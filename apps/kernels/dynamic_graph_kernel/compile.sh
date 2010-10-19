@@ -1,0 +1,1 @@
+g++ -O3 -I../../libs/boost-trunk/ -o dyanmic_graph_kernel dynamic_graph_kernel.cpp
