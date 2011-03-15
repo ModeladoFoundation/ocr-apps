@@ -1,11 +1,11 @@
-This benchmark is build using the SNAP package version 0.4 (http://sourceforge.net/projects/snap-graph/). The
+This benchmark is build using the SNAP package version 0.4 (http://sourceforge.net/projects/snap-graph/). 
 It generates R-MAT graph of successive sizes (default 250K -- 5000K nodes) and computes 500 runs of  breadth first search over randomly choosen nodes.
 The parallelization mechanism for bfs is openmp.
 
  The final timings for graph generation and bfs are collected in benchmark_bfs_timings.txt. 
 
 To build the benchmark:
- 1. Build snap package with openmp support (./configure --with-openmp) within the snap directory
+ 1. Build snap package with openmp support (./configure --enable-openmp) within the snap directory
  2. compile rmat-gen.c and rmat-bfs.c (see compile.sh)
 
 To run the benchmark: type ./benchmark_bfs.sh to produce benchmark_bfs_timings.txt
@@ -14,7 +14,3 @@ Relevant files to fine tune the benchmark
  1. benchmark_bfs.sh
  2. rmat-gen.c	
  3. rmat-bfs.c
-
-
-
-
