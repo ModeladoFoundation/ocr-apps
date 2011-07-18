@@ -41,10 +41,10 @@ void printPoint(point p)
  *  *      Implements an approximation to e^(x*i) = cos(x) + i*sin(x)
  *   *      error within x^10/10! of true value. maybe.
  *    */
-complex_double cexp(double x);
+complex_double my_cexp(double x);
 double factorial(int x);
 double my_pow(double base, int exp);
-complex_double cexp(double x)
+complex_double my_cexp(double x)
 {
         double cos = 1, sin = x;
         int k = 2;
@@ -71,7 +71,7 @@ complex_double cexp(double x)
 }
 
 /*
- *  *      Helpers to my cexp
+ *  *      Helpers to my my_cexp
  *   */
 double factorial(int x)
 {
@@ -91,7 +91,7 @@ double factorial(int x)
 }
 
 /*
- *  *      Helpers to my cexp
+ *  *      Helpers to my my_cexp
  *   */
 double my_pow(double base, int exp)
 {
@@ -172,7 +172,7 @@ complex_double* buildTwiddle(int numPoints, int inverse)
         int k;
         for(k = 0; k < numPoints/2; k++)
         {
-                twiddle[k] = cexp(((double) inverse)*-2.0*pi*((double) k)/((double) numPoints));
+                twiddle[k] = my_cexp(((double) inverse)*-2.0*pi*((double) k)/((double) numPoints));
         }
 
         return twiddle;
