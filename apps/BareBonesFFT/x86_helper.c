@@ -44,30 +44,33 @@ double factorial(int x);
 double my_pow(double base, int exp);
 complex_double my_cexp(double x)
 {
-        double cos = 1, sin = x;
+        double cos = 1.0, sin = x;
 		double real = x + 1.0;
         int k = 2;
         double sign = -1.0;
-        for(; k < 10; k++)
+        for(; k < 12; k++)
         {
-/*                if(!(k & 0x1)) //even - cos
-                {
-                        cos += sign*my_pow(x, k)/factorial(k);
-                }
-                else //odd - sin
-                {
-                        sin += sign*my_pow(x, k)/factorial(k);
-                }
+        	if(!(k & 0x1)) //even - cos
+            {
+            	cos += sign*my_pow(x, k)/factorial(k);
+            }
+            else //odd - sin
+            {
+                sin += sign*my_pow(x, k)/factorial(k);
+            }
 
-                sign *= -1;
-*/
-			real += my_pow(x, k);
+            if(k % 2 == 1) sign *= -1.0;
+
+			//y = complex_mult(y, x);
+			//total? += y / factorial(k); //complex divide?
         }
 
         complex_double ret;
-        ret.real = real;
-        ret.imaginary = 0.0;
-printf("%f + %fi versus %f + %fi\n", real, 0.0, creal(cexp(x)), cimag(cexp(x)));
+        ret.real = cos;
+        ret.imaginary = sin;
+//printf("sin: %f cos: %f\n", sin, cos);
+//printf("%f + %fi versus %f + %fi\n", cos, sin, creal(cexp(x*I)), cimag(cexp(x*I)));
+//printf("-----------------------\n");
         return ret;
 }
 
@@ -87,8 +90,8 @@ double factorial(int x)
         if(x == 9) return 362880.0;
         if(x == 10) return 3628800.0;
         if(x == 11) return 39916800.0;
-printf("BLUE LEADER RED ALERT\n");
-        return -1.0;
+//printf("BLUE LEADER RED ALERT\n");
+        return factorial(x-2) + factorial(x-1);
 }
 
 /*
@@ -96,9 +99,11 @@ printf("BLUE LEADER RED ALERT\n");
  */
 double my_pow(double base, int exp)
 {
+int s = exp;
+double b = base;
         if(exp < 0) return -1;
         if(exp == 0) return 1;
-        int ret = 1;
+        double ret = 1.0;
         while(exp > 0)
         {
                 if (exp & 0x1) ret *= base;
@@ -106,6 +111,7 @@ double my_pow(double base, int exp)
                 base *= base;
         }
 
+//printf("%f^%d = %d\n", b, s, ret);
         return ret;
 }
 
