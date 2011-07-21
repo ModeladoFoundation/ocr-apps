@@ -16,16 +16,14 @@ void printPoints(point* a, int N)
  *   */
 void printTwoPoints(point* a, point* b, int N)
 {
-/*
- *         int k;
- *                 for(k = 0; k < N; k++)
- *                         {
- *                                         printf("k: %d\n", k);
- *                                                         printPoint(a[k]);
- *                                                                         printPoint(b[k]);
- *                                                                                 }
- *
- *                                                                                 */}
+    int k;
+    for(k = 0; k < N; k++)
+    {
+    	printf("k: %d\n", k);
+    	printPoint(a[k]);
+    	printPoint(b[k]);
+	}
+}
 
 /*
  *  *      System.out.println(point.toString());
@@ -45,7 +43,7 @@ double my_pow(double base, int exp);
 complex_double my_cexp(double x)
 {
         double cos = 1.0, sin = x;
-		double real = x + 1.0;
+		//double real = x + 1.0;
         int k = 2;
         double sign = -1.0;
         for(; k < 12; k++)
@@ -99,8 +97,6 @@ double factorial(int x)
  */
 double my_pow(double base, int exp)
 {
-int s = exp;
-double b = base;
         if(exp < 0) return -1;
         if(exp == 0) return 1;
         double ret = 1.0;
