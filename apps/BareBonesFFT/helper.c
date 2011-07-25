@@ -49,7 +49,7 @@ complex_double my_cexp(double x)
         double cos = 1, sin = x;
         int k = 2;
         double sign = -1.0;
-        for(; k < 10; k++)
+        for(; k < 12; k++)
         {
                 if(!(k & 0x1)) //even - cos
                 {
@@ -65,7 +65,7 @@ complex_double my_cexp(double x)
 
         complex_double ret;
         ret.real = cos;
-        ret.imaginary = sin;
+        ret.imaginary = /*sin*/ 0.0;
 
         return ret;
 }
@@ -87,7 +87,7 @@ double factorial(int x)
         if(x == 10) return 3628800.0;
         if(x == 11) return 39916800.0;
 
-        return -1.0;
+        return factorial(x-2) + factorial(x-1);
 }
 
 /*
@@ -97,7 +97,7 @@ double my_pow(double base, int exp)
 {
         if(exp < 0) return -1;
         if(exp == 0) return 1;
-        int ret = 1;
+        double ret = 1.0;
         while(exp > 0)
         {
                 if (exp & 0x1) ret *= base;
