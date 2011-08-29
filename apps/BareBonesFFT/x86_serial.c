@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 	}
 	else 
 	{
+		printTwoPoints(invertedFFTPoints, dataPoints, numPoints);
 		printf("transform completed succesfully.\n");
 		ret = 0x10;
 	}

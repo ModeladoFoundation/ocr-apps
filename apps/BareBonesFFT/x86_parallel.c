@@ -1,4 +1,4 @@
-#include "parallel.h"
+#include "x86_parallel.h"
 #include <stdlib.h>
 
 int main(int argc, char *argv[])

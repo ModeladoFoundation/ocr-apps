@@ -2,6 +2,7 @@
 
 int main(int argc, char *argv[])
 { 
+
 	char *file = (char *) "Input/default.txt";
 	if(argc > 1) file = argv[1];
 	//point* dataPoints = buildDataPoints(file);
@@ -15,18 +16,20 @@ int main(int argc, char *argv[])
 //	writeData(fftPoints, outputFile);
 
 	int ret = 0x10000;
+	printf("1\n1\n2\n2\ntest\ntestetsetest\n\n\ntetestest\n\n\n\nhgfdhggf\n %d %d %d \n\n", 3, 4, 5);
+	exit(0);
 
 	point* invertedFFTPoints = FourierTransform(fftPoints, numPoints, -1);
 	if(checkPoints(origPoints, invertedFFTPoints, numPoints) == 0) 
 	{
-		//printf("f-(f(x)) differs from x! bad transformation!\n");
+		printf("f-(f(x)) differs from x! bad transformation!\n");
 		//write(stdout, (void *) &("f-(f(x)) differs from x! bad transformation!\n"), sizeof("f-(f(x)) differs from x! bad transformation!\n"));
 		//printTwoPoints(origPoints, dataPoints, numPoints);
 		ret = 0x3;
 	}
 	else 
 	{
-		//printf("transform completed succesfully.\n");
+		printf("transform completed succesfully.\n");
 		ret = 0x10;
 	}
 
@@ -34,8 +37,8 @@ int main(int argc, char *argv[])
 	return ret; 
 }
 
-void *malloc(unsigned long x) {return (void *) 0x0;} //because sesc wraps malloc
-void free(void *x) {} //because sesc wraps malloc
+//void *malloc(unsigned long x) {return (void *) 0x0;} //because sesc wraps malloc
+//void free(void *x) {} //because sesc wraps malloc
 
 /*
  *	Wrapper to Fourier Transformation
