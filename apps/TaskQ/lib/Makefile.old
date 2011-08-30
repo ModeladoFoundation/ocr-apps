@@ -1,0 +1,7 @@
+
+taskQ.o: 
+	icc -xHost -O3 -DCORES_PER_SOCKET=4 -DTASKQ_DIST_FIXED -c taskQDistCommon.c
+	mv taskQDistCommon.o taskQ.o
+
+clean:
+		rm *.o
