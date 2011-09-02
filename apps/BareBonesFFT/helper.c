@@ -46,7 +46,7 @@ double factorial(int x);
 double my_pow(double base, int exp);
 complex_double my_cexp(double x)
 {
-        double cos = 1, sin = x;
+        double cos = 1.0, sin = x;
         int k = 2;
         double sign = -1.0;
         for(; k < 12; k++)
@@ -60,12 +60,12 @@ complex_double my_cexp(double x)
                         sin += sign*my_pow(x, k)/factorial(k);
                 }
 
-                sign *= -1;
+                if(k % 2 == 1) sign *= -1.0;
         }
 
         complex_double ret;
         ret.real = cos;
-        ret.imaginary = /*sin*/ 0.0;
+        ret.imaginary = sin;
 
         return ret;
 }

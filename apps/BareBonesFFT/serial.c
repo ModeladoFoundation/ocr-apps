@@ -16,8 +16,6 @@ int main(int argc, char *argv[])
 //	writeData(fftPoints, outputFile);
 
 	int ret = 0x10000;
-	printf("1\n1\n2\n2\ntest\ntestetsetest\n\n\ntetestest\n\n\n\nhgfdhggf\n %d %d %d \n\n", 3, 4, 5);
-	exit(0);
 
 	point* invertedFFTPoints = FourierTransform(fftPoints, numPoints, -1);
 	if(checkPoints(origPoints, invertedFFTPoints, numPoints) == 0) 
