@@ -129,4 +129,4 @@ int checkPoints(point* a, point* b, int numPoints)
 	return 1;
 }
 
-#include "helper.c"
+#include "helper.h"

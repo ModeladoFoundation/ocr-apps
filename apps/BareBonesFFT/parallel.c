@@ -12,16 +12,21 @@ int main(int argc, char *argv[])
 	point* fftPoints = FourierTransform(dataPoints, numPoints, 1);
 	point* invertedFFTPoints = FourierTransform(fftPoints, numPoints, -1);
 	if(checkPoints(origPoints, invertedFFTPoints, numPoints) == 0) 
-		ret = 0x2;
+	{	
+		printf("f-(f(x)) differs from x! badtransformation!\n");
+		printTwoPoints(origPoints, dataPoints, numPoints);
+	}
 	else 
-		ret = 0x10;
+	{
+		printf("Transformation completed successfully\n");
 
+	}
 	freeAll(fftPoints, invertedFFTPoints, origPoints, dataPoints);
 	return ret ; 
 }
 
-void *malloc(unsigned long x) {return (void *) 0x0;} //because sesc wraps malloc
-void free(void *x) {} //because sesc wraps malloc
+//void *malloc(unsigned long x) {return (void *) 0x0;} //because sesc wraps malloc
+//void free(void *x) {} //because sesc wraps malloc
 
 /*
  *	Wrapper to Fourier Transformation
@@ -284,4 +289,4 @@ int checkPoints(point* a, point* b, int numPoints)
 	return 1;
 }
 
-#include "helper.c"
+#include "helper.h"

@@ -13,6 +13,9 @@
  */
 
 #include <pthread.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #ifndef pi
 #define pi 3.14159265358979323846
@@ -71,7 +74,7 @@ point* origPointer;
 
 //functions
 complex_double* buildTwiddle(int numPoints, int inverse);
-complex_double cexp(double x);
+complex_double my_cexp(double x);
 double my_pow(double base, int exp);
 double factorial(int x);
 point* buildDataPoints(char *file);
