@@ -1,0 +1,112 @@
+/**
+ *	Fast Fourier Transform (FFT)
+ *	@author: Austin Gibbons - austin.gibbons@intel.com
+ *	@date: June 7th, 2011
+ *
+ *	This is a serial version of the Cooley-Tukey FFT algorthim
+ *	Its purpose is to serve as an introductory tool to developing
+ *	Synthetic Apeture Radar (SAR) and offer parallelization hints
+ *	in regards to both HTA and Codelets paradigms
+ *
+ *	@Input: a file where each line represents an n-dimensional point
+ *	@Output: a file where each line represents an n-dimensional point
+ */
+
+#include "db_alloc_public.h"
+#include "db_alloc_pthrhack.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <complex.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#ifndef pi
+#define pi 3.14159265358979323846
+#endif
+
+const int nCEs = 0;
+const int nXEs = 8;
+#define nBlocks 1
+#define nChips 1
+
+#define engineHeap 32768 //per engine
+#define blockHeap 524288 //per block (not including engine)
+#define DRAM 268435456 //per chip (not including block or engine)
+
+//different modes for different sized datasets
+#define ONE_ENGINE -1
+#define MANY_ENGINE -10
+#define BLOCK -2
+#define BLOCK_ENGINE -3
+#define ONE_CHIP -4
+#define MANY_CHIPS -5
+#define ONE_DRAM -6
+#define MANY_DRAM -7
+#define DISK -8
+
+#define ANY LOCAL | BLOCK_LOCAL | ON_CHIP | OFF_CHIP
+
+typedef struct point
+{
+	double real;
+	double imaginary;
+} point;
+
+typedef struct StartData
+{
+	point *x;	
+	int N;
+	int stride;
+	int inverse;
+	
+	int thread_id;
+	int depth;
+} StartData;
+
+typedef struct DFTData
+{
+	int start;
+	int end;
+	point *even;
+	point *odd;
+	point *X;
+	int stride;
+	int offset;
+} DFTData ; 
+
+//globals
+int numPoints;
+int numThreads;
+complex double* twiddle;
+data_block_t twiddleBlock;
+point* origPointer;
+int mode;
+int twiddle_verse; //maintain which way twiddle is facing
+
+//functions
+complex double* buildTwiddle(int numPoints, int inverse);
+data_block_t buildDataPoints(char *file);
+data_block_t buildDataPointsWrapper(FILE *fd, int BUFF_SIZE, data_block_t dataPoints_block);
+data_block_t outfileName(char *file);
+void writeData(point *dataPoints, char *fileName);
+int countLines(FILE *fd, int BUFF_SIZE);
+point mult(const complex double a, const point b);
+point plus(const point a, const point b);
+point minus(const point a, const point b);
+void *plus_wrapper(void *v_td);
+void *minus_wrapper(void *v_td);
+void runSerial(point *even, point *odd, int stride, int offset, point * X);
+void recurseParallel(point * x, data_block_t *even_block, data_block_t *odd_block, int N, int stride, int inverse, int thread_id, int depth);
+void runParallel(int N, int thread_count, data_block_t even_block, data_block_t odd_block, point *X, int stride, int offset);
+void serialFastFourierTransform(point* x, int N, int stride, int inverse, point *X, point *even);
+void* parallelFastFourierTransform(void *);
+data_block_t FourierTransform(point* x, int N, int inverse);
+void releaseAndFreeAll(data_block_t origPointsBlock, data_block_t outputFileBlock, data_block_t twiddleBlock, data_block_t fftPoints_block, data_block_t invertedFFTPoints_block, data_block_t dataPoints_block);
+void printPoint(point p);
+void printPoints(point* a, int N);
+void printTwoPoints(point* a, point* b, int N);
+data_block_t copyPoints(point* a, int numPoints, int stride);
+int checkPoints(point* a, point* b, int numPoints);
+int powTwo(int x);
