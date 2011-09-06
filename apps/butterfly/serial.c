@@ -34,7 +34,8 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-point *fastFourierTransform(point *x, int N, int inverse)
+//input must be a power of two! this goes unchecked!
+point *fastFourierTransform(point *x, int N)
 {
 	point *X = (point *) malloc(N*sizeof(point));
 	point *Y = (point *) malloc(N*sizeof(point));
@@ -82,11 +83,12 @@ point *fastFourierTransform(point *x, int N, int inverse)
 	return Y;
 }
 
+//input must be a power of two! this goes unchecked!
 point *FourierTransform(point *x, int N, int inverse)
 {
 	twiddle = buildTwiddle(N, inverse);
 
-	point *fft = fastFourierTransform(x, N, inverse);
+	point *fft = fastFourierTransform(x, N);
 
 	if(inverse == -1)
 		invert(fft, N);
