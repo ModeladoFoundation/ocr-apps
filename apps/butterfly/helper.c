@@ -1,3 +1,4 @@
+int getNumPoints() {return numPoints;}
 
 /*
  *  *      prints all the points in a list

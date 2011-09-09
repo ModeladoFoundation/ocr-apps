@@ -43,7 +43,7 @@ int countLines(FILE *fd, int BUFF_SIZE);
 point mult(const complex double a, const point b);
 point plus(const point a, const point b);
 point minus(const point a, const point b);
-point* FourierTransform(point* x, int N, int inverse);
+point* FourierTransform(point* x, int numPoints, int inverse);
 void freeAll(point* a, point* b, point* c, point* d);
 void printPoint(point p);
 void printPoints(point* a, int N);
