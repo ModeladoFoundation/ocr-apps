@@ -6,7 +6,7 @@ void scatter_nugget(int tid, int sender_id, int receiver_id)
   printf("sg-begin: tid = %d, sender=%d, reciever = %d\n", tid, sender_id, receiver_id);
 
   /* look at bin with id == receiver_id */
-  int64_t recv_off = receiver_id * ds::bin_extant;
+  int64_t recv_off = receiver_id * ds::bin_extant + sender_id * ds::nugget_extant;
 
   int recvout;
   int sendout;
@@ -17,11 +17,11 @@ void scatter_nugget(int tid, int sender_id, int receiver_id)
   /* map the nugget sender_id portion */
   if ((recvout = open64(ds::bucket_fn, O_RDWR, S_IRWXU)) < 0)
     perror(ds::bucket_fn);
-  int64_t pos = sender_id * ds::nugget_extant; /* pos has to be multiple of 4096 */
+  //  int64_t pos = sender_id * ds::nugget_extant; /* pos has to be multiple of 4096 */
   
   if (lseek64(recvout, 0, SEEK_SET) == -1)
     perror("lseek error");
-  if ((rst = (int64_t*) mmap64(0, ds::nugget_extant, PROT_READ|PROT_WRITE, MAP_SHARED, recvout, pos)) == (int64_t*) -1)
+  if ((rst = (int64_t*) mmap64(0, ds::nugget_extant, PROT_READ|PROT_WRITE, MAP_SHARED, recvout, recv_off)) == (int64_t*) -1)
     perror("mmap error for output");
 
   /*-----------------------------------------*/
@@ -29,19 +29,19 @@ void scatter_nugget(int tid, int sender_id, int receiver_id)
   
   /* map the  receiver_id portion in bin sender_id */
 
-  int64_t sender_off = sender_id * ds::bin_extant;
-
+  int64_t sender_off = sender_id * ds::bin_extant + receiver_id * ds::nugget_extant; 
+  printf("sender_off=%d\n", sender_off);
   /*----------------MMAP Section------------------*/
   int64_t* sst;
   if ((sendout = open64(ds::cbucket_fn, O_RDWR, S_IRWXU)) < 0)
     perror(ds::cbucket_fn);
-  pos = receiver_id * ds::nugget_extant;
+  //  pos = receiver_id * ds::nugget_extant;
   if (lseek64(sendout, 0, SEEK_SET) == -1) 
     perror("lseek error"); 
-  if ((sst = (int64_t*) mmap64(0, ds::nugget_extant, PROT_READ|PROT_WRITE, MAP_SHARED, sendout, pos)) == (int64_t*) -1)
+  if ((sst = (int64_t*) mmap64(0, ds::nugget_extant, PROT_READ|PROT_WRITE, MAP_SHARED, sendout,sender_off)) == (int64_t*) -1)
     {
       perror("xx:mmap error for output");
-      printf("%d\n", pos);
+      printf("%d\n", sender_off);
     }
   /*--------------------------------------------------*/
 
@@ -49,7 +49,7 @@ void scatter_nugget(int tid, int sender_id, int receiver_id)
 
   /*-----------------MMAP Section---------------------*/
   
-  msync(rst, ds::nugget_extant, MS_SYNC); 
+  // msync(rst, ds::nugget_extant, MS_SYNC); 
 
   if (munmap(sst, ds::nugget_extant) == -1) {
     perror("Error un-mmapping the file");
@@ -88,22 +88,17 @@ int alloc_file(char *fn, int64_t sz)
 
 void random_shuffle_bin(int bin_id)
 {
-  char bin_fn[500];
-  char idstr[50];
-  sprintf(idstr, "%d", bin_id);
-  strcpy(bin_fn, "bin_");
-  strcat(bin_fn, idstr);
-  strcat(bin_fn, ".dat");
+  int64_t pos = bin_id * ds::bin_extant;
   int fdout;
   int64_t* rst;
-  if ((fdout = open64(bin_fn, O_RDWR, S_IRWXU)) < 0)
-    perror(bin_fn);
+  if ((fdout = open64(ds::bucket_fn, O_RDWR, S_IRWXU)) < 0)
+    perror(ds::bucket_fn);
   if (lseek64(fdout, 0, SEEK_SET) == -1)
     perror("lseek error");
-  if ((rst = (int64_t*) mmap64(0, ds::bin_extant, PROT_READ|PROT_WRITE, MAP_SHARED, fdout, 0)) == (int64_t*) -1)
+  if ((rst = (int64_t*) mmap64(0, ds::bin_extant, PROT_READ|PROT_WRITE, MAP_SHARED, fdout, pos)) == (int64_t*) -1)
     perror("mmap error for output");
-  std::random_shuffle(rst, rst+ds::bin_sz);
-  msync(rst, ds::bin_extant, MS_SYNC);
+  // std::random_shuffle(rst, rst+ds::bin_sz);
+  //  msync(rst, ds::bin_extant, MS_SYNC);
   if (munmap(rst, ds::bin_extant) == -1) {
     perror("Error un-mmapping the file");
   }
@@ -192,7 +187,7 @@ void initialize_bucket()
 
   char bbin_fn[500];
 
-  fdout = alloc_file(ds::cbucket_fn, bucket_sz);
+  fdout = alloc_file(ds::cbucket_fn, ds::bucket_extant);
 
   if ((dst = (int64_t*) mmap64(0, bucket_extant, PROT_READ | PROT_WRITE, MAP_SHARED, fdout, 0)) == (int64_t*)-1)
     perror("mmap error for output");
@@ -200,7 +195,7 @@ void initialize_bucket()
     {
       dst[j-start_idx] =  j;
     }
-  if (munmap(dst, ds::bin_extant) == -1) {
+  if (munmap(dst, ds::bucket_extant) == -1) {
     perror("Error un-mmapping the file");
   }
   close(fdout);
