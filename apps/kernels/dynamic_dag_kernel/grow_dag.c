@@ -1,5 +1,8 @@
+#ifndef __AFL__
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#endif 
+
 #include <stdio.h>
 #include <string.h>             /* for strdup */
 #include <strings.h>    /* for strcasecmp */
@@ -27,9 +30,11 @@ int totalfanoutcredit;
 int maxDeg;
 
 
-
+#ifndef __AFL__
 const gsl_rng_type* T;
 gsl_rng* rng;
+#endif
+
 
 int intcmp(int* a, int* b)
 {
@@ -52,10 +57,11 @@ void grow_dag_init(int d)
   nref_2_depth_iv.arr = NULL;
   fanoutcredit = construct_IntVec();
 
+#ifndef __AFL__
   gsl_rng_env_setup(); 
   T = gsl_rng_default;
   rng = gsl_rng_alloc(T);
-
+#endif
 }
 
 
@@ -188,7 +194,12 @@ int addNode_c(struct graphtree_idx* gptr, int fanout, int fanin)
 
 void boot_strap_new_node(struct graphtree_idx* gptr)
 {
-  int fanout= gsl_ran_binomial(rng, .5, maxDeg);
+  #ifndef __AFL__ 
+  int fanout= gsl_ran_binomial(rng, .5, maxDeg); 
+  #else
+  int fanout= drand48() * maxDeg;
+  #endif
+
  addNode_c(gptr, fanout,0);
 }
 
@@ -198,8 +209,13 @@ void addNewNode(struct graphtree_idx* gptr)
   int maxFanIn = maxDeg;
   while(1)
     {
+      #ifndef __AFL__
       int fanin = gsl_ran_binomial(rng, .5, maxFanIn);
       int fanout= gsl_ran_binomial(rng, .5, maxDeg);
+      #else
+      int fanin = drand48() * maxDeg;
+      int fanout = drand48() * maxDeg;
+      #endif
   
       int retval =  addNode_c(gptr,fanout, fanin);
       if(retval != -1)  
@@ -220,7 +236,8 @@ void free_dag_generator()
   free_Vec_IntVec(&nref_2_depth_iv);
   free(fanoutcredit->arr);
   free(fanoutcredit);
-  
+  #ifndef __AFL__
   gsl_rng_free(rng);
+  #endif
 }
 
