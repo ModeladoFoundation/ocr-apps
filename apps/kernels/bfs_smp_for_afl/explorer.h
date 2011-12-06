@@ -80,7 +80,7 @@ void relax(int explorer_id, uint32_t nid, std::vector< wq_t >*  discover_queue_p
 
 void* explorer_thread(void* arg)
 {
-  int id = (int) arg;
+  int id = (int64_t) arg;
   std::vector< wq_t >* visit_queue_ptr = &all_wq1;
   std::vector< wq_t >* discover_queue_ptr = &all_wq2;
   uint32_t rng_begin = id* bucket_sz;

@@ -52,7 +52,7 @@ int main(int argc, char** argv)
   for(int nq=0; nq < num_queries; ++nq)
     {
       printf("Start vertex = %d\n", start_v);
-      for(int i =0; i< num_explorers; ++i)
+      for(int64_t i =0; i< num_explorers; ++i)
 	{
 	  pthread_create(&all_threads[i], 0, explorer_thread, (void*)i);
 	}
