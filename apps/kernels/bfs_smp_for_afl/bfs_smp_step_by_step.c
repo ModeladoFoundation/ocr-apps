@@ -8,7 +8,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "rmd_afl_all.h"
+//#include "rmd_afl_all.h"
 
 #include "int_vec.h"  /* define vec_int and vec_of_vec_of_ints */
 #include "graph_gen.h"
@@ -32,7 +32,7 @@ int main(int argc, char** argv)
     return -1;
    }
   
-  rmd_env_param env_param = RMD_ENV_DEFAULT;
+  /*rmd_env_param env_param = RMD_ENV_DEFAULT;
   env_param.nchips        = 1;
   env_param.block_perchip = 1;
   env_param.ce_perblock   = 1;
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
   env_param.dram_size     = (size_t)4*1024*1024*1024; //4GB
   
   create_rmd_env(&env_param);
-  initmem_rmd_thread(0);
+  initmem_rmd_thread(0);*/
 
   srand48(1234567); /* sesc simulator does not support time  (i think) */
   num_explorers = atoi(argv[1]);
@@ -85,6 +85,6 @@ int main(int argc, char** argv)
     }
   free_Vec_IntVec(&G.adj_store);
   
-  cleanup_rmd_env();
+  //cleanup_rmd_env();
   return 0;
 }
