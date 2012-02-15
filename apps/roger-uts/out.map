@@ -1,0 +1,1284 @@
+Archive member included because of file (symbol)
+
+../../ss/runtime/libxe/libxert.a(xe-codelet.o)
+                              uts-main.o (rmd_codelet_create)
+../../ss/runtime/libxe/libxert.a(xe-codelet-header.o)
+                              ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o (codelet_header)
+../../ss/runtime/libxe/libxert.a(xe_console.o)
+                              uts-main.o (xe_printf)
+../../ss/runtime/libxe/libxert.a(codelet-main.o)
+                              ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o (rmd_main)
+../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+                              ../../ss/runtime/libxe/libxert.a(xe-codelet-header.o) (xe_initialize_memories)
+../../ss/runtime/libxe/libxert.a(xe_memory.o)
+                              uts-main.o (rmd_db_alloc)
+../../ss/runtime/libxe/libxert.a(xe_tlsf-allocator.o)
+                              ../../ss/runtime/libxe/libxert.a(xe_allocators.o) (tlsf_init)
+../../ss/runtime/libxe/libxert.a(xe_guid-allocator.o)
+                              ../../ss/runtime/libxe/libxert.a(xe_allocators.o) (guid_alloc_init)
+../../ss/runtime/libxe/libxert.a(xe_utils.o)
+                              ../../ss/runtime/libxe/libxert.a(xe_tlsf-allocator.o) (fls32)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+                              uts-main.o (__assert_func)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+                              uts.o (atof)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+                              uts.o (atoi)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+                              uts-main.o (exit)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o) (fiprintf)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o) (_impure_ptr)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+                              brg_sha1.o (memcpy)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+                              uts.o (memset)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+                              uts.o (printf)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+                              brg_sha1.o (sprintf)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+                              uts-main.o (strcat)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+                              uts-main.o (strerror)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+                              uts-main.o (strlen)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o) (strtod)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o) (_strtol_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o) (_svfprintf_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+                              uts.o (gettimeofday)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o) (_user_strerror)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o) (_vfiprintf_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o) (_vfprintf_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o) (__swsetup_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o) (__call_exitprocs)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o) (abort)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o) (__ctype_ptr__)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o) (_dtoa_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o) (_fflush_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o) (__sinit)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o) (_fputwc_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o) (__sfvwrite_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o) (_fwalk)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o) (__gethex)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o) (__hexnan)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o) (_gettimeofday_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o) (__locale_mb_cur_max)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o) (__smakebuf_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o) (memchr)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o) (memmove)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o) (_Balloc)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o) (errno)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o) (nanf)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o) (raise)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o) (_kill_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o) (__sread)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o) (strcmp)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o) (strncmp)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o) (__ssprint_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o) (__swbuf_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o) (_wcrtomb_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o) (__wctomb)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o) (_write_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o) (_close_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o) (fclose)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o) (_fstat_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o) (_isatty_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o) (_lseek_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o) (_read_r)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+                              uts.o (ceil)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+                              uts.o (floor)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+                              uts.o (sin)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+                              uts.o (log)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+                              uts.o (pow)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o) (__ieee754_log)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o) (__ieee754_pow)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o) (__ieee754_rem_pio2)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o) (__ieee754_sqrt)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o) (__kernel_cos)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o) (__kernel_rem_pio2)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o) (__kernel_sin)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o) (finite)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o) (__fdlib_version)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o) (matherr)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o) (nan)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o) (rint)
+../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o) (scalbn)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o) (_close)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o) (_fstat)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o) (_getpid)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o) (_gettimeofday)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o) (_isatty)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o) (_kill)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o) (_lseek)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o) (_read)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o) (_write)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+                              ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o (_exit)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o) (malloc)
+../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o) (_malloc_r)
+../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+                              ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o) (__errno)
+
+Allocating common symbols
+Common symbol       size              file
+
+errno               0x4               ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+xe_playgrounds_from_ce
+                    0x20              ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+pTS_return_scg      0x8               uts-main.o
+__hexdig            0x100             ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+main_pre_scg        0x8               uts-main.o
+xe_playgrounds      0x10              ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+main_pre_clg        0x8               uts-main.o
+myXE_struct         0x50              ../../ss/runtime/libxe/libxert.a(xe-codelet-header.o)
+pTS_return_clg      0x8               uts-main.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+LOCAL_RAM        0x0000000000000000 0x0000000000100000
+LOCAL_PRF        0x0000000000010000 0x0000000000001000
+LOCAL_MSR        0x0000000000011000 0x0000000000000200
+LOCAL_PMU        0x0000000000011200 0x0000000000000400
+BLOCK0_MSRPMU    0x0000000000000000 0x0000000000000800
+BLOCK0_RAM       0x0000000000002000 0x00000000000a0000
+BLOCK1_MSRPMU    0x0000000000100000 0x0000000000000800
+BLOCK1_RAM       0x0000000000102000 0x00000000000a0000
+CHIP_DRAM        0x0000000003030000 0x00000001fcfd0000
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+
+.text           0x0000000000000000    0x27408
+                0x0000000000000000                _ftext = .
+ crt0_lxe.o(.text)
+ .text          0x0000000000000000       0xb8 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+                0x0000000000000000                _start
+                0x00000000000000b0                rmd_crt_sp_base
+                0x00000000000000b8                einit = .
+ *(.init)
+                0x00000000000000b8                eprol = .
+ *(.text)
+ .text          0x00000000000000b8     0x7240 uts-main.o
+                0x00000000000000b8                RAG_struct_copy
+                0x00000000000001b0                pTS_return_codelet
+                0x0000000000000b70                pTS_finish_codelet
+                0x0000000000001d78                pTS_body_codelet
+                0x0000000000003ef8                parTreeSearch
+                0x00000000000049e8                main_pre
+                0x0000000000005360                main_post
+                0x0000000000005530                main_post_codelet
+                0x0000000000005bc0                main_pre_codelet
+                0x00000000000066b8                main_codelet
+                0x0000000000007180                impl_paramsToStr
+                0x0000000000007218                impl_parseParam
+                0x0000000000007258                impl_helpMessage
+                0x00000000000072b0                impl_abort
+ .text          0x00000000000072f8     0x2990 brg_sha1.o
+                0x00000000000072f8                rng_init
+                0x0000000000007428                sha1_begin
+                0x00000000000074c0                sha1_hash
+                0x00000000000076e8                sha1_end
+                0x0000000000007958                rng_spawn
+                0x0000000000007a50                rng_rand
+                0x0000000000007ad8                rng_nextrand
+                0x0000000000007ba8                rng_showstate
+                0x0000000000007c40                rng_showtype
+                0x0000000000007cd0                sha1_compile
+                0x0000000000009bf8                sha1
+ .text          0x0000000000009c88     0x2308 uts.o
+                0x0000000000009c88                uts_error
+                0x0000000000009d18                uts_wctime
+                0x0000000000009d98                rng_toProb
+                0x0000000000009e70                uts_initRoot
+                0x0000000000009f88                uts_numChildren_bin
+                0x000000000000a040                uts_numChildren_geo
+                0x000000000000a3b8                uts_numChildren
+                0x000000000000a6b8                uts_childType
+                0x000000000000a7f0                uts_paramsToStr
+                0x000000000000af38                uts_printParams
+                0x000000000000b090                uts_parseParams
+                0x000000000000b8c0                uts_helpMessage
+                0x000000000000bcd8                uts_showStats
+ .text          0x000000000000bf90      0x340 ../../ss/runtime/libxe/libxert.a(xe-codelet.o)
+                0x000000000000bf90                rmd_event_create
+                0x000000000000bfc8                rmd_event_satisfy
+                0x000000000000c008                rmd_event_delete
+                0x000000000000c040                rmd_codelet_create
+                0x000000000000c078                rmd_codelet_sched
+                0x000000000000c0b0                rmd_codelet_satisfy
+                0x000000000000c0f0                rmd_codelet_delete
+                0x000000000000c128                rmd_dep_add
+                0x000000000000c168                rmd_dep_delete
+                0x000000000000c1a8                rmd_complete
+                0x000000000000c1c8                xe_coreid_test
+ .text          0x000000000000c2d0       0xa8 ../../ss/runtime/libxe/libxert.a(xe-codelet-header.o)
+                0x000000000000c2d0                codelet_header
+ .text          0x000000000000c378      0x4a0 ../../ss/runtime/libxe/libxert.a(xe_console.o)
+                0x000000000000c378                xe_snprintf
+                0x000000000000c668                conout
+                0x000000000000c680                xe_printf
+ .text          0x000000000000c818      0x4e0 ../../ss/runtime/libxe/libxert.a(codelet-main.o)
+                0x000000000000c818                rmd_main
+ .text          0x000000000000ccf8      0x468 ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+                0x000000000000ccf8                xe_initialize_memories
+ .text          0x000000000000d160     0x1bc0 ../../ss/runtime/libxe/libxert.a(xe_memory.o)
+                0x000000000000d160                rmd_db_alloc
+                0x000000000000d9c0                rmd_db_free
+                0x000000000000ddf8                rmd_db_acquire
+                0x000000000000e360                rmd_db_release
+                0x000000000000e670                xe_malloc
+                0x000000000000e780                xe_free
+                0x000000000000e910                xe_realloc
+ .text          0x000000000000ed20     0x2408 ../../ss/runtime/libxe/libxert.a(xe_tlsf-allocator.o)
+                0x000000000000ed20                addressForBlock
+                0x000000000000ed30                blockForAddress
+                0x000000000000ed70                addFreeBlock
+                0x000000000000f248                tlsf_init
+                0x000000000000f8a8                tlsf_resize
+                0x000000000000f8d8                tlsf_malloc
+                0x00000000000104a0                tlsf_free
+                0x0000000000010928                tlsf_realloc
+                0x0000000000010da8                tlsf_extra_to_ptr
+                0x0000000000010db0                tlsf_ptr_to_extra
+ .text          0x0000000000011128      0x930 ../../ss/runtime/libxe/libxert.a(xe_guid-allocator.o)
+                0x0000000000011128                guid_alloc_init
+                0x00000000000113c0                guid_alloc_resize
+                0x0000000000011400                guid_alloc_malloc
+                0x00000000000116c0                guid_alloc_free
+                0x0000000000011810                guid_alloc_realloc
+                0x0000000000011990                guid_extra_to_ptr
+                0x00000000000119d0                guid_ptr_to_extra
+ .text          0x0000000000011a58      0x1d0 ../../ss/runtime/libxe/libxert.a(xe_utils.o)
+                0x0000000000011a58                fls16
+                0x0000000000011ae0                fls32
+                0x0000000000011b60                fls64
+ .text          0x0000000000011c28       0xf0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+                0x0000000000011c28                __assert_func
+                0x0000000000011ce8                __assert
+ .text          0x0000000000011d18       0x48 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+                0x0000000000011d18                atof
+ .text          0x0000000000011d60       0x90 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+                0x0000000000011d60                atoi
+                0x0000000000011da8                _atoi_r
+ .text          0x0000000000011df0       0x90 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+                0x0000000000011df0                exit
+ .text          0x0000000000011e80       0xb0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+                0x0000000000011e80                _fiprintf_r
+                0x0000000000011ec8                fiprintf
+ .text          0x0000000000011f30        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+ .text          0x0000000000011f30       0x40 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+                0x0000000000011f30                memcpy
+ .text          0x0000000000011f70       0x38 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+                0x0000000000011f70                memset
+ .text          0x0000000000011fa8      0x150 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+                0x0000000000011fa8                _printf_r
+                0x0000000000012048                printf
+ .text          0x00000000000120f8      0x130 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+                0x00000000000120f8                _sprintf_r
+                0x0000000000012188                sprintf
+ .text          0x0000000000012228       0x60 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+                0x0000000000012228                strcat
+ .text          0x0000000000012288      0x648 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+                0x0000000000012288                strerror
+ .text          0x00000000000128d0       0x38 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+                0x00000000000128d0                strlen
+ .text          0x0000000000012908     0x1c08 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+                0x0000000000012908                _strtod_r
+                0x0000000000014430                strtod
+                0x0000000000014480                strtof
+ .text          0x0000000000014510      0x280 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+                0x0000000000014510                _strtol_r
+                0x0000000000014740                strtol
+ .text          0x0000000000014790     0x23c8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+                0x0000000000014790                _svfprintf_r
+ .text          0x0000000000016b58       0x60 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+                0x0000000000016b58                gettimeofday
+ .text          0x0000000000016bb8        0x8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+                0x0000000000016bb8                _user_strerror
+ .text          0x0000000000016bc0     0x1500 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+                0x0000000000016bc0                __sprint_r
+                0x0000000000016d28                vfiprintf
+                0x0000000000016d78                _vfiprintf_r
+ .text          0x00000000000180c0     0x2680 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+                0x00000000000180c0                vfprintf
+                0x0000000000018110                _vfprintf_r
+ .text          0x000000000001a740      0x278 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+                0x000000000001a740                __swsetup_r
+ .text          0x000000000001a9b8      0x258 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+                0x000000000001a9b8                __call_exitprocs
+ .text          0x000000000001ac10       0x58 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+                0x000000000001ac10                abort
+ .text          0x000000000001ac68        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+ .text          0x000000000001ac68     0x1870 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+                0x000000000001ac68                _dtoa_r
+ .text          0x000000000001c4d8      0x498 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+                0x000000000001c4d8                _fflush_r
+                0x000000000001c8e0                fflush
+ .text          0x000000000001c970      0x650 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+                0x000000000001c970                __sfmoreglue
+                0x000000000001ca20                __sfp
+                0x000000000001cb80                __sfp_lock_acquire
+                0x000000000001cb88                __sinit
+                0x000000000001ce10                __sfp_lock_release
+                0x000000000001ce18                _cleanup_r
+                0x000000000001ce68                _cleanup
+                0x000000000001ced0                __sinit_lock_acquire
+                0x000000000001ced8                __sinit_lock_release
+                0x000000000001cee0                __fp_lock_all
+                0x000000000001cf50                __fp_unlock_all
+ .text          0x000000000001cfc0      0x330 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+                0x000000000001cfc0                _fputwc_r
+                0x000000000001d1c0                fputwc
+ .text          0x000000000001d2f0      0x678 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+                0x000000000001d2f0                __sfvwrite_r
+ .text          0x000000000001d968      0x210 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+                0x000000000001d968                _fwalk
+                0x000000000001da68                _fwalk_reent
+ .text          0x000000000001db78      0xd70 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+                0x000000000001db78                __hexdig_init
+                0x000000000001dc90                __gethex
+ .text          0x000000000001e8e8      0x360 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+                0x000000000001e8e8                __hexnan
+ .text          0x000000000001ec48       0xa0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+                0x000000000001ec48                _gettimeofday_r
+ .text          0x000000000001ece8      0x1c0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+                0x000000000001ece8                _setlocale_r
+                0x000000000001edf0                __locale_charset
+                0x000000000001ee08                __locale_mb_cur_max
+                0x000000000001ee20                __locale_msgcharset
+                0x000000000001ee38                __locale_cjk_lang
+                0x000000000001ee40                _localeconv_r
+                0x000000000001ee58                setlocale
+                0x000000000001ee90                localeconv
+ .text          0x000000000001eea8      0x250 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+                0x000000000001eea8                __smakebuf_r
+ .text          0x000000000001f0f8       0x38 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+                0x000000000001f0f8                memchr
+ .text          0x000000000001f130       0x88 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+                0x000000000001f130                memmove
+ .text          0x000000000001f1b8     0x15f8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+                0x000000000001f1b8                _Balloc
+                0x000000000001f328                _Bfree
+                0x000000000001f400                __multadd
+                0x000000000001f568                __s2b
+                0x000000000001f6f8                __hi0bits
+                0x000000000001f798                __lo0bits
+                0x000000000001f880                __i2b
+                0x000000000001f8d8                __multiply
+                0x000000000001fb48                __pow5mult
+                0x000000000001fd10                __lshift
+                0x000000000001feb8                __mcmp
+                0x000000000001ff30                __mdiff
+                0x0000000000020108                __ulp
+                0x00000000000201d8                __b2d
+                0x0000000000020390                __d2b
+                0x0000000000020520                __ratio
+                0x0000000000020648                _mprec_log10
+                0x0000000000020698                __copybits
+                0x0000000000020720                __any_on
+ .text          0x00000000000207b0      0x3e8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+                0x00000000000207b0                cleanup_glue
+                0x0000000000020828                _reclaim_reent
+                0x0000000000020ac0                _wrapup_reent
+ .text          0x0000000000020b98        0x8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+                0x0000000000020b98                nanf
+ .text          0x0000000000020ba0      0x4e0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+                0x0000000000020ba0                _init_signal_r
+                0x0000000000020c68                _signal_r
+                0x0000000000020d40                _raise_r
+                0x0000000000020e58                __sigtramp_r
+                0x0000000000020f58                raise
+                0x0000000000020fa0                signal
+                0x0000000000020ff0                _init_signal
+                0x0000000000021038                __sigtramp
+ .text          0x0000000000021080       0xe0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+                0x0000000000021080                _kill_r
+                0x0000000000021120                _getpid_r
+ .text          0x0000000000021160      0x260 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+                0x0000000000021160                __sread
+                0x00000000000211f8                __seofread
+                0x0000000000021200                __swrite
+                0x00000000000212d8                __sseek
+                0x0000000000021378                __sclose
+ .text          0x00000000000213c0       0x38 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+                0x00000000000213c0                strcmp
+ .text          0x00000000000213f8       0x68 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+                0x00000000000213f8                strncmp
+ .text          0x0000000000021460     0x13c0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+                0x0000000000021460                __ssprint_r
+                0x0000000000021718                _svfiprintf_r
+ .text          0x0000000000022820      0x2d8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+                0x0000000000022820                __swbuf_r
+                0x0000000000022aa8                __swbuf
+ .text          0x0000000000022af8      0x148 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+                0x0000000000022af8                _wcrtomb_r
+                0x0000000000022bf0                wcrtomb
+ .text          0x0000000000022c40       0xe8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+                0x0000000000022c40                __ascii_wctomb
+                0x0000000000022c80                _wctomb_r
+ .text          0x0000000000022d28       0xa8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+                0x0000000000022d28                _write_r
+ .text          0x0000000000022dd0       0xa0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+                0x0000000000022dd0                _close_r
+ .text          0x0000000000022e70      0x280 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+                0x0000000000022e70                _fclose_r
+                0x00000000000230a8                fclose
+ .text          0x00000000000230f0       0xa0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+                0x00000000000230f0                _fstat_r
+ .text          0x0000000000023190       0xa0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+                0x0000000000023190                _isatty_r
+ .text          0x0000000000023230       0xb0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+                0x0000000000023230                _lseek_r
+ .text          0x00000000000232e0       0xa8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+                0x00000000000232e0                _read_r
+ .text          0x0000000000023388      0x208 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+                0x0000000000023388                ceil
+ .text          0x0000000000023590      0x220 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+                0x0000000000023590                floor
+ .text          0x00000000000237b0      0x160 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+                0x00000000000237b0                sin
+ .text          0x0000000000023910      0x218 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+                0x0000000000023910                log
+ .text          0x0000000000023b28      0x5d0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+                0x0000000000023b28                pow
+ .text          0x00000000000240f8      0x3d8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+                0x00000000000240f8                __ieee754_log
+ .text          0x00000000000244d0      0xb98 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+                0x00000000000244d0                __ieee754_pow
+ .text          0x0000000000025068      0x490 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+                0x0000000000025068                __ieee754_rem_pio2
+ .text          0x00000000000254f8      0x318 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+                0x00000000000254f8                __ieee754_sqrt
+ .text          0x0000000000025810      0x170 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+                0x0000000000025810                __kernel_cos
+ .text          0x0000000000025980      0xc20 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+                0x0000000000025980                __kernel_rem_pio2
+ .text          0x00000000000265a0      0x140 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+                0x00000000000265a0                __kernel_sin
+ .text          0x00000000000266e0       0x50 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+                0x00000000000266e0                finite
+ .text          0x0000000000026730        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+ .text          0x0000000000026730        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+                0x0000000000026730                matherr
+ .text          0x0000000000026738        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+                0x0000000000026738                nan
+ .text          0x0000000000026740      0x268 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+                0x0000000000026740                rint
+ .text          0x00000000000269a8      0x2a0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+                0x00000000000269a8                scalbn
+ .text          0x0000000000026c48       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+                0x0000000000026c48                _close
+ .text          0x0000000000026c70       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+                0x0000000000026c70                _fstat
+ .text          0x0000000000026c98       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+                0x0000000000026c98                _getpid
+ .text          0x0000000000026cc0       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+                0x0000000000026cc0                _gettimeofday
+ .text          0x0000000000026ce8       0x20 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+                0x0000000000026ce8                _isatty
+ .text          0x0000000000026d08       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+                0x0000000000026d08                _kill
+ .text          0x0000000000026d30       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+                0x0000000000026d30                _lseek
+ .text          0x0000000000026d58       0x28 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+                0x0000000000026d58                _read
+ .text          0x0000000000026d80       0x18 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+                0x0000000000026d80                _write
+ .text          0x0000000000026d98       0x10 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+                0x0000000000026d98                _exit
+ .text          0x0000000000026da8       0xb0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+                0x0000000000026da8                malloc
+                0x0000000000026e00                free
+ .text          0x0000000000026e58      0x598 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+                0x0000000000026e58                _malloc_r
+                0x0000000000026f98                _free_r
+                0x0000000000027110                _calloc_r
+                0x0000000000027250                _realloc_r
+ .text          0x00000000000273f0       0x18 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+                0x00000000000273f0                __errno
+ *(.fini)
+                0x0000000000027408                etext = .
+                0x0000000000027408                _etext = .
+                0x0000000000027408                . = .
+
+.rodata         0x0000000000027410     0x4190
+ *(.rodata*)
+ .rodata        0x0000000000027410     0x1230 uts-main.o
+                0x0000000000027410                LOCAL
+ .rodata        0x0000000000028640       0x30 brg_sha1.o
+ .rodata.cst8   0x0000000000028670       0x18 uts.o
+ *fill*         0x0000000000028688        0x8 00
+ .rodata        0x0000000000028690      0x9d0 uts.o
+ .rodata        0x0000000000029060       0xe0 ../../ss/runtime/libxe/libxert.a(xe-codelet.o)
+ .rodata        0x0000000000029140       0x90 ../../ss/runtime/libxe/libxert.a(codelet-main.o)
+ .rodata        0x00000000000291d0       0xa0 ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+ .rodata        0x0000000000029270       0xa0 ../../ss/runtime/libxe/libxert.a(xe_memory.o)
+ .rodata        0x0000000000029310       0xb0 ../../ss/runtime/libxe/libxert.a(xe_tlsf-allocator.o)
+ .rodata        0x00000000000293c0       0x30 ../../ss/runtime/libxe/libxert.a(xe_guid-allocator.o)
+ .rodata        0x00000000000293f0       0x40 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .rodata        0x0000000000029430       0x10 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+                0x0000000000029430                _global_impure_ptr
+ .rodata        0x0000000000029440      0xc00 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .rodata.cst8   0x000000000002a040       0x28 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ *fill*         0x000000000002a068        0x8 00
+ .rodata        0x000000000002a070       0x70 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .rodata        0x000000000002a0e0      0x360 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .rodata        0x000000000002a440      0x200 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .rodata        0x000000000002a640      0x360 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .rodata        0x000000000002a9a0      0x290 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+                0x000000000002ab20                _ctype_
+ .rodata.cst8   0x000000000002ac30       0x18 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .rodata        0x000000000002ac48       0x40 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ *fill*         0x000000000002ac88        0x8 00
+ .rodata        0x000000000002ac90       0xc0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+                0x000000000002ac90                __sf_fake_stdin
+                0x000000000002acd0                __sf_fake_stdout
+                0x000000000002ad10                __sf_fake_stderr
+ .rodata        0x000000000002ad50       0x19 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .rodata        0x000000000002ad69        0xb ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+ *fill*         0x000000000002ad74        0xc 00
+ .rodata        0x000000000002ad80      0x140 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+                0x000000000002ad90                __mprec_tens
+                0x000000000002ae60                __mprec_bigtens
+                0x000000000002ae90                __mprec_tinytens
+ .rodata        0x000000000002aec0      0x200 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .rodata.cst8   0x000000000002b0c0        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .rodata.cst8   0x0000000000000000        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .rodata.cst16  0x000000000002b0c8       0x10 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .rodata        0x000000000002b0d8        0x5 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ *fill*         0x000000000002b0dd        0x3 00
+ .rodata.cst16  0x000000000002b0e0       0x20 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .rodata.cst8   0x000000000002b100       0x10 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .rodata        0x000000000002b110        0x4 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ *fill*         0x000000000002b114        0x4 00
+ .rodata.cst8   0x000000000002b118       0x60 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .rodata.cst8   0x000000000002b178       0xc0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+                                         0xc8 (size before relaxing)
+ .rodata.cst16  0x000000000002b238       0x20 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .rodata        0x000000000002b258       0x38 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .rodata.cst8   0x000000000002b290       0x60 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .rodata        0x000000000002b2f0      0x190 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .rodata.cst8   0x000000000002b480       0x30 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .rodata.cst8   0x000000000002b4b0        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+                                         0x10 (size before relaxing)
+ *fill*         0x000000000002b4b8        0x8 00
+ .rodata        0x000000000002b4c0       0x50 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .rodata.cst8   0x000000000002b510       0x38 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .rodata        0x000000000002b548       0x10 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .rodata.cst8   0x000000000002b558        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+                                         0x20 (size before relaxing)
+ .rodata        0x000000000002b560       0x40 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+                0x000000000002b5a0                _fdata = ALIGN (0x10)
+
+.data           0x000000000002b5a0      0x440
+ *(.data)
+ .data          0x000000000002b5a0        0x0 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+ .data          0x000000000002b5a0        0x8 uts-main.o
+                0x000000000002b5a0                coreid_self
+ .data          0x000000000002b5a8        0x0 brg_sha1.o
+ *fill*         0x000000000002b5a8        0x8 00
+ .data          0x000000000002b5b0       0x80 uts.o
+                0x000000000002b5b0                uts_trees_str
+                0x000000000002b5d0                uts_geoshapes_str
+                0x000000000002b5f0                type
+                0x000000000002b5f8                b_0
+                0x000000000002b600                nonLeafBF
+                0x000000000002b608                nonLeafProb
+                0x000000000002b610                gen_mx
+                0x000000000002b618                shiftDepth
+                0x000000000002b620                computeGranularity
+                0x000000000002b624                verbose
+ .data          0x000000000002b630        0x0 ../../ss/runtime/libxe/libxert.a(xe-codelet.o)
+ .data          0x000000000002b630        0x0 ../../ss/runtime/libxe/libxert.a(xe-codelet-header.o)
+ .data          0x000000000002b630       0x20 ../../ss/runtime/libxe/libxert.a(xe_console.o)
+ .data          0x000000000002b650        0x0 ../../ss/runtime/libxe/libxert.a(codelet-main.o)
+ .data          0x000000000002b650       0x80 ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+                0x000000000002b650                tlsf_allocator
+                0x000000000002b690                guid_allocator
+ .data          0x000000000002b6d0       0x20 ../../ss/runtime/libxe/libxert.a(xe_memory.o)
+                0x000000000002b6d0                xe_error_codes
+ .data          0x000000000002b6f0        0x0 ../../ss/runtime/libxe/libxert.a(xe_tlsf-allocator.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/runtime/libxe/libxert.a(xe_guid-allocator.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/runtime/libxe/libxert.a(xe_utils.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+ .data          0x000000000002b6f0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+ .data          0x000000000002b6f0      0x1e0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+                0x000000000002b8c0                _impure_ptr
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .data          0x000000000002b8d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+ .data          0x000000000002b8d0       0x40 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+ .data          0x000000000002b910        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+ .data          0x000000000002b910        0x8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+                0x000000000002b910                __ctype_ptr__
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+ .data          0x000000000002b918        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+ *fill*         0x000000000002b918        0x8 00
+ .data          0x000000000002b920       0xb0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+                0x000000000002b920                __mb_cur_max
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+ .data          0x000000000002b9d0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+ .data          0x000000000002b9d0        0x8 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+                0x000000000002b9d0                __wctomb
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .data          0x000000000002b9d8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+ .data          0x000000000002b9d8        0x8 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+                0x000000000002b9d8                __fdlib_version
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+ .data          0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+
+.data_local     0x000000000002b9e0        0x0
+ *(.data_local)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+ .data_local    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+
+.data_block     0x000000000002b9e0        0x0
+ *(.data_block)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+ .data_block    0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+                0x00000000000339e0                _gp = (ALIGN (0x10) + 0x8000)
+                0x000000000002b9e0                edata = .
+                0x000000000002b9e0                _edata = .
+                0x000000000002b9e0                _fbss = .
+
+.bss            0x000000000002b9e0      0x294
+ *(.bss)
+ .bss           0x000000000002b9e0        0x0 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+ .bss           0x000000000002b9e0       0x40 uts-main.o
+                0x000000000002b9e0                NULL_GUID
+                0x000000000002b9e8                nNodes
+                0x000000000002b9f0                nLeaves
+                0x000000000002b9f8                maxTreeDepth
+ .bss           0x000000000002ba20        0x0 brg_sha1.o
+ .bss           0x000000000002ba20       0x10 uts.o
+                0x000000000002ba20                rootId
+                0x000000000002ba24                shape_fn
+                0x000000000002ba28                debug
+ .bss           0x000000000002ba30        0x0 ../../ss/runtime/libxe/libxert.a(xe-codelet.o)
+ .bss           0x000000000002ba30        0x8 ../../ss/runtime/libxe/libxert.a(xe-codelet-header.o)
+                0x000000000002ba30                __self
+ .bss           0x000000000002ba38       0x80 ../../ss/runtime/libxe/libxert.a(xe_console.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/runtime/libxe/libxert.a(codelet-main.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/runtime/libxe/libxert.a(xe_memory.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/runtime/libxe/libxert.a(xe_tlsf-allocator.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/runtime/libxe/libxert.a(xe_guid-allocator.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/runtime/libxe/libxert.a(xe_utils.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+ .bss           0x000000000002bab8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+ .bss           0x000000000002bab8       0x10 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+                0x000000000002bab8                __nlocale_changed
+                0x000000000002babc                __mlocale_changed
+                0x000000000002bac0                _PathLocale
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+ .bss           0x000000000002bac8        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+ *(COMMON)
+ COMMON         0x000000000002bac8       0x20 uts-main.o
+                0x000000000002bac8                pTS_return_scg
+                0x000000000002bad0                main_pre_scg
+                0x000000000002bad8                main_pre_clg
+                0x000000000002bae0                pTS_return_clg
+ *fill*         0x000000000002bae8        0x8 00
+ COMMON         0x000000000002baf0       0x50 ../../ss/runtime/libxe/libxert.a(xe-codelet-header.o)
+                0x000000000002baf0                myXE_struct
+ COMMON         0x000000000002bb40       0x30 ../../ss/runtime/libxe/libxert.a(xe_allocators.o)
+                0x000000000002bb40                xe_playgrounds_from_ce
+                0x000000000002bb60                xe_playgrounds
+ COMMON         0x000000000002bb70      0x100 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+                0x000000000002bb70                __hexdig
+ COMMON         0x000000000002bc70        0x4 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+                0x000000000002bc70                errno
+
+.bss_local      0x000000000002bc78        0x0
+ *(.bss_local)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+ .bss_local     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+ *(COMMON_LOCAL)
+
+.bss_block      0x000000000002bc78        0x0
+ *(.bss_block)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/crt0_lxe.o
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-assert.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atof.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-atoi.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-exit.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fiprintf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-impure.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memcpy.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memset.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-printf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sprintf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcat.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strerror.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strlen.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtod.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strtol.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfprintf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sysgettod.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-u_strerr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfiprintf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-vfprintf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wsetup.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-__call_atexit.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-abort.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-ctype_.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-dtoa.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fflush.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-findfp.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fputwc.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fvwrite.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fwalk.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-gethex.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gdtoa-hexnan.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-gettimeofdayr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-locale.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-makebuf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memchr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-memmove.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-mprec.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-reent.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-sf_nan.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signal.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-signalr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-stdio.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strcmp.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-strncmp.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-svfiprintf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wbuf.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wcrtomb.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-wctomb_r.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-writer.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-closer.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fclose.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-fstatr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-isattyr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-lseekr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-readr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_ceil.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_floor.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_sin.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_log.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-w_pow.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_log.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_pow.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_rem_pio2.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-e_sqrt.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_cos.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_rem_pio2.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-k_sin.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_finite.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_lib_ver.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_matherr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_nan.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_rint.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libm.a(lib_a-s_scalbn.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(close.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(fstat.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(getpid.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(gettod.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(isatty.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(kill.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(lseek.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(read.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(write.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(_exit.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(malloc.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a(mallocr.o)
+ .bss_block     0x000000000002bc78        0x0 ../../ss/bin/rmd-linux-elf/lib/libc.a(lib_a-errno.o)
+ *(COMMON_BLOCK)
+                0x000000000002bc78                end = .
+                0x000000000002bc78                _end = .
+LOAD uts-main.o
+LOAD brg_sha1.o
+LOAD uts.o
+LOAD ../../ss/runtime/libxe/libxert.a
+START GROUP
+LOAD ../../ss/bin/rmd-linux-elf/lib/libc.a
+LOAD ../../ss/bin/rmd-linux-elf/lib/libg.a
+LOAD ../../ss/bin/rmd-linux-elf/lib/libm.a
+LOAD ../../ss/bin/rmd-linux-elf/lib/libgloss_lxe.a
+END GROUP
+OUTPUT(uts-main elf32-rmd)

@@ -1,0 +1,56 @@
+
+ifndef RMD_INSTALL_BASE
+	RMD_INSTALL_BASE = ../../ss
+endif
+PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
+
+RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
+RMD_RT_LIBDIR =$(RMD_INSTALL_BASE)/bin/rmd-linux-elf/lib
+
+AS	= $(PREFIX)-as
+ASFLAGS	=
+
+AR	= $(PREFIX)-ar
+ARFLAGS	= rcs
+
+FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim
+
+CC	= $(PREFIX)-clang -DRAG_SIM=1 -DTRACE=1 -DDEBUG=1
+CFLAGS	= -g -ggdb -g3 -std=c99 -DBRG_C99_TYPES -DBRG_RNG \
+	-I $(RMD_INSTALL_BASE)/xe_sim/include \
+	-I $(RMD_INSTALL_BASE)/common \
+	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
+	-I $(RMD_INSTALL_BASE)/runtime/libxe/inc \
+	-I $(RMD_INSTALL_BASE)/runtime/common
+
+OBJCOPY	= $(PREFIX)-objcopy
+
+LD	= $(PREFIX)-ld
+LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T ./uts-main-with-newlib.ld -static -Map=out.map
+LDLIBS	= -lxert --start-group -lc -lg -lm -lgloss_lxe --end-group
+
+
+CUT	= cut
+GREP	= grep
+RM	= rm
+
+OBJS 	= brg_sha1.o uts.o
+
+TARGET = uts-main
+
+all: $(TARGET)
+debug: $(TARGET)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
+	$(OBJCOPY) -R .data_local -R .data_block -R .bss_local -R .bss_block $@
+
+
+$(TARGET): $(TARGET).o $(OBJS) ./uts-main-with-newlib.ld
+	$(LD) $(LDFLAGS) -o $@ $(TARGET).o $(OBJS) $(LDLIBS)
+
+run:	$(TARGET)
+	$(FSIM) -c $(TARGET).cfg
+
+clean:
+	$(RM) -rf $(TARGET) *.s *.o logs/*
