@@ -139,7 +139,7 @@ typedef struct {
 } Result;
 
 void RAG_struct_copy(char *out,char *in, size_t len) {
-#if 1
+#if 0
 	if( ((uint64_t)in) > 1024*1024*1024 ) {
 		for(size_t i=0;i<len;i++)
 			REM_LD8_ADDR(out[i],&in[i]);
