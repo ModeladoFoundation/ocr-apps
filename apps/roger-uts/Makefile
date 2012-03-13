@@ -15,8 +15,11 @@ ARFLAGS	= rcs
 
 FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim
 
-CC	= $(PREFIX)-clang -DRAG_SIM=1 -DTRACE=1 -DDEBUG=1
-CFLAGS	= -g -ggdb -g3 -std=c99 -DBRG_C99_TYPES -DBRG_RNG \
+CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE -DDEBUG -DRAG_BLOCK_OFF
+## -DTRACE 
+## -DDEBUG 
+## -DRAG_BLOCK
+CFLAGS	= -g -ggdb -g3 -std=c99 -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=2 \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
