@@ -19,7 +19,9 @@
 #include <math.h>
 #include <sys/time.h>
 
+#ifdef RAG_SIM
 #include "xe_console.h"
+#endif
 
 #include "uts.h"
 
@@ -75,7 +77,11 @@ double nonLeafProb = 15.0 / 64.0;  // q
  *   
  *  Default parameter values
  */
+#ifdef RAG_DEPTH
+int        gen_mx   = RAG_DEPTH; // default depth of tree
+#else
 int        gen_mx   = 6;      // default depth of tree
+#endif
 geoshape_t shape_fn = LINEAR; // default shape function (b_i decr linearly)
 
 /*  In type HYBRID trees, each node is either type BIN or type
