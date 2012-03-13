@@ -58,6 +58,7 @@ do { \
 #ifdef RMD_DB_MEM
 #undef RMD_DB_MEM
 #endif
+#ifdef DEBUG
 #define RMD_DB_MEM(x,y) \
 do { \
 	int __err__; \
@@ -69,6 +70,18 @@ do { \
 	__err__ = GET_ACCESS_MODE((u64)(*(x))); \
 xe_printf("db_acquire MODE = %d\n",__err__); \
 } while(0)
+#else
+#define RMD_DB_MEM(x,y) \
+do { \
+	int __err__; \
+	*(x) = (void *)rmd_db_acquire((y),(0)); \
+	if ((__err__ = GET_STATUS((u64)(*(x)))) != 0) { \
+		xe_printf("db_acquire ERROR arg=%ld (%s) %s:%d\n", y.data, strerror(__err__), __FILE__, __LINE__); \
+		exit(__err__); \
+	} \
+	__err__ = GET_ACCESS_MODE((u64)(*(x))); \
+} while(0)
+#endif
 
 #ifdef RMD_DB_RELEASE
 #undef RMD_DB_RELEASE
