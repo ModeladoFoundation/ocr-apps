@@ -58,19 +58,6 @@ do { \
 #ifdef RMD_DB_MEM
 #undef RMD_DB_MEM
 #endif
-#ifdef DEBUG
-#define RMD_DB_MEM(x,y) \
-do { \
-	int __err__; \
-	*(x) = (void *)rmd_db_acquire((y),(0)); \
-	if ((__err__ = GET_STATUS((u64)(*(x)))) != 0) { \
-		xe_printf("db_acquire ERROR arg=%ld (%s) %s:%d\n", y.data, strerror(__err__), __FILE__, __LINE__); \
-		exit(__err__); \
-	} \
-	__err__ = GET_ACCESS_MODE((u64)(*(x))); \
-xe_printf("db_acquire MODE = %d\n",__err__); \
-} while(0)
-#else
 #define RMD_DB_MEM(x,y) \
 do { \
 	int __err__; \
@@ -81,7 +68,6 @@ do { \
 	} \
 	__err__ = GET_ACCESS_MODE((u64)(*(x))); \
 } while(0)
-#endif
 
 #ifdef RMD_DB_RELEASE
 #undef RMD_DB_RELEASE
@@ -141,6 +127,7 @@ const int LOCAL = 0;
 // _scg => scheduled codelet guid
 // _dbg => data block guid
 // _dbp => data block pointer
+// _lcl => on stack data
 
 //**********************************************************
 //        codelet Parallel Recursive Search Exection       *
@@ -199,9 +186,9 @@ xe_printf("enter return_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n
 #endif
 	int retval=-1;
 	assert(n_db == 1);
-        pTS_finish_return_param_t pTS_return_arg_dbp;
-	REM_LDX_ADDR(pTS_return_arg_dbp,db_ptr[0],pTS_finish_return_param_t);
-	rmd_guid_t main_post_scg = pTS_return_arg_dbp.main_post_scg;
+        pTS_finish_return_param_t pTS_return_arg_lcl;
+	REM_LDX_ADDR(pTS_return_arg_lcl,db_ptr[0],pTS_finish_return_param_t);
+	rmd_guid_t main_post_scg = pTS_return_arg_lcl.main_post_scg;
 #ifdef DEBUG
 xe_printf("return_codelet main_post_scg %ld\n",main_post_scg.data);
 #endif
@@ -211,9 +198,9 @@ xe_printf("return_codelet main_post_scg %ld\n",main_post_scg.data);
 	RMD_DB_ALLOC(&main_post_arg1_dbg, sizeof(main_post_param1_t),  LOCAL, COREID_SELF);
 	RMD_DB_MEM  (&main_post_arg1_dbp, main_post_arg1_dbg);
 #ifdef RAG_BLOCK
-	REM_STX(main_post_arg1_dbp->r, pTS_return_arg_dbp.r, Result);
+	REM_STX(main_post_arg1_dbp->r, pTS_return_arg_lcl.r, Result);
 #else
-	main_post_arg1_dbp->r    = pTS_return_arg_dbp.r;
+	main_post_arg1_dbp->r    = pTS_return_arg_lcl.r;
 #endif
 // provide the arguments to main_post
 	retval = rmd_codelet_satisfy(
@@ -253,41 +240,40 @@ xe_printf("finish_codelet line 3\n");
 #ifdef DEBUG
 xe_printf("finish_codelet line 4 numChildren %d\n",numChildren);
 #endif
- 	pTS_finish_return_param_t out_dbp;
+ 	pTS_finish_return_param_t out_lcl;
 #ifdef DEBUG
 xe_printf("finish_codelet line 5\n");
 #endif
-        REM_LDX_ADDR(out_dbp,db_ptr[numChildren],pTS_finish_return_param_t);
+        REM_LDX_ADDR(out_lcl,db_ptr[numChildren],pTS_finish_return_param_t);
 #ifdef DEBUG
 xe_printf("finish_codelet line 6\n");
 #endif
-	int slot = out_dbp.slot;
+	int slot = out_lcl.slot;
 #ifdef DEBUG
 xe_printf("finish_codelet slot %d\n",slot);
 #endif
 
 	for(int i=0; i<numChildren; i++) {
- 		pTS_finish_return_param_t in_dbp;
-                REM_LDX_ADDR(in_dbp,db_ptr[i],pTS_finish_return_param_t);
-		if( (out_dbp.r.maxdepth) < (in_dbp.r.maxdepth) )
-			out_dbp.r.maxdepth = in_dbp.r.maxdepth;
-		out_dbp.r.size       += in_dbp.r.size;
-		out_dbp.r.leaves     += in_dbp.r.leaves;
+ 		pTS_finish_return_param_t in_lcl;
+                REM_LDX_ADDR(in_lcl,db_ptr[i],pTS_finish_return_param_t);
+		if( (out_lcl.r.maxdepth) < (in_lcl.r.maxdepth) )
+			out_lcl.r.maxdepth = in_lcl.r.maxdepth;
+		out_lcl.r.size       += in_lcl.r.size;
+		out_lcl.r.leaves     += in_lcl.r.leaves;
 		RMD_DB_FREE(db[i]);
 	} // for numChildren
 // prepare to return our answer 
-	pTS_finish_return_param_t *pTS_finish_arg_dbp;
+	pTS_finish_return_param_t pTS_finish_arg_lcl, *pTS_finish_arg_dbp;
 	rmd_guid_t pTS_finish_arg_dbg;
 	RMD_DB_ALLOC(&pTS_finish_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, COREID_SELF);
 	RMD_DB_MEM  (&pTS_finish_arg_dbp, pTS_finish_arg_dbg);
+	pTS_finish_arg_lcl.main_post_scg  = out_lcl.main_post_scg;
+	pTS_finish_arg_lcl.slot           = out_lcl.slot;
+	pTS_finish_arg_lcl.r              = out_lcl.r;
 #ifdef RAG_BLOCK
-	REM_STX(pTS_finish_arg_dbp->main_post_scg, out_dbp.main_post_scg, rmd_guid_t);
-	REM_STX(pTS_finish_arg_dbp->slot,out_dbp.slot, int);
-	REM_STX(pTS_finish_arg_dbp->r,out_dbp.r, Result);
+	REM_STX(pTS_finish_arg_dbp,pTS_finish_arg_lcl, pTS_finish_return_param_t);
 #else
-	pTS_finish_arg_dbp->main_post_scg  = out_dbp.main_post_scg;
-	pTS_finish_arg_dbp->slot   = out_dbp.slot;
-	pTS_finish_arg_dbp->r      = out_dbp.r;
+	*pTS_finish_arg_dbp       = pTS_finish_arg_lcl;
 #endif
 // and let our parent's completion know we're done with parTreeSearch()
 	retval = rmd_codelet_satisfy(
@@ -317,19 +303,19 @@ xe_printf("enter body_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld \n",arg,n_
 	rmd_guid_t arg_guid = { .data = arg };
 	assert(n_db == 1);
 	assert(arg != 0);
-        pTS_body_async_param_t pTS_body_arg_dbp;
-        REM_LDX_ADDR(pTS_body_arg_dbp,db_ptr[0],pTS_body_async_param_t);
-	rmd_guid_t pTS_body_clg  = pTS_body_arg_dbp.pTS_body_clg;
-	rmd_guid_t main_post_scg = pTS_body_arg_dbp.main_post_scg;
+        pTS_body_async_param_t pTS_body_arg_lcl;
+        REM_LDX_ADDR(pTS_body_arg_lcl,db_ptr[0],pTS_body_async_param_t);
+	rmd_guid_t pTS_body_clg  = pTS_body_arg_lcl.pTS_body_clg;
+	rmd_guid_t main_post_scg = pTS_body_arg_lcl.main_post_scg;
 #ifdef DEBUG
-xe_printf("body_codelet main_post_scg %ld\n",pTS_body_arg_dbp.main_post_scg.data);
+xe_printf("body_codelet main_post_scg %ld\n",pTS_body_arg_lcl.main_post_scg.data);
 xe_printf("body_codelet pTS_body_clg  %ld\n",pTS_body_clg.data);
 #endif
-	int slot    = pTS_body_arg_dbp.slot;
+	int slot    = pTS_body_arg_lcl.slot;
 #ifdef DEBUG
 xe_printf("body_codelet slot %d\n",slot);
 #endif
-	Node *parent = &pTS_body_arg_dbp.parent;
+	Node *parent = &pTS_body_arg_lcl.parent;
 	counter_t parentHeight = parent->height;
 #ifdef DEBUG
 xe_printf("body_codelet parentHeight %d\n",parentHeight);
@@ -337,16 +323,7 @@ xe_printf("body_codelet parentHeight %d\n",parentHeight);
 	int numChildren = uts_numChildren(parent);
 	int childType   = uts_childType(parent);
 	Result r = { parentHeight, 1, 0 };
-#if 0
-// fsim tests - start out small
-if     (depth <1) numChildren = 5;
-else if(depth <2) numChildren = 4;
-else if(depth <3) numChildren = 3;
-else if(depth <4) numChildren = 0;
-else if(depth <5) numChildren = 0;
-else              numChildren = 0;
-// fsim tests - start out small
-#endif
+//
 // record number of children in parent
 	parent->numChildren = numChildren;
 #ifdef DEBUG
@@ -360,19 +337,18 @@ xe_printf("body_codelet numChildren %d\n",numChildren);
 #ifdef DEBUG
 xe_printf("body_codelel L\n");
 #endif
-		pTS_finish_return_param_t *pTS_leaf_arg_dbp;
+		pTS_finish_return_param_t pTS_leaf_arg_lcl, *pTS_leaf_arg_dbp;
 		rmd_guid_t pTS_leaf_arg_dbg;
 		r.leaves = 1;
 		RMD_DB_ALLOC(&pTS_leaf_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, COREID_SELF);
 		RMD_DB_MEM  (&pTS_leaf_arg_dbp, pTS_leaf_arg_dbg);
+		pTS_leaf_arg_lcl.main_post_scg  = main_post_scg;
+		pTS_leaf_arg_lcl.slot   = slot;
+		pTS_leaf_arg_lcl.r= r;
 #ifdef RAG_BLOCK
-		REM_STX(pTS_leaf_arg_dbp->main_post_scg, main_post_scg, rmd_guid_t);
-		REM_STX(pTS_leaf_arg_dbp->slot,slot, int);
-		REM_STX(pTS_leaf_arg_dbp->r,r, Result);
+		REM_STX(pTS_leaf_arg_dbp, pTS_leaf_arg_lcl, pTS_finish_return_param_t);
 #else
-		pTS_leaf_arg_dbp->main_post_scg  = main_post_scg;
-		pTS_leaf_arg_dbp->slot   = slot;
-		pTS_leaf_arg_dbp->r= r;
+		*pTS_leaf_arg_dbp = pTS_leaf_arg_lcl;
 #endif
 		retval = rmd_codelet_satisfy(
 				arg_guid,		// rmd_guid_t scheduled codelet's guid
@@ -402,7 +378,7 @@ xe_printf("body_codelel R create finish_clg %ld (retval=%d)\n",pTS_finish_clg.da
 #endif
 		assert(retval==0);
 // create the completion codelet and pass it the slot argument as a dependency
-		pTS_finish_return_param_t *pTS_finish_arg_dbp;
+		pTS_finish_return_param_t pTS_finish_arg_lcl, *pTS_finish_arg_dbp;
 		rmd_guid_t pTS_finish_arg_dbg;
 		retval = rmd_codelet_sched(
 			&pTS_finish_scg,		// rmd_guid_t* scheduled codelet's guid
@@ -415,24 +391,23 @@ xe_printf("body_codelel R sched finish_scg %ld (retval=%d)\n",pTS_finish_scg.dat
 
 // create the async codelet for parTreeSearch(depth+1,child[i])
 		for(int i=0;i<numChildren;i++) {
-			pTS_body_async_param_t pTS_async_arg;
-			pTS_body_async_param_t *pTS_async_arg_dbp;
+			pTS_body_async_param_t pTS_async_arg_lcl, *pTS_async_arg_dbp;
 			rmd_guid_t pTS_async_arg_dbg, pTS_async_scg;
 			RMD_DB_ALLOC(&pTS_async_arg_dbg, sizeof(pTS_body_async_param_t), LOCAL, COREID_SELF);
 			RMD_DB_MEM  (&pTS_async_arg_dbp, pTS_async_arg_dbg);
-			pTS_async_arg.main_post_scg      = main_post_scg;
-			pTS_async_arg.pTS_body_clg       = pTS_body_clg;
-			pTS_async_arg.slot               = i;
-		        pTS_async_arg.parent.type        = childType;
-			pTS_async_arg.parent.height      = parentHeight + 1;
-			pTS_async_arg.parent.numChildren = -1;    // not yet determined
+			pTS_async_arg_lcl.main_post_scg      = main_post_scg;
+			pTS_async_arg_lcl.pTS_body_clg       = pTS_body_clg;
+			pTS_async_arg_lcl.slot               = i;
+		        pTS_async_arg_lcl.parent.type        = childType;
+			pTS_async_arg_lcl.parent.height      = parentHeight + 1;
+			pTS_async_arg_lcl.parent.numChildren = -1;    // not yet determined
 			for (int j = 0; j < computeGranularity; j++) {
-				rng_spawn(parent->state.state, pTS_async_arg.parent.state.state, i);
+				rng_spawn(parent->state.state, pTS_async_arg_lcl.parent.state.state, i);
 			} // for j
 #ifdef RAG_BLOCK
-		        REM_STX(pTS_async_arg_dbp, pTS_async_arg, pTS_body_async_param_t);
+		        REM_STX(pTS_async_arg_dbp, pTS_async_arg_lcl, pTS_body_async_param_t);
 #else
-		        *pTS_async_arg_dbp = pTS_async_arg;
+		        *pTS_async_arg_dbp = pTS_async_arg_lcl;
 #endif
 			retval = rmd_codelet_sched(
 				&pTS_async_scg,		// rmd_guid_t* scheduled codelet's guid
@@ -456,14 +431,13 @@ xe_printf("body_codelel R satisfy %ld slot %d with dbg %ld (retval=%d)\n",pTS_as
 		RMD_DB_ALLOC(&pTS_finish_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, COREID_SELF);
 		RMD_DB_MEM  (&pTS_finish_arg_dbp, pTS_finish_arg_dbg);
 // slot, depth, parent, r //
+		pTS_finish_arg_lcl.main_post_scg  = main_post_scg;
+		pTS_finish_arg_lcl.slot           = slot;
+		pTS_finish_arg_lcl.r              = r;
 #ifdef RAG_BLOCK
-		REM_STX(pTS_finish_arg_dbp->main_post_scg, main_post_scg, rmd_guid_t);
-		REM_STX(pTS_finish_arg_dbp->slot, slot, int);
-		REM_STX(pTS_finish_arg_dbp->r, r, Result);
+		REM_STX(pTS_finish_arg_dbp, pTS_finish_arg_lcl, pTS_finish_return_param_t);
 #else
-		pTS_finish_arg_dbp->main_post_scg  = main_post_scg;
-		pTS_finish_arg_dbp->slot           = slot;
-		pTS_finish_arg_dbp->r              = r;
+		*pTS_finish_arg_dbp = pTS_finish_arg_lcl;
 #endif
 		retval = rmd_codelet_satisfy(
 			pTS_finish_scg,			// rmd_guid_t scheduled codelet's guid
@@ -516,19 +490,17 @@ xe_printf("parTreeSearch sched pTS_return_scg %ld (retval=%d)\n",pTS_return_scg.
 #endif
 	assert(retval==0);
 // create a db for parTreeSearch's argument and return value
-	pTS_body_async_param_t *pTS_body_arg_dbp;
+	pTS_body_async_param_t pTS_body_arg_lcl, *pTS_body_arg_dbp;
 	RMD_DB_ALLOC(&pTS_body_arg_dbg, sizeof(pTS_body_async_param_t),  LOCAL, COREID_SELF);
 	RMD_DB_MEM  (&pTS_body_arg_dbp, pTS_body_arg_dbg);
+	pTS_body_arg_lcl.main_post_scg = main_post_scg;
+	pTS_body_arg_lcl.pTS_body_clg  = pTS_body_clg;
+	pTS_body_arg_lcl.slot          = 0;
+	pTS_body_arg_lcl.parent        = *root;
 #ifdef RAG_BLOCK
-	REM_STX(pTS_body_arg_dbp->main_post_scg, main_post_scg, rmd_guid_t);
-	REM_STX(pTS_body_arg_dbp->pTS_body_clg, pTS_body_clg, rmd_guid_t);
-	REM_STX(pTS_body_arg_dbp->slot, zero, int);
-	REM_STX(pTS_body_arg_dbp->parent, *root, Node);
+	REM_STX(pTS_body_arg_dbp, pTS_body_arg_lcl,pTS_body_async_param_t);
 #else
-	pTS_body_arg_dbp->main_post_scg = main_post_scg;
-	pTS_body_arg_dbp->pTS_body_clg  = pTS_body_clg;
-	pTS_body_arg_dbp->slot = 0;
-	pTS_body_arg_dbp->parent = *root;
+	*pTS_body_arg_dbp = pTS_body_arg_lcl;
 #endif
 
 // create a new instance of pTS_body
@@ -562,12 +534,15 @@ void main_pre(rmd_guid_t main_post_scg, rmd_guid_t pTS_body_clg, int argc, char 
 xe_printf("enter main_pre\n");
 #endif
 
-#if 1
-argc = 0; // RAG RAG RAG RAG RAG //
-#endif
-
 #ifdef DEBUG
 xe_printf("line 1 main_pre argc = %d\n",argc);
+#endif
+
+#if defined(DEBUG) && defined(RAG_BLOCK)
+if(argc != 0) {
+	argc = 0;                          // RAG RAG RAG RAG RAG //
+	xe_printf("RESETING argc to 0 to see how far we can get!\n");
+}
 #endif
 	uts_parseParams(argc, argv);
 #ifdef DEBUG
@@ -657,11 +632,11 @@ rmd_guid_t main_post_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t 
 xe_printf("enter main_post_codelet arg  %ld db[0] %ld db_ptr[0] %ld\n",arg,db[0].data,db_ptr[0]);
 xe_printf("enter main_post_codelet n_db %d db[1] %ld db_ptr[1] %ld\n",n_db,db[1].data,db_ptr[1]);
 #endif
-	main_post_param0_t main_post_arg0_dbp;
-        REM_LDX_ADDR(main_post_arg0_dbp,db_ptr[0],main_post_param0_t);
-	main_post_param1_t main_post_arg1_dbp;
-        REM_LDX_ADDR(main_post_arg1_dbp,db_ptr[1],main_post_param1_t);
-	main_post(main_post_arg0_dbp.t1, main_post_arg1_dbp.r);
+	main_post_param0_t main_post_arg0_lcl;
+        REM_LDX_ADDR(main_post_arg0_lcl,db_ptr[0],main_post_param0_t);
+	main_post_param1_t main_post_arg1_lcl;
+        REM_LDX_ADDR(main_post_arg1_lcl,db_ptr[1],main_post_param1_t);
+	main_post(main_post_arg0_lcl.t1, main_post_arg1_lcl.r);
 	rmd_complete();
 	RMD_DB_FREE(db[0]);
 	RMD_DB_FREE(db[1]);
@@ -680,8 +655,8 @@ xe_printf("enter main_pre_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg
 #ifdef DEBUG
 xe_printf("line 1 main_pre_codelet\n");
 #endif
-	main_pre_param_t main_pre_arg_dbp;
-        REM_LDX_ADDR(main_pre_arg_dbp,db_ptr[0],main_pre_param_t);
+	main_pre_param_t main_pre_arg_lcl;
+        REM_LDX_ADDR(main_pre_arg_lcl,db_ptr[0],main_pre_param_t);
 #ifdef DEBUG
 xe_printf("line 2.0 main_pre_codelet\n");
 xe_printf("db[0].data = %ld\n",db[0].data);
@@ -692,11 +667,11 @@ xe_printf("line 2.2 main_pre_codelet\n");
 #ifdef DEBUG
 xe_printf("line 3 main_pre_codelet\n");
 #endif
-	int   argc  = main_pre_arg_dbp.argc;
+	int   argc  = main_pre_arg_lcl.argc;
 #ifdef DEBUG
 xe_printf("line 4 main_pre_codelet argc = %d (00)\n",argc);
 #endif
-	char **argv = main_pre_arg_dbp.argv;
+	char **argv = main_pre_arg_lcl.argv;
 #ifdef DEBUG
 xe_printf("line 5 main_pre_codelet\n");
 #endif
