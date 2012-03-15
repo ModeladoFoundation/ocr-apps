@@ -20,8 +20,11 @@ POWER_ANALYSIS_GRAPHS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/E*pdf
 POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/UHPC.Power*
 FSIM_RUNLOGS = UHPC.FsimRunLog
 
-CC	= $(PREFIX)-clang -DRAG_SIM=1 -DTRACE=1 -DDEBUG=1
-CFLAGS	= -g -ggdb -g3 -std=c99 -DBRG_C99_TYPES -DBRG_RNG \
+CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE_OFF -DDEBUG_OFF -DRAG_BLOCK
+## -DTRACE 
+## -DDEBUG 
+## -DRAG_BLOCK
+CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=4 \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
