@@ -1,0 +1,46 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                                                                !
+!	Change RUNTIME_XE_CLEAR_SPAD to 0                        !
+!	in ss/runtime/common/rmd_config.h                        !
+!                                                                !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+------------------------------------------------------------------
+TODO:
+	(1) try multi-block simulation
+	(2) allocation of data block allocation in DRAM
+	(3) continue to work to get larger problems to run
+
+------------------------------------------------------------------
+F_SIM:
+
+make clean;make;make run;grep CONSOLE logs/*CE*
+will build and run uts on the simulator
+
+-DRAG_SIM controls changes needed to run on simulator
+
+-DDEBUG enables a lot of detailed output
+-DTRACE enables a more modest amount of debug output
+
+By default the data blocks are allocated in the XE's SPAD
+-DRAG_BLOCK moves the allocation to the BLOCK memory shared by the XE's
+
+By default the Tree depth is 6
+-DRAG_DEPTH=#  will change this.
+
+Currently with DBs in SPAD, the max that works is -DRAG_DEPTH=4
+and with DBs in BLOCK, the max that works is -DRAG_DEPTH=5
+
+------------------------------------------------------------------
+AFL:
+
+make -f Makefile.afl clean; make -f Makefile.afl ; make -f Makefile.afl run;
+will build and run uts on linux using the AFL.
+
+-DRAG_AFL controls changes needed to run on AFL
+
+------------------------------------------------------------------
+POWER:
+
+Makefile.power is Ganesh's for doing power measurement runs.
+
+Roger
