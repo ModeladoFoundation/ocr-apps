@@ -30,34 +30,18 @@
 #include "xe_memory.h"
 #include "xe_console.h"
 #include "xe_global.h"
-
-#ifdef RMD_DB_ALLOC
-#undef RMD_DB_ALLOC
 #endif
-#define RMD_DB_ALLOC(v,w,x,y) \
-do { \
-	int __err__; \
-	if ((__err__ = GET_STATUS(rmd_db_alloc((v),(w),(x),(y)))) != 0) { \
-		xe_printf("db_alloc ERROR (%s) %s:%d\n", strerror(__err__), __FILE__, __LINE__); \
-		exit(__err__); \
-	} \
-} while(0)
 
-#ifdef RMD_DB_FREE
-#undef RMD_DB_FREE
-#endif
-#define RMD_DB_FREE(x) \
-do { \
-	int __err__; \
-	if ((__err__ = GET_STATUS(rmd_db_free((x)))) != 0) { \
-		xe_printf("db_free ERROR arg=%ld (%s) %s:%d\n", x.data, strerror(__err__), __FILE__, __LINE__); \
-		exit(__err__); \
-	} \
-} while(0)
+#ifdef RAG_AFL
+#include <string.h>
 
-#ifdef RMD_DB_MEM
-#undef RMD_DB_MEM
+#include "codelet.h"
+#include "rmd_afl_all.h"
+
+#define xe_printf printf
 #endif
+
+#ifndef RMD_DB_MEM
 #define RMD_DB_MEM(x,y) \
 do { \
 	u64 __retval__; \
@@ -71,38 +55,23 @@ do { \
 	__err__ = GET_ACCESS_MODE(__retval__); \
 	*(x) = (void*)GET_ADDRESS(__retval__);  \
 } while(0)
-
-#ifdef RMD_DB_RELEASE
-#undef RMD_DB_RELEASE
-#endif
-#define RMD_DB_RELEASE(x) \
-do { \
-	int __err__; \
-	__err__ = GET_STATUS(rmd_db_release((x))); \
-	if (__err__ != 0) { \
-		xe_printf("db_release ERROR (%s) %s:%d\n", strerror(__err__), __FILE__, __LINE__); \
-		exit(__err__); \
-	} \
-} while(0)
-
 #endif
 
 rmd_guid_t NULL_GUID = { .data = 0 };
 #ifdef RAG_BLOCK
-rmd_location_t    coreid_self = {	.type                = RMD_LOC_TYPE_RELATIVE,
-					.data.relative.level = RMD_LOCATION_BLOCK   };
+rmd_location_t    allocLoc = {	.type                     = RMD_LOC_TYPE_RELATIVE,
+        			.data.relative.identifier = 0,
+				.data.relative.level      = RMD_LOCATION_BLOCK   };
 #else
-rmd_location_t    coreid_self = {	.type                = RMD_LOC_TYPE_RELATIVE,
-					.data.relative.level = RMD_LOCATION_CORE    };
+rmd_location_t    allocLoc = {	.type                     = RMD_LOC_TYPE_RELATIVE,
+        			.data.relative.identifier = 0,
+				.data.relative.level      = RMD_LOCATION_CORE    };
 #endif
 #ifndef LOCAL
 const int LOCAL = 0;
 #endif
 
-#ifdef COREID_SELF
-#undef COREID_SELF
-#endif
-#define COREID_SELF (&coreid_self)
+#define ALLOC_LOC (&allocLoc)
 
 
 #ifdef RAG_SIM
@@ -116,10 +85,6 @@ const int LOCAL = 0;
 #endif
 #else
 #include <assert.h>
-#endif
-
-#if !defined(RAG_SIM) && (defined(DEBUG) || defined(TRACE))
-#define xe_printf printf
 #endif
 
 #include "uts.h"
@@ -148,10 +113,11 @@ typedef struct {
   counter_t maxdepth, size, leaves;
 } Result;
 
-void RAG_struct_copy(char *out,char *in, size_t len) {
-	for(size_t i=0;i<len;i++)
-		REM_LD8_ADDR(out[i],&in[i]);
-}
+#ifdef RAG_AFL
+#define REM_LDX_ADDR(out_var,in_ptr,type) memcpy(&out_var,in_ptr,sizeof(type))
+#define REM_STX_ADDR(out_ptr,in_var,type) memcpy(out_ptr,&in_var,sizeof(type))
+#define REM_ST64_ADDR(out_ptr,in_var) memcpy(out_ptr,&in_var,8*sizeof(char))
+#endif
 
 void parTreeSearch(rmd_guid_t main_post_scg, rmd_guid_t pTS_body_clg, int depth, Node *parent);
 
@@ -185,7 +151,7 @@ rmd_guid_t pTS_return_codelet( uint64_t arg, int n_db, void *db_ptr[], rmd_guid_
 
 rmd_guid_t pTS_return_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 #ifdef TRACE
-xe_printf("enter return_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0].data,db_ptr[0]);
+xe_printf("enter return_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0].data,(uint64_t)db_ptr[0]);
 #endif
 	int retval=-1;
 	assert(n_db == 1);
@@ -198,7 +164,7 @@ xe_printf("return_codelet main_post_scg %ld\n",main_post_scg.data);
 // create a db for main_post's argument
 	main_post_param1_t *main_post_arg1_dbp;
 	rmd_guid_t          main_post_arg1_dbg;
-	RMD_DB_ALLOC(&main_post_arg1_dbg, sizeof(main_post_param1_t),  LOCAL, COREID_SELF);
+	RMD_DB_ALLOC(&main_post_arg1_dbg, sizeof(main_post_param1_t),  LOCAL, ALLOC_LOC);
 	RMD_DB_MEM  (&main_post_arg1_dbp, main_post_arg1_dbg);
 #ifdef RAG_BLOCK
 	REM_STX_ADDR(main_post_arg1_dbp + offsetof(main_post_param1_t, r), pTS_return_arg_lcl.r, Result);
@@ -211,7 +177,7 @@ xe_printf("return_codelet main_post_scg %ld\n",main_post_scg.data);
 				main_post_arg1_dbg,	// rmd_guid_t db guid
 				1);			// int dep_slot
 #ifdef DEBUG
-xe_printf("return_codelet satisfy %ld slot 1 with dbg %ld (retval=%d)\n",main_post_scg.data,main_post_arg1_dbg.data);
+xe_printf("return_codelet satisfy %ld slot 1 with dbg %ld (retval=%d)\n",main_post_scg.data,main_post_arg1_dbg.data,retval);
 #endif
 	assert(retval==0);
 	RMD_DB_FREE(db[0]);				// rmd_guid_t db guid
@@ -229,11 +195,11 @@ rmd_guid_t pTS_finish_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t
 xe_printf("enter finish_codelet arg %ld n_db %d (more)\n",arg,n_db);
 #endif
 #ifdef DEBUG
-xe_printf("enter finish_codelet line 1 db[0] = %ld db_ptr[0] = %ld (cont.)\n",db[0].data,db_ptr[0]);
+xe_printf("enter finish_codelet line 1 db[0] = %ld db_ptr[0] = %ld (cont.)\n",db[0].data,(uint64_t)db_ptr[0]);
 #endif
 	rmd_guid_t arg_guid = { .data = arg};
 #ifdef DEBUG
-xe_printf("enter finish_codelet line 2 db[1] = %ld db_ptr[1] = %ld (cont.)\n",db[1].data,db_ptr[1]);
+xe_printf("enter finish_codelet line 2 db[1] = %ld db_ptr[1] = %ld (cont.)\n",db[1].data,(uint64_t)db_ptr[1]);
 #endif
 	assert(n_db > 1);
 #ifdef DEBUG
@@ -268,7 +234,7 @@ xe_printf("finish_codelet slot %d\n",slot);
 // prepare to return our answer 
 	pTS_finish_return_param_t pTS_finish_arg_lcl, *pTS_finish_arg_dbp;
 	rmd_guid_t pTS_finish_arg_dbg;
-	RMD_DB_ALLOC(&pTS_finish_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, COREID_SELF);
+	RMD_DB_ALLOC(&pTS_finish_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, ALLOC_LOC);
 	RMD_DB_MEM  (&pTS_finish_arg_dbp, pTS_finish_arg_dbg);
 	pTS_finish_arg_lcl.main_post_scg  = out_lcl.main_post_scg;
 	pTS_finish_arg_lcl.slot           = out_lcl.slot;
@@ -301,7 +267,7 @@ rmd_guid_t pTS_body_async_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
 {
 	int retval=-1;
 #ifdef TRACE
-xe_printf("enter body_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld \n",arg,n_db,db[0].data,db_ptr[0]);
+xe_printf("enter body_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld \n",arg,n_db,db[0].data,(uint64_t)db_ptr[0]);
 #endif
 	rmd_guid_t arg_guid = { .data = arg };
 	assert(n_db == 1);
@@ -321,7 +287,7 @@ xe_printf("body_codelet slot %d\n",slot);
 	Node *parent = &pTS_body_arg_lcl.parent;
 	counter_t parentHeight = parent->height;
 #ifdef DEBUG
-xe_printf("body_codelet parentHeight %d\n",parentHeight);
+xe_printf("body_codelet parentHeight %lld\n",parentHeight);
 #endif
 	int numChildren = uts_numChildren(parent);
 	int childType   = uts_childType(parent);
@@ -343,7 +309,7 @@ xe_printf("body_codelel L\n");
 		pTS_finish_return_param_t pTS_leaf_arg_lcl, *pTS_leaf_arg_dbp;
 		rmd_guid_t pTS_leaf_arg_dbg;
 		r.leaves = 1;
-		RMD_DB_ALLOC(&pTS_leaf_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, COREID_SELF);
+		RMD_DB_ALLOC(&pTS_leaf_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, ALLOC_LOC);
 		RMD_DB_MEM  (&pTS_leaf_arg_dbp, pTS_leaf_arg_dbg);
 		pTS_leaf_arg_lcl.main_post_scg  = main_post_scg;
 		pTS_leaf_arg_lcl.slot   = slot;
@@ -396,7 +362,7 @@ xe_printf("body_codelel R sched finish_scg %ld (retval=%d)\n",pTS_finish_scg.dat
 		for(int i=0;i<numChildren;i++) {
 			pTS_body_async_param_t pTS_async_arg_lcl, *pTS_async_arg_dbp;
 			rmd_guid_t pTS_async_arg_dbg, pTS_async_scg;
-			RMD_DB_ALLOC(&pTS_async_arg_dbg, sizeof(pTS_body_async_param_t), LOCAL, COREID_SELF);
+			RMD_DB_ALLOC(&pTS_async_arg_dbg, sizeof(pTS_body_async_param_t), LOCAL, ALLOC_LOC);
 			RMD_DB_MEM  (&pTS_async_arg_dbp, pTS_async_arg_dbg);
 			pTS_async_arg_lcl.main_post_scg      = main_post_scg;
 			pTS_async_arg_lcl.pTS_body_clg       = pTS_body_clg;
@@ -431,7 +397,7 @@ xe_printf("body_codelel R satisfy %ld slot %d with dbg %ld (retval=%d)\n",pTS_as
 			RMD_DB_RELEASE(pTS_async_arg_dbg);	// rmd_guid_t db guid
 		} // for numChildren
 
-		RMD_DB_ALLOC(&pTS_finish_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, COREID_SELF);
+		RMD_DB_ALLOC(&pTS_finish_arg_dbg, sizeof(pTS_finish_return_param_t), LOCAL, ALLOC_LOC);
 		RMD_DB_MEM  (&pTS_finish_arg_dbp, pTS_finish_arg_dbg);
 // slot, depth, parent, r //
 		pTS_finish_arg_lcl.main_post_scg  = main_post_scg;
@@ -462,11 +428,10 @@ xe_printf("leave body_codelet\n");
 
 void parTreeSearch(rmd_guid_t main_post_scg, rmd_guid_t pTS_body_clg, int depth, Node *root) {
 	int retval=-1;
-	int zero = 0;
 	rmd_guid_t pTS_body_scg, pTS_body_arg_dbg;
 
 #ifdef TRACE
-xe_printf("enter parTreeSearch (main_post = %ld) (body = %ld) (depth = %d) (root = %d %d)\n",main_post_scg, pTS_body_clg.data,depth,root->height,root->numChildren);
+xe_printf("enter parTreeSearch (main_post = %ld) (body = %ld) (depth = %d) (root = %d %d)\n",main_post_scg.data, pTS_body_clg.data,depth, root->height, root->numChildren);
 #endif
 	rmd_guid_t pTS_return_clg;
 	retval = rmd_codelet_create(
@@ -494,7 +459,7 @@ xe_printf("parTreeSearch sched pTS_return_scg %ld (retval=%d)\n",pTS_return_scg.
 	assert(retval==0);
 // create a db for parTreeSearch's argument and return value
 	pTS_body_async_param_t pTS_body_arg_lcl, *pTS_body_arg_dbp;
-	RMD_DB_ALLOC(&pTS_body_arg_dbg, sizeof(pTS_body_async_param_t),  LOCAL, COREID_SELF);
+	RMD_DB_ALLOC(&pTS_body_arg_dbg, sizeof(pTS_body_async_param_t),  LOCAL, ALLOC_LOC);
 	RMD_DB_MEM  (&pTS_body_arg_dbp, pTS_body_arg_dbg);
 	pTS_body_arg_lcl.main_post_scg = main_post_scg;
 	pTS_body_arg_lcl.pTS_body_clg  = pTS_body_clg;
@@ -540,13 +505,6 @@ xe_printf("enter main_pre\n");
 #ifdef DEBUG
 xe_printf("line 1 main_pre argc = %d\n",argc);
 #endif
-
-#if defined(DEBUG) && defined(RAG_BLOCK)
-if(argc != 0) {
-	argc = 0;                          // RAG RAG RAG RAG RAG //
-	xe_printf("RESETING argc to 0 to see how far we can get!\n");
-}
-#endif
 	uts_parseParams(argc, argv);
 #ifdef DEBUG
 xe_printf("line 2 main_pre\n");
@@ -566,7 +524,7 @@ xe_printf("line 4 main_pre\n");
 #ifdef DEBUG
 xe_printf("line 5 main_pre\n");
 #endif
-	RMD_DB_ALLOC(&main_post_arg0_dbg, sizeof(main_post_param0_t),  LOCAL, COREID_SELF);
+	RMD_DB_ALLOC(&main_post_arg0_dbg, sizeof(main_post_param0_t),  LOCAL, ALLOC_LOC);
 #ifdef DEBUG
 xe_printf("line 6 main_pre\n");
 #endif
@@ -632,8 +590,8 @@ xe_printf("leave main_post\n");
 rmd_guid_t main_post_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	assert(n_db == 2);
 #ifdef TRACE
-xe_printf("enter main_post_codelet arg  %ld db[0] %ld db_ptr[0] %ld\n",arg,db[0].data,db_ptr[0]);
-xe_printf("enter main_post_codelet n_db %d db[1] %ld db_ptr[1] %ld\n",n_db,db[1].data,db_ptr[1]);
+xe_printf("enter main_post_codelet arg  %ld db[0] %ld db_ptr[0] %ld\n",arg,db[0].data,(uint64_t)db_ptr[0]);
+xe_printf("enter main_post_codelet n_db %d db[1] %ld db_ptr[1] %ld\n",n_db,db[1].data,(uint64_t)db_ptr[1]);
 #endif
 	main_post_param0_t main_post_arg0_lcl;
         REM_LDX_ADDR(main_post_arg0_lcl,db_ptr[0],main_post_param0_t);
@@ -652,7 +610,7 @@ xe_printf("leave main_post_codelet\n");
 rmd_guid_t main_pre_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval=-1;
 #ifdef TRACE 
-xe_printf("enter main_pre_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0],db_ptr[0]);
+xe_printf("enter main_pre_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0].data,(uint64_t)db_ptr[0]);
 #endif
 	assert(n_db == 1);
 #ifdef DEBUG
@@ -733,12 +691,13 @@ xe_printf("leave main_pre_codelet\n");
 rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
 {
 	int retval=-1;
-#ifdef RAG_SIM
+#if defined(RAG_SIM) || defined(RAG_AFL)
 // create argc
 	int   argc = 0;
+	char **argv = NULL;
 #endif
 #ifdef TRACE
-	xe_printf("enter main_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0].data,db_ptr[0]);
+	xe_printf("enter main_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0].data,(uint64_t)db_ptr[0]);
 #endif
 
 // create codelets
@@ -756,29 +715,22 @@ xe_printf("main_codelet create main_pre_clg %ld (retval=%d)\n",main_pre_clg.data
 #endif
 	assert(retval==0);
 // create a db for main_pre's argument
-        main_pre_param_t *main_pre_arg_dbp;
+        main_pre_param_t main_pre_arg_lcl, *main_pre_arg_dbp;
         rmd_guid_t main_pre_arg_dbg;
-        rmd_location_t allocLocation;
-        allocLocation.type = RMD_LOC_TYPE_RELATIVE;
-        allocLocation.data.relative.level = RMD_LOCATION_CORE;
-        allocLocation.data.relative.identifier = 0;
-	RMD_DB_ALLOC(&main_pre_arg_dbg, sizeof(main_pre_param_t),  LOCAL, &allocLocation);
+	RMD_DB_ALLOC(&main_pre_arg_dbg, sizeof(main_pre_param_t),  LOCAL, ALLOC_LOC);
 #ifdef DEBUG
 xe_printf("main_codelet alloc main_pre_arg_dbg %ld (retval=%d)\n",main_pre_arg_dbg.data,retval);
 #endif
 	RMD_DB_MEM  (&main_pre_arg_dbp, main_pre_arg_dbg);
 #ifdef DEBUG
-xe_printf("main_codelet acquire main_pre_arg_dbg %ld (retval=%d)\n",main_pre_arg_dbp,retval);
+xe_printf("main_codelet acquire main_pre_arg_dbg %ld (retval=%d)\n",(uint64_t)main_pre_arg_dbp,retval);
 #endif
+	main_pre_arg_lcl.argc = argc;
+	main_pre_arg_lcl.argv = argv;
 #ifdef RAG_BLOCK
-{ int junk = -1;
-    REM_ST32_ADDR(main_pre_arg_dbp + offsetof(main_pre_param_t, argc), argc);
-    REM_LD32_ADDR(junk, main_pre_arg_dbp + offsetof(main_pre_param_t, argc));
-xe_printf("main_codelet set argc = %d (%d)\n",argc,junk);
-}
+	REM_STX_ADDR(main_pre_arg_dbp,main_pre_arg_lcl,main_pre_param_t);
 #else
-	main_pre_arg_dbp->argc = argc;
-xe_printf("main_codelet set argc = %d (%d)\n",main_pre_arg_dbp->argc,argc);
+	*main_pre_arg_dbp = main_pre_arg_lcl;
 #endif
 
 // create an instance for main_pre
