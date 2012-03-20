@@ -1,1 +1,9 @@
 A version of the microkernel fft that supports the FFTW API needed by SAR
+
+For f_sim:
+
+make -f Makefile.sim clean run
+
+For AFL:
+
+make -f Makefile.afl clean run
