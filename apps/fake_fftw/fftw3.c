@@ -46,8 +46,9 @@ void fftwf_destroy_plan(fftwf_plan plan)
 
 fftwf_complex *fftwf_malloc(size_t size)
 {
-	size = 1<<Ceiling_Power_Of_Two(size);
+	int SIZE = 1<<Ceiling_Power_Of_Two(size);
 	fftwf_complex *retval;
+	assert(SIZE == size);
 #ifdef RAG_SIM
 	retval = (fftwf_complex *)xe_malloc(size);
 #else
