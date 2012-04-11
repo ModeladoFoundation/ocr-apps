@@ -373,7 +373,6 @@ xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 #endif
         rmd_guid_t in_X_dbg;
 	in.X = (struct complexData**)bsm_malloc(&in_X_dbg,image_params.P1*sizeof(struct complexData*));
-xe_printf("// in.X %lx\n",(uint64_t) in.X);RAG_FLUSH;
 	if(in.X == NULL) {
 		fprintf(stderr,"Error allocating memory for X edge vector.\n");
 		xe_exit(1);
