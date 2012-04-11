@@ -16,9 +16,6 @@ async_body_ccd(
 	int m1, int m2, int n1, int n2
 ) {
         int Ncor_sqr = Ncor * Ncor;
-#ifdef TRACE
-xe_printf("cdd (m1,m2) = (%d,%d) (n1,n2) = (%d,%d)\n",m1,m2,n1,n2);RAG_FLUSH;
-#endif
         for(int m=m1; m<m2; m++) {
             int mIndex = (Ncor-1)/2 + m;
             for(int n=n1; n<n2; n++) {
@@ -95,14 +92,12 @@ CCD(	int    Ncor,
 	struct complexData **curImage,
 	struct complexData **refImage)
 {
+#ifdef TRACE
+xe_printf("enter ccd\n");RAG_FLUSH;
+#endif
     int Mwins = image_params->Iy - Ncor + 1;
     int Nwins = image_params->Ix - Ncor + 1;
     assert(Ncor < MAX_Ncor);
-#ifdef TRACE_CCD
-xe_printf("cdd -- begin Ncor = %d\n",Ncor);RAG_FLUSH;
-xe_printf("corr_map %1x, ImageParams %lx\n",(uint64_t)corr_map,(uint64_t)image_params);RAG_FLUSH;
-xe_printf("curImage %lx, refImage    %lx\n",(uint64_t)curImage,(uint64_t)refImage);RAG_FLUSH;
-#endif
 #define BLOCK_SIZE 4
     assert((Mwins%BLOCK_SIZE)==0);
     assert((Nwins%BLOCK_SIZE)==0);
@@ -112,8 +107,8 @@ xe_printf("curImage %lx, refImage    %lx\n",(uint64_t)curImage,(uint64_t)refImag
 		 m,m+BLOCK_SIZE,n,n+BLOCK_SIZE);
         } /* for n */
     } /* for m */
-#ifdef TRACE_CCD
-xe_printf("cdd -- finish\n");RAG_FLUSH;
+#ifdef TRACE
+xe_printf("leave ccd\n");RAG_FLUSH;
 #endif
     return;
 }

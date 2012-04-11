@@ -40,7 +40,7 @@ rmd_guid_t cfar_async_body( int m1, int m2, int n1, int n2,
     float CUT;
     float **pLocal;
 
-#ifdef TRACE
+#ifdef DEBUG
     xe_printf("cfar_async_body\n");RAG_FLUSH;
 #endif
 
@@ -177,6 +177,7 @@ int CFAR(struct ImageParams *image_params, int Ncor, struct CfarParams *cfar_par
     Mwins = image_params->Iy - Ncor - cfar_params->Ncfar + 2;
     Nwins = image_params->Ix - Ncor - cfar_params->Ncfar + 2;
 #ifdef TRACE
+    xe_printf("enter cfar");RAG_FLUSH;
     xe_printf("Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nwins,cfar_params->Ncfar,Ncor);RAG_FLUSH;
 #endif
 
@@ -203,6 +204,8 @@ int CFAR(struct ImageParams *image_params, int Ncor, struct CfarParams *cfar_par
 xe_printf("// SKIPPING Sort of the detections\n");RAG_FLUSH;
 #endif
 #endif
-
+#ifdef TRACE
+    xe_printf("leave cfar");RAG_FLUSH;
+#endif
     return Nd;
 }
