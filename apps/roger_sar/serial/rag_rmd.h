@@ -35,18 +35,13 @@
 do { \
 	u64 __retval__; \
 	int __err__; \
-xe_printf("before\n"); \
 	__retval__ = rmd_db_acquire((y),(0)); \
-xe_printf("after\n"); \
 	__err__ = GET_STATUS(__retval__);        \
 	if (__err__ != 0) { \
 		xe_printf("db_acquire ERROR arg=%ld (%s) %s:%d\n", (uint64_t)y.data, strerror(__err__), __FILE__, __LINE__); \
 		exit(__err__); \
-	} else {xe_printf("db_acquire OKAY\n");} \
-	xe_printf("update  %ld\n",(uint64_t)(x)); \
-	xe_printf("with    %ld\n",(uint64_t)__retval__); \
+	} \
 	*(x) = (void*)GET_ADDRESS(__retval__);  \
-	xe_printf("updated %ld\n",(uint64_t)*(x)); \
 } while(0)
 #endif
 

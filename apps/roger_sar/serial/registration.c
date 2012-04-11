@@ -9,7 +9,7 @@ void gauss_elim(float *AA[], float *x, int N);
 struct point corr2D(struct point ctrl_pt, int Nwin, int R,
     struct complexData**, struct complexData**, struct ImageParams*);
 
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
 #else
 struct body_1 {
 	int *Fx;
@@ -20,7 +20,7 @@ struct body_1 {
 #endif
 
 rmd_guid_t Affine_async_body_1(
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
     int *Fx, int *Fy, int **A, struct point ctrl_pt,
 #else
     struct body_1 *body_1_args,
@@ -30,7 +30,7 @@ rmd_guid_t Affine_async_body_1(
     rmd_guid_t curImage_dbg,
     rmd_guid_t refImage_dbg);
 
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
 #else
 struct body_2 {
 	int x1;
@@ -43,7 +43,7 @@ struct body_2 {
 #endif
 
 rmd_guid_t Affine_async_body_2(
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
     int x1, int x2,int y1, int y2, float Wcx[6], float Wcy[6],
 #else
     struct body_2 *body_2_args,
@@ -208,11 +208,13 @@ xe_printf("// Affine registration dynamically allocated variables\n");RAG_FLUSH;
 
     for(int m=0; m<N; m++) {
         for(int n=0; n<N; n++) {
+#ifdef DEBUG
 xe_printf("(m,n) = (%d,%d)\n",m,n);RAG_FLUSH;
+#endif
             struct point ctrl_pt;
             ctrl_pt.y = m*dy + min;
             ctrl_pt.x = n*dx + min;
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
             Affine_async_body_1(Fx, Fy, A, ctrl_pt,
 		affine_params_dbg, image_params_dbg, curImage_dbg, refImage_dbg);
 #else
@@ -287,8 +289,10 @@ xe_printf("// Perform Gaussian elimination to find Wcy\n");RAG_FLUSH;
 #endif
     for(int m=0; m<image_params->Iy; m+=BLOCK_SIZE) {
         for(int n=0; n<image_params->Ix; n+=BLOCK_SIZE) {
+#ifdef DEBUG
 xe_printf("(M,N) = (%d,%d)\n",m,n);RAG_FLUSH;
-#ifdef RAG_WORKAROUND
+#endif
+#ifndef RAG_WORKAROUND
 #else
 	    struct body_2 body_2_args;
 	    body_2_args.x1 = m;
@@ -298,7 +302,7 @@ xe_printf("(M,N) = (%d,%d)\n",m,n);RAG_FLUSH;
 	    memcpy(body_2_args.Wcx,Wcx,6*sizeof(float)); 
 	    memcpy(body_2_args.Wcy,Wcy,6*sizeof(float)); 
 #endif
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
             Affine_async_body_2(m,m+BLOCK_SIZE,n,n+BLOCK_SIZE,Wcx,Wcy,
 #else
             Affine_async_body_2(&body_2_args,
@@ -307,7 +311,7 @@ xe_printf("(M,N) = (%d,%d)\n",m,n);RAG_FLUSH;
         } // for n
     } // for m
 
-#ifdef RAG_TRACE
+#ifdef TRACE
 xe_printf("// Overwrite current image with registered image\n");RAG_FLUSH;
 #endif
     for(int m=0; m<image_params->Iy; m++) {
@@ -318,7 +322,7 @@ xe_printf("// Overwrite current image with registered image\n");RAG_FLUSH;
         BSMtoBSM(cur_m, out_m, image_params->Ix*sizeof(struct complexData));
     }
 
-#ifdef RAG_TRACE
+#ifdef TRACE
 xe_printf("// Free data blocks\n");RAG_FLUSH;
 #endif
 
@@ -330,7 +334,7 @@ xe_printf("// Free data blocks\n");RAG_FLUSH;
     spad_free(A,A_dbg);
     bsm_free(Fy,Fy_dbg);
     bsm_free(Fx,Fx_dbg);
-#ifdef RAG_TRACE
+#ifdef TRACE
 xe_printf("// leave affine registration\n");RAG_FLUSH;
 #endif
     return NULL_GUID;
@@ -753,7 +757,7 @@ void gauss_elim(float *AA[], float *x, int N)
     }
 }
 
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
 rmd_guid_t Affine_async_body_1(
     int *Fx, int *Fy, int **A, struct point ctrl_pt,
     rmd_guid_t  affine_params_dbg,
@@ -812,7 +816,6 @@ xe_printf("end\n");RAG_FLUSH;
 xe_printf("curImage is at %ld and holds %ld\n",(uint64_t)&curImage,(uint64_t)curImage);RAG_FLUSH;
 #endif
 #ifdef TRACE
-//xe_printf("refImage (dbg=%ld)\n",refImage_dbg.data);RAG_FLUSH;
 xe_printf("refImage\n");RAG_FLUSH;
 xe_printf("refImage_dbg is at %ld\n",(uint64_t)&refImage_dbg);RAG_FLUSH;
 xe_printf("and holds %ld)\n",refImage_dbg.data);RAG_FLUSH;
@@ -854,12 +857,9 @@ xe_printf("fetchadd %d\n",affine_params->Nc);RAG_FLUSH;
 xe_printf("// Form Fx, Fy (k=%d)\n",k);RAG_FLUSH;
 #endif
 
-xe_printf("Fx\n");RAG_FLUSH;
         RAG_PUT_INT(Fx+k, ctrl_pt.x + disp_vec.x);
-xe_printf("Fy\n");RAG_FLUSH;
         RAG_PUT_INT(Fy+k, ctrl_pt.y + disp_vec.y);
 
-xe_printf("A\n");RAG_FLUSH;
         // Form A
         A[k][0] = 1;
         A[k][1] = ctrl_pt.x;
@@ -867,15 +867,13 @@ xe_printf("A\n");RAG_FLUSH;
         A[k][3] = ctrl_pt.x*ctrl_pt.x;
         A[k][4] = ctrl_pt.y*ctrl_pt.y;
         A[k][5] = ctrl_pt.x*ctrl_pt.y;
-xe_printf("a\n");RAG_FLUSH;
 
     } // if above threshold
-xe_printf("ret\n");RAG_FLUSH;
     return NULL_GUID;
 }
 
 rmd_guid_t Affine_async_body_2(
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
     int x1, int x2, int y1, int y2, float Wcx[6], float Wcy[6],
 #else
     struct body_2 *body_2_args,
@@ -884,7 +882,7 @@ rmd_guid_t Affine_async_body_2(
     rmd_guid_t curImage_dbg,
     rmd_guid_t output_dbg)
 {
-#ifdef RAG_WORKAROUND
+#ifndef RAG_WORKAROUND
 #else
         int x1; int x2; int y1; int y2; float Wcx[6]; float Wcy[6];
 	x1 = body_2_args->x1;

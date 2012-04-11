@@ -26,13 +26,11 @@ static const int local = 0;
 void *spad_calloc(rmd_guid_t *dbg, size_t n, size_t size) {
 	void *tmp_dbp;
 	rmd_guid_t tmp_dbg = *dbg;
-#ifdef TRACE
-#endif
 	RMD_DB_ALLOC(&tmp_dbg,n*size,local,&alloc_spad);
 	RMD_DB_MEM(&tmp_dbp,tmp_dbg);
 	memset(tmp_dbp,0,n*size);
 	*dbg = tmp_dbg;
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("SPAD_CALLOC n %ld size %ld (ptr=%ld) (dbg=%ld)\n",n,size,(uint64_t)tmp_dbp,tmp_dbg.data);RAG_FLUSH;
 #endif
 	return tmp_dbp;
@@ -44,7 +42,7 @@ void *spad_malloc(rmd_guid_t *dbg, size_t size) {
 	RMD_DB_ALLOC(&tmp_dbg,size,local,&alloc_spad);
 	RMD_DB_MEM(&tmp_dbp,tmp_dbg);
 	*dbg = tmp_dbg;
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("SPAD_MALLOC size %ld (ptr=%ld) (dbg=%ld)\n",size,(uint64_t)tmp_dbp,tmp_dbg.data);RAG_FLUSH;
 #endif
 	return tmp_dbp;
@@ -53,7 +51,7 @@ void *spad_malloc(rmd_guid_t *dbg, size_t size) {
 void spad_free(void *dbp, rmd_guid_t dbg) {
 	RMD_DB_RELEASE(dbg);
 	RMD_DB_FREE(dbg);
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("SPAD_FREE (ptr=%ld) (dbg=%ld)\n",(uint64_t)dbp,dbg.data);RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;
@@ -70,7 +68,7 @@ void *bsm_calloc(rmd_guid_t *dbg, size_t n, size_t size) {
 	RMD_DB_MEM(&tmp_dbp,tmp_dbg);
 	bsm_memset(tmp_dbp,0,n*size);
 	*dbg = tmp_dbg;
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("BSM_CALLOC n %ld size %ld (ptr=%ld) (dbg=%ld)\n",n,size,(uint64_t)tmp_dbp,tmp_dbg.data);RAG_FLUSH;
 #endif
 	return tmp_dbp;
@@ -82,7 +80,7 @@ void *bsm_malloc(rmd_guid_t *dbg, size_t size) {
 	RMD_DB_ALLOC(&tmp_dbg,size,local,&alloc_blk);
 	RMD_DB_MEM(&tmp_dbp,tmp_dbg);
 	*dbg = tmp_dbg;
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("BSM_MALLOC size %ld (ptr=%ld) (dbg=%ld)\n",size,(uint64_t)tmp_dbp,tmp_dbg.data);RAG_FLUSH;
 #endif
 	return tmp_dbp;
@@ -91,7 +89,7 @@ void *bsm_malloc(rmd_guid_t *dbg, size_t size) {
 void bsm_free(void *dbp, rmd_guid_t dbg) {
 	RMD_DB_RELEASE(dbg);
 	RMD_DB_FREE(dbg);
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("BSM_FREE (ptr=%ld) (dbg=%ld)\n",(uint64_t)dbp,dbg.data);RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;
@@ -112,7 +110,7 @@ void *dram_calloc(rmd_guid_t *dbg, size_t n, size_t size) {
 	RMD_DB_MEM(&tmp_dbp,tmp_dbg);
 	dram_memset(tmp_dbp,0,n*size);
 	*dbg = tmp_dbg;
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("DRAM_CALLOC n %ld size %ld\n (dbg=%ld)",n,size,tmp_dbg.data);RAG_FLUSH;
 #endif
 	return tmp_dbp;
@@ -121,7 +119,7 @@ void *dram_calloc(rmd_guid_t *dbg, size_t n, size_t size) {
 void *dram_malloc(rmd_guid_t *dbg, size_t size) {
 	void *tmp_dbp;
 	rmd_guid_t tmp_dbg = *dbg;
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("DRAM_MALLOC size %ld (dbg=%ld)\n",size,tmp_dbg.data);RAG_FLUSH;
 #endif
 	RMD_DB_ALLOC(&tmp_dbg,size,local,&alloc_dram);
@@ -133,7 +131,7 @@ void *dram_malloc(rmd_guid_t *dbg, size_t size) {
 void dram_free(void *dbp, rmd_guid_t dbg) {
 	RMD_DB_RELEASE(dbg);
 	RMD_DB_FREE(dbg);
-#ifdef TRACE
+#ifdef DEBUG
 	xe_printf("DRAM_FREE (dbg=%ld)\n",dbg.data);RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;

@@ -21,7 +21,7 @@ CC	= $(PREFIX)-clang -DRAG_SIM
 # -D__float128=char is a fix for fftw-3.3 built with gcc 4.6 and quad precision
 #  and building the app with hc.  
 #  TODO: file bugs keeping fftw from being built with hc
-CFLAGS	= -g -ggdb -g3 -O0 -std=c99 -DDEBUG_SSCP -DTRACE -DRAG_WORKAROUND -DDEBUG_OFF \
+CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DDEBUG_SSCP -DTRACE -DRAG_WORKAROUND -DDEBUG_OFF \
 	-DRAG_PURE_FLOAT=1 -DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
 	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_THIN_ON=0 -DRAG_QSORT_ON=0 \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
