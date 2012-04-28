@@ -22,6 +22,7 @@ CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE_OFF -DDEBUG_OFF -DRAG_BLOCK
 CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=4 \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
+	-I $(RMD_INSTALL_BASE)/common/include \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/libxe/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/common
