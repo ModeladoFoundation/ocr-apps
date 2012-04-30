@@ -1,4 +1,4 @@
-FFTW_INC=/home/ragolliv/local/include
+FFTW_INC=/usr/local/include
 
 CC=gcc
 CFLAGS=-g -std=c99 -I../src -I/$(FFTW_INC)
