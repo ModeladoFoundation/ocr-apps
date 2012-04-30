@@ -87,20 +87,18 @@ $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 run:	$(TARGET) $(TARGET).cfg
-	$(RM) -f *.log.* detects.txt Detects.txt
-	$(RM) -f images_debug.txt corr_debug.txt cur.bmp ref.bmp all.bmp corr.bmp
 	/usr/bin/time $(FSIM) -c $(TARGET).cfg
 	grep -e 'x=0x' sscp.log.CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
-	diff Detects.txt Detects.gold
-	cmp  Detects.txt Detects.gold
-	wc   Detects.txt Detects.gold
 	egrep '(cur|ref)' sscp.log.CE.00 | grep 0x >images_debug.txt
 	../utils/viewImageTxt 1 <Detects.txt >cur.bmp
 	../utils/viewImageTxt 2 <Detects.txt >ref.bmp
 	../utils/viewImageTxt 3 <Detects.txt >all.bmp
 	grep corr sscp.log.CE.00 | grep 0x >corr_debug.txt
 	../utils/viewCorrTxt    >corr.bmp
+	-diff Detects.txt Detects.gold
+	-cmp  Detects.txt Detects.gold
+	-wc   Detects.txt Detects.gold
 ####	grep -i CONSOLE sscp.log.CE.00
 
 power:	$(TARGET) $(TARGET).cfg
