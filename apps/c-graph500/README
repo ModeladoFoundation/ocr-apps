@@ -1,4 +1,9 @@
 
-This README will change as the code matures
+This README will change as the code matures.
+
+NOTE - compilation assumes at least ../../tools/rmd_afl (if you have the
+RMD tree, it should be in the right place).
+
+#include <std-complaintaboutridiculoushardcodedpathsinmakefiles.h>
 
 
