@@ -1,0 +1,37 @@
+# Deepak Majeti (later Rob Knauerhase)
+#
+include make-incs/make.inc-gcc
+
+AFL_PATH_FROM_HERE = ../../tools/rmd_afl
+
+CDCFLAGS=-O3 -g -Wall -I$(AFL_PATH_FROM_HERE)/common -I$(AFL_PATH_FROM_HERE)/rmd_codelet -I$(AFL_PATH_FROM_HERE)
+
+CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
+
+GRAPH500_SOURCES= options.c rmat.c kronecker.c verify.c  prng.c \
+	xalloc.c timer.c
+
+GENERATOR_SRCS=splittable_mrg.c	\
+	graph_generator.c \
+        utils.c make_graph.c
+
+BIN = graph500
+
+.PHONY: all
+all: $(BIN)
+
+RMD_ALLOVER_INCS =  -I../../ss/rmdkrnl/inc/ -I./generator -I../../tools/rmd_afl/common/ -I../../ss/runtime/common
+
+%.o: %.c $(HEADERS)
+	$(CC) -c -DCODELETS -DRMD_DB_MEM -DPRINT_DEBUG_INFO $(RMD_ALLOVER_INCS) $(CDCFLAGS) -o $@ $<
+
+graph500:  graph500.o omp-csr/omp-csr.c ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a
+	$(CC) -std=c99 -o $@  $+ $(GRAPH500_SOURCES) $(addprefix generator/,$(GENERATOR_SRCS)) -lpthread -lxml2 -lc -ldl -lz -lm -lrt
+
+.PHONY:	clean
+clean:
+	rm -f *.o *~ map.out graph500 make-edgelist seq-csr/seq-csr seq-list/seq-list omp-csr/omp-csr
+
+# RCK save for the moment
+# CDCFLAGS=-O3 -g -Wall -I../../common -I../../rmd_memory -I../../rmd_threading -I../.. -I../../rmd_codelet -I../../../../ss/runtime/common -I../../../../ss/rmdkrnl/inc
+

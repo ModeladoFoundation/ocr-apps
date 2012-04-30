@@ -1,0 +1,32 @@
+# Deepak Majeti
+#
+include make-incs/make.inc-gcc
+
+CDCFLAGS=-O3 -g -Wall -I../../common -I../../rmd_memory -I../../rmd_threading -I../.. -I../../rmd_codelet -I../../../../ss/runtime/common -I../../../../ss/rmdkrnl/inc
+CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
+CDHEADERS=../../common/*.h ../../rmd_memory/*.h ../../rmd_threading/*.h ../../rmd_codelet/*.h
+
+GRAPH500_SOURCES= options.c rmat.c kronecker.c  prng.c \
+	xalloc.c timer.c
+
+GENERATOR_SRCS=splittable_mrg.c	\
+	graph_generator.c \
+	make_graph.c utils.c
+
+BIN = graph500_orig
+
+.PHONY: all
+all: $(BIN)
+
+CPPFLAGS += -I./generator
+
+
+%.o: %.c $(HEADERS)
+	$(CC) -c -DPRINT_DEBUG_INFO $(CDCFLAGS) -o $@ $<
+
+graph500_orig:  graph500_orig.o ../../rmd_codelet/rmd_codelet.a ../../rmd_afl.a
+	$(CC) -std=c99 -o $@  $+ $(GRAPH500_SOURCES) $(addprefix generator/,$(GENERATOR_SRCS)) -lpthread -lxml2 -lc -ldl -lz -lm -lrt
+
+.PHONY:	clean
+clean:
+	rm -f *.o graph500_orig
