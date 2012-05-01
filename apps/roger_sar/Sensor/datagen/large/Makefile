@@ -11,10 +11,10 @@ all:	Radar.txt
 Radar.txt:	Parameters.txt Targets.txt Makefile
 	../datagen Data.bin PlatformPosition.bin \
 		PulseTransmissionTime.bin Radar.txt
-
-run:	Radar.txt Makefile
 	../utils/viewData 1 500.0 <Data.bin >ref.bmp
 	../utils/viewData 2 250.0 <Data.bin >cur.bmp
+
+large:	all
 
 clean:
 	$(RM)	Data.bin PlatformPosition.bin \

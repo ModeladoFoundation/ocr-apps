@@ -1,9 +1,11 @@
 all:
-	$(MAKE) -C ./src
+	$(MAKE) -C ./src all
 
-run:
-	$(MAKE) -C ./small run
-	$(MAKE) -C ./large run
+small:	all
+	$(MAKE) -C ./small small
+
+large:	all
+	$(MAKE) -C ./large large
 
 clean:
 	$(MAKE) -C ./src   clean

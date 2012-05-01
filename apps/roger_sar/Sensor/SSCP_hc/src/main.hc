@@ -400,7 +400,7 @@ fprintf(stderr,"Output to file\n");fflush(stderr);
 #endif
 		// Output to file
 		for(m=0; m<Nd; m++) {
-			fprintf(pOutFile, "x=%7.2fm y=%7.2fm p=%4.2f\r\n", Y[m].x, Y[m].y, Y[m].p);
+			fprintf(pOutFile, "x=%7.2fm y=%7.2fm p=%4.2f\n", Y[m].x, Y[m].y, Y[m].p);
 		}
 	}
 	

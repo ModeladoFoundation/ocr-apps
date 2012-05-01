@@ -1,5 +1,5 @@
 ifndef RMD_INSTALL_BASE
-	RMD_INSTALL_BASE = /home/ragolliv/trunk/ss
+	RMD_INSTALL_BASE = ../../../../../ss
 endif
 
 PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
@@ -86,7 +86,7 @@ PulseTransmissionTime.s:	../../datagen/large/PulseTransmissionTime.bin
 $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
-run:	$(TARGET) $(TARGET).cfg
+large:	$(TARGET) $(TARGET).cfg
 	/usr/bin/time $(FSIM) -c $(TARGET).cfg
 	grep -e 'x=0x' sscp.log.CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
@@ -105,6 +105,8 @@ power:	$(TARGET) $(TARGET).cfg
 	$(POWER) -r $(TARGET).cfg
 
 clean:
-	$(RM) -f $(TARGET) *.o out.map
-	$(RM) -f *.log.* detects.txt Detects.txt
-	$(RM) -f images_debug.txt corr_debug.txt cur.bmp ref.bmp all.bmp corr.bmp
+	$(RM) -f $(TARGET) *.o out.map \
+		*.log.* detects.txt Detects.txt \
+		images_debug.txt corr_debug.txt \
+		cur.bmp ref.bmp all.bmp corr.bmp \
+		Data.s PlatformPosition.s PulseTransmissionTime.s

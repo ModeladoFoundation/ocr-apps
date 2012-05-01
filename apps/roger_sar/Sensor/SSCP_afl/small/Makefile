@@ -1,8 +1,8 @@
 ifndef RMD_INSTALL_BASE
-	RMD_INSTALL_BASE = /home/ragolliv/trunk/ss
+	RMD_INSTALL_BASE = ../../../../../ss
 endif
 ifndef AFL_INSTALL_BASE
-	AFL_INSTALL_BASE = /home/ragolliv/trunk/tools/rmd_afl
+	AFL_INSTALL_BASE = ../../../../../tools/rmd_afl
 endif
 
 RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
@@ -59,7 +59,7 @@ PulseTransmissionTime.c: ../../datagen/small/PulseTransmissionTime.bin
 sscp:	$(INCS) $(SRCS)
 	$(CC) $(CFLAGS) -o sscp $(SRCS) $(LDFLAGS)
 
-run:	./sscp
+small:	sscp
 	/usr/bin/time ./sscp -c sscp.cfg >detects.txt
 	egrep -e '(x=....\...m)' detects.txt | sort >Detects.txt
 	../utils/viewImage 1 <Detects.txt >cur.bmp
@@ -79,4 +79,5 @@ run:	./sscp
 
 clean:
 	$(RM) sscp detects.txt Detects.txt images_debug.bin corr_debug.bin \
-		cur.bmp ref.bmp all.bmp corr.bmp
+		cur.bmp ref.bmp all.bmp corr.bmp \
+		./Data.c ./PlatformPosition.c ./PulseTransmissionTime.c

@@ -59,7 +59,7 @@ PulseTransmissionTime.c: ../../datagen/large/PulseTransmissionTime.bin
 sscp:	$(INCS) $(SRCS)
 	$(CC) $(CFLAGS) -o sscp $(SRCS) $(LDFLAGS)
 
-run:	./sscp
+large:	sscp
 	/usr/bin/time ./sscp -c sscp.cfg >detects.txt
 	egrep -e '(x=....\...m)' detects.txt | sort >Detects.txt
 	../utils/viewImage 1 <Detects.txt >cur.bmp
@@ -79,4 +79,5 @@ run:	./sscp
 
 clean:
 	$(RM) sscp detects.txt Detects.txt images_debug.bin corr_debug.bin \
-		cur.bmp ref.bmp all.bmp corr.bmp
+		cur.bmp ref.bmp all.bmp corr.bmp \
+		./Data.c ./PlatformPosition.c ./PulseTransmissionTime.c

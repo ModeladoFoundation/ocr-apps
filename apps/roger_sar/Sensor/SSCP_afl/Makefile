@@ -1,11 +1,11 @@
 all:
-	$(MAKE) -C ./utils
-	$(MAKE) -C ./small
-	$(MAKE) -C ./large
+	$(MAKE) -C ./utils all
 
-run:
-	$(MAKE) -C ./small run
-	$(MAKE) -C ./large run
+small:	all
+	$(MAKE) -C ./small small
+
+large:	all
+	$(MAKE) -C ./large large
 
 clean:
 	$(MAKE) -C ./utils clean

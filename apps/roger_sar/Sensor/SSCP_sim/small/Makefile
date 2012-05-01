@@ -1,5 +1,5 @@
 ifndef RMD_INSTALL_BASE
-	RMD_INSTALL_BASE = /home/ragolliv/trunk/ss
+	RMD_INSTALL_BASE = ../../../../../ss
 endif
 
 PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
@@ -14,7 +14,9 @@ AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
 FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim
-POWER	= $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
+POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
+POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/E*pdf
+POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/UHPC.Power*
 
 CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
@@ -27,7 +29,7 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DRAG_SIM \
 	-I $(RMD_INSTALL_BASE)/runtime/libxe/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/common \
 	-I. \
-	-DDEBUG_SSCP -DTRACE -DDEBUG_OFF -DRAG_PURE_FLOAT=1 \
+	-DDEBUG_SSCP_OFF -DTRACE_OFF -DDEBUG_OFF -DRAG_PURE_FLOAT=1 \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
 	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_THIN_ON=0 \
 	-DRAG_QSORT_ON=0 -DRAG_SINCOS
@@ -87,25 +89,29 @@ PulseTransmissionTime.s:	../../datagen/small/PulseTransmissionTime.bin
 $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
-run:	$(TARGET) $(TARGET).cfg
+small:	$(TARGET) $(TARGET).cfg
 	/usr/bin/time $(FSIM) -c $(TARGET).cfg
 	grep -e 'x=0x' sscp.log.CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
-	egrep '(cur|ref)' sscp.log.CE.00 | grep 0x >images_debug.txt
-	../utils/viewImageTxt 1 <Detects.txt >cur.bmp
-	../utils/viewImageTxt 2 <Detects.txt >ref.bmp
-	../utils/viewImageTxt 3 <Detects.txt >all.bmp
-	grep corr sscp.log.CE.00 | grep 0x >corr_debug.txt
-	../utils/viewCorrTxt    >corr.bmp
+	-egrep '(cur|ref)' sscp.log.CE.00 | grep 0x >images_debug.txt
+	-../utils/viewImageTxt 1 <Detects.txt >cur.bmp
+	-../utils/viewImageTxt 2 <Detects.txt >ref.bmp
+	-../utils/viewImageTxt 3 <Detects.txt >all.bmp
+	-grep corr sscp.log.CE.00 | grep 0x >corr_debug.txt
+	-../utils/viewCorrTxt    >corr.bmp
 	-diff Detects.txt Detects.gold
 	-cmp  Detects.txt Detects.gold
 	-wc   Detects.txt Detects.gold
 ####	grep -i CONSOLE sscp.log.CE.00
 
-power:	$(TARGET) $(TARGET).cfg
-	$(POWER) -r $(TARGET).cfg
+
+power:	run
+	@$(POWER_ANALYSIS_SCRIPT) -r $(TARGET).cfg && echo -e "\nPower Analysis Graphs Generated:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_GRAPHS)
+	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
 
 clean:
-	$(RM) -f $(TARGET) *.o out.map
-	$(RM) -f *.log.* detects.txt Detects.txt
-	$(RM) -f images_debug.txt corr_debug.txt cur.bmp ref.bmp all.bmp corr.bmp
+	$(RM) -f $(TARGET) *.o out.map \
+		*.log.* detects.txt Detects.txt \
+		images_debug.txt corr_debug.txt \
+		cur.bmp ref.bmp all.bmp corr.bmp \
+		Data.s PlatformPosition.s PulseTransmissionTime.s

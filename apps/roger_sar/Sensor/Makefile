@@ -1,14 +1,19 @@
 all:
 	$(MAKE) -C ./datagen
-	$(MAKE) -C ./SSCP_hc
-	$(MAKE) -C ./SSCP_afl
-	$(MAKE) -C ./SSCP_sim
+	$(MAKE) -C ./SSCP_afl/utils
+	$(MAKE) -C ./SSCP_sim/utils
 
-run:
-	$(MAKE) -C ./datagen  run
-	$(MAKE) -C ./SSCP_hc  run
-	$(MAKE) -C ./SSCP_afl run
-	$(MAKE) -C ./SSCP_sim run
+small:
+	$(MAKE) -C ./datagen  small
+	$(MAKE) -C ./SSCP_hc  small
+	$(MAKE) -C ./SSCP_afl small
+	$(MAKE) -C ./SSCP_sim small
+
+large:
+	$(MAKE) -C ./datagen  large
+	$(MAKE) -C ./SSCP_hc  large
+	$(MAKE) -C ./SSCP_afl large
+#	$(MAKE) -C ./SSCP_sim large
 
 clean:
 	$(MAKE) -C ./datagen  clean

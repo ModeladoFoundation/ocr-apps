@@ -1,7 +1,7 @@
 all:
 	echo Nothing to make.
 
-run:	../src/sscp
+large:	../src/sscp
 	/usr/bin/time ../src/sscp --nproc 8 \
 		../../datagen/large/Data.bin \
 		../../datagen/large/PlatformPosition.bin \
