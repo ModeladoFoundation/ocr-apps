@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#include "block_sizes.h"
+
 #ifdef RAG_SIM
 #include "xe-codelet.h"
 #include "xe_memory.h"

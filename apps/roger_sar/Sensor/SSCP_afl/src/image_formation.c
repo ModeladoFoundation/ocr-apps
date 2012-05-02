@@ -4,10 +4,10 @@
 
 rmd_guid_t post_FormImage_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// enter post_FormImage_codelet\n");RAG_FLUSH;
 #endif
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	assert(n_db == 6);
 #else
 	assert(n_db == 5);
@@ -17,17 +17,17 @@ RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,radar_params_dbg,2);
 RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,curImage_dbg,3);
 RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,refImage_dbg,4);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 #endif
 	rmd_guid_t arg_scg =  { .data = arg };
 	if( refImage_dbg.data == NULL_GUID.data ) {
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// refImage_dbg == NULL_GUID\n");RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,in_dbg,0); 
 	} else {
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// refImage_dbg == struct complexData **\n");RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,0); 
@@ -37,10 +37,10 @@ RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
 	RMD_DB_RELEASE(image_params_dbg);
 	RMD_DB_RELEASE(radar_params_dbg);
 	RMD_DB_RELEASE(curImage_dbg);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	RMD_DB_RELEASE(dig_spot_dbg);
 #endif
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// leave post_FormImage_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -48,10 +48,10 @@ xe_printf("//// leave post_FormImage_codelet\n");RAG_FLUSH;
 
 rmd_guid_t FormImage_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// enter FormImage_codelet\n");RAG_FLUSH;
 #endif
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	assert(n_db == 6);
 #else
 	assert(n_db == 5);
@@ -62,11 +62,11 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,2);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,curImage_ptr,curImage_lcl,curImage_dbg,3);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,refImage_ptr,refImage_lcl,refImage_dbg,4);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 RAG_REF_MACRO_BSM( struct DigSpotVars,dig_spot,dig_spot_ptr,dig_spot_lcl,dig_spot_dbg,5);
 #endif
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for post_FormImage function\n");RAG_FLUSH;
 #endif
 	rmd_guid_t post_FormImage_clg;
@@ -75,7 +75,7 @@ xe_printf("//// create a codelet for post_FormImage function\n");RAG_FLUSH;
 		 post_FormImage_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 		6,			// int n_dep
 #else
 		5,			// int n_dep
@@ -85,7 +85,7 @@ xe_printf("//// create a codelet for post_FormImage function\n");RAG_FLUSH;
 		0);			// uint64_t prop
 	assert(retval==0);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create an instance for post_FormImage\n");RAG_FLUSH;
 #endif
 	rmd_guid_t post_FormImage_scg;
@@ -101,11 +101,11 @@ RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 #endif
 	if(refImage != NULL) {
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Copy curImage to refImage\n");RAG_FLUSH;
 #endif
 		for(int m=0; m<image_params->Iy; m++) {
@@ -118,7 +118,7 @@ xe_printf("//// Copy curImage to refImage\n");RAG_FLUSH;
 		} // for m
 	} // if !NULL
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Zero curImage\n");RAG_FLUSH;
 #endif
 	for(int n=0; n<image_params->Iy; n++) {
@@ -126,13 +126,13 @@ xe_printf("//// Zero curImage\n");RAG_FLUSH;
 	}
 	
 	if(image_params->TF > 1) {
-#if !RAG_DIG_SPOT_ON
+#ifndef RAG_DIG_SPOT
 // to stop defined but unused warning by compiler
 		radar_params = radar_params;
 		xe_printf("!!! DIGITAL SPOTLIGHTING NOT YET SUPPORTED !!!\n");RAG_FLUSH;
 		exit(1);
-#else // RAG_DIG_SPOT_ON
-#ifdef TRACE
+#else // RAG_DIG_SPOT
+#ifdef TRACE_LVL_2
 xe_printf("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_FLUSH;
 #endif
 		fftwf_plan plan_forward;
@@ -177,7 +177,7 @@ xe_printf("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_F
 					dig_spot->Pt2[n][2] = in->Pt[n*image_params->TF][2];
 				}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #endif
 		struct Corners_t *corners, *corners_ptr,corners_lcl; rmd_guid_t corners_dbg;
@@ -210,9 +210,9 @@ xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 		fftwf_free(input);
 		fftwf_free(fft_result);
 		fftwf_destroy_plan(plan_forward);
-#endif // RAG_DIG_SPOT_ON
+#endif // RAG_DIG_SPOT
 	} else { // else not digital spot light
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Perform backprojection over full image\n");RAG_FLUSH;
 #endif
 		struct Corners_t *corners, *corners_ptr,corners_lcl; rmd_guid_t corners_dbg;
@@ -224,7 +224,7 @@ xe_printf("//// Perform backprojection over full image\n");RAG_FLUSH;
 		corners->y2   = image_params->Iy;
 		corners->slot = 0;
 		REM_STX_ADDR(corners_ptr,corners_lcl,struct Corners_t);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for BackProj function\n");RAG_FLUSH;
 #endif
 	rmd_guid_t BackProj_clg;
@@ -238,7 +238,7 @@ xe_printf("//// create a codelet for BackProj function\n");RAG_FLUSH;
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create an instance for post_FormImage\n");RAG_FLUSH;
 #endif
 	rmd_guid_t BackProj_scg;
@@ -261,7 +261,7 @@ RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,refImage_dbg,5);
 		RMD_DB_RELEASE(curImage_dbg);
 		if(refImage != NULL)RMD_DB_RELEASE(refImage_dbg);
 	} // endif digital spot light
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// leave FormImage_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;

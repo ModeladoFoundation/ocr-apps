@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <complex.h>
 #include <string.h>
-#include <assert.h>
 
 #include <fftw3.h>
 

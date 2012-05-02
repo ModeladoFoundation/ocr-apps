@@ -18,10 +18,11 @@ CFLAGS= -g -O3 -std=c99 -DRAG_AFL -Wall \
 	-I $(RMD_INSTALL_BASE)/runtime/common \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I. \
-	-DDEBUG_SSCP -DTRACE -DDEBUG_OFF -DRAG_PURE_FLOAT=1 \
+	-DDEBUG_SSCP_OFF -DTRACE -DDEBUG_OFF \
+	-DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3 -DTRACE_LVL_4 \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
-	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_THIN_ON=0 \
-	-DRAG_QSORT_ON=0 -DRAG_SINCOS
+	-DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
+	-DRAG_QSORT_OFF -DRAG_SINCOS -DRAG_PURE_FLOAT
 
 # -DDEBUG_SSCP can be used to output image and corr_map data for debugging purposes
 
@@ -32,17 +33,17 @@ LDFLAGS=$(AFL_INSTALL_BASE)/rmd_codelet/rmd_codelet.a \
 INCS =	common.h rag_rmd.h
 
 SRCS=	main.c \
+	inputs.c \
+	image_formation.c \
 	digspot.c \
+	back_proj.c \
 	registration.c \
+	ccd.c \
+	cfar.c \
 	sinc_interp.c \
 	sinc.c \
-	image_formation.c \
-	back_proj.c \
 	fftw3.c \
 	rag_rmd.c \
-	./ccd.c \
-	./cfar.c \
-	./inputs.c \
 	./Data.c \
 	./PlatformPosition.c \
 	./PulseTransmissionTime.c
@@ -62,10 +63,10 @@ sscp:	$(INCS) $(SRCS)
 small:	sscp
 	/usr/bin/time ./sscp -c sscp.cfg >detects.txt
 	egrep -e '(x=....\...m)' detects.txt | sort >Detects.txt
-	../utils/viewImage 1 <Detects.txt >cur.bmp
-	../utils/viewImage 2 <Detects.txt >ref.bmp
-	../utils/viewImage 3 <Detects.txt >all.bmp
-	../utils/viewCorr    >corr.bmp
+	-../utils/viewImage 1 <Detects.txt >cur.bmp
+	-../utils/viewImage 2 <Detects.txt >ref.bmp
+	-../utils/viewImage 3 <Detects.txt >all.bmp
+	-../utils/viewCorr    >corr.bmp
 	wc  detects.txt
 	wc  Detects.txt Detects.gold
 	cmp Detects.txt Detects.gold

@@ -41,7 +41,6 @@
  ****************************************************************/
 
 #include "common.h"
-#include "assert.h"
 
 #include "rag_rmd.h"
 
@@ -50,7 +49,7 @@
 rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
 {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 if(n_db) {
 xe_printf("// enter main_codelet arg %ld n_db %d db[0] %ld db_ptr[0] %ld\n",arg,n_db,db[0].data,(uint64_t)db_ptr[0]);RAG_FLUSH;
 } else {
@@ -61,7 +60,7 @@ xe_printf("// enter main_codelet arg %ld n_db %d\n",arg,n_db);RAG_FLUSH;
 	struct Inputs in;			// Inputs
 	struct detects *Y;			// Detects list
 	struct point **corr_map;		// Correlation map
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	struct DigSpotVars dig_spot;		// Digital spotlight variables
 #endif
 	struct complexData **curImage;		// Current image
@@ -74,7 +73,7 @@ xe_printf("// enter main_codelet arg %ld n_db %d\n",arg,n_db);RAG_FLUSH;
 	struct ThinSplineParams ts_params;	// Thin spline registration parameters
 
 	rmd_guid_t in_dbg;      	// Inputs
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	rmd_guid_t dig_spot_dbg;	// Digital spotlight variables
 #endif
 
@@ -85,7 +84,7 @@ xe_printf("// enter main_codelet arg %ld n_db %d\n",arg,n_db);RAG_FLUSH;
 	rmd_guid_t ts_params_dbg;	// Thin spline registration parameters datablock guid
 
 	struct Inputs *in_ptr;			// Inputs
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	struct DigSpotVars *dig_spot_ptr;	// Digital spotlight variables
 #endif
 
@@ -100,7 +99,7 @@ xe_printf("// enter main_codelet arg %ld n_db %d\n",arg,n_db);RAG_FLUSH;
 		fprintf(stderr,"Error allocating memory for in data block.\n");
 		exit(1);
 	}
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	dig_spot_ptr = bsm_malloc(&dig_spot_dbg,  sizeof(struct DigSpotVars));
 	if(dig_spot_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for dig_spot data block.\n");
@@ -128,7 +127,7 @@ xe_printf("// enter main_codelet arg %ld n_db %d\n",arg,n_db);RAG_FLUSH;
 	pInFile2 = NULL;
 	pInFile3 = NULL;
 #else
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// SAR data\n");RAG_FLUSH;
 #endif
 	if( (pInFile = fopen(argv[1], "rb")) == NULL ) {
@@ -136,7 +135,7 @@ xe_printf("// SAR data\n");RAG_FLUSH;
 		exit(1);
 	}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Platform positions\n");RAG_FLUSH;
 #endif
 	if( (pInFile2 = fopen(argv[2], "rb")) == NULL ) {
@@ -144,7 +143,7 @@ xe_printf("// Platform positions\n");RAG_FLUSH;
 		exit(1);
 	}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Pulse transmission timestamps\n");RAG_FLUSH;
 #endif
 	if( (pInFile3 = fopen(argv[3], "rb")) == NULL ) {
@@ -166,7 +165,7 @@ xe_printf("// Pulse transmission timestamps\n");RAG_FLUSH;
 		  exit(1);
 	}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Ensure all window sizes are odd\n");RAG_FLUSH;
 #endif
 	if( !(affine_params.Sc % 2) ) {
@@ -194,11 +193,11 @@ xe_printf("// Ensure all window sizes are odd\n");RAG_FLUSH;
 		exit(1);
 	}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Calculate dependent variables\n");RAG_FLUSH;
 #endif
 	image_params.TF = image_params.Ix/image_params.Sx;
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 	image_params.dr = c_mks_mps/radar_params.fs/2.0f/((float)image_params.F);
 #else
 	image_params.dr = c_mks_mps/radar_params.fs/2/image_params.F;
@@ -206,25 +205,24 @@ xe_printf("// Calculate dependent variables\n");RAG_FLUSH;
 	image_params.P2 = image_params.P1/image_params.TF;
 	image_params.S2 = image_params.S1/image_params.TF;
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// TF > 1 implies digital spotlighting, TF = 1 implies no digital spotlighting\n");RAG_FLUSH;
 #endif
 	if(image_params.TF > 1) {
-#if !RAG_DIG_SPOT_ON
+#ifndef RAG_DIG_SPOT
 		xe_printf("!!! DIGITAL SPOTLIGHTING NOT YET SUPPORTED !!!\n");RAG_FLUSH;
 		exit(1);
-#else	// RAG_DIG_SPOT_ON
-#ifdef TRACE
+#else	// RAG_DIG_SPOT
+#ifdef TRACE_LVL_1
 xe_printf("// TF > 1 implies digital spotlighting\n");RAG_FLUSH;
 #endif
 		image_params.P3 = image_params.P2;
 		image_params.S3 = image_params.S2;
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Calculate new zeroth range bin\n");RAG_FLUSH;
 #endif
 		radar_params.R0_prime = radar_params.r0 - (radar_params.r0 - radar_params.R0)/image_params.TF;
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for variables needed to perform digital spotlighting\n");RAG_FLUSH;
 #endif
 		dig_spot.freqVec = (float*)malloc(image_params.S1*sizeof(float));
@@ -296,8 +294,7 @@ xe_printf("// Allocate memory for variables needed to perform digital spotlighti
 				exit(1);
 			}
 		}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Create frequency vector (positive freqs followed by negative freqs)\n");RAG_FLUSH;
 #endif
 		dig_spot.freqVec[0] = 0;
@@ -318,9 +315,9 @@ xe_printf("// Create frequency vector (positive freqs followed by negative freqs
 				dig_spot.freqVec[image_params.S1-n] = -n*(radar_params.fs/image_params.S1);
 			}
 		}
-#endif // RAG_DIG_SPOT_ON
+#endif // RAG_DIG_SPOT
 	} else {
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// TF = 1 implies no digital spotlighting\n");RAG_FLUSH;
 #endif
 		image_params.P3 = image_params.P1;
@@ -328,11 +325,10 @@ xe_printf("// TF = 1 implies no digital spotlighting\n");RAG_FLUSH;
 	}
 
 	image_params.S4 = (int)ceilf(image_params.F*image_params.S3);
-#ifdef TRACE
+#ifdef DEBUG
 xe_printf("// check ceilf S4 %d F %d S3 %d\n",image_params.S4,image_params.F,image_params.S3);RAG_FLUSH;
 #endif
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for axis vectors\n");RAG_FLUSH;
 #endif
         rmd_guid_t image_params_xr_dbg;
@@ -343,8 +339,7 @@ xe_printf("// Allocate memory for axis vectors\n");RAG_FLUSH;
 		fprintf(stderr,"Error allocating memory for axis vectors.\n");
 		exit(1);
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Create axis vectors\n");RAG_FLUSH;
 #endif
 	for(int i=0; i<image_params.Ix; i++) {
@@ -353,8 +348,7 @@ xe_printf("// Create axis vectors\n");RAG_FLUSH;
 	for(int i=0; i<image_params.Iy; i++) {
 		RAG_PUT_FLT(&image_params.yr[i],(i - floorf((float)image_params.Iy/2))*image_params.dr);
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 #endif
         rmd_guid_t in_X_dbg;
@@ -374,8 +368,7 @@ xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 	for(int i=0; i<image_params.P1; i++) {
 		RAG_PUT_PTR(&in.X[i], in_X_data_ptr + i*image_params.S1);
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FLUSH;
 #endif
 	rmd_guid_t in_Pt_dbg;
@@ -395,8 +388,7 @@ xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FL
 	for(int i=0; i<image_params.P1; i++) {
 		RAG_PUT_PTR(&in.Pt[i], in_Pt_data_ptr + i*3);
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for timestamp of pulse transmissions\n");RAG_FLUSH;
 #endif
 	rmd_guid_t in_Tp_dbg;
@@ -406,8 +398,7 @@ xe_printf("// Allocate memory for timestamp of pulse transmissions\n");RAG_FLUSH
 		exit(1);
 	}
 	in.Tp_dbg = in_Tp_dbg;
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 #endif
 	rmd_guid_t curImage_dbg;
@@ -425,8 +416,7 @@ xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 	for(int i=0; i<image_params.Iy; i++) {
 		RAG_PUT_PTR(&curImage[i], curImage_data_ptr + i*image_params.Ix);
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 #endif
 	rmd_guid_t refImage_dbg;
@@ -444,8 +434,7 @@ xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 	for(int i=0; i<image_params.Iy; i++) {
 		RAG_PUT_PTR(&refImage[i], refImage_data_ptr + i*image_params.Ix);
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
 #endif
 	rmd_guid_t corr_map_dbg;
@@ -464,8 +453,7 @@ xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
 	{
 		RAG_PUT_PTR(&corr_map[i], corr_map_data_ptr + i*(image_params.Ix-image_params.Ncor+1));
 	}
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 #endif
 	rmd_guid_t Y_dbg;
@@ -478,7 +466,7 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 //  DONE WITH INITIALIZATION OF PARAMETER DATA PUT, DATA INTO DATA BLOCKS //
 ////////////////////////////////////////////////////////////////////////////
 	REM_STX_ADDR(in_ptr           , in           , struct Inputs);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 	REM_STX_ADDR(dig_spot_ptr     , dig_spot     , struct DigSpotVars);
 #endif
 
@@ -503,7 +491,9 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 //   Create all the first level codelets                                //
 //////////////////////////////////////////////////////////////////////////
 
-// create a codelet for main_body_codelet function
+#ifdef TRACE_LVL_1
+xe_printf("// create a codelet for main_body_codelet function\n");RAG_FLUSH;
+#endif
 	rmd_guid_t main_body_clg;
 	extern rmd_guid_t main_body_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -517,7 +507,9 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 		0);			// uint64_t prop
 	assert(retval==0);
 
-// create a codelet for post_main_codelet function
+#ifdef TRACE_LVL_1
+xe_printf("// create a codelet for post_main_codelet function\n");RAG_FLUSH;
+#endif
 	rmd_guid_t post_main_clg;
 	extern rmd_guid_t post_main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -531,11 +523,13 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 		0);			// uint64_t prop
 	assert(retval==0);
 
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 #error
 #endif
 
-// create an instance for post_main_codelet
+#ifdef TRACE_LVL_1
+xe_printf("// create an instance for post_main_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t post_main_scg;
 	retval = rmd_codelet_sched(
 		&post_main_scg,		// rmd_guid_t* scheduled codelet's guid
@@ -543,18 +537,20 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 		post_main_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 
-// create an instance for main_body_codelet
+#ifdef TRACE_LVL_1
+xe_printf("// create an instance for main_body_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t main_body_scg;
 	retval = rmd_codelet_sched(
 		&main_body_scg,		// rmd_guid_t* scheduled codelet's guid
 		post_main_scg.data,	// uint64_t arg
 		main_body_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// main_body_scg = %ld\n",main_body_scg.data);RAG_FLUSH;
 #endif
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// provide the arguments to main_body_codelet.\n");RAG_FLUSH;
 #endif
 
@@ -570,7 +566,7 @@ RAG_DEF_MACRO_SPAD(main_body_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,8);
 RAG_DEF_MACRO_PASS(main_body_scg,struct detects *,NULL,NULL,NULL,Y_dbg,9);
 RAG_DEF_MACRO_BSM( main_body_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,10);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// provide the arguments to post_main_codelet.\n");RAG_FLUSH;
 #endif
 
@@ -619,7 +615,7 @@ RAG_DEF_MACRO_BSM( post_main_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg
 	RMD_DB_RELEASE(in_Pt_data_dbg);
 	RMD_DB_RELEASE(in_Tp_dbg);
 	RMD_DB_RELEASE(Y_dbg);
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// leave main_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -629,7 +625,7 @@ rmd_guid_t main_body_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t 
 {
 	int retval;
 	assert(n_db == 11);
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// enter main_body_codelet\n");RAG_FLUSH;
 #endif
 
@@ -647,8 +643,9 @@ RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file
 
 	rmd_guid_t post_main_scg;
 	post_main_scg.data = arg;
-
+#ifdef TRACE_LVL_1
 xe_printf("// create a codelet for ReadData_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t ReadData_clg;
 	extern rmd_guid_t ReadData_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -661,8 +658,9 @@ xe_printf("// create a codelet for ReadData_codelet\n");RAG_FLUSH;
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create a codelet for FormImage_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t FormImage_clg;
 	extern rmd_guid_t FormImage_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -670,7 +668,7 @@ xe_printf("// create a codelet for FormImage_codelet\n");RAG_FLUSH;
 		FormImage_codelet,	// rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 		6,			// int n_dep
 #else
 		5,			// int n_dep
@@ -679,8 +677,9 @@ xe_printf("// create a codelet for FormImage_codelet\n");RAG_FLUSH;
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create a codelet for Affine_codelet function\n");RAG_FLUSH;
+#endif
 	rmd_guid_t Affine_clg;
 	extern rmd_guid_t Affine_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -694,11 +693,12 @@ xe_printf("// create a codelet for Affine_codelet function\n");RAG_FLUSH;
 		0);			// uint64_t prop
 	assert(retval==0);
 
-#if RAG_THIN_ON
+#ifdef RAG_THIN
 #error
 #endif
-
+#ifdef TRACE_LVL_1
 xe_printf("// create a codelet for CCD_codelet function\n");RAG_FLUSH;
+#endif
 	rmd_guid_t CCD_clg;
 	extern rmd_guid_t CCD_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -711,8 +711,9 @@ xe_printf("// create a codelet for CCD_codelet function\n");RAG_FLUSH;
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create a codelet for CFAR_codelet function\n");RAG_FLUSH;
+#endif
 	rmd_guid_t CFAR_clg;
 	extern rmd_guid_t CFAR_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
 	retval = rmd_codelet_create(
@@ -725,8 +726,9 @@ xe_printf("// create a codelet for CFAR_codelet function\n");RAG_FLUSH;
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for CFAR_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t CFAR_scg;
 	retval = rmd_codelet_sched(
 		&CFAR_scg,		// rmd_guid_t* scheduled codelet's guid
@@ -734,62 +736,68 @@ xe_printf("// create an instance for CFAR_codelet\n");RAG_FLUSH;
 		CFAR_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for curImage/refImage CDD_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t CCD_scg;
 	retval = rmd_codelet_sched(
 		&CCD_scg,		// rmd_guid_t* scheduled codelet's guid
 		CFAR_scg.data,		// uint64_t arg
 		CCD_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for curImage/refImage Affine_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t Affine_scg;
 	retval = rmd_codelet_sched(
 		&Affine_scg,		// rmd_guid_t* scheduled codelet's guid
 		CCD_scg.data,		// uint64_t arg
 		Affine_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for curImage FormImage_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t FormImage_scg;
 	retval = rmd_codelet_sched(
 		&FormImage_scg,		// rmd_guid_t* scheduled codelet's guid
 		Affine_scg.data,	// uint64_t arg
 		FormImage_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for curImage ReadData_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t ReadData_scg;
 	retval = rmd_codelet_sched(
 		&ReadData_scg,		// rmd_guid_t* scheduled codelet's guid
 		FormImage_scg.data,	// uint64_t arg
 		ReadData_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for refImage FormImage_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t refFormImage_scg;
 	retval = rmd_codelet_sched(
 		&refFormImage_scg,	// rmd_guid_t* scheduled codelet's guid
 		ReadData_scg.data,	// uint64_t arg
 		FormImage_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-
+#ifdef TRACE_LVL_1
 xe_printf("// create an instance for refImage ReadData_codelet\n");RAG_FLUSH;
+#endif
 	rmd_guid_t refReadData_scg;
 	retval = rmd_codelet_sched(
 		&refReadData_scg,	// rmd_guid_t* scheduled codelet's guid
 		refFormImage_scg.data,	// uint64_t arg
 		ReadData_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Read first set of input data\n");RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,in_dbg,0);
 RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,file_args_dbg,2);
 //	ReadData(in, image_params, pInFile, pInFile2, pInFile3);
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Form first image\n");RAG_FLUSH;
 #endif
 //RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,in_dbg,0);
@@ -798,10 +806,10 @@ RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
 RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
 RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,NULL_GUID,4);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 #endif
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 //	FormImage(in_dbg,image_params_dbg,radar_params_dbg,
 //		curImage_dbg,NULL_GUID,dig_spot_dgb);
 #else
@@ -810,7 +818,7 @@ RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 #endif
 	assert(image_params->numImages == 2);
 	for(int image=1;image<image_params->numImages;image++) {
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Read second set of input data\n");RAG_FLUSH;
 #endif
 //RAG_DEF_MACRO_SPAD(ReadData_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,0);
@@ -819,7 +827,7 @@ RAG_DEF_MACRO_SPAD(ReadData_scg,struct ImageParams *,image_params,image_params_p
 RAG_DEF_MACRO_SPAD(ReadData_scg,struct file_args_t,file_args,file_arg_ptr,file_args_lcl,file_args_dbg,2);
 //		ReadData(in, image_params, pInFile, pInFile2, pInFile3);
 		
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Form second image (image_id=%d)\n",image);RAG_FLUSH;
 #endif
 //RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,in_dbg,0);
@@ -828,10 +836,10 @@ RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
 RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
 RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 #endif
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 //		FormImage(in_dbg,image_params_dbg,radar_params_dbg,
 //			curImage_dbg,refImage_dbg,dig_spot_dbg);
 #else
@@ -839,8 +847,8 @@ RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 //			curImage_dbg,refImage_dbg);
 #endif
 
-#if RAG_AFFINE_ON
-#ifdef TRACE
+#ifdef RAG_AFFINE
+#ifdef TRACE_LVL_1
 xe_printf("// Affine registration\n");RAG_FLUSH;
 #endif
 //RAG_DEF_MACRO_SPAD(Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
@@ -851,14 +859,14 @@ RAG_DEF_MACRO_SPAD(Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
 //		Affine(curImage_dbg,refImage_dbg,affine_params_dbg, image_params_dbg);
 #endif
 
-#if RAG_THIN_ON	// RAG WAS COMMENTED OUT
-#ifdef TRACE
+#ifdef RAG_THIN	// RAG WAS COMMENTED OUT
+#ifdef TRACE_LVL_1
 xe_printf("// Thin-spline registration\n");RAG_FLUSH;
 #endif
 		ThinSpline(ts_params, image_params, curImage, refImage);
 #endif
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Coherent Change Detection (Ncor = %d)\n",image_params->Ncor);RAG_FLUSH;
 #endif
 		// Coherent Change Detection
@@ -870,7 +878,7 @@ RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,corr_map_dbg,2);
 RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
 //	        CCD(curImage, refImage, corr_map, image_params);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Constant False Alarm Rate\n");RAG_FLUSH;
 #endif
 //RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
@@ -881,7 +889,7 @@ RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,Y_dbg,3);
 //		CFAR(corr_map, image_params, cfar_params, Y);
 
 	} // while
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// leave main_body_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -892,7 +900,7 @@ rmd_guid_t post_main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t 
 	int retval;
 	assert(n_db == 21);
 	FILE *pInFile, *pInFile2, *pInFile3;
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// enter post_main_codelet\n");RAG_FLUSH;
 #endif
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
@@ -922,7 +930,7 @@ RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file
 	pInFile3 = file_args_lcl.pInFile3;
 
 #ifdef DEBUG_SSCP
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// Output Images to .bins\n");RAG_FLUSH;
 #endif
     {
@@ -1011,11 +1019,11 @@ xe_printf("// Output Images to .bins\n");RAG_FLUSH;
 
 	bsm_free(file_args_ptr,file_args_dbg);
 
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
         bsm_free(dig_spot_ptr,dig_spot_dbg);
 #endif
 
-#ifdef TRACE
+#ifdef TRACE_LVL_1
 xe_printf("// leave post_main_codelet\n");RAG_FLUSH;
 #endif
 	xe_exit(0);

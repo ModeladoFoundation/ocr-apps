@@ -2,18 +2,16 @@
 
 #include "rag_rmd.h"
 
-#define BLOCK_SIZE 32
-
 rmd_guid_t backproject_final_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
-xe_printf("////// enter backproject_final\n");RAG_FLUSH;
+#ifdef TRACE_LVL_4
+xe_printf("//////// enter backproject_final\n");RAG_FLUSH;
 #endif
 	assert(n_db>1);
 	rmd_guid_t arg_scg = { .data = arg };
 	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,db[0],0);
-#ifdef TRACE
-xe_printf("////// leave backproject_final\n");RAG_FLUSH;
+#ifdef TRACE_LVL_4
+xe_printf("//////// leave backproject_final\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -43,8 +41,8 @@ RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,image_dbg,4);
 	int y2   = corners->y2;
 	int slot = corners->slot;
 
-#ifdef TRACE
-xe_printf("////// enter backproject_async slot %d\n",slot);RAG_FLUSH;
+#ifdef TRACE_LVL_4
+xe_printf("//////// enter backproject_async slot %d\n",slot);RAG_FLUSH;
 #endif
 
 	struct ImageParams *image_params, *image_params_ptr, image_params_lcl;
@@ -62,7 +60,7 @@ xe_printf("////// enter backproject_async slot %d\n",slot);RAG_FLUSH;
 
         float R, bin, w;
 
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 	const float ku = 2.0f*M_PI*radar_params->fc/c_mks_mps;
 #else
 	const float ku = 2*M_PI*radar_params->fc/c_mks_mps;
@@ -85,7 +83,7 @@ xe_printf("backproject_async k(%d)\n",k);RAG_FLUSH;
 				platpos_k = (float *)RAG_GET_PTR(platpos+k);
 				float platpos_k_012[3];
 				REM_LDX_ADDR(platpos_k_012,platpos_k,float [3]);
-#if defined(RAG_AFL) && defined(TRACE)
+#ifdef RAG_AFL
 assert(platpos[k][0] == platpos_k_012[0]);
 assert(platpos[k][1] == platpos_k_012[1]);
 assert(platpos[k][2] == platpos_k_012[2]);
@@ -142,8 +140,8 @@ xe_printf("backproject_async                 update image[%d][%d]\n",m,n);RAG_FL
 			REM_STX_ADDR(image_n+m,acc,struct complexData);
                 } // for n
         } // for m
-#ifdef TRACE
-xe_printf("////// leave backproject_async slot %d\n",slot);RAG_FLUSH;
+#ifdef TRACE_LVL_4
+xe_printf("//////// leave backproject_async slot %d\n",slot);RAG_FLUSH;
 #endif
 	rmd_guid_t arg_scg = { .data = rmd_arg };
 	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
@@ -153,7 +151,7 @@ xe_printf("////// leave backproject_async slot %d\n",slot);RAG_FLUSH;
 
 rmd_guid_t BackProj_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// enter BackProj_codelet\n");RAG_FLUSH;
 #endif
 assert(n_db == 6);
@@ -179,7 +177,7 @@ assert(slot==0);
 		fftwf_complex *input, *fft_result, *ifft_result;
 		fftwf_plan plan_forward, plan_backward;	// FFTW plan variables
 
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// BackProj FFTW initialization F = %d\n",image_params->F);RAG_FLUSH;
 #endif
 		input         = (fftwf_complex*)fftwf_malloc(image_params->S3 * sizeof(fftwf_complex));
@@ -234,9 +232,10 @@ xe_printf("////// BackProj FFTW initialization F = %d\n",image_params->F);RAG_FL
 		fftwf_free(ifft_result);
 		fftwf_destroy_plan(plan_forward);
 		fftwf_destroy_plan(plan_backward);
-
+#ifdef TRACE
 xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is > 1)\n",
 			x1, x2, y1, y2);RAG_FLUSH;
+#endif
 		struct Inputs tmp_in, *tmp_in_ptr; rmd_guid_t tmp_in_dbg;
 		tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
 		tmp_in.Pt = in->Pt;
@@ -248,8 +247,9 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is >
 		tmp_in.X_edge_dbg  = Xup_dbg;
 		tmp_in.X_data_dbg  = Xup_data_dbg;;
 		REM_STX_ADDR_SIZE(tmp_in_ptr,tmp_in,sizeof(struct Inputs));
-		assert( ((x2-x1)%BLOCK_SIZE) == 0);
-		assert( ((y2-y1)%BLOCK_SIZE) == 0);
+
+		assert( ((x2-x1)%BACK_PROJ_ASYNC_BLOCK_SIZE) == 0);
+		assert( ((y2-y1)%BACK_PROJ_ASYNC_BLOCK_SIZE) == 0);
 
 // create a codelet for backproject_async function
 	rmd_guid_t backproject_async_clg;
@@ -270,7 +270,7 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is >
 		 backproject_final_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		((x2-x1)/BLOCK_SIZE)*((y2-y1)/BLOCK_SIZE)+1, // int n_dep
+		((x2-x1)/BACK_PROJ_ASYNC_BLOCK_SIZE)*((y2-y1)/BACK_PROJ_ASYNC_BLOCK_SIZE)+1, // int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
@@ -283,18 +283,18 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is >
 		backproject_final_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 RAG_DEF_MACRO_PASS(backproject_final_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
-		for(int m=x1; m<x2; m+=BLOCK_SIZE) {
-			for(int n=y1; n<y2; n+=BLOCK_SIZE) {
-#ifdef TRACE
+		for(int m=x1; m<x2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE) {
+			for(int n=y1; n<y2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE) {
+#ifdef TRACE_LVL_3
 xe_printf("////// create an instance for backproject_async slot %d\n",slot);RAG_FLUSH;
 #endif
 				struct Corners_t *async_corners, *async_corners_ptr, async_corners_lcl; rmd_guid_t async_corners_dbg;
 				async_corners = &async_corners_lcl;
 				async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct Corners_t));
 				async_corners->x1   = m;
-				async_corners->x2   = m+BLOCK_SIZE;
+				async_corners->x2   = m+BACK_PROJ_ASYNC_BLOCK_SIZE;
 				async_corners->y1   = n;
-				async_corners->y2   = n+BLOCK_SIZE;
+				async_corners->y2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE;
 				async_corners->slot = slot++;
 				REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
 				rmd_guid_t backproject_async_scg;
@@ -303,6 +303,7 @@ xe_printf("////// create an instance for backproject_async slot %d\n",slot);RAG_
 		backproject_final_scg.data,	// uint64_t arg
 		backproject_async_clg);		// rmd_guid_t created codelet's guid
 				assert(retval==0);
+
 RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,tmp_in_dbg,0); // Xup,platpos
 RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,1);
 RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
@@ -315,10 +316,12 @@ RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,4);
 		bsm_free(Xup_data_ptr,Xup_data_dbg); // Xup[]
 		bsm_free(Xup,Xup_dbg);
 	} else { // if F
+#ifdef TRACE
 xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is = 1)\n",
 			x1, x2, y1, y2);RAG_FLUSH;
-		assert( ((x2-x1)%BLOCK_SIZE) == 0);
-		assert( ((y2-y1)%BLOCK_SIZE) == 0);
+#endif
+		assert( ((x2-x1)%BACK_PROJ_ASYNC_BLOCK_SIZE) == 0);
+		assert( ((y2-y1)%BACK_PROJ_ASYNC_BLOCK_SIZE) == 0);
 // create a codelet for backproject_async function
 	rmd_guid_t backproject_async_clg;
 	retval = rmd_codelet_create(
@@ -338,7 +341,7 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is =
 		 backproject_final_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		((x2-x1)/BLOCK_SIZE)*((y2-y1)/BLOCK_SIZE)+1, // int n_dep
+		((x2-x1)/BACK_PROJ_ASYNC_BLOCK_SIZE)*((y2-y1)/BACK_PROJ_ASYNC_BLOCK_SIZE)+1, // int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
@@ -351,18 +354,18 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is =
 		backproject_final_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 RAG_DEF_MACRO_PASS(backproject_final_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
-		for(int m=x1; m<x2; m+=BLOCK_SIZE) {
-			for(int n=y1; n<y2; n+=BLOCK_SIZE) {
-#ifdef TRACE
+		for(int m=x1; m<x2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE) {
+			for(int n=y1; n<y2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE) {
+#ifdef TRACE_LVL_3
 xe_printf("////// create an instance for backproject_async slot %d\n",slot);RAG_FLUSH;
 #endif
 				struct Corners_t *async_corners, *async_corners_ptr, async_corners_lcl; rmd_guid_t async_corners_dbg;
 				async_corners = &async_corners_lcl;
 				async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct Corners_t));
 				async_corners->x1   = m;
-				async_corners->x2   = m+BLOCK_SIZE;
+				async_corners->x2   = m+BACK_PROJ_ASYNC_BLOCK_SIZE;
 				async_corners->y1   = n;
-				async_corners->y2   = n+BLOCK_SIZE;
+				async_corners->y2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE;
 				async_corners->slot = slot++;
 				REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
 				rmd_guid_t backproject_async_scg;
@@ -371,6 +374,7 @@ xe_printf("////// create an instance for backproject_async slot %d\n",slot);RAG_
 		backproject_final_scg.data,	// uint64_t arg
 		backproject_async_clg);		// rmd_guid_t created codelet's guid
 				assert(retval==0);
+
 RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,in_dbg,0);	// Xin,platpos
 RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,1);
 RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
@@ -386,7 +390,7 @@ RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,4);
 	} // if F
 
 	bsm_free(corners_ptr,corners_dbg);
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// leave BackProj_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;

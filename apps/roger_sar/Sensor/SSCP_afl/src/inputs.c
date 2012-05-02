@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <assert.h>
 
 #include "common.h"
 
@@ -8,31 +7,7 @@
 int ReadParams(struct RadarParams *radar_params, struct ImageParams *image_params, struct AffineParams *affine_params, struct ThinSplineParams *ts_params, struct CfarParams *cfar_params)
 {
 #ifdef RAG_IMPLICIT_INPUTS
-#define RAG_Fs 300000000
-#define RAG_Fc 10000000000
-#define RAG_PRF 700
-#define RAG_F 1
-#define RAG_Ix 128
-#define RAG_Iy 128
-#define RAG_Sx 128
-#define RAG_Sy 128
-#define RAG_P1 263
-#define RAG_S1 256
-#define RAG_r0 10000
-#define RAG_R0 9936
-#define RAG_Nc 16
-#define RAG_Rc 16
-#define RAG_Sc 31
-#define RAG_Tc 0.7
-#define RAG_Nf 400
-#define RAG_Rf 4
-#define RAG_Scf 9
-#define RAG_Tf 0
-#define RAG_Ncor 5
-#define RAG_Ncfar 25
-#define RAG_Tcfar 90
-#define RAG_Nguard 17
-#define RAG_NumberImages 2
+#include "Parameters.h"
 	radar_params->fs        = RAG_Fs;
 	radar_params->fc        = RAG_Fc;
 	radar_params->PRF       = RAG_PRF;
@@ -188,13 +163,13 @@ rmd_guid_t ReadData_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *
 RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,2);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// enter ReadData_codelet\n");RAG_FLUSH;
 #endif
 	FILE *pInFile  = file_args_lcl.pInFile;
 	FILE *pInFile2 = file_args_lcl.pInFile2;
 	FILE *pInFile3 = file_args_lcl.pInFile3;
-#ifdef TRACE
+#ifdef DEBUG
 xe_printf("%ld %ld %ld\n",(uint64_t)pInFile, (uint64_t)pInFile2, (uint64_t) pInFile3);RAG_FLUSH;
 #endif
 	void ReadData(struct Inputs *in, struct ImageParams *image_params,
@@ -210,7 +185,7 @@ RAG_DEF_MACRO_SPAD(arg_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,0);
 	RMD_DB_RELEASE(file_args_dbg);
 	RMD_DB_RELEASE(in_dbg);
 	RMD_DB_RELEASE(image_params_dbg);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// leave ReadData_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -229,12 +204,14 @@ extern struct {int32_t x; int32_t y; int32_t z;} platform_0[RAG_P1][1];
 extern struct {int32_t x; int32_t y; int32_t z;} platform_1[RAG_P1][1];
 extern struct {int32_t t; } pulse_0[RAG_P1][1];
 extern struct {int32_t t; } pulse_1[RAG_P1][1];
-xe_printf("RAG_IMPLICIT_INPUTS P1 = %d S1 = %d\n",image_params->P1,image_params->S1);RAG_FLUSH;
+#ifdef TRACE_LVL_2
+xe_printf("//// RAG_IMPLICIT_INPUTS P1 = %d S1 = %d\n",image_params->P1,image_params->S1);RAG_FLUSH;
+#endif
 #endif
 
 	for(int m=0; m<image_params->P1; m++) {
-#ifdef TRACE
-if(!m){xe_printf("// Read complex SAR data\n");RAG_FLUSH;}
+#ifdef TRACE_LVL_2
+if(!m){xe_printf("//// Read complex SAR data\n");RAG_FLUSH;}
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
 		fread(&in->X[m][0], sizeof(struct complexData), image_params->S1, pFile1);
@@ -247,8 +224,8 @@ if(!m){xe_printf("// Read complex SAR data\n");RAG_FLUSH;}
 		SPADtoBSM(RAG_GET_PTR(in->X+m),&image_1[m][0], sizeof(struct complexData)*image_params->S1);
 		} // endif image
 #endif
-#ifdef TRACE
-if(!m){xe_printf("// Read platform positions\n");RAG_FLUSH;}
+#ifdef TRACE_LVL_2
+if(!m){xe_printf("//// Read platform positions\n");RAG_FLUSH;}
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
 		fread(&in->Pt[m][0], sizeof(float), 3, pFile2);
@@ -262,8 +239,8 @@ if(!m){xe_printf("// Read platform positions\n");RAG_FLUSH;}
 		} // endif image
 #endif
 	} // for m (P1)
-#ifdef TRACE
-xe_printf("// Read pulse transmission timestamps\n");RAG_FLUSH;
+#ifdef TRACE_LVL_2
+xe_printf("//// Read pulse transmission timestamps\n");RAG_FLUSH;
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
 	fread(in->Tp, sizeof(float), image_params->P1, pFile3);

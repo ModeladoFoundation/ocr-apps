@@ -2,7 +2,7 @@
 
 #include "rag_rmd.h"
 
-#if RAG_DIG_SPOT_ON
+#ifdef RAG_DIG_SPOT
 struct complexData** DigSpot(float xc, float yc, struct DigSpotVars *dig_spot, struct ImageParams *image_params, struct RadarParams *radar_params, struct Inputs *in)
 {
 	int m, n;
@@ -11,7 +11,7 @@ struct complexData** DigSpot(float xc, float yc, struct DigSpotVars *dig_spot, s
 	float deltaR;
 	fftwf_plan plan_backward;
 	fftwf_complex *ifft_input, *ifft_result;
-#ifdef TRACE
+#ifdef DEBUG
 xe_printf("DigSpot P1, S1 <%3d,%3d>\n",image_params->P1, image_params->S1);
 xe_printf("DigSpot P2, S2 <%3d,%3d>\n",image_params->P2, image_params->S2);
 xe_printf("DigSpot P3, S3 <%3d,%3d>\n",image_params->P3, image_params->S3);
@@ -32,7 +32,7 @@ RAG_FLUSH;
 		deltaR = sqrtf( (xc-in->Pt[m][0])*(xc-in->Pt[m][0]) + (yc-in->Pt[m][1])*(yc-in->Pt[m][1]) + in->Pt[m][2]*in->Pt[m][2] ) - radar_params->r0;
 		// Induce phase shift
 		for(n=0; n<image_params->S1; n++) {
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 			arg = 4.0f*((float)M_PI)*deltaR*(radar_params->fc+dig_spot->freqVec[n])/c_mks_mps;
 #else
 			arg = 4*M_PI*deltaR*(radar_params->fc+dig_spot->freqVec[n])/c_mks_mps;
@@ -75,4 +75,4 @@ RAG_FLUSH;
 
 	return dig_spot->X4;
 }
-#endif // RAG_DIG_SPOT_ON
+#endif // RAG_DIG_SPOT

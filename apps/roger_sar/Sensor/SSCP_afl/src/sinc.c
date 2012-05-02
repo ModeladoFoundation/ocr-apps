@@ -2,7 +2,7 @@
 
 float sinc(float x)
 {
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 	const float flt_m_pi = (float)M_PI;
 	if( x == 0.0f ) {
 		return 1.0f;

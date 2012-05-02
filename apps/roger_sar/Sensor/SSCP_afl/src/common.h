@@ -16,14 +16,14 @@ void sincosf(float arg_x, float* sin_x, float *cos_x);
 #include <string.h>
 
 #ifndef M_PI
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 #define M_PI		3.1415926535897932384626433832795029f
 #else
 #define M_PI		3.1415926535897932384626433832795029l
 #endif
 #endif
 
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 #define c_mks_mps 300000000.0f
 #else
 #define c_mks_mps 3e8

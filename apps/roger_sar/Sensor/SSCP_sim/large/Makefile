@@ -26,10 +26,11 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DRAG_SIM \
 	-I $(RMD_INSTALL_BASE)/runtime/libxe/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/common \
 	-I. \
-	-DDEBUG_SSCP_OFF -DTRACE_OFF -DDEBUG_OFF -DRAG_PURE_FLOAT=1 \
+	-DDEBUG_SSCP_OFF -DTRACE -DDEBUG_OFF \
+	-DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
-	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_THIN_ON=0 \
-	-DRAG_QSORT_ON=0 -DRAG_SINCOS
+	-DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
+	-DRAG_QSORT_OFF -DRAG_PURE_FLOAT -DRAG_SINCOS
 
 OBJCOPY	= $(PREFIX)-objcopy
 
@@ -47,19 +48,19 @@ INCS =	common.h fftw3.h rag_rmd.h
 
 OBJS=	main.o \
 	inputs.o \
+	image_formation.o \
 	digspot.o \
+	back_proj.o \
 	registration.o \
+	ccd.o \
 	cfar.o \
 	sinc_interp.o \
 	sinc.o \
-	image_formation.o \
-	back_proj.o \
-	ccd.o \
 	fftw3.o \
 	rag_rmd.o \
-	Data.o \
-	PlatformPosition.o \
-	PulseTransmissionTime.o
+	./Data.o \
+	./PlatformPosition.o \
+	./PulseTransmissionTime.o
 
 all: $(TARGET)
 
@@ -109,4 +110,4 @@ clean:
 		*.log.* detects.txt Detects.txt \
 		images_debug.txt corr_debug.txt \
 		cur.bmp ref.bmp all.bmp corr.bmp \
-		Data.s PlatformPosition.s PulseTransmissionTime.s
+		./Data.s ./PlatformPosition.s ./PulseTransmissionTime.s

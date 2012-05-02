@@ -2,8 +2,6 @@
 
 #include "rag_rmd.h"
 
-#define BLOCK_SIZE 32
-
 struct async_1_args_t {
 	int *Fx;
 	rmd_guid_t Fx_dbg;
@@ -29,7 +27,7 @@ struct async_2_args_t {
 
 rmd_guid_t post_Affine_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// enter post_Affine_codelet\n");RAG_FLUSH;
 #endif
 	assert(n_db == 4);
@@ -40,7 +38,7 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 
 	rmd_guid_t arg_scg = { .data = arg };
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("// Overwrite current image with registered image\n");RAG_FLUSH;
 #endif
 	for(int m=0; m<image_params->Iy; m++) {
@@ -58,7 +56,7 @@ RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 	RMD_DB_RELEASE(image_params_dbg);
 
 	bsm_free(output,output_dbg);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// leave post_Affine_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -66,7 +64,7 @@ xe_printf("//// leave post_Affine_codelet\n");RAG_FLUSH;
 
 rmd_guid_t Affine_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// enter Affine_codelet\n");RAG_FLUSH;
 #endif
 	assert(n_db==4);
@@ -74,7 +72,7 @@ RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for post_Affine function\n");RAG_FLUSH;
 #endif
 	rmd_guid_t post_Affine_clg;
@@ -88,7 +86,7 @@ xe_printf("//// create a codelet for post_Affine function\n");RAG_FLUSH;
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create an instance for post_Affine\n");RAG_FLUSH;
 #endif
 	rmd_guid_t arg_scg = { .data = arg };
@@ -112,7 +110,7 @@ xe_printf("//// create an instance for post_Affine\n");RAG_FLUSH;
 		image_params,	image_params_dbg,
 		post_Affine_scg);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// leave Affine_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -125,7 +123,7 @@ struct point corr2D(struct point ctrl_pt, int Nwin, int R,
 
 rmd_guid_t affine_final_1_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// enter affine_final_1_codelet %d\n",n_db);RAG_FLUSH;
 #endif
 	assert(n_db>5);
@@ -164,7 +162,7 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,4);
 	int *Fx = async_1_args->Fx;
 	int *Fy = async_1_args->Fy;
 	struct complexData **output = async_1_args->output;
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 printf("Nc = %d\n",affine_params->Nc);RAG_FLUSH;
 for(int i=0;i<affine_params->Nc;i++) {
 	printf("A[%d][*] = %d %d %d %d %d %d\n",i, A[i][0], A[i][1], A[i][2], A[i][3], A[i][4], A[i][5]);RAG_FLUSH;
@@ -199,7 +197,7 @@ assert(Fy+n==&Fy[n]);
 		b[m][0] = accum_x;
 		b[m][1] = accum_y;
 	}
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 for(int i=0;i<6;i++) {
 	printf("b[%d][*] = %f %f\n",i, b[i][0], b[i][1]);RAG_FLUSH;
 }
@@ -229,32 +227,32 @@ assert((A_k+n) == &A[k][n]);
 	for(int m=0; m<6; m++) {
 		aug_mat[m][6] = b[m][0];
 	}
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 for(int i=0;i<6;i++) {
 	printf("aug[%d][*] = %f %f %f %f %f %f %f\n",i, aug_mat[i][0], aug_mat[i][1], aug_mat[i][2], aug_mat[i][3], aug_mat[i][4], aug_mat[i][5],aug_mat[i][6]);RAG_FLUSH;
 }
 #endif
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// Perform Gaussian elimination to find Wcx\n");RAG_FLUSH;
 #endif
 	gauss_elim(aug_mat, Wcx, 6);
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 printf("Wcx = %f %f %f %f %f %f\n", Wcx[0], Wcx[1], Wcx[2], Wcx[3], Wcx[4], Wcx[5]);RAG_FLUSH;
 #endif
 	// aug_mat(1:6,7) = b(1:6,2)
 	for(int m=0; m<6; m++) {
 		aug_mat[m][6] = b[m][1];
 	}
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 for(int i=0;i<6;i++) {
 	printf("aug[%d][*] = %f %f %f %f %f %f %f\n",i, aug_mat[i][0], aug_mat[i][1], aug_mat[i][2], aug_mat[i][3], aug_mat[i][4], aug_mat[i][5],aug_mat[i][6]);RAG_FLUSH;
 }
 #endif
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// Perform Gaussian elimination to find Wcy\n");RAG_FLUSH;
 #endif
 	gauss_elim(aug_mat, Wcy, 6);
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 printf("Wcy = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[5]);RAG_FLUSH;
 #endif
 
@@ -266,11 +264,9 @@ printf("Wcy = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 	spad_free(aug_mat_data_ptr,aug_mat_data_dbg);
 	spad_free(aug_mat,aug_mat_dbg);
 
-#ifdef TRACE
-	assert( (image_params->Iy%BLOCK_SIZE) == 0);
-	assert( (image_params->Ix%BLOCK_SIZE) == 0);
-#endif
-#ifdef TRACE
+	assert( (image_params->Iy%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
+	assert( (image_params->Ix%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
+#ifdef TRACE_LVL_3
 xe_printf("////// create a codelet for affine_async_2 function\n");RAG_FLUSH;
 #endif
 rmd_guid_t affine_async_2_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *db);
@@ -286,7 +282,7 @@ rmd_guid_t affine_async_2_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_
 		0);			// uint64_t prop
 	assert(retval==0);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// create a codelet for affine_2_final function\n");RAG_FLUSH;
 #endif
 rmd_guid_t affine_final_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
@@ -296,12 +292,12 @@ rmd_guid_t affine_final_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
 		 affine_final_2_codelet,// rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		(image_params->Iy/BLOCK_SIZE)*(image_params->Ix/BLOCK_SIZE)+5,// int n_dep
+		(image_params->Iy/AFFINE_ASYNC_2_BLOCK_SIZE)*(image_params->Ix/AFFINE_ASYNC_2_BLOCK_SIZE)+5,// int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// create an instance for affine_final_2\n");RAG_FLUSH;
 #endif
 	rmd_guid_t affine_final_2_scg;
@@ -327,9 +323,9 @@ xe_printf("////// create an instance for affine_final_2\n");RAG_FLUSH;
 	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,slot++);
 	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,slot++);
 
-	for(int m=0; m<image_params->Iy; m+=BLOCK_SIZE) {
-		for(int n=0; n<image_params->Ix; n+=BLOCK_SIZE) {
-#ifdef TRACE
+	for(int m=0; m<image_params->Iy; m+=AFFINE_ASYNC_2_BLOCK_SIZE) {
+		for(int n=0; n<image_params->Ix; n+=AFFINE_ASYNC_2_BLOCK_SIZE) {
+#ifdef TRACE_LVL_3
 xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLUSH;
 #endif
 			struct Corners_t *async_corners,*async_corners_ptr,async_corners_lcl;
@@ -345,9 +341,9 @@ xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLU
 			assert(retval==0);
 
 			async_corners->x1   = m;
-			async_corners->x2   = m+BLOCK_SIZE;
+			async_corners->x2   = m+AFFINE_ASYNC_2_BLOCK_SIZE;
 			async_corners->y1   = n;
-			async_corners->y2   = n+BLOCK_SIZE;
+			async_corners->y2   = n+AFFINE_ASYNC_2_BLOCK_SIZE;
 			async_corners->slot = slot++;
 			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
 
@@ -361,7 +357,7 @@ RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,5);
 		} // for n
 	} // for m
 
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// leave affine_final_1_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -382,22 +378,22 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,4);
 	int **A  = async_1_args->A;
 	struct point ctrl_pt = async_1_args->ctrl_pt;
 	int slot = async_1_args->slot;
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// enter affine_async_1_codelet slot %d\n",slot);RAG_FLUSH;
 #endif
 	// disp_vec
 	struct point disp_vec;
             
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// Perform 2D correlation\n");RAG_FLUSH;
 #endif
 	disp_vec = corr2D(ctrl_pt, affine_params->Sc, affine_params->Rc,
 				curImage, refImage, image_params);
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// Only retain control points that exceed the threshold\n");RAG_FLUSH;
 #endif
 	if(disp_vec.p >= affine_params->Tc) {
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// disp_vec.p >= affine_params->Tc\n");RAG_FLUSH;
 #endif
 
@@ -412,7 +408,7 @@ xe_printf("////// disp_vec.p >= affine_params->Tc\n");RAG_FLUSH;
 		                + offsetof(struct AffineParams,Nc))),1);
 #endif
 
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// Form Fx, Fy (k=%d) and A\n",k);RAG_FLUSH;
 #endif
 		RAG_PUT_INT(Fx+k, ctrl_pt.x + disp_vec.x);
@@ -430,7 +426,7 @@ xe_printf("////// Form Fx, Fy (k=%d) and A\n",k);RAG_FLUSH;
 	rmd_guid_t arg_scg = { .data = arg };
 	RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
 	bsm_free(async_1_args,async_1_args_dbg);
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// leave affine_async_1_codelet slot %d\n",slot);RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -438,7 +434,7 @@ xe_printf("////// leave affine_async_1_codelet slot %d\n",slot);RAG_FLUSH;
 
 rmd_guid_t affine_final_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// enter affine_final_2_codelet %d\n",n_db);RAG_FLUSH;
 #endif
 	assert(n_db>5);
@@ -448,7 +444,7 @@ RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
 RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,3);
 RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_args_lcl,async_1_args_dbg,4);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("// Free data blocks\n");RAG_FLUSH;
 #endif
 #if 0
@@ -463,7 +459,7 @@ xe_printf("// Free data blocks\n");RAG_FLUSH;
 //	RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,1);
 //	RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,2);
 //	RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// leave affine_final_2_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -488,24 +484,22 @@ RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_a
 	int y1   = corners->y1;
 	int y2   = corners->y2;
 	int slot = corners->slot;
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// enter affine_async_2_codelet slot %d\n",slot);RAG_FLUSH;
 #endif
 	float Wcx[6];
 	memcpy(Wcx,async_2_args->Wcx,6*sizeof(float)); 
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 printf("wCX = %f %f %f %f %f %f\n", Wcx[0], Wcx[1], Wcx[2], Wcx[3], Wcx[4], Wcx[5]);RAG_FLUSH;
 #endif
 	float Wcy[6];
 	memcpy(Wcy,async_2_args->Wcy,6*sizeof(float)); 
-#if defined(TRACE) && defined(RAG_AFL)
+#if defined(DEBUG) && defined(RAG_AFL)
 printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[5]);RAG_FLUSH;
 #endif
             
-#ifdef TRACE
-	assert( ((x2-x1)%BLOCK_SIZE) == 0);
-	assert( ((y2-y1)%BLOCK_SIZE) == 0);
-#endif
+	assert( ((x2-x1)%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
+	assert( ((y2-y1)%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
 	for(int m=x1; m<x2; m++) {
 		struct complexData *out_m;
 		out_m = (struct complexData *)RAG_GET_PTR(output+m);
@@ -556,7 +550,7 @@ printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 	rmd_guid_t arg_scg = { .data = arg };
 	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
 	bsm_free(corners,corners_dbg);
-#ifdef TRACE
+#ifdef TRACE_LVL_3
 xe_printf("////// leave affine_async_2_codelet slot %d\n",slot);RAG_FLUSH;
 #endif
 	return NULL_GUID;
@@ -570,12 +564,12 @@ rmd_guid_t Affine(
     rmd_guid_t post_Affine_scg)
 {
 	int retval;
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// enter Affine\n");RAG_FLUSH;
 #endif
 	int N, min;
 	int dx, dy;
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Affine registration dynamically allocated variables\n");RAG_FLUSH;
 #endif
 	int **A;
@@ -618,7 +612,7 @@ xe_printf("//// Affine registration dynamically allocated variables\n");RAG_FLUS
 		RAG_PUT_PTR(A+m,A_data_ptr + m*6);
 	}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Allocate memory for output image (%dx%d)\n",image_params->Iy,image_params->Ix);RAG_FLUSH;
 #endif
 	rmd_guid_t output_dbg;
@@ -638,7 +632,7 @@ xe_printf("//// Allocate memory for output image (%dx%d)\n",image_params->Iy,ima
 		RAG_PUT_PTR(output+n , output_data_ptr + n*image_params->Ix);
 	}
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// Calculate misc. parameters\n");RAG_FLUSH;
 #endif
 	N = (int)sqrtf((float)affine_params->Nc);
@@ -655,10 +649,9 @@ xe_printf("//// Calculate misc. parameters\n");RAG_FLUSH;
 #ifdef RAG_AFL
 assert(*affine_params_Nc==affine_params->Nc);
 #endif
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for affine_async_1 function (N=%d)\n",N);RAG_FLUSH;
 #endif
-rmd_guid_t affine_async_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *db);
 	rmd_guid_t affine_async_1_clg;
 	retval = rmd_codelet_create(
 		&affine_async_1_clg,	// rmd_guid_t *new_guid
@@ -671,7 +664,7 @@ rmd_guid_t affine_async_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_
 		0);			// uint64_t prop
 	assert(retval==0);
 
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for affine_1_final function\n");RAG_FLUSH;
 #endif
 rmd_guid_t affine_final_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *db);
@@ -686,7 +679,7 @@ rmd_guid_t affine_final_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-#ifdef TRACE
+#ifdef TRACE_LVL_2
 xe_printf("//// create an instance for affine_final_1\n");RAG_FLUSH;
 #endif
 	rmd_guid_t affine_final_1_scg;
@@ -729,8 +722,8 @@ xe_printf("//// create an instance for affine_final_1\n");RAG_FLUSH;
 
 	for(int m=0; m<N; m++) {
 		for(int n=0; n<N; n++) {
-#ifdef TRACE
-xe_printf("////// create an instance for affine_async_1 slot %d\n",slot);RAG_FLUSH;
+#ifdef TRACE_LVL_2
+xe_printf("//// create an instance for affine_async_1 slot %d\n",slot);RAG_FLUSH;
 #endif
 			struct point ctrl_pt;
 			ctrl_pt.y = m*dy + min;
@@ -775,8 +768,8 @@ RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,1);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,2);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
-#ifdef TRACE
-xe_printf("// leave Affine\n");RAG_FLUSH;
+#ifdef TRACE_LVL_2
+xe_printf("//// leave Affine\n");RAG_FLUSH;
 #endif
     return NULL_GUID;
 }
@@ -790,8 +783,7 @@ struct point corr2D(struct point ctrl_pt, int Nwin, int R, struct complexData **
     struct complexData num;
     struct complexData *f, *g;
     struct complexData mu_f, mu_g;
-
-#ifdef TRACE
+#ifdef TRACE_LVL_4
         xe_printf("//////// corr2D ctrl_pt.x %d ctrl_pt.y %d\n",ctrl_pt.x,ctrl_pt.y);RAG_FLUSH;
 #endif
     rmd_guid_t f_dbg;
@@ -900,7 +892,9 @@ void gauss_elim(float *AA[], float *x, int N)
 {
 	int i, j, k, max;
 	float **a, temp;
-
+#ifdef TRACE_LVL_4
+        xe_printf("//////// gauss_elim\n");RAG_FLUSH;
+#endif
 	rmd_guid_t a_dbg;
 	a = (float**)spad_malloc(&a_dbg,N*sizeof(float*));
 	if(a == NULL) {
@@ -968,7 +962,7 @@ void gauss_elim(float *AA[], float *x, int N)
 	return;
 }
 
-#if RAG_THIN_ON
+#ifdef RAG_THIN
 void ThinSpline(struct ThinSplineParams *ts_params, struct ImageParams *image_params, struct complexData **curImage, struct complexData **refImage)
 {
     int i, j, m, n, k;
@@ -1200,4 +1194,4 @@ void ThinSpline(struct ThinSplineParams *ts_params, struct ImageParams *image_pa
     free(Wfy);
     free(output);
 }
-#endif // RAG_THIN_ON
+#endif // RAG_THIN
