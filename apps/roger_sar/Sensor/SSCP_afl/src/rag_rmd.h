@@ -7,7 +7,9 @@
 
 #include <string.h>
 
+#if defined(RAG_AFL) || defined(RAG_SIM)
 #include "block_sizes.h"
+#endif
 
 #ifdef RAG_SIM
 #include "xe-codelet.h"
