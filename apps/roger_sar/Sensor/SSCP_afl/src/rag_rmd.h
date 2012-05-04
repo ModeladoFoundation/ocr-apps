@@ -7,10 +7,6 @@
 
 #include <string.h>
 
-#if defined(RAG_AFL) || defined(RAG_SIM)
-#include "block_sizes.h"
-#endif
-
 #ifdef RAG_SIM
 #include "xe-codelet.h"
 #include "xe_memory.h"
@@ -151,4 +147,22 @@ void BSMtoBSM(void *out, void *in, size_t size);
 	rmd_guid_t dbg = db[slot];
 
 #endif // RAG_AFL || RAG_SIM
+
+#if defined(RAG_AFL) || defined(RAG_SIM)
+#define MAX_BLK_SIZE 32
+static int blk_size(int n) {
+	int ret_val = n;
+	for( int i = MAX_BLK_SIZE ; i>1 ; i-- ) {
+		if( (n%i) == 0 ) {
+			ret_val = i;	
+			break;
+		}
+	}
+	xe_printf("N = %d, blk_size = %d\n",n,ret_val);
+	return ret_val;
+}
+#else
+#include "block_sizes.h"
+#endif
+
 #endif

@@ -206,8 +206,10 @@ xe_printf("//// enter CCD\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 xe_printf("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_params->Ncor);RAG_FLUSH;
 #endif
-	assert((Mwins%CCD_ASYNC_BLOCK_SIZE)==0);
-	assert((Nwins%CCD_ASYNC_BLOCK_SIZE)==0);
+	int CCD_ASYNC_BLOCK_SIZE_M = blk_size(Mwins);
+	int CCD_ASYNC_BLOCK_SIZE_N = blk_size(Nwins);
+	assert((Mwins%CCD_ASYNC_BLOCK_SIZE_M)==0);
+	assert((Nwins%CCD_ASYNC_BLOCK_SIZE_N)==0);
 ///////////// create async and final, instance of final
 #ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for ccd_async function\n");RAG_FLUSH;
@@ -233,7 +235,7 @@ xe_printf("//// create a codelet for ccd_final function\n");RAG_FLUSH;
 		 ccd_final_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		((Mwins-0)/CCD_ASYNC_BLOCK_SIZE)*((Nwins-0)/CCD_ASYNC_BLOCK_SIZE)+1, // int n_dep
+		((Mwins-0)/CCD_ASYNC_BLOCK_SIZE_M)*((Nwins-0)/CCD_ASYNC_BLOCK_SIZE_N)+1, // int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
@@ -250,8 +252,8 @@ xe_printf("//// create an instance for ccd_final\n");RAG_FLUSH;
 	int slot = 0;
 RAG_DEF_MACRO_PASS(ccd_final_scg,NULL,NULL,NULL,NULL,corr_map_dbg, slot++);
 
-	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE) {
-		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE) {
+	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE_M) {
+		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE_N) {
 #ifdef TRACE_LVL_2
 xe_printf("//// create an instance for ccd_async slot %d\n",slot);RAG_FLUSH;
 #endif
@@ -265,9 +267,9 @@ xe_printf("//// create an instance for ccd_async slot %d\n",slot);RAG_FLUSH;
 			async_corners = &async_corners_lcl;
 			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct Corners_t));
 			async_corners->x1   = m;
-			async_corners->x2   = m+CCD_ASYNC_BLOCK_SIZE;
+			async_corners->x2   = m+CCD_ASYNC_BLOCK_SIZE_M;
 			async_corners->y1   = n;
-			async_corners->y2   = n+CCD_ASYNC_BLOCK_SIZE;
+			async_corners->y2   = n+CCD_ASYNC_BLOCK_SIZE_N;
 			async_corners->slot = slot++;
 			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
 RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);

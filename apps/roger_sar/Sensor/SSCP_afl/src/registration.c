@@ -270,8 +270,10 @@ printf("Wcy = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 	spad_free(aug_mat_data_ptr,aug_mat_data_dbg);
 	spad_free(aug_mat,aug_mat_dbg);
 
-	assert( (image_params->Iy%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
-	assert( (image_params->Ix%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
+	int AFFINE_ASYNC_2_BLOCK_SIZE_X = blk_size(image_params->Ix);
+	int AFFINE_ASYNC_2_BLOCK_SIZE_Y = blk_size(image_params->Iy);
+	assert( (image_params->Ix%AFFINE_ASYNC_2_BLOCK_SIZE_X) == 0);
+	assert( (image_params->Iy%AFFINE_ASYNC_2_BLOCK_SIZE_Y) == 0);
 #ifdef TRACE_LVL_3
 xe_printf("////// create a codelet for affine_async_2 function\n");RAG_FLUSH;
 #endif
@@ -298,7 +300,7 @@ rmd_guid_t affine_final_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
 		 affine_final_2_codelet,// rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		(image_params->Iy/AFFINE_ASYNC_2_BLOCK_SIZE)*(image_params->Ix/AFFINE_ASYNC_2_BLOCK_SIZE)+5,// int n_dep
+		(image_params->Iy/AFFINE_ASYNC_2_BLOCK_SIZE_Y)*(image_params->Ix/AFFINE_ASYNC_2_BLOCK_SIZE_X)+5,// int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
@@ -329,8 +331,8 @@ xe_printf("////// create an instance for affine_final_2\n");RAG_FLUSH;
 	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,slot++);
 	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,slot++);
 
-	for(int m=0; m<image_params->Iy; m+=AFFINE_ASYNC_2_BLOCK_SIZE) {
-		for(int n=0; n<image_params->Ix; n+=AFFINE_ASYNC_2_BLOCK_SIZE) {
+	for(int m=0; m<image_params->Iy; m+=AFFINE_ASYNC_2_BLOCK_SIZE_Y) {
+		for(int n=0; n<image_params->Ix; n+=AFFINE_ASYNC_2_BLOCK_SIZE_X) {
 #ifdef TRACE_LVL_3
 xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLUSH;
 #endif
@@ -347,9 +349,9 @@ xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLU
 			assert(retval==0);
 
 			async_corners->x1   = m;
-			async_corners->x2   = m+AFFINE_ASYNC_2_BLOCK_SIZE;
+			async_corners->x2   = m+AFFINE_ASYNC_2_BLOCK_SIZE_X;
 			async_corners->y1   = n;
-			async_corners->y2   = n+AFFINE_ASYNC_2_BLOCK_SIZE;
+			async_corners->y2   = n+AFFINE_ASYNC_2_BLOCK_SIZE_Y;
 			async_corners->slot = slot++;
 			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
 
@@ -453,16 +455,16 @@ RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_a
 #ifdef TRACE_LVL_3
 xe_printf("// Free data blocks\n");RAG_FLUSH;
 #endif
-#if 1
-xe_printf("// Free data blocks A_data %ld\n",(uint64_t)async_1_args->A_data_dbg.data);RAG_FLUSH;
+#if 0 // RAG -- NEED TO FIX THIS, CAUSES ERROR, FIGURE OUT WHY -- RAG //
 	int **A = async_1_args->A;
 	int *A_0 = RAG_GET_PTR(A+0);
+xe_printf("// Free data block A_data %ld\n",(uint64_t)async_1_args->A_data_dbg.data);RAG_FLUSH;
 	bsm_free(A_0,async_1_args->A_data_dbg);
-xe_printf("// Free data blocks A\n");RAG_FLUSH;
+xe_printf("// Free data block A\n");RAG_FLUSH;
 	bsm_free(A, async_1_args->A_dbg);
-xe_printf("// Free data blocks Fy\n");RAG_FLUSH;
+xe_printf("// Free data block Fy\n");RAG_FLUSH;
 	bsm_free(async_1_args->Fy,async_1_args->Fy_dbg);
-xe_printf("// Free data blocks Fx\n");RAG_FLUSH;
+xe_printf("// Free data block Fx\n");RAG_FLUSH;
 	bsm_free(async_1_args->Fx,async_1_args->Fx_dbg);
 #endif
 
@@ -510,8 +512,12 @@ printf("wCX = %f %f %f %f %f %f\n", Wcx[0], Wcx[1], Wcx[2], Wcx[3], Wcx[4], Wcx[
 printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[5]);RAG_FLUSH;
 #endif
             
-	assert( ((x2-x1)%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
-	assert( ((y2-y1)%AFFINE_ASYNC_2_BLOCK_SIZE) == 0);
+#if 0
+	int AFFINE_ASYNC_2_BLOCK_SIZE_Y = blk_size(y2-y1);
+	int AFFINE_ASYNC_2_BLOCK_SIZE_X = blk_size(x2-x1);
+	assert( ((y2-y1)%AFFINE_ASYNC_2_BLOCK_SIZE_Y) == 0);
+	assert( ((x2-x1)%AFFINE_ASYNC_2_BLOCK_SIZE_X) == 0);
+#endif
 	for(int m=x1; m<x2; m++) {
 		struct complexData *out_m;
 		out_m = (struct complexData *)RAG_GET_PTR(output+m);
