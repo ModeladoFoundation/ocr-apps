@@ -195,7 +195,11 @@ xe_printf("////// BackProj FFTW initialization F = %d\n",image_params->F);RAG_FL
 			exit(1);
 		}
       		struct complexData* Xup_data_ptr = NULL; rmd_guid_t Xup_data_dbg;
-		Xup_data_ptr = (struct complexData*)bsm_malloc(&Xup_data_dbg,image_params->P3*image_params->S4*sizeof(struct complexData));
+#ifdef RAG_AFL
+		Xup_data_ptr = (struct complexData*)dram_malloc(&Xup_data_dbg,image_params->P3*image_params->S4*sizeof(struct complexData));
+#else
+		Xup_data_ptr = (struct complexData*) bsm_malloc(&Xup_data_dbg,image_params->P3*image_params->S4*sizeof(struct complexData));
+#endif
 		if ( Xup_data_ptr == NULL) {
 			fprintf(stderr,"Error allocating data memory for Xup.\n");
 			exit(1);
@@ -313,7 +317,11 @@ RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,4);
 			} // for n
 		} // for m
 		bsm_free(tmp_in_ptr,tmp_in_dbg);
-		bsm_free(Xup_data_ptr,Xup_data_dbg); // Xup[]
+#ifdef RAG_AFL
+		dram_free(Xup_data_ptr,Xup_data_dbg); // Xup[]
+#else
+		 bsm_free(Xup_data_ptr,Xup_data_dbg); // Xup[]
+#endif
 		bsm_free(Xup,Xup_dbg);
 	} else { // if F
 #ifdef TRACE

@@ -1,8 +1,8 @@
 ifndef RMD_INSTALL_BASE
-	RMD_INSTALL_BASE = /home/ragolliv/trunk/ss
+	RMD_INSTALL_BASE = ../../../../../ss
 endif
 ifndef AFL_INSTALL_BASE
-	AFL_INSTALL_BASE = /home/ragolliv/trunk/tools/rmd_afl
+	AFL_INSTALL_BASE = ../../../../../tools/rmd_afl
 endif
 
 RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
@@ -19,7 +19,8 @@ CFLAGS= -g -O3 -std=c99 -DRAG_AFL -Wall \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I. \
 	-DDEBUG_SSCP_OFF -DTRACE -DDEBUG_OFF \
-	-DTRACE_LVL_1 -DTRACE_LVL_2_OFF -DTRACE_LVL_3_OFF -DTRACE_LVL_4_FF \
+	-DTRACE_LVL_1     -DTRACE_LVL_2_OFF  \
+	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF  \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
 	-DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
 	-DRAG_QSORT_OFF -DRAG_SINCOS -DRAG_PURE_FLOAT
@@ -60,7 +61,7 @@ PulseTransmissionTime.c: ../../datagen/large/PulseTransmissionTime.bin
 sscp:	$(INCS) $(SRCS)
 	$(CC) $(CFLAGS) -o sscp $(SRCS) $(LDFLAGS)
 
-large:	sscp
+run:	sscp
 	/usr/bin/time ./sscp -c sscp.cfg >detects.txt
 	egrep -e '(x=....\...m)' detects.txt | sort >Detects.txt
 	-../utils/viewImage 1 <Detects.txt >cur.bmp

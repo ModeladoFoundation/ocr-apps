@@ -30,11 +30,12 @@ rmd_guid_t post_Affine_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_
 #ifdef TRACE_LVL_2
 xe_printf("//// enter post_Affine_codelet\n");RAG_FLUSH;
 #endif
-	assert(n_db == 4);
+	assert(n_db == 5);
 RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,0);
-RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,1);
-RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,2);
-RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
+RAG_REF_MACRO_BSM( struct complexData *,output_data_ptr,NULL,NULL,output_data_dbg,1);
+RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
+RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,3);
+RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,4);
 
 	rmd_guid_t arg_scg = { .data = arg };
 
@@ -55,6 +56,11 @@ RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 	RMD_DB_RELEASE(refImage_dbg);
 	RMD_DB_RELEASE(image_params_dbg);
 
+#ifdef RAG_AFL
+	dram_free(output_data_ptr,output_data_dbg);
+#else
+	 bsm_free(output_data_ptr,output_data_dbg);
+#endif
 	bsm_free(output,output_dbg);
 #ifdef TRACE_LVL_2
 xe_printf("//// leave post_Affine_codelet\n");RAG_FLUSH;
@@ -81,7 +87,7 @@ xe_printf("//// create a codelet for post_Affine function\n");RAG_FLUSH;
 		 post_Affine_codelet,	// rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		4,			// int n_dep
+		5,			// int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
@@ -447,10 +453,16 @@ RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_a
 #ifdef TRACE_LVL_3
 xe_printf("// Free data blocks\n");RAG_FLUSH;
 #endif
-#if 0
-	bsm_free(RAG_GET_PTR(async_1_args->A),async_1_args->A_data_dbg);
-	bsm_free(async_1_args->A, async_1_args->A_dbg);
+#if 1
+xe_printf("// Free data blocks A_data %ld\n",(uint64_t)async_1_args->A_data_dbg.data);RAG_FLUSH;
+	int **A = async_1_args->A;
+	int *A_0 = RAG_GET_PTR(A+0);
+	bsm_free(A_0,async_1_args->A_data_dbg);
+xe_printf("// Free data blocks A\n");RAG_FLUSH;
+	bsm_free(A, async_1_args->A_dbg);
+xe_printf("// Free data blocks Fy\n");RAG_FLUSH;
 	bsm_free(async_1_args->Fy,async_1_args->Fy_dbg);
+xe_printf("// Free data blocks Fx\n");RAG_FLUSH;
 	bsm_free(async_1_args->Fx,async_1_args->Fx_dbg);
 #endif
 
@@ -616,14 +628,23 @@ xe_printf("//// Affine registration dynamically allocated variables\n");RAG_FLUS
 xe_printf("//// Allocate memory for output image (%dx%d)\n",image_params->Iy,image_params->Ix);RAG_FLUSH;
 #endif
 	rmd_guid_t output_dbg;
-	output = (struct complexData**)bsm_malloc(&output_dbg,image_params->Iy*sizeof(struct complexData*));
+#ifdef RAG_AFL
+	output = (struct complexData**) bsm_malloc(&output_dbg,image_params->Iy*sizeof(struct complexData*));
+#else
+	output = (struct complexData**) bsm_malloc(&output_dbg,image_params->Iy*sizeof(struct complexData*));
+#endif
 	if(output == NULL) {
 		xe_printf("Error allocating memory for output.\n");RAG_FLUSH;
 		exit(1);
 	}
 	struct complexData *output_data_ptr; rmd_guid_t output_data_dbg;
-	output_data_ptr = (struct complexData*)bsm_malloc(&output_data_dbg,
+#ifdef RAG_AFL
+	output_data_ptr = (struct complexData*)dram_malloc(&output_data_dbg,
 		image_params->Iy*(image_params->Ix*sizeof(struct complexData)));
+#else
+	output_data_ptr = (struct complexData*) bsm_malloc(&output_data_dbg,
+		image_params->Iy*(image_params->Ix*sizeof(struct complexData)));
+#endif
 	if (output_data_ptr == NULL) {
 		xe_printf("Error allocating memory for output.\n");RAG_FLUSH;
 		exit(1);
@@ -765,9 +786,10 @@ RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
 
 //RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_dbg,0);
 //save for async_final_2
-RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,1);
-RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,2);
-RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
+RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_data_dbg,1);
+RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
+RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,3);
+RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,4);
 #ifdef TRACE_LVL_2
 xe_printf("//// leave Affine\n");RAG_FLUSH;
 #endif

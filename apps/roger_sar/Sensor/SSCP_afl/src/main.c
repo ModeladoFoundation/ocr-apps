@@ -94,7 +94,7 @@ xe_printf("// enter main_codelet arg %ld n_db %d\n",arg,n_db);RAG_FLUSH;
 	struct AffineParams *affine_params_ptr;	// Affine registration parameters
 	struct ThinSplineParams *ts_params_ptr;	// Thin spline registration parameters
 
-	in_ptr       = bsm_malloc(&in_dbg      ,  sizeof(struct Inputs));
+	in_ptr       =  bsm_malloc(&in_dbg     ,  sizeof(struct Inputs));
 	if(in_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for in data block.\n");
 		exit(1);
@@ -359,7 +359,11 @@ xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 	}
 	in.X_edge_dbg = in_X_dbg;
         struct complexData* in_X_data_ptr = NULL; rmd_guid_t in_X_data_dbg;
-	in_X_data_ptr = (struct complexData*)bsm_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
+#ifdef RAG_AFL
+	in_X_data_ptr = (struct complexData*)dram_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
+#else
+	in_X_data_ptr = (struct complexData*) bsm_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
+#endif
 	if ( in_X_data_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for X data.\n");
 		exit(1);
@@ -379,7 +383,11 @@ xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FL
 	}
 	in.Pt_edge_dbg = in_Pt_dbg;
 	float * in_Pt_data_ptr = NULL; rmd_guid_t in_Pt_data_dbg;
-	in_Pt_data_ptr = (float*)bsm_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
+#ifdef RAG_AFL
+	in_Pt_data_ptr = (float*)dram_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
+#else
+	in_Pt_data_ptr = (float*) bsm_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
+#endif
 	if( in_Pt_data_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for Pt data.\n");
 		exit(1);
@@ -402,13 +410,21 @@ xe_printf("// Allocate memory for timestamp of pulse transmissions\n");RAG_FLUSH
 xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 #endif
 	rmd_guid_t curImage_dbg;
-	curImage = (struct complexData**)bsm_malloc(&curImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#ifdef RAG_AFL
+	curImage = (struct complexData**) bsm_malloc(&curImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#else
+	curImage = (struct complexData**) bsm_malloc(&curImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#endif
 	if( curImage == NULL) {
 		fprintf(stderr,"Error allocating memory for curImage edge vector.\n");
 		exit(1);
 	}
 	struct complexData *curImage_data_ptr; rmd_guid_t curImage_data_dbg;
-	curImage_data_ptr = (struct complexData*)bsm_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
+#ifdef RAG_AFL
+	curImage_data_ptr = (struct complexData*)dram_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
+#else
+	curImage_data_ptr = (struct complexData*) bsm_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
+#endif
 	if (curImage_data_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for curImage data.\n");
 		exit(1);
@@ -420,13 +436,21 @@ xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 #endif
 	rmd_guid_t refImage_dbg;
-	refImage = (struct complexData**)bsm_malloc(&refImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#ifdef RAG_AFL
+	refImage = (struct complexData**) bsm_malloc(&refImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#else
+	refImage = (struct complexData**) bsm_malloc(&refImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#endif
 	if(refImage == NULL) {
 		fprintf(stderr,"Error allocating memory for refImage edge vector.\n");
 		exit(1);
 	}
 	struct complexData *refImage_data_ptr; rmd_guid_t refImage_data_dbg;
-	refImage_data_ptr = (struct complexData*)bsm_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
+#ifdef RAG_AFL
+	refImage_data_ptr = (struct complexData*)dram_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
+#else
+	refImage_data_ptr = (struct complexData*) bsm_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
+#endif
 	if (refImage_data_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for refImage data.\n");
 		exit(1);
@@ -438,13 +462,21 @@ xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
 #endif
 	rmd_guid_t corr_map_dbg;
-	corr_map = (struct point**)bsm_malloc(&corr_map_dbg,(image_params.Iy-image_params.Ncor+1)*sizeof(struct point*));
+#ifdef RAG_AFL
+	corr_map = (struct point**) bsm_malloc(&corr_map_dbg,(image_params.Iy-image_params.Ncor+1)*sizeof(struct point*));
+#else
+	corr_map = (struct point**) bsm_malloc(&corr_map_dbg,(image_params.Iy-image_params.Ncor+1)*sizeof(struct point*));
+#endif
 	if(corr_map == NULL) {
 		fprintf(stderr,"Error allocating memory for correlation map edge vector.\n");
 		exit(1);
 	}
 	struct point *corr_map_data_ptr; rmd_guid_t corr_map_data_dbg;
-	corr_map_data_ptr = (struct point*)bsm_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
+#ifdef RAG_AFL
+	corr_map_data_ptr = (struct point*)dram_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
+#else
+	corr_map_data_ptr = (struct point*) bsm_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
+#endif
 	if (corr_map_data_ptr == NULL) {
 		fprintf(stderr,"Error allocating memory for correlation map data.\n");
 		exit(1);
@@ -995,16 +1027,36 @@ xe_printf("// Output Images to .bins\n");RAG_FLUSH;
 #endif
 
 	bsm_free(Y,Y_dbg);
-	bsm_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
+#ifdef RAG_AFL
+	dram_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
+#else
+	 bsm_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
+#endif
 	bsm_free(corr_map,corr_map_dbg);
-	bsm_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
+#ifdef RAG_AFL
+	dram_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
+#else
+	 bsm_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
+#endif
 	bsm_free(refImage,refImage_dbg);
-	bsm_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
+#ifdef RAG_AFL
+	dram_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
+#else
+	 bsm_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
+#endif
 	bsm_free(curImage,curImage_dbg);
 	bsm_free(in_Tp_ptr,in_Tp_dbg);
-	bsm_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
+#ifdef RAG_AFL
+	dram_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
+#else
+	 bsm_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
+#endif
 	bsm_free(in_Pt_ptr,in_Pt_dbg);
-        bsm_free(in_X_data_ptr,in_X_data_dbg); // in.X[]
+#ifdef RAG_AFL
+        dram_free(in_X_data_ptr,in_X_data_dbg); // in.X[]
+#else
+         bsm_free(in_X_data_ptr,in_X_data_dbg); // in.X[]
+#endif
         bsm_free(in_X_ptr,in_X_dbg);
         bsm_free(in,in_dbg);
 

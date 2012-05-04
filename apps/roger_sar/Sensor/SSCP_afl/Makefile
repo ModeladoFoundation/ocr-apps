@@ -1,13 +1,9 @@
-all:
+all:	Makefile
 	$(MAKE) -C ./utils all
+	$(MAKE) -C ./small all
+	$(MAKE) -C ./large all
 
-small:	all
-	$(MAKE) -C ./small small
-
-large:	all
-	$(MAKE) -C ./large large
-
-clean:
+clean:	Makefile
 	$(MAKE) -C ./utils clean
 	$(MAKE) -C ./small clean
 	$(MAKE) -C ./large clean

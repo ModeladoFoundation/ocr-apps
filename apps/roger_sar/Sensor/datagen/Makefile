@@ -20,10 +20,10 @@ datagen: $(SOURCES)
 	$(CC) $(CFLAGS) -o $@ -O $(FFTW_INC) $(SOURCES) $(FFTW_LIB) $(LDFLAGS)
 
 small:	all
-	$(MAKE) -C ./small small
+	$(MAKE) -C ./small run
 
 large:	all
-	$(MAKE) -C ./large large
+	$(MAKE) -C ./large run
 
 clean:
 	$(RM) datagen

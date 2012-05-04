@@ -14,7 +14,7 @@ Radar.txt:	Parameters.txt Targets.txt Makefile
 	../utils/viewData 1 500.0 <Data.bin >ref.bmp
 	../utils/viewData 2 250.0 <Data.bin >cur.bmp
 
-small:	all
+run:	all
 
 clean:
 	$(RM)	Data.bin PlatformPosition.bin \

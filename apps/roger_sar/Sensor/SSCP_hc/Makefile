@@ -1,11 +1,11 @@
 all:
 	$(MAKE) -C ./src all
 
-small:	all
-	$(MAKE) -C ./small small
+small:
+	$(MAKE) -C ./small all
 
-large:	all
-	$(MAKE) -C ./large large
+large:
+	$(MAKE) -C ./large all
 
 clean:
 	$(MAKE) -C ./src   clean

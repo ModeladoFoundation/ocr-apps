@@ -90,7 +90,7 @@ PulseTransmissionTime.s:	../../datagen/small/PulseTransmissionTime.bin
 $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
-small:	$(TARGET) $(TARGET).cfg
+run:	$(TARGET) $(TARGET).cfg
 	/usr/bin/time $(FSIM) -c $(TARGET).cfg
 	grep -e 'x=0x' sscp.log.CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
@@ -106,7 +106,7 @@ small:	$(TARGET) $(TARGET).cfg
 ####	grep -i CONSOLE sscp.log.CE.00
 
 
-power:	small
+power:	run
 	@$(POWER_ANALYSIS_SCRIPT) -r $(TARGET).cfg && echo -e "\nPower Analysis Graphs Generated:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_GRAPHS)
 	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
 
