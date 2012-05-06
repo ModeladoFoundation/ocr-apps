@@ -59,8 +59,8 @@ struct ThinSplineParams ts_params;	// Thin spline registration parameters
 
 int main(int argc, char *argv[])
 {
-	int m, n;
-	int Nd, Ncor;
+//	int m, n;
+	int Ncor;
 	FILE *pInFile, *pInFile2, *pInFile3;
 	FILE *pOutFile;
 //	extern struct reg_map *regmap;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
 	// Calculate dependent variables
 	image_params.TF = image_params.Ix/image_params.Sx;
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 	image_params.dr = c_mks_mps/radar_params.fs/2.0f/((float)image_params.F);
 #else
 	image_params.dr = c_mks_mps/radar_params.fs/2/image_params.F;
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 
 		// Calculate new zeroth range bin
 		radar_params.R0_prime = radar_params.r0 - (radar_params.r0 - radar_params.R0)/image_params.TF;
-#ifdef RAG_DEBUG
+#ifdef DEBUG_RAG
 fprintf(stderr,"r0=%f, R0=%f, R0_prime=%f\n",radar_params.r0, radar_params.R0, radar_params.R0_prime);fflush(stderr);
 #endif
 		// Allocate memory for variables needed to perform digital spotlighting
@@ -153,7 +153,7 @@ fprintf(stderr,"r0=%f, R0=%f, R0_prime=%f\n",radar_params.r0, radar_params.R0, r
 			fprintf(stderr,"Unable to allocate memory for freqVec.\n");
 			exit(1);
 		}
-#ifdef RAG_DEBUG
+#ifdef DEBUG_RAG
 fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); fflush(stderr);
 #endif
 
@@ -168,7 +168,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 			fprintf(stderr,"Error allocating memory for X2.\n");
 			exit(1);
 		}
-		for(n=0; n<image_params.P1; n++) {
+		for(int n=0; n<image_params.P1; n++) {
 			dig_spot.X2[n] = (struct complexData*)malloc(image_params.S1*sizeof(struct complexData));
 			if (dig_spot.X2[n] == NULL) {
 				fprintf(stderr,"Error allocating memory for X2.\n");
@@ -181,7 +181,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 			fprintf(stderr,"Error allocating memory for X3.\n");
 			exit(1);
 		}
-		for(n=0; n<image_params.P1; n++) {
+		for(int n=0; n<image_params.P1; n++) {
 			dig_spot.X3[n] = (struct complexData*)malloc(image_params.S2*sizeof(struct complexData));
 			if (dig_spot.X3[n] == NULL) {
 				fprintf(stderr,"Error allocating memory for X3.\n");
@@ -194,7 +194,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 			fprintf(stderr,"Error allocating memory for X4.\n");
 			exit(1);
 		}
-		for(n=0; n<image_params.P2; n++) {
+		for(int n=0; n<image_params.P2; n++) {
 			dig_spot.X4[n] = (struct complexData*)malloc(image_params.S2*sizeof(struct complexData));
 			if (dig_spot.X4[n] == NULL) {
 				fprintf(stderr,"Error allocating memory for X4.\n");
@@ -213,7 +213,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 			fprintf(stderr,"Error allocating memory for Pt2.\n");
 			exit(1);
 		}
-		for(n=0; n<image_params.P2; n++) {
+		for(int n=0; n<image_params.P2; n++) {
 			dig_spot.Pt2[n] = (float*)malloc(3*sizeof(float));
 			if (dig_spot.Pt2[n] == NULL) {
 				fprintf(stderr,"Error allocating memory for Pt2.\n");
@@ -225,7 +225,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		dig_spot.freqVec[0] = 0;
 		if( !(image_params.S1 % 2) )
 		{	// S1 even
-			for(n=1; n<image_params.S1/2; n++)
+			for(int n=1; n<image_params.S1/2; n++)
 			{
 				dig_spot.freqVec[n] = n*(radar_params.fs/image_params.S1);
 				dig_spot.freqVec[image_params.S1-n] = -n*(radar_params.fs/image_params.S1);
@@ -234,7 +234,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		}
 		else
 		{	// S1 odd
-			for(n=1; n<=image_params.S1/2; n++)
+			for(int n=1; n<=image_params.S1/2; n++)
 			{
 				dig_spot.freqVec[n] = n*(radar_params.fs/image_params.S1);
 				dig_spot.freqVec[image_params.S1-n] = -n*(radar_params.fs/image_params.S1);
@@ -257,10 +257,10 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 	}
 
 	// Create axis vectors
-	for(n=0; n<image_params.Ix; n++) {
+	for(int n=0; n<image_params.Ix; n++) {
 		image_params.xr[n] = (n - floorf((float)image_params.Ix/2))*image_params.dr;
 	}
-	for(n=0; n<image_params.Iy; n++) {
+	for(int n=0; n<image_params.Iy; n++) {
 		image_params.yr[n] = (n - floorf((float)image_params.Iy/2))*image_params.dr;
 	}
 
@@ -270,7 +270,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		fprintf(stderr,"Error allocating memory for X.\n");
 		exit(1);
 	}
-	for(n=0; n<image_params.P1; n++) {
+	for(int n=0; n<image_params.P1; n++) {
 		in.X[n] = (struct complexData*)malloc(image_params.S1*sizeof(struct complexData));
 		if (in.X[n] == NULL) {
 			fprintf(stderr,"Error allocating memory for X.\n");
@@ -284,7 +284,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		fprintf(stderr,"Error allocating memory for Pt.\n");
 		exit(1);
 	}
-	for(n=0; n<image_params.P1; n++) {
+	for(int n=0; n<image_params.P1; n++) {
 		in.Pt[n] = (float*)malloc(3*sizeof(float));
 		if(in.Pt[n] == NULL) {
 			fprintf(stderr,"Error allocating memory for Pt.\n");
@@ -305,7 +305,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		fprintf(stderr,"Error allocating memory for curImage.\n");
 		exit(1);
 	}
-	for(n=0; n<image_params.Iy; n++) {
+	for(int n=0; n<image_params.Iy; n++) {
 		curImage[n] = (struct complexData*)malloc(image_params.Ix*sizeof(struct complexData));
 		if (curImage[n] == NULL) {
 			fprintf(stderr,"Error allocating memory for curImage.\n");
@@ -319,7 +319,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		fprintf(stderr,"Error allocating memory for refImage.\n");
 		exit(1);
 	}
-	for(n=0; n<image_params.Iy; n++) {
+	for(int n=0; n<image_params.Iy; n++) {
 		refImage[n] = (struct complexData*)malloc(image_params.Ix*sizeof(struct complexData));
 		if (refImage[n] == NULL) {
 			fprintf(stderr,"Error allocating memory for refImage.\n");
@@ -333,7 +333,7 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 		fprintf(stderr,"Error allocating memory for correlation map.\n");
 		exit(1);
 	}
-	for(m=0; m<image_params.Iy-Ncor+1; m++)
+	for(int m=0; m<image_params.Iy-Ncor+1; m++)
 	{
 		corr_map[m] = (struct point*)malloc((image_params.Ix-Ncor+1)*sizeof(struct point));
 		if (corr_map[m] == NULL) {
@@ -355,26 +355,26 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 	// Form first image
 finish {FormImage(&dig_spot, &image_params, &in, curImage, &radar_params); }
 
-	while(--image_params.numImages)
-	{
+	while(--image_params.numImages) {
+
 		ReadData(pInFile, pInFile2, pInFile3, &in, &image_params);
 		
-		for(m=0; m<image_params.Iy; m++) {
+		for(int m=0; m<image_params.Iy; m++) {
 			memcpy(&refImage[m][0], &curImage[m][0], image_params.Ix*sizeof(struct complexData));
 		}
 
 		// Form current image
 finish {	FormImage(&dig_spot, &image_params, &in, curImage, &radar_params); }
-#if RAG_AFFINE_ON
+#ifdef RAG_AFFINE_ON
 #ifdef TRACE
 fprintf(stderr,"Affine registration\n");fflush(stderr);
 #endif
 		// Affine registration
-		Affine(&affine_params, &image_params, curImage, refImage);
+finish {	Affine(&affine_params, &image_params, curImage, refImage); }
 #endif
 
 		// Thin-spline registration
-#if RAG_THIN_ON	// RAG WAS COMMENTED OUT
+#ifdef RAG_THIN_ON	// RAG WAS COMMENTED OUT
 #ifdef TRACE
 fprintf(stderr,"Thin-spline registration\n");fflush(stderr);
 #endif
@@ -383,8 +383,6 @@ fprintf(stderr,"Thin-spline registration\n");fflush(stderr);
 
 #ifdef TRACE
 fprintf(stderr,"Coherent Change Detection (Ncor = %d)\n",Ncor);fflush(stderr);
-fprintf(stderr,"corr_map %p image_params %p\n",corr_map,&image_params);fflush(stderr);
-fprintf(stderr,"curImage %p refImage     %p\n",curImage,refImage);fflush(stderr);
 #endif
 		// Coherent Change Detection
 finish {        CCD(Ncor, corr_map, &image_params, curImage, refImage); }
@@ -393,17 +391,10 @@ finish {        CCD(Ncor, corr_map, &image_params, curImage, refImage); }
 fprintf(stderr,"Constant False Alarm Rate\n");fflush(stderr);
 #endif
 		// Constant False Alarm Rate
-		Nd = CFAR(&image_params, Ncor, &cfar_params, corr_map, Y);
+finish {	CFAR(&image_params, Ncor, &cfar_params, corr_map, Y, pOutFile); }
 
-#ifdef TRACE
-fprintf(stderr,"Output to file\n");fflush(stderr);
-#endif
-		// Output to file
-		for(m=0; m<Nd; m++) {
-			fprintf(pOutFile, "x=%7.2fm y=%7.2fm p=%4.2f\n", Y[m].x, Y[m].y, Y[m].p);
-		}
-	}
-	
+	} // while images to process
+
 #ifdef DEBUG_SSCP
 #ifdef TRACE
 fprintf(stderr,"Output Images to .bins\n");fflush(stderr);
@@ -415,13 +406,13 @@ fprintf(stderr,"Output Images to .bins\n");fflush(stderr);
         assert(pOutImg != NULL);
         assert(pOutCorr != NULL);
 
-        for(m=0; m<image_params.Iy; m++)
+        for(int m=0; m<image_params.Iy; m++)
             fwrite(&curImage[m][0], sizeof(struct complexData), image_params.Ix, pOutImg);
-        for(m=0; m<image_params.Iy; m++)
+        for(int m=0; m<image_params.Iy; m++)
             fwrite(&refImage[m][0], sizeof(struct complexData), image_params.Ix, pOutImg);
-        for(m=0; m<image_params.Iy-Ncor+1; m++)
+        for(int m=0; m<image_params.Iy-Ncor+1; m++)
             fwrite(&corr_map[m][0], sizeof(struct point), image_params.Ix-Ncor+1, pOutCorr);
-        //for(m=0; m<affine_params.Nc; m++)
+        //for(int m=0; m<affine_params.Nc; m++)
         //    fwrite(&regmap[m], sizeof(struct reg_map), 1, pOutFile);
 
         fclose(pOutImg);

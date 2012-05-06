@@ -9,14 +9,14 @@
 #include <string.h>
 
 #ifndef M_PI
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 #define M_PI		3.1415926535897932384626433832795029f
 #else
 #define M_PI		3.1415926535897932384626433832795029l
 #endif
 #endif
 
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 #define c_mks_mps 300000000.0f
 #else
 #define c_mks_mps 3e8
@@ -114,17 +114,55 @@ struct reg_map {
 };
 */
 
-int CFAR(struct ImageParams*, int, struct CfarParams*, struct point**, struct detects*);
 int ReadParams(struct RadarParams*, struct ImageParams*, struct AffineParams*, struct ThinSplineParams*, int*, struct CfarParams*);
+
 void ReadData(FILE*, FILE*, FILE*, struct Inputs*, struct ImageParams*);
-void Affine(struct AffineParams*, struct ImageParams*, struct complexData**, struct complexData**);
-#pragma hc suspendable
-void CCD(int Ncor, struct point**, struct ImageParams*, struct complexData**, struct complexData**);
-void ThinSpline(struct ThinSplineParams*, struct ImageParams*, struct complexData**, struct complexData**);
-void sinc_interp(float *X, struct complexData *Y, struct complexData *YI, int Nz, float B, int M, int lenY);
+
 #pragma hc suspendable
 void FormImage(struct DigSpotVars*, struct ImageParams*, struct Inputs*, struct complexData**, struct RadarParams*);
+
+#if RAG_DIG_SPOT_ON
+struct complexData** DigSpot(float, float, struct DigSpotVars*, struct ImageParams*, struct RadarParams*, struct Inputs*);
+#endif
+
 #pragma hc suspendable
 void BackProj(struct complexData*[], float**, int, int, int, int, struct ImageParams*, struct complexData**, struct RadarParams*);
+
+#pragma hc suspendable
+void Affine(struct AffineParams*, struct ImageParams*, struct complexData**, struct complexData**);
+
+#if RAG_THIN_ON
+void ThinSpline(struct ThinSplineParams*, struct ImageParams*, struct complexData**, struct complexData**);
+#endif
+
+#pragma hc suspendable
+void CCD(int Ncor, struct point**, struct ImageParams*, struct complexData**, struct complexData**);
+
+#pragma hc suspendable
+void CFAR(struct ImageParams*, int, struct CfarParams*, struct point**, struct detects*,FILE *pOutFile);
+
+void sinc_interp(float *X, struct complexData *Y, struct complexData *YI, int Nz, float B, int M, int lenY);
 float sinc(float x);
-struct complexData** DigSpot(float, float, struct DigSpotVars*, struct ImageParams*, struct RadarParams*, struct Inputs*);
+
+static int blk_size(int n,int max_blk_size) {
+	int ret_val = n;
+	for(int i = max_blk_size; i>1; i--) {
+		if( (n%i) == 0 ) {
+			ret_val = i;	
+			break;
+		}
+	}
+#ifdef DEBUG
+	fprintf(stderr,"blk_size(%d,%d) returns %d\n",n,max_blk_size,ret_val);
+#endif
+	return ret_val;
+}
+
+int RAG_fetch_and_add(int *ptr, int add_val);
+
+struct Corners_t {
+	int x1; int x2; int y1; int y2;
+};
+struct corners_t {
+	int m1; int m2; int n1; int n2;
+};

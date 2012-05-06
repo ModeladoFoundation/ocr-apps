@@ -1,5 +1,4 @@
-all:
-	echo Nothing to make.
+all:	clean run
 
 run:	../src/sscp
 	/usr/bin/time ../src/sscp --nproc 8 \

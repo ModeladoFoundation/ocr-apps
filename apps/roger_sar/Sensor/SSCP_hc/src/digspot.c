@@ -1,5 +1,6 @@
 #include "common.h"
 
+#ifdef RAG_DIG_SPOT_ON
 struct complexData** DigSpot(float xc, float yc, struct DigSpotVars *dig_spot, struct ImageParams *image_params, struct RadarParams *radar_params, struct Inputs *in)
 {
 	int m, n;
@@ -30,7 +31,7 @@ fflush(stderr);
 		deltaR = sqrtf( (xc-in->Pt[m][0])*(xc-in->Pt[m][0]) + (yc-in->Pt[m][1])*(yc-in->Pt[m][1]) + in->Pt[m][2]*in->Pt[m][2] ) - radar_params->r0;
 		// Induce phase shift
 		for(n=0; n<image_params->S1; n++) {
-#if RAG_PURE_FLOAT
+#ifdef RAG_PURE_FLOAT
 			arg = 4.0f*((float)M_PI)*deltaR*(radar_params->fc+dig_spot->freqVec[n])/c_mks_mps;
 #else
 			arg = 4*M_PI*deltaR*(radar_params->fc+dig_spot->freqVec[n])/c_mks_mps;
@@ -73,3 +74,4 @@ fflush(stderr);
 
 	return dig_spot->X4;
 }
+#endif
