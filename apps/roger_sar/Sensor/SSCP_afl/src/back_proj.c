@@ -2,16 +2,16 @@
 
 #include "rag_rmd.h"
 
-rmd_guid_t backproject_final_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t backproject_finish_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
 #ifdef TRACE_LVL_4
-xe_printf("//////// enter backproject_final\n");RAG_FLUSH;
+xe_printf("//////// enter backproject_finish\n");RAG_FLUSH;
 #endif
 	assert(n_db>1);
 	rmd_guid_t arg_scg = { .data = arg };
 	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,db[0],0);
 #ifdef TRACE_LVL_4
-xe_printf("//////// leave backproject_final\n");RAG_FLUSH;
+xe_printf("//////// leave backproject_finish\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -66,17 +66,17 @@ xe_printf("//////// enter backproject_async slot %d\n",slot);RAG_FLUSH;
 	const float ku = 2*M_PI*radar_params->fc/c_mks_mps;
 #endif
 	for(int m=x1; m<x2; m++) {
-#ifdef DEBUG
+#ifdef DEBUG_LVL_1
 xe_printf("backproject_async m(%d)\n",m);RAG_FLUSH;
 #endif
 		for(int n=y1; n<y2; n++) {
-#ifdef DEBUG
+#ifdef DEBUG_LVL_2
 xe_printf("backproject_async n(%d)\n",n);RAG_FLUSH;
 #endif
 			acc.real = 0;
 			acc.imag = 0;
 			for(int k=0; k<image_params->P3; k++) {
-#ifdef DEBUG
+#ifdef DEBUG_LVL_3
 xe_printf("backproject_async k(%d)\n",k);RAG_FLUSH;
 #endif
 				float *platpos_k;
@@ -92,7 +92,7 @@ assert(platpos[k][2] == platpos_k_012[2]);
 				float y = RAG_GET_FLT(image_params->yr+n) - platpos_k_012[1];
 				float z =                                 - platpos_k_012[2];
 				R = sqrtf( x*x + y*y + z*z );
-#ifdef DEBUG
+#ifdef DEBUG_LVL_3
 xe_printf("backproject_async                 R(%f)\n",R);RAG_FLUSH;
 #endif
 				if(image_params->TF > 1) {
@@ -132,7 +132,7 @@ xe_printf("backproject_async                 R(%f)\n",R);RAG_FLUSH;
 				acc.real += sample.real*arg.real - sample.imag*arg.imag;
 				acc.imag += sample.real*arg.imag + sample.imag*arg.real;
 			} // for k
-#ifdef DEBUG
+#ifdef DEBUG_LVL_2
 xe_printf("backproject_async                 update image[%d][%d]\n",m,n);RAG_FLUSH;
 #endif
 			struct complexData *image_n;
@@ -163,10 +163,6 @@ RAG_REF_MACRO_BSM( struct complexData **,image,image_ptr,image_lcl,image_dbg,4);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,refImage_ptr,curImage_lcl,refImage_dbg,5);
 	struct complexData **Xin;
 	Xin     = in->X;
-#if 0
-	float **platpos;
-	platpos = in.Pt;
-#endif
 	int x1   = corners->x1;
 	int x2   = corners->x2;
 	int y1   = corners->y1;
@@ -238,7 +234,7 @@ xe_printf("////// BackProj FFTW initialization F = %d\n",image_params->F);RAG_FL
 		fftwf_destroy_plan(plan_backward);
 #ifdef TRACE
 xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is > 1)\n",
-			x1, x2, y1, y2);RAG_FLUSH;
+			x1, x2-1, y1, y2-1);RAG_FLUSH;
 #endif
 		struct Inputs tmp_in, *tmp_in_ptr; rmd_guid_t tmp_in_dbg;
 		tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
@@ -252,8 +248,8 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is >
 		tmp_in.X_data_dbg  = Xup_data_dbg;;
 		REM_STX_ADDR_SIZE(tmp_in_ptr,tmp_in,sizeof(struct Inputs));
 
-		int BACK_PROJ_ASYNC_BLOCK_SIZE_X = blk_size(x2-x1);
-		int BACK_PROJ_ASYNC_BLOCK_SIZE_Y = blk_size(y2-y1);
+		int BACK_PROJ_ASYNC_BLOCK_SIZE_X = blk_size(x2-x1,32);
+		int BACK_PROJ_ASYNC_BLOCK_SIZE_Y = blk_size(y2-y1,32);
 		assert( ((x2-x1)%BACK_PROJ_ASYNC_BLOCK_SIZE_X) == 0);
 		assert( ((y2-y1)%BACK_PROJ_ASYNC_BLOCK_SIZE_Y) == 0);
 
@@ -269,11 +265,11 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is >
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-// create a codelet for backproject_final function
-	rmd_guid_t backproject_final_clg;
+// create a codelet for backproject_finish function
+	rmd_guid_t backproject_finish_clg;
 	retval = rmd_codelet_create(
-		&backproject_final_clg,     // rmd_guid_t *new_guid
-		 backproject_final_codelet, // rmd_codelet_ptr func_ptr
+		&backproject_finish_clg,     // rmd_guid_t *new_guid
+		 backproject_finish_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
 		((x2-x1)/BACK_PROJ_ASYNC_BLOCK_SIZE_X)*((y2-y1)/BACK_PROJ_ASYNC_BLOCK_SIZE_Y)+1, // int n_dep
@@ -281,14 +277,14 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is >
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-// create an instance for backproject_final
-	rmd_guid_t backproject_final_scg;
+// create an instance for backproject_finish
+	rmd_guid_t backproject_finish_scg;
 	retval = rmd_codelet_sched(
-		&backproject_final_scg,		// rmd_guid_t* scheduled codelet's guid
+		&backproject_finish_scg,		// rmd_guid_t* scheduled codelet's guid
 		arg,				// uint64_t arg
-		backproject_final_clg);		// rmd_guid_t created codelet's guid
+		backproject_finish_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-RAG_DEF_MACRO_PASS(backproject_final_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
+RAG_DEF_MACRO_PASS(backproject_finish_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
 		for(int m=x1; m<x2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_X) {
 			for(int n=y1; n<y2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_Y) {
 #ifdef TRACE_LVL_3
@@ -306,7 +302,7 @@ xe_printf("////// create an instance for backproject_async slot %d\n",slot);RAG_
 				rmd_guid_t backproject_async_scg;
 				retval = rmd_codelet_sched(
 		&backproject_async_scg,		// rmd_guid_t* scheduled codelet's guid
-		backproject_final_scg.data,	// uint64_t arg
+		backproject_finish_scg.data,	// uint64_t arg
 		backproject_async_clg);		// rmd_guid_t created codelet's guid
 				assert(retval==0);
 
@@ -328,10 +324,10 @@ RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,4);
 	} else { // if F
 #ifdef TRACE
 xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is = 1)\n",
-			x1, x2, y1, y2);RAG_FLUSH;
+			x1, x2-1, y1, y2-1);RAG_FLUSH;
 #endif
-		int BACK_PROJ_ASYNC_BLOCK_SIZE_X = blk_size(x2-x1);
-		int BACK_PROJ_ASYNC_BLOCK_SIZE_Y = blk_size(y2-y1);
+		int BACK_PROJ_ASYNC_BLOCK_SIZE_X = blk_size(x2-x1,32);
+		int BACK_PROJ_ASYNC_BLOCK_SIZE_Y = blk_size(y2-y1,32);
 		assert( ((x2-x1)%BACK_PROJ_ASYNC_BLOCK_SIZE_X) == 0);
 		assert( ((y2-y1)%BACK_PROJ_ASYNC_BLOCK_SIZE_Y) == 0);
 // create a codelet for backproject_async function
@@ -346,11 +342,11 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is =
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-// create a codelet for backproject_final function
-	rmd_guid_t backproject_final_clg;
+// create a codelet for backproject_finish function
+	rmd_guid_t backproject_finish_clg;
 	retval = rmd_codelet_create(
-		&backproject_final_clg,     // rmd_guid_t *new_guid
-		 backproject_final_codelet, // rmd_codelet_ptr func_ptr
+		&backproject_finish_clg,     // rmd_guid_t *new_guid
+		 backproject_finish_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
 		((x2-x1)/BACK_PROJ_ASYNC_BLOCK_SIZE_X)*((y2-y1)/BACK_PROJ_ASYNC_BLOCK_SIZE_Y)+1, // int n_dep
@@ -358,14 +354,14 @@ xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is =
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
-// create an instance for backproject_final
-	rmd_guid_t backproject_final_scg;
+// create an instance for backproject_finish
+	rmd_guid_t backproject_finish_scg;
 	retval = rmd_codelet_sched(
-		&backproject_final_scg,		// rmd_guid_t* scheduled codelet's guid
+		&backproject_finish_scg,		// rmd_guid_t* scheduled codelet's guid
 		arg,				// uint64_t arg
-		backproject_final_clg);		// rmd_guid_t created codelet's guid
+		backproject_finish_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
-RAG_DEF_MACRO_PASS(backproject_final_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
+RAG_DEF_MACRO_PASS(backproject_finish_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
 		for(int m=x1; m<x2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_X) {
 			for(int n=y1; n<y2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_Y) {
 #ifdef TRACE_LVL_3
@@ -383,7 +379,7 @@ xe_printf("////// create an instance for backproject_async slot %d\n",slot);RAG_
 				rmd_guid_t backproject_async_scg;
 				retval = rmd_codelet_sched(
 		&backproject_async_scg,		// rmd_guid_t* scheduled codelet's guid
-		backproject_final_scg.data,	// uint64_t arg
+		backproject_finish_scg.data,	// uint64_t arg
 		backproject_async_clg);		// rmd_guid_t created codelet's guid
 				assert(retval==0);
 

@@ -359,7 +359,7 @@ xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 	}
 	in.X_edge_dbg = in_X_dbg;
         struct complexData* in_X_data_ptr = NULL; rmd_guid_t in_X_data_dbg;
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	in_X_data_ptr = (struct complexData*)dram_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
 #else
 	in_X_data_ptr = (struct complexData*) bsm_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
@@ -383,7 +383,7 @@ xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FL
 	}
 	in.Pt_edge_dbg = in_Pt_dbg;
 	float * in_Pt_data_ptr = NULL; rmd_guid_t in_Pt_data_dbg;
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	in_Pt_data_ptr = (float*)dram_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
 #else
 	in_Pt_data_ptr = (float*) bsm_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
@@ -420,7 +420,7 @@ xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 		exit(1);
 	}
 	struct complexData *curImage_data_ptr; rmd_guid_t curImage_data_dbg;
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	curImage_data_ptr = (struct complexData*)dram_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
 #else
 	curImage_data_ptr = (struct complexData*) bsm_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
@@ -446,7 +446,7 @@ xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 		exit(1);
 	}
 	struct complexData *refImage_data_ptr; rmd_guid_t refImage_data_dbg;
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	refImage_data_ptr = (struct complexData*)dram_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
 #else
 	refImage_data_ptr = (struct complexData*) bsm_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
@@ -472,7 +472,7 @@ xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
 		exit(1);
 	}
 	struct point *corr_map_data_ptr; rmd_guid_t corr_map_data_dbg;
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	corr_map_data_ptr = (struct point*)dram_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
 #else
 	corr_map_data_ptr = (struct point*) bsm_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
@@ -1027,32 +1027,32 @@ xe_printf("// Output Images to .bins\n");RAG_FLUSH;
 #endif
 
 	bsm_free(Y,Y_dbg);
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	dram_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
 #else
 	 bsm_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
 #endif
 	bsm_free(corr_map,corr_map_dbg);
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	dram_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
 #else
 	 bsm_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
 #endif
 	bsm_free(refImage,refImage_dbg);
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	dram_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
 #else
 	 bsm_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
 #endif
 	bsm_free(curImage,curImage_dbg);
 	bsm_free(in_Tp_ptr,in_Tp_dbg);
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	dram_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
 #else
 	 bsm_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
 #endif
 	bsm_free(in_Pt_ptr,in_Pt_dbg);
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
         dram_free(in_X_data_ptr,in_X_data_dbg); // in.X[]
 #else
          bsm_free(in_X_data_ptr,in_X_data_dbg); // in.X[]

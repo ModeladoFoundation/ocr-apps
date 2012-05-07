@@ -149,20 +149,19 @@ void BSMtoBSM(void *out, void *in, size_t size);
 #endif // RAG_AFL || RAG_SIM
 
 #if defined(RAG_AFL) || defined(RAG_SIM)
-#define MAX_BLK_SIZE 32
-static int blk_size(int n) {
+static int blk_size(int n,int max_blk_size) {
 	int ret_val = n;
-	for( int i = MAX_BLK_SIZE ; i>1 ; i-- ) {
+	for( int i = max_blk_size ; i>1 ; i-- ) {
 		if( (n%i) == 0 ) {
 			ret_val = i;	
 			break;
 		}
 	}
-	xe_printf("N = %d, blk_size = %d\n",n,ret_val);
+#ifdef DEBUG
+	xe_printf("blk_size(%d,%d) returns = %d\n",n,max_blk_size,ret_val);
+#endif
 	return ret_val;
 }
-#else
-#include "block_sizes.h"
 #endif
 
 #endif

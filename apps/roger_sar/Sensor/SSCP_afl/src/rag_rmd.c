@@ -119,12 +119,12 @@ void *dram_calloc(rmd_guid_t *dbg, size_t n, size_t size) {
 void *dram_malloc(rmd_guid_t *dbg, size_t size) {
 	void *tmp_dbp;
 	rmd_guid_t tmp_dbg = *dbg;
-#ifdef DEBUG
-	xe_printf("DRAM_MALLOC size %ld (dbg=%ld)\n",size,tmp_dbg.data);RAG_FLUSH;
-#endif
 	RMD_DB_ALLOC(&tmp_dbg,size,local,&alloc_dram);
 	RMD_DB_MEM(&tmp_dbp,tmp_dbg);
 	*dbg = tmp_dbg;
+#ifdef DEBUG
+	xe_printf("DRAM_MALLOC size %ld (ptr=%ld) (dbg=%ld)\n",size,(uint64_t)tmp_dbp,tmp_dbg.data);RAG_FLUSH;
+#endif
 	return tmp_dbp;
 }
 
@@ -132,7 +132,7 @@ void dram_free(void *dbp, rmd_guid_t dbg) {
 	RMD_DB_RELEASE(dbg);
 	RMD_DB_FREE(dbg);
 #ifdef DEBUG
-	xe_printf("DRAM_FREE (dbg=%ld)\n",dbg.data);RAG_FLUSH;
+	xe_printf("DRAM_FREE (dbg=%ld)\n",(uint64_t)dbg.data);RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;
 }
@@ -189,7 +189,7 @@ void     RAG_PUT_PTR(void     *addr, void    *value)
 
 void SPADtoBSM(void *out, void *in, size_t size) {
 #ifdef DEBUG
-	xe_printf("OUT = %lx IN = %lx SIZE = %ld\n",(uint64_t)__out,(uint64_t)__in,(uint64_t)size);RAG_FLUSH;
+	xe_printf("OUT = %lx IN = %lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
 #endif
 #ifdef RAG_SIM
 	MEMCPY(out,in,size);
@@ -201,7 +201,7 @@ void SPADtoBSM(void *out, void *in, size_t size) {
 
 void BSMtoBSM(void *out, void *in, size_t size) {
 #ifdef DEBUG
-	xe_printf("OUT = %lx IN = %lx SIZE = %ld\n",(uint64_t)__out,(uint64_t)__in,(uint64_t)size);RAG_FLUSH;
+	xe_printf("OUT = %lx IN = %lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
 #endif
 #ifdef RAG_SIM
 	MEMCPY(out,in,size);

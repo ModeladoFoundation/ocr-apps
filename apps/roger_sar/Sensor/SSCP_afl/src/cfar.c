@@ -127,10 +127,10 @@ static int compare_detects(const void * _lhs, const void * _rhs)
 }
 #endif
 
-rmd_guid_t cfar_final_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t cfar_finish_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter cfar_final_codelet %d\n",n_db);RAG_FLUSH;
+xe_printf("////// enter cfar_finish_codelet %d\n",n_db);RAG_FLUSH;
 #endif
 	assert(n_db>1);
 	RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
@@ -141,7 +141,7 @@ xe_printf("////// enter cfar_final_codelet %d\n",n_db);RAG_FLUSH;
 	RMD_DB_RELEASE(Y_dbg);
 	RMD_DB_RELEASE(Nd_dbg);
 #ifdef TRACE_LVL_3
-xe_printf("////// leave cfar_final_codelet\n");RAG_FLUSH;
+xe_printf("////// leave cfar_finish_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -217,17 +217,17 @@ assert(corr_map_i_j_p == &corr_map[i][j].p);
 #ifdef RAG_AFL
 assert(pLocal[k][l] == corr_map[i][j].p);
 #endif
-                    }
-                }
+                    } // for j
+                } // for i
 
-#if defined(TRACE_LVL_3) && defined(DEBUT)
+#ifdef DEBUG_LVL_2
 xe_printf("////// Create guard window\n");RAG_FLUSH;
 #endif
                 for(int i=(cfar_params->Ncfar-1)/2-(cfar_params->Nguard-1)/2; i<=(cfar_params->Ncfar-1)/2+(cfar_params->Nguard-1)/2; i++) {
                     for(int j=(cfar_params->Ncfar-1)/2-(cfar_params->Nguard-1)/2; j<=(cfar_params->Ncfar-1)/2+(cfar_params->Nguard-1)/2; j++) {
                         pLocal[i][j] = -1;
-                    }
-                }
+                    } // for j
+                } // for i
 
 #if defined(TRACE_LVL_3) && defined(DEBUT)
 xe_printf("////// Calculate threshold\n");RAG_FLUSH;
@@ -247,7 +247,7 @@ assert(corr_map_m_n_p == &corr_map[mIndex][nIndex].p);
 #endif
                 REM_LD32_ADDR(CUT,corr_map_m_n_p);
 
-#if defined(TRACE_LVL_3) && defined(DEBUG)
+#ifdef DEBUG_LVL_2
 xe_printf("////// Ensure CUT's correlation value is below the correlation threshold\n");RAG_FLUSH;
 #endif
                 if(CUT < Tcorr) {
@@ -280,7 +280,7 @@ assert(&Y[nd] == (Y+nd));
 assert(Y_nd.x == image_params->xr[corr_map[mIndex][nIndex].x]);
 assert(Y_nd.y == image_params->yr[corr_map[mIndex][nIndex].y]);
 #endif
-#if defined(TRACE_LVL_3) && defined(DEBUG)
+#ifdef DEBUG_LVL_2
 xe_printf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y_nd.x,*(uint32_t *)&Y_nd.y,*(uint32_t *)&Y_nd.p,RAG_GET_INT((int32_t *)corr_map_m_n_x),RAG_GET_INT((int32_t *)corr_map_m_n_y));RAG_FLUSH;
 #endif
 			    REM_STX_ADDR(Y+nd,Y_nd,struct detects);
@@ -327,11 +327,11 @@ xe_printf("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nw
 	rmd_guid_t Nd_dbg;
 	int *Nd_ptr = bsm_malloc(&Nd_dbg,sizeof(int));
 	RAG_PUT_INT(Nd_ptr,0);
-	int CFAR_ASYNC_BLOCK_SIZE_M = blk_size(Mwins);
-	int CFAR_ASYNC_BLOCK_SIZE_N = blk_size(Nwins);
+	int CFAR_ASYNC_BLOCK_SIZE_M = blk_size(Mwins,32);
+	int CFAR_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CFAR_ASYNC_BLOCK_SIZE_M)==0);
 	assert((Nwins%CFAR_ASYNC_BLOCK_SIZE_N)==0);
-///////////// create async and final, instance of final
+///////////// create async and finish, instance of finish
 #ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for cfar_async function\n");RAG_FLUSH;
 #endif
@@ -348,12 +348,12 @@ xe_printf("//// create a codelet for cfar_async function\n");RAG_FLUSH;
 	assert(retval==0);
 
 #ifdef TRACE_LVL_2
-xe_printf("//// create a codelet for cfar_final function\n");RAG_FLUSH;
+xe_printf("//// create a codelet for cfar_finish function\n");RAG_FLUSH;
 #endif
-	rmd_guid_t cfar_final_clg;
+	rmd_guid_t cfar_finish_clg;
 	retval = rmd_codelet_create(
-		&cfar_final_clg,     // rmd_guid_t *new_guid
-		 cfar_final_codelet, // rmd_codelet_ptr func_ptr
+		&cfar_finish_clg,     // rmd_guid_t *new_guid
+		 cfar_finish_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
 		((Mwins-0)/CFAR_ASYNC_BLOCK_SIZE_M)*((Nwins-0)/CFAR_ASYNC_BLOCK_SIZE_N)+2, // int n_dep
@@ -362,17 +362,17 @@ xe_printf("//// create a codelet for cfar_final function\n");RAG_FLUSH;
 		0);			// uint64_t prop
 	assert(retval==0);
 #ifdef TRACE_LVL_2
-xe_printf("//// create an instance for cfar_final\n");RAG_FLUSH;
+xe_printf("//// create an instance for cfar_finish\n");RAG_FLUSH;
 #endif
-	rmd_guid_t cfar_final_scg;
+	rmd_guid_t cfar_finish_scg;
 	retval = rmd_codelet_sched(
-		&cfar_final_scg,		// rmd_guid_t* scheduled codelet's guid
+		&cfar_finish_scg,		// rmd_guid_t* scheduled codelet's guid
 		post_CFAR_scg.data,		// uint64_t arg
-		cfar_final_clg);		// rmd_guid_t created codelet's guid
+		cfar_finish_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 	int slot = 0;
-RAG_DEF_MACRO_PASS(cfar_final_scg,NULL,NULL,NULL,NULL,Y_dbg, slot++);
-RAG_DEF_MACRO_PASS(cfar_final_scg,NULL,NULL,NULL,NULL,Nd_dbg,slot++);
+RAG_DEF_MACRO_PASS(cfar_finish_scg,NULL,NULL,NULL,NULL,Y_dbg, slot++);
+RAG_DEF_MACRO_PASS(cfar_finish_scg,NULL,NULL,NULL,NULL,Nd_dbg,slot++);
 
 	for(int m=0; m<Mwins; m+=CFAR_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CFAR_ASYNC_BLOCK_SIZE_N) {
@@ -382,7 +382,7 @@ xe_printf("////// create an instance for cfar_async slot %d\n",slot);RAG_FLUSH;
 			rmd_guid_t cfar_async_scg;
 			retval = rmd_codelet_sched(
 		&cfar_async_scg,	// rmd_guid_t* scheduled codelet's guid
-		cfar_final_scg.data,	// uint64_t arg
+		cfar_finish_scg.data,	// uint64_t arg
 		cfar_async_clg);	// rmd_guid_t created codelet's guid
 			assert(retval==0);
 			struct Corners_t *async_corners, *async_corners_ptr, async_corners_lcl; rmd_guid_t async_corners_dbg;

@@ -56,7 +56,7 @@ RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 	RMD_DB_RELEASE(refImage_dbg);
 	RMD_DB_RELEASE(image_params_dbg);
 
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	dram_free(output_data_ptr,output_data_dbg);
 #else
 	 bsm_free(output_data_ptr,output_data_dbg);
@@ -127,10 +127,10 @@ void gauss_elim(float *AA[], float *x, int N);
 struct point corr2D(struct point ctrl_pt, int Nwin, int R,
     struct complexData**, struct complexData**, struct ImageParams*);
 
-rmd_guid_t affine_final_1_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t affine_finish_1_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter affine_final_1_codelet %d\n",n_db);RAG_FLUSH;
+xe_printf("////// enter affine_finish_1_codelet %d\n",n_db);RAG_FLUSH;
 #endif
 	assert(n_db>5);
 RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_args_lcl,async_1_args_dbg,0);
@@ -270,8 +270,8 @@ printf("Wcy = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 	spad_free(aug_mat_data_ptr,aug_mat_data_dbg);
 	spad_free(aug_mat,aug_mat_dbg);
 
-	int AFFINE_ASYNC_2_BLOCK_SIZE_X = blk_size(image_params->Ix);
-	int AFFINE_ASYNC_2_BLOCK_SIZE_Y = blk_size(image_params->Iy);
+	int AFFINE_ASYNC_2_BLOCK_SIZE_X = blk_size(image_params->Ix,32);
+	int AFFINE_ASYNC_2_BLOCK_SIZE_Y = blk_size(image_params->Iy,32);
 	assert( (image_params->Ix%AFFINE_ASYNC_2_BLOCK_SIZE_X) == 0);
 	assert( (image_params->Iy%AFFINE_ASYNC_2_BLOCK_SIZE_Y) == 0);
 #ifdef TRACE_LVL_3
@@ -291,28 +291,28 @@ rmd_guid_t affine_async_2_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_
 	assert(retval==0);
 
 #ifdef TRACE_LVL_3
-xe_printf("////// create a codelet for affine_2_final function\n");RAG_FLUSH;
+xe_printf("////// create a codelet for affine_2_finish function\n");RAG_FLUSH;
 #endif
-rmd_guid_t affine_final_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
-	rmd_guid_t affine_final_2_clg;
+rmd_guid_t affine_finish_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db);
+	rmd_guid_t affine_finish_2_clg;
 	retval = rmd_codelet_create(
-		&affine_final_2_clg,	// rmd_guid_t *new_guid
-		 affine_final_2_codelet,// rmd_codelet_ptr func_ptr
+		&affine_finish_2_clg,	// rmd_guid_t *new_guid
+		 affine_finish_2_codelet,// rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
-		(image_params->Iy/AFFINE_ASYNC_2_BLOCK_SIZE_Y)*(image_params->Ix/AFFINE_ASYNC_2_BLOCK_SIZE_X)+5,// int n_dep
+		(image_params->Iy/AFFINE_ASYNC_2_BLOCK_SIZE_Y)*(image_params->Ix/AFFINE_ASYNC_2_BLOCK_SIZE_X)+5,	// int n_dep
 		1,			// int buffer_in
 		false,			// bool gen_out
 		0);			// uint64_t prop
 	assert(retval==0);
 #ifdef TRACE_LVL_3
-xe_printf("////// create an instance for affine_final_2\n");RAG_FLUSH;
+xe_printf("////// create an instance for affine_finish_2\n");RAG_FLUSH;
 #endif
-	rmd_guid_t affine_final_2_scg;
+	rmd_guid_t affine_finish_2_scg;
 	retval = rmd_codelet_sched(
-		&affine_final_2_scg,	// rmd_guid_t* scheduled codelet's guid
+		&affine_finish_2_scg,	// rmd_guid_t* scheduled codelet's guid
 		async_1_args->post_Affine_scg.data,// uint64_t arg
-		affine_final_2_clg);	// rmd_guid_t created codelet's guid
+		affine_finish_2_clg);	// rmd_guid_t created codelet's guid
 	assert(retval==0);
 
 	int slot = 0;
@@ -325,11 +325,11 @@ xe_printf("////// create an instance for affine_final_2\n");RAG_FLUSH;
 	memcpy(async_2_args->Wcy,Wcy,6*sizeof(float)); 
 	REM_STX_ADDR(async_2_args_ptr,async_2_args_lcl,struct async_2_args_t);
 
-	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_2_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,slot++);
 
 	for(int m=0; m<image_params->Iy; m+=AFFINE_ASYNC_2_BLOCK_SIZE_Y) {
 		for(int n=0; n<image_params->Ix; n+=AFFINE_ASYNC_2_BLOCK_SIZE_X) {
@@ -344,7 +344,7 @@ xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLU
 			rmd_guid_t affine_async_2_scg;
 			retval = rmd_codelet_sched(
 		&affine_async_2_scg,		// rmd_guid_t* scheduled codelet's guid
-		affine_final_2_scg.data,	// uint64_t arg
+		affine_finish_2_scg.data,	// uint64_t arg
 		affine_async_2_clg);		// rmd_guid_t created codelet's guid
 			assert(retval==0);
 
@@ -366,7 +366,7 @@ RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,5);
 	} // for m
 
 #ifdef TRACE_LVL_3
-xe_printf("////// leave affine_final_1_codelet\n");RAG_FLUSH;
+xe_printf("////// leave affine_finish_1_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -388,6 +388,9 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,4);
 	int slot = async_1_args->slot;
 #ifdef TRACE_LVL_3
 xe_printf("////// enter affine_async_1_codelet slot %d\n",slot);RAG_FLUSH;
+#endif
+#if defined(RAG_AFL) && defined(TRACE_LVL_3)
+printf("////// enter affine_async_1_codelet ctrl_pt %d %d %f\n",ctrl_pt.x,ctrl_pt.y,ctrl_pt.p);RAG_FLUSH;
 #endif
 	// disp_vec
 	struct point disp_vec;
@@ -440,41 +443,46 @@ xe_printf("////// leave affine_async_1_codelet slot %d\n",slot);RAG_FLUSH;
 	return NULL_GUID;
 }
 
-rmd_guid_t affine_final_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t affine_finish_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter affine_final_2_codelet %d\n",n_db);RAG_FLUSH;
+xe_printf("////// enter affine_finish_2_codelet %d\n",n_db);RAG_FLUSH;
 #endif
 	assert(n_db>5);
 RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,0);
 RAG_REF_MACRO_PASS(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
-RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,3);
-RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_args_lcl,async_1_args_dbg,4);
+RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_args_lcl,async_1_args_dbg,3);
+RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,4);
+
+	RAG_DEF_MACRO_PASS(async_1_args->post_Affine_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,0);
 
 #ifdef TRACE_LVL_3
 xe_printf("// Free data blocks\n");RAG_FLUSH;
 #endif
-#if 0 // RAG -- NEED TO FIX THIS, CAUSES ERROR, FIGURE OUT WHY -- RAG //
-	int **A = async_1_args->A;
-	int *A_0 = RAG_GET_PTR(A+0);
-xe_printf("// Free data block A_data %ld\n",(uint64_t)async_1_args->A_data_dbg.data);RAG_FLUSH;
-	bsm_free(A_0,async_1_args->A_data_dbg);
-xe_printf("// Free data block A\n");RAG_FLUSH;
-	bsm_free(A, async_1_args->A_dbg);
-xe_printf("// Free data block Fy\n");RAG_FLUSH;
-	bsm_free(async_1_args->Fy,async_1_args->Fy_dbg);
-xe_printf("// Free data block Fx\n");RAG_FLUSH;
-	bsm_free(async_1_args->Fx,async_1_args->Fx_dbg);
-#endif
+	int **A;
+	int *A_0;
+	int *Fx;
+	int *Fy;
 
-	RAG_DEF_MACRO_PASS(async_1_args->post_Affine_scg,NULL,NULL,NULL,NULL,output_dbg,0);
-//	done before leave Affine
-//	RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,1);
-//	RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,2);
-//	RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
+// RAG // Since next 4 dbg's were passed in a structure,
+// RAG // we need to map to dbg before we free them.
+
+	RMD_DB_MEM(&A_0,async_1_args->A_data_dbg);
+	RMD_DB_MEM(&A,  async_1_args->A_dbg);
+	RMD_DB_MEM(&Fx, async_1_args->Fx_dbg);
+	RMD_DB_MEM(&Fy, async_1_args->Fy_dbg);
+
+	bsm_free(A_0,async_1_args->A_data_dbg);
+	bsm_free(async_1_args->A, async_1_args->A_dbg);
+	bsm_free(async_1_args->Fy,async_1_args->Fy_dbg);
+	bsm_free(async_1_args->Fx,async_1_args->Fx_dbg);
+
+	bsm_free(async_1_args_ptr,async_1_args_dbg);
+	bsm_free(async_2_args_ptr,async_2_args_dbg);
+
 #ifdef TRACE_LVL_3
-xe_printf("////// leave affine_final_2_codelet\n");RAG_FLUSH;
+xe_printf("////// leave affine_finish_2_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -510,13 +518,6 @@ printf("wCX = %f %f %f %f %f %f\n", Wcx[0], Wcx[1], Wcx[2], Wcx[3], Wcx[4], Wcx[
 	memcpy(Wcy,async_2_args->Wcy,6*sizeof(float)); 
 #if defined(DEBUG) && defined(RAG_AFL)
 printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[5]);RAG_FLUSH;
-#endif
-            
-#if 0
-	int AFFINE_ASYNC_2_BLOCK_SIZE_Y = blk_size(y2-y1);
-	int AFFINE_ASYNC_2_BLOCK_SIZE_X = blk_size(x2-x1);
-	assert( ((y2-y1)%AFFINE_ASYNC_2_BLOCK_SIZE_Y) == 0);
-	assert( ((x2-x1)%AFFINE_ASYNC_2_BLOCK_SIZE_X) == 0);
 #endif
 	for(int m=x1; m<x2; m++) {
 		struct complexData *out_m;
@@ -644,7 +645,7 @@ xe_printf("//// Allocate memory for output image (%dx%d)\n",image_params->Iy,ima
 		exit(1);
 	}
 	struct complexData *output_data_ptr; rmd_guid_t output_data_dbg;
-#ifdef RAG_AFL
+#ifdef RAG_DRAM
 	output_data_ptr = (struct complexData*)dram_malloc(&output_data_dbg,
 		image_params->Iy*(image_params->Ix*sizeof(struct complexData)));
 #else
@@ -692,13 +693,13 @@ xe_printf("//// create a codelet for affine_async_1 function (N=%d)\n",N);RAG_FL
 	assert(retval==0);
 
 #ifdef TRACE_LVL_2
-xe_printf("//// create a codelet for affine_1_final function\n");RAG_FLUSH;
+xe_printf("//// create a codelet for affine_1_finish function\n");RAG_FLUSH;
 #endif
-rmd_guid_t affine_final_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *db);
-	rmd_guid_t affine_final_1_clg;
+rmd_guid_t affine_finish_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *db);
+	rmd_guid_t affine_finish_1_clg;
 	retval = rmd_codelet_create(
-		&affine_final_1_clg,     // rmd_guid_t *new_guid
-		 affine_final_1_codelet, // rmd_codelet_ptr func_ptr
+		&affine_finish_1_clg,     // rmd_guid_t *new_guid
+		 affine_finish_1_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
 		N*N+5,			// int n_dep
@@ -707,45 +708,45 @@ rmd_guid_t affine_final_1_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_
 		0);			// uint64_t prop
 	assert(retval==0);
 #ifdef TRACE_LVL_2
-xe_printf("//// create an instance for affine_final_1\n");RAG_FLUSH;
+xe_printf("//// create an instance for affine_finish_1\n");RAG_FLUSH;
 #endif
-	rmd_guid_t affine_final_1_scg;
+	rmd_guid_t affine_finish_1_scg;
 	retval = rmd_codelet_sched(
-		&affine_final_1_scg,		// rmd_guid_t* scheduled codelet's guid
+		&affine_finish_1_scg,		// rmd_guid_t* scheduled codelet's guid
 		post_Affine_scg.data,		// uint64_t arg
-		affine_final_1_clg);		// rmd_guid_t created codelet's guid
+		affine_finish_1_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 	int slot = 0;
 	struct point ctrl_pt;
 	ctrl_pt.y =  0;
 	ctrl_pt.x =  0;
 	ctrl_pt.p = -1;
-	struct async_1_args_t *final_1_args,*final_1_args_ptr,final_1_args_lcl;
-	rmd_guid_t final_1_args_dbg;
-	final_1_args = &final_1_args_lcl;
-	final_1_args_ptr = bsm_malloc(&final_1_args_dbg,sizeof(struct async_1_args_t));
-	final_1_args->Fx = Fx;
-	final_1_args->Fx_dbg  = Fx_dbg;
-	final_1_args->Fy = Fy;
-	final_1_args->Fy_dbg  = Fy_dbg;
-	final_1_args->A  = A;
-	final_1_args->A_dbg   = A_dbg;
-	final_1_args->A_data_dbg  = A_data_dbg;
-	final_1_args->ctrl_pt = ctrl_pt;
-	final_1_args->slot    = slot;
-	final_1_args->output  = output;
-	final_1_args->output_dbg  = output_dbg;
-	final_1_args->output_data_dbg  = output_data_dbg;
-	final_1_args->curImage_dbg     = curImage_dbg;
-	final_1_args->refImage_dbg     = refImage_dbg;
-	final_1_args->post_Affine_scg  = post_Affine_scg;
-	REM_STX_ADDR(final_1_args_ptr,final_1_args_lcl,struct async_1_args_t);
+	struct async_1_args_t *finish_1_args,*finish_1_args_ptr,finish_1_args_lcl;
+	rmd_guid_t finish_1_args_dbg;
+	finish_1_args = &finish_1_args_lcl;
+	finish_1_args_ptr = bsm_malloc(&finish_1_args_dbg,sizeof(struct async_1_args_t));
+	finish_1_args->Fx = Fx;
+	finish_1_args->Fx_dbg  = Fx_dbg;
+	finish_1_args->Fy = Fy;
+	finish_1_args->Fy_dbg  = Fy_dbg;
+	finish_1_args->A  = A;
+	finish_1_args->A_dbg   = A_dbg;
+	finish_1_args->A_data_dbg  = A_data_dbg;
+	finish_1_args->ctrl_pt = ctrl_pt;
+	finish_1_args->slot    = slot;
+	finish_1_args->output  = output;
+	finish_1_args->output_dbg  = output_dbg;
+	finish_1_args->output_data_dbg  = output_data_dbg;
+	finish_1_args->curImage_dbg     = curImage_dbg;
+	finish_1_args->refImage_dbg     = refImage_dbg;
+	finish_1_args->post_Affine_scg  = post_Affine_scg;
+	REM_STX_ADDR(finish_1_args_ptr,finish_1_args_lcl,struct async_1_args_t);
 
-	RAG_DEF_MACRO_PASS(affine_final_1_scg,NULL,NULL,NULL,NULL,final_1_args_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_1_scg,NULL,NULL,NULL,NULL,affine_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_1_scg,NULL,NULL,NULL,NULL,image_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_1_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_final_1_scg,NULL,NULL,NULL,NULL,output_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,finish_1_args_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,affine_params_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,image_params_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot++);
+	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,output_dbg,slot++);
 
 	for(int m=0; m<N; m++) {
 		for(int n=0; n<N; n++) {
@@ -777,7 +778,7 @@ xe_printf("//// create an instance for affine_async_1 slot %d\n",slot);RAG_FLUSH
 			rmd_guid_t affine_async_1_scg;
 			retval = rmd_codelet_sched(
 		&affine_async_1_scg,		// rmd_guid_t* scheduled codelet's guid
-		affine_final_1_scg.data,	// uint64_t arg
+		affine_finish_1_scg.data,	// uint64_t arg
 		affine_async_1_clg);		// rmd_guid_t created codelet's guid
 			assert(retval==0);
 			REM_STX_ADDR(async_1_args_ptr,async_1_args_lcl,struct async_1_args_t);
@@ -791,7 +792,7 @@ RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
 	} // for m
 
 //RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_dbg,0);
-//save for async_final_2
+//save for async_finish_2
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_data_dbg,1);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,3);

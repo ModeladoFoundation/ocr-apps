@@ -1,7 +1,9 @@
-FFTW_INC=/usr/local/include
+ifndef FFTW_INC
+	FFTW_INC=/usr/local/include
+endif
 
 CC=gcc
-CFLAGS=-g -std=c99 -I../src -I/$(FFTW_INC)
+CFLAGS=-g -std=c99 -I../src -I$(FFTW_INC)
 LDFLAGS=-lm
 
 all:	viewImage    viewCorr    dataImage \

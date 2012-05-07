@@ -76,17 +76,17 @@ xe_printf("//// create an instance for post_CCD\n");RAG_FLUSH;
 	return NULL_GUID;
 }
 
-rmd_guid_t ccd_final_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t ccd_finish_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
 	int retval;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter ccd_final_codelet %d\n",n_db);RAG_FLUSH;
+xe_printf("////// enter ccd_finish_codelet %d\n",n_db);RAG_FLUSH;
 #endif
 	assert(n_db>1);
 	RAG_REF_MACRO_BSM( struct poinsts *,corr_map,NULL,NULL,corr_map_dbg,0);
 	rmd_guid_t arg_scg = { .data = arg };
 	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
 #ifdef TRACE_LVL_3
-xe_printf("////// leave ccd_final_codelet\n");RAG_FLUSH;
+xe_printf("////// leave ccd_finish_codelet\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -206,11 +206,11 @@ xe_printf("//// enter CCD\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 xe_printf("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_params->Ncor);RAG_FLUSH;
 #endif
-	int CCD_ASYNC_BLOCK_SIZE_M = blk_size(Mwins);
-	int CCD_ASYNC_BLOCK_SIZE_N = blk_size(Nwins);
+	int CCD_ASYNC_BLOCK_SIZE_M = blk_size(Mwins,32);
+	int CCD_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CCD_ASYNC_BLOCK_SIZE_M)==0);
 	assert((Nwins%CCD_ASYNC_BLOCK_SIZE_N)==0);
-///////////// create async and final, instance of final
+///////////// create async and finish, instance of finish
 #ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for ccd_async function\n");RAG_FLUSH;
 #endif
@@ -227,12 +227,12 @@ xe_printf("//// create a codelet for ccd_async function\n");RAG_FLUSH;
 	assert(retval==0);
 
 #ifdef TRACE_LVL_2
-xe_printf("//// create a codelet for ccd_final function\n");RAG_FLUSH;
+xe_printf("//// create a codelet for ccd_finish function\n");RAG_FLUSH;
 #endif
-	rmd_guid_t ccd_final_clg;
+	rmd_guid_t ccd_finish_clg;
 	retval = rmd_codelet_create(
-		&ccd_final_clg,     // rmd_guid_t *new_guid
-		 ccd_final_codelet, // rmd_codelet_ptr func_ptr
+		&ccd_finish_clg,     // rmd_guid_t *new_guid
+		 ccd_finish_codelet, // rmd_codelet_ptr func_ptr
 		0,			// size_t code_size
 		0,			// uinit64_t default_arg
 		((Mwins-0)/CCD_ASYNC_BLOCK_SIZE_M)*((Nwins-0)/CCD_ASYNC_BLOCK_SIZE_N)+1, // int n_dep
@@ -241,16 +241,16 @@ xe_printf("//// create a codelet for ccd_final function\n");RAG_FLUSH;
 		0);			// uint64_t prop
 	assert(retval==0);
 #ifdef TRACE_LVL_2
-xe_printf("//// create an instance for ccd_final\n");RAG_FLUSH;
+xe_printf("//// create an instance for ccd_finish\n");RAG_FLUSH;
 #endif
-	rmd_guid_t ccd_final_scg;
+	rmd_guid_t ccd_finish_scg;
 	retval = rmd_codelet_sched(
-		&ccd_final_scg,		// rmd_guid_t* scheduled codelet's guid
+		&ccd_finish_scg,		// rmd_guid_t* scheduled codelet's guid
 		post_CCD_scg.data,		// uint64_t arg
-		ccd_final_clg);		// rmd_guid_t created codelet's guid
+		ccd_finish_clg);		// rmd_guid_t created codelet's guid
 	assert(retval==0);
 	int slot = 0;
-RAG_DEF_MACRO_PASS(ccd_final_scg,NULL,NULL,NULL,NULL,corr_map_dbg, slot++);
+RAG_DEF_MACRO_PASS(ccd_finish_scg,NULL,NULL,NULL,NULL,corr_map_dbg, slot++);
 
 	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE_N) {
@@ -260,7 +260,7 @@ xe_printf("//// create an instance for ccd_async slot %d\n",slot);RAG_FLUSH;
 			rmd_guid_t ccd_async_scg;
 			retval = rmd_codelet_sched(
 		&ccd_async_scg,		// rmd_guid_t* scheduled codelet's guid
-		ccd_final_scg.data,	// uint64_t arg
+		ccd_finish_scg.data,	// uint64_t arg
 		ccd_async_clg);		// rmd_guid_t created codelet's guid
 			assert(retval==0);
 			struct Corners_t *async_corners, *async_corners_ptr, async_corners_lcl; rmd_guid_t async_corners_dbg;

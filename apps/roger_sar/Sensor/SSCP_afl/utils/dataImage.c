@@ -87,7 +87,9 @@ fprintf(stderr,"malloc FreqDomain\n");fflush(stderr);
 
 fprintf(stderr,"read FreqDomain (binary)\n");fflush(stderr);
 		for(int iy=0;iy<image_params.P1;iy++) {
-			fread(&FreqDomain[iy][0],sizeof(FreqDomain_t),image_params.S1,stdin);
+			if( image_params.S1 != fread(&FreqDomain[iy][0],sizeof(FreqDomain_t),image_params.S1,stdin)) {
+				perror("FreqDomain\n");
+			}
 		}
 
 fprintf(stderr,"write FreqDomain (ascii)\n");fflush(stderr);
@@ -125,7 +127,9 @@ fprintf(stderr,"malloc PlatformPosition\n");fflush(stderr);
 
 fprintf(stderr,"read PlatformPosition (binary)\n");fflush(stderr);
 		for(int iy=0;iy<image_params.P1;iy++) {
-			fread(&PlatformPosition[iy][0],sizeof(PlatformPosition_t),1,stdin);
+			if( 1 != fread(&PlatformPosition[iy][0],sizeof(PlatformPosition_t),1,stdin) ) {
+				perror("PlatforPosition\n");
+			}
 		}
 
 fprintf(stderr,"write PlatformPosition (ascii)\n");fflush(stderr);
@@ -166,7 +170,9 @@ fprintf(stderr,"malloc PulseTransmission\n");fflush(stderr);
 
 fprintf(stderr,"read PulseTransmission (binary)\n");fflush(stderr);
 		for(int iy=0;iy<image_params.P1;iy++) {
-			fread(&PulseTransmission[iy][0],sizeof(PulseTransmission_t),1,stdin);
+			if( 1 != fread(&PulseTransmission[iy][0],sizeof(PulseTransmission_t),1,stdin) ) {
+				perror("PulstTransmissionTime\n");
+			}
 		}
 
 fprintf(stderr,"write PulseTransmission (ascii)\n");fflush(stderr);
