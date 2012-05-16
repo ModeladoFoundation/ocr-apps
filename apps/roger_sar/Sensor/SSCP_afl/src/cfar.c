@@ -154,17 +154,17 @@ xe_printf("////// enter cfar_async_codelet\n");RAG_FLUSH;
 #endif
 	assert(n_db==6);
 
-RAG_REF_MACRO_SPAD(struct Corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
+RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_parms_ptr,cfar_parms_lcl,cfar_params_dbg,2);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,3);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,4);
 RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,5);
 
-	int m1   = corners->x1;
-	int m2   = corners->x2;
-	int n1   = corners->y1;
-	int n2   = corners->y2;
+	int m1   = corners->m1;
+	int m2   = corners->m2;
+	int n1   = corners->n1;
+	int n2   = corners->n2;
 	int slot = corners->slot;
 
 	int T,cnt;
@@ -385,15 +385,15 @@ xe_printf("////// create an instance for cfar_async slot %d\n",slot);RAG_FLUSH;
 		cfar_finish_scg.data,	// uint64_t arg
 		cfar_async_clg);	// rmd_guid_t created codelet's guid
 			assert(retval==0);
-			struct Corners_t *async_corners, *async_corners_ptr, async_corners_lcl; rmd_guid_t async_corners_dbg;
+			struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; rmd_guid_t async_corners_dbg;
 			async_corners = &async_corners_lcl;
-			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct Corners_t));
-			async_corners->x1   = m;
-			async_corners->x2   = m+CFAR_ASYNC_BLOCK_SIZE_M;
-			async_corners->y1   = n;
-			async_corners->y2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
+			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
+			async_corners->m1   = m;
+			async_corners->m2   = m+CFAR_ASYNC_BLOCK_SIZE_M;
+			async_corners->n1   = n;
+			async_corners->n2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
 			async_corners->slot = slot++;
-			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
+			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,2);

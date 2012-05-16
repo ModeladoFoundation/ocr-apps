@@ -1,5 +1,22 @@
 trunk/apps/roger_sar/Sensor/README.txt
+----------------------------------------------------------------------
+May 16,2012 Update:
+H-C/AFL/SIM versions now support Peter Tang's optimizations.
+-DRAG_PETER_DIST_AND_TRIG or -DRAG_PETER_DIST_AND_TRIG_OFF
 
+Under -DRAG_PETER_DIST_AND_TRIG the AFL/SIM versions 
+also support a -DRAG_SPAD or -DRAG_SPAD_OFF option.
+With -DRAG_SPAD, the image subblock is brought to SPAD, worked on with a
+3-deep loop nest and then put back to BSM or DRAM.
+With -DRAG_SPAD_OFF then caching is used to capture locality for
+the image subblock.
+
+Under -DRAG_PETER_AND_TRIG_OFF there is a -DSINCOS or -DSINCOS_OFF option.
+
+roger.a.golliver@gmail.com
+(503) 866-9331
+
+----------------------------------------------------------------------
 To pre-build datagen and other utils, from Sensor directory do:
 
 	make utils

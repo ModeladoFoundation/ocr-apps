@@ -17,4 +17,3 @@ cmp ../../SSCP_afl/small/fftw3.c fftw3.c
 cmp ../../SSCP_afl/small/fftw3.h fftw3.h
 cmp ../../SSCP_afl/small/Parameters.txt Parameters.txt
 cmp ../../SSCP_afl/small/Parameters.h Parameters.h
-cmp ../../SSCP_afl/small/block_sizes.h block_sizes.h

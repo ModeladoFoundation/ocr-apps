@@ -122,7 +122,10 @@ void  dramblk_free(void *dbp, rmd_guid_t dbg );
 void  dram_memset(void *out, int val, size_t size);
 
 void SPADtoBSM(void *out, void *in, size_t size);
+void BSMtoSPAD(void *out, void *in, size_t size);
 void BSMtoBSM(void *out, void *in, size_t size);
+void SPADtoDRAM(void *out, void *in, size_t size);
+void DRAMtoSPAD(void *out, void *in, size_t size);
 
 #define RAG_DEF_MACRO_SPAD(scg,type,var,ptr,lcl,dbg,slot) \
  	retval = rmd_codelet_satisfy(scg,dbg,slot); assert(retval==0);

@@ -124,8 +124,8 @@ struct file_args_t {
 	FILE *pInFile, *pInFile2, *pInFile3;
 };
 
-struct Corners_t {
-	int x1; int x2; int y1; int y2; int slot;
+struct corners_t {
+	int m1; int m2; int n1; int n2; int slot;
 };
 
 int  ReadParams(struct RadarParams*, struct ImageParams*, struct AffineParams*,

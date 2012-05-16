@@ -336,10 +336,10 @@ xe_printf("////// create an instance for affine_finish_2\n");RAG_FLUSH;
 #ifdef TRACE_LVL_3
 xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLUSH;
 #endif
-			struct Corners_t *async_corners,*async_corners_ptr,async_corners_lcl;
+			struct corners_t *async_corners,*async_corners_ptr,async_corners_lcl;
 			rmd_guid_t async_corners_dbg;
 			async_corners = &async_corners_lcl;
-			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct Corners_t));
+			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
 
 			rmd_guid_t affine_async_2_scg;
 			retval = rmd_codelet_sched(
@@ -348,12 +348,12 @@ xe_printf("////// create an instance for affine_async_2 slot %d\n",slot);RAG_FLU
 		affine_async_2_clg);		// rmd_guid_t created codelet's guid
 			assert(retval==0);
 
-			async_corners->x1   = m;
-			async_corners->x2   = m+AFFINE_ASYNC_2_BLOCK_SIZE_X;
-			async_corners->y1   = n;
-			async_corners->y2   = n+AFFINE_ASYNC_2_BLOCK_SIZE_Y;
+			async_corners->m1   = m;
+			async_corners->m2   = m+AFFINE_ASYNC_2_BLOCK_SIZE_X;
+			async_corners->n1   = n;
+			async_corners->n2   = n+AFFINE_ASYNC_2_BLOCK_SIZE_Y;
 			async_corners->slot = slot++;
-			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct Corners_t);
+			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 
 RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
 RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,1);
@@ -494,17 +494,17 @@ rmd_guid_t affine_async_2_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
 	int aa, bb;
 	float Px, Py, w, v;
 
-RAG_REF_MACRO_SPAD(struct Corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
+RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
 RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,3);
 RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,4);
 RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,5);
 
-	int x1   = corners->x1;
-	int x2   = corners->x2;
-	int y1   = corners->y1;
-	int y2   = corners->y2;
+	int m1   = corners->m1;
+	int m2   = corners->m2;
+	int n1   = corners->n1;
+	int n2   = corners->n2;
 	int slot = corners->slot;
 #ifdef TRACE_LVL_3
 xe_printf("////// enter affine_async_2_codelet slot %d\n",slot);RAG_FLUSH;
@@ -519,10 +519,10 @@ printf("wCX = %f %f %f %f %f %f\n", Wcx[0], Wcx[1], Wcx[2], Wcx[3], Wcx[4], Wcx[
 #if defined(DEBUG) && defined(RAG_AFL)
 printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[5]);RAG_FLUSH;
 #endif
-	for(int m=x1; m<x2; m++) {
+	for(int m=m1; m<m2; m++) {
 		struct complexData *out_m;
 		out_m = (struct complexData *)RAG_GET_PTR(output+m);
-		for(int n=y1; n<y2; n++) {
+		for(int n=n1; n<n2; n++) {
 			const float m_flt = (float)m;
 			const float n_flt = (float)n;
 			Px = Wcx[0] + Wcx[1]*n_flt + Wcx[2]*m_flt

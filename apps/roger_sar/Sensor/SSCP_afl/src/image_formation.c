@@ -180,15 +180,15 @@ xe_printf("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_F
 #ifdef TRACE_LVL_2
 xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #endif
-		struct Corners_t *corners, *corners_ptr,corners_lcl; rmd_guid_t corners_dbg;
-		corners_ptr   = bsm_malloc(&corners_dbg,sizeof(struct Corners_t));
+		struct corners_t *corners, *corners_ptr,corners_lcl; rmd_guid_t corners_dbg;
+		corners_ptr   = bsm_malloc(&corners_dbg,sizeof(struct corners_t));
 		corners = &corners_lcl;
-		corners->x1   = i*image_params->Sx;
-		corners->x2   = (i+1)*image_params->Sx;
-		corners->y1   = j*image_params->Sy;
-		corners->y2   = (j+1)*image_params->Sy;
+		corners->m1   = i*image_params->Sx;
+		corners->m2   = (i+1)*image_params->Sx;
+		corners->n1   = j*image_params->Sy;
+		corners->n2   = (j+1)*image_params->Sy;
 		corners->slot = 0;
-		REM_STX_ADDR(corners_ptr,corners_lcl,struct Corners_t);
+		REM_STX_ADDR(corners_ptr,corners_lcl,struct corners_t);
 		struct Inputs tmp_in, *tmp_in_ptr; rmd_guid_t tmp_in_dbg;
 		tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
 		tmp_in.Pt = dig_spot->Pt2
@@ -215,15 +215,15 @@ xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 xe_printf("//// Perform backprojection over full image\n");RAG_FLUSH;
 #endif
-		struct Corners_t *corners, *corners_ptr,corners_lcl; rmd_guid_t corners_dbg;
-		corners_ptr = bsm_malloc(&corners_dbg,sizeof(struct Corners_t));
+		struct corners_t *corners, *corners_ptr,corners_lcl; rmd_guid_t corners_dbg;
+		corners_ptr = bsm_malloc(&corners_dbg,sizeof(struct corners_t));
 		corners = &corners_lcl;
-		corners->x1   = 0;
-		corners->x2   = image_params->Ix;
-		corners->y1   = 0;
-		corners->y2   = image_params->Iy;
+		corners->m1   = 0;
+		corners->m2   = image_params->Ix;
+		corners->n1   = 0;
+		corners->n2   = image_params->Iy;
 		corners->slot = 0;
-		REM_STX_ADDR(corners_ptr,corners_lcl,struct Corners_t);
+		REM_STX_ADDR(corners_ptr,corners_lcl,struct corners_t);
 #ifdef TRACE_LVL_2
 xe_printf("//// create a codelet for BackProj function\n");RAG_FLUSH;
 #endif
