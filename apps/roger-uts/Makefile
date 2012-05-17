@@ -54,7 +54,7 @@ $(TARGET): $(TARGET).o $(OBJS) ./uts-main-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(TARGET).o $(OBJS) $(LDLIBS)
 
 run:	$(TARGET)
-	$(FSIM) -c $(TARGET).cfg
+	$(FSIM) -s -c $(TARGET).cfg
 
 clean:
 	$(RM) -rf $(TARGET) *.s *.o logs/*
