@@ -1,0 +1,8 @@
+
+This is an AFL version of the sequential-csr version of Graph500 ref impl.
+
+It's just a wrapper around the real graph code, providing enough AFL-ism
+that memalyzer can run with it.
+
+As of 5/6/2012, still very much WIP.  In fact, it dumps core at the end
+after some assert fail in AFL somewhere.  This will be fixed later.
