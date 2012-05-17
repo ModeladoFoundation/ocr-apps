@@ -22,7 +22,7 @@ all: $(BIN)
 
 RMD_ALLOVER_INCS =  -I../../ss/rmdkrnl/inc/ -I./generator -I../../tools/rmd_afl/common/ -I../../ss/runtime/common
 
-%.o: %.c $(HEADERS)
+%.o: %.c $(HEADERS) options.h
 	$(CC) -c -DCODELETS -DRMD_DB_MEM -DPRINT_DEBUG_INFO $(RMD_ALLOVER_INCS) $(CDCFLAGS) -o $@ $<
 
 graph500:  graph500.o omp-csr/omp-csr.c ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a
