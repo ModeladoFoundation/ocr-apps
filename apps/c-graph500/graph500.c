@@ -62,16 +62,18 @@ typedef struct argk1k2{
 	int64_t k2;
 }argk1k2;
 
-static int64_t nvtx_scale;
+// doesn't need to be static, except for conflict with same-name/same-val
+// variable in make-edgelist
+int64_t nvtx_scale;
 
-static int64_t bfs_root[NBFS_max];
+int64_t bfs_root[NBFS_max];
 
 static double generation_time;
 static double construction_time;
 static double bfs_time[NBFS_max];
-static int64_t bfs_nedge[NBFS_max];
+int64_t bfs_nedge[NBFS_max];
 
-static packed_edge * restrict IJ;
+packed_edge * restrict IJ;
 static int64_t nedge;
 
 int64_t verify_bfs_tree_c (int64_t *bfs_tree_in, int64_t max_bfsvtx, int64_t root, const int64_t *IJ_in, int64_t nedge);
@@ -88,10 +90,12 @@ static void output_results (const int64_t SCALE, int64_t nvtx_scale,
 #ifdef CODELETS
 #define MINVECT_SIZE 2
 
-static int64_t maxvtx, nv, sz;
-static int64_t * restrict xoff; /* Length 2*nv+2 */
-static int64_t * restrict xadjstore; /* Length MINVECT_SIZE + (xoff[nv] == nedge) */
-static int64_t * restrict xadj;
+int64_t sznonstatic; // no longer static
+int64_t maxvtx;
+int64_t nv;
+int64_t * restrict xoff; /* Length 2*nv+2 */
+int64_t * restrict xadjstore; /* Length MINVECT_SIZE + (xoff[nv] == nedge) */
+int64_t * restrict xadj;
 
 int64_t
 _fetch_add (int64_t* p, int64_t incr) {
@@ -258,41 +262,20 @@ void make_graph_c(int log_numverts, int64_t M, uint64_t userseed1, uint64_t user
   generate_kronecker_range_c(seed, log_numverts, 0, M, edges);
 }
 
-static void
-find_nv_c(const struct packed_edge * restrict IJ, const int64_t nedge) {
-  maxvtx = -1;
-  //OMP("omp parallel")
-  int64_t k, gmaxvtx, tmaxvtx = -1;
-
-  //OMP("omp for")
-  for (k = 0; k < nedge; ++k) {
-    if (get_v0_from_edge(&IJ[k]) > tmaxvtx)
-      tmaxvtx = get_v0_from_edge(&IJ[k]);
-    if (get_v1_from_edge(&IJ[k]) > tmaxvtx)
-      tmaxvtx = get_v1_from_edge(&IJ[k]);
-  }
-  gmaxvtx = maxvtx;
-  while (tmaxvtx > gmaxvtx)
-    gmaxvtx = _casval (&maxvtx, gmaxvtx, tmaxvtx);
-
-  nv = 1+maxvtx;
-  rmd_guid_t create_graph_s;
-  rmd_codelet_sched(&create_graph_s,0,create_graph_type);
-}
 
 static int
 alloc_graph_c (int64_t nedge) {
-  sz = (2*nv+2) * sizeof (*xoff);
+  sznonstatic = (2*nv+2) * sizeof (*xoff);
 #ifdef RMD_DB_MEM
   rmd_location_t loc;
   loc.type = RMD_LOC_TYPE_RELATIVE;
   loc.data.relative.level = RMD_LOCATION_DRAM;
-  xoff = RMD_DB_ALLOC(&xoff_DBlock,sz,0,&loc);
+  xoff = RMD_DB_ALLOC(&xoff_DBlock,sznonstatic,0,&loc);
 #else
-  xoff = xmalloc_large_ext (sz);
+  xoff = xmalloc_large_ext (sznonstatic);
 #endif
 #ifdef MEM_INFO
-	printf("xoff Memory=%ld\n",sz);
+	printf("xoff Memory=%ld\n",sznonstatic);
 #endif
   if (!xoff) return -1;
   return 0;
@@ -347,8 +330,6 @@ prefix_sum_c (int64_t *buf) {
 
 static int
 setup_deg_off_c (const struct packed_edge * restrict IJ, int64_t nedge) {
-
-  printf("******************************************************\n");
 
   int err = 0;
   int64_t *buf = NULL;
@@ -544,7 +525,6 @@ int make_bfs_tree_c (int64_t *bfs_tree_out, int64_t srcvtx,int m) {
 #define THREAD_BUF_LEN 16384
   //OMP("omp parallel shared(k1, k2)")
   int64_t k;
-  int64_t nbuf[THREAD_BUF_LEN];
   //OMP("omp for")
   for (k = 0; k < srcvtx; ++k)
     bfs_tree[k] = -1;
@@ -1145,66 +1125,7 @@ rmd_guid_t end_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
   return ret;
 }
 #else
-int
-main (int argc, char **argv)
-{
-  int64_t desired_nedge;
-  if (sizeof (int64_t) < 8) {
-    fprintf (stderr, "No 64-bit support.\n");
-    return EXIT_FAILURE;
-  }
-
-  if (argc > 1)
-    get_options (argc, argv);
-
-  nvtx_scale = ((int64_t)1)<<SCALE;
-
-  init_random ();
-
-  desired_nedge = nvtx_scale * edgefactor;
-  /* Catch a few possible overflows. */
-  assert (desired_nedge >= nvtx_scale);
-  assert (desired_nedge >= edgefactor);
-
-  /*
-    If running the benchmark under an architecture simulator, replace
-    the following if () {} else {} with a statement pointing IJ
-    to wherever the edge list is mapped into the simulator's memory.
-  */
-  if (!dumpname) {
-    if (VERBOSE) fprintf (stderr, "Generating edge list...");
-    if (use_RMAT) {
-      nedge = desired_nedge;
-      IJ = xmalloc_large_ext (nedge * sizeof (*IJ));
-      TIME(generation_time, rmat_edgelist (IJ, nedge, SCALE, A, B, C));
-    } else {
-      TIME(generation_time, make_graph (SCALE, desired_nedge, userseed, userseed, &nedge, (packed_edge**)(&IJ)));
-    }
-    if (VERBOSE) fprintf (stderr, " done.\n");
-  } else {
-    int fd;
-    ssize_t sz;
-    if ((fd = open (dumpname, O_RDONLY)) < 0) {
-      perror ("Cannot open input graph file");
-      return EXIT_FAILURE;
-    }
-    sz = nedge * sizeof (*IJ);
-    if (sz != read (fd, IJ, sz)) {
-      perror ("Error reading input graph file");
-      return EXIT_FAILURE;
-    }
-    close (fd);
-  }
-
-  run_bfs ();
-
-  xfree_large (IJ);
-
-  output_results (SCALE, nvtx_scale, edgefactor, A, B, C, D,
-		  generation_time, construction_time, NBFS, bfs_time, bfs_nedge);
-
-  return EXIT_SUCCESS;
-}
+// ifdef codelet above
 #endif
 
 #ifdef CODELETS
@@ -1238,109 +1159,6 @@ rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) 
 }
 #endif
 
-#ifndef CODELETS
-
-void
-run_bfs (void)
-{
-  int * restrict has_adj;
-  int m, err;
-  int64_t k, t;
-
-  if (VERBOSE) fprintf (stderr, "Creating graph...");
-  TIME(construction_time, err = create_graph_from_edgelist (IJ, nedge));
-  if (VERBOSE) fprintf (stderr, "done.\n");
-  if (err) {
-    fprintf (stderr, "Failure creating graph.\n");
-    exit (EXIT_FAILURE);
-  }
-
-  /*
-    If running the benchmark under an architecture simulator, replace
-    the following if () {} else {} with a statement pointing bfs_root
-    to wherever the BFS roots are mapped into the simulator's memory.
-  */
-  if (!rootname) {
-    has_adj = xmalloc_large (nvtx_scale * sizeof (*has_adj));
-    OMP("omp parallel") {
-      OMP("omp for")
-	for (k = 0; k < nvtx_scale; ++k)
-	  has_adj[k] = 0;
-      MTA("mta assert nodep") OMP("omp for")
-	for (k = 0; k < nedge; ++k) {
-	  const int64_t i = get_v0_from_edge(&IJ[k]);
-	  const int64_t j = get_v1_from_edge(&IJ[k]);
-	  if (i != j)
-	    has_adj[i] = has_adj[j] = 1;
-	}
-    }
-
-    /* Sample from {0, ..., nvtx_scale-1} without replacement. */
-    m = 0;
-    t = 0;
-    while (m < NBFS && t < nvtx_scale) {
-      double R = mrg_get_double_orig (prng_state);
-      if (!has_adj[t] || (nvtx_scale - t)*R > NBFS - m) ++t;
-      else bfs_root[m++] = t++;
-    }
-    if (t >= nvtx_scale && m < NBFS) {
-      if (m > 0) {
-	fprintf (stderr, "Cannot find %d sample roots of non-self degree > 0, using %d.\n",
-		 NBFS, m);
-	NBFS = m;
-      } else {
-	fprintf (stderr, "Cannot find any sample roots of non-self degree > 0.\n");
-	exit (EXIT_FAILURE);
-      }
-    }
-
-    xfree_large (has_adj);
-  } else {
-    int fd;
-    ssize_t sz;
-    if ((fd = open (rootname, O_RDONLY)) < 0) {
-      perror ("Cannot open input BFS root file");
-      exit (EXIT_FAILURE);
-    }
-    sz = NBFS * sizeof (*bfs_root);
-    if (sz != read (fd, bfs_root, sz)) {
-      perror ("Error reading input BFS root file");
-      exit (EXIT_FAILURE);
-    }
-    close (fd);
-  }
-
-  for (m = 0; m < NBFS; ++m) {
-    int64_t *bfs_tree, max_bfsvtx;
-
-    /* Re-allocate. Some systems may randomize the addres... */
-    bfs_tree = xmalloc_large (nvtx_scale * sizeof (*bfs_tree));
-    assert (bfs_root[m] < nvtx_scale);
-
-    if (VERBOSE) fprintf (stderr, "Running bfs %d...", m);
-    TIME(bfs_time[m], err = make_bfs_tree (bfs_tree, &max_bfsvtx, bfs_root[m]));
-    if (VERBOSE) fprintf (stderr, "done\n");
-
-    if (err) {
-      perror ("make_bfs_tree failed");
-      abort ();
-    }
-
-    if (VERBOSE) fprintf (stderr, "Verifying bfs %d...", m);
-    bfs_nedge[m] = verify_bfs_tree (bfs_tree, max_bfsvtx, bfs_root[m], IJ, nedge);
-    if (VERBOSE) fprintf (stderr, "done\n");
-    if (bfs_nedge[m] < 0) {
-      fprintf (stderr, "bfs %d from %" PRId64 " failed verification (%" PRId64 ")\n",
-	       m, bfs_root[m], bfs_nedge[m]);
-      abort ();
-    }
-
-    xfree_large (bfs_tree);
-  }
-
-  destroy_graph ();
-}
-#endif
 #define NSTAT 9
 #define PRINT_STATS(lbl, israte)					\
   do {									\
