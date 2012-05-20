@@ -170,14 +170,14 @@ fprintf(stderr,"init bmp header\n");fflush(stderr);
 	bmp_info_header.header_sz     = sizeof(bmp_info_header);
 	bmp_info_header.width         = S1;
 	bmp_info_header.height        = P1;
-	bmp_info_header.nplanes       = -1;
+	bmp_info_header.nplanes       = 1;
 	bmp_info_header.bitspp        = 32;
-	bmp_info_header.compress_type =  0;
-	bmp_info_header.bmp_bytesz    = -1;
-	bmp_info_header.hres          = -1;
-	bmp_info_header.vres          = -1;
-	bmp_info_header.ncolors       = -1;
-	bmp_info_header.nimpcolors    = -1;
+	bmp_info_header.compress_type = 0;
+	bmp_info_header.bmp_bytesz    = 0;
+	bmp_info_header.hres          = 1;
+	bmp_info_header.vres          = 1;
+	bmp_info_header.ncolors       = 0;
+	bmp_info_header.nimpcolors    = 0;
 
 	for(int iy=0;iy<P1;iy++) {
 		for(int ix=0;ix<S1;ix++) {

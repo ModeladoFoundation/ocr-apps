@@ -142,14 +142,14 @@ fprintf(stderr,"init bmp header\n");fflush(stderr);
 	bmp_info_header.header_sz     = sizeof(bmp_info_header);
 	bmp_info_header.width         = image_params.Ix;
 	bmp_info_header.height        = image_params.Iy;
-	bmp_info_header.nplanes       = -1;
+	bmp_info_header.nplanes       = 1;
 	bmp_info_header.bitspp        = 32;
-	bmp_info_header.compress_type =  0;
-	bmp_info_header.bmp_bytesz    = -1;
-	bmp_info_header.hres          = -1;
-	bmp_info_header.vres          = -1;
-	bmp_info_header.ncolors       = -1;
-	bmp_info_header.nimpcolors    = -1;
+	bmp_info_header.compress_type = 0;
+	bmp_info_header.bmp_bytesz    = 0;
+	bmp_info_header.hres          = 1;
+	bmp_info_header.vres          = 1;
+	bmp_info_header.ncolors       = 0;
+	bmp_info_header.nimpcolors    = 0;
 
 fprintf(stderr,"read corr_map\n");fflush(stderr);
 	for(int iy=0;iy<Cy;iy++) {
