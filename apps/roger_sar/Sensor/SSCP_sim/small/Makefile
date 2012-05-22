@@ -36,10 +36,10 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DRAG_SIM \
 	-DDEBUG_OFF                           \
 	-DDEBUG_LVL_1_OFF -DTRACE_LVL_2_OFF   \
 	-DDEBUG_LVL_3_OFF -DDEBUG_LVL_4_OFF   \
-	-DTRACE_OFF                               \
-	-DTRACE_LVL_1_OFF -DTRACE_LVL_2_OFF   \
+	-DTRACE                               \
+	-DTRACE_LVL_1     -DTRACE_LVL_2       \
 	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF   \
-	-DRAG_PETER_DIST_AND_TRIG_OFF -DRAG_SPAD_OFF -DRAG_DRAM 
+	-DRAG_PETER_DIST_AND_TRIG     -DRAG_SPAD     -DRAG_DRAM 
 
 OBJCOPY	= $(PREFIX)-objcopy
 
@@ -100,11 +100,11 @@ run:	$(TARGET) $(TARGET).cfg
 	/usr/bin/time $(FSIM) -s -c $(TARGET).cfg
 	grep -h -e 'x=0x' logs/sscp.log.*CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
-	-egrep -h '(cur|ref)' logs/sscp.log.*CE.00 | grep 0x >images_debug.txt
+	-egrep -h '(>>> cur|>>> ref)' logs/sscp.log.*CE.00 | grep 0x >images_debug.txt
 	-../utils/viewImageTxt 1 <Detects.txt >cur.bmp
 	-../utils/viewImageTxt 2 <Detects.txt >ref.bmp
 	-../utils/viewImageTxt 3 <Detects.txt >all.bmp
-	-grep -h corr logs/sscp.log.*CE.00 | grep 0x >corr_debug.txt
+	-grep -h '>>> corr' logs/sscp.log.*CE.00 | grep 0x >corr_debug.txt
 	-../utils/viewCorrTxt    >corr.bmp
 	-diff Detects.txt Detects.gold
 	-cmp  Detects.txt Detects.gold
