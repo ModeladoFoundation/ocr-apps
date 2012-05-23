@@ -8,6 +8,8 @@ CDCFLAGS=-O3 -g -Wall $(CDCINCLUDES)
 CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
 CDDEFINES= -DRMD_DB_MEM -DCODELETS -DSINGLE_THREAD
 
+RCKDEFINES= -DAFL_WRAPPED
+
 GENERATOR_SRCS=generator/splittable_mrg.c	\
 	generator/graph_generator.c \
         generator/utils.c generator/make_graph.c seq-csr/seq-csr.c
@@ -21,7 +23,7 @@ BIN = graph500
 all: $(BIN) $(GRAPH500_SOURCES)
 
 %.o: %.c options.h
-	$(CC) -c $(CDDEFINES)  -DPRINT_DEBUG_INFO $(CDCINCLUDES) -o $@ $<
+	$(CC) -c $(CDDEFINES)  -DPRINT_DEBUG_INFO $(CDCINCLUDES) $(RCKDEFINES) -o $@ $<
 
 graph500: graph500.o ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a 
 	$(CC) -std=c99  $(CDDEFINES) -o $@  $+ $(GRAPH500_SOURCES) $(CDCINCLUDES) $(CDLDFLAGS)

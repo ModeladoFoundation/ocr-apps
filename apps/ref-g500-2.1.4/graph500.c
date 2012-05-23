@@ -352,3 +352,11 @@ output_results (const int64_t SCALE, int64_t nvtx_scale, int64_t edgefactor,
   statistics (stats, tm, NBFS);
   PRINT_STATS("TEPS", 1);
 }
+
+#ifndef AFL_WRAPPED
+void main (int argc, char **argv) {
+
+  g500main(argc, argv);
+
+}
+#endif
