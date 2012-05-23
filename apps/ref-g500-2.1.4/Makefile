@@ -22,7 +22,7 @@ BIN = graph500
 .PHONY: all
 all: $(BIN) $(GRAPH500_SOURCES)
 
-%.o: %.c options.h
+%.o: %.c options.h afl-bones.c
 	$(CC) -c $(CDDEFINES)  -DPRINT_DEBUG_INFO $(CDCINCLUDES) $(RCKDEFINES) -o $@ $<
 
 graph500: graph500.o ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a 
