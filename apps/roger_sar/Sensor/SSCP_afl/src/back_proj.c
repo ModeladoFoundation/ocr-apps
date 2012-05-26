@@ -98,6 +98,9 @@ assert(platpos[k][1] == platpos_k_012[1]);
 assert(platpos[k][2] == platpos_k_012[2]);
 #endif
 // compute distance to R_mid
+		struct complexData *Xin_k;
+		Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
+// compute distance to R_mid
 		double zr_mid  = 0.0f - platpos_k_012[2]; // Z
 		double zr_mid2 = zr_mid * zr_mid;
 		double yr_mid = RAG_GET_FLT(image_params->yr+(m1+blk_size_half)) - platpos_k_012[1]; // Y
@@ -199,8 +202,6 @@ assert(platpos[k][2] == platpos_k_012[2]);
 #endif
 				struct complexData sample;
 				if(bin >= 0 && bin < image_params->S4-1) {
-					struct complexData *Xin_k;
-					Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
 					struct complexData left,right;
 					int int_bin = (int)floorf(bin);
 #ifdef RAG_HIST_BIN_DIFFS
@@ -222,8 +223,6 @@ hist[0]++;
 					sample.real = (1-w)*left.real + w*right.real;
 					sample.imag = (1-w)*left.imag + w*right.imag;
 				} else if (bin > image_params->S4-1) {
-					struct complexData *Xin_k;
-					Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
 					struct complexData edge;
 					REM_LDX_ADDR(edge, Xin_k+image_params->S4-1,struct complexData);
 					sample.real = edge.real;
@@ -310,6 +309,8 @@ assert(platpos[k][0] == platpos_k_012[0]);
 assert(platpos[k][1] == platpos_k_012[1]);
 assert(platpos[k][2] == platpos_k_012[2]);
 #endif
+				struct complexData *Xin_k;
+				Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
 				float x = RAG_GET_FLT(image_params->xr+m) - platpos_k_012[0];
 				float y = RAG_GET_FLT(image_params->yr+n) - platpos_k_012[1];
 				float z =                                 - platpos_k_012[2];
@@ -326,8 +327,6 @@ xe_printf("backproject_async                 R(%f)\n",R);RAG_FLUSH;
 				}
 
 				if(bin >= 0 && bin < image_params->S4-1) {
-					struct complexData *Xin_k;
-					Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
 					struct complexData left,right;
 					int int_bin = (int)floorf(bin);
 					float w = bin - int_bin;
@@ -336,8 +335,6 @@ xe_printf("backproject_async                 R(%f)\n",R);RAG_FLUSH;
 					sample.real = (1-w)*left.real + w*right.real;
 					sample.imag = (1-w)*left.imag + w*right.imag;
 				} else if (bin > image_params->S4-1) {
-					struct complexData *Xin_k;
-					Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
 					struct complexData edge;
 					REM_LDX_ADDR(edge, Xin_k+image_params->S4-1,struct complexData);
 					sample.real = edge.real;
