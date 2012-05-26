@@ -1,5 +1,5 @@
-FFTW_INC=-I/usr/local/include
-FFTW_LIB=-L/use/local/lib -lfftw3f
+FFTW_INC=-I/usr/include
+FFTW_LIB=-L/usr/lib64 -lfftw3f
 
 SOURCES = \
 	src/fir_filter.c \
