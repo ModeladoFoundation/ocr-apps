@@ -70,11 +70,9 @@ all: $(TARGET)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
-	$(OBJCOPY) -R .data_local -R .data_block -R .bss_local -R .bss_block $@
 
 %.o: %.s
 	$(AS) -o $@ $<
-	$(OBJCOPY) -R .data_local -R .data_block -R .bss_local -R .bss_block $@
 
 %.s: %.c
 	$(CC) $(CFLAGS) -fno-builtin -S -o $@ $<
