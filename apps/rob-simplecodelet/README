@@ -1,0 +1,13 @@
+
+This is a simple test to exercise codelet scheduling across one or more
+blocks.  The key differences are in simple(): if there is no yield,
+it terminates very quickly and ends up disproportionately scheduled on
+low-numbered cores.  With the nested for() to waste time, it's better.
+With a usleep (of 1 or 3 us), it's mostly proportionate as one would expect.
+sched_yield() makes little difference (see Rob or Justin for explanation).
+
+A nice way to see the results is:
+
+ ./stest -c [configfile].cfg | grep simple | sort | uniq -c
+
+
