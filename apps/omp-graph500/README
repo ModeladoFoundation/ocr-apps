@@ -1,0 +1,6 @@
+
+This is a memalyzer-hip version of the OMP Graph500-2.4.1 ref impl.
+
+It's just a wrapper around the original graph code, providing enough AFL-ism
+that memalyzer can run with it.
+
