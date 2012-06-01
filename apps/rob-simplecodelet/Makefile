@@ -1,27 +1,71 @@
+#################################
+# Note - this makefile is crap, and will require tedious hacking if you
+# dare move anything from where it is in the svn repo.  It may even include
+# superfluous or nonexistant include directories.
+#
+# I understand that early on we needed to get things going and
+# therefore hacked in whatever paths worked.  But the layout we have
+# is ridiculous.  (Whew, I feel a little better now.)  --RobK
 
-AFL_PATH_FROM_HERE = ../../tools/rmd_afl
 
-CDCFLAGS=-O3 -g -Wall -I$(AFL_PATH_FROM_HERE)/common -I$(AFL_PATH_FROM_HERE)/rmd_codelet -I$(AFL_PATH_FROM_HERE)
+ifndef RMD_INSTALL_BASE
+	RMD_INSTALL_BASE = ../../..
+endif
+PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
 
-CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
+RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
 
-SOURCES= stest.c
+CUT	= cut
+GREP	= grep
+RM	= rm
 
-BIN = stest
+AS	= $(PREFIX)-as
+ASFLAGS	=
 
-.PHONY: all
-all: $(BIN)
+AR	= $(PREFIX)-ar
+ARFLAGS	= rcs
 
-RMD_ALLOVER_INCS =  -I../../ss/rmdkrnl/inc/ -I./generator -I../../tools/rmd_afl/common/ -I../../ss/runtime/common
+DEFINITIONS = -DCODELETS -DRMD_DB_MEM -DPRINT_DEBUG_INFO -DFSIM
 
-%.o: %.c $(HEADERS)
-	$(CC) -c -DCODELETS -DRMD_DB_MEM -DPRINT_DEBUG_INFO $(RMD_ALLOVER_INCS) $(CDCFLAGS) -o $@ $<
 
-stest:  stest.o  ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a
-	$(CC) -std=c99 -o $@  $+  -lpthread -lxml2 -lc -ldl -lz -lm -lrt
+CC	= $(PREFIX)-clang
 
-.PHONY:	clean
+
+NOWARNINGFLAGS =  -Wno-unused-value
+CFLAGS  = -I../../../runtime/libxe/inc -I../../../runtime/common -I$(RMD_INSTALL_BASE)/common/include -O2 -frmd-extensions $(DEFINITIONS) $(MOREINCS) -I../../../rmdkrnl/inc
+
+LD	= $(PREFIX)-ld
+LDFLAGS = -L$(RMD_INSTALL_BASE)/bin/rmd-linux-elf/lib -L$(RMD_RT_INSTALL) -T rmd_newlib_big.ld -Map=out.map -static
+LDLIBS = -lxert --start-group -lc -lg -lm -lgloss_lxe --end-group 
+
+###########
+#Pre-ASE flags
+#LDFLAGS	=  -L$(RMD_INSTALL_BASE)/bin/rmd-linux-elf/lib -L$(RMD_RT_INSTALL) -T rob_hack_newlib_big.ld -static -Map=out.map 
+#LDLIBS	= -lxert --start-group -lc -lg -lm -lgloss_lxe --end-group
+###########
+
+SRCS = stest.c
+
+OBJS = ${SRCS:.c=.o}
+
+TARGET = stest
+
+all: ${SRCS} $(TARGET)
+
+$(TARGET): $(OBJS)
+
+%.o: %.c %.h 
+	$(CC) $(CFLAGS) $(NOWARNINGFLAGS) -fno-builtin -c -o $@ $<
+#	$(CC) $(CFLAGS) $*.c -S -o $*.s
+#	$(CC) $(CFLAGS) -c $*.c -emit-llvm -o $*.bc
+#	$(CC) $(CFLAGS) -c $*.c -o $*.o
+#	$(OBJCOPY) -R .data_local -R .data_block -R .bss_local -R .bss_block $@
+
+$(TARGET): $(TARGET).o
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+debug: $(TARGET)
+
 clean:
-	rm -f *.o *~ stest
-
+	rm -rf $(TARGET) make-edgelist *.s *.o *.bc out.map *~
 
