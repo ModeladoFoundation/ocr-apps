@@ -22,7 +22,7 @@ CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
 #	-DRAG_SPAD -DRAG_DRAM_OFF
 
-CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -DRAG_SIM \
+CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/common/include \

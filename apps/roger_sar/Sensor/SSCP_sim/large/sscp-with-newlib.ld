@@ -21,7 +21,15 @@ MEMORY
 SECTIONS
 {
     /* Local RAM */
+    .xe_tls : {
+        _fxetls         = ABSOLUTE(.);
+        xe_tls.o(.bss_local);
+        _exetls         = ABSOLUTE(.);
+    } > LOCAL_RAM
+
     .text : {
+        . = ALIGN(8);
+        _start          = ABSOLUTE(.);
         _ftext          = ABSOLUTE(.);
         crt0_lxe.o(.text);
         einit           = ABSOLUTE(.);
@@ -38,7 +46,7 @@ SECTIONS
     } > LOCAL_RAM
 
     .data_local : {
-        . = ALIGN(16);
+        . = ALIGN(8);
         _fdata_local    = ABSOLUTE(.);
         *(.data_local)
         edata_local     = ABSOLUTE(.);
@@ -46,7 +54,7 @@ SECTIONS
     } > LOCAL_RAM
 
     .bss_local : {
-        . = ALIGN(16);
+        . = ALIGN(8);
         _fbss_local     = ABSOLUTE(.);
         *(.bss_local)
         ebss_local      = ABSOLUTE(.);
@@ -61,7 +69,7 @@ SECTIONS
     } > BLOCK0_RAM
 
     .data_block : {
-        . = ALIGN(16);
+        . = ALIGN(8);
         _fdata_block    = ABSOLUTE(.);
         *(.data_block)
         edata_block     = ABSOLUTE(.);
@@ -69,7 +77,7 @@ SECTIONS
     } > BLOCK0_RAM
 
     .bss_block : {
-        . = ALIGN(16);
+        . = ALIGN(8);
         _fbss_block     = ABSOLUTE(.);
         *(.bss_block)
         ebss_block      = ABSOLUTE(.);
@@ -84,7 +92,7 @@ SECTIONS
     } > CHIP_DRAM
 
     .data : {
-        . = ALIGN(16);
+        . = ALIGN(8);
         _fdata          = ABSOLUTE(.);
         *(.data)
         edata           = ABSOLUTE(.);
@@ -92,7 +100,7 @@ SECTIONS
     } > CHIP_DRAM
 
     .bss : {
-        . = ALIGN(16);
+        . = ALIGN(8);
         _fbss           = ABSOLUTE(.);
         *(.bss)
         *(COMMON)
