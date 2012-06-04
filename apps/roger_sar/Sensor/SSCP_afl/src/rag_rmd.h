@@ -12,13 +12,14 @@
 #include "xe_memory.h"
 #include "xe_console.h"
 #include "xe_global.h"
+#include "xe_ase.h"
 #define RAG_FLUSH
 #endif
 
 #ifdef RAG_AFL
 #include "codelet.h"
 #include "rmd_afl_all.h"
-
+#include "xe_ase_afl.h"
 #define xe_printf printf
 #define RAG_FLUSH {fflush(stdout);fflush(stderr);}
 #endif
@@ -122,6 +123,7 @@ void  dramblk_free(void *dbp, rmd_guid_t dbg );
 void  dram_free(void *dbp, rmd_guid_t dbg );
 void  dram_memset(void *out, int val, size_t size);
 
+void GlobalPtrToDataBlock(void *out, rmdglobal void *in, size_t size);
 void SPADtoBSM(void *out, void *in, size_t size);
 void BSMtoSPAD(void *out, void *in, size_t size);
 void BSMtoBSM(void *out, void *in, size_t size);

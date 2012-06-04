@@ -187,6 +187,17 @@ void *   RAG_GET_PTR(void     *addr)
 void     RAG_PUT_PTR(void     *addr, void    *value)
 {REM_ST64_ADDR(addr,value);return;}
 
+void GlobalPtrToDataBlock(void *out, rmdglobal void *in, size_t size) {
+#ifdef DEBUG
+	xe_printf("OUT = %lx IN = %lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+#endif
+#ifdef RAG_SIM
+	MEMCPY(out,in,size);
+//	REM_STX_ADDR_SIZE(out,in,size);
+#else
+	memcpy(out,in,size);
+#endif
+}
 void SPADtoBSM(void *out, void *in, size_t size) {
 #ifdef DEBUG
 	xe_printf("OUT = %lx IN = %lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
