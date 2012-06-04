@@ -1,6 +1,21 @@
+#ifdef FSIM
+#define RMDGLOB RMDGLOBAL
+#else
+#define RMDGLOB
+#endif
+
+#define SUCCESS 0
+
+//#define rckpause (1);
+#define rckpause usleep(30);
+
 //#define rckprintf(a) printf(a)
 //#define rckprintf(a) fprintf(stderr,a)
 #define rckprintf(a)
+
+//#define rckprintf1(a) printf(a)
+//#define rckprintf1(a) fprintf(stderr,a)
+#define rckprintf1(a)
 
 /* -*- mode: C; mode: folding; fill-column: 70; -*- */
 /* Copyright 2010,  Georgia Institute of Technology, USA. */
@@ -12,21 +27,25 @@
 #include <errno.h>
 #include <string.h>
 #include <math.h>
-
 #include <assert.h>
-
 #include <alloca.h> /* Portable enough... */
 #include <fcntl.h>
 /* getopt should be in unistd.h */
 #include <unistd.h>
 
-#if !defined(__MTA__)
-#include <getopt.h>
-#endif
-
 #ifdef CODELETS
+
+#ifdef FSIM
+#include "xe-codelet.h"  //note hyphen, not underscore :(
+#include "xe_memory.h"
+#include "xe_console.h"
+#include "xe_global.h"
+#else
 #include "codelet.h"
 #include "rmd_afl_all.h"
+#endif
+
+
 rmd_guid_t init_type;
 rmd_guid_t generate_kron_type;
 rmd_guid_t find_nv_type;
@@ -34,9 +53,9 @@ rmd_guid_t create_graph_type;
 rmd_guid_t gather_edges_type;
 rmd_guid_t bfs_type;
 rmd_guid_t bfs_level_sync_type;
-rmd_guid_t bfs_kernel_type;
-rmd_guid_t traverse_type;
-rmd_guid_t traverse_verify_type;
+rmd_guid_t bfs_mark_nodes_type;
+rmd_guid_t per_root_type;
+rmd_guid_t verify_type;
 rmd_guid_t end_type;
 rmd_guid_t IJ_DBlock;
 rmd_guid_t bfs_DBlock;
@@ -55,9 +74,10 @@ rmd_guid_t xoff_DBlock;
 #include "generator/splittable_mrg.h"
 #include "generator/graph_generator.h"
 #include "generator/make_graph.h"
+#include "generator/utils.h"  // needed for LLVM implicit-decl error
 
 typedef struct argk1k2{
-
+	
 	int64_t k1;
 	int64_t k2;
 }argk1k2;
@@ -68,24 +88,16 @@ int64_t nvtx_scale;
 
 int64_t bfs_root[NBFS_max];
 
-static double generation_time;
-static double construction_time;
-static double bfs_time[NBFS_max];
+RMDGLOB static double generation_time; //RCKStatic
+RMDGLOB static double construction_time;  //RCKStatic
+RMDGLOB static double bfs_time[NBFS_max];  //RCKStatic
 int64_t bfs_nedge[NBFS_max];
 
 packed_edge * restrict IJ;
-static int64_t nedge;
+RMDGLOB static int64_t nedge;  //RCKStatic
 
 int64_t verify_bfs_tree_c (int64_t *bfs_tree_in, int64_t max_bfsvtx, int64_t root, const int64_t *IJ_in, int64_t nedge);
-static void run_bfs (void);
-static void output_results (const int64_t SCALE, int64_t nvtx_scale,
-			    int64_t edgefactor,
-			    const double A, const double B,
-			    const double C, const double D,
-			    const double generation_time,
-			    const double construction_time,
-			    const int NBFS,
-			    const double *bfs_time, const int64_t *bfs_nedge);
+//RMDGLOB static void run_bfs (void);
 
 #ifdef CODELETS
 #define MINVECT_SIZE 2
@@ -115,10 +127,11 @@ _cas(int64_t* p, int64_t oldval, int64_t newval) {
  * code is parallel on OpenMP and XMT; it must be used with
  * separately-implemented SPMD parallelism for MPI. */
 
-void generate_kron_codelet(uint64_t arg, int n_db, void *db_ptr[],rmd_guid_t *db) {
+rmd_guid_t generate_kron_codelet(uint64_t arg, int n_db, void *db_ptr[],rmd_guid_t *db) {
   rmd_guid_t ret;
+  rckpause;
 
-  rckprintf("\n--- generate_kron_codelet\n");
+  rckprintf1("\n--- generate_kron_codelet\n");
 
   int64_t ei = arg;
   //printf("ei=%d\n",arg);
@@ -155,12 +168,12 @@ void generate_kron_codelet(uint64_t arg, int n_db, void *db_ptr[],rmd_guid_t *db
     rmd_guid_t find_nv_s;
     rmd_codelet_sched(&find_nv_s,0,find_nv_type);
     
-    ret.data = "SUCCESS";
+    ret.data = SUCCESS;
     return ret;
     
   }
-  ret.data = "SUCCESS";
-  rckprintf("\n--- generate_kron_codelet end\n");
+  ret.data = SUCCESS;
+  rckprintf1("\n--- generate_kron_codelet end\n");
   return ret;
 }
 
@@ -263,8 +276,7 @@ void make_graph_c(int log_numverts, int64_t M, uint64_t userseed1, uint64_t user
 }
 
 
-static int
-alloc_graph_c (int64_t nedge) {
+static int alloc_graph_c (int64_t nedge) {
   sznonstatic = (2*nv+2) * sizeof (*xoff);
 #ifdef RMD_DB_MEM
   rmd_location_t loc;
@@ -275,14 +287,13 @@ alloc_graph_c (int64_t nedge) {
   xoff = xmalloc_large_ext (sznonstatic);
 #endif
 #ifdef MEM_INFO
-	printf("xoff Memory=%ld\n",sznonstatic);
+  printf("xoff Memory=%ld\n",sznonstatic);
 #endif
   if (!xoff) return -1;
   return 0;
 }
 
-static void
-free_graph_c(void) {
+static void free_graph_c(void) {
   xfree_large (xadjstore);
 #ifdef RMD_DB_MEM
   RMD_DB_FREE(xoff_DBlock);
@@ -294,26 +305,25 @@ free_graph_c(void) {
 #define XOFF(k) (xoff[2*(k)])
 #define XENDOFF(k) (xoff[1+2*(k)])
 
-static int64_t
-prefix_sum_c (int64_t *buf) {
+static int64_t prefix_sum_c (int64_t *buf) {
   int nt, tid;
   int64_t slice_begin, slice_end, t1, t2, k;
-
+  
   nt = 1;//omp_get_num_threads ();
   tid = 0;//omp_get_thread_num ();
-
+  
   t1 = nv / nt;
   t2 = nv % nt;
   slice_begin = t1 * tid + (tid < t2? tid : t2);
   slice_end = t1 * (tid+1) + ((tid+1) < t2? (tid+1) : t2);
-
+  
   buf[tid] = 0;
   for (k = slice_begin; k < slice_end; ++k)
     buf[tid] += XOFF(k);
   //OMP("omp barrier");
   //OMP("omp single")
-    for (k = 1; k < nt; ++k)
-      buf[k] += buf[k-1];
+  for (k = 1; k < nt; ++k)
+    buf[k] += buf[k-1];
   if (tid)
     t1 = buf[tid-1];
   else
@@ -328,8 +338,8 @@ prefix_sum_c (int64_t *buf) {
   return buf[nt-1];
 }
 
-static int
-setup_deg_off_c (const struct packed_edge * restrict IJ, int64_t nedge) {
+static int setup_deg_off_c (const struct packed_edge * restrict IJ,
+			    int64_t nedge) {
 
   int err = 0;
   int64_t *buf = NULL;
@@ -423,14 +433,16 @@ static void pack_vtx_edges_c(const int64_t i) {
 
 static void pack_edges_c (void) {
   int64_t v;
-
+	
   //OMP("omp for")
   for (v = 0; v < nv; ++v)
     pack_vtx_edges_c (v);
 }
 
-void gather_edges_codelet (uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
-  rckprintf("\n--- gather_edges_codelet\n");
+rmd_guid_t gather_edges_codelet (uint64_t arg, int n_db, void *db_ptr[],
+			   rmd_guid_t *db) {
+  rckpause;
+  rckprintf1("\n--- gather_edges_codelet\n");
 #ifdef PRINT_DEBUG_INFO
   //printf("Gather edges Start\n");
 #endif
@@ -457,7 +469,7 @@ void gather_edges_codelet (uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *d
     rmd_codelet_sched(&bfs_s,0,bfs_type);
   }
   ret.data= EXIT_SUCCESS;
-  rckprintf("\n--- gather_edges_codelet end\n");
+  rckprintf1("\n--- gather_edges_codelet end\n");
   return ret;
 }
 
@@ -497,12 +509,9 @@ int make_bfs_tree_c (int64_t *bfs_tree_out, int64_t srcvtx,int m) {
   //printf("Make_bfs_tree\n");
 #endif
   int64_t * restrict bfs_tree = bfs_tree_out;
-  int err = 0;
   rmd_guid_t ret;
   
   int64_t * restrict vlist = NULL;
-
- // *max_vtx_out = maxvtx;
 
 #ifdef RMD_DB_MEM
   rmd_location_t loc4;
@@ -513,15 +522,15 @@ int make_bfs_tree_c (int64_t *bfs_tree_out, int64_t srcvtx,int m) {
   vlist = xmalloc_large (nv * sizeof (*vlist));
 #endif
 #ifdef MEM_INFO
-   printf("Vlist Memory =%ld\n",nv*sizeof (*vlist)); 
+  printf("Vlist Memory =%ld\n",nv*sizeof (*vlist)); 
 #endif
-  
+	
   if (!vlist) return -1;
-
+	
   vlist[0] = srcvtx;
-
+	
   bfs_tree[srcvtx] = srcvtx;
-
+	
 #define THREAD_BUF_LEN 16384
   //OMP("omp parallel shared(k1, k2)")
   int64_t k;
@@ -558,6 +567,8 @@ int make_bfs_tree_c (int64_t *bfs_tree_out, int64_t srcvtx,int m) {
 }
 
 rmd_guid_t bfs_level_sync_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+  rckpause;
+
   //arg has the iteration number
   rmd_guid_t ret;
   //#define THREAD_BUF_LEN 16384
@@ -578,14 +589,14 @@ rmd_guid_t bfs_level_sync_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
 #else
     xfree_large (vlist);
 #endif
-
+		
 #ifdef PRINT_DEBUG_INFO
-    //printf("bfs_level_Done\n");
+		//printf("bfs_level_Done\n");
 #endif
     RMD_DB_FREE(db[0]);
     RMD_DB_FREE(db[2]);
     rmd_guid_t next_iter;
-    rmd_codelet_sched(&next_iter,arg,traverse_verify_type);
+    rmd_codelet_sched(&next_iter,arg,verify_type);
     rmd_codelet_satisfy(next_iter,db[1],0);
     ret.data= EXIT_SUCCESS;
     return ret;
@@ -602,18 +613,18 @@ rmd_guid_t bfs_level_sync_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
   int* prev_ctr_addr = RMD_DB_ALLOC (&previous_ctr_arg, sizeof (int) ,0,&iter);
   *counter_addr=k2-k1;
 #ifdef PRINT_DEBUG_INFO
-  printf("k1=%d,k2=%d,c=%d ",k1,k2,*counter_addr);
+  //printf("k1=%d,k2=%d,c=%d ",k1,k2,*counter_addr);
 #endif
   *prev_ctr_addr=arg;
   //rmd_guid_t finish_kern;
   //rmd_codelet_sched(&finish_kern,k,finish_kernel_type);
 #ifdef SERIAL_BFS	
   {
-    rmd_codelet_sched(&bfs_kern,k1,bfs_kernel_type);
+    rmd_codelet_sched(&bfs_kern,k1,bfs_mark_nodes_type);
 #else
     for (k = k1; k < k2; ++k)
       {
-	rmd_codelet_sched(&bfs_kern,k,bfs_kernel_type);
+	rmd_codelet_sched(&bfs_kern,k,bfs_mark_nodes_type);
 #endif
 	rmd_codelet_satisfy(bfs_kern,db[0],0);
 	rmd_codelet_satisfy(bfs_kern,db[1],1);
@@ -625,11 +636,14 @@ rmd_guid_t bfs_level_sync_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_gu
     return ret;
 }
  
-rmd_guid_t bfs_kernel_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)  {
-  rckprintf("\n--- bfs_kernel_codelet\n");
+rmd_guid_t bfs_mark_nodes_codelet(uint64_t arg, int n_db, void *db_ptr[],
+				  rmd_guid_t *db)  {
+  rckpause;
+
+  rckprintf1("\n--- bfs_mark_nodes_codelet\n");
   rmd_guid_t ret;
 #ifdef SERIAL_BFS
-  #define THREAD_BUF 16384
+#define THREAD_BUF 16384
 #else
   #define THREAD_BUF 128
 #endif
@@ -710,7 +724,7 @@ rmd_guid_t bfs_kernel_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t
     //printf("ic=%d_%d ",*counter,k);
 #endif
 #ifndef SERIAL_BFS
-    if(__sync_add_and_fetch(counter,-1)==0)
+		if(__sync_add_and_fetch(counter,-1)==0)
 #endif
       {	
    	RMD_DB_FREE(db[3]);
@@ -723,45 +737,37 @@ rmd_guid_t bfs_kernel_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t
     	rmd_codelet_satisfy(bfs_sync,db[2],2);
     }
     ret.data= EXIT_SUCCESS;
-    rckprintf("\n--- bfs_kernel_codelet end\n");
+    rckprintf1("\n--- bfs_mark_nodes_codelet end\n");
     return ret;
 }
 
-void
-destroy_graph_c (void) {
+void destroy_graph_c (void) {
   free_graph_c ();
 }
 
-rmd_guid_t init_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
-{
+rmd_guid_t init_codelet(uint64_t arg, int n_db, void *db_ptr[],
+			rmd_guid_t *db) {
 
-  rckprintf("\n--- init_codelet\n");
+  rckprintf1("\n--- init_codelet\n");
   rmd_guid_t ret;
-  rmd_cmd_line_t *ptr = db_ptr[0];
 
-#ifdef PRINT_DEBUG_INFO
-   printf("Init START\n");
-#endif
- 
- int64_t desired_nedge;
+		
+  int64_t desired_nedge;
   if (sizeof (int64_t) < 8) {
     fprintf (stderr, "No 64-bit support.\n");
-      ret.data= EXIT_FAILURE;
-	return ret;
+    ret.data= EXIT_FAILURE;
+    return ret;
   }
-
-  if (ptr->argc > 1)
-    get_options (ptr->argc,(char**)ptr->argv);
-
+		
   nvtx_scale = ((int64_t)1)<<SCALE;
-
+		
   init_random ();
-
+		
   desired_nedge = nvtx_scale * edgefactor;
   /* Catch a few possible overflows. */
   assert (desired_nedge >= nvtx_scale);
   assert (desired_nedge >= edgefactor);
-
+  
   /*
     If running the benchmark under an architecture simulator, replace
     the following if () {} else {} with a statement pointing IJ
@@ -781,21 +787,21 @@ rmd_guid_t init_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
 #endif
       TIME(generation_time, rmat_edgelist (IJ, nedge, SCALE, A, B, C));
 #ifdef PRINT_DEBUG_INFO
-    printf("Init Done\n");
+      printf("Init Done\n");
 #endif
-    ret.data= EXIT_SUCCESS;
-    rmd_guid_t find_nv_s;
-    rmd_codelet_sched(&find_nv_s,0,find_nv_type);
-    rckprintf("\n--- init_codelet 1 end\n");
-    return ret;
+      ret.data= EXIT_SUCCESS;
+      rmd_guid_t find_nv_s;
+      rmd_codelet_sched(&find_nv_s,0,find_nv_type);
+      rckprintf1("\n--- init_codelet 1 end\n");
+      return ret;
     } else {
-        //TIME(generation_time, make_graph_c (SCALE, desired_nedge, userseed, userseed, &nedge, (packed_edge**)(&IJ)));
-        tic();
-	make_graph_c (SCALE, desired_nedge, userseed, userseed, &nedge, (packed_edge**)(&IJ));
-	//printf("Nedge %d\n",nedge);
-	  }
+      //TIME(generation_time, make_graph_c (SCALE, desired_nedge, userseed, userseed, &nedge, (packed_edge**)(&IJ)));
+      tic();
+      make_graph_c (SCALE, desired_nedge, userseed, userseed, &nedge, (packed_edge**)(&IJ));
+      //printf("Nedge %d\n",nedge);
+    }
     ret.data= EXIT_SUCCESS;
-    rckprintf("\n--- init_codelet 2 end\n");
+    rckprintf1("\n--- init_codelet 2 end\n");
     return ret;
   } else {
     int fd;
@@ -803,37 +809,38 @@ rmd_guid_t init_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
     if ((fd = open (dumpname, O_RDONLY)) < 0) {
       perror ("Cannot open input graph file");
       ret.data= EXIT_FAILURE;
-      rckprintf("\n--- init_codelet 3 end\n");
-	return ret;
+      rckprintf1("\n--- init_codelet 3 end\n");
+      return ret;
     }
     sz = nedge * sizeof (*IJ);
     if (sz != read (fd, IJ, sz)) {
       perror ("Error reading input graph file");
       ret.data= EXIT_FAILURE;
-      rckprintf("\n--- init_codelet 4 end\n");
-	return ret;
+      rckprintf1("\n--- init_codelet 4 end\n");
+      return ret;
     }
     close (fd);
 #ifdef PRINT_DEBUG_INFO
-    printf("Init Done\n");
+		printf("Init Done\n");
 #endif
     ret.data= EXIT_SUCCESS;
     rmd_guid_t find_nv_s;
     rmd_codelet_sched(&find_nv_s,0,find_nv_type);
-    rckprintf("\n--- init_codelet 5 end\n");
+    rckprintf1("\n--- init_codelet 5 end\n");
     return ret;
   }
 
 }
 
-rmd_guid_t find_nv_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
-  rckprintf("\n--- find_nv_codelet\n");
+rmd_guid_t find_nv_codelet(uint64_t arg, int n_db, void *db_ptr[],
+			   rmd_guid_t *db) {
+  rckpause;
+  rckprintf1("\n--- find_nv_codelet\n");
   generation_time=toc();
 #ifdef PRINT_DEBUG_INFO
   printf("find nv Start\n");
 #endif
   rmd_guid_t ret;
-  int err;
 
   if (VERBOSE) fprintf (stderr, "Creating graph...");
   //TIME(construction_time, err = create_graph_from_edgelist_c (IJ, nedge));
@@ -850,24 +857,25 @@ rmd_guid_t find_nv_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *d
       tmaxvtx = get_v0_from_edge(&IJ[k]);
     if (get_v1_from_edge(&IJ[k]) > tmaxvtx)
       tmaxvtx = get_v1_from_edge(&IJ[k]);
-  
+    
     gmaxvtx = maxvtx;
     while (tmaxvtx > gmaxvtx)
       gmaxvtx = _casval (&maxvtx, gmaxvtx, tmaxvtx);
   }
-
+  
   nv = 1+maxvtx;
   rmd_guid_t create_graph_s;
   rmd_codelet_sched(&create_graph_s,0,create_graph_type);
   
   ret.data= EXIT_SUCCESS;
-  rckprintf("\n--- find_nv_codelet end\n");
+  rckprintf1("\n--- find_nv_codelet end\n");
   return ret;
 }
 
-rmd_guid_t create_graph_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t create_graph_codelet(uint64_t arg, int n_db, void *db_ptr[],
+				rmd_guid_t *db) {
   
-  rckprintf("\n--- create_graph_codelet\n");
+  rckprintf1("\n--- create_graph_codelet\n");
 #ifdef PRINT_DEBUG_INFO
   printf("create graph Start\n");
 #endif
@@ -878,20 +886,21 @@ rmd_guid_t create_graph_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid
   if (VERBOSE) fprintf (stderr, "done.\n");
   if (err) {
     fprintf (stderr, "Failure creating graph.\n");
-      ret.data= EXIT_FAILURE;
-	return ret;
+    ret.data= EXIT_FAILURE;
+    return ret;
   }
 #ifdef PRINT_DEBUG_INFO
-    printf("Created Graph\n");
+  printf("Created Graph\n");
 #endif
-    ret.data= EXIT_SUCCESS;
-    rckprintf("\n--- create_graph_codelet end\n");
-    return ret;
+  ret.data= EXIT_SUCCESS;
+  rckprintf1("\n--- create_graph_codelet end\n");
+  return ret;
 }
 
-rmd_guid_t bfs_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
-{
-  rckprintf("\n--- bfs_codelet\n");
+rmd_guid_t bfs_codelet(uint64_t arg, int n_db, void *db_ptr[],
+		       rmd_guid_t *db) {
+  rckpause;
+  rckprintf1("\n--- bfs_codelet\n");
   construction_time=toc();
 #ifdef PRINT_DEBUG_INFO
   printf("BFS Start\n");
@@ -899,7 +908,7 @@ rmd_guid_t bfs_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
   rmd_guid_t ret;
 
   int * restrict has_adj;
-  int m,err;
+  int m;
   int64_t k, t;
 
   /*
@@ -932,7 +941,7 @@ rmd_guid_t bfs_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
 	if (i != j)
 	  has_adj[i] = has_adj[j] = 1;
       }
-
+    
     /* Sample from {0, ..., nvtx_scale-1} without replacement. */
     m = 0;
     t = 0;
@@ -954,9 +963,9 @@ rmd_guid_t bfs_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
       }
     }
 #ifdef RMD_DB_MEM
-    RMD_DB_FREE (has_arg);
+			RMD_DB_FREE (has_arg);
 #else
-    xfree_large (has_adj);
+			xfree_large (has_adj);
 #endif
   } else {
     int fd;
@@ -981,15 +990,16 @@ rmd_guid_t bfs_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db)
   printf("BFS Part1 End\n");
 #endif
 
-  rmd_guid_t traverse_s;
-  rmd_codelet_sched(&traverse_s,0,traverse_type);
+  rmd_guid_t per_root_s;
+  rmd_codelet_sched(&per_root_s,0,per_root_type);
   //rmd_complete();
-  rckprintf("\n--- bfs_codelet end\n");
+  rckprintf1("\n--- bfs_codelet end\n");
   return ret;
 }
 
-rmd_guid_t traverse_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
-  rckprintf("\n--- traverse_codelet\n");
+rmd_guid_t per_root_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+  rckpause;
+  rckprintf1("\n--- per_root_codelet\n");
 #ifdef PRINT_DEBUG_INFO
   // printf("Traverse ");
 #endif
@@ -1015,38 +1025,39 @@ rmd_guid_t traverse_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *
  
   //for (m = 0; m < NBFS; ++m)
   //{
-    int64_t *bfs_tree, max_bfsvtx;
+  int64_t *bfs_tree; //, max_bfsvtx;
 
-    // Re-allocate. Some systems may randomize the addres... 
+  // Re-allocate. Some systems may randomize the addres... 
 #ifdef RMD_DB_MEM
-    rmd_location_t loc2;
-    loc2.type = RMD_LOC_TYPE_RELATIVE;
-    loc2.data.relative.level = RMD_LOCATION_BLOCK;
-    bfs_tree = RMD_DB_ALLOC (&bfs_DBlock, nvtx_scale * sizeof (*bfs_tree) ,0,&loc2);
+  rmd_location_t loc2;
+  loc2.type = RMD_LOC_TYPE_RELATIVE;
+  loc2.data.relative.level = RMD_LOCATION_BLOCK;
+  bfs_tree = RMD_DB_ALLOC (&bfs_DBlock, nvtx_scale * sizeof (*bfs_tree) ,0,&loc2);
 #else
-    bfs_tree = xmalloc_large (nvtx_scale * sizeof (*bfs_tree));
-    // printf("bfs_addr=%p\n",*bfs_tree_addr);
+  bfs_tree = xmalloc_large (nvtx_scale * sizeof (*bfs_tree));
+  // printf("bfs_addr=%p\n",*bfs_tree_addr);
 #endif  
 #ifdef MEM_INFO
-    printf("bfs_tree memory =%ld\n",nvtx_scale*sizeof (*bfs_tree)); 
+  printf("bfs_tree memory =%ld\n",nvtx_scale*sizeof (*bfs_tree)); 
 #endif
-    assert (bfs_root[m] < nvtx_scale);
+  assert (bfs_root[m] < nvtx_scale);
 
-    if (VERBOSE) fprintf (stderr, "Running bfs %d...", m);
-    //TIME(bfs_time[m], err = make_bfs_tree (bfs_tree, &max_bfsvtx, bfs_root[m]));
-    tic();
-    err = make_bfs_tree_c (bfs_tree, bfs_root[m],m);
+  if (VERBOSE) fprintf (stderr, "Running bfs %d...", m);
+  //TIME(bfs_time[m], err = make_bfs_tree (bfs_tree, &max_bfsvtx, bfs_root[m]));
+  tic();
+  err = make_bfs_tree_c (bfs_tree, bfs_root[m],m);
 
-    ret.data= EXIT_SUCCESS;
+  ret.data= EXIT_SUCCESS;
 #ifdef PRINT_DEBUG_INFO
-    // printf("Traverse End\n");
+  // printf("Traverse End\n");
 #endif
-    rckprintf("\n--- traverse_codelet end\n");
-    return ret;
+  rckprintf1("\n--- per_root_codelet end\n");
+  return ret;
 }
 
-rmd_guid_t traverse_verify_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
-  rckprintf("\n--- traverse_verify_codelet\n");
+rmd_guid_t verify_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+  rckpause;
+  rckprintf1("\n--- verify_codelet\n");
 #ifdef PRINT_DEBUG_INFO
   // printf("Traverse rest\n");
 #endif
@@ -1054,7 +1065,7 @@ rmd_guid_t traverse_verify_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_g
   int64_t *bfs_tree=(int64_t*)(*(uint64_t *)db_ptr[0]); 
   RMD_DB_FREE(db[0]);
   //printf("bfs_tree=%p\n",bfs_tree);
-  int m,err=0;
+  int m;//,err=0;
   m= (int)arg;
   bfs_time[m]= toc();
   //increment value for the next iteration
@@ -1092,15 +1103,15 @@ rmd_guid_t traverse_verify_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_g
 #endif
 
   rmd_guid_t next_iter;
-  rmd_codelet_sched(&next_iter,m+1,traverse_type);
+  rmd_codelet_sched(&next_iter,m+1,per_root_type);
   //rmd_codelet_satisfy(next_iter,db[0],0);
   //  rmd_event_satisfy(in_dep,db[0]); 
-  rckprintf("\n--- traverse_verify_codelet end\n");
+  rckprintf1("\n--- verify_codelet end\n");
   return ret;
 }
 
 rmd_guid_t end_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
-  rckprintf("\n--- end_codelet\n");
+  rckprintf1("\n--- end_codelet\n");
 
   //RMD_DB_FREE(db[0]);
 #ifdef PRINT_DEBUG_INFO
@@ -1114,29 +1125,27 @@ rmd_guid_t end_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
   xfree_large (IJ);
 #endif
 
-  output_results (SCALE, nvtx_scale, edgefactor, A, B, C, D,
-		  generation_time, construction_time, NBFS, bfs_time, bfs_nedge);
 #ifdef PRINT_DEBUG_INFO
   printf("The End\n");
 #endif
   rmd_complete();
   ret.data= EXIT_SUCCESS;
-  rckprintf("\n--- end_codelet end\n");
+  rckprintf1("\n--- end_codelet end\n");
   return ret;
 }
 #else
 // ifdef codelet above
 #endif
-
+	
 #ifdef CODELETS
-rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) {
+rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[],
+			rmd_guid_t *db) {
   
-  rmd_cmd_line_t *ptr = db_ptr[0];
   rmd_guid_t ret;
   rmd_guid_t init_s;
 
   //RCK initialize_core_logging("log_output.txt");
-  printf("Scale=%d\n",SCALE);
+  printf("Scale=%ld\n",SCALE);
   
   rmd_codelet_create(&init_type,init_codelet,0,0,1,1,false,0);  
   rmd_codelet_create(&generate_kron_type,generate_kron_codelet,0,0,7,1,false,0); 
@@ -1146,9 +1155,9 @@ rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db) 
   rmd_codelet_create(&gather_edges_type,gather_edges_codelet,0,0,2,1,false,0);  
   rmd_codelet_create(&bfs_type,bfs_codelet,0,0,0,1,false,0);  
   rmd_codelet_create(&bfs_level_sync_type,bfs_level_sync_codelet,0,0,3,1,false,0);  
-  rmd_codelet_create(&bfs_kernel_type,bfs_kernel_codelet,0,0,5,1,false,0);  
-  rmd_codelet_create(&traverse_type,traverse_codelet,0,0,0,1,false,0);  
-  rmd_codelet_create(&traverse_verify_type,traverse_verify_codelet,0,0,1,1,false,0);  
+  rmd_codelet_create(&bfs_mark_nodes_type,bfs_mark_nodes_codelet,0,0,5,1,false,0);  
+  rmd_codelet_create(&per_root_type,per_root_codelet,0,0,0,1,false,0);  
+  rmd_codelet_create(&verify_type,verify_codelet,0,0,1,1,false,0);  
   rmd_codelet_create(&end_type,end_codelet,0,0,0,1,false,0);  
   
   rmd_codelet_sched(&init_s,0,init_type);
@@ -1250,48 +1259,6 @@ void statistics (double *out, double *data, int64_t n) {
   out[8] = s;
 }
 
-void output_results (const int64_t SCALE, int64_t nvtx_scale,
-		     int64_t edgefactor, const double A, const double B,
-		     const double C, const double D,
-		     const double generation_time,
-		     const double construction_time,
-		     const int NBFS, const double *bfs_time,
-		     const int64_t *bfs_nedge) {
-  int k;
-  int64_t sz;
-  double *tm;
-  double *stats;
-
-  tm = alloca (NBFS * sizeof (*tm));
-  stats = alloca (NSTAT * sizeof (*stats));
-  if (!tm || !stats) {
-    perror ("Error allocating within final statistics calculation.");
-    abort ();
-  }
-
-  sz = (1L << SCALE) * edgefactor * 2 * sizeof (int64_t);
-  printf ("SCALE: %" PRId64 "\nnvtx: %" PRId64 "\nedgefactor: %" PRId64 "\n"
-	  "terasize: %20.17e\n",
-	  SCALE, nvtx_scale, edgefactor, sz/1.0e12);
-  printf ("A: %20.17e\nB: %20.17e\nC: %20.17e\nD: %20.17e\n", A, B, C, D);
-  printf ("generation_time: %20.17e\n", generation_time);
-  printf ("construction_time: %20.17e\n", construction_time);
-  printf ("nbfs: %d\n", NBFS);
-
-  memcpy (tm, bfs_time, NBFS*sizeof(tm[0]));
-  statistics (stats, tm, NBFS);
-  PRINT_STATS("time", 0);
-
-  for (k = 0; k < NBFS; ++k)
-    tm[k] = bfs_nedge[k];
-  statistics (stats, tm, NBFS);
-  PRINT_STATS("nedge", 0);
-
-  for (k = 0; k < NBFS; ++k)
-    tm[k] = bfs_nedge[k] / bfs_time[k];
-  statistics (stats, tm, NBFS);
-  PRINT_STATS("TEPS", 1);
-}
 
 static int compute_levels1 (int64_t * level, int64_t nv,
 			    const int64_t * restrict bfs_tree, int64_t root) {
