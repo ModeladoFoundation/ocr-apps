@@ -4,9 +4,9 @@ AFL_PATH_FROM_HERE = ../../tools/rmd_afl
 AFLINCLUDES = -I$(AFL_PATH_FROM_HERE)/common  -I$(AFL_PATH_FROM_HERE)/rmd_codelet -I$(AFL_PATH_FROM_HERE) -I../../ss/rmdkrnl/inc/  -I../../ss/runtime/common
 
 CDCINCLUDES = -I./generator  $(AFLINCLUDES)
-CDCFLAGS=-O3 -g -Wall $(CDCINCLUDES)
+CDCFLAGS=-O3 -g -Wall -DAFL_WRAPPED $(CDCINCLUDES)
 CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
-CDDEFINES= -DRMD_DB_MEM -DCODELETS -DSINGLE_THREAD
+CDDEFINES= -DRMD_DB_MEM -DCODELETS 
 
 CFLAGS_OPENMP = -DOPEN_MP -fopenmp
 
@@ -28,7 +28,7 @@ all: $(BIN) $(GRAPH500_SOURCES)
 	$(CC) -c $(CDDEFINES)  -DPRINT_DEBUG_INFO $(CDCINCLUDES) $(AFLINCLUDES) $(RCKDEFINES) -o $@ $<
 
 ompgraph500: omp-csr.c $(GRAPH500_SOURCES) graph500.c ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a 
-	$(CC) -std=c99  $(CDDEFINES) -o $@  $+  $(CFLAGS_OPENMP) $(AFLINCLUDES) $(CDCINCLUDES) $(CDLDFLAGS)
+	$(CC) -std=c99  $(CDDEFINES) -o $@  $+  $(CFLAGS_OPENMP) $(CDCINCLUDES) $(CDLDFLAGS)
 
 
 graph500: graph500.o seq-csr.o ../../tools/rmd_afl/rmd_codelet/rmd_codelet.a ../../tools/rmd_afl/rmd_afl.a 
