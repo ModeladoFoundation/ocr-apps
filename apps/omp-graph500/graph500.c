@@ -377,7 +377,10 @@ void main (int argc, char **argv) {
     int tid = omp_get_thread_num();
     /* do a single chip, single block */
     if (tid == 0) {
-      setup_rmd_memory(1, 1, 1, omp_get_num_threads());
+      setup_rmd_memory_full_spec(1, 1, 1, 8, 1048576*(KB), 1,
+				 1024*(KB), 2,
+				 1024*(KB), 1,
+				 64*(KB));
     }
 #pragma omp barrier
     /* do some logic to figure out what core I'm supposed to be -- let's say 1 block */
