@@ -2,6 +2,18 @@ ifndef RMD_INSTALL_BASE
 	RMD_INSTALL_BASE = ../../../../../ss
 endif
 
+ifdef RUN_SUFFIX
+	RUN_SUFFIX := $(RUN_SUFFIX); export RUN_SUFFIX
+else
+	
+endif	
+ifdef TECH_NODE 
+	TECH_NODE := $(TECH_NODE); export TECH_NODE
+else
+	
+endif	
+
+
 PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
 
 RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
@@ -15,12 +27,14 @@ ARFLAGS	= rcs
 
 FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim 
 POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
+POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript_TechScaled.sh
 POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/E*pdf
 POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/UHPC.Power*
 
 CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
 #	-DRAG_SPAD -DRAG_DRAM_OFF
+#-frmd-bb-profiling 
 
 CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
@@ -34,12 +48,13 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
 	-DRAG_QSORT_OFF -DRAG_SINCOS -DRAG_PURE_FLOAT \
 	-DDEBUG_OFF                           \
-	-DDEBUG_LVL_1_OFF -DTRACE_LVL_2_OFF   \
+	-DDEBUG_LVL_OFF -DTRACE_LVL_2_OFF   \
 	-DDEBUG_LVL_3_OFF -DDEBUG_LVL_4_OFF   \
-	-DTRACE                               \
-	-DTRACE_LVL_1     -DTRACE_LVL_2       \
+	-DTRACE_OFF                               \
+	-DTRACE_LVL_OFF     -DTRACE_LVL_2_OFF       \
 	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF   \
-	-DRAG_PETER_DIST_AND_TRIG     -DRAG_SPAD     -DRAG_DRAM 
+	-DRAG_PETER_DIST_AND_TRIG -DRAG_SPAD -DRAG_DRAM \
+	-DGANESH_STRENGTH_RED_OPT
 
 OBJCOPY	= $(PREFIX)-objcopy
 
@@ -114,6 +129,10 @@ powerclean:
 
 power:	
 	@$(POWER_ANALYSIS_SCRIPT) $(TARGET).cfg && echo -e "\nPower Analysis Graphs Generated:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_GRAPHS)
+	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
+
+powertech:	
+	@$(POWER_ANALYSIS_SCRIPT_TECHSCALED) $(TARGET).cfg && echo -e "\nPower Analysis Graphs Generated:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_GRAPHS)
 	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
 
 logclean:
