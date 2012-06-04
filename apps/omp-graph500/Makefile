@@ -3,7 +3,7 @@ include make.inc
 AFL_PATH_FROM_HERE = ../../tools/rmd_afl
 AFLINCLUDES = -I$(AFL_PATH_FROM_HERE)/common  -I$(AFL_PATH_FROM_HERE)/rmd_codelet -I$(AFL_PATH_FROM_HERE) -I../../ss/rmdkrnl/inc/  -I../../ss/runtime/common
 
-CDCINCLUDES = -I./generator  
+CDCINCLUDES = -I./generator  $(AFLINCLUDES)
 CDCFLAGS=-O3 -g -Wall -DAFL_WRAPPED $(CDCINCLUDES)
 CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
 CDDEFINES= -DRMD_DB_MEM -DCODELETS 
