@@ -1,0 +1,10 @@
+
+This is MPI graph, wrapped in AFL, (probably) working.  I have not yet
+made sure that the threads are compatible with AFL's view of pthreads
+-- they call the right setup, but I need to double-check.
+
+Rather than use a cfg file, I hard-coded the parameters I wanted in
+the AFL setup call.  So just run it with a scale number (and optionally
+an edgefactor, etc.).
+
+Rob
