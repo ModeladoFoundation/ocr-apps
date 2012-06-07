@@ -19,7 +19,7 @@ CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE_OFF -DDEBUG_OFF -DRAG_BLOCK
 ## -DTRACE 
 ## -DDEBUG 
 ## -DRAG_BLOCK
-CFLAGS	= -g -ggdb -g3 -O2 -std=c99 -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=4 \
+CFLAGS	= -g -ggdb -g3 -O2 -std=c99 -frmd-extensions -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=4 \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/common/include \
@@ -27,10 +27,8 @@ CFLAGS	= -g -ggdb -g3 -O2 -std=c99 -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=4 \
 	-I $(RMD_INSTALL_BASE)/runtime/libxe/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/common
 
-OBJCOPY	= $(PREFIX)-objcopy
-
 LD	= $(PREFIX)-ld
-LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T ./uts-main-with-newlib.ld -static -Map=out.map
+LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T ./uts_newlib_normal.ld -static -Map=out.map
 LDLIBS	= -lxert --start-group -lc -lg -lm -lgloss_lxe --end-group
 
 
@@ -47,7 +45,6 @@ debug: $(TARGET)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
-	$(OBJCOPY) -R .data_local -R .data_block -R .bss_local -R .bss_block $@
 
 
 $(TARGET): $(TARGET).o $(OBJS) ./uts-main-with-newlib.ld
