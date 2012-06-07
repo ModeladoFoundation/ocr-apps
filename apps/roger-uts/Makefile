@@ -15,6 +15,12 @@ ARFLAGS	= rcs
 
 FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim
 
+POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
+POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript_TechScaled.sh
+POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/E*pdf
+POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/UHPC.Power*
+
+
 CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE_OFF -DDEBUG_OFF -DRAG_BLOCK
 ## -DTRACE 
 ## -DDEBUG 
@@ -52,6 +58,20 @@ $(TARGET): $(TARGET).o $(OBJS) ./uts_newlib_normal.ld
 
 run:	$(TARGET)
 	$(FSIM) -s -c $(TARGET).cfg
+
+powerclean:
+	@-$(POWER_ANALYSIS_SCRIPT) -r 2>/dev/null 	
+
+power:	
+	@$(POWER_ANALYSIS_SCRIPT) $(TARGET).cfg && echo -e "\nPower Analysis Graphs Generated:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_GRAPHS)
+	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
+
+powertech:	
+	@$(POWER_ANALYSIS_SCRIPT_TECHSCALED) $(TARGET).cfg && echo -e "\nPower Analysis Graphs Generated:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_GRAPHS)
+	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
+
+logclean:
+	$(RM) -f logs/$(TARGET).log.*
 
 clean:
 	$(RM) -rf $(TARGET) *.s *.o logs/*
