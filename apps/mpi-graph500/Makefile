@@ -10,8 +10,8 @@ LDFLAGS = -g #-fopenmp -g # -g -pg
 
 MPICC = mpicc
 
-#all: graph500_mpi_simple 
-all: graph500_mpi_simple graph500_mpi_one_sided graph500_mpi_replicated graph500_mpi_replicated_csc
+all: graph500_mpi_replicated_csc
+#all: graph500_mpi_simple graph500_mpi_one_sided graph500_mpi_replicated graph500_mpi_replicated_csc
 
 GENERATOR_SOURCES = generator/graph_generator.c generator/make_graph.c generator/splittable_mrg.c generator/utils.c
 SOURCES = main.c oned_csr.c oned_csc.c utils.c validate.c onesided.c onesided_emul.c
@@ -24,7 +24,8 @@ graph500_mpi_one_sided: bfs_one_sided.c $(SOURCES) $(HEADERS) $(GENERATOR_SOURCE
 	$(MPICC) $(CFLAGS) $(AFLINCLUDES) $(LDFLAGS)  $(RCKDEFINES) -o graph500_mpi_one_sided bfs_simple.c $(SOURCES) $(GENERATOR_SOURCES) $(AFLLIBS) $(AFLLDFLAGS)
 
 graph500_mpi_replicated: bfs_replicated.c $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES)
-	$(MPICC) $(CFLAGS) $(AFLINCLUDES) $(LDFLAGS)  $(RCKDEFINES) -o graph500_mpi_replicated bfs_replicated.c $(SOURCES) $(GENERATOR_SOURCES) $(AFLLIBS) $(AFLLDFLAGS)
+#	$(MPICC) $(CFLAGS) $(AFLINCLUDES) $(LDFLAGS)  $(RCKDEFINES) -o graph500_mpi_replicated bfs_replicated.c $(SOURCES) $(GENERATOR_SOURCES) $(AFLLIBS) $(AFLLDFLAGS)
+	$(MPICC) $(CFLAGS) $(AFLINCLUDES) $(LDFLAGS)  $(RCKDEFINES) -S bfs_replicated.c $(SOURCES) $(GENERATOR_SOURCES) $(AFLLIBS) $(AFLLDFLAGS)
 
 graph500_mpi_replicated_csc: bfs_replicated.c $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES)
 	$(MPICC) $(CFLAGS) $(AFLINCLUDES) $(LDFLAGS)  $(RCKDEFINES) -o graph500_mpi_replicated_csc bfs_replicated_csc.c $(SOURCES) $(GENERATOR_SOURCES) $(AFLLIBS) $(AFLLDFLAGS)
