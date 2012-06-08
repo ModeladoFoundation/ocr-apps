@@ -90,15 +90,15 @@ $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 run:	$(TARGET) $(TARGET).cfg
-	/usr/bin/time $(FSIM) -c $(TARGET).cfg
-	grep -e 'x=0x' sscp.log.CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
+	/usr/bin/time $(FSIM) -s -c $(TARGET).cfg
+	grep -h -e 'x=0x' logs/sscp.log.*CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
-	egrep '(cur|ref)' sscp.log.CE.00 | grep 0x >images_debug.txt
-	../utils/viewImageTxt 1 <Detects.txt >cur.bmp
-	../utils/viewImageTxt 2 <Detects.txt >ref.bmp
-	../utils/viewImageTxt 3 <Detects.txt >all.bmp
-	grep corr sscp.log.CE.00 | grep 0x >corr_debug.txt
-	../utils/viewCorrTxt    >corr.bmp
+	-egrep -h '(>>> cur|>>> ref)' logs/sscp.log.*CE.00 | grep 0x >images_debug.txt
+	-../utils/viewImageTxt 1 <Detects.txt >cur.bmp
+	-../utils/viewImageTxt 2 <Detects.txt >ref.bmp
+	-../utils/viewImageTxt 3 <Detects.txt >all.bmp
+	-grep -h '>>> corr' logs/sscp.log.*CE.00 | grep 0x >corr_debug.txt
+	-../utils/viewCorrTxt    >corr.bmp
 	-diff Detects.txt Detects.gold
 	-cmp  Detects.txt Detects.gold
 	-wc   Detects.txt Detects.gold
@@ -107,9 +107,12 @@ run:	$(TARGET) $(TARGET).cfg
 power:	run
 	$(POWER) -r $(TARGET).cfg
 
+logclean:
+	$(RM) -f logs/$(TARGET).log.*
+
 clean:
 	$(RM) -f $(TARGET) *.o out.map \
-		*.log.* detects.txt Detects.txt \
+		detects.txt Detects.txt \
 		images_debug.txt corr_debug.txt \
 		cur.bmp ref.bmp all.bmp corr.bmp \
 		./Data.s ./PlatformPosition.s ./PulseTransmissionTime.s

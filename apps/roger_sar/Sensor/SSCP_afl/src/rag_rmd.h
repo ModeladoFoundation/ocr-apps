@@ -119,6 +119,7 @@ void  bsm_memset(void *out, int val, size_t size);
 
 void *dram_calloc(rmd_guid_t *dbg, size_t n, size_t size);
 void *dram_malloc(rmd_guid_t *dbg, size_t size);
+void  dram_free(void *dbp, rmd_guid_t dbg );
 void  dramblk_free(void *dbp, rmd_guid_t dbg );
 void  dram_free(void *dbp, rmd_guid_t dbg );
 void  dram_memset(void *out, int val, size_t size);

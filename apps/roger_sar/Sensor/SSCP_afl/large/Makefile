@@ -19,7 +19,7 @@ CFLAGS= -g -O3 -std=c99 -DRAG_AFL -Wall \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I. \
 	-DDEBUG_SSCP_OFF -DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
-	-DTRACE                               \
+	-DTRACE_OFF                           \
 	-DTRACE_LVL_1_OFF -DTRACE_LVL_2_OFF   \
 	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF   \
 	-DDEBUG_OFF                           \
@@ -27,8 +27,9 @@ CFLAGS= -g -O3 -std=c99 -DRAG_AFL -Wall \
 	-DDEBUG_LVL_3_OFF -DDEBUG_LVL_4_OFF   \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
 	-DRAG_QSORT_OFF -DRAG_SINCOS -DRAG_PURE_FLOAT \
-	-DRAG_PETER_DIST_AND_TRIG_OFF -DRAG_SPAD_OFF -DRAG_DRAM
-#
+	-DRAG_PETER_DIST_AND_TRIG     -DRAG_SPAD    -DRAG_DRAM \
+	-DRAG_HIST_BIN_DIFFS_OFF
+
 # -DDEBUG_SSCP can be used to output image and corr_map data for debugging purposes
 
 LDFLAGS=$(AFL_INSTALL_BASE)/rmd_codelet/rmd_codelet.a \

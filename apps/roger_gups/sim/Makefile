@@ -40,11 +40,8 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/libxe/inc \
 	-I $(RMD_INSTALL_BASE)/runtime/common \
-	-I. \
-	-DTRACE \
-	-DCHECK_OFF \
-	-DDEBUG_OFF \
-	-DRAG_ATOMIC=$(RAG)
+	-I.  -DTRACE -DCHECK -DDEBUG \
+	-DRAG_ATOMIC=$(RAG_ATOMIC) -DRAG_CACHE=$(RAG_CACHE)
 
 OBJCOPY	= $(PREFIX)-objcopy
 

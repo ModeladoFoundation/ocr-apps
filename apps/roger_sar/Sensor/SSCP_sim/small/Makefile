@@ -50,8 +50,8 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
 	-DDEBUG_OFF                           \
 	-DDEBUG_LVL_OFF -DTRACE_LVL_2_OFF   \
 	-DDEBUG_LVL_3_OFF -DDEBUG_LVL_4_OFF   \
-	-DTRACE_OFF                               \
-	-DTRACE_LVL_OFF     -DTRACE_LVL_2_OFF       \
+	-DTRACE                                   \
+	-DTRACE_LVL_1     -DTRACE_LVL_2_OFF       \
 	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF   \
 	-DRAG_PETER_DIST_AND_TRIG -DRAG_SPAD -DRAG_DRAM \
 	-DGANESH_STRENGTH_RED_OPT
@@ -136,11 +136,11 @@ powertech:
 	@echo -e "\nPower Analysis Run Logs:\n--------------------------------------\n" && ls $(POWER_ANALYSIS_RUNLOGS)	
 
 logclean:
-	$(RM) -f logs/$(TARGET).log.* 
+	$(RM) -f logs/$(TARGET).log.*
 
 clean:
 	$(RM) -f $(TARGET) *.o out.map \
-		*.log.* detects.txt Detects.txt \
+		detects.txt Detects.txt \
 		images_debug.txt corr_debug.txt \
 		cur.bmp ref.bmp all.bmp corr.bmp \
 		./Data.s ./PlatformPosition.s ./PulseTransmissionTime.s

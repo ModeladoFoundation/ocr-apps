@@ -1,4 +1,4 @@
-FFTW_INC=/usr/local/include
+FFTW_INC=/usr/include
 
 CC=gcc
 CFLAGS= -g -std=c99 -I../src/ -I$(FFTW_INC)

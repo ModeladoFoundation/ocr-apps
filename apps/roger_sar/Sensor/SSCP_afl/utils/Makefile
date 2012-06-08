@@ -1,5 +1,5 @@
 ifndef FFTW_INC
-	FFTW_INC=/usr/local/include
+	FFTW_INC=/usr/include
 endif
 
 CC=gcc

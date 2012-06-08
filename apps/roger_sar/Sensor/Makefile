@@ -1,7 +1,7 @@
 all:	utils radar_data
-	$(MAKE) -C ./SSCP_hc  all
 	$(MAKE) -C ./SSCP_afl all
 	$(MAKE) -C ./SSCP_sim all
+#	$(MAKE) -C ./SSCP_hc  all
 
 utils:
 	$(MAKE) -C ./datagen
@@ -13,14 +13,13 @@ radar_data:
 	$(MAKE) -C ./datagen  large
 
 small:
-	$(MAKE) -C ./SSCP_hc/src  all
 	$(MAKE) -C ./SSCP_afl/small all
 	$(MAKE) -C ./SSCP_sim/small all
+#	$(MAKE) -C ./SSCP_hc/src  all
 
 large:
-	$(MAKE) -C ./SSCP_hc/src  all
-	$(MAKE) -C ./SSCP_hc/large  all
 	$(MAKE) -C ./SSCP_afl/large all
+#	$(MAKE) -C ./SSCP_hc/src  all
 #	$(MAKE) -C ./SSCP_sim/large all
 
 clean:

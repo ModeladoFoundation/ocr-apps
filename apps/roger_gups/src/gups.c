@@ -7,7 +7,7 @@ typedef   signed long  int64_t;
 static const uint64_t POLY =    0x0000000000000007UL;
 static const uint64_t PERIOD = 1317624576693539401UL;
 
-#ifdef DEBUG
+#ifdef CHECK
 #define LOG2STABLESIZE ((uint64_t)4)		/* log2(16)   ==  4 */
 #define     STABLESIZE (1<<LOG2STABLESIZE)	/* 128 B / 8B == 16 */
 #define LOG2TABLESIZE ((uint64_t) 5)
@@ -15,7 +15,7 @@ static const uint64_t PERIOD = 1317624576693539401UL;
 #else
 #define LOG2STABLESIZE ((uint64_t)11)		/* log2(2048) == 11 */
 #define     STABLESIZE (1<<LOG2STABLESIZE)	/* 16 KB / 8B == 2K */
-#define LOG2TABLESIZE 16
+#define LOG2TABLESIZE 18
 #define     TABLESIZE (1<<LOG2TABLESIZE)
 #endif
 
@@ -137,24 +137,60 @@ void loop64( int64_t tid ) {
 	xe_printf("// Run GUPS Kernel (time critical)\n");
 #endif
 	for (int64_t i=start; i<=stop; i++) {
-		ran = (ran + ran) ^ (((int64_t) ran < 0) ? POLY : 0);
+		ran = (ran+ran) ^ (((int64_t) ran < 0) ? POLY : 0);
+#if RAG_CACHE==0 && RAG_ATOMIC==0
+		table[ran&tableMask] ^= spad_stable[ran>>(64-LOG2STABLESIZE)];
+#endif
+#if RAG_CACHE==0 && RAG_ATOMIC==1
 #ifdef RAG_SIM
-#if RAG_ATOMIC
-		uint64_t tmp =  spad_stable[ran >> (64-LOG2STABLESIZE)];
-		__REM_XADD64__((uint64_t)&table[ran & tableMask],tmp);
+		uint64_t tmp =  spad_stable[ran>>(64-LOG2STABLESIZE)];
+		REM_XADD64(table[ran&tableMask],tmp);
 #else
-		table[ran & tableMask] += spad_stable[ran >> (64-LOG2STABLESIZE)];
-#endif
-#else
-#if RAG_ATOMIC
-		(void) __sync_fetch_and_xor(&table[ran & tableMask],spad_stable[ran >> (64-LOG2STABLESIZE)]);
-#else
-		table[ran & tableMask] ^= spad_stable[ran >> (64-LOG2STABLESIZE)];
+		(void) __sync_fetch_and_xor(&table[ran&tableMask],spad_stable[ran>>(64-LOG2STABLESIZE)]);
 #endif
 #endif
+#if RAG_CACHE==1 && RAG_ATOMIC==0
+#ifdef RAG_SIM
+		uint64_t rmdglobal * restrict table_ptr;
+		uint64_t rmdglobal * restrict stable_ptr;
+		uint64_t old_mem, val, new_new;
+		table_ptr  = &table[ran&tableMask];
+		stable_ptr = &stable[ran>>(64-LOG2STABLESIZE)];
+#if 0
+		REM_LD64_ADDR(old_mem,table_ptr);
+		REM_LD64_ADDR(val,stable_ptr);
+		new_new = old_mem ^ val;
+		REM_ST64_ADDR(table_ptr,new_new);
+#else
+		CAC_LD64_ADDR(old_mem,table_ptr);
+		CAC_LD64_ADDR(val,stable_ptr);
+		new_new = old_mem ^ val;
+		CAC_ST64_ADDR(table_ptr,new_new);
+#endif
+#else
+		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
+#endif
+#endif
+#if RAG_CACHE==1 && RAG_ATOMIC==1
+#ifdef RAG_SIM
+		uint64_t rmdglobal * restrict stable_ptr;
+		uint64_t tmp;
+		stable_ptr  = &stable[ran>>(64-LOG2STABLESIZE)];
+#if 0
+		REM_LD64_ADDR(tmp,stable_ptr);
+		REM_XADD64(table[ran&tableMask],tmp);
+#else
+		CAC_LD64_ADDR(tmp,stable_ptr);
+		CAC_XADD64(table[ran&tableMask],tmp);
+#endif
+#else
+		(void) __sync_fetch_and_xor(&table[ran&tableMask],stable[ran>>(64-LOG2STABLESIZE)]);
+#endif
+#endif
+
 #ifdef DEBUG
 		xe_printf("update %ld @ %ld with %ld ran is %ld\n",
-		i, ran & tableMask, ran >> (64-LOG2STABLESIZE), ran);
+		i, ran&tableMask, ran>>(64-LOG2STABLESIZE), ran);
 #endif
 	}
 	rag_spad_free(spad_stable,spad_stable_dbg);
@@ -164,7 +200,7 @@ void loop64( int64_t tid ) {
 rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	rmd_guid_t ret_val = NULL_GUID;
 #ifdef TRACE
-	xe_printf("// Enter main_codelet\n");
+	xe_printf("// Enter main_codelet RAG_CACHE=%d RAG_ATOMIC=%d\n",RAG_CACHE, RAG_ATOMIC);
 #endif
 
 #ifdef CHECK
@@ -237,22 +273,26 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	for (int64_t i=0; i<numberUpdates; i++) {
 		ran = (ran << ((uint64_t)1)) ^ (((int64_t) ran < 0) ? POLY : 0);
 #ifdef RAG_SIM
-#if RAG_ATOMIC
-		uint64_t tmp = -stable[ran >> (64-LOG2STABLESIZE)];
-		__REM_XADD64__((uint64_t)&table[ran & tableMask],tmp);
+#if RAG_ATOMIC == 1
+		uint64_t tmp = -stable[ran>>(64-LOG2STABLESIZE)];
+		REM_XADD64(table[ran&tableMask],tmp);
+#elif RAG_ATOMIC == 0
+		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #else
-		table[ran & tableMask] -= stable[ran >> (64-LOG2STABLESIZE)];
+#error RAG_ATOMIC not zero or one 
 #endif
 #else
-#if RAG_ATOMIC
-		(void) __sync_fetch_and_xor(&table[ran & tableMask],stable[ran >> (64-LOG2STABLESIZE)]);
+#if RAG_ATOMIC == 1
+		(void) __sync_fetch_and_xor(&table[ran&tableMask],stable[ran>>(64-LOG2STABLESIZE)]);
+#elif RAG_ATOMIC == 0
+		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #else
-		table[ran & tableMask] ^= stable[ran >> (64-LOG2STABLESIZE)];
+#error RAG_ATOMIC not zero or one 
 #endif
 #endif
 #ifdef DEBUG
 		xe_printf("check  %ld @ %ld with %ld tmp is %ld\n",
-		i, ran & tableMask, ran >> (64-LOG2STABLESIZE), ran);
+		i, ran&tableMask, ran>>(64-LOG2STABLESIZE), ran);
 #endif
 	}
 	for (int64_t i=0; i<tableSize; i++) {

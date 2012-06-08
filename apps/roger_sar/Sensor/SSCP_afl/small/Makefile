@@ -18,8 +18,8 @@ CFLAGS= -g -O3 -std=c99 -DRAG_AFL -Wall \
 	-I $(RMD_INSTALL_BASE)/runtime/common \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I. \
-	-DDEBUG_SSCP     -DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
-	-DTRACE                               \
+	-DDEBUG_SSCP_OFF -DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
+	-DTRACE_OFF                           \
 	-DTRACE_LVL_1_OFF -DTRACE_LVL_2_OFF   \
 	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF   \
 	-DDEBUG_OFF                           \
