@@ -8,7 +8,7 @@ CDCFLAGS=-O3 -g -Wall -I$(AFL_PATH_FROM_HERE)/common -I$(AFL_PATH_FROM_HERE)/rmd
 
 CDLDFLAGS=-lpthread -lxml2 -lc -ldl -lz -lm -lrt
 
-PRINTDEBUG = -DPRINT_DEBUG_INFO
+PRINTDEBUG = # -DPRINT_DEBUG_INFO
 
 GRAPH500_SOURCES= options.c rmat.c kronecker.c verify.c  prng.c \
 	xalloc.c timer.c
