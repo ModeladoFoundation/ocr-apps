@@ -13,6 +13,11 @@ else
 	
 endif	
 
+ifdef USE_ICACHE
+ SSCP_NEWLIB=./sscp-with-newlib-icache.ld
+else
+ SSCP_NEWLIB=./sscp-with-newlib.ld
+endif 
 
 PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
 
@@ -36,7 +41,7 @@ CC	= $(PREFIX)-clang
 #	-DRAG_SPAD -DRAG_DRAM_OFF
 #-frmd-bb-profiling 
 
-CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
+CFLAGS	= -g -ggdb -g3 -O3 -std=c99 -frmd-extensions -DRAG_SIM \
 	-I $(RMD_INSTALL_BASE)/xe_sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/common/include \
@@ -59,7 +64,7 @@ CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
 OBJCOPY	= $(PREFIX)-objcopy
 
 LD	= $(PREFIX)-ld
-LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T ./sscp-with-newlib.ld -static -Map=out.map
+LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T $(SSCP_NEWLIB)  -static -Map=out.map
 LDLIBS	= -lxert --start-group -lc -lg -lm -lgloss_lxe --end-group
 
 CUT	= cut
