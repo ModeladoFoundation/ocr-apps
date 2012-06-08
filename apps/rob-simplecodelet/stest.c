@@ -21,8 +21,8 @@
 rmd_guid_t simple(uint64_t arg, int n_db, void *db_ptr[],
 		      rmd_guid_t *db) {
   rmd_guid_t emptyguid;
-  printf("in simple, b=%d xe=%d.\n", afl_get_block_id(get_currentid()),
-	 afl_get_core_id(get_currentid()));
+  //printf("in simple, b=%d xe=%d.\n", afl_get_block_id(get_currentid()),
+  //afl_get_core_id(get_currentid()));
 
   //  int i,j;
   //  for (i=0; i<1000000; i++) 
@@ -37,7 +37,7 @@ rmd_guid_t simple(uint64_t arg, int n_db, void *db_ptr[],
 rmd_guid_t end_codelet(uint64_t arg, int n_db, void *db_ptr[],
 			rmd_guid_t *db) {
 
-  printf("RCK: program ends here.\n"); // what core? :)
+  //printf("RCK: program ends here.\n"); // what core? :)
   rmd_complete();
 
   rmd_guid_t nullret;
@@ -60,9 +60,9 @@ rmd_guid_t main_codelet(uint64_t arg, int n_db, void *db_ptr[],
   rmd_dep_add(rmd_env_idle,endcodelet_i, 0);
 
   //RCK initialize_core_logging("log_output.txt");
-  printf("Starting.\n");
-  printf("in main, b=%d xe=%d.\n", afl_get_block_id(get_currentid()),
-	 afl_get_core_id(get_currentid()));
+  //printf("Starting.\n");
+  //printf("in main, b=%d xe=%d.\n", afl_get_block_id(get_currentid()),
+  //afl_get_core_id(get_currentid()));
   
   rmd_codelet_create(&simplecdlt_t,simple,0,0,1,0,false,0);  
   for (i=0; i<NUMDUMB; i++) {
