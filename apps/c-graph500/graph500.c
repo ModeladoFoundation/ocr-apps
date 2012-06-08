@@ -461,7 +461,9 @@ rmd_guid_t gather_edges_codelet (uint64_t arg, int n_db, void *db_ptr[],
     scatter_edge_c (j, i);
   }
   if(__sync_add_and_fetch(counter,-1)==0) {
+#ifdef PRINT_DEBUG_INFO
     printf("Packed Edges\n"); 
+#endif
     pack_edges_c ();
     RMD_DB_FREE(db[0]);
     RMD_DB_FREE(db[1]);
@@ -1069,7 +1071,9 @@ rmd_guid_t verify_codelet(uint64_t arg, int n_db, void *db_ptr[], rmd_guid_t *db
   m= (int)arg;
   bfs_time[m]= toc();
   //increment value for the next iteration
+#ifdef PRINT_DEBUG_INFO
   printf("m=%d\n",m);
+#endif
   rmd_guid_t ret;
   
   if (VERBOSE) fprintf (stderr, "done\n");

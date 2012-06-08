@@ -19,7 +19,7 @@ extern double A, B, C, D;
 #define NBFS_max 64
 extern int NBFS;
 
-#define default_SCALE ((int64_t)12)
+#define default_SCALE ((int64_t)9)
 #define default_edgefactor ((int64_t)16)
 
 extern int64_t SCALE;
