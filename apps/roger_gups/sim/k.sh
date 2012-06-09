@@ -1,11 +1,12 @@
 #!/bin/sh
 set -x
+rm -rf /tmp/roger_f_sim.????
 make logclean powerclean
-make RAG_CACHE=0 RAG_ATOMIC=0 clean gups gups.s run power
-./j.sh
-make RAG_CACHE=0 RAG_ATOMIC=1 clean gups gups.s run power
-./j.sh
-make RAG_CACHE=1 RAG_ATOMIC=0 clean gups gups.s run power
-./j.sh
-make RAG_CACHE=1 RAG_ATOMIC=1 clean gups gups.s run power
+#make RAG_CACHE=0 RAG_ATOMIC=0 clean gups gups.s run power
+#./j.sh
+#make RAG_CACHE=0 RAG_ATOMIC=1 clean gups gups.s run power
+#./j.sh
+#make RAG_CACHE=1 RAG_ATOMIC=0 clean gups gups.s run power
+#./j.sh
+make RAG_CACHE=1 RAG_ATOMIC=1 clean gups gups.s run
 ./j.sh
