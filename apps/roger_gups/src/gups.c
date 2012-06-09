@@ -13,10 +13,10 @@ static const uint64_t PERIOD = 1317624576693539401UL;
 #define LOG2TABLESIZE ((uint64_t) 5)
 #define     TABLESIZE (1<<LOG2TABLESIZE)
 #else
-#define LOG2STABLESIZE ((uint64_t)11)		/* log2(2048) == 11 */
-#define     STABLESIZE (1<<LOG2STABLESIZE)	/* 16 KB / 8B == 2K */
-#define LOG2TABLESIZE 18
-#define     TABLESIZE (1<<LOG2TABLESIZE)
+#define LOG2STABLESIZE ((uint64_t)12)		/* log2(4096) == 12 */
+#define     STABLESIZE (1<<LOG2STABLESIZE)	/* 32 KB / 8B == 4K */
+#define LOG2TABLESIZE 20			/* log2(1M)   == 20 */
+#define     TABLESIZE (1<<LOG2TABLESIZE)	/* 8 MB / 8B  == 1M */
 #endif
 
 uint64_t rmdglobal  * restrict stable;	/* 16 KB */
@@ -114,6 +114,7 @@ void loop64( int64_t tid ) {
 	uint64_t ran;
 	ran = giantstep(start);
 
+#if RAG_CACHE==0
 #ifdef TRACE
 	xe_printf("// Copy stable from DRAM to SPAD (not time critical)\n");
 #endif
@@ -132,6 +133,7 @@ void loop64( int64_t tid ) {
 		}
 	}
 	xe_printf("spad copy okay?\n");
+#endif
 #endif
 #ifdef TRACE
 	xe_printf("// Run GUPS Kernel (time critical)\n");
@@ -156,17 +158,10 @@ void loop64( int64_t tid ) {
 		uint64_t old_mem, val, new_new;
 		table_ptr  = &table[ran&tableMask];
 		stable_ptr = &stable[ran>>(64-LOG2STABLESIZE)];
-#if 0
-		REM_LD64_ADDR(old_mem,table_ptr);
-		REM_LD64_ADDR(val,stable_ptr);
-		new_new = old_mem ^ val;
-		REM_ST64_ADDR(table_ptr,new_new);
-#else
 		CAC_LD64_ADDR(old_mem,table_ptr);
 		CAC_LD64_ADDR(val,stable_ptr);
 		new_new = old_mem ^ val;
 		CAC_ST64_ADDR(table_ptr,new_new);
-#endif
 #else
 		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #endif
@@ -175,14 +170,9 @@ void loop64( int64_t tid ) {
 #ifdef RAG_SIM
 		uint64_t rmdglobal * restrict stable_ptr;
 		uint64_t tmp;
-		stable_ptr  = &stable[ran>>(64-LOG2STABLESIZE)];
-#if 0
-		REM_LD64_ADDR(tmp,stable_ptr);
-		REM_XADD64(table[ran&tableMask],tmp);
-#else
+		stable_ptr = &stable[ran>>(64-LOG2STABLESIZE)];
 		CAC_LD64_ADDR(tmp,stable_ptr);
 		CAC_XADD64(table[ran&tableMask],tmp);
-#endif
 #else
 		(void) __sync_fetch_and_xor(&table[ran&tableMask],stable[ran>>(64-LOG2STABLESIZE)]);
 #endif
@@ -193,7 +183,12 @@ void loop64( int64_t tid ) {
 		i, ran&tableMask, ran>>(64-LOG2STABLESIZE), ran);
 #endif
 	}
+#if RAG_CACHE==1
+//__asm__ volatile ( "cache.wball"  :::"memory");
+//__asm__ volatile ( "cache.invall" :::"memory");
+#else
 	rag_spad_free(spad_stable,spad_stable_dbg);
+#endif
 	return;
 }
 
