@@ -3,24 +3,36 @@
 typedef unsigned long uint64_t; 
 typedef   signed long  int64_t;
 
+#include "cacheIsa.h"
+
 /* Random number generator */
 static const uint64_t POLY =    0x0000000000000007UL;
 static const uint64_t PERIOD = 1317624576693539401UL;
 
+#ifndef CACHE_RUN
+#define CACHE_RUN 0
+#endif
+
+#if CACHE_RUN == 0
+#define TABLE_TYPE rmdglobal
+#else
+#define TABLE_TYPE rmdcache
+#endif
+
 #ifdef CHECK
-#define LOG2STABLESIZE ((uint64_t)4)		/* log2(16)   ==  4 */
+#define LOG2STABLESIZE ((uint64_t)8)		/* log2(16)   ==  4 */
 #define     STABLESIZE (1<<LOG2STABLESIZE)	/* 128 B / 8B == 16 */
-#define LOG2TABLESIZE ((uint64_t) 5)
+#define LOG2TABLESIZE ((uint64_t) 10)
 #define     TABLESIZE (1<<LOG2TABLESIZE)
 #else
-#define LOG2STABLESIZE ((uint64_t)12)		/* log2(4096) == 12 */
+#define LOG2STABLESIZE ((uint64_t)4)		/* log2(4096) == 12 */
 #define     STABLESIZE (1<<LOG2STABLESIZE)	/* 32 KB / 8B == 4K */
-#define LOG2TABLESIZE 20			/* log2(1M)   == 20 */
+#define LOG2TABLESIZE 5			/* log2(1M)   == 20 */
 #define     TABLESIZE (1<<LOG2TABLESIZE)	/* 8 MB / 8B  == 1M */
 #endif
 
 uint64_t rmdglobal  * restrict stable;	/* 16 KB */
-uint64_t rmdglobal  * restrict table;	/*  4 MB */
+uint64_t TABLE_TYPE  * restrict table;	/*  4 MB */
 
 #define NTHREADS 1
 const int64_t nThreads = NTHREADS;
@@ -153,7 +165,7 @@ void loop64( int64_t tid ) {
 #endif
 #if RAG_CACHE==1 && RAG_ATOMIC==0
 #ifdef RAG_SIM
-		uint64_t rmdglobal * restrict table_ptr;
+		uint64_t TABLE_TYPE * restrict table_ptr;
 		uint64_t rmdglobal * restrict stable_ptr;
 		uint64_t old_mem, val, new_new;
 		table_ptr  = &table[ran&tableMask];
@@ -162,6 +174,7 @@ void loop64( int64_t tid ) {
 		CAC_LD64_ADDR(val,stable_ptr);
 		new_new = old_mem ^ val;
 		CAC_ST64_ADDR(table_ptr,new_new);
+        //CAC_WB_ADDR((&(table[ran&tableMask])));
 #else
 		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #endif
@@ -173,6 +186,7 @@ void loop64( int64_t tid ) {
 		stable_ptr = &stable[ran>>(64-LOG2STABLESIZE)];
 		CAC_LD64_ADDR(tmp,stable_ptr);
 		CAC_XADD64(table[ran&tableMask],tmp);
+        //CAC_WB_ADDR((&(table[ran&tableMask])));
 #else
 		(void) __sync_fetch_and_xor(&table[ran&tableMask],stable[ran>>(64-LOG2STABLESIZE)]);
 #endif
@@ -233,7 +247,7 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	xe_printf("// Initialize table (not time critical)\n");
 #endif
 	rmd_guid_t table_dbg;
-	table = (uint64_t rmdglobal * restrict)rag_dram_malloc(&table_dbg,tableSize*sizeof(uint64_t));
+	table = (uint64_t TABLE_TYPE * restrict)rag_dram_malloc(&table_dbg,tableSize*sizeof(uint64_t));
 	if(table == NULL) {
 		xe_printf("table rag_dram_malloc error\n");
 		xe_exit(1);
@@ -305,7 +319,7 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	xe_printf("// Finished\n");
 #endif
 #endif
-	rag_dram_free( table, table_dbg);
+	//rag_dram_free( table, table_dbg);
 	rag_dram_free(stable,stable_dbg);
 #ifdef TRACE
 	xe_printf("// Leave main_codelet\n");
