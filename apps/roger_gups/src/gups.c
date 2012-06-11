@@ -31,8 +31,8 @@ static const uint64_t PERIOD = 1317624576693539401UL;
 #define     TABLESIZE (1<<LOG2TABLESIZE)	/* 8 MB / 8B  == 1M */
 #endif
 
-uint64_t rmdglobal  * restrict stable;	/* 16 KB */
-uint64_t TABLE_TYPE  * restrict table;	/*  4 MB */
+uint64_t TABLE_TYPE  * restrict stable;	/* 16 KB */
+uint64_t TABLE_TYPE  * restrict  table;	/*  4 MB */
 
 #define NTHREADS 1
 const int64_t nThreads = NTHREADS;
@@ -126,7 +126,7 @@ void loop64( int64_t tid ) {
 	uint64_t ran;
 	ran = giantstep(start);
 
-#if RAG_CACHE==0
+#if (RAG_CACHE==0) && (CACHE_RUN==0)
 #ifdef TRACE
 	xe_printf("// Copy stable from DRAM to SPAD (not time critical)\n");
 #endif
@@ -152,10 +152,10 @@ void loop64( int64_t tid ) {
 #endif
 	for (int64_t i=start; i<=stop; i++) {
 		ran = (ran+ran) ^ (((int64_t) ran < 0) ? POLY : 0);
-#if RAG_CACHE==0 && RAG_ATOMIC==0
+#if (RAG_CACHE==0) && (RAG_ATOMIC==0) && (CACHE_RUN==0)
 		table[ran&tableMask] ^= spad_stable[ran>>(64-LOG2STABLESIZE)];
 #endif
-#if RAG_CACHE==0 && RAG_ATOMIC==1
+#if (RAG_CACHE==0) && (RAG_ATOMIC==1) && (CACHE_RUN==0)
 #ifdef RAG_SIM
 		uint64_t tmp =  spad_stable[ran>>(64-LOG2STABLESIZE)];
 		REM_XADD64(table[ran&tableMask],tmp);
@@ -163,10 +163,21 @@ void loop64( int64_t tid ) {
 		(void) __sync_fetch_and_xor(&table[ran&tableMask],spad_stable[ran>>(64-LOG2STABLESIZE)]);
 #endif
 #endif
-#if RAG_CACHE==1 && RAG_ATOMIC==0
+#if (RAG_CACHE==0) && (RAG_ATOMIC==0) && (CACHE_RUN==1)
+		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
+#endif
+#if (RAG_CACHE==0) && (RAG_ATOMIC==1) && (CACHE_RUN==1)
 #ifdef RAG_SIM
-		uint64_t TABLE_TYPE * restrict table_ptr;
-		uint64_t rmdglobal * restrict stable_ptr;
+		uint64_t tmp =  stable[ran>>(64-LOG2STABLESIZE)];
+		REM_XADD64(table[ran&tableMask],tmp);
+#else
+		(void) __sync_fetch_and_xor(&table[ran&tableMask],stable[ran>>(64-LOG2STABLESIZE)]);
+#endif
+#endif
+#if (RAG_CACHE==1) && (RAG_ATOMIC==0)
+#ifdef RAG_SIM
+		uint64_t TABLE_TYPE * restrict  table_ptr;
+		uint64_t TABLE_TYPE * restrict stable_ptr;
 		uint64_t old_mem, val, new_new;
 		table_ptr  = &table[ran&tableMask];
 		stable_ptr = &stable[ran>>(64-LOG2STABLESIZE)];
@@ -179,9 +190,9 @@ void loop64( int64_t tid ) {
 		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #endif
 #endif
-#if RAG_CACHE==1 && RAG_ATOMIC==1
+#if (RAG_CACHE==1) && (RAG_ATOMIC==1)
 #ifdef RAG_SIM
-		uint64_t rmdglobal * restrict stable_ptr;
+		uint64_t TABLE_TYPE * restrict stable_ptr;
 		uint64_t tmp;
 		stable_ptr = &stable[ran>>(64-LOG2STABLESIZE)];
 		CAC_LD64_ADDR(tmp,stable_ptr);
@@ -200,7 +211,8 @@ void loop64( int64_t tid ) {
 #if RAG_CACHE==1
 //__asm__ volatile ( "cache.wball"  :::"memory");
 //__asm__ volatile ( "cache.invall" :::"memory");
-#else
+#endif
+#if (RAG_CACHE==0) && (CACHE_RUN==0)
 	rag_spad_free(spad_stable,spad_stable_dbg);
 #endif
 	return;
@@ -209,7 +221,7 @@ void loop64( int64_t tid ) {
 rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	rmd_guid_t ret_val = NULL_GUID;
 #ifdef TRACE
-	xe_printf("// Enter main_codelet RAG_CACHE=%d RAG_ATOMIC=%d\n",RAG_CACHE, RAG_ATOMIC);
+	xe_printf("// Enter main_codelet RAG_CACHE=%d RAG_ATOMIC=%d CACHE_RUN=%d\n",RAG_CACHE, RAG_ATOMIC,CACHE_RUN);
 #endif
 
 #ifdef CHECK
@@ -222,7 +234,7 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	xe_printf("// Initialize stable (not time critical)\n");
 #endif
 	rmd_guid_t stable_dbg;
-	stable = (uint64_t rmdglobal * restrict)rag_dram_malloc(&stable_dbg,STABLESIZE*sizeof(uint64_t));
+	stable = (uint64_t TABLE_TYPE * restrict)rag_dram_malloc(&stable_dbg,STABLESIZE*sizeof(uint64_t));
 	if(stable == NULL) {
 		xe_printf("stable rag_dram_malloc error\n");
 		xe_exit(1);
@@ -282,18 +294,18 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	for (int64_t i=0; i<numberUpdates; i++) {
 		ran = (ran << ((uint64_t)1)) ^ (((int64_t) ran < 0) ? POLY : 0);
 #ifdef RAG_SIM
-#if RAG_ATOMIC == 1
+#if (RAG_ATOMIC == 1)
 		uint64_t tmp = -stable[ran>>(64-LOG2STABLESIZE)];
 		REM_XADD64(table[ran&tableMask],tmp);
-#elif RAG_ATOMIC == 0
+#elif (RAG_ATOMIC == 0)
 		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #else
 #error RAG_ATOMIC not zero or one 
 #endif
 #else
-#if RAG_ATOMIC == 1
+#if (RAG_ATOMIC == 1)
 		(void) __sync_fetch_and_xor(&table[ran&tableMask],stable[ran>>(64-LOG2STABLESIZE)]);
-#elif RAG_ATOMIC == 0
+#elif (RAG_ATOMIC == 0)
 		table[ran&tableMask] ^= stable[ran>>(64-LOG2STABLESIZE)];
 #else
 #error RAG_ATOMIC not zero or one 
@@ -319,8 +331,8 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	xe_printf("// Finished\n");
 #endif
 #endif
-	//rag_dram_free( table, table_dbg);
-	rag_dram_free(stable,stable_dbg);
+	rag_dram_free((void *) table, table_dbg);
+	rag_dram_free((void *)stable,stable_dbg);
 #ifdef TRACE
 	xe_printf("// Leave main_codelet\n");
 #endif
