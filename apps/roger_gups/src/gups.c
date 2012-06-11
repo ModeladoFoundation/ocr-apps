@@ -25,9 +25,9 @@ static const uint64_t PERIOD = 1317624576693539401UL;
 #define LOG2TABLESIZE ((uint64_t) 10)
 #define     TABLESIZE (1<<LOG2TABLESIZE)
 #else
-#define LOG2STABLESIZE ((uint64_t)4)		/* log2(4096) == 12 */
+#define LOG2STABLESIZE ((uint64_t)12)		/* log2(4096) == 12 */
 #define     STABLESIZE (1<<LOG2STABLESIZE)	/* 32 KB / 8B == 4K */
-#define LOG2TABLESIZE 5			/* log2(1M)   == 20 */
+#define LOG2TABLESIZE 20			/* log2(1M)   == 20 */
 #define     TABLESIZE (1<<LOG2TABLESIZE)	/* 8 MB / 8B  == 1M */
 #endif
 
@@ -224,10 +224,12 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	xe_printf("// Enter main_codelet RAG_CACHE=%d RAG_ATOMIC=%d CACHE_RUN=%d\n",RAG_CACHE, RAG_ATOMIC,CACHE_RUN);
 #endif
 
+#ifdef TRACE
 #ifdef CHECK
 	xe_printf("// Checking requested, so setting numberUpdates to 4*tableSize\n");
 #else
 	xe_printf("// Checking not requested, so setting numberUpdates to 4*nThreads*tableSize\n");
+#endif
 #endif
 
 #ifdef TRACE

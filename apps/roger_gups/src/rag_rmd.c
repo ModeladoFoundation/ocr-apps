@@ -73,13 +73,13 @@ void *rag_dram_malloc(rmd_guid_t *dbg, size_t size) {
 	return tmp_dbp;
 }
 
-void rag_dram_free(void rmdglobal *dbp, rmd_guid_t dbg) {
+void rag_dram_free(void *dbp, rmd_guid_t dbg) {
 	RMD_DB_RELEASE(dbg);
 	RMD_DB_FREE(dbg);
 #ifdef DEBUG
 	xe_printf("DRAM_FREE (dbg=%ld)\n",(uint64_t)dbg.data);
 #endif
-	dbp = (void rmdglobal *)NULL;
+	dbp = (void *)NULL;
 }
 
 void rag_DRAMtoSPAD(void *out, void rmdglobal * restrict in, size_t size) {

@@ -77,7 +77,7 @@ void *rag_bsm_malloc(rmd_guid_t *dbg, size_t size);
 void  rag_bsm_free(void *dbp, rmd_guid_t dbg );
 
 void *rag_dram_malloc(rmd_guid_t *dbg, size_t size);
-void  rag_dram_free(void rmdglobal *dbp, rmd_guid_t dbg );
+void  rag_dram_free(void *dbp, rmd_guid_t dbg );
 
 void rag_DRAMtoSPAD(void *out, void rmdglobal * restrict in, size_t size);
 #endif
