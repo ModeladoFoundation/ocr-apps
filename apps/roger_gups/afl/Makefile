@@ -18,7 +18,8 @@ CFLAGS= -g -O3 -std=c99 -DRAG_AFL -Wall \
 	-I $(RMD_INSTALL_BASE)/runtime/common \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I. \
-	-DTRACE     -DCHECK     -DDEBUG  -DRAG_ATOMIC=1
+	-DTRACE     -DCHECK_OFF -DDEBUG_OFF  \
+	-DRAG_ATOMIC=$(RAG_ATOMIC) -DRAG_CACHE=$(RAG_CACHE) -DCACHE_RUN=$(CACHE_RUN)
 
 LDFLAGS=$(AFL_INSTALL_BASE)/rmd_codelet/rmd_codelet.a \
 	$(AFL_INSTALL_BASE)/rmd_afl.a \
@@ -43,4 +44,4 @@ check:	gups Makefile
 	valgrind ./gups -d -c gups.cfg
 
 clean:
-	$(RM) gups
+	$(RM) gups gups.s

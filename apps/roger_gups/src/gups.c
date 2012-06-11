@@ -151,6 +151,11 @@ void loop64( int64_t tid ) {
 	xe_printf("// Run GUPS Kernel (time critical)\n");
 #endif
 	for (int64_t i=start; i<=stop; i++) {
+#ifdef TRACE
+	if( (i&((1<<16)-1)) == 0 ) {
+		xe_printf("UPDATE i=%ld\n",i);
+	}
+#endif
 		ran = (ran+ran) ^ (((int64_t) ran < 0) ? POLY : 0);
 #if (RAG_CACHE==0) && (RAG_ATOMIC==0) && (CACHE_RUN==0)
 		table[ran&tableMask] ^= spad_stable[ran>>(64-LOG2STABLESIZE)];
@@ -294,6 +299,11 @@ rmd_guid_t main_codelet(uint64_t arg,int n_db,void *db_ptr[],rmd_guid_t *dbg) {
 	uint64_t ran = 0x1;
 	uint64_t cnt = 0;
 	for (int64_t i=0; i<numberUpdates; i++) {
+#if TRACE
+	if( (i&((1<<16)-1)) == 0 ) {
+		xe_printf("CHECK i=%ld\n",i);
+	}
+#endif
 		ran = (ran << ((uint64_t)1)) ^ (((int64_t) ran < 0) ? POLY : 0);
 #ifdef RAG_SIM
 #if (RAG_ATOMIC == 1)

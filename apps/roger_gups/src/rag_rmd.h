@@ -21,6 +21,7 @@
 #define xe_printf printf
 #define rmdglobal 
 #define rmdblock 
+#define rmdcache
 #endif
 
 #if defined(RAG_AFL) || defined(RAG_SIM)
