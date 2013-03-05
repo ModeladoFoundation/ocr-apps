@@ -14,3 +14,9 @@ u8 parallel_mergesort_worker(u32 paramc, u64 * params, void *paramv[], u32 depc,
 u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
 
 u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+
+u8 merge_phi(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+
+u8 mergelet(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+
+int binary_search(int value, int *data_array, int lower_bound, int upper_bound);

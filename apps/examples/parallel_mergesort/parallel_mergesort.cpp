@@ -1,6 +1,7 @@
 #include "sequential_mergesort.h"
 #include "parallel_mergesort.h"
 #include <pthread.h>
+#include <sstream>
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,7 +20,7 @@ int main(int argc, char ** argv){
   int chunk_size;
 
   /* Init OCR */
-  OCR_INIT(&argc, argv, splitter, merger);
+  OCR_INIT(&argc, argv, splitter, merger, merge_phi, mergelet);
 
   if (argc != 3){
     std::cerr << "Usage: " << argv[0] << " <array_size> <sequential_chunk_size>, where sequential_chunk_size is the number of elements at which the algorithm should switch from parallel recursion to just sequentially solving the chunk\n";
@@ -33,6 +34,13 @@ int main(int argc, char ** argv){
     /* be lazy and flag an error */
     std::cerr << "array_size must be larger than chunk_size\n";
     exit(0);
+  }
+
+  
+  /* Approximate the base-two log of the chunk_size */
+  int log_chunk_size = 0;
+  for(unsigned int temp = array_size; temp > 0; temp = temp >> 1){
+    log_chunk_size += 1;
   }
 
   std::cout << "array size: " << array_size << " chunk size: " << chunk_size << " run time (microseconds): ";
@@ -57,8 +65,8 @@ int main(int argc, char ** argv){
   that pretends to be the event that will fire that splitter's parent
   merger */
 
-  ocrGuid_t placeholder_event;
-  ocrEventCreate(&(placeholder_event), OCR_EVENT_STICKY_T, false);
+  //ocrGuid_t placeholder_event;
+  //ocrEventCreate(&(placeholder_event), OCR_EVENT_STICKY_T, false);
 
 
   //  std::cout << "at start: start_time = " << start_time << " and merger_event = " << placeholder_event << "\n";
@@ -66,7 +74,7 @@ int main(int argc, char ** argv){
   ocrGuid_t splitterInputGuid, splitterResultGuid;
   intptr_t *splitterInputDb, *splitterResultDb;
    
-  if(int res = ocrDbCreate(&splitterInputGuid, (void **) &splitterInputDb, 7*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
+  if(int res = ocrDbCreate(&splitterInputGuid, (void **) &splitterInputDb, 8*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
     std::cout << "DbCreate #1 failed\n";
   }
   /*  else{
@@ -79,7 +87,8 @@ int main(int argc, char ** argv){
   splitterInputDb[3]= (intptr_t) array_size-1;
   splitterInputDb[4]= (intptr_t) array_size;
   splitterInputDb[5]= (intptr_t) chunk_size;
-  splitterInputDb[6]= (intptr_t) placeholder_event;  
+  splitterInputDb[6] = (intptr_t) log_chunk_size;
+  splitterInputDb[7]= (intptr_t) NULL_GUID;  
   
   ocrGuid_t splitter_guid, splitter_event, splitter_event2;
   /* create the EDT for the worker */
@@ -135,9 +144,13 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
   int end_index = (int) typed_paramv[3];
   int array_size = (int) typed_paramv[4];
   int chunk_size = (int) typed_paramv[5];
-  ocrGuid_t merger_event = (ocrGuid_t) typed_paramv[6];
+  int log_chunk_size = (int) typed_paramv[6];
+  ocrGuid_t merger_event = (ocrGuid_t) typed_paramv[7];
+  std::ostringstream buf;
 
-  //  std::cout << "Splitter called on indices " << start_index << " to " << end_index << " with array_size " << array_size << " chunk_size " << chunk_size << " start_time " << start_time << " and merger_event " << merger_event << "\n";
+  // buf << "Splitter called on indices " << start_index << " to " << end_index << " with sort_array " << sort_array << " and temp_array " << temp_array << "\n";
+  
+  //std::cout << buf.str();
 
   if((end_index - start_index) < chunk_size){
     /* Our piece of the array is small enough that we should just sort
@@ -183,32 +196,50 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
    
     /* Create the events that the splitters (actually the mergers that
        the splitters will create) will satisfy to trigger the merger */
-    ocrGuid_t left_splitter_done_event_guid, right_splitter_done_event_guid, merger_guid, mergerInputReadyGuid, mergerOutputArrayReadyGuid;
+    ocrGuid_t left_splitter_done_event_guid, right_splitter_done_event_guid, merger_guid, mergerInputReadyGuid, mergerInputGuid;
+    intptr_t *mergerInputDb;
+
     ocrEventCreate(&(left_splitter_done_event_guid), OCR_EVENT_STICKY_T, true);
     ocrEventCreate(&(right_splitter_done_event_guid), OCR_EVENT_STICKY_T, true);
+    ocrEventCreate(&(mergerInputReadyGuid), OCR_EVENT_STICKY_T, true);
+    
+    /* Create the merger input array */
+    if(int res =ocrDbCreate(&mergerInputGuid, (void **) &mergerInputDb, 5*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
+      std::cout << "DBcreate #3.5 failed with result " << res << "\n";
+    }
+
+    mergerInputDb[0] = (intptr_t) (end_index - start_index) + 1;
+    mergerInputDb[1] = (intptr_t) array_size;
+    mergerInputDb[2] = (intptr_t) log_chunk_size;
+    mergerInputDb[3] = (intptr_t) chunk_size;
+    mergerInputDb[4] = (intptr_t) merger_event;
 
       /* Create the merger task */
-    ocrEdtCreate(&(merger_guid), merger, (end_index -start_index) + 1, (u64 *) (u64) array_size, (void **) merger_event, 0, 2, NULL);
+    ocrEdtCreate(&(merger_guid), merger, 0, 0, NULL, 0, 3, NULL);
 
     /* Add the splitter events as input dependencies */
     ocrAddDependency(left_splitter_done_event_guid, merger_guid, 0);
     ocrAddDependency(right_splitter_done_event_guid, merger_guid, 1);
+    ocrAddDependency(mergerInputReadyGuid, merger_guid, 2);
 
     /* Schedule the merger */
     ocrEdtSchedule(merger_guid);
+
+    /* and deliver its input values */
+    ocrEventSatisfy(mergerInputReadyGuid, mergerInputGuid);
 
     /* create and fill out the parameter lists for the new splitter
        tasks */
     ocrGuid_t leftSplitterInputGuid, rightSplitterInputGuid;
     intptr_t *leftSplitterInputDb, *rightSplitterInputDb;
  
-    if(int res =ocrDbCreate(&leftSplitterInputGuid, (void **) &leftSplitterInputDb, 7*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
+    if(int res =ocrDbCreate(&leftSplitterInputGuid, (void **) &leftSplitterInputDb, 8*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
       std::cout << "DBcreate #4 failed with result " << res << "\n";
     }
     /*  else{
     std::cout << "DbCreate #4 allocated db for guid " << leftSplitterInputGuid << "\n";
     }*/
-    if(int res =    ocrDbCreate(&rightSplitterInputGuid, (void **) &rightSplitterInputDb, 7*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
+    if(int res =    ocrDbCreate(&rightSplitterInputGuid, (void **) &rightSplitterInputDb, 8*sizeof(intptr_t), 0, NULL, NO_ALLOC)){
       std::cout << "DBcreate #5 failed with result " << res << "\n";
     } 
     /*    else{
@@ -220,7 +251,8 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
     leftSplitterInputDb[3]= (intptr_t) end_index_1;
     leftSplitterInputDb[4]= (intptr_t) array_size;  
     leftSplitterInputDb[5]= (intptr_t) chunk_size;  
-    leftSplitterInputDb[6]= (intptr_t) left_splitter_done_event_guid;  
+    leftSplitterInputDb[6]= (intptr_t) log_chunk_size;  
+    leftSplitterInputDb[7]= (intptr_t) left_splitter_done_event_guid;  
 
     rightSplitterInputDb[0]= (intptr_t) sort_array;
     rightSplitterInputDb[1]= (intptr_t) temp_array;
@@ -228,7 +260,9 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
     rightSplitterInputDb[3]= (intptr_t) end_index_2;
     rightSplitterInputDb[4]= (intptr_t) array_size;  
     rightSplitterInputDb[5]= (intptr_t) chunk_size;  
-    rightSplitterInputDb[6]= (intptr_t) right_splitter_done_event_guid;  
+    rightSplitterInputDb[6]= (intptr_t) log_chunk_size;  
+    rightSplitterInputDb[7]= (intptr_t) right_splitter_done_event_guid;  
+
 
     /* now, create the two splitter tasks */
     ocrGuid_t left_splitter_guid, right_splitter_guid;
@@ -281,20 +315,32 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
      Merger has two input dependencies from its children, and one that
      contains its inputs from the task that created it*/
 
-  /* For now, just do the dependency stuff so the program structure
-     works */
-
-
   intptr_t* typed_paramv = (intptr_t *) depv[2].ptr;
-  int merge_length = paramc;;
-  u64 array_size = (u64) params;
-  ocrGuid_t output_event = (ocrGuid_t) paramv;
+  int merge_length = (int) typed_paramv[0];
+  u64 array_size = (u64) typed_paramv[1];
+  u64 log_chunk_size = (u64) typed_paramv[2];
+  u64 chunk_size = (u64) typed_paramv[3];
+  ocrGuid_t output_event = (ocrGuid_t) typed_paramv[4];
   
+  u64 merge_chunk_size = log_chunk_size * chunk_size; 
+
   //std::cout << "Merger called on range " << start_index << " to " << end_index << " with start_time " << start_time << " and array_size " << array_size << "\n";
 
   int *left_subarray = (int *) depv[0].ptr;
   int *right_subarray = (int *) depv[1].ptr;
   
+  /* Pre-check the subarrays for correctness as a debugging step */
+  /*for(int i = 1; i < merge_length/2; i++){
+    if(left_subarray[i] < left_subarray[i-i]){
+      std::cout << "miss-sorted element found in left subarray at position " << i << "\n";
+    }
+  }
+  for(int i = 1; i < merge_length/2; i++){
+    if(right_subarray[i] < right_subarray[i-i]){
+      std::cout << "miss-sorted element found in right subarray at position " << i << "\n";
+    }
+  }
+  */
   /* allocate the space for the merged array */
   ocrGuid_t outputArrayGuid;
   int *output_array;
@@ -304,88 +350,344 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
   /*  else{
     std::cout << "DbCreate #6 allocated db for guid " << outputArrayGuid << "\n";
     }*/
-  /* Merge the sub-arrays */
 
-  
-  int left_index = 0;
-  int right_index = 0;
-  int merged_index = 0;
 
-  while((left_index < merge_length/2) && (right_index < merge_length/2)){
-    if(left_subarray[left_index] < right_subarray[right_index]){
+  if(merge_length > merge_chunk_size){
+    /* do the merge in parallel */
+
+    int num_mergelets = merge_length/merge_chunk_size;
+    if (num_mergelets > 128){
+      num_mergelets = 128;
+      // keep the number of mergelets from becoming absurdly large for
+      // very small chunk sizes and thus blowing out the deque length 
+    }
+    if (merge_length % merge_chunk_size){
+      num_mergelets += 1;
+    }  /* add an odd-length mergelet if things don't divide evenly */
+
+    /* create the merge_phi task that acts as a barrier for the
+       mergelets */ 
+
+    ocrGuid_t mergePhiGuid;
+    ocrEdtCreate(&(mergePhiGuid), merge_phi, 0, (u64 *) output_event, (void **) array_size, 0, (num_mergelets +3), NULL);
+    //std::cout << "output_event = " << output_event <<"\n";
+    /* add the events for the input arrays */
+    ocrGuid_t mergePhiLeftArrayGuid, mergePhiRightArrayGuid, mergePhiOutputArrayGuid;
+
+    ocrEventCreate(&(mergePhiLeftArrayGuid), OCR_EVENT_STICKY_T, true);  
+    ocrEventCreate(&(mergePhiRightArrayGuid), OCR_EVENT_STICKY_T, true); 
+    ocrEventCreate(&(mergePhiOutputArrayGuid), OCR_EVENT_STICKY_T, true);  
+
+    /* add the dependencies */
+    ocrAddDependency(mergePhiLeftArrayGuid, mergePhiGuid, 0);
+    ocrAddDependency(mergePhiRightArrayGuid, mergePhiGuid, 1);
+    ocrAddDependency(mergePhiOutputArrayGuid, mergePhiGuid, 2);
+
+    /* and satisfy them to queue things up */
+    ocrEventSatisfy(mergePhiLeftArrayGuid, depv[0].guid);
+    ocrEventSatisfy(mergePhiRightArrayGuid, depv[1].guid);
+    ocrEventSatisfy(mergePhiOutputArrayGuid, outputArrayGuid);
+    
+    /* merge_phi setup mostly done.  Create the mergelets and add
+       their dependencies */
+    ocrGuid_t mergeletGuid, mergeletLeftInputArrayGuid, mergeletRightInputArrayGuid, mergeletOutputArrayGuid, *mergeletDoneGuid_p;
+    intptr_t *paramv, **p_paramv;
+
+    int left_array_start = 0;
+    int left_array_length = (merge_length /2) / num_mergelets;
+    int left_array_end = -1;
+    int right_array_start = 0;
+    int right_array_end = 0 ;
+    int output_array_start = 0;
+
+    for (int i = 0; i < num_mergelets; i++){
+      mergeletDoneGuid_p = new ocrGuid_t;
+      ocrEventCreate(mergeletDoneGuid_p, OCR_EVENT_STICKY_T, false);
+      ocrAddDependency(*mergeletDoneGuid_p, mergePhiGuid, (3+i));
+      /* create the "done" event for the mergelet and add it to the
+	 dependency list for merge_phi */
+      
+      /* Compute end points of this mergelet's merge */
+      left_array_end += left_array_length;
+      if(i == num_mergelets -1){
+	left_array_end = (merge_length/2) -1;
+	left_array_length = (left_array_end - left_array_start) + 1;
+	//deal with rounding errors 
+      }
+
+      right_array_end = binary_search(left_subarray[left_array_end], right_subarray, 0, ((merge_length/2) -1));
+
+      //    std::cout << *mergeletDoneGuid_p << " ";
+      /* Allocate the input array for the mergelet and initialize it */
+      paramv = new intptr_t[6];
+      p_paramv = new intptr_t *[1];
+
+      *p_paramv = paramv;
+      paramv[0] = (intptr_t) left_array_start;
+      paramv[1] = (intptr_t) left_array_length;
+      paramv[2] = (intptr_t) right_array_start;
+      paramv[3] = (intptr_t) (right_array_end - right_array_start) +1;
+      paramv[4] = (intptr_t) output_array_start;
+      paramv[5] = (intptr_t) *mergeletDoneGuid_p;
+      
+      //      std::cout << "Creating mergelet with left_array_start = " << left_array_start << ", left_array_length = " << left_array_length << ", right_array_start = " << right_array_start << ", and right_array_length= " << (right_array_end - right_array_start)+1 << "\n";
+
+      /* Create the EDT for the mergelet */
+      ocrEdtCreate(&(mergeletGuid), mergelet, 6, NULL, (void **) p_paramv, 0, 3, NULL);
+      /* Create the events for the input and output arrays for
+	 mergelet */
+      ocrEventCreate(&(mergeletLeftInputArrayGuid), OCR_EVENT_STICKY_T, true);  
+      ocrEventCreate(&(mergeletRightInputArrayGuid), OCR_EVENT_STICKY_T, true);  
+      ocrEventCreate(&(mergeletOutputArrayGuid), OCR_EVENT_STICKY_T, true);  
+
+      ocrAddDependency(mergeletLeftInputArrayGuid, mergeletGuid, 0);
+      ocrAddDependency(mergeletRightInputArrayGuid, mergeletGuid, 1);
+      ocrAddDependency(mergeletOutputArrayGuid, mergeletGuid, 2);
+
+      /* Schedule the mergelet and satisfy its input dependencies so
+	 that it starts*/
+      ocrEdtSchedule(mergeletGuid);
+      ocrEventSatisfy(mergeletLeftInputArrayGuid, depv[0].guid);
+      ocrEventSatisfy(mergeletRightInputArrayGuid, depv[1].guid);
+      ocrEventSatisfy(mergeletOutputArrayGuid, outputArrayGuid);
+
+      /* Now, bump the start indices for the next loop */
+      output_array_start = right_array_end + left_array_end + 2;
+      right_array_start = right_array_end +1;
+      left_array_start += left_array_length;
+    }
+    /* once all the dependencies are in place, schedule the merge_phi */
+    ocrEdtSchedule(mergePhiGuid); 
+    //std::cout << "\n";
+  }
+  else{
+
+    /* Merge the sub-arrays */  
+    int left_index = 0;
+    int right_index = 0;
+    int merged_index = 0;
+    
+    while((left_index < merge_length/2) && (right_index < merge_length/2)){
+      if(left_subarray[left_index] < right_subarray[right_index]){
+	output_array[merged_index] = left_subarray[left_index];
+      left_index++;
+      }
+      else{
+	output_array[merged_index] = right_subarray[right_index];
+	right_index++;
+      }
+      merged_index++;
+    }
+    
+    // ok, we've reached the end of at least one of the sub-arrays, so finish up
+    while(left_index < merge_length/2){
       output_array[merged_index] = left_subarray[left_index];
       left_index++;
+      merged_index++;
     }
-    else{
+    while(right_index < merge_length/2){
       output_array[merged_index] = right_subarray[right_index];
       right_index++;
+      merged_index++;
     }
-    merged_index++;
-  }
-
-  // ok, we've reached the end of at least one of the sub-arrays, so finish up
-  while(left_index < merge_length/2){
-    output_array[merged_index] = left_subarray[left_index];
-    left_index++;
-    merged_index++;
-  }
-  while(right_index < merge_length/2){
-    output_array[merged_index] = right_subarray[right_index];
-    right_index++;
-    merged_index++;
-  }
-
-  //test loop
-  /*  for(int q = 1; q < merge_length; q++){
-    if (output_array[q-1] > output_array[q]){
-      std::cout << "Mis-sorted value found at position " << q << " with start_index = " << start_index << " and end_index " << end_index << "\n";
+    
+    //test loop
+    /*  for(int q = 1; q < merge_length; q++){
+	if (output_array[q-1] > output_array[q]){
+	std::cout << "Mis-sorted value found at position " << q << " with start_index = " << start_index << " and end_index " << end_index << "\n";
     }
     }*/
-  if(merge_length == array_size){
-    /* I'm the top-level merger, and the program is done when I'm finished */
-    /* Compute run time (not counting result check */
-    extern long int start_time;
-    struct timeval end_time;
-    gettimeofday(&end_time, NULL);
+    if(merge_length == array_size){
+      /* I'm the top-level merger, and the program is done when I'm finished */
+      /* Compute run time (not counting result check */
+      extern long int start_time;
+      struct timeval end_time;
+      gettimeofday(&end_time, NULL);
     long int end_microseconds = (end_time.tv_sec * 1000000) + end_time.tv_usec;
     /* std::cout << "start time " << start_time << "\n";
-    std::cout << "end time   " << end_microseconds << "\n";
-    std::cout << "Core run time " << (end_microseconds - start_time) << " microseconds\n"; */
+       std::cout << "end time   " << end_microseconds << "\n";
+       std::cout << "Core run time " << (end_microseconds - start_time) << " microseconds\n"; */
     std::cout << (end_microseconds - start_time) << "\n";
-
+    
     /* check the result, then exit */
     int bad_sort = 0;
-     for(int i = 1; i < array_size; i++){
+    for(int i = 1; i < array_size; i++){
   
-       if(output_array[i-1] > output_array[i]){
+      if(output_array[i-1] > output_array[i]){
 	std::cout << "Mis-sorted value found at positions " << i-1 << " and " << i << "\n";
 	bad_sort = 1;
       }
-      }   //comment out result check for vtune analysis
+    }   //comment out result check for vtune analysis
     if (bad_sort == 0){
       std::cout << "Sorted array checks out\n";
     }
-
+    
     /*   for(int i = 0; i < array_size; i++){
-      std::cout << sort_array[i] << " ";
-    }
-    std::cout << "\n";
+	 std::cout << sort_array[i] << " ";
+	 }
+	 std::cout << "\n";
     */
     ocrFinish();  /* Tell OCR we're done */
+    }
+    ocrEventSatisfy(output_event, outputArrayGuid);
+    if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
+      std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
+    }
+    /*  else{
+	std::cout << "Merger ocrDbDestroy #2 destroyed guid " << depv[1].guid << "\n";
+	}*/
+    if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+      std::cout << "Merger ocrDbDestroy #3 failed with code " << res << "\n";
+    }
+    /*  else{
+	std::cout << "Merger ocrDbDestroy #1 destroyed guid " << depv[0].guid << "\n";
+	}*/
   }
-  ocrEventSatisfy(output_event, outputArrayGuid);
-  if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
-    std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
-  }
-  /*  else{
-    std::cout << "Merger ocrDbDestroy #2 destroyed guid " << depv[1].guid << "\n";
-    }*/
-  if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-    std::cout << "Merger ocrDbDestroy #3 failed with code " << res << "\n";
-  }
-  /*  else{
-    std::cout << "Merger ocrDbDestroy #1 destroyed guid " << depv[0].guid << "\n";
-    }*/
+  
   return(0);
 }
 
+u8 merge_phi(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]){
+  /* merge_phi is the synchronization node for the parallel merge.  It
+     takes N+3 dependencies, where N is the number of mergelets fired
+     off in parallel by the overall merger.  The first three
+     dependencies are the left input array, right input array, and
+     output array from the merger that created merge_phi.  The
+     remaining ones are completion events from the mergelets.
+
+     When triggered, merge_phi signals its parent's parent's merger
+     that it has completed, passing the output array that the
+     mergelets have filled in.  It then frees the left and right input
+     arrays. */
+ 
+  ocrGuid_t output_event = (ocrGuid_t) params;
+  u64 array_size = (u64) paramv;
+  ocrGuid_t outputArrayGuid = depv[2].guid;
+  if (output_event == NULL_GUID){
+    /* We've reached the top of the tree, and are done */
+    std::cout << "We're at the top of the tree, checking results\n";
+    int *output_array = (int *) depv[2].ptr;
+
+    int bad_sort = 0;
+    for(int i = 1; i < array_size; i++){
+      //  std::cout << output_array[i] << " ";
+      if(output_array[i-1] > output_array[i]){
+	std::cout << "Mis-sorted value found at positions " << i-1 << " and " << i << "\n";
+	bad_sort = 1;
+      }
+    }   //comment out result check for vtune analysis
+    if (bad_sort == 0){
+      std::cout << "Sorted array checks out\n";
+    }
+    ocrFinish(); // Tell OCR we're done
+  }
+  else{
+    /* We're not at the top of the tree, satisfy our output event to
+       let the next level start */ 
+    ocrEventSatisfy(output_event, outputArrayGuid);
+  }
+
+  if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+      std::cout << "Merge_phi ocrDbDestroy #1 failed with code " << res << "\n";
+    }
+
+  if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
+      std::cout << "Merge_phi ocrDbDestroy #2 failed with code " << res << "\n";
+    }
+
+
+  return(0);
+}
+
+u8 mergelet(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]){
+
+  /* Mergelet implements the parallel merge.  It takes three input
+     datablocks: its left input array, its right input array, and its
+     output array.  It takes six arguments: the starting position for
+     the merge in the left input array, the length of the sequence to
+     merge in the left input array, the starting position for the
+     merge in the right input array, the length of the sequence to
+     merge in the right input array, the starting position for the
+     merge in the output array, and the guid for the dependency
+     mergelet should satisfy to indicate that it's done. */
+
+
+  intptr_t *typed_paramv = (intptr_t *) *paramv;
+  int left_array_start = (int) typed_paramv[0];
+  int left_array_length = (int) typed_paramv[1];
+  int right_array_start = (int) typed_paramv[2];
+  int right_array_length = (int) typed_paramv[3];
+  int output_array_start = (int) typed_paramv[4];
+  ocrGuid_t output_event = (ocrGuid_t) typed_paramv[5];
+
+  int *left_input_array = (int *) depv[0].ptr;
+  int *right_input_array = (int *) depv[1].ptr;
+  int *output_array = (int *) depv[2].ptr;
+
+  
+  /* do the merge */
+  int left_index = left_array_start;
+  int right_index = right_array_start;
+  int output_index = output_array_start;
+
+  while((left_index < (left_array_start + left_array_length)) && (right_index < (right_array_start + right_array_length))){
+    if(left_input_array[left_index] < right_input_array[right_index]){
+      output_array[output_index] = left_input_array[left_index];
+      left_index++;
+    }
+    else{
+      output_array[output_index] = right_input_array[right_index];
+      right_index++;
+    }
+    output_index++;
+  }
+    
+  // ok, we've reached the end of at least one of the sub-arrays, so finish up
+  while(left_index < (left_array_start + left_array_length)){
+    output_array[output_index] = left_input_array[left_index];
+    left_index++;
+    output_index++;
+  }
+  while(right_index < (right_array_start + right_array_length)){
+    output_array[output_index] = right_input_array[right_index];
+    right_index++;
+    output_index++;
+  }
+  //  std::cout << output_event << "\n";
+  ocrEventSatisfy(output_event, 0);
+  return(0);
+}
+
+int binary_search(int value, int *data_array, int lower_bound, int upper_bound){
+  /* Standard binary search algorithm */
+  int start = lower_bound;
+  int end = upper_bound;
+
+  while(start <= end){
+    int midpoint = (start + end) / 2;
+    if(data_array[midpoint] == value){
+      return(midpoint);
+    }
+    if(data_array[midpoint] < value){
+      // we guessed too low
+      start = midpoint + 1;
+    }
+    else{
+      // we guessed too high
+      end = midpoint -1;
+    }
+  }
+
+  // if we got this far, the value wasn't in the array, so return the
+  // best approximation to its position
+  if(end < 0){
+    return 0;
+  }
+  if(start > upper_bound){
+    return upper_bound;
+  }
+  else{
+    return start;
+  }
+
+}
