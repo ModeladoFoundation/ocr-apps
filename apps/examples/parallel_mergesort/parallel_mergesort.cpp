@@ -664,6 +664,9 @@ u8 mergelet(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
   }
   //  std::cout << output_event << "\n";
   ocrEventSatisfy(output_event, 0);
+  delete *paramv; //free our parameters.  Merge_phi will take care of
+		//freeing the datablocks we were passed
+  delete paramv;
   return(0);
 }
 
