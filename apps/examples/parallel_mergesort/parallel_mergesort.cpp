@@ -565,7 +565,16 @@ u8 merge_phi(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t dep
   ocrGuid_t outputArrayGuid = depv[2].guid;
   if (output_event == NULL_GUID){
     /* We've reached the top of the tree, and are done */
-    std::cout << "We're at the top of the tree, checking results\n";
+    //   std::cout << "We're at the top of the tree, checking results\n";
+
+    extern long int start_time;
+    struct timeval end_time;
+    gettimeofday(&end_time, NULL);
+    long int end_microseconds = (end_time.tv_sec * 1000000) + end_time.tv_usec;
+    /* std::cout << "start time " << start_time << "\n";
+       std::cout << "end time   " << end_microseconds << "\n";
+       std::cout << "Core run time " << (end_microseconds - start_time) << " microseconds\n"; */
+    std::cout << (end_microseconds - start_time) << "\n";
     int *output_array = (int *) depv[2].ptr;
 
     int bad_sort = 0;
