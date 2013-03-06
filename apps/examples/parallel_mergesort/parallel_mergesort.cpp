@@ -497,7 +497,7 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
 	std::cout << "Mis-sorted value found at position " << q << " with start_index = " << start_index << " and end_index " << end_index << "\n";
     }
     }*/
-    if(merge_length == array_size){
+    if(output_event == NULL_GUID){
       /* I'm the top-level merger, and the program is done when I'm finished */
       /* Compute run time (not counting result check */
       extern long int start_time;
@@ -529,7 +529,9 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
     */
     ocrFinish();  /* Tell OCR we're done */
     }
-    ocrEventSatisfy(output_event, outputArrayGuid);
+    else{
+      ocrEventSatisfy(output_event, outputArrayGuid);
+    }
     if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
       std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
     }
