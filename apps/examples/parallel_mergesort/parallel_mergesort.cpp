@@ -455,6 +455,7 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
       output_array_start = right_array_end + left_array_end + 2;
       right_array_start = right_array_end +1;
       left_array_start += left_array_length;
+      delete mergeletDoneGuid_p;  /* Free this so we don't leak memory */
     }
     /* once all the dependencies are in place, schedule the merge_phi */
     ocrEdtSchedule(mergePhiGuid); 
