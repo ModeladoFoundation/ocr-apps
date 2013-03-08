@@ -148,7 +148,7 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
   ocrGuid_t merger_event = (ocrGuid_t) typed_paramv[7];
   std::ostringstream buf;
 
-  // buf << "Splitter called on indices " << start_index << " to " << end_index << " with sort_array " << sort_array << " and temp_array " << temp_array << "\n";
+  //buf << "Splitter called on indices " << start_index << " to " << end_index << " with sort_array " << sort_array << " and temp_array " << temp_array << "\n";
   
   //std::cout << buf.str();
 
@@ -290,9 +290,9 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
     ocrEventSatisfy(right_event_guid, rightSplitterInputGuid);
    }
 
-  if(int res=ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-    std::cout << "Splitter ocrDbDestroy #1 failed with code " << res << "\n";
-  }
+  //if(int res=ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+  // std::cout << "Splitter ocrDbDestroy #1 failed with code " << res << "\n";
+  //}
   /*  else{
     std::cout << "Splitter ocrDbDestroy #1 destroyed guid " << depv[0].guid << "\n";
     }*/
@@ -323,14 +323,15 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
   ocrGuid_t output_event = (ocrGuid_t) typed_paramv[4];
   
   u64 merge_chunk_size = log_chunk_size * chunk_size; 
-
-  //std::cout << "Merger called on range " << start_index << " to " << end_index << " with start_time " << start_time << " and array_size " << array_size << "\n";
-
+  /*std::ostringstream buf;
+    buf << "Merger called with merge_length = " << merge_length << "\n";
+  std::cerr << buf.str();
+  */
   int *left_subarray = (int *) depv[0].ptr;
   int *right_subarray = (int *) depv[1].ptr;
   
   /* Pre-check the subarrays for correctness as a debugging step */
-  /*for(int i = 1; i < merge_length/2; i++){
+  /* for(int i = 1; i < merge_length/2; i++){
     if(left_subarray[i] < left_subarray[i-i]){
       std::cout << "miss-sorted element found in left subarray at position " << i << "\n";
     }
@@ -353,11 +354,12 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
 
 
   if(merge_length > merge_chunk_size){
-    /* do the merge in parallel */
+  
+  /* do the merge in parallel */
 
     int num_mergelets = merge_length/merge_chunk_size;
-    if (num_mergelets > 128){
-      num_mergelets = 128;
+    if (num_mergelets > 32){
+      num_mergelets = 32;
       // keep the number of mergelets from becoming absurdly large for
       // very small chunk sizes and thus blowing out the deque length 
     }
@@ -399,7 +401,7 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
     int right_array_start = 0;
     int right_array_end = 0 ;
     int output_array_start = 0;
-
+    //    std::ostringstream buf;
     for (int i = 0; i < num_mergelets; i++){
       mergeletDoneGuid_p = new ocrGuid_t;
       ocrEventCreate(mergeletDoneGuid_p, OCR_EVENT_STICKY_T, false);
@@ -430,8 +432,9 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
       paramv[4] = (intptr_t) output_array_start;
       paramv[5] = (intptr_t) *mergeletDoneGuid_p;
       
-      //      std::cout << "Creating mergelet with left_array_start = " << left_array_start << ", left_array_length = " << left_array_length << ", right_array_start = " << right_array_start << ", and right_array_length= " << (right_array_end - right_array_start)+1 << "\n";
+      /*buf << "Creating mergelet with left_array_start = " << left_array_start << ", left_array_length = " << left_array_length << ", right_array_start = " << right_array_start << ", and right_array_length= " << (right_array_end - right_array_start)+1 << "\n";
 
+	std::cerr << buf.str();  */
       /* Create the EDT for the mergelet */
       ocrEdtCreate(&(mergeletGuid), mergelet, 6, NULL, (void **) p_paramv, 0, 3, NULL);
       /* Create the events for the input and output arrays for
@@ -455,7 +458,7 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
       output_array_start = right_array_end + left_array_end + 2;
       right_array_start = right_array_end +1;
       left_array_start += left_array_length;
-      delete mergeletDoneGuid_p;  /* Free this so we don't leak memory */
+      //      delete mergeletDoneGuid_p;  /* Free this so we don't leak memory */
     }
     /* once all the dependencies are in place, schedule the merge_phi */
     ocrEdtSchedule(mergePhiGuid); 
@@ -533,15 +536,15 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
     else{
       ocrEventSatisfy(output_event, outputArrayGuid);
     }
-    if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
-      std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
-    }
+    //if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
+    //  std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
+    // }
     /*  else{
 	std::cout << "Merger ocrDbDestroy #2 destroyed guid " << depv[1].guid << "\n";
 	}*/
-    if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-      std::cout << "Merger ocrDbDestroy #3 failed with code " << res << "\n";
-    }
+    //if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+    //  std::cout << "Merger ocrDbDestroy #3 failed with code " << res << "\n";
+    //}
     /*  else{
 	std::cout << "Merger ocrDbDestroy #1 destroyed guid " << depv[0].guid << "\n";
 	}*/
@@ -562,7 +565,7 @@ u8 merge_phi(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t dep
      that it has completed, passing the output array that the
      mergelets have filled in.  It then frees the left and right input
      arrays. */
- 
+  //std::cerr << "Merge_phi firing\n";
   ocrGuid_t output_event = (ocrGuid_t) params;
   u64 array_size = (u64) paramv;
   ocrGuid_t outputArrayGuid = depv[2].guid;
@@ -599,13 +602,13 @@ u8 merge_phi(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t dep
     ocrEventSatisfy(output_event, outputArrayGuid);
   }
 
-  if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-      std::cout << "Merge_phi ocrDbDestroy #1 failed with code " << res << "\n";
-    }
+  //  if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+  //  std::cout << "Merge_phi ocrDbDestroy #1 failed with code " << res << "\n";
+  // }
 
-  if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
-      std::cout << "Merge_phi ocrDbDestroy #2 failed with code " << res << "\n";
-    }
+  //if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
+  //    std::cout << "Merge_phi ocrDbDestroy #2 failed with code " << res << "\n";
+  //   }
 
 
   return(0);
@@ -635,12 +638,15 @@ u8 mergelet(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
   int *left_input_array = (int *) depv[0].ptr;
   int *right_input_array = (int *) depv[1].ptr;
   int *output_array = (int *) depv[2].ptr;
+  /*  std::ostringstream buf;
+  buf << "starting mergelet with left_array_start = " << left_array_start << ", left_array_length = " <<  left_array_length << ", right_array_start = " << right_array_start << ", right_array_length = " << right_array_length << "\n";
+  std::cerr << buf.str(); */
 
-  
   /* do the merge */
   int left_index = left_array_start;
   int right_index = right_array_start;
   int output_index = output_array_start;
+  
 
   while((left_index < (left_array_start + left_array_length)) && (right_index < (right_array_start + right_array_length))){
     if(left_input_array[left_index] < right_input_array[right_index]){
@@ -666,10 +672,10 @@ u8 mergelet(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
     output_index++;
   }
   //  std::cout << output_event << "\n";
-  ocrEventSatisfy(output_event, 0);
-  delete *paramv; //free our parameters.  Merge_phi will take care of
+  ocrEventSatisfy(output_event, NULL_GUID);
+  //delete *paramv; //free our parameters.  Merge_phi will take care of
 		//freeing the datablocks we were passed
-  delete paramv;
+  //delete paramv;
   return(0);
 }
 
