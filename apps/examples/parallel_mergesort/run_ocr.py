@@ -41,7 +41,7 @@ for i in range(15,30):  # i = log2 of array size
             #get the output and parse it
             output = sort_task.stdout.read()
             output_lines = output.split("\n")
-            print output_lines
+#            print output_lines
             #second line of output should tell us that the sorted
             #array is ok 
             if len(output_lines) == 3 and output_lines[1] == "Sorted array checks out":
