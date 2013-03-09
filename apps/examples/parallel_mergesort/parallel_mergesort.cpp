@@ -290,9 +290,9 @@ u8 splitter(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
     ocrEventSatisfy(right_event_guid, rightSplitterInputGuid);
    }
 
-  //if(int res=ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-  // std::cout << "Splitter ocrDbDestroy #1 failed with code " << res << "\n";
-  //}
+  if(int res=ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+    std::cout << "Splitter ocrDbDestroy #1 failed with code " << res << "\n";
+  }
   /*  else{
     std::cout << "Splitter ocrDbDestroy #1 destroyed guid " << depv[0].guid << "\n";
     }*/
@@ -358,8 +358,8 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
   /* do the merge in parallel */
 
     int num_mergelets = merge_length/merge_chunk_size;
-    if (num_mergelets > 32){
-      num_mergelets = 32;
+    if (num_mergelets > 61){
+      num_mergelets = 61;
       // keep the number of mergelets from becoming absurdly large for
       // very small chunk sizes and thus blowing out the deque length 
     }
@@ -458,7 +458,7 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
       output_array_start = right_array_end + left_array_end + 2;
       right_array_start = right_array_end +1;
       left_array_start += left_array_length;
-      //      delete mergeletDoneGuid_p;  /* Free this so we don't leak memory */
+      delete mergeletDoneGuid_p;  /* Free this so we don't leak memory */
     }
     /* once all the dependencies are in place, schedule the merge_phi */
     ocrEdtSchedule(mergePhiGuid); 
@@ -536,15 +536,15 @@ u8 merger(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv[]
     else{
       ocrEventSatisfy(output_event, outputArrayGuid);
     }
-    //if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
-    //  std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
-    // }
+    if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
+      std::cout << "Merger ocrDbDestroy #2 failed with code " << res << "\n";
+     }
     /*  else{
 	std::cout << "Merger ocrDbDestroy #2 destroyed guid " << depv[1].guid << "\n";
 	}*/
-    //if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-    //  std::cout << "Merger ocrDbDestroy #3 failed with code " << res << "\n";
-    //}
+    if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+     std::cout << "Merger ocrDbDestroy #3 failed with code " << res << "\n";
+    }
     /*  else{
 	std::cout << "Merger ocrDbDestroy #1 destroyed guid " << depv[0].guid << "\n";
 	}*/
@@ -602,13 +602,13 @@ u8 merge_phi(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t dep
     ocrEventSatisfy(output_event, outputArrayGuid);
   }
 
-  //  if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
-  //  std::cout << "Merge_phi ocrDbDestroy #1 failed with code " << res << "\n";
-  // }
+    if(int res = ocrDbDestroy(depv[0].guid)){  /* Free the space used by our inputs */
+    std::cout << "Merge_phi ocrDbDestroy #1 failed with code " << res << "\n";
+   }
 
-  //if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
-  //    std::cout << "Merge_phi ocrDbDestroy #2 failed with code " << res << "\n";
-  //   }
+  if(int res = ocrDbDestroy(depv[1].guid)){  /* Free the space used by our inputs */
+      std::cout << "Merge_phi ocrDbDestroy #2 failed with code " << res << "\n";
+     }
 
 
   return(0);
@@ -673,9 +673,9 @@ u8 mergelet(u32 paramc, u64 * params, void *paramv[], u32 depc, ocrEdtDep_t depv
   }
   //  std::cout << output_event << "\n";
   ocrEventSatisfy(output_event, NULL_GUID);
-  //delete *paramv; //free our parameters.  Merge_phi will take care of
+  delete *paramv; //free our parameters.  Merge_phi will take care of
 		//freeing the datablocks we were passed
-  //delete paramv;
+  delete paramv;
   return(0);
 }
 
