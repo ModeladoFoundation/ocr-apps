@@ -1,5 +1,5 @@
 OCR_FLAGS=-L${OCR_INSTALL}/lib -I${OCR_INSTALL}/include -locr
-CFLAGS = -g
+CFLAGS = -O6
 
 EXES=sequential_mergesort_test.exe parallel_mergesort_test.exe parallel_mergesort_tcmalloc.exe
 
