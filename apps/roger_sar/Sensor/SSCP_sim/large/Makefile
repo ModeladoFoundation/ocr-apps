@@ -13,13 +13,13 @@ ASFLAGS	=
 AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
-FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim
-POWER	= $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
+FSIM	= $(RMD_INSTALL_BASE)/xe-sim/fsim
+POWER	= $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript.sh
 
 CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
 CFLAGS	= -g -ggdb -g3 -O1 -std=c99 -frmd-extensions -DRAG_SIM \
-	-I $(RMD_INSTALL_BASE)/xe_sim/include \
+	-I $(RMD_INSTALL_BASE)/xe-sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/common/include \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \

@@ -30,19 +30,20 @@ ASFLAGS	=
 AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
-FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim 
-POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
-POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript_TechScaled.sh
-POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/E*pdf
-POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/UHPC.Power*
+FSIM	= $(RMD_INSTALL_BASE)/xe-sim/fsim 
+POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript.sh
+POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript-TechScaled.sh
+POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/E*pdf
+POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/UHPC.Power*
+MACHINE_CFG = $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-4-blocks.cfg
 
 CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
 #	-DRAG_SPAD -DRAG_DRAM_OFF
 #-frmd-bb-profiling 
 
-CFLAGS	= -g -ggdb -g3 -O3 -std=c99 -frmd-extensions -DRAG_SIM \
-	-I $(RMD_INSTALL_BASE)/xe_sim/include \
+CFLAGS	= -g -ggdb -g3 -O3 -std=c99 -frmd-extensions \
+	-DRAG_SIM -I $(RMD_INSTALL_BASE)/xe-sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/common/include \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
@@ -56,8 +57,8 @@ CFLAGS	= -g -ggdb -g3 -O3 -std=c99 -frmd-extensions -DRAG_SIM \
 	-DDEBUG_LVL_OFF -DTRACE_LVL_2_OFF   \
 	-DDEBUG_LVL_3_OFF -DDEBUG_LVL_4_OFF   \
 	-DTRACE                                   \
-	-DTRACE_LVL_1     -DTRACE_LVL_2_OFF       \
-	-DTRACE_LVL_3_OFF -DTRACE_LVL_4_OFF   \
+	-DTRACE_LVL_1     -DTRACE_LVL_2       \
+	-DTRACE_LVL_3 -DTRACE_LVL_4   \
 	-DRAG_PETER_DIST_AND_TRIG -DRAG_SPAD -DRAG_DRAM \
 	-DGANESH_STRENGTH_RED_OPT
 
@@ -115,7 +116,7 @@ $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 run:	$(TARGET) $(TARGET).cfg
-	/usr/bin/time $(FSIM) -s -c $(TARGET).cfg
+	/usr/bin/time $(FSIM) -s -c $(TARGET).cfg -c $(MACHINE_CFG)
 	grep -h -e 'x=0x' logs/sscp.log.*CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
 	-egrep -h '(>>> cur|>>> ref)' logs/sscp.log.*CE.00 | grep 0x >images_debug.txt

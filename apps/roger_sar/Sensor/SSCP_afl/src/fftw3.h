@@ -13,9 +13,9 @@
 
 #ifdef RAG_SIM
 #include "xe-codelet.h"
-#include "xe_memory.h"
-#include "xe_console.h"
-#include "xe_global.h"
+#include "xe-memory.h"
+#include "xe-console.h"
+#include "xe-global.h"
 #endif
 
 #ifdef RAG_AFL
