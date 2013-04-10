@@ -9,10 +9,10 @@
 
 #ifdef RAG_SIM
 #include "xe-codelet.h"
-#include "xe_memory.h"
-#include "xe_console.h"
-#include "xe_global.h"
-#include "xe_ase.h"
+#include "xe-memory.h"
+#include "xe-console.h"
+#include "xe-global.h"
+#include "xe-ase.h"
 #define RAG_FLUSH
 #endif
 
@@ -160,7 +160,7 @@ static int blk_size(int n,int max_blk_size) {
 	int ret_val = n;
 	for( int i = max_blk_size ; i>1 ; i-- ) {
 		if( (n%i) == 0 ) {
-			ret_val = i;	
+			ret_val = i;
 			break;
 		}
 	}
