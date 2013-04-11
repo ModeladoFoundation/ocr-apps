@@ -35,7 +35,7 @@ POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript.sh
 POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript-TechScaled.sh
 POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/E*pdf
 POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/UHPC.Power*
-MACHINE_CFG = $(RMD_INSTALL_BASE)/xe-sim/configs/eth-16-thors-4-blocks.cfg
+MACHINE_CFG = $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-4-blocks.cfg
 
 CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
@@ -116,8 +116,8 @@ $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 run:	$(TARGET) $(TARGET).cfg
-	#/usr/bin/time $(FSIM) -s -c $(TARGET).cfg -c $(MACHINE_CFG)
-	#grep -h -e 'x=0x' logs/sscp.log.*CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
+	/usr/bin/time $(FSIM) -s -c $(TARGET).cfg -c $(MACHINE_CFG)
+	grep -h -e 'x=0x' logs/sscp.log.*CE.00 | grep -e 'y=0x' | grep -e 'p=0x' >detects.txt
 	../utils/detects_ascii_to_txt <detects.txt | sort >Detects.txt
 	-egrep -h '(>>> cur|>>> ref)' logs/sscp.log.*CE.00 | grep 0x >images_debug.txt
 	-../utils/viewImageTxt 1 <Detects.txt >cur.bmp
