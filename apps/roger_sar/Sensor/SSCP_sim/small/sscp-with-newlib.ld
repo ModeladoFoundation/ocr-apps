@@ -1,1 +1,1 @@
-../../../../../ss/runtime/libxe/rmd_newlib_big.ld
+../../../../../ss/runtime/libxe/rmd-newlib-big.ld
