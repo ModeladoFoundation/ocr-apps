@@ -1,10 +1,10 @@
-CC=gcc
+CC=gcc -Dinline=
 CCFLAGS= -fpic -O0 -g  -DBRG_C99_TYPES -std=c99 -DBRG_RNG -DTRACE=0 -DDEBUG=0
 ##-DRAG_FIN_LAST
 
 LDFLAGS= -lm
 
-HCC=hcc
+HCC=hcc -Dinline=
 HCCFLAGS= -rose:C99 -I$(HC_HOME)/include/hc
 HLDFLAGS= -lpthread -L$(HC_HOME)/lib -lxml2 -lhc
 
