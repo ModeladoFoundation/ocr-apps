@@ -13,12 +13,12 @@ ASFLAGS	=
 AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
-FSIM	= $(RMD_INSTALL_BASE)/xe_sim/f_sim
+FSIM	= $(RMD_INSTALL_BASE)/xe-sim/fsim
 
-POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript.sh
-POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe_sim/powerAnalysisScript_TechScaled.sh
-POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/E*pdf
-POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe_sim/tools/powerResultDir/UHPC.Power*
+POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript.sh
+POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript_TechScaled.sh
+POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/E*pdf
+POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/UHPC.Power*
 
 
 CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE_OFF -DDEBUG_OFF -DRAG_BLOCK
@@ -26,7 +26,7 @@ CC	= $(PREFIX)-clang -DRAG_SIM -DTRACE_OFF -DDEBUG_OFF -DRAG_BLOCK
 ## -DDEBUG 
 ## -DRAG_BLOCK
 CFLAGS	= -g -ggdb -g3 -O2 -std=c99 -frmd-extensions -frmd-bb-profiling -DBRG_C99_TYPES -DBRG_RNG -DRAG_DEPTH=4 \
-	-I $(RMD_INSTALL_BASE)/xe_sim/include \
+	-I $(RMD_INSTALL_BASE)/xe-sim/include \
 	-I $(RMD_INSTALL_BASE)/common \
 	-I $(RMD_INSTALL_BASE)/common/include \
 	-I $(RMD_INSTALL_BASE)/rmdkrnl/inc \
@@ -34,7 +34,7 @@ CFLAGS	= -g -ggdb -g3 -O2 -std=c99 -frmd-extensions -frmd-bb-profiling -DBRG_C99
 	-I $(RMD_INSTALL_BASE)/runtime/common
 
 LD	= $(PREFIX)-ld
-LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T ./uts_newlib_normal.ld -static -Map=out.map
+LDFLAGS	= -L$(RMD_RT_LIBDIR) -L$(RMD_RT_INSTALL) -T ./rmd-newlib-big.ld -static -Map=out.map
 LDLIBS	= -lxert --start-group -lc -lg -lm -lgloss_lxe --end-group
 
 
@@ -53,11 +53,11 @@ debug: $(TARGET)
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
 
 
-$(TARGET): $(TARGET).o $(OBJS) ./uts_newlib_normal.ld
+$(TARGET): $(TARGET).o $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(TARGET).o $(OBJS) $(LDLIBS)
 
 run:	$(TARGET)
-	$(FSIM) -s -c $(TARGET).cfg
+	$(FSIM) -s -c $(TARGET).cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 
 powerclean:
 	@-$(POWER_ANALYSIS_SCRIPT) -r 2>/dev/null 	
