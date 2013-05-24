@@ -30,7 +30,9 @@ run:	lulesh
 
 check:	lulesh gold.out
 	rm -f nohup.out
+	date
 	time nohup ./lulesh -nproc 8
+	date
 	diff nohup.out gold.out
 	wc nohup.out gold.out
 
