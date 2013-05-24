@@ -30,9 +30,9 @@ run:	lulesh
 
 check:	lulesh gold.out
 	rm -f nohup.out
-	nohup ./lulesh -nproc 8
+	time nohup ./lulesh -nproc 8
 	diff nohup.out gold.out
 	wc nohup.out gold.out
 
 clean:
-	rm -f rose_lulesh.o rose_lulesh.c AMO.o lulesh.o lulesh
+	rm -f rose_lulesh.o rose_lulesh.c lulesh.o lulesh
