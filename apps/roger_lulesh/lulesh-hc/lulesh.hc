@@ -819,7 +819,6 @@ void SumElemStressesToNodeForces( hcConst Real_t B[][EIGHT], /* IN */
 }
 
 #ifdef HAB_C
-//RAG TESTING 
 static inline
 void IntegrateStressForElems( Index_t numElem,
                               Real_t *sigxx, Real_t *sigyy, Real_t *sigzz,
@@ -930,6 +929,7 @@ void CollectDomainNodesToElemNodes(const Index_t* elemToNode,
                                    Real_t elemY[EIGHT],
                                    Real_t elemZ[EIGHT])
 {
+// RAG -- nd(0..7)i = elemToNode[0..7]
    Index_t nd0i = elemToNode[0] ;
    Index_t nd1i = elemToNode[1] ;
    Index_t nd2i = elemToNode[2] ;
@@ -938,7 +938,7 @@ void CollectDomainNodesToElemNodes(const Index_t* elemToNode,
    Index_t nd5i = elemToNode[5] ;
    Index_t nd6i = elemToNode[6] ;
    Index_t nd7i = elemToNode[7] ;
-
+// RAG -- GATHER elemX[0..7] = domain.m_x[elemToNode[0..7]]
    elemX[0] = domain.m_x[nd0i];
    elemX[1] = domain.m_x[nd1i];
    elemX[2] = domain.m_x[nd2i];
@@ -947,7 +947,7 @@ void CollectDomainNodesToElemNodes(const Index_t* elemToNode,
    elemX[5] = domain.m_x[nd5i];
    elemX[6] = domain.m_x[nd6i];
    elemX[7] = domain.m_x[nd7i];
-
+// RAG -- GATHER elemY[0..7] = domain.m_y[elemToNode[0..7]]
    elemY[0] = domain.m_y[nd0i];
    elemY[1] = domain.m_y[nd1i];
    elemY[2] = domain.m_y[nd2i];
@@ -956,7 +956,7 @@ void CollectDomainNodesToElemNodes(const Index_t* elemToNode,
    elemY[5] = domain.m_y[nd5i];
    elemY[6] = domain.m_y[nd6i];
    elemY[7] = domain.m_y[nd7i];
-
+// RAG -- GATHER elemZ[0..7] = domain.m_z[elemToNode[0..7]]
    elemZ[0] = domain.m_z[nd0i];
    elemZ[1] = domain.m_z[nd1i];
    elemZ[2] = domain.m_z[nd2i];
@@ -965,17 +965,16 @@ void CollectDomainNodesToElemNodes(const Index_t* elemToNode,
    elemZ[5] = domain.m_z[nd5i];
    elemZ[6] = domain.m_z[nd6i];
    elemZ[7] = domain.m_z[nd7i];
-
 }
 
 static inline
-void VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
-             const Real_t x3, const Real_t x4, const Real_t x5,
-             const Real_t y0, const Real_t y1, const Real_t y2,
-             const Real_t y3, const Real_t y4, const Real_t y5,
-             const Real_t z0, const Real_t z1, const Real_t z2,
-             const Real_t z3, const Real_t z4, const Real_t z5,
-             Real_t* dvdx, Real_t* dvdy, Real_t* dvdz)
+void VoluDer(const Real_t x0, const Real_t x1, const Real_t x2, /* IN */
+             const Real_t x3, const Real_t x4, const Real_t x5, /* IN */
+             const Real_t y0, const Real_t y1, const Real_t y2, /* IN */
+             const Real_t y3, const Real_t y4, const Real_t y5, /* IN */
+             const Real_t z0, const Real_t z1, const Real_t z2, /* IN */
+             const Real_t z3, const Real_t z4, const Real_t z5, /* IN */
+             Real_t* dvdx, Real_t* dvdy, Real_t* dvdz)          /* OUT */
 {
    const Real_t twelfth = cast_Real_t(1.0) / cast_Real_t(12.0) ;
 
@@ -999,12 +998,12 @@ void VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
 }
 
 static inline
-void CalcElemVolumeDerivative(Real_t dvdx[EIGHT],
-                              Real_t dvdy[EIGHT],
-                              Real_t dvdz[EIGHT],
-                              const Real_t x[EIGHT],
-                              const Real_t y[EIGHT],
-                              const Real_t z[EIGHT])
+void CalcElemVolumeDerivative(Real_t dvdx[EIGHT],    /* OUT */
+                              Real_t dvdy[EIGHT],    /* OUT */
+                              Real_t dvdz[EIGHT],    /* OUT */
+                              const Real_t x[EIGHT], /* IN */
+                              const Real_t y[EIGHT], /* IN */
+                              const Real_t z[EIGHT]) /* IN */
 {
    VoluDer(x[1], x[2], x[3], x[4], x[5], x[7],
            y[1], y[2], y[3], y[4], y[5], y[7],
@@ -1041,17 +1040,20 @@ void CalcElemVolumeDerivative(Real_t dvdx[EIGHT],
 }
 
 static inline
-void CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
-                              Real_t *hourgam1, Real_t *hourgam2, Real_t *hourgam3,
-                              Real_t *hourgam4, Real_t *hourgam5, Real_t *hourgam6,
-                              Real_t *hourgam7, Real_t coefficient,
-                              Real_t *hgfx, Real_t *hgfy, Real_t *hgfz )
+void CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,        /* IN */
+                              Real_t *hourgam0, Real_t *hourgam1,        /* IN */
+                              Real_t *hourgam2, Real_t *hourgam3,        /* IN */
+                              Real_t *hourgam4, Real_t *hourgam5,        /* IN */
+                              Real_t *hourgam6, Real_t *hourgam7,        /* IN */
+                              Real_t coefficient,                        /* IN */
+                              Real_t *hgfx, Real_t *hgfy, Real_t *hgfz ) /* OUT */
 {
+// RAG --   h(x|y|z)[0][0..3] =        MatMul( d(x|y|z)[0][0..7] , hourgam [0..7][0..3] )
+// RAG -- hgf(x|y|x)[0][0..7] = coef * MatMul( h(x|y|z)[0][0..3] , hourgamT[0..7][0..3] )
    Index_t i00=0;
    Index_t i01=1;
    Index_t i02=2;
    Index_t i03=3;
-
    Real_t h00 =
       hourgam0[i00] * xd[0] + hourgam1[i00] * xd[1] +
       hourgam2[i00] * xd[2] + hourgam3[i00] * xd[3] +
@@ -1223,6 +1225,170 @@ void CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourg
        hourgam7[i02] * h02 + hourgam7[i03] * h03);
 }
 
+#ifdef HAB_C
+static Real_t GAMMA[FOUR*EIGHT] = {
+( 1.), ( 1.), (-1.), (-1.), (-1.), (-1.), ( 1.), ( 1.),
+( 1.), (-1.), (-1.), ( 1.), (-1.), ( 1.), ( 1.), (-1.),
+( 1.), (-1.), ( 1.), (-1.), ( 1.), (-1.), ( 1.), (-1.),
+(-1.), ( 1.), (-1.), ( 1.), ( 1.), (-1.), ( 1.), (-1.),
+};
+
+static inline
+void CalcFBHourglassForceForElems(Real_t *determ,
+            Real_t *x8n,      Real_t *y8n,      Real_t *z8n,
+            Real_t *dvdx,     Real_t *dvdy,     Real_t *dvdz,
+            Real_t hourg)
+{
+   /*************************************************
+    *
+    *     FUNCTION: Calculates the Flanagan-Belytschko anti-hourglass
+    *               force.
+    *
+    *************************************************/
+
+   Index_t numElem = domain.m_numElem ;
+
+
+// RAG -- Could be compile time constants in rodata
+
+/*************************************************/
+/*    compute the hourglass modes */
+
+  finish {
+   for(Index_t i2=0;i2<numElem;++i2){
+//  async IN( domain, GAMMA,  // GLOBAL
+//            determ, x8n,y8n,z8n, dvdx,dvdy,dvdz, hourg, // PARAMS
+//            i2 ) { // LOCAL
+
+      Real_t *hgfx = malloc(EIGHT*sizeof(Real_t));
+      Real_t *hgfy = malloc(EIGHT*sizeof(Real_t));
+      Real_t *hgfz = malloc(EIGHT*sizeof(Real_t));
+
+      Real_t *hourgam0 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam1 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam2 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam3 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam4 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam5 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam6 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam7 = malloc(FOUR*sizeof(Real_t));
+
+      Real_t *xd1 = malloc(EIGHT*sizeof(Real_t));
+      Real_t *yd1 = malloc(EIGHT*sizeof(Real_t));
+      Real_t *zd1 = malloc(EIGHT*sizeof(Real_t));
+
+      Index_t *elemToNode  = malloc(EIGHT*sizeof(Index_t)) ;
+
+      Real_t coefficient;
+
+      Index_t i3=EIGHT*i2;
+
+      Real_t volinv=cast_Real_t(1.0)/determ[i2];
+      Real_t ss1, mass1, volume13 ;
+
+
+ // RAG -- GATHER/SCATTER Index Values
+      for(Index_t i=0;i<EIGHT;i++)
+        elemToNode[i] = *(Index_t *)&domain.m_nodelist[EIGHT*i2+i];
+
+      for(Index_t i1=0;i1<4;++i1){
+// RAGRAG TESTING TO SEE IF (x|y|z)8n is just scalar replication for vector
+         Real_t hourmodx =
+            x8n[i3+0] * GAMMA[i1*EIGHT+0] + x8n[i3+1] * GAMMA[i1*EIGHT+1] +
+            x8n[i3+2] * GAMMA[i1*EIGHT+2] + x8n[i3+3] * GAMMA[i1*EIGHT+3] +
+            x8n[i3+4] * GAMMA[i1*EIGHT+4] + x8n[i3+5] * GAMMA[i1*EIGHT+5] +
+            x8n[i3+6] * GAMMA[i1*EIGHT+6] + x8n[i3+7] * GAMMA[i1*EIGHT+7];
+
+         Real_t hourmody =
+            y8n[i3+0] * GAMMA[i1*EIGHT+0] + y8n[i3+1] * GAMMA[i1*EIGHT+1] +
+            y8n[i3+2] * GAMMA[i1*EIGHT+2] + y8n[i3+3] * GAMMA[i1*EIGHT+3] +
+            y8n[i3+4] * GAMMA[i1*EIGHT+4] + y8n[i3+5] * GAMMA[i1*EIGHT+5] +
+            y8n[i3+6] * GAMMA[i1*EIGHT+6] + y8n[i3+7] * GAMMA[i1*EIGHT+7];
+
+         Real_t hourmodz =
+            z8n[i3+0] * GAMMA[i1*EIGHT+0] + z8n[i3+1] * GAMMA[i1*EIGHT+1] +
+            z8n[i3+2] * GAMMA[i1*EIGHT+2] + z8n[i3+3] * GAMMA[i1*EIGHT+3] +
+            z8n[i3+4] * GAMMA[i1*EIGHT+4] + z8n[i3+5] * GAMMA[i1*EIGHT+5] +
+            z8n[i3+6] * GAMMA[i1*EIGHT+6] + z8n[i3+7] * GAMMA[i1*EIGHT+7];
+
+         hourgam0[i1] = GAMMA[i1*EIGHT+0] -  volinv*(dvdx[i3  ] * hourmodx +
+                                                  dvdy[i3  ] * hourmody +
+                                                  dvdz[i3  ] * hourmodz );
+
+         hourgam1[i1] = GAMMA[i1*EIGHT+1] -  volinv*(dvdx[i3+1] * hourmodx +
+                                                  dvdy[i3+1] * hourmody +
+                                                  dvdz[i3+1] * hourmodz );
+
+         hourgam2[i1] = GAMMA[i1*EIGHT+2] -  volinv*(dvdx[i3+2] * hourmodx +
+                                                  dvdy[i3+2] * hourmody +
+                                                  dvdz[i3+2] * hourmodz );
+
+         hourgam3[i1] = GAMMA[i1*EIGHT+3] -  volinv*(dvdx[i3+3] * hourmodx +
+                                                  dvdy[i3+3] * hourmody +
+                                                  dvdz[i3+3] * hourmodz );
+
+         hourgam4[i1] = GAMMA[i1*EIGHT+4] -  volinv*(dvdx[i3+4] * hourmodx +
+                                                  dvdy[i3+4] * hourmody +
+                                                  dvdz[i3+4] * hourmodz );
+
+         hourgam5[i1] = GAMMA[i1*EIGHT+5] -  volinv*(dvdx[i3+5] * hourmodx +
+                                                  dvdy[i3+5] * hourmody +
+                                                  dvdz[i3+5] * hourmodz );
+
+         hourgam6[i1] = GAMMA[i1*EIGHT+6] -  volinv*(dvdx[i3+6] * hourmodx +
+                                                  dvdy[i3+6] * hourmody +
+                                                  dvdz[i3+6] * hourmodz );
+
+         hourgam7[i1] = GAMMA[i1*EIGHT+7] -  volinv*(dvdx[i3+7] * hourmodx +
+                                                  dvdy[i3+7] * hourmody +
+                                                  dvdz[i3+7] * hourmodz );
+
+      } // for i1
+
+      /* compute forces */
+      /* store forces into h arrays (force arrays) */
+
+      ss1=domain.m_ss[i2];
+      mass1=domain.m_elemMass[i2];
+      volume13=cbrt(determ[i2]);
+
+// RAG ///////////////////////////////////////////////////////////// RAG //
+// RAG  GATHER (x|y|z)d1[0,,7] = domain.m_(x|y|z)[elemToNode[0..7]]  RAG //
+// RAG ///////////////////////////////////////////////////////////// RAG //
+      for(Index_t i=0 ; i<EIGHT; i++ ) {
+         Index_t gnode = elemToNode[i];
+         xd1[i] = domain.m_xd[gnode];
+         yd1[i] = domain.m_yd[gnode];
+         zd1[i] = domain.m_zd[gnode];
+      } // for i
+
+      coefficient = - hourg * cast_Real_t(0.01) * ss1 * mass1 / volume13;
+
+      CalcElemFBHourglassForce(xd1,yd1,zd1,
+                      hourgam0,hourgam1,hourgam2,hourgam3,
+                      hourgam4,hourgam5,hourgam6,hourgam7,
+                      coefficient, hgfx, hgfy, hgfz);
+
+// RAG ///////////////////////////////////////////////////////// RAG //
+// RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
+// RAG ///////////////////////////////////////////////////////// RAG //
+      for(Index_t i=0 ; i<EIGHT; i++ ) {
+         Index_t gnode = elemToNode[i];
+         AMO__sync_addition_double(&domain.m_fx[gnode], hgfx[i]);
+         AMO__sync_addition_double(&domain.m_fy[gnode], hgfy[i]);
+         AMO__sync_addition_double(&domain.m_fz[gnode], hgfz[i]);
+      } // for i
+
+      free(elemToNode);
+      free(hgfz); free(hgfy); free(hgfx);
+      free(hourgam7); free(hourgam6); free(hourgam5); free(hourgam4);
+      free(hourgam3); free(hourgam2); free(hourgam1); free(hourgam0);
+      free(zd1); free(yd1); free(xd1);
+//  } // async
+   } // for i2
+  } // finish
+} // CalcFBHourglassForceForElems
+#else // NOT HAB_C
 static inline
 void CalcFBHourglassForceForElems(Real_t *determ,
             Real_t *x8n,      Real_t *y8n,      Real_t *z8n,
@@ -1255,6 +1421,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
    gamma[0][5] = cast_Real_t(-1.);
    gamma[0][6] = cast_Real_t( 1.);
    gamma[0][7] = cast_Real_t( 1.);
+
    gamma[1][0] = cast_Real_t( 1.);
    gamma[1][1] = cast_Real_t(-1.);
    gamma[1][2] = cast_Real_t(-1.);
@@ -1263,6 +1430,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
    gamma[1][5] = cast_Real_t( 1.);
    gamma[1][6] = cast_Real_t( 1.);
    gamma[1][7] = cast_Real_t(-1.);
+
    gamma[2][0] = cast_Real_t( 1.);
    gamma[2][1] = cast_Real_t(-1.);
    gamma[2][2] = cast_Real_t( 1.);
@@ -1271,6 +1439,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
    gamma[2][5] = cast_Real_t(-1.);
    gamma[2][6] = cast_Real_t( 1.);
    gamma[2][7] = cast_Real_t(-1.);
+
    gamma[3][0] = cast_Real_t(-1.);
    gamma[3][1] = cast_Real_t( 1.);
    gamma[3][2] = cast_Real_t(-1.);
@@ -1426,13 +1595,23 @@ void CalcFBHourglassForceForElems(Real_t *determ,
       domain.m_fz[n7si2] += hgfz[7];
    }
 }
+#endif // HAB_C
 
 static inline
 void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
 {
    Index_t i, ii, jj ;
+#ifdef HAB_C
+   Real_t  *x1  = malloc(EIGHT*sizeof(Real_t));
+   Real_t  *y1  = malloc(EIGHT*sizeof(Real_t));
+   Real_t  *z1  = malloc(EIGHT*sizeof(Real_t));
+   Real_t  *pfx = malloc(EIGHT*sizeof(Real_t));
+   Real_t  *pfy = malloc(EIGHT*sizeof(Real_t));
+   Real_t  *pfz = malloc(EIGHT*sizeof(Real_t));
+#else // NOT HAB_C
    Real_t  x1[EIGHT],  y1[EIGHT],  z1[EIGHT] ;
    Real_t pfx[EIGHT], pfy[EIGHT], pfz[EIGHT] ;
+#endif // HAB_C
    Index_t numElem = domain.m_numElem ;
    Index_t numElem8 = numElem * EIGHT ;
    Real_t *dvdx = Allocate_Real_t(numElem8) ;
@@ -1444,8 +1623,9 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
 
    /* start loop over elements */
    for (i=0 ; i<numElem ; ++i){
-
+//RAGRAG TESTING
       Index_t* elemToNode = (Index_t *)&domain.m_nodelist[EIGHT*i];
+// RAG -- GATHER (x|y|z)1[0..7] = domain.m_(x|y|z)[domain.m_nodelist[0..7]]
       CollectDomainNodesToElemNodes(elemToNode, x1, y1, z1);
 
       CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
@@ -1480,6 +1660,15 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
    Release_Real_t(dvdz) ;
    Release_Real_t(dvdy) ;
    Release_Real_t(dvdx) ;
+
+#ifdef HAB_C
+   free(pfz);
+   free(pfy);
+   free(pfx);
+   free(z1);
+   free(y1);
+   free(x1);
+#endif
 
    return ;
 }
