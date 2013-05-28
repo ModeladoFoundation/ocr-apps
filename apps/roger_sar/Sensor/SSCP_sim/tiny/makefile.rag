@@ -35,7 +35,7 @@ POWER_ANALYSIS_SCRIPT  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript.sh
 POWER_ANALYSIS_SCRIPT_TECHSCALED  = $(RMD_INSTALL_BASE)/xe-sim/powerAnalysisScript-TechScaled.sh
 POWER_ANALYSIS_GRAPHS  = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/E*pdf
 POWER_ANALYSIS_RUNLOGS = $(RMD_INSTALL_BASE)/xe-sim/tools/powerResultDir/UHPC.Power*
-MACHINE_CFG = $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-4-blocks.cfg
+MACHINE_CFG = $(RMD_INSTALL_BASE)/xe-sim/configs/rogersFedora17-x64.cfg
 
 CC	= $(PREFIX)-clang
 # -DDEBUG_SSCP can be used to output binary data for debugging purposes
@@ -53,14 +53,15 @@ CFLAGS	= -g -ggdb -g3 -O3 -std=c99 -frmd-extensions \
 	-DDEBUG_SSCP      -DRAG_DIG_SPOT_OFF -DRAG_AFFINE -DRAG_THIN_OFF \
 	-DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_OFF \
 	-DRAG_QSORT_OFF -DRAG_SINCOS -DRAG_PURE_FLOAT \
-	-DDEBUG_OFF                           \
+	-DDEBUG                           \
 	-DDEBUG_LVL_OFF -DTRACE_LVL_2_OFF   \
 	-DDEBUG_LVL_3_OFF -DDEBUG_LVL_4_OFF   \
 	-DTRACE                                   \
 	-DTRACE_LVL_1     -DTRACE_LVL_2       \
 	-DTRACE_LVL_3 -DTRACE_LVL_4   \
 	-DRAG_PETER_DIST_AND_TRIG -DRAG_SPAD -DRAG_DRAM \
-	-DGANESH_STRENGTH_RED_OPT
+	-DGANESH_STRENGTH_RED_OPT \
+	-DRAG_KEEP_CURRENT_OFF -DDEBUG_RMD_OFF
 
 OBJCOPY	= $(PREFIX)-objcopy
 
@@ -92,7 +93,7 @@ OBJS=	main.o \
 	./PlatformPosition.o \
 	./PulseTransmissionTime.o
 
-all: $(TARGET)
+all: Data.s PlatformPosition.s PulseTransmissionTime.s
 
 %.o: %.c
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
@@ -103,14 +104,14 @@ all: $(TARGET)
 %.s: %.c
 	$(CC) $(CFLAGS) -fno-builtin -S -o $@ $<
 
-Data.s:	../../datagen/small/Data.bin
-	../utils/dataImageAsm 1 <../../datagen/small/Data.bin >Data.s
+Data.s:	/home/roger/runnemede/trunk/apps/roger_sar/Sensor/SSCP_afl/tiny/Data.c
+	$(CC) $(CFLAGS) -fno-builtin -S -o $@ $<
 
-PlatformPosition.s:	../../datagen/small/PlatformPosition.bin
-	../utils/dataImageAsm 2 <../../datagen/small/PlatformPosition.bin >PlatformPosition.s
+PlatformPosition.s: /home/roger/runnemede/trunk/apps/roger_sar/Sensor/SSCP_afl/tiny/PlatformPosition.c
+	$(CC) $(CFLAGS) -fno-builtin -S -o $@ $<
 
-PulseTransmissionTime.s:	../../datagen/small/PulseTransmissionTime.bin
-	../utils/dataImageAsm 3 <../../datagen/small/PulseTransmissionTime.bin >PulseTransmissionTime.s
+PulseTransmissionTime.s: /home/roger/runnemede/trunk/apps/roger_sar/Sensor/SSCP_afl/tiny/PulseTransmissionTime.c
+	$(CC) $(CFLAGS) -fno-builtin -S -o $@ $<
 
 $(TARGET): $(INCS) $(OBJS) ./sscp-with-newlib.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
