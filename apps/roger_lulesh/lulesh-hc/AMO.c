@@ -51,3 +51,24 @@ int     AMO__sync_bool_compare_and_swap_int64_t(int64_t *memPtr, int64_t compVal
 	int rtrnVal =__sync_bool_compare_and_swap(memPtr,compVal,exchVal);
 	return rtrnVal;
 }
+
+/* LOCKS */
+
+uint64_t idamin_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
+uint64_t idamax_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
+
+void AMO__lock_uint64_t(uint64_t *memPtr) {
+	const uint64_t rag_lock = 1;
+	const uint64_t rag_unlock = 0;
+        if(*memPtr != rag_unlock){printf("ERROR IN LOCK\n");fflush(stdout);}
+	while(!__sync_bool_compare_and_swap(memPtr, rag_unlock, rag_lock));
+	return;
+}
+
+void AMO__unlock_uint64_t(uint64_t *memPtr) {
+	const uint64_t rag_lock = 1;
+	const uint64_t rag_unlock = 0;
+        if(*memPtr != rag_lock){printf("ERROR IN UNLOCK\n");fflush(stdout);}
+	while(!__sync_bool_compare_and_swap(memPtr, rag_lock, rag_unlock));
+	return;
+}
