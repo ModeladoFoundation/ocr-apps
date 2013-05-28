@@ -69,7 +69,11 @@ Additional BSD Notice
 #ifdef HAB_C
 #include "hc.h"
 #include <math.h>
+// ATOMIC MEMORY OPERATIONS
 #include "AMO.h"
+// MACROS FOR STRIPMINING, TILING and PARALLELIZATION
+#include "RAG_habanaro.h"
+
 #else // NOT HAB_C
 #include <tgmath.h>
 #endif // HAB_C
@@ -393,17 +397,23 @@ domain_AllocateNodalPersistent(size_t hcSize) {
 
    if(domain.m_nodalMass != NULL)free(domain.m_nodalMass); domain.m_nodalMass = malloc(hcSize*sizeof(Real_t));
 
-   finish{ int i=0, len = hcSize, blk=BLK_SIZE;
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_xd[i] = (Real_t)(0.0);
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_yd[i] = (Real_t)(0.0);
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_zd[i] = (Real_t)(0.0);
+   FINISH
+      FOR_OUTER_0xNx1(i,hcSize)
+        ASYNC_IN_1(i,domain) // INDEX and GLOBAL
+          FOR_INNER(i)
+            domain.m_xd[i] = (Real_t)(0.0);
+            domain.m_yd[i] = (Real_t)(0.0);
+            domain.m_zd[i] = (Real_t)(0.0);
 
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_xdd[i] = (Real_t)(0.0);
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_ydd[i] = (Real_t)(0.0);
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_zdd[i] = (Real_t)(0.0) ;
+            domain.m_xdd[i] = (Real_t)(0.0);
+            domain.m_ydd[i] = (Real_t)(0.0);
+            domain.m_zdd[i] = (Real_t)(0.0) ;
 
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_nodalMass[i] = (Real_t)(0.0) ;
-   }
+            domain.m_nodalMass[i] = (Real_t)(0.0) ;
+          END_FOR_INNER(i)
+        END_ASYNC_IN_1(i)
+      END_FOR_OUTER(i)
+   END_FINISH
 }
 
 void
@@ -439,11 +449,17 @@ domain_AllocateElemPersistent(size_t hcSize) {
 
    if(domain.m_elemMass != NULL)free(domain.m_elemMass); domain.m_elemMass = malloc(hcSize*sizeof(Real_t)) ;
 
-   finish { int i=0, len = hcSize, blk=BLK_SIZE;
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_e[i] = (Real_t)(0.0);
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_p[i] = (Real_t)(0.0);
-      i=0;forasync in(domain) point(i) size(len) seq(blk) domain.m_v[i] = (Real_t)(1.0);
-   }
+   FINISH 
+      FOR_OUTER_0xNx1(i,hcSize)
+        ASYNC_IN_1(i,domain) // INDEX and GLOBAL
+          FOR_INNER(i)
+            domain.m_e[i] = (Real_t)(0.0);
+            domain.m_p[i] = (Real_t)(0.0);
+            domain.m_v[i] = (Real_t)(1.0);
+          END_FOR_INNER(i)
+        END_ASYNC_IN_1(i)
+      END_FOR_OUTER(i)
+   END_FINISH
 }
 
    /* Temporaries should not be initialized in bulk but */
@@ -555,10 +571,15 @@ void InitStressTermsForElems(Index_t numElem,
    //
    // pull in the stresses appropriate to the hydro integration
    //
-   finish{ int i=0, len=numElem, blk=BLK_SIZE;
-      forasync in(sigxx,sigyy,sigzz,domain) point(i) size(len) seq(blk)
-         sigxx[i] =  sigyy[i] = sigzz[i] =  - domain.m_p[i] - domain.m_q[i] ;
-   }
+   FINISH 
+      FOR_OUTER_0xNx1(i,numElem)
+        ASYNC_IN_1(i,sigxx,sigyy,sigzz,domain) // INDEX, PARAMSs and GLOBAL
+          FOR_INNER(i)
+            sigxx[i] =  sigyy[i] = sigzz[i] =  - domain.m_p[i] - domain.m_q[i] ;
+          END_FOR_INNER(i)
+        END_ASYNC_IN_1(i)
+      END_FOR_OUTER(i)
+   END_FINISH
 }
 
 static inline
@@ -801,57 +822,60 @@ void IntegrateStressForElems( Index_t numElem,
                               Real_t *determ)
 {
   // loop over all elements
- finish {
-  Index_t k_len=numElem, k_blk=BLK_SIZE, k_inc=1;
-  for (Index_t k_out=0; k_out<k_len; k_out+=k_blk) {
-   Index_t k_end = (k_out+k_blk)<k_len?(k_out+k_blk):k_len;
-   async IN(domain,                               // GLOBAL
-            numElem, sigxx, sigyy, sigzz, determ,  // PARAMS
-            k_out, k_end, k_inc ) {                // LOCAL
-    for (Index_t k=k_out ; k<k_end ; k+=k_inc ) {
-// H-C Real_t B[THREE][EIGHT] -- shape function derivatives
-       Real_t *B        = malloc(THREE*EIGHT*sizeof(Real_t)) ;
-       Real_t *x_local  = malloc(EIGHT*sizeof(Real_t)) ;
-       Real_t *y_local  = malloc(EIGHT*sizeof(Real_t)) ;
-       Real_t *z_local  = malloc(EIGHT*sizeof(Real_t)) ;
-       Real_t *fx_local = malloc(EIGHT*sizeof(Real_t)) ;
-       Real_t *fy_local = malloc(EIGHT*sizeof(Real_t)) ;
-       Real_t *fz_local = malloc(EIGHT*sizeof(Real_t)) ;
-       hcConst Index_t* hcConst elemNodes = (Index_t *)&domain.m_nodelist[EIGHT*k];
+  FINISH
+    FOR_OUTER_0xNx1(k,numElem) 
+      ASYNC_IN_1(k, numElem, sigxx, sigyy, sigzz, determ, domain ) // INDEX, PARAMs and GLOBAL
+        FOR_INNER(k) 
+#ifdef HAB_C
+          Real_t *B        = malloc(THREE*EIGHT*sizeof(Real_t)) ;
+          Real_t *x_local  = malloc(EIGHT*sizeof(Real_t)) ;
+          Real_t *y_local  = malloc(EIGHT*sizeof(Real_t)) ;
+          Real_t *z_local  = malloc(EIGHT*sizeof(Real_t)) ;
+          Real_t *fx_local = malloc(EIGHT*sizeof(Real_t)) ;
+          Real_t *fy_local = malloc(EIGHT*sizeof(Real_t)) ;
+          Real_t *fz_local = malloc(EIGHT*sizeof(Real_t)) ;
+#else // NOT HAB_C
+          Real_t B[THREE][EIGHT] -- shape function derivatives
+          Real_t  x_local[EIGHT],  y_local[EIGHT],  z_local[EIGHT];
+          Real_t fx_local[EIGHT], fy_local[EIGHT], fz_local[EIGHT],
+#endif // HAB_C
+          hcConst Index_t* hcConst elemNodes = (Index_t *)&domain.m_nodelist[EIGHT*k];
 
-       // get nodal coordinates from global arrays and copy into local arrays.
-       for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-          Index_t gnode = elemNodes[lnode];
-          x_local[lnode] = domain.m_x[gnode];
-          y_local[lnode] = domain.m_y[gnode];
-          z_local[lnode] = domain.m_z[gnode];
-       }
-       /* Volume calculation involves extra work for numerical consistency. */
-       CalcElemShapeFunctionDerivatives(x_local, y_local, z_local,
-                                        B, &determ[k]);
+          // get nodal coordinates from global arrays and copy into local arrays.
+          for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
+            Index_t gnode = elemNodes[lnode];
+            x_local[lnode] = domain.m_x[gnode];
+            y_local[lnode] = domain.m_y[gnode];
+            z_local[lnode] = domain.m_z[gnode];
+          }
+          /* Volume calculation involves extra work for numerical consistency. */
+          CalcElemShapeFunctionDerivatives(x_local, y_local, z_local,
+                                           B, &determ[k]);
 
-       CalcElemNodeNormals( &B[0*EIGHT], &B[1*EIGHT], &B[2*EIGHT],
-                            x_local, y_local, z_local );
+          CalcElemNodeNormals( &B[0*EIGHT], &B[1*EIGHT], &B[2*EIGHT],
+                               x_local, y_local, z_local );
 
-       SumElemStressesToNodeForces( B, sigxx[k], sigyy[k], sigzz[k],
-                                       fx_local, fy_local, fz_local ) ;
+          SumElemStressesToNodeForces( B, sigxx[k], sigyy[k], sigzz[k],
+                                          fx_local, fy_local, fz_local ) ;
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-       // accumulate nodal force contributions to global force arrray.
-       for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-          Index_t gnode = elemNodes[lnode];
-          AMO__sync_addition_double(&domain.m_fx[gnode], fx_local[lnode]);
-          AMO__sync_addition_double(&domain.m_fy[gnode], fy_local[lnode]);
-          AMO__sync_addition_double(&domain.m_fz[gnode], fz_local[lnode]);
-       }
-       free(fz_local) ; free(fy_local) ; free(fx_local) ;
-       free(z_local)  ; free(y_local)  ; free(x_local) ;
-       free(B) ;
-    } // for k
-   } // async
-  } // for k_out
- } // finish
+          // accumulate nodal force contributions to global force arrray.
+          for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
+            Index_t gnode = elemNodes[lnode];
+            AMO__sync_addition_double(&domain.m_fx[gnode], fx_local[lnode]);
+            AMO__sync_addition_double(&domain.m_fy[gnode], fy_local[lnode]);
+            AMO__sync_addition_double(&domain.m_fz[gnode], fz_local[lnode]);
+          }
+#ifdef HAB_C
+          free(fz_local) ; free(fy_local) ; free(fx_local) ;
+          free(z_local)  ; free(y_local)  ; free(x_local) ;
+          free(B) ;
+#endif // HAB_C
+        END_FOR_INNER(k)
+      END_ASYNC_IN_1(k)
+    END_FOR_OUTER(k)
+  END_FINISH
 } // IntegrateStressForElems()
 
 static inline
@@ -1183,141 +1207,148 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 /*************************************************/
 /*    compute the hourglass modes */
 
-finish {
- Index_t i2_len=numElem, i2_blk=BLK_SIZE, i2_inc=1;
- for (Index_t i2_out=0; i2_out<i2_len; i2_out+=i2_blk) {
-  Index_t i2_end = (i2_out+i2_blk)<i2_len?(i2_out+i2_blk):i2_len;
-   async IN( domain, GAMMA,                              // GLOBAL
-             determ, x8n,y8n,z8n, dvdx,dvdy,dvdz, hourg, // PARAMS
-             i2_out,i2_end,i2_inc ) {                    // LOCAL
-    for(Index_t i2=i2_out;i2<i2_end;i2+=i2_inc) {
-      Real_t *hgfx = malloc(EIGHT*sizeof(Real_t));
-      Real_t *hgfy = malloc(EIGHT*sizeof(Real_t));
-      Real_t *hgfz = malloc(EIGHT*sizeof(Real_t));
+  FINISH
+    FOR_OUTER_0xNx1(i2,numElem)
+      ASYNC_IN_1( i2, domain, GAMMA,                      // INDEX and GLOBALs
+             determ, x8n,y8n,z8n, dvdx,dvdy,dvdz, hourg ) // PARAMs
+        FOR_INNER(i2) 
+#ifdef HAB_C
+          Real_t *hgfx = malloc(EIGHT*sizeof(Real_t));
+          Real_t *hgfy = malloc(EIGHT*sizeof(Real_t));
+          Real_t *hgfz = malloc(EIGHT*sizeof(Real_t));
 
-      Real_t *hourgam0 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam1 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam2 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam3 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam4 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam5 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam6 = malloc(FOUR*sizeof(Real_t));
-      Real_t *hourgam7 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam0 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam1 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam2 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam3 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam4 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam5 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam6 = malloc(FOUR*sizeof(Real_t));
+          Real_t *hourgam7 = malloc(FOUR*sizeof(Real_t));
 
-      Real_t *xd1 = malloc(EIGHT*sizeof(Real_t));
-      Real_t *yd1 = malloc(EIGHT*sizeof(Real_t));
-      Real_t *zd1 = malloc(EIGHT*sizeof(Real_t));
+          Real_t *xd1 = malloc(EIGHT*sizeof(Real_t));
+          Real_t *yd1 = malloc(EIGHT*sizeof(Real_t));
+          Real_t *zd1 = malloc(EIGHT*sizeof(Real_t));
+#else // NOT HAB_C
+          Real_t hgfx[EIGHT], hgfy[EIGHT], hgfz[EIGHT];
 
-      Index_t *elemToNode  = malloc(EIGHT*sizeof(Index_t)) ;
+          Real_t hourgam0[FOUR], hourgam1[FOUR], hourgam2[FOUR], hourgam3[FOUR];
+          Real_t hourgam4[FOUR], hourgam5[FOUR], hourgam6[FOUR], hourgam7[FOUR];
 
-      Real_t coefficient;
+          Real_t  xd1[EIGHT],  yd1[EIGHT],  zd1[EIGHT];
+#endif // HAB_C
+          Index_t *elemToNode  = malloc(EIGHT*sizeof(Index_t)) ;
 
-      Index_t i3=EIGHT*i2;
+          Real_t coefficient;
 
-      Real_t volinv=cast_Real_t(1.0)/determ[i2];
-      Real_t ss1, mass1, volume13 ;
+          Index_t i3=EIGHT*i2;
+
+          Real_t volinv=cast_Real_t(1.0)/determ[i2];
+          Real_t ss1, mass1, volume13 ;
 
 
- // RAG -- GATHER/SCATTER Index Values
-      for(Index_t i=0;i<EIGHT;i++)
-        elemToNode[i] = *(Index_t *)&domain.m_nodelist[EIGHT*i2+i];
+          // RAG -- GATHER/SCATTER Index Values
+          for(Index_t i=0;i<EIGHT;i++) {
+            elemToNode[i] = *(Index_t *)&domain.m_nodelist[EIGHT*i2+i];
+          } // for i
 
-      for(Index_t i1=0;i1<4;++i1){
-         Real_t hourmodx =
-            x8n[i3+0] * GAMMA[i1*EIGHT+0] + x8n[i3+1] * GAMMA[i1*EIGHT+1] +
-            x8n[i3+2] * GAMMA[i1*EIGHT+2] + x8n[i3+3] * GAMMA[i1*EIGHT+3] +
-            x8n[i3+4] * GAMMA[i1*EIGHT+4] + x8n[i3+5] * GAMMA[i1*EIGHT+5] +
-            x8n[i3+6] * GAMMA[i1*EIGHT+6] + x8n[i3+7] * GAMMA[i1*EIGHT+7];
+          for(Index_t i1=0;i1<4;++i1){
+            Real_t hourmodx =
+              x8n[i3+0] * GAMMA[i1*EIGHT+0] + x8n[i3+1] * GAMMA[i1*EIGHT+1] +
+              x8n[i3+2] * GAMMA[i1*EIGHT+2] + x8n[i3+3] * GAMMA[i1*EIGHT+3] +
+              x8n[i3+4] * GAMMA[i1*EIGHT+4] + x8n[i3+5] * GAMMA[i1*EIGHT+5] +
+              x8n[i3+6] * GAMMA[i1*EIGHT+6] + x8n[i3+7] * GAMMA[i1*EIGHT+7];
 
-         Real_t hourmody =
-            y8n[i3+0] * GAMMA[i1*EIGHT+0] + y8n[i3+1] * GAMMA[i1*EIGHT+1] +
-            y8n[i3+2] * GAMMA[i1*EIGHT+2] + y8n[i3+3] * GAMMA[i1*EIGHT+3] +
-            y8n[i3+4] * GAMMA[i1*EIGHT+4] + y8n[i3+5] * GAMMA[i1*EIGHT+5] +
-            y8n[i3+6] * GAMMA[i1*EIGHT+6] + y8n[i3+7] * GAMMA[i1*EIGHT+7];
+            Real_t hourmody =
+              y8n[i3+0] * GAMMA[i1*EIGHT+0] + y8n[i3+1] * GAMMA[i1*EIGHT+1] +
+              y8n[i3+2] * GAMMA[i1*EIGHT+2] + y8n[i3+3] * GAMMA[i1*EIGHT+3] +
+              y8n[i3+4] * GAMMA[i1*EIGHT+4] + y8n[i3+5] * GAMMA[i1*EIGHT+5] +
+              y8n[i3+6] * GAMMA[i1*EIGHT+6] + y8n[i3+7] * GAMMA[i1*EIGHT+7];
 
-         Real_t hourmodz =
-            z8n[i3+0] * GAMMA[i1*EIGHT+0] + z8n[i3+1] * GAMMA[i1*EIGHT+1] +
-            z8n[i3+2] * GAMMA[i1*EIGHT+2] + z8n[i3+3] * GAMMA[i1*EIGHT+3] +
-            z8n[i3+4] * GAMMA[i1*EIGHT+4] + z8n[i3+5] * GAMMA[i1*EIGHT+5] +
-            z8n[i3+6] * GAMMA[i1*EIGHT+6] + z8n[i3+7] * GAMMA[i1*EIGHT+7];
+            Real_t hourmodz =
+              z8n[i3+0] * GAMMA[i1*EIGHT+0] + z8n[i3+1] * GAMMA[i1*EIGHT+1] +
+              z8n[i3+2] * GAMMA[i1*EIGHT+2] + z8n[i3+3] * GAMMA[i1*EIGHT+3] +
+              z8n[i3+4] * GAMMA[i1*EIGHT+4] + z8n[i3+5] * GAMMA[i1*EIGHT+5] +
+              z8n[i3+6] * GAMMA[i1*EIGHT+6] + z8n[i3+7] * GAMMA[i1*EIGHT+7];
 
-         hourgam0[i1] = GAMMA[i1*EIGHT+0] -  volinv*(dvdx[i3  ] * hourmodx +
-                                                  dvdy[i3  ] * hourmody +
-                                                  dvdz[i3  ] * hourmodz );
+            hourgam0[i1] = GAMMA[i1*EIGHT+0] -  volinv*(dvdx[i3  ] * hourmodx +
+                                                        dvdy[i3  ] * hourmody +
+                                                        dvdz[i3  ] * hourmodz );
 
-         hourgam1[i1] = GAMMA[i1*EIGHT+1] -  volinv*(dvdx[i3+1] * hourmodx +
-                                                  dvdy[i3+1] * hourmody +
-                                                  dvdz[i3+1] * hourmodz );
+            hourgam1[i1] = GAMMA[i1*EIGHT+1] -  volinv*(dvdx[i3+1] * hourmodx +
+                                                        dvdy[i3+1] * hourmody +
+                                                        dvdz[i3+1] * hourmodz );
 
-         hourgam2[i1] = GAMMA[i1*EIGHT+2] -  volinv*(dvdx[i3+2] * hourmodx +
-                                                  dvdy[i3+2] * hourmody +
-                                                  dvdz[i3+2] * hourmodz );
+            hourgam2[i1] = GAMMA[i1*EIGHT+2] -  volinv*(dvdx[i3+2] * hourmodx +
+                                                        dvdy[i3+2] * hourmody +
+                                                        dvdz[i3+2] * hourmodz );
 
-         hourgam3[i1] = GAMMA[i1*EIGHT+3] -  volinv*(dvdx[i3+3] * hourmodx +
-                                                  dvdy[i3+3] * hourmody +
-                                                  dvdz[i3+3] * hourmodz );
+            hourgam3[i1] = GAMMA[i1*EIGHT+3] -  volinv*(dvdx[i3+3] * hourmodx +
+                                                        dvdy[i3+3] * hourmody +
+                                                        dvdz[i3+3] * hourmodz );
 
-         hourgam4[i1] = GAMMA[i1*EIGHT+4] -  volinv*(dvdx[i3+4] * hourmodx +
-                                                  dvdy[i3+4] * hourmody +
-                                                  dvdz[i3+4] * hourmodz );
+            hourgam4[i1] = GAMMA[i1*EIGHT+4] -  volinv*(dvdx[i3+4] * hourmodx +
+                                                        dvdy[i3+4] * hourmody +
+                                                        dvdz[i3+4] * hourmodz );
 
-         hourgam5[i1] = GAMMA[i1*EIGHT+5] -  volinv*(dvdx[i3+5] * hourmodx +
-                                                  dvdy[i3+5] * hourmody +
-                                                  dvdz[i3+5] * hourmodz );
+            hourgam5[i1] = GAMMA[i1*EIGHT+5] -  volinv*(dvdx[i3+5] * hourmodx +
+                                                        dvdy[i3+5] * hourmody +
+                                                        dvdz[i3+5] * hourmodz );
 
-         hourgam6[i1] = GAMMA[i1*EIGHT+6] -  volinv*(dvdx[i3+6] * hourmodx +
-                                                  dvdy[i3+6] * hourmody +
-                                                  dvdz[i3+6] * hourmodz );
+            hourgam6[i1] = GAMMA[i1*EIGHT+6] -  volinv*(dvdx[i3+6] * hourmodx +
+                                                        dvdy[i3+6] * hourmody +
+                                                        dvdz[i3+6] * hourmodz );
 
-         hourgam7[i1] = GAMMA[i1*EIGHT+7] -  volinv*(dvdx[i3+7] * hourmodx +
-                                                  dvdy[i3+7] * hourmody +
-                                                  dvdz[i3+7] * hourmodz );
+            hourgam7[i1] = GAMMA[i1*EIGHT+7] -  volinv*(dvdx[i3+7] * hourmodx +
+                                                        dvdy[i3+7] * hourmody +
+                                                        dvdz[i3+7] * hourmodz );
 
-      } // for i1
+          } // for i1
 
-      /* compute forces */
-      /* store forces into h arrays (force arrays) */
+          /* compute forces */
+          /* store forces into h arrays (force arrays) */
 
-      ss1=domain.m_ss[i2];
-      mass1=domain.m_elemMass[i2];
-      volume13=cbrt(determ[i2]);
+          ss1=domain.m_ss[i2];
+          mass1=domain.m_elemMass[i2];
+          volume13=cbrt(determ[i2]);
 
 // RAG ///////////////////////////////////////////////////////////// RAG //
 // RAG  GATHER (x|y|z)d1[0,,7] = domain.m_(x|y|z)[elemToNode[0..7]]  RAG //
 // RAG ///////////////////////////////////////////////////////////// RAG //
-      for(Index_t i=0 ; i<EIGHT; i++ ) {
-         Index_t gnode = elemToNode[i];
-         xd1[i] = domain.m_xd[gnode];
-         yd1[i] = domain.m_yd[gnode];
-         zd1[i] = domain.m_zd[gnode];
-      } // for i
+          for(Index_t i=0 ; i<EIGHT; i++ ) {
+            Index_t gnode = elemToNode[i];
+            xd1[i] = domain.m_xd[gnode];
+            yd1[i] = domain.m_yd[gnode];
+            zd1[i] = domain.m_zd[gnode];
+          } // for i
 
-      coefficient = - hourg * cast_Real_t(0.01) * ss1 * mass1 / volume13;
+          coefficient = - hourg * cast_Real_t(0.01) * ss1 * mass1 / volume13;
 
-      CalcElemFBHourglassForce(xd1,yd1,zd1,
-                      hourgam0,hourgam1,hourgam2,hourgam3,
-                      hourgam4,hourgam5,hourgam6,hourgam7,
-                      coefficient, hgfx, hgfy, hgfz);
+          CalcElemFBHourglassForce(xd1,yd1,zd1,
+                                   hourgam0,hourgam1,hourgam2,hourgam3,
+                                   hourgam4,hourgam5,hourgam6,hourgam7,
+                                   coefficient, hgfx, hgfy, hgfz);
 
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-      for(Index_t i=0 ; i<EIGHT; i++ ) {
-         Index_t gnode = elemToNode[i];
-         AMO__sync_addition_double(&domain.m_fx[gnode], hgfx[i]);
-         AMO__sync_addition_double(&domain.m_fy[gnode], hgfy[i]);
-         AMO__sync_addition_double(&domain.m_fz[gnode], hgfz[i]);
-      } // for i
-
-      free(elemToNode);
-      free(hgfz); free(hgfy); free(hgfx);
-      free(hourgam7); free(hourgam6); free(hourgam5); free(hourgam4);
-      free(hourgam3); free(hourgam2); free(hourgam1); free(hourgam0);
-      free(zd1); free(yd1); free(xd1);
-    } // for i2
-   } // async
-  } // for i2_out
- } // finish
+          for(Index_t i=0 ; i<EIGHT; i++ ) {
+            Index_t gnode = elemToNode[i];
+            AMO__sync_addition_double(&domain.m_fx[gnode], hgfx[i]);
+            AMO__sync_addition_double(&domain.m_fy[gnode], hgfy[i]);
+            AMO__sync_addition_double(&domain.m_fz[gnode], hgfz[i]);
+          } // for i
+#ifdef HAB_C
+          free(elemToNode);
+          free(hgfz); free(hgfy); free(hgfx);
+          free(hourgam7); free(hourgam6); free(hourgam5); free(hourgam4);
+          free(hourgam3); free(hourgam2); free(hourgam1); free(hourgam0);
+          free(zd1); free(yd1); free(xd1);
+#endif // HAB_C
+        END_FOR_INNER(i2)
+      END_ASYNC_IN_1(i2)
+    END_FOR_OUTER(i2)
+  END_FINISH
 } // CalcFBHourglassForceForElems
 
 static inline
@@ -1333,54 +1364,55 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
    Real_t *z8n  = Allocate_Real_t(numElem8) ;
 
    /* start loop over elements */
-  finish {
-    Index_t i_len=numElem, i_blk=BLK_SIZE, i_inc=1;
-    for (Index_t i_out=0 ; i_out<i_len ; i_out+=i_blk ) {
-      Index_t i_end = (i_out+i_blk)<i_len?(i_out+i_blk):i_len;
-      async IN(domain,                       // GLOBAL 
-               determ,                       // PARAMS 
-               dvdx,dvdy,dvdz,x8n,y8n,z8n,   // LOCAL
-               i_out,i_end,i_inc) {          // LOCAL 
-        for (Index_t i=i_out;i<i_end ; i+=i_inc ) {
-//        Real_t  x1[EIGHT],  y1[EIGHT],  z1[EIGHT] ;
-//        Real_t pfx[EIGHT], pfy[EIGHT], pfz[EIGHT] ;
-          Real_t  *x1  = malloc(EIGHT*sizeof(Real_t));
-          Real_t  *y1  = malloc(EIGHT*sizeof(Real_t));
-          Real_t  *z1  = malloc(EIGHT*sizeof(Real_t));
-          Real_t  *pfx = malloc(EIGHT*sizeof(Real_t));
-          Real_t  *pfy = malloc(EIGHT*sizeof(Real_t));
-          Real_t  *pfz = malloc(EIGHT*sizeof(Real_t));
-//RAGRAG TESTING
-          Index_t* elemToNode = (Index_t *)&domain.m_nodelist[EIGHT*i];
+   FINISH
+     FOR_OUTER_0xNx1(i,numElem)
+       ASYNC_IN_1(i,domain,determ,           // INDEX, GLOBAL and PARAM 
+               dvdx,dvdy,dvdz,x8n,y8n,z8n)   // LOCALs
+         FOR_INNER(i)
+#ifdef HAB_C
+           Real_t  *x1  = malloc(EIGHT*sizeof(Real_t));
+           Real_t  *y1  = malloc(EIGHT*sizeof(Real_t));
+           Real_t  *z1  = malloc(EIGHT*sizeof(Real_t));
+           Real_t  *pfx = malloc(EIGHT*sizeof(Real_t));
+           Real_t  *pfy = malloc(EIGHT*sizeof(Real_t));
+           Real_t  *pfz = malloc(EIGHT*sizeof(Real_t));
+#else // NOT HAB_C
+           Real_t  x1[EIGHT],  y1[EIGHT],  z1[EIGHT] ;
+           Real_t pfx[EIGHT], pfy[EIGHT], pfz[EIGHT] ;
+#endif // HAB_C
+
+           Index_t* elemToNode = (Index_t *)&domain.m_nodelist[EIGHT*i];
 // RAG -- GATHER (x|y|z)1[0..7] = domain.m_(x|y|z)[domain.m_nodelist[0..7]]
-          CollectDomainNodesToElemNodes(elemToNode, x1, y1, z1);
+           CollectDomainNodesToElemNodes(elemToNode, x1, y1, z1);
 
-          CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
+           CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
 
-          /* load into temporary storage for FB Hour Glass control */
-          for(Index_t ii=0;ii<EIGHT;++ii){
-            Index_t jj=EIGHT*i+ii;
+           /* load into temporary storage for FB Hour Glass control */
+           for(Index_t ii=0;ii<EIGHT;++ii){
+             Index_t jj=EIGHT*i+ii;
 
-            dvdx[jj] = pfx[ii];
-            dvdy[jj] = pfy[ii];
-            dvdz[jj] = pfz[ii];
-            x8n[jj]  = x1[ii];
-            y8n[jj]  = y1[ii];
-            z8n[jj]  = z1[ii];
-          } // for ii
+             dvdx[jj] = pfx[ii];
+             dvdy[jj] = pfy[ii];
+             dvdz[jj] = pfz[ii];
+             x8n[jj]  = x1[ii];
+             y8n[jj]  = y1[ii];
+             z8n[jj]  = z1[ii];
+           } // for ii
 
-          determ[i] = domain.m_volo[i] * domain.m_v[i];
+           determ[i] = domain.m_volo[i] * domain.m_v[i];
 
-          /* Do a check for negative volumes */
-          if ( domain.m_v[i] <= cast_Real_t(0.0) ) {
+           /* Do a check for negative volumes */
+           if ( domain.m_v[i] <= cast_Real_t(0.0) ) {
              exit(VolumeError) ;
-          }
-          free(pfz); free(pfy); free(pfx);
-          free(z1) ; free(y1) ; free(x1);
-        } // for i
-      } // async
-    } // for i_out
-  } // finish
+           }
+#ifdef HAB_C
+           free(pfz); free(pfy); free(pfx);
+           free(z1) ; free(y1) ; free(x1);
+#endif // HAB_C
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   if ( hgcoef > cast_Real_t(0.) ) {
     CalcFBHourglassForceForElems(determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hgcoef) ;
@@ -1414,20 +1446,17 @@ void CalcVolumeForceForElems() {
     IntegrateStressForElems( numElem, sigxx, sigyy, sigzz, determ) ;
 
     // check for negative element volume
-    finish {
-      Index_t k_len=numElem,k_blk=BLK_SIZE, k_inc=1;
-      for (Index_t k_out=0 ; k_out<k_len ; k_out+=k_blk) {
-        Index_t k_end = (k_out+k_blk)<k_len?(k_out+k_blk):k_len;
-        async IN(determ,              // LOCAL
-                 k_out,k_end,k_inc) { // LOCAL
-          for (Index_t k=k_out ; k<k_end ; k+=k_inc) {
+    FINISH
+      FOR_OUTER_0xNx1(k,numElem)
+        ASYNC_IN_1(k, determ )// INDEX and LOCAL
+          FOR_INNER(k)
             if (determ[k] <= cast_Real_t(0.0)) {
               exit(VolumeError) ;
             }
-          } // for k
-        } // async
-      } // for k_out
-    } finish
+          END_FOR_INNER(k)
+        END_ASYNC_IN_1(k)
+      END_FOR_OUTER(k)
+    END_FINISH
 
     CalcHourglassControlForElems(determ, hgcoef) ;
 
@@ -1440,20 +1469,17 @@ void CalcVolumeForceForElems() {
 
 static inline void CalcForceForNodes() {
   Index_t numNode = domain.m_numNode ;
-  finish {
-    Index_t i_len=numNode,i_blk=BLK_SIZE, i_inc=1;
-    for (Index_t i_out=0 ; i_out<i_len ; i_out+=i_blk) {
-      Index_t i_end = (i_out+i_blk)<i_len?(i_out+i_blk):i_len;
-      async IN(domain,              // GLOBAL
-               i_out,i_end,i_inc) { // LOCAL
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+  FINISH 
+    FOR_OUTER_0xNx1(i,numNode)
+      ASYNC_IN_1(i,domain)   // INDEX and GLOBAL
+        FOR_INNER(i)
           domain.m_fx[i] = cast_Real_t(0.0) ;
           domain.m_fy[i] = cast_Real_t(0.0) ;
           domain.m_fz[i] = cast_Real_t(0.0) ;
-        } // for i
-      } // async
-    } // for i_out
-  } // finish
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   /* Calcforce calls partial, force, hourq */
   CalcVolumeForceForElems() ;
@@ -1466,59 +1492,47 @@ static inline void CalcForceForNodes() {
 static inline
 void CalcAccelerationForNodes() {
   Index_t numNode = domain.m_numNode ;
-  finish {
-    Index_t i_len=numNode,i_blk=BLK_SIZE, i_inc=1;
-    for (Index_t i_out=0 ; i_out<i_len ; i_out+=i_blk) {
-      Index_t i_end = (i_out+i_blk)<i_len?(i_out+i_blk):i_len;
-      async IN(domain,              // GLOBAL
-               i_out,i_end,i_inc) { // LOCAL
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+  FINISH 
+    FOR_OUTER_0xNx1(i,numNode)
+      ASYNC_IN_1(i,domain)   // INDEX and GLOBAL
+        FOR_INNER(i)
           domain.m_xdd[i] = domain.m_fx[i] / domain.m_nodalMass[i];
           domain.m_ydd[i] = domain.m_fy[i] / domain.m_nodalMass[i];
           domain.m_zdd[i] = domain.m_fz[i] / domain.m_nodalMass[i];
-        } // for i
-      } // async
-    } // for i_out
-  } // finish
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 } // CalcAccelerationForNodes()
 
 static inline
 void ApplyAccelerationBoundaryConditionsForNodes() {
   Index_t numNodeBC = (domain.m_sizeX+1)*(domain.m_sizeX+1) ;
-  finish {
-    Index_t i_len=numNodeBC,i_blk=BLK_SIZE, i_inc=1;
-    for (Index_t i_out=0 ; i_out<i_len ; i_out+=i_blk) {
-      Index_t i_end = (i_out+i_blk)<i_len?(i_out+i_blk):i_len;
-      async IN(domain,              // GLOBAL
-               i_out,i_end,i_inc) { // LOCAL
-// RAG -- SCATTER
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+  FINISH
+    FOR_OUTER_0xNx1(i,numNodeBC)
+      ASYNC_IN_1(i,domain)   // INDEX and GLOBAL
+// RAG -- SCATTER domain.m_(x|y|z)dd[domain.m_symm(X|Y|Z)[i]] = 0.0
+        FOR_INNER(i)
           domain.m_xdd[domain.m_symmX[i]] = cast_Real_t(0.0) ;
-        } // for i
-// RAG -- SCATTER
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+        END_FOR_INNER(i)
+        FOR_INNER(i)
           domain.m_ydd[domain.m_symmY[i]] = cast_Real_t(0.0) ;
-        } // for i
-// RAG -- SCATTER
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+        END_FOR_INNER(i)
+        FOR_INNER(i)
           domain.m_zdd[domain.m_symmZ[i]] = cast_Real_t(0.0) ;
-        } // for i
-      } // async
-    } // for i_out
-  } // finish
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 } // ApplyAccelerationBoundaryConditionsForNodes()
 
 static inline
 void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
   Index_t numNode = domain.m_numNode ;
-  finish {
-    Index_t i_len=numNode,i_blk=BLK_SIZE, i_inc=1;
-    for (Index_t i_out=0 ; i_out<i_len ; i_out+=i_blk) {
-      Index_t i_end = (i_out+i_blk)<i_len?(i_out+i_blk):i_len;
-      async IN(domain,              // GLOBAL
-               dt,u_cut,            // PARAMS
-               i_out,i_end,i_inc) { // LOCAL
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+  FINISH
+    FOR_OUTER_0xNx1(i,numNode)
+      ASYNC_IN_1(i, domain, dt,u_cut) // INDEX, GLOBAL and PARAMs
+        FOR_INNER(i)
           Real_t xdtmp, ydtmp, zdtmp ;
 
 // RAG -- DAXPY       -- (x|y|x)d += dt * (x|y|z)dd
@@ -1535,31 +1549,27 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
           zdtmp = domain.m_zd[i] + domain.m_zdd[i] * dt ;
           if( fabs(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
           domain.m_zd[i] = zdtmp ;
-        } // for i
-      } // async
-    } // for i_out
-  } // finish
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 } // CalcVelocityForNodes()
 
 static inline
 void CalcPositionForNodes(const Real_t dt) {
   Index_t numNode = domain.m_numNode ;
-  finish {
-    Index_t i_len=numNode,i_blk=BLK_SIZE, i_inc=1;
-    for (Index_t i_out=0 ; i_out<i_len ; i_out+=i_blk) {
-      Index_t i_end = (i_out+i_blk)<i_len?(i_out+i_blk):i_len;
-      async IN(domain,              // GLOBAL
-               dt,                  // PARAMS
-               i_out,i_end,i_inc) { // LOCAL
-        for (Index_t i=i_out ; i<i_end ; i+=i_inc) {
+  FINISH
+    FOR_OUTER_0xNx1(i,numNode)
+      ASYNC_IN_1(i, domain, dt) // INDEX, GLOBAL and PARAM
+        FOR_INNER(i)
 // RAG -- DAXPY       -- (x|y|x) += dt * (x|y|z)d
           domain.m_x[i] += domain.m_xd[i] * dt ;
           domain.m_y[i] += domain.m_yd[i] * dt ;
           domain.m_z[i] += domain.m_zd[i] * dt ;
-        } // for i
-      } // async
-    } // for i_out
-  } // finish
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 } // CalcPositionForNodes()
 
 static inline
@@ -2758,98 +2768,74 @@ int main(int argc, char *argv[]) {
 
   /* initialize nodal coordinates */
 
-  finish { 
+  FINISH
     Real_t sf = cast_Real_t(1.125)/cast_Real_t(edgeElems);
-    Index_t len = edgeNodes;
-    Index_t dim = edgeNodes, dimdim = edgeNodes*edgeNodes;
+    Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
 
-    Index_t pln_len=len, pln_blk=BLK_SIZE, pln_inc=1;
-    for (Index_t pln_out=0; pln_out<pln_len; pln_out+=pln_blk) {
-      Index_t pln_end = (pln_out+pln_blk)<pln_len?(pln_out+pln_blk):pln_len;
+    FOR_OUTER_0xNx1(pln,edgeNodes)
+      FOR_OUTER_0xNx1(col,edgeNodes)
+        FOR_OUTER_0xNx1(row,edgeNodes)
 
-      Index_t row_len=len, row_blk=BLK_SIZE, row_inc=1;
-      for (Index_t row_out=0; row_out<row_len; row_out+=row_blk) {
-        Index_t row_end = (row_out+row_blk)<row_len?(row_out+row_blk):row_len;
-
-        Index_t col_len=len, col_blk=BLK_SIZE, col_inc=1;
-        for (Index_t col_out=0; col_out<col_len; col_out+=col_blk) {
-          Index_t col_end = (col_out+col_blk)<col_len?(col_out+col_blk):col_len;
-
-          async IN(domain,                            // GLOBAL
-                   sf,dim,dimdim,                     // LOCAL
-                   pln_out,pln_end,pln_len,pln_inc,   // LOCAL
-                   row_out,row_end,row_len,row_inc,   // LOCAL
-                   col_out,col_end,col_len,col_inc) { // LOCAL
-            for (Index_t pln=pln_out; pln<pln_end; pln+=pln_inc) {
+          ASYNC_IN_3(pln,col,row,domain,       // INDEXs and GLOBAL
+                   sf,dimN,dimNdimN)           // LOCALs
+            FOR_INNER(pln)
               Real_t tz = cast_Real_t(pln)*sf;
-              Index_t pln_nidx = pln*dimdim;
-              for (Index_t row=row_out; row<row_end; row+=row_inc) {
+              Index_t pln_nidx = pln*dimNdimN;
+              FOR_INNER(row)
                 Real_t ty = cast_Real_t(row)*sf;
-                Index_t pln_row_nidx = pln_nidx + row*dim;
-                for (Index_t col=col_out; col<col_end; col+=col_inc) {
+                Index_t pln_row_nidx = pln_nidx + row*dimN;
+                FOR_INNER(col)
                   Real_t tx = cast_Real_t(col)*sf;
                   Index_t nidx = pln_row_nidx+col;
                   domain.m_x[nidx] = tx;
                   domain.m_y[nidx] = ty;
                   domain.m_z[nidx] = tz;
-                } // for col
-              } // for row
-            } // for pln
-          } // async
-        } // for col_out
-      } // for row_out
-    } // for pln_out
-  } // finish
+                END_FOR_INNER(col)
+              END_FOR_INNER(row)
+            END_FOR_INNER(pln)
+          END_ASYNC_IN_3(pln,row,col)
+        END_FOR_OUTER(col)
+      END_FOR_OUTER(row)
+    END_FOR_OUTER(pln)
+  END_FINISH
 
   /* embed hexehedral elements in nodal point lattice */
 
-  finish { 
-    Index_t len = edgeElems, lenlen = edgeElems*edgeElems;
-    Index_t dim = edgeNodes, dimdim = edgeNodes*edgeNodes;
+  FINISH
+    Index_t dimE = edgeElems, dimEdimE = edgeElems*edgeElems;
+    Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
 
-    Index_t pln_len=len, pln_blk=BLK_SIZE, pln_inc=1;
-    for (Index_t pln_out=0; pln_out<pln_len; pln_out+=pln_blk) {
-      Index_t pln_end = (pln_out+pln_blk)<pln_len?(pln_out+pln_blk):pln_len;
-
-      Index_t row_len=len, row_blk=BLK_SIZE, row_inc=1;
-      for (Index_t row_out=0; row_out<row_len; row_out+=row_blk) {
-        Index_t row_end = (row_out+row_blk)<row_len?(row_out+row_blk):row_len;
-
-        Index_t col_len=len, col_blk=BLK_SIZE, col_inc=1;
-        for (Index_t col_out=0; col_out<col_len; col_out+=col_blk) {
-          Index_t col_end = (col_out+col_blk)<col_len?(col_out+col_blk):col_len;
-
-          async IN(domain,                     // GLOBAL
-                   len,lenlen,dim,dimdim,      // LOCAL
-                   pln_out,pln_end,pln_inc,    // LOCAL
-                   row_out,row_end,row_inc,    // LOCAL
-                   col_out,col_end,col_inc) {  // LOCAL
-            for (Index_t pln=pln_out; pln<pln_end; pln+=pln_inc) {
-              Index_t pln_nidx = pln*dimdim;
-              Index_t pln_zidx = pln*lenlen;
-              for (Index_t row=row_out; row<row_end; row+=row_inc) {
-                Index_t pln_row_nidx = pln_nidx + row*dim;
-                Index_t pln_row_zidx = pln_zidx + row*len;
-                for (Index_t col=col_out; col<col_end; col+=col_inc) {
+    FOR_OUTER_0xNx1(pln,edgeElems)
+      FOR_OUTER_0xNx1(row,edgeElems)
+        FOR_OUTER_0xNx1(col,edgeElems)
+          ASYNC_IN_3(pln,row,col,domain,             // INDEXs and GLOBAL
+                   dimE,dimEdimE,dimN,dimNdimN)      // LOCALs
+            FOR_INNER(pln)
+              Index_t pln_nidx = pln*dimNdimN;
+              Index_t pln_zidx = pln*dimEdimE;
+              FOR_INNER(row)
+                Index_t pln_row_nidx = pln_nidx + row*dimN;
+                Index_t pln_row_zidx = pln_zidx + row*dimE;
+                FOR_INNER(col)
                   Index_t nidx = pln_row_nidx+col;
                   Index_t zidx = pln_row_zidx+col;
                   Index_t *localNode = (Index_t *)&domain.m_nodelist[EIGHT*zidx] ;
-                  localNode[0] = nidx                    ;
-                  localNode[1] = nidx                + 1 ;
-                  localNode[2] = nidx          + dim + 1 ;
-                  localNode[3] = nidx          + dim     ;
-                  localNode[4] = nidx + dimdim           ;
-                  localNode[5] = nidx + dimdim       + 1 ;
-                  localNode[6] = nidx + dimdim + dim + 1 ;
-                  localNode[7] = nidx + dimdim + dim     ;
-                } // for col
-              } // for row
-            } // for pln
-          } // async 
-        } // for col_out
-      } // for row_out
-    } // for pln_out
-  } // finish
+                  localNode[0] = nidx                       ;
+                  localNode[1] = nidx                   + 1 ;
+                  localNode[2] = nidx            + dimN + 1 ;
+                  localNode[3] = nidx            + dimN     ;
+                  localNode[4] = nidx + dimNdimN            ;
+                  localNode[5] = nidx + dimNdimN        + 1 ;
+                  localNode[6] = nidx + dimNdimN + dimN + 1 ;
+                  localNode[7] = nidx + dimNdimN + dimN     ;
+                END_FOR_INNER(col)
+              END_FOR_INNER(row)
+            END_FOR_INNER(pln)
+          END_ASYNC_IN_3(pln,row,col)
+        END_FOR_OUTER(col)
+      END_FOR_OUTER(row)
+    END_FOR_OUTER(pln)
+  END_FINISH
 
   /* Create a material IndexSet (entire domain same material for now) */
   for (Index_t i=0; i<domElems; ++i) {
@@ -2897,10 +2883,13 @@ int main(int argc, char *argv[]) {
   /* initialize field data */
   for (Index_t i=0; i<domElems; ++i) {
 
-//  Real_t x_local[EIGHT], y_local[EIGHT], z_local[EIGHT] ;
+#ifdef HAB_C
     Real_t *x_local = malloc(EIGHT*sizeof(Real_t)) ;
     Real_t *y_local = malloc(EIGHT*sizeof(Real_t)) ;
     Real_t *z_local = malloc(EIGHT*sizeof(Real_t)) ;
+#else // NOT HAB_C
+    Real_t x_local[EIGHT], y_local[EIGHT], z_local[EIGHT] ;
+#endif // HAB_C
 
     Index_t *elemToNode = (Index_t *)&domain.m_nodelist[EIGHT*i] ;
     for( Index_t lnode=0 ; lnode < EIGHT ; ++lnode ) {
@@ -2918,10 +2907,11 @@ int main(int argc, char *argv[]) {
       Index_t idx = elemToNode[j] ;
       domain.m_nodalMass[idx] += volume / cast_Real_t(8.0) ;
     } // for j
-
+#ifdef HAB_C
     free(x_local) ;
     free(y_local) ;
     free(z_local) ;
+#endif // HAB_C
   } // for i
 
   /* deposit energy */
