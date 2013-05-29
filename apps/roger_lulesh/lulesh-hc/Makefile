@@ -15,7 +15,7 @@ all: AMO.o lulesh.o lulesh
 AMO.o:  AMO.c AMO.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.hc AMO.h Makefile
+lulesh.o:  lulesh.hc RAG_habanaro.h AMO.h Makefile
 	$(HCC) $(HCFLAGS) $(CFLAGS) -c lulesh.hc
 
 rose_lulesh.o: rose_lulesh.c AML.h 
@@ -37,4 +37,4 @@ check:	lulesh gold.out
 	wc nohup.out gold.out
 
 clean:
-	rm -f rose_lulesh.o rose_lulesh.c lulesh.o lulesh
+	rm -f AMO.o rose_lulesh.o rose_lulesh.c lulesh.o lulesh

@@ -20,8 +20,8 @@ int AMO__sync_bool_compare_and_swap_int64_t(int64_t *memPtr, int64_t compVal, in
 
 /* LOCKS */
 
-extern uint64_t idamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
-extern uint64_t idamax_lock; // 0 --> UNLOCKED; 1 --> LOCKED
+extern uint64_t *pidamax_lock; // 0 --> UNLOCKED; 1 --> LOCKED
+extern uint64_t *pidamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
 
 void AMO__lock_uint64_t(uint64_t *memPtr);
 void AMO__unlock_uint64_t(uint64_t *memPtr);

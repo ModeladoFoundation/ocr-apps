@@ -108,8 +108,8 @@ typedef uint32_t Int_t ;   /* integer representation */
 #define SIX ((Index_t)6)
 // 2^NumberOfDimensions
 #define EIGHT ((Index_t)8)
-// two L1 cachelines of doubles
-#define BLK_SIZE (16)
+// small BLK_SIZE for small problem
+#define BLK_SIZE (4)
 
 /************************************************************/
 /* Allow for flexible data layout experiments by separating */
@@ -715,7 +715,7 @@ void CalcElemNodeNormals(Real_t pfx[EIGHT],     /* OUT */
                          const Real_t y[EIGHT], /* IN */
                          const Real_t z[EIGHT]) /* IN */
 {
-   for (Index_t i = 0 ; i < EIGHT ; ++i) {
+   for( Index_t i = 0 ; i < EIGHT ; ++i ) {
       pfx[i] = cast_Real_t(0.0);
       pfy[i] = cast_Real_t(0.0);
       pfz[i] = cast_Real_t(0.0);
@@ -1251,11 +1251,11 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 
 
           // RAG -- GATHER/SCATTER Index Values
-          for(Index_t i=0;i<EIGHT;i++) {
+          for( Index_t i=0 ; i<EIGHT ; ++i ) {
             elemToNode[i] = *(Index_t *)&domain.m_nodelist[EIGHT*i2+i];
           } // for i
 
-          for(Index_t i1=0;i1<4;++i1){
+          for( Index_t i1=0 ; i1<FOUR ; ++i1 ){
             Real_t hourmodx =
               x8n[i3+0] * GAMMA[i1*EIGHT+0] + x8n[i3+1] * GAMMA[i1*EIGHT+1] +
               x8n[i3+2] * GAMMA[i1*EIGHT+2] + x8n[i3+3] * GAMMA[i1*EIGHT+3] +
@@ -1318,7 +1318,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 // RAG ///////////////////////////////////////////////////////////// RAG //
 // RAG  GATHER (x|y|z)d1[0,,7] = domain.m_(x|y|z)[elemToNode[0..7]]  RAG //
 // RAG ///////////////////////////////////////////////////////////// RAG //
-          for(Index_t i=0 ; i<EIGHT; i++ ) {
+          for( Index_t i=0 ; i<EIGHT ; ++i ) {
             Index_t gnode = elemToNode[i];
             xd1[i] = domain.m_xd[gnode];
             yd1[i] = domain.m_yd[gnode];
@@ -1335,7 +1335,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-          for(Index_t i=0 ; i<EIGHT; i++ ) {
+          for( Index_t i=0 ; i<EIGHT ; ++i ) {
             Index_t gnode = elemToNode[i];
             AMO__sync_addition_double(&domain.m_fx[gnode], hgfx[i]);
             AMO__sync_addition_double(&domain.m_fy[gnode], hgfy[i]);
@@ -1391,7 +1391,7 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
            CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
 
            /* load into temporary storage for FB Hour Glass control */
-           for(Index_t ii=0;ii<EIGHT;++ii){
+           for( Index_t ii=0 ; ii<EIGHT ; ++ii ){
              Index_t jj=EIGHT*i+ii;
 
              dvdx[jj] = pfx[ii];
@@ -1874,7 +1874,7 @@ void CalcKinematicsForElems( Index_t numElem, Real_t dt ) {
           } // for lnode
 
           Real_t dt2 = cast_Real_t(0.5) * dt;
-          for ( Index_t j=0 ; j<EIGHT ; ++j ) {
+          for( Index_t j=0 ; j<EIGHT ; ++j ) {
              x_local[j] -= dt2 * xd_local[j];
              y_local[j] -= dt2 * yd_local[j];
              z_local[j] -= dt2 * zd_local[j];
@@ -2291,20 +2291,27 @@ void CalcQForElems() {
    /* Transfer veloctiy gradients in the first order elements */
    /* problem->commElements->Transfer(CommElements::monoQ) ; */
    CalcMonotonicQForElems() ;
-
    /* Don't allow excessive artificial viscosity */
    if (numElem != 0) {
-      Index_t idx = -1; 
-      for (Index_t i=0; i<numElem; ++i) {
-         if ( domain.m_q[i] > qstop ) {
-            idx = i ;
-            break ;
-         } // if domain.m_q
-      } // for i
+      int64_t *pidx = malloc(sizeof(Index_t)); 
+      *pidx = -1; 
+      FINISH
+      FOR_OUTER_0xNx1(i,numElem)
+        ASYNC_IN_1(i,domain,qstop,pidx)
+          FOR_INNER(i)
+            if ( domain.m_q[i] > qstop ) {
+               AMO__sync_fetch_and_add_int64_t(pidx,1);
+               break ;
+            } // if domain.m_q
+            END_FOR_INNER(i)
+          END_ASYNC_IN_1(i)
+        END_FOR_OUTER(i)
+      END_FINISH
 
-      if(idx >= 0) {
+      if(*pidx >= 0) {
          exit(QStopError) ;
       } // if idx
+      free(pidx);
    } // if numElem
 } // CalcQForElems()
 
@@ -2727,7 +2734,7 @@ void UpdateVolumesForElems() {
     Real_t v_cut = domain.m_v_cut;
     FINISH
       FOR_OUTER_0xNx1(i,numElem)
-//      ASYNC_IN_1(i,domain,v_cut) // INDEX, GLOBAL and LOCAL
+        ASYNC_IN_1(i,domain,v_cut) // INDEX, GLOBAL and LOCAL
           FOR_INNER(i) 
             Real_t tmpV ;
             tmpV = domain.m_vnew[i] ;
@@ -2737,7 +2744,7 @@ void UpdateVolumesForElems() {
             } // tmpV
             domain.m_v[i] = tmpV ;
           END_FOR_INNER(i)
-//      END_ASYNC_IN_1(i)
+        END_ASYNC_IN_1(i)
       END_FOR_OUTER(i)
     END_FINISH 
   } // if numElem
@@ -2758,104 +2765,29 @@ void LagrangeElements() {
   UpdateVolumesForElems() ;
 } // LagrangeElements()
 
-// RAG TESTED ABOVE OKAY
-
-// RAG TESTING
-#if 1
 static inline
 void CalcCourantConstraintForElems() {
-  Real_t dtcourant = cast_Real_t(1.0e+20) ;
-  Index_t   courant_elem = -1 ;
-  Real_t      qqc = domain.m_qqc ;
-  Index_t length = domain.m_numElem ;
+  Real_t  *pDtCourant    = malloc(sizeof(Real_t)) ;
+  Index_t *pCourant_elem = malloc(sizeof(Index_t));
+  *pDtCourant = cast_Real_t(1.0e+20) ;
+  *pCourant_elem = -1;
 
-  Real_t  qqc2 = cast_Real_t(64.0) * qqc * qqc ;
-
-  for (Index_t i = 0 ; i < length ; ++i) {
-    Index_t indx = domain.m_matElemlist[i] ;
-
-    Real_t dtf = domain.m_ss[indx] * domain.m_ss[indx] ;
-
-    if ( domain.m_vdov[indx] < cast_Real_t(0.) ) {
-
-      dtf = dtf
-          + qqc2 * domain.m_arealg[indx] * domain.m_arealg[indx]
-          * domain.m_vdov[indx] * domain.m_vdov[indx] ;
-    }
-
-    dtf = sqrt(dtf) ;
-
-    dtf = domain.m_arealg[indx] / dtf ;
-
-    /* determine minimum timestep with its corresponding elem */
-    if (domain.m_vdov[indx] != cast_Real_t(0.)) {
-      if ( dtf < dtcourant ) {
-        dtcourant = dtf ;
-        courant_elem = indx ;
-      }
-    }
-  } // for i
-
-  /* Don't try to register a time constraint if none of the elements
-   * were active */
-  if (courant_elem != -1) {
-     domain.m_dtcourant = dtcourant ;
-  }
-
-  return ;
-} // CalcCourantConstraintForElems()
-
-static inline
-void CalcHydroConstraintForElems() {
-  Real_t dthydro = cast_Real_t(1.0e+20) ;
-  Index_t hydro_elem = -1 ;
-  Real_t dvovmax = domain.m_dvovmax ;
-  Index_t length = domain.m_numElem ;
-
-  for (Index_t i = 0 ; i < length ; ++i) {
-    Index_t indx = domain.m_matElemlist[i] ;
-
-    if (domain.m_vdov[indx] != cast_Real_t(0.)) {
-      Real_t dtdvov = dvovmax / (fabs(domain.m_vdov[indx])+cast_Real_t(1.e-20)) ;
-      if ( dthydro > dtdvov ) {
-        dthydro = dtdvov ;
-        hydro_elem = indx ;
-      }
-    }
-  } // for i
-
-  if (hydro_elem != -1) {
-     domain.m_dthydro = dthydro ;
-  }
-
-  return ;
-} // CalcHydroConstraintForElems()
-#else
-static inline
-void CalcCourantConstraintForElems() {
-
-static Real_t  dtcourant = cast_Real_t(1.0e+20) ;
-static Index_t courant_elem = -1 ;
-
-  Real_t  qqc = domain.m_qqc ;
-  Index_t length = domain.m_numElem ;
-
-  Real_t  qqc2 = cast_Real_t(64.0) * qqc * qqc ;
-
-//FINISH
-//  FOR_OUTER_0xNx1(i,length)
-//    ASYNC_IN_1_INOUT((dtcourant,courant_elem,idamin_lock),i,domain,qqc2,stdout)
-//      Real_t local_dtcourant = dtcourant; // get global value
-//      FOR_INNER(i) 
-  for (Index_t i = 0 ; i < length ; ++i) {
+  FINISH
+    Real_t      qqc = domain.m_qqc ;
+    Real_t  qqc2 = cast_Real_t(64.0) * qqc * qqc ;
+    Index_t length = domain.m_numElem ;
+    FOR_OUTER_0xNx1(i,length)
+      ASYNC_IN_1(i,domain,qqc2,pDtCourant,pCourant_elem,pidamin_lock)
+        FOR_INNER(i)
           Index_t indx = domain.m_matElemlist[i] ;
 
           Real_t dtf = domain.m_ss[indx] * domain.m_ss[indx] ;
 
           if ( domain.m_vdov[indx] < cast_Real_t(0.) ) {
 
-            dtf += qqc2 * domain.m_arealg[indx] * domain.m_arealg[indx]
-                        * domain.m_vdov[indx] * domain.m_vdov[indx] ;
+            dtf = dtf
+                + qqc2 * domain.m_arealg[indx] * domain.m_arealg[indx]
+                * domain.m_vdov[indx] * domain.m_vdov[indx] ;
           } // if domain.m_vdov
 
           dtf = sqrt(dtf) ;
@@ -2864,62 +2796,69 @@ static Index_t courant_elem = -1 ;
 
           /* determine minimum timestep with its corresponding elem */
           if (domain.m_vdov[indx] != cast_Real_t(0.)) {
-            if ( dtf < dtcourant ) {          // if we found a smaller local value
-                AMO__lock_uint64_t(&idamin_lock);   //   lock
-                dtcourant = dtf ; //      update local and global value
-                courant_elem = indx ;               //     update global index
-//printf("RAG IDAMIN %d %e\n",courant_elem,dtf);fflush(stdout);
-                AMO__unlock_uint64_t(&idamin_lock); //   unlock
-            } // if dtf
+            if ( dtf < *pDtCourant ) {
+AMO__lock_uint64_t(pidamin_lock);          // LOCK
+              *pDtCourant    = dtf ;
+              *pCourant_elem = indx ;
+AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
+            } // if *pDtCourant
           } // if domain.m_vdov
 
-  } // for i
-//      END_FOR_INNER(i)
-//    END_ASYNC_IN_1_INOUT(i)
-//  END_FOR_OUTER(i)
-//END_FINISH 
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   /* Don't try to register a time constraint if none of the elements
    * were active */
-  if (courant_elem != -1) {
-     domain.m_dtcourant = dtcourant ;
-  }
+  if ( *pCourant_elem != -1) {
+     domain.m_dtcourant = *pDtCourant ;
+  } // if *pCourant_elem
 
+  free(pCourant_elem);
+  free(pDtCourant);
   return ;
 } // CalcCourantConstraintForElems()
 
 static inline
 void CalcHydroConstraintForElems() {
-  Real_t dthydro = cast_Real_t(1.0e+20) ;
-  Index_t hydro_elem = -1 ;
-  Real_t dvovmax = domain.m_dvovmax ;
-  Index_t length = domain.m_numElem ;
+  Real_t  *pDtHydro    = malloc(sizeof(Real_t)) ;
+  Index_t *pHydro_elem = malloc(sizeof(Index_t));
+  *pDtHydro = cast_Real_t(1.0e+20) ;
+  *pHydro_elem = -1 ;
 
-//RAG RAG RAGRAG need to find idamax in parallel, without critical section RAGRAG RAG RAG
+  FINISH
+    Real_t dvovmax = domain.m_dvovmax ;
+    Index_t length = domain.m_numElem ;
+    FOR_OUTER_0xNx1(i,length)
+      ASYNC_IN_1(i,domain,dvovmax,pidamin_lock,pDtHydro,pHydro_elem)
+        FOR_INNER(i)
 
-  for (Index_t i = 0 ; i < length ; ++i) {
-    Index_t indx = domain.m_matElemlist[i] ;
+          Index_t indx = domain.m_matElemlist[i] ;
 
-    if (domain.m_vdov[indx] != cast_Real_t(0.)) {
-      Real_t dtdvov = dvovmax / (fabs(domain.m_vdov[indx])+cast_Real_t(1.e-20)) ;
-      if ( dthydro > dtdvov ) {
-        dthydro = dtdvov ;
-        hydro_elem = indx ;
-//printf("RAG IDAMAX %d %e\n",hydro_elem,dthydro);fflush(stdout);
-      }
-    }
-  } // for i
+          if (domain.m_vdov[indx] != cast_Real_t(0.)) {
+            Real_t dtdvov = dvovmax / (fabs(domain.m_vdov[indx])+cast_Real_t(1.e-20)) ;
+            if ( *pDtHydro > dtdvov ) {
+AMO__lock_uint64_t(pidamin_lock);          // LOCK
+              *pDtHydro    = dtdvov ;
+              *pHydro_elem = indx ;
+AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
+            } // if *pDtHydro
+          } // if domain.m_vdov
 
-  if (hydro_elem != -1) {
-     domain.m_dthydro = dthydro ;
-  }
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
+  if (*pHydro_elem != -1) {
+     domain.m_dthydro = *pDtHydro ;
+  } // if *pHydro_elem
+
+  free(pHydro_elem);
+  free(pDtHydro);
   return ;
 } // CalcHydroConstraintForElems()
-#endif
-// RAG TESTING
-
-// RAG TESTED BELOW OKAY
 
 static inline
 void CalcTimeConstraintsForElems() {
@@ -3052,9 +2991,15 @@ int main(int argc, char *argv[]) {
   END_FINISH
 
   /* Create a material IndexSet (entire domain same material for now) */
-  for (Index_t i=0; i<domElems; ++i) {
-    domain.m_matElemlist[i] = i ;
-  }
+  FINISH
+    FOR_OUTER_0xNx1(i,domElems)
+      ASYNC_IN_1(i,domain)
+        FOR_INNER(i)
+          domain.m_matElemlist[i] = i ;
+        END_FOR_OUTER(col)
+      END_FOR_OUTER(row)
+    END_FOR_OUTER(pln)
+  END_FINISH
    
   /* initialize material parameters */
   domain.m_dtfixed            = cast_Real_t(-1.0e-7) ;
@@ -3077,22 +3022,22 @@ int main(int argc, char *argv[]) {
   domain.m_hgcoef             = cast_Real_t(3.0) ;
   domain.m_ss4o3              = cast_Real_t(4.0)/cast_Real_t(3.0) ;
 
-  domain.m_qstop              =  cast_Real_t(1.0e+12) ;
-  domain.m_monoq_max_slope    =  cast_Real_t(1.0) ;
-  domain.m_monoq_limiter_mult =  cast_Real_t(2.0) ;
+  domain.m_qstop              = cast_Real_t(1.0e+12) ;
+  domain.m_monoq_max_slope    = cast_Real_t(1.0) ;
+  domain.m_monoq_limiter_mult = cast_Real_t(2.0) ;
   domain.m_qlc_monoq          = cast_Real_t(0.5) ;
   domain.m_qqc_monoq          = cast_Real_t(2.0)/cast_Real_t(3.0) ;
   domain.m_qqc                = cast_Real_t(2.0) ;
 
-  domain.m_pmin               =  cast_Real_t(0.) ;
+  domain.m_pmin               = cast_Real_t(0.) ;
   domain.m_emin               = cast_Real_t(-1.0e+15) ;
 
-  domain.m_dvovmax            =  cast_Real_t(0.1) ;
+  domain.m_dvovmax            = cast_Real_t(0.1) ;
 
-  domain.m_eosvmax            =  cast_Real_t(1.0e+9) ;
-  domain.m_eosvmin            =  cast_Real_t(1.0e-9) ;
+  domain.m_eosvmax            = cast_Real_t(1.0e+9) ;
+  domain.m_eosvmin            = cast_Real_t(1.0e-9) ;
 
-  domain.m_refdens            =  cast_Real_t(1.0) ;
+  domain.m_refdens            = cast_Real_t(1.0) ;
 
   FINISH
     FOR_OUTER_0xNx1(i,domElems)
@@ -3120,7 +3065,7 @@ int main(int argc, char *argv[]) {
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-          for (Index_t j=0; j<EIGHT; ++j) {
+          for( Index_t j=0 ; j<EIGHT ; ++j ) {
             Index_t idx = elemToNode[j] ;
             Real_t value = volume / cast_Real_t(8.0);
             AMO__sync_addition_double(&domain.m_nodalMass[idx], value);
@@ -3139,65 +3084,120 @@ int main(int argc, char *argv[]) {
   domain.m_e[0] = cast_Real_t(3.948746e+7) ;
 
   /* set up symmetry nodesets */
-  { Index_t nidx = 0;
-    for (Index_t i=0; i<edgeNodes; ++i) {
-      Index_t planeInc = i*edgeNodes*edgeNodes ;
-      Index_t rowInc   = i*edgeNodes ;
-      for (Index_t j=0; j<edgeNodes; ++j) {
-        domain.m_symmX[nidx] = planeInc + j*edgeNodes ;
-        domain.m_symmY[nidx] = planeInc + j ;
-        domain.m_symmZ[nidx] = rowInc   + j ;
-        ++nidx ;
-      } // for j
-    } // for i
-  } // end scope
+  FINISH
+    Index_t dimN = edgeNodes, dimNdimN = dimN*dimN;
+    
+    FOR_OUTER_0xNx1(i,edgeNodes)
+      FOR_OUTER_0xNx1(j,edgeNodes)
+        ASYNC_IN_2(i,j,domain,dimN,dimNdimN)
+          FOR_INNER(i)
+            Index_t planeInc = i*dimNdimN ;
+            Index_t rowInc   = i*dimN ;
+            FOR_INNER(j)
+              Index_t nidx = rowInc + j;
+              domain.m_symmX[nidx] = planeInc + j*dimN ;
+              domain.m_symmY[nidx] = planeInc + j ;
+              domain.m_symmZ[nidx] = rowInc   + j ;
+            END_FOR_INNER(j)
+          END_FOR_INNER(i)
+        END_ASYNC_IN_2(i,j)
+      END_FOR_OUTER(j)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   /* set up elemement connectivity information */
-  domain.m_lxim[0] = 0 ;
-  for (Index_t i=1; i<domElems; ++i) {
-     domain.m_lxim[i]   = i-1 ;
-     domain.m_lxip[i-1] = i ;
-  } // for i
-  domain.m_lxip[domElems-1] = domElems-1 ;
+  FINISH
+    domain.m_lxip[0] = 1 ;
+    FOR_OUTER_0xNx1(i,domElems)
+      ASYNC_IN_1(i,domain,domElems)
+        FOR_INNER(i)
+          domain.m_lxim[i]   = i-1 ;
+          domain.m_lxip[i-1] = i ;
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+    domain.m_lxim[domElems-1] = domElems-2 ;
+  END_FINISH
 
-  for (Index_t i=0; i<edgeElems; ++i) {
-     domain.m_letam[i] = i ; 
-     domain.m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
-  } // for i
+  FINISH
+    FOR_OUTER_0xNx1(i,edgeElems)
+      ASYNC_IN_1(i,domain,domElems,edgeElems)
+        FOR_INNER(i)
+          domain.m_letam[i] = i ; 
+          domain.m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
-  for (Index_t i=edgeElems; i<domElems; ++i) {
-     domain.m_letam[i] = i-edgeElems ;
-     domain.m_letap[i-edgeElems] = i ;
-  } // for i
+  FINISH
+    FOR_OUTER_0xNx1(i,(domElems-edgeElems))
+      ASYNC_IN_1(i,domain,edgeElems)
+        FOR_INNER(i)
+          domain.m_letam[i+edgeElems] = i ;
+          domain.m_letap[i          ] = i+edgeElems ;
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
-  for (Index_t i=0; i<edgeElems*edgeElems; ++i) {
-    domain.m_lzetam[i] = i ;
-    domain.m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
-  } // for i
-  for (Index_t i=edgeElems*edgeElems; i<domElems; ++i) {
-    domain.m_lzetam[i] = i - edgeElems*edgeElems ;
-    domain.m_lzetap[i-edgeElems*edgeElems] = i ;
-  } // for i
+  FINISH
+    FOR_OUTER_0xNx1(i,(edgeElems*edgeElems))
+      ASYNC_IN_1(i,domain,domElems,edgeElems)
+        FOR_INNER(i)
+          domain.m_lzetam[i] = i ;
+          domain.m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
+
+  FINISH
+    Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
+    FOR_OUTER_0xNx1(i,(domElems-dimEdimE))
+      ASYNC_IN_1(i,domain,dimEdimE,domElems)
+        FOR_INNER(i)
+          domain.m_lzetam[i+dimEdimE] = i ;
+          domain.m_lzetap[i]          = i+dimEdimE ;
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   /* set up boundary condition information */
-  for (Index_t i=0; i<domElems; ++i) {
-    domain.m_elemBC[i] = 0 ;  /* clear BCs by default */
-  } // for i
+  FINISH
+    FOR_OUTER_0xNx1(i,domElems)
+      ASYNC_IN_1(i,domain,domElems)
+        FOR_INNER(i)
+          domain.m_elemBC[i] = 0 ;  /* clear BCs by default */
+        END_FOR_INNER(i)
+      END_ASYNC_IN_1(i)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   /* faces on "external" boundaries will be */
   /* symmetry plane or free surface BCs */
-  for (Index_t i=0; i<edgeElems; ++i) {
-    Index_t planeInc = i*edgeElems*edgeElems ;
-    Index_t rowInc   = i*edgeElems ;
-    for (Index_t j=0; j<edgeElems; ++j) {
-      domain.m_elemBC[planeInc+j*edgeElems] |= XI_M_SYMM ;
-      domain.m_elemBC[planeInc+j*edgeElems+edgeElems-1] |= XI_P_FREE ;
-      domain.m_elemBC[planeInc+j] |= ETA_M_SYMM ;
-      domain.m_elemBC[planeInc+j+edgeElems*edgeElems-edgeElems] |= ETA_P_FREE ;
-      domain.m_elemBC[rowInc+j] |= ZETA_M_SYMM ;
-      domain.m_elemBC[rowInc+j+domElems-edgeElems*edgeElems] |= ZETA_P_FREE ;
-    } // for j
-  } // for i
+  FINISH
+    Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
+    FOR_OUTER_0xNx1(i,edgeElems)
+      FOR_OUTER_0xNx1(j,edgeElems)
+        ASYNC_IN_2(i,j,domain,domElems,dimE,dimEdimE)
+          FOR_INNER(i)
+            Index_t planeInc = i*dimEdimE ;
+            Index_t rowInc   = i*dimE ;
+            FOR_INNER(j)
+              domain.m_elemBC[planeInc+j*dimE           ] |= XI_M_SYMM ;
+              domain.m_elemBC[planeInc+j*dimE+1*dimE-1  ] |= XI_P_FREE ;
+              domain.m_elemBC[planeInc+j                ] |= ETA_M_SYMM ;
+              domain.m_elemBC[planeInc+j+dimEdimE-dimE  ] |= ETA_P_FREE ;
+              domain.m_elemBC[rowInc+j                  ] |= ZETA_M_SYMM ;
+              domain.m_elemBC[rowInc+j+domElems-dimEdimE] |= ZETA_P_FREE ;
+            END_FOR_INNER(j)
+          END_FOR_INNER(i)
+        END_ASYNC_IN_2(i,j)
+      END_FOR_OUTER(j)
+    END_FOR_OUTER(i)
+  END_FINISH
 
   /* TIMESTEP TO SOLUTION */
 
