@@ -3217,16 +3217,39 @@ int main(int argc, char *argv[]) {
 
     LagrangeLeapFrog() ;
 
-#if LULESH_SHOW_PROGRESS
+#if       LULESH_SHOW_PROGRESS
+#ifdef      FSIM
+    xe_printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
+          *(uint64_t *)&(domain->m_time),
+          *(uint64_t *)&(domain->m_deltatime),
+          *(uint64_t *)&(domain->m_e[0])) ;
+#else    // NOT FSIM
+#if 0      // HEX
+    printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
+          *(uint64_t *)&(domain->m_time),
+          *(uint64_t *)&(domain->m_deltatime),
+          *(uint64_t *)&(domain->m_e[0])) ;
+#else      // NOT HEX
     printf("time = %e, dt=%e, e(0)=%e\n",
           ((double)domain->m_time),
           ((double)domain->m_deltatime),
           ((double)domain->m_e[0])) ;
+#endif     // HEX
     fflush(stdout);
-#endif
+#endif   // FSIM
+#endif // LULESH_SHOW_PROGRESS
   } // while time
 
+#ifdef    FSIM
+  xe_printf("   Final Origin Energy = %16.16lx \n", *(uint64_t *)&domain->m_e[0]) ;
+#else //  NOT FSIM
+#if 0    // HEX
+  printf("   Final Origin Energy = %16.16lx \n", *(uint64_t *)&domain->m_e[0]) ;
+#else    // NOT HEX
   printf("   Final Origin Energy = %12.6e \n", (double)domain->m_e[0]) ;
+#endif //   HEX
+  fflush(stdout);
+#endif // FSIM
 
   return 0 ;
 } // main()

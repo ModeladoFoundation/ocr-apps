@@ -20,13 +20,13 @@ lulesh:	lulesh.o AMO.o
 run:	lulesh
 	./lulesh
 
-check:	lulesh gold.out
+check:	lulesh ../utils/gold.out
 	rm -f nohup.out
 	date
 	time nohup ./lulesh
 	date
-	diff nohup.out gold.out
-	wc nohup.out gold.out
+	diff nohup.out ../utils/gold.out
+	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f AMO.o lulesh.o lulesh
+	rm -f AMO.o lulesh.o lulesh nohup.out

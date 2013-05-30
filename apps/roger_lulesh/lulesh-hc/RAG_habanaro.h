@@ -1,9 +1,11 @@
-#if 0
+#if 1
 // RAG better choice might be a small multiple of a cacheline size
+// otherwise i think there is to much false sharing or runtiem overhead.
 #define HAB_C_BLK_SIZE (16)
 #else
 // RAG small stripmining and tiling size for small problem
-#define HAB_C_BLK_SIZE (4)
+// this blocksize took longer and had no parallel speedup.
+#define HAB_C_BLK_SIZE (8)
 #endif
 
 #define FOR_OUTER_0xNx1(index,len) \
