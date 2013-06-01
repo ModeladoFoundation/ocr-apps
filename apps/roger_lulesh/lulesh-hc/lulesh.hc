@@ -66,21 +66,38 @@ Additional BSD Notice
 #include <stdlib.h>
 #include <stdint.h>
 
-#ifdef HAB_C
+#if  defined(HAB_C)
+
 #include "hc.h"
+#include <math.h>
+//
+// ATOMIC MEMORY OPERATIONS
+#include "AMO.h"
+
+// MACROS FOR STRIPMINING, TILING and PARALLELIZATION
+#include "RAG.h"
+
+#elif defined(CILK) // CILK
+
+#include <cilk/cilk.h>
+
 #include <math.h>
 // ATOMIC MEMORY OPERATIONS
 #include "AMO.h"
 // MACROS FOR STRIPMINING, TILING and PARALLELIZATION
-#include "RAG_habanaro.h"
+#include "RAG.h"
 
-#else // NOT HAB_C
+#else // NOT HAB_C or CILK, i.e. C99
+
 #include <tgmath.h>
+//
 // ATOMIC MEMORY OPERATIONS
 #include "AMO.h"
+
 // MACROS FOR STRIPMINING, TILING and PARALLELIZATION
-#include "RAG_habanaro.h"
-#endif // HAB_C
+#include "RAG.h"
+
+#endif //    HAB_C, CILK, or C99
 
 #define LULESH_SHOW_PROGRESS 1
 
@@ -381,28 +398,26 @@ void Release_Index_t(Index_t *ptr) { if(ptr != NULL) { free(ptr); } }
 
 void
 domain_AllocateNodalPersistent(size_t hcSize) {
-   if(domain->m_x != NULL)free(domain->m_x); domain->m_x = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_y != NULL)free(domain->m_y); domain->m_y = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_z != NULL)free(domain->m_z); domain->m_z = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_x != NULL)free(domain->m_x); domain->m_x = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_y != NULL)free(domain->m_y); domain->m_y = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_z != NULL)free(domain->m_z); domain->m_z = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-   if(domain->m_xd != NULL)free(domain->m_xd); domain->m_xd = malloc(hcSize*sizeof(Real_t));
-   if(domain->m_yd != NULL)free(domain->m_yd); domain->m_yd = malloc(hcSize*sizeof(Real_t));
-   if(domain->m_zd != NULL)free(domain->m_zd); domain->m_zd = malloc(hcSize*sizeof(Real_t));
+   if(domain->m_xd != NULL)free(domain->m_xd); domain->m_xd = (Real_t *)malloc(hcSize*sizeof(Real_t));
+   if(domain->m_yd != NULL)free(domain->m_yd); domain->m_yd = (Real_t *)malloc(hcSize*sizeof(Real_t));
+   if(domain->m_zd != NULL)free(domain->m_zd); domain->m_zd = (Real_t *)malloc(hcSize*sizeof(Real_t));
 
-   if(domain->m_xdd != NULL)free(domain->m_xdd); domain->m_xdd = malloc(hcSize*sizeof(Real_t));
-   if(domain->m_ydd != NULL)free(domain->m_ydd); domain->m_ydd = malloc(hcSize*sizeof(Real_t));
-   if(domain->m_zdd != NULL)free(domain->m_zdd); domain->m_zdd = malloc(hcSize*sizeof(Real_t));
+   if(domain->m_xdd != NULL)free(domain->m_xdd); domain->m_xdd = (Real_t *)malloc(hcSize*sizeof(Real_t));
+   if(domain->m_ydd != NULL)free(domain->m_ydd); domain->m_ydd = (Real_t *)malloc(hcSize*sizeof(Real_t));
+   if(domain->m_zdd != NULL)free(domain->m_zdd); domain->m_zdd = (Real_t *)malloc(hcSize*sizeof(Real_t));
 
-   if(domain->m_fx != NULL)free(domain->m_fx); domain->m_fx = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_fy != NULL)free(domain->m_fy); domain->m_fy = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_fz != NULL)free(domain->m_fz); domain->m_fz = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_fx != NULL)free(domain->m_fx); domain->m_fx = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_fy != NULL)free(domain->m_fy); domain->m_fy = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_fz != NULL)free(domain->m_fz); domain->m_fz = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-   if(domain->m_nodalMass != NULL)free(domain->m_nodalMass); domain->m_nodalMass = malloc(hcSize*sizeof(Real_t));
+   if(domain->m_nodalMass != NULL)free(domain->m_nodalMass); domain->m_nodalMass = (Real_t *)malloc(hcSize*sizeof(Real_t));
 
    FINISH
-      FOR_OUTER_0xNx1(i,hcSize)
-        ASYNC_IN_1(i,domain) // INDEX and GLOBAL
-          FOR_INNER(i)
+      PAR_FOR_0xNx1(i,hcSize,domain)
             domain->m_xd[i] = (Real_t)(0.0);
             domain->m_yd[i] = (Real_t)(0.0);
             domain->m_zd[i] = (Real_t)(0.0);
@@ -412,55 +427,49 @@ domain_AllocateNodalPersistent(size_t hcSize) {
             domain->m_zdd[i] = (Real_t)(0.0) ;
 
             domain->m_nodalMass[i] = (Real_t)(0.0) ;
-          END_FOR_INNER(i)
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
+      END_PAR_FOR(i)
    END_FINISH
 }
 
 void
 domain_AllocateElemPersistent(size_t hcSize) {
-   if(domain->m_matElemlist != NULL)free(domain->m_matElemlist); domain->m_matElemlist = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_nodelist != NULL)free(domain->m_nodelist); domain->m_nodelist= malloc(EIGHT*hcSize*sizeof(Index_t)) ;
+   if(domain->m_matElemlist != NULL)free(domain->m_matElemlist); domain->m_matElemlist = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_nodelist != NULL)free(domain->m_nodelist); domain->m_nodelist= (Index_t *)malloc(EIGHT*hcSize*sizeof(Index_t)) ;
 
-   if(domain->m_lxim != NULL)free(domain->m_lxim); domain->m_lxim = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_lxip != NULL)free(domain->m_lxip); domain->m_lxip = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_letam != NULL)free(domain->m_letam); domain->m_letam = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_letap != NULL)free(domain->m_letap); domain->m_letap = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_lzetam != NULL)free(domain->m_lzetam); domain->m_lzetam = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_lzetap != NULL)free(domain->m_lzetap); domain->m_lzetap = malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_lxim != NULL)free(domain->m_lxim); domain->m_lxim = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_lxip != NULL)free(domain->m_lxip); domain->m_lxip = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_letam != NULL)free(domain->m_letam); domain->m_letam = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_letap != NULL)free(domain->m_letap); domain->m_letap = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_lzetam != NULL)free(domain->m_lzetam); domain->m_lzetam = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_lzetap != NULL)free(domain->m_lzetap); domain->m_lzetap = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
 
-   if(domain->m_elemBC != NULL)free(domain->m_elemBC); domain->m_elemBC = malloc(hcSize*sizeof(Int_t)) ;
+   if(domain->m_elemBC != NULL)free(domain->m_elemBC); domain->m_elemBC = (Int_t *)malloc(hcSize*sizeof(Int_t)) ;
 
-   if(domain->m_e != NULL)free(domain->m_e); domain->m_e = malloc(hcSize*sizeof(Real_t));
+   if(domain->m_e != NULL)free(domain->m_e); domain->m_e = (Real_t *)malloc(hcSize*sizeof(Real_t));
 
-   if(domain->m_p != NULL)free(domain->m_p); domain->m_p = malloc(hcSize*sizeof(Real_t));
+   if(domain->m_p != NULL)free(domain->m_p); domain->m_p = (Real_t *)malloc(hcSize*sizeof(Real_t));
 
-   if(domain->m_q != NULL)free(domain->m_q); domain->m_q = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_ql != NULL)free(domain->m_ql); domain->m_ql = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_qq != NULL)free(domain->m_qq); domain->m_qq = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_q != NULL)free(domain->m_q); domain->m_q = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_ql != NULL)free(domain->m_ql); domain->m_ql = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_qq != NULL)free(domain->m_qq); domain->m_qq = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-   if(domain->m_v != NULL)free(domain->m_v); domain->m_v = malloc(hcSize*sizeof(Real_t));
-   if(domain->m_volo != NULL)free(domain->m_volo); domain->m_volo = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_delv != NULL)free(domain->m_delv); domain->m_delv = malloc(hcSize*sizeof(Real_t)) ;
-   if(domain->m_vdov != NULL)free(domain->m_vdov); domain->m_vdov = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_v != NULL)free(domain->m_v); domain->m_v = (Real_t *)malloc(hcSize*sizeof(Real_t));
+   if(domain->m_volo != NULL)free(domain->m_volo); domain->m_volo = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_delv != NULL)free(domain->m_delv); domain->m_delv = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_vdov != NULL)free(domain->m_vdov); domain->m_vdov = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-   if(domain->m_arealg != NULL)free(domain->m_arealg); domain->m_arealg = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_arealg != NULL)free(domain->m_arealg); domain->m_arealg = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-   if(domain->m_ss != NULL)free(domain->m_ss); domain->m_ss = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_ss != NULL)free(domain->m_ss); domain->m_ss = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-   if(domain->m_elemMass != NULL)free(domain->m_elemMass); domain->m_elemMass = malloc(hcSize*sizeof(Real_t)) ;
+   if(domain->m_elemMass != NULL)free(domain->m_elemMass); domain->m_elemMass = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
    FINISH 
-      FOR_OUTER_0xNx1(i,hcSize)
-        ASYNC_IN_1(i,domain) // INDEX and GLOBAL
-          FOR_INNER(i)
+      PAR_FOR_0xNx1(i,hcSize,domain)
             domain->m_e[i] = (Real_t)(0.0);
             domain->m_p[i] = (Real_t)(0.0);
             domain->m_v[i] = (Real_t)(1.0);
-          END_FOR_INNER(i)
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
+      END_PAR_FOR(i)
    END_FINISH
 }
 
@@ -468,26 +477,26 @@ domain_AllocateElemPersistent(size_t hcSize) {
    /* this is a runnable placeholder for now */
 void
 domain_AllocateElemTemporary(size_t hcSize) {
-  if(domain->m_dxx != NULL)free(domain->m_dxx); domain->m_dxx = malloc(hcSize*sizeof(Real_t)) ;
-  if(domain->m_dyy != NULL)free(domain->m_dyy); domain->m_dyy = malloc(hcSize*sizeof(Real_t)) ;
-  if(domain->m_dzz != NULL)free(domain->m_dzz); domain->m_dzz = malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_dxx != NULL)free(domain->m_dxx); domain->m_dxx = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_dyy != NULL)free(domain->m_dyy); domain->m_dyy = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_dzz != NULL)free(domain->m_dzz); domain->m_dzz = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-  if(domain->m_delv_xi != NULL)free(domain->m_delv_xi); domain->m_delv_xi = malloc(hcSize*sizeof(Real_t)) ;
-  if(domain->m_delv_eta != NULL)free(domain->m_delv_eta); domain->m_delv_eta = malloc(hcSize*sizeof(Real_t)) ;
-  if(domain->m_delv_zeta != NULL)free(domain->m_delv_zeta); domain->m_delv_zeta = malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_delv_xi != NULL)free(domain->m_delv_xi); domain->m_delv_xi = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_delv_eta != NULL)free(domain->m_delv_eta); domain->m_delv_eta = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_delv_zeta != NULL)free(domain->m_delv_zeta); domain->m_delv_zeta = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-  if(domain->m_delx_xi != NULL)free(domain->m_delx_xi); domain->m_delx_xi = malloc(hcSize*sizeof(Real_t)) ;
-  if(domain->m_delx_eta != NULL)free(domain->m_delx_eta); domain->m_delx_eta = malloc(hcSize*sizeof(Real_t)) ;
-  if(domain->m_delx_zeta != NULL)free(domain->m_delx_zeta); domain->m_delx_zeta = malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_delx_xi != NULL)free(domain->m_delx_xi); domain->m_delx_xi = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_delx_eta != NULL)free(domain->m_delx_eta); domain->m_delx_eta = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_delx_zeta != NULL)free(domain->m_delx_zeta); domain->m_delx_zeta = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 
-  if(domain->m_vnew != NULL)free(domain->m_vnew); domain->m_vnew = malloc(hcSize*sizeof(Real_t)) ;
+  if(domain->m_vnew != NULL)free(domain->m_vnew); domain->m_vnew = (Real_t *)malloc(hcSize*sizeof(Real_t)) ;
 }
 
 void
 domain_AllocateNodesets(size_t hcSize) {
-   if(domain->m_symmX != NULL)free(domain->m_symmX); domain->m_symmX = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_symmY != NULL)free(domain->m_symmY); domain->m_symmY = malloc(hcSize*sizeof(Index_t)) ;
-   if(domain->m_symmZ != NULL)free(domain->m_symmZ); domain->m_symmZ = malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_symmX != NULL)free(domain->m_symmX); domain->m_symmX = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_symmY != NULL)free(domain->m_symmY); domain->m_symmY = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
+   if(domain->m_symmZ != NULL)free(domain->m_symmZ); domain->m_symmZ = (Index_t *)malloc(hcSize*sizeof(Index_t)) ;
 }
 
 /* Stuff needed for boundary conditions */
@@ -574,13 +583,9 @@ void InitStressTermsForElems(Index_t numElem,
    // pull in the stresses appropriate to the hydro integration
    //
    FINISH 
-      FOR_OUTER_0xNx1(i,numElem)
-        ASYNC_IN_1(i,sigxx,sigyy,sigzz,domain) // INDEX, PARAMSs and GLOBAL
-          FOR_INNER(i)
+      PAR_FOR_0xNx1(i,numElem,sigxx,sigyy,sigzz,domain)
             sigxx[i] =  sigyy[i] = sigzz[i] =  - domain->m_p[i] - domain->m_q[i] ;
-          END_FOR_INNER(i)
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
+      END_PAR_FOR(i)
    END_FINISH
 }
 
@@ -825,63 +830,59 @@ void IntegrateStressForElems( Index_t numElem,
 {
   // loop over all elements
   FINISH
-    FOR_OUTER_0xNx1(k,numElem) 
-      ASYNC_IN_1(k, numElem, sigxx, sigyy, sigzz, determ, domain ) // INDEX, PARAMs and GLOBAL
-#ifdef HAB_C
-        Real_t *B        = malloc(THREE*EIGHT*sizeof(Real_t)) ;
-        Real_t *x_local  = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *y_local  = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *z_local  = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *fx_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *fy_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *fz_local = malloc(EIGHT*sizeof(Real_t)) ;
+    PAR_FOR_0xNx1(k,numElem,sigxx, sigyy, sigzz, determ, domain)
+#if  defined(HAB_C)
+        Real_t *B        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
+        Real_t *x_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+        Real_t *y_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+        Real_t *z_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+        Real_t *fx_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+        Real_t *fy_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+        Real_t *fz_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
 #else // NOT HAB_C
         Real_t B[THREE][EIGHT]; // -- shape function derivatives
         Real_t  x_local[EIGHT],  y_local[EIGHT],  z_local[EIGHT];
         Real_t fx_local[EIGHT], fy_local[EIGHT], fz_local[EIGHT];
-#endif // HAB_C
-        FOR_INNER(k) 
-          hcConst Index_t* hcConst elemNodes = (Index_t *)&domain->m_nodelist[EIGHT*k];
+#endif //    HAB_C
+        hcConst Index_t* hcConst elemNodes = (Index_t *)&domain->m_nodelist[EIGHT*k];
 
-          // get nodal coordinates from global arrays and copy into local arrays.
-          for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-            Index_t gnode = elemNodes[lnode];
-            x_local[lnode] = domain->m_x[gnode];
-            y_local[lnode] = domain->m_y[gnode];
-            z_local[lnode] = domain->m_z[gnode];
-          } // for lnode
-          /* Volume calculation involves extra work for numerical consistency. */
-          CalcElemShapeFunctionDerivatives(x_local, y_local, z_local,
-                                           B, &determ[k]);
+        // get nodal coordinates from global arrays and copy into local arrays.
+        for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
+          Index_t gnode = elemNodes[lnode];
+          x_local[lnode] = domain->m_x[gnode];
+          y_local[lnode] = domain->m_y[gnode];
+          z_local[lnode] = domain->m_z[gnode];
+        } // for lnode
+        /* Volume calculation involves extra work for numerical consistency. */
+        CalcElemShapeFunctionDerivatives(x_local, y_local, z_local,
+                                         B, &determ[k]);
 
-#ifdef HAB_C
-          CalcElemNodeNormals( &B[0*EIGHT], &B[1*EIGHT], &B[2*EIGHT],
-                               x_local, y_local, z_local );
-#else
-          CalcElemNodeNormals( B[0], B[1], B[2],
-                               x_local, y_local, z_local );
-#endif
+#if  defined(HAB_C)
+        CalcElemNodeNormals( &B[0*EIGHT], &B[1*EIGHT], &B[2*EIGHT],
+                             x_local, y_local, z_local );
+#else // NOT HAB_C
+        CalcElemNodeNormals( B[0], B[1], B[2],
+                             x_local, y_local, z_local );
+#endif //    HAB_C
 
-          SumElemStressesToNodeForces( B, sigxx[k], sigyy[k], sigzz[k],
-                                          fx_local, fy_local, fz_local ) ;
+        SumElemStressesToNodeForces( B, sigxx[k], sigyy[k], sigzz[k],
+                                        fx_local, fy_local, fz_local ) ;
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-          // accumulate nodal force contributions to global force arrray.
-          for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-            Index_t gnode = elemNodes[lnode];
-            AMO__sync_addition_double(&domain->m_fx[gnode], fx_local[lnode]);
-            AMO__sync_addition_double(&domain->m_fy[gnode], fy_local[lnode]);
-            AMO__sync_addition_double(&domain->m_fz[gnode], fz_local[lnode]);
-          } // for lnode
-        END_FOR_INNER(k)
-#ifdef HAB_C
+        // accumulate nodal force contributions to global force arrray.
+        for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
+          Index_t gnode = elemNodes[lnode];
+          AMO__sync_addition_double(&domain->m_fx[gnode], fx_local[lnode]);
+          AMO__sync_addition_double(&domain->m_fy[gnode], fy_local[lnode]);
+          AMO__sync_addition_double(&domain->m_fz[gnode], fz_local[lnode]);
+        } // for lnode
+#if  defined(HAB_C)
         free(fz_local) ; free(fy_local) ; free(fx_local) ;
         free(z_local)  ; free(y_local)  ; free(x_local) ;
         free(B) ;
-#endif // HAB_C
-      END_ASYNC_IN_1(k)
-    END_FOR_OUTER(k)
+#endif //    HAB_C
+    END_PAR_FOR(k)
   END_FINISH
 } // IntegrateStressForElems()
 
@@ -1215,150 +1216,144 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 /*    compute the hourglass modes */
 
   FINISH
-    FOR_OUTER_0xNx1(i2,numElem)
-      ASYNC_IN_1( i2, domain, GAMMA,                      // INDEX and GLOBALs
-             determ, x8n,y8n,z8n, dvdx,dvdy,dvdz, hourg ) // PARAMs
-#ifdef HAB_C
-        Real_t *hgfx = malloc(EIGHT*sizeof(Real_t));
-        Real_t *hgfy = malloc(EIGHT*sizeof(Real_t));
-        Real_t *hgfz = malloc(EIGHT*sizeof(Real_t));
+    PAR_FOR_0xNx1(i2,numElem,domain,GAMMA,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hourg)
+#if  defined(HAB_C)
+      Real_t *hgfx = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+      Real_t *hgfy = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+      Real_t *hgfz = (Real_t *)malloc(EIGHT*sizeof(Real_t));
 
-        Real_t *hourgam0 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam1 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam2 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam3 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam4 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam5 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam6 = malloc(FOUR*sizeof(Real_t));
-        Real_t *hourgam7 = malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam0 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam1 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam2 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam3 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam4 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam5 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam6 = (Real_t *)malloc(FOUR*sizeof(Real_t));
+      Real_t *hourgam7 = (Real_t *)malloc(FOUR*sizeof(Real_t));
 
-        Real_t *xd1 = malloc(EIGHT*sizeof(Real_t));
-        Real_t *yd1 = malloc(EIGHT*sizeof(Real_t));
-        Real_t *zd1 = malloc(EIGHT*sizeof(Real_t));
+      Real_t *xd1 = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+      Real_t *yd1 = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+      Real_t *zd1 = (Real_t *)malloc(EIGHT*sizeof(Real_t));
 
-        Index_t *elemToNode  = malloc(EIGHT*sizeof(Index_t)) ;
+      Index_t *elemToNode  = (Index_t *)malloc(EIGHT*sizeof(Index_t)) ;
 #else // NOT HAB_C
-        Real_t hgfx[EIGHT], hgfy[EIGHT], hgfz[EIGHT];
+      Real_t hgfx[EIGHT], hgfy[EIGHT], hgfz[EIGHT];
 
-        Real_t hourgam0[FOUR], hourgam1[FOUR], hourgam2[FOUR], hourgam3[FOUR];
-        Real_t hourgam4[FOUR], hourgam5[FOUR], hourgam6[FOUR], hourgam7[FOUR];
+      Real_t hourgam0[FOUR], hourgam1[FOUR], hourgam2[FOUR], hourgam3[FOUR];
+      Real_t hourgam4[FOUR], hourgam5[FOUR], hourgam6[FOUR], hourgam7[FOUR];
 
-        Real_t  xd1[EIGHT],  yd1[EIGHT],  zd1[EIGHT];
+      Real_t  xd1[EIGHT],  yd1[EIGHT],  zd1[EIGHT];
 
-        Index_t elemToNode[EIGHT];
-#endif // HAB_C
+      Index_t elemToNode[EIGHT];
+#endif //    HAB_C
 
-        FOR_INNER(i2) 
+      Real_t coefficient;
 
-          Real_t coefficient;
+      Index_t i3=EIGHT*i2;
 
-          Index_t i3=EIGHT*i2;
-
-          Real_t volinv=cast_Real_t(1.0)/determ[i2];
-          Real_t ss1, mass1, volume13 ;
+      Real_t volinv=cast_Real_t(1.0)/determ[i2];
+      Real_t ss1, mass1, volume13 ;
 
 
-          // RAG -- GATHER/SCATTER Index Values
-          for( Index_t i=0 ; i<EIGHT ; ++i ) {
-            elemToNode[i] = *(Index_t *)&domain->m_nodelist[EIGHT*i2+i];
-          } // for i
+      // RAG -- GATHER/SCATTER Index Values
+      for( Index_t i=0 ; i<EIGHT ; ++i ) {
+          elemToNode[i] = *(Index_t *)&domain->m_nodelist[EIGHT*i2+i];
+      } // for i
 
-          for( Index_t i1=0 ; i1<FOUR ; ++i1 ){
-            Real_t hourmodx =
-              x8n[i3+0] * GAMMA[i1*EIGHT+0] + x8n[i3+1] * GAMMA[i1*EIGHT+1] +
-              x8n[i3+2] * GAMMA[i1*EIGHT+2] + x8n[i3+3] * GAMMA[i1*EIGHT+3] +
-              x8n[i3+4] * GAMMA[i1*EIGHT+4] + x8n[i3+5] * GAMMA[i1*EIGHT+5] +
-              x8n[i3+6] * GAMMA[i1*EIGHT+6] + x8n[i3+7] * GAMMA[i1*EIGHT+7];
+      for( Index_t i1=0 ; i1<FOUR ; ++i1 ){
+        Real_t hourmodx =
+          x8n[i3+0] * GAMMA[i1*EIGHT+0] + x8n[i3+1] * GAMMA[i1*EIGHT+1] +
+          x8n[i3+2] * GAMMA[i1*EIGHT+2] + x8n[i3+3] * GAMMA[i1*EIGHT+3] +
+          x8n[i3+4] * GAMMA[i1*EIGHT+4] + x8n[i3+5] * GAMMA[i1*EIGHT+5] +
+          x8n[i3+6] * GAMMA[i1*EIGHT+6] + x8n[i3+7] * GAMMA[i1*EIGHT+7];
 
-            Real_t hourmody =
-              y8n[i3+0] * GAMMA[i1*EIGHT+0] + y8n[i3+1] * GAMMA[i1*EIGHT+1] +
-              y8n[i3+2] * GAMMA[i1*EIGHT+2] + y8n[i3+3] * GAMMA[i1*EIGHT+3] +
-              y8n[i3+4] * GAMMA[i1*EIGHT+4] + y8n[i3+5] * GAMMA[i1*EIGHT+5] +
-              y8n[i3+6] * GAMMA[i1*EIGHT+6] + y8n[i3+7] * GAMMA[i1*EIGHT+7];
+        Real_t hourmody =
+          y8n[i3+0] * GAMMA[i1*EIGHT+0] + y8n[i3+1] * GAMMA[i1*EIGHT+1] +
+          y8n[i3+2] * GAMMA[i1*EIGHT+2] + y8n[i3+3] * GAMMA[i1*EIGHT+3] +
+          y8n[i3+4] * GAMMA[i1*EIGHT+4] + y8n[i3+5] * GAMMA[i1*EIGHT+5] +
+          y8n[i3+6] * GAMMA[i1*EIGHT+6] + y8n[i3+7] * GAMMA[i1*EIGHT+7];
 
-            Real_t hourmodz =
-              z8n[i3+0] * GAMMA[i1*EIGHT+0] + z8n[i3+1] * GAMMA[i1*EIGHT+1] +
-              z8n[i3+2] * GAMMA[i1*EIGHT+2] + z8n[i3+3] * GAMMA[i1*EIGHT+3] +
-              z8n[i3+4] * GAMMA[i1*EIGHT+4] + z8n[i3+5] * GAMMA[i1*EIGHT+5] +
-              z8n[i3+6] * GAMMA[i1*EIGHT+6] + z8n[i3+7] * GAMMA[i1*EIGHT+7];
+        Real_t hourmodz =
+          z8n[i3+0] * GAMMA[i1*EIGHT+0] + z8n[i3+1] * GAMMA[i1*EIGHT+1] +
+          z8n[i3+2] * GAMMA[i1*EIGHT+2] + z8n[i3+3] * GAMMA[i1*EIGHT+3] +
+          z8n[i3+4] * GAMMA[i1*EIGHT+4] + z8n[i3+5] * GAMMA[i1*EIGHT+5] +
+          z8n[i3+6] * GAMMA[i1*EIGHT+6] + z8n[i3+7] * GAMMA[i1*EIGHT+7];
 
-            hourgam0[i1] = GAMMA[i1*EIGHT+0] -  volinv*(dvdx[i3  ] * hourmodx +
-                                                        dvdy[i3  ] * hourmody +
-                                                        dvdz[i3  ] * hourmodz );
+        hourgam0[i1] = GAMMA[i1*EIGHT+0] -  volinv*(dvdx[i3  ] * hourmodx +
+                                                    dvdy[i3  ] * hourmody +
+                                                    dvdz[i3  ] * hourmodz );
 
-            hourgam1[i1] = GAMMA[i1*EIGHT+1] -  volinv*(dvdx[i3+1] * hourmodx +
-                                                        dvdy[i3+1] * hourmody +
-                                                        dvdz[i3+1] * hourmodz );
+        hourgam1[i1] = GAMMA[i1*EIGHT+1] -  volinv*(dvdx[i3+1] * hourmodx +
+                                                    dvdy[i3+1] * hourmody +
+                                                    dvdz[i3+1] * hourmodz );
 
-            hourgam2[i1] = GAMMA[i1*EIGHT+2] -  volinv*(dvdx[i3+2] * hourmodx +
-                                                        dvdy[i3+2] * hourmody +
-                                                        dvdz[i3+2] * hourmodz );
+        hourgam2[i1] = GAMMA[i1*EIGHT+2] -  volinv*(dvdx[i3+2] * hourmodx +
+                                                    dvdy[i3+2] * hourmody +
+                                                    dvdz[i3+2] * hourmodz );
 
-            hourgam3[i1] = GAMMA[i1*EIGHT+3] -  volinv*(dvdx[i3+3] * hourmodx +
-                                                        dvdy[i3+3] * hourmody +
-                                                        dvdz[i3+3] * hourmodz );
+        hourgam3[i1] = GAMMA[i1*EIGHT+3] -  volinv*(dvdx[i3+3] * hourmodx +
+                                                    dvdy[i3+3] * hourmody +
+                                                    dvdz[i3+3] * hourmodz );
 
-            hourgam4[i1] = GAMMA[i1*EIGHT+4] -  volinv*(dvdx[i3+4] * hourmodx +
-                                                        dvdy[i3+4] * hourmody +
-                                                        dvdz[i3+4] * hourmodz );
+        hourgam4[i1] = GAMMA[i1*EIGHT+4] -  volinv*(dvdx[i3+4] * hourmodx +
+                                                    dvdy[i3+4] * hourmody +
+                                                    dvdz[i3+4] * hourmodz );
 
-            hourgam5[i1] = GAMMA[i1*EIGHT+5] -  volinv*(dvdx[i3+5] * hourmodx +
-                                                        dvdy[i3+5] * hourmody +
-                                                        dvdz[i3+5] * hourmodz );
+        hourgam5[i1] = GAMMA[i1*EIGHT+5] -  volinv*(dvdx[i3+5] * hourmodx +
+                                                    dvdy[i3+5] * hourmody +
+                                                    dvdz[i3+5] * hourmodz );
 
-            hourgam6[i1] = GAMMA[i1*EIGHT+6] -  volinv*(dvdx[i3+6] * hourmodx +
-                                                        dvdy[i3+6] * hourmody +
-                                                        dvdz[i3+6] * hourmodz );
+        hourgam6[i1] = GAMMA[i1*EIGHT+6] -  volinv*(dvdx[i3+6] * hourmodx +
+                                                    dvdy[i3+6] * hourmody +
+                                                    dvdz[i3+6] * hourmodz );
 
-            hourgam7[i1] = GAMMA[i1*EIGHT+7] -  volinv*(dvdx[i3+7] * hourmodx +
-                                                        dvdy[i3+7] * hourmody +
-                                                        dvdz[i3+7] * hourmodz );
+        hourgam7[i1] = GAMMA[i1*EIGHT+7] -  volinv*(dvdx[i3+7] * hourmodx +
+                                                    dvdy[i3+7] * hourmody +
+                                                    dvdz[i3+7] * hourmodz );
 
-          } // for i1
+      } // for i1
 
-          /* compute forces */
-          /* store forces into h arrays (force arrays) */
+      /* compute forces */
+      /* store forces into h arrays (force arrays) */
 
-          ss1=domain->m_ss[i2];
-          mass1=domain->m_elemMass[i2];
-          volume13=cbrt(determ[i2]);
+      ss1=domain->m_ss[i2];
+      mass1=domain->m_elemMass[i2];
+      volume13=cbrt(determ[i2]);
 
 // RAG ///////////////////////////////////////////////////////////// RAG //
 // RAG  GATHER (x|y|z)d1[0,,7] = domain->m_(x|y|z)[elemToNode[0..7]]  RAG //
 // RAG ///////////////////////////////////////////////////////////// RAG //
-          for( Index_t i=0 ; i<EIGHT ; ++i ) {
-            Index_t gnode = elemToNode[i];
-            xd1[i] = domain->m_xd[gnode];
-            yd1[i] = domain->m_yd[gnode];
-            zd1[i] = domain->m_zd[gnode];
-          } // for i
+      for( Index_t i=0 ; i<EIGHT ; ++i ) {
+        Index_t gnode = elemToNode[i];
+        xd1[i] = domain->m_xd[gnode];
+        yd1[i] = domain->m_yd[gnode];
+        zd1[i] = domain->m_zd[gnode];
+      } // for i
 
-          coefficient = - hourg * cast_Real_t(0.01) * ss1 * mass1 / volume13;
+      coefficient = - hourg * cast_Real_t(0.01) * ss1 * mass1 / volume13;
 
-          CalcElemFBHourglassForce(xd1,yd1,zd1,
-                                   hourgam0,hourgam1,hourgam2,hourgam3,
-                                   hourgam4,hourgam5,hourgam6,hourgam7,
-                                   coefficient, hgfx, hgfy, hgfz);
+      CalcElemFBHourglassForce(xd1,yd1,zd1,
+                               hourgam0,hourgam1,hourgam2,hourgam3,
+                               hourgam4,hourgam5,hourgam6,hourgam7,
+                               coefficient, hgfx, hgfy, hgfz);
 
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-          for( Index_t i=0 ; i<EIGHT ; ++i ) {
-            Index_t gnode = elemToNode[i];
-            AMO__sync_addition_double(&domain->m_fx[gnode], hgfx[i]);
-            AMO__sync_addition_double(&domain->m_fy[gnode], hgfy[i]);
-            AMO__sync_addition_double(&domain->m_fz[gnode], hgfz[i]);
-          } // for i
-        END_FOR_INNER(i2)
-#ifdef HAB_C
-        free(elemToNode);
-        free(hgfz); free(hgfy); free(hgfx);
-        free(hourgam7); free(hourgam6); free(hourgam5); free(hourgam4);
-        free(hourgam3); free(hourgam2); free(hourgam1); free(hourgam0);
-        free(zd1); free(yd1); free(xd1);
-#endif // HAB_C
-      END_ASYNC_IN_1(i2)
-    END_FOR_OUTER(i2)
+      for( Index_t i=0 ; i<EIGHT ; ++i ) {
+        Index_t gnode = elemToNode[i];
+        AMO__sync_addition_double(&domain->m_fx[gnode], hgfx[i]);
+        AMO__sync_addition_double(&domain->m_fy[gnode], hgfy[i]);
+        AMO__sync_addition_double(&domain->m_fz[gnode], hgfz[i]);
+      } // for i
+#if  defined(HAB_C)
+      free(elemToNode);
+      free(hgfz); free(hgfy); free(hgfx);
+      free(hourgam7); free(hourgam6); free(hourgam5); free(hourgam4);
+      free(hourgam3); free(hourgam2); free(hourgam1); free(hourgam0);
+      free(zd1); free(yd1); free(xd1);
+#endif //    HAB_C
+    END_PAR_FOR(i2)
   END_FINISH
 } // CalcFBHourglassForceForElems
 
@@ -1376,53 +1371,48 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
 
    /* start loop over elements */
    FINISH
-     FOR_OUTER_0xNx1(i,numElem)
-       ASYNC_IN_1(i,domain,determ,           // INDEX, GLOBAL and PARAM 
-               dvdx,dvdy,dvdz,x8n,y8n,z8n)   // LOCALs
-#ifdef HAB_C
-         Real_t  *x1  = malloc(EIGHT*sizeof(Real_t));
-         Real_t  *y1  = malloc(EIGHT*sizeof(Real_t));
-         Real_t  *z1  = malloc(EIGHT*sizeof(Real_t));
-         Real_t  *pfx = malloc(EIGHT*sizeof(Real_t));
-         Real_t  *pfy = malloc(EIGHT*sizeof(Real_t));
-         Real_t  *pfz = malloc(EIGHT*sizeof(Real_t));
+     PAR_FOR_0xNx1(i,numElem,domain,determ,dvdx,dvdy,dvdz,x8n,y8n,z8n)
+#if  defined(HAB_C)
+       Real_t  *x1  = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+       Real_t  *y1  = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+       Real_t  *z1  = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+       Real_t  *pfx = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+       Real_t  *pfy = (Real_t *)malloc(EIGHT*sizeof(Real_t));
+       Real_t  *pfz = (Real_t *)malloc(EIGHT*sizeof(Real_t));
 #else // NOT HAB_C
-         Real_t  x1[EIGHT],  y1[EIGHT],  z1[EIGHT] ;
-         Real_t pfx[EIGHT], pfy[EIGHT], pfz[EIGHT] ;
-#endif // HAB_C
-         FOR_INNER(i)
+       Real_t  x1[EIGHT],  y1[EIGHT],  z1[EIGHT] ;
+       Real_t pfx[EIGHT], pfy[EIGHT], pfz[EIGHT] ;
+#endif //    HAB_C
 
-           Index_t* elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*i];
+       Index_t* elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*i];
 // RAG -- GATHER (x|y|z)1[0..7] = domain->m_(x|y|z)[domain->m_nodelist[0..7]]
-           CollectDomainNodesToElemNodes(elemToNode, x1, y1, z1);
+       CollectDomainNodesToElemNodes(elemToNode, x1, y1, z1);
 
-           CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
+       CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
 
-           /* load into temporary storage for FB Hour Glass control */
-           for( Index_t ii=0 ; ii<EIGHT ; ++ii ){
-             Index_t jj=EIGHT*i+ii;
+       /* load into temporary storage for FB Hour Glass control */
+       for( Index_t ii=0 ; ii<EIGHT ; ++ii ){
+         Index_t jj=EIGHT*i+ii;
 
-             dvdx[jj] = pfx[ii];
-             dvdy[jj] = pfy[ii];
-             dvdz[jj] = pfz[ii];
-             x8n[jj]  = x1[ii];
-             y8n[jj]  = y1[ii];
-             z8n[jj]  = z1[ii];
-           } // for ii
+         dvdx[jj] = pfx[ii];
+         dvdy[jj] = pfy[ii];
+         dvdz[jj] = pfz[ii];
+         x8n[jj]  = x1[ii];
+         y8n[jj]  = y1[ii];
+         z8n[jj]  = z1[ii];
+       } // for ii
 
-           determ[i] = domain->m_volo[i] * domain->m_v[i];
+       determ[i] = domain->m_volo[i] * domain->m_v[i];
 
-           /* Do a check for negative volumes */
-           if ( domain->m_v[i] <= cast_Real_t(0.0) ) {
-             exit(VolumeError) ;
-           }
-         END_FOR_INNER(i)
-#ifdef HAB_C
-         free(pfz); free(pfy); free(pfx);
-         free(z1) ; free(y1) ; free(x1);
-#endif // HAB_C
-       END_ASYNC_IN_1(i)
-     END_FOR_OUTER(i)
+       /* Do a check for negative volumes */
+       if ( domain->m_v[i] <= cast_Real_t(0.0) ) {
+         exit(VolumeError) ;
+       }
+#if  defined(HAB_C)
+       free(pfz); free(pfy); free(pfx);
+       free(z1) ; free(y1) ; free(x1);
+#endif //    HAB_C
+     END_PAR_FOR(i)
   END_FINISH
 
   if ( hgcoef > cast_Real_t(0.) ) {
@@ -1458,15 +1448,11 @@ void CalcVolumeForceForElems() {
 
     // check for negative element volume
     FINISH
-      FOR_OUTER_0xNx1(k,numElem)
-        ASYNC_IN_1(k, determ )// INDEX and LOCAL
-          FOR_INNER(k)
-            if (determ[k] <= cast_Real_t(0.0)) {
-              exit(VolumeError) ;
-            }
-          END_FOR_INNER(k)
-        END_ASYNC_IN_1(k)
-      END_FOR_OUTER(k)
+      PAR_FOR_0xNx1(k,numElem,determ)
+        if (determ[k] <= cast_Real_t(0.0)) {
+          exit(VolumeError) ;
+        }
+      END_PAR_FOR(k)
     END_FINISH
 
     CalcHourglassControlForElems(determ, hgcoef) ;
@@ -1475,21 +1461,17 @@ void CalcVolumeForceForElems() {
     Release_Real_t(sigzz) ;
     Release_Real_t(sigyy) ;
     Release_Real_t(sigxx) ;
-  }
+  } // if numElem
 } // CalcVolumeForceForElems()
 
 static inline void CalcForceForNodes() {
   Index_t numNode = domain->m_numNode ;
   FINISH 
-    FOR_OUTER_0xNx1(i,numNode)
-      ASYNC_IN_1(i,domain)   // INDEX and GLOBAL
-        FOR_INNER(i)
-          domain->m_fx[i] = cast_Real_t(0.0) ;
-          domain->m_fy[i] = cast_Real_t(0.0) ;
-          domain->m_fz[i] = cast_Real_t(0.0) ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,numNode,domain)
+      domain->m_fx[i] = cast_Real_t(0.0) ;
+      domain->m_fy[i] = cast_Real_t(0.0) ;
+      domain->m_fz[i] = cast_Real_t(0.0) ;
+    END_PAR_FOR(i)
   END_FINISH
 
   /* Calcforce calls partial, force, hourq */
@@ -1504,15 +1486,11 @@ static inline
 void CalcAccelerationForNodes() {
   Index_t numNode = domain->m_numNode ;
   FINISH 
-    FOR_OUTER_0xNx1(i,numNode)
-      ASYNC_IN_1(i,domain)   // INDEX and GLOBAL
-        FOR_INNER(i)
-          domain->m_xdd[i] = domain->m_fx[i] / domain->m_nodalMass[i];
-          domain->m_ydd[i] = domain->m_fy[i] / domain->m_nodalMass[i];
-          domain->m_zdd[i] = domain->m_fz[i] / domain->m_nodalMass[i];
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,numNode,domain)
+      domain->m_xdd[i] = domain->m_fx[i] / domain->m_nodalMass[i];
+      domain->m_ydd[i] = domain->m_fy[i] / domain->m_nodalMass[i];
+      domain->m_zdd[i] = domain->m_fz[i] / domain->m_nodalMass[i];
+    END_PAR_FOR(i)
   END_FINISH
 } // CalcAccelerationForNodes()
 
@@ -1520,20 +1498,12 @@ static inline
 void ApplyAccelerationBoundaryConditionsForNodes() {
   Index_t numNodeBC = (domain->m_sizeX+1)*(domain->m_sizeX+1) ;
   FINISH
-    FOR_OUTER_0xNx1(i,numNodeBC)
-      ASYNC_IN_1(i,domain)   // INDEX and GLOBAL
+    PAR_FOR_0xNx1(i,numNodeBC,domain)
 // RAG -- SCATTER domain->m_(x|y|z)dd[domain->m_symm(X|Y|Z)[i]] = 0.0
-        FOR_INNER(i)
-          domain->m_xdd[domain->m_symmX[i]] = cast_Real_t(0.0) ;
-        END_FOR_INNER(i)
-        FOR_INNER(i)
-          domain->m_ydd[domain->m_symmY[i]] = cast_Real_t(0.0) ;
-        END_FOR_INNER(i)
-        FOR_INNER(i)
-          domain->m_zdd[domain->m_symmZ[i]] = cast_Real_t(0.0) ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      domain->m_xdd[domain->m_symmX[i]] = cast_Real_t(0.0) ;
+      domain->m_ydd[domain->m_symmY[i]] = cast_Real_t(0.0) ;
+      domain->m_zdd[domain->m_symmZ[i]] = cast_Real_t(0.0) ;
+    END_PAR_FOR(i)
   END_FINISH
 } // ApplyAccelerationBoundaryConditionsForNodes()
 
@@ -1541,28 +1511,24 @@ static inline
 void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
   Index_t numNode = domain->m_numNode ;
   FINISH
-    FOR_OUTER_0xNx1(i,numNode)
-      ASYNC_IN_1(i, domain, dt,u_cut) // INDEX, GLOBAL and PARAMs
-        FOR_INNER(i)
-          Real_t xdtmp, ydtmp, zdtmp ;
+    PAR_FOR_0xNx1(i,numNode,domain,dt,u_cut)
+      Real_t xdtmp, ydtmp, zdtmp ;
 
 // RAG -- DAXPY       -- (x|y|x)d += dt * (x|y|z)dd
 // RAG -- DFLUSH .i.e -- -u_cut < (x|y|z)d <u_cut to 0.0
 
-          xdtmp = domain->m_xd[i] + domain->m_xdd[i] * dt ;
-          if( fabs(xdtmp) < u_cut ) xdtmp = cast_Real_t(0.0);
-          domain->m_xd[i] = xdtmp ;
+      xdtmp = domain->m_xd[i] + domain->m_xdd[i] * dt ;
+      if( fabs(xdtmp) < u_cut ) xdtmp = cast_Real_t(0.0);
+      domain->m_xd[i] = xdtmp ;
 
-          ydtmp = domain->m_yd[i] + domain->m_ydd[i] * dt ;
-          if( fabs(ydtmp) < u_cut ) ydtmp = cast_Real_t(0.0);
-          domain->m_yd[i] = ydtmp ;
+      ydtmp = domain->m_yd[i] + domain->m_ydd[i] * dt ;
+      if( fabs(ydtmp) < u_cut ) ydtmp = cast_Real_t(0.0);
+      domain->m_yd[i] = ydtmp ;
 
-          zdtmp = domain->m_zd[i] + domain->m_zdd[i] * dt ;
-          if( fabs(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
-          domain->m_zd[i] = zdtmp ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      zdtmp = domain->m_zd[i] + domain->m_zdd[i] * dt ;
+      if( fabs(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
+      domain->m_zd[i] = zdtmp ;
+    END_PAR_FOR(i)
   END_FINISH
 } // CalcVelocityForNodes()
 
@@ -1570,16 +1536,12 @@ static inline
 void CalcPositionForNodes(const Real_t dt) {
   Index_t numNode = domain->m_numNode ;
   FINISH
-    FOR_OUTER_0xNx1(i,numNode)
-      ASYNC_IN_1(i, domain, dt) // INDEX, GLOBAL and PARAM
-        FOR_INNER(i)
+    PAR_FOR_0xNx1(i,numNode,domain,dt)
 // RAG -- DAXPY       -- (x|y|x) += dt * (x|y|z)d
-          domain->m_x[i] += domain->m_xd[i] * dt ;
-          domain->m_y[i] += domain->m_yd[i] * dt ;
-          domain->m_z[i] += domain->m_zd[i] * dt ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      domain->m_x[i] += domain->m_xd[i] * dt ;
+      domain->m_y[i] += domain->m_yd[i] * dt ;
+      domain->m_z[i] += domain->m_zd[i] * dt ;
+    END_PAR_FOR(i)
   END_FINISH
 } // CalcPositionForNodes()
 
@@ -1824,104 +1786,100 @@ static inline
 void CalcKinematicsForElems( Index_t numElem, Real_t dt ) {
   FINISH
     // loop over all elements
-    FOR_OUTER_0xNx1(k,numElem)
-      ASYNC_IN_1(k,domain,dt)   // INDEX, GLOBAL and PARAM
-#ifdef HAB_C
-        Real_t *B        = malloc(THREE*EIGHT*sizeof(Real_t)) ;
-        Real_t *D        = malloc(THREE*EIGHT*sizeof(Real_t)) ;
-        Real_t *x_local  = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *y_local  = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *z_local  = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *xd_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *yd_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *zd_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *detJ     = malloc(sizeof(Real_t)) ;
-        *detJ     = cast_Real_t(0.0) ;
+    PAR_FOR_0xNx1(k,numElem,domain,dt)
+#if  defined(HAB_C)
+      Real_t *B        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
+      Real_t *D        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
+      Real_t *x_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *y_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *z_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *xd_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *yd_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *zd_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *detJ     = (Real_t *)malloc(sizeof(Real_t)) ;
+      *detJ     = cast_Real_t(0.0) ;
 #else // NOT HAB_C
-        Real_t B[THREE][EIGHT] ; /** shape function derivatives */
-        Real_t D[SIX] ;
-        Real_t x_local[EIGHT] ;
-        Real_t y_local[EIGHT] ;
-        Real_t z_local[EIGHT] ;
-        Real_t xd_local[EIGHT] ;
-        Real_t yd_local[EIGHT] ;
-        Real_t zd_local[EIGHT] ;
-        Real_t detJ = cast_Real_t(0.0) ;
-#endif // HAB_C
-        FOR_INNER(k)
-          Real_t volume ;
-          Real_t relativeVolume ;
-          hcConst Index_t* hcConst elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*k] ;
+      Real_t B[THREE][EIGHT] ; /** shape function derivatives */
+      Real_t D[SIX] ;
+      Real_t x_local[EIGHT] ;
+      Real_t y_local[EIGHT] ;
+      Real_t z_local[EIGHT] ;
+      Real_t xd_local[EIGHT] ;
+      Real_t yd_local[EIGHT] ;
+      Real_t zd_local[EIGHT] ;
+      Real_t detJ = cast_Real_t(0.0) ;
+#endif //    HAB_C
+      Real_t volume ;
+      Real_t relativeVolume ;
+      hcConst Index_t* hcConst elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*k] ;
 
-          // get nodal coordinates from global arrays and copy into local arrays.
-          for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-            Index_t gnode = elemToNode[lnode];
-            x_local[lnode] = domain->m_x[gnode];
-            y_local[lnode] = domain->m_y[gnode];
-            z_local[lnode] = domain->m_z[gnode];
-          } // for lnode
+      // get nodal coordinates from global arrays and copy into local arrays.
+      for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
+        Index_t gnode = elemToNode[lnode];
+        x_local[lnode] = domain->m_x[gnode];
+        y_local[lnode] = domain->m_y[gnode];
+        z_local[lnode] = domain->m_z[gnode];
+      } // for lnode
 
-          // volume calculations
-          volume = CalcElemVolume(x_local, y_local, z_local );
-          relativeVolume = volume / domain->m_volo[k] ;
-          domain->m_vnew[k] = relativeVolume ;
-          domain->m_delv[k] = relativeVolume - domain->m_v[k] ;
+      // volume calculations
+      volume = CalcElemVolume(x_local, y_local, z_local );
+      relativeVolume = volume / domain->m_volo[k] ;
+      domain->m_vnew[k] = relativeVolume ;
+      domain->m_delv[k] = relativeVolume - domain->m_v[k] ;
 
-          // set characteristic length
-          domain->m_arealg[k] = CalcElemCharacteristicLength(x_local,
-                                                            y_local,
-                                                            z_local,
-                                                            volume);
+      // set characteristic length
+      domain->m_arealg[k] = CalcElemCharacteristicLength(x_local,
+                                                        y_local,
+                                                        z_local,
+                                                        volume);
 
-          // get nodal velocities from global array and copy into local arrays.
-          for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-            Index_t gnode = elemToNode[lnode];
-            xd_local[lnode] = domain->m_xd[gnode];
-            yd_local[lnode] = domain->m_yd[gnode];
-            zd_local[lnode] = domain->m_zd[gnode];
-          } // for lnode
+      // get nodal velocities from global array and copy into local arrays.
+      for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
+        Index_t gnode = elemToNode[lnode];
+        xd_local[lnode] = domain->m_xd[gnode];
+        yd_local[lnode] = domain->m_yd[gnode];
+        zd_local[lnode] = domain->m_zd[gnode];
+      } // for lnode
 
-          Real_t dt2 = cast_Real_t(0.5) * dt;
-          for( Index_t j=0 ; j<EIGHT ; ++j ) {
-             x_local[j] -= dt2 * xd_local[j];
-             y_local[j] -= dt2 * yd_local[j];
-             z_local[j] -= dt2 * zd_local[j];
-          } // for j
+      Real_t dt2 = cast_Real_t(0.5) * dt;
+      for( Index_t j=0 ; j<EIGHT ; ++j ) {
+         x_local[j] -= dt2 * xd_local[j];
+         y_local[j] -= dt2 * yd_local[j];
+         z_local[j] -= dt2 * zd_local[j];
+      } // for j
 
-#ifdef HAB_C
-          CalcElemShapeFunctionDerivatives( x_local,
-                                            y_local,
-                                            z_local,
-                                            B, detJ );
+#if  defined(HAB_C)
+      CalcElemShapeFunctionDerivatives( x_local,
+                                        y_local,
+                                        z_local,
+                                        B, detJ );
 
-          CalcElemVelocityGrandient( xd_local,
-                                     yd_local,
-                                     zd_local,
-                                     B, *detJ, D );
-#else
-          CalcElemShapeFunctionDerivatives( x_local,
-                                            y_local,
-                                            z_local,
-                                            B, &detJ );
+      CalcElemVelocityGrandient( xd_local,
+                                 yd_local,
+                                 zd_local,
+                                 B, *detJ, D );
+#else // NOT HAB_C
+      CalcElemShapeFunctionDerivatives( x_local,
+                                        y_local,
+                                        z_local,
+                                        B, &detJ );
 
-          CalcElemVelocityGrandient( xd_local,
-                                     yd_local,
-                                     zd_local,
-                                     B, detJ, D );
-#endif
+      CalcElemVelocityGrandient( xd_local,
+                                 yd_local,
+                                 zd_local,
+                                 B, detJ, D );
+#endif //    HAB_C
 
-          // put velocity gradient quantities into their global arrays.
-          domain->m_dxx[k] = D[0];
-          domain->m_dyy[k] = D[1];
-          domain->m_dzz[k] = D[2];
-        END_FOR_INNER(k) 
-#ifdef HAB_C
-        free(zd_local); free(yd_local); free(xd_local);
-        free(z_local); free(y_local); free(x_local);
-        free(D); free(B);
-#endif // HAB_C
-      END_ASYNC_IN_1(k) 
-    END_FOR_OUTER(k) 
+      // put velocity gradient quantities into their global arrays.
+      domain->m_dxx[k] = D[0];
+      domain->m_dyy[k] = D[1];
+      domain->m_dzz[k] = D[2];
+#if  defined(HAB_C)
+      free(zd_local); free(yd_local); free(xd_local);
+      free(z_local); free(y_local); free(x_local);
+      free(D); free(B);
+#endif //    HAB_C
+    END_PAR_FOR(k) 
   END_FINISH
 } // CalcKinematicsForElems()
 
@@ -1933,26 +1891,22 @@ void CalcLagrangeElements(Real_t deltatime) {
 
       // element loop to do some stuff not included in the elemlib function.
       FINISH
-        FOR_OUTER_0xNx1(k,numElem)
-          ASYNC_IN_1(k,domain) // INDEX and GLOBAL
-            FOR_INNER(k)
-              // calc strain rate and apply as constraint (only done in FB element)
-              Real_t vdov = domain->m_dxx[k] + domain->m_dyy[k] + domain->m_dzz[k] ;
-              Real_t vdovthird = vdov/cast_Real_t(3.0) ;
+        PAR_FOR_0xNx1(k,numElem,domain)
+          // calc strain rate and apply as constraint (only done in FB element)
+          Real_t vdov = domain->m_dxx[k] + domain->m_dyy[k] + domain->m_dzz[k] ;
+          Real_t vdovthird = vdov/cast_Real_t(3.0) ;
         
-              // make the rate of deformation tensor deviatoric
-              domain->m_vdov[k] = vdov ;
-              domain->m_dxx[k] -= vdovthird ;
-              domain->m_dyy[k] -= vdovthird ;
-              domain->m_dzz[k] -= vdovthird ;
+          // make the rate of deformation tensor deviatoric
+          domain->m_vdov[k] = vdov ;
+          domain->m_dxx[k] -= vdovthird ;
+          domain->m_dyy[k] -= vdovthird ;
+          domain->m_dzz[k] -= vdovthird ;
 
-              // See if any volumes are negative, and take appropriate action.
-              if (domain->m_vnew[k] <= cast_Real_t(0.0)) {
-                exit(VolumeError) ;
-              } // if domain->m_vnew
-            END_FOR_INNER(k)
-          END_ASYNC_IN_1(k)
-        END_FOR_OUTER(k)
+          // See if any volumes are negative, and take appropriate action.
+          if (domain->m_vnew[k] <= cast_Real_t(0.0)) {
+            exit(VolumeError) ;
+          } // if domain->m_vnew
+        END_PAR_FOR(k)
       END_FINISH
    } // if numElem
 } // CalcLagrangeElements()
@@ -1962,148 +1916,144 @@ void CalcMonotonicQGradientsForElems() {
 #define SUM4(a,b,c,d) (a + b + c + d)
   Index_t numElem = domain->m_numElem ;
   FINISH
-    FOR_OUTER_0xNx1(i,numElem)
-      ASYNC_IN_1(i,domain) // INDEX and GLOBAL
-        hcConst Real_t ptiny = cast_Real_t(1.e-36) ;
-        FOR_INNER(i)
-          Real_t ax,ay,az ;
-          Real_t dxv,dyv,dzv ;
+    PAR_FOR_0xNx1(i,numElem,domain)
+      hcConst Real_t ptiny = cast_Real_t(1.e-36) ;
+      Real_t ax,ay,az ;
+      Real_t dxv,dyv,dzv ;
 
-          const Index_t *elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*i];
-          Index_t n0 = elemToNode[0] ;
-          Index_t n1 = elemToNode[1] ;
-          Index_t n2 = elemToNode[2] ;
-          Index_t n3 = elemToNode[3] ;
-          Index_t n4 = elemToNode[4] ;
-          Index_t n5 = elemToNode[5] ;
-          Index_t n6 = elemToNode[6] ;
-          Index_t n7 = elemToNode[7] ;
+      const Index_t *elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*i];
+      Index_t n0 = elemToNode[0] ;
+      Index_t n1 = elemToNode[1] ;
+      Index_t n2 = elemToNode[2] ;
+      Index_t n3 = elemToNode[3] ;
+      Index_t n4 = elemToNode[4] ;
+      Index_t n5 = elemToNode[5] ;
+      Index_t n6 = elemToNode[6] ;
+      Index_t n7 = elemToNode[7] ;
 
-          Real_t x0 = domain->m_x[n0] ;
-          Real_t x1 = domain->m_x[n1] ;
-          Real_t x2 = domain->m_x[n2] ;
-          Real_t x3 = domain->m_x[n3] ;
-          Real_t x4 = domain->m_x[n4] ;
-          Real_t x5 = domain->m_x[n5] ;
-          Real_t x6 = domain->m_x[n6] ;
-          Real_t x7 = domain->m_x[n7] ;
+      Real_t x0 = domain->m_x[n0] ;
+      Real_t x1 = domain->m_x[n1] ;
+      Real_t x2 = domain->m_x[n2] ;
+      Real_t x3 = domain->m_x[n3] ;
+      Real_t x4 = domain->m_x[n4] ;
+      Real_t x5 = domain->m_x[n5] ;
+      Real_t x6 = domain->m_x[n6] ;
+      Real_t x7 = domain->m_x[n7] ;
 
-          Real_t y0 = domain->m_y[n0] ;
-          Real_t y1 = domain->m_y[n1] ;
-          Real_t y2 = domain->m_y[n2] ;
-          Real_t y3 = domain->m_y[n3] ;
-          Real_t y4 = domain->m_y[n4] ;
-          Real_t y5 = domain->m_y[n5] ;
-          Real_t y6 = domain->m_y[n6] ;
-          Real_t y7 = domain->m_y[n7] ;
+      Real_t y0 = domain->m_y[n0] ;
+      Real_t y1 = domain->m_y[n1] ;
+      Real_t y2 = domain->m_y[n2] ;
+      Real_t y3 = domain->m_y[n3] ;
+      Real_t y4 = domain->m_y[n4] ;
+      Real_t y5 = domain->m_y[n5] ;
+      Real_t y6 = domain->m_y[n6] ;
+      Real_t y7 = domain->m_y[n7] ;
 
-          Real_t z0 = domain->m_z[n0] ;
-          Real_t z1 = domain->m_z[n1] ;
-          Real_t z2 = domain->m_z[n2] ;
-          Real_t z3 = domain->m_z[n3] ;
-          Real_t z4 = domain->m_z[n4] ;
-          Real_t z5 = domain->m_z[n5] ;
-          Real_t z6 = domain->m_z[n6] ;
-          Real_t z7 = domain->m_z[n7] ;
+      Real_t z0 = domain->m_z[n0] ;
+      Real_t z1 = domain->m_z[n1] ;
+      Real_t z2 = domain->m_z[n2] ;
+      Real_t z3 = domain->m_z[n3] ;
+      Real_t z4 = domain->m_z[n4] ;
+      Real_t z5 = domain->m_z[n5] ;
+      Real_t z6 = domain->m_z[n6] ;
+      Real_t z7 = domain->m_z[n7] ;
 
-          Real_t xv0 = domain->m_xd[n0] ;
-          Real_t xv1 = domain->m_xd[n1] ;
-          Real_t xv2 = domain->m_xd[n2] ;
-          Real_t xv3 = domain->m_xd[n3] ;
-          Real_t xv4 = domain->m_xd[n4] ;
-          Real_t xv5 = domain->m_xd[n5] ;
-          Real_t xv6 = domain->m_xd[n6] ;
-          Real_t xv7 = domain->m_xd[n7] ;
+      Real_t xv0 = domain->m_xd[n0] ;
+      Real_t xv1 = domain->m_xd[n1] ;
+      Real_t xv2 = domain->m_xd[n2] ;
+      Real_t xv3 = domain->m_xd[n3] ;
+      Real_t xv4 = domain->m_xd[n4] ;
+      Real_t xv5 = domain->m_xd[n5] ;
+      Real_t xv6 = domain->m_xd[n6] ;
+      Real_t xv7 = domain->m_xd[n7] ;
 
-          Real_t yv0 = domain->m_yd[n0] ;
-          Real_t yv1 = domain->m_yd[n1] ;
-          Real_t yv2 = domain->m_yd[n2] ;
-          Real_t yv3 = domain->m_yd[n3] ;
-          Real_t yv4 = domain->m_yd[n4] ;
-          Real_t yv5 = domain->m_yd[n5] ;
-          Real_t yv6 = domain->m_yd[n6] ;
-          Real_t yv7 = domain->m_yd[n7] ;
+      Real_t yv0 = domain->m_yd[n0] ;
+      Real_t yv1 = domain->m_yd[n1] ;
+      Real_t yv2 = domain->m_yd[n2] ;
+      Real_t yv3 = domain->m_yd[n3] ;
+      Real_t yv4 = domain->m_yd[n4] ;
+      Real_t yv5 = domain->m_yd[n5] ;
+      Real_t yv6 = domain->m_yd[n6] ;
+      Real_t yv7 = domain->m_yd[n7] ;
 
-          Real_t zv0 = domain->m_zd[n0] ;
-          Real_t zv1 = domain->m_zd[n1] ;
-          Real_t zv2 = domain->m_zd[n2] ;
-          Real_t zv3 = domain->m_zd[n3] ;
-          Real_t zv4 = domain->m_zd[n4] ;
-          Real_t zv5 = domain->m_zd[n5] ;
-          Real_t zv6 = domain->m_zd[n6] ;
-          Real_t zv7 = domain->m_zd[n7] ;
+      Real_t zv0 = domain->m_zd[n0] ;
+      Real_t zv1 = domain->m_zd[n1] ;
+      Real_t zv2 = domain->m_zd[n2] ;
+      Real_t zv3 = domain->m_zd[n3] ;
+      Real_t zv4 = domain->m_zd[n4] ;
+      Real_t zv5 = domain->m_zd[n5] ;
+      Real_t zv6 = domain->m_zd[n6] ;
+      Real_t zv7 = domain->m_zd[n7] ;
 
-          Real_t vol = domain->m_volo[i]*domain->m_vnew[i] ;
-          Real_t norm = cast_Real_t(1.0) / ( vol + ptiny ) ;
+      Real_t vol = domain->m_volo[i]*domain->m_vnew[i] ;
+      Real_t norm = cast_Real_t(1.0) / ( vol + ptiny ) ;
 
-          Real_t dxj = cast_Real_t(-0.25)*(SUM4(x0,x1,x5,x4) - SUM4(x3,x2,x6,x7)) ;
-          Real_t dyj = cast_Real_t(-0.25)*(SUM4(y0,y1,y5,y4) - SUM4(y3,y2,y6,y7)) ;
-          Real_t dzj = cast_Real_t(-0.25)*(SUM4(z0,z1,z5,z4) - SUM4(z3,z2,z6,z7)) ;
+      Real_t dxj = cast_Real_t(-0.25)*(SUM4(x0,x1,x5,x4) - SUM4(x3,x2,x6,x7)) ;
+      Real_t dyj = cast_Real_t(-0.25)*(SUM4(y0,y1,y5,y4) - SUM4(y3,y2,y6,y7)) ;
+      Real_t dzj = cast_Real_t(-0.25)*(SUM4(z0,z1,z5,z4) - SUM4(z3,z2,z6,z7)) ;
 
-          Real_t dxi = cast_Real_t( 0.25)*(SUM4(x1,x2,x6,x5) - SUM4(x0,x3,x7,x4)) ;
-          Real_t dyi = cast_Real_t( 0.25)*(SUM4(y1,y2,y6,y5) - SUM4(y0,y3,y7,y4)) ;
-          Real_t dzi = cast_Real_t( 0.25)*(SUM4(z1,z2,z6,z5) - SUM4(z0,z3,z7,z4)) ;
+      Real_t dxi = cast_Real_t( 0.25)*(SUM4(x1,x2,x6,x5) - SUM4(x0,x3,x7,x4)) ;
+      Real_t dyi = cast_Real_t( 0.25)*(SUM4(y1,y2,y6,y5) - SUM4(y0,y3,y7,y4)) ;
+      Real_t dzi = cast_Real_t( 0.25)*(SUM4(z1,z2,z6,z5) - SUM4(z0,z3,z7,z4)) ;
 
-          Real_t dxk = cast_Real_t( 0.25)*(SUM4(x4,x5,x6,x7) - SUM4(x0,x1,x2,x3)) ;
-          Real_t dyk = cast_Real_t( 0.25)*(SUM4(y4,y5,y6,y7) - SUM4(y0,y1,y2,y3)) ;
-          Real_t dzk = cast_Real_t( 0.25)*(SUM4(z4,z5,z6,z7) - SUM4(z0,z1,z2,z3)) ;
+      Real_t dxk = cast_Real_t( 0.25)*(SUM4(x4,x5,x6,x7) - SUM4(x0,x1,x2,x3)) ;
+      Real_t dyk = cast_Real_t( 0.25)*(SUM4(y4,y5,y6,y7) - SUM4(y0,y1,y2,y3)) ;
+      Real_t dzk = cast_Real_t( 0.25)*(SUM4(z4,z5,z6,z7) - SUM4(z0,z1,z2,z3)) ;
 
-          /* find delvk and delxk ( i cross j ) */
+      /* find delvk and delxk ( i cross j ) */
 
-          ax = dyi*dzj - dzi*dyj ;
-          ay = dzi*dxj - dxi*dzj ;
-          az = dxi*dyj - dyi*dxj ;
+      ax = dyi*dzj - dzi*dyj ;
+      ay = dzi*dxj - dxi*dzj ;
+      az = dxi*dyj - dyi*dxj ;
 
-          domain->m_delx_zeta[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+      domain->m_delx_zeta[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
 
-          ax *= norm ;
-          ay *= norm ;
-          az *= norm ;
+      ax *= norm ;
+      ay *= norm ;
+      az *= norm ;
 
-          dxv = cast_Real_t(0.25)*(SUM4(xv4,xv5,xv6,xv7) - SUM4(xv0,xv1,xv2,xv3)) ;
-          dyv = cast_Real_t(0.25)*(SUM4(yv4,yv5,yv6,yv7) - SUM4(yv0,yv1,yv2,yv3)) ;
-          dzv = cast_Real_t(0.25)*(SUM4(zv4,zv5,zv6,zv7) - SUM4(zv0,zv1,zv2,zv3)) ;
+      dxv = cast_Real_t(0.25)*(SUM4(xv4,xv5,xv6,xv7) - SUM4(xv0,xv1,xv2,xv3)) ;
+      dyv = cast_Real_t(0.25)*(SUM4(yv4,yv5,yv6,yv7) - SUM4(yv0,yv1,yv2,yv3)) ;
+      dzv = cast_Real_t(0.25)*(SUM4(zv4,zv5,zv6,zv7) - SUM4(zv0,zv1,zv2,zv3)) ;
 
-          domain->m_delv_zeta[i] = ax*dxv + ay*dyv + az*dzv ;
+      domain->m_delv_zeta[i] = ax*dxv + ay*dyv + az*dzv ;
 
-          /* find delxi and delvi ( j cross k ) */
+      /* find delxi and delvi ( j cross k ) */
 
-          ax = dyj*dzk - dzj*dyk ;
-          ay = dzj*dxk - dxj*dzk ;
-          az = dxj*dyk - dyj*dxk ;
+      ax = dyj*dzk - dzj*dyk ;
+      ay = dzj*dxk - dxj*dzk ;
+      az = dxj*dyk - dyj*dxk ;
 
-          domain->m_delx_xi[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+      domain->m_delx_xi[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
 
-          ax *= norm ;
-          ay *= norm ;
-          az *= norm ;
+      ax *= norm ;
+      ay *= norm ;
+      az *= norm ;
 
-          dxv = cast_Real_t(0.25)*(SUM4(xv1,xv2,xv6,xv5) - SUM4(xv0,xv3,xv7,xv4)) ;
-          dyv = cast_Real_t(0.25)*(SUM4(yv1,yv2,yv6,yv5) - SUM4(yv0,yv3,yv7,yv4)) ;
-          dzv = cast_Real_t(0.25)*(SUM4(zv1,zv2,zv6,zv5) - SUM4(zv0,zv3,zv7,zv4)) ;
+      dxv = cast_Real_t(0.25)*(SUM4(xv1,xv2,xv6,xv5) - SUM4(xv0,xv3,xv7,xv4)) ;
+      dyv = cast_Real_t(0.25)*(SUM4(yv1,yv2,yv6,yv5) - SUM4(yv0,yv3,yv7,yv4)) ;
+      dzv = cast_Real_t(0.25)*(SUM4(zv1,zv2,zv6,zv5) - SUM4(zv0,zv3,zv7,zv4)) ;
 
-          domain->m_delv_xi[i] = ax*dxv + ay*dyv + az*dzv ;
+      domain->m_delv_xi[i] = ax*dxv + ay*dyv + az*dzv ;
 
-          /* find delxj and delvj ( k cross i ) */
+      /* find delxj and delvj ( k cross i ) */
 
-          ax = dyk*dzi - dzk*dyi ;
-          ay = dzk*dxi - dxk*dzi ;
-          az = dxk*dyi - dyk*dxi ;
+      ax = dyk*dzi - dzk*dyi ;
+      ay = dzk*dxi - dxk*dzi ;
+      az = dxk*dyi - dyk*dxi ;
 
-          domain->m_delx_eta[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+      domain->m_delx_eta[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
 
-          ax *= norm ;
-          ay *= norm ;
-          az *= norm ;
+      ax *= norm ;
+      ay *= norm ;
+      az *= norm ;
 
-          dxv = cast_Real_t(-0.25)*(SUM4(xv0,xv1,xv5,xv4) - SUM4(xv3,xv2,xv6,xv7)) ;
-          dyv = cast_Real_t(-0.25)*(SUM4(yv0,yv1,yv5,yv4) - SUM4(yv3,yv2,yv6,yv7)) ;
-          dzv = cast_Real_t(-0.25)*(SUM4(zv0,zv1,zv5,zv4) - SUM4(zv3,zv2,zv6,zv7)) ;
+      dxv = cast_Real_t(-0.25)*(SUM4(xv0,xv1,xv5,xv4) - SUM4(xv3,xv2,xv6,xv7)) ;
+      dyv = cast_Real_t(-0.25)*(SUM4(yv0,yv1,yv5,yv4) - SUM4(yv3,yv2,yv6,yv7)) ;
+      dzv = cast_Real_t(-0.25)*(SUM4(zv0,zv1,zv5,zv4) - SUM4(zv3,zv2,zv6,zv7)) ;
 
-          domain->m_delv_eta[i] = ax*dxv + ay*dyv + az*dzv ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      domain->m_delv_eta[i] = ax*dxv + ay*dyv + az*dzv ;
+    END_PAR_FOR(i)
   END_FINISH
 #undef SUM4
 } // CalcMonotonicQGradientsForElems()
@@ -2120,139 +2070,134 @@ void CalcMonotonicQRegionForElems(// parameters
                           Index_t elength )
 {
   FINISH
-    FOR_OUTER_0xNx1(ielem,elength)
-      ASYNC_IN_1(ielem,domain,                  // INDEX, GLOBAL and PARAMs
-                 qlc_monoq, qqc_monoq, monoq_limiter_mult,
-                 monoq_max_slope, ptiny )
-        FOR_INNER(ielem)
-          Real_t qlin, qquad ;
-          Real_t phixi, phieta, phizeta ;
-          Index_t i = domain->m_matElemlist[ielem];
-          Int_t bcMask = domain->m_elemBC[i] ;
-          Real_t delvm, delvp ;
+    PAR_FOR_0xNx1(ielem,elength,domain,qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny)
+      Real_t qlin, qquad ;
+      Real_t phixi, phieta, phizeta ;
+      Index_t i = domain->m_matElemlist[ielem];
+      Int_t bcMask = domain->m_elemBC[i] ;
+      Real_t delvm, delvp ;
 
-          /*  phixi     */
-          Real_t norm = cast_Real_t(1.) / ( domain->m_delv_xi[i] + ptiny ) ;
+      /*  phixi     */
+      Real_t norm = cast_Real_t(1.) / ( domain->m_delv_xi[i] + ptiny ) ;
 
-          switch (bcMask & XI_M) {
-            case 0:         delvm = domain->m_delv_xi[domain->m_lxim[i]] ; break ;
-            case XI_M_SYMM: delvm = domain->m_delv_xi[i] ;                break ;
-            case XI_M_FREE: delvm = cast_Real_t(0.0) ;                   break ;
-            default:        /* ERROR */ ;                                break ;
-          } // switch XI_M
+      switch (bcMask & XI_M) {
+        case 0:         delvm = domain->m_delv_xi[domain->m_lxim[i]] ; break ;
+        case XI_M_SYMM: delvm = domain->m_delv_xi[i] ;                break ;
+        case XI_M_FREE: delvm = cast_Real_t(0.0) ;                   break ;
+        default:        /* ERROR */ ;                                break ;
+      } // switch XI_M
 
-          switch (bcMask & XI_P) {
-            case 0:         delvp = domain->m_delv_xi[domain->m_lxip[i]] ; break ;
-            case XI_P_SYMM: delvp = domain->m_delv_xi[i] ;                break ;
-            case XI_P_FREE: delvp = cast_Real_t(0.0) ;                   break ;
-            default:        /* ERROR */ ;                                break ;
-          } // switch XI_P
+      switch (bcMask & XI_P) {
+        case 0:         delvp = domain->m_delv_xi[domain->m_lxip[i]] ; break ;
+        case XI_P_SYMM: delvp = domain->m_delv_xi[i] ;                break ;
+        case XI_P_FREE: delvp = cast_Real_t(0.0) ;                   break ;
+        default:        /* ERROR */ ;                                break ;
+      } // switch XI_P
 
-          delvm = delvm * norm ;
-          delvp = delvp * norm ;
+      delvm = delvm * norm ;
+      delvp = delvp * norm ;
 
-          phixi = cast_Real_t(.5) * ( delvm + delvp ) ;
+      phixi = cast_Real_t(.5) * ( delvm + delvp ) ;
 
-          delvm *= monoq_limiter_mult ;
-          delvp *= monoq_limiter_mult ;
+      delvm *= monoq_limiter_mult ;
+      delvp *= monoq_limiter_mult ;
 
-          if ( delvm < phixi ) phixi = delvm ;
-          if ( delvp < phixi ) phixi = delvp ;
-          if ( phixi < cast_Real_t(0.)) phixi = cast_Real_t(0.) ;
-          if ( phixi > monoq_max_slope) phixi = monoq_max_slope;
+      if ( delvm < phixi ) phixi = delvm ;
+      if ( delvp < phixi ) phixi = delvp ;
+      if ( phixi < cast_Real_t(0.)) phixi = cast_Real_t(0.) ;
+      if ( phixi > monoq_max_slope) phixi = monoq_max_slope;
 
 
-          /*  phieta     */
-          norm = cast_Real_t(1.) / ( domain->m_delv_eta[i] + ptiny ) ;
+      /*  phieta     */
+      norm = cast_Real_t(1.) / ( domain->m_delv_eta[i] + ptiny ) ;
 
-          switch (bcMask & ETA_M) {
-            case 0:          delvm = domain->m_delv_eta[domain->m_letam[i]] ; break ;
-            case ETA_M_SYMM: delvm = domain->m_delv_eta[i] ;                 break ;
-            case ETA_M_FREE: delvm = cast_Real_t(0.0) ;                     break ;
-            default:         /* ERROR */ ;                                  break ;
-          } // switch ETA_M
+      switch (bcMask & ETA_M) {
+        case 0:          delvm = domain->m_delv_eta[domain->m_letam[i]] ; break ;
+        case ETA_M_SYMM: delvm = domain->m_delv_eta[i] ;                 break ;
+        case ETA_M_FREE: delvm = cast_Real_t(0.0) ;                     break ;
+        default:         /* ERROR */ ;                                  break ;
+      } // switch ETA_M
 
-          switch (bcMask & ETA_P) {
-            case 0:          delvp = domain->m_delv_eta[domain->m_letap[i]] ; break ;
-            case ETA_P_SYMM: delvp = domain->m_delv_eta[i] ;                 break ;
-            case ETA_P_FREE: delvp = cast_Real_t(0.0) ;                     break ;
-            default:         /* ERROR */ ;                                  break ;
-          } // switch ETA_P
+      switch (bcMask & ETA_P) {
+        case 0:          delvp = domain->m_delv_eta[domain->m_letap[i]] ; break ;
+        case ETA_P_SYMM: delvp = domain->m_delv_eta[i] ;                 break ;
+        case ETA_P_FREE: delvp = cast_Real_t(0.0) ;                     break ;
+        default:         /* ERROR */ ;                                  break ;
+      } // switch ETA_P
 
-          delvm = delvm * norm ;
-          delvp = delvp * norm ;
+      delvm = delvm * norm ;
+      delvp = delvp * norm ;
 
-          phieta = cast_Real_t(.5) * ( delvm + delvp ) ;
+      phieta = cast_Real_t(.5) * ( delvm + delvp ) ;
 
-          delvm *= monoq_limiter_mult ;
-          delvp *= monoq_limiter_mult ;
+      delvm *= monoq_limiter_mult ;
+      delvp *= monoq_limiter_mult ;
 
-          if ( delvm  < phieta ) phieta = delvm ;
-          if ( delvp  < phieta ) phieta = delvp ;
-          if ( phieta < cast_Real_t(0.)) phieta = cast_Real_t(0.) ;
-          if ( phieta > monoq_max_slope)  phieta = monoq_max_slope;
+      if ( delvm  < phieta ) phieta = delvm ;
+      if ( delvp  < phieta ) phieta = delvp ;
+      if ( phieta < cast_Real_t(0.)) phieta = cast_Real_t(0.) ;
+      if ( phieta > monoq_max_slope)  phieta = monoq_max_slope;
 
-          /*  phizeta     */
-          norm = cast_Real_t(1.) / ( domain->m_delv_zeta[i] + ptiny ) ;
+      /*  phizeta     */
+      norm = cast_Real_t(1.) / ( domain->m_delv_zeta[i] + ptiny ) ;
 
-          switch (bcMask & ZETA_M) {
-            case 0:           delvm = domain->m_delv_zeta[domain->m_lzetam[i]] ; break ;
-            case ZETA_M_SYMM: delvm = domain->m_delv_zeta[i] ;                  break ;
-            case ZETA_M_FREE: delvm = cast_Real_t(0.0) ;                       break ;
-            default:          /* ERROR */ ;                                    break ;
-          } // switch ZETA_M
-          switch (bcMask & ZETA_P) {
-            case 0:           delvp = domain->m_delv_zeta[domain->m_lzetap[i]] ; break ;
-            case ZETA_P_SYMM: delvp = domain->m_delv_zeta[i] ;                  break ;
-            case ZETA_P_FREE: delvp = cast_Real_t(0.0) ;                       break ;
-            default:          /* ERROR */ ;                                    break ;
-          } // switch ZETA_P
+      switch (bcMask & ZETA_M) {
+        case 0:           delvm = domain->m_delv_zeta[domain->m_lzetam[i]] ; break ;
+        case ZETA_M_SYMM: delvm = domain->m_delv_zeta[i] ;                  break ;
+        case ZETA_M_FREE: delvm = cast_Real_t(0.0) ;                       break ;
+        default:          /* ERROR */ ;                                    break ;
+      } // switch ZETA_M
 
-          delvm = delvm * norm ;
-          delvp = delvp * norm ;
+      switch (bcMask & ZETA_P) {
+        case 0:           delvp = domain->m_delv_zeta[domain->m_lzetap[i]] ; break ;
+        case ZETA_P_SYMM: delvp = domain->m_delv_zeta[i] ;                  break ;
+        case ZETA_P_FREE: delvp = cast_Real_t(0.0) ;                       break ;
+        default:          /* ERROR */ ;                                    break ;
+      } // switch ZETA_P
 
-          phizeta = cast_Real_t(.5) * ( delvm + delvp ) ;
+      delvm = delvm * norm ;
+      delvp = delvp * norm ;
 
-          delvm *= monoq_limiter_mult ;
-          delvp *= monoq_limiter_mult ;
+      phizeta = cast_Real_t(.5) * ( delvm + delvp ) ;
 
-          if ( delvm   < phizeta ) phizeta = delvm ;
-          if ( delvp   < phizeta ) phizeta = delvp ;
-          if ( phizeta < cast_Real_t(0.)) phizeta = cast_Real_t(0.);
-          if ( phizeta > monoq_max_slope  ) phizeta = monoq_max_slope;
+      delvm *= monoq_limiter_mult ;
+      delvp *= monoq_limiter_mult ;
 
-          /* Remove length scale */
+      if ( delvm   < phizeta ) phizeta = delvm ;
+      if ( delvp   < phizeta ) phizeta = delvp ;
+      if ( phizeta < cast_Real_t(0.)) phizeta = cast_Real_t(0.);
+      if ( phizeta > monoq_max_slope  ) phizeta = monoq_max_slope;
 
-          if ( domain->m_vdov[i] > cast_Real_t(0.) )  {
-            qlin  = cast_Real_t(0.) ;
-            qquad = cast_Real_t(0.) ;
-          } else {
-            Real_t delvxxi   = domain->m_delv_xi[i]   * domain->m_delx_xi[i]   ;
-            Real_t delvxeta  = domain->m_delv_eta[i]  * domain->m_delx_eta[i]  ;
-            Real_t delvxzeta = domain->m_delv_zeta[i] * domain->m_delx_zeta[i] ;
+      /* Remove length scale */
 
-            if ( delvxxi   > cast_Real_t(0.) ) delvxxi   = cast_Real_t(0.) ;
-            if ( delvxeta  > cast_Real_t(0.) ) delvxeta  = cast_Real_t(0.) ;
-            if ( delvxzeta > cast_Real_t(0.) ) delvxzeta = cast_Real_t(0.) ;
+      if ( domain->m_vdov[i] > cast_Real_t(0.) )  {
+        qlin  = cast_Real_t(0.) ;
+        qquad = cast_Real_t(0.) ;
+      } else {
+        Real_t delvxxi   = domain->m_delv_xi[i]   * domain->m_delx_xi[i]   ;
+        Real_t delvxeta  = domain->m_delv_eta[i]  * domain->m_delx_eta[i]  ;
+        Real_t delvxzeta = domain->m_delv_zeta[i] * domain->m_delx_zeta[i] ;
 
-            Real_t rho = domain->m_elemMass[i] / (domain->m_volo[i] * domain->m_vnew[i]) ;
+        if ( delvxxi   > cast_Real_t(0.) ) delvxxi   = cast_Real_t(0.) ;
+        if ( delvxeta  > cast_Real_t(0.) ) delvxeta  = cast_Real_t(0.) ;
+        if ( delvxzeta > cast_Real_t(0.) ) delvxzeta = cast_Real_t(0.) ;
 
-            qlin = -qlc_monoq * rho *
-                 ( delvxxi   * (cast_Real_t(1.) - phixi  ) +
-                   delvxeta  * (cast_Real_t(1.) - phieta ) +
-                   delvxzeta * (cast_Real_t(1.) - phizeta) ) ;
+        Real_t rho = domain->m_elemMass[i] / (domain->m_volo[i] * domain->m_vnew[i]) ;
 
-            qquad = qqc_monoq * rho *
-                  (  delvxxi*delvxxi     * (cast_Real_t(1.) - phixi*phixi    ) +
-                     delvxeta*delvxeta   * (cast_Real_t(1.) - phieta*phieta  ) +
-                     delvxzeta*delvxzeta * (cast_Real_t(1.) - phizeta*phizeta) ) ;
-          } // if domain->m_vdov
+        qlin = -qlc_monoq * rho *
+             ( delvxxi   * (cast_Real_t(1.) - phixi  ) +
+               delvxeta  * (cast_Real_t(1.) - phieta ) +
+               delvxzeta * (cast_Real_t(1.) - phizeta) ) ;
 
-          domain->m_qq[i] = qquad ;
-          domain->m_ql[i] = qlin  ;
-        END_FOR_INNER(ielem)
-      END_ASYNC_IN_1(ielem)
-    END_FOR_OUTER(ielem)
+        qquad = qqc_monoq * rho *
+              (  delvxxi*delvxxi     * (cast_Real_t(1.) - phixi*phixi    ) +
+                 delvxeta*delvxeta   * (cast_Real_t(1.) - phieta*phieta  ) +
+                 delvxzeta*delvxzeta * (cast_Real_t(1.) - phizeta*phizeta) ) ;
+      } // if domain->m_vdov
+
+      domain->m_qq[i] = qquad ;
+      domain->m_ql[i] = qlin  ;
+    END_PAR_FOR(ielem)
   END_FINISH
 } // CalcMonotonicQRegionForElems()
 
@@ -2301,19 +2246,17 @@ void CalcQForElems() {
    CalcMonotonicQForElems() ;
    /* Don't allow excessive artificial viscosity */
    if (numElem != 0) {
-      int64_t *pidx = malloc(sizeof(Index_t)); 
+      int64_t *pidx = (int64_t *)malloc(sizeof(Index_t)); 
       *pidx = -1; 
       FINISH
-      FOR_OUTER_0xNx1(i,numElem)
-        ASYNC_IN_1(i,domain,qstop,pidx)
-          FOR_INNER(i)
-            if ( domain->m_q[i] > qstop ) {
-               AMO__sync_fetch_and_add_int64_t(pidx,1);
-               break ;
-            } // if domain->m_q
-            END_FOR_INNER(i)
-          END_ASYNC_IN_1(i)
-        END_FOR_OUTER(i)
+        PAR_FOR_0xNx1(i,numElem,domain,qstop,pidx)
+          if ( domain->m_q[i] > qstop ) {
+             AMO__sync_fetch_and_add_int64_t(pidx,1);
+#ifndef   CILK
+             break ;
+#endif // CILK
+          } // if domain->m_q
+        END_PAR_FOR(i)
       END_FINISH
 
       if(*pidx >= 0) {
@@ -2332,34 +2275,26 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
                           Index_t length)
 {
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,bvc,pbvc,compression) // INDEX and PARAMs
-        Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
-        FOR_INNER(i)
-          bvc[i] = c1s * (compression[i] + cast_Real_t(1.));
-          pbvc[i] = c1s;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,length,bvc,pbvc,compression)
+      Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
+      bvc[i] = c1s * (compression[i] + cast_Real_t(1.));
+      pbvc[i] = c1s;
+    END_PAR_FOR(i)
   END_FINISH
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax) // INDEX and PARAMs
-        FOR_INNER(i)
-          p_new[i] = bvc[i] * e_old[i] ;
+    PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
+      p_new[i] = bvc[i] * e_old[i] ;
 
-          if    (fabs(p_new[i]) <  p_cut   ) 
-             p_new[i] = cast_Real_t(0.0) ;
+      if    (fabs(p_new[i]) <  p_cut   ) 
+         p_new[i] = cast_Real_t(0.0) ;
 
-          if    ( vnewc[i] >= eosvmax ) /* impossible condition here? */
-             p_new[i] = cast_Real_t(0.0) ;
+      if    ( vnewc[i] >= eosvmax ) /* impossible condition here? */
+         p_new[i] = cast_Real_t(0.0) ;
 
-          if    (p_new[i]       <  pmin)
-             p_new[i]   = pmin ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      if    (p_new[i]       <  pmin)
+         p_new[i]   = pmin ;
+    END_PAR_FOR(i)
   END_FINISH
 } // CalcPressureForElems()
 
@@ -2378,125 +2313,108 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
   Real_t *pHalfStep = Allocate_Real_t(length) ;
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,e_new,e_old,delvc,p_old,q_old,work,emin) // INDEX and PARAMs
-        FOR_INNER(i)
-          e_new[i] = e_old[i] - cast_Real_t(0.5) * delvc[i] * (p_old[i] + q_old[i])
-                   + cast_Real_t(0.5) * work[i];
+    PAR_FOR_0xNx1(i,length,e_new,e_old,delvc,p_old,q_old,work,emin)
+      e_new[i] = e_old[i] - cast_Real_t(0.5) * delvc[i] * (p_old[i] + q_old[i])
+               + cast_Real_t(0.5) * work[i];
 
-          if (e_new[i]  < emin ) {
-            e_new[i] = emin ;
-          }
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      if (e_new[i]  < emin ) {
+        e_new[i] = emin ;
+      }
+    END_PAR_FOR(i)
   END_FINISH
 
   CalcPressureForElems(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
                        pmin, p_cut, eosvmax, length);
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,rho0,delvc,p_old,q_old,work,e_cut,emin) // INDEX and PARAMs
-        FOR_INNER(i)
-          Real_t vhalf = cast_Real_t(1.) / (cast_Real_t(1.) + compHalfStep[i]) ;
+    PAR_FOR_0xNx1(i,length,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,rho0,delvc,p_old,q_old,work,e_cut,emin)
+      Real_t vhalf = cast_Real_t(1.) / (cast_Real_t(1.) + compHalfStep[i]) ;
 
-          if ( delvc[i] > cast_Real_t(0.) ) {
-            q_new[i] /* = qq[i] = ql[i] */ = cast_Real_t(0.) ;
-          } else {
-            Real_t ssc = ( pbvc[i] * e_new[i]
-                       + vhalf * vhalf * bvc[i] * pHalfStep[i] ) / rho0 ;
+      if ( delvc[i] > cast_Real_t(0.) ) {
+        q_new[i] /* = qq[i] = ql[i] */ = cast_Real_t(0.) ;
+      } else {
+        Real_t ssc = ( pbvc[i] * e_new[i]
+                   + vhalf * vhalf * bvc[i] * pHalfStep[i] ) / rho0 ;
 
-            if ( ssc <= cast_Real_t(0.) ) {
-              ssc =cast_Real_t(.333333e-36) ;
-            } else {
-              ssc = sqrt(ssc) ;
-            } // if ssc
+        if ( ssc <= cast_Real_t(0.) ) {
+          ssc =cast_Real_t(.333333e-36) ;
+        } else {
+          ssc = sqrt(ssc) ;
+        } // if ssc
 
-            q_new[i] = (ssc*ql[i] + qq[i]) ;
-          } // if delvc
+        q_new[i] = (ssc*ql[i] + qq[i]) ;
+      } // if delvc
 
-          e_new[i] +=  cast_Real_t(0.5) * delvc[i]
-                   * ( cast_Real_t(3.0) * (p_old[i]     + q_old[i])
-                     - cast_Real_t(4.0) * (pHalfStep[i] + q_new[i])) ;
+      e_new[i] +=  cast_Real_t(0.5) * delvc[i]
+               * ( cast_Real_t(3.0) * (p_old[i]     + q_old[i])
+                 - cast_Real_t(4.0) * (pHalfStep[i] + q_new[i])) ;
 
-          e_new[i] += cast_Real_t(0.5) * work[i];
+      e_new[i] += cast_Real_t(0.5) * work[i];
 
-          if (fabs(e_new[i]) < e_cut) {
-            e_new[i] = cast_Real_t(0.)  ;
-          } // e_cut
-          if (     e_new[i]  < emin ) {
-            e_new[i] = emin ;
-          } // if emin
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      if (fabs(e_new[i]) < e_cut) {
+        e_new[i] = cast_Real_t(0.)  ;
+      } // e_cut
+      if (     e_new[i]  < emin ) {
+        e_new[i] = emin ;
+      } // if emin
+    END_PAR_FOR(i)
   END_FINISH
 
    CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                    pmin, p_cut, eosvmax, length);
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,p_old,q_old,pHalfStep,q_new,e_cut,emin) // INDEX and PARAMs
-        hcConst Real_t sixth = cast_Real_t(1.0) / cast_Real_t(6.0) ;
-        FOR_INNER(i)
-          Real_t q_tilde ;
+    PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,p_old,q_old,pHalfStep,q_new,e_cut,emin)
+      hcConst Real_t sixth = cast_Real_t(1.0) / cast_Real_t(6.0) ;
+      Real_t q_tilde ;
 
-          if (delvc[i] > cast_Real_t(0.)) {
-            q_tilde = cast_Real_t(0.) ;
-          } else {
-            Real_t ssc = ( pbvc[i] * e_new[i]
-                       + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
+      if (delvc[i] > cast_Real_t(0.)) {
+        q_tilde = cast_Real_t(0.) ;
+      } else {
+        Real_t ssc = ( pbvc[i] * e_new[i]
+                   + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
 
-            if ( ssc <= cast_Real_t(0.) ) {
-              ssc = cast_Real_t(.333333e-36) ;
-            } else {
-              ssc = sqrt(ssc) ;
-            } // if ssc
+        if ( ssc <= cast_Real_t(0.) ) {
+          ssc = cast_Real_t(.333333e-36) ;
+        } else {
+          ssc = sqrt(ssc) ;
+        } // if ssc
 
-            q_tilde = (ssc*ql[i] + qq[i]) ;
-          } // if delvc
+        q_tilde = (ssc*ql[i] + qq[i]) ;
+      } // if delvc
 
-          e_new[i] += - ( cast_Real_t(7.0)*(p_old[i]     + q_old[i])
-                        - cast_Real_t(8.0)*(pHalfStep[i] + q_new[i])
-                        + (p_new[i] + q_tilde)) * delvc[i]*sixth ;
+      e_new[i] += - ( cast_Real_t(7.0)*(p_old[i]     + q_old[i])
+                    - cast_Real_t(8.0)*(pHalfStep[i] + q_new[i])
+                    + (p_new[i] + q_tilde)) * delvc[i]*sixth ;
 
-          if (fabs(e_new[i]) < e_cut) {
-            e_new[i] = cast_Real_t(0.)  ;
-          } // if e_cut
-          if (     e_new[i]  < emin ) {
-            e_new[i] = emin ;
-          } // if emin
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      if (fabs(e_new[i]) < e_cut) {
+        e_new[i] = cast_Real_t(0.)  ;
+      } // if e_cut
+      if (     e_new[i]  < emin ) {
+        e_new[i] = emin ;
+      } // if emin
+    END_PAR_FOR(i)
   END_FINISH
 
   CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                    pmin, p_cut, eosvmax, length);
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,q_new,q_cut) // INDEX and PARAMs
-        FOR_INNER(i)
+    PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,q_new,q_cut)
+      if ( delvc[i] <= cast_Real_t(0.) ) {
+        Real_t ssc = (  pbvc[i] * e_new[i]
+                     + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
 
-          if ( delvc[i] <= cast_Real_t(0.) ) {
-            Real_t ssc = (  pbvc[i] * e_new[i]
-                         + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
+        if ( ssc <= cast_Real_t(0.) ) {
+          ssc = cast_Real_t(.333333e-36) ;
+        } else {
+          ssc = sqrt(ssc) ;
+        } // if ssc
 
-            if ( ssc <= cast_Real_t(0.) ) {
-              ssc = cast_Real_t(.333333e-36) ;
-            } else {
-              ssc = sqrt(ssc) ;
-            } // if ssc
+        q_new[i] = (ssc*ql[i] + qq[i]) ;
 
-            q_new[i] = (ssc*ql[i] + qq[i]) ;
-
-            if (fabs(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
-          } // if delvc
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+        if (fabs(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
+      } // if delvc
+    END_PAR_FOR(i)
   END_FINISH
 
    Release_Real_t(pHalfStep) ;
@@ -2509,19 +2427,15 @@ void CalcSoundSpeedForElems(Real_t *vnewc, Real_t rho0, Real_t *enewc,
                             Real_t *pnewc, Real_t *pbvc,
                             Real_t *bvc, Real_t ss4o3, Index_t nz) {
   FINISH
-    FOR_OUTER_0xNx1(i,nz)
-      ASYNC_IN_1(i,domain,pbvc,enewc,vnewc,bvc,pnewc,rho0) // INDEX, GLOBAL and PARAMs
-        FOR_INNER(i)
-          Index_t iz = domain->m_matElemlist[i];
-          Real_t ssTmp = (pbvc[i] * enewc[i] + vnewc[i] * vnewc[i] *
-                           bvc[i] * pnewc[i]) / rho0;
-          if (ssTmp <= cast_Real_t(1.111111e-36)) {
-            ssTmp = cast_Real_t(1.111111e-36);
-          } // if ssTmp
-          domain->m_ss[iz] = sqrt(ssTmp);
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,nz,domain,pbvc,enewc,vnewc,bvc,pnewc,rho0)
+      Index_t iz = domain->m_matElemlist[i];
+      Real_t ssTmp = (pbvc[i] * enewc[i] + vnewc[i] * vnewc[i] *
+                       bvc[i] * pnewc[i]) / rho0;
+      if (ssTmp <= cast_Real_t(1.111111e-36)) {
+        ssTmp = cast_Real_t(1.111111e-36);
+      } // if ssTmp
+      domain->m_ss[iz] = sqrt(ssTmp);
+    END_PAR_FOR(i)
   END_FINISH
 } // CalcSoundSpeedForElems()
 
@@ -2558,58 +2472,48 @@ void EvalEOSForElems(Real_t *vnewc, Index_t length) {
 // RAG GATHERS
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,domain,delvc,e_old,p_old,q_old,qq,ql)
-        FOR_INNER(i) 
-          Index_t zidx = domain->m_matElemlist[i] ;
-          delvc[i] = domain->m_delv[zidx] ;
-          e_old[i] = domain->m_e[zidx] ;
-          p_old[i] = domain->m_p[zidx] ;
-          q_old[i] = domain->m_q[zidx] ;
-          qq[i]    = domain->m_qq[zidx] ;
-          ql[i]    = domain->m_ql[zidx] ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,length,domain,delvc,e_old,p_old,q_old,qq,ql)
+      Index_t zidx = domain->m_matElemlist[i] ;
+      e_old[i] = domain->m_e[zidx] ;
+      delvc[i] = domain->m_delv[zidx] ;
+      p_old[i] = domain->m_p[zidx] ;
+      q_old[i] = domain->m_q[zidx] ;
+      qq[i]    = domain->m_qq[zidx] ;
+      ql[i]    = domain->m_ql[zidx] ;
+    END_PAR_FOR(i)
   END_FINISH 
 
 
 // RAG STRIDE ONE
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
-
-        FOR_INNER(i) 
+    PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
            Real_t vchalf ;
            compression[i] = cast_Real_t(1.) / vnewc[i] - cast_Real_t(1.);
            vchalf = vnewc[i] - delvc[i] * cast_Real_t(.5);
            compHalfStep[i] = cast_Real_t(1.) / vchalf - cast_Real_t(1.);
            work[i] = cast_Real_t(0.) ; 
-        END_FOR_INNER(i)
+    END_PAR_FOR(i)
 
 
-        /* Check for v > eosvmax or v < eosvmin */
+    /* Check for v > eosvmax or v < eosvmin */
 
-        if ( eosvmin != cast_Real_t(0.) ) {
-          FOR_INNER(i)
+    if ( eosvmin != cast_Real_t(0.) ) {
+      PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
             if (vnewc[i] <= eosvmin) { /* impossible due to calling func? */
               compHalfStep[i] = compression[i] ;
             } // if vnewc
-          END_FOR_INNER(i)
-        } // if eosvmin
-        if ( eosvmax != cast_Real_t(0.) ) {
-          FOR_INNER(i)
-            if (vnewc[i] >= eosvmax) { /* impossible due to calling func? */
-              p_old[i]        = cast_Real_t(0.) ;
-              compression[i]  = cast_Real_t(0.) ;
-              compHalfStep[i] = cast_Real_t(0.) ;
-            } // if vnewc
-          END_FOR_INNER(i)
-        } // if eosvmax
-
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      END_PAR_FOR(i)
+    } // if eosvmin
+    if ( eosvmax != cast_Real_t(0.) ) {
+      PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
+        if (vnewc[i] >= eosvmax) { /* impossible due to calling func? */
+          p_old[i]        = cast_Real_t(0.) ;
+          compression[i]  = cast_Real_t(0.) ;
+          compHalfStep[i] = cast_Real_t(0.) ;
+        } // if vnewc
+      END_PAR_FOR(i)
+    } // if eosvmax
   END_FINISH 
 
   CalcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
@@ -2621,16 +2525,12 @@ void EvalEOSForElems(Real_t *vnewc, Index_t length) {
 // RAG SCATTERS
 
   FINISH
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,domain,p_new,e_new,q_new)
-        FOR_INNER(i) 
-          Index_t zidx = domain->m_matElemlist[i] ;
-          domain->m_p[zidx] = p_new[i] ;
-          domain->m_e[zidx] = e_new[i] ;
-          domain->m_q[zidx] = q_new[i] ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,length,domain,p_new,e_new,q_new)
+      Index_t zidx = domain->m_matElemlist[i] ;
+      domain->m_p[zidx] = p_new[i] ;
+      domain->m_e[zidx] = e_new[i] ;
+      domain->m_q[zidx] = q_new[i] ;
+    END_PAR_FOR(i)
   END_FINISH 
 
   CalcSoundSpeedForElems(vnewc, rho0, e_new, p_new,
@@ -2665,66 +2565,54 @@ void ApplyMaterialPropertiesForElems() {
 // RAG GATHERS
 
     FINISH
-      FOR_OUTER_0xNx1(i,length)
-        ASYNC_IN_1(i,domain,vnewc) // INDEX, GLOBAL and PARAMS
-          FOR_INNER(i) 
-            Index_t zn = domain->m_matElemlist[i] ;
-            vnewc[i] = domain->m_vnew[zn] ;
-          END_FOR_INNER(i)
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
+      PAR_FOR_0xNx1(i,length,domain,vnewc)
+        Index_t zn = domain->m_matElemlist[i] ;
+        vnewc[i] = domain->m_vnew[zn] ;
+      END_PAR_FOR(i)
     END_FINISH 
 
 // RAG STIDE ONES
 
     FINISH
-      FOR_OUTER_0xNx1(i,length)
-        ASYNC_IN_1(i,vnewc,eosvmin,eosvmax) // INDEX and PARAMs
 
-          if (eosvmin != cast_Real_t(0.)) {
-            FOR_INNER(i) 
-              if (vnewc[i] < eosvmin) {
-                vnewc[i] = eosvmin ;
-              } // if vnewc
-            END_FOR_INNER(i)
-          } // if eosvmin
+      if (eosvmin != cast_Real_t(0.)) {
+        PAR_FOR_0xNx1(i,length,vnewc,eosvmin)
+          if (vnewc[i] < eosvmin) {
+            vnewc[i] = eosvmin ;
+          } // if vnewc
+        END_PAR_FOR(i)
+      } // if eosvmin
 
-          if (eosvmax != cast_Real_t(0.)) {
-            FOR_INNER(i) 
-              if (vnewc[i] > eosvmax) {
-                vnewc[i] = eosvmax ;
-              } // if vnewc
-            END_FOR_INNER(i)
-          } // if eosvmax
+      if (eosvmax != cast_Real_t(0.)) {
+        PAR_FOR_0xNx1(i,length,vnewc,eosvmax)
+          if (vnewc[i] > eosvmax) {
+            vnewc[i] = eosvmax ;
+          } // if vnewc
+        END_PAR_FOR(i)
+      } // if eosvmax
 
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
     END_FINISH 
 
 // RAG GATHER ERROR CHECK
 
     FINISH
-      FOR_OUTER_0xNx1(i,length)
-        ASYNC_IN_1(i,domain,vnewc,eosvmin,eosvmax) // INDEX, GLOBAL and PARAMs
-          FOR_INNER(i) 
-            Index_t zn = domain->m_matElemlist[i] ;
-            Real_t  vc = domain->m_v[zn] ;
-            if (eosvmin != cast_Real_t(0.)) {
-              if (vc < eosvmin) { 
-                vc = eosvmin ;
-              } // if domain->m_v
-            } // if eosvmin
-            if (eosvmax != cast_Real_t(0.)) {
-              if (vc > eosvmax) {
-                vc = eosvmax ;
-              } // if domain->m_v
-            } // if eosvmax
-            if (vc <= 0.) {
-              exit(VolumeError) ;
-            } // if domain->m_v
-          END_FOR_INNER(i)
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
+      PAR_FOR_0xNx1(i,length,domain,vnewc,eosvmin,eosvmax)
+        Index_t zn = domain->m_matElemlist[i] ;
+        Real_t  vc = domain->m_v[zn] ;
+        if (eosvmin != cast_Real_t(0.)) {
+          if (vc < eosvmin) { 
+            vc = eosvmin ;
+          } // if domain->m_v
+        } // if eosvmin
+        if (eosvmax != cast_Real_t(0.)) {
+          if (vc > eosvmax) {
+            vc = eosvmax ;
+          } // if domain->m_v
+        } // if eosvmax
+        if (vc <= 0.) {
+          exit(VolumeError) ;
+        } // if domain->m_v
+      END_PAR_FOR(i)
     END_FINISH 
 
     EvalEOSForElems(vnewc, length);
@@ -2741,19 +2629,15 @@ void UpdateVolumesForElems() {
   if (numElem != 0) {
     Real_t v_cut = domain->m_v_cut;
     FINISH
-      FOR_OUTER_0xNx1(i,numElem)
-        ASYNC_IN_1(i,domain,v_cut) // INDEX, GLOBAL and LOCAL
-          FOR_INNER(i) 
-            Real_t tmpV ;
-            tmpV = domain->m_vnew[i] ;
+      PAR_FOR_0xNx1(i,numElem,domain,v_cut)
+        Real_t tmpV ;
+        tmpV = domain->m_vnew[i] ;
 
-            if ( fabs(tmpV - cast_Real_t(1.0)) < v_cut ) {
-              tmpV = cast_Real_t(1.0) ;
-            } // tmpV
-            domain->m_v[i] = tmpV ;
-          END_FOR_INNER(i)
-        END_ASYNC_IN_1(i)
-      END_FOR_OUTER(i)
+        if ( fabs(tmpV - cast_Real_t(1.0)) < v_cut ) {
+          tmpV = cast_Real_t(1.0) ;
+        } // tmpV
+        domain->m_v[i] = tmpV ;
+      END_PAR_FOR(i)
     END_FINISH 
   } // if numElem
   return ;
@@ -2775,8 +2659,8 @@ void LagrangeElements() {
 
 static inline
 void CalcCourantConstraintForElems() {
-  Real_t  *pDtCourant    = malloc(sizeof(Real_t)) ;
-  Index_t *pCourant_elem = malloc(sizeof(Index_t));
+  Real_t  *pDtCourant    =  (Real_t *)malloc(sizeof(Real_t)) ;
+  Index_t *pCourant_elem = (Index_t *)malloc(sizeof(Index_t));
   *pDtCourant = cast_Real_t(1.0e+20) ;
   *pCourant_elem = -1;
 
@@ -2784,37 +2668,33 @@ void CalcCourantConstraintForElems() {
     Real_t      qqc = domain->m_qqc ;
     Real_t  qqc2 = cast_Real_t(64.0) * qqc * qqc ;
     Index_t length = domain->m_numElem ;
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,domain,qqc2,pDtCourant,pCourant_elem,pidamin_lock)
-        FOR_INNER(i)
-          Index_t indx = domain->m_matElemlist[i] ;
+    PAR_FOR_0xNx1(i,length,domain,qqc2,pDtCourant,pCourant_elem,pidamin_lock)
+      Index_t indx = domain->m_matElemlist[i] ;
 
-          Real_t dtf = domain->m_ss[indx] * domain->m_ss[indx] ;
+      Real_t dtf = domain->m_ss[indx] * domain->m_ss[indx] ;
 
-          if ( domain->m_vdov[indx] < cast_Real_t(0.) ) {
+      if ( domain->m_vdov[indx] < cast_Real_t(0.) ) {
 
-            dtf = dtf
-                + qqc2 * domain->m_arealg[indx] * domain->m_arealg[indx]
-                * domain->m_vdov[indx] * domain->m_vdov[indx] ;
-          } // if domain->m_vdov
+        dtf = dtf
+            + qqc2 * domain->m_arealg[indx] * domain->m_arealg[indx]
+            * domain->m_vdov[indx] * domain->m_vdov[indx] ;
+      } // if domain->m_vdov
 
-          dtf = sqrt(dtf) ;
+      dtf = sqrt(dtf) ;
 
-          dtf = domain->m_arealg[indx] / dtf ;
+      dtf = domain->m_arealg[indx] / dtf ;
 
-          /* determine minimum timestep with its corresponding elem */
-          if (domain->m_vdov[indx] != cast_Real_t(0.)) {
-            if ( dtf < *pDtCourant ) {
+      /* determine minimum timestep with its corresponding elem */
+      if (domain->m_vdov[indx] != cast_Real_t(0.)) {
+        if ( dtf < *pDtCourant ) {
 AMO__lock_uint64_t(pidamin_lock);          // LOCK
-              *pDtCourant    = dtf ;
-              *pCourant_elem = indx ;
+          *pDtCourant    = dtf ;
+          *pCourant_elem = indx ;
 AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
-            } // if *pDtCourant
-          } // if domain->m_vdov
+        } // if *pDtCourant
+      } // if domain->m_vdov
 
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    END_PAR_FOR(i)
   END_FINISH
 
   /* Don't try to register a time constraint if none of the elements
@@ -2830,33 +2710,28 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
 
 static inline
 void CalcHydroConstraintForElems() {
-  Real_t  *pDtHydro    = malloc(sizeof(Real_t)) ;
-  Index_t *pHydro_elem = malloc(sizeof(Index_t));
+  Real_t  *pDtHydro    =  (Real_t *) malloc(sizeof(Real_t)) ;
+  Index_t *pHydro_elem = (Index_t *) malloc(sizeof(Index_t));
   *pDtHydro = cast_Real_t(1.0e+20) ;
   *pHydro_elem = -1 ;
 
   FINISH
     Real_t dvovmax = domain->m_dvovmax ;
     Index_t length = domain->m_numElem ;
-    FOR_OUTER_0xNx1(i,length)
-      ASYNC_IN_1(i,domain,dvovmax,pidamin_lock,pDtHydro,pHydro_elem)
-        FOR_INNER(i)
+    PAR_FOR_0xNx1(i,length,domain,dvovmax,pidamin_lock,pDtHydro,pHydro_elem)
+      Index_t indx = domain->m_matElemlist[i] ;
 
-          Index_t indx = domain->m_matElemlist[i] ;
-
-          if (domain->m_vdov[indx] != cast_Real_t(0.)) {
-            Real_t dtdvov = dvovmax / (fabs(domain->m_vdov[indx])+cast_Real_t(1.e-20)) ;
-            if ( *pDtHydro > dtdvov ) {
+      if (domain->m_vdov[indx] != cast_Real_t(0.)) {
+        Real_t dtdvov = dvovmax / (fabs(domain->m_vdov[indx])+cast_Real_t(1.e-20)) ;
+        if ( *pDtHydro > dtdvov ) {
 AMO__lock_uint64_t(pidamin_lock);          // LOCK
-              *pDtHydro    = dtdvov ;
-              *pHydro_elem = indx ;
+          *pDtHydro    = dtdvov ;
+          *pHydro_elem = indx ;
 AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
-            } // if *pDtHydro
-          } // if domain->m_vdov
+        } // if *pDtHydro
+      } // if domain->m_vdov
 
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    END_PAR_FOR(i)
   END_FINISH
 
   if (*pHydro_elem != -1) {
@@ -2935,31 +2810,21 @@ int main(int argc, char *argv[]) {
     Real_t sf = cast_Real_t(1.125)/cast_Real_t(edgeElems);
     Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
 
-    FOR_OUTER_0xNx1(pln,edgeNodes)
-      FOR_OUTER_0xNx1(col,edgeNodes)
-        FOR_OUTER_0xNx1(row,edgeNodes)
-
-          ASYNC_IN_3(pln,col,row,domain,       // INDEXs and GLOBAL
-                   sf,dimN,dimNdimN)           // LOCALs
-            FOR_INNER(pln)
-              Real_t tz = cast_Real_t(pln)*sf;
-              Index_t pln_nidx = pln*dimNdimN;
-              FOR_INNER(row)
-                Real_t ty = cast_Real_t(row)*sf;
-                Index_t pln_row_nidx = pln_nidx + row*dimN;
-                FOR_INNER(col)
-                  Real_t tx = cast_Real_t(col)*sf;
-                  Index_t nidx = pln_row_nidx+col;
-                  domain->m_x[nidx] = tx;
-                  domain->m_y[nidx] = ty;
-                  domain->m_z[nidx] = tz;
-                END_FOR_INNER(col)
-              END_FOR_INNER(row)
-            END_FOR_INNER(pln)
-          END_ASYNC_IN_3(pln,row,col)
-        END_FOR_OUTER(col)
-      END_FOR_OUTER(row)
-    END_FOR_OUTER(pln)
+    for(Index_t pln = 0 ; pln < edgeNodes ; ++pln ) {
+      Real_t tz = cast_Real_t(pln)*sf;
+      Index_t pln_nidx = pln*dimNdimN;
+      for(Index_t row = 0 ; row < edgeNodes ; ++row ) {
+        Real_t ty = cast_Real_t(row)*sf;
+        Index_t pln_row_nidx = pln_nidx + row*dimN;
+        PAR_FOR_0xNx1(col,edgeNodes,pln,row,tz,ty,pln_row_nidx,domain,sf,dimN,dimNdimN)
+          Real_t tx = cast_Real_t(col)*sf;
+          Index_t nidx = pln_row_nidx+col;
+          domain->m_x[nidx] = tx;
+          domain->m_y[nidx] = ty;
+          domain->m_z[nidx] = tz;
+        END_PAR_FOR(col)
+      } // for row
+    } // for pln
   END_FINISH
 
   /* embed hexehedral elements in nodal point lattice */
@@ -2968,50 +2833,39 @@ int main(int argc, char *argv[]) {
     Index_t dimE = edgeElems, dimEdimE = edgeElems*edgeElems;
     Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
 
-    FOR_OUTER_0xNx1(pln,edgeElems)
-      FOR_OUTER_0xNx1(row,edgeElems)
-        FOR_OUTER_0xNx1(col,edgeElems)
-          ASYNC_IN_3(pln,row,col,domain,             // INDEXs and GLOBAL
-                   dimE,dimEdimE,dimN,dimNdimN)      // LOCALs
-            FOR_INNER(pln)
-              Index_t pln_nidx = pln*dimNdimN;
-              Index_t pln_zidx = pln*dimEdimE;
-              FOR_INNER(row)
-                Index_t pln_row_nidx = pln_nidx + row*dimN;
-                Index_t pln_row_zidx = pln_zidx + row*dimE;
-                FOR_INNER(col)
-                  Index_t nidx = pln_row_nidx+col;
-                  Index_t zidx = pln_row_zidx+col;
-                  Index_t *localNode = (Index_t *)&domain->m_nodelist[EIGHT*zidx] ;
-                  localNode[0] = nidx                       ;
-                  localNode[1] = nidx                   + 1 ;
-                  localNode[2] = nidx            + dimN + 1 ;
-                  localNode[3] = nidx            + dimN     ;
-                  localNode[4] = nidx + dimNdimN            ;
-                  localNode[5] = nidx + dimNdimN        + 1 ;
-                  localNode[6] = nidx + dimNdimN + dimN + 1 ;
-                  localNode[7] = nidx + dimNdimN + dimN     ;
-                END_FOR_INNER(col)
-              END_FOR_INNER(row)
-            END_FOR_INNER(pln)
-          END_ASYNC_IN_3(pln,row,col)
-        END_FOR_OUTER(col)
-      END_FOR_OUTER(row)
-    END_FOR_OUTER(pln)
+    for(Index_t pln = 0 ; pln < edgeElems ; ++pln ) {
+      Index_t pln_nidx = pln*dimNdimN;
+      Index_t pln_zidx = pln*dimEdimE;
+      for(Index_t row = 0 ; row < edgeElems ; ++row ) {
+        Index_t pln_row_nidx = pln_nidx + row*dimN;
+        Index_t pln_row_zidx = pln_zidx + row*dimE;
+        PAR_FOR_0xNx1(col,edgeElems,pln,row,pln_row_nidx,pln_row_zidx,domain,dimE,dimEdimE,dimN,dimNdimN)
+          Index_t nidx = pln_row_nidx+col;
+          Index_t zidx = pln_row_zidx+col;
+          Index_t *localNode = (Index_t *)&domain->m_nodelist[EIGHT*zidx] ;
+          localNode[0] = nidx                       ;
+          localNode[1] = nidx                   + 1 ;
+          localNode[2] = nidx            + dimN + 1 ;
+          localNode[3] = nidx            + dimN     ;
+          localNode[4] = nidx + dimNdimN            ;
+          localNode[5] = nidx + dimNdimN        + 1 ;
+          localNode[6] = nidx + dimNdimN + dimN + 1 ;
+          localNode[7] = nidx + dimNdimN + dimN     ;
+        END_PAR_FOR(col)
+      } // for row
+    } // for pln
   END_FINISH
 
   /* Create a material IndexSet (entire domain same material for now) */
+
   FINISH
-    FOR_OUTER_0xNx1(i,domElems)
-      ASYNC_IN_1(i,domain)
-        FOR_INNER(i)
-          domain->m_matElemlist[i] = i ;
-        END_FOR_OUTER(col)
-      END_FOR_OUTER(row)
-    END_FOR_OUTER(pln)
+    PAR_FOR_0xNx1(i,domElems,domain)
+      domain->m_matElemlist[i] = i ;
+    END_PAR_FOR(i)
   END_FINISH
    
   /* initialize material parameters */
+
   domain->m_dtfixed            = cast_Real_t(-1.0e-7) ;
   domain->m_deltatime          = cast_Real_t(1.0e-7) ;
   domain->m_deltatimemultlb    = cast_Real_t(1.1) ;
@@ -3050,163 +2904,127 @@ int main(int argc, char *argv[]) {
   domain->m_refdens            = cast_Real_t(1.0) ;
 
   FINISH
-    FOR_OUTER_0xNx1(i,domElems)
-      ASYNC_IN_1(i,domain) // INDEX and GLOBAL
-#ifdef HAB_C
-        Real_t *x_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *y_local = malloc(EIGHT*sizeof(Real_t)) ;
-        Real_t *z_local = malloc(EIGHT*sizeof(Real_t)) ;
+    PAR_FOR_0xNx1(i,domElems,domain)
+#if  defined(HAB_C)
+      Real_t *x_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *y_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *z_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
 #else // NOT HAB_C
-        Real_t x_local[EIGHT], y_local[EIGHT], z_local[EIGHT] ;
-#endif // HAB_C
-        FOR_INNER(i)
-          Index_t *elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*i] ;
-          for( Index_t lnode=0 ; lnode < EIGHT ; ++lnode ) {
-            Index_t gnode = elemToNode[lnode];
-            x_local[lnode] = domain->m_x[gnode];
-            y_local[lnode] = domain->m_y[gnode];
-            z_local[lnode] = domain->m_z[gnode];
-          } // for lnode
+      Real_t x_local[EIGHT], y_local[EIGHT], z_local[EIGHT] ;
+#endif //    HAB_C
+      Index_t *elemToNode = (Index_t *)&domain->m_nodelist[EIGHT*i] ;
+      for( Index_t lnode=0 ; lnode < EIGHT ; ++lnode ) {
+        Index_t gnode = elemToNode[lnode];
+        x_local[lnode] = domain->m_x[gnode];
+        y_local[lnode] = domain->m_y[gnode];
+        z_local[lnode] = domain->m_z[gnode];
+      } // for lnode
 
-          // volume calculations
-          Real_t volume = CalcElemVolume(x_local, y_local, z_local );
-          domain->m_volo[i] = volume ;
-          domain->m_elemMass[i] = volume ;
+      // volume calculations
+      Real_t volume = CalcElemVolume(x_local, y_local, z_local );
+      domain->m_volo[i] = volume ;
+      domain->m_elemMass[i] = volume ;
 // RAG ///////////////////////////////////////////////////////// RAG //
 // RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
 // RAG ///////////////////////////////////////////////////////// RAG //
-          for( Index_t j=0 ; j<EIGHT ; ++j ) {
-            Index_t idx = elemToNode[j] ;
-            Real_t value = volume / cast_Real_t(8.0);
-            AMO__sync_addition_double(&domain->m_nodalMass[idx], value);
-          } // for j
-        END_FOR_INNER(i)
-#ifdef HAB_C
-        free(z_local) ;
-        free(y_local) ;
-        free(x_local) ;
-#endif // HAB_C
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+      for( Index_t j=0 ; j<EIGHT ; ++j ) {
+        Index_t idx = elemToNode[j] ;
+        Real_t value = volume / cast_Real_t(8.0);
+        AMO__sync_addition_double(&domain->m_nodalMass[idx], value);
+      } // for j
+#if  defined(HAB_C)
+      free(z_local) ;
+      free(y_local) ;
+      free(x_local) ;
+#endif //    HAB_C
+    END_PAR_FOR(i)
   END_FINISH
 
   /* deposit energy */
+
   domain->m_e[0] = cast_Real_t(3.948746e+7) ;
 
   /* set up symmetry nodesets */
   FINISH
     Index_t dimN = edgeNodes, dimNdimN = dimN*dimN;
     
-    FOR_OUTER_0xNx1(i,edgeNodes)
-      FOR_OUTER_0xNx1(j,edgeNodes)
-        ASYNC_IN_2(i,j,domain,dimN,dimNdimN)
-          FOR_INNER(i)
-            Index_t planeInc = i*dimNdimN ;
-            Index_t rowInc   = i*dimN ;
-            FOR_INNER(j)
-              Index_t nidx = rowInc + j;
-              domain->m_symmX[nidx] = planeInc + j*dimN ;
-              domain->m_symmY[nidx] = planeInc + j ;
-              domain->m_symmZ[nidx] = rowInc   + j ;
-            END_FOR_INNER(j)
-          END_FOR_INNER(i)
-        END_ASYNC_IN_2(i,j)
-      END_FOR_OUTER(j)
-    END_FOR_OUTER(i)
+    for ( Index_t i = 0; i < edgeNodes ; ++i ) {
+      Index_t planeInc = i*dimNdimN ;
+      Index_t rowInc   = i*dimN ;
+      PAR_FOR_0xNx1(j,edgeNodes,i,planeInc,rowInc,domain,dimN,dimNdimN)
+        Index_t nidx = rowInc + j;
+        domain->m_symmX[nidx] = planeInc + j*dimN ;
+        domain->m_symmY[nidx] = planeInc + j ;
+        domain->m_symmZ[nidx] = rowInc   + j ;
+      END_PAR_FOR(j)
+    } // for i
   END_FINISH
 
   /* set up elemement connectivity information */
+
   FINISH
     domain->m_lxip[0] = 1 ;
-    FOR_OUTER_0xNx1(i,domElems)
-      ASYNC_IN_1(i,domain,domElems)
-        FOR_INNER(i)
+    PAR_FOR_0xNx1(i,domElems,domain,domElems)
           domain->m_lxim[i]   = i-1 ;
           domain->m_lxip[i-1] = i ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    END_PAR_FOR(i)
     domain->m_lxim[domElems-1] = domElems-2 ;
   END_FINISH
 
   FINISH
-    FOR_OUTER_0xNx1(i,edgeElems)
-      ASYNC_IN_1(i,domain,domElems,edgeElems)
-        FOR_INNER(i)
-          domain->m_letam[i] = i ; 
-          domain->m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,edgeElems,domain,domElems,edgeElems)
+      domain->m_letam[i] = i ; 
+      domain->m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
+    END_PAR_FOR(i)
   END_FINISH
 
   FINISH
-    FOR_OUTER_0xNx1(i,(domElems-edgeElems))
-      ASYNC_IN_1(i,domain,edgeElems)
-        FOR_INNER(i)
-          domain->m_letam[i+edgeElems] = i ;
-          domain->m_letap[i          ] = i+edgeElems ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,(domElems-edgeElems),domain,edgeElems)
+      domain->m_letam[i+edgeElems] = i ;
+      domain->m_letap[i          ] = i+edgeElems ;
+    END_PAR_FOR(i)
   END_FINISH
 
   FINISH
-    FOR_OUTER_0xNx1(i,(edgeElems*edgeElems))
-      ASYNC_IN_1(i,domain,domElems,edgeElems)
-        FOR_INNER(i)
-          domain->m_lzetam[i] = i ;
-          domain->m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,(edgeElems*edgeElems),domain,domElems,edgeElems)
+      domain->m_lzetam[i] = i ;
+      domain->m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
+    END_PAR_FOR(i)
   END_FINISH
 
   FINISH
     Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
-    FOR_OUTER_0xNx1(i,(domElems-dimEdimE))
-      ASYNC_IN_1(i,domain,dimEdimE,domElems)
-        FOR_INNER(i)
-          domain->m_lzetam[i+dimEdimE] = i ;
-          domain->m_lzetap[i]          = i+dimEdimE ;
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,(domElems-dimEdimE),domain,dimEdimE,domElems)
+      domain->m_lzetam[i+dimEdimE] = i ;
+      domain->m_lzetap[i]          = i+dimEdimE ;
+    END_PAR_FOR(i)
   END_FINISH
 
   /* set up boundary condition information */
+
   FINISH
-    FOR_OUTER_0xNx1(i,domElems)
-      ASYNC_IN_1(i,domain,domElems)
-        FOR_INNER(i)
-          domain->m_elemBC[i] = 0 ;  /* clear BCs by default */
-        END_FOR_INNER(i)
-      END_ASYNC_IN_1(i)
-    END_FOR_OUTER(i)
+    PAR_FOR_0xNx1(i,domElems,domain,domElems)
+      domain->m_elemBC[i] = 0 ;  /* clear BCs by default */
+    END_PAR_FOR(i)
   END_FINISH
 
   /* faces on "external" boundaries will be */
   /* symmetry plane or free surface BCs */
+
   FINISH
     Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
-    FOR_OUTER_0xNx1(i,edgeElems)
-      FOR_OUTER_0xNx1(j,edgeElems)
-        ASYNC_IN_2(i,j,domain,domElems,dimE,dimEdimE)
-          FOR_INNER(i)
-            Index_t planeInc = i*dimEdimE ;
-            Index_t rowInc   = i*dimE ;
-            FOR_INNER(j)
-              domain->m_elemBC[planeInc+j*dimE           ] |= XI_M_SYMM ;
-              domain->m_elemBC[planeInc+j*dimE+1*dimE-1  ] |= XI_P_FREE ;
-              domain->m_elemBC[planeInc+j                ] |= ETA_M_SYMM ;
-              domain->m_elemBC[planeInc+j+dimEdimE-dimE  ] |= ETA_P_FREE ;
-              domain->m_elemBC[rowInc+j                  ] |= ZETA_M_SYMM ;
-              domain->m_elemBC[rowInc+j+domElems-dimEdimE] |= ZETA_P_FREE ;
-            END_FOR_INNER(j)
-          END_FOR_INNER(i)
-        END_ASYNC_IN_2(i,j)
-      END_FOR_OUTER(j)
-    END_FOR_OUTER(i)
+    for ( Index_t i = 0 ; i < edgeElems ; ++i ) {
+      Index_t planeInc = i*dimEdimE ;
+      Index_t rowInc   = i*dimE ;
+      PAR_FOR_0xNx1(j,edgeElems,i,domain,planeInc,rowInc,domElems,dimE,dimEdimE)
+        domain->m_elemBC[planeInc+j*dimE           ] |= XI_M_SYMM ;
+        domain->m_elemBC[planeInc+j*dimE+1*dimE-1  ] |= XI_P_FREE ;
+        domain->m_elemBC[planeInc+j                ] |= ETA_M_SYMM ;
+        domain->m_elemBC[planeInc+j+dimEdimE-dimE  ] |= ETA_P_FREE ;
+        domain->m_elemBC[rowInc+j                  ] |= ZETA_M_SYMM ;
+        domain->m_elemBC[rowInc+j+domElems-dimEdimE] |= ZETA_P_FREE ;
+      END_PAR_FOR(j)
+    } // for i
   END_FINISH
 
   /* TIMESTEP TO SOLUTION */
@@ -3238,6 +3056,8 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 #endif   // FSIM
 #endif // LULESH_SHOW_PROGRESS
+
+
   } // while time
 
 #ifdef    FSIM

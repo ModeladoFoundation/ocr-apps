@@ -1,3 +1,7 @@
+#if CILK
+extern "C" {
+#endif
+
 /* double */
 
 void AMO__sync_addition_double(double *memPtr, double addVal);
@@ -25,3 +29,7 @@ extern uint64_t *pidamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
 
 void AMO__lock_uint64_t(uint64_t *memPtr);
 void AMO__unlock_uint64_t(uint64_t *memPtr);
+
+#if CILK
+} // extern "C"
+#endif

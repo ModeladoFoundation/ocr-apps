@@ -15,7 +15,10 @@ all: AMO.o lulesh.o lulesh
 AMO.o:  AMO.c AMO.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.hc RAG_habanaro.h AMO.h Makefile
+j.o:  j.hc RAG.h AMO.h Makefile
+	$(HCC) $(HCFLAGS) $(CFLAGS) -c j.hc
+
+lulesh.o:  lulesh.hc RAG.h AMO.h Makefile
 	$(HCC) $(HCFLAGS) $(CFLAGS) -c lulesh.hc
 
 rose_lulesh.o: rose_lulesh.c AML.h 

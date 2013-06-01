@@ -4,6 +4,10 @@
 
 #include "AMO.h"
 
+#ifdef CILK
+extern "C" {
+#endif
+
 /* double */
 
 void AMO__sync_addition_double(double *memPtr, double addVal) {
@@ -59,6 +63,7 @@ static uint64_t idamin_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
 uint64_t *pidamax_lock = &idamax_lock;
 uint64_t *pidamin_lock = &idamin_lock;
 
+
 void AMO__lock_uint64_t(uint64_t *memPtr) {
   const uint64_t rag_lock = 1;
   const uint64_t rag_unlock = 0;
@@ -78,3 +83,6 @@ void AMO__unlock_uint64_t(uint64_t *memPtr) {
   };
   return;
 }
+#ifdef CILK
+} // extern "C"
+#endif
