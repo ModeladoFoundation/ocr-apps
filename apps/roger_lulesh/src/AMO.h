@@ -1,4 +1,4 @@
-#if CILK
+#ifdef CILK
 extern "C" {
 #endif
 
@@ -35,6 +35,6 @@ SHARED extern uint64_t *pidamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
 void AMO__lock_uint64_t(SHARED uint64_t *memPtr);
 void AMO__unlock_uint64_t(SHARED uint64_t *memPtr);
 
-#if CILK
+#ifdef CILK
 } // extern "C"
 #endif

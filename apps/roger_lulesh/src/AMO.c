@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 #include "RAG.h"
-
 #include "AMO.h"
 
 #ifdef CILK

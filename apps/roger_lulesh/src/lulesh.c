@@ -1,3 +1,7 @@
+#if 1
+//RAG -G ACK FOR EMULATION OF FSIM ON linux
+#define xe_printf(...) fprintf(stdout,__VA_ARGS__)
+#endif
 #if 0
 #define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);fflush(stdout);
 #define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);fflush(stdout);
@@ -74,8 +78,9 @@ Additional BSD Notice
 #include <stdint.h>
 
 #include "RAG.h"
-
 #include "AMO.h"
+#include "MEM.h"
+#include "FP.h"
 
 #define LULESH_SHOW_PROGRESS 1
 
@@ -372,23 +377,23 @@ void  Release_Real_t( Real_t *ptr) { if(ptr != NULL) { free(ptr); } }
 
 void
 domain_AllocateNodalPersistent(size_t hcSize) {
-   if(domain->m_x != NULL)FREE(domain->m_x); domain->m_x = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_y != NULL)FREE(domain->m_y); domain->m_y = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_z != NULL)FREE(domain->m_z); domain->m_z = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_x != NULL)DRAM_FREE(domain->m_x); domain->m_x = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_y != NULL)DRAM_FREE(domain->m_y); domain->m_y = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_z != NULL)DRAM_FREE(domain->m_z); domain->m_z = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-   if(domain->m_xd != NULL)FREE(domain->m_xd); domain->m_xd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
-   if(domain->m_yd != NULL)FREE(domain->m_yd); domain->m_yd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
-   if(domain->m_zd != NULL)FREE(domain->m_zd); domain->m_zd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_xd != NULL)DRAM_FREE(domain->m_xd); domain->m_xd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_yd != NULL)DRAM_FREE(domain->m_yd); domain->m_yd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_zd != NULL)DRAM_FREE(domain->m_zd); domain->m_zd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
 
-   if(domain->m_xdd != NULL)FREE(domain->m_xdd); domain->m_xdd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
-   if(domain->m_ydd != NULL)FREE(domain->m_ydd); domain->m_ydd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
-   if(domain->m_zdd != NULL)FREE(domain->m_zdd); domain->m_zdd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_xdd != NULL)DRAM_FREE(domain->m_xdd); domain->m_xdd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_ydd != NULL)DRAM_FREE(domain->m_ydd); domain->m_ydd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_zdd != NULL)DRAM_FREE(domain->m_zdd); domain->m_zdd = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
 
-   if(domain->m_fx != NULL)FREE(domain->m_fx); domain->m_fx = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_fy != NULL)FREE(domain->m_fy); domain->m_fy = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_fz != NULL)FREE(domain->m_fz); domain->m_fz = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_fx != NULL)DRAM_FREE(domain->m_fx); domain->m_fx = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_fy != NULL)DRAM_FREE(domain->m_fy); domain->m_fy = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_fz != NULL)DRAM_FREE(domain->m_fz); domain->m_fz = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-   if(domain->m_nodalMass != NULL)FREE(domain->m_nodalMass); domain->m_nodalMass = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_nodalMass != NULL)DRAM_FREE(domain->m_nodalMass); domain->m_nodalMass = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
 
    FINISH
       PAR_FOR_0xNx1(i,hcSize,domain)
@@ -407,36 +412,36 @@ domain_AllocateNodalPersistent(size_t hcSize) {
 
 void
 domain_AllocateElemPersistent(size_t hcSize) {
-   if(domain->m_matElemlist != NULL)FREE(domain->m_matElemlist); domain->m_matElemlist = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_nodelist != NULL)FREE(domain->m_nodelist); domain->m_nodelist= (SHARED Index_t *)DRAM_MALLOC(hcSize,EIGHT*sizeof(Index_t)) ;
+   if(domain->m_matElemlist != NULL)DRAM_FREE(domain->m_matElemlist); domain->m_matElemlist = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_nodelist != NULL)DRAM_FREE(domain->m_nodelist); domain->m_nodelist= (SHARED Index_t *)DRAM_MALLOC(hcSize,EIGHT*sizeof(Index_t)) ;
 
-   if(domain->m_lxim != NULL)FREE(domain->m_lxim); domain->m_lxim = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_lxip != NULL)FREE(domain->m_lxip); domain->m_lxip = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_letam != NULL)FREE(domain->m_letam); domain->m_letam = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_letap != NULL)FREE(domain->m_letap); domain->m_letap = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_lzetam != NULL)FREE(domain->m_lzetam); domain->m_lzetam = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_lzetap != NULL)FREE(domain->m_lzetap); domain->m_lzetap = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_lxim != NULL)DRAM_FREE(domain->m_lxim); domain->m_lxim = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_lxip != NULL)DRAM_FREE(domain->m_lxip); domain->m_lxip = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_letam != NULL)DRAM_FREE(domain->m_letam); domain->m_letam = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_letap != NULL)DRAM_FREE(domain->m_letap); domain->m_letap = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_lzetam != NULL)DRAM_FREE(domain->m_lzetam); domain->m_lzetam = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_lzetap != NULL)DRAM_FREE(domain->m_lzetap); domain->m_lzetap = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
 
-   if(domain->m_elemBC != NULL)FREE(domain->m_elemBC); domain->m_elemBC = (SHARED Int_t *)DRAM_MALLOC(hcSize,sizeof(Int_t)) ;
+   if(domain->m_elemBC != NULL)DRAM_FREE(domain->m_elemBC); domain->m_elemBC = (SHARED Int_t *)DRAM_MALLOC(hcSize,sizeof(Int_t)) ;
 
-   if(domain->m_e != NULL)FREE(domain->m_e); domain->m_e = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_e != NULL)DRAM_FREE(domain->m_e); domain->m_e = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
 
-   if(domain->m_p != NULL)FREE(domain->m_p); domain->m_p = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_p != NULL)DRAM_FREE(domain->m_p); domain->m_p = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
 
-   if(domain->m_q != NULL)FREE(domain->m_q); domain->m_q = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_ql != NULL)FREE(domain->m_ql); domain->m_ql = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_qq != NULL)FREE(domain->m_qq); domain->m_qq = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_q != NULL)DRAM_FREE(domain->m_q); domain->m_q = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_ql != NULL)DRAM_FREE(domain->m_ql); domain->m_ql = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_qq != NULL)DRAM_FREE(domain->m_qq); domain->m_qq = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-   if(domain->m_v != NULL)FREE(domain->m_v); domain->m_v = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
-   if(domain->m_volo != NULL)FREE(domain->m_volo); domain->m_volo = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_delv != NULL)FREE(domain->m_delv); domain->m_delv = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-   if(domain->m_vdov != NULL)FREE(domain->m_vdov); domain->m_vdov = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_v != NULL)DRAM_FREE(domain->m_v); domain->m_v = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
+   if(domain->m_volo != NULL)DRAM_FREE(domain->m_volo); domain->m_volo = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_delv != NULL)DRAM_FREE(domain->m_delv); domain->m_delv = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_vdov != NULL)DRAM_FREE(domain->m_vdov); domain->m_vdov = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-   if(domain->m_arealg != NULL)FREE(domain->m_arealg); domain->m_arealg = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_arealg != NULL)DRAM_FREE(domain->m_arealg); domain->m_arealg = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-   if(domain->m_ss != NULL)FREE(domain->m_ss); domain->m_ss = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_ss != NULL)DRAM_FREE(domain->m_ss); domain->m_ss = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-   if(domain->m_elemMass != NULL)FREE(domain->m_elemMass); domain->m_elemMass = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+   if(domain->m_elemMass != NULL)DRAM_FREE(domain->m_elemMass); domain->m_elemMass = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
    FINISH 
       PAR_FOR_0xNx1(i,hcSize,domain)
@@ -451,26 +456,26 @@ domain_AllocateElemPersistent(size_t hcSize) {
    /* this is a runnable placeholder for now */
 void
 domain_AllocateElemTemporary(size_t hcSize) {
-  if(domain->m_dxx != NULL)FREE(domain->m_dxx); domain->m_dxx = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-  if(domain->m_dyy != NULL)FREE(domain->m_dyy); domain->m_dyy = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-  if(domain->m_dzz != NULL)FREE(domain->m_dzz); domain->m_dzz = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_dxx != NULL)DRAM_FREE(domain->m_dxx); domain->m_dxx = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_dyy != NULL)DRAM_FREE(domain->m_dyy); domain->m_dyy = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_dzz != NULL)DRAM_FREE(domain->m_dzz); domain->m_dzz = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-  if(domain->m_delv_xi != NULL)FREE(domain->m_delv_xi); domain->m_delv_xi = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-  if(domain->m_delv_eta != NULL)FREE(domain->m_delv_eta); domain->m_delv_eta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-  if(domain->m_delv_zeta != NULL)FREE(domain->m_delv_zeta); domain->m_delv_zeta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_delv_xi != NULL)DRAM_FREE(domain->m_delv_xi); domain->m_delv_xi = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_delv_eta != NULL)DRAM_FREE(domain->m_delv_eta); domain->m_delv_eta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_delv_zeta != NULL)DRAM_FREE(domain->m_delv_zeta); domain->m_delv_zeta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-  if(domain->m_delx_xi != NULL)FREE(domain->m_delx_xi); domain->m_delx_xi = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-  if(domain->m_delx_eta != NULL)FREE(domain->m_delx_eta); domain->m_delx_eta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
-  if(domain->m_delx_zeta != NULL)FREE(domain->m_delx_zeta); domain->m_delx_zeta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_delx_xi != NULL)DRAM_FREE(domain->m_delx_xi); domain->m_delx_xi = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_delx_eta != NULL)DRAM_FREE(domain->m_delx_eta); domain->m_delx_eta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_delx_zeta != NULL)DRAM_FREE(domain->m_delx_zeta); domain->m_delx_zeta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 
-  if(domain->m_vnew != NULL)FREE(domain->m_vnew); domain->m_vnew = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+  if(domain->m_vnew != NULL)DRAM_FREE(domain->m_vnew); domain->m_vnew = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 }
 
 void
 domain_AllocateNodesets(size_t hcSize) {
-   if(domain->m_symmX != NULL)FREE(domain->m_symmX); domain->m_symmX = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_symmY != NULL)FREE(domain->m_symmY); domain->m_symmY = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
-   if(domain->m_symmZ != NULL)FREE(domain->m_symmZ); domain->m_symmZ = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_symmX != NULL)DRAM_FREE(domain->m_symmX); domain->m_symmX = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_symmY != NULL)DRAM_FREE(domain->m_symmY); domain->m_symmY = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+   if(domain->m_symmZ != NULL)DRAM_FREE(domain->m_symmZ); domain->m_symmZ = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
 }
 
 /* Stuff needed for boundary conditions */
@@ -1297,7 +1302,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 
       ss1=domain->m_ss[i2];
       mass1=domain->m_elemMass[i2];
-      volume13=cbrt(determ[i2]);
+      volume13=CBRT(determ[i2]);
 
 // RAG ///////////////////////////////////////////////////////////// RAG //
 // RAG  GATHER (x|y|z)d1[0,,7] = domain->m_(x|y|z)[elemToNode[0..7]]  RAG //
@@ -1506,17 +1511,17 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
 // RAG -- DFLUSH .i.e -- -u_cut < (x|y|z)d <u_cut to 0.0
 
       xdtmp = domain->m_xd[i] + domain->m_xdd[i] * dt ;
-      if( fabs(xdtmp) < u_cut ) xdtmp = cast_Real_t(0.0);
+      if( FABS(xdtmp) < u_cut ) xdtmp = cast_Real_t(0.0);
       domain->m_xd[i] = xdtmp ;
 //DEBUG if(i==1)fprintf(stdout,"CVFN:m_xd[1]= %e\n",domain->m_xd[1]);fflush(stdout);
 
       ydtmp = domain->m_yd[i] + domain->m_ydd[i] * dt ;
-      if( fabs(ydtmp) < u_cut ) ydtmp = cast_Real_t(0.0);
+      if( FABS(ydtmp) < u_cut ) ydtmp = cast_Real_t(0.0);
       domain->m_yd[i] = ydtmp ;
 //DEBUG if(i==1)fprintf(stdout,"CVFN:m_yd[1]= %e\n",domain->m_yd[1]);fflush(stdout);
 
       zdtmp = domain->m_zd[i] + domain->m_zdd[i] * dt ;
-      if( fabs(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
+      if( FABS(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
       domain->m_zd[i] = zdtmp ;
 //DEBUG if(i==1)fprintf(stdout,"CVFN:m_zd[1]= %e\n",domain->m_zd[1]);fflush(stdout);
     END_PAR_FOR(i)
@@ -1683,34 +1688,34 @@ Real_t CalcElemCharacteristicLength( const Real_t x[EIGHT],
   a = AreaFace(x[0],x[1],x[2],x[3],
                y[0],y[1],y[2],y[3],
                z[0],z[1],z[2],z[3]) ;
-  charLength = fmax(a,charLength) ;
+  charLength = FMAX(a,charLength) ;
 
   a = AreaFace(x[4],x[5],x[6],x[7],
                y[4],y[5],y[6],y[7],
                z[4],z[5],z[6],z[7]) ;
-  charLength = fmax(a,charLength) ;
+  charLength = FMAX(a,charLength) ;
 
   a = AreaFace(x[0],x[1],x[5],x[4],
                y[0],y[1],y[5],y[4],
                z[0],z[1],z[5],z[4]) ;
-  charLength = fmax(a,charLength) ;
+  charLength = FMAX(a,charLength) ;
 
   a = AreaFace(x[1],x[2],x[6],x[5],
                y[1],y[2],y[6],y[5],
                z[1],z[2],z[6],z[5]) ;
-  charLength = fmax(a,charLength) ;
+  charLength = FMAX(a,charLength) ;
 
   a = AreaFace(x[2],x[3],x[7],x[6],
                y[2],y[3],y[7],y[6],
                z[2],z[3],z[7],z[6]) ;
-  charLength = fmax(a,charLength) ;
+  charLength = FMAX(a,charLength) ;
 
   a = AreaFace(x[3],x[0],x[4],x[7],
                y[3],y[0],y[4],y[7],
                z[3],z[0],z[4],z[7]) ;
-  charLength = fmax(a,charLength) ;
+  charLength = FMAX(a,charLength) ;
 
-  charLength = cast_Real_t(4.0) * volume / sqrt(charLength);
+  charLength = cast_Real_t(4.0) * volume / SQRT(charLength);
 
   return charLength;
 } // CalcElemCharacteristicLength()
@@ -2009,7 +2014,7 @@ void CalcMonotonicQGradientsForElems() {
       ay = dzi*dxj - dxi*dzj ;
       az = dxi*dyj - dyi*dxj ;
 
-      domain->m_delx_zeta[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+      domain->m_delx_zeta[i] = vol / SQRT(ax*ax + ay*ay + az*az + ptiny) ;
 
       ax *= norm ;
       ay *= norm ;
@@ -2027,7 +2032,7 @@ void CalcMonotonicQGradientsForElems() {
       ay = dzj*dxk - dxj*dzk ;
       az = dxj*dyk - dyj*dxk ;
 
-      domain->m_delx_xi[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+      domain->m_delx_xi[i] = vol / SQRT(ax*ax + ay*ay + az*az + ptiny) ;
 
       ax *= norm ;
       ay *= norm ;
@@ -2045,7 +2050,7 @@ void CalcMonotonicQGradientsForElems() {
       ay = dzk*dxi - dxk*dzi ;
       az = dxk*dyi - dyk*dxi ;
 
-      domain->m_delx_eta[i] = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+      domain->m_delx_eta[i] = vol / SQRT(ax*ax + ay*ay + az*az + ptiny) ;
 
       ax *= norm ;
       ay *= norm ;
@@ -2265,7 +2270,7 @@ void CalcQForElems() {
       if(*pidx >= 0) {
          exit(QStopError) ;
       } // if idx
-      FREE(pidx);
+      DRAM_FREE(pidx);
    } // if numElem
 } // CalcQForElems()
 
@@ -2289,7 +2294,7 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
     PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
       p_new[i] = bvc[i] * e_old[i] ;
 
-      if    (fabs(p_new[i]) <  p_cut   ) 
+      if    (FABS(p_new[i]) <  p_cut   ) 
          p_new[i] = cast_Real_t(0.0) ;
 
       if    ( vnewc[i] >= eosvmax ) /* impossible condition here? */
@@ -2347,7 +2352,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
         if ( ssc <= cast_Real_t(0.) ) {
           ssc =cast_Real_t(.333333e-36) ;
         } else {
-          ssc = sqrt(ssc) ;
+          ssc = SQRT(ssc) ;
         } // if ssc
 
         q_new[i] = (ssc*ql[i] + qq[i]) ;
@@ -2361,7 +2366,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
       e_new[i] += cast_Real_t(0.5) * work[i];
 //DEBUG if(i==0)fprintf(stdout," e_new2= %e\n",e_new[0]);fflush(stdout);
 
-      if (fabs(e_new[i]) < e_cut) {
+      if (FABS(e_new[i]) < e_cut) {
         e_new[i] = cast_Real_t(0.)  ;
       } // e_cut
       if (     e_new[i]  < emin ) {
@@ -2388,7 +2393,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
         if ( ssc <= cast_Real_t(0.) ) {
           ssc = cast_Real_t(.333333e-36) ;
         } else {
-          ssc = sqrt(ssc) ;
+          ssc = SQRT(ssc) ;
         } // if ssc
 
         q_tilde = (ssc*ql[i] + qq[i]) ;
@@ -2400,7 +2405,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
 //DEBUG if(i==0)fprintf(stdout," e_new4= %e\n",e_new[0]);fflush(stdout);
 
 
-      if (fabs(e_new[i]) < e_cut) {
+      if (FABS(e_new[i]) < e_cut) {
         e_new[i] = cast_Real_t(0.)  ;
       } // if e_cut
       if (     e_new[i]  < emin ) {
@@ -2424,12 +2429,12 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
         if ( ssc <= cast_Real_t(0.) ) {
           ssc = cast_Real_t(.333333e-36) ;
         } else {
-          ssc = sqrt(ssc) ;
+          ssc = SQRT(ssc) ;
         } // if ssc
 
         q_new[i] = (ssc*ql[i] + qq[i]) ;
 
-        if (fabs(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
+        if (FABS(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
       } // if delvc
     END_PAR_FOR(i)
   END_FINISH
@@ -2451,7 +2456,7 @@ void CalcSoundSpeedForElems(Real_t *vnewc, Real_t rho0, Real_t *enewc,
       if (ssTmp <= cast_Real_t(1.111111e-36)) {
         ssTmp = cast_Real_t(1.111111e-36);
       } // if ssTmp
-      domain->m_ss[iz] = sqrt(ssTmp);
+      domain->m_ss[iz] = SQRT(ssTmp);
     END_PAR_FOR(i)
   END_FINISH
 } // CalcSoundSpeedForElems()
@@ -2653,7 +2658,7 @@ void UpdateVolumesForElems() {
         Real_t tmpV ;
         tmpV = domain->m_vnew[i] ;
 
-        if ( fabs(tmpV - cast_Real_t(1.0)) < v_cut ) {
+        if ( FABS(tmpV - cast_Real_t(1.0)) < v_cut ) {
           tmpV = cast_Real_t(1.0) ;
         } // tmpV
         domain->m_v[i] = tmpV ;
@@ -2700,7 +2705,7 @@ void CalcCourantConstraintForElems() {
             * domain->m_vdov[indx] * domain->m_vdov[indx] ;
       } // if domain->m_vdov
 
-      dtf = sqrt(dtf) ;
+      dtf = SQRT(dtf) ;
 
       dtf = domain->m_arealg[indx] / dtf ;
 
@@ -2743,7 +2748,7 @@ void CalcHydroConstraintForElems() {
       Index_t indx = domain->m_matElemlist[i] ;
 
       if (domain->m_vdov[indx] != cast_Real_t(0.)) {
-        Real_t dtdvov = dvovmax / (fabs(domain->m_vdov[indx])+cast_Real_t(1.e-20)) ;
+        Real_t dtdvov = dvovmax / (FABS(domain->m_vdov[indx])+cast_Real_t(1.e-20)) ;
         if ( *pDtHydro > dtdvov ) {
 AMO__lock_uint64_t(pidamin_lock);          // LOCK
           *pDtHydro    = dtdvov ;
@@ -3075,10 +3080,19 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
 
 #if       LULESH_SHOW_PROGRESS
 #ifdef      FSIM
+#if 0      // HEX
     xe_printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
           *(uint64_t *)&(domain->m_time),
           *(uint64_t *)&(domain->m_deltatime),
           *(uint64_t *)&(domain->m_e[0])) ;
+    fflush(stdout);
+#else      // NOT HEX
+    printf("time = %e, dt=%e, e(0)=%e\n",
+          ((double)domain->m_time),
+          ((double)domain->m_deltatime),
+          ((double)domain->m_e[0])) ;
+    fflush(stdout);
+#endif     // HEX
 #else    // NOT FSIM
 #if 0      // HEX
     printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
@@ -3098,7 +3112,12 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
   } // while time
 
 #ifdef    FSIM
+#if 0    // HEX
   xe_printf("   Final Origin Energy = %16.16lx \n", *(SHARED uint64_t *)&domain->m_e[0]) ;
+#else    // NOT HEX
+  printf("   Final Origin Energy = %12.6e \n", (double)domain->m_e[0]) ;fflush(stdout);
+  fflush(stdout);
+#endif //   HEX
 #else //  NOT FSIM
 #if 0    // HEX
   printf("   Final Origin Energy = %16.16lx \n", *(SHARED uint64_t *)&domain->m_e[0]) ;
@@ -3108,7 +3127,7 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
   fflush(stdout);
 #endif // FSIM
 
-  FREE(domain);
+  DRAM_FREE(domain);
 
   return 0 ;
 } // main()

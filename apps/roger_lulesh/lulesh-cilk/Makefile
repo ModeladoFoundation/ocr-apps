@@ -2,20 +2,20 @@ ifndef OPT
 	OPT=-O
 endif
 
-GCC=gcc -DhcConst=const -std=c99
-ICC=icc -DhcConst=const -std=c99 -DCILK
+GCC=gcc -std=c99
+ICC=icc -std=c99 -DCILK
 CFLAGS= -fpic -g $(OPT)
 LDFLAGS = -lm
 
 all: AMO.o lulesh.o lulesh
 
-AMO.o:  AMO.c AMO.h Makefile
+AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.cpp RAG.h AMO.h Makefile
+lulesh.o:  lulesh.cpp RAG.h AMO.h MEM.h FP.h Makefile
 	$(ICC) $(CFLAGS) $(CFLAGS) -c lulesh.cpp
 
-lulesh:	lulesh.o AMO.o
+lulesh:	lulesh.o AMO.o Makefile
 	$(ICC) $(CFLAGS) -o lulesh lulesh.o AMO.o $(LDFLAGS)
 
 run:	lulesh

@@ -6,20 +6,20 @@ GCC=gcc -std=c99
 CFLAGS= -fpic -g $(OPT)
 LDFLAGS = -lm
 
-UPC=upcc -Wc,"-std=c99"
-UPCFLAGS= -DUPC $(OPT)
+UPC=upcc -Wc,"-std=c99" -DUPC
+UPCFLAGS= $(OPT)
 UPCLDFLAGS= -lm
 
 
 all: AMO.o lulesh.o lulesh
 
-AMO.o:  AMO.upc RAG.h AMO.h Makefile
+AMO.o:  AMO.upc AMO.h RAG.h Makefile
 	$(UPC) $(UPCFLAGS) -c AMO.upc
 
-lulesh.o:  lulesh.upc RAG.h AMO.h Makefile
+lulesh.o:  lulesh.upc RAG.h AMO.h MEM.h FP.h Makefile
 	$(UPC) $(UPCFLAGS) -c lulesh.upc
 
-lulesh:	lulesh.o AMO.o
+lulesh:	lulesh.o AMO.o Makefile
 	$(UPC) $(UPCFLAGS) -o lulesh lulesh.o AMO.o $(UPCLDFLAGS)
 
 run:	lulesh
