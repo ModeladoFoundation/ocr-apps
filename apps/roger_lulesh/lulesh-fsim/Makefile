@@ -2,51 +2,85 @@ ifndef OPT
 	OPT=-O
 endif
 
-GCC=gcc -std=c99 -DFSIM
-CFLAGS= -fpic -g $(OPT)
-LDFLAGS = 
+ifndef RMD_INSTALL_BASE
+	RMD_INSTALL_BASE = ../../../ss
+endif
+
+PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
+
+RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
+RMD_RT_LIBDIR =$(RMD_INSTALL_BASE)/bin/rmd-linux-elf/lib
+
+AS	= $(PREFIX)-as
+ASFLAGS	=
+
+AR	= $(PREFIX)-ar
+ARFLAGS	= rcs
+
+CC	= $(PREFIX)-clang -DFSIM
+CFLAGS	= -g -ggdb -g3 -O3 -fno-builtin \
+	-I$(RMD_INSTALL_BASE)/xe-sim/include \
+	-I$(RMD_INSTALL_BASE)/rmdkrnl/inc \
+	-I$(RMD_INSTALL_BASE)/runtime/libxe/inc \
+	-I$(RMD_INSTALL_BASE)/runtime/common \
+	-I$(RMD_INSTALL_BASE)/common/include
+
+OBJCOPY	= $(PREFIX)-objcopy
+
+LD	= $(PREFIX)-ld
+LDFLAGS	= -L$(RMD_RT_INSTALL) -T ./rmd-libxe-big.ld    -static -Map=out.map
+LDLIBS	= -lxert
+
+CUT	= cut
+GREP	= grep
+RM	= rm
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+%.s: %.c
+	$(CC) $(CFLAGS) -S -o $@ $<
 
 all: e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh
 
-e_sqrt.o:  ../../../ss/newlib/src-1.19/newlib/libm/math/e_sqrt.c Makefile
-	$(GCC) $(CFLAGS) \
-	-I../../../ss/newlib/src-1.19/newlib/libm/include \
-	-I../../../ss/newlib/src-1.19/newlib/libm/common \
-	-I../../../ss/newlib/src-1.19/newlib/libc/include \
-	-c ../../../ss/newlib/src-1.19/newlib/libm/math/e_sqrt.c
+e_sqrt.o:  $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/math/e_sqrt.c Makefile
+	$(CC) $(CFLAGS) \
+	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/include \
+	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common \
+	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libc/include \
+	-c $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/math/e_sqrt.c
 
-s_cbrt.o:  ../../../ss/newlib/src-1.19/newlib/libm/common/s_cbrt.c Makefile
-	$(GCC) $(CFLAGS) \
-	-I../../../ss/newlib/src-1.19/newlib/libm/include \
-	-I../../../ss/newlib/src-1.19/newlib/libm/common \
-	-I../../../ss/newlib/src-1.19/newlib/libc/include \
-	-c ../../../ss/newlib/src-1.19/newlib/libm/common/s_cbrt.c
+s_cbrt.o:  $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common/s_cbrt.c Makefile
+	$(CC) $(CFLAGS) \
+	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/include \
+	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common \
+	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libc/include \
+	-c $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common/s_cbrt.c
 
 FP.o:  FP.c FP.h RAG.h Makefile
-	$(GCC) $(CFLAGS) -c FP.c
+	$(CC) $(CFLAGS) -c FP.c
 
 MEM.o:  MEM.c MEM.h RAG.h Makefile
-	$(GCC) $(CFLAGS) -c MEM.c
+	$(CC) $(CFLAGS) -c MEM.c
 
 AMO.o:  AMO.c AMO.h RAG.h Makefile
-	$(GCC) $(CFLAGS) -c AMO.c
+	$(CC) $(CFLAGS) -c AMO.c
 
 lulesh.o:  lulesh.c RAG.h AMO.h MEM.h FP.h Makefile
-	$(GCC) $(CFLAGS) $(CFLAGS) -c lulesh.c
+	$(CC) $(CFLAGS) $(CFLAGS) -c lulesh.c
 
 lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o Makefile
-	$(GCC) $(CFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o $(LDFLAGS)
+	$(LD) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o $(LDLIBS)
 
 run:	lulesh
-	./lulesh
+	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
 	date
-	time nohup ./lulesh
+	time nohup time nohup $(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 	date
 	diff nohup.out ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh nohup.out
+	rm -f e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh out.map nohup.out

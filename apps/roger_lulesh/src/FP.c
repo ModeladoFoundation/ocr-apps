@@ -11,7 +11,7 @@ extern "C" {
 
 /* double */
 
-#ifdef FSIM
+#if defined(FSIM) || defined(OCR)
 
 #include <math.h>
 

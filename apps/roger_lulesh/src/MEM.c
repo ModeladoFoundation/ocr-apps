@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#ifdef FSIM
+#if defined(FSIM) || defined(OCR)
 
 void *DRAM_MALLOC(size_t count, size_t sizeof_type) { 
   return malloc(count*sizeof_type);
@@ -18,7 +18,7 @@ void  DRAM_FREE(void *ptr) {
   free(ptr);
 }
 
-#endif
+#endif // FSIM or OCR
 
 #if CILK
 } // extern "C"

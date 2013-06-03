@@ -1,8 +1,11 @@
-#if 1
-//RAG -G ACK FOR EMULATION OF FSIM ON linux
+#if defined(OCR)
+//RAG -G ACK FOR EMULATION OF FSIM ON linux with OCR
 #define xe_printf(...) fprintf(stdout,__VA_ARGS__)
 #endif
-#if 0
+#if FSIM
+#define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);
+#define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);
+#elif OCR
 #define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);fflush(stdout);
 #define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);fflush(stdout);
 #else
@@ -552,7 +555,7 @@ void TimeIncrement()
    domain->m_time += domain->m_deltatime ;
 
    ++domain->m_cycle ;
-//DEBUG fprintf(stdout,"cycle %d, time %e\n",domain->m_cycle,domain->m_time);fflush(stdout);
+//DEBUG fprintf(stdout,"cycle %d, time %e\n",domain->m_cycle,domain->m_time);
 }
 
 static INLINE
@@ -1475,13 +1478,13 @@ void CalcAccelerationForNodes() {
   FINISH 
     PAR_FOR_0xNx1(i,numNode,domain)
       domain->m_xdd[i] = domain->m_fx[i] / domain->m_nodalMass[i];
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_xdd %e\n",domain->m_xdd[1]);fflush(stdout);
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_fx  %e\n",domain->m_fx[1]);fflush(stdout);
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_nodalMass %e\n",domain->m_nodalMass[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CAFN: m_xdd %e\n",domain->m_xdd[1]);
+//DEBUG if(i==1)fprintf(stdout,"CAFN: m_fx  %e\n",domain->m_fx[1]);
+//DEBUG if(i==1)fprintf(stdout,"CAFN: m_nodalMass %e\n",domain->m_nodalMass[1]);
       domain->m_ydd[i] = domain->m_fy[i] / domain->m_nodalMass[i];
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_ydd %e\n",domain->m_ydd[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CAFN: m_ydd %e\n",domain->m_ydd[1]);
       domain->m_zdd[i] = domain->m_fz[i] / domain->m_nodalMass[i];
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_zdd %e\n",domain->m_zdd[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CAFN: m_zdd %e\n",domain->m_zdd[1]);
     END_PAR_FOR(i)
   END_FINISH
 } // CalcAccelerationForNodes()
@@ -1502,7 +1505,7 @@ void ApplyAccelerationBoundaryConditionsForNodes() {
 static INLINE
 void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
   Index_t numNode = domain->m_numNode ;
-//DEBUG fprintf(stdout,"CVFN:dt= %e\n",dt);fflush(stdout);
+//DEBUG fprintf(stdout,"CVFN:dt= %e\n",dt);
   FINISH
     PAR_FOR_0xNx1(i,numNode,domain,dt,u_cut)
       Real_t xdtmp, ydtmp, zdtmp ;
@@ -1513,17 +1516,17 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
       xdtmp = domain->m_xd[i] + domain->m_xdd[i] * dt ;
       if( FABS(xdtmp) < u_cut ) xdtmp = cast_Real_t(0.0);
       domain->m_xd[i] = xdtmp ;
-//DEBUG if(i==1)fprintf(stdout,"CVFN:m_xd[1]= %e\n",domain->m_xd[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CVFN:m_xd[1]= %e\n",domain->m_xd[1]);
 
       ydtmp = domain->m_yd[i] + domain->m_ydd[i] * dt ;
       if( FABS(ydtmp) < u_cut ) ydtmp = cast_Real_t(0.0);
       domain->m_yd[i] = ydtmp ;
-//DEBUG if(i==1)fprintf(stdout,"CVFN:m_yd[1]= %e\n",domain->m_yd[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CVFN:m_yd[1]= %e\n",domain->m_yd[1]);
 
       zdtmp = domain->m_zd[i] + domain->m_zdd[i] * dt ;
       if( FABS(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
       domain->m_zd[i] = zdtmp ;
-//DEBUG if(i==1)fprintf(stdout,"CVFN:m_zd[1]= %e\n",domain->m_zd[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CVFN:m_zd[1]= %e\n",domain->m_zd[1]);
     END_PAR_FOR(i)
   END_FINISH
 } // CalcVelocityForNodes()
@@ -1531,16 +1534,16 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
 static INLINE
 void CalcPositionForNodes(const Real_t dt) {
   Index_t numNode = domain->m_numNode ;
-//DEBUG fprintf(stdout,"CPFN:dt= %e\n",dt);fflush(stdout);
+//DEBUG fprintf(stdout,"CPFN:dt= %e\n",dt);
   FINISH
     PAR_FOR_0xNx1(i,numNode,domain,dt)
 // RAG -- DAXPY       -- (x|y|x) += dt * (x|y|z)d
       domain->m_x[i] += domain->m_xd[i] * dt ;
-//DEBUG if(i==1)fprintf(stdout,"CPFN:m_x[1]= %e\n",domain->m_x[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CPFN:m_x[1]= %e\n",domain->m_x[1]);
       domain->m_y[i] += domain->m_yd[i] * dt ;
-//DEBUG if(i==1)fprintf(stdout,"CPFN:m_y[1]= %e\n",domain->m_y[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CPFN:m_y[1]= %e\n",domain->m_y[1]);
       domain->m_z[i] += domain->m_zd[i] * dt ;
-//DEBUG if(i==1)fprintf(stdout,"CPFN:m_z[1]= %e\n",domain->m_z[1]);fflush(stdout);
+//DEBUG if(i==1)fprintf(stdout,"CPFN:m_z[1]= %e\n",domain->m_z[1]);
     END_PAR_FOR(i)
   END_FINISH
 } // CalcPositionForNodes()
@@ -1816,24 +1819,24 @@ void CalcKinematicsForElems( Index_t numElem, Real_t dt ) {
       // get nodal coordinates from global arrays and copy into local arrays.
       for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
         Index_t gnode = elemToNode[lnode];
-//DEBUG if(k==0)fprintf(stdout,"gnode%d= %d\n",lnode,gnode);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"gnode%d= %d\n",lnode,gnode);
         x_local[lnode] = domain->m_x[gnode];
-//DEBUG if(k==0)fprintf(stdout,"x_local%d= %e\n",lnode,x_local[lnode]);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"x_local%d= %e\n",lnode,x_local[lnode]);
         y_local[lnode] = domain->m_y[gnode];
-//DEBUG if(k==0)fprintf(stdout,"y_local%d= %e\n",lnode,y_local[lnode]);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"y_local%d= %e\n",lnode,y_local[lnode]);
         z_local[lnode] = domain->m_z[gnode];
-//DEBUG if(k==0)fprintf(stdout,"z_local%d= %e\n",lnode,z_local[lnode]);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"z_local%d= %e\n",lnode,z_local[lnode]);
       } // for lnode
 
       // volume calculations
       volume = CalcElemVolume(x_local, y_local, z_local );
-//DEBUG if(k==0)fprintf(stdout,"volume= %e\n",volume);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"volume= %e\n",volume);
       relativeVolume = volume / domain->m_volo[k] ;
-//DEBUG if(k==0)fprintf(stdout,"relVol= %e\n",relativeVolume);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"relVol= %e\n",relativeVolume);
       domain->m_vnew[k] = relativeVolume ;
-//DEBUG if(k==0)fprintf(stdout,"m_v   = %e\n",domain->m_v[0]);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"m_v   = %e\n",domain->m_v[0]);
       domain->m_delv[k] = relativeVolume - domain->m_v[k] ;
-//DEBUG if(k==0)fprintf(stdout,"m_delv= %e\n",domain->m_delv[0]);fflush(stdout);
+//DEBUG if(k==0)fprintf(stdout,"m_delv= %e\n",domain->m_delv[0]);
 
       // set characteristic length
       domain->m_arealg[k] = CalcElemCharacteristicLength(x_local,
@@ -2322,14 +2325,14 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
 
   FINISH
     PAR_FOR_0xNx1(i,length,e_new,e_old,delvc,p_old,q_old,work,emin)
-//DEBUG if(i==0)fprintf(stdout," e_old = %e\n",e_old[i]);fflush(stdout);
-//DEBUG if(i==0)fprintf(stdout," p_old = %e\n",p_old[i]);fflush(stdout);
-//DEBUG if(i==0)fprintf(stdout," q_old = %e\n",q_old[i]);fflush(stdout);
-//DEBUG if(i==0)fprintf(stdout," delvc = %e\n",delvc[i]);fflush(stdout);
-//DEBUG if(i==0)fprintf(stdout," work  = %e\n",work[i] );fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_old = %e\n",e_old[i]);
+//DEBUG if(i==0)fprintf(stdout," p_old = %e\n",p_old[i])
+//DEBUG if(i==0)fprintf(stdout," q_old = %e\n",q_old[i]);
+//DEBUG if(i==0)fprintf(stdout," delvc = %e\n",delvc[i]);
+//DEBUG if(i==0)fprintf(stdout," work  = %e\n",work[i] );
       e_new[i] = e_old[i] - cast_Real_t(0.5) * delvc[i] * (p_old[i] + q_old[i])
                + cast_Real_t(0.5) * work[i];
-//DEBUG if(i==0)fprintf(stdout," e_new0= %e\n",e_new[i]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_new0= %e\n",e_new[i]);
 
       if (e_new[i]  < emin ) {
         e_new[i] = emin ;
@@ -2361,10 +2364,10 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
       e_new[i] +=  cast_Real_t(0.5) * delvc[i]
                * ( cast_Real_t(3.0) * (p_old[i]     + q_old[i])
                  - cast_Real_t(4.0) * (pHalfStep[i] + q_new[i])) ;
-//DEBUG if(i==0)fprintf(stdout," e_new1= %e\n",e_new[0]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_new1= %e\n",e_new[0]);
 
       e_new[i] += cast_Real_t(0.5) * work[i];
-//DEBUG if(i==0)fprintf(stdout," e_new2= %e\n",e_new[0]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_new2= %e\n",e_new[0]);
 
       if (FABS(e_new[i]) < e_cut) {
         e_new[i] = cast_Real_t(0.)  ;
@@ -2372,7 +2375,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
       if (     e_new[i]  < emin ) {
         e_new[i] = emin ;
       } // if emin
-//DEBUG if(i==0)fprintf(stdout," e_new3= %e\n",e_new[0]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_new3= %e\n",e_new[0]);
     END_PAR_FOR(i)
   END_FINISH
 
@@ -2402,7 +2405,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
       e_new[i] += - ( cast_Real_t(7.0)*(p_old[i]     + q_old[i])
                     - cast_Real_t(8.0)*(pHalfStep[i] + q_new[i])
                     + (p_new[i] + q_tilde)) * delvc[i]*sixth ;
-//DEBUG if(i==0)fprintf(stdout," e_new4= %e\n",e_new[0]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_new4= %e\n",e_new[0]);
 
 
       if (FABS(e_new[i]) < e_cut) {
@@ -2411,14 +2414,14 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
       if (     e_new[i]  < emin ) {
         e_new[i] = emin ;
       } // if emin
-//DEBUG if(i==0)fprintf(stdout," e_new5= %e\n",e_new[0]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout," e_new5= %e\n",e_new[0]);
     END_PAR_FOR(i)
   END_FINISH
 
   CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                    pmin, p_cut, eosvmax, length);
 
-//DEBUG fprintf(stdout," e_new6= %e\n",e_new[0]);fflush(stdout);
+//DEBUG fprintf(stdout," e_new6= %e\n",e_new[0]);
 
   FINISH
     PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,q_new,q_cut)
@@ -2497,9 +2500,9 @@ TRACE1("/* compress data, minimal set */");
     PAR_FOR_0xNx1(i,length,domain,delvc,e_old,p_old,q_old,qq,ql)
       Index_t zidx = domain->m_matElemlist[i] ;
       e_old[i] = domain->m_e[zidx] ;
-//DEBUG if(i==0)fprintf(stdout,"e_old = %e\n",e_old[i]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout,"e_old = %e\n",e_old[i]);
       delvc[i] = domain->m_delv[zidx] ;
-//DEBUG if(i==0)fprintf(stdout,"delvc = %e\n",delvc[i]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout,"delvc = %e\n",delvc[i]);
       p_old[i] = domain->m_p[zidx] ;
       q_old[i] = domain->m_q[zidx] ;
       qq[i]    = domain->m_qq[zidx] ;
@@ -2553,7 +2556,7 @@ TRACE1("/* Check for v > eosvmax or v < eosvmin */");
       Index_t zidx = domain->m_matElemlist[i] ;
       domain->m_p[zidx] = p_new[i] ;
       domain->m_e[zidx] = e_new[i] ;
-//DEBUG if(i==0)fprintf(stdout,"e_new = %e\n",e_new[i]);fflush(stdout);
+//DEBUG if(i==0)fprintf(stdout,"e_new = %e\n",e_new[i]);
       domain->m_q[zidx] = q_new[i] ;
     END_PAR_FOR(i)
   END_FINISH 
@@ -2725,7 +2728,7 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
   /* Don't try to register a time constraint if none of the elements
    * were active */
   if ( *pCourant_elem != -1) {
-//DEBUG fprintf(stdout,"dtcourant %e\n",domain->m_dtcourant);fflush(stdout);
+//DEBUG fprintf(stdout,"dtcourant %e\n",domain->m_dtcourant);
      domain->m_dtcourant = *pDtCourant ;
   } // if *pCourant_elem
 
@@ -2762,7 +2765,7 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
 
   if (*pHydro_elem != -1) {
      domain->m_dthydro = *pDtHydro ;
-//DEBUG fprintf(stdout,"dthydro %e\n",domain->m_dthydro);fflush(stdout);
+//DEBUG fprintf(stdout,"dthydro %e\n",domain->m_dthydro);
   } // if *pHydro_elem
 
   free(pHydro_elem);
@@ -2799,7 +2802,11 @@ TRACE1("/* calculate time constraints for elems */");
 
 } // LagangeLeapFrog()
 
+#ifdef FSIM
+int mainEdt() {
+#else
 int main(int argc, char *argv[]) {
+#endif
   Index_t edgeElems = 45 ;
   Index_t edgeNodes = edgeElems+1 ;
   Index_t domElems ;
@@ -2851,11 +2858,11 @@ TRACE0("/* initialize nodal coordinates */");
           Real_t tx = cast_Real_t(col)*sf;
           Index_t nidx = pln_row_nidx+col;
           domain->m_x[nidx] = tx;
-//DEBUG if(nidx==1)fprintf(stdout,"m_x[1] = %e\n",domain->m_x[1]);fflush(stdout);
+//DEBUG if(nidx==1)fprintf(stdout,"m_x[1] = %e\n",domain->m_x[1]);
           domain->m_y[nidx] = ty;
-//DEBUG if(nidx==1)fprintf(stdout,"m_y[1] = %e\n",domain->m_y[1]);fflush(stdout);
+//DEBUG if(nidx==1)fprintf(stdout,"m_y[1] = %e\n",domain->m_y[1]);
           domain->m_z[nidx] = tz;
-//DEBUG if(nidx==1)fprintf(stdout,"m_z[1] = %e\n",domain->m_z[1]);fflush(stdout);
+//DEBUG if(nidx==1)fprintf(stdout,"m_z[1] = %e\n",domain->m_z[1]);
         END_PAR_FOR(col)
       } // for row
     } // for pln
@@ -2982,7 +2989,7 @@ TRACE0("/* deposit energy */");
   domain->m_e[0] = cast_Real_t(3.948746e+7) ;
 
 TRACE0("/* set up symmetry nodesets */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);fflush(stdout);
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   FINISH
     Index_t dimN = edgeNodes, dimNdimN = dimN*dimN;
@@ -3000,7 +3007,7 @@ TRACE0("/* set up symmetry nodesets */");
   END_FINISH
 
 TRACE0("/* set up elemement connectivity information */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);fflush(stdout);
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   FINISH
     domain->m_lxip[0] = 1 ;
@@ -3041,7 +3048,7 @@ TRACE0("/* set up elemement connectivity information */");
   END_FINISH
 
 TRACE0("/* set up boundary condition information */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);fflush(stdout);
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   FINISH
     PAR_FOR_0xNx1(i,domElems,domain,domElems)
@@ -3051,7 +3058,7 @@ TRACE0("/* set up boundary condition information */");
 
 TRACE0("/* faces on \"external\" boundaries will be */");
 TRACE0("/* symmetry plane or free surface BCs     */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);fflush(stdout);
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   FINISH
     Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
@@ -3070,7 +3077,7 @@ TRACE0("/* symmetry plane or free surface BCs     */");
   END_FINISH
 
 TRACE0("/* TIMESTEP TO SOLUTION */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);fflush(stdout);
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   while(domain->m_time < domain->m_stoptime ) {
 
@@ -3080,12 +3087,11 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
 
 #if       LULESH_SHOW_PROGRESS
 #ifdef      FSIM
-#if 0      // HEX
+#if 1      // HEX
     xe_printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
           *(uint64_t *)&(domain->m_time),
           *(uint64_t *)&(domain->m_deltatime),
           *(uint64_t *)&(domain->m_e[0])) ;
-    fflush(stdout);
 #else      // NOT HEX
     printf("time = %e, dt=%e, e(0)=%e\n",
           ((double)domain->m_time),
@@ -3112,7 +3118,7 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
   } // while time
 
 #ifdef    FSIM
-#if 0    // HEX
+#if 1    // HEX
   xe_printf("   Final Origin Energy = %16.16lx \n", *(SHARED uint64_t *)&domain->m_e[0]) ;
 #else    // NOT HEX
   printf("   Final Origin Energy = %12.6e \n", (double)domain->m_e[0]) ;fflush(stdout);
