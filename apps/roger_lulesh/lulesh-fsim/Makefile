@@ -1,5 +1,5 @@
 ifndef OPT
-	OPT=-O
+	OPT=-O3
 endif
 
 ifndef RMD_INSTALL_BASE
@@ -17,8 +17,8 @@ ASFLAGS	=
 AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
-CC	= $(PREFIX)-clang -DFSIM
-CFLAGS	= -g -ggdb -g3 -O3 -fno-builtin \
+CC	= $(PREFIX)-clang -DFSIM -DDEBUG
+CFLAGS	= -g -ggdb -g3 $(OPT) -fno-builtin \
 	-I$(RMD_INSTALL_BASE)/xe-sim/include \
 	-I$(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I$(RMD_INSTALL_BASE)/runtime/libxe/inc \
@@ -73,6 +73,7 @@ lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o Makefile
 
 run:	lulesh
 	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
+	grep CONSOLE */*CE.00 | grep RAG
 
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out

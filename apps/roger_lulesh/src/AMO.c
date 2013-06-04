@@ -26,24 +26,24 @@ void AMO__sync_addition_double(SHARED double *memPtr, double addVal) {
 
 		compVal = rtrnVal;
 		exchVal = *(uint64_t *)&newVal;
-#if 0
-fprintf(stdout,"memVal = %e, addVal = %e, newVal = %e\n",memVal,addVal,newVal);fflush(stdout);
-fprintf(stdout,"compVal = %16.16lx, exchVal = %16.16lx\n",compVal,exchVal);fflush(stdout);
-fprintf(stdout,"rtrnVal = %16.16lx, exchVal = %16.16lx\n",rtrnVal,*(uint64_t *)&newVal);fflush(stdout);
-#endif
+
+//DEBUGfprintf(stdout,"memVal = %e, addVal = %e, newVal = %e\n",memVal,addVal,newVal);fflush(stdout);
+//DEBUGfprintf(stdout,"compVal = %16.16lx, exchVal = %16.16lx\n",compVal,exchVal);fflush(stdout);
+//DEBUGfprintf(stdout,"rtrnVal = %16.16lx, exchVal = %16.16lx\n",rtrnVal,*(uint64_t *)&newVal);fflush(stdout);
+
 #ifdef UPC
 	        rtrnVal = bupc_atomicU64_cswap_strict((shared void *)memPtr,compVal,exchVal);
 #else
 		rtrnVal = __sync_val_compare_and_swap((uint64_t *)memPtr,compVal,exchVal);
 #endif
 	} while ( rtrnVal != compVal );
-#if 0
-  if(*memPtr != newVal) {
-    fprintf(stdout,"ERROR %e = AMO__sync_addition_double(%e,%e) != %e ERROR\n",*memPtr,memVal,addVal,newVal);fflush(stdout);
-    fprintf(stdout,"ERROR rtrnVal = %e RTRNvAL = %e ERROR\n",rtrnVal,RTRNvAL);fflush(stdout);
-    exit(0);
-  }
-#endif
+
+//DEBUG  if(*memPtr != newVal) {
+//DEBUG    fprintf(stdout,"ERROR %e = AMO__sync_addition_double(%e,%e) != %e ERROR\n",*memPtr,memVal,addVal,newVal);fflush(stdout);
+//DEBUG    fprintf(stdout,"ERROR rtrnVal = %e RTRNvAL = %e ERROR\n",rtrnVal,RTRNvAL);fflush(stdout);
+//DEBUG    EXIT(0);
+//DEBUG  }
+
 }
 
 /* uint64_t */

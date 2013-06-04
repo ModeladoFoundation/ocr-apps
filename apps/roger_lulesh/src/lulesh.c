@@ -1,17 +1,19 @@
 #if defined(OCR)
 //RAG -G ACK FOR EMULATION OF FSIM ON linux with OCR
-#define xe_printf(...) fprintf(stdout,__VA_ARGS__)
+#define xe_printf(...) printf(__VA_ARGS__)
 #endif
-#if FSIM
-#define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);
-#define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);
-#elif OCR_TRACE
-#define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);fflush(stdout);
-#define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);fflush(stdout);
-#else
+#if defined(FSIM)
+#define TRACE0(str) xe_printf("RAG:%s\n",str);
+#define TRACE1(str) xe_printf("RAG:: %s\n",str);
+#define TRACE2(str) xe_printf("RAG::: %s\n",str);
+#elif defined(OCR)
+#define TRACE0(str) printf("RAG:%s\n",str);fflush(stdout);
+#define TRACE1(str) printf("RAG:: %s\n",str);fflush(stdout);
+#define TRACE2(str) printf("RAG::: %s\n",str);fflush(stdout);
+#else // NOT FSIM or OCR
 #define TRACE0(str)
 #define TRACE1(str)
-#endif
+#endif // FSIM or OCR
 /*
 
                  Copyright (c) 2010.
@@ -89,280 +91,14 @@ Additional BSD Notice
 
 enum { VolumeError = -1, QStopError = -2 } ;
 
-/****************************************************/
-/* Allow flexibility for arithmetic representations */
-/****************************************************/
+#if defined(FSIM) || defined(OCR)
+struct DomainObject_t domainObject = { .guid = (uint64_t)NULL, .base = NULL, .offset = -1, .limit = -1 };
+#endif // FSIM or OCR
 
-/* Could also support fixed point and interval arithmetic types */
-typedef float        real4 ;
-typedef double       real8 ;
-typedef long double  real10 ;  /* 10 bytes on x86 */
+SHARED struct Domain_t *domain = NULL;
 
-typedef int32_t  Index_t ; /* array subscript and loop index */
-typedef real8    Real_t ;  /* floating point representation */
-typedef uint32_t Int_t ;   /* integer representation */
-
-/************************************************************/
-/* Allow for flexible data layout experiments by separating */
-/* array interface from underlying implementation.          */
-/************************************************************/
-
-#define ONE ((Index_t)1)
-// The NumberOfDimensions
-#define THREE ((Index_t)3)
-// Either 2^3/2 or 2^2 not sure which
-#define FOUR ((Index_t)4)
-// Either 6 or 2*3
-#define SIX ((Index_t)6)
-// 2^NumberOfDimensions
-#define EIGHT ((Index_t)8)
-
-/************************************************************/
-/* Allow for flexible data layout experiments by separating */
-/* array interface from underlying implementation.          */
-/************************************************************/
-
-struct Domain {
-
-   /******************/
-   /* Implementation */
-   /******************/
-
-   /* Node-centered */
-
-   SHARED Real_t  *m_x ;          /* coordinates */
-   SHARED Real_t  *m_y ; 
-   SHARED Real_t  *m_z ;
-
-   SHARED Real_t  *m_xd ;         /* velocities */
-   SHARED Real_t  *m_yd ; 
-   SHARED Real_t  *m_zd ; 
-
-   SHARED Real_t  *m_xdd ;        /* accelerations */
-   SHARED Real_t  *m_ydd ;
-   SHARED Real_t  *m_zdd ;
-
-   SHARED Real_t  *m_fx ;         /* forces */
-   SHARED Real_t  *m_fy ;
-   SHARED Real_t  *m_fz ;
-
-   SHARED Real_t  *m_nodalMass ;  /* mass */
-
-   SHARED Index_t *m_symmX ;      /* symmetry plane nodesets */
-   SHARED Index_t *m_symmY ;
-   SHARED Index_t *m_symmZ ;
-
-   /* Element-centered */
-
-   SHARED Index_t *m_matElemlist ;  /* material indexset */
-   SHARED Index_t *m_nodelist ;     /* elemToNode connectivity */
-
-   SHARED Index_t *m_lxim ;         /* element connectivity across each face */
-   SHARED Index_t *m_lxip ;
-   SHARED Index_t *m_letam ;
-   SHARED Index_t *m_letap ;
-   SHARED Index_t *m_lzetam ;
-   SHARED Index_t *m_lzetap ;
-
-   SHARED Int_t   *m_elemBC ;       /* symmetry/free-surface flags for each elem face */
-
-   SHARED Real_t  *m_dxx ;          /* principal strains -- temporary */
-   SHARED Real_t  *m_dyy ;
-   SHARED Real_t  *m_dzz ;
-
-   SHARED Real_t  *m_delv_xi ;      /* velocity gradient -- temporary */
-   SHARED Real_t  *m_delv_eta ;
-   SHARED Real_t  *m_delv_zeta ;
-
-   SHARED Real_t  *m_delx_xi ;      /* coordinate gradient -- temporary */
-   SHARED Real_t  *m_delx_eta ;
-   SHARED Real_t  *m_delx_zeta ;
-   
-   SHARED Real_t  *m_e ;            /* energy */
-
-   SHARED Real_t  *m_p ;            /* pressure */
-   SHARED Real_t  *m_q ;            /* q */
-   SHARED Real_t  *m_ql ;           /* linear term for q */
-   SHARED Real_t  *m_qq ;           /* quadratic term for q */
-
-   SHARED Real_t  *m_v ;            /* relative volume */
-   SHARED Real_t  *m_volo ;         /* reference volume */
-   SHARED Real_t  *m_vnew ;         /* new relative volume -- temporary */
-   SHARED Real_t  *m_delv ;         /* m_vnew - m_v */
-   SHARED Real_t  *m_vdov ;         /* volume derivative over volume */
-
-   SHARED Real_t  *m_arealg ;       /* characteristic length of an element */
-   
-   SHARED Real_t  *m_ss ;           /* "sound speed" */
-
-   SHARED Real_t  *m_elemMass ;     /* mass */
-
-   /* Parameters */
-
-   Real_t  m_dtfixed ;           /* fixed time increment */
-   Real_t  m_time ;              /* current time */
-   Real_t  m_deltatime ;         /* variable time increment */
-   Real_t  m_deltatimemultlb ;
-   Real_t  m_deltatimemultub ;
-   Real_t  m_stoptime ;          /* end time for simulation */
-
-   Real_t  m_u_cut ;             /* velocity tolerance */
-   Real_t  m_hgcoef ;            /* hourglass control */
-   Real_t  m_qstop ;             /* excessive q indicator */
-   Real_t  m_monoq_max_slope ;
-   Real_t  m_monoq_limiter_mult ;
-   Real_t  m_e_cut ;             /* energy tolerance */
-   Real_t  m_p_cut ;             /* pressure tolerance */
-   Real_t  m_ss4o3 ;
-   Real_t  m_q_cut ;             /* q tolerance */
-   Real_t  m_v_cut ;             /* relative volume tolerance */
-   Real_t  m_qlc_monoq ;         /* linear term coef for q */
-   Real_t  m_qqc_monoq ;         /* quadratic term coef for q */
-   Real_t  m_qqc ;
-   Real_t  m_eosvmax ;
-   Real_t  m_eosvmin ;
-   Real_t  m_pmin ;              /* pressure floor */
-   Real_t  m_emin ;              /* energy floor */
-   Real_t  m_dvovmax ;           /* maximum allowable volume change */
-   Real_t  m_refdens ;           /* reference density */
-
-   Real_t  m_dtcourant ;         /* courant constraint */
-   Real_t  m_dthydro ;           /* volume change constraint */
-   Real_t  m_dtmax ;             /* maximum allowable time increment */
-
-   Int_t   m_cycle ;             /* iteration count for simulation */
-
-   Index_t m_sizeX ;           /* X,Y,Z extent of this block */
-   Index_t m_sizeY ;
-   Index_t m_sizeZ ;
-
-   Index_t m_numElem ;         /* Elements/Nodes in this domain */
-   Index_t m_numNode ;
-} SHARED *domain;
-
-/* This first implementation allows for runnable code */
-/* and is not meant to be optimal. Final implementation */
-/* should separate declaration and allocation phases */
-/* so that allocation can be scheduled in a cache conscious */
-/* manner. */
-
-   /**********/
-   /* Access */
-   /**********/
-
-   /* Node-centered */
-
-#define domain_x(idx)           domain->m_x[(Index_t)(idx)]
-#define domain_y(idx)           domain->m_y[(Index_t)(idx)]
-#define domain_z(idx)           domain->m_z[(Index_t)(idx)]
-
-#define domain_xd(idx)          domain->m_xd[(Index_t)(idx)]
-#define domain_yd(idx)          domain->m_yd[(Index_t)(idx)]
-#define domain_zd(idx)          domain->m_zd[(Index_t)(idx)]
-
-#define domain_xdd(idx)         domain->m_xdd[(Index_t)(idx)]
-#define domain_ydd(idx)         domain->m_ydd[(Index_t)(idx)]
-#define domain_zdd(idx)         domain->m_zdd[(Index_t)(idx)]
-
-#define domain_fx(idx)          domain->m_fx[(Index_t)(idx)]
-#define domain_fy(idx)          domain->m_fy[(Index_t)(idx)]
-#define domain_fz(idx)          domain->m_fz[(Index_t)(idx)]
-
-#define domain_nodalMass(idx)   domain->m_nodalMass[(Index_t)(idx)]
-
-#define domain_symmX(idx)       domain->m_symmX[(Index_t)(idx)]
-#define domain_symmY(idx)       domain->m_symmY[(Index_t)(idx)]
-#define domain_symmZ(idx)       domain->m_symmZ[(Index_t)(idx)]
-
-   /* Element-centered */
-
-#define domain_matElemlist(idx) domain->m_matElemlist[(Index_t)(idx)]
-#define domain_nodelist(idx)    domain->m_nodelist[EIGHT*(Index_t)(idx)]
-#define domain_nodelist_ref(idx) ((SHARED Index_t *)&domain->m_nodelist[EIGHT*(Index_t)(idx)])
-
-#define domain_lxim(idx)        domain->m_lxim[(Index_t)(idx)]
-#define domain_lxip(idx)        domain->m_lxip[(Index_t)(idx)]
-#define domain_letam(idx)       domain->m_letam[(Index_t)(idx)]
-#define domain_letap(idx)       domain->m_letap[(Index_t)(idx)]
-#define domain_lzetam(idx)      domain->m_lzetam[(Index_t)(idx)]
-#define domain_lzetap(idx)      domain->m_lzetap[(Index_t)(idx)]
- 
-#define domain_elemBC(idx)      domain->m_elemBC[(Index_t)(idx)]
-
-#define domain_dxx(idx)         domain->m_dxx[idx]
-#define domain_dyy(idx)         domain->m_dyy[idx]
-#define domain_dzz(idx)         domain->m_dzz[idx]
-
-#define domain_delv_xi(idx)     domain->m_delv_xi[(Index_t)(idx)]
-#define domain_delv_eta(idx)    domain->m_delv_eta[(Index_t)(idx)]
-#define domain_delv_zeta(idx)   domain->m_delv_zeta[(Index_t)(idx)]
-
-#define domain_delx_xi(idx)     domain->m_delx_xi[(Index_t)(idx)]
-#define domain_delx_eta(idx)    domain->m_delx_eta[(Index_t)(idx)]
-#define domain_delx_zeta(idx)   domain->m_delx_zeta[(Index_t)(idx)]
-
-#define domain_e(idx)           domain->m_e[(Index_t)(idx)]
-
-#define domain_p(idx)           domain->m_p[(Index_t)(idx)]
-#define domain_q(idx)           domain->m_q[(Index_t)(idx)]
-#define domain_ql(idx)          domain->m_ql[(Index_t)(idx)]
-#define domain_qq(idx)          domain->m_qq[(Index_t)(idx)]
-
-#define domain_v(idx)           domain->m_v[(Index_t)(idx)]
-#define domain_volo(idx)        domain->m_volo[(Index_t)(idx)]
-#define domain_vnew(idx)        domain->m_vnew[(Index_t)(idx)]
-#define domain_delv(idx)        domain->m_delv[(Index_t)(idx)]
-#define domain_vdov(idx)        domain->m_vdov[(Index_t)(idx)]
-
-#define domain_arealg(idx)      domain->m_arealg[(Index_t)(idx)]
-
-#define domain_ss(idx)          domain->m_ss[(Index_t)(idx)]
-
-#define domain_elemMass(idx)    domain->m_elemMass[(Index_t)(idx)]
-
-   /* Params */
-
-#define domain_dtfixed()              domain->m_dtfixed
-#define domain_time()                 domain->m_time
-#define domain_deltatime()            domain->m_deltatime
-#define domain_deltatimemultlb()      domain->m_deltatimemultlb
-#define domain_deltatimemultub()      domain->m_deltatimemultub
-#define domain_stoptime()             domain->m_stoptime
-
-#define domain_u_cut()                domain->m_u_cut
-#define domain_hgcoef()               domain->m_hgcoef
-#define domain_qstop()                domain->m_qstop
-#define domain_monoq_max_slope()      domain->m_monoq_max_slope
-#define domain_monoq_limiter_mult()   domain->m_monoq_limiter_mult
-#define domain_e_cut()                domain->m_e_cut
-#define domain_p_cut()                domain->m_p_cut
-#define domain_ss4o3()                domain->m_ss4o3
-#define domain_q_cut()                domain->m_q_cut
-#define domain_v_cut()                domain->m_v_cut
-#define domain_qlc_monoq()            domain->m_qlc_monoq
-#define domain_qqc_monoq()            domain->m_qqc_monoq
-#define domain_qqc()                  domain->m_qqc
-#define domain_eosvmax()              domain->m_eosvmax
-#define domain_eosvmin()              domain->m_eosvmin
-#define domain_pmin()                 domain->m_pmin
-#define domain_emin()                 domain->m_emin
-#define domain_dvovmax()              domain->m_dvovmax
-#define domain_refdens()              domain->m_refdens
-
-#define domain_dtcourant()            domain->m_dtcourant
-#define domain_dthydro()              domain->m_dthydro
-#define domain_dtmax()                domain->m_dtmax
-
-#define domain_cycle()                domain->m_cycle
-
-#define domain_sizeX()                domain->m_sizeX
-#define domain_sizeY()                domain->m_sizeY
-#define domain_sizeZ()                domain->m_sizeZ
-#define domain_numElem()              domain->m_numElem
-#define domain_numNode()              domain->m_numNode
-
-static INLINE  Real_t *Allocate_Real_t(size_t hcSize) { return  (Real_t *)malloc(hcSize*sizeof(Real_t)); }
-void  Release_Real_t( Real_t *ptr) { if(ptr != NULL) { free(ptr); } }
+static INLINE  Real_t *Allocate_Real_t(size_t hcSize) { return  (Real_t *)SPAD_MALLOC(hcSize,sizeof(Real_t)); }
+void  Release_Real_t( Real_t *ptr) { if(ptr != NULL) { SPAD_FREE(ptr); } }
 
 #define   cast_Int_t(arg) (  (Int_t)(arg))
 #define  cast_Real_t(arg) ( (Real_t)(arg))
@@ -1396,7 +1132,7 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
 
        /* Do a check for negative volumes */
        if ( domain->m_v[i] <= cast_Real_t(0.0) ) {
-         exit(VolumeError) ;
+         EXIT(VolumeError) ;
        }
 #if  defined(HAB_C)
        free(pfz); free(pfy); free(pfx);
@@ -1440,7 +1176,7 @@ void CalcVolumeForceForElems() {
     FINISH
       PAR_FOR_0xNx1(k,numElem,determ)
         if (determ[k] <= cast_Real_t(0.0)) {
-          exit(VolumeError) ;
+          EXIT(VolumeError) ;
         }
       END_PAR_FOR(k)
     END_FINISH
@@ -1915,7 +1651,7 @@ void CalcLagrangeElements(Real_t deltatime) {
 
           // See if any volumes are negative, and take appropriate action.
           if (domain->m_vnew[k] <= cast_Real_t(0.0)) {
-            exit(VolumeError) ;
+            EXIT(VolumeError) ;
           } // if domain->m_vnew
         END_PAR_FOR(k)
       END_FINISH
@@ -2271,7 +2007,7 @@ void CalcQForElems() {
       END_FINISH
 
       if(*pidx >= 0) {
-         exit(QStopError) ;
+         EXIT(QStopError) ;
       } // if idx
       DRAM_FREE(pidx);
    } // if numElem
@@ -2638,7 +2374,7 @@ TRACE1("/* Expose all of the variables needed for material evaluation */");
           } // if domain->m_v
         } // if eosvmax
         if (vc <= 0.) {
-          exit(VolumeError) ;
+          EXIT(VolumeError) ;
         } // if domain->m_v
       END_PAR_FOR(i)
     END_FINISH 
@@ -2687,8 +2423,8 @@ void LagrangeElements() {
 
 static INLINE
 void CalcCourantConstraintForElems() {
-  Real_t  *pDtCourant    =  (Real_t *)malloc(sizeof(Real_t)) ;
-  Index_t *pCourant_elem = (Index_t *)malloc(sizeof(Index_t));
+  Real_t  *pDtCourant    =  (Real_t *)SPAD_MALLOC(ONE,sizeof(Real_t)) ;
+  Index_t *pCourant_elem = (Index_t *)SPAD_MALLOC(ONE,sizeof(Index_t));
   *pDtCourant = cast_Real_t(1.0e+20) ;
   *pCourant_elem = -1;
 
@@ -2732,15 +2468,15 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
      domain->m_dtcourant = *pDtCourant ;
   } // if *pCourant_elem
 
-  free(pCourant_elem);
-  free(pDtCourant);
+  SPAD_FREE(pCourant_elem);
+  SPAD_FREE(pDtCourant);
   return ;
 } // CalcCourantConstraintForElems()
 
 static INLINE
 void CalcHydroConstraintForElems() {
-  Real_t  *pDtHydro    =  (Real_t *) malloc(sizeof(Real_t)) ;
-  Index_t *pHydro_elem = (Index_t *) malloc(sizeof(Index_t));
+  Real_t  *pDtHydro    =  (Real_t *) SPAD_MALLOC(ONE,sizeof(Real_t)) ;
+  Index_t *pHydro_elem = (Index_t *) SPAD_MALLOC(ONE,sizeof(Index_t));
   *pDtHydro = cast_Real_t(1.0e+20) ;
   *pHydro_elem = -1 ;
 
@@ -2768,8 +2504,8 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
 //DEBUG fprintf(stdout,"dthydro %e\n",domain->m_dthydro);
   } // if *pHydro_elem
 
-  free(pHydro_elem);
-  free(pDtHydro);
+  SPAD_FREE(pHydro_elem);
+  SPAD_FREE(pDtHydro);
   return ;
 } // CalcHydroConstraintForElems()
 
@@ -2813,11 +2549,13 @@ int main(int argc, char *argv[]) {
 
 TRACE0("/* allocate domain data structure */");
 
-  domain = (SHARED struct Domain *)DRAM_MALLOC(ONE,sizeof(struct Domain));
+#if defined(FSIM) || defined(OCR)
+  DOMAIN_CREATE(&domainObject,edgeElems,edgeNodes);
+#endif // FSIM or OCR
+
+  domain = (SHARED struct Domain_t *)DRAM_MALLOC(ONE,sizeof(struct Domain_t));
 
 TRACE0("/* get run options to measure various metrics */");
-
-  /* ... */
 
   /****************************/
   /*   Initialize Sedov Mesh  */
@@ -2832,6 +2570,8 @@ TRACE0("/* construct a uniform box for this processor */");
   domain->m_numNode = edgeNodes*edgeNodes*edgeNodes ;
 
   domElems = domain->m_numElem ;
+
+#ifndef DEBUG
 
 TRACE0("/* allocate field memory */");
 
@@ -3133,7 +2873,11 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
   fflush(stdout);
 #endif // FSIM
 
-  DRAM_FREE(domain);
+#if defined(FSIM) || defined(OCR)
+  DOMAIN_DESTROY(&domainObject);
+#endif // FSIM or OCR
 
-  return 0 ;
+#endif // DEBUG
+  EXIT(0);
+  return 0; // IMPOSSIBLE
 } // main()
