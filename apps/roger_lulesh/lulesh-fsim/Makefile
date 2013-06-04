@@ -77,7 +77,7 @@ run:	lulesh
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
 	date
-	time nohup time nohup $(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
+	time nohup $(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 	date
 	diff nohup.out ../utils/gold.out
 	wc nohup.out ../utils/gold.out

@@ -5,7 +5,7 @@
 #if FSIM
 #define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);
 #define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);
-#elif OCR
+#elif OCR_TRACE
 #define TRACE0(str) fprintf(stdout,"RAG:%s\n",str);fflush(stdout);
 #define TRACE1(str) fprintf(stdout,"RAG:: %s\n",str);fflush(stdout);
 #else
