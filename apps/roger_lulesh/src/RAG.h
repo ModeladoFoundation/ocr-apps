@@ -68,9 +68,9 @@ struct DomainObject_t {
 
 /* Could also support fixed point and interval arithmetic types */
 
-typedef int32_t  Index_t ; /* array subscript and loop index */
+typedef int64_t  Index_t ; /* array subscript and loop index */
 typedef double   Real_t ;  /* floating point representation */
-typedef uint16_t Int_t ;   /* integer representation */
+typedef uint64_t Int_t ;   /* integer representation */
 
 /************************************************************/
 /* Allow for flexible data layout experiments by separating */
