@@ -9,11 +9,11 @@
 #define TRACE3(str) xe_printf("RAG:::: %s\n",str);
 #define TRACE4(str) xe_printf("RAG::::: %s\n",str);
 #elif defined(OCR)
-#define TRACE0(str) printf("RAG:%s\n",str);fflush(stdout);
-#define TRACE1(str) printf("RAG:: %s\n",str);fflush(stdout);
-#define TRACE2(str) printf("RAG::: %s\n",str);fflush(stdout);
-#define TRACE3(str) printf("RAG:::: %s\n",str);fflush(stdout);
-#define TRACE4(str) printf("RAG::::: %s\n",str);fflush(stdout);
+#define TRACE0(str)    printf("RAG:%s\n",str);fflush(stdout);
+#define TRACE1(str)    printf("RAG:: %s\n",str);fflush(stdout);
+#define TRACE2(str)    printf("RAG::: %s\n",str);fflush(stdout);
+#define TRACE3(str)    printf("RAG:::: %s\n",str);fflush(stdout);
+#define TRACE4(str)    printf("RAG::::: %s\n",str);fflush(stdout);
 #else // NOT FSIM or OCR
 #define TRACE0(str)
 #define TRACE1(str)
@@ -88,6 +88,9 @@ Additional BSD Notice
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#if !defined(FSIM) && !defined(OCR)
+#include <string.h>
+#endif
 
 #include "RAG.h"
 #include "AMO.h"
@@ -187,19 +190,32 @@ TRACE1("Allocate EP m_arealg,m_ss,m_elemMass");
    if(domain->m_ss != NULL)DRAM_FREE(domain->m_ss); domain->m_ss = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
    if(domain->m_elemMass != NULL)DRAM_FREE(domain->m_elemMass); domain->m_elemMass = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 TRACE1("Allocate EP zero m_(e|p|v)");
-//xe_printf("rag: domain %16.16lx\n",domain);
-//xe_printf("rag: domain->m_e %16.16lx\n",domain->m_e);
-//xe_printf("rag: domain->m_p %16.16lx\n",domain->m_p);
-//xe_printf("rag: domain->m_v %16.16lx\n",domain->m_v);
-//xe_printf("rag: loop (0;<%16.16lx,1)\n",hcSize);
+#if defined(FSIM)
+  xe_printf("rag: domain %16.16lx\n",domain);
+  xe_printf("rag: domain->m_e %16.16lx\n",domain->m_e);
+  xe_printf("rag: domain->m_p %16.16lx\n",domain->m_p);
+  xe_printf("rag: domain->m_v %16.16lx\n",domain->m_v);
+  xe_printf("rag: loop (0;<%16.16lx;1)\n",hcSize);
+#endif
    FINISH 
       PAR_FOR_0xNx1(i,hcSize,domain)
             domain->m_e[i] = (Real_t)(0.0);
+#ifdef FSIM
+//xe_printf("rag: m_e[%16.16lx] = %16.16lx\n",i,domain->m_e[i]);
+#endif
             domain->m_p[i] = (Real_t)(0.0);
+#ifdef FSIM
+//xe_printf("rag: m_p[%16.16lx] = %16.16lx\n",i,domain->m_e[i]);
+#endif
             domain->m_v[i] = (Real_t)(1.0);
+#ifdef FSIM
+//xe_printf("rag: m_v[%16.16lx] = %16.16lx\n",i,domain->m_e[i]);
+#endif
       END_PAR_FOR(i)
    END_FINISH
-//xe_printf("rag: end (0;<%16.16lx,1)\n",hcSize);
+#if defined(FSIM)
+  xe_printf("rag: end (0;<%16.16lx;1)\n",hcSize);
+#endif
 }
 
    /* Temporaries should not be initialized in bulk but */
@@ -229,7 +245,92 @@ TRACE1("Allocate NS m_symm(X|Y|Z)");
    if(domain->m_symmY != NULL)DRAM_FREE(domain->m_symmY); domain->m_symmY = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
    if(domain->m_symmZ != NULL)DRAM_FREE(domain->m_symmZ); domain->m_symmZ = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
 }
+#if !defined(FSIM) && !defined(OCR)
+   /****************/
+   /* Deallocation */
+   /****************/
 
+void
+domain_DeallocateNodalPersistent(void) {
+TRACE1("Deallocate NP m_(x|y|z)");
+   if(domain->m_x != NULL)DRAM_FREE(domain->m_x); domain->m_x = NULL;
+   if(domain->m_y != NULL)DRAM_FREE(domain->m_y); domain->m_y = NULL;
+   if(domain->m_z != NULL)DRAM_FREE(domain->m_z); domain->m_z = NULL;
+TRACE1("Deallocate NP m_(x|y|z)d");
+   if(domain->m_xd != NULL)DRAM_FREE(domain->m_xd); domain->m_xd = NULL;
+   if(domain->m_yd != NULL)DRAM_FREE(domain->m_yd); domain->m_yd = NULL;
+   if(domain->m_zd != NULL)DRAM_FREE(domain->m_zd); domain->m_zd = NULL;
+TRACE1("Deallocate NP m_(x|y|z)dd");
+   if(domain->m_xdd != NULL)DRAM_FREE(domain->m_xdd); domain->m_xdd = NULL;
+   if(domain->m_ydd != NULL)DRAM_FREE(domain->m_ydd); domain->m_ydd = NULL;
+   if(domain->m_zdd != NULL)DRAM_FREE(domain->m_zdd); domain->m_zdd = NULL;
+TRACE1("Deallocate NP m_f(x|y|z)");
+   if(domain->m_fx != NULL)DRAM_FREE(domain->m_fx); domain->m_fx = NULL;
+   if(domain->m_fy != NULL)DRAM_FREE(domain->m_fy); domain->m_fy = NULL;
+   if(domain->m_fz != NULL)DRAM_FREE(domain->m_fz); domain->m_fz = NULL;
+TRACE1("Deallocate NP m_nodalMass(x|y|z)");
+   if(domain->m_nodalMass != NULL)DRAM_FREE(domain->m_nodalMass); domain->m_nodalMass = NULL;
+}
+
+void
+domain_DeallocateElemPersistent(void) {
+TRACE1("Deallocate EP m_matElemlist and m_nodelist");
+   if(domain->m_matElemlist != NULL)DRAM_FREE(domain->m_matElemlist); domain->m_matElemlist = NULL;
+   if(domain->m_nodelist != NULL)DRAM_FREE(domain->m_nodelist); domain->m_nodelist= NULL;
+TRACE1("Deallocate EP m_lixm,m_lixp,m_letam,m_letap,m_lzetam,m_lzetap");
+   if(domain->m_lxim != NULL)DRAM_FREE(domain->m_lxim); domain->m_lxim = NULL;
+   if(domain->m_lxip != NULL)DRAM_FREE(domain->m_lxip); domain->m_lxip = NULL;
+   if(domain->m_letam != NULL)DRAM_FREE(domain->m_letam); domain->m_letam = NULL;
+   if(domain->m_letap != NULL)DRAM_FREE(domain->m_letap); domain->m_letap = NULL;
+   if(domain->m_lzetam != NULL)DRAM_FREE(domain->m_lzetam); domain->m_lzetam = NULL;
+   if(domain->m_lzetap != NULL)DRAM_FREE(domain->m_lzetap); domain->m_lzetap = NULL;
+TRACE1("Deallocate EP m_elemBC");
+   if(domain->m_elemBC != NULL)DRAM_FREE(domain->m_elemBC); domain->m_elemBC = NULL;
+TRACE1("Deallocate EP m_e,m_p,m_q,m_ql,m_qq");
+   if(domain->m_e != NULL)DRAM_FREE(domain->m_e); domain->m_e = NULL;
+   if(domain->m_p != NULL)DRAM_FREE(domain->m_p); domain->m_p = NULL;
+   if(domain->m_q != NULL)DRAM_FREE(domain->m_q); domain->m_q = NULL;
+   if(domain->m_ql != NULL)DRAM_FREE(domain->m_ql); domain->m_ql = NULL;
+   if(domain->m_qq != NULL)DRAM_FREE(domain->m_qq); domain->m_qq = NULL;
+TRACE1("Deallocate EP m_v,m_volo,m_delv,m_vdov");
+   if(domain->m_v != NULL)DRAM_FREE(domain->m_v); domain->m_v = NULL;
+   if(domain->m_volo != NULL)DRAM_FREE(domain->m_volo); domain->m_volo = NULL;
+   if(domain->m_delv != NULL)DRAM_FREE(domain->m_delv); domain->m_delv = NULL;
+   if(domain->m_vdov != NULL)DRAM_FREE(domain->m_vdov); domain->m_vdov = NULL;
+TRACE1("Deallocate EP m_arealg,m_ss,m_elemMass");
+   if(domain->m_arealg != NULL)DRAM_FREE(domain->m_arealg); domain->m_arealg = NULL;
+   if(domain->m_ss != NULL)DRAM_FREE(domain->m_ss); domain->m_ss = NULL;
+   if(domain->m_elemMass != NULL)DRAM_FREE(domain->m_elemMass); domain->m_elemMass = NULL;
+}
+
+   /* Temporaries should not be initialized in bulk but */
+   /* this is a runnable placeholder for now */
+void
+domain_DeallocateElemTemporary(void) {
+TRACE1("Deallocate ET m_d(xx|yy|zz)");
+  if(domain->m_dxx != NULL)DRAM_FREE(domain->m_dxx); domain->m_dxx = NULL;
+  if(domain->m_dyy != NULL)DRAM_FREE(domain->m_dyy); domain->m_dyy = NULL;
+  if(domain->m_dzz != NULL)DRAM_FREE(domain->m_dzz); domain->m_dzz = NULL;
+TRACE1("Deallocate ET m_delv_zi,m_delv_eta,m_delv_zeta");
+  if(domain->m_delv_xi != NULL)DRAM_FREE(domain->m_delv_xi); domain->m_delv_xi = NULL;
+  if(domain->m_delv_eta != NULL)DRAM_FREE(domain->m_delv_eta); domain->m_delv_eta = NULL;
+  if(domain->m_delv_zeta != NULL)DRAM_FREE(domain->m_delv_zeta); domain->m_delv_zeta = NULL;
+TRACE1("Deallocate ET m_delx_zi,m_delx_eta,m_delx_zeta");
+  if(domain->m_delx_xi != NULL)DRAM_FREE(domain->m_delx_xi); domain->m_delx_xi = NULL;
+  if(domain->m_delx_eta != NULL)DRAM_FREE(domain->m_delx_eta); domain->m_delx_eta = NULL;
+  if(domain->m_delx_zeta != NULL)DRAM_FREE(domain->m_delx_zeta); domain->m_delx_zeta = NULL;
+TRACE1("Deallocate ET m_vnew");
+  if(domain->m_vnew != NULL)DRAM_FREE(domain->m_vnew); domain->m_vnew = NULL;
+}
+
+void
+domain_DeallocateNodesets(void) {
+TRACE1("Deallocate NS m_symm(X|Y|Z)");
+   if(domain->m_symmX != NULL)DRAM_FREE(domain->m_symmX); domain->m_symmX = NULL;
+   if(domain->m_symmY != NULL)DRAM_FREE(domain->m_symmY); domain->m_symmY = NULL;
+   if(domain->m_symmZ != NULL)DRAM_FREE(domain->m_symmZ); domain->m_symmZ = NULL;
+}
+#endif //NOT FSIM and NOT OCR
 /* Stuff needed for boundary conditions */
 /* 2 BCs on each of 6 hexahedral faces (12 bits) */
 #define XI_M        0x003
@@ -2577,7 +2678,11 @@ int mainEdt() {
 #else
 int main(int argc, char *argv[]) {
 #endif
+#ifdef FSIM
+  Index_t edgeElems = 15 ;
+#else
   Index_t edgeElems = 45 ;
+#endif
   Index_t edgeNodes = edgeElems+1 ;
   Index_t domElems ;
 
@@ -2589,10 +2694,14 @@ TRACE0("/* allocate domain data structure */");
 
   domain = (SHARED struct Domain_t *)DRAM_MALLOC(ONE,sizeof(struct Domain_t));
 
-//xe_printf("rag: domain %16.16lx\n",(uint64_t)domain);
+#if defined(FSIM)
+  xe_printf("rag: domain %16.16lx\n",(uint64_t)domain);
+#endif
 
 #if defined(FSIM) || defined(OCR)
   for( size_t i = 0; i< ONE*sizeof(struct Domain_t) ; ++i ) *(char *)domain = (char)0;
+#else
+  memset(domain,0,sizeof(ONE*sizeof(struct Domain_t)));
 #endif
 
 TRACE0("/* get run options to measure various metrics */");
@@ -2788,12 +2897,12 @@ TRACE0("/* set up elemement connectivity information */");
 //DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   FINISH
-    domain->m_lxip[0] = 1 ;
-    PAR_FOR_0xNx1(i,domElems,domain,domElems)
-          domain->m_lxim[i]   = i-1 ;
-          domain->m_lxip[i-1] = i ;
+    domain->m_lxim[0] = 0 ;
+    PAR_FOR_0xNx1(i,domElems-1,domain,domElems)
+          domain->m_lxim[i+1] = i ;
+          domain->m_lxip[i  ] = i+1 ;
     END_PAR_FOR(i)
-    domain->m_lxim[domElems-1] = domElems-2 ;
+    domain->m_lxip[domElems-1] = domElems-1 ;
   END_FINISH
 
   FINISH
@@ -2921,6 +3030,15 @@ TRACE0("/* LagrangeLeapFrog() */");
 
 #if defined(FSIM) || defined(OCR)
   DOMAIN_DESTROY(&domainObject);
+#else
+TRACE0("/* Deallocate field memory */");
+  domain_DeallocateNodesets() ;
+  domain_DeallocateNodalPersistent() ;
+
+  domain_DeallocateElemTemporary () ;
+  domain_DeallocateElemPersistent() ;
+
+  DRAM_FREE(domain);
 #endif // FSIM or OCR
 
   EXIT(0);

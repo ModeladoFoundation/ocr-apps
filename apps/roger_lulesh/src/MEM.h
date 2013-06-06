@@ -28,12 +28,12 @@ extern "C" {
 #define DRAM_FREE(ptr)                 dram_free(ptr)
 #define DRAM_MALLOC(count,sizeof_type) dram_alloc(&domainObject,(count),(sizeof_type))
 #define SPAD_FREE(ptr)                 spad_free(ptr)
-#define SPAD_MALLOC(count,sizeof_type) spad_alloc((count),(sizeof_type))
+#define SPAD_MALLOC(count,sizeof_type) spad_alloc((count)*(sizeof_type))
 
 void  dram_free(void *ptr);
 void *dram_alloc(struct DomainObject_t *domainObject, size_t count, size_t sizeof_type);
 void  spad_free(void *ptr);
-void *spad_alloc(size_t count, size_t sizeof_type);
+void *spad_alloc(size_t len);
 
 #define DOMAIN_CREATE(object,edgeElems,edgeNodes)         domain_create(object,edgeElems,edgeNodes)
 #define DOMAIN_DESTROY(object)         domain_destroy(object)

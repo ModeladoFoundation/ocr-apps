@@ -47,7 +47,7 @@
 
 struct DomainObject_t {
   ocrGuid_t guid;
-  uint8_t  *base;
+  uint64_t *base;
   size_t    offset;
   size_t    limit;
 };
