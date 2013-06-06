@@ -1,13 +1,13 @@
 #if defined(OCR)
-//RAG -G ACK FOR EMULATION OF FSIM ON linux with OCR
+//RAG HACK FOR EMULATION OF FSIM ON linux with OCR
 #define xe_printf(...) printf(__VA_ARGS__)
 #endif
 #if defined(FSIM)
 #define TRACE0(str) xe_printf("RAG:%s\n",str);
-#define TRACE1(str) xe_printf("RAG:: %s\n",str);
-#define TRACE2(str) xe_printf("RAG::: %s\n",str);
-#define TRACE3(str) xe_printf("RAG:::: %s\n",str);
-#define TRACE4(str) xe_printf("RAG::::: %s\n",str);
+#define TRACE1(str) 
+#define TRACE2(str) 
+#define TRACE3(str) 
+#define TRACE4(str) 
 #elif defined(OCR)
 #define TRACE0(str)    printf("RAG:%s\n",str);fflush(stdout);
 #define TRACE1(str)    printf("RAG:: %s\n",str);fflush(stdout);
@@ -102,7 +102,7 @@ Additional BSD Notice
 enum { VolumeError = -1, QStopError = -2 } ;
 
 #if defined(FSIM) || defined(OCR)
-struct DomainObject_t domainObject = { .guid = (uint64_t)NULL, .base = NULL, .offset = -1, .limit = -1 };
+struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0 };
 #endif // FSIM or OCR
 
 SHARED struct Domain_t *domain = NULL;
@@ -126,6 +126,23 @@ void  Release_Real_t( Real_t *ptr) { if(ptr != NULL) { SPAD_FREE(ptr); } }
 
 void
 domain_AllocateNodalPersistent(size_t hcSize) {
+TRACE1("Allocate EP entry");
+#ifdef FSIM
+  xe_printf("rag: domain              %16.16lx\n",domain);
+  xe_printf("rag: domain->m_x         %16.16lx\n",domain->m_x);
+  xe_printf("rag: domain->m_y         %16.16lx\n",domain->m_y);
+  xe_printf("rag: domain->m_z         %16.16lx\n",domain->m_z);
+  xe_printf("rag: domain->m_xd        %16.16lx\n",domain->m_xd);
+  xe_printf("rag: domain->m_yd        %16.16lx\n",domain->m_yd);
+  xe_printf("rag: domain->m_zd        %16.16lx\n",domain->m_zd);
+  xe_printf("rag: domain->m_xdd       %16.16lx\n",domain->m_xdd);
+  xe_printf("rag: domain->m_ydd       %16.16lx\n",domain->m_ydd);
+  xe_printf("rag: domain->m_zdd       %16.16lx\n",domain->m_zdd);
+  xe_printf("rag: domain->m_fx        %16.16lx\n",domain->m_fx);
+  xe_printf("rag: domain->m_fy        %16.16lx\n",domain->m_fy);
+  xe_printf("rag: domain->m_fz        %16.16lx\n",domain->m_fz);
+  xe_printf("rag: domain->m_nodalMass %16.16lx\n",domain->m_nodalMass);
+#endif // FSIM
 TRACE1("Allocate NP m_(x|y|z)");
    if(domain->m_x != NULL)DRAM_FREE(domain->m_x); domain->m_x = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
    if(domain->m_y != NULL)DRAM_FREE(domain->m_y); domain->m_y = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
@@ -145,23 +162,76 @@ TRACE1("Allocate NP m_f(x|y|z)");
 TRACE1("Allocate NP m_nodalMass(x|y|z)");
    if(domain->m_nodalMass != NULL)DRAM_FREE(domain->m_nodalMass); domain->m_nodalMass = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t));
 TRACE1("Allocate NP zero m_(x|y|z)d, m_(x|y|z)dd and m_nodalMass(x|y|z)");
-   FINISH
-      PAR_FOR_0xNx1(i,hcSize,domain)
-            domain->m_xd[i] = (Real_t)(0.0);
-            domain->m_yd[i] = (Real_t)(0.0);
-            domain->m_zd[i] = (Real_t)(0.0);
+#ifdef FSIM
+  xe_printf("rag: domain %16.16lx\n",domain);
+  xe_printf("rag: domain->m_xd %16.16lx\n",domain->m_xd);
+  xe_printf("rag: domain->m_xy %16.16lx\n",domain->m_yd);
+  xe_printf("rag: domain->m_xz %16.16lx\n",domain->m_zd);
+  xe_printf("rag: domain->m_xd %16.16lx\n",domain->m_xdd);
+  xe_printf("rag: domain->m_xy %16.16lx\n",domain->m_ydd);
+  xe_printf("rag: domain->m_xz %16.16lx\n",domain->m_zdd);
+  xe_printf("rag: domain->m_nodalMassv %16.16lx\n",domain->m_nodalMass);
+  xe_printf("rag: loop (0;<%16.16lx;1)\n",hcSize);
+#endif
+  FINISH
+    PAR_FOR_0xNx1(i,hcSize,domain)
+      domain->m_xd[i] = (Real_t)(0.0);
+      domain->m_yd[i] = (Real_t)(0.0);
+      domain->m_zd[i] = (Real_t)(0.0);
 
-            domain->m_xdd[i] = (Real_t)(0.0);
-            domain->m_ydd[i] = (Real_t)(0.0);
-            domain->m_zdd[i] = (Real_t)(0.0) ;
+      domain->m_xdd[i] = (Real_t)(0.0);
+      domain->m_ydd[i] = (Real_t)(0.0);
+      domain->m_zdd[i] = (Real_t)(0.0) ;
 
-            domain->m_nodalMass[i] = (Real_t)(0.0) ;
-      END_PAR_FOR(i)
-   END_FINISH
+      domain->m_nodalMass[i] = (Real_t)(0.0) ;
+    END_PAR_FOR(i)
+  END_FINISH
+#ifdef FSIM
+  xe_printf("rag: domain              %16.16lx\n",domain);
+  xe_printf("rag: domain->m_x         %16.16lx\n",domain->m_x);
+  xe_printf("rag: domain->m_y         %16.16lx\n",domain->m_y);
+  xe_printf("rag: domain->m_z         %16.16lx\n",domain->m_z);
+  xe_printf("rag: domain->m_xd        %16.16lx\n",domain->m_xd);
+  xe_printf("rag: domain->m_yd        %16.16lx\n",domain->m_yd);
+  xe_printf("rag: domain->m_zd        %16.16lx\n",domain->m_zd);
+  xe_printf("rag: domain->m_xdd       %16.16lx\n",domain->m_xdd);
+  xe_printf("rag: domain->m_ydd       %16.16lx\n",domain->m_ydd);
+  xe_printf("rag: domain->m_zdd       %16.16lx\n",domain->m_zdd);
+  xe_printf("rag: domain->m_fx        %16.16lx\n",domain->m_fx);
+  xe_printf("rag: domain->m_fy        %16.16lx\n",domain->m_fy);
+  xe_printf("rag: domain->m_fz        %16.16lx\n",domain->m_fz);
+  xe_printf("rag: domain->m_nodalMass %16.16lx\n",domain->m_nodalMass);
+#endif // FSIM
+TRACE1("Allocate NP returns");
 }
 
 void
 domain_AllocateElemPersistent(size_t hcSize) {
+TRACE1("Allocate EP entry");
+#if defined(FSIM)
+  xe_printf("rag: domain                %16.16lx\n",domain);
+  xe_printf("rag: domain->m_matElemlist %16.16lx\n",domain->m_matElemlist);
+  xe_printf("rag: domain->m_nodelist    %16.16lx\n",domain->m_nodelist);
+  xe_printf("rag: domain->m_lxim        %16.16lx\n",domain->m_lxim);
+  xe_printf("rag: domain->m_lxip        %16.16lx\n",domain->m_lxip);
+  xe_printf("rag: domain->m_letam       %16.16lx\n",domain->m_letam);
+  xe_printf("rag: domain->m_letap       %16.16lx\n",domain->m_letap);
+  xe_printf("rag: domain->m_lzetam      %16.16lx\n",domain->m_lzetam);
+  xe_printf("rag: domain->m_lzetap      %16.16lx\n",domain->m_lzetap);
+  xe_printf("rag: domain->m_elemBC      %16.16lx\n",domain->m_elemBC);
+  xe_printf("rag: domain->m_e           %16.16lx\n",domain->m_e);
+  xe_printf("rag: domain->m_p           %16.16lx\n",domain->m_p);
+  xe_printf("rag: domain->m_q           %16.16lx\n",domain->m_q);
+  xe_printf("rag: domain->m_ql          %16.16lx\n",domain->m_ql);
+  xe_printf("rag: domain->m_qq          %16.16lx\n",domain->m_qq);
+  xe_printf("rag: domain->m_v           %16.16lx\n",domain->m_v);
+  xe_printf("rag: domain->m_volo        %16.16lx\n",domain->m_volo);
+  xe_printf("rag: domain->m_delv        %16.16lx\n",domain->m_delv);
+  xe_printf("rag: domain->m_vdov        %16.16lx\n",domain->m_vdov);
+  xe_printf("rag: domain->m_arealg      %16.16lx\n",domain->m_arealg);
+  xe_printf("rag: domain->m_ss          %16.16lx\n",domain->m_ss);
+  xe_printf("rag: domain->m_elemMass    %16.16lx\n",domain->m_elemMass);
+#endif // FSIM
 TRACE1("Allocate EP m_matElemlist and m_nodelist");
    if(domain->m_matElemlist != NULL)DRAM_FREE(domain->m_matElemlist); domain->m_matElemlist = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
    if(domain->m_nodelist != NULL)DRAM_FREE(domain->m_nodelist); domain->m_nodelist= (SHARED Index_t *)DRAM_MALLOC(hcSize,EIGHT*sizeof(Index_t)) ;
@@ -196,32 +266,59 @@ TRACE1("Allocate EP zero m_(e|p|v)");
   xe_printf("rag: domain->m_p %16.16lx\n",domain->m_p);
   xe_printf("rag: domain->m_v %16.16lx\n",domain->m_v);
   xe_printf("rag: loop (0;<%16.16lx;1)\n",hcSize);
-#endif
+#endif // FSIM
    FINISH 
       PAR_FOR_0xNx1(i,hcSize,domain)
             domain->m_e[i] = (Real_t)(0.0);
-#ifdef FSIM
-//xe_printf("rag: m_e[%16.16lx] = %16.16lx\n",i,domain->m_e[i]);
-#endif
             domain->m_p[i] = (Real_t)(0.0);
-#ifdef FSIM
-//xe_printf("rag: m_p[%16.16lx] = %16.16lx\n",i,domain->m_e[i]);
-#endif
             domain->m_v[i] = (Real_t)(1.0);
-#ifdef FSIM
-//xe_printf("rag: m_v[%16.16lx] = %16.16lx\n",i,domain->m_e[i]);
-#endif
       END_PAR_FOR(i)
    END_FINISH
 #if defined(FSIM)
-  xe_printf("rag: end (0;<%16.16lx;1)\n",hcSize);
-#endif
+  xe_printf("rag: domain                %16.16lx\n",domain);
+  xe_printf("rag: domain->m_matElemlist %16.16lx\n",domain->m_matElemlist);
+  xe_printf("rag: domain->m_nodelist    %16.16lx\n",domain->m_nodelist);
+  xe_printf("rag: domain->m_lxim        %16.16lx\n",domain->m_lxim);
+  xe_printf("rag: domain->m_lxip        %16.16lx\n",domain->m_lxip);
+  xe_printf("rag: domain->m_letam       %16.16lx\n",domain->m_letam);
+  xe_printf("rag: domain->m_letap       %16.16lx\n",domain->m_letap);
+  xe_printf("rag: domain->m_lzetam      %16.16lx\n",domain->m_lzetam);
+  xe_printf("rag: domain->m_lzetap      %16.16lx\n",domain->m_lzetap);
+  xe_printf("rag: domain->m_elemBC      %16.16lx\n",domain->m_elemBC);
+  xe_printf("rag: domain->m_e           %16.16lx\n",domain->m_e);
+  xe_printf("rag: domain->m_p           %16.16lx\n",domain->m_p);
+  xe_printf("rag: domain->m_q           %16.16lx\n",domain->m_q);
+  xe_printf("rag: domain->m_ql          %16.16lx\n",domain->m_ql);
+  xe_printf("rag: domain->m_qq          %16.16lx\n",domain->m_qq);
+  xe_printf("rag: domain->m_v           %16.16lx\n",domain->m_v);
+  xe_printf("rag: domain->m_volo        %16.16lx\n",domain->m_volo);
+  xe_printf("rag: domain->m_delv        %16.16lx\n",domain->m_delv);
+  xe_printf("rag: domain->m_vdov        %16.16lx\n",domain->m_vdov);
+  xe_printf("rag: domain->m_arealg      %16.16lx\n",domain->m_arealg);
+  xe_printf("rag: domain->m_ss          %16.16lx\n",domain->m_ss);
+  xe_printf("rag: domain->m_elemMass    %16.16lx\n",domain->m_elemMass);
+#endif // FSIM
+TRACE1("Allocate EP returns");
 }
 
    /* Temporaries should not be initialized in bulk but */
    /* this is a runnable placeholder for now */
 void
 domain_AllocateElemTemporary(size_t hcSize) {
+TRACE1("Allocate ET entry");
+#if defined(FSIM)
+  xe_printf("rag: domain              %16.16lx\n",domain);
+  xe_printf("rag: domain->m_dxx       %16.16lx\n",domain->m_dxx);
+  xe_printf("rag: domain->m_dyy       %16.16lx\n",domain->m_dyy);
+  xe_printf("rag: domain->m_dzz       %16.16lx\n",domain->m_dzz);
+  xe_printf("rag: domain->m_delv_xi   %16.16lx\n",domain->m_delv_xi);
+  xe_printf("rag: domain->m_delv_eta  %16.16lx\n",domain->m_delv_eta);
+  xe_printf("rag: domain->m_delv_zeta %16.16lx\n",domain->m_delv_zeta);
+  xe_printf("rag: domain->m_delx_xi   %16.16lx\n",domain->m_delx_xi);
+  xe_printf("rag: domain->m_delx_eta  %16.16lx\n",domain->m_delx_eta);
+  xe_printf("rag: domain->m_delx_zeta %16.16lx\n",domain->m_delx_zeta);
+  xe_printf("rag: domain->m_vnew      %16.16lx\n",domain->m_vnew);
+#endif // FSIM
 TRACE1("Allocate ET m_d(xx|yy|zz)");
   if(domain->m_dxx != NULL)DRAM_FREE(domain->m_dxx); domain->m_dxx = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
   if(domain->m_dyy != NULL)DRAM_FREE(domain->m_dyy); domain->m_dyy = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
@@ -236,14 +333,42 @@ TRACE1("Allocate ET m_delx_zi,m_delx_eta,m_delx_zeta");
   if(domain->m_delx_zeta != NULL)DRAM_FREE(domain->m_delx_zeta); domain->m_delx_zeta = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
 TRACE1("Allocate ET m_vnew");
   if(domain->m_vnew != NULL)DRAM_FREE(domain->m_vnew); domain->m_vnew = (SHARED Real_t *)DRAM_MALLOC(hcSize,sizeof(Real_t)) ;
+#if defined(FSIM)
+  xe_printf("rag: domain              %16.16lx\n",domain);
+  xe_printf("rag: domain->m_dxx       %16.16lx\n",domain->m_dxx);
+  xe_printf("rag: domain->m_dyy       %16.16lx\n",domain->m_dyy);
+  xe_printf("rag: domain->m_dzz       %16.16lx\n",domain->m_dzz);
+  xe_printf("rag: domain->m_delv_xi   %16.16lx\n",domain->m_delv_xi);
+  xe_printf("rag: domain->m_delv_eta  %16.16lx\n",domain->m_delv_eta);
+  xe_printf("rag: domain->m_delv_zeta %16.16lx\n",domain->m_delv_zeta);
+  xe_printf("rag: domain->m_delx_xi   %16.16lx\n",domain->m_delx_xi);
+  xe_printf("rag: domain->m_delx_eta  %16.16lx\n",domain->m_delx_eta);
+  xe_printf("rag: domain->m_delx_zeta %16.16lx\n",domain->m_delx_zeta);
+  xe_printf("rag: domain->m_vnew      %16.16lx\n",domain->m_vnew);
+#endif // FSIM
+TRACE1("Allocate ET returns");
 }
 
 void
 domain_AllocateNodesets(size_t hcSize) {
+TRACE1("Allocate NS entry");
+#if defined(FSIM)
+  xe_printf("rag: domain              %16.16lx\n",domain);
+  xe_printf("rag: domain->m_symmX     %16.16lx\n",domain->m_symmX);
+  xe_printf("rag: domain->m_symmY     %16.16lx\n",domain->m_symmY);
+  xe_printf("rag: domain->m_symmZ     %16.16lx\n",domain->m_symmZ);
+#endif // FSIM
 TRACE1("Allocate NS m_symm(X|Y|Z)");
    if(domain->m_symmX != NULL)DRAM_FREE(domain->m_symmX); domain->m_symmX = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
    if(domain->m_symmY != NULL)DRAM_FREE(domain->m_symmY); domain->m_symmY = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
    if(domain->m_symmZ != NULL)DRAM_FREE(domain->m_symmZ); domain->m_symmZ = (SHARED Index_t *)DRAM_MALLOC(hcSize,sizeof(Index_t)) ;
+#if defined(FSIM)
+  xe_printf("rag: domain              %16.16lx\n",domain);
+  xe_printf("rag: domain->m_symmX     %16.16lx\n",domain->m_symmX);
+  xe_printf("rag: domain->m_symmY     %16.16lx\n",domain->m_symmY);
+  xe_printf("rag: domain->m_symmZ     %16.16lx\n",domain->m_symmZ);
+#endif // FSIM
+TRACE1("Allocate NS returns");
 }
 #if !defined(FSIM) && !defined(OCR)
    /****************/
@@ -2646,16 +2771,19 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
 
 static INLINE
 void CalcTimeConstraintsForElems() {
+TRACE3("CalcTimeConstrantsForElems() entry");
 
-  /* evaluate time constraint */
+TRACE3("/* evaluate time constraint */");
   CalcCourantConstraintForElems() ;
 
-  /* check hydro constraint */
+TRACE3("/* check hydro constraint */");
   CalcHydroConstraintForElems() ;
+TRACE3("CalcTimeConstrantsForElems() return");
 } // CalcTimeConstraintsForElems()
 
 static INLINE
 void LagrangeLeapFrog() {
+TRACE1("LagrangeLeapFrog() entry");
 
 TRACE1("/* calculate nodal forces, accelerations, velocities, positions, with */");
 TRACE1(" * applied boundary conditions and slide surface considerations       */");
@@ -2671,6 +2799,7 @@ TRACE1("/* calculate time constraints for elems */");
 
   CalcTimeConstraintsForElems();
 
+TRACE1("LagrangeLeapFrog() return");
 } // LagangeLeapFrog()
 
 #ifdef FSIM
@@ -2679,7 +2808,7 @@ int mainEdt() {
 int main(int argc, char *argv[]) {
 #endif
 #ifdef FSIM
-  Index_t edgeElems = 15 ;
+  Index_t edgeElems =  5 ;
 #else
   Index_t edgeElems = 45 ;
 #endif
@@ -2693,13 +2822,14 @@ TRACE0("/* allocate domain data structure */");
 #endif // FSIM or OCR
 
   domain = (SHARED struct Domain_t *)DRAM_MALLOC(ONE,sizeof(struct Domain_t));
-
 #if defined(FSIM)
   xe_printf("rag: domain %16.16lx\n",(uint64_t)domain);
 #endif
-
-#if defined(FSIM) || defined(OCR)
-  for( size_t i = 0; i< ONE*sizeof(struct Domain_t) ; ++i ) *(char *)domain = (char)0;
+#if defined(FSIM)
+  for( size_t i = 0; i < ONE*sizeof(struct Domain_t) ; ++i ) {
+     char *ptr = (char *)domain;
+     ptr[i] = (char)0;
+  } // for i
 #else
   memset(domain,0,sizeof(ONE*sizeof(struct Domain_t)));
 #endif
@@ -2974,9 +3104,7 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
 #endif // HEX
 #endif // FSIM
 
-#ifndef FSIM_DEBUG
   while(domain->m_time < domain->m_stoptime ) {
-#endif // FSIM_DEBUG
 
 TRACE0("/* TimeIncrement() */");
 
@@ -3008,9 +3136,7 @@ TRACE0("/* LagrangeLeapFrog() */");
 #endif   // FSIM
 #endif // LULESH_SHOW_PROGRESS
 
-#ifndef FSIM_DEBUG
   } // while time
-#endif // FSIM_DEBUG
 
 #ifdef    FSIM
 #if 1    // HEX

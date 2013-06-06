@@ -50,7 +50,7 @@ struct DomainObject_t {
   uint64_t *base;
   size_t    offset;
   size_t    limit;
-};
+}; 
 
 #else // DEFAULT is C99
 
