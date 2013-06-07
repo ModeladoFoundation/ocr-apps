@@ -194,9 +194,9 @@ void *spad_alloc(size_t len) {
   uint8_t retVal = 0;
   void *ptrValue = NULL;
   uint64_t spad_dbGuid_stack_index = AMO__sync_fetch_and_add_uint64_t(&spad_dbGuid_stack_top,(uint64_t)1);
-#if OCR_SPAD_WORKAROUND==0
+#if defined(OCR) && (OCR_SPAD_WORKAROUND==0)
   xe_printf("rag: spad_alloc() index = %16.16lx\n",spad_dbGuid_stack_index);
-#endif // OCR_SPAD_WORKAROUND
+#endif // OCR and OCR_SPAD_WORKAROUND
 //xe_printf("rag: spad_alloc() top   = %16.16lx\n",spad_dbGuid_stack_top);
   if ( spad_dbGuid_stack_index < 100 ) {
 //  xe_printf("rag: spad_alloc()  len   = %16.16lx\n",len);
@@ -226,15 +226,15 @@ void *spad_alloc(size_t len) {
 
 void  spad_free(void *ptrValue) {
 //xe_printf("rag: spad_free() entry\n");
-#if       OCR_SPAD_WORKAROUND == 0
+#if       (OCR_SPAD_WORKAROUND == 0)
   uint64_t retVal = 0;
   uint64_t spad_dbGuid_stack_index = AMO__sync_fetch_and_add_uint64_t(&spad_dbGuid_stack_top,(int64_t)-1) - 1; // want post decremented value
 #if   defined(FSIM)
 //xe_printf("rag: spad_free() index = %16.16lx guid = %16.16lx\n",(spad_dbGuid_stack_index),spad_dbGuid_stack[spad_dbGuid_stack_index].data);
 #elif defined(OCR)
-#if OCR_SPAD_WORKAROUND==0
+#if defined(OCR) && (OCR_SPAD_WORKAROUND==0)
 xe_printf("rag: spad_free() index = %16.16lx guid = %16.16lx\n",(spad_dbGuid_stack_index),spad_dbGuid_stack[spad_dbGuid_stack_index]);
-#endif // OCR_SPAD_WORKAROUND
+#endif // OCR and OCR_SPAD_WORKAROUND
 #endif // FSIM or OCR
   if ( /* ( 0 <= spad_dbGuid_stack_index ) && */ ( spad_dbGuid_stack_index < MAX_spad_dbGuid_stack_size ) ) {
     retVal = ocrDbDestroy(spad_dbGuid_stack[spad_dbGuid_stack_index]);
