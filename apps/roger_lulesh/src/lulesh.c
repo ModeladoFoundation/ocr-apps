@@ -2815,7 +2815,7 @@ int main(int argc, char *argv[]) {
   ocrInit((int *)&argc,argv,0,NULL);
 #endif // OCR
 #if     defined(FSIM) || ( defined(OCR) && (OCR_SPAD_WORKAROUND==0) )
-  Index_t edgeElems =  5 ; // tiny problem size
+  Index_t edgeElems = 15 ; // tiny problem size (ran to completion with 5, try 15)
 #else   // FSIM
   Index_t edgeElems = 45 ; // standard problem size
 #endif // FSIM
