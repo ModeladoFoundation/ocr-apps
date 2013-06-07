@@ -19,7 +19,7 @@ lulesh:	lulesh.o AMO.o Makefile
 	$(ICC) $(CFLAGS) -o lulesh lulesh.o AMO.o $(LDFLAGS)
 
 run:	lulesh
-	./lulesh
+	CILK_NWORKERS=8 ./lulesh
 
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
@@ -30,4 +30,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f AMO.o lulesh.o lulesh nohup.out
+	rm -f AMO.o lulesh.o lulesh

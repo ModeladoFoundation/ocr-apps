@@ -34,4 +34,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f AMO.o lulesh.o lulesh nohup.out
+	rm -f AMO.o lulesh.o lulesh

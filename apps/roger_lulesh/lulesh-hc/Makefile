@@ -37,4 +37,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f AMO.o rose_lulesh.o rose_lulesh.c lulesh.o lulesh nohup.out
+	rm -f AMO.o rose_lulesh.o rose_lulesh.c lulesh.o lulesh

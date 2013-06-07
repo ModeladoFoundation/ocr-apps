@@ -1,6 +1,48 @@
+#if defined(OCR)
+//RAG HACK FOR EMULATION OF FSIM ON linux with OCR
+#define xe_printf(...) printf(__VA_ARGS__)
+#endif
+#if defined(FSIM)
+#define TRACE0(str) xe_printf("RAG:: %s\n",str);
+#define TRACE1(str) 
+#define TRACE2(str) 
+#define TRACE3(str) 
+#define TRACE4(str) 
+#define TRACE5(str) 
+#define TRACE6(str) 
+#elif defined(OCR)
+#if       0
+#define TRACE0(str)    printf("RAG:: %s\n",str);fflush(stdout);
+#define TRACE1(str)    printf("RAG:::: %s\n",str);fflush(stdout);
+#define TRACE2(str)    printf("RAG:::::: %s\n",str);fflush(stdout);
+#define TRACE3(str)    printf("RAG:::::::: %s\n",str);fflush(stdout);
+#define TRACE4(str)    printf("RAG:::::::::: %s\n",str);fflush(stdout);
+#define TRACE5(str)    printf("RAG:::::::::::: %s\n",str);fflush(stdout);
+#define TRACE6(str)    printf("RAG:::::::::::::: %s\n",str);fflush(stdout);
+#else  // 0 or 1
+#define TRACE0(str)
+#define TRACE1(str)
+#define TRACE2(str)
+#define TRACE3(str) 
+#define TRACE4(str) 
+#define TRACE5(str) 
+#define TRACE6(str) 
+#endif // 0 or 1
+#else // NOT FSIM or OCR
+#define TRACE0(str)
+#define TRACE1(str)
+#define TRACE2(str)
+#define TRACE3(str) 
+#define TRACE4(str) 
+#define TRACE5(str) 
+#define TRACE6(str) 
+#endif // FSIM or OCR
 ////////////////////////////////////////////////////////////////////////
 // RAG some generic macros to address language restrictions
 ////////////////////////////////////////////////////////////////////////
+#ifndef OCR_SPAD_WORKAROUND
+#define OCR_SPAD_WORKAROUND 0
+#endif
 
 #if  defined(HAB_C)
 
@@ -32,7 +74,7 @@
 #include <upc_strict.h>
 #include <upc_collective.h>
 
-#elif defined(FSIM) || defined(OCR)
+#elif defined(FSIM)
 
 #define INLINE inline
 #define HC_UPC_CONST const
@@ -48,6 +90,23 @@
 struct DomainObject_t {
   ocrGuid_t guid;
   uint64_t *base;
+  size_t    offset;
+  size_t    limit;
+}; 
+
+#elif defined(OCR)
+
+#define INLINE inline
+#define HC_UPC_CONST const
+#define HAB_CONST const
+#define SHARED
+#define EXIT(code) { printf("RAG: exit(%d)\n",code); ocrFinish(); }
+
+#include "ocr.h"
+
+struct DomainObject_t {
+  ocrGuid_t guid;
+  void     *base;
   size_t    offset;
   size_t    limit;
 }; 

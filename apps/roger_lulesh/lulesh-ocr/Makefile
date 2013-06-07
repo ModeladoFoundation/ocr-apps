@@ -5,9 +5,15 @@ endif
 ifndef RMD_INSTALL_BASE
 	RMD_INSTALL_BASE = ../../../ss
 endif
+ifndef OCR_INSTALL
+	OCR_INSTALL = ../../../ocr/runtime/ocr-x86/ocr-install
+endif
 
 GCC	= gcc -std=c99 -DOCR
-CFLAGS	= -fpic -g $(OPT)
+CFLAGS	= -fpic -g $(OPT) -I$(OCR_INSTALL)/include \
+	-DOCR_SPAD_WORKAROUND=0 # 0 (use spad_alloc/spad_free or 1 (malloc/free)
+LDFLAGS	= -fpic -g $(OPT) -L$(OCR_INSTALL)/lib -locr
+LDLIBS	= -locr
 
 all: e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh
 

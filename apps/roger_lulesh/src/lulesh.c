@@ -1,26 +1,3 @@
-#if defined(OCR)
-//RAG HACK FOR EMULATION OF FSIM ON linux with OCR
-#define xe_printf(...) printf(__VA_ARGS__)
-#endif
-#if defined(FSIM)
-#define TRACE0(str) xe_printf("RAG:%s\n",str);
-#define TRACE1(str) 
-#define TRACE2(str) 
-#define TRACE3(str) 
-#define TRACE4(str) 
-#elif defined(OCR)
-#define TRACE0(str)    printf("RAG:%s\n",str);fflush(stdout);
-#define TRACE1(str)    printf("RAG:: %s\n",str);fflush(stdout);
-#define TRACE2(str)    printf("RAG::: %s\n",str);fflush(stdout);
-#define TRACE3(str)    printf("RAG:::: %s\n",str);fflush(stdout);
-#define TRACE4(str)    printf("RAG::::: %s\n",str);fflush(stdout);
-#else // NOT FSIM or OCR
-#define TRACE0(str)
-#define TRACE1(str)
-#define TRACE2(str)
-#define TRACE3(str)
-#define TRACE4(str)
-#endif // FSIM or OCR
 /*
 
                  Copyright (c) 2010.
@@ -101,8 +78,10 @@ Additional BSD Notice
 
 enum { VolumeError = -1, QStopError = -2 } ;
 
-#if defined(FSIM) || defined(OCR)
+#if defined(FSIM)
 struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0 };
+#elif defined(OCR)
+struct DomainObject_t domainObject = { .guid = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0 };
 #endif // FSIM or OCR
 
 SHARED struct Domain_t *domain = NULL;
@@ -1324,10 +1303,12 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 } // CalcFBHourglassForceForElems
 
 static INLINE
-void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
-{
+void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef) {
+TRACE6("CalcHourglassControlForElems entry");
    Index_t numElem = domain->m_numElem ;
    Index_t numElem8 = numElem * EIGHT ;
+
+TRACE6("Allocate dvdx,dvdy,dvdz,x8n,y8n,z8n");
    Real_t *dvdx = Allocate_Real_t(numElem8) ;
    Real_t *dvdy = Allocate_Real_t(numElem8) ;
    Real_t *dvdz = Allocate_Real_t(numElem8) ;
@@ -1335,7 +1316,7 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
    Real_t *y8n  = Allocate_Real_t(numElem8) ;
    Real_t *z8n  = Allocate_Real_t(numElem8) ;
 
-   /* start loop over elements */
+TRACE6("/* start loop over elements */");
    FINISH
      PAR_FOR_0xNx1(i,numElem,domain,determ,dvdx,dvdy,dvdz,x8n,y8n,z8n)
 #if  defined(HAB_C)
@@ -1352,11 +1333,12 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
 
        SHARED Index_t* elemToNode = (SHARED Index_t *) &domain->m_nodelist[EIGHT*i];
 // RAG -- GATHER (x|y|z)1[0..7] = domain->m_(x|y|z)[domain->m_nodelist[0..7]]
+
        CollectDomainNodesToElemNodes(elemToNode, x1, y1, z1);
 
        CalcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
 
-       /* load into temporary storage for FB Hour Glass control */
+//TRACE6("/* load into temporary storage for FB Hour Glass control */");
        for( Index_t ii=0 ; ii<EIGHT ; ++ii ){
          Index_t jj=EIGHT*i+ii;
 
@@ -1370,7 +1352,7 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
 
        determ[i] = domain->m_volo[i] * domain->m_v[i];
 
-       /* Do a check for negative volumes */
+//TRACE6("/* Do a check for negative volumes */");
        if ( domain->m_v[i] <= cast_Real_t(0.0) ) {
          EXIT(VolumeError) ;
        }
@@ -1382,9 +1364,11 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
   END_FINISH
 
   if ( hgcoef > cast_Real_t(0.) ) {
+TRACE6("Call CalcFBHourglassForceForElems()");
     CalcFBHourglassForceForElems(determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hgcoef) ;
   }
 
+TRACE6("Release  z8n,y8n,x8n,dvdz,dvdy,dvdx");
   Release_Real_t(z8n) ;
   Release_Real_t(y8n) ;
   Release_Real_t(x8n) ;
@@ -1392,27 +1376,32 @@ void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef)
   Release_Real_t(dvdy) ;
   Release_Real_t(dvdx) ;
 
+TRACE6("CalcHourglassControlForElems return");
   return ;
 } // CalcHourglassControlForElems
 
 static INLINE
 void CalcVolumeForceForElems() {
+TRACE5("CalcVolueForceForElems() entry");
   Index_t numElem = domain->m_numElem ;
+
   if (numElem != 0) {
     Real_t  hgcoef = domain->m_hgcoef ;
+
+TRACE5("Allocate sigxx,sigyy,sigzz,determ");
     Real_t *sigxx  = Allocate_Real_t(numElem) ;
     Real_t *sigyy  = Allocate_Real_t(numElem) ;
     Real_t *sigzz  = Allocate_Real_t(numElem) ;
     Real_t *determ = Allocate_Real_t(numElem) ;
 
-    /* Sum contributions to total stress tensor */
+TRACE5("/* Sum contributions to total stress tensor */");
     InitStressTermsForElems(numElem, sigxx, sigyy, sigzz);
 
-    // call elemlib stress integration loop to produce nodal forces from
-    // material stresses.
+TRACE5("// call elemlib stress integration loop to produce nodal forces from");
+TRACE5("// material stresses.");
     IntegrateStressForElems( numElem, sigxx, sigyy, sigzz, determ) ;
 
-    // check for negative element volume
+TRACE5("// check for negative element volume");
     FINISH
       PAR_FOR_0xNx1(k,numElem,determ)
         if (determ[k] <= cast_Real_t(0.0)) {
@@ -1421,13 +1410,17 @@ void CalcVolumeForceForElems() {
       END_PAR_FOR(k)
     END_FINISH
 
+TRACE5("// Hourglass Control for Elems");
     CalcHourglassControlForElems(determ, hgcoef) ;
 
+TRACE5("Release  determ,sigzz,sigyy,sigxx");
     Release_Real_t(determ) ;
     Release_Real_t(sigzz) ;
     Release_Real_t(sigyy) ;
     Release_Real_t(sigxx) ;
   } // if numElem
+
+TRACE5("CalcVolueForceForElems() entry");
 } // CalcVolumeForceForElems()
 
 static INLINE void CalcForceForNodes() {
@@ -2228,6 +2221,9 @@ void CalcMonotonicQForElems() {
    } // if elength
 } // CalcMonotonicQForElems()
 
+static SHARED uint64_t index_AMO;
+static SHARED uint64_t *pIndex_AMO = &index_AMO;
+
 static INLINE
 void CalcQForElems() {
    Real_t qstop = domain->m_qstop ;
@@ -2245,12 +2241,15 @@ void CalcQForElems() {
    CalcMonotonicQForElems() ;
    /* Don't allow excessive artificial viscosity */
    if (numElem != 0) {
-      SHARED int64_t *pidx = (SHARED int64_t *)DRAM_MALLOC(ONE,sizeof(Index_t)); 
-      *pidx = -1; 
+#ifdef    UPC
+      bupc_atomicU64_set_strict(pIndex_AMO,(uint64_t)0); 
+#else  // UPC
+      *pIndex_AMO = 0; 
+#endif // UPC
       FINISH
-        PAR_FOR_0xNx1(i,numElem,domain,qstop,pidx)
+        PAR_FOR_0xNx1(i,numElem,domain,qstop,pIndex_AMO)
           if ( domain->m_q[i] > qstop ) {
-             AMO__sync_fetch_and_add_int64_t(pidx,1);
+             AMO__sync_fetch_and_add_uint64_t(pIndex_AMO,1);
 #ifndef   CILK
              break ;
 #endif // CILK
@@ -2258,10 +2257,15 @@ void CalcQForElems() {
         END_PAR_FOR(i)
       END_FINISH
 
-      if(*pidx >= 0) {
+#ifdef    UPC
+      if ( bupc_atomicU64_read_strict(pIndex_AMO) > 0 ) {
          EXIT(QStopError) ;
-      } // if idx
-      DRAM_FREE(pidx);
+      } // if pIndex_AMO
+#else  // UPC
+      if( *pIndex_AMO > 0 ) {
+         EXIT(QStopError) ;
+      } // if pIndex_AMO
+#endif // UPC
    } // if numElem
 } // CalcQForElems()
 
@@ -2807,11 +2811,14 @@ int mainEdt() {
 #else
 int main(int argc, char *argv[]) {
 #endif
-#ifdef FSIM
-  Index_t edgeElems =  5 ;
-#else
-  Index_t edgeElems = 45 ;
-#endif
+#ifdef OCR
+  ocrInit((int *)&argc,argv,0,NULL);
+#endif // OCR
+#if     defined(FSIM) || ( defined(OCR) && (OCR_SPAD_WORKAROUND==0) )
+  Index_t edgeElems =  5 ; // tiny problem size
+#else   // FSIM
+  Index_t edgeElems = 45 ; // standard problem size
+#endif // FSIM
   Index_t edgeNodes = edgeElems+1 ;
   Index_t domElems ;
 
@@ -2825,14 +2832,14 @@ TRACE0("/* allocate domain data structure */");
 #if defined(FSIM)
   xe_printf("rag: domain %16.16lx\n",(uint64_t)domain);
 #endif
-#if defined(FSIM)
+#if defined(FSIM) || defined(OCR) || defined(UPC)
   for( size_t i = 0; i < ONE*sizeof(struct Domain_t) ; ++i ) {
      char *ptr = (char *)domain;
      ptr[i] = (char)0;
   } // for i
-#else
+#else // DEFAULT all the others
   memset(domain,0,sizeof(ONE*sizeof(struct Domain_t)));
-#endif
+#endif // FSIM or OCR
 
 TRACE0("/* get run options to measure various metrics */");
 

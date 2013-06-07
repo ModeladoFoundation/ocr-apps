@@ -87,4 +87,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh out.map nohup.out
+	rm -f e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh out.map
