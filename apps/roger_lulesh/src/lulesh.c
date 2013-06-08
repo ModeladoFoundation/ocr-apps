@@ -2806,16 +2806,36 @@ TRACE1("/* calculate time constraints for elems */");
 TRACE1("LagrangeLeapFrog() return");
 } // LagangeLeapFrog()
 
-#ifdef FSIM
+#if    defined(OCR)
+ocrGuid_t mainEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+int main(int argc, char ** argv) {
+TRACE0("main entry");
+  ocrEdt_t edtList[1] = { mainEdt };
+  ocrGuid_t mainEdtGuid;
+TRACE0("call ocrInit()");
+  ocrInit((int *)&argc,argv,1,edtList);
+TRACE0("call ocrEdtCreate()");
+   /* (ocrGuid_t *)guid,ocrEdt_ funcPtr,u32 paramc, u64 *params, void *paramv[], u16 properties, u32 depc, ocrGuid_t *depv, ocrGuid_t *outputEvent */
+  ocrEdtCreate(&mainEdtGuid, mainEdt, 0, NULL, NULL, 0, 0, NULL, NULL);
+TRACE0("call ocrEdtSchedule()");
+  ocrEdtSchedule(mainEdtGuid);
+TRACE0("call ocrEdtCleanup()");
+  ocrCleanup();
+TRACE0("main return");
+  return 0;
+}
+
+ocrGuid_t mainEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
+#elif defined(FSIM)
 int mainEdt() {
-#else
+TRACE0("mainEdt entry");
+#else // DEFAULE, cilk, h-c, c99, and upc
 int main(int argc, char *argv[]) {
-#endif
-#ifdef OCR
-  ocrInit((int *)&argc,argv,0,NULL);
-#endif // OCR
+#endif // OCR or FSIM
 #if     defined(FSIM) || ( defined(OCR) && (OCR_SPAD_WORKAROUND==0) )
-  Index_t edgeElems = 15 ; // tiny problem size (ran to completion with 5, try 15)
+// tiny problem size 
+  Index_t edgeElems = 30 ;
+// ran to completion with 5, many cycles for 10 and 15, so trying 30
 #else   // FSIM
   Index_t edgeElems = 45 ; // standard problem size
 #endif // FSIM
@@ -3174,6 +3194,7 @@ TRACE0("/* Deallocate field memory */");
   DRAM_FREE(domain);
 #endif // FSIM or OCR
 
+TRACE0("mainEdt exit");
   EXIT(0);
   return 0; // IMPOSSIBLE
 } // main()
