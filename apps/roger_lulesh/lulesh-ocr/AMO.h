@@ -1,1 +1,1 @@
-../src/AMO.h
+../edt-src/AMO.h
