@@ -412,7 +412,8 @@ struct Domain_t {
 // RAG good choice might be a small multiple of a cacheline size
 // otherwise i think there is to much false sharing or runtime overhead.
 #define HAB_C_BLK_SIZE (16)
-
+// RAG -- to test forasync set #if 1 below to #if 0
+#if 1
 #define PAR_FOR_0xNx1(index,len, ... ) \
   Index_t index ## _len = (len); \
   Index_t index ## _blk = (HAB_C_BLK_SIZE); \
@@ -422,13 +423,27 @@ struct Domain_t {
       for ( Index_t index = index ## _out ; index < index ## _end; ++index ) {
 
 #define END_PAR_FOR(index) \
-  } } } // forasync(index,len) IN(...)
+  } } } // for async IN(...) for (index,len)
 
 #define FINISH \
   finish {
 
 #define END_FINISH \
   } // finish
+#else
+#define PAR_FOR_0xNx1(index,len, ... ) \
+  { Index_t index = 0, index ## _blk = HAB_C_BLK_SIZE ; \
+  forasync in(__VA_ARGS__) point(index) size(len) seq(index ## _blk) {
+
+#define END_PAR_FOR(index) \
+  } } // forasync(index,len) in(...)
+
+#define FINISH \
+  finish {
+
+#define END_FINISH \
+  } // finish
+#endif
 
 #elif defined(CILK)
 

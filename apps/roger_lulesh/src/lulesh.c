@@ -2250,7 +2250,7 @@ void CalcQForElems() {
         PAR_FOR_0xNx1(i,numElem,domain,qstop,pIndex_AMO)
           if ( domain->m_q[i] > qstop ) {
              AMO__sync_fetch_and_add_uint64_t(pIndex_AMO,1);
-#ifndef   CILK
+#if   !defined(CILK) && !defined(HAB_C)
              break ;
 #endif // CILK
           } // if domain->m_q
@@ -2829,12 +2829,12 @@ ocrGuid_t mainEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t
 #elif defined(FSIM)
 int mainEdt() {
 TRACE0("mainEdt entry");
-#else // DEFAULE, cilk, h-c, c99, and upc
+#else // DEFAULT, cilk, h-c, c99, and upc
 int main(int argc, char *argv[]) {
 #endif // OCR or FSIM
 #if     defined(FSIM) || ( defined(OCR) && (OCR_SPAD_WORKAROUND==0) )
 // tiny problem size 
-  Index_t edgeElems = 30 ;
+  Index_t edgeElems = 45 ;
 // ran to completion with 5, many cycles for 10 and 15, so trying 30
 #else   // FSIM
   Index_t edgeElems = 45 ; // standard problem size
