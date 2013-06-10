@@ -3,13 +3,23 @@
 #define xe_printf(...) printf(__VA_ARGS__)
 #endif
 #if defined(FSIM)
+#if 1
 #define TRACE0(str) xe_printf("RAG:: %s\n",str);
-#define TRACE1(str) 
-#define TRACE2(str) 
-#define TRACE3(str) 
-#define TRACE4(str) 
-#define TRACE5(str) 
-#define TRACE6(str) 
+#define TRACE1(str) xe_printf("RAG:::: %s\n",str);
+#define TRACE2(str) xe_printf("RAG:::::: %s\n",str);
+#define TRACE3(str) xe_printf("RAG:::::::: %s\n",str);
+#define TRACE4(str) xe_printf("RAG:::::::::: %s\n",str);
+#define TRACE5(str) xe_printf("RAG:::::::::::: %s\n",str);
+#define TRACE6(str) xe_printf("RAG:::::::::::::: %s\n",str);
+#else // 0 or 1
+#define TRACE0(str) xe_printf("RAG:: %s\n",str);
+#define TRACE1(str)
+#define TRACE2(str)
+#define TRACE3(str)
+#define TRACE4(str)
+#define TRACE5(str)
+#define TRACE6(str)
+#endif // 0 or 1
 #elif defined(OCR)
 #if       1
 #define TRACE0(str)    printf("RAG:: %s\n",str);fflush(stdout);
@@ -23,19 +33,19 @@
 #define TRACE0(str)
 #define TRACE1(str)
 #define TRACE2(str)
-#define TRACE3(str) 
-#define TRACE4(str) 
-#define TRACE5(str) 
-#define TRACE6(str) 
+#define TRACE3(str)
+#define TRACE4(str)
+#define TRACE5(str)
+#define TRACE6(str)
 #endif // 0 or 1
 #else // NOT FSIM or OCR
 #define TRACE0(str)
 #define TRACE1(str)
 #define TRACE2(str)
-#define TRACE3(str) 
-#define TRACE4(str) 
-#define TRACE5(str) 
-#define TRACE6(str) 
+#define TRACE3(str)
+#define TRACE4(str)
+#define TRACE5(str)
+#define TRACE6(str)
 #endif // FSIM or OCR
 ////////////////////////////////////////////////////////////////////////
 // RAG some generic macros to address language restrictions
@@ -92,7 +102,7 @@ struct DomainObject_t {
   uint64_t *base;
   size_t    offset;
   size_t    limit;
-}; 
+};
 
 #elif defined(OCR)
 
@@ -109,7 +119,7 @@ struct DomainObject_t {
   void     *base;
   size_t    offset;
   size_t    limit;
-}; 
+};
 
 #else // DEFAULT is C99
 
@@ -160,12 +170,12 @@ struct Domain_t {
    /* Node-centered */
 
    SHARED Real_t  *m_x ;          /* coordinates */
-   SHARED Real_t  *m_y ; 
+   SHARED Real_t  *m_y ;
    SHARED Real_t  *m_z ;
 
    SHARED Real_t  *m_xd ;         /* velocities */
-   SHARED Real_t  *m_yd ; 
-   SHARED Real_t  *m_zd ; 
+   SHARED Real_t  *m_yd ;
+   SHARED Real_t  *m_zd ;
 
    SHARED Real_t  *m_xdd ;        /* accelerations */
    SHARED Real_t  *m_ydd ;
@@ -206,7 +216,7 @@ struct Domain_t {
    SHARED Real_t  *m_delx_xi ;      /* coordinate gradient -- temporary */
    SHARED Real_t  *m_delx_eta ;
    SHARED Real_t  *m_delx_zeta ;
-   
+
    SHARED Real_t  *m_e ;            /* energy */
 
    SHARED Real_t  *m_p ;            /* pressure */
@@ -221,7 +231,7 @@ struct Domain_t {
    SHARED Real_t  *m_vdov ;         /* volume derivative over volume */
 
    SHARED Real_t  *m_arealg ;       /* characteristic length of an element */
-   
+
    SHARED Real_t  *m_ss ;           /* "sound speed" */
 
    SHARED Real_t  *m_elemMass ;     /* mass */
@@ -316,7 +326,7 @@ struct Domain_t {
 #define domain_letap(idx)       domain->m_letap[(Index_t)(idx)]
 #define domain_lzetam(idx)      domain->m_lzetam[(Index_t)(idx)]
 #define domain_lzetap(idx)      domain->m_lzetap[(Index_t)(idx)]
- 
+
 #define domain_elemBC(idx)      domain->m_elemBC[(Index_t)(idx)]
 
 #define domain_dxx(idx)         domain->m_dxx[idx]
@@ -393,7 +403,7 @@ struct Domain_t {
 #endif
 
 ////////////////////////////////////////////////////////////////////////
-// RAG some generic macros to address parallelization 
+// RAG some generic macros to address parallelization
 // RAG and stripmapping and tiling in a general manner
 ////////////////////////////////////////////////////////////////////////
 
@@ -426,7 +436,7 @@ struct Domain_t {
   cilk_for ( Index_t index = 0 ; index < len ; ++index ) {
 
 #define END_PAR_FOR(index) \
-  } // cilk_for (index=0, index<len, ++index) 
+  } // cilk_for (index=0, index<len, ++index)
 
 #define FINISH {
 #define END_FINISH cilk_sync; }
