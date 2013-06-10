@@ -21,7 +21,7 @@
 #define TRACE6(str)
 #endif // 0 or 1
 #elif defined(OCR)
-#if       1
+#if       0
 #define TRACE0(str)    printf("RAG:: %s\n",str);fflush(stdout);
 #define TRACE1(str)    printf("RAG:::: %s\n",str);fflush(stdout);
 #define TRACE2(str)    printf("RAG:::::: %s\n",str);fflush(stdout);
