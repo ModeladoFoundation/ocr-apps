@@ -9,13 +9,13 @@ LDFLAGS = -lm
 
 all: RAG_edt.o AMO.o lulesh.o lulesh
 
-RAG_edt.o:  RAG_edt.c RAG_edt.h RAG.h AMO.h FP.h MEM.h Makefile
+RAG_edt.o:  RAG_edt.c kernels.h RAG_edt.h RAG.h AMO.h FP.h MEM.h Makefile
 	$(GCC) $(CFLAGS) -c RAG_edt.c
 
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.cpp RAG.h AMO.h MEM.h FP.h RAG_edt.h Makefile
+lulesh.o:  lulesh.cpp RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h Makefile
 	$(ICC) $(CFLAGS) -c lulesh.cpp
 
 lulesh:	lulesh.o AMO.o RAG_edt.o Makefile

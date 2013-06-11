@@ -141,6 +141,10 @@ typedef int64_t  Index_t ; /* array subscript and loop index */
 typedef double   Real_t ;  /* floating point representation */
 typedef uint64_t Int_t ;   /* integer representation */
 
+#define   cast_Int_t(arg) (  (Int_t)(arg))
+#define  cast_Real_t(arg) ( (Real_t)(arg))
+#define cast_Index_t(arg) ((Index_t)(arg))
+
 /************************************************************/
 /* Allow for flexible data layout experiments by separating */
 /* array interface from underlying implementation.          */

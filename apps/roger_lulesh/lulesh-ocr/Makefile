@@ -11,13 +11,13 @@ endif
 
 GCC	= gcc -std=c99 -DOCR
 CFLAGS	= -fpic -g $(OPT) -I$(OCR_INSTALL)/include \
-	-DOCR_SPAD_WORKAROUND=1 # 0 (use spad_alloc/spad_free or 1 (malloc/free)
+	-DOCR_SPAD_WORKAROUND=0 # 0 (use spad_alloc/spad_free or 1 (malloc/free)
 LDFLAGS	= -fpic -g $(OPT) -L$(OCR_INSTALL)/lib -locr
 LDLIBS	= -locr
 
 all: RAG_edt.o e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh
 
-RAG_edt.o:  RAG_edt.c RAG_edt.h FP.h MEM.h AMO.h RAG.h Makefile
+RAG_edt.o:  RAG_edt.c RAG_edt.h kernels.h FP.h MEM.h AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c RAG_edt.c
 
 e_sqrt.o:  $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/math/e_sqrt.c Makefile
@@ -43,7 +43,7 @@ MEM.o:  MEM.c MEM.h RAG.h Makefile
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.c RAG.h AMO.h MEM.h FP.h RAG_edt.h Makefile
+lulesh.o:  lulesh.c RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h Makefile
 	$(GCC) $(CFLAGS) -c lulesh.c
 
 lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
