@@ -417,7 +417,16 @@ struct Domain_t {
 // otherwise i think there is to much false sharing or runtime overhead.
 #define HAB_C_BLK_SIZE (16)
 // RAG -- to test forasync set #if 1 below to #if 0
-#if 1
+#if 1 // DO NOT USE forasync
+
+#define EDT_PAR_FOR_0xNx1(index,len,edt_name, ... ) \
+  { Index_t index ## _len = (len) , index ## _blk = (HAB_C_BLK_SIZE) ; \
+    for ( Index_t index ## _out=0 ; index ## _out < index ## _len ; index ## _out  += index ## _blk ) { \
+      Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+      async IN(index ## _out , index ## _end , __VA_ARGS__ ) { \
+      edt_name(index ## _out , index ## _end , __VA_ARGS__ ); \
+  } } } // for async IN(...) for (index,len)
+
 #define PAR_FOR_0xNx1(index,len, ... ) \
   Index_t index ## _len = (len); \
   Index_t index ## _blk = (HAB_C_BLK_SIZE); \
@@ -434,7 +443,17 @@ struct Domain_t {
 
 #define END_FINISH \
   } // finish
-#else
+
+#else  // DO USE forasync
+
+#define EDT_PAR_FOR_0xNx1(index,len,edt_name, ... ) \
+  { Index_t index ## _len = (len) , index ## _blk = (HAB_C_BLK_SIZE) ; \
+    for ( Index_t index ## _out=0 ; index ## _out < index ## _len ; index ## _out  += index ## _blk ) { \
+      Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+      async IN(index ## _out , index ## _end , __VA_ARGS__ ) { \
+      edt_name(index ## _out , index ## _end , __VA_ARGS__ ); \
+  } } } // for async IN(...) for (index,len)
+
 #define PAR_FOR_0xNx1(index,len, ... ) \
   { Index_t index = 0, index ## _blk = HAB_C_BLK_SIZE ; \
   forasync in(__VA_ARGS__) point(index) size(len) seq(index ## _blk) {
@@ -447,7 +466,7 @@ struct Domain_t {
 
 #define END_FINISH \
   } // finish
-#endif
+#endif // DO OR DO NOT USE forasync
 
 #elif defined(CILK)
 

@@ -56,7 +56,7 @@ s_cbrt.o:  $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common/s_cbrt.c Makef
 	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libc/include \
 	-c $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common/s_cbrt.c
 
-RAG_edt.o:  RAG_edt.c RAG_edt.h RAG.h AMO.h FP.h MEM.h Makefile
+RAG_edt.o:  RAG_edt.c RAG_edt.h kernels.h RAG.h AMO.h FP.h MEM.h Makefile
 	$(CC) $(CFLAGS) -c RAG_edt.c
 
 FP.o:  FP.c FP.h RAG.h Makefile
@@ -68,8 +68,8 @@ MEM.o:  MEM.c MEM.h RAG.h Makefile
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(CC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.c RAG.h RAG_edt.h AMO.h MEM.h FP.h Makefile
-	$(CC) $(CFLAGS) $(CFLAGS) -c lulesh.c
+lulesh.o:  lulesh.c RAG.h RAG_edt.h kernels.h AMO.h MEM.h FP.h Makefile
+	$(CC) $(CFLAGS) -c lulesh.c
 
 lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
 	$(LD) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o $(LDLIBS)
