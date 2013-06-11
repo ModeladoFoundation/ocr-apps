@@ -1,3 +1,7 @@
+#define LULESH_SHOW_PROGRESS 1
+
+enum { VolumeError = -1, QStopError = -2 } ;
+
 #if defined(OCR)
 //RAG HACK FOR EMULATION OF FSIM ON linux with OCR
 #define xe_printf(...) printf(__VA_ARGS__)

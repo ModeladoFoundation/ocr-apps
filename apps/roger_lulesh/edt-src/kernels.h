@@ -1,5 +1,5 @@
 static INLINE
-void TimeIncrement() {
+void TimeIncrement( SHARED struct Domain_t *domain) {
   Real_t targetdt = domain->m_stoptime - domain->m_time ;
 
   if ((domain->m_dtfixed <= cast_Real_t(0.0)) && (domain->m_cycle != cast_Int_t(0))) {
@@ -281,7 +281,8 @@ static INLINE
 void CollectDomainNodesToElemNodes(SHARED const Index_t* elemToNode,
                                    Real_t elemX[EIGHT],
                                    Real_t elemY[EIGHT],
-                                   Real_t elemZ[EIGHT]) {
+                                   Real_t elemZ[EIGHT],
+                                   SHARED struct Domain_t *domain) {
 // RAG -- nd(0..7)i = elemToNode[0..7]
   Index_t nd0i = elemToNode[0] ;
   Index_t nd1i = elemToNode[1] ;
