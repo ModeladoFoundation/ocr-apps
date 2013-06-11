@@ -93,6 +93,9 @@ void  Release_Real_t( Real_t *ptr) { if(ptr != NULL) { SPAD_FREE(ptr); } }
 #define  cast_Real_t(arg) ( (Real_t)(arg))
 #define cast_Index_t(arg) ((Index_t)(arg))
 
+/* RAG -- prototypes for the edt functions */
+#include "RAG_edt.h"
+
 /* This first implementation allows for runnable code */
 /* and is not meant to be optimal. Final implementation */
 /* should separate declaration and allocation phases */
@@ -153,17 +156,7 @@ TRACE1("Allocate NP zero m_(x|y|z)d, m_(x|y|z)dd and m_nodalMass(x|y|z)");
   xe_printf("rag: loop (0;<%16.16lx;1)\n",hcSize);
 #endif
   FINISH
-    PAR_FOR_0xNx1(i,hcSize,domain)
-      domain->m_xd[i] = (Real_t)(0.0);
-      domain->m_yd[i] = (Real_t)(0.0);
-      domain->m_zd[i] = (Real_t)(0.0);
-
-      domain->m_xdd[i] = (Real_t)(0.0);
-      domain->m_ydd[i] = (Real_t)(0.0);
-      domain->m_zdd[i] = (Real_t)(0.0) ;
-
-      domain->m_nodalMass[i] = (Real_t)(0.0) ;
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,hcSize,domain_AllocateNodalPersistent_edt_1,domain);
   END_FINISH
 #ifdef FSIM
   xe_printf("rag: domain              %16.16lx\n",domain);
@@ -247,11 +240,7 @@ TRACE1("Allocate EP zero m_(e|p|v)");
   xe_printf("rag: loop (0;<%16.16lx;1)\n",hcSize);
 #endif // FSIM
    FINISH 
-      PAR_FOR_0xNx1(i,hcSize,domain)
-            domain->m_e[i] = (Real_t)(0.0);
-            domain->m_p[i] = (Real_t)(0.0);
-            domain->m_v[i] = (Real_t)(1.0);
-      END_PAR_FOR(i)
+     EDT_PAR_FOR_0xNx1(i,hcSize,domain_AllocateElemPersistent_edt_1,domain);
    END_FINISH
 #if defined(FSIM)
   xe_printf("rag: domain                %16.16lx\n",domain);
@@ -521,9 +510,9 @@ void InitStressTermsForElems(Index_t numElem,
    // pull in the stresses appropriate to the hydro integration
    //
    FINISH 
-      PAR_FOR_0xNx1(i,numElem,sigxx,sigyy,sigzz,domain)
+      BLK_PAR_FOR_0xNx1(i,numElem,sigxx,sigyy,sigzz,domain)
             sigxx[i] =  sigyy[i] = sigzz[i] =  - domain->m_p[i] - domain->m_q[i] ;
-      END_PAR_FOR(i)
+      END_BLK_PAR_FOR(i)
    END_FINISH
 }
 
@@ -768,7 +757,7 @@ void IntegrateStressForElems( Index_t numElem,
 {
   // loop over all elements
   FINISH
-    PAR_FOR_0xNx1(k,numElem,sigxx, sigyy, sigzz, determ, domain)
+    BLK_PAR_FOR_0xNx1(k,numElem,sigxx, sigyy, sigzz, determ, domain)
 #if  defined(HAB_C)
         Real_t *B        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
         Real_t *x_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
@@ -824,7 +813,7 @@ void IntegrateStressForElems( Index_t numElem,
         free(z_local)  ; free(y_local)  ; free(x_local) ;
         free(B) ;
 #endif //    HAB_C
-    END_PAR_FOR(k)
+    END_BLK_PAR_FOR(k)
   END_FINISH
 } // IntegrateStressForElems()
 
@@ -1158,7 +1147,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
 /*    compute the hourglass modes */
 
   FINISH
-    PAR_FOR_0xNx1(i2,numElem,domain,GAMMA,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hourg)
+    BLK_PAR_FOR_0xNx1(i2,numElem,domain,GAMMA,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hourg)
 #if  defined(HAB_C)
       Real_t *hgfx = (Real_t *)malloc(EIGHT*sizeof(Real_t));
       Real_t *hgfy = (Real_t *)malloc(EIGHT*sizeof(Real_t));
@@ -1298,7 +1287,7 @@ void CalcFBHourglassForceForElems(Real_t *determ,
       free(hourgam3); free(hourgam2); free(hourgam1); free(hourgam0);
       free(zd1); free(yd1); free(xd1);
 #endif //    HAB_C
-    END_PAR_FOR(i2)
+    END_BLK_PAR_FOR(i2)
   END_FINISH
 } // CalcFBHourglassForceForElems
 
@@ -1318,7 +1307,7 @@ TRACE6("Allocate dvdx,dvdy,dvdz,x8n,y8n,z8n");
 
 TRACE6("/* start loop over elements */");
    FINISH
-     PAR_FOR_0xNx1(i,numElem,domain,determ,dvdx,dvdy,dvdz,x8n,y8n,z8n)
+     BLK_PAR_FOR_0xNx1(i,numElem,domain,determ,dvdx,dvdy,dvdz,x8n,y8n,z8n)
 #if  defined(HAB_C)
        Real_t  *x1  = (Real_t *)malloc(EIGHT*sizeof(Real_t));
        Real_t  *y1  = (Real_t *)malloc(EIGHT*sizeof(Real_t));
@@ -1360,7 +1349,7 @@ TRACE6("/* start loop over elements */");
        free(pfz); free(pfy); free(pfx);
        free(z1) ; free(y1) ; free(x1);
 #endif //    HAB_C
-     END_PAR_FOR(i)
+     END_BLK_PAR_FOR(i)
   END_FINISH
 
   if ( hgcoef > cast_Real_t(0.) ) {
@@ -1403,11 +1392,11 @@ TRACE5("// material stresses.");
 
 TRACE5("// check for negative element volume");
     FINISH
-      PAR_FOR_0xNx1(k,numElem,determ)
+      BLK_PAR_FOR_0xNx1(k,numElem,determ)
         if (determ[k] <= cast_Real_t(0.0)) {
           EXIT(VolumeError) ;
         }
-      END_PAR_FOR(k)
+      END_BLK_PAR_FOR(k)
     END_FINISH
 
 TRACE5("// Hourglass Control for Elems");
@@ -1426,11 +1415,11 @@ TRACE5("CalcVolueForceForElems() entry");
 static INLINE void CalcForceForNodes() {
   Index_t numNode = domain->m_numNode ;
   FINISH 
-    PAR_FOR_0xNx1(i,numNode,domain)
+    BLK_PAR_FOR_0xNx1(i,numNode,domain)
       domain->m_fx[i] = cast_Real_t(0.0) ;
       domain->m_fy[i] = cast_Real_t(0.0) ;
       domain->m_fz[i] = cast_Real_t(0.0) ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
 TRACE4("/* Calcforce calls partial, force, hourq */");
@@ -1446,7 +1435,7 @@ static INLINE
 void CalcAccelerationForNodes() {
   Index_t numNode = domain->m_numNode ;
   FINISH 
-    PAR_FOR_0xNx1(i,numNode,domain)
+    BLK_PAR_FOR_0xNx1(i,numNode,domain)
       domain->m_xdd[i] = domain->m_fx[i] / domain->m_nodalMass[i];
 //DEBUG if(i==1)fprintf(stdout,"CAFN: m_xdd %e\n",domain->m_xdd[1]);
 //DEBUG if(i==1)fprintf(stdout,"CAFN: m_fx  %e\n",domain->m_fx[1]);
@@ -1455,7 +1444,7 @@ void CalcAccelerationForNodes() {
 //DEBUG if(i==1)fprintf(stdout,"CAFN: m_ydd %e\n",domain->m_ydd[1]);
       domain->m_zdd[i] = domain->m_fz[i] / domain->m_nodalMass[i];
 //DEBUG if(i==1)fprintf(stdout,"CAFN: m_zdd %e\n",domain->m_zdd[1]);
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 } // CalcAccelerationForNodes()
 
@@ -1463,12 +1452,12 @@ static INLINE
 void ApplyAccelerationBoundaryConditionsForNodes() {
   Index_t numNodeBC = (domain->m_sizeX+1)*(domain->m_sizeX+1) ;
   FINISH
-    PAR_FOR_0xNx1(i,numNodeBC,domain)
+    BLK_PAR_FOR_0xNx1(i,numNodeBC,domain)
 // RAG -- SCATTER domain->m_(x|y|z)dd[domain->m_symm(X|Y|Z)[i]] = 0.0
       domain->m_xdd[domain->m_symmX[i]] = cast_Real_t(0.0) ;
       domain->m_ydd[domain->m_symmY[i]] = cast_Real_t(0.0) ;
       domain->m_zdd[domain->m_symmZ[i]] = cast_Real_t(0.0) ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 } // ApplyAccelerationBoundaryConditionsForNodes()
 
@@ -1477,7 +1466,7 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
   Index_t numNode = domain->m_numNode ;
 //DEBUG fprintf(stdout,"CVFN:dt= %e\n",dt);
   FINISH
-    PAR_FOR_0xNx1(i,numNode,domain,dt,u_cut)
+    BLK_PAR_FOR_0xNx1(i,numNode,domain,dt,u_cut)
       Real_t xdtmp, ydtmp, zdtmp ;
 
 // RAG -- DAXPY       -- (x|y|x)d += dt * (x|y|z)dd
@@ -1497,7 +1486,7 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
       if( FABS(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
       domain->m_zd[i] = zdtmp ;
 //DEBUG if(i==1)fprintf(stdout,"CVFN:m_zd[1]= %e\n",domain->m_zd[1]);
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 } // CalcVelocityForNodes()
 
@@ -1506,7 +1495,7 @@ void CalcPositionForNodes(const Real_t dt) {
   Index_t numNode = domain->m_numNode ;
 //DEBUG fprintf(stdout,"CPFN:dt= %e\n",dt);
   FINISH
-    PAR_FOR_0xNx1(i,numNode,domain,dt)
+    BLK_PAR_FOR_0xNx1(i,numNode,domain,dt)
 // RAG -- DAXPY       -- (x|y|x) += dt * (x|y|z)d
       domain->m_x[i] += domain->m_xd[i] * dt ;
 //DEBUG if(i==1)fprintf(stdout,"CPFN:m_x[1]= %e\n",domain->m_x[1]);
@@ -1514,7 +1503,7 @@ void CalcPositionForNodes(const Real_t dt) {
 //DEBUG if(i==1)fprintf(stdout,"CPFN:m_y[1]= %e\n",domain->m_y[1]);
       domain->m_z[i] += domain->m_zd[i] * dt ;
 //DEBUG if(i==1)fprintf(stdout,"CPFN:m_z[1]= %e\n",domain->m_z[1]);
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 } // CalcPositionForNodes()
 
@@ -1770,7 +1759,7 @@ static INLINE
 void CalcKinematicsForElems( Index_t numElem, Real_t dt ) {
   FINISH
     // loop over all elements
-    PAR_FOR_0xNx1(k,numElem,domain,dt)
+    BLK_PAR_FOR_0xNx1(k,numElem,domain,dt)
 #if  defined(HAB_C)
       Real_t *B        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
       Real_t *D        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
@@ -1871,7 +1860,7 @@ void CalcKinematicsForElems( Index_t numElem, Real_t dt ) {
       free(z_local); free(y_local); free(x_local);
       free(D); free(B);
 #endif //    HAB_C
-    END_PAR_FOR(k) 
+    END_BLK_PAR_FOR(k) 
   END_FINISH
 } // CalcKinematicsForElems()
 
@@ -1883,7 +1872,7 @@ void CalcLagrangeElements(Real_t deltatime) {
 
       // element loop to do some stuff not included in the elemlib function.
       FINISH
-        PAR_FOR_0xNx1(k,numElem,domain)
+        BLK_PAR_FOR_0xNx1(k,numElem,domain)
           // calc strain rate and apply as constraint (only done in FB element)
           Real_t vdov = domain->m_dxx[k] + domain->m_dyy[k] + domain->m_dzz[k] ;
           Real_t vdovthird = vdov/cast_Real_t(3.0) ;
@@ -1898,7 +1887,7 @@ void CalcLagrangeElements(Real_t deltatime) {
           if (domain->m_vnew[k] <= cast_Real_t(0.0)) {
             EXIT(VolumeError) ;
           } // if domain->m_vnew
-        END_PAR_FOR(k)
+        END_BLK_PAR_FOR(k)
       END_FINISH
    } // if numElem
 } // CalcLagrangeElements()
@@ -1908,7 +1897,7 @@ void CalcMonotonicQGradientsForElems() {
 #define SUM4(a,b,c,d) (a + b + c + d)
   Index_t numElem = domain->m_numElem ;
   FINISH
-    PAR_FOR_0xNx1(i,numElem,domain)
+    BLK_PAR_FOR_0xNx1(i,numElem,domain)
       HAB_CONST Real_t ptiny = cast_Real_t(1.e-36) ;
       Real_t ax,ay,az ;
       Real_t dxv,dyv,dzv ;
@@ -2045,7 +2034,7 @@ void CalcMonotonicQGradientsForElems() {
       dzv = cast_Real_t(-0.25)*(SUM4(zv0,zv1,zv5,zv4) - SUM4(zv3,zv2,zv6,zv7)) ;
 
       domain->m_delv_eta[i] = ax*dxv + ay*dyv + az*dzv ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 #undef SUM4
 } // CalcMonotonicQGradientsForElems()
@@ -2062,7 +2051,7 @@ void CalcMonotonicQRegionForElems(// parameters
                           Index_t elength )
 {
   FINISH
-    PAR_FOR_0xNx1(ielem,elength,domain,qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny)
+    BLK_PAR_FOR_0xNx1(ielem,elength,domain,qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny)
       Real_t qlin, qquad ;
       Real_t phixi, phieta, phizeta ;
       Index_t i = domain->m_matElemlist[ielem];
@@ -2189,7 +2178,7 @@ void CalcMonotonicQRegionForElems(// parameters
 
       domain->m_qq[i] = qquad ;
       domain->m_ql[i] = qlin  ;
-    END_PAR_FOR(ielem)
+    END_BLK_PAR_FOR(ielem)
   END_FINISH
 } // CalcMonotonicQRegionForElems()
 
@@ -2247,14 +2236,14 @@ void CalcQForElems() {
       *pIndex_AMO = 0; 
 #endif // UPC
       FINISH
-        PAR_FOR_0xNx1(i,numElem,domain,qstop,pIndex_AMO)
+        BLK_PAR_FOR_0xNx1(i,numElem,domain,qstop,pIndex_AMO)
           if ( domain->m_q[i] > qstop ) {
              AMO__sync_fetch_and_add_uint64_t(pIndex_AMO,1);
 #if   !defined(CILK) && !defined(HAB_C)
              break ;
 #endif // CILK
           } // if domain->m_q
-        END_PAR_FOR(i)
+        END_BLK_PAR_FOR(i)
       END_FINISH
 
 #ifdef    UPC
@@ -2278,15 +2267,15 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
                           Index_t length)
 {
   FINISH
-    PAR_FOR_0xNx1(i,length,bvc,pbvc,compression)
+    BLK_PAR_FOR_0xNx1(i,length,bvc,pbvc,compression)
       Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
       bvc[i] = c1s * (compression[i] + cast_Real_t(1.));
       pbvc[i] = c1s;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   FINISH
-    PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
+    BLK_PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
       p_new[i] = bvc[i] * e_old[i] ;
 
       if    (FABS(p_new[i]) <  p_cut   ) 
@@ -2297,7 +2286,7 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
 
       if    (p_new[i]       <  pmin)
          p_new[i]   = pmin ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 } // CalcPressureForElems()
 
@@ -2316,7 +2305,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
   Real_t *pHalfStep = Allocate_Real_t(length) ;
 
   FINISH
-    PAR_FOR_0xNx1(i,length,e_new,e_old,delvc,p_old,q_old,work,emin)
+    BLK_PAR_FOR_0xNx1(i,length,e_new,e_old,delvc,p_old,q_old,work,emin)
 //DEBUG if(i==0)fprintf(stdout," e_old = %e\n",e_old[i]);
 //DEBUG if(i==0)fprintf(stdout," p_old = %e\n",p_old[i])
 //DEBUG if(i==0)fprintf(stdout," q_old = %e\n",q_old[i]);
@@ -2329,13 +2318,13 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
       if (e_new[i]  < emin ) {
         e_new[i] = emin ;
       }
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   CalcPressureForElems(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
                        pmin, p_cut, eosvmax, length);
   FINISH
-    PAR_FOR_0xNx1(i,length,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,rho0,delvc,p_old,q_old,work,e_cut,emin)
+    BLK_PAR_FOR_0xNx1(i,length,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,rho0,delvc,p_old,q_old,work,e_cut,emin)
       Real_t vhalf = cast_Real_t(1.) / (cast_Real_t(1.) + compHalfStep[i]) ;
 
       if ( delvc[i] > cast_Real_t(0.) ) {
@@ -2368,14 +2357,14 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
         e_new[i] = emin ;
       } // if emin
 //DEBUG if(i==0)fprintf(stdout," e_new3= %e\n",e_new[0]);
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
    CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                    pmin, p_cut, eosvmax, length);
 
   FINISH
-    PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,p_old,q_old,pHalfStep,q_new,e_cut,emin)
+    BLK_PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,p_old,q_old,pHalfStep,q_new,e_cut,emin)
       HAB_CONST Real_t sixth = cast_Real_t(1.0) / cast_Real_t(6.0) ;
       Real_t q_tilde ;
 
@@ -2407,7 +2396,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
         e_new[i] = emin ;
       } // if emin
 //DEBUG if(i==0)fprintf(stdout," e_new5= %e\n",e_new[0]);
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
@@ -2416,7 +2405,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
 //DEBUG fprintf(stdout," e_new6= %e\n",e_new[0]);
 
   FINISH
-    PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,q_new,q_cut)
+    BLK_PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,q_new,q_cut)
       if ( delvc[i] <= cast_Real_t(0.) ) {
         Real_t ssc = (  pbvc[i] * e_new[i]
                      + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
@@ -2431,7 +2420,7 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
 
         if (FABS(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
       } // if delvc
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
    Release_Real_t(pHalfStep) ;
@@ -2444,7 +2433,7 @@ void CalcSoundSpeedForElems(Real_t *vnewc, Real_t rho0, Real_t *enewc,
                             Real_t *pnewc, Real_t *pbvc,
                             Real_t *bvc, Real_t ss4o3, Index_t nz) {
   FINISH
-    PAR_FOR_0xNx1(i,nz,domain,pbvc,enewc,vnewc,bvc,pnewc,rho0)
+    BLK_PAR_FOR_0xNx1(i,nz,domain,pbvc,enewc,vnewc,bvc,pnewc,rho0)
       Index_t iz = domain->m_matElemlist[i];
       Real_t ssTmp = (pbvc[i] * enewc[i] + vnewc[i] * vnewc[i] *
                        bvc[i] * pnewc[i]) / rho0;
@@ -2452,7 +2441,7 @@ void CalcSoundSpeedForElems(Real_t *vnewc, Real_t rho0, Real_t *enewc,
         ssTmp = cast_Real_t(1.111111e-36);
       } // if ssTmp
       domain->m_ss[iz] = SQRT(ssTmp);
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 } // CalcSoundSpeedForElems()
 
@@ -2489,7 +2478,7 @@ TRACE1("/* compress data, minimal set */");
 // RAG GATHERS
 
   FINISH
-    PAR_FOR_0xNx1(i,length,domain,delvc,e_old,p_old,q_old,qq,ql)
+    BLK_PAR_FOR_0xNx1(i,length,domain,delvc,e_old,p_old,q_old,qq,ql)
       Index_t zidx = domain->m_matElemlist[i] ;
       e_old[i] = domain->m_e[zidx] ;
 //DEBUG if(i==0)fprintf(stdout,"e_old = %e\n",e_old[i]);
@@ -2499,38 +2488,38 @@ TRACE1("/* compress data, minimal set */");
       q_old[i] = domain->m_q[zidx] ;
       qq[i]    = domain->m_qq[zidx] ;
       ql[i]    = domain->m_ql[zidx] ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH 
 
 // RAG STRIDE ONE
 
   FINISH
-    PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
+    BLK_PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
            Real_t vchalf ;
            compression[i] = cast_Real_t(1.) / vnewc[i] - cast_Real_t(1.);
            vchalf = vnewc[i] - delvc[i] * cast_Real_t(.5);
            compHalfStep[i] = cast_Real_t(1.) / vchalf - cast_Real_t(1.);
            work[i] = cast_Real_t(0.) ; 
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
 
 TRACE1("/* Check for v > eosvmax or v < eosvmin */");
 
     if ( eosvmin != cast_Real_t(0.) ) {
-      PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
+      BLK_PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
             if (vnewc[i] <= eosvmin) { /* impossible due to calling func? */
               compHalfStep[i] = compression[i] ;
             } // if vnewc
-      END_PAR_FOR(i)
+      END_BLK_PAR_FOR(i)
     } // if eosvmin
 
     if ( eosvmax != cast_Real_t(0.) ) {
-      PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
+      BLK_PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
         if (vnewc[i] >= eosvmax) { /* impossible due to calling func? */
           p_old[i]        = cast_Real_t(0.) ;
           compression[i]  = cast_Real_t(0.) ;
           compHalfStep[i] = cast_Real_t(0.) ;
         } // if vnewc
-      END_PAR_FOR(i)
+      END_BLK_PAR_FOR(i)
     } // if eosvmax
 
   END_FINISH 
@@ -2544,13 +2533,13 @@ TRACE1("/* Check for v > eosvmax or v < eosvmin */");
 // RAG SCATTERS
 
   FINISH
-    PAR_FOR_0xNx1(i,length,domain,p_new,e_new,q_new)
+    BLK_PAR_FOR_0xNx1(i,length,domain,p_new,e_new,q_new)
       Index_t zidx = domain->m_matElemlist[i] ;
       domain->m_p[zidx] = p_new[i] ;
       domain->m_e[zidx] = e_new[i] ;
 //DEBUG if(i==0)fprintf(stdout,"e_new = %e\n",e_new[i]);
       domain->m_q[zidx] = q_new[i] ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH 
 
   CalcSoundSpeedForElems(vnewc, rho0, e_new, p_new,
@@ -2585,10 +2574,10 @@ TRACE1("/* Expose all of the variables needed for material evaluation */");
 // RAG GATHERS
 
     FINISH
-      PAR_FOR_0xNx1(i,length,domain,vnewc)
+      BLK_PAR_FOR_0xNx1(i,length,domain,vnewc)
         Index_t zn = domain->m_matElemlist[i] ;
         vnewc[i] = domain->m_vnew[zn] ;
-      END_PAR_FOR(i)
+      END_BLK_PAR_FOR(i)
     END_FINISH 
 
 // RAG STIDE ONES
@@ -2596,19 +2585,19 @@ TRACE1("/* Expose all of the variables needed for material evaluation */");
     FINISH
 
       if (eosvmin != cast_Real_t(0.)) {
-        PAR_FOR_0xNx1(i,length,vnewc,eosvmin)
+        BLK_PAR_FOR_0xNx1(i,length,vnewc,eosvmin)
           if (vnewc[i] < eosvmin) {
             vnewc[i] = eosvmin ;
           } // if vnewc
-        END_PAR_FOR(i)
+        END_BLK_PAR_FOR(i)
       } // if eosvmin
 
       if (eosvmax != cast_Real_t(0.)) {
-        PAR_FOR_0xNx1(i,length,vnewc,eosvmax)
+        BLK_PAR_FOR_0xNx1(i,length,vnewc,eosvmax)
           if (vnewc[i] > eosvmax) {
             vnewc[i] = eosvmax ;
           } // if vnewc
-        END_PAR_FOR(i)
+        END_BLK_PAR_FOR(i)
       } // if eosvmax
 
     END_FINISH 
@@ -2616,7 +2605,7 @@ TRACE1("/* Expose all of the variables needed for material evaluation */");
 // RAG GATHER ERROR CHECK
 
     FINISH
-      PAR_FOR_0xNx1(i,length,domain,vnewc,eosvmin,eosvmax)
+      BLK_PAR_FOR_0xNx1(i,length,domain,vnewc,eosvmin,eosvmax)
         Index_t zn = domain->m_matElemlist[i] ;
         Real_t  vc = domain->m_v[zn] ;
         if (eosvmin != cast_Real_t(0.)) {
@@ -2632,7 +2621,7 @@ TRACE1("/* Expose all of the variables needed for material evaluation */");
         if (vc <= 0.) {
           EXIT(VolumeError) ;
         } // if domain->m_v
-      END_PAR_FOR(i)
+      END_BLK_PAR_FOR(i)
     END_FINISH 
 
     EvalEOSForElems(vnewc, length);
@@ -2649,7 +2638,7 @@ void UpdateVolumesForElems() {
   if (numElem != 0) {
     Real_t v_cut = domain->m_v_cut;
     FINISH
-      PAR_FOR_0xNx1(i,numElem,domain,v_cut)
+      BLK_PAR_FOR_0xNx1(i,numElem,domain,v_cut)
         Real_t tmpV ;
         tmpV = domain->m_vnew[i] ;
 
@@ -2657,7 +2646,7 @@ void UpdateVolumesForElems() {
           tmpV = cast_Real_t(1.0) ;
         } // tmpV
         domain->m_v[i] = tmpV ;
-      END_PAR_FOR(i)
+      END_BLK_PAR_FOR(i)
     END_FINISH 
   } // if numElem
   return ;
@@ -2696,7 +2685,7 @@ void CalcCourantConstraintForElems() {
     Real_t      qqc = domain->m_qqc ;
     Real_t  qqc2 = cast_Real_t(64.0) * qqc * qqc ;
     Index_t length = domain->m_numElem ;
-    PAR_FOR_0xNx1(i,length,domain,qqc2,pDtCourant,pCourant_elem,pidamin_lock)
+    BLK_PAR_FOR_0xNx1(i,length,domain,qqc2,pDtCourant,pCourant_elem,pidamin_lock)
       Index_t indx = domain->m_matElemlist[i] ;
 
       Real_t dtf = domain->m_ss[indx] * domain->m_ss[indx] ;
@@ -2722,7 +2711,7 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
         } // if *pDtCourant
       } // if domain->m_vdov
 
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   /* Don't try to register a time constraint if none of the elements
@@ -2747,7 +2736,7 @@ void CalcHydroConstraintForElems() {
   FINISH
     Real_t dvovmax = domain->m_dvovmax ;
     Index_t length = domain->m_numElem ;
-    PAR_FOR_0xNx1(i,length,domain,dvovmax,pidamin_lock,pDtHydro,pHydro_elem)
+    BLK_PAR_FOR_0xNx1(i,length,domain,dvovmax,pidamin_lock,pDtHydro,pHydro_elem)
       Index_t indx = domain->m_matElemlist[i] ;
 
       if (domain->m_vdov[indx] != cast_Real_t(0.)) {
@@ -2760,7 +2749,7 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
         } // if *pDtHydro
       } // if domain->m_vdov
 
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   if (*pHydro_elem != -1) {
@@ -2898,7 +2887,7 @@ TRACE0("/* initialize nodal coordinates */");
       for(Index_t row = 0 ; row < edgeNodes ; ++row ) {
         Real_t ty = cast_Real_t(row)*sf;
         Index_t pln_row_nidx = pln_nidx + row*dimN;
-        PAR_FOR_0xNx1(col,edgeNodes,pln,row,tz,ty,pln_row_nidx,domain,sf,dimN,dimNdimN)
+        BLK_PAR_FOR_0xNx1(col,edgeNodes,pln,row,tz,ty,pln_row_nidx,domain,sf,dimN,dimNdimN)
           Real_t tx = cast_Real_t(col)*sf;
           Index_t nidx = pln_row_nidx+col;
           domain->m_x[nidx] = tx;
@@ -2907,7 +2896,7 @@ TRACE0("/* initialize nodal coordinates */");
 //DEBUG if(nidx==1)fprintf(stdout,"m_y[1] = %e\n",domain->m_y[1]);
           domain->m_z[nidx] = tz;
 //DEBUG if(nidx==1)fprintf(stdout,"m_z[1] = %e\n",domain->m_z[1]);
-        END_PAR_FOR(col)
+        END_BLK_PAR_FOR(col)
       } // for row
     } // for pln
   END_FINISH
@@ -2924,7 +2913,7 @@ TRACE0("/* embed hexehedral elements in nodal point lattice */");
       for(Index_t row = 0 ; row < edgeElems ; ++row ) {
         Index_t pln_row_nidx = pln_nidx + row*dimN;
         Index_t pln_row_zidx = pln_zidx + row*dimE;
-        PAR_FOR_0xNx1(col,edgeElems,pln,row,pln_row_nidx,pln_row_zidx,domain,dimE,dimEdimE,dimN,dimNdimN)
+        BLK_PAR_FOR_0xNx1(col,edgeElems,pln,row,pln_row_nidx,pln_row_zidx,domain,dimE,dimEdimE,dimN,dimNdimN)
           Index_t nidx = pln_row_nidx+col;
           Index_t zidx = pln_row_zidx+col;
           SHARED Index_t *localNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*zidx] ;
@@ -2936,7 +2925,7 @@ TRACE0("/* embed hexehedral elements in nodal point lattice */");
           localNode[5] = nidx + dimNdimN        + 1 ;
           localNode[6] = nidx + dimNdimN + dimN + 1 ;
           localNode[7] = nidx + dimNdimN + dimN     ;
-        END_PAR_FOR(col)
+        END_BLK_PAR_FOR(col)
       } // for row
     } // for pln
   END_FINISH
@@ -2944,9 +2933,9 @@ TRACE0("/* embed hexehedral elements in nodal point lattice */");
 TRACE0("/* Create a material IndexSet (entire domain same material for now) */");
 
   FINISH
-    PAR_FOR_0xNx1(i,domElems,domain)
+    BLK_PAR_FOR_0xNx1(i,domElems,domain)
       domain->m_matElemlist[i] = i ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
    
 TRACE0("/* initialize material parameters */");
@@ -2989,7 +2978,7 @@ TRACE0("/* initialize material parameters */");
   domain->m_refdens            = cast_Real_t(1.0) ;
 
   FINISH
-    PAR_FOR_0xNx1(i,domElems,domain)
+    BLK_PAR_FOR_0xNx1(i,domElems,domain)
 #if  defined(HAB_C)
       Real_t *x_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
       Real_t *y_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
@@ -3025,7 +3014,7 @@ TRACE0("/* initialize material parameters */");
       free(y_local) ;
       free(x_local) ;
 #endif //    HAB_C
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
 TRACE0("/* deposit energy */");
@@ -3041,12 +3030,12 @@ TRACE0("/* set up symmetry nodesets */");
     for ( Index_t i = 0; i < edgeNodes ; ++i ) {
       Index_t planeInc = i*dimNdimN ;
       Index_t rowInc   = i*dimN ;
-      PAR_FOR_0xNx1(j,edgeNodes,i,planeInc,rowInc,domain,dimN,dimNdimN)
+      BLK_PAR_FOR_0xNx1(j,edgeNodes,i,planeInc,rowInc,domain,dimN,dimNdimN)
         Index_t nidx = rowInc + j;
         domain->m_symmX[nidx] = planeInc + j*dimN ;
         domain->m_symmY[nidx] = planeInc + j ;
         domain->m_symmZ[nidx] = rowInc   + j ;
-      END_PAR_FOR(j)
+      END_BLK_PAR_FOR(j)
     } // for i
   END_FINISH
 
@@ -3055,49 +3044,49 @@ TRACE0("/* set up elemement connectivity information */");
 
   FINISH
     domain->m_lxim[0] = 0 ;
-    PAR_FOR_0xNx1(i,domElems-1,domain,domElems)
+    BLK_PAR_FOR_0xNx1(i,domElems-1,domain,domElems)
           domain->m_lxim[i+1] = i ;
           domain->m_lxip[i  ] = i+1 ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
     domain->m_lxip[domElems-1] = domElems-1 ;
   END_FINISH
 
   FINISH
-    PAR_FOR_0xNx1(i,edgeElems,domain,domElems,edgeElems)
+    BLK_PAR_FOR_0xNx1(i,edgeElems,domain,domElems,edgeElems)
       domain->m_letam[i] = i ; 
       domain->m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   FINISH
-    PAR_FOR_0xNx1(i,(domElems-edgeElems),domain,edgeElems)
+    BLK_PAR_FOR_0xNx1(i,(domElems-edgeElems),domain,edgeElems)
       domain->m_letam[i+edgeElems] = i ;
       domain->m_letap[i          ] = i+edgeElems ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   FINISH
-    PAR_FOR_0xNx1(i,(edgeElems*edgeElems),domain,domElems,edgeElems)
+    BLK_PAR_FOR_0xNx1(i,(edgeElems*edgeElems),domain,domElems,edgeElems)
       domain->m_lzetam[i] = i ;
       domain->m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
   FINISH
     Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
-    PAR_FOR_0xNx1(i,(domElems-dimEdimE),domain,dimEdimE,domElems)
+    BLK_PAR_FOR_0xNx1(i,(domElems-dimEdimE),domain,dimEdimE,domElems)
       domain->m_lzetam[i+dimEdimE] = i ;
       domain->m_lzetap[i]          = i+dimEdimE ;
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
 TRACE0("/* set up boundary condition information */");
 //DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
 
   FINISH
-    PAR_FOR_0xNx1(i,domElems,domain,domElems)
+    BLK_PAR_FOR_0xNx1(i,domElems,domain,domElems)
       domain->m_elemBC[i] = 0 ;  /* clear BCs by default */
-    END_PAR_FOR(i)
+    END_BLK_PAR_FOR(i)
   END_FINISH
 
 TRACE0("/* faces on \"external\" boundaries will be */");
@@ -3109,14 +3098,14 @@ TRACE0("/* symmetry plane or free surface BCs     */");
     for ( Index_t i = 0 ; i < edgeElems ; ++i ) {
       Index_t planeInc = i*dimEdimE ;
       Index_t rowInc   = i*dimE ;
-      PAR_FOR_0xNx1(j,edgeElems,i,domain,planeInc,rowInc,domElems,dimE,dimEdimE)
+      BLK_PAR_FOR_0xNx1(j,edgeElems,i,domain,planeInc,rowInc,domElems,dimE,dimEdimE)
         domain->m_elemBC[planeInc+j*dimE           ] |= XI_M_SYMM ;
         domain->m_elemBC[planeInc+j*dimE+1*dimE-1  ] |= XI_P_FREE ;
         domain->m_elemBC[planeInc+j                ] |= ETA_M_SYMM ;
         domain->m_elemBC[planeInc+j+dimEdimE-dimE  ] |= ETA_P_FREE ;
         domain->m_elemBC[rowInc+j                  ] |= ZETA_M_SYMM ;
         domain->m_elemBC[rowInc+j+domElems-dimEdimE] |= ZETA_P_FREE ;
-      END_PAR_FOR(j)
+      END_BLK_PAR_FOR(j)
     } // for i
   END_FINISH
 
@@ -3124,9 +3113,9 @@ TRACE0("/* TIMESTEP TO SOLUTION */");
 #ifdef FSIM
   xe_printf("rag: e(0)=%16.16lx\n",domain->m_e[0]);
 #else // NOT FSIM
-#if 0 // HEX
-  xe_printf("rag: e(0)=%16.16lx\n",domain->m_e[0]);
-#else // NOT HEX
+#ifdef    HEX
+  printf("rag: e(0)=%16.16lx\n",domain->m_e[0]);
+#else  // NOT HEX
   printf("rag: e(0)=%e\n",domain->m_e[0]);
 #endif // HEX
 #endif // FSIM
@@ -3148,7 +3137,7 @@ TRACE0("/* LagrangeLeapFrog() */");
           *(uint64_t *)&(domain->m_deltatime),
           *(uint64_t *)&(domain->m_e[0])) ;
 #else    // NOT FSIM
-#if 0      // HEX
+#ifdef        HEX
     printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
           *(uint64_t *)&(domain->m_time),
           *(uint64_t *)&(domain->m_deltatime),
@@ -3166,14 +3155,9 @@ TRACE0("/* LagrangeLeapFrog() */");
   } // while time
 
 #ifdef    FSIM
-#if 1    // HEX
   xe_printf("   Final Origin Energy = %16.16lx \n", *(SHARED uint64_t *)&domain->m_e[0]) ;
-#else    // NOT HEX
-  printf("   Final Origin Energy = %12.6e \n", (double)domain->m_e[0]) ;fflush(stdout);
-  fflush(stdout);
-#endif //   HEX
 #else //  NOT FSIM
-#if 0    // HEX
+#ifdef      HEX
   printf("   Final Origin Energy = %16.16lx \n", *(SHARED uint64_t *)&domain->m_e[0]) ;
 #else    // NOT HEX
   printf("   Final Origin Energy = %12.6e \n", (double)domain->m_e[0]) ;

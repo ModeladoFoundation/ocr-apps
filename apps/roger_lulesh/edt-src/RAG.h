@@ -447,6 +447,24 @@ struct Domain_t {
 
 #elif defined(CILK)
 
+#define CILK_BLK_SIZE (16)
+
+#define EDT_PAR_FOR_0xNx1(index,len,edt_name, ... ) \
+  { Index_t index ## _len = (len) , index ## _blk = (CILK_BLK_SIZE) ; \
+    cilk_for ( Index_t index ## _out=0 ; index ## _out < index ## _len ; index ## _out  += index ## _blk ) { \
+      Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+      edt_name(index ## _out , index ## _end , __VA_ARGS__ ); \
+  } } // cilk_for (index)
+
+#define BLK_PAR_FOR_0xNx1(index,len, ... ) \
+  { Index_t index ## _len = (len) , index ## _blk = (CILK_BLK_SIZE) ; \
+    cilk_for ( Index_t index ## _out=0 ; index ## _out < index ## _len ; index ## _out  += index ## _blk ) { \
+      Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+      for(Index_t index = index ## _out ; index < index ## _end ; ++index ) {
+
+#define END_BLK_PAR_FOR(index) \
+  } } } // for inner and cilk_for outer ( index ) \
+
 #define PAR_FOR_0xNx1(index,len, ... ) \
   cilk_for ( Index_t index = 0 ; index < len ; ++index ) {
 
@@ -469,24 +487,95 @@ struct Domain_t {
 
 #elif defined(FSIM)
 
+#define FSIM_BLK_SIZE (16)
+
+#define EDT_PAR_FOR_0xNx1(index,len,edt_name, ... ) \
+  for ( Index_t index ## _out=0 , index ## _len = (len) , index ## _blk = (FSIM_BLK_SIZE) \
+      ; index ## _out < index ## _len \
+      ; index ## _out  += index ## _blk ) { \
+    Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+    edt_name(index ## _out , index ## _end , __VA_ARGS__ ); \
+  }
+
+#define BLK_PAR_FOR_0xNx1(index,len, ... ) \
+  for ( Index_t index ## _out=0, index ## _len = (len) , index ## _blk = (FSIM_BLK_SIZE) \
+      ; index ## _out < index ## _len \
+      ; index ## _out  += index ## _blk ) { \
+    Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+    for(Index_t index = index ## _out ; index < index ## _end ; ++index ) {
+
+#define END_BLK_PAR_FOR(index) \
+  } } // for inner and for outer ( index ) \
+
 #define PAR_FOR_0xNx1(index,len, ... ) \
   for ( Index_t index = 0 ; index < len ; ++index ) {
 
 #define END_PAR_FOR(index) \
-  } // c99 for( index=0 ; index < len ; ++index )
+  } // for( index=0 ; index < len ; ++index )
+
+#define FINISH {
+#define END_FINISH }
+
+#elif defined(OCR)
+
+#define OCR_BLK_SIZE (16)
+
+#define EDT_PAR_FOR_0xNx1(index,len,edt_name, ... ) \
+  for ( Index_t index ## _out=0 , index ## _len = (len) , index ## _blk = (OCR_BLK_SIZE) \
+      ; index ## _out < index ## _len \
+      ; index ## _out  += index ## _blk ) { \
+    Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+    edt_name(index ## _out , index ## _end , __VA_ARGS__ ); \
+  } // for (index)
+
+#define BLK_PAR_FOR_0xNx1(index,len, ... ) \
+  for ( Index_t index ## _out=0, index ## _len = (len) , index ## _blk = (OCR_BLK_SIZE) \
+      ; index ## _out < index ## _len \
+      ; index ## _out  += index ## _blk ) { \
+    Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+    for(Index_t index = index ## _out ; index < index ## _end ; ++index ) {
+
+#define END_BLK_PAR_FOR(index) \
+  } } // for inner and for outer ( index ) \
+
+#define PAR_FOR_0xNx1(index,len, ... ) \
+  for ( Index_t index = 0 ; index < len ; ++index ) {
+
+#define END_PAR_FOR(index) \
+  } // for( index=0 ; index < len ; ++index )
 
 #define FINISH {
 #define END_FINISH }
 
 #else // DEFAULT is C99
 
+#define C99_BLK_SIZE (16)
+
+#define EDT_PAR_FOR_0xNx1(index,len, edt_name, ... ) \
+  for ( Index_t index ## _out=0 , index ## _len = (len) , index ## _blk = (C99_BLK_SIZE) \
+      ; index ## _out < index ## _len \
+      ; index ## _out  += index ## _blk ) { \
+    Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+    edt_name(index ## _out , index ## _end , __VA_ARGS__ ); \
+  } // for (index)
+
+#define BLK_PAR_FOR_0xNx1(index,len, ... ) \
+  for ( Index_t index ## _out=0, index ## _len = (len) , index ## _blk = (C99_BLK_SIZE) \
+      ; index ## _out < index ## _len \
+      ; index ## _out  += index ## _blk ) { \
+    Index_t index ## _end = ( index ## _out + index ## _blk) < index ## _len?( index ## _out + index ## _blk) : index ## _len; \
+    for(Index_t index = index ## _out ; index < index ## _end ; ++index ) {
+
+#define END_BLK_PAR_FOR(index) \
+  } } // for inner and for outer ( index ) \
+
 #define PAR_FOR_0xNx1(index,len, ... ) \
   for ( Index_t index = 0 ; index < len ; ++index ) {
 
 #define END_PAR_FOR(index) \
-  } // c99 for( index=0 ; index < len ; ++index )
+  } // for( index=0 ; index < len ; ++index )
 
 #define FINISH {
 #define END_FINISH }
 
-#endif // HAB_C, CILK, UPC, FSIM or C99
+#endif // HAB_C, CILK, UPC, FSIM, ORC or C99
