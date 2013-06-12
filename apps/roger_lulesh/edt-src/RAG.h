@@ -287,7 +287,6 @@ struct Domain_t {
    Real_t  m_monoq_limiter_mult ;
    Real_t  m_e_cut ;             /* energy tolerance */
    Real_t  m_p_cut ;             /* pressure tolerance */
-   Real_t  m_ss4o3 ;
    Real_t  m_q_cut ;             /* q tolerance */
    Real_t  m_v_cut ;             /* relative volume tolerance */
    Real_t  m_qlc_monoq ;         /* linear term coef for q */
@@ -411,7 +410,6 @@ struct Domain_t {
 #define domain_monoq_limiter_mult()   domain->m_monoq_limiter_mult
 #define domain_e_cut()                domain->m_e_cut
 #define domain_p_cut()                domain->m_p_cut
-#define domain_ss4o3()                domain->m_ss4o3
 #define domain_q_cut()                domain->m_q_cut
 #define domain_v_cut()                domain->m_v_cut
 #define domain_qlc_monoq()            domain->m_qlc_monoq

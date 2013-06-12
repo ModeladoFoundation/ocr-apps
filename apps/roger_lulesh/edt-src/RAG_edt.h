@@ -91,6 +91,27 @@ void                           CalcEnergyForElems_edt_4( Index_t i_out , Index_t
                                                          Real_t *q_new ,
                                                          Real_t rho0, Real_t q_cut) ;
 
+void                       CalcSoundSpeedForElems_edt_1( Index_t i_out , Index_t i_end , SHARED struct Domain_t *domain ,
+                                                         Real_t *vnewc, Real_t *enewc,
+                                                         Real_t *pnewc, Real_t *pbvc,
+                                                         Real_t *bvc, 
+                                                         Real_t rho0 ) ;
+
+void                              EvalEOSForElems_edt_1( Index_t i_out , Index_t i_end , SHARED struct Domain_t *domain ,
+                                                         Real_t *delvc , Real_t *e_old ,
+                                                         Real_t *p_old , Real_t *q_old ,
+                                                         Real_t *qq , Real_t *ql ) ; // RAG GATHERS
+
+void                              EvalEOSForElems_edt_2( Index_t i_out , Index_t i_end ,
+                                                         Real_t *compression , Real_t *vnewc ,
+                                                         Real_t *delvc , Real_t *compHalfStep ,
+                                                         Real_t *work , Real_t *p_old ,
+                                                         Real_t eosvmin , Real_t eosvmax ) ; // RAG STRIDE ONE
+
+void                              EvalEOSForElems_edt_3( Index_t i_out , Index_t i_end , SHARED struct Domain_t *domain ,
+                                                         Real_t *p_new , Real_t *e_new ,
+                                                         Real_t *q_new ) ; // RAG SCATTERS
+
 #ifdef CILK
 } // extern "C"
 #endif

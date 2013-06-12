@@ -728,6 +728,7 @@ void CalcQForElems() {
    } // if numElem
 } // CalcQForElems()
 
+#if 0  // RAG -- inlined CalcPressureForElems_edt_1 into CalcEnergyForElems()
 static INLINE
 void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
                           Real_t* pbvc, Real_t* e_old,
@@ -739,6 +740,7 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
     EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_old,compression,vnewc,pmin,p_cut,eosvmax)
   END_FINISH
 } // CalcPressureForElems()
+#endif
 
 static INLINE
 void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
@@ -752,43 +754,41 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
                         Real_t eosvmax,
                         Index_t length) {
   Real_t *pHalfStep = Allocate_Real_t(length) ;
-
-  FINISH
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_1,e_new,e_old,delvc,p_old,q_old,work,emin);
-    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,pHalfStep,bvc,pbvc,e_new,compHalfStep,vnewc,pmin,p_cut,eosvmax);
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_2,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,delvc,p_old,q_old,work,rho0,e_cut,emin);
-    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,pmin,p_cut,eosvmax)
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_3,delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,p_old,q_old,pHalfStep,q_new,rho0,e_cut,emin);
-    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,pmin,p_cut,eosvmax);
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_4,delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,q_new,rho0,q_cut);
-  END_FINISH
-
+  FINISH // RAG STRIDE ONE
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_1,  e_new,e_old,delvc,p_old,q_old,work,
+                                                          emin);
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,pHalfStep,bvc,pbvc,e_new,compHalfStep,vnewc,
+                                                          pmin,p_cut,eosvmax);
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_2,  compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,delvc,p_old,q_old,work,
+                                                          rho0,e_cut,emin);
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,
+                                                          pmin,p_cut,eosvmax)
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_3,  delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,p_old,q_old,pHalfStep,q_new,
+                                                          rho0,e_cut,emin);
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,
+                                                          pmin,p_cut,eosvmax);
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_4,  delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,q_new,
+                                                          rho0,q_cut);
+  END_FINISH // RAG STRIDE ONE
   Release_Real_t(pHalfStep) ;
   return ;
 } // CalcEnergyForElems()
 
+#if 0
 static INLINE
 void CalcSoundSpeedForElems(Real_t *vnewc, Real_t rho0, Real_t *enewc,
                             Real_t *pnewc, Real_t *pbvc,
-                            Real_t *bvc, Real_t ss4o3, Index_t nz) {
-  FINISH
-    PAR_FOR_0xNx1(i,nz,domain,pbvc,enewc,vnewc,bvc,pnewc,rho0)
-      Index_t iz = domain->m_matElemlist[i];
-      Real_t ssTmp = (pbvc[i] * enewc[i] + vnewc[i] * vnewc[i] *
-                       bvc[i] * pnewc[i]) / rho0;
-      if (ssTmp <= cast_Real_t(1.111111e-36)) {
-        ssTmp = cast_Real_t(1.111111e-36);
-      } // if ssTmp
-      domain->m_ss[iz] = SQRT(ssTmp);
-    END_PAR_FOR(i)
-  END_FINISH
+                            Real_t *bvc,   Index_t nz) {
+  FINISH // RAG SCATTERS
+    EDT_PAR_FOR_0xNx1(i,nz,CalcSoundSpeedForElems_edt_1,domain,vnewc,enewc,pnewc,pbvc,bvc,rho0)
+  END_FINISH // RAG SCATTERs
 } // CalcSoundSpeedForElems()
+#endif
 
 static INLINE
 void EvalEOSForElems(Real_t *vnewc, Index_t length) {
   Real_t  e_cut = domain->m_e_cut;
   Real_t  p_cut = domain->m_p_cut;
-  Real_t  ss4o3 = domain->m_ss4o3;
   Real_t  q_cut = domain->m_q_cut;
 
   Real_t eosvmax = domain->m_eosvmax ;
@@ -814,54 +814,57 @@ void EvalEOSForElems(Real_t *vnewc, Index_t length) {
 
 TRACE1("/* compress data, minimal set */");
 
-// RAG GATHERS
-
-  FINISH
+  FINISH // RAG GATHERS
+#if 1
+    EDT_PAR_FOR_0xNx1(i,length,EvalEOSForElems_edt_1,domain,delvc,e_old,p_old,q_old,qq,ql);
+#else
     PAR_FOR_0xNx1(i,length,domain,delvc,e_old,p_old,q_old,qq,ql)
       Index_t zidx = domain->m_matElemlist[i] ;
       e_old[i] = domain->m_e[zidx] ;
-//DEBUG if(i==0)fprintf(stdout,"e_old = %e\n",e_old[i]);
       delvc[i] = domain->m_delv[zidx] ;
-//DEBUG if(i==0)fprintf(stdout,"delvc = %e\n",delvc[i]);
       p_old[i] = domain->m_p[zidx] ;
       q_old[i] = domain->m_q[zidx] ;
       qq[i]    = domain->m_qq[zidx] ;
       ql[i]    = domain->m_ql[zidx] ;
     END_PAR_FOR(i)
-  END_FINISH 
-
-// RAG STRIDE ONE
-
-  FINISH
-    PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
-           Real_t vchalf ;
-           compression[i] = cast_Real_t(1.) / vnewc[i] - cast_Real_t(1.);
-           vchalf = vnewc[i] - delvc[i] * cast_Real_t(.5);
-           compHalfStep[i] = cast_Real_t(1.) / vchalf - cast_Real_t(1.);
-           work[i] = cast_Real_t(0.) ; 
-    END_PAR_FOR(i)
+#endif
+  END_FINISH // RAG GATHERS
 
 TRACE1("/* Check for v > eosvmax or v < eosvmin */");
 
-    if ( eosvmin != cast_Real_t(0.) ) {
-      PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
-            if (vnewc[i] <= eosvmin) { /* impossible due to calling func? */
-              compHalfStep[i] = compression[i] ;
-            } // if vnewc
-      END_PAR_FOR(i)
-    } // if eosvmin
+  FINISH // RAG STRIDE ONE
+#if 1
+    EDT_PAR_FOR_0xNx1(i,length,EvalEOSForElems_edt_2,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax);
+#else
+    PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax)
+      Real_t vchalf ;
+      compression[i] = cast_Real_t(1.) / vnewc[i] - cast_Real_t(1.);
+      vchalf = vnewc[i] - delvc[i] * cast_Real_t(.5);
+      compHalfStep[i] = cast_Real_t(1.) / vchalf - cast_Real_t(1.);
+      work[i] = cast_Real_t(0.) ; 
+//  END_PAR_FOR(i)
 
-    if ( eosvmax != cast_Real_t(0.) ) {
-      PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,eosvmin,eosvmax,p_old)
+      if ( eosvmin != cast_Real_t(0.) ) {
+//    PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax)
+        if (vnewc[i] <= eosvmin) { /* impossible due to calling func? */
+          compHalfStep[i] = compression[i] ;
+        } // if vnewc
+//    END_PAR_FOR(i)
+      } // if eosvmin
+
+      if ( eosvmax != cast_Real_t(0.) ) {
+//    PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax)
         if (vnewc[i] >= eosvmax) { /* impossible due to calling func? */
           p_old[i]        = cast_Real_t(0.) ;
           compression[i]  = cast_Real_t(0.) ;
           compHalfStep[i] = cast_Real_t(0.) ;
         } // if vnewc
-      END_PAR_FOR(i)
-    } // if eosvmax
+//    END_PAR_FOR(i)
+      } // if eosvmax
 
-  END_FINISH 
+    END_PAR_FOR(i)
+#endif
+  END_FINISH // RAG STRIDE ONE
 
   CalcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
                      p_old, e_old, q_old, compression, compHalfStep,
@@ -869,20 +872,28 @@ TRACE1("/* Check for v > eosvmax or v < eosvmin */");
                      p_cut, e_cut, q_cut, emin,
                      qq, ql, rho0, eosvmax, length);
 
-// RAG SCATTERS
 
-  FINISH
+  FINISH     // RAG SCATTERS
+#if 1
+    EDT_PAR_FOR_0xNx1(i,length,EvalEOSForElems_edt_3,domain,p_new,e_new,q_new);
+#else
     PAR_FOR_0xNx1(i,length,domain,p_new,e_new,q_new)
       Index_t zidx = domain->m_matElemlist[i] ;
       domain->m_p[zidx] = p_new[i] ;
       domain->m_e[zidx] = e_new[i] ;
-//DEBUG if(i==0)fprintf(stdout,"e_new = %e\n",e_new[i]);
       domain->m_q[zidx] = q_new[i] ;
     END_PAR_FOR(i)
-  END_FINISH 
+#endif
+  END_FINISH // RAG SCATTERS
 
+#if 1
+  FINISH     // RAG SCATTERS
+    EDT_PAR_FOR_0xNx1(i,length,CalcSoundSpeedForElems_edt_1,domain,vnewc,e_new,p_new,pbvc,bvc,rho0)
+  END_FINISH // RAG SCATTERs
+#else
   CalcSoundSpeedForElems(vnewc, rho0, e_new, p_new,
-                         pbvc, bvc, ss4o3, length) ;
+                         pbvc, bvc, length) ;
+#endif
 
   Release_Real_t(pbvc) ;
   Release_Real_t(bvc) ;
@@ -1297,7 +1308,6 @@ TRACE0("/* initialize material parameters */");
   domain->m_v_cut              = cast_Real_t(1.0e-10) ;
 
   domain->m_hgcoef             = cast_Real_t(3.0) ;
-  domain->m_ss4o3              = cast_Real_t(4.0)/cast_Real_t(3.0) ;
 
   domain->m_qstop              = cast_Real_t(1.0e+12) ;
   domain->m_monoq_max_slope    = cast_Real_t(1.0) ;

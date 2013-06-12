@@ -780,7 +780,7 @@ void CalcMonotonicQRegionForElems_edt_1( Index_t ielem_out, Index_t ielem_end, S
   } // for ielem
 } // CalcMonotonicQRegionForElems_edt_1()
 
-void CalcQForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain ,
+void CalcQForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
                                          Real_t qstop, SHARED uint64_t *pIndex_AMO ) {
   for( Index_t i = i_out ; i < i_end ; ++i ) {
     if ( domain->m_q[i] > qstop ) {
@@ -935,3 +935,79 @@ void CalcEnergyForElems_edt_4( Index_t i_out, Index_t i_end,
     } // if delvc
   } // for i
 } // CalcEnergyForElems_edt_4()
+
+void CalcSoundSpeedForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                                   Real_t *vnewc, Real_t *enewc,
+                                   Real_t *pnewc, Real_t *pbvc,
+                                   Real_t *bvc, 
+                                   Real_t rho0 ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) {
+    Index_t iz = domain->m_matElemlist[i];
+    Real_t ssTmp = (pbvc[i] * enewc[i] + vnewc[i] * vnewc[i] *
+                     bvc[i] * pnewc[i]) / rho0;
+    if (ssTmp <= cast_Real_t(1.111111e-36)) {
+      ssTmp = cast_Real_t(1.111111e-36);
+    } // if ssTmp
+    domain->m_ss[iz] = SQRT(ssTmp); // RAG -- SCATTER OPERATION
+  } // for i
+} // CalcSoundSpeedForElems_edt_1()
+
+void EvalEOSForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                            Real_t *delvc, Real_t *e_old,
+                            Real_t *p_old, Real_t *q_old,
+                            Real_t *qq, Real_t *ql) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG GATHERS
+    Index_t zidx = domain->m_matElemlist[i] ;
+    e_old[i] = domain->m_e[zidx] ;
+    delvc[i] = domain->m_delv[zidx] ;
+    p_old[i] = domain->m_p[zidx] ;
+    q_old[i] = domain->m_q[zidx] ;
+    qq[i]    = domain->m_qq[zidx] ;
+    ql[i]    = domain->m_ql[zidx] ;
+  } // for i
+} // EvalEOSForElems_edt_1()
+
+void EvalEOSForElems_edt_2( Index_t i_out, Index_t i_end,
+                            Real_t *compression, Real_t *vnewc,
+                            Real_t *delvc, Real_t *compHalfStep,
+                            Real_t *work, Real_t *p_old,
+                            Real_t eosvmin, Real_t eosvmax ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG STRIDE ONE
+//  PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax)
+    Real_t vchalf ;
+    compression[i] = cast_Real_t(1.) / vnewc[i] - cast_Real_t(1.);
+    vchalf = vnewc[i] - delvc[i] * cast_Real_t(.5);
+    compHalfStep[i] = cast_Real_t(1.) / vchalf - cast_Real_t(1.);
+    work[i] = cast_Real_t(0.) ; 
+//  END_PAR_FOR(i)
+
+    if ( eosvmin != cast_Real_t(0.) ) {
+//  PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax)
+      if (vnewc[i] <= eosvmin) { /* impossible due to calling func? */
+        compHalfStep[i] = compression[i] ;
+      } // if vnewc
+//  END_PAR_FOR(i)
+    } // if eosvmin
+
+    if ( eosvmax != cast_Real_t(0.) ) {
+//  PAR_FOR_0xNx1(i,length,compression,vnewc,delvc,compHalfStep,work,p_old,eosvmin,eosvmax)
+      if (vnewc[i] >= eosvmax) { /* impossible due to calling func? */
+        p_old[i]        = cast_Real_t(0.) ;
+        compression[i]  = cast_Real_t(0.) ;
+        compHalfStep[i] = cast_Real_t(0.) ;
+      } // if vnewc
+//  END_PAR_FOR(i)
+     } // if eosvmax
+  } // for i
+} // EvalEOSForElems_edt_2()
+
+void EvalEOSForElems_edt_3( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                            Real_t *p_new, Real_t *e_new,
+                            Real_t *q_new ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG SCATTERS
+    Index_t zidx = domain->m_matElemlist[i] ;
+    domain->m_p[zidx] = p_new[i] ;
+    domain->m_e[zidx] = e_new[i] ;
+    domain->m_q[zidx] = q_new[i] ;
+  } // for i
+} // EvalEOSForElems_edt_3()
