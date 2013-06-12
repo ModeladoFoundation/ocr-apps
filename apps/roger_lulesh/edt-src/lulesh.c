@@ -737,15 +737,15 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
                           Index_t length)
 {
   FINISH
-    PAR_FOR_0xNx1(i,length,bvc,pbvc,compression)
+    PAR_FOR_0xNx1(i,length,bvc,pbvc,compression,p_new,e_old,vnewc,pmin,p_cut,eosvmax)
       Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
       bvc[i] = c1s * (compression[i] + cast_Real_t(1.));
       pbvc[i] = c1s;
-    END_PAR_FOR(i)
-  END_FINISH
+//  END_PAR_FOR(i)
+//END_FINISH
 
-  FINISH
-    PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
+//FINISH
+//  PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
       p_new[i] = bvc[i] * e_old[i] ;
 
       if    (FABS(p_new[i]) <  p_cut   ) 
