@@ -164,6 +164,33 @@ typedef uint64_t Int_t ;   /* integer representation */
 // 2^NumberOfDimensions
 #define EIGHT ((Index_t)8)
 
+/* Stuff needed for boundary conditions */
+/* 2 BCs on each of 6 hexahedral faces (12 bits) */
+#
+#define XI_M        0x003
+#define XI_M_SYMM   0x001
+#define XI_M_FREE   0x002
+
+#define XI_P        0x00c
+#define XI_P_SYMM   0x004
+#define XI_P_FREE   0x008
+
+#define ETA_M       0x030
+#define ETA_M_SYMM  0x010
+#define ETA_M_FREE  0x020
+
+#define ETA_P       0x0c0
+#define ETA_P_SYMM  0x040
+#define ETA_P_FREE  0x080
+
+#define ZETA_M      0x300
+#define ZETA_M_SYMM 0x100
+#define ZETA_M_FREE 0x200
+
+#define ZETA_P      0xc00
+#define ZETA_P_SYMM 0x400
+#define ZETA_P_FREE 0x800
+
 /************************************************************/
 /* Allow for flexible data layout experiments by separating */
 /* array interface from underlying implementation.          */

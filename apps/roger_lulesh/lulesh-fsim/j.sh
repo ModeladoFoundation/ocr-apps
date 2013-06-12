@@ -8,4 +8,4 @@ make run 2>&1 | tee nohup.out
 
 grep CONSOLE logs/*.CE.00 | grep -i RAG
 
-grep CONSOLE /tmp/roger-fsim*/*.CE.00 | grep -i RAG
+####grep CONSOLE /tmp/roger-fsim*/*.CE.00 | grep -i RAG

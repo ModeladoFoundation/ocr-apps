@@ -573,3 +573,220 @@ void CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,          /* IN
       (hourgam7[i00] * h00 + hourgam7[i01] * h01 +
        hourgam7[i02] * h02 + hourgam7[i03] * h03);
 } // CalcElemFBHourglassForce()
+
+static INLINE
+Real_t CalcElemVolume_scalars( const Real_t x0, const Real_t x1,
+               const Real_t x2, const Real_t x3,
+               const Real_t x4, const Real_t x5,
+               const Real_t x6, const Real_t x7,
+               const Real_t y0, const Real_t y1,
+               const Real_t y2, const Real_t y3,
+               const Real_t y4, const Real_t y5,
+               const Real_t y6, const Real_t y7,
+               const Real_t z0, const Real_t z1,
+               const Real_t z2, const Real_t z3,
+               const Real_t z4, const Real_t z5,
+               const Real_t z6, const Real_t z7 ) {
+  Real_t twelveth = cast_Real_t(1.0)/cast_Real_t(12.0);
+
+  Real_t dx61 = x6 - x1;
+  Real_t dy61 = y6 - y1;
+  Real_t dz61 = z6 - z1;
+
+  Real_t dx70 = x7 - x0;
+  Real_t dy70 = y7 - y0;
+  Real_t dz70 = z7 - z0;
+
+  Real_t dx63 = x6 - x3;
+  Real_t dy63 = y6 - y3;
+  Real_t dz63 = z6 - z3;
+
+  Real_t dx20 = x2 - x0;
+  Real_t dy20 = y2 - y0;
+  Real_t dz20 = z2 - z0;
+
+  Real_t dx50 = x5 - x0;
+  Real_t dy50 = y5 - y0;
+  Real_t dz50 = z5 - z0;
+
+  Real_t dx64 = x6 - x4;
+  Real_t dy64 = y6 - y4;
+  Real_t dz64 = z6 - z4;
+
+  Real_t dx31 = x3 - x1;
+  Real_t dy31 = y3 - y1;
+  Real_t dz31 = z3 - z1;
+
+  Real_t dx72 = x7 - x2;
+  Real_t dy72 = y7 - y2;
+  Real_t dz72 = z7 - z2;
+
+  Real_t dx43 = x4 - x3;
+  Real_t dy43 = y4 - y3;
+  Real_t dz43 = z4 - z3;
+
+  Real_t dx57 = x5 - x7;
+  Real_t dy57 = y5 - y7;
+  Real_t dz57 = z5 - z7;
+
+  Real_t dx14 = x1 - x4;
+  Real_t dy14 = y1 - y4;
+  Real_t dz14 = z1 - z4;
+
+  Real_t dx25 = x2 - x5;
+  Real_t dy25 = y2 - y5;
+  Real_t dz25 = z2 - z5;
+
+#define TRIPLE_PRODUCT(x1, y1, z1, x2, y2, z2, x3, y3, z3) \
+   ((x1)*((y2)*(z3) - (z2)*(y3)) + (x2)*((z1)*(y3) - (y1)*(z3)) + (x3)*((y1)*(z2) - (z1)*(y2)))
+
+  Real_t volume =
+    TRIPLE_PRODUCT(dx31 + dx72, dx63, dx20,
+       dy31 + dy72, dy63, dy20,
+       dz31 + dz72, dz63, dz20) +
+    TRIPLE_PRODUCT(dx43 + dx57, dx64, dx70,
+       dy43 + dy57, dy64, dy70,
+       dz43 + dz57, dz64, dz70) +
+    TRIPLE_PRODUCT(dx14 + dx25, dx61, dx50,
+       dy14 + dy25, dy61, dy50,
+       dz14 + dz25, dz61, dz50);
+
+#undef TRIPLE_PRODUCT
+
+  volume *= twelveth;
+
+  return volume ;
+} // CalcElemVolume_scalars()
+
+static INLINE
+Real_t CalcElemVolume( const Real_t x[EIGHT],
+                       const Real_t y[EIGHT],
+                       const Real_t z[EIGHT] ) {
+  return CalcElemVolume_scalars( x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7],
+                                 y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7],
+                                 z[0], z[1], z[2], z[3], z[4], z[5], z[6], z[7]);
+} // CalcElemVolume()
+
+static INLINE
+Real_t AreaFace( const Real_t x0, const Real_t x1,
+                 const Real_t x2, const Real_t x3,
+                 const Real_t y0, const Real_t y1,
+                 const Real_t y2, const Real_t y3,
+                 const Real_t z0, const Real_t z1,
+                 const Real_t z2, const Real_t z3) {
+  Real_t fx = (x2 - x0) - (x3 - x1);
+  Real_t fy = (y2 - y0) - (y3 - y1);
+  Real_t fz = (z2 - z0) - (z3 - z1);
+  Real_t gx = (x2 - x0) + (x3 - x1);
+  Real_t gy = (y2 - y0) + (y3 - y1);
+  Real_t gz = (z2 - z0) + (z3 - z1);
+  Real_t area = (fx * fx + fy * fy + fz * fz)
+              * (gx * gx + gy * gy + gz * gz)
+              - (fx * gx + fy * gy + fz * gz)
+              * (fx * gx + fy * gy + fz * gz) ;
+  return area ;
+} // AreaFace
+
+static INLINE
+Real_t CalcElemCharacteristicLength( const Real_t x[EIGHT],
+                                     const Real_t y[EIGHT],
+                                     const Real_t z[EIGHT],
+                                     const Real_t volume) {
+  Real_t a, charLength = cast_Real_t(0.0);
+
+  a = AreaFace(x[0],x[1],x[2],x[3],
+               y[0],y[1],y[2],y[3],
+               z[0],z[1],z[2],z[3]) ;
+  charLength = FMAX(a,charLength) ;
+
+  a = AreaFace(x[4],x[5],x[6],x[7],
+               y[4],y[5],y[6],y[7],
+               z[4],z[5],z[6],z[7]) ;
+  charLength = FMAX(a,charLength) ;
+
+  a = AreaFace(x[0],x[1],x[5],x[4],
+               y[0],y[1],y[5],y[4],
+               z[0],z[1],z[5],z[4]) ;
+  charLength = FMAX(a,charLength) ;
+
+  a = AreaFace(x[1],x[2],x[6],x[5],
+               y[1],y[2],y[6],y[5],
+               z[1],z[2],z[6],z[5]) ;
+  charLength = FMAX(a,charLength) ;
+
+  a = AreaFace(x[2],x[3],x[7],x[6],
+               y[2],y[3],y[7],y[6],
+               z[2],z[3],z[7],z[6]) ;
+  charLength = FMAX(a,charLength) ;
+
+  a = AreaFace(x[3],x[0],x[4],x[7],
+               y[3],y[0],y[4],y[7],
+               z[3],z[0],z[4],z[7]) ;
+  charLength = FMAX(a,charLength) ;
+
+  charLength = cast_Real_t(4.0) * volume / SQRT(charLength);
+
+  return charLength;
+} // CalcElemCharacteristicLength()
+
+static INLINE
+void CalcElemVelocityGrandient( const Real_t* const xvel,
+                                const Real_t* const yvel,
+                                const Real_t* const zvel,
+                                HC_UPC_CONST Real_t *b, // RAG -- b[][EIGHT]
+                                const Real_t detJ,
+                                Real_t* const d ) {
+  const Real_t inv_detJ = cast_Real_t(1.0) / detJ ;
+  Real_t dyddx, dxddy, dzddx, dxddz, dzddy, dyddz;
+  const Real_t* const pfx = &b[0*EIGHT];
+  const Real_t* const pfy = &b[1*EIGHT];
+  const Real_t* const pfz = &b[2*EIGHT];
+
+  d[0] = inv_detJ * ( pfx[0] * (xvel[0]-xvel[6])
+                    + pfx[1] * (xvel[1]-xvel[7])
+                    + pfx[2] * (xvel[2]-xvel[4])
+                    + pfx[3] * (xvel[3]-xvel[5]) );
+
+  d[1] = inv_detJ * ( pfy[0] * (yvel[0]-yvel[6])
+                    + pfy[1] * (yvel[1]-yvel[7])
+                    + pfy[2] * (yvel[2]-yvel[4])
+                    + pfy[3] * (yvel[3]-yvel[5]) );
+
+  d[2] = inv_detJ * ( pfz[0] * (zvel[0]-zvel[6])
+                    + pfz[1] * (zvel[1]-zvel[7])
+                    + pfz[2] * (zvel[2]-zvel[4])
+                    + pfz[3] * (zvel[3]-zvel[5]) );
+
+  dyddx  = inv_detJ * ( pfx[0] * (yvel[0]-yvel[6])
+                      + pfx[1] * (yvel[1]-yvel[7])
+                      + pfx[2] * (yvel[2]-yvel[4])
+                      + pfx[3] * (yvel[3]-yvel[5]) );
+
+  dxddy  = inv_detJ * ( pfy[0] * (xvel[0]-xvel[6])
+                      + pfy[1] * (xvel[1]-xvel[7])
+                      + pfy[2] * (xvel[2]-xvel[4])
+                      + pfy[3] * (xvel[3]-xvel[5]) );
+
+  dzddx  = inv_detJ * ( pfx[0] * (zvel[0]-zvel[6])
+                      + pfx[1] * (zvel[1]-zvel[7])
+                      + pfx[2] * (zvel[2]-zvel[4])
+                      + pfx[3] * (zvel[3]-zvel[5]) );
+
+  dxddz  = inv_detJ * ( pfz[0] * (xvel[0]-xvel[6])
+                      + pfz[1] * (xvel[1]-xvel[7])
+                      + pfz[2] * (xvel[2]-xvel[4])
+                      + pfz[3] * (xvel[3]-xvel[5]) );
+
+  dzddy  = inv_detJ * ( pfy[0] * (zvel[0]-zvel[6])
+                      + pfy[1] * (zvel[1]-zvel[7])
+                      + pfy[2] * (zvel[2]-zvel[4])
+                      + pfy[3] * (zvel[3]-zvel[5]) );
+
+  dyddz  = inv_detJ * ( pfz[0] * (yvel[0]-yvel[6])
+                      + pfz[1] * (yvel[1]-yvel[7])
+                      + pfz[2] * (yvel[2]-yvel[4])
+                      + pfz[3] * (yvel[3]-yvel[5]) );
+  d[5]  = cast_Real_t( .5) * ( dxddy + dyddx );
+  d[4]  = cast_Real_t( .5) * ( dxddz + dzddx );
+  d[3]  = cast_Real_t( .5) * ( dzddy + dyddz );
+} // CalcElemVelocityGrandient()

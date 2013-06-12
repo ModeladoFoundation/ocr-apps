@@ -425,40 +425,13 @@ TRACE1("Deallocate NS m_symm(X|Y|Z)");
    if(domain->m_symmZ != NULL)DRAM_FREE(domain->m_symmZ); domain->m_symmZ = NULL;
 }
 #endif //NOT FSIM and NOT OCR
-/* Stuff needed for boundary conditions */
-/* 2 BCs on each of 6 hexahedral faces (12 bits) */
-#define XI_M        0x003
-#define XI_M_SYMM   0x001
-#define XI_M_FREE   0x002
-
-#define XI_P        0x00c
-#define XI_P_SYMM   0x004
-#define XI_P_FREE   0x008
-
-#define ETA_M       0x030
-#define ETA_M_SYMM  0x010
-#define ETA_M_FREE  0x020
-
-#define ETA_P       0x0c0
-#define ETA_P_SYMM  0x040
-#define ETA_P_FREE  0x080
-
-#define ZETA_M      0x300
-#define ZETA_M_SYMM 0x100
-#define ZETA_M_FREE 0x200
-
-#define ZETA_P      0xc00
-#define ZETA_P_SYMM 0x400
-#define ZETA_P_FREE 0x800
 
 static INLINE
 void InitStressTermsForElems(Index_t numElem, 
                              Real_t *sigxx, Real_t *sigyy, Real_t *sigzz) {
-   //
    // pull in the stresses appropriate to the hydro integration
-   //
    FINISH 
-     EDT_PAR_FOR_0xNx1(i,numElem,InitStressTermsForElems_edt_1,sigxx,sigyy,sigzz,domain);
+     EDT_PAR_FOR_0xNx1(i,numElem,InitStressTermsForElems_edt_1,domain,sigxx,sigyy,sigzz);
    END_FINISH
 } // InitStressTermsForElems()
 
@@ -468,17 +441,9 @@ void IntegrateStressForElems( Index_t numElem,
                               Real_t *determ) {
   // loop over all elements
   FINISH
-    EDT_PAR_FOR_0xNx1(i,numElem,IntegrateStressForElems_edt_1, sigxx, sigyy, sigzz, determ, domain);
+    EDT_PAR_FOR_0xNx1(i,numElem,IntegrateStressForElems_edt_1,domain,sigxx,sigyy,sigzz,determ);
   END_FINISH
 } // IntegrateStressForElems()
-
-// RAG -- GAMMA now compile time constants in rodata
-static HAB_CONST Real_t GAMMA[FOUR*EIGHT] = {
-( 1.), ( 1.), (-1.), (-1.), (-1.), (-1.), ( 1.), ( 1.),
-( 1.), (-1.), (-1.), ( 1.), (-1.), ( 1.), ( 1.), (-1.),
-( 1.), (-1.), ( 1.), (-1.), ( 1.), (-1.), ( 1.), (-1.),
-(-1.), ( 1.), (-1.), ( 1.), ( 1.), (-1.), ( 1.), (-1.),
-};
 
 static INLINE
 void CalcFBHourglassForceForElems(Real_t *determ,
@@ -491,10 +456,10 @@ void CalcFBHourglassForceForElems(Real_t *determ,
    *               force.
    *
    *************************************************/
-/*    compute the hourglass modes */
   Index_t numElem = domain->m_numElem ;
+// compute the hourglass modes
   FINISH
-    EDT_PAR_FOR_0xNx1(i2,numElem,CalcFBHourglassForceForElems_edt_1, hourg,GAMMA,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,domain)
+    EDT_PAR_FOR_0xNx1(i2,numElem,CalcFBHourglassForceForElems_edt_1,domain,hourg,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz)
   END_FINISH
 } // CalcFBHourglassForceForElems
 
@@ -514,7 +479,7 @@ TRACE6("Allocate dvdx,dvdy,dvdz,x8n,y8n,z8n");
 
 TRACE6("/* start loop over elements */");
   FINISH
-    EDT_PAR_FOR_0xNx1(i,numElem,CalcHourglassControlForElems_edt_1, determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,domain)
+    EDT_PAR_FOR_0xNx1(i,numElem,CalcHourglassControlForElems_edt_1,domain,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz)
   END_FINISH
 
   if ( hgcoef > cast_Real_t(0.) ) {
@@ -592,16 +557,7 @@ static INLINE
 void CalcAccelerationForNodes() {
   Index_t numNode = domain->m_numNode ;
   FINISH 
-    PAR_FOR_0xNx1(i,numNode,domain)
-      domain->m_xdd[i] = domain->m_fx[i] / domain->m_nodalMass[i];
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_xdd %e\n",domain->m_xdd[1]);
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_fx  %e\n",domain->m_fx[1]);
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_nodalMass %e\n",domain->m_nodalMass[1]);
-      domain->m_ydd[i] = domain->m_fy[i] / domain->m_nodalMass[i];
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_ydd %e\n",domain->m_ydd[1]);
-      domain->m_zdd[i] = domain->m_fz[i] / domain->m_nodalMass[i];
-//DEBUG if(i==1)fprintf(stdout,"CAFN: m_zdd %e\n",domain->m_zdd[1]);
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,numNode,CalcAccelerationForNodes_edt_1,domain)
   END_FINISH
 } // CalcAccelerationForNodes()
 
@@ -609,41 +565,15 @@ static INLINE
 void ApplyAccelerationBoundaryConditionsForNodes() {
   Index_t numNodeBC = (domain->m_sizeX+1)*(domain->m_sizeX+1) ;
   FINISH
-    PAR_FOR_0xNx1(i,numNodeBC,domain)
-// RAG -- SCATTER domain->m_(x|y|z)dd[domain->m_symm(X|Y|Z)[i]] = 0.0
-      domain->m_xdd[domain->m_symmX[i]] = cast_Real_t(0.0) ;
-      domain->m_ydd[domain->m_symmY[i]] = cast_Real_t(0.0) ;
-      domain->m_zdd[domain->m_symmZ[i]] = cast_Real_t(0.0) ;
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,numNodeBC,ApplyAccelerationBoundaryConditionsForNodes_edt_1,domain);
   END_FINISH
 } // ApplyAccelerationBoundaryConditionsForNodes()
 
 static INLINE
 void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
   Index_t numNode = domain->m_numNode ;
-//DEBUG fprintf(stdout,"CVFN:dt= %e\n",dt);
   FINISH
-    PAR_FOR_0xNx1(i,numNode,domain,dt,u_cut)
-      Real_t xdtmp, ydtmp, zdtmp ;
-
-// RAG -- DAXPY       -- (x|y|x)d += dt * (x|y|z)dd
-// RAG -- DFLUSH .i.e -- -u_cut < (x|y|z)d <u_cut to 0.0
-
-      xdtmp = domain->m_xd[i] + domain->m_xdd[i] * dt ;
-      if( FABS(xdtmp) < u_cut ) xdtmp = cast_Real_t(0.0);
-      domain->m_xd[i] = xdtmp ;
-//DEBUG if(i==1)fprintf(stdout,"CVFN:m_xd[1]= %e\n",domain->m_xd[1]);
-
-      ydtmp = domain->m_yd[i] + domain->m_ydd[i] * dt ;
-      if( FABS(ydtmp) < u_cut ) ydtmp = cast_Real_t(0.0);
-      domain->m_yd[i] = ydtmp ;
-//DEBUG if(i==1)fprintf(stdout,"CVFN:m_yd[1]= %e\n",domain->m_yd[1]);
-
-      zdtmp = domain->m_zd[i] + domain->m_zdd[i] * dt ;
-      if( FABS(zdtmp) < u_cut ) zdtmp = cast_Real_t(0.0);
-      domain->m_zd[i] = zdtmp ;
-//DEBUG if(i==1)fprintf(stdout,"CVFN:m_zd[1]= %e\n",domain->m_zd[1]);
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,numNode,CalcVelocityForNodes_edt_1,domain,dt,u_cut)
   END_FINISH
 } // CalcVelocityForNodes()
 
@@ -652,15 +582,7 @@ void CalcPositionForNodes(const Real_t dt) {
   Index_t numNode = domain->m_numNode ;
 //DEBUG fprintf(stdout,"CPFN:dt= %e\n",dt);
   FINISH
-    PAR_FOR_0xNx1(i,numNode,domain,dt)
-// RAG -- DAXPY       -- (x|y|x) += dt * (x|y|z)d
-      domain->m_x[i] += domain->m_xd[i] * dt ;
-//DEBUG if(i==1)fprintf(stdout,"CPFN:m_x[1]= %e\n",domain->m_x[1]);
-      domain->m_y[i] += domain->m_yd[i] * dt ;
-//DEBUG if(i==1)fprintf(stdout,"CPFN:m_y[1]= %e\n",domain->m_y[1]);
-      domain->m_z[i] += domain->m_zd[i] * dt ;
-//DEBUG if(i==1)fprintf(stdout,"CPFN:m_z[1]= %e\n",domain->m_z[1]);
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,numNode,CalcPositionForNodes_edt_1,domain,dt)
   END_FINISH
 } // CalcPositionForNodes()
 
@@ -696,328 +618,10 @@ TRACE2(" /* Call CalcPositionForNodes() */");
 } // LagrangeNodal()
 
 static INLINE
-Real_t CalcElemVolume_scalars( const Real_t x0, const Real_t x1,
-               const Real_t x2, const Real_t x3,
-               const Real_t x4, const Real_t x5,
-               const Real_t x6, const Real_t x7,
-               const Real_t y0, const Real_t y1,
-               const Real_t y2, const Real_t y3,
-               const Real_t y4, const Real_t y5,
-               const Real_t y6, const Real_t y7,
-               const Real_t z0, const Real_t z1,
-               const Real_t z2, const Real_t z3,
-               const Real_t z4, const Real_t z5,
-               const Real_t z6, const Real_t z7 ) {
-  Real_t twelveth = cast_Real_t(1.0)/cast_Real_t(12.0);
-
-  Real_t dx61 = x6 - x1;
-  Real_t dy61 = y6 - y1;
-  Real_t dz61 = z6 - z1;
-
-  Real_t dx70 = x7 - x0;
-  Real_t dy70 = y7 - y0;
-  Real_t dz70 = z7 - z0;
-
-  Real_t dx63 = x6 - x3;
-  Real_t dy63 = y6 - y3;
-  Real_t dz63 = z6 - z3;
-
-  Real_t dx20 = x2 - x0;
-  Real_t dy20 = y2 - y0;
-  Real_t dz20 = z2 - z0;
-
-  Real_t dx50 = x5 - x0;
-  Real_t dy50 = y5 - y0;
-  Real_t dz50 = z5 - z0;
-
-  Real_t dx64 = x6 - x4;
-  Real_t dy64 = y6 - y4;
-  Real_t dz64 = z6 - z4;
-
-  Real_t dx31 = x3 - x1;
-  Real_t dy31 = y3 - y1;
-  Real_t dz31 = z3 - z1;
-
-  Real_t dx72 = x7 - x2;
-  Real_t dy72 = y7 - y2;
-  Real_t dz72 = z7 - z2;
-
-  Real_t dx43 = x4 - x3;
-  Real_t dy43 = y4 - y3;
-  Real_t dz43 = z4 - z3;
-
-  Real_t dx57 = x5 - x7;
-  Real_t dy57 = y5 - y7;
-  Real_t dz57 = z5 - z7;
-
-  Real_t dx14 = x1 - x4;
-  Real_t dy14 = y1 - y4;
-  Real_t dz14 = z1 - z4;
-
-  Real_t dx25 = x2 - x5;
-  Real_t dy25 = y2 - y5;
-  Real_t dz25 = z2 - z5;
-
-#define TRIPLE_PRODUCT(x1, y1, z1, x2, y2, z2, x3, y3, z3) \
-   ((x1)*((y2)*(z3) - (z2)*(y3)) + (x2)*((z1)*(y3) - (y1)*(z3)) + (x3)*((y1)*(z2) - (z1)*(y2)))
-
-  Real_t volume =
-    TRIPLE_PRODUCT(dx31 + dx72, dx63, dx20,
-       dy31 + dy72, dy63, dy20,
-       dz31 + dz72, dz63, dz20) +
-    TRIPLE_PRODUCT(dx43 + dx57, dx64, dx70,
-       dy43 + dy57, dy64, dy70,
-       dz43 + dz57, dz64, dz70) +
-    TRIPLE_PRODUCT(dx14 + dx25, dx61, dx50,
-       dy14 + dy25, dy61, dy50,
-       dz14 + dz25, dz61, dz50);
-
-#undef TRIPLE_PRODUCT
-
-  volume *= twelveth;
-
-  return volume ;
-} // CalcElemVolume_scalars()
-
-static INLINE
-Real_t CalcElemVolume( const Real_t x[EIGHT],
-                       const Real_t y[EIGHT],
-                       const Real_t z[EIGHT] ) {
-  return CalcElemVolume_scalars( x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7],
-                                 y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7],
-                                 z[0], z[1], z[2], z[3], z[4], z[5], z[6], z[7]);
-} // CalcElemVolume()
-
-static INLINE
-Real_t AreaFace( const Real_t x0, const Real_t x1,
-                 const Real_t x2, const Real_t x3,
-                 const Real_t y0, const Real_t y1,
-                 const Real_t y2, const Real_t y3,
-                 const Real_t z0, const Real_t z1,
-                 const Real_t z2, const Real_t z3) {
-  Real_t fx = (x2 - x0) - (x3 - x1);
-  Real_t fy = (y2 - y0) - (y3 - y1);
-  Real_t fz = (z2 - z0) - (z3 - z1);
-  Real_t gx = (x2 - x0) + (x3 - x1);
-  Real_t gy = (y2 - y0) + (y3 - y1);
-  Real_t gz = (z2 - z0) + (z3 - z1);
-  Real_t area = (fx * fx + fy * fy + fz * fz)
-              * (gx * gx + gy * gy + gz * gz)
-              - (fx * gx + fy * gy + fz * gz)
-              * (fx * gx + fy * gy + fz * gz) ;
-  return area ;
-} // AreaFace
-
-static INLINE
-Real_t CalcElemCharacteristicLength( const Real_t x[EIGHT],
-                                     const Real_t y[EIGHT],
-                                     const Real_t z[EIGHT],
-                                     const Real_t volume) {
-  Real_t a, charLength = cast_Real_t(0.0);
-
-  a = AreaFace(x[0],x[1],x[2],x[3],
-               y[0],y[1],y[2],y[3],
-               z[0],z[1],z[2],z[3]) ;
-  charLength = FMAX(a,charLength) ;
-
-  a = AreaFace(x[4],x[5],x[6],x[7],
-               y[4],y[5],y[6],y[7],
-               z[4],z[5],z[6],z[7]) ;
-  charLength = FMAX(a,charLength) ;
-
-  a = AreaFace(x[0],x[1],x[5],x[4],
-               y[0],y[1],y[5],y[4],
-               z[0],z[1],z[5],z[4]) ;
-  charLength = FMAX(a,charLength) ;
-
-  a = AreaFace(x[1],x[2],x[6],x[5],
-               y[1],y[2],y[6],y[5],
-               z[1],z[2],z[6],z[5]) ;
-  charLength = FMAX(a,charLength) ;
-
-  a = AreaFace(x[2],x[3],x[7],x[6],
-               y[2],y[3],y[7],y[6],
-               z[2],z[3],z[7],z[6]) ;
-  charLength = FMAX(a,charLength) ;
-
-  a = AreaFace(x[3],x[0],x[4],x[7],
-               y[3],y[0],y[4],y[7],
-               z[3],z[0],z[4],z[7]) ;
-  charLength = FMAX(a,charLength) ;
-
-  charLength = cast_Real_t(4.0) * volume / SQRT(charLength);
-
-  return charLength;
-} // CalcElemCharacteristicLength()
-
-static INLINE
-void CalcElemVelocityGrandient( const Real_t* const xvel,
-                                const Real_t* const yvel,
-                                const Real_t* const zvel,
-                                HC_UPC_CONST Real_t *b, // RAG -- b[][EIGHT]
-                                const Real_t detJ,
-                                Real_t* const d ) {
-  const Real_t inv_detJ = cast_Real_t(1.0) / detJ ;
-  Real_t dyddx, dxddy, dzddx, dxddz, dzddy, dyddz;
-  const Real_t* const pfx = &b[0*EIGHT];
-  const Real_t* const pfy = &b[1*EIGHT];
-  const Real_t* const pfz = &b[2*EIGHT];
-
-  d[0] = inv_detJ * ( pfx[0] * (xvel[0]-xvel[6])
-                    + pfx[1] * (xvel[1]-xvel[7])
-                    + pfx[2] * (xvel[2]-xvel[4])
-                    + pfx[3] * (xvel[3]-xvel[5]) );
-
-  d[1] = inv_detJ * ( pfy[0] * (yvel[0]-yvel[6])
-                    + pfy[1] * (yvel[1]-yvel[7])
-                    + pfy[2] * (yvel[2]-yvel[4])
-                    + pfy[3] * (yvel[3]-yvel[5]) );
-
-  d[2] = inv_detJ * ( pfz[0] * (zvel[0]-zvel[6])
-                    + pfz[1] * (zvel[1]-zvel[7])
-                    + pfz[2] * (zvel[2]-zvel[4])
-                    + pfz[3] * (zvel[3]-zvel[5]) );
-
-  dyddx  = inv_detJ * ( pfx[0] * (yvel[0]-yvel[6])
-                      + pfx[1] * (yvel[1]-yvel[7])
-                      + pfx[2] * (yvel[2]-yvel[4])
-                      + pfx[3] * (yvel[3]-yvel[5]) );
-
-  dxddy  = inv_detJ * ( pfy[0] * (xvel[0]-xvel[6])
-                      + pfy[1] * (xvel[1]-xvel[7])
-                      + pfy[2] * (xvel[2]-xvel[4])
-                      + pfy[3] * (xvel[3]-xvel[5]) );
-
-  dzddx  = inv_detJ * ( pfx[0] * (zvel[0]-zvel[6])
-                      + pfx[1] * (zvel[1]-zvel[7])
-                      + pfx[2] * (zvel[2]-zvel[4])
-                      + pfx[3] * (zvel[3]-zvel[5]) );
-
-  dxddz  = inv_detJ * ( pfz[0] * (xvel[0]-xvel[6])
-                      + pfz[1] * (xvel[1]-xvel[7])
-                      + pfz[2] * (xvel[2]-xvel[4])
-                      + pfz[3] * (xvel[3]-xvel[5]) );
-
-  dzddy  = inv_detJ * ( pfy[0] * (zvel[0]-zvel[6])
-                      + pfy[1] * (zvel[1]-zvel[7])
-                      + pfy[2] * (zvel[2]-zvel[4])
-                      + pfy[3] * (zvel[3]-zvel[5]) );
-
-  dyddz  = inv_detJ * ( pfz[0] * (yvel[0]-yvel[6])
-                      + pfz[1] * (yvel[1]-yvel[7])
-                      + pfz[2] * (yvel[2]-yvel[4])
-                      + pfz[3] * (yvel[3]-yvel[5]) );
-  d[5]  = cast_Real_t( .5) * ( dxddy + dyddx );
-  d[4]  = cast_Real_t( .5) * ( dxddz + dzddx );
-  d[3]  = cast_Real_t( .5) * ( dzddy + dyddz );
-} // CalcElemVelocityGrandient()
-
-static INLINE
 void CalcKinematicsForElems( Index_t numElem, Real_t dt ) {
   FINISH
     // loop over all elements
-    PAR_FOR_0xNx1(k,numElem,domain,dt)
-#if  defined(HAB_C)
-      Real_t *B        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
-      Real_t *D        = (Real_t *)malloc(THREE*EIGHT*sizeof(Real_t)) ;
-      Real_t *x_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *y_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *z_local  = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *xd_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *yd_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *zd_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *detJ     = (Real_t *)malloc(sizeof(Real_t)) ;
-      *detJ     = cast_Real_t(0.0) ;
-#else // NOT HAB_C
-      Real_t B[THREE*EIGHT] ; /** shape function derivatives */ /* RAG -- B[THREE][EIGHT] */
-      Real_t D[SIX] ;
-      Real_t x_local[EIGHT] ;
-      Real_t y_local[EIGHT] ;
-      Real_t z_local[EIGHT] ;
-      Real_t xd_local[EIGHT] ;
-      Real_t yd_local[EIGHT] ;
-      Real_t zd_local[EIGHT] ;
-      Real_t detJ = cast_Real_t(0.0) ;
-#endif //    HAB_C
-      Real_t volume ;
-      Real_t relativeVolume ;
-      SHARED HAB_CONST Index_t* HAB_CONST elemToNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*k] ;
-
-      // get nodal coordinates from global arrays and copy into local arrays.
-      for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-        Index_t gnode = elemToNode[lnode];
-//DEBUG if(k==0)fprintf(stdout,"gnode%d= %d\n",lnode,gnode);
-        x_local[lnode] = domain->m_x[gnode];
-//DEBUG if(k==0)fprintf(stdout,"x_local%d= %e\n",lnode,x_local[lnode]);
-        y_local[lnode] = domain->m_y[gnode];
-//DEBUG if(k==0)fprintf(stdout,"y_local%d= %e\n",lnode,y_local[lnode]);
-        z_local[lnode] = domain->m_z[gnode];
-//DEBUG if(k==0)fprintf(stdout,"z_local%d= %e\n",lnode,z_local[lnode]);
-      } // for lnode
-
-      // volume calculations
-      volume = CalcElemVolume(x_local, y_local, z_local );
-//DEBUG if(k==0)fprintf(stdout,"volume= %e\n",volume);
-      relativeVolume = volume / domain->m_volo[k] ;
-//DEBUG if(k==0)fprintf(stdout,"relVol= %e\n",relativeVolume);
-      domain->m_vnew[k] = relativeVolume ;
-//DEBUG if(k==0)fprintf(stdout,"m_v   = %e\n",domain->m_v[0]);
-      domain->m_delv[k] = relativeVolume - domain->m_v[k] ;
-//DEBUG if(k==0)fprintf(stdout,"m_delv= %e\n",domain->m_delv[0]);
-
-      // set characteristic length
-      domain->m_arealg[k] = CalcElemCharacteristicLength(x_local,
-                                                        y_local,
-                                                        z_local,
-                                                        volume);
-
-      // get nodal velocities from global array and copy into local arrays.
-      for( Index_t lnode=0 ; lnode<EIGHT ; ++lnode ) {
-        Index_t gnode = elemToNode[lnode];
-        xd_local[lnode] = domain->m_xd[gnode];
-        yd_local[lnode] = domain->m_yd[gnode];
-        zd_local[lnode] = domain->m_zd[gnode];
-      } // for lnode
-
-      Real_t dt2 = cast_Real_t(0.5) * dt;
-      for( Index_t j=0 ; j<EIGHT ; ++j ) {
-         x_local[j] -= dt2 * xd_local[j];
-         y_local[j] -= dt2 * yd_local[j];
-         z_local[j] -= dt2 * zd_local[j];
-      } // for j
-
-#if  defined(HAB_C)
-      CalcElemShapeFunctionDerivatives( x_local,
-                                        y_local,
-                                        z_local,
-                                        B, detJ );
-
-      CalcElemVelocityGrandient( xd_local,
-                                 yd_local,
-                                 zd_local,
-                                 B, *detJ, D );
-#else // NOT HAB_C
-      CalcElemShapeFunctionDerivatives( x_local,
-                                        y_local,
-                                        z_local,
-                                        B, &detJ );
-
-      CalcElemVelocityGrandient( xd_local,
-                                 yd_local,
-                                 zd_local,
-                                 B, detJ, D );
-#endif //    HAB_C
-
-      // put velocity gradient quantities into their global arrays.
-      domain->m_dxx[k] = D[0];
-      domain->m_dyy[k] = D[1];
-      domain->m_dzz[k] = D[2];
-#if  defined(HAB_C)
-      free(zd_local); free(yd_local); free(xd_local);
-      free(z_local); free(y_local); free(x_local);
-      free(D); free(B);
-#endif //    HAB_C
-    END_PAR_FOR(k) 
+    EDT_PAR_FOR_0xNx1(i,numElem,CalcKinematicsForElems_edt_1,domain,dt);
   END_FINISH
 } // CalcKinematicsForElems()
 
@@ -1029,313 +633,29 @@ void CalcLagrangeElements(Real_t deltatime) {
 
       // element loop to do some stuff not included in the elemlib function.
       FINISH
-        PAR_FOR_0xNx1(k,numElem,domain)
-          // calc strain rate and apply as constraint (only done in FB element)
-          Real_t vdov = domain->m_dxx[k] + domain->m_dyy[k] + domain->m_dzz[k] ;
-          Real_t vdovthird = vdov/cast_Real_t(3.0) ;
-        
-          // make the rate of deformation tensor deviatoric
-          domain->m_vdov[k] = vdov ;
-          domain->m_dxx[k] -= vdovthird ;
-          domain->m_dyy[k] -= vdovthird ;
-          domain->m_dzz[k] -= vdovthird ;
-
-          // See if any volumes are negative, and take appropriate action.
-          if (domain->m_vnew[k] <= cast_Real_t(0.0)) {
-            EXIT(VolumeError) ;
-          } // if domain->m_vnew
-        END_PAR_FOR(k)
+        EDT_PAR_FOR_0xNx1(i,numElem,CalcLagrangeElements_edt_1,domain);
       END_FINISH
    } // if numElem
 } // CalcLagrangeElements()
 
 static INLINE
 void CalcMonotonicQGradientsForElems() {
-#define SUM4(a,b,c,d) (a + b + c + d)
   Index_t numElem = domain->m_numElem ;
   FINISH
-    PAR_FOR_0xNx1(i,numElem,domain)
-      HAB_CONST Real_t ptiny = cast_Real_t(1.e-36) ;
-      Real_t ax,ay,az ;
-      Real_t dxv,dyv,dzv ;
-
-      SHARED const Index_t *elemToNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*i];
-      Index_t n0 = elemToNode[0] ;
-      Index_t n1 = elemToNode[1] ;
-      Index_t n2 = elemToNode[2] ;
-      Index_t n3 = elemToNode[3] ;
-      Index_t n4 = elemToNode[4] ;
-      Index_t n5 = elemToNode[5] ;
-      Index_t n6 = elemToNode[6] ;
-      Index_t n7 = elemToNode[7] ;
-
-      Real_t x0 = domain->m_x[n0] ;
-      Real_t x1 = domain->m_x[n1] ;
-      Real_t x2 = domain->m_x[n2] ;
-      Real_t x3 = domain->m_x[n3] ;
-      Real_t x4 = domain->m_x[n4] ;
-      Real_t x5 = domain->m_x[n5] ;
-      Real_t x6 = domain->m_x[n6] ;
-      Real_t x7 = domain->m_x[n7] ;
-
-      Real_t y0 = domain->m_y[n0] ;
-      Real_t y1 = domain->m_y[n1] ;
-      Real_t y2 = domain->m_y[n2] ;
-      Real_t y3 = domain->m_y[n3] ;
-      Real_t y4 = domain->m_y[n4] ;
-      Real_t y5 = domain->m_y[n5] ;
-      Real_t y6 = domain->m_y[n6] ;
-      Real_t y7 = domain->m_y[n7] ;
-
-      Real_t z0 = domain->m_z[n0] ;
-      Real_t z1 = domain->m_z[n1] ;
-      Real_t z2 = domain->m_z[n2] ;
-      Real_t z3 = domain->m_z[n3] ;
-      Real_t z4 = domain->m_z[n4] ;
-      Real_t z5 = domain->m_z[n5] ;
-      Real_t z6 = domain->m_z[n6] ;
-      Real_t z7 = domain->m_z[n7] ;
-
-      Real_t xv0 = domain->m_xd[n0] ;
-      Real_t xv1 = domain->m_xd[n1] ;
-      Real_t xv2 = domain->m_xd[n2] ;
-      Real_t xv3 = domain->m_xd[n3] ;
-      Real_t xv4 = domain->m_xd[n4] ;
-      Real_t xv5 = domain->m_xd[n5] ;
-      Real_t xv6 = domain->m_xd[n6] ;
-      Real_t xv7 = domain->m_xd[n7] ;
-
-      Real_t yv0 = domain->m_yd[n0] ;
-      Real_t yv1 = domain->m_yd[n1] ;
-      Real_t yv2 = domain->m_yd[n2] ;
-      Real_t yv3 = domain->m_yd[n3] ;
-      Real_t yv4 = domain->m_yd[n4] ;
-      Real_t yv5 = domain->m_yd[n5] ;
-      Real_t yv6 = domain->m_yd[n6] ;
-      Real_t yv7 = domain->m_yd[n7] ;
-
-      Real_t zv0 = domain->m_zd[n0] ;
-      Real_t zv1 = domain->m_zd[n1] ;
-      Real_t zv2 = domain->m_zd[n2] ;
-      Real_t zv3 = domain->m_zd[n3] ;
-      Real_t zv4 = domain->m_zd[n4] ;
-      Real_t zv5 = domain->m_zd[n5] ;
-      Real_t zv6 = domain->m_zd[n6] ;
-      Real_t zv7 = domain->m_zd[n7] ;
-
-      Real_t vol = domain->m_volo[i]*domain->m_vnew[i] ;
-      Real_t norm = cast_Real_t(1.0) / ( vol + ptiny ) ;
-
-      Real_t dxj = cast_Real_t(-0.25)*(SUM4(x0,x1,x5,x4) - SUM4(x3,x2,x6,x7)) ;
-      Real_t dyj = cast_Real_t(-0.25)*(SUM4(y0,y1,y5,y4) - SUM4(y3,y2,y6,y7)) ;
-      Real_t dzj = cast_Real_t(-0.25)*(SUM4(z0,z1,z5,z4) - SUM4(z3,z2,z6,z7)) ;
-
-      Real_t dxi = cast_Real_t( 0.25)*(SUM4(x1,x2,x6,x5) - SUM4(x0,x3,x7,x4)) ;
-      Real_t dyi = cast_Real_t( 0.25)*(SUM4(y1,y2,y6,y5) - SUM4(y0,y3,y7,y4)) ;
-      Real_t dzi = cast_Real_t( 0.25)*(SUM4(z1,z2,z6,z5) - SUM4(z0,z3,z7,z4)) ;
-
-      Real_t dxk = cast_Real_t( 0.25)*(SUM4(x4,x5,x6,x7) - SUM4(x0,x1,x2,x3)) ;
-      Real_t dyk = cast_Real_t( 0.25)*(SUM4(y4,y5,y6,y7) - SUM4(y0,y1,y2,y3)) ;
-      Real_t dzk = cast_Real_t( 0.25)*(SUM4(z4,z5,z6,z7) - SUM4(z0,z1,z2,z3)) ;
-
-      /* find delvk and delxk ( i cross j ) */
-
-      ax = dyi*dzj - dzi*dyj ;
-      ay = dzi*dxj - dxi*dzj ;
-      az = dxi*dyj - dyi*dxj ;
-
-      domain->m_delx_zeta[i] = vol / SQRT(ax*ax + ay*ay + az*az + ptiny) ;
-
-      ax *= norm ;
-      ay *= norm ;
-      az *= norm ;
-
-      dxv = cast_Real_t(0.25)*(SUM4(xv4,xv5,xv6,xv7) - SUM4(xv0,xv1,xv2,xv3)) ;
-      dyv = cast_Real_t(0.25)*(SUM4(yv4,yv5,yv6,yv7) - SUM4(yv0,yv1,yv2,yv3)) ;
-      dzv = cast_Real_t(0.25)*(SUM4(zv4,zv5,zv6,zv7) - SUM4(zv0,zv1,zv2,zv3)) ;
-
-      domain->m_delv_zeta[i] = ax*dxv + ay*dyv + az*dzv ;
-
-      /* find delxi and delvi ( j cross k ) */
-
-      ax = dyj*dzk - dzj*dyk ;
-      ay = dzj*dxk - dxj*dzk ;
-      az = dxj*dyk - dyj*dxk ;
-
-      domain->m_delx_xi[i] = vol / SQRT(ax*ax + ay*ay + az*az + ptiny) ;
-
-      ax *= norm ;
-      ay *= norm ;
-      az *= norm ;
-
-      dxv = cast_Real_t(0.25)*(SUM4(xv1,xv2,xv6,xv5) - SUM4(xv0,xv3,xv7,xv4)) ;
-      dyv = cast_Real_t(0.25)*(SUM4(yv1,yv2,yv6,yv5) - SUM4(yv0,yv3,yv7,yv4)) ;
-      dzv = cast_Real_t(0.25)*(SUM4(zv1,zv2,zv6,zv5) - SUM4(zv0,zv3,zv7,zv4)) ;
-
-      domain->m_delv_xi[i] = ax*dxv + ay*dyv + az*dzv ;
-
-      /* find delxj and delvj ( k cross i ) */
-
-      ax = dyk*dzi - dzk*dyi ;
-      ay = dzk*dxi - dxk*dzi ;
-      az = dxk*dyi - dyk*dxi ;
-
-      domain->m_delx_eta[i] = vol / SQRT(ax*ax + ay*ay + az*az + ptiny) ;
-
-      ax *= norm ;
-      ay *= norm ;
-      az *= norm ;
-
-      dxv = cast_Real_t(-0.25)*(SUM4(xv0,xv1,xv5,xv4) - SUM4(xv3,xv2,xv6,xv7)) ;
-      dyv = cast_Real_t(-0.25)*(SUM4(yv0,yv1,yv5,yv4) - SUM4(yv3,yv2,yv6,yv7)) ;
-      dzv = cast_Real_t(-0.25)*(SUM4(zv0,zv1,zv5,zv4) - SUM4(zv3,zv2,zv6,zv7)) ;
-
-      domain->m_delv_eta[i] = ax*dxv + ay*dyv + az*dzv ;
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,numElem,CalcMonotonicQGradientsForElems_edt_1,domain)
   END_FINISH
-#undef SUM4
 } // CalcMonotonicQGradientsForElems()
 
 static INLINE
-void CalcMonotonicQRegionForElems(// parameters
-                          Real_t qlc_monoq,
+void CalcMonotonicQRegionForElems(
+                          Real_t qlc_monoq,            // parameters
                           Real_t qqc_monoq,
                           Real_t monoq_limiter_mult,
                           Real_t monoq_max_slope,
                           Real_t ptiny,
-
-                          // the elementset length
-                          Index_t elength )
-{
+                          Index_t elength ) {          // the elementset length
   FINISH
-    PAR_FOR_0xNx1(ielem,elength,domain,qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny)
-      Real_t qlin, qquad ;
-      Real_t phixi, phieta, phizeta ;
-      Index_t i = domain->m_matElemlist[ielem];
-      Int_t bcMask = domain->m_elemBC[i] ;
-      Real_t delvm, delvp ;
-
-      /*  phixi     */
-      Real_t norm = cast_Real_t(1.) / ( domain->m_delv_xi[i] + ptiny ) ;
-
-      switch (bcMask & XI_M) {
-        case 0:         delvm = domain->m_delv_xi[domain->m_lxim[i]] ; break ;
-        case XI_M_SYMM: delvm = domain->m_delv_xi[i] ;                break ;
-        case XI_M_FREE: delvm = cast_Real_t(0.0) ;                   break ;
-        default:        /* ERROR */ ;                                break ;
-      } // switch XI_M
-
-      switch (bcMask & XI_P) {
-        case 0:         delvp = domain->m_delv_xi[domain->m_lxip[i]] ; break ;
-        case XI_P_SYMM: delvp = domain->m_delv_xi[i] ;                break ;
-        case XI_P_FREE: delvp = cast_Real_t(0.0) ;                   break ;
-        default:        /* ERROR */ ;                                break ;
-      } // switch XI_P
-
-      delvm = delvm * norm ;
-      delvp = delvp * norm ;
-
-      phixi = cast_Real_t(.5) * ( delvm + delvp ) ;
-
-      delvm *= monoq_limiter_mult ;
-      delvp *= monoq_limiter_mult ;
-
-      if ( delvm < phixi ) phixi = delvm ;
-      if ( delvp < phixi ) phixi = delvp ;
-      if ( phixi < cast_Real_t(0.)) phixi = cast_Real_t(0.) ;
-      if ( phixi > monoq_max_slope) phixi = monoq_max_slope;
-
-
-      /*  phieta     */
-      norm = cast_Real_t(1.) / ( domain->m_delv_eta[i] + ptiny ) ;
-
-      switch (bcMask & ETA_M) {
-        case 0:          delvm = domain->m_delv_eta[domain->m_letam[i]] ; break ;
-        case ETA_M_SYMM: delvm = domain->m_delv_eta[i] ;                 break ;
-        case ETA_M_FREE: delvm = cast_Real_t(0.0) ;                     break ;
-        default:         /* ERROR */ ;                                  break ;
-      } // switch ETA_M
-
-      switch (bcMask & ETA_P) {
-        case 0:          delvp = domain->m_delv_eta[domain->m_letap[i]] ; break ;
-        case ETA_P_SYMM: delvp = domain->m_delv_eta[i] ;                 break ;
-        case ETA_P_FREE: delvp = cast_Real_t(0.0) ;                     break ;
-        default:         /* ERROR */ ;                                  break ;
-      } // switch ETA_P
-
-      delvm = delvm * norm ;
-      delvp = delvp * norm ;
-
-      phieta = cast_Real_t(.5) * ( delvm + delvp ) ;
-
-      delvm *= monoq_limiter_mult ;
-      delvp *= monoq_limiter_mult ;
-
-      if ( delvm  < phieta ) phieta = delvm ;
-      if ( delvp  < phieta ) phieta = delvp ;
-      if ( phieta < cast_Real_t(0.)) phieta = cast_Real_t(0.) ;
-      if ( phieta > monoq_max_slope)  phieta = monoq_max_slope;
-
-      /*  phizeta     */
-      norm = cast_Real_t(1.) / ( domain->m_delv_zeta[i] + ptiny ) ;
-
-      switch (bcMask & ZETA_M) {
-        case 0:           delvm = domain->m_delv_zeta[domain->m_lzetam[i]] ; break ;
-        case ZETA_M_SYMM: delvm = domain->m_delv_zeta[i] ;                  break ;
-        case ZETA_M_FREE: delvm = cast_Real_t(0.0) ;                       break ;
-        default:          /* ERROR */ ;                                    break ;
-      } // switch ZETA_M
-
-      switch (bcMask & ZETA_P) {
-        case 0:           delvp = domain->m_delv_zeta[domain->m_lzetap[i]] ; break ;
-        case ZETA_P_SYMM: delvp = domain->m_delv_zeta[i] ;                  break ;
-        case ZETA_P_FREE: delvp = cast_Real_t(0.0) ;                       break ;
-        default:          /* ERROR */ ;                                    break ;
-      } // switch ZETA_P
-
-      delvm = delvm * norm ;
-      delvp = delvp * norm ;
-
-      phizeta = cast_Real_t(.5) * ( delvm + delvp ) ;
-
-      delvm *= monoq_limiter_mult ;
-      delvp *= monoq_limiter_mult ;
-
-      if ( delvm   < phizeta ) phizeta = delvm ;
-      if ( delvp   < phizeta ) phizeta = delvp ;
-      if ( phizeta < cast_Real_t(0.)) phizeta = cast_Real_t(0.);
-      if ( phizeta > monoq_max_slope  ) phizeta = monoq_max_slope;
-
-      /* Remove length scale */
-
-      if ( domain->m_vdov[i] > cast_Real_t(0.) )  {
-        qlin  = cast_Real_t(0.) ;
-        qquad = cast_Real_t(0.) ;
-      } else {
-        Real_t delvxxi   = domain->m_delv_xi[i]   * domain->m_delx_xi[i]   ;
-        Real_t delvxeta  = domain->m_delv_eta[i]  * domain->m_delx_eta[i]  ;
-        Real_t delvxzeta = domain->m_delv_zeta[i] * domain->m_delx_zeta[i] ;
-
-        if ( delvxxi   > cast_Real_t(0.) ) delvxxi   = cast_Real_t(0.) ;
-        if ( delvxeta  > cast_Real_t(0.) ) delvxeta  = cast_Real_t(0.) ;
-        if ( delvxzeta > cast_Real_t(0.) ) delvxzeta = cast_Real_t(0.) ;
-
-        Real_t rho = domain->m_elemMass[i] / (domain->m_volo[i] * domain->m_vnew[i]) ;
-
-        qlin = -qlc_monoq * rho *
-             ( delvxxi   * (cast_Real_t(1.) - phixi  ) +
-               delvxeta  * (cast_Real_t(1.) - phieta ) +
-               delvxzeta * (cast_Real_t(1.) - phizeta) ) ;
-
-        qquad = qqc_monoq * rho *
-              (  delvxxi*delvxxi     * (cast_Real_t(1.) - phixi*phixi    ) +
-                 delvxeta*delvxeta   * (cast_Real_t(1.) - phieta*phieta  ) +
-                 delvxzeta*delvxzeta * (cast_Real_t(1.) - phizeta*phizeta) ) ;
-      } // if domain->m_vdov
-
-      domain->m_qq[i] = qquad ;
-      domain->m_ql[i] = qlin  ;
-    END_PAR_FOR(ielem)
+    EDT_PAR_FOR_0xNx1(ielem,elength,CalcMonotonicQRegionForElems_edt_1,domain,qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny);
   END_FINISH
 } // CalcMonotonicQRegionForElems()
 
@@ -1389,25 +709,18 @@ void CalcQForElems() {
    if (numElem != 0) {
 #ifdef    UPC
       bupc_atomicU64_set_strict(pIndex_AMO,(uint64_t)0); 
-#else  // UPC
+#else  // NOT UPC
       *pIndex_AMO = 0; 
 #endif // UPC
       FINISH
-        PAR_FOR_0xNx1(i,numElem,domain,qstop,pIndex_AMO)
-          if ( domain->m_q[i] > qstop ) {
-             AMO__sync_fetch_and_add_uint64_t(pIndex_AMO,1);
-#if   !defined(CILK) && !defined(HAB_C)
-             break ;
-#endif // CILK
-          } // if domain->m_q
-        END_PAR_FOR(i)
+        EDT_PAR_FOR_0xNx1(i,numElem,CalcQForElems_edt_1,domain,qstop,pIndex_AMO);
       END_FINISH
 
 #ifdef    UPC
       if ( bupc_atomicU64_read_strict(pIndex_AMO) > 0 ) {
          EXIT(QStopError) ;
       } // if pIndex_AMO
-#else  // UPC
+#else  // NOT UPC
       if( *pIndex_AMO > 0 ) {
          EXIT(QStopError) ;
       } // if pIndex_AMO
@@ -2267,15 +1580,6 @@ TRACE0("/* symmetry plane or free surface BCs     */");
   END_FINISH
 
 TRACE0("/* TIMESTEP TO SOLUTION */");
-#ifdef FSIM
-  xe_printf("rag: e(0)=%16.16lx\n",domain->m_e[0]);
-#else // NOT FSIM
-#ifdef    HEX
-  printf("rag: e(0)=%16.16lx\n",domain->m_e[0]);
-#else  // NOT HEX
-  printf("rag: e(0)=%e\n",domain->m_e[0]);
-#endif // HEX
-#endif // FSIM
 
   while(domain->m_time < domain->m_stoptime ) {
 
