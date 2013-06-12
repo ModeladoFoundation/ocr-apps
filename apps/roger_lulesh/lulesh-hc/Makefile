@@ -18,10 +18,10 @@ RAG_edt.o:  RAG_edt.c RAG_edt.h kernels.h RAG.h Makefile
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.hc RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h Makefile
+lulesh.o:  lulesh.hc RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h initialize.h Makefile
 	$(HCC) $(HCFLAGS) $(CFLAGS) -c lulesh.hc
 
-rose_lulesh.o: rose_lulesh.c AMO.h MEM.h FP.h RAG_edt.h kernels.h Makefile
+rose_lulesh.o: rose_lulesh.c AMO.h MEM.h FP.h RAG_edt.h kernels.h initialize.h Makefile
 	$(GCC) $(HCFLAGS) $(CFLAGS) -c rose_lulesh.c
 
 lulesh:	lulesh.o AMO.o RAG_edt.o Makefile

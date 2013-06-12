@@ -96,6 +96,11 @@ void     Release_Real_t( Real_t *ptr ) {
 #include "RAG_edt.h"
 /* RAG -- moved serial/scalar functions to here */
 #include "kernels.h"
+/* RAG -- moved initialization code here */
+#ifndef HAB_C
+#include "initialize.h"
+#else // HAB_C  WORKAROUND
+/* RAG -- moved initialization code here */
 
 /* This first implementation allows for runnable code */
 /* and is not meant to be optimal. Final implementation */
@@ -107,8 +112,8 @@ void     Release_Real_t( Real_t *ptr ) {
    /* Allocation */
    /**************/
 
-void
-domain_AllocateNodalPersistent(size_t hcSize) {
+static INLINE
+void domain_AllocateNodalPersistent(size_t hcSize) {
 TRACE1("Allocate EP entry");
 #ifdef FSIM
   xe_printf("rag: domain              %16.16lx\n",domain);
@@ -176,10 +181,10 @@ TRACE1("Allocate NP zero m_(x|y|z)d, m_(x|y|z)dd and m_nodalMass(x|y|z)");
   xe_printf("rag: domain->m_nodalMass %16.16lx\n",domain->m_nodalMass);
 #endif // FSIM
 TRACE1("Allocate NP returns");
-}
+} // domain_AllocateNodalPersistent()
 
-void
-domain_AllocateElemPersistent(size_t hcSize) {
+static INLINE
+void domain_AllocateElemPersistent(size_t hcSize) {
 TRACE1("Allocate EP entry");
 #if defined(FSIM)
   xe_printf("rag: domain                %16.16lx\n",domain);
@@ -268,12 +273,12 @@ TRACE1("Allocate EP zero m_(e|p|v)");
   xe_printf("rag: domain->m_elemMass    %16.16lx\n",domain->m_elemMass);
 #endif // FSIM
 TRACE1("Allocate EP returns");
-}
+} // domain_AllocateElemPersistent()
 
    /* Temporaries should not be initialized in bulk but */
    /* this is a runnable placeholder for now */
-void
-domain_AllocateElemTemporary(size_t hcSize) {
+static INLINE
+void domain_AllocateElemTemporary(size_t hcSize) {
 TRACE1("Allocate ET entry");
 #if defined(FSIM)
   xe_printf("rag: domain              %16.16lx\n",domain);
@@ -316,10 +321,10 @@ TRACE1("Allocate ET m_vnew");
   xe_printf("rag: domain->m_vnew      %16.16lx\n",domain->m_vnew);
 #endif // FSIM
 TRACE1("Allocate ET returns");
-}
+} // domain_AllocateElemTemporary()
 
-void
-domain_AllocateNodesets(size_t hcSize) {
+static INLINE
+void domain_AllocateNodesets(size_t hcSize) {
 TRACE1("Allocate NS entry");
 #if defined(FSIM)
   xe_printf("rag: domain              %16.16lx\n",domain);
@@ -338,14 +343,14 @@ TRACE1("Allocate NS m_symm(X|Y|Z)");
   xe_printf("rag: domain->m_symmZ     %16.16lx\n",domain->m_symmZ);
 #endif // FSIM
 TRACE1("Allocate NS returns");
-}
+} // domain_AllocateNodesets()
+
 #if !defined(FSIM) && !defined(OCR)
    /****************/
    /* Deallocation */
    /****************/
-
-void
-domain_DeallocateNodalPersistent(void) {
+static INLINE
+void domain_DeallocateNodalPersistent(void) {
 TRACE1("Deallocate NP m_(x|y|z)");
    if(domain->m_x != NULL)DRAM_FREE(domain->m_x); domain->m_x = NULL;
    if(domain->m_y != NULL)DRAM_FREE(domain->m_y); domain->m_y = NULL;
@@ -364,10 +369,10 @@ TRACE1("Deallocate NP m_f(x|y|z)");
    if(domain->m_fz != NULL)DRAM_FREE(domain->m_fz); domain->m_fz = NULL;
 TRACE1("Deallocate NP m_nodalMass(x|y|z)");
    if(domain->m_nodalMass != NULL)DRAM_FREE(domain->m_nodalMass); domain->m_nodalMass = NULL;
-}
+} // domain_DeallocateNodalPersistent()
 
-void
-domain_DeallocateElemPersistent(void) {
+static INLINE
+void domain_DeallocateElemPersistent(void) {
 TRACE1("Deallocate EP m_matElemlist and m_nodelist");
    if(domain->m_matElemlist != NULL)DRAM_FREE(domain->m_matElemlist); domain->m_matElemlist = NULL;
    if(domain->m_nodelist != NULL)DRAM_FREE(domain->m_nodelist); domain->m_nodelist= NULL;
@@ -395,12 +400,12 @@ TRACE1("Deallocate EP m_arealg,m_ss,m_elemMass");
    if(domain->m_arealg != NULL)DRAM_FREE(domain->m_arealg); domain->m_arealg = NULL;
    if(domain->m_ss != NULL)DRAM_FREE(domain->m_ss); domain->m_ss = NULL;
    if(domain->m_elemMass != NULL)DRAM_FREE(domain->m_elemMass); domain->m_elemMass = NULL;
-}
+} // domain_DeallocateElemPersistent()
 
    /* Temporaries should not be initialized in bulk but */
    /* this is a runnable placeholder for now */
-void
-domain_DeallocateElemTemporary(void) {
+static INLINE
+void domain_DeallocateElemTemporary(void) {
 TRACE1("Deallocate ET m_d(xx|yy|zz)");
   if(domain->m_dxx != NULL)DRAM_FREE(domain->m_dxx); domain->m_dxx = NULL;
   if(domain->m_dyy != NULL)DRAM_FREE(domain->m_dyy); domain->m_dyy = NULL;
@@ -415,16 +420,279 @@ TRACE1("Deallocate ET m_delx_zi,m_delx_eta,m_delx_zeta");
   if(domain->m_delx_zeta != NULL)DRAM_FREE(domain->m_delx_zeta); domain->m_delx_zeta = NULL;
 TRACE1("Deallocate ET m_vnew");
   if(domain->m_vnew != NULL)DRAM_FREE(domain->m_vnew); domain->m_vnew = NULL;
-}
+} // domain_DeallocateElemTemporary()
 
-void
-domain_DeallocateNodesets(void) {
+static INLINE
+void domain_DeallocateNodesets(void) {
 TRACE1("Deallocate NS m_symm(X|Y|Z)");
    if(domain->m_symmX != NULL)DRAM_FREE(domain->m_symmX); domain->m_symmX = NULL;
    if(domain->m_symmY != NULL)DRAM_FREE(domain->m_symmY); domain->m_symmY = NULL;
    if(domain->m_symmZ != NULL)DRAM_FREE(domain->m_symmZ); domain->m_symmZ = NULL;
-}
+} // domain_DeallocateNodesets()
 #endif //NOT FSIM and NOT OCR
+
+static INLINE
+void InitializeProblem( SHARED struct Domain_t *domain , Index_t edgeElems , Index_t edgeNodes ) {
+
+TRACE0("/* get run options to measure various metrics */");
+
+  /****************************/
+  /*   Initialize Sedov Mesh  */
+  /****************************/
+
+TRACE0("/* construct a uniform box for this processor */");
+
+  domain->m_sizeX   = edgeElems ;
+  domain->m_sizeY   = edgeElems ;
+  domain->m_sizeZ   = edgeElems ;
+  domain->m_numElem = edgeElems*edgeElems*edgeElems ;
+  domain->m_numNode = edgeNodes*edgeNodes*edgeNodes ;
+
+  Index_t domElems = domain->m_numElem ;
+
+TRACE0("/* allocate field memory */");
+
+  domain_AllocateElemPersistent(domain->m_numElem) ;
+  domain_AllocateElemTemporary (domain->m_numElem) ;
+
+  domain_AllocateNodalPersistent(domain->m_numNode) ;
+  domain_AllocateNodesets(edgeNodes*edgeNodes) ;
+
+TRACE0("/* initialize nodal coordinates */");
+
+
+  FINISH
+    Real_t sf = cast_Real_t(1.125)/cast_Real_t(edgeElems);
+    Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
+
+    for(Index_t pln = 0 ; pln < edgeNodes ; ++pln ) {
+      Real_t tz = cast_Real_t(pln)*sf;
+      Index_t pln_nidx = pln*dimNdimN;
+      for(Index_t row = 0 ; row < edgeNodes ; ++row ) {
+        Real_t ty = cast_Real_t(row)*sf;
+        Index_t pln_row_nidx = pln_nidx + row*dimN;
+        PAR_FOR_0xNx1(col,edgeNodes,pln,row,tz,ty,pln_row_nidx,domain,sf,dimN,dimNdimN)
+          Real_t tx = cast_Real_t(col)*sf;
+          Index_t nidx = pln_row_nidx+col;
+          domain->m_x[nidx] = tx;
+//DEBUG if(nidx==1)fprintf(stdout,"m_x[1] = %e\n",domain->m_x[1]);
+          domain->m_y[nidx] = ty;
+//DEBUG if(nidx==1)fprintf(stdout,"m_y[1] = %e\n",domain->m_y[1]);
+          domain->m_z[nidx] = tz;
+//DEBUG if(nidx==1)fprintf(stdout,"m_z[1] = %e\n",domain->m_z[1]);
+        END_PAR_FOR(col)
+      } // for row
+    } // for pln
+  END_FINISH
+
+TRACE0("/* embed hexehedral elements in nodal point lattice */");
+
+  FINISH
+    Index_t dimE = edgeElems, dimEdimE = edgeElems*edgeElems;
+    Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
+
+    for(Index_t pln = 0 ; pln < edgeElems ; ++pln ) {
+      Index_t pln_nidx = pln*dimNdimN;
+      Index_t pln_zidx = pln*dimEdimE;
+      for(Index_t row = 0 ; row < edgeElems ; ++row ) {
+        Index_t pln_row_nidx = pln_nidx + row*dimN;
+        Index_t pln_row_zidx = pln_zidx + row*dimE;
+        PAR_FOR_0xNx1(col,edgeElems,pln,row,pln_row_nidx,pln_row_zidx,domain,dimE,dimEdimE,dimN,dimNdimN)
+          Index_t nidx = pln_row_nidx+col;
+          Index_t zidx = pln_row_zidx+col;
+          SHARED Index_t *localNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*zidx] ;
+          localNode[0] = nidx                       ;
+          localNode[1] = nidx                   + 1 ;
+          localNode[2] = nidx            + dimN + 1 ;
+          localNode[3] = nidx            + dimN     ;
+          localNode[4] = nidx + dimNdimN            ;
+          localNode[5] = nidx + dimNdimN        + 1 ;
+          localNode[6] = nidx + dimNdimN + dimN + 1 ;
+          localNode[7] = nidx + dimNdimN + dimN     ;
+        END_PAR_FOR(col)
+      } // for row
+    } // for pln
+  END_FINISH
+
+TRACE0("/* Create a material IndexSet (entire domain same material for now) */");
+
+  FINISH
+    PAR_FOR_0xNx1(i,domElems,domain)
+      domain->m_matElemlist[i] = i ;
+    END_PAR_FOR(i)
+  END_FINISH
+   
+TRACE0("/* initialize material parameters */");
+
+  domain->m_dtfixed            = cast_Real_t(-1.0e-7) ;
+  domain->m_deltatime          = cast_Real_t(1.0e-7) ;
+  domain->m_deltatimemultlb    = cast_Real_t(1.1) ;
+  domain->m_deltatimemultub    = cast_Real_t(1.2) ;
+  domain->m_stoptime           = cast_Real_t(1.0e-2) ;
+  domain->m_dtcourant          = cast_Real_t(1.0e+20) ;
+  domain->m_dthydro            = cast_Real_t(1.0e+20) ;
+  domain->m_dtmax              = cast_Real_t(1.0e-2) ;
+  domain->m_time               = cast_Real_t(0.) ;
+  domain->m_cycle              = 0 ;
+
+  domain->m_e_cut              = cast_Real_t(1.0e-7) ;
+  domain->m_p_cut              = cast_Real_t(1.0e-7) ;
+  domain->m_q_cut              = cast_Real_t(1.0e-7) ;
+  domain->m_u_cut              = cast_Real_t(1.0e-7) ;
+  domain->m_v_cut              = cast_Real_t(1.0e-10) ;
+
+  domain->m_hgcoef             = cast_Real_t(3.0) ;
+
+  domain->m_qstop              = cast_Real_t(1.0e+12) ;
+  domain->m_monoq_max_slope    = cast_Real_t(1.0) ;
+  domain->m_monoq_limiter_mult = cast_Real_t(2.0) ;
+  domain->m_qlc_monoq          = cast_Real_t(0.5) ;
+  domain->m_qqc_monoq          = cast_Real_t(2.0)/cast_Real_t(3.0) ;
+  domain->m_qqc                = cast_Real_t(2.0) ;
+
+  domain->m_pmin               = cast_Real_t(0.) ;
+  domain->m_emin               = cast_Real_t(-1.0e+15) ;
+
+  domain->m_dvovmax            = cast_Real_t(0.1) ;
+
+  domain->m_eosvmax            = cast_Real_t(1.0e+9) ;
+  domain->m_eosvmin            = cast_Real_t(1.0e-9) ;
+
+  domain->m_refdens            = cast_Real_t(1.0) ;
+
+  FINISH
+    PAR_FOR_0xNx1(i,domElems,domain)
+#if  defined(HAB_C)
+      Real_t *x_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *y_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+      Real_t *z_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
+#else // NOT HAB_C
+      Real_t x_local[EIGHT], y_local[EIGHT], z_local[EIGHT] ;
+#endif //    HAB_C
+      SHARED Index_t *elemToNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*i] ;
+      for( Index_t lnode=0 ; lnode < EIGHT ; ++lnode ) {
+        Index_t gnode = elemToNode[lnode];
+        x_local[lnode] = domain->m_x[gnode];
+        y_local[lnode] = domain->m_y[gnode];
+        z_local[lnode] = domain->m_z[gnode];
+      } // for lnode
+
+      // volume calculations
+      Real_t volume = CalcElemVolume(x_local, y_local, z_local );
+      domain->m_volo[i] = volume ;
+      domain->m_elemMass[i] = volume ;
+
+// RAG ///////////////////////////////////////////////////////// RAG //
+// RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
+// RAG ///////////////////////////////////////////////////////// RAG //
+
+      for( Index_t j=0 ; j<EIGHT ; ++j ) {
+        Index_t idx = elemToNode[j] ;
+        Real_t value = volume / cast_Real_t(8.0);
+        AMO__sync_addition_double(&domain->m_nodalMass[idx], value);
+      } // for j
+
+#if  defined(HAB_C)
+      free(z_local) ;
+      free(y_local) ;
+      free(x_local) ;
+#endif //    HAB_C
+    END_PAR_FOR(i)
+  END_FINISH
+
+TRACE0("/* deposit energy */");
+
+  domain->m_e[0] = cast_Real_t(3.948746e+7) ;
+
+TRACE0("/* set up symmetry nodesets */");
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
+
+  FINISH
+    Index_t dimN = edgeNodes, dimNdimN = dimN*dimN;
+    
+    for ( Index_t i = 0; i < edgeNodes ; ++i ) {
+      Index_t planeInc = i*dimNdimN ;
+      Index_t rowInc   = i*dimN ;
+      PAR_FOR_0xNx1(j,edgeNodes,i,planeInc,rowInc,domain,dimN,dimNdimN)
+        Index_t nidx = rowInc + j;
+        domain->m_symmX[nidx] = planeInc + j*dimN ;
+        domain->m_symmY[nidx] = planeInc + j ;
+        domain->m_symmZ[nidx] = rowInc   + j ;
+      END_PAR_FOR(j)
+    } // for i
+  END_FINISH
+
+TRACE0("/* set up elemement connectivity information */");
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
+
+  FINISH
+    domain->m_lxim[0] = 0 ;
+    PAR_FOR_0xNx1(i,domElems-1,domain,domElems)
+          domain->m_lxim[i+1] = i ;
+          domain->m_lxip[i  ] = i+1 ;
+    END_PAR_FOR(i)
+    domain->m_lxip[domElems-1] = domElems-1 ;
+  END_FINISH
+
+  FINISH
+    PAR_FOR_0xNx1(i,edgeElems,domain,domElems,edgeElems)
+      domain->m_letam[i] = i ; 
+      domain->m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
+    END_PAR_FOR(i)
+  END_FINISH
+
+  FINISH
+    PAR_FOR_0xNx1(i,(domElems-edgeElems),domain,edgeElems)
+      domain->m_letam[i+edgeElems] = i ;
+      domain->m_letap[i          ] = i+edgeElems ;
+    END_PAR_FOR(i)
+  END_FINISH
+
+  FINISH
+    PAR_FOR_0xNx1(i,(edgeElems*edgeElems),domain,domElems,edgeElems)
+      domain->m_lzetam[i] = i ;
+      domain->m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
+    END_PAR_FOR(i)
+  END_FINISH
+
+  FINISH
+    Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
+    PAR_FOR_0xNx1(i,(domElems-dimEdimE),domain,dimEdimE,domElems)
+      domain->m_lzetam[i+dimEdimE] = i ;
+      domain->m_lzetap[i]          = i+dimEdimE ;
+    END_PAR_FOR(i)
+  END_FINISH
+
+TRACE0("/* set up boundary condition information */");
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
+
+  FINISH
+    PAR_FOR_0xNx1(i,domElems,domain,domElems)
+      domain->m_elemBC[i] = 0 ;  /* clear BCs by default */
+    END_PAR_FOR(i)
+  END_FINISH
+
+TRACE0("/* faces on \"external\" boundaries will be */");
+TRACE0("/* symmetry plane or free surface BCs     */");
+//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
+
+  FINISH
+    Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
+    for ( Index_t i = 0 ; i < edgeElems ; ++i ) {
+      Index_t planeInc = i*dimEdimE ;
+      Index_t rowInc   = i*dimE ;
+      PAR_FOR_0xNx1(j,edgeElems,i,domain,planeInc,rowInc,domElems,dimE,dimEdimE)
+        domain->m_elemBC[planeInc+j*dimE           ] |= XI_M_SYMM ;
+        domain->m_elemBC[planeInc+j*dimE+1*dimE-1  ] |= XI_P_FREE ;
+        domain->m_elemBC[planeInc+j                ] |= ETA_M_SYMM ;
+        domain->m_elemBC[planeInc+j+dimEdimE-dimE  ] |= ETA_P_FREE ;
+        domain->m_elemBC[rowInc+j                  ] |= ZETA_M_SYMM ;
+        domain->m_elemBC[rowInc+j+domElems-dimEdimE] |= ZETA_P_FREE ;
+      END_PAR_FOR(j)
+    } // for i
+  END_FINISH
+} // InitializeProblem()
+#endif // HAB_C WORKAROUND
 
 static INLINE
 void InitStressTermsForElems(Index_t numElem, 
@@ -754,20 +1022,32 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
                         Real_t eosvmax,
                         Index_t length) {
   Real_t *pHalfStep = Allocate_Real_t(length) ;
-  FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                OUT
     EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_1,  e_new,e_old,delvc,p_old,q_old,work,
                                                           emin);
+  END_FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                OUT       OUT OUT  *IN*
     EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,pHalfStep,bvc,pbvc,e_new,compHalfStep,vnewc,
                                                           pmin,p_cut,eosvmax);
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_2,  compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,delvc,p_old,q_old,work,
+  END_FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                OUT   IN/OUT                  *IN* *IN* *IN*
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_2,  q_new,e_new,compHalfStep,qq,ql,pbvc,bvc,pHalfStep,delvc,p_old,q_old,work,
                                                           rho0,e_cut,emin);
+  END_FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                OUT   OUT OUT  *IN*
     EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,
                                                           pmin,p_cut,eosvmax)
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_3,  delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,p_old,q_old,pHalfStep,q_new,
+  END_FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                IN/OUT     *IN*       *IN**IN*
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_3,  e_new,delvc,pbvc,vnewc,bvc,p_new,ql,qq,p_old,q_old,pHalfStep,q_new,
                                                           rho0,e_cut,emin);
+  END_FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                OUT   OUT OUT  *IN*
     EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,
                                                           pmin,p_cut,eosvmax);
-    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_4,  delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,q_new,
+  END_FINISH // RAG STRIDE ONE
+  FINISH // RAG STRIDE ONE                                OUT        *IN*             *IN**IN*
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_4,  q_new,delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,
                                                           rho0,q_cut);
   END_FINISH // RAG STRIDE ONE
   Release_Real_t(pHalfStep) ;
@@ -921,58 +1201,17 @@ TRACE1("/* Expose all of the variables needed for material evaluation */");
     Real_t eosvmax = domain->m_eosvmax ;
     Real_t *vnewc  = Allocate_Real_t(length) ;
 
-// RAG GATHERS
+    FINISH // RAG GATHERS
+      EDT_PAR_FOR_0xNx1(i,length,ApplyMaterialPropertiesForElems_edt_1,domain,vnewc) ;
+    END_FINISH // RAG GATHERS
 
-    FINISH
-      PAR_FOR_0xNx1(i,length,domain,vnewc)
-        Index_t zn = domain->m_matElemlist[i] ;
-        vnewc[i] = domain->m_vnew[zn] ;
-      END_PAR_FOR(i)
-    END_FINISH 
+    FINISH // RAG STIDE ONES
+      EDT_PAR_FOR_0xNx1(i,length,ApplyMaterialPropertiesForElems_edt_2,vnewc,eosvmin,eosvmax) ;
+    END_FINISH // RAG STIDE ONES
 
-// RAG STIDE ONES
-
-    FINISH
-
-      if (eosvmin != cast_Real_t(0.)) {
-        PAR_FOR_0xNx1(i,length,vnewc,eosvmin)
-          if (vnewc[i] < eosvmin) {
-            vnewc[i] = eosvmin ;
-          } // if vnewc
-        END_PAR_FOR(i)
-      } // if eosvmin
-
-      if (eosvmax != cast_Real_t(0.)) {
-        PAR_FOR_0xNx1(i,length,vnewc,eosvmax)
-          if (vnewc[i] > eosvmax) {
-            vnewc[i] = eosvmax ;
-          } // if vnewc
-        END_PAR_FOR(i)
-      } // if eosvmax
-
-    END_FINISH 
-
-// RAG GATHER ERROR CHECK
-
-    FINISH
-      PAR_FOR_0xNx1(i,length,domain,vnewc,eosvmin,eosvmax)
-        Index_t zn = domain->m_matElemlist[i] ;
-        Real_t  vc = domain->m_v[zn] ;
-        if (eosvmin != cast_Real_t(0.)) {
-          if (vc < eosvmin) { 
-            vc = eosvmin ;
-          } // if domain->m_v
-        } // if eosvmin
-        if (eosvmax != cast_Real_t(0.)) {
-          if (vc > eosvmax) {
-            vc = eosvmax ;
-          } // if domain->m_v
-        } // if eosvmax
-        if (vc <= 0.) {
-          EXIT(VolumeError) ;
-        } // if domain->m_v
-      END_PAR_FOR(i)
-    END_FINISH 
+    FINISH // RAG GATHER with ERROR CHECK
+      EDT_PAR_FOR_0xNx1(i,length,ApplyMaterialPropertiesForElems_edt_3,domain,eosvmin,eosvmax) ;
+    END_FINISH // RAG GATHER with ERROR CHECK
 
     EvalEOSForElems(vnewc, length);
 
@@ -988,15 +1227,7 @@ void UpdateVolumesForElems() {
   if (numElem != 0) {
     Real_t v_cut = domain->m_v_cut;
     FINISH
-      PAR_FOR_0xNx1(i,numElem,domain,v_cut)
-        Real_t tmpV ;
-        tmpV = domain->m_vnew[i] ;
-
-        if ( FABS(tmpV - cast_Real_t(1.0)) < v_cut ) {
-          tmpV = cast_Real_t(1.0) ;
-        } // tmpV
-        domain->m_v[i] = tmpV ;
-      END_PAR_FOR(i)
+      EDT_PAR_FOR_0xNx1(i,numElem,UpdateVolumesForElems_edt_1,domain,v_cut)
     END_FINISH 
   } // if numElem
   return ;
@@ -1024,10 +1255,13 @@ TRACE2("/* Call UpdateVolumesForElems() */");
 
 } // LagrangeElements()
 
+static SHARED Real_t    DtCourant;
+static SHARED Index_t   Courant_elem;
+static SHARED Real_t  *pDtCourant    = &DtCourant;
+static SHARED Index_t *pCourant_elem = &Courant_elem;
+
 static INLINE
 void CalcCourantConstraintForElems() {
-  Real_t  *pDtCourant    =  (Real_t *)SPAD_MALLOC(ONE,sizeof(Real_t)) ;
-  Index_t *pCourant_elem = (Index_t *)SPAD_MALLOC(ONE,sizeof(Index_t));
   *pDtCourant = cast_Real_t(1.0e+20) ;
   *pCourant_elem = -1;
 
@@ -1055,8 +1289,10 @@ void CalcCourantConstraintForElems() {
       if (domain->m_vdov[indx] != cast_Real_t(0.)) {
         if ( dtf < *pDtCourant ) {
 AMO__lock_uint64_t(pidamin_lock);          // LOCK
-          *pDtCourant    = dtf ;
-          *pCourant_elem = indx ;
+          if ( dtf < *pDtCourant ) {
+            *pDtCourant    = dtf ;
+            *pCourant_elem = indx ;
+          } // if *pDtCourant
 AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
         } // if *pDtCourant
       } // if domain->m_vdov
@@ -1071,21 +1307,25 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
      domain->m_dtcourant = *pDtCourant ;
   } // if *pCourant_elem
 
-  SPAD_FREE(pCourant_elem);
-  SPAD_FREE(pDtCourant);
   return ;
 } // CalcCourantConstraintForElems()
 
+static SHARED Real_t    DtHydro;
+static SHARED Index_t   Hydro_elem;
+static SHARED Real_t  *pDtHydro    = &DtHydro;
+static SHARED Index_t *pHydro_elem = &Hydro_elem;
+
 static INLINE
 void CalcHydroConstraintForElems() {
-  Real_t  *pDtHydro    =  (Real_t *) SPAD_MALLOC(ONE,sizeof(Real_t)) ;
-  Index_t *pHydro_elem = (Index_t *) SPAD_MALLOC(ONE,sizeof(Index_t));
   *pDtHydro = cast_Real_t(1.0e+20) ;
   *pHydro_elem = -1 ;
 
-  FINISH
+  FINISH // IDAMIN via AMO
     Real_t dvovmax = domain->m_dvovmax ;
     Index_t length = domain->m_numElem ;
+#if 1
+    EDT_PAR_FOR_0xNx1(i,length,CalcHydroConstraintForElems_edt_1,domain,pDtHydro,pHydro_elem,pidamin_lock,dvovmax);
+#else
     PAR_FOR_0xNx1(i,length,domain,dvovmax,pidamin_lock,pDtHydro,pHydro_elem)
       Index_t indx = domain->m_matElemlist[i] ;
 
@@ -1093,22 +1333,22 @@ void CalcHydroConstraintForElems() {
         Real_t dtdvov = dvovmax / (FABS(domain->m_vdov[indx])+cast_Real_t(1.e-20)) ;
         if ( *pDtHydro > dtdvov ) {
 AMO__lock_uint64_t(pidamin_lock);          // LOCK
-          *pDtHydro    = dtdvov ;
-          *pHydro_elem = indx ;
+          if ( *pDtHydro > dtdvov ) {
+            *pDtHydro    = dtdvov ;
+            *pHydro_elem = indx ;
+        } // if *pDtHydro
 AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
         } // if *pDtHydro
       } // if domain->m_vdov
 
     END_PAR_FOR(i)
-  END_FINISH
+#endif
+  END_FINISH // IDAMIN via AMO
 
   if (*pHydro_elem != -1) {
      domain->m_dthydro = *pDtHydro ;
-//DEBUG fprintf(stdout,"dthydro %e\n",domain->m_dthydro);
   } // if *pHydro_elem
 
-  SPAD_FREE(pHydro_elem);
-  SPAD_FREE(pDtHydro);
   return ;
 } // CalcHydroConstraintForElems()
 
@@ -1121,6 +1361,7 @@ TRACE3("/* evaluate time constraint */");
 
 TRACE3("/* check hydro constraint */");
   CalcHydroConstraintForElems() ;
+
 TRACE3("CalcTimeConstrantsForElems() return");
 } // CalcTimeConstraintsForElems()
 
@@ -1145,14 +1386,20 @@ TRACE1("/* calculate time constraints for elems */");
 TRACE1("LagrangeLeapFrog() return");
 } // LagangeLeapFrog()
 
+#if defined(OCR) || defined(FSIM)
+ocrGuid_t beginEdt (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t middleEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t endEdt   (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+#endif
+
 #if    defined(OCR)
-ocrGuid_t mainEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t mainEdt  (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
 int main(int argc, char ** argv) {
 TRACE0("main entry");
-  ocrEdt_t edtList[1] = { mainEdt };
+  ocrEdt_t edtList[4] = { mainEdt, beginEdt, middleEdt, endEdt };
   ocrGuid_t mainEdtGuid;
 TRACE0("call ocrInit()");
-  ocrInit((int *)&argc,argv,1,edtList);
+  ocrInit((int *)&argc,argv,sizeof(edtList)/sizeof(ocrEdt_t),edtList);
 TRACE0("call ocrEdtCreate()");
    /* (ocrGuid_t *)guid,ocrEdt_ funcPtr,u32 paramc, u64 *params, void *paramv[], u16 properties, u32 depc, ocrGuid_t *depv, ocrGuid_t *outputEvent */
   ocrEdtCreate(&mainEdtGuid, mainEdt, 0, NULL, NULL, 0, 0, NULL, NULL);
@@ -1179,7 +1426,6 @@ int main(int argc, char *argv[]) {
   Index_t edgeElems = 45 ; // standard problem size
 #endif // FSIM
   Index_t edgeNodes = edgeElems+1 ;
-  Index_t domElems ;
 
 TRACE0("/* allocate domain data structure */");
 
@@ -1200,263 +1446,15 @@ TRACE0("/* allocate domain data structure */");
   memset(domain,0,sizeof(ONE*sizeof(struct Domain_t)));
 #endif // FSIM or OCR
 
-TRACE0("/* get run options to measure various metrics */");
+TRACE0("/****************************/");
+TRACE0("/*   Initialize Sedov Mesh  */");
+TRACE0("/****************************/");
 
-  /****************************/
-  /*   Initialize Sedov Mesh  */
-  /****************************/
-
-TRACE0("/* construct a uniform box for this processor */");
-
-  domain->m_sizeX   = edgeElems ;
-  domain->m_sizeY   = edgeElems ;
-  domain->m_sizeZ   = edgeElems ;
-  domain->m_numElem = edgeElems*edgeElems*edgeElems ;
-  domain->m_numNode = edgeNodes*edgeNodes*edgeNodes ;
-
-  domElems = domain->m_numElem ;
-
-TRACE0("/* allocate field memory */");
-
-  domain_AllocateElemPersistent(domain->m_numElem) ;
-  domain_AllocateElemTemporary (domain->m_numElem) ;
-
-  domain_AllocateNodalPersistent(domain->m_numNode) ;
-  domain_AllocateNodesets(edgeNodes*edgeNodes) ;
-
-TRACE0("/* initialize nodal coordinates */");
-
-
-  FINISH
-    Real_t sf = cast_Real_t(1.125)/cast_Real_t(edgeElems);
-    Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
-
-    for(Index_t pln = 0 ; pln < edgeNodes ; ++pln ) {
-      Real_t tz = cast_Real_t(pln)*sf;
-      Index_t pln_nidx = pln*dimNdimN;
-      for(Index_t row = 0 ; row < edgeNodes ; ++row ) {
-        Real_t ty = cast_Real_t(row)*sf;
-        Index_t pln_row_nidx = pln_nidx + row*dimN;
-        PAR_FOR_0xNx1(col,edgeNodes,pln,row,tz,ty,pln_row_nidx,domain,sf,dimN,dimNdimN)
-          Real_t tx = cast_Real_t(col)*sf;
-          Index_t nidx = pln_row_nidx+col;
-          domain->m_x[nidx] = tx;
-//DEBUG if(nidx==1)fprintf(stdout,"m_x[1] = %e\n",domain->m_x[1]);
-          domain->m_y[nidx] = ty;
-//DEBUG if(nidx==1)fprintf(stdout,"m_y[1] = %e\n",domain->m_y[1]);
-          domain->m_z[nidx] = tz;
-//DEBUG if(nidx==1)fprintf(stdout,"m_z[1] = %e\n",domain->m_z[1]);
-        END_PAR_FOR(col)
-      } // for row
-    } // for pln
-  END_FINISH
-
-TRACE0("/* embed hexehedral elements in nodal point lattice */");
-
-  FINISH
-    Index_t dimE = edgeElems, dimEdimE = edgeElems*edgeElems;
-    Index_t dimN = edgeNodes, dimNdimN = edgeNodes*edgeNodes;
-
-    for(Index_t pln = 0 ; pln < edgeElems ; ++pln ) {
-      Index_t pln_nidx = pln*dimNdimN;
-      Index_t pln_zidx = pln*dimEdimE;
-      for(Index_t row = 0 ; row < edgeElems ; ++row ) {
-        Index_t pln_row_nidx = pln_nidx + row*dimN;
-        Index_t pln_row_zidx = pln_zidx + row*dimE;
-        PAR_FOR_0xNx1(col,edgeElems,pln,row,pln_row_nidx,pln_row_zidx,domain,dimE,dimEdimE,dimN,dimNdimN)
-          Index_t nidx = pln_row_nidx+col;
-          Index_t zidx = pln_row_zidx+col;
-          SHARED Index_t *localNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*zidx] ;
-          localNode[0] = nidx                       ;
-          localNode[1] = nidx                   + 1 ;
-          localNode[2] = nidx            + dimN + 1 ;
-          localNode[3] = nidx            + dimN     ;
-          localNode[4] = nidx + dimNdimN            ;
-          localNode[5] = nidx + dimNdimN        + 1 ;
-          localNode[6] = nidx + dimNdimN + dimN + 1 ;
-          localNode[7] = nidx + dimNdimN + dimN     ;
-        END_PAR_FOR(col)
-      } // for row
-    } // for pln
-  END_FINISH
-
-TRACE0("/* Create a material IndexSet (entire domain same material for now) */");
-
-  FINISH
-    PAR_FOR_0xNx1(i,domElems,domain)
-      domain->m_matElemlist[i] = i ;
-    END_PAR_FOR(i)
-  END_FINISH
-   
-TRACE0("/* initialize material parameters */");
-
-  domain->m_dtfixed            = cast_Real_t(-1.0e-7) ;
-  domain->m_deltatime          = cast_Real_t(1.0e-7) ;
-  domain->m_deltatimemultlb    = cast_Real_t(1.1) ;
-  domain->m_deltatimemultub    = cast_Real_t(1.2) ;
-  domain->m_stoptime           = cast_Real_t(1.0e-2) ;
-  domain->m_dtcourant          = cast_Real_t(1.0e+20) ;
-  domain->m_dthydro            = cast_Real_t(1.0e+20) ;
-  domain->m_dtmax              = cast_Real_t(1.0e-2) ;
-  domain->m_time               = cast_Real_t(0.) ;
-  domain->m_cycle              = 0 ;
-
-  domain->m_e_cut              = cast_Real_t(1.0e-7) ;
-  domain->m_p_cut              = cast_Real_t(1.0e-7) ;
-  domain->m_q_cut              = cast_Real_t(1.0e-7) ;
-  domain->m_u_cut              = cast_Real_t(1.0e-7) ;
-  domain->m_v_cut              = cast_Real_t(1.0e-10) ;
-
-  domain->m_hgcoef             = cast_Real_t(3.0) ;
-
-  domain->m_qstop              = cast_Real_t(1.0e+12) ;
-  domain->m_monoq_max_slope    = cast_Real_t(1.0) ;
-  domain->m_monoq_limiter_mult = cast_Real_t(2.0) ;
-  domain->m_qlc_monoq          = cast_Real_t(0.5) ;
-  domain->m_qqc_monoq          = cast_Real_t(2.0)/cast_Real_t(3.0) ;
-  domain->m_qqc                = cast_Real_t(2.0) ;
-
-  domain->m_pmin               = cast_Real_t(0.) ;
-  domain->m_emin               = cast_Real_t(-1.0e+15) ;
-
-  domain->m_dvovmax            = cast_Real_t(0.1) ;
-
-  domain->m_eosvmax            = cast_Real_t(1.0e+9) ;
-  domain->m_eosvmin            = cast_Real_t(1.0e-9) ;
-
-  domain->m_refdens            = cast_Real_t(1.0) ;
-
-  FINISH
-    PAR_FOR_0xNx1(i,domElems,domain)
-#if  defined(HAB_C)
-      Real_t *x_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *y_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-      Real_t *z_local = (Real_t *)malloc(EIGHT*sizeof(Real_t)) ;
-#else // NOT HAB_C
-      Real_t x_local[EIGHT], y_local[EIGHT], z_local[EIGHT] ;
-#endif //    HAB_C
-      SHARED Index_t *elemToNode = (SHARED Index_t *)&domain->m_nodelist[EIGHT*i] ;
-      for( Index_t lnode=0 ; lnode < EIGHT ; ++lnode ) {
-        Index_t gnode = elemToNode[lnode];
-        x_local[lnode] = domain->m_x[gnode];
-        y_local[lnode] = domain->m_y[gnode];
-        z_local[lnode] = domain->m_z[gnode];
-      } // for lnode
-
-      // volume calculations
-      Real_t volume = CalcElemVolume(x_local, y_local, z_local );
-      domain->m_volo[i] = volume ;
-      domain->m_elemMass[i] = volume ;
-
-// RAG ///////////////////////////////////////////////////////// RAG //
-// RAG  Atomic Memory Floating-point Addition Scatter operation  RAG //
-// RAG ///////////////////////////////////////////////////////// RAG //
-
-      for( Index_t j=0 ; j<EIGHT ; ++j ) {
-        Index_t idx = elemToNode[j] ;
-        Real_t value = volume / cast_Real_t(8.0);
-        AMO__sync_addition_double(&domain->m_nodalMass[idx], value);
-      } // for j
-
-#if  defined(HAB_C)
-      free(z_local) ;
-      free(y_local) ;
-      free(x_local) ;
-#endif //    HAB_C
-    END_PAR_FOR(i)
-  END_FINISH
-
-TRACE0("/* deposit energy */");
-
-  domain->m_e[0] = cast_Real_t(3.948746e+7) ;
-
-TRACE0("/* set up symmetry nodesets */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
-
-  FINISH
-    Index_t dimN = edgeNodes, dimNdimN = dimN*dimN;
-    
-    for ( Index_t i = 0; i < edgeNodes ; ++i ) {
-      Index_t planeInc = i*dimNdimN ;
-      Index_t rowInc   = i*dimN ;
-      PAR_FOR_0xNx1(j,edgeNodes,i,planeInc,rowInc,domain,dimN,dimNdimN)
-        Index_t nidx = rowInc + j;
-        domain->m_symmX[nidx] = planeInc + j*dimN ;
-        domain->m_symmY[nidx] = planeInc + j ;
-        domain->m_symmZ[nidx] = rowInc   + j ;
-      END_PAR_FOR(j)
-    } // for i
-  END_FINISH
-
-TRACE0("/* set up elemement connectivity information */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
-
-  FINISH
-    domain->m_lxim[0] = 0 ;
-    PAR_FOR_0xNx1(i,domElems-1,domain,domElems)
-          domain->m_lxim[i+1] = i ;
-          domain->m_lxip[i  ] = i+1 ;
-    END_PAR_FOR(i)
-    domain->m_lxip[domElems-1] = domElems-1 ;
-  END_FINISH
-
-  FINISH
-    PAR_FOR_0xNx1(i,edgeElems,domain,domElems,edgeElems)
-      domain->m_letam[i] = i ; 
-      domain->m_letap[domElems-edgeElems+i] = domElems-edgeElems+i ;
-    END_PAR_FOR(i)
-  END_FINISH
-
-  FINISH
-    PAR_FOR_0xNx1(i,(domElems-edgeElems),domain,edgeElems)
-      domain->m_letam[i+edgeElems] = i ;
-      domain->m_letap[i          ] = i+edgeElems ;
-    END_PAR_FOR(i)
-  END_FINISH
-
-  FINISH
-    PAR_FOR_0xNx1(i,(edgeElems*edgeElems),domain,domElems,edgeElems)
-      domain->m_lzetam[i] = i ;
-      domain->m_lzetap[domElems-edgeElems*edgeElems+i] = domElems-edgeElems*edgeElems+i ;
-    END_PAR_FOR(i)
-  END_FINISH
-
-  FINISH
-    Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
-    PAR_FOR_0xNx1(i,(domElems-dimEdimE),domain,dimEdimE,domElems)
-      domain->m_lzetam[i+dimEdimE] = i ;
-      domain->m_lzetap[i]          = i+dimEdimE ;
-    END_PAR_FOR(i)
-  END_FINISH
-
-TRACE0("/* set up boundary condition information */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
-
-  FINISH
-    PAR_FOR_0xNx1(i,domElems,domain,domElems)
-      domain->m_elemBC[i] = 0 ;  /* clear BCs by default */
-    END_PAR_FOR(i)
-  END_FINISH
-
-TRACE0("/* faces on \"external\" boundaries will be */");
-TRACE0("/* symmetry plane or free surface BCs     */");
-//DEBUG fprintf(stdout,"e(0)=%e\n",domain->m_e[0]);
-
-  FINISH
-    Index_t dimE = edgeElems, dimEdimE = dimE*dimE;
-    for ( Index_t i = 0 ; i < edgeElems ; ++i ) {
-      Index_t planeInc = i*dimEdimE ;
-      Index_t rowInc   = i*dimE ;
-      PAR_FOR_0xNx1(j,edgeElems,i,domain,planeInc,rowInc,domElems,dimE,dimEdimE)
-        domain->m_elemBC[planeInc+j*dimE           ] |= XI_M_SYMM ;
-        domain->m_elemBC[planeInc+j*dimE+1*dimE-1  ] |= XI_P_FREE ;
-        domain->m_elemBC[planeInc+j                ] |= ETA_M_SYMM ;
-        domain->m_elemBC[planeInc+j+dimEdimE-dimE  ] |= ETA_P_FREE ;
-        domain->m_elemBC[rowInc+j                  ] |= ZETA_M_SYMM ;
-        domain->m_elemBC[rowInc+j+domElems-dimEdimE] |= ZETA_P_FREE ;
-      END_PAR_FOR(j)
-    } // for i
-  END_FINISH
+#if 0
+  ocrEdtCreate(&beginEdtGuid, mainEdt, 0, NULL, NULL, 0, 0, NULL, NULL);
+#else
+  InitializeProblem( domain, edgeElems , edgeNodes );
+#endif
 
 TRACE0("/* TIMESTEP TO SOLUTION */");
 
@@ -1522,3 +1520,12 @@ TRACE0("mainEdt exit");
   EXIT(0);
   return 0; // IMPOSSIBLE
 } // main()
+
+#if defined(OCR) || defined(FSIM)
+ocrGuid_t  beginEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
+}
+ocrGuid_t middleEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
+}
+ocrGuid_t   endEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
+}
+#endif

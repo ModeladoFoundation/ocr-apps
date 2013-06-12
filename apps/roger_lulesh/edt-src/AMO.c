@@ -106,8 +106,8 @@ int     AMO__sync_bool_compare_and_swap_int64_t(SHARED int64_t *memPtr, int64_t 
 
 /* LOCKS */
 
-SHARED uint64_t idamax_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
-SHARED uint64_t idamin_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
+static SHARED uint64_t idamax_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
+static SHARED uint64_t idamin_lock = 0; // 0 --> UNLOCKED; 1 --> LOCKED
 SHARED uint64_t *pidamax_lock = &idamax_lock;
 SHARED uint64_t *pidamin_lock = &idamin_lock;
 

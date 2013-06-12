@@ -68,7 +68,7 @@ MEM.o:  MEM.c MEM.h RAG.h Makefile
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(CC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.c RAG.h RAG_edt.h kernels.h AMO.h MEM.h FP.h Makefile
+lulesh.o:  lulesh.c RAG.h RAG_edt.h kernels.h initialize.h AMO.h MEM.h FP.h Makefile
 	$(CC) $(CFLAGS) -c lulesh.c
 
 lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile

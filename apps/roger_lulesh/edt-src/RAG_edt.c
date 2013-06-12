@@ -793,10 +793,9 @@ void CalcQForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *
 } // CalcQForElems_edt_1()
 
 void CalcPressureForElems_edt_1( Index_t i_out, Index_t i_end,
-                          Real_t* p_new, Real_t* bvc ,
-                          Real_t* pbvc, Real_t* e_old ,
-                          Real_t* compression, Real_t *vnewc,
-                          Real_t pmin, Real_t p_cut, Real_t eosvmax ) {
+                          Real_t* p_new, Real_t* bvc, Real_t* pbvc,          /* OUT */
+                          Real_t* e_old, Real_t* compression, Real_t *vnewc, /* IN */
+                          Real_t pmin, Real_t p_cut, Real_t eosvmax ) {      /* IN */
   for( Index_t i = i_out ; i < i_end ; ++i ) {
       Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
       bvc[i]  = c1s * (compression[i] + cast_Real_t(1.));
@@ -817,10 +816,10 @@ void CalcPressureForElems_edt_1( Index_t i_out, Index_t i_end,
 } // CalcPressureForElems_edt_1()
 
 void CalcEnergyForElems_edt_1( Index_t i_out, Index_t i_end,
-                               Real_t *e_new, Real_t *e_old,
-                               Real_t *delvc, Real_t *p_old,
-                               Real_t *q_old, Real_t *work,
-                               Real_t emin ) {
+                               Real_t *e_new,                 /* OUT */
+                               Real_t *e_old, Real_t *delvc,  /* IN */
+                               Real_t *p_old, Real_t *q_old,  /* IN */
+                               Real_t *work,  Real_t emin ) { /* IN */
   for( Index_t i = i_out ; i < i_end ; ++i ) {
     e_new[i] = e_old[i] - cast_Real_t(0.5) * delvc[i] * (p_old[i] + q_old[i])
              + cast_Real_t(0.5) * work[i];
@@ -831,13 +830,14 @@ void CalcEnergyForElems_edt_1( Index_t i_out, Index_t i_end,
 } // CalcEnergyForElems_edt_1()
 
 void CalcEnergyForElems_edt_2( Index_t i_out, Index_t i_end,
-                               Real_t *compHalfStep, Real_t *q_new,
-                               Real_t *qq, Real_t *ql,
-                               Real_t *pbvc, Real_t *e_new,
-                               Real_t *bvc, Real_t *pHalfStep,
-                               Real_t *delvc, Real_t *p_old,
-                               Real_t *q_old, Real_t *work,
-                               Real_t rho0, Real_t e_cut, Real_t emin) {
+                               Real_t *q_new,                             /* OUT */
+                               Real_t *e_new,                             /* IN/OUT */
+                               Real_t *compHalfStep, Real_t *qq,          /* IN */
+                               Real_t *ql, Real_t *pbvc,                  /* IN */
+                               Real_t *bvc, Real_t *pHalfStep,            /* IN */
+                               Real_t *delvc, Real_t *p_old,              /* IN */
+                               Real_t *q_old, Real_t *work,               /* IN */
+                               Real_t rho0, Real_t e_cut, Real_t emin) {  /* IN */
   for( Index_t i = i_out ; i < i_end ; ++i ) {
       Real_t vhalf = cast_Real_t(1.) / (cast_Real_t(1.) + compHalfStep[i]) ;
 
@@ -872,14 +872,14 @@ void CalcEnergyForElems_edt_2( Index_t i_out, Index_t i_end,
 } // CalcEnergyForElems_edt_2()
 
 void CalcEnergyForElems_edt_3( Index_t i_out, Index_t i_end,
-                               Real_t *delvc, Real_t *pbvc,
-                               Real_t *e_new, Real_t *vnewc,
-                               Real_t *bvc, Real_t *p_new,
-                               Real_t *ql, Real_t *qq,
-                               Real_t *p_old, Real_t *q_old,
-                               Real_t *pHalfStep, Real_t *q_new,
-                               Real_t rho0, Real_t e_cut, Real_t emin) {
-  for( Index_t i = i_out ; i < i_end ; ++i ) {
+                               Real_t *e_new,                             /* IN/OUT */
+                               Real_t *delvc, Real_t *pbvc,               /* IN */
+                               Real_t *vnewc, Real_t *bvc, Real_t *p_new, /* IN */
+                               Real_t *ql, Real_t *qq,                    /* IN */
+                               Real_t *p_old, Real_t *q_old,              /* IN */
+                               Real_t *pHalfStep, Real_t *q_new,          /* IN */
+                               Real_t rho0, Real_t e_cut, Real_t emin) {  /* IN */
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // e_new is IN/OUT //
     HAB_CONST Real_t sixth = cast_Real_t(1.0) / cast_Real_t(6.0) ;
     Real_t q_tilde ;
 
@@ -912,12 +912,12 @@ void CalcEnergyForElems_edt_3( Index_t i_out, Index_t i_end,
 } // CalcEnergyForElems_edt_3()
 
 void CalcEnergyForElems_edt_4( Index_t i_out, Index_t i_end,
-                               Real_t *delvc, Real_t *pbvc,
-                               Real_t *e_new, Real_t *vnewc,
-                               Real_t *bvc, Real_t *p_new,
-                               Real_t *ql, Real_t *qq,
-                               Real_t *q_new,
-                               Real_t rho0, Real_t q_cut) {
+                               Real_t *q_new,                 /* OUT */
+                               Real_t *delvc, Real_t *pbvc,   /* IN */
+                               Real_t *e_new, Real_t *vnewc,  /* IN */
+                               Real_t *bvc, Real_t *p_new,    /* IN */
+                               Real_t *ql, Real_t *qq,        /* IN */
+                               Real_t rho0, Real_t q_cut) {   /* IN */
   for( Index_t i = i_out ; i < i_end ; ++i ) {
     if ( delvc[i] <= cast_Real_t(0.) ) {
       Real_t ssc = (  pbvc[i] * e_new[i]
@@ -1011,3 +1011,86 @@ void EvalEOSForElems_edt_3( Index_t i_out, Index_t i_end, SHARED struct Domain_t
     domain->m_q[zidx] = q_new[i] ;
   } // for i
 } // EvalEOSForElems_edt_3()
+
+void ApplyMaterialPropertiesForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                                            Real_t *vnewc ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG GATHERS
+    Index_t zn = domain->m_matElemlist[i] ;
+    vnewc[i] = domain->m_vnew[zn] ;
+  } // for i
+} // ApplyMaterialPropertiesForElems_edt_1()
+
+void ApplyMaterialPropertiesForElems_edt_2( Index_t i_out, Index_t i_end,
+                                            Real_t *vnewc,
+                                            Real_t eosvmin, Real_t eosvmax ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG STIDE ONES
+    if (eosvmin != cast_Real_t(0.)) {
+//    PAR_FOR_0xNx1(i,length,vnewc,eosvmin)
+      if (vnewc[i] < eosvmin) {
+        vnewc[i] = eosvmin ;
+      } // if vnewc
+//    END_PAR_FOR(i)
+    } // if eosvmin
+
+    if (eosvmax != cast_Real_t(0.)) {
+//    PAR_FOR_0xNx1(i,length,vnewc,eosvmax)
+      if (vnewc[i] > eosvmax) {
+        vnewc[i] = eosvmax ;
+      } // if vnewc
+//    END_PAR_FOR(i)
+    } // if eosvmax
+  } // for i
+} // ApplyMaterialPropertiesForElems_edt_2()
+
+void ApplyMaterialPropertiesForElems_edt_3( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                                            Real_t eosvmin, Real_t eosvmax ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG GATHER with ERROR CHECK
+    Index_t zn = domain->m_matElemlist[i] ;
+    Real_t  vc = domain->m_v[zn] ;
+    if (eosvmin != cast_Real_t(0.)) {
+      if (vc < eosvmin) { 
+        vc = eosvmin ;
+      } // if domain->m_v
+    } // if eosvmin
+    if (eosvmax != cast_Real_t(0.)) {
+      if (vc > eosvmax) {
+        vc = eosvmax ;
+      } // if domain->m_v
+    } // if eosvmax
+    if (vc <= 0.) {
+      EXIT(VolumeError) ;
+    } // if domain->m_v
+  } // for i
+} // ApplyMaterialPropertiesForElems_edt_3()
+
+void UpdateVolumesForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                                  Real_t v_cut ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG STRIDE ONE
+      Real_t tmpV = domain->m_vnew[i] ;
+      if ( FABS(tmpV - cast_Real_t(1.0)) < v_cut ) {
+        tmpV = cast_Real_t(1.0) ;
+      } // tmpV
+      domain->m_v[i] = tmpV ;
+  } // for i
+} // UpdateVolumesForElems_edt_1()
+
+void CalcHydroConstraintForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *domain,
+                                        Real_t *pDtHydro, Index_t *pHydro_elem,
+                                        uint64_t *pidamin_lock, 
+                                        Real_t dvovmax ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) { // RAG GATHERED IDAMIN via AMO
+    Index_t indx = domain->m_matElemlist[i] ;
+
+    if (domain->m_vdov[indx] != cast_Real_t(0.)) {
+      Real_t dtdvov = dvovmax / (FABS(domain->m_vdov[indx])+cast_Real_t(1.e-20)) ;
+      if ( *pDtHydro > dtdvov ) {
+AMO__lock_uint64_t(pidamin_lock);          // LOCK
+        if ( *pDtHydro > dtdvov ) {
+          *pDtHydro    = dtdvov ;
+          *pHydro_elem = indx ;
+        } // if *pDtHydro
+AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
+      } // if *pDtHydro
+    } // if domain->m_vdov
+  } // for i
+} // CalcHydroConstraintForElems_edt_1()
