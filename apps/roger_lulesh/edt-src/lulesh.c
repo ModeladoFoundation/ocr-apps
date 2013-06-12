@@ -734,29 +734,9 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
                           Real_t* compression, Real_t *vnewc,
                           Real_t pmin,
                           Real_t p_cut, Real_t eosvmax,
-                          Index_t length)
-{
+                          Index_t length) {
   FINISH
-    PAR_FOR_0xNx1(i,length,bvc,pbvc,compression,p_new,e_old,vnewc,pmin,p_cut,eosvmax)
-      Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
-      bvc[i] = c1s * (compression[i] + cast_Real_t(1.));
-      pbvc[i] = c1s;
-//  END_PAR_FOR(i)
-//END_FINISH
-
-//FINISH
-//  PAR_FOR_0xNx1(i,length,p_new,bvc,e_old,vnewc,pmin,p_cut,eosvmax)
-      p_new[i] = bvc[i] * e_old[i] ;
-
-      if    (FABS(p_new[i]) <  p_cut   ) 
-         p_new[i] = cast_Real_t(0.0) ;
-
-      if    ( vnewc[i] >= eosvmax ) /* impossible condition here? */
-         p_new[i] = cast_Real_t(0.0) ;
-
-      if    (p_new[i]       <  pmin)
-         p_new[i]   = pmin ;
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_old,compression,vnewc,pmin,p_cut,eosvmax)
   END_FINISH
 } // CalcPressureForElems()
 
@@ -771,131 +751,20 @@ void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
                         Real_t rho0,
                         Real_t eosvmax,
                         Index_t length) {
-
   Real_t *pHalfStep = Allocate_Real_t(length) ;
 
   FINISH
-    PAR_FOR_0xNx1(i,length,e_new,e_old,delvc,p_old,q_old,work,emin)
-//DEBUG if(i==0)fprintf(stdout," e_old = %e\n",e_old[i]);
-//DEBUG if(i==0)fprintf(stdout," p_old = %e\n",p_old[i])
-//DEBUG if(i==0)fprintf(stdout," q_old = %e\n",q_old[i]);
-//DEBUG if(i==0)fprintf(stdout," delvc = %e\n",delvc[i]);
-//DEBUG if(i==0)fprintf(stdout," work  = %e\n",work[i] );
-      e_new[i] = e_old[i] - cast_Real_t(0.5) * delvc[i] * (p_old[i] + q_old[i])
-               + cast_Real_t(0.5) * work[i];
-//DEBUG if(i==0)fprintf(stdout," e_new0= %e\n",e_new[i]);
-
-      if (e_new[i]  < emin ) {
-        e_new[i] = emin ;
-      }
-    END_PAR_FOR(i)
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_1,e_new,e_old,delvc,p_old,q_old,work,emin);
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,pHalfStep,bvc,pbvc,e_new,compHalfStep,vnewc,pmin,p_cut,eosvmax);
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_2,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,delvc,p_old,q_old,work,rho0,e_cut,emin);
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,pmin,p_cut,eosvmax)
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_3,delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,p_old,q_old,pHalfStep,q_new,rho0,e_cut,emin);
+    EDT_PAR_FOR_0xNx1(i,length,CalcPressureForElems_edt_1,p_new,bvc,pbvc,e_new,compression,vnewc,pmin,p_cut,eosvmax);
+    EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_4,delvc,pbvc,e_new,vnewc,bvc,p_new,ql,qq,q_new,rho0,q_cut);
   END_FINISH
 
-  CalcPressureForElems(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
-                       pmin, p_cut, eosvmax, length);
-  FINISH
-    PAR_FOR_0xNx1(i,length,compHalfStep,q_new,qq,ql,pbvc,e_new,bvc,pHalfStep,rho0,delvc,p_old,q_old,work,e_cut,emin)
-      Real_t vhalf = cast_Real_t(1.) / (cast_Real_t(1.) + compHalfStep[i]) ;
-
-      if ( delvc[i] > cast_Real_t(0.) ) {
-        q_new[i] /* = qq[i] = ql[i] */ = cast_Real_t(0.) ;
-      } else {
-        Real_t ssc = ( pbvc[i] * e_new[i]
-                   + vhalf * vhalf * bvc[i] * pHalfStep[i] ) / rho0 ;
-
-        if ( ssc <= cast_Real_t(0.) ) {
-          ssc =cast_Real_t(.333333e-36) ;
-        } else {
-          ssc = SQRT(ssc) ;
-        } // if ssc
-
-        q_new[i] = (ssc*ql[i] + qq[i]) ;
-      } // if delvc
-
-      e_new[i] +=  cast_Real_t(0.5) * delvc[i]
-               * ( cast_Real_t(3.0) * (p_old[i]     + q_old[i])
-                 - cast_Real_t(4.0) * (pHalfStep[i] + q_new[i])) ;
-//DEBUG if(i==0)fprintf(stdout," e_new1= %e\n",e_new[0]);
-
-      e_new[i] += cast_Real_t(0.5) * work[i];
-//DEBUG if(i==0)fprintf(stdout," e_new2= %e\n",e_new[0]);
-
-      if (FABS(e_new[i]) < e_cut) {
-        e_new[i] = cast_Real_t(0.)  ;
-      } // e_cut
-      if (     e_new[i]  < emin ) {
-        e_new[i] = emin ;
-      } // if emin
-//DEBUG if(i==0)fprintf(stdout," e_new3= %e\n",e_new[0]);
-    END_PAR_FOR(i)
-  END_FINISH
-
-   CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
-                   pmin, p_cut, eosvmax, length);
-
-  FINISH
-    PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,p_old,q_old,pHalfStep,q_new,e_cut,emin)
-      HAB_CONST Real_t sixth = cast_Real_t(1.0) / cast_Real_t(6.0) ;
-      Real_t q_tilde ;
-
-      if (delvc[i] > cast_Real_t(0.)) {
-        q_tilde = cast_Real_t(0.) ;
-      } else {
-        Real_t ssc = ( pbvc[i] * e_new[i]
-                   + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
-
-        if ( ssc <= cast_Real_t(0.) ) {
-          ssc = cast_Real_t(.333333e-36) ;
-        } else {
-          ssc = SQRT(ssc) ;
-        } // if ssc
-
-        q_tilde = (ssc*ql[i] + qq[i]) ;
-      } // if delvc
-
-      e_new[i] += - ( cast_Real_t(7.0)*(p_old[i]     + q_old[i])
-                    - cast_Real_t(8.0)*(pHalfStep[i] + q_new[i])
-                    + (p_new[i] + q_tilde)) * delvc[i]*sixth ;
-//DEBUG if(i==0)fprintf(stdout," e_new4= %e\n",e_new[0]);
-
-
-      if (FABS(e_new[i]) < e_cut) {
-        e_new[i] = cast_Real_t(0.)  ;
-      } // if e_cut
-      if (     e_new[i]  < emin ) {
-        e_new[i] = emin ;
-      } // if emin
-//DEBUG if(i==0)fprintf(stdout," e_new5= %e\n",e_new[0]);
-    END_PAR_FOR(i)
-  END_FINISH
-
-  CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
-                   pmin, p_cut, eosvmax, length);
-
-//DEBUG fprintf(stdout," e_new6= %e\n",e_new[0]);
-
-  FINISH
-    PAR_FOR_0xNx1(i,length,delvc,pbvc,e_new,vnewc,bvc,p_new,rho0,ql,qq,q_new,q_cut)
-      if ( delvc[i] <= cast_Real_t(0.) ) {
-        Real_t ssc = (  pbvc[i] * e_new[i]
-                     + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
-
-        if ( ssc <= cast_Real_t(0.) ) {
-          ssc = cast_Real_t(.333333e-36) ;
-        } else {
-          ssc = SQRT(ssc) ;
-        } // if ssc
-
-        q_new[i] = (ssc*ql[i] + qq[i]) ;
-
-        if (FABS(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
-      } // if delvc
-    END_PAR_FOR(i)
-  END_FINISH
-
-   Release_Real_t(pHalfStep) ;
-
-   return ;
+  Release_Real_t(pHalfStep) ;
+  return ;
 } // CalcEnergyForElems()
 
 static INLINE

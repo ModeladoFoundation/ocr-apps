@@ -53,6 +53,44 @@ void                CalcMonotonicQRegionForElems_edt_1( Index_t i_out , Index_t 
 void                                CalcQForElems_edt_1( Index_t i_out , Index_t i_end , SHARED struct Domain_t *domain ,
                                                          Real_t qstop, SHARED uint64_t *pIndex_AMO ) ;
 
+void                         CalcPressureForElems_edt_1( Index_t i_out , Index_t i_end ,
+                                                         Real_t *p_new , Real_t *bvc , 
+                                                         Real_t *pbvc , Real_t *e_old ,
+                                                         Real_t *compression , Real_t *vnewc ,
+                                                         Real_t pmin , Real_t p_cut , Real_t eosvmax ) ;
+
+void                           CalcEnergyForElems_edt_1( Index_t i_out , Index_t i_end ,
+                                                         Real_t *e_new , Real_t *e_old ,
+                                                         Real_t *delvc , Real_t *p_old , 
+                                                         Real_t *q_old , Real_t *work ,
+                                                         Real_t emin ) ;
+
+void                           CalcEnergyForElems_edt_2( Index_t i_out , Index_t i_end ,
+                                                         Real_t *compHalfStep , Real_t *q_new ,
+                                                         Real_t *qq , Real_t *ql ,
+                                                         Real_t *pbvc , Real_t *e_new ,
+                                                         Real_t *bvc , Real_t *pHalfStep ,
+                                                         Real_t *delvc , Real_t *p_old ,
+                                                         Real_t *q_old , Real_t *work ,
+                                                         Real_t rho0, Real_t e_cut, Real_t emin) ;
+
+void                           CalcEnergyForElems_edt_3( Index_t i_out , Index_t i_end ,
+                                                         Real_t *delvc , Real_t *pbvc ,
+                                                         Real_t *e_new , Real_t *vnewc ,
+                                                         Real_t *bvc , Real_t *p_new ,
+                                                         Real_t *ql , Real_t *qq ,
+                                                         Real_t *p_old , Real_t *q_old ,
+                                                         Real_t *pHalfStep , Real_t *q_new ,
+                                                         Real_t rho0, Real_t e_cut, Real_t emin) ;
+
+void                           CalcEnergyForElems_edt_4( Index_t i_out , Index_t i_end ,
+                                                         Real_t *delvc , Real_t *pbvc ,
+                                                         Real_t *e_new , Real_t *vnewc ,
+                                                         Real_t *bvc , Real_t *p_new ,
+                                                         Real_t *ql , Real_t *qq ,
+                                                         Real_t *q_new ,
+                                                         Real_t rho0, Real_t q_cut) ;
+
 #ifdef CILK
 } // extern "C"
 #endif

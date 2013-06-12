@@ -791,3 +791,147 @@ void CalcQForElems_edt_1( Index_t i_out, Index_t i_end, SHARED struct Domain_t *
      } // if domain->m_q
   } // for i
 } // CalcQForElems_edt_1()
+
+void CalcPressureForElems_edt_1( Index_t i_out, Index_t i_end,
+                          Real_t* p_new, Real_t* bvc ,
+                          Real_t* pbvc, Real_t* e_old ,
+                          Real_t* compression, Real_t *vnewc,
+                          Real_t pmin, Real_t p_cut, Real_t eosvmax ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) {
+      Real_t c1s = cast_Real_t(2.0)/cast_Real_t(3.0) ;
+      bvc[i]  = c1s * (compression[i] + cast_Real_t(1.));
+      pbvc[i] = c1s;
+//} // for i
+//for( Index_t i = i_out ; i < i_end ; ++i ) {
+      p_new[i] = bvc[i] * e_old[i] ;
+
+      if    (FABS(p_new[i]) <  p_cut   ) 
+         p_new[i] = cast_Real_t(0.0) ;
+
+      if    ( vnewc[i] >= eosvmax ) /* impossible condition here? */
+         p_new[i] = cast_Real_t(0.0) ;
+
+      if    (p_new[i]       <  pmin)
+         p_new[i]   = pmin ;
+  } // for i
+} // CalcPressureForElems_edt_1()
+
+void CalcEnergyForElems_edt_1( Index_t i_out, Index_t i_end,
+                               Real_t *e_new, Real_t *e_old,
+                               Real_t *delvc, Real_t *p_old,
+                               Real_t *q_old, Real_t *work,
+                               Real_t emin ) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) {
+    e_new[i] = e_old[i] - cast_Real_t(0.5) * delvc[i] * (p_old[i] + q_old[i])
+             + cast_Real_t(0.5) * work[i];
+    if (e_new[i]  < emin ) {
+      e_new[i] = emin ;
+    } // if e_new
+  } // for i
+} // CalcEnergyForElems_edt_1()
+
+void CalcEnergyForElems_edt_2( Index_t i_out, Index_t i_end,
+                               Real_t *compHalfStep, Real_t *q_new,
+                               Real_t *qq, Real_t *ql,
+                               Real_t *pbvc, Real_t *e_new,
+                               Real_t *bvc, Real_t *pHalfStep,
+                               Real_t *delvc, Real_t *p_old,
+                               Real_t *q_old, Real_t *work,
+                               Real_t rho0, Real_t e_cut, Real_t emin) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) {
+      Real_t vhalf = cast_Real_t(1.) / (cast_Real_t(1.) + compHalfStep[i]) ;
+
+      if ( delvc[i] > cast_Real_t(0.) ) {
+        q_new[i] /* = qq[i] = ql[i] */ = cast_Real_t(0.) ;
+      } else {
+        Real_t ssc = ( pbvc[i] * e_new[i]
+                   + vhalf * vhalf * bvc[i] * pHalfStep[i] ) / rho0 ;
+
+        if ( ssc <= cast_Real_t(0.) ) {
+          ssc =cast_Real_t(.333333e-36) ;
+        } else {
+          ssc = SQRT(ssc) ;
+        } // if ssc
+
+        q_new[i] = (ssc*ql[i] + qq[i]) ;
+      } // if delvc
+
+      e_new[i] +=  cast_Real_t(0.5) * delvc[i]
+               * ( cast_Real_t(3.0) * (p_old[i]     + q_old[i])
+                 - cast_Real_t(4.0) * (pHalfStep[i] + q_new[i])) ;
+
+      e_new[i] += cast_Real_t(0.5) * work[i];
+
+      if (FABS(e_new[i]) < e_cut) {
+        e_new[i] = cast_Real_t(0.)  ;
+      } // e_cut
+      if (     e_new[i]  < emin ) {
+        e_new[i] = emin ;
+      } // if emin
+  } // for i
+} // CalcEnergyForElems_edt_2()
+
+void CalcEnergyForElems_edt_3( Index_t i_out, Index_t i_end,
+                               Real_t *delvc, Real_t *pbvc,
+                               Real_t *e_new, Real_t *vnewc,
+                               Real_t *bvc, Real_t *p_new,
+                               Real_t *ql, Real_t *qq,
+                               Real_t *p_old, Real_t *q_old,
+                               Real_t *pHalfStep, Real_t *q_new,
+                               Real_t rho0, Real_t e_cut, Real_t emin) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) {
+    HAB_CONST Real_t sixth = cast_Real_t(1.0) / cast_Real_t(6.0) ;
+    Real_t q_tilde ;
+
+    if (delvc[i] > cast_Real_t(0.)) {
+      q_tilde = cast_Real_t(0.) ;
+    } else {
+      Real_t ssc = ( pbvc[i] * e_new[i]
+                 + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
+
+      if ( ssc <= cast_Real_t(0.) ) {
+        ssc = cast_Real_t(.333333e-36) ;
+      } else {
+        ssc = SQRT(ssc) ;
+      } // if ssc
+
+      q_tilde = (ssc*ql[i] + qq[i]) ;
+    } // if delvc
+
+    e_new[i] += - ( cast_Real_t(7.0)*(p_old[i]     + q_old[i])
+                  - cast_Real_t(8.0)*(pHalfStep[i] + q_new[i])
+                  + (p_new[i] + q_tilde)) * delvc[i]*sixth ;
+
+    if (FABS(e_new[i]) < e_cut) {
+      e_new[i] = cast_Real_t(0.)  ;
+    } // if e_cut
+    if (     e_new[i]  < emin ) {
+      e_new[i] = emin ;
+    } // if emin
+  } // for i
+} // CalcEnergyForElems_edt_3()
+
+void CalcEnergyForElems_edt_4( Index_t i_out, Index_t i_end,
+                               Real_t *delvc, Real_t *pbvc,
+                               Real_t *e_new, Real_t *vnewc,
+                               Real_t *bvc, Real_t *p_new,
+                               Real_t *ql, Real_t *qq,
+                               Real_t *q_new,
+                               Real_t rho0, Real_t q_cut) {
+  for( Index_t i = i_out ; i < i_end ; ++i ) {
+    if ( delvc[i] <= cast_Real_t(0.) ) {
+      Real_t ssc = (  pbvc[i] * e_new[i]
+                   + vnewc[i] * vnewc[i] * bvc[i] * p_new[i] ) / rho0 ;
+
+      if ( ssc <= cast_Real_t(0.) ) {
+        ssc = cast_Real_t(.333333e-36) ;
+      } else {
+        ssc = SQRT(ssc) ;
+      } // if ssc
+
+      q_new[i] = (ssc*ql[i] + qq[i]) ;
+
+      if (FABS(q_new[i]) < q_cut) q_new[i] = cast_Real_t(0.) ;
+    } // if delvc
+  } // for i
+} // CalcEnergyForElems_edt_4()
