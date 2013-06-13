@@ -76,12 +76,14 @@ Additional BSD Notice
 
 // RAG would like to remove all golbal accesses to domainObject and domain, to better model passing data blocks
 #if defined(FSIM)
-volatile struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
+rmdglobal struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                                 .edgeElems = 0, .edgeNodes = 0, };
+#define TYPE_CAST_DOMAIN_OBJECT struct DomainObject_t
 ocrGuid_t NULL_GUID = { .data = 0, };
 #elif defined(OCR)
 volatile struct DomainObject_t domainObject = { .guid      = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                                 .edgeElems = 0, .edgeNodes = 0,};
+#define TYPE_CAST_DOMAIN_OBJECT
 #endif // FSIM or OCR
 
 static SHARED struct Domain_t *domain = NULL;
@@ -104,10 +106,10 @@ void     Release_Real_t( Real_t *ptr ) {
 #include "initialize.h"
 
 static INLINE
-void InitStressTermsForElems(Index_t numElem, 
+void InitStressTermsForElems(Index_t numElem,
                              Real_t *sigxx, Real_t *sigyy, Real_t *sigzz) {
    // pull in the stresses appropriate to the hydro integration
-   FINISH 
+   FINISH
      EDT_PAR_FOR_0xNx1(i,numElem,InitStressTermsForElems_edt_1,domain,sigxx,sigyy,sigzz);
    END_FINISH
 } // InitStressTermsForElems()
@@ -217,7 +219,7 @@ TRACE5("CalcVolueForceForElems() entry");
 
 static INLINE void CalcForceForNodes() {
   Index_t numNode = domain->m_numNode ;
-  FINISH 
+  FINISH
     EDT_PAR_FOR_0xNx1(i,numNode,CalcForceForNodes_edt_1,domain)
   END_FINISH
 
@@ -233,7 +235,7 @@ TRACE4("/* problem->commSBN->Transfer(CommSBN::forces); */");
 static INLINE
 void CalcAccelerationForNodes() {
   Index_t numNode = domain->m_numNode ;
-  FINISH 
+  FINISH
     EDT_PAR_FOR_0xNx1(i,numNode,CalcAccelerationForNodes_edt_1,domain)
   END_FINISH
 } // CalcAccelerationForNodes()
@@ -337,10 +339,10 @@ void CalcMonotonicQRegionForElems(
 } // CalcMonotonicQRegionForElems()
 
 static INLINE
-void CalcMonotonicQForElems() {  
+void CalcMonotonicQForElems() {
    //
    // initialize parameters
-   // 
+   //
    HAB_CONST Real_t ptiny    = cast_Real_t(1.e-36) ;
    Real_t monoq_max_slope    = domain->m_monoq_max_slope ;
    Real_t monoq_limiter_mult = domain->m_monoq_limiter_mult ;
@@ -385,9 +387,9 @@ void CalcQForElems() {
    /* Don't allow excessive artificial viscosity */
    if (numElem != 0) {
 #ifdef    UPC
-      bupc_atomicU64_set_strict(pIndex_AMO,(uint64_t)0); 
+      bupc_atomicU64_set_strict(pIndex_AMO,(uint64_t)0);
 #else  // NOT UPC
-      *pIndex_AMO = 0; 
+      *pIndex_AMO = 0;
 #endif // UPC
       FINISH
         EDT_PAR_FOR_0xNx1(i,numElem,CalcQForElems_edt_1,domain,qstop,pIndex_AMO);
@@ -530,7 +532,7 @@ TRACE1("/* Check for v > eosvmax or v < eosvmin */");
       compression[i] = cast_Real_t(1.) / vnewc[i] - cast_Real_t(1.);
       vchalf = vnewc[i] - delvc[i] * cast_Real_t(.5);
       compHalfStep[i] = cast_Real_t(1.) / vchalf - cast_Real_t(1.);
-      work[i] = cast_Real_t(0.) ; 
+      work[i] = cast_Real_t(0.) ;
 //  END_PAR_FOR(i)
 
       if ( eosvmin != cast_Real_t(0.) ) {
@@ -637,7 +639,7 @@ void UpdateVolumesForElems() {
     Real_t v_cut = domain->m_v_cut;
     FINISH
       EDT_PAR_FOR_0xNx1(i,numElem,UpdateVolumesForElems_edt_1,domain,v_cut)
-    END_FINISH 
+    END_FINISH
   } // if numElem
   return ;
 } // UpdateVolumesForElems()
@@ -830,7 +832,7 @@ TRACE0("mainEdt entry");
 #endif // FSIM or OCR
   uint8_t retVal = 0;
 #if     defined(FSIM)
-// tiny problem size 
+// tiny problem size
   size_t  edgeElems =  5 ;
 // ran to completion quickly with 5, many cycles for 10, 15, 30 and 45
 #else   // FSIM
@@ -843,7 +845,7 @@ TRACE0("/* ALLOCATE DOMAIN DATA STRUCTURE */");
 
 #if defined(FSIM) || defined(OCR)
   DOMAIN_CREATE(&domainObject,edgeElems,edgeNodes);
-  xe_printf("domainObject at        %16.16lx\n",&domainObject);
+  xe_printf("domainObject at        %16.16lx\n",(TYPE_CAST_DOMAIN_OBJECT*)&domainObject);
 #if    defined(FSIM)
   xe_printf("domainObject.guid      %16.16lx\n",domainObject.guid.data);
 #elif  defined(OCR)
@@ -877,7 +879,7 @@ TRACE0("call ocrEdtCreate(beginEdt)");
   retVal = ocrEdtCreate(&beginEdtGuid, beginEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
   xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE0("call ocrAddDependence(beginEdt)");
-  retVal = ocrAddDependence(domainObject.guid,beginEdtGuid,0);
+  retVal = ocrAddDependence(((TYPE_CAST_DOMAIN_OBJECT)domainObject).guid,beginEdtGuid,0);
   xe_printf("ocrAddDependence retVal %d\n",retVal);
 TRACE0("call ocrEdtSchedule(beginEdt)");
   retVal = ocrEdtSchedule(beginEdtGuid);
@@ -899,7 +901,7 @@ xe_printf("beginEdt entry\n");
 uint8_t retVal = 0;
 SHARED struct Domain_t *domain = (SHARED struct Domain_t *)depv[0].ptr;
 xe_printf("domain %16.16lx\n",domain);
-xe_printf("domainObject at %16.16lx\n",&domainObject);
+xe_printf("domainObject at %16.16lx\n",(TYPE_CAST_DOMAIN_OBJECT*)&domainObject);
 Index_t edgeElems = (&domainObject)->edgeElems;
 xe_printf("edgeElems %d\n",edgeElems);
 Index_t edgeNodes = (&domainObject)->edgeNodes;
@@ -913,7 +915,7 @@ TRACE0("call ocrEdtCreate(middleEdt)");
   retVal = ocrEdtCreate(&middleEdtGuid, middleEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
   xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE0("call ocrAddDependence(middleEdt)");
-  retVal = ocrAddDependence(domainObject.guid,middleEdtGuid,0);
+  retVal = ocrAddDependence(((TYPE_CAST_DOMAIN_OBJECT)domainObject).guid,middleEdtGuid,0);
   xe_printf("ocrAddDependence retVal %d\n",retVal);
 TRACE0("call ocrEdtSchedule(middleEdt)");
   retVal = ocrEdtSchedule(middleEdtGuid);
@@ -969,7 +971,7 @@ TRACE0("call ocrEdtCreate(endEdt)");
   ocrEdtCreate(&endEdtGuid, endEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
   xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE0("call ocrAddDependence(endEdt)");
-  retVal = ocrAddDependence(domainObject.guid,endEdtGuid,0);
+  retVal = ocrAddDependence(((TYPE_CAST_DOMAIN_OBJECT)domainObject).guid,endEdtGuid,0);
   xe_printf("ocrAddDependence retVal %d\n",retVal);
 TRACE0("call ocrEdtSchedule(endEdt)");
   retVal = ocrEdtSchedule(endEdtGuid);
