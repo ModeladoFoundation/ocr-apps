@@ -17,8 +17,8 @@ ASFLAGS	=
 AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
-CC	= $(PREFIX)-clang -DFSIM -DFSIM_DEBUG
-CFLAGS	= -g -ggdb -g3 $(OPT) -fno-builtin -frmd-extensions \
+CC	= $(PREFIX)-clang -DFSIM -DFSIM_DEBUG -frmd-extensions
+CFLAGS	= -g -ggdb -g3 $(OPT) -fno-builtin \
 	-I$(RMD_INSTALL_BASE)/xe-sim/include \
 	-I$(RMD_INSTALL_BASE)/rmdkrnl/inc \
 	-I$(RMD_INSTALL_BASE)/runtime/libxe/inc \

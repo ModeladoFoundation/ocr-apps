@@ -48,11 +48,11 @@ TRACE1("/* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */");
 } // TimeIncrement()
 
 static INLINE
-void CalcElemShapeFunctionDerivatives( const Real_t* const x,   /* IN */
-                                       const Real_t* const y,   /* IN */
-                                       const Real_t* const z,   /* IN */
+void CalcElemShapeFunctionDerivatives( const Real_t *const x,   /* IN */
+                                       const Real_t *const y,   /* IN */
+                                       const Real_t *const z,   /* IN */
                                        Real_t *b,               /* OUT b[][EIGHT] */
-                                       Real_t* const volume ) { /* OUT */
+                                       Real_t *const volume ) { /* OUT */
   const Real_t x0 = x[0] ;   const Real_t x1 = x[1] ;
   const Real_t x2 = x[2] ;   const Real_t x3 = x[3] ;
   const Real_t x4 = x[4] ;   const Real_t x5 = x[5] ;

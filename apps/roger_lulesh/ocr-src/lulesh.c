@@ -76,26 +76,24 @@ Additional BSD Notice
 
 // RAG would like to remove all golbal accesses to domainObject and domain, to better model passing data blocks
 #if defined(FSIM)
-rmdglobal struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
+SHARED struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                                 .edgeElems = 0, .edgeNodes = 0, };
-#define TYPE_CAST_DOMAIN_OBJECT struct DomainObject_t
-ocrGuid_t NULL_GUID = { .data = 0, };
+SHARED       ocrGuid_t          NULL_GUID = { .data = 0, };
 #elif defined(OCR)
-volatile struct DomainObject_t domainObject = { .guid      = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
+SHARED struct DomainObject_t domainObject = { .guid      = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                                 .edgeElems = 0, .edgeNodes = 0,};
-#define TYPE_CAST_DOMAIN_OBJECT
 #endif // FSIM or OCR
 
-static SHARED struct Domain_t *domain = NULL;
+SHARED struct Domain_t     *SHARED domain = NULL;
 
 static INLINE
-Real_t *Allocate_Real_t( size_t hcSize ) {
-  return  (Real_t *)SPAD_MALLOC(hcSize,sizeof(Real_t));
+SHARED Real_t *Allocate_Real_t( size_t hcSize ) {
+  return  (SHARED Real_t *)SPAD_MALLOC(hcSize,sizeof(Real_t)); // RAG using SPAD_MALLOC but really getting a DRAM datablock
 } // Allocate_Real_t()
 
 static INLINE
-void     Release_Real_t( Real_t *ptr ) {
-  if(ptr != NULL) SPAD_FREE(ptr);
+void     Release_Real_t( SHARED Real_t *ptr ) {
+  if(ptr != NULL) SPAD_FREE(ptr);                       // RAG usein SPAD_FREE but really freeing a DRAM datablock
 } // Release_Real_t()
 
 /* RAG -- prototypes for the edt functions */
@@ -106,18 +104,18 @@ void     Release_Real_t( Real_t *ptr ) {
 #include "initialize.h"
 
 static INLINE
-void InitStressTermsForElems(Index_t numElem,
-                             Real_t *sigxx, Real_t *sigyy, Real_t *sigzz) {
-   // pull in the stresses appropriate to the hydro integration
-   FINISH
-     EDT_PAR_FOR_0xNx1(i,numElem,InitStressTermsForElems_edt_1,domain,sigxx,sigyy,sigzz);
-   END_FINISH
+void InitStressTermsForElems(Index_t numElem, 
+                             SHARED Real_t *sigxx, SHARED Real_t *sigyy, SHARED Real_t *sigzz) {
+  // pull in the stresses appropriate to the hydro integration
+  FINISH
+    EDT_PAR_FOR_0xNx1(i,numElem,InitStressTermsForElems_edt_1,domain,sigxx,sigyy,sigzz);
+  END_FINISH
 } // InitStressTermsForElems()
 
 static INLINE
 void IntegrateStressForElems( Index_t numElem,
-                              Real_t *sigxx, Real_t *sigyy, Real_t *sigzz,
-                              Real_t *determ) {
+                              SHARED Real_t *sigxx, SHARED Real_t *sigyy, SHARED Real_t *sigzz,
+                              SHARED Real_t *determ) {
   // loop over all elements
   FINISH
     EDT_PAR_FOR_0xNx1(i,numElem,IntegrateStressForElems_edt_1,domain,sigxx,sigyy,sigzz,determ);
@@ -125,9 +123,9 @@ void IntegrateStressForElems( Index_t numElem,
 } // IntegrateStressForElems()
 
 static INLINE
-void CalcFBHourglassForceForElems(Real_t *determ,
-            Real_t *x8n,      Real_t *y8n,      Real_t *z8n,
-            Real_t *dvdx,     Real_t *dvdy,     Real_t *dvdz,
+void CalcFBHourglassForceForElems( SHARED Real_t *determ,
+            SHARED Real_t *x8n,      SHARED Real_t *y8n,      SHARED Real_t *z8n,
+            SHARED Real_t *dvdx,     SHARED Real_t *dvdy,     SHARED Real_t *dvdz,
             Real_t hourg) {
   /*************************************************
    *
@@ -138,23 +136,23 @@ void CalcFBHourglassForceForElems(Real_t *determ,
   Index_t numElem = domain->m_numElem ;
 // compute the hourglass modes
   FINISH
-    EDT_PAR_FOR_0xNx1(i2,numElem,CalcFBHourglassForceForElems_edt_1,domain,hourg,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz)
+    EDT_PAR_FOR_0xNx1(i2,numElem,CalcFBHourglassForceForElems_edt_1,domain,determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hourg)
   END_FINISH
 } // CalcFBHourglassForceForElems
 
 static INLINE
-void CalcHourglassControlForElems(Real_t determ[], Real_t hgcoef) {
+void CalcHourglassControlForElems( SHARED Real_t *determ, Real_t hgcoef ) {
 TRACE6("CalcHourglassControlForElems entry");
   Index_t numElem = domain->m_numElem ;
   Index_t numElem8 = numElem * EIGHT ;
 
 TRACE6("Allocate dvdx,dvdy,dvdz,x8n,y8n,z8n");
-  Real_t *dvdx = Allocate_Real_t(numElem8) ;
-  Real_t *dvdy = Allocate_Real_t(numElem8) ;
-  Real_t *dvdz = Allocate_Real_t(numElem8) ;
-  Real_t *x8n  = Allocate_Real_t(numElem8) ;
-  Real_t *y8n  = Allocate_Real_t(numElem8) ;
-  Real_t *z8n  = Allocate_Real_t(numElem8) ;
+  SHARED Real_t *dvdx = Allocate_Real_t(numElem8) ;
+  SHARED Real_t *dvdy = Allocate_Real_t(numElem8) ;
+  SHARED Real_t *dvdz = Allocate_Real_t(numElem8) ;
+  SHARED Real_t *x8n  = Allocate_Real_t(numElem8) ;
+  SHARED Real_t *y8n  = Allocate_Real_t(numElem8) ;
+  SHARED Real_t *z8n  = Allocate_Real_t(numElem8) ;
 
 TRACE6("/* start loop over elements */");
   FINISH
@@ -187,10 +185,10 @@ TRACE5("CalcVolueForceForElems() entry");
     Real_t  hgcoef = domain->m_hgcoef ;
 
 TRACE5("Allocate sigxx,sigyy,sigzz,determ");
-    Real_t *sigxx  = Allocate_Real_t(numElem) ;
-    Real_t *sigyy  = Allocate_Real_t(numElem) ;
-    Real_t *sigzz  = Allocate_Real_t(numElem) ;
-    Real_t *determ = Allocate_Real_t(numElem) ;
+    SHARED Real_t *sigxx  = Allocate_Real_t(numElem) ;
+    SHARED Real_t *sigyy  = Allocate_Real_t(numElem) ;
+    SHARED Real_t *sigzz  = Allocate_Real_t(numElem) ;
+    SHARED Real_t *determ = Allocate_Real_t(numElem) ;
 
 TRACE5("/* Sum contributions to total stress tensor */");
     InitStressTermsForElems( numElem , sigxx , sigyy , sigzz );
@@ -267,7 +265,7 @@ void CalcPositionForNodes(const Real_t dt) {
 
 static INLINE
 void LagrangeNodal() {
-  HAB_CONST Real_t delt = domain->m_deltatime ;
+  const Real_t delt = domain->m_deltatime ;
   Real_t u_cut = domain->m_u_cut ;
 
 TRACE2("/* time of boundary condition evaluation is beginning of step for force and");
@@ -342,8 +340,8 @@ static INLINE
 void CalcMonotonicQForElems() {
    //
    // initialize parameters
-   //
-   HAB_CONST Real_t ptiny    = cast_Real_t(1.e-36) ;
+   // 
+   const Real_t ptiny    = cast_Real_t(1.e-36) ;
    Real_t monoq_max_slope    = domain->m_monoq_max_slope ;
    Real_t monoq_limiter_mult = domain->m_monoq_limiter_mult ;
 
@@ -422,17 +420,15 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
 #endif
 
 static INLINE
-void CalcEnergyForElems(Real_t* p_new, Real_t* e_new, Real_t* q_new,
-                        Real_t* bvc, Real_t* pbvc,
-                        Real_t* p_old, Real_t* e_old, Real_t* q_old,
-                        Real_t* compression, Real_t* compHalfStep,
-                        Real_t* vnewc, Real_t* work, Real_t* delvc, Real_t pmin,
-                        Real_t p_cut, Real_t  e_cut, Real_t q_cut, Real_t emin,
-                        Real_t* qq, Real_t* ql,
-                        Real_t rho0,
-                        Real_t eosvmax,
-                        Index_t length) {
-  Real_t *pHalfStep = Allocate_Real_t(length) ;
+void CalcEnergyForElems( SHARED Real_t* p_new,  SHARED Real_t* e_new,  SHARED Real_t* q_new,
+                         SHARED Real_t* bvc,  SHARED Real_t* pbvc,
+                         SHARED Real_t* p_old,  SHARED Real_t* e_old,  SHARED Real_t* q_old,
+                         SHARED Real_t* compression,  SHARED Real_t* compHalfStep,
+                         SHARED Real_t* vnewc,  SHARED Real_t* work,  SHARED Real_t* delvc,
+                         Real_t pmin, Real_t p_cut, Real_t  e_cut, Real_t q_cut, Real_t emin,
+                         SHARED Real_t* qq,  SHARED Real_t* ql,
+                         Real_t rho0, Real_t eosvmax, Index_t length) {
+  SHARED Real_t *pHalfStep = Allocate_Real_t(length) ;
   FINISH // RAG STRIDE ONE                                OUT
     EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_1,  e_new,e_old,delvc,p_old,q_old,work,
                                                           emin);
@@ -477,7 +473,7 @@ void CalcSoundSpeedForElems(Real_t *vnewc, Real_t rho0, Real_t *enewc,
 #endif
 
 static INLINE
-void EvalEOSForElems(Real_t *vnewc, Index_t length) {
+void EvalEOSForElems( SHARED Real_t *vnewc, Index_t length ) {
   Real_t  e_cut = domain->m_e_cut;
   Real_t  p_cut = domain->m_p_cut;
   Real_t  q_cut = domain->m_q_cut;
@@ -488,20 +484,20 @@ void EvalEOSForElems(Real_t *vnewc, Index_t length) {
   Real_t emin    = domain->m_emin ;
   Real_t rho0    = domain->m_refdens ;
 
-  Real_t *e_old = Allocate_Real_t(length) ;
-  Real_t *delvc = Allocate_Real_t(length) ;
-  Real_t *p_old = Allocate_Real_t(length) ;
-  Real_t *q_old = Allocate_Real_t(length) ;
-  Real_t *compression = Allocate_Real_t(length) ;
-  Real_t *compHalfStep = Allocate_Real_t(length) ;
-  Real_t *qq = Allocate_Real_t(length) ;
-  Real_t *ql = Allocate_Real_t(length) ;
-  Real_t *work = Allocate_Real_t(length) ;
-  Real_t *p_new = Allocate_Real_t(length) ;
-  Real_t *e_new = Allocate_Real_t(length) ;
-  Real_t *q_new = Allocate_Real_t(length) ;
-  Real_t *bvc = Allocate_Real_t(length) ;
-  Real_t *pbvc = Allocate_Real_t(length) ;
+  SHARED Real_t *e_old = Allocate_Real_t(length) ;
+  SHARED Real_t *delvc = Allocate_Real_t(length) ;
+  SHARED Real_t *p_old = Allocate_Real_t(length) ;
+  SHARED Real_t *q_old = Allocate_Real_t(length) ;
+  SHARED Real_t *compression = Allocate_Real_t(length) ;
+  SHARED Real_t *compHalfStep = Allocate_Real_t(length) ;
+  SHARED Real_t *qq = Allocate_Real_t(length) ;
+  SHARED Real_t *ql = Allocate_Real_t(length) ;
+  SHARED Real_t *work = Allocate_Real_t(length) ;
+  SHARED Real_t *p_new = Allocate_Real_t(length) ;
+  SHARED Real_t *e_new = Allocate_Real_t(length) ;
+  SHARED Real_t *q_new = Allocate_Real_t(length) ;
+  SHARED Real_t *bvc = Allocate_Real_t(length) ;
+  SHARED Real_t *pbvc = Allocate_Real_t(length) ;
 
 TRACE1("/* compress data, minimal set */");
 
@@ -610,7 +606,7 @@ void ApplyMaterialPropertiesForElems() {
 TRACE1("/* Expose all of the variables needed for material evaluation */");
     Real_t eosvmin = domain->m_eosvmin ;
     Real_t eosvmax = domain->m_eosvmax ;
-    Real_t *vnewc  = Allocate_Real_t(length) ;
+    SHARED Real_t *vnewc  = Allocate_Real_t(length) ;
 
     FINISH // RAG GATHERS
       EDT_PAR_FOR_0xNx1(i,length,ApplyMaterialPropertiesForElems_edt_1,domain,vnewc) ;
@@ -646,7 +642,7 @@ void UpdateVolumesForElems() {
 
 static INLINE
 void LagrangeElements() {
-  HAB_CONST Real_t deltatime = domain->m_deltatime ;
+  const Real_t deltatime = domain->m_deltatime ;
 
 TRACE2("/* Call CalcLagrangeElements() */");
 
@@ -845,7 +841,7 @@ TRACE0("/* ALLOCATE DOMAIN DATA STRUCTURE */");
 
 #if defined(FSIM) || defined(OCR)
   DOMAIN_CREATE(&domainObject,edgeElems,edgeNodes);
-  xe_printf("domainObject at        %16.16lx\n",(TYPE_CAST_DOMAIN_OBJECT*)&domainObject);
+  xe_printf("domainObject at        %16.16lx\n",&domainObject);
 #if    defined(FSIM)
   xe_printf("domainObject.guid      %16.16lx\n",domainObject.guid.data);
 #elif  defined(OCR)
@@ -879,7 +875,7 @@ TRACE0("call ocrEdtCreate(beginEdt)");
   retVal = ocrEdtCreate(&beginEdtGuid, beginEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
   xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE0("call ocrAddDependence(beginEdt)");
-  retVal = ocrAddDependence(((TYPE_CAST_DOMAIN_OBJECT)domainObject).guid,beginEdtGuid,0);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,beginEdtGuid,0);
   xe_printf("ocrAddDependence retVal %d\n",retVal);
 TRACE0("call ocrEdtSchedule(beginEdt)");
   retVal = ocrEdtSchedule(beginEdtGuid);
@@ -901,7 +897,7 @@ xe_printf("beginEdt entry\n");
 uint8_t retVal = 0;
 SHARED struct Domain_t *domain = (SHARED struct Domain_t *)depv[0].ptr;
 xe_printf("domain %16.16lx\n",domain);
-xe_printf("domainObject at %16.16lx\n",(TYPE_CAST_DOMAIN_OBJECT*)&domainObject);
+xe_printf("domainObject at %16.16lx\n",&domainObject);
 Index_t edgeElems = (&domainObject)->edgeElems;
 xe_printf("edgeElems %d\n",edgeElems);
 Index_t edgeNodes = (&domainObject)->edgeNodes;
@@ -915,7 +911,7 @@ TRACE0("call ocrEdtCreate(middleEdt)");
   retVal = ocrEdtCreate(&middleEdtGuid, middleEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
   xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE0("call ocrAddDependence(middleEdt)");
-  retVal = ocrAddDependence(((TYPE_CAST_DOMAIN_OBJECT)domainObject).guid,middleEdtGuid,0);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,middleEdtGuid,0);
   xe_printf("ocrAddDependence retVal %d\n",retVal);
 TRACE0("call ocrEdtSchedule(middleEdt)");
   retVal = ocrEdtSchedule(middleEdtGuid);
@@ -971,7 +967,7 @@ TRACE0("call ocrEdtCreate(endEdt)");
   ocrEdtCreate(&endEdtGuid, endEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
   xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE0("call ocrAddDependence(endEdt)");
-  retVal = ocrAddDependence(((TYPE_CAST_DOMAIN_OBJECT)domainObject).guid,endEdtGuid,0);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,endEdtGuid,0);
   xe_printf("ocrAddDependence retVal %d\n",retVal);
 TRACE0("call ocrEdtSchedule(endEdt)");
   retVal = ocrEdtSchedule(endEdtGuid);
