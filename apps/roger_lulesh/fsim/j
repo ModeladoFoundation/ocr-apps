@@ -1,6 +1,0 @@
-#if   defined(FSIM)
-ocrGuid_t NULL_GUID = { .data = 0, };
-#elif defined(OCR)
-ocrGuid_t NULL_GUID = NULL;
-#endif // FSIM or OCR
-

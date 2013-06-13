@@ -1,1 +1,1 @@
-../edt-src/lulesh.c
+../pre-edt-src/lulesh.c

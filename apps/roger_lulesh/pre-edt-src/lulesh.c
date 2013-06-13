@@ -78,9 +78,12 @@ Additional BSD Notice
 #if defined(FSIM)
 static struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                               .edgeElems = 0, .edgeNodes = 0, };
+ocrGuid_t NULL_GUID = { .data = 0, };
 #elif defined(OCR)
 static struct DomainObject_t domainObject = { .guid      = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                               .edgeElems = 0, .edgeNodes = 0,};
+#else
+#define NULL_GUID ((int)0)
 #endif // FSIM or OCR
 
 static SHARED struct Domain_t *domain = NULL;
@@ -900,7 +903,7 @@ Index_t edgeNodes = domainObject->edgeNodes;
 int  beginEdt(SHARED struct Domain_t *domain, Index_t edgeElems, Index_t edgeNodes ) {
 #endif
   InitializeProblem( domain, edgeElems , edgeNodes );
-  return 0;
+  return NULL_GUID;
 }// beginEdt()
 /////////////////////////////////////
 //////////// middleEDT //////////////
@@ -944,7 +947,7 @@ TRACE0("/* LagrangeLeapFrog() */");
 #endif // LULESH_SHOW_PROGRESS
 
   } // while time
-  return 0;
+  return NULL_GUID;
 } // middleEdt()
 //////////////////////////////////
 //////////// endEDT //////////////
@@ -981,5 +984,5 @@ TRACE0("/* Deallocate field memory */");
 
 TRACE0("endEdt exit");
   EXIT(0);
-  return 0; // IMPOSSIBLE
+  return NULL_GUID; // IMPOSSIBLE
 } // endEdt()
