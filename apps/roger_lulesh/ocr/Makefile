@@ -43,6 +43,9 @@ MEM.o:  MEM.c MEM.h RAG.h Makefile
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
+lulesh.i:  lulesh.c RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h initialize.h Makefile
+	$(GCC) $(CFLAGS) -E lulesh.c >& lulesh.i
+
 lulesh.o:  lulesh.c RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h initialize.h Makefile
 	$(GCC) $(CFLAGS) -c lulesh.c
 

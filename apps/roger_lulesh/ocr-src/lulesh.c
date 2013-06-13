@@ -1,5 +1,31 @@
-/*
+//#define USE_CALL
+//#define USE_EDT_CALL
+#define USE_EDT
 
+#if defined(USE_CALL)
+
+#define EDT_CALL(me,arg,next) \
+me(arg)
+
+#elif defined(USE_EDT_CALL)
+
+#define DEF_EDT_CALL(me,arg,next) \
+ocrGuid_t me ## _edt_0(u32 paramc, u64 *params, void *paramv[], u32 depc, void **depv) { \
+SHARED struct Domain_t *arg = (SHARED struct Domain_t *)(*depv);
+
+#define MAKE_EDT_CALL(me,arg,next) \
+ocrGuid_t me ## _edt_0(u32 paramc, u64 *params, void *paramv[], u32 depc, void **depv) ; \
+(void) me ## _edt_0((u32)0,(u64 *)NULL,(void *)NULL,(u32)1,(void *)&arg)
+
+#elif defined(USE_EDT)
+
+#define DEF_EDT_CALL(me,arg,next) \
+ocrGuid_t me ## _edt_0(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) { \
+SHARED struct Domain_t *arg = (SHARED struct Domain_t *)depv[0].ptr;
+
+#endif
+
+/*
                  Copyright (c) 2010.
       Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory.
@@ -105,6 +131,18 @@ void     Release_Real_t( SHARED Real_t *ptr ) {
 /* RAG -- moved initialization code here */
 #include "initialize.h"
 
+#if defined(OCR) || defined(FSIM)
+ocrGuid_t  beginEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t middleEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t    endEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+#if defined(USE_EDT)
+SHARED ocrGuid_t LagrangeLeapFrogEdtGuid;
+ocrGuid_t        LagrangeLeapFrog_edt_0(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+SHARED ocrGuid_t     ShowProgressEdtGuid;
+ocrGuid_t            ShowProgress_edt_0(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+#endif
+#endif
+
 static INLINE
 void InitStressTermsForElems(Index_t numElem, 
                              SHARED Real_t *sigxx, SHARED Real_t *sigyy, SHARED Real_t *sigzz) {
@@ -179,7 +217,7 @@ TRACE6("CalcHourglassControlForElems return");
 } // CalcHourglassControlForElems
 
 static INLINE
-void CalcVolumeForceForElems() {
+void CalcVolumeForceForElems( SHARED struct Domain_t *domain ) {
 TRACE5("CalcVolueForceForElems() entry");
   Index_t numElem = domain->m_numElem ;
 
@@ -217,7 +255,7 @@ TRACE5("Release  determ,sigzz,sigyy,sigxx");
 TRACE5("CalcVolueForceForElems() entry");
 } // CalcVolumeForceForElems()
 
-static INLINE void CalcForceForNodes() {
+static INLINE void CalcForceForNodes( SHARED struct Domain_t *domain ) {
   Index_t numNode = domain->m_numNode ;
   FINISH
     EDT_PAR_FOR_0xNx1(i,numNode,CalcForceForNodes_edt_1,domain)
@@ -225,7 +263,7 @@ static INLINE void CalcForceForNodes() {
 
 TRACE4("/* Calcforce calls partial, force, hourq */");
 
-  CalcVolumeForceForElems() ;
+  CalcVolumeForceForElems(domain) ;
 
 TRACE4("/* Calculate Nodal Forces at domain boundaries */");
 TRACE4("/* problem->commSBN->Transfer(CommSBN::forces); */");
@@ -266,7 +304,7 @@ void CalcPositionForNodes(const Real_t dt) {
 } // CalcPositionForNodes()
 
 static INLINE
-void LagrangeNodal() {
+void LagrangeNodal(SHARED struct Domain_t *domain) {
   HAB_CONST Real_t delt = domain->m_deltatime ;
   Real_t u_cut = domain->m_u_cut ;
 
@@ -275,7 +313,7 @@ TRACE2(" * acceleration boundary conditions. */");
 
 TRACE2(" /* Call CalcForceForNodes() */");
 
-  CalcForceForNodes();
+  CalcForceForNodes(domain);
 
 TRACE2(" /* Call AccelerationForNodes() */");
 
@@ -643,7 +681,7 @@ void UpdateVolumesForElems() {
 } // UpdateVolumesForElems()
 
 static INLINE
-void LagrangeElements() {
+void LagrangeElements(SHARED struct Domain_t *domain) {
   HAB_CONST Real_t deltatime = domain->m_deltatime ;
 
 TRACE2("/* Call CalcLagrangeElements() */");
@@ -670,7 +708,7 @@ static SHARED Real_t  *pDtCourant    = &DtCourant;
 static SHARED Index_t *pCourant_elem = &Courant_elem;
 
 static INLINE
-void CalcCourantConstraintForElems() {
+void CalcCourantConstraintForElems(SHARED struct Domain_t *domain) {
   *pDtCourant = cast_Real_t(1.0e+20) ;
   *pCourant_elem = -1;
 
@@ -725,7 +763,7 @@ static SHARED Real_t  *pDtHydro    = &DtHydro;
 static SHARED Index_t *pHydro_elem = &Hydro_elem;
 
 static INLINE
-void CalcHydroConstraintForElems() {
+void CalcHydroConstraintForElems(SHARED struct Domain_t *domain) {
   *pDtHydro = cast_Real_t(1.0e+20) ;
   *pHydro_elem = -1 ;
 
@@ -762,61 +800,140 @@ AMO__unlock_uint64_t(pidamin_lock);        // UNLOCK
 } // CalcHydroConstraintForElems()
 
 static INLINE
-void CalcTimeConstraintsForElems() {
+void CalcTimeConstraintsForElems(SHARED struct Domain_t *domain) {
 TRACE3("CalcTimeConstrantsForElems() entry");
 
 TRACE3("/* evaluate time constraint */");
-  CalcCourantConstraintForElems() ;
+  CalcCourantConstraintForElems(domain) ;
 
 TRACE3("/* check hydro constraint */");
-  CalcHydroConstraintForElems() ;
+  CalcHydroConstraintForElems(domain) ;
 
 TRACE3("CalcTimeConstrantsForElems() return");
 } // CalcTimeConstraintsForElems()
 
+#if defined(USE_EDT_CALL) || defined(USE_EDT)
+DEF_EDT_CALL(LagrangeLeapFrog,domain,ShowProgress)
+#else
 static INLINE
-void LagrangeLeapFrog() {
+void LagrangeLeapFrog(SHARED struct Domain_t *domain) {
+#endif
 TRACE1("LagrangeLeapFrog() entry");
 
 TRACE1("/* calculate nodal forces, accelerations, velocities, positions, with */");
 TRACE1(" * applied boundary conditions and slide surface considerations       */");
 
-  LagrangeNodal();
+  LagrangeNodal(domain);
 
 TRACE1("/* calculate element quantities (i.e. velocity gradient & q), and update */");
 TRACE1(" * material states                                                       */");
 
-  LagrangeElements();
+  LagrangeElements(domain);
 
 TRACE1("/* calculate time constraints for elems */");
 
-  CalcTimeConstraintsForElems();
+  CalcTimeConstraintsForElems(domain);
+
+#if defined(USE_EDT)
+  { uint8_t retVal = 0;
+TRACE1("call ocrAddDependence(ShowProgressEdtGuid)");
+    retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,(ocrGuid_t)ShowProgressEdtGuid,0);
+    if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
+#ifdef OCR
+TRACE1("call ocrEdtSchedule(ShowProgressEdtGuid)");
+    retVal = ocrEdtSchedule((ocrGuid_t)ShowProgressEdtGuid);
+    if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
+  }
+#endif
 
 TRACE1("LagrangeLeapFrog() return");
+#if defined(USE_EDT)
+  return NULL_GUID;
+#endif
 } // LagangeLeapFrog()
 
-#if defined(OCR) || defined(FSIM)
-ocrGuid_t  beginEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
-ocrGuid_t middleEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
-ocrGuid_t    endEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
+#if defined(USE_EDT_CALL) || defined(USE_EDT)
+DEF_EDT_CALL(ShowProgress,domain,middle)
+#else
+static INLINE
+void ShowProgress(SHARED struct Domain_t *domain) {
 #endif
+#if       LULESH_SHOW_PROGRESS
+#ifdef      FSIM
+  xe_printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
+          *(uint64_t *)&(domain->m_time),
+          *(uint64_t *)&(domain->m_deltatime),
+          *(uint64_t *)&(domain->m_e[0])) ;
+#else    // NOT FSIM
+#ifdef        HEX
+     printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
+          *(uint64_t *)&(domain->m_time),
+          *(uint64_t *)&(domain->m_deltatime),
+          *(uint64_t *)&(domain->m_e[0])) ;
+#else      // NOT HEX
+    printf("time = %e, dt=%e, e(0)=%e\n",
+          ((double)domain->m_time),
+          ((double)domain->m_deltatime),
+          ((double)domain->m_e[0])) ;
+#endif     // HEX
+    fflush(stdout);
+#endif   // FSIM
+#endif // LULESH_SHOW_PROGRESS
+
+#if defined(USE_EDT)
+{ uint8_t retVal = 0;
+  ocrGuid_t middleEdtGuid;
+
+TRACE1("call ocrEdtCreate(middleEdtGuid)");
+  retVal = ocrEdtCreate(&middleEdtGuid, middleEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
+  if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+
+TRACE1("call ocrAddDependence(middleEdtGuid)");
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,middleEdtGuid,0);
+  if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
+
+#ifdef OCR
+TRACE1("call ocrEdtSchedule(middleEdtGuid)");
+  retVal = ocrEdtSchedule(middleEdtGuid);
+  if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
+}
+#endif
+
+#if defined(USE_EDT_CALL) || defined(USE_EDT)
+  return NULL_GUID;
+#else
+  return;
+#endif
+} // ShowProgress()
+
 
 #if    defined(OCR)
 ocrGuid_t mainEdt  (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]);
 int main(int argc, char ** argv) {
   uint8_t retVal = 0;
 TRACE0("main entry");
+#if defined(USE_EDT)
+  ocrEdt_t edtList[] = { mainEdt , beginEdt , middleEdt , endEdt, LagrangeLeapFrog_edt_0, ShowProgress_edt_0 };
+#else
   ocrEdt_t edtList[] = { mainEdt , beginEdt , middleEdt , endEdt };
+#endif
   ocrGuid_t mainEdtGuid;
+
 TRACE0("call ocrInit()");
   ocrInit((int *)&argc,argv,sizeof(edtList)/sizeof(ocrEdt_t),edtList);
-TRACE0("call ocrEdtCreate()");
-   /* (ocrGuid_t *)guid,ocrEdt_t funcPtr,u32 paramc, u64 *params, void *paramv[], u16 properties, u32 depc, ocrGuid_t *depv, ocrGuid_t *outputEvent */
+
+TRACE0("call ocrEdtCreate(mainEdtGuid)");
   retVal = ocrEdtCreate(&mainEdtGuid, mainEdt, 0, NULL, NULL, 0, 0, NULL, NULL);
-  xe_printf("ocrEdtCreate retVal %d\n",retVal);
-TRACE0("call ocrEdtSchedule()");
+  if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+
+#ifdef OCR
+TRACE0("call ocrEdtSchedule(mainEdtGuid)");
   retVal = ocrEdtSchedule(mainEdtGuid);
-  xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+  if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
+
 TRACE0("call ocrEdtCleanup()");
   ocrCleanup();
 TRACE0("main return");
@@ -826,7 +943,7 @@ TRACE0("main return");
 ocrGuid_t mainEdt(u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
 #elif defined(FSIM)
 int mainEdt() {
-TRACE0("mainEdt entry");
+TRACE1("mainEdt entry");
 #endif // FSIM or OCR
   uint8_t retVal = 0;
 #if     defined(FSIM)
@@ -843,17 +960,17 @@ TRACE0("/* ALLOCATE DOMAIN DATA STRUCTURE */");
 
 #if defined(FSIM) || defined(OCR)
   DOMAIN_CREATE(&domainObject,edgeElems,edgeNodes);
-  xe_printf("domainObject at        %16.16lx\n",&domainObject);
+//xe_printf("rag: domainObject at        %16.16lx\n",&domainObject);
 #if    defined(FSIM)
-  xe_printf("domainObject.guid      %16.16lx\n",domainObject.guid.data);
+//xe_printf("rag: domainObject.guid      %16.16lx\n",domainObject.guid.data);
 #elif  defined(OCR)
-  xe_printf("domainObject.guid      %16.16lx\n",domainObject.guid);
+//xe_printf("rag: domainObject.guid      %16.16lx\n",domainObject.guid);
 #endif // FSIM or OCR
-  xe_printf("domainObject.base      %16.16lx\n",domainObject.base);
-  xe_printf("domainObject.offset    %16.16lx\n",domainObject.offset);
-  xe_printf("domainObject.limit     %16.16lx\n",domainObject.limit);
-  xe_printf("domainObject.edgeElems %16.16lx\n",domainObject.edgeElems);
-  xe_printf("domainObject.edgeNodes %16.16lx\n",domainObject.edgeNodes);
+//xe_printf("rag: domainObject.base      %16.16lx\n",domainObject.base);
+//xe_printf("rag: domainObject.offset    %16.16lx\n",domainObject.offset);
+//xe_printf("rag: domainObject.limit     %16.16lx\n",domainObject.limit);
+//xe_printf("rag: domainObject.edgeElems %16.16lx\n",domainObject.edgeElems);
+//xe_printf("rag: domainObject.edgeNodes %16.16lx\n",domainObject.edgeNodes);
 #endif // FSIM or OCR
 
   domain = (SHARED struct Domain_t *)DRAM_MALLOC(ONE,sizeof(struct Domain_t));
@@ -873,17 +990,19 @@ TRACE0("/* ALLOCATE DOMAIN DATA STRUCTURE */");
 TRACE0("/* INITIALIZE SEDOV MESH  */");
 
 ocrGuid_t beginEdtGuid;
-TRACE0("call ocrEdtCreate(beginEdt)");
+TRACE1("call ocrEdtCreate(beginEdtGuid)");
   retVal = ocrEdtCreate(&beginEdtGuid, beginEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
-  xe_printf("ocrEdtCreate retVal %d\n",retVal);
-TRACE0("call ocrAddDependence(beginEdt)");
+  if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+TRACE1("call ocrAddDependence(beginEdtGuid)");
   retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,beginEdtGuid,0);
-  xe_printf("ocrAddDependence retVal %d\n",retVal);
-TRACE0("call ocrEdtSchedule(beginEdt)");
+  if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
+#ifdef OCR
+TRACE1("call ocrEdtSchedule(beginEdtGuid)");
   retVal = ocrEdtSchedule(beginEdtGuid);
-  xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+  if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
 
-  TRACE0("mainEdt return");
+TRACE1("mainEdt return");
 #if   defined(FSIM)
   return 0;
 #elif defined(OCR)
@@ -895,31 +1014,36 @@ TRACE0("call ocrEdtSchedule(beginEdt)");
 //////////// beginEDT //////////////
 ////////////////////////////////////
 ocrGuid_t beginEdt (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
-xe_printf("beginEdt entry\n");
+TRACE1("beginEdt entry");
 uint8_t retVal = 0;
 SHARED struct Domain_t *domain = (SHARED struct Domain_t *)depv[0].ptr;
-xe_printf("domain %16.16lx\n",domain);
-xe_printf("domainObject at %16.16lx\n",&domainObject);
+//xe_printf("rag: domain %16.16lx\n",domain);
+//xe_printf("rag: domainObject at %16.16lx\n",&domainObject);
 Index_t edgeElems = (&domainObject)->edgeElems;
-xe_printf("edgeElems %d\n",edgeElems);
+//xe_printf("rag: edgeElems %d\n",edgeElems);
 Index_t edgeNodes = (&domainObject)->edgeNodes;
-xe_printf("edgeNodes %d\n",edgeNodes);
-xe_printf("call InitializeProblem\n");
+//xe_printf("rag: edgeNodes %d\n",edgeNodes);
+//xe_printf("rag: call InitializeProblem\n");
   InitializeProblem( domain, edgeElems , edgeNodes );
-xe_printf("back InitializeProblem\n");
+//xe_printf("rag: back InitializeProblem\n");
 
   ocrGuid_t middleEdtGuid;
-TRACE0("call ocrEdtCreate(middleEdt)");
-  retVal = ocrEdtCreate(&middleEdtGuid, middleEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
-  xe_printf("ocrEdtCreate retVal %d\n",retVal);
-TRACE0("call ocrAddDependence(middleEdt)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,middleEdtGuid,0);
-  xe_printf("ocrAddDependence retVal %d\n",retVal);
-TRACE0("call ocrEdtSchedule(middleEdt)");
-  retVal = ocrEdtSchedule(middleEdtGuid);
-  xe_printf("ocrEdtSchedule retVal %d\n",retVal);
 
-xe_printf("beginEdt return");
+TRACE1("call ocrEdtCreate(middleEdtGuid)");
+  retVal = ocrEdtCreate(&middleEdtGuid, middleEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
+  if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+
+TRACE1("call ocrAddDependence(middleEdtGuid)");
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,middleEdtGuid,0);
+  if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
+
+#ifdef OCR
+TRACE1("call ocrEdtSchedule(middleEdtGuid)");
+  retVal = ocrEdtSchedule(middleEdtGuid);
+  if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
+
+TRACE1("beginEdt return");
   return NULL_GUID;
 }// beginEdt()
 /////////////////////////////////////
@@ -927,10 +1051,14 @@ xe_printf("beginEdt return");
 /////////////////////////////////////
 ocrGuid_t middleEdt (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
 uint8_t retVal = 0;
-xe_printf("middleEdt entry\n");
+TRACE1("middleEdt entry");
 SHARED struct Domain_t *domain = (SHARED struct Domain_t *)depv[0].ptr;
-xe_printf("domain %16.16lx\n",domain);
+//xe_printf("rag: domain %16.16lx\n",domain);
+#if defined(USE_EDT)
+  if(domain->m_time < domain->m_stoptime ) {
+#else
   while(domain->m_time < domain->m_stoptime ) {
+#endif
 
 TRACE0("/* TimeIncrement() */");
 
@@ -938,53 +1066,80 @@ TRACE0("/* TimeIncrement() */");
 
 TRACE0("/* LagrangeLeapFrog() */");
 
-    LagrangeLeapFrog() ;
+#if defined(USE_CALL)
+    EDT_CALL(LagrangeLeapFrog,domain,ShowProgress) ;
+#elif defined(USE_EDT_CALL)
+    MAKE_EDT_CALL(LagrangeLeapFrog,domain,ShowProgress) ;
+#elif defined(USE_EDT)
 
-#if       LULESH_SHOW_PROGRESS
-#ifdef      FSIM
-    xe_printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
-          *(uint64_t *)&(domain->m_time),
-          *(uint64_t *)&(domain->m_deltatime),
-          *(uint64_t *)&(domain->m_e[0])) ;
-#else    // NOT FSIM
-#ifdef        HEX
-    printf("time = %16.16lx, dt=%16.16lx, e(0)=%16.16lx\n",
-          *(uint64_t *)&(domain->m_time),
-          *(uint64_t *)&(domain->m_deltatime),
-          *(uint64_t *)&(domain->m_e[0])) ;
-#else      // NOT HEX
-    printf("time = %e, dt=%e, e(0)=%e\n",
-          ((double)domain->m_time),
-          ((double)domain->m_deltatime),
-          ((double)domain->m_e[0])) ;
-#endif     // HEX
-    fflush(stdout);
-#endif   // FSIM
-#endif // LULESH_SHOW_PROGRESS
+TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
+    retVal = ocrEdtCreate((ocrGuid_t *)&LagrangeLeapFrogEdtGuid, LagrangeLeapFrog_edt_0, 0, NULL, NULL, 0, 1, NULL, NULL);
+    if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 
+#else
+    LagrangeLeapFrog(domain) ;
+#endif
+
+#if defined(USE_CALL)
+    EDT_CALL(ShowProgress,domain,middle);
+#elif defined(USE_EDT_CALL)
+    MAKE_EDT_CALL(ShowProgress,domain,middle) ;
+#elif defined(USE_EDT)
+
+TRACE1("call ocrEdtCreate(ShowProgressEdtGuid)");
+    retVal = ocrEdtCreate((ocrGuid_t *)&ShowProgressEdtGuid, ShowProgress_edt_0, 0, NULL, NULL, 0, 1, NULL, NULL);
+    if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+
+#else
+    ShowProgress(domain);
+#endif
+
+#ifdef USE_EDT
+TRACE1("call ocrAddDependence(LagrangeLeapFrogEdtGuid)");
+    retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,(ocrGuid_t)LagrangeLeapFrogEdtGuid,0);
+    if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
+#ifdef OCR
+TRACE1("call ocrEdtSchedule(LagrangeLeapFrogEdtGuid)");
+    retVal = ocrEdtSchedule((ocrGuid_t)LagrangeLeapFrogEdtGuid);
+    if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
+#endif
+
+#if defined(USE_EDT)
+  } else { // if time
+#else
   } // while time
+#endif
 
   ocrGuid_t endEdtGuid;
-TRACE0("call ocrEdtCreate(endEdt)");
-  ocrEdtCreate(&endEdtGuid, endEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
-  xe_printf("ocrEdtCreate retVal %d\n",retVal);
-TRACE0("call ocrAddDependence(endEdt)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,endEdtGuid,0);
-  xe_printf("ocrAddDependence retVal %d\n",retVal);
-TRACE0("call ocrEdtSchedule(endEdt)");
-  retVal = ocrEdtSchedule(endEdtGuid);
-  xe_printf("ocrEdtSchedule retVal %d\n",retVal);
 
-xe_printf("middleEdt return");
+TRACE1("call ocrEdtCreate(endEdt)");
+  ocrEdtCreate(&endEdtGuid, endEdt, 0, NULL, NULL, 0, 1, NULL, NULL);
+  if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+
+TRACE1("call ocrAddDependence(endEdt)");
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,endEdtGuid,0);
+  if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
+
+#ifdef OCR
+TRACE1("call ocrEdtSchedule(endEdt)");
+  retVal = ocrEdtSchedule(endEdtGuid);
+  if(retVal != 0)xe_printf("ocrEdtSchedule retVal %d\n",retVal);
+#endif // OCR
+
+#if defined(USE_EDT)
+  } // if time
+#endif
+TRACE1("middleEdt return");
   return NULL_GUID;
 } // middleEdt()
 //////////////////////////////////
 //////////// endEDT //////////////
 //////////////////////////////////
 ocrGuid_t endEdt (u32 paramc, u64 *params, void *paramv[], u32 depc, ocrEdtDep_t depv[]) {
-xe_printf("endEdt entry\n");
+TRACE1("endEdt entry");
 SHARED struct Domain_t *domain = (SHARED struct Domain_t *)depv[0].ptr;
-xe_printf("domain %16.16lx\n",domain);
+//xe_printf("domain %16.16lx\n",domain);
 #ifdef    FSIM
   xe_printf("   Final Origin Energy = %16.16lx \n", *(SHARED uint64_t *)&domain->m_e[0]) ;
 #else //  NOT FSIM
@@ -999,7 +1154,7 @@ xe_printf("domain %16.16lx\n",domain);
 #if defined(FSIM) || defined(OCR)
   DOMAIN_DESTROY(&domainObject);
 #else
-TRACE0("/* Deallocate field memory */");
+TRACE1("/* Deallocate field memory */");
   domain_DeallocateNodesets() ;
   domain_DeallocateNodalPersistent() ;
 
@@ -1009,8 +1164,8 @@ TRACE0("/* Deallocate field memory */");
   DRAM_FREE(domain);
 #endif // FSIM or OCR
 
-TRACE0("endEdt exit");
+TRACE1("endEdt exit");
   EXIT(0);
-xe_printf("endEdt return");
+TRACE1("endEdt return");
   return NULL_GUID;
 } // endEdt()

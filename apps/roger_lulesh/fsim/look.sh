@@ -1,5 +1,6 @@
 #!/bin/sh
 set -x
+tail -50 /tmp/roger-fsim.????/fsim-strip.logs.lulesh.log.brd00.chp00.unt00.blk00.CE.00
 egrep -e '(time\ =|Final)' /tmp/roger-fsim.????/fsim-strip.logs.lulesh.log.brd00.chp00.unt00.blk00.CE.00 \
 | sed -e 's/CONSOLE: XE. >>> //' >/tmp/j
 ~/xstack/apps/roger_lulesh/utils/hex2sci </tmp/j >/tmp/jj
