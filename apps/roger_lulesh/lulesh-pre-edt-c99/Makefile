@@ -6,16 +6,19 @@ GCC=gcc -std=c99
 CFLAGS= -fpic -g $(OPT)
 LDFLAGS = -lm
 
-all: AMO.o lulesh.o lulesh
+all: RAG_edt.o AMO.o lulesh.o lulesh
+
+RAG_edt.o:  RAG_edt.c RAG_edt.h kernels.h AMO.h MEM.h FP.h RAG.h Makefile
+	$(GCC) $(CFLAGS) -c RAG_edt.c
 
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.c RAG.h AMO.h MEM.h FP.h Makefile
-	$(GCC) $(CFLAGS) $(CFLAGS) -c lulesh.c
+lulesh.o:  lulesh.c RAG_edt.h kernels.h initialize.h RAG.h AMO.h MEM.h FP.h Makefile
+	$(GCC) $(CFLAGS) -c lulesh.c
 
-lulesh:	lulesh.o AMO.o Makefile
-	$(GCC) $(CFLAGS) -o lulesh lulesh.o AMO.o $(LDFLAGS)
+lulesh:	lulesh.o AMO.o RAG_edt.o Makefile
+	$(GCC) $(CFLAGS) -o lulesh lulesh.o AMO.o RAG_edt.o $(LDFLAGS)
 
 run:	lulesh
 	./lulesh
@@ -29,4 +32,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f AMO.o lulesh.o lulesh
+	rm -f RAG_edt.o AMO.o lulesh.o lulesh

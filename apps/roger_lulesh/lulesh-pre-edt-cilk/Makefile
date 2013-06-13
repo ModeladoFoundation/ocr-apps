@@ -7,16 +7,19 @@ ICC=icc -std=c99 -DCILK
 CFLAGS= -fpic -g $(OPT)
 LDFLAGS = -lm
 
-all: AMO.o lulesh.o lulesh
+all: RAG_edt.o AMO.o lulesh.o lulesh
+
+RAG_edt.o:  RAG_edt.c kernels.h RAG_edt.h RAG.h AMO.h FP.h MEM.h Makefile
+	$(GCC) $(CFLAGS) -c RAG_edt.c
 
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(GCC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.cpp RAG.h AMO.h MEM.h FP.h Makefile
-	$(ICC) $(CFLAGS) $(CFLAGS) -c lulesh.cpp
+lulesh.o:  lulesh.cpp RAG.h AMO.h MEM.h FP.h RAG_edt.h kernels.h initialize.h Makefile
+	$(ICC) $(CFLAGS) -c lulesh.cpp
 
-lulesh:	lulesh.o AMO.o Makefile
-	$(ICC) $(CFLAGS) -o lulesh lulesh.o AMO.o $(LDFLAGS)
+lulesh:	lulesh.o AMO.o RAG_edt.o Makefile
+	$(ICC) $(CFLAGS) -o lulesh lulesh.o AMO.o RAG_edt.o $(LDFLAGS)
 
 run:	lulesh
 	CILK_NWORKERS=8 ./lulesh
@@ -30,4 +33,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f AMO.o lulesh.o lulesh
+	rm -f RAG_edt.o AMO.o lulesh.o lulesh

@@ -40,7 +40,7 @@ RM	= rm
 %.s: %.c
 	$(CC) $(CFLAGS) -S -o $@ $<
 
-all: e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh
+all: RAG_edt.o e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh
 
 e_sqrt.o:  $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/math/e_sqrt.c Makefile
 	$(CC) $(CFLAGS) \
@@ -56,6 +56,9 @@ s_cbrt.o:  $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common/s_cbrt.c Makef
 	-I $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libc/include \
 	-c $(RMD_INSTALL_BASE)/newlib/src-1.19/newlib/libm/common/s_cbrt.c
 
+RAG_edt.o:  RAG_edt.c RAG_edt.h kernels.h RAG.h AMO.h FP.h MEM.h Makefile
+	$(CC) $(CFLAGS) -c RAG_edt.c
+
 FP.o:  FP.c FP.h RAG.h Makefile
 	$(CC) $(CFLAGS) -c FP.c
 
@@ -65,11 +68,11 @@ MEM.o:  MEM.c MEM.h RAG.h Makefile
 AMO.o:  AMO.c AMO.h RAG.h Makefile
 	$(CC) $(CFLAGS) -c AMO.c
 
-lulesh.o:  lulesh.c RAG.h AMO.h MEM.h FP.h Makefile
-	$(CC) $(CFLAGS) $(CFLAGS) -c lulesh.c
+lulesh.o:  lulesh.c RAG.h RAG_edt.h kernels.h initialize.h AMO.h MEM.h FP.h Makefile
+	$(CC) $(CFLAGS) -c lulesh.c
 
-lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o Makefile
-	$(LD) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o $(LDLIBS)
+lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
+	$(LD) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o $(LDLIBS)
 
 run:	lulesh
 	$(RM) -f logs/*
@@ -87,4 +90,4 @@ check:	lulesh ../utils/gold.out
 	wc nohup.out ../utils/gold.out
 
 clean:
-	rm -f e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh out.map
+	rm -f RAG_edt.o e_sqrt.o s_cbrt.o FP.o MEM.o AMO.o lulesh.o lulesh out.map

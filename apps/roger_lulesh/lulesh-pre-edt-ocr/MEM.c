@@ -1,1 +1,1 @@
-../src/MEM.c
+../edt-src/MEM.c

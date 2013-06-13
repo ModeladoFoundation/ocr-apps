@@ -1,0 +1,326 @@
+rm -f logs/*
+date
+Wed Jun 12 19:29:34 PDT 2013
+../../../ss/xe-sim/fsim -s -c lulesh.cfg -c ../../../ss/xe-sim/configs/localhost.cfg
+
+
+Multi-Block Simulation Mode Engaged: I am the central server.
+
+===> fsim (../../../ss/xe-sim/fsim) <=== ENTRY
+
+fsim: Unable to find DRAM BIN blob input filename.  Passing.
+Global parameter parsing results - before over-rides are applied:
+Post-CFG file parsing final result:
+	Agent type BSM at index 0 parameters:
+		id string.......: #00000
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.BSM.00
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000200000
+		sram size (KB)..: 1280
+		regmap address..: 0x00000000003ffa00
+		regmap size (KB): 1
+		cache allowed...: 0
+		cache size (KB).: 0
+		cache assoc.....: 0
+		cache line size.: 0
+		cache policy....: 0x00000000
+		enabled at start: false
+Post-CFG file parsing final result:
+	Agent type BSM at index 1 parameters:
+		id string.......: #00001
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.BSM.01
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000400000
+		sram size (KB)..: 1280
+		regmap address..: 0x00000000005ffa00
+		regmap size (KB): 1
+		cache allowed...: 0
+		cache size (KB).: 0
+		cache assoc.....: 0
+		cache line size.: 0
+		cache policy....: 0x00000000
+		enabled at start: false
+Post-CFG file parsing final result:
+	Agent type CE at index 2 parameters:
+		id string.......: #00002
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.CE.00
+		verbose.........: false
+		trace...........: 0x0000000000000000
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000600000
+		sram size (KB)..: 638
+		regmap address..: 0x00000000007ffa00
+		regmap size (KB): 1
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 3 parameters:
+		id string.......: #00003
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.00
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000800000
+		sram size (KB)..: 128
+		regmap address..: 0x00000000009fea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 4 parameters:
+		id string.......: #00004
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.01
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000a00000
+		sram size (KB)..: 128
+		regmap address..: 0x0000000000bfea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 5 parameters:
+		id string.......: #00005
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.02
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000c00000
+		sram size (KB)..: 128
+		regmap address..: 0x0000000000dfea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 6 parameters:
+		id string.......: #00006
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.03
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000000e00000
+		sram size (KB)..: 128
+		regmap address..: 0x0000000000ffea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 7 parameters:
+		id string.......: #00007
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.04
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000001000000
+		sram size (KB)..: 128
+		regmap address..: 0x00000000011fea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 8 parameters:
+		id string.......: #00008
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.05
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000001200000
+		sram size (KB)..: 128
+		regmap address..: 0x00000000013fea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 9 parameters:
+		id string.......: #00009
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.06
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000001400000
+		sram size (KB)..: 128
+		regmap address..: 0x00000000015fea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type XE at index 10 parameters:
+		id string.......: #00010
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.XE.07
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000001600000
+		sram size (KB)..: 128
+		regmap address..: 0x00000000017fea00
+		regmap size (KB): 5
+		cache allowed...: 1
+		cache size (KB).: 32
+		cache assoc.....: 4
+		cache line size.: 64
+		cache policy....: 0x00000005
+		enabled at start: true
+Post-CFG file parsing final result:
+	Agent type NLNI at index 11 parameters:
+		id string.......: #00011
+		input file......: -- None Provided, Zero'd State --
+		isInputHexFormat: false
+		output log......: logs/lulesh.log.NLNI.00
+		verbose.........: false
+		trace...........: 0x0000000000000001
+		start PC........: 0x0000000000000000
+		stop PC.........: 0x0000000000000000
+		sram address....: 0x0000000001800000
+		sram size (KB)..: 1
+		regmap address..: 0x00000000019fea00
+		regmap size (KB): 1
+		cache allowed...: 0
+		cache size (KB).: 0
+		cache assoc.....: 0
+		cache line size.: 0
+		cache policy....: 0x00000000
+		enabled at start: false
+	Sunshine Platform Parameters:
+		Single board Addr Map space.....: 0x0000001000000000
+		Single board Truncate space.....: 0x0000000001ffffff
+		Dram Stacks.....................: 1
+		Each Dram Stack Size (MB).......: 1024
+		SHN Total 'CPU' Chip Count......: 1
+		SHN Chip Addr Map Space.........: 0x0000000100000000
+Simulator client worker launch: server Fedora17-x64 is at IP 127.0.0.1
+. . . Established remote directory on localhost as /tmp/roger-fsim.weQW
+. . . Established for localhost in /tmp/roger-fsim.weQW a temp area locally at /tmp/roger-fsim.ADp4
+. . . Copying stripped binary of FSIM fsim-strip to remote machine localhost at /tmp/roger-fsim.weQW
+Simulator client worker launch: server Fedora17-x64 is at IP 127.0.0.1
+. . . Established remote directory on localhost as /tmp/roger-fsim.jdql
+. . . Established for localhost in /tmp/roger-fsim.jdql a temp area locally at /tmp/roger-fsim.AN2p
+. . . Copying stripped binary of FSIM fsim-strip to remote machine localhost at /tmp/roger-fsim.jdql
+Simulator client worker launch: server Fedora17-x64 is at IP 127.0.0.1
+. . . Established remote directory on localhost as /tmp/roger-fsim.Mj82
+. . . Established for localhost in /tmp/roger-fsim.Mj82 a temp area locally at /tmp/roger-fsim.QGob
+. . . Copying stripped binary of FSIM fsim-strip to remote machine localhost at /tmp/roger-fsim.Mj82
+Simulator client worker launch: server Fedora17-x64 is at IP 127.0.0.1
+. . . Established remote directory on localhost as /tmp/roger-fsim.ibnX
+. . . Established for localhost in /tmp/roger-fsim.ibnX a temp area locally at /tmp/roger-fsim.iuXh
+. . . Copying stripped binary of FSIM fsim-strip to remote machine localhost at /tmp/roger-fsim.ibnX
+. . . Now running FSIM on remote machine localhost with /tmp/roger-fsim.weQW dumping screens to /tmp/roger-fsim.ADp4
+. . . Now running FSIM on remote machine localhost with /tmp/roger-fsim.jdql dumping screens to /tmp/roger-fsim.AN2p
+. . . Now running FSIM on remote machine localhost with /tmp/roger-fsim.Mj82 dumping screens to /tmp/roger-fsim.QGob
+. . . Now running FSIM on remote machine localhost with /tmp/roger-fsim.ibnX dumping screens to /tmp/roger-fsim.iuXh
+		Chip Shared Memory (CSM) regions: 1
+		Each CSM region size (KB).......: 16384
+		Units per SHN Chip..............: 1
+		Unit Addr Map space.............: 0x0000000020000000
+		Unit Shared Memory (USM) regions: 1
+		Each USM region size (KB).......: 8192
+		Blocks per Unit in chip.........: 1
+		Block Addr Map space............: 0x0000000002000000
+	Multi Block Simulation parameters
+		SSH user: roger
+		Total blocks needed to simulate for this configuration: 4
+		Total blocks that can be simulated by remote machines: 12
+		Machine 0
+			Name..: 'localhost'
+			Blocks: 12
+>>> Server: launching watchdog thread for simulator self-monitoring
+This server will be launching worker copies of the simulator on remote agents . . .
+	Simulator is here: '../../../ss/xe-sim/fsim'
+	Username is......: 'roger'
+	Server is named..: 'Fedora17-x64'
+	Total blocks requested for sim: 4
+	Server FSIM internal port is..: 42000
+	Server DATA routing port is...: 42001
+Launching the worker threads remotely...
+Server FSIM socket ready; waiting for 4 TCP/IP socket connections before proceeding
+Server DATA socket ready; waiting for 4 TCP/IP socket connections before proceeding
+Server - preparing to run server_scan()..
+	Server received DATAPORT_OK from 'localhost' on sockfd 15
+	Server received DATAPORT_OK from 'localhost' on sockfd 13
+	Server received DATAPORT_OK from 'localhost' on sockfd 14
+	Server received DATAPORT_OK from 'localhost' on sockfd 12
+Received all (4) 'client online' notices; now releasing NLNI interfaces globally to launch system simulation
+	Server received CLIENT-SHUTDOWN-REQ from localhost [coords: 0/0/0/-1/0] (rcvd count: 1 of 4)
+	Server received CLIENT-SHUTDOWN-REQ from localhost [coords: 0/0/-1/-1/0] (rcvd count: 2 of 4)
+	Server received CLIENT-SHUTDOWN-REQ from localhost [coords: 0/-1/-1/-1/0] (rcvd count: 3 of 4)
+>>> Server: Watchdog still running [5 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [10 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [15 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [20 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [25 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [30 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [35 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [40 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [45 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [50 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [55 wake-ups at 4 secs/wake-up]
+>>> Server: Watchdog still running [60 wake-ups at 4 secs/wake-up]

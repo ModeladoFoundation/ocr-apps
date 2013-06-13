@@ -1,1 +1,0 @@
-../edt-src/AMO.h
