@@ -1,4 +1,4 @@
 #!/bin/sh
 set -x
 rm -rf /tmp/roger-fsim.???? /tmp/fsim.cfgfile.??????
-make run 2>&1
+nohup make run 2>&1 &
