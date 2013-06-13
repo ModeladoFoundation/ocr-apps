@@ -31,20 +31,20 @@ extern "C" {
 #define SPAD_MALLOC(count,sizeof_type) spad_alloc((count)*(sizeof_type))
 
 void  dram_free(void *ptr);
-void *dram_alloc(struct DomainObject_t *domainObject, size_t count, size_t sizeof_type);
+void *dram_alloc(volatile struct DomainObject_t *domainObject, size_t count, size_t sizeof_type);
 void  spad_free(void *ptr);
 void *spad_alloc(size_t len);
 
 #define DOMAIN_CREATE(object,edgeElems,edgeNodes)         domain_create(object,edgeElems,edgeNodes)
 #define DOMAIN_DESTROY(object)         domain_destroy(object)
 
-void  domain_create(struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes);
-void  domain_destroy(struct DomainObject_t *domainObject);
+void  domain_create(volatile struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes);
+void  domain_destroy(volatile struct DomainObject_t *domainObject);
 
 #elif defined(OCR)  // OCR
 
 void  dram_free(void *ptr);
-void *dram_alloc(struct DomainObject_t *domainObject, size_t count, size_t sizeof_type);
+void *dram_alloc(volatile struct DomainObject_t *domainObject, size_t count, size_t sizeof_type);
 void  spad_free(void *ptr);
 void *spad_alloc(size_t len);
 
@@ -61,8 +61,8 @@ void *spad_alloc(size_t len);
 #define DOMAIN_CREATE(object,edgeElems,edgeNodes)         domain_create(object,edgeElems,edgeNodes)
 #define DOMAIN_DESTROY(object)         domain_destroy(object)
 
-void  domain_create(struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes);
-void  domain_destroy(struct DomainObject_t *domainObject);
+void  domain_create(volatile struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes);
+void  domain_destroy(volatile struct DomainObject_t *domainObject);
 
 #else // DEFAULT is C99
 

@@ -39,7 +39,7 @@ static INLINE uint64_t align_address(uint64_t arg) {
               &(0xFFFFFFFFFFFFFFF8ll));
 } // align_address()
 
-void domain_create(struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes) { 
+void domain_create(volatile struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes) { 
 //xe_printf("rag: domain_create() entry %d %d\n",edgeElems,edgeNodes);
   uint16_t flags  = 0;
   uint8_t  retVal = 0;
@@ -120,30 +120,31 @@ void domain_create(struct DomainObject_t *domainObject, size_t edgeElems, size_t
                               );
 
 #if   defined(FSIM)
-  retVal = ocrDbCreate(&(domainObject->guid),(uint64_t *)&(domainObject->base),size_in_bytes, flags, locate_in_dram, NO_ALLOC);
+  retVal = ocrDbCreate((ocrGuid_t *)&(domainObject->guid),(uint64_t *)&(domainObject->base),size_in_bytes, flags, locate_in_dram, NO_ALLOC);
   xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid.data,domainObject->base);
 #elif defined(OCR)
-  retVal = ocrDbCreate(&(domainObject->guid),&(domainObject->base),size_in_bytes, flags, locate_in_dram, NO_ALLOC);
-//xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid,domainObject->base);
+  retVal = ocrDbCreate((ocrGuid_t *)&(domainObject->guid),(void *)&(domainObject->base),size_in_bytes, flags, locate_in_dram, NO_ALLOC);
+  xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid,domainObject->base);
 #endif // FSIM or OCR
   if( retVal != 0 ) {
     xe_printf("RAG: domain ocrDbCreate() error %d\n",(uint64_t)retVal);
     EXIT(1);
   }
-//xe_printf("rag: domain_create LEN = %16.16lx\n",size_in_bytes);
+  xe_printf("rag: domainObject  at  = %16.16lx\n",domainObject);
+  xe_printf("rag: domain_create LEN = %16.16lx\n",size_in_bytes);
   domainObject->offset  = 0;
-//xe_printf("rag: domain_create OFF = %16.16lx\n",domainObject->offset);
+  xe_printf("rag: domain_create OFF = %16.16lx\n",domainObject->offset);
   domainObject->limit   = size_in_bytes;
-//xe_printf("rag: domain_create LMT = %16.16lx\n",domainObject->limit);
+  xe_printf("rag: domain_create LMT = %16.16lx\n",domainObject->limit);
   domainObject->edgeElems = edgeElems;
-//xe_printf("rag: domain_create #El = %16.16lx\n",domainObject->edgeElems);
+  xe_printf("rag: domain_create #El = %16.16lx\n",domainObject->edgeElems);
   domainObject->edgeNodes = edgeNodes;
-//xe_printf("rag: domain_create #Nd = %16.16lx\n",domainObject->edgeNodes);
-//xe_printf("rag: domain_create() return\n");
+  xe_printf("rag: domain_create #Nd = %16.16lx\n",domainObject->edgeNodes);
+  xe_printf("rag: domain_create() return\n");
 } // dram_create()
 
-void  domain_destroy(struct DomainObject_t *domainObject) { 
-//xe_printf("rag: domain_destroy() entry\n");
+void  domain_destroy(volatile struct DomainObject_t *domainObject) { 
+  xe_printf("rag: domain_destroy() entry\n");
 #if       OCR_SPAD_WORKAROUND == 0
   uint8_t retVal = ocrDbDestroy(domainObject->guid);
 #if   defined(FSIM)
@@ -159,7 +160,7 @@ void  domain_destroy(struct DomainObject_t *domainObject) {
 //xe_printf("rag: domain_destroy() return\n");
 } // dram_destroy()
 
-void *dram_alloc(struct DomainObject_t *domainObject, size_t count, size_t sizeof_type) { 
+void *dram_alloc(volatile struct DomainObject_t *domainObject, size_t count, size_t sizeof_type) { 
 //xe_printf("rag: dram_alloc() entry\n");
   size_t len = align_address(count*sizeof_type);
   size_t off = AMO__sync_fetch_and_add_uint64_t((uint64_t *)&domainObject->offset,(uint64_t)len);
