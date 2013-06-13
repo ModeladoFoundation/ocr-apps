@@ -121,30 +121,30 @@ void domain_create(SHARED struct DomainObject_t *domainObject, size_t edgeElems,
 
 #if   defined(FSIM)
   retVal = ocrDbCreate((ocrGuid_t *)&(domainObject->guid),(uint64_t *)&(domainObject->base),size_in_bytes, flags, locate_in_dram, NO_ALLOC);
-  xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid.data,domainObject->base);
+//xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid.data,domainObject->base);
 #elif defined(OCR)
   retVal = ocrDbCreate((ocrGuid_t *)&(domainObject->guid),(void *)&(domainObject->base),size_in_bytes, flags, locate_in_dram, NO_ALLOC);
-  xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid,domainObject->base);
+//xe_printf("rag: ocrDbCreate() retval = %16.16lx  GUID = %16.16lx  BASE = %16.16lx\n",(uint64_t)retVal,domainObject->guid,domainObject->base);
 #endif // FSIM or OCR
   if( retVal != 0 ) {
     xe_printf("RAG: domain ocrDbCreate() error %d\n",(uint64_t)retVal);
     EXIT(1);
   }
-  xe_printf("rag: domainObject  at  = %16.16lx\n",domainObject);
-  xe_printf("rag: domain_create LEN = %16.16lx\n",size_in_bytes);
+//xe_printf("rag: domainObject  at  = %16.16lx\n",domainObject);
+//xe_printf("rag: domain_create LEN = %16.16lx\n",size_in_bytes);
   domainObject->offset  = 0;
-  xe_printf("rag: domain_create OFF = %16.16lx\n",domainObject->offset);
+//xe_printf("rag: domain_create OFF = %16.16lx\n",domainObject->offset);
   domainObject->limit   = size_in_bytes;
-  xe_printf("rag: domain_create LMT = %16.16lx\n",domainObject->limit);
+//xe_printf("rag: domain_create LMT = %16.16lx\n",domainObject->limit);
   domainObject->edgeElems = edgeElems;
-  xe_printf("rag: domain_create #El = %16.16lx\n",domainObject->edgeElems);
+//xe_printf("rag: domain_create #El = %16.16lx\n",domainObject->edgeElems);
   domainObject->edgeNodes = edgeNodes;
-  xe_printf("rag: domain_create #Nd = %16.16lx\n",domainObject->edgeNodes);
-  xe_printf("rag: domain_create() return\n");
+//xe_printf("rag: domain_create #Nd = %16.16lx\n",domainObject->edgeNodes);
+//xe_printf("rag: domain_create() return\n");
 } // dram_create()
 
 void  domain_destroy(SHARED struct DomainObject_t *domainObject) { 
-  xe_printf("rag: domain_destroy() entry\n");
+//xe_printf("rag: domain_destroy() entry\n");
 #if       OCR_SPAD_WORKAROUND == 0
   uint8_t retVal = ocrDbDestroy((ocrGuid_t)(domainObject->guid));
 #if   defined(FSIM)
@@ -173,12 +173,12 @@ SHARED void *dram_alloc(SHARED struct DomainObject_t *domainObject, size_t count
 //xe_printf("rag: dram_alloc PTR  = %16.16lx\n",ptr);
 #endif // FSIM
   if( domainObject->offset <= domainObject->limit ) {
-//  xe_printf("rag: dram_alloc() return %16.16lx\n",ptr);
+//xe_printf("rag: dram_alloc() return %16.16lx\n",ptr);
     return ptr;
   } else {
     xe_printf("RAG: dram_alloc() domainObject limit overflow (%16.16lx = %16.16lx)\n",domainObject->offset,domainObject->limit);
     EXIT(1);
-//  xe_printf("rag: dram_alloc() return IMPOSSIBLE\n");
+//xe_printf("rag: dram_alloc() return IMPOSSIBLE\n");
     return NULL ; // IMPOSSIBLE //
   }
 } // dram_alloc()
@@ -204,15 +204,15 @@ SHARED void *spad_alloc(size_t len) {
 #endif // OCR and OCR_SPAD_WORKAROUND
 //xe_printf("rag: spad_alloc() top   = %16.16lx\n",spad_dbGuid_stack_top);
   if ( spad_dbGuid_stack_index < 100 ) {
-//  xe_printf("rag: spad_alloc()  len   = %16.16lx\n",len);
-//  xe_printf("rag: spad_alloc()  flags = %16.16lx\n",(uint64_t)flags);
+//xe_printf("rag: spad_alloc()  len   = %16.16lx\n",len);
+//xe_printf("rag: spad_alloc()  flags = %16.16lx\n",(uint64_t)flags);
 #if   defined(FSIM)
     retVal = ocrDbCreate((ocrGuid_t *)&spad_dbGuid_stack[spad_dbGuid_stack_index], (uint64_t *)&ptrValue, len, flags, locate_in_spad, NO_ALLOC);
-//  xe_printf("rag: ocrDbCreate()  retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index].data,ptrValue);
+//xe_printf("rag: ocrDbCreate()  retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index].data,ptrValue);
 #elif defined(OCR)
     retVal = ocrDbCreate((ocrGuid_t *)&spad_dbGuid_stack[spad_dbGuid_stack_index], (void *)&ptrValue, len, flags, locate_in_spad, NO_ALLOC);
 #if OCR_SPAD_WORKAROUND==0
-//  xe_printf("rag: ocrDbCreate()  retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index],ptrValue);
+//xe_printf("rag: ocrDbCreate()  retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index],ptrValue);
 #endif // OCR_SPAD_WORKAROUND
 #endif // FSIM or OCR
     if( retVal != 0 ) {
@@ -244,9 +244,9 @@ void  spad_free(SHARED void *ptrValue) {
   if ( /* ( 0 <= spad_dbGuid_stack_index ) && */ ( spad_dbGuid_stack_index < MAX_spad_dbGuid_stack_size ) ) {
     retVal = ocrDbDestroy((ocrGuid_t)spad_dbGuid_stack[spad_dbGuid_stack_index]);
 #if   defined(FSIM)
-//  xe_printf("rag: ocrDbDestroy() retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index].data,ptrValue);
+//xe_printf("rag: ocrDbDestroy() retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index].data,ptrValue);
 #elif defined(OCR)
-//  xe_printf("rag: ocrDbDestroy() retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index],ptrValue);
+//xe_printf("rag: ocrDbDestroy() retval = %16.16lx  guid = %16.16lx  base = %16.16lx\n",(uint64_t)retVal,spad_dbGuid_stack[spad_dbGuid_stack_index],ptrValue);
 #endif // FSIM or OCR
     if( retVal != 0 ) {
       xe_printf("RAG: spad ocrDbDestroy() error %d\n",(uint64_t)retVal);

@@ -34,7 +34,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define TRACE5(str)    printf("RAG:::::::::::: %s\n",str);fflush(stdout);
 #define TRACE6(str)    printf("RAG:::::::::::::: %s\n",str);fflush(stdout);
 #else  // 0 or 1
-#define TRACE0(str)    printf("RAG:: %s\n",str);fflush(stdout);
+#define TRACE0(str)
 #define TRACE1(str)
 #define TRACE2(str)
 #define TRACE3(str)

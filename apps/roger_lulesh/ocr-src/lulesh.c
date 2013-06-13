@@ -77,11 +77,13 @@ Additional BSD Notice
 // RAG would like to remove all golbal accesses to domainObject and domain, to better model passing data blocks
 #if defined(FSIM)
 SHARED struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
-                                                .edgeElems = 0, .edgeNodes = 0, };
-SHARED       ocrGuid_t          NULL_GUID = { .data = 0, };
+                                              .edgeElems = 0, .edgeNodes = 0, };
+SHARED             ocrGuid_t NULL_GUID    = { .data = 0, };
 #elif defined(OCR)
 SHARED struct DomainObject_t domainObject = { .guid      = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
-                                                .edgeElems = 0, .edgeNodes = 0,};
+                                              .edgeElems = 0, .edgeNodes = 0,};
+#else
+#define NULL_GUID ((int)0)
 #endif // FSIM or OCR
 
 SHARED struct Domain_t     *SHARED domain = NULL;
@@ -265,7 +267,7 @@ void CalcPositionForNodes(const Real_t dt) {
 
 static INLINE
 void LagrangeNodal() {
-  const Real_t delt = domain->m_deltatime ;
+  HAB_CONST Real_t delt = domain->m_deltatime ;
   Real_t u_cut = domain->m_u_cut ;
 
 TRACE2("/* time of boundary condition evaluation is beginning of step for force and");
@@ -341,7 +343,7 @@ void CalcMonotonicQForElems() {
    //
    // initialize parameters
    // 
-   const Real_t ptiny    = cast_Real_t(1.e-36) ;
+   HAB_CONST Real_t ptiny    = cast_Real_t(1.e-36) ;
    Real_t monoq_max_slope    = domain->m_monoq_max_slope ;
    Real_t monoq_limiter_mult = domain->m_monoq_limiter_mult ;
 
@@ -420,14 +422,14 @@ void CalcPressureForElems(Real_t* p_new, Real_t* bvc,
 #endif
 
 static INLINE
-void CalcEnergyForElems( SHARED Real_t* p_new,  SHARED Real_t* e_new,  SHARED Real_t* q_new,
-                         SHARED Real_t* bvc,  SHARED Real_t* pbvc,
-                         SHARED Real_t* p_old,  SHARED Real_t* e_old,  SHARED Real_t* q_old,
-                         SHARED Real_t* compression,  SHARED Real_t* compHalfStep,
-                         SHARED Real_t* vnewc,  SHARED Real_t* work,  SHARED Real_t* delvc,
+void CalcEnergyForElems( SHARED Real_t *p_new, SHARED Real_t *e_new, SHARED Real_t *q_new,
+                         SHARED Real_t *bvc, SHARED Real_t *pbvc,
+                         SHARED Real_t *p_old, SHARED Real_t *e_old, SHARED Real_t *q_old,
+                         SHARED Real_t *compression, SHARED Real_t *compHalfStep,
+                         SHARED Real_t *vnewc, SHARED Real_t *work, SHARED Real_t *delvc,
                          Real_t pmin, Real_t p_cut, Real_t  e_cut, Real_t q_cut, Real_t emin,
-                         SHARED Real_t* qq,  SHARED Real_t* ql,
-                         Real_t rho0, Real_t eosvmax, Index_t length) {
+                         SHARED Real_t *qq, SHARED Real_t *ql,
+                         Real_t rho0, Real_t eosvmax, Index_t length ) {
   SHARED Real_t *pHalfStep = Allocate_Real_t(length) ;
   FINISH // RAG STRIDE ONE                                OUT
     EDT_PAR_FOR_0xNx1(i,length,CalcEnergyForElems_edt_1,  e_new,e_old,delvc,p_old,q_old,work,
@@ -642,7 +644,7 @@ void UpdateVolumesForElems() {
 
 static INLINE
 void LagrangeElements() {
-  const Real_t deltatime = domain->m_deltatime ;
+  HAB_CONST Real_t deltatime = domain->m_deltatime ;
 
 TRACE2("/* Call CalcLagrangeElements() */");
 

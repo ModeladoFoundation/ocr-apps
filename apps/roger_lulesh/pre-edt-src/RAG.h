@@ -93,7 +93,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define INLINE inline
 #define HC_UPC_CONST const
 #define HAB_CONST const
-#define SHARED
+#define SHARED rmdglobal
 #define EXIT(code) { xe_printf("RAG: exit(%d)\n",code); ocrFinish(); }
 
 #include "xe-edt.h"

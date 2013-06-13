@@ -24,13 +24,8 @@ int AMO__sync_bool_compare_and_swap_int64_t(SHARED int64_t *memPtr, int64_t comp
 
 /* LOCKS */
 
-#ifdef UPC
-SHARED uint64_t *pidamax_lock; // 0 --> UNLOCKED; 1 --> LOCKED
-SHARED uint64_t *pidamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
-#else
-SHARED extern uint64_t *pidamax_lock; // 0 --> UNLOCKED; 1 --> LOCKED
-SHARED extern uint64_t *pidamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
-#endif
+extern SHARED uint64_t *SHARED pidamax_lock; // 0 --> UNLOCKED; 1 --> LOCKED
+extern SHARED uint64_t *SHARED pidamin_lock; // 0 --> UNLOCKED; 1 --> LOCKED
 
 void AMO__lock_uint64_t(SHARED uint64_t *memPtr);
 void AMO__unlock_uint64_t(SHARED uint64_t *memPtr);
