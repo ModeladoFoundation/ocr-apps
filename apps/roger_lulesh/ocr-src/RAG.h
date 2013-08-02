@@ -25,7 +25,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define TRACE6(str)
 #endif // 0 or 1
 #elif defined(OCR)
-#if       0
+#if       1
 #define TRACE0(str)    printf("RAG:: %s\n",str);fflush(stdout);
 #define TRACE1(str)    printf("RAG:::: %s\n",str);fflush(stdout);
 #define TRACE2(str)    printf("RAG:::::: %s\n",str);fflush(stdout);
@@ -93,8 +93,13 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define INLINE inline
 #define HC_UPC_CONST const
 #define HAB_CONST const
+// RAG RAG workaround llvm compiler bug when passing shared point to guid to some functions
+#if 0
 #define SHARED rmdglobal
-#define EXIT(code) { xe_printf("RAG: exit(%d)\n",code); ocrFinish(); }
+#else
+#define SHARED
+#endif
+#define EXIT(code) { xe_printf("RAG: exit(%d)\n",code); ocrShutdown(); }
 
 #include "xe-edt.h"
 #include "xe-memory.h"
@@ -116,7 +121,7 @@ struct DomainObject_t {
 #define HC_UPC_CONST const
 #define HAB_CONST const
 #define SHARED
-#define EXIT(code) { printf("RAG: exit(%d)\n",code); ocrFinish(); exit(1); }
+#define EXIT(code) { printf("RAG: exit(%d)\n",code); ocrShutdown(); exit(1); }
 
 #include "ocr.h"
 

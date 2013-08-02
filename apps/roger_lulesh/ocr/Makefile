@@ -53,7 +53,7 @@ lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
 	$(GCC) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o $(LDLIBS)
 
 run:	lulesh
-	./lulesh
+	./lulesh -ocr:cfg ${OCR_INSTALL}/config/default.cfg
 
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
