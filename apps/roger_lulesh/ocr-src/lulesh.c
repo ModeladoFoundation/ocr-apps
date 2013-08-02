@@ -104,7 +104,7 @@ Additional BSD Notice
 #if defined(FSIM)
 SHARED struct DomainObject_t domainObject = { .guid.data = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                               .edgeElems = 0, .edgeNodes = 0, };
-SHARED             ocrGuid_t NULL_GUID    = { .data = 0, };
+//SHARED             ocrGuid_t NULL_GUID    = { .data = 0, };
 #elif defined(OCR)
 SHARED struct DomainObject_t domainObject = { .guid      = (uint64_t)NULL, .base = NULL, .offset = 0, .limit = 0,
                                               .edgeElems = 0, .edgeNodes = 0,};
@@ -885,8 +885,8 @@ TRACE1("call ocrEdtTemplateCreate(middleEdtGuid)");
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(middleEdtGuid)");
   retVal = ocrEdtCreate(&middleEdtGuid, middleEdtTempGuid,
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
+                       (u32) 0, (u64 *) NULL,
+                       (u32) 1, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 //TRACE1("call ocrEdtTemplateDestroy(middleEdtGuid)");
@@ -915,7 +915,7 @@ int mainEdt() {
 TRACE1("mainEdt entry");
 #endif // FSIM or OCR
   uint8_t retVal = 0;
-#if     defined(FSIM) || defined(OCR)
+#if     defined(FSIM)
 // tiny problem size
   size_t  edgeElems =  5 ;
 // ran to completion quickly with 5, many cycles for 10, 15, 30 and 45
@@ -964,8 +964,8 @@ TRACE1("call ocrEdtTemplateCreate(beginEdtGuid)");
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(beginEdtGuid)");
   retVal = ocrEdtCreate(&beginEdtGuid, beginEdtTempGuid,
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
+                       (u32) 0, (u64 *) NULL,
+                       (u32) 1, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtTemplateDestroy(beginEdtGuid)");
@@ -1007,8 +1007,8 @@ TRACE1("call ocrEdtTemplateCreate(middleEdtGuid)");
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(middleEdtGuid)");
   retVal = ocrEdtCreate(&middleEdtGuid, middleEdtTempGuid,
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
+                       (u32) 0, (u64 *) NULL,
+                       (u32) 1, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 //TRACE1("call ocrEdtTemplateDestroy(middleEdtGuid)");
@@ -1053,8 +1053,8 @@ TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtGuid)");
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
     retVal = ocrEdtCreate(&LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid,
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
+                       (u32) 0, (u64 *) NULL,
+                       (u32) 1, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 //TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtGuid)");
@@ -1076,8 +1076,8 @@ TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtGuid)");
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(ShowProgressEdtGuid)");
     retVal = ocrEdtCreate(&ShowProgressEdtGuid, ShowProgressEdtTempGuid,
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
+                       (u32) 0, (u64 *) NULL,
+                       (u32) 1, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 //TRACE1("call ocrEdtTemplateDestroy(ShowProgressEdtGuid)");
@@ -1107,8 +1107,8 @@ TRACE1("call ocrEdtTemplateCreate(endEdt)");
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(endEdt)");
   retVal = ocrEdtCreate(&endEdtGuid, endTempGuid, 
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
+                       (u32) 0, (u64 *) NULL,
+                       (u32) 1, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 //TRACE1("call ocrEdtTemplateDestroy(endEdt)");
@@ -1161,31 +1161,3 @@ TRACE1("endEdt exit");
 TRACE1("endEdt return");
   return NULL_GUID;
 } // endEdt()
-
-#if 0
-#include "ocr-lib.h"
-int main(const int argc, const char ** argv) {
-  uint8_t retVal = 0;
-  ocrConfig_t ocrConfig;
-  ocrGuid_t mainEdtGuid, mainEdtTempGuid;
-  printf("Running!\n");
-  ocrParseArgs(argc,argv,&ocrConfig);
-  ocrInit(&ocrConfig);
-  printf("Post init!\n");
-
-  retVal = ocrEdtTemplateCreate(&mainEdtTempGuid, mainEdt, 0, 0);
-  if(retVal != 0)printf("ocrEdtTemplateCreate mainEdt retVal %d\n",retVal);
-
-  retVal = ocrEdtCreate(&mainEdtGuid, mainEdtTempGuid,
-                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
-                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
-                       (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
-  if(retVal != 0)printf("ocrEdtCreate mainEdt retVal %d\n",retVal);
-
-  printf("mainEdt away we go!\n");
-
-  ocrFinalize();
-
-  return 0;
-}
-#endif

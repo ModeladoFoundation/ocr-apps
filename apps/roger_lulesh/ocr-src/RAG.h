@@ -7,7 +7,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define xe_printf(...) printf(__VA_ARGS__)
 #endif
 #if defined(FSIM)
-#if 0
+#if 1
 #define TRACE0(str) xe_printf("RAG:: %s\n",str);
 #define TRACE1(str) xe_printf("RAG:::: %s\n",str);
 #define TRACE2(str) xe_printf("RAG:::::: %s\n",str);
@@ -25,7 +25,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define TRACE6(str)
 #endif // 0 or 1
 #elif defined(OCR)
-#if       1
+#if       0
 #define TRACE0(str)    printf("RAG:: %s\n",str);fflush(stdout);
 #define TRACE1(str)    printf("RAG:::: %s\n",str);fflush(stdout);
 #define TRACE2(str)    printf("RAG:::::: %s\n",str);fflush(stdout);

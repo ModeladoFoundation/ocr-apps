@@ -26,8 +26,6 @@ static ocrLocation_t locate_in_spad_data = {
 static ocrGuid_t locate_in_dram = { .data = 0, };
 static ocrGuid_t locate_in_spad = { .data = 0, };
 
-#define DB_PROP_NONE 0
-
 #elif defined(OCR)
 
 static ocrGuid_t locate_in_dram = NULL_GUID;
@@ -42,7 +40,7 @@ static INLINE uint64_t align_address(uint64_t arg) {
 } // align_address()
 
 void domain_create(SHARED struct DomainObject_t *domainObject, size_t edgeElems, size_t edgeNodes) { 
-xe_printf("rag: domain_create() entry %d %d\n",edgeElems,edgeNodes);
+xe_printf("rag: domain_create() entry %lld %lld\n",edgeElems,edgeNodes);
   uint16_t flags  = 0;
   uint8_t  retVal = 0;
   size_t sqrNodes = edgeNodes*edgeNodes;
