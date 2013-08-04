@@ -880,16 +880,16 @@ void ShowProgress(SHARED struct Domain_t *domain) {
 { uint8_t retVal = 0;
   ocrGuid_t middleEdtGuid, middleEdtTempGuid;
 
-TRACE1("call ocrEdtTemplateCreate(middleEdtGuid)");
+TRACE1("call ocrEdtTemplateCreate(middleEdtTempGuid)");
   retVal = ocrEdtTemplateCreate(&middleEdtTempGuid,middleEdt,0,1);
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(middleEdtGuid)");
   retVal = ocrEdtCreate(&middleEdtGuid, middleEdtTempGuid,
-                       (u32) 0, (u64 *) NULL,
-                       (u32) 1, (ocrGuid_t *) NULL,
+                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
+                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
-//TRACE1("call ocrEdtTemplateDestroy(middleEdtGuid)");
+TRACE1("call ocrEdtTemplateDestroy(middleEdtTempGuid)");
 //retVal = ocrEdtTemplateDestroy(middleEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
@@ -959,16 +959,16 @@ TRACE0("/* ALLOCATE DOMAIN DATA STRUCTURE */");
 TRACE0("/* INITIALIZE SEDOV MESH  */");
 
 ocrGuid_t beginEdtGuid, beginEdtTempGuid;
-TRACE1("call ocrEdtTemplateCreate(beginEdtGuid)");
+TRACE1("call ocrEdtTemplateCreate(beginEdtTempGuid)");
   retVal = ocrEdtTemplateCreate(&beginEdtTempGuid,beginEdt,0,1);
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(beginEdtGuid)");
   retVal = ocrEdtCreate(&beginEdtGuid, beginEdtTempGuid,
-                       (u32) 0, (u64 *) NULL,
-                       (u32) 1, (ocrGuid_t *) NULL,
+                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
+                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
-TRACE1("call ocrEdtTemplateDestroy(beginEdtGuid)");
+TRACE1("call ocrEdtTemplateDestroy(beginEdtTempGuid)");
 //retVal = ocrEdtTemplateDestroy(beginEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 TRACE1("call ocrAddDependence(beginEdtGuid)");
@@ -1002,16 +1002,16 @@ Index_t edgeNodes = (&domainObject)->edgeNodes;
 
   ocrGuid_t middleEdtGuid, middleEdtTempGuid;
 
-TRACE1("call ocrEdtTemplateCreate(middleEdtGuid)");
+TRACE1("call ocrEdtTemplateCreate(middleEdtTempGuid)");
   retVal = ocrEdtTemplateCreate(&middleEdtTempGuid,middleEdt,0,1);
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(middleEdtGuid)");
   retVal = ocrEdtCreate(&middleEdtGuid, middleEdtTempGuid,
-                       (u32) 0, (u64 *) NULL,
-                       (u32) 1, (ocrGuid_t *) NULL,
+                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
+                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
-//TRACE1("call ocrEdtTemplateDestroy(middleEdtGuid)");
+TRACE1("call ocrEdtTemplateDestroy(middleEdtTempGuid)");
 //retVal = ocrEdtTemplateDestroy(middleEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
@@ -1048,16 +1048,16 @@ TRACE0("/* LagrangeLeapFrog() */");
     MAKE_EDT_CALL(LagrangeLeapFrog,domain,ShowProgress) ;
 #elif defined(USE_EDT)
 
-TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtGuid)");
+TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtTempGuid)");
     retVal = ocrEdtTemplateCreate(&LagrangeLeapFrogEdtTempGuid,LagrangeLeapFrog_edt_0,0,1);
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
     retVal = ocrEdtCreate(&LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid,
-                       (u32) 0, (u64 *) NULL,
-                       (u32) 1, (ocrGuid_t *) NULL,
+                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
+                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
-//TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtGuid)");
+TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtTempGuid)");
 //  retVal = ocrEdtTemplateDestroy(LagrangeLeapFrogEdtTempGuid);
 //  if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
@@ -1071,16 +1071,16 @@ TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
     MAKE_EDT_CALL(ShowProgress,domain,middle) ;
 #elif defined(USE_EDT)
 
-TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtGuid)");
+TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtTempGuid)");
     retVal = ocrEdtTemplateCreate(&ShowProgressEdtTempGuid,ShowProgress_edt_0,0,1);
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(ShowProgressEdtGuid)");
     retVal = ocrEdtCreate(&ShowProgressEdtGuid, ShowProgressEdtTempGuid,
-                       (u32) 0, (u64 *) NULL,
-                       (u32) 1, (ocrGuid_t *) NULL,
+                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
+                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
-//TRACE1("call ocrEdtTemplateDestroy(ShowProgressEdtGuid)");
+TRACE1("call ocrEdtTemplateDestroy(ShowProgressEdtTempGuid)");
 //  retVal = ocrEdtTemplateDestroy(ShowProgressEdtTempGuid);
 //  if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
@@ -1100,22 +1100,22 @@ TRACE1("call ocrAddDependence(LagrangeLeapFrogEdtGuid)");
   } // while time
 #endif
 
-  ocrGuid_t endEdtGuid, endTempGuid;
+  ocrGuid_t endEdtGuid, endEdtTempGuid;
 
-TRACE1("call ocrEdtTemplateCreate(endEdt)");
-  retVal = ocrEdtTemplateCreate(&endTempGuid,endEdt,0,1);
+TRACE1("call ocrEdtTemplateCreate(endEdtTempGuid)");
+  retVal = ocrEdtTemplateCreate(&endEdtTempGuid,endEdt,0,1);
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
-TRACE1("call ocrEdtCreate(endEdt)");
-  retVal = ocrEdtCreate(&endEdtGuid, endTempGuid, 
-                       (u32) 0, (u64 *) NULL,
-                       (u32) 1, (ocrGuid_t *) NULL,
+TRACE1("call ocrEdtCreate(endEdtGuid)");
+  retVal = ocrEdtCreate(&endEdtGuid, endEdtTempGuid, 
+                       (u32) EDT_PARAM_DEF, (u64 *) NULL,
+                       (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
-//TRACE1("call ocrEdtTemplateDestroy(endEdt)");
-//retVal = ocrEdtTemplateDestroy(endTempGuid);
+TRACE1("call ocrEdtTemplateDestroy(endEdtTempGuid)");
+//retVal = ocrEdtTemplateDestroy(endEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
-TRACE1("call ocrAddDependence(endEdt)");
+TRACE1("call ocrAddDependence(endEdtGuid)");
   retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,endEdtGuid,0,DB_MODE_ITW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 

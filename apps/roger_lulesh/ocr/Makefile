@@ -53,12 +53,12 @@ lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
 	$(GCC) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o $(LDLIBS)
 
 run:	lulesh
-	./lulesh -ocr:cfg ${OCR_INSTALL}/config/default.cfg
+	./lulesh -ocr:cfg ./default.cfg
 
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
 	date
-	time nohup ./lulesh
+	-time nohup ./lulesh -ocr:cfg ./default.cfg
 	date
 	diff nohup.out ../utils/gold.out
 	wc nohup.out ../utils/gold.out
