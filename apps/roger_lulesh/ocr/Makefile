@@ -58,7 +58,7 @@ run:	lulesh
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
 	date
-	-time nohup ./lulesh -ocr:cfg ./default.cfg
+	time nohup ./lulesh -ocr:cfg ./default.cfg
 	date
 	diff nohup.out ../utils/gold.out
 	wc nohup.out ../utils/gold.out

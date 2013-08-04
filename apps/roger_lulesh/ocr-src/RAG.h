@@ -121,7 +121,7 @@ struct DomainObject_t {
 #define HC_UPC_CONST const
 #define HAB_CONST const
 #define SHARED
-#define EXIT(code) { printf("RAG: exit(%d)\n",code); ocrShutdown(); exit(1); }
+#define EXIT(code) { /*printf("RAG: exit(%d)\n",code);*/ ocrShutdown(); exit(0); }
 
 #include "ocr.h"
 
