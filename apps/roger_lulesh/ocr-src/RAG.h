@@ -7,7 +7,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define xe_printf(...) printf(__VA_ARGS__)
 #endif
 #if defined(FSIM)
-#if 1
+#if 0
 #define TRACE0(str) xe_printf("RAG:: %s\n",str);
 #define TRACE1(str) xe_printf("RAG:::: %s\n",str);
 #define TRACE2(str) xe_printf("RAG:::::: %s\n",str);
@@ -94,7 +94,7 @@ enum { VolumeError = -1, QStopError = -2 } ;
 #define HC_UPC_CONST const
 #define HAB_CONST const
 // RAG RAG workaround llvm compiler bug when passing shared point to guid to some functions
-#if 0
+#if 1
 #define SHARED rmdglobal
 #else
 #define SHARED
