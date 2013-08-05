@@ -137,9 +137,9 @@ ocrGuid_t middleEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 ocrGuid_t    endEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 #if defined(USE_EDT)
 SHARED ocrGuid_t LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid;
-ocrGuid_t        LagrangeLeapFrog_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
-SHARED ocrGuid_t     ShowProgressEdtGuid,     ShowProgressEdtTempGuid;
-ocrGuid_t            ShowProgress_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t LagrangeLeapFrog_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
+SHARED ocrGuid_t ShowProgressEdtGuid,     ShowProgressEdtTempGuid;
+ocrGuid_t ShowProgress_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 #endif
 #endif
 
@@ -915,7 +915,7 @@ int mainEdt() {
 TRACE1("mainEdt entry");
 #endif // FSIM or OCR
   uint8_t retVal = 0;
-#if     defined(FSIM)
+#if     defined(FSIM) || defined(OCR)
 // tiny problem size
   size_t  edgeElems =  5 ;
 // ran to completion quickly with 5, many cycles for 10, 15, 30 and 45
@@ -1049,14 +1049,18 @@ TRACE0("/* LagrangeLeapFrog() */");
 #elif defined(USE_EDT)
 
 TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtTempGuid)");
-    retVal = ocrEdtTemplateCreate(&LagrangeLeapFrogEdtTempGuid,LagrangeLeapFrog_edt_0,0,1);
+    ocrGuid_t NSLagrangeLeapFrogEdtTempGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
+    retVal = ocrEdtTemplateCreate(&NSLagrangeLeapFrogEdtTempGuid,LagrangeLeapFrog_edt_0,0,1);
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
+    LagrangeLeapFrogEdtTempGuid = NSLagrangeLeapFrogEdtTempGuid;
 TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
-    retVal = ocrEdtCreate(&LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid,
+    ocrGuid_t NSLagrangeLeapFrogEdtGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
+    retVal = ocrEdtCreate(&NSLagrangeLeapFrogEdtGuid, NSLagrangeLeapFrogEdtTempGuid,
                        (u32) EDT_PARAM_DEF, (u64 *) NULL,
                        (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+    LagrangeLeapFrogEdtGuid = NSLagrangeLeapFrogEdtGuid;
 TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtTempGuid)");
 //  retVal = ocrEdtTemplateDestroy(LagrangeLeapFrogEdtTempGuid);
 //  if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
@@ -1072,14 +1076,18 @@ TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtTempGuid)");
 #elif defined(USE_EDT)
 
 TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtTempGuid)");
-    retVal = ocrEdtTemplateCreate(&ShowProgressEdtTempGuid,ShowProgress_edt_0,0,1);
+    ocrGuid_t NSShowProgressEdtTempGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
+    retVal = ocrEdtTemplateCreate(&NSShowProgressEdtTempGuid,ShowProgress_edt_0,0,1);
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
+    ShowProgressEdtTempGuid = NSShowProgressEdtTempGuid;
 TRACE1("call ocrEdtCreate(ShowProgressEdtGuid)");
-    retVal = ocrEdtCreate(&ShowProgressEdtGuid, ShowProgressEdtTempGuid,
+    ocrGuid_t NSShowProgressEdtGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
+    retVal = ocrEdtCreate(&NSShowProgressEdtGuid, NSShowProgressEdtTempGuid,
                        (u32) EDT_PARAM_DEF, (u64 *) NULL,
                        (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
+    ShowProgressEdtGuid = NSShowProgressEdtGuid;
 TRACE1("call ocrEdtTemplateDestroy(ShowProgressEdtTempGuid)");
 //  retVal = ocrEdtTemplateDestroy(ShowProgressEdtTempGuid);
 //  if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);

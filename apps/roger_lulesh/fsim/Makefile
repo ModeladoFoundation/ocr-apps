@@ -17,7 +17,8 @@ ASFLAGS	=
 AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
-CC	= $(PREFIX)-clang -DFSIM -DFSIM_DEBUG -frmd-extensions
+CC	= $(PREFIX)-clang -DFSIM -frmd-extensions
+## -DFSIM_DEBUG 
 CFLAGS	= -g -ggdb -g3 $(OPT) -fno-builtin \
 	-I$(RMD_INSTALL_BASE)/xe-sim/include \
 	-I$(RMD_INSTALL_BASE)/rmdkrnl/inc \
@@ -74,12 +75,13 @@ lulesh.o:  lulesh.c RAG.h RAG_edt.h kernels.h initialize.h AMO.h MEM.h FP.h Make
 lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
 	$(LD) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o $(LDLIBS)
 
-#######	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-8-blocks.cfg
+
+#######	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 
 run:	lulesh
 	$(RM) -f logs/*
 	date
-	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
+	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-8-blocks.cfg
 	date
 	grep CONSOLE */*CE.00 | grep -i RAG:
 

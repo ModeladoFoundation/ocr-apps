@@ -10,6 +10,7 @@ ifndef OCR_INSTALL
 endif
 
 GCC	= gcc -std=c99 -DOCR
+## -DOCR_DEBUG
 CFLAGS	= -fpic -g $(OPT) -I$(OCR_INSTALL)/include \
 	-DOCR_SPAD_WORKAROUND=0 # 0 (use spad_alloc/spad_free or 1 (malloc/free)
 LDFLAGS	= -fpic -g $(OPT) -L$(OCR_INSTALL)/lib -locr
