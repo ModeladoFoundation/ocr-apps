@@ -6,7 +6,7 @@ MEMORY
     /*
     * Local RAM in self-map
     */
-    LOCAL_RAM     : ORIGIN = 0x00000000,  LENGTH = 1024K
+    LOCAL_RAM     : ORIGIN = 0x00000000,  LENGTH = 256K
     /*
     * Block RAM in self-map
     */
@@ -23,7 +23,7 @@ SECTIONS
     /* Local RAM */
     .xe_tls : {
         _fxetls         = ABSOLUTE(.);
-        xe_tls.o(.bss_local);
+        xe-tls.o(.bss_local);
         _exetls         = ABSOLUTE(.);
     } > LOCAL_RAM
 
@@ -31,7 +31,7 @@ SECTIONS
         . = ALIGN(8);
         _start          = ABSOLUTE(.);
         _ftext          = ABSOLUTE(.);
-        crt0_lxe.o(.text);
+        xe-header.o(.text);    
         einit           = ABSOLUTE(.);
         *(.init)
         eprol           = ABSOLUTE(.);
