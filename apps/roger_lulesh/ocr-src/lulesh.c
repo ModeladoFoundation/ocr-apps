@@ -136,9 +136,18 @@ ocrGuid_t  beginEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 ocrGuid_t middleEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 ocrGuid_t    endEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 #if defined(USE_EDT)
-SHARED ocrGuid_t LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid;
+SHARED  ocrGuid_t middleEdtGuid, middleEdtTempGuid;
+#if defined(FSIM)
+SHARED ocrGuid_t LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid = { .data = 0 };
+#else
+SHARED ocrGuid_t LagrangeLeapFrogEdtGuid, LagrangeLeapFrogEdtTempGuid = NULL_GUID;
+#endif
 ocrGuid_t LagrangeLeapFrog_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
-SHARED ocrGuid_t ShowProgressEdtGuid,     ShowProgressEdtTempGuid;
+#if defined(FSIM)
+SHARED ocrGuid_t ShowProgressEdtGuid,     ShowProgressEdtTempGuid = { .data = 0 };
+#else
+SHARED ocrGuid_t ShowProgressEdtGuid,     ShowProgressEdtTempGuid = NULL_GUID;
+#endif
 ocrGuid_t ShowProgress_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]);
 #endif
 #endif
@@ -878,23 +887,24 @@ void ShowProgress(SHARED struct Domain_t *domain) {
 
 #if defined(USE_EDT)
 { uint8_t retVal = 0;
-  ocrGuid_t middleEdtGuid, middleEdtTempGuid;
+  ocrGuid_t NSmiddleEdtGuid     = middleEdtGuid;
+  ocrGuid_t NSmiddleEdtTempGuid = middleEdtTempGuid;
 
 TRACE1("call ocrEdtTemplateCreate(middleEdtTempGuid)");
-  retVal = ocrEdtTemplateCreate(&middleEdtTempGuid,middleEdt,0,1);
+  retVal = ocrEdtTemplateCreate(&NSmiddleEdtTempGuid,middleEdt,0,1);
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(middleEdtGuid)");
-  retVal = ocrEdtCreate(&middleEdtGuid, middleEdtTempGuid,
+  retVal = ocrEdtCreate(&NSmiddleEdtGuid, NSmiddleEdtTempGuid,
                        (u32) EDT_PARAM_DEF, (u64 *) NULL,
                        (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtTemplateDestroy(middleEdtTempGuid)");
-//retVal = ocrEdtTemplateDestroy(middleEdtTempGuid);
+//retVal = ocrEdtTemplateDestroy(NSmiddleEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 TRACE1("call ocrAddDependence(middleEdtGuid)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,middleEdtGuid,0,DB_MODE_ITW);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,NSmiddleEdtGuid,0,DB_MODE_ITW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 
 }
@@ -1000,23 +1010,25 @@ Index_t edgeNodes = (&domainObject)->edgeNodes;
   InitializeProblem( domain, edgeElems , edgeNodes );
 //xe_printf("rag: back InitializeProblem\n");
 
-  ocrGuid_t middleEdtGuid, middleEdtTempGuid;
+  ocrGuid_t NSmiddleEdtGuid, NSmiddleEdtTempGuid;
 
 TRACE1("call ocrEdtTemplateCreate(middleEdtTempGuid)");
-  retVal = ocrEdtTemplateCreate(&middleEdtTempGuid,middleEdt,0,1);
+  retVal = ocrEdtTemplateCreate(&NSmiddleEdtTempGuid,middleEdt,0,1);
+  middleEdtTempGuid = NSmiddleEdtTempGuid;
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(middleEdtGuid)");
-  retVal = ocrEdtCreate(&middleEdtGuid, middleEdtTempGuid,
+  retVal = ocrEdtCreate(&NSmiddleEdtGuid, NSmiddleEdtTempGuid,
                        (u32) EDT_PARAM_DEF, (u64 *) NULL,
                        (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
+   middleEdtGuid = NSmiddleEdtGuid;
   if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtTemplateDestroy(middleEdtTempGuid)");
-//retVal = ocrEdtTemplateDestroy(middleEdtTempGuid);
+//retVal = ocrEdtTemplateDestroy(NSmiddleEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 TRACE1("call ocrAddDependence(middleEdtGuid)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,middleEdtGuid,0,DB_MODE_ITW);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,NSmiddleEdtGuid,0,DB_MODE_ITW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 
 TRACE1("beginEdt return");
@@ -1048,11 +1060,22 @@ TRACE0("/* LagrangeLeapFrog() */");
     MAKE_EDT_CALL(LagrangeLeapFrog,domain,ShowProgress) ;
 #elif defined(USE_EDT)
 
-TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtTempGuid)");
     ocrGuid_t NSLagrangeLeapFrogEdtTempGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
-    retVal = ocrEdtTemplateCreate(&NSLagrangeLeapFrogEdtTempGuid,LagrangeLeapFrog_edt_0,0,1);
+#if defined(FSIM)
+    if(LagrangeLeapFrogEdtTempGuid.data == 0 ) {
+TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtTempGuid)");
+      retVal = ocrEdtTemplateCreate(&NSLagrangeLeapFrogEdtTempGuid,LagrangeLeapFrog_edt_0,0,1);
+      LagrangeLeapFrogEdtTempGuid = NSLagrangeLeapFrogEdtTempGuid;
+    }
+#else
+    if(LagrangeLeapFrogEdtTempGuid == NULL_GUID ) {
+TRACE1("call ocrEdtTemplateCreate(LagrangeLeapFrogEdtTempGuid)");
+      retVal = ocrEdtTemplateCreate(&NSLagrangeLeapFrogEdtTempGuid,LagrangeLeapFrog_edt_0,0,1);
+      LagrangeLeapFrogEdtTempGuid = NSLagrangeLeapFrogEdtTempGuid;
+    }
+#endif
+    NSLagrangeLeapFrogEdtTempGuid = LagrangeLeapFrogEdtTempGuid;
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
-    LagrangeLeapFrogEdtTempGuid = NSLagrangeLeapFrogEdtTempGuid;
 TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
     ocrGuid_t NSLagrangeLeapFrogEdtGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
     retVal = ocrEdtCreate(&NSLagrangeLeapFrogEdtGuid, NSLagrangeLeapFrogEdtTempGuid,
@@ -1062,7 +1085,7 @@ TRACE1("call ocrEdtCreate(LagrangeLeapFrogEdtGuid)");
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
     LagrangeLeapFrogEdtGuid = NSLagrangeLeapFrogEdtGuid;
 TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtTempGuid)");
-//  retVal = ocrEdtTemplateDestroy(LagrangeLeapFrogEdtTempGuid);
+//  retVal = ocrEdtTemplateDestroy(NSLagrangeLeapFrogEdtTempGuid);
 //  if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 #else
@@ -1075,11 +1098,22 @@ TRACE1("call ocrEdtTeimplateDestroy(LagrangeLeapFrogEdtTempGuid)");
     MAKE_EDT_CALL(ShowProgress,domain,middle) ;
 #elif defined(USE_EDT)
 
-TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtTempGuid)");
     ocrGuid_t NSShowProgressEdtTempGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
-    retVal = ocrEdtTemplateCreate(&NSShowProgressEdtTempGuid,ShowProgress_edt_0,0,1);
+#if defined(FSIM)
+    if(ShowProgressEdtTempGuid.data == 0 ) {
+TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtTempGuid)");
+      retVal = ocrEdtTemplateCreate(&NSShowProgressEdtTempGuid,ShowProgress_edt_0,0,1);
+      ShowProgressEdtTempGuid = NSShowProgressEdtTempGuid;
+    }
+#else
+    if(ShowProgressEdtTempGuid == NULL_GUID ) {
+TRACE1("call ocrEdtTemplateCreate(ShowProgressEdtTempGuid)");
+      retVal = ocrEdtTemplateCreate(&NSShowProgressEdtTempGuid,ShowProgress_edt_0,0,1);
+      ShowProgressEdtTempGuid = NSShowProgressEdtTempGuid;
+    }
+#endif
+    NSShowProgressEdtTempGuid = ShowProgressEdtTempGuid;
     if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
-    ShowProgressEdtTempGuid = NSShowProgressEdtTempGuid;
 TRACE1("call ocrEdtCreate(ShowProgressEdtGuid)");
     ocrGuid_t NSShowProgressEdtGuid; // RAG FIXME WORKAROUND TO NOT ALLOWING SHARED
     retVal = ocrEdtCreate(&NSShowProgressEdtGuid, NSShowProgressEdtTempGuid,
@@ -1089,7 +1123,7 @@ TRACE1("call ocrEdtCreate(ShowProgressEdtGuid)");
     if(retVal != 0)xe_printf("ocrEdtCreate retVal %d\n",retVal);
     ShowProgressEdtGuid = NSShowProgressEdtGuid;
 TRACE1("call ocrEdtTemplateDestroy(ShowProgressEdtTempGuid)");
-//  retVal = ocrEdtTemplateDestroy(ShowProgressEdtTempGuid);
+//  retVal = ocrEdtTemplateDestroy(NSShowProgressEdtTempGuid);
 //  if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 #else

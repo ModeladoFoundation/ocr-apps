@@ -83,7 +83,7 @@ run:	lulesh
 	date
 	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-8-blocks.cfg
 	date
-	grep CONSOLE */*CE.00 | grep -i RAG:
+	egrep --text -e "(Final|time\ =\ |rag:|RAG:|MEM:)" logs/*.blk00.CE.00 | sed  -e 's/^.*CONSOLE: XE[[:digit:]][[:digit:]]* >>> //g'
 
 check:	lulesh ../utils/gold.out
 	rm -f nohup.out
