@@ -20,7 +20,7 @@
 #include <sys/time.h>
 
 #ifdef RAG_SIM
-#include "xe_console.h"
+#include "xe-console.h"
 #endif
 
 #include "uts.h"

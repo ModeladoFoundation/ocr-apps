@@ -54,7 +54,7 @@ char * uts_geoshapes_str[] = { "Linear decrease", "Exponential decrease", "Cycli
  *   generated with geometric distributions near the
  *   root and binomial distributions towards the leaves.
  */
-tree_t type  = GEO; // Default tree type
+tree_t hcType  = GEO; // Default tree type
 double b_0   = 4.0; // default branching factor at the root
 int   rootId = 0;   // default seed for RNG state at root
 
@@ -148,14 +148,14 @@ double rng_toProb(int n) {
 }
 
 
-void uts_initRoot(Node * root, int type) {
-  root->type = type;
+void uts_initRoot(Node * root, int hcType) {
+  root->hcType = hcType;
   root->height = 0;
   root->numChildren = -1;      // means not yet determined
   rng_init(root->state.state, rootId);
 
   if (debug & 1)
-    printf("root node of type %d at %p\n",type, root);
+    printf("root node of type %d at %p\n",hcType, root);
 }
 
 
@@ -226,7 +226,7 @@ int uts_numChildren(Node *parent) {
   int numChildren = 0;
 
   /* Determine the number of children */
-  switch (type) {
+  switch (hcType) {
     case BIN:
       if (parent->height == 0)
         numChildren = (int) floor(b_0);
@@ -254,7 +254,7 @@ int uts_numChildren(Node *parent) {
   
   // limit number of children
   // only a BIN root can have more than MAXNUMCHILDREN
-  if (parent->height == 0 && parent->type == BIN) {
+  if (parent->height == 0 && parent->hcType == BIN) {
     int rootBF = (int) ceil(b_0);
     if (numChildren > rootBF) {
       printf("*** Number of children of root truncated from %d to %d\n",
@@ -262,7 +262,7 @@ int uts_numChildren(Node *parent) {
       numChildren = rootBF;
     }
   }
-  else if (type != BALANCED) {
+  else if (hcType != BALANCED) {
     if (numChildren > MAXNUMCHILDREN) {
       printf("*** Number of children truncated from %d to %d\n", 
              numChildren, MAXNUMCHILDREN);
@@ -275,7 +275,7 @@ int uts_numChildren(Node *parent) {
 
 
 int uts_childType(Node *parent) {
-  switch (type) {
+  switch (hcType) {
     case BIN:
       return BIN;
     case GEO:
@@ -300,18 +300,18 @@ int uts_paramsToStr(char *strBuf, int ind) {
   ind += sprintf(strBuf+ind, "UTS - Unbalanced Tree Search %s (%s)\n", UTS_VERSION, impl_getName());
 
   // tree type
-  ind += sprintf(strBuf+ind, "Tree type:  %d (%s)\n", type, uts_trees_str[type]);
+  ind += sprintf(strBuf+ind, "Tree type:  %d (%s)\n", hcType, uts_trees_str[hcType]);
 	
   // tree shape parameters
   ind += sprintf(strBuf+ind, "Tree shape parameters:\n");
   ind += sprintf(strBuf+ind, "  root branching factor b_0 = %.1f, root seed = %d\n", b_0, rootId);
 	
-  if (type == GEO || type == HYBRID) {
+  if (hcType == GEO || hcType == HYBRID) {
     ind += sprintf(strBuf+ind, "  GEO parameters: gen_mx = %d, shape function = %d (%s)\n", 
             gen_mx, shape_fn, uts_geoshapes_str[shape_fn]);
   }
 
-  if (type == BIN || type == HYBRID) {
+  if (hcType == BIN || hcType == HYBRID) {
     double q = nonLeafProb;
     int    m = nonLeafBF;
     double es  = (1.0 / (1.0 - q * m));
@@ -319,12 +319,12 @@ int uts_paramsToStr(char *strBuf, int ind) {
             q, m, q * m, es);
   }
 
-  if (type == HYBRID) {
+  if (hcType == HYBRID) {
     ind += sprintf(strBuf+ind, "  HYBRID:  GEO from root to depth %d, then BIN\n", 
             (int) ceil(shiftDepth * gen_mx));
   }
 	
-  if (type == BALANCED) {
+  if (hcType == BALANCED) {
     ind += sprintf(strBuf+ind, "  BALANCED parameters: gen_mx = %d\n", gen_mx);
     ind += sprintf(strBuf+ind, "        Expected size: %llu nodes, %llu leaves\n",
         (counter_t) ((pow(b_0, gen_mx+1) - 1.0)/(b_0 - 1.0)) /* geometric series */,
@@ -382,8 +382,8 @@ void uts_parseParams(int argc, char *argv[]){
       case 'v':
         verbose = atoi(argv[i+1]); break;
       case 't':
-        type = (tree_t) atoi(argv[i+1]); 
-        if (type != BIN && type != GEO && type!= HYBRID && type != BALANCED) 
+        hcType = (tree_t) atoi(argv[i+1]); 
+        if (hcType != BIN && hcType != GEO && hcType!= HYBRID && hcType != BALANCED) 
 	  err = i;
         break;
       case 'a':
@@ -444,7 +444,7 @@ void uts_showStats(int nPes, int chunkSize, double walltime, counter_t nNodes, c
   if (verbose == 0) {
     printf("%4d %7.3f %9llu %7.0llu %7.0llu %d %d %.2f %d %d %1d %f %3d\n",
         nPes, walltime, nNodes, (long long)(nNodes/walltime), (long long)((nNodes/walltime)/nPes), chunkSize, 
-        type, b_0, rootId, gen_mx, shape_fn, nonLeafProb, nonLeafBF);
+        hcType, b_0, rootId, gen_mx, shape_fn, nonLeafProb, nonLeafBF);
   }
 
   // summarize execution info for human consumption
