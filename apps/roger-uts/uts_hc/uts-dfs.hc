@@ -137,7 +137,7 @@ void impl_abort(int err) {
  ***********************************************************/
 
 typedef struct {
-  counter_t maxdepth, size, leaves;
+  counter_t maxdepth, hcSize, leaves;
 } Result;
 
 Result parTreeSearch(int depth, Node *parent) {
@@ -166,7 +166,7 @@ printf("pTS depth=%d numChildren=%d\n",depth, numChildren);fflush(stdout);
     finish {
 #endif
       for (int i = 0; i < numChildren; i++) {
-        child[i].type = childType;
+        child[i].hcType = childType;
 	child[i].height = parentHeight + 1;
 	child[i].numChildren = -1;    // not yet determined
 	for (int j = 0; j < computeGranularity; j++) {
@@ -186,7 +186,7 @@ printf("pTS depth=%d numChildren=%d\n",depth, numChildren);fflush(stdout);
     for (int i = 0; i < numChildren; i++) {
       if(r.maxdepth<c[i].maxdepth)
          r.maxdepth = c[i].maxdepth;
-      r.size       += c[i].size;
+      r.hcSize     += c[i].hcSize;
       r.leaves     += c[i].leaves;
     }
     free(c);
@@ -198,7 +198,7 @@ printf("pTS depth=%d numChildren=%d\n",depth, numChildren);fflush(stdout);
   if (numChildren > 0) {
     for (int i = 0; i < numChildren; i++) {
       Node child;
-      child.type = childType;
+      child.hcType = childType;
       child.height = parentHeight + 1;
       child.numChildren = -1;    // not yet determined
       for (int j = 0; j < computeGranularity; j++) {
@@ -206,7 +206,7 @@ printf("pTS depth=%d numChildren=%d\n",depth, numChildren);fflush(stdout);
       } // for j
       Result c = parTreeSearch(depth+1, &child);
       if (c.maxdepth>r.maxdepth) r.maxdepth = c.maxdepth;
-      r.size   += c.size;
+      r.hcSize += c.hcSize;
       r.leaves += c.leaves;
     } // for i
   } else {
@@ -214,20 +214,20 @@ printf("pTS depth=%d numChildren=%d\n",depth, numChildren);fflush(stdout);
   }
 #endif // RAG_SERIAL RAG_CILK and RAG_HC
 #if TRACE
-printf("return %d %d %d\n",r.maxdepth,r.size,r.leaves);fflush(stdout);
+printf("return %d %d %d\n",r.maxdepth,r.hcSize,r.leaves);fflush(stdout);
 #endif
   return r;
 }
 
+static Node root; // needs static to avoid stack allocation
 int main(int argc, char *argv[]) {
-  static Node root; // needs static to avoid stack allocation
   double t1, t2;
 
   uts_parseParams(argc, argv);
 
   if (GET_THREAD_NUM == 0) {
     uts_printParams();
-    uts_initRoot(&root, type);
+    uts_initRoot(&root, hcType);
   }
 
   t1 = uts_wctime();
@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
   t2 = uts_wctime();
 
   maxTreeDepth = r.maxdepth;
-  nNodes  = r.size;
+  nNodes  = r.hcSize;
   nLeaves = r.leaves;
 
   if (GET_THREAD_NUM == 0) {

@@ -1,6 +1,6 @@
 #include "common.h"
 
-void FormImage(struct DigSpotVars *dig_spot, struct ImageParams *image_params, struct Inputs *in, struct complexData **curImage, struct RadarParams *radar_params)
+void FormImage(struct DigSpotVars *dig_spot, struct ImageParams *image_params, struct Inputs *hcIn, struct complexData **curImage, struct RadarParams *radar_params)
 {
 #ifdef RAG_DIG_SPOT_ON
 	float xc, yc;
@@ -32,12 +32,12 @@ fprintf(stderr,"FormImage FFTW initialization TF = %d\n",image_params->TF);fflus
 		{
 			// Copy data from one pulse to FFT input array (first and second halves swapped)
 			for(int j=(int)ceilf(image_params->S1/2), n=0; j<image_params->S1; j++, n++) {
-				input[n][0] = in->X[i][j].real;
-				input[n][1] = in->X[i][j].imag;
+				input[n][0] = hcIn->X[i][j].real;
+				input[n][1] = hcIn->X[i][j].imag;
 			}
 			for(int j=0; j<(int)ceilf(image_params->S1/2); j++, n++) {
-				input[n][0] = in->X[i][j].real;
-				input[n][1] = in->X[i][j].imag;
+				input[n][0] = hcIn->X[i][j].real;
+				input[n][1] = hcIn->X[i][j].imag;
 			}
 
 			// Perform FFT
@@ -60,9 +60,9 @@ fprintf(stderr,"FormImage FFTW initialization TF = %d\n",image_params->TF);fflus
 
 				// Adjust platform locations
 				for(int n=0; n<image_params->P2; n++) {
-					dig_spot->Pt2[n][0] = in->Pt[n*image_params->TF][0] + xc;
-					dig_spot->Pt2[n][1] = in->Pt[n*image_params->TF][1] + yc;
-					dig_spot->Pt2[n][2] = in->Pt[n*image_params->TF][2];
+					dig_spot->Pt2[n][0] = hcIn->Pt[n*image_params->TF][0] + xc;
+					dig_spot->Pt2[n][1] = hcIn->Pt[n*image_params->TF][1] + yc;
+					dig_spot->Pt2[n][2] = hcIn->Pt[n*image_params->TF][2];
 				}
 
 				// Perform backprojection over subimage
@@ -78,7 +78,7 @@ finish { 		BackProj(Xsubimg, dig_spot->Pt2, i*image_params->Sx, (i+1)*image_para
 	else
 	{
 		// Perform backprojection over full image
-finish {	BackProj(in->X, in->Pt, 0, image_params->Ix, 0, image_params->Iy, image_params, curImage, radar_params); }
+finish {	BackProj(hcIn->X, hcIn->Pt, 0, image_params->Ix, 0, image_params->Iy, image_params, curImage, radar_params); }
 	}
 #ifdef DEBUG_RAG
 fprintf(stderr,"Form Image returns\n");fflush(stderr);

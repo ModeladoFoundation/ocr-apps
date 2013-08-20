@@ -27,7 +27,7 @@ struct complexData {
 	float imag;
 };
 
-struct point {
+struct hcPoint {
 	int x;		// x coordinate (pixel)
 	int y;		// y coordinate (pixel)
 	float p;	// correlation value
@@ -118,28 +118,28 @@ int ReadParams(struct RadarParams*, struct ImageParams*, struct AffineParams*, s
 
 void ReadData(FILE*, FILE*, FILE*, struct Inputs*, struct ImageParams*);
 
-#pragma hc suspendable
+#pragma hc continuable
 void FormImage(struct DigSpotVars*, struct ImageParams*, struct Inputs*, struct complexData**, struct RadarParams*);
 
 #if RAG_DIG_SPOT_ON
 struct complexData** DigSpot(float, float, struct DigSpotVars*, struct ImageParams*, struct RadarParams*, struct Inputs*);
 #endif
 
-#pragma hc suspendable
+#pragma hc continuable
 void BackProj(struct complexData*[], float**, int, int, int, int, struct ImageParams*, struct complexData**, struct RadarParams*);
 
-#pragma hc suspendable
+#pragma hc continuable
 void Affine(struct AffineParams*, struct ImageParams*, struct complexData**, struct complexData**);
 
 #if RAG_THIN_ON
 void ThinSpline(struct ThinSplineParams*, struct ImageParams*, struct complexData**, struct complexData**);
 #endif
 
-#pragma hc suspendable
-void CCD(int Ncor, struct point**, struct ImageParams*, struct complexData**, struct complexData**);
+#pragma hc continuable
+void CCD(int Ncor, struct hcPoint**, struct ImageParams*, struct complexData**, struct complexData**);
 
-#pragma hc suspendable
-void CFAR(struct ImageParams*, int, struct CfarParams*, struct point**, struct detects*,FILE *pOutFile);
+#pragma hc continuable
+void CFAR(struct ImageParams*, int, struct CfarParams*, struct hcPoint**, struct detects*,FILE *pOutFile);
 
 void sinc_interp(float *X, struct complexData *Y, struct complexData *YI, int Nz, float B, int M, int lenY);
 float sinc(float x);

@@ -15,40 +15,40 @@
 
 static int Ceiling_Power_Of_Two(int n) { int Pof2 = 0; while( (1<<(Pof2++)) < n); return (Pof2-1);};
 
-fftwf_plan fftwf_plan_dft_1d(int size, fftwf_complex *in, fftwf_complex *out, int dir, int est)
+fftwf_plan fftwf_plan_dft_1d(int hcSize, fftwf_complex *hcIn, fftwf_complex *hcOut, int dir, int est)
 {
 	fftwf_plan plan;
 	plan.dir  = dir;
-	plan.size = size;
-	plan.Pof2 = Ceiling_Power_Of_Two(size);
+	plan.hcSize = hcSize;
+	plan.Pof2 = Ceiling_Power_Of_Two(hcSize);
 	plan.SIZE = 1<<plan.Pof2;
-	plan.in   = in;
-	plan.out  = out;
+	plan.hcIn = hcIn;
+	plan.hcOut= hcOut;
 	assert( (plan.dir == FFTW_FORWARD) || (plan.dir == FFTW_BACKWARD) );
-	assert( plan.SIZE == plan.size );
-	assert( plan.in   != NULL );
-	assert( plan.out  != NULL );
+	assert( plan.SIZE == plan.hcSize );
+	assert( plan.hcIn != NULL );
+	assert( plan.hcOut!= NULL );
 	return plan;
 };
 
 void fftwf_destroy_plan(fftwf_plan plan)
 {
 	plan.dir  = 0;
-	plan.size = 0;
+	plan.hcSize = 0;
 	plan.Pof2 = 0;
 	plan.SIZE = 0;
-	plan.in   = NULL;
-	plan.out  = NULL;
+	plan.hcIn = NULL;
+	plan.hcOut= NULL;
 }
 
-fftwf_complex *fftwf_malloc(size_t size)
+fftwf_complex *fftwf_malloc(size_t hcSize)
 {
-	size = 1<<Ceiling_Power_Of_Two(size);
+	hcSize = 1<<Ceiling_Power_Of_Two(hcSize);
 	fftwf_complex *retval;
 #ifdef RAG_SIM
-	retval = (fftwf_complex *)xe_malloc(size);
+	retval = (fftwf_complex *)xe_malloc(hcSize);
 #else
-	retval = (fftwf_complex *)malloc(size);
+	retval = (fftwf_complex *)malloc(hcSize);
 #endif
 	assert(retval != NULL);
 	return retval;
@@ -78,8 +78,8 @@ void fftwf_execute(fftwf_plan plan)
 	const int dir  = plan.dir;
 	const int Pof2 = plan.Pof2;
 	const int SIZE = plan.SIZE;
-	fftwf_complex * restrict z_in  = plan.in;
-	fftwf_complex * restrict z_out = plan.out;
+	fftwf_complex * restrict z_in  = plan.hcIn;
+	fftwf_complex * restrict z_out = plan.hcOut;
   
 	/* Copy input to output and do inplace in output */
 

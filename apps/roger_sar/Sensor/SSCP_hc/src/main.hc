@@ -45,9 +45,9 @@
 
 // #define DEBUG_SSCP
 
-struct Inputs in;					// Inputs
-struct detects *Y;					// Detects list
-struct point **corr_map;			// Correlation map
+struct Inputs hcIn;			// Inputs
+struct detects *Y;			// Detects list
+struct hcPoint **corr_map;		// Correlation map
 struct DigSpotVars dig_spot;		// Digital spotlight variables
 struct complexData **curImage;		// Current image
 struct complexData **refImage;		// Reference (previous) image
@@ -57,10 +57,11 @@ struct ImageParams image_params;	// Image parameters
 struct AffineParams affine_params;	// Affine registration parameters
 struct ThinSplineParams ts_params;	// Thin spline registration parameters
 
+static int Ncor; // needed to make global for H-C
+
 int main(int argc, char *argv[])
 {
 //	int m, n;
-	int Ncor;
 	FILE *pInFile, *pInFile2, *pInFile3;
 	FILE *pOutFile;
 //	extern struct reg_map *regmap;
@@ -265,36 +266,36 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 	}
 
 	// Allocate memory for pulse compressed SAR data
-	in.X = (struct complexData**)malloc(image_params.P1*sizeof(struct complexData*));
-	if(in.X == NULL) {
+	hcIn.X = (struct complexData**)malloc(image_params.P1*sizeof(struct complexData*));
+	if(hcIn.X == NULL) {
 		fprintf(stderr,"Error allocating memory for X.\n");
 		exit(1);
 	}
 	for(int n=0; n<image_params.P1; n++) {
-		in.X[n] = (struct complexData*)malloc(image_params.S1*sizeof(struct complexData));
-		if (in.X[n] == NULL) {
+		hcIn.X[n] = (struct complexData*)malloc(image_params.S1*sizeof(struct complexData));
+		if (hcIn.X[n] == NULL) {
 			fprintf(stderr,"Error allocating memory for X.\n");
 			exit(1);
 		}
 	}
 
 	// Allocate memory for transmitter positions at each pulse
-	in.Pt = (float**)malloc(image_params.P1*sizeof(float*));
-	if(in.Pt == NULL) {
+	hcIn.Pt = (float**)malloc(image_params.P1*sizeof(float*));
+	if(hcIn.Pt == NULL) {
 		fprintf(stderr,"Error allocating memory for Pt.\n");
 		exit(1);
 	}
 	for(int n=0; n<image_params.P1; n++) {
-		in.Pt[n] = (float*)malloc(3*sizeof(float));
-		if(in.Pt[n] == NULL) {
+		hcIn.Pt[n] = (float*)malloc(3*sizeof(float));
+		if(hcIn.Pt[n] == NULL) {
 			fprintf(stderr,"Error allocating memory for Pt.\n");
 			exit(1);
 		}
 	}
 
 	// Allocate memory for timestamp of pulse transmissions
-	in.Tp = (float*)malloc(image_params.P1*sizeof(float));
-	if(in.Tp == NULL) {
+	hcIn.Tp = (float*)malloc(image_params.P1*sizeof(float));
+	if(hcIn.Tp == NULL) {
 		fprintf(stderr,"Error allocating memory for Tp.\n");
 		exit(1);
 	}
@@ -328,14 +329,14 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 	}
 
 	// Allocate memory for correlation map
-	corr_map = (struct point**)malloc((image_params.Iy-Ncor+1)*sizeof(struct point*));
+	corr_map = (struct hcPoint**)malloc((image_params.Iy-Ncor+1)*sizeof(struct hcPoint*));
 	if(corr_map == NULL) {
 		fprintf(stderr,"Error allocating memory for correlation map.\n");
 		exit(1);
 	}
 	for(int m=0; m<image_params.Iy-Ncor+1; m++)
 	{
-		corr_map[m] = (struct point*)malloc((image_params.Ix-Ncor+1)*sizeof(struct point));
+		corr_map[m] = (struct hcPoint*)malloc((image_params.Ix-Ncor+1)*sizeof(struct hcPoint));
 		if (corr_map[m] == NULL) {
 			fprintf(stderr,"Error allocating memory for correlation map.\n");
 			exit(1);
@@ -350,21 +351,21 @@ fprintf(stderr,"dig_spot.freqVec %p %d\n",dig_spot.freqVec,image_params.S1); ffl
 	}
 
 	// Read input data
-	ReadData(pInFile, pInFile2, pInFile3, &in, &image_params);
+	ReadData(pInFile, pInFile2, pInFile3, &hcIn, &image_params);
 
 	// Form first image
-finish {FormImage(&dig_spot, &image_params, &in, curImage, &radar_params); }
+finish {FormImage(&dig_spot, &image_params, &hcIn, curImage, &radar_params); }
 
 	while(--image_params.numImages) {
 
-		ReadData(pInFile, pInFile2, pInFile3, &in, &image_params);
+		ReadData(pInFile, pInFile2, pInFile3, &hcIn, &image_params);
 		
 		for(int m=0; m<image_params.Iy; m++) {
 			memcpy(&refImage[m][0], &curImage[m][0], image_params.Ix*sizeof(struct complexData));
 		}
 
 		// Form current image
-finish {	FormImage(&dig_spot, &image_params, &in, curImage, &radar_params); }
+finish {	FormImage(&dig_spot, &image_params, &hcIn, curImage, &radar_params); }
 #ifdef RAG_AFFINE_ON
 #ifdef TRACE
 fprintf(stderr,"Affine registration\n");fflush(stderr);
@@ -411,7 +412,7 @@ fprintf(stderr,"Output Images to .bins\n");fflush(stderr);
         for(int m=0; m<image_params.Iy; m++)
             fwrite(&refImage[m][0], sizeof(struct complexData), image_params.Ix, pOutImg);
         for(int m=0; m<image_params.Iy-Ncor+1; m++)
-            fwrite(&corr_map[m][0], sizeof(struct point), image_params.Ix-Ncor+1, pOutCorr);
+            fwrite(&corr_map[m][0], sizeof(struct hcPoint), image_params.Ix-Ncor+1, pOutCorr);
         //for(int m=0; m<affine_params.Nc; m++)
         //    fwrite(&regmap[m], sizeof(struct reg_map), 1, pOutFile);
 

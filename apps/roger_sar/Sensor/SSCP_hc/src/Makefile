@@ -35,8 +35,8 @@ HC_OBJS=main.o \
 .SUFFIXES:
 .SUFFIXES: .o .c .hc
 
-CC=gcc
-HCC=hcc
+CC=gcc -Dinline=
+HCC=hcc -Dinline=
 
 all: sscp
 
