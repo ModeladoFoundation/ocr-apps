@@ -11,7 +11,7 @@ ccd_async_body(
 	struct ImageParams *image_params,
 	struct complexData **curImage,
 	struct complexData **refImage,
-	struct point **corr_map,
+	struct hcPoint **corr_map,
 	struct corners_t *corners
 ) {
 
@@ -105,7 +105,7 @@ fprintf(stderr,"cdd         K = %5d, end = %5d\n",k,Ncor_sqr);fflush(stderr);
 
 void
 CCD(	int    Ncor,
-	struct point **corr_map,
+	struct hcPoint **corr_map,
 	struct ImageParams *image_params,
 	struct complexData **curImage,
 	struct complexData **refImage)

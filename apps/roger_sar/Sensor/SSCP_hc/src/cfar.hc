@@ -5,7 +5,7 @@
 void cfar_async_body(int *p_Nd,
 		struct ImageParams *image_params,
 		struct CfarParams *cfar_params,
-		struct point **corr_map,
+		struct hcPoint **corr_map,
 		struct detects *Y,
 		struct corners_t *corners)
 {
@@ -113,7 +113,7 @@ static int compare_detects(const void * _lhs, const void * _rhs)
 }
 #endif
 
-void CFAR(struct ImageParams *image_params, int Ncor, struct CfarParams *cfar_params, struct point **corr_map, struct detects *Y, FILE *pOutFile)
+void CFAR(struct ImageParams *image_params, int Ncor, struct CfarParams *cfar_params, struct hcPoint **corr_map, struct detects *Y, FILE *pOutFile)
 {
 	int *p_Nd;
 	int Mwins, Nwins;

@@ -2,13 +2,13 @@
 
 void gauss_elim(float *AA[], float *x, int N);
 
-struct point corr2D(struct point ctrl_pt, int Nwin, int R,
+struct hcPoint corr2D(struct hcPoint ctrl_pt, int Nwin, int R,
 	struct complexData**, struct complexData**, struct ImageParams*);
 
 //struct reg_map *regmap;
 
 void Affine_async_1_body(
-		struct point *ctrl_pt_ptr,
+		struct hcPoint *ctrl_pt_ptr,
 		int **A, int *Fx, int *Fy,
 		struct ImageParams *image_params,
 		struct AffineParams *affine_params,
@@ -18,11 +18,11 @@ void Affine_async_1_body(
 #ifdef DEBUG_RAG
 fprintf(stderr,"// Perform 2D correlation\n");fflush(stderr);
 #endif
-	struct point ctrl_pt = *ctrl_pt_ptr;
+	struct hcPoint ctrl_pt = *ctrl_pt_ptr;
 #ifdef DEBUG_RAG
 fprintf(stderr,"ctrl_pt %d %d %f\n",ctrl_pt.x,ctrl_pt.y,ctrl_pt.p);fflush(stderr);
 #endif
-	struct point disp_vec = corr2D(ctrl_pt,
+	struct hcPoint disp_vec = corr2D(ctrl_pt,
 				affine_params->Sc, affine_params->Rc,
 				curImage, refImage, image_params);
 
@@ -225,8 +225,8 @@ fprintf(stderr,"// form A, Fx and Fy\n");fflush(stderr);
 finish {
 	for(int m=0; m<N; m++) {
 		for(int n=0; n<N; n++) {
-			struct point *ctrl_pt_ptr;
-			ctrl_pt_ptr = malloc(sizeof(struct point));
+			struct hcPoint *ctrl_pt_ptr;
+			ctrl_pt_ptr = malloc(sizeof(struct hcPoint));
 			ctrl_pt_ptr->y = m*dy + min;
 			ctrl_pt_ptr->x = n*dx + min;
 			ctrl_pt_ptr->p = 0.0f;
@@ -357,7 +357,7 @@ void ThinSpline(struct ThinSplineParams *ts_params, struct ImageParams *image_pa
     float w, v;
     float warped_pt[2];
     float r, sum_x, sum_y;
-    struct point disp_vec, ctrl_pt;
+    struct hcPoint disp_vec, ctrl_pt;
 
 //  regmap = (struct reg_map*)malloc(Nf*sizeof(struct reg_map));
 
@@ -576,11 +576,11 @@ void ThinSpline(struct ThinSplineParams *ts_params, struct ImageParams *image_pa
 }
 #endif
 
-struct point corr2D(struct point ctrl_pt, int Nwin, int R, struct complexData **curImage, struct complexData **refImage, struct ImageParams *image_params)
+struct hcPoint corr2D(struct hcPoint ctrl_pt, int Nwin, int R, struct complexData **curImage, struct complexData **refImage, struct ImageParams *image_params)
 {
 	float den1, den2;
 	float rho;
-	struct point pt;
+	struct hcPoint pt;
 	struct complexData num;
 	struct complexData *f, *g;
 	struct complexData mu_f, mu_g;
