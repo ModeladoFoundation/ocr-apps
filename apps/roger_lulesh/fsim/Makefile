@@ -81,7 +81,7 @@ lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
 run:	lulesh
 	$(RM) -f logs/*
 	date
-	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-8-blocks.cfg
+	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 	date
 	egrep --text -e "(Final|time\ =\ |rag:|RAG:|MEM:)" logs/*.blk00.CE.00 | sed  -e 's/^.*CONSOLE: XE[[:digit:]][[:digit:]]* >>> //g'
 

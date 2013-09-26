@@ -925,7 +925,7 @@ int mainEdt() {
 TRACE1("mainEdt entry");
 #endif // FSIM or OCR
   uint8_t retVal = 0;
-#if     defined(FSIM) || defined(OCR)
+#if     defined(FSIM)
 // tiny problem size
   size_t  edgeElems =  5 ;
 // ran to completion quickly with 5, many cycles for 10, 15, 30 and 45
