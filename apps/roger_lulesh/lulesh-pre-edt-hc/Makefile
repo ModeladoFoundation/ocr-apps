@@ -3,7 +3,7 @@ ifndef OPT
 endif
 
 GCC=gcc -std=c99
-CFLAGS= -fpic -g $(OPT)
+CFLAGS= -fpic -g $(OPT) -I/usr/lib/gcc/x86_64-redhat-linux/4.8.1/include -I$(HC_HOME)/include/hc -Dinline= 
 LDFLAGS = -lm
 
 HCC=hcc -rose:C99 -DHAB_C
