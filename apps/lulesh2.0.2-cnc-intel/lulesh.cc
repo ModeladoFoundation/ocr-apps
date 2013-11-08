@@ -298,20 +298,50 @@ void CollectDomainNodesToElemNodes(Domain &domain,
 
 /******************************************/
 
+#include "lulesh_cnc.h"
+
+int64_t countedStruct::count = 0;
+
 static inline
 void InitStressTermsForElems(Domain &domain,
                              Real_t *sigxx, Real_t *sigyy, Real_t *sigzz,
                              Index_t numElem)
 {
+
    //
    // pull in the stresses appropriate to the hydro integration
    //
-
-#pragma omp parallel for firstprivate(numElem)
+   lulesh_context c;
+   c.setGlobalDomainPointer(&domain);
+   c.setGlobalSigPointer(sigxx, sigyy, sigzz);
    for (Index_t i = 0 ; i < numElem ; ++i){
-      sigxx[i] = sigyy[i] = sigzz[i] =  - domain.p(i) - domain.q(i) ;
+     c.tagInitStressTermsForElems.put(ElemTag(i));
    }
+   for (Index_t i = 0 ; i < numElem ; ++i){
+     c.tagInitStressTermsForElemsPutBack.put(ElemTag(i));
+   }     
+   c.wait();
+
+  // #pragma omp parallel for firstprivate(numElem)
+  //  for (Index_t i = 0 ; i < numElem ; ++i){
+  //     sigxx[i] = sigyy[i] = sigzz[i] =  - domain.p(i) - domain.q(i) ;
+  //  }
+
 }
+
+// static inline
+// void InitStressTermsForElems(Domain &domain,
+//                              Real_t *sigxx, Real_t *sigyy, Real_t *sigzz,
+//                              Index_t numElem)
+// {
+//    //
+//    // pull in the stresses appropriate to the hydro integration
+//    //
+// #pragma omp parallel for firstprivate(numElem)
+//    for (Index_t i = 0 ; i < numElem ; ++i){
+//       sigxx[i] = sigyy[i] = sigzz[i] =  - domain.p(i) - domain.q(i) ;
+//    }
+// }
 
 /******************************************/
 
