@@ -84,3 +84,7 @@ make install
 (cd xe-sim;make test)
 (cd xe-sim;make run)
 (cd xe-sim;make install)
+
+(cd ocr;make clean)
+(cd ocr;make all)
+(cd ocr;make run)

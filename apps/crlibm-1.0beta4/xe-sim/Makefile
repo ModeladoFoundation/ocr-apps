@@ -157,8 +157,6 @@ test.o:	test.c ../crlibm.h ../xe-stuff.h
 test:	test.o libcrlibm.a
 	$(LD) $(LDFLAGS) -o test test.o ./libcrlibm.a $(LDLIBS)
 
-#######	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
-
 run:	test test.cfg
 	$(MKDIR) -p logs
 	$(RM) -f logs/*
