@@ -152,7 +152,7 @@ libcrlibm.a:	$(OBJS)
 	$(AR) cru ./libcrlibm.a $(OBJS)
 
 test.o:	test.c ../crlibm.h ../xe-stuff.h
-	$(CC) $(CFLAGS) -DRAG -o test.o -I.. -c test.c
+	$(CC) $(CFLAGS) -o test.o -I.. -c test.c
 
 test:	test.o libcrlibm.a
 	$(LD) $(LDFLAGS) -o test test.o ./libcrlibm.a $(LDLIBS)

@@ -20,9 +20,6 @@ ex crlibm_config.h <<EOF
 %s;#define HAVE_SYS_STAT_H 1;/* #undef HAVE_SYS_STAT_H */;
 %s;#define HAVE_SYS_TYPES_H 1;/* #undef HAVE_SYS_TYPES_H */;
 %s;#define HAVE_UNISTD_H 1;/* #undef HAVE_UNISTD_H */;
-2:a
-#define RAG 1 // RAG -- post configure mods by install.sh
-.
 wq
 EOF
 grep RAG crlibm_config.h

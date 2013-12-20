@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#ifdef RAG
+#if defined(FSIM) || defined(OCR)
 #include "crlibm.h"
 #else
 #include <math.h>
