@@ -1,7 +1,10 @@
 #!/bin/sh
 # RAG-clobber.sh for xstack/apps/crlibm-1.0beta4
-rm -rf	./docs ./gappa ./maple ./scs_lib ./tests ./xe-sim/logs ./x86_64
+rm -rf	./docs ./gappa ./maple ./scs_lib ./tests ./xe-sim/logs ./x86_64 \
+	./xe-sim/lib ./xe-sim/include
+
 rm -f	./ocr/test ./xe-sim/out.map ./xe-sim/test
+
 rm -f	./AUTHORS \
 	./COPYING \
 	./COPYING.LIB \
