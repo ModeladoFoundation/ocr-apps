@@ -15,7 +15,12 @@
 
 #ifdef FSIM
 #include "xe-stuff.h"
+#endif
+#ifdef OCR
+#include "ocr.h"
+#endif
 
+#if defined(FSIM) || defined(OCR)
 ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 #else
 int main (int argc, char *argv[]) 
@@ -121,7 +126,7 @@ int main (int argc, char *argv[])
 
   printf("test's mainEDT return\n");
   exit(0);
-#ifdef FSIM
+#if defined(FSIM) || defined(OCR)
   return NULL_GUID;
 #endif
 }
