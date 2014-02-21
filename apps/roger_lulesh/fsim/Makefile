@@ -29,7 +29,7 @@ CFLAGS	= -g -ggdb -g3 $(OPT) -fno-builtin \
 OBJCOPY	= $(PREFIX)-objcopy
 
 LD	= $(PREFIX)-ld
-LDFLAGS	= -L$(RMD_RT_INSTALL) -T ./rmd-libxe-big.ld    -static -Map=out.map
+LDFLAGS	= -L$(RMD_RT_INSTALL) -T $(RMD_RT_INSTALL)/rmd-libxe-icache.ld    -static -Map=out.map
 LDLIBS	= -lxert
 
 CUT	= cut
@@ -76,6 +76,8 @@ lulesh:	lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o Makefile
 	$(LD) $(LDFLAGS) -o lulesh lulesh.o AMO.o MEM.o FP.o e_sqrt.o s_cbrt.o RAG_edt.o $(LDLIBS)
 
 
+#######	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
+#######	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/eth-32-thors-8-blocks.cfg
 #######	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c lulesh.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
 
 run:	lulesh
