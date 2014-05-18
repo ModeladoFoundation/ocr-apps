@@ -18,8 +18,8 @@ ocrGuid_t post_CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 #ifdef TRACE_LVL_2
 xe_printf("//// enter post_CFAR_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	assert(depc==2);
+	assert(paramc==0);
+	assert(depc==3);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
 RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,1);
 	int Nd = RAG_GET_INT(p_Nd);
@@ -50,8 +50,7 @@ xe_printf("//// Output to file %d detects\n",Nd);RAG_FLUSH;
 			 *(uint32_t *)&Y_m.x, *(uint32_t *)&Y_m.y, *(uint32_t *)&Y_m.p);
 #endif
 	} // for m
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,Y_dbg,0);
+
 	OCR_DB_RELEASE(Y_dbg);
 	bsm_free(p_Nd,Nd_dbg);
 #ifdef TRACE_LVL_2
@@ -66,42 +65,12 @@ ocrGuid_t CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t
 xe_printf("//// enter CFAR_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==1);
-	assert(depc==4);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-
+	ocrGuid_t post_CFAR_scg = (ocrGuid_t)paramv[0];
+	assert(depc==5);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_params_ptr,cfar_params_lcl,cfar_params_dbg,2);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,3);
-
-#ifdef TRACE_LVL_2
-xe_printf("//// create a template for post_CFAR function\n");RAG_FLUSH;
-#endif
-	ocrGuid_t post_CFAR_clg;
-	retval = ocrEdtTemplateCreate(
-			&post_CFAR_clg,		// ocrGuid_t *new_guid
-			 post_CFAR_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
-			2);			// depc
-	assert(retval==0);
-
-#ifdef TRACE_LVL_2
-xe_printf("//// create an edt for post_CFAR\n");RAG_FLUSH;
-#endif
-	ocrGuid_t post_CFAR_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(arg_scg) };
-	retval = ocrEdtCreate(
-			&post_CFAR_scg,		// *created_edt_guid
-			 post_CFAR_clg,		// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
 
 	void CFAR(struct point **corr_map, ocrGuid_t corr_map_dbg,
 		struct ImageParams *image_params, ocrGuid_t image_params_dbg,
@@ -112,8 +81,7 @@ xe_printf("//// create an edt for post_CFAR\n");RAG_FLUSH;
 	CFAR(	corr_map, corr_map_dbg,
 		image_params, image_params_dbg,
 		cfar_params, cfar_params_dbg,
-		Y, Y_dbg,
-		post_CFAR_scg);
+		Y, Y_dbg, post_CFAR_scg);
 
 #ifdef TRACE_LVL_2
 xe_printf("//// leave CFAR_edt\n");RAG_FLUSH;
@@ -142,34 +110,13 @@ static int compare_detects(const void * _lhs, const void * _rhs)
 }
 #endif
 
-ocrGuid_t cfar_finish_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
-	int retval;
-#ifdef TRACE_LVL_3
-xe_printf("////// enter cfar_finish_edt %d\n",depc);RAG_FLUSH;
-#endif
-	assert(paramc==1);
-	assert(depc>1);
-	RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
-	RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,1);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,Y_dbg,0);
-	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,Nd_dbg,1);
-	OCR_DB_RELEASE(Y_dbg);
-	OCR_DB_RELEASE(Nd_dbg);
-#ifdef TRACE_LVL_3
-xe_printf("////// leave cfar_finish_edt\n");RAG_FLUSH;
-#endif
-	return NULL_GUID;
-}
-
 ocrGuid_t cfar_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
 #ifdef TRACE_LVL_3
 xe_printf("////// enter cfar_async_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
+	assert(paramc==0);
 	assert(depc==6);
-
 RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_parms_ptr,cfar_parms_lcl,cfar_params_dbg,2);
@@ -181,7 +128,6 @@ RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,5);
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
-	int slot = corners->slot;
 
 	int T,cnt;
 	int mIndex, nIndex;
@@ -193,7 +139,7 @@ RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,5);
 	// CUT's correlation value must be below Tcorr to be eligible for detection
 
 #ifdef TRACE_LVL_3
-xe_printf("////// cfar_async m1 m2 n1 n2 s# %d %d %d %d (%d)\n",m1,m2,n1,m2,slot);RAG_FLUSH;
+xe_printf("////// cfar_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUSH;
 #endif
 
 	ocrGuid_t pLocal_dbg;
@@ -308,15 +254,9 @@ xe_printf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y_nd
             pLocal = NULL;
         }
 
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-#ifdef RAG_SIM_NULL_GUID_WORKAROUND
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,corr_map_dbg,slot);
-#else
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
-#endif
 	bsm_free(corners_ptr,corners_dbg);
 #ifdef TRACE_LVL_3
-xe_printf("////// leave cfar_async_cedt\n");RAG_FLUSH;
+xe_printf("////// leave cfar_async_edt\n");RAG_FLUSH;
 #endif
     return NULL_GUID;
 }
@@ -325,8 +265,7 @@ void CFAR(
 	struct point **corr_map, ocrGuid_t corr_map_dbg,
 	struct ImageParams *image_params, ocrGuid_t image_params_dbg,
 	struct CfarParams *cfar_params, ocrGuid_t cfar_params_dbg,
-	struct detects *Y, ocrGuid_t Y_dbg,
-	ocrGuid_t post_CFAR_scg) {
+	struct detects *Y, ocrGuid_t Y_dbg, ocrGuid_t post_CFAR_scg) {
 	int retval;
 	int Mwins, Nwins;
 
@@ -346,7 +285,13 @@ xe_printf("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nw
 	int CFAR_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CFAR_ASYNC_BLOCK_SIZE_M)==0);
 	assert((Nwins%CFAR_ASYNC_BLOCK_SIZE_N)==0);
-///////////// create async and finish, instance of finish
+
+#ifdef TRACE_LVL_2
+xe_printf("//// satisfy non event guids for post_CFAR_scg\n");RAG_FLUSH;
+#endif
+RAG_DEF_MACRO_PASS(post_CFAR_scg,NULL,NULL,NULL,NULL,Y_dbg,0);
+RAG_DEF_MACRO_PASS(post_CFAR_scg,NULL,NULL,NULL,NULL,Nd_dbg,1);
+
 #ifdef TRACE_LVL_2
 xe_printf("//// create a template for cfar_async function\n");RAG_FLUSH;
 #endif
@@ -354,60 +299,28 @@ xe_printf("//// create a template for cfar_async function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&cfar_async_clg,	// ocrGuid_t *new_guid
 			 cfar_async_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
+			0,			// paramc
 			6);			// depc
 	assert(retval==0);
-
-#ifdef TRACE_LVL_2
-xe_printf("//// create a template for cfar_finish function\n");RAG_FLUSH;
-#endif
-	ocrGuid_t cfar_finish_clg;
-	retval = ocrEdtTemplateCreate(
-			&cfar_finish_clg,	// ocrGuid_t *new_guid
-			 cfar_finish_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
-			((Mwins-0)/CFAR_ASYNC_BLOCK_SIZE_M)*((Nwins-0)/CFAR_ASYNC_BLOCK_SIZE_N)+2); // depc
-	assert(retval==0);
-#ifdef TRACE_LVL_2
-xe_printf("//// create an edt for cfar_finish\n");RAG_FLUSH;
-#endif
-	ocrGuid_t cfar_finish_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_CFAR_scg) };
-	retval = ocrEdtCreate(
-			&cfar_finish_scg,	// *created_edt_guid
-			 cfar_finish_clg,	// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
-	int slot = 0;
-RAG_DEF_MACRO_PASS(cfar_finish_scg,NULL,NULL,NULL,NULL,Y_dbg, slot++);
-RAG_DEF_MACRO_PASS(cfar_finish_scg,NULL,NULL,NULL,NULL,Nd_dbg,slot++);
 
 	for(int m=0; m<Mwins; m+=CFAR_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CFAR_ASYNC_BLOCK_SIZE_N) {
 #ifdef TRACE_LVL_2
-xe_printf("////// create an edt for cfar_async slot %d\n",slot);RAG_FLUSH;
+xe_printf("////// create an edt for cfar_async\n");RAG_FLUSH;
 #endif
 			ocrGuid_t cfar_async_scg;
-{			uint64_t paramv[1] = { GUID_VALUE(cfar_finish_scg) };
 			retval = ocrEdtCreate(
 					&cfar_async_scg,	// *created_edt_guid
 					 cfar_async_clg,	// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					paramv,			// *paramv
+					NULL,			// *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
 					NULL_GUID,		// affinity
 					NULL);			// *outputEvent
-}
 			assert(retval==0);
+
 			struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; ocrGuid_t async_corners_dbg;
 			async_corners = &async_corners_lcl;
 			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
@@ -415,7 +328,6 @@ xe_printf("////// create an edt for cfar_async slot %d\n",slot);RAG_FLUSH;
 			async_corners->m2   = m+CFAR_ASYNC_BLOCK_SIZE_M;
 			async_corners->n1   = n;
 			async_corners->n2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
-			async_corners->slot = slot++;
 			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);

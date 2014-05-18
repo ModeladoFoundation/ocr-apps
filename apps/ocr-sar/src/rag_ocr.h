@@ -33,6 +33,16 @@ void ocr_exit(void); // RAG ocr_exit() non-public
 #define xe_exit(a)  {xe_printf("\nxe_exit(%d)\n",a); RAG_FLUSH; ocrShutdown(); }
 #endif
 
+#ifdef RAG_SIM
+#define OCR_DB_CREATE(guid,addr,len,affinity) \
+do { \
+	u8 __retval__; \
+	__retval__ = ocrDbCreate(&(guid),(u64 *)&(addr),(len),DB_PROP_NONE,(affinity),NO_ALLOC); \
+	if (__retval__ != 0) { \
+		xe_printf("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
+	} /* else { xe_printf("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
+} while(0)
+#else
 #define OCR_DB_CREATE(guid,addr,len,affinity) \
 do { \
 	u8 __retval__; \
@@ -41,6 +51,7 @@ do { \
 		xe_printf("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
 	} /* else { xe_printf("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
 } while(0)
+#endif
 
 #define OCR_DB_RELEASE(guid) \
 do { \
@@ -192,13 +203,13 @@ void DRAMtoSPAD(void *out, void *in, size_t size);
 
 #define RAG_REF_MACRO_SPAD(type,var,ptr_var,lcl_var,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
-	type *var, *ptr_var= depv[slot].ptr, lcl_var; \
+	type *var, *ptr_var= (void *)depv[slot].ptr, lcl_var; \
 	REM_LDX_ADDR(lcl_var, ptr_var, type); \
 	var = &lcl_var;
 
 #define RAG_REF_MACRO_BSM(type,var,no_ptr,no_lcl,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
-	type var = depv[slot].ptr;
+	type var = (void *)depv[slot].ptr;
 
 #define RAG_REF_MACRO_PASS(no_type,no_var,no_ptr,no_lcl,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid;

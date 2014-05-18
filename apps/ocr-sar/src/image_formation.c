@@ -17,19 +17,11 @@ ocrGuid_t post_FormImage_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 xe_printf("//// enter post_FormImage_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==1);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
+	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // ReadData_edt or Affine_edt
 #ifdef RAG_DIG_SPOT
-#ifdef RAG_FINISH_EDT
 	assert(depc==7);
 #else
 	assert(depc==6);
-#endif
-#else
-#ifdef RAG_FINISH_EDT
-	assert(depc==6);
-#else
-	assert(depc==5);
-#endif
 #endif
 RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,in_dbg,0);
 RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,image_params_dbg,1);
@@ -74,6 +66,8 @@ ocrGuid_t FormImage_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 #ifdef TRACE_LVL_2
 xe_printf("//// enter FormImage_edt\n");RAG_FLUSH;
 #endif
+	assert(paramc==1);
+	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // ReadData_edt or Affine_edt
 #ifdef RAG_DIG_SPOT
 	assert(depc==6);
 #else
@@ -98,17 +92,9 @@ xe_printf("//// create a template for post_FormImage function\n");RAG_FLUSH;
 		 	post_FormImage_edt,	// ocr_edt_ptr func_ptr
 			1,			// paramc
 #ifdef RAG_DIG_SPOT
-#ifdef RAG_FINISH_EDT
 			7			// depc
 #else
 			6			// depc
-#endif
-#else
-#ifdef RAG_FINISH_EDT
-			6			// depc
-#else
-			5			// depc
-#endif
 #endif
 		);
 	assert(retval==0);
@@ -121,7 +107,7 @@ xe_printf("//// create an edt for post_FormImage\n");RAG_FLUSH;
 			&post_FormImage_scg,	// *created_edt_guid
 			 post_FormImage_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			paramv,			// *paramv (arg_scg, i.e. ReadData_edt or Affine_edt)
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
@@ -129,11 +115,7 @@ xe_printf("//// create an edt for post_FormImage\n");RAG_FLUSH;
 			NULL);			// *outputEvent
 	assert(retval==0);
 
-#ifdef RAG_FINISH_EDT
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,in_dbg,0);
-#else
-// done by post_backproject_edt
-#endif
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
@@ -228,7 +210,6 @@ xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 		corners->m2   = (i+1)*image_params->Sx;
 		corners->n1   = j*image_params->Sy;
 		corners->n2   = (j+1)*image_params->Sy;
-		corners->slot = 0;
 		REM_STX_ADDR(corners_ptr,corners_lcl,struct corners_t);
 		struct Inputs tmp_in, *tmp_in_ptr; ocrGuid_t tmp_in_dbg;
 		tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
@@ -263,7 +244,6 @@ xe_printf("//// Perform backprojection over full image\n");RAG_FLUSH;
 		corners->m2   = image_params->Ix;
 		corners->n1   = 0;
 		corners->n2   = image_params->Iy;
-		corners->slot = 0;
 		REM_STX_ADDR(corners_ptr,corners_lcl,struct corners_t);
 #ifdef TRACE_LVL_2
 xe_printf("//// create a template for BackProj function\n");RAG_FLUSH;
@@ -272,38 +252,23 @@ xe_printf("//// create a template for BackProj function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&BackProj_clg,		// ocrGuid_t *new_guid
 		 	 BackProj_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			0,			// paramc
 			6);			// depc
 	assert(retval==0);
 #ifdef TRACE_LVL_2
-xe_printf("//// create an edt for post_FormImage\n");RAG_FLUSH;
+xe_printf("//// create an edt for BackProj\n");RAG_FLUSH;
 #endif
-#ifdef RAG_FINISH_EDT
 	ocrGuid_t BackProj_scg, BackProj_evg;
-#else
-	ocrGuid_t BackProj_scg;
-#endif
-{	uint64_t paramv[1] = { GUID_VALUE(post_FormImage_scg) };
 	retval = ocrEdtCreate(
 			&BackProj_scg,		// *created_edt_guid
 			 BackProj_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			NULL,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
-#ifdef RAG_FINISH_EDT
 			EDT_PROP_FINISH,	// properties
-#else
-			EDT_PROP_NONE,		// properties
-#endif
 			NULL_GUID,		// affinity
-#ifdef RAG_FINISH_EDT
-			&BackProj_evg
-#else
-			NULL
-#endif
-);		// *outputEvent
-}
+			&BackProj_evg);		// *outputEvent
 	assert(retval==0);
 
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,in_dbg,0); // Xin, platpos
@@ -312,8 +277,10 @@ RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,radar_params_dbg,3);
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,curImage_dbg,4);
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,refImage_dbg,5);
-#ifdef RAG_FINISH_EDT
-RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,1);
+#ifdef RAG_DIG_SPOT
+RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,6);
+#else
+RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,5);
 #endif
 		OCR_DB_RELEASE(in_dbg);
 		OCR_DB_RELEASE(corners_dbg);

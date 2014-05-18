@@ -53,6 +53,10 @@
 #include "common.h"
 #endif
 
+#if defined(RAG_DIG_SPOT) || defined(RAG_THIN)
+#error
+#endif
+
 // main Edt for ocr's runtime to start
 
 ocrGuid_t mainEdt(
@@ -535,22 +539,10 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 	REM_STX_ADDR(file_args_ptr,file_args_lcl,struct file_args_t);
+
 //////////////////////////////////////////////////////////////////////////
 //   Create all the first level edts                                    //
 //////////////////////////////////////////////////////////////////////////
-
-#ifdef TRACE_LVL_1
-xe_printf("// create a template for main_body_edt function\n");RAG_FLUSH;
-#endif
-	ocrGuid_t main_body_clg;
-	extern ocrGuid_t main_body_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
-	retval = ocrEdtTemplateCreate(
-			&main_body_clg,		// ocrGuid_t *new_guid
-			 main_body_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
-			11);			// depc
-	assert(retval==0);
-
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for post_main_edt function\n");RAG_FLUSH;
 #endif
@@ -559,75 +551,31 @@ xe_printf("// create a template for post_main_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&post_main_clg,		// ocrGuid_t *new_guid
 			 post_main_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
-			21);			// depc
+			0,			// paramc
+			22);			// depc
 	assert(retval==0);
-
-#ifdef RAG_DIG_SPOT
-#error
-#endif
 
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for post_main_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t post_main_scg;
-{	uint64_t paramv[1] = { 0 };
 	retval = ocrEdtCreate(
 			&post_main_scg,		// *created_edt_guid
 			 post_main_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			(ocrGuid_t *)NULL);	// *outputEvent
-}
-	assert(retval==0);
-
-#ifdef TRACE_LVL_1
-xe_printf("// create an edt for main_body_edt\n");RAG_FLUSH;
-#endif
-	ocrGuid_t main_body_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_main_scg) };
-	retval = ocrEdtCreate(
-			&main_body_scg,		// *created_edt_guid
-			 main_body_clg,		// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			NULL,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
 			NULL_GUID,		// affinity
 			NULL);			// *outputEvent
-}
 	assert(retval==0);
-#ifdef TRACE_LVL_1
-xe_printf("// main_body_scg = %ld\n",main_body_scg);RAG_FLUSH;
-#endif
-
-#ifdef TRACE_LVL_1
-xe_printf("// provide the arguments to main_body_edt.\n");RAG_FLUSH;
-#endif
-
-RAG_DEF_MACRO_BSM( main_body_scg,struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
-RAG_DEF_MACRO_BSM( main_body_scg,struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct ImageParams *,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct RadarParams *,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,3);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct AffineParams *,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,4);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct ThinSplineParams *,ts_params,ts_params_ptr,ts_params_lcl,ts_params_dbg,5);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct Cfar_params *,NULL,NULL,NULL,cfar_params_dbg,6);
-RAG_DEF_MACRO_BSM( main_body_scg,struct point **,corr_map,NULL,NULL,corr_map_dbg,7);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,8);
-RAG_DEF_MACRO_PASS(main_body_scg,struct detects *,NULL,NULL,NULL,Y_dbg,9);
-RAG_DEF_MACRO_BSM( main_body_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,10);
 
 #ifdef TRACE_LVL_1
 xe_printf("// provide the arguments to post_main_edt.\n");RAG_FLUSH;
 #endif
 
-//RAG_DEF_MACRO_PASS(post_main_scg,struct detects *,NULL,NULL,NULL,Y_dbg,0);
-//coming from main_body_edt
+RAG_DEF_MACRO_PASS(post_main_scg,struct detects *,NULL,NULL,NULL,Y_dbg,0);
 RAG_DEF_MACRO_SPAD(post_main_scg,struct ImageParams *,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_yr_dbg,2);
 RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_xr_dbg,3);
@@ -648,6 +596,58 @@ RAG_DEF_MACRO_PASS(post_main_scg,struct point **,NULL,NULL,NULL,in_Pt_dbg,17);
 RAG_DEF_MACRO_PASS(post_main_scg,struct point *,NULL,NULL,NULL,in_Pt_data_dbg,18);
 RAG_DEF_MACRO_PASS(post_main_scg,struct float *,NULL,NULL,NULL,in_Tp_dbg,19);
 RAG_DEF_MACRO_BSM( post_main_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,20);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create a template for main_body_edt function\n");RAG_FLUSH;
+#endif
+	ocrGuid_t main_body_clg;
+	extern ocrGuid_t main_body_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
+	retval = ocrEdtTemplateCreate(
+			&main_body_clg,		// ocrGuid_t *new_guid
+			 main_body_edt,		// ocr_edt_ptr func_ptr
+			1,			// paramc
+			11);			// depc
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create an edt for main_body_edt\n");RAG_FLUSH;
+#endif
+	ocrGuid_t main_body_scg, main_body_evg;
+{	uint64_t paramv[1] = { GUID_VALUE(post_main_scg) };
+	retval = ocrEdtCreate(
+			&main_body_scg,		// *created_edt_guid
+			 main_body_clg,		// edt_template_guid
+			EDT_PARAM_DEF,		// paramc
+			paramv,			// *paramv
+			EDT_PARAM_DEF,		// depc
+			NULL,			// *depv
+			EDT_PROP_FINISH,	// properties
+			NULL_GUID,		// affinity
+			&main_body_evg);	// *outputEvent
+}
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// main_body_scg = %ld\n",main_body_scg);RAG_FLUSH;
+#endif
+
+#ifdef TRACE_LVL_1
+xe_printf("// provide the arguments to main_body_edt.\n");RAG_FLUSH;
+#endif
+
+RAG_DEF_MACRO_BSM( main_body_scg,struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
+RAG_DEF_MACRO_BSM( main_body_scg,struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
+RAG_DEF_MACRO_SPAD(main_body_scg,struct ImageParams *,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
+RAG_DEF_MACRO_SPAD(main_body_scg,struct RadarParams *,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,3);
+RAG_DEF_MACRO_SPAD(main_body_scg,struct AffineParams *,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,4);
+RAG_DEF_MACRO_SPAD(main_body_scg,struct ThinSplineParams *,ts_params,ts_params_ptr,ts_params_lcl,ts_params_dbg,5);
+RAG_DEF_MACRO_SPAD(main_body_scg,struct Cfar_params *,NULL,NULL,NULL,cfar_params_dbg,6);
+RAG_DEF_MACRO_BSM( main_body_scg,struct point **,corr_map,NULL,NULL,corr_map_dbg,7);
+RAG_DEF_MACRO_SPAD(main_body_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,8);
+RAG_DEF_MACRO_PASS(main_body_scg,struct detects *,NULL,NULL,NULL,Y_dbg,9);
+RAG_DEF_MACRO_BSM( main_body_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,10);
+
+RAG_DEF_MACRO_BSM( post_main_scg,NULL,NULL,NULL,NULL,main_body_evg,21);
 
 // release DB of post_main arguments
 	OCR_DB_RELEASE(file_args_dbg);
@@ -680,12 +680,13 @@ xe_printf("// leave mainEdt\n");RAG_FLUSH;
 ocrGuid_t main_body_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv)
 {
 	int retval;
-	assert(paramc==1);
-	assert(depc==11);
 #ifdef TRACE_LVL_1
 xe_printf("// enter main_body_edt\n");RAG_FLUSH;
 #endif
+	assert(paramc==1);
+	ocrGuid_t post_main_scg = (ocrGuid_t)paramv[0];
 
+	assert(depc==11);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
@@ -698,8 +699,6 @@ RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,8);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,9);
 RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,10);
 
-	ocrGuid_t post_main_scg;
-	post_main_scg = (ocrGuid_t)paramv[0];
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for ReadData_edt\n");RAG_FLUSH;
 #endif
@@ -727,6 +726,7 @@ xe_printf("// create a template for FormImage_edt\n");RAG_FLUSH;
 #endif
 		);
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for Affine_edt function\n");RAG_FLUSH;
 #endif
@@ -735,13 +735,46 @@ xe_printf("// create a template for Affine_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&Affine_clg,		// ocrGuid_t *new_guid
 			 Affine_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			2,			// paramc
 			4);			// depc
 	assert(retval==0);
 
-#ifdef RAG_THIN
-#error
+#ifdef TRACE_LVL_1
+xe_printf("// create a template for post_Affine_edt function\n");RAG_FLUSH;
 #endif
+	ocrGuid_t post_Affine_clg;
+	extern ocrGuid_t post_Affine_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
+	retval = ocrEdtTemplateCreate(
+			&post_Affine_clg,	// ocrGuid_t *new_guid
+			 post_Affine_edt,	// ocr_edt_ptr func_ptr
+			0,			// paramc
+			6);			// depc
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create a template for post_affine_async_1_edt function\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_affine_async_1_clg;
+	extern ocrGuid_t post_affine_async_1_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
+	retval = ocrEdtTemplateCreate(
+			&post_affine_async_1_clg,	// ocrGuid_t *new_guid
+			 post_affine_async_1_edt,	// ocr_edt_ptr func_ptr
+			1,				// paramc
+			10);				// depc
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create a template for post_affine_async_2_edt function\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_affine_async_2_clg;
+	extern ocrGuid_t post_affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
+	retval = ocrEdtTemplateCreate(
+			&post_affine_async_2_clg,	// ocrGuid_t *new_guid
+			 post_affine_async_2_edt,	// ocr_edt_ptr func_ptr
+			0,				// paramc
+			10);				// depc
+	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for CCD_edt function\n");RAG_FLUSH;
 #endif
@@ -750,9 +783,37 @@ xe_printf("// create a template for CCD_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&CCD_clg,		// ocrGuid_t *new_guid
 			 CCD_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
-			4);			// depc
+			0,			// paramc
+			5);			// depc
 	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create a template for post_CFAR function\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_CFAR_clg;
+	retval = ocrEdtTemplateCreate(
+			&post_CFAR_clg,		// ocrGuid_t *new_guid
+			 post_CFAR_edt,		// ocr_edt_ptr func_ptr
+			0,			// paramc
+			3);			// depc
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create an edt for post_CFAR\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_CFAR_scg, post_CFAR_evg;
+	retval = ocrEdtCreate(
+			&post_CFAR_scg,		// *created_edt_guid
+			 post_CFAR_clg,		// edt_template_guid
+			EDT_PARAM_DEF,		// paramc
+			NULL,			// *paramv
+			EDT_PARAM_DEF,		// depc
+			NULL,			// *depv
+			EDT_PROP_FINISH,	// properties
+			NULL_GUID,		// affinity
+			&post_CFAR_evg);	// *outputEvent
+	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for CFAR_edt function\n");RAG_FLUSH;
 #endif
@@ -762,13 +823,15 @@ xe_printf("// create a template for CFAR_edt function\n");RAG_FLUSH;
 			&CFAR_clg,		// ocrGuid_t *new_guid
 			 CFAR_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
-			4);			// depc
+			5			// depc
+			);
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for CFAR_edt\n");RAG_FLUSH;
 #endif
-	ocrGuid_t CFAR_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_main_scg) };
+	ocrGuid_t CFAR_scg, CFAR_evg;
+{	uint64_t paramv[1] = { GUID_VALUE(post_CFAR_scg) };
 	retval = ocrEdtCreate(
 			&CFAR_scg,		// *created_edt_guid
 			 CFAR_clg,		// edt_template_guid
@@ -776,34 +839,83 @@ xe_printf("// create an edt for CFAR_edt\n");RAG_FLUSH;
 			paramv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
+			EDT_PROP_FINISH,	// properties
 			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
+			&CFAR_evg);		// *outputEvent
 }
 	assert(retval==0);
 
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for curImage/refImage CDD_edt\n");RAG_FLUSH;
 #endif
-	ocrGuid_t CCD_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(CFAR_scg) };
+	ocrGuid_t CCD_scg, CCD_evg;
 	retval = ocrEdtCreate(
 			&CCD_scg,		// *created_edt_guid
 			 CCD_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			NULL,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
+			EDT_PROP_FINISH,	// properties
 			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
+			&CCD_evg);		// *outputEven
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create an edt for post_Affine\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_Affine_scg, post_Affine_evg;
+	retval = ocrEdtCreate(
+			&post_Affine_scg,	// *created_edt_guid
+			 post_Affine_clg,	// edt_template_guid
+			EDT_PARAM_DEF,		// paramc
+			NULL,			// *paramv
+			EDT_PARAM_DEF,		// depc
+			NULL,			// *depv
+			EDT_PROP_FINISH,	// properties
+			NULL_GUID,		// affinity
+			&post_Affine_evg);	// *outputEvent
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create an edt for post_affine_async_2_edt\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_affine_async_2_scg, post_affine_async_2_evg;
+	retval = ocrEdtCreate(
+			&post_affine_async_2_scg,	// *created_edt_guid
+			 post_affine_async_2_clg, 	// edt_template_guid
+			EDT_PARAM_DEF,			// paramc
+			NULL,				// *paramv
+			EDT_PARAM_DEF,			// depc
+			NULL,				// *depv
+			EDT_PROP_FINISH,		// properties
+			NULL_GUID,			// affinity
+			&post_affine_async_2_evg);	// *outputEvent
+	assert(retval==0);
+
+#ifdef TRACE_LVL_1
+xe_printf("// create an edt post_affine_async_1_edt\n");RAG_FLUSH;
+#endif
+	ocrGuid_t post_affine_async_1_scg, post_affine_async_1_evg;
+{	uint64_t paramv[1] = { GUID_VALUE(post_affine_async_2_scg) };
+	retval = ocrEdtCreate(
+			&post_affine_async_1_scg,	// *created_edt_guid
+			 post_affine_async_1_clg, 	// edt_template_guid
+			EDT_PARAM_DEF,			// paramc
+			paramv,				// *paramv
+			EDT_PARAM_DEF,			// depc
+			NULL,				// *depv
+			EDT_PROP_FINISH,		// properties
+			NULL_GUID,			// affinity
+			&post_affine_async_1_evg);	// *outputEvent
 }
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for curImage/refImage Affine_edt\n");RAG_FLUSH;
 #endif
-	ocrGuid_t Affine_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(CCD_scg) };
+	ocrGuid_t Affine_scg, Affine_evg;
+{	uint64_t paramv[2] = { GUID_VALUE(post_Affine_scg), GUID_VALUE(post_affine_async_1_scg) };
 	retval = ocrEdtCreate(
 			&Affine_scg,		// *created_edt_guid
 			 Affine_clg,		// edt_template_guid
@@ -811,11 +923,12 @@ xe_printf("// create an edt for curImage/refImage Affine_edt\n");RAG_FLUSH;
 			paramv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
+			EDT_PROP_FINISH,	// properties
 			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
+			&Affine_evg);		// *outputEvent
 }
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for curImage FormImage_edt\n");RAG_FLUSH;
 #endif
@@ -833,6 +946,7 @@ xe_printf("// create an edt for curImage FormImage_edt\n");RAG_FLUSH;
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for curImage ReadData_edt\n");RAG_FLUSH;
 #endif
@@ -850,6 +964,7 @@ xe_printf("// create an edt for curImage ReadData_edt\n");RAG_FLUSH;
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for refImage FormImage_edt\n");RAG_FLUSH;
 #endif
@@ -867,6 +982,7 @@ xe_printf("// create an edt for refImage FormImage_edt\n");RAG_FLUSH;
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for refImage ReadData_edt\n");RAG_FLUSH;
 #endif
@@ -884,6 +1000,7 @@ xe_printf("// create an edt for refImage ReadData_edt\n");RAG_FLUSH;
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
+
 #ifdef TRACE_LVL_1
 xe_printf("// Read first set of input data\n");RAG_FLUSH;
 #endif
@@ -968,10 +1085,8 @@ xe_printf("// Thin-spline registration\n");RAG_FLUSH;
 xe_printf("// Coherent Change Detection (Ncor = %d)\n",image_params->Ncor);RAG_FLUSH;
 #endif
 		// Coherent Change Detection
-//RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
-// done by Affine_edt
-//RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
-// done by Affine_edt
+RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
+RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,corr_map_dbg,2);
 RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
 //	        CCD(curImage, refImage, corr_map, image_params);
@@ -979,12 +1094,18 @@ RAG_DEF_MACRO_SPAD(CCD_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
 #ifdef TRACE_LVL_1
 xe_printf("// Constant False Alarm Rate\n");RAG_FLUSH;
 #endif
-//RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
-// done by CCD_edt
+RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,2);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,Y_dbg,3);
 //		CFAR(corr_map, image_params, cfar_params, Y);
+
+RAG_DEF_MACRO_SPAD(post_affine_async_1_scg,NULL,NULL,NULL,NULL,Affine_evg,9);
+RAG_DEF_MACRO_SPAD(post_affine_async_2_scg,NULL,NULL,NULL,NULL,post_affine_async_1_evg,9);
+RAG_DEF_MACRO_SPAD(post_Affine_scg,        NULL,NULL,NULL,NULL,post_affine_async_2_evg,5);
+RAG_DEF_MACRO_SPAD(CCD_scg,                NULL,NULL,NULL,NULL,post_Affine_evg,4);
+RAG_DEF_MACRO_SPAD(CFAR_scg,               NULL,NULL,NULL,NULL,CCD_evg,4);
+RAG_DEF_MACRO_SPAD(post_CFAR_scg,          NULL,NULL,NULL,NULL,CFAR_evg,2);
 
 	} // while
 #ifdef TRACE_LVL_1
@@ -996,7 +1117,8 @@ xe_printf("// leave main_body_edt\n");RAG_FLUSH;
 ocrGuid_t post_main_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv)
 {
 	int retval;
-	assert(depc == 21);
+	assert(paramc==0);
+	assert(depc==22);
 	FILE *pInFile, *pInFile2, *pInFile3;
 #ifdef TRACE_LVL_1
 xe_printf("// enter post_main_edt\n");RAG_FLUSH;

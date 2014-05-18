@@ -117,7 +117,7 @@ struct file_args_t {
 };
 
 struct corners_t {
-	int m1; int m2; int n1; int n2; int slot;
+	int m1; int m2; int n1; int n2;
 };
 
 int  ReadParams(struct RadarParams*, struct ImageParams*, struct AffineParams*,
@@ -129,6 +129,7 @@ ocrGuid_t BackProj_edt (uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 ocrGuid_t Affine_edt   (uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
 ocrGuid_t CCD_edt      (uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
 ocrGuid_t CFAR_edt     (uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
+ocrGuid_t post_CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
 
 #if RAG_DIG_SPOT_ON
 struct complexData** DigSpot(float, float, struct DigSpotVars*, struct ImageParams*, struct RadarParams*, struct Inputs*);

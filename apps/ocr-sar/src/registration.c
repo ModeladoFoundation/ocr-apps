@@ -13,7 +13,6 @@
 
 struct async_1_args_t {
 	struct point ctrl_pt;
-	int slot;
 	ocrGuid_t output_dbg;
 	ocrGuid_t output_data_dbg;
 	ocrGuid_t curImage_dbg;
@@ -31,14 +30,13 @@ ocrGuid_t post_Affine_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrE
 #ifdef TRACE_LVL_2
 xe_printf("//// enter post_Affine_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	assert(depc==5);
+	assert(paramc==0);
+	assert(depc==6);  // 6th is post_affine_async_2_evg
 RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData *,output_data_ptr,NULL,NULL,output_data_dbg,1);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,3);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,4);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
 
 #ifdef TRACE_LVL_2
 xe_printf("// Overwrite current image with registered image\n");RAG_FLUSH;
@@ -51,8 +49,6 @@ xe_printf("// Overwrite current image with registered image\n");RAG_FLUSH;
 		BSMtoBSM(cur_m, out_m, image_params->Ix*sizeof(struct complexData));
 	}
 
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 	OCR_DB_RELEASE(curImage_dbg);
 	OCR_DB_RELEASE(refImage_dbg);
 	OCR_DB_RELEASE(image_params_dbg);
@@ -60,7 +56,7 @@ RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 #ifdef RAG_DRAM
 	dram_free(output_data_ptr,output_data_dbg);
 #else
-	 bsm_free(output_data_ptr,output_data_dbg);
+	bsm_free(output_data_ptr,output_data_dbg);
 #endif
 	bsm_free(output,output_dbg);
 #ifdef TRACE_LVL_2
@@ -74,53 +70,28 @@ ocrGuid_t Affine_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep
 #ifdef TRACE_LVL_2
 xe_printf("//// enter Affine_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
+	assert(paramc==2);
+	ocrGuid_t post_Affine_scg		= (ocrGuid_t)paramv[0]; // post_Afine_scg
+	ocrGuid_t post_affine_async_1_scg	= (ocrGuid_t)paramv[1]; // post_affine_async_1_scg
 	assert(depc==4);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-#ifdef TRACE_LVL_2
-xe_printf("//// create a template for post_Affine function\n");RAG_FLUSH;
-#endif
-	ocrGuid_t post_Affine_clg;
-	retval = ocrEdtTemplateCreate(
-			&post_Affine_clg,	// ocrGuid_t *new_guid
-			 post_Affine_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
-			5);			// depc
-	assert(retval==0);
-#ifdef TRACE_LVL_2
-xe_printf("//// create an edt for post_Affine\n");RAG_FLUSH;
-#endif
-	ocrGuid_t post_Affine_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(arg_scg) };
-	retval = ocrEdtCreate(
-			&post_Affine_scg,	// *created_edt_guid
-			 post_Affine_clg,	// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
+
 
 	ocrGuid_t Affine(
 		struct complexData **curImage,		ocrGuid_t curImage_dbg,
 		struct complexData **refImage,		ocrGuid_t refImage_dbg,
 		struct AffineParams *affine_params,	ocrGuid_t affine_params_dbg, struct AffineParams *affine_params_ptr,
 		struct ImageParams *image_params,	ocrGuid_t image_params_dbg,
-		ocrGuid_t post_Affine_sdg);
+		ocrGuid_t post_Affine_scg,		ocrGuid_t post_affine_async_1_scg);
 
 	Affine(	curImage,	curImage_dbg,
 		refImage,	refImage_dbg,
 		affine_params,	affine_params_dbg, affine_params_ptr,
 		image_params,	image_params_dbg,
-		post_Affine_scg);
+		post_Affine_scg,post_affine_async_1_scg);
 
 #ifdef TRACE_LVL_2
 xe_printf("//// leave Affine_edt\n");RAG_FLUSH;
@@ -133,13 +104,15 @@ void gauss_elim(float *AA[], float *x, int N);
 struct point corr2D(struct point ctrl_pt, int Nwin, int R,
     struct complexData**, struct complexData**, struct ImageParams*);
 
-ocrGuid_t affine_finish_1_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
+ocrGuid_t post_affine_async_1_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter affine_finish_1_edt %d\n",depc);RAG_FLUSH;
+xe_printf("////// enter post_affine_async_1_edt\n");RAG_FLUSH;
 #endif
-	assert(depc>=9);
-	if(depc==9) { xe_printf("// RAG // RAG // Need to handle N (affine_params->Nc) == 0 case // RAG // RAG// \n");RAG_FLUSH; }
+	assert(paramc==1);
+	ocrGuid_t post_affine_async_2_scg = (ocrGuid_t)paramv[0]; // post_affine_async_2_scg
+	assert(depc==10); // 10th is post_Affine_evg
+	if(depc!=10) { xe_printf("// RAG // RAG // Need to handle N (affine_params->Nc) == 0 case // RAG // RAG// \n");RAG_FLUSH; }
 RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_args_lcl,async_1_args_dbg,0);
 RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
@@ -281,8 +254,9 @@ printf("Wcy = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 	int AFFINE_ASYNC_2_BLOCK_SIZE_Y = blk_size(image_params->Iy,32);
 	assert( (image_params->Ix%AFFINE_ASYNC_2_BLOCK_SIZE_X) == 0);
 	assert( (image_params->Iy%AFFINE_ASYNC_2_BLOCK_SIZE_Y) == 0);
+
 #ifdef TRACE_LVL_3
-xe_printf("////// create a template for affine_async_2 function\n");RAG_FLUSH;
+xe_printf("////// create a template for affine_async_2_edt function\n");RAG_FLUSH;
 #endif
 ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
 	ocrGuid_t affine_async_2_clg;
@@ -293,37 +267,6 @@ ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 			6);			// depc
 	assert(retval==0);
 
-#ifdef TRACE_LVL_3
-xe_printf("////// create a template for affine_2_finish function\n");RAG_FLUSH;
-#endif
-ocrGuid_t affine_finish_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
-	ocrGuid_t affine_finish_2_clg;
-	retval = ocrEdtTemplateCreate(
-			&affine_finish_2_clg,	// ocrGuid_t *new_guid
-			 affine_finish_2_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
-			(image_params->Iy/AFFINE_ASYNC_2_BLOCK_SIZE_Y)*(image_params->Ix/AFFINE_ASYNC_2_BLOCK_SIZE_X)+9);	// depc
-	assert(retval==0);
-#ifdef TRACE_LVL_3
-xe_printf("////// create an edt for affine_finish_2\n");RAG_FLUSH;
-#endif
-	ocrGuid_t affine_finish_2_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(async_1_args->post_Affine_scg) };
-	retval = ocrEdtCreate(
-			&affine_finish_2_scg,	// *created_edt_guid
-			 affine_finish_2_clg,	// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
-
-	int slot = 0;
-
 	struct async_2_args_t *async_2_args,*async_2_args_ptr,async_2_args_lcl;
 	ocrGuid_t async_2_args_dbg;
 	async_2_args = &async_2_args_lcl;
@@ -332,20 +275,20 @@ xe_printf("////// create an edt for affine_finish_2\n");RAG_FLUSH;
 	SPADtoSPAD(async_2_args->Wcy,Wcy,6*sizeof(float));
 	REM_STX_ADDR(async_2_args_ptr,async_2_args_lcl,struct async_2_args_t);
 
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,Fx_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,Fy_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,A_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_2_scg,NULL,NULL,NULL,NULL,A_data_dbg,slot++);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,0);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,3);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,4);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,Fx_dbg,5);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,Fy_dbg,6);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,A_dbg,7);
+	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,A_data_dbg,8);
 
 	for(int m=0; m<image_params->Iy; m+=AFFINE_ASYNC_2_BLOCK_SIZE_Y) {
 		for(int n=0; n<image_params->Ix; n+=AFFINE_ASYNC_2_BLOCK_SIZE_X) {
 #ifdef TRACE_LVL_3
-xe_printf("////// create an edt for affine_async_2 slot %d\n",slot);RAG_FLUSH;
+xe_printf("////// create an edt for affine_async_2\n");RAG_FLUSH;
 #endif
 			struct corners_t *async_corners,*async_corners_ptr,async_corners_lcl;
 			ocrGuid_t async_corners_dbg;
@@ -353,7 +296,7 @@ xe_printf("////// create an edt for affine_async_2 slot %d\n",slot);RAG_FLUSH;
 			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
 
 			ocrGuid_t affine_async_2_scg;
-{			uint64_t paramv[1] = { GUID_VALUE(affine_finish_2_scg) };
+{			uint64_t paramv[1] = { GUID_VALUE(post_affine_async_2_scg) };
 			retval = ocrEdtCreate(
 					&affine_async_2_scg,	// *created_edt_guid
 					 affine_async_2_clg,	// edt_template_guid
@@ -371,7 +314,6 @@ xe_printf("////// create an edt for affine_async_2 slot %d\n",slot);RAG_FLUSH;
 			async_corners->m2   = m+AFFINE_ASYNC_2_BLOCK_SIZE_X;
 			async_corners->n1   = n;
 			async_corners->n2   = n+AFFINE_ASYNC_2_BLOCK_SIZE_Y;
-			async_corners->slot = slot++;
 			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 
 RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
@@ -385,14 +327,14 @@ RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,5);
 	} // for m
 
 #ifdef TRACE_LVL_3
-xe_printf("////// leave affine_finish_1_edt\n");RAG_FLUSH;
+xe_printf("////// leave post_affine_async_1_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
 
 ocrGuid_t affine_async_1_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
-	assert(paramc==1);
+	assert(paramc==0);
 	assert(depc==9);
 RAG_REF_MACRO_SPAD(struct async_1_args_t,async_1_args,async_1_args_ptr,async_1_args_lcl,async_1_args_dbg,0);
 RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,1);
@@ -403,12 +345,10 @@ RAG_REF_MACRO_BSM( int *,Fx,NULL,NULL,Fx_dbg,5);
 RAG_REF_MACRO_BSM( int *,Fy,NULL,NULL,Fy_dbg,6);
 RAG_REF_MACRO_BSM( int **,A,NULL,NULL,A_dbg,7);
 RAG_REF_MACRO_BSM( int *,A_data_ptr,NULL,NULL,A_data_dbg,8);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
 
 	struct point ctrl_pt = async_1_args->ctrl_pt;
-	int slot = async_1_args->slot;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter affine_async_1_edt slot %d\n",slot);RAG_FLUSH;
+xe_printf("////// enter affine_async_1_edt\n");RAG_FLUSH;
 #endif
 #if defined(TRACE_LVL_3) && !defined(RAG_SIM)
 printf("////// enter affine_async_1_edt ctrl_pt %d %d %f\n",ctrl_pt.x,ctrl_pt.y,ctrl_pt.p);RAG_FLUSH;
@@ -433,7 +373,7 @@ xe_printf("////// Only retain control points that exceed the threshold\n");RAG_F
 xe_printf("////// disp_vec.p >= affine_params->Tc\n");RAG_FLUSH;
 #endif
 
-        // Allocate slot and update Number of control points found
+        // Update Number of control points found
 		const int k = __sync_fetch_and_add(
 			((int *)(((char *)affine_params_ptr)
 		                + offsetof(struct AffineParams,Nc))),1);
@@ -453,24 +393,19 @@ xe_printf("////// Form Fx, Fy (k=%d) and A\n",k);RAG_FLUSH;
 		RAG_PUT_INT(A_k+5, ctrl_pt.x*ctrl_pt.y);
 
 	} // if above threshold
-#ifdef RAG_SIM_NULL_GUID_WORKAROUND
-        RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot);
-#else
-	RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
-#endif
 	bsm_free(async_1_args,async_1_args_dbg);
 #ifdef TRACE_LVL_3
-xe_printf("////// leave affine_async_1_edt slot %d\n",slot);RAG_FLUSH;
+xe_printf("////// leave affine_async_1_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
 
-ocrGuid_t affine_finish_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
+ocrGuid_t post_affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
 #ifdef TRACE_LVL_3
-xe_printf("////// enter affine_finish_2_edt %d\n",depc);RAG_FLUSH;
+xe_printf("////// enter post_affine_async_2_edt\n");RAG_FLUSH;
 #endif
-	assert(depc>9);
+	assert(depc==10); // 10th post_affine_async_1_evg
 RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,0);
 RAG_REF_MACRO_PASS(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
@@ -481,7 +416,7 @@ RAG_REF_MACRO_BSM( int *,Fy,NULL,NULL,Fy_dbg,6);
 RAG_REF_MACRO_BSM( int **,A,NULL,NULL,A_dbg,7);
 RAG_REF_MACRO_BSM( int *,A_data_ptr,NULL,NULL,A_data_dbg,8);
 
-	RAG_DEF_MACRO_PASS(async_1_args->post_Affine_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,0);
+// RAG	RAG_DEF_MACRO_PASS(async_1_args->post_Affine_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,0);
 
 #ifdef TRACE_LVL_3
 xe_printf("// Free data blocks\n");RAG_FLUSH;
@@ -495,14 +430,18 @@ xe_printf("// Free data blocks\n");RAG_FLUSH;
 	bsm_free(async_2_args_ptr,async_2_args_dbg);
 
 #ifdef TRACE_LVL_3
-xe_printf("////// leave affine_finish_2_edt\n");RAG_FLUSH;
+xe_printf("////// leave post_affine_async_2_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
 
 ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+#ifdef TRACE_LVL_3
+xe_printf("////// enter affine_async_2_edt\n");RAG_FLUSH;
+#endif
 	assert(paramc==1);
+	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
 	assert(depc==6);
 RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
 RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,1);
@@ -510,7 +449,6 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,3);
 RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,4);
 RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,5);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
 
 	int aa, bb;
 	float Px, Py, w, v;
@@ -519,10 +457,6 @@ RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_a
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
-	int slot = corners->slot;
-#ifdef TRACE_LVL_3
-xe_printf("////// enter affine_async_2_edt slot %d\n",slot);RAG_FLUSH;
-#endif
 	float Wcx[6];
 	SPADtoSPAD(Wcx,async_2_args->Wcx,6*sizeof(float));
 #if defined(DEBUG) && !defined(RAG_SIM)
@@ -580,14 +514,9 @@ printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 		} // for n
 	} // for m
 
-#ifdef RAG_SIM_NULL_GUID_WORKAROUND
-        RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot);
-#else
-	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
-#endif
 	bsm_free(corners,corners_dbg);
 #ifdef TRACE_LVL_3
-xe_printf("////// leave affine_async_2_edt slot %d\n",slot);RAG_FLUSH;
+xe_printf("////// leave affine_async_2_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -597,7 +526,7 @@ ocrGuid_t Affine(
     struct complexData **refImage,	ocrGuid_t refImage_dbg,
     struct AffineParams *affine_params,	ocrGuid_t affine_params_dbg, struct AffineParams *affine_params_ptr,
     struct ImageParams *image_params,	ocrGuid_t image_params_dbg,
-    ocrGuid_t post_Affine_scg)
+    ocrGuid_t post_Affine_scg,		ocrGuid_t post_affine_async_1_scg)
 {
 	int retval;
 #ifdef TRACE_LVL_2
@@ -692,77 +621,57 @@ xe_printf("setting DRAM version of Nc to zero, will be updated with __sync_fetch
 	int *affine_params_Nc = (int *)(((char *)affine_params_ptr)+offsetof(struct AffineParams,Nc));
 	RAG_PUT_INT(affine_params_Nc,affine_params->Nc);	// global copy of Nc
 	assert(*affine_params_Nc==affine_params->Nc);
+
 #ifdef TRACE_LVL_2
-xe_printf("//// create a template for affine_async_1 function (N=%d)\n",N);RAG_FLUSH;
+xe_printf("//// create a template for affine_async_1_edt function (N=%d)\n",N);RAG_FLUSH;
 #endif
 	ocrGuid_t affine_async_1_clg;
 	retval = ocrEdtTemplateCreate(
 			&affine_async_1_clg,	// ocrGuid_t *new_guid
 			 affine_async_1_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
+			0,			// paramc
 			9);			// depc
 	assert(retval==0);
 
 #ifdef TRACE_LVL_2
-xe_printf("//// create a template for affine_1_finish function\n");RAG_FLUSH;
+xe_printf("//// create a ctrl_pt affine_async_1_edt\n");RAG_FLUSH;
 #endif
-ocrGuid_t affine_finish_1_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv);
-	ocrGuid_t affine_finish_1_clg;
-	retval = ocrEdtTemplateCreate(
-			&affine_finish_1_clg,	// ocrGuid_t *new_guid
-			 affine_finish_1_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
-			N*N+9);			// depc
-	assert(retval==0);
-#ifdef TRACE_LVL_2
-xe_printf("//// create an edt for affine_finish_1\n");RAG_FLUSH;
-#endif
-	ocrGuid_t affine_finish_1_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_Affine_scg) };
-	retval = ocrEdtCreate(
-			&affine_finish_1_scg,	// *created_edt_guid
-			 affine_finish_1_clg,	// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
-	int slot = 0;
 	struct point ctrl_pt;
 	ctrl_pt.y =  0;
 	ctrl_pt.x =  0;
 	ctrl_pt.p = -1;
-	struct async_1_args_t *finish_1_args,*finish_1_args_ptr,finish_1_args_lcl;
-	ocrGuid_t finish_1_args_dbg;
-	finish_1_args = &finish_1_args_lcl;
-	finish_1_args_ptr = bsm_malloc(&finish_1_args_dbg,sizeof(struct async_1_args_t));
-	finish_1_args->ctrl_pt = ctrl_pt;
-	finish_1_args->slot    = slot;
-	finish_1_args->output_dbg  = output_dbg;
-	finish_1_args->output_data_dbg  = output_data_dbg;
-	finish_1_args->curImage_dbg     = curImage_dbg;
-	finish_1_args->refImage_dbg     = refImage_dbg;
-	finish_1_args->post_Affine_scg  = post_Affine_scg;
-	REM_STX_ADDR(finish_1_args_ptr,finish_1_args_lcl,struct async_1_args_t);
+#ifdef TRACE_LVL_2
+xe_printf("//// create a ctrl_pt post_affine_async_1_edt\n");RAG_FLUSH;
+#endif
+	struct async_1_args_t *post_affine_async_1_args,*post_affine_async_1_args_ptr,post_affine_async_1_args_lcl;
+	ocrGuid_t post_affine_async_1_args_dbg;
+	post_affine_async_1_args = &post_affine_async_1_args_lcl;
+	post_affine_async_1_args_ptr = bsm_malloc(&post_affine_async_1_args_dbg,sizeof(struct async_1_args_t));
+	post_affine_async_1_args->ctrl_pt = ctrl_pt;
+	post_affine_async_1_args->output_dbg  = output_dbg;
+	post_affine_async_1_args->output_data_dbg  = output_data_dbg;
+	post_affine_async_1_args->curImage_dbg     = curImage_dbg;
+	post_affine_async_1_args->refImage_dbg     = refImage_dbg;
+	post_affine_async_1_args->post_Affine_scg  = post_Affine_scg;
+	REM_STX_ADDR(post_affine_async_1_args_ptr,post_affine_async_1_args_lcl,struct async_1_args_t);
 
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,finish_1_args_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,affine_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,image_params_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,output_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,Fx_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,Fy_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,A_dbg,slot++);
-	RAG_DEF_MACRO_PASS(affine_finish_1_scg,NULL,NULL,NULL,NULL,A_data_dbg,slot++);
+#ifdef TRACE_LVL_2
+xe_printf("//// statisy post_affine_async_1_edt\n");RAG_FLUSH;
+#endif
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,post_affine_async_1_args_dbg,0);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,affine_params_dbg,1);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,output_dbg,4);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,Fx_dbg,5);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,Fy_dbg,6);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,A_dbg,7);
+	RAG_DEF_MACRO_PASS(post_affine_async_1_scg,NULL,NULL,NULL,NULL,A_data_dbg,8);
 
 	for(int m=0; m<N; m++) {
 		for(int n=0; n<N; n++) {
 #ifdef TRACE_LVL_2
-xe_printf("//// create an edt for affine_async_1 slot %d\n",slot);RAG_FLUSH;
+xe_printf("//// create an edt for affine_async_1 m=%d n=%d\n",m,n);RAG_FLUSH;
 #endif
 			struct point ctrl_pt;
 			ctrl_pt.y = m*dy + min;
@@ -772,25 +681,22 @@ xe_printf("//// create an edt for affine_async_1 slot %d\n",slot);RAG_FLUSH;
 			async_1_args = &async_1_args_lcl;
 			async_1_args_ptr = bsm_malloc(&async_1_args_dbg,sizeof(struct async_1_args_t));
 			async_1_args->ctrl_pt = ctrl_pt;
-			async_1_args->slot   = slot++;
 			async_1_args->output_dbg  = output_dbg;
 			async_1_args->output_data_dbg  = output_data_dbg;
 			async_1_args->curImage_dbg     = curImage_dbg;
 			async_1_args->refImage_dbg     = refImage_dbg;
 			async_1_args->post_Affine_scg  = post_Affine_scg;
 			ocrGuid_t affine_async_1_scg;
-{			uint64_t paramv[1] = { GUID_VALUE(affine_finish_1_scg) };
 			retval = ocrEdtCreate(
 					&affine_async_1_scg,	// *created_edt_guid
 					 affine_async_1_clg,	// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					paramv,			// *paramv
+					NULL,			// *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
 					NULL_GUID,		// affinity
 					NULL);			// *outputEvent
-}
 			assert(retval==0);
 			REM_STX_ADDR(async_1_args_ptr,async_1_args_lcl,struct async_1_args_t);
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,0);
@@ -806,8 +712,7 @@ RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,A_data_dbg,8);
 		} // for n
 	} // for m
 
-//RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_dbg,0);
-//save for async_finish_2
+RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_dbg,0);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,output_data_dbg,1);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
 RAG_DEF_MACRO_PASS(post_Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,3);

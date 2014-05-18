@@ -11,29 +11,9 @@
 #include "common.h"
 #endif
 
-#ifdef RAG_FINISH_EDT
-#else
-ocrGuid_t backproject_finish_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
-  int retval;
-#ifdef TRACE_LVL_4
-  xe_printf("//////// enter backproject_finish\n");RAG_FLUSH;
-#endif
-  assert(paramc==1);
-  assert(depc>1);
-  xe_printf("//////// read paramv\n");RAG_FLUSH;
-  ocrGuid_t arg_scg = (ocrGuid_t) paramv[0];
-  xe_printf("//////// add depend %16.16lx, %16.16lx\n", GUID_VALUE(arg_scg),paramv[0]);RAG_FLUSH;
-  RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,depv[0].guid,0); // post_FormImae_scg
-#ifdef TRACE_LVL_4
-  xe_printf("//////// leave backproject_finish\n");RAG_FLUSH;
-#endif
-  return NULL_GUID;
-}
-#endif
-
 ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
-  assert(paramc==1);
+  assert(paramc==0);
   assert(depc==5);
   RAG_REF_MACRO_SPAD(struct Inputs,in_junk,in_ptr,in,in_dbg,0);
   RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,1);
@@ -52,10 +32,9 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   int m2   = corners->m2;
   int n1   = corners->n1;
   int n2   = corners->n2;
-  int slot = corners->slot;
 
 #ifdef TRACE_LVL_4
-  xe_printf("//////// enter backproject_async slot %d\n",slot);RAG_FLUSH;
+  xe_printf("//////// enter backproject_async\n");RAG_FLUSH;
 #endif
 
 #ifdef GANESH_STRENGTH_RED_OPT
@@ -89,7 +68,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   if(Phi_m == NULL){xe_printf("error malloc of Phi_m\n");RAG_FLUSH;xe_exit(1);}
 #ifdef RAG_SPAD
 #ifdef TRACE_LVL_5
-  xe_printf("////////// before spad setup in backproject_async slot %d\n",slot);RAG_FLUSH;
+  xe_printf("////////// before spad setup in backproject_async\n");RAG_FLUSH;
 #endif
   struct complexData **image_ptr;
   image_ptr = spad_malloc(&image_ptr_dbg, (m2-m1)*sizeof(struct complexData *));
@@ -104,7 +83,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
     BSMtoSPAD(image_ptr[m],image_m+n1,(n2-n1)*sizeof(struct complexData));
   }
 #ifdef TRACE_LVL_5
-  xe_printf("////////// after spad setup in backproject_async slot %d\n",slot);RAG_FLUSH;
+  xe_printf("////////// after spad setup in backproject_async\n");RAG_FLUSH;
 #endif
 #endif
 #ifdef RAG_HIST_BIN_DIFFS
@@ -122,12 +101,12 @@ assert(&image[m+m1][n1] == (image_m+n1));
     assert(platpos[k][2] == platpos_k_012[2]);
 
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute distance to R_mid (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute distance to R_mid\n");RAG_FLUSH;
 #endif
     struct complexData *Xin_k;
     Xin_k = (struct complexData *)RAG_GET_PTR(Xin+k);
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute distance to R_mid (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute distance to R_mid\n");RAG_FLUSH;
 #endif
     double zr_mid  = 0.0f - platpos_k_012[2]; // Z
     double zr_mid2 = zr_mid * zr_mid;
@@ -138,7 +117,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
     double xr_mid2 = xr_mid * xr_mid;
     double R_mid = sqrt_rn (sqrt_arg + xr_mid2);
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute coefficients for computing bin (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute coefficients for computing bin\n");RAG_FLUSH;
 #endif
     float ax  =  xr_mid/R_mid;
     float ay  =  yr_mid/R_mid;
@@ -156,7 +135,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
       A_m[n] = A_m[n-1] + (ax+bx) + (2*(n-1)-blk_size_whole)*bx;
     }
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute cofficients for computing arg (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute cofficients for computing arg\n");RAG_FLUSH;
 #endif
     float ux = ku2dr*ax;
     float uy = ku2dr*ay;
@@ -192,7 +171,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
     UX_VX.imag = sinf(ux+(1-blk_size_whole)*vx);
 #endif
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute Phi_m (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute Phi_m\n");RAG_FLUSH;
 #endif
 #ifdef RAG_SINCOS
     sincosf((-blk_size_half*ux + blk_size_whole*blk_size_whole/4*vx), &(Phi_m[0].imag), &(Phi_m[0].real));
@@ -210,7 +189,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
       UX_VX.imag = tmp.imag;
     }
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute Phi_n (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute Phi_n\n");RAG_FLUSH;
 #endif
     double theta_mid = ku2*R_mid;
     double arg_mid = theta_mid - blk_size_half*uy + blk_size_whole*blk_size_whole/4*vy;
@@ -222,7 +201,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
     Psi_n.imag = sinf(arg_mid-2*Pi*round(arg_mid/2/Pi));
 #endif
 #ifdef TRACE_LVL_5
-  xe_printf("////////// compute Gamma_m (slot %d)\n",slot);RAG_FLUSH;
+  xe_printf("////////// compute Gamma_m\n");RAG_FLUSH;
 #endif
     struct complexData Gamma_m;
 #ifdef RAG_SINCOS
@@ -450,16 +429,7 @@ assert(&image[m+m1][n1] == (image_m+n1));
 #endif
 #endif // RAG_PETER_DIST_AND_TRIG
 #ifdef TRACE_LVL_4
-  xe_printf("//////// leave backproject_async slot %d\n",slot);RAG_FLUSH;
-#endif
-#ifdef RAG_FINISH_EDT
-#else
-  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-#ifdef RAG_SIM_NULL_GUID_WORKAROUND
-  RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,image_dbg,slot);
-#else
-  RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
-#endif
+  xe_printf("//////// leave backproject_async\n");RAG_FLUSH;
 #endif
   bsm_free(corners_ptr,corners_dbg);
   return NULL_GUID;
@@ -470,7 +440,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 #ifdef TRACE_LVL_3
   xe_printf("////// enter BackProj_edt\n");RAG_FLUSH;
 #endif
-  assert(paramc==1);
+  assert(paramc==0);
   assert(depc==6);
   RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,0);
   RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,1);
@@ -484,8 +454,6 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   int m2   = corners->m2;
   int n1   = corners->n1;
   int n2   = corners->n2;
-  int slot = corners->slot;
-  assert(slot==0);
   if(image_params->F > 1) {
     fftwf_complex *input, *fft_result, *ifft_result;
     ocrGuid_t input_dbg, fft_result_dbg, ifft_result_dbg;
@@ -575,44 +543,14 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     ocrGuid_t backproject_async_clg;
     retval = ocrEdtTemplateCreate(
 	&backproject_async_clg, // ocrGuid_t *new_guid
-	backproject_async_edt,	// ocr_edt_ptr func_ptr
-	1,			// paramc
+	 backproject_async_edt,	// ocr_edt_ptr func_ptr
+	0,			// paramc
 	5);			// depc
     assert(retval==0);
-#ifdef RAG_FINISH_EDT
-#else
-    // create a template for backproject_finish function
-    ocrGuid_t backproject_finish_clg;
-    retval = ocrEdtTemplateCreate(
-	&backproject_finish_clg,// ocrGuid_t *new_guid
-	backproject_finish_edt,	// ocr_edt_ptr func_ptr
-	1,			// paramc
-	((m2-m1)/BACK_PROJ_ASYNC_BLOCK_SIZE_M)*((n2-n1)/BACK_PROJ_ASYNC_BLOCK_SIZE_N)+1); // depc
-    assert(retval==0);
-    // create an edt for backproject_finish
-    ocrGuid_t backproject_finish_scg, backproject_finish_evg;
-    retval = ocrEdtCreate(
-			&backproject_finish_scg,// *created_edt_guid
-			 backproject_finish_clg,// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-    assert(retval==0);
-#endif
-#ifdef RAG_FINISH_EDT
-//  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-//  RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,in_dbg,0); // post_FormImage_scg
-#else
-    RAG_DEF_MACRO_PASS(backproject_finish_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
-#endif
     for(int m=m1; m<m2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_M) {
       for(int n=n1; n<n2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_N) {
 #ifdef TRACE_LVL_3
-	xe_printf("////// create an edt for backproject_async slot %d\n",slot);RAG_FLUSH;
+	xe_printf("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
 	struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; ocrGuid_t async_corners_dbg;
 	async_corners = &async_corners_lcl;
@@ -621,27 +559,18 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	async_corners->m2   = m+BACK_PROJ_ASYNC_BLOCK_SIZE_M;
 	async_corners->n1   = n;
 	async_corners->n2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE_N;
-	async_corners->slot = slot++;
 	REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 	ocrGuid_t backproject_async_scg;
-{	uint64_t paramv[1] = {
-#ifdef RAG_FINISH_EDT
-			0
-#else
-			GUID_VALUE(backproject_finish_scg)
-#endif
-			 };
 	retval = ocrEdtCreate(
 			&backproject_async_scg,	// *created_edt_guid
 			 backproject_async_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			NULL,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
 			NULL_GUID,		// affinity
 			NULL);			// *outputEvent
-}
 	assert(retval==0);
 
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,tmp_in_dbg,0); // Xup,platpos
@@ -672,44 +601,15 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     ocrGuid_t backproject_async_clg;
     retval = ocrEdtTemplateCreate(
 	&backproject_async_clg, // ocrGuid_t *new_guid
-	backproject_async_edt,	// ocr_edt_ptr func_ptr
-	1,			// paramc
+	 backproject_async_edt,	// ocr_edt_ptr func_ptr
+	0,			// paramc
 	5);			// depc
     assert(retval==0);
-#ifdef RAG_FINISH_EDT
-#else
-    // create a template for backproject_finish function
-    ocrGuid_t backproject_finish_clg;
-    retval = ocrEdtTemplateCreate(
-	&backproject_finish_clg,// ocrGuid_t *new_guid
-	backproject_finish_edt,	// ocr_edt_ptr func_ptr
-	1,			// paramc
-	((m2-m1)/BACK_PROJ_ASYNC_BLOCK_SIZE_M)*((n2-n1)/BACK_PROJ_ASYNC_BLOCK_SIZE_N)+1); // depc
-    assert(retval==0);
-    // create an edt for backproject_finish
-    ocrGuid_t backproject_finish_scg, backproject_finish_evg;
-    retval = ocrEdtCreate(
-			&backproject_finish_scg,// *created_edt_guid
-			 backproject_finish_clg,// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-    assert(retval==0);
-#endif
-#ifdef RAG_FINISH_EDT
-//  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-//  RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,in_dbg,0); // post_FormImage_scg
-#else
-    RAG_DEF_MACRO_PASS(backproject_finish_scg,NULL,NULL,NULL,NULL,in_dbg,slot++);
-#endif
+
     for(int m=m1; m<m2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_M) {
       for(int n=n1; n<n2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_N) {
 #ifdef TRACE_LVL_3
-	xe_printf("////// create an edt for backproject_async slot %d\n",slot);RAG_FLUSH;
+	xe_printf("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
 	struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; ocrGuid_t async_corners_dbg;
 	async_corners = &async_corners_lcl;
@@ -718,28 +618,18 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	async_corners->m2   = m+BACK_PROJ_ASYNC_BLOCK_SIZE_M;
 	async_corners->n1   = n;
 	async_corners->n2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE_N;
-	async_corners->slot = slot++;
 	REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 	ocrGuid_t backproject_async_scg;
-{	uint64_t paramv[1] = {
-#ifdef RAG_FINISH_EDT
-			0
-#else
-			GUID_VALUE(backproject_finish_scg)
-#endif
-		 };
-
 	retval = ocrEdtCreate(
 			&backproject_async_scg,	// *created_edt_guid
 			 backproject_async_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			NULL,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
 			NULL_GUID,		// affinity
 			NULL);			// *outputEvent
-}
 	assert(retval==0);
 
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,in_dbg,0);	// Xin,platpos

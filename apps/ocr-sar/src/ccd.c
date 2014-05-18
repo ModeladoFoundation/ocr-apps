@@ -14,106 +14,43 @@
 #define MAX_Ncor (10)
 #define MAX_Ncor_sqr (MAX_Ncor*MAX_Ncor)
 
-ocrGuid_t post_CCD_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
-	int retval;
-#ifdef TRACE_LVL_2
-xe_printf("//// enter post_CCD_edt\n");RAG_FLUSH;
-#endif
-	assert(paramc==1);
-	assert(depc==1);
-RAG_REF_MACRO_BSM( struct points *,corr_map,NULL,NULL,corr_map_dbg,0);
-
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
-	OCR_DB_RELEASE(corr_map_dbg);
-#ifdef TRACE_LVL_2
-xe_printf("//// leave post_CCD_edt\n");RAG_FLUSH;
-#endif
-	return NULL_GUID;
-}
-
 ocrGuid_t CCD_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
 #ifdef TRACE_LVL_2
 xe_printf("//// enter CCD_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	assert(depc==4);
+	assert(paramc==0);
+	assert(depc==5); // 5th is post_Affine_evg
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-
-#ifdef TRACE_LVL_2
-xe_printf("//// create a template for post_CCD function\n");RAG_FLUSH;
-#endif
-	ocrGuid_t post_CCD_clg;
-	retval = ocrEdtTemplateCreate(
-			&post_CCD_clg,		// ocrGuid_t *new_guid
-			 post_CCD_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
-			1);			// depc
-	assert(retval==0);
-
-#ifdef TRACE_LVL_2
-xe_printf("//// create an edt for post_CCD\n");RAG_FLUSH;
-#endif
-	ocrGuid_t post_CCD_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(arg_scg) };
-	retval = ocrEdtCreate(
-			&post_CCD_scg,		// *created_edt_guid
-			 post_CCD_clg,		// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
 
 	void CCD(
 		struct complexData **curImage,    ocrGuid_t curImage_dbg,
 		struct complexData **refImage,    ocrGuid_t refImage_dbg,
 		struct point **corr_map,          ocrGuid_t corr_map_dbg,
-		struct ImageParams *image_params, ocrGuid_t image_params_dbg,
-		ocrGuid_t post_CCD_scg);
+		struct ImageParams *image_params, ocrGuid_t image_params_dbg);
 
 	CCD(	curImage,	curImage_dbg,
 		refImage,	refImage_dbg,
 		corr_map,	corr_map_dbg,
-		image_params,	image_params_dbg,
-		post_CCD_scg);
+		image_params,	image_params_dbg);
 
-	return NULL_GUID;
-}
-
-ocrGuid_t ccd_finish_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
-	int retval;
-#ifdef TRACE_LVL_3
-xe_printf("////// enter ccd_finish_edt %d\n",depc);RAG_FLUSH;
-#endif
-	assert(paramc==1);
-	assert(depc>1);
-	RAG_REF_MACRO_BSM( struct poinsts *,corr_map,NULL,NULL,corr_map_dbg,0);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-	RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
-#ifdef TRACE_LVL_3
-xe_printf("////// leave ccd_finish_edt\n");RAG_FLUSH;
+#ifdef TRACE_LVL_2
+xe_printf("//// leave CCD_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
 
 ocrGuid_t ccd_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
-	assert(paramc==1);
+	assert(paramc==0);
 	assert(depc==5);
 #ifdef TRACE_LVL_3
 xe_printf("////// enter ccd_async_edt\n");RAG_FLUSH;
 #endif
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
+//	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
 RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,1);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,2);
@@ -124,10 +61,9 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
-	int slot = corners->slot;
         int Ncor_sqr = Ncor * Ncor;
 #ifdef DEBUG
-xe_printf("////// ccd_async m1 m2 n1 n2 s# %d %d %d %d (%d)\n",m1,m2,n1,m2,slot);RAG_FLUSH;
+xe_printf("////// ccd_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUSH;
 #endif
         for(int m=m1; m<m2; m++) {
             int mIndex = (Ncor-1)/2 + m;
@@ -197,11 +133,6 @@ xe_printf("////// ccd_async m1 m2 n1 n2 s# %d %d %d %d (%d)\n",m1,m2,n1,m2,slot)
             } // for n
 	} // for n
 
-#ifdef RAG_SIM_NULL_GUID_WORKAROUND
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,slot);
-#else
-RAG_DEF_MACRO_PASS(arg_scg,NULL,NULL,NULL,NULL,NULL_GUID,slot);
-#endif
 	bsm_free(corners,corners_dbg);
 #ifdef TRACE_LVL_3
 xe_printf("////// leave ccd_async_edt\n");RAG_FLUSH;
@@ -213,8 +144,7 @@ void
 CCD(	struct complexData **curImage,    ocrGuid_t curImage_dbg,
 	struct complexData **refImage,    ocrGuid_t refImage_dbg,
 	struct point **corr_map,          ocrGuid_t corr_map_dbg,
-	struct ImageParams *image_params, ocrGuid_t image_params_dbg,
-	ocrGuid_t post_CCD_scg)
+	struct ImageParams *image_params, ocrGuid_t image_params_dbg)
 {
 	int retval;
 #ifdef TRACE_LVL_2
@@ -230,7 +160,7 @@ xe_printf("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_par
 	int CCD_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CCD_ASYNC_BLOCK_SIZE_M)==0);
 	assert((Nwins%CCD_ASYNC_BLOCK_SIZE_N)==0);
-///////////// create async and finish, instance of finish
+///////////// create async
 #ifdef TRACE_LVL_2
 xe_printf("//// create a template for ccd_async function\n");RAG_FLUSH;
 #endif
@@ -238,58 +168,26 @@ xe_printf("//// create a template for ccd_async function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&ccd_async_clg,		// ocrGuid_t *new_guid
 			 ccd_async_edt, 	// ocr_edt_ptr func_ptr
-			1,			// paramc
+			0,			// paramc
 			5);			// depc
 	assert(retval==0);
-
-#ifdef TRACE_LVL_2
-xe_printf("//// create a template for ccd_finish function\n");RAG_FLUSH;
-#endif
-	ocrGuid_t ccd_finish_clg;
-	retval = ocrEdtTemplateCreate(
-			&ccd_finish_clg,	// ocrGuid_t *new_guid
-			 ccd_finish_edt,	// ocr_edt_ptr func_ptr
-			1,
-			((Mwins-0)/CCD_ASYNC_BLOCK_SIZE_M)*((Nwins-0)/CCD_ASYNC_BLOCK_SIZE_N)+1); // depc
-	assert(retval==0);
-#ifdef TRACE_LVL_2
-xe_printf("//// create an edt for ccd_finish\n");RAG_FLUSH;
-#endif
-	ocrGuid_t ccd_finish_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_CCD_scg) };
-	retval = ocrEdtCreate(
-			&ccd_finish_scg,		// *created_edt_guid
-			 ccd_finish_clg,		// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
-			NULL);			// *outputEvent
-}
-	assert(retval==0);
-	int slot = 0;
-RAG_DEF_MACRO_PASS(ccd_finish_scg,NULL,NULL,NULL,NULL,corr_map_dbg, slot++);
 
 	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE_N) {
 #ifdef TRACE_LVL_2
-xe_printf("//// create an edt for ccd_async slot %d\n",slot);RAG_FLUSH;
+xe_printf("//// create an edt for ccd_async\n");RAG_FLUSH;
 #endif
 			ocrGuid_t ccd_async_scg;
-{			uint64_t paramv[1] = { GUID_VALUE(ccd_finish_scg) };
 			retval = ocrEdtCreate(
 					&ccd_async_scg,		// *created_edt_guid
 					 ccd_async_clg,		// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					paramv,			// *paramv
+					NULL,			// *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
 					NULL_GUID,		// affinity
 					NULL);			// *outputEvent
-}
 			assert(retval==0);
 			struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; ocrGuid_t async_corners_dbg;
 			async_corners = &async_corners_lcl;
@@ -298,7 +196,6 @@ xe_printf("//// create an edt for ccd_async slot %d\n",slot);RAG_FLUSH;
 			async_corners->m2   = m+CCD_ASYNC_BLOCK_SIZE_M;
 			async_corners->n1   = n;
 			async_corners->n2   = n+CCD_ASYNC_BLOCK_SIZE_N;
-			async_corners->slot = slot++;
 			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
 RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
 RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,curImage_dbg,1);

@@ -167,8 +167,8 @@ int ReadParams(struct RadarParams *radar_params, struct ImageParams *image_param
 ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
   assert(paramc==1);
+  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // FormImage_scg or refFormImage_scg
   assert(depc==3);
-  ocrGuid_t arg_scg;
   RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,0);
   RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
   RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,2);
@@ -188,7 +188,6 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 
   REM_STX_ADDR(image_params_ptr,image_params_lcl,struct ImageParams);
 
-  arg_scg = (ocrGuid_t)paramv[0];
   RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,in_dbg,0);
 
   OCR_DB_RELEASE(file_args_dbg);
