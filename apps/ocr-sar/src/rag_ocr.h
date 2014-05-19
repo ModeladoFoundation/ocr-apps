@@ -142,27 +142,6 @@ void rag_memcpy(void *out, void *in, size_t size);
 #define REM_ST64_ADDR(out_ptr,in_var) rag_memcpy(out_ptr,&in_var,8*sizeof(char))
 #endif
 
-int32_t  RAG_GET_INT(int32_t    *addr);
-void     RAG_PUT_INT(int32_t    *addr, int32_t  value);
-
-uint32_t RAG_GET_UINT(uint32_t  *addr);
-void     RAG_PUT_UINT(uint32_t  *addr, uint32_t value);
-
-int64_t  RAG_GET_LONG(int64_t   *addr);
-void     RAG_PUT_LONG(int64_t   *addr, int64_t  value);
-
-uint64_t RAG_GET_ULONG(uint64_t *addr);
-void     RAG_PUT_ULONG(uint64_t *addr, uint64_t value);
-
-float    RAG_GET_FLT(float      *addr);
-void     RAG_PUT_FLT(float      *addr, float    value);
-
-double   RAG_GET_DBL(double     *addr);
-void     RAG_PUT_DBL(double     *addr, double   value);
-
-void *   RAG_GET_PTR(void       *addr);
-void     RAG_PUT_PTR(void       *addr, void *   value);
-
 // _clg => edt template guid
 // _scg => edt task guid
 // _dbg => data block guid
@@ -185,12 +164,18 @@ void  dram_free(void *dbp, ocrGuid_t dbg );
 void  dram_memset(void *out, int val, size_t size);
 
 void GlobalPtrToDataBlock(void *out, SHARED void *in, size_t size);
+
 void SPADtoSPAD(void *out, void *in, size_t size);
-void SPADtoBSM(void *out, void *in, size_t size);
-void BSMtoSPAD(void *out, void *in, size_t size);
-void BSMtoBSM(void *out, void *in, size_t size);
+void SPADtoBSM( void *out, void *in, size_t size);
 void SPADtoDRAM(void *out, void *in, size_t size);
+
+void BSMtoSPAD(void *out, void *in, size_t size);
+void BSMtoBSM( void *out, void *in, size_t size);
+void BSMtoDRAM(void *out, void *in, size_t size);
+
 void DRAMtoSPAD(void *out, void *in, size_t size);
+void DRAMtoBSM( void *out, void *in, size_t size);
+void DRAMtoDRAM(void *out, void *in, size_t size);
 
 #define RAG_DEF_MACRO_SPAD(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
  	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0);

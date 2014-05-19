@@ -45,25 +45,24 @@ xe_printf("//// leave CCD_edt\n");RAG_FLUSH;
 
 ocrGuid_t ccd_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
-	assert(paramc==0);
-	assert(depc==5);
-#ifdef TRACE_LVL_3
-xe_printf("////// enter ccd_async_edt\n");RAG_FLUSH;
-#endif
-//	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
-RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,1);
-RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,2);
-RAG_REF_MACRO_BSM( struct points **,corr_map,NULL,NULL,corr_map_dbg,3);
-RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,4);
-	int Ncor = image_params->Ncor;
+	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
+	struct corners_t *corners = (struct corners_t *)paramv;
 	int m1   = corners->m1;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
+	assert(depc==4);
+#ifdef TRACE_LVL_3
+xe_printf("////// enter ccd_async_edt\n");RAG_FLUSH;
+#endif
+RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
+RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
+RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
+RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
+	int Ncor = image_params->Ncor;
         int Ncor_sqr = Ncor * Ncor;
 #ifdef DEBUG
-xe_printf("////// ccd_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUSH;
+xe_printf("////// ccd_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
 #endif
         for(int m=m1; m<m2; m++) {
             int mIndex = (Ncor-1)/2 + m;
@@ -78,23 +77,15 @@ xe_printf("////// ccd_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUSH
                 mu_g.real=0.0f;
                 mu_g.imag=0.0f;
                 for(int k=0,i=mIndex-(Ncor-1)/2; i<=mIndex+(Ncor-1)/2; i++) {
-                    struct complexData *cur_i;
-                    cur_i = (struct complexData *)RAG_GET_PTR(curImage+i);
-                    struct complexData *ref_i;
-                    ref_i = (struct complexData *)RAG_GET_PTR(refImage+i);
                     for(int j=nIndex-(Ncor-1)/2; j<=nIndex+(Ncor-1)/2; j++, k++) {
-                        struct complexData cur_i_j;
-                        struct complexData ref_i_j;
-			REM_LDX_ADDR(cur_i_j,cur_i+j,struct complexData);
-			REM_LDX_ADDR(ref_i_j,ref_i+j,struct complexData);
-                        f[k].real  = cur_i_j.real;
-                        f[k].imag  = cur_i_j.imag;
-                        g[k].real  = ref_i_j.real;
-                        g[k].imag  = ref_i_j.imag;
-                        mu_f.real += cur_i_j.real;
-                        mu_f.imag += cur_i_j.imag;
-                        mu_g.real += ref_i_j.real;
-                        mu_g.imag += ref_i_j.imag;
+                        f[k].real  = curImage[i][j].real;
+                        f[k].imag  = curImage[i][j].imag;
+                        g[k].real  = refImage[i][j].real;
+                        g[k].imag  = refImage[i][j].imag;
+                        mu_f.real += curImage[i][j].real;
+                        mu_f.imag += curImage[i][j].imag;
+                        mu_g.real += refImage[i][j].real;
+                        mu_g.imag += refImage[i][j].imag;
                     } // for
                 } // for k
                 mu_f.real /= Ncor_sqr;
@@ -119,21 +110,16 @@ xe_printf("////// ccd_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUSH
                     den2 += g[k].real*g[k].real + g[k].imag*g[k].imag;
                 } // for k
 
-                struct point *corr_map_m;
-                corr_map_m = (struct point *)RAG_GET_PTR(corr_map+m);
-		struct point corr_map_m_n;
-                corr_map_m_n.x = nIndex;
-                corr_map_m_n.y = mIndex;
+                corr_map[m][n].x = nIndex;
+                corr_map[m][n].y = mIndex;
                 if( (den1 != 0.0f) && (den2 != 0.0f) ) {
-                    corr_map_m_n.p = sqrtf_rn( (num.real*num.real + num.imag*num.imag) / (den1*den2) );
+                    corr_map[m][n].p = sqrtf_rn( (num.real*num.real + num.imag*num.imag) / (den1*den2) );
                 } else {
-                    corr_map_m_n.p = 0.0f;
+                    corr_map[m][n].p = 0.0f;
                 }
-                REM_STX_ADDR(corr_map_m+n, corr_map_m_n,struct point);
             } // for n
 	} // for n
 
-	bsm_free(corners,corners_dbg);
 #ifdef TRACE_LVL_3
 xe_printf("////// leave ccd_async_edt\n");RAG_FLUSH;
 #endif
@@ -168,12 +154,17 @@ xe_printf("//// create a template for ccd_async function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&ccd_async_clg,		// ocrGuid_t *new_guid
 			 ccd_async_edt, 	// ocr_edt_ptr func_ptr
-			0,			// paramc
-			5);			// depc
+			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+			4);			// depc
 	assert(retval==0);
 
 	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE_N) {
+			struct corners_t async_corners;
+			async_corners.m1   = m;
+			async_corners.m2   = m+CCD_ASYNC_BLOCK_SIZE_M;
+			async_corners.n1   = n;
+			async_corners.n2   = n+CCD_ASYNC_BLOCK_SIZE_N;
 #ifdef TRACE_LVL_2
 xe_printf("//// create an edt for ccd_async\n");RAG_FLUSH;
 #endif
@@ -182,27 +173,18 @@ xe_printf("//// create an edt for ccd_async\n");RAG_FLUSH;
 					&ccd_async_scg,		// *created_edt_guid
 					 ccd_async_clg,		// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					NULL,			// *paramv
+					(uint64_t*)&async_corners, // *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
 					NULL_GUID,		// affinity
 					NULL);			// *outputEvent
 			assert(retval==0);
-			struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; ocrGuid_t async_corners_dbg;
-			async_corners = &async_corners_lcl;
-			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
-			async_corners->m1   = m;
-			async_corners->m2   = m+CCD_ASYNC_BLOCK_SIZE_M;
-			async_corners->n1   = n;
-			async_corners->n2   = n+CCD_ASYNC_BLOCK_SIZE_N;
-			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
-RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
-RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,curImage_dbg,1);
-RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,refImage_dbg,2);
-RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,corr_map_dbg,3);
-RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,4);
-			OCR_DB_RELEASE(async_corners_dbg);
+
+RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
+RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
+RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,corr_map_dbg,2);
+RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
 		} /* for n */
 	} /* for m */
 

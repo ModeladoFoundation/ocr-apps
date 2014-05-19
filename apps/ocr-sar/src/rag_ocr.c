@@ -211,48 +211,6 @@ void dram_memset(void *out, int val, size_t size) {
 	} // for i (size)
 }
 
-int32_t  RAG_GET_INT(int32_t *addr)
-{int32_t tmp_int;REM_LD32_ADDR(tmp_int,addr);return tmp_int;}
-
-void     RAG_PUT_INT(int32_t *addr, int32_t value)
-{REM_ST32_ADDR(addr,value);return;}
-
-uint32_t RAG_GET_UINT(uint32_t *addr)
-{uint32_t tmp_uint;REM_LD32_ADDR(tmp_uint,addr);return tmp_uint;}
-
-void     RAG_PUT_UINT(uint32_t *addr, uint32_t value)
-{REM_ST32_ADDR(addr,value);return;}
-
-int64_t  RAG_GET_LONG(int64_t *addr)
-{int64_t tmp_long;REM_LD64_ADDR(tmp_long,addr);return tmp_long;}
-
-void     RAG_PUT_LONG(int64_t *addr, int64_t value)
-{REM_ST64_ADDR(addr,value);return;}
-
-uint64_t RAG_GET_ULONG(uint64_t *addr)
-{uint64_t tmp_ulong;REM_LD64_ADDR(tmp_ulong,addr);return tmp_ulong;}
-
-void     RAG_PUT_ULONG(uint64_t *addr, uint64_t value)
-{REM_ST64_ADDR(addr,value);return;}
-
-float    RAG_GET_FLT(float    *addr)
-{float   tmp_flt;REM_LD32_ADDR(tmp_flt,addr);return tmp_flt;}
-
-void     RAG_PUT_FLT(float    *addr, float    value)
-{REM_ST32_ADDR(addr,value);return;}
-
-double   RAG_GET_DBL(double   *addr)
-{float   tmp_dbl;REM_LD64_ADDR(tmp_dbl,addr);return tmp_dbl;}
-
-void     RAG_PUT_DBL(double   *addr, double   value)
-{REM_ST64_ADDR(addr,value);return;}
-
-void *   RAG_GET_PTR(void     *addr)
-{void*   tmp_ptr;REM_LD64_ADDR(tmp_ptr,addr);return tmp_ptr;}
-
-void     RAG_PUT_PTR(void     *addr, void    *value)
-{REM_ST64_ADDR(addr,value);return;}
-
 void GlobalPtrToDataBlock(void *out, SHARED void *in, size_t size) {
 #ifdef DEBUG
 	xe_printf("GblPtrToDB OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
@@ -265,13 +223,34 @@ void GlobalPtrToDataBlock(void *out, SHARED void *in, size_t size) {
 #endif
 }
 
+void SPADtoSPAD(void *out, void *in, size_t size) {
+#ifdef DEBUG
+	xe_printf("SPADtoSPAD OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+#endif
+#ifdef RAG_SIM
+	rag_memcpy(out,in,size);
+#else
+	memcpy(out,in,size);
+#endif
+}
+
 void SPADtoBSM(void *out, void *in, size_t size) {
 #ifdef DEBUG
 	xe_printf("SPADtoBSM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
 #endif
 #ifdef RAG_SIM
 	rag_memcpy(out,in,size);
-//	REM_STX_ADDR_SIZE(out,in,size);
+#else
+	memcpy(out,in,size);
+#endif
+}
+
+void SPADtoDRAM(void *out, void *in, size_t size) {
+#ifdef DEBUG
+	xe_printf("SPADtoDRAM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+#endif
+#ifdef RAG_SIM
+	rag_memcpy(out,in,size);
 #else
 	memcpy(out,in,size);
 #endif
@@ -283,15 +262,26 @@ void BSMtoSPAD(void *out, void *in, size_t size) {
 #endif
 #ifdef RAG_SIM
 	rag_memcpy(out,in,size);
+#else
+	memcpy(out,in,size);
+#endif
+}
+
+void BSMtoBSM(void *out, void *in, size_t size) {
+#ifdef DEBUG
+	xe_printf("BSMtoBSM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+#endif
+#ifdef RAG_SIM
+	rag_memcpy(out,in,size);
 //	REM_STX_ADDR_SIZE(out,in,size);
 #else
 	memcpy(out,in,size);
 #endif
 }
 
-void SPADtoDRAM(void *out, void *in, size_t size) {
+void BSMtoDRAM(void *out, void *in, size_t size) {
 #ifdef DEBUG
-	xe_printf("SPADtoDRAM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+	xe_printf("BSMtoDRAM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
 #endif
 #ifdef RAG_SIM
 	rag_memcpy(out,in,size);
@@ -307,15 +297,14 @@ void DRAMtoSPAD(void *out, void *in, size_t size) {
 #endif
 #ifdef RAG_SIM
 	rag_memcpy(out,in,size);
-//	REM_STX_ADDR_SIZE(out,in,size);
 #else
 	memcpy(out,in,size);
 #endif
 }
 
-void SPADtoSPAD(void *out, void *in, size_t size) {
+void DRAMtoBSM(void *out, void *in, size_t size) {
 #ifdef DEBUG
-	xe_printf("SPADtoSPAD OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+	xe_printf("DRAMtoBSM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
 #endif
 #ifdef RAG_SIM
 	rag_memcpy(out,in,size);
@@ -325,9 +314,9 @@ void SPADtoSPAD(void *out, void *in, size_t size) {
 #endif
 }
 
-void BSMtoBSM(void *out, void *in, size_t size) {
+void DRAMtoDRAM(void *out, void *in, size_t size) {
 #ifdef DEBUG
-	xe_printf("BSMtoBSM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
+	xe_printf("DRAMtoDRAM OUT = %16.16lx IN = %16.16lx SIZE = %ld\n",(uint64_t)out,(uint64_t)in,(uint64_t)size);RAG_FLUSH;
 #endif
 #ifdef RAG_SIM
 	rag_memcpy(out,in,size);

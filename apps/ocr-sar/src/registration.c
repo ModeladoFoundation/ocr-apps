@@ -42,11 +42,7 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 xe_printf("// Overwrite current image with registered image\n");RAG_FLUSH;
 #endif
 	for(int m=0; m<image_params->Iy; m++) {
-		struct complexData *cur_m;
-		cur_m = (struct complexData *)RAG_GET_PTR(curImage+m);
-		struct complexData *out_m;
-		out_m = (struct complexData *)RAG_GET_PTR(output+m);
-		BSMtoBSM(cur_m, out_m, image_params->Ix*sizeof(struct complexData));
+		BSMtoBSM(curImage[m], output[m], image_params->Ix*sizeof(struct complexData));
 	}
 
 	OCR_DB_RELEASE(curImage_dbg);
@@ -163,22 +159,8 @@ for(int i=0;i<affine_params->Nc;i++) {
 	for(int m=0; m<6; m++) {
 		double accum_x = 0.0, accum_y = 0.0;
 		for(int n=0; n<affine_params->Nc; n++) {
-#ifndef RAG_SIM
-assert(*(A+n) ==&A[n][0]);
-#endif
-			int *A_n   = (int *)RAG_GET_PTR(A+n);
-#ifndef RAG_SIM
-assert(A_n+m==&A[n][m]);
-#endif
-			int A_n_m  = RAG_GET_INT(A_n+m);
-#ifndef RAG_SIM
-assert(Fx+n==&Fx[n]);
-#endif
-			accum_x += (double)A_n_m*(double)(RAG_GET_INT(Fx+n));
-#ifndef RAG_SIM
-assert(Fy+n==&Fy[n]);
-#endif
-			accum_y += (double)A_n_m*(double)(RAG_GET_INT(Fy+n));
+			accum_x += (double)A[n][m]*(double)Fx[n];
+			accum_y += (double)A[n][m]*(double)Fy[n];
 		}
 		b[m][0] = accum_x;
 		b[m][1] = accum_y;
@@ -194,16 +176,7 @@ for(int i=0;i<6;i++) {
 		for(int n=0; n<6; n++) {
 			double accum = 0.0;
 			for(int k=0; k<affine_params->Nc; k++) {
-				int *A_k   = (int *)RAG_GET_PTR(A+k);
-#ifndef RAG_SIM
-assert(A_k == &A[k][0]);
-#endif
-				int A_k_m  = RAG_GET_INT(A_k+m);
-				int A_k_n  = RAG_GET_INT(A_k+n);
-#ifndef RAG_SIM
-assert((A_k+n) == &A[k][n]);
-#endif
-				accum += (double)A_k_m * (double) A_k_n;
+				accum += (double)A[k][m] * (double) A[k][n];
 			}
 			aug_mat[m][n] = (float)accum;
 		}
@@ -263,17 +236,14 @@ ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 	retval = ocrEdtTemplateCreate(
 			&affine_async_2_clg,	// ocrGuid_t *new_guid
 			 affine_async_2_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
-			6);			// depc
+			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+			5);			// depc
 	assert(retval==0);
 
-	struct async_2_args_t *async_2_args,*async_2_args_ptr,async_2_args_lcl;
-	ocrGuid_t async_2_args_dbg;
-	async_2_args = &async_2_args_lcl;
+	struct async_2_args_t *async_2_args_ptr; ocrGuid_t async_2_args_dbg;
 	async_2_args_ptr = bsm_malloc(&async_2_args_dbg,sizeof(struct async_2_args_t));
-	SPADtoSPAD(async_2_args->Wcx,Wcx,6*sizeof(float));
-	SPADtoSPAD(async_2_args->Wcy,Wcy,6*sizeof(float));
-	REM_STX_ADDR(async_2_args_ptr,async_2_args_lcl,struct async_2_args_t);
+	SPADtoBSM(async_2_args_ptr->Wcx,Wcx,6*sizeof(float));
+	SPADtoBSM(async_2_args_ptr->Wcy,Wcy,6*sizeof(float));
 
 	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,0);
 	RAG_DEF_MACRO_PASS(post_affine_async_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
@@ -287,42 +257,32 @@ ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 
 	for(int m=0; m<image_params->Iy; m+=AFFINE_ASYNC_2_BLOCK_SIZE_Y) {
 		for(int n=0; n<image_params->Ix; n+=AFFINE_ASYNC_2_BLOCK_SIZE_X) {
+			struct corners_t async_corners;
+			async_corners.m1   = m;
+			async_corners.m2   = m+AFFINE_ASYNC_2_BLOCK_SIZE_X;
+			async_corners.n1   = n;
+			async_corners.n2   = n+AFFINE_ASYNC_2_BLOCK_SIZE_Y;
 #ifdef TRACE_LVL_3
 xe_printf("////// create an edt for affine_async_2\n");RAG_FLUSH;
 #endif
-			struct corners_t *async_corners,*async_corners_ptr,async_corners_lcl;
-			ocrGuid_t async_corners_dbg;
-			async_corners = &async_corners_lcl;
-			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
-
 			ocrGuid_t affine_async_2_scg;
-{			uint64_t paramv[1] = { GUID_VALUE(post_affine_async_2_scg) };
 			retval = ocrEdtCreate(
 					&affine_async_2_scg,	// *created_edt_guid
 					 affine_async_2_clg,	// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					paramv,			// *paramv
+					(uint64_t *)&async_corners, // *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
 					NULL_GUID,		// affinity
 					NULL);			// *outputEvent
-}
 			assert(retval==0);
 
-			async_corners->m1   = m;
-			async_corners->m2   = m+AFFINE_ASYNC_2_BLOCK_SIZE_X;
-			async_corners->n1   = n;
-			async_corners->n2   = n+AFFINE_ASYNC_2_BLOCK_SIZE_Y;
-			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
-
-RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
-RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,1);
-RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
-RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
-RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,4);
-RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,5);
-			OCR_DB_RELEASE(async_corners_dbg);
+RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,affine_params_dbg,0);
+RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
+RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
+RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,3);
+RAG_DEF_MACRO_PASS(affine_async_2_scg,NULL,NULL,NULL,NULL,async_2_args_dbg,4);
 		} // for n
 	} // for m
 
@@ -381,16 +341,15 @@ xe_printf("////// disp_vec.p >= affine_params->Tc\n");RAG_FLUSH;
 #ifdef TRACE_LVL_3
 xe_printf("////// Form Fx, Fy (k=%d) and A\n",k);RAG_FLUSH;
 #endif
-		RAG_PUT_INT(Fx+k, ctrl_pt.x + disp_vec.x);
-		RAG_PUT_INT(Fy+k, ctrl_pt.y + disp_vec.y);
+		Fx[k] = ctrl_pt.x + disp_vec.x;
+		Fy[k] = ctrl_pt.y + disp_vec.y;
 
-		int *A_k = RAG_GET_PTR(A+k);
-		RAG_PUT_INT(A_k+0, 1);
-		RAG_PUT_INT(A_k+1, ctrl_pt.x);
-		RAG_PUT_INT(A_k+2, ctrl_pt.y);
-		RAG_PUT_INT(A_k+3, ctrl_pt.x*ctrl_pt.x);
-		RAG_PUT_INT(A_k+4, ctrl_pt.y*ctrl_pt.y);
-		RAG_PUT_INT(A_k+5, ctrl_pt.x*ctrl_pt.y);
+		A[k][0] = 1;
+		A[k][1] = ctrl_pt.x;
+		A[k][2] = ctrl_pt.y;
+		A[k][3] = ctrl_pt.x*ctrl_pt.x;
+		A[k][4] = ctrl_pt.y*ctrl_pt.y;
+		A[k][5] = ctrl_pt.x*ctrl_pt.y;
 
 	} // if above threshold
 	bsm_free(async_1_args,async_1_args_dbg);
@@ -405,6 +364,7 @@ ocrGuid_t post_affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t de
 #ifdef TRACE_LVL_3
 xe_printf("////// enter post_affine_async_2_edt\n");RAG_FLUSH;
 #endif
+	assert(paramc==0);
 	assert(depc==10); // 10th post_affine_async_1_evg
 RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,0);
 RAG_REF_MACRO_PASS(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
@@ -440,23 +400,22 @@ ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 #ifdef TRACE_LVL_3
 xe_printf("////// enter affine_async_2_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0];
-	assert(depc==6);
-RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
-RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,1);
-RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
-RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,3);
-RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,4);
-RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,5);
-
-	int aa, bb;
-	float Px, Py, w, v;
-
+	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
+	struct corners_t *corners = (struct corners_t *)paramv;
 	int m1   = corners->m1;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
+	assert(depc==5);
+RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,0);
+RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
+RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
+RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,3);
+RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,4);
+
+	int aa, bb;
+	float Px, Py, w, v;
+
 	float Wcx[6];
 	SPADtoSPAD(Wcx,async_2_args->Wcx,6*sizeof(float));
 #if defined(DEBUG) && !defined(RAG_SIM)
@@ -468,8 +427,6 @@ printf("wCX = %f %f %f %f %f %f\n", Wcx[0], Wcx[1], Wcx[2], Wcx[3], Wcx[4], Wcx[
 printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[5]);RAG_FLUSH;
 #endif
 	for(int m=m1; m<m2; m++) {
-		struct complexData *out_m;
-		out_m = (struct complexData *)RAG_GET_PTR(output+m);
 		for(int n=n1; n<n2; n++) {
 			const float m_flt = (float)m;
 			const float n_flt = (float)n;
@@ -485,36 +442,21 @@ printf("wCY = %f %f %f %f %f %f\n", Wcy[0], Wcy[1], Wcy[2], Wcy[3], Wcy[4], Wcy[
 
 			if( (aa >= 0) && (aa < image_params->Iy-1)
 			&& (bb >= 0) && (bb < image_params->Ix-1) ) {
-				struct complexData *cur_aa0;
-				struct complexData *cur_aa1;
-				struct complexData cur_aa0_bb0;
-				struct complexData cur_aa0_bb1;
-				struct complexData cur_aa1_bb0;
-				struct complexData cur_aa1_bb1;
-				struct complexData out_m_n;
-				cur_aa0 = (struct complexData *)RAG_GET_PTR(curImage+aa  );
-				cur_aa1 = (struct complexData *)RAG_GET_PTR(curImage+aa+1);
-				REM_LDX_ADDR(cur_aa0_bb0,cur_aa0+bb  ,struct complexData);
-				REM_LDX_ADDR(cur_aa0_bb1,cur_aa0+bb+1,struct complexData);
-				REM_LDX_ADDR(cur_aa1_bb0,cur_aa1+bb  ,struct complexData);
-				REM_LDX_ADDR(cur_aa1_bb1,cur_aa1+bb+1,struct complexData);
-				out_m_n.real 	= (1-v)*(1-w)*cur_aa0_bb0.real
-						+ (  v)*(1-w)*cur_aa0_bb1.real
-						+ (1-v)*(  w)*cur_aa1_bb0.real
-						+ (  v)*(  w)*cur_aa1_bb1.real;
-				out_m_n.imag	= (1-v)*(1-w)*cur_aa0_bb0.imag
-						+ (  v)*(1-w)*cur_aa0_bb1.imag
-						+ (1-v)*(  w)*cur_aa1_bb0.imag
-						+ (  v)*(  w)*cur_aa1_bb1.imag;
-				REM_STX_ADDR(out_m+n,out_m_n,struct complexData);
+				output[m][n].real 	= (1-v)*(1-w)*curImage[aa  ][bb  ].real
+							+ (  v)*(1-w)*curImage[aa  ][bb+1].real
+							+ (1-v)*(  w)*curImage[aa+1][bb  ].real
+							+ (  v)*(  w)*curImage[aa+1][bb+1].real;
+				output[m][n].imag	= (1-v)*(1-w)*curImage[aa  ][bb  ].imag
+							+ (  v)*(1-w)*curImage[aa  ][bb+1].imag
+							+ (1-v)*(  w)*curImage[aa+1][bb  ].imag
+							+ (  v)*(  w)*curImage[aa+1][bb+1].imag;
 			} else {
-				struct complexData out_m_n = {0.0f,0.0f};
-				REM_STX_ADDR(out_m+n,out_m_n,struct complexData);
+				output[m][n].real = 0.0f;
+				output[m][n].imag = 0.0f;
 			}
 		} // for n
 	} // for m
 
-	bsm_free(corners,corners_dbg);
 #ifdef TRACE_LVL_3
 xe_printf("////// leave affine_async_2_edt\n");RAG_FLUSH;
 #endif
@@ -574,7 +516,7 @@ xe_printf("//// Affine registration dynamically allocated variables size = %d\n"
 		xe_exit(1);
 	}
 	for(int m=0; m<affine_params->Nc; m++) {
-		RAG_PUT_PTR(A+m,A_data_ptr + m*6);
+		A[m] = A_data_ptr + m*6;
 	}
 
 #ifdef TRACE_LVL_2
@@ -599,7 +541,7 @@ xe_printf("//// Allocate memory for output image (%dx%d)\n",image_params->Iy,ima
 		xe_exit(1);
 	}
 	for(int n=0; n<image_params->Iy; n++) {
-		RAG_PUT_PTR(output+n , output_data_ptr + n*image_params->Ix);
+		output[n] = output_data_ptr + n*image_params->Ix;
 	}
 
 #ifdef TRACE_LVL_2
@@ -617,10 +559,8 @@ xe_printf("//// N = %d (sqrtf_rn(%d))\n",N,affine_params->Nc);RAG_FLUSH;
 #ifdef TRACE
 xe_printf("setting DRAM version of Nc to zero, will be updated with __sync_fetch_and_add() \n");RAG_FLUSH;
 #endif
-	affine_params->Nc = 0; 					// local copy of Nc
-	int *affine_params_Nc = (int *)(((char *)affine_params_ptr)+offsetof(struct AffineParams,Nc));
-	RAG_PUT_INT(affine_params_Nc,affine_params->Nc);	// global copy of Nc
-	assert(*affine_params_Nc==affine_params->Nc);
+	affine_params->Nc = 0; 				// local copy of Nc
+	affine_params_ptr->Nc = affine_params->Nc;	// global copy of Nc
 
 #ifdef TRACE_LVL_2
 xe_printf("//// create a template for affine_async_1_edt function (N=%d)\n",N);RAG_FLUSH;
@@ -643,17 +583,14 @@ xe_printf("//// create a ctrl_pt affine_async_1_edt\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 xe_printf("//// create a ctrl_pt post_affine_async_1_edt\n");RAG_FLUSH;
 #endif
-	struct async_1_args_t *post_affine_async_1_args,*post_affine_async_1_args_ptr,post_affine_async_1_args_lcl;
-	ocrGuid_t post_affine_async_1_args_dbg;
-	post_affine_async_1_args = &post_affine_async_1_args_lcl;
+	struct async_1_args_t *post_affine_async_1_args_ptr; ocrGuid_t post_affine_async_1_args_dbg;
 	post_affine_async_1_args_ptr = bsm_malloc(&post_affine_async_1_args_dbg,sizeof(struct async_1_args_t));
-	post_affine_async_1_args->ctrl_pt = ctrl_pt;
-	post_affine_async_1_args->output_dbg  = output_dbg;
-	post_affine_async_1_args->output_data_dbg  = output_data_dbg;
-	post_affine_async_1_args->curImage_dbg     = curImage_dbg;
-	post_affine_async_1_args->refImage_dbg     = refImage_dbg;
-	post_affine_async_1_args->post_Affine_scg  = post_Affine_scg;
-	REM_STX_ADDR(post_affine_async_1_args_ptr,post_affine_async_1_args_lcl,struct async_1_args_t);
+	post_affine_async_1_args_ptr->ctrl_pt = ctrl_pt;
+	post_affine_async_1_args_ptr->output_dbg  = output_dbg;
+	post_affine_async_1_args_ptr->output_data_dbg  = output_data_dbg;
+	post_affine_async_1_args_ptr->curImage_dbg     = curImage_dbg;
+	post_affine_async_1_args_ptr->refImage_dbg     = refImage_dbg;
+	post_affine_async_1_args_ptr->post_Affine_scg  = post_Affine_scg;
 
 #ifdef TRACE_LVL_2
 xe_printf("//// statisy post_affine_async_1_edt\n");RAG_FLUSH;
@@ -676,16 +613,14 @@ xe_printf("//// create an edt for affine_async_1 m=%d n=%d\n",m,n);RAG_FLUSH;
 			struct point ctrl_pt;
 			ctrl_pt.y = m*dy + min;
 			ctrl_pt.x = n*dx + min;
-			struct async_1_args_t *async_1_args,*async_1_args_ptr,async_1_args_lcl;
-			ocrGuid_t async_1_args_dbg;
-			async_1_args = &async_1_args_lcl;
+			struct async_1_args_t *async_1_args_ptr; ocrGuid_t async_1_args_dbg;
 			async_1_args_ptr = bsm_malloc(&async_1_args_dbg,sizeof(struct async_1_args_t));
-			async_1_args->ctrl_pt = ctrl_pt;
-			async_1_args->output_dbg  = output_dbg;
-			async_1_args->output_data_dbg  = output_data_dbg;
-			async_1_args->curImage_dbg     = curImage_dbg;
-			async_1_args->refImage_dbg     = refImage_dbg;
-			async_1_args->post_Affine_scg  = post_Affine_scg;
+			async_1_args_ptr->ctrl_pt = ctrl_pt;
+			async_1_args_ptr->output_dbg  = output_dbg;
+			async_1_args_ptr->output_data_dbg  = output_data_dbg;
+			async_1_args_ptr->curImage_dbg     = curImage_dbg;
+			async_1_args_ptr->refImage_dbg     = refImage_dbg;
+			async_1_args_ptr->post_Affine_scg  = post_Affine_scg;
 			ocrGuid_t affine_async_1_scg;
 			retval = ocrEdtCreate(
 					&affine_async_1_scg,	// *created_edt_guid
@@ -698,7 +633,7 @@ xe_printf("//// create an edt for affine_async_1 m=%d n=%d\n",m,n);RAG_FLUSH;
 					NULL_GUID,		// affinity
 					NULL);			// *outputEvent
 			assert(retval==0);
-			REM_STX_ADDR(async_1_args_ptr,async_1_args_lcl,struct async_1_args_t);
+
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,async_1_args_dbg,0);
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,affine_params_dbg,1);
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
@@ -708,7 +643,7 @@ RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,Fx_dbg,5);
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,Fy_dbg,6);
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,A_dbg,7);
 RAG_DEF_MACRO_PASS(affine_async_1_scg,NULL,NULL,NULL,NULL,A_data_dbg,8);
-	OCR_DB_RELEASE(async_1_args_dbg);
+			OCR_DB_RELEASE(async_1_args_dbg);
 		} // for n
 	} // for m
 
@@ -747,20 +682,15 @@ struct point corr2D(struct point ctrl_pt, int Nwin, int R, struct complexData **
 
     for(i=ctrl_pt.y-(Nwin-1)/2, k=mu_f.real=mu_f.imag=0; i<=ctrl_pt.y+(Nwin-1)/2; i++)
     {
-        struct complexData *cur_i;
-        cur_i = (struct complexData *)RAG_GET_PTR(curImage+i);
         for(j=ctrl_pt.x-(Nwin-1)/2; j<=ctrl_pt.x+(Nwin-1)/2; j++, k++)
         {
             if( (i < 0) || (j < 0) || (i >= image_params->Iy) || (j >= image_params->Ix) ) {
                 xe_printf("Warning: Index out of bounds in registration correlation.\n");RAG_FLUSH;
             }
-            struct complexData *cur_i_j = cur_i + j;
-            struct complexData cur;
-            REM_LDX_ADDR(cur,cur_i_j,struct complexData);
-            f[k].real  = cur.real;
-            f[k].imag  = cur.imag;
-            mu_f.real += cur.real;
-            mu_f.imag += cur.imag;
+            f[k].real  = curImage[i][j].real;
+            f[k].imag  = curImage[i][j].imag;
+            mu_f.real += curImage[i][j].real;
+            mu_f.imag += curImage[i][j].imag;
         }
     }
 
@@ -779,20 +709,15 @@ struct point corr2D(struct point ctrl_pt, int Nwin, int R, struct complexData **
         {
             for(i=m-(Nwin-1)/2, k=mu_g.real=mu_g.imag=0; i<=m+(Nwin-1)/2; i++)
             {
-                struct complexData *ref_i;
-                ref_i = (struct complexData *)RAG_GET_PTR(refImage+i);
                 for(j=n-(Nwin-1)/2; j<=n+(Nwin-1)/2; j++, k++)
                 {
                     if( (i < 0) || (j < 0) || (i >= image_params->Iy) || (j >= image_params->Ix) ) {
                         xe_printf("Warning: Index out of bounds in registration correlation.\n");RAG_FLUSH;
                     }
-                    struct complexData *ref_i_j = ref_i + j;
-                    struct complexData ref;
-                    REM_LDX_ADDR(ref,ref_i_j,struct complexData);
-                    g[k].real  = ref.real;
-                    g[k].imag  = ref.imag;
-                    mu_g.real += ref.real;
-                    mu_g.imag += ref.imag;
+                    g[k].real  = refImage[i][j].real;
+                    g[k].imag  = refImage[i][j].imag;
+                    mu_g.real += refImage[i][j].real;
+                    mu_g.imag += refImage[i][j].imag;
                 }
             }
 

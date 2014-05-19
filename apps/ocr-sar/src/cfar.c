@@ -22,7 +22,8 @@ xe_printf("//// enter post_CFAR_edt\n");RAG_FLUSH;
 	assert(depc==3);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
 RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,1);
-	int Nd = RAG_GET_INT(p_Nd);
+
+	int Nd = *p_Nd;
 
 #if RAG_QSORT_ON
 	// Sorting the detections is not strictly necessary. This is only done so
@@ -44,10 +45,8 @@ xe_printf("//// Output to file %d detects\n",Nd);RAG_FLUSH;
 #ifndef RAG_SIM
 		printf("x=%7.2fm y=%7.2fm p=%4.2f\n", Y[m].x, Y[m].y, Y[m].p);
 #else
-		struct detects Y_m;
-		REM_LDX_ADDR(Y_m,&Y[m],struct detects);
 		xe_printf("x=0x%x m y=0x%x m p=0x%x\n",
-			 *(uint32_t *)&Y_m.x, *(uint32_t *)&Y_m.y, *(uint32_t *)&Y_m.p);
+			 *(uint32_t *)&Y[m].x, *(uint32_t *)&Y[m].y, *(uint32_t *)&Y[m].p);
 #endif
 	} // for m
 
@@ -115,19 +114,18 @@ ocrGuid_t cfar_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEd
 #ifdef TRACE_LVL_3
 xe_printf("////// enter cfar_async_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==0);
-	assert(depc==6);
-RAG_REF_MACRO_SPAD(struct corners_t,corners,corners_ptr,corners_lcl,corners_dbg,0);
-RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
-RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_parms_ptr,cfar_parms_lcl,cfar_params_dbg,2);
-RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,3);
-RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,4);
-RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,5);
-
+	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
+        struct corners_t *corners = (struct corners_t *)paramv;
 	int m1   = corners->m1;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
+	assert(depc==5);
+RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
+RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_parms_ptr,cfar_parms_lcl,cfar_params_dbg,1);
+RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
+RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,3);
+RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,4);
 
 	int T,cnt;
 	int mIndex, nIndex;
@@ -139,7 +137,7 @@ RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,5);
 	// CUT's correlation value must be below Tcorr to be eligible for detection
 
 #ifdef TRACE_LVL_3
-xe_printf("////// cfar_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUSH;
+xe_printf("////// cfar_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
 #endif
 
 	ocrGuid_t pLocal_dbg;
@@ -168,17 +166,7 @@ xe_printf("////// cfar_async m1 m2 n1 n2 s# %d %d %d %d\n",m1,m2,n1,m2);RAG_FLUS
 
                 for(int i=mIndex-(cfar_params->Ncfar-1)/2, k=0; i<=mIndex+(cfar_params->Ncfar-1)/2; i++, k++) {
                     for(int j=nIndex-(cfar_params->Ncfar-1)/2, l=0; j<=nIndex+(cfar_params->Ncfar-1)/2; j++, l++) {
-			struct point *corr_map_i;
-			corr_map_i = (struct point *)RAG_GET_PTR(corr_map+i);
-			struct point *corr_map_i_j = corr_map_i+j;
-			float *corr_map_i_j_p = (float *)(((char *)corr_map_i_j)+offsetof(struct point,p));
-
-assert(corr_map_i_j_p == &corr_map[i][j].p);
-
-                        pLocal[k][l] = RAG_GET_FLT(corr_map_i_j_p);
-
-assert(pLocal[k][l] == corr_map[i][j].p);
-
+                        pLocal[k][l] = corr_map[i][j].p;
                     } // for j
                 } // for i
 
@@ -200,14 +188,7 @@ xe_printf("////// Calculate threshold\n");RAG_FLUSH;
                 T = (int)floorf(cfar_params->Tcfar/100.0*(cfar_params->Ncfar*cfar_params->Ncfar-cfar_params->Nguard*cfar_params->Nguard));
 #endif
 
-		struct point *corr_map_m;
-		corr_map_m = (struct point *)RAG_GET_PTR(corr_map+mIndex);
-		struct point *corr_map_m_n = corr_map_m+nIndex;
-		float *corr_map_m_n_p = (float *)(((char *)corr_map_m_n)+offsetof(struct point,p));
-
-assert(corr_map_m_n_p == &corr_map[mIndex][nIndex].p);
-
-                CUT = RAG_GET_FLT(corr_map_m_n_p);
+                CUT = corr_map[mIndex][nIndex].p;
 
 #ifdef DEBUG_LVL_2
 xe_printf("////// Ensure CUT's correlation value is below the correlation threshold\n");RAG_FLUSH;
@@ -222,26 +203,15 @@ xe_printf("////// Ensure CUT's correlation value is below the correlation thresh
                     } // for j
 
                     if(cnt >= T) {
-			    int *corr_map_m_n_x =
-				(int *)(((char *)corr_map_m_n)+offsetof(struct point,x));
-			    int *corr_map_m_n_y =
-				(int *)(((char *)corr_map_m_n)+offsetof(struct point,y));
 			    int nd = __sync_fetch_and_add(p_Nd,1);
-			    struct detects Y_nd;
 
-assert(&Y[nd] == (Y+nd));
-
-                            Y_nd.x = RAG_GET_FLT(image_params->xr+RAG_GET_INT((int32_t *)corr_map_m_n_x));
-                            Y_nd.y = RAG_GET_FLT(image_params->yr+RAG_GET_INT((int32_t *)corr_map_m_n_y));
-			    Y_nd.p = CUT;
-
-assert(Y_nd.x == image_params->xr[corr_map[mIndex][nIndex].x]);
-assert(Y_nd.y == image_params->yr[corr_map[mIndex][nIndex].y]);
+			    Y[nd].x = image_params->xr[corr_map[mIndex][nIndex].x];
+			    Y[nd].y = image_params->yr[corr_map[mIndex][nIndex].y];
+			    Y[nd].p = CUT;
 
 #ifdef DEBUG_LVL_2
-xe_printf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y_nd.x,*(uint32_t *)&Y_nd.y,*(uint32_t *)&Y_nd.p,RAG_GET_INT((int32_t *)corr_map_m_n_x),RAG_GET_INT((int32_t *)corr_map_m_n_y));RAG_FLUSH;
+xe_printf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y[nd].x,*(uint32_t *)&Y[nd].y,*(uint32_t *)&Y[nd].p,*(int32_t *)&corr_map[mIndex][nIndex].x,*(int32_t *)&corr_map[mIndex][nIndex].y);RAG_FLUSH;
 #endif
-			    REM_STX_ADDR(Y+nd,Y_nd,struct detects);
                     } // if cnt
                 } // if CUT
             } // for n
@@ -254,7 +224,6 @@ xe_printf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y_nd
             pLocal = NULL;
         }
 
-	bsm_free(corners_ptr,corners_dbg);
 #ifdef TRACE_LVL_3
 xe_printf("////// leave cfar_async_edt\n");RAG_FLUSH;
 #endif
@@ -280,7 +249,7 @@ xe_printf("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nw
 
 	ocrGuid_t Nd_dbg;
 	int *Nd_ptr = bsm_malloc(&Nd_dbg,sizeof(int));
-	RAG_PUT_INT(Nd_ptr,0);
+	*Nd_ptr = 0;
 	int CFAR_ASYNC_BLOCK_SIZE_M = blk_size(Mwins,32);
 	int CFAR_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CFAR_ASYNC_BLOCK_SIZE_M)==0);
@@ -299,12 +268,17 @@ xe_printf("//// create a template for cfar_async function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&cfar_async_clg,	// ocrGuid_t *new_guid
 			 cfar_async_edt,	// ocr_edt_ptr func_ptr
-			0,			// paramc
-			6);			// depc
+			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+			5);			// depc
 	assert(retval==0);
 
 	for(int m=0; m<Mwins; m+=CFAR_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CFAR_ASYNC_BLOCK_SIZE_N) {
+			struct corners_t async_corners;
+			async_corners.m1   = m;
+			async_corners.m2   = m+CFAR_ASYNC_BLOCK_SIZE_M;
+			async_corners.n1   = n;
+			async_corners.n2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
 #ifdef TRACE_LVL_2
 xe_printf("////// create an edt for cfar_async\n");RAG_FLUSH;
 #endif
@@ -313,7 +287,7 @@ xe_printf("////// create an edt for cfar_async\n");RAG_FLUSH;
 					&cfar_async_scg,	// *created_edt_guid
 					 cfar_async_clg,	// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					NULL,			// *paramv
+					(uint64_t *)&async_corners,			// *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
@@ -321,21 +295,11 @@ xe_printf("////// create an edt for cfar_async\n");RAG_FLUSH;
 					NULL);			// *outputEvent
 			assert(retval==0);
 
-			struct corners_t *async_corners, *async_corners_ptr, async_corners_lcl; ocrGuid_t async_corners_dbg;
-			async_corners = &async_corners_lcl;
-			async_corners_ptr = bsm_malloc(&async_corners_dbg,sizeof(struct corners_t));
-			async_corners->m1   = m;
-			async_corners->m2   = m+CFAR_ASYNC_BLOCK_SIZE_M;
-			async_corners->n1   = n;
-			async_corners->n2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
-			REM_STX_ADDR(async_corners_ptr,async_corners_lcl,struct corners_t);
-RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,async_corners_dbg,0);
-RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
-RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,2);
-RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,corr_map_dbg,3);
-RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Y_dbg,4);
-RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Nd_dbg,5);
-			OCR_DB_RELEASE(async_corners_dbg);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,0);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,1);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,corr_map_dbg,2);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Y_dbg,3);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Nd_dbg,4);
 		} // for n
 	} // for m
 

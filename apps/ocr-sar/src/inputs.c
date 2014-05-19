@@ -186,7 +186,7 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 
   ReadData(in, image_params, pInFile, pInFile2, pInFile3);
 
-  REM_STX_ADDR(image_params_ptr,image_params_lcl,struct ImageParams);
+  SPADtoBSM(image_params_ptr,image_params,sizeof(struct ImageParams));
 
   RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,in_dbg,0);
 
@@ -227,10 +227,10 @@ void ReadData(struct Inputs *in, struct ImageParams *image_params,
 #else
     if ( image_params->imageNumber == 0 ) {
       // &in->X[m][0]
-      GlobalPtrToDataBlock(RAG_GET_PTR(in->X+m),&image_0[m][0], sizeof(struct complexData)*image_params->S1);
+      GlobalPtrToDataBlock(in->X[m],&image_0[m][0], sizeof(struct complexData)*image_params->S1);
     } else if ( image_params->imageNumber == 1 ) {
       // &in->X[m][0]
-      GlobalPtrToDataBlock(RAG_GET_PTR(in->X+m),&image_1[m][0], sizeof(struct complexData)*image_params->S1);
+      GlobalPtrToDataBlock(in->X[m],&image_1[m][0], sizeof(struct complexData)*image_params->S1);
     } // endif image
 #endif
 #ifdef TRACE_LVL_2
@@ -241,10 +241,10 @@ void ReadData(struct Inputs *in, struct ImageParams *image_params,
 #else
     if ( image_params->imageNumber == 0 ) {
       // &in->Pt[m][0]
-      GlobalPtrToDataBlock(RAG_GET_PTR(in->Pt+m),&platform_0[m][0], sizeof(float)*3);
+      GlobalPtrToDataBlock(in->Pt[m],&platform_0[m][0], sizeof(float)*3);
     } else if ( image_params->imageNumber == 1 ) {
       // &in->Pt[m][0]
-      GlobalPtrToDataBlock(RAG_GET_PTR(in->Pt+m),&platform_1[m][0], sizeof(float)*3);
+      GlobalPtrToDataBlock(in->Pt[m],&platform_1[m][0], sizeof(float)*3);
     } // endif image
 #endif
   } // for m (P1)

@@ -127,6 +127,7 @@ FSIM	= $(XSTACK)/ss/xe-sim/fsim
 MACHINE_CFG = $(XSTACK)/ss/xe-sim/configs/eth-31-bar-8-blocks.cfg
 
 run:	$(TARGET) $(TARGET).cfg $(MACHINE_CFG)
+	$(RM) -rf detects.txt images_debug.txt corr_debug.txt
 	$(RM) -rf /tmp/ragollix-fsim*
 	$(RM) -rf logs
 	$(MKDIR) -p logs

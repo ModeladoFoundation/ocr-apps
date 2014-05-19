@@ -132,12 +132,12 @@ RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 xe_printf("//// Copy curImage to refImage\n");RAG_FLUSH;
 #endif
 		for(int m=0; m<image_params->Iy; m++) {
-			struct complexData *ref_m;
-			ref_m = (struct complexData *)RAG_GET_PTR(refImage+m);
-			struct complexData *cur_m;
-			cur_m = (struct complexData *)RAG_GET_PTR(curImage+m);
 // RAG refImage should be in DRAM
-			BSMtoBSM(ref_m, cur_m, image_params->Ix*sizeof(struct complexData));
+#ifdef RAG_DRAM
+			DRAMtoDRAM(refImage[m], curImage[m], image_params->Ix*sizeof(struct complexData));
+#else
+			BSMtoBSM(  refImage[m], curImage[m], image_params->Ix*sizeof(struct complexData));
+#endif
 		} // for m
 	} // if !NULL
 
@@ -145,7 +145,11 @@ xe_printf("//// Copy curImage to refImage\n");RAG_FLUSH;
 xe_printf("//// Zero curImage\n");RAG_FLUSH;
 #endif
 	for(int n=0; n<image_params->Iy; n++) {
-		bsm_memset(RAG_GET_PTR(curImage+n), 0, image_params->Ix*sizeof(struct complexData));
+#ifdef RAG_DRAM
+		bsm_memset( curImage[n], 0, image_params->Ix*sizeof(struct complexData));
+#else
+		dram_memset(curImage[n], 0, image_params->Ix*sizeof(struct complexData));
+#endif
 	}
 
 	if(image_params->TF > 1) {
@@ -203,26 +207,22 @@ xe_printf("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_F
 #ifdef TRACE_LVL_2
 xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #endif
-		struct corners_t *corners, *corners_ptr,corners_lcl; ocrGuid_t corners_dbg;
-		corners_ptr   = bsm_malloc(&corners_dbg,sizeof(struct corners_t));
-		corners = &corners_lcl;
-		corners->m1   = i*image_params->Sx;
-		corners->m2   = (i+1)*image_params->Sx;
-		corners->n1   = j*image_params->Sy;
-		corners->n2   = (j+1)*image_params->Sy;
-		REM_STX_ADDR(corners_ptr,corners_lcl,struct corners_t);
-		struct Inputs tmp_in, *tmp_in_ptr; ocrGuid_t tmp_in_dbg;
-		tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
-		tmp_in.Pt = dig_spot->Pt2
-		tmp_in.Pt_edge_dbg = NULL_GUID;
-		tmp_in.Pt_data_dbg = NULL_GUID;
-		tmp_in.Pl = NULL;
-		tmp_in.Pl_dbg = NULL_GUID;
-		tmp_in.X  = Xsubimg;
-		tmp_in.X_edge_dbg  = NULL_GUID;
-		tmp_in.X_data_dbg  = NULL_GUID;;
-		REM_STX_ADDR_SIZE(tmp_in_ptr,tmp_in,sizeof(struct Inputs));
-				BackProj(1,tmp_dbg, corners_dbg, // Xup, platpos
+				struct corners_t corners;
+				corners.m1   = i*image_params->Sx;
+				corners.m2   = (i+1)*image_params->Sx;
+				corners.n1   = j*image_params->Sy;
+				corners.n2   = (j+1)*image_params->Sy;
+				struct Inputs tmp_in;
+				tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
+				tmp_in.Pt = dig_spot->Pt2
+				tmp_in.Pt_edge_dbg = NULL_GUID;
+				tmp_in.Pt_data_dbg = NULL_GUID;
+				tmp_in.Pl = NULL;
+				tmp_in.Pl_dbg = NULL_GUID;
+				tmp_in.X  = Xsubimg;
+				tmp_in.X_edge_dbg  = NULL_GUID;
+				tmp_in.X_data_dbg  = NULL_GUID;;
+				BackProj(1,tmp_in, corners, // Xup, platpos
  				image_params_dbg, radar_params_dbg,
 				curImage_dbg, refImage_dbg);
 			}
@@ -237,57 +237,58 @@ xe_printf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 xe_printf("//// Perform backprojection over full image\n");RAG_FLUSH;
 #endif
-		struct corners_t *corners, *corners_ptr,corners_lcl; ocrGuid_t corners_dbg;
-		corners_ptr = bsm_malloc(&corners_dbg,sizeof(struct corners_t));
-		corners = &corners_lcl;
-		corners->m1   = 0;
-		corners->m2   = image_params->Ix;
-		corners->n1   = 0;
-		corners->n2   = image_params->Iy;
-		REM_STX_ADDR(corners_ptr,corners_lcl,struct corners_t);
+		struct corners_t corners;
+		corners.m1   = 0;
+		corners.m2   = image_params->Ix;
+		corners.n1   = 0;
+		corners.n2   = image_params->Iy;
 #ifdef TRACE_LVL_2
 xe_printf("//// create a template for BackProj function\n");RAG_FLUSH;
 #endif
-	ocrGuid_t BackProj_clg;
-	retval = ocrEdtTemplateCreate(
-			&BackProj_clg,		// ocrGuid_t *new_guid
-		 	 BackProj_edt,		// ocr_edt_ptr func_ptr
-			0,			// paramc
-			6);			// depc
-	assert(retval==0);
+		ocrGuid_t BackProj_clg;
+		retval = ocrEdtTemplateCreate(
+				&BackProj_clg,		// ocrGuid_t *new_guid
+			 	 BackProj_edt,		// ocr_edt_ptr func_ptr
+				(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+				5);			// depc
+		assert(retval==0);
 #ifdef TRACE_LVL_2
 xe_printf("//// create an edt for BackProj\n");RAG_FLUSH;
 #endif
-	ocrGuid_t BackProj_scg, BackProj_evg;
-	retval = ocrEdtCreate(
-			&BackProj_scg,		// *created_edt_guid
-			 BackProj_clg,		// edt_template_guid
-			EDT_PARAM_DEF,		// paramc
-			NULL,			// *paramv
-			EDT_PARAM_DEF,		// depc
-			NULL,			// *depv
-			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
-			&BackProj_evg);		// *outputEvent
-	assert(retval==0);
+		ocrGuid_t BackProj_scg, BackProj_evg;
+		retval = ocrEdtCreate(
+				&BackProj_scg,		// *created_edt_guid
+				 BackProj_clg,		// edt_template_guid
+				EDT_PARAM_DEF,		// paramc
+				(uint64_t *)&corners,	// *paramv
+				EDT_PARAM_DEF,		// depc
+				NULL,			// *depv
+				EDT_PROP_FINISH,	// properties
+				NULL_GUID,		// affinity
+				&BackProj_evg);		// *outputEvent
+		assert(retval==0);
 
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,in_dbg,0); // Xin, platpos
-RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,corners_dbg,1);
-RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,image_params_dbg,2);
-RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,radar_params_dbg,3);
-RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,curImage_dbg,4);
-RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,refImage_dbg,5);
+RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
+RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
+RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
+RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
 #ifdef RAG_DIG_SPOT
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,6);
 #else
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,5);
 #endif
 		OCR_DB_RELEASE(in_dbg);
-		OCR_DB_RELEASE(corners_dbg);
 		OCR_DB_RELEASE(image_params_dbg);
 		OCR_DB_RELEASE(radar_params_dbg);
 		OCR_DB_RELEASE(curImage_dbg);
-		if(refImage != NULL)OCR_DB_RELEASE(refImage_dbg);
+#ifdef RAG_SIM_NULL_GUID_WORKAROUND
+		if(refImage != curImage) {	// RAG NULL_GUID FSIM BUG WORKAROUND
+#else
+		if(refImage != NULL) {		// RAG NULL_GUID FSIM BUG WORKAROUND
+#endif
+			OCR_DB_RELEASE(refImage_dbg);
+		}
 	} // endif digital spot light
 #ifdef TRACE_LVL_2
 xe_printf("//// leave FormImage_edt\n");RAG_FLUSH;

@@ -375,10 +375,10 @@ xe_printf("// Allocate memory for axis vectors\n");RAG_FLUSH;
 xe_printf("// Create axis vectors\n");RAG_FLUSH;
 #endif
 	for(int i=0; i<image_params.Ix; i++) {
-		RAG_PUT_FLT(&image_params.xr[i], (i - floorf((float)image_params.Ix/2))*image_params.dr);
+		image_params.xr[i] = (i - floorf((float)image_params.Ix/2))*image_params.dr;
 	}
 	for(int i=0; i<image_params.Iy; i++) {
-		RAG_PUT_FLT(&image_params.yr[i],(i - floorf((float)image_params.Iy/2))*image_params.dr);
+		image_params.yr[i] = (i - floorf((float)image_params.Iy/2))*image_params.dr;
 	}
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
@@ -402,7 +402,7 @@ xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 	}
 	in.X_data_dbg = in_X_data_dbg;
 	for(int i=0; i<image_params.P1; i++) {
-		RAG_PUT_PTR(&in.X[i], in_X_data_ptr + i*image_params.S1);
+		in.X[i] = in_X_data_ptr + i*image_params.S1;
 	}
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FLUSH;
@@ -426,7 +426,7 @@ xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FL
 	}
 	in.Pt_data_dbg = in_Pt_data_dbg;
 	for(int i=0; i<image_params.P1; i++) {
-		RAG_PUT_PTR(&in.Pt[i], in_Pt_data_ptr + i*3);
+		in.Pt[i] = in_Pt_data_ptr + i*3;
 	}
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for timestamp of pulse transmissions\n");RAG_FLUSH;
@@ -458,7 +458,7 @@ xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 	for(int i=0; i<image_params.Iy; i++) {
-		RAG_PUT_PTR(&curImage[i], curImage_data_ptr + i*image_params.Ix);
+		curImage[i] = curImage_data_ptr + i*image_params.Ix;
 	}
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
@@ -480,7 +480,7 @@ xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 	for(int i=0; i<image_params.Iy; i++) {
-		RAG_PUT_PTR(&refImage[i], refImage_data_ptr + i*image_params.Ix);
+		refImage[i] = refImage_data_ptr + i*image_params.Ix;
 	}
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
@@ -503,7 +503,7 @@ xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
 	}
 	for(int i=0; i<image_params.Iy-image_params.Ncor+1; i++)
 	{
-		RAG_PUT_PTR(&corr_map[i], corr_map_data_ptr + i*(image_params.Ix-image_params.Ncor+1));
+		corr_map[i] = corr_map_data_ptr + i*(image_params.Ix-image_params.Ncor+1);
 	}
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
@@ -517,16 +517,16 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 ////////////////////////////////////////////////////////////////////////////
 //  DONE WITH INITIALIZATION OF PARAMETER DATA, PUT DATA INTO DATA BLOCKS //
 ////////////////////////////////////////////////////////////////////////////
-	REM_STX_ADDR(in_ptr           , in           , struct Inputs);
+	SPADtoBSM(in_ptr           , &in           , sizeof(struct Inputs));
 #ifdef RAG_DIG_SPOT
-	REM_STX_ADDR(dig_spot_ptr     , dig_spot     , struct DigSpotVars);
+	SPADtoBSM(dig_spot_ptr     , &dig_spot     , sizeof(struct DigSpotVars));
 #endif
 
-	REM_STX_ADDR(cfar_params_ptr  , cfar_params  , struct CfarParams);
-	REM_STX_ADDR(radar_params_ptr , radar_params , struct RadarParams);
-	REM_STX_ADDR(image_params_ptr , image_params , struct ImageParams);
-	REM_STX_ADDR(affine_params_ptr, affine_params, struct AffineParams);
-	REM_STX_ADDR(ts_params_ptr    , ts_params    , struct ThinSplineParams);
+	SPADtoBSM(cfar_params_ptr  , &cfar_params  , sizeof(struct CfarParams));
+	SPADtoBSM(radar_params_ptr , &radar_params , sizeof(struct RadarParams));
+	SPADtoBSM(image_params_ptr , &image_params , sizeof(struct ImageParams));
+	SPADtoBSM(affine_params_ptr, &affine_params, sizeof(struct AffineParams));
+	SPADtoBSM(ts_params_ptr    , &ts_params    , sizeof(struct ThinSplineParams));
 
 	struct file_args_t file_args_lcl, *file_args_ptr;
 	ocrGuid_t file_args_dbg;
@@ -538,7 +538,7 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 		xe_printf("Error allocating memory for file_args.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	REM_STX_ADDR(file_args_ptr,file_args_lcl,struct file_args_t);
+	SPADtoBSM(file_args_ptr    , &file_args_lcl, sizeof(struct file_args_t));
 
 //////////////////////////////////////////////////////////////////////////
 //   Create all the first level edts                                    //
@@ -1171,32 +1171,20 @@ xe_printf("// Output Images to .bin files\n");RAG_FLUSH;
             fwrite(&corr_map[m][0], sizeof(struct point), image_params->Ix-image_params->Ncor+1, pOutCorr);
 #else
         for(int m=0; m<image_params->Iy; m++) {
-            struct complexData *cur_m;
-            cur_m = (struct complexData *)RAG_GET_PTR(curImage+m);
             for(int n=0; n<image_params->Ix; n++) {
-	        struct complexData cur_m_n;
-	        REM_LDX_ADDR(cur_m_n,cur_m+n,struct complexData);
-		xe_printf("cur 0x%x 0x%x\n",*(uint32_t *)&cur_m_n.real, *(uint32_t *)&cur_m_n.imag);
+		xe_printf("cur 0x%x 0x%x\n",*(uint32_t *)&curImage[m][n].real, *(uint32_t *)&curImage[m][n].imag);
 	    } // for n
 	} // for m
 
         for(int m=0; m<image_params->Iy; m++) {
-            struct complexData *ref_m;
-            ref_m = (struct complexData *)RAG_GET_PTR(refImage+m);
             for(int n=0; n<image_params->Ix; n++) {
-	        struct complexData ref_m_n;
-	        REM_LDX_ADDR(ref_m_n,ref_m+n,struct complexData);
-		xe_printf("ref 0x%x 0x%x\n",*(uint32_t *)&ref_m_n.real, *(uint32_t *)&ref_m_n.imag);
+		xe_printf("ref 0x%x 0x%x\n",*(uint32_t *)&refImage[m][n].real, *(uint32_t *)&refImage[m][n].imag);
 	    } // for n
 	} // for m
 
         for(int m=0; m<image_params->Iy-image_params->Ncor+1; m++) {
-            struct point *corr_m;
-            corr_m = (struct point *)RAG_GET_PTR(corr_map+m);
             for(int n=0; n<image_params->Ix-image_params->Ncor+1; n++) {
-	        struct point corr_m_n;
-	        REM_LDX_ADDR(corr_m_n,corr_m+n,struct point);
-		xe_printf("corr 0x%x 0x%x 0x%x\n",*(uint32_t *)&corr_m_n.x, *(uint32_t *)&corr_m_n.y,*(uint32_t *)&corr_m_n.p);
+		xe_printf("corr 0x%x 0x%x 0x%x\n",*(uint32_t *)&corr_map[m][n].x, *(uint32_t *)&corr_map[m][n].y,*(uint32_t *)&corr_map[m][n].p);
 	    } // for n
 	} // for m
 #endif

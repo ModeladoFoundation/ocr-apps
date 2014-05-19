@@ -103,7 +103,7 @@ $(TARGET): $(INCS) $(OBJS) $(BIN_OBJS) Makefile
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(BIN_OBJS) $(LDLIBS)
 
 run:	$(TARGET) $(TARGET).cfg
-#	./$(TARGET) -ocr:cfg ./$(TARGET).cfg
+	$(RM) -rf detects.txt images_debug.bin corr_debug.bin
 	./$(TARGET) -ocr:cfg ./$(TARGET).cfg >detects.txt
 
 view:	detects.txt images_debug.bin corr_debug.bin

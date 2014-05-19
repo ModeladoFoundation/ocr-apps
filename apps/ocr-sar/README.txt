@@ -1,6 +1,6 @@
 trunk/apps/ocr-sar/Sensor/README.txt
 ----------------------------------------------------------------------
-May 12, 2014 Update:
+May 19, 2014 Update:
 linux/fsim ocr versions
 
 (1) Use -DRAG_PETER_DIST_AND_TRIG to support Peter Tang's optimizations.
@@ -12,37 +12,27 @@ Without -DRAG_SPAD, caching is used to capture locality for the image subblock.
 (2) Under -DRAG_PETER_AND_TRIG_OFF there is also -DSINCOS option, to use the
 merged sincosf() function.
 
-(3) -DRAG_FINISH_EDT  enables the use of FINISH_EDTs, this is still being
-debugged, and the conversion of all the places FINISH_EDTs could be used
-hasn't been finished.  Currently this works on linux, but had an assert in
-the CE on fsim.
-CONSOLE: XE7 >>> //////// leave backproject_async slot 0
-CONSOLE: XE7 >>> BSM_FREE (ptr=xxx) (dbg=yyy)
-CONSOLE: XE7 >>> WARN: No room to add dependence
-
 (4) -DRAG_NULL_GUID_WORKAROUND, workes around the fsim problem of not being able
 to ocrAddDependency with a NULL_GUID.
 
 (5) To run large problems on linux, one has to rebuild ocr to have a larger
 INIT_DEQUE_CAPASITY value.  The script rebuild-ocr-for-sar.sh will do this.
+One also needs to increase the #define DEQUE_LEN for fsim too.
+It is in the file xstack/ss/runtime/libce/inc/ocr-edt-ce.h
 
-(6) -DRAG_DRAM and -DRAG_BSM enable explicit data movement in the memory
-hierarchy.
+(6) -DRAG_SPAD and -DRAG_DRAM enable explicit data movement in the memory
+ hierarchy.
+ -DRAG_DRAM is intended to large data structures to DRAM when the are to big to fit in BSM.
 
 TODO:
 
-(1) finish the convertion to FINISH_EDTs
-
-(2) incrementially add back using DMA operations to move data between DRAM
+(1) incrementially add back using DMA operations to move data between DRAM
     and BSM on FSIM.
 
-(3) get rid of the GET_(INT|FLT|ect) macros and turn them back into normal C
-    pointer arith/array index operations
-
-(4) figure out why randomly, some of the linux ocr runs have a SEGV in the
+(2) figure out why randomly, some of the linux ocr runs have a SEGV in the
     OCR runtime after the user EDTs finish.
 
-(5) Map sincosf to the fsim instruction
+(3) Map sincosf to the fsim instruction
 
 roger.a.golliver@gmail.com
 (503) 866-9331
