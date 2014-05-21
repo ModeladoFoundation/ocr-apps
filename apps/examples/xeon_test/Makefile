@@ -1,7 +1,6 @@
-PROG=helloworld
+PROG=xeon_test
 CFLAGS=-O0 -g -Werror -I. -I../../inc -c
-OCR_FLAGS=-L${OCR_INSTALL}/lib -L/opt/intel/composer_xe_2013_sp1.1.106/compiler/lib/mic \
- 	-limf -lsvml -lirng -lintlc -I${OCR_INSTALL}/include -locr
+OCR_FLAGS=-L${OCR_INSTALL}/lib -L/opt/intel/composer_xe_2013_sp1.1.106/compiler/lib/mic	-limf -lsvml -lirng -lintlc -I${OCR_INSTALL}/include -locr
 
 ifndef OCR_INSTALL
 $(error OCR_INSTALL not set)

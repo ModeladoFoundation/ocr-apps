@@ -1,7 +1,7 @@
 PROG=treesum_2level
 SUFFIX=.exe
 CFLAGS=-O0 -g
-OCR_FLAGS=-L${OCR_INSTALL}/lib -I${OCR_INSTALL}/include -locr
+OCR_FLAGS=-L${OCR_INSTALL}/lib -I${OCR_INSTALL}/include -locr -lrt
 
 all-test: compile run
 
