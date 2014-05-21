@@ -1,1 +1,0 @@
-../../SSCP_afl/src/image_formation.c
