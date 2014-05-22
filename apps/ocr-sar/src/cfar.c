@@ -50,7 +50,6 @@ xe_printf("//// Output to file %d detects\n",Nd);RAG_FLUSH;
 #endif
 	} // for m
 
-	OCR_DB_RELEASE(Y_dbg);
 	bsm_free(p_Nd,Nd_dbg);
 #ifdef TRACE_LVL_2
 xe_printf("//// leave post_CFAR_edt\n");RAG_FLUSH;
@@ -141,15 +140,14 @@ xe_printf("////// cfar_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
 #endif
 
 	ocrGuid_t pLocal_dbg;
-        pLocal = (float **)spad_malloc(&pLocal_dbg,cfar_params->Ncfar*sizeof(float*));
+        pLocal = (float **)spad_malloc(&pLocal_dbg,(cfar_params->Ncfar)*sizeof(float*)
+						  +(cfar_params->Ncfar)*(cfar_params->Ncfar)*sizeof(float));
         if(pLocal == NULL) {
             xe_printf("Error allocating edge vector for local correlation map.\n");RAG_FLUSH;
             xe_exit(1);
         }
 
-	float * pLocal_data_ptr; ocrGuid_t pLocal_data_dbg;
-        pLocal_data_ptr = (float*)spad_malloc(&pLocal_data_dbg,
-		cfar_params->Ncfar*(cfar_params->Ncfar*sizeof(float)));
+	float * pLocal_data_ptr = (float *)&pLocal[cfar_params->Ncfar];
         if (pLocal_data_ptr == NULL) {
             xe_printf("Error allocating data memory for local correlation map.\n");RAG_FLUSH;
             xe_exit(1);
@@ -217,12 +215,7 @@ xe_printf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y[nd
             } // for n
         } // for m
 
-        if (pLocal[0])
-            spad_free(pLocal_data_ptr,pLocal_data_dbg);
-        if (pLocal) {
-            spad_free(pLocal,pLocal_dbg);
-            pLocal = NULL;
-        }
+        spad_free(pLocal,pLocal_dbg);
 
 #ifdef TRACE_LVL_3
 xe_printf("////// leave cfar_async_edt\n");RAG_FLUSH;
@@ -250,10 +243,15 @@ xe_printf("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nw
 	ocrGuid_t Nd_dbg;
 	int *Nd_ptr = bsm_malloc(&Nd_dbg,sizeof(int));
 	*Nd_ptr = 0;
+#ifdef RAG_NEW_BLK_SIZE
+	int CFAR_ASYNC_BLOCK_SIZE_M = 32;
+	int CFAR_ASYNC_BLOCK_SIZE_N = 32;
+#else
 	int CFAR_ASYNC_BLOCK_SIZE_M = blk_size(Mwins,32);
 	int CFAR_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CFAR_ASYNC_BLOCK_SIZE_M)==0);
 	assert((Nwins%CFAR_ASYNC_BLOCK_SIZE_N)==0);
+#endif
 
 #ifdef TRACE_LVL_2
 xe_printf("//// satisfy non event guids for post_CFAR_scg\n");RAG_FLUSH;
@@ -271,7 +269,17 @@ xe_printf("//// create a template for cfar_async function\n");RAG_FLUSH;
 			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
 			5);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = cfar_async_clg;
 
+#ifdef RAG_NEW_BLK_SIZE
+	for(int m=0; m<Mwins; m+=CFAR_ASYNC_BLOCK_SIZE_M) {
+		for(int n=0; n<Nwins; n+=CFAR_ASYNC_BLOCK_SIZE_N) {
+			struct corners_t async_corners;
+			async_corners.m1   = m;
+			async_corners.m2   = (m+CFAR_ASYNC_BLOCK_SIZE_M)<Mwins?(m+CFAR_ASYNC_BLOCK_SIZE_M):Mwins;
+			async_corners.n1   = n;
+			async_corners.n2   = (n+CFAR_ASYNC_BLOCK_SIZE_N)<Nwins?(n+CFAR_ASYNC_BLOCK_SIZE_N):Nwins;
+#else
 	for(int m=0; m<Mwins; m+=CFAR_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CFAR_ASYNC_BLOCK_SIZE_N) {
 			struct corners_t async_corners;
@@ -279,6 +287,7 @@ xe_printf("//// create a template for cfar_async function\n");RAG_FLUSH;
 			async_corners.m2   = m+CFAR_ASYNC_BLOCK_SIZE_M;
 			async_corners.n1   = n;
 			async_corners.n2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
+#endif
 #ifdef TRACE_LVL_2
 xe_printf("////// create an edt for cfar_async\n");RAG_FLUSH;
 #endif
@@ -303,11 +312,6 @@ RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Nd_dbg,4);
 		} // for n
 	} // for m
 
-	OCR_DB_RELEASE(image_params_dbg);
-	OCR_DB_RELEASE(cfar_params_dbg);
-	OCR_DB_RELEASE(corr_map_dbg);
-	OCR_DB_RELEASE(Y_dbg);
-	OCR_DB_RELEASE(Nd_dbg);
 #ifdef TRACE_LVL_2
 xe_printf("//// leave CFAR\n");RAG_FLUSH;
 #endif

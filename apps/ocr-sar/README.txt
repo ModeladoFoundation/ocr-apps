@@ -1,7 +1,9 @@
 trunk/apps/ocr-sar/Sensor/README.txt
 ----------------------------------------------------------------------
-May 19, 2014 Update:
-linux/fsim ocr versions
+May 22, 2014 Update:
+linux/fsim ocr versions:
+
+(0) now run on old fsim/ocr and the new linix/ocr
 
 (1) Use -DRAG_PETER_DIST_AND_TRIG to support Peter Tang's optimizations.
 Under -DRAG_PETER_DIST_AND_TRIG, there is also support for a -DRAG_SPAD option.
@@ -23,16 +25,22 @@ It is in the file xstack/ss/runtime/libce/inc/ocr-edt-ce.h
 (6) -DRAG_SPAD and -DRAG_DRAM enable explicit data movement in the memory
  hierarchy.
  -DRAG_DRAM is intended to large data structures to DRAM when the are to big to fit in BSM.
+ -DRAG_SPAD moves the sub-block's data to SPAD
 
 TODO:
 
 (1) incrementially add back using DMA operations to move data between DRAM
     and BSM on FSIM.
 
-(2) figure out why randomly, some of the linux ocr runs have a SEGV in the
-    OCR runtime after the user EDTs finish.
+(2) Map sincosf to the fsim instruction
 
-(3) Map sincosf to the fsim instruction
+FORGET:
+
+(1) figure out why randomly, some of the linux ocr runs have a SEGV in the
+    old OCR runtime after the user EDTs finish.
+    Low priority since this version of linux OCR is old
+    and work in on the new version, and it now runs on the new version.
+
 
 roger.a.golliver@gmail.com
 (503) 866-9331

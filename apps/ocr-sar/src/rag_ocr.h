@@ -20,10 +20,14 @@
 #endif
 
 #ifndef RAG_SIM
-#define xe_printf printf
+#define xe_printf(...) printf(__VA_ARGS__)
 #define RAG_FLUSH {fflush(stdout);fflush(stderr);}
+#define rag_printf(...)
+#define rag_flush
 #else
 #define RAG_FLUSH
+#define rag_printf(...)
+#define rag_flush
 #endif
 
 #ifndef RAG_SIM
@@ -38,6 +42,7 @@ void ocr_exit(void); // RAG ocr_exit() non-public
 do { \
 	u8 __retval__; \
 	__retval__ = ocrDbCreate(&(guid),(u64 *)&(addr),(len),DB_PROP_NONE,(affinity),NO_ALLOC); \
+	rag_printf("OCR_DB_C %16.16lx \n",GUID_VALUE(guid));rag_flush; \
 	if (__retval__ != 0) { \
 		xe_printf("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
 	} /* else { xe_printf("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
@@ -47,6 +52,7 @@ do { \
 do { \
 	u8 __retval__; \
 	__retval__ = ocrDbCreate(&(guid),&(addr),(len),DB_PROP_NONE,(affinity),NO_ALLOC); \
+	rag_printf("OCR_DB_C %16.16lx \n",GUID_VALUE(guid));rag_flush; \
 	if (__retval__ != 0) { \
 		xe_printf("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
 	} /* else { xe_printf("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
@@ -56,22 +62,29 @@ do { \
 #define OCR_DB_RELEASE(guid) \
 do { \
 	u8  __retval__; \
-	__retval__ = 0; /*ocrDbRelease(guid);*/ \
+	rag_printf("OCR_DB_R %16.16lx \n",GUID_VALUE(guid));rag_flush; \
+	__retval__ = ocrDbRelease(guid); \
 	if (__retval__ != 0) { \
 		xe_printf("ocrDbRelease ERROR arg=%ld %s:%d\n", GUID_VALUE(guid), __FILE__, __LINE__); \
 		xe_exit(__retval__); \
 	} \
 } while(0)
 
+#if 0
+#define OCR_DB_FREE(addr,guid) \
+	do { rag_printf("OCR_DB_D %16.16lx \n",GUID_VALUE(guid));rag_flush; } while (0)
+#else
 #define OCR_DB_FREE(addr,guid) \
 do { \
 	u8 __retval__; \
+	rag_printf("OCR_DB_D %16.16lx \n",GUID_VALUE(guid));rag_flush; \
 	__retval__ = ocrDbDestroy((guid)); \
 	if (__retval__ != 0) { \
 		xe_printf("ocrDbDestroy ERROR arg=%ld %s:%d\n", GUID_VALUE(guid), __FILE__, __LINE__); \
 		xe_exit(__retval__); \
 	} \
 } while(0)
+#endif
 
 #ifndef RAG_SIM
   #include <assert.h>
@@ -178,27 +191,34 @@ void DRAMtoBSM( void *out, void *in, size_t size);
 void DRAMtoDRAM(void *out, void *in, size_t size);
 
 #define RAG_DEF_MACRO_SPAD(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
- 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0);
+ 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0); \
+	rag_printf("DEF_SPAD %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_DEF_MACRO_BSM(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
- 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0);
+ 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0); \
+	rag_printf("DEF_BSM  %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_DEF_MACRO_PASS(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
- 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0);
+ 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0); \
+	rag_printf("DEF_PASS %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_REF_MACRO_SPAD(type,var,ptr_var,lcl_var,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
 	type *var, *ptr_var= (void *)depv[slot].ptr, lcl_var; \
 	REM_LDX_ADDR(lcl_var, ptr_var, type); \
-	var = &lcl_var;
+	var = &lcl_var; \
+	rag_printf("REF_SPAD %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_REF_MACRO_BSM(type,var,no_ptr,no_lcl,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
-	type var = (void *)depv[slot].ptr;
+	type var = (void *)depv[slot].ptr; \
+	rag_printf("REF_BSM  %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_REF_MACRO_PASS(no_type,no_var,no_ptr,no_lcl,dbg,slot) \
-	ocrGuid_t dbg = depv[slot].guid;
+	ocrGuid_t dbg = depv[slot].guid; \
+	rag_printf("REF_PASS %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
+#ifndef RAG_NEW_BLK_SIZE
 static int blk_size(int n,int max_blk_size) {
 	int ret_val = n;
 	for( int i = max_blk_size ; i>1 ; i-- ) {
@@ -207,11 +227,12 @@ static int blk_size(int n,int max_blk_size) {
 			break;
 		}
 	}
-#ifdef DEBUG
+#ifdef TRACE
 	xe_printf("blk_size(%d,%d) returns = %d\n",n,max_blk_size,ret_val);
 #endif
 	return ret_val;
 }
+#endif
 
 //
 // was in math.h, using crlibm and rag_ocr
@@ -226,4 +247,8 @@ extern float fmodf(float x, float y);
 extern float floorf(float arg );
 extern float ceilf(float arg);
 extern double round(double arg);
+
+extern SHARED ocrGuid_t templateList[25];
+extern SHARED int templateIndex;
+
 #endif // RAG_OCR_H

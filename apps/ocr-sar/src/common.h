@@ -1,5 +1,3 @@
-#define _USE_MATH_DEFINES
-
 #ifndef RAG_SIM
 #define _GNU_SOURCE
 #endif
@@ -45,10 +43,8 @@ struct Inputs {
 	float **Pt;	// Transmitter positions at each pulse
 	struct complexData **X;	// Pulse compressed SAR data
 	ocrGuid_t Tp_dbg;	// Timestamp of pulse transmissions
-	ocrGuid_t Pt_edge_dbg;	// Transmitter positions at each pulse
-	ocrGuid_t Pt_data_dbg;	// Transmitter positions at each pulse
-	ocrGuid_t X_edge_dbg;	// Pulse compressed SAR edge vector DB guid
-	ocrGuid_t X_data_dbg;	// Pulse compressed SAR data DB guid
+	ocrGuid_t Pt_dbg;	// Transmitter positions at each pulse
+	ocrGuid_t X_dbg;	// Pulse compressed SAR data DB guid
 };
 
 struct RadarParams {

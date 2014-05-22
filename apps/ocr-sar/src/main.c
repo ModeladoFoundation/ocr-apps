@@ -53,6 +53,15 @@
 #include "common.h"
 #endif
 
+SHARED ocrGuid_t templateList[25];
+SHARED int templateIndex = 0;
+
+#ifndef RAG_SIM
+#define dram_free(addr,guid)
+#define  bsm_free(addr,guid)
+#define spad_free(addr,guid)
+#endif
+
 #if defined(RAG_DIG_SPOT) || defined(RAG_THIN)
 #error
 #endif
@@ -68,7 +77,6 @@ ocrGuid_t mainEdt(
 xe_printf("enter mainEdt paramc %d depc %d\n",paramc,depc);RAG_FLUSH;
 #endif
 	FILE *pInFile, *pInFile2, *pInFile3;
-	struct Inputs in;			// Inputs
 	struct detects *Y;			// Detects list
 	struct point **corr_map;		// Correlation map
 #ifdef RAG_DIG_SPOT
@@ -83,7 +91,6 @@ xe_printf("enter mainEdt paramc %d depc %d\n",paramc,depc);RAG_FLUSH;
 	struct AffineParams affine_params;	// Affine registration parameters
 	struct ThinSplineParams ts_params;	// Thin spline registration parameters
 
-	ocrGuid_t in_dbg;      			// Inputs
 #ifdef RAG_DIG_SPOT
 	ocrGuid_t dig_spot_dbg;			// Digital spotlight variables
 #endif
@@ -94,7 +101,6 @@ xe_printf("enter mainEdt paramc %d depc %d\n",paramc,depc);RAG_FLUSH;
 	ocrGuid_t affine_params_dbg;		// Affine registration parameters datablock guid
 	ocrGuid_t ts_params_dbg;		// Thin spline registration parameters datablock guid
 
-	struct Inputs *in_ptr;			// Inputs
 #ifdef RAG_DIG_SPOT
 	struct DigSpotVars *dig_spot_ptr;	// Digital spotlight variables
 #endif
@@ -105,14 +111,6 @@ xe_printf("enter mainEdt paramc %d depc %d\n",paramc,depc);RAG_FLUSH;
 	struct AffineParams *affine_params_ptr;	// Affine registration parameters
 	struct ThinSplineParams *ts_params_ptr;	// Thin spline registration parameters
 
-#ifdef TRACE
-xe_printf("allocate Inputs\n");RAG_FLUSH;
-#endif
-	in_ptr       =  bsm_malloc(&in_dbg     ,  sizeof(struct Inputs));
-	if(in_ptr == NULL) {
-		xe_printf("Error allocating memory for in data block.\n");RAG_FLUSH;
-		xe_exit(1);
-	}
 #ifdef RAG_DIG_SPOT
 #ifdef TRACE
 xe_printf("allocate DigSpotVars\n");RAG_FLUSH;
@@ -122,6 +120,11 @@ xe_printf("allocate DigSpotVars\n");RAG_FLUSH;
 		xe_printf("Error allocating memory for dig_spot data block.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
+#endif
+
+#ifdef RAG_TEST_GUID_WALK
+	// create datablock that we don't destroy
+	ocrGuid_t rag_dbg; int *rag_ptr = bsm_malloc(&rag_dbg,1024*sizeof(int));
 #endif
 
 #ifdef TRACE
@@ -314,7 +317,7 @@ xe_printf("// Allocate memory for variables needed to perform digital spotlighti
 			xe_exit(1);
 		}
 
-		dig_spot.Pt2 = (float**)malloc(image_params.P2*sizeof(float*));
+		dig_spot.Pt2 = (float **)malloc(image_params.P2*sizeof(float*));
 		if(dig_spot.Pt2 == NULL) {
 			xe_printf("Error allocating memory for Pt2.\n");RAG_FLUSH;
 			xe_exit(1);
@@ -357,9 +360,10 @@ xe_printf("// TF = 1 implies no digital spotlighting\n");RAG_FLUSH;
 	}
 
 	image_params.S4 = (int)ceilf(image_params.F*image_params.S3);
-#ifdef DEBUG
+#ifdef DEBUG_LVL_5
 xe_printf("// check ceilf S4 %d F %d S3 %d\n",image_params.S4,image_params.F,image_params.S3);RAG_FLUSH;
 #endif
+
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for axis vectors\n");RAG_FLUSH;
 #endif
@@ -371,6 +375,7 @@ xe_printf("// Allocate memory for axis vectors\n");RAG_FLUSH;
 		xe_printf("Error allocating memory for axis vectors.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
+
 #ifdef TRACE_LVL_1
 xe_printf("// Create axis vectors\n");RAG_FLUSH;
 #endif
@@ -380,81 +385,87 @@ xe_printf("// Create axis vectors\n");RAG_FLUSH;
 	for(int i=0; i<image_params.Iy; i++) {
 		image_params.yr[i] = (i - floorf((float)image_params.Iy/2))*image_params.dr;
 	}
+
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for pulse compressed SAR data\n");RAG_FLUSH;
 #endif
-        ocrGuid_t in_X_dbg;
-	in.X = (struct complexData**)bsm_malloc(&in_X_dbg,image_params.P1*sizeof(struct complexData*));
-	if(in.X == NULL) {
-		xe_printf("Error allocating memory for X edge vector.\n");RAG_FLUSH;
-		xe_exit(1);
-	}
-	in.X_edge_dbg = in_X_dbg;
-        struct complexData* in_X_data_ptr = NULL; ocrGuid_t in_X_data_dbg;
+        struct complexData **X; ocrGuid_t X_dbg;
 #ifdef RAG_DRAM
-	in_X_data_ptr = (struct complexData*)dram_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
+	X = (struct complexData **)dram_malloc(&X_dbg,(image_params.P1)*sizeof(struct complexData *)
+							   +(image_params.P1)*(image_params.S1)*sizeof(struct complexData));
 #else
-	in_X_data_ptr = (struct complexData*) bsm_malloc(&in_X_data_dbg,image_params.P1*image_params.S1*sizeof(struct complexData));
+	X = (struct complexData **) bsm_malloc(&X_dbg,(image_params.P1)*sizeof(struct complexData *)
+							   +(image_params.P1)*(image_params.S1)*sizeof(struct complexData));
 #endif
-	if ( in_X_data_ptr == NULL) {
-		xe_printf("Error allocating memory for X data.\n");RAG_FLUSH;
+	if(X == NULL) {
+		xe_printf("Error allocating memory for X.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	in.X_data_dbg = in_X_data_dbg;
-	for(int i=0; i<image_params.P1; i++) {
-		in.X[i] = in_X_data_ptr + i*image_params.S1;
+        struct complexData *X_data_ptr = (struct complexData *)&X[image_params.P1];
+	if ( X_data_ptr == NULL) {
+		xe_printf("Unable to allocate memory for X.\n");RAG_FLUSH;
+		xe_exit(1);
 	}
+	for(int i=0; i<image_params.P1; i++) {
+		X[i] = X_data_ptr + i*image_params.S1;
+	}
+
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for transmitter positions at each pulse\n");RAG_FLUSH;
 #endif
-	ocrGuid_t in_Pt_dbg;
-	in.Pt = (float**)bsm_malloc(&in_Pt_dbg,image_params.P1*sizeof(float*));
-	if(in.Pt == NULL) {
-		xe_printf("Error allocating memory for Pt edge vector.\n");RAG_FLUSH;
-		xe_exit(1);
-	}
-	in.Pt_edge_dbg = in_Pt_dbg;
-	float * in_Pt_data_ptr = NULL; ocrGuid_t in_Pt_data_dbg;
+	float **Pt; ocrGuid_t Pt_dbg;
 #ifdef RAG_DRAM
-	in_Pt_data_ptr = (float*)dram_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
+	Pt = (float **)dram_malloc(&Pt_dbg,(image_params.P1)*sizeof(float *)
+					  +(image_params.P1)*3*sizeof(float));
 #else
-	in_Pt_data_ptr = (float*) bsm_malloc(&in_Pt_data_dbg,image_params.P1*3*sizeof(float));
+	Pt = (float **) bsm_malloc(&Pt_dbg,(image_params.P1)*sizeof(float *)
+					  +(image_params.P1)*3*sizeof(float));
 #endif
-	if( in_Pt_data_ptr == NULL) {
-		xe_printf("Error allocating memory for Pt data.\n");RAG_FLUSH;
+	if(Pt == NULL) {
+		xe_printf("Error allocating memory for Pt.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	in.Pt_data_dbg = in_Pt_data_dbg;
-	for(int i=0; i<image_params.P1; i++) {
-		in.Pt[i] = in_Pt_data_ptr + i*3;
+	float * Pt_data_ptr = (float *)&Pt[image_params.P1];
+	if( Pt_data_ptr == NULL) {
+		xe_printf("Unable allocate memory for Pt.\n");RAG_FLUSH;
+		xe_exit(1);
 	}
+	for(int i=0; i<image_params.P1; i++) {
+		Pt[i] = Pt_data_ptr + i*3;
+	}
+
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for timestamp of pulse transmissions\n");RAG_FLUSH;
 #endif
-	ocrGuid_t in_Tp_dbg;
-	in.Tp = (float*)bsm_malloc(&in_Tp_dbg,image_params.P1*sizeof(float));
-	if(in.Tp == NULL) {
+	float *Tp; ocrGuid_t Tp_dbg;
+#ifdef RAG_DRAM
+	Tp = (float*)dram_malloc(&Tp_dbg,image_params.P1*sizeof(float));
+#else
+	Tp = (float*) bsm_malloc(&Tp_dbg,image_params.P1*sizeof(float));
+#endif
+	if(Tp == NULL) {
 		xe_printf("Error allocating memory for Tp.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	in.Tp_dbg = in_Tp_dbg;
+
 #ifdef TRACE_LVL_1
 xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 #endif
 	ocrGuid_t curImage_dbg;
-	curImage = (struct complexData**) bsm_malloc(&curImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#ifdef RAG_DRAM
+	curImage = (struct complexData **)dram_malloc(&curImage_dbg,(image_params.Iy)*sizeof(struct complexData *)
+								   +(image_params.Iy)*(image_params.Ix)*sizeof(struct complexData));
+#else
+	curImage = (struct complexData **) bsm_malloc(&curImage_dbg,(image_params.Iy)*sizeof(struct complexData *)
+								   +(image_params.Iy)*(image_params.Ix)*sizeof(struct complexData));
+#endif
 	if( curImage == NULL) {
-		xe_printf("Error allocating memory for curImage edge vector.\n");RAG_FLUSH;
+		xe_printf("Error allocating memory for curImage.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	struct complexData *curImage_data_ptr; ocrGuid_t curImage_data_dbg;
-#ifdef RAG_DRAM
-	curImage_data_ptr = (struct complexData*)dram_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
-#else
-	curImage_data_ptr = (struct complexData*) bsm_malloc(&curImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
-#endif
+	struct complexData *curImage_data_ptr = (struct complexData *)&curImage[image_params.Iy];
 	if (curImage_data_ptr == NULL) {
-		xe_printf("Error allocating memory for curImage data.\n");RAG_FLUSH;
+		xe_printf("Unable to allocate memory for curImage.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 	for(int i=0; i<image_params.Iy; i++) {
@@ -464,19 +475,20 @@ xe_printf("// Allocate memory for current image\n");RAG_FLUSH;
 xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 #endif
 	ocrGuid_t refImage_dbg;
-	refImage = (struct complexData**) bsm_malloc(&refImage_dbg,image_params.Iy*sizeof(struct complexData*));
+#ifdef RAG_DRAM
+	refImage = (struct complexData **)dram_malloc(&refImage_dbg,(image_params.Iy)*sizeof(struct complexData *)
+								   +(image_params.Iy)*(image_params.Ix)*sizeof(struct complexData));
+#else
+	refImage = (struct complexData **) bsm_malloc(&refImage_dbg,(image_params.Iy)*sizeof(struct complexData *)
+								   +(image_params.Iy)*(image_params.Ix)*sizeof(struct complexData));
+#endif
 	if(refImage == NULL) {
-		xe_printf("Error allocating memory for refImage edge vector.\n");RAG_FLUSH;
+		xe_printf("Error allocating memory for refImage.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	struct complexData *refImage_data_ptr; ocrGuid_t refImage_data_dbg;
-#ifdef RAG_DRAM
-	refImage_data_ptr = (struct complexData*)dram_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
-#else
-	refImage_data_ptr = (struct complexData*) bsm_malloc(&refImage_data_dbg,image_params.Iy*image_params.Ix*sizeof(struct complexData));
-#endif
+	struct complexData *refImage_data_ptr = (struct complexData *)&refImage[image_params.Iy];
 	if (refImage_data_ptr == NULL) {
-		xe_printf("Error allocating memory for refImage data.\n");RAG_FLUSH;
+		xe_printf("Unable to allocate memory for refImage.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 	for(int i=0; i<image_params.Iy; i++) {
@@ -486,19 +498,20 @@ xe_printf("// Allocate memory for reference image\n");RAG_FLUSH;
 xe_printf("// Allocate memory for correlation map\n");RAG_FLUSH;
 #endif
 	ocrGuid_t corr_map_dbg;
-	corr_map = (struct point**) bsm_malloc(&corr_map_dbg,(image_params.Iy-image_params.Ncor+1)*sizeof(struct point*));
+#ifdef RAG_DRAM
+	corr_map = (struct point**)dram_malloc(&corr_map_dbg,(image_params.Iy-image_params.Ncor+1)*sizeof(struct point *)
+							    +(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
+#else
+	corr_map = (struct point**) bsm_malloc(&corr_map_dbg,(image_params.Iy-image_params.Ncor+1)*sizeof(struct point *)
+							    +(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
+#endif
 	if(corr_map == NULL) {
-		xe_printf("Error allocating memory for correlation map edge vector.\n");RAG_FLUSH;
+		xe_printf("Error allocating memory for correlation map.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
-	struct point *corr_map_data_ptr; ocrGuid_t corr_map_data_dbg;
-#ifdef RAG_DRAM
-	corr_map_data_ptr = (struct point*)dram_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
-#else
-	corr_map_data_ptr = (struct point*) bsm_malloc(&corr_map_data_dbg,(image_params.Iy-image_params.Ncor+1)*(image_params.Ix-image_params.Ncor+1)*sizeof(struct point));
-#endif
+	struct point *corr_map_data_ptr = (struct point *)&corr_map[(image_params.Iy-image_params.Ncor+1)];
 	if (corr_map_data_ptr == NULL) {
-		xe_printf("Error allocating memory for correlation map data.\n");RAG_FLUSH;
+		xe_printf("Unable to allocate memory for correlation map.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 	for(int i=0; i<image_params.Iy-image_params.Ncor+1; i++)
@@ -517,7 +530,6 @@ xe_printf("// Allocate memory for detection list\n");RAG_FLUSH;
 ////////////////////////////////////////////////////////////////////////////
 //  DONE WITH INITIALIZATION OF PARAMETER DATA, PUT DATA INTO DATA BLOCKS //
 ////////////////////////////////////////////////////////////////////////////
-	SPADtoBSM(in_ptr           , &in           , sizeof(struct Inputs));
 #ifdef RAG_DIG_SPOT
 	SPADtoBSM(dig_spot_ptr     , &dig_spot     , sizeof(struct DigSpotVars));
 #endif
@@ -552,8 +564,9 @@ xe_printf("// create a template for post_main_edt function\n");RAG_FLUSH;
 			&post_main_clg,		// ocrGuid_t *new_guid
 			 post_main_edt,		// ocr_edt_ptr func_ptr
 			0,			// paramc
-			22);			// depc
+			16);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_main_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for post_main_edt\n");RAG_FLUSH;
@@ -576,26 +589,20 @@ xe_printf("// provide the arguments to post_main_edt.\n");RAG_FLUSH;
 #endif
 
 RAG_DEF_MACRO_PASS(post_main_scg,struct detects *,NULL,NULL,NULL,Y_dbg,0);
-RAG_DEF_MACRO_SPAD(post_main_scg,struct ImageParams *,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
+RAG_DEF_MACRO_SPAD(post_main_scg,struct ImageParams *,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_yr_dbg,2);
 RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_xr_dbg,3);
-RAG_DEF_MACRO_SPAD(post_main_scg,struct RadarParams *,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,4);
-RAG_DEF_MACRO_SPAD(post_main_scg,struct AffineParams *,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,5);
-RAG_DEF_MACRO_SPAD(post_main_scg,struct ThinSplineParams *,ts_params,ts_params_ptr,ts_params_lcl,ts_params_dbg,6);
+RAG_DEF_MACRO_SPAD(post_main_scg,struct RadarParams *,NULL,NULL,NULL,radar_params_dbg,4);
+RAG_DEF_MACRO_SPAD(post_main_scg,struct AffineParams *,NULL,NULL,NULL,affine_params_dbg,5);
+RAG_DEF_MACRO_SPAD(post_main_scg,struct ThinSplineParams *,NULL,NULL,NULL,ts_params_dbg,6);
 RAG_DEF_MACRO_SPAD(post_main_scg,struct Cfar_params *,NULL,NULL,NULL,cfar_params_dbg,7);
 RAG_DEF_MACRO_BSM( post_main_scg,struct complexData **,curImage,NULL,NULL,curImage_dbg,8);
-RAG_DEF_MACRO_PASS(post_main_scg,struct complexData *, NULL,NULL,NULL,curImage_data_dbg,9);
-RAG_DEF_MACRO_BSM( post_main_scg,struct complexData **,refImage,NULL,NULL,refImage_dbg,10);
-RAG_DEF_MACRO_PASS(post_main_scg,struct complexData *, NULL,NULL,NULL,refImage_data_dbg,11);
-RAG_DEF_MACRO_BSM( post_main_scg,struct point **,corr_map,NULL,NULL,corr_map_dbg,12);
-RAG_DEF_MACRO_PASS(post_main_scg,struct point *, NULL,NULL,NULL,corr_map_data_dbg,13);
-RAG_DEF_MACRO_SPAD(post_main_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,14);
-RAG_DEF_MACRO_PASS(post_main_scg,struct complexData **,NULL,NULL,NULL,in_X_dbg,15);
-RAG_DEF_MACRO_PASS(post_main_scg,struct complex *,NULL,NULL,NULL,in_X_data_dbg,16);
-RAG_DEF_MACRO_PASS(post_main_scg,struct point **,NULL,NULL,NULL,in_Pt_dbg,17);
-RAG_DEF_MACRO_PASS(post_main_scg,struct point *,NULL,NULL,NULL,in_Pt_data_dbg,18);
-RAG_DEF_MACRO_PASS(post_main_scg,struct float *,NULL,NULL,NULL,in_Tp_dbg,19);
-RAG_DEF_MACRO_BSM( post_main_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,20);
+RAG_DEF_MACRO_BSM( post_main_scg,struct complexData **,refImage,NULL,NULL,refImage_dbg,9);
+RAG_DEF_MACRO_BSM( post_main_scg,struct point **,corr_map,NULL,NULL,corr_map_dbg,10);
+RAG_DEF_MACRO_BSM( post_main_scg,struct complexData **,NULL,NULL,NULL,X_dbg,11);
+RAG_DEF_MACRO_BSM( post_main_scg,struct float **,NULL,NULL,NULL,Pt_dbg,12);
+RAG_DEF_MACRO_BSM( post_main_scg,struct float *,NULL,NULL,NULL,Tp_dbg,13);
+RAG_DEF_MACRO_SPAD(post_main_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,14);
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for main_body_edt function\n");RAG_FLUSH;
@@ -606,8 +613,9 @@ xe_printf("// create a template for main_body_edt function\n");RAG_FLUSH;
 			&main_body_clg,		// ocrGuid_t *new_guid
 			 main_body_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
-			11);			// depc
+			13);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = main_body_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for main_body_edt\n");RAG_FLUSH;
@@ -643,34 +651,14 @@ RAG_DEF_MACRO_SPAD(main_body_scg,struct AffineParams *,affine_params,affine_para
 RAG_DEF_MACRO_SPAD(main_body_scg,struct ThinSplineParams *,ts_params,ts_params_ptr,ts_params_lcl,ts_params_dbg,5);
 RAG_DEF_MACRO_SPAD(main_body_scg,struct Cfar_params *,NULL,NULL,NULL,cfar_params_dbg,6);
 RAG_DEF_MACRO_BSM( main_body_scg,struct point **,corr_map,NULL,NULL,corr_map_dbg,7);
-RAG_DEF_MACRO_SPAD(main_body_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,8);
-RAG_DEF_MACRO_PASS(main_body_scg,struct detects *,NULL,NULL,NULL,Y_dbg,9);
-RAG_DEF_MACRO_BSM( main_body_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,10);
+RAG_DEF_MACRO_BSM( main_body_scg,struct complexData **,NULL,NULL,NULL,X_dbg,8);
+RAG_DEF_MACRO_BSM( main_body_scg,float **,NULL,NULL,NULL,Pt_dbg,9);
+RAG_DEF_MACRO_BSM( main_body_scg,float *,NULL,NULL,NULL,Tp_dbg,10);
+RAG_DEF_MACRO_PASS(main_body_scg,struct detects *,NULL,NULL,NULL,Y_dbg,11);
+RAG_DEF_MACRO_BSM( main_body_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,12);
 
-RAG_DEF_MACRO_BSM( post_main_scg,NULL,NULL,NULL,NULL,main_body_evg,21);
+RAG_DEF_MACRO_BSM( post_main_scg,NULL,NULL,NULL,NULL,main_body_evg,15);
 
-// release DB of post_main arguments
-	OCR_DB_RELEASE(file_args_dbg);
-	OCR_DB_RELEASE(image_params_dbg);
-        OCR_DB_RELEASE(image_params_yr_dbg);
-        OCR_DB_RELEASE(image_params_xr_dbg);
-	OCR_DB_RELEASE(radar_params_dbg);
-	OCR_DB_RELEASE(affine_params_dbg);
-	OCR_DB_RELEASE(ts_params_dbg);
-	OCR_DB_RELEASE(cfar_params_dbg);
-	OCR_DB_RELEASE(curImage_dbg);
-	OCR_DB_RELEASE(curImage_data_dbg);
-	OCR_DB_RELEASE(refImage_dbg);
-	OCR_DB_RELEASE(refImage_data_dbg);
-	OCR_DB_RELEASE(corr_map_dbg);
-	OCR_DB_RELEASE(corr_map_data_dbg);
-        OCR_DB_RELEASE(in_dbg);
-        OCR_DB_RELEASE(in_X_dbg);
-        OCR_DB_RELEASE(in_X_data_dbg);
-	OCR_DB_RELEASE(in_Pt_dbg);
-	OCR_DB_RELEASE(in_Pt_data_dbg);
-	OCR_DB_RELEASE(in_Tp_dbg);
-	OCR_DB_RELEASE(Y_dbg);
 #ifdef TRACE_LVL_1
 xe_printf("// leave mainEdt\n");RAG_FLUSH;
 #endif
@@ -686,7 +674,7 @@ xe_printf("// enter main_body_edt\n");RAG_FLUSH;
 	assert(paramc==1);
 	ocrGuid_t post_main_scg = (ocrGuid_t)paramv[0];
 
-	assert(depc==11);
+	assert(depc==13);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
@@ -695,9 +683,11 @@ RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_pa
 RAG_REF_MACRO_SPAD(struct ThinSplineParams,ts_params,ts_params_ptr,ts_params_lcl,ts_params_dbg,5);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_params_ptr,cfar_params_lcl,cfar_params_dbg,6);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,7);
-RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,8);
-RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,9);
-RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,10);
+RAG_REF_MACRO_BSM( struct complexData **,X,NULL,NULL,X_dbg,8);
+RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,9);
+RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,10);
+RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,11);
+RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,12);
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for ReadData_edt\n");RAG_FLUSH;
@@ -708,8 +698,10 @@ xe_printf("// create a template for ReadData_edt\n");RAG_FLUSH;
 			&ReadData_clg,		// ocrGuid_t *new_guid
 			 ReadData_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
-			3);			// depc
+			5);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = ReadData_clg;
+
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for FormImage_edt\n");RAG_FLUSH;
 #endif
@@ -720,12 +712,13 @@ xe_printf("// create a template for FormImage_edt\n");RAG_FLUSH;
 			 FormImage_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
 #ifdef RAG_DIG_SPOT
-			6			// depc
+			8			// depc
 #else
-			5			// depc
+			7			// depc
 #endif
 		);
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = FormImage_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for Affine_edt function\n");RAG_FLUSH;
@@ -738,6 +731,7 @@ xe_printf("// create a template for Affine_edt function\n");RAG_FLUSH;
 			2,			// paramc
 			4);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = Affine_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for post_Affine_edt function\n");RAG_FLUSH;
@@ -748,8 +742,9 @@ xe_printf("// create a template for post_Affine_edt function\n");RAG_FLUSH;
 			&post_Affine_clg,	// ocrGuid_t *new_guid
 			 post_Affine_edt,	// ocr_edt_ptr func_ptr
 			0,			// paramc
-			6);			// depc
+			5);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_Affine_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for post_affine_async_1_edt function\n");RAG_FLUSH;
@@ -760,8 +755,9 @@ xe_printf("// create a template for post_affine_async_1_edt function\n");RAG_FLU
 			&post_affine_async_1_clg,	// ocrGuid_t *new_guid
 			 post_affine_async_1_edt,	// ocr_edt_ptr func_ptr
 			1,				// paramc
-			10);				// depc
+			9);				// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_affine_async_1_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for post_affine_async_2_edt function\n");RAG_FLUSH;
@@ -772,8 +768,9 @@ xe_printf("// create a template for post_affine_async_2_edt function\n");RAG_FLU
 			&post_affine_async_2_clg,	// ocrGuid_t *new_guid
 			 post_affine_async_2_edt,	// ocr_edt_ptr func_ptr
 			0,				// paramc
-			10);				// depc
+			9);				// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_affine_async_2_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for CCD_edt function\n");RAG_FLUSH;
@@ -786,6 +783,7 @@ xe_printf("// create a template for CCD_edt function\n");RAG_FLUSH;
 			0,			// paramc
 			5);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = CCD_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create a template for post_CFAR function\n");RAG_FLUSH;
@@ -797,6 +795,7 @@ xe_printf("// create a template for post_CFAR function\n");RAG_FLUSH;
 			0,			// paramc
 			3);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_CFAR_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for post_CFAR\n");RAG_FLUSH;
@@ -826,6 +825,7 @@ xe_printf("// create a template for CFAR_edt function\n");RAG_FLUSH;
 			5			// depc
 			);
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = CFAR_clg;
 
 #ifdef TRACE_LVL_1
 xe_printf("// create an edt for CFAR_edt\n");RAG_FLUSH;
@@ -1004,62 +1004,76 @@ xe_printf("// create an edt for refImage ReadData_edt\n");RAG_FLUSH;
 #ifdef TRACE_LVL_1
 xe_printf("// Read first set of input data\n");RAG_FLUSH;
 #endif
-RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,in_dbg,0);
-RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
-RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,file_args_dbg,2);
-//	ReadData(in, image_params, pInFile, pInFile2, pInFile3);
+RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,image_params_dbg,0);
+RAG_DEF_MACRO_SPAD(refReadData_scg,NULL,NULL,NULL,NULL,file_args_dbg,1);
+RAG_DEF_MACRO_BSM( refReadData_scg,NULL,NULL,NULL,NULL,X_dbg,2);
+RAG_DEF_MACRO_BSM( refReadData_scg,NULL,NULL,NULL,NULL,Pt_dbg,3);
+RAG_DEF_MACRO_BSM( refReadData_scg,NULL,NULL,NULL,NULL,Tp_dbg,4);
+//	ReadData(image_params, pInFile, pInFile2, pInFile3, X, Pt, Tp);
 #ifdef TRACE_LVL_1
 xe_printf("// Form first image\n");RAG_FLUSH;
 #endif
-//RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,in_dbg,0);
-// done by refReadInputs_edt
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
+RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,0);
+RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,1);
+RAG_DEF_MACRO_BSM (refFormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
 #ifdef RAG_SIM_NULL_GUID_WORKAROUND
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,4);
+RAG_DEF_MACRO_BSM (refFormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
 #else
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,NULL_GUID,4);
+RAG_DEF_MACRO_BSM (refFormImage_scg,NULL,NULL,NULL,NULL,NULL_GUID,3);
+#endif
+//RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,X_dbg,4);
+// done by refReadInputs_edt
+//RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,Pt_dbg,5);
+// done by refReadInputs_edt
+//RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
+// done by refReadInputs_edt
+#ifdef RAG_DIG_SPOT
+RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,7);
 #endif
 #ifdef RAG_DIG_SPOT
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
-#endif
-#ifdef RAG_DIG_SPOT
-//	FormImage(in_dbg,image_params_dbg,radar_params_dbg,
-//		curImage_dbg,NULL_GUID,dig_spot_dgb);
+//	FormImage(image_params_dbg,radar_params_dbg,
+//		curImage_dbg,X,Pt,Tp,NULL_GUID,dig_spot_dgb);
 #else
-//	FormImage(in_dbg,image_params_dbg,radar_params_dbg,
-//		curImage_dbg,NULL_GUID);
+//	FormImage(image_params_dbg,radar_params_dbg,
+//		curImage_dbg,X,Pt,Tp,NULL_GUID);
 #endif
 	assert(image_params->numImages == 2);
 	for(int image=1;image<image_params->numImages;image++) {
 #ifdef TRACE_LVL_1
 xe_printf("// Read second set of input data\n");RAG_FLUSH;
 #endif
-//RAG_DEF_MACRO_SPAD(ReadData_scg,struct Inputs *,in,in_ptr,in_lcl,in_dbg,0);
+RAG_DEF_MACRO_SPAD(ReadData_scg,struct ImageParams *,NULL,NULL,NULL,image_params_dbg,0);
+RAG_DEF_MACRO_SPAD(ReadData_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,1);
+//RAG_DEF_MACRO_BSM( ReadData_scg,struct Complex **,NULL,NULL,NULL,X_dbg,2);
 //comming from refFormImage
-RAG_DEF_MACRO_SPAD(ReadData_scg,struct ImageParams *,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
-RAG_DEF_MACRO_SPAD(ReadData_scg,struct file_args_t,file_args,file_arg_ptr,file_args_lcl,file_args_dbg,2);
-//		ReadData(in, image_params, pInFile, pInFile2, pInFile3);
+//RAG_DEF_MACRO_BSM( ReadData_scg,float **,NULL,NULL,NULL,Pt_dbg,3);
+//comming from refFormImage
+//RAG_DEF_MACRO_BSM( ReadData_scg,float *,NULL,NULL,NULL,Tp_dbg,4);
+//comming from refFormImage
+//		ReadData(image_params, pInFile, pInFile2, pInFile3, X, Pt, Tp);
 
 #ifdef TRACE_LVL_1
 xe_printf("// Form second image (image_id=%d)\n",image);RAG_FLUSH;
 #endif
-//RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,in_dbg,0);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,0);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,1);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,2);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,refImage_dbg,3);
+//RAG_DEF_MACRO_BSM( FormImage_scg,NULL,NULL,NULL,NULL,X_dbg,4);
 // done by ReadInputs_edt
-RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
-RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
-RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,curImage_dbg,3);
-RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,refImage_dbg,4);
+//RAG_DEF_MACRO_SBSM FormImage_scg,NULL,NULL,NULL,NULL,Pt_dbg,5);
+// done by ReadInputs_edt
+//RAG_DEF_MACRO_BSM( FormImage_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
+// done by ReadInputs_edt
 #ifdef RAG_DIG_SPOT
-RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,7);
 #endif
 #ifdef RAG_DIG_SPOT
-//		FormImage(in_dbg,image_params_dbg,radar_params_dbg,
-//			curImage_dbg,refImage_dbg,dig_spot_dbg);
+//		FormImage(image_params_dbg,radar_params_dbg,
+//			curImage_dbg,refImage_dbg,X_dbg,Pt_dbg,Tp_dbg,dig_spot_dbg);
 #else
-//		FormImage(in_dbg,image_params_dbg,radar_params_dbg,
-//			curImage_dbg,refImage_dbg);
+//		FormImage(image_params_dbg,radar_params_dbg,
+//			curImage_dbg,refImage_dbg,X_dbg,Pt_dbg,Tp_dbg);
 #endif
 
 #if RAG_AFFINE_ON
@@ -1067,7 +1081,7 @@ RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,5);
 xe_printf("// Affine registration\n");RAG_FLUSH;
 #endif
 //RAG_DEF_MACRO_SPAD(Affine_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
-// done by FormInputs_edt
+// done by FormImage_edt
 RAG_DEF_MACRO_SPAD(Affine_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 RAG_DEF_MACRO_SPAD(Affine_scg,NULL,NULL,NULL,NULL,affine_params_dbg,2);
 RAG_DEF_MACRO_SPAD(Affine_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
@@ -1100,9 +1114,9 @@ RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,2);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,Y_dbg,3);
 //		CFAR(corr_map, image_params, cfar_params, Y);
 
-RAG_DEF_MACRO_SPAD(post_affine_async_1_scg,NULL,NULL,NULL,NULL,Affine_evg,9);
-RAG_DEF_MACRO_SPAD(post_affine_async_2_scg,NULL,NULL,NULL,NULL,post_affine_async_1_evg,9);
-RAG_DEF_MACRO_SPAD(post_Affine_scg,        NULL,NULL,NULL,NULL,post_affine_async_2_evg,5);
+RAG_DEF_MACRO_SPAD(post_affine_async_1_scg,NULL,NULL,NULL,NULL,Affine_evg,8);
+RAG_DEF_MACRO_SPAD(post_affine_async_2_scg,NULL,NULL,NULL,NULL,post_affine_async_1_evg,8);
+RAG_DEF_MACRO_SPAD(post_Affine_scg,        NULL,NULL,NULL,NULL,post_affine_async_2_evg,4);
 RAG_DEF_MACRO_SPAD(CCD_scg,                NULL,NULL,NULL,NULL,post_Affine_evg,4);
 RAG_DEF_MACRO_SPAD(CFAR_scg,               NULL,NULL,NULL,NULL,CCD_evg,4);
 RAG_DEF_MACRO_SPAD(post_CFAR_scg,          NULL,NULL,NULL,NULL,CFAR_evg,2);
@@ -1118,7 +1132,7 @@ ocrGuid_t post_main_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 {
 	int retval;
 	assert(paramc==0);
-	assert(depc==22);
+	assert(depc==16); // 16nd is finish edt event
 	FILE *pInFile, *pInFile2, *pInFile3;
 #ifdef TRACE_LVL_1
 xe_printf("// enter post_main_edt\n");RAG_FLUSH;
@@ -1132,18 +1146,12 @@ RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_pa
 RAG_REF_MACRO_SPAD(struct ThinSplineParams,ts_params,ts_params_ptr,ts_params_lcl,ts_params_dbg,6);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_params_ptr,cfar_params_lcl,cfar_params_dbg,7);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,8);
-RAG_REF_MACRO_BSM( struct complexData *, curImage_data_ptr,NULL,NULL,curImage_data_dbg,9);
-RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,10);
-RAG_REF_MACRO_BSM( struct complexData *,refImage_data_ptr,NULL,NULL,refImage_data_dbg,11);
-RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,12);
-RAG_REF_MACRO_BSM( struct point *, corr_map_data_ptr,NULL,NULL,corr_map_data_dbg,13);
-RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,14);
-RAG_REF_MACRO_BSM( struct complexData **,in_X_ptr,NULL,NULL,in_X_dbg,15);
-RAG_REF_MACRO_BSM( struct complexData *,in_X_data_ptr,NULL,NULL,in_X_data_dbg,16);
-RAG_REF_MACRO_BSM( struct point **,in_Pt_ptr,NULL,NULL,in_Pt_dbg,17);
-RAG_REF_MACRO_BSM( struct point *,in_Pt_data_ptr,NULL,NULL,in_Pt_data_dbg,18);
-RAG_REF_MACRO_BSM( float *,in_Tp_ptr,NULL,NULL,in_Tp_dbg,19);
-RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,20);
+RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,9);
+RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,10);
+RAG_REF_MACRO_BSM( struct complexData **,X,NULL,NULL,X_dbg,11);
+RAG_REF_MACRO_BSM( struct point **,Pt,NULL,NULL,Pt_dbg,12);
+RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,13);
+RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,14);
 
 	pInFile  = file_args_lcl.pInFile;
 	pInFile2 = file_args_lcl.pInFile2;
@@ -1203,38 +1211,42 @@ xe_printf("// Output Images to .bin files\n");RAG_FLUSH;
 #endif
 
 	bsm_free(Y,Y_dbg);
+
 #ifdef RAG_DRAM
-	dram_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
+	dram_free(corr_map,corr_map_dbg); // corr_map[][]
 #else
-	 bsm_free(corr_map_data_ptr,corr_map_data_dbg); // corr_map[]
+	 bsm_free(corr_map,corr_map_dbg); // corr_map[][]
 #endif
-	bsm_free(corr_map,corr_map_dbg);
+
 #ifdef RAG_DRAM
-	dram_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
+	dram_free(refImage,refImage_dbg); //refImage[][]
 #else
-	 bsm_free(refImage_data_ptr,refImage_data_dbg); //refImage[]
+	 bsm_free(refImage,refImage_dbg); //refImage[][]
 #endif
-	bsm_free(refImage,refImage_dbg);
+
 #ifdef RAG_DRAM
-	dram_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
+	dram_free(curImage,curImage_dbg); // curImage[][]
 #else
-	 bsm_free(curImage_data_ptr,curImage_data_dbg); // curImage[]
+	 bsm_free(curImage,curImage_dbg); // curImage[][]
 #endif
-	bsm_free(curImage,curImage_dbg);
-	bsm_free(in_Tp_ptr,in_Tp_dbg);
+
 #ifdef RAG_DRAM
-	dram_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
+	dram_free(Tp,Tp_dbg);  // Tp[]
 #else
-	 bsm_free(in_Pt_data_ptr,in_Pt_data_dbg); // in.Pt[]
+	 bsm_free(Tp,Tp_dbg);  // Tp[]
 #endif
-	bsm_free(in_Pt_ptr,in_Pt_dbg);
+
 #ifdef RAG_DRAM
-        dram_free(in_X_data_ptr,in_X_data_dbg); // in.X[]
+	dram_free(Pt,Pt_dbg); // Pt[][]
 #else
-         bsm_free(in_X_data_ptr,in_X_data_dbg); // in.X[]
+	 bsm_free(Pt,Pt_dbg); // Pt[][]
 #endif
-        bsm_free(in_X_ptr,in_X_dbg);
-        bsm_free(in,in_dbg);
+
+#ifdef RAG_DRAM
+        dram_free(X,X_dbg); // X[][]
+#else
+         bsm_free(X,X_dbg); // X[][]
+#endif
 
         bsm_free(image_params_yr_ptr,image_params_yr_dbg);
         bsm_free(image_params_xr_ptr,image_params_xr_dbg);
@@ -1250,6 +1262,11 @@ xe_printf("// Output Images to .bin files\n");RAG_FLUSH;
 #ifdef RAG_DIG_SPOT
         bsm_free(dig_spot_ptr,dig_spot_dbg);
 #endif
+
+	for(int i=0;i<templateIndex;i++) {
+		retval = ocrEdtTemplateDestroy((ocrGuid_t)templateList[i]);
+		assert(retval==0);
+	}
 
 #ifdef TRACE_LVL_1
 xe_printf("// leave post_main_edt\n");RAG_FLUSH;

@@ -24,7 +24,7 @@ CC	= $(PREFIX)-clang -frmd-extensions
 #-frmd-bb-profiling
 
 CFLAGS	= -g -ggdb -g3 -O3 -std=c99 -fno-builtin -DRAG_SIM \
-	-DDEBUG_SSCP -DRAG_SIM_NULL_GUID_WORKAROUND \
+	-DDEBUG_SSCP_off -DRAG_SIM_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE \
 	-DTRACE -DTRACE_LVL_1 \
 	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_THIN_ON=0 -DRAG_QSORT_ON=0 \
 	-DRAG_PURE_FLOAT -DRAG_IMPLICIT_INPUTS -DRAG_IMPLICIT_INPUTS_TEST_off \
@@ -128,7 +128,6 @@ MACHINE_CFG = $(XSTACK)/ss/xe-sim/configs/eth-31-bar-8-blocks.cfg
 
 run:	$(TARGET) $(TARGET).cfg $(MACHINE_CFG)
 	$(RM) -rf detects.txt images_debug.txt corr_debug.txt
-	$(RM) -rf /tmp/ragollix-fsim*
 	$(RM) -rf logs
 	$(MKDIR) -p logs
 	/usr/bin/time $(FSIM) -s -c $(TARGET).cfg -c $(MACHINE_CFG)

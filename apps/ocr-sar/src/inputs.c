@@ -166,33 +166,40 @@ int ReadParams(struct RadarParams *radar_params, struct ImageParams *image_param
 
 ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
-  assert(paramc==1);
-  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // FormImage_scg or refFormImage_scg
-  assert(depc==3);
-  RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,0);
-  RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
-  RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,2);
 #ifdef TRACE_LVL_2
   xe_printf("//// enter ReadData_edt\n");RAG_FLUSH;
 #endif
+  assert(paramc==1);
+  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // FormImage_scg or refFormImage_scg
+  assert(depc==5);
+  RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
+  RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,1);
+  RAG_REF_MACRO_BSM( struct complexData **,X,NULL,NULL,X_dbg,2);
+  RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,3);
+  RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,4);
+  assert((void *)&X[0][0] == (void *)&X[image_params_lcl.P1]);   // check to see if Datablocks are getting relocated
+  assert((void *)&Pt[0][0] == (void *)&Pt[image_params_lcl.P1]); // if they are then need to remap 2D array
   FILE *pInFile  = file_args_lcl.pInFile;
   FILE *pInFile2 = file_args_lcl.pInFile2;
   FILE *pInFile3 = file_args_lcl.pInFile3;
 #ifdef DEBUG
-  xe_printf("%ld %ld %ld\n",(uint64_t)pInFile, (uint64_t)pInFile2, (uint64_t) pInFile3);RAG_FLUSH;
+  xe_printf("file descripters are %ld %ld %ld\n",(uint64_t)pInFile, (uint64_t)pInFile2, (uint64_t) pInFile3);RAG_FLUSH;
 #endif
-  void ReadData(struct Inputs *in, struct ImageParams *image_params,
-		FILE *pFile1, FILE *pFile2, FILE *pFile3);
+  void ReadData(struct ImageParams *image_params, FILE *pFile1, FILE *pFile2, FILE *pFile3,
+                struct complexData **X, float **Pt, float *Tp);
 
-  ReadData(in, image_params, pInFile, pInFile2, pInFile3);
+  ReadData(image_params, pInFile, pInFile2, pInFile3, X, Pt, Tp);
 
+#ifdef RAG_SIM
   SPADtoBSM(image_params_ptr,image_params,sizeof(struct ImageParams));
+#else
+  memcpy(image_params_ptr,image_params,sizeof(struct ImageParams));
+#endif
 
-  RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,in_dbg,0);
+  RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,X_dbg,4);
+  RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Pt_dbg,5);
+  RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
 
-  OCR_DB_RELEASE(file_args_dbg);
-  OCR_DB_RELEASE(in_dbg);
-  OCR_DB_RELEASE(image_params_dbg);
 #ifdef TRACE_LVL_2
   xe_printf("//// leave ReadData_edt\n");RAG_FLUSH;
 #endif
@@ -201,10 +208,12 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 
 // ReadData
 
-void ReadData(struct Inputs *in, struct ImageParams *image_params,
-	      FILE *pFile1, FILE *pFile2, FILE *pFile3)
+void ReadData(struct ImageParams *image_params, FILE *pFile1, FILE *pFile2, FILE *pFile3,
+              struct complexData **X, float **Pt, float *Tp)
 {
-
+#ifdef TRACE_LVL_2
+  xe_printf("//// enter ReadData()\n");RAG_FLUSH;
+#endif
 
 #ifdef RAG_IMPLICIT_INPUTS
   extern SHARED struct {int32_t real; int32_t imag;} image_0[RAG_P1][RAG_S1];
@@ -220,31 +229,31 @@ void ReadData(struct Inputs *in, struct ImageParams *image_params,
 
   for(int m=0; m<image_params->P1; m++) {
 #ifdef TRACE_LVL_2
-    if(!m){xe_printf("//// Read complex SAR data\n");RAG_FLUSH;}
+    if(!m)xe_printf("//// Read complex SAR data\n");RAG_FLUSH;
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
-    fread(&in->X[m][0], sizeof(struct complexData), image_params->S1, pFile1);
+    fread(&X[m][0], sizeof(struct complexData), image_params->S1, pFile1);
 #else
     if ( image_params->imageNumber == 0 ) {
-      // &in->X[m][0]
-      GlobalPtrToDataBlock(in->X[m],&image_0[m][0], sizeof(struct complexData)*image_params->S1);
+      // &X[m][0]
+      GlobalPtrToDataBlock(X[m],&image_0[m][0], sizeof(struct complexData)*image_params->S1);
     } else if ( image_params->imageNumber == 1 ) {
-      // &in->X[m][0]
-      GlobalPtrToDataBlock(in->X[m],&image_1[m][0], sizeof(struct complexData)*image_params->S1);
+      // &X[m][0]
+      GlobalPtrToDataBlock(X[m],&image_1[m][0], sizeof(struct complexData)*image_params->S1);
     } // endif image
 #endif
 #ifdef TRACE_LVL_2
     if(!m){xe_printf("//// Read platform positions\n");RAG_FLUSH;}
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
-    fread(&in->Pt[m][0], sizeof(float), 3, pFile2);
+    fread(&Pt[m][0], sizeof(float), 3, pFile2);
 #else
     if ( image_params->imageNumber == 0 ) {
-      // &in->Pt[m][0]
-      GlobalPtrToDataBlock(in->Pt[m],&platform_0[m][0], sizeof(float)*3);
+      // &Pt[m][0]
+      GlobalPtrToDataBlock(Pt[m],&platform_0[m][0], sizeof(float)*3);
     } else if ( image_params->imageNumber == 1 ) {
-      // &in->Pt[m][0]
-      GlobalPtrToDataBlock(in->Pt[m],&platform_1[m][0], sizeof(float)*3);
+      // &Pt[m][0]
+      GlobalPtrToDataBlock(Pt[m],&platform_1[m][0], sizeof(float)*3);
     } // endif image
 #endif
   } // for m (P1)
@@ -252,19 +261,22 @@ void ReadData(struct Inputs *in, struct ImageParams *image_params,
   xe_printf("//// Read pulse transmission timestamps\n");RAG_FLUSH;
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
-  fread(in->Tp, sizeof(float), image_params->P1, pFile3);
+  fread(Tp, sizeof(float), image_params->P1, pFile3);
 #else
   for(int m=0; m<image_params->P1; m++) {
     if ( image_params->imageNumber == 0 ) {
-      // &in->Tp[m]
-      GlobalPtrToDataBlock(in->Tp+m,&pulse_0[m][0].t, sizeof(float)*1);
+      // &Tp[m]
+      GlobalPtrToDataBlock(Tp+m,&pulse_0[m][0].t, sizeof(float)*1);
     } else if ( image_params->imageNumber == 1 ) {
-      // &in->Tp[m]
-      GlobalPtrToDataBlock(in->Tp+m,&pulse_1[m][0].t, sizeof(float)*1);
+      // &Tp[m]
+      GlobalPtrToDataBlock(Tp+m,&pulse_1[m][0].t, sizeof(float)*1);
     } // endif image
   } // for m (P1)
 #endif
 #ifdef RAG_IMPLICIT_INPUTS
   image_params->imageNumber++;
+#endif
+#ifdef TRACE_LVL_2
+  xe_printf("//// leave ReadData()\n");RAG_FLUSH;
 #endif
 }

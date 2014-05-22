@@ -64,7 +64,7 @@ void *spad_calloc(ocrGuid_t *dbg, size_t n, size_t size) {
 #endif
 	OCR_DB_CREATE(tmp_dbg,tmp_dbp,n*size,locate_in_spad);
 #ifdef DEBUG
-	xe_printf("SPAD_CALLOC (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
+	xe_printf("SPAD_CALLOC (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
 #endif
 	spad_memset(tmp_dbp,0,n*size);
 	*dbg = tmp_dbg;
@@ -82,7 +82,7 @@ void *spad_malloc(ocrGuid_t *dbg, size_t size) {
 #endif
 	OCR_DB_CREATE(tmp_dbg,tmp_dbp,size,locate_in_spad);
 #ifdef DEBUG
-	xe_printf("SPAD_MALLOC (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
+	xe_printf("SPAD_MALLOC (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
 #endif
 	*dbg = tmp_dbg;
 	return tmp_dbp;
@@ -92,7 +92,7 @@ void spad_free(void *dbp, ocrGuid_t dbg) {
 	OCR_DB_RELEASE(dbg);
 	OCR_DB_FREE(dbp,dbg);
 #ifdef DEBUG
-	xe_printf("SPAD_FREE (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)dbp,GUID_VALUE(dbg));RAG_FLUSH;
+	xe_printf("SPAD_FREE (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)dbp,GUID_VALUE(dbg));RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;
 }
@@ -108,7 +108,7 @@ void *bsm_calloc(ocrGuid_t *dbg, size_t n, size_t size) {
 #endif
 	OCR_DB_CREATE(tmp_dbg,tmp_dbp,n*size,locate_in_bsm);
 #ifdef DEBUG
-	xe_printf("BSM_CALLOC (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
+	xe_printf("BSM_CALLOC (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
 #endif
 	bsm_memset(tmp_dbp,0,n*size);
 	*dbg = tmp_dbg;
@@ -126,7 +126,7 @@ void *bsm_malloc(ocrGuid_t *dbg, size_t size) {
 #endif
 	OCR_DB_CREATE(tmp_dbg,tmp_dbp,size,locate_in_bsm);
 #ifdef DEBUG
-	xe_printf("BSM_MALLOC (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
+	xe_printf("BSM_MALLOC (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
 #endif
 	*dbg = tmp_dbg;
 	return tmp_dbp;
@@ -136,7 +136,7 @@ void bsm_free(void *dbp, ocrGuid_t dbg) {
 	OCR_DB_RELEASE(dbg);
 	OCR_DB_FREE(dbp,dbg);
 #ifdef DEBUG
-	xe_printf("BSM_FREE (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)dbp,GUID_VALUE(dbg));RAG_FLUSH;
+	xe_printf("BSM_FREE (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)dbp,GUID_VALUE(dbg));RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;
 }
@@ -169,7 +169,7 @@ void *dram_calloc(ocrGuid_t *dbg, size_t n, size_t size) {
 #endif
 	OCR_DB_CREATE(tmp_dbg,tmp_dbp,n*size,locate_in_dram);
 #ifdef DEBUG
-	xe_printf("DRAM_CALLOC (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
+	xe_printf("DRAM_CALLOC (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
 #endif
 	dram_memset(tmp_dbp,0,n*size);
 	*dbg = tmp_dbg;
@@ -187,7 +187,7 @@ void *dram_malloc(ocrGuid_t *dbg, size_t size) {
 #endif
 	OCR_DB_CREATE(tmp_dbg,tmp_dbp,size,locate_in_dram);
 #ifdef DEBUG
-	xe_printf("DRAM_MALLOC (ptr=%16.16lx) (dbg=%ld)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
+	xe_printf("DRAM_MALLOC (ptr=%16.16lx) (dbg=%16.16lx)\n",(uint64_t)tmp_dbp,GUID_VALUE(tmp_dbg));RAG_FLUSH;
 #endif
 	*dbg = tmp_dbg;
 	return tmp_dbp;
@@ -197,7 +197,7 @@ void dram_free(void *dbp, ocrGuid_t dbg) {
 	OCR_DB_RELEASE(dbg);
 	OCR_DB_FREE(dbp,dbg);
 #ifdef DEBUG
-	xe_printf("DRAM_FREE (dbg=%ld)\n",GUID_VALUE(dbg));RAG_FLUSH;
+	xe_printf("DRAM_FREE (dbg=%16.16lx)\n",GUID_VALUE(dbg));RAG_FLUSH;
 #endif
 	dbp = (void *)NULL;
 }

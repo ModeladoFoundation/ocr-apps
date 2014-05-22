@@ -17,7 +17,6 @@
 #include "fftw3.h"
 #endif
 
-
 static int Ceiling_Power_Of_Two(int n) {
 	int Pof2 = 0;
 	while( (1<<(Pof2++)) < n)

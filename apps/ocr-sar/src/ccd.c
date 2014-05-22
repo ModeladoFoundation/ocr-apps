@@ -45,6 +45,9 @@ xe_printf("//// leave CCD_edt\n");RAG_FLUSH;
 
 ocrGuid_t ccd_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+#ifdef TRACE_LVL_3
+xe_printf("////// enter ccd_async_edt\n");RAG_FLUSH;
+#endif
 	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
 	struct corners_t *corners = (struct corners_t *)paramv;
 	int m1   = corners->m1;
@@ -52,9 +55,6 @@ ocrGuid_t ccd_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 	int n1   = corners->n1;
 	int n2   = corners->n2;
 	assert(depc==4);
-#ifdef TRACE_LVL_3
-xe_printf("////// enter ccd_async_edt\n");RAG_FLUSH;
-#endif
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
@@ -142,10 +142,15 @@ xe_printf("//// enter CCD\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 xe_printf("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_params->Ncor);RAG_FLUSH;
 #endif
+#ifdef RAG_NEW_BLK_SIZE
+	int CCD_ASYNC_BLOCK_SIZE_M = 32;
+	int CCD_ASYNC_BLOCK_SIZE_N = 32;
+#else
 	int CCD_ASYNC_BLOCK_SIZE_M = blk_size(Mwins,32);
 	int CCD_ASYNC_BLOCK_SIZE_N = blk_size(Nwins,32);
 	assert((Mwins%CCD_ASYNC_BLOCK_SIZE_M)==0);
 	assert((Nwins%CCD_ASYNC_BLOCK_SIZE_N)==0);
+#endif
 ///////////// create async
 #ifdef TRACE_LVL_2
 xe_printf("//// create a template for ccd_async function\n");RAG_FLUSH;
@@ -157,7 +162,17 @@ xe_printf("//// create a template for ccd_async function\n");RAG_FLUSH;
 			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
 			4);			// depc
 	assert(retval==0);
+	templateList[__sync_fetch_and_add(&templateIndex,1)] = ccd_async_clg;
 
+#ifdef RAG_NEW_BLK_SIZE
+	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE_M) {
+		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE_N) {
+			struct corners_t async_corners;
+			async_corners.m1   = m;
+			async_corners.m2   = (m+CCD_ASYNC_BLOCK_SIZE_M)<Mwins?(m+CCD_ASYNC_BLOCK_SIZE_M):Mwins;
+			async_corners.n1   = n;
+			async_corners.n2   = (n+CCD_ASYNC_BLOCK_SIZE_N)<Nwins?(n+CCD_ASYNC_BLOCK_SIZE_N):Nwins;
+#else
 	for(int m=0; m<Mwins; m+=CCD_ASYNC_BLOCK_SIZE_M) {
 		for(int n=0; n<Nwins; n+=CCD_ASYNC_BLOCK_SIZE_N) {
 			struct corners_t async_corners;
@@ -165,6 +180,7 @@ xe_printf("//// create a template for ccd_async function\n");RAG_FLUSH;
 			async_corners.m2   = m+CCD_ASYNC_BLOCK_SIZE_M;
 			async_corners.n1   = n;
 			async_corners.n2   = n+CCD_ASYNC_BLOCK_SIZE_N;
+#endif
 #ifdef TRACE_LVL_2
 xe_printf("//// create an edt for ccd_async\n");RAG_FLUSH;
 #endif
@@ -185,13 +201,10 @@ RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);
 RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,refImage_dbg,1);
 RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,corr_map_dbg,2);
 RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
+
 		} /* for n */
 	} /* for m */
 
-	OCR_DB_RELEASE(curImage_dbg);
-	OCR_DB_RELEASE(refImage_dbg);
-	OCR_DB_RELEASE(corr_map_dbg);
-	OCR_DB_RELEASE(image_params_dbg);
 #ifdef TRACE_LVL_2
 xe_printf("//// leave CCD\n");RAG_FLUSH;
 #endif

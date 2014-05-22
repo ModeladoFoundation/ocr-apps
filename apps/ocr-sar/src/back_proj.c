@@ -11,6 +11,12 @@
 #include "common.h"
 #endif
 
+#ifndef RAG_SIM
+#define dram_free(addr,guid)
+#define  bsm_free(addr,guid)
+#define spad_free(addr,guid)
+#endif
+
 ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
 #ifdef TRACE_LVL_4
@@ -22,17 +28,15 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   int m2   = corners->m2;
   int n1   = corners->n1;
   int n2   = corners->n2;
-  assert(depc==4);
-  RAG_REF_MACRO_SPAD(struct Inputs,in_junk,in_ptr,in,in_dbg,0);
-  RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
-  RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,2);
-  RAG_REF_MACRO_BSM(struct complexData **,image,NULL,NULL,image_dbg,3);
+  assert(depc==6);
+  RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
+  RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,1);
+  RAG_REF_MACRO_BSM( struct complexData **,image,NULL,NULL,image_dbg,2);
+  RAG_REF_MACRO_BSM( struct complexData **,Xin,NULL,NULL,Xin_dbg,3);
+  RAG_REF_MACRO_BSM( float **,platpos,NULL,NULL,platpos_dbg,4);
+  RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,4);
 
   struct complexData sample, acc, arg;
-  struct complexData **Xin;
-  Xin     = in.X;
-  float **platpos;
-  platpos = in.Pt;
 
 #ifdef GANESH_STRENGTH_RED_OPT
   float imageParams_S4_1_float = image_params->S4-1;
@@ -58,21 +62,21 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   assert((m2-m1) == (n2-n1));
   int blk_size_whole = (n2-n1);
   int blk_size_half = blk_size_whole/2;
-  ocrGuid_t A_m_dbg, Phi_m_dbg, image_ptr_dbg, image_data_ptr_dbg;
+  ocrGuid_t A_m_dbg, Phi_m_dbg, image_ptr_dbg;
   float *A_m = spad_malloc(&A_m_dbg, blk_size_whole*sizeof(float));
-  if(A_m == NULL){xe_printf("error malloc of A_m\n");RAG_FLUSH;xe_exit(1);}
+  if(A_m == NULL){xe_printf("Error allocating memory for A_m\n");RAG_FLUSH;xe_exit(1);}
   struct complexData *Phi_m = spad_malloc(&Phi_m_dbg, blk_size_whole*sizeof(struct complexData));
-  if(Phi_m == NULL){xe_printf("error malloc of Phi_m\n");RAG_FLUSH;xe_exit(1);}
+  if(Phi_m == NULL){xe_printf("Error allocating memory for Phi_m\n");RAG_FLUSH;xe_exit(1);}
 #ifdef RAG_SPAD
 #ifdef TRACE_LVL_5
   xe_printf("////////// before spad setup in backproject_async\n");RAG_FLUSH;
 #endif
   struct complexData **image_ptr;
-  image_ptr = spad_malloc(&image_ptr_dbg, (m2-m1)*sizeof(struct complexData *));
-  if(image_ptr == NULL) { xe_printf("error malloc of image_ptr\n");RAG_FLUSH;xe_exit(1);}
-  struct complexData *image_data_ptr;
-  image_data_ptr = spad_malloc(&image_data_ptr_dbg, (m2-m1)*(n2-n1)*sizeof(struct complexData));
-  if(image_data_ptr == NULL) { xe_printf("error malloc of image_data_ptr\n");RAG_FLUSH;xe_exit(1);}
+  image_ptr = (struct complexData **)spad_malloc(&image_ptr_dbg,(m2-m1)*sizeof(struct complexData *)
+			                                       +(m2-m1)*(n2-n1)*sizeof(struct complexData));
+  if(image_ptr == NULL) { xe_printf("Error allocating memory for image_ptr\n");RAG_FLUSH;xe_exit(1);}
+  struct complexData *image_data_ptr = (struct complexData *)&image_ptr[(m2-m1)];
+  if(image_data_ptr == NULL) { xe_printf("Unable to allocate memory for image_ptr\n");RAG_FLUSH;xe_exit(1);}
   for(int m=0;m<(m2-m1);m++) {
     image_ptr[m] = image_data_ptr + m*(n2-n1);
     BSMtoSPAD( image_ptr[m],&image[m+m1][n1],(n2-n1)*sizeof(struct complexData));
@@ -303,7 +307,6 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 	//xe_printf("I<i %d\n",m);
 	SPADtoBSM(&image[m+m1][n1],image_ptr[m],(n2-n1)*sizeof(struct complexData));
       }
-      spad_free(image_data_ptr, image_data_ptr_dbg);
       spad_free(image_ptr, image_ptr_dbg);
 #endif
       spad_free(Phi_m, Phi_m_dbg);
@@ -399,17 +402,17 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   int m2   = corners->m2;
   int n1   = corners->n1;
   int n2   = corners->n2;
-  assert(depc==5);
-  RAG_REF_MACRO_SPAD(struct Inputs,in,in_ptr,in_lcl,in_dbg,0);
-  RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
-  RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,2);
-  RAG_REF_MACRO_BSM( struct complexData **,image,image_ptr,image_lcl,image_dbg,3);
-  RAG_REF_MACRO_BSM( struct complexData **,refImage,refImage_ptr,curImage_lcl,refImage_dbg,4);
-  struct complexData **Xin;
+  assert(depc==7);
+  RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
+  RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,1);
+  RAG_REF_MACRO_BSM( struct complexData **,image,NULL,NULL,image_dbg,2);
+  RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,3);
+  RAG_REF_MACRO_BSM( struct complexData **,Xin,NULL,NULL,Xin_dbg,4);
+  RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,5);
+  RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,6);
 #if 0
 #warn RAG
 #endif
-  Xin     = in->X;
   if(image_params->F > 1) {
     fftwf_complex *input, *fft_result, *ifft_result;
     ocrGuid_t input_dbg, fft_result_dbg, ifft_result_dbg;
@@ -427,19 +430,20 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     float scale = 1/(float)image_params->S4;
     struct complexData **Xup;
     ocrGuid_t Xup_dbg;
-    Xup = (struct complexData**)bsm_malloc(&Xup_dbg,image_params->P3*sizeof(struct complexData*));
+#ifdef RAG_DRAM
+    Xup = (struct complexData **)dram_malloc(&Xup_dbg,(image_params->P3)*sizeof(struct complexData *)
+						     +(image_params->P3)*(image_params->S4)*sizeof(struct complexData));
+#else
+    Xup = (struct complexData **) bsm_malloc(&Xup_dbg,(image_params->P3)*sizeof(struct complexData *)
+						     +(image_params->P3)*(image_params->S4)*sizeof(struct complexData));
+#endif
     if(Xup == NULL) {
-      xe_printf("Error allocating edge vector for Xup.\n");RAG_FLUSH;
+      xe_printf("Error allocating memory for Xup.\n");RAG_FLUSH;
       xe_exit(1);
     }
-    struct complexData* Xup_data_ptr = NULL; ocrGuid_t Xup_data_dbg;
-#ifdef RAG_DRAM
-    Xup_data_ptr = (struct complexData*)dram_malloc(&Xup_data_dbg,image_params->P3*image_params->S4*sizeof(struct complexData));
-#else
-    Xup_data_ptr = (struct complexData*) bsm_malloc(&Xup_data_dbg,image_params->P3*image_params->S4*sizeof(struct complexData));
-#endif
+    struct complexData *Xup_data_ptr = (struct complexData *)&Xup[image_params->P3];
     if ( Xup_data_ptr == NULL) {
-      xe_printf("Error allocating data memory for Xup.\n");RAG_FLUSH;
+      xe_printf("Unable to allocate memory for Xup.\n");RAG_FLUSH;
       xe_exit(1);
     }
     for(int n=0; n<image_params->P3; n++) {
@@ -480,24 +484,16 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is > 1)\n",
 	      m1, m2-1, n1, n2-1);RAG_FLUSH;
 #endif
-//////////////////////////////////////////////////////////////////////////
-// RAG i don't think anyone does a bsm_free(tmp_in_ptr,tmp_in_dbg); RAG //
-//////////////////////////////////////////////////////////////////////////
-    struct Inputs *tmp_in_ptr; ocrGuid_t tmp_in_dbg;
-    tmp_in_ptr = bsm_malloc(&tmp_in_dbg,sizeof(struct Inputs));
-    tmp_in_ptr->Pt = in->Pt;
-    tmp_in_ptr->Pt_edge_dbg = in->Pt_edge_dbg;
-    tmp_in_ptr->Pt_data_dbg = in->Pt_data_dbg;
-    tmp_in_ptr->Tp = NULL;
-    tmp_in_ptr->Tp_dbg = NULL_GUID;
-    tmp_in_ptr->X  = Xup;
-    tmp_in_ptr->X_edge_dbg  = Xup_dbg;
-    tmp_in_ptr->X_data_dbg  = Xup_data_dbg;
 
+#ifdef RAG_NEW_BLK_SIZE
+    int BACK_PROJ_ASYNC_BLOCK_SIZE_M = 32;
+    int BACK_PROJ_ASYNC_BLOCK_SIZE_N = 32;
+#else
     int BACK_PROJ_ASYNC_BLOCK_SIZE_M = blk_size(m2-m1,32);
     int BACK_PROJ_ASYNC_BLOCK_SIZE_N = blk_size(n2-n1,32);
     assert( ((m2-m1)%BACK_PROJ_ASYNC_BLOCK_SIZE_M) == 0);
     assert( ((n2-n1)%BACK_PROJ_ASYNC_BLOCK_SIZE_N) == 0);
+#endif
 
     // create a template for backproject_async function
     ocrGuid_t backproject_async_clg;
@@ -505,8 +501,19 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	&backproject_async_clg, // ocrGuid_t *new_guid
 	 backproject_async_edt,	// ocr_edt_ptr func_ptr
 	(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
-	4);			// depc
+	6);			// depc
     assert(retval==0);
+    templateList[__sync_fetch_and_add(&templateIndex,1)] = backproject_async_clg;
+
+#ifdef RAG_NEW_BLK_SIZE
+    for(int m=m1; m<m2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_M) {
+      for(int n=n1; n<n2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_N) {
+	struct corners_t async_corners;
+	async_corners.m1   = m;
+	async_corners.m2   = (m+BACK_PROJ_ASYNC_BLOCK_SIZE_M)<m2?(m+BACK_PROJ_ASYNC_BLOCK_SIZE_M):m2;
+	async_corners.n1   = n;
+	async_corners.n2   = (n+BACK_PROJ_ASYNC_BLOCK_SIZE_N)<n2?(n+BACK_PROJ_ASYNC_BLOCK_SIZE_N):n2;
+#else
     for(int m=m1; m<m2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_M) {
       for(int n=n1; n<n2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_N) {
 	struct corners_t async_corners;
@@ -514,6 +521,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	async_corners.m2   = m+BACK_PROJ_ASYNC_BLOCK_SIZE_M;
 	async_corners.n1   = n;
 	async_corners.n2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE_N;
+#endif
 #ifdef TRACE_LVL_3
 	xe_printf("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
@@ -530,36 +538,54 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 			NULL);			// *outputEvent
 	assert(retval==0);
 
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,tmp_in_dbg,0); // Xup,platpos
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,3);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,0);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,radar_params_dbg,1);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,2);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Xup_dbg,3); // Xup
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Pt_dbg,4);  // Platform Position
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Tp_dbg,5);  // Platform Position
       } // for n
     } // for m
 #ifndef RAG_SIM
-    dram_free(Xup_data_ptr,Xup_data_dbg); // Xup[]
+    dram_free(Xup,Xup_dbg); // Xup[]
 #else
-    bsm_free(Xup_data_ptr,Xup_data_dbg); // Xup[]
+     bsm_free(Xup,Xup_dbg); // Xup[]
 #endif
-    bsm_free(Xup,Xup_dbg);
   } else { // if F
 #ifdef TRACE
     xe_printf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d] (F is = 1)\n",
 	      m1, m2-1, n1, n2-1);RAG_FLUSH;
 #endif
+
+#ifdef RAG_NEW_BLK_SIZE
+    int BACK_PROJ_ASYNC_BLOCK_SIZE_M = 32;
+    int BACK_PROJ_ASYNC_BLOCK_SIZE_N = 32;
+#else
     int BACK_PROJ_ASYNC_BLOCK_SIZE_M = blk_size(m2-m1,32);
     int BACK_PROJ_ASYNC_BLOCK_SIZE_N = blk_size(n2-n1,32);
     assert( ((m2-m1)%BACK_PROJ_ASYNC_BLOCK_SIZE_M) == 0);
     assert( ((n2-n1)%BACK_PROJ_ASYNC_BLOCK_SIZE_N) == 0);
+#endif
+
     // create a template for backproject_async function
     ocrGuid_t backproject_async_clg;
     retval = ocrEdtTemplateCreate(
 	&backproject_async_clg, // ocrGuid_t *new_guid
 	 backproject_async_edt,	// ocr_edt_ptr func_ptr
 	(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
-	4);			// depc
+	6);			// depc
     assert(retval==0);
+    templateList[__sync_fetch_and_add(&templateIndex,1)] = backproject_async_clg;
 
+#ifdef RAG_NEW_BLK_SIZE
+    for(int m=m1; m<m2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_M) {
+      for(int n=n1; n<n2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_N) {
+	struct corners_t async_corners;
+	async_corners.m1   = m;
+	async_corners.m2   = (m+BACK_PROJ_ASYNC_BLOCK_SIZE_M)<m2?(m+BACK_PROJ_ASYNC_BLOCK_SIZE_M):m2;
+	async_corners.n1   = n;
+	async_corners.n2   = (n+BACK_PROJ_ASYNC_BLOCK_SIZE_N)<n2?(n+BACK_PROJ_ASYNC_BLOCK_SIZE_N):n2;
+#else
     for(int m=m1; m<m2; m+=BACK_PROJ_ASYNC_BLOCK_SIZE_M) {
       for(int n=n1; n<n2; n+=BACK_PROJ_ASYNC_BLOCK_SIZE_N) {
 	struct corners_t async_corners;
@@ -567,6 +593,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	async_corners.m2   = m+BACK_PROJ_ASYNC_BLOCK_SIZE_M;
 	async_corners.n1   = n;
 	async_corners.n2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE_N;
+#endif
 
 #ifdef TRACE_LVL_3
 	xe_printf("////// create an edt for backproject_async\n");RAG_FLUSH;
@@ -584,16 +611,14 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 			NULL);			// *outputEvent
 	assert(retval==0);
 
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,in_dbg,0);	// Xin,platpos
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,radar_params_dbg,2);
-	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,3);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,0);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,radar_params_dbg,1);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_dbg,2);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Xin_dbg,3); // Xin
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Pt_dbg,4);  // Platform Position
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Tp_dbg,5);  // Time Pulse
       } // for n
     } // for m
-    OCR_DB_RELEASE(in_dbg);
-    OCR_DB_RELEASE(image_params_dbg);
-    OCR_DB_RELEASE(radar_params_dbg);
-    OCR_DB_RELEASE(image_dbg);
   } // if F
 
 #ifdef TRACE_LVL_3

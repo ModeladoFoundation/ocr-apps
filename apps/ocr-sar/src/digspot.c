@@ -12,7 +12,7 @@
 #endif
 
 #ifdef RAG_DIG_SPOT
-struct complexData** DigSpot(float xc, float yc, struct DigSpotVars *dig_spot, struct ImageParams *image_params, struct RadarParams *radar_params, struct Inputs *in)
+struct complexData** DigSpot(float xc, float yc, struct DigSpotVars *dig_spot, struct ImageParams *image_params, struct RadarParams *radar_params, struct complexData **x, float **Pt, flost *Pt)
 {
 	int m, n;
 	float arg;
@@ -38,7 +38,7 @@ RAG_FLUSH;
 	for(m=0; m<image_params->P1; m++)
 	{
 		// (Range from original platform position to new scene center) - r0
-		deltaR = sqrtf( (xc-in->Pt[m][0])*(xc-in->Pt[m][0]) + (yc-in->Pt[m][1])*(yc-in->Pt[m][1]) + in->Pt[m][2]*in->Pt[m][2] ) - radar_params->r0;
+		deltaR = sqrtf( (xc-Pt[m][0])*(xc-Pt[m][0]) + (yc-Pt[m][1])*(yc-Pt[m][1]) + Pt[m][2]*Pt[m][2] ) - radar_params->r0;
 		// Induce phase shift
 		for(n=0; n<image_params->S1; n++) {
 #ifdef RAG_PURE_FLOAT
@@ -70,7 +70,7 @@ RAG_FLUSH;
 		}
 
 		// Sinc filtering and interpolation
-		sinc_interp(in->Tp, dig_spot->tmpVector, dig_spot->filtOut, 8, radar_params->PRF/image_params->TF, image_params->TF, image_params->P1);
+		sinc_interp(Tp, dig_spot->tmpVector, dig_spot->filtOut, 8, radar_params->PRF/image_params->TF, image_params->TF, image_params->P1);
 
 		for(m=0; m<image_params->P2; m++) {
 			dig_spot->X4[m][n].real = dig_spot->filtOut[m].real;

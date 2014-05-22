@@ -20,12 +20,8 @@ void sinc_interp(float *X, struct complexData *Y, struct complexData *YI, int Nz
 	float offset;
 	float Gcurrent;
 	float Gleft, Gright;
-#ifndef RAG_SIM
-	float *Xtmp;
-#else
 	float *Xtmp;
 	ocrGuid_t Xtmp_dbg;
-#endif
 
 	for(m=0, T=0; m<lenY-1; m++) {
 		T += (X[m+1]-X[m]);
@@ -35,11 +31,7 @@ void sinc_interp(float *X, struct complexData *Y, struct complexData *YI, int Nz
 	Tprime = 1/B;	// Output sample spacing
 	lenYI = lenY/M;	// Length of output
 
-#ifndef RAG_SIM
-	Xtmp = (float*)malloc(lenY*sizeof(float));
-#else
 	Xtmp = (float*)bsm_malloc(&Xtmp_dbg, lenY*sizeof(float));
-#endif
 
 	offset = fmodf(X[0], Tprime);
 
@@ -80,9 +72,5 @@ void sinc_interp(float *X, struct complexData *Y, struct complexData *YI, int Nz
 		YI[m].imag *= T/Tprime;
 	}
 
-#ifndef RAG_SIM
-	free(Xtmp);
-#else
 	bsm_free(Xtmp,Xtmp_dbg);
-#endif
 }
