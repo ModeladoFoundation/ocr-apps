@@ -22,7 +22,7 @@ static double** readMatrix( int matrixSize, FILE* in );
 
 #define FLAGS DB_PROP_NONE
 #define PROPERTIES EDT_PROP_NONE
-
+#define NUM_WORKERS 8
 
 double t_start, t_end;
 
@@ -217,7 +217,7 @@ PAPI_stop(eventset, values);
 }
 
 inline static void sequential_cholesky_task_prescriber (ocrGuid_t edtTemp, int k,
-                                                        int tileSize, ocrGuid_t*** lkji_event_guids) {
+                                                        int tileSize, ocrGuid_t*** lkji_event_guids, int chunk_size) {
     ocrGuid_t seq_cholesky_task_guid;
 
     u64 func_args[3];
@@ -225,14 +225,14 @@ inline static void sequential_cholesky_task_prescriber (ocrGuid_t edtTemp, int k
     func_args[1] = tileSize;
     func_args[2] = GUIDTOU64(lkji_event_guids[k][k][k+1]);
 
-    ocrGuid_t affinity = (ocrGuid_t)k;
+    ocrGuid_t affinity = (ocrGuid_t)(k / chunk_size);
     ocrEdtCreate(&seq_cholesky_task_guid, edtTemp, 3, func_args, 1, NULL, PROPERTIES, affinity, NULL);
 
     ocrAddDependence(lkji_event_guids[k][k][k], seq_cholesky_task_guid, 0, DB_MODE_ITW);
 }
 
 inline static void trisolve_task_prescriber ( ocrGuid_t edtTemp, int k, int j, int tileSize,
-                                              ocrGuid_t*** lkji_event_guids) {
+                                              ocrGuid_t*** lkji_event_guids, int chunk_size) {
     ocrGuid_t trisolve_task_guid;
 
     u64 func_args[4];
@@ -242,7 +242,7 @@ inline static void trisolve_task_prescriber ( ocrGuid_t edtTemp, int k, int j, i
     func_args[3] = GUIDTOU64(lkji_event_guids[j][k][k+1]);
 
 
-    ocrGuid_t affinity = (ocrGuid_t)j;
+    ocrGuid_t affinity = (ocrGuid_t)(j / chunk_size);
     ocrEdtCreate(&trisolve_task_guid, edtTemp, 4, func_args, 2, NULL, PROPERTIES, affinity, NULL);
 
     ocrAddDependence(lkji_event_guids[j][k][k], trisolve_task_guid, 0, DB_MODE_ITW);   // Update - 1: 66
@@ -250,7 +250,7 @@ inline static void trisolve_task_prescriber ( ocrGuid_t edtTemp, int k, int j, i
 }
 
 inline static void update_nondiagonal_task_prescriber ( ocrGuid_t edtTemp, int k, int j, int i,
-                                                        int tileSize, ocrGuid_t*** lkji_event_guids) {
+                                                        int tileSize, ocrGuid_t*** lkji_event_guids, int chunk_size) {
     ocrGuid_t update_nondiagonal_task_guid;
 
     u64 func_args[5];
@@ -260,7 +260,7 @@ inline static void update_nondiagonal_task_prescriber ( ocrGuid_t edtTemp, int k
     func_args[3] = tileSize;
     func_args[4] = GUIDTOU64(lkji_event_guids[j][i][k+1]);
 
-    ocrGuid_t affinity = (ocrGuid_t)j;
+    ocrGuid_t affinity = (ocrGuid_t)(j / chunk_size);
     ocrEdtCreate(&update_nondiagonal_task_guid, edtTemp, 5, func_args, 3, NULL, PROPERTIES, affinity, NULL);
 
     ocrAddDependence(lkji_event_guids[j][i][k], update_nondiagonal_task_guid, 0, DB_MODE_ITW);   // Update - 1: 66
@@ -270,7 +270,7 @@ inline static void update_nondiagonal_task_prescriber ( ocrGuid_t edtTemp, int k
 
 
 inline static void update_diagonal_task_prescriber ( ocrGuid_t edtTemp, int k, int j, int i,
-                                                     int tileSize, ocrGuid_t*** lkji_event_guids) {
+                                                     int tileSize, ocrGuid_t*** lkji_event_guids, int chunk_size) {
     ocrGuid_t update_diagonal_task_guid;
 
     u64 func_args[5];
@@ -280,7 +280,7 @@ inline static void update_diagonal_task_prescriber ( ocrGuid_t edtTemp, int k, i
     func_args[3] = tileSize;
     func_args[4] = GUIDTOU64(lkji_event_guids[j][j][k+1]);
 
-    ocrGuid_t affinity = (ocrGuid_t)j;
+    ocrGuid_t affinity = (ocrGuid_t)(j / chunk_size);
     ocrEdtCreate(&update_diagonal_task_guid, edtTemp, 5, func_args, 2, NULL, PROPERTIES, affinity, NULL);
 
     ocrAddDependence(lkji_event_guids[j][j][k], update_diagonal_task_guid, 0, DB_MODE_ITW);   // Update - 1: 66
@@ -424,6 +424,8 @@ PAPI_start(eventset);
 
     numTiles = matrixSize/tileSize;
 
+    int chunk_size = 1;//numTiles / NUM_WORKERS;
+
     matrix = readMatrix( matrixSize, in );
 
     ocrGuid_t*** lkji_event_guids = allocateCreateEvents(numTiles);
@@ -440,6 +442,8 @@ PAPI_start(eventset);
 
     ocrGuid_t hintTrisolve;
     ocrHintCreate(&hintUpdateTrisolve);
+    //ocrHintSetEDTPriority(hintTrisolve, 1); // sets EDT priority
+    //ocrHintSetDependencePriority(hintTrisolve, 0, dep_num, dep_wt); // slot with max data
     ocrHintSetPriority(hintTrisolve, 1);
     ocrHintSetAccess0Slot(hintTrisolve, 0);
     ocrHintSetAccess0Weight(hintTrisolve, 66);
@@ -470,7 +474,6 @@ PAPI_start(eventset);
     //PRINTF("Going to satisfy initial tiles\n");
     satisfyInitialTiles( numTiles, tileSize, matrix, lkji_event_guids);
 
-
 #ifdef USE_PAPI
 PAPI_start(eventset);
 #endif
@@ -479,18 +482,18 @@ PAPI_start(eventset);
     for ( k = 0; k < numTiles; ++k ) {
         //PRINTF("Prescribing sequential task %d\n", k);
         sequential_cholesky_task_prescriber ( templateSeq, k, tileSize,
-                                              lkji_event_guids);
+                                              lkji_event_guids, chunk_size);
 
         for( j = k + 1 ; j < numTiles ; ++j ) {
             trisolve_task_prescriber ( templateTrisolve,
-                                       k, j, tileSize, lkji_event_guids);
+                                       k, j, tileSize, lkji_event_guids, chunk_size);
 
             for( i = k + 1 ; i < j ; ++i ) {
                 update_nondiagonal_task_prescriber ( templateUpdateNonDiag,
-                                                     k, j, i, tileSize, lkji_event_guids);
+                                                     k, j, i, tileSize, lkji_event_guids, chunk_size);
             }
             update_diagonal_task_prescriber ( templateUpdate,
-                                              k, j, i, tileSize, lkji_event_guids);
+                                              k, j, i, tileSize, lkji_event_guids, chunk_size);
         }
     }
 
