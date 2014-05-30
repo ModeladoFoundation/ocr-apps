@@ -1,0 +1,17 @@
+// Example to test for parallelism. even numbered threads sleep 0 seconds,
+// other threads sleep 1 second. Therefore, all the even numbered threads say
+// hello one second before the odd numbered threads.
+
+int target;
+int i;
+gpp_t index_array;
+gpp_t data_array;
+
+void f(int *target, gpp_t index_array, gpp_t data_array, int i)
+{
+	sleep(i%2);
+	fprintf(stdout, "Hello from %d!\n", i); fflush(stdout);
+	*target = 0;
+}
+
+node(1, i, [0:1:9], target, [0], f(&target, index_array, data_array, i))

@@ -1,0 +1,24 @@
+# Example that has two node calls
+
+# global data
+int i;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+# header functions
+void f(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "Hello World!\n");
+	*target = 2;
+}
+
+void g(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "hello again!\n");
+	*target = 0;
+}
+
+# node program
+node(1, NULL, [1:1:1], target, [2], f(&target, index_array, data_array))
+node(2, NULL, [1:1:1], target, [0], g(&target, index_array, data_array))

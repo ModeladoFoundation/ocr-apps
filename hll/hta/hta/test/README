@@ -1,0 +1,62 @@
+===============================================================================
+
+Unit Tests
+
+===============================================================================
+
+1.  Accessor_test
+    Create different types of accessors (Tuple and Region), and print the type 
+    of accessors.
+
+2.  Alloc_test
+    Create local blocks and free them.   
+
+3.  Debug_test
+    Test if DEBUG flag is on. If DEBUG is set, the program fails for assertion
+    check and print the debug level.
+
+4.  Tuple_test
+    Tuple creation and destuction test. Tuple_concat is used to create tuple 
+    sequence, and Tuple_destroy_all is used to free the memory objects used
+    for this sequence. An assertion is inserted at the end to make sure all
+    memory objects are correctly freed.
+
+5.  RefCount_test
+    This is used to test reference counting works correctly using creation
+    and destruction of Tuple objects.
+
+6.  Mapping_test
+    Mapping object creation and destruction.
+
+7.  HTA_test
+    HTA creation and destruction test. An assertion is used to make sure
+    all memory objects are correctly freed.
+
+8.  HTA_accessor_test
+    Select a tile HTA and select a region which creates a new HTA.
+    Test if constructor and destructor work correctly. An assertion is used
+    to check if all memory objects allocated during the process is freed
+
+9.  Region_test
+    Region creation and destruction.
+
+10. HTA_init_test
+    Initialize an HTA with a matrix and dump the content to the other matrix.
+    Use memcmp to make sure they match.
+
+11. HTA_map1_test
+    Recursively map the operation to the leaf tile and perform increment on
+    elements
+
+12. HTA_map2_test
+    Create an HTA and use HTA_map2 function to perform a pointwise 
+    multiplication.
+
+13. HTA_scalar_types_double, HTA_scalar_types_uint64_t
+    Test the handling of different scalar types
+
+14. HTA_matmul
+    Matrix multiplication using pointwise multiplication and addition. Not really parallel.
+
+15. HTA_tile_to_hta
+    Matrix multiplication with all row-to-matrix calculation parallelized

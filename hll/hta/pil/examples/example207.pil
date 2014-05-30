@@ -1,0 +1,36 @@
+// Example 29: A compilcated send/recv test.
+#define NUM_PROCS (10)
+
+int i;
+int target_id;
+
+_pil_node f void f(int *target_id)
+{
+	_pil_context int num;
+	_pil_context size_t size;
+	int src = pil_get_nwID();
+	int target = (src + 1) % NUM_PROCS;
+	size = sizeof(int);
+	num = src * 10;
+	printf("%d: sending %d to node %d\n", pil_get_nwID(), num, target); fflush(stdout);
+        // barrier needed
+	pil_send(target, &num, size, recv);
+	pil_recv(src, &num, size, recv);
+	*target_id = 0;
+}
+
+_pil_nodelet f void recv(int *target_id)
+{
+	// _pil_context int num inherited from above
+	// _pil_context size_t size inherited from above
+	fprintf(stdout, "%d: num = %d\n", pil_get_nwID(), num); fflush(stdout);
+}
+
+node(1, i, [0:1:9], target_id, [0], f(&target_id))
+
+void pil_main(int argc, char **argv)
+{
+	pil_enter(1, 0);
+	if (pil_get_nwID() == 0)
+		printf("SUCCESS\n");
+}

@@ -1,0 +1,28 @@
+// Example 25: A basic barrier test.
+
+int i;
+int target_id;
+
+_pil_node f void f(int *target_id)
+{
+	fprintf(stdout, "%d: before barrier\n", pil_get_nwID());
+	fflush(stdout);
+	pil_barrier_all(bar);
+	//pil_barrier_all();
+}
+
+_pil_nodelet f void bar(int *target_id)
+{
+	fprintf(stdout, "%d: after barrier barrier\n", pil_get_nwID());
+	fflush(stdout);
+	*target_id = 0;
+}
+
+node(1, i, [0:1:9], target_id, [0], f(&target_id))
+
+void pil_main(int argc, char **argv)
+{
+	pil_enter(1, 0);
+	if (pil_get_nwID() == 0)
+		printf("SUCCESS");
+}

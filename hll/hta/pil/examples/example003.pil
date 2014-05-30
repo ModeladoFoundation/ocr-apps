@@ -1,0 +1,17 @@
+# Example that has a forall loop that takes the loop index variable as a parameter
+
+# global data
+int target;
+int i;
+gpp_t index_array;
+gpp_t data_array;
+
+# header functions
+void f(int *target, gpp_t index_array, gpp_t data_array, int i)
+{
+	fprintf(stdout, "Hello from %d!\n", i);
+	*target = 0;
+}
+
+# node program
+node(1, i, [0:1:9], target, [0], f(&target, index_array, data_array, i))

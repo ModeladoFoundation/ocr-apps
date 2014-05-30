@@ -1,0 +1,26 @@
+// Example 24: A basic program for spmd 
+
+int i;
+int target_id;
+
+_pil_node f void f(int *target_id)
+{
+	fprintf(stdout, "%d: Hello f!\n", pil_get_nwID()); fflush(stdout);
+	*target_id = 2;
+}
+
+_pil_node g void g(int *target_id)
+{
+	fprintf(stdout, "%d: Hello g!\n", pil_get_nwID()); fflush(stdout);
+	*target_id = 3;
+}
+
+_pil_node h void h(int *target_id)
+{
+	fprintf(stdout, "%d: Hello h!\n", pil_get_nwID()); fflush(stdout);
+	*target_id = 0;
+}
+
+node(1, i, [1:1:1], target_id, [2], f(&target_id))
+node(2, i, [0:1:9], target_id, [3], g(&target_id))
+node(3, i, [1:1:1], target_id, [0], h(&target_id))

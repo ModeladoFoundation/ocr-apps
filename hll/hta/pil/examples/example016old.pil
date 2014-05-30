@@ -1,0 +1,88 @@
+// Example 16: an example that uses pil_alloc(), pil_mem() and pil_free()
+
+//       1
+//  /   /  \ \   \ .
+// A   2    3  B  C
+//  \   \  / /   / .
+//       4 C = max(A) + max(B)
+
+// global data
+int i;
+int64_t *A;
+int64_t *B;
+int64_t *C;
+int target_id;
+
+// header functions
+void f1(int *target_id, int64_t **Ap, int64_t **Bp, int64_t **Cp)
+{
+	*Ap = (int64_t *) pil_alloc(sizeof(int64_t));
+	*Bp = (int64_t *) pil_alloc(sizeof(int64_t));
+	*Cp = (int64_t *) pil_alloc(sizeof(int64_t));
+	/*
+	printf("\n");
+	printf("*Ap: %p\n", *Ap);
+	printf("pil_mem(*Ap): %p\n", pil_mem(*Ap));
+	printf("\n");
+	fflush(stdout);
+	*/
+	printf("setting a to 1\n");
+	*((int64_t *)pil_mem(*Ap)) = 1;
+	printf("setting b to 2\n");
+	*((int64_t *)pil_mem(*Bp)) = 2;
+	*((int64_t *)pil_mem(*Cp)) = 0;
+	pil_release(*Ap);
+	pil_release(*Bp);
+	pil_release(*Cp);
+
+	if (1)
+		*target_id = 2;
+	else
+		*target_id = 3;
+}
+
+void f2(int *target_id, int64_t **Ap)
+{
+	int64_t a = *((int64_t *) pil_mem(*Ap));
+	printf("incrementing a\n");
+	a++;
+	*((int64_t *)pil_mem(*Ap)) = a;
+	pil_release(*Ap);
+	*target_id = 4;
+}
+
+void f3(int *target_id, int64_t **Bp)
+{
+	int64_t b = *((int64_t *) pil_mem(*Bp));
+	printf("incrementing b\n");
+	b++;
+	*((int64_t *)pil_mem(*Bp)) = b;
+	pil_release(*Bp);
+	if (1)
+		*target_id = 4;
+	else
+		*target_id = 1;
+}
+
+void f4(int *target_id, int64_t **Ap, int64_t **Bp, int64_t **Cp)
+{
+	int64_t a = *((int64_t *) pil_mem(*Ap));
+	int64_t b = *((int64_t *) pil_mem(*Bp));
+
+	// C = max(A) + max(B)
+	printf("c = a + b. a: %ld  b: %ld\n", a, b);
+	*((int64_t *)pil_mem(*Cp)) = a + b;
+	int64_t c = *((int64_t *) pil_mem(*Cp));
+
+	printf("the answer is c: %ld\n", c);
+	pil_free(*Ap);
+	pil_free(*Bp);
+	pil_free(*Cp);
+	*target_id = 0;
+}
+
+// node program
+node(1, i, [1:1:1], target_id, [2,3], f1(&target_id, &A, &B, &C))
+node(2, i, [1:1:1], target_id, [4], f2(&target_id, &A))
+node(3, i, [1:1:1], target_id, [4,1], f3(&target_id, &B))
+node(4, i, [1:1:1], target_id, [0], f4(&target_id, &A, &B, &C))

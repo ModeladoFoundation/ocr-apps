@@ -1,0 +1,46 @@
+This directory contains the NAS Parallel Benchmarks (NPB) implementation
+using Hierarchical Tiled Array (HTA) library written in Parallel 
+Intermediate Language (PIL). The implementation is based on Seoul
+National University's SNU-NPB with necessary modifications to adapt 
+HTA programming model.
+
+You can find the original SNU_NPB here:
+    http://aces.snu.ac.kr/Center_for_Manycore_Programming/SNU_NPB_Suite.html
+
+If you have questions, please send emails to:
+    Chih-Chieh Yang  cyang49@illinois.edu
+
+===============================================================================
+    Prerequisites
+===============================================================================
+    OCR library
+    SWARM runtime
+    PIL library
+    HTA library
+===============================================================================
+    Files
+===============================================================================
+    NPB3.3-HTA
+        The HTA implementation of NPB adapted from SNU-NPB.
+    NPB3.3-OMP-C
+        A OpenMP C implementation of NPB pulled out from SNU-NPB 
+        for performance comparison.
+    NPB3.3-SER-C
+        A OpenMP C implementation of NPB pulled out from SNU-NPB 
+        for performance comparison.
+    runtest.py
+        An automized test script which can be customized to your own need.
+    runserial.py
+        An automized test script to generate sequential execution time.
+===============================================================================
+    Setup the environment
+===============================================================================
+
+    1. Make sure your PIL and HTA libraries are correctly installed.
+       PATH should also include paths to OCR and SWARM.
+    2. Check NPB3.3-HTA/config/make.def and make sure the configurations
+       are correct. Especially the CC and CFLAGS settings.
+    3. Under NPB3.3-HTA/, try to make EP benchmark.
+            make EP CLASS=A  
+    4. The executable will be in NPB3.3-HTA/bin
+            OMP_NUM_THREADS=4 bin/ep.A.x.omp

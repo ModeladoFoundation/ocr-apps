@@ -1,0 +1,152 @@
+// Example of distributed memory model communication 
+
+#define NUM_TOTAL_ELEM (1024) // Total number of elements
+#define NUM_PROCS (4)         // This should be equal to the number of processors
+#define NUM_LOCAL_TILES (4)   // The number of local tiles
+
+// global data
+int i;
+int target_id;
+int **tiles;
+int tile_size;
+
+// header functions
+_pil_node at void alloc_tiles(int *target_id, int** tiles, int tile_size)
+{
+	// all processors allocate locally one tile
+	*(tile[i]) = (int*) pil_alloc(sizeof(int) * tile_size);
+	*target_id = 0;
+}
+
+// initialize data within tiles using 1, 2, 3, 4, ...
+_pil_node it void init_tiles(int *target_id, int** tiles, int tile_size)
+{
+	int proc_id = pil_get_proc_id(); // TODO: this is to be implemented in PIL
+	int* ptr = tiles[i];
+	for(int j = 0; j < tile_size; j++) {
+		ptr[j] = proc_id * NUM_LOCAL_TILES * tile_size + j;
+	}
+	*target_id = 0;
+}
+
+
+//// shift tiles along specific direction
+//_pil_node st void shift_tiles(int *target_id, int** tiles, int tile_size, int direction) 
+//{
+//	_pil_context int proc_id = pil_get_proc_id();
+//	_pil_context int dest = (proc_id + direction) % NUM_PROCS;
+//	_pil_context int source = (proc_id - direction) % NUM_PROCS;
+//	_pil_context int *tmp;
+//
+//	// Push to <id>, <address>, <size>
+//	// int MPI_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype, int dest, int sendtag,
+//	//                  void *recvbuf, int recvcount, MPI_Datatype recvtype, int source, int recvtag,
+//	//                  MPI_Comm comm, MPI_Status *status)
+//	// pil_sendrecv(void *sendbuf, size_t send_bytes, int dest,
+//	//              void *recvptr, size_t recv_bytes, int source,
+//	//              continuation_nodelet)
+//	pil_sendrecv(*tiles, NUM_LOCAL_TILES * tile_size * sizeof(int), dest,
+//	             &tmp, NUM_LOCAL_TILES * tile_size * sizeof(int), source,
+//				 recv); // async
+//}
+//
+//_pil_node s void send()
+//{
+////-----------------------------------------------------------------------------
+//	if (proc_id == 0 || proc_id == 1)
+//		pil_sendrecv();
+//
+////-----------------------------------------------------------------------------
+//	if (proc_id == 0)
+//		//pil_send(void *buf, size_t send_bytes, int src, int dest);
+//		pil_send(buf, send_bytes, 1, cont);
+//	if (proc_id == 1)
+//		//pil_recv(void *buf, size_t send_bytes, int src, int dest);
+//		pil_recv(buf, send_bytes, 0, cont);
+//	*target_id = 0;
+//}
+//
+//_pil_nodelet s void cont()
+//{
+//}
+//
+//_pil_nodelet s void recv()
+//{
+//	pil_sync(bar); // a global synchronization (or just the procs involved?)
+//}
+//
+//_pil_nodelet s void bar(int *target_id, int **tmp, int **tiles)
+//{
+//	pil_free(*tiles);
+//	*tiles = tmp;
+//	if (a)
+//		*target_id = 1;
+//	else
+//		*target_id = 2;
+//}
+
+// A local reduction (sum) of all elements within local tiles
+_pil_node lr void local_reduce(int *target_id, int** tiles, int tile_size, int* local_result) 
+{
+	// compute local reduction result and store it to local_result
+	int proc_id = pil_get_proc_id(); // TODO: this is to be implemented in PIL
+	int sum = 0;
+	for(int i = 0; i < NUM_LOCAL_TILES; i++) {
+		int* ptr = tiles[i];
+		for(int j = 0; j < tile_size; j++) {
+			sum += ptr[j];
+		}
+	}
+	*local_result = sum;
+	*target_id = 0;
+}
+
+// circular shift one scalar
+_pil_node cs void circ_shift(int *target_id, int* scalar) 
+{
+	int proc_id = pil_get_proc_id();
+	int push_target = (proc_id + 1) % NUM_PROCS;
+
+	// Push to <id>, <address>, <size>
+	pil_send(push_target, scalar, sizeof(int)); // async?
+	pil_recv(push_source, scalar, sizeof(int)); // async?
+	pil_sync(); // a global synchronization
+	*target_id = 0;
+}
+
+// pil program
+node(1, i, [1:1:NUM_LOCAL_TILES], target_id, [0], alloc_tiles(&target_id, tiles, tile_size))
+node(2, i, [1:1:NUM_LOCAL_TILES], target_id, [0], init_tiles(&target_id, tiles, tile_size))
+//node(3, NULL, [1:1:1], target_id, [0], shift_tiles(&target_id, tiles, tile_size, direction))
+//node(4, NULL, [1:1:1], target_id, [0], local_reduce(&target_id, tiles, tile_size, local_result))
+//node(5, NULL, [1:1:1], target_id, [0], circular_shift(&target_id, scalar))
+
+void pil_main(int argc, char **argv)
+{
+	int* local_tiles[NUM_LOCAL_TILES];
+	int t_size = NUM_TOTAL_ELEM / (NUM_PROCS*NUM_LOCAL_TILES);
+	int result = 0;
+	int tmp_result;
+
+	// allocate 4 tiles locally in parallel 
+	pil_enter(1, 2, &local_tiles, &t_size);
+
+	// initialize local tiles
+	//pil_enter(2, 2, &local_tiles, &t_size);
+
+	int k = NUM_PROCS;
+
+//	do{
+//		// local reduction
+//		pil_enter(4, 3, &local_tiles, &t_size, &tmp_result);
+//
+//		// update result
+//		result += tmp_result;
+//
+//		k -= 1;
+//		if(k) {
+//			// circular shift all tiles
+//			pil_enter(3, 3, &local_tiles, &t_size, 1);
+//		}
+//	} while(k != 0);
+}

@@ -1,0 +1,12 @@
+This directory contains example code that we use for unit tests.
+
+0xx: Shared memory PIL
+1xx: Fork/join distributed memory
+2xx: SPMD distributed memory
+3xx: R-Stream integration
+
+Some of the examples are broken.
+
+020: broken in OpenMP
+024: pil_alloc inside of pil_enter is currently not allowed
+026: pil_alloc inside of pil_enter is currently not allowed

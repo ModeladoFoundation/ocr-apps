@@ -1,0 +1,27 @@
+#!/bin/bash
+
+files="pil.h pil.swh *.c *.swc out *.gen.c *.src.c"
+
+for file in $files
+do
+	if [ -f $HTAHLL/pil/$file ] ; then
+		rm $HTAHLL/pil/$file
+	fi
+done
+
+for i in {0..9}
+do
+	for j in {0..9}
+	do
+		for k in {0..9}
+		do
+			if [ -f $HTAHLL/pil/example$i$j$k ] ; then
+				rm $HTAHLL/pil/example$i$j$k
+			fi
+		done
+	done
+done
+
+if [ -f $HTAHLL/pil/pilc/run.pyc ] ; then
+	rm $HTAHLL/pil/pilc/*.pyc
+fi

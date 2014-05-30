@@ -1,0 +1,29 @@
+# Example 12: an example that uses pil_alloc()
+
+ #// a comment
+
+
+# global data
+int target;
+gpp_t index_array;
+gpp_t data_array;
+int i;
+
+# header functions
+void f(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("pil_allocing data...\n");
+	gpp_t g;
+	pil_alloc(&g, sizeof(int64_t));
+	printf("ptr: %p\n", g.ptr);
+#ifdef PIL2OCR
+	printf("guid: %ld\n", g.guid);
+#else
+	printf("guid: %p\n", g.guid);
+#endif
+	printf("SUCCESS\n");
+	*target = 0;
+}
+
+# node program
+node(1, i, [1:1:1], target, [0], f(&target, index_array, data_array))

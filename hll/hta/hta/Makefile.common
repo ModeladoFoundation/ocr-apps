@@ -1,0 +1,29 @@
+
+CC = gcc
+RM = rm -f
+OPT ?= -O3 -Wall
+DEBUG =
+#OPT ?= -O0 -Wall
+#DEBUG = -g -DDEBUG 
+
+
+LIB = $(HTAHLL)/hta/lib
+HTALIB = libhta
+SHTALIB = $(LIB)/$(HTALIB).so
+
+PIL = $(HTAHLL)/pil
+PIL_SRC=$(PIL)/src/pil_mem.c $(PIL)/src/pil_init.c $(PIL)/src/pil_nw.c
+PIL_INC = $(PIL)/include
+
+HTA = $(HTAHLL)/hta
+HTA_LIB = $(HTA)/lib
+HTA_SRC = $(HTA)/src
+HTA_INC = $(HTA)/include
+HTA_TEST = $(HTA)/test
+
+SWARM = $(HTAHLL)/swarm/releases/latest
+SWARM_INC = $(SWARM)/include
+
+OCR_FLAGS=-L$(OCR_INSTALL)/lib -I$(OCR_INSTALL)/include 
+OCR_LDFLAGS=-locr
+

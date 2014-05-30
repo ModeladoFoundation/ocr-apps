@@ -1,0 +1,66 @@
+// example025.pil
+
+// an example to test if PIL is setting the pointers correctly by explicitly
+// NULLifying the pointers before the call
+
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int i;
+int iter;
+
+void func1(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
+{
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end-beg;
+
+	int j;
+	printf("this is instance %d\n", i);
+	for (j = 0; j < num; j++)
+	{
+		int *data = (int*) da[j].ptr;
+		printf("%d: data[%d]: %d\n", i, j, *data); fflush(stdout);
+	}
+
+	*target = 0;
+}
+
+node(1, i, [0:1:iter], target, [0], func1(&target, index_array, data_array, i, iter))
+
+void pil_main(int argc, char **argv)
+{
+	int i = 0;
+	int iter = 3;
+	gpp_t index_array, data_array;
+	pil_init(&index_array, &data_array);
+
+	pil_alloc(&index_array, (iter+2)*sizeof(int));
+	pil_alloc(&data_array, (iter+1)*sizeof(gpp_t));
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+
+	for (i = 0; i <= iter; i++)
+	{
+		ia[i] = i;
+		pil_alloc(&da[i], sizeof(int));
+		int *p = (int *) da[i].ptr;
+		*p = i;
+
+		da[i].ptr = NULL; // clear the pointer value for testing if pil does guid to pointer translation correctly
+	}
+	ia[iter+1] = iter+1;
+
+
+	pil_enter(1, 4, index_array, data_array, i, iter);
+
+	pil_free(index_array);
+	for (i = 0; i <= iter; i++)
+	{
+		pil_free(da[i]);
+	}
+	pil_free(data_array);
+}

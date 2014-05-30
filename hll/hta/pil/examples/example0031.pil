@@ -1,0 +1,21 @@
+# Example that has a forall loop that takes the loop index variable as a parameter
+
+# global data
+int target_id;
+int i;
+
+# header functions
+void f(int i, int *target_id)
+{
+	int j;
+	for (j = 0; j < 5; j++)
+	{
+		fprintf(stdout, "Hello from %d!\n", i);
+		fflush(stdout);
+		sleep(1);
+	}
+	*target_id = 0;
+}
+
+# node program
+node(1, i, [0:1:9], target_id, [0], f(i, &target_id))

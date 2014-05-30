@@ -1,0 +1,60 @@
+// Example 151: nested parallellism
+
+// global data
+int i;
+int j;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+// header functions
+void f(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "This statement should only appear after being told 'hello' twice!\n");
+	*target = 0;
+}
+
+void g(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "Hello World!\n");
+	*target = 3;
+}
+
+void h(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "hello again!\n");
+	*target = 0;
+}
+
+void he(int *target, gpp_t index_array, gpp_t data_array, int *i)
+{
+	int j;
+	printf("outer i: %d\n", *i); fflush(stdout);
+	pil_enter(5, 3, index_array, data_array, i, &j);
+	*target = 0;
+}
+
+void llo(int *target, gpp_t index_array, gpp_t data_array, int *i, int *j)
+{
+	fprintf(stdout, "nested i: %d  j: %d\n", *i, *j);
+	*target = 0;
+}
+
+// pil program
+node(1, NULL, [1:1:1], target, [0], f(&target, index_array, data_array))
+node(2, NULL, [1:1:1], target, [3], g(&target, index_array, data_array))
+node(3, NULL, [1:1:1], target, [0], h(&target, index_array, data_array))
+node(4, i, [0:1:1], target, [0], he(&target, index_array, data_array, &i))
+node(5, j, [0:1:3], target, [0], llo(&target, index_array, data_array, &i, &j))
+
+//void pil_main(int argc, char **argv)
+void pil_main(int argc, char **argv)
+{
+	int i;
+	gpp_t index_array, data_array;
+	pil_init(&index_array, &data_array);
+
+	pil_enter(2, 2, index_array, data_array);
+	pil_enter(1, 2, index_array, data_array);
+	pil_enter(4, 3, index_array, data_array, &i);
+}

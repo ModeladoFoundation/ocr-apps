@@ -1,0 +1,64 @@
+// example024.pil
+// an example to allocate to data_array in parallel in the body node
+// also tests merging of the data_array by reading it after the call to pil_enter.
+
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int i;
+int iter;
+
+void func1(int *target, gpp_t index_array, gpp_t *data_array, int i, int iter)
+{
+	pil_alloc(data_array, sizeof(gpp_t));
+	gpp_t *da = (gpp_t *) data_array->ptr;
+	int *ia = (int *) index_array.ptr;
+
+	ia[0] = 0;
+	ia[1] = 1;
+	pil_alloc(&da[0], sizeof(int));
+	int *p = da[0].ptr;
+	*p = i;
+
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end - beg;
+
+	printf("iteration: %d  num: %d  *p: %d\n", i, num, *p);
+
+	*target = 0;
+}
+
+node(1, i, [0:1:iter], target, [0], func1(&target, index_array, &data_array, i, iter))
+
+void pil_main(int argc, char **argv)
+{
+	int i;
+	int iter = 3;
+	gpp_t index_array, data_array;
+	pil_init(&index_array, &data_array);
+
+	pil_alloc(&index_array, (iter+2)*sizeof(int));
+	//pil_alloc(&data_array, (iter+1)*sizeof(gpp_t)); // allocate space for the guids that will be created in the node instances
+	int *ia = (int *) index_array.ptr;
+
+	// each node instance gets one gpp to allocate
+	for (i = 0; i <= iter+1; i++)
+	{
+		ia[i] = 0;
+	}
+
+	printf("firing node instances\n"); fflush(stdout);
+	// this will initialize data_array
+	pil_enter(1, 4, index_array, &data_array, i, iter);
+
+	gpp_t *da = (gpp_t *) data_array.ptr;
+
+	printf("\nback in pil_main\n");
+	for (i = 0; i <= iter; i++)
+	{
+		int *data = da[i].ptr;
+		printf("data[%d]: %d\n", i, *data);
+	}
+}

@@ -1,0 +1,46 @@
+# Example10: An example that sets data in node_1, but isn't used until node_4
+
+#     node_1
+#     /   \ .
+#  node_2 node_3
+#     \   / .
+#     node_4
+
+
+int target;
+gpp_t index_array;
+gpp_t data_array;
+uint32_t magic_number;
+
+void f1(int *target, gpp_t index_array, gpp_t data_array, uint32_t *magic_number)
+{
+	*magic_number = 42;
+	printf("f1 says 'setting the magic number to %d.'\n", *magic_number);
+	if (*magic_number < 10)
+		*target = 2;
+	else
+		*target = 3;
+}
+
+void f2(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f2 says 'Hello!'\n");
+	*target = 4;
+}
+
+void f3(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f3 says 'Hello!'\n");
+	*target = 4;
+}
+
+void f4(int *target, gpp_t index_array, gpp_t data_array, uint32_t magic_number)
+{
+	printf("f4 says 'The magic number is %d.'\n", magic_number);
+	*target = 0;
+}
+
+node(1, NULL, [1:1:1], target, [2, 3], f1(&target, index_array, data_array, &magic_number))
+node(2, NULL, [1:1:1], target, [4], f2(&target, index_array, data_array))
+node(3, NULL, [1:1:1], target, [4], f3(&target, index_array, data_array))
+node(4, NULL, [1:1:1], target, [0], f4(&target, index_array, data_array, magic_number))

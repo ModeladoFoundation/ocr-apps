@@ -1,0 +1,12 @@
+The hta directory contains a C implementation of HTA based on PIL.
+
+hta/include:    The header files.
+hta/lib:        The C implementation.
+hta/test:       Unit test and examples
+
+Set these environment variables:
+    export HTA=$HTAHLL/hta
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HTA/lib
+    export LD_LIBRARY_PATH
+
+

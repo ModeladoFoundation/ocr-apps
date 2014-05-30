@@ -1,0 +1,75 @@
+// Example 16: an example that uses pil_alloc(), pil_mem() and pil_free()
+
+//       1
+//  /   /  \ \   \ .
+// A   2    3  B  C
+//  \   \  / /   / .
+//       4 C = max(A) + max(B)
+
+// global data
+int i;
+gpp_t A;
+gpp_t B;
+gpp_t C;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+// header functions
+void f1(int *target, gpp_t index_array, gpp_t data_array, gpp_t *Ap, gpp_t *Bp, gpp_t *Cp)
+{
+	pil_alloc(Ap, sizeof(int64_t));
+	pil_alloc(Bp, sizeof(int64_t));
+	pil_alloc(Cp, sizeof(int64_t));
+
+	printf("setting a to 1\n");
+	*((int64_t*) Ap->ptr) = 1;
+	printf("setting b to 2\n");
+	*((int64_t*) Bp->ptr) = 2;
+	*((int64_t*) Cp->ptr) = 0;
+
+	if (1)
+		*target = 2;
+	else
+		*target = 3;
+}
+
+void f2(int *target, gpp_t index_array, gpp_t data_array, gpp_t *Ap)
+{
+	printf("incrementing a\n");
+	(*((int64_t*)Ap->ptr))++;
+	*target = 4;
+}
+
+void f3(int *target, gpp_t index_array, gpp_t data_array, gpp_t *Bp)
+{
+	printf("incrementing b\n");
+	(*((int64_t*)Bp->ptr))++;
+	if (1)
+		*target = 4;
+	else
+		*target = 1;
+}
+
+void f4(int *target, gpp_t index_array, gpp_t data_array, gpp_t *Ap, gpp_t *Bp, gpp_t *Cp)
+{
+	int64_t a = *((int64_t*)Ap->ptr);
+	int64_t b = *((int64_t*)Bp->ptr);
+
+	// C = max(A) + max(B)
+	printf("c = a + b. a: %ld  b: %ld\n", a, b);
+	*((int64_t*)Cp->ptr) = a + b;
+	int64_t c = *((int64_t*)Cp->ptr);
+
+	printf("the answer is c: %ld\n", c);
+	pil_free(*Ap);
+	pil_free(*Bp);
+	pil_free(*Cp);
+	*target = 0;
+}
+
+// node program
+node(1, i, [1:1:1], target, [2,3], f1(&target, index_array, data_array, &A, &B, &C))
+node(2, i, [1:1:1], target, [4], f2(&target, index_array, data_array, &A))
+node(3, i, [1:1:1], target, [4,1], f3(&target, index_array, data_array, &B))
+node(4, i, [1:1:1], target, [0], f4(&target, index_array, data_array, &A, &B, &C))

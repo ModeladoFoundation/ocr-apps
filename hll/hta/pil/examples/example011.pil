@@ -1,0 +1,25 @@
+#// Example 1: an example with a cradeled else
+
+ #// a comment
+
+#// global data
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int i;
+
+#// header functions
+void f(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "Hello World!\n");
+	if (1)
+	{
+		*target = 0;
+	} else {
+		*target = 0;
+	}
+}
+
+#// node program
+node(1, i, [1:1:1], target, [0], f(&target, index_array, data_array))

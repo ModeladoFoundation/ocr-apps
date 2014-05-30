@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# $1 - backend (swarm, afl, C, ...)
+# $2 - example number to run (1-11)
+
+examples_dir="examples"
+mem="shared"
+out=""
+args=""
+rstream=""
+
+if [ $1 == "swarm" ] ; then
+	EXT="swc"
+	out="swarm"
+elif [ $1 == "forkjoinswarm" ] ; then
+	EXT="swc"
+	mem="forkjoin"
+	out="swarm"
+elif [ $1 == "spmdswarm" ] ; then
+	EXT="swc"
+	mem="spmd"
+	out="swarm"
+elif [ $1 == "C" ] ; then
+	EXT="c"
+	out="C"
+elif [ $1 == "afl" ] ; then
+	EXT="c"
+	out="afl"
+elif [ $1 == "ocr" ] ; then
+	EXT="c"
+	out="ocr"
+	args="-ocr:cfg $OCR_INSTALL/config/default.cfg"
+elif [ $1 == "rstreamocr" ] ; then
+	EXT="c"
+	out="ocr"
+	args="-ocr:cfg $OCR_INSTALL/config/default.cfg"
+	rstream="--rstream"
+elif [ $1 == "omp" ] ; then
+	EXT="c"
+	out="omp"
+else
+	echo "ERROR: run: unknown extension: '" $1 "'"
+	echo "usage: > run <backend> <example_number>"
+	echo "  > run swarm 1"
+	exit 1
+fi
+
+cmd="${HTAHLL}/pil/pilc/pilc $rstream -m $mem -o $out $examples_dir/example$2.pil >example$2.$EXT"
+echo $cmd
+$cmd && \
+./build $1 example$2 && \
+echo 
+
+if [ $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
+	swarmrun -l10 ./example$2
+else
+	./example$2 $args
+fi

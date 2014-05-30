@@ -1,0 +1,14 @@
+// Example 22: A basic hello world for spmd.
+
+int i;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+_pil_node f void f(int *target, gpp_t index_array, gpp_t data_array)
+{
+	fprintf(stdout, "%d: Hello SPMD World!\n", pil_get_nwID()); fflush(stdout);
+	*target = 0;
+}
+
+node(1, i, [0:1:9], target, [0], f(&target, index_array, data_array))

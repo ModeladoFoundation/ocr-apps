@@ -1,0 +1,1089 @@
+#include <stdlib.h>
+#include <string.h>
+#include "HTA.h"
+#include "Operation_util.h"
+
+uint32_t target_id;
+
+int level;
+int bound;
+int idx; // the index variable to identify codelets
+int dim_reduc;
+
+// Operator function pointers
+H1Op h1op;
+H2Op h2op;
+H3Op h3op;
+H4Op h4op;
+H5Op h5op;
+H1S1Op h1s1op;
+H2S1Op h2s1op;
+H3S1Op h3s1op;
+H4S1Op h4s1op;
+H5S1Op h5s1op;
+ReduceOp fr_op;
+
+// function pointers
+HTA *h1;   // HTA argument 1
+HTA *h2;   // HTA argument 2
+HTA *h3;
+HTA *h4;
+HTA *h5;
+HTA *h6;
+HTA **ha1; // HTA array argument 1
+HTA **ha2; // HTA array argument 2
+HTA **ha3; 
+HTA **ha4; 
+HTA **ha5;
+HTA **ha6;
+HTA **ph2;
+void* s1; // scalar
+void* s2; // scalar
+void* sa1;
+
+gpp_t index_array;
+gpp_t data_array;
+
+void HTA_map_h1(int level, H1Op h1op, HTA *h1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h1op(h1);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(110, 6, index_array, data_array, bound-1, idx, level-1, h1op);
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H1Op h1op)
+{
+    HTA *h1;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h1op(h1);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0;
+        HTA *ha1[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        ASSERT(count1 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h1op(ha1[i]);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h2(int level, H2Op h2op, HTA *h1, HTA *h2)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h2op(h1, h2);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(120, 6, index_array, data_array, bound-1, idx, level-1, h2op);
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h2_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H2Op h2op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h2op(h1, h2);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        ASSERT(count1 == num_tiles && count2 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h2op(ha1[i], ha2[i]);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h3(int level, H3Op h3op, HTA *h1, HTA *h2, HTA *h3)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && h3);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h3op(h1, h2, h3);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h3, h3->tiles, 1, bound);
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h3->tiles[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(130, 6, index_array, data_array, bound-1, idx, level-1, h3op);
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h3_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H3Op h3op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    unpacked += _unpack_HTA(da + unpacked, &h3);
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h3op(h1, h2, h3);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0, count3=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        HTA_collect_tiles(level, h3, ha3, &count3);
+        ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h3op(ha1[i], ha2[i], ha3[i]);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h4(int level, H4Op h4op, HTA *h1, HTA *h2, HTA *h3, HTA *h4)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && h3 && h4);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h4op(h1, h2, h3, h4);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h3, h3->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h4, h4->tiles, 1, bound);
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h3->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h4->tiles[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(140, 6, index_array, data_array, bound-1, idx, level-1, h4op);
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h4_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H4Op h4op)
+{
+    HTA *h1, *h2, *h3, *h4;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    unpacked += _unpack_HTA(da + unpacked, &h3);
+    unpacked += _unpack_HTA(da + unpacked, &h4);
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h4op(h1, h2, h3, h4);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0, count3=0, count4=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        HTA_collect_tiles(level, h3, ha3, &count3);
+        HTA_collect_tiles(level, h4, ha4, &count4);
+        ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h4op(ha1[i], ha2[i], ha3[i], ha4[i]);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h5(int level, H5Op h5op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, HTA *h5)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && h3 && h4 && h5);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h5op(h1, h2, h3, h4, h5);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h3, h3->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h4, h4->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h5, h5->tiles, 1, bound);
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h3->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h4->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h5->tiles[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(150, 6, index_array, data_array, bound-1, idx, level-1, h5op);
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h5_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H5Op h5op)
+{
+    HTA *h1, *h2, *h3, *h4, *h5;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    unpacked += _unpack_HTA(da + unpacked, &h3);
+    unpacked += _unpack_HTA(da + unpacked, &h4);
+    unpacked += _unpack_HTA(da + unpacked, &h5);
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h5op(h1, h2, h3, h4, h5);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0, count3=0, count4=0, count5=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles], *ha5[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        HTA_collect_tiles(level, h3, ha3, &count3);
+        HTA_collect_tiles(level, h4, ha4, &count4);
+        HTA_collect_tiles(level, h5, ha5, &count5);
+        ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles && count5 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h5op(ha1[i], ha2[i], ha3[i], ha4[i], ha5[i]);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h1s1(int level, H1S1Op h1s1op, HTA *h1, void *s1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h1s1op(h1, s1);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += bound;
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(210, 6, index_array, data_array, bound-1, idx, level-1, h1s1op);
+    for(int i = 0; i < bound; i++) {
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h1s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H1S1Op h1s1op)
+{
+    HTA *h1;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h1s1op(h1, s1);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0;
+        HTA *ha1[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        ASSERT(count1 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h1s1op(ha1[i], s1);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h2s1(int level, H2S1Op h2s1op, HTA *h1, HTA *h2, void *s1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h2s1op(h1, h2, s1);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += bound;
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(220, 6, index_array, data_array, bound-1, idx, level-1, h2s1op);
+    for(int i = 0; i < bound; i++) {
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h2s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H2S1Op h2s1op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h2s1op(h1, h2, s1);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        ASSERT(count1 == num_tiles && count2 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h2s1op(ha1[i], ha2[i], s1);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h3s1(int level, H3S1Op h3s1op, HTA *h1, HTA *h2, HTA *h3, void *s1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && h3 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h3s1op(h1, h2, h3, s1);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h3, h3->tiles, 1, bound);
+    total_num_gpps += bound;
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h3->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(230, 6, index_array, data_array, bound-1, idx, level-1, h3s1op);
+    for(int i = 0; i < bound; i++) {
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h3s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H3S1Op h3s1op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    unpacked += _unpack_HTA(da + unpacked, &h3);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h3s1op(h1, h2, h3, s1);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0, count3=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        HTA_collect_tiles(level, h3, ha3, &count3);
+        ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h3s1op(ha1[i], ha2[i], ha3[i], s1);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h4s1(int level, H4S1Op h4s1op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, void *s1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && h3 && h4 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h4s1op(h1, h2, h3, h4, s1);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h3, h3->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h4, h4->tiles, 1, bound);
+    total_num_gpps += bound;
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h3->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h4->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(240, 6, index_array, data_array, bound-1, idx, level-1, h4s1op);
+    for(int i = 0; i < bound; i++) {
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h4s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H4S1Op h4s1op)
+{
+    HTA *h1, *h2, *h3, *h4;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    unpacked += _unpack_HTA(da + unpacked, &h3);
+    unpacked += _unpack_HTA(da + unpacked, &h4);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h4s1op(h1, h2, h3, h4, s1);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0, count3=0, count4=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        HTA_collect_tiles(level, h3, ha3, &count3);
+        HTA_collect_tiles(level, h4, ha4, &count4);
+        ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h4s1op(ha1[i], ha2[i], ha3[i], ha4[i], s1);
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h5s1(int level, H5S1Op h5s1op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, HTA *h5, void *s1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && h3 && h4 && h5 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h5s1op(h1, h2, h3, h4, h5, s1);
+        return;
+    }
+    bound = Tuple_count_elements(h1->tiling, 1);
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h3, h3->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h4, h4->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h5, h5->tiles, 1, bound);
+    total_num_gpps += bound;
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h3->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h4->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h5->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+    pil_enter(250, 6, index_array, data_array, bound-1, idx, level-1, h5s1op);
+    for(int i = 0; i < bound; i++) {
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+void _HTA_map_h5s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, H5S1Op h5s1op)
+{
+    HTA *h1, *h2, *h3, *h4, *h5;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    unpacked += _unpack_HTA(da + unpacked, &h3);
+    unpacked += _unpack_HTA(da + unpacked, &h4);
+    unpacked += _unpack_HTA(da + unpacked, &h5);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    if(h1->height == 1) {
+        h5s1op(h1, h2, h3, h4, h5, s1);
+    }
+    else { // height > 1
+        int num_tiles = Tuple_count_elements(h1->tiling, level);
+        int count1=0, count2=0, count3=0, count4=0, count5=0;
+        HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles], *ha5[num_tiles];
+        HTA_collect_tiles(level, h1, ha1, &count1);
+        HTA_collect_tiles(level, h2, ha2, &count2);
+        HTA_collect_tiles(level, h3, ha3, &count3);
+        HTA_collect_tiles(level, h4, ha4, &count4);
+        HTA_collect_tiles(level, h5, ha5, &count5);
+        ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles && count5 == num_tiles);
+        for(int i = 0; i < num_tiles; i++) {
+            h5s1op(ha1[i], ha2[i], ha3[i], ha4[i], ha5[i], s1);
+        }
+    }
+    *target_id = 0;
+}
+
+//// ==========================================================================
+//// NON MAP FUNCTIONS START HERE
+//// ==========================================================================
+
+//// HTA_tile_to_hta
+//// goes down the hierarchiy of h2 to the specific level and 
+//// for all tiles t in that level, map the custom operator op(t, h3)
+//// in parallel
+void HTA_tile_to_hta(int level, H3Op h3op, HTA * h1, HTA * h2, HTA * h3)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    bound = Tuple_count_elements(h1->tiling, level);
+
+    int count1 = 0;
+    int count2 = 0;
+    HTA *ha1[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha2[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha3[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA_collect_tiles(level, h1, ha1, &count1);
+    HTA_collect_tiles(level, h2, ha2, &count2);
+    for(int i = 0; i < bound; i++)
+        ha3[i] = h3;
+    ASSERT(count1 == bound && count2 == bound);
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, ha1, level, bound);
+    total_num_gpps += get_num_gpps(h2, ha2, level, bound);
+    total_num_gpps += get_num_gpps(NULL, ha3, 0, bound);
+
+    // allocate data_array and index array using pil_alloc
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, ha1[i]);
+        processed += _pack_HTA(ptr_darray + processed, ha2[i]);
+        processed += _pack_HTA(ptr_darray + processed, ha3[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    // for each HTA at the level
+    // pack the dynamically allocated blocks information here
+    pil_enter(100, 5, index_array, data_array, bound-1, idx, h3op);
+
+    // TODO: restore the pointers
+    
+    pil_free(data_array);
+    pil_free(index_array);
+}
+
+void _HTA_tile_to_hta_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, H3Op h3op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked1 = _unpack_HTA(da, &h1);
+    int unpacked2 = _unpack_HTA(da + unpacked1, &h2);
+    int unpacked3 = _unpack_HTA(da + unpacked1 + unpacked2, &h3);
+#ifdef DEBUG
+    // debug check
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked1 + unpacked2 + unpacked3 == num_gpps);
+#endif
+    h3op(h1, h2, h3);
+
+    *target_id = 0;
+}
+
+// Assume s1's type is the same as h1->scalar_type
+void HTA_full_reduce(ReduceOp fr_op, void* s1, HTA * h1)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && s1);
+    bound = h1->num_tiles;
+
+    // allocate space for s1 passed to each instance, also for collecting results
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += bound;
+
+    // allocate data_array and index array using pil_alloc
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    // for each HTA at the level
+    // pack the dynamically allocated blocks information here
+    pil_enter(70, 5, index_array, data_array, bound-1, idx, fr_op);
+
+    // TODO: restore the pointers
+    
+    for(int i = 0; i < bound; i++) {
+        fr_op(h1->scalar_type, s1, s_darray[i].ptr); //merge partial results
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+
+void _HTA_full_reduce_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, ReduceOp fr_op)
+{
+    HTA *h;
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA((gpp_t*) data_array.ptr, &h);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    // debug check
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    // sequentially perform reduction on h
+    // partial results will be stored at *s1 after this
+    _recursive_full_reduce(fr_op, s1, h); 
+
+    *target_id = 0;
+}
+
+// HTA HTA_partial_reduce(ReduceOp scalar_op, H2Op hta_op, HTA h, int dim_reduc, void* initval)
+void HTA_partial_reduce_pil(ReduceOp fr_op, HTA * h1, int dim_reduc, void* s1, HTA **ph2)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && s1 && ph2);
+    bound = h1->num_tiles;
+    // must perform storage allocation here
+    // FIXME: sequential allocation might be bottleneck later
+    HTA ** ha = HTA_allocate_partial_reduce_temporary(h1, dim_reduc, s1);
+
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(NULL, ha, 0, bound);
+
+    // allocate data_array and index array using pil_alloc
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, ha[i]);
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    pil_enter(80, 5, index_array, data_array, bound-1, idx, fr_op, dim_reduc);
+
+    // TODO: restore pointers
+
+    // finishing up merge results
+    HTA *h2 = HTA_allocate_partial_reduce_storage(h1, dim_reduc, s1);
+    HTA_merge_partial_reduce_results(fr_op, h2, h1, dim_reduc, ha, s1);
+    for(int i = 0; i < bound; i++)
+        HTA_destroy(ha[i]);
+    pil_free(data_array);
+    pil_free(index_array);
+
+    *ph2 = h2;
+}
+
+void _HTA_partial_reduce_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, ReduceOp fr_op, int dim_reduc)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+#ifdef DEBUG
+    // debug check
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    // partial reduce HTA h1 and save the result to h2
+    HTA_sequential_partial_reduce(fr_op, h1, h2, dim_reduc);
+
+    *target_id = 0;
+}
+
+void HTA_reduce_h2(ReduceOp fr_op, H2S1Op h2s1op, void *s1, HTA * h1, HTA * h2)
+{
+    int bound;
+    int idx = 0;
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    ASSERT(h1 && h2 && s1);
+    bound = h1->num_tiles;
+    ASSERT(h1->num_tiles == h2->num_tiles);
+
+    // allocate space for s1 passed to each instance
+    // TODO: possible optimization to pass it as a read only object
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_darray[bound];
+    for(int i = 0; i < bound; i++) {
+        pil_alloc(&s_darray[i], sz);
+        memcpy(s_darray[i].ptr, s1, sz);
+    }
+
+    int total_num_gpps = 0;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += bound; // for s1
+
+    // allocate data_array and index array using pil_alloc
+    pil_alloc(&index_array, (bound+1)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    // for each HTA at the level
+    // pack the dynamically allocated blocks information here
+    pil_enter(90, 6, index_array, data_array, bound-1, idx, fr_op, h2s1op);
+
+    // TODO: restore the pointers
+    
+    for(int i = 0; i < bound; i++) {
+        fr_op(h1->scalar_type, s1, s_darray[i].ptr); //merge partial results
+        pil_free(s_darray[i]);
+    }
+    pil_free(data_array);
+    pil_free(index_array);
+}
+
+void _HTA_reduce_h2_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, ReduceOp fr_op, H2S1Op h2s1op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    unpacked += _unpack_HTA(da + unpacked, &h2);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+#ifdef DEBUG
+    // debug check
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+    h2s1op(h1, h2, s1);
+
+    *target_id = 0;
+}
+node(110, idx, [0:1:bound], target_id, [0], _HTA_map_h1_exec(&target_id, index_array, data_array, bound, idx, level, h1op))
+node(120, idx, [0:1:bound], target_id, [0], _HTA_map_h2_exec(&target_id, index_array, data_array, bound, idx, level, h2op))
+node(130, idx, [0:1:bound], target_id, [0], _HTA_map_h3_exec(&target_id, index_array, data_array, bound, idx, level, h3op))
+node(140, idx, [0:1:bound], target_id, [0], _HTA_map_h4_exec(&target_id, index_array, data_array, bound, idx, level, h4op))
+node(150, idx, [0:1:bound], target_id, [0], _HTA_map_h5_exec(&target_id, index_array, data_array, bound, idx, level, h5op))
+node(210, idx, [0:1:bound], target_id, [0], _HTA_map_h1s1_exec(&target_id, index_array, data_array, bound, idx, level, h1s1op))
+node(220, idx, [0:1:bound], target_id, [0], _HTA_map_h2s1_exec(&target_id, index_array, data_array, bound, idx, level, h2s1op))
+node(230, idx, [0:1:bound], target_id, [0], _HTA_map_h3s1_exec(&target_id, index_array, data_array, bound, idx, level, h3s1op))
+node(240, idx, [0:1:bound], target_id, [0], _HTA_map_h4s1_exec(&target_id, index_array, data_array, bound, idx, level, h4s1op))
+node(250, idx, [0:1:bound], target_id, [0], _HTA_map_h5s1_exec(&target_id, index_array, data_array, bound, idx, level, h5s1op))
+node(70, idx, [0:1:bound], target_id, [0], _HTA_full_reduce_exec(&target_id, index_array, data_array, bound, idx, fr_op))
+node(80, idx, [0:1:bound], target_id, [0], _HTA_partial_reduce_exec(&target_id, index_array, data_array, bound, idx, fr_op, dim_reduc))
+node(90, idx, [0:1:bound], target_id, [0], _HTA_reduce_h2_exec(&target_id, index_array, data_array, bound, idx, fr_op, h2s1op))
+node(100, idx, [0:1:bound], target_id, [0], _HTA_tile_to_hta_exec(&target_id, index_array, data_array, bound, idx, h3op))
+
+void pil_main(int argc, char** argv)
+{
+    hta_init();
+    hta_main(argc, argv);
+}
+

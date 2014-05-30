@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# $1 - backend (afl, swarm, C, ...)
+# $2 - name of file to build
+
+CC=gcc
+OPT="-O0 -g"
+#WARN="-Wall -Werror"
+WARN="-Wall"
+#WARN=""
+STD="-std=c99"
+PIL_INC="-I${HTAHLL}/pil/include -I. -I${HTAHLL}/hta/include"
+#PIL_SRCS="${HTAHLL}/pil/src/pil_mem.c ${HTAHLL}/pil/src/pil_init.c ${HTAHLL}/pil/src/pil_enter.c"
+PIL_SRCS="${HTAHLL}/pil/src/pil_mem.c ${HTAHLL}/pil/src/pil_init.c ${HTAHLL}/pil/src/pil_nw.c"
+OCR_FLAGS="-L$OCR_INSTALL/lib -I$OCR_INSTALL/include"
+OCR_LDFLAGS=-locr
+if [ -n "$RSTREAM_HOME" ]; then
+    RFLAGS="-S -fopenmp --mm=core2duo `smp-config` -std=c89 -fcollapse-include-files"
+    RCC_INC="-I$RSTREAM_HOME)/runtime/smp/include -lm"
+    RLD_FLAGS="$RSTREAM_HOME/runtime/smp/lib/librstream_smp.so"
+    rstreamfile=""
+fi
+
+SWARM_LDFLAGS=""
+if [ $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
+	SWARM_LDFLAGS="-lswarm-tools-tcp -DDISTSWARM"
+fi
+
+if [ $1 == "rstreamocr" ] ; then
+	rstreamfile="$2.gen.c"
+fi
+
+if [ $1 == "swarm" -o $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
+	swarm="${HTAHLL}/swarm/releases/latest"
+	$swarm/bin/swarm2c -DPIL2SWARM $PIL_INC -I$swarm/include "$2.swc" && $CC -DPIL2SWARM $STD $OPT $PIL_INC -I$swarm/include -L$swarm/lib "$2.c" -o "$2" $PIL_SRCS $SWARM_LDFLAGS $swarm/lib/libswarm.a -lrt -lpthread
+elif [ $1 == "C" ] ; then
+	$CC -DPIL2C $OPT $WARN $PIL_INC -o $2 $2.c $PIL_SRCS
+elif [ $1 == "omp" ] ; then
+	$CC -DPIL2C $OPT $WARN -fopenmp -DOMP $PIL_INC -o $2 $2.c $PIL_SRCS
+elif [ $1 == "afl" ] ; then
+	AFL_INC="-I$AFL -I$AFL/common -I$AFL/rmd_memory -I$AFL/rmd_threading -I$AFL/rmd_codelet -I$AFL/../../ss/runtime/common -I$AFL/../../ss/rmdkrnl/inc"
+	cmd="$CC -DPIL2AFL $WARN $OPT $PIL_INC $AFL_INC -o $2 $2.c $PIL_SRCS $AFL/rmd_codelet/rmd_codelet.a $AFL/rmd_afl.a -lpthread -lxml2 -lc -ldl -lz -lm -lrt"
+	echo $cmd
+	$cmd
+elif [ $1 == "ocr" -o $1 == "rstreamocr" ] ; then
+	if [ $1 == "rstreamocr" ] ; then
+		rstreamcmd="rcc $RFLAGS $PIL_INC $2.src.c -o $2.gen.c"
+		echo $rstreamcmd
+		$rstreamcmd
+	fi
+	cmd="$CC -DPIL2OCR $WARN $OPT $PIL_INC $RCC_INC $OCR_FLAGS -o $2 $2.c $rstreamfile $PIL_SRCS $OCR_LDFLAGS $RLD_FLAGS"
+	echo $cmd
+	$cmd
+else
+	echo "ERROR: build: unknown backend '$1'"
+	echo "usage: > swarm 1"
+	exit 1
+fi
