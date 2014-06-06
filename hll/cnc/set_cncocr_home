@@ -1,0 +1,7 @@
+export OCR_ARCH=x86-pthread-x86
+export OCR_INSTALL=$(pwd)/../../ocr/install/$OCR_ARCH
+export OCR_CONFIG=${OCR_INSTALL}/config/default.cfg
+export LD_LIBRARY_PATH=${OCR_INSTALL}/lib:$LD_LIBRARY_PATH
+
+export CNCOCR_INSTALL=$(pwd)/cncocr_distrib
+export PATH=${CNCOCR_INSTALL}/bin:$PATH
