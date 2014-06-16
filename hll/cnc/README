@@ -3,7 +3,7 @@
 *
 	- ant
 	- make
-	- java (JAVA_HOME set)
+	- java
 	- gcc
 	- libxml2
 	- OCR (0.8)
@@ -12,8 +12,7 @@
 * On the XSTG cluster
 *
 
-Everything is already set up. You may have to set JAVA_HOME to /usr/lib/jvm/java
-if not already set.
+Everything is already set up.
 
 *
 * Building the CnC-OCR distribution

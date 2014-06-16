@@ -19,12 +19,14 @@ CNC_PARSER=CnCParser.Main
 CLASSPATH=
 args=""
 
-if [ -n "$JAVA_HOME" -a -e "$JAVA_HOME/bin/java" ]; then
+if command -v java &>/dev/null; then
+    JAVA=`command -v java`
+elif [ -n "$JAVA_HOME" -a -e "$JAVA_HOME/bin/java" ]; then
     JAVA="$JAVA_HOME/bin/java"
 elif [ -n "$JRE_HOME" -a -e "$JRE_HOME/bin/java" ]; then
     JAVA="$JRE_HOME/bin/java"
 else
-    echo "JAVA_HOME ($JAVA_HOME) is not pointing to a JRE or a JDK"
+    echo "Cannot find java executable"
     exit 1
 fi
 
