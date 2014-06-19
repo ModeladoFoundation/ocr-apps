@@ -1,0 +1,28 @@
+The files with suffix .ocr.c (e.g., matmult.ocr.c) are R-Stream generated OCR programs.
+The input files are those without an ocr.c suffix (e.g., matmult.c).
+
+To compile the R-Stream generated OCR files, 
+
+1) Please set OCR installation path via OCR_INSTALL variable in compile.sh script
+2) Compile a benchmark:
+   ./compile.sh <benchmark-name>
+  For example,
+  ./compile.sh mvt
+  ./compile.sh adi
+  ./compile.sh one_d_imperfect_jacobi
+3) Run the binaries.
+   For example,
+   ./matmult.ocr
+   ./adi.ocr
+   ./jacobidouble2D_5points_enlarged.ocr
+
+  To check the correctness, pass -c flag:
+   ./mvt.ocr -c
+   ./adi.ocr -c
+   ./one_d_imperfect_jacobi.ocr -c
+
+4) To remove generated binaries:
+   ./clean.sh <benchmark>
+   For example,
+  ./clean.sh mvt
+   
