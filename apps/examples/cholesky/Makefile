@@ -2,7 +2,7 @@ OCR_INPUT_HOME=../../../apps
 PROG=cholesky
 SUFFIX=.exe
 CFLAGS= -O0 -g -DOCR_ENABLE_EDT_NAMING
-OCR_FLAGS=-L${OCR_INSTALL}/lib -I${OCR_INSTALL}/include -locr -lpthread -lm
+OCR_FLAGS=-L${OCR_INSTALL}/lib -Wl,-rpath,${OCR_INSTALL}/lib -I${OCR_INSTALL}/include -locr -lpthread -lm
 OCR_INPUT=${OCR_INPUT_HOME}/cholesky
 
 ifndef OCR_INSTALL
@@ -30,7 +30,7 @@ INPUT_FILE=m_${MATRIX_SIZE}.in
 OUTPUT_FILE=cholesky_out_${MATRIX_SIZE}.txt
 
 compile:
-	gcc -g $(CFLAGS) $(OCR_FLAGS) -I. $(PROG).c -o $(PROG)$(SUFFIX)
+	gcc -g $(CFLAGS) -I. $(PROG).c -o $(PROG)$(SUFFIX) $(OCR_FLAGS)
 
 compile.omp.task:
 	gcc -fopenmp $(CFLAGS) $(PROG).omp.task.c -o $(PROG).omp.task$(SUFFIX) -lm
