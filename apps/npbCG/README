@@ -1,0 +1,10 @@
+OCR rewriting of the NPB CG benchmark.
+Set OCR_INSTALL to the install directory for the proper version of OCR (works with
+x86-pthread-x86 or x86-pthread-fsim versions) and type make. For example:
+export OCR_INSTALL=../../ocr/install/x86-pthread-x86
+make
+
+Run ./cg_ocr -ocr:cfg ${OCR_INSTALL}/config/default.cfg, for the default problems size.
+Run ./cg_ocr -ocr:cfg ${OCR_INSTALL}/config/default.cfg -h to see available options.
+
+Instead of -ocr:cfg, you can also set the OCR_CONFIG environment variable.
