@@ -1,7 +1,7 @@
 OCR_INPUT_HOME=../../../apps
 PROG=cholesky
 SUFFIX=.exe
-CFLAGS= -O0 -g -DOCR_ENABLE_EDT_NAMING
+CFLAGS= -O2 -g -DOCR_ENABLE_EDT_NAMING
 OCR_FLAGS=-L${OCR_INSTALL}/lib -I${OCR_INSTALL}/include -locr -lpthread -lm
 OCR_INPUT=${OCR_INPUT_HOME}/cholesky
 
@@ -45,7 +45,7 @@ run.omp.task:
 	./$(PROG).omp.task$(SUFFIX) ${MATRIX_SIZE} ${TILE_SIZE} ${OCR_INPUT}/${INPUT_FILE}
 
 clean:
-	-rm -Rf *.o $(PROG)$(SUFFIX) cholesky.out
+	-rm -Rf *.o $(PROG)$(SUFFIX) cholesky.out core.*
 
 verify:
 	diff -b ${OCR_INPUT}/$(OUTPUT_FILE) cholesky.out

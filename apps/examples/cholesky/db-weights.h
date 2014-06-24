@@ -8,7 +8,7 @@ struct _dbWeightStruct gDbWeights[] = {
 {"trisolve_task", {0, 1}, {66, 34}, {1, 1}, 100 },
 {"update_diagonal_task", {0, 1}, {66, 34}, {0, 0}, 100 },
 {"update_nondiagonal_task", {0, 1}, {66, 33}, {0, 0}, 99 },
-
+{NULL}
 };
 
 #endif

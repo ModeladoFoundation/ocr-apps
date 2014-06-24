@@ -8,18 +8,27 @@
 #include "compat.h"
 #include <sys/time.h>
 
+//#define DODPRINT
+//#define CHOLESKY_HINT
+
+#ifdef DODPRINT
+#define APRINTF PRINTF
+#else
+#define APRINTF(...)
+#endif
+
+#ifdef CHOLESKY_HINT
 // Uncomment the below two lines to include EDT profiling information
 // Also see OCR_ENABLE_EDT_PROFILING in common.mk
-//#include "app-profiling.h"
-//#include "db-weights.h"
+#include "app-profiling.h"
+#include "db-weights.h"
+#endif
 
 struct timeval a,b;
 static double** readMatrix( int matrixSize, FILE* in );
 
 #define FLAGS DB_PROP_NONE
 #define PROPERTIES EDT_PROP_NONE
-
-
 
 ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int index = 0, iB = 0, jB = 0, kB = 0;
@@ -31,7 +40,7 @@ ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDe
 
     double* aBlock = (double*) (depv[0].ptr);
 
-    PRINTF("RUNNING sequential_cholesky %d with 0x%llx to satisfy\n", k, GUIDTOU64(out_lkji_kkkp1_event_guid));
+    APRINTF("RUNNING sequential_cholesky %d with 0x%llx to satisfy\n", k, GUIDTOU64(out_lkji_kkkp1_event_guid));
 
     PTR_T lBlock_db;
     ocrGuid_t out_lkji_kkkp1_db_guid;
@@ -77,7 +86,7 @@ ocrGuid_t trisolve_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int tileSize = (int) func_args[2];
     ocrGuid_t out_lkji_jkkp1_event_guid = (ocrGuid_t) func_args[3];
 
-    PRINTF("RUNNING trisolve (%d, %d)\n", k, j);
+    APRINTF("RUNNING trisolve (%d, %d)\n", k, j);
 
     double* aBlock = (double*) (depv[0].ptr);
 
@@ -120,7 +129,7 @@ ocrGuid_t update_diagonal_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     int tileSize = (int) func_args[3];
     ocrGuid_t out_lkji_jjkp1_event_guid = (ocrGuid_t) func_args[4];
 
-    PRINTF("RUNNING update_diagonal (%d, %d, %d)\n", k, j, i);
+    APRINTF("RUNNING update_diagonal (%d, %d, %d)\n", k, j, i);
 
     double* aBlock = (double*) (depv[0].ptr);
 
@@ -151,7 +160,7 @@ ocrGuid_t update_nondiagonal_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep
     int tileSize = (int) func_args[3];
     ocrGuid_t out_lkji_jikp1_event_guid = (ocrGuid_t) func_args[4];
 
-    PRINTF("RUNNING update_nondiagonal (%d, %d, %d)\n", k, j, i);
+    APRINTF("RUNNING update_nondiagonal (%d, %d, %d)\n", k, j, i);
 
     double* aBlock = (double*) (depv[0].ptr);
 
@@ -175,6 +184,9 @@ ocrGuid_t update_nondiagonal_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep
 ocrGuid_t wrap_up_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int i, j, i_b, j_b;
     double* temp;
+
+    gettimeofday(&b,0);
+
     FILE* out = fopen("cholesky.out", "w");
 
     u64 *func_args = paramv;
@@ -199,8 +211,7 @@ ocrGuid_t wrap_up_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) 
     }
     ocrShutdown();
 
-    gettimeofday(&b,0);
-    PRINTF("The computation took %f seconds\r\n",
+    PRINTF("The computation took %f seconds\n",
            ((b.tv_sec - a.tv_sec)*1000000+(b.tv_usec - a.tv_usec))*1.0/1000000);
     return NULL_GUID;
 }
@@ -403,13 +414,29 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtTemplateCreate(&templateUpdate, update_diagonal_task, 5, 2);
     ocrEdtTemplateCreate(&templateWrap, wrap_up_task, 2, (numTiles+1)*numTiles/2);
 
+#ifdef CHOLESKY_HINT
+    ocrGuid_t hintSeq, hintTrisolve, hintUpdateDiag, hintUpdateNonDiag;
+    ocrHintCreate(&hintSeq, OCR_HINT_EDT_TEMPLATE);
+    ocrHintCreate(&hintTrisolve, OCR_HINT_EDT_TEMPLATE);
+    ocrHintCreate(&hintUpdateDiag, OCR_HINT_EDT_TEMPLATE);
+    ocrHintCreate(&hintUpdateNonDiag, OCR_HINT_EDT_TEMPLATE);
+    ocrHintSetPriority(hintSeq, 0);
+    ocrHintSetPriority(hintTrisolve, 1);
+    ocrHintSetPriority(hintUpdateDiag, 2);
+    ocrHintSetPriority(hintUpdateNonDiag, 3);
+    ocrSetHint(templateSeq, hintSeq);
+    ocrSetHint(templateTrisolve, hintTrisolve);
+    ocrSetHint(templateUpdate, hintUpdateDiag);
+    ocrSetHint(templateUpdateNonDiag, hintUpdateNonDiag);
+#endif
+
     matrix = readMatrix( matrixSize, in );
-    PRINTF("Going to satisfy initial tiles\n");
+    APRINTF("Going to satisfy initial tiles\n");
     satisfyInitialTiles( numTiles, tileSize, matrix, lkji_event_guids);
     gettimeofday(&a,0);
 
     for ( k = 0; k < numTiles; ++k ) {
-        PRINTF("Prescribing sequential task %d\n", k);
+        APRINTF("Prescribing sequential task %d\n", k);
         sequential_cholesky_task_prescriber ( templateSeq, k, tileSize,
                                               lkji_event_guids);
 
@@ -428,7 +455,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     wrap_up_task_prescriber ( templateWrap, numTiles, tileSize, lkji_event_guids );
 
-    PRINTF("Wrapping up mainEdt\n");
+    APRINTF("Wrapping up mainEdt\n");
     return NULL_GUID;
 }
 
