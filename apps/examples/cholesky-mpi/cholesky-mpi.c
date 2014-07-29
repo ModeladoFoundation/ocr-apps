@@ -6,13 +6,14 @@
 
 #define __OCR__
 #include <stdio.h>
+// TODO: Need to remove when we have all the calls we need (str* mostly)
 #include <string.h>
-#include <inttypes.h>
-#include <assert.h>
+// TODO: Remove when we have sqrt
+#include <math.h>
 #include <sys/time.h>
 #include <ocr.h>
 
-#define debug(i,a,b...) do { fprintf(stderr, "[%d] %s:%d: " a "\n", i, __FILE__, __LINE__, ##b); fflush(stdout); } while(0)
+#define debug(i,a,b...) do { PRINTF("[%d] %s:%d: " a "\n", i, __FILE__, __LINE__, ##b); } while(0)
 
 int myrank, numranks = -1;
 
@@ -64,10 +65,10 @@ static void task_done(int i, int j, int k, int tileSize, const ocrGuid_t *global
     func_args[1] = j;
     func_args[2] = k+1;
     func_args[3] = tileSize;
-//    printf("[%d] task_done globals=%p globals_guid=%ld\n", myrank, globals, data_guid);
+//    PRINTF("[%d] task_done globals=%p globals_guid=%ld\n", myrank, globals, data_guid);
 
     if(k == j) {
-        printf("[%d] tile %d,%d finalized at version %d\n", myrank, i, j, k+1);
+        PRINTF("[%d] tile %d,%d finalized at version %d\n", myrank, i, j, k+1);
         /* tile is finalized, post the OUT event */
         ocrEventSatisfy(GLOBAL(globals,i,j,K_EV), data_guid);
         return;
@@ -75,21 +76,21 @@ static void task_done(int i, int j, int k, int tileSize, const ocrGuid_t *global
     if(k == j-1) {
         /* Next up is the final event for this tile */
         if(i == j) {
-//            printf("[%d] tile %d,%d next up: potrf template: %ld\n", myrank, i, j, globals[GLOBAL_SEQ]);
+//            PRINTF("[%d] tile %d,%d next up: potrf template: %ld\n", myrank, i, j, globals[GLOBAL_SEQ]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_SEQ], 4, func_args, 2, NULL, PROPERTIES, affinity, NULL);
         } else {
-//            printf("[%d] tile %d,%d next up: trsm template: %ld\n", myrank, i, j, globals[GLOBAL_TRISOLVE]);
+//            PRINTF("[%d] tile %d,%d next up: trsm template: %ld\n", myrank, i, j, globals[GLOBAL_TRISOLVE]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_TRISOLVE], 4, func_args, 3, NULL, PROPERTIES, affinity, NULL);
             ocrAddDependence(GLOBAL(globals,k+1,k+1,K_EV), task_guid, 2, DB_MODE_RO);  /* up */
         }
     } else {
         /* Next up is an intermediate computation */
         if(i == j) {
-//            printf("[%d] tile %d,%d next up: syrk template: %ld\n", myrank, i, j, globals[GLOBAL_UPDATE]);
+//            PRINTF("[%d] tile %d,%d next up: syrk template: %ld\n", myrank, i, j, globals[GLOBAL_UPDATE]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_UPDATE], 4, func_args, 3, NULL, PROPERTIES, affinity, NULL);
             ocrAddDependence(GLOBAL(globals,i,k+1,K_EV), task_guid, 2, DB_MODE_RO); /* left */
         } else {
-//            printf("[%d] tile %d,%d next up: gemm template: %ld\n", myrank, i, j, globals[GLOBAL_UPDATE_NON_DIAG]);
+//            PRINTF("[%d] tile %d,%d next up: gemm template: %ld\n", myrank, i, j, globals[GLOBAL_UPDATE_NON_DIAG]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_UPDATE_NON_DIAG], 4, func_args, 4, NULL, PROPERTIES, affinity, NULL);
             ocrAddDependence(GLOBAL(globals,i,k+1,K_EV), task_guid, 2, DB_MODE_RO); /* left */
             ocrAddDependence(GLOBAL(globals,j,k+1,K_EV), task_guid, 3, DB_MODE_RO); /* diagonal */
@@ -100,8 +101,8 @@ static void task_done(int i, int j, int k, int tileSize, const ocrGuid_t *global
 }
 
 static ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 4);
-    assert(depc   == 2);
+    ASSERT(paramc == 4);
+    ASSERT(depc   == 2);
 
     int i = (int)paramv[0];
     int j = (int)paramv[1];
@@ -145,8 +146,8 @@ static ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, o
 }
 
 static ocrGuid_t trisolve_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 4);
-    assert(depc   == 3);
+    ASSERT(paramc == 4);
+    ASSERT(depc   == 3);
 
     int i = (int)paramv[0];
     int j = (int)paramv[1];
@@ -183,8 +184,8 @@ static ocrGuid_t trisolve_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 }
 
 static ocrGuid_t update_diagonal_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 4);
-    assert(depc   == 3);
+    ASSERT(paramc == 4);
+    ASSERT(depc   == 3);
 
     int i = (int)paramv[0];
     int j = (int)paramv[1];
@@ -217,8 +218,8 @@ static ocrGuid_t update_diagonal_task ( u32 paramc, u64* paramv, u32 depc, ocrEd
 }
 
 static ocrGuid_t update_nondiagonal_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 4);
-    assert(depc   == 4);
+    ASSERT(paramc == 4);
+    ASSERT(depc   == 4);
 
     int i = (int)paramv[0];
     int j = (int)paramv[1];
@@ -336,12 +337,13 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     argc = dbAsU64[0];
 
     if ( argc !=  4 ) {
-        printf("Usage: ./cholesky matrixSize tileSize fileName (found %"PRIu64" args)\n", argc);
+        PRINTF("Usage: ./cholesky matrixSize tileSize fileName (found %ld args)\n", argc);
         ocrShutdown();
         return NULL_GUID;
     }
 
-    u64* offsets = (u64*)MALLOC(argc*sizeof(u64));
+    // TODO: Replace with MALLOC when it becomes available again
+    u64* offsets = (u64*)malloc(argc*sizeof(u64));
     for (i=0; i< argc; i++)
         offsets[i] = dbAsU64[i+1];
     char *dbAsChar = (char*)programArg;
@@ -395,8 +397,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 /* Runs on all nodes.  Creates a partial GUID array containing Event and DB GUIDs for tiles
  * the local node owns. (Only the Event GUIDs are used remotely.) */
 static ocrGuid_t setup_1_create_local(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 6);
-    assert(depc   == 0);
+    ASSERT(paramc == 6);
+    ASSERT(depc   == 0);
     int numTiles = (int)paramv[0];
     int tileSize = (int)paramv[1];
     ocrGuid_t cb = (ocrGuid_t)paramv[2];
@@ -432,12 +434,12 @@ static ocrGuid_t setup_1_create_local(u32 paramc, u64* paramv, u32 depc, ocrEdtD
 /* Runs on node 0.  Takes all nodes' partial GUID arrays as inputs.  Builds a
  * full table and broadcasts it to all of the nodes. */
 static ocrGuid_t setup_2_aggregate(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 2);
+    ASSERT(paramc == 2);
     int numTiles = (int)paramv[0];
     int tileSize = (int)paramv[1];
     ocrGuid_t *globals = NULL, db_globals = 0;
     int i, j;
-    assert(numranks > -1);
+    ASSERT(numranks > -1);
     ocrDbCreate(&db_globals, (void**)&globals, sizeof(ocrGuid_t)*GLOBALIDX(numTiles-1,numTiles-1,_K_MAX),
              FLAGS, NULL_GUID, NO_ALLOC);
     for( i = 0 ; i < numTiles ; ++i ) {
@@ -451,7 +453,7 @@ static ocrGuid_t setup_2_aggregate(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
     ocrGuid_t affinities[numranks];
     u64 num_affinities = numranks;
     ocrAffinityGet(AFFINITY_PD, &num_affinities, affinities);
-    assert(num_affinities == numranks);
+    ASSERT(num_affinities == numranks);
 
     /* Spawn the distributed DAG creation stuff */
     for(i = 0; i < numranks; i++) {
@@ -471,8 +473,8 @@ static ocrGuid_t setup_2_aggregate(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
  * a local copy for passing to local tasks, adds some local EDT Template GUIDs and
  * fixes things up a bit. */
 static ocrGuid_t setup_3_spawn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 3);
-    assert(depc   == 2);
+    ASSERT(paramc == 3);
+    ASSERT(depc   == 2);
     int numTiles       = (int)paramv[0];
     int tileSize       = (int)paramv[1];
     ocrGuid_t nodeguid = (ocrGuid_t)paramv[2];
@@ -559,8 +561,8 @@ static ocrGuid_t setup_3_spawn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
 }
 
 static ocrGuid_t satisfy_initial_tile(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    assert(paramc == 4);
-    assert(depc   == 2);
+    ASSERT(paramc == 4);
+    ASSERT(depc   == 2);
     int numTiles = (int)paramv[0];
     int tileSize = (int)paramv[1];
     int Tilei    = (int)paramv[2];
@@ -592,11 +594,11 @@ static ocrGuid_t readMatrix( int matrixSize, FILE* in ) {
     ocrGuid_t rv = 0, affinity = 0;
     double *buffer;
     ocrDbCreate(&rv, (void**)&buffer, sizeof(double)*matrixSize*matrixSize, FLAGS, affinity, NO_ALLOC);
-    printf("[%d] readMatrix: rv=%#lx buffer=%p\n", myrank, rv, buffer);
+    PRINTF("[%d] readMatrix: rv=%#lx buffer=%p\n", myrank, rv, buffer);
     if(!rv || !buffer) {
-        printf("Failed to alloc DB of %zd bytes.\n"
+        PRINTF("Failed to alloc DB of %zd bytes.\n"
                "Please fix your OCR config file.\n", sizeof(double)*matrixSize*matrixSize);
-        exit(1);
+        ocrShutdown();
     }
     for(index = 0, i = 0; i < matrixSize; ++i ) {
         for( j = 0; j < matrixSize; ++j )
