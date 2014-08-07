@@ -4,10 +4,11 @@
 typedef struct
 {
     char c;
-    u32 na;
+    u64 na;
     u32 nonzer;
     u32 niter;
     u8 on;
+    u32 blk;
     double shift;
     double zvv;
 } classdb_t;
@@ -27,7 +28,7 @@ typedef struct
 enum {class_S='S', class_W='W', class_A='A', class_B='B',
       class_C='C', class_D='D', class_E='E', class_U='U'};
 
-void class_init(classdb_t** class, ocrGuid_t* guid, char c);
+void class_init(classdb_t** class, ocrGuid_t* guid, char c, u32 blocking);
 
 void timer_init(timerdb_t** timerdb, ocrGuid_t* guid, classdb_t* class, u8 on);
 
@@ -45,29 +46,29 @@ int randi(randdb_t* randdb, int i);
 
 void print_results(classdb_t* class, double t, double mops);
 
-void conj_grad(u32 nn, ocrGuid_t n, ocrGuid_t a, ocrGuid_t x, ocrGuid_t cont, u32 dep);
+void conj_grad(u64 n, u64 blk, ocrGuid_t a, ocrGuid_t x, ocrGuid_t cont, u32 dep);
 
 int makea(classdb_t* class, ocrGuid_t* a);
 
-ocrGuid_t square(ocrGuid_t x, ocrGuid_t* o);
+ocrGuid_t square(u64 n, ocrGuid_t* o);
 
-void alphas(ocrGuid_t n, ocrGuid_t r, ocrGuid_t p, ocrGuid_t q, ocrGuid_t* al, ocrGuid_t* nal);
+void alphas(u64 n, ocrGuid_t r, ocrGuid_t p, ocrGuid_t q, ocrGuid_t* al, ocrGuid_t* nal);
 
-void alpha(ocrGuid_t n, ocrGuid_t r, ocrGuid_t p, ocrGuid_t q, ocrGuid_t* al);
+void alpha(u64 n, ocrGuid_t r, ocrGuid_t p, ocrGuid_t q, ocrGuid_t* al);
 
-ocrGuid_t fspMv(ocrGuid_t a, ocrGuid_t p, ocrGuid_t* q);
+ocrGuid_t fspMv(u64 n, u64 blk, ocrGuid_t p, ocrGuid_t* q);
 
-void spMv(ocrGuid_t n, ocrGuid_t a, ocrGuid_t p, ocrGuid_t* q);
+void spMv(u64 n, u64 blk, ocrGuid_t a, ocrGuid_t p, ocrGuid_t* q);
 
-void scale(ocrGuid_t n, ocrGuid_t a, ocrGuid_t x, ocrGuid_t* z);
+void scale(u64 n, ocrGuid_t a, ocrGuid_t x, ocrGuid_t* z);
 
-void daxpy(ocrGuid_t n, ocrGuid_t z, ocrGuid_t a, ocrGuid_t p, ocrGuid_t* zp);
+void daxpy(u64 n, ocrGuid_t z, ocrGuid_t a, ocrGuid_t p, ocrGuid_t* zp);
 
-void daxpyl(ocrGuid_t n, ocrGuid_t z, ocrGuid_t a, ocrGuid_t p, ocrGuid_t* zp);
+void daxpyl(u64 n, ocrGuid_t z, ocrGuid_t a, ocrGuid_t p, ocrGuid_t* zp);
 
-void distance(ocrGuid_t n, ocrGuid_t r, ocrGuid_t x, ocrGuid_t rr, ocrGuid_t pp, ocrGuid_t* d);
+void distance(u64 n, ocrGuid_t r, ocrGuid_t x, ocrGuid_t rr, ocrGuid_t pp, ocrGuid_t* d);
 
-void update(ocrGuid_t n, ocrGuid_t nal, ocrGuid_t p, ocrGuid_t q, ocrGuid_t r, ocrGuid_t rr, ocrGuid_t pp, ocrGuid_t rho, ocrGuid_t* po, ocrGuid_t* ppo);
+void update(u64 n, ocrGuid_t nal, ocrGuid_t p, ocrGuid_t q, ocrGuid_t r, ocrGuid_t rr, ocrGuid_t pp, ocrGuid_t rho, ocrGuid_t* po, ocrGuid_t* ppo);
 
 // depv: n x
 ocrGuid_t square_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
@@ -83,9 +84,6 @@ ocrGuid_t scale_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 // depv: n y a x
 ocrGuid_t daxpy_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-
-// depv: n y a x
-ocrGuid_t daxpyl_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 // depv: n na p q r rho
 ocrGuid_t update_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);

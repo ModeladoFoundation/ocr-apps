@@ -72,25 +72,35 @@ int makea(classdb_t* class, ocrGuid_t* a)
     }
 
     ocrGuid_t* a_ptr;
-    ocrDbCreate(a, (void**)&a_ptr, sizeof(ocrGuid_t)*class->na, 0, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(a, (void**)&a_ptr, sizeof(ocrGuid_t)*class->na/class->blk, 0, NULL_GUID, NO_ALLOC);
     for(i=0; i<class->na; ++i)
       nzcount[i] = 0;
     u64 nza = 0;
     ac = acol;
     for(i=0; i<class->na; ++i) {
-      int j;
+      u32 j;
       for(j=0; j<arow[i]; ++j,++ac) {
-         nzcount[*ac] += arow[i];
-         nza += arow[i];
+        nzcount[*ac] += arow[i];
+        nza += arow[i];
       }
     }
-    for(i=0; i<class->na; ++i) {
-      ocrDbCreate(a_ptr+i, (void**)rows+i, sizeof(u64)*(nzcount[i]+1)+sizeof(u32)*nzcount[i], 0, NULL_GUID, NO_ALLOC);
-      rows[i][0] = nzcount[i];
+    u32 even = class->blk+1+(1-class->blk&1);
+    for(i=0; i<class->na/class->blk; ++i) {
+      u32 b; u32 counts = 0;
+      for(b=0; b<class->blk; ++b)
+        counts += nzcount[i*class->blk+b];
+      ocrDbCreate(a_ptr+i, (void**)rows+i, sizeof(double)*counts+sizeof(u32)*(counts+even), 0, NULL_GUID, NO_ALLOC);
+      rows[i][class->blk] = counts<<1;
+      for(b=0; b<class->blk; ++b)
+        rows[i][b] = nzcount[i*class->blk+b];
+      rows[i][class->blk] += even;
     }
-    for(i=0; i<class->na; ++i) {
-      int j;
-      for(j=(rows[i][0]+1)<<1; j<((rows[i][0]+1)<<1)+rows[i][0]; ++j)
+    for(i=0; i<class->na/class->blk; ++i) {
+      u32 b, j, offset=0;
+      for(b=0; b<class->blk; ++b)
+        offset += rows[i][b];
+      offset += rows[i][class->blk];
+      for(j=rows[i][class->blk]; j<offset; ++j)
         rows[i][j] = NEGATIVE;
     }
 
@@ -126,13 +136,20 @@ int makea(classdb_t* class, ocrGuid_t* a)
                 if(j1==j0 && j1 == i)
                    va += rcond-class->shift;
 
-                u32* cols = rows[j0]+((rows[j0][0]+1)<<1);
-                double* vals = (double*)(rows[j0]+2);
+                u32 jj0 = j0/class->blk;
+                u32* cols = rows[jj0]+rows[jj0][class->blk];
+                double* vals = (double*)(rows[jj0]+even);
+                u32 b;
+                for(b=0; b<j0%class->blk; ++b) {
+                   cols += rows[jj0][b];
+                   vals += rows[jj0][b];
+                }
+                u32 vn = rows[jj0][j0%class->blk];
                 u32 k;
-                for(k=0; k<rows[j0][0]; ++k) {
+                for(k=0; k<vn; ++k) {
                    if(cols[k] > j1 && cols[k]<NEGATIVE) {
                        int kk;
-                       for(kk=rows[j0][0]-2; kk>=(int)k; --kk)
+                       for(kk=vn-2; kk>=(int)k; --kk)
                            if(cols[kk]<NEGATIVE) {
                                vals[kk+1] = vals[kk];
                                cols[kk+1] = cols[kk];
@@ -158,15 +175,30 @@ int makea(classdb_t* class, ocrGuid_t* a)
     }
 
     nza = 0;
-    for(i=0; i<class->na; ++i) {
-       u32 kk = (1+rows[i][0])<<1;
-       rows[i][0] = nzcount[i];
-       u32 j0 = (1+nzcount[i])<<1;
-       u32 j1 = j0+nzcount[i];
-       u32 k;
-       for(k = j0; k<j1; ++k,++kk)
-         rows[i][k] = rows[i][kk];
-       nza += rows[i][0];
+    for(i=0; i<class->na/class->blk; ++i) {
+      u32 b, j0=even, j1=even;
+      for(b=0; b<class->blk-1; ++b) {
+        j0 += nzcount[i*class->blk+b]<<1;
+        j1 += rows[i][b]<<1;
+        u32 kk = nzcount[i*class->blk+b+1];
+        double* dst = (double*)(rows[i]+j0);
+        double* src = (double*)(rows[i]+j1);
+        u32 k;
+        for(k = 0; k<kk; ++k)
+          dst[k] = src[k];
+      }
+      j0 += nzcount[i*class->blk+class->blk-1]<<1;
+      j1 = rows[i][class->blk];
+      rows[i][class->blk] = j0;
+      for(b=0; b<class->blk; ++b) {
+        u32 kk = j1+nzcount[i*class->blk+b];
+        u32 k;
+        for(k = j1; k<kk; ++k, ++j0)
+          rows[i][j0] = rows[i][k];
+        j1 += rows[i][b];
+        rows[i][b] = nzcount[i*class->blk+b];
+        nza += nzcount[i*class->blk+b];
+      }
     }
 
     printf("number of nonzeros = %lu\n", nza);

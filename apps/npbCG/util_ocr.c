@@ -46,10 +46,11 @@ void print_results(classdb_t* class, double t, double mops)
     printf("MFLOPS total    = %12.2f\n", mops);
 }
 
-void class_init(classdb_t** class, ocrGuid_t* guid, char c)
+void class_init(classdb_t** class, ocrGuid_t* guid, char c, u32 b)
 {
     ocrDbCreate(guid, (void**)class, sizeof(classdb_t), 0, NULL_GUID, NO_ALLOC);
     (*class)->c=c;
+    (*class)->blk=b;
     (*class)->on=1;
     switch(c) {
         case class_S:
