@@ -6,7 +6,7 @@
 ocrGuid_t childEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 *dbPtr = (u32*)depv[0].ptr;
     u32 idx = (u32)ocrDataParallelGetCurrentIteration(); 
-    dbPtr[idx] = idx;
+    dbPtr[idx] += idx;
     //PRINTF("The child is running. %lu\n", ocrDataParallelGetCurrentIteration());
     return NULL_GUID;
 }
@@ -27,7 +27,7 @@ ocrGuid_t awaitingEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 *dbPtr = (u32*)depv[1].ptr;
     for (i = 0; i < N; i++) {
         if (dbPtr[i] != i) {
-            PRINTF("Failed Verification\n");
+            PRINTF("!!! FAILED !!! Verification\n");
             break;
         }
     }
