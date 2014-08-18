@@ -12,6 +12,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <ocr.h>
+#include <extensions/ocr-affinity.h>
 
 #define debug(i,a,b...) do { PRINTF("[%d] %s:%d: " a "\n", i, __FILE__, __LINE__, ##b); } while(0)
 
