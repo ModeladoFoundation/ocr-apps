@@ -1,0 +1,11 @@
+
+lib gsllib : : <file>/usr/lib/libgsl.a
+    ;
+
+lib cblaslib : : <file>/usr/lib/libgslcblas.a
+    ;
+
+exe DagPatternKernel : int_vec.cpp grow_dag.cpp DagPatternKernel.cpp  gsllib cblaslib
+    :
+    <include>/home/sandeep/Computing/leda_extended/
+    ;

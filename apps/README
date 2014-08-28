@@ -1,0 +1,57 @@
+###
+# Introduction
+###
+This directory contains the applications worked on as part of the TG project
+
+The structure of this directory is as follows:
+  apps/
+  |---- <app1>/                      # Different implementations of app1
+  |     |------ ocr/                 # OCR implementation (symlink when mature)
+  |     \------ <omp|mpi|others...>/ # Any other implementation we want to compare agains
+  |
+  |---- ...                          # Other applications
+  |
+  |---- libs/                        # OCR support libraries (common across applications)
+  |     |---- src/                   # Source of these libraries
+  |     |     |--- <lib1>/
+  |     |     \--- ...
+  |     |
+  |     |---- tg/                    # Installation path for TG compiled libs
+  |     |     |-- include/
+  |     |     \-- lib/
+  |     |
+  |     \---- x86/                   # Installation path for x86 compiled libs
+  |           |--- include/
+  |           \--- lib/
+  |
+  |---- makefiles/                   # OCR Makefiles
+  |
+  \---- ocr-wrapper.sh               # Script to invoke OCR applications
+
+
+###
+# Compatible applications
+###
+This is the list of apps that have been "ported" to this new directory and build structure:
+    - cholesky
+    - fibonacci
+    - fft
+    - smithwaterman
+
+###
+# Best practices
+###
+    - Develop your OCR application directly in this hierarchy
+    - Once your OCR application is mature (and publically releasable), use git mv to move it
+      to ocr/ocr-apps/<app-name> and modify the default paths at the top of the Makefiles. Establish
+      a symlink between apps/<app-name>/ocr and ocr/ocr-apps/<app-name>
+
+    - All libraries should have a Makefile that uses an ARCH environment variable to build
+      the library either for x86 or TG. See libs/src/libc/ for an example
+
+###
+# Resources
+###
+    - Understanding OCR Makefiles: https://xstack.exascale-tech.com/wiki/index.php/OCR_User_Documentation#OCR_applications
+    - Detail on applications: https://xstack.exascale-tech.com/wiki/index.php/Applications,_Proxy_Apps,_mini-Apps_and_Kernels_-_status_and_location
+
