@@ -19,7 +19,7 @@ if [ -z "${APPS_LIBS_ROOT}" ]; then
 fi
 
 if [ -z "${OCR_SRC}" ]; then
-    OCR_SRC=`cd ./../ocr/src && pwd`
+    OCR_SRC=`cd ./../ocr && pwd`
 fi
 
 if [ -z "${OCR_INSTALL_ROOT}" ]; then

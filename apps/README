@@ -7,11 +7,11 @@ The structure of this directory is as follows:
   apps/
   |---- <app1>/                      # Different implementations of app1
   |     |------ ocr/                 # OCR implementation (symlink when mature)
-  |     \------ <omp|mpi|others...>/ # Any other implementation we want to compare agains
+  |     \------ <omp|mpi|others...>/ # Any other implementation we want to compare against
   |
   |---- ...                          # Other applications
   |
-  |---- libs/                        # OCR support libraries (common across applications)
+  |---- libs/                        # Support libraries (common across applications)
   |     |---- src/                   # Source of these libraries
   |     |     |--- <lib1>/
   |     |     \--- ...
