@@ -65,11 +65,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 initVal = INIT_VAL;
 
     // BUILTIN REDUCTION OP
-    ocrDataParallelReductionEdtCreate(&dataparallelReductionEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    ocrParallelReduce(&dataparallelReductionEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
         N, REDUCTION_OP_SUM, REDUCTION_TYPE_U64, sizeof(u64), NULL, (void *)(&initVal), EDT_PROP_NONE, NULL_GUID, &dataparallelReductionEventGuid);
 
     // USER REDUCTION OP
-    ocrDataParallelReductionEdtCreate(&dataparallelUserReductionEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    ocrParallelReduce(&dataparallelUserReductionEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
         N, REDUCTION_OP_USER, REDUCTION_TYPE_USER, sizeof(u64), userReductionFunction, (void *)(&initVal), EDT_PROP_NONE, NULL_GUID, &dataparallelUserReductionEventGuid);
 
     // AWAIT

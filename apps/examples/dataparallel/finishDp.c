@@ -15,8 +15,8 @@ ocrGuid_t finishScopeEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) 
     PRINTF("Start finish!\n");
     ocrGuid_t childTemplGuid, childEdtGuid;
     ocrEdtTemplateCreate(&childTemplGuid, childEdt, 0 /*paramc*/, 1 /*depc*/);
-    ocrDataParallelEdtCreate(&childEdtGuid, childTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-        N, EDT_PROP_DATA_PARALLEL, NULL_GUID, NULL);
+    ocrParallelFor(&childEdtGuid, childTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+        N, EDT_PROP_NONE, NULL_GUID, NULL);
     ocrAddDependence(depv[0].guid, childEdtGuid, 0, DB_DEFAULT_MODE);
     return NULL_GUID;
 }

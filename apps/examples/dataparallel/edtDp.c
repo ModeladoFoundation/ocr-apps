@@ -43,7 +43,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // DATA PARALLEL EDT
     ocrGuid_t dataparallelTemplGuid, dataparallelEdtGuid, dataparallelEventGuid;
     ocrEdtTemplateCreate(&dataparallelTemplGuid, dataparallelEdt, 0 /*paramc*/, 1 /*depc*/);
-    ocrDataParallelEdtCreate(&dataparallelEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    ocrParallelFor(&dataparallelEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
         N, EDT_PROP_NONE, NULL_GUID, &dataparallelEventGuid);
 
     // AWAIT
