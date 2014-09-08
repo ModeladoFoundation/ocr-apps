@@ -1,7 +1,8 @@
 CFLAGS=-g -I${OCR_INSTALL}/include
 LDFLAGS=-L${OCR_INSTALL}/lib -locr
+#TARGET=edtDp
 #TARGET=finishDp
-TARGET=edtDp
+TARGET=edtDpReduction
 
 .PHONY: $(TARGET)
 

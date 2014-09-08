@@ -1,7 +1,7 @@
 #define __OCR__
 #include "ocr.h"
 
-#define N 1000000
+#define N           1000000
 
 ocrGuid_t dataparallelEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 *dbPtr = (u32*)depv[0].ptr;
@@ -16,13 +16,16 @@ ocrGuid_t awaitingEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     PRINTF("Data Parallel finish!\n");
     u32 *dbPtr = (u32*)depv[1].ptr;
     for (i = 0; i < N; i++) {
-        if (dbPtr[i] != i) {
-            PRINTF("!!! FAILED !!! Verification\n");
+        if (dbPtr[i] != i)
             break;
-        }
     }
-    if (i == N)
+
+    if (i == N) {
         PRINTF("Passed Verification\n");
+    } else {
+        PRINTF("!!! FAILED !!! Verification\n");
+    }
+
     ocrShutdown();
     return NULL_GUID;
 }
@@ -41,7 +44,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t dataparallelTemplGuid, dataparallelEdtGuid, dataparallelEventGuid;
     ocrEdtTemplateCreate(&dataparallelTemplGuid, dataparallelEdt, 0 /*paramc*/, 1 /*depc*/);
     ocrDataParallelEdtCreate(&dataparallelEdtGuid, dataparallelTemplGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-        N, EDT_PROP_DATA_PARALLEL, NULL_GUID, &dataparallelEventGuid);
+        N, EDT_PROP_NONE, NULL_GUID, &dataparallelEventGuid);
 
     // AWAIT
     ocrGuid_t awaitingTemplGuid, awaitingEdtGuid;
