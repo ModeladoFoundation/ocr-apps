@@ -2,7 +2,7 @@
 #include "ocr.h"
 
 #define N           10000
-#define T           1
+#define T           0
 #define INIT_VAL    0
 
 #if (T == 1)

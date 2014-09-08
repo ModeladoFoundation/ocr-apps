@@ -2,7 +2,7 @@
 #include "ocr.h"
 
 #define N 1000000
-#define T 1
+#define T 0
 
 #if (T == 1)
 #include <stdio.h>
