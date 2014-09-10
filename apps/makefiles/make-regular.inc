@@ -45,8 +45,6 @@ OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(OBJS))
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
-VALIDGOALS := install run default clean
-
 .PHONY: install
 .ONESHELL:
 install: default | $(WORKLOAD_INSTALL)
@@ -60,14 +58,32 @@ install: default | $(WORKLOAD_INSTALL)
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 
-.PHONY: run
+ifeq (yes, $(DEBUGMAKE))
+.PHONY: debug_pre_prerun
+debug_pre_prerun:
+	@echo "Initial arguments are '${WORKLOAD_ARGS}' and inputs are '${WORKLOAD_INPUTS}'"
+
+prerun: debug_pre_prerun
+
+debug_post_prerun: prerun
+	@echo "Post prerun arguments are '${WORKLOAD_ARGS}' and inputs are '${WORKLOAD_INPUTS}'"
+else
+debug_post_prerun: prerun
+
+endif
+
+.PHONY: run_internal
 .ONESHELL:
-run:    WORKLOAD_ARGS := $(filter-out $(VALIDGOALS),$(MAKECMDGOALS))
-run:    WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
-run:    OCR_CONFIG ?= $(OCR_INSTALL)/config/default.cfg
-run:    install
+run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
+run_internal: OCR_CONFIG ?= $(OCR_INSTALL)/config/default.cfg
+run_internal: debug_post_prerun install
 	cd $(WORKLOAD_EXEC)
-	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib OCR_CONFIG=$(OCR_CONFIG) bash -c './$(TARGET) $(WORKLOAD_ARGS)'
+	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib OCR_CONFIG=$(OCR_CONFIG) bash -c './$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
+
+postrun: run_internal
+
+.PHONY: run
+run: postrun
 
 .PHONY: default
 default: reqlibs $(WORKLOAD_BUILD)/$(TARGET)
@@ -117,7 +133,3 @@ $(WORKLOAD_BUILD):
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
-
-# Prevent args from being interpreted as targets
-%:
-	@echo -n ""
