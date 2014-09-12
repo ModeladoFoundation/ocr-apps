@@ -22,8 +22,8 @@ OCR_BUILD_XE     := ${OCR_BUILD_ROOT}/${XE_TARGET}
 OCR_INSTALL_CE   := ${OCR_INSTALL_ROOT}/${CE_TARGET}
 OCR_BUILD_CE     := ${OCR_BUILD_ROOT}/${CE_TARGET}
 
-WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${ARCH}
-WORKLOAD_BUILD   := ${WORKLOAD_BUILD_ROOT}/${ARCH}
+WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
+WORKLOAD_BUILD   := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 
 REQ_LIBS         ?=
 
@@ -138,7 +138,7 @@ $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL_XE)/lib/libocr.a | $(WO
 #	$(RM) $@.tmp
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) $(OCR_INSTALL_XE)/lib/libocr.a | $(WORKLOAD_BUILD)
-	$(LD) $(LDFLAGS) -o $@ $(OBJS) --whole-archive $(OCR_INSTALL_XE)/lib/libocr.a
+	$(LD) -o $@ $(OBJS) $(LDFLAGS) --whole-archive $(OCR_INSTALL_XE)/lib/libocr.a
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
@@ -188,23 +188,25 @@ $(WORKLOAD_BUILD)/rmdkrnl: $(WORKLOAD_BUILD)/rmdkrnl.dbg | $(WORKLOAD_BUILD)
 # XE libocr.a
 $(OCR_INSTALL_XE)/lib/libocr.a: $(OCR_BUILD_XE)/Makefile
 	@echo "Building XE libocr.a..."
-	OCR_INSTALL=$(OCR_INSTALL_XE) OCR_SRC=$(OCR_SRC) $(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
+	OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL_XE) OCR_SRC=$(OCR_SRC) \
+	$(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
 
 # XE builder
 $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
 	@echo "Building XE builder..."
-	OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) \
+	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) \
 	OCR_SRC=$(OCR_SRC) $(MAKE) -C $(OCR_BUILD_ROOT)/$(XE_BUILDER) $(TARGETS) install
 
 # CE libocr.a
 $(OCR_INSTALL_CE)/lib/libocr.a: $(OCR_BUILD_CE)/Makefile
 	@echo "Building CE libocr.a..."
-	OCR_INSTALL=$(OCR_INSTALL_CE) OCR_SRC=$(OCR_SRC) $(MAKE) -C $(OCR_BUILD_CE) $(TARGETS) install
+	OCR_TYPE=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_SRC=$(OCR_SRC) \
+	$(MAKE) -C $(OCR_BUILD_CE) $(TARGETS) install
 
 # CE builder
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
 	@echo "Building CE builder..."
-	OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) \
+	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) \
 	OCR_SRC=$(OCR_SRC) $(MAKE) -C $(OCR_BUILD_ROOT)/$(CE_BUILDER) $(TARGETS) install
 
 .PHONY: clean
@@ -220,6 +222,3 @@ $(WORKLOAD_BUILD):
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
-# Prevents args from being interpreted as targets
-#%:
-#	@echo -n ""

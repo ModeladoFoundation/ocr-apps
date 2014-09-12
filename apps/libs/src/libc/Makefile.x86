@@ -12,8 +12,10 @@ debug:
 install:
 
 .PHONY: run
-run:
+run: ;
 
-# Here we do nothing, maybe remove the files we installed?
 .PHONY: clean
-clean:
+clean: ;
+
+.PHONY: uninstall
+uninstall: ;

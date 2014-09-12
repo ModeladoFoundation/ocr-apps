@@ -3,4 +3,4 @@ the use of the Makefiles needed to build an OCR application. The easiest
 way to develop your OCR application is to copy these files and
 modify based on the indications in the Makefile.
 
-To run: make -f Makefile.<target> run <args> (here no arguments are needed)
+To run: make -f Makefile.<type> run <args> (here no arguments are needed)
