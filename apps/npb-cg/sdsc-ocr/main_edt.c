@@ -1,7 +1,6 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
+#include <string.h>
 #include <ocr.h>
 
 #include "cg_ocr.h"
@@ -19,7 +18,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     classdb_t* class; ocrGuid_t classid;
     if(argc>1) {
         if(argc!=3 && argc != 5) {
-            printf("cg [-t class] [-b blocking ] (class=S|W|A|B|C|D|E; default: -t S, -b 1)\n");
+            PRINTF("cg [-t class] [-b blocking ] (class=T|S|W|A|B|C|D|E; default: -t S, -b 1)\n");
             ocrShutdown();
             return NULL_GUID;
         }
@@ -33,7 +32,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         }
         class_init(&class, &classid, classt, blocking);
         if(class->c == 'U') {
-            printf("cg [-t] [S,W,A,B,C,D,E] (default: S -t)\n");
+            PRINTF("cg [-t] [T,S,W,A,B,C,D,E] (default: S -t)\n");
             ocrShutdown();
             return NULL_GUID;
         }
@@ -43,7 +42,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     timerdb_t* timer; ocrGuid_t timerid;
     timer_init(&timer, &timerid, class, class->on);
-    printf("CG Benchmark: size=%d, iterations=%d\n", class->na, class->niter);
+    PRINTF("CG Benchmark: size=%lu, iterations=%u\n", class->na, class->niter);
 
     timer_start(timer);
 
@@ -83,7 +82,7 @@ ocrGuid_t head_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrDbDestroy(depv[4].guid);
     ocrDbDestroy(depv[5].guid);
 
-    printf("Iteration               ||r||               zeta\n");
+    PRINTF("Iteration               ||r||               zeta\n");
 
     double* x = (double*)depv[3].ptr;
     u32 i;
@@ -139,7 +138,7 @@ ocrGuid_t loop_bottom_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     double zeta = class->shift+1/_dot(class->na,x,z);
     double norm_temp2 = 1.0/sqrt(_dot(class->na,z,z));
     __scale(class->na,x,norm_temp2,z);
-    printf("%9d, %20.13le %10.13lf\n", paramv[0], *(double*)depv[5].ptr, zeta);
+    PRINTF("%9lu, %20.13f %10.13f\n", paramv[0], *(double*)depv[5].ptr, zeta);
     ocrDbDestroy(depv[4].guid);
 
     if(++paramv[0] > class->niter) {
@@ -177,9 +176,9 @@ ocrGuid_t tail_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     double zeta = *(double*)depv[2].ptr;
 
     timer_stop(tdb,1);
-    printf("Benchmark completed\n");
+    PRINTF("Benchmark completed\n");
 
-    double err = abs(zeta-class->zvv)/class->zvv;
+    double err = fabs(zeta-class->zvv)/class->zvv;
     if(err<=1e-10) {
         double mflops;
         double t_bench = timer_read(tdb,1);
@@ -187,30 +186,31 @@ ocrGuid_t tail_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             mflops = 2*class->niter*class->na*
                      (((double)3+class->nonzer*(class->nonzer+1))+((double)25*(5+class->nonzer*(class->nonzer+1))+3))/
                      t_bench/1000000;
-        printf("Verification SUCCESSFUL (zeta=%.13lf, error=%.13lf\n", zeta, err);
+        PRINTF("Verification SUCCESSFUL (zeta=%.13f, error=%.13f\n", zeta, err);
         print_results(class, t_bench, mflops);
 
         if(class->on) {
-            printf("Timing (sec,%%)\n");
+            PRINTF("Timing (sec,%%)\n");
             double t_cg = 0;
             int it;
             for(it = 1; it<=class->niter; ++it)
                 t_cg += timer_read(tdb,it+1);
             double t_init = timer_read(tdb,0);
             double wall = t_init+timer_read(tdb,1);
-            printf("init:      %10.3lf (%3.1lf%%)\n", t_init, t_init/wall*100);
-            printf("cg:        %10.3lf (%3.1lf%%)\n", t_cg, t_cg/wall*100);
-            printf("norm:      %10.3lf (%3.1lf%%)\n", (t_bench-t_cg), (t_bench-t_cg)/wall*100);
-            printf("wall time: %10.3lf\n", wall);
+            PRINTF("init:      %10.3f (%3.1f%%)\n", t_init, t_init/wall*100);
+            PRINTF("cg:        %10.3f (%3.1f%%)\n", t_cg, t_cg/wall*100);
+            PRINTF("norm:      %10.3f (%3.1f%%)\n", (t_bench-t_cg), (t_bench-t_cg)/wall*100);
+            PRINTF("wall time: %10.3f\n", wall);
         }
     }
-    else
-        printf("Verification FAILED (zeta=%.13lf, correct zeta=%.13lf\n", zeta, class->zvv);
-
+    else {
+        PRINTF("Verification FAILED (zeta=%.13f, correct zeta=%.13f\n", zeta, class->zvv);
+    }
     ocrDbDestroy(depv[0].guid);
     ocrDbDestroy(depv[1].guid);
     ocrDbDestroy(depv[2].guid);
 
+    PRINTF("DONE... going for shutdown\n");
     ocrShutdown();
     return NULL_GUID;
 }

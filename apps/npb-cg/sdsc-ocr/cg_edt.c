@@ -1,4 +1,3 @@
-#include <string.h>
 #include <ocr.h>
 
 #include "la_ocr.h"

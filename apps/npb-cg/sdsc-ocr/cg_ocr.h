@@ -1,4 +1,3 @@
-#include <inttypes.h>
 #include <ocr.h>
 
 typedef struct
@@ -25,7 +24,7 @@ typedef struct
     u64 amult;
 } randdb_t;
 
-enum {class_S='S', class_W='W', class_A='A', class_B='B',
+enum {class_T='T', class_S='S', class_W='W', class_A='A', class_B='B',
       class_C='C', class_D='D', class_E='E', class_U='U'};
 
 void class_init(classdb_t** class, ocrGuid_t* guid, char c, u32 blocking);

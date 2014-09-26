@@ -1,6 +1,6 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <math.h>
 #include <ocr.h>
 
@@ -105,7 +105,7 @@ int makea(classdb_t* class, ocrGuid_t* a)
     }
 
     if(nza>(class->na*(class->nonzer+1)*(class->nonzer+1))) {
-        printf("Space for matrix elements exceeded in sparse %lu > %lu\n", nza, class->na*(u64)(class->nonzer+1)*(class->nonzer+1));
+        PRINTF("Space for matrix elements exceeded in sparse %lu > %lu\n", nza, class->na*(u64)(class->nonzer+1)*(class->nonzer+1));
         ocrDbDestroy(acolid);
         ocrDbDestroy(aeltid);
         ocrDbDestroy(arowid);
@@ -120,7 +120,11 @@ int makea(classdb_t* class, ocrGuid_t* a)
 
     double size = 1;
     double rcond = 0.1;
+#ifdef TG_ARCH
+    double ratio = 0.99;
+#else
     double ratio = pow(rcond,1.0/class->na);
+#endif
 
     ac = acol;
     ae = aelt;
@@ -201,7 +205,7 @@ int makea(classdb_t* class, ocrGuid_t* a)
       }
     }
 
-    printf("number of nonzeros = %lu\n", nza);
+    PRINTF("number of nonzeros = %lu\n", nza);
 
     ocrDbDestroy(acolid);
     ocrDbDestroy(aeltid);

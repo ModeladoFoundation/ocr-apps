@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef TG_ARCH
 #include <sys/time.h>
-#include <inttypes.h>
+#endif
 #include <ocr.h>
 
 #include "cg_ocr.h"
@@ -9,9 +10,13 @@
 static inline
 double time()
 {
+#ifndef TG_ARCH
   struct timeval tv;
   gettimeofday(&tv, 0);
   return tv.tv_sec+1.0e-6*tv.tv_usec;
+#else
+  return 0;
+#endif
 }
 
 void timer_init(timerdb_t** timerdb, ocrGuid_t* guid, classdb_t* class, u8 on)
@@ -38,12 +43,12 @@ double timer_read(timerdb_t* timerdb, u8 tr)
 
 void print_results(classdb_t* class, double t, double mops)
 {
-    printf("CG Benchmark Completed\n");
-    printf("Class           = %12c\n", class->c);
-    printf("Size            = %12d\n", class->na);
-    printf("Iterations      = %12d\n", class->niter);
-    printf("Time in seconds = %12.2f\n", t);
-    printf("MFLOPS total    = %12.2f\n", mops);
+    PRINTF("CG Benchmark Completed\n");
+    PRINTF("Class           = %12c\n",  class->c);
+    PRINTF("Size            = %12lu\n", class->na);
+    PRINTF("Iterations      = %12u\n",  class->niter);
+    PRINTF("Time in seconds = %12.2f\n", t);
+    PRINTF("MFLOPS total    = %12.2f\n", mops);
 }
 
 void class_init(classdb_t** class, ocrGuid_t* guid, char c, u32 b)
@@ -53,47 +58,54 @@ void class_init(classdb_t** class, ocrGuid_t* guid, char c, u32 b)
     (*class)->blk=b;
     (*class)->on=1;
     switch(c) {
+        case class_T:
+          (*class)->na=50,
+          (*class)->nonzer=7,
+          (*class)->shift=10.,
+          (*class)->niter=3,
+          (*class)->zvv=7.8553405239753;
+          break;
         case class_S:
           (*class)->na=1400,
           (*class)->nonzer=7,
           (*class)->shift=10.,
           (*class)->niter=15,
-          (*class)->zvv=8.5971775078648;
+          (*class)->zvv=8.4273090265050;
           break;
         case class_W:
           (*class)->na=7000,
           (*class)->nonzer=8,
           (*class)->shift=12.,
           (*class)->niter=15,
-          (*class)->zvv=10.362595087124;
+          (*class)->zvv=10.4079058462847;
           break;
         case class_A:
           (*class)->na=14000,
           (*class)->nonzer=11,
           (*class)->shift=20.,
           (*class)->niter=15,
-          (*class)->zvv=17.130235054029;
+          (*class)->zvv=17.1721077015265;
           break;
         case class_B:
           (*class)->na=75000,
           (*class)->nonzer=13,
           (*class)->shift=60.,
           (*class)->niter=75,
-          (*class)->zvv=22.712745482631;
+          (*class)->zvv=22.6343607823757;
           break;
         case class_C:
           (*class)->na=150000,
           (*class)->nonzer=15,
           (*class)->shift=110.,
           (*class)->niter=75,
-          (*class)->zvv=28.973605592845;
+          (*class)->zvv=28.9334967418219;
           break;
         case class_D:
           (*class)->na=1500000,
           (*class)->nonzer=21,
           (*class)->shift=500.,
           (*class)->niter=100,
-          (*class)->zvv=52.514532105794;
+          (*class)->zvv=52.5239203995295;
           break;
         case class_E:
           (*class)->na=9000000,

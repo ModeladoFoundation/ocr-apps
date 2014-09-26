@@ -1,5 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
+//#include <stdlib.h>
+//#include <stdio.h>
 #include <ocr.h>
 
 #include "cg_ocr.h"
