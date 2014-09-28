@@ -100,25 +100,36 @@ $(FULL_REQ_LIBS):
 .PHONY: reqlibs
 reqlibs: parallel-reqlibs
 
-# Require libocr.a as this means all include files are up-to-date
-# The .so dependence is so that we can have the include files in place
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr.so | $(WORKLOAD_BUILD)
+# Require libocr as this means all include files are up-to-date
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c libocr | $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr.so | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp libocr | $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) $(OCR_INSTALL)/lib/libocr.so | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) libocr | $(WORKLOAD_BUILD)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
 	$(STRIP) $(WORKLOAD_BUILD)/$(TARGET)
 
-# libocr.so
+# libocr
+# Make this a .PHONY target so that we check if any of the
+# OCR source files have changed
+.PHONY: libocr
+
+ifeq ($(RUN_JENKINS), yes)
+# If we are running in Jenkins, we do not need to recheck if the file exists
+libocr: $(OCR_INSTALL)/lib/libocr.so
 $(OCR_INSTALL)/lib/libocr.so: $(OCR_BUILD)/Makefile
 	@echo "Building libocr.so..."
 	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_SRC=$(OCR_SRC) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
+else
+libocr: $(OCR_BUILD)/Makefile
+	@echo "Checking on libocr.so..."
+	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_SRC=$(OCR_SRC) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
+endif
 
 .PHONY: clean
 clean:

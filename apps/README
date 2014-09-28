@@ -24,9 +24,7 @@ The structure of this directory is as follows:
   |           |--- include/
   |           \--- lib/
   |
-  |---- makefiles/                   # OCR Makefiles
-  |
-  \---- ocr-wrapper.sh               # Script to invoke OCR applications
+  \---- makefiles/                   # OCR Makefiles
 
 
 ###
@@ -54,4 +52,3 @@ This is the list of apps that have been "ported" to this new directory and build
 ###
     - Understanding OCR Makefiles: https://xstack.exascale-tech.com/wiki/index.php/OCR_User_Documentation#OCR_applications
     - Detail on applications: https://xstack.exascale-tech.com/wiki/index.php/Applications,_Proxy_Apps,_mini-Apps_and_Kernels_-_status_and_location
-
