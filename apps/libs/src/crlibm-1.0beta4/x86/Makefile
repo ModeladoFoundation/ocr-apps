@@ -1,30 +1,68 @@
-ifndef OPT
-	OPT=-O
-endif
+#
+# For x86 (using package in x86_64) use the makefile build by configure
+#
 
-ifndef RMD_INSTALL_BASE
-	RMD_INSTALL_BASE = ../../../ss
-endif
-ifndef OCR_INSTALL
-	OCR_INSTALL = ../../../ocr/runtime/ocr-x86/ocr-install
-endif
+CRLBIM_ROOT     ?= ../x86_64
 
-GCC	= gcc -std=c99 -DOCR
-## -DOCR_DEBUG
-CFLAGS	= -fpic -g $(OPT) -I$(OCR_INSTALL)/include -I../x86_64/include
-LDFLAGS	= -fpic -g $(OPT) -L$(OCR_INSTALL)/lib -L../x86_64/lib
-LDLIBS	= -locr -lcrlibm
+APPS_ROOT       ?= ../../../../../apps
+APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
 
-all: test
+CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
+APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
+APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
-test.o:  test.c Makefile
-	$(GCC) $(CFLAGS) -c test.c
+CP=cp
+RM=rm
+MKDIR=mkdir
 
-test:	test.o Makefile
-	$(GCC) $(LDFLAGS) -o test test.o $(LDLIBS)
+.PHONY: squeaky
+squeaky:
+	(cd $(CRLIBM_ROOT);./RAG-clobber.sh)
 
-run:	test
-	./test -ocr:cfg ./default.cfg
+.PHONY: configure
+configure: $(CRLIBM_ROOT)/Makefile
 
+$(CRLIBM_ROOT)/Makefile: $(CRLIBM_ROOT)/RAG-install.sh
+	(cd $(CRLIBM_ROOT);./RAG-install.sh)
+
+.PHONY: all
+all: $(CRLIBM_ROOT)/Makefile
+	$(MAKE) -C $(CRLIBM_ROOT) all
+	$(MKDIR) -p lib include
+	$(CP) $(CRLIBM_ROOT)/crlibm.h    include/crlibm.h
+	$(CP) $(CRLIBM_ROOT)/libcrlibm.a lib/libcrlibm.a
+
+.PHONY: clean
 clean:
-	rm -f test.o test
+	$(MAKE) -C ../x86_64 clean
+	rm -rf lib include
+
+.PHONY: check
+check:
+	$(MAKE) -C ../x86_64 check
+
+lib/libcrlibm.a: | all
+
+include/crlibm.h: | all
+
+$(APPS_LIBS_ROOT)/lib/libcrlibm.a: lib/libcrlibm.a
+	$(CP) -f lib/libcrlibm.a $(APPS_LIBS_ROOT)/lib/libcrlibm.a
+
+$(APPS_LIBS_ROOT)/include/crlibm.h: include/crlibm.h
+	$(CP) -f include/crlibm.h $(APPS_LIBS_ROOT)/include/crlibm.h
+
+.PHONY: install
+install: $(APPS_LIBS_ROOT)/lib/libcrlibm.a $(APPS_LIBS_ROOT)/include/crlibm.h
+
+.PHONY: uninstall
+uninstall:
+	$(RM) -f $(APPS_LIBS_ROOT)/lib/libcrlibm.a
+	$(RM) -f $(APPS_LIBS_ROOT)/include/crlibm.h
+
+.PHONY: debug
+debug:
+	echo "Currently no x86 support for make debug"
+
+.PHONY: run
+run:
+	echo "Currently no x86 support for make run"

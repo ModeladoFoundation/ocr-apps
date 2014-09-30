@@ -1,39 +1,43 @@
-ifndef OPT
-	OPT=-O3
-endif
+CRLIBM_ROOT    ?= ../x86_64
 
-ifndef RMD_INSTALL_BASE
-	RMD_INSTALL_BASE = ../../../ss
-endif
+TG_SRC         ?= ../../../../../ss
+TG_INSTALL     ?= ../../../../../ss/install
 
-PREFIX=$(RMD_INSTALL_BASE)/bin/bin/rmd-linux-elf
+OCR_SRC        ?= ../../../../../ocr
+OCR_ROOT_BASE  ?= ../../../../../ocr/install
 
-RMD_RT_INSTALL=$(RMD_INSTALL_BASE)/runtime/libxe
-RMD_RT_LIBDIR =$(RMD_INSTALL_BASE)/bin/rmd-linux-elf/lib
+APPS_ROOT      ?= ../../../../../apps
+APPS_LIBS_ROOT ?= ../../../../../apps/libs/tg
 
-AS	= $(PREFIX)-as
+
+CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
+TG_SRC         := $(shell cd "${TG_SRC}" && pwd)
+TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
+OCR_SRC        := $(shell cd "${OCR_SRC}" && pwd)
+OCR_ROOT_BASE  := $(shell cd "${OCR_ROOT_BASE}" && pwd)
+APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
+APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+
+TG_PREFIX     := $(TG_INSTALL)/bin/rmd-linux-elf
+OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-null-tg-xe
+
+AS	= $(TG_PREFIX)-as
 ASFLAGS	=
 
-AR	= $(PREFIX)-ar
+AR	= $(TG_PREFIX)-ar
 ARFLAGS	= rcs
 
-CC	= $(PREFIX)-clang -DFSIM -frmd-extensions
+CC	= $(TG_PREFIX)-clang -DOCR -DTG_ARCH -frmd-extensions
 
-CFLAGS	= -g -ggdb -g3 $(OPT) -fno-builtin \
-	-I$(RMD_INSTALL_BASE)/xe-sim/include \
-	-I$(RMD_INSTALL_BASE)/rmdkrnl/inc \
-	-I$(RMD_INSTALL_BASE)/runtime/libxe/inc \
-	-I$(RMD_INSTALL_BASE)/runtime/common \
-	-I$(RMD_INSTALL_BASE)/common/include \
-	-DHAVE_CONFIG_H -I. -I../scs_lib -g -O2 -g
+CP = cp
+RM = rm
+
+CFLAGS	= -g -ggdb -g3 -O3 -fno-builtin \
+	-DHAVE_CONFIG_H -I. -I$(CRLIBM_ROOT)/scs_lib -I$(OCR_INSTALL)/include
 
 ## -DPROCESSOR_HAS_FMA=1
 
-OBJCOPY	= $(PREFIX)-objcopy
-
-LD	= $(PREFIX)-ld
-LDFLAGS	= -L$(RMD_RT_INSTALL) -T $(RMD_RT_INSTALL)/rmd-libxe-icache.ld    -static -Map=out.map
-LDLIBS	= -lxert
+OBJCOPY	= $(TG_PREFIX)-objcopy
 
 CUT	= cut
 GREP	= grep
@@ -69,107 +73,146 @@ OBJS=	crlibm_private.o \
 	addition_scs.o \
 	multiplication_scs.o \
 	scs2double.o \
-	zero_scs.o
+	zero_scs.o \
+	e_sqrt.o ef_sqrt.o
 
-all: libcrlibm.a test
+.PHONY: squeaky
+squeaky:
+	(cd $(CRLIBM_ROOT);./RAG-clobber.sh)
 
-scs_private.o:	../scs_lib/scs_private.c ../crlibm_config.h ../scs_lib/scs.h ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o scs_private.o -c ../scs_lib/scs_private.c
+.PHONY: configure
+configure: $(CRLIBM_ROOT)/Makefile
 
-double2scs.o:	../scs_lib/double2scs.c ../crlibm_config.h ../scs_lib/scs.h ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o double2scs.o -c ../scs_lib/double2scs.c
+$(CRLIBM_ROOT)/Makefile: $(CRLIBM_ROOT)/RAG-install.sh
+	(cd $(CRLIBM_ROOT);./RAG-install.sh)
 
-print_scs.o:	../scs_lib/print_scs.c ../crlibm_config.h ../scs_lib/scs.h ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o print_scs.o -c ../scs_lib/print_scs.c
+.PHONY: all
+all: lib/libcrlibm.a
 
-division_scs.o:	../scs_lib/division_scs.c ../crlibm_config.h ../scs_lib/scs.h ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o division_scs.o -c ../scs_lib/division_scs.c
+scs_private.o: $(CRLIBM_ROOT)/scs_lib/scs_private.c $(CRLIBM_ROOT)/crlibm_config.h $(CRLIBM_ROOT)/scs_lib/scs.h $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o scs_private.o -c $(CRLIBM_ROOT)/scs_lib/scs_private.c
 
-addition_scs.o:	../scs_lib/addition_scs.c ../crlibm_config.h ../scs_lib/scs.h ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o addition_scs.o -c ../scs_lib/addition_scs.c
+double2scs.o: $(CRLIBM_ROOT)/scs_lib/double2scs.c $(CRLIBM_ROOT)/crlibm_config.h $(CRLIBM_ROOT)/scs_lib/scs.h $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o double2scs.o -c $(CRLIBM_ROOT)/scs_lib/double2scs.c
 
-multiplication_scs.o: ../scs_lib/multiplication_scs.c  ../crlibm_config.h  ../scs_lib/scs.h  ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o multiplication_scs.o -c  ../scs_lib/multiplication_scs.c
+print_scs.o: $(CRLIBM_ROOT)/scs_lib/print_scs.c $(CRLIBM_ROOT)/crlibm_config.h $(CRLIBM_ROOT)/scs_lib/scs.h $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o print_scs.o -c $(CRLIBM_ROOT)/scs_lib/print_scs.c
 
-scs2double.o:	 ../scs_lib/scs2double.c  ../crlibm_config.h  ../scs_lib/scs.h  ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o scs2double.o -c  ../scs_lib/scs2double.c
+division_scs.o: $(CRLIBM_ROOT)/scs_lib/division_scs.c $(CRLIBM_ROOT)/crlibm_config.h $(CRLIBM_ROOT)/scs_lib/scs.h $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o division_scs.o -c $(CRLIBM_ROOT)/scs_lib/division_scs.c
 
-zero_scs.o:	 ../scs_lib/zero_scs.c  ../crlibm_config.h  ../scs_lib/scs.h  ../scs_lib/scs_private.h
-	$(CC) $(CFLAGS) -o zero_scs.o -c  ../scs_lib/zero_scs.c
+addition_scs.o: $(CRLIBM_ROOT)/scs_lib/addition_scs.c $(CRLIBM_ROOT)/crlibm_config.h $(CRLIBM_ROOT)/scs_lib/scs.h $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o addition_scs.o -c $(CRLIBM_ROOT)/scs_lib/addition_scs.c
 
-crlibm_private.o:	 ../crlibm_private.c ../crlibm.h ../crlibm_private.h ../xe-stuff.h
-	$(CC) $(CFLAGS) -o crlibm_private.o -c  ../crlibm_private.c
+multiplication_scs.o: $(CRLIBM_ROOT)/scs_lib/multiplication_scs.c  $(CRLIBM_ROOT)/crlibm_config.h  $(CRLIBM_ROOT)/scs_lib/scs.h  $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o multiplication_scs.o -c  $(CRLIBM_ROOT)/scs_lib/multiplication_scs.c
 
-triple-double.o:	 ../triple-double.c ../crlibm_private.h ../triple-double.h
-	$(CC) $(CFLAGS) -o triple-double.o -c  ../triple-double.c
+scs2double.o: $(CRLIBM_ROOT)/scs_lib/scs2double.c  $(CRLIBM_ROOT)/crlibm_config.h  $(CRLIBM_ROOT)/scs_lib/scs.h  $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o scs2double.o -c  $(CRLIBM_ROOT)/scs_lib/scs2double.c
 
-exp-td.o:	 ../exp-td.c ../crlibm.h
-	$(CC) $(CFLAGS) -o exp-td.o -c  ../exp-td.c
+zero_scs.o: $(CRLIBM_ROOT)/scs_lib/zero_scs.c  $(CRLIBM_ROOT)/crlibm_config.h  $(CRLIBM_ROOT)/scs_lib/scs.h  $(CRLIBM_ROOT)/scs_lib/scs_private.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o zero_scs.o -c  $(CRLIBM_ROOT)/scs_lib/zero_scs.c
 
-exp-td-standalone.o:	 ../exp-td-standalone.c ../crlibm.h
-	$(CC) $(CFLAGS) -o exp-td-standalone.o -c  ../exp-td-standalone.c
+crlibm_private.o: $(CRLIBM_ROOT)/crlibm_private.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/tg-defs.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o crlibm_private.o -c  $(CRLIBM_ROOT)/crlibm_private.c
 
-expm1-standalone.o:	 ../expm1-standalone.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../expm1.h
-	$(CC) $(CFLAGS) -o expm1-standalone.o -c  ../expm1-standalone.c
+triple-double.o: $(CRLIBM_ROOT)/triple-double.c $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o triple-double.o -c  $(CRLIBM_ROOT)/triple-double.c
 
-expm1.o:	 ../expm1.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../expm1.h
-	$(CC) $(CFLAGS) -o expm1.o -c  ../expm1.c
+exp-td.o: $(CRLIBM_ROOT)/exp-td.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o exp-td.o -c  $(CRLIBM_ROOT)/exp-td.c
 
-log.o:	 ../log.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../log.h
-	$(CC) $(CFLAGS) -o log.o -c  ../log.c -Wno-division-by-zero
+exp-td-standalone.o: $(CRLIBM_ROOT)/exp-td-standalone.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o exp-td-standalone.o -c  $(CRLIBM_ROOT)/exp-td-standalone.c
 
-log1p.o:	 ../log1p.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../log-td.h
-	$(CC) $(CFLAGS) -o log1p.o -c  ../log1p.c
+expm1-standalone.o: $(CRLIBM_ROOT)/expm1-standalone.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/expm1.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o expm1-standalone.o -c  $(CRLIBM_ROOT)/expm1-standalone.c
 
-rem_pio2_accurate.o:	 ../rem_pio2_accurate.c ../rem_pio2_accurate.h
-	$(CC) $(CFLAGS) -o rem_pio2_accurate.o -c  ../rem_pio2_accurate.c -Wno-parentheses-equality
+expm1.o: $(CRLIBM_ROOT)/expm1.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/expm1.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o expm1.o -c  $(CRLIBM_ROOT)/expm1.c
 
-trigo_fast.o:	 ../trigo_fast.c ../crlibm.h ../crlibm_private.h ../trigo_fast.h
-	$(CC) $(CFLAGS) -o trigo_fast.o -c  ../trigo_fast.c -Wno-parentheses-equality
+log.o: $(CRLIBM_ROOT)/log.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/log.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o log.o -c  $(CRLIBM_ROOT)/log.c -Wno-division-by-zero
 
-trigo_accurate.o:	 ../trigo_accurate.c ../trigo_accurate.h
-	$(CC) $(CFLAGS) -o trigo_accurate.o -c  ../trigo_accurate.c
+log1p.o: $(CRLIBM_ROOT)/log1p.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/log-td.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o log1p.o -c  $(CRLIBM_ROOT)/log1p.c
 
-trigpi.o:	 ../trigpi.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../trigpi.h
-	$(CC) $(CFLAGS) -o trigpi.o -c  ../trigpi.c
+rem_pio2_accurate.o: $(CRLIBM_ROOT)/rem_pio2_accurate.c $(CRLIBM_ROOT)/rem_pio2_accurate.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o rem_pio2_accurate.o -c  $(CRLIBM_ROOT)/rem_pio2_accurate.c -Wno-parentheses-equality
 
-asincos.o:	 ../asincos.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../asincos.h
-	$(CC) $(CFLAGS) -o asincos.o -c  ../asincos.c
+trigo_fast.o: $(CRLIBM_ROOT)/trigo_fast.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/trigo_fast.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o trigo_fast.o -c  $(CRLIBM_ROOT)/trigo_fast.c -Wno-parentheses-equality
 
-pow.o:	 ../pow.c ../crlibm.h ../crlibm_private.h ../triple-double.h ../pow.h
-	$(CC) $(CFLAGS) -o pow.o -c  ../pow.c
+trigo_accurate.o: $(CRLIBM_ROOT)/trigo_accurate.c $(CRLIBM_ROOT)/trigo_accurate.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o trigo_accurate.o -c  $(CRLIBM_ROOT)/trigo_accurate.c
 
-atan_fast.o:	../atan_fast.c ../crlibm.h ../crlibm_private.h ../atan_fast.h
-	$(CC) $(CFLAGS) -o atan_fast.o -c  ../atan_fast.c
+trigpi.o: $(CRLIBM_ROOT)/trigpi.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/trigpi.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o trigpi.o -c  $(CRLIBM_ROOT)/trigpi.c
 
-atan_accurate.o:	 ../atan_accurate.c ../crlibm_private.h ../atan_accurate.h ../atan_fast.h
-	$(CC) $(CFLAGS) -o atan_accurate.o -c  ../atan_accurate.c
+asincos.o: $(CRLIBM_ROOT)/asincos.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/asincos.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o asincos.o -c  $(CRLIBM_ROOT)/asincos.c
 
-csh_fast.o:	 ../csh_fast.c ../crlibm.h ../crlibm_private.h ../csh_fast.h ../triple-double.h
-	$(CC) $(CFLAGS) -o csh_fast.o -c  ../csh_fast.c
+pow.o: $(CRLIBM_ROOT)/pow.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/pow.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o pow.o -c  $(CRLIBM_ROOT)/pow.c
 
-libcrlibm.a:	$(OBJS)
+atan_fast.o: $(CRLIBM_ROOT)/atan_fast.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/atan_fast.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o atan_fast.o -c  $(CRLIBM_ROOT)/atan_fast.c
+
+atan_accurate.o: $(CRLIBM_ROOT)/atan_accurate.c $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/atan_accurate.h $(CRLIBM_ROOT)/atan_fast.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o atan_accurate.o -c  $(CRLIBM_ROOT)/atan_accurate.c
+
+csh_fast.o: $(CRLIBM_ROOT)/csh_fast.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/csh_fast.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) -o csh_fast.o -c  $(CRLIBM_ROOT)/csh_fast.c
+
+e_sqrt.o: $(TG_SRC)/newlib/src-1.19/newlib/libm/math/e_sqrt.c $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) \
+	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/include \
+	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/common \
+	-I $(TG_SRC)/newlib/src-1.19/newlib/libc/include \
+	-c $(TG_SRC)/newlib/src-1.19/newlib/libm/math/e_sqrt.c
+
+ef_sqrt.o: $(TG_SRC)/newlib/src-1.19/newlib/libm/math/ef_sqrt.c $(CRLIBM_ROOT)/Makefile
+	$(CC) $(CFLAGS) \
+	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/include \
+	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/common \
+	-I $(TG_SRC)/newlib/src-1.19/newlib/libc/include \
+	-c $(TG_SRC)/newlib/src-1.19/newlib/libm/math/ef_sqrt.c
+
+lib/libcrlibm.a: $(OBJS) Makefile $(CRLIBM_ROOT)/Makefile
 	$(AR) cru ./libcrlibm.a $(OBJS)
+	$(MKDIR) -p lib include
+	$(CP) -f libcrlibm.a lib/libcrlibm.a
+	$(CP) -f $(CRLIBM_ROOT)/crlibm.h include/crlibm.h
 
-test.o:	test.c ../crlibm.h ../xe-stuff.h
-	$(CC) $(CFLAGS) -o test.o -I.. -c test.c
+include/crlibm.h: lib/libcrlibm.a
 
-test:	test.o libcrlibm.a
-	$(LD) $(LDFLAGS) -o test test.o ./libcrlibm.a $(LDLIBS)
-
-run:	test test.cfg
-	$(MKDIR) -p logs
-	$(RM) -f logs/*
-	date
-	$(RMD_INSTALL_BASE)/xe-sim/fsim -s -c test.cfg -c $(RMD_INSTALL_BASE)/xe-sim/configs/localhost.cfg
-	date
-	grep CONSOLE logs/*blk00.CE.00
-
+.PHONY: clean
 clean:
-	rm -f libcrlibm.a $(OBJS) test.o test out.map logs/* lib/* include/*
+	$(RM) -f out.map libcrlibm.a $(OBJS)
+	$(RM) -rf lib include
 
-install: libcrlibm.a ../crlibm.h ../crlibm_config.h ../scs_lib/scs.h ../xe-stuff.h
-	mkdir -p lib
-	cp libcrlibm.a lib
-	mkdir -p include
-	cp ../crlibm.h ../crlibm_config.h ../scs_lib/scs.h ../xe-stuff.h include
+$(APPS_LIBS_ROOT)/include/crlibm.h: include/crlibm.h
+	$(CP) -f include/crlibm.h $(APPS_LIBS_ROOT)/include/crlibm.h
+
+$(APPS_LIBS_ROOT)/lib/libcrlibm.a: lib/libcrlibm.a
+	$(CP) -f lib/libcrlibm.a  $(APPS_LIBS_ROOT)/lib/libcrlibm.a
+
+.PHONY: install
+install: $(APPS_LIBS_ROOT)/lib/libcrlibm.a $(APPS_LIBS_ROOT)/include/crlibm.h
+
+.PHONY: uninstall
+uninstall:
+	$(RM) -f $(APPS_LIBS_ROOT)/lib/libcrlibm.a
+	$(RM) -f $(APPS_LIBS_ROOT)/include/crlibm.h
+
+.PHONY: debug
+debug:
+	echo "Currently no tg support for make debug"
+
+.PHONY: check
+check:
+	echo "Currently no tg support for make check"
+
+.PHONY: run
+run:
+	echo "Currently no tg support for make run"

@@ -15,7 +15,8 @@ install:
 run: ;
 
 .PHONY: clean
-clean: ;
-
+clean:
+#
+# Here we do nothing, maybe remove the files we installed?
 .PHONY: uninstall
-uninstall: ;
+uninstall:
