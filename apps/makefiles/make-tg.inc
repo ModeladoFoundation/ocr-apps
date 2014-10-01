@@ -6,27 +6,42 @@
 # Get absolute paths. This is useful since we go in
 # subfolders to do make and that screws up the relative
 # paths
-APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
-APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
-TG_INSTALL            := $(shell cd "${TG_INSTALL}" && pwd)
+ifeq ($(RUN_JENKINS), run)
+TG_SRC                :=
+OCR_SRC               :=
+OCR_BUILD_ROOT        :=
+OCR_BUILD_XE          :=
+OCR_BUILD_CE          :=
+WORKLOAD_BUILD_ROOT   :=
+WORKLOAD_BUILD        :=
+APPS_LIBS_ROOT        :=
+WORKLOAD_SRC          :=
+else
 TG_SRC                := $(shell cd "${TG_SRC}" && pwd)
-WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
-WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
-WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 OCR_SRC               := $(shell cd "${OCR_SRC}" && pwd)
-OCR_INSTALL_ROOT      := $(shell mkdir -p ${OCR_INSTALL_ROOT} && cd "${OCR_INSTALL_ROOT}" && pwd)
 OCR_BUILD_ROOT        := $(shell cd "${OCR_BUILD_ROOT}" && pwd)
+OCR_BUILD_XE          := ${OCR_BUILD_ROOT}/${XE_TARGET}
+OCR_BUILD_CE          := ${OCR_BUILD_ROOT}/${CE_TARGET}
+WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
+WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
+APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
+endif
 
+APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
+
+TG_INSTALL            := $(shell cd "${TG_INSTALL}" && pwd)
+
+WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
+
+OCR_INSTALL_ROOT      := $(shell mkdir -p ${OCR_INSTALL_ROOT} && cd "${OCR_INSTALL_ROOT}" && pwd)
 OCR_INSTALL_XE   := ${OCR_INSTALL_ROOT}/${XE_TARGET}
-OCR_BUILD_XE     := ${OCR_BUILD_ROOT}/${XE_TARGET}
 OCR_INSTALL_CE   := ${OCR_INSTALL_ROOT}/${CE_TARGET}
-OCR_BUILD_CE     := ${OCR_BUILD_ROOT}/${CE_TARGET}
 
 OCR_CE_CONFIG    ?= $(OCR_INSTALL_CE)/config/default.cfg
 OCR_XE_CONFIG    ?= $(OCR_INSTALL_XE)/config/default.cfg
 
 WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
-WORKLOAD_BUILD   := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 
 REQ_LIBS         ?=
 
@@ -71,7 +86,7 @@ MACHINE_CONFIG ?= $(TG_INSTALL)/fsim-configs/localhost.cfg
 MACHINE_CONFIG := -c $(MACHINE_CONFIG)
 endif
 
-ifeq ($(RUN_JENKINS), yes)
+ifeq ($(RUN_JENKINS), run)
 RUN_CMD := $(TG_INSTALL)/bin/fsim-scripts/fsim-torque.sh
 MACHINE_CONFIG :=
 endif
@@ -107,16 +122,20 @@ endif
 .PHONY: run_internal
 .ONESHELL:
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
+ifeq ($(RUN_JENKINS), run)
+run_internal:
+else
 run_internal: install
+endif
 	@$(MKDIR) -p $(WORKLOAD_EXEC)/logs
 	@$(RM) -rf $(WORKLOAD_EXEC)/logs/*
 	@$(RM) -f $(WORKLOAD_EXEC)/console.out
 	cd $(WORKLOAD_EXEC)
-	WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) bash -c '$(RUN_CMD) -s $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg'
-	$(eval WORKLOAD_OUTS := $(shell find -L $(WORKLOAD_EXEC)/logs/* -name '*.app_output' -print))
+	WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) $(RUN_CMD) -s $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg
 	@$(GREP) -H "CONSOLE: XE[0-7]" logs/*brd*.chp*.unt*.blk*.CE.00 | $(SED) 's/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/' > console.out
 
 postrun: run_internal
+postrun: WORKLOAD_OUTS := `find -L $(WORKLOAD_EXEC)/logs/* -name '*.app_output' -print`
 
 .PHONY: run
 run: postrun
@@ -195,8 +214,11 @@ $(WORKLOAD_BUILD)/rmdkrnl: $(WORKLOAD_BUILD)/rmdkrnl.dbg | $(WORKLOAD_BUILD)
 # Phony target to check on build everytime
 .PHONY: libocrxe
 
-ifeq ($(RUN_JENKINS), yes)
-# If running Jenkins, no need to recheck for source change
+ifeq ($(RUN_JENKINS), run)
+# If running Jenkins, on TG, we have to be agressive and assume all is OK
+# With run, we do not even attempt to build more stuff
+libocrxe: ;
+else ifeq ($(RUN_JENKINS), build)
 libocrxe: $(OCR_INSTALL_XE)/lib/libocr.a
 $(OCR_INSTALL_XE)/lib/libocr.a: $(OCR_BUILD_XE)/Makefile
 	@echo "Building XE libocr.a..."
@@ -213,8 +235,10 @@ endif
 # Phony target to check on build everytime
 .PHONY: builderxe
 
-ifeq ($(RUN_JENKINS), yes)
+ifeq ($(RUN_JENKINS), run)
 # If running Jenkins, no need to recheck for source change
+builderxe: ;
+else ifeq ($(RUN_JENKINS), build)
 builderxe: $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe
 $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
 	@echo "Building XE builder..."
@@ -230,8 +254,10 @@ endif
 # CE libocr.a
 .PHONY: libocrce
 
-ifeq ($(RUN_JENKINS), yes)
+ifeq ($(RUN_JENKINS), run)
 # If running Jenkins, no need to recheck for source change
+libocrcr: ;
+else ifeq ($(RUN_JENKINS), build)
 libocrce: $(OCR_INSTALL_CE)/lib/libocr.a
 $(OCR_INSTALL_CE)/lib/libocr.a: $(OCR_BUILD_CE)/Makefile
 	@echo "Building CE libocr.a..."
@@ -247,7 +273,9 @@ endif
 # CE builder
 .PHONY: builderce
 
-ifeq ($(RUN_JENKINS), yes)
+ifeq ($(RUN_JENKINS), run)
+builderce: ;
+else ifeq ($(RUN_JENKINS), build)
 builderce: $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
 	@echo "Building CE builder..."
