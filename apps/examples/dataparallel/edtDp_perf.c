@@ -2,18 +2,34 @@
 #include "ocr.h"
 
 #define N 1000000
+#define T 1
+
+#if (T == 1)
+#include <stdio.h>
+#include <sys/time.h>
+struct timeval a,b;
+#endif
+
+static void compdelay(int delaylength) {
+   int  i;
+   float a=0.;
+   for (i=0; i<delaylength; i++) a+=i;
+   if (a < 0) PRINTF("%f \n",a);
+}
 
 ocrGuid_t dataparallelEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 *dbPtr = (u32*)depv[0].ptr;
     u32 idx = (u32)ocrDataParallelGetCurrentIteration();
     dbPtr[idx] += idx;
-    //PRINTF("Data Parallel EDT iteration: %lu\n", ocrDataParallelGetCurrentIteration());
+    compdelay(10000);
     return NULL_GUID;
 }
 
 ocrGuid_t awaitingEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 i;
-    PRINTF("Data Parallel finish!\n");
+#if (T == 1)
+    gettimeofday(&b,0);
+#endif
     u32 *dbPtr = (u32*)depv[1].ptr;
     for (i = 0; i < N; i++) {
         if (dbPtr[i] != i * 2)
@@ -25,6 +41,11 @@ ocrGuid_t awaitingEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     } else {
         PRINTF("!!! FAILED !!! Verification\n");
     }
+
+#if (T == 1)
+    printf("The computation took %f seconds\r\n",
+           ((b.tv_sec - a.tv_sec)*1000000+(b.tv_usec - a.tv_usec))*1.0/1000000);
+#endif
 
     ocrShutdown();
     return NULL_GUID;
@@ -40,6 +61,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     for(i = 0; i < N; i++)
         ptr[i] = i;
 
+#if (T == 1)
+    gettimeofday(&a,0);
+#endif
     // DATA PARALLEL EDT
     ocrGuid_t dataparallelTemplGuid, dataparallelEdtGuid, dataparallelEventGuid;
     ocrEdtTemplateCreate(&dataparallelTemplGuid, dataparallelEdt, 0 /*paramc*/, 1 /*depc*/);
@@ -55,7 +79,6 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrAddDependence(dbGuid, awaitingEdtGuid, 1, DB_DEFAULT_MODE);
 
     // START
-    PRINTF("Data Parallel Start!\n");
     ocrAddDependence(dbGuid, dataparallelEdtGuid, 0, DB_DEFAULT_MODE);
 
     return NULL_GUID;
