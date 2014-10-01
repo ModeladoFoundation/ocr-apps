@@ -1,0 +1,9 @@
+Directory Tree Description:
+ocr/          --  (TG Compatible) Contains the standard OCR version of Cholesky with no MKL implementations
+
+ocr-mkl/      --  (Non-TG) Contains new OCR version of Cholesky with Intel MKL and includes algorthim timing option
+ocr-no-mkl/   --  (Non-TG) Contains OCR version of Cholesky with non-Intel MKL kernels and includes algorthim timing option
+omp-mkl/      --  (Non-TG) Contains new OMP version of Cholesky with Intel MKL and includes algorthim timing option (Part of ESAG Intel_BenchMark library)
+omp-no-mkl/   --  (Non-TG) Contains OMP version of Cholesky with non-Intel MKL kernels and includes algorthim timing option
+
+datasets/     -- Contains input matrix files

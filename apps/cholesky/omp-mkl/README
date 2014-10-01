@@ -1,0 +1,43 @@
+Intel_BenchMark: OMP-MKL Cholesky (cpp)
+__________________________________________________________________________________________________
+Solves an OMP version of a Tiled Cholesky Decomposition with Intel MKL math kernels
+(Non-TG, includes option to save algorithm computational time)
+
+Build:
+
+cd Intel_BenchMark
+make
+
+Usage:
+
+  Intel_BenchMark -b BenchType [options]
+
+  where:
+    -b  BenchType   -- Benchmark to Run
+                       all     : -ds DataSize -ts TileSize (runs 1dfft, 2dfft, cholesky)
+                       allsweep: -ds DataSize (runs all for ds to ds * 2^7 and ts from 4 to ds/2)
+                       1dfft   : -ds DataSize -ts TileSize
+                       2dfft   : -ds DataSize -ts TileSize
+                       cholesky: -ds DataSize -ts TileSize
+
+                       binfile : none
+                       genutil : none
+                       matrix  : -ds DataSize (Matrix unit tests)
+                       tmatrix : -ds DataSize -ts TileSize (TileMatrix unit tests)
+                       sysinfo : none
+                       timing  : -ts NumSeconds
+
+  options:
+    -ds DataSize    -- Data size
+    -ts TileSize    -- Process tile size (1 default for non-tiled implementation, else gt 1 for tiled implementation)
+
+    -ns NumSockets  -- Number of sockets (parallel tasks) to use for benchmark, else 0 to detect sockets (0 default)
+    -nt NumThreads  -- Number of threads/task to use for benchmark, else 0 to detect cores/socket (0 default)
+    -r  Runs        -- Number of repetitions of benchmark, which are averaged for time (2 default)
+
+    -dl DebugLevel  -- Debugging output level {0: none, 1: summary, 2: detail, 3: verbose} (1 default)
+    -fi InFile      -- Input Matrix file name, input to benchmark (optional)
+    -fo OutFile     -- Output Matrix file name, result of benchmark (optional)
+    -fa AnsFile     -- Answer Matrix file name, precalculated for corresponding InFile should match OutFile (optional)
+    -fr RepFile     -- Output binary report file name, appends record if exists (optional)
+    -frt TxtFile    -- Output text comma separated value report file name, reads RepFile to generate (optional)

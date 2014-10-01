@@ -1,0 +1,29 @@
+OCR-MKL Cholesky
+__________________________________________________________________________________________________
+Solves an OCR version of a Tiled Cholesky Decomposition with Intel MKL math kernels
+(Non-TG, includes option to save algorithm computational time)
+
+Build:
+
+make
+
+Usage:
+        ocr_mkl_cholesky.exe {Arguments}
+
+Arguments:
+        --ds -- Specify the Size of the Input Matrix
+        --ts -- Specify the Tile Size
+        --fi -- Specify the Input File Name of the Matrix
+        --ol -- Output Selection Level:
+                0: Print solution to stdout
+                1: Write solution to text file
+                2: Write solution to binary file (default)
+                3: Write solution to text file and print to stdout
+                4: Write solution to binary file and print to stdout
+                5: Write algorithm timing data to ocr_mkl_cholesky_stats.csv
+                   and write solution to binary file
+         (Note: ocr_mkl_cholesky_stats.csv will be created if file does not exist,
+          otherwise new data captures will be appended to the end of the file)
+
+For e.g., try:
+       ./ocr_mkl_cholesky.exe --ds 100 --ts 25 --fi /path/to/datasets/m_100.in --ol 5
