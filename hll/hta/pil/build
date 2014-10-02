@@ -14,7 +14,7 @@ PIL_INC="-I${HTAHLL}/pil/include -I. -I${HTAHLL}/hta/include"
 PIL_SRCS="${HTAHLL}/pil/src/pil_mem.c ${HTAHLL}/pil/src/pil_init.c ${HTAHLL}/pil/src/pil_nw.c"
 OCR_FLAGS="-L$OCR_INSTALL/lib -I$OCR_INSTALL/include"
 OCR_LDFLAGS=-locr
-if [ -n "$RSTREAM_HOME" ]; then
+if [ -d "$RSTREAM_HOME" ]; then
     RFLAGS="-S -fopenmp --mm=core2duo `smp-config` -std=c89 -fcollapse-include-files"
     RCC_INC="-I$RSTREAM_HOME)/runtime/smp/include -lm"
     RLD_FLAGS="$RSTREAM_HOME/runtime/smp/lib/librstream_smp.so"
