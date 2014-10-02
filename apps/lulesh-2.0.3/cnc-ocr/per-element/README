@@ -1,0 +1,5 @@
+To run
+	-> source setup_env in xstack/hll/cnc-ocr
+	-> make run
+
+Domain size is set to 4, modify this in lulesh_defs.h

@@ -1,4 +1,4 @@
-This is the README for LULESH 2.0 Beta
+This is the README for LULESH 2.0
 
 More information including LULESH 1.0 can be found at https://codesign.llnl.gov/lulesh.php
 
@@ -42,11 +42,10 @@ Performance optimizations and code cleanup uncovered during study of LULESH 1.0
 
 Added a "Figure of Merit" calculation (elements solved per microsecond) and output in support of using LULESH 2.0 for the 2017 CORAL procurement
 
-Possible Differences in Final Release (other changes possible as discovered)
+Possible Future 2.0 minor updates (other changes possible as discovered)
 
-* High Level mesh structure to allow data structure transformations
 * Different default parameters
-* Minor code performance changes and cleanup
+* Minor code performance changes and cleanupS
 
 TODO in future versions
 * Add reader for (truly) unstructured meshes, probably serial only

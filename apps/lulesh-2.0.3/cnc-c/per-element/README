@@ -1,0 +1,4 @@
+gcc lulesh.c -lm
+
+Domain size is set to 4, modify main in Lulesh.c
+TODO: Parse arguments to get domain size

@@ -5,7 +5,7 @@
 
 // OpenMP will be compiled in if this flag is set to 1 AND the compiler beging
 // used supports it (i.e. the _OPENMP symbol is defined)
-#define USE_OMP 1
+#define USE_OMP 0
 
 #if USE_MPI
 #include <mpi.h>

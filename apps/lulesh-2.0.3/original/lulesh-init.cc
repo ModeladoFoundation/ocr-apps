@@ -215,6 +215,7 @@ Domain::BuildMesh(Int_t nx, Int_t edgeNodes, Int_t edgeElems)
 
   // embed hexehedral elements in nodal point lattice
   Index_t zidx = 0 ;
+  Index_t element_id = 0;
   nidx = 0 ;
   for (Index_t plane=0; plane<edgeElems; ++plane) {
     for (Index_t row=0; row<edgeElems; ++row) {
@@ -230,6 +231,7 @@ Domain::BuildMesh(Int_t nx, Int_t edgeNodes, Int_t edgeElems)
 	localNode[7] = nidx + edgeNodes*edgeNodes + edgeNodes     ;
 	++zidx ;
 	++nidx ;
+	element_id++;
       }
       ++nidx ;
     }
@@ -342,7 +344,7 @@ Domain::SetupCommBuffers(Int_t edgeNodes)
      (m_rowMax & m_colMax) + (m_rowMax & m_planeMax) + (m_colMax & m_planeMax) +
      (m_rowMax & m_colMin) + (m_rowMin & m_planeMax) + (m_colMin & m_planeMax) +
      (m_rowMin & m_colMax) + (m_rowMax & m_planeMin) + (m_colMax & m_planeMin)) *
-    m_maxPlaneSize * MAX_FIELDS_PER_MPI_COMM ;
+    m_maxEdgeSize * MAX_FIELDS_PER_MPI_COMM ;
 
   // account for corner communication
   // factor of 16 is so each buffer has its own cache line

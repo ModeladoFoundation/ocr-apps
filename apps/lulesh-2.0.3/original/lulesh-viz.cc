@@ -147,21 +147,21 @@ DumpDomainToVisit(DBfile *db, Domain& domain, int myRank)
 
    /* Write out the mesh coordinates associated with the mesh */
    const char* coordnames[3] = {"X", "Y", "Z"};
-   Real_t *coords[3] ;
-   coords[0] = new double[domain.numNode()] ;
-   coords[1] = new double[domain.numNode()] ;
-   coords[2] = new double[domain.numNode()] ;
+   float *coords[3] ;
+   coords[0] = new float[domain.numNode()] ;
+   coords[1] = new float[domain.numNode()] ;
+   coords[2] = new float[domain.numNode()] ;
    for (int ni=0; ni < domain.numNode() ; ++ni) {
-      coords[0][ni] = domain.x(ni) ;
-      coords[1][ni] = domain.y(ni) ;
-      coords[2][ni] = domain.z(ni) ;
+      coords[0][ni] = float(domain.x(ni)) ;
+      coords[1][ni] = float(domain.y(ni)) ;
+      coords[2][ni] = float(domain.z(ni)) ;
    }
    optlist = DBMakeOptlist(2);
    ok += DBAddOption(optlist, DBOPT_DTIME, &domain.time());
    ok += DBAddOption(optlist, DBOPT_CYCLE, &domain.cycle());
    ok += DBPutUcdmesh(db, "mesh", 3, (char**)&coordnames[0], (float**)coords,
                       domain.numNode(), domain.numElem(), "connectivity",
-                      0, DB_DOUBLE, optlist);
+                      0, DB_FLOAT, optlist);
    ok += DBFreeOptlist(optlist);
    delete [] coords[2] ;
    delete [] coords[1] ;
@@ -175,78 +175,78 @@ DumpDomainToVisit(DBfile *db, Domain& domain, int myRank)
 
    ok += DBPutMaterial(db, "regions", "mesh", domain.numReg(),
                        matnums, domain.regNumList(), dims, 1,
-                       NULL, NULL, NULL, NULL, 0, DB_DOUBLE, NULL);
+                       NULL, NULL, NULL, NULL, 0, DB_FLOAT, NULL);
    delete [] matnums;
 
    /* Write out pressure, energy, relvol, q */
 
-   Real_t *e = new double[domain.numElem()] ;
+   float *e = new float[domain.numElem()] ;
    for (int ei=0; ei < domain.numElem(); ++ei) {
-      e[ei] = domain.e(ei) ;
+      e[ei] = float(domain.e(ei)) ;
    }
-   ok += DBPutUcdvar1(db, "e", "mesh", (float*) e,
-                      domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
+   ok += DBPutUcdvar1(db, "e", "mesh", e,
+                      domain.numElem(), NULL, 0, DB_FLOAT, DB_ZONECENT,
                       NULL);
    delete [] e ;
 
 
-   Real_t *p = new double[domain.numElem()] ;
+   float *p = new float[domain.numElem()] ;
    for (int ei=0; ei < domain.numElem(); ++ei) {
-      p[ei] = domain.p(ei) ;
+      p[ei] = float(domain.p(ei)) ;
    }
-   ok += DBPutUcdvar1(db, "p", "mesh", (float*) p,
-                      domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
+   ok += DBPutUcdvar1(db, "p", "mesh", p,
+                      domain.numElem(), NULL, 0, DB_FLOAT, DB_ZONECENT,
                       NULL);
    delete [] p ;
 
-   Real_t *v = new double[domain.numElem()] ;
+   float *v = new float[domain.numElem()] ;
    for (int ei=0; ei < domain.numElem(); ++ei) {
-      v[ei] = domain.v(ei) ;
+      v[ei] = float(domain.v(ei)) ;
    }
-   ok += DBPutUcdvar1(db, "v", "mesh", (float*) v,
-                      domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
+   ok += DBPutUcdvar1(db, "v", "mesh", v,
+                      domain.numElem(), NULL, 0, DB_FLOAT, DB_ZONECENT,
                       NULL);
    delete [] v ;
 
-   Real_t *q = new double[domain.numElem()] ;
+   float *q = new float[domain.numElem()] ;
    for (int ei=0; ei < domain.numElem(); ++ei) {
-      q[ei] = domain.q(ei) ;
+      q[ei] = float(domain.q(ei)) ;
    }
-   ok += DBPutUcdvar1(db, "q", "mesh", (float*) q,
-                      domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
+   ok += DBPutUcdvar1(db, "q", "mesh", q,
+                      domain.numElem(), NULL, 0, DB_FLOAT, DB_ZONECENT,
                       NULL);
    delete [] q ;
 
    /* Write out nodal speed, velocities */
-   Real_t *zd    = new double[domain.numNode()];
-   Real_t *yd    = new double[domain.numNode()];
-   Real_t *xd    = new double[domain.numNode()];
-   Real_t *speed = new double[domain.numNode()];
+   float *zd    = new float[domain.numNode()];
+   float *yd    = new float[domain.numNode()];
+   float *xd    = new float[domain.numNode()];
+   float *speed = new float[domain.numNode()];
    for(int ni=0 ; ni < domain.numNode() ; ++ni) {
-      xd[ni]    = domain.xd(ni);
-      yd[ni]    = domain.yd(ni);
-      zd[ni]    = domain.zd(ni);
-      speed[ni] = sqrt((xd[ni]*xd[ni])+(yd[ni]*yd[ni])+(zd[ni]*zd[ni]));
+      xd[ni]    = float(domain.xd(ni));
+      yd[ni]    = float(domain.yd(ni));
+      zd[ni]    = float(domain.zd(ni));
+      speed[ni] = float(sqrt((xd[ni]*xd[ni])+(yd[ni]*yd[ni])+(zd[ni]*zd[ni])));
    }
 
-   ok += DBPutUcdvar1(db, "speed", "mesh", (float*)speed,
-                      domain.numNode(), NULL, 0, DB_DOUBLE, DB_NODECENT,
+   ok += DBPutUcdvar1(db, "speed", "mesh", speed,
+                      domain.numNode(), NULL, 0, DB_FLOAT, DB_NODECENT,
                       NULL);
    delete [] speed;
 
 
-   ok += DBPutUcdvar1(db, "xd", "mesh", (float*) xd,
-                      domain.numNode(), NULL, 0, DB_DOUBLE, DB_NODECENT,
+   ok += DBPutUcdvar1(db, "xd", "mesh", xd,
+                      domain.numNode(), NULL, 0, DB_FLOAT, DB_NODECENT,
                       NULL);
    delete [] xd ;
 
-   ok += DBPutUcdvar1(db, "yd", "mesh", (float*) yd,
-                      domain.numNode(), NULL, 0, DB_DOUBLE, DB_NODECENT,
+   ok += DBPutUcdvar1(db, "yd", "mesh", yd,
+                      domain.numNode(), NULL, 0, DB_FLOAT, DB_NODECENT,
                       NULL);
    delete [] yd ;
 
-   ok += DBPutUcdvar1(db, "zd", "mesh", (float*) zd,
-                      domain.numNode(), NULL, 0, DB_DOUBLE, DB_NODECENT,
+   ok += DBPutUcdvar1(db, "zd", "mesh", zd,
+                      domain.numNode(), NULL, 0, DB_FLOAT, DB_NODECENT,
                       NULL);
    delete [] zd ;
 
