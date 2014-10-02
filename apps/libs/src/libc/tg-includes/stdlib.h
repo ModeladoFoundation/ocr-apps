@@ -1,7 +1,9 @@
 #ifndef _STDLIB_H
 #define _STDLIB_H
 
-s64 atoi(char *str)
+#include <ocr.h>
+
+inline s64 __attribute__((always_inline)) atoi(char *str)
 {
     s64 retval = 0;
     s64 sign = 1;

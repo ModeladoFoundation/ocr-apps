@@ -27,6 +27,11 @@ inline double  __attribute__((always_inline)) cos(double x) {
     return cosx;
 }
 
+inline int __attribute__((always_inline)) abs(int x) {
+    if (x<0) return -x;
+    return x;
+}
+
 inline double __attribute__((always_inline)) fabs(double x) {
     if (x<0) return -x;
     return x;
