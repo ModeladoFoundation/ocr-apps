@@ -71,11 +71,11 @@ LDFLAGS := -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+all:	CFLAGS += -O2 -DOCR
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0
+debug:	CFLAGS += -O0 -DOCR
 debug:	TARGETS := debug
 debug:	default
 

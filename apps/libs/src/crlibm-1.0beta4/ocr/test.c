@@ -30,7 +30,15 @@ int main (int argc, char *argv[])
 #endif
 {
 
+#ifdef OCR
+#ifdef TG_ARCH
+  PRINTF("test's mainEDT enter\n");
+#else
   printf("test's mainEDT enter\n");
+#endif
+#else
+  printf("test's main enter\n");
+#endif
   double arg1   = 1.0/3.0;
   double arg2   = 1.0/5.0;
   double result = 1.0/7.0;

@@ -2,7 +2,7 @@
 # For x86 (using package in x86_64) use the makefile build by configure
 #
 
-CRLBIM_ROOT     ?= ../x86_64
+CRLIBM_ROOT     ?= ../x86_64
 
 APPS_ROOT       ?= ../../../../../apps
 APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
@@ -34,12 +34,11 @@ all: $(CRLIBM_ROOT)/Makefile
 
 .PHONY: clean
 clean:
-	$(MAKE) -C ../x86_64 clean
-	rm -rf lib include
+	$(RM) -rf lib include bin
 
 .PHONY: check
 check:
-	$(MAKE) -C ../x86_64 check
+	$(MAKE) -C $(CRLIBM_ROOT) check
 
 lib/libcrlibm.a: | all
 

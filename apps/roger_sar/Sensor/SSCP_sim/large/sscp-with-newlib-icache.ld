@@ -1,1 +1,0 @@
-../../../../../ss/runtime/libxe/rmd_newlib_big_icache.ld

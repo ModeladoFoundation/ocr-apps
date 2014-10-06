@@ -6,7 +6,7 @@ tar --gzip --extract --strip-component=1 --file=../tar/crlibm-1.0beta4.tar.gz --
 ./configure	--without-gmp	--without-mpfr	--without-ultim	--without-mcr \
 		--disable-gmp	--disable-mpfr	--disable-ultim	--disable-mcr \
 		--enable-sse2	--disable-dependency-tracking \
-		--disable-double-extended --prefix=`pwd`/../x86
+		--disable-double-extended --prefix=/dev/null
 
 ex crlibm_config.h <<EOF
 %s;#define CRLIBM_HAS_FPU_CONTROL 1;/* #undef CRLIBM_HAS_FPU_CONTROL -- RAG */;
@@ -80,4 +80,3 @@ grep RAG asincos.c
 #make clean
 #make all
 #make check
-#make install

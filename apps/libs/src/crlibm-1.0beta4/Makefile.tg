@@ -4,6 +4,12 @@ ifndef ARCH
   $(error Need to specify ARCH!)
 endif
 
+squeaky:
+	@$(MAKE) -C $(ARCH) -f Makefile $@
+
+configure:
+	@$(MAKE) -C $(ARCH) -f Makefile $@
+
 all:
 	@$(MAKE) -C $(ARCH) -f Makefile $@
 
