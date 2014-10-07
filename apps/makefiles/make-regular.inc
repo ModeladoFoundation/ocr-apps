@@ -19,12 +19,15 @@ WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORK
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 endif
 
+# Tool to use as a wrapper to run
+RUN_TOOL              ?=
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 OCR_INSTALL_ROOT      := $(shell mkdir -p "${OCR_INSTALL_ROOT}" && cd "${OCR_INSTALL_ROOT}" && pwd)
+HOSTNAME              := $(shell hostname)
 
 OCR_INSTALL      := ${OCR_INSTALL_ROOT}/${OCR_TARGET}
 
@@ -33,7 +36,7 @@ WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
 REQ_LIBS ?=
 
 CC	= gcc
-CFLAGS_BASE = -g -Werror -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include
+CFLAGS_BASE =  -Werror -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include
 
 
 LDFLAGS_BASE = -L ${OCR_INSTALL}/lib -L $(APPS_LIBS_ROOT)/lib -locr
@@ -57,13 +60,14 @@ FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
 .PHONY: install
 .ONESHELL:
-install: default | $(WORKLOAD_INSTALL)
+install: | $(WORKLOAD_INSTALL)
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
 	@echo "####"
-	@echo "To run, set OCR_INSTALL to ${OCR_INSTALL} and export it; set "\
-	"LD_LIBRARY_PATH to ${OCR_INSTALL}/lib and export it; set OCR_CONFIG to "\
-	"${OCR_INSTALL}/config/default.cfg (default one) and export it"
+	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or, manually (in bash):"
+	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=${OCR_INSTALL}/lib "\
+	"&& export OCR_CONFIG=${OCR_INSTALL}/config/default.cfg (default one) and run "\
+	"the executable $(TARGET) in $(WORKLOAD_INSTALL)"
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
@@ -91,8 +95,11 @@ run_internal: debug_post_prerun
 else
 run_internal: debug_post_prerun install
 endif
+ifeq ($(HOSTNAME), bar1)
+	$(error Please refrain from running jobs on bar1!)
+endif
 	cd $(WORKLOAD_EXEC)
-	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib OCR_CONFIG=$(OCR_CONFIG) bash -c './$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
+	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib OCR_CONFIG=$(OCR_CONFIG) bash -c '$(RUN_TOOL) ./$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
 
 postrun: run_internal
 
@@ -115,18 +122,17 @@ $(FULL_REQ_LIBS):
 reqlibs: parallel-reqlibs
 
 # Require libocr as this means all include files are up-to-date
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c libocr | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocr $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp libocr | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | libocr $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) libocr | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
-	$(STRIP) $(WORKLOAD_BUILD)/$(TARGET)
 
 # libocr
 # Make this a .PHONY target so that we check if any of the

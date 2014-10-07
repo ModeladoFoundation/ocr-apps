@@ -29,6 +29,7 @@ WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 endif
 
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
+HOSTNAME              := $(shell hostname)
 
 TG_INSTALL            := $(shell cd "${TG_INSTALL}" && pwd)
 
@@ -93,11 +94,16 @@ endif
 
 .PHONY: install
 .ONESHELL:
-install: default | ${WORKLOAD_INSTALL}
+ifeq ($(RUN_JENKINS), run)
+install: | ${WORKLOAD_INSTALL}
+else
+install: $(WORKLOAD_SRC)/config.cfg | ${WORKLOAD_INSTALL}
+endif
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
 	@echo "####"
-	@echo "To run: ${RUN_CMD} -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
+	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or run manually:"
+	@echo "(from $(WORKLOAD_INSTALL)): ${RUN_CMD} -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)* $(WORKLOAD_INSTALL)/config.cfg $(WORKLOAD_INSTALL)/rmdkrnl
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
@@ -127,6 +133,9 @@ run_internal:
 else
 run_internal: install
 endif
+ifeq ($(HOSTNAME), bar1)
+	$(error Please refrain from running jobs on bar1!)
+endif
 	@$(MKDIR) -p $(WORKLOAD_EXEC)/logs
 	@$(RM) -rf $(WORKLOAD_EXEC)/logs/*
 	@$(RM) -f $(WORKLOAD_EXEC)/console.out
@@ -141,7 +150,8 @@ postrun: WORKLOAD_OUTS := `find -L $(WORKLOAD_EXEC)/logs/* -name '*.app_output' 
 run: postrun
 
 .PHONY: default
-default: reqlibs $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_BUILD)/$(TARGET).blob $(WORKLOAD_BUILD)/rmdkrnl
+default: reqlibs $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_BUILD)/$(TARGET).blob \
+  $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
 
 # Builds any libraries required by the workload
 .PHONY: parallel-reqlibs
@@ -156,13 +166,13 @@ $(FULL_REQ_LIBS):
 reqlibs: parallel-reqlibs
 
 # Require libocrxe as this means all include files are up-to-date
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c libocrxe | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
 #	$(CC) $(CFLAGS) -fno-builtin -c -o $@.tmp $<
 #	$(OBJCOPY) -R .data_local -R .rodata_local -R .bss_local -R .data_block -R .rodata_block -R .bss_block $@.tmp $@
 #	$(RM) $@.tmp
 
-$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) libocrxe | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocrxe $(WORKLOAD_BUILD)
 	$(LD) -o $@ $(OBJS) $(LDFLAGS) --whole-archive $(OCR_INSTALL_XE)/lib/libocr.a
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
@@ -178,20 +188,20 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg | $(WORKLOAD_BUILD)
 
 # Build the CE blob
 $(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_INSTALL_CE)/config/default.cfg \
-$(WORKLOAD_BUILD)/rmdkrnl.dbg builderce | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg | builderce $(WORKLOAD_BUILD)
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_CE_CONFIG)
 
-$(OCR_INSTALL_CE)/config/default.cfg: libocrce
+$(OCR_INSTALL_CE)/config/default.cfg: | libocrce
 
 # Build the XE blob
 $(WORKLOAD_BUILD)/$(TARGET).blob.xe: debug_post_prerun $(OCR_INSTALL_XE)/config/default.cfg \
-$(WORKLOAD_BUILD)/$(TARGET).dbg builderxe | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/$(TARGET).dbg | builderxe $(WORKLOAD_BUILD)
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
 	$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
 
-$(OCR_INSTALL_XE)/config/default.cfg: libocrxe
+$(OCR_INSTALL_XE)/config/default.cfg: | libocrxe
 
 # The arg blob is build automatically by the XE builder
 $(WORKLOAD_BUILD)/$(TARGET).blob.arg: $(WORKLOAD_BUILD)/$(TARGET).blob.xe | $(WORKLOAD_BUILD)
@@ -199,16 +209,15 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg: $(WORKLOAD_BUILD)/$(TARGET).blob.xe | $(WO
 # Local version of the RMDKRNL (built with the CE's libocr)
 # We build locally so we can run without impacting TG_INSTALL
 .ONESHELL:
-$(WORKLOAD_BUILD)/rmdkrnl.dbg: libocrce | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: | libocrce $(WORKLOAD_BUILD)/build.rmdkrnl
 	@echo "Building RMDKRNL from $(TG_SRC)..."
-	-@$(RM) -rf $(WORKLOAD_BUILD)/build.rmdkrnl
-	@$(MKDIR) -p $(WORKLOAD_BUILD)/build.rmdkrnl
+	-@$(RM) -rf $(WORKLOAD_BUILD)/build.rmdkrnl/*
 	@$(CP) $(TG_SRC)/build/build.rmdkrnl/make-me.make $(WORKLOAD_BUILD)/build.rmdkrnl
 	OCR_INSTALL=$(OCR_INSTALL_CE) TG_SRC=$(TG_SRC) \
 	TG_INSTALL=$(TG_INSTALL) \
 	$(MAKE) -C $(WORKLOAD_BUILD)/build.rmdkrnl -f make-me.make $(TARGETS)
 
-$(WORKLOAD_BUILD)/rmdkrnl: $(WORKLOAD_BUILD)/rmdkrnl.dbg | $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg | $(WORKLOAD_BUILD)/build.rmdkrnl
 
 # XE libocr
 # Phony target to check on build everytime
@@ -256,7 +265,7 @@ endif
 
 ifeq ($(RUN_JENKINS), run)
 # If running Jenkins, no need to recheck for source change
-libocrcr: ;
+libocrce: ;
 else ifeq ($(RUN_JENKINS), build)
 libocrce: $(OCR_INSTALL_CE)/lib/libocr.a
 $(OCR_INSTALL_CE)/lib/libocr.a: $(OCR_BUILD_CE)/Makefile
@@ -298,6 +307,9 @@ uninstall:
 
 $(WORKLOAD_BUILD):
 	mkdir -p $(WORKLOAD_BUILD)
+
+$(WORKLOAD_BUILD)/build.rmdkrnl: | $(WORKLOAD_BUILD)
+	mkdir -p $(WORKLOAD_BUILD)/build.rmdkrnl
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
