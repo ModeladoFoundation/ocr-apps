@@ -1,2 +1,0 @@
-Requires BOOST and BOOST Graph Library. 
-see ./compile.sh and modify appropriately to specify correct boost include path.

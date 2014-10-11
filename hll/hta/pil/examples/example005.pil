@@ -1,0 +1,26 @@
+# Example 5: Example where a varible is set in one node and used in a second node and the loop index variable is used in the second node
+
+# variables
+int i;
+int j;
+int target;
+int magic_number;
+gpp_t index_array;
+gpp_t data_array;
+
+# header functions
+void f(int *target, gpp_t index_array, gpp_t data_array, int *magic_number)
+{
+	*magic_number = 42;
+	*target = 2;
+}
+
+void g(int *target, gpp_t index_array, gpp_t data_array, int j, int magic_number)
+{
+	(void) fprintf(stdout, "process %d says: 'the magic number is %d'\n", j, magic_number);
+	*target = 0;
+}
+
+# node program
+node(1, i, [1:1:1], target, [2], f(&target, index_array, data_array, &magic_number))
+node(2, j, [0:1:3], target, [0], g(&target, index_array, data_array, j, magic_number))

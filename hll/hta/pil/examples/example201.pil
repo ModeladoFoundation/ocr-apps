@@ -1,0 +1,12 @@
+// Example 23: A basic program for spmd where not all nodes participate in the loop.
+
+int i;
+int target_id;
+
+_pil_node f void f(int *target_id)
+{
+	fprintf(stdout, "%d: Hello World!\n", pil_get_nwID());
+	*target_id = 0;
+}
+
+node(1, i, [1:1:1], target_id, [0], f(&target_id))

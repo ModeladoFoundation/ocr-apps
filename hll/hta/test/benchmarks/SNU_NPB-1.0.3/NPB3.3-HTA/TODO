@@ -1,0 +1,33 @@
+============================
+HTA Library
+============================
+1. A more general circshift implementation
+2. Review the use of rank information
+3. Remove HTA_tile_to_hta and replace it with several basic operations
+
+============================
+EP Benchmark
+============================
+Mostly done
+
+============================
+IS Benchmark
+============================
+1. Parallelize verification part (low priority)
+
+============================
+FT Benchmark
+============================
+
+============================
+CG Benchmark
+============================
+
+============================
+LU Benchmark
+============================
+
+============================
+MG Benchmark
+============================
+

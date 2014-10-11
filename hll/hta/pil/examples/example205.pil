@@ -1,0 +1,41 @@
+// Example 27: A basic send/recv test.
+
+int i;
+int target_id;
+
+_pil_node f void f(int *target_id)
+{
+	_pil_context int num;
+	_pil_context size_t size;
+	int target = 1;
+	int src = 0;
+	size = sizeof(int);
+	if (pil_get_nwID() == 0)
+	{
+		num = 42;
+		printf("%d: sending %d to node %d\n", pil_get_nwID(), num, target); fflush(stdout);
+		pil_send(target, &num, size, recv);
+	}
+	else if (pil_get_nwID() == 1)
+	{
+		pil_recv(src, &num, size, recv);
+	}
+	*target_id = 0;
+}
+
+_pil_nodelet f void recv(int *target_id)
+{
+	// _pil_context int num inherited from above
+	// _pil_context size_t size inherited from above
+	fprintf(stdout, "%d: num = %d\n", pil_get_nwID(), num); fflush(stdout);
+}
+
+node(1, i, [0:1:9], target_id, [0], f(&target_id))
+
+void pil_main(int argc, char **argv)
+{
+	printf("Total number of PEs = %d\n", pil_get_nwCount());
+	pil_enter(1, 0);
+	if (pil_get_nwID() == 0)
+		printf("SUCCESS");
+}

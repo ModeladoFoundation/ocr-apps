@@ -1,0 +1,15 @@
+This directory contains the source code for PIL and some examples of PIL code.
+To run the examples, use the run script provided here. The build script is a
+subcomponent of the run script and is not designed to be called on its own.
+
+	> ./run swarm 001
+	> ./run afl 002
+	> ./run omp 004
+	> ./run C 003
+
+The run script generates various source files from the examples. They may be
+cleaned up with the clean command.
+
+	> ./clean
+
+(This is master branch.)

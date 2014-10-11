@@ -1,0 +1,20 @@
+omp ocr
+HTA_init_test
+HTA_map1_test
+HTA_map2_test
+HTA_map2_irregular
+HTA_reduce_test
+HTA_reduce_test_2
+HTA_map_to_scalar_test
+HTA_map2_to_scalar_test
+HTA_scalar_types_double
+HTA_scalar_types_uint64
+HTA_matmul
+HTA_tile_to_hta
+HTA_partial_reduction_test 0
+HTA_partial_reduction_test 1
+HTA_sparse_test
+HTA_reduce_h2
+HTA_accessor_test
+HTA_circshift_test
+HTA_nd_rank_offset

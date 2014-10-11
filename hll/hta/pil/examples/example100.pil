@@ -1,0 +1,22 @@
+// Example that has two node calls
+
+// global data
+int i;
+int target_id;
+
+// header functions
+void foo(int *target_id, int i)
+{
+	printf("node: %d  i: %d\n", pil_get_nwID(), i);
+	*target_id = 0;
+}
+
+// pil program
+node(4, i, [0:1:9], target_id, [0], foo(&target_id, i))
+
+//void pil_main(int argc, char **argv)
+void pil_main()
+{
+	int i = 0;
+	pil_enter(4, 1, &i);
+}

@@ -1,0 +1,22 @@
+# Library environment
+APPS_LIB_INSTALL_ROOT ?= ../../x86
+APPS_LIB_SRC_ROOT ?= ..
+
+.PHONY: all
+all:
+
+.PHONY: debug
+debug:
+
+.PHONY: install
+install:
+
+.PHONY: run
+run: ;
+
+.PHONY: clean
+clean:
+#
+# Here we do nothing, maybe remove the files we installed?
+.PHONY: uninstall
+uninstall:

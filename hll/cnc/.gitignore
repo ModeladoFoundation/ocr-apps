@@ -1,0 +1,5 @@
+*.pyc
+lib/*
+!lib/getdeps.sh
+.depsOK
+*.o

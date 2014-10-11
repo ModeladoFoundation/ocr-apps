@@ -1,0 +1,11 @@
+Compiling and Linking:
+   The program has dependency on gnu gsl. On my machine I use the following command to compile
+
+   gcc   -o dynamic_dag_kernel kernel.c breadth_first_search.c  grow_dag.c int_vec.c dynamic_graph.c dynamic_graph_impl.c hash_funcs.c  -lgsl -lgslcblas
+
+   Currenly optimization flags are not supported. To execute simply run as "./dynamic_dag_kernel" as there are no command line input.
+
+About:
+  The program interleaves generating a directed acyclic graph and reachability query. Acyclic graphs model ontological structures. Reachability queries are most basic operator over ontological structure.  This kernel is a reasonable representative of the kind of computation we would see in ontological processing that was mentioned as one of motivating application in the BAA.
+
+

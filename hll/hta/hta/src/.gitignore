@@ -1,0 +1,4 @@
+*.swc
+Operation_omp.c
+Operation_ocr.c
+pil.h

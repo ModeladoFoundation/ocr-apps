@@ -1,0 +1,30 @@
+This is the Cooley-Tukey algorithm in Serial and in Parallel
+!------ Important ------!
+It requires that you have a power of two number of points
+
+You can compile with
+make clean
+make
+
+and run with
+./serial [Input/file]
+./parallel [Input/file] [number of threads (power of two)]
+
+or you can use the function
+FourierTransform(point *X, int N, int inverse)
+where
+	X is the array of points
+	N is the number of points / length of X
+	inverse: -1 for the inverse Fourier Transform, otherwise Fourier Transform
+directly by including FFT.h
+
+example use:
+#inlcude "FFT.h"
+
+int main()
+{
+	point *my_points = buildDataPoints("Input/default.txt");
+	point *fftPoints = FourierTransform(my_points, getNumPoints(), 1);
+
+	return 0;
+}

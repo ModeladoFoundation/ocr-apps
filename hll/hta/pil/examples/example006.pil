@@ -1,0 +1,19 @@
+# Example 6: Example where the function parameters have different names than those in the call to the function in the node
+
+# variables
+int ret3;
+gpp_t index_array;
+gpp_t data_array;
+
+# header functions
+void f(int *target, gpp_t index_array, gpp_t data_array, int ILindex)
+{
+	fprintf(stdout, "Hello from process %d!\n", ILindex);
+	*target = 0;
+}
+
+# more variables
+int target;
+
+# node program
+node(1, ret3, [0:1:3], target, [0], f(&target, index_array, data_array, ret3))

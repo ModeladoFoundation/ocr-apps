@@ -1,0 +1,74 @@
+// example022.pil
+// an example that test splitting and merging of data_array by having two nodes
+// and modifying some data in the first one
+
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int i;
+int iter;
+
+void func1(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
+{
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	int *data = (int*) da[0].ptr;
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end-beg;
+
+	int j;
+	for (j = 0; j < num; j++)
+	{
+		printf("node 1 iteration %d: data[%d]: %d\n", i, j, data[j]); fflush(stdout);
+		data[j]++;
+	}
+
+	*target = 2;
+}
+
+void func2(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
+{
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	int *data = (int*) da[0].ptr;
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end-beg;
+
+	int j;
+	for (j = 0; j < num; j++)
+	{
+		printf("node 2 iteration %d: data[%d]: %d\n", i, j, data[j]); fflush(stdout);
+	}
+
+	*target = 0;
+}
+
+node(1, i, [0:1:iter], target, [2], func1(&target, index_array, data_array, i, iter))
+node(2, i, [0:1:iter], target, [0], func2(&target, index_array, data_array, i, iter))
+
+void pil_main(int argc, char **argv)
+{
+	int i = 0;
+	int iter = 3;
+	gpp_t index_array, data_array;
+	pil_init(&index_array, &data_array);
+
+	pil_alloc(&index_array, (iter+2)*sizeof(int));
+	pil_alloc(&data_array, (iter+1)*sizeof(gpp_t));
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+
+	for (i = 0; i <= iter; i++)
+	{
+		ia[i] = i;
+		pil_alloc(&da[i], sizeof(int));
+		int *p = (int *) da[i].ptr;
+		*p = i;
+	}
+	ia[iter+1] = iter+1;
+
+	pil_enter(1, 4, index_array, data_array, i, iter);
+}

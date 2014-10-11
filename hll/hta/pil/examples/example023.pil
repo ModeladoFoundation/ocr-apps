@@ -1,0 +1,70 @@
+// example023.pil
+// and example that test splitting of data_array by having 2 inputs in data_array to each iteraiton of the node
+
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int i;
+int iter;
+
+void func1(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
+{
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end-beg;
+
+	int j;
+	for (j = 0; j < num; j++)
+	{
+		int *p = (int*)da[j].ptr;
+		printf("instance: %d  num: %d  da[%d]: %d\n", i, num, j, *p); fflush(stdout);
+	}
+
+	*target = 0;
+}
+
+node(1, i, [0:1:iter], target, [0], func1(&target, index_array, data_array, i, iter))
+
+void pil_main(int argc, char **argv)
+{
+	int i = 0, j = 0;
+	int iter = 3;
+	gpp_t index_array, data_array;
+	pil_init(&index_array, &data_array);
+
+	pil_alloc(&index_array, (iter+2)*sizeof(int));
+	pil_alloc(&data_array, 2*(iter+1)*sizeof(gpp_t));
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+
+	for (i = 0, j = 0; i <= iter; i++, j+=2)
+	{
+		ia[i] = j;
+		pil_alloc(&da[j], sizeof(int));
+		pil_alloc(&da[j+1], sizeof(int));
+		int *p = (int *) da[j].ptr;
+		*p = j;
+		int *q = (int *) da[j+1].ptr;
+		*q = j+1;
+		printf("prepare %d %d for instance %d\n", j, j+1, i);
+	}
+	ia[iter+1] = (iter+1)*2;
+
+	printf("ia: ");
+	for (i = 0; i <= iter+1; i++)
+	    printf(" %d", ia[i]);
+	printf("\n");
+
+	pil_enter(1, 4, index_array, data_array, i, iter);
+
+	pil_free(index_array);
+	for (i = 0; i < iter; i++)
+	{
+		pil_free(da[i*2]);
+		pil_free(da[i*2+1]);
+	}
+	pil_free(data_array);
+}

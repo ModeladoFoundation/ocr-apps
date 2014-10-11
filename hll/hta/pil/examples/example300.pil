@@ -1,0 +1,48 @@
+#include <omp.h> // needed for omp_get_wtime()
+#include "benchmark.h"
+#include "benchmark_pil_mmm_rstream.h"
+
+#define DEBUG 0
+
+//#define X 1024
+//#define Y 1024
+//#define Z 1024
+
+//-----------------------------------------------------------------------------
+// global data
+//-----------------------------------------------------------------------------
+
+int i;
+int end;
+int target_id;
+int argc;
+char **argv;
+// A[X][Z]
+double A[X][Z];
+// B[Z][Y]
+double B[Z][Y];
+// C[X][Y]
+double C[X][Y];
+double kernel_start_time;
+//struct timer kernel_timer;
+
+//-----------------------------------------------------------------------------
+// functions
+//-----------------------------------------------------------------------------
+
+void usage()
+{
+	printf("Usage:\n\n");
+	printf("\t> benchmark_c_mmm\n");
+}
+
+
+//-----------------------------------------------------------------------------
+// pil program
+//-----------------------------------------------------------------------------
+
+node(1, NULL, [1:1:1], target_id, [2], main_function(&target_id, argc, argv, &end, A, B, C, &kernel_start_time))
+// TODO: see if you can pass X, Y, and Z not by reference and not screw up the type system
+node(2, i, [0:1:end], target_id, [3], parallel_multiply_function(&target_id, i, A, B, C))
+node(3, NULL, [1:1:1], target_id, [0], finalize_function(&target_id, C, &kernel_start_time))
+

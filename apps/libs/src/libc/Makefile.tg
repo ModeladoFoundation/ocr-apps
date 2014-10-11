@@ -1,0 +1,28 @@
+# Library environment
+APPS_LIBS_ROOT ?= ../../tg
+APPS_ROOT ?= ../../..
+
+
+APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
+
+.PHONY: all
+all:
+
+.PHONY: debug
+debug:
+
+.PHONY: install
+install:
+	@echo "Installing TG standard files"
+	@cp ${APPS_ROOT}/libs/src/libc/tg-includes/* ${APPS_LIBS_ROOT}/include/
+
+.PHONY: run
+run:
+
+.PHONY: clean
+clean:
+
+.PHONY: uninstall
+uninstall:
+	for i in `ls -1 ${APPS_ROOT}/libs/src/libc/tg-includes/`; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done

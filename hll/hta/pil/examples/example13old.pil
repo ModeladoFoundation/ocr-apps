@@ -1,0 +1,35 @@
+# Example 13: an example that uses pil_alloc(), pil_mem() and pil_free()
+
+ #// a comment
+
+
+# global data
+int i;
+int64_t *ptr;
+int target_id;
+
+# header functions
+void f(int *target_id, int64_t **ipp)
+{
+	*ipp = (int64_t *) pil_alloc(sizeof(int64_t));
+	printf("\n");
+	printf("*ipp: %p\n", *ipp);
+	printf("pil_mem(*ipp): %p\n", pil_mem(*ipp));
+	printf("\n");
+	fflush(stdout);
+	*((int64_t *)pil_mem(*ipp)) = 42;
+	pil_release(*ipp);
+	*target_id = 2;
+}
+
+void g(int *target_id, int64_t **ipp)
+{
+	int64_t x = *((int64_t *) pil_mem(*ipp));
+	printf("the secret pil_alloc'd number is %ld\n", x);
+	pil_free(*ipp);
+	*target_id = 0;
+}
+
+# node program
+node(1, i, [1:1:1], target_id, [2], f(&target_id, &ptr))
+node(2, i, [1:1:1], target_id, [0], g(&target_id, &ptr))

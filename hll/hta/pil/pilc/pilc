@@ -1,0 +1,12 @@
+#!/usr/bin/python
+
+import os, sys
+
+if __name__ == "__main__":
+	cmd = "python $HTAHLL/pil/pilc/run.py"
+	args = ""
+	for arg in sys.argv[1:]:
+		args += " " + arg
+	full_cmd = cmd + args
+	#sys.stderr.write(full_cmd + "\n")
+	os.system(full_cmd)

@@ -1,0 +1,100 @@
+// example026.pil
+
+// an example that modifies the contents of the data_array in a node, thus
+// necessitating merging so the new contents can be read in the next node.
+
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int i;
+int iter;
+
+void func1(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
+{
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	int *data = (int*) da[0].ptr;
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end-beg;
+
+	printf("node 1 %d: received data-block (%ld)\n", i, da[0].guid);
+
+	gpp_t new_item;
+	pil_alloc(&new_item, sizeof(int));
+	int *new_data = (int *) new_item.ptr;
+
+	printf("node 1 %d: allocated data-block (%ld)\n", i, new_item.guid);
+
+	int j;
+	for (j = 0; j < num; j++)
+	{
+		new_data[j] = data[j] + 1;
+		printf("node 1 %d: data[%d]: %d  new_data[%d]: %d\n", i, j, data[j], j, new_data[j]); fflush(stdout);
+	}
+	da[0] = new_item;
+	data = (int*)da[0].ptr;
+	for (j = 0; j < num; j++)
+	{
+		printf("node 1 %d: data[%d]: %d  new_data[%d]: %d\n", i, j, data[j], j, new_data[j]); fflush(stdout);
+	}
+
+	*target = 2;
+}
+
+void func2(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
+{
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	int *data = (int*) da[0].ptr;
+	int beg = ia[0];
+	int end = ia[1];
+	int num = end-beg;
+
+	printf("node 2 %d: received data-block (%ld)\n", i, da[0].guid);
+
+	int j;
+	for (j = 0; j < num; j++)
+	{
+		printf("node 2 %d: data[%d]: %d\n", i, j, data[j]); fflush(stdout);
+	}
+
+	*target = 0;
+}
+
+node(1, i, [0:1:iter], target, [2], func1(&target, index_array, data_array, i, iter))
+node(2, i, [0:1:iter], target, [0], func2(&target, index_array, data_array, i, iter))
+
+void pil_main(int argc, char **argv)
+{
+	int i;
+	int iter = 3;
+	gpp_t index_array, data_array;
+	pil_init(&index_array, &data_array);
+
+	pil_alloc(&index_array, (iter+2)*sizeof(int));
+	pil_alloc(&data_array, (iter+1)*sizeof(gpp_t)); // allocate space for the guids that will be created in the node instances
+	int *ia = (int *) index_array.ptr;
+	gpp_t *da = (gpp_t *) data_array.ptr;
+
+	// each node instance gets one gpp to allocate
+	for (i = 0; i <= iter; i++)
+	{
+		ia[i] = i;
+		pil_alloc(&da[i], sizeof(int));
+		int *p = (int *) da[i].ptr;
+		*p = i;
+	}
+	ia[iter+1] = iter+1;
+
+	printf("firing node instances\n"); fflush(stdout);
+	pil_enter(1, 4, index_array, data_array, i, iter);
+
+	printf("\nback in pil_main\n");
+	for (i = 0; i <= iter; i++)
+	{
+		int *data = da[i].ptr;
+		printf("data[%d]: %d\n", i, *data);
+	}
+}
