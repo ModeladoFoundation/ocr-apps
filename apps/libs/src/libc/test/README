@@ -1,0 +1,5 @@
+Test of the libc math functionalities. Use
+OCR_TYPE=tg make run to test
+
+Result will be in install/tg/console.out
+
