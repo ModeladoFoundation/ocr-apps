@@ -1,0 +1,14 @@
+basicIO reads input file for integers, adds user supplied offset
+to every integer and writes resultant integers to output file.
+
+Running:
+
+make -f Makefile.<OCR_TYPE> run <offset> <input_size> <input_file_name_in_absolute_path>
+
+For e.g., try
+make -f Makefile.x86-pthread-x86 run 0 10 ${PWD}/input.txt
+Look for the output under install/x86-pthread-x86/basicIO_output.txt
+make -f Makefile.x86-pthread-tg run 0 10 ${PWD}/input.txt
+Look for the output under install/x86-pthread-tg/basicIO_output.txt
+make -f Makefile.tg run 0 10 ${PWD}/input.txt
+Look for the output under install/tg/logs/ocr-basicIO.log.brd00.dram00.app_output
