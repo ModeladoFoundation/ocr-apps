@@ -61,7 +61,7 @@ job_ocr_run_kernel_cholesky_x86_remote_regression = {
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/apps/cholesky/ocr',
-                  'WORKLOAD_ARGS': '1000 20 ${APPS_ROOT}/cholesky/datasets/m_1000.in',
+                  'WORKLOAD_ARGS': '--ds 1000 --ts 20 --fi ${APPS_ROOT}/cholesky/datasets/m_1000.in',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/apps/cholesky/ocr/install' }
 }
 
