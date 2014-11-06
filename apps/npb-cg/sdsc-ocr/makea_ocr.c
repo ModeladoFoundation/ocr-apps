@@ -120,11 +120,7 @@ int makea(classdb_t* class, ocrGuid_t* a)
 
     double size = 1;
     double rcond = 0.1;
-#ifdef TG_ARCH
-    double ratio = 0.99;
-#else
     double ratio = pow(rcond,1.0/class->na);
-#endif
 
     ac = acol;
     ae = aelt;

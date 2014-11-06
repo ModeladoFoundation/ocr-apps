@@ -179,7 +179,11 @@ ocrGuid_t tail_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PRINTF("Benchmark completed\n");
 
     double err = fabs(zeta-class->zvv)/class->zvv;
+#ifdef TG_ARCH
+    if(err<=1e-3) {
+#else
     if(err<=1e-10) {
+#endif
         double mflops;
         double t_bench = timer_read(tdb,1);
         if(t_bench)
