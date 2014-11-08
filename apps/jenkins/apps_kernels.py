@@ -141,9 +141,7 @@ job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
 #Aggregates execution times in csv file
 job_gatherStats = {
     'name': 'gatherStats',
-    'depends': ('ocr-run-kernel-cholesky-x86-remote-regression','ocr-run-kernel-fft-x86-remote-regression',\
-                'ocr-run-kernel-smithwaterman-x86-remote-regression',\
-                'ocr-run-kernel-fibonacci-x86-remote-regression'),
+    'depends': ('__type ocr-run-kernel-remote-regression',),
     'jobtype': 'gatherStats-regression',
     'run-args': '${JJOB_SHARED_HOME}/runtime 10',
     'sandbox': ('shared','inherit0')
