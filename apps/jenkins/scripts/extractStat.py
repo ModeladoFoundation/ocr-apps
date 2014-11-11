@@ -37,10 +37,21 @@ def main():
     writer.writerow(tuple(testnameList))
     writer.writerow(tuple(elapsedTimeList))
     csvfile.close()
+
+    # Check if jenkins is running the script
     if (os.getenv("WORKSPACE")):
+        # Purge old regressionStat.csv , if exist
+        if os.path.isfile(os.path.join(os.getenv("WORKSPACE"),"regressionStat.csv")):
+            os.remove(os.path.join(os.getenv("WORKSPACE"),"regressionStat.csv"))
+
         shutil.move("regressionStat.csv",os.getenv("WORKSPACE"))
     else:
-        shutil.move("regressionStat.csv",os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME"),os.pardir)))
+        # Purge old regressionStat.csv , if exist
+        dest = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME"),os.pardir))
+        if os.path.isfile(dest ,"regressionStat.csv")):
+            os.remove(dest ,"regressionStat.csv"))
+
+        shutil.move("regressionStat.csv",dest)
     shutil.rmtree(statDir)
 
 if __name__ == '__main__':
