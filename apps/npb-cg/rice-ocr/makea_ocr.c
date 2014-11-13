@@ -57,7 +57,7 @@ void indices(int* index, u64 affinityCount, u64 n, u32 blk){
     }
 }
 
-int makea(classdb_t* class, ocrGuid_t* a)
+int makea(classdb_t* class, ocrGuid_t* a, char* writeFile, char* readFile)
 {
 	u64 affinityCount = 0; ocrAffinityCount(AFFINITY_PD, &affinityCount); assert(affinityCount >= 1);
   ocrGuid_t affinities[affinityCount]; ocrAffinityGet(AFFINITY_PD, &affinityCount, affinities);
@@ -169,92 +169,155 @@ int makea(classdb_t* class, ocrGuid_t* a)
     double rcond = 0.1;
     double ratio = pow(rcond,1.0/class->na);
 
-    ac = acol;
-    ae = aelt;
-    for(i=0; i<class->na; ++i) {
+    /* ac = acol; */
+    /* for(i=0; i<class->na; ++i) { */
+    /*   u32 j; */
+    /*   for(j=0; j<arow[i]; ++j,++ac) { */
+    /*     printf("nzcount[%d] = %d\n", *ac, nzcount[*ac]); */
+    /*   } */
+    /* } */
+
+
+    if(readFile != NULL){
+      FILE *ptr_read_file;
+      ptr_read_file = fopen(readFile, "rb");
+      if(!ptr_read_file){
+	printf("Unable to open the input file for reading!\n");
+	return (-1);
+      }
+      printf("Reading data from a file %s\n", readFile);
+      fread(nzcount, sizeof(u32)*class->na, 1, ptr_read_file);
+      for(i=0; i<class->na/class->blk; ++i) {
+	u32 b; u32 counts = 0;
+	for(b=0; b<class->blk; ++b){
+	  counts += nzcount[i*class->blk+b];
+	  //printf ("nzcount[%d*%d+%d] = %d\n", i, class->blk, b, nzcount[i*class->blk+b]);
+	}
+	size_t size = sizeof(double)*counts+sizeof(u32)*(counts+even);
+	//printf("Reading %d bytes from file for row %d, counts = %d, even = %d, class->blk = %d, class->na = %d\n", size, i, counts, even, class->blk, class->na);
+	size_t size_read = fread(*((void**)rows+i), size, 1, ptr_read_file);
+      }
+      fclose(ptr_read_file);
+      printf("Done reading from a file %s\n", readFile);
+    }else{
+
+      printf("Generation beginning\n");
+
+      ac = acol;
+      ae = aelt;
+      for(i=0; i<class->na; ++i) {
         int j;
         for(j=0; j<arow[i]; ++j) {
-            u32 j0 = ac[j];
-            double scale = size*ae[j];
-            u32 jj;
-            for(jj=0; jj<arow[i]; ++jj) {
-                int j1 = ac[jj];
-                double va = ae[jj]*scale;
-                if(j1==j0 && j1 == i)
-                   va += rcond-class->shift;
+	  u32 j0 = ac[j];
+	  double scale = size*ae[j];
+	  u32 jj;
+	  for(jj=0; jj<arow[i]; ++jj) {
+	    int j1 = ac[jj];
+	    double va = ae[jj]*scale;
+	    if(j1==j0 && j1 == i)
+	      va += rcond-class->shift;
 
-                u32 jj0 = j0/class->blk;
-                u32* cols = rows[jj0]+rows[jj0][class->blk];
-                double* vals = (double*)(rows[jj0]+even);
-                u32 b;
-                for(b=0; b<j0%class->blk; ++b) {
-                   cols += rows[jj0][b];
-                   vals += rows[jj0][b];
-                }
-                u32 vn = rows[jj0][j0%class->blk];
-                u32 k;
-                for(k=0; k<vn; ++k) {
-                   if(cols[k] > j1 && cols[k]<NEGATIVE) {
-                       int kk;
-                       for(kk=vn-2; kk>=(int)k; --kk)
-                           if(cols[kk]<NEGATIVE) {
-                               vals[kk+1] = vals[kk];
-                               cols[kk+1] = cols[kk];
-                           }
-                       cols[k] = j1;
-                       vals[k] = 0;
-                       break;
-                   }
-                   else if(cols[k] == NEGATIVE) {
-                       cols[k] = j1;
-                       break;
-                   }
-                   else if(cols[k] == j1) {
-                       --nzcount[j0];
-                       break;
-                   }
-                }
-                vals[k] += va;
-            }
+	    u32 jj0 = j0/class->blk;
+	    u32* cols = rows[jj0]+rows[jj0][class->blk];
+	    double* vals = (double*)(rows[jj0]+even);
+	    u32 b;
+	    for(b=0; b<j0%class->blk; ++b) {
+	      cols += rows[jj0][b];
+	      vals += rows[jj0][b];
+	    }
+	    u32 vn = rows[jj0][j0%class->blk];
+	    u32 k;
+	    for(k=0; k<vn; ++k) {
+	      if(cols[k] > j1 && cols[k]<NEGATIVE) {
+		int kk;
+		for(kk=vn-2; kk>=(int)k; --kk)
+		  if(cols[kk]<NEGATIVE) {
+		    vals[kk+1] = vals[kk];
+		    cols[kk+1] = cols[kk];
+		  }
+		cols[k] = j1;
+		vals[k] = 0;
+		break;
+	      }
+	      else if(cols[k] == NEGATIVE) {
+		cols[k] = j1;
+		break;
+	      }
+	      else if(cols[k] == j1) {
+		--nzcount[j0];
+		break;
+	      }
+	    }
+	    vals[k] += va;
+	  }
         }
         ac += arow[i]; ae += arow[i];
         size *= ratio;
-    }
-
-    nza = 0;
-    for(i=0; i<class->na/class->blk; ++i) {
-      u32 b, j0=even, j1=even;
-      for(b=0; b<class->blk-1; ++b) {
-        j0 += nzcount[i*class->blk+b]<<1;
-        j1 += rows[i][b]<<1;
-        u32 kk = nzcount[i*class->blk+b+1];
-        double* dst = (double*)(rows[i]+j0);
-        double* src = (double*)(rows[i]+j1);
-        u32 k;
-        for(k = 0; k<kk; ++k)
-          dst[k] = src[k];
       }
-      j0 += nzcount[i*class->blk+class->blk-1]<<1;
-      j1 = rows[i][class->blk];
-      rows[i][class->blk] = j0;
-      for(b=0; b<class->blk; ++b) {
-        u32 kk = j1+nzcount[i*class->blk+b];
-        u32 k;
-        for(k = j1; k<kk; ++k, ++j0)
-          rows[i][j0] = rows[i][k];
-        j1 += rows[i][b];
-        rows[i][b] = nzcount[i*class->blk+b];
-        nza += nzcount[i*class->blk+b];
+
+      printf("Generation finished\n");
+
+      nza = 0;
+      for(i=0; i<class->na/class->blk; ++i) {
+	u32 b, j0=even, j1=even;
+	for(b=0; b<class->blk-1; ++b) {
+	  j0 += nzcount[i*class->blk+b]<<1;
+	  j1 += rows[i][b]<<1;
+	  u32 kk = nzcount[i*class->blk+b+1];
+	  double* dst = (double*)(rows[i]+j0);
+	  double* src = (double*)(rows[i]+j1);
+	  u32 k;
+	  for(k = 0; k<kk; ++k)
+	    dst[k] = src[k];
+	}
+	j0 += nzcount[i*class->blk+class->blk-1]<<1;
+	j1 = rows[i][class->blk];
+	rows[i][class->blk] = j0;
+	for(b=0; b<class->blk; ++b) {
+	  u32 kk = j1+nzcount[i*class->blk+b];
+	  u32 k;
+	  for(k = j1; k<kk; ++k, ++j0)
+	    rows[i][j0] = rows[i][k];
+	  j1 += rows[i][b];
+	  rows[i][b] = nzcount[i*class->blk+b];
+	  nza += nzcount[i*class->blk+b];
+	}
       }
+
+      for(i=0; i<class->na/class->blk; ++i) {
+	ocrDbRelease(a_ptr[i]);
+	// printf("[makea] out GUID[%d]: %#017x\n", i, a_ptr[i]);
+      }
+
+      printf("Populating data: done\n");
+      printf("number of nonzeros = %lu\n", nza);
+
     }
 
-    for(i=0; i<class->na/class->blk; ++i) {
-      ocrDbRelease(a_ptr[i]);
-      // printf("[makea] out GUID[%d]: %#017x\n", i, a_ptr[i]);
-    }
+    if(writeFile != NULL){
+      FILE *ptr_write_file;
+      ptr_write_file = fopen(writeFile, "wb");
+      if(!ptr_write_file){
+	printf("Unable to open the output file for writing!\n");
+	return (-1);
+      }
+      printf("Writing data into file %s\n", writeFile);
+      fwrite(nzcount, sizeof(u32)*class->na, 1, ptr_write_file);
+      for(i=0; i<class->na/class->blk; ++i) {
+	u32 b; u32 counts = 0;
+	for(b=0; b<class->blk; ++b){
+	  counts += nzcount[i*class->blk+b];
+	  //printf ("nzcount[%d*%d+%d] = %d\n", i, class->blk, b, nzcount[i*class->blk+b]);
+	}
+	size_t size = sizeof(double)*counts+sizeof(u32)*(counts+even);
+	//printf("Writing %d bytes into file for row %d, counts = %d, even = %d, class->blk = %d, class->na = %d\n", size, i, counts, even, class->blk, class->na);
+	size_t size_written = fwrite(*((void**)rows+i), size, 1, ptr_write_file);
 
-    printf("Populating data: done\n");
-    printf("number of nonzeros = %lu\n", nza);
+	
+      }
+      fclose(ptr_write_file);
+      printf("Done writing into file %s\n", writeFile);
+    }
 
     ocrDbDestroy(acolid);
     ocrDbDestroy(aeltid);

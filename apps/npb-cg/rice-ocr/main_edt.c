@@ -19,9 +19,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     u64 argc = getArgc(depv[0].ptr);
 
     classdb_t* class; ocrGuid_t classid;
+    char* writeFile = NULL;
+    char* readFile = NULL;
     if(argc>1) {
-        if(argc!=3 && argc != 5) {
-            printf("cg [-t class] [-b blocking ] (class=S|W|A|B|C|D|E; default: -t S, -b 1)\n");
+        if(argc!=3 && argc != 5 && argc !=7) {
+            printf("cg [-t class] [-b blocking ] [-w writeFile] [-r readFile] (class=S|W|A|B|C|D|E; default: -t S, -b 1)\n");
             ocrShutdown();
             return NULL_GUID;
         }
@@ -29,9 +31,13 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         char classt = 'S';
         while(--argc) {
             if(strcmp(getArgv(depv[0].ptr,argc-1), "-t")==0)
-                classt = *getArgv(depv[0].ptr,argc--);
+	      classt = *getArgv(depv[0].ptr,argc--);
             else if(strcmp(getArgv(depv[0].ptr,argc-1), "-b")==0)
-                blocking = atoi(getArgv(depv[0].ptr,argc--));
+	      blocking = atoi(getArgv(depv[0].ptr,argc--));
+	    else if(strcmp(getArgv(depv[0].ptr, argc-1), "-w")==0)
+	      writeFile = getArgv(depv[0].ptr,argc--);
+	    else if(strcmp(getArgv(depv[0].ptr, argc-1), "-r")==0)
+	      readFile = getArgv(depv[0].ptr,argc--);
         }
         class_init(&class, &classid, classt, blocking);
         if(class->c == 'U') {
@@ -45,7 +51,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     timerdb_t* timer; ocrGuid_t timerid;
     timer_init(&timer, &timerid, class, class->on);
-    printf("CG Benchmark: size=%d, iterations=%d\n", class->na, class->niter);
+    printf("CG Benchmark: size=%d, iterations=%d", class->na, class->niter);
+    if(writeFile != NULL) printf(", writeFile=%s", writeFile);
+    if(readFile != NULL) printf(", readFile=%s", readFile);
+    printf("\n");
 
     timer_start(timer);
 
@@ -53,7 +62,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     double* x;
     ocrDbCreate(&xid, (void**)&x, sizeof(double)*class->na, 0, currentAffinity, NO_ALLOC);
 
-    if(makea(class, &aid) == -1)
+    if(makea(class, &aid, writeFile, readFile) == -1)
         return NULL_GUID;
 
     ocrDbRelease(aid);

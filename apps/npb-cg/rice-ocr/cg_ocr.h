@@ -51,7 +51,7 @@ void print_results(classdb_t* class, double t, double mops);
 
 void conj_grad(u64 n, u64 blk, ocrGuid_t a, ocrGuid_t x, ocrGuid_t cont, u32 dep);
 
-int makea(classdb_t* class, ocrGuid_t* a);
+int makea(classdb_t* class, ocrGuid_t* a, char* writeFile, char* readFile);
 
 ocrGuid_t square(u64 n, ocrGuid_t* o);
 
