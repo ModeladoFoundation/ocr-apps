@@ -47,11 +47,11 @@ def main():
         shutil.move("regressionStat.csv",os.getenv("WORKSPACE"))
     else:
         # Purge old regressionStat.csv , if exist
-        dest = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME"),os.pardir))
-        if os.path.isfile(dest ,"regressionStat.csv")):
-            os.remove(dest ,"regressionStat.csv"))
+        dest = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME"),os.pardir)),"regressionStat.csv")
+        if os.path.isfile(dest):
+            os.remove(dest)
 
-        shutil.move("regressionStat.csv",dest)
+        shutil.move("regressionStat.csv",os.path.dirname(dest))
     shutil.rmtree(statDir)
 
 if __name__ == '__main__':
