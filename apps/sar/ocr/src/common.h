@@ -84,8 +84,10 @@ struct ImageParams {
 	int S4;			// Length of oversampled IDFT
 	int numImages;		// Number of images to process
 	float dr;		// Pixel edge size (m)
-	float *xr;		// x axis vector
-	float *yr;		// y-axis vectors
+#if 0
+	float *xr;		// x axis vector  // RAG -- move to own DB image_params_xr_dbg
+	float *yr;		// y-axis vectors // RAG -- move to own DB image_params_yr_dbg
+#endif
 	int   Ncor;             // CCD/CFAR correlation neighborhood size
 	int imageNumber;	// Image number that is being processed RAG
 };

@@ -147,8 +147,9 @@ prerun:
 # 'postrun: ;' is an empty rule (the rule is required)
 .PHONY: postrun
 postrun:
-	$(CP) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt ./Detects.txt
-	cat ./Detects.txt
+	$(CP) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt ./Detects-x86.txt
+	sort -o ./Detects-x86.txt ./Detects-x86.txt
+	cat ./Detects-x86.txt
 
 # Any additional rules required can go here
 

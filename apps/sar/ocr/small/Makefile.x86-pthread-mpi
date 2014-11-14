@@ -2,25 +2,20 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+COMM_LAYER=mpi
+
 # APPS
 APPS_ROOT        ?= ../../../../apps
-APPS_LIBS_ROOT   ?= ../../../../apps/libs/tg
+APPS_LIBS_ROOT   ?= ../../../../apps/libs/x86
 
 # OCR_TYPE
-OCR_TYPE         ?= tg
+OCR_TYPE        ?= x86-pthread-${COMM_LAYER}
 
-# DATA
-DATA             = /opt/share/xstack_app_input/sar/small/tg
-
-# TG
-TG_SRC           ?= ../../../../ss
-TG_INSTALL       ?= ../../../../ss/install
+#DATA
+DATA = /opt/share/xstack_app_input/sar/small/x86
 
 # OCR
-XE_TARGET        ?= tg-null-tg-xe
-XE_BUILDER       ?= x86-builder-tg-xe
-CE_TARGET        ?= tg-null-tg-ce
-CE_BUILDER       ?= x86-builder-tg-ce
+OCR_TARGET       ?= x86-pthread-${COMM_LAYER}
 OCR_SRC          ?= ../../../../ocr
 OCR_BUILD_ROOT   ?= ../../../../ocr/build
 OCR_INSTALL_ROOT ?= ../../../../ocr/install
@@ -61,24 +56,24 @@ TARGET := sscp
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := crlibm-1.0beta4
+# REQ_LIBS := crlibm-1.0beta4
 
 # Space separated list of source files
-SRCS :=	main.c \
-	inputs.c \
-	digspot.c \
-	registration.c \
-	cfar.c \
-	sinc_interp.c \
-	sinc.c \
-	image_formation.c \
-	back_proj.c \
-	ccd.c \
-	fftw3.c \
-	rag_ocr.c
+SRCS := main.c \
+    inputs.c \
+    digspot.c \
+    registration.c \
+    cfar.c \
+    sinc_interp.c \
+    sinc.c \
+    image_formation.c \
+    back_proj.c \
+    ccd.c \
+    fftw3.c \
+    rag_ocr.c
 
 # Space separated list of include files
-INCS :=	common.h rag-ocr.h fftw3.h Parameters.h argv.h
+INCS := common.h rag-ocr.h fftw3.h Parameters.h argv.h
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
@@ -90,34 +85,34 @@ INCS :=	common.h rag-ocr.h fftw3.h Parameters.h argv.h
 #	-DTRACE -DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3 -DTRACE_LVL_4 -DTRACE_LVL_5 \
 #  TODO: file bugs keeping fftw from being built with hc
 CFLAGS := -g -O2 -std=c99 \
-	-DDEBUG_SSCP_off -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
-	-DTRACE \
-	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
-	-DRAG_IMPLICIT_INPUTS \
-	-DRAG_PURE_FLOAT -DRAG_SINCOS \
-	-DRAG_CRLIBM -DRAG_PETER_DIST_AND_TRIG \
-	-DRAG_SPAD -DRAG_DRAM \
-	-DGANESH_STRENGTH_RED_OPT \
-	-I. -I./src -I $(APPS_LIBS_ROOT)/include
+	-DDEBUG_SSCP -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
+    -DTRACE \
+    -DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
+    -DRAG_IMPLICIT_INPUTS \
+    -DRAG_PURE_FLOAT -DRAG_SINCOS \
+    -DRAG_CRLIBM -DRAG_PETER_DIST_AND_TRIG \
+    -DRAG_SPAD -DRAG_DRAM \
+    -DGANESH_STRENGTH_RED_OPT \
+    -I. -I./src -I $(APPS_LIBS_ROOT)/include
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
-	 -lcrlibm
+     -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2 -frmd-extensions -DORC
-all:	TARGETS := all
-all:	default
+all:    CFLAGS += -O2 -DOCR
+all:    TARGETS := all
+all:    default
 
-debug:	CFLAGS += -O0 -frmd-extensions -DOCR
-debug:	TARGETS := debug
-debug:	default
+debug:  CFLAGS += -O0 -DOCR
+debug:  TARGETS := debug
+debug:  default
 
 install: all
 
@@ -143,20 +138,23 @@ install: all
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
-prerun:
+prerun: 
 	$(MKDIR) -p $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)
 	$(CP) ./Parameters.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Parameters.txt
 	$(RM) -f ./Detects.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt
 
+
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
-# 'postrun: ;' is an empty rule (the rule is required)
+# 'postrun: ;' is an empty rule (the rule is required
+# to be present though)
 .PHONY: postrun
-postrun:
-	grep CONSOLE:\ XE\[0\-7\] ./install/tg/logs/*.brd*.chp*.unt*.blk*.CE.00
-
-# Any additional rules required can go here
-
+postrun: 
+	$(CP) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt ./Detects-mpi.txt
+	env | grep OCR
+	sort -o ./Detects-mpi.txt ./Detects-mpi.txt
+	cat ./Detects-mpi.txt
 # Include common part
-include ${APPS_ROOT}/makefiles/make-tg.inc
+include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+

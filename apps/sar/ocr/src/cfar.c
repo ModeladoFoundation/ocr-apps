@@ -5,6 +5,7 @@
 #include "ocr.h"
 #include "rag_ocr.h"
 #include "common.h"
+#include "argv.h"
 
 ocrGuid_t post_CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
@@ -14,17 +15,26 @@ PRINTF("//// enter post_CFAR_edt\n");RAG_FLUSH;
 	assert(paramc==1);
 #ifdef TG_ARCH
        void *pOutFile = (void *)paramv[0];
-#else
-       FILE *pOutFile = (FILE *)paramv[0];
+#else // TG_ARCH
+       FILE *pOutFile = (void *)paramv[0];
+#ifdef TRACE_LVL_1
+PRINTF("// Detects.txt\n");RAG_FLUSH;
 #endif
-#ifdef TRACE_LVL_2
-PRINTF("//// pOutFile = %lx\n",pOutFile);RAG_FLUSH;
-#endif
-	assert(depc==3);
+	if( (pOutFile = fopen(argv_4, "wb")) == NULL ) {
+		PRINTF("Error opening %s\n", argv_4);
+		xe_exit(1);
+	}
+#endif // TG_ARCH
+
+	assert(depc==3); // finish event CFAR_evg is in slot 2
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
 RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,1);
 
 	int Nd = *p_Nd;
+
+#ifdef TRACE_LVL_2
+PRINTF("//// pOutFile = %lx\n",pOutFile);RAG_FLUSH;
+#endif
 
 #if RAG_QSORT_ON
 	// Sorting the detections is not strictly necessary. This is only done so
@@ -51,6 +61,10 @@ PRINTF("//// Output to file %d detects\n",Nd);RAG_FLUSH;
 #endif
 	} // for m
 
+#ifndef TG_ARCH
+	fclose(pOutFile);
+#endif
+
 	bsm_free(p_Nd,Nd_dbg);
 #ifdef TRACE_LVL_2
 PRINTF("//// leave post_CFAR_edt\n");RAG_FLUSH;
@@ -65,22 +79,27 @@ PRINTF("//// enter CFAR_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==1);
 	ocrGuid_t post_CFAR_scg = (ocrGuid_t)paramv[0];
-	assert(depc==5);
+	assert(depc==7); // finish event CDC_evg is in last slot
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_params_ptr,cfar_params_lcl,cfar_params_dbg,2);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,3);
+RAG_REF_MACRO_BSM( float *,image_params_xr,NULL,NULL,image_params_xr_dbg,4);
+RAG_REF_MACRO_BSM( float *,image_params_yr,NULL,NULL,image_params_yr_dbg,5);
+
+RAG_REF_REMAP_2D(  struct point *,corr_map,image_params->Ix-image_params->Ncor+1,image_params->Iy-image_params->Ncor+1);
 
 	void CFAR(struct point **corr_map, ocrGuid_t corr_map_dbg,
 		struct ImageParams *image_params, ocrGuid_t image_params_dbg,
 		struct CfarParams *cfar_params, ocrGuid_t cfar_params_dbg,
-		struct detects *Y, ocrGuid_t Y_dbg,
-		ocrGuid_t post_CFAR_scg);
+		struct detects *Y, ocrGuid_t Y_dbg, ocrGuid_t post_CFAR_scg,
+        	ocrGuid_t image_params_xr_dbg, ocrGuid_t image_params_yr_dbg);
 
 	CFAR(	corr_map, corr_map_dbg,
 		image_params, image_params_dbg,
 		cfar_params, cfar_params_dbg,
-		Y, Y_dbg, post_CFAR_scg);
+		Y, Y_dbg, post_CFAR_scg,
+        	image_params_xr_dbg, image_params_yr_dbg);
 
 #ifdef TRACE_LVL_2
 PRINTF("//// leave CFAR_edt\n");RAG_FLUSH;
@@ -120,12 +139,16 @@ PRINTF("////// enter cfar_async_edt\n");RAG_FLUSH;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
 	int n2   = corners->n2;
-	assert(depc==5);
+	assert(depc==7);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_parms_ptr,cfar_parms_lcl,cfar_params_dbg,1);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,3);
 RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,4);
+RAG_REF_MACRO_BSM( float *,image_params_xr,NULL,NULL,image_params_xr_dbg,5);
+RAG_REF_MACRO_BSM( float *,image_params_yr,NULL,NULL,image_params_yr_dbg,6);
+
+RAG_REF_REMAP_2D(  struct point *,corr_map,image_params->Ix-image_params->Ncor+1,image_params->Iy-image_params->Ncor+1);
 
 	int T,cnt;
 	int mIndex, nIndex;
@@ -204,8 +227,8 @@ PRINTF("////// Ensure CUT's correlation value is below the correlation threshold
                     if(cnt >= T) {
 			    int nd = __sync_fetch_and_add(p_Nd,1);
 
-			    Y[nd].x = image_params->xr[corr_map[mIndex][nIndex].x];
-			    Y[nd].y = image_params->yr[corr_map[mIndex][nIndex].y];
+			    Y[nd].x = image_params_xr[corr_map[mIndex][nIndex].x];
+			    Y[nd].y = image_params_yr[corr_map[mIndex][nIndex].y];
 			    Y[nd].p = CUT;
 
 #ifdef DEBUG_LVL_2
@@ -228,7 +251,8 @@ void CFAR(
 	struct point **corr_map, ocrGuid_t corr_map_dbg,
 	struct ImageParams *image_params, ocrGuid_t image_params_dbg,
 	struct CfarParams *cfar_params, ocrGuid_t cfar_params_dbg,
-	struct detects *Y, ocrGuid_t Y_dbg, ocrGuid_t post_CFAR_scg) {
+	struct detects *Y, ocrGuid_t Y_dbg, ocrGuid_t post_CFAR_scg,
+        ocrGuid_t image_params_xr_dbg, ocrGuid_t image_params_yr_dbg) {
 	int retval;
 	int Mwins, Nwins;
 
@@ -268,7 +292,7 @@ PRINTF("//// create a template for cfar_async function\n");RAG_FLUSH;
 			&cfar_async_clg,	// ocrGuid_t *new_guid
 			 cfar_async_edt,	// ocr_edt_ptr func_ptr
 			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
-			5);			// depc
+			7);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = cfar_async_clg;
 
@@ -310,6 +334,8 @@ RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,1);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,corr_map_dbg,2);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Y_dbg,3);
 RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Nd_dbg,4);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,5);
+RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,6);
 		} // for n
 	} // for m
 
