@@ -1,0 +1,59 @@
+Added to the repository by Chandra S. Martha (Intel)
+
+OCR version: Obtained from Dave Richards dated 2014/10/28
+
+Corresponding Tarball: Tars_Untouched/CoMD_OCR_2014_10_28.tgz
+
+To build and run:
+
+OCR_TYPE=x86-pthread-x86 WORKLOAD_ARGS="12 comd" make install run
+
+OR
+
+To build:
+make -f Makefile.x86-pthread-x86 install
+
+To run:
+make -f Makefile.x86-pthread-x86 run 12 comd
+
+
+=============================================================================
+Dave Richard's (richards12@llnl.gov) comments:
+
+These are exactly the same comments I sent out with the OCR version on Oct 28.
+
+I am pleased to announce that we have a version of CoMD that works in distributed OCR.  Well, sort of anyway.
+
+After the workshop I passed along the needed improvements that we identified to Aaron who fixed up the code and checked in a new version last week.  Earlier this evening I tested the code on the foobar cluster and found that the serial version works as expected and that the distributed version does complete time steps without crashing.  It even gives the right answers.  However, by the time we got to 40 time steps it was taking something like 1 minute per time step, so I killed the job ahead of the normal 100 steps.
+
+I'm still not fluent in the whole configure and build process in OCR so I just tarred up the relevant directory under ~/xstack/apps in my account on the foobar cluster.  The tar ball is available here:
+
+https://my.syncplicity.com/share/rqmpguaswqjj6ns/CoMD_28Oct
+
+The password is comd_ocr
+
+All global data has been removed, and the memory use has been drastically reduced.
+
+You'll probably need to insert the download in some kind of ocr distribution.  In any case, I'm sure that I've included source code, makefile, and input files.
+
+Once you have the code built you run it with 2 command line arguments:
+
+$ ./install/CoMD-<version> 12 comd
+
+If you get .1.243619XXXXXX for the potential energy in step 0 then you've probably got a good run.
+
+This should be considered an alpha release as there are still significant issues:
+
+1.  I can't figure out how to build this against an OCR distribution downloaded from github.  This is probably my fault, but I'd like to know what I'm missing.
+
+2.  As mentioned previously, the distributed performance is absolutely terrible and seems to get worse as the run proceeds.
+
+3.  We should improve the flexibility of the code to support more of CoMD's usual options and eliminate the need to read atoms from a file so that we can do flexible scaling studies.
+
+4.  There is a minor bug with the calculation of the kinetic energy in step 0, but this doesn't seem to impact function.
+
+5.  I'm not actually sure I ran the distributed code on multiple CPUs.  I just did a default run of the ocr/mpi build.
+
+6.  I'm sure there are more, but we can discuss them when they come up.
+=============================================================================
+
