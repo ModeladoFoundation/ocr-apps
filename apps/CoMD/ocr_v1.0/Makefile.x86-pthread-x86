@@ -4,7 +4,7 @@
 #
 # Chandra: Added REPO_TOP and prerun rule to copy input files to the run directory
 
-REPO_TOP ?= ../../../..
+REPO_TOP ?= ../../..
 
 # APPS
 APPS_ROOT       ?= ${REPO_TOP}/apps
