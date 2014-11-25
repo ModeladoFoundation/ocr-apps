@@ -48,7 +48,7 @@
 #define OPT_HALF_NEIGH 1    //enable half neighbor optimizations. Symmetry!
 
 // This option will not work in distributed OCR!
-#define _OCR_IS_BROKEN 1    // enables workarounds for broken parts of OCR. E.g. exclusive writes.
+#define _OCR_IS_BROKEN 0    // enables workarounds for broken parts of OCR. E.g. exclusive writes.
 
 #define _DEBUG 1            //Enable debugging.
 #define _DEBUG_STDOUT 1     //Enable writing to standard out.
@@ -892,7 +892,7 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         // Create spawner for force computations.
         ocrEdtCreate(&EDT_spawnFor, TEMPLATE->spawnFor, EDT_PARAM_DEF,
-                     /*paramv=*/NULL, EDT_PARAM_DEF, /*depv=*/NULL,
+                     /*paramv=*/NULL, EDT_PARAM_DEF/*4*/, /*depv=*/NULL,
                      /*properties=*/ EDT_PROP_FINISH, NULL_GUID,
                      /*outEvent=*/&EVENT_forFinish);
 
@@ -910,11 +910,6 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                      /*properties=*/ NULL_GUID, NULL_GUID,
                      /*outEvent=*/NULL);
 
-        // Satisfy spawnFor EDT dependencies.
-        ocrAddDependence(NULL_GUID,      EDT_spawnFor, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list,   EDT_spawnFor, 1, DB_MODE_RO);
-        ocrAddDependence(DB_templates,   EDT_spawnFor, 2, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping, EDT_spawnFor, 3, DB_MODE_RO); /*for periodicity information*/
 
         #if _DEBUG == 1
         // Satisfy spawnDebug EDT dependencies.
@@ -942,6 +937,12 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence(DB_templates,    EDT_timestep, 4, DB_MODE_RO);
         book->iteration++; // Increment time.
         #endif
+
+        // Satisfy spawnFor EDT dependencies.
+        ocrAddDependence(NULL_GUID,      EDT_spawnFor, 0, DB_MODE_RO);
+        ocrAddDependence(DB_cell_list,   EDT_spawnFor, 1, DB_MODE_RO);
+        ocrAddDependence(DB_templates,   EDT_spawnFor, 2, DB_MODE_RO);
+        ocrAddDependence(DB_bookkeeping, EDT_spawnFor, 3, DB_MODE_RO); /*for periodicity information*/
     }
     else
     {
@@ -951,25 +952,25 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         // Create spawner for momentum/position computations.
         ocrEdtCreate(&EDT_spawnMomPos, TEMPLATE->spawnMomPos, EDT_PARAM_DEF,
-                     /*paramv=*/NULL, EDT_PARAM_DEF, /*depv=*/NULL,
+                     /*paramv=*/NULL, EDT_PARAM_DEF/*4*/, /*depv=*/NULL,
                      /*properties=*/ EDT_PROP_FINISH, NULL_GUID,
                      /*outEvent=*/&EVENT_momPosFinish);
 
         // Create spawner for gather computations.
         ocrEdtCreate(&EDT_spawnGather, TEMPLATE->spawnGather, EDT_PARAM_DEF,
-                     /*paramv=*/NULL, EDT_PARAM_DEF, /*depv=*/NULL,
+                     /*paramv=*/NULL, EDT_PARAM_DEF/*2*/, /*depv=*/NULL,
                      /*properties=*/ EDT_PROP_FINISH, NULL_GUID,
                      /*outEvent=*/&EVENT_gatherFinish);
 
         // Create spawner for force computations.
         ocrEdtCreate(&EDT_spawnFor, TEMPLATE->spawnFor, EDT_PARAM_DEF,
-                     /*paramv=*/NULL, EDT_PARAM_DEF, /*depv=*/NULL,
+                     /*paramv=*/NULL, EDT_PARAM_DEF/*4*/, /*depv=*/NULL,
                      /*properties=*/ EDT_PROP_FINISH, NULL_GUID,
                      /*outEvent=*/&EVENT_forFinish);
 
         // Create spawner for momentum computations.
         ocrEdtCreate(&EDT_spawnMom, TEMPLATE->spawnMom, EDT_PARAM_DEF,
-                     /*paramv=*/NULL, EDT_PARAM_DEF, /*depv=*/NULL,
+                     /*paramv=*/NULL, EDT_PARAM_DEF/*3*/, /*depv=*/NULL,
                      /*properties=*/ EDT_PROP_FINISH, NULL_GUID,
                      /*outEvent=*/&EVENT_momFinish);
 
@@ -983,21 +984,14 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         // Create spawner for next time step.
         ocrEdtCreate(&EDT_timestep, TEMPLATE->timestep, EDT_PARAM_DEF,
-                     /*paramv=*/NULL, EDT_PARAM_DEF, /*depv=*/NULL,
+                     /*paramv=*/NULL, EDT_PARAM_DEF/*5*/, /*depv=*/NULL,
                      /*properties=*/ NULL_GUID, NULL_GUID,
                      /*outEvent=*/NULL);
 
-        // Satisfy spawnMomPos EDT dependencies.
-        ocrAddDependence(NULL_GUID,    EDT_spawnMomPos, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list, EDT_spawnMomPos, 1, DB_MODE_RO);
-        ocrAddDependence(DB_move_list, EDT_spawnMomPos, 2, DB_MODE_RO);
-        ocrAddDependence(DB_templates, EDT_spawnMomPos, 3, DB_MODE_RO);
-
-        // Satisfy spawnGather EDT dependencies.
-        ocrAddDependence(EVENT_momPosFinish, EDT_spawnGather, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list, EDT_spawnGather, 1, DB_MODE_RO);
-        ocrAddDependence(DB_move_list, EDT_spawnGather, 2, DB_MODE_RO);
-        ocrAddDependence(DB_templates, EDT_spawnGather, 3, DB_MODE_RO);
+        // Satisfy spawnMom EDT dependencies.
+        ocrAddDependence(EVENT_forFinish, EDT_spawnMom, 0, DB_MODE_RO);
+        ocrAddDependence(DB_cell_list,    EDT_spawnMom, 1, DB_MODE_RO);
+        ocrAddDependence(DB_templates,    EDT_spawnMom, 2, DB_MODE_RO);
 
         // Satisfy spawnFor EDT dependencies.
         ocrAddDependence(EVENT_gatherFinish, EDT_spawnFor, 0, DB_MODE_RO);
@@ -1005,10 +999,11 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence(DB_templates,       EDT_spawnFor, 2, DB_MODE_RO);
         ocrAddDependence(DB_bookkeeping,     EDT_spawnFor, 3, DB_MODE_RO); /*for periodicity information*/
 
-        // Satisfy spawnMom EDT dependencies.
-        ocrAddDependence(EVENT_forFinish, EDT_spawnMom, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list,    EDT_spawnMom, 1, DB_MODE_RO);
-        ocrAddDependence(DB_templates,    EDT_spawnMom, 2, DB_MODE_RO);
+        // Satisfy spawnGather EDT dependencies.
+        ocrAddDependence(EVENT_momPosFinish, EDT_spawnGather, 0, DB_MODE_RO);
+        ocrAddDependence(DB_cell_list, EDT_spawnGather, 1, DB_MODE_RO);
+        ocrAddDependence(DB_move_list, EDT_spawnGather, 2, DB_MODE_RO);
+        ocrAddDependence(DB_templates, EDT_spawnGather, 3, DB_MODE_RO);
 
         #if _DEBUG == 1
         // Satisfy spawnDebug EDT dependencies.
@@ -1036,6 +1031,12 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence(DB_templates,    EDT_timestep, 4, DB_MODE_RO);
         book->iteration++; // increment time.
         #endif
+
+        // Satisfy spawnMomPos EDT dependencies.
+        ocrAddDependence(NULL_GUID,    EDT_spawnMomPos, 0, DB_MODE_RO);
+        ocrAddDependence(DB_cell_list, EDT_spawnMomPos, 1, DB_MODE_RO);
+        ocrAddDependence(DB_move_list, EDT_spawnMomPos, 2, DB_MODE_RO);
+        ocrAddDependence(DB_templates, EDT_spawnMomPos, 3, DB_MODE_RO);
     }
 
     return NULL_GUID;
@@ -1075,10 +1076,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ///Read inputs and initialize things.
     char filename[1024];
     // Read files.
-    sprintf(filename, "input/%s.in", filename_prefix);
+    sprintf(filename, "%s.in", filename_prefix);
     printf("Reading file '%s'...\n", filename);
     read_file(filename, &space); // Read our input file of atoms.
-    sprintf(filename, "input/%s.lammps", filename_prefix);
+    sprintf(filename, "%s.lammps", filename_prefix);
     printf("Reading file '%s'...\n", filename);
     read_lammps(filename, &space); // Read our lammps file for some configuration parameters.
     double x_cell_size = ((space.hi.x - space.lo.x)/(double)cell_per_dims);
