@@ -160,7 +160,7 @@ void mul(HTA* h1, HTA* h2, void* scalar) {
     double val = *((double*)scalar);
     double *d1 = (double*) HTA_get_ptr_raw_data(h1);
     double *d2 = (double*) HTA_get_ptr_raw_data(h2);
-    int num_scalars = h1->leaf.num_elem; 
+    int num_scalars = h1->leaf.num_elem;
     for(int i = 0; i < num_scalars; i++)
     {
         *d1 = *d2 * val;
@@ -173,7 +173,7 @@ void muladd(HTA* h1, HTA* h2, void* scalar) {
     double val = *((double*)scalar);
     double *d1 = (double*) HTA_get_ptr_raw_data(h1);
     double *d2 = (double*) HTA_get_ptr_raw_data(h2);
-    int num_scalars = h1->leaf.num_elem; 
+    int num_scalars = h1->leaf.num_elem;
     for(int i = 0; i < num_scalars; i++)
     {
         *d1 += *d2 * val;
@@ -186,7 +186,7 @@ void muladd2(HTA* h1, HTA* h2, void* scalar) {
     double val = *((double*)scalar);
     double *d1 = (double*) HTA_get_ptr_raw_data(h1);
     double *d2 = (double*) HTA_get_ptr_raw_data(h2);
-    int num_scalars = h1->leaf.num_elem; 
+    int num_scalars = h1->leaf.num_elem;
     for(int i = 0; i < num_scalars; i++)
     {
         *d1 = *d2 + (val * *d1);
@@ -203,7 +203,7 @@ void sum_sq_pwsub(HTA* h1, HTA* h2, void* s)
 
     double* p1 = (double*) HTA_get_ptr_raw_data(h1);
     double* p2 = (double*) HTA_get_ptr_raw_data(h2);
-    int num_scalars = h1->leaf.num_elem; 
+    int num_scalars = h1->leaf.num_elem;
     for(i = 0; i < num_scalars; i++)
     {
         x = p1[i] - p2[i];
@@ -220,7 +220,7 @@ void sum_pwmul(HTA* h1, HTA* h2, void* s)
 
     double* p1 = (double*) HTA_get_ptr_raw_data(h1);
     double* p2 = (double*) HTA_get_ptr_raw_data(h2);
-    int num_scalars = h1->leaf.num_elem; 
+    int num_scalars = h1->leaf.num_elem;
     for(i = 0; i < num_scalars; i++)
         sum += p1[i] * p2[i];
 
@@ -234,7 +234,7 @@ void sum_sq(HTA* h1, HTA* dummy, void* s)
     double x;
 
     double* p1 = (double*) HTA_get_ptr_raw_data(h1);
-    int num_scalars = h1->leaf.num_elem; 
+    int num_scalars = h1->leaf.num_elem;
     for(i = 0; i < num_scalars; i++)
     {
         x = p1[i];
@@ -246,7 +246,7 @@ void sum_sq(HTA* h1, HTA* dummy, void* s)
 
 #define IS_POW_2(x) ((x!=0) && ((x & (x-1)) == 0))
 // A special version for optimization in shared memory model
-// hr is a dense tile, hs is a sparse tile, and hd is an HTA with PROC vectors 
+// hr is a dense tile, hs is a sparse tile, and hd is an HTA with PROC vectors
 void sdmv(HTA* hr, HTA* hs, HTA* hd)
 {
     ASSERT(hr->type == HTA_TYPE_DENSE
@@ -256,17 +256,17 @@ void sdmv(HTA* hr, HTA* hs, HTA* hd)
     ASSERT(hr->scalar_type == hs->scalar_type && hs->scalar_type == hd->scalar_type);
 
     int nnz = hs->leaf.num_elem;
-    
+
     if(nnz == 0) // all zero tile
-        return; 
+        return;
 
     int num_rows = hs->flat_size.values[0];
     void* raw = HTA_get_ptr_raw_data(hs);
-    double *val_ptr = (double*) raw; 
+    double *val_ptr = (double*) raw;
     int* col_ind = (int*) (raw + nnz * sizeof(double));
     int* row_ptr = (int*) (raw + nnz * sizeof(double) + nnz * sizeof(int));
 
-    double *hr_val = (double*) HTA_get_ptr_raw_data(hr); 
+    double *hr_val = (double*) HTA_get_ptr_raw_data(hr);
     if(IS_POW_2(PROC)) // speedup for power of 2
     {
         int p = PROC;
@@ -275,36 +275,36 @@ void sdmv(HTA* hr, HTA* hs, HTA* hd)
             p >>= 1;
             shift++;
         }
-        for(int i = 0; i < num_rows; i++) 
-        { 
-            double sum = 0.0; 
-            for(int j = row_ptr[i]; j < row_ptr[i+1]; j++) 
-            { 
-                int col = col_ind[j]; 
+        for(int i = 0; i < num_rows; i++)
+        {
+            double sum = 0.0;
+            for(int j = row_ptr[i]; j < row_ptr[i+1]; j++)
+            {
+                int col = col_ind[j];
                 int tidx = (((col + 1) << shift) - 1) / NA;
                 int offset = col - ((tidx * NA) >> shift);
                 double hd_val = ((double*)HTA_get_ptr_raw_data(hd->tiles[tidx]))[offset];
-                sum += val_ptr[j] * hd_val; 
-            } 
-            hr_val[i] = sum; 
+                sum += val_ptr[j] * hd_val;
+            }
+            hr_val[i] = sum;
         }
     }
     else
     {
-        for(int i = 0; i < num_rows; i++) 
-        { 
-            double sum = 0.0; 
-            for(int j = row_ptr[i]; j < row_ptr[i+1]; j++) 
-            { 
-                int col = col_ind[j]; 
+        for(int i = 0; i < num_rows; i++)
+        {
+            double sum = 0.0;
+            for(int j = row_ptr[i]; j < row_ptr[i+1]; j++)
+            {
+                int col = col_ind[j];
                 int tidx = (PROC * (col + 1) - 1) / NA;
                 int offset = col - (tidx * NA) / PROC;
                 double hd_val = ((double*)HTA_get_ptr_raw_data(hd->tiles[tidx]))[offset];
-                sum += val_ptr[j] * hd_val; 
-            } 
-            hr_val[i] = sum; 
+                sum += val_ptr[j] * hd_val;
+            }
+            hr_val[i] = sum;
         }
-    } 
+    }
 }
 
 int hta_main(int argc, char *argv[])
@@ -321,13 +321,13 @@ int hta_main(int argc, char *argv[])
   double zeta_verify_value, epsilon, err;
 
   char *t_names[T_last];
-  
+
   if (argc == 2)
   {
       PROC = atoi(argv[1]);
   }
   // FIXME: Timer for HTA versions
-  
+
   for (i = 0; i < T_last; i++) {
     timer_clear(i);
   }
@@ -382,8 +382,8 @@ int hta_main(int argc, char *argv[])
   // printf(" Number of available threads: %5d\n", omp_get_max_threads());
   printf("\n");
 
-  // TODO: Initialization is sequential 
-  
+  // TODO: Initialization is sequential
+
   naa = NA;
   nzz = NZ;
 
@@ -395,12 +395,12 @@ int hta_main(int argc, char *argv[])
   zeta    = randlc(&tran, amult);
 
   //---------------------------------------------------------------------
-  //  
+  //
   //---------------------------------------------------------------------
-  makea(naa, nzz, a, colidx, rowstr, 
-        firstrow, lastrow, firstcol, lastcol, 
-        arow, 
-        (int (*)[NONZER+1])(void*)acol, 
+  makea(naa, nzz, a, colidx, rowstr,
+        firstrow, lastrow, firstcol, lastcol,
+        arow,
+        (int (*)[NONZER+1])(void*)acol,
         (double (*)[NONZER+1])(void*)aelt,
         iv);
 
@@ -409,7 +409,7 @@ int hta_main(int argc, char *argv[])
   //      values of j used in indexing rowstr go from 0 --> lastrow-firstrow
   //      values of colidx which are col indexes go from firstcol --> lastcol
   //      So:
-  //      Shift the col index vals from actual (firstcol --> lastcol ) 
+  //      Shift the col index vals from actual (firstcol --> lastcol )
   //      to local, i.e., (0 --> lastcol-firstcol)
   //---------------------------------------------------------------------
   for (int j = 0; j < lastrow - firstrow + 1; j++) {
@@ -417,7 +417,7 @@ int hta_main(int argc, char *argv[])
       colidx[k] = colidx[k] - firstcol;
     }
   }
-  
+
 
   printf("HTA initialization starts\n");
   //---------------------------------------------------------------------
@@ -438,7 +438,7 @@ int hta_main(int argc, char *argv[])
   r_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
   // HTA p initializtion
   p_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
-  
+
   // sparse HTA initialization
   Tuple tp1 = Tuple_create(2, PROC, 1);
   Tuple fs1 = Tuple_create(2, NA, NA);
@@ -448,16 +448,16 @@ int hta_main(int argc, char *argv[])
   printf("Sparse HTA initialization starts\n");
   //HTA_init_with_sparse_matrix(hs, nzz, lastrow-firstrow+1, a, colidx, rowstr);
   HTA_map_h1(HTA_LEAF_LEVEL(hs), makea_HTA, hs);
-  
+
 
   //---------------------------------------------------------------------
   // set starting vector to (1, 1, .... 1)
   //---------------------------------------------------------------------
   //for (i = 0; i < NA+1; i++) {
   //   x[i] = 1.0;
-  //}  
+  //}
   HTA_map_h1s1(HTA_LEAF_LEVEL(x_HTA), H1S1_INIT, x_HTA, &one);
-  
+
   //for (j = 0; j < lastcol - firstcol + 1; j++) {
   //  q[j] = 0.0;
   //  z[j] = 0.0;
@@ -468,7 +468,7 @@ int hta_main(int argc, char *argv[])
   HTA_map_h1s1(HTA_LEAF_LEVEL(q_HTA), H1S1_INIT, q_HTA, &zero);
   HTA_map_h1s1(HTA_LEAF_LEVEL(r_HTA), H1S1_INIT, r_HTA, &zero);
   HTA_map_h1s1(HTA_LEAF_LEVEL(p_HTA), H1S1_INIT, p_HTA, &zero);
-    
+
   printf("HTA initialization done\n");
   printf("Run one iteration starts\n");
   zeta = 0.0;
@@ -495,7 +495,7 @@ int hta_main(int argc, char *argv[])
     //---------------------------------------------------------------------
     norm_temp1 = 0.0;
     norm_temp2 = 0.0;
-    //#pragma omp parallel for default(shared) private(j) 
+    //#pragma omp parallel for default(shared) private(j)
     //                         reduction(+:norm_temp1,norm_temp2)
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  norm_temp1 = norm_temp1 + x[j] * z[j];
@@ -503,18 +503,18 @@ int hta_main(int argc, char *argv[])
     //}
     HTA_reduce_h2(REDUCE_SUM, sum_pwmul, &norm_temp1, x_HTA, z_HTA);
     HTA_reduce_h2(REDUCE_SUM, sum_sq, &norm_temp2, z_HTA, z_HTA);
-    
+
     norm_temp2 = 1.0 / sqrt(norm_temp2);
-  
+
     //---------------------------------------------------------------------
     // Normalize z to obtain x
     //---------------------------------------------------------------------
     //#pragma omp parallel for default(shared) private(j)
-    //for (j = 0; j < lastcol - firstcol + 1; j++) {     
+    //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  x[j] = norm_temp2 * z[j];
-    //}    
-    HTA_map_h2s1(HTA_LEAF_LEVEL(x_HTA), mul, x_HTA, z_HTA, &norm_temp2); 
-    
+    //}
+    HTA_map_h2s1(HTA_LEAF_LEVEL(x_HTA), mul, x_HTA, z_HTA, &norm_temp2);
+
   } // end of do one iteration untimed
 
 
@@ -527,7 +527,7 @@ int hta_main(int argc, char *argv[])
   //  x[i] = 1.0;
   //}
   HTA_map_h1s1(HTA_LEAF_LEVEL(x_HTA), H1S1_INIT, x_HTA, &one);
-  
+
   zeta = 0.0;
 
   timer_stop(T_init);
@@ -561,19 +561,19 @@ int hta_main(int argc, char *argv[])
     //---------------------------------------------------------------------
     norm_temp1 = 0.0;
     norm_temp2 = 0.0;
-    //#pragma omp parallel for default(shared) private(j) 
+    //#pragma omp parallel for default(shared) private(j)
     //                         reduction(+:norm_temp1,norm_temp2)
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  norm_temp1 = norm_temp1 + x[j]*z[j];
     //  norm_temp2 = norm_temp2 + z[j]*z[j];
-    //} 
+    //}
     HTA_reduce_h2(REDUCE_SUM, sum_pwmul, &norm_temp1, x_HTA, z_HTA);
     HTA_reduce_h2(REDUCE_SUM, sum_sq, &norm_temp2, z_HTA, z_HTA);
-       
+
     norm_temp2 = 1.0 / sqrt(norm_temp2);
 
     zeta = SHIFT + 1.0 / norm_temp1;
-    if (it == 1) 
+    if (it == 1)
       printf("\n   iteration           ||r||                 zeta\n");
     printf("    %5d       %20.14E%20.13f\n", it, rnorm, zeta);
 
@@ -583,9 +583,9 @@ int hta_main(int argc, char *argv[])
     //#pragma omp parallel for default(shared) private(j)
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  x[j] = norm_temp2 * z[j];
-    //} 
+    //}
     HTA_map_h2s1(HTA_LEAF_LEVEL(x_HTA), mul, x_HTA, z_HTA, &norm_temp2);
-    
+
   } // end of main iter inv pow meth
 
   timer_stop(T_bench);
@@ -629,7 +629,7 @@ int hta_main(int argc, char *argv[])
 
   print_results("CG", Class, NA, 0, 0,
                 NITER, t,
-                mflops, "          floating point", 
+                mflops, "          floating point",
                 verified, NPBVERSION, COMPILETIME,
                 CS1, CS2, CS3, CS4, CS5, CS6, CS7);
 
@@ -669,7 +669,7 @@ int hta_main(int argc, char *argv[])
 
 
 //---------------------------------------------------------------------
-// Floaging point arrays here are named as in NPB1 spec discussion of 
+// Floaging point arrays here are named as in NPB1 spec discussion of
 // CG algorithm
 //---------------------------------------------------------------------
 //static void conj_grad(int colidx[],
@@ -685,14 +685,14 @@ static void conj_grad(int colidx[],
                       int rowstr[],
                       double a[],
                       double *rnorm)
-                        
+
 {
   //int j, k;
   int cgit, cgitmax = 25;
   double d, sum, rho, rho0, alpha, beta; //, suml;
 
   double temp;
-  
+
   rho = 0.0;
   sum = 0.0;
 
@@ -707,12 +707,12 @@ static void conj_grad(int colidx[],
   //  z[j] = 0.0;
   //  r[j] = x[j];
   //  p[j] = r[j];
-  //}  
+  //}
    HTA_map_h1s1(HTA_LEAF_LEVEL(z_HTA), H1S1_INIT, z_HTA, &zero);
    HTA_map_h1s1(HTA_LEAF_LEVEL(q_HTA), H1S1_INIT, q_HTA, &zero);
    HTA_map_h2(HTA_LEAF_LEVEL(r_HTA), H2_COPY, r_HTA, x_HTA);
    HTA_map_h2(HTA_LEAF_LEVEL(p_HTA), H2_COPY, p_HTA, r_HTA);
-    
+
   //---------------------------------------------------------------------
   // rho = r.r
   // Now, obtain the norm of r: First, sum squares of r elements locally...
@@ -722,7 +722,7 @@ static void conj_grad(int colidx[],
   //  rho = rho + r[j]*r[j];
   //}
   HTA_reduce_h2(REDUCE_SUM, sum_sq, &rho, r_HTA, r_HTA);
-  
+
   //---------------------------------------------------------------------
   //---->
   // The conj grad iteration loop
@@ -745,10 +745,10 @@ static void conj_grad(int colidx[],
     // The partition submatrix-vector multiply: use workspace w
     //---------------------------------------------------------------------
     //
-    // NOTE: this version of the multiply is actually (slightly: maybe %5) 
-    //       faster on the sp2 on 16 nodes than is the unrolled-by-2 version 
-    //       below.   On the Cray t3d, the reverse is true, i.e., the 
-    //       unrolled-by-two version is some 10% faster.  
+    // NOTE: this version of the multiply is actually (slightly: maybe %5)
+    //       faster on the sp2 on 16 nodes than is the unrolled-by-2 version
+    //       below.   On the Cray t3d, the reverse is true, i.e., the
+    //       unrolled-by-two version is some 10% faster.
     //       The unrolled-by-8 version below is significantly faster
     //       on the Cray t3d - overall speed of code is 1.5 times faster.
 
@@ -760,7 +760,7 @@ static void conj_grad(int colidx[],
     //  }
     //  q[j] = suml;
     //}
-    
+
     // FIXME: We use a trick, copying HTAs to arrays, and viceversa
     // Pure overhead due to using HTA programming model
     //HTA_to_array(p_HTA, p_array);
@@ -769,7 +769,7 @@ static void conj_grad(int colidx[],
     if (timeron) timer_start(T_sdmv);
     HTA_tile_to_hta(HTA_LEAF_LEVEL(q_HTA), sdmv, q_HTA, hs, p_HTA); // FIXME: this works for shared memory only
     if (timeron) timer_stop(T_sdmv);
-    
+
     /*
     for (j = 0; j < lastrow - firstrow + 1; j++) {
       int i = rowstr[j];
@@ -786,7 +786,7 @@ static void conj_grad(int colidx[],
     }
 
     for (j = 0; j < lastrow - firstrow + 1; j++) {
-      int i = rowstr[j]; 
+      int i = rowstr[j];
       int iresidue = (rowstr[j+1] - i) % 8;
       suml = 0.0;
       for (k = i; k <= i + iresidue - 1; k++) {
@@ -812,14 +812,14 @@ static void conj_grad(int colidx[],
     //#pragma omp for reduction(+:d)
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  d = d + p[j]*q[j];
-    //}   
+    //}
     HTA_reduce_h2(REDUCE_SUM, sum_pwmul, &d, p_HTA, q_HTA);
-    
+
     //---------------------------------------------------------------------
     // Obtain alpha = rho / (p.q)
     //---------------------------------------------------------------------
     alpha = rho0 / d;
-    
+
     //---------------------------------------------------------------------
     // Obtain z = z + alpha*p
     // and    r = r - alpha*q
@@ -828,19 +828,19 @@ static void conj_grad(int colidx[],
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  z[j] = z[j] + alpha*p[j];
     //  r[j] = r[j] - alpha*q[j];
-            
+
       //---------------------------------------------------------------------
       // rho = r.r
       // Now, obtain the norm of r: First, sum squares of r elements locally..
       //---------------------------------------------------------------------
     //  rho = rho + r[j]*r[j];
-    //}  
+    //}
     HTA_map_h2s1(HTA_LEAF_LEVEL(z_HTA), muladd, z_HTA, p_HTA, &alpha);
     temp = -alpha;
     HTA_map_h2s1(HTA_LEAF_LEVEL(r_HTA), muladd, r_HTA, q_HTA, &temp);
     HTA_reduce_h2(REDUCE_SUM, sum_sq, &rho, r_HTA, r_HTA);
-    
-    
+
+
     //---------------------------------------------------------------------
     // Obtain beta:
     //---------------------------------------------------------------------
@@ -852,10 +852,10 @@ static void conj_grad(int colidx[],
     //#pragma omp for
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  p[j] = r[j] + beta*p[j];
-    //}  
-    
+    //}
+
     HTA_map_h2s1(HTA_LEAF_LEVEL(p_HTA), muladd2, p_HTA, r_HTA, &beta);
-    
+
   } // end of do cgit=1,cgitmax
 
   //---------------------------------------------------------------------
@@ -871,7 +871,7 @@ static void conj_grad(int colidx[],
   //  }
   //  r[j] = suml;
   //}
-  
+
   //HTA_to_array(z_HTA, z_array);
   //HTA_init_with_array(_1tile_z_HTA, z_array);
 
@@ -889,7 +889,7 @@ static void conj_grad(int colidx[],
   //  sum  = sum + suml*suml;
   //}
   HTA_reduce_h2(REDUCE_SUM, sum_sq_pwsub, &sum, x_HTA, r_HTA);
-  
+
   // } // End of parallel section
 
   *rnorm = sqrt(sum);
@@ -942,7 +942,7 @@ static void makea_HTA(HTA *h)
   //  sprnvc(n, nzv, nn1, vc, ivc);
   //  vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
   //  arow[iouter] = nzv;
-  //  
+  //
   //  for (ivelt = 0; ivelt < nzv; ivelt++) {
   //    acol[iouter][ivelt] = ivc[ivelt] - 1;
   //    aelt[iouter][ivelt] = vc[ivelt];
@@ -953,7 +953,7 @@ static void makea_HTA(HTA *h)
   //// ... make the sparse matrix from list of elements with duplicates
   ////     (iv is used as  workspace)
   ////---------------------------------------------------------------------
-  //sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol, 
+  //sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol,
   //       aelt, firstrow, lastrow,
   //       iv, RCOND, SHIFT);
 
@@ -965,8 +965,8 @@ static void makea_HTA(HTA *h)
   double* val = &a[offset];
   //printf("There are %d nonzeros in tile %d\n", nnz, h->rank);
   HTA_init_sparse_leaf(h, nnz, val, colind, rowptr);
-  
-  // fix rowptr values 
+
+  // fix rowptr values
   void *leaf_val_ptr = h->leaf.raw;
   int * leaf_row_ptr = (int*)(leaf_val_ptr + nnz*sizeof(double) + nnz*sizeof(int));
   for(int i = 0; i < lastrow-firstrow + 2; i++)
@@ -1036,7 +1036,7 @@ static void makea(int n,
     sprnvc(n, nzv, nn1, vc, ivc);
     vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
     arow[iouter] = nzv;
-    
+
     for (ivelt = 0; ivelt < nzv; ivelt++) {
       acol[iouter][ivelt] = ivc[ivelt] - 1;
       aelt[iouter][ivelt] = vc[ivelt];
@@ -1047,7 +1047,7 @@ static void makea(int n,
   // ... make the sparse matrix from list of elements with duplicates
   //     (iv is used as  workspace)
   //---------------------------------------------------------------------
-  sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol, 
+  sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol,
          aelt, firstrow, lastrow,
          iv, RCOND, SHIFT);
 }

@@ -49,11 +49,11 @@ void z_solve()
     lhsinitj(nz2+1, nx2);
 
     //---------------------------------------------------------------------
-    // Computes the left hand side for the three z-factors   
+    // Computes the left hand side for the three z-factors
     //---------------------------------------------------------------------
 
     //---------------------------------------------------------------------
-    // first fill the lhs for the u-eigenvalue                          
+    // first fill the lhs for the u-eigenvalue
     //---------------------------------------------------------------------
     for (i = 1; i <= nx2; i++) {
       for (k = 0; k <= nz2+1; k++) {
@@ -72,7 +72,7 @@ void z_solve()
     }
 
     //---------------------------------------------------------------------
-    // add fourth order dissipation                                  
+    // add fourth order dissipation
     //---------------------------------------------------------------------
     for (i = 1; i <= nx2; i++) {
       k = 1;
@@ -111,7 +111,7 @@ void z_solve()
     }
 
     //---------------------------------------------------------------------
-    // subsequently, fill the other factors (u+c), (u-c) 
+    // subsequently, fill the other factors (u+c), (u-c)
     //---------------------------------------------------------------------
     for (k = 1; k <= nz2; k++) {
       for (i = 1; i <= nx2; i++) {
@@ -130,7 +130,7 @@ void z_solve()
 
 
     //---------------------------------------------------------------------
-    // FORWARD ELIMINATION  
+    // FORWARD ELIMINATION
     //---------------------------------------------------------------------
     for (k = 0; k <= grid_points[2]-3; k++) {
       k1 = k + 1;
@@ -156,7 +156,7 @@ void z_solve()
     }
 
     //---------------------------------------------------------------------
-    // The last two rows in this grid block are a bit different, 
+    // The last two rows in this grid block are a bit different,
     // since they for (not have two more rows available for the
     // elimination of off-diagonal entries
     //---------------------------------------------------------------------
@@ -185,7 +185,7 @@ void z_solve()
     }
 
     //---------------------------------------------------------------------
-    // for (the u+c and the u-c factors               
+    // for (the u+c and the u-c factors
     //---------------------------------------------------------------------
     for (k = 0; k <= grid_points[2]-3; k++) {
       k1 = k + 1;
@@ -251,7 +251,7 @@ void z_solve()
 
 
     //---------------------------------------------------------------------
-    // BACKSUBSTITUTION 
+    // BACKSUBSTITUTION
     //---------------------------------------------------------------------
     k  = grid_points[2]-2;
     k1 = grid_points[2]-1;
@@ -266,7 +266,7 @@ void z_solve()
 
     //---------------------------------------------------------------------
     // Whether or not this is the last processor, we always have
-    // to complete the back-substitution 
+    // to complete the back-substitution
     //---------------------------------------------------------------------
 
     //---------------------------------------------------------------------
@@ -277,7 +277,7 @@ void z_solve()
       k2 = k + 2;
       for (i = 1; i <= nx2; i++) {
         for (m = 0; m < 3; m++) {
-          rhs[k][j][i][m] = rhs[k][j][i][m] - 
+          rhs[k][j][i][m] = rhs[k][j][i][m] -
                             lhs[k][i][3]*rhs[k1][j][i][m] -
                             lhs[k][i][4]*rhs[k2][j][i][m];
         }
@@ -285,10 +285,10 @@ void z_solve()
         //-------------------------------------------------------------------
         // And the remaining two
         //-------------------------------------------------------------------
-        rhs[k][j][i][3] = rhs[k][j][i][3] - 
+        rhs[k][j][i][3] = rhs[k][j][i][3] -
                           lhsp[k][i][3]*rhs[k1][j][i][3] -
                           lhsp[k][i][4]*rhs[k2][j][i][3];
-        rhs[k][j][i][4] = rhs[k][j][i][4] - 
+        rhs[k][j][i][4] = rhs[k][j][i][4] -
                           lhsm[k][i][3]*rhs[k1][j][i][4] -
                           lhsm[k][i][4]*rhs[k2][j][i][4];
       }

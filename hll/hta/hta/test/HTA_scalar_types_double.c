@@ -26,7 +26,7 @@ int main()
     // create an empty shell
     Dist dist;
     //HTA h = HTA_create(2, 3, flat_size, ts, 0, dist, HTA_SCALAR_TYPE_DOUBLE);
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE, 
+    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
 
     // create a 2D matrix

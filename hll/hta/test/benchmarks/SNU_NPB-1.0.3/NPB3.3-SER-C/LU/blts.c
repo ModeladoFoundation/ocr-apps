@@ -32,19 +32,19 @@
 //-------------------------------------------------------------------------//
 
 //---------------------------------------------------------------------
-// 
+//
 // compute the regular-sparse, block lower triangular solution:
-// 
+//
 // v <-- ( L-inv ) * v
-// 
+//
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
-// To improve cache performance, second two dimensions padded by 1 
+// To improve cache performance, second two dimensions padded by 1
 // for even number sizes only.  Only needed in v.
 //---------------------------------------------------------------------
 void blts (int ldmx, int ldmy, int ldmz, int nx, int ny, int nz, int k,
     double omega,
-    double v[][ldmy/2*2+1][ldmx/2*2+1][5], 
+    double v[][ldmy/2*2+1][ldmx/2*2+1][5],
     double ldz[ldmy][ldmx/2*2+1][5][5],
     double ldy[ldmy][ldmx/2*2+1][5][5],
     double ldx[ldmy][ldmx/2*2+1][5][5],
@@ -95,7 +95,7 @@ void blts (int ldmx, int ldmy, int ldmz, int nx, int ny, int nz, int k,
 
       //---------------------------------------------------------------------
       // diagonal block inversion
-      // 
+      //
       // forward elimination
       //---------------------------------------------------------------------
       for (m = 0; m < 5; m++) {
@@ -175,7 +175,7 @@ void blts (int ldmx, int ldmy, int ldmz, int nx, int ny, int nz, int k,
       //---------------------------------------------------------------------
       vk[j][i][4] = tv[4] / tmat[4][4];
 
-      tv[3] = tv[3] 
+      tv[3] = tv[3]
         - tmat[3][4] * vk[j][i][4];
       vk[j][i][3] = tv[3] / tmat[3][3];
 

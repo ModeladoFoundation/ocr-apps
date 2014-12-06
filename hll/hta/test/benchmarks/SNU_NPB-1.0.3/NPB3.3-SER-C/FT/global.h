@@ -35,9 +35,9 @@
 #include "type.h"
 
 // Cache blocking params. These values are good for most
-// RISC processors.  
+// RISC processors.
 // FFT parameters:
-//  fftblock controls how many ffts are done at a time. 
+//  fftblock controls how many ffts are done at a time.
 //  The default is appropriate for most cache-based machines
 //  On vector machines, the FFT can be vectorized with vector
 //  length equal to the block size, so the block size should
@@ -88,7 +88,7 @@ void CompExp(int n, dcomplex exponent[n]);
 int ilog2(int n);
 void CalculateChecksum(dcomplex *csum, int iterN, int d1, int d2, int d3,
                        dcomplex u[d3][d2][d1+1]);
-void compute_initial_conditions(int d1, int d2, int d3, 
+void compute_initial_conditions(int d1, int d2, int d3,
                                 dcomplex u0[d3][d2][d1+1]);
 void evolve(int nx, int ny, int nz,
             dcomplex x[nz][ny][nx+1], dcomplex y[nz][ny][nx+1],

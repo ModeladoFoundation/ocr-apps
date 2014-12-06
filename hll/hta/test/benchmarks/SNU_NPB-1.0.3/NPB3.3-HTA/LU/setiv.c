@@ -42,7 +42,7 @@
 //---------------------------------------------------------------------
 
 void setiv_HTA()
-{ 
+{
   //HTA_tile_to_hta(HTA_LEAF_LEVEL(u_HTA), setiv_op_HTA, u_HTA, u_HTA, u_HTA);
   HTA_map_h1(HTA_LEAF_LEVEL(u_HTA), setiv_op_HTA, u_HTA);
 }
@@ -57,7 +57,7 @@ void setiv_op_HTA(HTA* u_tile)
   int i_first, j_first, k_first, i_last, j_last, k_last;
   int i_offset, j_offset, k_offset, x, y, z;
   int i_real, j_real, k_real;
-  
+
   double xi, eta, zeta;
   double pxi, peta, pzeta;
   double ue_1jk[5], ue_nx0jk[5], ue_i1k[5];
@@ -67,16 +67,16 @@ void setiv_op_HTA(HTA* u_tile)
   int nx_tile = u_tile->flat_size.values[2];
   int ny_tile = u_tile->flat_size.values[1];
   int nz_tile = u_tile->flat_size.values[0];
-  
+
   // Get global tile nd_index first
   //Tuple* nd_size = u_complete->tiling; // tile dimensions
   Tuple nd_size = u_tile->nd_tile_dimensions;
   Tuple nd_idx = u_tile->nd_rank;
   //Tuple_init_zero(&nd_idx, 4); // this tile index
   //Tuple_1d_to_nd_index(u_tile->rank, nd_size, &nd_idx);
-  
+
   double (*u_temp)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(u_tile);
-  
+
   x = nd_idx.values[2];
   y = nd_idx.values[1];
   z = nd_idx.values[0];
@@ -94,16 +94,16 @@ void setiv_op_HTA(HTA* u_tile)
   else j_last = ny_tile;
   if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // West: one before last element
   else k_last = nz_tile;
-  
+
   //FIXME: assuming regular tiles: problem with irregular tiles!!!
   //i_offset = x * (nx_tile - 4) - 2;
   //j_offset = y * (ny_tile - 4) - 2;
-  //k_offset = z * (nz_tile - 4) - 2; 
-  
-  i_offset = u_tile->nd_element_offset.values[2] - (4 * x) - 2; 
+  //k_offset = z * (nz_tile - 4) - 2;
+
+  i_offset = u_tile->nd_element_offset.values[2] - (4 * x) - 2;
   j_offset = u_tile->nd_element_offset.values[1] - (4 * y) - 2;
   k_offset = u_tile->nd_element_offset.values[0] - (4 * z) - 2;
-  
+
   for (k = k_first; k < k_last; k++) {
     k_real = k + k_offset;
     zeta = (double)k_real / (nz-1);

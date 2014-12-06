@@ -39,14 +39,14 @@
 // set the boundary values of dependent variables
 //---------------------------------------------------------------------
 void setbv_HTA()
-{ 
+{
   double zero = 0.0;
-  
+
   HTA_map_h1s1(HTA_LEAF_LEVEL(u_HTA), H1S1_INIT, u_HTA, &zero);
-  
+
   //HTA_tile_to_hta(HTA_LEAF_LEVEL(u_HTA), setbv_op_HTA, u_HTA, u_HTA, u_HTA);
   HTA_map_h1(HTA_LEAF_LEVEL(u_HTA), setbv_op_HTA, u_HTA);
-  
+
 }
 
 //void setbv_op_HTA(HTA* dest_tile, HTA* u_tile, HTA* u_complete)
@@ -56,21 +56,21 @@ void setbv_op_HTA(HTA* u_tile)
   int i_first, j_first, k_first, i_last, j_last, k_last;
   int i_offset, j_offset, k_offset, x, y, z;
   double temp1[5], temp2[5];
-  
+
   int nm_tile = u_tile->flat_size.values[3]; // Always 5
   int nx_tile = u_tile->flat_size.values[2];
   int ny_tile = u_tile->flat_size.values[1];
   int nz_tile = u_tile->flat_size.values[0];
-  
+
   // Get global tile nd_index first
   //Tuple* nd_size = u_complete->tiling; // tile dimensions
   Tuple nd_size = u_tile->nd_tile_dimensions;
   Tuple nd_idx = u_tile->nd_rank;
   //Tuple_init_zero(&nd_idx, 4); // this tile index
   //Tuple_1d_to_nd_index(u_tile->rank, nd_size, &nd_idx);
-  
+
   double (*u_temp)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(u_tile);
-  
+
   x = nd_idx.values[2];
   y = nd_idx.values[1];
   z = nd_idx.values[0];
@@ -88,19 +88,19 @@ void setbv_op_HTA(HTA* u_tile)
   else j_last = ny_tile;
   if (z == nd_size.values[0] - 1) k_last = nz_tile - 2;
   else k_last = nz_tile;
-  
+
   //FIXME: assuming regular tiles: problem with irregular tiles!!!
   //i_offset = x * (nx_tile - 4) - 2;
   //j_offset = y * (ny_tile - 4) - 2;
   //k_offset = z * (nz_tile - 4) - 2;
-  
-  i_offset = u_tile->nd_element_offset.values[2] - (4 * x) - 2; 
+
+  i_offset = u_tile->nd_element_offset.values[2] - (4 * x) - 2;
   j_offset = u_tile->nd_element_offset.values[1] - (4 * y) - 2;
   k_offset = u_tile->nd_element_offset.values[0] - (4 * z) - 2;
-  
+
   //printf("Tile (%d,%d,%d) -- Offset (z : %d(%d), y : %d(%d), x : %d(%d))\n", z, y, x, k_offset, new_off_k, j_offset, new_off_j, i_offset, new_off_i);
   //Tuple_print(&u_tile->nd_element_offset);
-  
+
   //---------------------------------------------------------------------
   // set the dependent variable values along the top and bottom faces
   //---------------------------------------------------------------------
@@ -170,5 +170,5 @@ void setbv_op_HTA(HTA* u_tile)
       }
     }
   }
-  
-}  
+
+}

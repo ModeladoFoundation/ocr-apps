@@ -7,14 +7,14 @@
 
 struct mapping {
     /// Row-major, column-major or tile
-    int order;              
+    int order;
     Dist dist;
     void** map_blocks;     // map_blocks is a data block which contains an array of REFs to all tiles allocated
-    int num_blocks;     // total number of leaves    
+    int num_blocks;     // total number of leaves
     size_t scalar_size;
 };
 
-typedef struct mapping Mapping; 
+typedef struct mapping Mapping;
 
 /// Allocates data blocks for leaf tiles. The mapping information should be stored in leaf
 /// tile HTAs and this Mapping should be discarded after the mapping information is recorded.

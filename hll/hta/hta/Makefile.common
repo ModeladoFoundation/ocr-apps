@@ -4,7 +4,7 @@ RM = rm -f
 OPT ?= -O3 -Wall
 DEBUG =
 #OPT ?= -O0 -Wall
-#DEBUG = -g -DDEBUG 
+#DEBUG = -g -DDEBUG
 
 
 LIB = $(HTAHLL)/hta/lib
@@ -24,6 +24,6 @@ HTA_TEST = $(HTA)/test
 SWARM = $(HTAHLL)/swarm/releases/latest
 SWARM_INC = $(SWARM)/include
 
-OCR_FLAGS=-L$(OCR_INSTALL)/lib -I$(OCR_INSTALL)/include 
+OCR_FLAGS=-L$(OCR_INSTALL)/lib -I$(OCR_INSTALL)/include
 OCR_LDFLAGS=-locr
 

@@ -29,11 +29,11 @@ int main()
     Dist_init(&dist, 0);
     // create an empty shell
     HTA* h = HTA_create_with_ts(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT32, 2, tiling);
- 
+
     Tuple iter[2];
     Tuple nd_offset;
     Tuple_init_zero(&nd_offset, 2);
-   
+
     Tuple_iterator_begin(2, 2, iter);
     do {
         Tuple_get_tile_start_offset(&flat_size, tiling, iter, &nd_offset);

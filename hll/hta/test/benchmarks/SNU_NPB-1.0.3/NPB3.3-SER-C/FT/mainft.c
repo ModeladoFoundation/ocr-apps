@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
   }
 
   print_results("FT", Class, NX, NY, NZ, niter,
-                total_time, mflops, "          floating point", verified, 
-                NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, 
+                total_time, mflops, "          floating point", verified,
+                NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4,
                 CS5, CS6, CS7);
 
   return 0;
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
 static char getclass()
 {
-  if ((NX == 64) && (NY == 64) &&                 
+  if ((NX == 64) && (NY == 64) &&
       (NZ == 64) && (NITER_DEFAULT == 6)) {
     return 'S';
   } else if ((NX == 128) && (NY == 128) &&

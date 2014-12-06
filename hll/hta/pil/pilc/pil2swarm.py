@@ -778,7 +778,7 @@ def swarm_process_node_procedure(label, index, func_name, key):
 			if arg_name == "index_array" or arg_name == "data_array":
 				in_args += arg_name
 				continue
-	
+
 			# check to see if we should pass the argument by reference or by value
 			in_args += "(" + g.variables[arg_name]
 			if g.args[func_name]['dict'][arg_name]['passed_by_reference']:
@@ -789,7 +789,7 @@ def swarm_process_node_procedure(label, index, func_name, key):
 				in_args += "pil_p->" + arg_name
 			elif g.MEM == "spmd":
 				in_args += func_name + "_param." + arg_name
-	
+
 		print "\t\t" + func_name + "(" + in_args + ");"
 	else:
 		if node:

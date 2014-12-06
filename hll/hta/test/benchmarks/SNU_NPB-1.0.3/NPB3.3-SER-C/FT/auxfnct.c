@@ -39,7 +39,7 @@
 
 
 //---------------------------------------------------------------------
-// compute the roots-of-unity array that will be used for subsequent FFTs. 
+// compute the roots-of-unity array that will be used for subsequent FFTs.
 //---------------------------------------------------------------------
 void CompExp(int n, dcomplex exponent[n])
 {
@@ -127,13 +127,13 @@ void CalculateChecksum(dcomplex *csum, int iterN, int d1, int d2, int d3,
     csum_temp = dcmplx_add(csum_temp, u[ki][ji][ii]);
   }
   csum_temp = dcmplx_div2(csum_temp, (double)(d1*d2*d3));
-  printf(" T =%5d     Checksum =%22.12E%22.12E\n", 
+  printf(" T =%5d     Checksum =%22.12E%22.12E\n",
       iterN, csum_temp.real, csum_temp.imag);
   *csum = csum_temp;
 }
 
 
-void compute_initial_conditions(int d1, int d2, int d3, 
+void compute_initial_conditions(int d1, int d2, int d3,
                                 dcomplex u0[d3][d2][d1+1])
 {
   dcomplex tmp[MAXDIM];

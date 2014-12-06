@@ -30,7 +30,7 @@ MODE = 0x3
 if len(sys.argv) > 1:
     MODE = int(sys.argv[1])
 
-if MODE & 0x1:    
+if MODE & 0x1:
     # Build executable
     os.chdir('NPB3.3-SER-C')
     for bench_name in benches:

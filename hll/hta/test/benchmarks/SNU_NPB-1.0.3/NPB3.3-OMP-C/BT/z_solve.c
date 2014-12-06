@@ -38,10 +38,10 @@
 
 //---------------------------------------------------------------------
 // Performs line solves in Z direction by first factoring
-// the block-tridiagonal matrix into an upper triangular matrix, 
+// the block-tridiagonal matrix into an upper triangular matrix,
 // and then performing back substitution to solve for the unknow
-// vectors of each line.  
-// 
+// vectors of each line.
+//
 // Make sure we treat elements zero to cell_size in the direction
 // of the sweep.
 //---------------------------------------------------------------------
@@ -58,7 +58,7 @@ void z_solve()
   //---------------------------------------------------------------------
 
   //---------------------------------------------------------------------
-  // This function computes the left hand side for the three z-factors   
+  // This function computes the left hand side for the three z-factors
   //---------------------------------------------------------------------
 
   ksize = grid_points[2]-1;
@@ -93,7 +93,7 @@ void z_solve()
         fjac[k][3][2] = u[k][j][i][2] * tmp1;
         fjac[k][4][2] = 0.0;
 
-        fjac[k][0][3] = - (u[k][j][i][3]*u[k][j][i][3] * tmp2 ) 
+        fjac[k][0][3] = - (u[k][j][i][3]*u[k][j][i][3] * tmp2 )
           + c2 * qs[k][j][i];
         fjac[k][1][3] = - c2 *  u[k][j][i][1] * tmp1;
         fjac[k][2][3] = - c2 *  u[k][j][i][2] * tmp1;
@@ -156,7 +156,7 @@ void z_solve()
 
         lhs[k][AA][0][0] = - tmp2 * fjac[k-1][0][0]
           - tmp1 * njac[k-1][0][0]
-          - tmp1 * dz1; 
+          - tmp1 * dz1;
         lhs[k][AA][1][0] = - tmp2 * fjac[k-1][1][0]
           - tmp1 * njac[k-1][1][0];
         lhs[k][AA][2][0] = - tmp2 * fjac[k-1][2][0]
@@ -251,7 +251,7 @@ void z_solve()
         lhs[k][BB][2][4] = tmp1 * 2.0 * njac[k][2][4];
         lhs[k][BB][3][4] = tmp1 * 2.0 * njac[k][3][4];
         lhs[k][BB][4][4] = 1.0
-          + tmp1 * 2.0 * njac[k][4][4] 
+          + tmp1 * 2.0 * njac[k][4][4]
           + tmp1 * 2.0 * dz5;
 
         lhs[k][CC][0][0] =  tmp2 * fjac[k+1][0][0]
@@ -320,10 +320,10 @@ void z_solve()
 
       //---------------------------------------------------------------------
       // performs guaussian elimination on this cell.
-      // 
-      // assumes that unpacking routines for non-first cells 
+      //
+      // assumes that unpacking routines for non-first cells
       // preload C' and rhs' from previous cell.
-      // 
+      //
       // assumed send happens outside this routine, but that
       // c'(KMAX) and rhs'(KMAX) will be sent to next cell.
       //---------------------------------------------------------------------
@@ -340,12 +340,12 @@ void z_solve()
 
       //---------------------------------------------------------------------
       // begin inner most do loop
-      // do all the elements of the cell unless last 
+      // do all the elements of the cell unless last
       //---------------------------------------------------------------------
       for (k = 1; k <= ksize-1; k++) {
         //-------------------------------------------------------------------
         // subtract A*lhs_vector(k-1) from lhs_vector(k)
-        // 
+        //
         // rhs(k) = rhs(k) - A*rhs(k-1)
         //-------------------------------------------------------------------
         matvec_sub(lhs[k][AA], rhs[k-1][j][i], rhs[k][j][i]);
@@ -397,7 +397,7 @@ void z_solve()
       for (k = ksize-1; k >= 0; k--) {
         for (m = 0; m < BLOCK_SIZE; m++) {
           for (n = 0; n < BLOCK_SIZE; n++) {
-            rhs[k][j][i][m] = rhs[k][j][i][m] 
+            rhs[k][j][i][m] = rhs[k][j][i][m]
               - lhs[k][CC][n][m]*rhs[k+1][j][i][n];
           }
         }

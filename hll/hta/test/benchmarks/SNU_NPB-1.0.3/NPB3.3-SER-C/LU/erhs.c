@@ -338,7 +338,7 @@ void erhs()
                     + rsd[k][j][i][3] * rsd[k][j][i][3] )
                  / rsd[k][j][i][0];
         flux[k][1] = rsd[k][j][i][1] * u41;
-        flux[k][2] = rsd[k][j][i][2] * u41; 
+        flux[k][2] = rsd[k][j][i][2] * u41;
         flux[k][3] = rsd[k][j][i][3] * u41 + C2 * ( rsd[k][j][i][4] - q );
         flux[k][4] = ( C1 * rsd[k][j][i][4] - C2 * q ) * u41;
       }

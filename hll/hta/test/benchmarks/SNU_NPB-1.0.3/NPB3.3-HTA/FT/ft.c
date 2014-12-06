@@ -51,19 +51,19 @@
 
 
 //---------------------------------------------------------------------
-// u0, u1, u2 are the main arrays in the problem. 
-// Depending on the decomposition, these arrays will have different 
-// dimensions. To accomodate all possibilities, we allocate them as 
-// one-dimensional arrays and pass them to subroutines for different 
+// u0, u1, u2 are the main arrays in the problem.
+// Depending on the decomposition, these arrays will have different
+// dimensions. To accomodate all possibilities, we allocate them as
+// one-dimensional arrays and pass them to subroutines for different
 // views
 //  - u0 contains the initial (transformed) initial condition
 //  - u1 and u2 are working arrays
-//  - twiddle contains exponents for the time evolution operator. 
+//  - twiddle contains exponents for the time evolution operator.
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 // Large arrays are in common so that they are allocated on the
 // heap rather than the stack. This common block is not
-// referenced directly anywhere else. Padding is to avoid accidental 
+// referenced directly anywhere else. Padding is to avoid accidental
 // cache problems, since all array sizes are powers of two.
 //---------------------------------------------------------------------
 /* common /bigarrays/ */
@@ -93,21 +93,21 @@ static void cffts1(HTA * ox, void* dir);
 static void cffts2(HTA * ox, void* dir);
 static void cffts3(HTA * ox, void* dir);
 static void fft_init(int n);
-static void cfftz(int is, int m, int n, 
+static void cfftz(int is, int m, int n,
                   dcomplex x[n][fftblockpad], dcomplex y[n][fftblockpad]);
-static void fftz2(int is, int l, int m, int n, int ny, int ny1, 
+static void fftz2(int is, int l, int m, int n, int ny, int ny1,
                   dcomplex u[n], dcomplex x[n][ny1], dcomplex y[n][ny1]);
 static int ilog2(int n);
 static void checksum(HTA * checksum_leaf, HTA * u1_leaf);
-static void verify(int d1, int d2, int d3, int nt, 
+static void verify(int d1, int d2, int d3, int nt,
                    logical *verified, char *Class);
 //---------------------------------------------------------------------------
 
-void dump_twiddle(HTA * x_HTA) 
+void dump_twiddle(HTA * x_HTA)
 {
     double x[NTOTALP];
     HTA_to_array(x_HTA, x);
-    
+
     printf("twiddle dump\n");
     printf("=========================================\n");
     for(int k = 0; k < NZ; k++)
@@ -119,11 +119,11 @@ void dump_twiddle(HTA * x_HTA)
             }
     printf("=========================================\n");
 }
-void dump(HTA * x_HTA) 
+void dump(HTA * x_HTA)
 {
     dcomplex x[NTOTALP];
     HTA_to_array(x_HTA, x);
-    
+
     printf("=========================================\n");
     for(int k = 0; k < NZ; k++)
         for(int j = 0; j < NY; j++)
@@ -148,20 +148,20 @@ void init_hta()
   Tuple t2 = Tuple_create(3, 1, NP, 1);
   Tuple t3 = Tuple_create(3, NP, 1, 1);
 
-  twiddle_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 2, t2, t3); 
+  twiddle_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 2, t2, t3);
   HTA_map_h1s1(HTA_LEAF_LEVEL(twiddle_HTA), H1S1_INIT, twiddle_HTA, &double_zero);
 
-  u0_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3); 
+  u0_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3);
   HTA_map_h1s1(HTA_LEAF_LEVEL(u0_HTA), H1S1_INIT, u0_HTA, &dcomplex_zero);
 
-  u2_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3); 
+  u2_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3);
   HTA_map_h1s1(HTA_LEAF_LEVEL(u2_HTA), H1S1_INIT, u2_HTA, &dcomplex_zero);
 
   // partition along Z axis
   Tuple t0 = Tuple_create(3, NP, 1, 1); // distribution is decided at the 1st level partition
   Tuple t1 = Tuple_create(3, 1, NP, 1);
 
-  u1_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t0, t1);   
+  u1_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t0, t1);
   HTA_map_h1s1(HTA_LEAF_LEVEL(u1_HTA), H1S1_INIT, u1_HTA, &dcomplex_zero);
 
   Tuple fs1 = Tuple_create(3, NP, NP, 1);
@@ -178,9 +178,9 @@ int hta_main(int argc, char *argv[])
   char Class;
 
   //---------------------------------------------------------------------
-  // Run the entire problem once to make sure all data is touched. 
-  // This reduces variable startup costs, which is important for such a 
-  // short benchmark. The other NPB 2 implementations are similar. 
+  // Run the entire problem once to make sure all data is touched.
+  // This reduces variable startup costs, which is important for such a
+  // short benchmark. The other NPB 2 implementations are similar.
   //---------------------------------------------------------------------
   for (i = 1; i <= T_max; i++) {
     timer_clear(i);
@@ -204,7 +204,7 @@ int hta_main(int argc, char *argv[])
 
   //---------------------------------------------------------------------
   // Start over from the beginning. Note that all operations must
-  // be timed, in contrast to other benchmarks. 
+  // be timed, in contrast to other benchmarks.
   //---------------------------------------------------------------------
   for (i = 1; i <= T_max; i++) {
     timer_clear(i);
@@ -256,7 +256,7 @@ int hta_main(int argc, char *argv[])
     mflops = 0.0;
   }
   print_results("FT", Class, NX, NY, NZ, niter,
-                total_time, mflops, "          floating point", verified, 
+                total_time, mflops, "          floating point", verified,
                 NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5, CS6, CS7);
   CLASS=Class;
   if (timers_enabled) print_timers();
@@ -290,8 +290,8 @@ static void evolve(HTA * u0_leaf, HTA * u1_leaf, HTA * twiddle_leaf)
 
 
 //---------------------------------------------------------------------
-// Fill in array u0 with initial conditions from 
-// random number generator 
+// Fill in array u0 with initial conditions from
+// random number generator
 //---------------------------------------------------------------------
 
 static void compute_initial_conditions(HTA * u0_leaf)
@@ -397,15 +397,15 @@ static void setup()
   // Set up info for blocking of ffts and transposes.  This improves
   // performance on cache-based systems. Blocking involves
   // working on a chunk of the problem at a time, taking chunks
-  // along the first, second, or third dimension. 
+  // along the first, second, or third dimension.
   //
   // - In cffts1 blocking is on 2nd dimension (with fft on 1st dim)
   // - In cffts2/3 blocking is on 1st dimension (with fft on 2nd and 3rd dims)
 
-  // Since 1st dim is always in processor, we'll assume it's long enough 
+  // Since 1st dim is always in processor, we'll assume it's long enough
   // (default blocking factor is 16 so min size for 1st dim is 16)
-  // The only case we have to worry about is cffts1 in a 2d decomposition. 
-  // so the blocking factor should not be larger than the 2nd dimension. 
+  // The only case we have to worry about is cffts1 in a 2d decomposition.
+  // so the blocking factor should not be larger than the 2nd dimension.
   //---------------------------------------------------------------------
 
   fftblock = FFTBLOCK_DEFAULT;
@@ -431,9 +431,9 @@ static void compute_indexmap(HTA * twiddle_leaf)
   double ap;
 
   //---------------------------------------------------------------------
-  // basically we want to convert the fortran indices 
-  //   1 2 3 4 5 6 7 8 
-  // to 
+  // basically we want to convert the fortran indices
+  //   1 2 3 4 5 6 7 8
+  // to
   //   0 1 2 3 -4 -3 -2 -1
   // The following magic formula does the trick:
   // mod(i-1+n/2, n) - n/2
@@ -463,13 +463,13 @@ static void print_timers()
   int i;
   double t, t_m;
   char *tstrings[T_max+1];
-  tstrings[1] = "          total "; 
-  tstrings[2] = "          setup "; 
-  tstrings[3] = "            fft "; 
-  tstrings[4] = "         evolve "; 
-  tstrings[5] = "       checksum "; 
-  tstrings[6] = "           fftx "; 
-  tstrings[7] = "           ffty "; 
+  tstrings[1] = "          total ";
+  tstrings[2] = "          setup ";
+  tstrings[3] = "            fft ";
+  tstrings[4] = "         evolve ";
+  tstrings[5] = "       checksum ";
+  tstrings[6] = "           fftx ";
+  tstrings[7] = "           ffty ";
   tstrings[8] = "           fftz ";
   tstrings[9] = "      transpose ";
 
@@ -480,7 +480,7 @@ static void print_timers()
   if (t_m <= 0.0) t_m = 1.00;
   for (i = 1; i <= T_max; i++) {
     t = timer_read(i);
-    printf(" timer %2d(%16s) :%9.4f (%6.2f%%)\n", 
+    printf(" timer %2d(%16s) :%9.4f (%6.2f%%)\n",
         i, tstrings[i], t, t*100.0/t_m);
     fprintf(fp_rec, "%9.4f ", t);
   }
@@ -489,7 +489,7 @@ static void print_timers()
 }
 
 // FIXME: for now it's a specialized operation to deal with FT only
-void HTA_transpose(HTA * xout, HTA * xin, int from_upper, int from_lower) 
+void HTA_transpose(HTA * xout, HTA * xin, int from_upper, int from_lower)
 {
   // Assume that the tiling of xout is what we need already, so metadata doesn't have to be changed
   // Assume that upper level is 1D vector tiling and the same for lower level
@@ -577,7 +577,7 @@ static void fft(int dir, HTA * x1, HTA * x2)
 static void cffts1(HTA * ox_tile, void* dir)
 {
   int d1 = ox_tile->flat_size.values[2]; // NX least significant dimension
-  int d2 = ox_tile->flat_size.values[1]; // NY 
+  int d2 = ox_tile->flat_size.values[1]; // NY
   int d3 = ox_tile->flat_size.values[0]; // NZ / NP
 
   dcomplex (*ty1)[FFTBLOCKPAD_DEFAULT] = (dcomplex (*)[FFTBLOCKPAD_DEFAULT])ty1a[ox_tile->rank];
@@ -631,7 +631,7 @@ static void cffts1(HTA * ox_tile, void* dir)
 static void cffts2(HTA * ox_tile, void* dir)
 {
   int d1 = ox_tile->flat_size.values[2]; // NX least significant dimension
-  int d2 = ox_tile->flat_size.values[1]; // NY 
+  int d2 = ox_tile->flat_size.values[1]; // NY
   int d3 = ox_tile->flat_size.values[0]; // NZ / NP
 
   dcomplex (*ty1)[FFTBLOCKPAD_DEFAULT] = (dcomplex (*)[FFTBLOCKPAD_DEFAULT])ty1a[ox_tile->rank];
@@ -723,7 +723,7 @@ static void cffts3(HTA * ox_tile, void* dir)
 }
 
 //---------------------------------------------------------------------
-// compute the roots-of-unity array that will be used for subsequent FFTs. 
+// compute the roots-of-unity array that will be used for subsequent FFTs.
 //---------------------------------------------------------------------
 static void fft_init(int n)
 {
@@ -756,13 +756,13 @@ static void fft_init(int n)
 
 //---------------------------------------------------------------------
 // Computes NY N-point complex-to-complex FFTs of X using an algorithm due
-// to Swarztrauber.  X is both the input and the output array, while Y is a 
-// scratch array.  It is assumed that N = 2^M.  Before calling CFFTZ to 
-// perform FFTs, the array U must be initialized by calling CFFTZ with IS 
-// set to 0 and M set to MX, where MX is the maximum value of M for any 
+// to Swarztrauber.  X is both the input and the output array, while Y is a
+// scratch array.  It is assumed that N = 2^M.  Before calling CFFTZ to
+// perform FFTs, the array U must be initialized by calling CFFTZ with IS
+// set to 0 and M set to MX, where MX is the maximum value of M for any
 // subsequent call.
 //---------------------------------------------------------------------
-static void cfftz(int is, int m, int n, 
+static void cfftz(int is, int m, int n,
                   dcomplex x[n][fftblockpad], dcomplex y[n][fftblockpad])
 {
   int i, j, l, mx;
@@ -772,9 +772,9 @@ static void cfftz(int is, int m, int n,
   //---------------------------------------------------------------------
   mx = (int)(u[0].real);
   if ((is != 1 && is != -1) || m < 1 || m > mx) {
-    printf("CFFTZ: Either U has not been initialized, or else\n"    
+    printf("CFFTZ: Either U has not been initialized, or else\n"
            "one of the input parameters is invalid%5d%5d%5d\n", is, m, mx);
-    exit(EXIT_FAILURE); 
+    exit(EXIT_FAILURE);
   }
 
   //---------------------------------------------------------------------
@@ -801,7 +801,7 @@ static void cfftz(int is, int m, int n,
 //---------------------------------------------------------------------
 // Performs the L-th iteration of the second variant of the Stockham FFT.
 //---------------------------------------------------------------------
-static void fftz2(int is, int l, int m, int n, int ny, int ny1, 
+static void fftz2(int is, int l, int m, int n, int ny, int ny1,
                   dcomplex u[n], dcomplex x[n][ny1], dcomplex y[n][ny1])
 {
   int k, n1, li, lj, lk, ku, i, j, i11, i12, i21, i22;
@@ -891,7 +891,7 @@ static void checksum(HTA * chk_leaf, HTA * u1_leaf)
 }
 
 
-static void verify(int d1, int d2, int d3, int nt, 
+static void verify(int d1, int d2, int d3, int nt,
                    logical *verified, char *Class)
 {
   int i;

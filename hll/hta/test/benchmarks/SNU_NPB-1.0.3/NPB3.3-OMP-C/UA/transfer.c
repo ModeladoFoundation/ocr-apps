@@ -839,7 +839,7 @@ void transfb_c(double tx[])
   int il1, il2, il3, il4, ig1, ig2, ig3, ig4, ie, iface, col, j, ig, il;
 
   #pragma omp parallel default(shared) private(ie,iface,il1,il2, \
-                                       il3,il4,ig1,ig2,ig3,ig4,col,j,ig,il) 
+                                       il3,il4,ig1,ig2,ig3,ig4,col,j,ig,il)
   {
   #pragma omp for
   for (j = 0; j < nmor; j++) {

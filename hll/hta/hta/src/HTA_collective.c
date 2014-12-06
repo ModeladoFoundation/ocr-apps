@@ -3,7 +3,7 @@
 #include "Tuple.h"
 #include "HTA.h"
 
-static void _get_shift_target(Tuple * target, Tuple * nd_idx, Tuple * nd_size, Tuple * direction) 
+static void _get_shift_target(Tuple * target, Tuple * nd_idx, Tuple * nd_size, Tuple * direction)
 {
     ASSERT(target->dim == nd_idx->dim && nd_idx->dim == nd_size->dim && nd_size->dim == direction->dim);
 
@@ -15,7 +15,7 @@ static void _get_shift_target(Tuple * target, Tuple * nd_idx, Tuple * nd_size, T
     }
 }
 
-static void _recursive_rerank(HTA *h, int* rank) 
+static void _recursive_rerank(HTA *h, int* rank)
 {
     if(h->height == 1) {
         h->rank = *rank;
@@ -50,7 +50,7 @@ void HTA_circshift(HTA *h, Tuple *dir) {
     }while(Tuple_iterator_next(h->tiling, &iter));
 
     // overwrite original pointers
-    for(int i = 0; i < h->num_tiles; i++) 
+    for(int i = 0; i < h->num_tiles; i++)
     {
         h->tiles[i] = newtiles[i];
     }
@@ -59,7 +59,7 @@ void HTA_circshift(HTA *h, Tuple *dir) {
     HTA_rerank(h);
 }
 
-void HTA_rerank(HTA *h) 
+void HTA_rerank(HTA *h)
 {
     int rank = 0;
     _recursive_rerank(h, &rank);

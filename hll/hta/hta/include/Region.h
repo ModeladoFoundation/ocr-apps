@@ -9,12 +9,12 @@ struct range {
     int high;   // higher bound
     int step;   // step
     int mod;   // for circular shift?
-    /// Cardinality 
-    int card; 
+    /// Cardinality
+    int card;
 };
 
 /// Range is passed by value
-typedef struct range Range; 
+typedef struct range Range;
 
 /// region is an n-dimensional rectangular index space spanned by n ranges.
 struct region {

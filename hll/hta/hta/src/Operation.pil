@@ -32,8 +32,8 @@ HTA *h5;
 HTA *h6;
 HTA **ha1; // HTA array argument 1
 HTA **ha2; // HTA array argument 2
-HTA **ha3; 
-HTA **ha4; 
+HTA **ha3;
+HTA **ha4;
 HTA **ha5;
 HTA **ha6;
 HTA **ph2;
@@ -775,7 +775,7 @@ void _HTA_map_h5s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array
 //// ==========================================================================
 
 //// HTA_tile_to_hta
-//// goes down the hierarchiy of h2 to the specific level and 
+//// goes down the hierarchiy of h2 to the specific level and
 //// for all tiles t in that level, map the custom operator op(t, h3)
 //// in parallel
 void HTA_tile_to_hta(int level, H3Op h3op, HTA * h1, HTA * h2, HTA * h3)
@@ -824,7 +824,7 @@ void HTA_tile_to_hta(int level, H3Op h3op, HTA * h1, HTA * h2, HTA * h3)
     pil_enter(100, 5, index_array, data_array, bound-1, idx, h3op);
 
     // TODO: restore the pointers
-    
+
     pil_free(data_array);
     pil_free(index_array);
 }
@@ -893,7 +893,7 @@ void HTA_full_reduce(ReduceOp fr_op, void* s1, HTA * h1)
     pil_enter(70, 5, index_array, data_array, bound-1, idx, fr_op);
 
     // TODO: restore the pointers
-    
+
     for(int i = 0; i < bound; i++) {
         fr_op(h1->scalar_type, s1, s_darray[i].ptr); //merge partial results
         pil_free(s_darray[i]);
@@ -917,7 +917,7 @@ void _HTA_full_reduce_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_ar
 #endif
     // sequentially perform reduction on h
     // partial results will be stored at *s1 after this
-    _recursive_full_reduce(fr_op, s1, h); 
+    _recursive_full_reduce(fr_op, s1, h);
 
     *target_id = 0;
 }
@@ -1037,7 +1037,7 @@ void HTA_reduce_h2(ReduceOp fr_op, H2S1Op h2s1op, void *s1, HTA * h1, HTA * h2)
     pil_enter(90, 6, index_array, data_array, bound-1, idx, fr_op, h2s1op);
 
     // TODO: restore the pointers
-    
+
     for(int i = 0; i < bound; i++) {
         fr_op(h1->scalar_type, s1, s_darray[i].ptr); //merge partial results
         pil_free(s_darray[i]);

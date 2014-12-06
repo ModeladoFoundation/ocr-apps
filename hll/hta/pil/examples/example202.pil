@@ -1,4 +1,4 @@
-// Example 24: A basic program for spmd 
+// Example 24: A basic program for spmd
 
 int i;
 int target_id;

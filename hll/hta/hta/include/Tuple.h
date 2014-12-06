@@ -12,8 +12,8 @@ typedef struct tuple {
     /// This field is used for runtime introspection in HTA_access
     int accessor_type;
     int dim;        // dimension
-    int height; 
-    int values[HTA_MAX_DIM];   // pointer to an array of elements in the tuple    
+    int height;
+    int values[HTA_MAX_DIM];   // pointer to an array of elements in the tuple
 } Tuple;
 
 // ------------------------------------------
@@ -63,7 +63,7 @@ int Tuple_nd_to_1d_index(const Tuple *nd_idx, const Tuple *nd_size);
 /// Convert 1D index to ND index for given ND dimension size
 void Tuple_1d_to_nd_index(int idx, const Tuple *nd_size, Tuple *nd_idx);
 
-/// To use iterator functions, create an array of tuples as a stack 
+/// To use iterator functions, create an array of tuples as a stack
 /// variable before calling Tuple_iterator_begin for best performance
 void Tuple_iterator_begin(int dim, const int num_tuples, Tuple* iter);
 

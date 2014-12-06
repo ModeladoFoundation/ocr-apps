@@ -38,7 +38,7 @@
 void matvec_sub(double ablock[5][5], double avec[5], double bvec[5])
 {
   //---------------------------------------------------------------------
-  // rhs[kc][jc][ic][i] = rhs[kc][jc][ic][i] 
+  // rhs[kc][jc][ic][i] = rhs[kc][jc][ic][i]
   // $                  - lhs[ia][ablock][0][i]*
   //---------------------------------------------------------------------
   bvec[0] = bvec[0] - ablock[0][0]*avec[0]

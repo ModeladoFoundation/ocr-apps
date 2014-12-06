@@ -70,7 +70,7 @@ Tuple Region_get_dimension(Region *r) {
     Tuple new_tuple;
     new_tuple.dim = r->dim;
     new_tuple.height = 1;
-    
+
     for(int i = 0; i < r->dim; i++) {
         new_tuple.values[i] = r->ranges[i].card;
     }
@@ -92,7 +92,7 @@ int Region_idx_to_tile_idx(Region *r, Tuple *t, int idx) {
 
     // Map region indices to tile indices
     for(int j = dim - 1; j >= 0; j--) {
-       indices[j] = Range_idx_to_linear_idx(&r->ranges[j], indices[j]); 
+       indices[j] = Range_idx_to_linear_idx(&r->ranges[j], indices[j]);
     }
     //printf("tile indices: %d %d\n", indices[0], indices[1]);
 
@@ -121,7 +121,7 @@ void Region_print(Region *r) {
 
 
 void Range_print(Range *r) {
-    printf("Range low: %d, high: %d, step: %d, mod: %d, cardinality:%d\n", 
+    printf("Range low: %d, high: %d, step: %d, mod: %d, cardinality:%d\n",
             r->low, r->high, r->step, r->mod, r->card);
 }
 
@@ -133,11 +133,11 @@ int Range_idx_to_linear_idx(Range *r, int idx) {
     return r->low + r->step * idx;
 }
 
-void Range_init(Range *r, int l, int h, int s, int m)       
+void Range_init(Range *r, int l, int h, int s, int m)
 {
-    r->low = l;                                        
-    r->high = h;                                      
-    r->step= s;                                       
-    r->mod = m;                                        
-    r->card = (h - l)/s + 1;                     
+    r->low = l;
+    r->high = h;
+    r->step= s;
+    r->mod = m;
+    r->card = (h - l)/s + 1;
 }

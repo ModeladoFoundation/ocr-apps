@@ -68,7 +68,7 @@
 static double x[2*NK];
 static double qq[NQ];
 #pragma omp threadprivate(x,qq)
-static double q[NQ]; 
+static double q[NQ];
 
 
 int main(int argc, char *argv[])
@@ -111,12 +111,12 @@ int main(int argc, char *argv[])
   verified = false;
 
   //--------------------------------------------------------------------
-  //  Compute the number of "batches" of random number pairs generated 
-  //  per processor. Adjust if the number of processors does not evenly 
+  //  Compute the number of "batches" of random number pairs generated
+  //  per processor. Adjust if the number of processors does not evenly
   //  divide the total number
   //--------------------------------------------------------------------
 
-  np = NN; 
+  np = NN;
 
   //--------------------------------------------------------------------
   //  Call the random number generator functions and initialize
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
       x[i] = -1.0e99;
     }
   }
-  Mops = log(sqrt(fabs(MAX(1.0, 1.0))));   
+  Mops = log(sqrt(fabs(MAX(1.0, 1.0))));
 
   #pragma omp parallel
   {
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 
     #pragma omp for reduction(+:sx,sy) nowait
     for (k = 1; k <= np; k++) {
-      kk = k_offset + k; 
+      kk = k_offset + k;
       t1 = S;
       t2 = an;
 
@@ -204,9 +204,9 @@ int main(int argc, char *argv[])
       if (timers_enabled) timer_stop(2);
 
       //--------------------------------------------------------------------
-      //  Compute Gaussian deviates by acceptance-rejection method and 
-      //  tally counts in concentri//square annuli.  This loop is not 
-      //  vectorizable. 
+      //  Compute Gaussian deviates by acceptance-rejection method and
+      //  tally counts in concentri//square annuli.  This loop is not
+      //  vectorizable.
       //--------------------------------------------------------------------
       if (timers_enabled) timer_start(1);
 
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
   }
 
   print_results("EP", CLASS, M+1, 0, 0, nit,
-      tm, Mops, 
+      tm, Mops,
       "Random numbers generated",
       verified, NPBVERSION, COMPILETIME, CS1,
       CS2, CS3, CS4, CS5, CS6, CS7);

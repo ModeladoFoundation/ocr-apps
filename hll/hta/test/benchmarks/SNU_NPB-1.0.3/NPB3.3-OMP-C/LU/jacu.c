@@ -72,7 +72,7 @@ void jacu(int k)
         * ( - tx1 * r43 - ty1 - tz1 )
         * ( c34 * tmp2 * u[k][j][i][1] );
       du[j][i][1][1] =  1.0
-        + dt * 2.0 * c34 * tmp1 
+        + dt * 2.0 * c34 * tmp1
         * (  tx1 * r43 + ty1 + tz1 )
         + dt * 2.0 * ( tx1 * dx2 + ty1 * dy2 + tz1 * dz2 );
       du[j][i][2][1] = 0.0;
@@ -268,7 +268,7 @@ void jacu(int k)
         * ( c34 - c1345 ) * tmp2 * u[k][j+1][i][1];
       bu[j][i][2][4] =  dt * ty2
         * ( C1 * ( u[k][j+1][i][4] * tmp1 )
-            - C2 
+            - C2
             * ( qs[k][j+1][i] * tmp1
               + u[k][j+1][i][2]*u[k][j+1][i][2] * tmp2 ) )
         - dt * ty1

@@ -87,10 +87,10 @@ void rhs_norm(double rms[5])
         for (m = 0; m < 5; m++) {
           add = rhs[k][j][i][m];
           rms[m] = rms[m] + add*add;
-        } 
-      } 
-    } 
-  } 
+        }
+      }
+    }
+  }
 
   for (m = 0; m < 5; m++) {
     for (d = 0; d < 3; d++) {

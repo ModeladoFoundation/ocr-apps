@@ -87,7 +87,7 @@ void move()
         sje_new[iel][iside][1][0] = -1;
         sje_new[iel][iside][0][1] = -1;
         sje_new[iel][iside][1][1] = -1;
-      } 
+      }
     }
 
     copy(ta2[iel][0][0], ta1[i][0][0], NXYZ);

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#ifndef DBG_LVL 
+#ifndef DBG_LVL
 #define DBG_LVL (0)
 #endif
 

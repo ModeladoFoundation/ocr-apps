@@ -77,7 +77,7 @@ def afl_process_type(label, index, func_name, lower, step, upper, in_args):
 #	print "};"
 #	print ""
 
-	
+
 def output_node_entry(m):
 	"""This is the entry to a node. It schedules the parallel body of the
 	work."""

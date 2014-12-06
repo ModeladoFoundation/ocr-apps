@@ -300,7 +300,7 @@ def process_function(lines, lineno):
 			func_name = f.group(2)
 			in_args = f.group(3)
 			rest = f.group(4)
-			
+
 			if func_name == "pil_main":
 				g.PIL_MAIN = True
 				processing_pil_main = True
@@ -475,7 +475,7 @@ def make_targets(targets):
 			seen.append(target)
 		else:
 			warning("Caught a duplicate destination target '" + target + "'. Removing it.")
-	
+
 	return target_list
 
 
@@ -512,7 +512,7 @@ def handle_nodes(nodes):
 		g.functions[m['label']] = m['func_name']
 		g.intervals[m['label']] = {'lower': m['lower'], 'step': m['step'], 'upper': m['upper']}
 		g.targets[m['label']] = make_targets(m['targets'])
-		g.target_variables[m['label']] = m['cond'] 
+		g.target_variables[m['label']] = m['cond']
 
 	for m in split_nodes:
 		# store the input args so we can refer to their type later

@@ -22,6 +22,6 @@ ${PROGRAM}: config ${OBJS}
 cg.o:		cg.c  globals.h npbparams.h
 
 clean:
-	- rm -f *.o *~ 
+	- rm -f *.o *~
 	- rm -f npbparams.h core
 	- if [ -d rii_files ]; then rm -r rii_files; fi

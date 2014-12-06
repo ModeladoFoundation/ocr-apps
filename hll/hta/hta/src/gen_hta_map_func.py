@@ -1,4 +1,4 @@
-# This python script generates HTA_map functions that take different 
+# This python script generates HTA_map functions that take different
 # number of input arguments
 
 def gen_list_with_name(name, n, start = 1, postfix=''):
@@ -38,22 +38,22 @@ def gen_map_header(nh, ns = 0):
     op_name = gen_map_op_name(nh, ns)
     hlist = gen_hta_args_list(nh)
     slist = gen_scalar_args_list(ns)
- 
+
     s = 'void HTA_map_' + op_name[:-2] + '(int level, ' + op_type + ' ' + op_name + ', ' + ", ".join(hlist + slist) + ')'
     return s
-    
+
 def gen_map_exec_header(nh, ns = 0):
     op_type = gen_map_op_type(nh, ns)
     op_name = gen_map_op_name(nh, ns)
     hlist = gen_hta_args_list(nh)
     slist = gen_scalar_args_list(ns)
- 
+
     s = 'void _HTA_map_' + op_name[:-2] + '_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, int level, ' + op_type + ' ' + op_name + ')'
     return s
 
 def gen_node_decl(node_id, nh, ns = 0):
     op_name = gen_map_op_name(nh, ns)
- 
+
     s = "node(" + str(node_id) + ", idx, [0:1:bound], target_id, [0], _HTA_map_" + op_name[:-2] + "_exec(&target_id, index_array, data_array, bound, idx, level, " + op_name + "))"
     return s
 # =======================================================
@@ -84,7 +84,7 @@ def gen_map_function(node_id, nh, ns = 0):
     s += gen_code_line(gen_map_op_name(nh, ns) + "(" + ", ".join(hlist + slist) + ");", 2)
     s += gen_code_line("return;", 2)
     s += gen_code_line("}")
-    
+
     # get first level tiles and map to them in parallel
     s += gen_code_line("bound = Tuple_count_elements(h1->tiling, 1);")
     s += gen_code_line("int sz = HTA_get_scalar_size(h1);")
@@ -96,7 +96,7 @@ def gen_map_function(node_id, nh, ns = 0):
         s += gen_code_line("    pil_alloc(&s_darray[i], sz);")
         s += gen_code_line("    memcpy(s_darray[i].ptr, s1, sz);")
         s += gen_code_line("}")
-    
+
     # tile collection
     # countvars = gen_list_with_name("count", nh)
     # havars = gen_list_with_name("ha", nh)
@@ -194,7 +194,7 @@ def gen_map_exec_function(nh, ns = 0):
     s += gen_code_line("*target_id = 0;")
     s += gen_code_line("}", 0)
     return s
-    
+
 
 if __name__ == "__main__":
 

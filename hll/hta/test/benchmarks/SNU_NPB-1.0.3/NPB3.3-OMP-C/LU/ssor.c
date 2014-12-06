@@ -178,15 +178,15 @@ void ssor(int niter)
       blts( ISIZ1, ISIZ2, ISIZ3,
             nx, ny, nz, k,
             omega,
-            rsd, 
+            rsd,
             a, b, c, d,
-            ist, iend, jst, jend, 
+            ist, iend, jst, jend,
             nx0, ny0 );
       #pragma omp master
       if (timeron) timer_stop(t_blts);
     }
     #pragma omp barrier
- 
+
     for (k = nz - 2; k > 0; k--) {
       //---------------------------------------------------------------------
       // form the strictly upper triangular part of the jacobian matrix
@@ -254,19 +254,19 @@ void ssor(int niter)
                " RMS-norm of SSOR-iteration correction "
                "for fourth pde = %12.5E\n",
                " RMS-norm of SSOR-iteration correction "
-               "for fifth pde  = %12.5E\n", 
-               delunm[0], delunm[1], delunm[2], delunm[3], delunm[4]); 
+               "for fifth pde  = %12.5E\n",
+               delunm[0], delunm[1], delunm[2], delunm[3], delunm[4]);
       } else if ( ipr == 2 ) {
         printf("(%5d,%15.6f)\n", istep, delunm[4]);
       }
       */
     }
- 
+
     //---------------------------------------------------------------------
     // compute the steady-state residuals
     //---------------------------------------------------------------------
     rhs();
- 
+
     //---------------------------------------------------------------------
     // compute the max-norms of newton iteration residuals
     //---------------------------------------------------------------------
@@ -286,7 +286,7 @@ void ssor(int niter)
                " RMS-norm of steady-state residual for "
                "fourth pde = %12.5E\n"
                " RMS-norm of steady-state residual for "
-               "fifth pde  = %12.5E\n", 
+               "fifth pde  = %12.5E\n",
                rsdnm[0], rsdnm[1], rsdnm[2], rsdnm[3], rsdnm[4]);
       }
       */

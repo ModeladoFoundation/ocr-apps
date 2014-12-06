@@ -35,7 +35,7 @@
 #include "header.h"
 
 //---------------------------------------------------------------------
-// block-diagonal matrix-vector multiplication              
+// block-diagonal matrix-vector multiplication
 //---------------------------------------------------------------------
 void ninvr()
 {

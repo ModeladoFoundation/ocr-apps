@@ -36,7 +36,7 @@
 #include "type.h"
 
 //---------------------------------------------------------------------
-//  Note: please observe that in the routine conj_grad three 
+//  Note: please observe that in the routine conj_grad three
 //  implementations of the sparse matrix-vector multiply have
 //  been supplied.  The default matrix-vector multiply is not
 //  loop unrolled.  The alternate implementations are unrolled
@@ -48,7 +48,7 @@
 
 
 //---------------------------------------------------------------------
-//  Class specific parameters: 
+//  Class specific parameters:
 //  It appears here for reference only.
 //  These are their values, however, this info is imported in the npbparams.h
 //  include file, which is written by the sys/setparams.c program.

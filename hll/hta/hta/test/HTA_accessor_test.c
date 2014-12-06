@@ -23,7 +23,7 @@ int main()
 
     Dist dist;
     // create an empty shell
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, L1_WIDTH, L1_WIDTH), Tuple_create(2, L2_WIDTH, L2_WIDTH));
     // Print recursively
     HTA_print(h, 1);
@@ -59,7 +59,7 @@ int main()
 
     printf("Destroy h\n");
     HTA_destroy(h); // HTA destruction calls Tuple_destroy_all on its tiling
-  
+
     // Explicit destruction of accessor tuples are needed
     // because they are not used in HTA tiling information
     printf("Destroy z\n");

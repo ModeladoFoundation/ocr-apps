@@ -45,10 +45,10 @@ int main()
 
     // create an empty shell
     Dist dist;
-    HTA *a = HTA_create(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64, 
+    HTA *a = HTA_create(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, Tuple_create(2, MATRIX_WIDTH, 1)); // (M, 1) (1, M)
     HTA *b = HTA_create(2, 1, &flat_size2, 0, &dist, HTA_SCALAR_TYPE_UINT64, 0); // only 1 level
-    HTA *c = HTA_create(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64, 
+    HTA *c = HTA_create(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, Tuple_create(2, MATRIX_WIDTH, 1)); // (M, 1) (1, M)
 
     // create a 2D matrix

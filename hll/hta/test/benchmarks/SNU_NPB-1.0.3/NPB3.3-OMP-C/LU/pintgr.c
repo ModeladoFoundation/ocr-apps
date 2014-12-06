@@ -83,7 +83,7 @@ void pintgr()
 
   #pragma omp single
   frc1 = 0.0;
-  
+
   #pragma omp for reduction(+:frc1)
   for (j = jbeg; j < jfin1; j++) {
     for (i = ibeg; i < ifin1; i++) {

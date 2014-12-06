@@ -10,7 +10,7 @@ void REDUCE_SUM(HTA_SCALAR_TYPE stype, void* result, void* elem);
 void REDUCE_SUMSQUARE(HTA_SCALAR_TYPE stype, void* result, void* elem);
 void REDUCE_MAX(HTA_SCALAR_TYPE stype, void* result, void* elem);
 
-/// Increment all elements within dense HTA 
+/// Increment all elements within dense HTA
 void H1_INC(HTA * dest);
 void H1S1_MUL(HTA * h, void* scalar);
 void H1S1_INIT(HTA * h, void* scalar);

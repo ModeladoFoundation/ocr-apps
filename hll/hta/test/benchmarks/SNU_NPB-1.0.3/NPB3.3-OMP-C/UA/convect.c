@@ -38,16 +38,16 @@
 
 //---------------------------------------------------------
 // Advance the convection term using 4th order RK
-// 1.ta1 is solution from last time step 
+// 1.ta1 is solution from last time step
 // 2.the heat source is considered part of d/dx
 // 3.trhs is right hand side for the diffusion equation
 // 4.tmor is solution on mortar points, which will be used
-//   as the initial guess when advancing the diffusion term 
+//   as the initial guess when advancing the diffusion term
 //---------------------------------------------------------
 void convect(logical ifmortar)
 {
-  double alpha2, tempa[LX1][LX1][LX1], rdtime, pidivalpha; 
-  double dtx1, dtx2, dtx3, src, rk1[LX1][LX1][LX1]; 
+  double alpha2, tempa[LX1][LX1][LX1], rdtime, pidivalpha;
+  double dtx1, dtx2, dtx3, src, rk1[LX1][LX1][LX1];
   double rk2[LX1][LX1][LX1], rk3[LX1][LX1][LX1], rk4[LX1][LX1][LX1];
   double temp[LX1][LX1][LX1], subtime[3], xx0[3], yy0[3], zz0[3];
   double dtime2, r2, sum, xloc[LX1], yloc[LX1], zloc[LX1];
@@ -117,7 +117,7 @@ void convect(logical ifmortar)
           temp[k][j][i] = ta1[iel][k][j][i]+dtime2*rk1[k][j][i];
         }
       }
-    }        
+    }
 
     for (k = 0; k < LX1; k++) {
       for (j = 0; j < LX1; j++) {
@@ -149,7 +149,7 @@ void convect(logical ifmortar)
           tempa[k][j][i] = ta1[iel][k][j][i]+dtime2*rk2[k][j][i];
         }
       }
-    }        
+    }
 
     for (k = 0; k < LX1; k++) {
       for (j = 0; j < LX1; j++) {
@@ -181,7 +181,7 @@ void convect(logical ifmortar)
           temp[k][j][i] = ta1[iel][k][j][i]+dtime*rk3[k][j][i];
         }
       }
-    }        
+    }
 
     for (k = 0; k < LX1; k++) {
       for (j = 0; j < LX1; j++) {
@@ -214,7 +214,7 @@ void convect(logical ifmortar)
                            rk2[k][j][i]+2.0*rk3[k][j][i]+rk4[k][j][i]);
         }
       }
-    }        
+    }
 
     // apply boundary condition
     for (iside = 0; iside < NSIDES; iside++) {
@@ -232,7 +232,7 @@ void convect(logical ifmortar)
         }
       }
     }
-  } 
+  }
 
   // get mortar for intial guess for CG
   if (timeron) timer_start(t_transfb_c);

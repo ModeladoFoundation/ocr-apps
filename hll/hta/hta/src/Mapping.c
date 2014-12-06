@@ -9,12 +9,12 @@ Mapping* Mapping_create(int dim, int levels, int order, const Tuple *flat_size, 
     int i = 0;
     int num_tiles;
     int mem_space_used = 0;
-    
+
     ASSERT(scalar_size > 0);
 
     // get number of leaf tiles
     if(tiling)
-        num_tiles = Tuple_count_elements(tiling, tiling->height);  
+        num_tiles = Tuple_count_elements(tiling, tiling->height);
     else
         num_tiles = 1;
 
@@ -68,7 +68,7 @@ void Mapping_destroy(Mapping *m)
     Alloc_free_block(m);
 }
 
-void Mapping_print(Mapping *m) 
+void Mapping_print(Mapping *m)
 {
     printf("Mapping structure:\n");
     printf("order: %d\n", m->order);

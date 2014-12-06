@@ -93,7 +93,7 @@ void pil_alloc(gpp_t *g, size_t size)
 #endif
 }
 
-/* 
+/*
  * Return a pointer to the memory block's contents. Find the address of the
  * memory block with the corresponding id.
  */

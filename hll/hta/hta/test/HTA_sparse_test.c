@@ -40,7 +40,7 @@ int main()
 
     Dist dist;
     // create an empty shell
-    HTA *hs = HTA_sparse_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE, 
+    HTA *hs = HTA_sparse_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
             2, Tuple_create(2, L1_WIDTH, L1_WIDTH), Tuple_create(2, L2_WIDTH, L2_WIDTH));
 
     // Create sparse matrix in CSR format
@@ -64,12 +64,12 @@ int main()
     //Tuple_retain_all(flat_size);
     //Tuple_retain_all(ts);
     //HTA hd = HTA_create(2, 3, flat_size, ts, 0, dist, HTA_SCALAR_TYPE_DOUBLE); // Dense HTA operand
-    HTA *hd = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE, 
+    HTA *hd = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
             2, Tuple_create(2, L1_WIDTH, L1_WIDTH), Tuple_create(2, L2_WIDTH, L2_WIDTH));
     //Tuple_retain_all(flat_size);
     //Tuple_retain_all(ts);
     //HTA hr = HTA_create(2, 3, flat_size, ts, 0, dist, HTA_SCALAR_TYPE_DOUBLE); // for results
-    HTA *hr = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE, 
+    HTA *hr = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
             2, Tuple_create(2, L1_WIDTH, L1_WIDTH), Tuple_create(2, L2_WIDTH, L2_WIDTH));
     double A[MATRIX_WIDTH*MATRIX_WIDTH];
     double R[MATRIX_WIDTH*MATRIX_WIDTH];
@@ -89,7 +89,7 @@ int main()
 
     HTA_to_array(hr, R);
     printf("Result after pointwise multiplication:\n");
-    mat_print(MATRIX_WIDTH, R);    
+    mat_print(MATRIX_WIDTH, R);
 
     HTA_destroy(hs);
     HTA_destroy(hd);

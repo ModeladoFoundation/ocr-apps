@@ -51,11 +51,11 @@ int main()
 
     // create an empty shell
     Dist dist;
-    HTA *a = HTA_create_with_ts(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64, 
+    HTA *a = HTA_create_with_ts(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, &t0);
-    HTA *b = HTA_create_with_ts(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64, 
+    HTA *b = HTA_create_with_ts(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, &t0);
-    HTA *c = HTA_create_with_ts(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64, 
+    HTA *c = HTA_create_with_ts(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, &t0);
     // tmp is a place to store temporary value
     // There is no tiling for this 1 level HTA
@@ -104,7 +104,7 @@ int main()
                 printf("== block based matrix multiplication : tmp = a[%d][%d] * b[%d][%d]\n", i, k, k, j);
                 HTA_map_h3(0, H3_MATMUL, tmp, a_i_k, b_k_j);
                 //printf("== block based matrix addition : c[i][j] += tmp\n");
-                HTA_map_h3(0, H3_PWADD, c_i_j, c_i_j, tmp); 
+                HTA_map_h3(0, H3_PWADD, c_i_j, c_i_j, tmp);
             }
     // store the data from HTA to 1D array
     HTA_to_array(c, C);

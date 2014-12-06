@@ -78,7 +78,7 @@ static void zran3(void *oz, int nx1, int ny1, int nz1);
 //-------------------------------------------------------------------------c
 // These arrays are in common because they are quite large
 // and probably shouldn't be allocated on the stack. They
-// are always passed as subroutine args. 
+// are always passed as subroutine args.
 //-------------------------------------------------------------------------c
 /* commcon /noautom/ */
 //static double u[NR];
@@ -179,15 +179,15 @@ int hta_main(int argc, char *argv[])
     Class = 'S';
   } else if ( nx[lt] == 128 && nit == 4 ) {
     Class = 'W';
-  } else if ( nx[lt] == 256 && nit == 4 ) {  
+  } else if ( nx[lt] == 256 && nit == 4 ) {
     Class = 'A';
   } else if ( nx[lt] == 256 && nit == 20 ) {
     Class = 'B';
-  } else if ( nx[lt] == 512 && nit == 20 ) {  
+  } else if ( nx[lt] == 512 && nit == 20 ) {
     Class = 'C';
-  } else if ( nx[lt] == 1024 && nit == 50 ) {  
+  } else if ( nx[lt] == 1024 && nit == 50 ) {
     Class = 'D';
-  } else if ( nx[lt] == 2048 && nit == 50 ) {  
+  } else if ( nx[lt] == 2048 && nit == 50 ) {
     Class = 'E';
   } else {
     Class = 'U';
@@ -210,7 +210,7 @@ int hta_main(int argc, char *argv[])
   a[1] =  0.0;
   a[2] =  1.0/6.0;
   a[3] =  1.0/12.0;
-      
+
   if (Class == 'A' || Class == 'S' || Class =='W') {
     //---------------------------------------------------------------------
     // Coefficients for the S(a) smoother
@@ -340,9 +340,9 @@ int hta_main(int argc, char *argv[])
     mflops = 0.0;
   }
 
-  print_results("MG", Class, nx[lt], ny[lt], nz[lt], 
+  print_results("MG", Class, nx[lt], ny[lt], nz[lt],
                 nit, t,
-                mflops, "          floating point", 
+                mflops, "          floating point",
                 verified, NPBVERSION, COMPILETIME,
                 CS1, CS2, CS3, CS4, CS5, CS6, CS7);
 
@@ -374,35 +374,35 @@ int hta_main(int argc, char *argv[])
 
   return 0;
 }
- 
+
 
 static int pi[3]; // number of processors in each dimension
 void setup_HTA (int nprocs)
-{    
+{
   int di[3];
   int ov[3];
   int ng[MAXLEVEL+1][3];
   int k, ax;
   double log_p  = log((double)(nprocs)+0.0001)/log(2.0);
-  
+
   // calculate the number of processors in each dimension
   int dx     = (int)(log_p/3);
   pi[0] = (int) pow(2.0, dx);
   int dy     = (int)((log_p-dx)/2);
   pi[1]  = (int) pow (2.0, dy);
   pi[2]  = nprocs/(pi[0]*pi[1]);
-  
+
   ng[lt][0] = nx[lt];
   ng[lt][1] = ny[lt];
   ng[lt][2] = nz[lt];
-  
+
   // compute grid sizes for each level
   for (k = lt-1; k >= 1; k--) {
     for (ax = 0; ax < 3; ax++) {
       ng[k][ax] = ng[k+1][ax]/2;
     }
   }
-  
+
   for (k = lt; k >= 1; k--) {
     nx[k] = ng[k][0];
     ny[k] = ng[k][1];
@@ -428,7 +428,7 @@ void setup_HTA (int nprocs)
     {
         for(int i = 0; i < 3; i++)
         {
-            di[i] = pi[i]; 
+            di[i] = pi[i];
             ov[i] = di[i] * 2;
         }
     }
@@ -453,7 +453,7 @@ void setup_HTA (int nprocs)
     //Tuple_print(fs, 0);
     //printf("Size of leaves: ");
     //Tuple_print(r_HTA[k]->tiles[0]->flat_size, 0);
-      
+
     HTA_map_h1s1(HTA_LEAF_LEVEL(r_HTA[k]), H1S1_INIT, r_HTA[k], &zero);
     HTA_map_h1s1(HTA_LEAF_LEVEL(u_HTA[k]), H1S1_INIT, u_HTA[k], &zero);
   }
@@ -476,7 +476,7 @@ static void mg3P()
     j = k - 1;
     rprj3_HTA(r_HTA[k], r_HTA[j], k);
   }
-  
+
   k = lb;
   //---------------------------------------------------------------------
   // compute an approximate solution on the coarsest grid
@@ -510,7 +510,7 @@ static void mg3P()
   //
   // At this point, get the residual for the finest grid
   //
-  
+
   j = lt - 1;
   k = lt;
   interp_HTA(u_HTA[j], u_HTA[k], k);
@@ -523,12 +523,12 @@ static void mg3P()
 // psinv applies an approximate inverse as smoother:  u = u + Cr
 //
 // This  implementation costs  15A + 4M per result, where
-// A and M denote the costs of Addition and Multiplication.  
+// A and M denote the costs of Addition and Multiplication.
 // Presuming coefficient c(3) is zero (the NPB assumes this,
 // but it is thus not a general case), 2A + 1M may be eliminated,
 // resulting in 13A + 3M.
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  
+// Note that this vectorizes, and is also fine for cache
+// based machines.
 //---------------------------------------------------------------------
 static void psinv_on_leaves(HTA* r_tile, HTA* u_tile)
 {
@@ -586,13 +586,13 @@ static void psinv_HTA(HTA* r, HTA* u, int k)
 // resid computes the residual:  r = v - Au
 //
 // This  implementation costs  15A + 4M per result, where
-// A and M denote the costs of Addition (or Subtraction) and 
-// Multiplication, respectively. 
+// A and M denote the costs of Addition (or Subtraction) and
+// Multiplication, respectively.
 // Presuming coefficient a(1) is zero (the NPB assumes this,
 // but it is thus not a general case), 3A + 1M may be eliminated,
 // resulting in 12A + 3M.
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  
+// Note that this vectorizes, and is also fine for cache
+// based machines.
 //---------------------------------------------------------------------
 static void resid_HTA(HTA* u_HTA, HTA* v_HTA, HTA* r_HTA, int k)
 {
@@ -601,7 +601,7 @@ static void resid_HTA(HTA* u_HTA, HTA* v_HTA, HTA* r_HTA, int k)
   if (timeron) timer_stop(T_resid);
 
   //---------------------------------------------------------------------
-  // exchange boundary data 
+  // exchange boundary data
   //---------------------------------------------------------------------
   comm3_HTA(r_HTA);
   if (debug_vec[0] >= 1) {
@@ -652,13 +652,13 @@ static void resid_on_leaves(HTA* u_tile, HTA* v_tile, HTA* r_tile)
 
 
 //---------------------------------------------------------------------
-// rprj3 projects onto the next coarser grid, 
+// rprj3 projects onto the next coarser grid,
 // using a trilinear Finite Element projection:  s = r' = P r
-//     
+//
 // This  implementation costs  20A + 4M per result, where
-// A and M denote the costs of Addition and Multiplication.  
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  
+// A and M denote the costs of Addition and Multiplication.
+// Note that this vectorizes, and is also fine for cache
+// based machines.
 //---------------------------------------------------------------------
 static void rprj3_on_leaves(HTA* s_tile, HTA* r_tile) // s is the coarser one
 {
@@ -867,11 +867,11 @@ static void rprj3_HTA(HTA* r_HTA, HTA* s_HTA, int k)
 //---------------------------------------------------------------------
 // interp adds the trilinear interpolation of the correction
 // from the coarser grid to the current approximation:  u = u + Qu'
-//     
+//
 // Observe that this  implementation costs  16A + 4M, where
-// A and M denote the costs of Addition and Multiplication.  
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  Vector machines may get slightly better 
+// A and M denote the costs of Addition and Multiplication.
+// Note that this vectorizes, and is also fine for cache
+// based machines.  Vector machines may get slightly better
 // performance however, with 8 separate "do i1" loops, rather than 4.
 //---------------------------------------------------------------------
 static void interp_on_leaves(HTA* z_tile, HTA* u_tile)
@@ -956,24 +956,24 @@ static void interp_on_leaves(HTA* z_tile, HTA* u_tile)
     for (i3 = d3; i3 <= mm3-1; i3++) {
       for (i2 = d2; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-d2-1][2*i1-d1-1] = 
+          u[2*i3-d3-1][2*i2-d2-1][2*i1-d1-1] =
             u[2*i3-d3-1][2*i2-d2-1][2*i1-d1-1]
             + z[i3-1][i2-1][i1-1];
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-d2-1][2*i1-t1-1] = 
+          u[2*i3-d3-1][2*i2-d2-1][2*i1-t1-1] =
             u[2*i3-d3-1][2*i2-d2-1][2*i1-t1-1]
             + 0.5 * (z[i3-1][i2-1][i1] + z[i3-1][i2-1][i1-1]);
         }
       }
       for (i2 = 1; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-t2-1][2*i1-d1-1] = 
+          u[2*i3-d3-1][2*i2-t2-1][2*i1-d1-1] =
             u[2*i3-d3-1][2*i2-t2-1][2*i1-d1-1]
             + 0.5 * (z[i3-1][i2][i1-1] + z[i3-1][i2-1][i1-1]);
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-t2-1][2*i1-t1-1] = 
+          u[2*i3-d3-1][2*i2-t2-1][2*i1-t1-1] =
             u[2*i3-d3-1][2*i2-t2-1][2*i1-t1-1]
             + 0.25 * (z[i3-1][i2][i1] + z[i3-1][i2-1][i1]
                     + z[i3-1][i2][i1-1] + z[i3-1][i2-1][i1-1]);
@@ -984,12 +984,12 @@ static void interp_on_leaves(HTA* z_tile, HTA* u_tile)
     for (i3 = 1; i3 <= mm3-1; i3++) {
       for (i2 = d2; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-d2-1][2*i1-d1-1] = 
+          u[2*i3-t3-1][2*i2-d2-1][2*i1-d1-1] =
             u[2*i3-t3-1][2*i2-d2-1][2*i1-d1-1]
             + 0.5 * (z[i3][i2-1][i1-1] + z[i3-1][i2-1][i1-1]);
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-d2-1][2*i1-t1-1] = 
+          u[2*i3-t3-1][2*i2-d2-1][2*i1-t1-1] =
             u[2*i3-t3-1][2*i2-d2-1][2*i1-t1-1]
             + 0.25 * (z[i3  ][i2-1][i1] + z[i3  ][i2-1][i1-1]
                     + z[i3-1][i2-1][i1] + z[i3-1][i2-1][i1-1]);
@@ -997,13 +997,13 @@ static void interp_on_leaves(HTA* z_tile, HTA* u_tile)
       }
       for (i2 = 1; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-t2-1][2*i1-d1-1] = 
+          u[2*i3-t3-1][2*i2-t2-1][2*i1-d1-1] =
             u[2*i3-t3-1][2*i2-t2-1][2*i1-d1-1]
             + 0.25 * (z[i3  ][i2][i1-1] + z[i3  ][i2-1][i1-1]
                     + z[i3-1][i2][i1-1] + z[i3-1][i2-1][i1-1]);
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-t2-1][2*i1-t1-1] = 
+          u[2*i3-t3-1][2*i2-t2-1][2*i1-t1-1] =
             u[2*i3-t3-1][2*i2-t2-1][2*i1-t1-1]
             + 0.125 * (z[i3  ][i2][i1  ] + z[i3  ][i2-1][i1  ]
                      + z[i3  ][i2][i1-1] + z[i3  ][i2-1][i1-1]
@@ -1017,7 +1017,7 @@ static void interp_on_leaves(HTA* z_tile, HTA* u_tile)
 
 static void distribute_interp_results(HTA* dummy, HTA* u_tile, HTA* x_tile)
 {
-    // iterate through u_tile elements and add appropriate offset values 
+    // iterate through u_tile elements and add appropriate offset values
     // to get the interpolation results
 
     int n3 = u_tile->flat_size.values[0];
@@ -1037,7 +1037,7 @@ static void distribute_interp_results(HTA* dummy, HTA* u_tile, HTA* x_tile)
     Tuple_init_zero(&nd_idx, 3);
     Tuple_1d_to_nd_index(u_tile->rank, &nd_size, &nd_idx);
 
-    // FIXME: Assuming all tiles have the same dimensions. 
+    // FIXME: Assuming all tiles have the same dimensions.
     //        It will not work if tile size is not regular
     off3 = nd_idx.values[0] * (n3 - 2);
     off2 = nd_idx.values[1] * (n2 - 2);
@@ -1185,7 +1185,7 @@ static void rep_nrm(HTA* u_HTA, char *title, int kk)
 
 
 //---------------------------------------------------------------------
-// comm3 organizes the communication on all borders 
+// comm3 organizes the communication on all borders
 //---------------------------------------------------------------------
 
 // Actively write necessary boundaries from other neighbor tiles
@@ -1604,7 +1604,7 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
   // Now which of these are globally best?
   //---------------------------------------------------------------------
   i1 = mm - 1;
-  i0 = mm - 1; 
+  i0 = mm - 1;
   for (i = mm - 1; i >= 0; i--) {
     best = 0.0;
     if (best < ten[i1][1]) {
@@ -1662,9 +1662,9 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
     // must know which tile the element is and add correct offset to write to correct
     // location in overlapped tile
     // nd global index to tile index (of the original non overlapped HTA)
-    c.values[0] = jg[3][i][0]; 
-    c.values[1] = jg[2][i][0]; 
-    c.values[2] = jg[1][i][0]; 
+    c.values[0] = jg[3][i][0];
+    c.values[1] = jg[2][i][0];
+    c.values[2] = jg[1][i][0];
     HTA_nd_global_to_tile_index(&flat_size, nd_num_tiles, &c, &tile_nd_index, &tile_local_index);
     tile_local_index.values[0] += 1;
     tile_local_index.values[1] += 1;
@@ -1711,7 +1711,7 @@ static void showall(HTA* z_HTA)
         c.values[0] = i3;
         c.values[1] = i2;
         c.values[2] = i1;
-        
+
         double* ptr = HTA_flat_access(z_HTA, &c);
         printf("%6.3f", *ptr);
       }

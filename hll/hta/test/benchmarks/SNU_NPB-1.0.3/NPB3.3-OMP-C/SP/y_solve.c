@@ -52,11 +52,11 @@ void y_solve()
     lhsinitj(ny2+1, nx2);
 
     //---------------------------------------------------------------------
-    // Computes the left hand side for the three y-factors   
+    // Computes the left hand side for the three y-factors
     //---------------------------------------------------------------------
 
     //---------------------------------------------------------------------
-    // first fill the lhs for the u-eigenvalue         
+    // first fill the lhs for the u-eigenvalue
     //---------------------------------------------------------------------
     for (i = 1; i <= grid_points[0]-2; i++) {
       for (j = 0; j <= grid_points[1]-1; j++) {
@@ -75,7 +75,7 @@ void y_solve()
     }
 
     //---------------------------------------------------------------------
-    // add fourth order dissipation                             
+    // add fourth order dissipation
     //---------------------------------------------------------------------
     for (i = 1; i <= grid_points[0]-2; i++) {
       j = 1;
@@ -112,7 +112,7 @@ void y_solve()
     }
 
     //---------------------------------------------------------------------
-    // subsequently, for (the other two factors                    
+    // subsequently, for (the other two factors
     //---------------------------------------------------------------------
     for (j = 1; j <= grid_points[1]-2; j++) {
       for (i = 1; i <= grid_points[0]-2; i++) {
@@ -131,7 +131,7 @@ void y_solve()
 
 
     //---------------------------------------------------------------------
-    // FORWARD ELIMINATION  
+    // FORWARD ELIMINATION
     //---------------------------------------------------------------------
     for (j = 0; j <= grid_points[1]-3; j++) {
       j1 = j + 1;
@@ -157,7 +157,7 @@ void y_solve()
     }
 
     //---------------------------------------------------------------------
-    // The last two rows in this grid block are a bit different, 
+    // The last two rows in this grid block are a bit different,
     // since they for (not have two more rows available for the
     // elimination of off-diagonal entries
     //---------------------------------------------------------------------
@@ -176,7 +176,7 @@ void y_solve()
         rhs[k][j1][i][m] = rhs[k][j1][i][m] - lhs[j1][i][1]*rhs[k][j][i][m];
       }
       //---------------------------------------------------------------------
-      // scale the last row immediately 
+      // scale the last row immediately
       //---------------------------------------------------------------------
       fac2 = 1.0/lhs[j1][i][2];
       for (m = 0; m < 3; m++) {
@@ -185,7 +185,7 @@ void y_solve()
     }
 
     //---------------------------------------------------------------------
-    // for (the u+c and the u-c factors                 
+    // for (the u+c and the u-c factors
     //---------------------------------------------------------------------
     for (j = 0; j <= grid_points[1]-3; j++) {
       j1 = j + 1;
@@ -242,7 +242,7 @@ void y_solve()
       rhs[k][j1][i][m] = rhs[k][j1][i][m] - lhsm[j1][i][1]*rhs[k][j][i][m];
 
       //---------------------------------------------------------------------
-      // Scale the last row immediately 
+      // Scale the last row immediately
       //---------------------------------------------------------------------
       rhs[k][j1][i][3]   = rhs[k][j1][i][3]/lhsp[j1][i][2];
       rhs[k][j1][i][4]   = rhs[k][j1][i][4]/lhsm[j1][i][2];
@@ -250,7 +250,7 @@ void y_solve()
 
 
     //---------------------------------------------------------------------
-    // BACKSUBSTITUTION 
+    // BACKSUBSTITUTION
     //---------------------------------------------------------------------
     j  = grid_points[1]-2;
     j1 = grid_points[1]-1;
@@ -271,7 +271,7 @@ void y_solve()
       j2 = j + 2;
       for (i = 1; i <= grid_points[0]-2; i++) {
         for (m = 0; m < 3; m++) {
-          rhs[k][j][i][m] = rhs[k][j][i][m] - 
+          rhs[k][j][i][m] = rhs[k][j][i][m] -
                             lhs[j][i][3]*rhs[k][j1][i][m] -
                             lhs[j][i][4]*rhs[k][j2][i][m];
         }
@@ -279,10 +279,10 @@ void y_solve()
         //-------------------------------------------------------------------
         // And the remaining two
         //-------------------------------------------------------------------
-        rhs[k][j][i][3] = rhs[k][j][i][3] - 
+        rhs[k][j][i][3] = rhs[k][j][i][3] -
                           lhsp[j][i][3]*rhs[k][j1][i][3] -
                           lhsp[j][i][4]*rhs[k][j2][i][3];
-        rhs[k][j][i][4] = rhs[k][j][i][4] - 
+        rhs[k][j][i][4] = rhs[k][j][i][4] -
                           lhsm[j][i][3]*rhs[k][j1][i][4] -
                           lhsm[j][i][4]*rhs[k][j2][i][4];
       }

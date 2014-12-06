@@ -35,14 +35,14 @@
 #include "applu.incl"
 
 //---------------------------------------------------------------------
-// 
+//
 // compute the regular-sparse, block upper triangular solution:
-// 
+//
 // v <-- ( U-inv ) * v
-// 
+//
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
-// To improve cache performance, second two dimensions padded by 1 
+// To improve cache performance, second two dimensions padded by 1
 // for even number sizes only.  Only needed in v.
 //---------------------------------------------------------------------
 void buts(int ldmx, int ldmy, int ldmz, int nx, int ny, int nz, int k,
@@ -68,7 +68,7 @@ void buts(int ldmx, int ldmy, int ldmz, int nx, int ny, int nz, int k,
   for (j = jend - 1; j >= jst; j--) {
     for (i = iend - 1; i >= ist; i--) {
       for (m = 0; m < 5; m++) {
-        tv[j][i][m] = 
+        tv[j][i][m] =
           omega * (  udz[j][i][0][m] * v[k+1][j][i][0]
                    + udz[j][i][1][m] * v[k+1][j][i][1]
                    + udz[j][i][2][m] * v[k+1][j][i][2]

@@ -26,9 +26,9 @@ int main()
 
     Dist dist;
     // create an empty shell
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
-    HTA *h2 = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *h2 = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
 
     srand(time(NULL));

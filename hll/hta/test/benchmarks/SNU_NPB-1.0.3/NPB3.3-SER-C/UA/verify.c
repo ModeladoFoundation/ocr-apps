@@ -62,7 +62,7 @@ void verify(char *Class, logical *verified)
     *Class = 'U';
     norm_ref = 1.0;
     *verified = false;
-  }         
+  }
 
   norm_dif = fabs((norm - norm_ref)/norm_ref);
 
@@ -74,7 +74,7 @@ void verify(char *Class, logical *verified)
   if (*Class != 'U') {
     printf(" Verification being performed for class %c\n", *Class);
     printf(" accuracy setting for epsilon = %20.13E\n", epsilon);
-  } else { 
+  } else {
     printf(" Unknown class\n");
   }
 
@@ -88,7 +88,7 @@ void verify(char *Class, logical *verified)
     printf("          %20.13E\n", norm);
   } else if (norm_dif <= epsilon) {
     printf("          %20.13E%20.13E%20.13E\n", norm, norm_ref, norm_dif);
-  } else { 
+  } else {
     *verified = false;
     printf(" FAILURE: %20.13E%20.13E%20.13E\n", norm, norm_ref, norm_dif);
   }

@@ -103,7 +103,7 @@ void adaptation(logical *ifmortar, int step)
   // Perform coarsening repeatedly until all possible coarsening
   // is done.
 
-  // icoarsen records how many elements got coarsened 
+  // icoarsen records how many elements got coarsened
   icoarsen = 0;
 
   // skip[iel]=true indicates an element no longer exists (because it
@@ -113,24 +113,24 @@ void adaptation(logical *ifmortar, int step)
   neltold = nelt;
 
   // Check whether elements need to be coarsened because they don't have
-  // overlap with the heat source. Only elements that don't have a larger 
+  // overlap with the heat source. Only elements that don't have a larger
   // size neighbor can be marked to be coarsened
 
   while (true) {
     find_coarsen(&if_coarsen, neltold);
 
     if (if_coarsen) {
-      // Perform coarsening, however subject to restriction. Only possible 
+      // Perform coarsening, however subject to restriction. Only possible
       // coarsening will be performed. if_coarsen=true indicates that
       // actual coarsening happened
       do_coarsen(&if_coarsen, &icoarsen, neltold);
       if (if_coarsen) {
-        // ifmortar=true indicates the grid changed, i.e. the mortar points 
+        // ifmortar=true indicates the grid changed, i.e. the mortar points
         // indices need to be regenerated on the new grid.
         *ifmortar = true;
       } else {
         break;
-      } 
+      }
     }
   }
 
@@ -146,7 +146,7 @@ void adaptation(logical *ifmortar, int step)
     id_to_mt[iel] = miel;
   }
 
-  // Reorder the elements in the order of the morton curve. After the move 
+  // Reorder the elements in the order of the morton curve. After the move
   // subroutine the element indices are  the same as the morton indices
   move();
 
@@ -161,7 +161,7 @@ void adaptation(logical *ifmortar, int step)
 
 
 //---------------------------------------------------------------
-// Coarsening procedure: 
+// Coarsening procedure:
 // 1) check with restrictions
 // 2) perform coarsening
 //---------------------------------------------------------------
@@ -169,7 +169,7 @@ static void do_coarsen(logical *if_coarsen, int *icoarsen, int neltold)
 {
   logical test, test1, test2, test3;
   int iel, ntp[8], ic, parent, mielnew, miel;
-  int i, index, num_coarsen; 
+  int i, index, num_coarsen;
 
   *if_coarsen = false;
 
@@ -183,7 +183,7 @@ static void do_coarsen(logical *if_coarsen, int *icoarsen, int neltold)
   nr_init(mt_to_id, nelt, -1);
   l_init(ifcoa_id, neltold, false);
 
-  // Check whether the potential coarsening will make neighbor, 
+  // Check whether the potential coarsening will make neighbor,
   // and neighbor's neighbor....break grid restriction
   for (miel = 0; miel < nelt; miel++) {
     ifcoa[miel] = false;
@@ -193,8 +193,8 @@ static void do_coarsen(logical *if_coarsen, int *icoarsen, int neltold)
     if (ich[iel] == 2) {
 
       // If the current  element is the "first" child (front-left-
-      // bottom) of its parent (tree[iel] mod 8 equals 0), then 
-      // find all its neighbors. Check whether they are from the same 
+      // bottom) of its parent (tree[iel] mod 8 equals 0), then
+      // find all its neighbors. Check whether they are from the same
       // parent.
 
       ic = tree[iel];
@@ -235,7 +235,7 @@ static void do_coarsen(logical *if_coarsen, int *icoarsen, int neltold)
         // if the eight child elements are eligible to be coarsened
         // mark the first children ifcoa[miel]=true
         // mark them all ifcoa_id[]=true
-        // front[miel] will be used to calculate (potentially in parallel) 
+        // front[miel] will be used to calculate (potentially in parallel)
         //             how many elements with seuqnece numbers less than
         //             miel will be coarsened.
         // skip[]      marks that an element will no longer exist after merge.
@@ -251,9 +251,9 @@ static void do_coarsen(logical *if_coarsen, int *icoarsen, int neltold)
           }
           *if_coarsen = true;
         }
-      } 
-    } 
-  } 
+      }
+    }
+  }
 
   // compute front[iel], how many elements will be coarsened before iel
   // (including iel)
@@ -272,7 +272,7 @@ static void do_coarsen(logical *if_coarsen, int *icoarsen, int neltold)
       if (ifcoa[miel]) {
         action[front[miel]-1] = miel;
         mielnew = miel-(front[miel]-1)*7;
-      } else { 
+      } else {
         mielnew = miel-front[miel]*7;
       }
       mt_to_id[mielnew] = iel;
@@ -360,7 +360,7 @@ static void do_refine(logical *ifmortar, int *irefine)
   }
 
 
-  // Perform refinement (potentially in parallel): 
+  // Perform refinement (potentially in parallel):
   // - Cut an element into eight children.
   // - Assign them element index  as iel, nelt+1,...., nelt+7.
   // - Update neighboring information.
@@ -424,7 +424,7 @@ static void do_refine(logical *ifmortar, int *irefine)
     for (j = 0; j < 7; j += 2) {
       for (i = 0; i < 7; i += 2) {
         xc[nelt+j][i]   = xhalf;
-        xc[nelt+j][i+1] = xright; 
+        xc[nelt+j][i+1] = xright;
       }
     }
 
@@ -500,7 +500,7 @@ static void do_refine(logical *ifmortar, int *irefine)
     // update the children's neighbor information
 
     // ndir refers to the x,y,z directions, respectively.
-    // facedir refers to the orientation of the face in each direction, 
+    // facedir refers to the orientation of the face in each direction,
     // e.g. ndir=0, facedir=0 refers to face 1,
     // and ndir =0, facedir=1 refers to face 2.
 
@@ -521,7 +521,7 @@ static void do_refine(logical *ifmortar, int *irefine)
         } else {
           ne[0] = iel;
         }
-        // update neighbor information of the four child elements on each 
+        // update neighbor information of the four child elements on each
         // face of the parent element
         for (k = 0; k < 4; k++) {
           cbc[le[k]][i] = 2;
@@ -602,8 +602,8 @@ static void do_refine(logical *ifmortar, int *irefine)
             cbc[ne[k]][i] = cb;
           }
         }
-      } 
-    } 
+      }
+    }
 
     // map solution from parent element to children
     remap(ta1[iel], &ta1[ref_front_id[iel]], ta1temp);
@@ -616,8 +616,8 @@ static void do_refine(logical *ifmortar, int *irefine)
 
 
 //-----------------------------------------------------------
-// returns whether element n1's face i and element n2's 
-// jjface[iface] have intersections, i.e. whether n1 and 
+// returns whether element n1's face i and element n2's
+// jjface[iface] have intersections, i.e. whether n1 and
 // n2 are neighbored by an edge.
 //-----------------------------------------------------------
 static logical ifcor(int n1, int n2, int i, int iface)
@@ -851,7 +851,7 @@ static logical iftouch(int iel)
 //-----------------------------------------------------------------
 // After a refinement, map the solution  from the parent (x) to
 // the eight children. y is the solution on the first child
-// (front-bottom-left) and y1 is the solution on the next 7 
+// (front-bottom-left) and y1 is the solution on the next 7
 // children.
 //-----------------------------------------------------------------
 static void remap(double y[LX1][LX1][LX1], double y1[7][LX1][LX1][LX1],
@@ -878,13 +878,13 @@ static void remap(double y[LX1][LX1][LX1], double y1[7][LX1][LX1][LX1],
     for (kk = 0; kk < LX1; kk++) {
       for (jj = 0; jj < LX1; jj++) {
         for (ii = 0; ii < LX1; ii++) {
-          ytwo[0][jj][i][ii] = ytwo[0][jj][i][ii] + 
+          ytwo[0][jj][i][ii] = ytwo[0][jj][i][ii] +
                                yone[0][i][kk][ii]*ixtmc1[jj][kk];
-          ytwo[1][jj][i][ii] = ytwo[1][jj][i][ii] + 
+          ytwo[1][jj][i][ii] = ytwo[1][jj][i][ii] +
                                yone[0][i][kk][ii]*ixtmc2[jj][kk];
-          ytwo[2][jj][i][ii] = ytwo[2][jj][i][ii] + 
+          ytwo[2][jj][i][ii] = ytwo[2][jj][i][ii] +
                                yone[1][i][kk][ii]*ixtmc1[jj][kk];
-          ytwo[3][jj][i][ii] = ytwo[3][jj][i][ii] + 
+          ytwo[3][jj][i][ii] = ytwo[3][jj][i][ii] +
                                yone[1][i][kk][ii]*ixtmc2[jj][kk];
         }
       }
@@ -910,7 +910,7 @@ static void remap(double y[LX1][LX1][LX1], double y1[7][LX1][LX1][LX1],
           y1[5][jj][iz][ii] = y1[5][jj][iz][ii] +
                               ytwo[1][iz][kk][ii]*ixtmc2[jj][kk];
           y1[6][jj][iz][ii] = y1[6][jj][iz][ii] +
-                              ytwo[3][iz][kk][ii]*ixtmc2[jj][kk];           
+                              ytwo[3][iz][kk][ii]*ixtmc2[jj][kk];
         }
       }
     }
@@ -919,8 +919,8 @@ static void remap(double y[LX1][LX1][LX1], double y1[7][LX1][LX1][LX1],
 
 
 //-----------------------------------------------------------------------
-// This subroutine is to merge the eight child elements and map 
-// the solution from eight children to the  merged element. 
+// This subroutine is to merge the eight child elements and map
+// the solution from eight children to the  merged element.
 // iela array records the eight elements to be merged.
 //-----------------------------------------------------------------------
 static void merging(int iela[8])
@@ -932,7 +932,7 @@ static void merging(int iela[8])
 
   tree[ielnew] = tree[ielnew] >> 3;
 
-  // element vertices 
+  // element vertices
   x1 = xc[iela[0]][0];
   x2 = xc[iela[1]][1];
   y1 = yc[iela[0]][0];
@@ -978,7 +978,7 @@ static void merging(int iela[8])
           ntemp = sje[sje[ntempa[0]][i][0][0]][i][0][0];
         } else {
           ntemp = sje[ntempa[0]][i][0][0];
-        } 
+        }
         sje[ielnew][i][0][0] = ntemp;
         ijel[ielnew][i][0] = 0;
         ijel[ielnew][i][1] = 0;
@@ -997,7 +997,7 @@ static void merging(int iela[8])
           ijel[ielnew][i][1] = 0;
         }
         cbc[ielnew][i] = 3;
-      }       
+      }
     } else if (cb == 1) {
 
       ntemp = sje[ielold][i][0][0];

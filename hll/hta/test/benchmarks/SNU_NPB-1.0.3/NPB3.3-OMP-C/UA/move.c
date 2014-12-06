@@ -48,7 +48,7 @@ void move()
   nr_init_omp((int *)ijel_new, n2, -1);
 
   #pragma omp parallel default(shared) private(iel,i,iside,jface,cb,ntemp, \
-                                               ii1,ii2) 
+                                               ii1,ii2)
   {
   #pragma omp for
   for (iel = 0; iel < nelt; iel++) {
@@ -93,7 +93,7 @@ void move()
         sje_new[iel][iside][1][0] = -1;
         sje_new[iel][iside][0][1] = -1;
         sje_new[iel][iside][1][1] = -1;
-      } 
+      }
     }
 
     copy(ta2[iel][0][0], ta1[i][0][0], NXYZ);

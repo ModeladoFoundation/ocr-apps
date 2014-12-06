@@ -37,11 +37,11 @@
 #include "header.h"
 
 //---------------------------------------------------------------------
-// verification routine                         
+// verification routine
 //---------------------------------------------------------------------
 void verify(int no_time_steps, char *Class, logical *verified)
 {
-  double xcrref[5], xceref[5], xcrdif[5], xcedif[5]; 
+  double xcrref[5], xceref[5], xcrdif[5], xcedif[5];
   double epsilon, xce[5], xcr[5], dtref = 0.0;
   int m;
 
@@ -98,7 +98,7 @@ void verify(int no_time_steps, char *Class, logical *verified)
     xceref[4] = 8.9269630987491446e-04;
 
     //---------------------------------------------------------------------
-    // reference data for 24X24X24 grids after 200 time steps, 
+    // reference data for 24X24X24 grids after 200 time steps,
     // with DT = 0.8e-3
     //---------------------------------------------------------------------
   } else if ( (grid_points[0] == 24) && (grid_points[1] == 24) &&
@@ -125,7 +125,7 @@ void verify(int no_time_steps, char *Class, logical *verified)
     xceref[4] = 0.1018045837718e+02;
 
     //---------------------------------------------------------------------
-    // reference data for 64X64X64 grids after 200 time steps, 
+    // reference data for 64X64X64 grids after 200 time steps,
     // with DT = 0.8e-3
     //---------------------------------------------------------------------
   } else if ( (grid_points[0] == 64) && (grid_points[1] == 64) &&
@@ -268,7 +268,7 @@ void verify(int no_time_steps, char *Class, logical *verified)
   }
 
   //---------------------------------------------------------------------
-  // verification test for residuals if gridsize is one of 
+  // verification test for residuals if gridsize is one of
   // the defined grid sizes above (*Class != 'U')
   //---------------------------------------------------------------------
 
@@ -287,11 +287,11 @@ void verify(int no_time_steps, char *Class, logical *verified)
     printf(" Verification being performed for class %c\n", *Class);
     printf(" accuracy setting for epsilon = %20.13E\n", epsilon);
     *verified = (fabs(dt-dtref) <= epsilon);
-    if (!(*verified)) {  
+    if (!(*verified)) {
       *Class = 'U';
       printf(" DT does not match the reference value of %15.8E\n", dtref);
     }
-  } else { 
+  } else {
     printf(" Unknown class\n");
   }
 
@@ -305,9 +305,9 @@ void verify(int no_time_steps, char *Class, logical *verified)
     if (*Class == 'U') {
       printf("          %2d%20.13E\n", m+1, xcr[m]);
     } else if (xcrdif[m] <= epsilon) {
-      printf("          %2d%20.13E%20.13E%20.13E\n", 
+      printf("          %2d%20.13E%20.13E%20.13E\n",
           m+1, xcr[m], xcrref[m], xcrdif[m]);
-    } else { 
+    } else {
       *verified = false;
       printf(" FAILURE: %2d%20.13E%20.13E%20.13E\n",
           m+1, xcr[m], xcrref[m], xcrdif[m]);
@@ -324,7 +324,7 @@ void verify(int no_time_steps, char *Class, logical *verified)
     if (*Class == 'U') {
       printf("          %2d%20.13E\n", m+1, xce[m]);
     } else if (xcedif[m] <= epsilon) {
-      printf("          %2d%20.13E%20.13E%20.13E\n", 
+      printf("          %2d%20.13E%20.13E%20.13E\n",
           m+1, xce[m], xceref[m], xcedif[m]);
     } else {
       *verified = false;

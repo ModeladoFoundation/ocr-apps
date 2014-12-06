@@ -16,18 +16,18 @@ int main()
 {
     int i;
     double *M, *R;
-    
+
     int dim_reduc = (argc == 1) ? 0 : atoi(argv[1]);
-    
+
     Tuple flat_size = Tuple_create(2, 8, 8);
 
     Dist dist;
     // create an empty shell
-    HTA* h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE, 
+    HTA* h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
             2, Tuple_create(2, 2, 2), Tuple_create(2, 2, 2));
 
     srand(time(NULL));
-    
+
     // Create a 2D matrix
     int matrix_size = Tuple_product(&flat_size);
     M = (double *) malloc(matrix_size * sizeof(double));
@@ -36,19 +36,19 @@ int main()
     }
     // Initialize the HTA using 2D matrix
     HTA_init_with_array(h, M);
-    
+
     double initval = 0.0;
     // Partial reduction along dim_reduc
     // TODO: HTA_partial_reduction_dim(operation, h, dim_reduc)
     HTA* r = HTA_partial_reduce(REDUCE_MAX, h, dim_reduc, &initval);
-    
+
     assert(r);
     // Print the result
     matrix_size = Tuple_product(&r->flat_size);
     R = (double *) malloc(matrix_size * sizeof(double));
     HTA_to_array(r, R);
     for(i = 0; i < matrix_size; i++) printf("(%d) %lf \n", i, R[i]);
-    
+
     for(i = 0; i < matrix_size; i++)
     {
         double v = (!dim_reduc) ? (56 + i + 1) : (8 * (i+1));

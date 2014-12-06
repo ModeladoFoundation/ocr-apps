@@ -51,9 +51,9 @@ static dcomplex scr[MAXDIM][BLOCKMAX+1];
 
 //---------------------------------------------------------------------
 // Computes NY N-point complex-to-complex FFTs of X using an algorithm due
-// to Swarztrauber.  X is both the input and the output array, while Y is a 
-// scratch array.  It is assumed that N = 2^M.  Before calling 
-// Swarztrauber to 
+// to Swarztrauber.  X is both the input and the output array, while Y is a
+// scratch array.  It is assumed that N = 2^M.  Before calling
+// Swarztrauber to
 // perform FFTs
 //---------------------------------------------------------------------
 static void Swarztrauber(int is, int m, int vlen, int n, int xd1,

@@ -109,10 +109,10 @@ void rhs_norm(double rms[5])
           for (m = 0; m < 5; m++) {
             add = rhs[k][j][i][m];
             rms_local[m] = rms_local[m] + add*add;
-          } 
-        } 
-      } 
-    } 
+          }
+        }
+      }
+    }
     for (m = 0; m < 5; m++) {
       #pragma omp atomic
       rms[m] += rms_local[m];

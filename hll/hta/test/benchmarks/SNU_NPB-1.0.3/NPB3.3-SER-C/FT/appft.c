@@ -59,14 +59,14 @@ void appft(int niter, double *total_time, logical *verified, char CLASS)
 
   for (i = 1; i <= 15; i++) {
     timer_clear(i);
-  }         
+  }
 
-  timer_start(2);      
+  timer_start(2);
   compute_initial_conditions(NX, NY, NZ, xnt);
 
   CompExp(NX, exp1);
   CompExp(NY, exp2);
-  CompExp(NZ, exp3);          
+  CompExp(NZ, exp3);
   fftXYZ(1, NX, NY, NZ, xnt, (dcomplex *)y, exp1, exp2, exp3);
   timer_stop(2);
 

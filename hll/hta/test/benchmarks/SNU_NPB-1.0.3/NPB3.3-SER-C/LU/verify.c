@@ -36,9 +36,9 @@
 #include "applu.incl"
 
 //---------------------------------------------------------------------
-// verification routine                         
+// verification routine
 //---------------------------------------------------------------------
-void verify(double xcr[5], double xce[5], double xci, 
+void verify(double xcr[5], double xce[5], double xci,
             char *Class, logical *verified)
 {
   double xcrref[5], xceref[5], xciref;
@@ -75,7 +75,7 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 3.4264073155896461e-02;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, 
+    // Reference values of RMS-norms of solution error,
     // for the (12X12X12) grid,
     // after 50 time steps, with  DT = 5.0e-01
     //---------------------------------------------------------------------
@@ -106,7 +106,7 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 0.2826799444189e+02;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, 
+    // Reference values of RMS-norms of solution error,
     // for the (33X33X33) grid,
     //---------------------------------------------------------------------
     xceref[0] = 0.4867877144216e+00;
@@ -136,7 +136,7 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 1.8384760349464247e+03;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, 
+    // Reference values of RMS-norms of solution error,
     // for the (64X64X64) grid,
     // after 250 time steps, with  DT = 2.0e+00
     //---------------------------------------------------------------------
@@ -168,7 +168,7 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 7.3087969592545314e+03;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, for the (102X102X102) 
+    // Reference values of RMS-norms of solution error, for the (102X102X102)
     // grid, after 250 time steps, with  DT = 2.0e+00
     //---------------------------------------------------------------------
     xceref[0] = 1.1401176380212709e+02;
@@ -199,7 +199,7 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 1.78078057261061185e+04;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, for the (162X162X162) 
+    // Reference values of RMS-norms of solution error, for the (162X162X162)
     // grid, after 250 time steps, with  DT = 2.0e+00
     //---------------------------------------------------------------------
     xceref[0] = 2.15986399716949279e+02;
@@ -236,7 +236,7 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 0.7142398413817e+05;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, for the (408X408X408) 
+    // Reference values of RMS-norms of solution error, for the (408X408X408)
     // grid, after 300 time steps, with  DT = 1.0e+00
     //---------------------------------------------------------------------
     xceref[0] = 0.3752393004482e+03;
@@ -251,14 +251,14 @@ void verify(double xcr[5], double xce[5], double xci,
     //---------------------------------------------------------------------
     xciref =    0.8334101392503e+02;
 
-  } else if ((nx0 == 1020) && (ny0 == 1020) && (nz0 == 1020) && 
+  } else if ((nx0 == 1020) && (ny0 == 1020) && (nz0 == 1020) &&
              (itmax == 300)) {
 
     *Class = 'E';
     dtref = 0.5e+0;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of residual, 
+    // Reference values of RMS-norms of residual,
     // for the (1020X1020X1020) grid,
     // after 300 time steps, with  DT = 0.5e+00
     //---------------------------------------------------------------------
@@ -269,8 +269,8 @@ void verify(double xcr[5], double xce[5], double xci,
     xcrref[4] = 0.2932360006590e+06;
 
     //---------------------------------------------------------------------
-    // Reference values of RMS-norms of solution error, 
-    // for the (1020X1020X1020) 
+    // Reference values of RMS-norms of solution error,
+    // for the (1020X1020X1020)
     // grid, after 300 time steps, with  DT = 0.5e+00
     //---------------------------------------------------------------------
     xceref[0] = 0.4800572578333e+03;
@@ -290,7 +290,7 @@ void verify(double xcr[5], double xce[5], double xci,
   }
 
   //---------------------------------------------------------------------
-  // verification test for residuals if gridsize is one of 
+  // verification test for residuals if gridsize is one of
   // the defined grid sizes above (*Class != 'U')
   //---------------------------------------------------------------------
 
@@ -315,7 +315,7 @@ void verify(double xcr[5], double xce[5], double xci,
       *Class = 'U';
       printf(" DT does not match the reference value of %15.8E\n", dtref);
     }
-  } else { 
+  } else {
     printf(" Unknown class\n");
   }
 
@@ -329,9 +329,9 @@ void verify(double xcr[5], double xce[5], double xci,
     if (*Class == 'U') {
       printf("          %2d  %20.13E\n", m+1, xcr[m]);
     } else if (xcrdif[m] <= epsilon) {
-      printf("          %2d  %20.13E%20.13E%20.13E\n", 
+      printf("          %2d  %20.13E%20.13E%20.13E\n",
           m+1 ,xcr[m], xcrref[m], xcrdif[m]);
-    } else { 
+    } else {
       *verified = false;
       printf(" FAILURE: %2d  %20.13E%20.13E%20.13E\n",
           m+1, xcr[m], xcrref[m], xcrdif[m]);
@@ -348,7 +348,7 @@ void verify(double xcr[5], double xce[5], double xci,
     if (*Class == 'U') {
       printf("          %2d  %20.13E\n", m+1, xce[m]);
     } else if (xcedif[m] <= epsilon) {
-      printf("          %2d  %20.13E%20.13E%20.13E\n", 
+      printf("          %2d  %20.13E%20.13E%20.13E\n",
           m+1, xce[m], xceref[m], xcedif[m]);
     } else {
       *verified = false;

@@ -46,19 +46,19 @@ int grid_points[3], nx2, ny2, nz2;
 logical timeron;
 
 /* common /constants/ */
-double tx1, tx2, tx3, ty1, ty2, ty3, tz1, tz2, tz3, 
-       dx1, dx2, dx3, dx4, dx5, dy1, dy2, dy3, dy4, 
-       dy5, dz1, dz2, dz3, dz4, dz5, dssp, dt, 
-       ce[5][13], dxmax, dymax, dzmax, xxcon1, xxcon2, 
+double tx1, tx2, tx3, ty1, ty2, ty3, tz1, tz2, tz3,
+       dx1, dx2, dx3, dx4, dx5, dy1, dy2, dy3, dy4,
+       dy5, dz1, dz2, dz3, dz4, dz5, dssp, dt,
+       ce[5][13], dxmax, dymax, dzmax, xxcon1, xxcon2,
        xxcon3, xxcon4, xxcon5, dx1tx1, dx2tx1, dx3tx1,
        dx4tx1, dx5tx1, yycon1, yycon2, yycon3, yycon4,
        yycon5, dy1ty1, dy2ty1, dy3ty1, dy4ty1, dy5ty1,
-       zzcon1, zzcon2, zzcon3, zzcon4, zzcon5, dz1tz1, 
-       dz2tz1, dz3tz1, dz4tz1, dz5tz1, dnxm1, dnym1, 
-       dnzm1, c1c2, c1c5, c3c4, c1345, conz1, c1, c2, 
+       zzcon1, zzcon2, zzcon3, zzcon4, zzcon5, dz1tz1,
+       dz2tz1, dz3tz1, dz4tz1, dz5tz1, dnxm1, dnym1,
+       dnzm1, c1c2, c1c5, c3c4, c1345, conz1, c1, c2,
        c3, c4, c5, c4dssp, c5dssp, dtdssp, dttx1, bt,
-       dttx2, dtty1, dtty2, dttz1, dttz2, c2dttx1, 
-       c2dtty1, c2dttz1, comz1, comz4, comz5, comz6, 
+       dttx2, dtty1, dtty2, dttz1, dttz2, c2dttx1,
+       c2dtty1, c2dttz1, comz1, comz4, comz5, comz6,
        c3c4tx3, c3c4ty3, c3c4tz3, c2iv, con43, con16;
 
 /* common /fields/ */
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
     grid_points[2] = PROBLEM_SIZE;
   }
 
-  printf(" Size: %4dx%4dx%4d\n", 
+  printf(" Size: %4dx%4dx%4d\n",
       grid_points[0], grid_points[1], grid_points[2]);
   printf(" Iterations: %4d    dt: %10.6f\n", niter, dt);
   printf("\n");
@@ -205,10 +205,10 @@ int main(int argc, char *argv[])
     mflops = 0.0;
   }
 
-  print_results("SP", Class, grid_points[0], 
-                grid_points[1], grid_points[2], niter, 
-                tmax, mflops, "          floating point", 
-                verified, NPBVERSION,COMPILETIME, CS1, CS2, CS3, CS4, CS5, 
+  print_results("SP", Class, grid_points[0],
+                grid_points[1], grid_points[2], niter,
+                tmax, mflops, "          floating point",
+                verified, NPBVERSION,COMPILETIME, CS1, CS2, CS3, CS4, CS5,
                 CS6, "(none)");
 
   //---------------------------------------------------------------------
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 
     printf("  SECTION   Time (secs)\n");
     for (i = 1; i <= t_last; i++) {
-      printf("  %-8s:%9.3f  (%6.2f%%)\n", 
+      printf("  %-8s:%9.3f  (%6.2f%%)\n",
           t_names[i], trecs[i], trecs[i]*100./tmax);
       if (i == t_rhs) {
         t = trecs[t_rhsx] + trecs[t_rhsy] + trecs[t_rhsz];

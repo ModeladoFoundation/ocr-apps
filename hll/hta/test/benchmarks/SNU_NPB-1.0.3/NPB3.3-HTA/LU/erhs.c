@@ -43,13 +43,13 @@
 void erhs_HTA()
 {
   double zero = 0.0;
-  
+
   HTA_map_h1s1(HTA_LEAF_LEVEL(frct_HTA), H1S1_INIT, frct_HTA, &zero);
-  
+
   HTA_map_h1(HTA_LEAF_LEVEL(rsd_HTA), erhs_init_ce_HTA, rsd_HTA);
 
   HTA_map_h2(HTA_LEAF_LEVEL(frct_HTA), erhs_flux_HTA, frct_HTA, rsd_HTA);
-  
+
   sync_boundary(frct_HTA);
 
 }
@@ -57,7 +57,7 @@ void erhs_HTA()
 //void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
 void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 {
-  
+
   //---------------------------------------------------------------------
   // local variables
   //---------------------------------------------------------------------
@@ -72,25 +72,25 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
   double u21jm1, u31jm1, u41jm1, u51jm1;
   double u21km1, u31km1, u41km1, u51km1;
   double flux_temp[ISIZ1+4][5];
-  
+
   int i_first, j_first, k_first, i_last, j_last, k_last;
   int x, y, z;
-  
+
   int nm_tile = s1_tile->flat_size.values[3]; // Always 5
   int nx_tile = s1_tile->flat_size.values[2];
   int ny_tile = s1_tile->flat_size.values[1];
   int nz_tile = s1_tile->flat_size.values[0];
-  
+
   // Get global tile nd_index first
   //Tuple* nd_size = s2->tiling; // tile dimensions
   Tuple nd_size = s1_tile->nd_tile_dimensions;
   Tuple nd_idx = s1_tile->nd_rank;
   //Tuple_init_zero(&nd_idx, 4); // this tile index
   //Tuple_1d_to_nd_index(s1_tile->rank, nd_size, &nd_idx);
-  
+
   double (*frct_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(d_tile);
   double (*rsd_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(s1_tile);
-  
+
   x = nd_idx.values[2];
   y = nd_idx.values[1];
   z = nd_idx.values[0];
@@ -107,13 +107,13 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
   else j_last = ny_tile - 2;
   if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // Next to last element
   else k_last = nz_tile - 2;
-  
-  for (k = k_first; k < k_last; k++) { // Original: k = 1; k < nz - 1; 
+
+  for (k = k_first; k < k_last; k++) { // Original: k = 1; k < nz - 1;
     for (j = j_first; j < j_last; j++) { // Original: j = jst; j < jend;
-         
+
       i_first = 1; // Because later flux[i-1] and flux[i+1] is required
       i_last = nx_tile - 1;// Because later flux[i-1] and flux[i+1] is required
-      
+
       for (i = i_first; i < i_last; i++) { // Original: i = 0; i < nx;
         flux_temp[i][0] = rsd_tile[k][j][i][1];
         u21 = rsd_tile[k][j][i][1] / rsd_tile[k][j][i][0];
@@ -126,24 +126,24 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
         flux_temp[i][3] = rsd_tile[k][j][i][3] * u21;
         flux_temp[i][4] = ( C1 * rsd_tile[k][j][i][4] - C2 * q ) * u21;
       }
-      
+
       if (x == 0) i_first = 3; // 2nd element
       else i_first = 2;
       if (x == nd_size.values[2] - 1) i_last = nx_tile - 3; // Next to last element
       else i_last = nx_tile - 2;
-      
+
       for (i = i_first; i < i_last; i++) { // Original: i = ist; i < iend
         for (m = 0; m < 5; m++) {
           frct_tile[k][j][i][m] =  frct_tile[k][j][i][m]
                     - tx2 * ( flux_temp[i+1][m] - flux_temp[i-1][m] );
         }
       }
-      
+
       if (x == 0) i_first = 3; // 2nd element
       else i_first = 2;
       i_last = nx_tile - 1; // Because later flux[i+1] is required
-      
-      for (i = i_first; i < i_last; i++) { // Original: i = ist; i < nx 
+
+      for (i = i_first; i < i_last; i++) { // Original: i = ist; i < nx
         tmp = 1.0 / rsd_tile[k][j][i][0];
 
         u21i = tmp * rsd_tile[k][j][i][1];
@@ -171,7 +171,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 
       if (x == nd_size.values[2] - 1) i_last = nx_tile - 3;
       else i_last = nx_tile -2;
-      
+
       for (i = i_first; i < i_last; i++) { // Original: i = ist; i < iend;
         frct_tile[k][j][i][0] = frct_tile[k][j][i][0]
           + dx1 * tx1 * (        rsd_tile[k][j][i-1][0]
@@ -218,9 +218,9 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 
       if (x == 0) i_first = 5; // 4th element
       else i_first = 2;
-      if (x == nd_size.values[2] - 1) i_last = nx_tile - 5; 
+      if (x == nd_size.values[2] - 1) i_last = nx_tile - 5;
       else i_last = nx_tile - 2;
-      
+
       for (i = i_first; i < i_last; i++) { // Original: i = 3; i < nx - 3;
         for (m = 0; m < 5; m++) {
           frct_tile[k][j][i][m] = frct_tile[k][j][i][m]
@@ -246,10 +246,10 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 		      + 5.0 * rsd_tile[k][j][i_last-2][m] );
 	}
       }
-      
+
     }
   }
-  
+
   //---------------------------------------------------------------------
   // eta-direction flux differences
   //---------------------------------------------------------------------
@@ -262,13 +262,13 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
   else i_last = nx_tile - 2;
   if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // Next to last element
   else k_last = nz_tile - 2;
-   
+
   for (k = k_first; k < k_last; k++) {
      for (i = i_first; i < i_last; i++) {
-       
+
       j_first = 1; // Because later flux[j-1] and flux[j+1] is required
       j_last = ny_tile - 1;// Because later flux[j-1] and flux[j+1] is required
-       
+
        for (j = j_first; j < j_last; j++) {
         flux_temp[j][0] = rsd_tile[k][j][i][2];
         u31 = rsd_tile[k][j][i][2] / rsd_tile[k][j][i][0];
@@ -281,7 +281,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
         flux_temp[j][3] = rsd_tile[k][j][i][3] * u31;
         flux_temp[j][4] = ( C1 * rsd_tile[k][j][i][4] - C2 * q ) * u31;
       }
-      
+
       if (y == 0) j_first = 3; // 2nd element
       else j_first = 2;
       if (y == nd_size.values[1] - 1) j_last = ny_tile - 3; // Next to last element
@@ -297,7 +297,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
       if (y == 0) j_first = 3; // 2nd element
       else j_first = 2;
       j_last = ny_tile - 1; // Because later flux[j+1] is required
-      
+
       for (j = j_first; j < j_last; j++) {
         tmp = 1.0 / rsd_tile[k][j][i][0];
 
@@ -326,7 +326,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 
       if (y == nd_size.values[1] - 1) j_last = ny_tile - 3;
       else j_last = ny_tile - 2;
-      
+
       for (j = j_first; j < j_last; j++) {
         frct_tile[k][j][i][0] = frct_tile[k][j][i][0]
           + dy1 * ty1 * (        rsd_tile[k][j-1][i][0]
@@ -373,9 +373,9 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 
       if (y == 0) j_first = 5; // 4th element
       else j_first = 2;
-      if (y == nd_size.values[1] - 1) j_last = ny_tile - 5; 
+      if (y == nd_size.values[1] - 1) j_last = ny_tile - 5;
       else j_last = ny_tile - 2;
-      
+
       for (j = j_first; j < j_last; j++) {
         for (m = 0; m < 5; m++) {
           frct_tile[k][j][i][m] = frct_tile[k][j][i][m]
@@ -386,7 +386,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
                       +       rsd_tile[k][j+2][i][m] );
         }
       }
-      
+
     if(y == nd_size.values[1] - 1) {
       j_last = ny_tile - 2;
       for (m = 0; m < 5; m++) {
@@ -401,10 +401,10 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
                     + 5.0 * rsd_tile[k][j_last-2][i][m] );
       }
     }
-    
+
     } // end j
   } // end k
-  
+
   //---------------------------------------------------------------------
   // zeta-direction flux_temp differences
   //---------------------------------------------------------------------
@@ -417,13 +417,13 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
   else i_last = nx_tile - 2;
   if (y == nd_size.values[1] - 1) j_last = ny_tile - 3; // Next to last element
   else j_last = ny_tile - 2;
-    
+
   for (j = j_first; j < j_last; j++) {
     for (i = i_first; i < i_last; i++) {
-      
+
       k_first = 1; // Because later flux[k-1] and flux[k+1] is required
       k_last = nz_tile - 1;// Because later flux[k-1] and flux[k+1] is required
-      
+
       for (k = k_first; k < k_last; k++) {
         flux_temp[k][0] = rsd_tile[k][j][i][3];
         u41 = rsd_tile[k][j][i][3] / rsd_tile[k][j][i][0];
@@ -432,11 +432,11 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
                     + rsd_tile[k][j][i][3] * rsd_tile[k][j][i][3] )
                  / rsd_tile[k][j][i][0];
         flux_temp[k][1] = rsd_tile[k][j][i][1] * u41;
-        flux_temp[k][2] = rsd_tile[k][j][i][2] * u41; 
+        flux_temp[k][2] = rsd_tile[k][j][i][2] * u41;
         flux_temp[k][3] = rsd_tile[k][j][i][3] * u41 + C2 * ( rsd_tile[k][j][i][4] - q );
         flux_temp[k][4] = ( C1 * rsd_tile[k][j][i][4] - C2 * q ) * u41;
       }
-      
+
       if (z == 0) k_first = 3; // 2nd element
       else k_first = 2;
       if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // Next to last element
@@ -452,7 +452,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
       if (z == 0) k_first = 3; // 2nd element
       else k_first = 2;
       k_last = nz_tile - 1; // Because later flux[j+1] is required
-      
+
       for (k = k_first; k < k_last; k++) {
         tmp = 1.0 / rsd_tile[k][j][i][0];
 
@@ -481,7 +481,7 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 
       if (z == nd_size.values[0] - 1) k_last = nz_tile - 3;
       else k_last = nz_tile -2;
-      
+
       for (k = k_first; k < k_last; k++) {
         frct_tile[k][j][i][0] = frct_tile[k][j][i][0]
           + dz1 * tz1 * (        rsd_tile[k+1][j][i][0]
@@ -528,9 +528,9 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
 
       if (z == 0) k_first = 5; // 4th element
       else k_first = 2;
-      if (z == nd_size.values[0] - 1) k_last = nz_tile - 5; 
+      if (z == nd_size.values[0] - 1) k_last = nz_tile - 5;
       else k_last = nz_tile - 2;
-      
+
       for (k = k_first; k < k_last; k++) {
         for (m = 0; m < 5; m++) {
           frct_tile[k][j][i][m] = frct_tile[k][j][i][m]
@@ -556,10 +556,10 @@ void erhs_flux_HTA(HTA* d_tile, HTA* s1_tile)
                     + 5.0 * rsd_tile[k_last-2][j][i][m] );
 	}
       }
-      
-    } 
+
+    }
   }
-  
+
 }
 
 
@@ -571,25 +571,25 @@ void erhs_init_ce_HTA(HTA* s1_tile)
     int i_offset, j_offset, k_offset, x, y, z;
     int i_real, j_real, k_real;
     double xi, eta, zeta;
-    
+
     int nm_tile = s1_tile->flat_size.values[3];
     int nx_tile = s1_tile->flat_size.values[2];
     int ny_tile = s1_tile->flat_size.values[1];
     int nz_tile = s1_tile->flat_size.values[0];
-    
+
     // Get global tile nd_index first
     //Tuple* nd_size = s2->tiling; // tile dimensions
     Tuple nd_size = s1_tile->nd_tile_dimensions;
     Tuple nd_idx = s1_tile->nd_rank;
     //Tuple_init_zero(&nd_idx, 4); // this tile index
     //Tuple_1d_to_nd_index(s1_tile->rank, nd_size, &nd_idx);
-  
+
     double (*rsd_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(s1_tile);
-   
+
     x = nd_idx.values[2];
     y = nd_idx.values[1];
     z = nd_idx.values[0];
-    
+
     // sync_boundary due to overlapping
     if (x == 0) i_first = 2;
     else i_first = 0;
@@ -603,18 +603,18 @@ void erhs_init_ce_HTA(HTA* s1_tile)
     else j_last = ny_tile;
     if (z == nd_size.values[0] - 1) k_last = nz_tile - 2;
     else k_last = nz_tile;
-  
+
     //FIXME: assuming regular tiles: problem with irregular tiles!!!
     //i_offset = x * (nx_tile - 4) - 2;
     //j_offset = y * (ny_tile - 4) - 2;
     //k_offset = z * (nz_tile - 4) - 2;
-    
-    i_offset = s1_tile->nd_element_offset.values[2] - (4 * x) - 2; 
+
+    i_offset = s1_tile->nd_element_offset.values[2] - (4 * x) - 2;
     j_offset = s1_tile->nd_element_offset.values[1] - (4 * y) - 2;
     k_offset = s1_tile->nd_element_offset.values[0] - (4 * z) - 2;
-    
+
     for (k = k_first; k < k_last; k++) {
-    k_real = k + k_offset;  
+    k_real = k + k_offset;
     zeta = ( (double)k_real ) / ( nz - 1 );
     for (j = j_first; j < j_last; j++) {
       j_real = j + j_offset;
@@ -640,6 +640,6 @@ void erhs_init_ce_HTA(HTA* s1_tile)
       }
     }
   }
-  
-  
+
+
 }

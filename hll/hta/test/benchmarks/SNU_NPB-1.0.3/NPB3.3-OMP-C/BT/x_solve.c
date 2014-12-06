@@ -37,15 +37,15 @@
 #include "timers.h"
 
 //---------------------------------------------------------------------
-// 
+//
 // Performs line solves in X direction by first factoring
-// the block-tridiagonal matrix into an upper triangular matrix, 
+// the block-tridiagonal matrix into an upper triangular matrix,
 // and then performing back substitution to solve for the unknow
-// vectors of each line.  
-// 
+// vectors of each line.
+//
 // Make sure we treat elements zero to cell_size in the direction
 // of the sweep.
-// 
+//
 //---------------------------------------------------------------------
 void x_solve()
 {
@@ -76,7 +76,7 @@ void x_solve()
         tmp2 = tmp1 * tmp1;
         tmp3 = tmp1 * tmp2;
         //-------------------------------------------------------------------
-        // 
+        //
         //-------------------------------------------------------------------
         fjac[i][0][0] = 0.0;
         fjac[i][1][0] = 1.0;
@@ -105,7 +105,7 @@ void x_solve()
 
         fjac[i][0][4] = ( c2 * 2.0 * square[k][j][i] - c1 * u[k][j][i][4] )
           * ( u[k][j][i][1] * tmp2 );
-        fjac[i][1][4] = c1 *  u[k][j][i][4] * tmp1 
+        fjac[i][1][4] = c1 *  u[k][j][i][4] * tmp1
           - c2 * ( u[k][j][i][1]*u[k][j][i][1] * tmp2 + qs[k][j][i] );
         fjac[i][2][4] = - c2 * ( u[k][j][i][2]*u[k][j][i][1] ) * tmp2;
         fjac[i][3][4] = - c2 * ( u[k][j][i][3]*u[k][j][i][1] ) * tmp2;
@@ -157,7 +157,7 @@ void x_solve()
 
         lhs[i][AA][0][0] = - tmp2 * fjac[i-1][0][0]
           - tmp1 * njac[i-1][0][0]
-          - tmp1 * dx1; 
+          - tmp1 * dx1;
         lhs[i][AA][1][0] = - tmp2 * fjac[i-1][1][0]
           - tmp1 * njac[i-1][1][0];
         lhs[i][AA][2][0] = - tmp2 * fjac[i-1][2][0]
@@ -321,10 +321,10 @@ void x_solve()
 
       //---------------------------------------------------------------------
       // performs guaussian elimination on this cell.
-      // 
-      // assumes that unpacking routines for non-first cells 
+      //
+      // assumes that unpacking routines for non-first cells
       // preload C' and rhs' from previous cell.
-      // 
+      //
       // assumed send happens outside this routine, but that
       // c'(IMAX) and rhs'(IMAX) will be sent to next cell
       //---------------------------------------------------------------------
@@ -341,7 +341,7 @@ void x_solve()
 
       //---------------------------------------------------------------------
       // begin inner most do loop
-      // do all the elements of the cell unless last 
+      // do all the elements of the cell unless last
       //---------------------------------------------------------------------
       for (i = 1; i <= isize-1; i++) {
         //-------------------------------------------------------------------
@@ -386,7 +386,7 @@ void x_solve()
       for (i = isize-1; i >=0; i--) {
         for (m = 0; m < BLOCK_SIZE; m++) {
           for (n = 0; n < BLOCK_SIZE; n++) {
-            rhs[k][j][i][m] = rhs[k][j][i][m] 
+            rhs[k][j][i][m] = rhs[k][j][i][m]
               - lhs[i][CC][n][m]*rhs[k][j][i+1][n];
           }
         }

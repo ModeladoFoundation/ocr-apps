@@ -58,7 +58,7 @@ void setuppc()
 
   rdtime = 1.0/dtime;
 
-  #pragma omp parallel for default(shared) private(ie,isize,i,j,k,q) 
+  #pragma omp parallel for default(shared) private(ie,isize,i,j,k,q)
   for (ie = 0; ie < nelt; ie++) {
     r_init(dpcelm[ie][0][0], NXYZ, 0.0);
     isize = size_e[ie];
@@ -66,7 +66,7 @@ void setuppc()
       for (j = 0; j < LX1; j++) {
         for (i = 0; i < LX1; i++) {
           for (q = 0; q < LX1; q++) {
-            dpcelm[ie][k][j][i] = dpcelm[ie][k][j][i] + 
+            dpcelm[ie][k][j][i] = dpcelm[ie][k][j][i] +
               g1m1_s[isize][k][j][q] * dxtm1_2[q][i] +
               g1m1_s[isize][k][q][i] * dxtm1_2[q][j] +
               g1m1_s[isize][q][j][i] * dxtm1_2[q][k];
@@ -84,8 +84,8 @@ void setuppc()
   // take inverse.
   reciprocal((double *)dpcelm, ntot);
 
-  // compute preconditioner on mortar points. NOTE:  dpcmor for 
-  // nonconforming cases will be corrected in subroutine setpcmo 
+  // compute preconditioner on mortar points. NOTE:  dpcmor for
+  // nonconforming cases will be corrected in subroutine setpcmo
   #pragma omp parallel for default(shared) private(i)
   for (i = 0; i < nmor; i++) {
     dpcmor[i] = 1.0/dpcmor[i];
@@ -94,23 +94,23 @@ void setuppc()
 
 
 //--------------------------------------------------------------
-// pre-compute elemental contribution to preconditioner  
+// pre-compute elemental contribution to preconditioner
 // for all situations
 //--------------------------------------------------------------
 void setpcmo_pre()
 {
   int element_size, i, j, ii, jj, col;
-  double p[LX1][LX1][LX1], p0[LX1][LX1][LX1], mtemp[LX1][LX1]; 
+  double p[LX1][LX1][LX1], p0[LX1][LX1][LX1], mtemp[LX1][LX1];
   double temp[LX1][LX1][LX1], temp1[LX1][LX1], tmp[LX1][LX1], tig[LX1];
 
-  // corners on face of type 3 
+  // corners on face of type 3
   r_init((double *)tcpre, LX1*LX1, 0.0);
   r_init((double *)tmp, LX1*LX1, 0.0);
   r_init(tig, 5, 0.0);
   tig[0]    = 1.0;
   tmp[0][0] = 1.0;
 
-  // tcpre results from mapping a unit spike field (unity at 
+  // tcpre results from mapping a unit spike field (unity at
   // collocation point (0,0), zero elsewhere) on an entire element
   // face to the (0,0) segment of a nonconforming face
   for (i = 1; i < LX1-1; i++) {
@@ -134,9 +134,9 @@ void setpcmo_pre()
   for (element_size = 0; element_size < REFINE_MAX; element_size++) {
     // for conforming cases
 
-    // pcmor_c[element_size][j][i] records the intermediate value 
-    // (preconditioner=1/pcmor_c) of the preconditor on collocation 
-    // point (i,j) on a conforming face of an element of size 
+    // pcmor_c[element_size][j][i] records the intermediate value
+    // (preconditioner=1/pcmor_c) of the preconditor on collocation
+    // point (i,j) on a conforming face of an element of size
     // element_size.
 
     for (j = 0; j < LX1/2+1; j++) {
@@ -155,12 +155,12 @@ void setpcmo_pre()
       }
     }
 
-    // for nonconforming cases 
+    // for nonconforming cases
 
     // nonconforming face interior
 
-    // pcmor_nc1[element_size][jj][ii][j][i] records the intermediate 
-    // preconditioner value on collocation point (i,j) on mortar 
+    // pcmor_nc1[element_size][jj][ii][j][i] records the intermediate
+    // preconditioner value on collocation point (i,j) on mortar
     // (ii,jj)  on a nonconforming face of an element of size element_
     // size
     for (j = 1; j < LX1; j++) {
@@ -217,10 +217,10 @@ void setpcmo_pre()
       }
 
       laplacian(temp, p, element_size);
-      transfb_nc2(temp1, (double (*)[LX1])temp);       
+      transfb_nc2(temp1, (double (*)[LX1])temp);
 
       // pcmor_nc2[element_size][jj][ii][j][i] gives the intermediate
-      // preconditioner value on collocation point (i,j) on a 
+      // preconditioner value on collocation point (i,j) on a
       // nonconforming face of an element with size size_element
 
       pcmor_nc2[element_size][0][0][j][i] = temp1[j][i]*2.0 ;
@@ -228,11 +228,11 @@ void setpcmo_pre()
         pcmor_nc2[element_size][0][0][j][i];
 
       laplacian(temp, p0, element_size);
-      transfb_nc0(temp1, temp);         
+      transfb_nc0(temp1, temp);
 
       // pcmor_nc0[element_size][jj][ii][j][i] gives the intermediate
-      // preconditioner value on collocation point (i,j) on a 
-      // conforming face of an element, which shares a nonconforming 
+      // preconditioner value on collocation point (i,j) on a
+      // conforming face of an element, which shares a nonconforming
       // edge with another conforming face
       pcmor_nc0[element_size][0][0][j][i] = temp1[j][i];
       pcmor_nc0[element_size][0][0][i][j] = temp1[j][i];
@@ -272,7 +272,7 @@ void setpcmo_pre()
         pcmor_nc0[element_size][0][0][j][LX1-1-i];
       pcmor_nc2[element_size][1][0][j][i] =
         pcmor_nc2[element_size][0][0][j][LX1-1-i];
-    }                                                
+    }
 
     j = 0;
     i = 0;
@@ -345,8 +345,8 @@ void setpcmo_pre()
     // situation 1: only one edge is nonconforming
     // situation 2: two edges are nonconforming
     // situation 3: three edges are nonconforming
-    // situation 4: one face is nonconforming 
-    // situation 5: one face and one edge are nonconforming 
+    // situation 4: one face is nonconforming
+    // situation 5: one face and one edge are nonconforming
     // situation 6: two faces are nonconforming
     // situation 7: three faces are nonconforming
 
@@ -438,7 +438,7 @@ void setpcmo()
 {
   int face2, nb1, nb2, sizei, imor, _enum, i, j, iel, iside, nn1, nn2;
 
-  #pragma omp parallel default(shared) private(imor,iel,iside,i) 
+  #pragma omp parallel default(shared) private(imor,iel,iside,i)
   {
     #pragma omp for nowait
     for (imor = 0; imor < nvertex; imor++) {
@@ -450,13 +450,13 @@ void setpcmo()
       for (iside = 0; iside < NSIDES; iside++) {
         for (i = 0; i < 4; i++) {
           edgevis[iel][iside][i] = false;
-        } 
-      } 
-    } 
+        }
+      }
+    }
   } //end parallel
 
   #pragma omp parallel for default(shared) private(iel,iside,sizei, \
-                           imor,_enum,face2,nb1,nb2,i,j,nn1,nn2) 
+                           imor,_enum,face2,nb1,nb2,i,j,nn1,nn2)
   for (iel = 0; iel < nelt; iel++) {
     for (iside = 0; iside < NSIDES; iside++) {
       // for nonconforming faces
@@ -465,7 +465,7 @@ void setpcmo()
 
         // vertices
 
-        // ifpcmor[imor] = true indicates that mortar point imor has 
+        // ifpcmor[imor] = true indicates that mortar point imor has
         // been visited
         imor = idmo[iel][iside][0][0][0][0];
         if (!ifpcmor[imor]) {
@@ -494,7 +494,7 @@ void setpcmo()
 
         // edges on nonconforming faces, _enum is local edge number
         for (_enum = 0; _enum < 4; _enum++) {
-          // edgevis[iel][iside][_enum]=true indicates that local edge 
+          // edgevis[iel][iside][_enum]=true indicates that local edge
           // _enum of face iside of iel has been visited
           if (!edgevis[iel][iside][_enum]) {
             edgevis[iel][iside][_enum] = true;
@@ -508,7 +508,7 @@ void setpcmo()
 
                 // Compute the preconditioner on local edge _enum on face
                 // iside of element iel, 1 is neighborhood information got
-                // by examing neighbors(nb1). For detailed meaning of 1, 
+                // by examing neighbors(nb1). For detailed meaning of 1,
                 // see subroutine com_dpc.
 
                 com_dpc(iside, iel, _enum, 1, sizei);
@@ -537,7 +537,7 @@ void setpcmo()
           }
         }
 
-        // mortar element interior (not edge of mortar) 
+        // mortar element interior (not edge of mortar)
         for (nn1 = 0; nn1 < 2; nn1++) {
           for (nn2 = 0; nn2 < 2; nn2++) {
             for (j = 1; j < LX1-1; j++) {
@@ -550,7 +550,7 @@ void setpcmo()
           }
         }
 
-        // for i,j=LX1-1 there are duplicated mortar points, so 
+        // for i,j=LX1-1 there are duplicated mortar points, so
         // pcmor_c needs to be doubled or quadrupled
         i = LX1-1;
         for (j = 1; j < LX1-1; j++) {
@@ -574,7 +574,7 @@ void setpcmo()
           dpcmor[imor] = 1.0/(pcmor_nc1[sizei][1][0][j][i]+
                               pcmor_c[sizei+1][j][i]*2.0);
         }
-      } 
+      }
     }
   }
 }
@@ -613,7 +613,7 @@ static void pc_corner(int imor)
     }
 
     // each n indicates how many nonconforming faces and nonconforming
-    // edges share this vertex on an element, 
+    // edges share this vertex on an element,
 
     if (sface == 0) {
       if (sedge == 0) {
@@ -624,7 +624,7 @@ static void pc_corner(int imor)
         n = 1;
       } else if (sedge == 3) {
         n = 2;
-      } 
+      }
     } else if (sface == 1) {
       if (sedge == 1) {
         n = 4;
@@ -637,7 +637,7 @@ static void pc_corner(int imor)
       n = 6;
     }
 
-    // sum the intermediate pre-computed preconditioner values for 
+    // sum the intermediate pre-computed preconditioner values for
     // all elements
     tmortemp = tmortemp+pcmor_cor[sizei][n];
   }
@@ -648,11 +648,11 @@ static void pc_corner(int imor)
 
 
 //------------------------------------------------------------------------
-// Compute preconditioner for local edge enumber of face iside 
+// Compute preconditioner for local edge enumber of face iside
 // on element iel.
 // isize is element size,
 // n is one of five different configurations
-// anc1, ac, anc2, anc0 are coefficients for different edges. 
+// anc1, ac, anc2, anc0 are coefficients for different edges.
 // nc0 refers to nonconforming edge shared by two conforming faces
 // nc1 refers to nonconforming edge shared by one nonconforming face
 // nc2 refers to nonconforming edges shared by two nonconforming faces
@@ -660,11 +660,11 @@ static void pc_corner(int imor)
 //------------------------------------------------------------------------
 static void com_dpc(int iside, int iel, int enumber, int n, int isize)
 {
-  int nn1start, nn1end, nn2start; 
+  int nn1start, nn1end, nn2start;
   int nn2end, jstart, jend, istart, iend, i, j, nn1, nn2, imor = 0;
   double anc1, ac, anc2, anc0, temp = 0.0;
 
-  // different local edges have different loop ranges 
+  // different local edges have different loop ranges
   if (enumber == 0) {
     nn1start = 1;
     nn1end = 1;

@@ -66,10 +66,10 @@
 #define S         271828183.0
 
 static double x[2*NK];
-static double q[NQ]; 
+static double q[NQ];
 
 
-int main() 
+int main()
 {
   double Mops, t1, t2, t3, t4, x1, x2;
   double sx, sy, tm, an, tt, gc;
@@ -108,12 +108,12 @@ int main()
   verified = false;
 
   //--------------------------------------------------------------------
-  //  Compute the number of "batches" of random number pairs generated 
-  //  per processor. Adjust if the number of processors does not evenly 
+  //  Compute the number of "batches" of random number pairs generated
+  //  per processor. Adjust if the number of processors does not evenly
   //  divide the total number
   //--------------------------------------------------------------------
 
-  np = NN; 
+  np = NN;
 
   //--------------------------------------------------------------------
   //  Call the random number generator functions and initialize
@@ -127,7 +127,7 @@ int main()
   for (i = 0; i < 2 * NK; i++) {
     x[i] = -1.0e99;
   }
-  Mops = log(sqrt(fabs(MAX(1.0, 1.0))));   
+  Mops = log(sqrt(fabs(MAX(1.0, 1.0))));
 
   timer_clear(0);
   timer_clear(1);
@@ -166,7 +166,7 @@ int main()
   k_offset = -1;
 
   for (k = 1; k <= np; k++) {
-    kk = k_offset + k; 
+    kk = k_offset + k;
     t1 = S;
     t2 = an;
 
@@ -188,9 +188,9 @@ int main()
     if (timers_enabled) timer_stop(2);
 
     //--------------------------------------------------------------------
-    //  Compute Gaussian deviates by acceptance-rejection method and 
-    //  tally counts in concentri//square annuli.  This loop is not 
-    //  vectorizable. 
+    //  Compute Gaussian deviates by acceptance-rejection method and
+    //  tally counts in concentri//square annuli.  This loop is not
+    //  vectorizable.
     //--------------------------------------------------------------------
     if (timers_enabled) timer_start(1);
 
@@ -265,7 +265,7 @@ int main()
   }
 
   print_results("EP", CLASS, M+1, 0, 0, nit,
-      tm, Mops, 
+      tm, Mops,
       "Random numbers generated",
       verified, NPBVERSION, COMPILETIME, CS1,
       CS2, CS3, CS4, CS5, CS6, CS7);

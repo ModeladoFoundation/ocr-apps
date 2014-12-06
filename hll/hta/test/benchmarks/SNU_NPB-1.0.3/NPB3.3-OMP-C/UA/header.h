@@ -36,7 +36,7 @@
 #include "npbparams.h"
 #include "type.h"
 
-// Array dimensions     
+// Array dimensions
 #define LX1       5
 #define LNJE      2
 #define NSIDES    6
@@ -86,11 +86,11 @@ extern double ppmor  [LMOR];
 
 // integer arrays associated with element faces
 /* common/facein/ */
-extern int idmo    [LELT][NSIDES][LNJE][LNJE][LX1][LX1]; 
-extern int idel    [LELT][NSIDES][LX1][LX1]; 
-extern int sje     [LELT][NSIDES][2][2]; 
+extern int idmo    [LELT][NSIDES][LNJE][LNJE][LX1][LX1];
+extern int idel    [LELT][NSIDES][LX1][LX1];
+extern int sje     [LELT][NSIDES][2][2];
 extern int sje_new [LELT][NSIDES][2][2];
-extern int ijel    [LELT][NSIDES][2]; 
+extern int ijel    [LELT][NSIDES][2];
 extern int ijel_new[LELT][NSIDES][2];
 extern int cbc     [LELT][NSIDES]; /**/
 extern int cbc_new [LELT][NSIDES]; /**/
@@ -129,7 +129,7 @@ extern logical ifpcmor[8*LELT];
 /* common /edgelg/ */
 extern logical eassign  [LELT][12];
 extern logical ncon_edge[LELT][12];
-extern logical if_1_edge[LELT][12]; 
+extern logical if_1_edge[LELT][12];
 
 // logical arrays associated with elements
 /* common /facelg/ */
@@ -206,11 +206,11 @@ extern double xfrac[LX1];
 
 // used in laplacian operator
 /* common /gmfact/ */
-extern double g1m1_s[REFINE_MAX][LX1][LX1][LX1]; 
+extern double g1m1_s[REFINE_MAX][LX1][LX1][LX1];
 extern double g4m1_s[REFINE_MAX][LX1][LX1][LX1];
 extern double g5m1_s[REFINE_MAX][LX1][LX1][LX1];
 extern double g6m1_s[REFINE_MAX][LX1][LX1][LX1];
-      
+
 // We store some tables of useful topological constants
 // These constants are intialized in a block data 'top_constants'
 /* common /top_consts/ */

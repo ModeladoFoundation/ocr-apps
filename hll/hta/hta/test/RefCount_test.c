@@ -11,7 +11,7 @@ int main()
     Tuple t0 = Tuple_create(2, 5, 3);
     Tuple t1 = Tuple_create(2, 11, 22);
     Tuple t2 = Tuple_create(5, 33, 44, 55, 22, 22);
-    
+
     Tuple_concat(Tuple_concat(t0, t1), t2);
     Tuple t3 = Tuple_create(2, 9, 9);
     Tuple_attach_with_retain(t3, t0);

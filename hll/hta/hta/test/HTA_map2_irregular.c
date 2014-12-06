@@ -29,9 +29,9 @@ int main()
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
     // create an empty shell
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
-    HTA *result = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *result = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
 
     // create a 2D matrix
@@ -40,7 +40,7 @@ int main()
     {
         M[i] = rand() % 1000;
         R1[i] = 0;
-        R2[i] = 0; 
+        R2[i] = 0;
     }
 
     // initialize the HTA using 2D matrix
@@ -58,7 +58,7 @@ int main()
        for (j = 0; j < MATRIX_WIDTH; j++)
        {
            R2[i*MATRIX_WIDTH+j] = M[i*MATRIX_WIDTH+j] * M[i*MATRIX_WIDTH+j];
-       } 
+       }
 
     // verify the result
     printf("comparing %zd bytes\n", sizeof(R1));

@@ -39,10 +39,10 @@ void REDUCE_SUM(HTA_SCALAR_TYPE stype, void* result, void* buf) {
             REDUCE_SUM_CASE(double)
         break;
         case(HTA_SCALAR_TYPE_DCOMPLEX):
-            { 
-                dcomplex *r = (dcomplex*) result; 
-                dcomplex d = *((dcomplex*) buf); 
-                *r = dcmplx_add(*r, d); 
+            {
+                dcomplex *r = (dcomplex*) result;
+                dcomplex d = *((dcomplex*) buf);
+                *r = dcmplx_add(*r, d);
             }
         break;
         default:
@@ -134,7 +134,7 @@ void H1_INC(HTA * dest)
 
     int num_elems = dest->leaf.num_elem;
 
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H1_INC_CASE(int32_t)
@@ -169,7 +169,7 @@ void H2_INC(HTA * dest, HTA * src)
     ASSERT(dest->height == 1 && src->height == 1);
     int num_elems = dest->leaf.num_elem;
 
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H2_INC_CASE(int32_t)
@@ -203,7 +203,7 @@ void H2_COPY(HTA * dest, HTA * src)
     int num_elems = dest->leaf.num_elem;
     size_t sz = HTA_get_scalar_size(dest);
 
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H2_COPY_CASE(int32_t)
@@ -250,7 +250,7 @@ void H2_ABS(HTA * dest, HTA * src)
     ASSERT(dest->height == 1 && src->height == 1);
     int num_elems = dest->leaf.num_elem;
 
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H2_ABS_CASE(int32_t)
@@ -290,7 +290,7 @@ void H2S1_POW(HTA * dest, HTA * src, void* s)
     ASSERT(dest->height == 1 && src->height == 1);
     int num_elems = dest->leaf.num_elem;
 
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_FLOAT):
             H2S1_POW_CASE(float)
@@ -322,7 +322,7 @@ void H3_PWADD(HTA * dest, HTA * src1, HTA * src2)
     ASSERT(dest->height == 1 && src1->height == 1 && src2->height == 1);
 
     int num_elems = dest->leaf.num_elem;
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H3_PWADD_CASE(int32_t)
@@ -366,7 +366,7 @@ void H3_PWSUB(HTA * dest, HTA * src1, HTA * src2)
     ASSERT(dest->height == 1 && src1->height == 1 && src2->height == 1);
 
     int num_elems = dest->leaf.num_elem;
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H3_PWSUB_CASE(int32_t)
@@ -410,7 +410,7 @@ void H3_PWMUL(HTA * dest, HTA * src1, HTA * src2)
     ASSERT(dest->height == 1 && src1->height == 1 && src2->height == 1);
 
     int num_elems = dest->leaf.num_elem;
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H3_PWMUL_CASE(int32_t)
@@ -464,7 +464,7 @@ void H3_MATMUL(HTA * dest, HTA * src1, HTA * src2)
     int M = src1->flat_size.values[0];
     int N = src1->flat_size.values[1];
     int O = src2->flat_size.values[1];
-    switch (dest->scalar_type) 
+    switch (dest->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H3_MATMUL_CASE(int32_t)
@@ -501,9 +501,9 @@ void H3_MATMUL(HTA * dest, HTA * src1, HTA * src2)
 void H1S1_MUL(HTA * h, void* scalar) {
     ASSERT(h->type == HTA_TYPE_DENSE && scalar); // TODO: add support for SPARSE HTA
     ASSERT(h->height == 1);
-   
+
     int num_elems = h->leaf.num_elem;
-    switch (h->scalar_type) 
+    switch (h->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H1S1_MUL_CASE(int32_t)
@@ -541,9 +541,9 @@ void H1S1_MUL(HTA * h, void* scalar) {
 void H1S1_INIT(HTA * h, void* scalar) {
     ASSERT(h->type == HTA_TYPE_DENSE && scalar); // TODO: add support for SPARSE HTA
     ASSERT(h->height == 1);
-   
+
     int num_elems = h->leaf.num_elem;
-    switch (h->scalar_type) 
+    switch (h->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H1S1_INIT_CASE(int32_t)
@@ -603,14 +603,14 @@ void H3_SDPWMUL(HTA * hr, HTA * hs, HTA * hd)
 
     Leaf* leaf = &hs->leaf;
     int nnz = leaf->num_elem;
-    
+
     if(nnz == 0) // all zero tile
-        return; 
+        return;
 
     size_t sz = HTA_get_scalar_size(hs);
     int num_rows = hd->flat_size.values[0];
     int num_cols = hd->flat_size.values[1];
-    switch (hr->scalar_type) 
+    switch (hr->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H3_SDPWMUL_CASE(int32_t)
@@ -664,14 +664,14 @@ void H3_SDMV(HTA * hr, HTA * hs, HTA * hd)
 
     Leaf* leaf = &hs->leaf;
     int nnz = leaf->num_elem;
-    
+
     if(nnz == 0) // all zero tile
-        return; 
+        return;
 
     size_t sz = HTA_get_scalar_size(hs);
     int num_rows = hs->flat_size.values[0];
 
-    switch (hr->scalar_type) 
+    switch (hr->scalar_type)
     {
         case(HTA_SCALAR_TYPE_INT32):
             H3_SDMV_CASE(int32_t)

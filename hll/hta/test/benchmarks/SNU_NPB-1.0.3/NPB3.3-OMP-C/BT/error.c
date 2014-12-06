@@ -94,7 +94,7 @@ void rhs_norm(double rms[5])
 
   for (m = 0; m < 5; m++) {
     rms[m] = 0.0;
-  } 
+  }
 
   #pragma omp parallel default(shared) private(i,j,k,m,add,rms_local) \
                                        shared(rms)
@@ -109,10 +109,10 @@ void rhs_norm(double rms[5])
         for (m = 0; m < 5; m++) {
           add = rhs[k][j][i][m];
           rms_local[m] = rms_local[m] + add*add;
-        } 
-      } 
-    } 
-  } 
+        }
+      }
+    }
+  }
   for (m = 0; m < 5; m++) {
     #pragma omp atomic
     rms[m] += rms_local[m];
@@ -122,7 +122,7 @@ void rhs_norm(double rms[5])
   for (m = 0; m < 5; m++) {
     for (d = 0; d < 3; d++) {
       rms[m] = rms[m] / (double)(grid_points[d]-2);
-    } 
+    }
     rms[m] = sqrt(rms[m]);
-  } 
+  }
 }

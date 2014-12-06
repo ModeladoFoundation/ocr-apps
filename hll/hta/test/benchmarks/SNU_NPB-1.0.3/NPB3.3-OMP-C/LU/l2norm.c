@@ -39,7 +39,7 @@
 // to compute the l2-norm of vector v.
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
-// To improve cache performance, second two dimensions padded by 1 
+// To improve cache performance, second two dimensions padded by 1
 // for even number sizes only.  Only needed in v.
 //---------------------------------------------------------------------
 void l2norm (int ldx, int ldy, int ldz, int nx0, int ny0, int nz0,

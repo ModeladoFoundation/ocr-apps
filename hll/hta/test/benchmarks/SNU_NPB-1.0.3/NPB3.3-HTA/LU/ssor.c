@@ -61,9 +61,9 @@ void ssor_HTA(int niter)
   int istep;
   double tmp, tmp2;
   double delunm[5];
-  
+
   double zero = 0.0;
-  
+
   //---------------------------------------------------------------------
   // begin pseudo-time stepping iterations
   //---------------------------------------------------------------------
@@ -81,7 +81,7 @@ void ssor_HTA(int niter)
   //HTA_map_h1s1(HTA_LEAF_LEVEL(bu_HTA), H1S1_INIT, bu_HTA, &zero);
   //HTA_map_h1s1(HTA_LEAF_LEVEL(cu_HTA), H1S1_INIT, cu_HTA, &zero);
   //HTA_map_h1s1(HTA_LEAF_LEVEL(du_HTA), H1S1_INIT, du_HTA, &zero);
-   
+
   for (i = 1; i <= t_last; i++) {
     timer_clear(i);
   }
@@ -90,12 +90,12 @@ void ssor_HTA(int niter)
   // compute the steady-state residuals
   //---------------------------------------------------------------------
   rhs_HTA();
- 
+
   //---------------------------------------------------------------------
   // compute the L2 norms of newton iteration residuals
   //---------------------------------------------------------------------
   l2norm_HTA(rsdnm);
-  
+
    for (i = 1; i <= t_last; i++) {
      timer_clear(i);
    }
@@ -104,7 +104,7 @@ void ssor_HTA(int niter)
   // Number of iteration of the wavefront computations
   wavefront = PROC_X + PROC_Y + PROC_Z - 3;
   //printf(" Wavefront iterations: %d\n", wavefront+1);
-  
+
   //---------------------------------------------------------------------
   // the timestep loop
   //---------------------------------------------------------------------
@@ -121,24 +121,24 @@ void ssor_HTA(int niter)
     HTA_map_h1s1(HTA_LEAF_LEVEL(rsd_HTA), mulscalar, rsd_HTA, &tmp2);
 
     sync_boundary(rsd_HTA);
-       
+
     if (timeron) timer_stop(t_rhs);
-       
+
     //  ---------------------------------------------------------------------
     //  form the lower triangular part of the jacobian matrix
     //  ---------------------------------------------------------------------
     if (timeron) timer_start(t_jacld);
-    
-    //jacld_HTA(); // Loop is not necessary 
-    
+
+    //jacld_HTA(); // Loop is not necessary
+
     if (timeron) timer_stop(t_jacld);
     //---------------------------------------------------------------------
     // perform the lower triangular solution
     //---------------------------------------------------------------------
     if (timeron) timer_start(t_blts);
-      
+
     blts_HTA(wavefront);
- 
+
     if (timeron) timer_stop(t_blts);
 
     //---------------------------------------------------------------------
@@ -147,7 +147,7 @@ void ssor_HTA(int niter)
     if (timeron) timer_start(t_jacu);
 
     //jacu_HTA(); // Loop is not necessary
-      
+
     if (timeron) timer_stop(t_jacu);
 
     //---------------------------------------------------------------------
@@ -156,18 +156,18 @@ void ssor_HTA(int niter)
     if (timeron) timer_start(t_buts);
 
     buts_HTA(wavefront);
-      
+
     if (timeron) timer_stop(t_buts);
-   
+
     //---------------------------------------------------------------------
     // update the variables
     //---------------------------------------------------------------------
     if (timeron) timer_start(t_add);
     tmp2 = tmp;
     HTA_map_h2s1(HTA_LEAF_LEVEL(u_HTA), muladd, u_HTA, rsd_HTA, &tmp2);
-    
+
     sync_boundary(u_HTA);
-     
+
     if (timeron) timer_stop(t_add);
 
     //---------------------------------------------------------------------
@@ -188,18 +188,18 @@ void ssor_HTA(int niter)
                " RMS-norm of SSOR-iteration correction "
                "for fourth pde = %12.5E\n",
                " RMS-norm of SSOR-iteration correction "
-               "for fifth pde  = %12.5E\n", 
-               delunm[0], delunm[1], delunm[2], delunm[3], delunm[4]); 
+               "for fifth pde  = %12.5E\n",
+               delunm[0], delunm[1], delunm[2], delunm[3], delunm[4]);
       } else if ( ipr == 2 ) {
         printf("(%5d,%15.6f)\n", istep, delunm[4]);
       }
       */
     }
- 
+
     //---------------------------------------------------------------------
     // compute the steady-state residuals
     //---------------------------------------------------------------------
-    rhs_HTA();	
+    rhs_HTA();
     //---------------------------------------------------------------------
     // compute the max-norms of newton iteration residuals
     //---------------------------------------------------------------------
@@ -225,28 +225,28 @@ void ssor_HTA(int niter)
 
   timer_stop(1);
   maxtime = timer_read(1);
- 
+
 }
 
 void muladd(HTA* s1_tile, HTA* s2_tile, void* scalar) {
-  
+
     int i, j, k, m;
     int i_first, j_first, k_first, i_last, j_last, k_last;
     int x, y, z;
-    
+
 //    int TILES_X = 1;
 //    int TILES_Y = 1;
 //    int TILES_Z = 3;
-    
+
     int nm_tile = s1_tile->flat_size.values[3]; // Always 5
     int nx_tile = s1_tile->flat_size.values[2];
     int ny_tile = s1_tile->flat_size.values[1];
     int nz_tile = s1_tile->flat_size.values[0];
-    
+
     double (*u_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(s1_tile);
     double (*rsd_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(s2_tile);
     double val = *((double*)scalar);
-    
+
     // FIXME: Trick to obtain the nd_idx of the tiles
     // Get global tile nd_index first
     //Tuple nd_size = Tuple_create(4, TILES_Z, TILES_Y, TILES_X, 1); // tile dimensions
@@ -272,7 +272,7 @@ void muladd(HTA* s1_tile, HTA* s2_tile, void* scalar) {
     else j_last = ny_tile;
     if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // West: one before last element
     else k_last = nz_tile;
-    
+
     for (k = k_first; k < k_last; k++) {
       for (j = j_first; j < j_last; j++) {
 	for (i = i_first; i < i_last; i++) {
@@ -282,17 +282,17 @@ void muladd(HTA* s1_tile, HTA* s2_tile, void* scalar) {
 	}
       }
     }
-} 
+}
 
 
 void mulscalar(HTA* s1_tile, void* scalar) {
-    
+
     int i, j, k, m;
     int nm_tile = s1_tile->flat_size.values[3];
     int nx_tile = s1_tile->flat_size.values[2];
     int ny_tile = s1_tile->flat_size.values[1];
     int nz_tile = s1_tile->flat_size.values[0];
-    
+
     double (*rsd_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(s1_tile);
     double val = *((double*)scalar);
 

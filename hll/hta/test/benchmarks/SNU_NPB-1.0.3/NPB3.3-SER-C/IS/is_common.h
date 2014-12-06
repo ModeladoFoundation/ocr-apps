@@ -87,8 +87,8 @@
 #define  MAX_KEY             (1 << MAX_KEY_LOG_2)
 #define  NUM_BUCKETS         (1 << NUM_BUCKETS_LOG_2)
 #define  NUM_KEYS            TOTAL_KEYS
-#define  SIZE_OF_BUFFERS     NUM_KEYS  
-                                           
+#define  SIZE_OF_BUFFERS     NUM_KEYS
+
 
 #define  MAX_ITERATIONS      10
 #define  TEST_ARRAY_SIZE     5

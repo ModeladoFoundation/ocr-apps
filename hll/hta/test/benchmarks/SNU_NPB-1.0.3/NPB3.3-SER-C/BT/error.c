@@ -79,7 +79,7 @@ void rhs_norm(double rms[5])
 
   for (m = 0; m < 5; m++) {
     rms[m] = 0.0;
-  } 
+  }
 
   for (k = 1; k <= grid_points[2]-2; k++) {
     for (j = 1; j <= grid_points[1]-2; j++) {
@@ -87,15 +87,15 @@ void rhs_norm(double rms[5])
         for (m = 0; m < 5; m++) {
           add = rhs[k][j][i][m];
           rms[m] = rms[m] + add*add;
-        } 
-      } 
-    } 
-  } 
+        }
+      }
+    }
+  }
 
   for (m = 0; m < 5; m++) {
     for (d = 0; d < 3; d++) {
       rms[m] = rms[m] / (double)(grid_points[d]-2);
-    } 
+    }
     rms[m] = sqrt(rms[m]);
-  } 
+  }
 }

@@ -4,10 +4,10 @@
 ///of the region collectively as its shape. shape can be viewed as a logical structure with two
 ///values, the dimension and the size of the region.
 
-// Shape (Region) is a collection of N triplets 
+// Shape (Region) is a collection of N triplets
 struct shape {
     int dim;        // dimension
-    Triplet *dims_;   // pointer to an array of Triplet  
+    Triplet *dims_;   // pointer to an array of Triplet
 };
 
 typedef struct shape* Shape;

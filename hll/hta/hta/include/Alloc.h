@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
-/* 
+/*
  *  Alloc functions are wrappers of backend memory allocation APIs
  *
  */

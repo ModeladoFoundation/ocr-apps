@@ -67,16 +67,16 @@
 
 static HTA *x;      // x is an 1D HTA with PROC tiles
 static HTA *qq;     // qq is an 1D HTA with PROC tiles
-static HTA *sxh;     
-static HTA *syh;     
-static double q[NQ]; 
+static HTA *sxh;
+static HTA *syh;
+static double q[NQ];
 static int PROC = 1;
 
 static int np;
 static double an;
 static logical timers_enabled;
 
-void ep_kernel(HTA *qq_HTA, HTA *x_HTA, HTA *sx_HTA, HTA *sy_HTA) { 
+void ep_kernel(HTA *qq_HTA, HTA *x_HTA, HTA *sx_HTA, HTA *sy_HTA) {
   if (timers_enabled) timer_start(3);
   int k_offset = qq_HTA->rank * np; // np is the number of patches per processor
   double *x = (double *) HTA_get_ptr_raw_data(x_HTA);
@@ -86,7 +86,7 @@ void ep_kernel(HTA *qq_HTA, HTA *x_HTA, HTA *sx_HTA, HTA *sy_HTA) {
   double sx = 0.0, sy = 0.0;
 
   for (int k = 0; k < np; k++) {
-    int kk = k_offset + k; 
+    int kk = k_offset + k;
     double t1 = S;
     double t2 = an;
     double t3, t4;
@@ -108,9 +108,9 @@ void ep_kernel(HTA *qq_HTA, HTA *x_HTA, HTA *sx_HTA, HTA *sy_HTA) {
     if (timers_enabled) timer_stop(2);
 
     //--------------------------------------------------------------------
-    //  Compute Gaussian deviates by acceptance-rejection method and 
-    //  tally counts in concentri//square annuli.  This loop is not 
-    //  vectorizable. 
+    //  Compute Gaussian deviates by acceptance-rejection method and
+    //  tally counts in concentri//square annuli.  This loop is not
+    //  vectorizable.
     //--------------------------------------------------------------------
     if (timers_enabled) timer_start(1);
 
@@ -142,7 +142,7 @@ int hta_main(int argc, char *argv[])
   double sx_verify_value, sy_verify_value, sx_err, sy_err;
   int    i, nit;
   int    j;
-  logical verified; 
+  logical verified;
 
   double dum[3] = {1.0, 1.0, 1.0};
   char   size[16];
@@ -179,12 +179,12 @@ int hta_main(int argc, char *argv[])
   verified = false;
 
   //--------------------------------------------------------------------
-  //  Compute the number of "batches" of random number pairs generated 
-  //  per processor. Adjust if the number of processors does not evenly 
+  //  Compute the number of "batches" of random number pairs generated
+  //  per processor. Adjust if the number of processors does not evenly
   //  divide the total number
   //--------------------------------------------------------------------
 
-  np = NN / PROC; 
+  np = NN / PROC;
 
   //--------------------------------------------------------------------
   //  Call the random number generator functions and initialize
@@ -217,15 +217,15 @@ int hta_main(int argc, char *argv[])
   syh = HTA_create(2, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp4);
 
   double initval_x = -1.0e99;
-  HTA_map_h1s1(HTA_LEAF_LEVEL(x), H1S1_INIT, x, &initval_x); 
+  HTA_map_h1s1(HTA_LEAF_LEVEL(x), H1S1_INIT, x, &initval_x);
 
 
   // init sxh and syh
   double initval_zero = 0.0;
-  HTA_map_h1s1(HTA_LEAF_LEVEL(sxh), H1S1_INIT, sxh, &initval_zero); 
-  HTA_map_h1s1(HTA_LEAF_LEVEL(syh), H1S1_INIT, syh, &initval_zero); 
+  HTA_map_h1s1(HTA_LEAF_LEVEL(sxh), H1S1_INIT, sxh, &initval_zero);
+  HTA_map_h1s1(HTA_LEAF_LEVEL(syh), H1S1_INIT, syh, &initval_zero);
 
-  Mops = log(sqrt(fabs(MAX(1.0, 1.0))));   
+  Mops = log(sqrt(fabs(MAX(1.0, 1.0))));
 
   // FIXME: timer for HTA version
   //#pragma omp parallel
@@ -261,7 +261,7 @@ int hta_main(int argc, char *argv[])
     q[i] = 0.0;
   }
 
-  HTA_map_h1s1(HTA_LEAF_LEVEL(qq), H1S1_INIT, qq, &initval_zero); 
+  HTA_map_h1s1(HTA_LEAF_LEVEL(qq), H1S1_INIT, qq, &initval_zero);
 
   HTA_map_h4(HTA_LEAF_LEVEL(qq), ep_kernel, qq, x, sxh, syh);
 
@@ -270,7 +270,7 @@ int hta_main(int argc, char *argv[])
 
   HTA_full_reduce(REDUCE_SUM, &sx, sxh);
   HTA_full_reduce(REDUCE_SUM, &sy, syh);
-  
+
   for (i = 0; i < NQ; i++) {
     gc = gc + q[i];
   }
@@ -323,7 +323,7 @@ int hta_main(int argc, char *argv[])
   }
 
   print_results("EP", CLASS, M+1, 0, 0, nit,
-      tm, Mops, 
+      tm, Mops,
       "Random numbers generated",
       verified, NPBVERSION, COMPILETIME, CS1,
       CS2, CS3, CS4, CS5, CS6, CS7);

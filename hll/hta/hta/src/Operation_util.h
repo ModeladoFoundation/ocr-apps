@@ -15,26 +15,26 @@
 	} \
     }
 
-void _recursive_full_reduce(ReduceOp op, void* result, HTA* h) 
-{ 
-    if(h->height == 1) 
-    { 
-        //int num_elements = Tuple_count_elements(h->tiling, 1); 
+void _recursive_full_reduce(ReduceOp op, void* result, HTA* h)
+{
+    if(h->height == 1)
+    {
+        //int num_elements = Tuple_count_elements(h->tiling, 1);
         int num_elements = h->leaf.num_elem;
-        void* ptr = HTA_get_ptr_raw_data(h); 
-        for(int i = 0; i < num_elements; i++) { 
-            op(h->scalar_type, result, ptr + HTA_get_scalar_size(h) * i); 
-        } 
-    } 
-    else 
-    { 
-        int num_tiles = Tuple_count_elements(h->tiling, 1); 
-        for(int i = 0; i < num_tiles; i++) 
-        { 
-            _recursive_full_reduce(op, result, h->tiles[i]); 
-        } 
-    } 
-} 
+        void* ptr = HTA_get_ptr_raw_data(h);
+        for(int i = 0; i < num_elements; i++) {
+            op(h->scalar_type, result, ptr + HTA_get_scalar_size(h) * i);
+        }
+    }
+    else
+    {
+        int num_tiles = Tuple_count_elements(h->tiling, 1);
+        for(int i = 0; i < num_tiles; i++)
+        {
+            _recursive_full_reduce(op, result, h->tiles[i]);
+        }
+    }
+}
 
 int _count_gpps(HTA * h)
 {
@@ -74,7 +74,7 @@ int _count_gpps(HTA * h)
     return total;
 }
 
-int _count_gpps_at_level(HTA *h, int level) 
+int _count_gpps_at_level(HTA *h, int level)
 {
     for(int i = 0; i < level; i++)
         h = h->tiles[0];
@@ -95,13 +95,13 @@ int get_num_gpps(HTA *h, HTA **ha, int level, int bound) {
 
 // perform DFS on the input HTA tree to fill in the gpp array in prefix order
 // returns the number of gpps processed
-int _pack_HTA(gpp_t *g, HTA *h) 
+int _pack_HTA(gpp_t *g, HTA *h)
 {
     int total = 0;
 
     ASSERT(h && g);
 
-    // Fill in guid information of "this" 
+    // Fill in guid information of "this"
     g[0].guid = (guid_t) Alloc_get_block_id(h);
     // printf("Packing 0x%08x\n", g[0].guid);
     if(h->height == 1) { // leaf

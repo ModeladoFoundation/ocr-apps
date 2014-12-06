@@ -34,7 +34,7 @@
 #include "header.h"
 
 //---------------------------------------------------------------------
-// block-diagonal matrix-vector multiplication                       
+// block-diagonal matrix-vector multiplication
 //---------------------------------------------------------------------
 void tzetar()
 {
@@ -57,7 +57,7 @@ void tzetar()
         r2 = rhs[k][j][i][1];
         r3 = rhs[k][j][i][2];
         r4 = rhs[k][j][i][3];
-        r5 = rhs[k][j][i][4];     
+        r5 = rhs[k][j][i][4];
 
         uzik1 = u[k][j][i][0];
         btuz  = bt * uzik1;
@@ -70,7 +70,7 @@ void tzetar()
         rhs[k][j][i][1] = -uzik1*r2 + xvel*t2;
         rhs[k][j][i][2] =  uzik1*r1 + yvel*t2;
         rhs[k][j][i][3] =  zvel*t2  + t3;
-        rhs[k][j][i][4] =  uzik1*(-xvel*r2 + yvel*r1) + 
+        rhs[k][j][i][4] =  uzik1*(-xvel*r2 + yvel*r1) +
                            qs[k][j][i]*t2 + c2iv*ac2u*t1 + zvel*t3;
       }
     }

@@ -36,18 +36,18 @@
 #include "timers.h"
 
 //---------------------------------------------------------------------
-// 
+//
 // compute the regular-sparse, block lower triangular solution:
-// 
+//
 // v <-- ( L-inv ) * v
-// 
+//
 //---------------------------------------------------------------------
 
 void blts_HTA(int iter)
 {
   int w, val;
-  
-  // FIXME: h5s2 is required to pass omega = 1.2  
+
+  // FIXME: h5s2 is required to pass omega = 1.2
   for(w = 0; w <= iter ; w++) { // Wavefront propagation to calculate rsd_HTA
       val = w;
       check_bound = w;
@@ -58,14 +58,14 @@ void blts_HTA(int iter)
       sync_boundary(rsd_HTA);
       if (timeron) timer_stop(t_sync_blts);
   }
-  
+
   check_bound = -1;
-  
+
 }
 
 void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, void *scalar)
 {
-    
+
   //---------------------------------------------------------------------
   // local variables
   //---------------------------------------------------------------------
@@ -74,7 +74,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
   double c1345;
   double c34;
   double tmp, tmp1, tmp2, tmp3;
-  
+
   int i, j, k, m;
   int i_first, j_first, i_last, j_last, k_first, k_last;
   int x, y, z;
@@ -83,29 +83,29 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
   // FIXME: h5s2 is required to pass omega and k, omega = 1.2
   double omega = 1.2;
   double d[25], a[25], b[25], c[25];
-  
+
   Tuple nd_size = s4_tile->nd_tile_dimensions;
   Tuple nd_idx = s4_tile->nd_rank;
-  
+
   x = nd_idx.values[2];
   y = nd_idx.values[1];
   z = nd_idx.values[0];
-  
+
   int selection = *((int*)scalar);
-  
+
   if(x + y + z == selection) { // Wavefront propagation: only tiles with i + j + z == val
-  
-  
+
+
   int nx_tile = s4_tile->flat_size.values[2];
   int ny_tile = s4_tile->flat_size.values[1];
-  int nz_tile = s4_tile->flat_size.values[0]; 
-    
+  int nz_tile = s4_tile->flat_size.values[0];
+
   double (*rsd_tile)[ny_tile][nx_tile][5] = (double (*)[ny_tile][nx_tile][5])HTA_get_ptr_raw_data(s1_tile);
   // Required by jacld
   double (*rho_i_tile)[ny_tile][nx_tile][1] = (double (*)[ny_tile][nx_tile][1])HTA_get_ptr_raw_data(s2_tile);
   double (*qs_tile)[ny_tile][nx_tile][1] = (double (*)[ny_tile][nx_tile][1])HTA_get_ptr_raw_data(s3_tile);
   double (*u_tile)[ny_tile][nx_tile][5] = (double (*)[ny_tile][nx_tile][5])HTA_get_ptr_raw_data(s4_tile);
-  
+
 
 
     //printf("Iteration = %d --> Tile(%d,%d,%d)\n", selection, z, y, x);
@@ -122,14 +122,14 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
     else j_last = ny_tile - 2;
     if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // Next to last element
     else k_last = nz_tile - 2;
-    
+
     r43 = ( 4.0 / 3.0 );
     c1345 = C1 * C3 * C4 * C5;
     c34 = C3 * C4;
-  
+
     for(k = k_first; k < k_last; k++) {
      for (j = j_first; j < j_last; j++) {
-      for (i = i_first; i < i_last; i++) { 
+      for (i = i_first; i < i_last; i++) {
       // ******************************************************
       // From now on JACLD
       // ******************************************************
@@ -154,8 +154,8 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
       d[11] = 0.0;
       d[16] = 0.0;
       d[21] = 0.0;
-      
-      d[2] = -dt * 2.0 
+
+      d[2] = -dt * 2.0
         * ( tx1 + ty1 * r43 + tz1 ) * c34 * tmp2 * u_tile[k][j][i][2];
       d[7] = 0.0;
       d[12] = 1.0
@@ -200,8 +200,8 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
           + tz1 * ( r43*c34 - c1345 ) );
       d[24] = 1.0
         + dt * 2.0 * ( tx1  + ty1 + tz1 ) * c1345 * tmp1
-        + dt * 2.0 * ( tx1 * dx5 +  ty1 * dy5 +  tz1 * dz5 );  
-	
+        + dt * 2.0 * ( tx1 * dx5 +  ty1 * dy5 +  tz1 * dz5 );
+
       //---------------------------------------------------------------------
       // form the first block sub-diagonal
       //---------------------------------------------------------------------
@@ -271,7 +271,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
       a[24] = - dt * tz2
         * ( C1 * ( u_tile[k-1][j][i][3] * tmp1 ) )
         - dt * tz1 * c1345 * tmp1
-        - dt * tz1 * dz5;   
+        - dt * tz1 * dz5;
 
       //---------------------------------------------------------------------
       // form the second block sub-diagonal
@@ -341,7 +341,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
         * ( C1 * ( u_tile[k][j-1][i][2] * tmp1 ) )
         - dt * ty1 * c1345 * tmp1
         - dt * ty1 * dy5;
-	
+
       //---------------------------------------------------------------------
       // form the third block sub-diagonal
       //---------------------------------------------------------------------
@@ -417,7 +417,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
      // From now on BLTS
      // ******************************************************
      //for (j = j_first; j < j_last; j++) {
-     // for (i = i_first; i < i_last; i++) { 
+     // for (i = i_first; i < i_last; i++) {
 	  for (m = 0; m < 5; m++) {
 	      rsd_tile[k][j][i][m] =  rsd_tile[k][j][i][m]
 		- omega * (  a[m] * rsd_tile[k-1][j][i][0]
@@ -425,8 +425,8 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
                      + a[10+m] * rsd_tile[k-1][j][i][2]
                      + a[15+m] * rsd_tile[k-1][j][i][3]
                      + a[20+m] * rsd_tile[k-1][j][i][4] );
-	  } 
-	  
+	  }
+
 	  for (m = 0; m < 5; m++) {
 	    tv[m] =  rsd_tile[k][j][i][m]
 	      - omega * ( b[m] * rsd_tile[k][j-1][i][0]
@@ -443,7 +443,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 
 	//---------------------------------------------------------------------
 	// diagonal block inversion
-	// 
+	//
 	// forward elimination
 	//---------------------------------------------------------------------
 	for (m = 0; m < 5; m++) {
@@ -523,7 +523,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 	//---------------------------------------------------------------------
 	rsd_tile[k][j][i][4] = tv[4] / tmat[4][4];
 
-	tv[3] = tv[3] 
+	tv[3] = tv[3]
         - tmat[3][4] * rsd_tile[k][j][i][4];
 	rsd_tile[k][j][i][3] = tv[3] / tmat[3][3];
 
@@ -544,17 +544,17 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 	  - tmat[0][3] * rsd_tile[k][j][i][3]
 	  - tmat[0][4] * rsd_tile[k][j][i][4];
 	rsd_tile[k][j][i][0] = tv[0] / tmat[0][0];
-   
+
 	}
-      }	
+      }
     }
   } // End If
-}  
+}
 
-  
+
 // void blts_compute_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, HTA* s5_tile, void *scalar)
 // {
-//   
+//
 //   int i, j, k, m;
 //   int i_first, j_first, i_last, j_last, k_first, k_last;
 //   int x, y, z;
@@ -562,22 +562,22 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //   double tmat[5][5], tv[5];
 //   // FIXME: h5s2 is required to pass omega and k, omega = 1.2
 //   double omega = 1.2;
-//   
+//
 // //    int TILES_X = 1;
 // //    int TILES_Y = 1;
 // //    int TILES_Z = 3;
-//   
+//
 //   int nx_tile = s5_tile->flat_size.values[2];
 //   int ny_tile = s5_tile->flat_size.values[1];
-//   int nz_tile = s5_tile->flat_size.values[0]; 
-//     
+//   int nz_tile = s5_tile->flat_size.values[0];
+//
 //   double (*a_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s1_tile);
 //   double (*b_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s2_tile);
 //   double (*c_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s3_tile);
 //   double (*d_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s4_tile);
 //   double (*rsd_tile)[ny_tile][nx_tile][5] = (double (*)[ny_tile][nx_tile][5])HTA_get_ptr_raw_data(s5_tile);
 //   int selection = *((int*)scalar);
-//   
+//
 //   // FIXME: Trick to obtain the nd_idx of the tiles
 //     // Get global tile nd_index first
 //     //Tuple nd_size = Tuple_create(4, TILES_Z, TILES_Y, TILES_X, 1); // tile dimensions
@@ -585,13 +585,13 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //     Tuple nd_idx = s5_tile->nd_rank;
 //     //Tuple_init_zero(&nd_idx, 4); // this tile index
 //     //Tuple_1d_to_nd_index(s5_tile->rank, &nd_size, &nd_idx);
-//   
+//
 //   x = nd_idx.values[2];
 //   y = nd_idx.values[1];
 //   z = nd_idx.values[0];
-//   
+//
 //   if(x + y + z == selection) { // Wavefront propagation: only tiles with i + j + z == val
-// 
+//
 //     if (x == 0) i_first = 3; // 2nd element
 //     else i_first = 2;
 //     if (y == 0) j_first = 3; // 2nd element
@@ -604,7 +604,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //     else j_last = ny_tile - 2;
 //     if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // Next to last element
 //     else k_last = nz_tile - 2;
-//   
+//
 //     for(k = k_first; k < k_last; k++) {
 //       for (j = j_first; j < j_last; j++) {
 // 	for (i = i_first; i < i_last; i++) {
@@ -615,8 +615,8 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //                      + a_tile[k][j][i][10+m] * rsd_tile[k-1][j][i][2]
 //                      + a_tile[k][j][i][15+m] * rsd_tile[k-1][j][i][3]
 //                      + a_tile[k][j][i][20+m] * rsd_tile[k-1][j][i][4] );
-// 	  } 
-// 	  
+// 	  }
+//
 // 	  for (m = 0; m < 5; m++) {
 // 	    tv[m] =  rsd_tile[k][j][i][m]
 // 	      - omega * ( b_tile[k][j][i][m] * rsd_tile[k][j-1][i][0]
@@ -630,10 +630,10 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //                     + b_tile[k][j][i][20+m] * rsd_tile[k][j-1][i][4]
 //                     + c_tile[k][j][i][20+m] * rsd_tile[k][j][i-1][4] );
 // 	  }
-// 
+//
 // 	//---------------------------------------------------------------------
 // 	// diagonal block inversion
-// 	// 
+// 	//
 // 	// forward elimination
 // 	//---------------------------------------------------------------------
 // 	for (m = 0; m < 5; m++) {
@@ -643,7 +643,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 // 	  tmat[m][3] = d_tile[k][j][i][15+m];
 // 	  tmat[m][4] = d_tile[k][j][i][20+m];
 // 	}
-// 
+//
 // 	tmp1 = 1.0 / tmat[0][0];
 // 	tmp = tmp1 * tmat[1][0];
 // 	tmat[1][1] =  tmat[1][1] - tmp * tmat[0][1];
@@ -651,101 +651,101 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 // 	tmat[1][3] =  tmat[1][3] - tmp * tmat[0][3];
 // 	tmat[1][4] =  tmat[1][4] - tmp * tmat[0][4];
 // 	tv[1] = tv[1] - tv[0] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[2][0];
 // 	tmat[2][1] =  tmat[2][1] - tmp * tmat[0][1];
 // 	tmat[2][2] =  tmat[2][2] - tmp * tmat[0][2];
 // 	tmat[2][3] =  tmat[2][3] - tmp * tmat[0][3];
 // 	tmat[2][4] =  tmat[2][4] - tmp * tmat[0][4];
 // 	tv[2] = tv[2] - tv[0] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[3][0];
 // 	tmat[3][1] =  tmat[3][1] - tmp * tmat[0][1];
 // 	tmat[3][2] =  tmat[3][2] - tmp * tmat[0][2];
 // 	tmat[3][3] =  tmat[3][3] - tmp * tmat[0][3];
 // 	tmat[3][4] =  tmat[3][4] - tmp * tmat[0][4];
 // 	tv[3] = tv[3] - tv[0] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[4][0];
 // 	tmat[4][1] =  tmat[4][1] - tmp * tmat[0][1];
 // 	tmat[4][2] =  tmat[4][2] - tmp * tmat[0][2];
 // 	tmat[4][3] =  tmat[4][3] - tmp * tmat[0][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[0][4];
 // 	tv[4] = tv[4] - tv[0] * tmp;
-// 
+//
 // 	tmp1 = 1.0 / tmat[1][1];
 // 	tmp = tmp1 * tmat[2][1];
 // 	tmat[2][2] =  tmat[2][2] - tmp * tmat[1][2];
 // 	tmat[2][3] =  tmat[2][3] - tmp * tmat[1][3];
 // 	tmat[2][4] =  tmat[2][4] - tmp * tmat[1][4];
 // 	tv[2] = tv[2] - tv[1] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[3][1];
 // 	tmat[3][2] =  tmat[3][2] - tmp * tmat[1][2];
 // 	tmat[3][3] =  tmat[3][3] - tmp * tmat[1][3];
 // 	tmat[3][4] =  tmat[3][4] - tmp * tmat[1][4];
 // 	tv[3] = tv[3] - tv[1] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[4][1];
 // 	tmat[4][2] =  tmat[4][2] - tmp * tmat[1][2];
 // 	tmat[4][3] =  tmat[4][3] - tmp * tmat[1][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[1][4];
 // 	tv[4] = tv[4] - tv[1] * tmp;
-// 
+//
 // 	tmp1 = 1.0 / tmat[2][2];
 // 	tmp = tmp1 * tmat[3][2];
 // 	tmat[3][3] =  tmat[3][3] - tmp * tmat[2][3];
 // 	tmat[3][4] =  tmat[3][4] - tmp * tmat[2][4];
 // 	tv[3] = tv[3] - tv[2] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[4][2];
 // 	tmat[4][3] =  tmat[4][3] - tmp * tmat[2][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[2][4];
 // 	tv[4] = tv[4] - tv[2] * tmp;
-// 
+//
 // 	tmp1 = 1.0 / tmat[3][3];
 // 	tmp = tmp1 * tmat[4][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[3][4];
 // 	tv[4] = tv[4] - tv[3] * tmp;
-// 
+//
 // 	//---------------------------------------------------------------------
 // 	// back substitution
 // 	//---------------------------------------------------------------------
 // 	rsd_tile[k][j][i][4] = tv[4] / tmat[4][4];
-// 
-// 	tv[3] = tv[3] 
+//
+// 	tv[3] = tv[3]
 //         - tmat[3][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][3] = tv[3] / tmat[3][3];
-// 
+//
 // 	tv[2] = tv[2]
 // 	  - tmat[2][3] * rsd_tile[k][j][i][3]
 // 	  - tmat[2][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][2] = tv[2] / tmat[2][2];
-// 
+//
 // 	tv[1] = tv[1]
 // 	  - tmat[1][2] * rsd_tile[k][j][i][2]
 // 	  - tmat[1][3] * rsd_tile[k][j][i][3]
 // 	  - tmat[1][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][1] = tv[1] / tmat[1][1];
-// 
+//
 // 	tv[0] = tv[0]
 // 	  - tmat[0][1] * rsd_tile[k][j][i][1]
 // 	  - tmat[0][2] * rsd_tile[k][j][i][2]
 // 	  - tmat[0][3] * rsd_tile[k][j][i][3]
 // 	  - tmat[0][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][0] = tv[0] / tmat[0][0];
-//       
+//
 // 	}
-//       }	
+//       }
 //     }
 //   } // End If
-//   
+//
 // }
-// 
-// 
+//
+//
 // void jacld_blts_compute_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, HTA* s5_tile, HTA* s6_tile, HTA* s7_tile, HTA* s8_tile, void *scalar)
 // {
-//     
+//
 //   //---------------------------------------------------------------------
 //   // local variables
 //   //---------------------------------------------------------------------
@@ -754,7 +754,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //   double c1345;
 //   double c34;
 //   double tmp, tmp1, tmp2, tmp3;
-//   
+//
 //   int i, j, k, m;
 //   int i_first, j_first, i_last, j_last, k_first, k_last;
 //   int x, y, z;
@@ -762,12 +762,12 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //   double tmat[5][5], tv[5];
 //   // FIXME: h5s2 is required to pass omega and k, omega = 1.2
 //   double omega = 1.2;
-//   
-//   
+//
+//
 //   int nx_tile = s5_tile->flat_size.values[2];
 //   int ny_tile = s5_tile->flat_size.values[1];
-//   int nz_tile = s5_tile->flat_size.values[0]; 
-//     
+//   int nz_tile = s5_tile->flat_size.values[0];
+//
 //   double (*a_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s1_tile);
 //   double (*b_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s2_tile);
 //   double (*c_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s3_tile);
@@ -777,20 +777,20 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //   double (*rho_i_tile)[ny_tile][nx_tile][1] = (double (*)[ny_tile][nx_tile][1])HTA_get_ptr_raw_data(s6_tile);
 //   double (*qs_tile)[ny_tile][nx_tile][1] = (double (*)[ny_tile][nx_tile][1])HTA_get_ptr_raw_data(s7_tile);
 //   double (*u_tile)[ny_tile][nx_tile][5] = (double (*)[ny_tile][nx_tile][5])HTA_get_ptr_raw_data(s8_tile);
-//   
+//
 //   int selection = *((int*)scalar);
-//   
+//
 //   Tuple nd_size = s5_tile->nd_tile_dimensions;
 //   Tuple nd_idx = s5_tile->nd_rank;
-//   
+//
 //   x = nd_idx.values[2];
 //   y = nd_idx.values[1];
 //   z = nd_idx.values[0];
-//   
+//
 //   if(x + y + z == selection) { // Wavefront propagation: only tiles with i + j + z == val
-// 
+//
 //     //printf("Iteration = %d --> Tile(%d,%d,%d)\n", selection, z, y, x);
-// 
+//
 //     if (x == 0) i_first = 3; // 2nd element
 //     else i_first = 2;
 //     if (y == 0) j_first = 3; // 2nd element
@@ -803,14 +803,14 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //     else j_last = ny_tile - 2;
 //     if (z == nd_size.values[0] - 1) k_last = nz_tile - 3; // Next to last element
 //     else k_last = nz_tile - 2;
-//     
+//
 //     r43 = ( 4.0 / 3.0 );
 //     c1345 = C1 * C3 * C4 * C5;
 //     c34 = C3 * C4;
-//   
+//
 //     for(k = k_first; k < k_last; k++) {
 //      for (j = j_first; j < j_last; j++) {
-//       for (i = i_first; i < i_last; i++) { 
+//       for (i = i_first; i < i_last; i++) {
 //       // ******************************************************
 //       // From now on JACLD
 //       // ******************************************************
@@ -820,13 +820,13 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       tmp1 = rho_i_tile[k][j][i][0];
 //       tmp2 = tmp1 * tmp1;
 //       tmp3 = tmp1 * tmp2;
-// 
+//
 //       d_tile[k][j][i][0] =  1.0 + dt * 2.0 * ( tx1 * dx1 + ty1 * dy1 + tz1 * dz1 );
 //       d_tile[k][j][i][5] =  0.0;
 //       d_tile[k][j][i][10] =  0.0;
 //       d_tile[k][j][i][15] =  0.0;
 //       d_tile[k][j][i][20] =  0.0;
-// 
+//
 //       d_tile[k][j][i][1] = -dt * 2.0
 //         * ( tx1 * r43 + ty1 + tz1 ) * c34 * tmp2 * u_tile[k][j][i][1];
 //       d_tile[k][j][i][6] =  1.0
@@ -835,8 +835,8 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       d_tile[k][j][i][11] = 0.0;
 //       d_tile[k][j][i][16] = 0.0;
 //       d_tile[k][j][i][21] = 0.0;
-//       
-//       d_tile[k][j][i][2] = -dt * 2.0 
+//
+//       d_tile[k][j][i][2] = -dt * 2.0
 //         * ( tx1 + ty1 * r43 + tz1 ) * c34 * tmp2 * u_tile[k][j][i][2];
 //       d_tile[k][j][i][7] = 0.0;
 //       d_tile[k][j][i][12] = 1.0
@@ -844,7 +844,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         + dt * 2.0 * ( tx1 * dx3 + ty1 * dy3 + tz1 * dz3 );
 //       d_tile[k][j][i][17] = 0.0;
 //       d_tile[k][j][i][22] = 0.0;
-// 
+//
 //       d_tile[k][j][i][3] = -dt * 2.0
 //         * ( tx1 + ty1 + tz1 * r43 ) * c34 * tmp2 * u_tile[k][j][i][3];
 //       d_tile[k][j][i][8] = 0.0;
@@ -853,7 +853,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         + dt * 2.0 * c34 * tmp1 * ( tx1 + ty1 + tz1 * r43 )
 //         + dt * 2.0 * ( tx1 * dx4 + ty1 * dy4 + tz1 * dz4 );
 //       d_tile[k][j][i][23] = 0.0;
-// 
+//
 //       d_tile[k][j][i][4] = -dt * 2.0
 //         * ( ( ( tx1 * ( r43*c34 - c1345 )
 //                 + ty1 * ( c34 - c1345 )
@@ -866,7 +866,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //                 + tz1 * ( r43*c34 - c1345 ) ) * (u_tile[k][j][i][3]*u_tile[k][j][i][3])
 //             ) * tmp3
 //             + ( tx1 + ty1 + tz1 ) * c1345 * tmp2 * u_tile[k][j][i][4] );
-// 
+//
 //       d_tile[k][j][i][9] = dt * 2.0 * tmp2 * u_tile[k][j][i][1]
 //         * ( tx1 * ( r43*c34 - c1345 )
 //           + ty1 * (     c34 - c1345 )
@@ -881,21 +881,21 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //           + tz1 * ( r43*c34 - c1345 ) );
 //       d_tile[k][j][i][24] = 1.0
 //         + dt * 2.0 * ( tx1  + ty1 + tz1 ) * c1345 * tmp1
-//         + dt * 2.0 * ( tx1 * dx5 +  ty1 * dy5 +  tz1 * dz5 );  
-// 	
+//         + dt * 2.0 * ( tx1 * dx5 +  ty1 * dy5 +  tz1 * dz5 );
+//
 //       //---------------------------------------------------------------------
 //       // form the first block sub-diagonal
 //       //---------------------------------------------------------------------
 //       tmp1 = rho_i_tile[k-1][j][i][0];
 //       tmp2 = tmp1 * tmp1;
 //       tmp3 = tmp1 * tmp2;
-// 
+//
 //       a_tile[k][j][i][0] = - dt * tz1 * dz1;
 //       a_tile[k][j][i][5] =   0.0;
 //       a_tile[k][j][i][10] =   0.0;
 //       a_tile[k][j][i][15] = - dt * tz2;
 //       a_tile[k][j][i][20] =   0.0;
-// 
+//
 //       a_tile[k][j][i][1] = - dt * tz2
 //         * ( - ( u_tile[k-1][j][i][1]*u_tile[k-1][j][i][3] ) * tmp2 )
 //         - dt * tz1 * ( - c34 * tmp2 * u_tile[k-1][j][i][1] );
@@ -905,7 +905,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       a_tile[k][j][i][11] = 0.0;
 //       a_tile[k][j][i][16] = - dt * tz2 * ( u_tile[k-1][j][i][1] * tmp1 );
 //       a_tile[k][j][i][21] = 0.0;
-// 
+//
 //       a_tile[k][j][i][2] = - dt * tz2
 //         * ( - ( u_tile[k-1][j][i][2]*u_tile[k-1][j][i][3] ) * tmp2 )
 //         - dt * tz1 * ( - c34 * tmp2 * u_tile[k-1][j][i][2] );
@@ -915,7 +915,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         - dt * tz1 * dz3;
 //       a_tile[k][j][i][17] = - dt * tz2 * ( u_tile[k-1][j][i][2] * tmp1 );
 //       a_tile[k][j][i][22] = 0.0;
-// 
+//
 //       a_tile[k][j][i][3] = - dt * tz2
 //         * ( - ( u_tile[k-1][j][i][3] * tmp1 ) * ( u_tile[k-1][j][i][3] * tmp1 )
 //             + C2 * qs_tile[k-1][j][i][0] * tmp1 )
@@ -929,7 +929,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         - dt * tz1 * ( r43 * c34 * tmp1 )
 //         - dt * tz1 * dz4;
 //       a_tile[k][j][i][23] = - dt * tz2 * C2;
-// 
+//
 //       a_tile[k][j][i][4] = - dt * tz2
 //         * ( ( C2 * 2.0 * qs_tile[k-1][j][i][0] - C1 * u_tile[k-1][j][i][4] )
 //             * u_tile[k-1][j][i][3] * tmp2 )
@@ -952,21 +952,21 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       a_tile[k][j][i][24] = - dt * tz2
 //         * ( C1 * ( u_tile[k-1][j][i][3] * tmp1 ) )
 //         - dt * tz1 * c1345 * tmp1
-//         - dt * tz1 * dz5;   
-// 
+//         - dt * tz1 * dz5;
+//
 //       //---------------------------------------------------------------------
 //       // form the second block sub-diagonal
 //       //---------------------------------------------------------------------
 //       tmp1 = rho_i_tile[k][j-1][i][0];
 //       tmp2 = tmp1 * tmp1;
 //       tmp3 = tmp1 * tmp2;
-// 
+//
 //       b_tile[k][j][i][0] = - dt * ty1 * dy1;
 //       b_tile[k][j][i][5] =   0.0;
 //       b_tile[k][j][i][10] = - dt * ty2;
 //       b_tile[k][j][i][15] =   0.0;
 //       b_tile[k][j][i][20] =   0.0;
-// 
+//
 //       b_tile[k][j][i][1] = - dt * ty2
 //         * ( - ( u_tile[k][j-1][i][1]*u_tile[k][j-1][i][2] ) * tmp2 )
 //         - dt * ty1 * ( - c34 * tmp2 * u_tile[k][j-1][i][1] );
@@ -976,7 +976,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       b_tile[k][j][i][11] = - dt * ty2 * ( u_tile[k][j-1][i][1] * tmp1 );
 //       b_tile[k][j][i][16] = 0.0;
 //       b_tile[k][j][i][21] = 0.0;
-// 
+//
 //       b_tile[k][j][i][2] = - dt * ty2
 //         * ( - ( u_tile[k][j-1][i][2] * tmp1 ) * ( u_tile[k][j-1][i][2] * tmp1 )
 //             + C2 * ( qs_tile[k][j-1][i][0] * tmp1 ) )
@@ -988,7 +988,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         - dt * ty1 * dy3;
 //       b_tile[k][j][i][17] = - dt * ty2 * ( - C2 * ( u_tile[k][j-1][i][3] * tmp1 ) );
 //       b_tile[k][j][i][22] = - dt * ty2 * C2;
-// 
+//
 //       b_tile[k][j][i][3] = - dt * ty2
 //         * ( - ( u_tile[k][j-1][i][2]*u_tile[k][j-1][i][3] ) * tmp2 )
 //         - dt * ty1 * ( - c34 * tmp2 * u_tile[k][j-1][i][3] );
@@ -998,7 +998,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         - dt * ty1 * ( c34 * tmp1 )
 //         - dt * ty1 * dy4;
 //       b_tile[k][j][i][23] = 0.0;
-// 
+//
 //       b_tile[k][j][i][4] = - dt * ty2
 //         * ( ( C2 * 2.0 * qs_tile[k][j-1][i][0] - C1 * u_tile[k][j-1][i][4] )
 //             * ( u_tile[k][j-1][i][2] * tmp2 ) )
@@ -1022,20 +1022,20 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         * ( C1 * ( u_tile[k][j-1][i][2] * tmp1 ) )
 //         - dt * ty1 * c1345 * tmp1
 //         - dt * ty1 * dy5;
-// 	
+//
 //       //---------------------------------------------------------------------
 //       // form the third block sub-diagonal
 //       //---------------------------------------------------------------------
 //       tmp1 = rho_i_tile[k][j][i-1][0];
 //       tmp2 = tmp1 * tmp1;
 //       tmp3 = tmp1 * tmp2;
-// 
+//
 //       c_tile[k][j][i][0] = - dt * tx1 * dx1;
 //       c_tile[k][j][i][5] = - dt * tx2;
 //       c_tile[k][j][i][10] =   0.0;
 //       c_tile[k][j][i][15] =   0.0;
 //       c_tile[k][j][i][20] =   0.0;
-// 
+//
 //       c_tile[k][j][i][1] = - dt * tx2
 //         * ( - ( u_tile[k][j][i-1][1] * tmp1 ) * ( u_tile[k][j][i-1][1] * tmp1 )
 //             + C2 * qs_tile[k][j][i-1][0] * tmp1 )
@@ -1049,7 +1049,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       c_tile[k][j][i][16] = - dt * tx2
 //         * ( - C2 * ( u_tile[k][j][i-1][3] * tmp1 ) );
 //       c_tile[k][j][i][21] = - dt * tx2 * C2;
-// 
+//
 //       c_tile[k][j][i][2] = - dt * tx2
 //         * ( - ( u_tile[k][j][i-1][1] * u_tile[k][j][i-1][2] ) * tmp2 )
 //         - dt * tx1 * ( - c34 * tmp2 * u_tile[k][j][i-1][2] );
@@ -1059,7 +1059,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //         - dt * tx1 * dx3;
 //       c_tile[k][j][i][17] = 0.0;
 //       c_tile[k][j][i][22] = 0.0;
-// 
+//
 //       c_tile[k][j][i][3] = - dt * tx2
 //         * ( - ( u_tile[k][j][i-1][1]*u_tile[k][j][i-1][3] ) * tmp2 )
 //         - dt * tx1 * ( - c34 * tmp2 * u_tile[k][j][i-1][3] );
@@ -1068,7 +1068,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //       c_tile[k][j][i][18] = - dt * tx2 * ( u_tile[k][j][i-1][1] * tmp1 )
 //         - dt * tx1 * ( c34 * tmp1 ) - dt * tx1 * dx4;
 //       c_tile[k][j][i][23] = 0.0;
-// 
+//
 //       c_tile[k][j][i][4] = - dt * tx2
 //         * ( ( C2 * 2.0 * qs_tile[k][j][i-1][0] - C1 * u_tile[k][j][i-1][4] )
 //             * u_tile[k][j][i-1][1] * tmp2 )
@@ -1098,7 +1098,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //      // From now on BLTS
 //      // ******************************************************
 //      //for (j = j_first; j < j_last; j++) {
-//      // for (i = i_first; i < i_last; i++) { 
+//      // for (i = i_first; i < i_last; i++) {
 // 	  for (m = 0; m < 5; m++) {
 // 	      rsd_tile[k][j][i][m] =  rsd_tile[k][j][i][m]
 // 		- omega * (  a_tile[k][j][i][m] * rsd_tile[k-1][j][i][0]
@@ -1106,8 +1106,8 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //                      + a_tile[k][j][i][10+m] * rsd_tile[k-1][j][i][2]
 //                      + a_tile[k][j][i][15+m] * rsd_tile[k-1][j][i][3]
 //                      + a_tile[k][j][i][20+m] * rsd_tile[k-1][j][i][4] );
-// 	  } 
-// 	  
+// 	  }
+//
 // 	  for (m = 0; m < 5; m++) {
 // 	    tv[m] =  rsd_tile[k][j][i][m]
 // 	      - omega * ( b_tile[k][j][i][m] * rsd_tile[k][j-1][i][0]
@@ -1121,10 +1121,10 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 //                     + b_tile[k][j][i][20+m] * rsd_tile[k][j-1][i][4]
 //                     + c_tile[k][j][i][20+m] * rsd_tile[k][j][i-1][4] );
 // 	  }
-// 
+//
 // 	//---------------------------------------------------------------------
 // 	// diagonal block inversion
-// 	// 
+// 	//
 // 	// forward elimination
 // 	//---------------------------------------------------------------------
 // 	for (m = 0; m < 5; m++) {
@@ -1134,7 +1134,7 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 // 	  tmat[m][3] = d_tile[k][j][i][15+m];
 // 	  tmat[m][4] = d_tile[k][j][i][20+m];
 // 	}
-// 
+//
 // 	tmp1 = 1.0 / tmat[0][0];
 // 	tmp = tmp1 * tmat[1][0];
 // 	tmat[1][1] =  tmat[1][1] - tmp * tmat[0][1];
@@ -1142,94 +1142,94 @@ void jacld_blts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_t
 // 	tmat[1][3] =  tmat[1][3] - tmp * tmat[0][3];
 // 	tmat[1][4] =  tmat[1][4] - tmp * tmat[0][4];
 // 	tv[1] = tv[1] - tv[0] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[2][0];
 // 	tmat[2][1] =  tmat[2][1] - tmp * tmat[0][1];
 // 	tmat[2][2] =  tmat[2][2] - tmp * tmat[0][2];
 // 	tmat[2][3] =  tmat[2][3] - tmp * tmat[0][3];
 // 	tmat[2][4] =  tmat[2][4] - tmp * tmat[0][4];
 // 	tv[2] = tv[2] - tv[0] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[3][0];
 // 	tmat[3][1] =  tmat[3][1] - tmp * tmat[0][1];
 // 	tmat[3][2] =  tmat[3][2] - tmp * tmat[0][2];
 // 	tmat[3][3] =  tmat[3][3] - tmp * tmat[0][3];
 // 	tmat[3][4] =  tmat[3][4] - tmp * tmat[0][4];
 // 	tv[3] = tv[3] - tv[0] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[4][0];
 // 	tmat[4][1] =  tmat[4][1] - tmp * tmat[0][1];
 // 	tmat[4][2] =  tmat[4][2] - tmp * tmat[0][2];
 // 	tmat[4][3] =  tmat[4][3] - tmp * tmat[0][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[0][4];
 // 	tv[4] = tv[4] - tv[0] * tmp;
-// 
+//
 // 	tmp1 = 1.0 / tmat[1][1];
 // 	tmp = tmp1 * tmat[2][1];
 // 	tmat[2][2] =  tmat[2][2] - tmp * tmat[1][2];
 // 	tmat[2][3] =  tmat[2][3] - tmp * tmat[1][3];
 // 	tmat[2][4] =  tmat[2][4] - tmp * tmat[1][4];
 // 	tv[2] = tv[2] - tv[1] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[3][1];
 // 	tmat[3][2] =  tmat[3][2] - tmp * tmat[1][2];
 // 	tmat[3][3] =  tmat[3][3] - tmp * tmat[1][3];
 // 	tmat[3][4] =  tmat[3][4] - tmp * tmat[1][4];
 // 	tv[3] = tv[3] - tv[1] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[4][1];
 // 	tmat[4][2] =  tmat[4][2] - tmp * tmat[1][2];
 // 	tmat[4][3] =  tmat[4][3] - tmp * tmat[1][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[1][4];
 // 	tv[4] = tv[4] - tv[1] * tmp;
-// 
+//
 // 	tmp1 = 1.0 / tmat[2][2];
 // 	tmp = tmp1 * tmat[3][2];
 // 	tmat[3][3] =  tmat[3][3] - tmp * tmat[2][3];
 // 	tmat[3][4] =  tmat[3][4] - tmp * tmat[2][4];
 // 	tv[3] = tv[3] - tv[2] * tmp;
-// 
+//
 // 	tmp = tmp1 * tmat[4][2];
 // 	tmat[4][3] =  tmat[4][3] - tmp * tmat[2][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[2][4];
 // 	tv[4] = tv[4] - tv[2] * tmp;
-// 
+//
 // 	tmp1 = 1.0 / tmat[3][3];
 // 	tmp = tmp1 * tmat[4][3];
 // 	tmat[4][4] =  tmat[4][4] - tmp * tmat[3][4];
 // 	tv[4] = tv[4] - tv[3] * tmp;
-// 
+//
 // 	//---------------------------------------------------------------------
 // 	// back substitution
 // 	//---------------------------------------------------------------------
 // 	rsd_tile[k][j][i][4] = tv[4] / tmat[4][4];
-// 
-// 	tv[3] = tv[3] 
+//
+// 	tv[3] = tv[3]
 //         - tmat[3][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][3] = tv[3] / tmat[3][3];
-// 
+//
 // 	tv[2] = tv[2]
 // 	  - tmat[2][3] * rsd_tile[k][j][i][3]
 // 	  - tmat[2][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][2] = tv[2] / tmat[2][2];
-// 
+//
 // 	tv[1] = tv[1]
 // 	  - tmat[1][2] * rsd_tile[k][j][i][2]
 // 	  - tmat[1][3] * rsd_tile[k][j][i][3]
 // 	  - tmat[1][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][1] = tv[1] / tmat[1][1];
-// 
+//
 // 	tv[0] = tv[0]
 // 	  - tmat[0][1] * rsd_tile[k][j][i][1]
 // 	  - tmat[0][2] * rsd_tile[k][j][i][2]
 // 	  - tmat[0][3] * rsd_tile[k][j][i][3]
 // 	  - tmat[0][4] * rsd_tile[k][j][i][4];
 // 	rsd_tile[k][j][i][0] = tv[0] / tmat[0][0];
-//    
+//
 // 	}
-//       }	
+//       }
 //     }
 //   } // End If
-//   
+//
 // }
-// 
+//

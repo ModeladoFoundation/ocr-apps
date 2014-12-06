@@ -22,7 +22,7 @@ ${PROGRAM}: config ${OBJS}
 cg.o:		cg.c  globals.h npbparams.h
 
 clean:
-	- rm -f *.o *~ 
+	- rm -f *.o *~
 	- rm -f npbparams.h core
 
 

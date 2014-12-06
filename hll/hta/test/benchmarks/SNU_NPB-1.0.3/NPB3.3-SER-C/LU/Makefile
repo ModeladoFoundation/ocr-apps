@@ -18,10 +18,10 @@ OBJS = lu.o read_input.o \
 # npbparams.h is included by applu.incl
 # The following rule should do the trick but many make programs (not gmake)
 # will do the wrong thing and rebuild the world every time (because the
-# mod time on header.h is not changed. One solution would be to 
+# mod time on header.h is not changed. One solution would be to
 # touch header.h but this might cause confusion if someone has
 # accidentally deleted it. Instead, make the dependency on npbparams.h
-# explicit in all the lines below (even though dependence is indirect). 
+# explicit in all the lines below (even though dependence is indirect).
 
 # applu.incl: npbparams.h
 
@@ -42,7 +42,7 @@ exec: $(OBJS)
 
 lu.o:		lu.c applu.incl npbparams.h
 blts$(VEC).o:	blts$(VEC).c
-buts$(VEC).o:	buts$(VEC).c	
+buts$(VEC).o:	buts$(VEC).c
 erhs.o:		erhs.c applu.incl npbparams.h
 error.o:	error.c applu.incl npbparams.h
 exact.o:	exact.c applu.incl npbparams.h

@@ -92,6 +92,6 @@ void finalize_function(int *target_id, double C[X][Y], double *kernel_start_time
 	stop_timer(&verification_timer);
 	printf("  %11.3lf ms\n", verification_timer.elapsed);
 	print_correct(correct);
-	
+
 	*target_id = 0;
 }

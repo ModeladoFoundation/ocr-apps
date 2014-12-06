@@ -85,9 +85,9 @@ double dssp;
 
 //---------------------------------------------------------------------
 // field variables and residuals
-// to improve cache performance, second two dimensions padded by 1 
+// to improve cache performance, second two dimensions padded by 1
 // for even number sizes only.
-// Note: corresponding array (called "v") in routines blts, buts, 
+// Note: corresponding array (called "v") in routines blts, buts,
 // and l2norm are similarly padded
 //---------------------------------------------------------------------
 /* common/cvar/ */
@@ -97,7 +97,7 @@ double dssp;
 // double flux [ISIZ1][5];
 // double qs   [ISIZ3][ISIZ2/2*2+1][ISIZ1/2*2+1];
 // double rho_i[ISIZ3][ISIZ2/2*2+1][ISIZ1/2*2+1];
- 
+
 // double test[ISIZ3+(4*PROC_Z)][ISIZ2+(4*PROC_Y)][ISIZ1+(4*PROC_X)][5];
 
 //---------------------------------------------------------------------
@@ -149,17 +149,17 @@ int hta_main(int argc, char *argv[])
   int i;
   char *t_names[t_last+3];
   int PROC;
-  
+
   if (argc >= 4)
   {
       PROC_X = atoi(argv[3]);
       PROC_Y = atoi(argv[2]);
       PROC_Z = atoi(argv[1]);
-  } 
-  
+  }
+
   if (argc == 5) PROC = atoi(argv[4]);
   else PROC = omp_get_max_threads();
-  
+
   //---------------------------------------------------------------------
   // Setup info for timers
   //---------------------------------------------------------------------
@@ -183,7 +183,7 @@ int hta_main(int argc, char *argv[])
   } else {
     timeron = false;
   }
-  
+
   //---------------------------------------------------------------------
   // HTA definitions
   //---------------------------------------------------------------------
@@ -212,11 +212,11 @@ int hta_main(int argc, char *argv[])
 //   du_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
   //---------------------------------------------------------------------
   Tuple t4 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 1);
-  Tuple fs4 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 5); 
+  Tuple fs4 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 5);
   sum_HTA = HTA_create(4, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t4); // Required by l2norm
   err_HTA = HTA_create(4, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t4); // Required by error
   //---------------------------------------------------------------------
-  
+
   //---------------------------------------------------------------------
   // read input data
   //---------------------------------------------------------------------
@@ -256,18 +256,18 @@ int hta_main(int argc, char *argv[])
   // perform one SSOR iteration to touch all data pages
   //---------------------------------------------------------------------
   ssor_HTA(1);
- 
+
   //---------------------------------------------------------------------
   // reset the boundary and initial values
   //---------------------------------------------------------------------
   setbv_HTA();
   setiv_HTA();
- 
+
   //---------------------------------------------------------------------
   // perform the SSOR iterations
   //---------------------------------------------------------------------
   ssor_HTA(itmax);
-  
+
   //---------------------------------------------------------------------
   // compute the solution error
   //---------------------------------------------------------------------
@@ -284,19 +284,19 @@ int hta_main(int argc, char *argv[])
   mflops = (double)itmax * (1984.77 * (double)nx0
       * (double)ny0
       * (double)nz0
-      - 10923.3 * pow(((double)(nx0+ny0+nz0)/3.0), 2.0) 
+      - 10923.3 * pow(((double)(nx0+ny0+nz0)/3.0), 2.0)
       + 27770.9 * (double)(nx0+ny0+nz0)/3.0
       - 144010.0)
     / (maxtime*1000000.0);
 
   print_results("LU", Class, nx0,
                 ny0, nz0, itmax,
-                maxtime, mflops, "          floating point", verified, 
-                NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5, CS6, 
+                maxtime, mflops, "          floating point", verified,
+                NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5, CS6,
                 "(none)");
 
 
-  
+
   //---------------------------------------------------------------------
   // More timers
   //---------------------------------------------------------------------
@@ -311,9 +311,9 @@ int hta_main(int argc, char *argv[])
     sprintf(rec_name, "rec/lu.%c.%d.rec", Class, PROC);
     FILE* fp_rec = fopen(rec_name, "a");
     fprintf(fp_rec, "%9.4f ", tmax);
-    
+
     printf("  SECTION     Time (secs)\n");
-    for (i = 1; i <= t_last; i++) {     
+    for (i = 1; i <= t_last; i++) {
       if (i == 1 || i > 4) fprintf(fp_rec, "%9.4f ", trecs[i]);
       printf("  %-8s:%9.4f  (%6.2f%%)\n",
           t_names[i], trecs[i], trecs[i]*100./tmax);
@@ -332,7 +332,7 @@ int hta_main(int argc, char *argv[])
 
   return 0;
 }
- 
+
 //  FIXME: this should be a collective operation instead of a map
 void sync_boundary(HTA* h)
 {
@@ -341,7 +341,7 @@ void sync_boundary(HTA* h)
 
 // Actively write necessary boundaries from other neighbor tiles
 // Writes don't have to wait because all writes go directly to where
-// the boundaries are. 
+// the boundaries are.
 
 #define IDX_INC(i) \
     do { \
@@ -402,11 +402,11 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
     int x = nd_idx.values[2];
     int y = nd_idx.values[1];
     int z = nd_idx.values[0];
-    
+
     if(check_bound < 0 || (x + y + z) == check_bound) {
-    
+
     //printf("Synchronizing boundaries tile (%d,%d,%d) -- check = %d\n", x, y, z, check_bound);
-    
+
     // Update the surfaces
     // x+1
     X_PLUS_1();
@@ -472,7 +472,7 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
 	      for(m = 0; m < n0s; m++) {
 		zt[0][i2][i1][m] = zs[n3s-4][i2][i1][m];
 		zt[1][i2][i1][m] = zs[n3s-3][i2][i1][m];
-		
+
 	      }
     }
     // z-1
@@ -489,7 +489,7 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
 	      }
     }
    } // End If condition
-   
+
    if(check_bound == -2) { // Only for pintgr.c
     // Update the vectors
     // x+1, y+1, z
@@ -601,7 +601,7 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
 	   zt[n3t-1][0][i1][m] = zs[3][n2s-4][i1][m];
 	   zt[n3t-1][1][i1][m] = zs[3][n2s-3][i1][m];
 	   zt[n3t-2][0][i1][m] = zs[2][n2s-4][i1][m];
-	   zt[n3t-2][1][i1][m] = zs[2][n2s-3][i1][m];	     
+	   zt[n3t-2][1][i1][m] = zs[2][n2s-3][i1][m];
 	  }
     }
     // x+1, y, z+1
@@ -692,7 +692,7 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
 	  zt[n3t-1][1][1][m] = zs[3][n2s-3][n1s-3][m];
 	  zt[n3t-2][0][0][m] = zs[2][n2s-4][n1s-4][m];
 	  zt[n3t-2][0][1][m] = zs[2][n2s-4][n1s-3][m];
-	  zt[n3t-2][1][0][m] = zs[2][n2s-3][n1s-4][m];      
+	  zt[n3t-2][1][0][m] = zs[2][n2s-3][n1s-4][m];
 	  zt[n3t-2][1][1][m] = zs[2][n2s-3][n1s-3][m];
 	}
     }
@@ -797,7 +797,7 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
 	  zt[n3t-2][n2t-2][n1t-1][m] = zs[2][2][3][m];
 	  zt[n3t-2][n2t-2][n1t-2][m] = zs[2][2][2][m];
 	}
-    }  
-  } // End if condition  
+    }
+  } // End if condition
 }
 

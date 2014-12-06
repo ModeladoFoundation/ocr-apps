@@ -24,7 +24,7 @@ if __name__ == "__main__":
         for t in tests:
             argv = t.split()
             argv[0] = './' + argv[0] + '_' + b
-            print argv 
+            print argv
             ret = subprocess.call(argv)
             print ret
             if ret != 0:

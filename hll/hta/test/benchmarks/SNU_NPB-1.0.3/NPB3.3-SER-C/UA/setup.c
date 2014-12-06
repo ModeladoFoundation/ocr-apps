@@ -67,15 +67,15 @@ void create_initial_grid()
 
 //-----------------------------------------------------------------
 //
-// generate 
+// generate
 //
 //        - collocation points
 //        - weights
-//        - derivative matrices 
+//        - derivative matrices
 //        - projection matrices
-//        - interpolation matrices 
+//        - interpolation matrices
 //
-// associated with the 
+// associated with the
 //
 //        - gauss-legendre lobatto mesh (suffix m1)
 //
@@ -85,7 +85,7 @@ void coef()
   int i, j, k;
 
   // for gauss-legendre lobatto mesh (suffix m1)
-  // generate collocation points and weights 
+  // generate collocation points and weights
   zgm1[0] = -1.0;
   zgm1[1] = -0.65465367070797710;
   zgm1[2] = 0.0;
@@ -153,7 +153,7 @@ void coef()
     for (i = 0; i < 3; i++) {
       qbnew[1][j][i] = qbnew[0][LX1-1-j][2-i];
     }
-  } 
+  }
 
   // generate interpolation matrices for mesh refinement
   ixtmc1[0][0] = 1.0;
@@ -226,7 +226,7 @@ void coef()
 //     bm1      -   mass matrix
 //     xfrac    -   will be used in prepwork for calculating collocation
 //                      coordinates
-//     idel     -   collocation points index on element boundaries 
+//     idel     -   collocation points index on element boundaries
 //------------------------------------------------------------------
 void geom1()
 {
@@ -295,7 +295,7 @@ void setdef()
 
 //------------------------------------------------------------------
 // mesh information preparations: calculate refinement levels of
-// each element, mask matrix for domain boundary and element 
+// each element, mask matrix for domain boundary and element
 // boundaries
 //------------------------------------------------------------------
 void prepwork()
@@ -319,7 +319,7 @@ void prepwork()
     }
   }
 
-  // masks for domain boundary at mortar 
+  // masks for domain boundary at mortar
   r_init(tmmor, nmor, 1.0);
 
   for (iel = 0; iel < nelt; iel++) {
@@ -390,7 +390,7 @@ void prepwork()
     }
   }
 }
-            
+
 
 //------------------------------------------------------------------
 // We store some tables of useful topological constants
@@ -533,7 +533,7 @@ void top_constants()
   oplc[2] = 1;
   oplc[3] = 0;
 
-  // cal_iijj[n][i] returns the location of local corner number n on a face 
+  // cal_iijj[n][i] returns the location of local corner number n on a face
   // i =0  to get ii, i=1 to get jj
   // (ii,jj) is defined the same as in mortar location (ii,jj)
   cal_iijj[0][0] = 0;
@@ -546,8 +546,8 @@ void top_constants()
   cal_iijj[3][1] = 1;
 
   // returns the adjacent(neighbored by a face) element's children,
-  // assumming a vertex is shared by eight child elements 0-7. 
-  // index n is local corner number on the face which is being 
+  // assumming a vertex is shared by eight child elements 0-7.
+  // index n is local corner number on the face which is being
   // assigned the mortar index number
   cal_intempx[0][0] = 7;
   cal_intempx[0][1] = 5;
@@ -602,11 +602,11 @@ void top_constants()
 
   // on each face of the parent element, there are four children element.
   //le_arr[n][j][i] returns the i'th elements among the four children elements
-  // n refers to the direction: 1 for x, 2 for y and 3 for z direction. 
+  // n refers to the direction: 1 for x, 2 for y and 3 for z direction.
   // j refers to positive(0) or negative(1) direction on x, y or z direction.
   // n=1,j=0 refers to face 1 and n=1, j=1 refers to face 2, n=2,j=0 refers to
-  // face 3.... 
-  // The current eight children are ordered as 8,1,2,3,4,5,6,7 
+  // face 3....
+  // The current eight children are ordered as 8,1,2,3,4,5,6,7
   le_arr[0][0][0] = 7;
   le_arr[0][0][1] = 1;
   le_arr[0][0][2] = 3;
@@ -694,7 +694,7 @@ void top_constants()
   e_face2[5][2] = 0;
   e_face2[5][3] = 0;
 
-  // op[n] returns the local edge number of the edge which 
+  // op[n] returns the local edge number of the edge which
   // is opposite to local edge n on the same face
   op[0] = 2;
   op[1] = 3;
@@ -802,7 +802,7 @@ void top_constants()
   edgenumber[5][2] = 8;
   edgenumber[5][3] = 4;
 
-  // f_c[n][c] returns the face index of i'th face sharing vertex n 
+  // f_c[n][c] returns the face index of i'th face sharing vertex n
   f_c[0][0] = 1;
   f_c[0][1] = 3;
   f_c[0][2] = 5;
@@ -828,12 +828,12 @@ void top_constants()
   f_c[7][1] = 2;
   f_c[7][2] = 4;
 
-  // if two elements are neighbor by one edge, 
-  // e1v1[f2][f1] returns the smaller index of the two vertices on this 
+  // if two elements are neighbor by one edge,
+  // e1v1[f2][f1] returns the smaller index of the two vertices on this
   // edge on one element
-  // e1v2 returns the larger index of the two vertices of this edge on 
-  // on element. exfor a vertex on element 
-  // e2v1 returns the smaller index of the two vertices on this edge on 
+  // e1v2 returns the larger index of the two vertices of this edge on
+  // on element. exfor a vertex on element
+  // e2v1 returns the smaller index of the two vertices on this edge on
   // another element
   // e2v2 returns the larger index of the two vertiex on this edge on
   // another element
@@ -989,7 +989,7 @@ void top_constants()
   e2v2[5][4] = -1;
   e2v2[5][5] = -1;
 
-  // children[n][n1] returns the four elements among the eight children 
+  // children[n][n1] returns the four elements among the eight children
   // elements to be merged on face n of the parent element
   // the IDs for the eight children are 0,1,2,3,4,5,6,7
   children[0][0] = 1;
@@ -1033,7 +1033,7 @@ void top_constants()
   v_end[0] = 0;
   v_end[1] = LX1-1;
 
-  //face_l1,face_l2,face_ld return for start,end,stride for a loop over faces 
+  //face_l1,face_l2,face_ld return for start,end,stride for a loop over faces
   // used on subroutine  mortar_vertex
   face_l1[0] = 1;
   face_l1[1] = 2;

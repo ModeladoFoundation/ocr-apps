@@ -49,7 +49,7 @@ cmd="${HTAHLL}/pil/pilc/pilc $rstream -m $mem -o $out $examples_dir/example$2.pi
 echo $cmd
 $cmd && \
 ./build $1 example$2 && \
-echo 
+echo
 
 if [ $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
 	swarmrun -l10 ./example$2

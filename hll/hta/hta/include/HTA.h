@@ -48,14 +48,14 @@ typedef struct hta {
     HTA_TYPE type;
     /// The scalar type of this HTA
     HTA_SCALAR_TYPE scalar_type;
-    /// Number of  dimensions 
-    int dim;              
+    /// Number of  dimensions
+    int dim;
     /// The height of current tile in the tree (i.e. the number of levels below this one)
     int height;
-    /// The home location (processor node number) of this tile. -1 means this tile is not leaf   
+    /// The home location (processor node number) of this tile. -1 means this tile is not leaf
     int home;
     /// The rank of it among all HTAs at the same level
-    int rank;        
+    int rank;
     /// The nd rank of the HTA (it only apply to leaf tiles
     Tuple nd_rank;
     /// global tile dimensions at the same level
@@ -67,9 +67,9 @@ typedef struct hta {
     /// The dimension of flattened HTA
     Tuple flat_size;
     /// An array of <levels> Tuples
-    Tuple* tiling; 
+    Tuple* tiling;
     /// tiles is a dynamically allocated array of pointers to all HTA metadata one level immediately below
-    struct hta** tiles;  
+    struct hta** tiles;
     /// The block id of the data tile. It's 0 for non-leaf HTA tiles.
     /// The pointer to leaf tile metadata
     Leaf leaf;
@@ -83,14 +83,14 @@ typedef struct hta {
     /// !!!!!!! These fields should not be used in general manipulation
     /// !!!!!!! Since they are not valid for HTAs acquired with HTA_select
     /// The level relative to the root during first initialization
-    // int level; 
+    // int level;
     /// The block id of it's original parent
     // struct hta* parent;
     /// The block id of it's original root
     // struct hta* root;
 } HTA;
 
-/// The new HTA_create takes the flatten HTA dimension size and the tiling of all levels 
+/// The new HTA_create takes the flatten HTA dimension size and the tiling of all levels
 /// except for the scalar level, which is computed automatically by the library
 /// The flat_size field in each HTA instance is used to record the dimensions if
 /// the HTA is flattened. If this field is null pointer, the HTA is an exact sized one.
@@ -117,7 +117,7 @@ void HTA_to_array(HTA *h, void* array);
 // and set initial value to them
 void HTA_init_all_scalars(HTA *h, void* initval);
 
-/** 
+/**
  *  Get scalar element size of a certain HTA_SCALAR_TYPE
  *  @param scalar_t Some HTA_SCALAR_TYPE
  *  @return An integer number of the size in bytes
@@ -140,7 +140,7 @@ void* HTA_get_ptr_raw_data(const HTA *h);
 /// @param h The top level HTA node
 /// @param accessor A sequence of tuples to specify the tile to select
 /// @return A pointer to selected HTA
-/// @see HTA_access_tile(), HTA_destroy()     
+/// @see HTA_access_tile(), HTA_destroy()
 HTA* HTA_select(HTA *h, void** accessor, int togo);
 HTA* HTA_pick_one_tile(const HTA* h, const Tuple *nd_idx);
 
@@ -181,7 +181,7 @@ void HTA_map_h4s1(int level, H4S1Op op, HTA* h1, HTA* h2, HTA* h3, HTA* h4, void
 void HTA_map_h5s1(int level, H5S1Op op, HTA* h1, HTA* h2, HTA* h3, HTA* h4, HTA* h5, void* s1);
 
 // HTA_tile_to_hta
-// goes down the hierarchiy of src1 to the specific level and 
+// goes down the hierarchiy of src1 to the specific level and
 // for all tiles t in that level, map the custom operator op(t, src2)
 // in parallel
 void HTA_tile_to_hta(int level, H3Op h3op, HTA* dest, HTA* src1, HTA* src2);
@@ -191,17 +191,17 @@ typedef void (*ReduceOp)(HTA_SCALAR_TYPE stype, void* result, void* ptr);
 void HTA_full_reduce(ReduceOp op, void* result, HTA *h);
 
 // Useful for compute L2 norm
-void HTA_reduce_h2(ReduceOp rop, H2S1Op h2s1op, void* result, 
+void HTA_reduce_h2(ReduceOp rop, H2S1Op h2s1op, void* result,
         HTA *h1, HTA *h2);
 
 // For partial reduction
 HTA* HTA_iterator_to_hta(HTA *h, Tuple *it);
-HTA* HTA_partial_reduce(ReduceOp scalar_op, HTA *h, int dim_reduc, 
+HTA* HTA_partial_reduce(ReduceOp scalar_op, HTA *h, int dim_reduc,
         void* initval);
 void HTA_sequential_partial_reduce(ReduceOp r_op, HTA* h, HTA* r, int dim_reduc);
 HTA* HTA_allocate_partial_reduce_storage(HTA *h, int dim_reduc, void *initval);
 HTA** HTA_allocate_partial_reduce_temporary(HTA *h, int dim_reduc, void *initval);
-void HTA_merge_partial_reduce_results(ReduceOp scalar_op, HTA *r, HTA* h, 
+void HTA_merge_partial_reduce_results(ReduceOp scalar_op, HTA *r, HTA* h,
         int dim_reduc, HTA** ha1, void * initval) ;
 
 void HTA_circshift(HTA *h, Tuple *dir);
@@ -210,28 +210,28 @@ void HTA_rerank(HTA *h);
 // ------------------------------
 // Sparse HTAs
 // ------------------------------
-HTA* HTA_sparse_create(int dim, int levels, const Tuple *flat_size, 
+HTA* HTA_sparse_create(int dim, int levels, const Tuple *flat_size,
         int order, Dist *dist, HTA_SCALAR_TYPE scalar_type, int num_tuples, ...);
-HTA* HTA_sparse_create_with_ts(int dim, int levels, const Tuple *flat_size, 
-        int order, Dist *dist, HTA_SCALAR_TYPE scalar_type, int num_tuples, 
+HTA* HTA_sparse_create_with_ts(int dim, int levels, const Tuple *flat_size,
+        int order, Dist *dist, HTA_SCALAR_TYPE scalar_type, int num_tuples,
         Tuple *ts);
-void HTA_init_sparse_leaf(HTA *h, int nnz, void* val, int* col_ind, 
+void HTA_init_sparse_leaf(HTA *h, int nnz, void* val, int* col_ind,
         int* row_ptr);
-void HTA_init_with_sparse_matrix(HTA *hs, int num_nz, int num_rows, void* val, int* col_ind, 
+void HTA_init_with_sparse_matrix(HTA *hs, int num_nz, int num_rows, void* val, int* col_ind,
         int* row_ptr);
 // ------------------------------
 // Index Calculation
 // ------------------------------
-void HTA_leaf_local_to_global_nd_index(HTA *h, Tuple *tiling_iter, 
+void HTA_leaf_local_to_global_nd_index(HTA *h, Tuple *tiling_iter,
         const Tuple *leaf_local_iter, Tuple *global_nd_index);
 /// Returns a pointer to the leaf tile for a tuple of given ND global
 /// indices
-HTA* HTA_locate_leaf_for_nd_index(HTA *h, const Tuple *nd_index, 
+HTA* HTA_locate_leaf_for_nd_index(HTA *h, const Tuple *nd_index,
         int *leaf_offset);
 /// It takes a tuple of ND global element indices and convert
 /// it to ND tile indices and ND element indices within the tile
-void HTA_nd_global_to_tile_index(const Tuple *flat_size, 
-        const Tuple *nd_num_tiles, const Tuple *nd_global_index, 
+void HTA_nd_global_to_tile_index(const Tuple *flat_size,
+        const Tuple *nd_num_tiles, const Tuple *nd_global_index,
         Tuple *tile_index, Tuple *nd_local_index);
 // ------------------------------
 // for PILHTA

@@ -10,7 +10,7 @@
 
 /* ================================================
  *
- * Static variables 
+ * Static variables
  *
  * ===============================================*/
 const static size_t _hta_scalar_size[HTA_SCALAR_TYPE_MAX] = {
@@ -68,15 +68,15 @@ static void _free_leaf_tile(HTA *h)
 // @param tiling The dimension tuples of each level
 // @param mmap The mapping information of leaf tiles to data block GUIDs
 // @param scalar_type The primitive data type of scalars
-// @param idx The 1D linear index of a tile at its level. It's used for mapping 
+// @param idx The 1D linear index of a tile at its level. It's used for mapping
 //            to data block GUIDs.
-static HTA* _recursive_create(HTA_TYPE type, int dim, int levels, 
-        const Tuple *element_offset, const Tuple *flat_size, 
-        Tuple* tiling, const Mapping * mmap, 
-        HTA_SCALAR_TYPE scalar_type, int* idx, Tuple* nd_size_at_level) 
+static HTA* _recursive_create(HTA_TYPE type, int dim, int levels,
+        const Tuple *element_offset, const Tuple *flat_size,
+        Tuple* tiling, const Mapping * mmap,
+        HTA_SCALAR_TYPE scalar_type, int* idx, Tuple* nd_size_at_level)
 {
     if(levels != 1)
-        ASSERT(levels == tiling->height+1 
+        ASSERT(levels == tiling->height+1
                 && "Levels specified should be equal to the height of tiling");
 
     // Allocate memory space for metadata
@@ -93,7 +93,7 @@ static HTA* _recursive_create(HTA_TYPE type, int dim, int levels,
     Tuple_1d_to_nd_index(cur_idx, &h->nd_tile_dimensions, &h->nd_rank);
     h->nd_element_offset = *element_offset;
     h->is_selection= 0;
-    
+
     // recursive tree walk to lower levels
     if(levels == 1) // Leaf level
     {
@@ -102,8 +102,8 @@ static HTA* _recursive_create(HTA_TYPE type, int dim, int levels,
         h->tiles = NULL;
         h->tiling = NULL;
         switch(type) {
-            case HTA_TYPE_DENSE: 
-                _create_dense_leaf(&h->leaf, Tuple_product(flat_size), 
+            case HTA_TYPE_DENSE:
+                _create_dense_leaf(&h->leaf, Tuple_product(flat_size),
                         mmap->map_blocks[cur_idx]);
                 h->home = Dist_get_home(&mmap->dist, cur_idx);
             break;
@@ -124,13 +124,13 @@ static HTA* _recursive_create(HTA_TYPE type, int dim, int levels,
         // copy the whole tiling information into a newly allocated object
         h->tiling = Alloc_acquire_block(0, sizeof(Tuple) * tiling->height);
         Tuple_clone_array(h->tiling, tiling);
-        h->tiles = (HTA**) Alloc_acquire_block(0, sizeof(HTA*) * h->num_tiles); 
+        h->tiles = (HTA**) Alloc_acquire_block(0, sizeof(HTA*) * h->num_tiles);
         h->flat_size = *flat_size;
 
         Tuple nd_idx;
-        Tuple_init_zero(&nd_idx, dim); 
+        Tuple_init_zero(&nd_idx, dim);
         Tuple tile_size;
-        Tuple_init_zero(&tile_size, dim); 
+        Tuple_init_zero(&tile_size, dim);
         Tuple ll_offset;
         for(int i=0; i < h->num_tiles; i++)
         {
@@ -180,7 +180,7 @@ static void _recursive_destroy(HTA *h)
 }
 
 // Compute the tile index given a specific global index
-static int _1d_global_to_tile_index(int size, int num_tiles, int global_index, int* local_index) 
+static int _1d_global_to_tile_index(int size, int num_tiles, int global_index, int* local_index)
 {
     int i;
 
@@ -216,7 +216,7 @@ static void _nd_tile_to_elem_offset(const Tuple *nd_tile_index, const Tuple *nd_
 }
 
 // Compute the max possible leaf tile size
-//static void _max_leaf_tile_size(HTA *h, Tuple *nd_size) 
+//static void _max_leaf_tile_size(HTA *h, Tuple *nd_size)
 //{
 //    Tuple_overwrite_values(nd_size, &h->flat_size);
 //    Tuple* cur_t = h->tiling;
@@ -237,7 +237,7 @@ static void _nd_tile_to_elem_offset(const Tuple *nd_tile_index, const Tuple *nd_
  *
  * ===============================================*/
 
-HTA* HTA_create(int dim, int levels, const Tuple *flat_size, int order, 
+HTA* HTA_create(int dim, int levels, const Tuple *flat_size, int order,
         Dist *dist, HTA_SCALAR_TYPE scalar_type, int num_tuples, ...)
 {
     va_list argp;
@@ -258,7 +258,7 @@ HTA* HTA_create(int dim, int levels, const Tuple *flat_size, int order,
         ts = tiling;
     } // else ts = NULL;
 
-    DBG(5, "HTA_create(): dim = %d, levels = %d, scalar_type = %d\n", dim, levels, scalar_type); 
+    DBG(5, "HTA_create(): dim = %d, levels = %d, scalar_type = %d\n", dim, levels, scalar_type);
     HTA* ret = HTA_create_with_ts(dim, levels, flat_size, order, dist, scalar_type, num_tuples, ts);
     return ret;
 }
@@ -268,8 +268,8 @@ HTA* HTA_create_with_ts(int dim, int levels, const Tuple *flat_size, int order, 
     ASSERT(flat_size && dist);
     ASSERT(levels == num_tuples+1 && "Levels should be (the number of tuples in tiling) + 1");
     ASSERT(dim > 0 && "Invalid dimension value specified");
-    
-    int idx[levels]; // to count tile index at each level 
+
+    int idx[levels]; // to count tile index at each level
     for(int i = 0; i < levels; i++)
         idx[i] = 0;
 
@@ -287,7 +287,7 @@ HTA* HTA_create_with_ts(int dim, int levels, const Tuple *flat_size, int order, 
     }
 
     // TODO: this can be parallel
-    Mapping* mmap = Mapping_create(dim, levels, order, flat_size, ts, dist, _hta_scalar_size[scalar_type]); 
+    Mapping* mmap = Mapping_create(dim, levels, order, flat_size, ts, dist, _hta_scalar_size[scalar_type]);
     Tuple nd_element_offset;
     Tuple_init_zero(&nd_element_offset, dim);
     HTA* ret = _recursive_create(HTA_TYPE_DENSE, dim, levels, &nd_element_offset, flat_size, ts, mmap, scalar_type, idx, nd_size_at_level);
@@ -315,7 +315,7 @@ HTA HTA_retain_all(HTA h)
     ASSERT(h->height >= 1);
     if(h->height > 1) // Non-leaf node
     {
-        int n = Tuple_count_elements(h->tiling, 1); 
+        int n = Tuple_count_elements(h->tiling, 1);
         for(int i=0; i<n; i++) {
             HTA_retain_all(h->tiles[i]);
         }
@@ -372,7 +372,7 @@ static HTA* _clone_root_node(HTA *h) {
     *clone = *h;
     if(h->height > 1)
     {
-        clone->tiles = (HTA**) Alloc_acquire_block(0, sizeof(HTA*) * h->num_tiles); 
+        clone->tiles = (HTA**) Alloc_acquire_block(0, sizeof(HTA*) * h->num_tiles);
         clone->tiling = Alloc_acquire_block(0, sizeof(Tuple) * (h->height-1));
         memcpy(clone->tiles, h->tiles, sizeof(HTA*) * h->num_tiles);
         Tuple_clone_array(clone->tiling, h->tiling);
@@ -393,7 +393,7 @@ static HTA* _clone_root_node(HTA *h) {
 /// @param cur Current accessor
 //  Reference to HTAImpl.h: tileAt(Shape)
 HTA* HTA_select(HTA* h, void** accessor, int togo) {
-    ASSERT(h); 
+    ASSERT(h);
     ASSERT(h->height > togo);
     ASSERT(togo > 0);
     //ASSERT(h->height > 1 && "This function sould not be applied on leaf tile");
@@ -414,23 +414,23 @@ HTA* HTA_select(HTA* h, void** accessor, int togo) {
     int watch_dim;
 
     switch(ACCESSOR_TYPE(*accessor)) {
-        case (ACCESSOR_TUPLE): 
-            target = HTA_pick_one_tile(h, acc); 
+        case (ACCESSOR_TUPLE):
+            target = HTA_pick_one_tile(h, acc);
             if(togo == 1)
                 return _clone_root_node(target);
             else
                 return HTA_select(target, accessor + 1, togo - 1);
             break;
-        case (ACCESSOR_REGION): 
+        case (ACCESSOR_REGION):
             ASSERT(togo == 1 && "LIMITATION: region accessor must be the last one" );
-            //target = (HTA) RefCount_alloc(sizeof(struct hta)); 
+            //target = (HTA) RefCount_alloc(sizeof(struct hta));
             target =  Alloc_acquire_block(0, sizeof(struct hta));
             target->dim = h->dim;
             target->height = h->height;
 
             num_tiles = Region_cardinality(r);
-            //target->tiles = (HTA*) malloc(sizeof(HTA) * num_tiles); 
-            target->tiles = (HTA**) Alloc_acquire_block(0, sizeof(HTA*) * num_tiles); 
+            //target->tiles = (HTA*) malloc(sizeof(HTA) * num_tiles);
+            target->tiles = (HTA**) Alloc_acquire_block(0, sizeof(HTA*) * num_tiles);
             target->tiling = Alloc_acquire_block(0, sizeof(Tuple) * (h->height-1));
             //target->tiling = Region_get_dimension(r); // the function call *malloc* a new tuple
             *target->tiling = Region_get_dimension(r);
@@ -444,7 +444,7 @@ HTA* HTA_select(HTA* h, void** accessor, int togo) {
             for(int i = 0; i < num_tiles; i++) {
                 int idx = Region_idx_to_tile_idx(r, h->tiling, i); // the index of the original HTA
                 target->tiles[i] = h->tiles[idx];
-                
+
                 // update flat_size of the watched dimension
                 int old_idx = iter.values[watch_dim];
                 if(Tuple_iterator_next(&nd_size, &iter)) {
@@ -486,7 +486,7 @@ HTA* HTA_select(HTA* h, void** accessor, int togo) {
     return NULL;
 }
 
-HTA* HTA_iterator_to_hta(HTA *h, Tuple *it) 
+HTA* HTA_iterator_to_hta(HTA *h, Tuple *it)
 {
     ASSERT(h);
     HTA *ret = h;
@@ -496,19 +496,19 @@ HTA* HTA_iterator_to_hta(HTA *h, Tuple *it)
     return ret;
 }
 
-/// Return the pointer to the leaf where the nd_index element is located, 
+/// Return the pointer to the leaf where the nd_index element is located,
 /// and also output the local offset within the leaf.
-HTA* HTA_locate_leaf_for_nd_index(HTA *h, const Tuple *nd_index, 
+HTA* HTA_locate_leaf_for_nd_index(HTA *h, const Tuple *nd_index,
         int *leaf_offset)
 {
     HTA* p = h;
     Tuple global_nd_index = *nd_index;
-    Tuple next_tile_index; 
+    Tuple next_tile_index;
     Tuple_init_zero(&next_tile_index, h->dim);
-    Tuple local_nd_index; 
+    Tuple local_nd_index;
     Tuple_init_zero(&local_nd_index, h->dim);
 
-    while(p->height > 1) {        
+    while(p->height > 1) {
         _nd_global_to_tile_index(&p->flat_size, p->tiling, &global_nd_index, &next_tile_index, &local_nd_index);
 
         // swap the two tuples for next iteration
@@ -525,7 +525,7 @@ HTA* HTA_locate_leaf_for_nd_index(HTA *h, const Tuple *nd_index,
 }
 
 /// Convert a leaf local nd index into a global nd index
-void HTA_leaf_local_to_global_nd_index(HTA *h, Tuple *tiling_iter, 
+void HTA_leaf_local_to_global_nd_index(HTA *h, Tuple *tiling_iter,
         const Tuple *leaf_local_iter, Tuple *global_nd_index)
 {
     Tuple_clear_value(global_nd_index);
@@ -538,7 +538,7 @@ void HTA_leaf_local_to_global_nd_index(HTA *h, Tuple *tiling_iter,
         cur_h = HTA_pick_one_tile(cur_h, cur_idx);
         cur_idx += 1; // next level of iterator
     }
-   
+
     Tuple_add_dimensions(global_nd_index, leaf_local_iter);
     return;
 }
@@ -601,26 +601,26 @@ void HTA_collect_tiles(int level, HTA *h, HTA** collect, int *count)
     {
         for(int i = 0; i < h->num_tiles; i++)
             HTA_collect_tiles(level-1, h->tiles[i], collect, count);
-    } 
+    }
 }
 
-void* HTA_access_element(HTA* h, Tuple** acc) {            
-   int depth = h->height;                                       
+void* HTA_access_element(HTA* h, Tuple** acc) {
+   int depth = h->height;
    size_t unit_size = HTA_get_scalar_size(h);
-   HTA* cur_h = h;                                               
-   while(depth > 1)                                             
-   {                                                            
-       Tuple *t = acc[h->height - depth];                        
-       ASSERT(t);                                               
-       cur_h = HTA_pick_one_tile(cur_h, t);                     
-       ASSERT(h);                                               
-       depth--;                                          
-   }                                                         
+   HTA* cur_h = h;
+   while(depth > 1)
+   {
+       Tuple *t = acc[h->height - depth];
+       ASSERT(t);
+       cur_h = HTA_pick_one_tile(cur_h, t);
+       ASSERT(h);
+       depth--;
+   }
    Tuple* nd_idx = acc[h->height-1];
-   int idx = Tuple_nd_to_1d_index(nd_idx, &cur_h->flat_size); 
+   int idx = Tuple_nd_to_1d_index(nd_idx, &cur_h->flat_size);
    if(cur_h->type == HTA_TYPE_DENSE)
    {
-       return (HTA_get_ptr_raw_data(cur_h) + idx*unit_size); 
+       return (HTA_get_ptr_raw_data(cur_h) + idx*unit_size);
    }
 #if 0
    else if(cur_h->type == HTA_TYPE_SPARSE)
@@ -657,7 +657,7 @@ void* HTA_flat_access(HTA *h, const Tuple *global_nd_idx) {
 
 void HTA_init_all_scalars(HTA *h, void* initval) {
     ASSERT(h->type == HTA_TYPE_DENSE && "only works for dense HTA");
-  
+
     if(h->height > 1) { // It's not a leaf tile
         Tuple iter[h->height-1];
         Tuple_iterator_begin(h->dim, h->height-1, iter);
@@ -690,7 +690,7 @@ void * HTA_get_ptr_raw_data(const HTA *h) {
     {
         case HTA_TYPE_DENSE:
         case HTA_TYPE_SPARSE:
-            return h->leaf.raw; 
+            return h->leaf.raw;
         default:
             ASSERT(0 && "unimplemented");
     }
@@ -705,7 +705,7 @@ void HTA_nd_global_to_tile_index(const Tuple *flat_size, const Tuple *nd_num_til
 // ========================================================================
 // Sparse HTAs
 // ========================================================================
-HTA* HTA_sparse_create(int dim, int levels, const Tuple *flat_size, int order, 
+HTA* HTA_sparse_create(int dim, int levels, const Tuple *flat_size, int order,
         Dist *dist, HTA_SCALAR_TYPE scalar_type, int num_tuples, ...)
 {
     va_list argp;
@@ -726,7 +726,7 @@ HTA* HTA_sparse_create(int dim, int levels, const Tuple *flat_size, int order,
         ts = tiling;
     } // else ts = NULL;
 
-    DBG(5, "HTA_create(): dim = %d, levels = %d, scalar_type = %d\n", dim, levels, scalar_type); 
+    DBG(5, "HTA_create(): dim = %d, levels = %d, scalar_type = %d\n", dim, levels, scalar_type);
     HTA* ret = HTA_sparse_create_with_ts(dim, levels, flat_size, order, dist, scalar_type, num_tuples, ts);
     return ret;
 }
@@ -736,8 +736,8 @@ HTA* HTA_sparse_create_with_ts(int dim, int levels, const Tuple *flat_size, int 
     ASSERT(flat_size && dist);
     ASSERT(levels == num_tuples+1 && "Levels should be (the number of tuples in tiling) + 1");
     ASSERT(dim > 0 && "Invalid dimension value specified");
-    
-    int idx[levels]; // to count tile index at each level 
+
+    int idx[levels]; // to count tile index at each level
     for(int i = 0; i < levels; i++)
         idx[i] = 0;
 
@@ -761,7 +761,7 @@ HTA* HTA_sparse_create_with_ts(int dim, int levels, const Tuple *flat_size, int 
 
 void HTA_init_sparse_leaf(HTA *h, int nnz, void* val, int* col_ind, int* row_ptr) {
     ASSERT(h->dim == 2 && "only 2D matrix is supported");
-    ASSERT(h->height == 1 && "the input HTA has to be leaf tile"); 
+    ASSERT(h->height == 1 && "the input HTA has to be leaf tile");
     if(nnz == 0) // special case return immediately
         return;
 
@@ -778,7 +778,7 @@ void HTA_init_sparse_leaf(HTA *h, int nnz, void* val, int* col_ind, int* row_ptr
 
     memcpy(val_ptr, val, nnz*sz);
     memcpy(col_ind_ptr, col_ind, nnz*sizeof(int));
-    memcpy(row_ptr_ptr, row_ptr, (row_dim+1)*sizeof(int)); 
+    memcpy(row_ptr_ptr, row_ptr, (row_dim+1)*sizeof(int));
 }
 
 void HTA_init_with_sparse_matrix(HTA *hs, int num_nz, int num_rows, void* val, int* col_ind, int* row_ptr)
@@ -802,7 +802,7 @@ void HTA_init_with_sparse_matrix(HTA *hs, int num_nz, int num_rows, void* val, i
     tile_col_ind = (int*) malloc(max_size * sizeof(int));
     tile_row_ptr = (int*) malloc((num_rows + 1) * sizeof(int));
     ASSERT(tile_val && tile_col_ind && tile_row_ptr);
-    
+
     Tuple global_idx; //= Tuple_create_empty(hs->dim);    // global index in the matrix
     Tuple_init_zero(&global_idx, hs->dim);
     Tuple local_iter; //= Tuple_create_empty(hs->dim); // local index with leaf tile
@@ -816,13 +816,13 @@ void HTA_init_with_sparse_matrix(HTA *hs, int num_nz, int num_rows, void* val, i
         // acquire global index of each element in the tile
         do {
             // a new row starts
-            if(local_iter.values[0] != prev_row) 
+            if(local_iter.values[0] != prev_row)
             {
                 tile_row_ptr[local_iter.values[0]] = nnz;
                 prev_row = local_iter.values[0];
             }
 
-            HTA_leaf_local_to_global_nd_index(hs, iter, &local_iter, &global_idx); 
+            HTA_leaf_local_to_global_nd_index(hs, iter, &local_iter, &global_idx);
             int start = row_ptr[global_idx.values[0]];
             int end = row_ptr[global_idx.values[0]+1];
             for(int i = start; i < end; i++)

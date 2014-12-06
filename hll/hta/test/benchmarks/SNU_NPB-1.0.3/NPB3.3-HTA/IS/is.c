@@ -1,13 +1,13 @@
 /*************************************************************************
- *                                                                       * 
+ *                                                                       *
  *       N  A  S     P A R A L L E L     B E N C H M A R K S  3.3        *
  *                                                                       *
  *                      O p e n M P     V E R S I O N                    *
- *                                                                       * 
- *                                  I S                                  * 
- *                                                                       * 
- ************************************************************************* 
- *                                                                       * 
+ *                                                                       *
+ *                                  I S                                  *
+ *                                                                       *
+ *************************************************************************
+ *                                                                       *
  *   This benchmark is an OpenMP version of the NPB IS code.             *
  *   It is described in NAS Technical Report 99-011.                     *
  *                                                                       *
@@ -33,11 +33,11 @@
  *         E-mail:  npb@nas.nasa.gov                                     *
  *         Fax:     (650) 604-3957                                       *
  *                                                                       *
- ************************************************************************* 
- *                                                                       * 
- *   Author: M. Yarrow                                                   * 
- *           H. Jin                                                      * 
- *                                                                       * 
+ *************************************************************************
+ *                                                                       *
+ *   Author: M. Yarrow                                                   *
+ *           H. Jin                                                      *
+ *                                                                       *
  *************************************************************************/
 
 #include "npbparams.h"
@@ -142,8 +142,8 @@
 #define  MAX_KEY             (1 << MAX_KEY_LOG_2)
 #define  NUM_BUCKETS         (1 << NUM_BUCKETS_LOG_2)
 #define  NUM_KEYS            TOTAL_KEYS
-#define  SIZE_OF_BUFFERS     NUM_KEYS  
-                                           
+#define  SIZE_OF_BUFFERS     NUM_KEYS
+
 
 #define  MAX_ITERATIONS      10
 #define  TEST_ARRAY_SIZE     5
@@ -170,7 +170,7 @@ INT_TYPE *key_buff_ptr_global;         /* used by full_verify to get */
                                        /* copies of rank info        */
 
 int      passed_verification;
-                                 
+
 
 /************************************/
 /* These are the three main arrays. */
@@ -186,13 +186,13 @@ static HTA * local_sum_HTA;
 static HTA * last_rank_HTA;
 
 #ifdef USE_BUCKETS
-//INT_TYPE **bucket_size, 
+//INT_TYPE **bucket_size,
 //         bucket_ptrs[NUM_BUCKETS];
 //#pragma omp threadprivate(bucket_ptrs)
 static HTA * bucket_size_HTA;
 static HTA * bucket_ptrs_HTA;
 #else
-#error "Unimplemented" 
+#error "Unimplemented"
 #endif
 
 static int PROC=1;
@@ -204,34 +204,34 @@ static const int shift = MAX_KEY_LOG_2 - NUM_BUCKETS_LOG_2;
 INT_TYPE test_index_array[TEST_ARRAY_SIZE],
          test_rank_array[TEST_ARRAY_SIZE],
 
-         S_test_index_array[TEST_ARRAY_SIZE] = 
+         S_test_index_array[TEST_ARRAY_SIZE] =
                              {48427,17148,23627,62548,4431},
-         S_test_rank_array[TEST_ARRAY_SIZE] = 
+         S_test_rank_array[TEST_ARRAY_SIZE] =
                              {0,18,346,64917,65463},
 
-         W_test_index_array[TEST_ARRAY_SIZE] = 
+         W_test_index_array[TEST_ARRAY_SIZE] =
                              {357773,934767,875723,898999,404505},
-         W_test_rank_array[TEST_ARRAY_SIZE] = 
+         W_test_rank_array[TEST_ARRAY_SIZE] =
                              {1249,11698,1039987,1043896,1048018},
 
-         A_test_index_array[TEST_ARRAY_SIZE] = 
+         A_test_index_array[TEST_ARRAY_SIZE] =
                              {2112377,662041,5336171,3642833,4250760},
-         A_test_rank_array[TEST_ARRAY_SIZE] = 
+         A_test_rank_array[TEST_ARRAY_SIZE] =
                              {104,17523,123928,8288932,8388264},
 
-         B_test_index_array[TEST_ARRAY_SIZE] = 
+         B_test_index_array[TEST_ARRAY_SIZE] =
                              {41869,812306,5102857,18232239,26860214},
-         B_test_rank_array[TEST_ARRAY_SIZE] = 
-                             {33422937,10244,59149,33135281,99}, 
+         B_test_rank_array[TEST_ARRAY_SIZE] =
+                             {33422937,10244,59149,33135281,99},
 
-         C_test_index_array[TEST_ARRAY_SIZE] = 
+         C_test_index_array[TEST_ARRAY_SIZE] =
                              {44172927,72999161,74326391,129606274,21736814},
-         C_test_rank_array[TEST_ARRAY_SIZE] = 
+         C_test_rank_array[TEST_ARRAY_SIZE] =
                              {61147,882988,266290,133997595,133525895},
 
-         D_test_index_array[TEST_ARRAY_SIZE] = 
+         D_test_index_array[TEST_ARRAY_SIZE] =
                              {1317351170,995930646,1157283250,1503301535,1453734525},
-         D_test_rank_array[TEST_ARRAY_SIZE] = 
+         D_test_rank_array[TEST_ARRAY_SIZE] =
                              {1,36538729,1978098519,2145192618,2147425337};
 
 
@@ -244,7 +244,7 @@ void full_verify( void );
 
 void c_print_results( char   *name,
                       char   class,
-                      int    n1, 
+                      int    n1,
                       int    n2,
                       int    n3,
                       int    niter,
@@ -356,7 +356,7 @@ double	randlc( double *X, double *A )
       X1 = j;
       X2 = *X - T23 * X1;
       T1 = A1 * X2 + A2 * X1;
-      
+
       j  = R23 * T1;
       T2 = j;
       Z = T1 - T23 * T2;
@@ -365,7 +365,7 @@ double	randlc( double *X, double *A )
       T4 = j;
       *X = T3 - T46 * T4;
       return(R46 * *X);
-} 
+}
 
 
 
@@ -466,7 +466,7 @@ void tile_create_seq(HTA * key_array_HTA)
       x = randlc(&s, &an);
       x += randlc(&s, &an);
       x += randlc(&s, &an);
-      x += randlc(&s, &an);  
+      x += randlc(&s, &an);
 
       keys[i-k1] = k*x;
     }
@@ -508,7 +508,7 @@ void cal_bucket_ptrs(HTA * bucket_ptrs_leaf, HTA * bucket_size_leaf)
     INT_TYPE* bucket_size = HTA_get_ptr_raw_data(bucket_size_leaf);
     INT_TYPE sum = 0;
     int i;
-    for(i = 0; i< NUM_BUCKETS; i++ ) {     
+    for(i = 0; i< NUM_BUCKETS; i++ ) {
         bucket_ptrs[i] = sum;
         sum += bucket_size[i];
     }
@@ -526,7 +526,7 @@ void bucket_sort(HTA * key_buff2_leaf, HTA * key_array_leaf, HTA * bucket_ptrs_l
 
     int num_keys = key_array_leaf->flat_size.values[0];
 
-    for(i=0; i<num_keys; i++ )  
+    for(i=0; i<num_keys; i++ )
     {
         k = key_array[i];
         key_buff2[bucket_ptrs[k >> shift]++] = k;
@@ -566,7 +566,7 @@ void count_keys(HTA * key_buff1_leaf)
                 k = key_buff2[j];
                 key_counters[k - key_offset]++;
             }
-        } 
+        }
     }
 
 }
@@ -585,9 +585,9 @@ void final_sorting(HTA * key_buff1_leaf, HTA* last_rank_leaf)
     int myid = key_buff1_leaf->rank;
     INT_TYPE* key_buff_ptr = HTA_get_ptr_raw_data(key_buff1_leaf);
     INT_TYPE* last_rank = HTA_get_ptr_raw_data(last_rank_leaf);
-    int num_keys = MAX_KEY / PROC;                        
+    int num_keys = MAX_KEY / PROC;
     int key_offset = myid * num_keys; // global key offset
-    
+
     INT_TYPE prev_rank = (myid == 0) ? 0 : *last_rank;
     for(i = 0; i < num_keys; i++)
     {
@@ -614,7 +614,7 @@ void local_scan(HTA * key_buff1_leaf, HTA * local_sum_leaf)
 void scan_partial_and_shift(HTA * local_sum_HTA) // TODO: communication
 {
     int num_tiles = local_sum_HTA->tiling->values[0];
-    INT_TYPE sum = 0; 
+    INT_TYPE sum = 0;
     for(int i = 0; i < num_tiles; i++)
     {
         INT_TYPE* p = HTA_get_ptr_raw_data(local_sum_HTA->tiles[i]);
@@ -661,7 +661,7 @@ void full_verify( void )
 /*  Confirm keys correctly sorted: count incorrectly sorted keys, if any */
 
     j = 0;
-    // FIXME: verification is sequential now.. need to make it parallel 
+    // FIXME: verification is sequential now.. need to make it parallel
     for(int i=1; i<NUM_KEYS; i++ )
     {
         if( key_array[i-1] > key_array[i] )
@@ -718,9 +718,9 @@ void rank( int iteration )
     // determine local process bucket ptrs (local scan)
     HTA_map_h2(HTA_LEAF_LEVEL(bucket_ptrs_HTA), cal_bucket_ptrs, bucket_ptrs_HTA, bucket_size_HTA); // does not scale
     // sort keys locally
-    HTA_map_h3(HTA_LEAF_LEVEL(key_buff2_HTA), bucket_sort, key_buff2_HTA, key_array_HTA, bucket_ptrs_HTA); 
+    HTA_map_h3(HTA_LEAF_LEVEL(key_buff2_HTA), bucket_sort, key_buff2_HTA, key_array_HTA, bucket_ptrs_HTA);
     if(timer_on) timer_stop(6);
-    // distribute buckets to the processors in charge and count population of the keys 
+    // distribute buckets to the processors in charge and count population of the keys
     // For now, it's not a generalized HTA operation
     if(timer_on) timer_start(7);
     HTA_map_h1(HTA_LEAF_LEVEL(key_buff1_HTA), count_keys, key_buff1_HTA);
@@ -738,7 +738,7 @@ void rank( int iteration )
     HTA_map_h2(HTA_LEAF_LEVEL(key_buff1_HTA), final_scan, key_buff1_HTA, local_sum_HTA);
     if(timer_on) timer_stop(7);
     if(timer_on) timer_stop(4);
-    
+
 
     // At this point, all key ranks are determined
 
@@ -746,7 +746,7 @@ void rank( int iteration )
 /* Observe that test_rank_array vals are   */
 /* shifted differently for different cases */
     for( i=0; i<TEST_ARRAY_SIZE; i++ )
-    {                                             
+    {
         k = partial_verify_vals[i];          /* test vals were put here */
         if( 0 < k  &&  k <= NUM_KEYS-1 )
         {
@@ -856,7 +856,7 @@ void rank( int iteration )
             }
             if( failed == 1 )
                 printf( "Failed partial verification: "
-                        "iteration %d, test key %d, key_rank = %d\n", 
+                        "iteration %d, test key %d, key_rank = %d\n",
                          iteration, (int)i, key_rank );
         }
     }
@@ -868,10 +868,10 @@ void rank( int iteration )
     in rank are local; making them global slows down the code, probably
     since they cannot be made register by compiler                        */
 
-    //if( iteration == MAX_ITERATIONS ) 
+    //if( iteration == MAX_ITERATIONS )
     //    key_buff_ptr_global = key_buff_ptr;
 
-}      
+}
 
 
 void alloc_and_init_HTAs()
@@ -879,13 +879,13 @@ void alloc_and_init_HTAs()
     INT_TYPE initval_0 = 0;
     /* HTA initialization */
     Tuple tp0 = Tuple_create(1, PROC);
-    Tuple fs0 = Tuple_create(1, SIZE_OF_BUFFERS); 
+    Tuple fs0 = Tuple_create(1, SIZE_OF_BUFFERS);
     Dist dist0;
     Dist_init(&dist0, 0);
     key_array_HTA = HTA_create(1, 2, &fs0, 0, &dist0, SCALAR_TYPE, 1, tp0);  // tile size = TOTAL_KEYS/PROC
     key_buff2_HTA = HTA_create(1, 2, &fs0, 0, &dist0, SCALAR_TYPE, 1, tp0);  // tile size = TOTAL_KEYS/PROC
 
-    Tuple fs1 = Tuple_create(1, NUM_BUCKETS * PROC); 
+    Tuple fs1 = Tuple_create(1, NUM_BUCKETS * PROC);
     bucket_size_HTA = HTA_create(1, 2, &fs1, 0, &dist0, SCALAR_TYPE, 1, tp0);
 
     bucket_ptrs_HTA = HTA_create(1, 2, &fs1, 0, &dist0, SCALAR_TYPE, 1, tp0);
@@ -922,7 +922,7 @@ int hta_main(int argc, char* argv[])
   }
 
 /*  Initialize timers  */
-    timer_on = 0;            
+    timer_on = 0;
     if ((fp = fopen("timer.flag", "r")) != NULL) {
         fclose(fp);
         timer_on = 1;
@@ -971,7 +971,7 @@ int hta_main(int argc, char* argv[])
                 break;
         };
 
-        
+
 
 /*  Printout initial NPB info */
     printf
@@ -996,15 +996,15 @@ int hta_main(int argc, char* argv[])
     //HTA_to_array(key_array_HTA, key_array);
 
     // alloc_key_buff();
-    
+
     if (timer_on) timer_stop( 1 );
 
 
-/*  Do one interation for free (i.e., untimed) to guarantee initialization of  
+/*  Do one interation for free (i.e., untimed) to guarantee initialization of
     all data and code pages and respective tables */
     int timed = timer_on;
     timer_on = 0; // turn off timer for the first call
-    rank( 1 );  
+    rank( 1 );
     timer_on = timed;
 
 /*  Start verification counter */
@@ -1012,7 +1012,7 @@ int hta_main(int argc, char* argv[])
 
     if( CLASS != 'S' ) printf( "\n   iteration\n" );
 
-/*  Start timer  */             
+/*  Start timer  */
     timer_start( 0 );
 
 
@@ -1050,7 +1050,7 @@ int hta_main(int argc, char* argv[])
                      timecounter,
                      ((double) (MAX_ITERATIONS*TOTAL_KEYS))
                                                   /timecounter/1000000.,
-                     "keys ranked", 
+                     "keys ranked",
                      passed_verification,
                      NPBVERSION,
                      COMPILETIME,

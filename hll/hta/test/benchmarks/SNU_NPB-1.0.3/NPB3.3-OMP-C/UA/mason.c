@@ -46,7 +46,7 @@ static void mor_ne(int mor_v[3], int nn, int edge, int face,
 
 
 //-----------------------------------------------------------------
-// generate mortar point index number 
+// generate mortar point index number
 //-----------------------------------------------------------------
 void mortar()
 {
@@ -68,11 +68,11 @@ void mortar()
   l_init_omp((logical *)if_1_edge, n4, false);
   nr_init_omp((int *)diagn, n5, -1) ;
 
-  // Mortar points indices are generated in two steps: first generate 
-  // them for all element vertices (corner points), then for conforming 
-  // edge and conforming face interiors. Each time a new mortar index 
-  // is generated for a mortar point, it is broadcast to all elements 
-  // sharing this mortar point. 
+  // Mortar points indices are generated in two steps: first generate
+  // them for all element vertices (corner points), then for conforming
+  // edge and conforming face interiors. Each time a new mortar index
+  // is generated for a mortar point, it is broadcast to all elements
+  // sharing this mortar point.
 
   // VERTICES
   count = -1;
@@ -82,7 +82,7 @@ void mortar()
                            cb,cb1,cb2,ntemp,ntemp1)
   for (iel = 0; iel < nelt; iel++) {
 
-    // first calculate how many new mortar indices will be generated for 
+    // first calculate how many new mortar indices will be generated for
     // each element.
 
     // For each element, at least one vertex (vertex 7) will be new mortar
@@ -100,8 +100,8 @@ void mortar()
     //        1 for type 2 or 3
     //        2 for type 0
     //        5 for type 1
-    // By summing these integers for faces 1,3 and 5, sumcb will have 
-    // 10 different numbers indicating 10 different combinations. 
+    // By summing these integers for faces 1,3 and 5, sumcb will have
+    // 10 different numbers indicating 10 different combinations.
 
     sumcb = 0;
     if (cb == 2 || cb == 3) {
@@ -129,7 +129,7 @@ void mortar()
     // compute newc[iel]
     // newc[iel] records how many new mortar indices will be generated
     //           for element iel
-    // vassign[iel][i] records the element vertex of the i'th new mortar 
+    // vassign[iel][i] records the element vertex of the i'th new mortar
     //           vertex point for element iel. e.g. vassign[iel][1]=8 means
     //           the 2nd new mortar vertex point generated on element
     //           iel is iel's 8th vertex.
@@ -140,7 +140,7 @@ void mortar()
       vassign[iel][0] = 7;
 
     } else if (sumcb == 4) {
-      // the three face types for face 1,3 and 5 are 2 2 0 (not 
+      // the three face types for face 1,3 and 5 are 2 2 0 (not
       // necessarily in this order)
       newc[iel] = 2;
       if (cb == 0) {
@@ -153,7 +153,7 @@ void mortar()
       vassign[iel][1] = 7;
 
     } else if (sumcb == 7) {
-      // the three face types for face 1,3 and 5 are 2 2 1 (not 
+      // the three face types for face 1,3 and 5 are 2 2 1 (not
       // necessarily in this order)
       if (cb == 1) {
         ij1 = ijel[iel][5][0];
@@ -253,7 +253,7 @@ void mortar()
       }
 
     } else if (sumcb == 5) {
-      // the three face types for face 1,3 and 5 are 2/3 0 0 (not 
+      // the three face types for face 1,3 and 5 are 2/3 0 0 (not
       // necessarily in this order)
       newc[iel] = 4;
       if (cb == 2 || cb == 3) {
@@ -274,7 +274,7 @@ void mortar()
       }
 
     } else if (sumcb == 8) {
-      // the three face types for face 1,3 and 5 are 2 0 1 (not 
+      // the three face types for face 1,3 and 5 are 2 0 1 (not
       // necessarily in this order)
 
       // if face 2 of type 1
@@ -425,7 +425,7 @@ void mortar()
               vassign[iel][2] = 7;
             }
           }
-        } else { 
+        } else {
           if (ijel[iel][1][1] == 0) {
             newc[iel] = 4;
             vassign[iel][0] = 2;
@@ -449,7 +449,7 @@ void mortar()
       }
 
     } else if (sumcb == 11) {
-      // the three face type for face 2,4 and 6 are 2 1 1(not 
+      // the three face type for face 2,4 and 6 are 2 1 1(not
       // necessarily in this order)
       if (cb == 2 || cb == 3) {
         if (ijel[iel][3][0] == 0) {
@@ -581,7 +581,7 @@ void mortar()
       }
 
     } else if (sumcb == 6) {
-      // the three face type for face 1,3 and 5 are 0 0 0(not 
+      // the three face type for face 1,3 and 5 are 0 0 0(not
       // necessarily in this order)
       newc[iel] = 8;
       vassign[iel][0] = 0;
@@ -594,7 +594,7 @@ void mortar()
       vassign[iel][7] = 7;
 
     } else if (sumcb == 9) {
-      // the three face type for face 1,3 and 5 are 0 0 1(not 
+      // the three face type for face 1,3 and 5 are 0 0 1(not
       // necessarily in this order)
       newc[iel] = 7;
       vassign[iel][0] = 1;
@@ -606,7 +606,7 @@ void mortar()
       vassign[iel][6] = 7;
 
     } else if (sumcb == 12) {
-      // the three face type for face 1,3 and 5 are 0 1 1(not 
+      // the three face type for face 1,3 and 5 are 0 1 1(not
       // necessarily in this order)
       if (cb == 0) {
         ntemp = sje[iel][1][0][0];
@@ -660,7 +660,7 @@ void mortar()
       }
 
     } else if (sumcb == 15) {
-      // the three face type for face 1,3 and 5 are 1 1 1(not 
+      // the three face type for face 1,3 and 5 are 1 1 1(not
       // necessarily in this order)
       ntemp = sje[iel][3][0][0];
       ntemp1 = sje[iel][1][0][0];
@@ -728,9 +728,9 @@ void mortar()
 
           } else {
             newc[iel] = 7;
-            vassign[iel][0] = 1; 
-            vassign[iel][1] = 2; 
-            vassign[iel][2] = 3; 
+            vassign[iel][0] = 1;
+            vassign[iel][1] = 2;
+            vassign[iel][2] = 3;
             vassign[iel][3] = 4;
             vassign[iel][4] = 5;
             vassign[iel][5] = 6;
@@ -744,7 +744,7 @@ void mortar()
   // end computing how many new mortar vertex points will be generated
   // on each element.
 
-  // Compute (potentially in parallel) front[iel], which records how many 
+  // Compute (potentially in parallel) front[iel], which records how many
   // new mortar point indices are to be generated from element 0 to iel.
   // front[iel]=newc[0]+newc[1]+...+newc[iel]
 
@@ -756,9 +756,9 @@ void mortar()
   parallel_add(front);
 
   // On each element, generate new mortar point indices and assign them
-  // to all elements sharing this mortar point. Note, if a mortar point 
+  // to all elements sharing this mortar point. Note, if a mortar point
   // is shared by several elements, the mortar point index of it will only
-  // be generated on the element with the lowest element index. 
+  // be generated on the element with the lowest element index.
 
   #pragma omp parallel for default(shared) private(iel,i,count)
   for (iel = 0; iel < nelt; iel++) {
@@ -787,25 +787,25 @@ void mortar()
   n1 = 12*nelt;
   n2 = 6*nelt;
 
-  // eassign[iel][i]=true   indicates that the i'th edge on iel will 
-  //                        generate new mortar points. 
-  // ncon_edge[iel][i]=true indicates that the i'th edge on iel is 
+  // eassign[iel][i]=true   indicates that the i'th edge on iel will
+  //                        generate new mortar points.
+  // ncon_edge[iel][i]=true indicates that the i'th edge on iel is
   //                        nonconforming
   l_init_omp((logical *)ncon_edge, n1, false);
   l_init_omp((logical *)eassign, n1, false);
 
-  // fassign[iel][i]=true indicates that the i'th face of iel will 
+  // fassign[iel][i]=true indicates that the i'th face of iel will
   //                      generate new mortar points
   l_init_omp((logical *)fassign, n2, false);
 
   // newe records how many new edges are to be assigned
   // diagn[iel][n][0] records the element index of neighbor element of iel,
   //            that shares edge n of iel
-  // diagn[iel][n][1] records the neighbor element diagn[iel][n][0] shares 
+  // diagn[iel][n][1] records the neighbor element diagn[iel][n][0] shares
   //            which part of edge n of iel. diagn[iel][n][1]=0 refers to left
   //            or bottom half of the edge n, diagn[iel][n][1]=1 refers
   //            to the right or top part of edge n.
-  // if_1_edge[iel][n]=true indicates that the size of iel is smaller than 
+  // if_1_edge[iel][n]=true indicates that the size of iel is smaller than
   //            that of its neighbor connected, neighbored by edge n only
   #pragma omp parallel for default(shared) private(iel,cb1,cb2,cb3,cb4,cb5 \
                                                   ,cb6,ntemp)
@@ -855,7 +855,7 @@ void mortar()
         ntemp = sje[iel][3][0][0];
 
         // if ntemp's face 6 is not noncoforming or the neighbor element
-        // of ntemp on face 6 has an element index larger than iel, the 
+        // of ntemp on face 6 has an element index larger than iel, the
         // edge shared by face 6 and 4 (edge 10) will generate new mortar
         // point indices.
         if (cbc[ntemp][5] != 3 || sje[ntemp][5][0][0] > iel) {
@@ -864,14 +864,14 @@ void mortar()
           eassign[iel][10] = true;
           // if the face 6 of ntemp is of type 2
           if (cbc[ntemp][5] == 2) {
-            // The neighbor element of iel, neighbored by edge 10, is 
+            // The neighbor element of iel, neighbored by edge 10, is
             // sje[ntemp][5][0][0] (the neighbor element of ntemp on ntemp's
             // face 6).
             diagn[iel][10][0] = sje[ntemp][5][0][0];
             // The neighbor element of iel, neighbored by edge 10 shares
             // the ijel[iel][5][1] part of edge 10 of iel
             diagn[iel][10][1] = ijel[iel][5][1];
-            // edge 9 of element sje[ntemp][5][0][0] (the neighbor element of 
+            // edge 9 of element sje[ntemp][5][0][0] (the neighbor element of
             // ntemp on ntemp's face 6) is a nonconforming edge
             ncon_edge[sje[ntemp][5][0][0]][9] = true;
             // if_1_edge[iel][n]=true indicates that iel is of a smaller
@@ -994,7 +994,7 @@ void mortar()
       if (cb2 == 0 || cb2 == 1) {
         newe[iel] = newe[iel]+1;
         eassign[iel][7] = true;
-      } 
+      }
 
     } else if (cb4 == 1) {
       if (cb1 == 2) {
@@ -1214,7 +1214,7 @@ void mortar()
           eassign[iel][1] = true;
           if (cbc[ntemp][2] == 2) {
             diagn[iel][1][0] = sje[ntemp][2][0][0];
-          } 
+          }
         }
       } else if (cb3 == 0 || cb3 == 1) {
         newe[iel] = newe[iel]+1;
@@ -1292,7 +1292,7 @@ void mortar()
           ntemp = sje[iel][2][0][0];
           if (cbc[ntemp][4] == 2) {
             diagn[iel][9][0] = sje[ntemp][4][0][0];
-          } 
+          }
         }
       }
     } else if (cb3 == 0) {
@@ -1345,8 +1345,8 @@ void mortar()
     newc[iel] = newe[iel]*3+newi[iel];
   }
 
-  // Compute (potentially in parallel) front[iel], which records how 
-  // many new mortar point indices are to be assigned (to conforming 
+  // Compute (potentially in parallel) front[iel], which records how
+  // many new mortar point indices are to be assigned (to conforming
   // edges and conforming face interiors) from element 0 to iel.
   // front[iel]=newc[0]+newc[1]+...+newc[iel]
 
@@ -1360,8 +1360,8 @@ void mortar()
   // nmor is the total number or mortar points
   nmor = nvertex+front[nelt-1];
 
-  // Generate (potentially in parallel) new mortar point indices on 
-  // each conforming element face. On each face, first visit all 
+  // Generate (potentially in parallel) new mortar point indices on
+  // each conforming element face. On each face, first visit all
   // conforming edges, and then the face interior.
   #pragma omp parallel for default(shared) private(iel,count,i,cb1,ne, \
               space,ie,edge_g,face2,ie2,ntemp,ii,jj,jface,cb,mor_v)
@@ -1380,9 +1380,9 @@ void mortar()
         // i loops over faces. Only 4 faces need to be examed for edge visit.
         // On face 1, edge 0,1,2 and 3 will be visited. On face 2, edge 4,5,6
         // and 7 will be visited. On face 3, edge 8 and 9 will be visited and
-        // on face 4, edge 10 and 11 will be visited. The 12 edges can be 
+        // on face 4, edge 10 and 11 will be visited. The 12 edges can be
         // covered by four faces, there is no need to visit edges on face
-        // 5 and 6.  So ne is set to be 0. 
+        // 5 and 6.  So ne is set to be 0.
         // However, i still needs to loop over 4 and 5, since the interiors
         // of face 5 and 6 still need to be visited.
 
@@ -1399,8 +1399,8 @@ void mortar()
           // assign mor_v to local edge ie of face i on element iel
           mor_edge(ie, i, iel, mor_v);
 
-          // Since this edge is shared by another face of element 
-          // iel, assign mor_v to the corresponding edge on the other 
+          // Since this edge is shared by another face of element
+          // iel, assign mor_v to the corresponding edge on the other
           // face also.
 
           // find the other face
@@ -1439,15 +1439,15 @@ void mortar()
           } else {
             if (diagn[iel][edgenumber[i][ie]][0] != -1) {
               ntemp = diagn[iel][edgenumber[i][ie]][0];
-              mor_ne(mor_v, diagn[iel][edgenumber[i][ie]][1], 
+              mor_ne(mor_v, diagn[iel][edgenumber[i][ie]][1],
                      ie, i, ie2, face2, iel, ntemp);
             }
           }
         }
-      } 
+      }
 
       if (fassign[iel][i]) {
-        // generate new mortar points index in face interior. 
+        // generate new mortar points index in face interior.
         // if face i is of type 2 or iel doesn't have a neighbor element,
         // assign new mortar point indices to interior mortar points
         // of face i of iel.
@@ -1473,7 +1473,7 @@ void mortar()
                 count = count+1;
               }
             }
-          } 
+          }
         }
       }
     }
@@ -1487,11 +1487,11 @@ void mortar()
     for (i = 0; i < 6; i++) {
       cb = cbc[iel][i];
       if (cb == 3) {
-        // edges 
+        // edges
         edgecopy_s(i, iel);
-      } 
+      }
 
-      // face interior 
+      // face interior
 
       jface = jjface[i];
       if (cb == 3) {
@@ -1516,17 +1516,17 @@ void mortar()
   }
 }
 
-       
+
 //-----------------------------------------------------------------
 // This subroutine fills array emo.
-// emo  records all elements sharing the same mortar point 
+// emo  records all elements sharing the same mortar point
 //              (only applies to element vertices) .
 // emo[n][i][0] gives the element ID of the i'th element sharing
 //              mortar point n. (emo[n][i][0]=ie), ie is element
 //              index.
 // emo[n][i][1] gives the vertex index of mortar point n on this
 //              element (emo[n][i][1]=ng), ng is the vertex index.
-// nemo[n] records the total number of elements sharing mortar 
+// nemo[n] records the total number of elements sharing mortar
 //              point n.
 //-----------------------------------------------------------------
 static void get_emo(int ie, int n, int ng)
@@ -1556,7 +1556,7 @@ static void get_emo(int ie, int n, int ng)
 logical ifsame(int ntemp, int j, int iel, int i)
 {
   if (ntemp == -1 || iel == -1) return false;
-  if (xc[iel][i] == xc[ntemp][j] && yc[iel][i] == yc[ntemp][j] && 
+  if (xc[iel][i] == xc[ntemp][j] && yc[iel][i] == yc[ntemp][j] &&
       zc[iel][i] == zc[ntemp][j]) {
     return true;
   }
@@ -1566,7 +1566,7 @@ logical ifsame(int ntemp, int j, int iel, int i)
 
 //-----------------------------------------------------------------
 // Assign three consecutive numbers for mor_v, which will
-// be assigned to the three interior points of an edge as the 
+// be assigned to the three interior points of an edge as the
 // mortar point indices.
 //-----------------------------------------------------------------
 static void mor_assign(int mor_v[3], int *count)
@@ -1579,9 +1579,9 @@ static void mor_assign(int mor_v[3], int *count)
   }
 }
 
-     
+
 //-----------------------------------------------------------------
-// Copy the mortar points index from mor_v to local 
+// Copy the mortar points index from mor_v to local
 // edge ie of the face'th face on element iel.
 // The edge is conforming.
 //-----------------------------------------------------------------
@@ -1594,17 +1594,17 @@ static void mor_edge(int ie, int face, int iel, int mor_v[3])
     for (nn = 1; nn < LX1-1; nn++) {
       idmo[iel][face][0][0][j][nn] = mor_v[nn-1];
     }
-  } else if (ie == 1) { 
+  } else if (ie == 1) {
     i = LX1-1;
     for (nn = 1; nn < LX1-1; nn++) {
       idmo[iel][face][0][0][nn][i] = mor_v[nn-1];
     }
-  } else if (ie == 2) { 
+  } else if (ie == 2) {
     j = LX1-1;
     for (nn = 1; nn < LX1-1; nn++) {
       idmo[iel][face][0][0][j][nn] = mor_v[nn-1];
     }
-  } else if (ie == 3) { 
+  } else if (ie == 3) {
     i = 0;
     for (nn = 1; nn < LX1-1; nn++) {
       idmo[iel][face][0][0][nn][i] = mor_v[nn-1];
@@ -1614,7 +1614,7 @@ static void mor_edge(int ie, int face, int iel, int mor_v[3])
 
 
 //------------------------------------------------------------
-// Copy mortar points index on edges from neighbor elements 
+// Copy mortar points index on edges from neighbor elements
 // to an element face of the 3rd type.
 //------------------------------------------------------------
 static void edgecopy_s(int face, int iel)
@@ -1704,7 +1704,7 @@ static void edgecopy_s(int face, int iel)
 
 //------------------------------------------------------------
 // Copy mortar points index from mor_s_v to local edge n
-// on face "face" of element iel. The edge is nonconforming. 
+// on face "face" of element iel. The edge is nonconforming.
 //------------------------------------------------------------
 static void mor_s_e(int n, int face, int iel, int mor_s_v[2][4])
 {
@@ -1745,7 +1745,7 @@ static void mor_s_e(int n, int face, int iel, int mor_s_v[2][4])
 //------------------------------------------------------------
 // Copy mortar point indices from mor_s_v to local edge n
 // on face "face" of element iel. nn is the edge mortar index,
-// which indicates that mor_s_v  corresponds to left/bottom or 
+// which indicates that mor_s_v  corresponds to left/bottom or
 // right/top part of the edge.
 //------------------------------------------------------------
 static void mor_s_e_nn(int n, int face, int iel, int mor_s_v[4], int nn)
@@ -1813,17 +1813,17 @@ static void mortar_vertex(int i, int iel, int count)
   }
 
   // face_a records the three faces sharing this vertex on iel.
-  // lc_a gives the local corner number of this vertex on each 
+  // lc_a gives the local corner number of this vertex on each
   // face in face_a.
   for (l = 0; l < 3; l++) {
     face_a[l] = f_c[i][l];
     lc_a[l] = local_corner[face_a[l]][i];
   }
 
-  // each vertex is shared by at most 8 elements. 
-  // ntempx[j] gives the element index of a POSSIBLE element with its 
+  // each vertex is shared by at most 8 elements.
+  // ntempx[j] gives the element index of a POSSIBLE element with its
   // j'th  vertex is iel's i'th vertex
-  // ifntempx[i]=ntempx[i] means  ntempx[i] exists 
+  // ifntempx[i]=ntempx[i] means  ntempx[i] exists
   // ifntempx[i]=-1 means ntempx[i] does not exist.
 
   ntempx[7-i] = iel;
@@ -1831,11 +1831,11 @@ static void mortar_vertex(int i, int iel, int count)
 
   // first find all elements sharing this vertex, ifntempx
 
-  // find the three possible neighbors of iel, neighbored by faces 
+  // find the three possible neighbors of iel, neighbored by faces
   // listed in array face_a
 
   for (itemp = 0; itemp < 3; itemp++) {
-    // j[itemp] is the local corner number of this vertex on the 
+    // j[itemp] is the local corner number of this vertex on the
     // neighbor element on the corresponding face.
     j[itemp] = c_f[jjface[face_a[itemp]]][lc_a[itemp]];
 
@@ -1843,10 +1843,10 @@ static void mortar_vertex(int i, int iel, int count)
     // neighbor element, neighborned by face_a[itemp]
     iintempx[itemp] = cal_intempx[face_a[itemp]][lc_a[itemp]];
 
-    // ntemp refers the neighbor element 
+    // ntemp refers the neighbor element
     ntemp = -1;
 
-    // if the face is nonconforming, find out in which piece of the 
+    // if the face is nonconforming, find out in which piece of the
     // mortar the vertex is located
     ii = cal_iijj[lc_a[itemp]][0];
     jj = cal_iijj[lc_a[itemp]][1];
@@ -1855,7 +1855,7 @@ static void mortar_vertex(int i, int iel, int count)
     // if the face is conforming
     if (ntemp == -1) {
       ntemp = sje[iel][face_a[itemp]][0][0];
-      // find the possible neighbor        
+      // find the possible neighbor
       ntempx[iintempx[itemp]] = ntemp;
       // check whether this possible neighbor is a real neighbor or not
       if (ntemp != -1) {
@@ -1872,7 +1872,7 @@ static void mortar_vertex(int i, int iel, int count)
           ntempx[iintempx[itemp]] = ntemp;
         }
       }
-    } 
+    }
   }
 
   // find the possible three neighbors, neighbored by an edge only
@@ -1895,11 +1895,11 @@ static void mortar_vertex(int i, int iel, int count)
       if (ifntempx[iintempx[l]] != -1) {
         nbe = ifntempx[iintempx[l]];
         // if 1st neighor exists, check the neighbor's two neighbors in
-        // the other two directions. 
+        // the other two directions.
         // e.g. if l=0, check directions 1 and 2,i.e. itemp=1,2,1
         // if l=1, itemp=2,0,-2
         // if l=2, itemp=0,1,1
-         
+
         itemp = face_l1[l];
         while ((l != 1 && itemp <= face_l2[l]) ||
                (l == 1 && itemp >= face_l2[l])) {
@@ -1942,10 +1942,10 @@ static void mortar_vertex(int i, int iel, int count)
 
         // check the last neighbor element, neighbored by an edge
 
-        // ifntempx[iintempx[l]] has been visited in the above, now 
-        // check another neighbor element(nbe) neighbored by a face 
+        // ifntempx[iintempx[l]] has been visited in the above, now
+        // check another neighbor element(nbe) neighbored by a face
 
-        // if the neighbor element is neighbored by face 
+        // if the neighbor element is neighbored by face
         // face_a[face_l1[l]] exists
         if (ifntempx[iintempx[face_l1[l]]] != -1) {
           nbe = ifntempx[iintempx[face_l1[l]]];
@@ -1963,7 +1963,7 @@ static void mortar_vertex(int i, int iel, int count)
           if (ntemp == -1) {
             ntemp = sje[nbe][face_a[itemp]][0][0];
             if (ntemp != -1) {
-              if (ifsame(ntemp, c_f[jjface[face_a[itemp]]][lc], nbe, 
+              if (ifsame(ntemp, c_f[jjface[face_a[itemp]]][lc], nbe,
                          j[face_l1[l]])) {
                 ntempx[temp] = ntemp;
                 ifntempx[temp] = ntemp;
@@ -1982,7 +1982,7 @@ static void mortar_vertex(int i, int iel, int count)
             }
           }
 
-          // if the neighbor element neighbored by face face_a[face_l2[l]] 
+          // if the neighbor element neighbored by face face_a[face_l2[l]]
           // does not exist
         } else if (ifntempx[iintempx[face_l2[l]]] != -1) {
           nbe = ifntempx[iintempx[face_l2[l]]];
@@ -2027,13 +2027,13 @@ static void mortar_vertex(int i, int iel, int count)
   ntemp = -1;
 
   // the neighbor element neighbored by a vertex must be a neighbor of
-  // a valid(non-negative) nnb[i], neighbored by a face 
+  // a valid(non-negative) nnb[i], neighbored by a face
 
   if (nnb[0] != -1) {
     lc = oplc[local_corner[face_a[2]][i]];
     ii = cal_iijj[lc][0];
     jj = cal_iijj[lc][1];
-    // ntemp records the neighbor of iel, neighbored by vertex i 
+    // ntemp records the neighbor of iel, neighbored by vertex i
     ntemp = sje[nnb[0]][face_a[2]][jj][ii];
     // temp is the vertex index of i on ntemp
     temp = cal_intempx[face_a[2]][lc];
@@ -2158,13 +2158,13 @@ static void mortar_vertex(int i, int iel, int count)
   }
 }
 
-     
+
 //---------------------------------------------------------------
 // Copy the mortar points index  (mor_v + vertex mortar point) from
 // edge'th local edge on face'th face on element ntemp to iel.
-// ntemp is iel's neighbor, neighbored by this edge only. 
+// ntemp is iel's neighbor, neighbored by this edge only.
 // This subroutine is for the situation that iel is of larger
-// size than ntemp.  
+// size than ntemp.
 // face, face2 are face indices
 // edge and edge2 are local edge numbers of this edge on face and face2
 // nn is edge motar index, which indicate whether this edge

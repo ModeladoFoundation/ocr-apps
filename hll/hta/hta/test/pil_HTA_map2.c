@@ -73,7 +73,7 @@ int main()
        for (j = 0; j < MATRIX_WIDTH; j++)
        {
            R2[i*MATRIX_WIDTH+j] = M[i*MATRIX_WIDTH+j] * M[i*MATRIX_WIDTH+j];
-       } 
+       }
 
     // verify the result
     if(memcmp(R1, R2, sizeof(R1)) == 0)

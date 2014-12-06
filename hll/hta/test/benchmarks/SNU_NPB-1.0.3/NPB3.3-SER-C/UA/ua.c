@@ -77,13 +77,13 @@ double ppmor  [LMOR];
 
 // integer arrays associated with element faces
 /* common/facein/ */
-int idmo    [LELT][NSIDES][LNJE][LNJE][LX1][LX1]; 
-int idel    [LELT][NSIDES][LX1][LX1]; 
-int sje     [LELT][NSIDES][2][2]; 
+int idmo    [LELT][NSIDES][LNJE][LNJE][LX1][LX1];
+int idel    [LELT][NSIDES][LX1][LX1];
+int sje     [LELT][NSIDES][2][2];
 int sje_new [LELT][NSIDES][2][2];
-int ijel    [LELT][NSIDES][2]; 
+int ijel    [LELT][NSIDES][2];
 int ijel_new[LELT][NSIDES][2];
-int cbc     [LELT][NSIDES]; 
+int cbc     [LELT][NSIDES];
 int cbc_new [LELT][NSIDES];
 
 // integer array associated with vertices
@@ -120,7 +120,7 @@ logical ifpcmor[8*LELT];
 /* common /edgelg/ */
 logical eassign  [LELT][12];
 logical ncon_edge[LELT][12];
-logical if_1_edge[LELT][12]; 
+logical if_1_edge[LELT][12];
 
 // logical arrays associated with elements
 /* common /facelg/ */
@@ -197,11 +197,11 @@ double xfrac[LX1];
 
 // used in laplacian operator
 /* common /gmfact/ */
-double g1m1_s[REFINE_MAX][LX1][LX1][LX1]; 
+double g1m1_s[REFINE_MAX][LX1][LX1][LX1];
 double g4m1_s[REFINE_MAX][LX1][LX1][LX1];
 double g5m1_s[REFINE_MAX][LX1][LX1][LX1];
 double g6m1_s[REFINE_MAX][LX1][LX1][LX1];
-      
+
 // We store some tables of useful topological constants
 // These constants are intialized in a block data 'top_constants'
 /* common /top_consts/ */
@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
   r_init((double *)ta1, ntot, 0.0);
   nr_init((int *)sje, 4*6*nelt, -1);
 
-  // compute tables of coefficients and weights      
+  // compute tables of coefficients and weights
   coef();
   geom1();
 
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
       timer_start(1);
     }
 
-    // advance the convection step 
+    // advance the convection step
     convect(ifmortar);
 
     if (timeron) timer_start(t_transf2);
@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
       laplacian(ta2[ie], ta1[ie], size_e[ie]);
     }
 
-    // compute the residual 
+    // compute the residual
     for (ie = 0; ie < nelt; ie++) {
       for (k = 0; k < LX1; k++) {
         for (j = 0; j < LX1; j++) {
@@ -370,7 +370,7 @@ int main(int argc, char *argv[])
       }
     }
 
-    // get the residual on mortar 
+    // get the residual on mortar
     transfb(rmor, (double *)trhs);
     if (timeron) timer_stop(t_transf2);
 
@@ -416,9 +416,9 @@ int main(int argc, char *argv[])
   // diffusion: nmxh advancements, convection: 1 advancement
   mflops = nelt_tot*(double)(LX1*LX1*LX1*(nmxh+1))/(tmax*1.e6);
 
-  print_results("UA", Class, REFINE_MAX, 0, 0, niter, 
-                tmax, mflops, "    coll. point advanced", 
-                verified, NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5, 
+  print_results("UA", Class, REFINE_MAX, 0, 0, niter,
+                tmax, mflops, "    coll. point advanced",
+                verified, NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5,
                 CS6, "(none)");
 
   //---------------------------------------------------------------------
@@ -436,11 +436,11 @@ int main(int argc, char *argv[])
           t_names[i], trecs[i], trecs[i]*100./tmax);
       if (i == t_transfb_c) {
         t2 = trecs[t_convect] - trecs[t_transfb_c];
-        printf("    --> %11s:%9.3f  (%6.2f%%)\n", 
+        printf("    --> %11s:%9.3f  (%6.2f%%)\n",
             "sub-convect", t2, t2*100./tmax);
       } else if (i == t_transfb) {
         t2 = trecs[t_diffusion] - trecs[t_transf] - trecs[t_transfb];
-        printf("    --> %11s:%9.3f  (%6.2f%%)\n", 
+        printf("    --> %11s:%9.3f  (%6.2f%%)\n",
             "sub-diffuse", t2, t2*100./tmax);
       }
     }

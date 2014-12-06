@@ -65,7 +65,7 @@ void CSR_print_matrix(int num_rows, int num_cols, double* val, int* col_ind, int
         {
             double d = 0.0;
             CSR_get_value(i, j, val, col_ind, row_ptr, &d, sizeof(double));
-            printf("%.2lf ", d); 
+            printf("%.2lf ", d);
         }
         printf("\n");
     }

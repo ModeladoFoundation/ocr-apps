@@ -38,10 +38,10 @@
 
 //---------------------------------------------------------------------
 // Performs line solves in Y direction by first factoring
-// the block-tridiagonal matrix into an upper triangular matrix, 
+// the block-tridiagonal matrix into an upper triangular matrix,
 // and then performing back substitution to solve for the unknow
-// vectors of each line.  
-// 
+// vectors of each line.
+//
 // Make sure we treat elements zero to cell_size in the direction
 // of the sweep.
 //---------------------------------------------------------------------
@@ -58,7 +58,7 @@ void y_solve()
   //---------------------------------------------------------------------
 
   //---------------------------------------------------------------------
-  // This function computes the left hand side for the three y-factors   
+  // This function computes the left hand side for the three y-factors
   //---------------------------------------------------------------------
 
   jsize = grid_points[1]-1;
@@ -103,7 +103,7 @@ void y_solve()
         fjac[j][0][4] = ( c2 * 2.0 * square[k][j][i] - c1 * u[k][j][i][4] )
           * u[k][j][i][2] * tmp2;
         fjac[j][1][4] = - c2 * u[k][j][i][1]*u[k][j][i][2] * tmp2;
-        fjac[j][2][4] = c1 * u[k][j][i][4] * tmp1 
+        fjac[j][2][4] = c1 * u[k][j][i][4] * tmp1
           - c2 * ( qs[k][j][i] + u[k][j][i][2]*u[k][j][i][2] * tmp2 );
         fjac[j][3][4] = - c2 * ( u[k][j][i][2]*u[k][j][i][3] ) * tmp2;
         fjac[j][4][4] = c1 * u[k][j][i][2] * tmp1;
@@ -155,7 +155,7 @@ void y_solve()
 
         lhs[j][AA][0][0] = - tmp2 * fjac[j-1][0][0]
           - tmp1 * njac[j-1][0][0]
-          - tmp1 * dy1; 
+          - tmp1 * dy1;
         lhs[j][AA][1][0] = - tmp2 * fjac[j-1][1][0]
           - tmp1 * njac[j-1][1][0];
         lhs[j][AA][2][0] = - tmp2 * fjac[j-1][2][0]
@@ -250,7 +250,7 @@ void y_solve()
         lhs[j][BB][2][4] = tmp1 * 2.0 * njac[j][2][4];
         lhs[j][BB][3][4] = tmp1 * 2.0 * njac[j][3][4];
         lhs[j][BB][4][4] = 1.0
-          + tmp1 * 2.0 * njac[j][4][4] 
+          + tmp1 * 2.0 * njac[j][4][4]
           + tmp1 * 2.0 * dy5;
 
         lhs[j][CC][0][0] =  tmp2 * fjac[j+1][0][0]
@@ -319,10 +319,10 @@ void y_solve()
 
       //---------------------------------------------------------------------
       // performs guaussian elimination on this cell.
-      // 
-      // assumes that unpacking routines for non-first cells 
+      //
+      // assumes that unpacking routines for non-first cells
       // preload C' and rhs' from previous cell.
-      // 
+      //
       // assumed send happens outside this routine, but that
       // c'(JMAX) and rhs'(JMAX) will be sent to next cell
       //---------------------------------------------------------------------
@@ -335,12 +335,12 @@ void y_solve()
 
       //---------------------------------------------------------------------
       // begin inner most do loop
-      // do all the elements of the cell unless last 
+      // do all the elements of the cell unless last
       //---------------------------------------------------------------------
       for (j = 1; j <= jsize-1; j++) {
         //-------------------------------------------------------------------
         // subtract A*lhs_vector(j-1) from lhs_vector(j)
-        // 
+        //
         // rhs(j) = rhs(j) - A*rhs(j-1)
         //-------------------------------------------------------------------
         matvec_sub(lhs[j][AA], rhs[k][j-1][i], rhs[k][j][i]);
@@ -383,7 +383,7 @@ void y_solve()
       for (j = jsize-1; j >= 0; j--) {
         for (m = 0; m < BLOCK_SIZE; m++) {
           for (n = 0; n < BLOCK_SIZE; n++) {
-            rhs[k][j][i][m] = rhs[k][j][i][m] 
+            rhs[k][j][i][m] = rhs[k][j][i][m]
               - lhs[j][CC][n][m]*rhs[k][j+1][i][n];
           }
         }

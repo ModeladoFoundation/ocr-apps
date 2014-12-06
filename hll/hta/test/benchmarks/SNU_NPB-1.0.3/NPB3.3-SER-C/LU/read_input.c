@@ -58,7 +58,7 @@ void read_input()
 
     while (fgetc(fp) != '\n');
     while (fgetc(fp) != '\n');
-    result = fscanf(fp, "%d%d", &ipr, &inorm); 
+    result = fscanf(fp, "%d%d", &ipr, &inorm);
     while (fgetc(fp) != '\n');
 
     while (fgetc(fp) != '\n');

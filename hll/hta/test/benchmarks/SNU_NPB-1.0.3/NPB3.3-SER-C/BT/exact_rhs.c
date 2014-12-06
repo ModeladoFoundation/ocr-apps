@@ -42,7 +42,7 @@ void exact_rhs()
   int m, i, j, k, ip1, im1, jp1, jm1, km1, kp1;
 
   //---------------------------------------------------------------------
-  // initialize                                  
+  // initialize
   //---------------------------------------------------------------------
   for (k = 0; k <= grid_points[2]-1; k++) {
     for (j = 0; j <= grid_points[1]-1; j++) {
@@ -55,7 +55,7 @@ void exact_rhs()
   }
 
   //---------------------------------------------------------------------
-  // xi-direction flux differences                      
+  // xi-direction flux differences
   //---------------------------------------------------------------------
   for (k = 1; k <= grid_points[2]-2; k++) {
     zeta = (double)(k) * dnzm1;
@@ -117,7 +117,7 @@ void exact_rhs()
       }
 
       //---------------------------------------------------------------------
-      // Fourth-order dissipation                         
+      // Fourth-order dissipation
       //---------------------------------------------------------------------
       for (m = 0; m < 5; m++) {
         i = 1;
@@ -150,7 +150,7 @@ void exact_rhs()
   }
 
   //---------------------------------------------------------------------
-  // eta-direction flux differences             
+  // eta-direction flux differences
   //---------------------------------------------------------------------
   for (k = 1; k <= grid_points[2]-2; k++) {
     zeta = (double)(k) * dnzm1;
@@ -212,7 +212,7 @@ void exact_rhs()
       }
 
       //---------------------------------------------------------------------
-      // Fourth-order dissipation                      
+      // Fourth-order dissipation
       //---------------------------------------------------------------------
       for (m = 0; m < 5; m++) {
         j = 1;
@@ -245,7 +245,7 @@ void exact_rhs()
   }
 
   //---------------------------------------------------------------------
-  // zeta-direction flux differences                      
+  // zeta-direction flux differences
   //---------------------------------------------------------------------
   for (j = 1; j <= grid_points[1]-2; j++) {
     eta = (double)(j) * dnym1;
@@ -307,7 +307,7 @@ void exact_rhs()
       }
 
       //---------------------------------------------------------------------
-      // Fourth-order dissipation                        
+      // Fourth-order dissipation
       //---------------------------------------------------------------------
       for (m = 0; m < 5; m++) {
         k = 1;
@@ -341,7 +341,7 @@ void exact_rhs()
   }
 
   //---------------------------------------------------------------------
-  // now change the sign of the forcing function, 
+  // now change the sign of the forcing function,
   //---------------------------------------------------------------------
   for (k = 1; k <= grid_points[2]-2; k++) {
     for (j = 1; j <= grid_points[1]-2; j++) {

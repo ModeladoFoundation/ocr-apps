@@ -25,12 +25,12 @@ void Alloc_init() {
 /**
  *  Allocate a block and get an unique block id for later reference.
  *  How this block is allocated depends on how PIL handles it. It
- *  is quite possible that there are one copy for each node in a 
- *  distributed system. 
- *  @param node       An integer number to specify the node where 
+ *  is quite possible that there are one copy for each node in a
+ *  distributed system.
+ *  @param node       An integer number to specify the node where
  *                    allocation happens
  *  @param size       The size of the data block needed.
- *  @param ptr        A placeholder for the pointer to the newly allocated data block. 
+ *  @param ptr        A placeholder for the pointer to the newly allocated data block.
  *                    If it's NULL it means the user doesn't need the pointer for data accessing immediately.
  *                    The acquired pointer is only valid within the same EDT
  *  @return The allocated block id. 0 means allocation failed.
@@ -51,10 +51,10 @@ void *Alloc_acquire_block(int node, size_t size)
     //ASSERT(pthread_mutex_lock(&lock) == 0);
         HASH_FIND_PTR(ht, &g.ptr, exists);
     //pthread_mutex_unlock(&lock);
-    ASSERT(exists == NULL); 
+    ASSERT(exists == NULL);
 #endif
     //ASSERT(pthread_mutex_lock(&lock) == 0);
-        HASH_ADD_PTR(ht, ptr, ref); 
+        HASH_ADD_PTR(ht, ptr, ref);
     //pthread_mutex_unlock(&lock);
     return ref->ptr;
 }

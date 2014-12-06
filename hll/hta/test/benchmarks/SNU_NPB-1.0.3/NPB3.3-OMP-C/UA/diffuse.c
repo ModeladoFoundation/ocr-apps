@@ -66,7 +66,7 @@ void diffusion(logical ifmortar)
   rho1 = 0.0;
   #pragma omp parallel default(shared) private(im,ie,i,j,k) reduction(+:rho1)
   {
-  #pragma omp for nowait 
+  #pragma omp for nowait
   for (ie = 0; ie < nelt; ie++) {
     for (k = 0; k < LX1; k++) {
       for (j = 0; j < LX1; j++) {
@@ -79,7 +79,7 @@ void diffusion(logical ifmortar)
     }
   }
 
-  #pragma omp for nowait 
+  #pragma omp for nowait
   for (im = 0; im < nmor; im++) {
     pmorx[im] = dpcmor[im]*rmor[im];
     rho1      = rho1 + rmor[im]*pmorx[im];
@@ -124,7 +124,7 @@ void diffusion(logical ifmortar)
 
       // update p_m+1 in the specification
       adds1m1((double *)pdiff, (double *)pdiffp, beta, ntot);
-      adds1m1(pmorx, ppmor, beta, nmor);  
+      adds1m1(pmorx, ppmor, beta, nmor);
     }
 
     // compute matrix vector product: (theta pm) in the specification
@@ -133,12 +133,12 @@ void diffusion(logical ifmortar)
     if (timeron) timer_stop(t_transf);
 
     // compute pdiffp which is (A theta pm) in the specification
-    #pragma omp parallel for default(shared) private(ie) 
+    #pragma omp parallel for default(shared) private(ie)
     for (ie = 0; ie < nelt; ie++) {
       laplacian(pdiffp[ie], pdiff[ie], size_e[ie]);
     }
 
-    // compute ppmor which will be used to compute (thetaT A theta pm) 
+    // compute ppmor which will be used to compute (thetaT A theta pm)
     // in the specification
     if (timeron) timer_start(t_transfb);
     transfb(ppmor, (double *)pdiffp);
@@ -217,7 +217,7 @@ void laplacian(double r[LX1][LX1][LX1], double u[LX1][LX1][LX1], int sizei)
           tm1[iz][j][i] = tm1[iz][j][i]+wdtdr[k][i]*u[iz][j][k];
         }
       }
-    }                           
+    }
   }
 
   r_init((double *)tm2, NXYZ, 0.0);

@@ -52,11 +52,11 @@ void x_solve()
     lhsinit(nx2+1, ny2);
 
     //---------------------------------------------------------------------
-    // Computes the left hand side for the three x-factors  
+    // Computes the left hand side for the three x-factors
     //---------------------------------------------------------------------
 
     //---------------------------------------------------------------------
-    // first fill the lhs for the u-eigenvalue                   
+    // first fill the lhs for the u-eigenvalue
     //---------------------------------------------------------------------
     for (j = 1; j <= ny2; j++) {
       for (i = 0; i <= grid_points[0]-1; i++) {
@@ -75,7 +75,7 @@ void x_solve()
     }
 
     //---------------------------------------------------------------------
-    // add fourth order dissipation                             
+    // add fourth order dissipation
     //---------------------------------------------------------------------
     for (j = 1; j <= ny2; j++) {
       i = 1;
@@ -112,8 +112,8 @@ void x_solve()
     }
 
     //---------------------------------------------------------------------
-    // subsequently, fill the other factors (u+c), (u-c) by adding to 
-    // the first  
+    // subsequently, fill the other factors (u+c), (u-c) by adding to
+    // the first
     //---------------------------------------------------------------------
     for (j = 1; j <= ny2; j++) {
       for (i = 1; i <= nx2; i++) {
@@ -131,11 +131,11 @@ void x_solve()
     }
 
     //---------------------------------------------------------------------
-    // FORWARD ELIMINATION  
+    // FORWARD ELIMINATION
     //---------------------------------------------------------------------
 
     //---------------------------------------------------------------------
-    // perform the Thomas algorithm; first, FORWARD ELIMINATION     
+    // perform the Thomas algorithm; first, FORWARD ELIMINATION
     //---------------------------------------------------------------------
     for (j = 1; j <= ny2; j++) {
       for (i = 0; i <= grid_points[0]-3; i++) {
@@ -161,7 +161,7 @@ void x_solve()
     }
 
     //---------------------------------------------------------------------
-    // The last two rows in this grid block are a bit different, 
+    // The last two rows in this grid block are a bit different,
     // since they for (not have two more rows available for the
     // elimination of off-diagonal entries
     //---------------------------------------------------------------------
@@ -181,7 +181,7 @@ void x_solve()
       }
 
       //---------------------------------------------------------------------
-      // scale the last row immediately 
+      // scale the last row immediately
       //---------------------------------------------------------------------
       fac2 = 1.0/lhs[j][i1][2];
       for (m = 0; m < 3; m++) {
@@ -190,7 +190,7 @@ void x_solve()
     }
 
     //---------------------------------------------------------------------
-    // for (the u+c and the u-c factors                 
+    // for (the u+c and the u-c factors
     //---------------------------------------------------------------------
     for (j = 1; j <= ny2; j++) {
       for (i = 0; i <= grid_points[0]-3; i++) {
@@ -256,7 +256,7 @@ void x_solve()
     }
 
     //---------------------------------------------------------------------
-    // BACKSUBSTITUTION 
+    // BACKSUBSTITUTION
     //---------------------------------------------------------------------
     for (j = 1; j <= ny2; j++) {
       i  = grid_points[0]-2;
@@ -277,7 +277,7 @@ void x_solve()
         i1 = i + 1;
         i2 = i + 2;
         for (m = 0; m < 3; m++) {
-          rhs[k][j][i][m] = rhs[k][j][i][m] - 
+          rhs[k][j][i][m] = rhs[k][j][i][m] -
                             lhs[j][i][3]*rhs[k][j][i1][m] -
                             lhs[j][i][4]*rhs[k][j][i2][m];
         }
@@ -285,10 +285,10 @@ void x_solve()
         //-------------------------------------------------------------------
         // And the remaining two
         //-------------------------------------------------------------------
-        rhs[k][j][i][3] = rhs[k][j][i][3] - 
+        rhs[k][j][i][3] = rhs[k][j][i][3] -
                           lhsp[j][i][3]*rhs[k][j][i1][3] -
                           lhsp[j][i][4]*rhs[k][j][i2][3];
-        rhs[k][j][i][4] = rhs[k][j][i][4] - 
+        rhs[k][j][i][4] = rhs[k][j][i][4] -
                           lhsm[j][i][3]*rhs[k][j][i1][4] -
                           lhsm[j][i][4]*rhs[k][j][i2][4];
       }
@@ -297,7 +297,7 @@ void x_solve()
   if (timeron) timer_stop(t_xsolve);
 
   //---------------------------------------------------------------------
-  // Do the block-diagonal inversion          
+  // Do the block-diagonal inversion
   //---------------------------------------------------------------------
   ninvr();
 }

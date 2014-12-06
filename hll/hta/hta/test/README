@@ -5,18 +5,18 @@ Unit Tests
 ===============================================================================
 
 1.  Accessor_test
-    Create different types of accessors (Tuple and Region), and print the type 
+    Create different types of accessors (Tuple and Region), and print the type
     of accessors.
 
 2.  Alloc_test
-    Create local blocks and free them.   
+    Create local blocks and free them.
 
 3.  Debug_test
     Test if DEBUG flag is on. If DEBUG is set, the program fails for assertion
     check and print the debug level.
 
 4.  Tuple_test
-    Tuple creation and destuction test. Tuple_concat is used to create tuple 
+    Tuple creation and destuction test. Tuple_concat is used to create tuple
     sequence, and Tuple_destroy_all is used to free the memory objects used
     for this sequence. An assertion is inserted at the end to make sure all
     memory objects are correctly freed.
@@ -49,7 +49,7 @@ Unit Tests
     elements
 
 12. HTA_map2_test
-    Create an HTA and use HTA_map2 function to perform a pointwise 
+    Create an HTA and use HTA_map2 function to perform a pointwise
     multiplication.
 
 13. HTA_scalar_types_double, HTA_scalar_types_uint64_t

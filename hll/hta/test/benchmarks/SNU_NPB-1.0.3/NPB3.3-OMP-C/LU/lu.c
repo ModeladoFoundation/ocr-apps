@@ -79,9 +79,9 @@ double dssp;
 
 //---------------------------------------------------------------------
 // field variables and residuals
-// to improve cache performance, second two dimensions padded by 1 
+// to improve cache performance, second two dimensions padded by 1
 // for even number sizes only.
-// Note: corresponding array (called "v") in routines blts, buts, 
+// Note: corresponding array (called "v") in routines blts, buts,
 // and l2norm are similarly padded
 //---------------------------------------------------------------------
 /* common/cvar/ */
@@ -228,15 +228,15 @@ int main(int argc, char *argv[])
   mflops = (double)itmax * (1984.77 * (double)nx0
       * (double)ny0
       * (double)nz0
-      - 10923.3 * pow(((double)(nx0+ny0+nz0)/3.0), 2.0) 
+      - 10923.3 * pow(((double)(nx0+ny0+nz0)/3.0), 2.0)
       + 27770.9 * (double)(nx0+ny0+nz0)/3.0
       - 144010.0)
     / (maxtime*1000000.0);
 
   print_results("LU", Class, nx0,
                 ny0, nz0, itmax,
-                maxtime, mflops, "          floating point", verified, 
-                NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5, CS6, 
+                maxtime, mflops, "          floating point", verified,
+                NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, CS5, CS6,
                 "(none)");
 
   //---------------------------------------------------------------------
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
     sprintf(rec_name, "rec/lu.%c.%d.rec", Class, omp_get_max_threads());
     FILE* fp_rec = fopen(rec_name, "a");
     fprintf(fp_rec, "%9.4f ", tmax);
-    
+
     printf("  SECTION     Time (secs)\n");
     for (i = 1; i <= t_last; i++) {
       if (i == 1 || i > 4) fprintf(fp_rec, "%9.4f ", trecs[i]);

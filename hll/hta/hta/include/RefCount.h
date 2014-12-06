@@ -24,7 +24,7 @@ int RefCount_retain(void *ptr);
 /// This function decrement the reference counter by 1 and free memory
 /// space if counter value reaches zero
 /// @param ptr Pointer to the reference counted object
-/// @return Returns 1 if the memory space is freed. Returns 0 otherwise. 
+/// @return Returns 1 if the memory space is freed. Returns 0 otherwise.
 int RefCount_release(void *ptr);
 
 /// Gets the reference counter value of the specified reference counted

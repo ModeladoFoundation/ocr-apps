@@ -38,9 +38,9 @@
 
 
 //---------------------------------------------------------------------
-// 
+//
 // compute the solution error
-// 
+//
 //---------------------------------------------------------------------
 void error_HTA(double error[5])
 {
@@ -50,11 +50,11 @@ void error_HTA(double error[5])
     int m;
     int initval = 0;
     double error_temp[1][1][1][5];
-  
+
     for (m = 0; m < 5; m++) {
       error_temp[0][0][0][m] = 0.0;
     }
-    
+
     // FIXME: Be careful with this operation. Order of the reductions may influence the final sum
     // TODO: Find another easy way to do this
     //HTA_tile_to_hta(HTA_LEAF_LEVEL(u_HTA), error_sq_HTA, err_HTA, u_HTA, u_HTA);
@@ -64,11 +64,11 @@ void error_HTA(double error[5])
     HTA* r2 = HTA_partial_reduce(REDUCE_SUM, r1, 1, &initval);
     HTA* r3 = HTA_partial_reduce(REDUCE_SUM, r2, 0, &initval);
     HTA_to_array(r3, error_temp);
-    
+
     for (m = 0; m < 5; m++) {
       error[m] = sqrt ( error_temp[0][0][0][m] / ( (nx0-2)*(ny0-2)*(nz0-2) ));
     }
-    
+
       /*
   printf(" \n RMS-norm of error in soln. to first pde  = %12.5E\n"
          " RMS-norm of error in soln. to second pde = %12.5E\n"
@@ -87,26 +87,26 @@ void error_sq_HTA(HTA* d_tile, HTA* s1_tile)
     int i, j, k, m;
     int i_first, j_first, k_first, i_last, j_last, k_last;
     int x, y, z;
-  
+
     int nm_tile = s1_tile->flat_size.values[3]; // Always 5
     int nx_tile = s1_tile->flat_size.values[2];
     int ny_tile = s1_tile->flat_size.values[1];
     int nz_tile = s1_tile->flat_size.values[0];
-    
+
     // Get global tile nd_index first
     //Tuple* nd_size = s2->tiling; // tile dimensions
     Tuple nd_size = s1_tile->nd_tile_dimensions;
     Tuple nd_idx = s1_tile->nd_rank;
     //Tuple_init_zero(&nd_idx, 4); // this tile index
     //Tuple_1d_to_nd_index(s1_tile->rank, nd_size, &nd_idx);
-  
+
     double (*u_tile)[ny_tile][nx_tile][nm_tile] = (double (*)[ny_tile][nx_tile][nm_tile])HTA_get_ptr_raw_data(s1_tile);
     double (*error_local)[1][1][5] = (double (*)[1][1][5])HTA_get_ptr_raw_data(d_tile);
 
     for (m = 0; m < 5; m++) {
       error_local[0][0][0][m] = 0.0;
     }
-    
+
     x = nd_idx.values[2];
     y = nd_idx.values[1];
     z = nd_idx.values[0];
@@ -115,11 +115,11 @@ void error_sq_HTA(HTA* d_tile, HTA* s1_tile)
     //int i_offset = x * (nx_tile - 4) - 2;
     //int j_offset = y * (ny_tile - 4) - 2;
     //int k_offset = z * (nz_tile - 4) - 2;
-    
-    int i_offset = s1_tile->nd_element_offset.values[2] - (4 * x) - 2; 
+
+    int i_offset = s1_tile->nd_element_offset.values[2] - (4 * x) - 2;
     int j_offset = s1_tile->nd_element_offset.values[1] - (4 * y) - 2;
     int k_offset = s1_tile->nd_element_offset.values[0] - (4 * z) - 2;
-    
+
     // sync_boundary due to overlapping
     if (x == 0) i_first = 3;
     else i_first = 2;
@@ -133,8 +133,8 @@ void error_sq_HTA(HTA* d_tile, HTA* s1_tile)
     else j_last = ny_tile - 2;
     if (z == nd_size.values[0] - 1) k_last = nz_tile - 3;
     else k_last = nz_tile - 2;
-    
-    
+
+
     for (k = k_first; k < k_last; k++) {
       for (j = j_first; j < j_last; j++) {
 	for (i = i_first; i < i_last; i++) {
@@ -146,6 +146,6 @@ void error_sq_HTA(HTA* d_tile, HTA* s1_tile)
 	}
       }
     }
-    
+
 }
 

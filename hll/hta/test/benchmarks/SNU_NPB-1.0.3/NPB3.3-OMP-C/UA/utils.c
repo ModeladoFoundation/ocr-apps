@@ -196,7 +196,7 @@ void col2(double a[], double b[], int n)
 
 
 //------------------------------------------------------------------
-// zero out array of integers 
+// zero out array of integers
 //------------------------------------------------------------------
 void nrzero(int na[], int n)
 {

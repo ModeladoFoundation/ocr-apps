@@ -6,7 +6,7 @@
 void print_results(char *name, char class, int n1, int n2, int n3, int niter,
     double t, double mops, char *optype, logical verified, char *npbversion,
     char *compiletime, char *cs1, char *cs2, char *cs3, char *cs4, char *cs5,
-    char *cs6, char *cs7) 
+    char *cs6, char *cs7)
 {
   char size[16];
   int j;
@@ -24,7 +24,7 @@ void print_results(char *name, char class, int n1, int n2, int n3, int niter,
       sprintf( size, "%15.0lf", pow(2.0, n1) );
       j = 14;
       if ( size[j] == '.' ) {
-        size[j] = ' '; 
+        size[j] = ' ';
         j--;
       }
       size[j+1] = '\0';
@@ -40,13 +40,13 @@ void print_results(char *name, char class, int n1, int n2, int n3, int niter,
   printf( " Time in seconds =             %12.2lf\n", t );
   printf( " Mop/s total     =          %15.2lf\n", mops );
   printf( " Operation type  = %24s\n", optype );
-  if ( verified ) 
+  if ( verified )
     printf( " Verification    =             %12s\n", "SUCCESSFUL" );
   else
     printf( " Verification    =             %12s\n", "UNSUCCESSFUL" );
   printf( " Version         =             %12s\n", npbversion );
   printf( " Compile date    =             %12s\n", compiletime );
-  
+
   printf( "\n Compile options:\n"
           "    CC           = %s\n", cs1 );
   printf( "    CLINK        = %s\n", cs2 );

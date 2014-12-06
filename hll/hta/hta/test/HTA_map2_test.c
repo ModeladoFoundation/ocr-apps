@@ -28,18 +28,18 @@ int main()
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
     // create an empty shell
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
-    HTA *result = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32, 
+    HTA *result = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
-    
+
     // create a 2D matrix
     srand(time(NULL)); /* FIXME: using random to initialize distributed model will fail */
     for(i = 0; i < MATRIX_SIZE; i++)
     {
         M[i] = rand() % 1000;
         R1[i] = 0;
-        R2[i] = 0; 
+        R2[i] = 0;
     }
 
     // initialize the HTA using 2D matrix

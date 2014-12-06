@@ -35,8 +35,8 @@
 #include "header.h"
 
 //---------------------------------------------------------------------
-// This subroutine initializes the field variable u using 
-// tri-linear transfinite interpolation of the boundary values     
+// This subroutine initializes the field variable u using
+// tri-linear transfinite interpolation of the boundary values
 //---------------------------------------------------------------------
 void initialize()
 {
@@ -47,10 +47,10 @@ void initialize()
           private(i,j,k,m,zeta,eta,xi,ix,iy,iz,Pxi,Peta,Pzeta,Pface,temp)
   {
   //---------------------------------------------------------------------
-  //  Later (in compute_rhs) we compute 1/u for every element. A few of 
-  //  the corner elements are not used, but it convenient (and faster) 
-  //  to compute the whole thing with a simple loop. Make sure those 
-  //  values are nonzero by initializing the whole thing here. 
+  //  Later (in compute_rhs) we compute 1/u for every element. A few of
+  //  the corner elements are not used, but it convenient (and faster)
+  //  to compute the whole thing with a simple loop. Make sure those
+  //  values are nonzero by initializing the whole thing here.
   //---------------------------------------------------------------------
   #pragma omp for schedule(static)
   for (k = 0; k <= grid_points[2]-1; k++) {
@@ -66,7 +66,7 @@ void initialize()
   }
 
   //---------------------------------------------------------------------
-  // first store the "interpolated" values everywhere on the grid    
+  // first store the "interpolated" values everywhere on the grid
   //---------------------------------------------------------------------
   #pragma omp for schedule(static) nowait
   for (k = 0; k <= grid_points[2]-1; k++) {
@@ -96,8 +96,8 @@ void initialize()
           Peta  = eta  * Pface[1][1][m] + (1.0-eta)  * Pface[0][1][m];
           Pzeta = zeta * Pface[1][2][m] + (1.0-zeta) * Pface[0][2][m];
 
-          u[k][j][i][m] = Pxi + Peta + Pzeta - 
-                          Pxi*Peta - Pxi*Pzeta - Peta*Pzeta + 
+          u[k][j][i][m] = Pxi + Peta + Pzeta -
+                          Pxi*Peta - Pxi*Pzeta - Peta*Pzeta +
                           Pxi*Peta*Pzeta;
         }
       }
@@ -106,11 +106,11 @@ void initialize()
 
 
   //---------------------------------------------------------------------
-  // now store the exact values on the boundaries        
+  // now store the exact values on the boundaries
   //---------------------------------------------------------------------
 
   //---------------------------------------------------------------------
-  // west face                                                  
+  // west face
   //---------------------------------------------------------------------
   xi = 0.0;
   i  = 0;
@@ -127,7 +127,7 @@ void initialize()
   }
 
   //---------------------------------------------------------------------
-  // east face                                                      
+  // east face
   //---------------------------------------------------------------------
   xi = 1.0;
   i  = grid_points[0]-1;
@@ -144,7 +144,7 @@ void initialize()
   }
 
   //---------------------------------------------------------------------
-  // south face                                                 
+  // south face
   //---------------------------------------------------------------------
   eta = 0.0;
   j   = 0;
@@ -161,7 +161,7 @@ void initialize()
   }
 
   //---------------------------------------------------------------------
-  // north face                                    
+  // north face
   //---------------------------------------------------------------------
   eta = 1.0;
   j   = grid_points[1]-1;
@@ -178,7 +178,7 @@ void initialize()
   }
 
   //---------------------------------------------------------------------
-  // bottom face                                       
+  // bottom face
   //---------------------------------------------------------------------
   zeta = 0.0;
   k    = 0;
@@ -195,7 +195,7 @@ void initialize()
   }
 
   //---------------------------------------------------------------------
-  // top face     
+  // top face
   //---------------------------------------------------------------------
   zeta = 1.0;
   k    = grid_points[2]-1;

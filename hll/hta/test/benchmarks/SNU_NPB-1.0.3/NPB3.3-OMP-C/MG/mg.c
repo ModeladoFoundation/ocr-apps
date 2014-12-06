@@ -76,7 +76,7 @@ static void zero3(void *oz, int n1, int n2, int n3);
 //-------------------------------------------------------------------------c
 // These arrays are in common because they are quite large
 // and probably shouldn't be allocated on the stack. They
-// are always passed as subroutine args. 
+// are always passed as subroutine args.
 //-------------------------------------------------------------------------c
 /* commcon /noautom/ */
 static double u[NR];
@@ -169,15 +169,15 @@ int main()
     Class = 'S';
   } else if ( nx[lt] == 128 && nit == 4 ) {
     Class = 'W';
-  } else if ( nx[lt] == 256 && nit == 4 ) {  
+  } else if ( nx[lt] == 256 && nit == 4 ) {
     Class = 'A';
   } else if ( nx[lt] == 256 && nit == 20 ) {
     Class = 'B';
-  } else if ( nx[lt] == 512 && nit == 20 ) {  
+  } else if ( nx[lt] == 512 && nit == 20 ) {
     Class = 'C';
-  } else if ( nx[lt] == 1024 && nit == 50 ) {  
+  } else if ( nx[lt] == 1024 && nit == 50 ) {
     Class = 'D';
-  } else if ( nx[lt] == 2048 && nit == 50 ) {  
+  } else if ( nx[lt] == 2048 && nit == 50 ) {
     Class = 'E';
   } else {
     Class = 'U';
@@ -200,7 +200,7 @@ int main()
   a[1] =  0.0;
   a[2] =  1.0/6.0;
   a[3] =  1.0/12.0;
-      
+
   if (Class == 'A' || Class == 'S' || Class =='W') {
     //---------------------------------------------------------------------
     // Coefficients for the S(a) smoother
@@ -336,9 +336,9 @@ int main()
     mflops = 0.0;
   }
 
-  print_results("MG", Class, nx[lt], ny[lt], nz[lt], 
+  print_results("MG", Class, nx[lt], ny[lt], nz[lt],
                 nit, t,
-                mflops, "          floating point", 
+                mflops, "          floating point",
                 verified, NPBVERSION, COMPILETIME,
                 CS1, CS2, CS3, CS4, CS5, CS6, CS7);
 
@@ -370,7 +370,7 @@ int main()
 
   return 0;
 }
- 
+
 
 static void setup(int *n1, int *n2, int *n3)
 {
@@ -422,7 +422,7 @@ static void setup(int *n1, int *n2, int *n3)
   if (debug_vec[1] >= 1) {
     printf(" in setup, \n");
     printf(" k  lt  nx  ny  nz  n1  n2  n3 is1 is2 is3 ie1 ie2 ie3\n");
-    printf("%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d\n", 
+    printf("%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d\n",
         k,lt,ng[k][0],ng[k][1],ng[k][2],*n1,*n2,*n3,is1,is2,is3,ie1,ie2,ie3);
   }
 }
@@ -442,10 +442,10 @@ static void mg3P(double u[], double v[], double r[],
   //---------------------------------------------------------------------
   for (k = lt; k >= lb+1; k--) {
     j = k - 1;
-    rprj3(&r[ir[k]], m1[k], m2[k], m3[k], 
+    rprj3(&r[ir[k]], m1[k], m2[k], m3[k],
           &r[ir[j]], m1[j], m2[j], m3[j], k);
   }
-  
+
   k = lb;
   //---------------------------------------------------------------------
   // compute an approximate solution on the coarsest grid
@@ -485,12 +485,12 @@ static void mg3P(double u[], double v[], double r[],
 // psinv applies an approximate inverse as smoother:  u = u + Cr
 //
 // This  implementation costs  15A + 4M per result, where
-// A and M denote the costs of Addition and Multiplication.  
+// A and M denote the costs of Addition and Multiplication.
 // Presuming coefficient c(3) is zero (the NPB assumes this,
 // but it is thus not a general case), 2A + 1M may be eliminated,
 // resulting in 13A + 3M.
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  
+// Note that this vectorizes, and is also fine for cache
+// based machines.
 //---------------------------------------------------------------------
 static void psinv(void *or, void *ou, int n1, int n2, int n3,
                   double c[4], int k)
@@ -547,13 +547,13 @@ static void psinv(void *or, void *ou, int n1, int n2, int n3,
 // resid computes the residual:  r = v - Au
 //
 // This  implementation costs  15A + 4M per result, where
-// A and M denote the costs of Addition (or Subtraction) and 
-// Multiplication, respectively. 
+// A and M denote the costs of Addition (or Subtraction) and
+// Multiplication, respectively.
 // Presuming coefficient a(1) is zero (the NPB assumes this,
 // but it is thus not a general case), 3A + 1M may be eliminated,
 // resulting in 12A + 3M.
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  
+// Note that this vectorizes, and is also fine for cache
+// based machines.
 //---------------------------------------------------------------------
 static void resid(void *ou, void *ov, void *or, int n1, int n2, int n3,
                   double a[4], int k)
@@ -607,13 +607,13 @@ static void resid(void *ou, void *ov, void *or, int n1, int n2, int n3,
 
 
 //---------------------------------------------------------------------
-// rprj3 projects onto the next coarser grid, 
+// rprj3 projects onto the next coarser grid,
 // using a trilinear Finite Element projection:  s = r' = P r
-//     
+//
 // This  implementation costs  20A + 4M per result, where
-// A and M denote the costs of Addition and Multiplication.  
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  
+// A and M denote the costs of Addition and Multiplication.
+// Note that this vectorizes, and is also fine for cache
+// based machines.
 //---------------------------------------------------------------------
 static void rprj3(void *or, int m1k, int m2k, int m3k,
                   void *os, int m1j, int m2j, int m3j, int k)
@@ -691,11 +691,11 @@ static void rprj3(void *or, int m1k, int m2k, int m3k,
 //---------------------------------------------------------------------
 // interp adds the trilinear interpolation of the correction
 // from the coarser grid to the current approximation:  u = u + Qu'
-//     
+//
 // Observe that this  implementation costs  16A + 4M, where
-// A and M denote the costs of Addition and Multiplication.  
-// Note that this vectorizes, and is also fine for cache 
-// based machines.  Vector machines may get slightly better 
+// A and M denote the costs of Addition and Multiplication.
+// Note that this vectorizes, and is also fine for cache
+// based machines.  Vector machines may get slightly better
 // performance however, with 8 separate "do i1" loops, rather than 4.
 //---------------------------------------------------------------------
 static void interp(void *oz, int mm1, int mm2, int mm3,
@@ -780,24 +780,24 @@ static void interp(void *oz, int mm1, int mm2, int mm3,
     for (i3 = d3; i3 <= mm3-1; i3++) {
       for (i2 = d2; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-d2-1][2*i1-d1-1] = 
+          u[2*i3-d3-1][2*i2-d2-1][2*i1-d1-1] =
             u[2*i3-d3-1][2*i2-d2-1][2*i1-d1-1]
             + z[i3-1][i2-1][i1-1];
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-d2-1][2*i1-t1-1] = 
+          u[2*i3-d3-1][2*i2-d2-1][2*i1-t1-1] =
             u[2*i3-d3-1][2*i2-d2-1][2*i1-t1-1]
             + 0.5 * (z[i3-1][i2-1][i1] + z[i3-1][i2-1][i1-1]);
         }
       }
       for (i2 = 1; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-t2-1][2*i1-d1-1] = 
+          u[2*i3-d3-1][2*i2-t2-1][2*i1-d1-1] =
             u[2*i3-d3-1][2*i2-t2-1][2*i1-d1-1]
             + 0.5 * (z[i3-1][i2][i1-1] + z[i3-1][i2-1][i1-1]);
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-d3-1][2*i2-t2-1][2*i1-t1-1] = 
+          u[2*i3-d3-1][2*i2-t2-1][2*i1-t1-1] =
             u[2*i3-d3-1][2*i2-t2-1][2*i1-t1-1]
             + 0.25 * (z[i3-1][i2][i1] + z[i3-1][i2-1][i1]
                     + z[i3-1][i2][i1-1] + z[i3-1][i2-1][i1-1]);
@@ -809,12 +809,12 @@ static void interp(void *oz, int mm1, int mm2, int mm3,
     for (i3 = 1; i3 <= mm3-1; i3++) {
       for (i2 = d2; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-d2-1][2*i1-d1-1] = 
+          u[2*i3-t3-1][2*i2-d2-1][2*i1-d1-1] =
             u[2*i3-t3-1][2*i2-d2-1][2*i1-d1-1]
             + 0.5 * (z[i3][i2-1][i1-1] + z[i3-1][i2-1][i1-1]);
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-d2-1][2*i1-t1-1] = 
+          u[2*i3-t3-1][2*i2-d2-1][2*i1-t1-1] =
             u[2*i3-t3-1][2*i2-d2-1][2*i1-t1-1]
             + 0.25 * (z[i3  ][i2-1][i1] + z[i3  ][i2-1][i1-1]
                     + z[i3-1][i2-1][i1] + z[i3-1][i2-1][i1-1]);
@@ -822,13 +822,13 @@ static void interp(void *oz, int mm1, int mm2, int mm3,
       }
       for (i2 = 1; i2 <= mm2-1; i2++) {
         for (i1 = d1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-t2-1][2*i1-d1-1] = 
+          u[2*i3-t3-1][2*i2-t2-1][2*i1-d1-1] =
             u[2*i3-t3-1][2*i2-t2-1][2*i1-d1-1]
             + 0.25 * (z[i3  ][i2][i1-1] + z[i3  ][i2-1][i1-1]
                     + z[i3-1][i2][i1-1] + z[i3-1][i2-1][i1-1]);
         }
         for (i1 = 1; i1 <= mm1-1; i1++) {
-          u[2*i3-t3-1][2*i2-t2-1][2*i1-t1-1] = 
+          u[2*i3-t3-1][2*i2-t2-1][2*i1-t1-1] =
             u[2*i3-t3-1][2*i2-t2-1][2*i1-t1-1]
             + 0.125 * (z[i3  ][i2][i1  ] + z[i3  ][i2-1][i1  ]
                      + z[i3  ][i2][i1-1] + z[i3  ][i2-1][i1-1]
@@ -916,7 +916,7 @@ static void rep_nrm(void *u, int n1, int n2, int n3, char *title, int kk)
 
 
 //---------------------------------------------------------------------
-// comm3 organizes the communication on all borders 
+// comm3 organizes the communication on all borders
 //---------------------------------------------------------------------
 static void comm3(void *ou, int n1, int n2, int n3, int kk)
 {
@@ -1064,7 +1064,7 @@ static void zran3(void *oz, int n1, int n2, int n3, int nx1, int ny1, int k)
   // Now which of these are globally best?
   //---------------------------------------------------------------------
   i1 = mm - 1;
-  i0 = mm - 1; 
+  i0 = mm - 1;
   myid = 0;
   myid = omp_get_thread_num();
   num_threads = omp_get_num_threads();

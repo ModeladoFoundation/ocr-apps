@@ -22,7 +22,7 @@ def print_main_func():
 
 def print_funcs():
 	"""output the body functions"""
-	
+
 	if g.RSTREAM:
 		outfile = open(g.FILE + ".src.c", 'w')
 
@@ -196,7 +196,7 @@ def print_num_iterations(tabs, param, old):
 	print tabs + "}"
 
 
-	
+
 def output_node_entry(m):
 	"""This is the entry to a node. It schedules the parallel body of the
 	work."""
@@ -562,7 +562,7 @@ def ocr_param_init(level, label, target):
 	print tabs + "// [lower, step, upper] = [" + init + "]"
 	#print tabs + "node_"+ target + "_param_init(n" + target + "p, input->global_db_guid, " + init + ");"
 	print tabs + "node_"+ target + "_param_init(n" + target + "p, n" + label + "p->global_db_guid, " + init + ");"
-	
+
 
 def initialize_data_array(tabs):
 	""""""
@@ -591,7 +591,7 @@ def output_node_exit(m):
 	print "{"
 	print "\tint i;"
 	print "\tstruct node_" + m['label'] + "_param *n" + m['label'] + "p = (struct node_" + m['label'] + "_param *) depv[3].ptr;"
-	targets = g.targets[m['label']] 
+	targets = g.targets[m['label']]
 	ng = False
 	for target in targets:
 		if needs_global(target):
