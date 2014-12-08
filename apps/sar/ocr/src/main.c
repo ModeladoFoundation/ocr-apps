@@ -147,35 +147,14 @@ PRINTF("allocate AffineParams\n");RAG_FLUSH;
 		xe_exit(1);
 	}
 
-#ifndef RAG_IMPLICIT_INPUTS
 	pInFile  = NULL;
 	pInFile2 = NULL;
 	pInFile3 = NULL;
+	pOutFile = NULL;
+
 #ifdef TRACE_LVL_1
 PRINTF("// SAR data\n");RAG_FLUSH;
 #endif
-	if( (pInFile = fopen(argv_1, "rb")) == NULL ) {
-		PRINTF("Error opening %s\n", argv_1);
-		xe_exit(1);
-	}
-
-#ifdef TRACE_LVL_1
-PRINTF("// Platform positions\n");RAG_FLUSH;
-#endif
-	if( (pInFile2 = fopen(argv_2, "rb")) == NULL ) {
-		PRINTF("Error opening %s\n", argv_2);
-		xe_exit(1);
-	}
-
-#ifdef TRACE_LVL_1
-PRINTF("// Pulse transmission timestamps\n");RAG_FLUSH;
-#endif
-	if( (pInFile3 = fopen(argv_3, "rb")) == NULL ) {
-		PRINTF("Error opening %s\n", argv_3);
-		xe_exit(1);
-	}
-
-#endif // RAG_IMPLICIT_INPUTS
 
 	switch(ReadParams(&radar_params, &image_params, &affine_params, &cfar_params)) {
 	  case 0: break;
@@ -190,17 +169,6 @@ PRINTF("// Pulse transmission timestamps\n");RAG_FLUSH;
 		  xe_exit(1);
 	}
 
-#ifdef TG_ARCH
-	pOutFile = NULL;
-#else
-#ifdef TRACE_LVL_1
-PRINTF("// Detects.txt\n");RAG_FLUSH;
-#endif
-	if( (pOutFile = fopen(argv_4, "wb")) == NULL ) {
-		PRINTF("Error opening %s\n", argv_4);
-		xe_exit(1);
-	}
-#endif // TG_ARCH
 
 #ifdef TRACE_LVL_1
 PRINTF("// Ensure all window sizes are odd\n");RAG_FLUSH;
@@ -364,11 +332,11 @@ PRINTF("// check ceilf S4 %d F %d S3 %d\n",image_params.S4,image_params.F,image_
 #ifdef TRACE_LVL_1
 PRINTF("// Allocate memory for axis vectors\n");RAG_FLUSH;
 #endif
-        ocrGuid_t image_params_xr_dbg;
-        ocrGuid_t image_params_yr_dbg;
-	image_params.xr = (float*)bsm_malloc(&image_params_xr_dbg,image_params.Ix*sizeof(float));
-	image_params.yr = (float*)bsm_malloc(&image_params_yr_dbg,image_params.Iy*sizeof(float));
-	if(image_params.xr == NULL || image_params.yr == NULL) {
+        float *image_params_xr; ocrGuid_t image_params_xr_dbg;
+        float *image_params_yr; ocrGuid_t image_params_yr_dbg;
+	image_params_xr = (float*)bsm_malloc(&image_params_xr_dbg,image_params.Ix*sizeof(float));
+	image_params_yr = (float*)bsm_malloc(&image_params_yr_dbg,image_params.Iy*sizeof(float));
+	if(image_params_xr == NULL || image_params_yr == NULL) {
 		PRINTF("Error allocating memory for axis vectors.\n");RAG_FLUSH;
 		xe_exit(1);
 	}
@@ -377,10 +345,10 @@ PRINTF("// Allocate memory for axis vectors\n");RAG_FLUSH;
 PRINTF("// Create axis vectors\n");RAG_FLUSH;
 #endif
 	for(int i=0; i<image_params.Ix; i++) {
-		image_params.xr[i] = (i - floorf((float)image_params.Ix/2))*image_params.dr;
+		image_params_xr[i] = (i - floorf((float)image_params.Ix/2))*image_params.dr;
 	}
 	for(int i=0; i<image_params.Iy; i++) {
-		image_params.yr[i] = (i - floorf((float)image_params.Iy/2))*image_params.dr;
+		image_params_yr[i] = (i - floorf((float)image_params.Iy/2))*image_params.dr;
 	}
 
 #ifdef TRACE_LVL_1
@@ -587,8 +555,8 @@ PRINTF("// provide the arguments to post_main_edt.\n");RAG_FLUSH;
 
 RAG_DEF_MACRO_PASS(post_main_scg,struct detects *,NULL,NULL,NULL,Y_dbg,0);
 RAG_DEF_MACRO_SPAD(post_main_scg,struct ImageParams *,NULL,NULL,NULL,image_params_dbg,1);
-RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_yr_dbg,2);
-RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_xr_dbg,3);
+RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_xr_dbg,2);
+RAG_DEF_MACRO_PASS(post_main_scg,float *,NULL,NULL,NULL,image_params_yr_dbg,3);
 RAG_DEF_MACRO_SPAD(post_main_scg,struct RadarParams *,NULL,NULL,NULL,radar_params_dbg,4);
 RAG_DEF_MACRO_SPAD(post_main_scg,struct AffineParams *,NULL,NULL,NULL,affine_params_dbg,5);
 RAG_DEF_MACRO_SPAD(post_main_scg,struct Cfar_params *,NULL,NULL,NULL,cfar_params_dbg,6);
@@ -609,7 +577,7 @@ PRINTF("// create a template for main_body_edt function\n");RAG_FLUSH;
 			&main_body_clg,		// ocrGuid_t *new_guid
 			 main_body_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
-			12);			// depc
+			14);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = main_body_clg;
 
@@ -651,6 +619,8 @@ RAG_DEF_MACRO_BSM( main_body_scg,float **,NULL,NULL,NULL,Pt_dbg,8);
 RAG_DEF_MACRO_BSM( main_body_scg,float *,NULL,NULL,NULL,Tp_dbg,9);
 RAG_DEF_MACRO_PASS(main_body_scg,struct detects *,NULL,NULL,NULL,Y_dbg,10);
 RAG_DEF_MACRO_BSM( main_body_scg,struct file_args_t,NULL,NULL,NULL,file_args_dbg,11);
+RAG_DEF_MACRO_PASS(main_body_scg,float *,NULL,NULL,NULL,image_params_xr_dbg,12);
+RAG_DEF_MACRO_PASS(main_body_scg,float *,NULL,NULL,NULL,image_params_yr_dbg,13);
 
 RAG_DEF_MACRO_BSM( post_main_scg,NULL,NULL,NULL,NULL,main_body_evg,14);
 
@@ -669,7 +639,7 @@ PRINTF("// enter main_body_edt\n");RAG_FLUSH;
 	assert(paramc==1);
 	ocrGuid_t post_main_scg = (ocrGuid_t)paramv[0];
 
-	assert(depc==12);
+	assert(depc==14);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,2);
@@ -682,6 +652,14 @@ RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,8);
 RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,9);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,10);
 RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,11);
+RAG_REF_MACRO_BSM( float *,image_params_xr,NULL,NULL,image_params_xr_dbg,12);
+RAG_REF_MACRO_BSM( float *,image_params_yr,NULL,NULL,image_params_yr_dbg,13);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,X       ,image_params->S1,image_params->P1);
+RAG_REF_REMAP_2D(  struct point *,corr_map,image_params->Ix-image_params->Ncor+1,image_params->Iy-image_params->Ncor+1);
+RAG_REF_REMAP_2D(  float *,Pt,3,image_params->P1);
 
 #ifdef TRACE_LVL_1
 PRINTF("// create a template for ReadData_edt\n");RAG_FLUSH;
@@ -706,9 +684,9 @@ PRINTF("// create a template for FormImage_edt\n");RAG_FLUSH;
 			 FormImage_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
 #ifdef RAG_DIG_SPOT
-			8			// depc
+			10			// depc
 #else
-			7			// depc
+			9			// depc
 #endif
 		);
 	assert(retval==0);
@@ -819,7 +797,7 @@ PRINTF("// create a template for CFAR_edt function\n");RAG_FLUSH;
 			&CFAR_clg,		// ocrGuid_t *new_guid
 			 CFAR_edt,		// ocr_edt_ptr func_ptr
 			1,			// paramc
-			5);			// depc
+			7);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = CFAR_clg;
 
@@ -1022,9 +1000,11 @@ RAG_DEF_MACRO_BSM (refFormImage_scg,NULL,NULL,NULL,NULL,NULL_GUID,3);
 //RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,Pt_dbg,5);
 // done by refReadInputs_edt
 //RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
+RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,7);
+RAG_DEF_MACRO_BSM( refFormImage_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,8);
 // done by refReadInputs_edt
 #ifdef RAG_DIG_SPOT
-RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,7);
+RAG_DEF_MACRO_SPAD(refFormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,9);
 #endif
 #ifdef RAG_DIG_SPOT
 //	FormImage(image_params_dbg,radar_params_dbg,
@@ -1061,8 +1041,10 @@ RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,refImage_dbg,3);
 // done by ReadInputs_edt
 //RAG_DEF_MACRO_BSM( FormImage_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
 // done by ReadInputs_edt
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,7);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,8);
 #ifdef RAG_DIG_SPOT
-RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,7);
+RAG_DEF_MACRO_SPAD(FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,9);
 #endif
 #ifdef RAG_DIG_SPOT
 //		FormImage(image_params_dbg,radar_params_dbg,
@@ -1101,13 +1083,15 @@ RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,corr_map_dbg,0);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,image_params_dbg,1);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,cfar_params_dbg,2);
 RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,Y_dbg,3);
+RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,4);
+RAG_DEF_MACRO_SPAD(CFAR_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,5);
 //		CFAR(corr_map, image_params, cfar_params, Y);
 
 RAG_DEF_MACRO_SPAD(post_affine_async_1_scg,NULL,NULL,NULL,NULL,Affine_evg,8);
 RAG_DEF_MACRO_SPAD(post_affine_async_2_scg,NULL,NULL,NULL,NULL,post_affine_async_1_evg,8);
 RAG_DEF_MACRO_SPAD(post_Affine_scg,        NULL,NULL,NULL,NULL,post_affine_async_2_evg,4);
 RAG_DEF_MACRO_SPAD(CCD_scg,                NULL,NULL,NULL,NULL,post_Affine_evg,4);
-RAG_DEF_MACRO_SPAD(CFAR_scg,               NULL,NULL,NULL,NULL,CCD_evg,4);
+RAG_DEF_MACRO_SPAD(CFAR_scg,               NULL,NULL,NULL,NULL,CCD_evg,6);
 RAG_DEF_MACRO_SPAD(post_CFAR_scg,          NULL,NULL,NULL,NULL,CFAR_evg,2);
 
 	} // while
@@ -1132,8 +1116,8 @@ PRINTF("// enter post_main_edt\n");RAG_FLUSH;
 #endif
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
-RAG_REF_MACRO_BSM( float *,image_params_yr_ptr,NULL,NULL,image_params_yr_dbg,2);
-RAG_REF_MACRO_BSM( float *,image_params_xr_ptr,NULL,NULL,image_params_xr_dbg,3);
+RAG_REF_MACRO_BSM( float *,image_params_xr_ptr,NULL,NULL,image_params_xr_dbg,2);
+RAG_REF_MACRO_BSM( float *,image_params_yr_ptr,NULL,NULL,image_params_yr_dbg,3);
 RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,4);
 RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,5);
 RAG_REF_MACRO_SPAD(struct CfarParams,cfar_params,cfar_params_ptr,cfar_params_lcl,cfar_params_dbg,6);
@@ -1141,9 +1125,15 @@ RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,7);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,8);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,9);
 RAG_REF_MACRO_BSM( struct complexData **,X,NULL,NULL,X_dbg,10);
-RAG_REF_MACRO_BSM( struct point **,Pt,NULL,NULL,Pt_dbg,11);
+RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,11);
 RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,12);
 RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,13);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,X       ,image_params->S1,image_params->P1);
+RAG_REF_REMAP_2D(  struct point *,corr_map,image_params->Ix-image_params->Ncor+1,image_params->Iy-image_params->Ncor+1);
+RAG_REF_REMAP_2D(  float *,Pt,3,image_params->P1);
 
 	pInFile  = file_args_lcl.pInFile;
 	pInFile2 = file_args_lcl.pInFile2;
@@ -1196,15 +1186,6 @@ PRINTF("// Output Images to .bin files\n");RAG_FLUSH;
 #endif
     }
 #endif // DEBUG_SSCP
-
-#ifndef RAG_IMPLICIT_INPUTS
-	fclose(pInFile);
-	fclose(pInFile2);
-	fclose(pInFile3);
-#endif
-#ifndef TG_ARCH
-	fclose(pOutFile);
-#endif
 
 	bsm_free(Y,Y_dbg);
 

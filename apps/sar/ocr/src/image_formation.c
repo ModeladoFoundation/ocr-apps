@@ -56,9 +56,9 @@ PRINTF("//// enter FormImage_edt\n");RAG_FLUSH;
 	assert(paramc==1);
 	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // ReadData_edt or Affine_edt
 #ifdef RAG_DIG_SPOT
-	assert(depc==8);
+	assert(depc==10);
 #else
-	assert(depc==7);
+	assert(depc==9);
 #endif
 
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
@@ -68,6 +68,14 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,3);
 RAG_REF_MACRO_BSM( struct complexData **,Xin,NULL,NULL,Xin_dbg,4);
 RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,5);
 RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,6);
+RAG_REF_MACRO_BSM( float *,image_params_xr,NULL,NULL,image_params_xr_dbg,7);
+RAG_REF_MACRO_BSM( float *,image_params_yr,NULL,NULL,image_params_yr_dbg,8);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,Xin     ,image_params->S1,image_params->P1);
+RAG_REF_REMAP_2D(  float *,Pt,3,image_params->P1);
+
 #ifdef RAG_DIG_SPOT
 RAG_REF_MACRO_BSM( struct DigSpotVars,dig_spot,dig_spot_ptr,dig_spot_lcl,dig_spot_dbg,7);
 #endif
@@ -136,7 +144,16 @@ PRINTF("//// Copy curImage to refImage\n");RAG_FLUSH;
 #ifdef TRACE_LVL_2
 PRINTF("//// Zero curImage\n");RAG_FLUSH;
 #endif
+#ifdef DEBUG_LVL_2
+PRINTF("//// image_params == %16.16lx\n",image_params);RAG_FLUSH;
+PRINTF("//// curImage     == %16.16lx\n",curImage);RAG_FLUSH;
+PRINTF("//// image_params->Iy == %x\n",image_params->Iy);RAG_FLUSH;
+PRINTF("//// image_params->Ix == %x\n",image_params->Ix);RAG_FLUSH;
+#endif
 	for(int n=0; n<image_params->Iy; n++) {
+#ifdef DEBUG_LVL_3
+PRINTF("//// curImage[%x] == %16.16lx\n",n,curImage[n]);RAG_FLUSH;
+#endif
 #ifdef RAG_DRAM
 		dram_memset(curImage[n], 0, image_params->Ix*sizeof(struct complexData));
 #else
@@ -183,8 +200,8 @@ PRINTF("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_FLUS
 		for(int i=0; i<image_params->TF; i++) {
 			for(int j=0; j<image_params->TF; j++) {
 				// Subimage center
-				xc = image_params->xr[(image_params->Sx-1)/2 + i*image_params->Sx];
-				yc = image_params->yr[(image_params->Sy-1)/2 + j*image_params->Sy];
+				xc = image_params_xr[(image_params->Sx-1)/2 + i*image_params->Sx];
+				yc = image_params_yr[(image_params->Sy-1)/2 + j*image_params->Sy];
 
 				// Perform Digital Spotlighting
 				Xsubimg = DigSpot(xc, yc, dig_spot, image_params, radar_params, in);
@@ -230,7 +247,7 @@ PRINTF("//// create a template for BackProj function\n");RAG_FLUSH;
 				&BackProj_clg,		// ocrGuid_t *new_guid
 			 	 BackProj_edt,		// ocr_edt_ptr func_ptr
 				(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
-				7);			// depc
+				9);			// depc
 		assert(retval==0);
 		templateList[__sync_fetch_and_add(&templateIndex,1)] = BackProj_clg;
 
@@ -257,6 +274,9 @@ RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,refImage_dbg,3);
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,Xin_dbg,4);
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,Pt_dbg,5);
 RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
+RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,7);
+RAG_DEF_MACRO_PASS(BackProj_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,8);
+
 #ifdef RAG_DIG_SPOT
 RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,8);
 #else

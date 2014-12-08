@@ -17,6 +17,10 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
 
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct point *,corr_map,image_params->Ix-image_params->Ncor+1,image_params->Iy-image_params->Ncor+1);
+
 	void CCD(
 		struct complexData **curImage,    ocrGuid_t curImage_dbg,
 		struct complexData **refImage,    ocrGuid_t refImage_dbg,
@@ -50,6 +54,11 @@ RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct point *,corr_map,image_params->Ix-image_params->Ncor+1,image_params->Iy-image_params->Ncor+1);
+
 	int Ncor = image_params->Ncor;
         int Ncor_sqr = Ncor * Ncor;
 #ifdef DEBUG

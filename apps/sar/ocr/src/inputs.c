@@ -3,6 +3,7 @@
 #include "ocr.h"
 #include "rag_ocr.h"
 #include "common.h"
+#include "argv.h"
 
 int ReadParams(struct RadarParams *radar_params, struct ImageParams *image_params, struct AffineParams *affine_params, struct CfarParams *cfar_params)
 {
@@ -222,17 +223,48 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   RAG_REF_MACRO_BSM( struct complexData **,X,NULL,NULL,X_dbg,2);
   RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,3);
   RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,4);
-  assert((void *)&X[0][0] == (void *)&X[image_params_lcl.P1]);   // check to see if Datablocks are getting relocated
-  assert((void *)&Pt[0][0] == (void *)&Pt[image_params_lcl.P1]); // if they are then need to remap 2D array
+
+  RAG_REF_REMAP_2D(  struct complexData *,X,image_params->S1,image_params->P1);
+  RAG_REF_REMAP_2D(  float *,Pt,3,image_params->P1);
+
 #ifdef TG_ARCH
   void *pInFile  = file_args_lcl.pInFile;
   void *pInFile2 = file_args_lcl.pInFile2;
   void *pInFile3 = file_args_lcl.pInFile3;
-#else
+#else // TG_ARCH
   FILE *pInFile  = file_args_lcl.pInFile;
   FILE *pInFile2 = file_args_lcl.pInFile2;
   FILE *pInFile3 = file_args_lcl.pInFile3;
+#endif // TG_ARCH
+#ifndef RAG_IMPLICIT_INPUTS
+#ifdef TRACE_LVL_1
+PRINTF("// SAR data\n");RAG_FLUSH;
 #endif
+	if( (pInFile = fopen(argv_1, "rb")) == NULL ) {
+		PRINTF("Error opening %s\n", argv_1);
+		xe_exit(1);
+	}
+	fseek(pInFile,(image_params->imageNumber)*(image_params->P1)*(image_params->S1)*sizeof(struct complexData),SEEK_SET);
+
+#ifdef TRACE_LVL_1
+PRINTF("// Platform positions\n");RAG_FLUSH;
+#endif
+	if( (pInFile2 = fopen(argv_2, "rb")) == NULL ) {
+		PRINTF("Error opening %s\n", argv_2);
+		xe_exit(1);
+	}
+	fseek(pInFile2,(image_params->imageNumber)*(image_params->P1)*(3)*sizeof(float),SEEK_SET);
+
+#ifdef TRACE_LVL_1
+PRINTF("// Pulse transmission timestamps\n");RAG_FLUSH;
+#endif
+	if( (pInFile3 = fopen(argv_3, "rb")) == NULL ) {
+		PRINTF("Error opening %s\n", argv_3);
+		xe_exit(1);
+	}
+	fseek(pInFile3,(image_params->imageNumber)*(image_params->P1)*sizeof(float),SEEK_SET);
+#endif // RAG_IMPLICIT_INPUTS
+
 #ifdef DEBUG
   PRINTF("file descripters are %ld %ld %ld\n",(uint64_t)pInFile, (uint64_t)pInFile2, (uint64_t) pInFile3);RAG_FLUSH;
 #endif
@@ -255,6 +287,12 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,X_dbg,4);
   RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Pt_dbg,5);
   RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
+
+#ifndef RAG_IMPLICIT_INPUTS
+  fclose(pInFile);
+  fclose(pInFile2);
+  fclose(pInFile3);
+#endif
 
 #ifdef TRACE_LVL_2
   PRINTF("//// leave ReadData_edt\n");RAG_FLUSH;
@@ -293,7 +331,16 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
     if(!m)PRINTF("//// Read complex SAR data\n");RAG_FLUSH;
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
-    fread(&X[m][0], sizeof(struct complexData), image_params->S1, pFile1);
+    size_t ret;
+#if 0
+    PRINTF("pFile1  = %llx\n",pFile1);
+    PRINTF("iter    = %d, siz = %ld\n",m,image_params->S1);
+    PRINTF("X       = %16.16lx\n", X);
+    PRINTF("X[m]    = %16.16lx\n", X[m]);
+    PRINTF("&X[m][0]= %16.16lx\n",&X[m][0]);
+#endif
+    ret = fread(&X[m][0], sizeof(struct complexData), image_params->S1, pFile1);
+    if ( ret != image_params->S1 ) { PRINTF("iter = %d, ret = %ld\n",m,ret);exit(1); }
 #else
     if ( image_params->imageNumber == 0 ) {
       // &X[m][0]
@@ -336,6 +383,8 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
 #endif
 #ifdef RAG_IMPLICIT_INPUTS
   image_params->imageNumber++;
+#else
+  image_params->imageNumber++; // RAG OCR-MPI for fseek
 #endif
 #ifdef TRACE_LVL_2
   PRINTF("//// leave ReadData()\n");RAG_FLUSH;

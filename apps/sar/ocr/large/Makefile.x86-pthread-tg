@@ -53,7 +53,7 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 TARGET := sscp
 
 # Space separated list of directory names in apps/libs/src
-# that need to be built. These will be built for OCR_TYPE
+# that need to be built. These will be built for ARCH
 REQ_LIBS := crlibm-1.0beta4
 
 # Space separated list of source files

@@ -27,7 +27,11 @@
 #define rag_flush
 #else
 #define RAG_FLUSH {fflush(stdout);fflush(stderr);}
+#ifdef DEBUG
+#define rag_printf(...) PRINTF(__VA_ARGS__)
+#else
 #define rag_printf(...)
+#endif
 #define rag_flush
 #endif
 
@@ -218,6 +222,22 @@ void DRAMtoDRAM(void *out, void *in, size_t size);
 #define RAG_REF_MACRO_PASS(no_type,no_var,no_ptr,no_lcl,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
 	rag_printf("REF_PASS %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+
+#if 1
+// remap 2D array
+#define RAG_REF_REMAP_2D(type,ptr,inc,n) \
+{ for(int i=0; i<(n); i++) { \
+    if(ptr[i] != ((type)&ptr[(n)]) + i*(inc)) { \
+       ptr[i] =  ((type)&ptr[(n)]) + i*(inc); \
+} } }
+#else
+// check mapping of 2D array
+#define RAG_REF_REMAP_2D(type,ptr,inc,n) \
+{ for(int i=0; i<(n); i++) { \
+    if(ptr[i] != ((type)&ptr[(n)]) + i*(inc)) { \
+      printf("%s %s\n",__FILE__,__LINE__);exit(1); \
+} } }
+#endif
 
 #ifndef RAG_NEW_BLK_SIZE
 static int blk_size(int n,int max_blk_size) {

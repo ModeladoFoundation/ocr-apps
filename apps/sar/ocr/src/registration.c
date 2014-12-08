@@ -1,6 +1,7 @@
 #include "ocr.h"
 #include "rag_ocr.h"
 #include "common.h"
+#include "Parameters.h"
 
 #ifndef TG_ARCH // FIX-ME
 #define dram_free(addr,guid)
@@ -36,6 +37,10 @@ RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,1);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
 
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,output  ,image_params->Ix,image_params->Iy);
+
 #ifdef TRACE_LVL_2
 PRINTF("// Overwrite current image with registered image\n");RAG_FLUSH;
 #endif
@@ -69,6 +74,8 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
 RAG_REF_MACRO_SPAD(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,2);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,3);
 
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
 
 	ocrGuid_t Affine(
 		struct complexData **curImage,		ocrGuid_t curImage_dbg,
@@ -111,6 +118,16 @@ RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,4);
 RAG_REF_MACRO_BSM( int *,Fx,NULL,NULL,Fx_dbg,5);
 RAG_REF_MACRO_BSM( int *,Fy,NULL,NULL,Fy_dbg,6);
 RAG_REF_MACRO_BSM( int **,A,NULL,NULL,A_dbg,7);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+#if 0
+PRINTF("Nc      = %16.16lx\n",affine_params->Nc);
+PRINTF("A       = %16.16lx\n",A);
+PRINTF("A[0]    = %16.16lx\n",A[0]);
+PRINTF("A[Nc]   = %16.16lx\n",&A[affine_params->Nc]);
+#endif
+RAG_REF_REMAP_2D(  int *,A,6,RAG_Nc);
 
 	int rc;
 	// b = 6 x 2
@@ -362,6 +379,10 @@ RAG_REF_MACRO_BSM( int *,Fx,NULL,NULL,Fx_dbg,5);
 RAG_REF_MACRO_BSM( int *,Fy,NULL,NULL,Fy_dbg,6);
 RAG_REF_MACRO_BSM( int **,A,NULL,NULL,A_dbg,7);
 
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  int *,A,6,RAG_Nc);
+
 	struct point ctrl_pt = async_1_args->ctrl_pt;
 #ifdef TRACE_LVL_3
 PRINTF("////// enter affine_async_1_edt\n");RAG_FLUSH;
@@ -393,20 +414,24 @@ PRINTF("////// disp_vec.p >= affine_params->Tc\n");RAG_FLUSH;
 		const int k = __sync_fetch_and_add(
 			((int *)(((char *)affine_params_ptr)
 		                + offsetof(struct AffineParams,Nc))),1);
-
+                if ( k < RAG_Nc ) { // if below max number of control points
 #ifdef TRACE_LVL_3
 PRINTF("////// Form Fx, Fy (k=%d) and A\n",k);RAG_FLUSH;
 #endif
-		Fx[k] = ctrl_pt.x + disp_vec.x;
-		Fy[k] = ctrl_pt.y + disp_vec.y;
+			Fx[k] = ctrl_pt.x + disp_vec.x;
+			Fy[k] = ctrl_pt.y + disp_vec.y;
 
-		A[k][0] = 1;
-		A[k][1] = ctrl_pt.x;
-		A[k][2] = ctrl_pt.y;
-		A[k][3] = ctrl_pt.x*ctrl_pt.x;
-		A[k][4] = ctrl_pt.y*ctrl_pt.y;
-		A[k][5] = ctrl_pt.x*ctrl_pt.y;
+			A[k][0] = 1;
+			A[k][1] = ctrl_pt.x;
+			A[k][2] = ctrl_pt.y;
+			A[k][3] = ctrl_pt.x*ctrl_pt.x;
+			A[k][4] = ctrl_pt.y*ctrl_pt.y;
+			A[k][5] = ctrl_pt.x*ctrl_pt.y;
 
+		} else { // if below max number of control points
+			PRINTF("////// Increase Nc to Form Fx, Fy (k=%d) and A\n",k);RAG_FLUSH;
+			xe_exit(1);
+		} // if below max number of control points
 	} // if above threshold
 	bsm_free(async_1_args,async_1_args_dbg);
 #ifdef TRACE_LVL_3
@@ -423,13 +448,16 @@ PRINTF("////// enter post_affine_async_2_edt\n");RAG_FLUSH;
 	assert(paramc==0);
 	assert(depc==9); // 9th post_affine_async_1_evg
 RAG_REF_MACRO_PASS(struct AffineParams,affine_params,affine_params_ptr,affine_params_lcl,affine_params_dbg,0);
-RAG_REF_MACRO_PASS(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
+RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
 RAG_REF_MACRO_SPAD(struct async_1_args_t,post_affine_async_1_args,post_affine_async_1_args_ptr,post_affine_async_1_args_lcl,post_affine_async_1_args_dbg,3);
 RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,4);
 RAG_REF_MACRO_BSM( int *,Fx,NULL,NULL,Fx_dbg,5);
 RAG_REF_MACRO_BSM( int *,Fy,NULL,NULL,Fy_dbg,6);
 RAG_REF_MACRO_BSM( int **,A,NULL,NULL,A_dbg,7);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  int *,A,6,RAG_Nc);
 
 // RAG	RAG_DEF_MACRO_PASS(async_1_args->post_Affine_scg,NULL,NULL,NULL,NULL,async_1_args->output_dbg,0);
 
@@ -466,6 +494,9 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,2);
 RAG_REF_MACRO_BSM( struct complexData **,output,NULL,NULL,output_dbg,3);
 RAG_REF_MACRO_SPAD(struct async_2_args_t,async_2_args,async_2_args_ptr,async_2_args_lcl,async_2_args_dbg,4);
+
+RAG_REF_REMAP_2D(  struct complexData *,curImage,image_params->Ix,image_params->Iy);
+RAG_REF_REMAP_2D(  struct complexData *,output  ,image_params->Ix,image_params->Iy); // RAG
 
 	int aa, bb;
 	float Px, Py, w, v;

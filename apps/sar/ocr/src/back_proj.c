@@ -19,13 +19,19 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   int m2   = corners->m2;
   int n1   = corners->n1;
   int n2   = corners->n2;
-  assert(depc==6);
+  assert(depc==8);
   RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
   RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,1);
   RAG_REF_MACRO_BSM( struct complexData **,image,NULL,NULL,image_dbg,2);
   RAG_REF_MACRO_BSM( struct complexData **,Xin,NULL,NULL,Xin_dbg,3);
   RAG_REF_MACRO_BSM( float **,platpos,NULL,NULL,platpos_dbg,4);
-  RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,4);
+  RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,5);
+  RAG_REF_MACRO_BSM( float *,image_params_xr,NULL,NULL,image_params_xr_dbg,6);
+  RAG_REF_MACRO_BSM( float *,image_params_yr,NULL,NULL,image_params_yr_dbg,7);
+
+  RAG_REF_REMAP_2D(  struct complexData *,image,image_params->Ix,image_params->Iy);
+  RAG_REF_REMAP_2D(  struct complexData *,Xin,  image_params->S1,image_params->P1);
+  RAG_REF_REMAP_2D(  float *,platpos,3,image_params->P1);
 
   struct complexData sample, acc, arg;
 
@@ -86,10 +92,10 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 #endif
     double zr_mid  =                                   - platpos[k][2]; // Z
     double zr_mid2 = zr_mid * zr_mid;
-    double yr_mid = image_params->yr[m1+blk_size_half] - platpos[k][1]; // Y
+    double yr_mid = image_params_yr[m1+blk_size_half] - platpos[k][1]; // Y
     double yr_mid2 = yr_mid * yr_mid;
     double sqrt_arg = zr_mid2 + yr_mid2;
-    double xr_mid = image_params->xr[n1+blk_size_half] - platpos[k][0]; // X
+    double xr_mid = image_params_xr[n1+blk_size_half] - platpos[k][0]; // X
     double xr_mid2 = xr_mid * xr_mid;
     double R_mid = sqrt (sqrt_arg + xr_mid2);
 #ifdef TRACE_LVL_5
@@ -327,8 +333,8 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 #ifdef DEBUG_LVL_3
 	    PRINTF("backproject_async k(%d)\n",k);RAG_FLUSH;
 #endif
-	    double x = (double)image_params->xr[m] - platpos[k][0];
-	    double y = (double)image_params->yr[n] - platpos[k][1];
+	    double x = (double)image_params_xr[m] - platpos[k][0];
+	    double y = (double)image_params_yr[n] - platpos[k][1];
 	    double z = (double)                      platpos[k][2];
 	    double R = sqrt( x*x + y*y + z*z ); // RAG -- Changed precision to match latest code from Dan Campbell
 #ifdef DEBUG_LVL_3
@@ -402,7 +408,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   int m2   = corners->m2;
   int n1   = corners->n1;
   int n2   = corners->n2;
-  assert(depc==7);
+  assert(depc==9);
   RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
   RAG_REF_MACRO_SPAD(struct RadarParams,radar_params,radar_params_ptr,radar_params_lcl,radar_params_dbg,1);
   RAG_REF_MACRO_BSM( struct complexData **,image,NULL,NULL,image_dbg,2);
@@ -410,6 +416,14 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   RAG_REF_MACRO_BSM( struct complexData **,Xin,NULL,NULL,Xin_dbg,4);
   RAG_REF_MACRO_BSM( float **,Pt,NULL,NULL,Pt_dbg,5);
   RAG_REF_MACRO_BSM( float *,Tp,NULL,NULL,Tp_dbg,6);
+  RAG_REF_MACRO_BSM( float *,image_params_xr,NULL,NULL,image_params_xr_dbg,7);
+  RAG_REF_MACRO_BSM( float *,image_params_yr,NULL,NULL,image_params_yr_dbg,8);
+
+  RAG_REF_REMAP_2D(  struct complexData *,image,   image_params->Ix,image_params->Iy);
+  RAG_REF_REMAP_2D(  struct complexData *,refImage,image_params->Ix,image_params->Iy);
+  RAG_REF_REMAP_2D(  struct complexData *,Xin,     image_params->S1,image_params->P1);
+  RAG_REF_REMAP_2D(  float *,Pt,3,image_params->P1);
+
 #if 0
 #warn RAG
 #endif
@@ -505,7 +519,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	&backproject_async_clg, // ocrGuid_t *new_guid
 	 backproject_async_edt,	// ocr_edt_ptr func_ptr
 	(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
-	6);			// depc
+	8);			// depc
     assert(retval==0);
     templateList[__sync_fetch_and_add(&templateIndex,1)] = backproject_async_clg;
 
@@ -548,6 +562,8 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Xup_dbg,3); // Xup
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Pt_dbg,4);  // Platform Position
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Tp_dbg,5);  // Platform Position
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,6);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,7);
       } // for n
     } // for m
 #ifndef TG_ARCH
@@ -581,7 +597,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	&backproject_async_clg, // ocrGuid_t *new_guid
 	 backproject_async_edt,	// ocr_edt_ptr func_ptr
 	(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
-	6);			// depc
+	8);			// depc
     assert(retval==0);
     templateList[__sync_fetch_and_add(&templateIndex,1)] = backproject_async_clg;
 
@@ -624,6 +640,8 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Xin_dbg,3); // Xin
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Pt_dbg,4);  // Platform Position
 	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,Tp_dbg,5);  // Time Pulse
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_xr_dbg,6);
+	RAG_DEF_MACRO_PASS(backproject_async_scg,NULL,NULL,NULL,NULL,image_params_yr_dbg,7);
       } // for n
     } // for m
   } // if F
