@@ -1,0 +1,51 @@
+units          lj
+atom_style     atomic
+boundary       f f f
+dimension      3
+
+region         box1 block -10 10 -10 10 -10 10 units lattice
+create_box     7 box1
+
+mass           * 1
+
+create_atoms    1 single 0 0 0
+create_atoms    2 single 1 0 0
+create_atoms  	3 single -1 0 0
+create_atoms  	4 single 0 1 0
+create_atoms  	5 single 0 -1 0
+create_atoms  	6 single 0 0 1
+create_atoms  	7 single 0 0 -1
+
+pair_style     lj/cut 2.5
+pair_coeff     * * 1 1
+
+neighbor 1.3 bin
+
+timestep       0.005
+
+group 1 type 1
+group 2 type 2
+group 3 type 3
+group 4 type 4
+group 5 type 5
+group 6 type 6
+group 7 type 7
+
+#velocity 1 create 0 4928459 rot yes dist gaussian
+velocity 1 set 0 0 0
+velocity 2 set -3 0 0
+velocity 3 set 3 0 0
+velocity 4 set 0 -3 0
+velocity 5 set 0 3 0
+velocity 6 set 0 0 -3
+velocity 7 set 0 0 3
+
+thermo_style   custom etotal pe ke temp press
+thermo_modify  line one flush yes norm no
+thermo         1
+
+dump x all custom 1 test.dump id mass x y z vx vy vz fx fy fz
+
+fix 1 all nve
+run 500
+unfix 1

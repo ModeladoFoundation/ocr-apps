@@ -1,0 +1,16 @@
+ITEM: TIMESTEP
+0
+ITEM: NUMBER OF ATOMS
+7
+ITEM: BOX BOUNDS ff ff ff
+-10 10
+-10 10
+-10 10
+ITEM: ATOMS id mass x y z vx vy vz fx fy fz
+7 1 0 0 -1 0 0 3 0 0 -19.3184
+5 1 0 -1 0 0 3 0 0 -19.3184 0
+3 1 -1 0 0 3 0 0 -19.3184 0 0
+1 1 0 0 0 0 0 0 0 0 0
+2 1 1 0 0 -3 0 0 19.3184 0 0
+4 1 0 1 0 0 -3 0 0 19.3184 0
+6 1 0 0 1 0 0 -3 0 0 19.3184

@@ -1,0 +1,48 @@
+units          lj
+atom_style     atomic
+boundary       f f f
+dimension      3
+
+lattice        fcc 1.0
+region         atombox block -2 .49 -2 .49 -2 .49 units lattice
+region	       remove1 block -0.1 0.1 -0.1 0.1 -0.1 0.1 units lattice
+region         remove2 block -2.1 -1.9 -2.1 -1.9 -2.1 -1.9 units lattice
+region         remove3 block -0.1 0.1 -2.1 -1.9 -2.1 -1.9 units lattice
+region         remove4 block -2.1 -1.9 -0.1 0.1 -2.1 -1.9 units lattice
+region         remove5 block -2.1 -1.9 -2.1 -1.9 -0.1 0.1 units lattice
+region         remove6 block -0.1 0.1 -0.1 0.1 -2.1 -1.9 units lattice
+region         remove7 block -2.1 -1.9 -0.1 0.1 -0.1 0.1 units lattice
+region         remove8 block -0.1 0.1 -2.1 -1.9 -0.1 0.1 units lattice
+region         simbox block -10 10 -10 10 -10 10 units lattice
+create_box     1 simbox
+
+mass           * 1
+
+create_atoms   1 region atombox
+delete_atoms   region remove1
+delete_atoms   region remove2
+delete_atoms   region remove3
+delete_atoms   region remove4
+delete_atoms   region remove5
+delete_atoms   region remove6
+delete_atoms   region remove7
+delete_atoms   region remove8
+
+pair_style     lj/cut 2.5
+pair_coeff     * * 1 1
+
+neighbor 1.3 bin
+
+timestep       0.001
+
+velocity all create 1 4928459 rot yes dist gaussian
+
+thermo_style   custom etotal pe ke temp press
+thermo_modify  line one flush yes norm no
+thermo         10
+
+dump x all custom 10 test.dump id mass x y z vx vy vz fx fy fz
+
+fix 1 all nve
+run 1000
+unfix 1
