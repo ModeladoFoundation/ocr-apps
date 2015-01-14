@@ -17,6 +17,11 @@ The modern code uses V-cycles, Gauss-Seidel Red-black smoother, and BiCGStab
 bottom solver. The exascale code uses F-cycles, Chebyshev smoother, and BiCGStab
 bottom solver.
 
+The sample output was produced using the following environment settings were used for mpicc/icc:
+. /opt/intel/tools/bin/compilervars.sh intel64
+. /opt/intel/tools/impi/5.0.1.035/intel64/bin/mpivars.sh
+
+
 ---
 RUN
 ---
