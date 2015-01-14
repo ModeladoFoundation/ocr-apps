@@ -1,0 +1,30 @@
+Testing modern with log2 box dim = 4 and target boxes = 512, please wait...
+calculating error...  h =  5.208333333333333e-03  ||error|| =  2.601065150250820e-08
+Expected:
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+
+Testing modern with log2 box dim = 5 and target boxes = 64, please wait...
+calculating error...  h =  5.208333333333333e-03  ||error|| =  2.601065150250820e-08
+Expected:
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+
+Testing modern with log2 box dim = 6 and target boxes = 8, please wait...
+calculating error...  h =  5.208333333333333e-03  ||error|| =  2.601065150250820e-08
+Expected:
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+
+Testing exascale with log2 box dim = 4 and target boxes = 512, please wait...
+calculating error...  h =  5.208333333333333e-03  ||error|| =  2.594949582849828e-08
+Expected ('x' values: TBD):
+ h =  7.812500000000000e-03  ||error|| =  5.77xxxxxxxxxxxxxe-08
+
+Testing exascale with log2 box dim = 5 and target boxes = 64, please wait...
+calculating error...  h =  5.208333333333333e-03  ||error|| =  2.594949582849828e-08
+Expected ('x' values: TBD):
+ h =  7.812500000000000e-03  ||error|| =  5.77xxxxxxxxxxxxxe-08
+
+Testing exascale with log2 box dim = 6 and target boxes = 8, please wait...
+calculating error...  h =  5.208333333333333e-03  ||error|| =  2.594949582849828e-08
+Expected ('x' values: TBD):
+ h =  7.812500000000000e-03  ||error|| =  5.77xxxxxxxxxxxxxe-08
+
