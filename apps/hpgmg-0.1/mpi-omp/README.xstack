@@ -58,4 +58,9 @@ problem sizes. To test, run the following command:
 KNOWN ISSUES
 ------------
 
-* TBD
+* Comparing results of runs on different numbers of MPI ranks:
+  Leaving the number of target boxes constant, increasing the number of ranks also increases the problem size.
+  In order to compare the same size, one has to reduce the number of boxes per rank.
+  In addition, in order to avoid global resuction operations such as dot-products, one should use the GSRB smoother and build
+  with -UUSE BICGSTAB. This will imply that no bottom solver is applied, but rather, that a number of GSRB smoothers is applied
+  on the coarsest grid. Sample output for the run is in testx86-gsrb.output. An example how to build is in buildit-gsrb.

@@ -33,7 +33,7 @@ test() {
     echo ""
 }
 
-
+echo "NOTE: Assuming the name of the git repository is $HOME/xstack"
 cd $HOME/xstack/apps/hpgmg-0.1/mpi-omp
 # Test modern
 test modern 4 512 1 1 8
