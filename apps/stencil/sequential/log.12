@@ -1,0 +1,13 @@
+Perform 2 iterations of 1D Stencil operation on nx = 12 gridpoints
+val [0] =  1.000000
+val [1] =  -1.000000
+val [2] =  0.250000
+val [3] =  0.000000
+val [4] =  0.000000
+val [5] =  0.000000
+val [6] =  0.000000
+val [7] =  0.000000
+val [8] =  0.000000
+val [9] =  0.250000
+val [10] =  1.000000
+val [11] =  1.000000

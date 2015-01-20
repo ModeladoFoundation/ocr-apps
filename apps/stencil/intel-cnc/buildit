@@ -1,0 +1,18 @@
+#!/bin/bash
+#edit Makefile:
+#  1. include => inc to find ocr.h
+#  2. libpcr in OCR_INSTALL/build/x86-pthread-x86
+export OCR_INSTALL=$HOME/xstack/ocr/install/x86-pthread-x86
+export OCR_TYPE=x86-pthread-x86
+cd $HOME/xstack/cnc-ocr
+./setup_env.sh
+cd $HOME/xstack/apps/stencil/intel-cnc
+export CNCOCR_INSTALL=$HOME/xstack/hll/cnc-ocr
+export PATH=$PATH:$CNCOCR_INSTALL/bin
+. $HOME/cnc/1.0.100/bin/cncvars.sh
+which cncocr_t
+cncocr_t --help
+cncocr_t --intel keep Stencil1D.cnc
+export OCR_CONFIG=$OCR_INSTALL/config/default.cfg
+make clean
+make

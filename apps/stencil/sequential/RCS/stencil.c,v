@@ -1,0 +1,138 @@
+head	1.3;
+access;
+symbols;
+locks
+	gjost:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2014.12.10.17.42.24;	author gjost;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.12.10.03.04.14;	author gjost;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.12.10.02.41.34;	author gjost;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@*** empty log message ***
+@
+text
+@#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+int main (int argc, char **argv) {
+    float *val, *new;
+    int i, t;
+    int nx, niter;
+
+    if (argc != 3) {
+        printf("Usage: %s <# iterations> < grid dimension NX> \n", *argv);
+        exit (1);
+    }
+    nx =  atoi(*++argv);
+    if (nx < 1) {
+        printf("nx must be >= 1 : %d \n", nx );
+        exit (1);
+    }
+    niter =  atoi(*++argv);
+    if (niter < 1) {
+        printf("niter must be >= 1 : %d \n", niter );
+        exit (1);
+    }
+    printf ("Perform %d iterations of 1D Stencil operation on nx = %d gridpoints\n", niter, nx);
+    val = malloc (sizeof(float) * (nx + 1) );
+    new = malloc (sizeof(float) * (nx + 1) );
+
+    // intialization
+    for (i = 0; i < nx + 1 ; i++) {
+        val [i] = 0.;
+        new [i] = 0;
+    }
+    val [ 0 ] = 1.;
+    val [ nx  - 1 ] = 1.;
+
+    // time step iteration
+    for (t = 0; t < niter; t++) {
+        // stencil update
+        for (i = 1; i < nx - 1; i++) {
+            new [i] =  val [i] + 0.5 * ( val [i + 1] - val [i - 1] );
+        }
+        // copy values for next iteration
+        for (i = 1; i < nx - 1; i++) {
+         val [i] =  new [i] ;
+        }
+    }
+
+    // print results
+    for (i = 0; i < nx; i++) {
+        //if ( i % 5 == 0) printf ( "val [%d} =  %f\n", i, val [i] );
+        printf ( "val [%d] =  %f\n", i, val [i] );
+        fflush (stdout);
+    }
+    return (0);
+}
+
+
+@
+
+
+1.2
+log
+@*** empty log message ***
+@
+text
+@d14 5
+a23 5
+    nx =  atoi(*++argv);
+    if (nx < 1) {
+        printf("nx must be >= 1 : %d \n", nx );
+        exit (1);
+    }
+d25 2
+a26 2
+    val = malloc (sizeof(float) * (nx + 2) );
+    new = malloc (sizeof(float) * (nx + 2) );
+d29 1
+a29 1
+    for (i = 0; i < nx + 2; i++) {
+d34 1
+a34 1
+    val [ nx + 1 ] = 1.;
+d39 1
+a39 1
+        for (i = 1; i < nx + 1; i++) {
+d43 1
+a43 1
+        for (i = 1; i < nx + 1; i++) {
+a44 2
+         printf ( "val [%d} =  %f\n", i, val [i] );
+         fflush (stdout);
+d49 3
+a51 2
+    for (i = 1; i < nx - 1; i++) {
+        printf ( "val [%d} =  %f\n", i, val [i] );
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d25 30
+@
