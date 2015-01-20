@@ -1,0 +1,11 @@
+#!/bin/bash
+#./configure --CC=mpiicc --CFLAGS=-openmp
+#rm -rf build-default
+#./configure --no-fe --arch=build-default --CC=mpiicc --CFLAGS="-O3 -openmp -g"
+#make -j 3 -C build-default V=1
+rm -rf build-gsrb
+./configure --no-fe --fv-cycle=V --fv-smoother=gsrb --arch=build-gsrb  --CC=mpiicc --CFLAGS="-g -UUSE -O3 -openmp -fp-model precise"
+make -j 3 -C build-gsrb V=1
+cd  build-gsrb
+make
+cd ..
