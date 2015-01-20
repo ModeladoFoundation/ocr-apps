@@ -1,0 +1,13 @@
+-------------------------------------------------------------------------------
+1D Stencil Kernel in different implementations
+-------------------------------------------------------------------------------
+Gabriele.Jost@intel.com
+Element-wise stencil update. Tests fine grained nearest neighbor communication.
+
+- sequential
+- MPI
+- CnC-OCR
+- Intel CnC
+
+
+Shell scripts to build and run are provided in each sub-directory.
