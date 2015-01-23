@@ -1,0 +1,49 @@
+    Usage: ./run.proposed <problem_type> <#islands/#MPI-ranks> <#threads-per-island/rank> <1D|2D|3D> <version_dir> <app_mode>\
+                          <OPTIONAL:million-instructions|(minus)iterations> <OPTIONAL:script_mode>
+
+    The script does the following:
+    1. Sets the problem size and other parameters (timesteps, iterations, etc.) as a function of islands/MPI-ranks
+    2. Builds the proxy-app residing in version_dir/ ( by grabbing the make_app script in that version_dir )
+    3. Runs the proxy-app on the chosen platform using specified number of islands/MPI ranks
+
+    ===Begin Documentaion===
+    problem_type: Strongscaling (ss) or weakscaling (ws) problems defined in parameters.proposed file
+        ss_small:   ~   4 -   8 MB               total footprint (based on the serial case)
+        ss_large:   ~ 200 - 250 MB               total footprint (based on the serial case)
+        ws_small:   ~       384 KB per-island/MPI-rank footprint ( or the next smallest one if the app does not allow that )
+        ws_large:   ~  15 -  30 MB per-island/MPI-rank footprint
+
+    #islands/MPI-ranks: Number of islands or MPI-ranks to be used
+
+    #threads-per-island/rank: Threads per island or rank
+
+    1D|2D|3D:   Determines how the problem geometry is scaled with islands/MPI-ranks
+                Note: Some proxy-apps allow all the three scalings and some do not.
+
+    version_dir/: directory containing the specific version to be built
+
+    app_mode: The mode of execution supported by version_dir
+        e.g; serial, othreading, pthreading, messaging (corresponding to seial, OMP, Pthreads, MPI, etc)
+        The script grabs the make_app script under version_dir/build_and_run/app_mode to build the app.
+
+    million-instructions: Optional with default defined in parameters.proposed file
+        Number of instructions (in millions) to be simulated. This parameter determines the number of iterations/timesteps.
+        For ss_{small,large} - Total instructions
+        For ws_{small,large} - Instructions per island
+        With the knowledge of expected MIPS on the machine, this number can be set to limit the run time to desired value.
+
+        If negative or 0 instructions are specified, then the iterations/timesteps = abs(instructions); This directly sets
+        desired number of iterations/timesteps.
+
+    script_mode: Optional
+        test: To view the problem size for the input parameters without building and running the app
+        setup: To set up the run (build, generate input files and create a run_command script to run the app)
+        Default script_mode will setup and run the app with the specified problem type.
+    ===End Documentation===
+
+    The problem sizes are set to 'nice' values to best avoid load imbalance across the islands/ranks.
+    There are 4 types of problem sizes that can be run:
+
+    To see a list of complete problem sizes: cd to the app directory and run the following:
+    ./proposed_sizes.sh | grep -v 'Error' | grep -v 'Info' | awk ' !x[$0]++'
+

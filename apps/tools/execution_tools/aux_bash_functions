@@ -1,0 +1,51 @@
+#!/bin/bash
+
+
+function searchArray()
+{
+    local key=$1
+    shift
+    local array=(${@})
+
+    local found=0
+    for value in ${array[@]}
+    do
+        if [[ $key == $value ]]; then
+            local found=1
+            break
+        fi
+    done
+    echo $found
+}
+
+function myroot()
+{
+    local v1=`echo "e(l($1)/$2)" | bc -l`
+    awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'
+}
+
+function isItAPower()
+{
+    local num=$1
+    local pow=$2
+
+    local flag=0
+    local i=1
+
+    while [[ $flag == 0 ]]; do
+
+        local iPow=`echo "$i^$pow" | bc -l`
+
+        if [[ $iPow  == $num ]]; then
+           flag=1
+           break
+        elif [[ $iPow -gt $num ]]; then
+            break
+        fi
+
+        i=$(($i+1))
+    done
+
+    echo $flag
+}
+

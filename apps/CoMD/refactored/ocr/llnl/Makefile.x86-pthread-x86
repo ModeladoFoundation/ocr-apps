@@ -2,23 +2,24 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-COMM_LAYER=mpi
+REPO_TOP ?= ${APPS_ROOT}/..
 
 # APPS
-APPS_ROOT       ?= ../../../apps
-APPS_LIBS_ROOT  ?= ../../../apps/libs/x86
+APPS_ROOT       ?= ${REPO_TOP}/apps
+APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
 
 # OCR_TYPE
-OCR_TYPE        ?= x86-pthread-${COMM_LAYER}
+OCR_TYPE        ?= x86-pthread-x86
 
 # OCR
-OCR_TARGET   ?= x86-pthread-${COMM_LAYER}
-OCR_INSTALL_ROOT ?= ../../../ocr/install
-OCR_SRC     ?= ../../../ocr
-OCR_BUILD_ROOT   ?= ../../../ocr/build
+OCR_TARGET   ?= x86-pthread-x86
+OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
+OCR_SRC     ?= ${REPO_TOP}/ocr
+OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build/
 
 # APPLICATION
-WORKLOAD_SRC          ?= .
+SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "build_and_run" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tpath)/
+WORKLOAD_SRC          ?= ${SRC_DIR}
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -26,7 +27,7 @@ WORKLOAD_INSTALL_ROOT ?= ./install
 # If 1+, this is the index in the argument
 # list after which everything is considered an
 # input file. Note that the index STARTS AT 1
-WORKLOAD_INPUT_FILE_IDX := 1
+WORKLOAD_INPUT_FILE_IDX := 0
 
 # You can specify default arguments here. These
 # will be overriden by (in order):
@@ -61,25 +62,25 @@ SRCS := mdd.c io_lammps.c
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -std=c99 -g
+CFLAGS := -g -std=c99
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm
+LDFLAGS := -lpthread
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:    CFLAGS += -O2
-all:    TARGETS := all
-all:    default
+all:	CFLAGS += -O2
+all:	TARGETS := all
+all:	default
 
-debug:  CFLAGS += -O0
-debug:  TARGETS := debug
-debug:  default
+debug:	CFLAGS += -O0
+debug:	TARGETS := debug
+debug:	default
 
 install: all
 
@@ -116,6 +117,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-ocrrun.inc
-
+include ${APPS_ROOT}/makefiles/make-regular.inc
 

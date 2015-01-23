@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Some relevent proxy-app information
+function information()
+{
+echo " CoMD Information:"
+echo " CoMD's footprint with EAM varies as 2.7 - 14 KB/lattice"
+echo " or 7.5 - 110 KB per link cell (with 64 atoms)"
+echo " (typically the lower value; increases with surface to volume ratio)"
+}
+
+expected_arguments=6 #Without optional arguments
+
+# Strong-scaling (ss) and weak-scaling (ws) problem sizes below
+# Memory is in MBs
+memory_ss_small=3.5
+problem_size_x_ss_small=8
+problem_size_y_ss_small=8
+problem_size_z_ss_small=8
+
+memory_ss_large=50
+problem_size_x_ss_large=24
+problem_size_y_ss_large=24
+problem_size_z_ss_large=24
+
+memory_ws_small=1
+problem_size_x_ws_small=4
+problem_size_y_ws_small=4
+problem_size_z_ws_small=4
+
+memory_ws_large=20
+problem_size_x_ws_large=16
+problem_size_y_ws_large=16
+problem_size_z_ws_large=16
+
+supported_scalings=(1D 2D 3D)   #Supported scalings by the app
+
+scaled_dimensions_1D=(1)     # what direction needs be scaled for the problem geometry ("x", "y" or "z")
+scaled_dimensions_2D=(1 2)   # "xy" or "xz" or "yz"
+scaled_dimensions_3D=(1 2 3) # all
+
+MIPS_expected=0.5           # Expected Aggregate MIPS per rank
+instructions=1800           # in millions; 240 billion should take about 4 hours on one 8 PEs (rank) on FFWD @ 16 MIPS
+                            # per rank for "ws_small" and "ws_large"
+                            # Total for "ss_small" and "ss_large"
+
+instructions_A=0.07         # Linear fits for instruction counts per cell/particle/grid-point
+instructions_B=0.08         # e.g., instructions in millions = ( A * (niter) + B )*(problem-size)

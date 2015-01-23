@@ -1,26 +1,29 @@
 # This file is subject to the license agreement located in the file LICENSE
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
-#
-# Chandra: Added REPO_TOP and prerun rule to copy input files to the run directory
 
-REPO_TOP ?= ../../..
+ifndef APPS_ROOT
+    $(error APPS_ROOT not set. Source app_env.bash from apps/ first!)
+endif
+
+REPO_TOP ?= ${APPS_ROOT}/..
 
 # APPS
 APPS_ROOT       ?= ${REPO_TOP}/apps
 APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
 
 # OCR_TYPE
-OCR_TYPE        ?= x86-pthread-x86
+OCR_TYPE        ?= x86-pthread-mpi
 
 # OCR
-OCR_TARGET   ?= x86-pthread-x86
+OCR_TARGET   ?= x86-pthread-mpi
 OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
 OCR_SRC     ?= ${REPO_TOP}/ocr
 OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build/
 
 # APPLICATION
-WORKLOAD_SRC          ?= .
+SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "build_and_run" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tpath)/
+WORKLOAD_SRC          ?= ${SRC_DIR}
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -52,7 +55,6 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
 TARGET := CoMD-ocr
-
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
@@ -108,8 +110,7 @@ install: all
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
-prerun: 
-	mkdir -p ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}/input ; cp -r ${WORKLOAD_SRC}/input/{comd.in,comd.lammps} ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}/input/ ;
+prerun: ;
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
@@ -120,5 +121,5 @@ prerun:
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-ocrrun.inc
 

@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# This is a general script provided to run all the 6 apps with a "quick" or "report" problem sizes.
+# The main purpose is to have a symbolic link to this file under "app/subversion/build_and_run/mode/{symbolic}"
+# to call this script with the right arguments.
+# This script runs the 'subversion' of the 'app' in the specified 'mode' on specified number of
+# cores and/or threads.
+
+if [ -z "$APPS_ROOT" ]; then
+    echo APPS_ROOT is not set.
+    echo "$ source XSTACK_TOP/apps/apps_env.bash #To set the path"
+    exit 1
+fi
+
+source $APPS_ROOT/tools/execution_tools/aux_bash_functions
+
+spath=(`pwd | tr "/" " "`) # ( . . . .  app subversion build_and_run app_mode)
+len=${#spath[@]}
+app_mode=${spath[$len-1]}
+parent_dir=${spath[$len-2]}
+script_name=`basename $0`
+
+if [[ "$parent_dir" != "build_and_run" ]]; then
+    echo " Run this script from app/version/build_and_run/mode directory"
+    echo " E.g.: XSTACK_TOP/apps/CoMD/x86/build_and_run/serial/"
+    exit 1
+fi
+
+echo " "
+echo " You are currently trying to run the application in \"$app_mode\" mode"
+
+if (( $# < 2 )); then
+    echo " $script_name {problem_type} {iterations|problem_type} [Optional:ranks] [Optional:threads]"
+    echo " Might need ranks and/or threads depending on the application mode"
+    echo " E.g.,"
+    echo " Serial:     $  $script_name {ss_small|ss_large} {niter|quick|report}"
+    echo " Threading:  $  $script_name {ss_small|ss_large} {niter|quick|report} threads"
+    echo " Messaging:  $  $script_name {ss_small|ss_large} {niter|quick|report} ranks"
+    echo " Hybrid:     $  $script_name {ss_small|ss_large} {niter|quick|report} ranks threads"
+    echo ""
+    exit 1
+fi
+
+problem_type=$1
+iteration_count=$2
+
+#script_dir=../../../  #path where run.proposed script resides (i.e, relative path to app see spath variable)
+script_dir=$(tmydir=`pwd`; tpath="." ; while [[ $tmydir != "/" ]]; do if [[ -f "run.proposed" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$tpath/..; done; echo $tpath)
+
+geom_scaling="3D"  #Default
+
+ranks=1 #Default; overwrite below based on the mode
+threads=1 #Default; overwrite below based on the mode
+
+case $app_mode in
+
+serial*)
+    ;;
+
+omp*)
+    if (( $# != 3 )); then
+        echo " Usage: $ $script_name {ss_small|ss_large} {niter|quick|report} threads"
+        exit 1
+    fi
+    threads=$3
+    ;;
+
+mpi*)
+    if (( $# != 3 )); then
+        echo " Usage: $ $script_name {ss_small|ss_large} {niter|quick|report} ranks"
+
+        exit 1
+    fi
+    ranks=$3
+    ;;
+
+hybrid*)
+    if (( $# != 4 )); then
+        echo " Usage: $ $script_name {ss_small|ss_large} {niter|quick|report} ranks threads"
+        exit 1
+    fi
+    ranks=$3
+    threads=$4
+    ;;
+
+x86-*)
+
+    ;;
+
+*)
+    echo " $app_mode not supported!"
+    exit 1
+    ;;
+
+esac
+
+if [[ $iteration_count == "quick" ]]; then
+    instructions=120 #million
+elif [[ $iteration_count = "report" ]]; then
+    instructions=""  #28800 millions - Default (specified in $script_dir/parameters.proposed
+elif [[ $iteration_count = "0" ]]; then
+    instructions="$iteration_count"   # 0 iterations
+else
+    instructions="-$iteration_count"  # iterations
+fi
+
+subversion=${spath[$len-5]}/${spath[$len-4]}/${spath[$len-3]}
+app=${spath[$len-5]}
+
+g_scalings=("1D" "2D" "3D")
+
+for(( d=3; d>=1; d-- )); do
+
+    found=$(isItAPower $ranks $d)
+    geom_scaling=${g_scalings[$(($d-1))]}
+
+    if [ $found -eq 1 ]; then
+        break
+    fi
+
+done
+
+cd ${script_dir}
+echo ./run.proposed ${problem_type} ${ranks} ${threads} ${geom_scaling} ${subversion} ${app_mode} ${instructions}
+./run.proposed ${problem_type} ${ranks} ${threads} ${geom_scaling} ${subversion} ${app_mode} ${instructions}
+
+if [[ "$geom_scaling" == "3D" && $? == 1 ]]; then
+    echo "$geom_scaling geometry scaling is not supported."
+    geom_scaling="2D"
+    echo "Trying $geom_scaling geometry scaling instead."
+
+    echo ./run.proposed ${problem_type} ${ranks} ${threads} ${geom_scaling} ${subversion} ${app_mode} ${instructions}
+    ./run.proposed ${problem_type} ${ranks} ${threads} ${geom_scaling} ${subversion} ${app_mode} ${instructions}
+fi
