@@ -1,0 +1,26 @@
+-------------------------------------------------------------------------------
+1D Stencil Kernel in different implementations
+-------------------------------------------------------------------------------
+Gabriele.Jost@intel.com
+Element-wise stencil update. Tests fine grained nearest neighbor communication.
+
+- sequential
+- MPI
+- CnC-OCR
+- Intel CnC
+
+
+Shell scripts to build and run are provided in each sub-directory.
+run_test.sh requires 2 input parameters: Number of grid points (NX) and number of iterations (NITER)
+
+run_test.sh <NX> <NITER>
+
+Example: ./run_test.sh 18 10
+
+This will update 16 inner grid points, boundary values are set to 1.
+
+Known issues:
+
+- Current settings of boundary values yields to huge result values if run over many (>= 100) iterations.
+- For mpi you have to manually modify the script to set the number of MPI ranks.
+- cnc-ocr version requires habanero-rice-cnc-ocr-f833954 or later
