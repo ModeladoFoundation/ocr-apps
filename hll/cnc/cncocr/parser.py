@@ -1,13 +1,4 @@
-###########################################################################
-# WARNING!
-# This code monkey-patches the pyparsing module to make string literals
-# convert to Suppress rather than Literal by default.
-###########################################################################
-
 from pyparsing import *
-
-# Suppress string literals (see WARNING above)
-ParserElement.literalStringClass = Suppress
 
 
 ##################################################
@@ -17,9 +8,9 @@ class InjectToken(Token):
     """Matches nothing and returns the provided string as a new token.
        Useful for tagging groups with an identifying string."""
     def __init__(self, strToken):
-        super(InjectToken,self).__init__()
+        super(InjectToken,self).__init__() 
         self.mayReturnEmpty = False
-        self.mayIndexError = False
+        self.mayIndexError = False 
         self.returnString = strToken
     def parseImpl(self, instring, loc, doActions=True):
         return loc, self.returnString
@@ -74,34 +65,49 @@ cTypeStars = joined(ZeroOrMore(cStar))
 
 cType = cTypeBase('baseType') + cTypeStars('stars')
 
+cArraySuffix = Group("[" + cExpr('arraySize') + "]")
 
 ##################################################
 # Context struct fields declaration
 # (used to add custom parameters to the context)
 
-cncContext = CaselessLiteral("$context").suppress() + "{" + cExpr('fields') + "}" + ";"
+cncContext = CaselessLiteral("$context").suppress() + Suppress("{")\
+           + cExpr('fields') + Suppress("}") + Suppress(";")
 
 
 ##################################################
 # SCALAR TAG FUNCTION COMPONENTS
 # (used in tag functions)
 
-scalarExpr = notSpace(OneOrMore(CharsNotIn("()[]{},") | cSubExpr))
-scalarTC = Group(kind('SCALAR') + joined(scalarExpr)('expr'))
+scalarExpr = joined(notSpace(OneOrMore(CharsNotIn("()[]{},") | cSubExpr)))
+scalarTC = Group(kind('SCALAR') + scalarExpr('expr'))
 
 
 ##################################################
 # RANGED TAG FUNCTION COMPONENTS
 # (used in tag functions)
 
+# Old range syntax support
 # Helper parsers for ranges (to avoid parsing the "..")
 singleDotExpr = Regex(r"(\.?[^{}[\].])+")
 rangeSafeExpr = joined(OneOrMore(singleDotExpr | cSubExpr))
 rangeSafeExpr.leaveWhitespace()
 
-rangedTC = Group(kind('RANGED') + "{" + rangeSafeExpr('start') \
-                + ".." + rangeSafeExpr('end') + "}")
+def deprecatedRangeSyntaxWarning(s, loc, tok):
+    lnum = lineno(loc, s)
+    ltxt = line(loc, s)
+    print "WARNING! Using deprecated range syntax on line {0}:"
+    print "\t", ltxt
+    print "\t(Please the $range or $rangeTo function instead.)\n"
 
+oldRangeExpr = "{" + rangeSafeExpr('start') + ".." + rangeSafeExpr('end') + "}"
+oldRangeExpr.addParseAction(deprecatedRangeSyntaxWarning)
+
+# Newer-style range functions
+rangeFn = CaselessLiteral("$rangeTo")('inclusive') | CaselessLiteral("$range")
+rangeExpr = rangeFn + "(" + Optional(scalarExpr('start') + ",") + scalarExpr('end') + ")"
+
+rangedTC = Group(kind('RANGED') + (rangeExpr | oldRangeExpr))
 
 ##################################################
 # TAGS
@@ -131,7 +137,7 @@ inlineMapping = ":" + scalarTagExpr('keyFunc')
 mappingFunction = externalMapping | inlineMapping
 itemMapping = cVar('targetCollName') + mappingFunction
 
-cTypedVar = cType('type') + cVar('collName')
+cTypedVar = cType('type') + cVar('collName') + Optional(cArraySuffix)('vecSuffix')
 itemDecl = Group("[" + cTypedVar + ":" + tagDecl('key') \
                 + Optional("=" + itemMapping)('virtualMapping') \
                 + "]" + ";")

@@ -4,11 +4,10 @@
 
 #include "{{g.name}}.h"
 
-/*{% for name in stepfun.inputColls %}
- * typeof {{name}} is {{g.itemDeclarations[name].type}}
-{%- endfor %}
+/**
+ * Step function defintion for "{{stepfun.collName}}"
  */
-void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True)
+void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True) 
         }}{{ util.print_bindings(stepfun.inputs, typed=True)
         }}{{g.name}}Ctx *ctx) {
 {% if rangedInputs %}
@@ -19,9 +18,9 @@ void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True)
 {%- set comment = "Access \"" ~ input.binding ~ "\" inputs" -%}
 {%- set decl = g.itemDeclarations[input.collName] -%}
 {%- call util.render_indented(1) -%}
-{%- call(args, ranges) util.render_io_nest(comment, input.key, decl.key) -%}
+{%- call(args, ranges) util.render_io_nest(comment, input.key, decl.key, zeroBased=True) -%}
 {%- set var = input.binding ~ util.print_indices(ranges) -%}
-/* TODO: Do something with {{var}}.item */
+/* TODO: Do something with {{var}} */
 {%- endcall -%}
 {%- endcall %}
 {% endfor %}
@@ -31,23 +30,25 @@ void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True)
     //
 {% for output in stepfun.outputs %}
 {%- call util.render_indented(1) -%}
-{% if output.kind == 'ITEM' -%}
+{% if output.kind == 'WHEN' -%}
+// !!!! "{{output}}"
+{% elif output.kind == 'ITEM' -%}
 {%- set comment = "Put \"" ~ output.binding ~ "\" items" -%}
 {%- set decl = g.itemDeclarations[output.collName] -%}
 {%- call(args, ranges) util.render_io_nest(comment, output.key, decl.key) -%}
 {%- set var = output.binding ~ util.print_indices(ranges) -%}
-{{decl.type.ptrType ~ output.binding}};
-cncHandle_t {{output.binding}}Handle = cncCreateItem_{{output.collName
-    }}(&{{output.binding}}{% if decl.type.isPtrType %}, /* TODO: count=*/1{% endif %});
+{{ util.item_create_statement(decl, output.binding) }}
 /* TODO: Initialize {{output.binding}} */
-cncPut_{{output.collName}}({{output.binding}}Handle, {% for x in args %}{{x}}, {% endfor %}ctx);
+cncPut_{{output.collName}}({{output.binding}}, {{ util.print_tag(args) }}ctx);
 {%- endcall -%}
-{% else -%}
+{% elif output.kind == 'STEP' -%}
 {%- set comment = "Prescribe \"" ~ output.collName ~ "\" steps" -%}
 {%- set decl = g.stepFunctions[output.collName] -%}
 {%- call(args, ranges) util.render_io_nest(comment, output.tag, decl.tag) -%}
-cncPrescribe_{{output.collName}}({% for x in args %}{{x}}, {% endfor %}ctx);
+cncPrescribe_{{output.collName}}({{ util.print_tag(args) }}ctx);
 {%- endcall -%}
+{% else %}
+{% do exit("Unkown output type:" + output) %}
 {% endif -%}
 {%- endcall %}
 {% endfor %}

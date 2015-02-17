@@ -23,9 +23,9 @@ typedef struct ItemCollEntry {
 {% endblock arch_itemcoll_defs %}
 
 {% block arch_itemcoll_impl %}
-/* get an entry from the item collection, or create and insert one
- * (atomically) if it doesn't exist
- * The creator parameter CNC_PUTTER/CNC_GETTER ensures that multiple
+/* get an entry from the item collection, or create and insert one 
+ * (atomically) if it doesn't exist 
+ * The creator parameter CNC_PUTTER/CNC_GETTER ensures that multiple 
  * puts are not allowed
  */
 static ItemCollectionEntry * _allocateEntryIfAbsent(
@@ -48,7 +48,7 @@ static ItemCollectionEntry * _allocateEntryIfAbsent(
                     ocrEventDestroy(entry->event);
                     free(entry);
                 }
-
+                    
                 // XXX - PutIfAbsent is kind of broken here if creator is GET
                 // but using IDEM events still gives the correct behavior
                 if ((current->creator == CNC_PUTTER) && (creator == CNC_PUTTER)) {
@@ -88,13 +88,13 @@ static ItemCollectionEntry * _allocateEntryIfAbsent(
 
 /* Putting an item into the hashmap */
 bool _cncPut(ocrGuid_t item, unsigned char *tag, int tagLength, ItemCollectionEntry ** hashmap, bool isSingleAssignment) {
-
+    
     ASSERT(tag != NULL && "Put - ERROR================\n");
 
     /* allocateEntryIfAbsent checks for multiple puts using the "CNC_PUTTER" parameter */
     ItemCollectionEntry * entry = _allocateEntryIfAbsent(hashmap, tag, tagLength, CNC_PUTTER, isSingleAssignment);
 
-    /* the returned placeholder can be NULL only when isSingleAssignment is false.
+    /* the returned placeholder can be NULL only when isSingleAssignment is false. 
        in which case, the item was Put previously, so the current Put returns */
     if(entry == NULL && !isSingleAssignment)
         return false;

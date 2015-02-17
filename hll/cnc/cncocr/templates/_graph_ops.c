@@ -3,11 +3,27 @@
 
 #include "{{g.name}}_internal.h"
 
+{% if logEnabled %}
+#ifndef CNCOCR_x86
+#error "Debug logging mode only supported on x86 targets"
+#endif
+#include <pthread.h>
+pthread_mutex_t _cncDebugMutex = PTHREAD_MUTEX_INITIALIZER;
+{% endif -%}
+
 {{g.name}}Ctx *{{g.name}}_create() {
+{% if logEnabled %}
+    // init debug logger (only once)
+    if (!cncDebugLog) {
+        const char *logPath = getenv("CNC_LOG");
+        if (!logPath) logPath = "./cnc_events.log";
+        cncDebugLog = fopen(logPath ,"w");
+    }
+{% endif -%}
     // allocate the context datablock
     ocrGuid_t contextGuid;
     {{g.name}}Ctx *context;
-    CNC_CREATE_ITEM(&contextGuid, (void**)&context, sizeof(*context));
+    SIMPLE_DBCREATE(&contextGuid, (void**)&context, sizeof(*context));
     // store a copy of its guid inside
     context->_guids.self = contextGuid;
     // initialize graph events
@@ -21,8 +37,13 @@ s32 i;
 ocrGuid_t *itemTable;
 {% for i in g.concreteItems -%}
 {% if i.key -%}
-CNC_CREATE_ITEM(&context->_items.{{i.collName}}, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-for (i=0; i<CNC_TABLE_SIZE; i++) itemTable[i] = NULL_GUID;
+SIMPLE_DBCREATE(&context->_items.{{i.collName}}, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
+for (i=0; i<CNC_TABLE_SIZE; i++) {
+    ocrGuid_t *_ptr;
+    // Add one level of indirection to help with contention
+    SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
+    *_ptr = NULL_GUID;
+}
 {% else -%}
 ocrEventCreate(&context->_items.{{i.collName}}, OCR_EVENT_IDEM_T, true);
 {% endif -%}
@@ -46,7 +67,7 @@ void {{g.name}}_destroy({{g.name}}Ctx *context) {
 {% block arch_itemcoll_destroy -%}
 {% for i in g.concereteItems -%}
 {% if i.key -%}
-CNC_DESTROY_ITEM(context->_items.{{i.collName}});
+ocrDbDestroy(context->_items.{{i.collName}});
 {% else -%}
 ocrEventDestroy(context->_items.{{i.collName}});
 {% endif -%}
@@ -78,10 +99,13 @@ static ocrGuid_t _graphFinishEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
         /*depc=*/EDT_PARAM_DEF, /*depv=*/&context->_guids.finalizedEvent,
         /*properties=*/EDT_PROP_NONE,
         /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
-    ocrEdtTemplateDestroy(templGuid);
+    // XXX - destroying this template caused crash on FSim
+    //ocrEdtTemplateDestroy(templGuid);
     // Start graph execution
+    {{ util.step_enter() }}
     {{g.name}}_init(args, context);
-    ocrDbDestroy(depv[0].guid);
+    {{ util.step_exit() }}
+    if (args) ocrDbDestroy(depv[0].guid);
     return NULL_GUID;
 }
 
@@ -92,7 +116,7 @@ static ocrGuid_t _finalizerEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t d
         {%- for x in g.finalizeFunction.tag %}tag[{{loop.index0}}], {% endfor -%}
         context);
     // XXX - for some reason this causes a segfault?
-    //CNC_DESTROY_ITEM(depv[1].guid);
+    //ocrDbDestroy(depv[1].guid);
     return NULL_GUID;
 }
 
@@ -101,8 +125,14 @@ void {{g.name}}_launch({{g.name}}Args *args, {{g.name}}Ctx *context) {
     ocrGuid_t graphEdtGuid, finalEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
     // copy the args struct into a data block
     // TODO - I probably need to free this sometime
-    CNC_CREATE_ITEM(&argsDbGuid, (void**)&argsCopy, sizeof(*args));
-    *argsCopy = *args;
+    if (sizeof(*args) > 0) {
+        SIMPLE_DBCREATE(&argsDbGuid, (void**)&argsCopy, sizeof(*args));
+        *argsCopy = *args;
+    }
+    // Don't need to copy empty args structs
+    else {
+        argsDbGuid = NULL_GUID;
+    }
     // create a finish EDT for the CnC graph
     ocrEdtTemplateCreate(&edtTemplateGuid, _graphFinishEdt, 0, 2);
     ocrEdtCreate(&graphEdtGuid, edtTemplateGuid,
@@ -136,7 +166,7 @@ void {{g.name}}_await({{
     cncTag_t *_tagPtr;
     ocrGuid_t _tagGuid;
     int _i = 0;
-    CNC_CREATE_ITEM(&_tagGuid, (void**)&_tagPtr, sizeof(cncTag_t) * {{ g.finalizeFunction.tag|count}});
+    SIMPLE_DBCREATE(&_tagGuid, (void**)&_tagPtr, sizeof(cncTag_t) * {{ g.finalizeFunction.tag|count}});
     {% for x in g.finalizeFunction.tag -%}
     _tagPtr[_i++] = {{x}};
     {% endfor -%}
@@ -145,3 +175,25 @@ void {{g.name}}_await({{
     {% endif -%}
     ocrEventSatisfy(ctx->_guids.awaitTag, _tagGuid);
 }
+
+/* define NO_CNC_MAIN if you want to use mainEdt as the entry point instead */
+#ifndef NO_CNC_MAIN
+
+extern int cncMain(int argc, char *argv[]);
+
+#pragma weak mainEdt
+ocrGuid_t mainEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+    // Unpack argc and argv (passed thru from mainEdt)
+    u64 *packedArgs = depv[0].ptr;
+    int i, argc = packedArgs[0];
+    char *argBytes = (char*)packedArgs;
+    char **argv = cncMalloc(sizeof(char*)*argc);
+    for (i=0; i<argc; i++) argv[i] = argBytes+packedArgs[i+1];
+    // Run user's cncEnvIn function
+    cncMain(argc, argv);
+    cncFree(argv);
+    return NULL_GUID;
+}
+
+#endif /* NO_CNC_MAIN */
+

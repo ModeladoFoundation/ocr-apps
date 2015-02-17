@@ -1,13 +1,14 @@
 *
 * Installation Prerequisites
 *
-	- make
-	- Python (2.7)
-	- gcc
-	- OCR (0.9)
+    - make
+    - gcc
+    - curl
+    - Python (2.6 or 2.7)
+    - OCR (0.9) or Intel(R) CnC
 
 *
-* Setting up the environment
+* Setting up the environment for OCR
 *
 
 If you have a copy of the xstack repository, the CnC-OCR root directory (which
@@ -23,18 +24,33 @@ If you don't have a copy of the xstack repository, you can still mimic this
 directory structure to get the expected behavior. To set the needed environment
 variables, navigate to the CnC-OCR root directory and source setup_env.sh:
 
-	source setup_env.sh
+    source setup_env.sh
 
 This script sets the XSTACK_SRC variable to point to the xstack repository root,
 CNCOCR_INSTALL to point to the CnC-OCR root, and updates the PATH to include
 the CnC-OCR bin directory (which contains the graph translator tool).
 
 *
+* Setting up the environment for Intel(R) CnC
+*
+
+Get the latest Intel(R) CnC (binary) package from https://icnc.github.io,
+install it and setup your CnC environment as described in the docs there
+(source <cncroot>/bin/cncvars.[c]sh).
+
+Make sure the translator script is in your PATH, e.g. by doing
+
+    source setup_env.sh
+
+
+*
 * Running the translator
 *
-	cncocr_t [options] FileName.cnc
+    cncocr_t [options] FileName.cnc
 
-The first time you run the graph translator, it will download its dependencies (Jinja2 and Pyparsing), which will be saved in ${CNCOCR_INSTALL}/lib for future use.
+The first time you run the graph translator, it will download and install several Python dependencies, which will be saved in ${CNCOCR_INSTALL}/py for future use.
+
+For Intel(R) CnC use the option --intel.
 
 *
 * Docs
@@ -42,10 +58,6 @@ The first time you run the graph translator, it will download its dependencies (
 
 Please visit the CnC-OCR wiki on Github for current documentation.
    https://github.com/habanero-rice/cnc-ocr/wiki
-
-Some additional documentation on the CnC model can be found in docCnCHC.pdf, a document created part of the CDSC project.
-Despite the fact that the document was designed for CnC-HC rather than CnC-OCR, it is never the less informative about creating a .cnc file and changing it, concepts that still apply for CnC-OCR. The document can be found on our github page:
-	https://github.com/habanero-rice/cnc-ocr/blob/master/docCnCHC.pdf
 
 ============================================================================
 *
@@ -62,31 +74,6 @@ cncc_t graph_name.cnc
 See the examples (in the examples directory) for further details.
 
 
-============================================================================
-*
-* Running applications on the TG simulator
-*
-
-By default the cncocr_t translator tool generates code for single-node x86 OCR.
-This is convenient for development and debugging. Once your application is working
-with the default environment, you might want to try one of the other OCR targets.
-The simplest way to do this is to re-run the cncocr_t tool and tell it to generate
-FSim-compatible code and makefiles:
-
-    cncocr_t --fsim graph_name.cnc
-
-Re-running the graph translator tool will only overwrite runtime files (located in
-the cncocr_support directory) and the Makefile symlink. It will NOT re-generate your
-existing source files unless you explicitly delete them first. After the translator
-overwrites the runtime files and updates the Makefile symlink, you're ready to run
-on FSim:
-
-	OCR_TYPE=tg make run print WORKLOAD_ARGS="arg1 arg2 arg3 ..."
-
-If you later decide to revert to the single-node x86 runtime, you can simply run
-the translator tool again without the --fsim option. You should be able to run the
-translator as many times as you want without clobbering your source files.
-
 *
 * Help
 *
@@ -99,8 +86,8 @@ Please also check the github page for current contact information.
 *
 * Acknowledgements
 *
-Partial support for CnC-OCR was provided through the CDSC program of
-the National Science Foundation with an award in the 2009 Expedition
+Partial support for CnC-OCR was provided through the CDSC program of 
+the National Science Foundation with an award in the 2009 Expedition 
 in Computing Program.
 This work is actively supported as part ofthe DOE-funded Traleika Glacier
 X-Stack project (Intel CS1924113).

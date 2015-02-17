@@ -15,12 +15,18 @@ extern void *memcpy(void *dest, const void *src, size_t n);
 #    endif
 #elif CNCOCR_TG
 // some HAL definitions (apps/lib/tg/include)
-#    include "misc.h"
+#    include "misc.h" 
 #else
 #    warning UNKNOWN PLATFORM (possibly unsupported)
 #endif
 
-#define CNC_TABLE_SIZE 512 /* TODO - Table size should be set by the user when initializing the item collection */
+#if CNCOCR_TG
+#define CNC_TABLE_SIZE 16
+#else
+#define CNC_TABLE_SIZE 512
+#endif
+
+#define SIMPLE_DBCREATE(guid, ptr, sz) ocrDbCreate(guid, ptr, sz, DB_PROP_NONE, NULL_GUID, NO_ALLOC)
 
 bool _cncPut(ocrGuid_t item, unsigned char *tag, int tagLength, cncItemCollection_t collection, bool isSingleAssignment);
 bool _cncPutSingleton(ocrGuid_t item, ocrGuid_t collection, bool isSingleAssignment);
@@ -28,6 +34,6 @@ bool _cncPutSingleton(ocrGuid_t item, ocrGuid_t collection, bool isSingleAssignm
 void _cncGet(unsigned char *tag, int tagLength, ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, cncItemCollection_t collection);
 void _cncGetSingleton(ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, ocrGuid_t collection);
 
-ocrEdtDep_t _cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize);
+void *_cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize, ocrEdtDep_t *out);
 
 #endif /*{{defname}}*/

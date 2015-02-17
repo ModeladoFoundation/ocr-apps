@@ -1,18 +1,23 @@
 from itertools import count, ifilter, imap
-from collections import Counter, OrderedDict
 from sys import exit
 from string import strip
+# Compatibility for Python 2.6
+from counter import Counter
+from ordereddict import OrderedDict
 
 
 class CType(object):
     """C-style data type"""
-    def __init__(self, typ):
+    def __init__(self, typ, arrayTyp):
         self.baseType = typ.baseType
         self.stars = typ.get('stars', "")
+        self.isVecType = bool(arrayTyp.vecSuffix)
+        if self.isVecType: self.stars += "*"
         self.isPtrType = bool(self.stars)
         self.ptrType = str(self) + ("" if self.isPtrType else "*")
+        self.vecSize = arrayTyp.arraySize
     def __str__(self):
-        return "{} {}".format(self.baseType, self.stars)
+        return "{0} {1}".format(self.baseType, self.stars)
 
 
 class CExpr(object):
@@ -32,9 +37,18 @@ class ScalarTC(object):
 
 class RangedTC(object):
     def __init__(self, rtc):
-        self.start = CExpr(rtc.start)
+        self.start = CExpr(rtc.start or "0")
         self.end = CExpr(rtc.end)
-        self.sizeExpr = "(({})-({}))".format(self.end, self.start)
+        self.inclusive = bool(rtc.inclusive)
+        if str(self.start) == "0":
+            self.sizeExpr = str(self.end)
+        elif str(self.start).isalnum() and str(self.end).isalnum():
+            self.sizeExpr = "({0}-{1})".format(self.end, self.start)
+        else:
+            self.sizeExpr = "({0})-({1})".format(self.end, self.start)
+        self.upperLoopBound = self.sizeExpr
+        if self.inclusive:
+            self.sizeExpr = "({0}+1)".format(self.sizeExpr)
         self.isRanged = True
 
 
@@ -62,7 +76,7 @@ class ItemRef(object):
 class ItemDecl(object):
     def __init__(self, itemDecl):
         self.collName = itemDecl.collName
-        self.type = CType(itemDecl.type)
+        self.type = CType(itemDecl.type, itemDecl)
         self.key = tuple(itemDecl.key)
         self.isSingleton = len(self.key) == 0
         self.isVirtual = False
@@ -112,7 +126,7 @@ class StepFunction(object):
         bindingsCounts = Counter(map(getBinding, allItems) + stepTag)
         # Verify that tag bindings are unique
         if len(set(stepTag)) != len(stepTag):
-            exit("Repeated ID in tag for declaration of step `{}`: {}".format(\
+            exit("Repeated ID in tag for declaration of step `{0}`: {1}".format(\
                     stepIO.step.collName, stepTag))
         # Compute binding names (avoiding duplicates)
         bindings = set(bindingsCounts.keys())
@@ -147,13 +161,13 @@ def verifyCollectionDecls(typ, decls):
     nameCounts = Counter([ x.collName for x in decls ])
     repeated = [ name for name, n in nameCounts.iteritems() if n > 1 ]
     if repeated:
-        exit("Repeated {} collection names: {}".format(typ, ", ".join(repeated)))
+        exit("Repeated {0} collection names: {1}".format(typ, ", ".join(repeated)))
 
 
 def verifyEnv(stepFuns):
     for name in [initNameRaw, finalizeNameRaw]:
         if not name in stepFuns:
-            exit("Missing I/O declaration for environment ({}).".format(name))
+            exit("Missing I/O declaration for environment ({0}).".format(name))
 
 
 # TODO - verify item/step instances match with their declarations
@@ -181,4 +195,7 @@ class CnCGraph(object):
         self.finalAndSteps = [self.finalizeFunction] + self.stepFunctions.values()
         # context
         self.ctxParams = filter(bool, map(strip, g.ctx.splitlines())) if g.ctx else []
+
+    def lookupType(self, item):
+        return self.itemDeclarations[item.collName].type
 

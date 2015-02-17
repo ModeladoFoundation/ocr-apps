@@ -1,4 +1,7 @@
 #include "cncocr_internal.h"
+{% if affinitiesEnabled -%}
+#include <extensions/ocr-affinity.h>
+{% endif %}
 {#
 // TODO:
 // Instead of having a isSingleAssignment argument for each of the
@@ -7,20 +10,19 @@
 // Then satisfying the event would give the desired behavior.
 // (We'd also have to check if it's an event or a data block guid.)
 #}
+{% if logEnabled %}
+FILE *cncDebugLog;
+
+{% endif -%}
 {% block arch_itemcoll_defs %}
 // XXX - depending on misc.h for HAL on FSim
-#define USE_OCR_HAL 1
-#if !USE_OCR_HAL
-static void _cncMemCopy(void *dest, const void *src, size_t n) {
-    u8 *x = (u8*)dest;
-    const u8 *y = (const u8*)src;
-    size_t i;
-    for (i=0; i<n; i++) x[i] = y[i];
-}
-#endif // USE_OCR_HAL
 
-// XXX - increase this (I just wanted to set it small so I can see if it's working)
+#if CNCOCR_TG
 #define CNC_ITEMS_PER_BLOCK 8
+#else
+#define CNC_ITEMS_PER_BLOCK 64
+#endif
+
 #define CNC_ITEM_BLOCK_FULL(block) ((block)->count == CNC_ITEMS_PER_BLOCK)
 #define CNC_GETTER_GUID ((ocrGuid_t)-1)
 #define CNC_GETTER_ROLE 'G'
@@ -28,16 +30,16 @@ static void _cncMemCopy(void *dest, const void *src, size_t n) {
 
 typedef struct {
     ocrGuid_t entry;
-    ocrGuid_t collection;
+    ocrGuid_t bucketHead;
     ocrGuid_t firstBlock;
     ocrGuid_t oldFirstBlock;
-    u32 bucketIndex;
+    ocrGuid_t affinity;
     u32 firstBlockCount;
     u32 tagLength;
     u32 slot;
     ocrDbAccessMode_t mode;
     u8 checkedFirst;
-    u8 role;
+    u64 role; // forcing tag[] to be 8-byte aligned (for FSim)
     u8 tag[];
 } ItemCollOpParams;
 
@@ -57,7 +59,7 @@ static ocrGuid_t _itemBlockCreate(u32 tagLength, ocrGuid_t next, ItemBlock **out
     ocrGuid_t blockGuid;
     ItemBlock *block;
     u64 size = sizeof(ItemBlock) + (tagLength * CNC_ITEMS_PER_BLOCK);
-    CNC_CREATE_ITEM(&blockGuid, (void**)&block, size);
+    SIMPLE_DBCREATE(&blockGuid, (void**)&block, size);
     // XXX - should we start from the back?
     block->count = 0;
     block->next = next;
@@ -76,13 +78,8 @@ static ocrGuid_t _itemBlockInsert(ItemBlock *block, u8 *tag, ocrGuid_t entry, u3
         block->entries[i].isEvent = false;
         block->entries[i].guid = entry;
     }
-#if USE_OCR_HAL
     hal_memCopy(&block->tags[i*tagLength], tag, tagLength, 0);
     hal_fence();
-#else
-    _cncMemCopy(&block->tags[i*tagLength], tag, tagLength);
-    // XXX - do we need some sort of memory barrier here on FSim?
-#endif // USE_OCR_HAL
     block->count += 1;
     return block->entries[i].guid;
 }
@@ -108,9 +105,13 @@ static bool _equals(u8 *tag1, u8 *tag2, u32 length) {
 /* Hash function implementation. Fast and pretty good */
 static u64 _hash_function(u8 *str, u32 length) {
     u64 hash = 5381;
-    u32 c;
-    while (length-- > 0) {
-        c = *str++;
+    u64 c;
+    // All tags should be composed of longs, but even if
+    // they're not, part of it is just ignored for the hash.
+    u64 *components = (u64*)str;
+    u32 n = length / sizeof(u64);
+    while (n-- > 0) {
+        c = *components++;
         hash = ((hash << 5) + hash) + c; // hash * 33 + c
     }
     return hash;
@@ -133,12 +134,13 @@ static ocrGuid_t _addToBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
     ocrGuid_t *blockArray = depv[0].ptr;
     ItemCollOpParams *params = depv[1].ptr;
     ocrGuid_t paramsGuid = depv[1].guid;
+    const u32 index = 0;
     // look up the first block the bucket
-    ocrGuid_t firstBlock = blockArray[params->bucketIndex];
+    ocrGuid_t firstBlock = blockArray[index];
     // is our first block still first?
     if (firstBlock == params->firstBlock) {
         ItemBlock *newFirst;
-        blockArray[params->bucketIndex] = _itemBlockCreate(params->tagLength, firstBlock, &newFirst);
+        blockArray[index] = _itemBlockCreate(params->tagLength, firstBlock, &newFirst);
         // XXX - repeated code, also in addToBlock
         bool isGetter = (params->role == CNC_GETTER_ROLE);
         ocrGuid_t src = isGetter ? CNC_GETTER_GUID : params->entry;
@@ -147,7 +149,7 @@ static ocrGuid_t _addToBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
             ocrAddDependence(res, params->entry, params->slot, params->mode);
         }
         // DONE! clean up.
-        CNC_DESTROY_ITEM(paramsGuid);
+        ocrDbDestroy(paramsGuid);
     }
     else { // someone added a new block...
         // try searching again
@@ -161,7 +163,7 @@ static ocrGuid_t _addToBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
             /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
             /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
             /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
+            /*affinity=*/params->affinity, /*outEvent=*/NULL);
         ocrEdtTemplateDestroy(templGuid);
     }
     return NULL_GUID;
@@ -185,7 +187,7 @@ static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t 
         }
         // XXX - currently ignoring single assignment checks
         // DONE! clean up.
-        CNC_DESTROY_ITEM(paramsGuid);
+        ocrDbDestroy(paramsGuid);
     }
     // add the entry if there's still room
     else if (!CNC_ITEM_BLOCK_FULL(block)) {
@@ -196,7 +198,7 @@ static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t 
             ocrAddDependence(res, params->entry, params->slot, params->mode);
         }
         // DONE! clean up.
-        CNC_DESTROY_ITEM(paramsGuid);
+        ocrDbDestroy(paramsGuid);
     }
     else { // the block filled up while we were searching
         // might need to add a new block to the bucket
@@ -206,8 +208,8 @@ static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t 
             /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
             /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
             /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
-        ocrAddDependence(params->collection, addEdtGuid, 0, DB_MODE_EW);
+            /*affinity=*/params->affinity, /*outEvent=*/NULL);
+        ocrAddDependence(params->bucketHead, addEdtGuid, 0, DB_MODE_EW);
         ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
         ocrEdtTemplateDestroy(templGuid);
     }
@@ -237,7 +239,7 @@ static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_
         }
         // XXX - currently ignoring single assignment checks
         // DONE! clean up.
-        CNC_DESTROY_ITEM(paramsGuid);
+        ocrDbDestroy(paramsGuid);
     }
     // did we reach the end of the search?
     else if (block->next == NULL_GUID || blockGuid == params->oldFirstBlock) {
@@ -249,7 +251,7 @@ static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_
             /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
             /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
             /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
+            /*affinity=*/params->affinity, /*outEvent=*/NULL);
         ocrAddDependence(params->firstBlock, addEdtGuid, 0, DB_MODE_EW);
         ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
         ocrEdtTemplateDestroy(templGuid);
@@ -263,7 +265,41 @@ static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_
             /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
             /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
             /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
+            /*affinity=*/params->affinity, /*outEvent=*/NULL);
+        ocrEdtTemplateDestroy(templGuid);
+    }
+    return NULL_GUID;
+}
+
+static ocrGuid_t _bucketHeadEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+    // unpack
+    ocrGuid_t *blockArray = depv[0].ptr;
+    ItemCollOpParams *params = depv[1].ptr;
+    ocrGuid_t paramsGuid = depv[1].guid;
+    // save bucket info for first block
+    params->firstBlock = blockArray[0];
+    if (params->firstBlock == NULL_GUID) { // empty bucket
+        // might need to add a new block to the bucket
+        ocrGuid_t addEdtGuid, templGuid;
+        ocrEdtTemplateCreate(&templGuid, _addToBucketEdt, 0, 2);
+        ocrEdtCreate(&addEdtGuid, templGuid,
+            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+            /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
+            /*properties=*/EDT_PROP_NONE,
+            /*affinity=*/params->affinity, /*outEvent=*/NULL);
+        ocrAddDependence(params->bucketHead, addEdtGuid, 0, DB_MODE_EW);
+        ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
+        ocrEdtTemplateDestroy(templGuid);
+    }
+    else { // search the bucket
+        ocrGuid_t deps[] = { params->firstBlock, paramsGuid };
+        ocrGuid_t searchEdtGuid, templGuid;
+        ocrEdtTemplateCreate(&templGuid, _searchBucketEdt, 0, 2);
+        ocrEdtCreate(&searchEdtGuid, templGuid,
+            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+            /*properties=*/EDT_PROP_NONE,
+            /*affinity=*/params->affinity, /*outEvent=*/NULL);
         ocrEdtTemplateDestroy(templGuid);
     }
     return NULL_GUID;
@@ -278,34 +314,19 @@ static ocrGuid_t _doHashEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv
     u64 hash = _hash_function(params->tag, params->tagLength);
     u32 index = hash % CNC_TABLE_SIZE;
     // save bucket info
-    params->bucketIndex = index;
-    params->firstBlock = blockArray[index];
+    params->bucketHead = blockArray[index];
     params->oldFirstBlock = NULL_GUID;
     params->checkedFirst = 0;
-    if (params->firstBlock == NULL_GUID) { // empty bucket
-        // might need to add a new block to the bucket
-        ocrGuid_t addEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _addToBucketEdt, 0, 2);
-        ocrEdtCreate(&addEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
-        ocrAddDependence(params->collection, addEdtGuid, 0, DB_MODE_EW);
-        ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
-        ocrEdtTemplateDestroy(templGuid);
-    }
-    else { // search the bucket
-        ocrGuid_t deps[] = { params->firstBlock, paramsGuid };
-        ocrGuid_t searchEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _searchBucketEdt, 0, 2);
-        ocrEdtCreate(&searchEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
-        ocrEdtTemplateDestroy(templGuid);
-    }
+    // go into bucket
+    ocrGuid_t deps[] = { params->bucketHead, paramsGuid };
+    ocrGuid_t bucketEdtGuid, templGuid;
+    ocrEdtTemplateCreate(&templGuid, _bucketHeadEdt, 0, 2);
+    ocrEdtCreate(&bucketEdtGuid, templGuid,
+        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+        /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+        /*properties=*/EDT_PROP_NONE,
+        /*affinity=*/params->affinity, /*outEvent=*/NULL);
+    ocrEdtTemplateDestroy(templGuid);
     return NULL_GUID;
 }
 
@@ -313,27 +334,31 @@ static void _itemCollUpdate(ocrGuid_t coll, u8 *tag, u32 tagLength, u8 role, ocr
     // Build datablock to hold search parameters
     ocrGuid_t paramsGuid;
     ItemCollOpParams *params;
-    CNC_CREATE_ITEM(&paramsGuid, (void**)&params, sizeof(ItemCollOpParams)+tagLength);
-    params->collection = coll;
+    SIMPLE_DBCREATE(&paramsGuid, (void**)&params, sizeof(ItemCollOpParams)+tagLength);
     params->entry = entry;
     params->tagLength = tagLength;
     params->role = role;
     params->slot = slot;
     params->mode = mode;
-#if USE_OCR_HAL
     hal_memCopy(params->tag, tag, tagLength, 0);
-#else
-    _cncMemCopy(params->tag, tag, tagLength);
-#endif // USE_OCR_HAL
+    // affinity
+    // TODO - affinitizing each bucket with node, and running all the 
+    // lookup stuff on that node would probably be cheaper.
+    {% if affinitiesEnabled -%}
+    ocrAffinityGetCurrent(&params->affinity);
+    {%- else -%}
+    params->affinity = NULL_GUID;
+    {%- endif %}
     // edt
-    ocrGuid_t deps[] = { coll, paramsGuid };
-    ocrGuid_t shutdownEdtGuid, templGuid;
+    ocrGuid_t hashEdtGuid, templGuid;
     ocrEdtTemplateCreate(&templGuid, _doHashEdt, 0, 2);
-    ocrEdtCreate(&shutdownEdtGuid, templGuid,
+    ocrEdtCreate(&hashEdtGuid, templGuid,
         /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+        /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
         /*properties=*/EDT_PROP_NONE,
-        /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
+        /*affinity=*/params->affinity, /*outEvent=*/NULL);
+    ocrAddDependence(coll, hashEdtGuid, 0, DB_MODE_RO);
+    ocrAddDependence(paramsGuid, hashEdtGuid, 1, DB_DEFAULT_MODE);
     ocrEdtTemplateDestroy(templGuid);
 }
 
@@ -360,6 +385,9 @@ void _cncGetSingleton(ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, o
 }
 
 static ocrGuid_t _shutdownEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+{% if logEnabled %}
+    fclose(cncDebugLog);
+{% endif -%}
     ocrShutdown();
     return NULL_GUID;
 }
@@ -375,7 +403,7 @@ void cncAutomaticShutdown(ocrGuid_t doneEvent) {
     ocrEdtTemplateDestroy(templGuid);
 }
 
-ocrEdtDep_t _cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize) {
+void *_cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize, ocrEdtDep_t *out) {
     u32 i, j, k;
     ///////////////////////////////////////
     // Figure out how much memory we need
@@ -391,12 +419,14 @@ ocrEdtDep_t _cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize) {
     // Allocate a datablock
     ///////////////////////////////////////
     ocrEdtDep_t block;
-    CNC_CREATE_ITEM(&block.guid, &block.ptr, sum);
+    SIMPLE_DBCREATE(&block.guid, &block.ptr, sum);
+    void *dataStart = block.ptr;
     ///////////////////////////////////////
     // Set up the internal pointers
     ///////////////////////////////////////
     if (n > 1) {
         u32 prevDim = 1, currDim = 1, nextDim = dims[0];
+        // Set up the pointers-to-pointers
         void **ptrs = block.ptr;
         void **current = ptrs;
         void **tail = ptrs + nextDim; // make room for first array
@@ -415,6 +445,9 @@ ocrEdtDep_t _cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize) {
                 }
             }
         }
+        // Save start of actual data's memory
+        dataStart = tail;
+        // Set up the pointers-to-data
         u8 **itemCurrent = (u8**)current;
         u8 *itemTail = (u8*)tail;
         // Slide the window
@@ -435,6 +468,34 @@ ocrEdtDep_t _cncRangedInputAlloc(u32 n, u32 dims[], size_t itemSize) {
     ///////////////////////////////////////
     // Return the initialized datablock
     ///////////////////////////////////////
-    return block;
+    *out = block;
+    return dataStart;
 }
 
+void *cncMalloc(size_t count) {
+    ocrGuid_t handle;
+    void *data;
+    // add space for our meta-data
+    count += _CNC_ITEM_META_SIZE;
+    // allocate datablock
+    // XXX - do I need to check for busy (and do a retry)?
+    ocrDbCreate(&handle, &data, count, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ASSERT(data && "ERROR: out of memory");
+    // store guid
+    *(ocrGuid_t*)data = handle;
+    // set cookie
+    #ifdef CNC_DEBUG
+    u8 *bytes = data;
+    u64 *cookie = (u64*)&bytes[sizeof(ocrGuid_t)];
+    *cookie = _CNC_ITEM_COOKIE;
+    #endif
+    // return offset user pointer
+    return _cncItemDataPtr(data);
+}
+
+void cncFree(void *itemPtr) {
+    if (itemPtr) {
+        _cncItemCheckCookie(itemPtr);
+        ocrDbDestroy(_cncItemGuid(itemPtr));
+    }
+}

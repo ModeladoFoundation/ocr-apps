@@ -43,12 +43,12 @@
 // translator into code to access the member x of the
 // graph init function's args struct.
 ( $init: () )
- -> [ naturals: {0..@n} ],
-    ( sumEvens: @n/2 + @n%2 ),
-    ( sumOdds:  @n/2 );
+ -> [ naturals: $range(0, @n) ],
+    ( sumEvens: ((@n/2)) + (((@n%2))) ),
+    ( sumOdds:  @n/2 ); 
 
-( sumEvens: n ) <- [ evens: {0..n} ] -> [ evensTotal: () ];
-( sumOdds: n ) <- [ odds: {0..n} ] -> [ oddsTotal: () ];
+( sumEvens: n ) <- [ evens: $range(0, n) ] -> [ evensTotal: () ];
+( sumOdds: n ) <- [ odds: $range(0, n) ] -> [ oddsTotal: () ];
 
 ( $finalize: () ) <- [ evensTotal: () ], [ oddsTotal: () ];
 
