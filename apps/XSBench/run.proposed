@@ -68,33 +68,49 @@ case $problem_type in
 "ws_small")
     memory=$memory_ws_small #MB
 
-    problem_size_x=$problem_size_x_ws_small
-    problem_size_y=$problem_size_y_ws_small
-    problem_size_z=$problem_size_z_ws_small
+    input_size=$input_size_ws_small
+    ng=$ng_ws_small
+    nl=$nl_ws_small
+    ;;
+
+"ws_medium")
+    memory=$memory_ws_medium #MB
+
+    input_size=$input_size_ws_medium
+    ng=$ng_ws_medium
+    nl=$nl_ws_medium
     ;;
 
 "ws_large")
     memory=$memory_ws_large #MB
 
-    problem_size_x=$problem_size_x_ws_large
-    problem_size_y=$problem_size_y_ws_large
-    problem_size_z=$problem_size_z_ws_large
+    input_size=$input_size_ws_large
+    ng=$ng_ws_large
+    nl=$nl_ws_large
     ;;
 
 "ss_small")
     memory=$memory_ss_small #MB
 
-    problem_size_x=$problem_size_x_ss_small
-    problem_size_y=$problem_size_y_ss_small
-    problem_size_z=$problem_size_z_ss_small
+    input_size=$input_size_ss_small
+    ng=$ng_ss_small
+    nl=$nl_ss_small
+    ;;
+
+"ss_medium")
+    memory=$memory_ss_medium #MB
+
+    input_size=$input_size_ss_medium
+    ng=$ng_ss_medium
+    nl=$nl_ss_medium
     ;;
 
 "ss_large")
     memory=$memory_ss_large #MB
 
-    problem_size_x=$problem_size_x_ss_large
-    problem_size_y=$problem_size_y_ss_large
-    problem_size_z=$problem_size_z_ss_large
+    input_size=$input_size_ss_large
+    ng=$ng_ss_large
+    nl=$nl_ss_large
     ;;
 
 esac
@@ -132,40 +148,23 @@ do
     scalings[$value-1]=`echo ${scalings[$value-1]}*$ranks_dim | bc`
 done
 
+Nx="-"
+Ny="-"
+Nz="-"
+
 if [[ "$problem_type" == "ws_small" || "$problem_type" == "ws_large" ]]; then
-    Nx=$(($problem_size_x*${scalings[0]}))
-    Ny=$(($problem_size_y*${scalings[1]}))
-    Nz=$(($problem_size_z*${scalings[2]}))
+    Nl=$(($nl*$ranks))
 fi
 
 if [[ "$problem_type" == "ss_small" || "$problem_type" == "ss_large" ]]; then
-    Nx=$problem_size_x
-    Ny=$problem_size_y
-    Nz=$problem_size_z
+    Nl=$nl
 fi
 
-px=$(($px*${scalings[0]}))
-py=$(($py*${scalings[1]}))
-pz=$(($pz*${scalings[2]}))
+px="-"
+py="-"
+pz="-"
 
-# instruction estimates
-if [[ "$problem_type" == "ws_small" || "$problem_type" == "ws_large" ]]; then
-
-    v1=`echo "scale=6;($Nx/$px*$Ny/$py*$Nz/$pz)" | bc -l` # problem size per rank
-    problem_size=`awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'`
-
-    v1=`echo "scale=6;($total_instr_exp/$problem_size - $B)/$A" | bc -l`
-    iterations=`awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'`
-
-elif [[ "$problem_type" == "ss_small" || "$problem_type" == "ss_large" ]]; then
-
-    v1=`echo "scale=6;($Nx*$Ny*$Nz)" | bc -l` # problem size per rank
-    problem_size=`awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'`
-
-    v1=`echo "scale=6;($total_instr_exp/$problem_size - $B)/$A" | bc -l`
-    iterations=`awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'`
-
-fi
+iterations=$Nl
 
 if [[ $iterations -le 0 ]]; then
     iterations=1
@@ -176,7 +175,7 @@ if [ $total_instr_exp -le 0 ]; then
     iterations=`echo -1*$total_instr_exp | bc`
 fi
 
-v1=`echo "scale=6;($A*$iterations + $B)*$Nx/$px*$Ny/$py*$Nz/$pz" | bc` # per rank
+v1=0 #`echo "scale=6;($A*$iterations + $B)*$Nx/$px*$Ny/$py*$Nz/$pz" | bc` # per rank
 total_instr=`awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'`
 
 v1=`echo "scale=6; $total_instr/$MIPS/60" | bc` # instructions per rank / MIPS per second; - Result in minutes
@@ -192,7 +191,7 @@ echo " "
 printf "%8s | %8s | %8s | %12s | %15s | %15s | %12s | %10s | %18s | %12s\n" "Scaling" "Type" "Ranks" "Threds per" "Problem size" "Rank config" "Memory per" "Iterations" "Instructions per" "Expected time"
 printf "%8s | %8s | %8s | %12s | %15s | %15s | %12s | %10s | %18s | %12s\n" "" "" "" "Ranks" "" "" "rank (MB)" "/timesteps" "rank (10^6)" "(mins @${MIPS}MIPS/rank)"
 echo   "-----------------------------------------------------------------------------------------------------------------------------------------------"
-printf "%8s | %8s | %8d | %12d | %5d%5d%5d | %5d%5d%5d | %12.1f | %10d | %18.3e | %12.0f\n" $geometry_scaling $problem_type $ranks $threads $Nx $Ny $Nz $px $py $pz $memory $iterations $total_instr \
+printf "%8s | %8s | %8d | %12d | %5s%5s%5s | %5s%5s%5s | %12.1f | %10d | %18.3e | %12.0f\n" $geometry_scaling $problem_type $ranks $threads $Nx $Ny $Nz $px $py $pz $memory $iterations $total_instr \
 $wallclock_exp
 echo " "
 }
@@ -208,20 +207,19 @@ run_command=""
 
 build_and_run_dir="$version_dir/build_and_run/${app_mode}"  #relative to the script directory
 #relative to build_and_run_dir
-cp_list="Makefile make_app pots/" # From build_and_run_dir to odirname
+cp_list="Makefile make_app" # From build_and_run_dir to odirname
 odirname="$problem_type"#"$ranks_input"#"$threads"#"$geometry_scaling"#"${version_dir//\//_}"#"$app_mode"#"$total_instr_exp_input"
-input_dir="./pots" # relative to odirname
 
 driver_opts=""
-app_name="./CoMD"
-app_opts="-d ${input_dir} -N $iterations -n 1 -x $Nx -y $Ny -z $Nz -e"
+app_name="./XSBench"
+app_opts="-s ${input_size} -g ${ng} -l ${iterations} -t ${threads}"
 extra_opts=""
 
 case $version_dir in
 
-"baseline/mpi-serial/doe-original")
+"baseline/mpi-omp-serial/doe-original")
 
-    supported_app_modes=("serial" "mpi")
+    supported_app_modes=("serial" "mpi" "omp" "hybrid")
 
     case $app_mode in
 
@@ -234,22 +232,7 @@ case $version_dir in
 
     mpi*)
         driver_opts="mpirun -np $ranks"
-        extra_opts="-i $px -j $py -k $pz"
         ;;
-
-    *)
-        echo "Error: $version_dir only supports {${supported_app_modes[@]}} modes"
-        exit 1
-        ;;
-
-    esac
-    ;;
-
-"baseline/omp/doe-original")
-
-    supported_app_modes=("omp")
-
-    case $app_mode in
 
     omp*)
         env_command="export OMP_NUM_THREADS=$threads"
@@ -259,31 +242,9 @@ case $version_dir in
         fi
         ;;
 
-    *)
-        echo "Error: $version_dir only supports {${supported_app_modes[@]}} modes"
-        exit 1
-        ;;
-
-    esac
-    ;;
-
-"refactored/ocr/llnl")
-
-    supported_app_modes=("x86-pthread-x86" "x86-pthread-mpi")
-
-    case $app_mode in
-
-    x86-pthread-x86)
-        driver_opts="make run"
-        app_name=""
-        app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
-        ;;
-
-    x86-pthread-mpi)
-        driver_opts="make run"
-        app_name=""
-        app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
-
+    hybrid*)
+        env_command="export OMP_NUM_THREADS=$threads"
+        driver_opts="mpirun -np $ranks"
         ;;
 
     *)
@@ -293,7 +254,6 @@ case $version_dir in
 
     esac
     ;;
-
 
 *)
     echo "Error: Version $version_dir is not supported"

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+MPI=yes make -f Makefile

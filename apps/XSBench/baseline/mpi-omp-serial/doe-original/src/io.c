@@ -63,6 +63,7 @@ void print_results( Inputs in, int mype, double runtime, int nprocs,
 		printf("MPI ranks:   %d\n", nprocs);
 		#endif
 		#ifdef MPI
+		printf("Lookups:     "); fancy_int(in.lookups);
 		printf("Total Lookups/s:            ");
 		fancy_int(total_lookups);
 		printf("Avg Lookups/s per MPI rank: ");

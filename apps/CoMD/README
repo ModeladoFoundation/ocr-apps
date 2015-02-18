@@ -1,0 +1,24 @@
+datasets/
+    * Input (pots/ and LAMMPS input) files common across multiple implementations kept here
+
+baselie/
+    * Baseline MPI+OpenMP implementations
+
+refactored/
+    * Refactored (OCR, CnC, etc.) implementations go here
+
+
+##########################################################
+To build and run the apps using unified run-system
+##########################################################
+
+1. Source compiler paths and some environment variables/paths needed for the run-systems first
+    source ${APPS_ROOT}/apps_env.bash
+2. Navigate to "build_and_run/" directory for a given implementation
+    E.g., cd baseline/mpi-serial/doe-original/build_and_run/
+3. Go to any subdirectory listed under build_and_run
+    E.g., serial/ or mpi/
+4. Call run_app
+    $run_app #For help
+
+##########################################################

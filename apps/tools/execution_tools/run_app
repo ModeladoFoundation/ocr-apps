@@ -55,6 +55,10 @@ threads=1 #Default; overwrite below based on the mode
 case $app_mode in
 
 serial*)
+    if (( $# != 2 )); then
+        echo " Usage: $ $script_name {ss_small|ss_large} {niter|quick|report}"
+        exit 1
+    fi
     ;;
 
 omp*)

@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Some relevent proxy-app information
+function information()
+{
+echo " XSBench Information:"
+echo " XSBench's footprint varies as 2.7 - 14 KB/lattice"
+echo " or 7.5 - 110 KB per link cell (with 64 atoms)"
+echo " (typically the lower value; increases with surface to volume ratio)"
+}
+
+expected_arguments=6 #Without optional arguments
+
+# Strong-scaling (ss) and weak-scaling (ws) problem sizes below
+# Memory is in MBs
+memory_ss_small=24
+input_size_ss_small="small"
+ng_ss_small=1130
+nl_ss_small=100000
+
+memory_ss_medium=567
+input_size_ss_medium="large"
+ng_ss_medium=1130
+nl_ss_medium=1000000
+
+memory_ss_large=5678
+input_size_ss_large="large"
+ng_ss_large=11303
+nl_ss_large=10000000
+
+memory_ws_small=24
+input_size_ws_small="small"
+ng_ws_small=1130
+nl_ws_small=100000
+
+memory_ws_medium=567
+input_size_ws_medium="large"
+ng_ws_medium=1130
+nl_ws_medium=1000000
+
+memory_ws_large=5678
+input_size_ws_large="large"
+ng_ws_large=11303
+nl_ws_large=10000000
+
+supported_scalings=(1D 2D 3D)   #Supported scalings by the app
+
+scaled_dimensions_1D=(1)     # what direction needs be scaled for the problem geometry ("x", "y" or "z")
+scaled_dimensions_2D=(1 2)   # "xy" or "xz" or "yz"
+scaled_dimensions_3D=(1 2 3) # all
+
+MIPS_expected=0.5           # Expected Aggregate MIPS per rank
+instructions=1800           # in millions; 240 billion should take about 4 hours on one 8 PEs (rank) on FFWD @ 16 MIPS
+                            # per rank for "ws_small" and "ws_large"
+                            # Total for "ss_small" and "ss_large"
+
+instructions_A=0.07         # Linear fits for instruction counts per cell/particle/grid-point
+instructions_B=0.08         # e.g., instructions in millions = ( A * (niter) + B )*(problem-size)
