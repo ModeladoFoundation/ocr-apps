@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -ne 2 ]; then
-    echo "Usage <statDir_src> <localMach_dest>"
+    echo "Usage <statDir_src> <number of runs>"
     exit 1
 fi
 
