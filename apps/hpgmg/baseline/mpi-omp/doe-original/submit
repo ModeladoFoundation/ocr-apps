@@ -1,0 +1,2 @@
+#!/bin/bash
+qsub -q batch -l nodes=4:ppn=32 $1

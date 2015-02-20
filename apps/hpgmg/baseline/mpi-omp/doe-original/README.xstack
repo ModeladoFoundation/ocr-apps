@@ -1,0 +1,72 @@
+-------------------------------------------------------------------------------
+HPGMG  v0.1 Baseline as distributed by the DOE
+-------------------------------------------------------------------------------
+
+https://hpgmg.org/
+
+Downloaded as tar-ball Oct 25th, 2014
+
+This application is set up to run on the xstack foobar cluster.
+
+-----
+BUILD
+-----
+Run the following command:
+
+./buildit
+
+This will build both the "modern" and "exascale" proxy applications.
+
+The modern code uses V-cycles, Gauss-Seidel Red-black smoother, and BiCGStab
+bottom solver. The exascale code uses F-cycles, Chebyshev smoother, and BiCGStab
+bottom solver.
+
+The sample output was produced using the following environment settings were used for mpicc/icc:
+. /opt/intel/tools/bin/compilervars.sh intel64
+. /opt/intel/tools/impi/5.0.1.035/intel64/bin/mpivars.sh
+
+
+---
+RUN
+---
+To run these binaries on a range of problem sizes, execute the runx86.sh script:
+
+runx86.sh [exascale|modern] log2 box dimension] [target # of boxes] [ # MPI processes] [ # MPI processes per node] [ # OMP Threads ]
+
+[exascale|modern]: modern is V cycles, gsrb smoother.
+                   exascale is F cycles, chebyshev smoother.
+
+[log2 box dimension]: log2 of the dimension n for each n^3 sized box in the
+                      multigrid run. Typical values are 4, 5, and 6.
+
+[target # of boxes]: number of n^3 boxes in the multigrid run. Number is used
+                     in conjunction with [log2 box dimension] to "influence"
+                     total problem size. "Influence" because hpgmg always
+                     creates a cube of boxes and will tweak the number of boxes
+                     to achieve this. The following three combinations of
+                     [log2 box dimension] and [target # of boxes] lead to
+                     the exact same problem size:
+                     4 4096 (16^3 grid of 16^3 boxes)
+                     5  512 ( 8^3 grid of 32^3 boxes)
+                     6   64 ( 4^3 grid of 64^3 boxes)
+Sample outputs 4 4096 for modern and exascale are provided in the files sample.modern, sample.exascale
+----
+TEST
+----
+The included script testx86.sh tests the modern and exascale proxies at known good
+problem sizes. To test, run the following command:
+
+Note: In  testx86.sh export XSTACK=<your-local-git-rep>
+
+./testx86.sh
+
+------------
+KNOWN ISSUES
+------------
+
+* Comparing results of runs on different numbers of MPI ranks:
+  Leaving the number of target boxes constant, increasing the number of ranks also increases the problem size.
+  In order to compare the same size, one has to reduce the number of boxes per rank.
+  In addition, in order to avoid global resuction operations such as dot-products, one should use the GSRB smoother and build
+  with -UUSE BICGSTAB. This will imply that no bottom solver is applied, but rather, that a number of GSRB smoothers is applied
+  on the coarsest grid. Sample output for the run is in testx86-gsrb.output. An example how to build is in buildit-gsrb.
