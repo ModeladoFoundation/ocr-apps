@@ -1,0 +1,17 @@
+#!/bin/bash
+#./configure --CC=mpiicc --CFLAGS=-openmp
+#rm -rf build-default
+#./configure --no-fe --arch=build-default --CC=mpiicc --CFLAGS="-O3 -openmp -g"
+#make -j 3 -C build-default V=1
+rm -rf build-modern
+./configure --no-fe --fv-cycle=V --fv-smoother=gsrb --fv-coarse-solver=bicgstab --arch=build-modern  --CC=mpiicc --CFLAGS="-g -O3 -openmp -fp-model precise"
+make -j 3 -C build-modern V=1
+cd  build-modern
+make
+cd ..
+rm -rf build-exascale
+./configure --no-fe --fv-cycle=F --fv-smoother=cheby --fv-coarse-solver=bicgstab --arch=build-exascale --CC=mpiicc --CFLAGS="-g -O3 -openmp -fp-model precise"
+make -j 3 -C build-exascale V=1
+cd  build-exascale
+make
+cd ..
