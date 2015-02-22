@@ -12,7 +12,6 @@ jobtype_gatherStats_regression = {
     'timeout': 20,
     'sandbox': ('shared', 'shareOK')
 }
-
 jobtype_ocr_build_kernel_regression = {
     'name': 'ocr-build-kernel-regression',
     'isLocal': True,
@@ -31,18 +30,6 @@ jobtype_ocr_run_kernel_remote_regression = {
     'name': 'ocr-run-kernel-remote-regression',
     'isLocal': False,
     'run-cmd': '${JJOB_SHARED_HOME}/apps/jenkins/scripts/kernel-run-remote.sh',
-    'param-cmd': '${JJOB_SHARED_HOME}/apps/jenkins/scripts/remote-param-cmd.sh',
-    'keywords': ('regression',),
-    'timeout': 300,
-    'sandbox': ('shared', 'shareOK'),
-    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/apps',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/install'}
-}
-
-jobtype_ocr_run_kernel_remote_scaling = {
-    'name': 'ocr-run-kernel-remote-scaling',
-    'isLocal': False,
-    'run-cmd': '${JJOB_SHARED_HOME}/apps/jenkins/scripts/scaling.sh',
     'param-cmd': '${JJOB_SHARED_HOME}/apps/jenkins/scripts/remote-param-cmd.sh',
     'keywords': ('regression',),
     'timeout': 300,
@@ -151,7 +138,6 @@ job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
                   'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/apps/smithwaterman/datasets/string2-medium-large.txt',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/apps/smithwaterman/ocr/install'}
 }
-
 #Aggregates execution times in csv file
 job_gatherStats = {
     'name': 'gatherStats',
@@ -159,17 +145,4 @@ job_gatherStats = {
     'jobtype': 'gatherStats-regression',
     'run-args': '${JJOB_SHARED_HOME}/runtime 10',
     'sandbox': ('shared','inherit0')
-}
-
-# Scaling
-job_scaling = {
-    'name': 'ocr-run-kernel-x86-remote-scaling',
-    'depends': ('ocr-build-x86-pthread-x86',),
-    'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': '${JJOB_SHARED_HOME}/regressionScaling.csv',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/apps/libs/x86',
-                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/ocr/ocr-apps/scaling',
-                  'WORKLOAD_ARGS': '',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr-apps/scaling/install' }
 }
