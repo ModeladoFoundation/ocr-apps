@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -ne 2 ]; then
-    echo "Usage <statDir_src> <localMach_dest>"
+    echo "Usage <directory containing running times> <number of samples>"
     exit 1
 fi
 
