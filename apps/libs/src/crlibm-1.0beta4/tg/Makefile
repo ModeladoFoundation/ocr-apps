@@ -1,9 +1,9 @@
 CRLIBM_ROOT    ?= ../x86_64
 
-TG_SRC         ?= ../../../../../ss
-TG_INSTALL     ?= ../../../../../ss/install
+TG_ROOT        ?= ../../../../../../intel/ss
+TG_INSTALL     ?= ../../../../../../intel/ss/install
 
-OCR_SRC        ?= ../../../../../ocr
+OCR_ROOT       ?= ../../../../../ocr
 OCR_ROOT_BASE  ?= ../../../../../ocr/install
 
 APPS_ROOT      ?= ../../../../../apps
@@ -11,9 +11,9 @@ APPS_LIBS_ROOT ?= ../../../../../apps/libs/tg
 
 
 CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
-TG_SRC         := $(shell cd "${TG_SRC}" && pwd)
+TG_ROOT        := $(shell cd "${TG_ROOT}" && pwd)
 TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
-OCR_SRC        := $(shell cd "${OCR_SRC}" && pwd)
+OCR_ROOT       := $(shell cd "${OCR_ROOT}" && pwd)
 OCR_ROOT_BASE  := $(shell cd "${OCR_ROOT_BASE}" && pwd)
 APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
@@ -164,19 +164,19 @@ atan_accurate.o: $(CRLIBM_ROOT)/atan_accurate.c $(CRLIBM_ROOT)/crlibm_private.h 
 csh_fast.o: $(CRLIBM_ROOT)/csh_fast.c $(CRLIBM_ROOT)/crlibm.h $(CRLIBM_ROOT)/crlibm_private.h $(CRLIBM_ROOT)/csh_fast.h $(CRLIBM_ROOT)/triple-double.h $(CRLIBM_ROOT)/Makefile
 	$(CC) $(CFLAGS) -o csh_fast.o -c  $(CRLIBM_ROOT)/csh_fast.c
 
-e_sqrt.o: $(TG_SRC)/newlib/src-1.19/newlib/libm/math/e_sqrt.c $(CRLIBM_ROOT)/Makefile
+e_sqrt.o: $(TG_ROOT)/newlib/src-1.19/newlib/libm/math/e_sqrt.c $(CRLIBM_ROOT)/Makefile
 	$(CC) $(CFLAGS) \
-	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/include \
-	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/common \
-	-I $(TG_SRC)/newlib/src-1.19/newlib/libc/include \
-	-c $(TG_SRC)/newlib/src-1.19/newlib/libm/math/e_sqrt.c
+	-I $(TG_ROOT)/newlib/src-1.19/newlib/libm/include \
+	-I $(TG_ROOT)/newlib/src-1.19/newlib/libm/common \
+	-I $(TG_ROOT)/newlib/src-1.19/newlib/libc/include \
+	-c $(TG_ROOT)/newlib/src-1.19/newlib/libm/math/e_sqrt.c
 
-ef_sqrt.o: $(TG_SRC)/newlib/src-1.19/newlib/libm/math/ef_sqrt.c $(CRLIBM_ROOT)/Makefile
+ef_sqrt.o: $(TG_ROOT)/newlib/src-1.19/newlib/libm/math/ef_sqrt.c $(CRLIBM_ROOT)/Makefile
 	$(CC) $(CFLAGS) \
-	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/include \
-	-I $(TG_SRC)/newlib/src-1.19/newlib/libm/common \
-	-I $(TG_SRC)/newlib/src-1.19/newlib/libc/include \
-	-c $(TG_SRC)/newlib/src-1.19/newlib/libm/math/ef_sqrt.c
+	-I $(TG_ROOT)/newlib/src-1.19/newlib/libm/include \
+	-I $(TG_ROOT)/newlib/src-1.19/newlib/libm/common \
+	-I $(TG_ROOT)/newlib/src-1.19/newlib/libc/include \
+	-c $(TG_ROOT)/newlib/src-1.19/newlib/libm/math/ef_sqrt.c
 
 lib/libcrlibm.a: $(OBJS) Makefile $(CRLIBM_ROOT)/Makefile
 	$(AR) cru ./libcrlibm.a $(OBJS)

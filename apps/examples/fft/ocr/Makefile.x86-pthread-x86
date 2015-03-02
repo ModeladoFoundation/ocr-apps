@@ -7,7 +7,7 @@ ARCH        ?= x86-pthread-x86
 # OCR
 OCR_TARGET   ?= x86-pthread-x86
 OCR_INSTALL_ROOT ?= ../../../install
-OCR_SRC     ?= ../../..
+OCR_ROOT     ?= ../../..
 OCR_BUILD_ROOT   ?= ../../../build/
 
 # Application

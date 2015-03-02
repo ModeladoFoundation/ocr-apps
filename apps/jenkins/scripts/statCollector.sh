@@ -5,7 +5,7 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-python ${JJOB_SHARED_HOME}/apps/jenkins/scripts/extractStat.py $1 $2
+python ${JJOB_SHARED_HOME}/xstack/apps/jenkins/scripts/extractStat.py $1 $2
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then
     echo " ---- Statistic extraction SUCCESSFUL ----"

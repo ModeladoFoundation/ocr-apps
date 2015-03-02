@@ -14,7 +14,7 @@ DATA             = /opt/share/xstack_app_input/sar/tiny/x86
 
 # OCR
 OCR_TARGET       ?= x86-pthread-tg
-OCR_SRC          ?= ../../../../ocr
+OCR_ROOT         ?= ../../../../ocr
 OCR_BUILD_ROOT   ?= ../../../../ocr/build
 OCR_INSTALL_ROOT ?= ../../../../ocr/install
 

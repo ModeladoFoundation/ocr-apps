@@ -14,8 +14,8 @@ APPS_LIBS_ROOT  ?= $(XSTACK_SRC)/apps/libs/tg
 OCR_TYPE        ?= tg
 
 # TG
-TG_SRC     ?= $(XSTACK_SRC)/ss
-TG_INSTALL ?= $(XSTACK_SRC)/ss/install
+TG_ROOT    ?= $(XSTACK_SRC)/../intel/ss
+TG_INSTALL ?= $(XSTACK_SRC)/../intel/ss/install
 
 # OCR
 XE_TARGET   ?= tg-null-tg-xe
@@ -23,7 +23,7 @@ XE_BUILDER  ?= x86-builder-tg-xe
 CE_TARGET   ?= tg-null-tg-ce
 CE_BUILDER  ?= x86-builder-tg-ce
 
-OCR_SRC     ?= $(XSTACK_SRC)/ocr
+OCR_ROOT         ?= $(XSTACK_SRC)/ocr
 OCR_BUILD_ROOT   ?= $(XSTACK_SRC)/ocr/build
 OCR_INSTALL_ROOT ?= $(XSTACK_SRC)/ocr/install
 

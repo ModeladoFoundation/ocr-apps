@@ -10,8 +10,8 @@ APPS_LIBS_ROOT  ?= $(XSTACK_SRC)/apps/libs/tg
 OCR_TYPE        ?= tg
 
 # TG
-TG_INSTALL ?= $(XSTACK_SRC)/ss/install
-TG_SRC     ?= $(XSTACK_SRC)/ss
+TG_INSTALL ?= $(XSTACK_SRC)/../intel/ss/install
+TG_ROOT    ?= $(XSTACK_SRC)/../intel/ss
 
 # OCR
 XE_TARGET   ?= tg-null-tg-xe
@@ -19,7 +19,7 @@ XE_BUILDER  ?= x86-builder-tg-xe
 CE_TARGET   ?= tg-null-tg-ce
 CE_BUILDER  ?= x86-builder-tg-ce
 OCR_INSTALL_ROOT ?= $(XSTACK_SRC)/ocr/install
-OCR_SRC     ?= $(XSTACK_SRC)/ocr
+OCR_ROOT     ?= $(XSTACK_SRC)/ocr
 OCR_BUILD_ROOT   ?= $(XSTACK_SRC)/ocr/build
 
 # APPLICATION
@@ -57,7 +57,7 @@ REQ_LIBS := libc
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-#CFLAGS += -I$(OCR_SRC)/build/$(XE_TARGET)
+#CFLAGS += -I$(OCR_ROOT)/build/$(XE_TARGET)
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in

@@ -18,7 +18,7 @@ OCR_TYPE        ?= x86-pthread-mpi
 # OCR
 OCR_TARGET   ?= x86-pthread-mpi
 OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
-OCR_SRC     ?= ${REPO_TOP}/ocr
+OCR_ROOT     ?= ${REPO_TOP}/ocr
 OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build/
 
 # APPLICATION

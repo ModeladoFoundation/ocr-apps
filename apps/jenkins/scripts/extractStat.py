@@ -23,7 +23,7 @@ def output(statDir, filename, namelist, valuelist):
         shutil.move(filename,os.getenv("WORKSPACE"))
     else:
         # Purge old .csv , if exist
-        dest = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME"),os.pardir)), filename)
+        dest = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME") + "/xstack/", os.pardir)), filename)
         if os.path.isfile(dest):
             os.remove(dest)
 
