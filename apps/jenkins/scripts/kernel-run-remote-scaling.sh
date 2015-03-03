@@ -31,7 +31,7 @@ configFile=$(mktemp)
 for t in ${THREADS[*]}
 do
     rm -f $configFile
-    ${JJOB_SHARED_HOME}/ocr/scripts/Configs/config-generator.py --threads $t --output $configFile
+    ${JJOB_SHARED_HOME}/xstack/ocr/scripts/Configs/config-generator.py --threads $t --output $configFile
 
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
     for i in `seq 1 $4`; do WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=run OCR_CONFIG=$configFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null; done
