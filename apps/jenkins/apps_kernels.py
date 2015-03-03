@@ -165,7 +165,7 @@ job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
                   'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/apps/smithwaterman/ocr/install'}
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
 }
 
 #Aggregates execution times in csv file
