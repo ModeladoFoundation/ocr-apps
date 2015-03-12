@@ -5,6 +5,11 @@ Steps:
     - Set and export OCR_CONFIG to the configuration you want to use for OCR
       (usually ${OCR_INSTALL}/config/default.cfg)
 
+    * Some HTA unit tests may require more data block slots of EDTs to work.
+      Please edit ${OCR_INSTALL}../build/x86-pthread-x86/Makefile, change the CFLAGS setting
+      to the following and rebuild if getting runtime assertions:
+          CFLAGS  := -DOCR_MAX_MULTI_SLOT=16 -DINIT_DEQUE_CAPACITY=32768
+
 To test PIL:
     - Go to ${HTAHLL}/pil and run './run ocr 001' (or any of the micro tests)
     - OMP and Reservoir backends are also available
@@ -23,3 +28,14 @@ For the NAS parallel benchmarks:
       and OCR version
     - Notes:
         - Some benchmarks may require larger heap for OCR (change in the ocr configuration file)
+
+For more information about Hierarchically Tiled Arrays, please visit
+    http://polaris.cs.uiuc.edu/hta/
+
+If there are questions concerning getting HTA programs to run, please contact:
+    Chih-Chieh Yang    cyang49 at illinois.edu
+
+If there are questions concerning the general concepts of HTA programming, please contact:
+    Chih-Chieh Yang    cyang49 at illinois.edu
+    David Padua        padua at illinois.edu
+

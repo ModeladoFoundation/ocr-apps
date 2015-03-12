@@ -1,12 +1,35 @@
+The Hierarchically Tiled Array or HTA data type is a class designed to
+facilitate the writing of programs based on tiles. HTAs allow to
+exploit locality as well as to express parallelism with much less
+effort than other approaches.
+
+Here you will find the HTA library implementation based on Parallel
+Intermediate Language (PIL). PIL is an intermediate language designed
+to realize any-to-any parallel language translation. Currently,
+the implementation of PIL includes a compiler that compiles code written
+in PIL-C into OpenMP, ETI SCALE, and OCR. HTA library here is written
+in PIL-C.
+
 The hta directory contains a C implementation of HTA based on PIL.
 
 hta/include:    The header files.
-hta/lib:        The C implementation.
+hta/src:        The source code of HTA library
+hta/lib:        The shared object generated after compilation
 hta/test:       Unit test and examples
 
-Set these environment variables:
+In order to for applications to link to libhta.so at runtime, please
+set these environment variables:
     export HTA=$HTAHLL/hta
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HTA/lib
     export LD_LIBRARY_PATH
 
+
+For more information about Hierarchically Tiled Arrays, please visit
+    http://polaris.cs.uiuc.edu/hta/
+If there are questions concerning getting HTA programs to run, please contact:
+    Chih-Chieh Yang    cyang49 at illinois.edu
+
+If there are questions concerning the general concepts of HTA programming, please contact:
+    Chih-Chieh Yang    cyang49 at illinois.edu
+    David Padua        padua at illinois.edu
 
