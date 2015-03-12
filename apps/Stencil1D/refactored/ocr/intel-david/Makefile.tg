@@ -4,13 +4,20 @@
 
 # APPS
 APPS_ROOT       ?= ../../../../../apps
-APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
+APPS_LIBS_ROOT  ?= ../../../../../apps/libs/tg
 
 # OCR_TYPE
-OCR_TYPE        ?= x86-pthread-tg
+OCR_TYPE        ?= tg
+
+# TG
+TG_INSTALL ?= ../../../../../../intel/ss/install
+TG_ROOT     ?= ../../../../../../intel/ss
 
 # OCR
-OCR_TARGET   ?= x86-pthread-tg
+XE_TARGET   ?= tg-null-tg-xe
+XE_BUILDER  ?= x86-builder-tg-xe
+CE_TARGET   ?= tg-null-tg-ce
+CE_BUILDER  ?= x86-builder-tg-ce
 OCR_INSTALL_ROOT ?= ../../../../../ocr/install
 OCR_ROOT     ?= ../../../../../ocr
 OCR_BUILD_ROOT   ?= ../../../../../ocr/build
@@ -51,7 +58,7 @@ TARGET := stencil
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := libc
 
 # Space separated list of source files
 SRCS := stencil1D.c
@@ -64,7 +71,7 @@ CFLAGS :=
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread
+LDFLAGS :=
 
 # Targets:
 #   - all:     Build the application.
@@ -108,11 +115,12 @@ prerun: ;
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
-# 'postrun: ;' is an empty rule (the rule is required
-# to be present though)
+# 'postrun: ;' is an empty rule (the rule is required)
 .PHONY: postrun
 postrun: ;
 
+# Any additional rules required can go here
+
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-tg.inc
 
