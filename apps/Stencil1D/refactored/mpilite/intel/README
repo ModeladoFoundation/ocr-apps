@@ -1,0 +1,24 @@
+NAME:    stencil, stencil_read
+
+PURPOSE : This program tests the efficiency of a simple 1D stencil update
+         It employs a 1D decomposition of the space interval.
+         Each MPI ranks updates 1 chunk. Halo exchange uses MPI_Isend/Recv
+
+         for (it = 0; it<NITER; it++) {
+             exchange_halo (kstart-1; kend+1);
+             u(i,t) = u(i,t-1) + 0.5 ( u(i+1,t-1) - u(i-1, t-1) )
+             copy_halo ();
+         }
+
+	stencil uses MPI_Iread and MPI_Wait; stencil_read uses MPI_Read
+
+USAGE:   The program takes as input the length of the interval,
+         and the number of iterations on the interval
+
+               <progname> < # grid points > <# iterations>
+
+        # grid points has to be a multiple of NPROCS - 2, where NPROCS is the number of
+        MPI ranks
+
+
+
