@@ -1,3 +1,9 @@
+/*
+* This file is subject to the license agreement located in the file LICENSE
+* and cannot be distributed without it. This notice cannot be
+* removed or modified.
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -12,6 +18,13 @@
 
 #define MPI_WARNING(s,w) {PRINTF("WARNING: %s, returning" #w "\n",(s)); return (w);}
 
+// Have to make sure to drag in mainEdt else mpi_ocr.o does not get
+// included in the linked object. We assume at least one of these MPI
+// routines will be called, causing miplite.o to be included in the link.
+void mainEdt(void);
+void __drag_in_mainEdt(void){mainEdt();}
+    
+    
 
 int MPI_Init(int *argc, char ***argv)
 {

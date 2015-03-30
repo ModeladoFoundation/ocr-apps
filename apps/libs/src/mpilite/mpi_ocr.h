@@ -70,10 +70,8 @@ extern "C" {
     {
         return ((rankContextP_t)( ocrElsUserGet(RANK_CONTEXT_SLOT)));
     }
-    static inline messageContextP_t getMessageContext()
-    {
-        return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
-    }
+    messageContextP_t getMessageContext();
+    
   
 #define MIN(x,y) ((x)<(y)? (x) : (y))
 
