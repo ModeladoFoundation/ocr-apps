@@ -1,5 +1,11 @@
-#ifndef FFWD_MESSAGING_H
-#define FFWD_MESSAGING_H
+/*
+* This file is subject to the license agreement located in the file LICENSE
+* and cannot be distributed without it. This notice cannot be
+* removed or modified.
+*/
+
+#ifndef MPI_OCR_MESSAGING_H
+#define MPI_OCR_MESSAGING_H
 
 #define NEW_MQ
 

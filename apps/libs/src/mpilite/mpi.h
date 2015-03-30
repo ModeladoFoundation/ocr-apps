@@ -1,3 +1,9 @@
+/*
+* This file is subject to the license agreement located in the file LICENSE
+* and cannot be distributed without it. This notice cannot be
+* removed or modified.
+*/
+
 #ifndef FFWD_MPI_H
 #define FFWD_MPI_H
 
@@ -12,6 +18,7 @@ extern "C" {
 
 // replace printf with PRINTF, but don't include ocr.h
 unsigned int PRINTF(const char *, ...);
+
 #define printf PRINTF
 
 #define MPI_BOTTOM              ((void *)0)
