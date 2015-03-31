@@ -17,6 +17,7 @@
 #include <malloc.h>
 
 #define MPI_WARNING(s,w) {PRINTF("WARNING: %s, returning" #w "\n",(s)); return (w);}
+#define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
 
 // Have to make sure to drag in mainEdt else mpi_ocr.o does not get
 // included in the linked object. We assume at least one of these MPI
@@ -42,6 +43,12 @@ int MPI_Initialized(int *flag)
 
 int MPI_Finalize(void)
 {
+#if 0    // Only needed for debugging....
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    PRINTF("MPI_Finalize: rank #%d: Finalized!\n", rank);
+#endif    // end of debugging
+
     getRankContext()->mpiInitialized = FALSE;
     return MPI_SUCCESS;
 }
@@ -63,6 +70,25 @@ static inline u64 index(int source, int dest, int tag, int numRanks, int maxTag)
     return ((numRanks*source + dest)*(maxTag+1) + tag);
 }
 
+static char * get_op_string(MPI_Request req)
+{
+    if (req == MPI_REQUEST_NULL)
+        return "null";
+
+    switch(req->op)
+    {
+      case OP_ISEND:
+        return "isend";
+      case OP_IRECV:
+        return "irecv";
+      case OP_IPROBE:
+        return "iprobe";
+      default:
+        return "unknown";
+    }
+}
+
+
 static inline void initRequest(MPI_Request p, int op, int count, int datatype, int tag, int rank, int comm, void *buf)
 {
     p->count = count;
@@ -80,7 +106,17 @@ static inline void initRequest(MPI_Request p, int op, int count, int datatype, i
 // MPI_Wait* will caus the send to occur
 int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
               MPI_Comm comm, MPI_Request *request)
+
 {
+#if 0    // Only needed for debugging....
+    rankContextP_t rankContext = getRankContext();
+    const u32 source = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+    PRINTF("MPI_Isend: rank #%d: Sending on index %d\n", source,
+           index(source, dest, tag, numRanks, maxTag));
+#endif    // end of debugging
+
     *request = (MPI_Request)malloc(sizeof(**request));
     initRequest(*request, OP_ISEND, count, datatype, tag, dest, comm, buf);
 
@@ -98,6 +134,8 @@ int MPI_Send (void *buf,int count, MPI_Datatype
     const u32 numRanks = rankContext->numRanks;
     const u32 maxTag = rankContext->maxTag;
     const u64 totalSize = count * rankContext->sizeOf[datatype];
+
+    //PRINTF("MPI_Send: rank #%d: Sending on index %d\n", source, index(source, dest, tag, numRanks, maxTag));
 
     messageContextP_t messageContext = getMessageContext();
 
@@ -165,6 +203,8 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     const u32 numRanks = rankContext->numRanks;
     const u32 maxTag = rankContext->maxTag;
     const u64 totalSize = count * rankContext->sizeOf[datatype];
+
+    //PRINTF("MPI_Recv: rank #%d: Receiving on index %d\n", dest, index(source, dest, tag, numRanks, maxTag));
 
     if (MPI_ANY_SOURCE == source || MPI_ANY_TAG == tag)
         {
@@ -291,12 +331,24 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status)
 {
+    // for debugging
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+
+
+
     MPI_Request r;
 
     if (NULL == request || NULL == (r = *request))
         {
-            MPI_WARNING("MPI_Wait: bad value for request", MPI_ERR_REQUEST);
+            //MPI_REQUEST_NULL is legitimate.
+            //MPI_WARNING("MPI_Wait: bad value for request", MPI_ERR_REQUEST);
+            return MPI_SUCCESS;
         }
+
+    //PRINTF("MPI_Wait: rank #%d: request->op=%s\n", rank, get_op_string(r));
 
     int ret = MPI_SUCCESS;
     switch(r->op)
@@ -340,11 +392,27 @@ int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
     return MPI_Wait(request, status);
 }
 
-// NYI
-int MPI_Barrier( MPI_Comm comm )
+
+int MPI_Waitall(int count, MPI_Request *array_of_requests,
+    MPI_Status *array_of_statuses)
 {
-    return MPI_ERR_INTERN;
+    u32 i;
+
+    //PRINTF("MPI_Waitall: %d aor %p aos %p\n", count, array_of_requests, array_of_statuses);
+
+    if (array_of_statuses == MPI_STATUSES_IGNORE)
+        for(i=0;i<count;i++) {
+            MPI_Wait(&array_of_requests[i], MPI_STATUS_IGNORE);
+        }
+    else
+        for(i=0;i<count;i++) {
+            MPI_Wait(&array_of_requests[i], &array_of_statuses[i]);
+        }
+
+    return MPI_SUCCESS;
 }
+
+
 
 int MPI_Get_count(
                   MPI_Status *status,
@@ -364,3 +432,516 @@ int MPI_Get_count(
     *count = status->mq_status.count;
     return MPI_SUCCESS;
 }
+
+
+int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
+    MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm)
+{
+
+  // TBD: use comm to determine real "rank"
+  //  const u32 rank = comm->group->rank;
+  //  const u32 numRanks = comm->group->size;
+
+
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+    const u64 totalSize = count * rankContext->sizeOf[datatype];
+
+
+    if (sendbuf == MPI_IN_PLACE) {
+        sendbuf = recvbuf;
+    }
+
+    if (root == rank) {
+        u32 i, j;
+        memcpy(recvbuf, sendbuf, totalSize);
+
+        void *p = malloc(totalSize);	// temporary buffer for recv
+        if (!p)
+            MPI_ERROR("Temporary buffer allocation for MPI_Reduce failed.");
+
+        for(i=0;i<numRanks;i++) {
+            if (i==root)
+                continue;
+            MPI_Recv(p, count, datatype, i, 0 /*tag*/, comm, MPI_STATUS_IGNORE);
+
+            if (datatype == MPI_INT) {
+                int *a = recvbuf;
+                int *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+                } else if (op == MPI_LAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] && b[j];
+                    }
+                } else if (op == MPI_BAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] & b[j];
+                    }
+                } else if (op == MPI_LOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] || b[j];
+                    }
+                } else if (op == MPI_BOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] | b[j];
+                    }
+                } else if (op == MPI_LXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+					}
+                } else if (op == MPI_BXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] ^ b[j];
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_LONG) {
+                long *a = recvbuf;
+                long *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+                } else if (op == MPI_LAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] && b[j];
+                    }
+                } else if (op == MPI_BAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] & b[j];
+                    }
+                } else if (op == MPI_LOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] || b[j];
+                    }
+                } else if (op == MPI_BOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] | b[j];
+                    }
+                } else if (op == MPI_LXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                    }
+                } else if (op == MPI_BXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] ^ b[j];
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_LONG_LONG || datatype == MPI_LONG_LONG_INT) {
+                long long *a = recvbuf;
+                long long *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+                } else if (op == MPI_LAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] && b[j];
+                    }
+                } else if (op == MPI_BAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] & b[j];
+                    }
+                } else if (op == MPI_LOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] || b[j];
+                    }
+                } else if (op == MPI_BOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] | b[j];
+                    }
+                } else if (op == MPI_LXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                    }
+                } else if (op == MPI_BXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] ^ b[j];
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_UNSIGNED) {
+                unsigned *a = recvbuf;
+                unsigned *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+                } else if (op == MPI_LAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] && b[j];
+                    }
+                } else if (op == MPI_BAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] & b[j];
+                    }
+                } else if (op == MPI_LOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] || b[j];
+                    }
+                } else if (op == MPI_BOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] | b[j];
+                    }
+                } else if (op == MPI_LXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                    }
+                } else if (op == MPI_BXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] ^ b[j];
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_UNSIGNED_LONG) {
+                unsigned long *a = recvbuf;
+                unsigned long *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+                } else if (op == MPI_LAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] && b[j];
+                    }
+                } else if (op == MPI_BAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] & b[j];
+                    }
+                } else if (op == MPI_LOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] || b[j];
+                    }
+                } else if (op == MPI_BOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] | b[j];
+                    }
+                } else if (op == MPI_LXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                    }
+                } else if (op == MPI_BXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] ^ b[j];
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_UNSIGNED_LONG_LONG) {
+                unsigned long long *a = recvbuf;
+                unsigned long long *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+                } else if (op == MPI_LAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] && b[j];
+                    }
+                } else if (op == MPI_BAND) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] & b[j];
+                    }
+                } else if (op == MPI_LOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] || b[j];
+                    }
+                } else if (op == MPI_BOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] | b[j];
+                    }
+                } else if (op == MPI_LXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                    }
+                } else if (op == MPI_BXOR) {
+                    for(j=0;j<count;j++) {
+                        a[j] = a[j] ^ b[j];
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_FLOAT) {
+                float *a = recvbuf;
+                float *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+// no LAND/BAND/LOR/BOR/LXOR/BXOR
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_DOUBLE) {
+                double *a = recvbuf;
+                double *b = p;
+                if (op == MPI_SUM) {
+                    for(j=0;j<count;j++) {
+                        a[j] += b[j];
+                    }
+                } else if (op == MPI_MIN) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                    }
+                } else if (op == MPI_MAX) {
+                    for(j=0;j<count;j++) {
+                        a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                    }
+// no MINLOC/MAXLOC
+                } else if (op == MPI_PROD) {
+                    for(j=0;j<count;j++) {
+                        a[j] *= b[j];
+                    }
+// no LAND/BAND/LOR/BOR/LXOR/BXOR
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else if (datatype == MPI_DOUBLE_INT) {
+                double_int *a = recvbuf;
+                double_int *b = p;
+                if (op == MPI_MINLOC) {
+                    for(j=0;j<count;j++) {
+                        if (a[j].a > b[j].a) {
+                            a[j].a = b[j].a;
+                            a[j].b = b[j].b;
+                        } else if (a[j].a == b[j].a) {	// get min index if equals
+                            if (a[j].b > b[j].b)
+                                a[j].b = b[j].b;
+                        }
+                    }
+                } else if (op == MPI_MAXLOC) {
+                    for(j=0;j<count;j++) {
+                        if (a[j].a < b[j].a) {
+                            a[j].a = b[j].a;
+                            a[j].b = b[j].b;
+                        } else if (a[j].a == b[j].a) {	// get min index if equal
+                            if (a[j].b > b[j].b)
+                                a[j].b = b[j].b;
+                        }
+                    }
+                } else {
+                    char msg[100];
+                    sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                    MPI_ERROR(msg);
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } // for
+
+        free(p);
+    } else {
+        MPI_Send(sendbuf, count, datatype, root, 0 /*tag*/, comm);
+    }
+
+    return MPI_SUCCESS;
+}
+
+
+
+#if 1   // this works
+int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
+               MPI_Comm comm )
+{
+    // TBD: use comm to determine real "rank"
+    //  const u32 rank = comm->group->rank;
+    //  const u32 numRanks = comm->group->size;
+
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+
+    if (numRanks == 1)	// e.g. comm_self
+        return MPI_SUCCESS;
+
+    //PRINTF("MPI_Bcast buffer %p, count %d, type %d, rank %d\n", buffer,
+    //       count, datatype, rank);
+
+    if (root >= numRanks) {
+        MPI_ERROR("MPI_Bcast: root >= group size? invalid rank\n");
+    }
+    if (root == rank) {
+        u32 i;
+        for(i=0;i<numRanks;i++) {
+            if (i != root) {
+                MPI_Send(buffer, count, datatype, i, 0 /* tag */, comm);
+            }
+        }
+    } else {
+        MPI_Recv(buffer, count, datatype, root, 0 /* tag */, comm, MPI_STATUS_IGNORE);
+    }
+    return MPI_SUCCESS;
+}
+#else  //this works, too.
+int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
+               MPI_Comm comm )
+{
+    // TBD: use comm to determine real "rank"
+    //  const u32 rank = comm->group->rank;
+    //  const u32 numRanks = comm->group->size;
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+
+
+    if (numRanks == 1)	// e.g. comm_self
+        return MPI_SUCCESS;
+
+    //PRINTF("MPI_Bcast buffer %p , count %d , type %d, root %d\n", buffer,
+    //       count, datatype, root);
+
+    if (root >= numRanks) {
+        MPI_ERROR("MPI_Bcast: root >= group size? invalid rank\n");
+    }
+    if (root == rank) {
+        u32 i;
+        MPI_Request req[numRanks];
+        for(i=0;i<numRanks;i++) {
+            if (i != root) {
+                MPI_Isend(buffer, count, datatype, i, 0 /* tag */, comm, &req[i]);
+            } else {
+                req[i] = (MPI_Request)MPI_REQUEST_NULL;
+            }
+        }
+        MPI_Waitall(numRanks, req, MPI_STATUSES_IGNORE);
+
+    } else {
+        MPI_Recv(buffer, count, datatype, root, 0 /* tag */, comm, MPI_STATUS_IGNORE);
+
+    }
+    return MPI_SUCCESS;
+}
+#endif
+
+
+int MPI_Barrier(MPI_Comm comm)
+{
+    long buf[1];
+    long sum=0;
+    long one=1;
+
+    MPI_Reduce(&sum, &one, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Bcast(buf, 1, MPI_LONG, 0 /*root*/, MPI_COMM_WORLD);
+
+    return MPI_SUCCESS;
+}
+

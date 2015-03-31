@@ -125,6 +125,11 @@ typedef int MPI_Datatype;
 // special
 //extern MPI_Datatype MPI_UB;
 
+typedef struct {
+    double a;
+    int b;
+} double_int;
+
 #define MPI_DOUBLE_INT          16
 #define _MPI_LAST_DATATYPE      16
 
