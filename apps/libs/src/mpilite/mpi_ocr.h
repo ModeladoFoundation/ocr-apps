@@ -29,7 +29,7 @@ extern "C" {
 #define OP_IPROBE 3
 
 
-    typedef struct mpiOcrMessage_t 
+typedef struct mpiOcrMessage_t 
     {
         struct // same args as send, plus source and totalSize
         {
@@ -46,7 +46,7 @@ extern "C" {
   
 
 
-    typedef struct rankContext_t 
+typedef struct rankContext_t 
     {
         u32 rank, numRanks, maxTag, mpiInitialized;
         unsigned char sizeOf[17];  // sizeof each datatype
@@ -56,7 +56,7 @@ extern "C" {
         void ** communicators;  // array of ptrs to communicator structure
     } rankContext_t, *rankContextP_t;
 
-    typedef struct messageContext_t 
+typedef struct messageContext_t 
     {
         ocrGuid_t *messageEvents;
         ocrEdtDep_t *messageData;
@@ -66,15 +66,17 @@ extern "C" {
 #define RANK_CONTEXT_SLOT 0
 #define MESSAGE_CONTEXT_SLOT 1
 
-    static inline rankContextP_t getRankContext()
+static inline rankContextP_t getRankContext()
     {
         return ((rankContextP_t)( ocrElsUserGet(RANK_CONTEXT_SLOT)));
     }
-    messageContextP_t getMessageContext();
+static inline messageContextP_t getMessageContext()
+    {
+        return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
+    }
     
-  
-#define MIN(x,y) ((x)<(y)? (x) : (y))
-
+int __mpi_ocr_TRUE(void);
+    
 #ifdef __cplusplus
 }
 #endif

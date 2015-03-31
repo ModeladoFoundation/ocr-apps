@@ -20,16 +20,13 @@
 #define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
 
 // Have to make sure to drag in mainEdt else mpi_ocr.o does not get
-// included in the linked object. We assume at least one of these MPI
-// routines will be called, causing miplite.o to be included in the link.
-void mainEdt(void);
-void __drag_in_mainEdt(void){mainEdt();}
-    
-    
+// included in the linked object. MPI_Init must be called by all MPI
+// programs, and it uses __mpi_ocr_TRUE from mpi_ocr.o, which will drag in
+// the .o file.
 
 int MPI_Init(int *argc, char ***argv)
 {
-    getRankContext()->mpiInitialized = TRUE;
+    getRankContext()->mpiInitialized = __mpi_ocr_TRUE();
     return MPI_SUCCESS;
 }
 
@@ -204,45 +201,79 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     const u32 maxTag = rankContext->maxTag;
     const u64 totalSize = count * rankContext->sizeOf[datatype];
 
-    //PRINTF("MPI_Recv: rank #%d: Receiving on index %d\n", dest, index(source, dest, tag, numRanks, maxTag));
+    messageContextP_t messageContext = getMessageContext();
+    ocrGuid_t *eventP;
 
-    if (MPI_ANY_SOURCE == source || MPI_ANY_TAG == tag)
-        {
-            MPI_WARNING("MPI_Recv does not yet support MPI_ANY_*", MPI_ERR_ARG);
-#if 0
-            if (MPI_ANY_SOURCE == source && MPI_ANY_TAG == tag){
-                int done = FALSE;
-                ocrGuid_t *eventP;
+    // This large IF stmt will keep looking for the appropriate event to
+    // wait on, and when the if completes, eventP will point at the non
+    // NULL_GUID 
+    if (!(MPI_ANY_SOURCE == source || MPI_ANY_TAG == tag)){
+        // need volatile so while loop keeps loading each iteration
+        volatile ocrGuid_t *vEventP =
+            &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
+
+        while (NULL_GUID == *vEventP);  // wait till slot has event guid
+
+        // OK, the location is full: time to wait on the event
+        eventP = (ocrGuid_t *)vEventP;
+        
+    }
+    else { // *ANY* for source, tag, or both
+
+        //        MPI_WARNING("MPI_Recv does not yet support MPI_ANY_*", MPI_ERR_ARG);
+        //#if 0
+        int done = FALSE;  // used by one of the while loops below
+        if (MPI_ANY_SOURCE == source && MPI_ANY_TAG == tag){
                 
-                while(!done){
-                    for (u32 source = 0; source < numRanks; source++){
-                        for (u32 tag = 0; tag <= maxTag; tag++){
-                            eventP =
-                                &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                            if (NULL_GUID != eventP){
-                                done = TRUE;
-                                break;
-                            }
-                        }
-                        if (done){
+            while(!done){
+                for (u32 source = 0; source < numRanks; source++){
+                    for (u32 tag = 0; tag <= maxTag; tag++){
+                        eventP =
+                            &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
+                        if (NULL_GUID != eventP){
+                            done = TRUE;
                             break;
                         }
                     }
+                    if (done){
+                        break;
+                    }
                 }
-                else if (MPI_ANY_SOURCE == source){
-#endif
+            }  // end while
+            
+                
+        } // end both use ANY
+        else if (MPI_ANY_SOURCE == source){
+            while(!done){
+                for (u32 source = 0; source < numRanks; source++){
+                    eventP =
+                        &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
+                    if (NULL_GUID != eventP){
+                        done = TRUE;
+                        break;
+                    }
+                }
+            }
+            
         }
-
-    messageContextP_t messageContext = getMessageContext();
-
-    // need volatile so while loop keeps loading each iteration
-    volatile ocrGuid_t *eventP =
-        &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-
-    while (NULL_GUID == *eventP);  // wait till slot has event guid
-
-    // OK, the location is full: time to wait on the event
-    ocrGuid_t DB = ocrWait(*(ocrGuid_t *)eventP);
+        else { // ANY_TAG
+            while(!done){
+                for (u32 tag = 0; tag <= maxTag; tag++){
+                    eventP =
+                        &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
+                    if (NULL_GUID != eventP){
+                        done = TRUE;
+                        break;
+                    }
+                }
+            }
+            
+        }
+                        
+        //#endif
+    }
+    // Here *eventP is not NULL_GUID, so something to wait on
+    ocrGuid_t DB = ocrWait(*eventP);
 
 
 

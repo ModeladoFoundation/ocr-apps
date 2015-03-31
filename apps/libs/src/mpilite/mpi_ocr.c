@@ -374,7 +374,12 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     return NULL_GUID;
 }
 
- messageContextP_t getMessageContext()
-    {
-        return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
-    }
+// This function's only purpose is to be called by MPI_Init in mpilite.c,
+// which will cause mpi_ocr.o to be dragged into the linked
+// executable. Otherwise it does not, and mainEdt is not defined when the
+// OCR runtime starts up.
+
+int __mpi_ocr_TRUE(void){
+    return TRUE;
+}
+
