@@ -62,17 +62,17 @@ typedef struct messageContext_t
     ocrEdtDep_t *messageData;
 } messageContext_t, *messageContextP_t;
 
-
 #define RANK_CONTEXT_SLOT 0
 #define MESSAGE_CONTEXT_SLOT 1
 
 static inline rankContextP_t getRankContext() {
     return ((rankContextP_t)( ocrElsUserGet(RANK_CONTEXT_SLOT)));
 }
+static inline messageContextP_t getMessageContext() {
+    return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
+}
 
-messageContextP_t getMessageContext();
-
-#define MIN(x,y) ((x)<(y)? (x) : (y))
+int __mpi_ocr_TRUE(void);
 
 #ifdef __cplusplus
 }
