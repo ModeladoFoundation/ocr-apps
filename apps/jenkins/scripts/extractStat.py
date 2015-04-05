@@ -1,33 +1,52 @@
 # Following script will extract lines containing desired statistic
 # and appends it to the output file
+# Generated file format is
+#
+# testname1,runtime
+# testname2,runtime
+# .
+# .
+#
+
 import sys
 import os
 import csv
 import shutil
 import glob
 import math
+import datetime
 
-def output(statDir, filename, namelist, valuelist):
+def output(statDir, filename, namelist, valuelist,archiveDir):
+    # Generate stat file
+    testnameValPair = zip(namelist,valuelist)
     csvfile = open(os.path.join(statDir, filename), 'w')
     writer = csv.writer(csvfile)
-    writer.writerow(tuple(namelist))
-    writer.writerow(tuple(valuelist))
+    for pair in testnameValPair:
+        writer.writerow(tuple(pair))
     csvfile.close()
 
-    # Check if jenkins is running the script
+    # Generate Archive dir path depending on who is running infra. Jenkins or Manual ?
+    archivedirPath = ""
     if (os.getenv("WORKSPACE")):
-        # Purge old .csv , if exist
-        if os.path.isfile(os.path.join(os.getenv("WORKSPACE"), filename)):
-            os.remove(os.path.join(os.getenv("WORKSPACE"), filename))
-
-        shutil.move(filename,os.getenv("WORKSPACE"))
+        # Jenkins running infra
+        archivedirPath = os.path.join(os.getenv("WORKSPACE"), archiveDir)
     else:
-        # Purge old .csv , if exist
-        dest = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME") + "/xstack/", os.pardir)), filename)
-        if os.path.isfile(dest):
-            os.remove(dest)
+        # Manual exec. of infra
+        archivedirPath = os.path.join(os.path.abspath(os.path.join(os.getenv("JJOB_SHARED_HOME"),os.pardir)), archiveDir)
 
-        shutil.move(filename,os.path.dirname(dest))
+    # Check if stat dir exists . if not , create one
+    if not os.path.exists(archivedirPath):
+        print("ERROR ! Jenkins failed to create/copy archived dirs for this regression run . Inspect jenkins PBS configuration\n")
+        sys.exit(1)
+
+    # Purge old .csv , if exist
+    if os.path.isfile(os.path.join(archivedirPath, filename)):
+        msg = "Purging old version of " + filename +"\n"
+        print(msg)
+        os.remove(os.path.join(archivedirPath, filename))
+
+    # Move stat file in Archive dir
+    shutil.move(os.path.join(statDir, filename),archivedirPath)
 
 def main():
     if len(sys.argv) !=3 :
@@ -59,52 +78,56 @@ def main():
         avgtime = totaltime/float(turns)
         elapsedTimeList.append(avgtime)
 
-    # Next, read the running times for scaling runs
-    scaleFileList = glob.glob(statDir+"/scale*.txt")
-    scalenameList = []
-    scalevalueList = []
-    logX = [0,1,2,3,4]
-    logY = []
-    N = 5
-    for file in scaleFileList:
-        fd = open(file,'r')
-        totaltime = 0
-        runcount = 0
-        for line in fd:
-            #example input line from stat file :  user 0.01system 0:00.29elapsed 779%CPU (0avgtext+0avgdata 35452maxresident)k
-            time = (line.split()[2]).split("elapsed")
-            #after above operation time is equal to 0:00.29 ; 0 min and 00.29 sec
-            if len(time) > 1 :
-                totaltime = totaltime + float(time[0].split(':')[0])*60 + float(time[0].split(':')[1])
-                runcount = runcount + 1
-                print(runcount, turns)
-            if runcount >= turns :
-                ans = math.log((float(totaltime)/float(turns)), 2)
-                logY.append(ans)
-                runcount = 0
-                totaltime = 0
-        fd.close()
+#    # Next, read the running times for scaling runs
+#    scaleFileList = glob.glob(statDir+"/scale*.txt")
+#    scalenameList = []
+#    scalevalueList = []
+#    logX = [0,1,2,3,4]
+#    logY = []
+#    N = 5
+#    for file in scaleFileList:
+#        fd = open(file,'r')
+#        totaltime = 0
+#        runcount = 0
+#        for line in fd:
+#            #example input line from stat file :  user 0.01system 0:00.29elapsed 779%CPU (0avgtext+0avgdata 35452maxresident)k
+#            time = (line.split()[2]).split("elapsed")
+#            #after above operation time is equal to 0:00.29 ; 0 min and 00.29 sec
+#            if len(time) > 1 :
+#                totaltime = totaltime + float(time[0].split(':')[0])*60 + float(time[0].split(':')[1])
+#                runcount = runcount + 1
+#                print(runcount, turns)
+#            if runcount >= turns :
+#                ans = math.log((float(totaltime)/float(turns)), 2)
+#                logY.append(ans)
+#                runcount = 0
+#                totaltime = 0
+#        fd.close()
+#
+#        # Compute the regression line using linear least-squares fit (NumPy is too picky & non-transparent)
+#        sumxy = 0
+#        sumx = 0
+#        sumy = 0
+#        sumx2 = 0
+#
+#        for i in logX:
+#            sumxy = sumxy + logX[i]*logY[i]
+#            sumx = sumx + logX[i]
+#            sumy = sumy + logY[i]
+#            sumx2 = sumx2 + logX[i]*logX[i]
+#
+#        scalenameList.append(os.path.basename(file).split(".txt")[0])
+#        scalevalueList.append(((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx)))
 
-        # Compute the regression line using linear least-squares fit (NumPy is too picky & non-transparent)
-        sumxy = 0
-        sumx = 0
-        sumy = 0
-        sumx2 = 0
-
-        for i in logX:
-            sumxy = sumxy + logX[i]*logY[i]
-            sumx = sumx + logX[i]
-            sumy = sumy + logY[i]
-            sumx2 = sumx2 + logX[i]*logX[i]
-
-        scalenameList.append(os.path.basename(file).split(".txt")[0])
-        scalevalueList.append(((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx)))
-
+    # Use build no as stat file name if jenkins running infra else use date time
+    if (os.getenv("WORKSPACE")):
+        filename = os.getenv("BUILD_NUMBER")+".csv"
+    else:
+        filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+ ".csv"
 
     # Now, record the plots for regression & scaling
-    output(statDir, "regressionStat.csv", testnameList, elapsedTimeList)
-    output(statDir, "regressionScaling.csv", scalenameList, scalevalueList)
-
+    output(statDir, filename, testnameList, elapsedTimeList,"regressionResults/NightlyRegressionStat")
+#    output(statDir, filename, scalenameList, scalevalueList,"regressionResults/NightlyScalingStat")
     shutil.rmtree(statDir)
 
 if __name__ == '__main__':

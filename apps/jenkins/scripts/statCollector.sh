@@ -5,12 +5,56 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-python ${JJOB_SHARED_HOME}/xstack/apps/jenkins/scripts/extractStat.py $1 $2
+SCRIPT_FOLDER=${JJOB_SHARED_HOME}/xstack/apps/jenkins/scripts
+
+
+python ${SCRIPT_FOLDER}/extractStat.py $1 $2
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then
-    echo " ---- Statistic extraction SUCCESSFUL ----"
+    echo " ---- Successfully extractd statistic from time files ----"
 else
-    echo " ---- Statistic extraction FAILED ----"
+    echo " ---- Failure in statistic extraction from time files  ----"
+    exit $RET_VAL
 fi
-exit $RET_VAL
+
+# Generate plotGraph.py parsable stat file
+
+python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/regressionResults/NightlyRegressionStat/ ${WORKSPACE}/NightlyRegressionStat.txt
+RET_VAL=$?
+if [ $RET_VAL -eq 0 ]; then
+    echo " ---- Successfully generated plot script parsable regression input file ----"
+else
+    echo " ---- Failure in generation of plot script parsable regression input file ----"
+    exit $RET_VAL
+fi
+
+#python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/regressionResults/NightlyScalingStat/ ${WORKSPACE}/NightlyScalingStat.txt
+#RET_VAL=$?
+#if [ $RET_VAL -eq 0 ]; then
+#    echo " ---- Successfully generated plot script parsable regression input file ----"
+#else
+#    echo " ---- Failure in generation of plot script parsable regression input file ----"
+#    exit $RET_VAL
+#fi
+
+# Plot these stat files
+cat ${WORKSPACE}/NightlyRegressionStat.txt
+python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time(sec)" "${WORKSPACE}/RegressionTrendlineplot.png"
+RET_VAL=$?
+if [ $RET_VAL -eq 0 ]; then
+    echo " ---- Successfully generated Nightly Regression plot ----"
+else
+    echo " ---- Failure in generation of Nightly Regression plot ----"
+    exit $RET_VAL
+fi
+
+#cat ${WORKSPACE}/NightlyScalingStat.txt
+#python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyScalingStat.txt "Scaling Trend Line" "Build" "Normalized Execution Time(sec)" "${WORKSPACE}/ScalingTrendlineplot.png"
+#RET_VAL=$?
+#if [ $RET_VAL -eq 0 ]; then
+#    echo " ---- Successfully generated Scaling plot ----"
+#else
+#    echo " ---- Failure in generation of Scaling plot ----"
+#fi
+#exit $RET_VAL
 
