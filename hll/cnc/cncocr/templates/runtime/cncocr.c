@@ -10,10 +10,10 @@
 // Then satisfying the event would give the desired behavior.
 // (We'd also have to check if it's an event or a data block guid.)
 #}
-{% if logEnabled %}
+#ifdef CNC_DEBUG_LOG
 FILE *cncDebugLog;
+#endif /* CNC_DEBUG_LOG */
 
-{% endif -%}
 {% block arch_itemcoll_defs %}
 // XXX - depending on misc.h for HAL on FSim
 
@@ -64,6 +64,7 @@ static ocrGuid_t _itemBlockCreate(u32 tagLength, ocrGuid_t next, ItemBlock **out
     block->count = 0;
     block->next = next;
     *out = block;
+    ocrDbRelease(blockGuid);
     return blockGuid;
 }
 
@@ -342,13 +343,14 @@ static void _itemCollUpdate(ocrGuid_t coll, u8 *tag, u32 tagLength, u8 role, ocr
     params->mode = mode;
     hal_memCopy(params->tag, tag, tagLength, 0);
     // affinity
-    // TODO - affinitizing each bucket with node, and running all the 
+    // TODO - affinitizing each bucket with node, and running all the
     // lookup stuff on that node would probably be cheaper.
     {% if affinitiesEnabled -%}
     ocrAffinityGetCurrent(&params->affinity);
     {%- else -%}
     params->affinity = NULL_GUID;
     {%- endif %}
+    ocrDbRelease(paramsGuid);
     // edt
     ocrGuid_t hashEdtGuid, templGuid;
     ocrEdtTemplateCreate(&templGuid, _doHashEdt, 0, 2);
@@ -385,9 +387,9 @@ void _cncGetSingleton(ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, o
 }
 
 static ocrGuid_t _shutdownEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-{% if logEnabled %}
+#ifdef CNC_DEBUG_LOG
     fclose(cncDebugLog);
-{% endif -%}
+#endif /* CNC_DEBUG_LOG */
     ocrShutdown();
     return NULL_GUID;
 }

@@ -16,9 +16,9 @@
 #if defined(__i386__) || defined(__x86_64__)
 #    define CNCOCR_x86 1
 #elif defined(TG_ARCH)
-{% if logEnabled %}
-#    error "CnC logging is not supported on FSim."
-{% endif -%}
+#    ifdef CNC_DEBUG_LOG
+#        error "CnC debug logging is not supported on FSim (use trace instead)."
+#    endif /* CNC_DEBUG_LOG */
 #    define CNCOCR_TG 1
 #else
 #    warning UNKNOWN PLATFORM (possibly unsupported)
@@ -29,6 +29,11 @@
 #undef ASSERT
 #define ASSERT(x) assert(x)
 #include <assert.h>
+#endif
+
+#ifdef CNCOCR_TG
+// use TG printf function
+#define printf PRINTF
 #endif
 
 {% block arch_includes %}{% endblock arch_includes %}
@@ -121,11 +126,11 @@ static inline void *_cncItemDataPtr(void *item) {
 void *cncMalloc(size_t count);
 void cncFree(void *itemPtr);
 
-{% if logEnabled %}
+#ifdef CNC_DEBUG_LOG
 /**********************************\
 ********* CNC DEBUG LOGGING ********
 \**********************************/
 extern FILE *cncDebugLog;
+#endif /* CNC_DEBUG_LOG */
 
-{% endif -%}
 #endif /*{{defname}}*/
