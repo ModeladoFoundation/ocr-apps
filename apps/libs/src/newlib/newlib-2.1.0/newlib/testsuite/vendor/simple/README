@@ -1,0 +1,15 @@
+WARNING: the relative offset of the tools location may be different for you...
+
+For building simple.c into xstg executable:
+
+../../xstack.4.1.0/ss/bin/bin/xstg-linux-elf-clang -v -O0 -S -o simple.S simple.c
+../../xstack.4.1.0/ss/bin/bin/xstg-linux-elf-as -v -o simple.o simple.S
+../../xstack.4.1.0/ss/bin/bin/xstg-linux-elf-ld -T xstg.ld -o simple /home/dennis.obrien/repos/xstack.4.1.0/ss/bin/xstg-linux-elf/lib/crt0.o /home/dennis.obrien/repos/xstack.4.1.0/ss/bin/xstg-linux-elf/lib/init.o simple.o /home/dennis.obrien/repos/xstack.4.1.0/ss/bin/xstg-linux-elf/lib/fini.o /home/dennis.obrien/repos/xstack.4.1.0/ss/bin/xstg-linux-elf/lib/libgloss.a /home/dennis.obrien/repos/xstack.4.1.0/ss/bin/xstg-linux-elf/lib/libc.a
+
+
+For building simple.c into x86_64 executable:
+../../xstack.4.1.0/ss/bin/bin/xstg-linux-elf-clang --target=x86_64 -v -O0 -S -o simple-x86.S simple.c
+../../xstack.4.1.0/ss/bin/bin/x86_64-linux-elf-as -v -o simple-x86.o simple-x86.S
+../../xstack.4.1.0/ss/bin/bin/x86_64-linux-elf-ld ....????
+
+I realized that I need to make a x86_64 version of newlib to do the ld...

@@ -1,0 +1,11 @@
+/*
+This code does a 1D (3 point) stencil computation on a set of points
+It takes as input:
+NX is the number of points in each task
+NITER is the number of timesteps
+
+the datapoints are initialized to zero except the boundary values which are set to 1
+the particular stencil implemented is anew(i) = a(i) + .5*(a(i+1)-a(i-1))
+
+Known issue: This stencil is numerically unstable so that the values blow up over time. Keep NITER < 100
+

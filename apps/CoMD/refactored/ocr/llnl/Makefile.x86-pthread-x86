@@ -2,6 +2,11 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+ifndef APPS_ROOT
+$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+APPS_ROOT ?= ../../../..
+endif
+
 REPO_TOP ?= ${APPS_ROOT}/..
 
 # APPS

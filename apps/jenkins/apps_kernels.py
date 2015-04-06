@@ -168,6 +168,32 @@ job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
 }
 
+# 1d Stencil David Scott
+job_ocr_build_kernel_1DStencilDavidScott_x86_regression = {
+    'name': 'ocr-build-kernel-1DStencilDavidScott_x86-regression',
+    'depends': ('ocr-build-x86-pthread-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'Stencil1D x86-pthread-x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david/install'}
+}
+
+job_ocr_run_kernel_1DStencilDavidScott_x86_remote_regression = {
+    'name': 'ocr-run-kernel-1DStencilDavidScott-x86-remote-regression',
+    'depends': ('ocr-build-kernel-1DStencilDavidScott-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': '1DStencil x86-pthread-x86 ocr-run-kernel-1DStencilDavidScott-x86-remote-regression',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david/install'}
+}
+
+
 #Aggregates execution times in csv file
 job_gatherStats = {
     'name': 'gatherStats',

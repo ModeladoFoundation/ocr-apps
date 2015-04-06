@@ -1,0 +1,20 @@
+This version of CoMD is identical to the original doe application (doe-original)
+except that it relies on newlib which runs on top of OCR.
+
+To compile:
+    - Build newlib in apps/libs/src:
+        - cd ../../../../apps/libs/src/newlib
+        - ARCH=x86 make all install
+    - Build the ocrshim library (temporary step):
+        - cd ocrshim
+        - make all install
+    - Build this application
+        - make
+
+The executable will be called CoMD-serial and will be located in install/x86.
+
+The pots directory is in ../../../datasets.
+
+Note: Currently, newlib uses a OCR-shim layer for demonstration purposes; this
+will be replaced by the OCR runtime.
+

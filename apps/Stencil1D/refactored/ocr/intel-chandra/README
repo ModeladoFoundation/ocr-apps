@@ -1,0 +1,5 @@
+Running:
+
+make -f Makefile.<OCR_TYPE> run
+
+#Edit the source file (#defines) to change the number of subdomains and timesteps if needed first
