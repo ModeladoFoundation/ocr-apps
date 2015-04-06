@@ -28,7 +28,7 @@ ARFLAGS := rsv
 RANLIB := ranlib
 
 INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
-CFLAGS := -std=c99
+CFLAGS := -std=c99 -g -O0
 
 CFLAGS := $(CFLAGS) $(INC_FLAGS)
 
