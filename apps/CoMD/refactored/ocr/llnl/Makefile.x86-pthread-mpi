@@ -3,7 +3,8 @@
 # removed or modified.
 
 ifndef APPS_ROOT
-    $(error APPS_ROOT not set. Source app_env.bash from apps/ first!)
+$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+APPS_ROOT ?= ../../../..
 endif
 
 REPO_TOP ?= ${APPS_ROOT}/..

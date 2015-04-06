@@ -1,0 +1,29 @@
+// XSTG crt0 code
+#include <stdlib.h>
+
+__asm__
+ (
+  " .org 0x0\n"
+  " .section .init,\"ax\"\n"
+  " .global _start\n"
+  " .align 8\n"
+  " .type _start,@function\n"
+  "_start:\n"
+  " jrel __start\n"
+  );
+
+extern void _init (void);
+extern void _fini (void);
+extern int main(int argc, char** argv);
+
+static void start () __asm__ ("__start") __attribute ((__used__));
+static void
+start (int argc, char **argv, char **env)
+{
+  _init ();
+  if (atexit (_fini) != 0)
+    _exit (-1);
+
+  /* Call the user program.  */
+  _exit (main (argc, argv));
+}
