@@ -7,7 +7,7 @@ int cncMain(int argc, char *argv[]) {
 
     CombinationsArgs args;
 
-    // TODO: initialize graph context parameters
+    // initialize graph context parameters
     // u32 n, k;
     context->n = atoi(argv[1]);
     context->k = atoi(argv[2]);
@@ -17,6 +17,6 @@ int cncMain(int argc, char *argv[]) {
 
     // Exit when the graph execution completes
     CNC_SHUTDOWN_ON_FINISH(context);
-    
+
     return 0;
 }

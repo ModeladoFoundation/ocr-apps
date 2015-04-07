@@ -3,23 +3,21 @@
 
 #include "{{g.name}}_internal.h"
 
-{% if logEnabled %}
+#ifdef CNC_DEBUG_LOG
 #ifndef CNCOCR_x86
 #error "Debug logging mode only supported on x86 targets"
 #endif
 #include <pthread.h>
 pthread_mutex_t _cncDebugMutex = PTHREAD_MUTEX_INITIALIZER;
-{% endif -%}
+#endif /* CNC_DEBUG_LOG */
 
 {{g.name}}Ctx *{{g.name}}_create() {
-{% if logEnabled %}
+#ifdef CNC_DEBUG_LOG
     // init debug logger (only once)
     if (!cncDebugLog) {
-        const char *logPath = getenv("CNC_LOG");
-        if (!logPath) logPath = "./cnc_events.log";
-        cncDebugLog = fopen(logPath ,"w");
+        cncDebugLog = fopen(CNC_DEBUG_LOG, "w");
     }
-{% endif -%}
+#endif /* CNC_DEBUG_LOG */
     // allocate the context datablock
     ocrGuid_t contextGuid;
     {{g.name}}Ctx *context;
@@ -43,7 +41,9 @@ for (i=0; i<CNC_TABLE_SIZE; i++) {
     // Add one level of indirection to help with contention
     SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
     *_ptr = NULL_GUID;
+    ocrDbRelease(itemTable[i]);
 }
+ocrDbRelease(context->_items.{{i.collName}});
 {% else -%}
 ocrEventCreate(&context->_items.{{i.collName}}, OCR_EVENT_IDEM_T, true);
 {% endif -%}
@@ -123,11 +123,13 @@ static ocrGuid_t _finalizerEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t d
 void {{g.name}}_launch({{g.name}}Args *args, {{g.name}}Ctx *context) {
     {{g.name}}Args *argsCopy;
     ocrGuid_t graphEdtGuid, finalEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
+    ocrDbRelease(context->_guids.self);
     // copy the args struct into a data block
     // TODO - I probably need to free this sometime
     if (sizeof(*args) > 0) {
         SIMPLE_DBCREATE(&argsDbGuid, (void**)&argsCopy, sizeof(*args));
         *argsCopy = *args;
+        ocrDbRelease(argsDbGuid);
     }
     // Don't need to copy empty args structs
     else {
@@ -170,6 +172,7 @@ void {{g.name}}_await({{
     {% for x in g.finalizeFunction.tag -%}
     _tagPtr[_i++] = {{x}};
     {% endfor -%}
+    ocrDbRelease(_tagGuid);
     {% else -%}
     ocrGuid_t _tagGuid = NULL_GUID;
     {% endif -%}
@@ -184,11 +187,9 @@ extern int cncMain(int argc, char *argv[]);
 #pragma weak mainEdt
 ocrGuid_t mainEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     // Unpack argc and argv (passed thru from mainEdt)
-    u64 *packedArgs = depv[0].ptr;
-    int i, argc = packedArgs[0];
-    char *argBytes = (char*)packedArgs;
+    int i, argc = OCR_MAIN_ARGC;
     char **argv = cncMalloc(sizeof(char*)*argc);
-    for (i=0; i<argc; i++) argv[i] = argBytes+packedArgs[i+1];
+    for (i=0; i<argc; i++) argv[i] = OCR_MAIN_ARGV(i);
     // Run user's cncEnvIn function
     cncMain(argc, argv);
     cncFree(argv);

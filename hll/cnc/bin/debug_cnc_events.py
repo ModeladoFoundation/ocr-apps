@@ -21,7 +21,7 @@ with open(infile, 'r') as f:
         lhs, rhs = line.split(" @ ")
         cmd, coll = lhs.split(" ")
         tag = tuple(map(int, rhs.split(", ")))
-        # handle 
+        # handle
         if cmd == 'PUT':
             items[coll].add(tag)
         elif cmd == 'GET-DEP':
@@ -36,13 +36,17 @@ with open(infile, 'r') as f:
         else:
             print "Unknown command", cmd
 
+def withFinalizerLast(x):
+    collName = x[0]
+    return (collName.endswith("_finalize"), x)
+
 # Which steps are stuck?
 running = []
 print "*** STALLED STEPS ***"
-for collname, coll in steps.iteritems():
-    for tag, stepdeps in coll.iteritems():
+for collname, coll in sorted(steps.iteritems(), key=withFinalizerLast):
+    for tag, stepdeps in sorted(coll.iteritems()):
         missing = []
-        for dep in stepdeps:
+        for dep in sorted(stepdeps):
             icoll, itag = dep
             if not itag in items[icoll]:
                 missing.append(dep)
@@ -52,7 +56,7 @@ for collname, coll in steps.iteritems():
             running.append((collname, tag))
 
 # Which steps were still running at exit?
-print 
+print
 print "*** RUNNING STEPS ***"
-for collname, tag in running:
+for collname, tag in sorted(running):
     print collname, tag
