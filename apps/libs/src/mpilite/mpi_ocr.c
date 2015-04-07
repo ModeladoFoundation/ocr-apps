@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <ocr.h>
+
+#define ENABLE_EXTENSION_LEGACY 1
+#define ENABLE_EXTENSION_RTITF 1
 #include <extensions/ocr-legacy.h>
 #include <extensions/ocr-runtime-itf.h>
 #include <mpi_ocr.h>
