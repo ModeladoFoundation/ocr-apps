@@ -26,7 +26,7 @@ if ! [ -d venv ]; then
 fi
 
 if ! [ -f .depsOK ]; then
-    echo <<EOF
+    cat <<EOF
 ERROR! Failed to set up python environment.
 See $CNCOCR_INSTALL/env/setup.log for details.
 EOF

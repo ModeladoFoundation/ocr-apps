@@ -1,0 +1,9 @@
+#!/bin/sh
+
+ROOT=${CNCOCR_INSTALL?"Missing CNCOCR_INSTALL environment variable"}
+
+[ -f $ROOT/py/.depsOK ] || bash $ROOT/py/bootstrap.sh
+
+source $ROOT/py/venv/bin/activate
+
+$ROOT/event_grapher.py "$@"

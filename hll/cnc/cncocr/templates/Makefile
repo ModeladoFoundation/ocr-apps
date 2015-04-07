@@ -1,3 +1,22 @@
+# CnC-OCR Makefile for {{g.name}}
+TARGET := {{g.name}}
+
+#################################################
+# DEBUG / OPTIMIZATION OPTIONS
+
+# Optimization flags
+CFLAGS += -g -O2
+
+# Enable CnC assertions and runtime sanity checks
+CFLAGS += -DCNC_DEBUG
+
+# Enable debug logging for x86 (also serializes step execution)
+#CFLAGS += -DCNC_DEBUG_LOG=\"./cnc_events.log\"
+
+
+#################################################
+# ENVIRONMENT CHECK
+
 # Make sure we can find OCR
 ifndef OCR_INSTALL
 ifndef XSTACK_SRC
@@ -8,13 +27,19 @@ OCR_INSTALL=$(XSTACK_SRC)/ocr/install/$(OCR_TYPE)
 endif
 OCR_HOME=$(shell dirname `dirname $(OCR_INSTALL)`)
 
-# Auto-parse arguments for "make run"
+
+#################################################
+# INCLUDES
+
+# Auto-parse arguments for "make run" (WORKLOAD_ARGS)
 WORKLOAD_INPUT_FILE_IDX := 0
--include $(XSTACK_SRC)/apps/makefiles/make-pre.inc
+-include $(OCR_HOME)/ocr-apps/makefiles/make-pre.inc
 
-
-TARGET := {{g.name}}
 include cncocr_support/{{g.name}}_defs.mk
+
+
+#################################################
+# OCR VARIANTS
 
 # Distributed (MPI)
 ifeq "$(OCR_TYPE)" "x86-pthread-mpi"
@@ -35,28 +60,41 @@ CFG_NAME ?= jenkins-1block-lockableDB.cfg
 
 # Default (x86 shared memory)
 else
-CC := gcc
+ifdef CNCOCR_INSTALL
+OCR_CONFIG := $(CNCOCR_INSTALL)/resources/cncocr/config/m8w.cfg
+else
 CFG_NAME ?= mach-hc-8w-lockableDB.cfg
-RUN := ./$(TARGET)
 endif
+endif
+
+CC ?= gcc
+RUN ?= ./$(TARGET)
+OCR_CONFIG ?= $(OCR_INSTALL)/config/$(CFG_NAME)
+OCR_AR := $(OCR_INSTALL)/lib/libocr.a
+
+
+#################################################
+# COMPILER FLAGS SETUP
 
 CC_OPTS := -pthread
 LDFLAGS := -lm $(CC_OPTS)
 IFLAGS := -I. -Icncocr_support -I$(OCR_INSTALL)/include
-CFLAGS := $(IFLAGS) -DCNC_DEBUG -g -O2 -Wall $(CC_OPTS)
+CFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall $(CC_OPTS)
 
 CNC_RUNTIME_SRCS := cncocr_support/cncocr.c
 CNC_OP_SRCS := $(patsubst %,cncocr_support/{{g.name}}_%_ops.c,step item graph)
+HEADERS := {{g.name}}_defs.h $(wildcard cncocr_support/*.h)
 SRCS := Main.c {{g.name}}.c $(CNC_OP_SRCS) $(CNC_STEP_SRCS) $(CNC_RUNTIME_SRCS)
 OBJS := $(patsubst %.c,%.o,$(SRCS))
 
-OCR_CONFIG ?= $(OCR_INSTALL)/config/$(CFG_NAME)
-OCR_AR=$(OCR_INSTALL)/lib/libocr.a
+
+#################################################
+# MAKE TARGETS
 
 compile: $(TARGET)
 
 # building source files
-%.o: %.c | $(OCR_AR)
+%.o: %.c $(HEADERS) | $(OCR_AR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # build the ocr runtime if needed
@@ -81,3 +119,4 @@ gdb: compile
 	OCR_CONFIG=$(OCR_CONFIG) gdb -ex r --args ./$(TARGET) $(WORKLOAD_ARGS)
 
 .PHONY: compile clean run gdb
+

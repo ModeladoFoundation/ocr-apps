@@ -11,11 +11,11 @@ APPS_ROOT       ?= $(XSTACK_SRC)/apps
 APPS_LIBS_ROOT  ?= $(XSTACK_SRC)/apps/libs/tg
 
 # OCR_TYPE
-OCR_TYPE        ?= tg
+OCR_TYPE    ?= tg
 
 # TG
-TG_ROOT    ?= $(XSTACK_SRC)/../intel/ss
-TG_INSTALL ?= $(XSTACK_SRC)/../intel/ss/install
+TG_ROOT     ?= $(XSTACK_SRC)/../intel/ss
+TG_INSTALL  ?= $(TG_ROOT)/install
 
 # OCR
 XE_TARGET   ?= tg-null-tg-xe
@@ -69,10 +69,6 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
 TARGET := {{g.name}}
-
-# Space separated list of directory names in apps/libs/src
-# that need to be built. These will be built for ARCH
-REQ_LIBS := libc
 
 # Space separated list of source files
 # (runtime source files and step code files are automatically included later)
