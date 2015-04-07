@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <ocr.h>
+
+#define ENABLE_EXTENSION_LEGACY 1
+#define ENABLE_EXTENSION_RTITF 1
 #include <extensions/ocr-legacy.h>
 #include <extensions/ocr-runtime-itf.h>
 #include <mpi_ocr.h>
@@ -230,7 +233,7 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
                     for (u32 tag = 0; tag <= maxTag; tag++){
                         eventP =
                             &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                        if (NULL_GUID != eventP) {
+                        if (NULL_GUID != *eventP) {
                             done = TRUE;
                             break;
                         }
@@ -246,7 +249,7 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
                 for (u32 source = 0; source < numRanks; source++) {
                     eventP =
                         &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                    if (NULL_GUID != eventP){
+                    if (NULL_GUID != *eventP){
                         done = TRUE;
                         break;
                     }
@@ -258,7 +261,7 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
                 for (u32 tag = 0; tag <= maxTag; tag++){
                     eventP =
                         &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                    if (NULL_GUID != eventP){
+                    if (NULL_GUID != *eventP){
                         done = TRUE;
                         break;
                     }
@@ -269,7 +272,13 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
         //#endif
     }
     // Here *eventP is not NULL_GUID, so something to wait on
-    ocrGuid_t DB = ocrWait(*eventP);
+        ocrGuid_t DB = ocrWait(*eventP);
+    void *myPtr;
+    ocrGuid_t newDB;
+    u64 dbSize;
+
+    //ocrLegacyBlockProgress(*eventP, &newDB, &myPtr, &dbSize);
+    //assert(DB==newDB);
 
 
 
@@ -279,6 +288,7 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     // that the DB guid delivered by ocrWait == the guid stashed in the array.
     ocrEdtDep_t *dataP =
         &(messageContext->messageData[index(source, dest, tag, numRanks, maxTag)]);
+    //assert(dataP == myPtr);
 
     ocrGuid_t receivedGuid = dataP->guid;
 
