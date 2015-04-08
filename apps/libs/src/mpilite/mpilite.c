@@ -19,8 +19,17 @@
 #include "mpi.h"
 #include <malloc.h>
 
+#define MPI_INFO(s,w) {PRINTF("WARNING: %s, will return" #w "\n",(s));}
 #define MPI_WARNING(s,w) {PRINTF("WARNING: %s, returning" #w "\n",(s)); return (w);}
 #define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
+
+#define CHECK_RANGE(r,max,fn,kind)  if(r < 0 || r >= max) \
+{\
+    char msg[100];\
+    sprintf(msg, "%s: %s %d is out of range [0..%d)",fn, kind, r,max);\
+    MPI_WARNING(msg, MPI_ERR_ARG);\
+}\
+
 
 // Have to make sure to drag in mainEdt else mpi_ocr.o does not get
 
@@ -34,13 +43,24 @@ int MPI_Init(int *argc, char ***argv)
     return MPI_SUCCESS;
 }
 
+int MPI_Init_thread( int *argc, char ***argv, int required, int *provided )
+{
+    int ret = MPI_SUCCESS;
+
+    *provided = MPI_THREAD_SINGLE;
+    if (required > *provided) {
+        MPI_WARNING("INFO MPI_Init_thread required higher threading model.\n", MPI_ERR_ARG);
+    }
+    MPI_Init(argc, argv);
+    //A threaded MPI program that does not call MPI_Init_thread is an incorrect program
+    return ret;
+}
+
 int MPI_Initialized(int *flag)
 {
     *flag = getRankContext()->mpiInitialized;
     return MPI_SUCCESS;
 }
-
-
 
 int MPI_Finalize(void)
 {
@@ -125,8 +145,8 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
 }
 
 // Do a send.
-int MPI_Send (void *buf,int count, MPI_Datatype
-	      datatype, int dest, int tag, MPI_Comm comm)
+int MPI_Send(void *buf,int count, MPI_Datatype
+              datatype, int dest, int tag, MPI_Comm comm)
 {
     // TBD: use comm to determine real "rank"
 
@@ -137,6 +157,9 @@ int MPI_Send (void *buf,int count, MPI_Datatype
     const u64 totalSize = count * rankContext->sizeOf[datatype];
 
     //PRINTF("MPI_Send: rank #%d: Sending on index %d\n", source, index(source, dest, tag, numRanks, maxTag));
+    CHECK_RANGE(dest, numRanks, "MPI_Send", "dest");
+    CHECK_RANGE(tag, maxTag+1, "MPI_Send", "tag");
+
 
     messageContextP_t messageContext = getMessageContext();
 
@@ -159,7 +182,7 @@ int MPI_Send (void *buf,int count, MPI_Datatype
     mpiOcrMessageP_t ptr;
 
     ocrDbCreate(&(dataP->guid), (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
-		DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+                DB_PROP_NONE, NULL_GUID, NO_ALLOC);
     dataP->ptr = (void *)ptr;
 
     // fill message header
@@ -194,10 +217,11 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
 }
 
 
-int MPI_Recv (void *buf,int count, MPI_Datatype
-	      datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
+int MPI_Recv(void *buf,int count, MPI_Datatype
+              datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
 {
     // TBD: use comm to determine real "rank"
+    int ret = MPI_SUCCESS;
 
     rankContextP_t rankContext = getRankContext();
     const u32 dest = rankContext->rank;
@@ -212,6 +236,10 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     // wait on, and when the if completes, eventP will point at the non
     // NULL_GUID
     if (!(MPI_ANY_SOURCE == source || MPI_ANY_TAG == tag)) {
+
+        CHECK_RANGE(source, numRanks, "MPI_Recv", "source");
+        CHECK_RANGE(tag, maxTag+1, "MPI_Recv", "tag");
+
         // need volatile so while loop keeps loading each iteration
         volatile ocrGuid_t *vEventP =
             &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
@@ -223,8 +251,6 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
 
     } else { // *ANY* for source, tag, or both
 
-        //        MPI_WARNING("MPI_Recv does not yet support MPI_ANY_*", MPI_ERR_ARG);
-        //#if 0
         int done = FALSE;  // used by one of the while loops below
         if (MPI_ANY_SOURCE == source && MPI_ANY_TAG == tag){
 
@@ -245,6 +271,9 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
             }  // end while
         } // end both use ANY
         else if (MPI_ANY_SOURCE == source) {
+
+            CHECK_RANGE(tag, maxTag+1, "MPI_Recv", "tag");
+
             while(!done){
                 for (u32 source = 0; source < numRanks; source++) {
                     eventP =
@@ -257,6 +286,9 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
             }
 
         } else { // ANY_TAG
+
+            CHECK_RANGE(source, numRanks, "MPI_Recv", "source");
+
             while(!done){
                 for (u32 tag = 0; tag <= maxTag; tag++){
                     eventP =
@@ -272,12 +304,12 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
         //#endif
     }
     // Here *eventP is not NULL_GUID, so something to wait on
-        ocrGuid_t DB = ocrWait(*eventP);
+    ocrGuid_t DB; //= ocrWait(*eventP);
     void *myPtr;
     ocrGuid_t newDB;
     u64 dbSize;
 
-    //ocrLegacyBlockProgress(*eventP, &newDB, &myPtr, &dbSize);
+    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize);
     //assert(DB==newDB);
 
 
@@ -288,7 +320,7 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     // that the DB guid delivered by ocrWait == the guid stashed in the array.
     ocrEdtDep_t *dataP =
         &(messageContext->messageData[index(source, dest, tag, numRanks, maxTag)]);
-    //assert(dataP == myPtr);
+    //    assert(dataP == myPtr);
 
     ocrGuid_t receivedGuid = dataP->guid;
 
@@ -300,6 +332,8 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
         }
 
     mpiOcrMessageP_t ptr = (mpiOcrMessageP_t) dataP->ptr;
+
+    assert(ptr == myPtr);
 
     // Destroy event and set array entry to NULL_GUID so sender can send
     // again.
@@ -314,38 +348,37 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     ocrEventDestroy(*eventP);
     *eventP = NULL_GUID;
 
-#if 0 //MPI_DEBUG
-    // TBD: check message header components against the args.
+    // Check message header components against the args. If they're wrong,
+    // then the system got the wrong message!
 
     // checked explicitly below    ptr->header.count = count;
-    ptr->header.datatype != datatype;
-    ptr->header.source    != source;
-    ptr->header.dest      != dest;
-    ptr->header.tag       != tag;
-    ptr->header.comm      != comm;
+    // OK if user is dishonest about datatype as long as the recv size
+    // isn't smaller than send size
+    // ptr->header.datatype != datatype;
+
+    assert(ptr->header.source == source || MPI_ANY_SOURCE == source);
+    assert(ptr->header.dest == dest);
+    assert(ptr->header.tag == tag || MPI_ANY_TAG == tag);
+
+    // comm probably doesn't matter as long as src/dest match
+    // ptr->header.comm      != comm;
     // OK, checked by count comparison ptr->header.totalSize != totalSize;
-#endif
 
-    u64 sizeToCopy;
+    u64 sizeToCopy = MIN(ptr->header.totalSize, totalSize);
 
-    // Make sure receiving buffer is big enough, else error
+    // Make sure receiving buffer is big enough, else warning with truncation
     if (count < ptr->header.count)
         {
             char msg[100];
             sprintf((char*)&msg, "MPI_Recv: count %d < message count %d ", count, ptr->header.count);
-            MPI_WARNING(msg, MPI_ERR_TRUNCATE);
+            MPI_INFO(msg, ret = MPI_ERR_TRUNCATE);
         }
     else if (totalSize < ptr->header.totalSize)
         {
             char msg[100];
             sprintf((char*)&msg, "MPI_Recv: buf size %d < message size %d ", totalSize,
                     ptr->header.totalSize);
-            MPI_WARNING(msg, MPI_ERR_TRUNCATE);
-        }
-    else
-        {
-            // so message is <= buf size
-            sizeToCopy = ptr->header.totalSize;
+            MPI_INFO(msg, ret = MPI_ERR_TRUNCATE);
         }
 
     // copy into buf starting at .data
@@ -363,7 +396,24 @@ int MPI_Recv (void *buf,int count, MPI_Datatype
     // OK, finished with DB, delete it
     ocrDbDestroy(receivedGuid);
 
-    return MPI_SUCCESS;
+    return ret;
+}
+
+int MPI_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                 int dest, int sendtag,
+                 void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                 int source, int recvtag,
+                 MPI_Comm comm, MPI_Status *status)
+{
+    int retSend = MPI_Send(sendbuf, sendcount, sendtype, dest, sendtag, comm);
+    int retRecv = MPI_Recv(recvbuf, recvcount, recvtype, source, recvtag,
+                           comm, status);
+    if (MPI_SUCCESS == retSend){
+        return retRecv;
+    } else {
+        return retSend;
+    }
+
 }
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status)
@@ -378,7 +428,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
 
     MPI_Request r;
 
-    if (NULL == request || NULL == (r = *request))
+    if (NULL == request || MPI_REQUEST_NULL == (r = *request))
         {
             //MPI_REQUEST_NULL is legitimate.
             //MPI_WARNING("MPI_Wait: bad value for request", MPI_ERR_REQUEST);
@@ -404,7 +454,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
         case OP_IPROBE:
             {
                 free(r);
-                r = MPI_REQUEST_NULL;
+                *request = MPI_REQUEST_NULL;
 
                 // does a return
                 MPI_WARNING("MPI_Wait: MPI_Probe NYI",MPI_ERR_INTERN);
@@ -412,23 +462,16 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
         default:
             {
                 free(r);
-                r = MPI_REQUEST_NULL;
+                *request = MPI_REQUEST_NULL;
                 // does a return
                 MPI_WARNING("MPI_Wait: unknown request operation type",MPI_ERR_REQUEST);
             }
         }
 
     free (r);
-    r = MPI_REQUEST_NULL;
+    *request = MPI_REQUEST_NULL;
     return ret;
 }
-
-int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
-{
-    *flag = TRUE;
-    return MPI_Wait(request, status);
-}
-
 
 int MPI_Waitall(int count, MPI_Request *array_of_requests,
     MPI_Status *array_of_statuses)
@@ -442,13 +485,51 @@ int MPI_Waitall(int count, MPI_Request *array_of_requests,
             MPI_Wait(&array_of_requests[i], MPI_STATUS_IGNORE);
         }
     else
-        for(i=0;i<count;i++) {
-            MPI_Wait(&array_of_requests[i], &array_of_statuses[i]);
+        {
+            // First try waiting only on the Sends, in case the Recvs need
+            // the send to happen
+            for(i=0;i<count;i++) {
+                MPI_Request *r = &array_of_requests[i];
+                if (MPI_REQUEST_NULL != *r && OP_ISEND == (*r)->op)
+                    {
+                        MPI_Wait(r, &array_of_statuses[i]);
+                    }
+            }
+            for(i=0;i<count;i++) {
+                MPI_Wait(&array_of_requests[i], &array_of_statuses[i]);
+            }
         }
-
     return MPI_SUCCESS;
 }
 
+
+int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
+{
+    *flag = TRUE;
+    return MPI_Wait(request, status);
+}
+
+int MPI_Testall(int count, MPI_Request *array_of_requests, int *flag,
+                MPI_Status *array_of_statuses)
+{
+    int i;
+    int temp;
+#ifdef DEBUG_MPI
+    printf("testall: %d aor %p aos %p\n", count, array_of_requests, array_of_statuses);
+#endif
+    *flag = 1;  // True if all requests have completed; false otherwise (logical)
+    if (array_of_statuses == MPI_STATUSES_IGNORE)
+        for(i=0;i<count;i++) {
+            MPI_Test(&array_of_requests[i], &temp, MPI_STATUS_IGNORE);
+            *flag = *flag && temp;
+        }
+    else
+        for(i=0;i<count;i++) {
+            MPI_Test(&array_of_requests[i], &temp, &array_of_statuses[i]);
+            *flag = *flag && temp;
+        }
+    return MPI_SUCCESS;
+}
 
 
 int MPI_Get_count(
@@ -495,7 +576,7 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
         u32 i, j;
         memcpy(recvbuf, sendbuf, totalSize);
 
-        void *p = malloc(totalSize);	// temporary buffer for recv
+        void *p = malloc(totalSize);    // temporary buffer for recv
         if (!p)
             MPI_ERROR("Temporary buffer allocation for MPI_Reduce failed.");
 
@@ -543,7 +624,7 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
                 } else if (op == MPI_LXOR) {
                     for(j=0;j<count;j++) {
                         a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
-					}
+                                        }
                 } else if (op == MPI_BXOR) {
                     for(j=0;j<count;j++) {
                         a[j] = a[j] ^ b[j];
@@ -858,7 +939,7 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
                         if (a[j].a > b[j].a) {
                             a[j].a = b[j].a;
                             a[j].b = b[j].b;
-                        } else if (a[j].a == b[j].a) {	// get min index if equals
+                        } else if (a[j].a == b[j].a) {  // get min index if equals
                             if (a[j].b > b[j].b)
                                 a[j].b = b[j].b;
                         }
@@ -868,7 +949,7 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
                         if (a[j].a < b[j].a) {
                             a[j].a = b[j].a;
                             a[j].b = b[j].b;
-                        } else if (a[j].a == b[j].a) {	// get min index if equal
+                        } else if (a[j].a == b[j].a) {  // get min index if equal
                             if (a[j].b > b[j].b)
                                 a[j].b = b[j].b;
                         }
@@ -893,6 +974,20 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
     return MPI_SUCCESS;
 }
 
+#define ALLREDUCE_ROOT 0
+int MPI_Allreduce ( void *sendbuf, void *recvbuf, int count,
+                    MPI_Datatype datatype, MPI_Op op, MPI_Comm comm )
+{
+
+    if (sendbuf == MPI_IN_PLACE) {
+        sendbuf = recvbuf;
+    }
+
+    MPI_Reduce(sendbuf, recvbuf, count, datatype, op, ALLREDUCE_ROOT, comm);
+    MPI_Bcast(recvbuf, count, datatype, ALLREDUCE_ROOT, comm);
+
+    return MPI_SUCCESS;
+}
 
 
 #if 1   // this works
@@ -907,7 +1002,7 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     const u32 rank = rankContext->rank;
     const u32 numRanks = rankContext->numRanks;
 
-    if (numRanks == 1)	// e.g. comm_self
+    if (numRanks == 1)  // e.g. comm_self
         return MPI_SUCCESS;
 
     //PRINTF("MPI_Bcast buffer %p, count %d, type %d, rank %d\n", buffer,
@@ -940,7 +1035,7 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     const u32 numRanks = rankContext->numRanks;
 
 
-    if (numRanks == 1)	// e.g. comm_self
+    if (numRanks == 1)  // e.g. comm_self
         return MPI_SUCCESS;
 
     //PRINTF("MPI_Bcast buffer %p , count %d , type %d, root %d\n", buffer,
@@ -982,3 +1077,210 @@ int MPI_Barrier(MPI_Comm comm)
     return MPI_SUCCESS;
 }
 
+int MPI_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                void *recvbuf, int recvcount, MPI_Datatype recvtype, int root,
+                MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u64 sendSize = sendcount * rankContext->sizeOf[sendtype];
+    const u64 recvSize = recvcount * rankContext->sizeOf[recvtype];
+
+    if (recvSize < sendSize) {
+        char msg[100];
+        sprintf((char*)&msg, "MPI_Scatter: recv size %d < send size %d ", recvSize, sendSize);
+        MPI_WARNING(msg, MPI_ERR_TRUNCATE);
+    }
+    if (root == rank) {
+         void *target = (char *)recvbuf;
+        memcpy(target, sendbuf + sendSize*root, sendSize);
+
+        for(int i=0; i<numRanks; i++) {
+            if (i == root)
+                continue;
+            void *p = (char *)sendbuf + sendSize*i;
+            MPI_Send(p, sendcount, sendtype, i, 0 /* i tag*/, comm);
+        }
+    } else {
+        MPI_Recv(recvbuf, recvcount, recvtype, root, 0, comm, MPI_STATUS_IGNORE);
+    }
+    return MPI_SUCCESS;
+}
+
+int MPI_Scatterv(const void *sendbuf, const int *sendcounts, const int *displs,
+                 MPI_Datatype sendtype, void *recvbuf, int recvcount,
+                 MPI_Datatype recvtype,
+                 int root, MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u64 sendSize =             rankContext->sizeOf[sendtype];
+    const u64 recvSize = recvcount * rankContext->sizeOf[recvtype];
+
+    if (root == rank) {
+        void *target = (char *)recvbuf;
+        memcpy(target, sendbuf + sendSize * displs[root], sendSize * sendcounts[root]);
+
+        for(int i=0; i<numRanks; i++) {
+            if (i == root)
+                continue;
+            void *p = (char *)sendbuf + sendSize * displs[i];
+            MPI_Send(p, sendcounts[i], sendtype, i, 0 /*i tag*/, comm);
+        }
+    } else {
+        MPI_Recv(recvbuf, recvcount, recvtype, root, 0, comm, MPI_STATUS_IGNORE);
+    }
+    return MPI_SUCCESS;
+}
+
+int MPI_Gather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+               void *recvbuf, int recvcount, MPI_Datatype recvtype, int root,
+               MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u64 sendSize = sendcount * rankContext->sizeOf[sendtype];
+    const u64 recvSize = recvcount * rankContext->sizeOf[recvtype];
+
+    if (recvSize < sendSize) {
+        char msg[100];
+        sprintf((char*)&msg, "MPI_Gather: recv size %d < send size %d ", recvSize, sendSize);
+        MPI_WARNING(msg, MPI_ERR_TRUNCATE);
+    }
+
+    if (root == rank) {
+        void *target = (char *)recvbuf + recvSize*root;
+        memcpy(target, sendbuf, sendSize);
+
+        for(int i=0; i<numRanks; i++) {
+            if (i == root)
+                continue;
+            void *p = (char *)recvbuf + recvSize*i;
+            MPI_Recv(p, recvcount, recvtype, i, 0 /* i tag*/, comm, MPI_STATUS_IGNORE);
+        }
+    } else {
+        MPI_Send(sendbuf, sendcount, sendtype, root, 0, comm);
+    }
+    return MPI_SUCCESS;
+}
+
+int MPI_Gatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                void *recvbuf, const int *recvcounts, const int *displs,
+                MPI_Datatype recvtype, int root, MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u64 sendSize = sendcount * rankContext->sizeOf[sendtype];
+    const u64 recvSize =             rankContext->sizeOf[recvtype];
+
+    if (root == rank) {
+        void *target = (char *)recvbuf + recvSize * displs[root];
+        memcpy(target, sendbuf, sendSize);
+
+        for(int i=0; i<numRanks; i++) {
+            if (i == root)
+                continue;
+            void *p = (char *)recvbuf + recvSize * displs[i];
+            MPI_Recv(p, recvcounts[i], recvtype, i, 0 /* i tag*/, comm, MPI_STATUS_IGNORE);
+        }
+    } else {
+        MPI_Send((void *)sendbuf, sendcount, sendtype, root, 0, comm);
+    }
+    return MPI_SUCCESS;
+}
+
+#define ALLGATHER_ROOT  0
+int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                   void *recvbuf, const int *recvcounts, const int *displs,
+                   MPI_Datatype recvtype, MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 numRanks = rankContext->numRanks;
+
+    MPI_Gatherv(sendbuf, sendcount, sendtype, recvbuf, recvcounts, displs, recvtype, ALLGATHER_ROOT, comm);
+
+    // total bcast count is displacement start of last rank + count of the
+    // last rank
+    MPI_Bcast(recvbuf, displs[numRanks-1]+recvcounts[numRanks-1] /* assumes..  */ , recvtype, ALLGATHER_ROOT, comm);
+    return MPI_SUCCESS;
+}
+
+
+
+int MPI_Allgather(void *sendbuf, int  sendcount,
+                  MPI_Datatype sendtype, void *recvbuf, int recvcount,
+                  MPI_Datatype recvtype, MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 numRanks = rankContext->numRanks;
+
+    MPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, ALLGATHER_ROOT, comm);
+    MPI_Bcast(recvbuf, recvcount*numRanks, recvtype, ALLGATHER_ROOT, comm);
+    return MPI_SUCCESS;
+}
+
+
+int MPI_Alltoall(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                 void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                 MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u64 sendSize = sendcount * rankContext->sizeOf[sendtype];
+    const u64 recvSize = recvcount * rankContext->sizeOf[recvtype];
+
+    // Send before receiving so don't hang!
+    for(int i=0; i<numRanks; i++) {
+        if (i == rank) {
+        } else {
+            MPI_Send((void *)sendbuf, sendcount, sendtype, i, 0 /* i */, comm);
+        }
+        sendbuf = (char *)sendbuf + sendSize;
+    }
+    for(int i=0; i<numRanks; i++) {
+        if (i == rank) {
+            memcpy(recvbuf, (char*)sendbuf + sendSize*i, recvSize);
+        } else {
+            MPI_Recv(recvbuf, recvcount, recvtype, i, 0 /* rank */, comm, MPI_STATUS_IGNORE);
+        }
+        recvbuf = (char *)recvbuf + recvSize;
+    }
+    return MPI_SUCCESS;
+
+}
+
+int MPI_Abort(MPI_Comm comm, int errorcode)
+{
+    exit(errorcode);
+    return 0;
+}
+
+double MPI_Wtime( void )	// Time in seconds since an arbitrary time in the past.
+{
+#if 0
+    struct timeval now;
+    int rc;
+    double ret;
+    rc = gettimeofday(&now, NULL);	// rc always 0 for now
+    ret = (double) now.tv_sec + (double) now.tv_usec * 1.0e-6;
+    return ret;
+#endif
+    // cheat, race condition, but will be monotonically increasing so
+    // people won't get div/by/zero if they do ratios of time diffs
+    static double ret = 0;
+
+    return (ret += 0.001);
+}
+
+int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
+{
+    // TBD: cheat!!
+    *newcomm = comm;
+
+    return MPI_SUCCESS;
+}
