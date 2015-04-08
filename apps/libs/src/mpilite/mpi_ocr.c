@@ -338,6 +338,8 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_ITW);
         }
 #endif
+
+    return NULL_GUID;
 }
 
 
