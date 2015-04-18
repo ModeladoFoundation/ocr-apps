@@ -1,0 +1,9 @@
+1) Make sure the "sdsc-ocr" directory is under <xstack_dir>/apps/hpgmg/
+2) The x86-pthread-x86 target is built
+
+To run: OCR_TYPE=x86-pthread-x86 make run <log of box dimension> <total number of boxes>
+    Eg: OCR_TYPE=x86-pthread-x86 make run 4 8
+
+Increasing the box dimension or total number of boxes may lead to out of memory errors. The OCR configuration file should be modified (with more memory) to work around this error.
+
+The current version implements the following configuration: BiCGSTAB+Cheby+FMGCycle. If comparing with Sam's code, then the following flags need to be used: -DUSE_BICGSTAB=1 -DUSE_SUBCOMM=1 -DUSE_FCYCLES=1 -DUSE_CHEBY=1  -DSTENCIL_FUSE_BC=1. The following HPGMG commit (Sam's code) was used for comparison: 762ce20259eba74e42df3aeb8f91a9074c4ff457 (Wed Sep 10 10:13:02)
