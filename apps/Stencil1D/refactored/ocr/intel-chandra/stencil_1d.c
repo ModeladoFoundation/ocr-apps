@@ -1,13 +1,16 @@
 #include "ocr.h"
 #include "ocr-std.h"
+#include <stdlib.h>
 
-#include "stdlib.h"
-
-#define SUBDOMAIN_SIZE 1
-#define NSUBDOMAINS 4
-#define HALO_RADIUS 1
+//default values
+#define NPOINTS 4
+#define NRANKS 4
 #define NTIMESTEPS 10
-#define NTIMESTEPS_SYNC 10
+#define NTIMESTEPS_SYNC 5
+#define ITIMESTEP0 1
+#define HALO_RADIUS 1
+
+#define NORM 1e-6
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -21,755 +24,1020 @@
 
 typedef struct
 {
-    ocrEdt_t FUNC;
+    ocrEdt_t FNC;
     ocrGuid_t TML;
     ocrGuid_t EDT;
-    ocrGuid_t EVT;
+    ocrGuid_t OET;
 } MyOcrTaskStruct_t;
 
 typedef struct
 {
-    s32 lb, ub, N, id, itimestep;
-    ocrGuid_t DB_xIn, DB_xOut;
-
-    ocrGuid_t EVNT_lsend_finish[2], EVNT_rsend_finish[2], EVNT_lrecv_finish[2], EVNT_rrecv_finish[2];
-    ocrGuid_t EVNT_lsend_ack[2], EVNT_rsend_ack[2];
-} memberHandle_t;
+    s64 NP, NR; //global problem size, number of ranks
+    s64 NT, NT_SYNC, IT0;
+    s64 HR;
+} gSettingsH_t;
 
 typedef struct
 {
-    s64 count;
-    ocrGuid_t member[]; //each member is a guid containing a handle of memberHandle_t
-} globalHandle_t;
+    s64 id, lb, ub, np; // rank id, local bounds, local points
+    s64 itimestep;
+} settingsH_t;
 
-ocrGuid_t FUNC_mainInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-    ocrGuid_t FUNC_initSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-        ocrGuid_t FUNC_init(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-
-ocrGuid_t FUNC_mainCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-    ocrGuid_t FUNC_mainComputeManager(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-        ocrGuid_t FUNC_computeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-            ocrGuid_t FUNC_compute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                ocrGuid_t FUNC_iterate(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FUNC_resetEvents(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-
-ocrGuid_t FUNC_mainFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-
-ocrGuid_t FUNC_mainInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+typedef struct
 {
-    PRINTF("%s\n", __func__);
-    s32 _paramc, _depc, _idep;
+    ocrGuid_t DBK_xIn, DBK_xOut;
+} dataH_t;
 
-    u64 nsubdomains                 = paramv[0];
+typedef struct
+{
+    ocrGuid_t EVT_Lsend_fin, EVT_Rsend_fin;
+    ocrGuid_t EVT_Lrecv_start, EVT_Rrecv_start;
+    ocrGuid_t EVT_Lrecv_fin, EVT_Rrecv_fin;
+} eventH_t;
 
-    ocrGuid_t DB_globalHandle       = depv[0].guid;
-    globalHandle_t *CP_globalHandle = depv[0].ptr;
+typedef struct
+{
+    ocrGuid_t DBK_settingsH; //-->settingsH_t
+    ocrGuid_t DBK_dataH; //--> dataH_t
+    ocrGuid_t DBK_eventHs[2]; //--> eventH_t[2]
+} rankH_t;
 
-    CP_globalHandle->count          = (s64) nsubdomains;
+typedef struct
+{
+    s64 itimestep; //tag
+    ocrGuid_t DBK_gSettingsH; // Commandline parameters/settings
+    ocrGuid_t DBK_gSettingsHs; //-> Broadcasted parameters/settings gSettingsH_t[]
+    ocrGuid_t DBK_rankHs; //--> rankH_t[]
+} globalH_t;
 
-    u64 initSpawner_paramv[1]  = { nsubdomains };
+void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e, s64* n);
 
-    MyOcrTaskStruct_t TS_initSpawner; _paramc = 1; _depc = 1;
+ocrGuid_t FNC_settingsInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
-    TS_initSpawner.FUNC = FUNC_initSpawner;
-    ocrEdtTemplateCreate( &TS_initSpawner.TML, TS_initSpawner.FUNC, _paramc, _depc );
+ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+    ocrGuid_t FNC_init_gSettingsH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+    ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+        ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+            ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
-    ocrEdtCreate(         &TS_initSpawner.EDT, TS_initSpawner.TML,
-                          EDT_PARAM_DEF, initSpawner_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_FINISH, NULL_GUID, NULL );
+ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+    ocrGuid_t FNC_globalMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+        ocrGuid_t FNC_rankMultiTimestepSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+            ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_Lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
-    _idep = 0;
-    ocrAddDependence(     DB_globalHandle, TS_initSpawner.EDT, _idep++, DB_MODE_ITW ); //Fires up individual EDTs to allocated subdomain DBs, EDTs
+ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+
+void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e, s64* n)
+{
+    s64 N = ub_g - lb_g + 1;
+
+    *s = id*N/R + lb_g;
+    *e = (id+1)*N/R + lb_g - 1;
+
+    *n = *e - *s + 1;
+}
+
+ocrGuid_t FNC_settingsInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    gSettingsH_t* PTR_gSettingsH_0 = depv[0].ptr;
+
+    PTR_gSettingsH_0->NP = (s64) paramv[0];
+    PTR_gSettingsH_0->NR = (s64) paramv[1];
+    PTR_gSettingsH_0->NT = (s64) paramv[2];
+    PTR_gSettingsH_0->NT_SYNC = (s64) paramv[3];
+    PTR_gSettingsH_0->IT0 = (s64) paramv[4];
+    PTR_gSettingsH_0->HR = (s64) paramv[5];
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_initSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_init_gSettingsH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    gSettingsH_t* PTR_gSettingsH_0 = depv[0].ptr;
+    gSettingsH_t* PTR_gSettingsH = depv[1].ptr;
+
+    PTR_gSettingsH->NP = PTR_gSettingsH_0->NP;
+    PTR_gSettingsH->NR = PTR_gSettingsH_0->NR;
+    PTR_gSettingsH->NT = PTR_gSettingsH_0->NT;
+    PTR_gSettingsH->NT_SYNC = PTR_gSettingsH_0->NT_SYNC;
+    PTR_gSettingsH->IT0 = PTR_gSettingsH_0->IT0;
+    PTR_gSettingsH->HR = PTR_gSettingsH_0->HR;
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
-    u32 nsubdomains                 = (u32) paramv[0];
+    ocrGuid_t DBK_gSettingsH_0 = depv[0].guid;
+    ocrGuid_t DBK_globalH = depv[1].guid;
 
-    globalHandle_t *CP_globalHandle = depv[0].ptr;
+    gSettingsH_t* PTR_gSettingsH_0 = depv[0].ptr;
+    globalH_t* PTR_globalH = depv[1].ptr;
+
+    u64 NR = PTR_gSettingsH_0->NR;
+    u64 IT0 = PTR_gSettingsH_0->IT0;
+
+    PTR_globalH->itimestep = IT0;
+
+    gSettingsH_t* PTR_gSettingsH;
+    ocrDbCreate( &(PTR_globalH->DBK_gSettingsH), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+    //settingsInit
+    ocrGuid_t TS_init_gSettingsH_OET;
+    ocrEventCreate( &TS_init_gSettingsH_OET, OCR_EVENT_STICKY_T, false );
+
+    MyOcrTaskStruct_t TS_init_gSettingsH;
+
+    TS_init_gSettingsH.FNC = FNC_init_gSettingsH;
+    ocrEdtTemplateCreate( &TS_init_gSettingsH.TML, TS_init_gSettingsH.FNC, 0, 2 );
+
+    ocrEdtCreate( &TS_init_gSettingsH.EDT, TS_init_gSettingsH.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_init_gSettingsH.OET );
+
+    ocrAddDependence( TS_init_gSettingsH.OET, TS_init_gSettingsH_OET, 0, DB_MODE_NULL );
+
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH_0, TS_init_gSettingsH.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_init_gSettingsH.EDT, _idep++, DB_MODE_ITW );
+
+    ocrGuid_t* PTR_gSettingsHs;
+    ocrDbCreate( &PTR_globalH->DBK_gSettingsHs, (void **) &PTR_gSettingsHs, sizeof(ocrGuid_t)*NR,
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+    ocrGuid_t* PTR_rankHs;
+    ocrDbCreate( &PTR_globalH->DBK_rankHs, (void **) &PTR_rankHs, sizeof(ocrGuid_t)*NR,
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+    MyOcrTaskStruct_t TS_rankInitSpawner; _paramc = 0; _depc = 4;
+
+    TS_rankInitSpawner.FNC = FNC_rankInitSpawner;
+    ocrEdtTemplateCreate( &TS_rankInitSpawner.TML, TS_rankInitSpawner.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_rankInitSpawner.EDT, TS_rankInitSpawner.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, NULL ); //Fires up individual EDTs to allocate subdomain DBs, EDTs
+
+    _idep = 0;
+    ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_rankInitSpawner.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_globalH->DBK_gSettingsHs, TS_rankInitSpawner.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_globalH->DBK_rankHs, TS_rankInitSpawner.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_init_gSettingsH_OET, TS_rankInitSpawner.EDT, _idep++, DB_MODE_NULL );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    PRINTF("%s\n", __func__);
+    s32 _paramc, _depc, _idep;
+
+    ocrGuid_t DBK_gSettingsH = depv[0].guid;
+    ocrGuid_t DBK_gSettingsHs = depv[1].guid;
+    ocrGuid_t DBK_rankHs = depv[2].guid;
+
+    gSettingsH_t *PTR_gSettingsH = depv[0].ptr;
+    ocrGuid_t* PTR_gSettingsHs = depv[1].ptr;
+    ocrGuid_t* PTR_rankHs = depv[2].ptr;
+
+    u64 NR = PTR_gSettingsH->NR;
 
     //spawn N intializer EDTs
-    PRINTF("#Subdomains %d\n", NSUBDOMAINS);
+    PRINTF("#Subdomains %d\n", NR);
 
-    MyOcrTaskStruct_t TS_init; _paramc = 1; _depc = 1;
+    MyOcrTaskStruct_t TS_rankInit; _paramc = 1; _depc = 3;
 
-    u64 init_paramv[1];
+    u64 init_paramv[1] = {-1}; //each spawned EDT gets its rank or id
 
-    TS_init.FUNC = FUNC_init;
-    ocrEdtTemplateCreate( &TS_init.TML, TS_init.FUNC, _paramc, _depc );
+    TS_rankInit.FNC = FNC_rankInit;
+    ocrEdtTemplateCreate( &TS_rankInit.TML, TS_rankInit.FNC, _paramc, _depc );
 
     s64 i;
-    for( i = 0; i < nsubdomains; i++ )
+    for( i = 0; i < NR; i++ )
     {
-        memberHandle_t *CP_memberHandle;
-        ocrDbCreate(  &(CP_globalHandle->member[i]), (void **) &CP_memberHandle, sizeof(memberHandle_t),
-                      DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+        gSettingsH_t* PTR_gSettingsH;
+        ocrDbCreate( &(PTR_gSettingsHs[i]), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
+                     DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+        rankH_t *PTR_rankH;
+        ocrDbCreate( &(PTR_rankHs[i]), (void **) &PTR_rankH, sizeof(rankH_t),
+                     DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
         init_paramv[0] = (u64) i;
-        ocrEdtCreate(     &TS_init.EDT, TS_init.TML,
-                          EDT_PARAM_DEF, init_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, NULL );
+        ocrEdtCreate( &TS_rankInit.EDT, TS_rankInit.TML,
+                      EDT_PARAM_DEF, init_paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, NULL_GUID, NULL );
 
         _idep = 0;
-        ocrAddDependence( CP_globalHandle->member[i], TS_init.EDT, _idep++, DB_MODE_ITW );
+        ocrAddDependence( DBK_gSettingsH, TS_rankInit.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( PTR_gSettingsHs[i], TS_rankInit.EDT, _idep++, DB_MODE_ITW );
+        ocrAddDependence( PTR_rankHs[i], TS_rankInit.EDT, _idep++, DB_MODE_ITW );
     }
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_init(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    PRINTF("%s\n", __func__);
+    s32 _paramc, _depc, _idep;
+
+    ocrGuid_t DBK_gSettingsH_0 = (ocrGuid_t) depv[0].guid;
+    ocrGuid_t DBK_gSettingsH = (ocrGuid_t) depv[1].guid;
+    ocrGuid_t DBK_rankH = (ocrGuid_t) depv[2].guid;
+
+    rankH_t *PTR_rankH = (rankH_t*) depv[2].ptr;
+
+    //settingsInit
+    ocrGuid_t TS_init_gSettingsH_OET;
+    ocrEventCreate( &TS_init_gSettingsH_OET, OCR_EVENT_STICKY_T, false );
+
+    MyOcrTaskStruct_t TS_init_gSettingsH; _paramc = 0; _depc = 2;
+
+    TS_init_gSettingsH.FNC = FNC_init_gSettingsH;
+    ocrEdtTemplateCreate( &TS_init_gSettingsH.TML, TS_init_gSettingsH.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_init_gSettingsH.EDT, TS_init_gSettingsH.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_init_gSettingsH.OET );
+
+    ocrAddDependence( TS_init_gSettingsH.OET, TS_init_gSettingsH_OET, 0, DB_MODE_NULL );
+
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH_0, TS_init_gSettingsH.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_gSettingsH, TS_init_gSettingsH.EDT, _idep++, DB_MODE_ITW );
+
+    settingsH_t *PTR_settingsH;
+    ocrDbCreate( &(PTR_rankH->DBK_settingsH), (void **) &PTR_settingsH, sizeof(settingsH_t),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+    dataH_t *PTR_dataH;
+    ocrDbCreate( &(PTR_rankH->DBK_dataH), (void **) &PTR_dataH, sizeof(dataH_t),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+    s32 i;
+    for( i = 0; i < 2; i++ )
+    {
+        eventH_t* PTR_eventH;
+        ocrDbCreate(    &(PTR_rankH->DBK_eventHs[i]), (void **) &PTR_eventH, sizeof(eventH_t),
+                        DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    }
+
+    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 6;
+
+    TS_init_rankH.FNC = FNC_init_rankH;
+    ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_init_rankH.EDT, TS_init_rankH.TML,
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, NULL );
+
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH, TS_init_rankH.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_rankH->DBK_settingsH, TS_init_rankH.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_rankH->DBK_dataH, TS_init_rankH.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_rankH->DBK_eventHs[0], TS_init_rankH.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_rankH->DBK_eventHs[1], TS_init_rankH.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_init_gSettingsH_OET, TS_init_rankH.EDT, _idep++, DB_MODE_NULL );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    PRINTF("%s\n", __func__);
+    s32 _paramc, _depc, _idep;
+
+    s64 id = (s64) paramv[0];
+
+    ocrGuid_t DBK_gSettingsH = depv[0].guid;
+    ocrGuid_t DBK_settingsH = depv[1].guid;
+
+    gSettingsH_t *PTR_gSettingsH = (gSettingsH_t*) depv[0].ptr;
+    settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
+    dataH_t *PTR_dataH = (dataH_t*) depv[2].ptr;
+
+    PTR_settingsH->id = id;
+    partition_bounds( PTR_settingsH->id, 0, PTR_gSettingsH->NP-1, PTR_gSettingsH->NR,
+                      &(PTR_settingsH->lb), &(PTR_settingsH->ub), &(PTR_settingsH->np));
+    PTR_settingsH->itimestep = PTR_gSettingsH->IT0;
+
+    s64 subdomain_size = PTR_settingsH->np;
+    s64 HR = PTR_gSettingsH->HR;
+
+    double *xIn, *xOut;
+    ocrDbCreate( &(PTR_dataH->DBK_xIn), (void **) &xIn, sizeof(double)*(subdomain_size+2*HR),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_xOut), (void **) &xOut, sizeof(double)*(subdomain_size),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+
+    MyOcrTaskStruct_t TS_init_dataH; _paramc = 0; _depc = 4;
+
+    TS_init_dataH.FNC = FNC_init_dataH;
+    ocrEdtTemplateCreate( &TS_init_dataH.TML, TS_init_dataH.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_init_dataH.EDT, TS_init_dataH.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, NULL );
+
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH, TS_init_dataH.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_settingsH, TS_init_dataH.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_dataH->DBK_xIn, TS_init_dataH.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_dataH->DBK_xOut, TS_init_dataH.EDT, _idep++, DB_MODE_ITW );
+
+    s64 i;
+    for( i = 0; i < 2; i++ )
+    {
+        eventH_t *PTR_eventH = (eventH_t*) depv[3+i].ptr;
+
+        ocrEventCreate( &PTR_eventH->EVT_Lsend_fin, OCR_EVENT_STICKY_T, false );
+        ocrEventCreate( &PTR_eventH->EVT_Rsend_fin, OCR_EVENT_STICKY_T, false );
+        ocrEventCreate( &PTR_eventH->EVT_Lrecv_start, OCR_EVENT_STICKY_T, true );
+        ocrEventCreate( &PTR_eventH->EVT_Rrecv_start, OCR_EVENT_STICKY_T, true );
+        ocrEventCreate( &PTR_eventH->EVT_Lrecv_fin, OCR_EVENT_STICKY_T, false );
+        ocrEventCreate( &PTR_eventH->EVT_Rrecv_fin, OCR_EVENT_STICKY_T, false );
+    }
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
 
-    s32 subdomainID                 = (s32) paramv[0];
+    gSettingsH_t *PTR_gSettingsH = (gSettingsH_t*) depv[0].ptr;
+    settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
+    double *xIn = (double*) depv[2].ptr;
+    double *xOut = (double*) depv[3].ptr;
 
-    ocrGuid_t DB_memberHandle       = (ocrGuid_t) depv[0].guid;
+    s64 np = PTR_settingsH->np;
+    s64 id = PTR_settingsH->id;
+    s64 lb = PTR_settingsH->lb;
+    s64 ub = PTR_settingsH->ub;
 
-    memberHandle_t *CP_memberHandle = (memberHandle_t*) depv[0].ptr;
-
-    double *xIn, *xOut;
-    ocrDbCreate(    &(CP_memberHandle->DB_xIn), (void **) &xIn, sizeof(double)*(SUBDOMAIN_SIZE+2*HALO_RADIUS),
-                    DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-    ocrDbCreate(    &(CP_memberHandle->DB_xOut), (void **) &xOut, sizeof(double)*(SUBDOMAIN_SIZE),
-                    DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-
-    CP_memberHandle->N = SUBDOMAIN_SIZE*NSUBDOMAINS;
-    CP_memberHandle->id = subdomainID;
-    CP_memberHandle->lb = subdomainID*SUBDOMAIN_SIZE;
-    CP_memberHandle->ub = (subdomainID+1)*SUBDOMAIN_SIZE-1;
-
-    CP_memberHandle->itimestep = 0;
+    s64 NR = PTR_gSettingsH->NR;
+    s64 HR = PTR_gSettingsH->HR;
 
     s64 i;
 
-    for( i = 0; i < SUBDOMAIN_SIZE; i++ )
+    for( i = 0; i < np; i++ )
     {
-        xIn[i+HALO_RADIUS] = (double) ( CP_memberHandle->lb + i );
+        xIn[i+HR] = (double) ( lb + i );
         xOut[i] = 0.;
     }
 
-    for( i = 0; i < HALO_RADIUS; i++ )
+    for( i = 0; i < HR; i++ )
     {
         xIn[i] = -111.;
-        xIn[SUBDOMAIN_SIZE+HALO_RADIUS+i] = -111.;
+        xIn[np + HR + i] = -111.;
     }
 
-    if( subdomainID == 0)
+    if( id == 0 )
     {
-        for( i = -HALO_RADIUS; i < 0; i++ )
-            xIn[i+HALO_RADIUS] = (double) ( CP_memberHandle->lb + i );
+        for( i = -HR; i < 0; i++ )
+            xIn[i+HR] = (double) ( lb + i );
     }
 
-    if( subdomainID == NSUBDOMAINS-1)
+    if( id == NR-1)
     {
-        for( i = SUBDOMAIN_SIZE; i < SUBDOMAIN_SIZE+HALO_RADIUS; i++ )
-            xIn[i+HALO_RADIUS] = (double) ( CP_memberHandle->lb + i );
+        for( i = np; i < np + HR; i++ )
+            xIn[i+HR] = (double) ( lb + i );
     }
 
-    for( i = 0; i < SUBDOMAIN_SIZE+2*HALO_RADIUS; i++ )
-        PRINTF("ID: %d xIn[%d]=%f\n", subdomainID, i, xIn[i]);
-
-    for( i = 0; i < 2; i++ )
-    {
-        ocrEventCreate( &CP_memberHandle->EVNT_lrecv_finish[i], OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &CP_memberHandle->EVNT_rrecv_finish[i], OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &CP_memberHandle->EVNT_lsend_finish[i], OCR_EVENT_STICKY_T, true );
-        ocrEventCreate( &CP_memberHandle->EVNT_rsend_finish[i], OCR_EVENT_STICKY_T, true );
-        ocrEventCreate( &CP_memberHandle->EVNT_lsend_ack[i], OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &CP_memberHandle->EVNT_rsend_ack[i], OCR_EVENT_STICKY_T, false );
-    }
-
-    ocrDbRelease( DB_memberHandle );
+    for( i = 0; i < np + 2*HR; i++ )
+        PRINTF("ID: %d xIn[%ld]=%f\n", id, i, xIn[i]);
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_mainCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
-    s32 _paramc, _depc, _idep;
+    u32 _paramc, _depc, _idep;
 
-    u64 nsubdomains     = NSUBDOMAINS;
-    u64 ntimesteps      = NTIMESTEPS;
-    u64 ntimesteps_sync = NTIMESTEPS_SYNC;
+    ocrGuid_t DBK_globalH = depv[0].guid;
 
-    u64 itimestep   = 1;
+    globalH_t *PTR_globalH = depv[0].ptr;
 
-    ocrGuid_t DB_globalHandle       = depv[0].guid;
+    MyOcrTaskStruct_t TS_globalMultiTimestepper; _paramc = 1; _depc = 2;
 
-    globalHandle_t *CP_globalHandle = depv[0].ptr;
+    u64 computeSpawner_paramv[1] = { NULL_GUID };
 
-    MyOcrTaskStruct_t TS_mainComputeManager; _paramc = 4; _depc = 1;
+    TS_globalMultiTimestepper.FNC = FNC_globalMultiTimestepper;
+    ocrEdtTemplateCreate( &TS_globalMultiTimestepper.TML, TS_globalMultiTimestepper.FNC, _paramc, _depc );
 
-    u64 computeSpawner_paramv[4] = { nsubdomains, ntimesteps, ntimesteps_sync, itimestep };
-
-    TS_mainComputeManager.FUNC = FUNC_mainComputeManager;
-    ocrEdtTemplateCreate(   &TS_mainComputeManager.TML, TS_mainComputeManager.FUNC, _paramc, _depc );
-
-    ocrEdtCreate(           &TS_mainComputeManager.EDT, TS_mainComputeManager.TML,
-                            EDT_PARAM_DEF, computeSpawner_paramv, EDT_PARAM_DEF, NULL,
-                            EDT_PROP_FINISH, NULL_GUID, &TS_mainComputeManager.EVT );
+    ocrEdtCreate( &TS_globalMultiTimestepper.EDT, TS_globalMultiTimestepper.TML,
+                  EDT_PARAM_DEF, computeSpawner_paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, NULL );
 
     _idep = 0;
-    ocrAddDependence(       DB_globalHandle, TS_mainComputeManager.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_mainComputeManager(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_globalMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 _paramc, _depc, _idep;
+    u32 _paramc, _depc, _idep;
 
-    u64 nsubdomains = paramv[0];
-    u64 ntimesteps  = paramv[1];
-    u64 ntimesteps_sync = paramv[2];
-    u64 itimestep   = paramv[3];
+    ocrGuid_t TS_rankMultiTimestepSpawner_OET_old = (ocrGuid_t) paramv[0];
+
+    ocrGuid_t DBK_gSettingsH = depv[0].guid;
+    ocrGuid_t DBK_globalH = depv[1].guid;
+
+    gSettingsH_t *PTR_gSettingsH = depv[0].ptr;
+    globalH_t *PTR_globalH = depv[1].ptr;
+
+    u64 itimestep = (u64) PTR_globalH->itimestep;
+
+    u64 NT = PTR_gSettingsH->NT;
+    u64 NT_SYNC = PTR_gSettingsH->NT_SYNC;
+
+    if( TS_rankMultiTimestepSpawner_OET_old != NULL_GUID )
+        ocrEventDestroy(TS_rankMultiTimestepSpawner_OET_old);
 
     PRINTF("%s Timestep %d\n", __func__, itimestep);
 
-    if( itimestep <= NTIMESTEPS )
+    if( itimestep <= NT )
     {
-        ocrGuid_t DB_globalHandle       = depv[0].guid;
+        ocrGuid_t TS_rankMultiTimestepSpawner_OET;
+        MyOcrTaskStruct_t TS_rankMultiTimestepSpawner; _paramc = 0; _depc = 4;
 
-        globalHandle_t *CP_globalHandle = depv[0].ptr;
+        ocrEventCreate( &TS_rankMultiTimestepSpawner_OET, OCR_EVENT_STICKY_T, false );
 
-        ocrGuid_t TS_computeSpawner_EVT;
-        MyOcrTaskStruct_t TS_computeSpawner; _paramc = 4; _depc = 1;
+        TS_rankMultiTimestepSpawner.FNC = FNC_rankMultiTimestepSpawner;
+        ocrEdtTemplateCreate( &TS_rankMultiTimestepSpawner.TML, TS_rankMultiTimestepSpawner.FNC, _paramc, _depc );
 
-        ocrEventCreate(         &TS_computeSpawner_EVT, OCR_EVENT_STICKY_T, false );
+        ocrEdtCreate( &TS_rankMultiTimestepSpawner.EDT, TS_rankMultiTimestepSpawner.TML,
+                      EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_FINISH, NULL_GUID, &TS_rankMultiTimestepSpawner.OET );
 
-        TS_computeSpawner.FUNC = FUNC_computeSpawner;
-        ocrEdtTemplateCreate(   &TS_computeSpawner.TML, TS_computeSpawner.FUNC, _paramc, _depc );
-
-        ocrEdtCreate(           &TS_computeSpawner.EDT, TS_computeSpawner.TML,
-                                EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                                EDT_PROP_FINISH, NULL_GUID, &TS_computeSpawner.EVT );
-
-        ocrAddDependence(       TS_computeSpawner.EVT, TS_computeSpawner_EVT, 0, DB_MODE_NULL );
+        ocrAddDependence( TS_rankMultiTimestepSpawner.OET, TS_rankMultiTimestepSpawner_OET, 0, DB_MODE_NULL );
 
         _idep = 0;
-        ocrAddDependence(       DB_globalHandle, TS_computeSpawner.EDT, _idep++, DB_MODE_ITW );
+        ocrAddDependence( DBK_gSettingsH, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_globalH, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_ITW );
+        ocrAddDependence( PTR_globalH->DBK_gSettingsHs, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( PTR_globalH->DBK_rankHs, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
 
-        itimestep += NTIMESTEPS_SYNC;
+        itimestep += NT_SYNC;
 
-        if( itimestep <= NTIMESTEPS )
+        if( itimestep <= NT )
         {
-            MyOcrTaskStruct_t TS_mainComputeManager; _paramc = 4; _depc = 2;
-            u64 mainComputeManager_paramv[4] = { nsubdomains, ntimesteps, ntimesteps_sync, itimestep };
+            MyOcrTaskStruct_t TS_globalMultiTimestepper; _paramc = 1; _depc = 3;
+            u64 mainComputeManager_paramv[1] = { TS_rankMultiTimestepSpawner_OET };
 
-            TS_mainComputeManager.FUNC = FUNC_mainComputeManager;
-            ocrEdtTemplateCreate(   &TS_mainComputeManager.TML, TS_mainComputeManager.FUNC, _paramc, _depc );
+            TS_globalMultiTimestepper.FNC = FNC_globalMultiTimestepper;
+            ocrEdtTemplateCreate( &TS_globalMultiTimestepper.TML, TS_globalMultiTimestepper.FNC, _paramc, _depc );
 
-            ocrEdtCreate(           &TS_mainComputeManager.EDT, TS_mainComputeManager.TML,
-                                    EDT_PARAM_DEF, mainComputeManager_paramv, EDT_PARAM_DEF, NULL,
-                                    EDT_PROP_FINISH, NULL_GUID, &TS_mainComputeManager.EVT );
+            ocrEdtCreate( &TS_globalMultiTimestepper.EDT, TS_globalMultiTimestepper.TML,
+                          EDT_PARAM_DEF, mainComputeManager_paramv, EDT_PARAM_DEF, NULL,
+                          EDT_PROP_NONE, NULL_GUID, NULL );
 
             _idep = 0;
-            ocrAddDependence(       DB_globalHandle, TS_mainComputeManager.EDT, _idep++, DB_MODE_ITW );
-            ocrAddDependence(       TS_computeSpawner_EVT, TS_mainComputeManager.EDT, _idep++, DB_MODE_NULL );
+            ocrAddDependence( DBK_gSettingsH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( TS_rankMultiTimestepSpawner_OET, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_NULL );
         }
     }
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_computeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_rankMultiTimestepSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
-    s32 _paramc, _depc, _idep;
+    u32 _paramc, _depc, _idep;
 
-    u64 nsubdomains = paramv[0];
-    u64 ntimesteps  = paramv[1];
-    u64 ntimesteps_sync = paramv[2];
-    u64 itimestep   = paramv[3];
+    ocrGuid_t DBK_gSettingsH = depv[0].guid;
+    ocrGuid_t DBK_globalH = depv[1].guid;
+    ocrGuid_t DBK_gSettingsHs = depv[2].guid;
+    ocrGuid_t DBK_rankHs = depv[3].guid;
 
-    globalHandle_t *CP_globalHandle = depv[0].ptr;
+    gSettingsH_t *PTR_gSettingsH = depv[0].ptr;
+    globalH_t* PTR_globalH = depv[1].ptr;
+    ocrGuid_t* PTR_gSettingsHs = depv[2].ptr;
+    ocrGuid_t* PTR_rankHs = depv[3].ptr;
+
+    u64 NR = PTR_gSettingsH->NR;
+    u64 NT = PTR_gSettingsH->NT;
+    u64 NT_SYNC = PTR_gSettingsH->NT_SYNC;
+
+    u64 itimestep = (u64) PTR_globalH->itimestep;
 
     u64 i;
 
-    PRINTF("#Subdomains %d\n", nsubdomains);
+    PRINTF("#Subdomains %d\n", NR);
 
-    MyOcrTaskStruct_t TS_compute; _paramc = 3; _depc = 3;
+    MyOcrTaskStruct_t TS_rankMultiTimestepper; _paramc = 3; _depc = 4;
 
     u64 compute_paramv[3];
 
-    TS_compute.FUNC = FUNC_compute;
-    ocrEdtTemplateCreate( &TS_compute.TML, TS_compute.FUNC, _paramc, _depc );
+    TS_rankMultiTimestepper.FNC = FNC_rankMultiTimestepper;
+    ocrEdtTemplateCreate( &TS_rankMultiTimestepper.TML, TS_rankMultiTimestepper.FNC, _paramc, _depc );
 
-    PRINTF("Timestep # %3d\n", itimestep);
-    for( i = 0; i < nsubdomains; i++ )
+    PRINTF("Timestep# %d NR = %d\n", itimestep, NR);
+    for( i = 0; i < NR; i++ )
     {
         compute_paramv[0] = (u64) i;
         compute_paramv[1] = (u64) itimestep;
-        compute_paramv[2] = (u64) MIN( itimestep + ntimesteps_sync - 1, ntimesteps );
+        compute_paramv[2] = (u64) MIN( itimestep + NT_SYNC - 1, NT );
 
-        ocrEdtCreate( &TS_compute.EDT, TS_compute.TML,
+        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
                       EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_FINISH, NULL_GUID, NULL );
+                      EDT_PROP_NONE, NULL_GUID, NULL );
 
         _idep = 0;
-        ocrAddDependence( CP_globalHandle->member[i], TS_compute.EDT, _idep++, DB_MODE_ITW );
-        ocrAddDependence( (i!=0) ? CP_globalHandle->member[i-1] : NULL_GUID, TS_compute.EDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( (i!=nsubdomains-1) ? CP_globalHandle->member[i+1] : NULL_GUID, TS_compute.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( PTR_gSettingsHs[i], TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( PTR_rankHs[i], TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( (i!=0) ? PTR_rankHs[i-1] : NULL_GUID, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( (i!=NR-1) ? PTR_rankHs[i+1] : NULL_GUID, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
     }
+
+    PTR_globalH->itimestep += NT_SYNC;
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_compute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
-    s32 _paramc, _depc, _idep;
+    u32 _paramc, _depc, _idep;
 
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
-    s32 ntimestep_l = (s32) paramv[2];
+    ocrGuid_t DBK_gSettingsH = depv[0].guid;
+    ocrGuid_t DBK_rankH =  depv[1].guid;
+    ocrGuid_t DBK_rankH_l = depv[2].guid;
+    ocrGuid_t DBK_rankH_r = depv[3].guid;
 
-    memberHandle_t* CP_memberHandle     = (memberHandle_t*) depv[0].ptr;
-    memberHandle_t* CP_memberHandle_l   = (memberHandle_t*) depv[1].ptr;
-    memberHandle_t* CP_memberHandle_r   = (memberHandle_t*) depv[2].ptr;
+    gSettingsH_t *PTR_gSettingsH = depv[0].ptr;
+    rankH_t* PTR_rankH = (rankH_t*) depv[1].ptr;
+    rankH_t* PTR_rankH_l = (rankH_t*) depv[2].ptr;
+    rankH_t* PTR_rankH_r = (rankH_t*) depv[3].ptr;
 
-    MyOcrTaskStruct_t TS_iterate; _paramc = 3; _depc = 3;
+    s64 id = (s64) paramv[0];
+    s64 itimestep = (s64) paramv[1];
+    s64 ntimestep_l = (s64) paramv[2];
 
-    TS_iterate.FUNC = FUNC_iterate;
-    ocrEdtTemplateCreate( &TS_iterate.TML, TS_iterate.FUNC, _paramc, _depc );
+    s64 phase = itimestep%2;
 
-    ocrEdtCreate( &TS_iterate.EDT, TS_iterate.TML,
-                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, NULL_GUID, &TS_iterate.EVT);
+    s64 NR = (s64) PTR_gSettingsH->NR;
 
-    ocrGuid_t TS_iterate_EVT;
-    ocrEventCreate( &TS_iterate_EVT, OCR_EVENT_STICKY_T, false );
-    ocrAddDependence( TS_iterate.EVT, TS_iterate_EVT,   0, DB_MODE_NULL );
+    MyOcrTaskStruct_t TS_timestep; _paramc = 0; _depc = 6;
+
+    TS_timestep.FNC = FNC_timestep;
+    ocrEdtTemplateCreate( &TS_timestep.TML, TS_timestep.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_timestep.EDT, TS_timestep.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, NULL_GUID, &TS_timestep.OET);
+
+    ocrGuid_t TS_timestep_OET;
+    ocrEventCreate( &TS_timestep_OET, OCR_EVENT_STICKY_T, false );
+    ocrAddDependence( TS_timestep.OET, TS_timestep_OET,   0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( (ocrGuid_t) depv[0].guid, TS_iterate.EDT, _idep++, DB_MODE_ITW );
-    ocrAddDependence( (ocrGuid_t) depv[1].guid, TS_iterate.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( (ocrGuid_t) depv[2].guid, TS_iterate.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_gSettingsH, TS_timestep.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_rankH->DBK_settingsH, TS_timestep.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_rankH->DBK_dataH, TS_timestep.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_rankH->DBK_eventHs[phase], TS_timestep.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( (id!=0) ? PTR_rankH_l->DBK_eventHs[phase] : NULL_GUID, TS_timestep.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( (id!=NR-1) ? PTR_rankH_r->DBK_eventHs[phase] : NULL_GUID, TS_timestep.EDT, _idep++, DB_MODE_RO );
 
     itimestep += 1;
 
     if( itimestep <= ntimestep_l )
     {
-        MyOcrTaskStruct_t TS_compute; _paramc = 3; _depc = 4;
+        MyOcrTaskStruct_t TS_rankMultiTimestepper; _paramc = 3; _depc = 5;
 
         u64 compute_paramv[3];
-        compute_paramv[0] = (u64) subdomainID;
+        compute_paramv[0] = (u64) id;
         compute_paramv[1] = (u64) itimestep;
         compute_paramv[2] = (u64) ntimestep_l;
 
-        TS_compute.FUNC = FUNC_compute;
-        ocrEdtTemplateCreate( &TS_compute.TML, TS_compute.FUNC, _paramc, _depc );
+        TS_rankMultiTimestepper.FNC = FNC_rankMultiTimestepper;
+        ocrEdtTemplateCreate( &TS_rankMultiTimestepper.TML, TS_rankMultiTimestepper.FNC, _paramc, _depc );
 
-        ocrEdtCreate( &TS_compute.EDT, TS_compute.TML,
+        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
                       EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_FINISH, NULL_GUID, NULL );
+                      EDT_PROP_NONE, NULL_GUID, NULL );
 
         _idep = 0;
-        ocrAddDependence( (ocrGuid_t) depv[0].guid, TS_compute.EDT, _idep++, DB_MODE_ITW );
-        ocrAddDependence( (ocrGuid_t) depv[1].guid, TS_compute.EDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( (ocrGuid_t) depv[2].guid, TS_compute.EDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( TS_iterate_EVT,           TS_compute.EDT, _idep++, DB_MODE_NULL ); //the input event needs to be destroyed. But how and when?
-
+        ocrAddDependence( DBK_gSettingsH, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH_l, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH_r, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( TS_timestep_OET, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_NULL );
     }
 
     return NULL_GUID;
-
 }
 
-ocrGuid_t FUNC_iterate(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
-    s32 _paramc, _depc, _idep;
+    u32 _paramc, _depc, _idep;
 
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    ocrGuid_t DBK_gSettingsH = depv[0].guid;
+    ocrGuid_t DBK_settingsH = depv[1].guid;
+    ocrGuid_t DBK_dataH = depv[2].guid;
+    ocrGuid_t DBK_eventH = depv[3].guid;
 
-    ocrGuid_t DB_memberHandle = (ocrGuid_t) depv[0].guid;
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    dataH_t* PTR_data = (dataH_t*) depv[2].ptr;
+    eventH_t* PTR_events = (eventH_t*) depv[3].ptr;
+    eventH_t* PTR_events_l = (eventH_t*) depv[4].ptr;
+    eventH_t* PTR_events_r = (eventH_t*) depv[5].ptr;
 
-    memberHandle_t* CP_memberHandle   = (memberHandle_t*) depv[0].ptr;
-    memberHandle_t* CP_memberHandle_l = (memberHandle_t*) depv[1].ptr;
-    memberHandle_t* CP_memberHandle_r = (memberHandle_t*) depv[2].ptr;
+    s64 NR = (s64) PTR_gSettingsH->NR;
 
-    s32 phase = itimestep%2;
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
-    MyOcrTaskStruct_t TS_lsend; _paramc = 2; _depc = 1;
+    MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 3;
 
-    u64 TS_lsend_paramv[2] = { paramv[0], paramv[1]};
+    TS_Lsend.FNC = FNC_Lsend;
+    ocrEdtTemplateCreate( &TS_Lsend.TML, TS_Lsend.FNC, _paramc, _depc );
 
-    TS_lsend.FUNC = FUNC_lsend;
-    ocrEdtTemplateCreate( &TS_lsend.TML, TS_lsend.FUNC, _paramc, _depc );
+    ocrEdtCreate( &TS_Lsend.EDT, TS_Lsend.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_Lsend.OET);
 
-    ocrEdtCreate(         &TS_lsend.EDT, TS_lsend.TML,
-                          EDT_PARAM_DEF, TS_lsend_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, &TS_lsend.EVT);
-
-    ocrAddDependence(     TS_lsend.EVT, CP_memberHandle->EVNT_lsend_finish[phase], 0, DB_MODE_RO );
-
-    _idep = 0;
-    ocrAddDependence( CP_memberHandle->DB_xIn, TS_lsend.EDT, _idep++, DB_MODE_RO );
-
-    MyOcrTaskStruct_t TS_rsend; _paramc = 2; _depc = 1;
-
-    u64 TS_rsend_paramv[2] = { paramv[0], paramv[1] };
-
-    TS_rsend.FUNC = FUNC_rsend;
-    ocrEdtTemplateCreate( &TS_rsend.TML, TS_rsend.FUNC, _paramc, _depc );
-
-    ocrEdtCreate(         &TS_rsend.EDT, TS_rsend.TML,
-                          EDT_PARAM_DEF, TS_rsend_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, &TS_rsend.EVT);
-
-    ocrAddDependence(     TS_rsend.EVT, CP_memberHandle->EVNT_rsend_finish[phase], 0, DB_MODE_RO );
+    if( id!=0 ) ocrAddDependence( TS_Lsend.OET, PTR_events_l->EVT_Rrecv_start, 0, DB_MODE_ITW );
+    ocrAddDependence( TS_Lsend.OET, PTR_events->EVT_Lsend_fin, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( CP_memberHandle->DB_xIn, TS_rsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_gSettingsH, TS_Lsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_settingsH, TS_Lsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_xIn, TS_Lsend.EDT, _idep++, DB_MODE_RO );
 
-    //Receives happen via event dependencies; Use the event as a dependency for the receive to read the message DB.
-    //Receive EDTs depend on the neighbor events. So, how do you know the neighbor events??
-    MyOcrTaskStruct_t TS_lrecv; _paramc = 3; _depc = 2;
+    MyOcrTaskStruct_t TS_Rsend; _paramc = 0; _depc = 3;
 
-    u64 TS_lrecv_paramv[3];
-    TS_lrecv_paramv[0] = paramv[0];
-    TS_lrecv_paramv[1] = paramv[1];
-    TS_lrecv_paramv[2] = (subdomainID!=0)?CP_memberHandle_l->EVNT_rsend_ack[phase]:NULL_GUID;
+    TS_Rsend.FNC = FNC_Rsend;
+    ocrEdtTemplateCreate( &TS_Rsend.TML, TS_Rsend.FNC, _paramc, _depc );
 
-    TS_lrecv.FUNC = FUNC_lrecv;
-    ocrEdtTemplateCreate( &TS_lrecv.TML, TS_lrecv.FUNC, _paramc, _depc );
+    ocrEdtCreate( &TS_Rsend.EDT, TS_Rsend.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_Rsend.OET);
 
-    ocrEdtCreate(         &TS_lrecv.EDT, TS_lrecv.TML,
-                          EDT_PARAM_DEF, TS_lrecv_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, &TS_lrecv.EVT);
-
-    ocrAddDependence(     TS_lrecv.EVT, CP_memberHandle->EVNT_lrecv_finish[phase], 0, DB_MODE_RO );
+    if( id != NR - 1 ) ocrAddDependence( TS_Rsend.OET, PTR_events_r->EVT_Lrecv_start, 0, DB_MODE_ITW );
+    ocrAddDependence( TS_Rsend.OET, PTR_events->EVT_Rsend_fin, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( CP_memberHandle->DB_xIn, TS_lrecv.EDT, _idep++, DB_MODE_ITW );
-    ocrAddDependence( (subdomainID!=0)?CP_memberHandle_l->EVNT_rsend_finish[phase]:NULL_GUID, TS_lrecv.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( DBK_gSettingsH, TS_Rsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_settingsH, TS_Rsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_xIn, TS_Rsend.EDT, _idep++, DB_MODE_RO );
 
-    MyOcrTaskStruct_t TS_rrecv; _paramc = 3; _depc = 2;
+    MyOcrTaskStruct_t TS_Lrecv; _paramc = 0; _depc = 4;
 
-    u64 TS_rrecv_paramv[3];
-    TS_rrecv_paramv[0] = paramv[0];
-    TS_rrecv_paramv[1] = paramv[1];
-    TS_rrecv_paramv[2] = (subdomainID!=NSUBDOMAINS-1)?CP_memberHandle_r->EVNT_lsend_ack[phase]:NULL_GUID;
+    TS_Lrecv.FNC = FNC_Lrecv;
+    ocrEdtTemplateCreate( &TS_Lrecv.TML, TS_Lrecv.FNC, _paramc, _depc );
 
-    TS_rrecv.FUNC = FUNC_rrecv;
-    ocrEdtTemplateCreate( &TS_rrecv.TML, TS_rrecv.FUNC, _paramc,_depc );
+    ocrEdtCreate( &TS_Lrecv.EDT, TS_Lrecv.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_Lrecv.OET);
 
-    ocrEdtCreate(         &TS_rrecv.EDT, TS_rrecv.TML,
-                          EDT_PARAM_DEF, TS_rrecv_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, &TS_rrecv.EVT);
-
-    ocrAddDependence(     TS_rrecv.EVT, CP_memberHandle->EVNT_rrecv_finish[phase], 0, DB_MODE_RO );
+    ocrAddDependence( TS_Lrecv.OET, PTR_events->EVT_Lrecv_fin, 0, DB_MODE_RO );
 
     _idep = 0;
-    ocrAddDependence(     CP_memberHandle->DB_xIn, TS_rrecv.EDT, _idep++, DB_MODE_ITW );
-    ocrAddDependence(     (subdomainID!=NSUBDOMAINS-1)?CP_memberHandle_r->EVNT_lsend_finish[phase]:NULL_GUID, TS_rrecv.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( DBK_gSettingsH, TS_Lrecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_settingsH, TS_Lrecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_xIn, TS_Lrecv.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( (id!=0)?PTR_events->EVT_Lrecv_start:NULL_GUID, TS_Lrecv.EDT, _idep++, DB_MODE_ITW );
 
-    ocrGuid_t TS_verify_EVT;
-    ocrEventCreate(       &TS_verify_EVT, OCR_EVENT_STICKY_T, false );
+    MyOcrTaskStruct_t TS_Rrecv; _paramc = 0; _depc = 4;
 
-    MyOcrTaskStruct_t TS_verify; _paramc = 2; _depc = 3;
+    TS_Rrecv.FNC = FNC_Rrecv;
+    ocrEdtTemplateCreate( &TS_Rrecv.TML, TS_Rrecv.FNC, _paramc,_depc );
 
-    TS_verify.FUNC = FUNC_verify;
-    ocrEdtTemplateCreate( &TS_verify.TML, TS_verify.FUNC, _paramc, _depc );
+    ocrEdtCreate( &TS_Rrecv.EDT, TS_Rrecv.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_Rrecv.OET);
 
-    ocrEdtCreate(         &TS_verify.EDT, TS_verify.TML,
-                          EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID,
-                          &TS_verify.EVT );
-
-    ocrAddDependence(     TS_verify.EVT, TS_verify_EVT, 0, DB_MODE_RO );
+    ocrAddDependence( TS_Rrecv.OET, PTR_events->EVT_Rrecv_fin, 0, DB_MODE_RO );
 
     _idep = 0;
-    ocrAddDependence(     CP_memberHandle->DB_xIn, TS_verify.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence(     CP_memberHandle->EVNT_lrecv_finish[phase], TS_verify.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence(     CP_memberHandle->EVNT_rrecv_finish[phase], TS_verify.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( DBK_gSettingsH, TS_Rrecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_settingsH, TS_Rrecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_xIn, TS_Rrecv.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( (id!=NR-1)?PTR_events->EVT_Rrecv_start:NULL_GUID, TS_Rrecv.EDT, _idep++, DB_MODE_ITW );
 
-    ocrGuid_t TS_update_EVT;
-    ocrEventCreate(       &TS_update_EVT, OCR_EVENT_STICKY_T, false );
+    ocrGuid_t TS_verify_OET;
+    ocrEventCreate( &TS_verify_OET, OCR_EVENT_STICKY_T, false );
 
-    MyOcrTaskStruct_t TS_update; _paramc = 2; _depc = 4;
+    MyOcrTaskStruct_t TS_verify; _paramc = 0; _depc = 5;
 
-    TS_update.FUNC = FUNC_update;
-    ocrEdtTemplateCreate( &TS_update.TML, TS_update.FUNC, _paramc, _depc );
+    TS_verify.FNC = FNC_verify;
+    ocrEdtTemplateCreate( &TS_verify.TML, TS_verify.FNC, _paramc, _depc );
 
-    ocrEdtCreate(         &TS_update.EDT, TS_update.TML,
-                          EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, &TS_update.EVT );
+    ocrEdtCreate( &TS_verify.EDT, TS_verify.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID,
+                  &TS_verify.OET );
 
-    ocrAddDependence(     TS_update.EVT, TS_update_EVT, 0, DB_MODE_RO );
-
-    _idep = 0;
-    ocrAddDependence(     CP_memberHandle->DB_xIn, TS_update.EDT, _idep++, DB_MODE_ITW );
-    ocrAddDependence(     CP_memberHandle->EVNT_lsend_finish[phase], TS_update.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence(     CP_memberHandle->EVNT_rsend_finish[phase], TS_update.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence(     TS_verify_EVT, TS_update.EDT, _idep++, DB_MODE_RO );
-
-    MyOcrTaskStruct_t TS_resetEvents; _paramc = 2; _depc = 4;
-
-    TS_resetEvents.FUNC = FUNC_resetEvents;
-    ocrEdtTemplateCreate( &TS_resetEvents.TML, TS_resetEvents.FUNC, _paramc, _depc );
-
-    ocrEdtCreate(         &TS_resetEvents.EDT, TS_resetEvents.TML,
-                          EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, NULL_GUID, &TS_resetEvents.EVT );
+    ocrAddDependence( TS_verify.OET, TS_verify_OET, 0, DB_MODE_RO );
 
     _idep = 0;
-    ocrAddDependence(     DB_memberHandle, TS_resetEvents.EDT, _idep++, DB_MODE_ITW );
-    ocrAddDependence(     (subdomainID!=0)?CP_memberHandle->EVNT_lsend_ack[phase]:NULL_GUID, TS_resetEvents.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence(     (subdomainID!=NSUBDOMAINS-1)?CP_memberHandle->EVNT_rsend_ack[phase]:NULL_GUID, TS_resetEvents.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence(     TS_update_EVT, TS_resetEvents.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( DBK_gSettingsH, TS_verify.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_settingsH, TS_verify.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_xIn, TS_verify.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_events->EVT_Lrecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( PTR_events->EVT_Rrecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
+
+    ocrGuid_t TS_update_OET;
+    ocrEventCreate( &TS_update_OET, OCR_EVENT_STICKY_T, false );
+
+    MyOcrTaskStruct_t TS_update; _paramc = 0; _depc = 8;
+
+    TS_update.FNC = FNC_update;
+    ocrEdtTemplateCreate( &TS_update.TML, TS_update.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_update.EDT, TS_update.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_update.OET );
+
+    ocrAddDependence( TS_update.OET, TS_update_OET, 0, DB_MODE_RO );
+
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH, TS_update.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( DBK_settingsH, TS_update.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_data->DBK_xIn, TS_update.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_data->DBK_xOut, TS_update.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( DBK_eventH, TS_update.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_events->EVT_Lsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( PTR_events->EVT_Rsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( TS_verify_OET, TS_update.EDT, _idep++, DB_MODE_RO );
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_resetEvents(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    double* xIn = (double*) depv[2].ptr;
 
-    ocrGuid_t DB_memberHandle       = (ocrGuid_t) depv[0].guid;
-    memberHandle_t* CP_memberHandle = (memberHandle_t*) depv[0].ptr;
+    s64 HR = PTR_gSettingsH->HR;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
 
-    s32 phase = (itimestep)%2;
-
-    ocrEventDestroy( CP_memberHandle->EVNT_lsend_finish[phase] );
-    ocrEventDestroy( CP_memberHandle->EVNT_rsend_finish[phase] );
-    ocrEventDestroy( CP_memberHandle->EVNT_lsend_ack[phase]    );
-    ocrEventDestroy( CP_memberHandle->EVNT_rsend_ack[phase]    );
-    ocrEventDestroy( CP_memberHandle->EVNT_lrecv_finish[phase] );
-    ocrEventDestroy( CP_memberHandle->EVNT_rrecv_finish[phase] );
-
-    ocrEventCreate( &CP_memberHandle->EVNT_lsend_finish[phase], OCR_EVENT_STICKY_T, true);
-    ocrEventCreate( &CP_memberHandle->EVNT_rsend_finish[phase], OCR_EVENT_STICKY_T, true);
-    ocrEventCreate( &CP_memberHandle->EVNT_lsend_ack[phase], OCR_EVENT_STICKY_T, false);
-    ocrEventCreate( &CP_memberHandle->EVNT_rsend_ack[phase], OCR_EVENT_STICKY_T, false);
-    ocrEventCreate( &CP_memberHandle->EVNT_lrecv_finish[phase], OCR_EVENT_STICKY_T, false);
-    ocrEventCreate( &CP_memberHandle->EVNT_rrecv_finish[phase], OCR_EVENT_STICKY_T, false);
-
-    return NULL_GUID;
-
-}
-
-ocrGuid_t FUNC_lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
-
-    ocrGuid_t DB_xIn = (ocrGuid_t) depv[0].guid;
-
-    double* xIn = (double*) depv[0].ptr;
-
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
     double* lsend;
-    ocrGuid_t DB_lsend;
-    ocrDbCreate(    &DB_lsend, (void **) &lsend,
-                    sizeof(double)*HALO_RADIUS,
-                    DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrGuid_t DBK_Lsend;
+    ocrDbCreate( &DBK_Lsend, (void **) &lsend, sizeof(double)*HR,
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
     int i;
-    for( i = 0; i < HALO_RADIUS; i++ )
+    for( i = 0; i < HR; i++ )
     {
-        lsend[i] = xIn[HALO_RADIUS+i];
-        PRINTF("lsend: id=%d i=%ld %f\n", subdomainID, HALO_RADIUS+i, lsend[i]);
+        lsend[i] = xIn[HR+i];
+        PRINTF("lsend: id=%d i=%ld %f\n", id, HR+i, lsend[i]);
     }
 
-    if( subdomainID != 0 )
+    if( id != 0 )
     {
-        PRINTF("ID=%d FUNC_lsend lsend guid is %lu\n", subdomainID, DB_lsend);
-        return DB_lsend;
+        PRINTF("ID=%d FNC_Lsend lsend guid is %lu\n", id, DBK_Lsend);
+        return DBK_Lsend;
     }
     else
     {
-        PRINTF("ID=%d FUNC_lsend lsend guid is NULL\n", subdomainID);
+        PRINTF("ID=%d FNC_Lsend lsend guid is NULL\n", id);
         return NULL_GUID;
     }
 
 }
 
-ocrGuid_t FUNC_rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    ocrGuid_t DBK_xIn = (ocrGuid_t) depv[2].guid;
 
-    ocrGuid_t DB_xIn = (ocrGuid_t) depv[0].guid;
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    double* xIn = (double*) depv[2].ptr;
 
-    double* xIn = (double*) depv[0].ptr;
+    s64 NR = PTR_gSettingsH->NR;
+    s64 HR = PTR_gSettingsH->HR;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
+    s64 np = (s64) PTR_settingsH->np;
+
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
     double* rsend;
-    ocrGuid_t DB_rsend;
-    ocrDbCreate(    &DB_rsend, (void **) &rsend,  sizeof(double)*HALO_RADIUS,
-                    DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrGuid_t DBK_Rsend;
+    ocrDbCreate( &DBK_Rsend, (void **) &rsend,  sizeof(double)*HR,
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
     int i;
-    for( i = 0; i < HALO_RADIUS; i++ )
+    for( i = 0; i < HR; i++ )
     {
-        rsend[i] = xIn[SUBDOMAIN_SIZE+i];
-        PRINTF("rsend: id=%d i=%ld %f\n", subdomainID, SUBDOMAIN_SIZE+i, rsend[i]);
+        rsend[i] = xIn[np+i];
+        PRINTF("rsend: id=%d i=%ld %f\n", id, np+i, rsend[i]);
     }
 
-    if( subdomainID != NSUBDOMAINS - 1 )
+    if( id != NR - 1 )
     {
-        PRINTF("ID=%d FUNC_rsend rsend guid is %lu\n", subdomainID, DB_rsend);
-        return DB_rsend;
+        PRINTF("ID=%d FNC_Rsend rsend guid is %lu\n", id, DBK_Rsend);
+        return DBK_Rsend;
     }
     else
     {
-        PRINTF("ID=%d FUNC_lsend lsend guid is NULL\n", subdomainID);
+        PRINTF("ID=%d FNC_Lsend lsend guid is NULL\n", id);
         return NULL_GUID;
     }
-
 }
 
-ocrGuid_t FUNC_lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_Lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    ocrGuid_t DBK_xIn = (ocrGuid_t) depv[2].guid;
+    ocrGuid_t DBK_Rsend = (ocrGuid_t) depv[3].guid;
 
-    ocrGuid_t DB_xIn    = (ocrGuid_t) depv[0].guid;
-    ocrGuid_t DB_rsend  = (ocrGuid_t) depv[1].guid;
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    double* xIn = (double*) depv[2].ptr;
+    double* rsent = (double*) depv[3].ptr;
 
-    double* xIn = (double*) depv[0].ptr;
+    s64 HR = PTR_gSettingsH->HR;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
+
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
     int i;
-    if( DB_rsend != NULL_GUID || subdomainID != 0 )
+    if( DBK_Rsend != NULL_GUID || id != 0 )
     {
-        double* rsent = (double*) depv[1].ptr;
-
-        for( i = 0; i < HALO_RADIUS; i++ )
+        for( i = 0; i < HR; i++ )
         {
             xIn[i] = rsent[i];
-            PRINTF("lrecv: id=%d i=%ld %f\n", subdomainID, i, xIn[i]);
+            PRINTF("lrecv: id=%d i=%ld %f\n", id, i, xIn[i]);
         }
 
-        ocrGuid_t EVNT_rsend_ack = (ocrGuid_t) paramv[2];
-        ocrEventSatisfy(EVNT_rsend_ack, NULL_GUID);
-
-        PRINTF("ID=%d FUNC_lrecv lrecv guid is %lu\n", subdomainID, DB_rsend);
-        ocrDbDestroy(DB_rsend);
-
+        PRINTF("ID=%d FNC_Lrecv lrecv guid is %lu\n", id, DBK_Rsend);
+        ocrDbDestroy( DBK_Rsend );
     }
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    ocrGuid_t DBK_xIn = (ocrGuid_t) depv[2].guid;
+    ocrGuid_t DBK_Lsend = (ocrGuid_t) depv[3].guid;
 
-    ocrGuid_t DB_xIn    = (ocrGuid_t) depv[0].guid;
-    ocrGuid_t DB_lsend  = (ocrGuid_t) depv[1].guid;
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    double* xIn = (double*) depv[2].ptr;
+    double* lsent = (double*) depv[3].ptr;
 
-    double* xIn = (double*) depv[0].ptr;
+    s64 NR = PTR_gSettingsH->NR;
+    s64 HR = PTR_gSettingsH->HR;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
+    s64 np = (s64) PTR_settingsH->np;
+
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
     int i;
-    if( DB_lsend != NULL_GUID || subdomainID != NSUBDOMAINS - 1)
+    if( DBK_Lsend != NULL_GUID || id != NR - 1)
     {
-        double* lsent = (double*) depv[1].ptr;
-
-        for( i = 0; i < HALO_RADIUS; i++ )
+        for( i = 0; i < HR; i++ )
         {
-            xIn[HALO_RADIUS+SUBDOMAIN_SIZE+i] = lsent[i];
-            PRINTF("rrecv: id=%d i=%ld %f\n", subdomainID, HALO_RADIUS+SUBDOMAIN_SIZE+i, xIn[HALO_RADIUS+SUBDOMAIN_SIZE+i]);
+            xIn[HR+np+i] = lsent[i];
+            PRINTF("rrecv: id=%d i=%ld %f\n", id, HR+np+i, xIn[HR+np+i]);
         }
 
-        ocrGuid_t EVNT_lsend_ack = (ocrGuid_t) paramv[2];
-        ocrEventSatisfy(EVNT_lsend_ack, NULL_GUID);
-
-        PRINTF("ID=%d FUNC_rrecv rrecv guid is %lu\n", subdomainID, DB_lsend);
-        ocrDbDestroy(DB_lsend);
+        PRINTF("ID=%d FNC_Rrecv rrecv guid is %lu\n", id, DBK_Lsend);
+        ocrDbDestroy( DBK_Lsend );
     }
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    double* xIn = (double*) depv[2].ptr;
 
-    ocrGuid_t DB_xIn = (ocrGuid_t) depv[0].guid;
+    s64 NR = PTR_gSettingsH->NR;
+    s64 HR = PTR_gSettingsH->HR;
 
-    double* xIn = (double*) depv[0].ptr;
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
+    s64 np = (s64) PTR_settingsH->np;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
     s64 i;
-    for( i = -HALO_RADIUS; i < SUBDOMAIN_SIZE+HALO_RADIUS; i++ )
+    for( i = -HR; i < np+HR; i++ )
     {
-        if( (subdomainID == 0 && i < 0) || (subdomainID == NSUBDOMAINS - 1 && i >= SUBDOMAIN_SIZE) )
+        if( (id == 0 && i < 0) || (id == NR - 1 && i >= np) )
             continue;
 
-        PRINTF("ID: %d xIn[%d]=%f\n", subdomainID, i+HALO_RADIUS, xIn[i+HALO_RADIUS]);
+        PRINTF("ID: %d xIn[%ld]=%f\n", id, i+HR, xIn[i+HR]);
 
-        if( xIn[i+HALO_RADIUS] != (double) ( subdomainID*SUBDOMAIN_SIZE + i + itimestep - 1) )
+        if( ABS( xIn[i+HR] - ( id*np + i + itimestep - 1) ) > (double) NORM )
             break;
     }
 
-    if( i != SUBDOMAIN_SIZE+HALO_RADIUS )
-        PRINTF("ID: %d Verification failed! timestep %d\n", subdomainID, itimestep);
+    if( i != np+HR )
+        PRINTF("ID: %ld Verification failed! timestep %d\n", id, itimestep);
     else
-        PRINTF("ID: %d Verification passed! timestep %d\n", subdomainID, itimestep);
+        PRINTF("ID: %ld Verification passed! timestep %d\n", id, itimestep);
 
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 subdomainID = (s32) paramv[0];
-    s32 itimestep   = (s32) paramv[1];
+    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+    settingsH_t* PTR_settingsH = depv[1].ptr;
+    double* xIn = (double*) depv[2].ptr;
+    double* xOut = (double*) depv[3].ptr;
+    eventH_t* PTR_events = (eventH_t*) depv[4].ptr;
 
-    ocrGuid_t DB_xIn = (ocrGuid_t) depv[0].guid;
+    s64 NR = PTR_gSettingsH->NR;
+    s64 HR = PTR_gSettingsH->HR;
 
-    double* xIn = (double*) depv[0].ptr;
+    s64 id = (s64) PTR_settingsH->id;
+    s64 itimestep = (s64) PTR_settingsH->itimestep;
+    s64 np = (s64) PTR_settingsH->np;
+    s64 lb = (s64) PTR_settingsH->lb;
 
-    PRINTF("ID:%d %s timestep %d\n", subdomainID, __func__, itimestep);
+    PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
     s64 i;
-    for( i = 0; i < SUBDOMAIN_SIZE; i++ )
-        xIn[i+HALO_RADIUS] = (double) ( subdomainID*SUBDOMAIN_SIZE + i + itimestep);
+    for( i = 0; i < np; i++ )
+        xOut[i] = (xIn[i+HR-1]+xIn[i+HR+1]-xIn[i+HR]) + 1;
 
-    if( (subdomainID == NSUBDOMAINS - 1) && (itimestep == 1))
+    for( i = 0; i < np; i++ )
+        xIn[i+HR] = xOut[i];
+
+    if( id == 0 )
     {
-        //PRINTF("ID:%d Sleeping for 10 seconds timestep %d\n", subdomainID, itimestep );
+        for( i = -HR; i < 0; i++ )
+            xIn[i+HR] = (double) (xIn[i+HR] + 1);
+    }
+
+    if( id == NR-1)
+    {
+        for( i = np; i < np + HR; i++ )
+            xIn[i+HR] = (double) ( xIn[i+HR] + 1 );
+    }
+
+    if( (id == NR - 1) && (itimestep == 1))
+    {
+        //PRINTF("ID:%d Sleeping for 10 seconds timestep %d\n", id, itimestep );
         //sleep(10);
     }
 
+    ocrEventDestroy( PTR_events->EVT_Lsend_fin );
+    ocrEventDestroy( PTR_events->EVT_Rsend_fin );
+    ocrEventDestroy( PTR_events->EVT_Lrecv_start );
+    ocrEventDestroy( PTR_events->EVT_Rrecv_start );
+    ocrEventDestroy( PTR_events->EVT_Lrecv_fin );
+    ocrEventDestroy( PTR_events->EVT_Rrecv_fin );
+
+    ocrEventCreate( &PTR_events->EVT_Lsend_fin, OCR_EVENT_STICKY_T, false);
+    ocrEventCreate( &PTR_events->EVT_Rsend_fin, OCR_EVENT_STICKY_T, false);
+    ocrEventCreate( &PTR_events->EVT_Lrecv_start, OCR_EVENT_STICKY_T, true);
+    ocrEventCreate( &PTR_events->EVT_Rrecv_start, OCR_EVENT_STICKY_T, true);
+    ocrEventCreate( &PTR_events->EVT_Lrecv_fin, OCR_EVENT_STICKY_T, false );
+    ocrEventCreate( &PTR_events->EVT_Rrecv_fin, OCR_EVENT_STICKY_T, false );
+
+    PTR_settingsH->itimestep = itimestep + 1;
+
     return NULL_GUID;
 }
 
-ocrGuid_t FUNC_mainFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
 
-    ocrGuid_t DB_globalHandle = depv[0].guid;
+    ocrGuid_t DBK_globalH = depv[0].guid;
 
-    ocrDbDestroy( DB_globalHandle );
+    ocrDbDestroy( DBK_globalH );
 
     ocrShutdown();
 
@@ -779,58 +1047,123 @@ ocrGuid_t FUNC_mainFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     PRINTF("%s\n", __func__);
+    u32 _paramc, _depc, _idep;
 
-    ocrGuid_t DB_globalHandle;
-    globalHandle_t* CP_globalHandle;
+    void* programArgv = depv[0].ptr;
+    u32 argc = getArgc(programArgv);
 
-    ocrDbCreate( &DB_globalHandle, (void **) &CP_globalHandle, sizeof(globalHandle_t) + sizeof(ocrGuid_t)*(NSUBDOMAINS),
+    s64 npoints, nranks, ntimesteps, ntimesteps_sync, itimestep0, halo_radius;
+
+    npoints = NPOINTS;
+    nranks = NRANKS;
+    ntimesteps = NTIMESTEPS;
+    ntimesteps_sync = NTIMESTEPS_SYNC;
+    itimestep0 = ITIMESTEP0;
+    halo_radius = HALO_RADIUS;
+
+    if (argc == 7)
+    {
+        u32 i = 1;
+        npoints = (s64) atoi(getArgv(programArgv, i++));
+        nranks = (s64) atoi(getArgv(programArgv, i++));
+        ntimesteps = (s64) atoi(getArgv(programArgv, i++));
+        ntimesteps_sync = (s64) atoi(getArgv(programArgv, i++));
+        itimestep0 = (s64) atoi(getArgv(programArgv, i++));
+        halo_radius = (s64) atoi(getArgv(programArgv, i++));
+
+        npoints = (npoints != -1) ? npoints : NPOINTS;
+        nranks = (nranks != -1) ? nranks : NRANKS;
+        ntimesteps = (ntimesteps != -1) ? ntimesteps : NTIMESTEPS;
+        ntimesteps_sync = (ntimesteps_sync != -1) ? ntimesteps_sync : NTIMESTEPS_SYNC;
+        itimestep0 = (itimestep0 != -1) ? itimestep0 : ITIMESTEP0;
+        halo_radius = (halo_radius != -1) ? halo_radius : HALO_RADIUS;
+
+    }
+
+    PRINTF("npoints %d\n", npoints);
+    PRINTF("nranks %d\n", nranks);
+    PRINTF("ntimesteps %d\n", ntimesteps);
+    PRINTF("ntimesteps_sync %d\n", ntimesteps_sync);
+    PRINTF("itimestep0 %d\n", itimestep0);
+    PRINTF("halo_radius %d\n", halo_radius);
+
+    ocrGuid_t DBK_gSettingsH_0;
+    gSettingsH_t* PTR_gSettingsH_0;
+
+    ocrDbCreate( &DBK_gSettingsH_0, (void **) &PTR_gSettingsH_0, sizeof(gSettingsH_t),
                  DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-    ocrDbRelease( DB_globalHandle );
 
-    ocrGuid_t TS_mainInit_EVT, TS_mainCompute_EVT, TS_mainFinalize_EVT;
+    ocrGuid_t TS_settingsInit_OET;
+    ocrEventCreate( &TS_settingsInit_OET, OCR_EVENT_STICKY_T, false );
 
-    ocrEventCreate( &TS_mainInit_EVT, OCR_EVENT_STICKY_T, false );
-    ocrEventCreate( &TS_mainCompute_EVT, OCR_EVENT_STICKY_T, false );
-    ocrEventCreate( &TS_mainFinalize_EVT, OCR_EVENT_STICKY_T, false );
+    MyOcrTaskStruct_t TS_settingsInit;
 
-    MyOcrTaskStruct_t TS_mainInit, TS_mainCompute, TS_mainFinalize;
+    u64 settingsInit_paramv[6] = { (u64) npoints, (u64) nranks, (u64) ntimesteps, (u64) ntimesteps_sync, (u64) itimestep0, (u64) halo_radius };
 
-    u64 mainInit_paramv[1] = { NSUBDOMAINS };
+    TS_settingsInit.FNC = FNC_settingsInit;
+    ocrEdtTemplateCreate( &TS_settingsInit.TML, TS_settingsInit.FNC, 6, 1 );
 
-    TS_mainInit.FUNC = FUNC_mainInit;
-    ocrEdtTemplateCreate( &TS_mainInit.TML, TS_mainInit.FUNC, 1, 1 );
+    ocrEdtCreate( &TS_settingsInit.EDT, TS_settingsInit.TML,
+                  EDT_PARAM_DEF, settingsInit_paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, NULL_GUID, &TS_settingsInit.OET );
 
-    ocrEdtCreate(         &TS_mainInit.EDT, TS_mainInit.TML,
-                          EDT_PARAM_DEF, mainInit_paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_FINISH, NULL_GUID, &TS_mainInit.EVT );
+    ocrAddDependence( TS_settingsInit.OET, TS_settingsInit_OET, 0, DB_MODE_NULL );
 
-    ocrAddDependence(     TS_mainInit.EVT, TS_mainInit_EVT, 0, DB_DEFAULT_MODE );
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH_0, TS_settingsInit.EDT, _idep++, DB_MODE_ITW );
 
-    TS_mainCompute.FUNC = FUNC_mainCompute;
-    ocrEdtTemplateCreate( &TS_mainCompute.TML, TS_mainCompute.FUNC, 0, 2 );
+    ocrGuid_t DBK_globalH;
+    globalH_t* PTR_globalH;
 
-    ocrEdtCreate(         &TS_mainCompute.EDT, TS_mainCompute.TML,
-                          EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_FINISH, NULL_GUID, &TS_mainCompute.EVT );
+    ocrDbCreate( &DBK_globalH, (void **) &PTR_globalH, sizeof(globalH_t),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
-    ocrAddDependence(     TS_mainCompute.EVT, TS_mainCompute_EVT, 0, DB_DEFAULT_MODE );
+    ocrGuid_t TS_globalInit_OET, TS_globalCompute_OET, TS_globalFinalize_OET;
 
-    TS_mainFinalize.FUNC = FUNC_mainFinalize;
-    ocrEdtTemplateCreate( &TS_mainFinalize.TML, TS_mainFinalize.FUNC, 0, 2 );
+    ocrEventCreate( &TS_globalInit_OET, OCR_EVENT_STICKY_T, false );
+    ocrEventCreate( &TS_globalCompute_OET, OCR_EVENT_STICKY_T, false );
+    ocrEventCreate( &TS_globalFinalize_OET, OCR_EVENT_STICKY_T, false );
 
-    ocrEdtCreate(         &TS_mainFinalize.EDT, TS_mainFinalize.TML,
-                          EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_FINISH, NULL_GUID, &TS_mainFinalize.EVT );
+    MyOcrTaskStruct_t TS_globalInit, TS_globalCompute, TS_globalFinalize;
 
-    ocrAddDependence(     TS_mainFinalize.EVT, TS_mainFinalize_EVT, 0, DB_DEFAULT_MODE);
+    TS_globalInit.FNC = FNC_globalInit;
+    ocrEdtTemplateCreate( &TS_globalInit.TML, TS_globalInit.FNC, 0, 2 );
 
-    ocrAddDependence( DB_globalHandle, TS_mainInit.EDT, 0, DB_MODE_ITW );
+    ocrEdtCreate( &TS_globalInit.EDT, TS_globalInit.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, NULL_GUID, &TS_globalInit.OET );
 
-    ocrAddDependence( DB_globalHandle, TS_mainCompute.EDT, 0, DB_MODE_RO );
-    ocrAddDependence( TS_mainInit_EVT, TS_mainCompute.EDT, 1, DB_DEFAULT_MODE);
+    ocrAddDependence( TS_globalInit.OET, TS_globalInit_OET, 0, DB_MODE_NULL );
 
-    ocrAddDependence( DB_globalHandle,    TS_mainFinalize.EDT, 0, DB_MODE_ITW );
-    ocrAddDependence( TS_mainCompute_EVT, TS_mainFinalize.EDT, 1, DB_DEFAULT_MODE );
+    _idep = 0;
+    ocrAddDependence( DBK_gSettingsH_0, TS_globalInit.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_globalH, TS_globalInit.EDT, _idep++, DB_MODE_ITW );
+
+    TS_globalCompute.FNC = FNC_globalCompute;
+    ocrEdtTemplateCreate( &TS_globalCompute.TML, TS_globalCompute.FNC, 0, 2 );
+
+    ocrEdtCreate( &TS_globalCompute.EDT, TS_globalCompute.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, NULL_GUID, &TS_globalCompute.OET );
+
+    ocrAddDependence( TS_globalCompute.OET, TS_globalCompute_OET, 0, DB_MODE_NULL );
+
+    _idep = 0;
+    ocrAddDependence( DBK_globalH, TS_globalCompute.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( TS_globalInit_OET, TS_globalCompute.EDT, _idep++, DB_MODE_NULL);
+
+    TS_globalFinalize.FNC = FNC_globalFinalize;
+    ocrEdtTemplateCreate( &TS_globalFinalize.TML, TS_globalFinalize.FNC, 0, 2 );
+
+    ocrEdtCreate( &TS_globalFinalize.EDT, TS_globalFinalize.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, NULL_GUID, &TS_globalFinalize.OET );
+
+    ocrAddDependence( TS_globalFinalize.OET, TS_globalFinalize_OET, 0, DB_MODE_NULL);
+
+    _idep = 0;
+    ocrAddDependence( DBK_globalH, TS_globalFinalize.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_globalCompute_OET, TS_globalFinalize.EDT, _idep++, DB_MODE_NULL);
 
     return NULL_GUID;
 }
