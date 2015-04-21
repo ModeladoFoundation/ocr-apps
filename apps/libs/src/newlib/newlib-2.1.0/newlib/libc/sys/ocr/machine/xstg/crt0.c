@@ -11,7 +11,7 @@
 __asm__
  (
   " .org 0x0\n"
-  " .section .init,\"ax\"\n"
+  " .section .text,\"ax\"\n"
   " .global _start\n"
   " .align 8\n"
   " .type _start,@function\n"
