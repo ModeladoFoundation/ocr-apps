@@ -21,16 +21,24 @@ OBJS := mpilite.o mpi_ocr.o
 INCLUDES := ../mpi.h ../mpi_ocr_messaging.h
 LIB := libmpilite.a
 
+# installed files
+INSTALL_MPI_H := ${APPS_LIBS_ROOT}/include/mpi.h
+INSTALL_MPI_MESS_H := ${APPS_LIBS_ROOT}/include/mpi_ocr_messaging.h
+INSTALL_MPI_A := ${APPS_LIBS_ROOT}/lib/$(LIB)
+
 CC := gcc
 AR := ar
 # add members AND generate index. Ranlib not needed.
 ARFLAGS := rsv
 RANLIB := ranlib
 
+# 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
+OPT_FLAGS := -O0
 INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
-CFLAGS := -std=c99 -g -O0
+CFLAGS := -std=c99 -g
+DEFINES := -DOCR_ENABLE_EDT_NAMING
 
-CFLAGS := $(CFLAGS) $(INC_FLAGS)
+CFLAGS := $(CFLAGS) $(INC_FLAGS)  $(OPT_FLAGS)
 
 .PHONY: all
 all: install
@@ -54,8 +62,19 @@ $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
 	@$(AR) $(ARFLAGS) $(LIB) $^
 
+$(INSTALL_MPI_H): ../mpi.h
+	cp --remove-destination $< $@
+
+$(INSTALL_MPI_MESS_H): ../mpi_ocr_messaging.h
+	cp --remove-destination $< $@
+
+$(INSTALL_MPI_A): $(LIB)
+	cp --remove-destination $< $@
+
 .PHONY: install
-install: $(INCLUDES) $(LIB)
+install: $(INSTALL_MPI_H) $(INSTALL_MPI_MESS_H) $(INSTALL_MPI_A)
+
+installold: $(INCLUDES) $(LIB)
 	@echo "Installing X86 standard files"
 	@cp --remove-destination $(INCLUDES) ${APPS_LIBS_ROOT}/include/
 	@cp --remove-destination $(LIB) ${APPS_LIBS_ROOT}/lib/

@@ -1,0 +1,6 @@
+MPI-Lite
+
+mpi-install-SS.sh - builds comd-mpi using the Makefile in .., and runs StrongScaling 1,2,4,8,16
+mpi-runapp-SS.sh - builds CoMD using the Makefile in ../build_and_run/mpi, and runs StrongScaling 1,2,4,8,16
+
+** These should produce the same results! Just different directory structures.
