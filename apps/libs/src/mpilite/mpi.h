@@ -114,9 +114,13 @@ typedef int MPI_Datatype;
 #define MPI_LONG_LONG_INT        7
 #define MPI_BYTE                 8
 #define MPI_UNSIGNED_CHAR        9
+#define MPI_UINT8_T             MPI_UNSIGNED_CHAR
 #define MPI_UNSIGNED_SHORT      10
+#define MPI_UINT16_T            MPI_UNSIGNED_SHORT
 #define MPI_UNSIGNED            11
+#define MPI_UINT32_T            MPI_UNSIGNED
 #define MPI_UNSIGNED_LONG       12
+#define MPI_UINT64_T            MPI_UNSIGNED_LONG
 #define MPI_UNSIGNED_LONG_LONG  13
 #define MPI_FLOAT               14
 #define MPI_DOUBLE              15

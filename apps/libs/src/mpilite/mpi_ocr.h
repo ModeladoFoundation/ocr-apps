@@ -74,6 +74,8 @@ static inline messageContextP_t getMessageContext() {
 
 int __mpi_ocr_TRUE(void);
 
+#define MIN(x,y) ((x)<(y) ? (x) : (y) )
+
 #ifdef __cplusplus
 }
 #endif
