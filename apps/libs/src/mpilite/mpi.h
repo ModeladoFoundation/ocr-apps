@@ -17,9 +17,15 @@ extern "C" {
 #define main __mpiOcrMain
 
 // replace printf with PRINTF, but don't include ocr.h
-unsigned int PRINTF(const char *, ...);
-
 #define printf PRINTF
+
+#ifdef _STDIO_H
+    // so stdio.h has been included, need decl for PRINTF.
+    // If not included yet, the #define printf PRINTF will provide a decl
+    // for PRINTF if stdio.h is included. If it's not included, then it
+    // doesn't matter
+    unsigned int PRINTF(const char *, ...);
+#endif
 
 #define MPI_BOTTOM              ((void *)0)
 #define MPI_SUCCESS             (1)
@@ -169,6 +175,7 @@ int MPI_Init(int *argc, char ***argv);
 int MPI_Initialized(int *flag);
 int MPI_Finalize(void);
 int MPI_Abort(MPI_Comm comm, int errorcode);
+double MPI_Wtick( void );	// Accuracy in seconds of Wtime
 double MPI_Wtime( void );    // Time in seconds since an arbitrary time in the past.
 int MPI_Send (void *buf,int count, MPI_Datatype
               datatype, int dest, int tag, MPI_Comm comm);

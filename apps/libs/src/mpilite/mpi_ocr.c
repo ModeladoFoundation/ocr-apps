@@ -102,7 +102,9 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     messageContext_t messageContext =
     {
         .messageEvents = (ocrGuid_t *)(depv[1].ptr),
+#ifdef DB_ARRAY
         .messageData = (ocrEdtDep_t *)(depv[2].ptr)
+#endif
     };
 
     // Save the contexts in ELS so they can be retrieved when the user calls
@@ -208,6 +210,7 @@ static ocrGuid_t createTaggedEvents(u32 ranks, u32 maxTag)
 // createMessageEventsAndData: until tagging is working, need to use array
 // of event guids, and array of datablock ocrEdtDep_t's. Create and
 // initialize these arrays, which will be shared by all ranks.
+
 static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
                        ocrGuid_t *messageDataDB,
                        const u32 numRanks,const u32 maxTags)
@@ -218,20 +221,23 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
 
     const u32 numElements = numRanks * numRanks * (maxTags + 1);
     ocrGuid_t *events;
-    ocrEdtDep_t *data ;
 
     ocrDbCreate(messageEventsDB, (void*)&events,
                 numElements * sizeof (ocrGuid_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
 
+#ifdef DB_ARRAY
+    ocrEdtDep_t *data ;
     ocrDbCreate(messageDataDB, (void*)&data,
                 numElements * sizeof (ocrEdtDep_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-
+#endif
 
     for (int i = 0; i < numElements; i++)
         {
             events[i] = NULL_GUID;
+#ifdef DB_ARRAY
             data[i].guid = NULL_GUID;
             data[i].ptr = NULL;
+#endif
         }
 }
 
@@ -244,6 +250,7 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
 // 3. Create and start the rankEdts. They have the same paramv and depv, except for
 // their rank (paramv[0]).
 // 4. Wait until they all "finish", and then return to let endEdt close up shop.
+
 static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     PRINTF("Starting mainEdtHelper\n");
 
@@ -298,7 +305,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     // checking that the guid has the same value as the DB received from
     // ocrWait.
 
-    ocrGuid_t messageEventsDB, messageDataDB;
+    ocrGuid_t messageEventsDB=NULL_GUID, messageDataDB=NULL_GUID;
     createMessageEventsAndData(&messageEventsDB, &messageDataDB, numRanks, maxTag);
 
     u64 rankParamv[] = {0, numRanks, maxTag, eventTagGuid};  //most params are the same

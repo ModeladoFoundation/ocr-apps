@@ -23,6 +23,16 @@ extern "C" {
  * simulated here.
  */
 
+// Defines to simulate OCR tagging for events, and ocrLegacyBlockProgress
+// for datablocks
+
+#define EVENT_ARRAY 1
+
+/* 4/21/15, ocrLegacyBlockProgress() has been working for a while, turn
+       off the DB Array.
+// #define DB_ARRAY 1
+*/
+
 // doesn't work? typedef enum( opIsend, opIrecv, opIprobe) nonBlockingOp;
 #define OP_ISEND    1
 #define OP_IRECV    2
@@ -59,7 +69,9 @@ typedef struct rankContext_t
 typedef struct messageContext_t
 {
     ocrGuid_t *messageEvents;
+#ifdef DB_ARRAY
     ocrEdtDep_t *messageData;
+#endif
 } messageContext_t, *messageContextP_t;
 
 #define RANK_CONTEXT_SLOT 0
