@@ -157,7 +157,7 @@ if [[ "$problem_type" == ws_* ]]; then
 fi
 
 if [[ "$problem_type" == ss_* ]]; then
-    Nl=$nl
+    Nl=$(($nl*$ranks))
 fi
 
 px="-"
