@@ -144,8 +144,6 @@ Dependencies:
 
     if(timestep < T) {
 
-
-
 //compute
 
 
@@ -169,7 +167,6 @@ Dependencies:
 
         if(timestep<T-1)ocrEdtCreate(&stencilEdt, stencilTemplate, EDT_PARAM_DEF, (u64 *) &stencilTemplate,
                 EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-
 
         once = NULL_GUID;
 
@@ -196,7 +193,6 @@ Dependencies:
 
         private->timestep = timestep+1;
 
-
 //create clone
 //
     ocrGuid_t mychild = private->mychild;
@@ -212,7 +208,6 @@ Dependencies:
 
     return NULL_GUID;
 }
-
 
 ocrGuid_t wrapupTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 /*
@@ -238,7 +233,6 @@ N: output event of realmain
     return NULL_GUID;
 }
 
-
 ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 creates the first set of sticky events
@@ -254,8 +248,6 @@ N - (5N-5): the (2*N-2) communication datablocks
   2*N-2 of them will be passed in as parameters for the next iteration
 
 */
-
-
     u64 i, mynode;
     ocrGuid_t stencilTemplate, stencilEdt[N], tempEdt;
     ocrEdtTemplateCreate(&stencilTemplate, stencilTask, 1, 4);
@@ -267,14 +259,9 @@ N - (5N-5): the (2*N-2) communication datablocks
     buffer_t * buffer[2*N-2];
     private_t * private[N];
 
-
-
     for(i=0;i<N;i++) a[i] = depv[i].ptr;
     for(i=0;i<2*N-2;i++) buffer[i] = depv[N+i].ptr;
     for(i=0;i<N;i++) private[i] = depv[3*N-2+i].ptr;
-
-
-
 
     for(i=0;i<N;i++) {
         private[i]->mynode = i;
@@ -298,7 +285,6 @@ N - (5N-5): the (2*N-2) communication datablocks
         ocrDbRelease(depv[N+toright].guid);
         ocrAddDependence(depv[N+toright++].guid, stencilEdt[i+1], 1, DB_MODE_ITW);
 
-
         ocrEventCreate(&once, OCR_EVENT_ONCE_T, true);
         buffer[toleft]->link = once;
         ocrAddDependence(once, private[i+1]->mychild, 1, DB_MODE_ITW);
@@ -306,27 +292,19 @@ N - (5N-5): the (2*N-2) communication datablocks
         ocrAddDependence(depv[N+toleft++].guid, stencilEdt[i], 2, DB_MODE_ITW);
 
     }
-
     ocrAddDependence(NULL_GUID, private[N-1]->mychild, 2, DB_MODE_ITW);
     ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_ITW);
     private[N-1]->mynode = N-1;
     private[N-1]->timestep = 0;
-
-
-
 
 //create N stencil init events, attach the data db
 
     for(i=0;i<N;i++) {
         ocrDbRelease(depv[i].guid);  //release all dbs
         ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_ITW);
-
         ocrDbRelease(depv[3*N-2+i].guid);  //release all dbs
         ocrAddDependence(depv[3*N-2+i].guid, stencilEdt[i], 3, DB_MODE_ITW);
     }
-
-
-
 
     return NULL_GUID;
 }
@@ -334,7 +312,6 @@ N - (5N-5): the (2*N-2) communication datablocks
 
 
 ocrGuid_t mainEdt(){
-
 /*
 mainEdt is executed first
 Creates the datablocks
@@ -343,8 +320,6 @@ launches realmian
 */
 
     u64 i;
-
-
     PRINTF("1D stencil code: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
 
     u64 *dummy;
@@ -354,13 +329,10 @@ launches realmian
        ocrDbCreate(&(bufferDb[i]), (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
    }
 
-
     for(i=0;i<N;i++) {
        ocrDbCreate(&(privateDb[i]), (void**) &dummy, sizeof(private_t), 0, NULL_GUID, NO_ALLOC);
        ocrDbCreate(&(dataDb[i]), (void**) &dummy, 2*M*sizeof(double), 0, NULL_GUID, NO_ALLOC);
    }
-
-
     ocrGuid_t wrapupTemplate;
     ocrGuid_t wrapupEdt;
 
@@ -371,12 +343,8 @@ launches realmian
     ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
           EDT_PROP_FINISH, NULL_GUID, &realmainOutputEvent);
 
-
-
-
     for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_ITW);
         ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_ITW);
-
     for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_ITW);
     for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_ITW);
     for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_ITW);

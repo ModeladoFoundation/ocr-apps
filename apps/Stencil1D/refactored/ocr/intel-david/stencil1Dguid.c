@@ -273,7 +273,6 @@ N - (3N-3): the (2*N-2) communication datablocks
         ocrDbRelease(depv[N+toright].guid);
         ocrAddDependence(depv[N+toright++].guid, stencilEdt[i+1], 1, DB_MODE_ITW);
 
-
         buffer[toleft]->edt = childEdt[i+1];
         ocrDbRelease(depv[N+toleft].guid);
         ocrAddDependence(depv[N+toleft++].guid, stencilEdt[i], 2, DB_MODE_ITW);
@@ -283,8 +282,6 @@ N - (3N-3): the (2*N-2) communication datablocks
     ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_ITW);
     private[N-1]->mynode = N-1;
     private[N-1]->timestep = 0;
-
-
 
 //create N stencil init events, attach the data db
 

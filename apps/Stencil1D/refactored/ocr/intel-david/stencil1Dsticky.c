@@ -138,13 +138,6 @@ Dependencies:
     ocrGuid_t leftinEvent = NULL_GUID;
     ocrGuid_t rightinEvent = NULL_GUID;
 
-//printf("ST%d T%d start\n", mynode, timestep);
-//printf("ST%d T%d depv[0] %d \n", mynode, timestep, depv[0].guid);
-//printf("ST%d T%d depv[1] %d \n", mynode, timestep, depv[1].guid);
-//printf("ST%d T%d depv[2] %d \n", mynode, timestep, depv[2].guid);
-//printf("ST%d T%d depv[3] %d \n", mynode, timestep, depv[3].guid);
-//fflush(stdout);
-
     if(private->leftold != NULL_GUID) ocrEventDestroy(private->leftold);
     if(private->rightold != NULL_GUID) ocrEventDestroy(private->rightold);
 
@@ -159,17 +152,15 @@ Dependencies:
                 a[0] = 0;
                 leftin->buffer = 0;
 
-            for(i=1;i<M-1;i++) a[i] = 0;
+                for(i=1;i<M-1;i++) a[i] = 0;
 
-            if(rightin == NULL) a[M-1] = 1;
-                else {
-                a[M-1] = 0;
-                rightin->buffer = 0;
+                if(rightin == NULL) a[M-1] = 1;
+                    else {
+                    a[M-1] = 0;
+                    rightin->buffer = 0;
+                }
             }
         }
-    }
-//printf("ST%d T%d after init \n", mynode, timestep);
-//fflush(stdout);
     }
 
 
@@ -196,13 +187,6 @@ Dependencies:
 //could optimized by changing a pointer rather than actually copying
         for(i=0;i<M;i++) a[i] = atemp[i];
 
-//printf("ST%d T%d after compute %f %f %f \n", mynode, timestep, a[0], a[1], a[2]);
-//fflush(stdout);
-
-
-
-
-
         if(leftin != NULL) { //leftin is NULL too
             leftinEvent = leftin->link;
             leftin->buffer = a[0];
@@ -211,9 +195,6 @@ Dependencies:
             ocrEventSatisfy(private->leftevent, depv[1].guid);
             private->leftevent = sticky;
         }
-
-//printf("ST%d T%d after send left\n", mynode, timestep);
-//fflush(stdout);
 
         if(rightin != NULL) {
             rightinEvent = rightin->link;
@@ -228,8 +209,6 @@ Dependencies:
         private->leftold = leftinEvent;
         private->rightold = rightinEvent;
 
-//printf("ST%d T%d after send right \n", mynode, timestep);
-//fflush(stdout);
 
 //create clone
 
@@ -246,8 +225,6 @@ Dependencies:
         ocrAddDependence(depv[3].guid, stencilEdt, 3 , DB_MODE_ITW);
 
     }
-//printf("ST%d T%d finish\n", mynode, timestep);
-//fflush(stdout);
 
     return NULL_GUID;
 }
@@ -306,16 +283,9 @@ N - (5N-5): the (2*N-2) communication datablocks
     buffer_t * buffer[2*N-2];
     private_t * private[N];
 
-//printf("R  start realmain\n");
-//fflush(stdout);
-
-
     for(i=0;i<N;i++) a[i] = depv[i].ptr;
     for(i=N;i<3*N-2;i++) buffer[i-N] = depv[i].ptr;
     for(i=0;i<N;i++) private[i] = depv[3*N-2+i].ptr;
-
-//printf("R  after unpack\n");
-//fflush(stdout);
 
     u64 lin =  0;
     u64 rin =  lin + N - 1;
@@ -324,32 +294,18 @@ N - (5N-5): the (2*N-2) communication datablocks
     private[0]->leftold = NULL_GUID;
 
     for(i=0;i<N-1;i++) {
-//printf("R%d  start \n", i);
-//fflush(stdout);
         private[i]->mynode = i;
-//printf("R%d  after mynode \n", i);
-//fflush(stdout);
         private[i]->timestep = 0;
-//printf("R%d  after timestep\n", i);
-//fflush(stdout);
 
         ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-//printf("R%d  after sticky create %d \n", i, sticky);
-//fflush(stdout);
         private[i]->rightevent = sticky;
         buffer[lin++]->link = sticky;
         private[i]->rightold = NULL_GUID;
-//printf("R%d  after right\n", i);
-//fflush(stdout);
 
         ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-//printf("R%d  after sticky create %d \n", i, sticky);
-//fflush(stdout);
         private[i+1]->leftevent = sticky;
         buffer[rin++]->link = sticky;
         private[i+1]->leftold = NULL_GUID;
-//printf("R%d  after after left \n", i);
-//fflush(stdout);
     }
 
     private[N-1]->mynode = N-1;
@@ -357,18 +313,12 @@ N - (5N-5): the (2*N-2) communication datablocks
     private[N-1]->rightevent = NULL_GUID;
     private[N-1]->rightold = NULL_GUID;
 
-//printf("R  after events \n");
-//fflush(stdout);
-
-
 //create N stencil init events, attach the data db
 
     for(i=0;i<4*N-2;i++) ocrDbRelease(depv[i].guid);  //release all dbs
 
     for(i=0;i<N;i++) ocrEdtCreate(&stencilEdt[i], stencilTemplate, EDT_PARAM_DEF, (u64 *) &stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
-//printf("R  after EDT create\n");
-//fflush(stdout);
 
 
     lin = N;
@@ -379,8 +329,6 @@ N - (5N-5): the (2*N-2) communication datablocks
     ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_RO);
 
     for(i=0;i<N-1;i++){
-//printf("R i %d lin %d rin %d pbuffer %d \n", i, lin, rin, pbuffer);
-//fflush(stdout);
 
         ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_ITW);
         ocrAddDependence(depv[rin++].guid, stencilEdt[i], 2, DB_MODE_ITW);
@@ -392,10 +340,6 @@ N - (5N-5): the (2*N-2) communication datablocks
     ocrAddDependence(depv[N-1].guid, stencilEdt[N-1], 0, DB_MODE_ITW);
     ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_ITW);
     ocrAddDependence(depv[pbuffer++].guid, stencilEdt[N-1], 3, DB_MODE_ITW);
-
-//printf("R  after add dep\n");
-//fflush(stdout);
-
 
     return NULL_GUID;
 }
@@ -412,10 +356,6 @@ launches realmian
 */
 
     u64 i;
-
-
-//printf("M  start\n");
-//fflush(stdout);
     PRINTF("1D stencil code: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
 
     u64 *dummy;
@@ -431,9 +371,6 @@ launches realmian
        ocrDbCreate(&(dataDb[i]), (void**) &dummy, 2*M*sizeof(double), 0, NULL_GUID, NO_ALLOC);
    }
 
-//printf("M  after createDB\n");
-//fflush(stdout);
-
     ocrGuid_t wrapupTemplate;
     ocrGuid_t wrapupEdt;
 
@@ -444,21 +381,12 @@ launches realmian
     ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
           EDT_PROP_FINISH, NULL_GUID, &realmainOutputEvent);
 
-
-//printf("M  after EDTcreate \n");
-//fflush(stdout);
-
-
     for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_ITW);
         ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_ITW);
-//printf("M  after wrapup\n");
-//fflush(stdout);
 
     for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_ITW);
     for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_ITW);
     for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_ITW);
-//printf("M  after realmain\n");
-//fflush(stdout);
 
     return NULL_GUID;
 }
