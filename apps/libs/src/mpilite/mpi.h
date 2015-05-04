@@ -16,6 +16,8 @@ extern "C" {
 // Rename user's main fn
 #define main __mpiOcrMain
 
+#ifndef __x86_64__
+ // If not on x86, only have PRINTF, so substitute it for printf
 // replace printf with PRINTF, but don't include ocr.h
 #define printf PRINTF
 
@@ -25,6 +27,7 @@ extern "C" {
     // for PRINTF if stdio.h is included. If it's not included, then it
     // doesn't matter
     unsigned int PRINTF(const char *, ...);
+#endif
 #endif
 
 #define MPI_BOTTOM              ((void *)0)
