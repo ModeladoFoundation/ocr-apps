@@ -1,0 +1,42 @@
+# TempestBase directory
+TEMPESTBASEDIR= ../..
+
+# Compile with BLAS libraries
+#USEBLAS= true
+USEBLAS= false
+MPILITE=$(APPS_ROOT)/libs/x86/lib
+CFLAGS+=-O0 -g
+
+# Load system-specific defaults
+include $(TEMPESTBASEDIR)/mk/Make.defs
+
+##
+## Build instructions
+##
+all: atm SWTest2 MountainRossbyTest RossbyHaurwitzWaveTest BarotropicInstabilityTest
+
+atm:
+	cd $(TEMPESTBASEDIR)/src/base; make
+	cd $(TEMPESTBASEDIR)/src/atm; make
+
+##
+## Individual test case build instructions
+##
+SWTest2: $(BUILDDIR)/SWTest2.o $(FILES:%.cpp=$(BUILDDIR)/%.o) $(TEMPESTLIBS)
+	$(CC) $(LDFLAGS) -o $@ $(BUILDDIR)/SWTest2.o $(FILES:%.cpp=$(BUILDDIR)/%.o) $(LDFILES) -L$(MPILITE) -lmpilite
+
+
+##
+## Clean
+##
+clean:
+	rm -f SWTest2
+	rm -rf $(DEPDIR)
+	rm -rf $(BUILDDIR)
+##
+## Include dependencies
+##
+include $(FILES:%.cpp=$(DEPDIR)/%.d)
+
+# DO NOT DELETE
+
