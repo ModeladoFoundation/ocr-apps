@@ -41,9 +41,11 @@ for (i=0; i<CNC_TABLE_SIZE; i++) {
     // Add one level of indirection to help with contention
     SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
     *_ptr = NULL_GUID;
-    ocrDbRelease(itemTable[i]);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(itemTable[i]);
 }
-ocrDbRelease(context->_items.{{i.collName}});
+// FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+// ocrDbRelease(context->_items.{{i.collName}});
 {% else -%}
 ocrEventCreate(&context->_items.{{i.collName}}, OCR_EVENT_IDEM_T, true);
 {% endif -%}
@@ -123,13 +125,15 @@ static ocrGuid_t _finalizerEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t d
 void {{g.name}}_launch({{g.name}}Args *args, {{g.name}}Ctx *context) {
     {{g.name}}Args *argsCopy;
     ocrGuid_t graphEdtGuid, finalEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
-    ocrDbRelease(context->_guids.self);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(context->_guids.self);
     // copy the args struct into a data block
     // TODO - I probably need to free this sometime
     if (sizeof(*args) > 0) {
         SIMPLE_DBCREATE(&argsDbGuid, (void**)&argsCopy, sizeof(*args));
         *argsCopy = *args;
-        ocrDbRelease(argsDbGuid);
+        // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+        // ocrDbRelease(argsDbGuid);
     }
     // Don't need to copy empty args structs
     else {
@@ -172,7 +176,8 @@ void {{g.name}}_await({{
     {% for x in g.finalizeFunction.tag -%}
     _tagPtr[_i++] = {{x}};
     {% endfor -%}
-    ocrDbRelease(_tagGuid);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagGuid);
     {% else -%}
     ocrGuid_t _tagGuid = NULL_GUID;
     {% endif -%}

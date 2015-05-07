@@ -17,15 +17,22 @@ CFLAGS += -DCNC_DEBUG
 #################################################
 # ENVIRONMENT CHECK
 
-# Make sure we can find OCR
-ifndef OCR_INSTALL
-ifndef XSTACK_SRC
-$(error Please define XSTACK_SRC or OCR_INSTALL)
-endif
 OCR_TYPE ?= x86-pthread-x86
-OCR_INSTALL=$(XSTACK_SRC)/ocr/install/$(OCR_TYPE)
-endif
-OCR_HOME=$(shell dirname `dirname $(OCR_INSTALL)`)
+
+# Make sure we can find OCR and CnC-OCR
+ifndef OCR_INSTALL_ROOT
+ifndef XSTACK_ROOT
+$(error Please define XSTACK_ROOT or OCR_INSTALL_ROOT)
+endif #XSTACK_ROOT
+OCR_INSTALL_ROOT=$(XSTACK_ROOT)/ocr/install/$(OCR_TYPE)
+CNCOCR_ROOT ?= $(XSTACK_ROOT)/hll/cnc
+else
+ifndef CNCOCR_ROOT
+$(error Please define XSTACK_ROOT or CNCOCR_ROOT)
+endif #CNCOCR_ROOT
+endif #CNC_INSTALL_ROOT
+
+OCR_HOME=$(shell dirname `dirname $(OCR_INSTALL_ROOT)`)
 
 
 #################################################
@@ -50,7 +57,7 @@ else ifdef OCR_NUM_NODES
 MPI_FLAGS := -np $(OCR_NUM_NODES)
 else
 $(error Must specify either OCR_NODEFILE or OCR_NUM_NODES)
-endif
+endif #OCR_NODEFILE
 CFG_NAME ?= mach-hc-dist-mpi-clone-2w-lockable.cfg
 RUN := mpirun $(MPI_FLAGS) ./$(TARGET)
 
@@ -60,17 +67,13 @@ CFG_NAME ?= jenkins-1block-lockableDB.cfg
 
 # Default (x86 shared memory)
 else
-ifdef CNCOCR_INSTALL
-OCR_CONFIG := $(CNCOCR_INSTALL)/resources/cncocr/config/m8w.cfg
-else
-CFG_NAME ?= mach-hc-8w-lockableDB.cfg
-endif
-endif
+OCR_CONFIG := $(CNCOCR_ROOT)/resources/cncocr/config/m8w.cfg
+endif #x86-pthread-mpi
 
 CC ?= gcc
 RUN ?= ./$(TARGET)
-OCR_CONFIG ?= $(OCR_INSTALL)/config/$(CFG_NAME)
-OCR_AR := $(OCR_INSTALL)/lib/libocr.a
+OCR_CONFIG ?= $(OCR_INSTALL_ROOT)/config/$(CFG_NAME)
+OCR_AR := $(OCR_INSTALL_ROOT)/lib/libocr.a
 
 
 #################################################
@@ -78,7 +81,7 @@ OCR_AR := $(OCR_INSTALL)/lib/libocr.a
 
 CC_OPTS := -pthread
 LDFLAGS := -lm $(CC_OPTS)
-IFLAGS := -I. -Icncocr_support -I$(OCR_INSTALL)/include
+IFLAGS := -I. -Icncocr_support -I$(OCR_INSTALL_ROOT)/include
 CFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall $(CC_OPTS)
 
 CNC_RUNTIME_SRCS := cncocr_support/cncocr.c

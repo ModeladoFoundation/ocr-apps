@@ -3,6 +3,7 @@
 
 #include "{{g.name}}_internal.h"
 {% if affinitiesEnabled -%}
+#define ENABLE_EXTENSION_AFFINITY
 #include <extensions/ocr-affinity.h>
 {% endif %}
 {#/****** Item instance data cast ******/-#}
@@ -94,7 +95,8 @@ void cncPrescribe_{{stepfun.collName}}({{
     u64 *_tagBlockPtr;
     SIMPLE_DBCREATE(&_tagBlockGuid, (void**)&_tagBlockPtr, sizeof(_args));
     hal_memCopy(_tagBlockPtr, _args, sizeof(_args), 0);
-    ocrDbRelease(_tagBlockGuid);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagBlockGuid);
     {% endif -%}
     {% else -%}
     u64 *_args = NULL;

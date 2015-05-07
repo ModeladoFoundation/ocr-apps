@@ -18,7 +18,8 @@ void cncPutChecked_{{i.collName}}({{i.type.ptrType}}_item, {{
     ocrGuid_t _handle = _cncItemGuid(_item);
     // MUST release first to conform with OCR memory model
     // otherwise the item data might not be visible to other EDTs
-    ocrDbRelease(_handle);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_handle);
     {{ util.log_msg("PUT", i.collName, i.key) }}
     {% if i.key -%}
     cncTag_t _tag[] = { {{i.key|join(", ")}} };
