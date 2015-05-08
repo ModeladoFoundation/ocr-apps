@@ -23,20 +23,50 @@ extern "C" {
  * simulated here.
  */
 
+// mpi_ocr.h must be included before any ocr*.h files.
+
+// Turn on legacy capabilities of OCR.
+#define ENABLE_EXTENSION_LEGACY 1
+#define ENABLE_EXTENSION_RTITF 1
+
 // Defines to simulate OCR tagging for events, and ocrLegacyBlockProgress
 // for datablocks
 
-#define EVENT_ARRAY 1
+// Can define as 0 on compile line to test: -DEVENT_ARRAY=0
+#ifndef EVENT_ARRAY
+    #define EVENT_ARRAY 1
+#endif
 
 /* 4/21/15, ocrLegacyBlockProgress() has been working for a while, turn
        off the DB Array.
 // #define DB_ARRAY 1
 */
 
+#if ! EVENT_ARRAY
+    // use OCR labeling
+    #define ENABLE_EXTENSION_LABELING  1
+#endif
+
+// Include this AFTER all defines have been done.
+// This is used for u64 and friends
+#include <ocr-types.h>
+
+// Values for MPI_Request->op
 // doesn't work? typedef enum( opIsend, opIrecv, opIprobe) nonBlockingOp;
 #define OP_ISEND    1
 #define OP_IRECV    2
 #define OP_IPROBE   3
+
+// Values for MPI_Request->status
+#define FFWD_MQ_MAX             (0)
+#define FFWD_MQ_NULL            (-1)
+#define FFWD_MQ_INIT            (-2)
+#define FFWD_MQ_SEND            (-3)
+#define FFWD_MQ_SEND_MATCHED    (-4)    // used for push-only qeng, but not necessarily enabled
+#define FFWD_MQ_RECV            (-5)
+#define FFWD_MQ_RECV_MATCHED    (-6)    // used for pull-only spad. mandatory.
+#define FFWD_MQ_DONE            (-7)
+#define FFWD_MQ_MIN             (-8)
 
 
 typedef struct mpiOcrMessage_t
@@ -68,11 +98,19 @@ typedef struct rankContext_t
 
 typedef struct messageContext_t
 {
+#if  EVENT_ARRAY
+    // 3 D array of events
     ocrGuid_t *messageEvents;
+#else
+    // 3 D map of event guid s
+    ocrGuid_t messageEventMap;
+#endif
 #ifdef DB_ARRAY
     ocrEdtDep_t *messageData;
 #endif
 } messageContext_t, *messageContextP_t;
+
+#include <extensions/ocr-runtime-itf.h>
 
 #define RANK_CONTEXT_SLOT 0
 #define MESSAGE_CONTEXT_SLOT 1

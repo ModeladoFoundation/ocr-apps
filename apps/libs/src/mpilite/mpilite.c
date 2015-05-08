@@ -9,13 +9,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <mpi_ocr.h>  // must come before ocr.h, as it sets defines
 #include <ocr.h>
 
-#define ENABLE_EXTENSION_LEGACY 1
-#define ENABLE_EXTENSION_RTITF 1
 #include <extensions/ocr-legacy.h>
-#include <extensions/ocr-runtime-itf.h>
-#include <mpi_ocr.h>
 #include "mpi.h"
 #include <malloc.h>
 
@@ -315,7 +312,11 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     ocrGuid_t newDB;
     u64 dbSize;
 
-    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize);
+    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize
+#if LEGACY_BLOCK_PROGRESS_5_ARGS
+                           ,0
+#endif
+                           );
     //assert(DB==newDB);
 
 

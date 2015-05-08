@@ -9,13 +9,13 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <mpi_ocr.h>  // must come before ocr.h, as it sets defines
 #include <ocr.h>
 
-#define ENABLE_EXTENSION_LEGACY 1
-#define ENABLE_EXTENSION_RTITF 1
 #include <extensions/ocr-legacy.h>
-#include <extensions/ocr-runtime-itf.h>
-#include <mpi_ocr.h>
+#if ENABLE_EXTENSION_LABELING
+    #include <extensions/ocr-labeling.h>
+#endif
 
 #define DEBUG_MPI 1
 
@@ -101,9 +101,13 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
     messageContext_t messageContext =
     {
-        .messageEvents = (ocrGuid_t *)(depv[1].ptr),
+#if EVENT_ARRAY
+        .messageEvents = (ocrGuid_t *)(depv[1].ptr)
+#else
+        .messageEventMap = (ocrGuid_t) (paramv[3])
+#endif
 #ifdef DB_ARRAY
-        .messageData = (ocrEdtDep_t *)(depv[2].ptr)
+        , .messageData = (ocrEdtDep_t *)(depv[2].ptr)
 #endif
     };
 
@@ -199,12 +203,34 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
 #endif
 }
 
-
-static ocrGuid_t createTaggedEvents(u32 ranks, u32 maxTag)
+static ocrGuid_t messageEventMapFunc(ocrGuid_t startGuid, u64 skipGuid,
+                                     s64* params, s64* tuple)
 {
-    // Tagging is NYI in OCR
+    const s64 dim0=params[0], dim1=params[1], dim2=params[2];
+    const s64 i0=tuple[0], i1=tuple[1], i2=tuple[2];
+    // bounds check
+    for(int i=0; i<3; i++) {
+        if (tuple[i]<0 || tuple[i] >= params[i])
+            ERROR("messageEventMapFunc: index out of range");
+    }
 
+    s64 index = ((dim1*i0 + i1)*dim2 + i2);
+    return startGuid + skipGuid * index;
+}
+
+static ocrGuid_t createTaggedEvents(u32 numRanks, u32 maxTag)
+{
+#if EVENT_ARRAY
+    // Tagging is NYI in OCR
     return NULL_GUID;
+#else
+    ocrGuid_t messageEventMap;
+    s64 dimensions[] = {numRanks, numRanks, maxTag+1};
+
+    ocrGuidMapCreate(&messageEventMap, 3, messageEventMapFunc, dimensions,
+                     numRanks*numRanks*(maxTag+1) );
+    return messageEventMap;
+#endif
 }
 
 // createMessageEventsAndData: until tagging is working, need to use array
@@ -219,6 +245,7 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
     //   events  messageEventsDB [numRanks, numRanks, maxTags+1];
     //   struct{guid, ptr}  messageDataDB [numRanks, numRanks, maxTags+1];
 
+#if EVENT_ARRAY
     const u32 numElements = numRanks * numRanks * (maxTags + 1);
     ocrGuid_t *events;
 
@@ -239,6 +266,7 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
             data[i].ptr = NULL;
 #endif
         }
+#endif  // EVENT_ARRAY
 }
 
 // mainEdtHelperFn: a FINISH edt that does most of the work of starting the
@@ -296,7 +324,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 #endif
 
     // Mapping from [sourceRank x destRank x maxTag+1] to a tagged event
-    ocrGuid_t eventTagGuid = createTaggedEvents(numRanks, maxTag);
+    ocrGuid_t messageEventMap = createTaggedEvents(numRanks, maxTag);
 
     // But, Until OCR tagging is implemented, we need the shared array of message
     // events in a DB. And until ocrLegacyProgressBlock() is implemented to
@@ -308,7 +336,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     ocrGuid_t messageEventsDB=NULL_GUID, messageDataDB=NULL_GUID;
     createMessageEventsAndData(&messageEventsDB, &messageDataDB, numRanks, maxTag);
 
-    u64 rankParamv[] = {0, numRanks, maxTag, eventTagGuid};  //most params are the same
+    u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap};  //most params are the same
     ocrGuid_t rankDepv[] = {argcArgvDB->guid, messageEventsDB, messageDataDB };
 
     // create the rankEdts. since their deps are all satisfied, they can

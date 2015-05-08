@@ -11,8 +11,6 @@
 extern "C" {
 #endif
 
-#include <mpi_ocr_messaging.h>
-
 // Rename user's main fn
 #define main __mpiOcrMain
 
@@ -28,7 +26,7 @@ extern "C" {
     // doesn't matter
     unsigned int PRINTF(const char *, ...);
 #endif
-#endif
+#endif // ndef __x86_64__
 
 #define MPI_BOTTOM              ((void *)0)
 #define MPI_SUCCESS             (1)
@@ -80,6 +78,25 @@ typedef int    MPI_Comm;
 #define MPI_COMM_WORLD   ( 0)
 #define MPI_COMM_SELF    (-2)
 
+struct ffwd_status {
+    int count;
+    int datatype;
+    int tag;
+    int source;
+};
+
+struct ffwd_message {
+    int op;  // what operation should be done?: send, recv, probe
+    int count;
+    int datatype;
+    int tag;
+    int rank;    // dest or source depending on context.. global pid
+    int comm;
+    int flag;
+    volatile int status;
+    void *buf;
+};
+
 typedef struct {
     struct ffwd_status mq_status;
 } MPI_Status;    // also modify mpif.h MPI_STATUS_SIZE if the size changes
@@ -87,14 +104,11 @@ typedef struct {
 #define MPI_TAG           mq_status.tag
 
 // TODO: the largest tag value should be available through the attribute MPI_TAG_UB
-#define MPI_ANY_SOURCE    FFWD_MQ_ANY_SOURCE
-#define MPI_ANY_TAG       FFWD_MQ_ANY_TAG
+#define MPI_ANY_SOURCE    (-1)
+#define MPI_ANY_TAG       (-1)
 
-#ifdef NEW_MQ
 typedef struct ffwd_message *    MPI_Request;
-#else
-typedef struct ffwd_message    MPI_Request;
-#endif
+
 #define MPI_REQUEST_NULL  NULL
 
 typedef int MPI_Op;
