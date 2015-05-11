@@ -1,0 +1,6 @@
+#!/bin/bash
+cd snap-c
+make clean
+make
+cd ..
+mpirun -np 4 snap-c/snap_mkl_vml --fi ./infile --fo ./outfile
