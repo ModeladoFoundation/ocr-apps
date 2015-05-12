@@ -81,7 +81,7 @@ job_ocr_run_kernel_comdsdsc_x86_remote_regression = {
                   'WORKLOAD_ARGS': '-x 5 -y 5 -z 5 -d ${JJOB_SHARED_HOME}/xstack/apps/CoMD/datasets/pots',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/CoMD/refactored/ocr/sdsc/install'}
 }
-job_ocr_build_kernel_comdllnl_x86_regression = {
+job_ocr_build_kernel_tempestsw2lite_x86_regression = {
     'name': 'ocr-build-kernel-tempestsw2lite-x86-regression',
     'depends': ('ocr-build-x86-pthread-x86',),
     'jobtype': 'ocr-build-kernel-regression',
