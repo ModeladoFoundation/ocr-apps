@@ -11,15 +11,22 @@
 extern "C" {
 #endif
 
-#include <mpi_ocr_messaging.h>
-
 // Rename user's main fn
 #define main __mpiOcrMain
 
+#ifndef __x86_64__
+ // If not on x86, only have PRINTF, so substitute it for printf
 // replace printf with PRINTF, but don't include ocr.h
-unsigned int PRINTF(const char *, ...);
-
 #define printf PRINTF
+
+#ifdef _STDIO_H
+    // so stdio.h has been included, need decl for PRINTF.
+    // If not included yet, the #define printf PRINTF will provide a decl
+    // for PRINTF if stdio.h is included. If it's not included, then it
+    // doesn't matter
+    unsigned int PRINTF(const char *, ...);
+#endif
+#endif // ndef __x86_64__
 
 #define MPI_BOTTOM              ((void *)0)
 #define MPI_SUCCESS             (1)
@@ -71,6 +78,25 @@ typedef int    MPI_Comm;
 #define MPI_COMM_WORLD   ( 0)
 #define MPI_COMM_SELF    (-2)
 
+struct ffwd_status {
+    int count;
+    int datatype;
+    int tag;
+    int source;
+};
+
+struct ffwd_message {
+    int op;  // what operation should be done?: send, recv, probe
+    int count;
+    int datatype;
+    int tag;
+    int rank;    // dest or source depending on context.. global pid
+    int comm;
+    int flag;
+    volatile int status;
+    void *buf;
+};
+
 typedef struct {
     struct ffwd_status mq_status;
 } MPI_Status;    // also modify mpif.h MPI_STATUS_SIZE if the size changes
@@ -78,14 +104,11 @@ typedef struct {
 #define MPI_TAG           mq_status.tag
 
 // TODO: the largest tag value should be available through the attribute MPI_TAG_UB
-#define MPI_ANY_SOURCE    FFWD_MQ_ANY_SOURCE
-#define MPI_ANY_TAG       FFWD_MQ_ANY_TAG
+#define MPI_ANY_SOURCE    (-1)
+#define MPI_ANY_TAG       (-1)
 
-#ifdef NEW_MQ
 typedef struct ffwd_message *    MPI_Request;
-#else
-typedef struct ffwd_message    MPI_Request;
-#endif
+
 #define MPI_REQUEST_NULL  NULL
 
 typedef int MPI_Op;
@@ -169,6 +192,7 @@ int MPI_Init(int *argc, char ***argv);
 int MPI_Initialized(int *flag);
 int MPI_Finalize(void);
 int MPI_Abort(MPI_Comm comm, int errorcode);
+double MPI_Wtick( void );	// Accuracy in seconds of Wtime
 double MPI_Wtime( void );    // Time in seconds since an arbitrary time in the past.
 int MPI_Send (void *buf,int count, MPI_Datatype
               datatype, int dest, int tag, MPI_Comm comm);

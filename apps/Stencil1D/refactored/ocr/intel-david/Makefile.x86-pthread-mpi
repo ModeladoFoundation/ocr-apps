@@ -4,19 +4,18 @@
 
 COMM_LAYER=mpi
 
-REPO_TOP ?= ${APPS_ROOT}/..
 # APPS
-APPS_ROOT       ?= ${APPS_ROOT}/apps
-APPS_LIBS_ROOT  ?= ${APPS_ROOT}/apps/libs/mpi
+APPS_ROOT       ?= ../../../../../apps
+APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-pthread-${COMM_LAYER}
 
 # OCR
 OCR_TARGET   ?= x86-pthread-${COMM_LAYER}
-OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
-OCR_SRC     ?= ${REPO_TOP}/ocr
-OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
+OCR_INSTALL_ROOT ?= ../../../../../ocr/install
+OCR_ROOT     ?= ../../../../../ocr
+OCR_BUILD_ROOT   ?= ../../../../../ocr/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -50,14 +49,14 @@ RUN_JENKINS ?= no
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := Stencil1D
+TARGET := stencil
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := Stencil1D.c
+SRCS := stencil1D.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
