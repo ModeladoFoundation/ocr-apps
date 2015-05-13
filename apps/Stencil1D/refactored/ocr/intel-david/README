@@ -1,0 +1,24 @@
+Written and Committed by David S Scott
+
+There are three versions of stencil 1D here:
+
+stencil1Dsticky uses sticky events to transmit data
+stencil1Donce uses once events (requires EDTs to spawn their GRANDCHILDREN)
+stencil1Dguid sends the guid of the grandchild and doesn't use events at all
+
+Copy whichever one you want to run to stencil1D.c
+
+All implement a 1D dissapative stencil on a set of points
+the initial data is 1s at each end and zero on the interior
+there are three input parameters that are set in #define s
+
+
+
+N is the number of worker EDTs that are created
+M is the number of points controlled by each EDT
+T is the number of iterations
+
+They can be changed and rerun.
+
+
+

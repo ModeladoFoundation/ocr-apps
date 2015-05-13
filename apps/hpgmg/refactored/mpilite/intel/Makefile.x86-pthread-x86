@@ -19,7 +19,7 @@ OCR_TYPE        ?= x86-pthread-x86
 # OCR
 OCR_TARGET       ?= x86-pthread-x86
 OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
-OCR_SRC          ?= ${REPO_TOP}/ocr
+OCR_ROOT         ?= ${REPO_TOP}/ocr
 OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
 
 # APPLICATION
@@ -60,8 +60,7 @@ TARGET ?= hpgmg
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-#REQ_LIBS := mpilite
-REQ_LIBS :=
+REQ_LIBS := mpilite
 
 # Space separated list of source files
 

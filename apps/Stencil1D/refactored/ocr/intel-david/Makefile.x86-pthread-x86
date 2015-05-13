@@ -2,21 +2,18 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-
-REPO_TOP ?= ${APPS_ROOT}/..
-
 # APPS
-APPS_ROOT       ?= ${REPO_TOP}/apps
-APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
+APPS_ROOT       ?= ../../../../../apps
+APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-pthread-x86
 
 # OCR
 OCR_TARGET   ?= x86-pthread-x86
-OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
-OCR_SRC     ?= ${REPO_TOP}/ocr
-OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
+OCR_ROOT     ?= ../../../../../ocr
+OCR_INSTALL_ROOT ?= ../../../../../ocr/install
+OCR_BUILD_ROOT   ?= ../../../../../ocr/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -48,17 +45,17 @@ RUN_JENKINS ?= no
 ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
-include $(APPS_ROOT)/makefiles/make-pre.inc
+include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := Stencil1D
+TARGET := stencil
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := Stencil1D.c
+SRCS := stencil1D.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
@@ -75,13 +72,13 @@ LDFLAGS := -lpthread
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O0
+all:	CFLAGS += -O0 -g
 all:	TARGETS := all
 all:	default
 
-#debug:	CFLAGS += -O0
-#debug:	TARGETS := debug
-#debug:	default
+debug:	CFLAGS += -O0
+debug:	TARGETS := debug
+debug:	default
 
 install: all
 
@@ -118,5 +115,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include $(APPS_ROOT)/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-regular.inc
 

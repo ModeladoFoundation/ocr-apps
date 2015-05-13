@@ -9,13 +9,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <mpi_ocr.h>  // must come before ocr.h, as it sets defines
 #include <ocr.h>
 
-#define ENABLE_EXTENSION_LEGACY 1
-#define ENABLE_EXTENSION_RTITF 1
 #include <extensions/ocr-legacy.h>
-#include <extensions/ocr-runtime-itf.h>
-#include <mpi_ocr.h>
 #include "mpi.h"
 #include <malloc.h>
 
@@ -172,6 +169,14 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     // OK, the location is free: time to create the event and DB
     ocrEventCreate((ocrGuid_t *)eventP, OCR_EVENT_STICKY_T, TRUE);
 
+
+    mpiOcrMessageP_t ptr;
+    ocrGuid_t DB;
+
+    ocrDbCreate(&DB, (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
+                DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+
+#ifdef DB_ARRAY
     // Have to put the DB into a parallel array, because ocrWait does not
     // yet return the ptr value, so recipient can't get to the data!!!
     // Thus it has to be accessed from here by the receiver, who can check
@@ -179,11 +184,9 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     ocrEdtDep_t *dataP =
         &(messageContext->messageData[index(source, dest, tag, numRanks, maxTag)]);
 
-    mpiOcrMessageP_t ptr;
-
-    ocrDbCreate(&(dataP->guid), (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
-                DB_PROP_NONE, NULL_GUID, NO_ALLOC);
     dataP->ptr = (void *)ptr;
+    dataP->data = DB;
+#endif
 
     // fill message header
     ptr->header.count = count;
@@ -197,10 +200,10 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     // copy buf starting at .data
     memcpy(&(ptr->data), buf, totalSize);
 
-    ocrDbRelease(dataP->guid); // make sure it's visible to receiver
+    ocrDbRelease(DB); // make sure it's visible to receiver
 
     // OK, Send the DB. the Satisfy should also release it (?).
-    ocrEventSatisfy(*eventP, dataP->guid);
+    ocrEventSatisfy(*eventP, DB);
 
     return MPI_SUCCESS;
 }
@@ -309,11 +312,15 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     ocrGuid_t newDB;
     u64 dbSize;
 
-    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize);
+    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize
+#if LEGACY_BLOCK_PROGRESS_5_ARGS
+                           ,0
+#endif
+                           );
     //assert(DB==newDB);
 
 
-
+#ifdef DB_ARRAY
     // The DB is in a parallel array, because ocrWait does not
     // yet return the ptr value, so recipient can't get to the data!!!
     // Thus it has to be accessed from here by the receiver, who can check
@@ -334,7 +341,11 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     mpiOcrMessageP_t ptr = (mpiOcrMessageP_t) dataP->ptr;
 
     assert(ptr == myPtr);
+#else
+    // ocrLegacyBlockProgress provides the db ptr.
+    mpiOcrMessageP_t ptr = (mpiOcrMessageP_t) myPtr;
 
+#endif
     // Destroy event and set array entry to NULL_GUID so sender can send
     // again.
 
@@ -394,7 +405,7 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
         }
 
     // OK, finished with DB, delete it
-    ocrDbDestroy(receivedGuid);
+    ocrDbDestroy(DB);
 
     return ret;
 }
@@ -1260,21 +1271,27 @@ int MPI_Abort(MPI_Comm comm, int errorcode)
     return 0;
 }
 
+double MPI_Wtick( void )	// Accuracy in seconds of Wtime
+{
+    return .000001;    // generated on x86 testing successive values of Wtime
+}
+
 double MPI_Wtime( void )	// Time in seconds since an arbitrary time in the past.
 {
-#if 0
+#ifndef __TG
     struct timeval now;
     int rc;
     double ret;
     rc = gettimeofday(&now, NULL);	// rc always 0 for now
     ret = (double) now.tv_sec + (double) now.tv_usec * 1.0e-6;
     return ret;
-#endif
+#else
     // cheat, race condition, but will be monotonically increasing so
     // people won't get div/by/zero if they do ratios of time diffs
     static double ret = 0;
 
     return (ret += 0.001);
+#endif
 }
 
 int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)

@@ -152,12 +152,12 @@ Nx="-"
 Ny="-"
 Nz="-"
 
-if [[ "$problem_type" == "ws_small" || "$problem_type" == "ws_large" ]]; then
+if [[ "$problem_type" == ws_* ]]; then
     Nl=$(($nl*$ranks))
 fi
 
-if [[ "$problem_type" == "ss_small" || "$problem_type" == "ss_large" ]]; then
-    Nl=$nl
+if [[ "$problem_type" == ss_* ]]; then
+    Nl=$(($nl*$ranks))
 fi
 
 px="-"
