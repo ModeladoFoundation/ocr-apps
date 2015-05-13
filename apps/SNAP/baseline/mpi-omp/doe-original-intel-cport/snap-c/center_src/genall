@@ -1,6 +1,6 @@
 
 # No Fixup
-mpirun -cpus-per-proc 3 -np 4 $1 in01 out01 
+mpirun -cpus-per-proc 3 -np 4 $1 in01 out01
 mpirun -cpus-per-proc 2 -np 6 $1 in02 out02
 mpirun -cpus-per-proc 2 -np 6 $1 in03 out03
 mpirun -cpus-per-proc 2 -np 4 $1 in04 out04
@@ -14,7 +14,7 @@ mpirun -cpus-per-proc 4 -np 4 $1 in11 out11
 mpirun -cpus-per-proc 4 -np 4 $1 in12 out12
 
 # Fixup
-mpirun -cpus-per-proc 3 -np 4 $1 fin01 fout01 
+mpirun -cpus-per-proc 3 -np 4 $1 fin01 fout01
 mpirun -cpus-per-proc 2 -np 6 $1 fin02 fout02
 mpirun -cpus-per-proc 2 -np 6 $1 fin03 fout03
 mpirun -cpus-per-proc 2 -np 4 $1 fin04 fout04
