@@ -108,28 +108,28 @@ job_ocr_run_kernel_cholesky_x86_remote_regression = {
 }
 
 # fibonacci
-#job_ocr_build_kernel_fibonacci_x86_regression = {
-#    'name': 'ocr-build-kernel-fibonacci-x86-regression',
-#    'depends': ('ocr-build-x86-pthread-x86',),
-#    'jobtype': 'ocr-build-kernel-regression',
-#    'run-args': 'fibonacci x86-pthread-x86',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
-#                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/fibonacci/ocr/build',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr/install'}
-#}
-#job_ocr_run_kernel_fibonacci_x86_remote_regression = {
-#    'name': 'ocr-run-kernel-fibonacci-x86-remote-regression',
-#    'depends': ('ocr-build-kernel-fibonacci-x86-regression',),
-#    'jobtype': 'ocr-run-kernel-remote-regression',
-#    'run-args': 'fibonacci x86-pthread-x86 ocr-run-kernel-fibonacci-x86-remote-regression 10',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
-#                  'WORKLOAD_ARGS': '20',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr/install' }
-#}
+job_ocr_build_kernel_fibonacci_x86_regression = {
+    'name': 'ocr-build-kernel-fibonacci-x86-regression',
+    'depends': ('ocr-build-x86-pthread-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'fibonacci x86-pthread-x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/fibonacci/ocr/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr/install'}
+}
+job_ocr_run_kernel_fibonacci_x86_remote_regression = {
+    'name': 'ocr-run-kernel-fibonacci-x86-remote-regression',
+    'depends': ('ocr-build-kernel-fibonacci-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'fibonacci x86-pthread-x86 ocr-run-kernel-fibonacci-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
+                  'WORKLOAD_ARGS': '20',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr/install' }
+}
 
 #job_ocr_run_kernel_fibonacci_x86_remote_scaling = {
 #    'name': 'ocr-run-kernel-fibonacci-x86-remote-scaling',
@@ -144,29 +144,29 @@ job_ocr_run_kernel_cholesky_x86_remote_regression = {
 #}
 
 # Smith-Waterman
-#job_ocr_build_kernel_smithwaterman_x86_regression = {
-#    'name': 'ocr-build-kernel-smithwaterman-x86-regression',
-#    'depends': ('ocr-build-x86-pthread-x86',),
-#    'jobtype': 'ocr-build-kernel-regression',
-#    'run-args': 'smithwaterman x86-pthread-x86',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
-#                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/smithwaterman/ocr/build',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
-#}
-#
-#job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
-#    'name': 'ocr-run-kernel-smithwaterman-x86-remote-regression',
-#    'depends': ('ocr-build-kernel-smithwaterman-x86-regression',),
-#    'jobtype': 'ocr-run-kernel-remote-regression',
-#    'run-args': 'smithwaterman x86-pthread-x86 ocr-run-kernel-smithwaterman-x86-remote-regression 10',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
-#                  'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
-#}
+job_ocr_build_kernel_smithwaterman_x86_regression = {
+    'name': 'ocr-build-kernel-smithwaterman-x86-regression',
+    'depends': ('ocr-build-x86-pthread-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'smithwaterman x86-pthread-x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/smithwaterman/ocr/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
+}
+
+job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
+    'name': 'ocr-run-kernel-smithwaterman-x86-remote-regression',
+    'depends': ('ocr-build-kernel-smithwaterman-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'smithwaterman x86-pthread-x86 ocr-run-kernel-smithwaterman-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
+                  'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
+}
 
 # 1d Stencil David Scott
 #job_ocr_build_kernel_1DStencilDavidScott_x86_regression = {

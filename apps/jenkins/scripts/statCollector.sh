@@ -7,6 +7,13 @@ fi
 
 SCRIPT_FOLDER=${JJOB_SHARED_HOME}/xstack/apps/jenkins/scripts
 
+# Create archive dirs if the framework is being run manually ( i.e. local run and not by jenkin)
+if [ -z $WORKSPACE]; then
+    echo "---- Local execution of Regression Framework . Creating Archive dirs ----"
+    mkdir ${JJOB_SHARED_HOME}/../regressionResults
+    mkdir ${JJOB_SHARED_HOME}/../regressionResults/NightlyRegressionStat
+#    mkdir ${JJOB_SHARED_HOME}/../regressionResults/NightlyScalingStat
+fi
 
 python ${SCRIPT_FOLDER}/extractStat.py $1 $2
 RET_VAL=$?
@@ -19,7 +26,12 @@ fi
 
 # Generate plotGraph.py parsable stat file
 
-python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/regressionResults/NightlyRegressionStat/ ${WORKSPACE}/NightlyRegressionStat.txt
+if [ -z $WORKSPACE]; then
+    #  Manually execution of framework( i.e. local run and not by jenkin)
+    python ${SCRIPT_FOLDER}/statFileFolderParser.py ${JJOB_SHARED_HOME}/../regressionResults/NightlyRegressionStat/ ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt
+else
+    python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/regressionResults/NightlyRegressionStat/ ${WORKSPACE}/NightlyRegressionStat.txt
+fi
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then
     echo " ---- Successfully generated plot script parsable regression input file ----"
@@ -27,7 +39,7 @@ else
     echo " ---- Failure in generation of plot script parsable regression input file ----"
     exit $RET_VAL
 fi
-
+#TODO : Bala following must get updated as above
 #python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/regressionResults/NightlyScalingStat/ ${WORKSPACE}/NightlyScalingStat.txt
 #RET_VAL=$?
 #if [ $RET_VAL -eq 0 ]; then
@@ -38,8 +50,15 @@ fi
 #fi
 
 # Plot these stat files
-cat ${WORKSPACE}/NightlyRegressionStat.txt
-python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time(sec)" "${WORKSPACE}/RegressionTrendlineplot.png"
+
+if [ -z $WORKSPACE]; then
+    #  Manually execution of framework( i.e. local run and not by jenkin)
+    cat ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt
+    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time(sec)" "${JJOB_SHARED_HOME}/../RegressionTrendlineplot.png"
+else
+    cat ${WORKSPACE}/NightlyRegressionStat.txt
+    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time(sec)" "${WORKSPACE}/RegressionTrendlineplot.png"
+fi
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then
     echo " ---- Successfully generated Nightly Regression plot ----"
@@ -48,6 +67,7 @@ else
     exit $RET_VAL
 fi
 
+#TODO : Bala following must get updated as above
 #cat ${WORKSPACE}/NightlyScalingStat.txt
 #python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyScalingStat.txt "Scaling Trend Line" "Build" "Normalized Execution Time(sec)" "${WORKSPACE}/ScalingTrendlineplot.png"
 #RET_VAL=$?

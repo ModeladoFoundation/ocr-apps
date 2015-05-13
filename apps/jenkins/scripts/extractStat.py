@@ -36,7 +36,7 @@ def output(statDir, filename, namelist, valuelist,archiveDir):
 
     # Check if stat dir exists . if not , create one
     if not os.path.exists(archivedirPath):
-        print("ERROR ! Jenkins failed to create/copy archived dirs for this regression run . Inspect jenkins PBS configuration\n")
+        print("ERROR ! Archived dir (" + archivedirPath +" ) for this regression run does not exist . Inspect jenkins PBS configuration if jenkins running the framework or statCollector.sh if framework is being run manully.\n")
         sys.exit(1)
 
     # Purge old .csv , if exist
