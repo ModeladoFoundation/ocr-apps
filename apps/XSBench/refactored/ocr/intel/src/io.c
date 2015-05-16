@@ -1,4 +1,5 @@
 #include "XSbench_header.h"
+#include "ocr.h"
 
 #ifdef MPI
 #include<mpi.h>
@@ -177,19 +178,13 @@ Inputs read_CLI( int argc, char * argv[] )
     input.n_mats = 12;
 
     // defaults to 11303 (corresponding to H-M Large benchmark)
-    input.n_gridpoints = 113;
+    input.n_gridpoints = 11303;
 
     // defaults to 15,000,000
     input.lookups = 15000;
 
     // defaults to H-M Large benchmark
     //input.HM = (char *) malloc( 6 * sizeof(char) );
-    input.HM[0] = 'l' ;
-    input.HM[1] = 'a' ;
-    input.HM[2] = 'r' ;
-    input.HM[3] = 'g' ;
-    input.HM[4] = 'e' ;
-    input.HM[5] = '\0';
     strcpy( input.HM, "small" );
 
     // Check if user sets these
@@ -198,13 +193,13 @@ Inputs read_CLI( int argc, char * argv[] )
     // Collect Raw Input
     for( int i = 1; i < argc; i++ )
     {
-        char * arg = argv[i];
+        char * arg = getArgv(argv, i);
 
         // nthreads (-t)
         if( strcmp(arg, "-t") == 0 )
         {
             if( ++i < argc )
-                input.nthreads = atoi(argv[i]);
+                input.nthreads = atoi(getArgv(argv, i));
             else
                 print_CLI_error();
         }
@@ -214,7 +209,7 @@ Inputs read_CLI( int argc, char * argv[] )
             if( ++i < argc )
             {
                 user_g = 1;
-                input.n_gridpoints = atol(argv[i]);
+                input.n_gridpoints = atol(getArgv(argv, i));
             }
             else
                 print_CLI_error();
@@ -223,7 +218,7 @@ Inputs read_CLI( int argc, char * argv[] )
         else if( strcmp(arg, "-l") == 0 )
         {
             if( ++i < argc )
-                input.lookups = atoi(argv[i]);
+                input.lookups = atoi(getArgv(argv,i));
             else
                 print_CLI_error();
         }
@@ -231,7 +226,7 @@ Inputs read_CLI( int argc, char * argv[] )
         else if( strcmp(arg, "-s") == 0 )
         {
             if( ++i < argc )
-                strcpy(input.HM, argv[i]);
+                strcpy(input.HM, getArgv(argv,i));
             else
                 print_CLI_error();
         }

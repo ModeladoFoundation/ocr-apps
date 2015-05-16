@@ -1105,7 +1105,7 @@ ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int n_gridpoints = PTR_InputsH->n_gridpoints;
 
     double xs_vector[5];
-    double macro_xs_vector[5];
+    double macro_xs_vector[5] = {0., 0., 0., 0., 0.};
 
     int p_nuc;
     double conc;
@@ -1149,7 +1149,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int nprocs = 1;
 
     void* programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    int argc = getArgc(programArgv);
 
     // Process CLI Fields -- store in "Inputs" structure
     Inputs in = read_CLI( argc, programArgv );
