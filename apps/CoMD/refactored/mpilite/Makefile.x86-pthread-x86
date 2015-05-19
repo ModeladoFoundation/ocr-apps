@@ -3,7 +3,11 @@
 # removed or modified.
 
 # APPS
-APPS_ROOT       ?= ../../../../apps
+#APPS_ROOT       ?= ../../../../apps
+MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
+
+
+APPS_ROOT       = $(MYAPPS_ROOT)
 APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
@@ -11,12 +15,18 @@ OCR_TYPE        ?= x86-pthread-x86
 
 # OCR
 OCR_TARGET       ?= x86-pthread-x86
-OCR_ROOT         ?= ../../../../ocr
+OCR_ROOT         = $(APPS_ROOT)/../ocr
 OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
-WORKLOAD_SRC          ?= .
+#WORKLOAD_SRC          ?= src-mpi
+#src dir - go upt to "intel" which has the "src' dir, then you are there. works if starting
+#  at "intel" or down under "build_and_run"
+SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
+
+WORKLOAD_SRC          ?= $(SRC_DIR)
+
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -66,7 +76,7 @@ $(OBJS): CoMD_info.h cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h  
 # icc is 15% faster than gcc
 CC=icc
 
-CFLAGS := -g -DDO_MPI -DDOUBLE
+CFLAGS := -g -DDO_MPI -DDOUBLE -I $(SRC_DIR)
 LDFLAGS := -lpthread -lm -lmpilite
 
 # 4/17/15 Mark doesn't know how to cause this to get created in the build dir; plus

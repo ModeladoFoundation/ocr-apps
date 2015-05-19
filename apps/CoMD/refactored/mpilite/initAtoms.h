@@ -1,1 +1,0 @@
-src-mpi/initAtoms.h
