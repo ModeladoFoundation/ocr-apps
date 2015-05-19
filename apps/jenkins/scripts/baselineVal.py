@@ -14,4 +14,5 @@ test_baseval={
                 'time_ocr-run-kernel-fibonacci-x86-remote-scaling':1,
                 'time_ocr-run-kernel-comdllnl-x86-remote-regression':14.4,
                 'time_ocr-run-kernel-comdsdsc-x86-remote-regression':0.20,
+                'time_ocr-run-kernel-hpgmglite-x86-remote-regression':21.8,
 }

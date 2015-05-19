@@ -30,30 +30,30 @@ job_ocr_run_kernel_comdllnl_x86_remote_regression = {
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/CoMD/refactored/ocr/llnl/install'}
 }
 
-## hpgmg-lite
-#job_ocr_build_kernel_hpgmglite_x86_regression = {
-#    'name': 'ocr-build-kernel-hpgmglite_x86-regression',
-#    'depends': ('ocr-build-x86-pthread-x86',),
-#    'jobtype': 'ocr-build-kernel-regression',
-#    'run-args': 'hpgmg x86-pthread-x86',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel',
-#                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/build',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/install'}
-#}
+# hpgmg-lite
+job_ocr_build_kernel_hpgmglite_x86_regression = {
+    'name': 'ocr-build-kernel-hpgmglite-x86-regression',
+    'depends': ('ocr-build-x86-pthread-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'hpgmg x86-pthread-x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/install'}
+}
 #
-#job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
-#    'name': 'ocr-run-kernel-hpgmglLite-x86-remote-regression',
-#    'depends': ('ocr-build-kernel-hpgmglite-x86-regression',),
-#    'jobtype': 'ocr-run-kernel-remote-regression',
-#    'run-args': 'hpgmg x86-pthread-x86 ocr-run-kernel-hpgmgLite-x86-remote-regression',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel',
-#                  'WORKLOAD_ARGS': '',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/install'}
-#}
+job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
+    'name': 'ocr-run-kernel-hpgmglite-x86-remote-regression',
+    'depends': ('ocr-build-kernel-hpgmglite-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'hpgmg x86-pthread-x86 ocr-run-kernel-hpgmglite-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/install'}
+}
 
 # CoMD: sdsc ocr
 job_ocr_build_kernel_comdsdsc_x86_regression = {
