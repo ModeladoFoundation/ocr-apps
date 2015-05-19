@@ -2,4 +2,10 @@ Running:
 
 make -f Makefile.<OCR_TYPE> run
 
-#Edit the source file (#defines) to change the number of subdomains and timesteps if needed first
+where OCR_TYPE can be
+x86-pthread-x8
+x86-pthread-mpi
+x86-pthread-tg
+tg
+
+#Edit the WORKLOAD_ARGS variable in the corresponding Makefile.OCR_TYPE to change the problem size/iterations
