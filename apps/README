@@ -1,40 +1,45 @@
 ###
 # Introduction
 ###
-This directory contains the applications worked on as part of the TG project
+This directory contains the kernels/applications worked on as part of the TG project
 
 The structure of this directory is as follows:
+
   apps/
-  |---- <app1>/                      # Different implementations of app1
-  |     |------ ocr/                 # OCR implementation (symlink when mature)
-  |     \------ <omp|mpi|others...>/ # Any other implementation we want to compare against
   |
-  |---- ...                          # Other applications
+  #Older directory structure: E.g., cholesky, fibonacci, fft, smithwaterman, etc.
   |
-  |---- libs/                        # Support libraries (common across applications)
-  |     |---- src/                   # Source of these libraries
+  |---- <old_app1>/                     # Different implementations of app1
+  |     |------ ocr/                    # OCR implementation (symlink when mature)
+  |     \------ <omp|mpi|others...>/    # Any other implementation we want to compare against
+  |
+  #Newer (recommended) directory structure: E.g., CoMD, miniAMR, RSBench, tempest, hpgmg, SNAP, XSBench, Stencil1D, etc.
+  |
+  |---- <new_app1>/                     # Different implementations of app1
+  |     |---- refactored/               # Refactored implementations (runs on OCR)
+  |     |     \---- <ocr|icnc|hta|...>  # High-level expression of the program (CnC, HTA, ...)
+  |     |           \---- <owner>       # Institution responsible for the program (SDSC, LLNL, ...)
+  |     |---- baseline/                 # Original or legacy implementations
+  |     |     \---- <omp|serial|mpi>    # High-level expression of the program (C, MPI, etc.); use 'mpi-serial', for example, if implementation supports multiple modes
+  |     |           \---- <owner>       # Institution responsible for the program; use 'doe-original' for original DoE apps.
+  |     \---- datasets/                 # Data for the application (common to various implementations)
+  |
+  |---- ...                             # Other applications
+  |
+  |---- libs/                           # Support libraries (common across applications)
+  |     |---- src/                      # Source of these libraries
   |     |     |--- <lib1>/
   |     |     \--- ...
   |     |
-  |     |---- tg/                    # Installation path for TG compiled libs
+  |     |---- tg/                       # Installation path for TG compiled libs
   |     |     |-- include/
   |     |     \-- lib/
   |     |
-  |     \---- x86/                   # Installation path for x86 compiled libs
+  |     \---- x86/                      # Installation path for x86 compiled libs
   |           |--- include/
   |           \--- lib/
   |
-  \---- makefiles/                   # OCR Makefiles
-
-
-###
-# Compatible applications
-###
-This is the list of apps that have been "ported" to this new directory and build structure:
-    - cholesky
-    - fibonacci
-    - fft
-    - smithwaterman
+  \---- makefiles/                      # OCR Makefiles
 
 ###
 # Best practices
@@ -50,5 +55,5 @@ This is the list of apps that have been "ported" to this new directory and build
 ###
 # Resources
 ###
-    - Understanding OCR Makefiles: https://xstack.exascale-tech.com/wiki/index.php/OCR_User_Documentation#OCR_applications
-    - Detail on applications: https://xstack.exascale-tech.com/wiki/index.php/Applications,_Proxy_Apps,_mini-Apps_and_Kernels_-_status_and_location
+    - Understanding OCR Makefiles: https://xstack.exascale-tech.com/wiki/index.php/Adding_an_Application#Makefile_options
+    - Detail on applications: https://xstack.exascale-tech.com/wiki/index.php/App_Development
