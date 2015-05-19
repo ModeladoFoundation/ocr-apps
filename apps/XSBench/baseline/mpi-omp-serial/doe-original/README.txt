@@ -85,9 +85,17 @@ Compilation-------------------------------------------------------------------
 
 Running XSBench---------------------------------------------------------------
 
+Option - 1:
 	To run XSBench with default settings, use the following command:
 
 	>$ ./XSBench
+
+Option - 2:
+    # Using the unified run framework
+    $ source ../../../../apps_env.bash
+    $ cd build_and_run
+    $ cd serial #cd omp #for OpenMP
+    $ run_app ss_small 1500000 #Runs the "small" problem size defined in ../../../parameters.proposed file with 1500000 lookups
 
 	For non-default settings, XSBench supports the following command line
 	options:
