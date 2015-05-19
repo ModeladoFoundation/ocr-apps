@@ -3,7 +3,7 @@ except that it relies on newlib which runs on top of OCR.
 
 To compile:
     - Build newlib in apps/libs/src:
-        - cd ../../../../apps/libs/src/newlib
+        - cd ../../../../../apps/libs/src/newlib
         - ARCH=x86 make all install
     - Build the ocrshim library (temporary step):
         - cd ocrshim

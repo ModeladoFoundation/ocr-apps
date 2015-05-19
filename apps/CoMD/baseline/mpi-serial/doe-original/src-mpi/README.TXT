@@ -62,6 +62,12 @@ comments in Makefile.vanilla for information about specifying the name
 of the C compiler and/or additional compiler switches that might be
 necessary for your platform.
 
+OR
+# Using unified run framework
+$ source ../../../../apps_env.bash
+$ cd build_and_run
+$ cd serial
+$ run_app ss_small 10 #Runs the "small" problem size defined in ../../../../parameters.proposed file for 10 timesteps
 
 What's New
 ==========

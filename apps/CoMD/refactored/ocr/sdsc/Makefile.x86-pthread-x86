@@ -99,7 +99,8 @@ install: all
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
-prerun: ;
+prerun:
+	./generate_info_header
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
