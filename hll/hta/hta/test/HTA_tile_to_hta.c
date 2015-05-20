@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include "HTA.h"
+#include "Comm.h"
 #include "HTA_operations.h"
 #include "Tuple.h"
 #include "test.h"
@@ -30,25 +31,24 @@ void mat_print(int width, uint64_t m[])
     }
 }
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     uint64_t A[MATRIX_SIZE], B[MATRIX_SIZE], C[MATRIX_SIZE];
     uint64_t G[MATRIX_SIZE];
-    int i, j;
+    int i, j, err;
     int cmp_result;
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
     Tuple flat_size2 = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH); // MxM
 
     // create an empty shell
+    Tuple mesh = HTA_get_vp_mesh(1);
+
     Dist dist;
-    HTA *a = HTA_create(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
+    Dist_init(&dist, DIST_BLOCK, &mesh);
+    HTA *a = HTA_create_with_pid(pid, 2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, Tuple_create(2, MATRIX_WIDTH, 1)); // (M, 1) (1, M)
-    HTA *b = HTA_create(2, 1, &flat_size2, 0, &dist, HTA_SCALAR_TYPE_UINT64, 0); // only 1 level
-    HTA *c = HTA_create(2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
+    HTA *b = HTA_create_with_pid(pid, 2, 1, &flat_size2, 0, &dist, HTA_SCALAR_TYPE_UINT64, 0); // only 1 level // FIXME: not well defined in SPMD mode
+    HTA *c = HTA_create_with_pid(pid, 2, 2, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT64,
             1, Tuple_create(2, MATRIX_WIDTH, 1)); // (M, 1) (1, M)
 
     // create a 2D matrix
@@ -68,41 +68,43 @@ int main()
     HTA_init_with_array(a, A);
     HTA_init_with_array(b, B);
     HTA_init_with_array(c, C);
+    HTA_barrier(pid);
 
-    printf("The content of matrix A\n");
-    mat_print(MATRIX_WIDTH, A);
-    printf("The content of matrix B\n");
-    mat_print(MATRIX_WIDTH, B);
-
+    if(pid == -1 || pid == 0) {
+        printf("The content of matrix A\n");
+        mat_print(MATRIX_WIDTH, A);
+        printf("The content of matrix B\n");
+        mat_print(MATRIX_WIDTH, B);
+    }
     // forall tile t in a, matmul(c, t, b)
     HTA_tile_to_hta(1, H3_MATMUL, c, a, b);
 
     // store the data from HTA to 1D array
-    HTA_to_array(c, C);
-    printf("The result of matmul on HTA\n");
-    mat_print(MATRIX_WIDTH, C);
+    HTA_flatten(C, NULL, NULL, c);
+    //printf("The result of matmul on HTA\n");
+    //mat_print(MATRIX_WIDTH, C);
 
     matmul_direct(MATRIX_WIDTH, G, A, B);
-    printf("The result of matmul_direct\n");
-    mat_print(MATRIX_WIDTH, G);
+    //printf("The result of matmul_direct\n");
+    //mat_print(MATRIX_WIDTH, G);
 
-    printf("Comparing matrix content %lu bytes\n", sizeof(C));
+    printf("thread (%d) Comparing matrix content %lu bytes\n", pid, sizeof(C));
     cmp_result = memcmp(C, G, sizeof(C));
-    if(cmp_result == 0)
-        printf("** result matches! **\n");
+    if(cmp_result == 0) {
+        err = SUCCESS;
+        printf("** thread(%d) result matches! **\n", pid);
+    }
     else {
-        printf("** result does not match! **\n");
-        exit(ERR_UNMATCH);
+        printf("** thread(%d) result does not match! **\n", pid);
+        err = ERR_UNMATCH;
     }
 
     HTA_destroy(a);
     HTA_destroy(b);
     HTA_destroy(c);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
-    exit(SUCCESS);
+    int all_err = SUCCESS;
+    comm_allreduce(pid, REDUCE_MAX, &err, &all_err, HTA_SCALAR_TYPE_INT32);
+    assert(all_err==SUCCESS);
     return 0;
 }

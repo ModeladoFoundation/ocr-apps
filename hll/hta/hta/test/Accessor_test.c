@@ -17,11 +17,7 @@ void print_accessor_type(void * x) {
     }
 }
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     Tuple t0;
     Tuple_init(&t0, 2, 1, 1);

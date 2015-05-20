@@ -10,18 +10,19 @@
 #define L3_WIDTH (2)
 #define FLAT_WIDTH (L1_WIDTH*L2_WIDTH*L3_WIDTH)
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     // tuples are linked to form a sequence
     // if the sequence is used in HTA construction,
     // it is implicitly destroyed during HTA destruction
     Tuple flat_size = Tuple_create(2, FLAT_WIDTH, FLAT_WIDTH);
 
+    Tuple mesh;
+    Tuple_init(&mesh, 1, 8);
+    mesh.height = 1;
+
     Dist dist;
+    Dist_init(&dist, DIST_BLOCK, &mesh);
     // create an empty shell
     HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
             2, Tuple_create(2, L1_WIDTH, L1_WIDTH), Tuple_create(2, L2_WIDTH, L2_WIDTH));
@@ -44,8 +45,8 @@ int main()
     Tuple x0 = Tuple_create(2, 1, 1);
     Range row;
     Range col;
-    Range_init(&row, 0, 3, 1, 0);
-    Range_init(&col, 0, 3, 2, 0);
+    Range_init(&row, 0, 3, 1, 4);
+    Range_init(&col, 0, 3, 2, 4);
     Region r;
     Region_init(&r, 2, row, col);
     void* acc2[2] = {&x0, &r};
@@ -70,10 +71,6 @@ int main()
     printf("Destroy mz\n");
     HTA_destroy(mz); // Tuple_destroy_all on its tiling
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
     exit(SUCCESS);
     return 0;
 }

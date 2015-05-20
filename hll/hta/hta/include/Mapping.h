@@ -5,6 +5,11 @@
 #include "Tuple.h"
 #include "Distribution.h"
 
+
+enum ORDERING { ORDER_TILE = 0,
+                ORDER_ROW = 1,
+                ORDER_COL = 2 };
+
 struct mapping {
     /// Row-major, column-major or tile
     int order;
@@ -12,6 +17,7 @@ struct mapping {
     void** map_blocks;     // map_blocks is a data block which contains an array of REFs to all tiles allocated
     int num_blocks;     // total number of leaves
     size_t scalar_size;
+    int* owners;
 };
 
 typedef struct mapping Mapping;
@@ -25,6 +31,14 @@ typedef struct mapping Mapping;
 /// @param scalar_size The size in bytes of a scalar element
 Mapping* Mapping_create(int dim, int levels, int order, const Tuple *flat_size, const Tuple* tiling, const Dist *dist, size_t scalar_size);
 
+/// Same as Mapping_create but used in SPMD mode
+Mapping* Mapping_create_with_pid(int pid, int dim, int levels, int order, const Tuple *flat_size, const Tuple* tiling, const Dist *dist, size_t scalar_size);
+
+/// Same as Mapping_create except for an extra parameter to specify a preallocated memory region
+Mapping* Mapping_create_with_ptr(int dim, int levels, int order, const Tuple *flat_size, const Tuple* tiling, const Dist *dist, size_t scalar_size, void* prealloc);
+
+/// Most low-level option for creating a Mapping
+Mapping* Mapping_create_impl(int pid, int owner_only, int dim, int levels, int order, const Tuple *flat_size, const Tuple* tiling, const Dist *dist, size_t scalar_size, void* prealloc);
 /// Destroy mapping information
 /// @param m The mapping data structure to destroy.
 void Mapping_destroy(Mapping *m);

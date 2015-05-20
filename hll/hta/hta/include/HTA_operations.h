@@ -1,6 +1,9 @@
 #ifndef __HTA_OPS__
 #define __HTA_OPS__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "HTA.h"
 #include "Tuple.h"
 #include "CSR.h"
@@ -29,9 +32,15 @@ void H3_PWSUB(HTA * dest, HTA * src1, HTA * src2);
 /// Dense matrix pointwise multiplication
 void H3_PWMUL(HTA * dest, HTA * src1, HTA * src2);
 void H3_MATMUL(HTA * dest, HTA * src1, HTA * src2);
+void H3_DGEMM(HTA * dest, HTA * src1, HTA * src2);
 /// Sparse matrix-dense matrix pointwise multiplication
 void H3_SDPWMUL(HTA * hr, HTA * hs, HTA * hd);
 /// sparse matrix dense vector multiplication
 void H3_SDMV(HTA * hr, HTA * hs, HTA * hd);
 
+/// Matrix-matrix multiplication
+void HTA_matmul(HTA * h1, HTA * h2, HTA * h3);
+#ifdef __cplusplus
+}
+#endif
 #endif

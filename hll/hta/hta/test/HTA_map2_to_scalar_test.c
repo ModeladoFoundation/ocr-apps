@@ -22,30 +22,32 @@ void muladd(HTA* h1, HTA* h2, void* scalar) {
     }
 }
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
+    int i, err;
     int32_t M1[MATRIX_SIZE];
     int32_t M2[MATRIX_SIZE];
     int32_t result = 0;
     int32_t check = 0;
 
+    Tuple t0 = Tuple_create(2, 3, 3);
+    Tuple t1 = Tuple_create(2, 5, 5);
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
-    Dist dist;
-    // create an empty shell
-    HTA *h1 = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
-            2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
-    HTA *h2 = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
-            2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
+    Tuple mesh = HTA_get_vp_mesh(2);
+    Tuple_print(&mesh);
 
-    srand(time(NULL));
+    Dist dist;
+    Dist_init(&dist, DIST_BLOCK, &mesh);
+    // create an empty shell
+    HTA *h1 = HTA_create_with_pid(pid, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
+            2, t0, t1);
+    HTA *h2 = HTA_create_with_pid(pid, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
+            2, t0, t1);
+
     // create a 2D matrix
-    for(int i = 0; i < MATRIX_SIZE; i++) {
-        M1[i] = rand()%100;
+    for(i = 0; i < MATRIX_SIZE; i++) {
+        M1[i] = i%100;
         M2[i] = M1[i];
     }
     // Here, h1 == h2
@@ -68,21 +70,19 @@ int main()
     printf("result = %d\n", result);
     printf("check = %d\n", check);
 
-    if((result * 11 == check))
+    if((result * 11 == check)) {
         printf("** VERIFIED! **\n");
+        err = SUCCESS;
+    }
     else {
         printf("** INCORRECT! **\n");
-        exit(ERR_UNMATCH);
+        err = ERR_UNMATCH;
     }
 
 
     HTA_destroy(h1);
     HTA_destroy(h2);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
-    exit(SUCCESS);
+    exit(err);
     return 0;
 }
