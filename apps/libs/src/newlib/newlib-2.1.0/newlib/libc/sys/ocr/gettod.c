@@ -1,9 +1,9 @@
-#include <_ansi.h>
-#include <_syslist.h>
 #include <sys/time.h>
 #include <sys/times.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/ocr.h>
+#include <_ansi.h>
 
 int
 _DEFUN (_gettimeofday, (ptimeval, ptimezone),

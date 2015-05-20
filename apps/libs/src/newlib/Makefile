@@ -8,7 +8,7 @@
 # 		Justin Teller, Intel
 #		EQware various
 #
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/bin)
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 
@@ -115,7 +115,7 @@ $(ARCHES): show_args
 # Debug assist
 #
 show_args:
-	@echo APP_INSTALL = $(APP_INSTALL)
+	@echo APPS_ROOT = $(APPS_ROOT)
 	@echo ARCH = $(ARCH)
 	@echo TARGET = $(TARGET)
 	@echo CFLAGS_FOR_TARGET = $(CFLAGS)
