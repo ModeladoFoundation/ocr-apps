@@ -54,10 +54,10 @@ fi
 if [ -z $WORKSPACE]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     cat ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt
-    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time(sec)" "${JJOB_SHARED_HOME}/../RegressionTrendlineplot.png"
+    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${JJOB_SHARED_HOME}/../RegressionTrendlineplot.png"
 else
     cat ${WORKSPACE}/NightlyRegressionStat.txt
-    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time(sec)" "${WORKSPACE}/RegressionTrendlineplot.png"
+    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${WORKSPACE}/RegressionTrendlineplot.png"
 fi
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then

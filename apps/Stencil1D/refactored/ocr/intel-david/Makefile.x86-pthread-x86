@@ -55,7 +55,18 @@ TARGET := stencil
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := stencil1D.c
+# There are three versions of the Stencil code available; Pick one based on
+# this varibale
+# 1 - sticky; 2 - guid; 3 - once
+CODE_TYPE ?= 1
+
+ifeq ($(CODE_TYPE), 1)
+SRCS := stencil1Dsticky.c
+else ifeq ($(CODE_TYPE), 2)
+SRCS := stencil1Dguid.c
+else ifeq ($(CODE_TYPE), 3)
+SRCS := stencil1Donce.c
+endif
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
