@@ -1,9 +1,15 @@
 /*
-This file is subject to the license agreement located in the file LICENSE
- * and cannot be distributed withs file is subject to the license agreement located in the file LICENSE
- *  *  * and cannot be distributed without it. This notice cannot be
- *   *   * removed or modified.
+written by David S Scott
 
+Copyright Intel Corporation 2015
+
+LICENSE####
+
+
+See README and stencil1D.h for more documentation
+
+There are 3 versions of a 1D stencil computation.
+This code uses STICKY events
 
 This code does a 1D (3 point) stencil computation on a set of points in pure ocr
 
@@ -18,79 +24,10 @@ The values converge (slowly) to all 1s.
 
 if the stencil is wider than 3 points, then the number of shared boundary values
 would have to be increased.
-
-
-Control structure
-  N stenciltask EDTs do the computation on M numbers each
-  Each stencil task has a "real" datablock for computing values
-  Each stencil has a private datablock to hold parameters
-  Each stenciltask "clones" itself for each iteration
-  Each stenciltask has two data blocks for sending to each neighbor
-   (the blocks alternate each time step to break a race condition)
-  Neighboring stencil tasks share sticky events.
-    The receiver uses the sticky event as a dependence for its clone
-    The sender satisfies the event with the boundary data
-    THe sender creates the sticky event for the next exchange and puts it in the datablok
-    The receiver is responsible for destroying the used sticky event
-
-
-Structure of code
-
-mainEDT
-  creates N datablocks of length 2M
-  creates 4*N-4 datablocks for exchanging halo data and control information
-  N "private" datablocks for local parameters
-  launches wrapup that depends on realmain finishing
-  launches realmain as a finish EDT
-
-realmain
-  creates N stencilEdts
-  creates 2N-2 sticky events that will be used to pass the first boundary blocks
-  launches the N stencilEdt with the correct datablocks attached
-
-
-Each stencil event
-  if(iteration == 0) initializes data
-  destroys the previous sticky events
-  computes its new values using neighbor values as needed
-  writes its boundary value(s) to the out datablock(s)
-  creates the sticky events and puts them in the out datablocks
-  enables its nephews by satisfying the previous sticky events with
-    the out datablocks
-  clones itself for the next iteration
-  launches its clone by attaching 4 datablocks and 2 sticky events
-
-The sticky events prevent the sons from starting until their uncle(s)
-are finished writing and making the data available.
-
-They have to be sticky events to avoid the race condition that they
-may be satisfied before the nephews are created
-
-The boundary data blocks alternate each time step to make sure that my son
-doesn't overwrite my data before my nephew has read it
-
-The blocks that stencilEdt is writing to are acquired in ITW mode
-The blocks that stencilEdt is reading are acquired in RO mode.
-
-The values after final iteration are printed out in order by a wrapupEdt.
-To make sure wrapup doesn't start early, it depends on realmain
-which is declared to be a finish event (which means it
-doesn't satisfy its output event until ALL of its descendents are finished).
-
-
 */
-
 #include <ocr.h>
 #include <stdio.h>
-
-#define N 10  //number of blocks
-#define M 5   // size of local block
-#define T 200  //number of iterations
-
-typedef struct{
-    double buffer;
-    ocrGuid_t link; //sticky event for control
-    } buffer_t;
+#include "stencil1D.h"
 
 typedef struct{
     u64 timestep;
@@ -99,31 +36,22 @@ typedef struct{
     ocrGuid_t rightevent;
     ocrGuid_t leftold;
     ocrGuid_t rightold;
+    ocrGuid_t template;
     } private_t;
-
-
-
 ocrGuid_t stencilTask(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 /*
-Parameters:
-0: stencilTemplate
+paramv[0]:
 
-Dependencies:
+depv[4]:
 0: My datablock
-1: Leftin block (satisfied by my left neighbor)
-2: Rightin block (satisfied by my right neighbor)
+1: Leftin block (provided by my left neighbor)
+2: Rightin block (provided by my right neighbor)
 3: My private block
 */
-
-
     u64 i, phase, phasenext;
-
     ocrGuid_t stencilEdt;
     ocrGuid_t sticky;
-
-
-    ocrGuid_t stencilTemplate = paramv[0];
 
     double * a = depv[0].ptr;
     double * atemp = a + M;
@@ -188,19 +116,21 @@ Dependencies:
         for(i=0;i<M;i++) a[i] = atemp[i];
 
         if(leftin != NULL) { //leftin is NULL too
-            leftinEvent = leftin->link;
+            leftinEvent = leftin->control;
             leftin->buffer = a[0];
             ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-            leftin->link = sticky;
+            leftin->control = sticky;
+            ocrDbRelease(depv[1].guid);
             ocrEventSatisfy(private->leftevent, depv[1].guid);
             private->leftevent = sticky;
         }
 
         if(rightin != NULL) {
-            rightinEvent = rightin->link;
+            rightinEvent = rightin->control;
             rightin->buffer = a[M-1];
             ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-            rightin->link = sticky;
+            rightin->control = sticky;
+            ocrDbRelease(depv[2].guid);
             ocrEventSatisfy(private->rightevent, depv[2].guid);
             private->rightevent = sticky;
         }
@@ -212,7 +142,7 @@ Dependencies:
 
 //create clone
 
-        ocrEdtCreate(&stencilEdt, stencilTemplate, EDT_PARAM_DEF, (u64 *) &stencilTemplate,
+        ocrEdtCreate(&stencilEdt, private->template, EDT_PARAM_DEF, NULL,
                 EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
         ocrDbRelease(depv[0].guid);
@@ -274,7 +204,7 @@ N - (5N-5): the (2*N-2) communication datablocks
 
     u64 i, mynode;
     ocrGuid_t stencilTemplate, stencilEdt[N];
-    ocrEdtTemplateCreate(&stencilTemplate, stencilTask, 1, 4);
+    ocrEdtTemplateCreate(&stencilTemplate, stencilTask, 0, 4);
     u64 *dummy;
     u64 j;
     ocrGuid_t sticky;
@@ -296,20 +226,22 @@ N - (5N-5): the (2*N-2) communication datablocks
     for(i=0;i<N-1;i++) {
         private[i]->mynode = i;
         private[i]->timestep = 0;
+        private[i]->template = stencilTemplate;
 
         ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
         private[i]->rightevent = sticky;
-        buffer[lin++]->link = sticky;
+        buffer[lin++]->control = sticky;
         private[i]->rightold = NULL_GUID;
 
         ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
         private[i+1]->leftevent = sticky;
-        buffer[rin++]->link = sticky;
+        buffer[rin++]->control = sticky;
         private[i+1]->leftold = NULL_GUID;
     }
 
     private[N-1]->mynode = N-1;
     private[N-1]->timestep = 0;
+    private[N-1]->template = stencilTemplate;
     private[N-1]->rightevent = NULL_GUID;
     private[N-1]->rightold = NULL_GUID;
 
@@ -317,15 +249,11 @@ N - (5N-5): the (2*N-2) communication datablocks
 
     for(i=0;i<4*N-2;i++) ocrDbRelease(depv[i].guid);  //release all dbs
 
-    for(i=0;i<N;i++) ocrEdtCreate(&stencilEdt[i], stencilTemplate, EDT_PARAM_DEF, (u64 *) &stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-
-
-
+    for(i=0;i<N;i++) ocrEdtCreate(&stencilEdt[i], stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//attach correct data blocks
     lin = N;
     rin =  lin + N - 1;
-
     u64 pbuffer = 3*N-2;
-
     ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_RO);
 
     for(i=0;i<N-1;i++){
@@ -352,6 +280,8 @@ ocrGuid_t mainEdt(){
 mainEdt is executed first
 Creates the datablocks
 creates realmain
+creates wrapup
+launches wrapup
 launches realmian
 */
 
