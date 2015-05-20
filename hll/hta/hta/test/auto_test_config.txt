@@ -19,6 +19,5 @@ HTA_accessor_test
 HTA_circshift_test
 HTA_nd_rank_offset
 HTA_partition_test
-HTA_partition_init
 Comm_bcast
 

@@ -33,15 +33,15 @@ SRCS = Alloc_test.c \
        HTA_circshift_test.c \
        HTA_layout_test.c \
        HTA_assign_test.c \
-       HTA_cholesky.c \
        Comm_bcast.c \
        pow_hta.c \
        TLA_bellman_ford.c
+#       HTA_cholesky.c \
 #       HTAblas_matmul.c
 #       HTA_performance_test.c \
 #       RefCount_test.c \
 #       HTA_SUMMA.c
-LMKL = -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lrt
+#LMKL = -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lrt
 CFLAGS_PIL = -std=gnu99 $(DEBUG) -I$(HTA_INC) -I$(PIL_INC) -DPILHTA
 ifeq ($(PROFILE), 1)
     CFLAGS_PIL += -L$(PROFILE_LIB) $(LPROFILE) -I$(PROFILE_INC)
