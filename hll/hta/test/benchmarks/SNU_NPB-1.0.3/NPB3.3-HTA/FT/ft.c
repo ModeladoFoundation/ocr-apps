@@ -47,6 +47,7 @@
 #include "print_results.h"
 
 #include "HTA.h"
+#include "Config.h"
 #include "HTA_operations.h"
 
 
@@ -67,11 +68,11 @@
 // cache problems, since all array sizes are powers of two.
 //---------------------------------------------------------------------
 /* common /bigarrays/ */
-static HTA * twiddle_HTA;
-static HTA * u0_HTA;
-static HTA * u1_HTA;
-static HTA * u2_HTA;
-static HTA * checksum_HTA;
+//static HTA * twiddle_HTA;
+//static HTA * u0_HTA;
+//static HTA * u1_HTA;
+//static HTA * u2_HTA;
+//static HTA * checksum_HTA;
 
 static int NP = 1;
 static char CLASS;
@@ -106,7 +107,8 @@ static void verify(int d1, int d2, int d3, int nt,
 void dump_twiddle(HTA * x_HTA)
 {
     double x[NTOTALP];
-    HTA_to_array(x_HTA, x);
+//    HTA_to_array(x_HTA, x);
+    HTA_flatten(x, NULL, NULL, x_HTA);
 
     printf("twiddle dump\n");
     printf("=========================================\n");
@@ -122,7 +124,7 @@ void dump_twiddle(HTA * x_HTA)
 void dump(HTA * x_HTA)
 {
     dcomplex x[NTOTALP];
-    HTA_to_array(x_HTA, x);
+    HTA_flatten(x, NULL, NULL, x_HTA);
 
     printf("=========================================\n");
     for(int k = 0; k < NZ; k++)
@@ -135,42 +137,61 @@ void dump(HTA * x_HTA)
     printf("=========================================\n");
 }
 
-void init_hta()
+void init_hta(int pid, HTA ** ptwiddle_HTA, HTA** pu0_HTA, HTA** pu1_HTA, HTA** pu2_HTA, HTA** pchecksum_HTA)
 {
   dcomplex dcomplex_zero = dcmplx(0.0, 0.0);
   double double_zero = 0.0;
 
   Dist dist0;
-  Dist_init(&dist0, 0);
+  Tuple mesh0;
+  Tuple_init(&mesh0, 3, 1, NP, 1);
+  Dist_init(&dist0, DIST_BLOCK, &mesh0);
+
   Tuple fs0 = Tuple_create(3, NZ, NY, NX);
 
   // partition along Y axis
   Tuple t2 = Tuple_create(3, 1, NP, 1);
   Tuple t3 = Tuple_create(3, NP, 1, 1);
 
-  twiddle_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 2, t2, t3);
+  HTA *twiddle_HTA = HTA_create_with_pid(pid, 3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 2, t2, t3);
   HTA_map_h1s1(HTA_LEAF_LEVEL(twiddle_HTA), H1S1_INIT, twiddle_HTA, &double_zero);
 
-  u0_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3);
+  HTA *u0_HTA = HTA_create_with_pid(pid, 3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3);
   HTA_map_h1s1(HTA_LEAF_LEVEL(u0_HTA), H1S1_INIT, u0_HTA, &dcomplex_zero);
 
-  u2_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3);
+  HTA *u2_HTA = HTA_create_with_pid(pid, 3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t2, t3);
   HTA_map_h1s1(HTA_LEAF_LEVEL(u2_HTA), H1S1_INIT, u2_HTA, &dcomplex_zero);
 
   // partition along Z axis
+  Dist dist1;
+  Tuple mesh1;
+  Tuple_init(&mesh1, 3, NP, 1, 1);
+  Dist_init(&dist1, DIST_BLOCK, &mesh1);
+
   Tuple t0 = Tuple_create(3, NP, 1, 1); // distribution is decided at the 1st level partition
   Tuple t1 = Tuple_create(3, 1, NP, 1);
 
-  u1_HTA = HTA_create(3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t0, t1);
+  HTA *u1_HTA = HTA_create_with_pid(pid, 3, 3, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t0, t1);
   HTA_map_h1s1(HTA_LEAF_LEVEL(u1_HTA), H1S1_INIT, u1_HTA, &dcomplex_zero);
 
   Tuple fs1 = Tuple_create(3, NP, NP, 1);
-  checksum_HTA = HTA_create(3, 3, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t0, t1);
+  HTA *checksum_HTA = HTA_create_with_pid(pid, 3, 3, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DCOMPLEX, 2, t0, t1);
+
+  * ptwiddle_HTA = twiddle_HTA;
+  * pu0_HTA = u0_HTA;
+  * pu1_HTA = u1_HTA;
+  * pu2_HTA = u2_HTA;
+  * pchecksum_HTA = checksum_HTA;
 }
 
 //int main(int argc, char *argv[])
-int hta_main(int argc, char *argv[])
+int hta_main(int argc, char *argv[], int pid)
 {
+  HTA * twiddle_HTA;
+  HTA * u0_HTA;
+  HTA * u1_HTA;
+  HTA * u2_HTA;
+  HTA * checksum_HTA;
   int i;
   int iter;
   double total_time, mflops;
@@ -195,11 +216,13 @@ int hta_main(int argc, char *argv[])
   //compute_indexmap(twiddle, dims[0], dims[1], dims[2]);
   //compute_initial_conditions(u1, dims[0], dims[1], dims[2]);
 
-  init_hta();
+  init_hta(pid, &twiddle_HTA, &u0_HTA, &u1_HTA, &u2_HTA, &checksum_HTA);
   HTA_map_h1(HTA_LEAF_LEVEL(twiddle_HTA), compute_indexmap, twiddle_HTA);
   HTA_map_h1(HTA_LEAF_LEVEL(u1_HTA), compute_initial_conditions, u1_HTA);
-  // assume in SPMD model, each processor executes fft_init independently
-  fft_init(dims[0]); // NX
+  // NOTICE: for Shared Mem SPMD only one thread performs initialization
+  if(pid == 0 || pid == -1) fft_init(dims[0]); // NX
+  HTA_barrier(pid); // barrier to make sure initialization is completed, since only one thread initializes u[] array
+
   fft(1, u1_HTA, u0_HTA);
 
   //---------------------------------------------------------------------
@@ -216,7 +239,8 @@ int hta_main(int argc, char *argv[])
   HTA_map_h1(HTA_LEAF_LEVEL(twiddle_HTA), compute_indexmap, twiddle_HTA);
   HTA_map_h1(HTA_LEAF_LEVEL(u1_HTA), compute_initial_conditions, u1_HTA);
 
-  fft_init(dims[0]);
+  if(pid == 0 || pid == -1) fft_init(dims[0]); // NX
+  HTA_barrier(pid); // barrier to make sure initialization is completed, since only one thread initializes u[] array
 
   if (timers_enabled) timer_stop(T_setup);
   if (timers_enabled) timer_start(T_fft);
@@ -237,11 +261,12 @@ int hta_main(int argc, char *argv[])
     // use reduce to get the final checksum (divided by NTOTAL)
     dcomplex chk = dcmplx(0.0, 0.0);
     HTA_full_reduce(REDUCE_SUM, &chk, checksum_HTA);
-    sums[iter] = dcmplx_div2(chk, (double)(NTOTAL));
+    if(pid == 0 || pid == -1) sums[iter] = dcmplx_div2(chk, (double)(NTOTAL));
     if (timers_enabled) timer_stop(T_checksum);
-    printf(" T =%5d     Checksum =%22.12E%22.12E\n", iter, sums[iter].real, sums[iter].imag);
+    if(pid == 0 || pid == -1) printf(" T =%5d     Checksum =%22.12E%22.12E\n", iter, sums[iter].real, sums[iter].imag);
   }
 
+  HTA_barrier(pid);
   verify(NX, NY, NZ, niter, &verified, &Class);
 
   timer_stop(T_total);
@@ -324,6 +349,7 @@ static void compute_initial_conditions(HTA * u0_leaf)
     dummy = randlc(&start, an);
     starts[k] = start;
   }
+  UNUSED(dummy);
 
   //---------------------------------------------------------------------
   // Go through by z planes filling in one square at a time.
@@ -364,6 +390,7 @@ static double ipow46(double a, int exponent)
     }
   }
   dummy = randlc(&r, q);
+  UNUSED(dummy);
   result = r;
   return result;
 }
@@ -487,21 +514,25 @@ static void print_timers()
   fprintf(fp_rec, "\n");
   fclose(fp_rec);
 }
-
+#if 0
 // FIXME: for now it's a specialized operation to deal with FT only
+// NOTICE: This should be OK to keep for SPMD since each thread has global pointer information already.
+//         But a barrier is required before continuing since the ownership of data tiles is changed.
 void HTA_transpose(HTA * xout, HTA * xin, int from_upper, int from_lower)
 {
   // Assume that the tiling of xout is what we need already, so metadata doesn't have to be changed
   // Assume that upper level is 1D vector tiling and the same for lower level
   // Assume shared memory model for now
 
-  assert(from_upper != from_lower);
+  ASSERT(from_upper != from_lower);
 
-  int num_upper_tiles = xin->tiling->values[from_upper];
-  int num_lower_tiles = xin->tiling[1].values[from_lower];
+  int num_upper_tiles = xin->tiling.values[from_upper];
+  //int num_lower_tiles = xin->tiling[1].values[from_lower];
+  int num_lower_tiles = xin->tiles[0]->tiling.values[from_lower];
 
-  assert(num_upper_tiles == xout->tiling[1].values[from_upper]
-          && num_lower_tiles == xout->tiling->values[from_lower]);
+  // FIXME: assuming regular tiles?
+  ASSERT(num_upper_tiles == xout->tiles[0]->tiling->values[from_upper]
+          && num_lower_tiles == xout->tiling.values[from_lower]);
 
   // clone tiles
   // TODO: use all-to-all communication for distributed memory machines
@@ -510,8 +541,9 @@ void HTA_transpose(HTA * xout, HTA * xin, int from_upper, int from_lower)
     HTA * from_tile = xin->tiles[i];
     for(int j = 0; j < num_lower_tiles; j++)
     {
+        HTA * to_tile = xout->tiles[j];
         HTA * from_leaf = from_tile->tiles[j];
-        HTA * to_leaf = xout->tiles[j]->tiles[i];
+        HTA * to_leaf = to_tile->tiles[i];
         // swap pointers directly
         // assume number of elements are the same
         void * tmp = from_leaf->leaf.raw;
@@ -522,12 +554,18 @@ void HTA_transpose(HTA * xout, HTA * xin, int from_upper, int from_lower)
         //size_t sz = from_leaf->leaf.num_elem * HTA_get_scalar_size(from_leaf);
 
         //memcpy(to_ptr, from_ptr, sz);
+#if ENABLE_PREPACKING
+        to_tile->prepacked = 0;
+#endif
     }
+#if ENABLE_PREPACKING
+    from_tile->prepacked = 0;
+#endif
   }
 
   // no need to change metadata information because it's assumed to be allocated correctly for the output HTA *
 }
-
+#endif
 //---------------------------------------------------------------------
 // note: args x1, x2 must be different arrays
 // note: args for cfftsx are (direction, layout, xin, xout, scratch)
@@ -538,6 +576,7 @@ void HTA_transpose(HTA * xout, HTA * xin, int from_upper, int from_lower)
 //int dumped = 0;
 static void fft(int dir, HTA * x1, HTA * x2)
 {
+  int pid = x1->pid;
   if (dir == 1) {
     // x1 is partitioned along z axis
     HTA_map_h1s1(1, cffts1, x1, &dir); // map to the 1st level instead of the leaf level
@@ -554,6 +593,7 @@ static void fft(int dir, HTA * x1, HTA * x2)
     //}
     if(timers_enabled) timer_start(T_transpose);
     HTA_transpose(x2, x1, 0, 1); // z <--> y
+    //HTA_barrier(pid); // required because the transpose here implies global communication.
     if(timers_enabled) timer_stop(T_transpose);
     HTA_map_h1s1(1, cffts3, x2, &dir);
     //if(!dumped)
@@ -567,6 +607,7 @@ static void fft(int dir, HTA * x1, HTA * x2)
     HTA_map_h1s1(1, cffts3, x1, &dir);
     if(timers_enabled) timer_start(T_transpose);
     HTA_transpose(x2, x1, 1, 0); // y <--> z
+    //HTA_barrier(pid); // required because the transpose here implies global communication.
     if(timers_enabled) timer_stop(T_transpose);
     HTA_map_h1s1(1, cffts2, x2, &dir);
     HTA_map_h1s1(1, cffts1, x2, &dir);
@@ -636,7 +677,7 @@ static void cffts2(HTA * ox_tile, void* dir)
 
   dcomplex (*ty1)[FFTBLOCKPAD_DEFAULT] = (dcomplex (*)[FFTBLOCKPAD_DEFAULT])ty1a[ox_tile->rank];
   dcomplex (*ty2)[FFTBLOCKPAD_DEFAULT] = (dcomplex (*)[FFTBLOCKPAD_DEFAULT])ty2a[ox_tile->rank];
-  int num_tiles = ox_tile->tiling->values[1]; // Number of lower level tiles along Y direction
+  int num_tiles = ox_tile->tiling.values[1]; // Number of lower level tiles along Y direction
   int ld2 = ox_tile->tiles[0]->flat_size.values[1]; // leaf tile Y dim
 
   int is = *(int*)dir;
@@ -683,7 +724,7 @@ static void cffts3(HTA * ox_tile, void* dir)
   dcomplex (*ty1)[FFTBLOCKPAD_DEFAULT] = (dcomplex (*)[FFTBLOCKPAD_DEFAULT])ty1a[ox_tile->rank];
   dcomplex (*ty2)[FFTBLOCKPAD_DEFAULT] = (dcomplex (*)[FFTBLOCKPAD_DEFAULT])ty2a[ox_tile->rank];
 
-  int num_tiles = ox_tile->tiling->values[0]; // Number of lower level tiles along Z direction
+  int num_tiles = ox_tile->tiling.values[0]; // Number of lower level tiles along Z direction
   int ld3 = ox_tile->tiles[0]->flat_size.values[0]; // leaf tile Z dim
 
   int is = *(int*)dir;

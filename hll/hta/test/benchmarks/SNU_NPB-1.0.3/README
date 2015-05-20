@@ -8,7 +8,7 @@ You can find the original SNU_NPB here:
     http://aces.snu.ac.kr/Center_for_Manycore_Programming/SNU_NPB_Suite.html
 
 If you have questions, please send emails to:
-    Chih-Chieh Yang  cyang49@illinois.edu
+    Chih-Chieh Yang  cyang49 at illinois.edu
 
 ===============================================================================
     Prerequisites
@@ -21,7 +21,9 @@ If you have questions, please send emails to:
     Files
 ===============================================================================
     NPB3.3-HTA
-        The HTA implementation of NPB adapted from SNU-NPB.
+        The HTA implementation (fork-join PIL) of NPB adapted from SNU-NPB.
+    NPB3.3-HTA-SPMD
+        The HTA implementation (SPMD PIL) of NPB adapted from SNU-NPB.
     NPB3.3-OMP-C
         A OpenMP C implementation of NPB pulled out from SNU-NPB
         for performance comparison.
@@ -29,7 +31,9 @@ If you have questions, please send emails to:
         A OpenMP C implementation of NPB pulled out from SNU-NPB
         for performance comparison.
     runtest.py
-        An automized test script which can be customized to your own need.
+        An automized test script for fork-join mode benchmarks.
+    runtest-spmd.py
+        An automized test script for SPMD mode benchmarks.
     runserial.py
         An automized test script to generate sequential execution time.
 ===============================================================================

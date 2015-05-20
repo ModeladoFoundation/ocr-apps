@@ -139,7 +139,7 @@ double ce[5][13];
 double maxtime;
 logical timeron;
 
-int hta_main(int argc, char *argv[])
+int hta_main(int argc, char *argv[], int pid)
 {
   char Class;
   logical verified;
@@ -190,7 +190,10 @@ int hta_main(int argc, char *argv[])
   Tuple t1 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 1);
   Tuple fs1 = Tuple_create(4, ISIZ3+(4*PROC_Z), ISIZ2+(4*PROC_Y), ISIZ1+(4*PROC_X), 5);
   Dist dist0;
-  Dist_init(&dist0, 0);
+  //Dist_init(&dist0, 0);
+  Tuple mesh;
+  Tuple_init(&mesh, 4, PROC_Z, PROC_Y, PROC_X, 1);
+  Dist_init(&dist0, DIST_BLOCK, &mesh);
   u_HTA = HTA_create(4, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t1);
   rsd_HTA = HTA_create(4, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t1);
   frct_HTA = HTA_create(4, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t1);
@@ -199,17 +202,6 @@ int hta_main(int argc, char *argv[])
   Tuple fs2 = Tuple_create(4, ISIZ3+(4*PROC_Z), ISIZ2+(4*PROC_Y), ISIZ1+(4*PROC_X), 1);
   rho_i_HTA = HTA_create(4, 2, &fs2, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t2);
   qs_HTA = HTA_create(4, 2, &fs2, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t2);
-  //---------------------------------------------------------------------
-//  Tuple t3 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 1);
-//  Tuple fs3 = Tuple_create(4, ISIZ3+(4*PROC_Z), ISIZ2+(4*PROC_Y), ISIZ1+(4*PROC_X), 25); // Original size: [Isiz2][Isiz1][5][5]
-//  a_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   b_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   c_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   d_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   au_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   bu_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   cu_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
-//   du_HTA = HTA_create(4, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t3);
   //---------------------------------------------------------------------
   Tuple t4 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 1);
   Tuple fs4 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 5);
@@ -268,15 +260,22 @@ int hta_main(int argc, char *argv[])
   //---------------------------------------------------------------------
   ssor_HTA(itmax);
 
+  HTA_destroy(rsd_HTA);
+  HTA_destroy(frct_HTA);
+  HTA_destroy(rho_i_HTA);
+  HTA_destroy(qs_HTA);
+
   //---------------------------------------------------------------------
   // compute the solution error
   //---------------------------------------------------------------------
   error_HTA(errnm);
+
   //---------------------------------------------------------------------
   // compute the surface integral
   //---------------------------------------------------------------------
   pintgr_HTA();
 
+  HTA_destroy(u_HTA);
   //---------------------------------------------------------------------
   // verification test
   //---------------------------------------------------------------------
@@ -329,14 +328,15 @@ int hta_main(int argc, char *argv[])
     fprintf(fp_rec, "\n");
     fclose(fp_rec);
   }
-
-  return 0;
+  assert(verified);
+  return (verified)?0:-1;
 }
 
 //  FIXME: this should be a collective operation instead of a map
 void sync_boundary(HTA* h)
 {
-    HTA_tile_to_hta(HTA_LEAF_LEVEL(h), sync_boundary_HTA, h, h, h);
+    //HTA_tile_to_hta(HTA_LEAF_LEVEL(h), sync_boundary_HTA, h, h, h);
+    HTA_tile_to_hta2(HTA_LEAF_LEVEL(h), sync_boundary_HTA, h, h);
 }
 
 // Actively write necessary boundaries from other neighbor tiles
@@ -378,7 +378,8 @@ void sync_boundary(HTA* h)
      n3t = t->flat_size.values[0]; \
      double (*zt)[n2t][n1t][n0t] = (double (*)[n2t][n1t][n0t])HTA_get_ptr_raw_data(t); \
 
-void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
+//void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
+void sync_boundary_HTA(HTA* s1_tile, HTA* s2)
 {
     HTA* t;
     int n0t, n1t, n2t, n3t;
@@ -392,7 +393,7 @@ void sync_boundary_HTA(HTA* d_tile, HTA* s1_tile, HTA* s2)
     double (*zs)[n2s][n1s][n0s] = (double (*)[n2s][n1s][n0s])HTA_get_ptr_raw_data(s1_tile);
 
     // Get global tile nd_index first
-    Tuple* nd_size = s2->tiling; // tile dimensions
+    Tuple* nd_size = &s2->tiling; // tile dimensions
     Tuple nd_idx = s1_tile->nd_rank;
     //Tuple_init_zero(&nd_idx, 4); // this tile index
     Tuple target_idx;

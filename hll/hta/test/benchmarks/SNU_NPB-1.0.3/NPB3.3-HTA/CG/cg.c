@@ -38,6 +38,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #ifdef _OPENMP
 #include <omp.h>
@@ -52,106 +53,97 @@
 #include "HTA_operations.h"
 //---------------------------------------------------------------------
 /* common / main_int_mem / */
-static int colidx[NZ];
-static int rowstr[NA+1];
-static int iv[NZ+1+NA];
-static int arow[NA+1];
-static int acol[NAZ];
+static int NPROWS, NPCOLS, IsSquare;
+static int NZZ;
 
-/* common / main_flt_mem / */
-//static double v[NZ];
-static double aelt[NAZ];
-static double a[NZ];
-//static double x[NA+2];
-//static double z[NA+2];
-//static double p[NA+2];
-//static double q[NA+2];
-////static double r[NA+2];
-
-static HTA* x_HTA;      // x is an 1D HTA with PROC tiles
-static HTA* z_HTA;      // z is an 1D HTA with PROC tiles
-static HTA* p_HTA;      // p is an 1D HTA with PROC tiles
-static HTA* q_HTA;      // q is an 1D HTA with PROC tiles
-static HTA* r_HTA;      // r is an 1D HTA with PROC tiles
+static HTA* x_HTA;
+static HTA* z_HTA;
+static HTA* p_HTA;
+static HTA* q_HTA;
+static HTA* r_HTA;
+static HTA* t_HTA;
 static HTA* hs;         // the sparse array
-//static HTA _1tile_p_HTA;
-//static HTA _1tile_z_HTA;
-//static HTA temp_HTA;
-//static double z_array[NA+2]; // required for the SpMV
-//static double p_array[NA+2]; // required for the SpMV
-//static double q_array[NA+2]; // required for the SpMV
-//static double r_array[NA+2]; // required for the SpMV
 static int PROC = 1;
 /* common /tinof/ */
 // static int myid, num_threads, ilow, ihigh;
 // #pragma omp threadprivate(myid, num_threads, ilow, ihigh)
-
 #define max_threads 1024
 //static int last_n[max_threads+1];
 
 /* common / partit_size / */
 static int naa;
-static int nzz;
-static int firstrow;
-static int lastrow;
-static int firstcol;
-static int lastcol;
+//static int nzz;
+//static int firstrow;
+//static int lastrow;
+//static int firstcol;
+//static int lastcol;
 
 /* common /urando/ */
-static double amult;
-static double tran;
-#pragma omp threadprivate (amult,tran)
+//static double amult;
+//static double tran;
+//#pragma omp threadprivate (amult,tran)
+static const double AMULT = 1220703125.0;
 
 /* common /timers/ */
 static logical timeron;
 
+static int layout = ORDER_ROW;
 static double one = 1.0;
 static double zero = 0.0;
 //---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
-static void conj_grad(int colidx[],
-                      int rowstr[],
-                      //double x[],
-                      //double z[],
-                      double a[],
-                      //double p[],
-                      //double q[],
-                      //double r[],
-                      double *rnorm);
-static void makea(int n,
+static void conj_grad(double *rnorm);
+static void makea(int rank,
+                  int n,
                   int nz,
-                  double a[],
+                  double values[],
                   int colidx[],
                   int rowstr[],
                   int firstrow,
                   int lastrow,
                   int firstcol,
-                  int lastcol,
-                  int arow[],
-                  int acol[][NONZER+1],
-                  double aelt[][NONZER+1],
-                  // double v[],
-                  int iv[]);
+                  int lastcol);
+//static void makea(int n,
+//                  int nz,
+//                  double a[],
+//                  int colidx[],
+//                  int rowstr[],
+//                  int firstrow,
+//                  int lastrow,
+//                  int firstcol,
+//                  int lastcol,
+//                  int arow[],
+//                  int acol[][NONZER+1],
+//                  double aelt[][NONZER+1],
+//                  // double v[],
+//                  int iv[]);
 static void makea_HTA(HTA *h);
-static void sparse(double a[],
-                   int colidx[],
-                   int rowstr[],
-                   int n,
-                   int nz,
-                   int nozer,
-                   int arow[],
-                   int acol[][NONZER+1],
-                   double aelt[][NONZER+1],
-                   int firstrow,
-                   int lastrow,
-                   // int last_n[],
-                   // double v[],
-                   // int iv[],
-                   int nzloc[],
-                   double rcond,
-                   double shift);
-static void sprnvc(int n, int nz, int nn1, double v[], int iv[]);
+//static void sparse(double a[],
+//                   int colidx[],
+//                   int rowstr[],
+//                   int n,
+//                   int nz,
+//                   int nozer,
+//                   int arow[],
+//                   int acol[][NONZER+1],
+//                   double aelt[][NONZER+1],
+//                   int firstrow,
+//                   int lastrow,
+//                   // int last_n[],
+//                   // double v[],
+//                   // int iv[],
+//                   int nzloc[],
+//                   double rcond,
+//                   double shift);
+static void sprnvc(
+		   int n,
+		   int nz,
+		   double v[],
+		   int iv[],
+		   int nzloc[],
+		   int mark[],
+                   double *tran);
 static int icnvrt(double x, int ipwr2);
 static void vecset(int n, double v[], int iv[], int *nzv, int i, double val);
 //---------------------------------------------------------------------
@@ -244,9 +236,13 @@ void sum_sq(HTA* h1, HTA* dummy, void* s)
     *((double*)s) = sum;
 }
 
-#define IS_POW_2(x) ((x!=0) && ((x & (x-1)) == 0))
-// A special version for optimization in shared memory model
-// hr is a dense tile, hs is a sparse tile, and hd is an HTA with PROC vectors
+void merge_tiles(HTA* hr, HTA* hd)
+{
+    int offset = hr->nd_element_offset.values[0];
+    double* src = (double*)HTA_get_ptr_raw_data(hr);
+    double* dest = (double*)HTA_get_ptr_raw_data(hd);
+    memcpy(dest + offset, src, sizeof(double) * hr->leaf.num_elem);
+}
 void sdmv(HTA* hr, HTA* hs, HTA* hd)
 {
     ASSERT(hr->type == HTA_TYPE_DENSE
@@ -265,49 +261,43 @@ void sdmv(HTA* hr, HTA* hs, HTA* hd)
     double *val_ptr = (double*) raw;
     int* col_ind = (int*) (raw + nnz * sizeof(double));
     int* row_ptr = (int*) (raw + nnz * sizeof(double) + nnz * sizeof(int));
-
+    int tile_idx = hs->nd_rank.values[1];
+    HTA* hv = hd->tiles[tile_idx];
     double *hr_val = (double*) HTA_get_ptr_raw_data(hr);
-    if(IS_POW_2(PROC)) // speedup for power of 2
+    double* hv_val = (double*) HTA_get_ptr_raw_data(hv);
+    for(int i = 0; i < num_rows; i++)
     {
-        int p = PROC;
-        int shift = 0;
-        while(p != 1) {
-            p >>= 1;
-            shift++;
-        }
-        for(int i = 0; i < num_rows; i++)
+        double sum = 0.0;
+        for(int j = row_ptr[i]; j < row_ptr[i+1]; j++)
         {
-            double sum = 0.0;
-            for(int j = row_ptr[i]; j < row_ptr[i+1]; j++)
-            {
-                int col = col_ind[j];
-                int tidx = (((col + 1) << shift) - 1) / NA;
-                int offset = col - ((tidx * NA) >> shift);
-                double hd_val = ((double*)HTA_get_ptr_raw_data(hd->tiles[tidx]))[offset];
-                sum += val_ptr[j] * hd_val;
-            }
-            hr_val[i] = sum;
+            int col = col_ind[j];
+            sum += val_ptr[j] * hv_val[col];
         }
-    }
-    else
-    {
-        for(int i = 0; i < num_rows; i++)
-        {
-            double sum = 0.0;
-            for(int j = row_ptr[i]; j < row_ptr[i+1]; j++)
-            {
-                int col = col_ind[j];
-                int tidx = (PROC * (col + 1) - 1) / NA;
-                int offset = col - (tidx * NA) / PROC;
-                double hd_val = ((double*)HTA_get_ptr_raw_data(hd->tiles[tidx]))[offset];
-                sum += val_ptr[j] * hd_val;
-            }
-            hr_val[i] = sum;
-        }
+        hr_val[i] = sum;
     }
 }
 
-int hta_main(int argc, char *argv[])
+// This operation is a special purpose repmat_transpose
+// duplicate each column tile of h to multiple hr tiles of the same row
+void repmat_transpose(HTA* hr, HTA* dummy, HTA* h) {
+    int col_idx = hr->nd_rank.values[1];
+    HTA* source_leaf = h->tiles[col_idx]; // copy from the vector the leaf idx == col idx
+    double* p1 = (double*) HTA_get_ptr_raw_data(hr);
+    double* p2 = (double*) HTA_get_ptr_raw_data(source_leaf);
+    ASSERT(hr->leaf.num_elem == source_leaf->leaf.num_elem);
+    memcpy(p1, p2, hr->leaf.num_elem * sizeof(double));
+}
+void even(HTA* hr, HTA* dummy, HTA* h) {
+    int row_idx = hr->nd_rank.values[0];
+    HTA* source_leaf = h->tiles[row_idx];
+    double* p1 = (double*) HTA_get_ptr_raw_data(hr);
+    double* p2 = (double*) HTA_get_ptr_raw_data(source_leaf);
+    ASSERT(hr->leaf.num_elem == source_leaf->leaf.num_elem);
+    for(int i = 0; i < hr->leaf.num_elem; i++)
+        p1[i] = p2[i] / NPCOLS;
+}
+
+int hta_main(int argc, char *argv[], int pid)
 {
   int i,  it;
 
@@ -322,10 +312,15 @@ int hta_main(int argc, char *argv[])
 
   char *t_names[T_last];
 
-  if (argc == 2)
+  if (argc >= 2)
   {
       PROC = atoi(argv[1]);
   }
+  if (argc == 3)
+  {
+      layout = atoi(argv[2]);
+  }
+
   // FIXME: Timer for HTA versions
 
   for (i = 0; i < T_last; i++) {
@@ -345,11 +340,6 @@ int hta_main(int argc, char *argv[])
   }
 
   timer_start(T_init);
-
-  firstrow = 0;
-  lastrow  = NA-1;
-  firstcol = 0;
-  lastcol  = NA-1;
 
   if (NA == 1400 && NONZER == 7 && NITER == 15 && SHIFT == 10) {
     Class = 'S';
@@ -384,25 +374,52 @@ int hta_main(int argc, char *argv[])
 
   // TODO: Initialization is sequential
 
-  naa = NA;
-  nzz = NZ;
+  // compute 2d tasks row/column number
+  if(PROC & (PROC - 1)) // the expression will be 0 if x is a power of 2
+  {
+    printf("The number of processes has to be power of 2!\n");
+    exit(1);
+  }
 
-  //---------------------------------------------------------------------
-  // Inialize random number generator
-  //---------------------------------------------------------------------
-  tran    = 314159265.0;
-  amult   = 1220703125.0;
-  zeta    = randlc(&tran, amult);
+  //int x = 0;
+  //while ( (1 << x) != PROC) ++x;
+
+  //NPROWS = 1 << (x / 2);
+  //NPCOLS = PROC / NPROWS;
+
+  // always use square tiling
+  // rule: select the next power of two number for sqrt(PROC)
+
+  //int x = 0;
+  //double r = sqrt(PROC);
+  //while( (1 << x) < r ) ++x;
+  //NPROWS = 1 << x;
+  //NPCOLS = 1 << x;
+  NPROWS=PROC;
+  NPCOLS=1;
+
+  printf("NPROWS=%d, NPCOLS=%d\n", NPROWS, NPCOLS);
+
+  IsSquare = (NPROWS == NPCOLS);
+
+  naa = NA;
+  //nzz = NZ;
+  NZZ = NA*(NONZER+1)*(NONZER+1)/(NPROWS*NPCOLS)
+          + NA*(NONZER+2+(NPROWS*NPCOLS)/256)/NPCOLS;
+
+  printf("NAA = %d, NZZ = %d\n", naa, NZZ);
+
+
 
   //---------------------------------------------------------------------
   //
   //---------------------------------------------------------------------
-  makea(naa, nzz, a, colidx, rowstr,
-        firstrow, lastrow, firstcol, lastcol,
-        arow,
-        (int (*)[NONZER+1])(void*)acol,
-        (double (*)[NONZER+1])(void*)aelt,
-        iv);
+  //makea(naa, nzz, a, colidx, rowstr,
+  //      firstrow, lastrow, firstcol, lastcol,
+  //      arow,
+  //      (int (*)[NONZER+1])(void*)acol,
+  //      (double (*)[NONZER+1])(void*)aelt,
+  //      iv);
 
   //---------------------------------------------------------------------
   // Note: as a result of the above call to makea:
@@ -412,12 +429,11 @@ int hta_main(int argc, char *argv[])
   //      Shift the col index vals from actual (firstcol --> lastcol )
   //      to local, i.e., (0 --> lastcol-firstcol)
   //---------------------------------------------------------------------
-  for (int j = 0; j < lastrow - firstrow + 1; j++) {
-    for (int k = rowstr[j]; k < rowstr[j+1]; k++) {
-      colidx[k] = colidx[k] - firstcol;
-    }
-  }
-
+  //for (int j = 0; j < lastrow - firstrow + 1; j++) {
+  //  for (int k = rowstr[j]; k < rowstr[j+1]; k++) {
+  //    colidx[k] = colidx[k] - firstcol;
+  //  }
+  //}
 
   printf("HTA initialization starts\n");
   //---------------------------------------------------------------------
@@ -425,30 +441,63 @@ int hta_main(int argc, char *argv[])
   //---------------------------------------------------------------------
   // FIXME: Problem with tile sizes related to PROC and NA
   // HTA x initializtion
-  Tuple tp0 = Tuple_create(2, PROC, 1);
-  Tuple fs0 = Tuple_create(2, NA, 1);
+  //Tuple tp0 = Tuple_create(2, NPROWS, 1);
+  //Tuple fs0 = Tuple_create(2, NA, 1);
+  //Dist dist0;
+  //Dist_init(&dist0, 0);
+  //// initialize vectors
+  //x_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  //z_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  //q_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  //r_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  //p_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+
+  //// one tile vector
+  //t_HTA = HTA_create(2, 1, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 0);
+
+  Tuple tp0 = Tuple_create(1, NPROWS);
+  Tuple fs0 = Tuple_create(1, NA);
   Dist dist0;
-  Dist_init(&dist0, 0);
-  x_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
-  // HTA z initializtion
-  z_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
-  // HTA q initializtion
-  q_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
-  // HTA r initializtion
-  r_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
-  // HTA p initializtion
-  p_HTA = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  Tuple mesh;
+  Tuple_init(&mesh, 1, NPROWS);
+  Dist_init(&dist0, DIST_BLOCK, &mesh);
+  // initialize vectors
+  x_HTA = HTA_create(1, 2, &fs0, layout, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  z_HTA = HTA_create(1, 2, &fs0, layout, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  q_HTA = HTA_create(1, 2, &fs0, layout, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  r_HTA = HTA_create(1, 2, &fs0, layout, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+  p_HTA = HTA_create(1, 2, &fs0, layout, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+
+  // one tile vector
+  if(layout == ORDER_TILE) {
+    t_HTA = HTA_create(1, 1, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 0);
+  }
+/*
+  Tuple tp1 = Tuple_create(2, NPROWS, NPCOLS);
+  Tuple fs1 = Tuple_create(2, NA, NPCOLS);
+  // initialize storage for repmat vectors
+  //xr_HTA = HTA_create(2, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp1);
+  zr_HTA = HTA_create(2, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp1);
+  qr_HTA = HTA_create(2, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp1);
+  rr_HTA = HTA_create(2, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp1);
+  pr_HTA = HTA_create(2, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp1);
+#ifdef PREALLOC
+  // Allocate partial reduction temporary storage for reuse
+  zt_HTA = HTA_allocate_partial_reduce_temporary(zr_HTA, 1, &zero);
+  qt_HTA = HTA_allocate_partial_reduce_temporary(zr_HTA, 1, &zero);
+  rt_HTA = HTA_allocate_partial_reduce_temporary(zr_HTA, 1, &zero);
+  pt_HTA = HTA_allocate_partial_reduce_temporary(zr_HTA, 1, &zero);
+#endif
+*/
 
   // sparse HTA initialization
-  Tuple tp1 = Tuple_create(2, PROC, 1);
-  Tuple fs1 = Tuple_create(2, NA, NA);
+  Tuple tp2 = Tuple_create(2, NPROWS, NPCOLS);
+  Tuple fs2 = Tuple_create(2, NA, NA);
   // create an empty shell
   printf("Creating Sparse HTA shell\n");
-  hs = HTA_sparse_create(2, 2, &fs1, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp1);
+  hs = HTA_sparse_create(2, 2, &fs2, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp2);
   printf("Sparse HTA initialization starts\n");
-  //HTA_init_with_sparse_matrix(hs, nzz, lastrow-firstrow+1, a, colidx, rowstr);
   HTA_map_h1(HTA_LEAF_LEVEL(hs), makea_HTA, hs);
-
 
   //---------------------------------------------------------------------
   // set starting vector to (1, 1, .... 1)
@@ -456,23 +505,23 @@ int hta_main(int argc, char *argv[])
   //for (i = 0; i < NA+1; i++) {
   //   x[i] = 1.0;
   //}
-  HTA_map_h1s1(HTA_LEAF_LEVEL(x_HTA), H1S1_INIT, x_HTA, &one);
 
-  //for (j = 0; j < lastcol - firstcol + 1; j++) {
-  //  q[j] = 0.0;
-  //  z[j] = 0.0;
-  //  r[j] = 0.0;
-  //  p[j] = 0.0;
-  //}
+  HTA_map_h1s1(HTA_LEAF_LEVEL(x_HTA), H1S1_INIT, x_HTA, &one);
   HTA_map_h1s1(HTA_LEAF_LEVEL(z_HTA), H1S1_INIT, z_HTA, &zero);
   HTA_map_h1s1(HTA_LEAF_LEVEL(q_HTA), H1S1_INIT, q_HTA, &zero);
   HTA_map_h1s1(HTA_LEAF_LEVEL(r_HTA), H1S1_INIT, r_HTA, &zero);
   HTA_map_h1s1(HTA_LEAF_LEVEL(p_HTA), H1S1_INIT, p_HTA, &zero);
 
+/*
+  //HTA_map_h1s1(HTA_LEAF_LEVEL(xr_HTA), H1S1_INIT, xr_HTA, &one);
+  HTA_map_h1s1(HTA_LEAF_LEVEL(zr_HTA), H1S1_INIT, zr_HTA, &zero);
+  HTA_map_h1s1(HTA_LEAF_LEVEL(qr_HTA), H1S1_INIT, qr_HTA, &zero);
+  HTA_map_h1s1(HTA_LEAF_LEVEL(rr_HTA), H1S1_INIT, rr_HTA, &zero);
+  HTA_map_h1s1(HTA_LEAF_LEVEL(pr_HTA), H1S1_INIT, pr_HTA, &zero);
+*/
   printf("HTA initialization done\n");
-  printf("Run one iteration starts\n");
+  //printf("Run one iteration starts\n");
   zeta = 0.0;
-
   //---------------------------------------------------------------------
   //---->
   // Do one iteration untimed to init all code and data page tables
@@ -485,7 +534,7 @@ int hta_main(int argc, char *argv[])
     //conj_grad(colidx, rowstr, x, z, a, p, q, r, &rnorm);
     logical timer_enabled = timeron;
     timeron = false;
-    conj_grad(colidx, rowstr, a, &rnorm);
+    conj_grad(&rnorm);
     timeron = timer_enabled;
     //---------------------------------------------------------------------
     // zeta = shift + 1/(x.z)
@@ -503,6 +552,9 @@ int hta_main(int argc, char *argv[])
     //}
     HTA_reduce_h2(REDUCE_SUM, sum_pwmul, &norm_temp1, x_HTA, z_HTA);
     HTA_reduce_h2(REDUCE_SUM, sum_sq, &norm_temp2, z_HTA, z_HTA);
+    //norm_temp1 /= (double)NPROWS;
+    //norm_temp2 /= (double)NPROWS;
+    //printf("norm_temp1 = %.4f, norm_temp2 = %.4f\n", norm_temp1, norm_temp2);
 
     norm_temp2 = 1.0 / sqrt(norm_temp2);
 
@@ -518,7 +570,7 @@ int hta_main(int argc, char *argv[])
   } // end of do one iteration untimed
 
 
-  printf("Run one iteration done\n");
+  //printf("Run one iteration done\n");
   //---------------------------------------------------------------------
   // set starting vector to (1, 1, .... 1)
   //---------------------------------------------------------------------
@@ -549,8 +601,7 @@ int hta_main(int argc, char *argv[])
     //---------------------------------------------------------------------
     // Initialize the CG algorithm:
     //---------------------------------------------------------------------
-    //conj_grad(colidx, rowstr, x, z, a, p, q, r, &rnorm);
-    conj_grad(colidx, rowstr, a, &rnorm);
+    conj_grad(&rnorm);
     if (timeron) timer_stop(T_conj_grad);
 
     //---------------------------------------------------------------------
@@ -569,6 +620,9 @@ int hta_main(int argc, char *argv[])
     //}
     HTA_reduce_h2(REDUCE_SUM, sum_pwmul, &norm_temp1, x_HTA, z_HTA);
     HTA_reduce_h2(REDUCE_SUM, sum_sq, &norm_temp2, z_HTA, z_HTA);
+    norm_temp1 /= (double)NPROWS;
+    norm_temp2 /= (double)NPROWS;
+    //printf("norm_temp1 = %.4f, norm_temp2 = %.4f\n", norm_temp1, norm_temp2);
 
     norm_temp2 = 1.0 / sqrt(norm_temp2);
 
@@ -587,7 +641,6 @@ int hta_main(int argc, char *argv[])
     HTA_map_h2s1(HTA_LEAF_LEVEL(x_HTA), mul, x_HTA, z_HTA, &norm_temp2);
 
   } // end of main iter inv pow meth
-
   timer_stop(T_bench);
 
   //---------------------------------------------------------------------
@@ -662,11 +715,16 @@ int hta_main(int argc, char *argv[])
     fprintf(fp_rec, "\n");
     fclose(fp_rec);
   }
+  HTA_destroy(x_HTA);
+  HTA_destroy(z_HTA);
+  HTA_destroy(q_HTA);
+  HTA_destroy(r_HTA);
+  HTA_destroy(p_HTA);
+  HTA_destroy(hs);
 
   assert(verified);
   return (verified)?0:1;
 }
-
 
 //---------------------------------------------------------------------
 // Floaging point arrays here are named as in NPB1 spec discussion of
@@ -681,15 +739,13 @@ int hta_main(int argc, char *argv[])
 //                      double q[],
 //                      double r[],
 //                      double *rnorm)
-static void conj_grad(int colidx[],
-                      int rowstr[],
-                      double a[],
-                      double *rnorm)
+static void conj_grad(double *rnorm)
 
 {
   //int j, k;
   int cgit, cgitmax = 25;
   double d, sum, rho, rho0, alpha, beta; //, suml;
+ // double checksum = 0.0;
 
   double temp;
 
@@ -712,6 +768,7 @@ static void conj_grad(int colidx[],
    HTA_map_h1s1(HTA_LEAF_LEVEL(q_HTA), H1S1_INIT, q_HTA, &zero);
    HTA_map_h2(HTA_LEAF_LEVEL(r_HTA), H2_COPY, r_HTA, x_HTA);
    HTA_map_h2(HTA_LEAF_LEVEL(p_HTA), H2_COPY, p_HTA, r_HTA);
+   //TODO: initialize temporaries too?
 
   //---------------------------------------------------------------------
   // rho = r.r
@@ -721,7 +778,8 @@ static void conj_grad(int colidx[],
   //for (j = 0; j < lastcol - firstcol + 1; j++) {
   //  rho = rho + r[j]*r[j];
   //}
-  HTA_reduce_h2(REDUCE_SUM, sum_sq, &rho, r_HTA, r_HTA);
+  HTA_reduce_h2(REDUCE_SUM, sum_sq, &rho, r_HTA, r_HTA); // parallelism here is NPCOLS
+  //printf("rho1 = %.4f\n", rho);
 
   //---------------------------------------------------------------------
   //---->
@@ -744,13 +802,6 @@ static void conj_grad(int colidx[],
     // q = A.p
     // The partition submatrix-vector multiply: use workspace w
     //---------------------------------------------------------------------
-    //
-    // NOTE: this version of the multiply is actually (slightly: maybe %5)
-    //       faster on the sp2 on 16 nodes than is the unrolled-by-2 version
-    //       below.   On the Cray t3d, the reverse is true, i.e., the
-    //       unrolled-by-two version is some 10% faster.
-    //       The unrolled-by-8 version below is significantly faster
-    //       on the Cray t3d - overall speed of code is 1.5 times faster.
 
     //#pragma omp for
     //for (j = 0; j < lastrow - firstrow + 1; j++) {
@@ -761,13 +812,13 @@ static void conj_grad(int colidx[],
     //  q[j] = suml;
     //}
 
-    // FIXME: We use a trick, copying HTAs to arrays, and viceversa
-    // Pure overhead due to using HTA programming model
-    //HTA_to_array(p_HTA, p_array);
-    //HTA_init_with_array(_1tile_p_HTA, p_array);
-    //HTA_tile_to_hta(HTA_LEAF_LEVEL(q_HTA), H3_SDMV, q_HTA, hs, _1tile_p_HTA);
     if (timeron) timer_start(T_sdmv);
-    HTA_tile_to_hta(HTA_LEAF_LEVEL(q_HTA), sdmv, q_HTA, hs, p_HTA); // FIXME: this works for shared memory only
+    if(layout == ORDER_TILE) {
+        HTA_tile_to_hta2(HTA_LEAF_LEVEL(p_HTA), merge_tiles, p_HTA, t_HTA);  // to avoid using extra operations to generate pr_HTA
+        HTA_tile_to_hta(HTA_LEAF_LEVEL(q_HTA), H3_SDMV, q_HTA, hs, t_HTA);  // to avoid using extra operations to generate pr_HTA
+    } else {
+        HTA_tile_to_hta(HTA_LEAF_LEVEL(q_HTA), sdmv, q_HTA, hs, p_HTA);  // to avoid using extra operations to generate pr_HTA
+    }
     if (timeron) timer_stop(T_sdmv);
 
     /*
@@ -813,12 +864,29 @@ static void conj_grad(int colidx[],
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  d = d + p[j]*q[j];
     //}
+    /*
+#ifdef PREALLOC
+    HTA_partial_reduce_with_preallocated(REDUCE_SUM, qr_HTA, 1, &zero, qt_HTA, q_HTA);
+#else
+    q_HTA = HTA_partial_reduce(REDUCE_SUM, qr_HTA, 1, &zero);
+#endif
+    */
+    //for(int i = 0; i < q_HTA->num_tiles; i++) {
+    //    printf("q_HTA tile %d\n", i);
+    //    for(int j = 0; j < q_HTA->tiles[i]->leaf.num_elem; j++)
+    //        printf("j = %d, val = %.4lf\n", j, ((double*)HTA_get_ptr_raw_data(q_HTA->tiles[i]))[j]);
+    //}
+    //checksum = 0.0;
+    //HTA_full_reduce(REDUCE_SUM, &checksum, q_HTA);
+    //printf("q_HTA_checksum = %lf\n", checksum);
     HTA_reduce_h2(REDUCE_SUM, sum_pwmul, &d, p_HTA, q_HTA);
+    //printf("d = %.4f\n", d);
 
     //---------------------------------------------------------------------
     // Obtain alpha = rho / (p.q)
     //---------------------------------------------------------------------
     alpha = rho0 / d;
+    //printf("alpha = %.4f\n", alpha);
 
     //---------------------------------------------------------------------
     // Obtain z = z + alpha*p
@@ -827,7 +895,10 @@ static void conj_grad(int colidx[],
     //#pragma omp for reduction(+:rho)
     //for (j = 0; j < lastcol - firstcol + 1; j++) {
     //  z[j] = z[j] + alpha*p[j];
+    HTA_map_h2s1(HTA_LEAF_LEVEL(z_HTA), muladd, z_HTA, p_HTA, &alpha);
     //  r[j] = r[j] - alpha*q[j];
+    temp = -alpha;
+    HTA_map_h2s1(HTA_LEAF_LEVEL(r_HTA), muladd, r_HTA, q_HTA, &temp);
 
       //---------------------------------------------------------------------
       // rho = r.r
@@ -835,11 +906,8 @@ static void conj_grad(int colidx[],
       //---------------------------------------------------------------------
     //  rho = rho + r[j]*r[j];
     //}
-    HTA_map_h2s1(HTA_LEAF_LEVEL(z_HTA), muladd, z_HTA, p_HTA, &alpha);
-    temp = -alpha;
-    HTA_map_h2s1(HTA_LEAF_LEVEL(r_HTA), muladd, r_HTA, q_HTA, &temp);
     HTA_reduce_h2(REDUCE_SUM, sum_sq, &rho, r_HTA, r_HTA);
-
+    //printf("rho2 = %.4f\n", rho);
 
     //---------------------------------------------------------------------
     // Obtain beta:
@@ -855,7 +923,6 @@ static void conj_grad(int colidx[],
     //}
 
     HTA_map_h2s1(HTA_LEAF_LEVEL(p_HTA), muladd2, p_HTA, r_HTA, &beta);
-
   } // end of do cgit=1,cgitmax
 
   //---------------------------------------------------------------------
@@ -872,12 +939,13 @@ static void conj_grad(int colidx[],
   //  r[j] = suml;
   //}
 
-  //HTA_to_array(z_HTA, z_array);
-  //HTA_init_with_array(_1tile_z_HTA, z_array);
-
-  //HTA_tile_to_hta(HTA_LEAF_LEVEL(r_HTA), H3_SDMV, r_HTA, hs, _1tile_z_HTA);
   if (timeron) timer_start(T_sdmv);
-  HTA_tile_to_hta(HTA_LEAF_LEVEL(r_HTA), sdmv, r_HTA, hs, z_HTA); // FIXME: this works for shared memory only
+  if(layout == ORDER_TILE) {
+      HTA_tile_to_hta2(HTA_LEAF_LEVEL(z_HTA), merge_tiles, z_HTA, t_HTA);  // to avoid using extra operations to generate pr_HTA
+      HTA_tile_to_hta(HTA_LEAF_LEVEL(r_HTA), H3_SDMV, r_HTA, hs, t_HTA);  // to avoid using extra operations to generate zr_HTA
+  } else {
+      HTA_tile_to_hta(HTA_LEAF_LEVEL(r_HTA), sdmv, r_HTA, hs, z_HTA);  // to avoid using extra operations to generate zr_HTA
+  }
   if (timeron) timer_stop(T_sdmv);
 
   //---------------------------------------------------------------------
@@ -889,6 +957,7 @@ static void conj_grad(int colidx[],
   //  sum  = sum + suml*suml;
   //}
   HTA_reduce_h2(REDUCE_SUM, sum_sq_pwsub, &sum, x_HTA, r_HTA);
+  //printf("sum = %.4f\n", sum);
 
   // } // End of parallel section
 
@@ -899,78 +968,44 @@ static void conj_grad(int colidx[],
 // it should not matter. However, it only works for shared memory
 static void makea_HTA(HTA *h)
 {
-  //  int n = NA;
-  //  int nz = NZ;
-  //  // FIXME: potential stack overlfow problem?
-  //  double a[NZ];
-  //  int colidx[NZ];
-  //  int rowstr[NA+1];
+  Tuple nd_rank = h->nd_rank;
 
-    int firstrow = (h->rank * NA) / PROC;
-    int lastrow = ((h->rank +1)* NA) / PROC - 1;
-    //int firstcol = 0;
-    //int lastcol = h->flat_size.values[1] - 1;
-    //printf("tile %d: firstrow = %d, lastrow = %d, firstcol = %d, lastcol = %d\n",
-    //        h->rank, firstrow, lastrow, firstcol, lastcol);
-  //  int arow[NA+1];
-  //  int wcol[NAZ];
-  //  int (*acol)[NONZER+1] = (int (*)[NONZER+1])wcol;
-  //  double welt[NAZ];
-  //  double (*aelt)[NONZER+1] = (double (*)[NONZER+1])welt;
-  //  int iv[NZ+1+NA];
-  //  int iouter, ivelt, nzv, nn1;
-  //  int ivc[NONZER+1];
-  //  double vc[NONZER+1];
+  int firstrow = (nd_rank.values[0] * NA) / NPROWS;
+  int lastrow = ((nd_rank.values[0] +1)* NA) / NPROWS - 1;
+  int firstcol = (nd_rank.values[1] * NA) / NPCOLS;
+  int lastcol = ((nd_rank.values[1] +1)* NA) / NPCOLS - 1;
+  //printf("tile %d: firstrow = %d, lastrow = %d, firstcol = %d, lastcol = %d\n",
+  //        h->rank, firstrow, lastrow, firstcol, lastcol);
+  //printf("tile %d: NONZER = %d,  NZ = %d, NZZ = %d\n", h->rank, NONZER, NZ, NZZ);
+  double *a = malloc(sizeof(double) * NZZ);
+  int *colidx = malloc(sizeof(int) * NZZ);
+  int *rowstr = malloc(sizeof(int) * (lastrow-firstrow+2));
 
-  ////---------------------------------------------------------------------
-  //// nonzer is approximately  (int(sqrt(nnza /n)));
-  ////---------------------------------------------------------------------
+  makea(h->rank, naa, NZZ, a, colidx, rowstr,
+        firstrow, lastrow, firstcol, lastcol);
 
-  ////---------------------------------------------------------------------
-  //// nn1 is the smallest power of two not less than n
-  ////---------------------------------------------------------------------
-  //nn1 = 1;
-  //do {
-  //  nn1 = 2 * nn1;
-  //} while (nn1 < n);
-
-  ////---------------------------------------------------------------------
-  //// Generate nonzero positions and save for the use in sparse.
-  ////---------------------------------------------------------------------
-  //for (iouter = 0; iouter < n; iouter++) {
-  //  nzv = NONZER;
-  //  sprnvc(n, nzv, nn1, vc, ivc);
-  //  vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
-  //  arow[iouter] = nzv;
-  //
-  //  for (ivelt = 0; ivelt < nzv; ivelt++) {
-  //    acol[iouter][ivelt] = ivc[ivelt] - 1;
-  //    aelt[iouter][ivelt] = vc[ivelt];
+  //---------------------------------------------------------------------
+  // Note: as a result of the above call to makea:
+  //      values of j used in indexing rowstr go from 0 --> lastrow-firstrow
+  //      values of colidx which are col indexes go from firstcol --> lastcol
+  //      So:
+  //      Shift the col index vals from actual (firstcol --> lastcol )
+  //      to local, i.e., (0 --> lastcol-firstcol)
+  //---------------------------------------------------------------------
+  //for (int j = 0; j < lastrow - firstrow + 1; j++) {
+  //  for (int k = rowstr[j]; k < rowstr[j+1]; k++) {
+  //    //colidx[k] = colidx[k] - firstcol;
+  //    printf("k = %d, colidx = %d\n", k, colidx[k]);
   //  }
   //}
 
-  ////---------------------------------------------------------------------
-  //// ... make the sparse matrix from list of elements with duplicates
-  ////     (iv is used as  workspace)
-  ////---------------------------------------------------------------------
-  //sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol,
-  //       aelt, firstrow, lastrow,
-  //       iv, RCOND, SHIFT);
-
-
-  int nnz = rowstr[lastrow+1] - rowstr[firstrow];
-  int* rowptr = &rowstr[firstrow];
-  int offset = rowptr[0];
-  int* colind = &colidx[offset]; // TODO: for 2D decomposition, colind values need to be changed
-  double* val = &a[offset];
+  int nnz = rowstr[lastrow-firstrow+1] - rowstr[0];
   //printf("There are %d nonzeros in tile %d\n", nnz, h->rank);
-  HTA_init_sparse_leaf(h, nnz, val, colind, rowptr);
+  HTA_init_sparse_leaf(h, nnz, a, colidx, rowstr);
 
-  // fix rowptr values
-  void *leaf_val_ptr = h->leaf.raw;
-  int * leaf_row_ptr = (int*)(leaf_val_ptr + nnz*sizeof(double) + nnz*sizeof(int));
-  for(int i = 0; i < lastrow-firstrow + 2; i++)
-      leaf_row_ptr[i] -= offset;
+  free(a);
+  free(colidx);
+  free(rowstr);
 }
 
 //---------------------------------------------------------------------
@@ -998,270 +1033,243 @@ static void makea_HTA(HTA *h)
 // iv, arow, acol i
 // aelt           r*8
 //---------------------------------------------------------------------
-static void makea(int n,
+static void makea(int rank,
+                  int n,
                   int nz,
-                  double a[],
+                  double values[],
                   int colidx[],
                   int rowstr[],
                   int firstrow,
                   int lastrow,
                   int firstcol,
-                  int lastcol,
-                  int arow[],
-                  int acol[][NONZER+1],
-                  double aelt[][NONZER+1],
-                  int iv[])
+                  int lastcol)
+                  //int arow[],
+                  //int acol[][NONZER+1],
+                  //double aelt[][NONZER+1],
+                  //int iv[])
 {
-  int iouter, ivelt, nzv, nn1;
-  int ivc[NONZER+1];
-  double vc[NONZER+1];
+  int iouter; //, ivelt, nzv, nn1;
+  double *v = malloc(sizeof(double) * (NONZER+1));
+  int* iv = malloc(sizeof(int) *(2*n+1));
+  int* arow = malloc(sizeof(int) * (nz+1));
+  int* acol = malloc(sizeof(int) * (nz+1));
+  double* element = malloc(sizeof(double) * (nz + 1));
+  int* rowidx = malloc(sizeof(int) *(2*n+1));
+  // Code from HTA C++ CG implementation
+  double size = 1.0;
+  double ratio = pow(RCOND,  (size / (double)(n)));
+  int  nnza = 0;
 
   //---------------------------------------------------------------------
-  // nonzer is approximately  (int(sqrt(nnza /n)));
+  // Inialize random number generator
   //---------------------------------------------------------------------
+  double tran    = 314159265.0;
+  randlc(&tran, AMULT);
 
-  //---------------------------------------------------------------------
-  // nn1 is the smallest power of two not less than n
-  //---------------------------------------------------------------------
-  nn1 = 1;
-  do {
-    nn1 = 2 * nn1;
-  } while (nn1 < n);
-
-  //---------------------------------------------------------------------
-  // Generate nonzero positions and save for the use in sparse.
-  //---------------------------------------------------------------------
+  //printf("makea (%d): n = %d, nz = %d, firstrow = %d, lastrow = %d, firstcol = %d, lastcol = %d\n",
+  //        rank, n, nz, firstrow, lastrow, firstcol, lastcol);
+  int* numelem = malloc(sizeof(int) * (lastrow - firstrow + 2));
+  for (int i = 0; i < lastrow - firstrow + 2; i++) {
+    numelem[i] = 0;
+  }
+  for (int i = 0; i < n; i++) {
+    assert (n+i < 2*n+1);
+    rowidx[n+i] = 0;
+  }
+  //printf("makea (%d): enter first loop\n", rank);
   for (iouter = 0; iouter < n; iouter++) {
-    nzv = NONZER;
-    sprnvc(n, nzv, nn1, vc, ivc);
-    vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
-    arow[iouter] = nzv;
-
-    for (ivelt = 0; ivelt < nzv; ivelt++) {
-      acol[iouter][ivelt] = ivc[ivelt] - 1;
-      aelt[iouter][ivelt] = vc[ivelt];
-    }
-  }
-
-  //---------------------------------------------------------------------
-  // ... make the sparse matrix from list of elements with duplicates
-  //     (iv is used as  workspace)
-  //---------------------------------------------------------------------
-  sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol,
-         aelt, firstrow, lastrow,
-         iv, RCOND, SHIFT);
-}
-
-
-//---------------------------------------------------------------------
-// rows range from firstrow to lastrow
-// the rowstr pointers are defined for nrows = lastrow-firstrow+1 values
-//---------------------------------------------------------------------
-static void sparse(double a[],
-                   int colidx[],
-                   int rowstr[],
-                   int n,
-                   int nz,
-                   int nozer,
-                   int arow[],
-                   int acol[][NONZER+1],
-                   double aelt[][NONZER+1],
-                   int firstrow,
-                   int lastrow,
-                   int nzloc[],
-                   double rcond,
-                   double shift)
-{
-  int nrows;
-
-  //---------------------------------------------------
-  // generate a sparse matrix from a list of
-  // [col, row, element] tri
-  //---------------------------------------------------
-  int i, j, j1, j2, nza, k, kk, nzrow, jcol;
-  double size, scale, ratio, va;
-  logical cont40;
-
-  //---------------------------------------------------------------------
-  // how many rows of result
-  //---------------------------------------------------------------------
-  nrows = lastrow - firstrow + 1;
-
-  //---------------------------------------------------------------------
-  // ...count the number of triples in each row
-  //---------------------------------------------------------------------
-  for (j = 0; j < nrows+1; j++) {
-    rowstr[j] = 0;
-  }
-
-  for (i = 0; i < n; i++) {
-    for (nza = 0; nza < arow[i]; nza++) {
-      j = acol[i][nza] + 1;
-      rowstr[j] = rowstr[j] + arow[i];
-    }
-  }
-
-  rowstr[0] = 0;
-  for (j = 1; j < nrows+1; j++) {
-    rowstr[j] = rowstr[j] + rowstr[j-1];
-  }
-  nza = rowstr[nrows] - 1;
-
-  //---------------------------------------------------------------------
-  // ... rowstr(j) now is the location of the first nonzero
-  //     of row j of a
-  //---------------------------------------------------------------------
-  if (nza > nz) {
-    printf("Space for matrix elements exceeded in sparse\n");
-    printf("nza, nzmax = %d, %d\n", nza, nz);
-    exit(EXIT_FAILURE);
-  }
-
-  //---------------------------------------------------------------------
-  // ... preload data pages
-  //---------------------------------------------------------------------
-  for (j = 0; j < nrows; j++) {
-    for (k = rowstr[j]; k < rowstr[j+1]; k++) {
-      a[k] = 0.0;
-      colidx[k] = -1;
-    }
-    nzloc[j] = 0;
-  }
-
-  //---------------------------------------------------------------------
-  // ... generate actual values by summing duplicates
-  //---------------------------------------------------------------------
-  size = 1.0;
-  ratio = pow(rcond, (1.0 / (double)(n)));
-
-  for (i = 0; i < n; i++) {
-    for (nza = 0; nza < arow[i]; nza++) {
-      j = acol[i][nza];
-
-      scale = size * aelt[i][nza];
-      for (nzrow = 0; nzrow < arow[i]; nzrow++) {
-        jcol = acol[i][nzrow];
-        va = aelt[i][nzrow] * scale;
-
-        //--------------------------------------------------------------------
-        // ... add the identity * rcond to the generated matrix to bound
-        //     the smallest eigenvalue from below by rcond
-        //--------------------------------------------------------------------
-        if (jcol == j && j == i) {
-          va = va + rcond - shift;
-        }
-
-        cont40 = false;
-        for (k = rowstr[j]; k < rowstr[j+1]; k++) {
-          if (colidx[k] > jcol) {
-            //----------------------------------------------------------------
-            // ... insert colidx here orderly
-            //----------------------------------------------------------------
-            for (kk = rowstr[j+1]-2; kk >= k; kk--) {
-              if (colidx[kk] > -1) {
-                a[kk+1]  = a[kk];
-                colidx[kk+1] = colidx[kk];
-              }
-            }
-            colidx[k] = jcol;
-            a[k]  = 0.0;
-            cont40 = true;
-            break;
-          } else if (colidx[k] == -1) {
-            colidx[k] = jcol;
-            cont40 = true;
-            break;
-          } else if (colidx[k] == jcol) {
-            //--------------------------------------------------------------
-            // ... mark the duplicated entry
-            //--------------------------------------------------------------
-            nzloc[j] = nzloc[j] + 1;
-            cont40 = true;
-            break;
-          }
-        }
-        if (cont40 == false) {
-          printf("internal error in sparse: i=%d\n", i);
-          exit(EXIT_FAILURE);
-        }
-        a[k] = a[k] + va;
+    int nzv = NONZER;
+    sprnvc (n, nzv, v, iv, &(rowidx[0]), &(rowidx[n]), &tran);
+    vecset (n, v, iv, &nzv, iouter, (double) 0.50);
+     for (int ivelt = 0; ivelt < nzv; ivelt++) {
+      int jcol = iv[ivelt];
+      if (jcol >= firstcol && jcol <= lastcol) {
+	double scale = size * v[ivelt];
+	for (int ivelt1 = 0; ivelt1 < nzv; ivelt1++) {
+	  int irow = iv[ivelt1];
+	  if (irow >= firstrow && irow <= lastrow) {
+	    assert (nnza <= nz);
+	    acol[nnza] = jcol - firstcol;
+	    arow[nnza] = irow - firstrow;
+	    element[nnza] = v[ivelt1] * scale;
+	    numelem[irow - firstrow + 1]++;
+	    nnza = nnza + 1;
+	  }
+	}
       }
     }
     size = size * ratio;
   }
 
-  //---------------------------------------------------------------------
-  // ... remove empty entries and generate final results
-  //---------------------------------------------------------------------
-  for (j = 1; j < nrows; j++) {
-    nzloc[j] = nzloc[j] + nzloc[j-1];
+  //printf("makea (%d): first loop result nnza = %d\n", rank, nnza);
+
+
+  /**
+   * ... add the identity * rcond to the generated matrix to bound
+   *           the smallest eigenvalue from below by rcond
+   * This step leads to duplicate value for a given (acol,arow).
+   */
+  for (int i = firstrow; i <= lastrow; i++){
+    if (i >= firstcol && i <= lastcol) {
+      iouter = n + i - 1;
+      assert (nnza < nz+1);
+      acol[nnza] = i - firstcol;
+      arow[nnza] = i - firstrow;
+      element[nnza] = RCOND - SHIFT;
+      numelem[i - firstrow + 1]++;
+      nnza = nnza + 1;
+    }
+  }
+  //printf("second loop result nnza = %d\n", nnza);
+
+  /**
+   * Find the global starting positions
+   * of each column in the values array
+   */
+  rowstr[0] = numelem[0];
+  for (int i = 1; i < lastrow - firstrow + 2; i++) {
+    numelem[i] += numelem[i-1];
+    rowstr[i] = numelem[i];
   }
 
-  for (j = 0; j < nrows; j++) {
-    if (j > 0) {
-      j1 = rowstr[j] - nzloc[j-1];
-    } else {
-      j1 = 0;
-    }
-    j2 = rowstr[j+1] - nzloc[j];
-    nza = rowstr[j];
-    for (k = j1; k < j2; k++) {
-      a[k] = a[nza];
-      colidx[k] = colidx[nza];
-      nza = nza + 1;
-    }
+  /**
+   * group all elements of row i together
+   */
+  for (int i = 0; i < nnza; i++) {
+    int j = arow[i];
+    int k = numelem[j];
+    values[k] = element[i];
+    colidx[k] = acol[i];
+    numelem[j]++;
   }
-  for (j = 1; j < nrows+1; j++) {
-    rowstr[j] = rowstr[j] - nzloc[j-1];
+
+  /**
+   * Remove duplicates and generate
+   * the final output
+   */
+  nnza = 0;
+  //double *x = new double [n];
+  //int *nzloc = new int[n];
+  //bool *mark = new bool[n];
+  double *x = malloc(sizeof(double) * n);
+  int *nzloc = malloc(sizeof(int) * n);
+  int *mark = malloc(sizeof(int) * n);
+
+  for (int i = 0; i < n; i++) {
+    x[i] = 0.0;
+    nzloc[i] = 0;
+    mark[i] = 0;
   }
-  nza = rowstr[nrows] - 1;
+
+  int jajpr = rowstr[0];
+  for (int j = 0; j < lastrow - firstrow + 1; j++) {
+    int nzrow = 0;
+    for (int k = jajpr; k < rowstr[j+1]; k++) {
+      int i = colidx[k];
+      x[i] = x[i] + values[k];
+      if (mark[i] == 0 && x[i] != 0.0){
+	mark[i] = 1;
+	nzloc[nzrow] = i;
+	nzrow = nzrow + 1;
+      }
+    }
+
+    for (int k = 0; k < nzrow; k++) {
+      int i = nzloc[k];
+      mark[i] = 0;
+      /*
+       * do not know why we need this temporary?
+       * The FORTRAN version was written this way.
+       * May be something to do with branch prediction..
+      */
+      double xi = x[i];
+      x[i] = 0.0;
+      if (xi != 0.0) {
+	values[nnza] = xi;
+	colidx[nnza] = i;
+	nnza = nnza + 1;
+      }
+    }
+    jajpr = rowstr[j+1];
+    rowstr[j+1] = nnza + rowstr[0];
+    //printf("nnza = %d, rowstr[%d] = %d\n", nnza, j+1, rowstr[j+1]);
+  }
+
+  free(v);
+  free(iv);
+  free(arow);
+  free(acol);
+  free(element);
+  free(rowidx);
+  free(numelem);
+  free(x);
+  free(nzloc);
+  free(mark);
 }
 
-
-
-//---------------------------------------------------------------------
-// generate a sparse n-vector (v, iv)
-// having nzv nonzeros
-//
-// mark(i) is set to 1 if position i is nonzero.
-// mark is all zero on entry and is reset to all zero before exit
-// this corrects a performance bug found by John G. Lewis, caused by
-// reinitialization of mark on every one of the n calls to sprnvc
-//---------------------------------------------------------------------
-static void sprnvc(int n, int nz, int nn1, double v[], int iv[])
+/*---------------------------------------------------------------------
+  c       generate a sparse n-vector (v, iv)
+  c       having nzv nonzeros
+  c
+  c       mark(i) is set to 1 if position i is nonzero.
+  c       mark is all zero on entry and is reset to all zero before exit
+  c       this corrects a performance bug found by John G. Lewis, caused by
+  c       reinitialization of mark on every one of the n calls to sprnvc
+  ---------------------------------------------------------------------*/
+static void sprnvc(
+		   int n,
+		   int nz,
+		   double v[],		/* v[1:*] */
+		   int iv[],		/* iv[1:*] */
+		   int nzloc[],	/* nzloc[1:n] */
+		   int mark[],  	/* mark[1:n] */
+                   double *tran)
 {
-  int nzv, ii, i;
+  int nn1;
+  int nzrow, nzv, ii, i;
   double vecelt, vecloc;
 
   nzv = 0;
+  nzrow = 0;
+  nn1 = 1;
+  do {
+    nn1 = 2 * nn1;
+  } while (nn1 < n);
+
+  /*--------------------------------------------------------------------
+   *    nn1 is the smallest power of two not less than n
+   *-------------------------------------------------------------------*/
 
   while (nzv < nz) {
-    vecelt = randlc(&tran, amult);
+    vecelt = randlc(tran, AMULT);
 
-    //---------------------------------------------------------------------
-    // generate an integer between 1 and n in a portable manner
-    //---------------------------------------------------------------------
-    vecloc = randlc(&tran, amult);
+    /*--------------------------------------------------------------------
+     *   generate an integer between 1 and n in a portable manner
+     *-------------------------------------------------------------------*/
+    vecloc =  randlc(tran, AMULT);
     i = icnvrt(vecloc, nn1) + 1;
+
+
     if (i > n) continue;
 
-    //---------------------------------------------------------------------
-    // was this integer generated already?
-    //---------------------------------------------------------------------
-    logical was_gen = false;
-    for (ii = 0; ii < nzv; ii++) {
-      if (iv[ii] == i) {
-        was_gen = true;
-        break;
-      }
+    /*--------------------------------------------------------------------
+      c  was this integer generated already?
+      c-------------------------------------------------------------------*/
+    if (mark[i-1] == 0) {
+      nzrow = nzrow + 1;
+      nzv = nzv + 1;
+      mark[i-1] = 1;
+      nzloc[nzrow-1] = i-1;
+      v[nzv-1] = vecelt;
+      iv[nzv-1] = i-1;
     }
-    if (was_gen) continue;
-    v[nzv] = vecelt;
-    iv[nzv] = i;
-    nzv = nzv + 1;
+  }
+
+  for (ii = 0; ii < nzrow; ii++) {
+    i = nzloc[ii];
+    mark[i] = 0;
   }
 }
-
 
 //---------------------------------------------------------------------
 // scale a double precision number x in (0,1) by a power of 2 and chop it

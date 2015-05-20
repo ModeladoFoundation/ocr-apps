@@ -44,23 +44,24 @@
 //---------------------------------------------------------------------
 void buts_HTA(int iter)
 {
-  int w, val;
-
-  // FIXME: h5s2 is required to pass omega = 1.2
+  int w;
+  Tuple t;
+  Tuple_init_zero(&t, 1);
   for(w = iter; w >= 0; w--) { // Wavefront propagation to calculate rsd_HTA
-      val = w;
-      check_bound = w;
-      //HTA_map_h5s1(HTA_LEAF_LEVEL(rsd_HTA), buts_compute_HTA, au_HTA, bu_HTA, cu_HTA, du_HTA, rsd_HTA, &val);
-      HTA_map_h4s1(HTA_LEAF_LEVEL(rsd_HTA), jacu_buts_compute2_HTA, rsd_HTA, rho_i_HTA, qs_HTA, u_HTA, &val);
-      if (timeron) timer_start(t_sync_buts);
-      sync_boundary(rsd_HTA);
-      if (timeron) timer_stop(t_sync_buts);
+      //val = w;
+      //check_bound = w;
+      //HTA_map_h4s1(HTA_LEAF_LEVEL(rsd_HTA), jacu_buts_compute2_HTA, rsd_HTA, rho_i_HTA, qs_HTA, u_HTA, &val);
+      t.values[0] = w;
+      HTA_map_h4sel(HTA_LEAF_LEVEL(rsd_HTA), jacu_buts_compute2_HTA, rsd_HTA, rho_i_HTA, qs_HTA, u_HTA, selector, t);
+      //if (timeron) timer_start(t_sync_buts);
+      //sync_boundary(rsd_HTA);
+      //if (timeron) timer_stop(t_sync_buts);
   }
 
   check_bound = -1;
 }
 
-void jacu_buts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, void *scalar)
+void jacu_buts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile)
 {
 
   double r43;
@@ -86,9 +87,9 @@ void jacu_buts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_ti
   y = nd_idx.values[1];
   z = nd_idx.values[0];
 
-  int selection = *((int*)scalar);
+  //int selection = *((int*)scalar);
 
-  if(x + y + z == selection) { // Wavefront propagation: only tiles with i + j + k == val
+  //if(x + y + z == selection) { // Wavefront propagation: only tiles with i + j + k == val
 
   int nx_tile = s4_tile->flat_size.values[2];
   int ny_tile = s4_tile->flat_size.values[1];
@@ -556,200 +557,11 @@ void jacu_buts_compute2_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_ti
 	}
       }
     }
-  } // End If
+
+    // FIXME: This only works assuming Shared Memory
+    //sync_boundary_HTA(s1_tile, s1_tile, rsd_HTA);
+    sync_boundary_HTA(s1_tile, rsd_HTA);
+  //} // end if
 
 }
 
-// void buts_compute_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, HTA* s5_tile, void *scalar)
-// {
-//
-//   int i, j, k, m;
-//   int i_first, j_first, i_last, j_last, k_first, k_last;
-//   int x, y, z;
-//   double tmp, tmp1;
-//   double tmat[5][5];
-//   // FIXME: h5s2 is required to pass omega and k, omega = 1.2
-//   double omega = 1.2;
-//
-// //    int TILES_X = 1;
-// //    int TILES_Y = 1;
-// //    int TILES_Z = 3;
-//
-//   int nx_tile = s5_tile->flat_size.values[2];
-//   int ny_tile = s5_tile->flat_size.values[1];
-//   int nz_tile = s5_tile->flat_size.values[0];
-//
-//   double tv[ny_tile][nx_tile][5];
-//
-//   double (*au_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s1_tile);
-//   double (*bu_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s2_tile);
-//   double (*cu_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s3_tile);
-//   double (*du_tile)[ny_tile][nx_tile][25] = (double (*)[ny_tile][nx_tile][25])HTA_get_ptr_raw_data(s4_tile);
-//   double (*rsd_tile)[ny_tile][nx_tile][5] = (double (*)[ny_tile][nx_tile][5])HTA_get_ptr_raw_data(s5_tile);
-//   int selection = *((int*)scalar);
-//
-//   // FIXME: Trick to obtain the nd_idx of the tiles
-//     // Get global tile nd_index first
-//     //Tuple nd_size = Tuple_create(4, TILES_Z, TILES_Y, TILES_X, 1); // tile dimensions
-//     Tuple nd_size = s5_tile->nd_tile_dimensions;
-//     Tuple nd_idx = s5_tile->nd_rank;
-//     //Tuple_init_zero(&nd_idx, 4); // this tile index
-//     //Tuple_1d_to_nd_index(s5_tile->rank, &nd_size, &nd_idx);
-//
-//   x = nd_idx.values[2];
-//   y = nd_idx.values[1];
-//   z = nd_idx.values[0];
-//
-//   if(x + y + z == selection) { // Wavefront propagation: only tiles with i + j + k == val
-//
-//   if (x == 0) i_first = 3; // 2nd element
-//   else i_first = 2;
-//   if (y == 0) j_first = 3; // 2nd element
-//   else j_first = 2;
-//   if (z == 0) k_first = 3; // 2nd element
-//   else k_first = 2;
-//   if (x == nd_size.values[2] - 1) i_last = nx_tile - 4; // orig. loop i = iend - 1; i >= ist; i--
-//   else i_last = nx_tile - 3;
-//   if (y == nd_size.values[1] - 1) j_last = ny_tile - 4; // orig. loop j = jend - 1; j >= jst; j--
-//   else j_last = ny_tile - 3;
-//   if (z == nd_size.values[0] - 1) k_last = nz_tile - 4; // orig. loop: k = nz-2; k > 0; k--
-//   else k_last = nz_tile - 3;
-//
-//   for(k = k_last; k >= k_first; k--) {
-//     for (j = j_last; j >= j_first; j--) {
-//       for (i = i_last; i >= i_first; i--) {
-// 	for (m = 0; m < 5; m++) {
-// 	  tv[j][i][m] =
-// 	      omega * (  cu_tile[k][j][i][m] * rsd_tile[k+1][j][i][0]
-//                    + cu_tile[k][j][i][5+m] * rsd_tile[k+1][j][i][1]
-//                    + cu_tile[k][j][i][10+m] * rsd_tile[k+1][j][i][2]
-//                    + cu_tile[k][j][i][15+m] * rsd_tile[k+1][j][i][3]
-//                    + cu_tile[k][j][i][20+m] * rsd_tile[k+1][j][i][4] );
-// 	 }
-//
-// 	for (m = 0; m < 5; m++) {
-// 	    tv[j][i][m] = tv[j][i][m]
-// 	      + omega * ( bu_tile[k][j][i][m] * rsd_tile[k][j+1][i][0]
-// 		      + au_tile[k][j][i][m] * rsd_tile[k][j][i+1][0]
-// 		      + bu_tile[k][j][i][5+m] * rsd_tile[k][j+1][i][1]
-// 		      + au_tile[k][j][i][5+m] * rsd_tile[k][j][i+1][1]
-// 		      + bu_tile[k][j][i][10+m] * rsd_tile[k][j+1][i][2]
-// 		      + au_tile[k][j][i][10+m] * rsd_tile[k][j][i+1][2]
-// 		      + bu_tile[k][j][i][15+m] * rsd_tile[k][j+1][i][3]
-// 		      + au_tile[k][j][i][15+m] * rsd_tile[k][j][i+1][3]
-// 		      + bu_tile[k][j][i][20+m] * rsd_tile[k][j+1][i][4]
-// 		      + au_tile[k][j][i][20+m] * rsd_tile[k][j][i+1][4] );
-// 	}
-//       //---------------------------------------------------------------------
-//       // diagonal block inversion
-//       //---------------------------------------------------------------------
-//       for (m = 0; m < 5; m++) {
-//         tmat[m][0] = du_tile[k][j][i][m];
-//         tmat[m][1] = du_tile[k][j][i][5+m];
-//         tmat[m][2] = du_tile[k][j][i][10+m];
-//         tmat[m][3] = du_tile[k][j][i][15+m];
-//         tmat[m][4] = du_tile[k][j][i][20+m];
-//       }
-//
-//       tmp1 = 1.0 / tmat[0][0];
-//       tmp = tmp1 * tmat[1][0];
-//       tmat[1][1] =  tmat[1][1] - tmp * tmat[0][1];
-//       tmat[1][2] =  tmat[1][2] - tmp * tmat[0][2];
-//       tmat[1][3] =  tmat[1][3] - tmp * tmat[0][3];
-//       tmat[1][4] =  tmat[1][4] - tmp * tmat[0][4];
-//       tv[j][i][1] = tv[j][i][1] - tv[j][i][0] * tmp;
-//
-//       tmp = tmp1 * tmat[2][0];
-//       tmat[2][1] =  tmat[2][1] - tmp * tmat[0][1];
-//       tmat[2][2] =  tmat[2][2] - tmp * tmat[0][2];
-//       tmat[2][3] =  tmat[2][3] - tmp * tmat[0][3];
-//       tmat[2][4] =  tmat[2][4] - tmp * tmat[0][4];
-//       tv[j][i][2] = tv[j][i][2] - tv[j][i][0] * tmp;
-//
-//       tmp = tmp1 * tmat[3][0];
-//       tmat[3][1] =  tmat[3][1] - tmp * tmat[0][1];
-//       tmat[3][2] =  tmat[3][2] - tmp * tmat[0][2];
-//       tmat[3][3] =  tmat[3][3] - tmp * tmat[0][3];
-//       tmat[3][4] =  tmat[3][4] - tmp * tmat[0][4];
-//       tv[j][i][3] = tv[j][i][3] - tv[j][i][0] * tmp;
-//
-//       tmp = tmp1 * tmat[4][0];
-//       tmat[4][1] =  tmat[4][1] - tmp * tmat[0][1];
-//       tmat[4][2] =  tmat[4][2] - tmp * tmat[0][2];
-//       tmat[4][3] =  tmat[4][3] - tmp * tmat[0][3];
-//       tmat[4][4] =  tmat[4][4] - tmp * tmat[0][4];
-//       tv[j][i][4] = tv[j][i][4] - tv[j][i][0] * tmp;
-//
-//       tmp1 = 1.0 / tmat[1][1];
-//       tmp = tmp1 * tmat[2][1];
-//       tmat[2][2] =  tmat[2][2] - tmp * tmat[1][2];
-//       tmat[2][3] =  tmat[2][3] - tmp * tmat[1][3];
-//       tmat[2][4] =  tmat[2][4] - tmp * tmat[1][4];
-//       tv[j][i][2] = tv[j][i][2] - tv[j][i][1] * tmp;
-//
-//       tmp = tmp1 * tmat[3][1];
-//       tmat[3][2] =  tmat[3][2] - tmp * tmat[1][2];
-//       tmat[3][3] =  tmat[3][3] - tmp * tmat[1][3];
-//       tmat[3][4] =  tmat[3][4] - tmp * tmat[1][4];
-//       tv[j][i][3] = tv[j][i][3] - tv[j][i][1] * tmp;
-//
-//       tmp = tmp1 * tmat[4][1];
-//       tmat[4][2] =  tmat[4][2] - tmp * tmat[1][2];
-//       tmat[4][3] =  tmat[4][3] - tmp * tmat[1][3];
-//       tmat[4][4] =  tmat[4][4] - tmp * tmat[1][4];
-//       tv[j][i][4] = tv[j][i][4] - tv[j][i][1] * tmp;
-//
-//       tmp1 = 1.0 / tmat[2][2];
-//       tmp = tmp1 * tmat[3][2];
-//       tmat[3][3] =  tmat[3][3] - tmp * tmat[2][3];
-//       tmat[3][4] =  tmat[3][4] - tmp * tmat[2][4];
-//       tv[j][i][3] = tv[j][i][3] - tv[j][i][2] * tmp;
-//
-//       tmp = tmp1 * tmat[4][2];
-//       tmat[4][3] =  tmat[4][3] - tmp * tmat[2][3];
-//       tmat[4][4] =  tmat[4][4] - tmp * tmat[2][4];
-//       tv[j][i][4] = tv[j][i][4] - tv[j][i][2] * tmp;
-//
-//       tmp1 = 1.0 / tmat[3][3];
-//       tmp = tmp1 * tmat[4][3];
-//       tmat[4][4] =  tmat[4][4] - tmp * tmat[3][4];
-//       tv[j][i][4] = tv[j][i][4] - tv[j][i][3] * tmp;
-//
-//       //---------------------------------------------------------------------
-//       // back substitution
-//       //---------------------------------------------------------------------
-//       tv[j][i][4] = tv[j][i][4] / tmat[4][4];
-//
-//       tv[j][i][3] = tv[j][i][3] - tmat[3][4] * tv[j][i][4];
-//       tv[j][i][3] = tv[j][i][3] / tmat[3][3];
-//
-//       tv[j][i][2] = tv[j][i][2]
-//         - tmat[2][3] * tv[j][i][3]
-//         - tmat[2][4] * tv[j][i][4];
-//       tv[j][i][2] = tv[j][i][2] / tmat[2][2];
-//
-//       tv[j][i][1] = tv[j][i][1]
-//         - tmat[1][2] * tv[j][i][2]
-//         - tmat[1][3] * tv[j][i][3]
-//         - tmat[1][4] * tv[j][i][4];
-//       tv[j][i][1] = tv[j][i][1] / tmat[1][1];
-//
-//       tv[j][i][0] = tv[j][i][0]
-//         - tmat[0][1] * tv[j][i][1]
-//         - tmat[0][2] * tv[j][i][2]
-//         - tmat[0][3] * tv[j][i][3]
-//         - tmat[0][4] * tv[j][i][4];
-//       tv[j][i][0] = tv[j][i][0] / tmat[0][0];
-//
-//       rsd_tile[k][j][i][0] = rsd_tile[k][j][i][0] - tv[j][i][0];
-//       rsd_tile[k][j][i][1] = rsd_tile[k][j][i][1] - tv[j][i][1];
-//       rsd_tile[k][j][i][2] = rsd_tile[k][j][i][2] - tv[j][i][2];
-//       rsd_tile[k][j][i][3] = rsd_tile[k][j][i][3] - tv[j][i][3];
-//       rsd_tile[k][j][i][4] = rsd_tile[k][j][i][4] - tv[j][i][4];
-//
-// 	}
-//       }
-//     }
-//   } // End If
-//
-// }
