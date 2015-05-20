@@ -4,8 +4,8 @@ files="pil.h pil.swh *.c *.swc out *.gen.c *.src.c"
 
 for file in $files
 do
-	if [ -f $HTAHLL/pil/$file ] ; then
-		rm $HTAHLL/pil/$file
+	if [ -f $UHPC/pil/$file ] ; then
+		rm $UHPC/pil/$file
 	fi
 done
 
@@ -15,13 +15,17 @@ do
 	do
 		for k in {0..9}
 		do
-			if [ -f $HTAHLL/pil/example$i$j$k ] ; then
-				rm $HTAHLL/pil/example$i$j$k
+			if [ -f $UHPC/pil/example$i$j$k ] ; then
+				rm $UHPC/pil/example$i$j$k
 			fi
 		done
 	done
 done
 
-if [ -f $HTAHLL/pil/pilc/run.pyc ] ; then
-	rm $HTAHLL/pil/pilc/*.pyc
+if [ -f $UHPC/pil/pilc/run.pyc ] ; then
+	rm $UHPC/pil/pilc/*.pyc
+fi
+
+if ls core* 1> /dev/null 2>&1; then
+	rm -f core*
 fi

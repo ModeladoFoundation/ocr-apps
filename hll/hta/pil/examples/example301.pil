@@ -1,0 +1,71 @@
+// example 300. An example for task parallel PIL
+
+int rank;
+int targets[10];
+int _pil_task_names[10];
+//int targets;
+int target;
+int _pil_num_targets;
+gpp_t index_array;
+gpp_t data_array;
+
+void f1(int *targets, gpp_t index_array, gpp_t data_array, int *_pil_num_targets, int *_pil_task_names)
+{
+	printf("f1\n"); fflush(stdout);
+	//*targets = 2;
+	*_pil_num_targets = 2;
+	targets[0] = 2;
+	targets[1] = 3;
+	_pil_task_names[0] = 0;
+	_pil_task_names[1] = 1;
+}
+
+void f2(int *target, gpp_t index_array, gpp_t data_array)
+{
+	sleep(3);
+	printf("f2\n"); fflush(stdout);
+	*target = 7;
+}
+
+void f3(int *targets, gpp_t index_array, gpp_t data_array, int *_pil_num_targets, int *_pil_task_names)
+{
+	printf("f3\n"); fflush(stdout);
+	*_pil_num_targets = 2;
+	targets[0] = 4;
+	targets[1] = 5;
+	_pil_task_names[0] = 1;
+	_pil_task_names[1] = 2;
+}
+
+void f4(int *target, gpp_t index_array, gpp_t data_array)
+{
+	sleep(2);
+	printf("f4\n"); fflush(stdout);
+	*target = 6;
+}
+
+void f5(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f5\n"); fflush(stdout);
+	*target = 6;
+}
+
+void f6(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f6\n"); fflush(stdout);
+	*target = 7;
+}
+
+void f7(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f7\n"); fflush(stdout);
+	*target = 0;
+}
+
+node(1, rank, NULL, [1:1:1], targets, [0], [(2,3)], f1(targets, index_array, data_array, &_pil_num_targets, _pil_task_names))
+node(2, rank, NULL, [1:1:1], target, [1], [7], f2(&target, index_array, data_array))
+node(3, rank, NULL, [1:1:1], targets, [1], [(4,5)], f3(targets, index_array, data_array, &_pil_num_targets, _pil_task_names))
+node(4, rank, NULL, [1:1:1], target, [3], [6], f4(&target, index_array, data_array))
+node(5, rank, NULL, [1:1:1], target, [3], [6], f5(&target, index_array, data_array))
+node(6, rank, NULL, [1:1:1], target, [(4,5)], [7], f6(&target, index_array, data_array))
+node(7, rank, NULL, [1:1:1], target, [(2,6)], [0], f7(&target, index_array, data_array))

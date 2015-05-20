@@ -3,26 +3,25 @@
 # $1 - backend (afl, swarm, C, ...)
 # $2 - name of file to build
 
-CC=gcc
 OPT="-O0 -g"
+#OPT="-O3 -g"
 #WARN="-Wall -Werror"
 WARN="-Wall"
 #WARN=""
-STD="-std=c99"
-PIL_INC="-I${HTAHLL}/pil/include -I. -I${HTAHLL}/hta/include"
-#PIL_SRCS="${HTAHLL}/pil/src/pil_mem.c ${HTAHLL}/pil/src/pil_init.c ${HTAHLL}/pil/src/pil_enter.c"
-PIL_SRCS="${HTAHLL}/pil/src/pil_mem.c ${HTAHLL}/pil/src/pil_init.c ${HTAHLL}/pil/src/pil_nw.c"
-OCR_FLAGS="-L$OCR_INSTALL/lib -I$OCR_INSTALL/include"
-OCR_LDFLAGS=-locr
-if [ -d "$RSTREAM_HOME" ]; then
-    RFLAGS="-S -fopenmp --mm=core2duo `smp-config` -std=c89 -fcollapse-include-files"
-    RCC_INC="-I$RSTREAM_HOME)/runtime/smp/include -lm"
-    RLD_FLAGS="$RSTREAM_HOME/runtime/smp/lib/librstream_smp.so"
-    rstreamfile=""
-fi
+SWARM_STD="-std=c99"
+STD="-std=gnu99"
+PIL_INC="-I$UHPC/pil/include -I. -Iexamples/"
+#PIL_SRCS="$UHPC/pil/src/pil_mem.c $UHPC/pil/src/pil_init.c $UHPC/pil/src/pil_enter.c"
+PIL_SRCS="$UHPC/pil/src/pil_mem.c $UHPC/pil/src/pil_init.c $UHPC/pil/src/pil_nw.c"
+OCR_FLAGS="-L$OCR_INSTALL/lib -I$OCR_INSTALL/include -DOCR_ENABLE_EDT_NAMING -DOCR_ENABLE_VISUALIZER"
+#OCR_FLAGS="-L$OCR_INSTALL/lib -I$OCR_INSTALL/include"
+OCR_LDFLAGS="-locr -lpthread"
+PIL_FLAGS=""
+#PIL_FLAGS="-DCIRC_BUF_SIZE=1"
+#PIL_FLAGS="-DPIL_PREALLOC=1 -DPIL_PREALLOC_SIZE=10 -DPIL_PREALLOC_VERIFY=1"
 
 SWARM_LDFLAGS=""
-if [ $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
+if [ $1 == "forkjoinswarm" -o $1 == "distspmdswarm" ] ; then
 	SWARM_LDFLAGS="-lswarm-tools-tcp -DDISTSWARM"
 fi
 
@@ -30,29 +29,33 @@ if [ $1 == "rstreamocr" ] ; then
 	rstreamfile="$2.gen.c"
 fi
 
-if [ $1 == "swarm" -o $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
-	swarm="${HTAHLL}/swarm/releases/latest"
-	$swarm/bin/swarm2c -DPIL2SWARM $PIL_INC -I$swarm/include "$2.swc" && $CC -DPIL2SWARM $STD $OPT $PIL_INC -I$swarm/include -L$swarm/lib "$2.c" -o "$2" $PIL_SRCS $SWARM_LDFLAGS $swarm/lib/libswarm.a -lrt -lpthread
+if [ $1 == "swarm" -o $1 == "forkjoinswarm" -o $1 == "spmdswarm" -o $1 == "sharedspmdswarm" ] ; then
+	swarm="$UHPC/swarm/releases/latest"
+	$swarm/bin/swarm2c $PIL_FLAGS -Wno-scalecc-unused-codelet -DPIL2SWARM $PIL_INC -I$swarm/include "$2.swc" && $CC -DPIL2SWARM $PIL_FLAGS $SWARM_STD $OPT $PIL_INC -I$swarm/include -L$swarm/lib "$2.c" -o "$2" $PIL_SRCS $SWARM_LDFLAGS $swarm/lib/libswarm.a -lrt -lpthread -lm
 elif [ $1 == "C" ] ; then
-	$CC -DPIL2C $OPT $WARN $PIL_INC -o $2 $2.c $PIL_SRCS
-elif [ $1 == "omp" ] ; then
-	$CC -DPIL2C $OPT $WARN -fopenmp -DOMP $PIL_INC -o $2 $2.c $PIL_SRCS
+	$CC -DPIL2C $PIL_FLAGS $STD $OPT $WARN $PIL_INC -o $2 $2.c $PIL_SRCS -lm
+elif [ $1 == "omp" -o $1 == "spmdomp" ] ; then
+	$CC -DPIL2C $PIL_FLAGS $STD $OPT $WARN -fopenmp -DOMP $PIL_INC -o $2 $2.c $PIL_SRCS -lm
 elif [ $1 == "afl" ] ; then
 	AFL_INC="-I$AFL -I$AFL/common -I$AFL/rmd_memory -I$AFL/rmd_threading -I$AFL/rmd_codelet -I$AFL/../../ss/runtime/common -I$AFL/../../ss/rmdkrnl/inc"
-	cmd="$CC -DPIL2AFL $WARN $OPT $PIL_INC $AFL_INC -o $2 $2.c $PIL_SRCS $AFL/rmd_codelet/rmd_codelet.a $AFL/rmd_afl.a -lpthread -lxml2 -lc -ldl -lz -lm -lrt"
+	cmd="$CC -DPIL2AFL $PIL_FLAGS $STD $WARN $OPT $PIL_INC $AFL_INC -o $2 $2.c $PIL_SRCS $AFL/rmd_codelet/rmd_codelet.a $AFL/rmd_afl.a -lpthread -lxml2 -lc -ldl -lz -lm -lrt"
 	echo $cmd
 	$cmd
-elif [ $1 == "ocr" -o $1 == "rstreamocr" ] ; then
+elif [ $1 == "ocr" -o $1 == "sharedspmdocr" -o $1 == "rstreamocr" ] ; then
 	if [ $1 == "rstreamocr" ] ; then
-		rstreamcmd="rcc $RFLAGS $PIL_INC $2.src.c -o $2.gen.c"
+		RFLAGS="-S -fopenmp --mm=core2duo `smp-config` -std=c89 -fcollapse-include-files"
+		RCC_INC="-I$RSTREAM_HOME/runtime/smp/include -lm"
+		RLD_FLAGS="$RSTREAM_HOME/runtime/smp/lib/librstream_smp.so"
+		rstreamfile=""
+		rstreamcmd="rcc $PIL_FLAGS $RFLAGS $PIL_INC $2.src.c -o $2.gen.c"
 		echo $rstreamcmd
 		$rstreamcmd
 	fi
-	cmd="$CC -DPIL2OCR $WARN $OPT $PIL_INC $RCC_INC $OCR_FLAGS -o $2 $2.c $rstreamfile $PIL_SRCS $OCR_LDFLAGS $RLD_FLAGS"
+	cmd="$CC -DPIL2OCR $PIL_FLAGS $STD $WARN $OPT $PIL_INC $RCC_INC $OCR_FLAGS -o $2 $2.c $rstreamfile $PIL_SRCS $OCR_LDFLAGS $RLD_FLAGS -lm"
 	echo $cmd
 	$cmd
 else
 	echo "ERROR: build: unknown backend '$1'"
-	echo "usage: > swarm 1"
+	echo "usage: > build swarm example100"
 	exit 1
 fi

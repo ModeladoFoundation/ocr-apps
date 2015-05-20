@@ -1,8 +1,9 @@
 # Example that has a forall loop that takes the loop index variable as a parameter
 
 # global data
-int target;
 int i;
+int rank;
+int target;
 gpp_t index_array;
 gpp_t data_array;
 
@@ -14,4 +15,4 @@ void f(int *target, gpp_t index_array, gpp_t data_array, int i)
 }
 
 # node program
-node(1, i, [0:1:9], target, [0], f(&target, index_array, data_array, i))
+node(1, rank, i, [0:1:9], target, [0], [0], f(&target, index_array, data_array, i))

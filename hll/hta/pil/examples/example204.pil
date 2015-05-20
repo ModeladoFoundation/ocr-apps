@@ -1,28 +1,78 @@
-// Example 25: A basic barrier test.
+// Example 27: A basic send/recv test.
+
+#define NUM (42)
 
 int i;
-int target_id;
+int rank;
+int target;
+gpp_t index_array;
+gpp_t data_array;
 
-_pil_node f void f(int *target_id)
+int dest;
+int src;
+size_t size;
+int offset;
+gpp_t send_buf;
+gpp_t recv_buf;
+
+void f(int *target, gpp_t index_array, gpp_t data_array, int rank, int *dest, int *src, size_t *size, int *offset, gpp_t *recv_buf, gpp_t *send_buf)
 {
-	fprintf(stdout, "%d: before barrier\n", pil_get_nwID());
-	fflush(stdout);
-	pil_barrier_all(bar);
-	//pil_barrier_all();
+	*dest = 1;
+	*src = 0;
+	*size = sizeof(int);
+	*offset = 0;
+	if (rank == 0)
+	{
+		pil_alloc(send_buf, *size);
+		int *p = (int *) send_buf->ptr;
+		*p = NUM;
+		printf("%d: sending %d to node %d\n", rank, *p, *dest); fflush(stdout);
+		*target = 2;
+	}
+	else if (rank == 1)
+	{
+		pil_alloc(recv_buf, *size);
+		*target = 3;
+	}
+	else
+	{
+		printf("%d: this rank does nothing. exiting.\n", rank);
+		*target = 0;
+	}
 }
 
-_pil_nodelet f void bar(int *target_id)
+void recv(int *target, gpp_t index_array, gpp_t data_array, int rank, gpp_t recv_buf)
 {
-	fprintf(stdout, "%d: after barrier barrier\n", pil_get_nwID());
-	fflush(stdout);
-	*target_id = 0;
+	if (rank == 1) {
+		int *p = (int *) recv_buf.ptr;
+		fprintf(stdout, "%d: num = %d\n", rank, *p); fflush(stdout);
+	}
+	*target = 0;
 }
 
-node(1, i, [0:1:9], target_id, [0], f(&target_id))
+node(1, rank, i, [1:1:1], target, [0], [2,3,0], f(&target, index_array, data_array, rank, &dest, &src, &size, &offset, &recv_buf, &send_buf))
+pil_send(2, rank, [1], [4], dest, size, offset, send_buf)
+pil_recv(3, rank, [1], [4], src, size, offset, recv_buf)
+node(4, rank, i, [1:1:1], target, [2,3], [0], recv(&target, index_array, data_array, rank, recv_buf))
 
-void pil_main(int argc, char **argv)
+void pil_main(int argc, char **argv, int rank)
 {
-	pil_enter(1, 0);
-	if (pil_get_nwID() == 0)
-		printf("SUCCESS");
+	gpp_t index_array, data_array;
+	int src, dest, offset;
+	size_t size;
+	gpp_t recv_buf, send_buf;
+
+	pil_init(&index_array, &data_array);
+	if (rank == 0) printf("Total number of PEs = %d\n", pil_get_nwCount());
+	pil_enter(1, rank, 9, index_array, data_array, rank, &dest, &src, &size, &offset, &recv_buf, &send_buf);
+	if (rank == 1) {
+		int *p = (int *) recv_buf.ptr;
+		if (*p == NUM) {
+			printf("SUCCESS\n");
+		}
+		else
+		{
+			printf("%d\nFAILURE\n", *p);
+		}
+	}
 }

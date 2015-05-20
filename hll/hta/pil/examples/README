@@ -3,7 +3,9 @@ This directory contains example code that we use for unit tests.
 0xx: Shared memory PIL
 1xx: Fork/join distributed memory
 2xx: SPMD distributed memory
-3xx: R-Stream integration
+3xx: Task Parallel PIL
+4xx: communication
+5xx: R-Stream integration
 
 Some of the examples are broken.
 

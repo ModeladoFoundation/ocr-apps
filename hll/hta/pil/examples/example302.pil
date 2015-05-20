@@ -1,0 +1,185 @@
+// example 302. An example for task parallel PIL with nodes that don't merge
+
+#include <stdlib.h>
+#include "example302.h"
+
+#define BUF "----------------------------------------\n"
+//#define TIME (500*1000)
+#define TIME (500*1000)
+#define DEFAULT_N 4
+#define COUNTER 100000000
+
+int rank;
+int targets[10];
+int _pil_task_names[10];
+//int targets;
+int target;
+int _pil_num_targets;
+gpp_t index_array;
+gpp_t data_array;
+
+int argc;
+char **argv;
+int N;
+int k;
+int x;
+int i;
+
+void GET_I_J(int x, int start, int end, int *ret_i, int *ret_j)
+{
+	*ret_i = x / end;
+	*ret_j = x % end;
+}
+
+void wait_for_dependence(char *func, int i, int j, int k)
+{
+	int counter = 0;
+	while(tiles[i][j] < k) {
+		counter++;
+		if (counter % COUNTER == 0) {
+			printf("%s: waiting on tiles[%d][%d]: %d in iteration %d\n", func, i, j, tiles[i][j], k);
+		}
+	}
+}
+
+// node 1
+void start(int *target, gpp_t index_array, gpp_t data_array, int argc, char **argv, int *N, int *k)
+{
+	printf("start\n"); fflush(stdout);
+	if (argc == 1){
+		*N = DEFAULT_N;
+	}
+	else if (argc == 2){
+		*N = atoi(argv[1]);
+	}
+	else {
+		printf("ERROR: too many argumens.\n");
+		exit(0);
+	}
+	int *dgemm_data = (int *) malloc((*N) * (*N) * sizeof(int));
+	dgemms = (int **) malloc((*N) * sizeof(int *));
+	for (int g = 0; g < *N; g++) {
+		dgemms[g] = &dgemm_data[(*N)*g];
+		for (int h = 0; h < *N; h++) {
+			dgemms[g][h] = 0;
+		}
+	}
+	int *tile_data = (int *) malloc((*N) * (*N) * sizeof(int));
+	tiles = (int **) malloc((*N) * sizeof(int *));
+	for (int g = 0; g < *N; g++) {
+		tiles[g] = &tile_data[(*N)*g];
+		for (int h = 0; h < *N; h++) {
+			tiles[g][h] = 0;
+		}
+	}
+	*k = -1;
+	printf("\tN: %d\n", *N);
+	printf("\tk: %d\n", *k);
+	*target = 2;
+}
+
+// node 2
+void potrf(int *targets, gpp_t index_array, gpp_t data_array, int *_pil_num_targets, int *_pil_task_names, int N, int *k)
+{
+	*k += 1; // the first k starts at -1
+	int i, j;
+	i = j = *k;
+	int num = N - *k - 1;
+	printf("%s", BUF);
+	printf("potrf[%d][%d] k: %d  num: %d\n", *k, *k, *k, num); fflush(stdout);
+	// no need to check tiles, since we are fired by this tile in the previous iteration
+	usleep(TIME);
+	if (num > 0) { // not done
+		*_pil_num_targets = num;
+		for (int i = 0; i < num; i++) {
+			targets[i] = 3;
+			_pil_task_names[i] = *k + i + 1;
+		}
+	}
+	else {
+		*_pil_num_targets = 1;
+		targets[0] = 6;
+		_pil_task_names[0] = 0;
+	}
+	__sync_add_and_fetch(&tiles[i][j], 1);
+}
+
+// node 3
+void trsm(int *targets, gpp_t index_array, gpp_t data_array, int i, int *_pil_num_targets, int *_pil_task_names, int N, int *k)
+{
+	int j = *k;
+	int row_gemm = i - *k - 1;
+	int col_gemm = N - i - 1;
+	wait_for_dependence("trsm", i, j, *k); // wait for ourself from the previous iteration
+	printf("trsm[%d][%d] k: %d  row_gemm: %d  col_gemm: %d\n", i, j, *k, row_gemm, col_gemm); fflush(stdout);
+	usleep(TIME);
+	// always spawn 1 syrk node and the right number of gemm nodes
+	*_pil_num_targets = 1 + row_gemm + col_gemm;
+	targets[0] = 4;
+	_pil_task_names[0] = i;
+	for (int g = 0; g < row_gemm; g++) {
+		int index = 1 + g;
+		int ii = i;
+		int jj = j + 1 + g;
+		int x = ii*N + jj;
+		targets[index] = 5;
+		_pil_task_names[index] = x;
+		printf("\ttrsm[%d][%d] k: %d  creating gemm x: %d index: %d\n", i, j, *k, x, index);
+	}
+	for (int g = 0; g < col_gemm; g++) {
+		int index = 1+row_gemm+g;
+		int ii = i + 1 + g;
+		int jj = i;
+		int x = ii*N + jj;
+		if (ii == i) continue; // we already satisfied this dependence
+		targets[index] = 5;
+		_pil_task_names[index] = x;
+		printf("\ttrsm[%d][%d] k: %d  creating gemm x: %d index: %d\n", i, j, *k, x, index);
+	}
+	__sync_add_and_fetch(&tiles[i][j], 1);
+}
+
+// node 4
+void syrk(int *target, gpp_t index_array, gpp_t data_array, int i, int N, int *k)
+{
+	int j = i;
+	wait_for_dependence("syrk", i, j, *k); // wait for ourself from the previous iteration
+	printf("syrk[%d][%d] k: %d\n", i, j, *k); fflush(stdout);
+	usleep(TIME);
+	if (i == *k + 1) *target = 2;
+	else *target = 0;
+	__sync_add_and_fetch(&tiles[i][j], 1);
+}
+
+// node 5
+void gemm(int *target, gpp_t index_array, gpp_t data_array, int x, int N, int *k)
+{
+	int i, j;
+	GET_I_J(x, (*k)+1, N, &i, &j);
+	*target = 0; // never spawn any new work
+	wait_for_dependence("gemm", i, j, *k); // wait for ourself from the previous iteration
+	int num = __sync_add_and_fetch(&dgemms[i][j], 1);
+	if (num == 1) { // wait for the second dependency
+		printf("gemm[%d][%d] k: %d  x: %d exiting early\n", i, j, *k, x); fflush(stdout);
+		return;
+	}
+	assert(num == 2);
+	dgemms[i][j] = 0;
+	printf("gemm[%d][%d] k: %d  x: %d num: %d tiles: %d dgemms: %d\n", i, j, *k, x, num, tiles[i][j], dgemms[i][j]); fflush(stdout);
+	usleep(TIME);
+	__sync_add_and_fetch(&tiles[i][j], 1);
+}
+
+// node 6
+void cleanup(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("cleanup\n"); fflush(stdout);
+	*target = 0;
+}
+
+node(1, rank, NULL, [1:1:1], target, [0], [2,6], start(&target, index_array, data_array, argc, argv, &N, &k))
+node(2, rank, NULL, [1:1:1], targets, [1,4], [(3),6], potrf(targets, index_array, data_array, &_pil_num_targets, _pil_task_names, N, &k))
+node(3, i, NULL, [1:1:1], targets, [2], [(4, 5)], trsm(targets, index_array, data_array, i, &_pil_num_targets, _pil_task_names, N, &k))
+node(4, i, NULL, [1:1:1], target, [3], [2,0], syrk(&target, index_array, data_array, i, N, &k))
+node(5, x, NULL, [1:1:1], target, [3], [0], gemm(&target, index_array, data_array, x, N, &k))
+node(6, rank, NULL, [1:1:1], target, [1,2], [0], cleanup(&target, index_array, data_array))
