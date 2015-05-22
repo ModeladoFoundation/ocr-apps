@@ -12,6 +12,12 @@ the same functionality as the OCR Cholesky example. This version is in the
 "file_input" subdirectory. The other version automatically generates an input
 matrix, and is located in the "generated_input" subdirectory.
 
+The file-input version of the application also produces the factorized result
+matrix as an output file. For the generated-input version, the output matrix
+is simply checksummed, and that checksum is printed as the result. Since the
+checksum is influenced by rounding errors in the computation, the result may
+differ for the same input when using a different math library.
+
 The input file version of the application does not require support code to
 preprocess the input file for FSim (TG) compatibility; therefore, only the
 generated input version currently supports running on the TG simulator.

@@ -3,7 +3,7 @@
 /*
  * typeof data is double *
  */
-void updateStep(cncTag_t k, cncTag_t j, cncTag_t i, double *dataA1D, double *dataB1D, double *dataC1D, CholeskyCtx *ctx) {
+void Cholesky_updateStep(cncTag_t k, cncTag_t j, cncTag_t i, double *dataA1D, double *dataB1D, double *dataC1D, CholeskyCtx *ctx) {
     int t = ctx->tileSize;
     double (*dataA)[t] = (double(*)[t])dataA1D;
     double (*dataB)[t] = (double(*)[t])dataB1D;

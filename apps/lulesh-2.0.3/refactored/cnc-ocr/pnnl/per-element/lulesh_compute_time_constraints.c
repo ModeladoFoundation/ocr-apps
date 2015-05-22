@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_time_constraints"
  */
-void compute_time_constraints(cncTag_t iteration, cncTag_t element_id, double sound_speed, double volume_derivative, double characteristic_length, luleshCtx *ctx) {
+void lulesh_compute_time_constraints(cncTag_t iteration, cncTag_t element_id, double sound_speed, double volume_derivative, double characteristic_length, luleshCtx *ctx) {
 
 	// Constants
 	double qqc = ctx->constants.qqc;
@@ -39,12 +39,12 @@ void compute_time_constraints(cncTag_t iteration, cncTag_t element_id, double so
 	//
 
 	// Put "courant_out" items
-	double *courant_out = cncCreateItem_courant();
+	double *courant_out = cncItemCreate_courant();
 	*courant_out = dtcourant;
 	cncPut_courant(courant_out, iteration, element_id, ctx);
 
 	// Put "hydro_out" items
-	double *hydro_out = cncCreateItem_hydro();
+	double *hydro_out = cncItemCreate_hydro();
 	*hydro_out = dthydro;
 	cncPut_hydro(hydro_out, iteration, element_id, ctx);
 

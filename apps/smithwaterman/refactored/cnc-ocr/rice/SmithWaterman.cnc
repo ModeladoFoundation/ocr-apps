@@ -22,7 +22,7 @@
     -> [ below @ above: i+1, j ], [ right @ left: i, j+1 ];
 
 // Write graph inputs and start steps
-( $init: ntw, nth, tw, th )
+( $initialize: ntw, nth, tw, th )
     -> [ startTime: () ],
        ( initAboveStep: tw, ntw ),
        ( initLeftStep: th, nth ),

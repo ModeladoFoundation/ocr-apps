@@ -52,7 +52,7 @@ static size_t read_sequence(FILE *file, int fnum, signed char *dest, size_t fsiz
 }
 
 
-void SmithWaterman_init(SmithWatermanArgs *args, SmithWatermanCtx *ctx) {
+void SmithWaterman_cncInitialize(SmithWatermanArgs *args, SmithWatermanCtx *ctx) {
 
     // Unpack arguments
     s32 tw = args->tw;
@@ -67,7 +67,7 @@ void SmithWaterman_init(SmithWatermanArgs *args, SmithWatermanCtx *ctx) {
 
     // Allocate tile data item and read sequence data
     size_t dataSize = sizeof(SeqData) + filesize1 + filesize2 + 2;
-    SeqData *data = cncCreateItemSized_data(dataSize);
+    SeqData *data = cncItemCreateSized_data(dataSize);
     data->seq2offset = filesize1 + 1;
     size_t length1 = read_sequence(file1, 1, SEQ1(data), filesize1);
     size_t length2 = read_sequence(file2, 2, SEQ2(data), filesize2);
@@ -87,7 +87,7 @@ void SmithWaterman_init(SmithWatermanArgs *args, SmithWatermanCtx *ctx) {
     PRINTF("Imported %d x %d tiles.\n", ntw, nth);
 
     // Record starting time
-    struct timeval *startTime = cncCreateItem_startTime();
+    struct timeval *startTime = cncItemCreate_startTime();
     gettimeofday(startTime, 0);
     cncPut_startTime(startTime, ctx);
 
@@ -109,7 +109,7 @@ void SmithWaterman_init(SmithWatermanArgs *args, SmithWatermanCtx *ctx) {
 }
 
 
-void SmithWaterman_finalize(cncTag_t ntw, cncTag_t nth, cncTag_t tw, struct timeval *startTime, int *above, SmithWatermanCtx *ctx) {
+void SmithWaterman_cncFinalize(cncTag_t ntw, cncTag_t nth, cncTag_t tw, struct timeval *startTime, int *above, SmithWatermanCtx *ctx) {
     struct timeval endTime;
     gettimeofday(&endTime, 0);
     double secondsRun = endTime.tv_sec - startTime->tv_sec;

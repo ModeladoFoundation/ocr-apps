@@ -116,7 +116,7 @@ BasePotential* initLjPot(comdCtx *ctx)
 {
   // LjPotential *pot = (LjPotential*)comdMalloc(sizeof(LjPotential));
 
-   LjPotential *pot = cncCreateItem_POT();
+   LjPotential *pot = cncItemCreate_POT();
 
    cncPut_POT(pot, 1, ctx);
 

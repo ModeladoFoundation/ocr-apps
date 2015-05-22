@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_volume"
  */
-void compute_volume(cncTag_t iteration, cncTag_t element_id, vertex *neighbor_position, luleshCtx *ctx) {
+void lulesh_compute_volume(cncTag_t iteration, cncTag_t element_id, vertex *neighbor_position, luleshCtx *ctx) {
 
     //
     // INPUTS
@@ -47,7 +47,7 @@ void compute_volume(cncTag_t iteration, cncTag_t element_id, vertex *neighbor_po
     //
 
     // Put "volume_out" items
-    double *volume_out = cncCreateItem_volume();
+    double *volume_out = cncItemCreate_volume();
 	*volume_out = volume;
     cncPut_volume(volume_out, iteration, element_id, ctx);
 

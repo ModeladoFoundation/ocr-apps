@@ -97,7 +97,7 @@ BasePotential* initPotential(
 SpeciesData* initSpecies(BasePotential* pot, comdCtx *ctx)
 {
  //  SpeciesData* species = comdMalloc(sizeof(SpeciesData));
-   SpeciesData* species = cncCreateItem_SPECIES();
+   SpeciesData* species = cncItemCreate_SPECIES();
 
    cncPut_SPECIES(species, 1, ctx);
 
@@ -171,7 +171,7 @@ void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeT
 
 SimFlat* initSimulationNew(Command *cmd, comdCtx *ctx) {
 
-   SimFlat *sim = cncCreateItem_SF();
+   SimFlat *sim = cncItemCreate_SF();
 
    cncPut_SF(sim, 1, ctx);
 
@@ -269,8 +269,8 @@ Command parseContext(comdCtx * ctx)
 
 
 
-//void comd_init(int argc, char** argv, comdCtx *ctx) {
-void comd_init(comdArgs *args, comdCtx *ctx) {
+//void comd_cncInitialize(int argc, char** argv, comdCtx *ctx) {
+void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
     int totalBoxes;
     int MAXIT;
     int numNbrs;
@@ -286,7 +286,7 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
     // This is the CoMD main loop
 
     // creating IT
-    struct cmdInfo *ci = cncCreateItem_CMD();
+    struct cmdInfo *ci = cncItemCreate_CMD();
     ci->nSteps = cmd.nSteps;
     ci->nx = cmd.nx; ci->ny = cmd.ny; ci->nz = cmd.nz;
     ci->xproc = cmd.xproc; ci->yproc = cmd.yproc; ci->zproc = cmd.zproc;
@@ -304,7 +304,7 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
     const int printRate = sim->printRate;
     int iStep = 0;
 
-    struct eamPot *potCnC = cncCreateItem_EAMPOT();
+    struct eamPot *potCnC = cncItemCreate_EAMPOT();
 
     if (ctx->doeam) {
       // Initialize EAM potential
@@ -359,7 +359,7 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
     PRINTF("-----------------------------------------\n");
     PRINTF("Total number of atoms == %d\n", sim->atoms->nGlobal);
     for (i=0; i<totalBoxes; i++){
-        b = cncCreateItem_B();
+        b = cncItemCreate_B();
 
         // Copy initialization data into CnC related data structures
         for (int iOff=MAXATOMS*i,ii=0; ii<sim->boxes->nAtoms[i]; ii++,iOff++) {
@@ -390,7 +390,7 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
 
         if (i == 0) {
             // Record the starting time of the computation
-            struct timeval *start = cncCreateItem_time();
+            struct timeval *start = cncItemCreate_time();
 #ifndef CNCOCR_TG
             gettimeofday(start, 0);
 #endif
@@ -457,12 +457,12 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
     cncPrescribe_updateBoxStep(0, 0, 0, ctx);
 
 /*
-    int *s = cncCreateItem_s();
+    int *s = cncItemCreate_s();
     *s = 0;
     cncPut_s(s, 0, 1, ctx);
 */
 
-    struct myReduction *rd = cncCreateItem_redc();
+    struct myReduction *rd = cncItemCreate_redc();
     rd->i = 0;
     rd->ePot = 0.0;
     rd->eKin = 0.0;
@@ -470,12 +470,12 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
     cncPut_redc(rd, 0, 1, ctx);
 
     // creating IT
-    int *t = cncCreateItem_IT();
+    int *t = cncItemCreate_IT();
     *t = MAXIT;
     cncPut_IT(t, 0, ctx);
 
     // creating TBoxes
-    t = cncCreateItem_TBoxes();
+    t = cncItemCreate_TBoxes();
     *t = totalBoxes;
     cncPut_TBoxes(t, 0, ctx);
 
@@ -483,7 +483,7 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
 
 
     // creating Nbs
-    t = cncCreateItem_Nbs();
+    t = cncItemCreate_Nbs();
     *t = numNbrs;
     cncPut_Nbs(t, 0, ctx);
 
@@ -493,7 +493,7 @@ void comd_init(comdArgs *args, comdCtx *ctx) {
 }
 
 
-void comd_finalize(cncTag_t i, cncTag_t iter, struct box *B, struct myReduction *r, struct timeval *start, comdCtx *ctx) {
+void comd_cncFinalize(cncTag_t i, cncTag_t iter, struct box *B, struct myReduction *r, struct timeval *start, comdCtx *ctx) {
   //  PRINTF("Box %d, iteration %d ends\n", i, iter);
     real_t p,k,t;
 //    p = r->ePot/32000;

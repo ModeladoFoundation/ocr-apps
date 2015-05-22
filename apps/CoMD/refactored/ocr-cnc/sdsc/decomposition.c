@@ -22,7 +22,7 @@ Domain* initDecomposition(int xproc, int yproc, int zproc, real3 globalExtent, c
    PRINTF("CnC: Inside initDecomposition\n");
 
  //  Domain* dd = comdMalloc(sizeof(Domain));
-   Domain* dd = cncCreateItem_DD();
+   Domain* dd = cncItemCreate_DD();
 
 
    dd->procGrid[0] = xproc;

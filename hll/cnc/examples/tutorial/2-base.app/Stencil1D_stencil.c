@@ -5,12 +5,12 @@
 /**
  * Step function defintion for "stencil"
  */
-void stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, float *fromRight, Stencil1DCtx *ctx) {
+void Stencil1D_stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, float *fromRight, Stencil1DCtx *ctx) {
 
     // Put "newTile" items
     s32 j;
     const s32 lastJ = TILE_SIZE - 1;
-    float *newTile = cncCreateItemVector_tile(TILE_SIZE);
+    float *newTile = cncItemCreateVector_tile(TILE_SIZE);
 
     // first
     newTile[0] = STENCIL(*fromLeft, tile[0], tile[1]);
@@ -24,12 +24,12 @@ void stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, float *fromRi
     cncPut_tile(newTile, i, t, ctx);
 
     // Put "toRight" items
-    float *toRight = cncCreateItem_fromLeft();
+    float *toRight = cncItemCreate_fromLeft();
     *toRight = newTile[lastJ];
     cncPut_fromLeft(toRight, i+1, t, ctx);
 
     // Put "toLeft" items
-    float *toLeft = cncCreateItem_fromRight();
+    float *toLeft = cncItemCreate_fromRight();
     *toLeft = newTile[0];
     cncPut_fromRight(toLeft, i-1, t, ctx);
 

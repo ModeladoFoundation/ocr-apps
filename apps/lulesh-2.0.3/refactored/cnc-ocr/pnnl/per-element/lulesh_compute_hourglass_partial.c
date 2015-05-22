@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_hourglass_partial"
  */
-void compute_hourglass_partial(cncTag_t iteration, cncTag_t element_id, double element_volume, double sound_speed, vertex *neighbor_position, vector *neighbor_velocity, luleshCtx *ctx) {
+void lulesh_compute_hourglass_partial(cncTag_t iteration, cncTag_t element_id, double element_volume, double sound_speed, vertex *neighbor_position, vector *neighbor_velocity, luleshCtx *ctx) {
 
     //
     // INPUTS
@@ -143,7 +143,7 @@ void compute_hourglass_partial(cncTag_t iteration, cncTag_t element_id, double e
 				// Then this is where we want to store the force value
 				int _map_id = (node_id << 3) | local_element_id;
 				// Put "hourglass_partialout" items
-				vector *hourglass_partial_out = cncCreateItem_hourglass_partial();
+				vector *hourglass_partial_out = cncItemCreate_hourglass_partial();
 					*hourglass_partial_out = forces_out[local_node_id];
 				cncPut_hourglass_partial(hourglass_partial_out, iteration, _map_id, ctx);
 			}

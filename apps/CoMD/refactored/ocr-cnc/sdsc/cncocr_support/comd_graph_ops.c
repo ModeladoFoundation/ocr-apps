@@ -6,227 +6,138 @@
 
 #include "comd_internal.h"
 
+#ifdef CNC_DEBUG_LOG
+#ifndef CNCOCR_x86
+#error "Debug logging mode only supported on x86 targets"
+#endif
+#include <pthread.h>
+pthread_mutex_t _cncDebugMutex = PTHREAD_MUTEX_INITIALIZER;
+#endif /* CNC_DEBUG_LOG */
+
 comdCtx *comd_create() {
-// allocate the context datablock
+#ifdef CNC_DEBUG_LOG
+    // init debug logger (only once)
+    if (!cncDebugLog) {
+        cncDebugLog = fopen(CNC_DEBUG_LOG, "w");
+    }
+#endif /* CNC_DEBUG_LOG */
+    // allocate the context datablock
     ocrGuid_t contextGuid;
-    comdCtx *context;
-    SIMPLE_DBCREATE(&contextGuid, (void**)&context, sizeof(*context));
+    comdCtx *ctx;
+    SIMPLE_DBCREATE(&contextGuid, (void**)&ctx, sizeof(*ctx));
     // store a copy of its guid inside
-    context->_guids.self = contextGuid;
+    ctx->_guids.self = contextGuid;
     // initialize graph events
-    ocrEventCreate(&context->_guids.finalizedEvent, OCR_EVENT_STICKY_T, true);
-    ocrEventCreate(&context->_guids.doneEvent, OCR_EVENT_STICKY_T, true);
-    ocrEventCreate(&context->_guids.awaitTag, OCR_EVENT_ONCE_T, true);
+    // TODO - these events probably shouldn't be marked as carrying data
+    ocrEventCreate(&ctx->_guids.finalizedEvent, OCR_EVENT_STICKY_T, TRUE);
+    ocrEventCreate(&ctx->_guids.quiescedEvent, OCR_EVENT_STICKY_T, FALSE);
+    ocrEventCreate(&ctx->_guids.doneEvent, OCR_EVENT_STICKY_T, TRUE);
+    ocrEventCreate(&ctx->_guids.awaitTag, OCR_EVENT_ONCE_T, TRUE);
     // initialize item collections
-    s32 i;
-    ocrGuid_t *itemTable;
-    SIMPLE_DBCREATE(&context->_items.B, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.SF, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.POT, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.EAMPOT, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.SPECIES, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.DD, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.LC, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.NAtoms, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.redc, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.AtomInfo, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.CMD, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.time, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.ATOMS, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.GID, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.ISP, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.R, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.P, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.F, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.U, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.IT, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.TBoxes, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
-    SIMPLE_DBCREATE(&context->_items.Nbs, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
-    for (i=0; i<CNC_TABLE_SIZE; i++) {
-        ocrGuid_t *_ptr;
-        // Add one level of indirection to help with contention
-        SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-        *_ptr = NULL_GUID;
-    }
+    ctx->_items.B = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.SF = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.POT = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.EAMPOT = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.SPECIES = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.DD = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.LC = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.NAtoms = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.redc = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.AtomInfo = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.CMD = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.time = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.ATOMS = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.GID = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.ISP = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.R = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.P = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.F = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.U = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.IT = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.TBoxes = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+    ctx->_items.Nbs = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
     // initialize step collections
-    ocrEdtTemplateCreate(&context->_steps.comd_finalize,
-            _cncStep_comd_finalize, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.cleanupInitStep,
-            _cncStep_cleanupInitStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.advanceVelocityStep,
-            _cncStep_advanceVelocityStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.updateBoxStep,
-            _cncStep_updateBoxStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.updateNeighborsStep,
-            _cncStep_updateNeighborsStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.generateDataforForceStep,
-            _cncStep_generateDataforForceStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.generateForceTagsStep,
-            _cncStep_generateForceTagsStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.forceStep,
-            _cncStep_forceStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.computeForcefromNeighborsStep,
-            _cncStep_computeForcefromNeighborsStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.computeForcefromNeighborsStep1,
-            _cncStep_computeForcefromNeighborsStep1, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&context->_steps.reduceStep,
-            _cncStep_reduceStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
-    return context;
+    ocrEdtTemplateCreate(&ctx->_steps.cncFinalize,
+            _comd_cncStep_cncFinalize, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.cleanupInitStep,
+            _comd_cncStep_cleanupInitStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.advanceVelocityStep,
+            _comd_cncStep_advanceVelocityStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.updateBoxStep,
+            _comd_cncStep_updateBoxStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.updateNeighborsStep,
+            _comd_cncStep_updateNeighborsStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.generateDataforForceStep,
+            _comd_cncStep_generateDataforForceStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.generateForceTagsStep,
+            _comd_cncStep_generateForceTagsStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.forceStep,
+            _comd_cncStep_forceStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.computeForcefromNeighborsStep,
+            _comd_cncStep_computeForcefromNeighborsStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.computeForcefromNeighborsStep1,
+            _comd_cncStep_computeForcefromNeighborsStep1, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&ctx->_steps.reduceStep,
+            _comd_cncStep_reduceStep, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    return ctx;
 }
 
-void comd_destroy(comdCtx *context) {
-    ocrEventDestroy(context->_guids.finalizedEvent);
-    ocrEventDestroy(context->_guids.doneEvent);
+void comd_destroy(comdCtx *ctx) {
+    ocrEventDestroy(ctx->_guids.finalizedEvent);
+    ocrEventDestroy(ctx->_guids.quiescedEvent);
+    ocrEventDestroy(ctx->_guids.doneEvent);
     // destroy item collections
     // XXX - need to do a deep free by traversing the table
-    // destroy step collections
-    ocrEdtTemplateDestroy(context->_steps.comd_finalize);
-    ocrEdtTemplateDestroy(context->_steps.cleanupInitStep);
-    ocrEdtTemplateDestroy(context->_steps.advanceVelocityStep);
-    ocrEdtTemplateDestroy(context->_steps.updateBoxStep);
-    ocrEdtTemplateDestroy(context->_steps.updateNeighborsStep);
-    ocrEdtTemplateDestroy(context->_steps.generateDataforForceStep);
-    ocrEdtTemplateDestroy(context->_steps.generateForceTagsStep);
-    ocrEdtTemplateDestroy(context->_steps.forceStep);
-    ocrEdtTemplateDestroy(context->_steps.computeForcefromNeighborsStep);
-    ocrEdtTemplateDestroy(context->_steps.computeForcefromNeighborsStep1);
-    ocrEdtTemplateDestroy(context->_steps.reduceStep);
-    ocrDbDestroy(context->_guids.self);
+    FREE(ctx->_items.B);
+    FREE(ctx->_items.SF);
+    FREE(ctx->_items.POT);
+    FREE(ctx->_items.EAMPOT);
+    FREE(ctx->_items.SPECIES);
+    FREE(ctx->_items.DD);
+    FREE(ctx->_items.LC);
+    FREE(ctx->_items.NAtoms);
+    FREE(ctx->_items.redc);
+    FREE(ctx->_items.AtomInfo);
+    FREE(ctx->_items.CMD);
+    FREE(ctx->_items.time);
+    FREE(ctx->_items.ATOMS);
+    FREE(ctx->_items.GID);
+    FREE(ctx->_items.ISP);
+    FREE(ctx->_items.R);
+    FREE(ctx->_items.P);
+    FREE(ctx->_items.F);
+    FREE(ctx->_items.U);
+    FREE(ctx->_items.IT);
+    FREE(ctx->_items.TBoxes);
+    FREE(ctx->_items.Nbs);// destroy step collections
+    ocrEdtTemplateDestroy(ctx->_steps.cncFinalize);
+    ocrEdtTemplateDestroy(ctx->_steps.cleanupInitStep);
+    ocrEdtTemplateDestroy(ctx->_steps.advanceVelocityStep);
+    ocrEdtTemplateDestroy(ctx->_steps.updateBoxStep);
+    ocrEdtTemplateDestroy(ctx->_steps.updateNeighborsStep);
+    ocrEdtTemplateDestroy(ctx->_steps.generateDataforForceStep);
+    ocrEdtTemplateDestroy(ctx->_steps.generateForceTagsStep);
+    ocrEdtTemplateDestroy(ctx->_steps.forceStep);
+    ocrEdtTemplateDestroy(ctx->_steps.computeForcefromNeighborsStep);
+    ocrEdtTemplateDestroy(ctx->_steps.computeForcefromNeighborsStep1);
+    ocrEdtTemplateDestroy(ctx->_steps.reduceStep);
+    ocrDbDestroy(ctx->_guids.self);
 }
 
 static ocrGuid_t _emptyEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     return NULL_GUID;
 }
 
-static ocrGuid_t _graphFinishEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+/* EDT runs when all compute steps are done AND graph is finalized (graph is DONE) */
+static ocrGuid_t _graphFinishedEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+    ocrGuid_t finalizerResult = depv[1].guid;
+    return finalizerResult;
+}
+
+/* EDT runs when all compute steps are done (graph is quiesced) */
+static ocrGuid_t _stepsFinishedEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdArgs *args = depv[0].ptr;
-    comdCtx *context = depv[1].ptr;
+    comdCtx *ctx = depv[1].ptr;
     // XXX - just do finalize from within the finish EDT
     // The graph isn't done until the finalizer runs as well,
     // so we need to make a dummy EDT depending on the
@@ -235,63 +146,90 @@ static ocrGuid_t _graphFinishEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
     ocrEdtTemplateCreate(&templGuid, _emptyEdt, 0, 1);
     ocrEdtCreate(&emptyEdtGuid, templGuid,
         /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/&context->_guids.finalizedEvent,
+        /*depc=*/EDT_PARAM_DEF, /*depv=*/&ctx->_guids.finalizedEvent,
         /*properties=*/EDT_PROP_NONE,
         /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
     // XXX - destroying this template caused crash on FSim
     //ocrEdtTemplateDestroy(templGuid);
     // Start graph execution
-
-    comd_init(args, context);
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
+    comd_cncInitialize(args, ctx);
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     if (args) ocrDbDestroy(depv[0].guid);
     return NULL_GUID;
 }
 
 static ocrGuid_t _finalizerEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    comdCtx *context = depv[0].ptr;
+    comdCtx *ctx = depv[0].ptr;
     cncTag_t *tag = depv[1].ptr; MAYBE_UNUSED(tag);
-    cncPrescribe_comd_finalize(tag[0], tag[1], context);
+    cncPrescribe_cncFinalize(tag[0], tag[1], ctx);
+    // TODO - I probably need to free this (the tag) sometime
     // XXX - for some reason this causes a segfault?
     //ocrDbDestroy(depv[1].guid);
     return NULL_GUID;
 }
 
-void comd_launch(comdArgs *args, comdCtx *context) {
+void comd_launch(comdArgs *args, comdCtx *ctx) {
     comdArgs *argsCopy;
-    ocrGuid_t graphEdtGuid, finalEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
+    ocrGuid_t graphEdtGuid, finalEdtGuid, doneEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(ctx->_guids.self);
     // copy the args struct into a data block
     // TODO - I probably need to free this sometime
     if (sizeof(*args) > 0) {
         SIMPLE_DBCREATE(&argsDbGuid, (void**)&argsCopy, sizeof(*args));
         *argsCopy = *args;
+        // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+        // ocrDbRelease(argsDbGuid);
     }
     // Don't need to copy empty args structs
     else {
         argsDbGuid = NULL_GUID;
     }
     // create a finish EDT for the CnC graph
-    ocrEdtTemplateCreate(&edtTemplateGuid, _graphFinishEdt, 0, 2);
-    ocrEdtCreate(&graphEdtGuid, edtTemplateGuid,
-        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-        /*properties=*/EDT_PROP_FINISH,
-        /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
-    ocrEdtTemplateDestroy(edtTemplateGuid);
-    // hook doneEvent into the graph's output event
-    ocrAddDependence(outEventGuid, context->_guids.doneEvent, 0, DB_DEFAULT_MODE);
+    {
+        ocrEdtTemplateCreate(&edtTemplateGuid, _stepsFinishedEdt, 0, 2);
+        ocrEdtCreate(&graphEdtGuid, edtTemplateGuid,
+                /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+                /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
+                /*properties=*/EDT_PROP_FINISH,
+                /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
+        ocrEdtTemplateDestroy(edtTemplateGuid);
+        // hook the graph's quiescedEvent into the graph's output event
+        ocrAddDependence(outEventGuid, ctx->_guids.quiescedEvent, 0, DB_DEFAULT_MODE);
+    }
     // set up the finalizer
-    ocrEdtTemplateCreate(&edtTemplateGuid, _finalizerEdt, 0, 2);
-    ocrGuid_t deps[] = { context->_guids.self, context->_guids.awaitTag };
-    ocrEdtCreate(&finalEdtGuid, edtTemplateGuid,
-        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-        /*properties=*/EDT_PROP_NONE,
-        /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
-    ocrEdtTemplateDestroy(edtTemplateGuid);
+    {
+        ocrEdtTemplateCreate(&edtTemplateGuid, _finalizerEdt, 0, 2);
+        ocrGuid_t deps[] = { ctx->_guids.self, ctx->_guids.awaitTag };
+        ocrEdtCreate(&finalEdtGuid, edtTemplateGuid,
+            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+            /*properties=*/EDT_PROP_FINISH,
+            /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
+        ocrEdtTemplateDestroy(edtTemplateGuid);
+        // hook the graph's finalizedEvent into the finalizer's output event
+        ocrAddDependence(outEventGuid, ctx->_guids.finalizedEvent, 0, DB_DEFAULT_MODE);
+    }
+    // set up the EDT that controls the graph's doneEvent
+    {
+        ocrEdtTemplateCreate(&edtTemplateGuid, _graphFinishedEdt, 0, 2);
+        ocrGuid_t deps[] = { ctx->_guids.quiescedEvent, ctx->_guids.finalizedEvent };
+        ocrEdtCreate(&doneEdtGuid, edtTemplateGuid,
+            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+            /*properties=*/EDT_PROP_NONE,
+            /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
+        ocrEdtTemplateDestroy(edtTemplateGuid);
+        ocrAddDependence(outEventGuid, ctx->_guids.doneEvent, 0, DB_DEFAULT_MODE);
+    }
     // start the graph execution
     ocrAddDependence(argsDbGuid, graphEdtGuid, 0, DB_DEFAULT_MODE);
-    ocrAddDependence(context->_guids.self, graphEdtGuid, 1, DB_DEFAULT_MODE);
+    ocrAddDependence(ctx->_guids.self, graphEdtGuid, 1, DB_DEFAULT_MODE);
 }
 
 void comd_await(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
@@ -303,6 +241,8 @@ void comd_await(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
     SIMPLE_DBCREATE(&_tagGuid, (void**)&_tagPtr, sizeof(cncTag_t) * 2);
     _tagPtr[_i++] = i;
     _tagPtr[_i++] = iter;
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagGuid);
     ocrEventSatisfy(ctx->_guids.awaitTag, _tagGuid);
 }
 

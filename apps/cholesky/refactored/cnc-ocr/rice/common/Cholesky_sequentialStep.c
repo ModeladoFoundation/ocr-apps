@@ -4,13 +4,13 @@
 /*
  * typeof data is double *
  */
-void sequentialStep(cncTag_t k, double *data1D, CholeskyCtx *ctx) {
+void Cholesky_sequentialStep(cncTag_t k, double *data1D, CholeskyCtx *ctx) {
 
     int t = ctx->tileSize;
     double (*data)[t] = (double(*)[t])data1D;
 
     // Allocate new tile
-    double *lBlock1D = cncCreateItemVector_data(t*t);
+    double *lBlock1D = cncItemCreateVector_data(t*t);
     double (*lBlock)[t] = (double(*)[t])lBlock1D;
 
     // Calculate tile values

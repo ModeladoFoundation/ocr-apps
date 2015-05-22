@@ -8,16 +8,16 @@
  * typeof F is real3 *
  * typeof U is real_t *
  */
-void cleanupInitStep(cncTag_t i, int *GID, int *ISP, real3 *R, real3 *P, real3 *F, real_t *U, comdCtx *ctx) {
+void comd_cleanupInitStep(cncTag_t i, int *GID, int *ISP, real3 *R, real3 *P, real3 *F, real_t *U, comdCtx *ctx) {
 
    // destroy the items passed as they are not used again
    PRINTF("Cleaning up initialized data\n");
 
-   cncFree(GID);
-   cncFree(ISP);
-   cncFree(R);
-   cncFree(P);
-   cncFree(F);
-   cncFree(U);
+   cncItemDestroy(GID);
+   cncItemDestroy(ISP);
+   cncItemDestroy(R);
+   cncItemDestroy(P);
+   cncItemDestroy(F);
+   cncItemDestroy(U);
 
 }

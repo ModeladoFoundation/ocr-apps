@@ -48,6 +48,8 @@ include cncocr_support/{{g.name}}_defs.mk
 #################################################
 # OCR VARIANTS
 
+CC := gcc
+
 # Distributed (MPI)
 ifeq "$(OCR_TYPE)" "x86-pthread-mpi"
 CC := mpicc
@@ -70,7 +72,6 @@ else
 OCR_CONFIG := $(CNCOCR_ROOT)/resources/cncocr/config/m8w.cfg
 endif #x86-pthread-mpi
 
-CC ?= gcc
 RUN ?= ./$(TARGET)
 OCR_CONFIG ?= $(OCR_INSTALL_ROOT)/config/$(CFG_NAME)
 OCR_AR := $(OCR_INSTALL_ROOT)/lib/libocr.a
@@ -82,14 +83,18 @@ OCR_AR := $(OCR_INSTALL_ROOT)/lib/libocr.a
 CC_OPTS := -pthread
 LDFLAGS := -lm $(CC_OPTS)
 IFLAGS := -I. -Icncocr_support -I$(OCR_INSTALL_ROOT)/include
-CFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall $(CC_OPTS)
 
 CNC_RUNTIME_SRCS := cncocr_support/cncocr.c
 CNC_OP_SRCS := $(patsubst %,cncocr_support/{{g.name}}_%_ops.c,step item graph)
 HEADERS := {{g.name}}_defs.h $(wildcard cncocr_support/*.h)
 SRCS := Main.c {{g.name}}.c $(CNC_OP_SRCS) $(CNC_STEP_SRCS) $(CNC_RUNTIME_SRCS)
-OBJS := $(patsubst %.c,%.o,$(SRCS))
 
+# Optionally allow the user to provide some overrides in a separate makefile
+# (allowing you to keep using the auto-generated makefile for most settings)
+-include {{g.name}}_overrides.mk
+
+CFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall $(CC_OPTS)
+OBJS += $(patsubst %.c,%.o,$(SRCS))
 
 #################################################
 # MAKE TARGETS

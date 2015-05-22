@@ -12,7 +12,7 @@
 [ int X: () ];
 [ int Y: () ];
 
-( $init: () ) -> ( SX: 1 ), ( SY: 2 );
+( $initialize: () ) -> ( SX: 1 ), ( SY: 2 );
 
 ( SX: x ) -> [ X: () ];
 ( SY: y ) -> [ Y: () ];

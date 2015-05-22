@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_volume_derivative"
  */
-void compute_volume_derivative(cncTag_t iteration, cncTag_t element_id, double delta_time, vertex *neighbor_position, vector *neighbor_velocity, luleshCtx *ctx) {
+void lulesh_compute_volume_derivative(cncTag_t iteration, cncTag_t element_id, double delta_time, vertex *neighbor_position, vector *neighbor_velocity, luleshCtx *ctx) {
 
     //
     // INPUTS
@@ -89,7 +89,7 @@ void compute_volume_derivative(cncTag_t iteration, cncTag_t element_id, double d
     //
 
     // Put "volume_derivative_out" items
-    double *volume_derivative_out = cncCreateItem_volume_derivative();
+    double *volume_derivative_out = cncItemCreate_volume_derivative();
 	*volume_derivative_out = volume_derivative;
     cncPut_volume_derivative(volume_derivative_out, iteration, element_id, ctx);
 

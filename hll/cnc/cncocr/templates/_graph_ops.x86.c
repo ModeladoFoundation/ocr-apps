@@ -1,11 +1,12 @@
 {% extends "_graph_ops.c" %}
+{% import "common_macros.inc.c" as util with context -%}
 
 {% block arch_itemcoll_init scoped -%}
 {% for i in g.concreteItems -%}
 {% if i.key -%}
-context->_items.{{i.collName}} = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
+{{util.g_ctx_var()}}->_items.{{i.collName}} = calloc(CNC_TABLE_SIZE, sizeof(struct ItemCollEntry*));
 {% else -%}
-ocrEventCreate(&context->_items.{{i.collName}}, OCR_EVENT_IDEM_T, true);
+ocrEventCreate(&{{util.g_ctx_var()}}->_items.{{i.collName}}, OCR_EVENT_IDEM_T, TRUE);
 {% endif -%}
 {% endfor -%}
 {% endblock arch_itemcoll_init %}
@@ -13,9 +14,9 @@ ocrEventCreate(&context->_items.{{i.collName}}, OCR_EVENT_IDEM_T, true);
 {% block arch_itemcoll_destroy -%}
 {% for i in g.concreteItems -%}
 {% if i.key -%}
-FREE(context->_items.{{i.collName}});
+FREE({{util.g_ctx_var()}}->_items.{{i.collName}});
 {% else -%}
-ocrEventDestroy(context->_items.{{i.collName}});
+ocrEventDestroy({{util.g_ctx_var()}}->_items.{{i.collName}});
 {% endif -%}
 {% endfor -%}
 {% endblock arch_itemcoll_destroy %}

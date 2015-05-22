@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_gradients"
  */
-void compute_gradients(cncTag_t iteration, cncTag_t element_id, double volume, vertex *neighbor_position, vector *neighbor_velocity, luleshCtx *ctx) {
+void lulesh_compute_gradients(cncTag_t iteration, cncTag_t element_id, double volume, vertex *neighbor_position, vector *neighbor_velocity, luleshCtx *ctx) {
 
     //
     // INPUTS
@@ -90,12 +90,12 @@ void compute_gradients(cncTag_t iteration, cncTag_t element_id, double volume, v
     //
 
     // Put "position_gradient_out" items
-    vector *position_gradient_out = cncCreateItem_position_gradient();
+    vector *position_gradient_out = cncItemCreate_position_gradient();
 	*position_gradient_out = position_gradient;
     cncPut_position_gradient(position_gradient_out, iteration, element_id, ctx);
 
     // Put "velocity_gradient_out" items
-    vector *velocity_gradient_out = cncCreateItem_velocity_gradient();
+    vector *velocity_gradient_out = cncItemCreate_velocity_gradient();
 	*velocity_gradient_out = velocity_gradient;
     cncPut_velocity_gradient(velocity_gradient_out, iteration, element_id, ctx);
 

@@ -3,13 +3,13 @@
 /*
  * typeof data is double *
  */
-void trisolveStep(cncTag_t k, cncTag_t j, double *dataA1D, double *dataB1D, CholeskyCtx *ctx) {
+void Cholesky_trisolveStep(cncTag_t k, cncTag_t j, double *dataA1D, double *dataB1D, CholeskyCtx *ctx) {
     int t = ctx->tileSize;
     double (*dataA)[t] = (double(*)[t])dataA1D;
     double (*dataB)[t] = (double(*)[t])dataB1D;
 
     // Allocate new tile
-    double *loBlock1D = cncCreateItemVector_data(t*t);
+    double *loBlock1D = cncItemCreateVector_data(t*t);
     double (*loBlock)[t] = (double(*)[t])loBlock1D;
 
     int kB, iB, jB;

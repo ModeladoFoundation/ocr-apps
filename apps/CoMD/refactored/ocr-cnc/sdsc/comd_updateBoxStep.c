@@ -2,12 +2,12 @@
 
 #include "force.h"
 
-void updateBoxStep (cncTag_t i, cncTag_t k, cncTag_t iter, BItem b1, TBoxesItem totalBoxes, comdCtx *ctx) {
+void comd_updateBoxStep (cncTag_t i, cncTag_t k, cncTag_t iter, BItem b1, TBoxesItem totalBoxes, comdCtx *ctx) {
 
 //    PRINTF("CnC: updateBoxStep %lu, %lu, %d\n", i, iter, 111);
 
     struct box *b = b1;
-    struct atomInfo *ai = cncCreateItem_AtomInfo();
+    struct atomInfo *ai = cncItemCreate_AtomInfo();
 
     //////////////////////////////////////////////////
     int iBox = i;
@@ -60,7 +60,7 @@ void updateBoxStep (cncTag_t i, cncTag_t k, cncTag_t iter, BItem b1, TBoxesItem 
         cncPut_AtomInfo(ai, i, ai->nbrs[0][0], iter, ctx);
         cncPrescribe_updateNeighborsStep(i, ai->nbrs[0][0], iter, ctx);
     } else {
-        cncFree(ai);  /////////////// should be based on some condition
+        cncItemDestroy(ai);  /////////////// should be based on some condition
 //        if (i < 1727)
 //        if (i < 342)
         if ( i < totalBoxes-1)

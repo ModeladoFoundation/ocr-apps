@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_delta_time"
  */
-void compute_delta_time(cncTag_t iteration, double previous_delta_time, double previous_elapsed_time, double *courant, double *hydro, luleshCtx *ctx) {
+void lulesh_compute_delta_time(cncTag_t iteration, double previous_delta_time, double previous_elapsed_time, double *courant, double *hydro, luleshCtx *ctx) {
 
     //
     // INPUTS
@@ -85,12 +85,12 @@ void compute_delta_time(cncTag_t iteration, double previous_delta_time, double p
 		//
 
 	    // Put "delta_time_out" items
-	    double *delta_time_out = cncCreateItem_delta_time();
+	    double *delta_time_out = cncItemCreate_delta_time();
 		*delta_time_out = delta_time;
 	    cncPut_delta_time(delta_time_out, iteration + 1, ctx);
 
 	    // Put "elapsed_time_out" items
-	    double *elapsed_time_out = cncCreateItem_elapsed_time();
+	    double *elapsed_time_out = cncItemCreate_elapsed_time();
 		*elapsed_time_out = elapsed_time;
 	    cncPut_elapsed_time(elapsed_time_out, iteration + 1, ctx);
 

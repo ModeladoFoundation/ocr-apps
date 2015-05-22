@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "reduce_force"
  */
-void reduce_force(cncTag_t iteration, cncTag_t node_id, vector *neighbor_stress_partial, vector *neighbor_hourglass_partial, luleshCtx *ctx) {
+void lulesh_reduce_force(cncTag_t iteration, cncTag_t node_id, vector *neighbor_stress_partial, vector *neighbor_hourglass_partial, luleshCtx *ctx) {
 
     //
     // INPUTS
@@ -28,7 +28,7 @@ void reduce_force(cncTag_t iteration, cncTag_t node_id, vector *neighbor_stress_
     //
 
     // Put "force_out" items
-    vector *force_out = cncCreateItem_force();
+    vector *force_out = cncItemCreate_force();
 	*force_out = force;
     cncPut_force(force_out, iteration, node_id, ctx);
 

@@ -56,7 +56,7 @@ $context {
  -> [ data: j, i, k+1 ];
 
 // Input from the caller: tile pointers, tile size and loop end value
-( $init: () )
+( $initialize: () )
  -> [ startTime: () ],
     [ data: $range(tileCount), $range(tileCount), 0 ],
     ( kComputeStep: () );

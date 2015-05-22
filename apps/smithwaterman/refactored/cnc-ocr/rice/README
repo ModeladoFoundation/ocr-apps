@@ -7,6 +7,11 @@ environment variable to the path to your xstack repository checkout. Running
 the run_test.sh script (as described at the end of this README) should build,
 run and verify this application.
 
+Smith-Waterman is a gene sequence alignment application. The application takes
+two gene sequences as input (files), and produces a score representing how
+different the two sequences are. The score is computed using a standard edit-
+distance algorithm (using dynamic programming).
+
 This example includes the following files:
 
     * SmithWaterman.cnc:
@@ -39,7 +44,7 @@ This example includes the following files:
         A shell script that runs the translator, makes the application
         binary, runs the application and finally verifies the output.
 
-You must run the CnC-OCR graph translator tool to generate the scaffolding
+You need to run the CnC-OCR graph translator tool to generate the scaffolding
 code, and compile the application using the provided Makefile. You can use
 the provided shell script to build and run the application:
 

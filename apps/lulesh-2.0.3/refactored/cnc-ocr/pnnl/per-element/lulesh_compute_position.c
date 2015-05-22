@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "compute_position"
  */
-void compute_position(cncTag_t iteration, cncTag_t node_id, double delta_time, vector velocity, vertex previous_position, luleshCtx *ctx) {
+void lulesh_compute_position(cncTag_t iteration, cncTag_t node_id, double delta_time, vector velocity, vertex previous_position, luleshCtx *ctx) {
 
 
 	vertex position = move(previous_position, mult(velocity, delta_time));
@@ -13,7 +13,7 @@ void compute_position(cncTag_t iteration, cncTag_t node_id, double delta_time, v
     //
 
     // Put "position_out" items
-    vertex *position_out = cncCreateItem_position();
+    vertex *position_out = cncItemCreate_position();
 	*position_out = position;
     cncPut_position(position_out, iteration, node_id, ctx);
 

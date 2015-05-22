@@ -17,6 +17,7 @@ typedef struct {{g.name}}Context {
     struct {
         ocrGuid_t self;
         ocrGuid_t finalizedEvent;
+        ocrGuid_t quiescedEvent;
         ocrGuid_t doneEvent;
         ocrGuid_t awaitTag;
     } _guids;
@@ -33,15 +34,15 @@ typedef struct {{g.name}}Context {
 {%- for line in g.ctxParams %}
     {{ line }}
 {%- endfor %}
-} {{g.name}}Ctx;
+} {{util.g_ctx_t()}};
 {# /* TODO - Use a GUID instead of a pointer to the context */ #}
-{{g.name}}Ctx *{{g.name}}_create(void);
-void {{g.name}}_destroy({{g.name}}Ctx *context);
+{{util.g_ctx_t()}} *{{g.name}}_create(void);
+void {{g.name}}_destroy({{util.g_ctx_param()}});
 
-void {{g.name}}_launch({{g.name}}Args *args, {{g.name}}Ctx *ctx);
+void {{g.name}}_launch({{g.name}}Args *args, {{util.g_ctx_param()}});
 void {{g.name}}_await({{
         util.print_tag(g.finalizeFunction.tag, typed=True)
-        }}{{g.name}}Ctx *context);
+        }}{{util.g_ctx_param()}});
 
 /**********************************\
  ******** ITEM KEY STRUCTS ********
@@ -58,22 +59,26 @@ typedef struct { cncTag_t {{ i.key|join(", ") }}; } {{name}}ItemKey;
 {% for i in g.externVms -%}
 {{i.mapTarget}}ItemKey {{i.functionName}}({{
   util.print_tag(i.key, typed=True)
-  }}{{g.name}}Ctx *ctx);
+  }}{{util.g_ctx_param()}});
 {% endfor %}
 {% endif -%}
 /*****************************\
  ******** ITEM CREATE ********
 \*****************************/
 {% for name, i in g.itemDeclarations.items() %}
-{{i.type.ptrType}}cncCreateItemSized_{{name}}(size_t size);
+{{i.type.ptrType}}cncItemCreateSized_{{name}}(size_t size);
 {# /* TODO - ADD NAMESPACE PREFIX DEFINE THING */ -#}
-static inline {{i.type.ptrType}}cncCreateItem_{{name}}(void) {
-    return cncCreateItemSized_{{name}}(sizeof({{i.type.baseType}}));
+static inline {{i.type.ptrType}}cncItemCreate_{{name}}(void) {
+    return cncItemCreateSized_{{name}}(sizeof({{i.type.baseType}}));
 }
-static inline {{i.type.ptrType}}cncCreateItemVector_{{name}}(size_t count) {
-    return cncCreateItemSized_{{name}}(sizeof({{i.type.baseType}}) * count);
+static inline {{i.type.ptrType}}cncItemCreateVector_{{name}}(size_t count) {
+    return cncItemCreateSized_{{name}}(sizeof({{i.type.baseType}}) * count);
 }
 {% endfor %}
+static inline void cncItemDestroy(void *item) {
+    cncFree(item);
+}
+
 /**************************\
  ******** ITEM PUT ********
 \**************************/
@@ -83,12 +88,12 @@ static inline {{i.type.ptrType}}cncCreateItemVector_{{name}}(size_t count) {
 
 void cncPutChecked_{{name}}({{i.type.ptrType}}_item, {{
         util.print_tag(i.key, typed=True)
-        }}bool checkSingleAssignment, {{g.name}}Ctx *ctx);
+        }}bool checkSingleAssignment, {{util.g_ctx_param()}});
 
 static inline void cncPut_{{name}}({{i.type.ptrType}}_item, {{
         util.print_tag(i.key, typed=True)
-        }}{{g.name}}Ctx *ctx) {
-    cncPutChecked_{{name}}(_item, {{ util.print_tag(i.key) }}true, ctx);
+        }}{{util.g_ctx_param()}}) {
+    cncPutChecked_{{name}}(_item, {{ util.print_tag(i.key) }}true, {{util.g_ctx_var()}});
 }
 {% endfor %}
 /************************************\
@@ -97,6 +102,6 @@ static inline void cncPut_{{name}}({{i.type.ptrType}}_item, {{
 
 {% for stepfun in g.finalAndSteps -%}
 void cncPrescribe_{{stepfun.collName}}({{
-        util.print_tag(stepfun.tag, typed=True) }}{{g.name}}Ctx *ctx);
+        util.print_tag(stepfun.tag, typed=True) }}{{util.g_ctx_param()}});
 {% endfor %}
 #endif /*{{defname}}*/

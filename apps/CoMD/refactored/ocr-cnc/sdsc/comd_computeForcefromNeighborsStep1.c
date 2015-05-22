@@ -4,7 +4,7 @@
 
 //void computeForcefromNeighborsStep1 (int i, int j1, int j2,int j3,int j4,int j5,int j6,int j7,int j8,int j9,int j10,int j11,int j12,int j13,int j14,int j15,int j16,int j17,int j18,int j19,int j20,int j21,int j22,int j23,int j24,int j25,int j26, int iter,
 //        EAMPOTItem p, BItem b1, BItem b2, BItem b3,BItem b4,BItem b5,BItem b6,BItem b7,BItem b8,BItem b9,BItem b10,BItem b11,BItem b12,BItem b13,BItem b14,BItem b15,BItem b16,BItem b17,BItem b18,BItem b19,BItem b20,BItem b21,BItem b22,BItem b23,BItem b24,BItem b25,BItem b26,BItem b27, comdCtx *ctx) {
-void computeForcefromNeighborsStep1 (cncTag_t i, cncTag_t j1, cncTag_t j2, cncTag_t j3,cncTag_t j4,cncTag_t j5,cncTag_t j6,cncTag_t j7,cncTag_t j8,cncTag_t j9,cncTag_t j10,cncTag_t j11,cncTag_t j12,cncTag_t j13,cncTag_t j14,cncTag_t j15,cncTag_t j16,cncTag_t j17,cncTag_t j18,cncTag_t j19,cncTag_t j20,cncTag_t j21,cncTag_t j22,cncTag_t j23,cncTag_t j24,cncTag_t j25,cncTag_t j26, cncTag_t iter,
+void comd_computeForcefromNeighborsStep1 (cncTag_t i, cncTag_t j1, cncTag_t j2, cncTag_t j3,cncTag_t j4,cncTag_t j5,cncTag_t j6,cncTag_t j7,cncTag_t j8,cncTag_t j9,cncTag_t j10,cncTag_t j11,cncTag_t j12,cncTag_t j13,cncTag_t j14,cncTag_t j15,cncTag_t j16,cncTag_t j17,cncTag_t j18,cncTag_t j19,cncTag_t j20,cncTag_t j21,cncTag_t j22,cncTag_t j23,cncTag_t j24,cncTag_t j25,cncTag_t j26, cncTag_t iter,
         BItem b1, BItem b2, BItem b3,BItem b4,BItem b5,BItem b6,BItem b7,BItem b8,BItem b9,BItem b10,BItem b11,BItem b12,BItem b13,BItem b14,BItem b15,BItem b16,BItem b17,BItem b18,BItem b19,BItem b20,BItem b21,BItem b22,BItem b23,BItem b24,BItem b25,BItem b26,BItem b27, EAMPOTItem eampot, comdCtx *ctx) {
 
   // printf("computeForcefromNeighborsStep1 %d\n",i);

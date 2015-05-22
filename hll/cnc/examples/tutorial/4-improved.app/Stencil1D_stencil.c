@@ -5,12 +5,12 @@
 /**
  * Step function defintion for "stencil"
  */
-void stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, float *fromRight, Stencil1DCtx *ctx) {
+void Stencil1D_stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, float *fromRight, Stencil1DCtx *ctx) {
 
     // Put "newTile" items
     s32 j;
     const s32 lastJ = ctx->tileSize - 1;
-    float *newTile = cncCreateItemVector_tile(ctx->tileSize);
+    float *newTile = cncItemCreateVector_tile(ctx->tileSize);
 
     // first (conditional, default=1)
     const float first = fromLeft ? *fromLeft : 1;
@@ -45,5 +45,5 @@ void stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, float *fromRi
     }
 
     // free old tile memory
-    cncFree(tile);
+    cncItemDestroy(tile);
 }

@@ -52,27 +52,27 @@ Atoms* initAtoms(LinkCell* boxes, comdCtx *context)
 {
 
    Atoms *atoms;
-   atoms = cncCreateItem_ATOMS();
+   atoms = cncItemCreate_ATOMS();
    cncPut_ATOMS(atoms, 1, context);
 
    int maxTotalAtoms = MAXATOMS*boxes->nTotalBoxes;
 
-   atoms->gid = cncCreateItemVector_GID(maxTotalAtoms);
+   atoms->gid = cncItemCreateVector_GID(maxTotalAtoms);
    cncPut_GID(atoms->gid, 1, context);
 
-   atoms->iSpecies = cncCreateItemVector_ISP(maxTotalAtoms);
+   atoms->iSpecies = cncItemCreateVector_ISP(maxTotalAtoms);
    cncPut_ISP(atoms->iSpecies, 1, context);
 
-   atoms->r = cncCreateItemVector_R(maxTotalAtoms);
+   atoms->r = cncItemCreateVector_R(maxTotalAtoms);
    cncPut_R(atoms->r, 1, context);
 
-   atoms->p = cncCreateItemVector_P(maxTotalAtoms);
+   atoms->p = cncItemCreateVector_P(maxTotalAtoms);
    cncPut_P(atoms->p, 1, context);
 
-   atoms->f = cncCreateItemVector_F(maxTotalAtoms);
+   atoms->f = cncItemCreateVector_F(maxTotalAtoms);
    cncPut_F(atoms->f, 1, context);
 
-   atoms->U = cncCreateItemVector_U(maxTotalAtoms);
+   atoms->U = cncItemCreateVector_U(maxTotalAtoms);
    cncPut_U(atoms->U, 1, context);
 
    atoms->nLocal = 0;

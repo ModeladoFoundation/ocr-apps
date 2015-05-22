@@ -1,12 +1,13 @@
+{% import "common_macros.inc.c" as util with context -%}
 #include "{{g.name}}.h"
 
 int cncMain(int argc, char *argv[]) {
 
     // Create a new graph context
-    {{g.name}}Ctx *context = {{g.name}}_create();
+    {{util.g_ctx_t()}} *context = {{g.name}}_create();
 
     // Set up arguments for new graph instantiation
-    {{g.name}}Args args = {
+    {{util.g_args_t()}} args = {
         // TODO: initialize custom arguments
         // Note that you should define the members of
         // this struct by editing {{g.name}}_defs.h.

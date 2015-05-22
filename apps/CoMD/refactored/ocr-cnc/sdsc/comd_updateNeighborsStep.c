@@ -1,6 +1,6 @@
 #include "comd.h"
 
-void updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoItem ai1, BItem b1, TBoxesItem totalBoxes, comdCtx *ctx) {
+void comd_updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoItem ai1, BItem b1, TBoxesItem totalBoxes, comdCtx *ctx) {
 
     struct atomInfo *ai = ai1;
     struct box *b = b1;
@@ -42,7 +42,7 @@ void updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoItem ai
     }
 
     if (next == -1) { // this is the last box to be updated
-        cncFree(ai1);
+        cncItemDestroy(ai1);
 //       if (i < 1727)
 //        if (i < 342)
         if (i < totalBoxes-1)
@@ -62,7 +62,7 @@ void updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoItem ai
 
      // to be populated later -- if last neighbor
      if (1) {
-         cncFree(ai1);  /////////////// should be based on some condition
+         cncItemDestroy(ai1);  /////////////// should be based on some condition
          if (i < 1727)
          cncPrescribe_updateBoxStep(i+1, 0, iter, ctx);
      }

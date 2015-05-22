@@ -1,7 +1,7 @@
 #include "Cholesky.h"
 #include <math.h>
 
-void Cholesky_init(CholeskyArgs *args, CholeskyCtx *ctx) {
+void Cholesky_cncInitialize(CholeskyArgs *args, CholeskyCtx *ctx) {
     int i, j;
     int nt = ctx->numTiles;
     int t = ctx->tileSize;
@@ -30,7 +30,7 @@ void Cholesky_init(CholeskyArgs *args, CholeskyCtx *ctx) {
     for (i = 0; i < nt; i++){
         for (j = 0 ; j <= i ; j++ ) {
             int A_i, A_j, T_i, T_j;
-            double *temp1D = cncCreateItemVector_data(t*t);
+            double *temp1D = cncItemCreateVector_data(t*t);
             // The 1D array of tile entries maps to a
             // 2D array corresponding to a t-by-t matrix tile
             double (*temp)[t] = (double(*)[t])temp1D;
@@ -49,7 +49,7 @@ void Cholesky_init(CholeskyArgs *args, CholeskyCtx *ctx) {
 
     // Record starting time
 #if CNCOCR_x86
-    struct timeval *startTime = cncCreateItem_startTime();
+    struct timeval *startTime = cncItemCreate_startTime();
     gettimeofday(startTime, 0);
 #else
     struct timeval *startTime = NULL;
@@ -68,7 +68,7 @@ void Cholesky_init(CholeskyArgs *args, CholeskyCtx *ctx) {
 /*
  * typeof results is double *
  */
-void Cholesky_finalize(cncTag_t tileCount, struct timeval *startTime, double **results, CholeskyCtx *ctx) {
+void Cholesky_cncFinalize(cncTag_t tileCount, struct timeval *startTime, double **results, CholeskyCtx *ctx) {
 #if CNCOCR_x86
     // Report the total running time
     struct timeval endTime;

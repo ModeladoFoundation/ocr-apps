@@ -2,10 +2,10 @@
 
 /*
  */
-void addToRightEdge(cncTag_t row, cncTag_t col, CombinationsCtx *ctx) {
+void Combinations_addToRightEdge(cncTag_t row, cncTag_t col, CombinationsCtx *ctx) {
 
     // Put "out" items
-    u64 *out = cncCreateItem_cells();
+    u64 *out = cncItemCreate_cells();
     *out = 1;
     cncPut_cells(out, row, col, ctx);
 
