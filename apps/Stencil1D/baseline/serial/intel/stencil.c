@@ -1,6 +1,16 @@
+/*
+Serial version of stencil 1D
+Takes two arguments
+
+number of iterations
+Grid dimension
+
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
+
 
 int main (int argc, char **argv) {
     float *val, *new;
@@ -37,7 +47,7 @@ int main (int argc, char **argv) {
     for (t = 0; t < niter; t++) {
         // stencil update
         for (i = 1; i < nx - 1; i++) {
-            new [i] =  val [i] + 0.5 * ( val [i + 1] - val [i - 1] );
+            new [i] =  0.5* val [i] + 0.25 * ( val [i + 1] + val [i - 1] );
         }
         // copy values for next iteration
         for (i = 1; i < nx - 1; i++) {
