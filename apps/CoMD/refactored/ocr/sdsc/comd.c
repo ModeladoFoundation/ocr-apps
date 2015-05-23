@@ -63,9 +63,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, main_edt2, 0, 4);
   ocrEdtCreate(&edt, tmp, 0, NULL, 4, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(timer_i, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(sim_i, edt, 1, DB_MODE_RO);
-  ocrAddDependence(sim_p->bxs.list, edt, 2, DB_MODE_RO);
+  ocrAddDependence(timer_i, edt, 0, DB_MODE_RW);
+  ocrAddDependence(sim_i, edt, 1, DB_MODE_CONST);
+  ocrAddDependence(sim_p->bxs.list, edt, 2, DB_MODE_CONST);
   sim_p->pot.fork_force_computation(sim_i, sim_p, edt, list, sim_p->bxs.grid);
   ocrEdtTemplateDestroy(tmp);
 
@@ -81,8 +81,8 @@ ocrGuid_t main_edt2(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, main_edt3, 0, 3);
   ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_ITW);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RW);
+  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_RW);
   fork_kinetic_energy(depv[1].guid, edt, 2, (ocrGuid_t*)depv[2].ptr, ((simulation*)depv[1].ptr)->bxs.boxes_num);
   ocrEdtTemplateDestroy(tmp);
 
@@ -105,9 +105,9 @@ ocrGuid_t main_edt3(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, top_edt, 0, 3);
   ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_RO);
-  ocrAddDependence(sim->bxs.list, edt, 2, DB_MODE_RO);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RW);
+  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_CONST);
+  ocrAddDependence(sim->bxs.list, edt, 2, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
   return NULL_GUID;
@@ -122,8 +122,8 @@ ocrGuid_t top_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrEdtTemplateCreate(&tmp, bot_edt, 0, 3);
   ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
   profile_start(timestep_timer, depv[0].ptr);
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_ITW);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RW);
+  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_RW);
   timestep(depv[0].guid, depv[0].ptr, depv[1].guid, edt, depv[2].guid, (ocrGuid_t*)depv[2].ptr, ((simulation*)depv[1].ptr)->bxs.boxes_num);
   ocrEdtTemplateDestroy(tmp);
 
@@ -142,9 +142,9 @@ ocrGuid_t bot_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate(&tmp, end_edt, 0, 3);
 
   ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_RO);
-  ocrAddDependence(sim->bxs.list, edt, 2, DB_MODE_RO);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RW);
+  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_CONST);
+  ocrAddDependence(sim->bxs.list, edt, 2, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
   return NULL_GUID;

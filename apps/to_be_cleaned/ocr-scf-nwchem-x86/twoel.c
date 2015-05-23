@@ -1573,7 +1573,7 @@ void twoel_ocr()
 
 
 		//Since twoel_params_guid has already an associated db, this dependency is satisfied immediately.
-		ocrAddDependence(my_twoel_params_db, *(symm_guid+iter*threads+i), 0, DB_MODE_ITW);
+		ocrAddDependence(my_twoel_params_db, *(symm_guid+iter*threads+i), 0, DB_MODE_RW);
 	}
 	//======================================================================================================//
 
@@ -1593,13 +1593,13 @@ void twoel_ocr()
 			redu_affinity, NULL);
 
 	//Since twoel_params_guid has already an associated db, this dependency is satisfied immediately.
-	ocrAddDependence(my_twoel_params_db, redu_guid[iter], 0, DB_MODE_ITW);
+	ocrAddDependence(my_twoel_params_db, redu_guid[iter], 0, DB_MODE_RW);
 
 	//associate the dependencies between the instances of twoel_symm (source) and twoel_reduction (destination)
 	for(i=0; i<threads; i++)
 	{
 		//associate dependencies with events
-		ocrAddDependence(*(symm_finished+iter*threads+i), redu_guid[iter], i+1, DB_MODE_ITW);
+		ocrAddDependence(*(symm_finished+iter*threads+i), redu_guid[iter], i+1, DB_MODE_RW);
 	}
 	//======================================================================================================//
 
@@ -1618,10 +1618,10 @@ void twoel_ocr()
 			comp_affinity, NULL);
 
 	//Since twoel_params_guid has already an associated db, this dependency is satisfied immediately.
-	ocrAddDependence(my_twoel_params_db, comp_guid[iter], 0, DB_MODE_ITW);
+	ocrAddDependence(my_twoel_params_db, comp_guid[iter], 0, DB_MODE_RW);
 
 	//associate the dependencies between the instances of twoel_symm (source) and twoel_reduction (destination)
-	ocrAddDependence(reduction_finished[iter], comp_guid[iter], 1, DB_MODE_ITW);
+	ocrAddDependence(reduction_finished[iter], comp_guid[iter], 1, DB_MODE_RW);
 	//======================================================================================================//
 }
 //======================================================================================================//
@@ -1724,7 +1724,7 @@ void create_new_iteration()
 
 
 		//Since twoel_params_guid has already an associated db, this dependency is satisfied immediately.
-		ocrAddDependence(my_twoel_params_db, *(symm_guid+iter*threads+i), 0, DB_MODE_ITW);
+		ocrAddDependence(my_twoel_params_db, *(symm_guid+iter*threads+i), 0, DB_MODE_RW);
 	}
 	//======================================================================================================//
 
@@ -1743,13 +1743,13 @@ void create_new_iteration()
 			redu_affinity, NULL);
 
 	//Since twoel_params_guid has already an associated db, this dependency is satisfied immediately.
-	ocrAddDependence(my_twoel_params_db, redu_guid[iter], 0, DB_MODE_ITW);
+	ocrAddDependence(my_twoel_params_db, redu_guid[iter], 0, DB_MODE_RW);
 
 	//associate the dependencies between the instances of twoel_symm (source) and twoel_reduction (destination)
 	for(i=0; i<threads; i++)
 	{
 		//associate dependencies with events
-		ocrAddDependence(*(symm_finished+iter*threads+i), redu_guid[iter], i+1, DB_MODE_ITW);
+		ocrAddDependence(*(symm_finished+iter*threads+i), redu_guid[iter], i+1, DB_MODE_RW);
 	}
 	//======================================================================================================//
 
@@ -1767,10 +1767,10 @@ void create_new_iteration()
 			comp_affinity, NULL);
 
 	//Since twoel_params_guid has already an associated db, this dependency is satisfied immediately.
-	ocrAddDependence(my_twoel_params_db, comp_guid[iter], 0, DB_MODE_ITW);
+	ocrAddDependence(my_twoel_params_db, comp_guid[iter], 0, DB_MODE_RW);
 
 	//associate the dependencies between the instances of twoel_symm (source) and twoel_reduction (destination)
-	ocrAddDependence(reduction_finished[iter], comp_guid[iter], 1, DB_MODE_ITW);
+	ocrAddDependence(reduction_finished[iter], comp_guid[iter], 1, DB_MODE_RW);
 	//======================================================================================================//
 }
 //======================================================================================================//

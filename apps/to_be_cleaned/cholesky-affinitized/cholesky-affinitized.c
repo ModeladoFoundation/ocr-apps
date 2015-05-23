@@ -82,23 +82,23 @@ static void task_done(int i, int j, int k, int tileSize, const ocrGuid_t *global
         } else {
 //            PRINTF("[%d] tile %d,%d next up: trsm template: %ld\n", myrank, i, j, globals[GLOBAL_TRISOLVE]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_TRISOLVE], 4, func_args, 3, NULL, PROPERTIES, affinity, NULL);
-            ocrAddDependence(GLOBAL(globals,k+1,k+1,K_EV), task_guid, 2, DB_MODE_RO);  /* up */
+            ocrAddDependence(GLOBAL(globals,k+1,k+1,K_EV), task_guid, 2, DB_MODE_CONST);  /* up */
         }
     } else {
         /* Next up is an intermediate computation */
         if(i == j) {
 //            PRINTF("[%d] tile %d,%d next up: syrk template: %ld\n", myrank, i, j, globals[GLOBAL_UPDATE]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_UPDATE], 4, func_args, 3, NULL, PROPERTIES, affinity, NULL);
-            ocrAddDependence(GLOBAL(globals,i,k+1,K_EV), task_guid, 2, DB_MODE_RO); /* left */
+            ocrAddDependence(GLOBAL(globals,i,k+1,K_EV), task_guid, 2, DB_MODE_CONST); /* left */
         } else {
 //            PRINTF("[%d] tile %d,%d next up: gemm template: %ld\n", myrank, i, j, globals[GLOBAL_UPDATE_NON_DIAG]);
             ocrEdtCreate(&task_guid, globals[GLOBAL_UPDATE_NON_DIAG], 4, func_args, 4, NULL, PROPERTIES, affinity, NULL);
-            ocrAddDependence(GLOBAL(globals,i,k+1,K_EV), task_guid, 2, DB_MODE_RO); /* left */
-            ocrAddDependence(GLOBAL(globals,j,k+1,K_EV), task_guid, 3, DB_MODE_RO); /* diagonal */
+            ocrAddDependence(GLOBAL(globals,i,k+1,K_EV), task_guid, 2, DB_MODE_CONST); /* left */
+            ocrAddDependence(GLOBAL(globals,j,k+1,K_EV), task_guid, 3, DB_MODE_CONST); /* diagonal */
         }
     }
-    ocrAddDependence(data_guid,task_guid,0,DB_MODE_ITW);
-    ocrAddDependence(globals[GLOBAL_SELF],task_guid,1,DB_MODE_RO);
+    ocrAddDependence(data_guid,task_guid,0,DB_MODE_RW);
+    ocrAddDependence(globals[GLOBAL_SELF],task_guid,1,DB_MODE_CONST);
 }
 
 static ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
@@ -302,10 +302,10 @@ inline static void wrap_up_task_prescriber ( ocrGuid_t edtTemp, int numTiles, in
     int index = 1;
     for ( i = 0; i < numTiles; ++i ) {
         for ( j = 0; j <= i; ++j ) {
-            ocrAddDependence(GLOBAL(globals,i,j,K_EV), wrap_up_task_guid, index++, DB_MODE_RO);
+            ocrAddDependence(GLOBAL(globals,i,j,K_EV), wrap_up_task_guid, index++, DB_MODE_CONST);
         }
     }
-    ocrAddDependence(globals[0], wrap_up_task_guid, 0, DB_MODE_RO);
+    ocrAddDependence(globals[0], wrap_up_task_guid, 0, DB_MODE_CONST);
 }
 
 
@@ -425,7 +425,7 @@ static ocrGuid_t setup_1_create_local(u32 paramc, u64* paramv, u32 depc, ocrEdtD
     }
     ocrDbRelease(db_globals);
     /* Pass my chunk of GUIDs, and my node ID, back to node 0 */
-    ocrAddDependence(db_globals, cb, me, DB_MODE_RO);
+    ocrAddDependence(db_globals, cb, me, DB_MODE_CONST);
     return NULL_GUID;
 }
 
@@ -502,8 +502,8 @@ static ocrGuid_t setup_3_spawn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
 //                ocrEdtCreate(&edt, copy_template, 1, (u64[]){ tileSize*tileSize*sizeof(double) },
 //                             1, NULL, EDT_PROP_NONE, nodeguid, &out_event);
 //                ocrEventCreate(&local_event, OCR_EVENT_STICKY_T, 1);
-//                ocrAddDependence(out_event, local_event, 0, DB_MODE_RO);
-//                ocrAddDependence(GLOBAL(globals,i,j,K_EV), edt, 0, DB_MODE_RO);
+//                ocrAddDependence(out_event, local_event, 0, DB_MODE_CONST);
+//                ocrAddDependence(GLOBAL(globals,i,j,K_EV), edt, 0, DB_MODE_CONST);
 //                GLOBAL(globals,i,j,K_EV) = local_event;
 //            }
 //        }

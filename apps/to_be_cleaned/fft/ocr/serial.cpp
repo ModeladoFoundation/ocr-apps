@@ -109,7 +109,7 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
         } else {
             edtEventGuid = NULL_GUID;
         }
-        ocrAddDependence(edtEventGuid, edtGuid, 0, DB_MODE_RO);
+        ocrAddDependence(edtEventGuid, edtGuid, 0, DB_MODE_CONST);
         edtStack.pop();
         eventStack.pop();
     }

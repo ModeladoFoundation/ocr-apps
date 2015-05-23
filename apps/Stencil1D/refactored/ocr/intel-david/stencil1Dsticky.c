@@ -146,13 +146,13 @@ depv[4]:
                 EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
         ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, stencilEdt, 0 , DB_MODE_ITW);
+        ocrAddDependence(depv[0].guid, stencilEdt, 0 , DB_MODE_RW);
 
-        ocrAddDependence(leftinEvent, stencilEdt, 1 , DB_MODE_ITW);
-        ocrAddDependence(rightinEvent, stencilEdt, 2 , DB_MODE_ITW);
+        ocrAddDependence(leftinEvent, stencilEdt, 1 , DB_MODE_RW);
+        ocrAddDependence(rightinEvent, stencilEdt, 2 , DB_MODE_RW);
 
         ocrDbRelease(depv[3].guid);
-        ocrAddDependence(depv[3].guid, stencilEdt, 3 , DB_MODE_ITW);
+        ocrAddDependence(depv[3].guid, stencilEdt, 3 , DB_MODE_RW);
 
     }
 
@@ -254,20 +254,20 @@ N - (5N-5): the (2*N-2) communication datablocks
     lin = N;
     rin =  lin + N - 1;
     u64 pbuffer = 3*N-2;
-    ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_RO);
+    ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_CONST);
 
     for(i=0;i<N-1;i++){
 
-        ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_ITW);
-        ocrAddDependence(depv[rin++].guid, stencilEdt[i], 2, DB_MODE_ITW);
-        ocrAddDependence(depv[pbuffer++].guid, stencilEdt[i], 3, DB_MODE_ITW);
+        ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_RW);
+        ocrAddDependence(depv[rin++].guid, stencilEdt[i], 2, DB_MODE_RW);
+        ocrAddDependence(depv[pbuffer++].guid, stencilEdt[i], 3, DB_MODE_RW);
 
-        ocrAddDependence(depv[lin++].guid, stencilEdt[i+1], 1, DB_MODE_ITW);
+        ocrAddDependence(depv[lin++].guid, stencilEdt[i+1], 1, DB_MODE_RW);
     }
 
-    ocrAddDependence(depv[N-1].guid, stencilEdt[N-1], 0, DB_MODE_ITW);
-    ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_ITW);
-    ocrAddDependence(depv[pbuffer++].guid, stencilEdt[N-1], 3, DB_MODE_ITW);
+    ocrAddDependence(depv[N-1].guid, stencilEdt[N-1], 0, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_RW);
+    ocrAddDependence(depv[pbuffer++].guid, stencilEdt[N-1], 3, DB_MODE_RW);
 
     return NULL_GUID;
 }
@@ -311,12 +311,12 @@ launches realmian
     ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
           EDT_PROP_FINISH, NULL_GUID, &realmainOutputEvent);
 
-    for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_ITW);
-        ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_ITW);
+    for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_RW);
+        ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_RW);
 
-    for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_ITW);
-    for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_ITW);
-    for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_ITW);
+    for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_RW);
+    for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_RW);
+    for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_RW);
 
     return NULL_GUID;
 }

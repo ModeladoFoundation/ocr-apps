@@ -153,7 +153,7 @@ ocrGuid_t ShowProgress_edt_0(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv
 #endif
 
 static INLINE
-void InitStressTermsForElems(Index_t numElem, 
+void InitStressTermsForElems(Index_t numElem,
                              SHARED Real_t *sigxx, SHARED Real_t *sigyy, SHARED Real_t *sigzz) {
   // pull in the stresses appropriate to the hydro integration
   FINISH
@@ -389,7 +389,7 @@ static INLINE
 void CalcMonotonicQForElems() {
    //
    // initialize parameters
-   // 
+   //
    HAB_CONST Real_t ptiny    = cast_Real_t(1.e-36) ;
    Real_t monoq_max_slope    = domain->m_monoq_max_slope ;
    Real_t monoq_limiter_mult = domain->m_monoq_limiter_mult ;
@@ -846,7 +846,7 @@ TRACE1("/* calculate time constraints for elems */");
 #if defined(USE_EDT)
   { uint8_t retVal = 0;
 TRACE1("call ocrAddDependence(ShowProgressEdtGuid)");
-    retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,(ocrGuid_t)ShowProgressEdtGuid,0,DB_MODE_ITW);
+    retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,(ocrGuid_t)ShowProgressEdtGuid,0,DB_MODE_RW);
     if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
   }
 #endif
@@ -904,7 +904,7 @@ TRACE1("call ocrEdtTemplateDestroy(middleEdtTempGuid)");
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 TRACE1("call ocrAddDependence(middleEdtGuid)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,NSmiddleEdtGuid,0,DB_MODE_ITW);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,NSmiddleEdtGuid,0,DB_MODE_RW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 
 }
@@ -982,7 +982,7 @@ TRACE1("call ocrEdtTemplateDestroy(beginEdtTempGuid)");
 //retVal = ocrEdtTemplateDestroy(beginEdtTempGuid);
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 TRACE1("call ocrAddDependence(beginEdtGuid)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,beginEdtGuid,0,DB_MODE_ITW);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,beginEdtGuid,0,DB_MODE_RW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 
 TRACE1("mainEdt return");
@@ -1028,7 +1028,7 @@ TRACE1("call ocrEdtTemplateDestroy(middleEdtTempGuid)");
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 TRACE1("call ocrAddDependence(middleEdtGuid)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,NSmiddleEdtGuid,0,DB_MODE_ITW);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,NSmiddleEdtGuid,0,DB_MODE_RW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 
 TRACE1("beginEdt return");
@@ -1132,7 +1132,7 @@ TRACE1("call ocrEdtTemplateDestroy(ShowProgressEdtTempGuid)");
 
 #ifdef USE_EDT
 TRACE1("call ocrAddDependence(LagrangeLeapFrogEdtGuid)");
-    retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,(ocrGuid_t)LagrangeLeapFrogEdtGuid,0,DB_MODE_ITW);
+    retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,(ocrGuid_t)LagrangeLeapFrogEdtGuid,0,DB_MODE_RW);
     if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 #endif
 
@@ -1148,7 +1148,7 @@ TRACE1("call ocrEdtTemplateCreate(endEdtTempGuid)");
   retVal = ocrEdtTemplateCreate(&endEdtTempGuid,endEdt,0,1);
   if(retVal != 0)xe_printf("ocrEdtTemplateCreate retVal %d\n",retVal);
 TRACE1("call ocrEdtCreate(endEdtGuid)");
-  retVal = ocrEdtCreate(&endEdtGuid, endEdtTempGuid, 
+  retVal = ocrEdtCreate(&endEdtGuid, endEdtTempGuid,
                        (u32) EDT_PARAM_DEF, (u64 *) NULL,
                        (u32) EDT_PARAM_DEF, (ocrGuid_t *) NULL,
                        (u16) EDT_PROP_NONE, NULL_GUID, (ocrGuid_t *) NULL);
@@ -1158,7 +1158,7 @@ TRACE1("call ocrEdtTemplateDestroy(endEdtTempGuid)");
 //if(retVal != 0)xe_printf("ocrEdtTemplateDestroy retVal %d\n",retVal);
 
 TRACE1("call ocrAddDependence(endEdtGuid)");
-  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,endEdtGuid,0,DB_MODE_ITW);
+  retVal = ocrAddDependence((ocrGuid_t)domainObject.guid,endEdtGuid,0,DB_MODE_RW);
   if(retVal != 0)xe_printf("ocrAddDependence retVal %d\n",retVal);
 
 #if defined(USE_EDT)

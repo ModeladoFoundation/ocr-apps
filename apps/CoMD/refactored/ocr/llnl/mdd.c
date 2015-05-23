@@ -342,7 +342,7 @@ ocrGuid_t FUNC_calcMomPos(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             *atomToMove = cell->atoms[i];
 
             // The new task shouldn't fire until this one and any others using these DBs finishes.
-            ocrAddDependence(DB_atomToMove,            EDT_scatter, 0, DB_MODE_RO); // DB of the data.
+            ocrAddDependence(DB_atomToMove,            EDT_scatter, 0, DB_MODE_CONST); // DB of the data.
             ocrAddDependence(move_list->db[newCellID], EDT_scatter, 1, DB_MODE_EW);
 
             // Remove atom from this cell (since a copy was scheduled to be inserted in another cell).
@@ -588,9 +588,9 @@ ocrGuid_t FUNC_spawnMomPos(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
         //Pass a cell to each calc step.
         ocrAddDependence(cell_list->db[i], EDT_calcStep, 0, DB_MODE_EW); //EW or ITW -- either should be fine for this step.
         //Pass list of move buffers to each calc step -- so they can schedule atom movement tasks.
-        ocrAddDependence(DB_move_list,     EDT_calcStep, 1, DB_MODE_RO);
+        ocrAddDependence(DB_move_list,     EDT_calcStep, 1, DB_MODE_CONST);
         //Pass list of templates -- since this step will spawn some EDTs.
-        ocrAddDependence(DB_templates,     EDT_calcStep, 2, DB_MODE_RO);
+        ocrAddDependence(DB_templates,     EDT_calcStep, 2, DB_MODE_CONST);
     }
 
     return NULL_GUID;
@@ -687,12 +687,12 @@ ocrGuid_t FUNC_spawnFor(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                 (book->z_period==0 && (z_coor+z_off<0 || z_coor+z_off>=book->cell_per_dims)))
             {
                 // Non-periodic, add false dependency because why not?
-                ocrAddDependence(NULL_GUID, EDT_calcStep, slot, DB_MODE_ITW);
+                ocrAddDependence(NULL_GUID, EDT_calcStep, slot, DB_MODE_RW);
             }
             #if OPT_HALF_NEIGH == 1
             else if(i>neiCellID) // only actually add neighbors with IDs higher than us.
             {
-                ocrAddDependence(NULL_GUID, EDT_calcStep, slot, DB_MODE_ITW);
+                ocrAddDependence(NULL_GUID, EDT_calcStep, slot, DB_MODE_RW);
             }
             else // Periodic case.
             {
@@ -703,7 +703,7 @@ ocrGuid_t FUNC_spawnFor(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             else // Periodic case.
             {
                 //Add neighbor dependency (or ourself).
-                ocrAddDependence(cell_list->db[neiCellID], EDT_calcStep, slot, DB_MODE_ITW);
+                ocrAddDependence(cell_list->db[neiCellID], EDT_calcStep, slot, DB_MODE_RW);
             }
             #endif
             slot++; //next slot.
@@ -913,36 +913,36 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         #if _DEBUG == 1
         // Satisfy spawnDebug EDT dependencies.
-        ocrAddDependence(EVENT_forFinish, EDT_debug, 0, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,  EDT_debug, 1, DB_MODE_ITW); // incremented.
+        ocrAddDependence(EVENT_forFinish, EDT_debug, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,  EDT_debug, 1, DB_MODE_RW); // incremented.
         for(s64 i=0; i<book->cell_count; ++i)
         {
-            ocrAddDependence(cell_list->db[i], EDT_debug, i*2+2, DB_MODE_RO);
-            ocrAddDependence(move_list->db[i], EDT_debug, i*2+3, DB_MODE_RO);
+            ocrAddDependence(cell_list->db[i], EDT_debug, i*2+2, DB_MODE_CONST);
+            ocrAddDependence(move_list->db[i], EDT_debug, i*2+3, DB_MODE_CONST);
         }
 
         // Satisfy timestep EDT dependencies.
-        ocrAddDependence(EVENT_debugFinish, EDT_timestep, 0, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,    EDT_timestep, 1, DB_MODE_ITW); // incremented.
-        ocrAddDependence(DB_cell_list,      EDT_timestep, 2, DB_MODE_RO);
-        ocrAddDependence(DB_move_list,      EDT_timestep, 3, DB_MODE_RO);
-        ocrAddDependence(DB_templates,      EDT_timestep, 4, DB_MODE_RO);
+        ocrAddDependence(EVENT_debugFinish, EDT_timestep, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,    EDT_timestep, 1, DB_MODE_RW); // incremented.
+        ocrAddDependence(DB_cell_list,      EDT_timestep, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_move_list,      EDT_timestep, 3, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,      EDT_timestep, 4, DB_MODE_CONST);
         ///Don't increment time here. The debug step is responsible for it in debug builds!
         #else
         // Satisfy timestep EDT dependencies.
-        ocrAddDependence(EVENT_forFinish, EDT_timestep, 0, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,  EDT_timestep, 1, DB_MODE_ITW); // incremented.
-        ocrAddDependence(DB_cell_list,    EDT_timestep, 2, DB_MODE_RO);
-        ocrAddDependence(DB_move_list,    EDT_timestep, 3, DB_MODE_RO);
-        ocrAddDependence(DB_templates,    EDT_timestep, 4, DB_MODE_RO);
+        ocrAddDependence(EVENT_forFinish, EDT_timestep, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,  EDT_timestep, 1, DB_MODE_RW); // incremented.
+        ocrAddDependence(DB_cell_list,    EDT_timestep, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_move_list,    EDT_timestep, 3, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,    EDT_timestep, 4, DB_MODE_CONST);
         book->iteration++; // Increment time.
         #endif
 
         // Satisfy spawnFor EDT dependencies.
-        ocrAddDependence(NULL_GUID,      EDT_spawnFor, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list,   EDT_spawnFor, 1, DB_MODE_RO);
-        ocrAddDependence(DB_templates,   EDT_spawnFor, 2, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping, EDT_spawnFor, 3, DB_MODE_RO); /*for periodicity information*/
+        ocrAddDependence(NULL_GUID,      EDT_spawnFor, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_cell_list,   EDT_spawnFor, 1, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,   EDT_spawnFor, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping, EDT_spawnFor, 3, DB_MODE_CONST); /*for periodicity information*/
     }
     else
     {
@@ -989,54 +989,54 @@ ocrGuid_t FUNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                      /*outEvent=*/NULL);
 
         // Satisfy spawnMom EDT dependencies.
-        ocrAddDependence(EVENT_forFinish, EDT_spawnMom, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list,    EDT_spawnMom, 1, DB_MODE_RO);
-        ocrAddDependence(DB_templates,    EDT_spawnMom, 2, DB_MODE_RO);
+        ocrAddDependence(EVENT_forFinish, EDT_spawnMom, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_cell_list,    EDT_spawnMom, 1, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,    EDT_spawnMom, 2, DB_MODE_CONST);
 
         // Satisfy spawnFor EDT dependencies.
-        ocrAddDependence(EVENT_gatherFinish, EDT_spawnFor, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list,       EDT_spawnFor, 1, DB_MODE_RO);
-        ocrAddDependence(DB_templates,       EDT_spawnFor, 2, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,     EDT_spawnFor, 3, DB_MODE_RO); /*for periodicity information*/
+        ocrAddDependence(EVENT_gatherFinish, EDT_spawnFor, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_cell_list,       EDT_spawnFor, 1, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,       EDT_spawnFor, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,     EDT_spawnFor, 3, DB_MODE_CONST); /*for periodicity information*/
 
         // Satisfy spawnGather EDT dependencies.
-        ocrAddDependence(EVENT_momPosFinish, EDT_spawnGather, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list, EDT_spawnGather, 1, DB_MODE_RO);
-        ocrAddDependence(DB_move_list, EDT_spawnGather, 2, DB_MODE_RO);
-        ocrAddDependence(DB_templates, EDT_spawnGather, 3, DB_MODE_RO);
+        ocrAddDependence(EVENT_momPosFinish, EDT_spawnGather, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_cell_list, EDT_spawnGather, 1, DB_MODE_CONST);
+        ocrAddDependence(DB_move_list, EDT_spawnGather, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_templates, EDT_spawnGather, 3, DB_MODE_CONST);
 
         #if _DEBUG == 1
         // Satisfy spawnDebug EDT dependencies.
-        ocrAddDependence(EVENT_momFinish, EDT_debug, 0, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,  EDT_debug, 1, DB_MODE_ITW); // incremented.
+        ocrAddDependence(EVENT_momFinish, EDT_debug, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,  EDT_debug, 1, DB_MODE_RW); // incremented.
         for(s64 i=0; i<book->cell_count; ++i)
         {
-            ocrAddDependence(cell_list->db[i], EDT_debug, i*2+2, DB_MODE_RO);
-            ocrAddDependence(move_list->db[i], EDT_debug, i*2+3, DB_MODE_RO);
+            ocrAddDependence(cell_list->db[i], EDT_debug, i*2+2, DB_MODE_CONST);
+            ocrAddDependence(move_list->db[i], EDT_debug, i*2+3, DB_MODE_CONST);
         }
 
         // Satisfy timestep EDT dependencies.
-        ocrAddDependence(EVENT_debugFinish, EDT_timestep, 0, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,    EDT_timestep, 1, DB_MODE_ITW); // incremented.
-        ocrAddDependence(DB_cell_list,      EDT_timestep, 2, DB_MODE_RO);
-        ocrAddDependence(DB_move_list,      EDT_timestep, 3, DB_MODE_RO);
-        ocrAddDependence(DB_templates,      EDT_timestep, 4, DB_MODE_RO);
+        ocrAddDependence(EVENT_debugFinish, EDT_timestep, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,    EDT_timestep, 1, DB_MODE_RW); // incremented.
+        ocrAddDependence(DB_cell_list,      EDT_timestep, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_move_list,      EDT_timestep, 3, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,      EDT_timestep, 4, DB_MODE_CONST);
         /// Don't increment time here. The debug step is responsible for it in debug builds!
         #else
         // Satisfy timestep EDT dependencies.
-        ocrAddDependence(EVENT_momFinish, EDT_timestep, 0, DB_MODE_RO);
-        ocrAddDependence(DB_bookkeeping,  EDT_timestep, 1, DB_MODE_ITW); // incremented.
-        ocrAddDependence(DB_cell_list,    EDT_timestep, 2, DB_MODE_RO);
-        ocrAddDependence(DB_move_list,    EDT_timestep, 3, DB_MODE_RO);
-        ocrAddDependence(DB_templates,    EDT_timestep, 4, DB_MODE_RO);
+        ocrAddDependence(EVENT_momFinish, EDT_timestep, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_bookkeeping,  EDT_timestep, 1, DB_MODE_RW); // incremented.
+        ocrAddDependence(DB_cell_list,    EDT_timestep, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_move_list,    EDT_timestep, 3, DB_MODE_CONST);
+        ocrAddDependence(DB_templates,    EDT_timestep, 4, DB_MODE_CONST);
         book->iteration++; // increment time.
         #endif
 
         // Satisfy spawnMomPos EDT dependencies.
-        ocrAddDependence(NULL_GUID,    EDT_spawnMomPos, 0, DB_MODE_RO);
-        ocrAddDependence(DB_cell_list, EDT_spawnMomPos, 1, DB_MODE_RO);
-        ocrAddDependence(DB_move_list, EDT_spawnMomPos, 2, DB_MODE_RO);
-        ocrAddDependence(DB_templates, EDT_spawnMomPos, 3, DB_MODE_RO);
+        ocrAddDependence(NULL_GUID,    EDT_spawnMomPos, 0, DB_MODE_CONST);
+        ocrAddDependence(DB_cell_list, EDT_spawnMomPos, 1, DB_MODE_CONST);
+        ocrAddDependence(DB_move_list, EDT_spawnMomPos, 2, DB_MODE_CONST);
+        ocrAddDependence(DB_templates, EDT_spawnMomPos, 3, DB_MODE_CONST);
     }
 
     return NULL_GUID;
@@ -1314,11 +1314,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                  /*outEvent=*/NULL);
 
     //S atisfy timestep EDT dependencies.
-    ocrAddDependence(NULL_GUID,      EDT_timestep, 0, DB_MODE_RO);
-    ocrAddDependence(DB_bookkeeping, EDT_timestep, 1, DB_MODE_ITW); //incremented.
-    ocrAddDependence(DB_cell_list,   EDT_timestep, 2, DB_MODE_RO);
-    ocrAddDependence(DB_move_list,   EDT_timestep, 3, DB_MODE_RO);
-    ocrAddDependence(DB_templates,   EDT_timestep, 4, DB_MODE_RO);
+    ocrAddDependence(NULL_GUID,      EDT_timestep, 0, DB_MODE_CONST);
+    ocrAddDependence(DB_bookkeeping, EDT_timestep, 1, DB_MODE_RW); //incremented.
+    ocrAddDependence(DB_cell_list,   EDT_timestep, 2, DB_MODE_CONST);
+    ocrAddDependence(DB_move_list,   EDT_timestep, 3, DB_MODE_CONST);
+    ocrAddDependence(DB_templates,   EDT_timestep, 4, DB_MODE_CONST);
     /**************************************************************************/
 
     ///Free atom information.

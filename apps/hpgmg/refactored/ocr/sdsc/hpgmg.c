@@ -60,7 +60,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, top_warm, 0, 1);
   ocrEdtCreate(&edt, tmp, 0, NULL, 1, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(mg, edt, 0, DB_MODE_RO);
+  ocrAddDependence(mg, edt, 0, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
   ocrDbDestroy(depv[0].guid);
@@ -76,8 +76,8 @@ ocrGuid_t top_warm(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, top_loop, 0, 2);
   ocrEdtCreate(&edt, tmp, 0, NULL, 2, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RO);
-  ocrAddDependence(cont, edt, 1, DB_MODE_RO);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
+  ocrAddDependence(cont, edt, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
   ocrEventSatisfy(e, depv[0].guid);
@@ -94,9 +94,9 @@ ocrGuid_t top_loop(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, finalize, 0, 3);
   ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RO);
-  ocrAddDependence(((mg_type *)(depv[0].ptr))->levels[0], edt, 1, DB_MODE_RO); // only fine grid required to compute error
-  ocrAddDependence(cont, edt, 2, DB_MODE_RO);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
+  ocrAddDependence(((mg_type *)(depv[0].ptr))->levels[0], edt, 1, DB_MODE_CONST); // only fine grid required to compute error
+  ocrAddDependence(cont, edt, 2, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
   ocrEventSatisfy(e, depv[0].guid);
@@ -113,7 +113,7 @@ ocrGuid_t finalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   u64 num_levels = ((mg_type*)(depv[0].ptr))->num_levels;
   ocrEdtCreate(&tm, i_tm, 1, &num_levels, num_levels, NULL, 0, NULL_GUID, &fin);
   for (b = 0; b < num_levels; b++) {
-    ocrAddDependence(((mg_type*)(depv[0].ptr))->levels[b], tm, b, DB_MODE_RO);
+    ocrAddDependence(((mg_type*)(depv[0].ptr))->levels[b], tm, b, DB_MODE_CONST);
   }
 
   ocrEdtTemplateDestroy(i_tm);
@@ -128,11 +128,11 @@ ocrGuid_t finalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
  ocrGuid_t* boxes = (ocrGuid_t*)(((char*)l)+l->boxes);
   for (b = 0; b < num_boxes; b++) {
-    ocrAddDependence(boxes[b], edt, b+3, DB_MODE_RO);
+    ocrAddDependence(boxes[b], edt, b+3, DB_MODE_CONST);
   }
-  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RO);
-  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_RO);
-  ocrAddDependence(fin, edt, 2, DB_MODE_RO);
+  ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
+  ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_CONST);
+  ocrAddDependence(fin, edt, 2, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
   return NULL_GUID;

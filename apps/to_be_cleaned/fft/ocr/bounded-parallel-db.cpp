@@ -122,12 +122,12 @@ ocrGuid_t fftStartEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
             PRINTF("Created end EDT\n");
         }
 
-        ocrAddDependence(dataInGuid, edtGuid, 0, DB_MODE_RO);
-        ocrAddDependence(dataRealGuid, edtGuid, 1, DB_MODE_ITW);
-        ocrAddDependence(dataImagGuid, edtGuid, 2, DB_MODE_ITW);
-        ocrAddDependence(dataInGuid, edtGuid2, 0, DB_MODE_RO);
-        ocrAddDependence(dataRealGuid, edtGuid2, 1, DB_MODE_ITW);
-        ocrAddDependence(dataImagGuid, edtGuid2, 2, DB_MODE_ITW);
+        ocrAddDependence(dataInGuid, edtGuid, 0, DB_MODE_CONST);
+        ocrAddDependence(dataRealGuid, edtGuid, 1, DB_MODE_RW);
+        ocrAddDependence(dataImagGuid, edtGuid, 2, DB_MODE_RW);
+        ocrAddDependence(dataInGuid, edtGuid2, 0, DB_MODE_CONST);
+        ocrAddDependence(dataRealGuid, edtGuid2, 1, DB_MODE_RW);
+        ocrAddDependence(dataImagGuid, edtGuid2, 2, DB_MODE_RW);
     }
 
     if(verbose) {
@@ -377,10 +377,10 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
         } else {
             edtEventGuid = NULL_GUID;
         }
-        ocrAddDependence(dataInGuid, edtGuid, 0, DB_MODE_RO);
-        ocrAddDependence(dataRealGuid, edtGuid, 1, DB_MODE_ITW);
-        ocrAddDependence(dataImagGuid, edtGuid, 2, DB_MODE_ITW);
-        ocrAddDependence(edtEventGuid, edtGuid, 3, DB_MODE_RO);
+        ocrAddDependence(dataInGuid, edtGuid, 0, DB_MODE_CONST);
+        ocrAddDependence(dataRealGuid, edtGuid, 1, DB_MODE_RW);
+        ocrAddDependence(dataImagGuid, edtGuid, 2, DB_MODE_RW);
+        ocrAddDependence(edtEventGuid, edtGuid, 3, DB_MODE_CONST);
         edtStack.pop();
         eventStack.pop();
     }

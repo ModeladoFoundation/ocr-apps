@@ -186,7 +186,7 @@ static ocrGuid_t lj_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     *res_ptr += lj_force_box((box*)depv[1].ptr, (box*)depv[++dep].ptr, sim->bxs.shift[faces(bg,bbg,sim->bxs.grid)], sim->pot.lj.sigma, sim->pot.lj.epsilon, sim->pot.cutoff);
     ++bbg[0]; if(bbg[0] == sim->bxs.grid[0]) bbg[0] = 0;
   }
-  ocrAddDependence(res, paramv[0], 1+paramv[1], DB_MODE_RO);
+  ocrAddDependence(res, paramv[0], 1+paramv[1], DB_MODE_CONST);
 
   return NULL_GUID;
 }
@@ -210,8 +210,8 @@ static inline void spawn_pair(ocrGuid_t sim, ocrGuid_t tmp, ocrGuid_t red, ocrGu
   paramv[0] = red; paramv[1] = b;
   ocrGuid_t edt;
   ocrEdtCreate(&edt, tmp, 2, paramv, 28, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(sim, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(list[b], edt, 1, DB_MODE_RO);
+  ocrAddDependence(sim, edt, 0, DB_MODE_RW);
+  ocrAddDependence(list[b], edt, 1, DB_MODE_CONST);
 
   u32 dep = 1;
   u32 bg[3]; box2grid(b, bg, grid[0], plane);
@@ -221,21 +221,21 @@ static inline void spawn_pair(ocrGuid_t sim, ocrGuid_t tmp, ocrGuid_t red, ocrGu
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2]==0 ? grid[2]-1 : bg[2]-1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Previous plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Previous plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Same plane, previous row
@@ -243,21 +243,21 @@ static inline void spawn_pair(ocrGuid_t sim, ocrGuid_t tmp, ocrGuid_t red, ocrGu
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Same plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
-  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
   ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
-  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
   // Same plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, previous row
@@ -265,21 +265,21 @@ static inline void spawn_pair(ocrGuid_t sim, ocrGuid_t tmp, ocrGuid_t red, ocrGu
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2]==grid[2]-1 ? 0 : bg[2]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
 }
@@ -288,13 +288,13 @@ void fork_lj_force(ocrGuid_t sim, simulation* sim_ptr, ocrGuid_t cont, ocrGuid_t
 {
   ocrGuid_t f,fdb,*fdb_ptr;
   ocrEventCreate(&f, OCR_EVENT_ONCE_T, false);
-  ocrAddDependence(f, cont, CONT_DEPC, DB_MODE_RO);
+  ocrAddDependence(f, cont, CONT_DEPC, DB_MODE_CONST);
 
   u32 pairs = sim_ptr->bxs.boxes_num;
   ocrGuid_t tmp,red;
   ocrEdtTemplateCreate(&tmp, lj_red_edt, 1, pairs+1);
   ocrEdtCreate(&red, tmp, 1, &f, pairs+1, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(sim, red, 0, DB_MODE_ITW);
+  ocrAddDependence(sim, red, 0, DB_MODE_RW);
   ocrEdtTemplateDestroy(tmp);
 
   u32 plane = grid[0]*grid[1];

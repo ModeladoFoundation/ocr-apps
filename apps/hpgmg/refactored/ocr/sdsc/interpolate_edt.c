@@ -32,12 +32,12 @@ ocrGuid_t interpolate_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
   for(b = 0; b < l->num_boxes; ++b) {
     get_fine_boxes(f,l,b,fine);
     ocrEdtCreate(&i, i_t, 1, paramv, 3+count, NULL, 0, NULL_GUID, NULL);
-    ocrAddDependence(depv[1].guid, i, 0, DB_MODE_RO);
-    ocrAddDependence(boxes[b], i, 1, DB_MODE_RO);
-    ocrAddDependence(depv[0].guid, i, 2, DB_MODE_RO);
+    ocrAddDependence(depv[1].guid, i, 0, DB_MODE_CONST);
+    ocrAddDependence(boxes[b], i, 1, DB_MODE_CONST);
+    ocrAddDependence(depv[0].guid, i, 2, DB_MODE_CONST);
     int fc;
     for(fc = 0; fc < count; ++fc)
-      ocrAddDependence(fine[fc], i, 3+fc, DB_MODE_ITW);
+      ocrAddDependence(fine[fc], i, 3+fc, DB_MODE_RW);
   }
 
   ocrEdtTemplateDestroy(i_t);

@@ -504,7 +504,7 @@ ocrGuid_t eam_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ++bbg[0]; if(bbg[0] == sim->bxs.grid[0]) bbg[0] = 0;
   }
 
-  ocrAddDependence(res, paramv[0], 1+paramv[1], DB_MODE_RO);
+  ocrAddDependence(res, paramv[0], 1+paramv[1], DB_MODE_CONST);
 
   return NULL_GUID;
 }
@@ -523,7 +523,7 @@ ocrGuid_t rho_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     a->U[aa] += fembed;
     *res_ptr += fembed;
   }
-  ocrAddDependence(res, paramv[0], paramv[1], DB_MODE_RO);
+  ocrAddDependence(res, paramv[0], paramv[1], DB_MODE_CONST);
 
   return NULL_GUID;
 }
@@ -666,8 +666,8 @@ static inline void spawn_pair_rho(ocrGuid_t sim, ocrGuid_t values, ocrGuid_t tmp
   u64 bb = b;
   ocrGuid_t edt;
   ocrEdtCreate(&edt, tmp, 1, &bb, 29, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(sim, edt, 0, DB_MODE_RO);
-  ocrAddDependence(list[b], edt, 1, DB_MODE_ITW);
+  ocrAddDependence(sim, edt, 0, DB_MODE_CONST);
+  ocrAddDependence(list[b], edt, 1, DB_MODE_RW);
 
   u32 dep=1;
   u32 bg[3]; box2grid(b, bg, grid[0], plane);
@@ -678,21 +678,21 @@ static inline void spawn_pair_rho(ocrGuid_t sim, ocrGuid_t values, ocrGuid_t tmp
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2]==0 ? grid[2]-1 : bg[2]-1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Previous plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Previous plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Same plane, previous row
@@ -700,21 +700,21 @@ static inline void spawn_pair_rho(ocrGuid_t sim, ocrGuid_t values, ocrGuid_t tmp
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Same plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
-  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
   ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
-  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
   // Same plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, previous row
@@ -722,25 +722,25 @@ static inline void spawn_pair_rho(ocrGuid_t sim, ocrGuid_t values, ocrGuid_t tmp
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2]==grid[2]-1 ? 0 : bg[2]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
 
-  ocrAddDependence(values, edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(values, edt, ++dep, DB_MODE_CONST);
 }
 
 // sim pot0 .. potn list
@@ -776,8 +776,8 @@ static ocrGuid_t eam_red_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
   ocrGuid_t tmp, red;
   ocrEdtTemplateCreate(&tmp, rho_red_edt, 0, sim->bxs.boxes_num+2);
   ocrEdtCreate(&red, tmp, 0, NULL, sim->bxs.boxes_num+2, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(depv[0].guid, red, 0, DB_MODE_ITW);
-  ocrAddDependence(sim->bxs.list, red, sim->bxs.boxes_num+1, DB_MODE_ITW);
+  ocrAddDependence(depv[0].guid, red, 0, DB_MODE_RW);
+  ocrAddDependence(sim->bxs.list, red, sim->bxs.boxes_num+1, DB_MODE_RW);
   ocrEdtTemplateDestroy(tmp);
 
   ocrGuid_t* list = (ocrGuid_t*)depv[depc-1].ptr;
@@ -786,9 +786,9 @@ static ocrGuid_t eam_red_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
   for(u32 b = 0; b < sim->bxs.boxes_num; ++b) {
     u64 paramv[2]; paramv[0]=red; paramv[1]=b+1;
     ocrEdtCreate(&edt, tmp, 2, paramv, 3, NULL, 0, NULL_GUID, NULL);
-    ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_ITW);
-    ocrAddDependence(list[b], edt, 1, DB_MODE_ITW);
-    ocrAddDependence(sim->pot.eam.f.values, edt, 2, DB_MODE_ITW);
+    ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RW);
+    ocrAddDependence(list[b], edt, 1, DB_MODE_RW);
+    ocrAddDependence(sim->pot.eam.f.values, edt, 2, DB_MODE_RW);
   }
   ocrEdtTemplateDestroy(tmp);
 
@@ -800,8 +800,8 @@ static inline void spawn_pair(ocrGuid_t sim, eam_potential* eam, ocrGuid_t tmp, 
   u64 paramv[2]; paramv[0]=red; paramv[1]=b;
   ocrGuid_t edt;
   ocrEdtCreate(&edt, tmp, 2, paramv, 30, NULL, 0, NULL_GUID, NULL);
-  ocrAddDependence(sim, edt, 0, DB_MODE_ITW);
-  ocrAddDependence(list[b], edt, 1, DB_MODE_ITW);
+  ocrAddDependence(sim, edt, 0, DB_MODE_RW);
+  ocrAddDependence(list[b], edt, 1, DB_MODE_RW);
 
   u32 dep=1;
   u32 bg[3]; box2grid(b, bg, grid[0], plane);
@@ -812,21 +812,21 @@ static inline void spawn_pair(ocrGuid_t sim, eam_potential* eam, ocrGuid_t tmp, 
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2]==0 ? grid[2]-1 : bg[2]-1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Previous plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Previous plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Same plane, previous row
@@ -834,21 +834,21 @@ static inline void spawn_pair(ocrGuid_t sim, eam_potential* eam, ocrGuid_t tmp, 
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Same plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
-  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
   ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
-  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
   // Same plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, previous row
@@ -856,26 +856,26 @@ static inline void spawn_pair(ocrGuid_t sim, eam_potential* eam, ocrGuid_t tmp, 
   bbg[1] = bg[1]==0 ? grid[1]-1 : bg[1]-1;
   bbg[2] = bg[2]==grid[2]-1 ? 0 : bg[2]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, same row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1];
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
   // Next plane, next row
   bbg[0] = bg[0]==0 ? grid[0]-1 : bg[0]-1;
   bbg[1] = bg[1]==grid[1]-1 ? 0 : bg[1]+1;
   for(u32 bb = 0; bb < 3; ++bb) {
-    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_RO);
+    ocrAddDependence(list[grid2box(bbg,grid[0],plane)], edt, ++dep, DB_MODE_CONST);
     ++bbg[0]; if(bbg[0] == grid[0]) bbg[0] = 0;
   }
 
-  ocrAddDependence(eam->phi.values, edt, ++dep, DB_MODE_RO);
-  ocrAddDependence(eam->rho.values, edt, ++dep, DB_MODE_RO);
+  ocrAddDependence(eam->phi.values, edt, ++dep, DB_MODE_CONST);
+  ocrAddDependence(eam->rho.values, edt, ++dep, DB_MODE_CONST);
 }
 
 void fork_eam_force(ocrGuid_t sim, simulation* sim_ptr, ocrGuid_t cont, ocrGuid_t* list, u32 grid[3])
@@ -885,9 +885,9 @@ void fork_eam_force(ocrGuid_t sim, simulation* sim_ptr, ocrGuid_t cont, ocrGuid_
   ocrGuid_t tmp,red,fin;
   ocrEdtTemplateCreate(&tmp, eam_red_edt, 0, pairs+2);
   ocrEdtCreate(&red, tmp, 0, NULL, pairs+2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(fin, cont, CONT_DEPC, DB_MODE_RO);
-  ocrAddDependence(sim, red, 0, DB_MODE_ITW);
-  ocrAddDependence(sim_ptr->bxs.list, red, pairs+1, DB_MODE_ITW);
+  ocrAddDependence(fin, cont, CONT_DEPC, DB_MODE_CONST);
+  ocrAddDependence(sim, red, 0, DB_MODE_RW);
+  ocrAddDependence(sim_ptr->bxs.list, red, pairs+1, DB_MODE_RW);
   ocrEdtTemplateDestroy(tmp);
 
   pairs = 0; u32 plane = grid[0]*grid[1];

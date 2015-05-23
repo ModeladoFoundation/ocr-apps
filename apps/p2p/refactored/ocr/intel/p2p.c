@@ -144,27 +144,27 @@ PRINTF("N%d T%d P%d guids %lx %lx %lx\n", mynode, timestep, phase, depv[0].guid,
 //PRINTF("N%d T%d P%d guids %d %d %d\n", mynode, timestep, phase, depv[0].guid, depv[1].guid, depv[2].guid);
 //fflush(stdout);
     ocrDbRelease(depv[0].guid);
-    ocrAddDependence(depv[0].guid, p2pEdt, 0 , DB_MODE_ITW);
+    ocrAddDependence(depv[0].guid, p2pEdt, 0 , DB_MODE_RW);
 //PRINTF("N%d T%d P%d after depv0\n", mynode, timestep, phase);
 
 //PRINTF("N%d T%d P%d after depv1\n", mynode, timestep, phase);
     if(mynode != 0) {
 //PRINTF("N%d T%d P%d launching clone with event %d \n", mynode, timestep, phase, leftinevent);
 //fflush(stdout);
-        ocrAddDependence(leftinevent, p2pEdt, 2 , DB_MODE_ITW);
+        ocrAddDependence(leftinevent, p2pEdt, 2 , DB_MODE_RW);
     } else {
         if(phase == W-1) {
-            ocrAddDependence(private0->leftrecvevent, p2pEdt, 2 , DB_MODE_ITW);
+            ocrAddDependence(private0->leftrecvevent, p2pEdt, 2 , DB_MODE_RW);
 //PRINTF("N%d T%d P%d launching clone with event %d \n", mynode, timestep, phase, ((private0_t *) private)->leftrecvevent);
 //fflush(stdout);
         } else {
 //PRINTF("N%d T%d P%d launching clone with db %lx \n", mynode, timestep, phase, private0->block[private0->next]);
-            ocrAddDependence(private0->block[private0->next], p2pEdt, 2 , DB_MODE_ITW);
+            ocrAddDependence(private0->block[private0->next], p2pEdt, 2 , DB_MODE_RW);
             private0->next = (private0->next + 1) % W;
         }
     }
     ocrDbRelease(depv[1].guid);
-    ocrAddDependence(depv[1].guid, p2pEdt, 1 , DB_MODE_ITW);
+    ocrAddDependence(depv[1].guid, p2pEdt, 1 , DB_MODE_RW);
     return NULL_GUID;
 }
 
@@ -204,16 +204,16 @@ ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
     for(i=0;i<P;i++) {
         j = P-i-1;
-        ocrAddDependence(depv[j].guid, p2pEdt[j], 0, DB_MODE_ITW);
+        ocrAddDependence(depv[j].guid, p2pEdt[j], 0, DB_MODE_RW);
         if(j != 0) {
-            ocrAddDependence(private[j-1]->sendrightevent, p2pEdt[j], 2, DB_MODE_ITW);
+            ocrAddDependence(private[j-1]->sendrightevent, p2pEdt[j], 2, DB_MODE_RW);
             private[j]->leftold = private[j-1]->sendrightevent;
           }else{
             private[0]->leftold == NULL_GUID;
-            ocrAddDependence(depv[2*P].guid, p2pEdt[0], 2, DB_MODE_ITW);
+            ocrAddDependence(depv[2*P].guid, p2pEdt[0], 2, DB_MODE_RW);
         }
         ocrDbRelease(depv[P+j].guid);
-        ocrAddDependence(depv[P+j].guid, p2pEdt[j], 1, DB_MODE_ITW);
+        ocrAddDependence(depv[P+j].guid, p2pEdt[j], 1, DB_MODE_RW);
     }
     return NULL_GUID;
 }
@@ -241,9 +241,9 @@ ocrGuid_t mainEdt(){
     ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
           EDT_PROP_FINISH, NULL_GUID, NULL_GUID);
 //launch realmain
-    for(i=0;i<P;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_ITW);
-    for(i=0;i<P;i++) ocrAddDependence(privateDb[i], realmain, P+i, DB_MODE_ITW);
-    ocrAddDependence(bufferDb, realmain, 2*P, DB_MODE_ITW);
+    for(i=0;i<P;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_RW);
+    for(i=0;i<P;i++) ocrAddDependence(privateDb[i], realmain, P+i, DB_MODE_RW);
+    ocrAddDependence(bufferDb, realmain, 2*P, DB_MODE_RW);
 //PRINTF("done in main \n");
     return NULL_GUID;
 }

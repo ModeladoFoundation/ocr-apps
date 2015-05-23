@@ -366,13 +366,13 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
                          EDT_PROP_NONE, NULL_GUID /*affinity*/, NULL /*outputEvent*/);
 
             /* add dependency to the EDT from the west tile's right column ready event */
-            ocrAddDependence(tile_matrix[i][j-1].right_column_event_guid, task_guid, 0, DB_MODE_RO);
+            ocrAddDependence(tile_matrix[i][j-1].right_column_event_guid, task_guid, 0, DB_MODE_CONST);
 
             /* add dependency to the EDT from the north tile's bottom row ready event */
-            ocrAddDependence(tile_matrix[i-1][j].bottom_row_event_guid, task_guid, 1, DB_MODE_RO);
+            ocrAddDependence(tile_matrix[i-1][j].bottom_row_event_guid, task_guid, 1, DB_MODE_CONST);
 
             /* add dependency to the EDT from the northwest tile's bottom right ready event */
-            ocrAddDependence(tile_matrix[i-1][j-1].bottom_right_event_guid, task_guid, 2, DB_MODE_RO);
+            ocrAddDependence(tile_matrix[i-1][j-1].bottom_right_event_guid, task_guid, 2, DB_MODE_CONST);
 
             /* schedule task*/
             // ocrEdtSchedule(task_guid);

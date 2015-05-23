@@ -36,10 +36,10 @@ Node 0 returns the global value in GSsharedBlock by satisfying rootEvent
 //check whether need to receive by cloning
     if((mydata->event[1] != NULL_GUID) && (depv[2].guid == NULL_GUID)) {
         ocrEdtCreate(&gsEdt, SB->GSxTemplate, EDT_PARAM_DEF, &mynode, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, gsEdt, 0 , DB_MODE_ITW);
-        ocrAddDependence(depv[1].guid, gsEdt, 1 , DB_MODE_ITW);
+        ocrAddDependence(depv[0].guid, gsEdt, 0 , DB_MODE_RW);
+        ocrAddDependence(depv[1].guid, gsEdt, 1 , DB_MODE_RW);
         for(i=0;i<ARITY;i++) {
-            ocrAddDependence(mydata->event[i+1], gsEdt, i+2 , DB_MODE_ITW);
+            ocrAddDependence(mydata->event[i+1], gsEdt, i+2 , DB_MODE_RW);
         }
         return NULL_GUID;
     }
@@ -110,9 +110,9 @@ GSsharedBlock and private (initialized) gsBlock and rank number as a parameter.
     }
 //create my compute event
     ocrEdtCreate(&compute, SB->computeInitTemplate, EDT_PARAM_DEF, &mynode, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    ocrAddDependence(SB->userBlock, compute, 0, DB_MODE_ITW);
+    ocrAddDependence(SB->userBlock, compute, 0, DB_MODE_RW);
     ocrDbRelease(depv[0].guid);
-    ocrAddDependence(depv[0].guid, compute, 1, DB_MODE_ITW);
+    ocrAddDependence(depv[0].guid, compute, 1, DB_MODE_RW);
 //create and launch my children
     myGSblock->event[0] = mysend;
     paramvout[2] = paramv[2];
@@ -125,11 +125,11 @@ GSsharedBlock and private (initialized) gsBlock and rank number as a parameter.
         paramvout[1] = sticky;
         ocrDbCreate(&(gsBlock), (void**) &dummy, sizeof(gsBlock_t), 0, NULL_GUID, NO_ALLOC);
         ocrEdtCreate(&GSi, GSiTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, GSi, 0, DB_MODE_ITW);
-        ocrAddDependence(gsBlock, GSi, 1, DB_MODE_ITW);
+        ocrAddDependence(depv[0].guid, GSi, 0, DB_MODE_RW);
+        ocrAddDependence(gsBlock, GSi, 1, DB_MODE_RW);
     }
 //launch my compute event
     ocrDbRelease(depv[1].guid);
-    ocrAddDependence(depv[1].guid, compute, 2, DB_MODE_ITW);
+    ocrAddDependence(depv[1].guid, compute, 2, DB_MODE_RW);
     return NULL_GUID;
 }
