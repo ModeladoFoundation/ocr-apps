@@ -28,7 +28,7 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 #  at "intel" or down under "build_and_run"
 SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src
 
-WORKLOAD_SRC          ?= $(SRC_DIR)
+WORKLOAD_SRC          = $(SRC_DIR)
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 

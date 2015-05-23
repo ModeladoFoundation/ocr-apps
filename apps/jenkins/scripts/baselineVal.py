@@ -20,4 +20,5 @@ test_baseval={
                 'time_ocr-run-kernel-hpgmglite-x86-remote-regression':22.80,
                 'time_ocr-run-kernel-tempestsw2lite-x86-remote-regression':1.4,
                 'time_ocr-run-kernel-xsbench-x86-remote-regression':20.4,
+                'time_ocr-run-kernel-xsbenchlite-x86-remote-regression':20.4,
 }

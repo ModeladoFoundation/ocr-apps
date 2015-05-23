@@ -82,32 +82,32 @@ job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/install'}
 }
 
-## hpgmg: sdsc ocr
-#job_ocr_build_kernel_hpgmgsdsc_x86_regression = {
-#    'name': 'ocr-build-kernel-hpgmgsdsc-x86-regression',
-#    'depends': ('ocr-build-x86-pthread-x86',),
-#    'jobtype': 'ocr-build-kernel-regression',
-#    'run-args': 'hpgmg x86-pthread-x86',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
-#                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc',
-#                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc/build',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc/install'}
-#}
+# hpgmg: sdsc ocr
+job_ocr_build_kernel_hpgmgsdsc_x86_regression = {
+    'name': 'ocr-build-kernel-hpgmgsdsc-x86-regression',
+    'depends': ('ocr-build-x86-pthread-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'hpgmg x86-pthread-x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc/install'}
+}
 #
-#job_ocr_run_kernel_hpgmgsdsc_x86_remote_regression = {
-#    'name': 'ocr-run-kernel-hpgmgsdsc-x86-remote-regression',
-#    'depends': ('ocr-build-kernel-hpgmgsdsc-x86-regression',),
-#    'jobtype': 'ocr-run-kernel-remote-regression',
-#    'run-args': 'hpgmg x86-pthread-x86 ocr-run-kernel-hpgmgsdsc-x86-remote-regression 1',
-#    'sandbox': ('shared','inherit0'),
-#    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
-#                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc',
-#                  'WORKLOAD_ARGS': '4 8',
-#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc/install'}
-#}
+job_ocr_run_kernel_hpgmgsdsc_x86_remote_regression = {
+    'name': 'ocr-run-kernel-hpgmgsdsc-x86-remote-regression',
+    'depends': ('ocr-build-kernel-hpgmgsdsc-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'hpgmg x86-pthread-x86 ocr-run-kernel-hpgmgsdsc-x86-remote-regression 3',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc',
+                  'WORKLOAD_ARGS': '4 8',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/ocr/sdsc/install'}
+}
 
 # tempest-lite
 job_ocr_build_kernel_tempestsw2lite_x86_regression = {
@@ -163,3 +163,32 @@ job_ocr_run_kernel_xsbench_x86_remote_regression = {
                   'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
                   'OCR_CONFIG': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/default.cfg'}
 }
+
+# XSBench: Intel MPI-Lite
+job_ocr_build_kernel_xsbenchlite_x86_regression = {
+        'name': 'ocr-build-kernel-xsbenchlite-x86-regression',
+        'depends': ('ocr-build-x86-pthread-x86',),
+        'jobtype': 'ocr-build-kernel-regression',
+        'run-args': 'XSBenchlite x86-pthread-x86',
+        'sandbox': ('shared','inherit0'),
+        'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+        'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+        'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/mpilite/intel',
+        'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/XSBench/refactored/mpilite/intel/build',
+        'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/mpilite/intel/install'}
+}
+
+job_ocr_run_kernel_xsbench_x86_remote_regression = {
+        'name': 'ocr-run-kernel-xsbenchlite-x86-remote-regression',
+        'depends': ('ocr-build-kernel-xsbenchlite-x86-regression',),
+        'jobtype': 'ocr-run-kernel-remote-regression',
+        'run-args': 'XSBench x86-pthread-x86 ocr-run-kernel-xsbenchlite-x86-remote-regression 10',
+        'sandbox': ('shared','inherit0'),
+        'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+        'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+        'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/mpilite/intel',
+        'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/mpilite/intel/install',
+        'WORKLOAD_ARGS': '-r 4 -s small -g 1000 -l 100000 -t 1',
+        'OCR_CONFIG': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/default.cfg'}
+}
+
