@@ -44,14 +44,14 @@ do
     fi
 done
 
-if [ -d "${JJOB_SHARED_HOME}/runtime" ]; then
-    echo "${JJOB_SHARED_HOME}/runtime already exists! Skipping mkdir .."
+if [ -d "${JJOB_SHARED_HOME}/xstack/runtime" ]; then
+    echo "${JJOB_SHARED_HOME}/xstack/runtime already exists! Skipping mkdir .."
 else
-    mkdir ${JJOB_SHARED_HOME}/runtime
+    mkdir ${JJOB_SHARED_HOME}/xstack/runtime
 fi
 
 # copying scaling file from local to shared runtime dir, after reformatting
-cp $timeFile ${JJOB_SHARED_HOME}/runtime/scale_$3.txt
+cp $timeFile ${JJOB_SHARED_HOME}/xstack/runtime/scale_$3.txt
 
 rm -f $timeFile
 rm -f $configFile
