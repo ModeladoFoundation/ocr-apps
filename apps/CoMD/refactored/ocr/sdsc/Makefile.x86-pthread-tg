@@ -57,7 +57,7 @@ REQ_LIBS :=
 
 SRCS := atoms.c  cells.c  comd.c  command.c  eam.c  lj.c  simulation.c	timers.c  timestep.c
 OBJS := $(notdir $(SRCS:.c=.o))
-$(OBJS): cells.h  CoMD_info.h  command.h  simulation.h  timers.h
+$(OBJS): cells.h  command.h  simulation.h  timers.h
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include

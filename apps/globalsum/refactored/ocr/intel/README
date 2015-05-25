@@ -1,0 +1,45 @@
+This directory provides an implementation of computing global sums.
+The parameter ARITY is defined in ocrGS.h as 2 which yields a binary tree.
+The code has been tested with higher values of ARITY which reduces the number of EDTs created but also reduces the amount of parallelism
+
+gsLib.c : both the global sum computation code and the initialization code
+
+GSsharedBlock.h: definition of the "shared block" which is both used and passed through
+
+ocrGS.h: contains the ARITY of the tree, the structure definition for the gsBlocks and 3 prototypes: GSiEdt, GSxEdt, and computeInitEdt
+    to change the ARITY of the tree, you must recompile both the source code and gsLib.c
+    This file also contains the definitions of
+  M the number of datapoints for each worker
+  N the number of workers
+  T the maximum number of timesteps (the preconditioned version will stop early)
+
+cg.c: the "temporary" test driver for gsLib.c
+   the driver code must set numnodes in GSsharedBLock
+   the driver must launch GSiEDT before going parallel
+   GSiEDT creates the tree of size numnodes
+   GSiEDT returns to the parallel computation through a copy of computeInitEdt
+   computeInitEdt launches a copy of cgEdt
+
+cgEdt implements conjugate gradients
+   the matrix is diagonal with diagonal element equal to its row number (starting with 1)
+   the right had side is equal to this same row number so the answer is all 1s
+
+   cgEdt has three phases.
+   the last two alternate until the timestep limit is reached with a global sum between each phase.
+
+   after T iterations, each compute node prints out its x values (which should be close to 1)
+
+There are THREE version of "cg.c" in this directory
+
+cgNoShim.c   is the prefered implementation where rtrold is updated "out of phase" to avoid a race condition
+
+cgShim.c     creates a serial "shimEdt" between the end of the global sum and the return to parallelism just to do
+             the update of rtrold safely.  As shown by cgNoShim.c it is not needed in this example but was included
+             here to show how it could be done if needed in some other context
+
+a third driver pcg.c is provided.  It implements preconditioned conjugate gradients with a diagonal preconditioner
+where the diagonal elements of the preconditioner are 1 larger than the diagonal of the matrix.
+
+this requires THREE global sums per iteration but converges much faster.
+
+The bash script go.sh invokes all three versions of the code on all three x86 modes (x86, mpi)

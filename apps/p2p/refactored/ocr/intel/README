@@ -1,0 +1,82 @@
+OCR version of the Parallel Research Kernel synch_p2p
+Written by David Scott
+
+This code implements multiple "sweeps" across an MxN 2D grid
+The grid is initialized to zero except the first row and column
+that are equal to max(rownum, columnnum)
+
+The grid is split into block columns across P workers.
+M is assumed to be P*K for some K (so every worker has the same number of columns).
+
+The sweep starts at Array(1,1) and progresses by rows computing
+Array(i,j) = Array(i-1,j) + Array(i,j-1) - Array(i-1,j-1)
+
+After computing the first row, Node 0 could pass two numbers onto
+Node 1 to allow Node 1 to start computing.  However if the
+communication is expensive, it may be better for Node 0 to
+compute several rows before sending data on.  The parameter B
+is this blocking factor.
+
+The number of rows is defined to be B*W+1
+so that there are W phases of communication.
+
+W phases defines one "timestep".  At the end of each timestep
+node P-1 sends the value of Array(N-1,M-1) to Node 0 who sets
+Array(0,0) = Array(N-1,M-1) before starting the next timestep.
+
+This makes node 0 wait for the previous timestep to finish and
+also provides a way of verifying that the computation is done
+correctly
+
+All the parameters are defined inside the code and can be changed
+as desired.
+
+#define T 100    //number of timesteps
+#define P 10     //number of workers
+#define K 5     //columns per worker
+#define M (P*K) //global number of columns
+#define B 3     //blocking factor
+#define W 8     //number of blocks in vertical direction
+#define N (B*W+1) //number of rows
+
+code structure
+
+mainEdt creates the datablocks and passes them to realmain
+
+realmain creates P EDTs and passes in a "data" block and a
+"private" block.  It also links them in a circle, creating
+sticky events, setting dependencies, and storing the events
+in the appropriate private blocks.  This allows a "send right"
+to be accomplished by one EDT satisfying the event with a
+buffer block and the other EDT having had a dependence on
+that event.  The receiving EDT also destroys the event.
+
+The connection from nodeP-1 back to node0 is special in that
+it is used only once per timestep (instead of once per phase).
+
+Buffer block management:
+Node 0 creates P-1 buffer blocks at the beginning (and receives one from
+realmain).  It stores the P guids in its "special" private block
+Node 0 could last for a whole timestep but in keeping with the "small"
+EDT concept it clones itself every phase just like the rest of the EDTs
+It passes in the "next" buffer block to its clone to have a block available to
+send data to Node1 at the end of a phase.  The exception is the first phase
+of a timestep when the block is received from NodeP-1
+
+The intermediate nodes just pass the received buffer block onto the next node.
+
+Node P-1 needs no buffer block for sending except for the last phase of a timestep
+when it sends the block it received back to Node 0.  This means that the blocks
+are used in a slightly different order each timestep.
+
+
+As usual the code can be executed using
+OCR_TYPE=x86-pthread-x86  make run
+
+Note that currently realmain receives 2*P blocks from mainEdt, so if you
+chose to run with P>32 it is necessary to change OCR_MAX_MULTI_SLOT
+in common.mk which by default set to 1 (x64).
+
+
+
+OCR_TYPE=x86-pthread-mpi  make run >>out

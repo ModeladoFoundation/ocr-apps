@@ -1,0 +1,82 @@
+This code implements a recursive search of the game tree of the "14 peg puzzle"
+to count the number of solutions.
+
+The board starts with 14 pegs and one open spot in a 5x5 triangle.  The goal is
+to jump and remove one peg at a time leaving only one left.  Traditionally the
+hole is at the top of the triangle:
+
+        0
+      1   1
+    1   1   1
+  1   1   1   1
+1   1   1   1   1
+
+which leads to 29760 unique solutions, but it can be solved with the hole
+placed anywhere.  The most solutions is with the hole at the middle of the bottom
+(or either of the other two sides of course).
+
+The depth of the tree is 13
+The branching factor varies but the largest found was 10
+The total number of nodes in the search tree is almost 1.3 million
+
+The code uses the local default.cfg.  Two changes have been made:
+
+The memory size was increased significantly,  otherwise the code crashes.  This might be
+mitigated with priority hints that favor nodes that are deeper in the tree.
+
+The datablocks were changed from Regular to Lockable
+This was necessary to support atomic updates of the counter datablock
+(in the incrementEdt which accesses the counterDb in EW mode).
+
+
+Becausae of the shared nature of datablocks, each instantiation of triangleTask needs to have a separate
+board.  To avoid using a datablock in the EDT in which it was created, this is accomplished by
+having and EDT create a new datablock for each legal move that is found.  The old and new board are passed
+into the new EDT along with the move number.  The new EDT copies the old board to the new board and makes
+the move on the new board.  It then looks for legal moves.
+
+However, because the existing board has been modified it cannot be passed to the new triangleEdt without
+being released to make the changes visible.  Once it is released, it can no longer be examined to look for
+other legal moves.  To break this deadlock, a ONCE event is created and each new EDT is made dependent
+on the ONCE event.  After checking on all possible moves, the existing board is released and the event
+is satisfied to wake up all the children (if any).
+
+
+
+Structure of the code:
+
+mainEDT creates realmainEDT and the various datablocks:
+  counter: single word which is used to count the solutions
+  oldboard: used to receive the existing board position
+  board: used to make a copy of oldboard and then make the move
+  pmoves: a Read Only list of possible moves
+
+realmainEDT
+  initializes the datablocks
+  creates the first copy of triangleTask as a FINISH EDT
+  creates wrapupTask which depends on triangleTask finishing
+
+Since the first triangleTask is a finish EDT wrapup won't start until the count is complete
+
+The btemp array which initializes the first board can be modified to try the hole in different places.
+
+The following counts were obtained.
+0: 29760  [the standard set up]
+1: 14880
+2: same as 1 by symmetry
+3: 85258
+4: 1550
+5-14: one of the above numbers
+
+The program compares the count to 29760 so will report "FAIL" for the other cases.
+
+There are no input parameters to the program so it should be executed by:
+
+OCR_TYPE=x86-pthread-x86  make run
+
+It currently takes about 21 seconds to find all the solutions.
+
+The code can be run on -mpi, but it currently runs very slowly (hours) and eventually
+crashes, perhaps because it runs out of memory.
+
+It will probably take affinity hints to improve the performance.

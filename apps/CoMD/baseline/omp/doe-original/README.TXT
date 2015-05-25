@@ -28,21 +28,32 @@ readable).  If you run doxygen in src-openmp this information will
 automatically be included in the generated html files (html/index.html).
 
 
-Building CoMD
+Building and running CoMD
 =============
+Option - 1:
 
-The OpenMP versin CoMD is written with portability in mind and should
-compile using practically any compiler that implements the C99 standard
-and OpenMP 3.0 or greater.  You will need to create a Makefile by
-copying the sample provided with the distribution (Makefile.vanilla).
+    The OpenMP versin CoMD is written with portability in mind and should
+    compile using practically any compiler that implements the C99 standard
+    and OpenMP 3.0 or greater.  You will need to create a Makefile by
+    copying the sample provided with the distribution (Makefile.vanilla).
 
-$ cp Makefile.vanilla Makefile
+    $ cd src-omp
+    $ cp Makefile.vanilla Makefile
 
-and use the make command to build the code
+    and use the make command to build the code
 
-$ make
+    $ make
 
-The sample Makefile will compile the code on many platforms.  See
-comments in Makefile.vanilla for information about specifying the name
-of the C compiler and/or additional compiler switches that might be
-necessary for your platform.
+    The sample Makefile will compile the code on many platforms.  See
+    comments in Makefile.vanilla for information about specifying the name
+    of the C compiler and/or additional compiler switches that might be
+    necessary for your platform.
+
+OR
+
+Option - 2:
+    # Using the unified run framework
+    $ source ../../../../apps_env.bash
+    $ cd build_and_run
+    $ cd omp
+    $ run_app ss_small 10 8 #Runs the "small" problem size defined in ../../../../parameters.proposed file for 10 timesteps using 8 OpenMP threads

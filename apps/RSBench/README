@@ -12,13 +12,19 @@ refactored/
 To build and run the apps using unified run-system
 ##########################################################
 
-1. Source compiler paths and some environment variables/paths needed for the run-systems first
-    source ${APPS_ROOT}/apps_env.bash
-2. Navigate to "build_and_run/" directory for a given implementation
-    E.g., cd baseline/mpi-serial/doe-original/build_and_run/
-3. Go to any subdirectory listed under build_and_run
-    E.g., serial/ or mpi/
-4. Call run_app
-    $run_app #For help
+1. Source compiler paths and the environment variables/paths needed for the unified run-system
+    $ source ../apps_env.bash
+
+2. Navigate to "build_and_run/" directory for a given implementation. E.g.,
+    $ cd baseline/mpi-serial/doe-original/build_and_run/
+
+3. Go to any subdirectory listed under build_and_run/. E.g.,
+    $ cd serial/
+    or
+    $ cd mpi/
+
+4. Call the "run_app" script with appropriate problem size arguments
+    $ run_app #For help
+    $ run_app ss_small 10 #run the app with "small" problem size for 10 iterations
 
 ##########################################################
