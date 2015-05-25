@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include "Mapping.h"
 #include "Tuple.h"
 #include "Accessor.h"
 #include "Debug.h"
@@ -186,6 +187,7 @@ int Tuple_iterator_next(const Tuple* tiling, Tuple* iter)
         Tuple* i = &iter[level];
         const Tuple* sz = &tiling[level];
         for(int dim = total_dim - 1; dim >= 0; dim--) {
+            ASSERT(sz->values[dim] > 0 && "Iteration space size should not be 0");
             if(i->values[dim] + 1 < sz->values[dim])
             {
                 i->values[dim]++;
@@ -206,8 +208,28 @@ int Tuple_iterator_next(const Tuple* tiling, Tuple* iter)
         return 1; // next element found
 }
 
+int Tuple_inc(const Tuple* sz, Tuple* t)
+{
+    int total_dim = sz->dim;
+    ASSERT(total_dim == t->dim);
+
+    for(int dim = total_dim - 1; dim >= 0; dim--) {
+        if(t->values[dim] + 1 < sz->values[dim])
+        {
+            t->values[dim]++;
+            return 1; // incremented
+        }
+        else
+        {
+            t->values[dim] = 0;
+        }
+    }
+    return 0; // reset to all zeroes
+}
+
 /// Return the nd global offset of the specified tile
-void Tuple_get_tile_start_offset(Tuple* flat_size, Tuple* tiling, Tuple *iter, Tuple *nd_offset) {
+/// The offset is logical index relative to the whole nd array
+void Tuple_get_tile_start_offset(const Tuple* flat_size, const Tuple* tiling, Tuple *iter, Tuple *nd_offset) {
     int dim = flat_size->dim;
     ASSERT(flat_size && tiling && iter && nd_offset);
     ASSERT(tiling->height >= iter->height);
@@ -227,7 +249,11 @@ void Tuple_get_tile_start_offset(Tuple* flat_size, Tuple* tiling, Tuple *iter, T
 /// tile_size has to be initialized to the same value as flat_size!
 void Tuple_get_leaf_tile_size(const Tuple *flat_size, const Tuple* tiling, const Tuple* iter, Tuple* tile_size)
 {
-    ASSERT(tiling != NULL && iter != NULL);
+    //ASSERT(tiling != NULL && iter != NULL);
+    if(tiling == NULL) {
+        *tile_size = *flat_size;
+        return;
+    }
     ASSERT(tiling->height == iter->height);
 
     Tuple cur_flat_size = *flat_size;
@@ -287,6 +313,33 @@ int Tuple_nd_to_1d_index(const Tuple *nd_idx, const Tuple *nd_size)
     return idx;
 }
 
+int Tuple_nd_to_1d_index_by_order(int order, const Tuple *nd_idx, const Tuple *nd_size)
+{
+    int dim = nd_idx->dim;
+    int mul = 1;
+    int idx = 0;
+    ASSERT(nd_idx->dim == nd_size->dim);
+
+    if(order == ORDER_TILE || order == ORDER_ROW) {
+        for(int i = dim-1; i>=0; i--)
+        {
+            idx += nd_idx->values[i] * mul;
+            mul *= nd_size->values[i];
+            ASSERT(mul >= 1); // overflow detection
+        }
+    } else if (order == ORDER_COL){
+        for(int i = 0; i < dim; i++)
+        {
+            idx += nd_idx->values[i] * mul;
+            mul *= nd_size->values[i];
+            ASSERT(mul >= 1); // overflow detection
+        }
+    } else {
+        ASSERT(0 && "Unrecognized layout");
+    }
+
+    return idx;
+}
 // For partial reduction
 
 void Tuple_set_tuples_dim(Tuple *t, int dim_reduc, int value)

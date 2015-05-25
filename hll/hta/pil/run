@@ -14,11 +14,15 @@ if [ $1 == "swarm" ] ; then
 	out="swarm"
 elif [ $1 == "forkjoinswarm" ] ; then
 	EXT="swc"
-	mem="forkjoin"
+	mem="distforkjoin"
 	out="swarm"
-elif [ $1 == "spmdswarm" ] ; then
+elif [ $1 == "sharedspmdswarm" ] ; then
 	EXT="swc"
-	mem="spmd"
+	mem="sharedspmd"
+	out="swarm"
+elif [ $1 == "distspmdswarm" ] ; then
+	EXT="swc"
+	mem="distspmd"
 	out="swarm"
 elif [ $1 == "C" ] ; then
 	EXT="c"
@@ -30,6 +34,11 @@ elif [ $1 == "ocr" ] ; then
 	EXT="c"
 	out="ocr"
 	args="-ocr:cfg $OCR_INSTALL/config/default.cfg"
+elif [ $1 == "sharedspmdocr" ] ; then
+	EXT="c"
+	mem="sharedspmd"
+	out="ocr"
+	args="-ocr:cfg $OCR_INSTALL/config/default.cfg"
 elif [ $1 == "rstreamocr" ] ; then
 	EXT="c"
 	out="ocr"
@@ -38,6 +47,14 @@ elif [ $1 == "rstreamocr" ] ; then
 elif [ $1 == "omp" ] ; then
 	EXT="c"
 	out="omp"
+elif [ $1 == "spmdomp" ] ; then
+	EXT="c"
+	out="omp"
+	mem="spmd"
+elif [ $1 == "spmdswarm" ] ; then
+	EXT="c"
+	out="swarm"
+	mem="spmd"
 else
 	echo "ERROR: run: unknown extension: '" $1 "'"
 	echo "usage: > run <backend> <example_number>"
@@ -45,13 +62,19 @@ else
 	exit 1
 fi
 
-cmd="${HTAHLL}/pil/pilc/pilc $rstream -m $mem -o $out $examples_dir/example$2.pil >example$2.$EXT"
+cmd="$UHPC/pil/pilc/pilc $rstream -m $mem -o $out $examples_dir/example$2.pil >example$2.$EXT"
 echo $cmd
 $cmd && \
 ./build $1 example$2 && \
 echo
 
-if [ $1 == "forkjoinswarm" -o $1 == "spmdswarm" ] ; then
+#$cmd
+#if [ $? -eq 0 ]; then
+#	./build $1 example$2 && \
+#	echo
+#fi
+
+if [ $1 == "forkjoinswarm" -o $1 == "distspmdswarm" ] ; then
 	swarmrun -l10 ./example$2
 else
 	./example$2 $args

@@ -29,7 +29,7 @@
 #---------------------------------------------------------------------------
 # This is the fortran compiler used for Fortran programs
 #---------------------------------------------------------------------------
-F77 = ifort
+F77 = f77
 # This links fortran programs; usually the same as ${F77}
 FLINK	= $(F77)
 
@@ -52,22 +52,35 @@ FFLAGS	= -O3 -fopenmp -mcmodel=medium
 # Global *link time* flags. Flags for increasing maximum executable
 # size usually go here.
 #---------------------------------------------------------------------------
-FLINKFLAGS = -O3 -fopenmp -mcmodel=medium
+FLINKFLAGS = -O0 -fopenmp -mcmodel=medium
 
-HTA = $(HTAHLL)/hta
+HTA = $(UHPC)/hta
 HTA_INC = $(HTA)/include
 HTA_LIB = $(HTA)/lib
 OP_SEQC = $(HTA)/src/Operation_seq.c
 OP_OMP = $(HTA)/src/Operation_omp.c
 OP_SWARM = $(HTA)/src/Operation_swarm.c
 OP_OCR = $(HTA)/src/Operation_ocr.c
-PIL = $(HTAHLL)/pil
+OP_MPI = $(HTA)/src/Operation_mpi.c
+PIL = $(UHPC)/pil
 PIL_INC = $(PIL)/include
 PIL_H = $(HTA)/src
-PIL_SRC = $(PIL)/src/pil_mem.c $(PIL)/src/pil_init.c
-SWARM = $(HTAHLL)/swarm/releases/latest
+PIL_SRC = $(PIL)/src/pil_mem.c $(PIL)/src/pil_init.c $(PIL)/src/pil_nw.c
+SWARM = $(UHPC)/swarm/releases/latest
 SWARM_INC = -I$(SWARM)/include
-SWARM_LINK = -lpthread $(SWARM)/lib/libswarm.a -lrt -lm
+SWARM_LIB = $(SWARM)/lib
+ifeq ($(TRACING), 1)
+    LSWARM = -lswarm-tracing
+else
+    LSWARM = -lswarm
+endif
+ifeq ($(PROFILE), 1)
+    LPROFILE = -L${GPERFTOOLS_INSTALL}/lib -lprofiler -ltcmalloc
+else
+    LPROFILE =
+endif
+
+SWARM_LINK = -lpthread -L$(SWARM_LIB) $(LSWARM) -lrt -lm
 SWARM_FLAGS = -DPIL2SWARM
 OCR_FLAGS=-L$(OCR_INSTALL)/lib -I$(OCR_INSTALL)/include
 OCR_LDFLAGS=-locr
@@ -93,6 +106,7 @@ OCR_LDFLAGS=-locr
 # This is the C compiler used for C programs
 #---------------------------------------------------------------------------
 CC = gcc
+MPICC = mpicc
 # This links C programs; usually the same as ${CC}
 CLINK	= $(CC)
 
@@ -104,7 +118,8 @@ C_LIB  = -lm
 #---------------------------------------------------------------------------
 # These macros are passed to the compiler
 #---------------------------------------------------------------------------
-C_INC = -I../common -I$(HTA_INC)
+#C_INC = -I../common -I$(HTA_INC)
+C_INC = -I../common -I$(HTA_INC) $(MODEL)
 
 #---------------------------------------------------------------------------
 # Global *compile time* flags for C programs
@@ -122,16 +137,20 @@ C_INC = -I../common -I$(HTA_INC)
 # files larger than 2GB.
 #---------------------------------------------------------------------------
 #CFLAGS	= -g -Wall -O0 -std=c99 -mcmodel=medium -fopenmp
-CFLAGS	= -Wall -O3 -std=c99 -mcmodel=medium -fopenmp
+CFLAGS	= -Wall -g -O3 -std=c99 -mcmodel=medium -fopenmp
 
 #---------------------------------------------------------------------------
 # Global *link time* flags. Flags for increasing maximum executable
 # size usually go here.
 #---------------------------------------------------------------------------
 #CLINKFLAGS = -g -O0  -std=c99 -mcmodel=medium -fopenmp
-CLINKFLAGS = -O3  -std=c99 -mcmodel=medium -fopenmp
+CLINKFLAGS = -O3 -g -std=c99 -mcmodel=medium -fopenmp
 
-
+ifeq ($(PROFILE), 1)
+    $(info PROFILE is on)
+    CFLAGS += ${LPROFILE}
+    CLINKFLAGS += ${LPROFILE}
+endif
 #---------------------------------------------------------------------------
 # Utilities C:
 #
@@ -176,3 +195,5 @@ WTIME  = wtime.c
 #---------------------------------------------------------------------------
 # MACHINE	=	-DCRAY
 # MACHINE	=	-DIBM
+
+

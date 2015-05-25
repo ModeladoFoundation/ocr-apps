@@ -1,7 +1,7 @@
 Steps:
     - Compile OCR and set OCR_INSTALL to point to the installation of OCR
-    - Set and export HTAHLL to this directory
-    - Set and export LD_LIBRARY_PATH to $OCR_INSTALL/lib and $HTAHLL/hta/lib
+    - Set and export UHPC to this directory
+    - Set and export LD_LIBRARY_PATH to $OCR_INSTALL/lib and $UHPC/hta/lib
     - Set and export OCR_CONFIG to the configuration you want to use for OCR
       (usually ${OCR_INSTALL}/config/default.cfg)
 
@@ -11,17 +11,21 @@ Steps:
           CFLAGS  := -DOCR_MAX_MULTI_SLOT=16 -DINIT_DEQUE_CAPACITY=32768
 
 To test PIL:
-    - Go to ${HTAHLL}/pil and run './run ocr 001' (or any of the micro tests)
+    - Go to ${UHPC}/pil and check the README for more information on PIL
+    - Try to run './run ocr 001' (or any of the micro tests)
     - OMP and Reservoir backends are also available
 
 To test HTA:
-    - Go to ${HTAHLL}/hta/src and type 'make'
-    - Go to ${HTAHLL}/hta/test and type 'make -j32'
+    - Go to ${UHPC}/hta and check the README for more information on HTAs
+    - Go to ${UHPC}/hta/src and type 'make'
+    - Go to ${UHPC}/hta/test and type 'make -j32'
     - To run all the microbenchmarks run 'python auto_test.py'. This
       will generate an auto_test_results.txt with the results of all the tests
 
 For the NAS parallel benchmarks:
-    - Go to ${HTAHLL}/test/benchmarks/SNU_NPB-1.0.3/NPB3.3-HTA
+    - Go to ${UHPC}/test/benchmarks/SNU_NPB-1.0.3/
+    - Check the README here for more information on the NAS benchmarks.
+    - To build the HTA NAS benchmarks go to NPB3.3-HTA
     - GCC is used. ICC is also possible:
         - in config/make.def replace 'gcc' with 'icc' and '-fopenmp' with '-openmp'
     - To make a benchmark type, for example: 'make EP CLASS=A'. This will build the OMP

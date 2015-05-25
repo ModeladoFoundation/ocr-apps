@@ -27,7 +27,7 @@ int getNeighborBoxes1(struct box *b, int iBox, int* nbrBoxes);
 
 */
 
-void forceStep (cncTag_t i, cncTag_t iter, BItem b1, comdCtx *ctx) {
+void comd_forceStep (cncTag_t i, cncTag_t iter, BItem b1, comdCtx *ctx) {
 
     struct box *b = b1;
     if (i == 0)

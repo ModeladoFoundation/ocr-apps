@@ -1,6 +1,6 @@
 #include "comd.h"
 
-void advanceVelocityStep (cncTag_t i, cncTag_t iter, BItem b1, comdCtx *ctx) {
+void comd_advanceVelocityStep (cncTag_t i, cncTag_t iter, BItem b1, comdCtx *ctx) {
 
 //    if (i==0)
 //    PRINTF("CnC: advanceVelocityStep %lu, %d, %lu\n",i,  b1->i, iter);

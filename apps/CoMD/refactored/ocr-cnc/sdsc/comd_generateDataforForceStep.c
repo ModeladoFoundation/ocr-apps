@@ -2,7 +2,7 @@
 
 #include "force.h"
 
-void generateDataforForceStep(cncTag_t i, cncTag_t iter, struct box *B, int totalBoxes, comdCtx *ctx) {
+void comd_generateDataforForceStep(cncTag_t i, cncTag_t iter, struct box *B, int totalBoxes, comdCtx *ctx) {
 
 //   PRINTF("CnC: Inside generateDataforForceStep %d\n", i);
 

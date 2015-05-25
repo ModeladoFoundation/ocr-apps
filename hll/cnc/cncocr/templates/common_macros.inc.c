@@ -22,12 +22,47 @@
 #endif
 {%- endmacro %}
 
+{#/****** Context struct type ******/#}
+{% macro g_ctx_t() -%}
+{{g.name}}Ctx
+{%- endmacro %}
+
+{#/****** Context variable name ******/#}
+{% macro g_ctx_var() -%}
+ctx
+{%- endmacro %}
+
+{#/****** Context variable declaration ******/#}
+{% macro g_ctx_param() -%}
+{{g_ctx_t()}} *{{g_ctx_var()}}
+{%- endmacro %}
+
+{#/****** Init-args struct type ******/#}
+{% macro g_args_t() -%}
+{{g.name}}Args
+{%- endmacro %}
+
+{#/****** Init-args variable name ******/#}
+{% macro g_args_var() -%}
+args
+{%- endmacro %}
+
+{#/****** Init-args variable declaration ******/#}
+{% macro g_args_param() -%}
+{{g_args_t()}} *{{g_args_var()}}
+{%- endmacro %}
+
+{#/****** Step name qualified with graph name ******/#}
+{% macro qualified_step_name(s) -%}
+{{g.name}}_{{s.collName}}
+{%- endmacro %}
+
 {#/****** CnC Item Create call + variable declaration ******/#}
 {% macro item_create_statement(itemcoll, varname) -%}
 {% set suffix = "Vector" if itemcoll.type.isVecType else "" -%}
 {% set count = "/*TODO: count=*/1" if itemcoll.type.isVecType else "" -%}
 {% set vecSize = itemcoll.type.vecSize or count -%}
-{{itemcoll.type.ptrType ~ varname}} = cncCreateItem{{suffix}}_{{
+{{itemcoll.type.ptrType ~ varname}} = cncItemCreate{{suffix}}_{{
     itemcoll.collName}}({{vecSize}});
 {%- endmacro %}
 
@@ -176,13 +211,13 @@ pthread_mutex_unlock(&_cncDebugMutex);
 {%- set var = output.binding ~ print_indices(ranges) -%}
 {{ item_create_statement(decl, output.binding) }}
 /* TODO: Initialize {{output.binding}} */
-cncPut_{{output.collName}}({{output.binding}}, {{ print_tag(args) }}ctx);
+cncPut_{{output.collName}}({{output.binding}}, {{ print_tag(args) }}{{g_ctx_var()}});
 {%- endcall -%}
 {% elif output.kind == 'STEP' -%}
 {%- set comment = "Prescribe \"" ~ output.collName ~ "\" steps" -%}
 {%- set decl = g.stepFunctions[output.collName] -%}
 {%- call(args, ranges) render_io_nest(comment, output.tag, decl.tag) -%}
-cncPrescribe_{{output.collName}}({{ print_tag(args) }}ctx);
+cncPrescribe_{{output.collName}}({{ print_tag(args) }}{{g_ctx_var()}});
 {%- endcall -%}
 {% elif output.kind == 'IF' %}
 if ({{ output.cond }}) {

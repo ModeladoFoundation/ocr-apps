@@ -1,8 +1,8 @@
-set XSTACK_SRC to the xstack source directory
+set XSTACK_ROOT to the xstack source directory
 
 To run on x86-pthreads-x86 target:
-  e.g.: make run ARGS="-x 5 -y 5 -z 5 -N 8"
+  e.g.: make run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
 
 To run on TG target
-  e.eg.: make -f Makefile.tg -- run -x 5 -y 5 -z 5 -N 8
+  e.eg.: make -f Makefile.tg run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
 

@@ -3,6 +3,7 @@
 // an example to test if PIL is setting the pointers correctly by explicitly
 // NULLifying the pointers before the call
 
+int rank;
 int target;
 gpp_t index_array;
 gpp_t data_array;
@@ -29,9 +30,9 @@ void func1(int *target, gpp_t index_array, gpp_t data_array, int i, int iter)
 	*target = 0;
 }
 
-node(1, i, [0:1:iter], target, [0], func1(&target, index_array, data_array, i, iter))
+node(1, rank, i, [0:1:iter], target, [0], [0], func1(&target, index_array, data_array, i, iter))
 
-void pil_main(int argc, char **argv)
+void pil_main(int argc, char **argv, int rank)
 {
 	int i = 0;
 	int iter = 3;
@@ -55,7 +56,7 @@ void pil_main(int argc, char **argv)
 	ia[iter+1] = iter+1;
 
 
-	pil_enter(1, 4, index_array, data_array, i, iter);
+	pil_enter(1, rank, 4, index_array, data_array, i, iter);
 
 	pil_free(index_array);
 	for (i = 0; i <= iter; i++)

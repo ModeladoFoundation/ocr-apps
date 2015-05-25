@@ -1,0 +1,3611 @@
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#ifdef TRACING
+#include <sys/syscall.h>
+#include <eti/tracing.h>
+#endif
+#ifdef PROFILE
+#include <gperftools/profiler.h>
+#endif
+#include "HTA.h"
+#include "Comm.h"
+#include "Operation_util.h"
+#include "Config.h"
+
+uint32_t target_id;
+
+int pid;
+int level;
+int bound;
+int idx; // the index variable to identify codelets
+int dim_reduc;
+int vec_size;
+
+// Operator function pointers
+H1Op h1op;
+H2Op h2op;
+H3Op h3op;
+H4Op h4op;
+H5Op h5op;
+H1S1Op h1s1op;
+H2S1Op h2s1op;
+H3S1Op h3s1op;
+H4S1Op h4s1op;
+H5S1Op h5s1op;
+ReduceOp fr_op;
+
+// function pointers
+HTA *h1;   // HTA argument 1
+HTA *h2;   // HTA argument 2
+HTA *h3;
+HTA *h4;
+HTA *h5;
+HTA *h6;
+HTA **ha1; // HTA array argument 1
+HTA **ha2; // HTA array argument 2
+HTA **ha3;
+HTA **ha4;
+HTA **ha5;
+HTA **ha6;
+HTA **ph2;
+void* s1; // scalar
+void* s2; // scalar
+void* sa1;
+
+gpp_t index_array;
+gpp_t data_array;
+
+// for SPMD communication
+int np;
+int src;
+int dest;
+int next_dest;
+int offset;
+int round;
+int send_rounds;
+int recv_rounds;
+int pid_norm;
+int src_bcast;
+int step;
+int stype;
+size_t size;
+size_t bufsize;
+size_t bufoffset;
+size_t send_size;
+size_t send_offset;
+size_t* send_sizes;
+size_t* send_offsets;
+size_t* recv_sizes;
+size_t* recv_offsets;
+void* initval;
+gpp_t buf;
+gpp_t bcastbuf;
+gpp_t sendbuf;
+gpp_t recvbuf;
+
+void HTA_map_h1(int level, H1Op h1op, HTA *h1)
+{
+    ASSERT(h1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    int total_num_gpps = 0;
+    if(level == 0) { // map at one tile only
+        if(h1->pid == h1->home)
+            total_num_gpps += _count_gpps(h1);
+    } else {
+        for(int i = 0; i < h1->num_tiles; i++) {
+            HTA *t = h1->tiles[i];
+            if(t->pid == t->home) {
+                total_num_gpps += _count_gpps(t);
+            }
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack HTA tiles
+    if(level == 0) { // map at one tile only
+        if(h1->pid == h1->home)
+            processed += _pack_HTA(ptr_darray + processed, h1);
+    } else {
+        for(int i = 0; i < h1->num_tiles; i++) {
+            HTA *t1 = h1->tiles[i];
+            if(t1->pid == t1->home) {
+                processed += _pack_HTA(ptr_darray + processed, t1);
+            }
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(110, h1->pid, 5, index_array, data_array, h1->pid, (level==0)?(level):(level-1), h1op);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H1Op h1op)
+{
+    HTA *h1;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                h1op(h1);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0;
+            HTA *ha1[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            ASSERT(count1 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h1op(ha1[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h2(int level, H2Op h2op, HTA *h1, HTA *h2)
+{
+    ASSERT(h1 && h2);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h2op(h1, h2);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    _enter_120(index_array, data_array, h1->pid, level-1, h2op);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h2_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H2Op h2op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                h2op(h1, h2);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            ASSERT(count1 == num_tiles && count2 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h2op(ha1[i], ha2[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void _HTA_map_h2a_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H2Op h2op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                h2op(h1, h2);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            ASSERT(count1 == num_tiles && count2 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h2op(ha1[i], ha2[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h3(int level, H3Op h3op, HTA *h1, HTA *h2, HTA *h3)
+{
+    ASSERT(h1 && h2 && h3);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h3op(h1, h2, h3);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h3->num_tiles; i++) {
+        HTA *t = h3->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        HTA *t3 = h3->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    //pil_enter(130, h1->pid, 5, index_array, data_array, h1->pid, level-1, h3op);
+    _enter_130(index_array, data_array, h1->pid, level-1, h3op);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h3_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H3Op h3op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                h3op(h1, h2, h3);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h3op(ha1[i], ha2[i], ha3[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void _HTA_map_h3a_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H3Op h3op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                h3op(h1, h2, h3);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h3op(ha1[i], ha2[i], ha3[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h4(int level, H4Op h4op, HTA *h1, HTA *h2, HTA *h3, HTA *h4)
+{
+    ASSERT(h1 && h2 && h3 && h4);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h4op(h1, h2, h3, h4);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h3->num_tiles; i++) {
+        HTA *t = h3->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h4->num_tiles; i++) {
+        HTA *t = h4->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        HTA *t3 = h3->tiles[i];
+        HTA *t4 = h4->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+            ASSERT(t4->pid == t4->home);
+            processed += _pack_HTA(ptr_darray + processed, t4);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(140, h1->pid, 5, index_array, data_array, h1->pid, level-1, h4op);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h4_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H4Op h4op)
+{
+    HTA *h1, *h2, *h3, *h4;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        unpacked += _unpack_HTA(da + unpacked, &h4);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                ASSERT(h4->pid == h4->home);
+                h4op(h1, h2, h3, h4);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0, count4=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            HTA_collect_tiles(level, h4, ha4, &count4);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h4op(ha1[i], ha2[i], ha3[i], ha4[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h5(int level, H5Op h5op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, HTA *h5)
+{
+    ASSERT(h1 && h2 && h3 && h4 && h5);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h5op(h1, h2, h3, h4, h5);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h3->num_tiles; i++) {
+        HTA *t = h3->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h4->num_tiles; i++) {
+        HTA *t = h4->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h5->num_tiles; i++) {
+        HTA *t = h5->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        HTA *t3 = h3->tiles[i];
+        HTA *t4 = h4->tiles[i];
+        HTA *t5 = h5->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+            ASSERT(t4->pid == t4->home);
+            processed += _pack_HTA(ptr_darray + processed, t4);
+            ASSERT(t5->pid == t5->home);
+            processed += _pack_HTA(ptr_darray + processed, t5);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(150, h1->pid, 5, index_array, data_array, h1->pid, level-1, h5op);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h5_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H5Op h5op)
+{
+    HTA *h1, *h2, *h3, *h4, *h5;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    int unpacked = 0;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        unpacked += _unpack_HTA(da + unpacked, &h4);
+        unpacked += _unpack_HTA(da + unpacked, &h5);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                ASSERT(h4->pid == h4->home);
+                ASSERT(h5->pid == h5->home);
+                h5op(h1, h2, h3, h4, h5);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0, count4=0, count5=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles], *ha5[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            HTA_collect_tiles(level, h4, ha4, &count4);
+            HTA_collect_tiles(level, h5, ha5, &count5);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles && count5 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h5op(ha1[i], ha2[i], ha3[i], ha4[i], ha5[i]);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h1s1(int level, H1S1Op h1s1op, HTA *h1, void *s1)
+{
+    ASSERT(h1 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h1s1op(h1, s1);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+    total_num_gpps += 1;
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(210, h1->pid, 5, index_array, data_array, h1->pid, level-1, h1s1op);
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h1s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H1S1Op h1s1op)
+{
+    HTA *h1;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    void *s1 = da[0].ptr;
+    int unpacked = 1;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                h1s1op(h1, s1);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0;
+            HTA *ha1[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            ASSERT(count1 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h1s1op(ha1[i], s1);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h2s1(int level, H2S1Op h2s1op, HTA *h1, HTA *h2, void *s1)
+{
+    ASSERT(h1 && h2 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h2s1op(h1, h2, s1);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+    total_num_gpps += 1;
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(220, h1->pid, 5, index_array, data_array, h1->pid, level-1, h2s1op);
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h2s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H2S1Op h2s1op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    void *s1 = da[0].ptr;
+    int unpacked = 1;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                h2s1op(h1, h2, s1);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            ASSERT(count1 == num_tiles && count2 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h2s1op(ha1[i], ha2[i], s1);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h3s1(int level, H3S1Op h3s1op, HTA *h1, HTA *h2, HTA *h3, void *s1)
+{
+    ASSERT(h1 && h2 && h3 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h3s1op(h1, h2, h3, s1);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h3->num_tiles; i++) {
+        HTA *t = h3->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+    total_num_gpps += 1;
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        HTA *t3 = h3->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(230, h1->pid, 5, index_array, data_array, h1->pid, level-1, h3s1op);
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h3s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H3S1Op h3s1op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    void *s1 = da[0].ptr;
+    int unpacked = 1;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                h3s1op(h1, h2, h3, s1);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h3s1op(ha1[i], ha2[i], ha3[i], s1);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h4s1(int level, H4S1Op h4s1op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, void *s1)
+{
+    ASSERT(h1 && h2 && h3 && h4 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h4s1op(h1, h2, h3, h4, s1);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h3->num_tiles; i++) {
+        HTA *t = h3->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h4->num_tiles; i++) {
+        HTA *t = h4->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+    total_num_gpps += 1;
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        HTA *t3 = h3->tiles[i];
+        HTA *t4 = h4->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+            ASSERT(t4->pid == t4->home);
+            processed += _pack_HTA(ptr_darray + processed, t4);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(240, h1->pid, 5, index_array, data_array, h1->pid, level-1, h4s1op);
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h4s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H4S1Op h4s1op)
+{
+    HTA *h1, *h2, *h3, *h4;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    void *s1 = da[0].ptr;
+    int unpacked = 1;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        unpacked += _unpack_HTA(da + unpacked, &h4);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                ASSERT(h4->pid == h4->home);
+                h4s1op(h1, h2, h3, h4, s1);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0, count4=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            HTA_collect_tiles(level, h4, ha4, &count4);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h4s1op(ha1[i], ha2[i], ha3[i], ha4[i], s1);
+            }
+        }
+    }
+    *target_id = 0;
+}
+void HTA_map_h5s1(int level, H5S1Op h5s1op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, HTA *h5, void *s1)
+{
+    ASSERT(h1 && h2 && h3 && h4 && h5 && s1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h5s1op(h1, h2, h3, h4, h5, s1);
+        return;
+    }
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h3->num_tiles; i++) {
+        HTA *t = h3->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h4->num_tiles; i++) {
+        HTA *t = h4->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h5->num_tiles; i++) {
+        HTA *t = h5->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    if(total_num_gpps == 0) return; // not owned tiles to compute
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+    total_num_gpps += 1;
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    // pack HTA tiles
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        HTA *t3 = h3->tiles[i];
+        HTA *t4 = h4->tiles[i];
+        HTA *t5 = h5->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+            ASSERT(t4->pid == t4->home);
+            processed += _pack_HTA(ptr_darray + processed, t4);
+            ASSERT(t5->pid == t5->home);
+            processed += _pack_HTA(ptr_darray + processed, t5);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(250, h1->pid, 5, index_array, data_array, h1->pid, level-1, h5s1op);
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+void _HTA_map_h5s1_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H5S1Op h5s1op)
+{
+    HTA *h1, *h2, *h3, *h4, *h5;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    void *s1 = da[0].ptr;
+    int unpacked = 1;
+    // unpack before sequentially execute the opeartor
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        unpacked += _unpack_HTA(da + unpacked, &h3);
+        unpacked += _unpack_HTA(da + unpacked, &h4);
+        unpacked += _unpack_HTA(da + unpacked, &h5);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                ASSERT(h3->pid == h3->home);
+                ASSERT(h4->pid == h4->home);
+                ASSERT(h5->pid == h5->home);
+                h5s1op(h1, h2, h3, h4, h5, s1);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0, count3=0, count4=0, count5=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles], *ha3[num_tiles], *ha4[num_tiles], *ha5[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            HTA_collect_tiles(level, h3, ha3, &count3);
+            HTA_collect_tiles(level, h4, ha4, &count4);
+            HTA_collect_tiles(level, h5, ha5, &count5);
+            ASSERT(count1 == num_tiles && count2 == num_tiles && count3 == num_tiles && count4 == num_tiles && count5 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h5s1op(ha1[i], ha2[i], ha3[i], ha4[i], ha5[i], s1);
+            }
+        }
+    }
+    *target_id = 0;
+}
+
+// -----------------------------------------------------------------------
+// Operations for cholesky
+// -----------------------------------------------------------------------
+
+void HTA_cmap_h2(int level, H2Op h2op, int len, HTA* h1, Tuple* sel1, HTA* h2, Tuple* sel2, int iter)
+{
+    ASSERT(h1 && h2);
+    ASSERT(h1->height == h2->height);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    ASSERT(len >= 0);
+    if(level == 0) { // map at one tile only
+        ASSERT(len != 0);
+        h2op(h1, h2);
+        return;
+    }
+    if(len == 0) return;
+
+    int mypid = h1->pid;
+    int np = HTA_get_num_processes();
+
+    // For each destination process, search for dependent RHS tile owned by this process
+    // Initiate at most P-1 sends to send out pointers
+    size_t comm_buf_size = len*sizeof(HTA*); // buffer size is the size of the dependence list
+    enum {NOT_PROCESSED, PROCESSED, READY_TO_SEND};
+    int send_status[np]; // NOT_PROCESSED, PROCESSED, and READY_TO_SEND
+    gpp_t sendbufs[np]; // messages to send
+    gpp_t recvbufs[np]; // received messages
+    int map_performed[len];
+    for(int p = 0; p < np; p++) {
+        recvbufs[p].ptr = NULL;
+        if(p != mypid) {
+            send_status[p] = NOT_PROCESSED;
+            pil_alloc(&sendbufs[p], comm_buf_size);
+        } else {
+            send_status[p] = PROCESSED;
+        }
+    }
+    for(int i = 0; i < len; i++)
+        map_performed[i] = 0;
+
+    int all_send_processed = 0;
+    int all_maps_performed = 0;
+
+    while (!all_send_processed || !all_maps_performed) {
+        //==============================================
+        // PROCESSING SENDS
+        //==============================================
+        if(!all_send_processed) {
+            all_send_processed = 1;
+            for(int dest = 0; dest < np; dest++) {
+                //if(dest == mypid) continue; // always skip local tiles
+                if(send_status[dest] == NOT_PROCESSED) {
+                    int must_send = 0;
+                    HTA** rhs_to_send = (HTA**)sendbufs[dest].ptr;
+                    // prepare the tiles
+                    for(int i = 0; i < len; i++) {
+                        HTA* lhs = HTA_pick_one_tile(h1, &sel1[i]);
+                        rhs_to_send[i] = NULL;
+                        if(lhs->home == dest) {
+                            HTA* rhs0 = HTA_pick_one_tile(h2, &sel2[i]);
+                            if(rhs0->home == mypid) {
+                                rhs_to_send[i] = rhs0;
+                                must_send = 1; // at least one tile needs to be sent
+                            }
+                        }
+                    }
+                    if(must_send) {
+                        send_status[dest] = READY_TO_SEND;
+                        all_send_processed = 0;
+                    } else {
+                        send_status[dest] = PROCESSED;
+                    }
+                }
+                if(send_status[dest] == READY_TO_SEND) {
+                    // asynchronous send to the destination process
+                    if(!CFG_get(CFG_CMAP_CHECK_BEFORE_COMM) || comm_can_send(mypid, dest)) {
+                        comm_send(mypid, sendbufs[dest], dest, comm_buf_size, 0);
+                        send_status[dest] = PROCESSED;
+                    } else {
+                        all_send_processed = 0; // will re-attempt to send later
+                    }
+                }
+            }
+        }
+        //==============================================
+        // Satisfy dependences and perform maps
+        //==============================================
+        if(!all_maps_performed) {
+            all_maps_performed = 1;
+            for(int i = 0; i < len; i++) {
+                if(!map_performed[i]) {
+                    HTA* lhs = HTA_pick_one_tile(h1, &sel1[i]);
+                    if(lhs->home == mypid) { // this process owns lhs tile so it has to perform the computation
+                        HTA* rhs0 = HTA_pick_one_tile(h2, &sel2[i]);
+                        int rhs0_owner = rhs0->home;
+                        if(rhs0_owner != mypid) { // RHS is not locally owned, receive from another process
+                            // receive from the sender if not yet done
+                            if(recvbufs[rhs0_owner].ptr == NULL) {
+                                if(!CFG_get(CFG_CMAP_CHECK_BEFORE_COMM) || comm_can_recv(rhs0_owner, mypid)) {
+                                    pil_alloc(&recvbufs[rhs0_owner], comm_buf_size);
+                                    comm_recv(mypid, recvbufs[rhs0_owner], rhs0_owner, comm_buf_size, 0);
+                                } else {
+                                    all_maps_performed = 0;
+                                    if(!all_send_processed)
+                                        break; // to retry send
+                                    else
+                                        continue; // break for to skip this dependence
+                                }
+                            }
+                            // replace rhs0 pointer to remote tile
+                            rhs0 = ((HTA**)recvbufs[rhs0_owner].ptr)[i];
+                            ASSERT(rhs0 != NULL);
+                        } // else do nothing and use the rhs0 pointer directly
+
+                        // at this point, the dependences are satisfied. perform map
+                        if(!CFG_get(CFG_CMAP_CREATE_CODELETS)) { // sequentially process by the master
+                            h2op(lhs, rhs0);
+                        } else {
+                            int total_num_gpps = 0;
+                            total_num_gpps += _count_gpps(lhs);
+                            total_num_gpps += _count_gpps(rhs0);
+                            ASSERT(total_num_gpps != 0);
+                            ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+                            // allocate data array and index array using pil_alloc
+                            gpp_t index_array, data_array;
+                            pil_init(&index_array, &data_array);
+                            pil_alloc(&index_array, (2)*sizeof(int));
+                            pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+                            int processed = 0;
+                            gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+                            int *ptr_iarray = (int *) index_array.ptr;
+                            ptr_iarray[0] = 0;
+                            // pack HTA tiles
+                            processed += _pack_HTA(ptr_darray + processed, lhs);
+                            processed += _pack_HTA(ptr_darray + processed, rhs0);
+                            ASSERT(processed == total_num_gpps);
+                            ptr_iarray[1] = processed;
+                            if(iter & 0x1)
+                                _enter_120(index_array, data_array, mypid, 0, h2op);
+                            else
+                                _enter_121(index_array, data_array, mypid, 0, h2op);
+                            GPP_ARRAY_FINALIZE
+                        }
+                    }
+                    map_performed[i] = 1;
+                    if(!all_send_processed) {
+                        all_maps_performed = 0; // have to check dependence again because some iterations may not yet be executed
+                        break; // in order to run send-loop instead of running send-loop after all computation is done
+                    }
+                }
+            }
+        } // if(!all_maps_performed)
+    } // while
+
+    for(int p = 0; p < np; p++) {
+        if(recvbufs[p].ptr != NULL) pil_free(recvbufs[p]);
+        if(p != mypid) pil_free(sendbufs[p]);
+    }
+}
+
+void HTA_cmap_h3(int level, H3Op h3op, int len, HTA* h1, Tuple* sel1, HTA* h2, Tuple* sel2, HTA* h3, Tuple* sel3, int iter)
+{
+    ASSERT(h1 && h2 && h3);
+    ASSERT(h1->height == h2->height && h2->height == h3->height);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    ASSERT(len >= 0);
+    if(level == 0) { // map at one tile only
+        ASSERT(len != 0);
+        h3op(h1, h2, h3);
+        return;
+    }
+    if(len == 0) return;
+
+    int mypid = h1->pid;
+    int np = HTA_get_num_processes();
+
+    // For each destination process, search for dependent RHS tile owned by this process
+    // Initiate at most P-1 sends to send out pointers
+    size_t comm_buf_size = (len*2)*sizeof(HTA*);
+    enum {NOT_PROCESSED, PROCESSED, READY_TO_SEND};
+    int send_status[np]; // NOT_PROCESSED, PROCESSED, and READY_TO_SEND
+    gpp_t sendbufs[np]; // messages to send
+    gpp_t recvbufs[np]; // received messages
+    int map_performed[len];
+    for(int p = 0; p < np; p++) {
+        recvbufs[p].ptr = NULL;
+        if(p != mypid) {
+            send_status[p] = NOT_PROCESSED;
+            pil_alloc(&sendbufs[p], comm_buf_size);
+        } else {
+            send_status[p] = PROCESSED;
+        }
+    }
+    for(int i = 0; i < len; i++)
+        map_performed[i] = 0;
+
+    int all_send_processed = 0;
+    int all_maps_performed = 0;
+    while (!all_send_processed || !all_maps_performed) {
+        //==============================================
+        // PROCESSING SENDS
+        //==============================================
+        if(!all_send_processed) {
+            all_send_processed = 1;
+            for(int dest = 0; dest < np; dest++) {
+                //if(dest == mypid) continue; // always skip local tiles
+                if(send_status[dest] == NOT_PROCESSED) {
+                    int must_send = 0;
+                    HTA** rhs_to_send = (HTA**)sendbufs[dest].ptr;
+                    // prepare the tiles
+                    for(int i = 0; i < len; i++) {
+                        int j = i*2;
+                        HTA* lhs = HTA_pick_one_tile(h1, &sel1[i]);
+                        rhs_to_send[j] = NULL;
+                        rhs_to_send[j+1] = NULL;
+                        if(lhs->home == dest) {
+                            HTA* rhs0 = HTA_pick_one_tile(h2, &sel2[i]);
+                            if(rhs0->home == mypid) {
+                                rhs_to_send[j] = rhs0;
+                                must_send = 1; // at least one tile needs to be sent
+                            }
+                            HTA* rhs1 = HTA_pick_one_tile(h3, &sel3[i]);
+                            if(rhs1->home == mypid) {
+                                rhs_to_send[j+1] = rhs1;
+                                must_send = 1; // at least one tile needs to be sent
+                            }
+                        }
+                    }
+                    if(must_send) {
+                        send_status[dest] = READY_TO_SEND;
+                        all_send_processed = 0;
+                    } else {
+                        send_status[dest] = PROCESSED;
+                    }
+
+                }
+                if(send_status[dest] == READY_TO_SEND) {
+                    // asynchronous send to the destination process
+                    if(!CFG_get(CFG_CMAP_CHECK_BEFORE_COMM) || comm_can_send(mypid, dest)) {
+                        comm_send(mypid, sendbufs[dest], dest, comm_buf_size, 0);
+                        send_status[dest] = PROCESSED;
+                    } else {
+                        all_send_processed = 0;
+                    }
+                }
+            }
+        }
+
+        //==============================================
+        // Satisfy dependences and perform maps
+        //==============================================
+        if(!all_maps_performed) {
+            all_maps_performed = 1;
+            for(int i = 0; i < len; i++) {
+                if(!map_performed[i]) {
+                    HTA* lhs = HTA_pick_one_tile(h1, &sel1[i]);
+                    int j = i*2;
+                    if(lhs->home == mypid) { // this process owns lhs tile
+                        HTA* rhs0 = HTA_pick_one_tile(h2, &sel2[i]);
+                        HTA* rhs1 = HTA_pick_one_tile(h3, &sel3[i]);
+                        int rhs0_owner = rhs0->home;
+                        int rhs1_owner = rhs1->home;
+                        if(rhs0_owner != mypid) { // RHS is not locally owned
+                            // receive from the sender if not yet done
+                            if(recvbufs[rhs0_owner].ptr == NULL) {
+                                if(!CFG_get(CFG_CMAP_CHECK_BEFORE_COMM) || comm_can_recv(rhs0_owner, mypid)) {
+                                    pil_alloc(&recvbufs[rhs0_owner], comm_buf_size);
+                                    comm_recv(mypid, recvbufs[rhs0_owner], rhs0_owner, comm_buf_size, 0);
+                                } else {
+                                    all_maps_performed = 0;
+                                    if(!all_send_processed)
+                                        break; // to retry send
+                                    else
+                                        continue; // break for to skip this dependence
+                                }
+                            }
+                            // replace rhs0 pointer to remote tile
+                            rhs0 = ((HTA**)recvbufs[rhs0_owner].ptr)[j];
+                            ASSERT(rhs0 != NULL);
+                        } // else do nothing and use the rhs0 pointer directly
+                        if(rhs1_owner != mypid) { // RHS is not locally owned
+                            // receive from the sender if not yet done
+                            if(recvbufs[rhs1_owner].ptr == NULL) {
+                                if(!CFG_get(CFG_CMAP_CHECK_BEFORE_COMM) || comm_can_recv(rhs1_owner, mypid)) {
+                                    pil_alloc(&recvbufs[rhs1_owner], comm_buf_size);
+                                    comm_recv(mypid, recvbufs[rhs1_owner], rhs1_owner, comm_buf_size, 0);
+                                } else {
+                                    all_maps_performed = 0;
+                                    continue; // break for to skip this dependence
+                                }
+                            }
+                            // replace rhs1 pointer to remote tile
+                            rhs1 = ((HTA**)recvbufs[rhs1_owner].ptr)[j+1];
+                            ASSERT(rhs1 != NULL);
+                        } // else do nothing and use the rhs1 pointer directly
+
+                        // at this point, the dependences are satisfied. perform map
+                        if(!CFG_get(CFG_CMAP_CREATE_CODELETS)) { // sequentially process by the master
+                            h3op(lhs, rhs0, rhs1);
+                        } else {
+                            int total_num_gpps = 0;
+                            total_num_gpps += _count_gpps(lhs);
+                            total_num_gpps += _count_gpps(rhs0);
+                            total_num_gpps += _count_gpps(rhs1);
+                            ASSERT(total_num_gpps != 0);
+                            ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+                            // allocate data array and index array using pil_alloc
+                            gpp_t index_array, data_array;
+                            pil_init(&index_array, &data_array);
+                            pil_alloc(&index_array, (2)*sizeof(int));
+                            pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+                            int processed = 0;
+                            gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+                            int *ptr_iarray = (int *) index_array.ptr;
+                            ptr_iarray[0] = 0;
+                            // pack HTA tiles
+                            processed += _pack_HTA(ptr_darray + processed, lhs);
+                            processed += _pack_HTA(ptr_darray + processed, rhs0);
+                            processed += _pack_HTA(ptr_darray + processed, rhs1);
+                            ASSERT(processed == total_num_gpps);
+                            ptr_iarray[1] = processed;
+                            if(iter & 0x1)
+                                _enter_130(index_array, data_array, mypid, 0, h3op);
+                            else
+                                _enter_131(index_array, data_array, mypid, 0, h3op);
+                            GPP_ARRAY_FINALIZE
+                        }
+                    }
+                    map_performed[i] = 1;
+                    if(!all_send_processed) {
+                        all_maps_performed = 0; // have to check dependence again because some iterations may not yet be executed
+                        break; // in order to run send-loop instead of running send-loop after all computation is done
+                    }
+                }
+            }
+        } // if(!all_maps_performed)
+    } // while
+
+    for(int p = 0; p < np; p++) {
+        if(recvbufs[p].ptr != NULL) pil_free(recvbufs[p]);
+        if(p != mypid) pil_free(sendbufs[p]);
+    }
+}
+//// ==========================================================================
+//// NON MAP FUNCTIONS START HERE
+//// ==========================================================================
+
+//// HTA_tile_to_hta
+//// goes down the hierarchiy of h2 to the specific level and
+//// for all tiles t in that level, map the custom operator op(t, h3)
+//// in parallel
+void HTA_tile_to_hta(int level, H3Op h3op, HTA * h1, HTA * h2, HTA * h3)
+{
+    ASSERT(h1 && h2 && h3);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    ASSERT(level == 1);
+
+    //printf("thread %d HTA_tile_to_hta\n", h1->pid);
+    int total_num_gpps = 0;
+    total_num_gpps += _count_gpps(h3);
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    processed += _pack_HTA(ptr_darray, h3);
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+
+    pil_enter(100, h1->pid, 5, index_array, data_array, h1->pid, level-1, h3op);
+
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_tile_to_hta_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H3Op h3op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    //printf("thread %d HTA_tile_to_hta_exec starts\n", pid);
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+
+    unpacked += _unpack_HTA(da, &h3);
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                ASSERT(h2->pid == h2->home);
+                h3op(h1, h2, h3);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0, count2=0;
+            HTA *ha1[num_tiles], *ha2[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            HTA_collect_tiles(level, h2, ha2, &count2);
+            ASSERT(count1 == num_tiles && count2 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h3op(ha1[i], ha2[i], h3);
+            }
+        }
+    }
+
+    //printf("thread %d HTA_tile_to_hta_exec finished\n", pid);
+    *target_id = 0;
+}
+
+void HTA_tile_to_hta2(int level, H2Op h2op, HTA * h1, HTA * h2)
+{
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    ASSERT(level == 1);
+
+    int total_num_gpps = 0;
+    total_num_gpps += _count_gpps(h2);
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    processed += _pack_HTA(ptr_darray, h2);
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+
+    pil_enter(200, h1->pid, 5, index_array, data_array, h1->pid, level, h2op);
+
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_tile_to_hta2_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H2Op h2op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+
+    unpacked += _unpack_HTA(da, &h2);
+    while(unpacked != num_gpps) { // has something to do
+        unpacked += _unpack_HTA(da + unpacked, &h1);
+        if(h1->height == 1) {
+            if(h1->pid == h1->home) {
+                h2op(h1, h2);
+            }
+        }
+        else { // height > 1
+            int num_tiles = 1;
+            HTA* t = h1;
+            int leveldown = level;
+            while(leveldown != 0) {
+                num_tiles *= Tuple_product(&t->tiling);
+                t = t->tiles[0];
+                leveldown--;
+            }
+            int count1=0;
+            HTA *ha1[num_tiles];
+            HTA_collect_tiles(level, h1, ha1, &count1);
+            ASSERT(count1 == num_tiles);
+            for(int i = 0; i < num_tiles; i++) {
+                h2op(ha1[i], h2);
+            }
+        }
+    }
+
+    *target_id = 0;
+}
+
+// Assume s1's type is the same as h1->scalar_type
+void HTA_full_reduce(ReduceOp fr_op, void* s1, HTA * h1)
+{
+    ASSERT(h1 && s1);
+    ASSERT(h1->type == HTA_TYPE_DENSE && "Sparse HTAs not supported yet");
+
+    // allocate space for s1 passed to each instance, also for collecting results
+    size_t sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+
+    int total_num_gpps = 0;
+    int tiles_count = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+            tiles_count++;
+        }
+    }
+    total_num_gpps += 1; // add one gpp for scalar array to store partial result
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data_array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    // setup index array
+    ptr_iarray[0] = 0;
+    ptr_iarray[1] = processed;
+
+    // for each HTA at the level
+    // pack the dynamically allocated blocks information here
+    pil_enter(70, h1->pid, 5, index_array, data_array, h1->pid, fr_op);
+
+    //// Global reduction on partial results
+    //int np = pil_get_nwCount();
+    //int pid = h1->pid;
+    //int step = 0;
+    //int dest, src;
+    int stype = h1->scalar_type;
+    //gpp_t sendbuf, recvbuf;
+    //// index_array and data_array are not used. send_buf and recv_buf are used instead
+    //_enter_1200(index_array, data_array, pid, &step, np, sz, 0, s_gpp, &dest, &sendbuf, &src, &recvbuf, stype, fr_op);
+    //memcpy(s1, s_gpp.ptr, sz);
+    comm_allreduce(h1->pid, fr_op, s_gpp.ptr, s1, stype);
+
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_full_reduce_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, ReduceOp fr_op)
+{
+    HTA *h;
+    // unpack before sequentially execute the opeartor
+    gpp_t* ptr_darray = (gpp_t*) data_array.ptr;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    // acquire scalar gpp
+    void *s1 = ptr_darray[0].ptr;
+    int unpacked = 1;
+
+    while(unpacked != num_gpps) {
+        unpacked += _unpack_HTA(ptr_darray + unpacked, &h);
+        _recursive_full_reduce(fr_op, s1, h);
+    }
+    //printf("pid = %d, ptr = %p, reduction result = %.0lf\n", pid, s1, *(double*)s1);
+
+    *target_id = 0;
+}
+
+
+// work around pil compiler limitation
+void _enter_80(gpp_t index_array, gpp_t data_array, int pid, ReduceOp fr_op, int dim_reduc)
+{
+    pil_enter(80, pid, 5, index_array, data_array, pid, fr_op, dim_reduc);
+}
+
+void _enter_120(gpp_t index_array, gpp_t data_array, int pid, int level, H2Op h2op)
+{
+    pil_enter(120, pid, 5, index_array, data_array, pid, level, h2op);
+}
+
+void _enter_121(gpp_t index_array, gpp_t data_array, int pid, int level, H2Op h2op)
+{
+    pil_enter(121, pid, 5, index_array, data_array, pid, level, h2op);
+}
+void _enter_130(gpp_t index_array, gpp_t data_array, int pid, int level, H3Op h3op)
+{
+    pil_enter(130, pid, 5, index_array, data_array, pid, level, h3op);
+}
+
+void _enter_131(gpp_t index_array, gpp_t data_array, int pid, int level, H3Op h3op)
+{
+    pil_enter(131, pid, 5, index_array, data_array, pid, level, h3op);
+}
+//void _enter_81(gpp_t index_array, gpp_t data_array, int bound, int idx, ReduceOp fr_op, int dim_reduc, int vec_size)
+//{
+//    pil_enter(81, -1, 7, index_array, data_array, bound-1, idx, fr_op, dim_reduc, vec_size);
+//}
+
+void _enter_1200(gpp_t index_array, gpp_t data_array, int pid, int *step, int np, size_t size, int offset, gpp_t buf, int *dest, gpp_t *sendbuf, int *src, gpp_t *recvbuf, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    pil_enter(1200, pid, 14, index_array, data_array, pid, step, np, size, offset, buf, dest, sendbuf, src, recvbuf, stype, fr_op);
+}
+
+void _enter_1400(gpp_t index_array, gpp_t data_array, int pid, int np, size_t size, int offset, void* result, int *dest, gpp_t *sendbuf, int* send_rounds, int *src, gpp_t *recvbuf, int* recv_rounds, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    pil_enter(1400, pid, 15, index_array, data_array, pid, np, size, offset, result, dest, sendbuf, send_rounds, src, recvbuf, recv_rounds, stype, fr_op);
+}
+
+void HTA_partial_reduce_pil(ReduceOp fr_op, HTA * h1, int dim_reduc, void* s1, HTA **ph2)
+{
+    ASSERT(h1 && s1 && ph2);
+    ASSERT(h1->type == HTA_TYPE_DENSE && "Sparse HTAs not supported yet");
+    // ****
+    // Allocate temporary HTA per tile for local reduction results
+    // ****
+    HTA *h2 = HTA_allocate_partial_reduce_temporary_spmd(h1, dim_reduc, s1);
+    //HTA_barrier(h1->pid);
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+
+    int total_num_gpps = 0;
+    int tiles_count = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+	    assert(t->home == t2->home);
+            total_num_gpps += _count_gpps(t2); // FIXME: use one temporary HTA per process to speed up?
+            tiles_count++;
+        }
+    }
+    total_num_gpps += 1; // add one gpp for scalar array to store partial result
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+    // allocate data_array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            processed += _pack_HTA(ptr_darray + processed, h2->tiles[i]);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    // setup index array
+    ptr_iarray[0] = 0;
+    ptr_iarray[1] = processed;
+
+    _enter_80(index_array, data_array, h1->pid, fr_op, dim_reduc);
+
+    // ****
+    // Allocate HTA for final results
+    // ****
+    // finishing up merge results
+    HTA *ret = HTA_allocate_partial_reduce_storage_spmd(h1, dim_reduc, s1);
+#if 0 // (REDUCE_OPT & PARTIAL_REDUCE_PARALLEL_MERGE)
+    GPP_SARRAY_FINALIZE
+    GPP_ARRAY_FINALIZE
+
+    // For each destination tile, map it to a vector of the source tiles
+    bound = h2->num_tiles; // parallelism is equal to the number of tiles in the destination h2
+    GPP_SARRAY_INIT
+
+    total_num_gpps = bound;
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(NULL, ha, 0, h1->num_tiles);
+
+    GPP_ARRAY_INIT
+
+    Tuple iter;
+    Tuple_iterator_begin(h2->dim, 1, &iter);
+    int i = 0;
+    processed = 0;
+    ptr_darray = (gpp_t *) data_array.ptr;
+    ptr_iarray = (int *) index_array.ptr;
+    int vec_size = h1->tiling.values[dim_reduc];
+    Tuple top_tiling = h2->tiling;
+    top_tiling.height = 1;
+    do {
+        ptr_iarray[i] = processed;
+        HTA* dest = HTA_pick_one_tile(h2, &iter);
+        processed += _pack_HTA(ptr_darray + processed, dest);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+        for(int j = 0; j < vec_size; j++) {
+            Tuple src_iter = iter;
+            src_iter.values[dim_reduc] = j;
+            int src_idx = Tuple_nd_to_1d_index(&src_iter, &h1->tiling);
+            processed += _pack_HTA(ptr_darray + processed, ha[src_idx]);
+        }
+        i++;
+    } while(Tuple_iterator_next(&top_tiling, &iter));
+    ASSERT(i == bound);
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    _enter_81(index_array, data_array, bound, idx, fr_op, dim_reduc, vec_size);
+
+#else
+    //HTA_barrier(h1->pid); // barrier needed before accessing/destroying shared data
+    HTA_merge_partial_reduce_results_spmd(fr_op, ret, h1, dim_reduc, h2, s1);
+#endif
+    //HTA_barrier(h1->pid); // barrier needed before accessing/destroying shared data
+    HTA_destroy(h2);
+
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+    *ph2 = ret;
+}
+
+void HTA_partial_reduce_with_preallocated_pil(ReduceOp fr_op, HTA * h1, int dim_reduc, void* s1, HTA** ha, HTA *h2)
+{
+    int bound;
+    ASSERT(h1 && s1);
+    ASSERT(h1->type == HTA_TYPE_DENSE && "Sparse HTAs not supported yet");
+    bound = h1->num_tiles;
+    // HTA ** ha = HTA_allocate_partial_reduce_temporary(h1, dim_reduc, s1);
+    // Assume ha is allocated and initialized by the user
+    int sz = HTA_get_scalar_size(h1);
+    GPP_SARRAY_INIT
+
+    int total_num_gpps = bound;
+    total_num_gpps += get_num_gpps(h1, h1->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(NULL, ha, 0, bound);
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+
+    // allocate data_array and index array using pil_alloc
+    GPP_ARRAY_INIT
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    for(int i = 0; i < bound; i++) {
+        ptr_iarray[i] = processed;
+        processed += _pack_HTA(ptr_darray + processed, h1->tiles[i]);
+        processed += _pack_HTA(ptr_darray + processed, ha[i]);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    _enter_80(index_array, data_array, h1->pid, fr_op, dim_reduc);
+
+    // TODO: restore pointers
+
+    // finishing up merge results
+    //HTA *h2 = HTA_allocate_partial_reduce_storage(h1, dim_reduc, s1);
+#if 0//(REDUCE_OPT & PARTIAL_REDUCE_PARALLEL_MERGE)
+    GPP_SARRAY_FINALIZE
+    GPP_ARRAY_FINALIZE
+
+    // For each destination tile, map it to a vector of the source tiles
+    bound = h2->num_tiles; // parallelism is equal to the number of tiles in the destination h2
+    GPP_SARRAY_INIT
+
+    total_num_gpps = bound;
+    total_num_gpps += get_num_gpps(h2, h2->tiles, 1, bound);
+    total_num_gpps += get_num_gpps(NULL, ha, 0, h1->num_tiles);
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+
+    GPP_ARRAY_INIT
+
+    Tuple iter;
+    Tuple_iterator_begin(h2->dim, 1, &iter);
+    int i = 0;
+    processed = 0;
+    ptr_darray = (gpp_t *) data_array.ptr;
+    ptr_iarray = (int *) index_array.ptr;
+    int vec_size = h1->tiling.values[dim_reduc];
+    Tuple top_tiling = h2->tiling;
+    top_tiling.height = 1;
+    do { // packing sequence: h2, s1, ha[*]
+        ptr_iarray[i] = processed;
+        HTA* dest = HTA_pick_one_tile(h2, &iter);
+        processed += _pack_HTA(ptr_darray + processed, dest);
+        ptr_darray[processed] = s_darray[i];
+        processed++;
+        for(int j = 0; j < vec_size; j++) {
+            Tuple src_iter = iter;
+            src_iter.values[dim_reduc] = j;
+            int src_idx = Tuple_nd_to_1d_index(&src_iter, &h1->tiling);
+            processed += _pack_HTA(ptr_darray + processed, ha[src_idx]);
+        }
+        i++;
+    } while(Tuple_iterator_next(&top_tiling, &iter));
+    ASSERT(i == bound);
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[bound] = processed;
+
+    _enter_81(index_array, data_array, bound, idx, fr_op, dim_reduc, vec_size);
+
+#else
+    HTA_merge_partial_reduce_results(fr_op, h2, h1, dim_reduc, ha, s1);
+#endif
+    //for(int i = 0; i < bound; i++)
+    //    HTA_destroy(ha[i]);
+    //free(ha);
+
+    GPP_SARRAY_FINALIZE
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_partial_reduce_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, ReduceOp fr_op, int dim_reduc)
+{
+    HTA *h1, *h2;
+    // unpack before sequentially execute the opeartor
+    gpp_t* ptr_darray = (gpp_t*) data_array.ptr;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    // acquire scalar gpp
+    void *s1 = ptr_darray[0].ptr;
+    int unpacked = 1;
+
+    // partial reduce HTA h1 and save the result to h2
+    while(unpacked != num_gpps) {
+        unpacked += _unpack_HTA(ptr_darray + unpacked, &h1);
+        unpacked += _unpack_HTA(ptr_darray + unpacked, &h2);
+	HTA_sequential_partial_reduce(fr_op, h1, h2, dim_reduc, s1);
+    }
+
+    *target_id = 0;
+}
+
+void _HTA_partial_reduce_merge(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int bound, int idx, ReduceOp fr_op, int dim_reduc, int vec_size)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = _unpack_HTA(da, &h1);
+    void *s1 = ((gpp_t*)data_array.ptr)[unpacked].ptr;
+    unpacked++;
+
+    HTA_init_all_scalars(h1, s1);
+    for(int i = 0; i < vec_size; i++) {
+        unpacked += _unpack_HTA(da + unpacked, &h2);
+	int tree_height = h1->height;
+	if(tree_height > 1) { // It's not a leaf tile
+	  Tuple leaf_iter[tree_height-1];
+          Tuple_iterator_begin(h1->dim, tree_height-1, leaf_iter);
+	  do{
+	    HTA* r_leaf = HTA_iterator_to_hta(h1, leaf_iter);
+            HTA* s_leaf = HTA_iterator_to_hta(h2, leaf_iter);
+            HTA_reduce_two_tiles(fr_op, r_leaf, s_leaf);
+	  } while(Tuple_iterator_next(&h1->tiling, leaf_iter));
+	}
+	else { // It's a leaf tile
+	  HTA* r_leaf = h1;
+          HTA* s_leaf = h2;
+          HTA_reduce_two_tiles(fr_op, r_leaf, s_leaf);
+	}
+    }
+#ifdef DEBUG
+    // debug check
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(unpacked == num_gpps);
+#endif
+
+    *target_id = 0;
+}
+void HTA_reduce_h2(ReduceOp fr_op, H2S1Op h2s1op, void *s1, HTA * h1, HTA * h2)
+{
+    ASSERT(h1 && h2 && s1);
+    ASSERT(h1->type == HTA_TYPE_DENSE && h2->type == HTA_TYPE_DENSE && "Sparse HTAs not supported yet");
+    ASSERT(h1->num_tiles == h2->num_tiles);
+
+    // allocate space for s1 passed to each instance
+    int sz = HTA_get_scalar_size(h1);
+    gpp_t s_gpp;
+    pil_alloc(&s_gpp, sz);
+    memcpy(s_gpp.ptr, s1, sz);
+
+    // gpp counting
+    int total_num_gpps = 0;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t = h1->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    for(int i = 0; i < h2->num_tiles; i++) {
+        HTA *t = h2->tiles[i];
+        if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        }
+    }
+    total_num_gpps += 1; // add one gpp for scalar array to store partial result
+    ASSERT(total_num_gpps < 1024 && "Hard limit on the number of gpps");
+
+    // allocate data_array and index array using pil_alloc
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+
+    // prepare data_array and index array
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    // pack scalar gpp at the beginning of the data array
+    ptr_darray[0] = s_gpp;
+    processed += 1;
+    for(int i = 0; i < h1->num_tiles; i++) {
+        HTA *t1 = h1->tiles[i];
+        HTA *t2 = h2->tiles[i];
+        if(t1->pid == t1->home) {
+            processed += _pack_HTA(ptr_darray + processed, t1);
+            ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+        }
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[0] = 0;
+    ptr_iarray[1] = processed;
+    // local computations
+    pil_enter(90, h1->pid, 5, index_array, data_array, h1->pid, fr_op, h2s1op);
+
+    //// Global reduction on partial results
+    //int np = pil_get_nwCount();
+    //int pid = h1->pid;
+    //int step = 0;
+    //int dest, src;
+    int stype = h1->scalar_type;
+    //gpp_t sendbuf, recvbuf;
+    //// index_array and data_array are not used. send_buf and recv_buf are used instead
+    //_enter_1200(index_array, data_array, pid, &step, np, sz, 0, s_gpp, &dest, &sendbuf, &src, &recvbuf, stype, fr_op);
+    //memcpy(s1, s_gpp.ptr, sz);
+    comm_allreduce(h1->pid, fr_op, s_gpp.ptr, s1, stype);
+
+    pil_free(s_gpp);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_reduce_h2_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, ReduceOp fr_op, H2S1Op h2s1op)
+{
+    HTA *h1, *h2;
+    gpp_t* ptr_darray = (gpp_t*) data_array.ptr;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    ASSERT(ptr_darray && ptr_iarray);
+
+    // acquire scalar gpp
+    void *s1 = ptr_darray[0].ptr;
+    int unpacked = 1;
+
+    while(unpacked != num_gpps) {
+        unpacked += _unpack_HTA(ptr_darray + unpacked, &h1);
+        unpacked += _unpack_HTA(ptr_darray + unpacked, &h2);
+
+	if(h1->pid == h1->home) {
+          ASSERT(h2->pid == h2->home);
+	  h2s1op(h1, h2, s1);
+	}
+    }
+
+    *target_id = 0;
+}
+
+// *********************************************************
+// Map functions that applied to a set of tiles
+// *********************************************************
+void HTA_map_h1sel(int level, H1Op h1op, HTA *h1, SelecOp sel_op, Tuple selec)
+{
+    int bound = 1, count1 = 0;
+    ASSERT(h1);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h1op(h1);
+        return;
+    }
+
+    if(h1->height > 1) {
+        // FIXME: this will not work for irregular HTAs
+        HTA* cur_h = h1;
+        while(cur_h->height > 1) {
+            bound = bound * cur_h->num_tiles;
+            cur_h = cur_h->tiles[0];
+        }
+    }
+    //printf("\nMax Bound: %d, level: %d\n", bound, level);
+    HTA *ha1[bound]; // an array of HTA pointers to the mapped HTAs
+
+    HTA_collect_set_tiles(level, h1, ha1, &count1, sel_op, selec);
+
+    bound = count1; // Actual number of tiles selected
+    //printf("Actual Bound: %d\n", bound);
+
+    if(bound == 0) return; // not tiles owned to compute
+
+    int total_num_gpps = 0;
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha1[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    for(int i = 0; i < bound; i++) {
+         HTA *t1 = ha1[i];
+	 //if(t1->pid == t1->home) {
+	    ASSERT(t1->pid == t1->home);
+	    processed += _pack_HTA(ptr_darray + processed, t1);
+	 //}
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(310, h1->pid, 4, index_array, data_array, h1->pid, level-1, h1op);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_map_h1sel_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H1Op h1op)
+{
+    HTA *h1;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) {
+      unpacked += _unpack_HTA(da + unpacked, &h1);
+      assert(h1->height == 1);
+
+      //if(h1->pid == h1->home) {
+	  ASSERT(h1->pid == h1->home);
+	  h1op(h1);
+      //}
+    }
+
+    *target_id = 0;
+ }
+
+void HTA_map_h2sel(int level, H2Op h2op, HTA *h1, HTA *h2, SelecOp sel_op, Tuple selec)
+{
+    int bound = 1, count1 = 0, count2 = 0;
+    ASSERT(h1 && h2);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h2op(h1, h2);
+        return;
+    }
+
+    if(h1->height > 1) {
+        // FIXME: this will not work for irregular HTAs
+        HTA* cur_h = h1;
+        while(cur_h->height > 1) {
+            bound = bound * cur_h->num_tiles;
+            cur_h = cur_h->tiles[0];
+        }
+    }
+    //printf("\nMax Bound: %d, level: %d\n", bound, level);
+    HTA *ha1[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha2[bound]; // an array of HTA pointers to the mapped HTAs
+
+    HTA_collect_set_tiles(level, h1, ha1, &count1, sel_op, selec);
+    HTA_collect_set_tiles(level, h2, ha2, &count2, sel_op, selec);
+    ASSERT(count1 == count2 && "Different number of tiles selected");
+
+    bound = count1; // Actual number of tiles selected
+    //printf("Actual Bound: %d\n", bound);
+
+    if(bound == 0) return; // not tiles owned to compute
+
+    int total_num_gpps = 0;
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha1[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha2[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    for(int i = 0; i < bound; i++) {
+         HTA *t1 = ha1[i];
+	 HTA *t2 = ha2[i];
+	 //if(t1->pid == t1->home) {
+	    ASSERT(t1->pid == t1->home);
+	    processed += _pack_HTA(ptr_darray + processed, t1);
+	    ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+	  //}
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(320, h1->pid, 4, index_array, data_array, h1->pid, level-1, h2op);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_map_h2sel_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H2Op h2op)
+{
+    HTA *h1, *h2;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) {
+      unpacked += _unpack_HTA(da + unpacked, &h1);
+      unpacked += _unpack_HTA(da + unpacked, &h2);
+
+      assert(h1->height == 1 && h2->height == 1);
+
+      //if(h1->pid == h1->home) {
+	  ASSERT(h1->pid == h1->home);
+          ASSERT(h2->pid == h2->home);
+	  h2op(h1, h2);
+      //}
+    }
+
+    *target_id = 0;
+}
+
+void HTA_map_h3sel(int level, H3Op h3op, HTA *h1, HTA *h2, HTA *h3, SelecOp sel_op, Tuple selec)
+{
+    int bound = 1, count1 = 0, count2 = 0, count3 = 0;
+    ASSERT(h1 && h2 && h3);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h3op(h1, h2, h3);
+        return;
+    }
+
+    if(h1->height > 1) {
+        // FIXME: this will not work for irregular HTAs
+        HTA* cur_h = h1;
+        while(cur_h->height > 1) {
+            bound = bound * cur_h->num_tiles;
+            cur_h = cur_h->tiles[0];
+        }
+    }
+    //printf("\nMax Bound: %d, level: %d\n", bound, level);
+    HTA *ha1[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha2[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha3[bound]; // an array of HTA pointers to the mapped HTAs
+
+    HTA_collect_set_tiles(level, h1, ha1, &count1, sel_op, selec);
+    HTA_collect_set_tiles(level, h2, ha2, &count2, sel_op, selec);
+    HTA_collect_set_tiles(level, h3, ha3, &count3, sel_op, selec);
+    ASSERT(count1 == count2 && count2 == count3 && "Different number of tiles selected");
+
+    bound = count1; // Actual number of tiles selected
+    //printf("Actual Bound: %d\n", bound);
+
+    if(bound == 0) return; // not tiles owned to compute
+
+    int total_num_gpps = 0;
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha1[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha2[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha3[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    for(int i = 0; i < bound; i++) {
+	  HTA *t1 = ha1[i];
+	  HTA *t2 = ha2[i];
+	  HTA *t3 = ha3[i];
+	  //if(t1->pid == t1->home) {
+	    ASSERT(t1->pid == t1->home);
+	    processed += _pack_HTA(ptr_darray + processed, t1);
+	    ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+	  //}
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(330, h1->pid, 4, index_array, data_array, h1->pid, level-1, h3op);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_map_h3sel_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H3Op h3op)
+{
+    HTA *h1, *h2, *h3;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) {
+      unpacked += _unpack_HTA(da + unpacked, &h1);
+      unpacked += _unpack_HTA(da + unpacked, &h2);
+      unpacked += _unpack_HTA(da + unpacked, &h3);
+
+      assert(h1->height == 1 && h2->height == 1 && h3->height == 1);
+
+      //if(h1->pid == h1->home) {
+	  ASSERT(h1->pid == h1->home);
+          ASSERT(h2->pid == h2->home);
+          ASSERT(h3->pid == h3->home);
+	  h3op(h1, h2, h3);
+      //}
+    }
+
+    *target_id = 0;
+}
+
+void HTA_map_h4sel(int level, H4Op h4op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, SelecOp sel_op, Tuple selec)
+{
+    int bound = 1, count1 = 0, count2 = 0, count3 = 0, count4 = 0;
+    ASSERT(h1 && h2 && h3 && h4);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h4op(h1, h2, h3, h4);
+        return;
+    }
+
+    if(h1->height > 1) {
+        // FIXME: this will not work for irregular HTAs
+        HTA* cur_h = h1;
+        while(cur_h->height > 1) {
+            bound = bound * cur_h->num_tiles;
+            cur_h = cur_h->tiles[0];
+        }
+    }
+    //printf("\nMax Bound: %d, level: %d\n", bound, level);
+    HTA *ha1[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha2[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha3[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha4[bound]; // an array of HTA pointers to the mapped HTAs
+
+    HTA_collect_set_tiles(level, h1, ha1, &count1, sel_op, selec);
+    HTA_collect_set_tiles(level, h2, ha2, &count2, sel_op, selec);
+    HTA_collect_set_tiles(level, h3, ha3, &count3, sel_op, selec);
+    HTA_collect_set_tiles(level, h4, ha4, &count4, sel_op, selec);
+    ASSERT(count1 == count2 && count2 == count3 && count3 == count4 && "Different number of tiles selected");
+
+    bound = count1; // Actual number of tiles selected
+    //printf("(%d) Actual Bound: %d\n", h1->pid, bound);
+
+    if(bound == 0) return; // not tiles owned to compute
+
+    int total_num_gpps = 0;
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha1[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha2[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha3[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha4[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    for(int i = 0; i < bound; i++) {
+	  HTA *t1 = ha1[i];
+	  HTA *t2 = ha2[i];
+	  HTA *t3 = ha3[i];
+	  HTA *t4 = ha4[i];
+	  //if(t1->pid == t1->home) {
+	    ASSERT(t1->pid == t1->home);
+	    processed += _pack_HTA(ptr_darray + processed, t1);
+	    ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+            ASSERT(t4->pid == t4->home);
+            processed += _pack_HTA(ptr_darray + processed, t4);
+	  //}
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(340, h1->pid, 4, index_array, data_array, h1->pid, level-1, h4op);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_map_h4sel_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H4Op h4op)
+{
+    HTA *h1, *h2, *h3, *h4;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) {
+      unpacked += _unpack_HTA(da + unpacked, &h1);
+      unpacked += _unpack_HTA(da + unpacked, &h2);
+      unpacked += _unpack_HTA(da + unpacked, &h3);
+      unpacked += _unpack_HTA(da + unpacked, &h4);
+
+      assert(h1->height == 1 && h2->height == 1 && h3->height == 1 && h4->height == 1);
+
+      ASSERT(h1->pid == h1->home);
+      ASSERT(h2->pid == h2->home);
+      ASSERT(h3->pid == h3->home);
+      ASSERT(h4->pid == h4->home);
+      h4op(h1, h2, h3, h4);
+
+    }
+
+    *target_id = 0;
+ }
+
+void HTA_map_h5sel(int level, H5Op h5op, HTA *h1, HTA *h2, HTA *h3, HTA *h4, HTA *h5, SelecOp sel_op, Tuple selec)
+{
+    int bound = 1, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0;
+    ASSERT(h1 && h2 && h3 && h4 && h5);
+    ASSERT(level <= HTA_LEAF_LEVEL(h1) && "Mapped level is limited to less than leaf level");
+    if(level == 0) { // map at one tile only
+        h5op(h1, h2, h3, h4, h5);
+        return;
+    }
+
+    if(h1->height > 1) {
+        // FIXME: this will not work for irregular HTAs
+        HTA* cur_h = h1;
+        while(cur_h->height > 1) {
+            bound = bound * cur_h->num_tiles;
+            cur_h = cur_h->tiles[0];
+        }
+    }
+    //printf("\nMax Bound: %d, level: %d\n", bound, level);
+    HTA *ha1[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha2[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha3[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha4[bound]; // an array of HTA pointers to the mapped HTAs
+    HTA *ha5[bound]; // an array of HTA pointers to the mapped HTAs
+
+    HTA_collect_set_tiles(level, h1, ha1, &count1, sel_op, selec);
+    HTA_collect_set_tiles(level, h2, ha2, &count2, sel_op, selec);
+    HTA_collect_set_tiles(level, h3, ha3, &count3, sel_op, selec);
+    HTA_collect_set_tiles(level, h4, ha4, &count4, sel_op, selec);
+    HTA_collect_set_tiles(level, h5, ha5, &count5, sel_op, selec);
+    ASSERT(count1 == count2 && count2 == count3 && count3 == count4 && count4 == count5 && "Different number of tiles selected");
+
+    bound = count1; // Actual number of tiles selected
+    //printf("Actual Bound: %d\n", bound);
+
+    if(bound == 0) return; // not tiles owned to compute
+
+    int total_num_gpps = 0;
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha1[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha2[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha3[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha4[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+    for(int i = 0; i < bound; i++) {
+        HTA *t = ha5[i];
+        //if(t->pid == t->home) {
+            total_num_gpps += _count_gpps(t);
+        //}
+    }
+
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    pil_alloc(&index_array, (2)*sizeof(int));
+    pil_alloc(&data_array, total_num_gpps*sizeof(gpp_t));
+    int processed = 0;
+    gpp_t *ptr_darray = (gpp_t *) data_array.ptr;
+    int *ptr_iarray = (int *) index_array.ptr;
+    ptr_iarray[0] = 0;
+    for(int i = 0; i < bound; i++) {
+	  HTA *t1 = ha1[i];
+	  HTA *t2 = ha2[i];
+	  HTA *t3 = ha3[i];
+	  HTA *t4 = ha4[i];
+	  HTA *t5 = ha5[i];
+	  //if(t1->pid == t1->home) {
+	    ASSERT(t1->pid == t1->home);
+	    processed += _pack_HTA(ptr_darray + processed, t1);
+	    ASSERT(t2->pid == t2->home);
+            processed += _pack_HTA(ptr_darray + processed, t2);
+            ASSERT(t3->pid == t3->home);
+            processed += _pack_HTA(ptr_darray + processed, t3);
+            ASSERT(t4->pid == t4->home);
+            processed += _pack_HTA(ptr_darray + processed, t4);
+	    ASSERT(t5->pid == t5->home);
+            processed += _pack_HTA(ptr_darray + processed, t5);
+	  //}
+    }
+    ASSERT(processed == total_num_gpps);
+    ptr_iarray[1] = processed;
+    pil_enter(350, h1->pid, 4, index_array, data_array, h1->pid, level-1, h5op);
+    GPP_ARRAY_FINALIZE
+}
+
+void _HTA_map_h5sel_exec(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int level, H5Op h5op)
+{
+    HTA *h1, *h2, *h3, *h4, *h5;
+    gpp_t *da = (gpp_t *)data_array.ptr;
+    ASSERT(da);
+    // unpack before sequentially execute the opeartor
+    int unpacked = 0;
+    int *ptr_iarray = (int*) index_array.ptr;
+    int num_gpps = ptr_iarray[1] - ptr_iarray[0];
+    while(unpacked != num_gpps) {
+      unpacked += _unpack_HTA(da + unpacked, &h1);
+      unpacked += _unpack_HTA(da + unpacked, &h2);
+      unpacked += _unpack_HTA(da + unpacked, &h3);
+      unpacked += _unpack_HTA(da + unpacked, &h4);
+      unpacked += _unpack_HTA(da + unpacked, &h5);
+
+      assert(h1->height == 1 && h2->height == 1 && h3->height == 1 && h4->height == 1 && h5->height == 1);
+
+      //if(h1->pid == h1->home) {
+	  ASSERT(h1->pid == h1->home);
+          ASSERT(h2->pid == h2->home);
+          ASSERT(h3->pid == h3->home);
+          ASSERT(h4->pid == h4->home);
+	  ASSERT(h5->pid == h5->home);
+	  h5op(h1, h2, h3, h4, h5);
+      //}
+
+    }
+
+    *target_id = 0;
+}
+// -----------------------------------------------------------------------
+// Communication APIs
+// -----------------------------------------------------------------------
+
+void comm_allreduce(int pid, ReduceOp fr_op, void* data, void* result, HTA_SCALAR_TYPE stype)
+{
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+    int np = pil_get_nwCount();
+    int dest, src;
+    size_t sz = HTA_size_of_scalar_type(stype);
+    gpp_t sendbuf, recvbuf;
+    if(np == 1) {
+        memcpy(result, data, sz);
+        return;
+    } else {
+        if(CFG_get(CFG_OPT_ASYNC_SEND) && CFG_get(CFG_OPT_MEMCPY_AVOIDANCE) && CFG_get(CFG_ASYNC_ALLREDUCE)) {
+            int send_rounds = 0;
+            int recv_rounds = 0;
+            gpp_t sendbuf, recvbuf;
+            sendbuf.ptr = data;
+            pil_alloc(&recvbuf, sz);
+            _enter_1400(index_array, data_array, pid, np, sz, 0, result, &dest, &sendbuf, &send_rounds, &src, &recvbuf, &recv_rounds, stype, fr_op);
+            pil_free(recvbuf);
+        } else {
+            gpp_t s_gpp;
+            int step = 0;
+            pil_alloc(&s_gpp, sz);
+            memcpy(s_gpp.ptr, data, sz);
+            _enter_1200(index_array, data_array, pid, &step, np, sz, 0, s_gpp, &dest, &sendbuf, &src, &recvbuf, stype, fr_op);
+            memcpy(result, s_gpp.ptr, sz);
+            pil_free(s_gpp);
+        }
+    }
+}
+
+void comm_allgatherv(int pid, void* sendptr, size_t send_size, size_t send_offset, void* recvptr, size_t* recv_sizes, size_t* recv_offsets)
+{
+    int np = pil_get_nwCount();
+    if(np == 1) {
+        ASSERT(send_size == recv_sizes[0]);
+        memcpy(recvptr+recv_offsets[0], sendptr+send_offset, send_size);
+        return;
+    } else {
+        // send my part to everyone
+        if(CFG_get(CFG_OPT_ASYNC_SEND)) {
+            if(CFG_get(CFG_OPT_MEMCPY_AVOIDANCE) ) {
+                gpp_t sendbuf, recvbuf;
+#if 0  // do not remove this. this is easier to understand and test for correctness
+                sendbuf.ptr = sendptr;
+                for(int i = 0; i < np; i++) { // async p-1 sends
+                    //if(pid == 0) printf("thread(%d) sending to (%d) of size %zu and offset %zu\n", pid, i, send_size, send_offset);
+                    //comm_send(pid, sendbuf, i, send_size, send_offset);
+                    comm_send(pid, sendbuf, i, send_size, send_offset);
+                }
+                // receives np-1 pieces from others
+                recvbuf.ptr = recvptr;
+                for(int i = 0; i < np; i++) { // sync recvs
+                    //if(pid == 0) printf("thread(%d) receiving from (%d) of size %zu and offset %zu\n", pid, i, recv_sizes[i], recv_offsets[i]);
+                    comm_recv(pid, recvbuf, i, recv_sizes[i], recv_offsets[i]);
+                }
+#else
+                gpp_t index_array, data_array;
+                pil_init(&index_array, &data_array);
+                int dest, src;
+                size_t size, offset;
+                int send_rounds = 0;
+                int recv_rounds = 0;
+                sendbuf.ptr = sendptr;
+                recvbuf.ptr = recvptr;
+                pil_enter(3000, pid, 16, index_array, data_array, pid, np, &send_rounds, &dest, sendbuf, send_size, send_offset, &recv_rounds, &src, recvbuf, recv_sizes, recv_offsets, &size, &offset);
+#endif
+            } else {
+                assert(0 && "non-optimized path not implemented for CFG_OPT_MEMCPY_AVOIDANCE in comm_allgatherv");
+            }
+        } else {
+            assert(0 && "non-optimized path not implemented for CFG_OPT_ASYNC_SEND in comm_allgatherv");
+        }
+    }
+}
+
+void comm_alltoallv(int pid, void* sendptr, size_t* send_sizes, size_t* send_offsets, void* recvptr, size_t* recv_sizes, size_t* recv_offsets)
+{
+    int np = pil_get_nwCount();
+    if(np == 1) {
+        ASSERT(send_sizes[0] == recv_sizes[0]);
+        if(send_sizes[0] != 0) memcpy(recvptr+recv_offsets[0], sendptr+send_offsets[0], send_sizes[0]);
+        return;
+    } else {
+        // send my part to everyone
+        if(CFG_get(CFG_OPT_ASYNC_SEND)) {
+            if(CFG_get(CFG_OPT_MEMCPY_AVOIDANCE) ) {
+                gpp_t sendbuf, recvbuf;
+#if 0  // do not remove this. this is easier to understand and test for correctness
+                sendbuf.ptr = sendptr;
+                for(int i = 0; i < np; i++) { // async p-1 sends
+                    if(send_sizes[i] != 0) {
+                        comm_send(pid, sendbuf, i, send_sizes[i], send_offsets[i]);
+                        //printf("thread (%d) sent %zu bytes data to %d\n", pid, send_sizes[i], i);
+                    }
+                }
+                // receives np-1 pieces from others
+                recvbuf.ptr = recvptr;
+                for(int i = 0; i < np; i++) { // sync recvs
+                    if(recv_sizes[i] != 0) {
+                        //printf("thread (%d) to receive %zu bytes data from %d\n", pid, recv_sizes[i], i);
+                        comm_recv(pid, recvbuf, i, recv_sizes[i], recv_offsets[i]);
+                    }
+                }
+#else
+                gpp_t index_array, data_array;
+                pil_init(&index_array, &data_array);
+                int dest, src;
+                size_t size, offset;
+                int send_rounds = 0;
+                int recv_rounds = 0;
+                sendbuf.ptr = sendptr;
+                recvbuf.ptr = recvptr;
+                pil_enter(4000, pid, 16, index_array, data_array, pid, np, &send_rounds, &dest, sendbuf, send_sizes, send_offsets, &recv_rounds, &src, recvbuf, recv_sizes, recv_offsets, &size, &offset);
+#endif
+            } else {
+                assert(0 && "non-optimized path not implemented for CFG_OPT_MEMCPY_AVOIDANCE in comm_alltoallv");
+            }
+        } else {
+            assert(0 && "non-optimized path not implemented for CFG_OPT_ASYNC_SEND in comm_alltoallv");
+        }
+    }
+}
+
+void comm_bcast(int pid, int src_bcast, void* data, size_t size)
+{
+    int np = pil_get_nwCount();
+    if(np == 1)
+        return;
+    //if(CFG_get(CFG_OPT_ASYNC_SEND)) { // when async send is supported, there is no need to do tree broadcast on shared memory machines
+    //    gpp_t buf;
+    //    int dest;
+    //    if(CFG_get(CFG_OPT_MEMCPY_AVOIDANCE)) { // p-1 sends
+    //        if(pid == src_bcast) { // this is the source
+    //            buf.ptr = data;
+    //            for(int i = 0; i < np; i++) {
+    //                if(i != pid) comm_send(pid, buf, i, size, 0);
+    //            }
+    //        } else {
+    //            buf.ptr = data;
+    //            comm_recv(pid, buf, src_bcast, size, 0);
+    //        }
+    //    } else {
+    //        assert(0 && "non-optimized path not implemented for CFG_OPT_MEMCPY_AVOIDANCE in comm_bcast");
+    //    }
+    //} else {
+        gpp_t index_array, data_array, buf;
+        pil_init(&index_array, &data_array);
+        int src = src_bcast;
+        int dest = 0;
+        int round = 0;
+        int pid_norm = ( pid - src_bcast < 0 ) ? ( np + (pid - src_bcast) ) : ( pid - src_bcast );
+
+        // Setup broadcast buffer
+        int offset = 0;
+        if(CFG_get(CFG_OPT_MEMCPY_AVOIDANCE)) {
+            buf.ptr = data;
+        } else {
+            pil_alloc(&buf, size);
+            if(pid == src_bcast) memcpy(buf.ptr, data, size);
+        }
+
+        if(CFG_get(CFG_OPT_ASYNC_SEND) && CFG_get(CFG_ASYNC_BCAST)) {
+            pil_enter(1001, pid, 10, index_array, data_array, pid, np, &round, src, &dest, size, offset, &buf);
+        } else {
+            // Tree-based broadcast
+            pil_enter(1101, pid, 12, index_array, data_array, pid, np, &round, pid_norm, src_bcast, &src, &dest, size, offset, &buf);
+        }
+
+        if(CFG_get(CFG_OPT_MEMCPY_AVOIDANCE)) {
+            // do nothing here
+        } else {
+            if(pid != src_bcast) memcpy(data, buf.ptr, size);
+            pil_free(buf);
+        }
+    //}
+}
+
+void comm_sendrecv(int pid, gpp_t buf, int target, size_t size)
+{
+    if(pid == target) return;
+    ASSERT(pid != -1 && target != -1);
+
+    // The one with smaller pid will receive first and then send
+    // and the other one process in reverse order to prevent deadlock.
+    if(CFG_get(CFG_OPT_ASYNC_SEND)) {
+        gpp_t index_array, data_array;
+        size_t offset = 0;
+        pil_init(&index_array, &data_array);
+        pil_enter(2020, pid, 7, index_array, data_array, pid, target, size, offset, buf); // sendrecv
+    } else {
+        if(pid < target) {
+            gpp_t tmp;
+            pil_alloc(&tmp, size);
+            memcpy(tmp.ptr, buf.ptr, size);
+            comm_recv(pid, buf, target, size, 0);
+            comm_send(pid, tmp, target, size, 0);
+            pil_free(tmp);
+        } else { // send first case does not need a temp buffer
+            comm_send(pid, buf, target, size, 0);
+            comm_recv(pid, buf, target, size, 0);
+        }
+    }
+}
+
+void _sendrecv(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int dest, size_t size, size_t offset, gpp_t buf)
+{
+    *target_id = 2021;
+}
+
+void _sendrecv_exit(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid)
+{
+    *target_id = 0;
+}
+
+void comm_send(int pid, gpp_t buf, int dest, size_t size, size_t offset)
+{
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+
+    //printf("%d --> %d (%zu)\n", pid, dest, size);
+    pil_enter(2000, pid, 7, index_array, data_array, pid, dest, size, offset, buf);
+}
+
+void _send(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int dest, size_t size, size_t offset, gpp_t buf)
+{
+    *target_id = 2001;
+}
+
+void _send_exit(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid)
+{
+    *target_id = 0;
+}
+
+void comm_recv(int pid, gpp_t buf, int src, size_t size, size_t offset)
+{
+    gpp_t index_array, data_array;
+    pil_init(&index_array, &data_array);
+
+    //printf("%d <-- %d (%zu)\n", pid, src, size);
+    pil_enter(2010, pid, 7, index_array, data_array, pid, src, size, offset, buf);
+}
+
+void _recv(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int src, size_t size, size_t offset, gpp_t buf)
+{
+    *target_id = 2011;
+}
+
+void _recv_exit(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid)
+{
+    *target_id = 0;
+}
+
+// Make all leaves HTA shared among all threads in SPMD mode
+// Use broadcast operation to acquire pointer to raw data owned by other threads
+void HTA_make_shared_all_leaves(HTA *h)
+{
+    ASSERT(h);
+
+    // Broadcast the pointer to the leaf
+    int np = pil_get_nwCount();
+    int pid = h->pid;
+    int count = 1, count2;
+
+    if(h->height > 1) {
+        // FIXME: this will not work for irregular HTAs
+        HTA* cur_h = h;
+        while(cur_h->height > 1) {
+            count = count * cur_h->num_tiles;
+            cur_h = cur_h->tiles[0];
+        }
+    }
+
+    Leaf leaves[count];
+
+    for(int src_bcast = 0; src_bcast < np; src_bcast++) { // One broadcast from each process
+        count = 0;
+
+	// Get ptrs if I'm the owner, if not get only the number of leaves
+	HTA_collect_leaves_pid(HTA_LEAF_LEVEL(h), h, leaves, &count, src_bcast);
+
+	// Setup broadcast buffer
+	size_t size = count * sizeof(Leaf);
+
+        comm_bcast(pid, src_bcast, leaves, size);
+
+	// Assign ptrs collected to leaf tiles
+	count2 = 0;
+	HTA_set_ptr_to_leaves_pid(HTA_LEAF_LEVEL(h), h, leaves, &count2, src_bcast);
+
+	assert(count == count2);
+    }
+}
+
+// Make a leaf HTA shared among all threads in SPMD mode
+// Use broadcast operation to acquire pointer to raw data owned by other threads
+void HTA_make_shared_leaf(HTA *h)
+{
+    // Check if h is a leaf HTA
+    ASSERT(h);
+    ASSERT(h->height == 1);
+
+    comm_bcast(h->pid, h->home, h->leaf.raw, sizeof(void *));
+}
+
+void _scan_leaf_tile(HTA* h, ReduceOp op, void* sum)
+{
+    ASSERT(h);
+    ASSERT(h->pid == h->home);
+
+    HTA_SCALAR_TYPE type = h->scalar_type;
+    size_t sz = HTA_get_scalar_size(h);
+    int num_elements = h->leaf.num_elem;
+    void* ptr = HTA_get_ptr_raw_data(h);
+
+    ASSERT(num_elements != 0);
+    ASSERT(ptr);
+
+    op(type, ptr, sum);   // first element
+    for(int i = 1; i < num_elements; i++) {
+        ptr += sz;               // move to the next element
+        op(type, ptr, ptr-sz);   // reduce the element being pointed at
+    }
+    memcpy(sum, ptr, sz); // update sum, copy from the last element
+}
+
+// Iterate through all leaves in the tree
+void _scan_subtree(HTA *h, ReduceOp op, void* sum)
+{
+    if(h->height == 1) {
+        _scan_leaf_tile(h, op, sum);
+    } else { // use iterator to go through the leaf tiles
+        Tuple iter[h->height - 1];
+        HTA *t = HTA_iterator_begin(h, iter);
+        do {
+            _scan_leaf_tile(t, op, sum);
+        } while((t = HTA_iterator_next(h, iter)));
+    }
+}
+
+// Goes through first level tiling and perform scan on owned tiles sequentially
+void _local_scan(HTA* h, ReduceOp op, void* local_sum)
+{
+    for(int i = 0; i < h->num_tiles; i++) {
+        HTA* t = h->tiles[i];
+        if(t->pid == t->home) {
+            _scan_subtree(t, op, local_sum);
+        }
+    }
+}
+
+void _final_scan_leaf_tile(HTA* h, ReduceOp op, void* sum)
+{
+    ASSERT(h);
+    ASSERT(h->pid == h->home);
+
+    HTA_SCALAR_TYPE type = h->scalar_type;
+    size_t sz = HTA_get_scalar_size(h);
+    int num_elements = h->leaf.num_elem;
+    void* ptr = HTA_get_ptr_raw_data(h);
+
+    ASSERT(num_elements != 0);
+    ASSERT(ptr);
+
+    op(type, ptr, sum);   // first element
+    for(int i = 1; i < num_elements; i++) {
+        ptr += sz;               // move to the next element
+        op(type, ptr, sum);   // reduce the element being pointed at
+    }
+}
+
+// Iterate through all leaves in the tree
+void _final_scan_subtree(HTA *h, ReduceOp op, void* sum)
+{
+    if(h->height == 1) {
+        _final_scan_leaf_tile(h, op, sum);
+    } else { // use iterator to go through the leaf tiles
+        Tuple iter[h->height - 1];
+        HTA *t = HTA_iterator_begin(h, iter);
+        do {
+            _final_scan_leaf_tile(t, op, sum);
+        } while((t = HTA_iterator_next(h, iter)));
+    }
+}
+
+// add ex_sum to all scalar elements
+void _final_scan(HTA *h, ReduceOp op, void* ex_sum)
+{
+    for(int i = 0; i < h->num_tiles; i++) {
+        HTA* t = h->tiles[i];
+        if(t->pid == t->home) {
+            _final_scan_subtree(t, op, ex_sum);
+        }
+    }
+}
+
+// A special purpose scan that works only for 1D HTAs for now
+// FIXME: this will only work if mapping is BLOCK, not CIRCULAR
+void HTA_scan(HTA *h, ReduceOp op, void* initval)
+{
+    ASSERT(h);
+    ASSERT(h->dim == 1); // FIXME: assume 1D vectors
+
+    size_t sz = HTA_get_scalar_size(h);
+    void* sum = malloc(sz);
+    memcpy(sum, initval, sz);
+    ASSERT(sum);
+
+    // 1. Scan locally to find local sum first
+    _local_scan(h, op, sum);
+
+    //printf("local scan result %d\n", *(int*)sum);
+    // 2. inter-threads exclusive scan on local sums
+    gpp_t index_array, data_array, buf;
+    pil_init(&index_array, &data_array);
+    int np = pil_get_nwCount();
+    int pid = h->pid;
+    int step = 0;
+    int dest, src;
+    HTA_SCALAR_TYPE stype = h->scalar_type;
+    gpp_t sendbuf, recvbuf;
+    pil_alloc(&buf, sz);
+    memcpy(buf.ptr, sum, sz); // initialize buf data with local scan result
+
+    pil_enter(1300, pid, 9, index_array, data_array, pid, &step, initval, sz, 0, buf, &dest, &sendbuf, &src, &recvbuf, np, stype, op);
+
+    memcpy(sum, buf.ptr, sz); // acquire the exscan result
+
+    // 3. accumulate exscan result to all local scalar elements
+    //printf("pid=%d, exscan result %d\n", pid, *(int*)sum);
+    _final_scan(h, op, sum);
+
+    pil_free(buf);
+    free(sum);
+}
+
+//// Linear Broadcast
+//void _bcast(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int src, int *next_dest, int size, int offset, gpp_t buf)
+//{
+//    *next_dest = 0; // start from pid = 0
+//    if(pid == src) { // This one is the source
+//        *target_id = 1002;
+//    } else { // one of the receiver
+//        *target_id = 1004;
+//    }
+//}
+//
+//// Source of broadcast
+//void _bcast_src(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int src, int *next_dest, int *dest, int size, int offset, gpp_t buf)
+//{
+//    if(*next_dest == src) (*next_dest)++; // skip self
+//    if(*next_dest < np) {
+//        *dest = *next_dest;
+//        (*next_dest)++;
+//        *target_id = 1003;
+//    } else {
+//        *target_id = 0;
+//    }
+//}
+
+// Binomial tree-based Broadcast
+void _bcast_tree(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int *round, int pid_norm, int src_bcast, int *src, int *dest, size_t size, int offset, gpp_t *buf)
+{
+    int src_norm, dest_norm;
+    int temp = (int)pow(2, (*round));
+    int temp2 = (int)pow(2, (*round)+1);
+
+    if ( pid_norm < temp) { // Sending in this round
+      *src = pid;
+      dest_norm = pid_norm + temp;
+      *dest = ( dest_norm + src_bcast >= np) ? ( dest_norm + src_bcast - np ) : ( dest_norm + src_bcast );
+      if (dest_norm < np) { // np --> odd number
+        //printf("pid=%d, (bcast_src=%d) sending at round=%d to dest=%d\n", pid, src_bcast, *round, *dest);
+	*target_id = 1103;
+      }
+      else *target_id = 0;
+    }
+    else if ( pid_norm >= temp && pid_norm < temp2 ) { // Receiving in this round
+      *dest = pid;
+      src_norm = pid_norm - temp;
+      *src = ( src_norm + src_bcast >= np) ? ( src_norm + src_bcast - np ) : ( src_norm + src_bcast);
+      //printf("pid=%d, (bcast_src=%d) receiving at round=%d from src=%d\n", pid, src_bcast, *round, *src);
+      *target_id = 1104;
+    }
+    else {
+      *target_id = 1102; // next round for this pid
+   }
+}
+
+void _bcast_iter(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int *round, int pid_norm, int src_bcast, int *src, int *dest, size_t size, int offset, gpp_t* buf)
+{
+    if ( *round == (int)(log(np)/log(2)) ) { // log2(np)
+         *target_id = 0;
+    }
+    else {
+	(*round)++;
+	*target_id = 1101;
+    }
+}
+
+// Another bcast implementation using asynchronous sends
+void _bcast_async_iter(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int *round, int src, int* dest, size_t size, size_t offset, gpp_t* bcastbuf)
+{
+    if(pid == src) {
+        if(*round == pid) (*round)++; // skip self
+        if(*round < np) {
+            *dest = *round; // set message destination
+            //printf("_bcast_async_iter (%d): (%d) ---> (%d)\n", np, pid, *dest);
+            (*round)++; // next round destination
+
+            *target_id = 1002; // send
+        } else {
+            *target_id = 0;
+        }
+    } else {
+        if(*round == 0) { // round here is used to indicate whether the recv has been performed
+            (*round)++;
+            //printf("_bcast_async_iter (%d): (%d) <--- (%d)\n", np, pid, src);
+            *target_id = 1003; // recv
+        } else {
+            *target_id = 0;
+        }
+    }
+}
+
+// Ring all reduce
+void _all_reduc(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, int np, size_t size, int offset, gpp_t buf, int *dest, gpp_t *sendbuf, int *src, gpp_t *recvbuf, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    if(np == 1) {
+        *target_id = 0;
+        return;
+    }
+    *dest = (pid == 0) ? (np - 1) : (pid - 1);
+    *src = (pid == (np - 1)) ? (0) : (pid + 1);
+    //printf("thread (%d): dest = %d, src = %d\n", pid, *dest, *src);
+    // allocate send buffer and receive buffer
+    pil_alloc(sendbuf, size);
+    pil_alloc(recvbuf, size);
+    *step = 0;
+    *target_id = 1201;
+}
+
+void _all_reduc_header(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, int np, size_t size, int offest, gpp_t buf, int dest, gpp_t sendbuf, int src, gpp_t recvbuf, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    if(*step != 0) { // local reduction
+        //double val = *(double*)recvbuf.ptr;
+        //printf("step = %d, pid = %d, received result = %.4lf\n", *step, pid, val);
+        fr_op(stype, buf.ptr, recvbuf.ptr);
+        memcpy(sendbuf.ptr, recvbuf.ptr, size);
+    } else { // first step
+        memcpy(sendbuf.ptr, buf.ptr, size);
+        //printf("pid = %d, send val = %.4lf\n", pid, *(double*)sendbuf.ptr);
+    }
+    // next action
+    if(*step < np-1) {
+        (*step)++;
+        *target_id = (pid%2) ? 1202 : 1204;
+    } else {
+        *target_id = 1206;
+    }
+}
+
+void _all_reduc_exit(uint32_t *target_id, gpp_t index_array, gpp_t data_array, gpp_t sendbuf, gpp_t recvbuf)
+{
+    pil_free(sendbuf);
+    pil_free(recvbuf);
+    *target_id = 0;
+}
+
+void _all_reduc_async(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, size_t size, int offset, void* result, int *dest, gpp_t *sendbuf, int* send_rounds, int *src, gpp_t *recvbuf, int* recv_rounds, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    if(*send_rounds == 0) { // initial setup, put local data in the result buffer first
+        memcpy(result, sendbuf->ptr, size);
+        //printf("thread (%d) local value = %.2lf\n", pid, *(double*)result);
+    }
+
+    if(*send_rounds == pid) (*send_rounds)++; // skip self
+    if(*send_rounds < np) { // async sends
+        *dest = *send_rounds;
+        //printf("thread (%d) -----> (%d)\n", pid, *dest);
+        (*send_rounds)++;
+        *target_id = 1401;
+        return;
+    }
+
+    //printf("thread (%d) finished sending\n", pid);
+    *target_id = 1402;
+}
+
+void _all_reduc_async_recvs(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, size_t size, int offset, void* result, int *dest, gpp_t *sendbuf, int* send_rounds, int *src, gpp_t *recvbuf, int* recv_rounds, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    if(*recv_rounds == pid) (*recv_rounds)++; // skip self
+    if(*recv_rounds <= np) {
+        if((pid != 0 && *recv_rounds > 0) || (pid == 0 && *recv_rounds > 1)) { // perform reduction with newly received data
+            fr_op(stype, result, recvbuf->ptr);
+            //printf("thread (%d) round %d receives %.2lf, result is updated to %.2lf\n", pid, *recv_rounds, *(double*)recvbuf->ptr, *(double*)result);
+        }
+
+        if(*recv_rounds != np) { // perform next receive
+            *src = *recv_rounds;
+            (*recv_rounds)++;
+            *target_id = 1403;
+        } else {
+            *target_id = 0;
+        }
+
+    }
+}
+
+// *NOTICE* it assumes all processes participate
+// For now it is a linear algorithm for prototype implementation and debugging
+void _exscan(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, void* initval, size_t size, int offset, gpp_t buf, int *dest, gpp_t *sendbuf, int* src, gpp_t *recvbuf, int np, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    pil_alloc(sendbuf, size);
+
+    // initialize data buffer for step 0
+    memcpy(sendbuf->ptr, buf.ptr, size); // sendbuf data is inclusive scan result
+    memcpy(buf.ptr, initval, size); // clear buf data for exscan result
+
+    if(np == 1) {
+        *target_id = 0;
+        pil_free(*sendbuf);
+        return;
+    }
+
+    pil_alloc(recvbuf, size);
+    *step = 0;
+    *target_id = 1301;
+}
+
+void _exscan_header(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, size_t size, int offset, gpp_t buf, int *dest, gpp_t sendbuf, int *src, gpp_t recvbuf, int np, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    int dist = 1 << (*step);
+    int to_send = 0, to_recv = 0;
+
+    //printf("pid = %d, step = %d, dist = %d\n", pid, *step, dist);
+    (*step)++;
+
+    if(pid + dist < np) {
+        to_send = 1;
+        *dest = pid + dist;
+        //printf("pid = %d, send to dest = %d\n", pid, *dest);
+    }
+    if(pid - dist >= 0) {
+        to_recv = 1;
+        *src = pid - dist;
+        //printf("pid = %d, recv from src = %d\n", pid, *src);
+    }
+
+    if(to_send && to_recv) {
+        *target_id = (pid%2) ? 1302: 1304;
+    } else if (to_send) {
+        *target_id = 1306; // _pil_send only
+    } else if (to_recv) {
+        *target_id = 1307; // _pil_recv
+    } else {
+        *target_id = 1309; // _exscan_exit
+    }
+}
+
+void _exscan_reduce(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, size_t size, int offset, gpp_t buf, int *dest, gpp_t sendbuf, int *src, gpp_t recvbuf, int np, HTA_SCALAR_TYPE stype, ReduceOp fr_op)
+{
+    //printf("pid = %d received %d\n", pid, *(int*)recvbuf.ptr);
+    fr_op(stype, sendbuf.ptr, recvbuf.ptr);
+    fr_op(stype, buf.ptr, recvbuf.ptr);
+    *target_id = 1301;
+}
+
+void _exscan_exit(uint32_t *target_id, gpp_t index_array, gpp_t data_array, gpp_t sendbuf, gpp_t recvbuf)
+{
+    pil_free(sendbuf);
+    pil_free(recvbuf);
+    *target_id = 0;
+}
+
+void _allgather_iter(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int *send_rounds, int* dest, gpp_t sendbuf, size_t send_size, size_t send_offset, int *recv_rounds, int *src, gpp_t recvbuf, size_t *recv_sizes, size_t* recv_offsets, size_t* size, size_t *offset)
+{
+    if(*send_rounds < np) {
+        *dest = *send_rounds;
+        *size = send_size;
+        *offset = send_offset;
+        (*send_rounds)++;
+        *target_id = 3001;
+        return;
+    }
+
+    if(*recv_rounds < np) {
+        *src = *recv_rounds;
+        *size = recv_sizes[*src];
+        *offset = recv_offsets[*src];
+        (*recv_rounds)++;
+        *target_id = 3002;
+        return;
+    }
+
+    *target_id = 0;
+}
+
+void _alltoall_iter(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int np, int *send_rounds, int* dest, gpp_t sendbuf, size_t* send_sizes, size_t* send_offsets, int *recv_rounds, int *src, gpp_t recvbuf, size_t *recv_sizes, size_t* recv_offsets, size_t* size, size_t *offset)
+{
+    if(*send_rounds < np) {
+        *dest = *send_rounds;
+        *size = send_sizes[*dest];
+        *offset = send_offsets[*dest];
+        (*send_rounds)++;
+        if(*size == 0)
+            *target_id = 4000;
+        else
+            *target_id = 4001;
+        return;
+    }
+
+    if(*recv_rounds < np) {
+        *src = *recv_rounds;
+        *size = recv_sizes[*src];
+        *offset = recv_offsets[*src];
+        (*recv_rounds)++;
+        if(*size == 0)
+            *target_id = 4000;
+        else
+            *target_id = 4002;
+        return;
+    }
+
+    *target_id = 0;
+}
+node(110, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h1_exec(&target_id, index_array, data_array, pid, level, h1op))
+node(120, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h2_exec(&target_id, index_array, data_array, pid, level, h2op))
+node(121, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h2a_exec(&target_id, index_array, data_array, pid, level, h2op))
+node(130, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h3_exec(&target_id, index_array, data_array, pid, level, h3op))
+node(131, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h3a_exec(&target_id, index_array, data_array, pid, level, h3op))
+node(140, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h4_exec(&target_id, index_array, data_array, pid, level, h4op))
+node(150, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h5_exec(&target_id, index_array, data_array, pid, level, h5op))
+node(210, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h1s1_exec(&target_id, index_array, data_array, pid, level, h1s1op))
+node(220, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h2s1_exec(&target_id, index_array, data_array, pid, level, h2s1op))
+node(230, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h3s1_exec(&target_id, index_array, data_array, pid, level, h3s1op))
+node(240, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h4s1_exec(&target_id, index_array, data_array, pid, level, h4s1op))
+node(250, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h5s1_exec(&target_id, index_array, data_array, pid, level, h5s1op))
+
+node(70,  pid, idx, [0:1:0], target_id, [0], [0], _HTA_full_reduce_exec(&target_id, index_array, data_array, pid, fr_op))
+node(80,  pid, idx, [0:1:0], target_id, [0], [0], _HTA_partial_reduce_exec(&target_id, index_array, data_array, pid, fr_op, dim_reduc))
+//node(81,  pid, idx, [0:1:bound], target_id, [0], [0], _HTA_partial_reduce_merge(&target_id, index_array, data_array, bound, idx, fr_op, dim_reduc, vec_size))
+node(90,  pid, idx, [0:1:0], target_id, [0], [0], _HTA_reduce_h2_exec(&target_id, index_array, data_array, pid, fr_op, h2s1op))
+node(100, pid, idx, [0:1:0], target_id, [0], [0], _HTA_tile_to_hta_exec(&target_id, index_array, data_array, pid, level, h3op))
+node(200, pid, idx, [0:1:0], target_id, [0], [0], _HTA_tile_to_hta2_exec(&target_id, index_array, data_array, pid, level, h2op))
+
+node(310, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h1sel_exec(&target_id, index_array, data_array, pid, level, h1op))
+node(320, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h2sel_exec(&target_id, index_array, data_array, pid, level, h2op))
+node(330, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h3sel_exec(&target_id, index_array, data_array, pid, level, h3op))
+node(340, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h4sel_exec(&target_id, index_array, data_array, pid, level, h4op))
+node(350, pid, idx, [0:1:0], target_id, [0], [0], _HTA_map_h5sel_exec(&target_id, index_array, data_array, pid, level, h5op))
+
+// broadcast using async sends
+node(1001, pid, idx, [0:1:0], target_id, [0, 1002, 1003], [0, 1002, 1003], _bcast_async_iter(&target_id, index_array, data_array, pid, np, &round, src, &dest, size, offset, &bcastbuf))
+pil_send(1002, pid, [1001], [1001], dest, size, offset, bcastbuf)
+pil_recv(1003, pid, [1001], [1001], src, size, offset, bcastbuf)
+
+// broadcast (binomial tree, same as pil/examples/208)
+node(1101, pid, idx, [0:1:0], target_id, [0,1102], [0, 1103, 1104, 1102], _bcast_tree(&target_id, index_array, data_array, pid, np, &round, pid_norm, src_bcast, &src, &dest, size, offset, &bcastbuf))
+node(1102, pid, idx, [0:1:0], target_id, [1101, 1103, 1104], [0, 1101], _bcast_iter(&target_id, index_array, data_array, pid, np, &round, pid_norm, src_bcast, &src, &dest, size, offset, &bcastbuf))
+pil_send(1103, pid, [1101], [1102], dest, size, offset, bcastbuf)
+pil_recv(1104, pid, [1101], [1102], src, size, offset, bcastbuf)
+
+// Ring all-reduce
+node(1200, pid, idx, [0:1:0], target_id, [0], [1201, 0], _all_reduc(&target_id, index_array, data_array, pid, &step, np, size, offset, buf, &dest, &sendbuf, &src, &recvbuf, stype, fr_op))
+node(1201, pid, idx, [0:1:0], target_id, [1200, 1203, 1205], [1202, 1204, 1206], _all_reduc_header(&target_id, index_array, data_array, pid, &step, np, size, offset, buf, dest, sendbuf, src, recvbuf, stype, fr_op))
+// send first
+pil_send(1202, pid, [1201], [1203], dest, size, offset, sendbuf)
+pil_recv(1203, pid, [1202], [1201], src, size, offset, recvbuf)
+// recv first
+pil_recv(1204, pid, [1201], [1205], src, size, offset, recvbuf)
+pil_send(1205, pid, [1204], [1201], dest, size, offset, sendbuf)
+node(1206, pid, idx, [0:1:0], target_id, [1201], [0], _all_reduc_exit(&target_id, index_array, data_array, sendbuf, recvbuf))
+
+// Exclusive scan
+node(1300, pid, idx, [0:1:0], target_id, [0], [1301, 0], _exscan(&target_id, index_array, data_array, pid, &step, &initval, size, offset, buf, &dest, &sendbuf, &src, &recvbuf, np, stype, fr_op))
+node(1301, pid, idx, [0:1:0], target_id, [1300, 1306, 1308], [1302, 1304, 1306, 1307, 1309], _exscan_header(&target_id, index_array, data_array, pid, &step, size, offset, buf, &dest, sendbuf, &src, recvbuf, np, stype, fr_op))
+// send first
+pil_send(1302, pid, [1301], [1303], dest, size, offset, sendbuf)
+pil_recv(1303, pid, [1302], [1308], src, size, offset, recvbuf)
+// recv first
+pil_recv(1304, pid, [1301], [1305], src, size, offset, recvbuf)
+pil_send(1305, pid, [1304], [1308], dest, size, offset, sendbuf)
+// send only
+pil_send(1306, pid, [1301], [1301], dest, size, offset, sendbuf)
+// recv only
+pil_recv(1307, pid, [1301], [1308], src, size, offset, recvbuf)
+node(1308, pid, idx, [0:1:0], target_id, [1303, 1305, 1307], [1301], _exscan_reduce(&target_id, index_array, data_array, pid, &step, size, offset, buf, &dest, sendbuf, &src, recvbuf, np, stype, fr_op))
+node(1309, pid, idx, [0:1:0], target_id, [1301], [0], _exscan_exit(&target_id, index_array, data_array, sendbuf, recvbuf))
+
+// Optimized all reduce using async sends
+node(1400, pid, idx, [0:1:0], target_id, [0, 1401], [1401, 1402], _all_reduc_async(&target_id, index_array, data_array, pid, np, size, offset, s1, &dest, &sendbuf, &send_rounds, &src, &recvbuf, &recv_rounds, stype, fr_op))
+pil_send(1401, pid, [1400], [1400], dest, size, offset, sendbuf)
+node(1402, pid, idx, [0:1:0], target_id, [1400, 1403], [1403, 0], _all_reduc_async_recvs(&target_id, index_array, data_array, pid, np, size, offset, s1, &dest, &sendbuf, &send_rounds, &src, &recvbuf, &recv_rounds, stype, fr_op))
+pil_recv(1403, pid, [1402], [1402], src, size, offset, recvbuf)
+
+// comm_send
+node(2000, pid, idx, [0:1:0], target_id, [0], [2001], _send(&target_id, index_array, data_array, pid, dest, size, offset, buf))
+pil_send(2001, pid, [2000], [2002], dest, size, offset, buf)
+node(2002, pid, idx, [0:1:0], target_id, [2001], [0], _send_exit(&target_id, index_array, data_array, pid))
+
+// comm_recv
+node(2010, pid, idx, [0:1:0], target_id, [0], [2011], _recv(&target_id, index_array, data_array, pid, src, size, offset, buf))
+pil_recv(2011, pid, [2010], [2012], src, size, offset, buf)
+node(2012, pid, idx, [0:1:0], target_id, [2011], [0], _recv_exit(&target_id, index_array, data_array, pid))
+
+// comm_sendrecv
+node(2020, pid, idx, [0:1:0], target_id, [0], [2021], _sendrecv(&target_id, index_array, data_array, pid, dest, size, offset, buf))
+pil_send(2021, pid, [2020], [2022], dest, size, offset, buf)
+pil_recv(2022, pid, [2021], [2023], dest, size, offset, buf)
+node(2023, pid, idx, [0:1:0], target_id, [2022], [0], _sendrecv_exit(&target_id, index_array, data_array, pid))
+
+// allgather
+node(3000, pid, idx, [0:1:0], target_id, [0, 3001, 3002], [0, 3001, 3002], _allgather_iter(&target_id, index_array, data_array, pid, np, &send_rounds, &dest, sendbuf, send_size, send_offset, &recv_rounds, &src, recvbuf, recv_sizes, recv_offsets, &bufsize, &bufoffset))
+pil_send(3001, pid, [3000], [3000], dest, bufsize, bufoffset, sendbuf)
+pil_recv(3002, pid, [3000], [3000], src, bufsize, bufoffset, recvbuf)
+
+// alltoall
+node(4000, pid, idx, [0:1:0], target_id, [0, 4000, 4001, 4002], [0, 4000, 4001, 4002], _alltoall_iter(&target_id, index_array, data_array, pid, np, &send_rounds, &dest, sendbuf, send_sizes, send_offsets, &recv_rounds, &src, recvbuf, recv_sizes, recv_offsets, &bufsize, &bufoffset))
+pil_send(4001, pid, [4000], [4000], dest, bufsize, bufoffset, sendbuf)
+pil_recv(4002, pid, [4000], [4000], src, bufsize, bufoffset, recvbuf)
+
+void pil_main(int argc, char** argv, int rank)
+{
+    //SET_SPMD_PID(rank);
+    for(int i = 0; i < CFG_LIST_LENGTH; i++) {
+        char* val_str = getenv(CFG_LIST[i].name);
+        if(val_str != NULL)
+            assert(CFG_set(i, atoi(val_str)));
+        // else the default value is used
+        // MASTER_PRINTF("Config: %s = %d\n", CFG_LIST[i].name, CFG_LIST[i].val);
+    }
+    HTA_barrier(rank); // make sure the config is set by the master thread
+    hta_init(rank);
+#ifdef TRACING
+    tracing_hook_into_swarm();
+    printf("swarm tracing enabled...\n");
+#endif
+#ifdef PROFILE
+    ProfilerStart(NULL);
+#endif
+    hta_main(argc, argv, rank);
+#ifdef PROFILE
+    ProfilerStop();
+#endif
+#ifdef TRACING
+    char fn[100];
+    sprintf(fn,"tracing-%d.log", getpid());
+    tracing_emit_log(fn);
+#endif
+}
+

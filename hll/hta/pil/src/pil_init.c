@@ -25,6 +25,7 @@ void pil_init(gpp_t *index_array, gpp_t *data_array)
 	data_array->guid = NULL_GUID;
 	data_array->ptr = NULL;
 //#endif // PIL2OCR
+
 #ifdef PIL2AFL
 #endif // PIL2AFL
 }

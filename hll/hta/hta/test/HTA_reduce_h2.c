@@ -11,7 +11,7 @@
 
 void SUMSQUARE(HTA* h1, HTA* dummy, void* s)
 {
-    int32_t sum = 0;
+    int32_t sum = *(int32_t*)s;
     Tuple iter[h1->height - 1];
     Tuple_iterator_begin(h1->dim, h1->height-1, iter);
     do {
@@ -23,32 +23,35 @@ void SUMSQUARE(HTA* h1, HTA* dummy, void* s)
             int32_t x = p[i];
             sum += x * x;
         }
-    } while(Tuple_iterator_next(h1->tiling, iter));
+    } while(Tuple_iterator_next(&h1->tiling, iter));
 
     *((int32_t*)s) = sum;
 }
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     int32_t M[MATRIX_SIZE];
-    int i;
+    int i, err;
     int32_t result = 0;
     int32_t check = 0;
 
+    Tuple t0 = Tuple_create(2, 3, 3);
+    Tuple t1 = Tuple_create(2, 5, 5);
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
+
+    Tuple mesh = HTA_get_vp_mesh(2);
+    Tuple_print(&mesh);
+
     Dist dist;
+    Dist_init(&dist, DIST_BLOCK, &mesh);
     // create an empty shell
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
-            2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
+    HTA *h = HTA_create_with_pid(pid, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
+            2, t0, t1);
 
     srand(time(NULL));
     // create a 2D matrix
     for(i = 0; i < MATRIX_SIZE; i++) {
-        M[i] = rand()%100;
+        M[i] = i%100;
     }
 
     HTA_init_with_array(h, M);
@@ -64,19 +67,17 @@ int main()
     printf("Check result\n");
     printf("result = %d\n", result);
     printf("check = %d\n", check);
-    if(result == check)
+    if(result == check) {
         printf("** result matches! **\n");
+        err = SUCCESS;
+    }
     else {
         printf("** result does not match! **\n");
-        exit(ERR_UNMATCH);
+        err = ERR_UNMATCH;
     }
 
     HTA_destroy(h);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
-    exit(SUCCESS);
+    exit(err);
     return 0;
 }

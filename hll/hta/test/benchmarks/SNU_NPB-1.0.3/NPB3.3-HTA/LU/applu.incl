@@ -198,7 +198,8 @@ void verify(double xcr[5], double xce[5], double xci,
 
 // HTA Functions *****************************************
 void sync_boundary(HTA* h1);
-void sync_boundary_HTA(HTA* dest, HTA* s1, HTA* s2);
+//void sync_boundary_HTA(HTA* dest, HTA* s1, HTA* s2);
+void sync_boundary_HTA(HTA* dest, HTA* s1);
 void setbv_HTA();
 void setbv_op_HTA(HTA* s1);
 void setiv_HTA();
@@ -217,19 +218,13 @@ void l2norm_HTA(double sum[5]);
 void sum_sq_HTA(HTA* d, HTA* s1);
 void jacld_HTA();
 void jacld_compute_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, HTA* s6, HTA* s7, void *scalar);
-// void jacld_diagonal_a_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, void *scalar);
-// void jacld_b_c_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, void *scalar);
 void jacu_HTA();
 void jacu_compute_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, HTA* s6, HTA* s7, void *scalar);
-// void jacu_diagonal_a_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, void *scalar);
-// void jacu_b_c_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, void *scalar);
+int selector(HTA *h, Tuple t);
 void blts_HTA(int iter);
-void blts_compute_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, void *scalar);
-void jacld_blts_compute2_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, void *scalar);
-//void jacld_blts_compute_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, HTA* s6, HTA* s7, HTA *s8, void *scalar);
+void jacld_blts_compute2_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4);
 void buts_HTA(int iter);
-void jacu_buts_compute2_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, void *scalar);
-void buts_compute_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4, HTA* s5, void *scalar);
+void jacu_buts_compute2_HTA(HTA* s1, HTA* s2, HTA* s3, HTA* s4);
 void error_HTA();
 void error_sq_HTA(HTA* d_tile, HTA* s1);
 void pintgr_HTA();

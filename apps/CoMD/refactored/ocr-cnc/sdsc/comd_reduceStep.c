@@ -1,7 +1,7 @@
 #include "comd.h"
 
 
-void reduceStep (cncTag_t i, cncTag_t iter, BItem b, redcItem rd, ITItem it, TBoxesItem tb, comdCtx *ctx) {
+void comd_reduceStep (cncTag_t i, cncTag_t iter, BItem b, redcItem rd, ITItem it, TBoxesItem tb, comdCtx *ctx) {
 
 //    if(i==0)
 //        PRINTF("reducesStep %d, %d, %d\n", i, iter, it );

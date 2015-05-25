@@ -50,11 +50,11 @@ $context {
 // the triangle, then calling the steps to compute the two
 // edge cells in the next row. These edge cell entries spawn
 // the computation for the rest of the triangle.
-( $init: () )
+( $initialize: () )
  -> [ out @ cells:    0, 0 ],
     ( addToLeftEdge:  1, 0 ),
     ( addToRightEdge: 1, 1 );
 
 // The computation is done when we've computed [ cells: n, k ].
 // Note that the #n notation means that n is a field in the context.
-( $finalize: () ) <- [ totalChoices @ cells: #n, #k ]; 
+( $finalize: () ) <- [ totalChoices @ cells: #n, #k ];

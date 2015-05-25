@@ -1,36 +1,108 @@
-// Example 29: A compilcated send/recv test.
-#define NUM_PROCS (10)
+// Example: An all-reduce (of a single scalar value) implementation
+#include <string.h>
+#define MIN(a, b) ((a < b) ? (a):(b))
 
-int i;
-int target_id;
+int pid;
+int idx;
+uint32_t target_id;
+int step;
+int np;
+int src;
+int dest;
+int next_dest;
+int offset;
+size_t size;
 
-_pil_node f void f(int *target_id)
+gpp_t index_array;
+gpp_t data_array;
+gpp_t buf;
+gpp_t sendbuf;
+gpp_t recvbuf;
+
+void _all_reduce(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, int np, size_t size, int offset, gpp_t buf, int *dest, gpp_t *sendbuf, int *src, gpp_t *recvbuf)
 {
-	_pil_context int num;
-	_pil_context size_t size;
-	int src = pil_get_nwID();
-	int target = (src + 1) % NUM_PROCS;
-	size = sizeof(int);
-	num = src * 10;
-	printf("%d: sending %d to node %d\n", pil_get_nwID(), num, target); fflush(stdout);
-        // barrier needed
-	pil_send(target, &num, size, recv);
-	pil_recv(src, &num, size, recv);
-	*target_id = 0;
+    if(np == 1) {
+        *target_id = 0;
+        return;
+    }
+    *dest = (pid == 0) ? (np - 1) : (pid - 1);
+    *src = (pid == (np - 1)) ? (0) : (pid + 1);
+    printf("thread (%d): dest = %d, src = %d\n", pid, *dest, *src);
+    // allocate send buffer and receive buffer
+    pil_alloc(sendbuf, size);
+    pil_alloc(recvbuf, size);
+    *step = 0;
+    *target_id = 1101;
 }
 
-_pil_nodelet f void recv(int *target_id)
+void _all_reduce_header(uint32_t *target_id, gpp_t index_array, gpp_t data_array, int pid, int *step, int np, size_t size, int offset, gpp_t buf, int dest, gpp_t sendbuf, int src, gpp_t recvbuf)
 {
-	// _pil_context int num inherited from above
-	// _pil_context size_t size inherited from above
-	fprintf(stdout, "%d: num = %d\n", pil_get_nwID(), num); fflush(stdout);
+    if(*step != 0) { // local reduction
+        *((double*)(buf.ptr)) = MIN((*((double*)buf.ptr)),(*(double*)recvbuf.ptr));
+        memcpy(sendbuf.ptr, recvbuf.ptr, size);
+    } else { // first step
+        memcpy(sendbuf.ptr, buf.ptr, size);
+    }
+    // next action
+    if(*step < np-1) {
+        (*step)++;
+        *target_id = (pid%2) ? 1102 : 1104;
+    } else {
+        *target_id = 1106;
+    }
 }
 
-node(1, i, [0:1:9], target_id, [0], f(&target_id))
-
-void pil_main(int argc, char **argv)
+void _all_reduce_exit(uint32_t *target_id, gpp_t index_array, gpp_t data_array, gpp_t sendbuf, gpp_t recvbuf)
 {
-	pil_enter(1, 0);
-	if (pil_get_nwID() == 0)
-		printf("SUCCESS\n");
+    pil_free(sendbuf);
+    pil_free(recvbuf);
+    *target_id = 0;
+}
+
+// Ring all-reduce
+node(1100, pid, idx, [0:1:0], target_id, [0], [1101, 0], _all_reduce(&target_id, index_array, data_array, pid, &step, np, size, offset, buf, &dest, &sendbuf, &src, &recvbuf))
+node(1101, pid, idx, [0:1:0], target_id, [1100, 1103, 1105], [1102, 1104, 1106], _all_reduce_header(&target_id, index_array, data_array, pid, &step, np, size, offset, buf, dest, sendbuf, src, recvbuf))
+// send first
+pil_send(1102, pid, [1101], [1103], dest, size, offset, sendbuf)
+pil_recv(1103, pid, [1102], [1101], src, size, offset, recvbuf)
+// recv first
+pil_recv(1104, pid, [1101], [1105], src, size, offset, recvbuf)
+pil_send(1105, pid, [1104], [1101], dest, size, offset, sendbuf)
+node(1106, pid, idx, [0:1:0], target_id, [1101], [0], _all_reduce_exit(&target_id, index_array, data_array, sendbuf, recvbuf))
+
+
+void pil_main(int argc, char **argv, int pid)
+{
+    int i;
+    gpp_t index_array, data_array;
+    int step = 0;
+    int dest, src;
+    int np;
+    int offset;
+    size_t size;
+    gpp_t buf, sendbuf, recvbuf;
+    double result = 0.0;
+
+    // Broadcast a double value
+    pil_init(&index_array, &data_array);
+    np = pil_get_nwCount();
+    // Setup broadcast buffer
+    size = sizeof(double);
+    offset = 0;
+    pil_alloc(&buf, size);
+    *((double*)buf.ptr) = pid + 1.0;
+
+    for(i=0; i<1; i++) {
+        pil_enter(1100, pid, 12, index_array, data_array, pid, &step, np, size, offset, buf, &dest, &sendbuf, &src, &recvbuf);
+    }
+    // At this point, the broadcast is done
+    result = *((double*)buf.ptr);
+    pil_free(buf);
+
+    // Verification
+    if (result == 1.0) {
+        printf("%d: SUCCESS\n", pid);
+    } else {
+        printf("%d: FAILURE (%.4lf)\n", pid, result);
+    }
 }

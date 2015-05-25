@@ -1,7 +1,7 @@
 #include "comd.h"
 
 
-void generateForceTagsStep (cncTag_t iter, TBoxesItem tb, comdCtx *ctx) {
+void comd_generateForceTagsStep (cncTag_t iter, TBoxesItem tb, comdCtx *ctx) {
 //    PRINTF("CnC: generateForceTags %d\n", iter);
 
     int i;

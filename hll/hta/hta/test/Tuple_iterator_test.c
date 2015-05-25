@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "Tuple.h"
 
-#ifdef PILHTA
+#if defined(PILHTA) || defined(MPI)
 int hta_main(int argc, char** argv)
 #else
 int main()

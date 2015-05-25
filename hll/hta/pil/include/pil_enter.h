@@ -9,4 +9,4 @@
 #define MUL 1, 3
 */
 
-void pil_enter(int func, int num_args, ...);
+void pil_enter(int func, int _pil_rank, int num_args, ...);

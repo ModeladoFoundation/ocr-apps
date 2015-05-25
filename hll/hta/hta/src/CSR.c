@@ -2,28 +2,30 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include "Debug.h"
 #include "CSR.h"
 
+#define CHECK_RETURN(val, call) (assert(val == (call)))
 void CSR_read_rcs_file(const char *filename, int* num_rows, int* num_cols, int* nnz, double** val_ptr, int** col_ind, int** row_ptr)
 {
     assert(filename && num_rows && num_cols && nnz && val_ptr && col_ind && row_ptr);
     FILE* fp = fopen(filename, "r");
     assert(fp);
 
-    fscanf(fp, "%d %d", num_rows, nnz);
+    CHECK_RETURN(2, fscanf(fp, "%d %d", num_rows, nnz));
 
     *col_ind = (int*)malloc(sizeof(int) * (*nnz));
     *val_ptr = (double*)malloc(sizeof(double) * (*nnz));
     *row_ptr = (int*)malloc(sizeof(int) * ((*num_rows) + 1));
 
     for(int i = 0; i <= *num_rows; i++) {
-        fscanf(fp, "%d", (*row_ptr) + i);
+        CHECK_RETURN(1, fscanf(fp, "%d", (*row_ptr) + i));
     }
     for(int i = 0; i < *nnz; i++) {
-        fscanf(fp, "%d", (*col_ind) + i);
+        CHECK_RETURN(1, fscanf(fp, "%d", (*col_ind) + i));
     }
     for(int i = 0; i < *nnz; i++) {
-        fscanf(fp, "%lf", (*val_ptr) + i);
+        CHECK_RETURN(1, fscanf(fp, "%lf", (*val_ptr) + i));
     }
     *num_cols = *num_rows;
 
@@ -35,15 +37,15 @@ void CSR_read_dense_file(const char *filename, int* num_rows, int* num_cols, int
     FILE* fp = fopen(filename, "r");
     assert(fp);
 
-    int row, col;
-    fscanf(fp, "%d %d\n", &row, &col);
+    int row = 0, col = 0;
+    CHECK_RETURN(2, fscanf(fp, "%d %d\n", &row, &col));
     *nnz = 0;
     for(int i = 0; i < row; i++) {
         row_ptr[i] = *nnz;
         for(int j = 0; j < col; j++)
         {
-            double val;
-            fscanf(fp, "%lf", &val);
+            double val = 0.0;
+            CHECK_RETURN(1, fscanf(fp, "%lf", &val));
             if(val != 0.0)
             {
                 col_ind[*nnz] = j;

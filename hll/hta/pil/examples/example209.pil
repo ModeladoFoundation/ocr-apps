@@ -1,0 +1,61 @@
+// Example 25: A basic barrier test.
+
+#define N (500)
+
+int i;
+int barrier_num;
+int rank;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+void f(int *target, gpp_t index_array, gpp_t data_array, int rank)
+{
+	int *ia = (int *) index_array.ptr;
+	assert(ia[0] == 0);
+	assert(ia[1] == 1);
+
+	gpp_t *da = data_array.ptr;
+	int *d = (int *) da[0].ptr;
+
+	printf("%d: the magic number is %d\n", rank, *d);
+
+	*target = 0;
+}
+
+node(1, rank, i, [1:1:1], target, [0], [0], f(&target, index_array, data_array, rank))
+
+void pil_main(int argc, char **argv, int rank)
+{
+	gpp_t index_array;
+	gpp_t data_array;
+	gpp_t data;
+
+	pil_init(&index_array, &data_array);
+
+	// alloc the arrays
+	pil_alloc(&data, sizeof(int));
+	pil_alloc(&index_array, 2*sizeof(int));
+	pil_alloc(&data_array, 1*sizeof(gpp_t));
+
+	// set the magic number
+	int *d = data.ptr;
+	*d = 42;
+
+	// initialize the index array
+	int *ia = (int *) index_array.ptr;
+	ia[0] = 0;
+	ia[1] = 1;
+
+	// initialize the data array
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	da[0].guid = data.guid; // only set the guid because that is what the HTA library does.
+
+	// do the work
+	pil_enter(1, rank, 3, index_array, data_array, rank);
+
+	pil_barrier_all(rank);
+	if (rank == 0) {
+		printf("SUCCESS\n");
+	}
+}

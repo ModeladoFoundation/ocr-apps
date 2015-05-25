@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <assert.h>
-#include "RefCount.h"
 #include "Region.h"
 
-#ifdef PILHTA
+#if defined(PILHTA) || defined(MPI)
 int hta_main(int argc, char** argv)
 #else
 int main()

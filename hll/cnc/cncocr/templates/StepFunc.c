@@ -6,9 +6,9 @@
 /**
  * Step function defintion for "{{stepfun.collName}}"
  */
-void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True)
+void {{util.qualified_step_name(stepfun)}}({{ util.print_tag(stepfun.tag, typed=True)
         }}{{ util.print_bindings(stepfun.inputItems, typed=True)
-        }}{{g.name}}Ctx *ctx) {
+        }}{{util.g_ctx_param()}}) {
 {% if stepfun.rangedInputItems %}
     //
     // INPUTS

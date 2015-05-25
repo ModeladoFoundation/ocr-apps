@@ -14,13 +14,13 @@ s`// TODO: initialize custom arguments`20`;
 }' Main.c
 
 sed -i '{
-s`.*{ // Access "evens" inputs$`    int sum = 0;\n&`;
+s`.*{ // Access "evens" inputs$`    int sum = 0;\n&.`;
 s`/. TODO: Do something with \([^ ]*\) ./`sum += \1;`;
 s`/. TODO: Initialize \([^ ]*\) ./`*\1 = sum;`;
 }' EvenOddSums_sumEvens.c
 
 sed -i '{
-s`.*{ // Access "odds" inputs$`    int sum = 0;\n&`;
+s`.*{ // Access "odds" inputs$`    int sum = 0;\n&.`;
 s`/. TODO: Do something with \([^ ]*\) ./`sum += \1;`;
 s`/. TODO: Initialize \([^ ]*\) ./`*\1 = sum;`;
 }' EvenOddSums_sumOdds.c

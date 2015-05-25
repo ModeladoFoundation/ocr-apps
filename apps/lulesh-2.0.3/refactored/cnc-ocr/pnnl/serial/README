@@ -1,0 +1,7 @@
+This is an intermediate serial version of LULESH in the conversion from
+the iCnC (C++) version to the CnC-OCR (C) version.
+
+gcc lulesh.c -lm
+
+Domain size is set to 4, modify main in lulesh.c
+TODO: Parse arguments to get domain size

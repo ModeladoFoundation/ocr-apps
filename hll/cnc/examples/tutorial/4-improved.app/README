@@ -16,7 +16,7 @@ The included Main.c file parses the command line arguments. Since
 these parameters are set in the global graph context, there is no
 need to hard-code them in a header file (as done previously).
 
-make run
+make run WORKLOAD_ARGS="4 16 4"
 
 The skeleton functions have been fully fleshed-out in the provided
 Stencil1D.c and Stencil1D_stencil.c files. The edge cases are also

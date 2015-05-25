@@ -1,29 +1,85 @@
-
-CC = gcc
+CC ?=gcc
 RM = rm -f
-OPT ?= -O3 -Wall
-DEBUG =
-#OPT ?= -O0 -Wall
+ifeq ($(CC), icc)
+    OPT ?= -O3 -g -Wall
+else
+    OPT ?= -O3 -g -Wall -Wno-unused-variable
+endif
+
+OPT += -DCIRC_BUF_SIZE=32 -DPIL_PREALLOC=1 -DPIL_PREALLOC_SIZE=26214400 #-DPIL_PREALLOC_VERIFY=1
+#OPT = -O0 -Wall -Wno-unused-variable
 #DEBUG = -g -DDEBUG
 
+# WARNING: try to set these options on command line. If
+#          you want to modify them here, make sure there
+#          are no extra space characters!
 
-LIB = $(HTAHLL)/hta/lib
+# Default build SPMD
+SPMD_PIL ?=1
+
+# Profiling with cpu profiler, default off
+PROFILE ?=0
+
+# Link with SWARM tracing library, default off
+TRACING ?=0
+
+ifeq ($(TRACING), 1)
+    $(info TRACING is on)
+    DTRACING = -DTRACING
+    LSWARM = -lswarm-tracing
+else
+    $(info TRACING is off)
+    DTRACING =
+    LSWARM = -lswarm
+endif
+
+ifeq ($(PROFILE), 1)
+    $(info PROFILE is on)
+    DPROFILE = -DPROFILE
+    LPROFILE = -lprofiler -ltcmalloc
+    PROFILE_INC = $(GPERFTOOLS_INSTALL)/include
+    PROFILE_LIB = $(GPERFTOOLS_INSTALL)/lib
+    ifndef GPERFTOOLS_INSTALL
+    $(error !!WARNING!! GPERFTOOLS_INSTALL environment variable must be defined to enable profiling)
+    endif
+else
+    $(info PROFILE is off)
+    DPROFILE =
+    LPROFILE =
+endif
+
+ifndef UHPC
+$(error !!WARNING!! UHPC environment variable must be defined)
+endif
+LIB = $(UHPC)/hta/lib
 HTALIB = libhta
-SHTALIB = $(LIB)/$(HTALIB).so
+#SHTALIB = $(LIB)/$(HTALIB).so
+HTA_PIL_LIB = $(LIB)/$(HTALIB).so
+HTA_SPMD_PIL_LIB = $(LIB)/$(HTALIB)_spmd.so
+HTA_MPI_LIB = $(LIB)/$(HTALIB)_mpi.so
 
-PIL = $(HTAHLL)/pil
+PIL = $(UHPC)/pil
 PIL_SRC=$(PIL)/src/pil_mem.c $(PIL)/src/pil_init.c $(PIL)/src/pil_nw.c
 PIL_INC = $(PIL)/include
 
-HTA = $(HTAHLL)/hta
+HTA = $(UHPC)/hta
 HTA_LIB = $(HTA)/lib
 HTA_SRC = $(HTA)/src
 HTA_INC = $(HTA)/include
 HTA_TEST = $(HTA)/test
 
-SWARM = $(HTAHLL)/swarm/releases/latest
+SWARM = $(UHPC)/swarm/releases/latest
 SWARM_INC = $(SWARM)/include
+SWARM_LIB = $(SWARM)/lib
+SWARM_LINK = -lpthread -L$(SWARM_LIB) $(LSWARM) -lrt -lm
+SWARM_LINK = -lpthread -L$(SWARM_LIB) $(LSWARM) -lrt -lm
+export SCALECC_CPP=$(CC) -std=gnu99 -E -xc
 
+ifndef OCR_INSTALL
+$(warning !!WARNING!! OCR_INSTALL environment variable must be defined)
+endif
 OCR_FLAGS=-L$(OCR_INSTALL)/lib -I$(OCR_INSTALL)/include
 OCR_LDFLAGS=-locr
 
+# MPI
+MPICC ?=mpicc

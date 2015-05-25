@@ -18,6 +18,9 @@
 #if defined(__i386__) || defined(__x86_64__)
 #    define CNCOCR_x86 1
 #elif defined(TG_ARCH)
+#    ifdef CNC_DEBUG_LOG
+#        error "CnC debug logging is not supported on FSim (use trace instead)."
+#    endif /* CNC_DEBUG_LOG */
 #    define CNCOCR_TG 1
 #else
 #    warning UNKNOWN PLATFORM (possibly unsupported)
@@ -30,13 +33,18 @@
 #include <assert.h>
 #endif
 
+#ifdef CNCOCR_TG
+// use TG printf function
+#define printf PRINTF
+#endif
+
 
 /********************************\
 ******** CNC TYPE ALIASES ********
 \********************************/
 
 typedef s64 cncTag_t; // tag components
-typedef ocrGuid_t cncItemCollection_t; // item collections
+typedef struct ItemCollEntry **cncItemCollection_t; // item collections
 
 /*************************************\
 ******** CNC HELPER FUNCTIONS ********
@@ -55,8 +63,15 @@ void cncAutomaticShutdown(ocrGuid_t doneEvent);
 #warning Your compiler might not support variadic macros, in which case the CNC_REQUIRE macro is not supported. You can disable this warning by setting NO_VARIADIC_MACROS to 0, or disable the macro definitions by setting it to 1.
 #endif
 
+// FIXME - Should be able to handle this better after Bug#545 is addressed
+#if CNCOCR_x86
+#define CNC_ABORT(err) do { ocrShutdown(); exit(err); } while (0)
+#else
+#define CNC_ABORT(err) ocrAbort(err)
+#endif
+
 #if !NO_VARIADIC_MACROS
-#define CNC_REQUIRE(cond, ...) do { if (!(cond)) { PRINTF(__VA_ARGS__); ocrShutdown(); } } while (0)
+#define CNC_REQUIRE(cond, ...) do { if (!(cond)) { PRINTF(__VA_ARGS__); CNC_ABORT(1); } } while (0)
 #endif
 
 /* squelch "unused variable" warnings */
@@ -112,11 +127,17 @@ static inline void *_cncItemDataPtr(void *item) {
 ********* CNC COMPATIBILITY FUNCTIONS ********
 \********************************************/
 
-// XXX - re-enalbe these when we get pdMalloc from OCR
-//#define MALLOC pdMalloc
-//#define FREE   pdFree
+#define MALLOC malloc
+#define FREE free
 
 void *cncMalloc(size_t count);
 void cncFree(void *itemPtr);
+
+#ifdef CNC_DEBUG_LOG
+/**********************************\
+********* CNC DEBUG LOGGING ********
+\**********************************/
+extern FILE *cncDebugLog;
+#endif /* CNC_DEBUG_LOG */
 
 #endif /*_CNCOCR_H_*/

@@ -4,6 +4,8 @@
 #include <string.h>
 #include "Debug.h"
 #include "HTA.h"
+#include "HTA_operations.h"
+#include "Comm.h"
 #include "Tuple.h"
 #include "Distribution.h"
 #include "test.h"
@@ -21,59 +23,51 @@ void mat_print(int width, uint32_t m[])
         printf("\n");
     }
 }
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     uint32_t M[MATRIX_SIZE];
     uint32_t R1[MATRIX_SIZE];
-    int i;
+    int i, err;
 
     Tuple t0 = Tuple_create(2, 3, 3);
     Tuple t1 = Tuple_create(2, 5, 5);
-    //Tuple t2 = Tuple_create(2, 4, 4);
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
+    Tuple mesh = HTA_get_vp_mesh(2);
+    Tuple_print(&mesh);
+
     Dist dist;
-    Dist_init(&dist, 0);
+    Dist_init(&dist, DIST_BLOCK, &mesh);
     // create an empty shell
-    HTA* h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT32, 2, t0, t1);
+    HTA* h = HTA_create_with_pid(pid, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT32, 2, t0, t1);
 
     // create a 2D matrix
-    srand(time(NULL)); /* FIXME: using random to initialize distributed model will fail */
     for(i = 0; i < MATRIX_SIZE; i++)
     {
-        M[i] = rand() % 1000;
-        //M[i] = i%4;
-        R1[i] = 0;
+        M[i] = i%8 + 1;
+        R1[i] = 9;
     }
 
     // initialize the HTA using 2D matrix
     HTA_init_with_array(h, M); // copy from process memory to memory allocated for HTAs
-
-    HTA_to_array(h, R1); // copy from HTA memory to process memory
-    printf("Original matrix content\n");
-    mat_print(MATRIX_WIDTH, M);
-    printf("Result matrix content\n");
-    mat_print(MATRIX_WIDTH, R1);
+    HTA_flatten(R1,NULL, NULL, h); // copy from HTA memory to process memory
 
     // verify the result
-    printf("comparing %zd bytes\n", sizeof(R1));
-    if(memcmp(M, R1, sizeof(R1)) == 0)
-        printf("all results match!\n");
-    else {
-        printf("incorrect result detected!\n");
-        exit(ERR_UNMATCH);
+    printf("thread(%d) comparing %zd bytes\n", pid, sizeof(R1));
+    if(memcmp(M, R1, sizeof(R1)) == 0) {
+        printf("thread(%d) all results match!\n", pid);
+        err = SUCCESS;
     }
+    else {
+        printf("thread(%d) results mismatch!\n", pid);
+        err = ERR_UNMATCH;
+    }
+
 
     HTA_destroy(h);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
-    exit(SUCCESS);
+    int all_err = SUCCESS;
+    comm_allreduce(pid, REDUCE_MAX, &err, &all_err, HTA_SCALAR_TYPE_INT32);
+    assert(all_err==SUCCESS);
     return 0;
 }

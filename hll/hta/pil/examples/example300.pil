@@ -1,48 +1,45 @@
-#include <omp.h> // needed for omp_get_wtime()
-#include "benchmark.h"
-#include "benchmark_pil_mmm_rstream.h"
+// example 300. An example for task parallel PIL
 
-#define DEBUG 0
+int targets[10];
+int _pil_task_names[10];
+//int targets;
+int rank;
+int target;
+int _pil_num_targets;
+gpp_t index_array;
+gpp_t data_array;
 
-//#define X 1024
-//#define Y 1024
-//#define Z 1024
-
-//-----------------------------------------------------------------------------
-// global data
-//-----------------------------------------------------------------------------
-
-int i;
-int end;
-int target_id;
-int argc;
-char **argv;
-// A[X][Z]
-double A[X][Z];
-// B[Z][Y]
-double B[Z][Y];
-// C[X][Y]
-double C[X][Y];
-double kernel_start_time;
-//struct timer kernel_timer;
-
-//-----------------------------------------------------------------------------
-// functions
-//-----------------------------------------------------------------------------
-
-void usage()
+void f1(int *targets, gpp_t index_array, gpp_t data_array, int *_pil_num_targets, int *_pil_task_names)
 {
-	printf("Usage:\n\n");
-	printf("\t> benchmark_c_mmm\n");
+	printf("f1\n"); fflush(stdout);
+	//*targets = 2;
+	*_pil_num_targets = 2;
+	targets[0] = 2;
+	targets[1] = 3;
+	_pil_task_names[0] = 0;
+	_pil_task_names[1] = 1;
 }
 
+void f2(int *target, gpp_t index_array, gpp_t data_array)
+{
+	sleep(1);
+	printf("f2\n"); fflush(stdout);
+	*target = 4;
+}
 
-//-----------------------------------------------------------------------------
-// pil program
-//-----------------------------------------------------------------------------
+void f3(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f3\n"); fflush(stdout);
+	*target = 4;
+}
 
-node(1, NULL, [1:1:1], target_id, [2], main_function(&target_id, argc, argv, &end, A, B, C, &kernel_start_time))
-// TODO: see if you can pass X, Y, and Z not by reference and not screw up the type system
-node(2, i, [0:1:end], target_id, [3], parallel_multiply_function(&target_id, i, A, B, C))
-node(3, NULL, [1:1:1], target_id, [0], finalize_function(&target_id, C, &kernel_start_time))
+void f4(int *target, gpp_t index_array, gpp_t data_array)
+{
+	printf("f4\n"); fflush(stdout);
+	*target = 0;
+}
 
+node(1, rank, NULL, [1:1:1], targets, [0], [(2,3)], f1(targets, index_array, data_array, &_pil_num_targets, _pil_task_names))
+node(2, rank, NULL, [1:1:1], target, [1], [4], f2(&target, index_array, data_array))
+node(3, rank, NULL, [1:1:1], target, [1], [4], f3(&target, index_array, data_array))
+node(4, rank, NULL, [1:1:1], target, [(2,3)], [0], f4(&target, index_array, data_array))

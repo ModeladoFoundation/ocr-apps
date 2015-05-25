@@ -2,11 +2,7 @@
 #include <assert.h>
 #include "Tuple.h"
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     Tuple t[3];
     //t[0] = Tuple_create(2, 5, 3);

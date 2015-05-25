@@ -57,8 +57,11 @@ void Tuple_clone_array(Tuple *d, const Tuple *s);
 // Index computation
 // ------------------------------------------
 
-/// Convert ND index to 1D index
+/// Convert ND index to 1D index assuming row major layout
 int Tuple_nd_to_1d_index(const Tuple *nd_idx, const Tuple *nd_size);
+
+/// Convert ND index to 1D index with no assumption for row major layout
+int Tuple_nd_to_1d_index_by_order(int order, const Tuple *nd_idx, const Tuple *nd_size);
 
 /// Convert 1D index to ND index for given ND dimension size
 void Tuple_1d_to_nd_index(int idx, const Tuple *nd_size, Tuple *nd_idx);
@@ -71,7 +74,10 @@ void Tuple_iterator_begin(int dim, const int num_tuples, Tuple* iter);
 int Tuple_iterator_next(const Tuple* tiling, Tuple* iter);
 
 /// Return the nd global offset of the specified tile
-void Tuple_get_tile_start_offset(Tuple* flat_size, Tuple* tiling, Tuple *iter, Tuple *nd_offset);
+void Tuple_get_tile_start_offset(const Tuple* flat_size, const Tuple* tiling, Tuple *iter, Tuple *nd_offset);
+
+/// For iterator calculation. returns 0 if tuple values are reset
+int Tuple_inc(const Tuple* sz, Tuple* t);
 
 // ------------------------------------------
 // Tile size computation
