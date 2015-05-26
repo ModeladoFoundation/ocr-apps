@@ -60,7 +60,8 @@ swarm_Runtime_t * rswSwarmRuntime;
 #ifdef OCR_TARGET
 #warning Using OCR backend.
 #include <ocr.h>
-#include <ocr-lib.h> // using OCR in lib mode
+#define ENABLE_EXTENSION_LEGACY
+#include <ocr-legacy.h>
 
 static char * concat(char const * c1, char const * c2) {
     size_t plen;
@@ -79,17 +80,25 @@ ocrConfig_t ocrConfig() {
     char * buf = NULL;
 
     pPathPtr = getenv ("OCR_CONFIG");
-    // if config file not found, default to 12-thread shared mem configuration
+    // if config file not found, default to "default" mem configuration
     if (pPathPtr==NULL) {
+        char * ocrVersion = getenv("OCR_VERSION");
+        int ver08 = 0;
+        if (ocrVersion == NULL || (strcmp(ocrVersion, "0.8") == 0)) {
+            ver08 = 1;
+        }
         char * ocrHomePath = getenv("OCR_HOME");
-        char * rstDftMach = "mach-hc-12w.cfg";
-        char * dftMach    = "mach-hc-12w.cfg";
+        if (ver08 == 0 && ocrHomePath==NULL) {
+            printf("Please define $OCR_CONFIG (machine description file) or $OCR_HOME\n");
+            exit(1);
+        }
+        const char * dftMach = ((ver08 == 1) ? "/machine-configs/default.cfg" : "/install/x86-pthread-x86/config/default.cfg");
         size_t plen;
         char * buf;
 
-        /*
         if (ocrHomePath==NULL) {
             ocrHomePath = getenv("RSTREAM_HOME");
+            const char * rstDftMach = "/runtime/codelet/ocr/ocr-hc/machine-configs/default.cfg";
             if (ocrHomePath==NULL) {
                 printf("Please define $OCR_CONFIG (machine description file) or $OCR_HOME\n");
                 exit(1);
@@ -99,9 +108,6 @@ ocrConfig_t ocrConfig() {
         } else {
             pPathPtr = concat(ocrHomePath, dftMach);
         }
-	*/
-       pPathPtr = dftMach;
-
     }
     printf("Using machine file  %s \n", pPathPtr);
     ocrConfig.iniFile = pPathPtr;
@@ -110,6 +116,10 @@ ocrConfig_t ocrConfig() {
     return ocrConfig;
 }
 #endif // OCR_TARGET
+
+#ifdef CLUSTER_GA_TARGET
+#include <rstream_ga.h>
+#endif
 
 #ifdef RSTREAM_PAPI
 /* Papi headers */
@@ -275,6 +285,7 @@ int max_errors           = 10;
 double epsilon           = 1e-5;
 int count_full_tiles     = 0;
 int count_non_full_tiles = 0;
+char * results_filename  = (char *) NULL;
 
 int PARAMS[16];
 
@@ -325,7 +336,8 @@ static void process_arguments(int argc, char** argv) {
     int error = 0;
     const char * prog = argv[0];
 
-    while ((opt = getopt(argc, argv, "a:cft:T:vpP:e:E:")) >= 0) {
+
+    while ((opt = getopt(argc, argv, "a:cft:T:vpP:e:E:r:")) >= 0) {
 	switch (opt) {
 	case 'a': setParams(opt);            break;
 	case 'c': check_results = 1;            break;
@@ -336,6 +348,7 @@ static void process_arguments(int argc, char** argv) {
 	case 'P': nb_procs = strdup(optarg); break;
 	case 'e': epsilon = atof(optarg); break;
 	case 'E': max_errors = atol(optarg); break;
+	case 'r': results_filename = optarg; break;
 	default:  error = 1;
 	    fprintf(stderr, "unrecognized option '-%c'\n", optopt);
 	    break;
@@ -352,7 +365,8 @@ static void process_arguments(int argc, char** argv) {
 	       "\t-p show a portion of the results\n"
 	       "\t-P <proc> declare that the program runs on proc processors\n"
 	       "\t-e <float> use the given error bounds\n"
-	       "\t-E <num>  limit to the given number of errors\n",
+	       "\t-E <num>  limit to the given number of errors\n"
+	       "\t-r <filename> append performance results in a CSV format to <filename>.\n",
 	       prog
 	       );
 	exit(1);
@@ -439,9 +453,14 @@ int main(int argc, char **argv) {
 #endif // SWARM
 
 #ifdef OCR_TARGET
+    ocrGuid_t ocrCtx;
     ocrConfig_t ocrConf = ocrConfig();
-    ocrInit(&ocrConf);
+    ocrLegacyInit(&ocrCtx, &ocrConf);
 #endif // OCR
+
+#ifdef CLUSTER_GA_TARGET
+    rga_init();
+#endif
 
     // PAPI Wrapper Loop
 #ifdef RSTREAM_PAPI
@@ -548,9 +567,12 @@ int main(int argc, char **argv) {
     PRINT_MONITORING_STATS() ;
 
 #ifdef OCR_TARGET
-    ocrShutdown();
-    ocrFinalize();
+    ocrLegacyFinalize(ocrCtx, false);
 #endif // OCR
+
+#ifdef CLUSTER_GA_TARGET
+    rga_exit();
+#endif
 
     if (check_results) {
 	if (verbose) {
@@ -624,6 +646,14 @@ int main(int argc, char **argv) {
 	   (check_results ? (rc ? "(FAILED)" : "(PASSED)") : ""));
     fprintf(stderr, "%s , %s , %d, %g , %g, %d\n", function_name, nb_procs,
 	    nb_samples, total_time/max_trials, flops_per_trial(), rc);
+
+    if (results_filename!=NULL) {
+	FILE * results_file = fopen(results_filename, "a");
+	fprintf(results_file, "%s , %s , %d, %g , %g, %d\n", function_name,
+		nb_procs, nb_samples, total_time/max_trials, flops_per_trial(),
+		rc);
+	fclose(results_file);
+    }
 #endif
 #endif
 
