@@ -103,7 +103,7 @@ void ssor_HTA(int niter)
 
   // Number of iteration of the wavefront computations
   wavefront = PROC_X + PROC_Y + PROC_Z - 3;
-  //printf(" Wavefront iterations: %d\n", wavefront+1);
+  printf(" Wavefront iterations: %d\n", wavefront+1);
 
   //---------------------------------------------------------------------
   // the timestep loop
@@ -116,47 +116,39 @@ void ssor_HTA(int niter)
     //---------------------------------------------------------------------
     // perform SSOR iteration
     //---------------------------------------------------------------------
-    if (timeron) timer_start(t_rhs);
-    tmp2 = dt;
-    HTA_map_h1s1(HTA_LEAF_LEVEL(rsd_HTA), mulscalar, rsd_HTA, &tmp2);
-
-    sync_boundary(rsd_HTA);
-
-    if (timeron) timer_stop(t_rhs);
+    //if (timeron) timer_start(t_rhs);
+    //tmp2 = dt;
+    //HTA_map_h1s1(HTA_LEAF_LEVEL(rsd_HTA), mulscalar, rsd_HTA, &tmp2);
+    // sync is not needed after rhs
+    //sync_boundary(rsd_HTA);
+    //if (timeron) timer_stop(t_rhs);
 
     //  ---------------------------------------------------------------------
     //  form the lower triangular part of the jacobian matrix
     //  ---------------------------------------------------------------------
-    if (timeron) timer_start(t_jacld);
+    //if (timeron) timer_start(t_jacld);
+    //jacld_HTA();
+    //if (timeron) timer_stop(t_jacld);
 
-    //jacld_HTA(); // Loop is not necessary
-
-    if (timeron) timer_stop(t_jacld);
     //---------------------------------------------------------------------
     // perform the lower triangular solution
     //---------------------------------------------------------------------
     if (timeron) timer_start(t_blts);
-
     blts_HTA(wavefront);
-
     if (timeron) timer_stop(t_blts);
 
     //---------------------------------------------------------------------
     // form the strictly upper triangular part of the jacobian matrix
     //---------------------------------------------------------------------
-    if (timeron) timer_start(t_jacu);
-
+    //if (timeron) timer_start(t_jacu);
     //jacu_HTA(); // Loop is not necessary
-
-    if (timeron) timer_stop(t_jacu);
+    //if (timeron) timer_stop(t_jacu);
 
     //---------------------------------------------------------------------
     // perform the upper triangular solution
     //---------------------------------------------------------------------
     if (timeron) timer_start(t_buts);
-
     buts_HTA(wavefront);
-
     if (timeron) timer_stop(t_buts);
 
     //---------------------------------------------------------------------
@@ -165,9 +157,8 @@ void ssor_HTA(int niter)
     if (timeron) timer_start(t_add);
     tmp2 = tmp;
     HTA_map_h2s1(HTA_LEAF_LEVEL(u_HTA), muladd, u_HTA, rsd_HTA, &tmp2);
-
-    sync_boundary(u_HTA);
-
+    // sync is not required after buts
+    //sync_boundary(u_HTA);
     if (timeron) timer_stop(t_add);
 
     //---------------------------------------------------------------------
@@ -276,9 +267,13 @@ void muladd(HTA* s1_tile, HTA* s2_tile, void* scalar) {
     for (k = k_first; k < k_last; k++) {
       for (j = j_first; j < j_last; j++) {
 	for (i = i_first; i < i_last; i++) {
-	  for (m = 0; m < 5; m++) {
-	    u_tile[k][j][i][m] = u_tile[k][j][i][m] + val * rsd_tile[k][j][i][m];
-	  }
+	  //for (m = 0; m < 5; m++) {
+	    u_tile[k][j][i][0] = u_tile[k][j][i][0] + val * rsd_tile[k][j][i][0];
+	    u_tile[k][j][i][1] = u_tile[k][j][i][1] + val * rsd_tile[k][j][i][1];
+	    u_tile[k][j][i][2] = u_tile[k][j][i][2] + val * rsd_tile[k][j][i][2];
+	    u_tile[k][j][i][3] = u_tile[k][j][i][3] + val * rsd_tile[k][j][i][3];
+	    u_tile[k][j][i][4] = u_tile[k][j][i][4] + val * rsd_tile[k][j][i][4];
+	  //}
 	}
       }
     }

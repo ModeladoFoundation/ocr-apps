@@ -10,10 +10,15 @@
 
 #ifdef DEBUG
 #define DBG(level, format, ...) ((level <= DBG_LVL) ? fprintf(stderr, format, ##__VA_ARGS__) : (void) 0)
+#ifndef ASSERT
 #define ASSERT(x) (assert(x))
+#endif
 #else
 #define DBG(level, format, ...) ((void) 0)
+#ifndef ASSERT
 #define ASSERT(x) ((void) 0)
 #endif
+#endif
 
+#define UNUSED(x) ((void) x)
 #endif

@@ -86,7 +86,7 @@ LinkCell* initLinkCells(const Domain* domain, real_t cutoff, comdCtx *ctx)
    ASSERT(domain);
 //   LinkCell* ll = comdMalloc(sizeof(LinkCell));
 
-   LinkCell *ll = cncCreateItem_LC();
+   LinkCell *ll = cncItemCreate_LC();
    cncPut_LC(ll, 1, ctx);
 
 
@@ -109,7 +109,7 @@ LinkCell* initLinkCells(const Domain* domain, real_t cutoff, comdCtx *ctx)
    ll->nTotalBoxes = ll->nLocalBoxes + ll->nHaloBoxes;
 
 //   ll->nAtoms = comdMalloc(ll->nTotalBoxes*sizeof(int));
-   ll->nAtoms = cncCreateItemVector_NAtoms(ll->nTotalBoxes);
+   ll->nAtoms = cncItemCreateVector_NAtoms(ll->nTotalBoxes);
    cncPut_NAtoms(ll->nAtoms, 1, ctx);
 
 

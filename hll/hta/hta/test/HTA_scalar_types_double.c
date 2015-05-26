@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "HTA.h"
+#include "Comm.h"
 #include "HTA_operations.h"
 #include "Tuple.h"
 #include "test.h"
@@ -10,29 +11,29 @@
 #define MATRIX_WIDTH (3*5*4)
 #define MATRIX_SIZE (3*3*5*5*4*4)
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     double M[MATRIX_SIZE];
     double G[MATRIX_SIZE];
-    int i;
+    int i, err;
     int cmp_result;
 
+    Tuple t0 = Tuple_create(2, 3, 3);
+    Tuple t1 = Tuple_create(2, 5, 5);
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
     // create an empty shell
+    Tuple mesh = HTA_get_vp_mesh(2);
+    Tuple_print(&mesh);
+
     Dist dist;
-    //HTA h = HTA_create(2, 3, flat_size, ts, 0, dist, HTA_SCALAR_TYPE_DOUBLE);
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
-            2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
+    Dist_init(&dist, DIST_BLOCK, &mesh);
+    HTA *h = HTA_create_with_pid(pid, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
+            2, t0, t1);
 
     // create a 2D matrix
-    srand(time(NULL));
     for(i = 0; i < MATRIX_SIZE; i++) {
-        double val = rand()/(double)RAND_MAX;
+        double val = (double)i;
         M[i] = val;
 	G[i] = val*val;
     }
@@ -42,23 +43,22 @@ int main()
 
     // print the content of HTA
     HTA_map_h3(HTA_LEAF_LEVEL(h), H3_PWMUL, h, h, h);
-    HTA_to_array(h, M);
-
+    HTA_flatten(M, NULL, NULL, h);
     printf("comparing %zd bytes\n", sizeof(M));
     cmp_result = memcmp(M, G, sizeof(M));
-    if(cmp_result == 0)
+    if(cmp_result == 0) {
         printf("** result matches! **\n");
+        err = SUCCESS;
+    }
     else {
         printf("** result does not match! **\n");
-        exit(ERR_UNMATCH);
+        err = SUCCESS;
     }
 
     HTA_destroy(h);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
-    exit(SUCCESS);
+    int all_err = SUCCESS;
+    comm_allreduce(pid, REDUCE_MAX, &err, &all_err, HTA_SCALAR_TYPE_INT32);
+    assert(all_err==SUCCESS);
     return 0;
 }

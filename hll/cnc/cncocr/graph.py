@@ -223,9 +223,9 @@ class CnCGraph(object):
         self.stepFunctions = OrderedDict((x.step.collName, StepFunction(x)) for x in g.stepRels)
         verifyEnv(self.stepFunctions)
         self.initFunction = self.stepFunctions.pop(initNameRaw)
-        self.initFunction.collName = str(name)+"_init"
+        self.initFunction.collName = "cncInitialize"
         self.finalizeFunction = self.stepFunctions.pop(finalizeNameRaw)
-        self.finalizeFunction.collName = str(name)+"_finalize"
+        self.finalizeFunction.collName = "cncFinalize"
         self.finalAndSteps = [self.finalizeFunction] + self.stepFunctions.values()
         # context
         self.ctxParams = filter(bool, map(strip, g.ctx.splitlines())) if g.ctx else []

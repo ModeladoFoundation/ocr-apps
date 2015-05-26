@@ -37,6 +37,9 @@ void pil_alloc(gpp_t *g, size_t size)
 	printf("calling pil_alloc()");
 #endif
 
+	if (size == 0) {
+		printf("WARNING: called pil_alloc with size 0\n");
+	}
 	assert (sizeof(void *) == 8); // TODO: currently only works with 64 bit backends
 
 #if defined PIL2C || defined PIL2SWARM
@@ -82,13 +85,13 @@ void pil_alloc(gpp_t *g, size_t size)
 #ifdef PIL2OCR
 	ocrDbCreate(&g->guid, (void **) &g->ptr, size, /*flags=*/DB_PROP_NONE, /*affinity=*/NULL_GUID, NO_ALLOC);
 #if PIL_MEM_DEBUG
-	printf("allocated data-block (%ld) for db_guid (%ld) in pil_alloc\n", g->guid, (long int)g->ptr);
+	printf("allocated data-block (%p) for db_guid (%p) in pil_alloc\n", g->guid, (long int)g->ptr);
 #endif
 	//ocrDbRelease(db_guid);
 #endif /* PIL2OCR */
 
 #if PIL_MEM_DEBUG
-	printf("g->guid: %p\n", g->guid);
+	printf("g->guid: %lld\n", g->guid);
 	printf("leaving pil_alloc()\n\n");
 #endif
 }
@@ -186,7 +189,7 @@ void pil_release(void *id)
 void pil_free(gpp_t g)
 {
 #if PIL_MEM_DEBUG
-	printf("calling pil_free()\n");
+	printf("calling pil_free(%lld)\n", g.guid);
 #endif
 
 #if defined PIL2C || defined PIL2SWARM
@@ -210,8 +213,8 @@ void pil_free(gpp_t g)
 	//printf("freeing data-block (%ld) in pil_free\n", guid);
 /*
 	fprintf(stderr, "WARNING: PIL implemented hack for pil_free to avoid OCR bug. Not freeing\n");
-	ocrDbDestroy(g.guid);
 */
+	ocrDbDestroy(g.guid);
 	g.ptr = NULL;
 #endif /* PIL2OCR */
 }

@@ -46,11 +46,29 @@ PILC accepts the following options:
     -o backend, --output=backend
         Set the type of backend code to generate. If none is specified,
         sequential C will be assumed. Current backends are {C, omp, swarm, ocr,
-		afl}.
+        afl}.
+
+    -m type, --memory=type
+        Specify that pilc should generate code for the specified memory model.
+        Valid memory models are "shared", "spmd", and "forkjoin". The default
+        is shared.
+
+        Shared Memory:
+          Code is generated for the shared memory model. There will be one PIL
+          node created at the beginning of execution.
+        SPMD:
+          This means that PIL_NUM_THREADS will be created at the start of the
+          program. The number of threads created can be changed at runtime by
+          changing the enviornment variable PIL_NUM_THREADS, or by specifying
+          --pil_threads=N at run time.
+        Fork/Join:
+          Similar to shared memory, except that each of the data parallel loop
+          iterations of a parallel node will be executed in a different address
+          space.
 
 Usage:
 
-    > pilc [-i file_type] [-h] [--debug=level] [-o backend] input_file
+    > pilc [-i file_type] [-h] [--debug=level] [-o backend] [-m type] input_file
 """
 
 
@@ -63,6 +81,7 @@ import sys
 from string import strip
 import getopt
 import pil2ocr, pil2afl, pil2swarm, pil2c, g
+import graph
 
 
 #------------------------------------------------------------------------------
@@ -238,10 +257,21 @@ def process_func_args(func_name, in_args):
 			g.args[func_name]['dict'][sia['name']]['modifier'] = None
 
 
+def match_function_prototype(string):
+	"""check to see if the string is a function prototype"""
+
+	f = re.match('\s*(void)\s+(\w+)\s*\(\s*(.*)\s*\)\s*;(.*)', string)
+	# f.group(1) - return value
+	# f.group(2) - function name
+	# f.group(3) - input parameters
+	# f.group(4) - anything after the function. probably white space or the opening {
+
+	return f
+
 def match_function(string):
 	"""check to see if the string is a function declaration"""
 
-	f = re.match('(void)\s+(\w+)\s*\(\s*(.*)\s*\)(.*)', string)
+	f = re.match('\s*(void)\s+(\w+)\s*\(\s*(.*)\s*\)(.*)', string)
 	# f.group(1) - return value
 	# f.group(2) - function name
 	# f.group(3) - input parameters
@@ -258,6 +288,11 @@ def process_function(lines, lineno):
 	braces = 0
 	started = False
 	processing_pil_main = False
+
+	fp = match_function_prototype(lines[lineno])
+	if fp:
+		g.prototypes.append(lines[lineno])
+		return lineno
 
 
 	if True:
@@ -295,24 +330,26 @@ def process_function(lines, lineno):
 		else:
 			f = match_function(lines[lineno])
 
-		if f:
-			ret = f.group(1)
-			func_name = f.group(2)
-			in_args = f.group(3)
-			rest = f.group(4)
+			if f:
+				ret = f.group(1)
+				func_name = f.group(2)
+				in_args = f.group(3)
+				rest = f.group(4)
 
-			if func_name == "pil_main":
-				g.PIL_MAIN = True
-				processing_pil_main = True
+				if func_name == "pil_main":
+					g.PIL_MAIN = True
+					processing_pil_main = True
 
-			line = ret + " " + func_name + "(" + in_args + ")" + rest + "\n"
-			if processing_pil_main:
-				g.pil_main_lines.append(line)
+				line = ret + " " + func_name + "(" + in_args + ")" + rest + "\n"
+				if processing_pil_main:
+					g.pil_main_lines.append(line)
+				else:
+					g.func_lines[func_name] = []
+					if g.RSTREAM:
+						g.func_lines[func_name].append("#pragma rstream map\n")
+					g.func_lines[func_name].append(line)
 			else:
-				g.func_lines[func_name] = []
-				if g.RSTREAM:
-					g.func_lines[func_name].append("#pragma rstream map\n")
-				g.func_lines[func_name].append(line)
+				error("not a function? " + lines[lineno])
 		lineno += 1
 
 	while True:
@@ -336,17 +373,6 @@ def process_function(lines, lineno):
 		# b.group(1) - whitespace for matching indent
 		# b.group(2) - continuation nodelet
 
-		# pil_recv
-		#r = re.match("(\s*)pil_recv\s*\(\s*(\w+)\s*,\s*([&]{0,1})\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\)\s*;.*", lines[lineno])
-		r = re.match(g.NW_RECV_RE, lines[lineno])
-		#r = re.match("(\s*)pil_recv\s*\((\w+)\s*,\s*([&]{0,1})\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+).*", lines[lineno])
-		# r.group(1) - whitespace for matching indent
-		# r.group(2) - source
-		# r.group(3) - modifier
-		# r.group(4) - pointer
-		# r.group(5) - size
-		# r.group(6) - continuation
-
 		pc = re.match("(\s*)_pil_context\s+(\w+)\s+(\w+)\s*;", lines[lineno])
 		# pc.group(1) - whitespace for matching indent
 		# pc.group(2) - type
@@ -358,27 +384,17 @@ def process_function(lines, lineno):
 				g.pil_main_lines.append(lines[lineno])
 			else:
 				g.func_lines[func_name].append(lines[lineno])
-		elif b:
-			space = b.group(1)
-			continuation = b.group(2)
-			debug(5, "pil_barrier_all")
-			#line = space + "nw_barrierAll(GRAPH_BARRIER_0, swarm_cargs(_pil_" + continuation + "));\n"
-			line = "nw_barrierAll(GRAPH_BARRIER_0, swarm_cargs(_pil_" + continuation + "));"
-			g.nw_calls[label] = line
-			#if processing_pil_main:
-			#	g.pil_main_lines.append(line)
-			#else:
-			#	g.func_lines[func_name].append(line)
-		elif r:
-			space = r.group(1)
-			source = r.group(2)
-			modifier = r.group(3)
-			pointer = r.group(4)
-			size = r.group(5)
-			continuation = r.group(6)
-			debug(4, "pil_recv")
-			#line = "pil_recv(" + source + ");"
-			g.nw_calls[label] = lines[lineno]
+		#elif b:
+		#	space = b.group(1)
+		#	continuation = b.group(2)
+		#	debug(5, "pil_barrier_all")
+		#	#line = space + "nw_barrierAll(GRAPH_BARRIER_0, swarm_cargs(_pil_" + continuation + "));\n"
+		#	line = "nw_barrierAll(GRAPH_BARRIER_0, swarm_cargs(_pil_" + continuation + "));"
+		#	g.nw_calls[label] = line
+		#	#if processing_pil_main:
+		#	#	g.pil_main_lines.append(line)
+		#	#else:
+		#	#	g.func_lines[func_name].append(line)
 		elif pc:
 			space = pc.group(1)
 			arg_type = pc.group(2)
@@ -410,6 +426,59 @@ def process_function(lines, lineno):
 	return lineno-1
 
 
+def process_nw_call(lines, lineno):
+	"""parses the line into the network call"""
+
+	node = {}
+
+	s = re.match(g.NW_SEND_RE, lines[lineno])
+	# s.group(1) - whitespace for matching indent
+	# s.group(2) - func
+	# s.group(3) - label
+	# s.group(4) - rank
+	# s.group(5) - preds
+	# s.group(6) - succs
+	# s.group(7) - dest
+	# s.group(8) - size
+	# s.group(9) - offset
+	# s.group(10) - buf
+	if s:
+		node['line'] = lines[lineno]
+		node['func'] = s.group(2)
+		node['label'] = s.group(3)
+		node['rank'] = s.group(4)
+		node['preds'] = s.group(5)
+		node['succ'] = s.group(6)
+		node['dest'] = s.group(7)
+		node['size'] = s.group(8)
+		node['offset'] = s.group(9)
+		node['buf'] = s.group(10)
+
+	r = re.match(g.NW_RECV_RE, lines[lineno])
+	# r.group(1) - whitespace for matching indent
+	# r.group(2) - func
+	# r.group(3) - label
+	# r.group(4) - rank
+	# r.group(5) - preds
+	# r.group(6) - succs
+	# r.group(7) - src
+	# r.group(8) - size
+	# r.group(9) - offset
+	# r.group(10) - buf
+	if r:
+		node['line'] = lines[lineno]
+		node['func'] = r.group(2)
+		node['label'] = r.group(3)
+		node['rank'] = r.group(4)
+		node['preds'] = r.group(5)
+		node['succ'] = r.group(6)
+		node['src'] = r.group(7)
+		node['size'] = r.group(8)
+		node['offset'] = r.group(9)
+		node['buf'] = r.group(10)
+
+	return node
+
 def process_node(lines, lineno):
 	"""finds the node from the lines and returns it"""
 
@@ -424,6 +493,7 @@ def process_node(lines, lineno):
 	m = re.match(g.MAP_RE, line)
 	if not m:
 		error("invalid node line at line number " + str(lineno+1))
+	g.node_labels.append(m.group(1))
 
 	return line
 
@@ -463,20 +533,81 @@ def process_input_arguments(func_name, in_args):
 def make_targets(targets):
 	"""take the string of targets from a node and turn it into a list of the targets"""
 
-	split_targets = re.split("\s*,\s*", targets)
+#	split_targets = re.split("\s*,\s*", targets)
+#
+#	seen = []
+#	target_list = []
+#	for target in split_targets:
+#		debug(1, "target: " + target)
+#
+#		if target not in seen:
+#			target_list.append(target)
+#			seen.append(target)
+#		else:
+#			warning("Caught a duplicate destination target '" + target + "'. Removing it.")
 
-	seen = []
+	group = False
 	target_list = []
-	for target in split_targets:
-		debug(1, "target: " + target)
+	group_list = []
 
-		if target not in seen:
-			target_list.append(target)
-			seen.append(target)
+	n = 0
+	#for c in targets:
+	while n < len(targets):
+		c = targets[n]
+		n += 1
+		#print c
+		if c == ",":
+			continue
+		elif c == " ":
+			continue
+		elif c == "\t":
+			continue
+		elif c == "(":
+			group = True
+			continue
+		elif c == ")":
+			if not group:
+				print "ERROR: found a ')' while not in a group"
+			group = False
+			target_list.append(group_list)
+			group_list = []
+			continue
 		else:
-			warning("Caught a duplicate destination target '" + target + "'. Removing it.")
+			#print c
+			pass
 
+		m = re.match("(\d+)", targets[n-1:])
+		if m:
+			#print "\t", targets[n-1:]
+			#print "\t\t", m.group(1)
+			target = m.group(1)
+			i = int(target)
+			if group:
+				group_list.append(target)
+			else:
+				target_list.append(target)
+
+			if len(target) != 1:
+				n += (len(target)-1)
+
+	#print target_list
 	return target_list
+
+
+def flatten(l):
+	"""flatten list l"""
+
+	#return [item for sublist in l for item in sublist]
+
+	new_list = []
+
+	for i in l:
+		if type(i) is list:
+			for j in i:
+				new_list.append(j)
+		else:
+			new_list.append(i)
+	return new_list
 
 
 def handle_nodes(nodes):
@@ -494,32 +625,64 @@ def handle_nodes(nodes):
 		ma = re.match(g.MAP_RE, m)
 
 		split_nodes[curnode]["label"] = ma.group(1)
-		split_nodes[curnode]["index"] = ma.group(2)
-		split_nodes[curnode]["lower"] = ma.group(3)
-		split_nodes[curnode]["step"] = ma.group(4)
-		split_nodes[curnode]["upper"] = ma.group(5)
-		split_nodes[curnode]["cond"] = ma.group(6)
-		split_nodes[curnode]["targets"] = ma.group(7)
-		split_nodes[curnode]["func"] = ma.group(8)
-		split_nodes[curnode]["func_name"] = ma.group(9)
-		split_nodes[curnode]["in_args"] = ma.group(10)
+		split_nodes[curnode]["rank"] = ma.group(2)
+		split_nodes[curnode]["index"] = ma.group(3)
+		split_nodes[curnode]["lower"] = ma.group(4)
+		split_nodes[curnode]["step"] = ma.group(5)
+		split_nodes[curnode]["upper"] = ma.group(6)
+		split_nodes[curnode]["cond"] = ma.group(7)
+		split_nodes[curnode]["pred"] = ma.group(8)
+		split_nodes[curnode]["targets"] = ma.group(9)
+		split_nodes[curnode]["func"] = ma.group(10)
+		split_nodes[curnode]["func_name"] = ma.group(11)
+		split_nodes[curnode]["in_args"] = ma.group(12)
+
 
 	# go through the nodes and one at a time output the code. The multiple
 	# loops are necessary so that the code is output together for each
 	# function.
 	# TODO: some of these loops could be combined together for performance
 	for m in split_nodes:
+		g.nodes[m['label']] = {'label': m['label'], 'func_name': m['func_name'], 'index': m['index'], 'rank': m['rank']}
 		g.functions[m['label']] = m['func_name']
 		g.intervals[m['label']] = {'lower': m['lower'], 'step': m['step'], 'upper': m['upper']}
-		g.targets[m['label']] = make_targets(m['targets'])
+		g.real_preds[m['label']] = make_targets(m['pred'])
+		g.preds[m['label']] = flatten(g.real_preds[m['label']])
+		g.real_targets[m['label']] = make_targets(m['targets'])
+		g.targets[m['label']] = flatten(g.real_targets[m['label']])
+		#g.targets[m['label']] = flatten(make_targets(m['targets']))
 		g.target_variables[m['label']] = m['cond']
+	for n in g.nw_calls:
+		g.real_preds[n['label']] = make_targets(n['preds'])
+		g.real_targets[n['label']] = make_targets(n['succ'])
+
+	# create the task graph
+	g.graph["0"] = graph.GraphNode("0", [], [])
+	for n in split_nodes:
+		label = n['label']
+		node = graph.GraphNode(label, g.real_preds[label], g.real_targets[label])
+		if "0" in node.get_pred():
+			g.graph["0"].add_succ(label)
+		g.graph[label] = node
+	for n in g.nw_calls:
+		label = n['label']
+		node = graph.GraphNode(label, g.real_preds[label], g.real_targets[label])
+		if "0" in node.get_pred():
+			node.output()
+			error("Cannot start a graph with a network call")
+		g.graph[label] = node
+	graph.compute_dominance(g.graph)
+	graph.match_forks_to_joins(g.graph)
+
+#	for l in g.graph:
+#		g.graph[l].output()
 
 	for m in split_nodes:
 		# store the input args so we can refer to their type later
 		process_func_args(m['func_name'], m['in_args'])
 		process_input_arguments(m['func_name'], m['in_args'])
 		if m['index'] == 'NULL':
-			warning("Caught a NULL loop index variable that will be replaced with '" + g.INDEX + "'")
+			#warning("Caught a NULL loop index variable that will be replaced with '" + g.INDEX + "'")
 			m['index'] = g.INDEX
 		g.indices[m['label']] = m['index']
 
@@ -527,12 +690,20 @@ def handle_nodes(nodes):
 		handle_main_node(m['label'], m['lower'], m['step'], m['upper'], m['func_name'])
 
 	if g.OUTPUT == "C" or g.OUTPUT == "omp":
+		pil2c.print_main_func()
+		pil2c.print_funcs()
 		pil2c.handle_nodes(split_nodes)
 	elif g.OUTPUT == "swarm":
+		pil2swarm.print_main_func()
+		pil2swarm.print_funcs()
 		pil2swarm.handle_nodes(split_nodes)
 	elif g.OUTPUT == "afl":
+		pil2afl.print_main_func()
+		pil2afl.print_funcs()
 		pil2afl.handle_nodes(split_nodes)
 	elif g.OUTPUT == "ocr":
+		pil2ocr.print_main_func()
+		pil2ocr.print_funcs()
 		pil2ocr.handle_nodes(split_nodes)
 	else:
 		error("Unknown OUTPUT backend: " + g.OUTPUT)
@@ -566,6 +737,7 @@ def process_header():
 	print "#include <stdint.h>"
 	print "#include <assert.h>"
 	print "#include <string.h>"
+#	print "#include <semaphore.h>"
 	print ""
 	print "// Includes to manage the maximum size of the stack"
 	print "#include <sys/resource.h>"
@@ -593,7 +765,7 @@ def process_pil_enter(nodes):
 
 	print \
 """
-void pil_enter(int func, int num_args, ...)
+void pil_enter(int func, int _pil_rank, int num_args, ...)
 {
 	va_list argptr;
 	va_start(argptr, num_args);
@@ -601,7 +773,7 @@ void pil_enter(int func, int num_args, ...)
 
 	#g.nodes_entered.sort()
 	if g.OUTPUT == "C" or g.OUTPUT == "omp":
-		#pil2c.declare_pil_enter_arguments()
+		pil2c.declare_pil_enter_arguments()
 		pass
 	elif g.OUTPUT == "swarm":
 		pil2swarm.declare_pil_enter_arguments()
@@ -717,7 +889,12 @@ def process_file(input_filename, lines):
 
 	g.h_file = open(g.header_file_name, "w")
 	g.h_file.write("#ifndef PIL_H\n")
-	g.h_file.write("#define PIL_H\n\n")
+	g.h_file.write("#define PIL_H\n")
+	g.h_file.write("\n")
+
+	g.h_file.write("#include <stdint.h>\n")
+	g.h_file.write("\n")
+
 	g.h_file.write("#ifdef PIL2OCR\n")
 	g.h_file.write("#include \"ocr.h\"\n")
 	g.h_file.write("typedef ocrGuid_t guid_t;\n")
@@ -726,10 +903,20 @@ def process_file(input_filename, lines):
 	g.h_file.write("typedef void* guid_t;\n")
 	g.h_file.write("#endif // PIL2OCR\n")
 	g.h_file.write("\n")
+
 	g.h_file.write("typedef struct {\n")
 	g.h_file.write("\tguid_t guid;\n")
 	g.h_file.write("\tvoid *ptr;\n")
-	g.h_file.write("} gpp_t;\n\n")
+	g.h_file.write("} gpp_t;\n")
+	g.h_file.write("\n")
+
+#	g.h_file.write("struct _pil_communication_buffers {\n")
+#	g.h_file.write("\tvoid *ptr;\n")
+#	g.h_file.write("\tint volatile full;\n")
+#	g.h_file.write("\tsize_t size;\n")
+#	g.h_file.write("};\n")
+#	g.h_file.write("struct _pil_communication_buffers **_pil_send_buf;\n")
+#	g.h_file.write("\n")
 
 	# data structure to store nodes we encounter in so that we can process them
 	# all together later
@@ -831,13 +1018,21 @@ def process_file(input_filename, lines):
 		# va.group(5) - the variable name
 		# va.group(6) - the variable size
 
-		vas = re.match('(\s*(\w+)\s*([*&]*)\s*(\w+)\[(\w+)\]\[(\w+)\]s*);', l)
+		vas1 = re.match('(\s*(\w+)\s*([*&]*)\s*(\w+)\[(\w+)\]s*);', l)
+		# va.group(1) - the whole statement
+		# va.group(2) - the variable type
+		# va.group(3) - the variable modifier
+		# va.group(4) - the variable name
+		# va.group(5) - the variable size
+
+		vas2 = re.match('(\s*(\w+)\s*([*&]*)\s*(\w+)\[(\w+)\]\[(\w+)\]s*);', l)
 		# va.group(1) - the whole statement
 		# va.group(2) - the variable type
 		# va.group(3) - the variable modifier
 		# va.group(4) - the variable name
 		# va.group(5) - the variable size
 		# va.group(6) - the variable size
+
 		if v:
 			var_type = v.group(2)
 			var_modifier = v.group(3)
@@ -861,13 +1056,24 @@ def process_file(input_filename, lines):
 			if var_modifier:
 				g.variables[var_name] += " " + var_modifier
 			continue
-		if vas:
-			var_type = vas.group(2)
-			var_modifier = vas.group(3)
-			var_name = vas.group(4)
-			var_sizex = vas.group(5)
-			var_sizey = vas.group(6)
-			debug(4, "VAS match: " + var_name + "\n")
+		if vas1:
+			var_type = vas1.group(2)
+			var_modifier = vas1.group(3)
+			var_name = vas1.group(4)
+			var_sizex = vas1.group(5)
+			debug(4, "VAS1 match: " + var_name + "\n")
+			g.variables[var_name] = var_type
+			g.arrays[var_name] = [var_sizex]
+			if var_modifier:
+				g.variables[var_name] += " " + var_modifier
+			continue
+		if vas2:
+			var_type = vas2.group(2)
+			var_modifier = vas2.group(3)
+			var_name = vas2.group(4)
+			var_sizex = vas2.group(5)
+			var_sizey = vas2.group(6)
+			debug(4, "VAS2 match: " + var_name + "\n")
 			g.variables[var_name] = var_type
 			g.arrays[var_name] = [var_sizex, var_sizey]
 			if var_modifier:
@@ -893,6 +1099,18 @@ def process_file(input_filename, lines):
 			lineno = process_function(lines, lineno)
 			continue
 
+		# the line is a pil_send
+		s = re.match(g.NW_SEND_RE, l)
+		if s:
+			g.nw_calls.append(process_nw_call(lines, lineno))
+			continue
+
+		# the line is a pil_send
+		r = re.match(g.NW_RECV_RE, l)
+		if r:
+			g.nw_calls.append(process_nw_call(lines, lineno))
+			continue
+
 		# the line is a node
 		m = re.match(g.MAP_RE, l)
 		if m:
@@ -916,20 +1134,23 @@ def process_file(input_filename, lines):
 		error("Unknown OUTPUT backend: " + g.OUTPUT)
 
 	# 4) now that the globals are available, we can output pil_main and the body functions
-	if g.OUTPUT == "C" or g.OUTPUT == "omp":
-		pil2c.print_main_func()
-		pil2c.print_funcs()
-	elif g.OUTPUT == "swarm":
-		pil2swarm.print_main_func()
-		pil2swarm.print_funcs()
-	elif g.OUTPUT == "afl":
-		pil2afl.print_main_func()
-		pil2afl.print_funcs()
-	elif g.OUTPUT == "ocr":
-		pil2ocr.print_main_func()
-		pil2ocr.print_funcs()
-	else:
-		error("Unknown OUTPUT backend: " + g.OUTPUT)
+	for prototype in g.prototypes:
+		print prototype
+
+#	if g.OUTPUT == "C" or g.OUTPUT == "omp":
+#		pil2c.print_main_func()
+#		pil2c.print_funcs()
+#	elif g.OUTPUT == "swarm":
+#		pil2swarm.print_main_func()
+#		pil2swarm.print_funcs()
+#	elif g.OUTPUT == "afl":
+#		pil2afl.print_main_func()
+#		pil2afl.print_funcs()
+#	elif g.OUTPUT == "ocr":
+#		pil2ocr.print_main_func()
+#		pil2ocr.print_funcs()
+#	else:
+#		error("Unknown OUTPUT backend: " + g.OUTPUT)
 
 	# 5) process all of the nodes
 	split_nodes = handle_nodes(nodes)
@@ -963,10 +1184,10 @@ if __name__ == "__main__":
 	# read the command line arguments
 	input_filename = process_command_line_arguments()
 
-	warning("Manually increasing stack size to compensate for never returning from a function")
-	warning("Unoptimized handling of stride of less than 0.")
-	warning("Error will occure if you have 0 loop iterations. E.g. forall i in [1..0 by 1]")
-	warning("SWARM functions are currently prepended with 'swarm_' which may clash with built-in SWARM functions")
+	#warning("Manually increasing stack size to compensate for never returning from a function")
+	#warning("Unoptimized handling of stride of less than 0.")
+	#warning("Error will occure if you have 0 loop iterations. E.g. forall i in [1..0 by 1]")
+	#warning("SWARM functions are currently prepended with 'swarm_' which may clash with built-in SWARM functions")
 
 	# read the file into lines
 	lines = read_file(input_filename)

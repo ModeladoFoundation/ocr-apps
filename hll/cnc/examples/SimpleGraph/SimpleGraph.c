@@ -1,6 +1,6 @@
 #include "SimpleGraph.h"
 
-void SimpleGraph_init(SimpleGraphArgs *args, SimpleGraphCtx *ctx) {
+void SimpleGraph_cncInitialize(SimpleGraphArgs *args, SimpleGraphCtx *ctx) {
 
     // Prescribe "SX" steps
     cncPrescribe_SX(1, ctx);
@@ -14,10 +14,10 @@ void SimpleGraph_init(SimpleGraphArgs *args, SimpleGraphCtx *ctx) {
 }
 
 /*
- * typeof X is int 
- * typeof Y is int 
+ * typeof X is int
+ * typeof Y is int
  */
-void SimpleGraph_finalize(int X, int Y, SimpleGraphCtx *ctx) {
+void SimpleGraph_cncFinalize(int X, int Y, SimpleGraphCtx *ctx) {
     // Print results
     PRINTF("X = %d\n", X);
     PRINTF("Y = %d\n", Y);

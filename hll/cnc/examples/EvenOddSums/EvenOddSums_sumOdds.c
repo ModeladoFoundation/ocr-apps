@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "sumOdds"
  */
-void sumOdds(cncTag_t n, int *odds, EvenOddSumsCtx *ctx) {
+void EvenOddSums_sumOdds(cncTag_t n, int *odds, EvenOddSumsCtx *ctx) {
 
     //
     // INPUTS
@@ -23,7 +23,7 @@ void sumOdds(cncTag_t n, int *odds, EvenOddSumsCtx *ctx) {
     //
 
     // Put "oddsTotal" items
-    int *oddsTotal = cncCreateItem_oddsTotal();
+    int *oddsTotal = cncItemCreate_oddsTotal();
     *oddsTotal = sum;
     cncPut_oddsTotal(oddsTotal, ctx);
 

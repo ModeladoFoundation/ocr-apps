@@ -1,5 +1,6 @@
 #include "cncocr_internal.h"
 {% if affinitiesEnabled -%}
+#define ENABLE_EXTENSION_AFFINITY
 #include <extensions/ocr-affinity.h>
 {% endif %}
 {#

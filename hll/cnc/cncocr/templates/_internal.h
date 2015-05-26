@@ -13,19 +13,19 @@
 \******************************/
 
 {% for name, i in g.itemDeclarations.items() %}
-void cncGet_{{name}}({{ util.print_tag(i.key, typed=True) }}ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, {{g.name}}Ctx *context);
+void cncGet_{{name}}({{ util.print_tag(i.key, typed=True) }}ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, {{util.g_ctx_param()}});
 {% endfor %}
 
 /********************************\
  ******** STEP FUNCTIONS ********
 \********************************/
 
-void {{g.name}}_init({{g.name}}Args *args, {{g.name}}Ctx *ctx);
+void {{util.qualified_step_name(g.initFunction)}}({{g.name}}Args *args, {{util.g_ctx_param()}});
 {% for stepfun in g.finalAndSteps %}
-void {{stepfun.collName}}({{
+void {{util.qualified_step_name(stepfun)}}({{
         util.print_tag(stepfun.tag, typed=True)}}{{
         util.print_bindings(stepfun.inputItems, typed=True)
-        }}{{g.name}}Ctx *ctx);
-ocrGuid_t _cncStep_{{stepfun.collName}}(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]);
+        }}{{util.g_ctx_param()}});
+ocrGuid_t _{{g.name}}_cncStep_{{stepfun.collName}}(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]);
 {% endfor %}
 #endif /*{{defname}}*/

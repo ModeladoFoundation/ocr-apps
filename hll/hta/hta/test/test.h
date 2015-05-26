@@ -5,5 +5,6 @@
 #define SUCCESS     (0)
 #define ERR_UNMATCH (1)
 #define ERR_MEMLEAK (2)
+#define ERR_ALLOC   (3)
 
 #endif

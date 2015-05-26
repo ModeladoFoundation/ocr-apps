@@ -18,6 +18,7 @@ typedef struct comdContext {
     struct {
         ocrGuid_t self;
         ocrGuid_t finalizedEvent;
+        ocrGuid_t quiescedEvent;
         ocrGuid_t doneEvent;
         ocrGuid_t awaitTag;
     } _guids;
@@ -46,7 +47,7 @@ typedef struct comdContext {
         cncItemCollection_t Nbs;
     } _items;
     struct {
-        ocrGuid_t comd_finalize;
+        ocrGuid_t cncFinalize;
         ocrGuid_t cleanupInitStep;
         ocrGuid_t advanceVelocityStep;
         ocrGuid_t updateBoxStep;
@@ -66,10 +67,10 @@ typedef struct comdContext {
 } comdCtx;
 
 comdCtx *comd_create(void);
-void comd_destroy(comdCtx *context);
+void comd_destroy(comdCtx *ctx);
 
 void comd_launch(comdArgs *args, comdCtx *ctx);
-void comd_await(cncTag_t i, cncTag_t iter, comdCtx *context);
+void comd_await(cncTag_t i, cncTag_t iter, comdCtx *ctx);
 
 /**********************************\
  ******** ITEM KEY STRUCTS ********
@@ -102,180 +103,184 @@ typedef struct { cncTag_t i; } NbsItemKey;
  ******** ITEM CREATE ********
 \*****************************/
 
-struct box *cncCreateItemSized_B(size_t size);
-static inline struct box *cncCreateItem_B(void) {
-    return cncCreateItemSized_B(sizeof(struct box));
+struct box *cncItemCreateSized_B(size_t size);
+static inline struct box *cncItemCreate_B(void) {
+    return cncItemCreateSized_B(sizeof(struct box));
 }
-static inline struct box *cncCreateItemVector_B(size_t count) {
-    return cncCreateItemSized_B(sizeof(struct box) * count);
-}
-
-SimFlat *cncCreateItemSized_SF(size_t size);
-static inline SimFlat *cncCreateItem_SF(void) {
-    return cncCreateItemSized_SF(sizeof(SimFlat));
-}
-static inline SimFlat *cncCreateItemVector_SF(size_t count) {
-    return cncCreateItemSized_SF(sizeof(SimFlat) * count);
+static inline struct box *cncItemCreateVector_B(size_t count) {
+    return cncItemCreateSized_B(sizeof(struct box) * count);
 }
 
-LjPotential *cncCreateItemSized_POT(size_t size);
-static inline LjPotential *cncCreateItem_POT(void) {
-    return cncCreateItemSized_POT(sizeof(LjPotential));
+SimFlat *cncItemCreateSized_SF(size_t size);
+static inline SimFlat *cncItemCreate_SF(void) {
+    return cncItemCreateSized_SF(sizeof(SimFlat));
 }
-static inline LjPotential *cncCreateItemVector_POT(size_t count) {
-    return cncCreateItemSized_POT(sizeof(LjPotential) * count);
-}
-
-struct eamPot *cncCreateItemSized_EAMPOT(size_t size);
-static inline struct eamPot *cncCreateItem_EAMPOT(void) {
-    return cncCreateItemSized_EAMPOT(sizeof(struct eamPot));
-}
-static inline struct eamPot *cncCreateItemVector_EAMPOT(size_t count) {
-    return cncCreateItemSized_EAMPOT(sizeof(struct eamPot) * count);
+static inline SimFlat *cncItemCreateVector_SF(size_t count) {
+    return cncItemCreateSized_SF(sizeof(SimFlat) * count);
 }
 
-SpeciesData *cncCreateItemSized_SPECIES(size_t size);
-static inline SpeciesData *cncCreateItem_SPECIES(void) {
-    return cncCreateItemSized_SPECIES(sizeof(SpeciesData));
+LjPotential *cncItemCreateSized_POT(size_t size);
+static inline LjPotential *cncItemCreate_POT(void) {
+    return cncItemCreateSized_POT(sizeof(LjPotential));
 }
-static inline SpeciesData *cncCreateItemVector_SPECIES(size_t count) {
-    return cncCreateItemSized_SPECIES(sizeof(SpeciesData) * count);
-}
-
-Domain *cncCreateItemSized_DD(size_t size);
-static inline Domain *cncCreateItem_DD(void) {
-    return cncCreateItemSized_DD(sizeof(Domain));
-}
-static inline Domain *cncCreateItemVector_DD(size_t count) {
-    return cncCreateItemSized_DD(sizeof(Domain) * count);
+static inline LjPotential *cncItemCreateVector_POT(size_t count) {
+    return cncItemCreateSized_POT(sizeof(LjPotential) * count);
 }
 
-LinkCell *cncCreateItemSized_LC(size_t size);
-static inline LinkCell *cncCreateItem_LC(void) {
-    return cncCreateItemSized_LC(sizeof(LinkCell));
+struct eamPot *cncItemCreateSized_EAMPOT(size_t size);
+static inline struct eamPot *cncItemCreate_EAMPOT(void) {
+    return cncItemCreateSized_EAMPOT(sizeof(struct eamPot));
 }
-static inline LinkCell *cncCreateItemVector_LC(size_t count) {
-    return cncCreateItemSized_LC(sizeof(LinkCell) * count);
-}
-
-int *cncCreateItemSized_NAtoms(size_t size);
-static inline int *cncCreateItem_NAtoms(void) {
-    return cncCreateItemSized_NAtoms(sizeof(int));
-}
-static inline int *cncCreateItemVector_NAtoms(size_t count) {
-    return cncCreateItemSized_NAtoms(sizeof(int) * count);
+static inline struct eamPot *cncItemCreateVector_EAMPOT(size_t count) {
+    return cncItemCreateSized_EAMPOT(sizeof(struct eamPot) * count);
 }
 
-struct myReduction *cncCreateItemSized_redc(size_t size);
-static inline struct myReduction *cncCreateItem_redc(void) {
-    return cncCreateItemSized_redc(sizeof(struct myReduction));
+SpeciesData *cncItemCreateSized_SPECIES(size_t size);
+static inline SpeciesData *cncItemCreate_SPECIES(void) {
+    return cncItemCreateSized_SPECIES(sizeof(SpeciesData));
 }
-static inline struct myReduction *cncCreateItemVector_redc(size_t count) {
-    return cncCreateItemSized_redc(sizeof(struct myReduction) * count);
-}
-
-struct atomInfo *cncCreateItemSized_AtomInfo(size_t size);
-static inline struct atomInfo *cncCreateItem_AtomInfo(void) {
-    return cncCreateItemSized_AtomInfo(sizeof(struct atomInfo));
-}
-static inline struct atomInfo *cncCreateItemVector_AtomInfo(size_t count) {
-    return cncCreateItemSized_AtomInfo(sizeof(struct atomInfo) * count);
+static inline SpeciesData *cncItemCreateVector_SPECIES(size_t count) {
+    return cncItemCreateSized_SPECIES(sizeof(SpeciesData) * count);
 }
 
-struct cmdInfo *cncCreateItemSized_CMD(size_t size);
-static inline struct cmdInfo *cncCreateItem_CMD(void) {
-    return cncCreateItemSized_CMD(sizeof(struct cmdInfo));
+Domain *cncItemCreateSized_DD(size_t size);
+static inline Domain *cncItemCreate_DD(void) {
+    return cncItemCreateSized_DD(sizeof(Domain));
 }
-static inline struct cmdInfo *cncCreateItemVector_CMD(size_t count) {
-    return cncCreateItemSized_CMD(sizeof(struct cmdInfo) * count);
-}
-
-struct timeval *cncCreateItemSized_time(size_t size);
-static inline struct timeval *cncCreateItem_time(void) {
-    return cncCreateItemSized_time(sizeof(struct timeval));
-}
-static inline struct timeval *cncCreateItemVector_time(size_t count) {
-    return cncCreateItemSized_time(sizeof(struct timeval) * count);
+static inline Domain *cncItemCreateVector_DD(size_t count) {
+    return cncItemCreateSized_DD(sizeof(Domain) * count);
 }
 
-Atoms *cncCreateItemSized_ATOMS(size_t size);
-static inline Atoms *cncCreateItem_ATOMS(void) {
-    return cncCreateItemSized_ATOMS(sizeof(Atoms));
+LinkCell *cncItemCreateSized_LC(size_t size);
+static inline LinkCell *cncItemCreate_LC(void) {
+    return cncItemCreateSized_LC(sizeof(LinkCell));
 }
-static inline Atoms *cncCreateItemVector_ATOMS(size_t count) {
-    return cncCreateItemSized_ATOMS(sizeof(Atoms) * count);
-}
-
-int *cncCreateItemSized_GID(size_t size);
-static inline int *cncCreateItem_GID(void) {
-    return cncCreateItemSized_GID(sizeof(int));
-}
-static inline int *cncCreateItemVector_GID(size_t count) {
-    return cncCreateItemSized_GID(sizeof(int) * count);
+static inline LinkCell *cncItemCreateVector_LC(size_t count) {
+    return cncItemCreateSized_LC(sizeof(LinkCell) * count);
 }
 
-int *cncCreateItemSized_ISP(size_t size);
-static inline int *cncCreateItem_ISP(void) {
-    return cncCreateItemSized_ISP(sizeof(int));
+int *cncItemCreateSized_NAtoms(size_t size);
+static inline int *cncItemCreate_NAtoms(void) {
+    return cncItemCreateSized_NAtoms(sizeof(int));
 }
-static inline int *cncCreateItemVector_ISP(size_t count) {
-    return cncCreateItemSized_ISP(sizeof(int) * count);
-}
-
-real3 *cncCreateItemSized_R(size_t size);
-static inline real3 *cncCreateItem_R(void) {
-    return cncCreateItemSized_R(sizeof(real3));
-}
-static inline real3 *cncCreateItemVector_R(size_t count) {
-    return cncCreateItemSized_R(sizeof(real3) * count);
+static inline int *cncItemCreateVector_NAtoms(size_t count) {
+    return cncItemCreateSized_NAtoms(sizeof(int) * count);
 }
 
-real3 *cncCreateItemSized_P(size_t size);
-static inline real3 *cncCreateItem_P(void) {
-    return cncCreateItemSized_P(sizeof(real3));
+struct myReduction *cncItemCreateSized_redc(size_t size);
+static inline struct myReduction *cncItemCreate_redc(void) {
+    return cncItemCreateSized_redc(sizeof(struct myReduction));
 }
-static inline real3 *cncCreateItemVector_P(size_t count) {
-    return cncCreateItemSized_P(sizeof(real3) * count);
-}
-
-real3 *cncCreateItemSized_F(size_t size);
-static inline real3 *cncCreateItem_F(void) {
-    return cncCreateItemSized_F(sizeof(real3));
-}
-static inline real3 *cncCreateItemVector_F(size_t count) {
-    return cncCreateItemSized_F(sizeof(real3) * count);
+static inline struct myReduction *cncItemCreateVector_redc(size_t count) {
+    return cncItemCreateSized_redc(sizeof(struct myReduction) * count);
 }
 
-real_t *cncCreateItemSized_U(size_t size);
-static inline real_t *cncCreateItem_U(void) {
-    return cncCreateItemSized_U(sizeof(real_t));
+struct atomInfo *cncItemCreateSized_AtomInfo(size_t size);
+static inline struct atomInfo *cncItemCreate_AtomInfo(void) {
+    return cncItemCreateSized_AtomInfo(sizeof(struct atomInfo));
 }
-static inline real_t *cncCreateItemVector_U(size_t count) {
-    return cncCreateItemSized_U(sizeof(real_t) * count);
-}
-
-int *cncCreateItemSized_IT(size_t size);
-static inline int *cncCreateItem_IT(void) {
-    return cncCreateItemSized_IT(sizeof(int));
-}
-static inline int *cncCreateItemVector_IT(size_t count) {
-    return cncCreateItemSized_IT(sizeof(int) * count);
+static inline struct atomInfo *cncItemCreateVector_AtomInfo(size_t count) {
+    return cncItemCreateSized_AtomInfo(sizeof(struct atomInfo) * count);
 }
 
-int *cncCreateItemSized_TBoxes(size_t size);
-static inline int *cncCreateItem_TBoxes(void) {
-    return cncCreateItemSized_TBoxes(sizeof(int));
+struct cmdInfo *cncItemCreateSized_CMD(size_t size);
+static inline struct cmdInfo *cncItemCreate_CMD(void) {
+    return cncItemCreateSized_CMD(sizeof(struct cmdInfo));
 }
-static inline int *cncCreateItemVector_TBoxes(size_t count) {
-    return cncCreateItemSized_TBoxes(sizeof(int) * count);
+static inline struct cmdInfo *cncItemCreateVector_CMD(size_t count) {
+    return cncItemCreateSized_CMD(sizeof(struct cmdInfo) * count);
 }
 
-int *cncCreateItemSized_Nbs(size_t size);
-static inline int *cncCreateItem_Nbs(void) {
-    return cncCreateItemSized_Nbs(sizeof(int));
+struct timeval *cncItemCreateSized_time(size_t size);
+static inline struct timeval *cncItemCreate_time(void) {
+    return cncItemCreateSized_time(sizeof(struct timeval));
 }
-static inline int *cncCreateItemVector_Nbs(size_t count) {
-    return cncCreateItemSized_Nbs(sizeof(int) * count);
+static inline struct timeval *cncItemCreateVector_time(size_t count) {
+    return cncItemCreateSized_time(sizeof(struct timeval) * count);
+}
+
+Atoms *cncItemCreateSized_ATOMS(size_t size);
+static inline Atoms *cncItemCreate_ATOMS(void) {
+    return cncItemCreateSized_ATOMS(sizeof(Atoms));
+}
+static inline Atoms *cncItemCreateVector_ATOMS(size_t count) {
+    return cncItemCreateSized_ATOMS(sizeof(Atoms) * count);
+}
+
+int *cncItemCreateSized_GID(size_t size);
+static inline int *cncItemCreate_GID(void) {
+    return cncItemCreateSized_GID(sizeof(int));
+}
+static inline int *cncItemCreateVector_GID(size_t count) {
+    return cncItemCreateSized_GID(sizeof(int) * count);
+}
+
+int *cncItemCreateSized_ISP(size_t size);
+static inline int *cncItemCreate_ISP(void) {
+    return cncItemCreateSized_ISP(sizeof(int));
+}
+static inline int *cncItemCreateVector_ISP(size_t count) {
+    return cncItemCreateSized_ISP(sizeof(int) * count);
+}
+
+real3 *cncItemCreateSized_R(size_t size);
+static inline real3 *cncItemCreate_R(void) {
+    return cncItemCreateSized_R(sizeof(real3));
+}
+static inline real3 *cncItemCreateVector_R(size_t count) {
+    return cncItemCreateSized_R(sizeof(real3) * count);
+}
+
+real3 *cncItemCreateSized_P(size_t size);
+static inline real3 *cncItemCreate_P(void) {
+    return cncItemCreateSized_P(sizeof(real3));
+}
+static inline real3 *cncItemCreateVector_P(size_t count) {
+    return cncItemCreateSized_P(sizeof(real3) * count);
+}
+
+real3 *cncItemCreateSized_F(size_t size);
+static inline real3 *cncItemCreate_F(void) {
+    return cncItemCreateSized_F(sizeof(real3));
+}
+static inline real3 *cncItemCreateVector_F(size_t count) {
+    return cncItemCreateSized_F(sizeof(real3) * count);
+}
+
+real_t *cncItemCreateSized_U(size_t size);
+static inline real_t *cncItemCreate_U(void) {
+    return cncItemCreateSized_U(sizeof(real_t));
+}
+static inline real_t *cncItemCreateVector_U(size_t count) {
+    return cncItemCreateSized_U(sizeof(real_t) * count);
+}
+
+int *cncItemCreateSized_IT(size_t size);
+static inline int *cncItemCreate_IT(void) {
+    return cncItemCreateSized_IT(sizeof(int));
+}
+static inline int *cncItemCreateVector_IT(size_t count) {
+    return cncItemCreateSized_IT(sizeof(int) * count);
+}
+
+int *cncItemCreateSized_TBoxes(size_t size);
+static inline int *cncItemCreate_TBoxes(void) {
+    return cncItemCreateSized_TBoxes(sizeof(int));
+}
+static inline int *cncItemCreateVector_TBoxes(size_t count) {
+    return cncItemCreateSized_TBoxes(sizeof(int) * count);
+}
+
+int *cncItemCreateSized_Nbs(size_t size);
+static inline int *cncItemCreate_Nbs(void) {
+    return cncItemCreateSized_Nbs(sizeof(int));
+}
+static inline int *cncItemCreateVector_Nbs(size_t count) {
+    return cncItemCreateSized_Nbs(sizeof(int) * count);
+}
+
+static inline void cncItemDestroy(void *item) {
+    cncFree(item);
 }
 
 /**************************\
@@ -462,7 +467,7 @@ static inline void cncPut_Nbs(int *_item, cncTag_t i, comdCtx *ctx) {
  ******** STEP PRESCRIPTIONS ********
 \************************************/
 
-void cncPrescribe_comd_finalize(cncTag_t i, cncTag_t iter, comdCtx *ctx);
+void cncPrescribe_cncFinalize(cncTag_t i, cncTag_t iter, comdCtx *ctx);
 void cncPrescribe_cleanupInitStep(cncTag_t i, comdCtx *ctx);
 void cncPrescribe_advanceVelocityStep(cncTag_t i, cncTag_t iter, comdCtx *ctx);
 void cncPrescribe_updateBoxStep(cncTag_t i, cncTag_t k, cncTag_t iter, comdCtx *ctx);

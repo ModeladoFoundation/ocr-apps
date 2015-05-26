@@ -39,9 +39,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-//#ifdef _OPENMP
-//#include <omp.h>
-//#endif
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include "globals.h"
 #include "randdp.h"
@@ -97,7 +97,7 @@ double starts[NM];
 
 
 static double a[4], c[4];
-int hta_main(int argc, char *argv[])
+int hta_main(int argc, char *argv[], int pid)
 {
   //-------------------------------------------------------------------------c
   // k is the current level. It is passed down through subroutine args
@@ -160,6 +160,7 @@ int hta_main(int argc, char *argv[])
     for (i = 0; i <= 7; i++) {
       result = fscanf(fp, "%d", &debug_vec[i]);
     }
+    UNUSED(result);
     fclose(fp);
   } else {
     printf(" No input file. Using compiled defaults \n");
@@ -410,8 +411,6 @@ void setup_HTA (int nprocs)
   }
 
   // allocate HTAs for grids at each level
-  Dist dist0;
-  Dist_init(&dist0, 0);
   for (int k = lt; k >=1; k--)
   {
     // Check if the size is too small for distributed partition
@@ -432,6 +431,9 @@ void setup_HTA (int nprocs)
             ov[i] = di[i] * 2;
         }
     }
+    Dist dist0;
+    Tuple mesh = Tuple_create(3, di[2], di[1], di[0]);
+    Dist_init(&dist0, DIST_BLOCK, &mesh);
     Tuple t0 = Tuple_create(3, di[2], di[1], di[0]); // PEs
     Tuple fs = Tuple_create(3, ng[k][2] + ov[2], ng[k][1] + ov[1], ng[k][0] + ov[0]); // includes overlapped region
 
@@ -733,15 +735,8 @@ static void rprj3_on_leaves(HTA* s_tile, HTA* r_tile) // s is the coarser one
           tile_local_index.values[0] += 1; \
           tile_local_index.values[1] += 1; \
           tile_local_index.values[2] += 1; \
-          val = *(double*)HTA_access_element(r_HTA, acc); \
+          HTA_read_element(r_HTA, acc, &val); \
       }
-
-//          printf("tile dimension: "); \
-//          Tuple_print(nd_num_tiles, 0); \
-//          printf("global element index: "); \
-//          Tuple_print(c, 0); \
-//          printf("tile nd index: "); \
-//          Tuple_print(tile_nd_index, 0); \
 
 static void rprj3_collective(HTA* s_tile, HTA* r_HTA) // s is the coarser one
 {
@@ -778,7 +773,7 @@ static void rprj3_collective(HTA* s_tile, HTA* r_HTA) // s is the coarser one
     }
 
     Tuple flat_size = Tuple_create(3, m3k-2, m2k-2, m1k-2);
-    Tuple* nd_num_tiles = r_HTA->tiling;
+    Tuple* nd_num_tiles = &r_HTA->tiling;
     Tuple tile_nd_index;
     Tuple_init_zero(&tile_nd_index, 3);
     Tuple tile_local_index;
@@ -846,7 +841,7 @@ static void rprj3_HTA(HTA* r_HTA, HTA* s_HTA, int k)
 {
   if (timeron) timer_start(T_rprj3);
 
-  if(Tuple_product(r_HTA->tiling) == Tuple_product(s_HTA->tiling))
+  if(Tuple_product(&r_HTA->tiling) == Tuple_product(&s_HTA->tiling))
       HTA_map_h2(HTA_LEAF_LEVEL(r_HTA), rprj3_on_leaves, s_HTA, r_HTA);
   else
       rprj3_collective(s_HTA->tiles[0], r_HTA); // TODO: performance can be improved if done in parallel
@@ -1062,7 +1057,7 @@ static void distribute_interp_results(HTA* dummy, HTA* u_tile, HTA* x_tile)
 static void interp_HTA(HTA* z_HTA, HTA* u_HTA, int k)
 {
   if (timeron) timer_start(T_interp);
-  if(Tuple_product(z_HTA->tiling) == Tuple_product(u_HTA->tiling))
+  if(Tuple_product(&z_HTA->tiling) == Tuple_product(&u_HTA->tiling))
   {
     HTA_map_h2(HTA_LEAF_LEVEL(z_HTA), interp_on_leaves, z_HTA, u_HTA);
   }
@@ -1072,8 +1067,7 @@ static void interp_HTA(HTA* z_HTA, HTA* u_HTA, int k)
     // FIXME: easier to implement but might not be very efficient
     Tuple fs;
     Tuple_init_zero(&fs, 3);
-    Dist dist0;
-    Dist_init(&dist0, 0);
+    Dist dist0 = u_HTA->dist;
     fs.values[0] = z_HTA->flat_size.values[0] * 2 - 2;
     fs.values[1] = z_HTA->flat_size.values[1] * 2 - 2;
     fs.values[2] = z_HTA->flat_size.values[2] * 2 - 2;
@@ -1240,7 +1234,7 @@ void sync_boundary(HTA* d_tile, HTA* s1_tile, HTA* s2)
     double (*zs)[n2][n1] = (double (*)[n2][n1])HTA_get_ptr_raw_data(s1_tile);
 
     // Get globa tile nd index first
-    Tuple* nd_size = s2->tiling; // tile dimensions
+    Tuple* nd_size = &s2->tiling; // tile dimensions
     Tuple nd_idx;
     Tuple_init_zero(&nd_idx, 3); // this tile index
     Tuple target_idx;
@@ -1488,10 +1482,79 @@ void sync_boundary(HTA* d_tile, HTA* s1_tile, HTA* s2)
 
 }
 
-//  FIXME: this should be a collective operation instead of a map
+#define CREATE_TILE_SELECTION(rgn, zstart, zend, ystart, yend, xstart, xend) \
+{ \
+    Range_init(&(rgn##_tiles_range_x),  xstart, xend, 1, 0); \
+    Range_init(&(rgn##_tiles_range_y),  ystart, yend, 1, 0); \
+    Range_init(&(rgn##_tiles_range_z),  zstart, zend, 1, 0); \
+    Region_init(&(rgn##_tiles_sel), 3, rgn##_tiles_range_z, rgn##_tiles_range_y, rgn##_tiles_range_x); \
+}
+
+#define CREATE_ELEM_SELECTION(rgn, zstart, zend, ystart, yend, xstart, xend) \
+{ \
+    Range_init(&(rgn##_elem_range_x), xstart, xend, 1, 0); \
+    Range_init(&(rgn##_elem_range_y), ystart, yend, 1, 0); \
+    Range_init(&(rgn##_elem_range_z), zstart, zend, 1, 0); \
+    Region_init(&(rgn##_elem_sel), 3, rgn##_elem_range_z, rgn##_elem_range_y, rgn##_elem_range_x); \
+}
+
+
 static void comm3_HTA(HTA* h)
 {
+#if 0
+    Range lhs_elem_range_x, lhs_elem_range_y, lhs_elem_range_z;
+    Range lhs_tiles_range_x, lhs_tiles_range_y, lhs_tiles_range_z;
+    Range rhs_elem_range_x, rhs_elem_range_y, rhs_elem_range_z;
+    Range rhs_tiles_range_x, rhs_tiles_range_y, rhs_tiles_range_z;
+    Region lhs_elem_sel, rhs_elem_sel;
+    Region lhs_tiles_sel, rhs_tiles_sel;
+
+    int num_tiles = Tuple_product(&h->tiling);
+
+    // 1 synchronize zy plane (x direction)
+    // 1.1 right
+    // select tiles in the LHS
+    CREATE_TILE_SELECTION(lhs, 0, -1, 0, -1,  1,  0);
+    CREATE_TILE_SELECTION(rhs, 0, -1, 0, -1,  0, -1);
+    CREATE_ELEM_SELECTION(lhs, 1, -2, 1, -2,  0,  0);
+    CREATE_ELEM_SELECTION(rhs, 1, -2, 1, -2, -2, -2);
+    HTA_assign_with_region(&lhs_tiles_sel, &lhs_elem_sel, h, &rhs_tiles_sel, &rhs_elem_sel, h);
+    // 1.2 left
+    // Tile selection is swapped, rhs here is the receiving end and lhs is the sending
+    CREATE_ELEM_SELECTION(lhs, 1, -2, 1, -2,  1,  1);
+    CREATE_ELEM_SELECTION(rhs, 1, -2, 1, -2, -1, -1);
+    HTA_assign_with_region(&rhs_tiles_sel, &rhs_elem_sel, h, &lhs_tiles_sel, &lhs_elem_sel, h);
+
+    // 2 synchronize zx plane (y direction)
+    // 2.1 upward
+    CREATE_TILE_SELECTION(lhs,  0, -1,  1,  0,  0, -1);
+    CREATE_TILE_SELECTION(rhs,  0, -1,  0, -1,  0, -1);
+    CREATE_ELEM_SELECTION(lhs,  1, -2,  0,  0,  0, -1); // z[all], y[0], x[all+2]
+    CREATE_ELEM_SELECTION(rhs,  1, -2, -2, -2,  0, -1); // z[all], y[n-1], x[all+2]
+    HTA_assign_with_region(&lhs_tiles_sel, &lhs_elem_sel, h, &rhs_tiles_sel, &rhs_elem_sel, h);
+    // 2.2 downward (lhs send, rhs receive)
+    CREATE_ELEM_SELECTION(lhs,  1, -2,  1,  1,  0, -1); // z[all], y[1], x[all+2]
+    CREATE_ELEM_SELECTION(rhs,  1, -2, -1, -1,  0, -1); // z[all], y[n], x[all+2]
+    HTA_assign_with_region(&rhs_tiles_sel, &rhs_elem_sel, h, &lhs_tiles_sel, &lhs_elem_sel, h);
+
+    // synchronize yx plane
+    // 3.1 backward
+    CREATE_TILE_SELECTION(lhs,  1,  0,  0, -1,  0, -1);
+    CREATE_TILE_SELECTION(rhs,  0, -1,  0, -1,  0, -1);
+    CREATE_ELEM_SELECTION(lhs,  0,  0,  0, -1,  0, -1); // z[0], y[all+2], x[all+2]
+    CREATE_ELEM_SELECTION(rhs, -2, -2,  0, -1,  0, -1); // z[n-1], y[all+2], x[all+2]
+    HTA_assign_with_region(&lhs_tiles_sel, &lhs_elem_sel, h, &rhs_tiles_sel, &rhs_elem_sel, h);
+    // 3.2 forward
+    CREATE_ELEM_SELECTION(lhs,  1,  1,  0, -1,  0, -1); // z[1], y[all+2], x[all+2]
+    CREATE_ELEM_SELECTION(rhs, -1, -1,  0, -1,  0, -1); // z[n], y[all+2], x[all+2]
+    HTA_assign_with_region(&rhs_tiles_sel, &rhs_elem_sel, h, &lhs_tiles_sel, &lhs_elem_sel, h);
+
+#else
+    int pid = h->pid;
+    HTA_barrier(h->pid);
     HTA_tile_to_hta(HTA_LEAF_LEVEL(h), sync_boundary, h, h, h);
+    HTA_barrier(h->pid);
+#endif
 }
 
 //---------------------------------------------------------------------
@@ -1508,8 +1571,8 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
 
   int i0, mm0, mm1;
 
-  int i1, i2, i3, d1, e1, e2, e3;
-  double xx, x0, x1, a1, a2, ai;
+  int i1, i2, i3, d1/*, e1, e2, e3*/;
+  double xx, x0, x1, a1, a2;
 
   const int mm = 10;
   const double a = pow(5.0, 13.0);
@@ -1519,6 +1582,7 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
   int jg[4][mm][2];
 
   double rdummy;
+  UNUSED(rdummy);
 
   a1 = power(a, nx1);
   a2 = power(a, nx1*ny1);
@@ -1531,11 +1595,11 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
   //d1 = ie1 - is1 + 1;
   d1 = nx1;
   //e1 = ie1 - is1 + 2;
-  e1 = nx1;
+  //e1 = nx1;
   //e2 = ie2 - is2 + 2;
-  e2 = ny1;
+  //e2 = ny1;
   //e3 = ie3 - is3 + 2;
-  e3 = nz1;
+  //e3 = nz1;
   x0 = x;
   //rdummy = randlc(&x0, ai);
 
@@ -1647,7 +1711,7 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
   // FIXME: This will not work for the distributed memory model
   // NOTICE: the coordinates generated are off by 1 to pure OMP version
   Tuple flat_size = Tuple_create(3, nz1, ny1, nx1);
-  Tuple *nd_num_tiles = v_HTA->tiling;
+  Tuple *nd_num_tiles = &v_HTA->tiling;
   Tuple tile_nd_index;
   Tuple_init_zero(&tile_nd_index, 3);
   Tuple tile_local_index;
@@ -1655,7 +1719,7 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
   Tuple *acc[2] = {&tile_nd_index, &tile_local_index};
   Tuple c;
   Tuple_init_zero(&c, 3);
-  double *ptr;
+  double val;
   for (i = mm-1; i >= mm0; i--) {
     //printf("%d, %d, %d is set to -1.0\n", jg[3][i][0], jg[2][i][0], jg[1][i][0]);
     // the index within HTA with overlapped tiles is different
@@ -1669,8 +1733,8 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
     tile_local_index.values[0] += 1;
     tile_local_index.values[1] += 1;
     tile_local_index.values[2] += 1;
-    ptr = (double*)HTA_access_element(v_HTA, acc);
-    *ptr = -1.0;
+    val = -1.0;
+    HTA_write_element(v_HTA, acc, &val);
   }
   for (i = mm-1; i >= mm1; i--) {
     //printf("%d, %d, %d is set to +1.0\n", jg[3][i][1], jg[2][i][1], jg[1][i][1]);
@@ -1681,8 +1745,8 @@ static void zran3(void *oz, int nx1, int ny1, int nz1)
     tile_local_index.values[0] += 1;
     tile_local_index.values[1] += 1;
     tile_local_index.values[2] += 1;
-    ptr = (double*)HTA_access_element(v_HTA, acc);
-    *ptr = +1.0;
+    val = +1.0;
+    HTA_write_element(v_HTA, acc, &val);
   }
   comm3_HTA(v_HTA);
 }
@@ -1712,8 +1776,9 @@ static void showall(HTA* z_HTA)
         c.values[1] = i2;
         c.values[2] = i1;
 
-        double* ptr = HTA_flat_access(z_HTA, &c);
-        printf("%6.3f", *ptr);
+        double val;
+        HTA_flat_read(z_HTA, &c, &val);
+        printf("%6.3f", val);
       }
       printf("\n");
     }
@@ -1734,6 +1799,7 @@ static double power(double a, int n)
   double rdummy;
   double power;
 
+  UNUSED(rdummy);
   power = 1.0;
   nj = n;
   aj = a;

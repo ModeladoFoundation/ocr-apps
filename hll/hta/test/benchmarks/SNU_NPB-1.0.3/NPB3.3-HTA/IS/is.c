@@ -43,9 +43,9 @@
 #include "npbparams.h"
 #include <stdlib.h>
 #include <stdio.h>
-//#ifdef _OPENMP
-//#include <omp.h>
-//#endif
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include "HTA.h"
 #include "HTA_operations.h"
@@ -540,7 +540,7 @@ void count_keys(HTA * key_buff1_leaf)
     INT_TYPE* key_counters = HTA_get_ptr_raw_data(key_buff1_leaf);
     int key_offset = myid * (MAX_KEY / PROC);
 
-    assert(NUM_BUCKETS % PROC == 0);
+    ASSERT(NUM_BUCKETS % PROC == 0);
     // calculate the bucket range for this processor
     int num = NUM_BUCKETS / PROC;
     int b1 = myid * num;
@@ -613,7 +613,7 @@ void local_scan(HTA * key_buff1_leaf, HTA * local_sum_leaf)
 
 void scan_partial_and_shift(HTA * local_sum_HTA) // TODO: communication
 {
-    int num_tiles = local_sum_HTA->tiling->values[0];
+    int num_tiles = local_sum_HTA->tiling.values[0];
     INT_TYPE sum = 0;
     for(int i = 0; i < num_tiles; i++)
     {
@@ -682,17 +682,16 @@ void rank( int iteration )
 {
 
     INT_TYPE    i, k;
-    INT_TYPE    *key_array_ptr;
+    //INT_TYPE    *key_array_ptr;
 
     //key_array[iteration] = iteration;
     //key_array[iteration+MAX_ITERATIONS] = MAX_KEY - iteration;
     // FIXME: reduce overhead
     Tuple idx1 = Tuple_create(1, iteration);
     Tuple idx2 = Tuple_create(1, iteration + MAX_ITERATIONS);
-    key_array_ptr = (INT_TYPE*) HTA_flat_access(key_array_HTA, &idx1);
-    *key_array_ptr = iteration;
-    key_array_ptr = (INT_TYPE*) HTA_flat_access(key_array_HTA, &idx2);
-    *key_array_ptr = MAX_KEY - iteration;
+    HTA_flat_write(key_array_HTA, &idx1, &iteration);
+    INT_TYPE val = MAX_KEY - iteration;
+    HTA_flat_write(key_array_HTA, &idx2, &val);
 
 /*  Determine where the partial verify test keys are, load into  */
 /*  top of array bucket_size                                     */
@@ -701,7 +700,7 @@ void rank( int iteration )
     for( i=0; i<TEST_ARRAY_SIZE; i++ )
     {
         idx3.values[0] = test_index_array[i];
-        partial_verify_vals[i] = *((INT_TYPE*) HTA_flat_access(key_array_HTA, &idx3));
+        HTA_flat_read(key_array_HTA, &idx3, &partial_verify_vals[i]);
     }
 
     if(timer_on) timer_start(4);
@@ -751,7 +750,8 @@ void rank( int iteration )
         if( 0 < k  &&  k <= NUM_KEYS-1 )
         {
             Tuple idx1 = Tuple_create(1, k-1);
-            INT_TYPE key_rank = *((INT_TYPE*) HTA_flat_access(key_buff1_HTA, &idx1));
+            INT_TYPE key_rank;
+            HTA_flat_read(key_buff1_HTA, &idx1, &key_rank);
 
             int failed = 0;
 
@@ -881,7 +881,9 @@ void alloc_and_init_HTAs()
     Tuple tp0 = Tuple_create(1, PROC);
     Tuple fs0 = Tuple_create(1, SIZE_OF_BUFFERS);
     Dist dist0;
-    Dist_init(&dist0, 0);
+    Tuple mesh;
+    Tuple_init(&mesh, 1, PROC);
+    Dist_init(&dist0, DIST_BLOCK, &mesh);
     key_array_HTA = HTA_create(1, 2, &fs0, 0, &dist0, SCALAR_TYPE, 1, tp0);  // tile size = TOTAL_KEYS/PROC
     key_buff2_HTA = HTA_create(1, 2, &fs0, 0, &dist0, SCALAR_TYPE, 1, tp0);  // tile size = TOTAL_KEYS/PROC
 
@@ -907,7 +909,7 @@ void alloc_and_init_HTAs()
 /*************             M  A  I  N             ****************/
 /*****************************************************************/
 
-int hta_main(int argc, char* argv[])
+int hta_main(int argc, char* argv[], int pid)
 {
 
     int             i, iteration;

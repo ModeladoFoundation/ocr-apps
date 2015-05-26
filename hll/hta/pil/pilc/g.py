@@ -38,9 +38,14 @@ PIL_MAIN = False
 # the memory model assumed to output code for. Choices are "shared" and "dist".
 MEM = "shared"
 
-
 # flag to denote if we are to use the R-Stream compiler
 RSTREAM = False
+
+# flag to set whether or not to reuse the temporary arrays if possible
+REUSE_ARRAYS = True
+
+# flag to use ocrWait()
+OCR_WAIT = False
 
 
 #------------------------------------------------------------------------------
@@ -54,9 +59,10 @@ CHPL = ['chpl']
 DEFAULT = ['default']
 
 # the regular expression that specifies a node call
-MAP_RE = "node\s*\(\s*(\d+)\s*,\s*(\w+)\s*,\s*\[(\w+):(\w+):(\w+)\]\s*,\s*(\w+)\s*,\s*\[(.*)\]\s*,\s*((\w+)\(\s*(.*)\s*\)\s*\))"
-#        "node    (   label   ,   index   ,     [lower:step:upper]    ,    key    ,   [targets]  ,    func_name(in_args) )
-NW_RECV_RE = "(\s*)pil_recv\s*\(\s*(\w+)\s*,\s*([&]{0,1})\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\)\s*;.*"
+MAP_RE = "node\s*\(\s*(\d+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*\[(\w+):(\w+):(\w+)\]\s*,\s*(\w+)\s*,\s*\[(.*)\]\s*,\s*\[(.*)\]\s*,\s*((\w+)\(\s*(.*)\s*\)\s*\))"
+#        "node    (   label   ,   index   ,     [lower:step:upper]    ,    key    ,    [pred]    ,    [succ]    , func_name(in_args) )
+NW_RECV_RE = "(\s*)(pil_recv)\s*\(\s*(\w+)\s*,\s*(\w+)\s*,\s*\[(.*)\]\s*,\s*\[(.*)\]\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\)"
+NW_SEND_RE = "(\s*)(pil_send)\s*\(\s*(\w+)\s*,\s*(\w+)\s*,\s*\[(.*)\]\s*,\s*\[(.*)\]\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\)"
 
 # the index variable we shall use if the user specifies a NULL index variable
 INDEX = "__pil_unique_index_variable_name"
@@ -92,15 +98,20 @@ arrays = {} # the sizes of constant arrays
 
 # TODO: this is saving info from each node. I'm starting to think I might as
 # well save it all.
+prototypes = [] # the function prototypes declared in a file
 functions = {} # the function each node calls
 intervals = {} # the interval of each node
 target_variables = {} # the name of the target variable for each function
+preds = {} # the list of predecessors of each node
+real_preds = {} # the list of predecessors of each node
 targets = {} # the list of targets of each node
+real_targets = {} # the list of targets of each node
 indices = {} # the index variable name for each node
 
+node_labels = [] # a list of the labels of nodes that are called
 nodes = {} # the _pil_nodes that are called
 nodelets = {} # the _pil_nodelets that are called
-nw_calls = {} # the nw calls inside of nodes and nodelets
+nw_calls = [] # the nw calls
 context_variables = {} # variables declared with _pil_context
 
 
@@ -112,3 +123,7 @@ func_lines = {} # the body functions to be output later
 pil_main_lines = [] # the contents of the pil_main function to be output later
 
 nodes_entered = [] # the nodes that are entered with a pil_enter() call
+
+# graph is the task graph of the program. This is created by parsing the pil
+# nodes.
+graph = {}

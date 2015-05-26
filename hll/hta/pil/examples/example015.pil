@@ -2,6 +2,7 @@
 
 // global data
 int i;
+int rank;
 int target;
 gpp_t index_array;
 gpp_t data_array;
@@ -26,15 +27,15 @@ void h(int *target, gpp_t index_array, gpp_t data_array)
 }
 
 // pil program
-node(1, NULL, [1:1:1], target, [0], f(&target, index_array, data_array))
-node(2, NULL, [1:1:1], target, [3], g(&target, index_array, data_array))
-node(3, NULL, [1:1:1], target, [0], h(&target, index_array, data_array))
+node(1, rank, NULL, [1:1:1], target, [0], [0], f(&target, index_array, data_array))
+node(2, rank, NULL, [1:1:1], target, [0], [3], g(&target, index_array, data_array))
+node(3, rank, NULL, [1:1:1], target, [2], [0], h(&target, index_array, data_array))
 
 //void pil_main(int argc, char **argv)
-void pil_main(int argc, char **argv)
+void pil_main(int argc, char **argv, int rank)
 {
 	gpp_t index_array, data_array;
 	pil_init(&index_array, &data_array);
-	pil_enter(2, 2, index_array, data_array);
-	pil_enter(1, 2, index_array, data_array);
+	pil_enter(2, rank, 2, index_array, data_array);
+	pil_enter(1, rank, 2, index_array, data_array);
 }

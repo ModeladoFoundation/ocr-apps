@@ -62,8 +62,15 @@ void cncAutomaticShutdown(ocrGuid_t doneEvent);
 #warning Your compiler might not support variadic macros, in which case the CNC_REQUIRE macro is not supported. You can disable this warning by setting NO_VARIADIC_MACROS to 0, or disable the macro definitions by setting it to 1.
 #endif
 
+// FIXME - Should be able to handle this better after Bug#545 is addressed
+#if CNCOCR_x86
+#define CNC_ABORT(err) do { ocrShutdown(); exit(err); } while (0)
+#else
+#define CNC_ABORT(err) ocrAbort(err)
+#endif
+
 #if !NO_VARIADIC_MACROS
-#define CNC_REQUIRE(cond, ...) do { if (!(cond)) { PRINTF(__VA_ARGS__); ocrShutdown(); } } while (0)
+#define CNC_REQUIRE(cond, ...) do { if (!(cond)) { PRINTF(__VA_ARGS__); CNC_ABORT(1); } } while (0)
 #endif
 
 /* squelch "unused variable" warnings */

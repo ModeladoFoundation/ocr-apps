@@ -1,13 +1,13 @@
 #include "Stencil1D.h"
 
 
-void Stencil1D_init(Stencil1DArgs *args, Stencil1DCtx *ctx) {
+void Stencil1D_cncInitialize(Stencil1DArgs *args, Stencil1DCtx *ctx) {
 
     s64 i, j, t;
 
     // Put "tile" items
     for (i = 0; i < NUM_TILES; i++) {
-        float *tile = cncCreateItemVector_tile(TILE_SIZE);
+        float *tile = cncItemCreateVector_tile(TILE_SIZE);
         for (j = 0; j < TILE_SIZE; j++) {
             tile[j] = 0;
         }
@@ -16,14 +16,14 @@ void Stencil1D_init(Stencil1DArgs *args, Stencil1DCtx *ctx) {
 
     // Put "fromLeft" items
     for (i = 1; i < NUM_TILES; i++) {
-        float *fromLeft = cncCreateItem_fromLeft();
+        float *fromLeft = cncItemCreate_fromLeft();
         *fromLeft = 0;
         cncPut_fromLeft(fromLeft, i, 0, ctx);
     }
 
     // Put "fromRight" items
     for (i = 0; i < NUM_TILES-1; i++) {
-        float *fromRight = cncCreateItem_fromRight();
+        float *fromRight = cncItemCreate_fromRight();
         *fromRight = 0;
         cncPut_fromRight(fromRight, i, 0, ctx);
     }
@@ -41,7 +41,7 @@ void Stencil1D_init(Stencil1DArgs *args, Stencil1DCtx *ctx) {
 }
 
 
-void Stencil1D_finalize(float **tile, Stencil1DCtx *ctx) {
+void Stencil1D_cncFinalize(float **tile, Stencil1DCtx *ctx) {
 
     int i, j;
     double total = 2; // first and last are always 1

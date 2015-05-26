@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ROOT=${CNCOCR_INSTALL?"Missing CNCOCR_INSTALL environment variable"}
+ROOT=${CNCOCR_ROOT-"${XSTACK_ROOT?Missing CNCOCR_ROOT or XSTACK_ROOT environment variable}/hll/cnc"}
 
 [ -f $ROOT/py/.depsOK ] || bash $ROOT/py/bootstrap.sh
 

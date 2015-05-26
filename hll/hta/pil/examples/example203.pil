@@ -1,25 +1,43 @@
 // Example 25: A basic barrier test.
 
-int i;
-int target_id;
+#define N (500)
 
-void f(int *target_id)
+int i;
+int barrier_num;
+int rank;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+void f(int *target, gpp_t index_array, gpp_t data_array, int rank, int barrier_num)
 {
-	fprintf(stdout, "%d: before barrier\n", pil_get_nwID());
-	fflush(stdout);
-	pil_barrier_all();
-	fprintf(stdout, "%d: after barrier barrier\n", pil_get_nwID());
-	fflush(stdout);
-	*target_id = 0;
+	//fprintf(stdout, "%d: before barrier\n", rank); fflush(stdout);
+	//pil_barrier_all(rank);
+	//fprintf(stdout, "%d: after barrier\n", rank); fflush(stdout);
+	//printf("%d: f number %d\n", rank, barrier_num); fflush(stdout);
+	pil_barrier_all(rank);
+	*target = 0;
 }
 
-node(1, i, [0:1:9], target_id, [0], f(&target_id))
+node(1, rank, i, [1:1:1], target, [0], [0], f(&target, index_array, data_array, rank, barrier_num))
 
-void pil_main(int argc, char **argv)
+void pil_main(int argc, char **argv, int rank)
 {
-	printf("ERROR: this is broken. scale barriers are non-blocking\n"); fflush(stdout);
-	exit(0);
-	pil_enter(1, 0);
-	if (pil_get_nwID() == 0)
-		printf("SUCCESS");
+	gpp_t index_array;
+	gpp_t data_array;
+	int barrier_num;
+	pil_init(&index_array, &data_array);
+
+	if (rank == 0) {
+		printf("performing %d barriers...", N); fflush(stdout);
+	}
+
+	for (barrier_num = 0; barrier_num < N; barrier_num++) {
+		//printf("%d: pil_enter number %d\n", rank, barrier_num); fflush(stdout);
+		pil_enter(1, rank, 3, index_array, data_array, rank, barrier_num);
+	}
+
+	if (rank == 0) {
+		printf("done\nSUCCESS\n");
+	}
 }

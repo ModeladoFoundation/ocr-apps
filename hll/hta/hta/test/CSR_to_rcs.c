@@ -1,11 +1,7 @@
 #include <stdio.h>
 #include "CSR.h"
 #define MATRIX_WIDTH (16)
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     double val[MATRIX_WIDTH*MATRIX_WIDTH];
     int col_ind[MATRIX_WIDTH*MATRIX_WIDTH];

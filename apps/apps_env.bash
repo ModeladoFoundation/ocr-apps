@@ -48,6 +48,8 @@ fi
 # set repository-wide environment variables
 export APPS_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo APPS_ROOT=$APPS_ROOT
+export XSTACK_ROOT="$( cd "$( dirname "${APPS_ROOT}" )" && pwd )"
+echo XSTACK_ROOT=$XSTACK_ROOT
 
 # add paths
 for p in "${PATHS[@]}"

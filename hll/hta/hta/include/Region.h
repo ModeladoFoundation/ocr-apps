@@ -9,7 +9,6 @@ struct range {
     int high;   // higher bound
     int step;   // step
     int mod;   // for circular shift?
-    /// Cardinality
     int card;
 };
 
@@ -27,12 +26,11 @@ struct region {
 /// Region is passed by reference
 typedef struct region Region;
 
-//Region Region_create(int dim, ...);
+/// Initialize a Region structure with <<dim>> ranges
 void Region_init(Region *r, int dim, ...);
-//void Region_destroy(Region r);
 
 /// The total number of elements in a region is known as its cardinality.
-unsigned int Region_cardinality(Region *r);
+int Region_cardinality(Region *r);
 
 /// Take a linear index within a region and convert it to linear index
 /// within a tile specified by the tuple t.
@@ -42,8 +40,22 @@ unsigned int Region_cardinality(Region *r);
 /// @return The converted linear index within the tile.
 int Region_idx_to_tile_idx(Region *r, Tuple *t, int idx);
 
+Tuple Region_nd_idx_to_tile_nd_idx(Region *r, Tuple* region_nd_idx);
+// It converts a region selection into equivalent boolean array
+// representation. The programmer has to allocate memory space for the boolean array
+void Region_to_boolean_array(Region *r, Tuple *t, int* sel);
+
+Region Region_create_full_elem_selection(int dim);
+
 /// Create a Tuple of 1 level
 Tuple Region_get_dimension(Region *r);
+
+/// flatten is an alias of Region_get_dimension
+#define Region_flatten(r) Region_get_dimension(r)
+
+// Region iterator functions
+void Region_iterator_init(Tuple *iter, Region *rgn);
+int Region_iterator_next(Tuple *iter, Region *rgn);
 
 void Region_print(Region *r);
 

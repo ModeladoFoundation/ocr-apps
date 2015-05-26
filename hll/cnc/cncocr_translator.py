@@ -4,6 +4,8 @@ from cncocr import graph, parser
 
 from jinja2 import Environment, PackageLoader, contextfilter
 
+__version__ = "1.0.0"
+
 @contextfilter
 def dispatch_macro(context, macro_name, *args, **kwargs):
     return context.vars[macro_name](*args, **kwargs)
@@ -11,12 +13,15 @@ def dispatch_macro(context, macro_name, *args, **kwargs):
 templateEnv = Environment(loader=PackageLoader('cncocr'), extensions=['jinja2.ext.with_','jinja2.ext.do'], keep_trailing_newline=True)
 templateEnv.filters['macro'] = dispatch_macro
 
+progDesc="CnC-OCR (version {0}) graph translator tool. Parses a CnC graph specification, and generates a CnC-OCR project from the specification.".format(__version__)
+
 # Arguments
-argParser = argparse.ArgumentParser(prog="cncocr_t", description="Process CnC-OCR graph spec.")
+argParser = argparse.ArgumentParser(prog="cncocr_t", description=progDesc)
 argParser.add_argument('--affinities', action='store_true', help="use OCR affinities")
 argParser.add_argument('--platform', choices=['x86', 'ocr'], default='x86', help="target platform for the CnC-OCR runtime")
 argParser.add_argument('--fsim', action='store_true', help="Generates FSim-specific files (implies --platform=ocr)")
 argParser.add_argument('--distributed', action='store_true', help="alias of --affinities --platform=ocr")
+argParser.add_argument('--version', action='version', version='%(prog)s v{0}'.format(__version__))
 argParser.add_argument('specfile', nargs='?', default="", help="CnC-OCR graph spec file")
 args = argParser.parse_args()
 
@@ -27,15 +32,19 @@ if args.distributed:
     args.platform='ocr'
     args.affinities=True
 
+def die(msg):
+    note="\nRun '{0} -h' for usage information.".format(argParser.prog)
+    sys.exit(msg+note)
+
 # Find default spec file
 if not args.specfile:
     specs = glob.glob("*.cnc")
     if len(specs) > 1:
-        sys.exit("ERROR! Conflicting spec files: " + " ".join(specs))
+        die("ERROR! Conflicting spec files: " + " ".join(specs))
     elif specs:
         args.specfile = specs[0]
     else:
-        sys.exit("ERROR! No graph spec file found (*.cnc)")
+        die("ERROR! No graph spec file found (*.cnc)")
 
 
 # Options

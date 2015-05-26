@@ -3,7 +3,7 @@
 /**
  * Step function defintion for "sumEvens"
  */
-void sumEvens(cncTag_t n, int *evens, EvenOddSumsCtx *ctx) {
+void EvenOddSums_sumEvens(cncTag_t n, int *evens, EvenOddSumsCtx *ctx) {
 
     //
     // INPUTS
@@ -23,7 +23,7 @@ void sumEvens(cncTag_t n, int *evens, EvenOddSumsCtx *ctx) {
     //
 
     // Put "evensTotal" items
-    int *evensTotal = cncCreateItem_evensTotal();
+    int *evensTotal = cncItemCreate_evensTotal();
     *evensTotal = sum;
     cncPut_evensTotal(evensTotal, ctx);
 

@@ -3,7 +3,7 @@
 #include "{{g.name}}.h"
 
 {#/* TODO - eliminate code reuse between here and StepFunc.c */#}
-void {{g.name}}_init({{g.name}}Args *args, {{g.name}}Ctx *ctx) {
+void {{util.qualified_step_name(g.initFunction)}}({{util.g_args_param()}}, {{util.g_ctx_param()}}) {
 {% if g.initFunction.tag %}
     // TODO: Initialize these tag variables using args
     cncTag_t {{ g.initFunction.tag|join(", ") }};
@@ -12,16 +12,16 @@ void {{g.name}}_init({{g.name}}Args *args, {{g.name}}Ctx *ctx) {
 {{ util.render_step_outputs(g.initFunction.outputs) }}
 {% endcall %}
     // Set finalizer function's tag
-    {{g.name}}_await({{util.print_tag(g.finalizeFunction.tag)}}ctx);
+    {{g.name}}_await({{util.print_tag(g.finalizeFunction.tag)}}{{util.g_ctx_var()}});
 
 }
 
 
 {#/* XXX -  This code is copied from StepFunc.c */-#}
 {% set stepfun = g.finalizeFunction -%}
-void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True)
+void {{util.qualified_step_name(stepfun)}}({{ util.print_tag(stepfun.tag, typed=True)
         }}{{ util.print_bindings(stepfun.inputs, typed=True)
-        }}{{g.name}}Ctx *ctx) {
+        }}{{util.g_ctx_param()}}) {
 {% for input in stepfun.inputItems -%}
 {% if input.keyRanges %}
 {%- set comment = "Access \"" ~ input.binding ~ "\" inputs" -%}
@@ -43,7 +43,7 @@ void {{stepfun.collName}}({{ util.print_tag(stepfun.tag, typed=True)
 /* Mapping {{i.collName}} onto {{i.mapTarget}} */
 {{i.mapTarget}}ItemKey {{i.functionName}}({{
   util.print_tag(i.key, typed=True)
-  }}{{g.name}}Ctx *ctx) {
+  }}{{util.g_ctx_param()}}) {
     {{i.mapTarget}}ItemKey _result;
     {% for x in g.itemDeclarations[i.mapTarget].key -%}
     _result.{{x}} = /*TODO*/0;

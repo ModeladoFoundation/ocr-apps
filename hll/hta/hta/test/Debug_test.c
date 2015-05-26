@@ -2,11 +2,7 @@
 #include "HTA.h"
 #include "Debug.h"
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     int x = 100;
 
@@ -16,6 +12,7 @@ int main()
 #else
     printf("DEBUG is off. The program should exit with return value 0.\n");
 #endif
+    UNUSED(x);
 
     DBG(0, "debug log level 0\n");
     DBG(1, "debug log level 1\n");

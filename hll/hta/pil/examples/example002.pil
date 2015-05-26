@@ -2,6 +2,7 @@
 
 # global data
 int i;
+int rank;
 int target;
 gpp_t index_array;
 gpp_t data_array;
@@ -20,5 +21,5 @@ void g(int *target, gpp_t index_array, gpp_t data_array)
 }
 
 # node program
-node(1, NULL, [1:1:1], target, [2], f(&target, index_array, data_array))
-node(2, NULL, [1:1:1], target, [0], g(&target, index_array, data_array))
+node(1, rank, NULL, [1:1:1], target, [0], [2], f(&target, index_array, data_array))
+node(2, rank, NULL, [1:1:1], target, [1], [0], g(&target, index_array, data_array))

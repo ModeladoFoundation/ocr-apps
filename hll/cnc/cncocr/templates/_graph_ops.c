@@ -11,7 +11,7 @@
 pthread_mutex_t _cncDebugMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif /* CNC_DEBUG_LOG */
 
-{{g.name}}Ctx *{{g.name}}_create() {
+{{util.g_ctx_t()}} *{{g.name}}_create() {
 #ifdef CNC_DEBUG_LOG
     // init debug logger (only once)
     if (!cncDebugLog) {
@@ -20,14 +20,16 @@ pthread_mutex_t _cncDebugMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif /* CNC_DEBUG_LOG */
     // allocate the context datablock
     ocrGuid_t contextGuid;
-    {{g.name}}Ctx *context;
-    SIMPLE_DBCREATE(&contextGuid, (void**)&context, sizeof(*context));
+    {{util.g_ctx_param()}};
+    SIMPLE_DBCREATE(&contextGuid, (void**)&{{util.g_ctx_var()}}, sizeof(*{{util.g_ctx_var()}}));
     // store a copy of its guid inside
-    context->_guids.self = contextGuid;
+    {{util.g_ctx_var()}}->_guids.self = contextGuid;
     // initialize graph events
-    ocrEventCreate(&context->_guids.finalizedEvent, OCR_EVENT_STICKY_T, true);
-    ocrEventCreate(&context->_guids.doneEvent, OCR_EVENT_STICKY_T, true);
-    ocrEventCreate(&context->_guids.awaitTag, OCR_EVENT_ONCE_T, true);
+    // TODO - these events probably shouldn't be marked as carrying data
+    ocrEventCreate(&{{util.g_ctx_var()}}->_guids.finalizedEvent, OCR_EVENT_STICKY_T, TRUE);
+    ocrEventCreate(&{{util.g_ctx_var()}}->_guids.quiescedEvent, OCR_EVENT_STICKY_T, FALSE);
+    ocrEventCreate(&{{util.g_ctx_var()}}->_guids.doneEvent, OCR_EVENT_STICKY_T, TRUE);
+    ocrEventCreate(&{{util.g_ctx_var()}}->_guids.awaitTag, OCR_EVENT_ONCE_T, TRUE);
     // initialize item collections
     {% call util.render_indented(1) -%}
 {% block arch_itemcoll_init scoped -%}
@@ -35,59 +37,69 @@ s32 i;
 ocrGuid_t *itemTable;
 {% for i in g.concreteItems -%}
 {% if i.key -%}
-SIMPLE_DBCREATE(&context->_items.{{i.collName}}, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
+SIMPLE_DBCREATE(&{{util.g_ctx_var()}}->_items.{{i.collName}}, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
 for (i=0; i<CNC_TABLE_SIZE; i++) {
     ocrGuid_t *_ptr;
     // Add one level of indirection to help with contention
     SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
     *_ptr = NULL_GUID;
-    ocrDbRelease(itemTable[i]);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(itemTable[i]);
 }
-ocrDbRelease(context->_items.{{i.collName}});
+// FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+// ocrDbRelease({{util.g_ctx_var()}}->_items.{{i.collName}});
 {% else -%}
-ocrEventCreate(&context->_items.{{i.collName}}, OCR_EVENT_IDEM_T, true);
+ocrEventCreate(&{{util.g_ctx_var()}}->_items.{{i.collName}}, OCR_EVENT_IDEM_T, TRUE);
 {% endif -%}
 {% endfor -%}
 {% endblock arch_itemcoll_init -%}
     {% endcall %}
     // initialize step collections
     {% for s in g.finalAndSteps -%}
-    ocrEdtTemplateCreate(&context->_steps.{{s.collName}},
-            _cncStep_{{s.collName}}, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    ocrEdtTemplateCreate(&{{util.g_ctx_var()}}->_steps.{{s.collName}},
+            _{{g.name}}_cncStep_{{s.collName}}, EDT_PARAM_UNK, EDT_PARAM_UNK);
     {% endfor -%}
-    return context;
+    return {{util.g_ctx_var()}};
 }
 
-void {{g.name}}_destroy({{g.name}}Ctx *context) {
-    ocrEventDestroy(context->_guids.finalizedEvent);
-    ocrEventDestroy(context->_guids.doneEvent);
+void {{g.name}}_destroy({{util.g_ctx_param()}}) {
+    ocrEventDestroy({{util.g_ctx_var()}}->_guids.finalizedEvent);
+    ocrEventDestroy({{util.g_ctx_var()}}->_guids.quiescedEvent);
+    ocrEventDestroy({{util.g_ctx_var()}}->_guids.doneEvent);
     // destroy item collections
     // XXX - need to do a deep free by traversing the table
     {% call util.render_indented(1) -%}
 {% block arch_itemcoll_destroy -%}
 {% for i in g.concereteItems -%}
 {% if i.key -%}
-ocrDbDestroy(context->_items.{{i.collName}});
+ocrDbDestroy({{util.g_ctx_var()}}->_items.{{i.collName}});
 {% else -%}
-ocrEventDestroy(context->_items.{{i.collName}});
+ocrEventDestroy({{util.g_ctx_var()}}->_items.{{i.collName}});
 {% endif -%}
 {% endfor -%}
 {% endblock arch_itemcoll_destroy -%}
     {% endcall -%}
     // destroy step collections
     {% for s in g.finalAndSteps -%}
-    ocrEdtTemplateDestroy(context->_steps.{{s.collName}});
+    ocrEdtTemplateDestroy({{util.g_ctx_var()}}->_steps.{{s.collName}});
     {% endfor -%}
-    ocrDbDestroy(context->_guids.self);
+    ocrDbDestroy({{util.g_ctx_var()}}->_guids.self);
 }
 
 static ocrGuid_t _emptyEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     return NULL_GUID;
 }
 
-static ocrGuid_t _graphFinishEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    {{g.name}}Args *args = depv[0].ptr;
-    {{g.name}}Ctx *context = depv[1].ptr;
+/* EDT runs when all compute steps are done AND graph is finalized (graph is DONE) */
+static ocrGuid_t _graphFinishedEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+    ocrGuid_t finalizerResult = depv[1].guid;
+    return finalizerResult;
+}
+
+/* EDT runs when all compute steps are done (graph is quiesced) */
+static ocrGuid_t _stepsFinishedEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+    {{util.g_args_param()}} = depv[0].ptr;
+    {{util.g_ctx_param()}} = depv[1].ptr;
     // XXX - just do finalize from within the finish EDT
     // The graph isn't done until the finalizer runs as well,
     // so we need to make a dummy EDT depending on the
@@ -96,72 +108,93 @@ static ocrGuid_t _graphFinishEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
     ocrEdtTemplateCreate(&templGuid, _emptyEdt, 0, 1);
     ocrEdtCreate(&emptyEdtGuid, templGuid,
         /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/&context->_guids.finalizedEvent,
+        /*depc=*/EDT_PARAM_DEF, /*depv=*/&{{util.g_ctx_var()}}->_guids.finalizedEvent,
         /*properties=*/EDT_PROP_NONE,
         /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
     // XXX - destroying this template caused crash on FSim
     //ocrEdtTemplateDestroy(templGuid);
     // Start graph execution
     {{ util.step_enter() }}
-    {{g.name}}_init(args, context);
+    {{util.qualified_step_name(g.initFunction)}}({{util.g_args_var()}}, {{util.g_ctx_var()}});
     {{ util.step_exit() }}
-    if (args) ocrDbDestroy(depv[0].guid);
+    if ({{util.g_args_var()}}) ocrDbDestroy(depv[0].guid);
     return NULL_GUID;
 }
 
 static ocrGuid_t _finalizerEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    {{g.name}}Ctx *context = depv[0].ptr;
+    {{util.g_ctx_param()}} = depv[0].ptr;
     cncTag_t *tag = depv[1].ptr; MAYBE_UNUSED(tag);
     cncPrescribe_{{g.finalizeFunction.collName}}(
         {%- for x in g.finalizeFunction.tag %}tag[{{loop.index0}}], {% endfor -%}
-        context);
+        {{util.g_ctx_var()}});
+    // TODO - I probably need to free this (the tag) sometime
     // XXX - for some reason this causes a segfault?
     //ocrDbDestroy(depv[1].guid);
     return NULL_GUID;
 }
 
-void {{g.name}}_launch({{g.name}}Args *args, {{g.name}}Ctx *context) {
-    {{g.name}}Args *argsCopy;
-    ocrGuid_t graphEdtGuid, finalEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
-    ocrDbRelease(context->_guids.self);
+void {{g.name}}_launch({{util.g_args_param()}}, {{util.g_ctx_param()}}) {
+    {{util.g_args_param()}}Copy;
+    ocrGuid_t graphEdtGuid, finalEdtGuid, doneEdtGuid, edtTemplateGuid, outEventGuid, argsDbGuid;
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease({{util.g_ctx_var()}}->_guids.self);
     // copy the args struct into a data block
     // TODO - I probably need to free this sometime
-    if (sizeof(*args) > 0) {
-        SIMPLE_DBCREATE(&argsDbGuid, (void**)&argsCopy, sizeof(*args));
-        *argsCopy = *args;
-        ocrDbRelease(argsDbGuid);
+    if (sizeof(*{{util.g_args_var()}}) > 0) {
+        SIMPLE_DBCREATE(&argsDbGuid, (void**)&argsCopy, sizeof(*{{util.g_args_var()}}));
+        *argsCopy = *{{util.g_args_var()}};
+        // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+        // ocrDbRelease(argsDbGuid);
     }
     // Don't need to copy empty args structs
     else {
         argsDbGuid = NULL_GUID;
     }
     // create a finish EDT for the CnC graph
-    ocrEdtTemplateCreate(&edtTemplateGuid, _graphFinishEdt, 0, 2);
-    ocrEdtCreate(&graphEdtGuid, edtTemplateGuid,
-        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-        /*properties=*/EDT_PROP_FINISH,
-        /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
-    ocrEdtTemplateDestroy(edtTemplateGuid);
-    // hook doneEvent into the graph's output event
-    ocrAddDependence(outEventGuid, context->_guids.doneEvent, 0, DB_DEFAULT_MODE);
+    {
+        ocrEdtTemplateCreate(&edtTemplateGuid, _stepsFinishedEdt, 0, 2);
+        ocrEdtCreate(&graphEdtGuid, edtTemplateGuid,
+                /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+                /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
+                /*properties=*/EDT_PROP_FINISH,
+                /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
+        ocrEdtTemplateDestroy(edtTemplateGuid);
+        // hook the graph's quiescedEvent into the graph's output event
+        ocrAddDependence(outEventGuid, {{util.g_ctx_var()}}->_guids.quiescedEvent, 0, DB_DEFAULT_MODE);
+    }
     // set up the finalizer
-    ocrEdtTemplateCreate(&edtTemplateGuid, _finalizerEdt, 0, 2);
-    ocrGuid_t deps[] = { context->_guids.self, context->_guids.awaitTag };
-    ocrEdtCreate(&finalEdtGuid, edtTemplateGuid,
-        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-        /*properties=*/EDT_PROP_NONE,
-        /*affinity=*/NULL_GUID, /*outEvent=*/NULL);
-    ocrEdtTemplateDestroy(edtTemplateGuid);
+    {
+        ocrEdtTemplateCreate(&edtTemplateGuid, _finalizerEdt, 0, 2);
+        ocrGuid_t deps[] = { {{util.g_ctx_var()}}->_guids.self, {{util.g_ctx_var()}}->_guids.awaitTag };
+        ocrEdtCreate(&finalEdtGuid, edtTemplateGuid,
+            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+            /*properties=*/EDT_PROP_FINISH,
+            /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
+        ocrEdtTemplateDestroy(edtTemplateGuid);
+        // hook the graph's finalizedEvent into the finalizer's output event
+        ocrAddDependence(outEventGuid, {{util.g_ctx_var()}}->_guids.finalizedEvent, 0, DB_DEFAULT_MODE);
+    }
+    // set up the EDT that controls the graph's doneEvent
+    {
+        ocrEdtTemplateCreate(&edtTemplateGuid, _graphFinishedEdt, 0, 2);
+        ocrGuid_t deps[] = { {{util.g_ctx_var()}}->_guids.quiescedEvent, {{util.g_ctx_var()}}->_guids.finalizedEvent };
+        ocrEdtCreate(&doneEdtGuid, edtTemplateGuid,
+            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
+            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
+            /*properties=*/EDT_PROP_NONE,
+            /*affinity=*/NULL_GUID, /*outEvent=*/&outEventGuid);
+        ocrEdtTemplateDestroy(edtTemplateGuid);
+        ocrAddDependence(outEventGuid, {{util.g_ctx_var()}}->_guids.doneEvent, 0, DB_DEFAULT_MODE);
+    }
     // start the graph execution
     ocrAddDependence(argsDbGuid, graphEdtGuid, 0, DB_DEFAULT_MODE);
-    ocrAddDependence(context->_guids.self, graphEdtGuid, 1, DB_DEFAULT_MODE);
+    ocrAddDependence({{util.g_ctx_var()}}->_guids.self, graphEdtGuid, 1, DB_DEFAULT_MODE);
 }
 
 void {{g.name}}_await({{
         util.print_tag(g.finalizeFunction.tag, typed=True)
-        }}{{g.name}}Ctx *ctx) {
+        }}{{util.g_ctx_param()}}) {
     // Can't launch the finalizer EDT from within the finish EDT,
     // so we copy the tag information into a DB and do it indirectly.
     {% if g.finalizeFunction.tag -%}
@@ -172,11 +205,12 @@ void {{g.name}}_await({{
     {% for x in g.finalizeFunction.tag -%}
     _tagPtr[_i++] = {{x}};
     {% endfor -%}
-    ocrDbRelease(_tagGuid);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagGuid);
     {% else -%}
     ocrGuid_t _tagGuid = NULL_GUID;
     {% endif -%}
-    ocrEventSatisfy(ctx->_guids.awaitTag, _tagGuid);
+    ocrEventSatisfy({{util.g_ctx_var()}}->_guids.awaitTag, _tagGuid);
 }
 
 /* define NO_CNC_MAIN if you want to use mainEdt as the entry point instead */

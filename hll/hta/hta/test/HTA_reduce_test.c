@@ -6,31 +6,32 @@
 #include "HTA.h"
 #include "HTA_operations.h"
 #include "test.h"
-#define MATRIX_WIDTH (3*5*4)
+#define MATRIX_WIDTH (2*2*4)
 #define MATRIX_SIZE (MATRIX_WIDTH*MATRIX_WIDTH)
 
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
-    int32_t M[MATRIX_SIZE];
-    int i;
-    int32_t result = 0;
-    int32_t check = 0;
+    int i, err;
+    double M[MATRIX_SIZE];
+    double result = 0;
+    double check = 0;
 
+    Tuple t0 = Tuple_create(2, 2, 2);
+    Tuple t1 = Tuple_create(2, 2, 2);
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
-    Dist dist;
-    // create an empty shell
-    HTA *h = HTA_create(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_INT32,
-            2, Tuple_create(2, 3, 3), Tuple_create(2, 5, 5));
+    Tuple mesh = HTA_get_vp_mesh(2);
+    Tuple_print(&mesh);
 
-    srand(time(NULL));
+    Dist dist;
+    Dist_init(&dist, DIST_BLOCK, &mesh);
+    // create an empty shell
+    HTA *h = HTA_create_with_pid(pid, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_DOUBLE,
+            2, t0, t1);
+
     // create a 2D matrix
     for(i = 0; i < MATRIX_SIZE; i++) {
-        M[i] = rand()%100;
+        M[i] = i%100;
     }
 
     // initialize the HTA using 2D matrix
@@ -38,30 +39,26 @@ int main()
 
     // perform increment
     HTA_full_reduce(REDUCE_SUM, &result, h);
-
-    // dump HTA data
-    // HTA_to_array_int32_t(h, M);
+    // no barrier needed since it's a collective op
 
     for(i = 0; i < MATRIX_SIZE; i++) {
         check += M[i];
     }
 
     printf("Check result\n");
-    printf("result = %d\n", result);
-    printf("check = %d\n", check);
-    if(result == check)
+    printf("result = %.4lf\n", result);
+    printf("check = %.4lf\n", check);
+    if(result == check) {
         printf("** result matches! **\n");
+        err = SUCCESS;
+    }
     else {
         printf("** result does not match! **\n");
-        exit(ERR_UNMATCH);
+        err = ERR_UNMATCH;
     }
 
     HTA_destroy(h);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
-    exit(SUCCESS);
+    exit(err);
     return 0;
 }

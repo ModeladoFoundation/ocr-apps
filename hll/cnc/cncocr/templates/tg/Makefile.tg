@@ -2,19 +2,19 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-ifndef XSTACK_SRC
-  $(error Need to specify XSTACK_SRC!)
+ifndef XSTACK_ROOT
+  $(error Need to specify XSTACK_ROOT!)
 endif
 
 # APPS
-APPS_ROOT       ?= $(XSTACK_SRC)/apps
-APPS_LIBS_ROOT  ?= $(XSTACK_SRC)/apps/libs/tg
+APPS_ROOT       ?= $(XSTACK_ROOT)/apps
+APPS_LIBS_ROOT  ?= $(XSTACK_ROOT)/apps/libs/tg
 
 # OCR_TYPE
 OCR_TYPE    ?= tg
 
 # TG
-TG_ROOT     ?= $(XSTACK_SRC)/../intel/ss
+TG_ROOT     ?= $(XSTACK_ROOT)/../intel/ss
 TG_INSTALL  ?= $(TG_ROOT)/install
 
 # OCR
@@ -23,9 +23,9 @@ XE_BUILDER  ?= x86-builder-tg-xe
 CE_TARGET   ?= tg-null-tg-ce
 CE_BUILDER  ?= x86-builder-tg-ce
 
-OCR_ROOT         ?= $(XSTACK_SRC)/ocr
-OCR_BUILD_ROOT   ?= $(XSTACK_SRC)/ocr/build
-OCR_INSTALL_ROOT ?= $(XSTACK_SRC)/ocr/install
+OCR_ROOT         ?= $(XSTACK_ROOT)/ocr
+OCR_BUILD_ROOT   ?= $(XSTACK_ROOT)/ocr/build
+OCR_INSTALL_ROOT ?= $(XSTACK_ROOT)/ocr/install
 
 # Use lockable OCR config
 OCR_CE_CONFIG ?= $(OCR_INSTALL_ROOT)/$(CE_TARGET)/config/ce-multialloc-default-lockable.cfg
@@ -152,11 +152,16 @@ postrun: ;
 
 # Any additional rules required can go here
 
+CONSOLE_OUT_PATH := install/$(OCR_TYPE)/console.out
+
+$(CONSOLE_OUT_PATH):
+	@! [ -f $(CONSOLE_OUT_PATH) ] && echo "Must run before printing" && exit 1
+
 # Convenience target for printing the output
 .PHONY: print
-print:
+print: $(CONSOLE_OUT_PATH)
 	@echo '>>> Application console output:'
-	@cat install/$(OCR_TYPE)/console.out
+	@cat $(CONSOLE_OUT_PATH)
 
 # Include common part
 include ${APPS_ROOT}/makefiles/make-tg.inc

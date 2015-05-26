@@ -1,87 +1,30 @@
 #include "cncocr_internal.h"
 
 
+#ifdef CNC_DEBUG_LOG
+FILE *cncDebugLog;
+#endif /* CNC_DEBUG_LOG */
 
-// XXX - depending on misc.h for HAL on FSim
 
-#if CNCOCR_TG
-#define CNC_ITEMS_PER_BLOCK 8
-#else
-#define CNC_ITEMS_PER_BLOCK 64
-#endif
+#include <string.h>
+#define CNC_MEMCMP memcmp
 
-#define CNC_ITEM_BLOCK_FULL(block) ((block)->count == CNC_ITEMS_PER_BLOCK)
-#define CNC_GETTER_GUID ((ocrGuid_t)-1)
-#define CNC_GETTER_ROLE 'G'
-#define CNC_PUTTER_ROLE 'P'
+#define DEPS_BUCKET 3 /* must be >=3 */
 
-typedef struct {
-    ocrGuid_t entry;
-    ocrGuid_t bucketHead;
-    ocrGuid_t firstBlock;
-    ocrGuid_t oldFirstBlock;
-    ocrGuid_t affinity;
-    u32 firstBlockCount;
-    u32 tagLength;
-    u32 slot;
-    ocrDbAccessMode_t mode;
-    u8 checkedFirst;
-    u64 role; // forcing tag[] to be 8-byte aligned (for FSim)
-    u8 tag[];
-} ItemCollOpParams;
+#define CNC_GETTER 1
+#define CNC_PUTTER 2
 
-typedef struct {
-    bool isEvent;
-    ocrGuid_t guid;
-} ItemBlockEntry;
+#define SINGLE_ASSIGNMENT_ENFORCED 1
+#define SKIP_SINGLE_ASSIGNMENT 0
 
-typedef struct {
-    u32 count;
-    ocrGuid_t next;
-    ItemBlockEntry entries[CNC_ITEMS_PER_BLOCK];
-    u8 tags[];
-} ItemBlock;
+/* The structure to hold an item in the item collection */
+typedef struct ItemCollEntry {
+    ocrGuid_t event; /* The event representing the data item. Data will be put through the event when it is satisfied */
+    struct ItemCollEntry * volatile nxt; /* The next bucket in the hashtable */
+    char creator; /* Who created this entry (could be from a Put or a Get)*/
+    unsigned char tag[]; /* Tags are byte arrays, with a known length for each item collection */
+} ItemCollectionEntry;
 
-static ocrGuid_t _itemBlockCreate(u32 tagLength, ocrGuid_t next, ItemBlock **out) {
-    ocrGuid_t blockGuid;
-    ItemBlock *block;
-    u64 size = sizeof(ItemBlock) + (tagLength * CNC_ITEMS_PER_BLOCK);
-    SIMPLE_DBCREATE(&blockGuid, (void**)&block, size);
-    // XXX - should we start from the back?
-    block->count = 0;
-    block->next = next;
-    *out = block;
-    return blockGuid;
-}
-
-static ocrGuid_t _itemBlockInsert(ItemBlock *block, u8 *tag, ocrGuid_t entry, u32 tagLength) {
-    ASSERT(!CNC_ITEM_BLOCK_FULL(block));
-    u32 i = block->count;
-    if (entry == CNC_GETTER_GUID) {
-        block->entries[i].isEvent = true;
-        ocrEventCreate(&block->entries[i].guid, OCR_EVENT_IDEM_T, true);
-    }
-    else {
-        block->entries[i].isEvent = false;
-        block->entries[i].guid = entry;
-    }
-    hal_memCopy(&block->tags[i*tagLength], tag, tagLength, 0);
-    hal_fence();
-    block->count += 1;
-    return block->entries[i].guid;
-}
-
-static bool _cncMemCompare(const void *a, const void *b, size_t n) {
-    const u8 *x = (const u8*)a;
-    const u8 *y = (const u8*)b;
-    size_t i;
-    for (i=0; i<n; i++) {
-        if (x[i] != y[i]) return 1;
-    }
-    return 0;
-}
-
-#define CNC_MEMCMP _cncMemCompare
 
 
 /* Compare byte-by-byte for tag equality */
@@ -104,256 +47,93 @@ static u64 _hash_function(u8 *str, u32 length) {
     return hash;
 }
 
-static u32 _itemBlockFind(ItemBlock *block, u8 *tag, u32 tagLength, u32 startAt) {
-    u32 i = startAt;
-    for (; i<block->count; i++) {
-        if (_equals(&block->tags[i*tagLength], tag, tagLength)) {
-            return i;
-        }
-    }
-    return CNC_ITEMS_PER_BLOCK; // not found
-}
+/* get an entry from the item collection, or create and insert one
+ * (atomically) if it doesn't exist
+ * The creator parameter CNC_PUTTER/CNC_GETTER ensures that multiple
+ * puts are not allowed
+ */
+static ItemCollectionEntry * _allocateEntryIfAbsent(
+        ItemCollectionEntry * volatile * hashmap, unsigned char * tag,
+        int length, char creator, bool isSingleAssignment) {
+    int index = (_hash_function(tag, length)) % CNC_TABLE_SIZE;
+    ItemCollectionEntry * volatile current = hashmap[index];
+    ItemCollectionEntry * volatile * currentLocation = &hashmap[index];
+    ItemCollectionEntry * volatile head = current;
+    ItemCollectionEntry * volatile tail = NULL;
 
-static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]);
+    ItemCollectionEntry * entry = NULL;
 
-static ocrGuid_t _addToBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    // unpack
-    ocrGuid_t *blockArray = depv[0].ptr;
-    ItemCollOpParams *params = depv[1].ptr;
-    ocrGuid_t paramsGuid = depv[1].guid;
-    const u32 index = 0;
-    // look up the first block the bucket
-    ocrGuid_t firstBlock = blockArray[index];
-    // is our first block still first?
-    if (firstBlock == params->firstBlock) {
-        ItemBlock *newFirst;
-        blockArray[index] = _itemBlockCreate(params->tagLength, firstBlock, &newFirst);
-        // XXX - repeated code, also in addToBlock
-        bool isGetter = (params->role == CNC_GETTER_ROLE);
-        ocrGuid_t src = isGetter ? CNC_GETTER_GUID : params->entry;
-        ocrGuid_t res = _itemBlockInsert(newFirst, params->tag, src, params->tagLength);
-        if (isGetter) {
-            ocrAddDependence(res, params->entry, params->slot, params->mode);
-        }
-        // DONE! clean up.
-        ocrDbDestroy(paramsGuid);
-    }
-    else { // someone added a new block...
-        // try searching again
-        params->oldFirstBlock = params->firstBlock;
-        params->firstBlock = firstBlock;
-        params->checkedFirst = 0;
-        ocrGuid_t deps[] = { firstBlock, paramsGuid };
-        ocrGuid_t searchEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _searchBucketEdt, 0, 2);
-        ocrEdtCreate(&searchEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/params->affinity, /*outEvent=*/NULL);
-        ocrEdtTemplateDestroy(templGuid);
-    }
-    return NULL_GUID;
-}
+    while (1) {
+        /* traverse the buckets in the table to get to the last one */
+        while (current != tail) {
+            if (_equals(current->tag, tag, length)) {
+                /* deallocate the entry we eagerly allocated in a previous iteration of the outer while(1) loop */
+                if (entry != NULL){
+                    ocrEventDestroy(entry->event);
+                    free(entry);
+                }
 
-static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    // unpack
-    ItemBlock *block = depv[0].ptr;
-    ItemCollOpParams *params = depv[1].ptr;
-    ocrGuid_t paramsGuid = depv[1].guid;
-    // is it in this block?
-    // XXX - repeated code (also in the searchEdt)
-    u32 i = _itemBlockFind(block, params->tag, params->tagLength, 0);
-    if (i < CNC_ITEMS_PER_BLOCK) { // found!
-        ocrGuid_t foundEntry = block->entries[i].guid;
-        if (params->role == CNC_GETTER_ROLE) { // Get
-            ocrAddDependence(foundEntry, params->entry, params->slot, params->mode);
+                // XXX - PutIfAbsent is kind of broken here if creator is GET
+                // but using IDEM events still gives the correct behavior
+                if ((current->creator == CNC_PUTTER) && (creator == CNC_PUTTER)) {
+                    if (isSingleAssignment) {
+                        ASSERT(!"Single assignment rule violated in item collection put");
+                    }
+                    return NULL;
+                }
+                return current; /* just return the table entry if it already has the tag */
+            }
+            current = current->nxt;
         }
-        else if (block->entries[i].isEvent) { // Put
-            ocrAddDependence(params->entry, foundEntry, 0, DB_DEFAULT_MODE);
-        }
-        // XXX - currently ignoring single assignment checks
-        // DONE! clean up.
-        ocrDbDestroy(paramsGuid);
-    }
-    // add the entry if there's still room
-    else if (!CNC_ITEM_BLOCK_FULL(block)) {
-        bool isGetter = (params->role == CNC_GETTER_ROLE);
-        ocrGuid_t src = isGetter ? CNC_GETTER_GUID : params->entry;
-        ocrGuid_t res = _itemBlockInsert(block, params->tag, src, params->tagLength);
-        if (isGetter) {
-            ocrAddDependence(res, params->entry, params->slot, params->mode);
-        }
-        // DONE! clean up.
-        ocrDbDestroy(paramsGuid);
-    }
-    else { // the block filled up while we were searching
-        // might need to add a new block to the bucket
-        ocrGuid_t addEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _addToBucketEdt, 0, 2);
-        ocrEdtCreate(&addEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/params->affinity, /*outEvent=*/NULL);
-        ocrAddDependence(params->bucketHead, addEdtGuid, 0, DB_MODE_EW);
-        ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
-        ocrEdtTemplateDestroy(templGuid);
-    }
-    return NULL_GUID;
-}
 
-static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    // unpack
-    ItemBlock *block = depv[0].ptr;
-    ocrGuid_t blockGuid = depv[0].guid;
-    ItemCollOpParams *params = depv[1].ptr;
-    ocrGuid_t paramsGuid = depv[1].guid;
-    // record first block size (if applicable)
-    if (!params->checkedFirst) {
-        params->checkedFirst = 1;
-        params->firstBlockCount = block->count;
-    }
-    // is it in this block?
-    u32 i = _itemBlockFind(block, params->tag, params->tagLength, 0);
-    if (i < CNC_ITEMS_PER_BLOCK) { // found!
-        ocrGuid_t foundEntry = block->entries[i].guid;
-        if (params->role == CNC_GETTER_ROLE) { // Get
-            ocrAddDependence(foundEntry, params->entry, params->slot, params->mode);
+        /* allocate a new entry if this is the first time we are going to try and insert a new entry to the end of the bucket list */
+        if (entry == NULL) {
+            entry = (ItemCollectionEntry *) malloc(sizeof(ItemCollectionEntry)+length);
+            entry->creator = creator;
+            memcpy(entry->tag, tag, length);
+            ocrEventCreate(&(entry->event), OCR_EVENT_IDEM_T, true);
         }
-        else if (block->entries[i].isEvent) { // Put
-            ocrAddDependence(params->entry, foundEntry, 0, DB_DEFAULT_MODE);
+        entry->nxt=head;
+
+        /* try to insert the new entry into the _first_ position in a bucket of the table */
+        if (__sync_bool_compare_and_swap(currentLocation, head, entry)) {
+            return entry;
         }
-        // XXX - currently ignoring single assignment checks
-        // DONE! clean up.
-        ocrDbDestroy(paramsGuid);
-    }
-    // did we reach the end of the search?
-    else if (block->next == NULL_GUID || blockGuid == params->oldFirstBlock) {
-        // try to go back and add it to the first block
-        // XXX - should check if it was full
-        ocrGuid_t addEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _addToBlockEdt, 0, 2);
-        ocrEdtCreate(&addEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/params->affinity, /*outEvent=*/NULL);
-        ocrAddDependence(params->firstBlock, addEdtGuid, 0, DB_MODE_EW);
-        ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
-        ocrEdtTemplateDestroy(templGuid);
-    }
-    else { // keep looking...
-        // search next
-        ocrGuid_t deps[] = { block->next, paramsGuid };
-        ocrGuid_t searchEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _searchBucketEdt, 0, 2);
-        ocrEdtCreate(&searchEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/params->affinity, /*outEvent=*/NULL);
-        ocrEdtTemplateDestroy(templGuid);
-    }
-    return NULL_GUID;
-}
 
-static ocrGuid_t _bucketHeadEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    // unpack
-    ocrGuid_t *blockArray = depv[0].ptr;
-    ItemCollOpParams *params = depv[1].ptr;
-    ocrGuid_t paramsGuid = depv[1].guid;
-    // save bucket info for first block
-    params->firstBlock = blockArray[0];
-    if (params->firstBlock == NULL_GUID) { // empty bucket
-        // might need to add a new block to the bucket
-        ocrGuid_t addEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _addToBucketEdt, 0, 2);
-        ocrEdtCreate(&addEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/params->affinity, /*outEvent=*/NULL);
-        ocrAddDependence(params->bucketHead, addEdtGuid, 0, DB_MODE_EW);
-        ocrAddDependence(paramsGuid, addEdtGuid, 1, DB_DEFAULT_MODE);
-        ocrEdtTemplateDestroy(templGuid);
+        /* CAS failed, which means that someone else inserted the new entry into the table while we were trying to do so, we need to try again */
+        current = hashmap[index]; //do not update tail anymore if deletes are inserted.
+        tail = head;
+        head = current;
     }
-    else { // search the bucket
-        ocrGuid_t deps[] = { params->firstBlock, paramsGuid };
-        ocrGuid_t searchEdtGuid, templGuid;
-        ocrEdtTemplateCreate(&templGuid, _searchBucketEdt, 0, 2);
-        ocrEdtCreate(&searchEdtGuid, templGuid,
-            /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-            /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-            /*properties=*/EDT_PROP_NONE,
-            /*affinity=*/params->affinity, /*outEvent=*/NULL);
-        ocrEdtTemplateDestroy(templGuid);
-    }
-    return NULL_GUID;
-}
 
-static ocrGuid_t _doHashEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    // unpack
-    ocrGuid_t *blockArray = depv[0].ptr;
-    ItemCollOpParams *params = depv[1].ptr;
-    ocrGuid_t paramsGuid = depv[1].guid;
-    // find the the bucket index
-    u64 hash = _hash_function(params->tag, params->tagLength);
-    u32 index = hash % CNC_TABLE_SIZE;
-    // save bucket info
-    params->bucketHead = blockArray[index];
-    params->oldFirstBlock = NULL_GUID;
-    params->checkedFirst = 0;
-    // go into bucket
-    ocrGuid_t deps[] = { params->bucketHead, paramsGuid };
-    ocrGuid_t bucketEdtGuid, templGuid;
-    ocrEdtTemplateCreate(&templGuid, _bucketHeadEdt, 0, 2);
-    ocrEdtCreate(&bucketEdtGuid, templGuid,
-        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/deps,
-        /*properties=*/EDT_PROP_NONE,
-        /*affinity=*/params->affinity, /*outEvent=*/NULL);
-    ocrEdtTemplateDestroy(templGuid);
-    return NULL_GUID;
-}
-
-static void _itemCollUpdate(ocrGuid_t coll, u8 *tag, u32 tagLength, u8 role, ocrGuid_t entry, u32 slot, ocrDbAccessMode_t mode) {
-    // Build datablock to hold search parameters
-    ocrGuid_t paramsGuid;
-    ItemCollOpParams *params;
-    SIMPLE_DBCREATE(&paramsGuid, (void**)&params, sizeof(ItemCollOpParams)+tagLength);
-    params->entry = entry;
-    params->tagLength = tagLength;
-    params->role = role;
-    params->slot = slot;
-    params->mode = mode;
-    hal_memCopy(params->tag, tag, tagLength, 0);
-    // affinity
-    // TODO - affinitizing each bucket with node, and running all the
-    // lookup stuff on that node would probably be cheaper.
-    params->affinity = NULL_GUID;
-    // edt
-    ocrGuid_t hashEdtGuid, templGuid;
-    ocrEdtTemplateCreate(&templGuid, _doHashEdt, 0, 2);
-    ocrEdtCreate(&hashEdtGuid, templGuid,
-        /*paramc=*/EDT_PARAM_DEF, /*paramv=*/NULL,
-        /*depc=*/EDT_PARAM_DEF, /*depv=*/NULL,
-        /*properties=*/EDT_PROP_NONE,
-        /*affinity=*/params->affinity, /*outEvent=*/NULL);
-    ocrAddDependence(coll, hashEdtGuid, 0, DB_MODE_RO);
-    ocrAddDependence(paramsGuid, hashEdtGuid, 1, DB_DEFAULT_MODE);
-    ocrEdtTemplateDestroy(templGuid);
+    ASSERT(!"Arrived at the end of allocateEntryIfAbsent in DataDriven.c"); /* we should never get here */
+    return NULL;
 }
 
 /* Putting an item into the hashmap */
-bool _cncPut(ocrGuid_t item, unsigned char *tag, int tagLength, cncItemCollection_t collection, bool isSingleAssignment) {
-    _itemCollUpdate(collection, tag, tagLength, CNC_PUTTER_ROLE, item, 0, DB_DEFAULT_MODE);
+bool _cncPut(ocrGuid_t item, unsigned char *tag, int tagLength, ItemCollectionEntry ** hashmap, bool isSingleAssignment) {
+
+    ASSERT(tag != NULL && "Put - ERROR================\n");
+
+    /* allocateEntryIfAbsent checks for multiple puts using the "CNC_PUTTER" parameter */
+    ItemCollectionEntry * entry = _allocateEntryIfAbsent(hashmap, tag, tagLength, CNC_PUTTER, isSingleAssignment);
+
+    /* the returned placeholder can be NULL only when isSingleAssignment is false.
+       in which case, the item was Put previously, so the current Put returns */
+    if(entry == NULL && !isSingleAssignment)
+        return false;
+    /* Now, we have the correct placeholder (either inserted by us or by a Get function) */
+
+    /* Inserting the item now boils down to just satisfying the event with a data block of the item. */
+    ocrEventSatisfy(entry->event, item);
+
     return true;
 }
 
 /* Get GUID from an item tag */
-void _cncGet(unsigned char *tag, int tagLength, ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, cncItemCollection_t collection) {
-    _itemCollUpdate(collection, tag, tagLength, CNC_GETTER_ROLE, destination, slot, mode);
+void _cncGet(unsigned char *tag, int tagLength, ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, ItemCollectionEntry **hashmap) {
+    ItemCollectionEntry * entry = _allocateEntryIfAbsent(hashmap, tag, tagLength, CNC_GETTER, SINGLE_ASSIGNMENT_ENFORCED);
+    ocrAddDependence(entry->event, destination, slot, mode);
 }
 
 /* Put a singleton item */
@@ -368,7 +148,10 @@ void _cncGetSingleton(ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, o
 }
 
 static ocrGuid_t _shutdownEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-ocrShutdown();
+#ifdef CNC_DEBUG_LOG
+    fclose(cncDebugLog);
+#endif /* CNC_DEBUG_LOG */
+    ocrShutdown();
     return NULL_GUID;
 }
 

@@ -6,9 +6,17 @@
 
 #include "comd_internal.h"
 
+#ifdef CNC_DEBUG_LOG
+#if !defined(CNCOCR_x86)
+#error "Debug logging mode only supported on x86 targets"
+#endif
+#include <pthread.h>
+extern pthread_mutex_t _cncDebugMutex;
+#endif /* CNC_DEBUG_LOG */
 
-/* comd_finalize setup/teardown function */
-ocrGuid_t _cncStep_comd_finalize(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+
+/* cncFinalize setup/teardown function */
+ocrGuid_t _comd_cncStep_cncFinalize(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -26,22 +34,32 @@ ocrGuid_t _cncStep_comd_finalize(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
     struct timeval *start;
     start = (struct timeval *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    comd_finalize(i, iter, B, r, start, ctx);
-
-    // Signal that the finalizer is done
-    ocrEventSatisfy(ctx->_guids.finalizedEvent, NULL_GUID);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING cncFinalize @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING cncFinalize @ %ld, %ld\n", i, iter);
+#endif
+    comd_cncFinalize(i, iter, B, r, start, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE cncFinalize @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE cncFinalize @ %ld, %ld\n", i, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
-/* comd_finalize task creation */
-void cncPrescribe_comd_finalize(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
+/* cncFinalize task creation */
+void cncPrescribe_cncFinalize(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
 
     ocrGuid_t _stepGuid;
     u64 _args[] = { (u64)i, (u64)iter };
@@ -49,7 +67,7 @@ void cncPrescribe_comd_finalize(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
     // TODO - allow custom distribution
     const ocrGuid_t _affinity = NULL_GUID;
     u64 _depc = 1 + 1 + 1 + 1;
-    ocrEdtCreate(&_stepGuid, ctx->_steps.comd_finalize,
+    ocrEdtCreate(&_stepGuid, ctx->_steps.cncFinalize,
         /*paramc=*/2, /*paramv=*/_args,
         /*depc=*/_depc, /*depv=*/NULL,
         /*properties=*/EDT_PROP_NONE,
@@ -79,11 +97,16 @@ void cncPrescribe_comd_finalize(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED cncFinalize @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED cncFinalize @ %ld, %ld\n", i, iter);
+#endif
 }
 
 /* cleanupInitStep setup/teardown function */
-ocrGuid_t _cncStep_cleanupInitStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_cleanupInitStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -109,14 +132,27 @@ ocrGuid_t _cncStep_cleanupInitStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep
     real_t *U;
     U = (real_t *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    cleanupInitStep(i, GID, ISP, R, P, F, U, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING cleanupInitStep @ %ld\n", i);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING cleanupInitStep @ %ld\n", i);
+#endif
+    comd_cleanupInitStep(i, GID, ISP, R, P, F, U, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE cleanupInitStep @ %ld\n", i);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE cleanupInitStep @ %ld\n", i);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -170,11 +206,16 @@ void cncPrescribe_cleanupInitStep(cncTag_t i, comdCtx *ctx) {
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED cleanupInitStep @ %ld\n", i);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED cleanupInitStep @ %ld\n", i);
+#endif
 }
 
 /* advanceVelocityStep setup/teardown function */
-ocrGuid_t _cncStep_advanceVelocityStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_advanceVelocityStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -186,14 +227,27 @@ ocrGuid_t _cncStep_advanceVelocityStep(u32 paramc, u64 paramv[], u32 depc, ocrEd
     struct box *B0;
     B0 = (struct box *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    advanceVelocityStep(i, iter, B0, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING advanceVelocityStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING advanceVelocityStep @ %ld, %ld\n", i, iter);
+#endif
+    comd_advanceVelocityStep(i, iter, B0, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE advanceVelocityStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE advanceVelocityStep @ %ld, %ld\n", i, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -225,11 +279,16 @@ void cncPrescribe_advanceVelocityStep(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED advanceVelocityStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED advanceVelocityStep @ %ld, %ld\n", i, iter);
+#endif
 }
 
 /* updateBoxStep setup/teardown function */
-ocrGuid_t _cncStep_updateBoxStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_updateBoxStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -245,14 +304,27 @@ ocrGuid_t _cncStep_updateBoxStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
     int TBoxes;
     TBoxes = *(int *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    updateBoxStep(i, k, iter, B, TBoxes, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING updateBoxStep @ %ld, %ld, %ld\n", i, k, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING updateBoxStep @ %ld, %ld, %ld\n", i, k, iter);
+#endif
+    comd_updateBoxStep(i, k, iter, B, TBoxes, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE updateBoxStep @ %ld, %ld, %ld\n", i, k, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE updateBoxStep @ %ld, %ld, %ld\n", i, k, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -289,11 +361,16 @@ void cncPrescribe_updateBoxStep(cncTag_t i, cncTag_t k, cncTag_t iter, comdCtx *
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED updateBoxStep @ %ld, %ld, %ld\n", i, k, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED updateBoxStep @ %ld, %ld, %ld\n", i, k, iter);
+#endif
 }
 
 /* updateNeighborsStep setup/teardown function */
-ocrGuid_t _cncStep_updateNeighborsStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_updateNeighborsStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -312,14 +389,27 @@ ocrGuid_t _cncStep_updateNeighborsStep(u32 paramc, u64 paramv[], u32 depc, ocrEd
     int TBoxes;
     TBoxes = *(int *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    updateNeighborsStep(i, j, iter, AtomInfo0, B, TBoxes, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING updateNeighborsStep @ %ld, %ld, %ld\n", i, j, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING updateNeighborsStep @ %ld, %ld, %ld\n", i, j, iter);
+#endif
+    comd_updateNeighborsStep(i, j, iter, AtomInfo0, B, TBoxes, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE updateNeighborsStep @ %ld, %ld, %ld\n", i, j, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE updateNeighborsStep @ %ld, %ld, %ld\n", i, j, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -363,11 +453,16 @@ void cncPrescribe_updateNeighborsStep(cncTag_t i, cncTag_t j, cncTag_t iter, com
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED updateNeighborsStep @ %ld, %ld, %ld\n", i, j, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED updateNeighborsStep @ %ld, %ld, %ld\n", i, j, iter);
+#endif
 }
 
 /* generateDataforForceStep setup/teardown function */
-ocrGuid_t _cncStep_generateDataforForceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_generateDataforForceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -382,14 +477,27 @@ ocrGuid_t _cncStep_generateDataforForceStep(u32 paramc, u64 paramv[], u32 depc, 
     int totalBoxes;
     totalBoxes = *(int *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    generateDataforForceStep(i, iter, B, totalBoxes, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING generateDataforForceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING generateDataforForceStep @ %ld, %ld\n", i, iter);
+#endif
+    comd_generateDataforForceStep(i, iter, B, totalBoxes, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE generateDataforForceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE generateDataforForceStep @ %ld, %ld\n", i, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -426,11 +534,16 @@ void cncPrescribe_generateDataforForceStep(cncTag_t i, cncTag_t iter, comdCtx *c
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED generateDataforForceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED generateDataforForceStep @ %ld, %ld\n", i, iter);
+#endif
 }
 
 /* generateForceTagsStep setup/teardown function */
-ocrGuid_t _cncStep_generateForceTagsStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_generateForceTagsStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -441,14 +554,27 @@ ocrGuid_t _cncStep_generateForceTagsStep(u32 paramc, u64 paramv[], u32 depc, ocr
     int TBoxes;
     TBoxes = *(int *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    generateForceTagsStep(iter, TBoxes, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING generateForceTagsStep @ %ld\n", iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING generateForceTagsStep @ %ld\n", iter);
+#endif
+    comd_generateForceTagsStep(iter, TBoxes, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE generateForceTagsStep @ %ld\n", iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE generateForceTagsStep @ %ld\n", iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -477,11 +603,16 @@ void cncPrescribe_generateForceTagsStep(cncTag_t iter, comdCtx *ctx) {
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED generateForceTagsStep @ %ld\n", iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED generateForceTagsStep @ %ld\n", iter);
+#endif
 }
 
 /* forceStep setup/teardown function */
-ocrGuid_t _cncStep_forceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_forceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -493,14 +624,27 @@ ocrGuid_t _cncStep_forceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t dep
     struct box *B;
     B = (struct box *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    forceStep(i, iter, B, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING forceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING forceStep @ %ld, %ld\n", i, iter);
+#endif
+    comd_forceStep(i, iter, B, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE forceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE forceStep @ %ld, %ld\n", i, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -532,11 +676,16 @@ void cncPrescribe_forceStep(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED forceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED forceStep @ %ld, %ld\n", i, iter);
+#endif
 }
 
 /* computeForcefromNeighborsStep setup/teardown function */
-ocrGuid_t _cncStep_computeForcefromNeighborsStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_computeForcefromNeighborsStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = depv[1].ptr; MAYBE_UNUSED(_tag);
@@ -656,14 +805,27 @@ ocrGuid_t _cncStep_computeForcefromNeighborsStep(u32 paramc, u64 paramv[], u32 d
     struct eamPot *EAMPOT;
     EAMPOT = (struct eamPot *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    computeForcefromNeighborsStep(i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23, B24, B25, B26, EAMPOT, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING computeForcefromNeighborsStep @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING computeForcefromNeighborsStep @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+#endif
+    comd_computeForcefromNeighborsStep(i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23, B24, B25, B26, EAMPOT, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE computeForcefromNeighborsStep @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE computeForcefromNeighborsStep @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -676,6 +838,8 @@ void cncPrescribe_computeForcefromNeighborsStep(cncTag_t i, cncTag_t j1, cncTag_
     u64 *_tagBlockPtr;
     SIMPLE_DBCREATE(&_tagBlockGuid, (void**)&_tagBlockPtr, sizeof(_args));
     hal_memCopy(_tagBlockPtr, _args, sizeof(_args), 0);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagBlockGuid);
     // affinity
     // TODO - allow custom distribution
     const ocrGuid_t _affinity = NULL_GUID;
@@ -913,11 +1077,16 @@ void cncPrescribe_computeForcefromNeighborsStep(cncTag_t i, cncTag_t j1, cncTag_
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED computeForcefromNeighborsStep @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED computeForcefromNeighborsStep @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+#endif
 }
 
 /* computeForcefromNeighborsStep1 setup/teardown function */
-ocrGuid_t _cncStep_computeForcefromNeighborsStep1(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_computeForcefromNeighborsStep1(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = depv[1].ptr; MAYBE_UNUSED(_tag);
@@ -1037,14 +1206,27 @@ ocrGuid_t _cncStep_computeForcefromNeighborsStep1(u32 paramc, u64 paramv[], u32 
     struct eamPot *EAMPOT;
     EAMPOT = (struct eamPot *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    computeForcefromNeighborsStep1(i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23, B24, B25, B26, EAMPOT, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING computeForcefromNeighborsStep1 @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING computeForcefromNeighborsStep1 @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+#endif
+    comd_computeForcefromNeighborsStep1(i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23, B24, B25, B26, EAMPOT, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE computeForcefromNeighborsStep1 @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE computeForcefromNeighborsStep1 @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -1057,6 +1239,8 @@ void cncPrescribe_computeForcefromNeighborsStep1(cncTag_t i, cncTag_t j1, cncTag
     u64 *_tagBlockPtr;
     SIMPLE_DBCREATE(&_tagBlockGuid, (void**)&_tagBlockPtr, sizeof(_args));
     hal_memCopy(_tagBlockPtr, _args, sizeof(_args), 0);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagBlockGuid);
     // affinity
     // TODO - allow custom distribution
     const ocrGuid_t _affinity = NULL_GUID;
@@ -1294,11 +1478,16 @@ void cncPrescribe_computeForcefromNeighborsStep1(cncTag_t i, cncTag_t j1, cncTag
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED computeForcefromNeighborsStep1 @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED computeForcefromNeighborsStep1 @ %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n", i, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15, j16, j17, j18, j19, j20, j21, j22, j23, j24, j25, j26, iter);
+#endif
 }
 
 /* reduceStep setup/teardown function */
-ocrGuid_t _cncStep_reduceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t _comd_cncStep_reduceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     comdCtx *ctx = depv[0].ptr;
 
     u64 *_tag = paramv; MAYBE_UNUSED(_tag);
@@ -1319,14 +1508,27 @@ ocrGuid_t _cncStep_reduceStep(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t de
     int TBoxes;
     TBoxes = *(int *)_cncItemDataPtr(depv[_edtSlot++].ptr);
 
-
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_lock(&_cncDebugMutex);
+#endif
     // Call user-defined step function
-
-    reduceStep(i, iter, B0, redc, IT, TBoxes, ctx);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "RUNNING reduceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: RUNNING reduceStep @ %ld, %ld\n", i, iter);
+#endif
+    comd_reduceStep(i, iter, B0, redc, IT, TBoxes, ctx);
     // Clean up
-
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "DONE reduceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: DONE reduceStep @ %ld, %ld\n", i, iter);
+#endif
+    #ifdef CNC_DEBUG_LOG
+pthread_mutex_unlock(&_cncDebugMutex);
+#endif
     return NULL_GUID;
 }
 
@@ -1374,7 +1576,12 @@ void cncPrescribe_reduceStep(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
     }
 
     ASSERT(_depc == _edtSlot);
-
+    #ifdef CNC_DEBUG_LOG
+    fprintf(cncDebugLog, "PRESCRIBED reduceStep @ %ld, %ld\n", i, iter);
+    fflush(cncDebugLog);
+#elif CNC_DEBUG_TRACE
+    PRINTF("<<CnC Trace>>: PRESCRIBED reduceStep @ %ld, %ld\n", i, iter);
+#endif
 }
 
 

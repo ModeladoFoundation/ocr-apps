@@ -7,8 +7,8 @@
 //
 // 1) Creating virtual item collection mappings.
 // 2) Declaring singleton collections using the "unit" tag.
-// 3) Using "@" notation in the $init function's outputs' tag functions
-//    to access the init function's arg struct.
+// 3) Using "@" notation in the $initialize function's outputs' tag functions
+//    to access the initialize function's arg struct.
 //
 // The application takes a single positive integer argument N.
 // The application computes the sum of the even and odd numbers
@@ -41,11 +41,11 @@
 
 // The notation @x in a tag expression is expanded by the
 // translator into code to access the member x of the
-// graph init function's args struct.
-( $init: () )
+// graph initialize function's args struct.
+( $initialize: () )
  -> [ naturals: $range(0, @n) ],
     ( sumEvens: ((@n/2)) + (((@n%2))) ),
-    ( sumOdds:  @n/2 ); 
+    ( sumOdds:  @n/2 );
 
 ( sumEvens: n ) <- [ evens: $range(0, n) ] -> [ evensTotal: () ];
 ( sumOdds: n ) <- [ odds: $range(0, n) ] -> [ oddsTotal: () ];

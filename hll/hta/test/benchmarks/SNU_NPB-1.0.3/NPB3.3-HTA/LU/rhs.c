@@ -44,15 +44,8 @@ void rhs_HTA()
 
     if (timeron) timer_start(t_rhs);
 
-    // Initialization rsd, rho_i and qs
-    //HTA_map_h5s1(HTA_LEAF_LEVEL(rsd_HTA), init_rhs_HTA, rho_i_HTA, qs_HTA, u_HTA, frct_HTA, rsd_HTA, &dummy);
-
-    //sync_boundary(qs_HTA);
-    //sync_boundary(rho_i_HTA);
-
-    //HTA_map_h4(HTA_LEAF_LEVEL(rsd_HTA), rhs_flux_HTA, rsd_HTA, u_HTA, rho_i_HTA, qs_HTA);
     HTA_map_h5s1(HTA_LEAF_LEVEL(rsd_HTA), rhs_compute_HTA, frct_HTA, rsd_HTA, u_HTA, rho_i_HTA, qs_HTA, &dummy);
-    sync_boundary(rsd_HTA);
+    //sync_boundary(rsd_HTA);
 
     if (timeron) timer_stop(t_rhs);
 }
@@ -74,10 +67,6 @@ void rhs_compute_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, HTA
   double u21jm1, u31jm1, u41jm1, u51jm1;
   double u21km1, u31km1, u41km1, u51km1;
   double flux_temp[ISIZ1+4][5];
-
-//    int TILES_X = 1;
-//    int TILES_Y = 1;
-//    int TILES_Z = 3;
 
   int i_first, j_first, k_first, i_last, j_last, k_last;
   int x, y, z;
@@ -626,6 +615,10 @@ void rhs_compute_HTA(HTA* s1_tile, HTA* s2_tile, HTA* s3_tile, HTA* s4_tile, HTA
       }
     }
   }
+
+  // FIXME: This only works assuming Shared Memory
+  //sync_boundary_HTA(s2_tile, s2_tile, rsd_HTA);
+  sync_boundary_HTA(s2_tile, rsd_HTA);
 
 }
 

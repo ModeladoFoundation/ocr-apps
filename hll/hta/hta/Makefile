@@ -1,6 +1,6 @@
 include Makefile.common
 
-SUBDIRS = test
+SUBDIRS = src test
 
 .PHONY: default all clean tidy
 .PHONY: $(SUBDIRS) src
@@ -10,10 +10,7 @@ default: all
 doc:
 	doxygen
 
-src:
-	$(MAKE) -C src $(MAKECMDGOALS)
-
-$(SUBDIRS): src
+$(SUBDIRS):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 all tidy clean: $(SUBDIRS)

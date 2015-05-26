@@ -443,12 +443,12 @@ void H3_PWMUL(HTA * dest, HTA * src1, HTA * src2)
     for(int i = 0; i < M; i++) \
         for(int j = 0; j < O; j++) \
         { \
-            type sum = 0; \
+            type sum = 0.0; \
             for(int k = 0; k < N; k++) \
             { \
                 sum += src1_ptr[i * N + k] * src2_ptr[k * N + j]; \
             } \
-            dest_ptr[i * N + j] = sum; \
+            dest_ptr[i * N + j] += sum; \
         } \
 }
 
@@ -483,6 +483,70 @@ void H3_MATMUL(HTA * dest, HTA * src1, HTA * src2)
         break;
         case(HTA_SCALAR_TYPE_DOUBLE):
             H3_MATMUL_CASE(double)
+        break;
+        default:
+            ASSERT(0 && "Unimplemented");
+    }
+}
+
+// !!!!!!!!!!!!!!!! This is only for the CnC test and it is not general dgemm  !!!!!!!!!!!!!!!!
+// This is optimized for column major input
+#define H3_DGEMM_CASE(type) \
+{ \
+    type* dest_start = (type*) HTA_get_ptr_raw_data(dest); \
+    type* src1_start = (type*) HTA_get_ptr_raw_data(src1); \
+    type* src2_start = (type*) HTA_get_ptr_raw_data(src2); \
+    type* dest_ptr = dest_start;\
+    type* src1_ptr = src1_start;\
+    int stride = src1->global_dimensions.values[0];\
+    for(int j = 0; j < O; j++) \
+    { \
+        src1_ptr = src1_start; \
+        for(int k = 0; k < N; k++) \
+        { \
+            for(int i = 0; i < M; i++) \
+            { \
+                *(dest_ptr+i) -= *(src1_ptr+i) * src2_start[k * O + j]; \
+            } \
+            src1_ptr += stride; \
+        } \
+        dest_ptr += stride; \
+    } \
+}
+
+// !!!!!!!!!!!!!!!! This is only for the CnC test and it is not general dgemm  !!!!!!!!!!!!!!!!
+// Only works when alpha = -1.0 and beta = 1.0
+void H3_DGEMM(HTA * dest, HTA * src1, HTA * src2)
+{
+    ASSERT(dest->type == HTA_TYPE_DENSE
+            && src1->type == HTA_TYPE_DENSE
+            && src2->type == HTA_TYPE_DENSE);
+    ASSERT(dest->height == 1 && src1->height == 1 && src2->height == 1);
+    ASSERT(src1->flat_size.values[1] == src2->flat_size.values[0]);
+
+    int M = src1->flat_size.values[0];
+    int N = src1->flat_size.values[1];
+    int O = src2->flat_size.values[1];
+
+    switch (dest->scalar_type)
+    {
+        case(HTA_SCALAR_TYPE_INT32):
+            H3_DGEMM_CASE(int32_t)
+        break;
+        case(HTA_SCALAR_TYPE_INT64):
+            H3_DGEMM_CASE(int64_t)
+        break;
+        case(HTA_SCALAR_TYPE_UINT32):
+            H3_DGEMM_CASE(uint32_t)
+        break;
+        case(HTA_SCALAR_TYPE_UINT64):
+            H3_DGEMM_CASE(uint64_t)
+        break;
+        case(HTA_SCALAR_TYPE_FLOAT):
+            H3_DGEMM_CASE(float)
+        break;
+        case(HTA_SCALAR_TYPE_DOUBLE):
+            H3_DGEMM_CASE(double)
         break;
         default:
             ASSERT(0 && "Unimplemented");
@@ -695,3 +759,40 @@ void H3_SDMV(HTA * hr, HTA * hs, HTA * hd)
             ASSERT(0 && "Unimplemented");
     }
 }
+
+
+// Matrix-matrix multiplication h3 = h1*h2
+// Tiles are assumed to be row-major
+void HTA_matmul(HTA * h1, HTA * h2, HTA * h3)
+{
+    // If h1 has MxK tiles, h2 has KxN tiles, h3 will have MxN tiles
+    // Create a 3d temporary HTA of MxNxK tiles and perform independent matrix-matrix multiplications for each tile
+    // Perform reduction to produce the desired result and store it in h3
+    ASSERT(h1->dim == h2->dim && h2->dim == h2->dim);
+    int dim = h1->dim;
+    Tuple h1_idx;
+    Tuple h2_idx;
+    Tuple h3_idx;
+
+    // FIXME: this is a sequential version (instead of using 3D algorithm)
+    //        just to make sure it can work with CnC
+    int M = h1->tiling.values[0];
+    int K = h1->tiling.values[1];
+    int N = h2->tiling.values[1];
+
+    ASSERT(M == h3->tiling.values[0] && N == h3->tiling.values[1]);
+    for(int i = 0; i < M; i++) {
+        for(int j = 0; j < N; j++) {
+            Tuple_init(&h3_idx, dim, i, j);
+            HTA* t3 = HTA_pick_one_tile(h3, &h3_idx);
+            if(t3->pid == t3->home) {
+                for(int k = 0; k < K; k++) {
+                    Tuple_init(&h1_idx, dim, i, k);
+                    Tuple_init(&h2_idx, dim, k, j);
+                    H3_MATMUL(t3, HTA_pick_one_tile(h1, &h1_idx), HTA_pick_one_tile(h2, &h2_idx));
+                }
+            }
+        }
+    }
+}
+

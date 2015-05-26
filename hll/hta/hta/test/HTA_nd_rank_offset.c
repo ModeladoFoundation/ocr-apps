@@ -10,11 +10,7 @@
 
 #define MATRIX_WIDTH (10)
 #define MATRIX_SIZE (MATRIX_WIDTH*MATRIX_WIDTH)
-#ifdef PILHTA
-int hta_main(int argc, char** argv)
-#else
-int main()
-#endif
+int hta_main(int argc, char** argv, int pid)
 {
     int i;
 
@@ -25,10 +21,14 @@ int main()
     tiling[1].height = 1;
     Tuple flat_size = Tuple_create(2, MATRIX_WIDTH, MATRIX_WIDTH);
 
+    Tuple mesh;
+    Tuple_init(&mesh, 1, 8);
+    mesh.height = 1;
+
     Dist dist;
-    Dist_init(&dist, 0);
+    Dist_init(&dist, DIST_BLOCK, &mesh);
     // create an empty shell
-    HTA* h = HTA_create_with_ts(2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT32, 2, tiling);
+    HTA* h = HTA_create_impl(-1, NULL, 2, 3, &flat_size, 0, &dist, HTA_SCALAR_TYPE_UINT32, 2, tiling);
 
     Tuple iter[2];
     Tuple nd_offset;
@@ -49,10 +49,6 @@ int main()
 
     HTA_destroy(h);
 
-    if(Alloc_count_objects() > 0) {
-        printf("Objects left (memory leak) %d\n", Alloc_count_objects());
-        exit(ERR_MEMLEAK);
-    }
     exit(SUCCESS);
     return 0;
 }

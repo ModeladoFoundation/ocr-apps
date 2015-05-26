@@ -3,10 +3,10 @@
 /*
  * typeof cells is u64
  */
-void addToInside(cncTag_t row, cncTag_t col, u64 a, u64 b, CombinationsCtx *ctx) {
+void Combinations_addToInside(cncTag_t row, cncTag_t col, u64 a, u64 b, CombinationsCtx *ctx) {
 
     // Put "out" items
-    u64 *out = cncCreateItem_cells();
+    u64 *out = cncItemCreate_cells();
     *out = a + b;
     cncPut_cells(out, row, col, ctx);
 

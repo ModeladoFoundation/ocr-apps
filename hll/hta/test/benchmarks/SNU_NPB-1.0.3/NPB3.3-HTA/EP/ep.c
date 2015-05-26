@@ -65,11 +65,11 @@
 #define A         1220703125.0
 #define S         271828183.0
 
-static HTA *x;      // x is an 1D HTA with PROC tiles
-static HTA *qq;     // qq is an 1D HTA with PROC tiles
-static HTA *sxh;
-static HTA *syh;
-static double q[NQ];
+//static HTA *x;      // x is an 1D HTA with PROC tiles
+//static HTA *qq;     // qq is an 1D HTA with PROC tiles
+//static HTA *sxh;
+//static HTA *syh;
+//static double q[NQ];
 static int PROC = 1;
 
 static int np;
@@ -135,7 +135,7 @@ void ep_kernel(HTA *qq_HTA, HTA *x_HTA, HTA *sx_HTA, HTA *sy_HTA) {
   if (timers_enabled) timer_stop(3);
 }
 
-int hta_main(int argc, char *argv[])
+int hta_main(int argc, char *argv[], int pid)
 {
   double Mops, t1, t2, tt;
   double sx, sy, gc, tm;
@@ -143,6 +143,13 @@ int hta_main(int argc, char *argv[])
   int    i, nit;
   int    j;
   logical verified;
+
+  //for SPMD
+  HTA *x;      // x is an 1D HTA with PROC tiles
+  HTA *qq;     // qq is an 1D HTA with PROC tiles
+  HTA *sxh;
+  HTA *syh;
+  double q[NQ];
 
   double dum[3] = {1.0, 1.0, 1.0};
   char   size[16];
@@ -200,21 +207,25 @@ int hta_main(int argc, char *argv[])
   Tuple tp0 = Tuple_create(2, PROC, 1);
   Tuple fs0 = Tuple_create(2, PROC, 2 * NK);
   Dist dist0;
-  Dist_init(&dist0, 0);
-  x = HTA_create(2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
+
+  Tuple mesh;
+  Tuple_init(&mesh, 2, PROC, 1);
+  Dist_init(&dist0, DIST_BLOCK, &mesh);
+
+  x = HTA_create_with_pid(pid, 2, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp0);
 
   // HTA qq initialization
   Tuple tp3 = Tuple_create(2, PROC, 1);
   Tuple fs3 = Tuple_create(2, PROC, NQ);
-  qq = HTA_create(2, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp3);
+  qq = HTA_create_with_pid(pid, 2, 2, &fs3, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp3);
 
   // HTA sxh initialization
   Tuple tp4 = Tuple_create(2, PROC, 1);
   Tuple fs4 = Tuple_create(2, PROC, 1);
-  sxh = HTA_create(2, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp4);
+  sxh = HTA_create_with_pid(pid, 2, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp4);
 
   // HTA syh initialization
-  syh = HTA_create(2, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp4);
+  syh = HTA_create_with_pid(pid, 2, 2, &fs4, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, tp4);
 
   double initval_x = -1.0e99;
   HTA_map_h1s1(HTA_LEAF_LEVEL(x), H1S1_INIT, x, &initval_x);
@@ -250,6 +261,7 @@ int hta_main(int argc, char *argv[])
   for (i = 0; i < MK + 1; i++) {
     t2 = randlc(&t1, t1);
   }
+  UNUSED(t2);
 
   an = t1;
   tt = S;
@@ -265,15 +277,18 @@ int hta_main(int argc, char *argv[])
 
   HTA_map_h4(HTA_LEAF_LEVEL(qq), ep_kernel, qq, x, sxh, syh);
 
-  HTA* q_result = HTA_partial_reduce(REDUCE_SUM, qq, 0, &initval_zero);
-  HTA_to_array(q_result, q);
+  HTA* q_result = HTA_partial_reduce(REDUCE_SUM, qq, 0, &initval_zero); // it has an implicit barrier
+  //HTA_to_array(q_result, q);
+  HTA_flatten(q, NULL, NULL, q_result);
 
   HTA_full_reduce(REDUCE_SUM, &sx, sxh);
   HTA_full_reduce(REDUCE_SUM, &sy, syh);
+  //printf("pid = %d, sx = %.4lf, sy = %.4lf\n", pid, sx, sy);
 
   for (i = 0; i < NQ; i++) {
     gc = gc + q[i];
   }
+  //printf("pid = %d, gc = %.4lf\n", pid, gc);
 
   timer_stop(0);
   tm = timer_read(0);
@@ -312,48 +327,51 @@ int hta_main(int argc, char *argv[])
 
   Mops = pow(2.0, M+1) / tm / 1000000.0;
 
-  printf("\nEP Benchmark Results:\n\n");
-  printf("CPU Time =%10.4lf\n", tm);
-  printf("N = 2^%5d\n", M);
-  printf("No. Gaussian Pairs = %15.0lf\n", gc);
-  printf("Sums = %25.15lE %25.15lE\n", sx, sy);
-  printf("Counts: \n");
-  for (i = 0; i < NQ; i++) {
-    printf("%3d%15.0lf\n", i, q[i]);
+  //if(pid == 0 || pid == -1) {
+  {
+      printf("\nEP Benchmark Results:\n\n");
+      printf("CPU Time =%10.4lf\n", tm);
+      printf("N = 2^%5d\n", M);
+      printf("No. Gaussian Pairs = %15.0lf\n", gc);
+      printf("Sums = %25.15lE %25.15lE\n", sx, sy);
+      printf("Counts: \n");
+      for (i = 0; i < NQ; i++) {
+        printf("%3d%15.0lf\n", i, q[i]);
+      }
+
+      print_results("EP", CLASS, M+1, 0, 0, nit,
+          tm, Mops,
+          "Random numbers generated",
+          verified, NPBVERSION, COMPILETIME, CS1,
+          CS2, CS3, CS4, CS5, CS6, CS7);
+
+      if (timers_enabled) {
+        char rec_name[256];
+        sprintf(rec_name, "rec/ep.%c.%d.rec", CLASS, PROC);
+        FILE* fp_rec = fopen(rec_name, "a");
+        if (tm <= 0.0) tm = 1.0;
+        tt = timer_read(0);
+        printf("\nTotal time:     %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
+        fprintf(fp_rec, "%9.3lf ", tt);
+        tt = timer_read(1);
+        printf("Gaussian pairs: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
+        fprintf(fp_rec, "%9.3lf ", tt);
+        tt = timer_read(2);
+        printf("Random numbers: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
+        fprintf(fp_rec, "%9.3lf ", tt);
+        tt = timer_read(3);
+        printf("Kernel exec:    %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
+        fprintf(fp_rec, "%9.3lf\n", tt);
+        fclose(fp_rec);
+      }
   }
-
-  print_results("EP", CLASS, M+1, 0, 0, nit,
-      tm, Mops,
-      "Random numbers generated",
-      verified, NPBVERSION, COMPILETIME, CS1,
-      CS2, CS3, CS4, CS5, CS6, CS7);
-
-  if (timers_enabled) {
-    char rec_name[256];
-    sprintf(rec_name, "rec/ep.%c.%d.rec", CLASS, PROC);
-    FILE* fp_rec = fopen(rec_name, "a");
-    if (tm <= 0.0) tm = 1.0;
-    tt = timer_read(0);
-    printf("\nTotal time:     %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
-    fprintf(fp_rec, "%9.3lf ", tt);
-    tt = timer_read(1);
-    printf("Gaussian pairs: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
-    fprintf(fp_rec, "%9.3lf ", tt);
-    tt = timer_read(2);
-    printf("Random numbers: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
-    fprintf(fp_rec, "%9.3lf ", tt);
-    tt = timer_read(3);
-    printf("Kernel exec:    %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
-    fprintf(fp_rec, "%9.3lf\n", tt);
-    fclose(fp_rec);
-  }
-
+  HTA_barrier(pid);
   HTA_destroy(x);
   HTA_destroy(qq);
   HTA_destroy(q_result);
   HTA_destroy(sxh);
   HTA_destroy(syh);
-  assert(verified);
+  //assert(verified);
   return (verified)?0:-1;
 }
 

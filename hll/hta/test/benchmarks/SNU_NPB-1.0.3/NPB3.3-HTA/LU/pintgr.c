@@ -48,7 +48,10 @@ void pintgr_HTA()
   Tuple t0 = Tuple_create(4, PROC_Z, PROC_Y, PROC_X, 1);
   Tuple fs0 = Tuple_create(4, ISIZ3+(4*PROC_Z), ISIZ2+(4*PROC_Y), ISIZ1+(4*PROC_X), 1);
   Dist dist0;
-  Dist_init(&dist0, 0);
+  //Dist_init(&dist0, 0);
+  Tuple mesh;
+  Tuple_init(&mesh, 4, PROC_Z, PROC_Y, PROC_X, 1);
+  Dist_init(&dist0, DIST_BLOCK, &mesh);
   phi1_HTA = HTA_create(4, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t0);
   phi2_HTA = HTA_create(4, 2, &fs0, 0, &dist0, HTA_SCALAR_TYPE_DOUBLE, 1, t0);
 

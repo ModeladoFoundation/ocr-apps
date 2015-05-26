@@ -2,21 +2,25 @@
 
 int i;
 int num;
-int target_id;
+int rank;
+int target;
 
-void f(int *target_id, int i, int *num)
+gpp_t index_array;
+gpp_t data_array;
+
+void f(gpp_t index_array, gpp_t data_array, int *target, int i, int *num)
 {
 	*num = 42;
 	fprintf(stdout, "node: %d  iteration: %d  setting magic number to %d.\n", pil_get_nwID(), i, *num); fflush(stdout);
-	*target_id = 2;
+	*target = 2;
 }
 
-void g(int *target_id, int i, int num)
+void g(gpp_t index_array, gpp_t data_array, int *target, int i, int num)
 {
 	fprintf(stdout, "node: %d  iteration: %d  magic number is %d!\n", pil_get_nwID(), i, num); fflush(stdout);
-	*target_id = 0;
+	*target = 0;
 }
 
-node(1, i, [0:1:4], target_id, [2], f(&target_id, i, &num))
-node(2, i, [0:1:9], target_id, [0], g(&target_id, i, num))
+node(1, rank, i, [0:1:4], target, [0], [2], f(index_array, data_array, &target, i, &num))
+node(2, rank, i, [0:1:9], target, [1], [0], g(index_array, data_array, &target, i, num))
 

@@ -1,0 +1,171 @@
+// Example 210: a test of send and recv buf check
+
+int i;
+int rank;
+int target;
+gpp_t index_array;
+gpp_t data_array;
+
+int src;
+int dest;
+int next_dest;
+int offset;
+size_t size;
+gpp_t buf;
+
+// calculate who sends to this rank
+#define NP (pil_get_nwCount())
+#define mysrc(rank) (((rank+NP)-1)%NP)
+// calculate who this rank sends to
+#define mydest(rank) ((rank+1)%NP)
+//int mysrc(int rank)
+//{
+//	int NP = pil_get_nwCount();
+//	int src = ((rank+NP)-1)%NP;
+//	return src;
+//}
+//int mydest(int rank)
+//{
+//	int NP = pil_get_nwCount();
+//	int dest = (rank+1)%NP;
+//	return dest;
+//}
+
+void send_header(int *target, gpp_t index_array, gpp_t data_array, int rank, int src, int dest, size_t size, int offset, gpp_t buf)
+{
+	// index array pointer
+	int *ia = (int *) index_array.ptr;
+	assert(ia[0] == 0);
+	assert(ia[1] == 1);
+
+	// read the magic number for the payload
+	gpp_t *da = data_array.ptr;
+	int *d = (int *) da[0].ptr;
+
+	printf("%d: sending message '%d' to %d\n", rank, *d, dest);
+
+	*target = 11;
+}
+
+void recv_header(int *target, gpp_t index_array, gpp_t data_array, int rank, int src, int dest, size_t size, int offset, gpp_t buf)
+{
+	*target = 21;
+}
+
+void recv_check(int *target, gpp_t index_array, gpp_t data_array, int rank, int src, int dest, size_t size, int offset, gpp_t buf)
+{
+	// index array pointer
+	int *ia = (int *) index_array.ptr;
+	assert(ia[0] == 0);
+	assert(ia[1] == 1);
+
+	// read the magic number for the payload
+	gpp_t *da = data_array.ptr;
+	int *d = (int *) da[0].ptr;
+
+	printf("%d: received message '%d' from %d\n", rank, *d, src);
+	*target = 0;
+}
+
+// send
+node(10, rank, i, [1:1:1], target, [0], [11], send_header(&target, index_array, data_array, rank, src, dest, size, offset, buf))
+pil_send(11, rank, [10], [0], dest, size, offset, buf)
+
+// recv
+node(20, rank, i, [1:1:1], target, [0], [21], recv_header(&target, index_array, data_array, rank, src, dest, size, offset, buf))
+pil_recv(21, rank, [20], [22], src, size, offset, buf)
+node(22, rank, i, [1:1:1], target, [21], [0], recv_check(&target, index_array, data_array, rank, src, dest, size, offset, buf))
+
+void pil_main(int argc, char **argv, int rank)
+{
+	gpp_t index_array;
+	gpp_t data_array;
+	int src = mysrc(rank);
+	int dest = mydest(rank);
+	size_t size = sizeof(int);
+	int offset = 0;
+	gpp_t buf;
+	uint32_t success = 1;
+
+	pil_init(&index_array, &data_array);
+
+	// alloc the arrays
+	pil_alloc(&buf, sizeof(int));
+	pil_alloc(&index_array, 2*sizeof(int));
+	pil_alloc(&data_array, 1*sizeof(gpp_t));
+
+	// set the magic number
+	int *d = buf.ptr;
+	*d = rank;
+
+	// initialize the index array
+	int *ia = (int *) index_array.ptr;
+	ia[0] = 0;
+	ia[1] = 1;
+
+	// initialize the data array
+	gpp_t *da = (gpp_t *) data_array.ptr;
+	da[0].guid = buf.guid;
+	da[0].ptr = NULL; // only set the guid because that is what the HTA library does.
+
+	// check that the send buffer is empty
+	if (pil_send_get_buf_status(rank, mydest(rank))) {
+		success = 0;
+		printf("%d: ERROR 0\n", rank);
+	}
+
+	// check that the recv buffer is empty
+	if (pil_recv_get_buf_status(mysrc(rank), rank)) {
+		success = 0;
+		printf("%d: ERROR 1\n", rank);
+	}
+
+	// everyone initiates a send to its neighbor
+	pil_enter(10, rank, 8, index_array, data_array, rank, src, dest, size, offset, buf);
+
+#if 0 // this check only works if we aren't using circular buffers
+	// check that you actually populated the send buffer
+	if (!pil_send_get_buf_status(rank, mydest(rank))) {
+		success = 0;
+		printf("%d: ERROR 2\n", rank);
+	}
+#endif
+
+	// barrier so that we know all the buffers should be populated
+	pil_barrier_all(rank);
+
+	// check that your neighbor populated the recv buffer
+	if (pil_recv_get_buf_status(mysrc(rank), rank)) {
+		success = 0;
+		printf("%d: ERROR 3\n", rank);
+	}
+
+	// everyone iniates a recv on their data
+	pil_enter(20, rank, 8, index_array, data_array, rank, src, dest, size, offset, buf);
+
+	// check that the recv buffer is empty because you just consumed it
+	if (pil_recv_get_buf_status(mysrc(rank), rank)) {
+		success = 0;
+		printf("%d: ERROR 4\n", rank);
+	}
+
+	// barrier so that we know all the buffers should be consumed
+	pil_barrier_all(rank);
+
+	// check that the send buffer is empty because it was consumed
+	if (pil_send_get_buf_status(rank, mydest(rank))) {
+		success = 0;
+		printf("%d: ERROR 5\n", rank);
+	}
+
+	// check the value that was received
+	//printf("%d: the message received is %d\n", rank, *d);
+	if (*d != mysrc(rank)) {
+		success = 0;
+		printf("%d: ERROR 6\n", rank);
+	}
+
+	pil_barrier_all(rank); // barrier for success message to be pretty
+	if (success) printf("SUCCESS\n");
+	else printf("FAILURE\n");
+}

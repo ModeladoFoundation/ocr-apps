@@ -3,6 +3,7 @@
 
 #include "{{g.name}}_internal.h"
 {% if affinitiesEnabled -%}
+#define ENABLE_EXTENSION_AFFINITY
 #include <extensions/ocr-affinity.h>
 {% endif %}
 {#/****** Item instance data cast ******/-#}
@@ -25,8 +26,8 @@ extern pthread_mutex_t _cncDebugMutex;
 {% set isFinalizer = loop.first -%}
 {% set paramTag = (stepfun.tag|count) <= 8 -%}
 /* {{stepfun.collName}} setup/teardown function */
-ocrGuid_t _cncStep_{{stepfun.collName}}(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
-    {{g.name}}Ctx *ctx = depv[0].ptr;
+ocrGuid_t _{{g.name}}_cncStep_{{stepfun.collName}}(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
+    {{util.g_ctx_param()}} = depv[0].ptr;
 
     u64 *_tag = {{ "paramv" if paramTag else "depv[1].ptr" }}; MAYBE_UNUSED(_tag);
     {% for x in stepfun.tag -%}
@@ -63,11 +64,7 @@ ocrGuid_t _cncStep_{{stepfun.collName}}(u32 paramc, u64 paramv[], u32 depc, ocrE
     {{ util.step_enter() }}
     // Call user-defined step function
     {{ util.log_msg("RUNNING", stepfun.collName, stepfun.tag) }}
-    {{stepfun.collName}}({{ util.print_tag(stepfun.tag) ~ util.print_bindings(stepfun.inputItems) }}ctx);
-    {% if isFinalizer %}
-    // Signal that the finalizer is done
-    ocrEventSatisfy(ctx->_guids.finalizedEvent, NULL_GUID);
-    {% endif %}
+    {{util.qualified_step_name(stepfun)}}({{ util.print_tag(stepfun.tag) ~ util.print_bindings(stepfun.inputItems) }}{{util.g_ctx_var()}});
     // Clean up
     {% for input in stepfun.rangedInputItems -%}
     ocrDbDestroy(_block_{{input.binding}}.guid);
@@ -80,7 +77,7 @@ ocrGuid_t _cncStep_{{stepfun.collName}}(u32 paramc, u64 paramv[], u32 depc, ocrE
 /* {{stepfun.collName}} task creation */
 void cncPrescribe_{{stepfun.collName}}({{
         util.print_tag(stepfun.tag, typed=True)
-        }}{{g.name}}Ctx *ctx) {
+        }}{{util.g_ctx_param()}}) {
 
     ocrGuid_t _stepGuid;
     {# /* TODO - figure out if there's a way to compute the size of non-rectangular
@@ -94,7 +91,8 @@ void cncPrescribe_{{stepfun.collName}}({{
     u64 *_tagBlockPtr;
     SIMPLE_DBCREATE(&_tagBlockGuid, (void**)&_tagBlockPtr, sizeof(_args));
     hal_memCopy(_tagBlockPtr, _args, sizeof(_args), 0);
-    ocrDbRelease(_tagBlockGuid);
+    // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
+    // ocrDbRelease(_tagBlockGuid);
     {% endif -%}
     {% else -%}
     u64 *_args = NULL;
@@ -116,7 +114,7 @@ void cncPrescribe_{{stepfun.collName}}({{
     const ocrGuid_t _affinity = NULL_GUID;
     {%- endif %}
     u64 _depc = {{stepfun.inputCountExpr}} + {{ 1 if paramTag else 2 }};
-    ocrEdtCreate(&_stepGuid, ctx->_steps.{{stepfun.collName}},
+    ocrEdtCreate(&_stepGuid, {{util.g_ctx_var()}}->_steps.{{stepfun.collName}},
         {% if paramTag -%}
         /*paramc=*/{{(stepfun.tag|count)}}, /*paramv=*/_args,
         {% else -%}
@@ -127,7 +125,7 @@ void cncPrescribe_{{stepfun.collName}}({{
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence({{util.g_ctx_var()}}->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
     {% if not paramTag -%}
     ocrAddDependence(_tagBlockGuid, _stepGuid, _edtSlot++, DB_MODE_RO);
     {% endif -%}
@@ -155,7 +153,7 @@ else {
 {%- if inputIsEnabled[-1] -%}
 cncGet_{{input.collName}}(
         {%- for k in input.key %}_i{{loop.index0}}, {% endfor -%}
-         _stepGuid, _edtSlot++, DB_DEFAULT_MODE, ctx);
+         _stepGuid, _edtSlot++, DB_DEFAULT_MODE, {{util.g_ctx_var()}});
 {%- else -%}
 ocrAddDependence(NULL_GUID, _stepGuid, _edtSlot++, DB_DEFAULT_MODE);
 {%- endif -%}
