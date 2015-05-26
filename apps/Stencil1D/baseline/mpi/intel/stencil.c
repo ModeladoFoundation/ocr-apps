@@ -110,7 +110,7 @@ int main (int argc, char **argv) {
 
         // stencil update
         for (i = 1; i < nloc + 1; i++) {
-            new [i] =  val [i] + 0.5 * ( val [i + 1] - val [i - 1] );
+            new [i] =  0.5*val [i] + 0.25 * ( val [i + 1] + val [i - 1] );
         }
         // copy values for next iteration
         for (i = 1; i < nloc + 1; i++) {

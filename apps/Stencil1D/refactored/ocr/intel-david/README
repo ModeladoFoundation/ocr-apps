@@ -1,24 +1,66 @@
-Written and Committed by David S Scott
-
-There are three versions of stencil 1D here:
-
-stencil1Dsticky uses sticky events to transmit data
-stencil1Donce uses once events (requires EDTs to spawn their GRANDCHILDREN)
-stencil1Dguid sends the guid of the grandchild and doesn't use events at all
-
-Copy whichever one you want to run to stencil1D.c
-
-All implement a 1D dissapative stencil on a set of points
-the initial data is 1s at each end and zero on the interior
-there are three input parameters that are set in #define s
+Written by David S Scott
 
 
+There are 3 versions of a 1D stencil computation
+All three use "buffer" datablocks to exchange halo values between EDTs
+All three use the "cloning" style in which a sequence of EDTs look after the same set of datapoints.
+A new clone is launched at every iteration to gain access to the buffer blocks.
+The bufferblocks are sent back at the end of an iteration.  The three versions are:
 
-N is the number of worker EDTs that are created
-M is the number of points controlled by each EDT
-T is the number of iterations
+"sticky" which uses sticky events to pass the buffer block.  The sender satisfies the event while the receiver
+makes its clone depend on the event.  A new event is created and sent with the halo data to facilitate the next
+iteration.  sticky events are required because there is no order relationship between the adding of the dependence
+and the satisfaction of the event.
 
-They can be changed and rerun.
+"once" breaks the race condition by having an EDT clone its grandchild and adding the dependence before sending
+the event (and halo data) to its neighbor.
+
+"guid" doesn't use events at all.  Like "once" each EDT clones its grandchild but in the guid version,
+it sends the guid of its grandchild with the halo data.  The other EDT can add the dependence directly
+rather than satisfying an event.
 
 
+There are three parameters (defined in stencil1D.h)
+  N is the number of tasks
+  M is the number of points in each task
+  T is the number of iterations
 
+The datapoints are initialized to zero except the boundary values which are set to 1
+the particular stencil implemented is anew(i) = .5*(a(i+1) + a(i-1))
+which implements an elliptic solver using the 2nd order three point finite difference.
+The values converge (slowly) to all 1s.
+If the stencil is wider than 3 points, then the number of shared boundary values
+would have to be increased.
+
+Control structure
+  N stenciltask EDTs do the computation on M numbers each
+  Each stencil task has a "real" datablock for computing values
+  Each stencil has a private datablock to hold parameters
+  Each stenciltask "clones" itself for each iteration
+  Each stenciltask has two data blocks for sending data to each neighbor
+
+
+Structure of code
+
+mainEDT
+  creates N datablocks of length 2M
+  creates 2*N-2 datablocks for exchanging halo data and control information
+  creates N private datablocks for local parameters
+  launches wrapup that depends on realmain finishing
+  launches realmain as a finish EDT
+
+realmain
+  creates N stencilEdts for the "sticky" version but creates 2*N Edts for the other two.
+  initializes the data blocks
+  launches the first N stencilEdt with the correct datablocks attached
+
+Each stencil event
+  if(iteration == 0) initializes data
+  computes its new values using halo values as needed
+  writes its boundary value(s) to the datablock(s)
+  provides the data blocks to its neighbors in one of 3 ways
+
+The values after final iteration are printed out in order by a wrapupEdt.
+To make sure wrapup doesn't start early, it depends on realmain
+which is declared to be a finish event (which means it
+doesn't satisfy its output event until ALL of its descendents are finished).

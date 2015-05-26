@@ -36,7 +36,7 @@ def output(statDir, filename, namelist, valuelist,archiveDir):
 
     # Check if stat dir exists . if not , create one
     if not os.path.exists(archivedirPath):
-        print("ERROR ! Jenkins failed to create/copy archived dirs for this regression run . Inspect jenkins PBS configuration\n")
+        print("ERROR ! Archived dir (" + archivedirPath +" ) for this regression run does not exist . Inspect jenkins PBS configuration if jenkins running the framework or statCollector.sh if framework is being run manully.\n")
         sys.exit(1)
 
     # Purge old .csv , if exist
@@ -78,46 +78,50 @@ def main():
         avgtime = totaltime/float(turns)
         elapsedTimeList.append(avgtime)
 
-#    # Next, read the running times for scaling runs
-#    scaleFileList = glob.glob(statDir+"/scale*.txt")
-#    scalenameList = []
-#    scalevalueList = []
-#    logX = [0,1,2,3,4]
-#    logY = []
-#    N = 5
-#    for file in scaleFileList:
-#        fd = open(file,'r')
-#        totaltime = 0
-#        runcount = 0
-#        for line in fd:
-#            #example input line from stat file :  user 0.01system 0:00.29elapsed 779%CPU (0avgtext+0avgdata 35452maxresident)k
-#            time = (line.split()[2]).split("elapsed")
-#            #after above operation time is equal to 0:00.29 ; 0 min and 00.29 sec
-#            if len(time) > 1 :
-#                totaltime = totaltime + float(time[0].split(':')[0])*60 + float(time[0].split(':')[1])
-#                runcount = runcount + 1
-#                print(runcount, turns)
-#            if runcount >= turns :
-#                ans = math.log((float(totaltime)/float(turns)), 2)
-#                logY.append(ans)
-#                runcount = 0
-#                totaltime = 0
-#        fd.close()
-#
-#        # Compute the regression line using linear least-squares fit (NumPy is too picky & non-transparent)
-#        sumxy = 0
-#        sumx = 0
-#        sumy = 0
-#        sumx2 = 0
-#
-#        for i in logX:
-#            sumxy = sumxy + logX[i]*logY[i]
-#            sumx = sumx + logX[i]
-#            sumy = sumy + logY[i]
-#            sumx2 = sumx2 + logX[i]*logX[i]
-#
-#        scalenameList.append(os.path.basename(file).split(".txt")[0])
-#        scalevalueList.append(((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx)))
+    # Next, read the running times for scaling runs
+    scaleFileList = glob.glob(statDir+"/scale*.txt")
+    scalenameList = []
+    scalevalueList = []
+    logX = [0,1,2,3,4]
+    logY = []
+    N = 5
+    for file in scaleFileList:
+        fd = open(file,'r')
+        totaltime = 0
+        runcount = 0
+        logY = []
+        for line in fd:
+            #example input line from stat file :  user 0.01system 0:00.29elapsed 779%CPU (0avgtext+0avgdata 35452maxresident)k
+            time = (line.split()[2]).split("elapsed")
+            #after above operation time is equal to 0:00.29 ; 0 min and 00.29 sec
+            if len(time) > 1 :
+                totaltime = totaltime + float(time[0].split(':')[0])*60 + float(time[0].split(':')[1])
+                runcount = runcount + 1
+            if runcount >= turns:
+                if totaltime > 0.0:
+                    ans = math.log((float(totaltime)/float(turns)), 2)
+                else:
+                    ans = 0
+                logY.append(ans)
+                runcount = 0
+                totaltime = 0
+        fd.close()
+
+        # Compute the regression line using linear least-squares fit (NumPy is too picky & non-transparent)
+        sumxy = 0
+        sumx = 0
+        sumy = 0
+        sumx2 = 0
+
+        for i in logX:
+            sumxy = sumxy + logX[i]*logY[i]
+            sumx = sumx + logX[i]
+            sumy = sumy + logY[i]
+            sumx2 = sumx2 + logX[i]*logX[i]
+
+        scalenameList.append(os.path.basename(file).split(".txt")[0])
+        scalevalueList.append(((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx)))
+        print(scalenameList, scalevalueList)
 
     # Use build no as stat file name if jenkins running infra else use date time
     if (os.getenv("WORKSPACE")):
@@ -127,7 +131,7 @@ def main():
 
     # Now, record the plots for regression & scaling
     output(statDir, filename, testnameList, elapsedTimeList,"regressionResults/NightlyRegressionStat")
-#    output(statDir, filename, scalenameList, scalevalueList,"regressionResults/NightlyScalingStat")
+    output(statDir, filename, scalenameList, scalevalueList,"regressionResults/NightlyScalingStat")
     shutil.rmtree(statDir)
 
 if __name__ == '__main__':

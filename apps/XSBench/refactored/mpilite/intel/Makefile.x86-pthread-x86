@@ -3,10 +3,15 @@
 # removed or modified.
 
 # APPS
-MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
+ifndef APPS_ROOT
+  $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+
+  MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
 
 
-APPS_ROOT       = $(MYAPPS_ROOT)
+  APPS_ROOT       = $(MYAPPS_ROOT)
+
+endif
 APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
@@ -23,7 +28,7 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 #  at "intel" or down under "build_and_run"
 SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src
 
-WORKLOAD_SRC          ?= $(SRC_DIR)
+WORKLOAD_SRC          = $(SRC_DIR)
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -77,8 +82,9 @@ OBJS := $(notdir $(source:.c=.o))
 
 $(OBJS): $(SRC_DIR)/XSbench_header.h $(SRC_DIR)/omp.h
 
-# icc is faster than gcc
-CC=icc
+# icc is faster than gcc. turn off warning that OMP pragmas are off, which
+# becomes an error due to -Werror from make-regular.inc
+CC=icc -wd3180
 
 CFLAGS := -g -DMPI -I $(SRC_DIR)
 LDFLAGS := -lpthread -lm -lmpilite

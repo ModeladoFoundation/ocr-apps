@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -x
 [ $# -ne 2 ] && { echo "Usage: $0 NX NITER "; exit 1; }
 rm -f ./stencil

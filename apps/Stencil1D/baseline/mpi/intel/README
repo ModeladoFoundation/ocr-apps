@@ -7,7 +7,7 @@ PURPOSE: This program tests the efficiency of a simple 1D stencil update
 
          for (it = 0; it<NITER; it++) {
              exchange_halo (kstart-1; kend+1);
-             u(i,t) = u(i,t-1) + 0.5 ( u(i+1,t-1) - u(i-1, t-1) )
+             u(i,t) = 0.5*u(i,t-1) + 0.25*( u(i+1,t-1) + u(i-1, t-1) )
              copy_halo ();
          }
 

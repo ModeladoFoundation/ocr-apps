@@ -62,9 +62,17 @@ Compilation-------------------------------------------------------------------
 
 Running RSBench---------------------------------------------------------------
 
+Option - 1:
 	To run RSBench with default settings, use the following command:
 
 	>$ ./RSBench
+
+Option - 2:
+    # Using the unified run framework
+    $ source ../../../../apps_env.bash
+    $ cd build_and_run
+    $ cd serial #cd omp #for OpenMP
+    $ run_app ss_small 1500000 #Runs the "small" problem size defined in ../../../parameters.proposed file with 1500000 lookups
 
 	For non-default settings, RSBench supports the following command line
 	options:
