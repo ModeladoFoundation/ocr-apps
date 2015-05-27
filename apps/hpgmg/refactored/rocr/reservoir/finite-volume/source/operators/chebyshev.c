@@ -9,12 +9,13 @@
 #include "rstream_chebyshev.h"
 #ifdef RSTREAM_CHEBY
 #include "cheby2/mcheby2.h"
-#include <ocr-lib.h>
 #else
 #include "rstream_chebyshev_mappable.c" // Reference
 #endif
 
 #ifdef XXXRSTREAM_CHEBY
+#define ENABLE_EXTENSION_LEGACY
+#include "ocr-legacy.h"
 static char * concat(char const * c1, char const * c2) {
     size_t plen;
     char * buf;
@@ -71,9 +72,11 @@ void smooth(level_type * level, int x_id, int rhs_id, double a, double b){
   int radius     = STENCIL_RADIUS;
   int communicationAvoiding = ghosts > radius;
 #ifdef XXXRSTREAM_CHEBY
+  ocrGuid_t ocrLegCtx;
+
   //printf("OCR CONFIG START\n");
   ocrConfig_t ocrConf = ocrConfig();
-  ocrInit(&ocrConf);
+  ocrLegacyInit(&ocrLegCtx, &ocrConf);
   //printf("OCR CONFIG FINISH\n");
 #endif
 
@@ -148,7 +151,7 @@ void smooth(level_type * level, int x_id, int rhs_id, double a, double b){
 #ifdef XXXRSTREAM_CHEBY
   ocrShutdown();
   //printf("FINISH OCR SHUTDOWN\n");
-  ocrFinalize();
+  ocrLegacyFinalize(ocrLegCtx, false);
   //printf("FINISH OCR FINALIZE\n");
 #endif
 }
