@@ -6,17 +6,17 @@ Corresponding Tarball: Tars_Untouched/CoMD_OCR_2014_10_28.tgz
 
 To build and run:
 
-i) OCR_TYPE=x86-pthread-x86 WORKLOAD_ARGS="12 $PWD/input/comd" make install run
+i) OCR_TYPE=x86 WORKLOAD_ARGS="12 $PWD/input/comd" make install run
    OR
     To build:
-    make -f Makefile.x86-pthread-x86 install
+    make -f Makefile.x86 install
 
     To run:
-    make -f Makefile.x86-pthread-x86 run 12 $PWD/input/comd
+    make -f Makefile.x86 run 12 $PWD/input/comd
 
 ii) source ../../../../apps_env.bash
     cd build_and_run
-    cd x86-pthread-x86
+    cd x86
     run_app ss_small 10 #At the moment the arguments are just dummies
 
 =============================================================================

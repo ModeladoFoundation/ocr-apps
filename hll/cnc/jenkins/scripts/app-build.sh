@@ -9,7 +9,7 @@ echo ">>> CnC-OCR: Building example ${1}"
 cd "${WORKLOAD_SRC}" && \
 if [ "$2" = "regression" ]; then
     echo ">>> (regression build)"
-    make -f Makefile.${OCR_TYPE-x86-pthread-x86} build install
+    make -f Makefile.${OCR_TYPE-x86} build install
 else
     make
 fi

@@ -23,7 +23,7 @@ the appropriate value and rebuilding OCR:
 
 cd $OCR_HOME/build
 export CFLAGS_USER="-DINIT_DEQUE_CAPACITY=10000"
-OCR_TYPE=x86-pthread-x86 make install
+OCR_TYPE=x86 make install
 
 -----
 BUILD
@@ -49,7 +49,7 @@ run.sh [exascale|modern] [OCR config file] [log2 box dimension] [target # of box
                    exascale is F cycles, chebyshev smoother.
 
 [OCR config file]: An OCR config file
-                   (found in $OCR_HOME/install/x86-pthread-x86/config/ for instance)
+                   (found in $OCR_HOME/install/x86/config/ for instance)
 
 [log2 box dimension]: log2 of the dimension n for each n^3 sized box in the
                       multigrid run. Typical values are 4, 5, and 6.

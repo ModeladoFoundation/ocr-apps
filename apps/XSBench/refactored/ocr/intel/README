@@ -1,8 +1,8 @@
 This OCR implementation of XSBENCH requires up to 8GB of memory (depending on the problem size - large problem requires 8 GB memory) which is higher than the default memory size specified in the default config files. Hence, appropriate config files have been generated using the scripts provided under ocr/Configs
 To build and run
 
-x86-pthread-x86:
-OCR_CONFIG=$PWD/default.cfg make -f Makefile.x86-pthread-x86 clean run
+x86:
+OCR_CONFIG=$PWD/default.cfg make -f Makefile.x86 clean run
 
-x86-pthread-mpi:
-OCR_CONFIG=$PWD/default_mpi.cfg make -f Makefile.x86-pthread-mpi clean run
+x86-mpi:
+OCR_CONFIG=$PWD/default_mpi.cfg make -f Makefile.x86-mpi clean run

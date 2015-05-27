@@ -1,18 +1,18 @@
 CoMD with MPI-Lite can be built 2 ways
 
 1. in this directory
-	make OCR_TYPE=x86-pthread-x86 install
+	make OCR_TYPE=x86 install
 
-	comd-mpi executable shows up in ./install/x86-pthread-x86
+	comd-mpi executable shows up in ./install/x86
 
-	make OCR_TYPE=x86-pthread-x86 run   #runs it
+	make OCR_TYPE=x86 run   #runs it
 
 2. in build_and_run/mpi
-	make OCR_TYPE=x86-pthread-x86 install
+	make OCR_TYPE=x86 install
 
-	comd-mpi executable shows up in ./build_and_run/mpi/install/x86-pthread-x86
+	comd-mpi executable shows up in ./build_and_run/mpi/install/x86
 
-	make OCR_TYPE=x86-pthread-x86 run   #runs it
+	make OCR_TYPE=x86 run   #runs it
 
 For running with multiple numbers of ranks, you can go to ./examples
 

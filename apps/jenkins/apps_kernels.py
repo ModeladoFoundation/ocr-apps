@@ -39,6 +39,7 @@ jobtype_ocr_run_kernel_remote_regression = {
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
     'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'OCR_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr/install'}
 }
 
@@ -61,9 +62,9 @@ jobtype_ocr_run_kernel_remote_scaling = {
 # FFT
 job_ocr_build_kernel_fft_x86_regression = {
     'name': 'ocr-build-kernel-fft-x86-regression',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-kernel-regression',
-    'run-args': 'fft x86-pthread-x86',
+    'run-args': 'fft x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fft/ocr',
@@ -75,7 +76,7 @@ job_ocr_run_kernel_fft_x86_remote_regression = {
     'name': 'ocr-run-kernel-fft-x86-remote-regression',
     'depends': ('ocr-build-kernel-fft-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'fft x86-pthread-x86 ocr-run-kernel-fft-x86-remote-regression 10',
+    'run-args': 'fft x86 ocr-run-kernel-fft-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fft/ocr',
@@ -87,7 +88,7 @@ job_ocr_run_kernel_fft_x86_remote_scaling = {
     'name': 'ocr-run-kernel-fft-x86-remote-scaling',
     'depends': ('ocr-build-kernel-fft-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'fft x86-pthread-x86 ocr-run-kernel-fft-x86-remote-scaling 10',
+    'run-args': 'fft x86 ocr-run-kernel-fft-x86-remote-scaling 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fft/ocr',
@@ -98,9 +99,9 @@ job_ocr_run_kernel_fft_x86_remote_scaling = {
 # Cholesky
 job_ocr_build_kernel_cholesky_x86_regression = {
     'name': 'ocr-build-kernel-cholesky-x86-regression',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-kernel-regression',
-    'run-args': 'cholesky x86-pthread-x86',
+    'run-args': 'cholesky x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/cholesky/ocr',
@@ -112,7 +113,7 @@ job_ocr_run_kernel_cholesky_x86_remote_regression = {
     'name': 'ocr-run-kernel-cholesky-x86-remote-regression',
     'depends': ('ocr-build-kernel-cholesky-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'cholesky x86-pthread-x86 ocr-run-kernel-cholesky-x86-remote-regression 10',
+    'run-args': 'cholesky x86 ocr-run-kernel-cholesky-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/cholesky/ocr',
@@ -124,7 +125,7 @@ job_ocr_run_kernel_cholesky_x86_remote_scaling = {
     'name': 'ocr-run-kernel-cholesky-x86-remote-scaling',
     'depends': ('ocr-build-kernel-cholesky-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'cholesky x86-pthread-x86 ocr-run-kernel-cholesky-x86-remote-scaling 10',
+    'run-args': 'cholesky x86 ocr-run-kernel-cholesky-x86-remote-scaling 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/cholesky/ocr',
@@ -135,9 +136,9 @@ job_ocr_run_kernel_cholesky_x86_remote_scaling = {
 # fibonacci
 job_ocr_build_kernel_fibonacci_x86_regression = {
     'name': 'ocr-build-kernel-fibonacci-x86-regression',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-kernel-regression',
-    'run-args': 'fibonacci x86-pthread-x86',
+    'run-args': 'fibonacci x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
@@ -148,7 +149,7 @@ job_ocr_run_kernel_fibonacci_x86_remote_regression = {
     'name': 'ocr-run-kernel-fibonacci-x86-remote-regression',
     'depends': ('ocr-build-kernel-fibonacci-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'fibonacci x86-pthread-x86 ocr-run-kernel-fibonacci-x86-remote-regression 10',
+    'run-args': 'fibonacci x86 ocr-run-kernel-fibonacci-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
@@ -160,7 +161,7 @@ job_ocr_run_kernel_fibonacci_x86_remote_scaling = {
     'name': 'ocr-run-kernel-fibonacci-x86-remote-scaling',
     'depends': ('ocr-build-kernel-fibonacci-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'fibonacci x86-pthread-x86 ocr-run-kernel-fibonacci-x86-remote-scaling 10',
+    'run-args': 'fibonacci x86 ocr-run-kernel-fibonacci-x86-remote-scaling 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/fibonacci/ocr',
@@ -171,9 +172,9 @@ job_ocr_run_kernel_fibonacci_x86_remote_scaling = {
 # Smith-Waterman
 job_ocr_build_kernel_smithwaterman_x86_regression = {
     'name': 'ocr-build-kernel-smithwaterman-x86-regression',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-kernel-regression',
-    'run-args': 'smithwaterman x86-pthread-x86',
+    'run-args': 'smithwaterman x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
@@ -185,11 +186,11 @@ job_ocr_run_kernel_smithwaterman_x86_remote_regression = {
     'name': 'ocr-run-kernel-smithwaterman-x86-remote-regression',
     'depends': ('ocr-build-kernel-smithwaterman-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'smithwaterman x86-pthread-x86 ocr-run-kernel-smithwaterman-x86-remote-regression 10',
+    'run-args': 'smithwaterman x86 ocr-run-kernel-smithwaterman-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
-                  'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/score-mediu    m-large.txt',
+                  'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/score-medium-large.txt',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
 }
 
@@ -197,20 +198,20 @@ job_ocr_run_kernel_smithwaterman_x86_remote_scaling = {
     'name': 'ocr-run-kernel-smithwaterman-x86-remote-scaling',
     'depends': ('ocr-build-kernel-smithwaterman-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'smithwaterman x86-pthread-x86 ocr-run-kernel-smithwaterman-x86-remote-scaling 10',
+    'run-args': 'smithwaterman x86 ocr-run-kernel-smithwaterman-x86-remote-scaling 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr',
-                  'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/score-mediu    m-large.txt',
+                  'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/score-medium-large.txt',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
 }
 
 # 1d Stencil David Scott
 job_ocr_build_kernel_Stencil1DDavid_x86_regression = {
     'name': 'ocr-build-kernel-Stencil1DDavid-x86-regression',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-kernel-regression',
-    'run-args': 'stencil x86-pthread-x86',
+    'run-args': 'stencil x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david',
@@ -223,7 +224,7 @@ job_ocr_run_kernel_Stencil1DDavid_x86_remote_regression = {
     'name': 'ocr-run-kernel-Stencil1DDavid-x86-remote-regression',
     'depends': ('ocr-build-kernel-Stencil1DDavid-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'stencil x86-pthread-x86 ocr-run-kernel-Stencil1DDavid-x86-remote-regression 10',
+    'run-args': 'stencil x86 ocr-run-kernel-Stencil1DDavid-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david',
@@ -236,7 +237,7 @@ job_ocr_run_kernel_Stencil1DDavid_x86_remote_scaling = {
     'name': 'ocr-run-kernel-Stencil1DDavid-x86-remote-scaling',
     'depends': ('ocr-build-kernel-Stencil1DDavid-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'Stencil1DDavid x86-pthread-x86 ocr-run-kernel-Stencil1DDavid-x86-remote-scaling 10',
+    'run-args': 'Stencil1DDavid x86 ocr-run-kernel-Stencil1DDavid-x86-remote-scaling 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-david',
@@ -248,9 +249,9 @@ job_ocr_run_kernel_Stencil1DDavid_x86_remote_scaling = {
 #1d Stencil - Chandra Martha
 job_ocr_build_kernel_Stencil1DChandra_x86_regression = {
     'name': 'ocr-build-kernel-Stencil1DChandra-x86-regression',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-kernel-regression',
-    'run-args': 'stencil_1d x86-pthread-x86',
+    'run-args': 'stencil_1d x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra',
@@ -262,7 +263,7 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_regression = {
     'name': 'ocr-run-kernel-Stencil1DChandra-x86-remote-regression',
     'depends': ('ocr-build-kernel-Stencil1DChandra-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'stencil_1d x86-pthread-x86 ocr-run-kernel-Stencil1DChandra-x86-remote-regression 10',
+    'run-args': 'stencil_1d x86 ocr-run-kernel-Stencil1DChandra-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra',
@@ -274,7 +275,7 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_scaling = {
     'name': 'ocr-run-kernel-Stencil1DChandra-x86-remote-scaling',
     'depends': ('ocr-build-kernel-Stencil1DChandra-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'Stencil1DChandra x86-pthread-x86 ocr-run-kernel-Stencil1DChandra-x86-remote-scaling 10',
+    'run-args': 'Stencil1DChandra x86 ocr-run-kernel-Stencil1DChandra-x86-remote-scaling 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra',

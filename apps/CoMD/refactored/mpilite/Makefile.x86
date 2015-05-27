@@ -1,0 +1,145 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+# APPS
+ifndef APPS_ROOT
+  $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+
+  MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
+
+
+  APPS_ROOT       = $(MYAPPS_ROOT)
+
+endif
+APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
+
+# OCR_TYPE
+OCR_TYPE        ?= x86
+
+# OCR
+OCR_TARGET       ?= x86
+OCR_ROOT         = $(APPS_ROOT)/../ocr
+OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+
+# APPLICATION
+#WORKLOAD_SRC          ?= src-mpi
+#src dir - go upt to "intel" which has the "src' dir, then you are there. works if starting
+#  at "intel" or down under "build_and_run"
+SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
+
+WORKLOAD_SRC          ?= $(SRC_DIR)
+
+WORKLOAD_BUILD_ROOT   ?= ./build
+WORKLOAD_INSTALL_ROOT ?= ./install
+
+# If 0, the workload has no input file
+# If 1+, this is the index in the argument
+# list after which everything is considered an
+# input file. Note that the index STARTS AT 1
+WORKLOAD_INPUT_FILE_IDX := 0
+
+# You can specify default arguments here. These
+# will be overriden by (in order):
+#   - the WORKLOAD_ARGS environment variable
+#   - the arguments passed to 'make run'
+# To restate, the arguments passed to make run have
+# the highest priority and will override both the
+# default arguments here and the ones passed through
+# an environment variable
+WORKLOAD_ARGS ?=  -r 4  -t 10  -e -i 2 -j 2 -k 1 -x 40 -y 40 -z 40 -d ../../pots
+
+# Run mode (not fully supported)
+# Set to "yes" if running with torque
+RUN_TORQUE ?= no
+# Set to "yes" if Jenkins is running this job as an automated test
+RUN_JENKINS ?= no
+
+## END of variables coming from user/environment
+
+include ${APPS_ROOT}/makefiles/make-pre.inc
+
+# Name of the application to build
+TARGET := comd-mpi
+
+# Space separated list of directory names in apps/libs/src
+# that need to be built. These will be built for ARCH
+REQ_LIBS := mpilite
+
+# Space separated list of source files
+
+## from sdsc SRCS := atoms.c  cells.c  comd.c  command.c  eam.c  lj.c  simulation.c timers.c  timestep.c
+SRCS := cmdLineParser.c  decomposition.c  haloExchange.c  linkCells.c  mycommand.c  performanceTimers.c  timestep.c CoMD.c           eam.c            initAtoms.c     ljForce.c    parallel.c   random.c             yamlOutput.c
+
+HDR_NAMES := cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h   parallel.h timestep.h CoMDTypes.h      eam.h            linkCells.h  mycommand.h  performanceTimers.h  yamlOutput.h constants.h      haloExchange.h   ljForce.h    mytype.h     random.h
+
+HDRS := ./CoMD_info.h $(addprefix $(SRC_DIR)/,$(HDR_NAMES))
+
+#OBJS := $(notdir $(SRCS:.c=.o))
+OBJS := $(notdir $(source:.c=.o))
+
+## from sdsc $(OBJS): cells.h  CoMD_info.h  command.h  simulation.h  timers.h
+#$(OBJS): CoMD_info.h cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h   parallel.h timestep.h CoMDTypes.h      eam.h            linkCells.h  mycommand.h  performanceTimers.h  yamlOutput.h constants.h      haloExchange.h   ljForce.h    mytype.h     random.h
+
+$(OBJS): $(HDRS)
+
+# icc is 15% faster than gcc
+CC=icc
+
+CFLAGS := -g -DDO_MPI -DDOUBLE -I $(SRC_DIR)
+LDFLAGS := -lpthread -lm -lmpilite
+
+# Targets:
+#   - all:     Build the application.
+#   - debug:   Build the debug version of the application
+#   - install: Build and install
+#   - run:     Run the application
+all:	CFLAGS += -O3 -std=c99
+all:	TARGETS := all
+all:	default
+
+debug:	CFLAGS += -g -O0 -std=c99
+debug:	TARGETS := debug
+debug:	default
+
+install: all
+
+# This rule will be executed prior to execution:
+#  - For the FSim target, this happens when the binary is built
+#  - For all other targets this happens prior to running the
+#    executable
+# WORKLOAD_ARGS and WORKLOAD_INPUTS are available
+# to you and contain, respectively, the non file
+# arguments and the file arguments. They will be
+# passed directly to the application unless you
+# modify them. You can use the following
+# syntax to do so:
+# $(eval WORKLOAD_INPUTS := something) or
+# $(eval WORKLOAD_INPUTS := $(shell <script>))
+# The second syntax will execute <script> and assign
+# its output to WORKLOAD_INPUTS
+#
+# You may also want to assign a value to WORKLOAD_OUTS
+# which should contain the list of output files produced
+# by the application (to be passed to postrun). This is
+# taken-care of for you on FSim but not on any of the
+# other platforms.
+# 'prerun: ;' is an empty rule (the rule is required)
+.PHONY: prerun
+prerun: ;
+
+prebuild: CoMD_info.h
+CoMD_info.h:
+	${SRC_DIR}/generate_info_header ${TARGET} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
+
+# This rule will be executed after execution
+# The variable ${WORKLOAD_OUTS} contains a space separated
+# list of output files
+# 'postrun: ;' is an empty rule (the rule is required
+# to be present though)
+.PHONY: postrun
+postrun: ;
+
+# Include common part
+include ${APPS_ROOT}/makefiles/make-regular.inc

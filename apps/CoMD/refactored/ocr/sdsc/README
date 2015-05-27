@@ -1,15 +1,15 @@
 Run the app as follows:
 
 Non-distibuted OCR on x86:
-OCR_TYPE=x86-pthread-x86 make install
+OCR_TYPE=x86 make install
 
 To build and run:
-OCR_TYPE=x86-pthread-x86 make run
+OCR_TYPE=x86 make run
 
 For distributed OCR on x86:
-OCR_TYPE=x86-pthread-mpi make install
+OCR_TYPE=x86-mpi make install
 
 To build and run:
-OCR_TYPE=x86-pthread-mpi make run
+OCR_TYPE=x86-mpi make run
 
 The problem size is set to 5x5x5 lattice cells. It is specified in the corresponding makefiles via "WORKLOAD_ARGS" variable as "WORKLOAD_ARGS ?= -x 5 -y 5 -z 5".
