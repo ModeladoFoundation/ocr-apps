@@ -8,175 +8,174 @@ import os
 jobtype_cnc_ocr_bootstrap = {
     'name': 'cnc-ocr-bootstrap-base',
     'isLocal': True,
-    'run-cmd': '${JJOB_PRIVATE_HOME}/xstack/hll/cnc/py/bootstrap.sh',
-    'param-cmd': '${JJOB_PRIVATE_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
+    'run-cmd': '${JJOB_SHARED_HOME}/xstack/hll/cnc/py/bootstrap.sh',
+    'param-cmd': '${JJOB_SHARED_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
     'keywords': ('cnc-ocr',),
     'timeout': 60,
-    'sandbox': ('local', 'emptyShared', 'shareOK'),
+    'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
-    'env-vars': {'XSTACK_ROOT': '${JJOB_PRIVATE_HOME}/xstack'}
+    'env-vars': {'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack'}
 }
 
-jobtype_cnc_ocr_example_gen = {
-    'name': 'cnc-ocr-example-gen',
+jobtype_cnc_ocr_app_gen = {
+    'name': 'cnc-ocr-app-gen',
     'isLocal': True,
-    'run-cmd': '${JJOB_PRIVATE_HOME}/xstack/hll/cnc/jenkins/scripts/example-gen.sh',
-    'param-cmd': '${JJOB_PRIVATE_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
+    'run-cmd': '${JJOB_SHARED_HOME}/xstack/hll/cnc/jenkins/scripts/app-gen.sh',
+    'param-cmd': '${JJOB_SHARED_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
     'keywords': ('cnc-ocr',),
-    'timeout': 60,
-    'sandbox': ('local', 'emptyShared', 'shareOK'),
+    'timeout': 120,
+    'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
-    'env-vars': {'XSTACK_ROOT': '${JJOB_PRIVATE_HOME}/xstack'}
+    'env-vars': {'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack'}
 }
 
-jobtype_cnc_ocr_example_make = {
-    'name': 'cnc-ocr-example-make',
+jobtype_cnc_ocr_app_build = {
+    'name': 'cnc-ocr-app-build',
     'isLocal': True,
-    'run-cmd': '${JJOB_PRIVATE_HOME}/xstack/hll/cnc/jenkins/scripts/example-make.sh',
-    'param-cmd': '${JJOB_PRIVATE_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
+    'run-cmd': '${JJOB_SHARED_HOME}/xstack/hll/cnc/jenkins/scripts/app-build.sh',
+    'param-cmd': '${JJOB_SHARED_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
     'keywords': ('cnc-ocr',),
     'timeout': 60,
-    'sandbox': ('local', 'emptyShared', 'shareOK'),
+    'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
-    'env-vars': {'XSTACK_ROOT': '${JJOB_PRIVATE_HOME}/xstack'}
+    'env-vars': {'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack'}
 }
 
-jobtype_cnc_ocr_example_run = {
-    'name': 'cnc-ocr-example-run',
+jobtype_cnc_ocr_app_run = {
+    'name': 'cnc-ocr-app-run',
     'isLocal': True,
-    'run-cmd': '${JJOB_PRIVATE_HOME}/xstack/hll/cnc/jenkins/scripts/example-run.sh',
-    'param-cmd': '${JJOB_PRIVATE_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
+    'run-cmd': '${JJOB_SHARED_HOME}/xstack/hll/cnc/jenkins/scripts/app-run.sh',
+    'param-cmd': '${JJOB_SHARED_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
     'keywords': ('cnc-ocr',),
     'timeout': 60,
-    'sandbox': ('local', 'emptyShared', 'shareOK'),
+    'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
-    'env-vars': {'XSTACK_ROOT': '${JJOB_PRIVATE_HOME}/xstack'}
+    'env-vars': {'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack'}
 }
 
-jobtype_cnc_ocr_example_grep_verify = {
-    'name': 'cnc-ocr-example-grep-verify',
+jobtype_cnc_ocr_app_grep_verify = {
+    'name': 'cnc-ocr-app-grep-verify',
     'isLocal': True,
-    'run-cmd': '${JJOB_PRIVATE_HOME}/xstack/hll/cnc/jenkins/scripts/example-grep-verify.sh',
-    'param-cmd': '${JJOB_PRIVATE_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
+    'run-cmd': '${JJOB_SHARED_HOME}/xstack/hll/cnc/jenkins/scripts/app-grep-verify.sh',
+    'param-cmd': '${JJOB_SHARED_HOME}/xstack/jenkins/scripts/empty-cmd.sh',
     'keywords': ('cnc-ocr',),
     'timeout': 60,
-    'sandbox': ('local', 'emptyShared', 'shareOK'),
+    'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
-    'env-vars': {'XSTACK_ROOT': '${JJOB_PRIVATE_HOME}/xstack'}
+    'env-vars': {'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack'}
 }
 
 ###################################################
 # specific jobs
 
-job_cnc_ocr_bootstrap = {
-    'name': 'cnc-ocr-bootstrap',
-    'depends': (),
+job_cnc_ocr_bootstrap_x86 = {
+    'name': 'cnc-ocr-bootstrap-x86',
+    'depends': ('ocr-build-x86-pthread-x86',),
     'jobtype': 'cnc-ocr-bootstrap-base',
     'run-args': '',
-    'sandbox': ()
+    'sandbox': ('shared', 'inherit0'),
 }
 
 # Smith-Waterman
 
-job_cnc_ocr_example_gen_sw = {
-    'name': 'cnc-ocr-example-gen-sw',
-    'depends': ('cnc-ocr-bootstrap',),
-    'jobtype': 'cnc-ocr-example-gen',
+job_cnc_ocr_app_gen_sw_x86 = {
+    'name': 'cnc-ocr-app-gen-sw-x86',
+    'depends': ('cnc-ocr-bootstrap-x86',),
+    'jobtype': 'cnc-ocr-app-gen',
     'run-args': 'SmithWaterman',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_make_sw = {
-    'name': 'cnc-ocr-example-make-sw',
-    'depends': ('cnc-ocr-example-gen-sw','ocr-build-x86-pthread-x86'),
-    'jobtype': 'cnc-ocr-example-make',
+job_cnc_ocr_app_build_sw_x86 = {
+    'name': 'cnc-ocr-app-build-sw-x86',
+    'depends': ('cnc-ocr-app-gen-sw-x86',),
+    'jobtype': 'cnc-ocr-app-build',
     'run-args': 'SmithWaterman',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_run_sw = {
-    'name': 'cnc-ocr-example-run-sw',
-    'depends': ('cnc-ocr-example-make-sw',),
-    'jobtype': 'cnc-ocr-example-run',
+job_cnc_ocr_app_run_sw_x86 = {
+    'name': 'cnc-ocr-app-run-sw-x86',
+    'depends': ('cnc-ocr-app-build-sw-x86',),
+    'jobtype': 'cnc-ocr-app-run',
     'run-args': 'SmithWaterman 10 10 ${DATA_DIR}/string1-medium.txt ${DATA_DIR}/string2-medium.txt',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
     'env-vars': {'DATA_DIR': '${XSTACK_ROOT}/apps/smithwaterman/datasets'}
 }
 
-job_cnc_ocr_example_verify_sw = {
-    'name': 'cnc-ocr-example-verify-sw',
-    'depends': ('cnc-ocr-example-run-sw',),
-    'jobtype': 'cnc-ocr-example-grep-verify',
+job_cnc_ocr_app_verify_sw_x86 = {
+    'name': 'cnc-ocr-app-verify-sw-x86',
+    'depends': ('cnc-ocr-app-run-sw-x86',),
+    'jobtype': 'cnc-ocr-app-grep-verify',
     'run-args': 'SmithWaterman "score: 80"',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
 
 # combinations
 
-job_cnc_ocr_example_gen_combinations = {
-    'name': 'cnc-ocr-example-gen-combinations',
-    'depends': ('cnc-ocr-bootstrap',),
-    'jobtype': 'cnc-ocr-example-gen',
+job_cnc_ocr_app_gen_combinations_x86 = {
+    'name': 'cnc-ocr-app-gen-combinations-x86',
+    'depends': ('cnc-ocr-bootstrap-x86',),
+    'jobtype': 'cnc-ocr-app-gen',
     'run-args': 'Combinations',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_make_combinations = {
-    'name': 'cnc-ocr-example-make-combinations',
-    'depends': ('cnc-ocr-example-gen-combinations','ocr-build-x86-pthread-x86'),
-    'jobtype': 'cnc-ocr-example-make',
+job_cnc_ocr_app_build_combinations_x86 = {
+    'name': 'cnc-ocr-app-build-combinations-x86',
+    'depends': ('cnc-ocr-app-gen-combinations-x86',),
+    'jobtype': 'cnc-ocr-app-build',
     'run-args': 'Combinations',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_run_combinations = {
-    'name': 'cnc-ocr-example-run-combinations',
-    'depends': ('cnc-ocr-example-make-combinations',),
-    'jobtype': 'cnc-ocr-example-run',
+job_cnc_ocr_app_run_combinations_x86 = {
+    'name': 'cnc-ocr-app-run-combinations-x86',
+    'depends': ('cnc-ocr-app-build-combinations-x86',),
+    'jobtype': 'cnc-ocr-app-run',
     'run-args': 'Combinations 100 7',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_verify_combinations = {
-    'name': 'cnc-ocr-example-verify-combinations',
-    'depends': ('cnc-ocr-example-run-combinations',),
-    'jobtype': 'cnc-ocr-example-grep-verify',
+job_cnc_ocr_app_verify_combinations_x86 = {
+    'name': 'cnc-ocr-app-verify-combinations-x86',
+    'depends': ('cnc-ocr-app-run-combinations-x86',),
+    'jobtype': 'cnc-ocr-app-grep-verify',
     'run-args': 'Combinations "100 choose 7 = 16007560800"',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
 # Cholesky
 
-job_cnc_ocr_example_gen_cholesky = {
-    'name': 'cnc-ocr-example-gen-cholesky',
-    'depends': ('cnc-ocr-bootstrap',),
-    'jobtype': 'cnc-ocr-example-gen',
+job_cnc_ocr_app_gen_cholesky_x86 = {
+    'name': 'cnc-ocr-app-gen-cholesky-x86',
+    'depends': ('cnc-ocr-bootstrap-x86',),
+    'jobtype': 'cnc-ocr-app-gen',
     'run-args': 'Cholesky/generated_input',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_make_cholesky = {
-    'name': 'cnc-ocr-example-make-cholesky',
-    'depends': ('cnc-ocr-example-gen-cholesky','ocr-build-x86-pthread-x86'),
-    'jobtype': 'cnc-ocr-example-make',
+job_cnc_ocr_app_build_cholesky_x86 = {
+    'name': 'cnc-ocr-app-build-cholesky-x86',
+    'depends': ('cnc-ocr-app-gen-cholesky-x86',),
+    'jobtype': 'cnc-ocr-app-build',
     'run-args': 'Cholesky/generated_input',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_run_cholesky = {
-    'name': 'cnc-ocr-example-run-cholesky',
-    'depends': ('cnc-ocr-example-make-cholesky',),
-    'jobtype': 'cnc-ocr-example-run',
+job_cnc_ocr_app_run_cholesky_x86 = {
+    'name': 'cnc-ocr-app-run-cholesky-x86',
+    'depends': ('cnc-ocr-app-build-cholesky-x86',),
+    'jobtype': 'cnc-ocr-app-run',
     'run-args': 'Cholesky/generated_input 2500 125',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
 
-job_cnc_ocr_example_verify_cholesky = {
-    'name': 'cnc-ocr-example-verify-cholesky',
-    'depends': ('cnc-ocr-example-run-cholesky',),
-    'jobtype': 'cnc-ocr-example-grep-verify',
+job_cnc_ocr_app_verify_cholesky_x86 = {
+    'name': 'cnc-ocr-app-verify-cholesky-x86',
+    'depends': ('cnc-ocr-app-run-cholesky-x86',),
+    'jobtype': 'cnc-ocr-app-grep-verify',
     'run-args': 'Cholesky/generated_input "checksum: d5ff728615a593f"',
-    'sandbox': ('inherit0',),
+    'sandbox': ('shared', 'inherit0'),
 }
-
