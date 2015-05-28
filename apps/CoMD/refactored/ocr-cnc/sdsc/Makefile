@@ -41,7 +41,7 @@ OCR_HOME=$(shell dirname `dirname $(OCR_INSTALL_ROOT)`)
 
 # Auto-parse arguments for "make run" (WORKLOAD_ARGS)
 WORKLOAD_INPUT_FILE_IDX := 0
--include $(OCR_HOME)/ocr-apps/makefiles/make-pre.inc
+-include ${APPS_ROOT}/makefiles/make-pre.inc
 
 include cncocr_support/comd_defs.mk
 
