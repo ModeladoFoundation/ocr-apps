@@ -19,6 +19,8 @@ test_baseval={
                 'scale_ocr-run-kernel-Stencil1DDavid-x86-remote-scaling':1,
                 'time_ocr-run-kernel-Stencil1DChandra-x86-remote-regression':8.0,
                 'scale_ocr-run-kernel-Stencil1DChandra-x86-remote-scaling':1,
+                'time_ocr-run-kernel-Stencil1Dlite-x86-remote-regression':0.36,
+                'scale_ocr-run-kernel-Stencil1Dlite-x86-remote-scaling':1,
                 'time_ocr-run-kernel-comdllnl-x86-remote-regression':14.4,
                 'scale_ocr-run-kernel-comdllnl-x86-remote-scaling':1,
                 'time_ocr-run-kernel-comdsdsc-x86-remote-regression':0.20,

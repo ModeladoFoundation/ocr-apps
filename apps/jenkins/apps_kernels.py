@@ -283,6 +283,43 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_scaling = {
                   'WORKLOAD_ARGS': '1000 100 500 5 -1 -1'}
 }
 
+#1d Stencil - mpilite
+job_ocr_build_kernel_Stencil1Dlite_x86_regression = {
+    'name': 'ocr-build-kernel-Stencil1Dlite-x86-regression',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'stencil_1d x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install'}
+}
+
+job_ocr_run_kernel_Stencil1Dlite_x86_remote_regression = {
+    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-regression',
+    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+                  'WORKLOAD_ARGS': '-r 4 -t 0 18 10' }
+}
+
+job_ocr_run_kernel_Stencil1Dlite_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-scaling',
+    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+                  'WORKLOAD_ARGS': '-r 4 -t 0 18 10'}
+}
+
 #Aggregates execution times in csv file
 job_gatherStats = {
     'name': 'gatherStats',
