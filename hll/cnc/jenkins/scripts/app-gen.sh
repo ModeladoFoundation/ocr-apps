@@ -6,7 +6,7 @@ WORKLOAD_SRC=`${ROOT}/jenkins/scripts/get-app-path.sh ${1}`
 echo ">>> CnC-OCR: Running translator for example ${1}"
 cd "${WORKLOAD_SRC}" && ${ROOT}/bin/cncocr_t
 
-OCR_TYPE="${OCR_TYPE-x86-pthread-x86}"
+OCR_TYPE="${OCR_TYPE-x86}"
 
 # Only continue to generate the regression-friendly
 # makefile if this is a regression job

@@ -3,12 +3,12 @@
 ###
 
 To build:
-    - TARGET=<target> make -f Makefile.x86-pthread-x86 install
+    - TARGET=<target> make -f Makefile.x86 install
     - <target> can be one of serial, naive-parallel, bounded-parallel or bounded-parallel-db
     - By default, bounded-parallel-db will be built
 
 Options:
-    - You can modify Makefile.x86-pthread-x86 or set appropriate environment
+    - You can modify Makefile.x86 or set appropriate environment
       variables to override where the program is built (WORKLOAD_BUILD) and
       installed (WORKLOAD_INSTALL) as well as where OCR resides (OCR_INSTALL_ROOT
       and OCR_BUILD_ROOT) and which implementation of OCR to use (OCR_TARGET)

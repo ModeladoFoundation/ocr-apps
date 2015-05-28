@@ -1,0 +1,5 @@
+Running:
+
+make -f Makefile.<OCR_TYPE> run
+
+A sequence of integers will be randomly generated and sorted

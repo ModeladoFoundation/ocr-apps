@@ -269,17 +269,17 @@ case $version_dir in
 
 "refactored/ocr/llnl")
 
-    supported_app_modes=("x86-pthread-x86" "x86-pthread-mpi")
+    supported_app_modes=("x86" "x86-mpi")
 
     case $app_mode in
 
-    x86-pthread-x86)
+    x86)
         driver_opts="make run"
         app_name=""
         app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
         ;;
 
-    x86-pthread-mpi)
+    x86-mpi)
         driver_opts="make run"
         app_name=""
         app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now

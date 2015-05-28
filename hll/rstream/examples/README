@@ -1,27 +1,33 @@
-The files with suffix .ocr.c (e.g., matmult.ocr.c) are R-Stream generated OCR programs.
-The input files are those without an ocr.c suffix (e.g., matmult.c).
+The files with suffix .ocr.c (e.g., adi.ocr.c) are R-Stream generated OCR programs.
+The input files are those without an ocr.c suffix (e.g., adi.c).
 
 To compile the R-Stream generated OCR files,
 
-1) Please set OCR installation path via OCR_INSTALL variable in compile.sh script
+1) Please set OCR installation path via the OCR_INSTALL environment variable
+  For example: export OCR_INSTALL=/etc/ocr/install/x86-pthread-x86
 2) Compile a benchmark:
    ./compile.sh <benchmark-name>
   For example,
-  ./compile.sh mvt
   ./compile.sh adi
+  ./compile.sh mvt
   ./compile.sh one_d_imperfect_jacobi
-3) Run the binaries.
+3) Setup the OCR configuration you want to use using the OCR_CONFIG environment variable
+  For example: export OCR_CONFIG=${PWD}/mach-hc-16w.cfg
+4) Run the binaries.
    For example,
-   ./matmult.ocr
    ./adi.ocr
-   ./jacobidouble2D_5points_enlarged.ocr
+   ./sor.ocr
 
   To check the correctness, pass -c flag:
    ./mvt.ocr -c
    ./adi.ocr -c
    ./one_d_imperfect_jacobi.ocr -c
 
-4) To remove generated binaries:
+  The following OCR Warning may be printed with no consequence on the program validity:
+API(WARN) [PD:0x0 W:0x31f6ae70 EDT:0x0] Acquiring DB (GUID: 0x31f67bb8) from outside an EDT ... auto-release will fail
+  You can safely ignore this warning.
+
+5) To remove generated binaries:
    ./clean.sh <benchmark>
    For example,
   ./clean.sh mvt

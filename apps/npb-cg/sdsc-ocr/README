@@ -1,11 +1,11 @@
 OCR rewriting of the NPB CG benchmark.
 
 To build:
-    OCR_TYPE=x86-pthread-x86 make all install
-Tested for OCR_TYPE x86-pthread-x86, x86-pthread-tg and tg
+    OCR_TYPE=x86 make all install
+Tested for OCR_TYPE x86, tg-x86 and tg
 
 To run:
-    OCR_TYPE=x86-pthread-x86 make run to run the toy (T) problem size
+    OCR_TYPE=x86 make run to run the toy (T) problem size
     You can also run from install/OCR_TYPE/ (for non pure tg) as:
 OCR_INSTALL should be set to the proper installation of OCR
 ./cg_ocr -ocr:cfg ${OCR_INSTALL}/config/default.cfg for the default problem size

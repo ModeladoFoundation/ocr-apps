@@ -17,7 +17,7 @@ CFLAGS += -DCNC_DEBUG
 #################################################
 # ENVIRONMENT CHECK
 
-OCR_TYPE ?= x86-pthread-x86
+OCR_TYPE ?= x86
 
 # Make sure we can find OCR and CnC-OCR
 ifndef OCR_INSTALL_ROOT
@@ -51,7 +51,7 @@ include cncocr_support/{{g.name}}_defs.mk
 CC := gcc
 
 # Distributed (MPI)
-ifeq "$(OCR_TYPE)" "x86-pthread-mpi"
+ifeq "$(OCR_TYPE)" "x86-mpi"
 CC := mpicc
 ifdef OCR_NODEFILE
 MPI_FLAGS := --machinefile $(OCR_NODEFILE)
@@ -64,13 +64,13 @@ CFG_NAME ?= mach-hc-dist-mpi-clone-2w-lockable.cfg
 RUN := mpirun $(MPI_FLAGS) ./$(TARGET)
 
 # Emulated TG
-else ifeq "$(OCR_TYPE)" "x86-pthread-mpi"
+else ifeq "$(OCR_TYPE)" "x86-mpi"
 CFG_NAME ?= jenkins-1block-lockableDB.cfg
 
 # Default (x86 shared memory)
 else
 OCR_CONFIG := $(CNCOCR_ROOT)/resources/cncocr/config/m8w.cfg
-endif #x86-pthread-mpi
+endif #x86-mpi
 
 RUN ?= ./$(TARGET)
 OCR_CONFIG ?= $(OCR_INSTALL_ROOT)/config/$(CFG_NAME)

@@ -71,7 +71,7 @@ are used in a slightly different order each timestep.
 
 
 As usual the code can be executed using
-OCR_TYPE=x86-pthread-x86  make run
+OCR_TYPE=x86  make run
 
 Note that currently realmain receives 2*P blocks from mainEdt, so if you
 chose to run with P>32 it is necessary to change OCR_MAX_MULTI_SLOT
@@ -79,4 +79,4 @@ in common.mk which by default set to 1 (x64).
 
 
 
-OCR_TYPE=x86-pthread-mpi  make run >>out
+OCR_TYPE=x86-mpi  make run >>out

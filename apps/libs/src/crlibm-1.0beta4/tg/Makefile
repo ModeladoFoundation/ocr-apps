@@ -19,7 +19,7 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
 TG_PREFIX     := $(TG_INSTALL)/bin/rmd-linux-elf
-OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-null-tg-xe
+OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-xe
 
 AS	= $(TG_PREFIX)-as
 ASFLAGS	=

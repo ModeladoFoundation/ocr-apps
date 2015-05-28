@@ -17,7 +17,7 @@ CFLAGS += -DCNC_DEBUG
 #################################################
 # ENVIRONMENT CHECK
 
-OCR_TYPE ?= x86-pthread-x86
+OCR_TYPE ?= x86
 XSTACK_ROOT ?= ../../../../../
 
 # Make sure we can find OCR and CnC-OCR
@@ -41,7 +41,7 @@ OCR_HOME=$(shell dirname `dirname $(OCR_INSTALL_ROOT)`)
 
 # Auto-parse arguments for "make run" (WORKLOAD_ARGS)
 WORKLOAD_INPUT_FILE_IDX := 0
--include $(OCR_HOME)/ocr-apps/makefiles/make-pre.inc
+-include ${APPS_ROOT}/makefiles/make-pre.inc
 
 include cncocr_support/comd_defs.mk
 
@@ -50,7 +50,7 @@ include cncocr_support/comd_defs.mk
 # OCR VARIANTS
 
 # Distributed (MPI)
-ifeq "$(OCR_TYPE)" "x86-pthread-mpi"
+ifeq "$(OCR_TYPE)" "x86-mpi"
 CC := mpicc
 ifdef OCR_NODEFILE
 MPI_FLAGS := --machinefile $(OCR_NODEFILE)
@@ -63,13 +63,13 @@ CFG_NAME ?= mach-hc-dist-mpi-clone-2w-lockable.cfg
 RUN := mpirun $(MPI_FLAGS) ./$(TARGET)
 
 # Emulated TG
-else ifeq "$(OCR_TYPE)" "x86-pthread-mpi"
+else ifeq "$(OCR_TYPE)" "x86-mpi"
 CFG_NAME ?= jenkins-1block-lockableDB.cfg
 
 # Default (x86 shared memory)
 else
 OCR_CONFIG := $(CNCOCR_ROOT)/resources/cncocr/config/m8w.cfg
-endif #x86-pthread-mpi
+endif #x86-mpi
 
 CC ?= gcc
 RUN ?= ./$(TARGET)

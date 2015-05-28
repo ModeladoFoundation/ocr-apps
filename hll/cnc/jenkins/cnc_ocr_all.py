@@ -70,7 +70,7 @@ jobtype_cnc_ocr_app_grep_verify = {
 
 job_cnc_ocr_bootstrap_x86 = {
     'name': 'cnc-ocr-bootstrap-x86',
-    'depends': ('ocr-build-x86-pthread-x86',),
+    'depends': ('ocr-build-x86',),
     'jobtype': 'cnc-ocr-bootstrap-base',
     'run-args': '',
     'sandbox': ('shared', 'inherit0'),

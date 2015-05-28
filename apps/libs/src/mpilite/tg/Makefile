@@ -22,7 +22,7 @@ TG_ROOT        := $(shell cd "${TG_ROOT}" && pwd)
 TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
 
 TG_PREFIX     := $(TG_INSTALL)/bin/rmd-linux-elf
-OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-null-tg-xe
+OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-xe
 
 AS	= $(TG_PREFIX)-as
 ASFLAGS	=

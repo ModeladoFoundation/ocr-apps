@@ -23,7 +23,7 @@
 
 // OPERA/tile-cc rights
 
-#include "../src/micro_kernels.h"
+#include "micro_kernels.h"
 #include <stdio.h>
 #include <math.h>
 

@@ -16,8 +16,14 @@ echo "Running kernel '$1' for architecture '$2'"
 rm -f ${WORKLOAD_INSTALL}/runlog
 timeFile=$(mktemp)
 export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
-for i in `seq 1 $4`; do WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=run make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > ${WORKLOAD_INSTALL}/runlog; done
-RETURN_CODE=$?
+for i in `seq 1 $4`; do
+    WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=run make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > ${WORKLOAD_INSTALL}/runlog
+    RETURN_CODE=$?
+    if [ $RETURN_CODE -ne 0 ]; then
+        break
+    fi
+done
+
 
 if [ $RETURN_CODE -eq 0 ]; then
     echo "**** Run SUCCESS ****"

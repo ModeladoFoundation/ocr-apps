@@ -1,2 +1,2 @@
-make OCR_TYPE=x86-pthread-x86 run
+make OCR_TYPE=x86 run
 	installs, and runs a medium size problem taking about a minute to run
