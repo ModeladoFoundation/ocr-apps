@@ -120,7 +120,7 @@ def main():
             sumx2 = sumx2 + logX[i]*logX[i]
 
         scalenameList.append(os.path.basename(file).split(".txt")[0])
-        scalevalueList.append(((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx)))
+        scalevalueList.append(-1 * (((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx))))
         print(scalenameList, scalevalueList)
 
     # Use build no as stat file name if jenkins running infra else use date time

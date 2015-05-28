@@ -32,4 +32,5 @@ test_baseval={
                 'time_ocr-run-kernel-xsbench-x86-remote-regression':20.4,
                 'scale_ocr-run-kernel-xsbench-x86-remote-scaling':1,
                 'time_ocr-run-kernel-xsbenchlite-x86-remote-regression':20.4,
+                'time_ocr-run-kernel-lulesh2pnnl-x86-remote-regression':0.1,
 }
