@@ -25,6 +25,7 @@ test_baseval={
                 'scale_ocr-run-kernel-comdllnl-x86-remote-scaling':1,
                 'time_ocr-run-kernel-comdsdsc-x86-remote-regression':0.20,
                 'scale_ocr-run-kernel-comdsdsc-x86-remote-scaling':1,
+                'time_ocr-run-kernel-comdlite-x86-remote-regression':27.3,
                 'time_ocr-run-kernel-hpgmgsdsc-x86-remote-regression':0.80,
                 'scale_ocr-run-kernel-hpgmgsdsc-x86-remote-scaling':1,
                 'time_ocr-run-kernel-hpgmglite-x86-remote-regression':22.80,
@@ -33,6 +34,6 @@ test_baseval={
                 'scale_ocr-run-kernel-tempestsw2lite-x86-remote-scaling':1,
                 'time_ocr-run-kernel-xsbench-x86-remote-regression':20.4,
                 'scale_ocr-run-kernel-xsbench-x86-remote-scaling':1,
-                'time_ocr-run-kernel-xsbenchlite-x86-remote-regression':20.4,
+                'time_ocr-run-kernel-xsbenchlite-x86-remote-regression':1.2,
                 'time_ocr-run-kernel-lulesh2pnnl-x86-remote-regression':0.1,
 }
