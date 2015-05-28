@@ -10,10 +10,10 @@ if [ $# -ne 4 ]; then
     exit 1
 fi
 
-# For now, we support only x86-pthread-x86
+# For now, we support only x86
 
-if [ $2 != 'x86-pthread-x86' ]; then
-    echo "Only x86-pthread-x86 supported"
+if [ $2 != 'x86' ]; then
+    echo "Only x86 supported"
     exit 1
 fi
 
@@ -28,21 +28,31 @@ timeFile=$(mktemp)
 
 configFile=$(mktemp)
 
+RETURN_CODE=0
 for t in ${THREADS[*]}
 do
     rm -f $configFile
     ${JJOB_SHARED_HOME}/xstack/ocr/scripts/Configs/config-generator.py --threads $t --output $configFile
 
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
-    for i in `seq 1 $4`; do WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=run OCR_CONFIG=$configFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null; done
-    RETURN_CODE=$?
+    for i in `seq 1 $4`; do
+        WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=run OCR_CONFIG=$configFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
+        RETURN_CODE=$?
+        if [ $RETURN_CODE -ne 0 ]; then
+            break
+        fi
+    done
 
-    if [ $RETURN_CODE -eq 0 ]; then
-        echo "**** Run SUCCESS ****"
-    else
-        echo "**** Run FAILURE ****"
+    if [ $RETURN_CODE -ne 0 ]; then
+        break
     fi
 done
+
+if [ $RETURN_CODE -eq 0 ]; then
+    echo "**** Run SUCCESS ****"
+else
+    echo "**** Run FAILURE ****"
+fi
 
 if [ -d "${JJOB_SHARED_HOME}/xstack/runtime" ]; then
     echo "${JJOB_SHARED_HOME}/xstack/runtime already exists! Skipping mkdir .."

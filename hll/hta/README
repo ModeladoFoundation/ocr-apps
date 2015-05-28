@@ -6,7 +6,7 @@ Steps:
       (usually ${OCR_INSTALL}/config/default.cfg)
 
     * Some HTA unit tests may require more data block slots of EDTs to work.
-      Please edit ${OCR_INSTALL}../build/x86-pthread-x86/Makefile, change the CFLAGS setting
+      Please edit ${OCR_INSTALL}../build/x86/Makefile, change the CFLAGS setting
       to the following and rebuild if getting runtime assertions:
           CFLAGS  := -DOCR_MAX_MULTI_SLOT=16 -DINIT_DEQUE_CAPACITY=32768
 

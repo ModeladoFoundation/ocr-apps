@@ -46,7 +46,8 @@
 //------------------------------------------------------------------------------------------------------------------------------
 #if (defined(RSTREAM_CHEBY) || defined(GSRB_R_STREAM))
 #include <ocr.h>
-#include <ocr-lib.h>
+#define ENABLE_EXTENSION_LEGACY
+#include <ocr-legacy.h>
 static char * concat(char const * c1, char const * c2) {
     size_t plen;
     char * buf;
@@ -193,9 +194,11 @@ int main(int argc, char **argv){
   #ifdef USE_FCYCLES
   int trial;for(trial=0;trial<1;trial++){
         #ifdef RSTREAM_CHEBY
+        ocrGuid_t ocrLegCtx;
+
         //printf("OCR CONFIG START\n");
         ocrConfig_t ocrConf = ocrConfig();
-        ocrInit(&ocrConf);
+	ocrLegacyInit(&ocrLegCtx, &ocrConf);
         //printf("OCR CONFIG FINISH\n");
         #endif
 
@@ -205,16 +208,18 @@ int main(int argc, char **argv){
         #ifdef RSTREAM_CHEBY
         ocrShutdown();
         //printf("FINISH OCR SHUTDOWN\n");
-        ocrFinalize();
+        ocrLegacyFinalize(ocrLegCtx, false);
         //printf("FINISH OCR FINALIZE\n");
         #endif
   }
   #else
   int trial;for(trial=0;trial< 1;trial++){
         #ifdef GSRB_R_STREAM
+        ocrGuid_t ocrLegCtx;
+
         //printf("OCR CONFIG START\n");
         ocrConfig_t ocrConf = ocrConfig();
-        ocrInit(&ocrConf);
+	ocrLegacyInit(&ocrLegCtx, &ocrConf);
         //printf("OCR CONFIG FINISH\n");
         #endif
         zero_vector(all_grids.levels[0],VECTOR_U);
@@ -222,7 +227,7 @@ int main(int argc, char **argv){
         #ifdef GSRB_R_STREAM
         ocrShutdown();
         //printf("FINISH OCR SHUTDOWN\n");
-        ocrFinalize();
+        ocrLegacyFinalize(ocrLegCtx, false);
         //printf("FINISH OCR FINALIZE\n");
         #endif
   }

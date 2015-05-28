@@ -4,6 +4,9 @@
 #
 #------------------------------------------------------------------------------
 
+# check for basic settings
+: ${OCR_HOME:?"Please set the environment variable OCR_HOME to the location of OCR"}
+
 # Setup environment
 . ./env.sh
 
@@ -13,7 +16,8 @@
 # Setup compilers
 export CC=gcc
 export CXX=g++
-LDLIBS="-lrstream_ocr -L$ROCR_HOME -locr -L$OCR_INSTALL/lib"
+RSTREAM_DIST=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rstream
+LDLIBS="-lrstream_ocr -Wl,-rpath=$RSTREAM_DIST -L$RSTREAM_DIST -locr -L$OCR_INSTALL/lib"
 
 #=== "MODERN" =================================================================
 
@@ -21,15 +25,15 @@ LDLIBS="-lrstream_ocr -L$ROCR_HOME -locr -L$OCR_INSTALL/lib"
 ./configure --no-fe --no-fv-mpi --fv-timer=omp \
 --fv-cycle=V --fv-smoother=gsrb --fv-coarse-solver=bicgstab \
 --arch=modern-rocr \
---CC=$CC --CCLD=$CXX --CFLAGS="-O0 -g -fopenmp" \
---CPPFLAGS="-DGSRB_R_STREAM -I$OCR_INSTALL/include -I$OCR_INSTALL/include/extensions -I$ROCR_HOME/inc " \
+--CC=$CC --CCLD=$CXX --CFLAGS="-O3 -g -fopenmp -I$RSTREAM_DIST" \
+--CPPFLAGS="-DGSRB_R_STREAM -I$OCR_INSTALL/include -I$OCR_INSTALL/include/extensions -I$RSTREAM_DIST " \
 --LDLIBS="$LDLIBS"
 
 # Build
 make -j 16 -C modern-rocr V=1
 
 #=== EXASCALE =================================================================
-CFLAGS="-DRSTREAM_CHEBY -O0 -g -fopenmp -std=c99 -I$OCR_INSTALL/include -I$OCR_INSTALL/include/extensions -I$ROCR_HOME/inc"
+CFLAGS="-DRSTREAM_CHEBY -O3 -g -fopenmp -std=c99 -I$OCR_INSTALL/include -I$OCR_INSTALL/include/extensions -I$RSTREAM_DIST"
 
 # Configure with OpenMP
 ./configure --no-fe --no-fv-mpi --fv-timer=omp \

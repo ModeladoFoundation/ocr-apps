@@ -52,7 +52,7 @@ MPI_INCLUDE = -I$(APPS_LIBS_ROOT)/include
 #
 OCR_ROOT ?= $(APPS_ROOT)/../ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
-OTHER_LIB = -L$(OCR_ROOT)/install/x86-pthread-x86/lib -locr -lpthread
+OTHER_LIB = -L$(OCR_ROOT)/install/x86/lib -locr -lpthread
 
 # Standard Flags
 CFLAGS := -std=gnu99

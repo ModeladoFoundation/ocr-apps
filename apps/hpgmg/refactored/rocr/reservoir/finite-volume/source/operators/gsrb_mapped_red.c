@@ -123,7 +123,7 @@ void gsrb_mapped_kernel4_red(int dim, double (* phi)[4][4], double const (*
 
 static ocrGuid_t gsrb_mapped_kernel4_red1(unsigned int paramc, unsigned long*
    paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel4_red1_2 gsrb_mapped_kernel4_red1_args;
    double (* phi)[4][4];
    double const (* alpha)[4][4];
@@ -662,7 +662,7 @@ static ocrGuid_t gsrb_mapped_kernel4_red1(unsigned int paramc, unsigned long*
 
 static ocrGuid_t gsrb_mapped_kernel4_red_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel4_red_main_4
       gsrb_mapped_kernel4_red_main_args;
    union __args_gsrb_mapped_kernel4_red1_2* allArgs;
@@ -848,7 +848,7 @@ void gsrb_mapped_kernel6_red(int dim, double (* phi)[6][6], double const (*
 
 static ocrGuid_t gsrb_mapped_kernel6_red1(unsigned int paramc, unsigned long*
    paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel6_red1_2 gsrb_mapped_kernel6_red1_args;
    double (* phi)[6][6];
    double const (* alpha)[6][6];
@@ -1387,7 +1387,7 @@ static ocrGuid_t gsrb_mapped_kernel6_red1(unsigned int paramc, unsigned long*
 
 static ocrGuid_t gsrb_mapped_kernel6_red_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel6_red_main_4
       gsrb_mapped_kernel6_red_main_args;
    union __args_gsrb_mapped_kernel6_red1_2* allArgs;
@@ -1573,7 +1573,7 @@ void gsrb_mapped_kernel10_red(int dim, double (* phi)[10][10], double const (*
 
 static ocrGuid_t gsrb_mapped_kernel10_red1(unsigned int paramc, unsigned long*
    paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel10_red1_2 gsrb_mapped_kernel10_red1_args;
    double (* phi)[10][10];
    double const (* alpha)[10][10];
@@ -2112,7 +2112,7 @@ static ocrGuid_t gsrb_mapped_kernel10_red1(unsigned int paramc, unsigned long*
 
 static ocrGuid_t gsrb_mapped_kernel10_red_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel10_red_main_4
       gsrb_mapped_kernel10_red_main_args;
    union __args_gsrb_mapped_kernel10_red1_2* allArgs;
@@ -2298,7 +2298,7 @@ void gsrb_mapped_kernel18_red(int dim, double (* phi)[18][18], double const (*
 
 static ocrGuid_t gsrb_mapped_kernel18_red1(unsigned int paramc, unsigned long*
    paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel18_red1_2 gsrb_mapped_kernel18_red1_args;
    double (* phi)[18][18];
    double const (* alpha)[18][18];
@@ -2837,7 +2837,7 @@ static ocrGuid_t gsrb_mapped_kernel18_red1(unsigned int paramc, unsigned long*
 
 static ocrGuid_t gsrb_mapped_kernel18_red_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel18_red_main_4
       gsrb_mapped_kernel18_red_main_args;
    union __args_gsrb_mapped_kernel18_red1_2* allArgs;
@@ -3023,7 +3023,7 @@ void gsrb_mapped_kernel34_red(int dim, double (* phi)[34][34], double const (*
 
 static ocrGuid_t gsrb_mapped_kernel34_red1(unsigned int paramc, unsigned long*
    paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel34_red1_2 gsrb_mapped_kernel34_red1_args;
    double (* phi)[34][34];
    double const (* alpha)[34][34];
@@ -3562,7 +3562,7 @@ static ocrGuid_t gsrb_mapped_kernel34_red1(unsigned int paramc, unsigned long*
 
 static ocrGuid_t gsrb_mapped_kernel34_red_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel34_red_main_4
       gsrb_mapped_kernel34_red_main_args;
    union __args_gsrb_mapped_kernel34_red1_2* allArgs;
@@ -3748,7 +3748,7 @@ void gsrb_mapped_kernel66_red(int dim, double (* phi)[66][66], double const (*
 
 static ocrGuid_t gsrb_mapped_kernel66_red1(unsigned int paramc, unsigned long*
    paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel66_red1_2 gsrb_mapped_kernel66_red1_args;
    double (* phi)[66][66];
    double const (* alpha)[66][66];
@@ -4287,7 +4287,7 @@ static ocrGuid_t gsrb_mapped_kernel66_red1(unsigned int paramc, unsigned long*
 
 static ocrGuid_t gsrb_mapped_kernel66_red_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_gsrb_mapped_kernel66_red_main_4
       gsrb_mapped_kernel66_red_main_args;
    union __args_gsrb_mapped_kernel66_red1_2* allArgs;

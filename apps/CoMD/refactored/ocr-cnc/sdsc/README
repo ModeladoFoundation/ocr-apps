@@ -1,6 +1,6 @@
 set XSTACK_ROOT to the xstack source directory
 
-To run on x86-pthreads-x86 target:
+To run on x86s-x86 target:
   e.g.: make run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
 
 To run on TG target

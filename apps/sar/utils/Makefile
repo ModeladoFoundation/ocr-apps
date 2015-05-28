@@ -1,6 +1,6 @@
 XSTACK=../../..
 
-OCR_INSTALL= ../../../ocr/install/x86-pthread-x86
+OCR_INSTALL= ../../../ocr/install/x86
 CRLIBM_INC = ../../../apps/libs/x86/include
 
 CC=gcc

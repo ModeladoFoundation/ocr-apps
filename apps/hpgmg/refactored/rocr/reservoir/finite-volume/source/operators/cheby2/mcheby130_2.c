@@ -165,7 +165,7 @@ void cheby_mappable_kernel130_2(int H2INV, int s, int ss, int ghosts, int
 
 static ocrGuid_t cheby_mappable_kernel130_21(unsigned int paramc, unsigned long
    * paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_cheby_mappable_kernel130_21_2 cheby_mappable_kernel130_21_args;
    double const* chebyshev_c1;
    double const* chebyshev_c2;
@@ -312,7 +312,7 @@ static ocrGuid_t cheby_mappable_kernel130_21(unsigned int paramc, unsigned long
 
 static ocrGuid_t cheby_mappable_kernel130_2_main(unsigned int paramc,
    unsigned long* paramv, unsigned int depc, ocrEdtDep_t* depv)
-{
+{ rocrParseInputArgs(paramc, paramv, depc, depv);
    union __args_cheby_mappable_kernel130_2_main_4
       cheby_mappable_kernel130_2_main_args;
    union __args_cheby_mappable_kernel130_21_2* allArgs;

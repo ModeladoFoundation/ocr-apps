@@ -1,0 +1,127 @@
+-------------------------------------------------------------------------------
+HPGMG R-Stream OCR
+-------------------------------------------------------------------------------
+
+This application is best run on the xstack foobar cluster. This version of
+HPGMG has been optimized by the R-Stream compiler. R-Stream is a source-to-
+source compiler that accepts a sequential C program as input and produces code
+that has been parallelized and optimized for parallel processors and accelerators.
+
+If you would like to know more about R-Stream, please visit
+http://www.reservoir.com/product/r-stream
+
+---------------------
+CONFIGURE ENVIRONMENT
+---------------------
+
+Before running the build.sh command, please set the environment variable
+OCR_HOME to designate the root directory of OCR.
+
+It is highly recommended to increase the deque size in OCR to at least 10000.
+This can be accomplished by setting the CFLAGS_USER environment variable with
+the appropriate value and rebuilding OCR:
+
+cd $OCR_HOME/build
+export CFLAGS_USER="-DINIT_DEQUE_CAPACITY=10000"
+OCR_TYPE=x86 make install
+
+-----
+BUILD
+-----
+Run the following command to build HPGMG:
+
+./build.sh
+
+This will build both the "modern" and "exascale" proxy applications.
+
+The modern code uses V-cycles, Gauss-Seidel Red-black smoother, and BiCGStab
+bottom solver. The exascale code uses F-cycles, Chebyshev smoother, and BiCGStab
+bottom solver.
+
+---
+RUN
+---
+To run these binaries on a range of problem sizes, execute the run.sh script:
+
+run.sh [exascale|modern] [OCR config file] [log2 box dimension] [target # of boxes]
+
+[exascale|modern]: modern is V cycles, gsrb smoother.
+                   exascale is F cycles, chebyshev smoother.
+
+[OCR config file]: An OCR config file
+                   (found in $OCR_HOME/install/x86/config/ for instance)
+
+[log2 box dimension]: log2 of the dimension n for each n^3 sized box in the
+                      multigrid run. Typical values are 4, 5, and 6.
+
+[target # of boxes]: number of n^3 boxes in the multigrid run. Number is used
+                     in conjunction with [log2 box dimension] to "influence"
+                     total problem size. "Influence" because hpgmg always
+                     creates a cube of boxes and will tweak the number of boxes
+                     to achieve this. The following three combinations of
+                     [log2 box dimension] and [target # of boxes] lead to
+                     the exact same problem size:
+                     4 4096 (16^3 grid of 16^3 boxes)
+                     5  512 ( 8^3 grid of 32^3 boxes)
+                     6   64 ( 4^3 grid of 64^3 boxes)
+
+----
+TEST
+----
+The included script test.sh tests the modern and exascale proxies at known good
+problem sizes. To test, run the following command:
+
+./test.sh
+
+Expected output is below.
+Testing modern with log2 box dim = 4 and target boxes = 512, please wait...
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+Expected:
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+
+Testing modern with log2 box dim = 5 and target boxes = 64, please wait...
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+Expected:
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+
+Testing modern with log2 box dim = 6 and target boxes = 8, please wait...
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+Expected:
+ h =  7.812500000000000e-03  ||error|| =  5.797955958337405e-08
+
+Testing exascale with log2 box dim = 4 and target boxes = 512, please wait...
+ h =  7.812500000000000e-03  ||error|| =  5.774907724930600e-08
+Expected ('x' values may vary):
+ h =  7.812500000000000e-03  ||error|| =  5.7749xxxxxxxxxxxe-08
+
+Testing exascale with log2 box dim = 5 and target boxes = 64, please wait...
+ h =  7.812500000000000e-03  ||error|| =  5.774973411243025e-08
+Expected ('x' values may vary):
+ h =  7.812500000000000e-03  ||error|| =  5.7749xxxxxxxxxxxe-08
+
+Testing exascale with log2 box dim = 6 and target boxes = 8, please wait...
+ h =  7.812500000000000e-03  ||error|| =  5.774981010842778e-08
+
+Expected ('x' values may vary):
+ h =  7.812500000000000e-03  ||error|| =  5.7749xxxxxxxxxxxe-08
+
+------------
+KNOWN ISSUES
+------------
+ OCR currently emits a number of warnings regarding DB acquisition when
+  running the rocr code:
+
+  API(WARN) [PD:0x0 W:0x1cd84c60 EDT:0x0] Acquiring DB (GUID: 0x7f1368739b40)
+  from outside an EDT ... auto-release will fail
+
+  This does not affect program correctness, nor does it adversely affect memory
+  consumption. The R-Stream OCR runtime manages allocation and deallocation of
+  OCR DB and does not use any auto-release features of the OCR runtime.
+
+* Some problem sizes cause the OCR allocator to run out of memory leading to
+  a segfault. The following sizes should work with both modern and exascale
+  codes:
+
+  log2box=4  target_boxes <= 512
+  log2box=5  target_boxes <= 256
+  log2box=6  target_boxes <= 64

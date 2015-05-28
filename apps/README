@@ -44,11 +44,6 @@ The structure of this directory is as follows:
 ###
 # Best practices
 ###
-    - Develop your OCR application directly in this hierarchy
-    - Once your OCR application is mature (and publically releasable), use git mv to move it
-      to ocr/ocr-apps/<app-name> and modify the default paths at the top of the Makefiles. Establish
-      a symlink between apps/<app-name>/ocr and ocr/ocr-apps/<app-name>
-
     - All libraries should have a Makefile that uses an ARCH environment variable to build
       the library either for x86 or TG. See libs/src/libc/ for an example
 

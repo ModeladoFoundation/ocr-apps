@@ -1,0 +1,156 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+# APPS
+APPS_ROOT        ?= ../../../../apps
+APPS_LIBS_ROOT   ?= ../../../../apps/libs/x86
+
+# OCR_TYPE
+OCR_TYPE         ?= x86
+
+# DATA
+DATA             = /opt/share/xstack_app_input/sar/medium/x86
+
+# OCR
+OCR_TARGET       ?= x86
+OCR_ROOT         ?= ../../../../ocr
+OCR_BUILD_ROOT   ?= ../../../../ocr/build
+OCR_INSTALL_ROOT ?= ../../../../ocr/install
+
+# APPLICATION
+WORKLOAD_SRC          ?= .
+WORKLOAD_BUILD_ROOT   ?= ./build
+WORKLOAD_INSTALL_ROOT ?= ./install
+
+# If 0, the workload has no input file
+# If 1+, this is the index in the argument
+# list after which everything is considered an
+# input file. Note that the index STARTS AT 1
+WORKLOAD_INPUT_FILE_IDX := 0
+
+# You can specify default arguments here. These
+# will be overriden by (in order):
+#   - the WORKLOAD_ARGS environment variable
+#   - the arguments passed to 'make run'
+# To restate, the arguments passed to make run have
+# the highest priority and will override both the
+# default arguments here and the ones passed through
+# an environment variable
+WORKLOAD_ARGS ?= 0
+
+# Run mode (not fully supported)
+# Set to "yes" if running with torque
+RUN_TORQUE ?= no
+# Set to "yes" if Jenkins is running this job as an automated test
+RUN_JENKINS ?= no
+
+## END of variables coming from user/environment
+
+include ${APPS_ROOT}/makefiles/make-pre.inc
+
+# Name of the application to build
+TARGET := sscp
+
+# Space separated list of directory names in apps/libs/src
+# that need to be built. These will be built for OCR_TYPE
+REQ_LIBS := crlibm-1.0beta4
+
+# Space separated list of source files
+SRCS :=	main.c \
+	inputs.c \
+	digspot.c \
+	registration.c \
+	cfar.c \
+	sinc_interp.c \
+	sinc.c \
+	image_formation.c \
+	back_proj.c \
+	ccd.c \
+	fftw3.c \
+	rag_ocr.c
+
+# Space separated list of include files
+INCS :=	common.h rag-ocr.h fftw3.h Parameters.h argv.h
+
+# Additional CFLAGS. By default, it includes
+# all OCR required includes and apps/libs/<target>/include
+# TG_ARCH is also defined for Fsim
+# -DDEBUG_SSCP can be used to output binary data for debugging purposes
+# -D__float128=char is a fix for fftw-3.3 built with gcc 4.6 and quad precision
+#  and building the app with hc.
+#	-DDEBUG -DDEBUG_LVL_1 -DDEBUG_LVL_2 -DDEBUG_LVL_3 -DDEBUG_LVL_4 -DDEBUG_LVL_5 \
+#	-DTRACE -DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3 -DTRACE_LVL_4 -DTRACE_LVL_5 \
+#  TODO: file bugs keeping fftw from being built with hc
+CFLAGS := -g -O2 -std=c99 \
+	-DDEBUG_SSCP -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
+	-DTRACE \
+	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
+	-DRAG_IMPLICIT_INPUTS \
+	-DRAG_PURE_FLOAT -DRAG_SINCOS \
+	-DRAG_CRLIBM -DRAG_PETER_DIST_AND_TRIG \
+	-DRAG_SPAD -DRAG_DRAM \
+	-DGANESH_STRENGTH_RED_OPT \
+	-I. -I./src -I $(APPS_LIBS_ROOT)/include
+# Additional LDFLAGS. By default, it includes
+# the required OCR library path and apps/libs/<target/lib
+# Note that none of the specific libraries specified in
+# REQ_LIBS are included.
+LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
+	 -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
+
+# Targets:
+#   - all:     Build the application.
+#   - debug:   Build the debug version of the application
+#   - install: Build and install
+#   - run:     Run the application
+all:	CFLAGS += -O2 -DOCR
+all:	TARGETS := all
+all:	default
+
+debug:	CFLAGS += -O0 -DOCR
+debug:	TARGETS := debug
+debug:	default
+
+install: all
+
+# This rule will be executed prior to execution:
+#  - For the FSim target, this happens when the binary is built
+#  - For all other targets this happens prior to running the
+#    executable
+# WORKLOAD_ARGS and WORKLOAD_INPUTS are available
+# to you and contain, respectively, the non file
+# arguments and the file arguments. They will be
+# passed directly to the application unless you
+# modify them. You can use the following
+# syntax to do so:
+# $(eval WORKLOAD_INPUTS := something) or
+# $(eval WORKLOAD_INPUTS := $(shell <script>))
+# The second syntax will execute <script> and assign
+# its output to WORKLOAD_INPUTS
+#
+# You may also want to assign a value to WORKLOAD_OUTS
+# which should contain the list of output files produced
+# by the application (to be passed to postrun). This is
+# taken-care of for you on FSim but not on any of the
+# other platforms.
+# 'prerun: ;' is an empty rule (the rule is required)
+.PHONY: prerun
+prerun:
+	$(MKDIR) -p $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)
+	$(CP) ./Parameters.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Parameters.txt
+	$(RM) -f ./Detects.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt
+
+# This rule will be executed after execution
+# The variable ${WORKLOAD_OUTS} contains a space separated
+# list of output files
+# 'postrun: ;' is an empty rule (the rule is required)
+.PHONY: postrun
+postrun:
+	$(CP) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt ./Detects.txt
+	cat ./Detects.txt
+
+# Any additional rules required can go here
+
+# Include common part
+include ${APPS_ROOT}/makefiles/make-regular.inc
