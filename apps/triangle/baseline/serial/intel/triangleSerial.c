@@ -3,10 +3,14 @@
 #define MOVESIZE 36
 #define HEIGHT 13
 /*
-Written by David S Scott
-Copywrite Intel Corporation 2015
+Written by David S. Scott
+Copyright Intel Corporation 2015
 
-LICENSE???
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
+
+/*
 
 This is a serial (recursive) implementation of the triangle puzzle.
 See the README file in triangle/refactored/ocr/intel

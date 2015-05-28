@@ -72,7 +72,7 @@ The program compares the count to 29760 so will report "FAIL" for the other case
 
 There are no input parameters to the program so it should be executed by:
 
-OCR_TYPE=x86  make run
+OCR_TYPE=x86 make run
 
 It currently takes about 21 seconds to find all the solutions.
 

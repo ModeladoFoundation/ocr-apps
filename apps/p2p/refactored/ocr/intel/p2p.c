@@ -1,23 +1,23 @@
 /*
- *
-OCR version of the Parallel Research Kernel synch_p2p
 Written by David S. Scott
-
 Copyright Intel Corporation 2015
 
-LICENSE@@@@@@
-
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
+/*
+OCR version of the Parallel Research Kernel synch_p2p
 See README file for more information
 
 */
 #include <ocr.h>
 #include <stdio.h>
-#define T 10    //number of timesteps
-#define P 10     //number of workers
+#define T 100    //number of timesteps
+#define P 20     //number of workers
 #define K 20     //columns per worker
 #define M (P*K) //global number of columns
 #define B 5     //blocking factor
-#define W 5     //number of blocks in vertical direction
+#define W 20     //number of blocks in vertical direction
 #define N (B*W+1) //number of rows
 #define ARRAY(i,j) vector[(i)*K + (j)] //translation from 2d to 1d
 
@@ -65,8 +65,8 @@ Depv:
     u64 mynode = private->mynode;
     u64 timestep = private->timestep;
     u64 phase = private->phase;
-PRINTF("N%d T%d P%d guids %lx %lx %lx\n", mynode, timestep, phase, depv[0].guid, depv[1].guid, depv[2].guid);
-//PRINTF("N%d T%d P%d left old %d \n", mynode, timestep, phase, private->leftold);
+//PRINTF("N%d T%d P%d guids %lx %lx %lx\n", mynode, timestep, phase, depv[0].guid, depv[1].guid, depv[2].guid);
+//PRINTF("N%d T%d P%d left old %lx \n", mynode, timestep, phase, private->leftold);
     if(private->leftold != NULL_GUID) ocrEventDestroy(private->leftold); //destroy old event
     if(phase == 0 && timestep == 0){ //initialize array
         for(i=0;i<N;i++) for(j=0;j<K;j++) ARRAY(i,j) = 0.0;
@@ -110,12 +110,12 @@ PRINTF("N%d T%d P%d guids %lx %lx %lx\n", mynode, timestep, phase, depv[0].guid,
 //PRINTF("N%d T%d P%d dataout %d %g\n", mynode, timestep, phase, i, leftin->data[i]);
 //PRINTF("N%d T%d P%d sending to %d \n", mynode, timestep, phase, sendrightevent);
         ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-//PRINTF("N%d T%d P%d create sticky %d \n", mynode, timestep, phase, sticky);
+//PRINTF("N%d T%d P%d create sticky %lx \n", mynode, timestep, phase, sticky);
 //PRINTF("N%d T%d P%d leftin->event %d \n", mynode, timestep, phase, leftinevent);
         leftin->event = sticky;
         private->sendrightevent = sticky;
         ocrDbRelease(depv[2].guid);
-//PRINTF("N%d T%d P%d satisfy event %d \n", mynode, timestep, phase, sendrightevent);
+//PRINTF("N%d T%d P%d satisfy event %lx \n", mynode, timestep, phase, sendrightevent);
         ocrEventSatisfy(sendrightevent, depv[2].guid);
     }
 //PRINTF("N%d T%d P%d destroy Db %d \n", mynode, timestep, phase, depv[2].guid);
@@ -149,13 +149,13 @@ PRINTF("N%d T%d P%d guids %lx %lx %lx\n", mynode, timestep, phase, depv[0].guid,
 
 //PRINTF("N%d T%d P%d after depv1\n", mynode, timestep, phase);
     if(mynode != 0) {
-//PRINTF("N%d T%d P%d launching clone with event %d \n", mynode, timestep, phase, leftinevent);
+//PRINTF("N%d T%d P%d launching clone with event %lx \n", mynode, timestep, phase, leftinevent);
 //fflush(stdout);
         ocrAddDependence(leftinevent, p2pEdt, 2 , DB_MODE_ITW);
     } else {
         if(phase == W-1) {
             ocrAddDependence(private0->leftrecvevent, p2pEdt, 2 , DB_MODE_ITW);
-//PRINTF("N%d T%d P%d launching clone with event %d \n", mynode, timestep, phase, ((private0_t *) private)->leftrecvevent);
+//PRINTF("N%d T%d P%d launching clone with event %lx \n", mynode, timestep, phase, ((private0_t *) private)->leftrecvevent);
 //fflush(stdout);
         } else {
 //PRINTF("N%d T%d P%d launching clone with db %lx \n", mynode, timestep, phase, private0->block[private0->next]);
