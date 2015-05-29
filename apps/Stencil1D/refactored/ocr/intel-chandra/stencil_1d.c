@@ -1,3 +1,20 @@
+/*
+    Author: Chandra S. Martha
+    Copywrite Intel Corporation 2015
+
+    This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+    and cannot be distributed without it. This notice cannot be removed or modified.
+*/
+
+/* 1-D stencil is implemented in OCR making use of rank data structures to
+ * easily create, track and manage the settings, data, and events needed for OCR implementation.
+ *
+ * Halo-exchange is done by passing the halo datablocks via event dependency channels
+ * E.g., A sticky event is used to establish dependency between the sender and receiver tasks belonging
+ * to different ranks. The sender satisfies the event with a halo datablock and the receiver then can access
+ * the contents of the halo datablock.
+ */
+
 #include "ocr.h"
 #include "ocr-std.h"
 #include <stdlib.h>
