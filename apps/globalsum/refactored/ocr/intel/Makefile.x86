@@ -55,7 +55,15 @@ TARGET := cg
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := cg.c gsLib.c
+CODE_type ?= 2
+ifeq ($(CODE_TYPE), 1)
+SRCS := cgShim.c gsLib.c
+else ifeq ($(CODE_TYPE), 2)
+SRCS := cgNoShim.c gsLib.c
+else ifeq ($(CODE_TYPE), 3)
+SRCS := pcg.c gsLib.c
+endif
+
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
