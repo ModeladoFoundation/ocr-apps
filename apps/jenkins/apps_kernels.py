@@ -53,6 +53,7 @@ jobtype_ocr_run_kernel_remote_scaling = {
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
     'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'OCR_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr/install'}
 }
 
@@ -308,17 +309,18 @@ job_ocr_run_kernel_Stencil1Dlite_x86_remote_regression = {
                   'WORKLOAD_ARGS': '-r 4 -t 0 18 10' }
 }
 
-job_ocr_run_kernel_Stencil1Dlite_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
-    'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
-                  'WORKLOAD_ARGS': '-r 4 -t 0 18 10'}
-}
+# Disabling the below because it requires 4 ranks and causes failure for 1 & 2 threads
+#job_ocr_run_kernel_Stencil1Dlite_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-scaling',
+#    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-scaling 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+#                  'WORKLOAD_ARGS': '-r 4 -t 0 18 10'}
+#}
 
 #Aggregates execution times in csv file
 job_gatherStats = {
