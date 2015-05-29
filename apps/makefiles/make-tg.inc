@@ -261,7 +261,7 @@ else ifeq ($(RUN_JENKINS), build)
 #  - check if libocr.a has been modified
 #  - if it has, it will rebuild it
 #  - these rules do *not* check if a source modification happened in OCR's tree
-libocrxe: $(OCR_INSTALL_XE)/lib/libocr.a
+libocrxe: | $(OCR_INSTALL_XE)/lib/libocr.a
 $(OCR_INSTALL_XE)/lib/libocr.a: $(OCR_BUILD_XE)/Makefile
 	@echo "#### BUILDING XE libocr.a ####"
 	OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL_XE) OCR_ROOT=$(OCR_ROOT) \
@@ -289,7 +289,7 @@ builderxe: ;
 $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: ;
 else ifeq ($(RUN_JENKINS), build)
 
-builderxe: $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe
+builderxe: | $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe
 $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
 	@echo "#### BUILDING XE BUILDER ####"
 	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) \
@@ -314,7 +314,7 @@ rmdkrnl.dbg: ;
 $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: ;
 else ifeq ($(RUN_JENKINS), build)
 
-rmdkrnl.dbg: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
+rmdkrnl.dbg: | $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
 .ONESHELL:
 $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: $(TG_ROOT)/build/build.rmdkrnl/make-me.make \
 | $(WORKLOAD_BUILD)/build.rmdkrnl
@@ -347,7 +347,7 @@ builderce: ;
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: ;
 
 else ifeq ($(RUN_JENKINS), build)
-builderce: $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe
+builderce: | $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
 	@echo "#### BUILDING CE BUILDER ####"
 	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) \

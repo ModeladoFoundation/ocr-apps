@@ -177,7 +177,7 @@ ifeq ($(RUN_JENKINS), run)
 libocr: ;
 else ifeq ($(RUN_JENKINS), build)
 # If we are running in Jenkins, we do not need to recheck if the file exists
-libocr: $(OCR_INSTALL)/lib/libocr.so
+libocr: | $(OCR_INSTALL)/lib/libocr.so
 $(OCR_INSTALL)/lib/libocr.so: $(OCR_BUILD)/Makefile
 	@echo "Building libocr.so..."
 	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
