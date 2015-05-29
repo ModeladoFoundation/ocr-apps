@@ -1,6 +1,9 @@
 Smith-Waterman example for CnC-OCR
 ==================================
 
+This example application is part of the CnC-OCR distribution. For copyright
+and license information, please see the LICENSE file in xstack/hll/cnc/.
+
 Follow the instructions in the CnC-OCR README for building and installing the
 CnC-OCR runtime and toolchain. At a minimum, you should set the XSTACK_ROOT
 environment variable to the path to your xstack repository checkout. Running
