@@ -35,6 +35,7 @@ int mainEdt( int argc, char **argv )
 {
     foo * f = blah();
 
+    std::cout << "Hello World!" << std::endl;
     std::cout << "cplus output: " << f->M2() << std::endl;
 
     return 0;

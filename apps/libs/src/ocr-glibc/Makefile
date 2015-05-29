@@ -49,7 +49,7 @@ all: setup $(CLIB) $(CXXLIB)
 default: all
 
 # Always try to build these when we get here
-.PHONY: $(LIB) setup clean
+.PHONY: $(CLIB) $(CXXLIB) setup clean
 #
 # Create a build dir and link to the sys/ocr/sys/ocr.h since we can't use
 # it in place.
@@ -90,10 +90,10 @@ $(BUILD_DIR)/%.o : $(SRCDIR)/%.cc
 .PHONY: install
 install: root_install
 root_install:
-	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
+	@echo Installing $(CLIB) and $(CXXLIB) to $(APPS_LIBS_ROOT) ...
 	@mkdir -p $(APPS_LIBS_ROOT)
-	@cp -u -R $(LIB_INSTALL)/$(TARGET)/include $(APPS_LIBS_ROOT)/
-	@cp -u -R $(LIB) $(APPS_LIBS_ROOT)/
+	@cp -u -R $(CLIB) $(APPS_LIBS_ROOT)/lib
+	@cp -u -R $(CXXLIB) $(APPS_LIBS_ROOT)/lib
 	@echo Installation complete
 
 .PHONY: uninstall
