@@ -3,3 +3,6 @@ Running:
 make -f Makefile.<OCR_TYPE> run <fib_num>
 
 where fib_num is the optional number you want to run fibonacci for; default 10
+
+NOTE that this example is not meant as an efficient way to compute fibonacci,
+     just a fork-bomb of EDTs that happens to compute fibonacci.

@@ -4,7 +4,7 @@ make -f Makefile.<OCR_TYPE> run WORKLOAD_ARGS="--arg1 val1 --arg2 val2 --arg3 va
 
 For e.g., try
 
-make -f Makefile.tg run WORKLOAD_ARGS="--ds 100 --ts 25 --fi /path/to/datasets/m_100.in"
+make -f Makefile.tg run WORKLOAD_ARGS="--ds 100 --ts 10 --ps 1 --fi ${PWD}/../../../apps/cholesky/datasets/m_100.in"
 
 For tg, look for the output matrix under
 install/tg/logs/ocr-cholesky.log.brd00.dram00.app_output
