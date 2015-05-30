@@ -75,8 +75,8 @@ $(LIB): $(OBJS)
 .PHONY: install
 install: $(INCLUDES) $(LIB)
 	@echo "Installing X86 standard files"
-	@cp --remove-destination $(INCLUDES) ${APPS_LIBS_ROOT}/include/
-	@cp --remove-destination $(LIB) ${APPS_LIBS_ROOT}/lib/
+	@cp $(INCLUDES) ${APPS_LIBS_ROOT}/include/
+	@cp $(LIB) ${APPS_LIBS_ROOT}/lib/
 
 .PHONY: run
 run:

@@ -189,7 +189,7 @@ $(FULL_REQ_LIBS):
 	echo "Grabbed lock"; date; \
 	ARCH=tg APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
 	$(MAKE) -C $@ install; \
-	echo "Releasing lock"; date; \
+	echo "Releasing lock"; date
 	rm -f "/tmp/$(subst /,_,$@)_lock"
 
 .PHONY: reqlibs
