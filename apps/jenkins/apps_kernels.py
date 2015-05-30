@@ -223,7 +223,7 @@ job_ocr_run_kernel_triangle_x86_remote_regression = {
     'name': 'ocr-run-kernel-triangle-x86-remote-regression',
     'depends': ('ocr-build-kernel-triangle-x86-regression',),
     'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'triangle x86 ocr-run-kernel-triangle-x86-remote-regression 2',
+    'run-args': 'triangle x86 ocr-run-kernel-triangle-x86-remote-regression 10',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel',
@@ -231,17 +231,17 @@ job_ocr_run_kernel_triangle_x86_remote_regression = {
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel/install'}
 }
 
-job_ocr_run_kernel_triangle_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-triangle-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-triangle-x86-regression',),
-    'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'triangle x86 ocr-run-kernel-triangle-x86-remote-scaling 2',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel',
-                  'WORKLOAD_ARGS': '',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel/install'}
-}
+#job_ocr_run_kernel_triangle_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-triangle-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-triangle-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-scaling',
+#    'run-args': 'triangle x86 ocr-run-kernel-triangle-x86-remote-scaling 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel',
+#                  'WORKLOAD_ARGS': '',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel/install'}
+#}
 
 #p2p synch (David Scott)
 job_ocr_build_kernel_p2p_x86_regression = {
