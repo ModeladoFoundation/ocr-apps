@@ -33,8 +33,8 @@ ocrGuid_t time_all(mg_type* mg_ptr, ocrGuid_t start) {
 
   u64 p = 4;
   ocrEdtCreate(&i, i_t, 1, &p, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(i_t);
   return fin;
@@ -48,10 +48,10 @@ ocrGuid_t init_ur(mg_type* mg_ptr, ocrGuid_t start, int flag)
 
   ocrEdtCreate(&i, i_t, 1, &max_levels, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
   if (!flag)
-    ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_CONST);
   else
-    ocrAddDependence(mg_ptr->levels[mg_ptr->max_levels-1], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[mg_ptr->max_levels-1], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(i_t);
   return fin;
@@ -66,16 +66,16 @@ ocrGuid_t restrict_all(mg_type* mg_ptr, ocrGuid_t start)
   int l;
   for(l=0; l < mg_ptr->max_levels-2; ++l) {
     ocrEdtCreate(&r, r_t, 1, &box, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[l], r, 0, DB_MODE_RO);
-    ocrAddDependence(mg_ptr->levels[l+1], r, 1, DB_MODE_RO);
-    ocrAddDependence(start, r, 2, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[l], r, 0, DB_MODE_CONST);
+    ocrAddDependence(mg_ptr->levels[l+1], r, 1, DB_MODE_CONST);
+    ocrAddDependence(start, r, 2, DB_MODE_CONST);
     start = fin;
   }
     ocrEventCreate(&box, OCR_EVENT_ONCE_T, 1);
     ocrEdtCreate(&r, r_t, 1, &box, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[l], r, 0, DB_MODE_RO);
-    ocrAddDependence(mg_ptr->levels[l+1], r, 1, DB_MODE_RO);
-    ocrAddDependence(start, r, 2, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[l], r, 0, DB_MODE_CONST);
+    ocrAddDependence(mg_ptr->levels[l+1], r, 1, DB_MODE_CONST);
+    ocrAddDependence(start, r, 2, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(r_t);
   return box;
@@ -92,9 +92,9 @@ ocrGuid_t restrict_level(int l, mg_type* mg_ptr, ocrGuid_t start)
 
   u64 pv[2] = {box,1};
   ocrEdtCreate(&r, r_t, 2, pv, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], r, 0, DB_MODE_RO);
-  ocrAddDependence(mg_ptr->levels[l+1], r, 1, DB_MODE_RO);
-  ocrAddDependence(start, r, 2, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], r, 0, DB_MODE_CONST);
+  ocrAddDependence(mg_ptr->levels[l+1], r, 1, DB_MODE_CONST);
+  ocrAddDependence(start, r, 2, DB_MODE_CONST);
 
 
   /////// time restrict ///////
@@ -103,8 +103,8 @@ ocrGuid_t restrict_level(int l, mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_t, time_edt, 1, 2);
   u64 p = 2;
   ocrEdtCreate(&i, i_t, 1, &p, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(i_t);
   /////////////////////////////
 
@@ -119,14 +119,14 @@ ocrGuid_t solve(mg_type* mg_ptr, ocrGuid_t start1, ocrGuid_t start2)
   if (start2 == NULL_GUID) {
     ocrEdtTemplateCreate(&s_t, solve_edt, 0, 2);
     ocrEdtCreate(&s, s_t, 0, NULL, 2, NULL, EDT_PROP_NONE, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[mg_ptr->max_levels-1], s, 0, DB_MODE_RO);
-    ocrAddDependence(start1, s, 1, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[mg_ptr->max_levels-1], s, 0, DB_MODE_CONST);
+    ocrAddDependence(start1, s, 1, DB_MODE_CONST);
   } else {
     ocrEdtTemplateCreate(&s_t, solve_edt, 0, 3);
     ocrEdtCreate(&s, s_t, 0, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[mg_ptr->max_levels-1], s, 0, DB_MODE_RO);
-    ocrAddDependence(start1, s, 1, DB_MODE_RO);
-    ocrAddDependence(start2, s, 2, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[mg_ptr->max_levels-1], s, 0, DB_MODE_CONST);
+    ocrAddDependence(start1, s, 1, DB_MODE_CONST);
+    ocrAddDependence(start2, s, 2, DB_MODE_CONST);
 
   }
 
@@ -143,15 +143,15 @@ ocrGuid_t interpolate(int l, mg_type* mg_ptr, ocrGuid_t start, u64 type)
   if (type == FMG_INTERPOLATE) {
     u64 iter[2] = {0,1};
     ocrEdtCreate(&x, x_t, 2, iter, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[l], x, 0, DB_MODE_RO);
-    ocrAddDependence(start, x, 1, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[l], x, 0, DB_MODE_CONST);
+    ocrAddDependence(start, x, 1, DB_MODE_CONST);
     start = fin;
   }
 
   ocrEdtCreate(&i, i_t, 1, &type, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l-1], i, 0, DB_MODE_RO);
-  ocrAddDependence(mg_ptr->levels[l], i, 1, DB_MODE_RO);
-  ocrAddDependence(start, i, 2, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l-1], i, 0, DB_MODE_CONST);
+  ocrAddDependence(mg_ptr->levels[l], i, 1, DB_MODE_CONST);
+  ocrAddDependence(start, i, 2, DB_MODE_CONST);
 
 
   //////// time interpolate ////////
@@ -160,8 +160,8 @@ ocrGuid_t interpolate(int l, mg_type* mg_ptr, ocrGuid_t start, u64 type)
   ocrEdtTemplateCreate(&i_tm, time_edt, 1, 2);
   u64 p = 3;
   ocrEdtCreate(&tm, i_tm, 1, &p, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], tm, 0, DB_MODE_RO);
-  ocrAddDependence(start, tm, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], tm, 0, DB_MODE_CONST);
+  ocrAddDependence(start, tm, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(i_tm);
   /////////////////////////////
 
@@ -196,8 +196,8 @@ ocrGuid_t zero_vector(int l, mg_type* mg_ptr, u64 type, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_t, zero_vector_level_edt, 1, 2);
 
   ocrEdtCreate(&i, i_t, 1, &type, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(i_t);
   return fin;
@@ -214,12 +214,12 @@ ocrGuid_t smooth(int l, mg_type* mg_ptr, ocrGuid_t start)
   for(iter = 0; iter < NUM_SMOOTHS*CHEBYSHEV_DEGREE; ++iter) {
     u64 iter_num = iter;
     ocrEdtCreate(&x, x_t, 1, &iter_num, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[l], x, 0, DB_MODE_ITW);
-    ocrAddDependence(start, x, 1, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[l], x, 0, DB_MODE_RW);
+    ocrAddDependence(start, x, 1, DB_MODE_CONST);
     start = fin;
     ocrEdtCreate(&s, s_t, 1, &iter_num, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-    ocrAddDependence(mg_ptr->levels[l], s, 0, DB_MODE_ITW);
-    ocrAddDependence(start, s, 1, DB_MODE_RO);
+    ocrAddDependence(mg_ptr->levels[l], s, 0, DB_MODE_RW);
+    ocrAddDependence(start, s, 1, DB_MODE_CONST);
     start = fin;
   }
 
@@ -228,8 +228,8 @@ ocrGuid_t smooth(int l, mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_t, time_edt, 1, 2);
   u64 p = 0;
   ocrEdtCreate(&i, i_t, 1, &p, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_ITW);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_RW);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(i_t);
   /////////////////////////////
 
@@ -246,13 +246,13 @@ ocrGuid_t residual(int l, mg_type* mg_ptr, ocrGuid_t start)
 
   u64 iter = 0;
   ocrEdtCreate(&x, x_t, 1, &iter, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], x, 0, DB_MODE_RO);
-  ocrAddDependence(start, x, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], x, 0, DB_MODE_CONST);
+  ocrAddDependence(start, x, 1, DB_MODE_CONST);
   start = fin;
 
   ocrEdtCreate(&i, i_t, 0, NULL, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
 
   //////// time residual ////////
@@ -261,8 +261,8 @@ ocrGuid_t residual(int l, mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_tm, time_edt, 1, 2);
   u64 p = 1;
   ocrEdtCreate(&tm, i_tm, 1, &p, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[l], tm, 0, DB_MODE_RO);
-  ocrAddDependence(start, tm, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[l], tm, 0, DB_MODE_CONST);
+  ocrAddDependence(start, tm, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(i_tm);
   /////////////////////////////
 
@@ -280,14 +280,14 @@ ocrGuid_t scaled_residual_norm(mg_type* mg_ptr, ocrGuid_t start)
 
   u64 iter = 0;
   ocrEdtCreate(&x, x_t, 1, &iter, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], x, 0, DB_MODE_RO);
-  ocrAddDependence(start, x, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], x, 0, DB_MODE_CONST);
+  ocrAddDependence(start, x, 1, DB_MODE_CONST);
   start = fin;
 
   u64 p = 1;
   ocrEdtCreate(&i, i_t, 1, &p, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(i_t);
 
@@ -297,8 +297,8 @@ ocrGuid_t scaled_residual_norm(mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_tm, time_edt, 1, 2);
   u64 op = 1;
   ocrEdtCreate(&tm, i_tm, 1, &op, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], tm, 0, DB_MODE_RO);
-  ocrAddDependence(start, tm, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], tm, 0, DB_MODE_CONST);
+  ocrAddDependence(start, tm, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(i_tm);
   /////////////////////////////
 
@@ -308,8 +308,8 @@ ocrGuid_t scaled_residual_norm(mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_t, mulv_level_edt, 0, 2);
 
   ocrEdtCreate(&i, i_t, 0, NULL, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(i_t);
   start = fin;
@@ -317,8 +317,8 @@ ocrGuid_t scaled_residual_norm(mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_t, norm_level_edt, 0, 2);
 
   ocrEdtCreate(&i, i_t, 0, NULL, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_ITW);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_RW);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
 
   ocrEdtTemplateDestroy(i_t);
@@ -327,8 +327,8 @@ ocrGuid_t scaled_residual_norm(mg_type* mg_ptr, ocrGuid_t start)
   ocrEdtTemplateCreate(&i_t, norm_final_edt, 0, 2);
 
   ocrEdtCreate(&i, i_t, 0, NULL, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_RO);
-  ocrAddDependence(start, i, 1, DB_MODE_RO);
+  ocrAddDependence(mg_ptr->levels[0], i, 0, DB_MODE_CONST);
+  ocrAddDependence(start, i, 1, DB_MODE_CONST);
 
   ocrEdtTemplateDestroy(i_t);
   start = fin;

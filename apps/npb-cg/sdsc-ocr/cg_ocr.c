@@ -29,9 +29,9 @@ void conj_grad(u64 n, u64 blk, ocrGuid_t a, ocrGuid_t x, ocrGuid_t cont, u32 dep
     spMv(n,blk,a,z,&q);                              // r=Az
     distance(n,q,x,r,p,&p);                          // rnorm=||x-r||
 
-    ocrAddDependence(z, cont, dep, DB_MODE_RO);
-    ocrAddDependence(p, cont, dep+1, DB_MODE_RO);
+    ocrAddDependence(z, cont, dep, DB_MODE_CONST);
+    ocrAddDependence(p, cont, dep+1, DB_MODE_CONST);
 
-    ocrAddDependence(x, first, 0, DB_MODE_RO);
-    ocrAddDependence(a, second, 0, DB_MODE_RO);
+    ocrAddDependence(x, first, 0, DB_MODE_CONST);
+    ocrAddDependence(a, second, 0, DB_MODE_CONST);
 }

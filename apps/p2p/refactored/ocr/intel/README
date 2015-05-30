@@ -57,7 +57,7 @@ it is used only once per timestep (instead of once per phase).
 Buffer block management:
 Node 0 creates P-1 buffer blocks at the beginning (and receives one from
 realmain).  It stores the P guids in its "special" private block
-The EDT that is Node 0 could last for a whole timestep but both to avoid having 
+The EDT that is Node 0 could last for a whole timestep but both to avoid having
 all P buffer blocks "live" at the same time and in keeping with the "small"
 EDT concept it clones itself every phase just like the rest of the EDTs
 It passes in the "next" buffer block to its clone to have a block available to

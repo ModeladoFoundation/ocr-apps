@@ -192,15 +192,15 @@ void DRAMtoBSM( void *out, void *in, size_t size);
 void DRAMtoDRAM(void *out, void *in, size_t size);
 
 #define RAG_DEF_MACRO_SPAD(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
- 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0); \
+ 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_RW); assert(retval==0); \
 	rag_printf("DEF_SPAD %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_DEF_MACRO_BSM(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
- 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0); \
+ 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_RW); assert(retval==0); \
 	rag_printf("DEF_BSM  %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_DEF_MACRO_PASS(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
- 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_ITW); assert(retval==0); \
+ 	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_RW); assert(retval==0); \
 	rag_printf("DEF_PASS %16.16lx \n",GUID_VALUE(dbg));rag_flush;
 
 #define RAG_REF_MACRO_SPAD(type,var,ptr_var,lcl_var,dbg,slot) \

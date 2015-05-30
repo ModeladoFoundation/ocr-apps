@@ -73,23 +73,23 @@ depv
 //Create Shim
             if(mynode == 0) {
                 ocrEdtCreate(&shimEdt, uSB->rtrShimTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-                ocrAddDependence(SB->rootEvent, shimEdt, 0, DB_MODE_ITW);
+                ocrAddDependence(SB->rootEvent, shimEdt, 0, DB_MODE_RW);
             }
 //create next cgTask
             ocrEdtCreate(&cgEdt, uSB->cgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
             ocrDbRelease(depv[0].guid);
-            ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_ITW);
-            ocrAddDependence(SB->shimEvent, cgEdt, 1, DB_MODE_ITW);
+            ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_RW);
+            ocrAddDependence(SB->shimEvent, cgEdt, 1, DB_MODE_RW);
             ocrDbRelease(depv[2].guid);
-            ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_ITW);
+            ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_RW);
             ocrDbRelease(depv[3].guid);
-            ocrAddDependence(depv[3].guid, cgEdt, 3, DB_MODE_ITW);
+            ocrAddDependence(depv[3].guid, cgEdt, 3, DB_MODE_RW);
 //launch global sum
             ocrEdtCreate(&gsEdt, SB->GSxTemplate, EDT_PARAM_DEF, &mynode, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
             ocrDbRelease(depv[1].guid);
-            ocrAddDependence(depv[1].guid, gsEdt, 0, DB_MODE_ITW);
-            ocrAddDependence(depv[2].guid, gsEdt, 1, DB_MODE_ITW);
-            for(i=0;i<ARITY;i++) ocrAddDependence(NULL_GUID, gsEdt, i+2, DB_MODE_ITW);
+            ocrAddDependence(depv[1].guid, gsEdt, 0, DB_MODE_RW);
+            ocrAddDependence(depv[2].guid, gsEdt, 1, DB_MODE_RW);
+            for(i=0;i<ARITY;i++) ocrAddDependence(NULL_GUID, gsEdt, i+2, DB_MODE_RW);
             return NULL_GUID;
         case 1:
 // Consume rtr
@@ -115,18 +115,18 @@ depv
 //Clone compute
             ocrEdtCreate(&cgEdt, uSB->cgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
             ocrDbRelease(depv[0].guid);
-            ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_ITW);
-            ocrAddDependence(SB->rootEvent, cgEdt, 1, DB_MODE_ITW);
+            ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_RW);
+            ocrAddDependence(SB->rootEvent, cgEdt, 1, DB_MODE_RW);
             ocrDbRelease(depv[2].guid);
-            ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_ITW);
+            ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_RW);
             ocrDbRelease(depv[3].guid);
-            ocrAddDependence(depv[3].guid, cgEdt, 3, DB_MODE_ITW);
+            ocrAddDependence(depv[3].guid, cgEdt, 3, DB_MODE_RW);
 //launch global sum
             ocrEdtCreate(&gsEdt, SB->GSxTemplate, EDT_PARAM_DEF, &mynode, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
             ocrDbRelease(depv[1].guid);
-            ocrAddDependence(depv[1].guid, gsEdt, 0, DB_MODE_ITW);
-            ocrAddDependence(depv[2].guid, gsEdt, 1, DB_MODE_ITW);
-            for(i=0;i<ARITY;i++) ocrAddDependence(NULL_GUID, gsEdt, i+2, DB_MODE_ITW);
+            ocrAddDependence(depv[1].guid, gsEdt, 0, DB_MODE_RW);
+            ocrAddDependence(depv[2].guid, gsEdt, 1, DB_MODE_RW);
+            for(i=0;i<ARITY;i++) ocrAddDependence(NULL_GUID, gsEdt, i+2, DB_MODE_RW);
             return NULL_GUID;
         case 2:
 //Consume pAp
@@ -140,7 +140,7 @@ depv
 //create shimEdt
             if(mynode == 0) {
                 ocrEdtCreate(&shimEdt, uSB->rtrShimTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-                ocrAddDependence(SB->rootEvent, shimEdt, 0, DB_MODE_ITW);
+                ocrAddDependence(SB->rootEvent, shimEdt, 0, DB_MODE_RW);
                 }
 //compute local inner product
             sum = 0;
@@ -151,18 +151,18 @@ depv
             paramv[1]++;
             ocrEdtCreate(&cgEdt, uSB->cgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
             ocrDbRelease(depv[0].guid);
-            ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_ITW);
-            ocrAddDependence(SB->shimEvent, cgEdt, 1, DB_MODE_ITW);
+            ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_RW);
+            ocrAddDependence(SB->shimEvent, cgEdt, 1, DB_MODE_RW);
             ocrDbRelease(depv[2].guid);
-            ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_ITW);
+            ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_RW);
             ocrDbRelease(depv[3].guid);
-            ocrAddDependence(depv[3].guid, cgEdt, 3, DB_MODE_ITW);
+            ocrAddDependence(depv[3].guid, cgEdt, 3, DB_MODE_RW);
 //create and launch GSxEdt
             ocrEdtCreate(&gsEdt, SB->GSxTemplate, EDT_PARAM_DEF, &mynode, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
             ocrDbRelease(depv[1].guid);
-            ocrAddDependence(depv[1].guid, gsEdt, 0, DB_MODE_ITW);
-            ocrAddDependence(depv[2].guid, gsEdt, 1, DB_MODE_ITW);
-            for(i=0;i<ARITY;i++) ocrAddDependence(NULL_GUID, gsEdt, i+2, DB_MODE_ITW);
+            ocrAddDependence(depv[1].guid, gsEdt, 0, DB_MODE_RW);
+            ocrAddDependence(depv[2].guid, gsEdt, 1, DB_MODE_RW);
+            for(i=0;i<ARITY;i++) ocrAddDependence(NULL_GUID, gsEdt, i+2, DB_MODE_RW);
         return NULL_GUID;
     }
 }
@@ -183,10 +183,10 @@ computeInit is launched by the initialization phase of the GS library
     u64 paramvout[3] = {mynode, 0, 0};
     ocrDbCreate(&(cgBlock), (void**) &dummy, sizeof(cgBlock_t), 0, NULL_GUID, NO_ALLOC);
     ocrEdtCreate(&cgEdt, uSB->cgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_ITW);
-    ocrAddDependence(depv[1].guid, cgEdt, 1, DB_MODE_ITW);
-    ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_ITW);
-    ocrAddDependence(cgBlock, cgEdt, 3, DB_MODE_ITW);
+    ocrAddDependence(depv[0].guid, cgEdt, 0, DB_MODE_RW);
+    ocrAddDependence(depv[1].guid, cgEdt, 1, DB_MODE_RW);
+    ocrAddDependence(depv[2].guid, cgEdt, 2, DB_MODE_RW);
+    ocrAddDependence(cgBlock, cgEdt, 3, DB_MODE_RW);
 
     return NULL_GUID;
 }
@@ -236,8 +236,8 @@ realMain launches the GS initialization
     u64 GSparamvout[3] = {0, NULL_GUID, NULL_GUID};
     ocrEdtCreate(&GSi, SB->GSiTemplate, EDT_PARAM_DEF, GSparamvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
     ocrDbRelease(depv[1].guid);
-    ocrAddDependence(depv[1].guid, GSi, 0, DB_MODE_ITW);
-    ocrAddDependence(gsBlock, GSi, 1, DB_MODE_ITW);
+    ocrAddDependence(depv[1].guid, GSi, 0, DB_MODE_RW);
+    ocrAddDependence(gsBlock, GSi, 1, DB_MODE_RW);
     return NULL_GUID;
 }
 
@@ -266,8 +266,8 @@ launches realmain
     ocrDbCreate(&GSsharedBlock, (void **) &dummy, sizeof(GSsharedBlock_t), 0, NULL_GUID, NO_ALLOC);
     ocrDbCreate(&userSharedBlock, (void **) &dummy, sizeof(userSharedBlock_t), 0, NULL_GUID, NO_ALLOC);
     ocrEdtCreate(&wrapup, wrapupTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL_GUID);
-    ocrAddDependence(output, wrapup, 0, DB_MODE_ITW);
-    ocrAddDependence(userSharedBlock, realMain, 0, DB_MODE_ITW);
-    ocrAddDependence(GSsharedBlock, realMain, 1, DB_MODE_ITW);
+    ocrAddDependence(output, wrapup, 0, DB_MODE_RW);
+    ocrAddDependence(userSharedBlock, realMain, 0, DB_MODE_RW);
+    ocrAddDependence(GSsharedBlock, realMain, 1, DB_MODE_RW);
     return NULL_GUID;
 }

@@ -109,9 +109,9 @@ look for legal moves
                 ocrDbCreate(&newboardDb, (void**) &newboard, sizeof(u64)*BOARDSIZE, 0, NULL_GUID, NO_ALLOC);
                 triangleParamv[1] = i;
                 ocrEdtCreate(&triangleEdt, triangleTemplate, EDT_PARAM_DEF, triangleParamv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-                ocrAddDependence(once, triangleEdt, 0, DB_MODE_RO);
-                ocrAddDependence(newboardDb, triangleEdt, 1, DB_MODE_ITW);
-                ocrAddDependence(depv[2].guid, triangleEdt, 2, DB_MODE_RO);
+                ocrAddDependence(once, triangleEdt, 0, DB_MODE_CONST);
+                ocrAddDependence(newboardDb, triangleEdt, 1, DB_MODE_RW);
+                ocrAddDependence(depv[2].guid, triangleEdt, 2, DB_MODE_CONST);
             }
         }
     }
@@ -208,14 +208,14 @@ launch triangleEdt
     ocrEdtTemplateCreate(&wrapupTemplate, wrapupTask, 0, 2);
     ocrEdtCreate(&wrapupEdt, wrapupTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
     ocrDbRelease(depv[0].guid);
-    ocrAddDependence(depv[0].guid, wrapupEdt, 0, DB_MODE_RO);
-    ocrAddDependence(triangleOutputEvent, wrapupEdt, 1, DB_MODE_ITW);
+    ocrAddDependence(depv[0].guid, wrapupEdt, 0, DB_MODE_CONST);
+    ocrAddDependence(triangleOutputEvent, wrapupEdt, 1, DB_MODE_RW);
 //launch triangleEdt
     ocrDbRelease(depv[1].guid);
-    ocrAddDependence(depv[1].guid, triangleEdt, 0, DB_MODE_RO);
-    ocrAddDependence(depv[2].guid, triangleEdt, 1, DB_MODE_ITW);
+    ocrAddDependence(depv[1].guid, triangleEdt, 0, DB_MODE_CONST);
+    ocrAddDependence(depv[2].guid, triangleEdt, 1, DB_MODE_RW);
     ocrDbRelease(depv[3].guid);
-    ocrAddDependence(depv[3].guid, triangleEdt, 2, DB_MODE_RO);
+    ocrAddDependence(depv[3].guid, triangleEdt, 2, DB_MODE_CONST);
     return NULL_GUID;
 }
 ocrGuid_t mainEdt(){
@@ -228,9 +228,9 @@ ocrGuid_t mainEdt(){
     ocrDbCreate(&pmovesDb, (void**) &pmoves, sizeof(u64)*MOVESIZE*3, 0, NULL_GUID, NO_ALLOC);
     ocrEdtTemplateCreate(&realmainTemplate, realmainTask, 0, 4);
     ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-    ocrAddDependence(counterDb, realmain, 0, DB_MODE_ITW);
-    ocrAddDependence(oldboardDb, realmain, 1, DB_MODE_ITW);
-    ocrAddDependence(boardDb, realmain, 2, DB_MODE_ITW);
-    ocrAddDependence(pmovesDb, realmain, 3, DB_MODE_RO);
+    ocrAddDependence(counterDb, realmain, 0, DB_MODE_RW);
+    ocrAddDependence(oldboardDb, realmain, 1, DB_MODE_RW);
+    ocrAddDependence(boardDb, realmain, 2, DB_MODE_RW);
+    ocrAddDependence(pmovesDb, realmain, 3, DB_MODE_CONST);
     return NULL_GUID;
 }

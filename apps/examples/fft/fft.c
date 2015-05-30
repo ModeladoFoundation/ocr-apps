@@ -92,8 +92,8 @@ ocrGuid_t fftStartEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrEdtCreate(&endEdtGuid, endGuid, EDT_PARAM_DEF, paramv, 3,
                      endDependencies, EDT_PROP_FINISH, NULL_GUID, NULL);
 
-        ocrAddDependence(dataGuid, edtGuid, 0, DB_MODE_ITW);
-        ocrAddDependence(dataGuid, edtGuid2, 0, DB_MODE_ITW);
+        ocrAddDependence(dataGuid, edtGuid, 0, DB_MODE_RW);
+        ocrAddDependence(dataGuid, edtGuid2, 0, DB_MODE_RW);
     }
 
         PRINTF("Task with size %d completed\n",N);
@@ -314,8 +314,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
                  EDT_PARAM_DEF, finishDependencies, EDT_PROP_NONE, NULL_GUID, NULL);
 
     edtEventGuid = NULL_GUID;
-    ocrAddDependence(dataGuid, edtGuid, 0, DB_MODE_ITW);
-    ocrAddDependence(edtEventGuid, edtGuid, 1, DB_MODE_RO);
+    ocrAddDependence(dataGuid, edtGuid, 0, DB_MODE_RW);
+    ocrAddDependence(edtEventGuid, edtGuid, 1, DB_MODE_CONST);
 
     return NULL_GUID;
 }

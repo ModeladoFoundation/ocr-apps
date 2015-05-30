@@ -299,7 +299,7 @@ inline static void sequential_cholesky_task_prescriber (ocrGuid_t edtTemp, u32 k
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&seq_cholesky_task_guid, edtTemp, 4, func_args, 1, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[k][k][k], seq_cholesky_task_guid, 0, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[k][k][k], seq_cholesky_task_guid, 0, DB_MODE_RW);
 }
 
 inline static void trisolve_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j, u32 tileSize,
@@ -316,8 +316,8 @@ inline static void trisolve_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j, u
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&trisolve_task_guid, edtTemp, 5, func_args, 2, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[j][k][k], trisolve_task_guid, 0, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[k][k][k+1], trisolve_task_guid, 1, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[j][k][k], trisolve_task_guid, 0, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[k][k][k+1], trisolve_task_guid, 1, DB_MODE_RW);
 }
 
 inline static void update_nondiagonal_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j, u32 i, u32 tileSize,
@@ -335,9 +335,9 @@ inline static void update_nondiagonal_task_prescriber ( ocrGuid_t edtTemp, u32 k
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&update_nondiagonal_task_guid, edtTemp, 6, func_args, 3, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[j][i][k], update_nondiagonal_task_guid, 0, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[j][k][k+1], update_nondiagonal_task_guid, 1, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[i][k][k+1], update_nondiagonal_task_guid, 2, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[j][i][k], update_nondiagonal_task_guid, 0, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[j][k][k+1], update_nondiagonal_task_guid, 1, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[i][k][k+1], update_nondiagonal_task_guid, 2, DB_MODE_RW);
 }
 
 
@@ -356,8 +356,8 @@ inline static void update_diagonal_task_prescriber ( ocrGuid_t edtTemp, u32 k, u
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&update_diagonal_task_guid, edtTemp, 6, func_args, 2, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[j][j][k], update_diagonal_task_guid, 0, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[j][k][k+1], update_diagonal_task_guid, 1, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[j][j][k], update_diagonal_task_guid, 0, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[j][k][k+1], update_diagonal_task_guid, 1, DB_MODE_RW);
 }
 
 inline static void wrap_up_task_prescriber ( ocrGuid_t edtTemp, u32 numTiles, u32 tileSize,
@@ -377,7 +377,7 @@ inline static void wrap_up_task_prescriber ( ocrGuid_t edtTemp, u32 numTiles, u3
     for ( i = 0; i < numTiles; ++i ) {
         k = 1;
         for ( j = 0; j <= i; ++j ) {
-            ocrAddDependence(lkji_event_guids[i][j][k], wrap_up_task_guid, index++, DB_MODE_ITW);
+            ocrAddDependence(lkji_event_guids[i][j][k], wrap_up_task_guid, index++, DB_MODE_RW);
             ++k;
         }
     }

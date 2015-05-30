@@ -111,9 +111,9 @@ void fork_redistribute(ocrGuid_t sim, ocrGuid_t cont, u32 depc, ocrGuid_t* list,
   ocrGuid_t tmp, red, red_e;
   ocrEdtTemplateCreate(&tmp,redistribute_edt, 0, boxes_num+1);
   ocrEdtCreate(&red, tmp, 0, NULL, boxes_num+1, NULL, 0, NULL_GUID, &red_e);
-  ocrAddDependence(red_e, cont, depc, DB_MODE_RO);
+  ocrAddDependence(red_e, cont, depc, DB_MODE_CONST);
   for(u32 b = 0; b < boxes_num; ++b)
-    ocrAddDependence(list[b], red, b, DB_MODE_ITW);
-  ocrAddDependence(sim, red, boxes_num, DB_MODE_ITW);
+    ocrAddDependence(list[b], red, b, DB_MODE_RW);
+  ocrAddDependence(sim, red, boxes_num, DB_MODE_RW);
   ocrEdtTemplateDestroy(tmp);
 }
