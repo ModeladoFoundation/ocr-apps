@@ -19,7 +19,7 @@ OCR_TYPE        ?= x86
 
 # OCR
 OCR_TARGET       ?= x86
-OCR_ROOT         = $(APPS_ROOT)/../ocr
+OCR_ROOT         ?= $(APPS_ROOT)/../ocr
 OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
@@ -27,7 +27,10 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 #WORKLOAD_SRC          ?= src-mpi
 #src dir - go upt to "intel" which has the "src' dir, then you are there. works if starting
 #  at "intel" or down under "build_and_run"
-SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
+# doesn't work with Jenkins, so reckon direclty from APPS_ROOT
+#SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
+
+SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
 
 WORKLOAD_SRC          ?= $(SRC_DIR)
 
@@ -74,7 +77,7 @@ SRCS := cmdLineParser.c  decomposition.c  haloExchange.c  linkCells.c  mycommand
 
 HDR_NAMES := cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h   parallel.h timestep.h CoMDTypes.h      eam.h            linkCells.h  mycommand.h  performanceTimers.h  yamlOutput.h constants.h      haloExchange.h   ljForce.h    mytype.h     random.h
 
-HDRS := ./CoMD_info.h $(addprefix $(SRC_DIR)/,$(HDR_NAMES))
+HDRS := ./CoMD_info.h $(addprefix $(WORKLOAD_SRC)/,$(HDR_NAMES))
 
 #OBJS := $(notdir $(SRCS:.c=.o))
 OBJS := $(notdir $(source:.c=.o))
@@ -85,9 +88,10 @@ OBJS := $(notdir $(source:.c=.o))
 $(OBJS): $(HDRS)
 
 # icc is 15% faster than gcc
-CC=icc
+#Jenkins does not set up icc.
+#CC=icc
 
-CFLAGS := -g -DDO_MPI -DDOUBLE -I $(SRC_DIR)
+CFLAGS := -g -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
 
 # Targets:
@@ -131,7 +135,7 @@ prerun: ;
 
 prebuild: CoMD_info.h
 CoMD_info.h:
-	${SRC_DIR}/generate_info_header ${TARGET} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
+	${WORKLOAD_SRC}/generate_info_header ${TARGET} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated

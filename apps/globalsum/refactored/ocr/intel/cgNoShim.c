@@ -2,8 +2,7 @@
 Author: David S Scott
 Copyright Intel Corporation 2015
 
-This file is subject to the license agreement located in the file ####LICENSE
-and cannot be distributed withs file is subject to the license agreement located in the file LICENSE
+This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
 and cannot be distributed without it. This notice cannot be removed or modified.
 */
 //this version of the driver program updates rtrold in the alternate phase (during the pAp computation)

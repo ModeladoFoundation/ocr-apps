@@ -1,13 +1,6 @@
-cp cgShim.c cg.c
-touch cg.c
-OCR_TYPE=x86  make run > outShim
-OCR_TYPE=x86-mpi  make run >> outShim
-cp cgNoShim.c cg.c
-touch cg.c
-OCR_TYPE=x86  make run > outNoShim
-OCR_TYPE=x86-mpi  make run >> outNoShim
-cp pcg.c cg.c
-touch cg.c
-OCR_TYPE=x86  make run > outPcg
-OCR_TYPE=x86-mpi  make run >> outPcg
-rm cg.c
+OCR_TYPE=x86 CODE_TYPE=1 make clean run > outShim
+OCR_TYPE=x86-mpi CODE_TYPE=1 make clean run >> outShim
+OCR_TYPE=x86 CODE_TYPE=2 make clean run > outNoShim
+OCR_TYPE=x86-mpi CODE_TYPE=2 make clean run >> outNoShim
+OCR_TYPE=x86 CODE_TYPE=3 make clean run > outPcg
+OCR_TYPE=x86-mpi CODE_TYPE=3 make clean run >> outPcg

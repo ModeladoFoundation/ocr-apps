@@ -267,32 +267,32 @@ case $version_dir in
     esac
     ;;
 
-"refactored/ocr/llnl")
-
-    supported_app_modes=("x86" "x86-mpi")
-
-    case $app_mode in
-
-    x86)
-        driver_opts="make run"
-        app_name=""
-        app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
-        ;;
-
-    x86-mpi)
-        driver_opts="make run"
-        app_name=""
-        app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
-
-        ;;
-
-    *)
-        echo "Error: $version_dir only supports {${supported_app_modes[@]}} modes"
-        exit 1
-        ;;
-
-    esac
-    ;;
+#"refactored/ocr/llnl")
+#
+#    supported_app_modes=("x86" "x86-mpi")
+#
+#    case $app_mode in
+#
+#    x86)
+#        driver_opts="make run"
+#        app_name=""
+#        app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
+#        ;;
+#
+#    x86-mpi)
+#        driver_opts="make run"
+#        app_name=""
+#        app_opts="WORKLOAD_ARGS=\"12 \$PWD/comd\"" #FIXME: Size hard-coded to 12 for now
+#
+#        ;;
+#
+#    *)
+#        echo "Error: $version_dir only supports {${supported_app_modes[@]}} modes"
+#        exit 1
+#        ;;
+#
+#    esac
+#    ;;
 
 
 *)

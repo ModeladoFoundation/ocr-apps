@@ -1,3 +1,20 @@
+/*
+    Author: Chandra S. Martha
+    Copywrite Intel Corporation 2015
+
+    This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+    and cannot be distributed without it. This notice cannot be removed or modified.
+
+    This file is also subject to the license agreement located in the file LICENSE in the current directory.
+*/
+
+/* OCR implemenation of XSBench (mimicking MPI+OpenMP implementation)
+ * A rank structure is created to manage each rank's settings and data.
+ * A unionized energy grid is created as a datablock guid array where each datablock guid points to
+ * indices of the energy levels in the nuclide energy grids closest to the energy level
+ * in the unionized energy grid.
+ */
+
 #include "ocr.h"
 #include "XSbench_header.h"
 

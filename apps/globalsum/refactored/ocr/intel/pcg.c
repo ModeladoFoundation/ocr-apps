@@ -1,8 +1,12 @@
 /*
 Author: David S Scott
-Copyright Intel 2015
-LICENSE#####################
+ Copyright Intel Corporation 2015
 
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
+
+/*
 driver for global sum code
 see README for more documentation
 */
@@ -238,7 +242,7 @@ launches realmain (wrapup waits until realmain is done)
     u64 i;
     u64 *dummy;
     ocrGuid_t realMain, GSsharedBlock, userSharedBlock, realMainTemplate, output, wrapup, wrapupTemplate;
-    PRINTF("conjugate gradient driver WITHOUT shim coming out of computing rtz\n");
+    PRINTF("Preconditioned driver\n");
     PRINTF("Number of timesteps is %d \n", T);
     PRINTF("Number of workers is %d \n", N);
     PRINTF("Rows per worker %d \n", M);

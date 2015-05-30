@@ -1,8 +1,12 @@
 /*
-Author: David S Scott
-Copyright Intel 2015
-LICENSE#####################
+ Author: David S Scott
+ Copyright Intel Corporation 2015
 
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
+
+/*
 an OCR "library" for computing global sums, including a parallel initialization
 see README for more documentation
 */

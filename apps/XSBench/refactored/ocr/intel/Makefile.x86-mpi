@@ -2,6 +2,8 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+COMM_LAYER=mpi
+
 ifndef APPS_ROOT
 $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
 APPS_ROOT ?= ../../../..
@@ -14,10 +16,10 @@ APPS_ROOT       ?= ${REPO_TOP}/apps
 APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
 
 # OCR_TYPE
-OCR_TYPE        ?= x86-mpi
+OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
-OCR_TARGET   	 ?= x86-mpi
+OCR_TARGET   	 ?= x86-${COMM_LAYER}
 OCR_ROOT         ?= ${REPO_TOP}/ocr
 OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
 OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install

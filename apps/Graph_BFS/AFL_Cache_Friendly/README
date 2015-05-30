@@ -1,4 +1,0 @@
-This version uses a linked list queue structure
-It pops the entire workload at every iteration
-It uses a static partitioning
-USES NEWPUT

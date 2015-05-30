@@ -1,10 +1,6 @@
 #!/bin/bash
 
-# This is a general script provided to run all the 6 apps with a "quick" or "report" problem sizes.
-# The main purpose is to have a symbolic link to this file under "app/subversion/build_and_run/mode/{symbolic}"
-# to call this script with the right arguments.
-# This script runs the 'subversion' of the 'app' in the specified 'mode' on specified number of
-# cores and/or threads.
+# This script supports running an app with the specified problem size under unified run-system
 
 if [ -z "$APPS_ROOT" ]; then
     echo APPS_ROOT is not set.
@@ -87,7 +83,7 @@ hybrid*)
     threads=$4
     ;;
 
-x86-*)
+x86*)
 
     ;;
 

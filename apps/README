@@ -1,54 +1,11 @@
 ###
 # Introduction
+# This is not a real README. The complete and up-to-date instructions
+# on all applications/kernels related matters is maintained on the wiki.
+# Please go to (https://xstack.exascale-tech.com/wiki/index.php/Main_Page#Applications)
+# where you will find the instructions on how to:
+# - become an app contributor.
+# - browse the current application and kernel examples.
+# - learn about developing an app in each of the programming models.
+# For each individual appl version there will be a traditional README in its directory
 ###
-This directory contains the kernels/applications worked on as part of the TG project
-
-The structure of this directory is as follows:
-
-  apps/
-  |
-  #Older directory structure: E.g., cholesky, fibonacci, fft, smithwaterman, etc.
-  |
-  |---- <old_app1>/                     # Different implementations of app1
-  |     |------ ocr/                    # OCR implementation (symlink when mature)
-  |     \------ <omp|mpi|others...>/    # Any other implementation we want to compare against
-  |
-  #Newer (recommended) directory structure: E.g., CoMD, miniAMR, RSBench, tempest, hpgmg, SNAP, XSBench, Stencil1D, etc.
-  |
-  |---- <new_app1>/                     # Different implementations of app1
-  |     |---- refactored/               # Refactored implementations (runs on OCR)
-  |     |     \---- <ocr|icnc|hta|...>  # High-level expression of the program (CnC, HTA, ...)
-  |     |           \---- <owner>       # Institution responsible for the program (SDSC, LLNL, ...)
-  |     |---- baseline/                 # Original or legacy implementations
-  |     |     \---- <omp|serial|mpi>    # High-level expression of the program (C, MPI, etc.); use 'mpi-serial', for example, if implementation supports multiple modes
-  |     |           \---- <owner>       # Institution responsible for the program; use 'doe-original' for original DoE apps.
-  |     \---- datasets/                 # Data for the application (common to various implementations)
-  |
-  |---- ...                             # Other applications
-  |
-  |---- libs/                           # Support libraries (common across applications)
-  |     |---- src/                      # Source of these libraries
-  |     |     |--- <lib1>/
-  |     |     \--- ...
-  |     |
-  |     |---- tg/                       # Installation path for TG compiled libs
-  |     |     |-- include/
-  |     |     \-- lib/
-  |     |
-  |     \---- x86/                      # Installation path for x86 compiled libs
-  |           |--- include/
-  |           \--- lib/
-  |
-  \---- makefiles/                      # OCR Makefiles
-
-###
-# Best practices
-###
-    - All libraries should have a Makefile that uses an ARCH environment variable to build
-      the library either for x86 or TG. See libs/src/libc/ for an example
-
-###
-# Resources
-###
-    - Understanding OCR Makefiles: https://xstack.exascale-tech.com/wiki/index.php/Adding_an_Application#Makefile_options
-    - Detail on applications: https://xstack.exascale-tech.com/wiki/index.php/App_Development

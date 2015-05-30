@@ -1,11 +1,12 @@
 /*
-written by David S Scott
+Author: David Scott
+Copywrite Intel Corporation 2015
 
-Copyright Intel Corporation 2015
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
 
-LICENSE####
-
-
+/*
 See README and stencil1D.h for more documentation
 
 There are 3 versions of a 1D stencil computation.
@@ -286,7 +287,7 @@ launches realmian
 */
 
     u64 i;
-    PRINTF("1D stencil code: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
+    PRINTF("1D stencil code STICKY style: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
 
     u64 *dummy;
     ocrGuid_t realmain, realmainOutputEvent, realmainTemplate, dataDb[N], privateDb[N], bufferDb[2*N-2];

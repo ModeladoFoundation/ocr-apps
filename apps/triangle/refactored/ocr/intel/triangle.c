@@ -2,8 +2,12 @@
 Author: David Scott
 Copywrite Intel Corporation 2015
 
-LICENSE#############
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
 
+*/
+
+/*
 This code implements a recursive search of the game tree of the "14 peg puzzle" in OCR
 to count the number of solutions.
 
