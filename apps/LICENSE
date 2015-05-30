@@ -1,8 +1,9 @@
 /**
- * @brief License file for MPI-Lite
- * @date 2015-03-30
+ * @License file for local created apps
+ * @date 2015-05-27
  */
-This LICENSE file applies to all files in this directory (and any sub-directories)
+This LICENSE file applies to any source code in any subdirectory
+that points to this license file.
 
 Copyright (c) 2015, Intel Corporation
 
@@ -16,10 +17,9 @@ met:
      copyright notice, this list of conditions and the following
      disclaimer in the documentation and/or other materials provided
      with the distribution.
-3.  Neither the name of Intel Corporation, Rice University
-     nor the names of its contributors may be used to endorse or
-     promote products derived from this software without specific
-     prior written permission.
+3.  The name of Intel Corporation nor the names of the authors of the codes
+     may be used to endorse or promote products derived from this software without
+     specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -32,8 +32,3 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The following people contributed to this distribution:
-	- Mark Davis (Intel)
-	- Gail Lyons (Intel)
-	- Min Lee (Intel)

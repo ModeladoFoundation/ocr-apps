@@ -53,6 +53,7 @@ jobtype_ocr_run_kernel_remote_scaling = {
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('xstack',),
     'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'OCR_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr/install'}
 }
 
@@ -205,6 +206,120 @@ job_ocr_run_kernel_smithwaterman_x86_remote_scaling = {
                   'WORKLOAD_ARGS': '10 10 ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string1-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/string2-medium-large.txt ${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/datasets/score-medium-large.txt',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/smithwaterman/ocr/install'}
 }
+#triangle (David Scott)
+job_ocr_build_kernel_triangle_x86_regression = {
+    'name': 'ocr-build-kernel-triangle-x86-regression',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'triangle x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/triangle/refactored/ocr/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel/install'}
+}
+
+job_ocr_run_kernel_triangle_x86_remote_regression = {
+    'name': 'ocr-run-kernel-triangle-x86-remote-regression',
+    'depends': ('ocr-build-kernel-triangle-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'triangle x86 ocr-run-kernel-triangle-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel/install'}
+}
+
+#job_ocr_run_kernel_triangle_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-triangle-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-triangle-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-scaling',
+#    'run-args': 'triangle x86 ocr-run-kernel-triangle-x86-remote-scaling 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel',
+#                  'WORKLOAD_ARGS': '',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/triangle/refactored/ocr/intel/install'}
+#}
+
+#p2p synch (David Scott)
+job_ocr_build_kernel_p2p_x86_regression = {
+    'name': 'ocr-build-kernel-p2p-x86-regression',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'p2p x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/p2p/refactored/ocr/intel',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/p2p/refactored/ocr/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/p2p/refactored/ocr/intel/install'}
+}
+
+job_ocr_run_kernel_p2p_x86_remote_regression = {
+    'name': 'ocr-run-kernel-p2p-x86-remote-regression',
+    'depends': ('ocr-build-kernel-p2p-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'p2p x86 ocr-run-kernel-p2p-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/p2p/refactored/ocr/intel',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/p2p/refactored/ocr/intel/install'}
+}
+
+job_ocr_run_kernel_p2p_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-p2p-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-p2p-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-scaling',
+    'run-args': 'p2p x86 ocr-run-kernel-p2p-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/p2p/refactored/ocr/intel',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/p2p/refactored/ocr/intel/install'}
+}
+
+# Global Sum David Scott
+job_ocr_build_kernel_globalsum_x86_regression = {
+    'name': 'ocr-build-kernel-globalsum-x86-regression',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'cg x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/globalsum/refactored/ocr/intel',
+                  'CODE_TYPE': '2',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/globalsum/refactored/ocr/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/globalsum/refactored/ocr/intel/install'}
+}
+
+job_ocr_run_kernel_globalsum_x86_remote_regression = {
+    'name': 'ocr-run-kernel-globalsum-x86-remote-regression',
+    'depends': ('ocr-build-kernel-globalsum-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'cg x86 ocr-run-kernel-globalsum-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/globalsum/refactored/ocr/intel',
+                  'CODE_TYPE': '2',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/globalsum/refactored/ocr/intel/install'}
+}
+
+job_ocr_run_kernel_globalsum_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-globalsum-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-globalsum-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-scaling',
+    'run-args': 'cg x86 ocr-run-kernel-globalsum-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/globalsum/refactored/ocr/intel',
+                  'CODE_TYPE': '2',
+                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/globalsum/refactored/ocr/intel/install'}
+}
+
 
 # 1d Stencil David Scott
 job_ocr_build_kernel_Stencil1DDavid_x86_regression = {
@@ -282,6 +397,44 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_scaling = {
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra/install',
                   'WORKLOAD_ARGS': '1000 100 500 5 -1 -1'}
 }
+
+#1d Stencil - mpilite
+job_ocr_build_kernel_Stencil1Dlite_x86_regression = {
+    'name': 'ocr-build-kernel-Stencil1Dlite-x86-regression',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'stencil_1d x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install'}
+}
+
+job_ocr_run_kernel_Stencil1Dlite_x86_remote_regression = {
+    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-regression',
+    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+                  'WORKLOAD_ARGS': '-r 4 -t 0 18 10' }
+}
+
+# Disabling the below because it requires 4 ranks and causes failure for 1 & 2 threads
+#job_ocr_run_kernel_Stencil1Dlite_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-scaling',
+#    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-scaling 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+#                  'WORKLOAD_ARGS': '-r 4 -t 0 18 10'}
+#}
 
 #Aggregates execution times in csv file
 job_gatherStats = {

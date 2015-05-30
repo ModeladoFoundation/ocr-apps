@@ -1,10 +1,12 @@
 /*
-written by David S Scott
+Author: David Scott
+Copywrite Intel Corporation 2015
 
-Copyright Intel Corporation 2015
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
 
-LICENSE####
-
+/*
 
 See README and stencil1D.h for more documentation
 
@@ -235,7 +237,7 @@ launches realmian
     u64 i;
     u64 *dummy;
     ocrGuid_t realmain, realmainOutputEvent, realmainTemplate, dataDb[N], privateDb[N], bufferDb[2*N-2];
- PRINTF("1D stencil code: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
+ PRINTF("1D stencil code GUID style: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
     for(i=0;i<2*N-2;i++) {
        ocrDbCreate(&(bufferDb[i]), (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
    }

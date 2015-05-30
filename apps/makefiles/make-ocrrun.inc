@@ -6,7 +6,6 @@
 # subfolders to do make and that screws up the relative
 # paths
 ifeq ($(RUN_JENKINS), run)
-OCR_ROOT               :=
 OCR_BUILD_ROOT        :=
 OCR_BUILD             :=
 WORKLOAD_BUILD_ROOT   :=
@@ -35,6 +34,15 @@ OCR_INSTALL      := ${OCR_INSTALL_ROOT}/${OCR_TARGET}
 
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
+
+# Config file specific settings
+CONFIG_GENERATE       := ${OCR_ROOT}/scripts/Configs/config-generator.py
+CONFIG_FILE           := ${WORKLOAD_INSTALL}/generated.cfg
+CONFIG_NUM_THREADS    ?= 8
+
+ifeq ($(strip $(OCR_CONFIG)),)
+OCR_CONFIG ?= $(CONFIG_FILE)
+endif
 
 REQ_LIBS ?=
 
@@ -106,7 +114,6 @@ endif
 .PHONY: run_internal
 .ONESHELL:
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
-run_internal: OCR_CONFIG ?= $(OCR_INSTALL)/config/default.cfg
 ifeq ($(RUN_JENKINS), run)
 run_internal: debug_post_prerun
 else
@@ -115,6 +122,9 @@ run_internal: install debug_post_prerun
 endif
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
+endif
+ifeq ($(OCR_CONFIG), $(CONFIG_FILE))
+	$(CONFIG_GENERATE) --guid COUNTED_MAP --threads $(CONFIG_NUM_THREADS) --target $(COMM_LAYER) --remove-destination --output $(CONFIG_FILE)
 endif
 	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_ROOT) OCR_CONFIG=$(OCR_CONFIG) \
 	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) $(OCR_INSTALL)/bin/ocrrun ./$(TARGET) -ocr:cfg $(OCR_CONFIG) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'

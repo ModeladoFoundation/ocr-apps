@@ -1,4 +1,0 @@
-#!/bin/sh
-set -x
-rm -rf /tmp/roger-fsim.???? /tmp/fsim.cfgfile.??????
-nohup make run 2>&1 &

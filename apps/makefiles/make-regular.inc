@@ -35,8 +35,11 @@ OCR_INSTALL      := ${OCR_INSTALL_ROOT}/${OCR_TARGET}
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 WORKLOAD_INSTALL      := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
 
+# Config file specific settings
 CONFIG_GENERATE       := ${OCR_ROOT}/scripts/Configs/config-generator.py
 CONFIG_FILE           := ${WORKLOAD_INSTALL}/generated.cfg
+CONFIG_NUM_THREADS    ?= 4
+OCR_CONFIG            ?= $(CONFIG_FILE)
 
 REQ_LIBS ?=
 
@@ -104,10 +107,6 @@ endif
 .ONESHELL:
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
 
-ifeq ($(strip $(OCR_CONFIG)),)
-OCR_CONFIG = $(CONFIG_FILE)
-endif
-
 ifeq ($(RUN_JENKINS), run)
 run_internal: debug_post_prerun
 else
@@ -117,10 +116,12 @@ endif
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
+ifeq ($(OCR_CONFIG), $(CONFIG_FILE))
 ifeq ($(ENABLE_VISUALIZER), yes)
-	$(CONFIG_GENERATE) --guid COUNTED_MAP --dbtype Regular --remove-destination --output $(CONFIG_FILE)
+	$(CONFIG_GENERATE) --guid COUNTED_MAP --dbtype Regular --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 else
-	$(CONFIG_GENERATE) --remove-destination --output $(CONFIG_FILE)
+	$(CONFIG_GENERATE) --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
+endif
 endif
 	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_ROOT) OCR_CONFIG=$(OCR_CONFIG) \
 	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) ./$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'

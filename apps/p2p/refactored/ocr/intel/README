@@ -22,7 +22,7 @@ so that there are W phases of communication.
 
 W phases defines one "timestep".  At the end of each timestep
 node P-1 sends the value of Array(N-1,M-1) to Node 0 who sets
-Array(0,0) = Array(N-1,M-1) before starting the next timestep.
+Array(0,0) = -Array(N-1,M-1) before starting the next timestep.
 
 This makes node 0 wait for the previous timestep to finish and
 also provides a way of verifying that the computation is done
@@ -57,7 +57,8 @@ it is used only once per timestep (instead of once per phase).
 Buffer block management:
 Node 0 creates P-1 buffer blocks at the beginning (and receives one from
 realmain).  It stores the P guids in its "special" private block
-Node 0 could last for a whole timestep but in keeping with the "small"
+The EDT that is Node 0 could last for a whole timestep but both to avoid having
+all P buffer blocks "live" at the same time and in keeping with the "small"
 EDT concept it clones itself every phase just like the rest of the EDTs
 It passes in the "next" buffer block to its clone to have a block available to
 send data to Node1 at the end of a phase.  The exception is the first phase
@@ -67,16 +68,12 @@ The intermediate nodes just pass the received buffer block onto the next node.
 
 Node P-1 needs no buffer block for sending except for the last phase of a timestep
 when it sends the block it received back to Node 0.  This means that the blocks
-are used in a slightly different order each timestep.
-
+are used in a slightly different order during each timestep.
 
 As usual the code can be executed using
-OCR_TYPE=x86  make run
+OCR_TYPE=x86-pthread-x86  make run
 
 Note that currently realmain receives 2*P blocks from mainEdt, so if you
 chose to run with P>32 it is necessary to change OCR_MAX_MULTI_SLOT
 in common.mk which by default set to 1 (x64).
 
-
-
-OCR_TYPE=x86-mpi  make run >>out

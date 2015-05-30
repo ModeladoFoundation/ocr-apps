@@ -1,12 +1,15 @@
 /*
-Author: David S Scott
-Copyright Intel 2015
-LICENSE#####################
+Author: David Scott
+Copywrite Intel Corporation 2015
 
-Driver code for global sum library.  See README for more information
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
 */
+
 /*
-this is the Shim version which has the global sum of r*r wake up a single ShimEDT that copies
+Driver code for global sum library.  See README for more information
+
+This is the Shim version which has the global sum of r*r wake up a single ShimEDT that copies
    rtr to rtrold
 */
 #include <ocr.h>

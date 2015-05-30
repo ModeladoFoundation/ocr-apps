@@ -1,8 +1,0 @@
-#!/bin/bash
-
-SRC_DIR=$(tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "build_and_run" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$tpath/..; done; echo $tpath)/input
-
-echo "Copying input files to the current directory..."
-cp ${SRC_DIR}/comd.in ${SRC_DIR}/comd.lammps .
-
-OCR_TYPE=x86-mpi make install
