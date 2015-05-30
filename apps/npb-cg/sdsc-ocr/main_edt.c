@@ -60,10 +60,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t tmp,edt;
     ocrEdtTemplateCreate(&tmp, head_edt, 0, 6);
     ocrEdtCreate(&edt, tmp, 0, NULL, 6, NULL, 0, NULL_GUID, NULL);
-    ocrAddDependence(classid, edt, 0, DB_MODE_RO);
-    ocrAddDependence(timerid, edt, 1, DB_MODE_ITW);
-    ocrAddDependence(aid, edt, 2, DB_MODE_RO);
-    ocrAddDependence(xid, edt, 3, DB_MODE_RO);
+    ocrAddDependence(classid, edt, 0, DB_MODE_CONST);
+    ocrAddDependence(timerid, edt, 1, DB_MODE_RW);
+    ocrAddDependence(aid, edt, 2, DB_MODE_CONST);
+    ocrAddDependence(xid, edt, 3, DB_MODE_CONST);
     conj_grad(class->na, class->blk, aid, xid, edt, 4);
     ocrEdtTemplateDestroy(tmp);
 
@@ -97,7 +97,7 @@ ocrGuid_t head_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate(&tmp, loop_top_edt, 1, 4);
     ocrEdtCreate(&edt, tmp, 1, &it, 4, NULL, 0, NULL_GUID, NULL);
     for(i=0; i<depc-2; ++i)
-        ocrAddDependence(depv[i].guid, edt, i, DB_MODE_ITW);
+        ocrAddDependence(depv[i].guid, edt, i, DB_MODE_RW);
     ocrEdtTemplateDestroy(tmp);
 
     return NULL_GUID;
@@ -117,7 +117,7 @@ ocrGuid_t loop_top_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtCreate(&edt, tmp, 1, paramv, 6, NULL, 0, NULL_GUID, NULL);
     int i;
     for(i=0; i<depc; ++i)
-        ocrAddDependence(depv[i].guid, edt, i, DB_MODE_ITW);
+        ocrAddDependence(depv[i].guid, edt, i, DB_MODE_RW);
     conj_grad(class->na, class->blk, depv[2].guid, depv[3].guid, edt, 4);
     ocrEdtTemplateDestroy(tmp);
 
@@ -146,9 +146,9 @@ ocrGuid_t loop_bottom_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrGuid_t tmp,edt;
         ocrEdtTemplateCreate(&tmp, tail_edt, 0, 3);
         ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
-        ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_RO);
-        ocrAddDependence(depv[5].guid, edt, 2, DB_MODE_RO);
+        ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
+        ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_CONST);
+        ocrAddDependence(depv[5].guid, edt, 2, DB_MODE_CONST);
         ocrDbDestroy(depv[2].guid);
         ocrDbDestroy(depv[3].guid);
         ocrEdtTemplateDestroy(tmp);
@@ -159,7 +159,7 @@ ocrGuid_t loop_bottom_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrEdtCreate(&edt, tmp, 1, paramv, 4, NULL, 0, NULL_GUID, NULL);
         int i;
         for(i=0; i<depc-2; ++i)
-            ocrAddDependence(depv[i].guid, edt, i, DB_MODE_ITW);
+            ocrAddDependence(depv[i].guid, edt, i, DB_MODE_RW);
         ocrDbDestroy(depv[5].guid);
         ocrEdtTemplateDestroy(tmp);
     }

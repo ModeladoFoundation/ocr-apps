@@ -74,7 +74,7 @@ void cncPrescribe_cncFinalize(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B" input dependencies
@@ -172,7 +172,7 @@ void cncPrescribe_cleanupInitStep(cncTag_t i, comdCtx *ctx) {
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "GID" input dependencies
@@ -267,7 +267,7 @@ void cncPrescribe_advanceVelocityStep(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B0" input dependencies
@@ -344,7 +344,7 @@ void cncPrescribe_updateBoxStep(cncTag_t i, cncTag_t k, cncTag_t iter, comdCtx *
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B" input dependencies
@@ -429,7 +429,7 @@ void cncPrescribe_updateNeighborsStep(cncTag_t i, cncTag_t j, cncTag_t iter, com
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "AtomInfo0" input dependencies
@@ -517,7 +517,7 @@ void cncPrescribe_generateDataforForceStep(cncTag_t i, cncTag_t iter, comdCtx *c
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B" input dependencies
@@ -594,7 +594,7 @@ void cncPrescribe_generateForceTagsStep(cncTag_t iter, comdCtx *ctx) {
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "TBoxes" input dependencies
@@ -664,7 +664,7 @@ void cncPrescribe_forceStep(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B" input dependencies
@@ -851,8 +851,8 @@ void cncPrescribe_computeForcefromNeighborsStep(cncTag_t i, cncTag_t j1, cncTag_
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
-    ocrAddDependence(_tagBlockGuid, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
+    ocrAddDependence(_tagBlockGuid, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B0" input dependencies
@@ -1252,8 +1252,8 @@ void cncPrescribe_computeForcefromNeighborsStep1(cncTag_t i, cncTag_t j1, cncTag
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
-    ocrAddDependence(_tagBlockGuid, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
+    ocrAddDependence(_tagBlockGuid, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B0" input dependencies
@@ -1548,7 +1548,7 @@ void cncPrescribe_reduceStep(cncTag_t i, cncTag_t iter, comdCtx *ctx) {
         /*affinity=*/_affinity, /*outEvent=*/NULL);
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
-    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
+    ocrAddDependence(ctx->_guids.self, _stepGuid, _edtSlot++, DB_MODE_CONST);
 
 
     { // Set up "B0" input dependencies

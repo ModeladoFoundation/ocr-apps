@@ -112,12 +112,12 @@ depv[4]:
             leftin->buffer = a[0];
             if(timestep<T-1) {
                 ocrEventCreate(&once, OCR_EVENT_ONCE_T, true);
-                ocrAddDependence(once, stencilEdt, 1, DB_MODE_ITW);
+                ocrAddDependence(once, stencilEdt, 1, DB_MODE_RW);
                 leftin->control = once;
             }
             ocrDbRelease(depv[1].guid);
             ocrEventSatisfy(leftinEvent, depv[1].guid);
-        } else if(timestep<T-1) ocrAddDependence(NULL_GUID, stencilEdt, 1, DB_MODE_ITW);
+        } else if(timestep<T-1) ocrAddDependence(NULL_GUID, stencilEdt, 1, DB_MODE_RW);
 
         once = NULL_GUID;
         if(rightin != NULL) {
@@ -125,12 +125,12 @@ depv[4]:
             rightin->buffer = a[M-1];
             if(timestep<T-1) {
                 ocrEventCreate(&once, OCR_EVENT_ONCE_T, true);
-                ocrAddDependence(once, stencilEdt, 2, DB_MODE_ITW);
+                ocrAddDependence(once, stencilEdt, 2, DB_MODE_RW);
                 rightin->control = once;
             }
             ocrDbRelease(depv[2].guid);
             ocrEventSatisfy(rightinEvent, depv[2].guid);
-        } else if(timestep<T-1) ocrAddDependence(NULL_GUID, stencilEdt, 2, DB_MODE_ITW);
+        } else if(timestep<T-1) ocrAddDependence(NULL_GUID, stencilEdt, 2, DB_MODE_RW);
 
         private->timestep = timestep+1;
 //launch clone
@@ -138,10 +138,10 @@ depv[4]:
     if(timestep<T-1) private->mychild = stencilEdt;
 
         ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, mychild, 0 , DB_MODE_ITW);
+        ocrAddDependence(depv[0].guid, mychild, 0 , DB_MODE_RW);
 
         ocrDbRelease(depv[3].guid);
-        ocrAddDependence(depv[3].guid, mychild, 3 , DB_MODE_ITW);
+        ocrAddDependence(depv[3].guid, mychild, 3 , DB_MODE_RW);
 
     }
 
@@ -206,34 +206,34 @@ passes in the private block
         ocrEdtCreate(&tempEdt, stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         private[i]->mychild = tempEdt;
         }
-    ocrAddDependence(NULL_GUID, private[0]->mychild, 1, DB_MODE_ITW);
-    ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_ITW);
+    ocrAddDependence(NULL_GUID, private[0]->mychild, 1, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_RW);
 //attach correct buffer blocks
     u64 toleft =  0;
     u64 toright =  toleft + N - 1;
     for(i=0;i<N-1;i++) {
         ocrEventCreate(&once, OCR_EVENT_ONCE_T, true);
         buffer[toright]->control = once;
-        ocrAddDependence(once, private[i]->mychild, 2, DB_MODE_ITW);
+        ocrAddDependence(once, private[i]->mychild, 2, DB_MODE_RW);
         ocrDbRelease(depv[N+toright].guid);
-        ocrAddDependence(depv[N+toright++].guid, stencilEdt[i+1], 1, DB_MODE_ITW);
+        ocrAddDependence(depv[N+toright++].guid, stencilEdt[i+1], 1, DB_MODE_RW);
 
         ocrEventCreate(&once, OCR_EVENT_ONCE_T, true);
         buffer[toleft]->control = once;
-        ocrAddDependence(once, private[i+1]->mychild, 1, DB_MODE_ITW);
+        ocrAddDependence(once, private[i+1]->mychild, 1, DB_MODE_RW);
         ocrDbRelease(depv[N+toleft].guid);
-        ocrAddDependence(depv[N+toleft++].guid, stencilEdt[i], 2, DB_MODE_ITW);
+        ocrAddDependence(depv[N+toleft++].guid, stencilEdt[i], 2, DB_MODE_RW);
     }
-    ocrAddDependence(NULL_GUID, private[N-1]->mychild, 2, DB_MODE_ITW);
-    ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_ITW);
+    ocrAddDependence(NULL_GUID, private[N-1]->mychild, 2, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_RW);
     private[N-1]->mynode = N-1;
     private[N-1]->timestep = 0;
 //launch N stencil init events, attach the data db and private db
     for(i=0;i<N;i++) {
         ocrDbRelease(depv[i].guid);  //release all dbs
-        ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_ITW);
+        ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_RW);
         ocrDbRelease(depv[3*N-2+i].guid);  //release all dbs
-        ocrAddDependence(depv[3*N-2+i].guid, stencilEdt[i], 3, DB_MODE_ITW);
+        ocrAddDependence(depv[3*N-2+i].guid, stencilEdt[i], 3, DB_MODE_RW);
     }
     return NULL_GUID;
 }
@@ -268,11 +268,11 @@ launches realmian
     ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
           EDT_PROP_FINISH, NULL_GUID, &realmainOutputEvent);
 
-    for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_ITW);
-        ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_ITW);
-    for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_ITW);
-    for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_ITW);
-    for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_ITW);
+    for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_RW);
+        ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_RW);
+    for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_RW);
+    for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_RW);
+    for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_RW);
 
     return NULL_GUID;
 }

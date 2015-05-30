@@ -243,7 +243,7 @@ inline static void lapacke_dpotrf_task_prescriber (ocrGuid_t edtTemp, u32 k,
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&seq_cholesky_task_guid, edtTemp, 3, func_args, 1, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[k][k][k], seq_cholesky_task_guid, 0, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[k][k][k], seq_cholesky_task_guid, 0, DB_MODE_RW);
 }
 
 inline static void cblas_dtrsm_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j, u32 tileSize,
@@ -260,8 +260,8 @@ inline static void cblas_dtrsm_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&cblas_dtrsm_task_guid, edtTemp, 4, func_args, 2, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[j][k][k], cblas_dtrsm_task_guid, 0, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[k][k][k+1], cblas_dtrsm_task_guid, 1, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[j][k][k], cblas_dtrsm_task_guid, 0, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[k][k][k+1], cblas_dtrsm_task_guid, 1, DB_MODE_RW);
 }
 
 inline static void cblas_dgemm_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j, u32 i,
@@ -278,9 +278,9 @@ inline static void cblas_dgemm_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&cblas_dgemm_task_guid, edtTemp, 5, func_args, 3, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[j][i][k], cblas_dgemm_task_guid, 0, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[j][k][k+1], cblas_dgemm_task_guid, 1, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[i][k][k+1], cblas_dgemm_task_guid, 2, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[j][i][k], cblas_dgemm_task_guid, 0, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[j][k][k+1], cblas_dgemm_task_guid, 1, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[i][k][k+1], cblas_dgemm_task_guid, 2, DB_MODE_RW);
 }
 
 
@@ -298,8 +298,8 @@ inline static void cblas_dsyrk_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j
     ocrGuid_t affinity = NULL_GUID;
     ocrEdtCreate(&cblas_dsyrk_task_guid, edtTemp, 5, func_args, 2, NULL, PROPERTIES, affinity, NULL);
 
-    ocrAddDependence(lkji_event_guids[j][j][k], cblas_dsyrk_task_guid, 0, DB_MODE_ITW);
-    ocrAddDependence(lkji_event_guids[j][k][k+1], cblas_dsyrk_task_guid, 1, DB_MODE_ITW);
+    ocrAddDependence(lkji_event_guids[j][j][k], cblas_dsyrk_task_guid, 0, DB_MODE_RW);
+    ocrAddDependence(lkji_event_guids[j][k][k+1], cblas_dsyrk_task_guid, 1, DB_MODE_RW);
 }
 
 inline static void wrap_up_task_prescriber ( ocrGuid_t edtTemp, u32 numTiles, u32 tileSize, u32 outSelLevel,
@@ -319,7 +319,7 @@ inline static void wrap_up_task_prescriber ( ocrGuid_t edtTemp, u32 numTiles, u3
     for ( i = 0; i < numTiles; ++i ) {
         k = 1;
         for ( j = 0; j <= i; ++j ) {
-            ocrAddDependence(lkji_event_guids[i][j][k], wrap_up_task_guid, index++, DB_MODE_ITW);
+            ocrAddDependence(lkji_event_guids[i][j][k], wrap_up_task_guid, index++, DB_MODE_RW);
             ++k;
         }
     }

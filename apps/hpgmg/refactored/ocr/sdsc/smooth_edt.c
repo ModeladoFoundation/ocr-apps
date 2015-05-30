@@ -25,8 +25,8 @@ ocrGuid_t smooth_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
   int b;
   for(b = 0; b < l->num_boxes; ++b) {
     ocrEdtCreate(&r, r_t, 1, &s, 2, NULL, 0, NULL_GUID, NULL); // Manu: added paramc = 1
-    ocrAddDependence(depv[0].guid, r, 0, DB_MODE_RO);
-    ocrAddDependence(boxes[b], r, 1, DB_MODE_ITW);
+    ocrAddDependence(depv[0].guid, r, 0, DB_MODE_CONST);
+    ocrAddDependence(boxes[b], r, 1, DB_MODE_RW);
   }
 
   ocrEdtTemplateDestroy(r_t);

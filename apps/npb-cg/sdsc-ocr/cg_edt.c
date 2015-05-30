@@ -122,9 +122,9 @@ ocrGuid_t spmv_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     for(e = 0; e < paramv[0]/paramv[1]; ++e) {
         ocrGuid_t rv,rve;
         ocrEdtCreate(&rv,rowvect,1,paramv+1,2,NULL,0,NULL_GUID,&rve);
-        ocrAddDependence(rve,assgn,e,DB_MODE_RO);
-        ocrAddDependence(((ocrGuid_t*)depv[0].ptr)[e],rv,0,DB_MODE_RO);
-        ocrAddDependence(depv[1].guid,rv,1,DB_MODE_RO);
+        ocrAddDependence(rve,assgn,e,DB_MODE_CONST);
+        ocrAddDependence(((ocrGuid_t*)depv[0].ptr)[e],rv,0,DB_MODE_CONST);
+        ocrAddDependence(depv[1].guid,rv,1,DB_MODE_CONST);
     }
     ocrEdtTemplateDestroy(rowvect);
 
