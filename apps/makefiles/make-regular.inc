@@ -153,10 +153,12 @@ parallel-reqlibs: $(FULL_REQ_LIBS)
 
 .PHONY: $(FULL_REQ_LIBS)
 $(FULL_REQ_LIBS):
-	lockfile $@/.lock; \
+	lockfile "/tmp/$(subst /,_,$@)_lock"
+	echo "Grabbed lock"; date; \
 	ARCH=x86 APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
 	$(MAKE) -C $@ install; \
-	rm -f $@/.lock
+	echo "Releasing lock"; date
+	rm -f "/tmp/$(subst /,_,$@)_lock"
 
 .PHONY: reqlibs
 reqlibs: parallel-reqlibs
