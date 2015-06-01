@@ -15,7 +15,7 @@ debug:
 .PHONY: install
 install:
 	@echo "Installing TG standard files"
-	@cp --remove-destination ${APPS_ROOT}/libs/src/libc/tg-includes/* ${APPS_LIBS_ROOT}/include/
+	@cp ${APPS_ROOT}/libs/src/libc/tg-includes/* ${APPS_LIBS_ROOT}/include/
 
 .PHONY: run
 run:
