@@ -64,7 +64,7 @@ The following counts were obtained.
 0: 29760  [the standard set up]
 1: 14880
 2: same as 1 by symmetry
-3: 85258
+3: 85258  [may require even more memory]
 4: 1550
 5-14: one of the above numbers
 
@@ -74,9 +74,11 @@ There are no input parameters to the program so it should be executed by:
 
 OCR_TYPE=x86 make run
 
-It currently takes about 21 seconds to find all the solutions.
+It currently takes about 140 seconds to find all the solutions.
+
+This is too long for the nightly regressions, so the depth of the search was reduced to
+6 when being run in Jenkins
 
 The code can be run on -mpi, but it currently runs very slowly (hours) and eventually
-crashes, perhaps because it runs out of memory.
-
-It will probably take affinity hints to improve the performance.
+crashes, perhaps because it runs out of memory.  It will probably take affinity hints to
+improve the performance.
