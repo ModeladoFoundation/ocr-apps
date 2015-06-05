@@ -141,15 +141,16 @@ static ocrGuid_t endEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 
-// parseAndShiftArgv extract numRanks "-r <int>" required,
-// and maxTag "-t <int>" optional
+// parseAndShiftArgv extract numRanks "-r <int>" optional - otherwise use NbWorkers
+// and maxTag "-t <int>" optional; else use 0
+//     exe [-r <int>][-t <int>] <args for program>
 // arguments from argcArgv DB, and shift argv to left by number of items
 // extracted (reducing argc accordingly)
 static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
 {
     *numRanks = 4;  // default
     *maxTag = 0;  // default
-    int shift = 0;      // amount to shift argv
+    int shift = 0;      // amount to shift argv to remove mpilite args
 
     int argc = getArgc(argcArgv);
 
@@ -166,20 +167,24 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
     if (argc < 3 || strcmp("-r", getArgv(argcArgv,1)))
         {
             char msg[150];
-            sprintf(msg, "Command line should be 'exe -r <numRanks> [-t <maxTag>]\n"
-                    "Continuing with %d ranks and max tag %d", *numRanks,
-                    *maxTag);
+            *numRanks = ocrNbWorkers();
+            sprintf(msg, "MPI startup: numRanks not specified, using %d \n"
+                    , *numRanks);
             WARNING(msg);
-            return;
         }
-    // should check that is digits
-    *numRanks = atoi(getArgv(argcArgv, 2));
-    shift += 2;
-
-    if (argc >= 5 && !strcmp("-t", getArgv(argcArgv, 3)))
+    else
         {
             // should check that is digits
-            *maxTag = atoi(getArgv(argcArgv, 4));
+            *numRanks = atoi(getArgv(argcArgv, 2));
+            shift += 2;
+        }
+
+    // "-t" may be specified without "-r", so have to look in position 1 or
+    // 3
+    if (argc >= (3+shift) && !strcmp("-t", getArgv(argcArgv, (1+shift))))
+        {
+            // should check that is digits
+            *maxTag = atoi(getArgv(argcArgv, (2+shift)));
             shift += 2;
         }
 
