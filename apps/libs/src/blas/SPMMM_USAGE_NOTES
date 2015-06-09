@@ -1,0 +1,146 @@
+SPMMM -- Sparse Matrix Matrix Multiply -- is readily available herein.  But first, I need to explain
+the lay of the land.
+
+It will probably seem odd and overblown that this code resides in such a large directory of other
+source files.  This is an artifact of how I am developing library code.  First, I am a relative
+new-comer to actually writing applications for OCR, so I had a learning curve.  My first foray
+was to develop a few of the BLAS/LINPACK functions, like GEMM, POSV, etc.  I got so far as to
+making each of these pass unit tests, notwithstanding that I deferred making them callable via
+a function-call-and-return API (which we are presently referring to as "legacy" calling).  These
+all work insofar as I took the implementation, but they are NOT RELEVANT for use with SPMMM.
+SPMMM stands apart from these other functions.
+
+What IS RELEVANT is that, in developing the various BLAS/LINPACK functions, I fell into the habit
+of using some macros of my own devising, to make things easier and better organized, in my opinion.
+The macros are encapsulated inside blas.h.  Here are a few of the things seen therein:
+
+*  NAME, STRINGIFY, and similar macros:
+      NAME (and a few variants, none of which are used in SPMMM) is used to "mangle" a symbolic
+      name to make it unique for the various datatypes I want to implement.  For example,
+      "NAME(spmmm)" (without the quotes) expands to "sspmmm" when BLAS_TYPE__single is #defined,
+      "dspmmm" when BLAS_TYPE__double is #defined, "cspmmm" when BLAS_TYPE__complex is #defined,
+      and "zspmmm" when BLAS_TYPE__complex_double is #defined.
+
+      STRINGIFY is used to be able to print out the function name, as mangled.  For example,
+      STRINGIFY(NAME(spmmm)), when fed to the %s edit descriptor in a printf, assures that
+      it prints "sspmmm", "dspmmm", "cspmmm", or "zspmmm" as appropriate.
+
+      By virtue of these macros, and others to be described below, I have developed all four
+      number precisions in just one source code, with very little special-casing for individual
+      data types.  By compiling the same source four different ways, I provide library functions
+      for all four precisions.
+
+*  xFMUL, xMUL, xADD, etc. macros:
+      These macros perform the simple operation indicated by the name.  For example, xMUL is just
+      a simple multiply.  The reason I do a multiply with xMUL instead of with the "*" operator is
+      because with complex and complex_double datatypes, the multiply involves FOUR multiplies, an
+      add, and a subtract, utilizing the .real and .imag struct components of the variables involved.
+      We could do that trivially in C++ by overloading the "*" operator, but we are NOT C++!
+
+*  ADD_DEPENDENCE macro:
+      This macro is just a shorthand way of calling ocrAddDependence, which I happen to find more
+      readable than if I actually called ocrAddDependence.  It just clears away a bit of clutter,
+      and I like that.
+
+Also relevant are files single.c, double.c, complex.c, and complexdouble.c, which are intended to
+fulfill the defining of one of the BLAS_TYPE__<xyz> #defines, and then #include all the source codes
+for which I want the type-specific compilations.  Long term, the intention is to have all four
+precisions in a single library.  At present, I have hacked this ambition back a little, because
+one of the things I have found (at least true in the past, and I'm not yet sure if it is actually
+true for our own current development environment) is that most debuggers do a relatively piss-pour
+job of helping you step through code line-by-line when that code has been #include'd into some other
+source file.  Likewise, stack tracebacks are similarly confused when you do that.  I needed some
+reliable tracebacks, so I have temporarily hacked that back.
+
+With that intended design temporarily hacked back, you get to compile only one SPMMM variant at a
+time.  Do that by editing test_blas.c, and changing line 35 accordingly.  Then go to line 64 of
+Makefile.x86 and make the corresponding change.  While there, notice on line 58 that there is only
+a minimal amount of stuff being compiled -- none of the BLAS/LINPACK functions, none of the single.c,
+double.c, complex.c, complex_double.c "wrapper" functions.  I will reintroduce these later, but for
+now I am keeping the hack-back, to keep things simple.
+
+
+test_blas.c is nothing but a wrapper, to call the BLAS/LINPACK function I presently want to unit test.
+It presently calls ztest_spmmm, the complex_double variant.
+
+test_spmmm.c contains a very simple unit test dataset for testing the current variant of spmmm (which
+is presently zspmm).
+
+Then spmmm.c is, of course, the whole ball of wax for doing sparse matrix time sparse matrix.
+
+To build, go to the BLAS source directory, and type
+
+make -f Makefile.x86 clean;  make -f Makefile.x86 debug run
+
+(I like to do a "clean" every time; and I like to be able to get a backtrace with GDB when it
+crashes, which is the reason for the "debug" flag, of course.)
+
+Unlike the BLAS/LINPACK sources, this source actually works with the function-call-and-return
+"legacy" API (and in fact, ONLY with that; I have NOT provided an EDT-creation-and-continuation-out
+API -- yet).
+
+It is very probable that you will get a SegFault upon your first attempt to use this code.  See
+redmine #580 for why this is the case.  I see this OCR bug as the responsibility of one on the OCR
+team to validate the fix for, but the apparent fix that I outlined in the bug report (the last note
+I added thereto!) is what seems to work for me.  For your convenience, here is what you need to do:
+
+The work around is to go into .../ocr/src/api/extensions/ocr-legacy.c and make a wee patch.  The
+code is segfaulting at line 70, which is inside an else-clause of an if statement.  If you hoist
+the call to getCurrentEnv from the then-clause of that same if statement, to just above the if
+statement, the code will work.
+
+With that done, the unit test should work for you, almost.  The Makefile.x86 calls for a .postrun
+which is supposed to compile and execute convertOut.c to examine the output of the unit test.
+That is part of the proper discipline for preparing a unit test for auto-magic firing by Gerrit,
+but I have NOT yet done that part.  This is the reason for the "Cannot open input or output files"
+message that occurs AFTER my unit test finishes and prints its final good-bye message.  It might
+be a bit disconcerting, but it really isn't of any consequence for foreground unit testing.
+
+Though this unit test works, it is the only unit test I have written so far, and there certainly
+is a great need to do much more thorough testing.  If you decide to craft unit tests of your own,
+please be aware of the following fundamentals:
+
+*  Input matrices to SPMMM must be in "canonical" form.  They are in ELL format, but "canonical"
+   means that the non-zero elements of each row must be in sorted order.  They must be monotonically
+   increasing, which is the fancy way of saying not only in sorted order but also there cannot be
+   two or more nonzero values for the same element.
+
+   In the long run, if canonicity is not easy for the calling application to assure, it will be far
+   cheaper for me to detect non-canonicity in the input matrix and fix it, than for the calling
+   application to make a separate pass over the data to canonize it.  But I will need agreement
+   from the calling application that it is okay for me to modify the contents of the original
+   input storage locations, as I do the canonizing.
+
+*  The API provides a means for the caller to give a subjective hint as to the density/sparsity
+   of the input matrices.  The more accurate it is, the more wisely I can arrive at an appropriate
+   degree of tiling, i.e. factoring down the work such that in most cases, the relevant data will
+   be brought closer to the computation agents that use them.  But this is entirely non-fatal if
+   we don't get it perfectly grokked.  If the caller doesn't know the exact density/sparsity
+   statistics, it can provide an educated guess, or it can provide "-1" for "I have no clue", in
+   which case I use alternate criteria for coming up with the factoring.
+
+*  The output is also in ELL format, and it is in canonical form.  The density/sparsity statistics
+   for the output matrix are fed back to the caller, so that it can use them to feed into another
+   call to SPMMM in the case of the output matrix of one call becoming the input matrix of another.
+
+*  SPMMM also looks for the case when the output ELL data structure provides rows that are too short
+   to host what would otherwise be the full set of non-zero elements in a too-long row.  You only
+   get ONE error status out, even if there are multiple errors.  If there are multiple errors I make
+   no guarantee that you will get a deterministic error status (might vary from one run to another)
+   nor that you will get the error status for the most agregious case, the lowest or highest row
+   number, nor any other possible sorting criteria you might have expected.  I handle the problem(s)
+   by throwing away some of the non-zero elements in the too-long row(s), but here again I make no
+   promise as to which ones will be thrown away, or that it will even be deterministic.  BKM:
+   Fix the error for one error code, then run again and keep fixing errors until they stop
+   happening.
+
+In case anyone is curious, the innards of this implementation do NOT use the ELL format by which
+the input arrives and the output goes out.  Rather, internally, I used a modified CRS format for
+input matrix A, and a modified CCS format for input matrix B;  and I actually have a partial CCS
+format of A and a CRS format of B for figuring out how much storage I will need for the modified
+CRS-format tiles of C.  If I need to wax all Mr. Architect on all that, I can write it up, as
+people express an interest.  Otherwise, it's all just inside a nice black box for you.
+
+
+Regards,
+Brian R. Nickerson
