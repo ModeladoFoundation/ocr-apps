@@ -1,0 +1,11 @@
+#name of MPI C compiler, e.g. mpiicc, mpicc
+MPICC=mpiicc
+
+#name of C compiler, e.g. icc, xlc, gcc
+CC=icc
+
+#name of compile line flag enabling OpenMP, e.g. -qopenmp, -openmp, -fopenmp
+OPENMPFLAG=
+
+#default compiler optimization flags
+DEFAULT_OPT_FLAGS=-O3

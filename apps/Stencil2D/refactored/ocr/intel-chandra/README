@@ -1,0 +1,11 @@
+Running:
+
+make -f Makefile.<OCR_TYPE> run
+
+where OCR_TYPE can be
+x86
+x86-mpi
+tg-x86
+tg
+
+#Edit the WORKLOAD_ARGS variable in the corresponding Makefile.OCR_TYPE to change the problem size/iterations
