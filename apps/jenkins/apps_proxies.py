@@ -93,7 +93,7 @@ job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel',
-                  'WORKLOAD_ARGS': '',
+                  'WORKLOAD_ARGS': ' -r 4 -t 1600 4 8',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/hpgmg/refactored/mpilite/intel/install'}
 }
 
@@ -295,3 +295,42 @@ job_ocr_run_kernel_lulesh2pnnl_x86_remote_regression = {
                   'WORKLOAD_BUILD_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/build',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/install' }
 }
+
+job_ocr_build_kernel_SNAPlite_x86_regression = {
+    'name': 'ocr-build-kernel-SNAPlite-x86-regression',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-kernel-regression',
+    'run-args': 'snap_lite x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/',
+                  'WORKLOAD_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/build',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/install'}
+}
+
+job_ocr_run_kernel_SNAPlite = {
+    'name': 'ocr-run-kernel-SNAPlite-x86-remote-regression',
+    'depends': ('ocr-build-kernel-SNAPlite-x86-regression',),
+    'jobtype': 'ocr-run-kernel-remote-regression',
+    'run-args': 'snap_lite x86 ocr-run-kernel-SNAPlite-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/',
+                  'WORKLOAD_ARGS': '-r 4 -t 1600  --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04',
+                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/install'}
+}
+
+#job_ocr_run_kernel_SNAPlite_scaling = {
+#    'name': 'ocr-run-kernel-SNAPlite-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-SNAPlite-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-scaling',
+#    'run-args': 'snap_lite x86 ocr-run-kernel-SNAPlite-x86-remote-scaling 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+#                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/',
+#                  'WORKLOAD_ARGS': '-r 4 -t 1600',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/SNAP/refactored/mpilite/intel/install'}
+#}
