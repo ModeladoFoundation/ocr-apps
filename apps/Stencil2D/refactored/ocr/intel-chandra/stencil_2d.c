@@ -1,5 +1,9 @@
 #include "ocr.h"
 #include "ocr-std.h"
+#ifndef TG_ARCH
+#include "time.h"
+#endif
+#include "timers.h"
 #include <stdlib.h>
 #include <math.h>
 
@@ -29,6 +33,18 @@
 #define IN(i,j) ( xIn[ INDEXIN(i-ib,j-jb) ] )
 #define OUT(i,j) ( xOut[ INDEXOUT(i-ib,j-jb) ] )
 
+static void timestamp(const char* msg)
+{
+#ifdef TG_ARCH
+  PRINTF(msg);
+#else
+  time_t t= time(NULL);
+  char* timeString = ctime(&t);
+  timeString[24] = '\0';
+  PRINTF("%s: %s\n", timeString, msg);
+#endif
+}
+
 typedef struct
 {
     ocrEdt_t FNC;
@@ -48,8 +64,7 @@ typedef struct
 
 typedef struct
 {
-    s64 id, lb, ub, np; // rank id, local bounds, local points
-    s64 id_x, id_y, ib, ie, jb, je, np_x, np_y;
+    s64 id, id_x, id_y, ib, ie, jb, je, np_x, np_y;
     s64 itimestep;
 } settingsH_t;
 
@@ -80,6 +95,7 @@ typedef struct
 typedef struct
 {
     s64 itimestep; //tag
+    ocrGuid_t DBK_timers;
     ocrGuid_t EDT_reduction;
     ocrGuid_t DBK_gSettingsH; // Commandline parameters/settings
     ocrGuid_t DBK_gSettingsHs; //-> Broadcasted parameters/settings gSettingsH_t[]
@@ -113,6 +129,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
                     ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+    ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
@@ -168,6 +185,20 @@ ocrGuid_t FNC_init_gSettingsH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
     PTR_gSettingsH->NR_Y = (s64) Num_procsy;
     //PRINTF("NR_X = %d NR_Y = %d\n", PTR_gSettingsH->NR_X, PTR_gSettingsH->NR_Y);
 
+    if( paramc == 1 && paramv[0] == 1 )
+    {
+    PRINTF("\n");
+    PRINTF("OCR stencil execution on 2D grid\n");
+    PRINTF("Grid size                   = %dx%d\n", PTR_gSettingsH->NP_X, PTR_gSettingsH->NP_Y);
+    PRINTF("Number of tiles             = %d\n", PTR_gSettingsH->NR);
+    PRINTF("Tiles in x & y-directions   = %dx%d\n", PTR_gSettingsH->NR_X, PTR_gSettingsH->NR_Y);
+    PRINTF("Radius of stencil           = %d\n", PTR_gSettingsH->HR);
+    PRINTF("Type of stencil             = star\n");
+    PRINTF("Data type                   = double precision\n");
+    PRINTF("Number of iterations        = %d\n", PTR_gSettingsH->NT);
+    PRINTF("\n");
+    }
+
     return NULL_GUID;
 }
 
@@ -198,10 +229,12 @@ ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     MyOcrTaskStruct_t TS_init_gSettingsH;
 
     TS_init_gSettingsH.FNC = FNC_init_gSettingsH;
-    ocrEdtTemplateCreate( &TS_init_gSettingsH.TML, TS_init_gSettingsH.FNC, 0, 2 );
+    ocrEdtTemplateCreate( &TS_init_gSettingsH.TML, TS_init_gSettingsH.FNC, 1, 2 );
+
+    u64 print_info = 1;
 
     ocrEdtCreate( &TS_init_gSettingsH.EDT, TS_init_gSettingsH.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, &print_info, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, NULL_GUID, &TS_init_gSettingsH.OET );
 
     ocrAddDependence( TS_init_gSettingsH.OET, TS_init_gSettingsH_OET, 0, DB_MODE_NULL );
@@ -209,6 +242,7 @@ ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH_0, TS_init_gSettingsH.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_init_gSettingsH.EDT, _idep++, DB_MODE_ITW );
+    ocrDbRelease( PTR_globalH->DBK_gSettingsH);
 
     ocrGuid_t* PTR_gSettingsHs;
     ocrDbCreate( &PTR_globalH->DBK_gSettingsHs, (void **) &PTR_gSettingsHs, sizeof(ocrGuid_t)*NR,
@@ -497,6 +531,23 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     globalH_t *PTR_globalH = depv[0].ptr;
 
+    timer* PTR_timers;
+    ocrDbCreate( &PTR_globalH->DBK_timers, (void**) &PTR_timers, sizeof(timer)*number_of_timers,
+                 0, NULL_GUID, NO_ALLOC );
+    int i;
+    for( i = 0; i < number_of_timers; i++ )
+    {
+        PTR_timers[i].start = 0;
+        PTR_timers[i].total = 0;
+        PTR_timers[i].count = 0;
+        PTR_timers[i].elapsed = 0;
+    }
+    profile_start( total_timer, PTR_timers );
+    ocrDbRelease(PTR_globalH->DBK_timers);
+
+    ocrGuid_t TS_globalMultiTimestepper_OET;
+    ocrEventCreate( &TS_globalMultiTimestepper_OET, OCR_EVENT_STICKY_T, false );
+
     MyOcrTaskStruct_t TS_globalMultiTimestepper; _paramc = 1; _depc = 2;
 
     u64 computeSpawner_paramv[1] = { NULL_GUID };
@@ -506,11 +557,53 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     ocrEdtCreate( &TS_globalMultiTimestepper.EDT, TS_globalMultiTimestepper.TML,
                   EDT_PARAM_DEF, computeSpawner_paramv, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
+                  EDT_PROP_FINISH, NULL_GUID, &TS_globalMultiTimestepper.OET );
+
+    ocrAddDependence( TS_globalMultiTimestepper.OET, TS_globalMultiTimestepper_OET, 0, DB_MODE_NULL );
 
     _idep = 0;
     ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+
+    MyOcrTaskStruct_t TS_timer; _paramc = 0; _depc = 3;
+
+    TS_timer.FNC = FNC_timer;
+    ocrEdtTemplateCreate( &TS_timer.TML, TS_timer.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_timer.EDT, TS_timer.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_timer.OET );
+
+    _idep = 0;
+    ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_timer.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_globalH->DBK_timers, TS_timer.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_globalMultiTimestepper_OET, TS_timer.EDT, _idep++, DB_MODE_NULL );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    gSettingsH_t *PTR_gSettingsH = depv[0].ptr;
+    timer* PTR_timers = depv[1].ptr;
+
+    profile_stop( total_timer, PTR_timers );
+
+    s64 NT = PTR_gSettingsH->NT;
+    s64 NR = PTR_gSettingsH->NR;
+    s64 HR = PTR_gSettingsH->HR;
+    s64 NP_X = PTR_gSettingsH->NP_X;
+    s64 NP_Y = PTR_gSettingsH->NP_Y;
+
+    double f_active_points = (double) ( (NP_X - 2*HR) * (NP_Y - 2*HR) );
+
+    double stencil_time = get_elapsed_time( total_timer, PTR_timers );
+    double avgtime = stencil_time/(double)NT;
+
+    int stencil_size = 4*HR + 1;
+    double flops = (double) (2*stencil_size+1) * f_active_points;
+    PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",
+           1.0E-06 * flops/avgtime, avgtime);
 
     return NULL_GUID;
 }
@@ -1483,6 +1576,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             }
         }
         ocrEventSatisfy( PTR_events->EVT_reduction, DBK_refNorm);
+        ocrDbRelease(DBK_refNorm);
         ocrAddDependence( PTR_events->EVT_reduction, PTR_globalH->EDT_reduction, 1+id, DB_MODE_RO );
 
     }
@@ -1537,6 +1631,8 @@ ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
     ocrGuid_t DBK_globalH = depv[0].guid;
 
+    globalH_t* PTR_globalH = depv[0].ptr;
+
     ocrDbDestroy( DBK_globalH );
 
     ocrShutdown();
@@ -1580,12 +1676,12 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     }
 
-    PRINTF("npoints %d\n", npoints);
-    PRINTF("nranks %d\n", nranks);
-    PRINTF("ntimesteps %d\n", ntimesteps);
-    PRINTF("ntimesteps_sync %d\n", ntimesteps_sync);
-    PRINTF("itimestep0 %d\n", itimestep0);
-    PRINTF("halo_radius %d\n", halo_radius);
+    //PRINTF("npoints %d\n", npoints);
+    //PRINTF("nranks %d\n", nranks);
+    //PRINTF("ntimesteps %d\n", ntimesteps);
+    //PRINTF("ntimesteps_sync %d\n", ntimesteps_sync);
+    //PRINTF("itimestep0 %d\n", itimestep0);
+    //PRINTF("halo_radius %d\n", halo_radius);
 
     ocrGuid_t DBK_gSettingsH_0;
     gSettingsH_t* PTR_gSettingsH_0;
@@ -1627,7 +1723,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     MyOcrTaskStruct_t TS_globalInit, TS_globalCompute, TS_globalFinalize;
 
     TS_globalInit.FNC = FNC_globalInit;
-    ocrEdtTemplateCreate( &TS_globalInit.TML, TS_globalInit.FNC, 0, 2 );
+    ocrEdtTemplateCreate( &TS_globalInit.TML, TS_globalInit.FNC, 0, 3 );
 
     ocrEdtCreate( &TS_globalInit.EDT, TS_globalInit.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
@@ -1638,6 +1734,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH_0, TS_globalInit.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_globalH, TS_globalInit.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_settingsInit_OET, TS_globalInit.EDT, _idep++, DB_MODE_NULL );
 
     TS_globalCompute.FNC = FNC_globalCompute;
     ocrEdtTemplateCreate( &TS_globalCompute.TML, TS_globalCompute.FNC, 0, 2 );

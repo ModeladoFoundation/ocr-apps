@@ -62,7 +62,7 @@ TARGET := stencil_2d
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := stencil_2d.c
+SRCS := stencil_2d.c timers.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
@@ -79,7 +79,7 @@ LDFLAGS := -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O0
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 

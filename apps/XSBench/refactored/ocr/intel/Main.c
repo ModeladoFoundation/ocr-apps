@@ -1262,7 +1262,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEventCreate( &TS_globalFinalize_OET, OCR_EVENT_STICKY_T, false );
 
     MyOcrTaskStruct_t TS_globalInit, TS_globalCompute, TS_globalFinalize;
-    _paramc = 0; _depc = 2;
+    _paramc = 0; _depc = 3;
 
     TS_globalInit.FNC = FNC_globalInit;
     ocrEdtTemplateCreate( &TS_globalInit.TML, TS_globalInit.FNC, _paramc, _depc );
@@ -1276,7 +1276,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     _idep = 0;
     ocrAddDependence( DBK_InputsH_0, TS_globalInit.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_globalH, TS_globalInit.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( TS_settingsInit_OET, TS_globalInit.EDT, _idep++, DB_MODE_NULL );
 
+    _paramc = 0; _depc = 2;
     TS_globalCompute.FNC = FNC_globalCompute;
     ocrEdtTemplateCreate( &TS_globalCompute.TML, TS_globalCompute.FNC, _paramc, _depc );
 
@@ -1290,6 +1292,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_globalH, TS_globalCompute.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( TS_globalInit_OET, TS_globalCompute.EDT, _idep++, DB_MODE_NULL);
 
+    _paramc = 0; _depc = 2;
     TS_globalFinalize.FNC = FNC_globalFinalize;
     ocrEdtTemplateCreate( &TS_globalFinalize.TML, TS_globalFinalize.FNC, _paramc, _depc );
 
