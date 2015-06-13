@@ -69,7 +69,8 @@ Main.c \
 io.c \
 CalculateXS.c \
 XSutils.c \
-Materials.c
+Materials.c \
+timers.c
 #OBJS := $(SRCS:.c=.o)
 
 #INCS := XSbench_header.h
@@ -89,7 +90,7 @@ LDFLAGS := -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2 -std=gnu99
+all:	CFLAGS += -O3 -std=gnu99
 all:	TARGETS := all
 all:	default
 

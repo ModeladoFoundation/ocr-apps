@@ -17,6 +17,7 @@
 
 #include "ocr.h"
 #include "XSbench_header.h"
+#include "timers.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -58,6 +59,7 @@ typedef struct
 
 typedef struct
 {
+    ocrGuid_t DBK_timers;
     ocrGuid_t DBK_InputsH; // Commandline parameters/settings
     ocrGuid_t DBK_InputsHs; //-> Broadcasted parameters/settings Inputs[]
     ocrGuid_t DBK_rankHs; //--> rankH_t[]
@@ -82,6 +84,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
                     ocrGuid_t FNC_microxs(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                         ocrGuid_t FNC_microxs_0(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                             ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+    ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
@@ -756,6 +759,23 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     globalH_t *PTR_globalH = depv[0].ptr;
 
+    timer* PTR_timers;
+    ocrDbCreate( &PTR_globalH->DBK_timers, (void**) &PTR_timers, sizeof(timer)*number_of_timers,
+                 0, NULL_GUID, NO_ALLOC );
+    int i;
+    for( i = 0; i < number_of_timers; i++ )
+    {
+        PTR_timers[i].start = 0;
+        PTR_timers[i].total = 0;
+        PTR_timers[i].count = 0;
+        PTR_timers[i].elapsed = 0;
+    }
+    profile_start( total_timer, PTR_timers );
+    ocrDbRelease(PTR_globalH->DBK_timers);
+
+    ocrGuid_t TS_globalComputeSpawner_OET;
+    ocrEventCreate( &TS_globalComputeSpawner_OET, OCR_EVENT_STICKY_T, false );
+
     MyOcrTaskStruct_t TS_globalComputeSpawner; _paramc = 0; _depc = 3;
 
     TS_globalComputeSpawner.FNC = FNC_globalComputeSpawner;
@@ -763,12 +783,42 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     ocrEdtCreate( &TS_globalComputeSpawner.EDT, TS_globalComputeSpawner.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
+                  EDT_PROP_FINISH, NULL_GUID, &TS_globalComputeSpawner.OET );
+
+    ocrAddDependence( TS_globalComputeSpawner.OET, TS_globalComputeSpawner_OET, 0, DB_MODE_NULL );
 
     _idep = 0;
     ocrAddDependence( PTR_globalH->DBK_InputsH, TS_globalComputeSpawner.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_globalH->DBK_InputsHs, TS_globalComputeSpawner.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_globalH->DBK_rankHs, TS_globalComputeSpawner.EDT, _idep++, DB_MODE_CONST );
+
+    MyOcrTaskStruct_t TS_timer; _paramc = 0; _depc = 3;
+
+    TS_timer.FNC = FNC_timer;
+    ocrEdtTemplateCreate( &TS_timer.TML, TS_timer.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_timer.EDT, TS_timer.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_timer.OET );
+
+    _idep = 0;
+    ocrAddDependence( PTR_globalH->DBK_InputsH, TS_timer.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_globalH->DBK_timers, TS_timer.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_globalComputeSpawner_OET, TS_timer.EDT, _idep++, DB_MODE_NULL );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    Inputs *PTR_InputsH = depv[0].ptr;
+    timer* PTR_timers = depv[1].ptr;
+
+    profile_stop( total_timer, PTR_timers );
+    double runtime = get_elapsed_time( total_timer, PTR_timers );
+
+    PRINTF("\n");
+    print_results( *PTR_InputsH, 0, runtime, PTR_InputsH->nprocs );
 
     return NULL_GUID;
 }
@@ -799,7 +849,7 @@ ocrGuid_t FNC_globalComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     TS_rankCompute.FNC = FNC_rankCompute;
     ocrEdtTemplateCreate( &TS_rankCompute.TML, TS_rankCompute.FNC, _paramc, _depc );
-    u64 ilookup = 0, NL_SYNC = 100;
+    u64 ilookup = 0, NL_SYNC = 1000;
 
     for( i = 0; i < NR; i++ )
     {

@@ -37,19 +37,19 @@ void center_print(const char *s, int width)
     fputs("\n", stdout);
 }
 
-void print_results( Inputs in, int mype, double runtime, int nprocs,
-    unsigned long long vhash )
+void print_results( Inputs in, int mype, double runtime, int nprocs )
+//    unsigned long long vhash )
 {
     // Calculate Lookups per sec
     int lookups_per_sec = (int) ((double) in.lookups / runtime);
 
-    // If running in MPI, reduce timing statistics and calculate average
-    #ifdef MPI
-    int total_lookups = 0;
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Reduce(&lookups_per_sec, &total_lookups, 1, MPI_INT,
-               MPI_SUM, 0, MPI_COMM_WORLD);
-    #endif
+    //// If running in MPI, reduce timing statistics and calculate average
+    //#ifdef MPI
+    //int total_lookups = 0;
+    //MPI_Barrier(MPI_COMM_WORLD);
+    //MPI_Reduce(&lookups_per_sec, &total_lookups, 1, MPI_INT,
+    //           MPI_SUM, 0, MPI_COMM_WORLD);
+    //#endif
 
     // Print output
     if( mype == 0 )
@@ -75,18 +75,18 @@ void print_results( Inputs in, int mype, double runtime, int nprocs,
         printf("Lookups/s:   ");
         fancy_int(lookups_per_sec);
         #endif
-        #ifdef VERIFICATION
-        printf("Verification checksum: %llu\n", vhash);
-        #endif
+        //#ifdef VERIFICATION
+        //printf("Verification checksum: %llu\n", vhash);
+        //#endif
         border_print();
 
         // For bechmarking, output lookup/s data to file
-        if( SAVE )
-        {
-            FILE * out = fopen( "results.txt", "a" );
-            fprintf(out, "%d\t%d\n", in.nthreads, lookups_per_sec);
-            fclose(out);
-        }
+        //if( SAVE )
+        //{
+        //    FILE * out = fopen( "results.txt", "a" );
+        //    fprintf(out, "%d\t%d\n", in.nthreads, lookups_per_sec);
+        //    fclose(out);
+        //}
     }
 }
 
