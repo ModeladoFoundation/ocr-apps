@@ -68,6 +68,7 @@ io.c \
 CalculateXS.c \
 XSutils.c \
 Materials.c \
+qsort.c \
 timers.c
 #OBJS := $(SRCS:.c=.o)
 

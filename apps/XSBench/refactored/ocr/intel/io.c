@@ -9,7 +9,7 @@
 void logo(int version)
 {
     border_print();
-    printf(
+    PRINTF(
     "                   __   __ ___________                 _                        \n"
     "                   \\ \\ / //  ___| ___ \\               | |                       \n"
     "                    \\ V / \\ `--.| |_/ / ___ _ __   ___| |__                     \n"
@@ -18,10 +18,9 @@ void logo(int version)
     "                   \\/   \\/\\____/\\____/ \\___|_| |_|\\___|_| |_|                   \n\n"
     );
     border_print();
-    center_print("Developed at Argonne National Laboratory", 79);
+    center_print("Ported to OCR at Intel", 79);
     char v[100];
-    sprintf(v, "Version: %d", version);
-    center_print(v, 79);
+    center_print("Version: 1.0", 79); //Hard-coded
     border_print();
 }
 
@@ -31,10 +30,11 @@ void center_print(const char *s, int width)
     int length = strlen(s);
     int i;
     for (i=0; i<=(width-length)/2; i++) {
-        fputs(" ", stdout);
+        PRINTF(" ");
+
     }
-    fputs(s, stdout);
-    fputs("\n", stdout);
+    PRINTF("%s", s);
+    PRINTF("\n");
 }
 
 void print_results( Inputs in, int mype, double runtime, int nprocs )
@@ -42,14 +42,6 @@ void print_results( Inputs in, int mype, double runtime, int nprocs )
 {
     // Calculate Lookups per sec
     int lookups_per_sec = (int) ((double) in.lookups / runtime);
-
-    //// If running in MPI, reduce timing statistics and calculate average
-    //#ifdef MPI
-    //int total_lookups = 0;
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //MPI_Reduce(&lookups_per_sec, &total_lookups, 1, MPI_INT,
-    //           MPI_SUM, 0, MPI_COMM_WORLD);
-    //#endif
 
     // Print output
     if( mype == 0 )
@@ -59,34 +51,27 @@ void print_results( Inputs in, int mype, double runtime, int nprocs )
         border_print();
 
         // Print the results
-        printf("Threads:     %d\n", in.nthreads);
+        PRINTF("Threads:     %d\n", in.nthreads);
         #ifdef MPI
-        printf("MPI ranks:   %d\n", nprocs);
+        PRINTF("MPI ranks:   %d\n", nprocs);
         #endif
         #ifdef MPI
-        printf("Lookups:     "); fancy_int(in.lookups);
-        printf("Total Lookups/s:            ");
+        PRINTF("Lookups:     "); fancy_int(in.lookups);
+        PRINTF("Total Lookups/s:            ");
         fancy_int(total_lookups);
-        printf("Avg Lookups/s per MPI rank: ");
+        PRINTF("Avg Lookups/s per MPI rank: ");
         fancy_int(total_lookups / nprocs);
         #else
-        printf("Runtime:     %.3lf seconds\n", runtime);
-        printf("Lookups:     "); fancy_int(in.lookups);
-        printf("Lookups/s:   ");
+        PRINTF("Runtime:     %.3f seconds\n", runtime);
+        PRINTF("Lookups:     "); fancy_int(in.lookups);
+        PRINTF("Lookups/s:   ");
         fancy_int(lookups_per_sec);
         #endif
         //#ifdef VERIFICATION
-        //printf("Verification checksum: %llu\n", vhash);
+        //PRINTF("Verification checksum: %llu\n", vhash);
         //#endif
         border_print();
 
-        // For bechmarking, output lookup/s data to file
-        //if( SAVE )
-        //{
-        //    FILE * out = fopen( "results.txt", "a" );
-        //    fprintf(out, "%d\t%d\n", in.nthreads, lookups_per_sec);
-        //    fclose(out);
-        //}
     }
 }
 
@@ -98,23 +83,23 @@ void print_inputs(Inputs in, int nprocs, int version )
     center_print("INPUT SUMMARY", 79);
     border_print();
     #ifdef VERIFICATION
-    printf("Verification Mode:            on\n");
+    PRINTF("Verification Mode:            on\n");
     #endif
-    printf("Materials:                    %d\n", in.n_mats);
-    printf("H-M Benchmark Size:           %s\n", in.HM);
-    printf("Total Nuclides:               %ld\n", in.n_isotopes);
-    printf("Gridpoints (per Nuclide):     ");
+    PRINTF("Materials:                    %d\n", in.n_mats);
+    PRINTF("H-M Benchmark Size:           %s\n", in.HM);
+    PRINTF("Total Nuclides:               %ld\n", in.n_isotopes);
+    PRINTF("Gridpoints (per Nuclide):     ");
     fancy_int(in.n_gridpoints);
-    printf("Unionized Energy Gridpoints:  ");
+    PRINTF("Unionized Energy Gridpoints:  ");
     fancy_int(in.n_isotopes*in.n_gridpoints);
-    printf("XS Lookups:                   "); fancy_int(in.lookups);
+    PRINTF("XS Lookups:                   "); fancy_int(in.lookups);
     #ifdef MPI
-    printf("MPI Ranks:                    %d\n", nprocs);
-    printf("OMP Threads per MPI Rank:     %d\n", in.nthreads);
-    printf("Mem Usage per MPI Rank (MB):  "); fancy_int(mem_tot);
+    PRINTF("MPI Ranks:                    %d\n", nprocs);
+    PRINTF("OMP Threads per MPI Rank:     %d\n", in.nthreads);
+    PRINTF("Mem Usage per MPI Rank (MB):  "); fancy_int(mem_tot);
     #else
-    printf("Threads:                      %d\n", in.nthreads);
-    printf("Est. Memory Usage (MB):       "); fancy_int(mem_tot);
+    PRINTF("Threads:                      %d\n", in.nthreads);
+    PRINTF("Est. Memory Usage (MB):       "); fancy_int(mem_tot);
     #endif
     border_print();
     center_print("INITIALIZATION", 79);
@@ -123,7 +108,7 @@ void print_inputs(Inputs in, int nprocs, int version )
 
 void border_print(void)
 {
-    printf(
+    PRINTF(
     "==================================================================="
     "=============\n");
 }
@@ -131,36 +116,41 @@ void border_print(void)
 // Prints comma separated integers - for ease of reading
 void fancy_int( long a )
 {
+    #if 0   //PRINTF doesn't support fancy format specifiers (e.g., %03ld for leading zeros)
     if( a < 1000 )
-        printf("%ld\n",a);
+        PRINTF("%ld\n",a);
 
     else if( a >= 1000 && a < 1000000 )
-        printf("%ld,%03ld\n", a / 1000, a % 1000);
+        PRINTF("%ld,%03ld\n", a / 1000, a % 1000);
 
     else if( a >= 1000000 && a < 1000000000 )
-        printf("%ld,%03ld,%03ld\n",a / 1000000,(a % 1000000) / 1000,a % 1000 );
+        PRINTF("%ld,%03ld,%03ld\n",a / 1000000,(a % 1000000) / 1000,a % 1000 );
 
     else if( a >= 1000000000 )
-        printf("%ld,%03ld,%03ld,%03ld\n",
+        PRINTF("%ld,%03ld,%03ld,%03ld\n",
                a / 1000000000,
                (a % 1000000000) / 1000000,
                (a % 1000000) / 1000,
                a % 1000 );
     else
-        printf("%ld\n",a);
+        PRINTF("%ld\n",a);
+    #endif
+
+    PRINTF("%ld\n",a);
 }
 
 void print_CLI_error(void)
 {
-    printf("Usage: ./XSBench <options>\n");
-    printf("Options include:\n");
-    printf("  -t <threads>     Number of OpenMP threads to run\n");
-    printf("  -s <size>        Size of H-M Benchmark to run (small, large, XL, XXL)\n");
-    printf("  -g <gridpoints>  Number of gridpoints per nuclide (overrides -s defaults)\n");
-    printf("  -l <lookups>     Number of Cross-section (XS) lookups\n");
-    printf("Default is equivalent to: -s large -l 15000000\n");
-    printf("See readme for full description of default run values\n");
-    exit(4);
+    PRINTF("Usage: ./XSBench <options>\n");
+    PRINTF("Options include:\n");
+    PRINTF("  -t <threads>     Number of OpenMP threads to run\n");
+    PRINTF("  -s <size>        Size of H-M Benchmark to run (small, large, XL, XXL)\n");
+    PRINTF("  -g <gridpoints>  Number of gridpoints per nuclide (overrides -s defaults)\n");
+    PRINTF("  -l <lookups>     Number of Cross-section (XS) lookups\n");
+    PRINTF("Default is equivalent to: -s large -l 15000000\n");
+    PRINTF("See readme for full description of default run values\n");
+    ocrShutdown();
+    //exit(4);
 }
 
 Inputs read_CLI( int argc, char * argv[] )
@@ -209,7 +199,7 @@ Inputs read_CLI( int argc, char * argv[] )
             if( ++i < argc )
             {
                 user_g = 1;
-                input.n_gridpoints = atol(getArgv(argv, i));
+                input.n_gridpoints = atoi(getArgv(argv, i)); //TODO: we need atol here but we don't have it yet
             }
             else
                 print_CLI_error();

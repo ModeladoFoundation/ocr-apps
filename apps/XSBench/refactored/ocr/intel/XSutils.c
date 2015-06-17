@@ -1,28 +1,5 @@
 #include "XSbench_header.h"
 
-// Allocates nuclide matrix
-NuclideGridPoint ** gpmatrix(size_t m, size_t n)
-{
-    int i,j;
-    NuclideGridPoint * full = (NuclideGridPoint *) malloc( m * n *
-                              sizeof( NuclideGridPoint ) );
-    NuclideGridPoint ** M = (NuclideGridPoint **) malloc( m *
-                              sizeof(NuclideGridPoint *) );
-
-    for( i = 0, j=0; i < m*n; i++ )
-        if( i % n == 0 )
-            M[j++] = &full[i];
-
-    return M;
-}
-
-// Frees nuclide matrix
-void gpmatrix_free( NuclideGridPoint ** M )
-{
-    free( *M );
-    free( M );
-}
-
 // Compare function for two grid points. Used for sorting during init
 int NGP_compare( const void * a, const void * b )
 {
@@ -38,8 +15,6 @@ int NGP_compare( const void * a, const void * b )
     else
         return 0;
 }
-
-
 
 // Binary Search function for nuclide grid
 // Returns ptr to energy less than the quarry that is closest to the quarry
@@ -108,7 +83,7 @@ unsigned int hash(unsigned char *str, int nbins)
     unsigned int hash = 5381;
     int c;
 
-    while (c = *str++)
+    while (c == *str++)
         hash = ((hash << 5) + hash) + c;
 
     return hash % nbins;
