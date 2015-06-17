@@ -110,10 +110,18 @@ typedef struct messageContext_t
 #endif
 } messageContext_t, *messageContextP_t;
 
+typedef struct globalDBContext_t
+{
+    ocrGuid_t dbGuid;
+    void * addrPtr;
+} globalDBContext_t, *globalDBContextP_t;
+
+
 #include <extensions/ocr-runtime-itf.h>
 
 #define RANK_CONTEXT_SLOT 0
 #define MESSAGE_CONTEXT_SLOT 1
+#define GLOBAL_DB_SLOT 2
 
 static inline rankContextP_t getRankContext() {
     return ((rankContextP_t)( ocrElsUserGet(RANK_CONTEXT_SLOT)));
@@ -121,6 +129,23 @@ static inline rankContextP_t getRankContext() {
 static inline messageContextP_t getMessageContext() {
     return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
 }
+
+static ocrGuid_t getGlobalDBGuid()
+{
+    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+    return globalDBContext->dbGuid;
+}
+
+static unsigned long * getGlobalDBAddr()
+{
+    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+    return globalDBContext->addrPtr;
+}
+
+extern void check_ocr_status(u8 status, char * functionName);
+
 
 int __mpi_ocr_TRUE(void);
 

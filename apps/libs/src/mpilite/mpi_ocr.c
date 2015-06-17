@@ -19,6 +19,8 @@
 
 #define DEBUG_MPI 1
 
+extern ocrGuid_t __ffwd_init(void * ffwd_add_ptr);
+
 void ERROR(char *s)
 {
     PRINTF("ERROR: %s; exiting\n",s); exit(1);
@@ -118,6 +120,18 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     // functions are called.
     ocrElsUserSet(RANK_CONTEXT_SLOT, (ocrGuid_t) &rankContext);
     ocrElsUserSet(MESSAGE_CONTEXT_SLOT, (ocrGuid_t) &messageContext);
+
+    // globals2db support
+    void * ffwd_addr_p=NULL;
+    ocrGuid_t ffwd_db_guid = NULL;
+    ffwd_db_guid = __ffwd_init(&ffwd_addr_p);
+    globalDBContext_t globalDBContext =
+        {
+            .dbGuid = ffwd_db_guid,
+            .addrPtr = ffwd_addr_p
+        };
+    ocrElsUserSet(GLOBAL_DB_SLOT, (ocrGuid_t)&globalDBContext);
+
 
     // Turn the argcArgv datablock into a "native" C argc & argv
     const u64 argc = getArgc(argcArgv->ptr);
@@ -423,3 +437,37 @@ int __mpi_ocr_TRUE(void) {
 }
 
 
+// check the results from an OCR API call.
+void check_ocr_status(u8 status, char * functionName)
+{
+    switch (status)
+    {
+      case OCR_ENXIO:
+        printf("%s: Error: Affinity is invalid.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_ENOMEM:
+        printf("%s: Error: Allocation failed because of insufficent memory.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_EINVAL:
+        printf("%s: Error: Invalid Arguments.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_EBUSY:
+        printf("%s: Error: The agent that is needed to process this request is busy.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_EPERM:
+        printf("%s: Error: Trying to allocate a restricted area of memory.\n", functionName);
+        exit(1);
+        break;
+
+      default:
+        ;  //  it is OK
+    }
+}
