@@ -19,7 +19,7 @@
 #define LEN6 6
 
 int arr1d[LEN4]={1,2,3,4};
-int arr2d[LEN4][LEN5];
+extern int arr2d[LEN4][LEN5];
 int arr3d[LEN4][LEN5][LEN6];
 int x=5, y=6, z=7;
 

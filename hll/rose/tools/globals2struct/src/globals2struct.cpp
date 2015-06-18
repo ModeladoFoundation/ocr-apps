@@ -1,4 +1,11 @@
-// The ROSE tool visitorTraversal should find all globals and
+/*
+ * This file is subject to the license agreement located in the file LICENSE
+ * and cannot be distributed without it. This notice cannot be
+ * removed or modified.
+ */
+
+
+// The ROSE tool globals2struct finds all globals and
 // file statics, and
 //    1. Place them in a structure
 //    2. Initialize the globals and statics which were originally
@@ -65,7 +72,7 @@ class visitorTraversal : public AstSimpleProcessing
 visitorTraversal::visitorTraversal(SgProject* project)
 {
     _globalScope=getFirstGlobalScope(project);
-    _structName = strFFWD2 + strS;
+    _structName = strUnderscore + strUnderscore + strFFWD2 + strS;
     _structDecl = buildStructDeclaration(_structName, _globalScope);
     _structDef = buildClassDefinition(_structDecl);
     _structType = _structDecl->get_type();
@@ -100,7 +107,7 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
     // #include <string.h>  (for memcpy())
     fprintf(fp, "#include <string.h>\n");
 
-    // struct ffwd2_s {...};
+    // struct __ffwd2_s {...};
     fprintf(fp, "struct %s\n{\n", _structName.c_str());
 
 
@@ -131,8 +138,8 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
     }
     fprintf(fp, "};\n\n");
 
-    // typedef struct ffwd2_s ffwd2_t;
-    string typedefName = strFFWD2 + strT;
+    // typedef struct __ffwd2_s __ffwd2_t;
+    string typedefName = strUnderscore + strUnderscore + strFFWD2 + strT;
     fprintf(fp, "typedef struct %s %s;\n\n", _structName.c_str(), typedefName.c_str());
 
     fprintf(fp, "#endif\n");
@@ -156,8 +163,8 @@ void visitorTraversal::writeInitFunction(SgProject * project)
     SgBasicBlock* globalInitBB = globalInit->get_definition()->get_body();
 
     // allocate some memory
-    // ffwd2_p = ((ffwd2_t *)(malloc((sizeof(ffwd2_t)))));
-    string typedefName = strFFWD2 + strT;
+    // ffwd2_p = ((__ffwd2_t *)(malloc((sizeof(__ffwd2_t)))));
+    string typedefName = strUnderscore + strUnderscore + strFFWD2 + strT;
     SgTypedefDeclaration* typedefDecl = buildTypedefDeclaration(typedefName,_structType, _globalScope);
     SgTypedefType * typedefType = typedefDecl->get_type();
     // this is inserted as text in the ffwd include file.
@@ -218,9 +225,9 @@ void visitorTraversal::insertHeaders(SgProject* project)
         insertHeader("ffwd.h",PreprocessingInfo::after,false,fileScope);
 
         // Create a pointer to the new data structure
-        // ffwd2_t *ffwd2_p;
-        string typedefName = strFFWD2 + strT;
-        SgTypedefDeclaration* typedefDecl = buildTypedefDeclaration(typedefName,_structType, fileScope);
+        // __ffwd2_t *ffwd2_p;
+        string typedefName = strUnderscore + strUnderscore + strFFWD2 + strT;
+        SgTypedefDeclaration* typedefDecl = buildTypedefDeclaration(typedefName, _structType, fileScope);
         SgTypedefType * typedefType = typedefDecl->get_type();
         // this is inserted as text in the ffwd include file.
 
@@ -253,6 +260,23 @@ DbElement* visitorTraversal::onGlobalDeclList(SgVariableSymbol* sym)
         //printf("Debug: onGlobalDeclList: sym = %p, symbol = %p\n", sym, symbol);
         if (sym == symbol)
             return element;
+    }
+
+    // look for externals
+    SgInitializedName * iName = sym->get_declaration();
+    string sName = iName->get_name().getString();
+
+    for (Rose_STL_Container<DbElement*>::iterator iter=_globalDeclList.begin();
+         iter!=_globalDeclList.end(); iter++)
+    {
+        DbElement* element = *iter;
+        string str = element->get_name()->get_name().getString();
+
+        if (element->get_scope() == _globalScope)
+            if (strcmp(sName.c_str(), str.c_str()) == 0) {
+                //printf("Debug: onGlobalDeclList: found symbol %s\n", sName.c_str());
+                return element;
+            }
     }
     return NULL;
 }
@@ -398,7 +422,7 @@ void visitorTraversal::visit(SgNode* node)
             SgInitializedName* variableName = isSgInitializedName(*i);
             if (isSgGlobal(variableName->get_scope()))
             {
-                printNode(node);
+                //printNode(node);
                 SgType* variableType = variableName->get_type();
                 //printf("Found Declaration: %s\n",variableName->get_name().str());
                 SgVariableSymbol* variableSymbol = isSgVariableSymbol(variableName->get_symbol_from_symbol_table ());
@@ -444,13 +468,13 @@ void visitorTraversal::visit(SgNode* node)
         if ( isSgGlobal(varScope))
         {
             // global reference
-//            string newName = create_new_name(varName);
             DbElement* element = onGlobalDeclList(varSymbol);
             ROSE_ASSERT(element != NULL);
             string newName = element->get_new_name();
-            printf("visit(): newName=%s", element->get_new_name().c_str());
-            SgVarRefExp* newNameExp = buildVarRefExp(newName,varScope);
-            SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, _globalScope);
+            //printf("visit(): newName=%s\n", element->get_new_name().c_str());
+            SgVarRefExp* newNameExp = buildVarRefExp(newName, varScope);
+            SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, element->get_scope());
+            //SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, _globalScope);
             SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
 
             SgNode * parent = varRefExp->get_parent();

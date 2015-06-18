@@ -1,15 +1,5 @@
 
-This ROSE tool, globals2struct, finds all globals and
-file statics in an application, and
-
-    1. Places them in a structure
-
-    2. Initializes the globals and statics which were originally
-       initialized in the declaration.
-
-    3. Updates the references to the global and file statics to
-       reflect their new location.
-
+This ROSE tool adds __thread to all global variables.
 
 If the ROSE compiler framework is not available on your system, see below.
 The ROSE compiler framework in available on the xstack.exascale-tech.com system.

@@ -1,3 +1,9 @@
+/*
+ * This file is subject to the license agreement located in the file LICENSE
+ * and cannot be distributed without it. This notice cannot be
+ * removed or modified.
+ */
+
 #ifndef _DB_ELEMENT_H
 #define _DB_ELEMENT_H
 
@@ -205,7 +211,7 @@ string create_new_name( SgInitializedName * name)
     }
 
     num++;
-    printf("create_new_name(): newname=%s\n", newName.c_str());
+    //printf("create_new_name(): newname=%s\n", newName.c_str());
 
     return newName;
 }
@@ -348,8 +354,6 @@ void DbElement::get_empty_declarator(SgArrayType* arrayType)
 // Utilities
 
 
-
-
     string get_type_string(const SgType * type)
     {
         string strBool="bool";
@@ -423,7 +427,7 @@ void DbElement::get_empty_declarator(SgArrayType* arrayType)
         else return 0;
 }
 
-// from ShiftCalculus::safeInterface_modified.C
+
 // return the value buried in a value expression.
 unsigned long long getIntegerConstantValue(SgValueExp* expr) {
     switch (expr->variantT()) {
@@ -437,37 +441,11 @@ unsigned long long getIntegerConstantValue(SgValueExp* expr) {
       case V_SgUnsignedLongVal: return isSgUnsignedLongVal(expr)->get_value();
       case V_SgLongLongIntVal: return isSgLongLongIntVal(expr)->get_value();
       case V_SgUnsignedLongLongIntVal: return isSgUnsignedLongLongIntVal(expr)->get_value();
-      default: ROSE_ASSERT (!"Bad kind in getIntegerConstantValue");
+      default: return 0;
     }
-    ROSE_ASSERT (!"Bad kind return in getIntegerConstantValue");
     return 0;
 }
 
-
-//  from UpcTranslation::upc_translation.C
-//  Rename main() to extern  user_main()
-void renameMainToUserMain(SgFunctionDeclaration* sg_func)
-{
-    ROSE_ASSERT(isMain(sg_func));
-
-    // grab symbol before any modifications.
-    SgGlobal* global_scope= isSgGlobal(sg_func->get_scope());
-    ROSE_ASSERT(global_scope);
-    SgFunctionSymbol * symbol = global_scope->lookup_function_symbol
-                                (SgName("main"),sg_func->get_type());
-    ROSE_ASSERT(symbol == sg_func->get_firstNondefiningDeclaration()->get_symbol_from_symbol_table());
-    global_scope->remove_symbol(symbol);
-    delete (symbol); // avoid dangling symbol!!
-
-    // rename it
-    SgName new_name = SgName("user_main");
-    sg_func->set_name(new_name);
-    sg_func->get_declarationModifier().get_storageModifier().setExtern();
-
-    //handle function symbol:remove the original one, insert a new one
-    symbol = new SgFunctionSymbol(sg_func);
-    global_scope->insert_symbol(new_name,symbol);
-}
 
 
 static void printNode(SgNode* node)
