@@ -180,6 +180,12 @@ void visitorTraversal::writeInitFunction(SgProject * project)
     SgExprStatement * assignOp = buildAssignStatement(buildVarRefExp(_ptrName, _globalScope), castExp);
     appendStatement(assignOp, globalInitBB);
 
+    // memset(ffwd2_p, 0, sizeof(__ffwd2_t));
+    SgExprListExp* memsetParam = buildExprListExp(buildVarRefExp(_ptrName, _globalScope), buildIntVal(0), deepCopy(sizeofExp));
+    SgExpression * memsetExp = buildFunctionCallExp(SgName("memset"),  buildVoidType(), memsetParam, _globalScope);
+    SgExprStatement * memsetStmt = buildExprStatement(memsetExp);
+    appendStatement(memsetStmt, globalInitBB);
+
 
     if ( ! _localFileList.empty() )
     {
@@ -209,6 +215,7 @@ void visitorTraversal::writeInitFunction(SgProject * project)
                 decl->get_declarationModifier().get_storageModifier().setExtern();
             insertStatementBefore(_here, decl);
             _here = decl;
+            printf("writeInitFunction(): _here set for %s\n", _currentPathname.c_str());
         }
     }  // not localFileList empty
 }
@@ -378,6 +385,7 @@ void visitorTraversal::visit(SgNode* node)
     {
         // save current file name - this would be better done in atTraversalStart().
         _currentPathname = node->get_file_info()->get_filenameString();
+        printf("Visit(): visiting %s\n", _currentPathname.c_str());
     }
 
     if (isSgInitializedName(node) != NULL)
@@ -467,9 +475,18 @@ void visitorTraversal::visit(SgNode* node)
         SgScopeStatement* varScope = varName->get_scope();
         if ( isSgGlobal(varScope))
         {
+            printLocation(node);
+
             // global reference
             DbElement* element = onGlobalDeclList(varSymbol);
-            ROSE_ASSERT(element != NULL);
+            if (element == NULL)
+            {
+                // declaration must be in a different file
+                // create a new DB entry
+                element = new DbElement(varSymbol, node);
+                _globalDeclList.push_back(element);
+            }
+
             string newName = element->get_new_name();
             //printf("visit(): newName=%s\n", element->get_new_name().c_str());
             SgVarRefExp* newNameExp = buildVarRefExp(newName, varScope);
@@ -539,15 +556,18 @@ void visitorTraversal::atTraversalEnd()
         SgName* globalInitName = new SgName(strFFWD2+strUnderscore+strINIT);
         SgFunctionParameterList * parameterList = buildFunctionParameterList();
         SgFunctionDeclaration * forwardDecl = buildNondefiningFunctionDeclaration
-                                              (*globalInitName,(SgType*)buildVoidType(),parameterList,_globalScope);
+                                              (*globalInitName,(SgType*)buildVoidType(),
+                                               parameterList,_globalScope);
         insertStatementBefore(getFirstStatement(_globalScope), forwardDecl);
         _here=forwardDecl;
+        printf("atTraversalEnd(): _here set for %s\n", _currentPathname.c_str());
 
 
         // main calls the initialization function
         // ffwd2_init();
         SgExprListExp * parameters = buildExprListExp();
-        SgExprStatement * globalInitCall = buildFunctionCallStmt(*globalInitName,(SgType *)buildVoidType(), parameters, _mainScope);
+        SgExprStatement * globalInitCall = buildFunctionCallStmt(*globalInitName,(SgType *)buildVoidType(),
+                                                                 parameters, _mainScope);
         insertStatementBefore(getFirstStatement(_mainScope), globalInitCall);
     }  // is main file
     printf ("Traversal ends here. \n");
