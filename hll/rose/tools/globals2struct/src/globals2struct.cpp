@@ -38,6 +38,7 @@ class visitorTraversal : public AstSimpleProcessing
     void writeHeaderFile(SgProject* project);
     void writeInitFunction(SgProject * project);
     void insertHeaders(SgProject * project);
+    void errorCheck();
     DbElement* onGlobalDeclList(SgVariableSymbol* sym);
     FileElement* onLocalFileList(string filename);
     SgBasicBlock* createLocalInitFunction(DbElement* dbElement);
@@ -61,11 +62,6 @@ class visitorTraversal : public AstSimpleProcessing
     string _mainPathname;
     SgScopeStatement* _mainScope;
     SgStatement * _here;
-
-
-    // experimental
-    bool _applyTaskKeyword;
-    bool _applyDBKeyword;
 };
 
 
@@ -81,10 +77,6 @@ visitorTraversal::visitorTraversal(SgProject* project)
     _mainPathname.clear();
     _mainScope=NULL;
     _here=NULL;
-
-    // experimental
-    _applyTaskKeyword=false;
-    _applyDBKeyword=false;
 }
 
 
@@ -215,10 +207,21 @@ void visitorTraversal::writeInitFunction(SgProject * project)
                 decl->get_declarationModifier().get_storageModifier().setExtern();
             insertStatementBefore(_here, decl);
             _here = decl;
-            printf("writeInitFunction(): _here set for %s\n", _currentPathname.c_str());
-        }
+                    }
     }  // not localFileList empty
 }
+
+
+void visitorTraversal::errorCheck()
+{
+    if (_globalDeclList.empty())
+    {
+        printf("Error: No global or function static variables were found.  This tool is specifically for applications with global or file static variables.  Stopping.\n");
+        exit(1);
+    }
+}
+
+
 
 void visitorTraversal::insertHeaders(SgProject* project)
 {
@@ -242,6 +245,8 @@ void visitorTraversal::insertHeaders(SgProject* project)
         SgVarRefExp* ptrNameExp = buildVarRefExp(SgName(ptrName), fileScope);
         SgPointerType* ptrType = buildPointerType(typedefType);
         SgVariableDeclaration* structVarPtr = buildVariableDeclaration(SgName(ptrName), ptrType, NULL, fileScope);
+        // set TLS to add __thread
+        structVarPtr->get_declarationModifier().get_storageModifier().set_thread_local_storage(true);
 
         string pathname = file->get_path_name();
         if(strcmp(_mainPathname.c_str(), pathname.c_str()) != 0)
@@ -385,39 +390,6 @@ void visitorTraversal::visit(SgNode* node)
     {
         // save current file name - this would be better done in atTraversalStart().
         _currentPathname = node->get_file_info()->get_filenameString();
-        printf("Visit(): visiting %s\n", _currentPathname.c_str());
-    }
-
-    if (isSgInitializedName(node) != NULL)
-    {
-        // Keyword support is provided in hopes that we can generate
-        // a framework of some type.  This is experimental...
-        SgInitializedName * initializedName = isSgInitializedName(node);
-        string name = initializedName->get_name().str();
-
-        if (strcmp(name.c_str(), "__task_keyword") == 0)
-        {
-            printf ("Found __task keyword... \n");
-            _applyTaskKeyword=true;
-        }
-        if (strcmp(name.c_str(), "__db_keyword") == 0)
-        {
-            printf ("Found __db keyword... \n");
-            _applyDBKeyword=true;
-        }
-    }
-
-    if (isSgFunctionDeclaration(node) != NULL)
-    {
-        // experimental....
-        if (_applyTaskKeyword)
-        {
-            printf ("Applying task keyword ...");
-            SgFunctionDeclaration * funcDecl = isSgFunctionDeclaration(node);
-            SgName name = funcDecl->get_name();
-            printf("on function %s\n", name.str());
-            _applyTaskKeyword=false;
-        }
     }
 
     if (isSgVariableDeclaration(node) != NULL)
@@ -450,16 +422,6 @@ void visitorTraversal::visit(SgNode* node)
                 }
 
             }
-
-
-            // experimental...
-            if (_applyDBKeyword)
-            {
-                printf ("Applying DB keyword ...");
-                printf("on variable %s\n", variableName->get_name().str());
-                _applyDBKeyword=false;
-            }
-
             i++;
         }
         while (i != variableDeclaration->get_variables().end());
@@ -475,37 +437,38 @@ void visitorTraversal::visit(SgNode* node)
         SgScopeStatement* varScope = varName->get_scope();
         if ( isSgGlobal(varScope))
         {
-            printLocation(node);
-
             // global reference
             DbElement* element = onGlobalDeclList(varSymbol);
             if (element == NULL)
             {
                 // declaration must be in a different file
-                // create a new DB entry
-                element = new DbElement(varSymbol, node);
-                _globalDeclList.push_back(element);
+                // create a new DB entry if user's file
+                if ( isNodeInUserLocation(node) == true) {
+                    element = new DbElement(varSymbol, node);
+                    _globalDeclList.push_back(element);
+                }
             }
 
-            string newName = element->get_new_name();
-            //printf("visit(): newName=%s\n", element->get_new_name().c_str());
-            SgVarRefExp* newNameExp = buildVarRefExp(newName, varScope);
-            SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, element->get_scope());
-            //SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, _globalScope);
-            SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
+            if (element != NULL)
+            {
+                string newName = element->get_new_name();
+                SgVarRefExp* newNameExp = buildVarRefExp(newName, varScope);
+                SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, element->get_scope());
+                SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
 
-            SgNode * parent = varRefExp->get_parent();
-            if (isSgPntrArrRefExp(parent) != NULL)
-            {
-                SgPntrArrRefExp * pntrArrRefExp = isSgPntrArrRefExp(parent);
-                pntrArrRefExp->set_lhs_operand(arrowExp);
-                arrowExp->set_parent(pntrArrRefExp);
-            }
-            else
-            {
-                SgBinaryOp * binaryOp = isSgBinaryOp(parent);
-                binaryOp->set_lhs_operand(arrowExp);
-                arrowExp->set_parent(binaryOp);
+                SgNode * parent = varRefExp->get_parent();
+                if (isSgPntrArrRefExp(parent) != NULL)
+                {
+                    SgPntrArrRefExp * pntrArrRefExp = isSgPntrArrRefExp(parent);
+                    pntrArrRefExp->set_lhs_operand(arrowExp);
+                    arrowExp->set_parent(pntrArrRefExp);
+                }
+                else
+                {
+                    SgBinaryOp * binaryOp = isSgBinaryOp(parent);
+                    binaryOp->set_lhs_operand(arrowExp);
+                    arrowExp->set_parent(binaryOp);
+                }
             }
         }
     }
@@ -548,6 +511,9 @@ void visitorTraversal::atTraversalEnd()
     }  // globalist
 
 
+    //printf("atTraversalEnd(): currentPathname=%s, mainPathname=%s\n",
+    //       _currentPathname.c_str(), _mainPathname.c_str());
+
     if (strcmp(_currentPathname.c_str(), _mainPathname.c_str())==0)
     {
 
@@ -560,8 +526,6 @@ void visitorTraversal::atTraversalEnd()
                                                parameterList,_globalScope);
         insertStatementBefore(getFirstStatement(_globalScope), forwardDecl);
         _here=forwardDecl;
-        printf("atTraversalEnd(): _here set for %s\n", _currentPathname.c_str());
-
 
         // main calls the initialization function
         // ffwd2_init();
@@ -570,7 +534,7 @@ void visitorTraversal::atTraversalEnd()
                                                                  parameters, _mainScope);
         insertStatementBefore(getFirstStatement(_mainScope), globalInitCall);
     }  // is main file
-    printf ("Traversal ends here. \n");
+    //printf ("Traversal ends here. \n");
 }
 
 
@@ -592,8 +556,11 @@ int main ( int argc, char* argv[] )
 
     // Call the traversal function (member function of AstSimpleProcessing)
     // starting at the project node of the AST, using a preorder traversal.
-    printf("Traverse the input files\n");
+    printf("Traversing the input files\n");
     exampleTraversal.traverseInputFiles(project,preorder);
+
+    // Check for issues.
+    exampleTraversal.errorCheck();
 
     // Write the header file.
     printf("Writing the header file and init function\n");
@@ -604,11 +571,11 @@ int main ( int argc, char* argv[] )
 
     // run all tests
     printf("Running all tests\n");
-    printf("Emitting a ton of warnings during AstTesting is one of ROSE's charms.\n\n");
+    printf("Emitting a ton of warnings during AST Testing is one of ROSE's charms.\n\n");
     AstTests::runAllTests(project);
 
     // Generate source code from AST and call the vendor's compiler
-    printf("\nCalling backend\n");
+    printf("\nCalling the backend\n");
     int res = backend(project);
 
     printf("Done!\n");
