@@ -21,6 +21,21 @@ void residual_coarse(level_type * level, box_type *box, double *res_id, double *
 double norm_coarse(level_type * level, double *component_id);
 void update_boundary_all (level_type *l, box_type *b, int b_off, box_type *nb, int nb_off, int face_only);
 
+void get_fine_box_ids(level_type *fine, level_type *coarse, int coarse_box_id, int *fine_box_ids);
+void get_neighbors_all(int b, int dim_i, int dim_j, int dim_k, int *nbrs);
+double mean(level_type * level, int id_a);
+void mul_vectors(level_type * level, double *id_c, double scale, double *id_a, double *id_b);
+void get_neighbor_guids_all(int b, level_type *level, ocrGuid_t* nbr_guids);
+void scale_vector(level_type * level, double *id_c, double scale_a, double *id_a);
+void apply_op(level_type * level, box_type *box, double *Ax_id, double *x_id, double a, double b);
+void add_vectors(level_type * level, double *id_c, double scale_a, double *id_a, double scale_b, double *id_b);
+
 void print_vectors_sum(level_type *level, box_type *box);
+
+#ifdef TG_ARCH
+void ABORT(int a);
+float tanh_approx(float val);
+#endif
+
 
 #endif

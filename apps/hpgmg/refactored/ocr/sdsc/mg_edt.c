@@ -5,6 +5,11 @@
 #include <math.h>
 #include "utils.h"
 
+#ifdef TG_ARCH
+#include "strings.h"
+#endif
+
+
 
 // deps: level0
 ocrGuid_t init_ur_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])

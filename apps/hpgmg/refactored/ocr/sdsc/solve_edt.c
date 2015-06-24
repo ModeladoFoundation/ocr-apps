@@ -2,7 +2,13 @@
 
 #include "hpgmg.h"
 #include "utils.h"
+#include <math.h>
 #include <string.h>
+
+#ifdef TG_ARCH
+#include "strings.h"
+#endif
+
 
 #define KRYLOV_DIAGONAL_PRECONDITION
 
@@ -69,7 +75,12 @@ ocrGuid_t solve_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
       break;
     }
     double alpha = r_dot_r0 / Ap_dot_r0;           //   alpha = r_dot_r0 / Ap_dot_r0
+//    if(isinf(alpha)){
+#ifndef TG_ARCH
     if(isinf(alpha)){
+#else
+    if(isInf(alpha)) {
+#endif
       BiCGStabFailed=2;
       break;
     }
@@ -105,7 +116,12 @@ ocrGuid_t solve_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
       break;
     }
 
+//    if(isinf(omega)){
+#ifndef TG_ARCH
     if(isinf(omega)){
+#else
+    if(isInf(omega)) {
+#endif
       BiCGStabFailed=4;   //   stabilization breakdown ???
       break;
     }
@@ -134,7 +150,12 @@ ocrGuid_t solve_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     }
 
     double beta = (r_dot_r0_new/r_dot_r0) * (alpha/omega);  //   beta = (r_dot_r0_new/r_dot_r0) * (alpha/omega)
+//    if(isinf(beta)){
+#ifndef TG_ARCH
     if(isinf(beta)){
+#else
+    if(isInf(beta)) {
+#endif
       BiCGStabFailed=6;
       break;
     }
