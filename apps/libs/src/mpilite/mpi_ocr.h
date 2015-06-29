@@ -130,22 +130,6 @@ static inline messageContextP_t getMessageContext() {
     return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
 }
 
-static ocrGuid_t getGlobalDBGuid()
-{
-    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
-
-    return globalDBContext->dbGuid;
-}
-
-static unsigned long * getGlobalDBAddr()
-{
-    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
-
-    return globalDBContext->addrPtr;
-}
-
-extern void check_ocr_status(u8 status, char * functionName);
-
 
 int __mpi_ocr_TRUE(void);
 

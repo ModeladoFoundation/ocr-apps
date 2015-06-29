@@ -437,8 +437,24 @@ int __mpi_ocr_TRUE(void) {
 }
 
 
+ocrGuid_t __getGlobalDBGuid()
+{
+    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+    return globalDBContext->dbGuid;
+}
+
+u64 * __getGlobalDBAddr()
+{
+    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+    return globalDBContext->addrPtr;
+}
+
+
+
 // check the results from an OCR API call.
-void check_ocr_status(u8 status, char * functionName)
+void __ocrCheckStatus(u8 status, char * functionName)
 {
     switch (status)
     {
