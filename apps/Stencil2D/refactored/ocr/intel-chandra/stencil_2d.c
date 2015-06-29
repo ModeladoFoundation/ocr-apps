@@ -1,5 +1,6 @@
 #include "ocr.h"
 #include "ocr-std.h"
+#include "extensions/ocr-affinity.h"
 #ifndef TG_ARCH
 #include "time.h"
 #endif
@@ -295,9 +296,29 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
     TS_rankInit.FNC = FNC_rankInit;
     ocrEdtTemplateCreate( &TS_rankInit.TML, TS_rankInit.FNC, _paramc, _depc );
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+    u64 affinityCount;
+    ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    ocrGuid_t DBK_affinityGuids;
+    ocrGuid_t* PTR_affinityGuids;
+    ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
+                 DB_PROP_SINGLE_ASSIGNMENT, NULL_GUID, NO_ALLOC );
+    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids );
+    ASSERT( affinityCount >= 1 );
+#endif
+
     s64 i;
     for( i = 0; i < NR; i++ )
     {
+#ifdef ENABLE_EXTENSION_AFFINITY
+        gSettingsH_t* PTR_gSettingsH;
+        ocrDbCreate( &(PTR_gSettingsHs[i]), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
+                     DB_PROP_NONE, PTR_affinityGuids[i%affinityCount], NO_ALLOC );
+
+        rankH_t *PTR_rankH;
+        ocrDbCreate( &(PTR_rankHs[i]), (void **) &PTR_rankH, sizeof(rankH_t),
+                     DB_PROP_NONE, PTR_affinityGuids[i%affinityCount], NO_ALLOC );
+#else
         gSettingsH_t* PTR_gSettingsH;
         ocrDbCreate( &(PTR_gSettingsHs[i]), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
                      DB_PROP_NONE, NULL_GUID, NO_ALLOC );
@@ -306,10 +327,20 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
         ocrDbCreate( &(PTR_rankHs[i]), (void **) &PTR_rankH, sizeof(rankH_t),
                      DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
+#endif
+
         init_paramv[0] = (u64) i;
+#ifdef ENABLE_EXTENSION_AFFINITY
+        if( i== 0 ) PRINTF("Using affinity API\n");
+        ocrEdtCreate( &TS_rankInit.EDT, TS_rankInit.TML,
+                      EDT_PARAM_DEF, init_paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, PTR_affinityGuids[i%affinityCount], NULL );
+#else
+        if( i== 0 ) PRINTF("NOT Using affinity API\n");
         ocrEdtCreate( &TS_rankInit.EDT, TS_rankInit.TML,
                       EDT_PARAM_DEF, init_paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, NULL_GUID, NULL );
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_gSettingsH, TS_rankInit.EDT, _idep++, DB_MODE_RO );
@@ -371,9 +402,19 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     TS_init_rankH.FNC = FNC_init_rankH;
     ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrGuid_t currentAffinity;
+    ocrAffinityGetCurrent(&currentAffinity);
+
+    ocrEdtCreate( &TS_init_rankH.EDT, TS_init_rankH.TML,
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, currentAffinity, NULL );
+#else
+
     ocrEdtCreate( &TS_init_rankH.EDT, TS_init_rankH.TML,
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, NULL_GUID, NULL );
+#endif
 
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH, TS_init_rankH.EDT, _idep++, DB_MODE_RO );
@@ -435,9 +476,19 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     TS_init_dataH.FNC = FNC_init_dataH;
     ocrEdtTemplateCreate( &TS_init_dataH.TML, TS_init_dataH.FNC, _paramc, _depc );
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrGuid_t currentAffinity;
+    ocrAffinityGetCurrent(&currentAffinity);
+
+    ocrEdtCreate( &TS_init_dataH.EDT, TS_init_dataH.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, currentAffinity, NULL );
+#else
+
     ocrEdtCreate( &TS_init_dataH.EDT, TS_init_dataH.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, NULL_GUID, NULL );
+#endif
 
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH, TS_init_dataH.EDT, _idep++, DB_MODE_RO );
@@ -742,9 +793,20 @@ ocrGuid_t FNC_rankMultiTimestepSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdt
         id_x = I%NR_X;
         id_y = I/NR_X;
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+        u64 count = 1;
+        ocrGuid_t DBAffinityGuid;
+        ocrAffinityQuery(PTR_rankHs[I], &count, &DBAffinityGuid);
+
+
+        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
+                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, DBAffinityGuid, NULL );
+#else
         ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
                       EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, NULL_GUID, NULL );
+#endif
 
         _idep = 0;
         ocrAddDependence( PTR_gSettingsHs[I], TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
@@ -798,9 +860,19 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
     TS_timestep.FNC = FNC_timestep;
     ocrEdtTemplateCreate( &TS_timestep.TML, TS_timestep.FNC, _paramc, _depc );
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrGuid_t currentAffinity;
+    ocrAffinityGetCurrent(&currentAffinity);
+
+    ocrEdtCreate( &TS_timestep.EDT, TS_timestep.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, currentAffinity, &TS_timestep.OET);
+#else
+
     ocrEdtCreate( &TS_timestep.EDT, TS_timestep.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, NULL_GUID, &TS_timestep.OET);
+#endif
 
     ocrGuid_t TS_timestep_OET;
     ocrEventCreate( &TS_timestep_OET, OCR_EVENT_STICKY_T, false );
@@ -831,9 +903,15 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
         TS_rankMultiTimestepper.FNC = FNC_rankMultiTimestepper;
         ocrEdtTemplateCreate( &TS_rankMultiTimestepper.TML, TS_rankMultiTimestepper.FNC, _paramc, _depc );
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
+                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, currentAffinity, NULL );
+#else
         ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
                       EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, NULL_GUID, NULL );
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_gSettingsH, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
@@ -880,6 +958,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     //PRINTF("%s id %d x %d y %d\n", __func__, id, id_x, id_y);
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrGuid_t currentAffinity;
+    ocrAffinityGetCurrent(&currentAffinity);
+#endif
+
     MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 3;
 
     TS_Lsend.FNC = FNC_Lsend;
@@ -887,7 +970,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Lsend.EDT, TS_Lsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Lsend.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Lsend.OET);
+#endif
 
     if( id_x!=0 ) ocrAddDependence( TS_Lsend.OET, PTR_events_l->EVT_Rrecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Lsend.OET, PTR_events->EVT_Lsend_fin, 0, DB_MODE_NULL );
@@ -904,7 +991,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Rsend.EDT, TS_Rsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Rsend.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Rsend.OET);
+#endif
 
     if( id_x != NR_X - 1 ) ocrAddDependence( TS_Rsend.OET, PTR_events_r->EVT_Lrecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Rsend.OET, PTR_events->EVT_Rsend_fin, 0, DB_MODE_NULL );
@@ -921,7 +1012,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Lrecv.EDT, TS_Lrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Lrecv.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Lrecv.OET);
+#endif
 
     ocrAddDependence( TS_Lrecv.OET, PTR_events->EVT_Lrecv_fin, 0, DB_MODE_RO );
 
@@ -938,7 +1033,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Rrecv.EDT, TS_Rrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Rrecv.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Rrecv.OET);
+#endif
 
     ocrAddDependence( TS_Rrecv.OET, PTR_events->EVT_Rrecv_fin, 0, DB_MODE_RO );
 
@@ -957,7 +1056,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Bsend.EDT, TS_Bsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Bsend.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Bsend.OET);
+#endif
 
     if( id_y!=0 ) ocrAddDependence( TS_Bsend.OET, PTR_events_b->EVT_Trecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Bsend.OET, PTR_events->EVT_Bsend_fin, 0, DB_MODE_NULL );
@@ -974,7 +1077,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Tsend.EDT, TS_Tsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Tsend.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Tsend.OET);
+#endif
 
     if( id_y != NR_Y - 1 ) ocrAddDependence( TS_Tsend.OET, PTR_events_t->EVT_Brecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Tsend.OET, PTR_events->EVT_Tsend_fin, 0, DB_MODE_NULL );
@@ -991,7 +1098,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Brecv.EDT, TS_Brecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Brecv.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Brecv.OET);
+#endif
 
     ocrAddDependence( TS_Brecv.OET, PTR_events->EVT_Brecv_fin, 0, DB_MODE_RO );
 
@@ -1008,7 +1119,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Trecv.EDT, TS_Trecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_Trecv.OET);
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_Trecv.OET);
+#endif
 
     ocrAddDependence( TS_Trecv.OET, PTR_events->EVT_Trecv_fin, 0, DB_MODE_RO );
 
@@ -1030,8 +1145,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_verify.EDT, TS_verify.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID,
-                  &TS_verify.OET );
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_verify.OET );
+#else
+                  EDT_PROP_NONE, NULL_GUID, &TS_verify.OET );
+#endif
 
     ocrAddDependence( TS_verify.OET, TS_verify_OET, 0, DB_MODE_RO );
 
@@ -1054,7 +1172,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_update.EDT, TS_update.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+#ifdef ENABLE_EXTENSION_AFFINITY
+                  EDT_PROP_NONE, currentAffinity, &TS_update.OET );
+#else
                   EDT_PROP_NONE, NULL_GUID, &TS_update.OET );
+#endif
 
     ocrAddDependence( TS_update.OET, TS_update_OET, 0, DB_MODE_RO );
 

@@ -9,3 +9,10 @@ tg-x86
 tg
 
 #Edit the WORKLOAD_ARGS variable in the corresponding Makefile.OCR_TYPE to change the problem size/iterations
+
+To use AFFINITY (experimental OCR) API:
+1. Rebuild OCR with AFFINITY API enabled: Change ../../../../../ocr/build/common.mk to
+    Add a line CFLAGS += -DENABLE_EXTENSION_AFFINITY
+
+2. Modify Makefile.x86-mpi
+    CFLAGS := -g -DENABLE_EXTENSION_AFFINITY
