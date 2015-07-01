@@ -18,6 +18,10 @@
 
 #define EPSILON 1e-8
 
+//#define FULL_APP 0 //To measure only the OCR overhead
+//or
+#define FULL_APP 1 //To measure the full app performance
+
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #endif
@@ -72,6 +76,7 @@ typedef struct
 typedef struct
 {
     ocrGuid_t DBK_xIn, DBK_xOut, DBK_weight;
+    ocrGuid_t DBK_LsendBufs[2], DBK_RsendBufs[2], DBK_TsendBufs[2], DBK_BsendBufs[2];
     ocrGuid_t DBK_refNorm;
 } dataH_t;
 
@@ -127,7 +132,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
                     ocrGuid_t FNC_Tsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_Brecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_Trecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    //ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]); //Verification is done at the end
                     ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
     ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
@@ -305,42 +310,31 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
                  DB_PROP_SINGLE_ASSIGNMENT, NULL_GUID, NO_ALLOC );
     ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids );
     ASSERT( affinityCount >= 1 );
+    PRINTF("Using affinity API\n");
+#else
+    PRINTF("NOT Using affinity API\n");
 #endif
+
+    ocrGuid_t currentAffinity = NULL_GUID;
 
     s64 i;
     for( i = 0; i < NR; i++ )
     {
 #ifdef ENABLE_EXTENSION_AFFINITY
-        gSettingsH_t* PTR_gSettingsH;
-        ocrDbCreate( &(PTR_gSettingsHs[i]), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
-                     DB_PROP_NONE, PTR_affinityGuids[i%affinityCount], NO_ALLOC );
-
-        rankH_t *PTR_rankH;
-        ocrDbCreate( &(PTR_rankHs[i]), (void **) &PTR_rankH, sizeof(rankH_t),
-                     DB_PROP_NONE, PTR_affinityGuids[i%affinityCount], NO_ALLOC );
-#else
-        gSettingsH_t* PTR_gSettingsH;
-        ocrDbCreate( &(PTR_gSettingsHs[i]), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
-                     DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-
-        rankH_t *PTR_rankH;
-        ocrDbCreate( &(PTR_rankHs[i]), (void **) &PTR_rankH, sizeof(rankH_t),
-                     DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-
+        currentAffinity = PTR_affinityGuids[i%affinityCount];
 #endif
+        gSettingsH_t* PTR_gSettingsH;
+        ocrDbCreate( &(PTR_gSettingsHs[i]), (void **) &PTR_gSettingsH, sizeof(gSettingsH_t),
+                     DB_PROP_NONE, currentAffinity, NO_ALLOC );
+
+        rankH_t *PTR_rankH;
+        ocrDbCreate( &(PTR_rankHs[i]), (void **) &PTR_rankH, sizeof(rankH_t),
+                     DB_PROP_NONE, currentAffinity, NO_ALLOC );
 
         init_paramv[0] = (u64) i;
-#ifdef ENABLE_EXTENSION_AFFINITY
-        if( i== 0 ) PRINTF("Using affinity API\n");
         ocrEdtCreate( &TS_rankInit.EDT, TS_rankInit.TML,
                       EDT_PARAM_DEF, init_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, PTR_affinityGuids[i%affinityCount], NULL );
-#else
-        if( i== 0 ) PRINTF("NOT Using affinity API\n");
-        ocrEdtCreate( &TS_rankInit.EDT, TS_rankInit.TML,
-                      EDT_PARAM_DEF, init_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, NULL_GUID, NULL );
-#endif
+                      EDT_PROP_NONE, currentAffinity, NULL );
 
         _idep = 0;
         ocrAddDependence( DBK_gSettingsH, TS_rankInit.EDT, _idep++, DB_MODE_RO );
@@ -361,6 +355,12 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t DBK_rankH = (ocrGuid_t) depv[2].guid;
 
     rankH_t *PTR_rankH = (rankH_t*) depv[2].ptr;
+
+    ocrGuid_t currentAffinity = NULL_GUID;
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&currentAffinity);
+#endif
 
     //settingsInit
     ocrGuid_t TS_init_gSettingsH_OET;
@@ -383,18 +383,16 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     settingsH_t *PTR_settingsH;
     ocrDbCreate( &(PTR_rankH->DBK_settingsH), (void **) &PTR_settingsH, sizeof(settingsH_t),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
     dataH_t *PTR_dataH;
     ocrDbCreate( &(PTR_rankH->DBK_dataH), (void **) &PTR_dataH, sizeof(dataH_t),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
     s32 i;
     for( i = 0; i < 2; i++ )
     {
         eventH_t* PTR_eventH;
         ocrDbCreate(    &(PTR_rankH->DBK_eventHs[i]), (void **) &PTR_eventH, sizeof(eventH_t),
-                        DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+                        DB_PROP_NONE, currentAffinity, NO_ALLOC );
     }
 
     MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 6;
@@ -402,19 +400,9 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     TS_init_rankH.FNC = FNC_init_rankH;
     ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
 
-#ifdef ENABLE_EXTENSION_AFFINITY
-    ocrGuid_t currentAffinity;
-    ocrAffinityGetCurrent(&currentAffinity);
-
     ocrEdtCreate( &TS_init_rankH.EDT, TS_init_rankH.TML,
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, NULL );
-#else
-
-    ocrEdtCreate( &TS_init_rankH.EDT, TS_init_rankH.TML,
-                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
-#endif
 
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH, TS_init_rankH.EDT, _idep++, DB_MODE_RO );
@@ -442,6 +430,12 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
     dataH_t *PTR_dataH = (dataH_t*) depv[2].ptr;
 
+    ocrGuid_t currentAffinity = NULL_GUID;
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&currentAffinity);
+#endif
+
     PTR_settingsH->id = id;
     PTR_settingsH->id_x = id%PTR_gSettingsH->NR_X;
     PTR_settingsH->id_y = id/PTR_gSettingsH->NR_X;
@@ -456,39 +450,53 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     PTR_settingsH->itimestep = PTR_gSettingsH->IT0;
 
-    s64 subdomain_size_x = PTR_settingsH->np_x;
-    s64 subdomain_size_y = PTR_settingsH->np_y;
+    s64 np_x = PTR_settingsH->np_x;
+    s64 np_y = PTR_settingsH->np_y;
 
     s64 HR = PTR_gSettingsH->HR;
 
     double *xIn, *xOut, *weight, *refNorm;
-    ocrDbCreate( &(PTR_dataH->DBK_xIn), (void **) &xIn, sizeof(double)*(subdomain_size_x+2*HR)*(subdomain_size_y+2*HR),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-    ocrDbCreate( &(PTR_dataH->DBK_xOut), (void **) &xOut, sizeof(double)*(subdomain_size_x)*(subdomain_size_y),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_xIn), (void **) &xIn, sizeof(double)*(np_x+2*HR)*(np_y+2*HR),
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_xOut), (void **) &xOut, sizeof(double)*(np_x)*(np_y),
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
     ocrDbCreate( &(PTR_dataH->DBK_weight), (void **) &weight, sizeof(double)*(2*HR+1)*(2*HR+1),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
     ocrDbCreate( &(PTR_dataH->DBK_refNorm), (void **) &refNorm, sizeof(double)*(1),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+
+    double* lsend;
+    ocrDbCreate( &(PTR_dataH->DBK_LsendBufs[0]), (void **) &lsend, sizeof(double)*HR*np_y,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_LsendBufs[1]), (void **) &lsend, sizeof(double)*HR*np_y,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+
+    double* rsend;
+    ocrDbCreate( &(PTR_dataH->DBK_RsendBufs[0]), (void **) &rsend,  sizeof(double)*HR*np_y,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_RsendBufs[1]), (void **) &rsend,  sizeof(double)*HR*np_y,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+
+    double* tsend;
+    ocrDbCreate( &(PTR_dataH->DBK_TsendBufs[0]), (void **) &tsend,  sizeof(double)*HR*np_x,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_TsendBufs[1]), (void **) &tsend,  sizeof(double)*HR*np_x,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+
+    double* bsend;
+    ocrDbCreate( &(PTR_dataH->DBK_BsendBufs[0]), (void **) &bsend, sizeof(double)*HR*np_x,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
+    ocrDbCreate( &(PTR_dataH->DBK_BsendBufs[1]), (void **) &bsend, sizeof(double)*HR*np_x,
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
 
     MyOcrTaskStruct_t TS_init_dataH; _paramc = 0; _depc = 6;
 
     TS_init_dataH.FNC = FNC_init_dataH;
     ocrEdtTemplateCreate( &TS_init_dataH.TML, TS_init_dataH.FNC, _paramc, _depc );
 
-#ifdef ENABLE_EXTENSION_AFFINITY
-    ocrGuid_t currentAffinity;
-    ocrAffinityGetCurrent(&currentAffinity);
-
     ocrEdtCreate( &TS_init_dataH.EDT, TS_init_dataH.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, NULL );
-#else
-
-    ocrEdtCreate( &TS_init_dataH.EDT, TS_init_dataH.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
-#endif
 
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH, TS_init_dataH.EDT, _idep++, DB_MODE_RO );
@@ -614,7 +622,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     _idep = 0;
     ocrAddDependence( PTR_globalH->DBK_gSettingsH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RW );
 
     MyOcrTaskStruct_t TS_timer; _paramc = 0; _depc = 3;
 
@@ -671,6 +679,9 @@ ocrGuid_t FNC_globalMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
     gSettingsH_t *PTR_gSettingsH = depv[0].ptr;
     globalH_t *PTR_globalH = depv[1].ptr;
 
+    ocrGuid_t DBK_gSettingsHs = PTR_globalH->DBK_gSettingsHs;
+    ocrGuid_t DBK_rankHs = PTR_globalH->DBK_rankHs;
+
     u64 itimestep = (u64) PTR_globalH->itimestep;
     u64 itimestep0 = (u64) (PTR_gSettingsH->IT0);
 
@@ -696,6 +707,7 @@ ocrGuid_t FNC_globalMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
 
         _idep = 0;
         ocrAddDependence( PTR_globalH->DBK_gSettingsH, PTR_globalH->EDT_reduction, _idep++, DB_MODE_RO );
+        ocrDbRelease( DBK_globalH );
     }
 
     if( itimestep <= NT )
@@ -716,9 +728,9 @@ ocrGuid_t FNC_globalMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
 
         _idep = 0;
         ocrAddDependence( DBK_gSettingsH, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( DBK_globalH, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_ITW );
-        ocrAddDependence( PTR_globalH->DBK_gSettingsHs, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( PTR_globalH->DBK_rankHs, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_globalH, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_gSettingsHs, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankHs, TS_rankMultiTimestepSpawner.EDT, _idep++, DB_MODE_RO );
 
         itimestep += NT_SYNC;
 
@@ -736,7 +748,7 @@ ocrGuid_t FNC_globalMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
 
             _idep = 0;
             ocrAddDependence( DBK_gSettingsH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( DBK_globalH, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_RW );
             ocrAddDependence( TS_rankMultiTimestepSpawner_OET, TS_globalMultiTimestepper.EDT, _idep++, DB_MODE_NULL );
         }
     }
@@ -775,6 +787,8 @@ ocrGuid_t FNC_rankMultiTimestepSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdt
     u64 I, id_x, id_y;
 
     //PRINTF("#Subdomains %d\n", NR);
+    //
+    ocrGuid_t currentAffinity = NULL_GUID;
 
     MyOcrTaskStruct_t TS_rankMultiTimestepper; _paramc = 3; _depc = 7;
 
@@ -795,18 +809,12 @@ ocrGuid_t FNC_rankMultiTimestepSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdt
 
 #ifdef ENABLE_EXTENSION_AFFINITY
         u64 count = 1;
-        ocrGuid_t DBAffinityGuid;
-        ocrAffinityQuery(PTR_rankHs[I], &count, &DBAffinityGuid);
-
-
-        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
-                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, DBAffinityGuid, NULL );
-#else
-        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
-                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, NULL_GUID, NULL );
+        ocrAffinityQuery(PTR_rankHs[I], &count, &currentAffinity);
 #endif
+
+        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
+                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, currentAffinity, NULL );
 
         _idep = 0;
         ocrAddDependence( PTR_gSettingsHs[I], TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
@@ -855,24 +863,20 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
     s64 id_x = id%NR_X;
     s64 id_y = id/NR_X;
 
+    ocrGuid_t currentAffinity = NULL_GUID;
+
     MyOcrTaskStruct_t TS_timestep; _paramc = 0; _depc = 9;
 
     TS_timestep.FNC = FNC_timestep;
     ocrEdtTemplateCreate( &TS_timestep.TML, TS_timestep.FNC, _paramc, _depc );
 
 #ifdef ENABLE_EXTENSION_AFFINITY
-    ocrGuid_t currentAffinity;
     ocrAffinityGetCurrent(&currentAffinity);
+#endif
 
     ocrEdtCreate( &TS_timestep.EDT, TS_timestep.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, currentAffinity, &TS_timestep.OET);
-#else
-
-    ocrEdtCreate( &TS_timestep.EDT, TS_timestep.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, NULL_GUID, &TS_timestep.OET);
-#endif
 
     ocrGuid_t TS_timestep_OET;
     ocrEventCreate( &TS_timestep_OET, OCR_EVENT_STICKY_T, false );
@@ -903,15 +907,9 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
         TS_rankMultiTimestepper.FNC = FNC_rankMultiTimestepper;
         ocrEdtTemplateCreate( &TS_rankMultiTimestepper.TML, TS_rankMultiTimestepper.FNC, _paramc, _depc );
 
-#ifdef ENABLE_EXTENSION_AFFINITY
         ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
                       EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, currentAffinity, NULL );
-#else
-        ocrEdtCreate( &TS_rankMultiTimestepper.EDT, TS_rankMultiTimestepper.TML,
-                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, NULL_GUID, NULL );
-#endif
 
         _idep = 0;
         ocrAddDependence( DBK_gSettingsH, TS_rankMultiTimestepper.EDT, _idep++, DB_MODE_RO );
@@ -955,26 +953,25 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 id_y = (s64) PTR_settingsH->id_y;
     s64 itimestep = (s64) PTR_settingsH->itimestep;
 
+    s64 phase = itimestep%2;
+
     //PRINTF("%s id %d x %d y %d\n", __func__, id, id_x, id_y);
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
+    ocrGuid_t currentAffinity = NULL_GUID;
+
 #ifdef ENABLE_EXTENSION_AFFINITY
-    ocrGuid_t currentAffinity;
     ocrAffinityGetCurrent(&currentAffinity);
 #endif
 
-    MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 3;
+    MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 4;
 
     TS_Lsend.FNC = FNC_Lsend;
     ocrEdtTemplateCreate( &TS_Lsend.TML, TS_Lsend.FNC, _paramc, _depc );
 
     ocrEdtCreate( &TS_Lsend.EDT, TS_Lsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Lsend.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Lsend.OET);
-#endif
 
     if( id_x!=0 ) ocrAddDependence( TS_Lsend.OET, PTR_events_l->EVT_Rrecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Lsend.OET, PTR_events->EVT_Lsend_fin, 0, DB_MODE_NULL );
@@ -983,19 +980,16 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_gSettingsH, TS_Lsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_settingsH, TS_Lsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_data->DBK_xIn, TS_Lsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_LsendBufs[phase], TS_Lsend.EDT, _idep++, DB_MODE_RW );
 
-    MyOcrTaskStruct_t TS_Rsend; _paramc = 0; _depc = 3;
+    MyOcrTaskStruct_t TS_Rsend; _paramc = 0; _depc = 4;
 
     TS_Rsend.FNC = FNC_Rsend;
     ocrEdtTemplateCreate( &TS_Rsend.TML, TS_Rsend.FNC, _paramc, _depc );
 
     ocrEdtCreate( &TS_Rsend.EDT, TS_Rsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Rsend.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Rsend.OET);
-#endif
 
     if( id_x != NR_X - 1 ) ocrAddDependence( TS_Rsend.OET, PTR_events_r->EVT_Lrecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Rsend.OET, PTR_events->EVT_Rsend_fin, 0, DB_MODE_NULL );
@@ -1004,6 +998,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_gSettingsH, TS_Rsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_settingsH, TS_Rsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_data->DBK_xIn, TS_Rsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_RsendBufs[phase], TS_Rsend.EDT, _idep++, DB_MODE_RW );
 
     MyOcrTaskStruct_t TS_Lrecv; _paramc = 0; _depc = 4;
 
@@ -1012,11 +1007,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Lrecv.EDT, TS_Lrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Lrecv.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Lrecv.OET);
-#endif
 
     ocrAddDependence( TS_Lrecv.OET, PTR_events->EVT_Lrecv_fin, 0, DB_MODE_RO );
 
@@ -1033,11 +1024,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Rrecv.EDT, TS_Rrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Rrecv.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Rrecv.OET);
-#endif
 
     ocrAddDependence( TS_Rrecv.OET, PTR_events->EVT_Rrecv_fin, 0, DB_MODE_RO );
 
@@ -1049,18 +1036,14 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 
     //Y direction communication
-    MyOcrTaskStruct_t TS_Bsend; _paramc = 0; _depc = 3;
+    MyOcrTaskStruct_t TS_Bsend; _paramc = 0; _depc = 4;
 
     TS_Bsend.FNC = FNC_Bsend;
     ocrEdtTemplateCreate( &TS_Bsend.TML, TS_Bsend.FNC, _paramc, _depc );
 
     ocrEdtCreate( &TS_Bsend.EDT, TS_Bsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Bsend.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Bsend.OET);
-#endif
 
     if( id_y!=0 ) ocrAddDependence( TS_Bsend.OET, PTR_events_b->EVT_Trecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Bsend.OET, PTR_events->EVT_Bsend_fin, 0, DB_MODE_NULL );
@@ -1069,19 +1052,16 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_gSettingsH, TS_Bsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_settingsH, TS_Bsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_data->DBK_xIn, TS_Bsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_BsendBufs[phase], TS_Bsend.EDT, _idep++, DB_MODE_RW );
 
-    MyOcrTaskStruct_t TS_Tsend; _paramc = 0; _depc = 3;
+    MyOcrTaskStruct_t TS_Tsend; _paramc = 0; _depc = 4;
 
     TS_Tsend.FNC = FNC_Tsend;
     ocrEdtTemplateCreate( &TS_Tsend.TML, TS_Tsend.FNC, _paramc, _depc );
 
     ocrEdtCreate( &TS_Tsend.EDT, TS_Tsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Tsend.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Tsend.OET);
-#endif
 
     if( id_y != NR_Y - 1 ) ocrAddDependence( TS_Tsend.OET, PTR_events_t->EVT_Brecv_start, 0, DB_MODE_ITW );
     ocrAddDependence( TS_Tsend.OET, PTR_events->EVT_Tsend_fin, 0, DB_MODE_NULL );
@@ -1090,6 +1070,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_gSettingsH, TS_Tsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_settingsH, TS_Tsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_data->DBK_xIn, TS_Tsend.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_data->DBK_TsendBufs[phase], TS_Tsend.EDT, _idep++, DB_MODE_RW );
 
     MyOcrTaskStruct_t TS_Brecv; _paramc = 0; _depc = 4;
 
@@ -1098,11 +1079,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Brecv.EDT, TS_Brecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Brecv.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Brecv.OET);
-#endif
 
     ocrAddDependence( TS_Brecv.OET, PTR_events->EVT_Brecv_fin, 0, DB_MODE_RO );
 
@@ -1119,11 +1096,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_Trecv.EDT, TS_Trecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_Trecv.OET);
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_Trecv.OET);
-#endif
 
     ocrAddDependence( TS_Trecv.OET, PTR_events->EVT_Trecv_fin, 0, DB_MODE_RO );
 
@@ -1135,6 +1108,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //end
 
+#if 0
     ocrGuid_t TS_verify_OET;
     ocrEventCreate( &TS_verify_OET, OCR_EVENT_STICKY_T, false );
 
@@ -1145,11 +1119,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_verify.EDT, TS_verify.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_verify.OET );
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_verify.OET );
-#endif
 
     ocrAddDependence( TS_verify.OET, TS_verify_OET, 0, DB_MODE_RO );
 
@@ -1161,27 +1131,24 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( PTR_events->EVT_Rrecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
     ocrAddDependence( PTR_events->EVT_Brecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
     ocrAddDependence( PTR_events->EVT_Trecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
+#endif
 
     ocrGuid_t TS_update_OET;
     ocrEventCreate( &TS_update_OET, OCR_EVENT_STICKY_T, false );
 
-    MyOcrTaskStruct_t TS_update; _paramc = 0; _depc = 13;
+    MyOcrTaskStruct_t TS_update; _paramc = 0; _depc = 16;
 
     TS_update.FNC = FNC_update;
     ocrEdtTemplateCreate( &TS_update.TML, TS_update.FNC, _paramc, _depc );
 
     ocrEdtCreate( &TS_update.EDT, TS_update.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-#ifdef ENABLE_EXTENSION_AFFINITY
                   EDT_PROP_NONE, currentAffinity, &TS_update.OET );
-#else
-                  EDT_PROP_NONE, NULL_GUID, &TS_update.OET );
-#endif
 
     ocrAddDependence( TS_update.OET, TS_update_OET, 0, DB_MODE_RO );
 
     _idep = 0;
-    ocrAddDependence( DBK_globalH, TS_update.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( DBK_globalH, TS_update.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_gSettingsH, TS_update.EDT, _idep++, DB_MODE_ITW );
     ocrAddDependence( DBK_settingsH, TS_update.EDT, _idep++, DB_MODE_ITW );
     ocrAddDependence( PTR_data->DBK_weight, TS_update.EDT, _idep++, DB_MODE_RO );
@@ -1193,16 +1160,23 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( PTR_events->EVT_Rsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
     ocrAddDependence( PTR_events->EVT_Bsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
     ocrAddDependence( PTR_events->EVT_Tsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( TS_verify_OET, TS_update.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_events->EVT_Lrecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( PTR_events->EVT_Rrecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( PTR_events->EVT_Brecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( PTR_events->EVT_Trecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    //ocrAddDependence( TS_verify_OET, TS_update.EDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;
 }
 
 ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+    ocrGuid_t DBK_Lsend = depv[3].guid;
+
     gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
     settingsH_t* PTR_settingsH = depv[1].ptr;
     double* xIn = (double*) depv[2].ptr;
+    double* lsend = (double*) depv[3].ptr;
 
     s64 HR = PTR_gSettingsH->HR;
 
@@ -1219,11 +1193,12 @@ ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
-    double* lsend;
-    ocrGuid_t DBK_Lsend;
-    ocrDbCreate( &DBK_Lsend, (void **) &lsend, sizeof(double)*HR*np_y,
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    //double* lsend;
+    //ocrGuid_t DBK_Lsend;
+    //ocrDbCreate( &DBK_Lsend, (void **) &lsend, sizeof(double)*HR*np_y,
+    //             DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
+#if FULL_APP==1
     int i, j;
     int kk = 0;
     for( j = jb; j <= je; j++ )
@@ -1231,6 +1206,7 @@ ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         {
             lsend[kk++] = IN(i,j);
         }
+#endif
 
     if( id_x != 0 )
     {
@@ -1248,10 +1224,12 @@ ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[2].guid;
+    ocrGuid_t DBK_Rsend = depv[3].guid;
 
     gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
     settingsH_t* PTR_settingsH = depv[1].ptr;
     double* xIn = (double*) depv[2].ptr;
+    double* rsend = (double*) depv[3].ptr;
 
     s64 NR_X = PTR_gSettingsH->NR_X;
     s64 HR = PTR_gSettingsH->HR;
@@ -1269,11 +1247,12 @@ ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
-    double* rsend;
-    ocrGuid_t DBK_Rsend;
-    ocrDbCreate( &DBK_Rsend, (void **) &rsend,  sizeof(double)*HR*np_y,
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    //double* rsend;
+    //ocrGuid_t DBK_Rsend;
+    //ocrDbCreate( &DBK_Rsend, (void **) &rsend,  sizeof(double)*HR*np_y,
+    //             DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
+#if FULL_APP==1
     int i, j;
     int kk = 0;
     for( j = jb; j <= je; j++ )
@@ -1281,6 +1260,7 @@ ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         {
             rsend[kk++] = IN(i,j);
         }
+#endif
 
     if( id_x != NR_X - 1 )
     {
@@ -1319,6 +1299,7 @@ ocrGuid_t FNC_Lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
+#if FULL_APP==1
     int i, j;
     if( DBK_Rsend != NULL_GUID || id_x != 0 )
     {
@@ -1330,8 +1311,9 @@ ocrGuid_t FNC_Lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             }
 
         //PRINTF("ID=%d FNC_Lrecv lrecv guid is %lu\n", id, DBK_Rsend);
-        ocrDbDestroy( DBK_Rsend );
+        //ocrDbDestroy( DBK_Rsend );
     }
+#endif
 
     return NULL_GUID;
 }
@@ -1362,6 +1344,7 @@ ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
+#if FULL_APP==1
     int i, j;
     if( DBK_Lsend != NULL_GUID || id_x != NR_X - 1)
     {
@@ -1373,8 +1356,9 @@ ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             }
 
         //PRINTF("ID=%d FNC_Rrecv rrecv guid is %lu\n", id, DBK_Lsend);
-        ocrDbDestroy( DBK_Lsend );
+        //ocrDbDestroy( DBK_Lsend );
     }
+#endif
 
     return NULL_GUID;
 }
@@ -1382,9 +1366,12 @@ ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //y-direction
 ocrGuid_t FNC_Bsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+    ocrGuid_t DBK_Bsend = (ocrGuid_t) depv[3].guid;
+
     gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
     settingsH_t* PTR_settingsH = depv[1].ptr;
     double* xIn = (double*) depv[2].ptr;
+    double* bsend = (double*) depv[3].ptr;
 
     s64 HR = PTR_gSettingsH->HR;
 
@@ -1401,11 +1388,12 @@ ocrGuid_t FNC_Bsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
-    double* bsend;
-    ocrGuid_t DBK_Bsend;
-    ocrDbCreate( &DBK_Bsend, (void **) &bsend, sizeof(double)*HR*np_x,
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    //double* bsend;
+    //ocrGuid_t DBK_Bsend;
+    //ocrDbCreate( &DBK_Bsend, (void **) &bsend, sizeof(double)*HR*np_x,
+    //             DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
+#if FULL_APP==1
     int i, j;
     int kk = 0;
     for( j = jb; j < jb+HR; j++ )
@@ -1413,6 +1401,7 @@ ocrGuid_t FNC_Bsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         {
             bsend[kk++] = IN(i,j);
         }
+#endif
 
     if( id_y != 0 )
     {
@@ -1430,10 +1419,12 @@ ocrGuid_t FNC_Bsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 ocrGuid_t FNC_Tsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[2].guid;
+    ocrGuid_t DBK_Tsend = (ocrGuid_t) depv[3].guid;
 
     gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
     settingsH_t* PTR_settingsH = depv[1].ptr;
     double* xIn = (double*) depv[2].ptr;
+    double* tsend = (double*) depv[3].ptr;
 
     s64 NR_Y = PTR_gSettingsH->NR_Y;
     s64 HR = PTR_gSettingsH->HR;
@@ -1451,11 +1442,12 @@ ocrGuid_t FNC_Tsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
-    double* tsend;
-    ocrGuid_t DBK_Tsend;
-    ocrDbCreate( &DBK_Tsend, (void **) &tsend,  sizeof(double)*HR*np_x,
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    //double* tsend;
+    //ocrGuid_t DBK_Tsend;
+    //ocrDbCreate( &DBK_Tsend, (void **) &tsend,  sizeof(double)*HR*np_x,
+    //             DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
+#if FULL_APP==1
     int i, j;
     int kk = 0;
     for( j = je - HR + 1; j <= je; j++ )
@@ -1463,6 +1455,7 @@ ocrGuid_t FNC_Tsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         {
             tsend[kk++] = IN(i,j);
         }
+#endif
 
     if( id_y != NR_Y - 1 )
     {
@@ -1501,6 +1494,7 @@ ocrGuid_t FNC_Brecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
+#if FULL_APP==1
     int i, j;
     if( DBK_Tsend != NULL_GUID || id_y != 0 )
     {
@@ -1512,8 +1506,9 @@ ocrGuid_t FNC_Brecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             }
 
         //PRINTF("ID=%d FNC_Brecv lrecv guid is %lu\n", id, DBK_Tsend);
-        ocrDbDestroy( DBK_Tsend );
+        //ocrDbDestroy( DBK_Tsend );
     }
+#endif
 
     return NULL_GUID;
 }
@@ -1544,6 +1539,7 @@ ocrGuid_t FNC_Trecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
+#if FULL_APP==1
     int i, j;
     if( DBK_Bsend != NULL_GUID || id_y != NR_Y - 1)
     {
@@ -1555,44 +1551,45 @@ ocrGuid_t FNC_Trecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
             }
 
         //PRINTF("ID=%d FNC_Trecv rrecv guid is %lu\n", id, DBK_Bsend);
-        ocrDbDestroy( DBK_Bsend );
+        //ocrDbDestroy( DBK_Bsend );
     }
+#endif
 
     return NULL_GUID;
 }
 
-ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
-    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
-    settingsH_t* PTR_settingsH = depv[1].ptr;
-    double* xIn = (double*) depv[2].ptr;
-
-    s64 NR = PTR_gSettingsH->NR;
-    s64 HR = PTR_gSettingsH->HR;
-    s64 NP_X = PTR_gSettingsH->NP_X;
-    s64 NP_Y = PTR_gSettingsH->NP_Y;
-
-    s64 id = (s64) PTR_settingsH->id;
-    s64 itimestep = (s64) PTR_settingsH->itimestep;
-    s64 np_x = (s64) PTR_settingsH->np_x;
-    s64 np_y = (s64) PTR_settingsH->np_y;
-
-    s64 ib = (s64) PTR_settingsH->ib;
-    s64 ie = (s64) PTR_settingsH->ie;
-    s64 jb = (s64) PTR_settingsH->jb;
-    s64 je = (s64) PTR_settingsH->je;
-
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
-
-    int i, j;
-    double local_norm = (double) 0.0;
-    for( j=MAX(jb,HR); j<=MIN(NP_Y-HR-1,je); j++ )
-        for (i=MAX(ib,HR); i<=MIN(NP_X-HR-1,ie); i++)
-            //local_norm += (double)ABS(OUT(i,j));
-            ;
-
-    return NULL_GUID;
-}
+//ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+//{
+//    gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
+//    settingsH_t* PTR_settingsH = depv[1].ptr;
+//    double* xIn = (double*) depv[2].ptr;
+//
+//    s64 NR = PTR_gSettingsH->NR;
+//    s64 HR = PTR_gSettingsH->HR;
+//    s64 NP_X = PTR_gSettingsH->NP_X;
+//    s64 NP_Y = PTR_gSettingsH->NP_Y;
+//
+//    s64 id = (s64) PTR_settingsH->id;
+//    s64 itimestep = (s64) PTR_settingsH->itimestep;
+//    s64 np_x = (s64) PTR_settingsH->np_x;
+//    s64 np_y = (s64) PTR_settingsH->np_y;
+//
+//    s64 ib = (s64) PTR_settingsH->ib;
+//    s64 ie = (s64) PTR_settingsH->ie;
+//    s64 jb = (s64) PTR_settingsH->jb;
+//    s64 je = (s64) PTR_settingsH->je;
+//
+//    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+//
+//    int i, j;
+//    double local_norm = (double) 0.0;
+//    for( j=MAX(jb,HR); j<=MIN(NP_Y-HR-1,je); j++ )
+//        for (i=MAX(ib,HR); i<=MIN(NP_X-HR-1,ie); i++)
+//            //local_norm += (double)ABS(OUT(i,j));
+//            ;
+//
+//    return NULL_GUID;
+//}
 
 ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
@@ -1625,6 +1622,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     //PRINTF("ID: %d ib %d ie %d jb %d je %d\n", id, ib, ie, jb, je);
 
     /* Apply the stencil operator */
+#if FULL_APP==1
     int i, j, ii, jj;
     for (j=MAX(jb,HR); j<=MIN(NP_Y-HR-1,je); j++)
     {
@@ -1645,6 +1643,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     /* add constant to solution to force refresh of neighbor data, if any */
     for (j=jb; j<=je; j++) for (i=ib; i<=ie; i++) IN(i,j)+= 1.0;
+#endif
 
     ocrEventDestroy( PTR_events->EVT_Lsend_fin );
     ocrEventDestroy( PTR_events->EVT_Rsend_fin );
@@ -1678,6 +1677,8 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( itimestep == PTR_gSettingsH->NT )
     {
+#if FULL_APP==1
+
         for (j=MAX(jb,HR); j<=MIN(NP_Y-HR-1,je); j++)
         {
             for (i=MAX(ib,HR); i<=MIN(NP_X-HR-1,ie); i++)
@@ -1697,6 +1698,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
             }
         }
+#endif
         ocrEventSatisfy( PTR_events->EVT_reduction, DBK_refNorm);
         ocrDbRelease(DBK_refNorm);
         ocrAddDependence( PTR_events->EVT_reduction, PTR_globalH->EDT_reduction, 1+id, DB_MODE_RO );
