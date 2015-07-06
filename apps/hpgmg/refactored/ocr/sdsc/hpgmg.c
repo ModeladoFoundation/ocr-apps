@@ -112,13 +112,8 @@ ocrGuid_t finalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrEdtTemplateCreate(&i_tm, print_timing_edt, 1, ((mg_type*)(depv[0].ptr))->num_levels);
   u64 num_levels = ((mg_type*)(depv[0].ptr))->num_levels;
   ocrEdtCreate(&tm, i_tm, 1, &num_levels, num_levels, NULL, 0, NULL_GUID, &fin);
-  for (b = 0; b < num_levels; b++) {
-    ocrAddDependence(((mg_type*)(depv[0].ptr))->levels[b], tm, b, DB_MODE_CONST);
-  }
 
-  ocrEdtTemplateDestroy(i_tm);
-
-
+   // Set up finalize_edt (depends on print_timing_edt's output event)
   level_type *l = (level_type*)(depv[1].ptr);
   ocrGuid_t tmp,edt;
   int num_boxes = l->num_boxes;
@@ -128,12 +123,20 @@ ocrGuid_t finalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
  ocrGuid_t* boxes = (ocrGuid_t*)(((char*)l)+l->boxes);
   for (b = 0; b < num_boxes; b++) {
-    ocrAddDependence(boxes[b], edt, b+3, DB_MODE_CONST);
+    ocrAddDependence(boxes[b], edt, b+3, DB_MODE_RW);
   }
   ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
   ocrAddDependence(depv[1].guid, edt, 1, DB_MODE_CONST);
   ocrAddDependence(fin, edt, 2, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
+
+   // Allow print_timing_edt to run now
+  for (b = 0; b < num_levels; b++) {
+    ocrAddDependence(((mg_type*)(depv[0].ptr))->levels[b], tm, b, DB_MODE_CONST);
+  }
+
+  ocrEdtTemplateDestroy(i_tm);
+
 
   return NULL_GUID;
 }

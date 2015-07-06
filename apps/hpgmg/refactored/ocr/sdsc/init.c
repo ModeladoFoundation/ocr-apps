@@ -173,7 +173,7 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
 
   ocrDbCreate(&boxGuid, (void**)&boxPtr, totalMemSize, 0,NULL_GUID,NO_ALLOC);
 
-//  bzero(boxPtr, totalMemSize);
+  bzero(boxPtr, totalMemSize);
 
   lPtr->jStride = jStride; lPtr->kStride = kStride, lPtr->volume = boxVolume;
 
@@ -567,6 +567,13 @@ void mg_build(mg_type* all_grids, level_type* fine_grid, double a, double b, int
 
   int level=1;
   int coarse_dim = fine_grid->dim.i;
+
+  // Initialize the structures
+  int i;
+  for (i =0; i < MG_MAXLEVELS; i++) {
+    dim_i[i] = 0; boxes_in_i[i] = 0; box_dim[i] = 0; box_ghosts[i] = 0;
+  }
+
 
   while( (coarse_dim>=2*minCoarseGridDim) && ((coarse_dim&0x1)==0) ) { // grid dimension is even and big enough...
     level++;

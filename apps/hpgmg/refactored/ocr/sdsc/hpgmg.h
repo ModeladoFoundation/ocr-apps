@@ -2,7 +2,7 @@
 #define HPGMG_H
 
 #include <ocr.h>
-#define WARMUP 1
+#define WARMUP 0
 #define TIMED 1
 
 #define MG_MAXLEVELS 100

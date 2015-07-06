@@ -7,6 +7,7 @@
 To run
 x86: OCR_TYPE=x86 make run <log of box dimension> <total number of boxes>
      Eg: OCR_TYPE=x86 make run 4 8
+x86-mpi: OCR_TYPE=x86-mpi make run 4 8
 TG: OCR_TYPE=tg make run
 
 Increasing the box dimension or total number of boxes may lead to out of memory errors. The OCR configuration file should be modified (with more memory) to work around this error.
