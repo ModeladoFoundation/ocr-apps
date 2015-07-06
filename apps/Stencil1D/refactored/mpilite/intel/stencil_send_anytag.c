@@ -86,13 +86,14 @@ int main (int argc, char **argv) {
     if (my_ID == Num_procs - 1) val [ nloc + 1] = 1.;
 
     int tag=0;
+    int recvTag = MPI_ANY_TAG;
 
     // time step iteration
     for (t = 0; t < niter; t++) {
         // don't need this??        MPI_Barrier(MPI_COMM_WORLD);
         // update ghost points
         // to use tag as iteration # to avoid bug 631, uncomment next line
-        // tag=t;
+        tag=t;
         if (my_ID < Num_procs - 1) {
             MPI_Send(&(val [nloc]), 1,MPI_FLOAT, my_ID + 1, tag,
                      MPI_COMM_WORLD);
@@ -109,7 +110,7 @@ int main (int argc, char **argv) {
             //printf ("DEBUG: Process %d after wait for message from %d with tag 99\n", my_ID, my_ID + 1);
             sleep(1);
 
-            MPI_Recv (&(val [nloc + 1]), 1, MPI_FLOAT, my_ID + 1, tag,
+            MPI_Recv (&(val [nloc + 1]), 1, MPI_FLOAT, my_ID + 1, recvTag,
                       MPI_COMM_WORLD, &status);
             //printf ("DEBUG: Process %d after receive of message from %d with tag 99 val = %f\n", my_ID, my_ID + 1, val [nloc - 1]);
         }
@@ -119,7 +120,7 @@ int main (int argc, char **argv) {
             //printf ("DEBUG: Process %d after wait for message from %d with tag 101\n", my_ID, my_ID - 1);
             sleep(1);
 
-            MPI_Recv (&(val [0]), 1, MPI_FLOAT, my_ID - 1, tag,
+            MPI_Recv (&(val [0]), 1, MPI_FLOAT, my_ID - 1, recvTag,
                       MPI_COMM_WORLD, &status);
             //printf ("DEBUG: Process %d after receive of message from %d with tag 101 val = %f\n", my_ID, my_ID - 1, val [0]);
         }
@@ -127,7 +128,7 @@ int main (int argc, char **argv) {
 
         // stencil update
         for (i = 1; i < nloc + 1; i++) {
-            new [i] =  0.5*val [i] + 0.25 * ( val [i + 1] + val [i - 1] );
+            new [i] =  val [i] + 0.5 * ( val [i + 1] - val [i - 1] );
         }
         // copy values for next iteration
         for (i = 1; i < nloc + 1; i++) {
@@ -135,13 +136,16 @@ int main (int argc, char **argv) {
         }
     }
     {
-        int ub = (6 > (nloc+1)? nloc+1 : 6);
-        // print first MIN(5, nloc) elements
-        for (i = 1; i < ub; i++) {
-            //if ( i % 5 == 0) printf ( "val [%d} =  %f\n", i, val [i] );
-            printf ( " Local results PID %d val [%d] =  %f\n", my_ID, i, val [i] );
-            //        printf ("DEBUG %d %d\n", i, nloc - 2);
-            fflush (stdout);
+        int id;
+        for ( id = 0; id < Num_procs; id++ ) {
+            if (my_ID == id) {
+                for (i = 1; i < nloc + 1; i++) {
+                    //if ( i % 5 == 0) printf ( "val [%d} =  %f\n", i, val [i] );
+                    printf ( " Local results PID %d val [%d] =  %f\n", id, i, val [i] );
+                    //        printf ("DEBUG %d %d\n", i, nloc - 2);
+                    fflush (stdout);
+                }
+            }
         }
         if ( my_ID == 0 ) {
             results [0] = 1.;
@@ -150,7 +154,7 @@ int main (int argc, char **argv) {
                 //  printf ("DEBUG %d receive %d results at location %d\n", my_ID, nloc, i); fflush (stdout);
                 sleep(1);
 
-                MPI_Recv (&(results [ 1 + i * nloc ]), nloc, MPI_FLOAT, i, tag,
+                MPI_Recv (&(results [ 1 + i * nloc ]), nloc, MPI_FLOAT, i, recvTag,
                           MPI_COMM_WORLD, &status);
             }
         } else {
@@ -168,9 +172,8 @@ int main (int argc, char **argv) {
                 results [i] = val [i];
                 //printf ( "results [%d] =  %f\n", i, val [i]);
             }
-            for (i = 0; i < 5; i++) {
+            for (i = 0; i < nx; i++) {
                 printf ( "results [%d] =  %f\n", i, results [i] );
-                printf ( "results [%d] =  %f\n", nx-1-i, results [nx-1-i] );
                 fflush (stdout);
             }
         }

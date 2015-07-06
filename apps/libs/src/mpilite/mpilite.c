@@ -16,8 +16,11 @@
 #include "mpi.h"
 #include <malloc.h>
 
-#define MPI_INFO(s,w) {PRINTF("WARNING: %s, will return" #w "\n",(s));}
-#define MPI_WARNING(s,w) {PRINTF("WARNING: %s, returning" #w "\n",(s)); return (w);}
+// Note: can't hide PRINTF with an empty macro or these following
+// warn/error message macros won't print anything. They need to be macros
+// so they can execute a return.
+#define MPI_INFO(s,w) {PRINTF("WARNING: %s, will return " #w "\n",(s));}
+#define MPI_WARNING(s,w) {PRINTF("WARNING: %s, returning " #w "\n",(s)); return (w);}
 #define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
 
 #define CHECK_RANGE(r,max,fn,kind)  if(r < 0 || r >= max) \
@@ -29,7 +32,6 @@
 
 
 // Have to make sure to drag in mainEdt else mpi_ocr.o does not get
-
 // included in the linked object. MPI_Init must be called by all MPI
 // programs, and it uses __mpi_ocr_TRUE from mpi_ocr.o, which will drag in
 // the .o file.
@@ -61,7 +63,7 @@ int MPI_Initialized(int *flag)
 
 int MPI_Finalize(void)
 {
-#if 0    // Only needed for debugging....
+#if DEBUG_MPI    // Only needed for debugging....
     rankContextP_t rankContext = getRankContext();
     const u32 rank = rankContext->rank;
     PRINTF("MPI_Finalize: rank #%d: Finalized!\n", rank);
@@ -95,19 +97,19 @@ static char * get_op_string(MPI_Request req)
 
     switch(req->op)
     {
-      case OP_ISEND:
+      case opIsend:
         return "isend";
-      case OP_IRECV:
+      case opIrecv:
         return "irecv";
-      case OP_IPROBE:
-        return "iprobe";
       default:
         return "unknown";
     }
 }
 
 
-static inline void initRequest(MPI_Request p, int op, int count, int datatype, int tag, int rank, int comm, void *buf)
+static inline void initRequest(MPI_Request p, nonBlockingOp op, int count, int
+                               datatype, int tag, int rank, int comm, void
+                               *buf, bool done)
 {
     p->count = count;
     p->op = op;
@@ -116,9 +118,11 @@ static inline void initRequest(MPI_Request p, int op, int count, int datatype, i
     p->rank = rank;
     p->comm = comm;
     p->flag = 0;
-    p->status = FFWD_MQ_INIT;
+    p->status = (done ? FFWD_MQ_DONE : FFWD_MQ_INIT);
     p->buf = buf;
 }
+
+#if EVENT_ARRAY
 
 // Isend: fill out the request, but do nothing else. A later MPI_Test or
 // MPI_Wait* will caus the send to occur
@@ -126,7 +130,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
               MPI_Comm comm, MPI_Request *request)
 
 {
-#if 0    // Only needed for debugging....
+#if DEBUG_MPI    // Only needed for debugging....
     rankContextP_t rankContext = getRankContext();
     const u32 source = rankContext->rank;
     const u32 numRanks = rankContext->numRanks;
@@ -136,7 +140,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
 #endif    // end of debugging
 
     *request = (MPI_Request)malloc(sizeof(**request));
-    initRequest(*request, OP_ISEND, count, datatype, tag, dest, comm, buf);
+    initRequest(*request, opIsend, count, datatype, tag, dest, comm, buf, FALSE);
 
     return(MPI_SUCCESS);
 }
@@ -214,7 +218,8 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
               int tag, MPI_Comm comm, MPI_Request *request)
 {
     *request = (MPI_Request)malloc(sizeof(**request));
-    initRequest(*request, OP_IRECV, count, datatype, tag, source, comm, buf);
+    initRequest(*request, opIrecv, count, datatype, tag, source, comm,
+                buf, FALSE);
 
     return MPI_SUCCESS;
 }
@@ -312,11 +317,8 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     ocrGuid_t newDB;
     u64 dbSize;
 
-    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize
-#if LEGACY_BLOCK_PROGRESS_5_ARGS
-                           ,0
-#endif
-                           );
+    ocrLegacyBlockProgress(*eventP, &DB, &myPtr, &dbSize, 0);
+
     //assert(DB==newDB);
 
 
@@ -410,6 +412,280 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     return ret;
 }
 
+#else
+
+/********** Use OCR labeling *********/
+
+// Isend: If doing aggressive non-blocking, Try to send. If can't do immediately,
+//  fill out the request.
+//  A later MPI_Test or MPI_Wait* will cause the send to occur
+int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+              MPI_Comm comm, MPI_Request *request)
+
+{
+    rankContextP_t rankContext = getRankContext();
+    const bool aggressiveNB = rankContext->aggressiveNB;
+
+    if (!aggressiveNB)
+        {
+#if DEBUG_MPI    // Only needed for debugging....
+            const u32 source = rankContext->rank;
+            PRINTF("MPI_Isend: rank #%d: dest:%d, tag:%d %d\n", source, dest, tag);
+            fflush(stdout);
+#endif    // end of debugging
+
+            *request = (MPI_Request)malloc(sizeof(**request));
+            initRequest(*request, opIsend, count, datatype, tag, dest, comm, buf, FALSE);
+
+            return(MPI_SUCCESS);
+        }
+
+    const u32 source = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+    const u64 totalSize = count * rankContext->sizeOf[datatype];
+    bool done;
+
+#if DEBUG_MPI    // Only needed for debugging....
+    PRINTF("MPI_Isend_a: rank #%d: dest:%d, tag:%d %d\n", source, dest, tag);
+    fflush(stdout);
+#endif    // end of debugging
+
+    CHECK_RANGE(dest, numRanks, "MPI_Isend", "dest");
+    CHECK_RANGE(tag, maxTag+1, "MPI_Isend", "tag");
+
+    int ret = mpiOcrTrySend(buf, count, datatype, source, dest, tag, comm,
+                            totalSize, &done);
+
+    *request = (MPI_Request)malloc(sizeof(**request));
+    initRequest(*request, opIsend, count, datatype, tag, dest, comm, buf, done);
+
+    return(ret);
+}
+
+// Do a send.
+int MPI_Send(void *buf,int count, MPI_Datatype
+              datatype, int dest, int tag, MPI_Comm comm)
+{
+    // TBD: use comm to determine real "rank"
+
+    rankContextP_t rankContext = getRankContext();
+    const u32 source = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+    const u64 totalSize = count * rankContext->sizeOf[datatype];
+
+#if DEBUG_MPI  // debug
+    PRINTF("MPI_Send: rank #%d: Sending to %d tag:%d \n", source, dest, tag);
+    fflush(stdout);
+#endif
+
+    CHECK_RANGE(dest, numRanks, "MPI_Send", "dest");
+    CHECK_RANGE(tag, maxTag+1, "MPI_Send", "tag");
+
+    return mpiOcrSend(buf, count, datatype, source, dest, tag, comm, totalSize);
+}
+
+// Irecv: If doing aggressive non-blocking, try doing a recv. Otherwise, fill out the request,
+// but do nothing else. A later MPI_Test or
+// MPI_Wait* will cause the recv to occur
+int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
+              int tag, MPI_Comm comm, MPI_Request *request)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 dest = rankContext->rank;
+    const bool aggressiveNB = rankContext->aggressiveNB;
+    bool done = FALSE;
+    int ret = MPI_SUCCESS;
+
+#if DEBUG_MPI    // Only needed for debugging....
+    PRINTF("MPI_Irecv: rank #%d: source:%d, tag:%d %d\n", dest, source, tag);
+    fflush(stdout);
+#endif    // end of debugging
+
+    if (aggressiveNB)
+        {  //
+           // Aggressive Non-Blocking: see if the Recv can be done via mpiTryRecv. If so,
+           //
+           // complete it. In either case, package up results in *request,
+           // where done will be TRUE or FALSE, respectively.
+
+            // This large IF stmt distinguishes the easy case of no wildcards,
+            // versus wildcards.
+            const u32 numRanks = rankContext->numRanks;
+            const u32 maxTag = rankContext->maxTag;
+            const u64 totalSize = count * rankContext->sizeOf[datatype];
+            MPI_Status status;
+
+            if (!(MPI_ANY_SOURCE == source || MPI_ANY_TAG == tag)) {
+
+                CHECK_RANGE(source, numRanks, "MPI_Recv", "source");
+                CHECK_RANGE(tag, maxTag+1, "MPI_Recv", "tag");
+
+                ret = mpiOcrTryRecv(buf, count, datatype, source, dest, tag, comm,
+                                 totalSize, &status, &done);
+
+            } else { //
+                // *ANY* for source, tag, or both. Try once for each
+                // combination; stop if you find a
+                // successful recv using mpiOcrTryRecv.
+                //
+                // Use one doubly nested loop for the 3 conditions, using xLb
+                // and xUb as appropriate range for src and tag
+
+                u32 srcLb, srcUb, tagLb, tagUb;
+
+                if (MPI_ANY_SOURCE == source)
+                    {
+                        srcLb = 0;
+                        srcUb = numRanks;
+                    }
+                else
+                    {   // Real source value
+                        CHECK_RANGE(source, numRanks, "MPI_Recv", "source");
+                        srcLb = source;
+                        srcUb = source+1;
+                    }
+
+                if (MPI_ANY_TAG == tag)
+                    {
+                        tagLb = 0;
+                        tagUb = maxTag+1;
+                    }
+                else
+                    {   // real tag value
+                        CHECK_RANGE(tag, (maxTag+1), "MPI_Recv", "tag");
+                        tagLb = tag;
+                        tagUb = tag+1;
+                    }
+
+                for (u32 trySource = srcLb; trySource < srcUb; trySource++) {
+                    for (u32 tryTag = tagLb; tryTag < tagUb; tryTag++){
+                        ret = mpiOcrTryRecv(buf, count, datatype, trySource, dest,
+                                            tryTag, comm, totalSize, &status, &done);
+                        if (done) {
+                            // Found a match! set source & tag to the
+                            // values that worked, so they get filled into
+                            // request properly
+                            source = trySource;
+                            tag = tryTag;
+                            break;
+                        }
+                    } // end inner loop
+                    if (done) {
+                        break;
+                    }
+                } // end outer loop
+            } // end Else one or both use ANY
+        } // end if aggressiveNB
+    else
+        {
+            // non-aggressive non-blocking - just fall out the bottom,
+            // creating a request with all the args, and
+            // done==FALSE. ret is already MPI_SUCCESS.
+            // Operation will be completed by MPI_Wait or MPI_Test
+        }
+
+    *request = (MPI_Request)malloc(sizeof(**request));
+    initRequest(*request, opIrecv, count, datatype, tag, source, comm, buf, done);
+
+    return ret;
+}
+
+
+int MPI_Recv(void *buf,int count, MPI_Datatype
+              datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
+{
+    // TBD: use comm to determine real "rank"
+    int ret = MPI_SUCCESS;
+
+    rankContextP_t rankContext = getRankContext();
+    const u32 dest = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+    const u64 totalSize = count * rankContext->sizeOf[datatype];
+
+#if DEBUG_MPI
+    PRINTF("MPI_Recv: rank #%d: Recv from %d tag:%d\n",  dest, source, tag);
+    fflush(stdout);
+#endif
+
+    // This large IF stmt distinguishes the easy case of no wildcards,
+    // versus wildcards.
+    if (!(MPI_ANY_SOURCE == source || MPI_ANY_TAG == tag)) {
+
+        CHECK_RANGE(source, numRanks, "MPI_Recv", "source");
+        CHECK_RANGE(tag, maxTag+1, "MPI_Recv", "tag");
+
+        ret = mpiOcrRecv(buf, count, datatype, source, dest, tag, comm,
+                         totalSize, status);
+
+    } else {
+        // *ANY* for source, tag, or both. Try once for each
+        // combination; stop if you find a
+        // successful recv using mpiOcrTryRecv; else go around the
+        // while loop again, trying all combinations. Don't stop
+        // till someone matches!
+        //
+        // Use one doubly nested loop for the 3 possible "*ANY*" conditions, using xLb
+        // and xUb as appropriate range for src and tag
+
+        u32 srcLb, srcUb, tagLb, tagUb;
+
+        if (MPI_ANY_SOURCE == source)
+            {
+                srcLb = 0;
+                srcUb = numRanks;
+            }
+        else
+            {   // Real source value
+                CHECK_RANGE(source, numRanks, "MPI_Recv", "source");
+                srcLb = source;
+                srcUb = source+1;
+            }
+
+        if (MPI_ANY_TAG == tag)
+            {
+                tagLb = 0;
+                tagUb = maxTag+1;
+            }
+        else
+            {   // real tag value
+                CHECK_RANGE(tag, (maxTag+1), "MPI_Recv", "tag");
+                tagLb = tag;
+                tagUb = tag+1;
+            }
+
+        bool done = FALSE;
+        while (!done)
+            {
+                // Note: it is OK to hide the source and tag args to
+                // MPI_Recv with the loop args, because the correct value will be filled into
+                // the status struct once a match is found.
+                for (u32 trySource = srcLb; trySource < srcUb; trySource++) {
+                    for (u32 tryTag = tagLb; tryTag < tagUb; tryTag++){
+                        ret = mpiOcrTryRecv(buf, count, datatype, trySource, dest,
+                                            tryTag, comm, totalSize, status, &done);
+                        if (done) {
+                            break;
+                        }
+                    } // end inner for loop
+                    if (done) {
+                        break;
+                    }
+                } // end outer for loop
+            }  // end while(!done)
+
+    } // end Else one or both use ANY
+
+    // Here buf is filled and if status isn't IGNORE it has been filled
+    // in. Also, ret is set.
+
+    return ret;
+}
+
+#endif // if EVENT_ARRAY
+
 int MPI_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                  int dest, int sendtag,
                  void *recvbuf, int recvcount, MPI_Datatype recvtype,
@@ -427,15 +703,24 @@ int MPI_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 
 }
 
+// Fill in status using info from a satisfied request
+static void fillStatusFromRequest(MPI_Status *status, MPI_Request request)
+{
+    if (status != MPI_STATUS_IGNORE)
+        {
+            // fill in status struct
+            status->mq_status.count    = request->count;
+            status->mq_status.datatype = request->datatype;
+            status->mq_status.source   = request->rank;
+            status->mq_status.tag      = request->tag;
+        }
+}
+
 int MPI_Wait(MPI_Request *request, MPI_Status *status)
 {
     // for debugging
     rankContextP_t rankContext = getRankContext();
     const u32 rank = rankContext->rank;
-    const u32 numRanks = rankContext->numRanks;
-    const u32 maxTag = rankContext->maxTag;
-
-
 
     MPI_Request r;
 
@@ -443,32 +728,47 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
         {
             //MPI_REQUEST_NULL is legitimate.
             //MPI_WARNING("MPI_Wait: bad value for request", MPI_ERR_REQUEST);
+#if DEBUG_MPI
+            PRINTF("MPI_Wait: rank #%d: MPI_NULL_REQUEST\n", rank);
+#endif
             return MPI_SUCCESS;
         }
 
-    //PRINTF("MPI_Wait: rank #%d: request->op=%s\n", rank, get_op_string(r));
+    const bool done = FFWD_MQ_DONE == r->status;
+
+#if DEBUG_MPI
+    PRINTF("MPI_Wait: rank #%d: request->(op=%s, done=%s)\n", rank, get_op_string(r),
+           (done ? "yes" : "no"));
+#endif
 
     int ret = MPI_SUCCESS;
     switch(r->op)
         {
-        case OP_ISEND:
+        case opIsend:
             {
-                ret = MPI_Send(r->buf,r-> count,r-> datatype, r->rank, r->tag,
-                               r->comm);
+                // If wasn't done before, force it now. If was done,
+                // nothing to do now. Note: status arg is left alone.
+                if (!done){
+                    // didn't happen at the isend, so force a send now
+                    ret = MPI_Send(r->buf,r-> count, r-> datatype, r->rank, r->tag,
+                                   r->comm);
+                }
                 break;
             }
-        case OP_IRECV:
+        case opIrecv:
             {
-                ret = MPI_Recv(r->buf,r-> count,r-> datatype, r->rank, r->tag, r->comm, status);
+                // If was done, just fill in status from request.
+                // If wasn't done before, force it now.
+                if (done){
+                    // irecv was successful; transfer info from request to status
+                    fillStatusFromRequest(status, r);
+                }
+                else {
+                    // have to actually do the recv
+                    ret = MPI_Recv(r->buf,r-> count, r-> datatype, r->rank, r->tag,
+                                   r->comm, status);
+                }
                 break;
-            }
-        case OP_IPROBE:
-            {
-                free(r);
-                *request = MPI_REQUEST_NULL;
-
-                // does a return
-                MPI_WARNING("MPI_Wait: MPI_Probe NYI",MPI_ERR_INTERN);
             }
         default:
             {
@@ -479,7 +779,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
             }
         }
 
-    free (r);
+    free(r);
     *request = MPI_REQUEST_NULL;
     return ret;
 }
@@ -501,7 +801,7 @@ int MPI_Waitall(int count, MPI_Request *array_of_requests,
             // the send to happen
             for(i=0;i<count;i++) {
                 MPI_Request *r = &array_of_requests[i];
-                if (MPI_REQUEST_NULL != *r && OP_ISEND == (*r)->op)
+                if (MPI_REQUEST_NULL != *r && opIsend == (*r)->op)
                     {
                         MPI_Wait(r, &array_of_statuses[i]);
                     }
@@ -516,8 +816,109 @@ int MPI_Waitall(int count, MPI_Request *array_of_requests,
 
 int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
 {
-    *flag = TRUE;
-    return MPI_Wait(request, status);
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    bool aggressiveNB = rankContext->aggressiveNB;
+
+    if (!aggressiveNB)
+        {
+#if DEBUG_MPI
+            PRINTF("MPI_Test: rank #%d: request->(op=%s)\n", rank, (NULL == request? "NULL" :
+                   get_op_string(*request)));
+#endif
+            *flag = TRUE;
+            return MPI_Wait(request, status);
+        }
+
+    // Aggressive Non-blocking. See if we can do the send or recv NOW.
+    // If not, don't block.
+
+    MPI_Request r, newR;
+
+    if (NULL == request || MPI_REQUEST_NULL == (r = *request))
+        {
+            //MPI_REQUEST_NULL is legitimate. E.g., previous TEST succeeded.
+#if DEBUG_MPI
+            PRINTF("MPI_Test: rank #%d: MPI_NULL_REQUEST, set flag=TRUE\n", rank);
+#endif
+
+            *flag = TRUE;
+            return MPI_SUCCESS;
+        }
+
+    bool done = (FFWD_MQ_DONE == r->status);
+
+#if DEBUG_MPI
+    PRINTF("MPI_Test: rank #%d: request->(op=%s, done=%s)\n", rank, get_op_string(r),
+           (done ? "yes" : "no"));
+#endif
+
+    int ret = MPI_SUCCESS;
+    switch(r->op)
+        {
+        case opIsend:
+            {
+                // If wasn't done before, try it again. If was done,
+                // nothing to do now. Note: status arg is left alone.
+                if (!(done)){
+                    // didn't happen at the isend, so try an Isend again
+                    ret = MPI_Isend(r->buf,r-> count, r-> datatype, r->rank, r->tag,
+                                    r->comm, &newR);
+
+                    // This gives us another "newer" filled in request. So
+                    // free the old one, and assign newR to r
+                    free(r);
+                    r = newR;
+
+                    // see if it's done now!
+                    done = (FFWD_MQ_DONE == r->status);
+                }
+                break;
+            }
+        case opIrecv:
+            {
+                // If wasn't done before, try it again
+                if (!(done)){
+                    // didn't complete at the Irecv, so try another Irecv
+                    ret = MPI_Irecv(r->buf, r->count, r->datatype, r->rank, r->tag,
+                                    r->comm, &newR);
+
+                    // This gives us another "newer" filled in request. So
+                    // free the old one, and assign newR to r
+                    free(r);
+                    r = newR;
+
+                    // see if it's done now!
+                    done = (FFWD_MQ_DONE == r->status);
+                }
+                if (done){
+                    // irecv was successful; or the original irecv was
+                    // successful, so transfer info from request to status
+                    fillStatusFromRequest(status, r);
+                }
+                break;
+            }
+        default:
+            {
+                free(r);
+                *request = MPI_REQUEST_NULL;
+                // does a return
+                MPI_WARNING("MPI_Test: unknown request operation type", MPI_ERR_REQUEST);
+            }
+        }
+
+    *flag = done;
+    if(done)
+        {
+            free(r);
+            *request = MPI_REQUEST_NULL;
+        }
+    else
+        {
+            *request = r;
+        }
+
+    return ret;
 }
 
 int MPI_Testall(int count, MPI_Request *array_of_requests, int *flag,

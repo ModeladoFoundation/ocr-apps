@@ -28,11 +28,16 @@ extern "C" {
 // Turn on legacy capabilities of OCR.
 #define ENABLE_EXTENSION_LEGACY 1
 #define ENABLE_EXTENSION_RTITF 1
+#define ENABLE_EXTENSION_LABELING  1
+
+// debugging for mpi_ocr{,_messaging}.c, mpilite.c
+#define DEBUG_MPI 0
 
 // Defines to simulate OCR tagging for events, and ocrLegacyBlockProgress
 // for datablocks
 
 // Can define as 0 on compile line to test: -DEVENT_ARRAY=0
+// or set to 0 to turn off permanently in favor of Labeled Guids
 #ifndef EVENT_ARRAY
     #define EVENT_ARRAY 1
 #endif
@@ -42,20 +47,15 @@ extern "C" {
 // #define DB_ARRAY 1
 */
 
-#if ! EVENT_ARRAY
-    // use OCR labeling
-    #define ENABLE_EXTENSION_LABELING  1
-#endif
-
 // Include this AFTER all defines have been done.
 // This is used for u64 and friends
 #include <ocr-types.h>
 
 // Values for MPI_Request->op
-// doesn't work? typedef enum( opIsend, opIrecv, opIprobe) nonBlockingOp;
-#define OP_ISEND    1
-#define OP_IRECV    2
-#define OP_IPROBE   3
+typedef enum {
+    opIsend,
+    opIrecv
+} nonBlockingOp;
 
 // Values for MPI_Request->status
 #define FFWD_MQ_MAX             (0)
@@ -89,6 +89,7 @@ typedef struct mpiOcrMessage_t
 typedef struct rankContext_t
 {
     u32 rank, numRanks, maxTag, mpiInitialized;
+    bool aggressiveNB; // aggressive non-blocking implementation
     unsigned char sizeOf[17];  // sizeof each datatype
 
     u32 maxComm,    // communicators range from 0..maxComm
@@ -101,10 +102,10 @@ typedef struct messageContext_t
 #if  EVENT_ARRAY
     // 3 D array of events
     ocrGuid_t *messageEvents;
-#else
+#endif
     // 3 D map of event guid s
     ocrGuid_t messageEventMap;
-#endif
+
 #ifdef DB_ARRAY
     ocrEdtDep_t *messageData;
 #endif
@@ -130,6 +131,26 @@ static inline messageContextP_t getMessageContext() {
     return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
 }
 
+int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
+               datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64 totalSize);
+
+int mpiOcrTrySend(void *buf, int count, /*MPI_Datatype*/ int
+               datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
+                  totalSize, bool *done);
+
+int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
+               datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
+               totalSize, /*MPI_Status*/ void *status);
+
+int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
+                  datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
+                  totalSize, /*MPI_Status*/ void *status, bool *done);
+
+/* prints error and exits program */
+void ERROR(char *s);
+
+/* prints warning */
+void WARNING(char *s);
 
 int __mpi_ocr_TRUE(void);
 

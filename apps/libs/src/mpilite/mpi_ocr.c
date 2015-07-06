@@ -13,11 +13,7 @@
 #include <ocr.h>
 
 #include <extensions/ocr-legacy.h>
-#if ENABLE_EXTENSION_LABELING
-    #include <extensions/ocr-labeling.h>
-#endif
-
-#define DEBUG_MPI 1
+#include <extensions/ocr-labeling.h>
 
 extern ocrGuid_t __ffwd_init(void * ffwd_add_ptr);
 
@@ -32,7 +28,10 @@ void WARNING(char *s)
 }
 
 // HIDE all the debugging printfs
-#define PRINTF(a,...)
+#if !DEBUG_MPI
+     #define PRINTF(a,...)
+     #define fflush(a)
+#endif
 
 // fillArgv: create argc/argv for main() from OCR
 static void fillArgv(u64 argc, char *argv[],void *argcArgvPtr)
@@ -74,6 +73,7 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
       .numRanks = paramv[1],
       .maxTag = paramv[2],
       .mpiInitialized = FALSE,
+      .aggressiveNB = paramv[4],
       .sizeOf = {0,  // not-a-datatype
                  sizeof(char), // MPI_CHAR
                  sizeof(signed char), // MPI_SIGNED_CHAR
@@ -155,15 +155,17 @@ static ocrGuid_t endEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 
-// parseAndShiftArgv extract numRanks "-r <int>" optional - otherwise use NbWorkers
+// parseAndShiftArgv extract optional aggressive Non-Blocking "-a" (default
+// conservative; then numRanks "-r <int>" optional - otherwise use NbWorkers
 // and maxTag "-t <int>" optional; else use 0
 //     exe [-r <int>][-t <int>] <args for program>
 // arguments from argcArgv DB, and shift argv to left by number of items
 // extracted (reducing argc accordingly)
-static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
+static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *aggressiveNB )
 {
     *numRanks = 4;  // default
     *maxTag = 0;  // default
+    *aggressiveNB = FALSE; // default non-aggressive
     int shift = 0;      // amount to shift argv to remove mpilite args
 
     int argc = getArgc(argcArgv);
@@ -178,7 +180,22 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
     }
 #endif
 
-    if (argc < 3 || strcmp("-r", getArgv(argcArgv,1)))
+    if (argc > 1 && ! strcmp("-a", getArgv(argcArgv,1)))
+#if EVENT_ARRAY
+        {
+            // only supported for LABELing version of mpi-lite
+            *aggressiveNB = FALSE;
+            shift += 1;
+            WARNING("MPI startup: '-a' Aggressive Non-Blocking not supported in this version\n");
+        }
+#else
+        {
+            *aggressiveNB = TRUE;
+            shift += 1;
+        }
+#endif
+
+    if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
         {
             char msg[150];
             *numRanks = ocrNbWorkers();
@@ -189,12 +206,12 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
     else
         {
             // should check that is digits
-            *numRanks = atoi(getArgv(argcArgv, 2));
+            *numRanks = atoi(getArgv(argcArgv, 2 + shift));
             shift += 2;
         }
 
-    // "-t" may be specified without "-r", so have to look in position 1 or
-    // 3
+    // "-t" may be specified without "-a" and/or "-r", so have to look in position 1,2 or
+    // 3,4
     if (argc >= (3+shift) && !strcmp("-t", getArgv(argcArgv, (1+shift))))
         {
             // should check that is digits
@@ -247,7 +264,7 @@ static ocrGuid_t createTaggedEvents(u32 numRanks, u32 maxTag)
     s64 dimensions[] = {numRanks, numRanks, maxTag+1};
 
     ocrGuidMapCreate(&messageEventMap, 3, messageEventMapFunc, dimensions,
-                     numRanks*numRanks*(maxTag+1) );
+                     numRanks*numRanks*(maxTag+1), GUID_USER_EVENT_STICKY);
     return messageEventMap;
 #endif
 }
@@ -307,10 +324,10 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     char ** newArgv = NULL;
     u32 numRanks = 0;
     u32 maxTag = 0;
-
+    bool aggressiveNB = FALSE;
 
     PRINTF("mainEdtHelper: Parse argv\n");
-    parseAndShiftArgv(argcArgv, &numRanks, &maxTag);
+    parseAndShiftArgv(argcArgv, &numRanks, &maxTag, &aggressiveNB);
 
     // CHECK that the number of threads in the ocr context is >= numRanks,
     // or might get hangs. [Don't know how to ask this]
@@ -325,7 +342,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             ERROR(msg); // exits
         }
 
-    PRINTF("mainEdtHelper: numRanks = %d; maxTag = %d\n", numRanks, maxTag);
+    PRINTF("mainEdtHelper: numRanks = %d; maxTag = %d, aggressiveNB = %d\n", numRanks, maxTag, aggressiveNB);
 
     // create rankEDTs - but don't add depv until endEdt has had their output
     // events added as its depv; so a rank doesn't complete before endEdt is ready.
@@ -333,7 +350,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     PRINTF("mainEdtHelper: creating rank edts\n");fflush(stdout);
 
     ocrGuid_t rankEdtTemplate;
-    ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, 4, 3);
+    ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, 5, 3);
 
 #if DONT_USE_FINISH_EDT
     ocrGuid_t ranks[numRanks];     // needed so dependences can be added to
@@ -355,7 +372,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     ocrGuid_t messageEventsDB=NULL_GUID, messageDataDB=NULL_GUID;
     createMessageEventsAndData(&messageEventsDB, &messageDataDB, numRanks, maxTag);
 
-    u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap};  //most params are the same
+    u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap, aggressiveNB};  //most params are the same
     ocrGuid_t rankDepv[] = {argcArgvDB->guid, messageEventsDB, messageDataDB };
 
     // create the rankEdts. since their deps are all satisfied, they can
@@ -385,11 +402,11 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             PRINTF("  rank %d edt 0x%llx\n",rank, ranks[rank]);
 
             // argcArgvDB: will only be read by ranks
-            ocrAddDependence(argcArgvDB->guid, ranks[rank], 0, DB_MODE_CONST);
+            ocrAddDependence(argcArgvDB->guid, ranks[rank], 0, DB_MODE_RO);
 
-            ocrAddDependence(messgeEventsDB, ranks[rank], 0, DB_MODE_RW);
+            ocrAddDependence(messgeEventsDB, ranks[rank], 0, DB_MODE_ITW);
 
-            ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_RW);
+            ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_ITW);
         }
 #endif
 
