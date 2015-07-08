@@ -40,6 +40,7 @@ CONFIG_GENERATE       := ${OCR_ROOT}/scripts/Configs/config-generator.py
 CONFIG_FILE           := ${WORKLOAD_INSTALL}/generated.cfg
 CONFIG_NUM_THREADS    ?= 4
 OCR_CONFIG            ?= $(CONFIG_FILE)
+#CONFIG_FLAGS - may be set in user portion of Makefile
 
 REQ_LIBS ?=
 
@@ -120,7 +121,7 @@ ifeq ($(OCR_CONFIG), $(CONFIG_FILE))
 ifeq ($(ENABLE_VISUALIZER), yes)
 	$(CONFIG_GENERATE) --guid COUNTED_MAP --dbtype Regular --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 else
-	$(CONFIG_GENERATE) --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
+	$(CONFIG_GENERATE) $(CONFIG_FLAGS) --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 endif
 endif
 	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_ROOT) OCR_CONFIG=$(OCR_CONFIG) \
