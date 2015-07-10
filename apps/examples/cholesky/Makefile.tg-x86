@@ -120,7 +120,7 @@ postrun: $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/convertOut.exe
 	cd $(WORKLOAD_EXEC)
 	$(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/convertOut.exe $(WORKLOAD_ARGS) $(WORKLOAD_OUTS) cholesky.out.txt
 
-ifneq ($(RUN_JENKINS), run)
+ifneq ($(RUN_JENKINS), runApp)
 $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/convertOut.exe: $(WORKLOAD_SRC)/convertOut.c
 	mkdir -p $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)
 	gcc -m64 -o $@ $^
