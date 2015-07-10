@@ -3,19 +3,24 @@
 # removed or modified.
 
 
-TOOL = globals2db
+TOOL1 = globals2db
+TOOL2 = globals2struct
 
 include $(CURDIR)/../../Makefile.def
 
-all: $(TOOL)
+all: $(TOOL1) $(TOOL2)
 
 bindir:
 	 @mkdir -p ../bin
 
-$(TOOL): $(TOOL).cpp bindir
-	$(CXX) -g -O2 $(TOOL_INC) $< -o $@ $(TOOL_LNK)
-	mv $(TOOL) ../bin
+$(TOOL1): $(TOOL1).cpp bindir
+	$(CXX) -g -O2 -D__FFWD_DB_ $(TOOL_INC) $< -o $@ $(TOOL_LNK)
+	mv $(TOOL1) ../bin
+
+$(TOOL2): $(TOOL1).cpp bindir
+	$(CXX) -g -O2 -D__FFWD_STRUCT_ $(TOOL_INC) $< -o $@ $(TOOL_LNK)
+	mv $(TOOL2) ../bin
 
 clean:
-	rm -f ../bin/$(TOOL)
+	rm -f ../bin/$(TOOL1)  ../bin/$(TOOL2)
 	rm -f *~

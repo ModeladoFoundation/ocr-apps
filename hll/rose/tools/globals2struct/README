@@ -1,4 +1,11 @@
 
+*** THIS TOOL HAS BEEN COMBINED WITH globals2db, ***
+*** AND IT NOW RESIDES IN THAT DIRECTORY.        ***
+***                                              ***
+*** THIS DIRECTORY WILL SOON BE DELETED.         ***
+
+
+
 This ROSE tool, globals2struct, finds all globals and
 file statics in an application, and
 

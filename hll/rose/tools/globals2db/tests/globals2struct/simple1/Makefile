@@ -5,24 +5,28 @@
 TARGET = main
 SRC = main.c foo.c
 ROSE_SRC = rose_main.c rose_foo.c
-TOOL = ../../bin/globals2db
+TOOL = ../../../bin/globals2struct
 ROSE_TARGET = rose_$(TARGET)
-ROSE_OPT = -rose:binary
 
-include $(CURDIR)/../../../Makefile.def
+include $(CURDIR)/../../../../Makefile.def
 
 all: run
 
 
 $(ROSE_TARGET): $(SRC) $(TOOL)
-	$(TOOL)  $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) -o $(TARGET) > build.log
-	@if test `grep -e "applications with MPI support" build.log | wc -l` -eq 1; \
+	$(TOOL) $(CFLAGS) $(CC_INC) $(SRC) -o $(TARGET) > build.log
+
+
+run: $(ROSE_TARGET)
+	$(CC) -g -O2  -I. $(ROSE_SRC) -o $(ROSE_TARGET)
+	./$(ROSE_TARGET) 8 > $(ROSE_TARGET).log
+	$(CC) -O2 $(SRC) -o $(TARGET)
+	./$(TARGET) 8 > $(TARGET).log
+	@if test `diff $(TARGET).log $(ROSE_TARGET).log  | wc -l` -eq 0; \
 		then echo "$(TOOL) PASSED!" $(OUTPUT) ; \
 		else echo "$(TOOL) FAILED." $(OUTPUT) ; \
 	fi
 
-
-run: $(ROSE_TARGET)
 
 dot:
 	dotGenerator $(TARGET).c

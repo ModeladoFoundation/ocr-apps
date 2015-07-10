@@ -2,27 +2,27 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-TARGET = main
-SRC = main.c foo.c
-ROSE_SRC = rose_main.c rose_foo.c
-TOOL = ../../bin/globals2db
+TARGET = stencil
+SRC = stencil.c
+ROSE_SRC = rose_stencil.c
+TOOL = ../../../bin/globals2db
 ROSE_TARGET = rose_$(TARGET)
-ROSE_OPT = -rose:binary
 
-include $(CURDIR)/../../../Makefile.def
+include $(CURDIR)/../../../../Makefile.def
 
 all: run
 
 
 $(ROSE_TARGET): $(SRC) $(TOOL)
-	$(TOOL)  $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) -o $(TARGET) > build.log
-	@if test `grep -e "applications with MPI support" build.log | wc -l` -eq 1; \
+	$(TOOL) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) -o $(TARGET) > build.log
+
+run: $(ROSE_TARGET)
+#	$(CC) -g -O2  -I. $(ROSE_SRC) $(MPI_FLAGS) -o $(ROSE_TARGET)
+#	./$(ROSE_TARGET) 8 > $(ROSE_TARGET).log
+	@if test `grep "MPI_Init" build.log | wc -l` -eq 1; \
 		then echo "$(TOOL) PASSED!" $(OUTPUT) ; \
 		else echo "$(TOOL) FAILED." $(OUTPUT) ; \
 	fi
-
-
-run: $(ROSE_TARGET)
 
 dot:
 	dotGenerator $(TARGET).c

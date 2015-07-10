@@ -31,8 +31,29 @@ const string strUnderscore("_");
 // forward declarations
 size_t sizeOfType(const SgType *type);
 static void printNode(SgNode* node);
-string create_new_name(SgInitializedName * name);
+string create_new_name(SgInitializedName * name, SgScopeStatement * scope);
 
+
+// This class stores information about tool generated variables (TGV).
+// These variables will be placed in the global structure with the
+// DbElement variables, but they lack all of the context that the
+// applications variables contain.
+class TgvElement
+{
+  public:
+    TgvElement(string name, SgScopeStatement* scope)
+    {
+        _name = name;
+        _scope = scope;
+    }
+    ~TgvElement(){};
+    string get_name() { return _name; }
+    SgScopeStatement* get_scope() { return _scope; }
+
+  private:
+    string _name;
+    SgScopeStatement* _scope;
+};
 
 
 
@@ -88,6 +109,7 @@ FileElement::FileElement(Sg_File_Info* fileInfo, SgBasicBlock* initFunc, SgName*
 }
 
 
+
 // This class stores information about global and file static variables.
 class DbElement
 {
@@ -101,6 +123,8 @@ class DbElement
     string get_new_name() { return _newName; }
     SgScopeStatement* get_scope() { return _scope; }
     SgDeclarationStatement* get_declaration() { return _decl; }
+    TgvElement * get_tgv() { return _tgv; }
+    void set_tgv(TgvElement * tgv) { _tgv = tgv; }
     bool is_initialized() { return _isInitialized; }
     bool is_static() { return _isStatic; }
     bool entry_created() { return _entryCreated; }
@@ -126,6 +150,7 @@ class DbElement
     string _newName;
     SgScopeStatement* _scope;
     SgDeclarationStatement* _decl;
+    TgvElement * _tgv;
     bool _isInitialized;
     bool _isStatic;
     bool _entryCreated;
@@ -143,12 +168,14 @@ DbElement::DbElement(SgVariableSymbol* sym, SgNode* node)
     _sym = sym;
     _name = sym->get_declaration();
     ROSE_ASSERT (_name != NULL);
-    _newName = create_new_name(_name);
     _scope = _name->get_scope();
-
     ROSE_ASSERT (_scope != NULL);
+    _newName = create_new_name(_name, _scope);
+
     SgDeclarationStatement* _decl = sym->get_declaration()->get_declaration();
     ROSE_ASSERT(_decl);
+
+    _tgv = NULL;
 
     _fileInfo=isSgNode(_decl)->get_file_info();
     _baseType= _name->get_type()->findBaseType();
@@ -183,9 +210,11 @@ DbElement::DbElement(SgVariableSymbol* sym, SgNode* node)
 
 // Create a new variable name for the global and file static variables.
 // Globals are prepending with an underscore.  File statics are prepended
-// with an underscore and the main part of the file name.
+// with an underscore and the main part of the file name. Function statics
+// are prepended with an underscore, the file name and the function name.
+// All have an integer added as a suffix.
 //
-string create_new_name( SgInitializedName * name)
+string create_new_name( SgInitializedName * name, SgScopeStatement * scope)
 {
     static int num=0;
     char buf[256];
@@ -195,23 +224,42 @@ string create_new_name( SgInitializedName * name)
     {
         string filename =  name->get_file_info()->get_filename();
         string file_no_path = StringUtility::stripPathFromFileName(filename);
-        std::size_t dot = file_no_path.find(".");
-        std::string fname = file_no_path.substr(0,dot);
-        std::string tstr = strUnderscore + fname + strUnderscore +
-                           name->get_name().str() + strUnderscore;
+        size_t dot = file_no_path.find(".");
+        string fname = file_no_path.substr(0,dot);
 
-        sprintf(buf, "%s%d", tstr.c_str(),num);
-        newName =  string(buf);
+        if (isSgGlobal(scope))
+        {
+            string tstr = strUnderscore + fname + strUnderscore +
+                          name->get_name().str() + strUnderscore;
+            sprintf(buf, "%s%d", tstr.c_str(),num);
+            newName =  string(buf);
+        }
+        else
+        {
+            SgFunctionDeclaration * funcDecl = getEnclosingFunctionDeclaration(scope);
+            if (funcDecl == 0)
+            {
+                printf("create_new_name: funcDecl not found\n");
+                return "";
+            }
+            string funcName = funcDecl->get_name().getString();
+            string tstr = strUnderscore + fname + strUnderscore +
+                          funcName + strUnderscore +
+                          name->get_name().str() + strUnderscore;
+            sprintf(buf, "%s%d", tstr.c_str(),num);
+            newName =  string(buf);
+        }
     }
-    else
+
+    else // isSgGlobal(scope)
     {
-        std::string tstr = strUnderscore + name->get_name().str() + strUnderscore;
+        string tstr = strUnderscore + name->get_name().str() + strUnderscore;
         sprintf(buf, "%s%d", tstr.c_str(),num);
         newName = string(buf);
     }
 
     num++;
-    //printf("create_new_name(): newname=%s\n", newName.c_str());
+    printf("create_new_name(): newname=%s\n", newName.c_str());
 
     return newName;
 }
@@ -463,7 +511,7 @@ static void printLocation(SgNode* node)
            isSgNode(node)->unparseToString().c_str());
 }
 
-static bool isNodeInUserLocation(SgNode* node)
+static bool isNodeDefinedInUserLocation(SgNode* node)
 {
     Sg_File_Info* file = node->get_file_info();
     const char* filename = file->get_filenameString().c_str();

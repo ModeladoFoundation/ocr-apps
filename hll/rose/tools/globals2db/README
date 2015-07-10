@@ -1,0 +1,62 @@
+
+These ROSE tools, globals2db and globals2struct, find all globals,
+file statics and function statics in an application.
+
+The tool globals2db:
+
+    1. Creates an OCR Data Block.
+    2. Places the globals and statics in the DB.
+    3. Initializes the globals and statics which were originally
+       initialized in the application.
+    4. Updates the references to the globals and statics to
+       reflect their new location.
+    5. Stores a pointer to the OCR DB in ELS.
+
+The tool globals2struct:
+
+    1. Places the globals and statics in a structure.
+    2. Initializes the globals and statics which were originally
+       initialized in the application.
+    3. Updates the references to the globals and statics to
+       reflect their new location.
+    4. Stores the pointer to the structure in TLS.
+
+
+If the Open Community Runtime (OCR) is not installed on your system, see
+https://xstack.exascale-tech.com/wiki/index.php/Getting_Started.
+
+If the ROSE compiler framework is not available on your system, see below.
+The ROSE compiler framework in available on the xstack.exascale-tech.com system.
+
+
+To build and execute these tools:
+    1. Set up the OCR/Xstack environment.
+
+    2. Execute the script to set up the ROSE environment.
+         % . ../../rose_env.sh
+
+    3. Build the tools.
+         % cd src
+         % make
+
+    4. Run the tool using the test case provided.
+         % cd ../tests/<tool-name>/<test-name>
+         % make
+
+
+
+To build the ROSE compiler framework,
+    1. Download the ROSE compiler framework from http://rosecompiler.org.
+
+    2. Build the ROSE compiler framework. See http://rosecompiler.org/ROSE_InstallationInstructions.pdf.
+
+    3. Update the script which sets up the ROSE environment to reflect your system.
+         % xemacs ../../rose_env.sh &
+
+
+The ROSE compiler framework, developed at Lawrence Livermore National
+Laboratory (LLNL), is an open source compiler infrastructure to generate
+source-to-source analyzers and translators for multiple source languages
+including C, C++, and Fortran.  See http://www.rosecompiler.org/ for
+more information.
+

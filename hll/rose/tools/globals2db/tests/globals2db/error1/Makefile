@@ -5,11 +5,11 @@
 TARGET = main
 SRC = main.c foo.c
 ROSE_SRC = rose_main.c rose_foo.c
-TOOL = ../../bin/globals2db
+TOOL = ../../../bin/globals2db
 ROSE_TARGET = rose_$(TARGET)
 ROSE_OPT = -rose:binary
 
-include $(CURDIR)/../../../Makefile.def
+include $(CURDIR)/../../../../Makefile.def
 
 all: run
 

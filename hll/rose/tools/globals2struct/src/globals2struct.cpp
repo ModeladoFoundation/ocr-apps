@@ -41,15 +41,16 @@ class visitorTraversal : public AstSimpleProcessing
     void errorCheck();
     DbElement* onGlobalDeclList(SgVariableSymbol* sym);
     FileElement* onLocalFileList(string filename);
+    TgvElement* onTgvList(string varName);
     SgBasicBlock* createLocalInitFunction(DbElement* dbElement);
-    SgExprStatement* createInitStmt(DbElement* dbElement, SgBasicBlock* initBB,
-                                    SgVarRefExp* structPtrExp);
+    SgExprStatement* createInitStmt(DbElement* dbElement, SgVarRefExp* structPtrExp);
 
 
     private:
     Rose_STL_Container<DbElement *> _globalDeclList;
     Rose_STL_Container<FileElement *> _localFileList;
     Rose_STL_Container<SourceFile *> _fileList;
+    Rose_STL_Container<TgvElement *> _tgvList;
     SgScopeStatement* _globalScope;
     string _structName;
     SgClassDeclaration* _structDecl;
@@ -58,7 +59,7 @@ class visitorTraversal : public AstSimpleProcessing
     string _ptrName;
     bool _isCreated;
     string _currentPathname;
-    SgScopeStatement* _currentScope;
+    SgScopeStatement* _fileScope;
     string _mainPathname;
     SgScopeStatement* _mainScope;
     SgStatement * _here;
@@ -96,6 +97,8 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
     fprintf(fp, "#define _FFWD_H_\n\n");
 
 
+    // #include <stdlib.h>  (for malloc())
+    fprintf(fp, "#include <stdlib.h>\n");
     // #include <string.h>  (for memcpy())
     fprintf(fp, "#include <string.h>\n");
 
@@ -127,6 +130,12 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
         else
             fprintf(fp, ";\n");
 
+    }
+    for (Rose_STL_Container<TgvElement *>::iterator iter = _tgvList.begin();
+         iter != _tgvList.end(); iter++)
+    {
+        TgvElement* tgvElement=(*iter);
+        fprintf(fp, "    int %s;\n", tgvElement->get_name().c_str());
     }
     fprintf(fp, "};\n\n");
 
@@ -207,7 +216,7 @@ void visitorTraversal::writeInitFunction(SgProject * project)
                 decl->get_declarationModifier().get_storageModifier().setExtern();
             insertStatementBefore(_here, decl);
             _here = decl;
-                    }
+        }
     }  // not localFileList empty
 }
 
@@ -229,29 +238,36 @@ void visitorTraversal::insertHeaders(SgProject* project)
          iter!=_fileList.end(); iter++)
     {
         SourceFile* file = (*iter);
+        SgScopeStatement* scope;
 
         // at top, insert #include "ffwd.h"
         SgScopeStatement* fileScope=file->get_file_scope();
-        insertHeader("ffwd.h",PreprocessingInfo::after,false,fileScope);
+        if (fileScope != 0)
+            scope = fileScope;
+        else
+            scope = _globalScope;
+
+        insertHeader("ffwd.h",PreprocessingInfo::after,false,_globalScope);
 
         // Create a pointer to the new data structure
         // __ffwd2_t *ffwd2_p;
         string typedefName = strUnderscore + strUnderscore + strFFWD2 + strT;
-        SgTypedefDeclaration* typedefDecl = buildTypedefDeclaration(typedefName, _structType, fileScope);
+        SgTypedefDeclaration* typedefDecl = buildTypedefDeclaration(typedefName, _structType, scope);
         SgTypedefType * typedefType = typedefDecl->get_type();
         // this is inserted as text in the ffwd include file.
 
         string ptrName = strFFWD2 + strP;
-        SgVarRefExp* ptrNameExp = buildVarRefExp(SgName(ptrName), fileScope);
+        SgVarRefExp* ptrNameExp = buildVarRefExp(SgName(ptrName), scope);
         SgPointerType* ptrType = buildPointerType(typedefType);
-        SgVariableDeclaration* structVarPtr = buildVariableDeclaration(SgName(ptrName), ptrType, NULL, fileScope);
+        SgVariableDeclaration* structVarPtr = buildVariableDeclaration(SgName(ptrName), ptrType,
+                                                                       NULL, scope);
         // set TLS to add __thread
         structVarPtr->get_declarationModifier().get_storageModifier().set_thread_local_storage(true);
 
         string pathname = file->get_path_name();
         if(strcmp(_mainPathname.c_str(), pathname.c_str()) != 0)
             structVarPtr->get_declarationModifier().get_storageModifier().setExtern();
-        insertStatementAfter(getFirstStatement(fileScope), structVarPtr);
+        insertStatementAfter(getFirstStatement(scope), structVarPtr);
     }
 }
 
@@ -259,19 +275,34 @@ void visitorTraversal::insertHeaders(SgProject* project)
 
 DbElement* visitorTraversal::onGlobalDeclList(SgVariableSymbol* sym)
 {
-    ROSE_ASSERT(isSgGlobal(sym->get_declaration()->get_scope()));
+    SgInitializedName * iname = sym->get_declaration();
+    SgDeclarationStatement * decl = iname->get_declaration();
+
+    ROSE_ASSERT(isSgGlobal(iname->get_scope()) ||
+                isStatic(decl));
 
     if(_globalDeclList.empty())
         return NULL;
+
+    SgScopeStatement * scope = iname->get_scope();
 
     for (Rose_STL_Container<DbElement*>::iterator iter=_globalDeclList.begin();
          iter!=_globalDeclList.end(); iter++)
     {
         DbElement* element = *iter;
         SgVariableSymbol* symbol = isSgVariableSymbol(element->get_symbol());
-        //printf("Debug: onGlobalDeclList: sym = %p, symbol = %p\n", sym, symbol);
-        if (sym == symbol)
-            return element;
+        if (isSgGlobal(scope))
+        {
+            if (sym == symbol)
+                return element;
+        }
+        else
+        {   // function static
+            Sg_File_Info* fileInfo = decl->get_file_info();
+            Sg_File_Info* efileInfo = element->get_file_info();
+            if (fileInfo == efileInfo)
+                return element;
+        }
     }
 
     // look for externals
@@ -286,7 +317,6 @@ DbElement* visitorTraversal::onGlobalDeclList(SgVariableSymbol* sym)
 
         if (element->get_scope() == _globalScope)
             if (strcmp(sName.c_str(), str.c_str()) == 0) {
-                //printf("Debug: onGlobalDeclList: found symbol %s\n", sName.c_str());
                 return element;
             }
     }
@@ -305,7 +335,24 @@ FileElement* visitorTraversal::onLocalFileList(string filename)
         FileElement* element = (*iter);
         string name = element->get_file_name();
         if (strcmp(name.c_str(), filename.c_str()) == 0) {
-            //printf("found %s on localFileList\n", name.c_str());
+            return element;
+        }
+    }
+    return NULL;
+}
+
+
+TgvElement* visitorTraversal::onTgvList(string varName)
+{
+    if(_tgvList.empty())
+        return NULL;
+
+    for (Rose_STL_Container<TgvElement*>::iterator iter=_tgvList.begin();
+         iter!=_tgvList.end(); iter++)
+    {
+        TgvElement* element = (*iter);
+        string name = element->get_name();
+        if (strcmp(name.c_str(), varName.c_str()) == 0) {
             return element;
         }
     }
@@ -348,11 +395,11 @@ SgBasicBlock* visitorTraversal::createLocalInitFunction(DbElement* dbElement)
 
 
 // Create a statement which initializes the new global with its old value.
-SgExprStatement* visitorTraversal::createInitStmt(DbElement* dbElement, SgBasicBlock* initBB,
+SgExprStatement* visitorTraversal::createInitStmt(DbElement* dbElement,
                                                   SgVarRefExp* structPtrExp)
 {
     string newName = dbElement->get_new_name();
-    SgVarRefExp* newNameExp = buildVarRefExp(newName, _globalScope);
+    SgVarRefExp* newNameExp = buildVarRefExp(newName, dbElement->get_scope());
     SgExpression* arrowExp = buildArrowExp(structPtrExp, newNameExp);
 
     SgExprStatement* initStmt= NULL;
@@ -360,15 +407,15 @@ SgExprStatement* visitorTraversal::createInitStmt(DbElement* dbElement, SgBasicB
     {
         // initialize the field with the original value
         initStmt = buildAssignStatement(arrowExp,
-                                        buildVarRefExp(dbElement->get_name(), initBB));
+                                        buildVarRefExp(dbElement->get_name(), dbElement->get_scope()));
     }
     else {
         // Call memcpy().
-        SgVarRefExp* nameExp = buildVarRefExp(dbElement->get_name(), _globalScope);
+        SgVarRefExp* nameExp = buildVarRefExp(dbElement->get_name(), dbElement->get_scope());
         SgExprListExp* memcpyParam = buildExprListExp(arrowExp, nameExp,
                                                       buildIntVal(dbElement->get_total_size()));
         SgFunctionCallExp* memcpyExp = buildFunctionCallExp(SgName("memcpy"), buildIntType(),
-                                                            memcpyParam, _globalScope);
+                                                            memcpyParam, dbElement->get_scope());
         initStmt = buildExprStatement(memcpyExp);
     }
     return initStmt;
@@ -378,7 +425,7 @@ SgExprStatement* visitorTraversal::createInitStmt(DbElement* dbElement, SgBasicB
 void visitorTraversal::atTraversalStart()
 {
     _currentPathname.clear();
-    _currentScope=NULL;
+    _fileScope=NULL;
 }
 
 
@@ -394,33 +441,54 @@ void visitorTraversal::visit(SgNode* node)
 
     if (isSgVariableDeclaration(node) != NULL)
     {
+        printNode(node);
         SgVariableDeclaration * variableDeclaration = isSgVariableDeclaration(node);
         SgInitializedNamePtrList::const_iterator i = variableDeclaration->get_variables().begin();
         ROSE_ASSERT(i != variableDeclaration->get_variables().end());
 
         do {
             SgInitializedName* variableName = isSgInitializedName(*i);
-            if (isSgGlobal(variableName->get_scope()))
+            if (isSgGlobal(variableName->get_scope()) || isStatic(variableDeclaration))
             {
-                //printNode(node);
-                SgType* variableType = variableName->get_type();
-                //printf("Found Declaration: %s\n",variableName->get_name().str());
+                DbElement * dbElement = NULL;
+
                 SgVariableSymbol* variableSymbol = isSgVariableSymbol(variableName->get_symbol_from_symbol_table ());
                 ROSE_ASSERT (variableSymbol != NULL);
+
                 if ( ! onGlobalDeclList(variableSymbol))
                 {
                     // create a new DB entry
-                    DbElement * dbElement = new DbElement(variableSymbol, isSgNode(*i));
-                    _globalDeclList.push_back(dbElement);
-
+                    if (isNodeDefinedInUserLocation(variableSymbol) == true) {
+                        DbElement * dbElement = new DbElement(variableSymbol, isSgNode(*i));
+                        _globalDeclList.push_back(dbElement);
+                    }
                  }
-                if (_currentScope == NULL)
+                if ( ! isSgGlobal(variableName->get_scope())  && dbElement!=NULL)
                 {
-                    _currentScope = isSgGlobal(variableName->get_scope());
-                    SourceFile * source = new SourceFile(_currentPathname, _currentScope);
+                    // function static - replace the expression
+                    string newName = dbElement->get_new_name();
+                    SgVarRefExp* newNameExp = buildVarRefExp(newName, dbElement->get_scope());
+                    SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, dbElement->get_scope());
+                    SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
+                    replaceExpression(isSgExpression(*i), arrowExp, true);
+
+                    // create a tool generated variable (TGV) that will indicate
+                    // if the function static has been initialized.
+                    string tgvName = newName + strUnderscore + strINIT;
+                    if ( ! onTgvList(tgvName))
+                    {
+                        TgvElement * tgvElement = new TgvElement(tgvName, dbElement->get_scope());
+                        fflush(stdout);
+                        dbElement->set_tgv(tgvElement);
+                        _tgvList.push_back(tgvElement);
+                    }
+                }
+                if (_fileScope == NULL)
+                {
+                    _fileScope = isSgGlobal(variableName->get_scope());
+                    SourceFile * source = new SourceFile(_currentPathname, _fileScope);
                     _fileList.push_back(source);
                 }
-
             }
             i++;
         }
@@ -435,7 +503,9 @@ void visitorTraversal::visit(SgNode* node)
         SgVariableSymbol* varSymbol = varRefExp->get_symbol();
         SgInitializedName * varName = varSymbol->get_declaration();
         SgScopeStatement* varScope = varName->get_scope();
-        if ( isSgGlobal(varScope))
+        SgDeclarationStatement * varDecl = varName->get_declaration();
+
+        if ( isSgGlobal(varScope)  || isStatic(varDecl))
         {
             // global reference
             DbElement* element = onGlobalDeclList(varSymbol);
@@ -443,7 +513,7 @@ void visitorTraversal::visit(SgNode* node)
             {
                 // declaration must be in a different file
                 // create a new DB entry if user's file
-                if ( isNodeInUserLocation(node) == true) {
+                if ( isNodeDefinedInUserLocation(node) == true) {
                     element = new DbElement(varSymbol, node);
                     _globalDeclList.push_back(element);
                 }
@@ -455,19 +525,21 @@ void visitorTraversal::visit(SgNode* node)
                 SgVarRefExp* newNameExp = buildVarRefExp(newName, varScope);
                 SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, element->get_scope());
                 SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
+                replaceExpression(isSgExpression(node), arrowExp, true);
 
-                SgNode * parent = varRefExp->get_parent();
-                if (isSgPntrArrRefExp(parent) != NULL)
+
+                if ( ! isSgGlobal(varScope))
                 {
-                    SgPntrArrRefExp * pntrArrRefExp = isSgPntrArrRefExp(parent);
-                    pntrArrRefExp->set_lhs_operand(arrowExp);
-                    arrowExp->set_parent(pntrArrRefExp);
-                }
-                else
-                {
-                    SgBinaryOp * binaryOp = isSgBinaryOp(parent);
-                    binaryOp->set_lhs_operand(arrowExp);
-                    arrowExp->set_parent(binaryOp);
+                    // create a tool generated variable (TGV) that will indicate
+                    // if the function static has been initialized.
+                    string tgvName = newName + strUnderscore + strINIT;
+                    if ( ! onTgvList(tgvName))
+                    {
+                        TgvElement * tgvElement = new TgvElement(tgvName, element->get_scope());
+                        fflush(stdout);
+                        element->set_tgv(tgvElement);
+                        _tgvList.push_back(tgvElement);
+                    }
                 }
             }
         }
@@ -492,31 +564,64 @@ void visitorTraversal::atTraversalEnd()
 
     // initialize the global elements which were initialized
     // in their declaration in a file specific init file
-
+    //
     string ptrName = strFFWD2 + strP;
-    SgVarRefExp* structPtrExp = buildVarRefExp(_ptrName, _globalScope);
     for (Rose_STL_Container<DbElement *>::iterator iter = _globalDeclList.begin();
          iter != _globalDeclList.end(); iter++)
     {
         DbElement* dbElement = *iter;
-        if (dbElement->is_initialized() && ! dbElement->init_created())
+        if ( isSgGlobal(dbElement->get_scope()))
         {
-            SgBasicBlock* initBB = createLocalInitFunction(dbElement);
-            ROSE_ASSERT(initBB != NULL);
-            SgExprStatement* stmt = createInitStmt(dbElement, initBB, structPtrExp);
-            ROSE_ASSERT(stmt != NULL);
-            appendStatement(stmt, initBB);
-            dbElement->set_init_created(true);
+            if (dbElement->is_initialized() && ! dbElement->init_created())
+            {
+                SgBasicBlock* initBB = createLocalInitFunction(dbElement);
+                ROSE_ASSERT(initBB != NULL);
+                SgVarRefExp* structPtrExp = buildVarRefExp(_ptrName, dbElement->get_scope());
+                SgExprStatement* stmt = createInitStmt(dbElement, structPtrExp);
+                ROSE_ASSERT(stmt != NULL);
+                appendStatement(stmt, initBB);
+                dbElement->set_init_created(true);
+            }
         }
-    }  // globalist
+        else
+        {   //function static
+            // if (ffwd_p->tgv == 0) {
+            //     ffwd_p->fs = fs;
+            //     ffwd_p->tgv = 1;  }
 
+            TgvElement* tgv = dbElement->get_tgv();
+            if (tgv != NULL)
+            {
+                SgScopeStatement * scope = dbElement->get_scope();
+                SgBasicBlock * trueBB = buildBasicBlock();
 
-    //printf("atTraversalEnd(): currentPathname=%s, mainPathname=%s\n",
-    //       _currentPathname.c_str(), _mainPathname.c_str());
+                //     ffwd_p->fs = fs;
+                SgVarRefExp* structPtrExp = buildVarRefExp(_ptrName, scope);
+                SgExprStatement* initStmt = createInitStmt(dbElement, structPtrExp);
+                dbElement->set_init_created(true);
+                appendStatement(initStmt, trueBB);
+
+                //     ffwd_p->tgv = 1;
+                string tgvName = tgv->get_name();
+                SgVarRefExp* newNameExp = buildVarRefExp(tgvName, scope);
+                SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, scope);
+                SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
+                SgExprStatement * assignOp = buildAssignStatement(arrowExp,
+buildIntVal(1));
+                appendStatement(assignOp, trueBB);
+
+                // if (ffwd_p->tgv == 0)
+                SgExpression * tgvEqualZero = buildEqualityOp(deepCopy(arrowExp),
+                                                              buildIntVal(0));
+                SgIfStmt * ifStmt = buildIfStmt( tgvEqualZero, trueBB, NULL);
+                insertStatementAfterLastDeclaration(ifStmt, scope);
+            }
+        }
+    }  // globalDeclList
+
 
     if (strcmp(_currentPathname.c_str(), _mainPathname.c_str())==0)
     {
-
         // forward declarations...
         // void ffwd2_init();
         SgName* globalInitName = new SgName(strFFWD2+strUnderscore+strINIT);
@@ -571,7 +676,7 @@ int main ( int argc, char* argv[] )
 
     // run all tests
     printf("Running all tests\n");
-    printf("Emitting a ton of warnings during AST Testing is one of ROSE's charms.\n\n");
+    printf("Emitting excessive warnings during AST Testing is one of ROSE's charms.\n\n");
     AstTests::runAllTests(project);
 
     // Generate source code from AST and call the vendor's compiler
