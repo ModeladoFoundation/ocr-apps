@@ -32,11 +32,11 @@
 #define ABS(a) ((a) >= 0 ? (a) : -(a))
 #endif
 
-#define WEIGHT(ii,jj) weight[ii+HR+(jj+HR)*(2*HR+1)]
-#define INDEXIN(i,j) ( (i+HR)+(j+HR)*(np_x+2*HR) )
+#define WEIGHT(ii,jj) weight[jj+HALO_RADIUS+(ii+HALO_RADIUS)*(2*HALO_RADIUS+1)]   //To match the legacy PRK kernel
+#define INDEXIN(i,j) ( (i+HALO_RADIUS)+(j+HALO_RADIUS)*(np_x+2*HALO_RADIUS) )
 #define INDEXOUT(i,j) ( (i)+(j)*(np_x) )
-#define IN(i,j) ( xIn[ INDEXIN(i-ib,j-jb) ] )
-#define OUT(i,j) ( xOut[ INDEXOUT(i-ib,j-jb) ] )
+#define IN(i,j) xIn[ INDEXIN(i-ib,j-jb) ]
+#define OUT(i,j) xOut[ INDEXOUT(i-ib,j-jb) ]
 
 static void timestamp(const char* msg)
 {
@@ -1650,9 +1650,9 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     globalH_t* PTR_globalH = depv[0].ptr;
     gSettingsH_t* PTR_gSettingsH = depv[1].ptr;
     settingsH_t* PTR_settingsH = depv[2].ptr;
-    double* weight = (double*) depv[3].ptr;
-    double* xIn = (double*) depv[4].ptr;
-    double* xOut = (double*) depv[5].ptr;
+    double *restrict weight = (double*) depv[3].ptr;
+    double *restrict xIn = (double*) depv[4].ptr;
+    double *restrict xOut = (double*) depv[5].ptr;
     double* refNorm = (double*) depv[6].ptr;
     eventH_t* PTR_events = (eventH_t*) depv[7].ptr;
 
@@ -1675,20 +1675,20 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     /* Apply the stencil operator */
 #if FULL_APP==1
+    //HALO_RADIUS is hard-coded for better compiler optimzation here
     int i, j, ii, jj;
-    for (j=MAX(jb,HR); j<=MIN(NP_Y-HR-1,je); j++)
+    for (j=MAX(jb,HALO_RADIUS); j<=MIN(NP_Y-HALO_RADIUS-1,je); j++)
     {
-        for (i=MAX(ib,HR); i<=MIN(NP_X-HR-1,ie); i++)
+        for (i=MAX(ib,HALO_RADIUS); i<=MIN(NP_X-HALO_RADIUS-1,ie); i++)
         {
-            for (jj=-HR; jj<=HR; jj++) {
+            for (jj=-HALO_RADIUS; jj<=HALO_RADIUS; jj++) {
                 OUT(i,j) += WEIGHT(0,jj)*IN(i,j+jj);
             }
-            for (ii=-HR; ii<0; ii++) {
+            for (ii=-HALO_RADIUS; ii<0; ii++) {
                 OUT(i,j) += WEIGHT(ii,0)*IN(i+ii,j);
             }
-            for (ii=1; ii<=HR; ii++) {
+            for (ii=1; ii<=HALO_RADIUS; ii++) {
                 OUT(i,j) += WEIGHT(ii,0)*IN(i+ii,j);
-
             }
         }
     }

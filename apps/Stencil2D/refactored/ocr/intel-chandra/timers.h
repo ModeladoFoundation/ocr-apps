@@ -18,4 +18,6 @@ void profile_stop(const enum timer_name name, void* t);
 
 double get_elapsed_time(const enum timer_name name, void* t);
 
+u64 getTime(void);
+
 #endif

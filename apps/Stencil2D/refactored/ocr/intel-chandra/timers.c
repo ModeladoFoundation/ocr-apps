@@ -8,7 +8,7 @@
 
 #define TICK (1.0e-6)
 
-static u64 getTime(void)
+u64 getTime(void)
 {
 #ifndef TG_ARCH
    struct timeval ptime;

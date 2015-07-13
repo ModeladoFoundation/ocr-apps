@@ -57,6 +57,11 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 # Name of the application to build
 TARGET := stencil_2d
 
+# Without "restrict" keyword, icc and gcc performance is the same
+# With "restrict", icc is 1.5x faster for than gcc
+# gcc performance doesn't seem to change with "restrict" keyword
+#CC := icc
+
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS :=
@@ -80,7 +85,7 @@ LDFLAGS := -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3
+all:	CFLAGS += -std=c99 -O3
 all:	TARGETS := all
 all:	default
 
