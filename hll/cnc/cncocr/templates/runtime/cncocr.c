@@ -50,6 +50,7 @@ typedef struct {
 } ItemBlockEntry;
 
 typedef struct {
+    CNCTGL_ONLY(volatile u32 lock;)
     u32 count;
     ocrGuid_t next;
     ItemBlockEntry entries[CNC_ITEMS_PER_BLOCK];
@@ -62,6 +63,7 @@ static ocrGuid_t _itemBlockCreate(u32 tagLength, ocrGuid_t next, ItemBlock **out
     u64 size = sizeof(ItemBlock) + (tagLength * CNC_ITEMS_PER_BLOCK);
     SIMPLE_DBCREATE(&blockGuid, (void**)&block, size);
     // XXX - should we start from the back?
+    CNCTGL_ONLY(block->lock = 0;)
     block->count = 0;
     block->next = next;
     *out = block;
@@ -81,7 +83,6 @@ static ocrGuid_t _itemBlockInsert(ItemBlock *block, u8 *tag, ocrGuid_t entry, u3
         block->entries[i].guid = entry;
     }
     hal_memCopy(&block->tags[i*tagLength], tag, tagLength, 0);
-    hal_fence();
     block->count += 1;
     return block->entries[i].guid;
 }
@@ -133,20 +134,23 @@ static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_
 
 static ocrGuid_t _addToBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     // unpack
-    ocrGuid_t *blockArray = depv[0].ptr;
+    _cncBucketHead_t *bucket = depv[0].ptr;
     ItemCollOpParams *params = depv[1].ptr;
     ocrGuid_t paramsGuid = depv[1].guid;
     const u32 index = 0;
+    CNCTGL_ONLY(hal_lock32(&bucket->lock);)
+    hal_fence();
     // look up the first block the bucket
-    ocrGuid_t firstBlock = blockArray[index];
+    ocrGuid_t firstBlock = bucket->blocks[index];
     // is our first block still first?
     if (firstBlock == params->firstBlock) {
         ItemBlock *newFirst;
-        blockArray[index] = _itemBlockCreate(params->tagLength, firstBlock, &newFirst);
+        bucket->blocks[index] = _itemBlockCreate(params->tagLength, firstBlock, &newFirst);
         // XXX - repeated code, also in addToBlock
         bool isGetter = (params->role == CNC_GETTER_ROLE);
         ocrGuid_t src = isGetter ? CNC_GETTER_GUID : params->entry;
         ocrGuid_t res = _itemBlockInsert(newFirst, params->tag, src, params->tagLength);
+        CNCTGL_ONLY(hal_unlock32(&bucket->lock);)
         if (isGetter) {
             ocrAddDependence(res, params->entry, params->slot, params->mode);
         }
@@ -154,6 +158,7 @@ static ocrGuid_t _addToBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t
         ocrDbDestroy(paramsGuid);
     }
     else { // someone added a new block...
+        CNCTGL_ONLY(hal_unlock32(&bucket->lock);)
         // try searching again
         params->oldFirstBlock = params->firstBlock;
         params->firstBlock = firstBlock;
@@ -176,10 +181,13 @@ static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t 
     ItemBlock *block = depv[0].ptr;
     ItemCollOpParams *params = depv[1].ptr;
     ocrGuid_t paramsGuid = depv[1].guid;
+    CNCTGL_ONLY(hal_lock32(&block->lock);)
+    hal_fence();
     // is it in this block?
     // XXX - repeated code (also in the searchEdt)
     u32 i = _itemBlockFind(block, params->tag, params->tagLength, 0);
     if (i < CNC_ITEMS_PER_BLOCK) { // found!
+        CNCTGL_ONLY(hal_unlock32(&block->lock);)
         ocrGuid_t foundEntry = block->entries[i].guid;
         if (params->role == CNC_GETTER_ROLE) { // Get
             ocrAddDependence(foundEntry, params->entry, params->slot, params->mode);
@@ -196,6 +204,7 @@ static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t 
         bool isGetter = (params->role == CNC_GETTER_ROLE);
         ocrGuid_t src = isGetter ? CNC_GETTER_GUID : params->entry;
         ocrGuid_t res = _itemBlockInsert(block, params->tag, src, params->tagLength);
+        CNCTGL_ONLY(hal_unlock32(&block->lock);)
         if (isGetter) {
             ocrAddDependence(res, params->entry, params->slot, params->mode);
         }
@@ -203,6 +212,7 @@ static ocrGuid_t _addToBlockEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t 
         ocrDbDestroy(paramsGuid);
     }
     else { // the block filled up while we were searching
+        CNCTGL_ONLY(hal_unlock32(&block->lock);)
         // might need to add a new block to the bucket
         ocrGuid_t addEdtGuid, templGuid;
         ocrEdtTemplateCreate(&templGuid, _addToBucketEdt, 0, 2);
@@ -275,11 +285,11 @@ static ocrGuid_t _searchBucketEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_
 
 static ocrGuid_t _bucketHeadEdt(u32 paramc, u64 paramv[], u32 depc, ocrEdtDep_t depv[]) {
     // unpack
-    ocrGuid_t *blockArray = depv[0].ptr;
+    _cncBucketHead_t *bucket = depv[0].ptr;
     ItemCollOpParams *params = depv[1].ptr;
     ocrGuid_t paramsGuid = depv[1].guid;
     // save bucket info for first block
-    params->firstBlock = blockArray[0];
+    params->firstBlock = bucket->blocks[0];
     if (params->firstBlock == NULL_GUID) { // empty bucket
         // might need to add a new block to the bucket
         ocrGuid_t addEdtGuid, templGuid;

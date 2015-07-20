@@ -39,10 +39,11 @@ ocrGuid_t *itemTable;
 {% if i.key -%}
 SIMPLE_DBCREATE(&{{util.g_ctx_var()}}->_items.{{i.collName}}, (void**)&itemTable, sizeof(ocrGuid_t) * CNC_TABLE_SIZE);
 for (i=0; i<CNC_TABLE_SIZE; i++) {
-    ocrGuid_t *_ptr;
+    _cncBucketHead_t *_ptr;
     // Add one level of indirection to help with contention
-    SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(ocrGuid_t));
-    *_ptr = NULL_GUID;
+    SIMPLE_DBCREATE(&itemTable[i], (void**)&_ptr, sizeof(_cncBucketHead_t));
+    CNCTGL_ONLY(_ptr->lock = 0;)
+    *_ptr->blocks = NULL_GUID;
     // FIXME - Re-enable ocrDbRelease after bug #504 (redmine) is fixed
     // ocrDbRelease(itemTable[i]);
 }

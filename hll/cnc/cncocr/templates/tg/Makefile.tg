@@ -27,9 +27,15 @@ OCR_ROOT         ?= $(XSTACK_ROOT)/ocr
 OCR_BUILD_ROOT   ?= $(XSTACK_ROOT)/ocr/build
 OCR_INSTALL_ROOT ?= $(XSTACK_ROOT)/ocr/install
 
-# Use lockable OCR config
+ifeq ("$(USE_HAL_LOCKS)", "1")
+# Use HAL locks for mutual exclusion
+CFLAGS += -DCNC_USE_HAL_LOCKS=1
+$(warning Using HAL locks for mutual exclusion)
+else
+# Use lockable datablocks for mutual exclusion
 OCR_CE_CONFIG ?= $(OCR_INSTALL_ROOT)/$(CE_TARGET)/config/ce-multialloc-default-lockable.cfg
 OCR_XE_CONFIG ?= $(OCR_INSTALL_ROOT)/$(XE_TARGET)/config/xe-default-lockable.cfg
+endif
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -77,7 +83,7 @@ APP_SRCS := Main.c {{g.name}}.c
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -I$(WORKLOAD_SRC) -I$(WORKLOAD_SRC)/cncocr_support
+CFLAGS += -I$(WORKLOAD_SRC) -I$(WORKLOAD_SRC)/cncocr_support
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
