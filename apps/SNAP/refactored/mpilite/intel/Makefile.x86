@@ -43,7 +43,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # default arguments here and the ones passed through
 # an environment variable
 #WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin01 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout01
-WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04
+WORKLOAD_ARGS ?= -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04
 #WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin12 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout12
 
 # Run mode (not fully supported)
@@ -64,6 +64,9 @@ TARGET ?= snap_lite
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := mpilite
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 

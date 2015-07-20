@@ -51,6 +51,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
+#  #ranks, -r, has to = i*j*k
 WORKLOAD_ARGS ?=  -r 4  -t 10  -e -i 2 -j 2 -k 1 -x 40 -y 40 -z 40 -d ../../pots
 
 # Run mode (not fully supported)
@@ -93,6 +94,9 @@ $(OBJS): $(HDRS)
 
 CFLAGS := -g -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
 # Targets:
 #   - all:     Build the application.

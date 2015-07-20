@@ -41,7 +41,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= -r 4 -t 1600 4 8
+WORKLOAD_ARGS ?= -t 1600 4 8
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -61,6 +61,9 @@ TARGET ?= hpgmg
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := mpilite
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 
