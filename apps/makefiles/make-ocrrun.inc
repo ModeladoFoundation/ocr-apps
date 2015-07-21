@@ -5,13 +5,21 @@
 # Get absolute paths. This is useful since we go in
 # subfolders to do make and that screws up the relative
 # paths
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 OCR_BUILD_ROOT        :=
 OCR_BUILD             :=
 WORKLOAD_BUILD_ROOT   :=
 WORKLOAD_BUILD        :=
 APPS_ROOT             :=
 WORKLOAD_SRC          :=
+else ifeq ($(RUN_JENKINS), buildApp)
+OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
+OCR_BUILD_ROOT        :=
+OCR_BUILD             :=
+WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
+WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
+APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
+WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 else
 OCR_ROOT               := $(shell cd "${OCR_ROOT}" && pwd)
 OCR_BUILD_ROOT        := $(shell cd "${OCR_BUILD_ROOT}" && pwd)
@@ -46,7 +54,12 @@ endif
 
 REQ_LIBS ?=
 
-CC ?= gcc
+ifeq ($(CC), cc)
+# We want to use gcc as the default
+# but allow for the user to set something else if needed
+CC = gcc
+endif
+
 ifeq ($(CFLAGS_WARN_ERROR), no)
 CFLAGS_BASE_WARN_ERROR =
 else
@@ -71,6 +84,13 @@ MKDIR   = mkdir
 OBJS := $(notdir $(SRCS:.c=.o))
 OBJS := $(notdir $(OBJS:.cpp=.o))
 OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(OBJS))
+
+# Pick between libocr.so and libocr.a
+# Gasnet uses libocr.a
+LIBOCREXT = so
+ifeq ($(OCR_TYPE), x86-gasnet)
+LIBOCREXT = a
+endif
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
@@ -114,7 +134,7 @@ endif
 .PHONY: run_internal
 .ONESHELL:
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 run_internal: debug_post_prerun
 else
 debug_post_prerun: install
@@ -181,21 +201,22 @@ $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
 
 # libocr
-# We make this a .PHONY target to force the re-evaluation of this
-# rule in case source files change for OCR
 .PHONY: libocr
-
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
+# When running with Jenkins, we don't check anything and
+# assume that it is all built and up to date
 libocr: ;
-else ifeq ($(RUN_JENKINS), build)
-# If we are running in Jenkins, we do not need to recheck if the file exists
-libocr: | $(OCR_INSTALL)/lib/libocr.so
-$(OCR_INSTALL)/lib/libocr.so: $(OCR_BUILD)/Makefile
-	@echo "Building libocr.so..."
-	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
+else ifeq ($(RUN_JENKINS), buildApp)
+# If we are running in Jenkins and building the app, we just need to make sure the library is built
+# This will error out if it is not
+libocr: | $(OCR_INSTALL)/lib/libocr.$(LIBOCREXT)
+	@echo "Checked that libocr.$(LIBOCREXT) exists."
+$(OCR_INSTALL)/lib/libocr.$(LIBOCREXT):
+	$(error Cannot find libocr.$(LIBOCREXT) in $(OCR_INSTALL))
 else
+# In all other cases, we build the library
 libocr: $(OCR_BUILD)/Makefile
-	@echo "Checking on libocr.so..."
+	@echo "Building libocr.$(LIBOCREXT)..."
 	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
 endif
 
