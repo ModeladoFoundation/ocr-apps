@@ -6,7 +6,7 @@
 # Get absolute paths. This is useful since we go in
 # subfolders to do make and that screws up the relative
 # paths
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 TG_ROOT               :=
 OCR_ROOT              :=
 OCR_BUILD_ROOT        :=
@@ -16,6 +16,16 @@ WORKLOAD_BUILD_ROOT   :=
 WORKLOAD_BUILD        :=
 APPS_LIBS_ROOT        :=
 WORKLOAD_SRC          :=
+else ifeq ($(RUN_JENKINS), buildApp)
+TG_ROOT               := $(shell cd "${TG_ROOT}" && pwd)
+OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
+OCR_BUILD_ROOT        :=
+OCR_BUILD_XE          :=
+OCR_BUILD_CE          :=
+WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
+WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
+APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 else
 TG_ROOT               := $(shell cd "${TG_ROOT}" && pwd)
 OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
@@ -88,7 +98,7 @@ MACHINE_CONFIG ?= $(TG_INSTALL)/fsim-configs/localhost.cfg
 MACHINE_CONFIG := -c $(MACHINE_CONFIG)
 endif
 
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 RUN_CMD := $(TG_INSTALL)/bin/fsim-scripts/fsim-torque.sh
 MACHINE_CONFIG :=
 endif
@@ -96,7 +106,7 @@ endif
 ### Install rules ###
 .PHONY: install_internal
 .ONESHELL:
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 install_internal: preinstall | ${WORKLOAD_INSTALL}
 else
 # Order of both should not matter here
@@ -139,7 +149,7 @@ endif
 .ONESHELL:
 .SHELLFLAGS=-ec
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 run_internal:
 else
 run_internal: install
@@ -203,10 +213,13 @@ $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
 #	$(RM) $@.tmp
 
 # Two pre-requisites here that seem to be the same but serve different purposes:
-#  - libocr.a: Execute this rule if libocr.a changes due to being rebuilt
+#  - libocr.a: Execute this rule if libocr.a changes due to being rebuilt (due to the libocrxe rule)
 #  - libocrxe: This rule will ALWAYS execute (it is a PHONY target) and it will
 #              check if libocr.a needs to be rebuilt. If we listed this as a
 #              regular pre-requisite, we would *always* rebuild the blob (PHONY rules are infectious)
+# In other words, since we use the .a (and not a .so), we need to run this rule if the .a changes.
+# Before that, thought, we need to check if we need to update the .a and that is the purpose
+# of the libocrxe dependence
 # Other rules for the blobs follow similar ideas
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) $(OCR_INSTALL_XE)/lib/libocr.a | libocrxe $(WORKLOAD_BUILD)
 	$(LD) -o $@ $(OBJS) $(LDFLAGS) --whole-archive $(OCR_INSTALL_XE)/lib/libocr.a
@@ -250,30 +263,21 @@ $(OCR_XE_CONFIG): | libocrxe
 $(WORKLOAD_BUILD)/$(TARGET).blob.arg: $(WORKLOAD_BUILD)/$(TARGET).blob.xe | $(WORKLOAD_BUILD)
 
 # XE libocr
-# Phony target to check on build everytime
 .PHONY: libocrxe
-
-ifeq ($(RUN_JENKINS), run)
-# If running Jenkins, on TG, we have to be agressive and assume all is OK
-# With run, we do not even attempt to build more stuff
+ifeq ($(RUN_JENKINS), runApp)
 libocrxe: ;
 $(OCR_INSTALL_XE)/lib/libocr.a: ;
-else ifeq ($(RUN_JENKINS), build)
-# This set of rules will:
-#  - check if libocr.a has been modified
-#  - if it has, it will rebuild it
-#  - these rules do *not* check if a source modification happened in OCR's tree
+else ifeq ($(RUN_JENKINS), buildApp)
+# If we are running in Jenkins, and building the app, we just need to make sure the library is built
+# This will error out if it is not
 libocrxe: | $(OCR_INSTALL_XE)/lib/libocr.a
-$(OCR_INSTALL_XE)/lib/libocr.a: $(OCR_BUILD_XE)/Makefile
-	@echo "#### BUILDING XE libocr.a ####"
-	OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL_XE) OCR_ROOT=$(OCR_ROOT) \
-	$(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
+	@echo "Checked that XE libocr.a exists."
+$(OCR_INSTALL_XE)/lib/libocr.a:
+	$(error Cannot find XE libocr.a in $(OCR_INSTALL_XE))
 else
-# This set of rules is the safest (will catch all changes)
-# It will *always* run Make on libocrxe which will check for
-# any modification to OCR's source
+# In all other cases, we build the library
 libocrxe: $(OCR_BUILD_XE)/Makefile
-	@echo "#### CHECKING XE libocr.a ####"
+	@echo "Building XE libocr.a..."
 	OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL_XE) OCR_ROOT=$(OCR_ROOT) \
 	$(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
 $(OCR_INSTALL_XE)/lib/libocr.a: | libocrxe
@@ -282,26 +286,21 @@ endif
 # Note: builderxe, rmdkrnl, builderce all follow the same idea as libocrxe
 
 # XE builder
-# Phony target to check on build everytime
 .PHONY: builderxe
-
-ifeq ($(RUN_JENKINS), run)
-# If running Jenkins, no need to recheck for source change
+ifeq ($(RUN_JENKINS), runApp)
 builderxe: ;
 $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: ;
-else ifeq ($(RUN_JENKINS), build)
-
+else ifeq ($(RUN_JENKINS), buildApp)
 builderxe: | $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe
-$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
-	@echo "#### BUILDING XE BUILDER ####"
-	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) \
-	OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD_ROOT)/$(XE_BUILDER) $(TARGETS) install
+	@echo "Checked that XE builder exists."
+$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe:
+	$(error Cannot find XE builder in $(OCR_INSTALL_ROOT)/$(XE_BUILDER))
 else
-
+# In all other cases, we build the builder
 builderxe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
-	@echo "#### CHECKING XE BUILDER ####"
-	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) \
-	OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD_ROOT)/$(XE_BUILDER) $(TARGETS) install
+	@echo "Building XE builder..."
+	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) OCR_ROOT=$(OCR_ROOT) \
+	$(MAKE) -C $(OCR_BUILD_ROOT)/$(XE_BUILDER) $(TARGETS) install
 $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: | builderxe
 endif
 
@@ -311,29 +310,18 @@ endif
 # explicitly here)
 .PHONY: rmdkrnl.dbg
 
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 rmdkrnl.dbg: ;
 $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: ;
-else ifeq ($(RUN_JENKINS), build)
-
-rmdkrnl.dbg: | $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
+else
+rmdkrnl.dbg: | $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg
 .ONESHELL:
 $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: $(TG_ROOT)/build/build.rmdkrnl/make-me.make \
 | $(WORKLOAD_BUILD)/build.rmdkrnl
-	@echo "#### BUILDING RMDKRNL FROM $(TG_ROOT) ####"
+	@echo "Building rmdkrnl..."
 	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
 	$(MAKE) -C $(WORKLOAD_BUILD)/build.rmdkrnl -f make-me.make $(TARGETS)
-else
-
-.ONESHELL:
-rmdkrnl.dbg: $(TG_ROOT)/build/build.rmdkrnl/make-me.make | $(WORKLOAD_BUILD)/build.rmdkrnl
-	@echo "#### CHECKING RMDKRNL FROM $(TG_ROOT) ####"
-	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
-	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
-	$(MAKE) -C $(WORKLOAD_BUILD)/build.rmdkrnl -f make-me.make $(TARGETS)
-
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: | rmdkrnl.dbg
 endif
 
 .PHONY: rmdkrnl
@@ -343,23 +331,20 @@ $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
 
 # CE builder
 .PHONY: builderce
-
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 builderce: ;
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: ;
-
-else ifeq ($(RUN_JENKINS), build)
+else ifeq ($(RUN_JENKINS), buildApp)
 builderce: | $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe
-$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
-	@echo "#### BUILDING CE BUILDER ####"
-	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) \
-	OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD_ROOT)/$(CE_BUILDER) $(TARGETS) install
+	@echo "Checked that CE builder exists."
+$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe:
+	$(error Cannot find CE builder in $(OCR_INSTALL_ROOT)/$(CE_BUILDER))
 else
-
+# In all other cases, we build the builder
 builderce: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
-	@echo "#### CHECKING CE BUILDER ####"
-	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) \
-	OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD_ROOT)/$(CE_BUILDER) $(TARGETS) install
+	@echo "Building CE builder..."
+	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) OCR_ROOT=$(OCR_ROOT) \
+	$(MAKE) -C $(OCR_BUILD_ROOT)/$(CE_BUILDER) $(TARGETS) install
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: | builderce
 endif
 

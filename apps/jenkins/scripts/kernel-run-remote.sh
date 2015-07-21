@@ -17,7 +17,7 @@ rm -f ${WORKLOAD_INSTALL}/runlog
 timeFile=$(mktemp)
 export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
 for i in `seq 1 $4`; do
-    WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=run make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > ${WORKLOAD_INSTALL}/runlog
+    WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > ${WORKLOAD_INSTALL}/runlog
     RETURN_CODE=$?
     if [ $RETURN_CODE -ne 0 ]; then
         break

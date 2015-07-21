@@ -1025,7 +1025,7 @@ int var_bcast ( input_data *input_vars, para_data *para_vars )
         {
 #ifdef MPILITE
             printf ( "Int value at %d: %d, from %d proc\n", i, ipak[i], IPROC );
-#else           
+#else
             printf ( "Int value at %i: %i, from %i proc\n", i, ipak[i], IPROC );
 #endif
         }
@@ -1087,7 +1087,7 @@ int var_bcast ( input_data *input_vars, para_data *para_vars )
             printf ( "Int value at %d: %d, from %d proc\n", i, ipak[i], IPROC );
 #else
             printf ( "Int value at %i: %i, from %i proc\n", i, ipak[i], IPROC );
-#endif 
+#endif
 
         }
         for ( i = 0; i < dlen; i++ )
@@ -1096,7 +1096,7 @@ int var_bcast ( input_data *input_vars, para_data *para_vars )
             printf ( "Double value at %d: %f, from %d proc after input\n", i, dpak[i], IPROC );
 #else
             printf ( "Double value at %i: %.4E, from %i proc after input\n", i, dpak[i], IPROC );
-#endif 
+#endif
         }
 }
 #endif

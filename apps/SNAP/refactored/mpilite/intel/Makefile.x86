@@ -74,8 +74,8 @@ SRCS = snap_main.c utils.c version.c plib.c geom.c \
        octsweep.c dim1_sweep.c dim3_sweep.c output.c time.c mms.c
 
 #OBJS := $(notdir $(SRCS:.c=.o))
-CFLAGS=-O0 -g -std=c99 -DMPILITE -I./ -I${APPS_ROOT}/libs/x86/include  
-#CFLAGS=-O0 -g -std=c99 -DMPILITE -DDEBUG=2 -I./ -I${APPS_ROOT}/libs/x86/include  
+CFLAGS=-O0 -g -std=c99 -DMPILITE -I./ -I${APPS_ROOT}/libs/x86/include
+#CFLAGS=-O0 -g -std=c99 -DMPILITE -DDEBUG=2 -I./ -I${APPS_ROOT}/libs/x86/include
 #CFLAGS :=  -DOCR_RUNTIME_PROFILER
 LDFLAGS := -fopenmp -lpthread -lm -lmpilite
 

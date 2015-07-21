@@ -381,7 +381,7 @@ void sweep_recv_bdry ( input_data *input_vars, para_data *para_vars,
 
     i = iop + g*G_OFF + MTAG;
 
-#ifdef MPILITE 
+#ifdef MPILITE
     precv_d_3d( &JB_IN_4D(0,0,0,(g-1)), NANG, ICHUNK, NZ, 1, YP_RCV, YPROC, i );
     precv_d_3d( &KB_IN_4D(0,0,0,(g-1)), NANG, ICHUNK, NY, 2, ZP_RCV, ZPROC, i );
 #else

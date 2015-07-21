@@ -5,15 +5,23 @@
 # Get absolute paths. This is useful since we go in
 # subfolders to do make and that screws up the relative
 # paths
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 OCR_BUILD_ROOT        :=
 OCR_BUILD             :=
 WORKLOAD_BUILD_ROOT   :=
 WORKLOAD_BUILD        :=
 APPS_ROOT             :=
 WORKLOAD_SRC          :=
+else ifeq ($(RUN_JENKINS), buildApp)
+OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
+OCR_BUILD_ROOT        :=
+OCR_BUILD             :=
+WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
+WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
+APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
+WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 else
-OCR_ROOT               := $(shell cd "${OCR_ROOT}" && pwd)
+OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
 OCR_BUILD_ROOT        := $(shell cd "${OCR_BUILD_ROOT}" && pwd)
 OCR_BUILD             := ${OCR_BUILD_ROOT}/${OCR_TARGET}
 WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
@@ -44,7 +52,12 @@ OCR_CONFIG            ?= $(CONFIG_FILE)
 
 REQ_LIBS ?=
 
-CC ?= gcc
+ifeq ($(CC), cc)
+# We want to use gcc as the default
+# but allow for the user to set something else if needed
+CC = gcc
+endif
+
 CFLAGS_BASE =  -Werror -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include
 
 
@@ -108,7 +121,7 @@ endif
 .ONESHELL:
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
 
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
 run_internal: debug_post_prerun
 else
 debug_post_prerun: install
@@ -165,10 +178,16 @@ $(FULL_REQ_LIBS):
 reqlibs: parallel-reqlibs
 
 # Require libocr as this means all include files are up-to-date
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocr $(WORKLOAD_BUILD)
+# Note that we include libocr in order only dependences because it is a
+# phony target and would infect things.
+# We could add the .so as a the regular dependence list
+# because if the library changes, we could consider
+# that the header files may have also changed but it seems like a small
+# corner case
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | libocr $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
@@ -179,21 +198,22 @@ $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
 
 # libocr
-# Make this a .PHONY target so that we check if any of the
-# OCR source files have changed
 .PHONY: libocr
-
-ifeq ($(RUN_JENKINS), run)
+ifeq ($(RUN_JENKINS), runApp)
+# When running with Jenkins, we don't check anything and
+# assume that it is all built and up to date
 libocr: ;
-else ifeq ($(RUN_JENKINS), build)
-# If we are running in Jenkins, we do not need to recheck if the file exists
+else ifeq ($(RUN_JENKINS), buildApp)
+# If we are running in Jenkins and building the app, we just need to make sure the library is built
+# This will error out if it is not
 libocr: | $(OCR_INSTALL)/lib/libocr.so
-$(OCR_INSTALL)/lib/libocr.so: $(OCR_BUILD)/Makefile
-	@echo "Building libocr.so..."
-	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
+	@echo "Checked that libocr.so exists."
+$(OCR_INSTALL)/lib/libocr.so:
+	$(error Cannot find libocr.so in $(OCR_INSTALL))
 else
+# In all other cases, we build the library
 libocr: $(OCR_BUILD)/Makefile
-	@echo "Checking on libocr.so..."
+	@echo "Building libocr.so..."
 	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
 $(OCR_INSTALL)/lib/libocr.so: libocr
 endif

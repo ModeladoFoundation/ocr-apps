@@ -7,7 +7,7 @@ More infor mation on SNAP can be found here:
 http://www.lanl.gov/projects/feynman-center/technologies/software/sn
 
 mpilite does currently not support cartesian grid topolgies for ranks (MPI_Cart_create, MPI_Cart_sub, MPI_Cart_rank).
-We have modified the code to employ a linear topologie. The changes are listed in the file differences.txt. 
+We have modified the code to employ a linear topologie. The changes are listed in the file differences.txt.
 SNAP also uses very high message tag numbers. mpilite supports only tags up to 32K. We modified to code to limit the size of the tags. We did not see a problem with the test cases we tried, but there are potential issues for larger problems.
 Three test input data sets with reference output are provided. fout4 is the default in the Makefile.x86.
 

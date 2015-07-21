@@ -137,7 +137,7 @@ void pcomm_set( int npey, int npez,  para_data *para_vars, int *ierr )
 #ifdef MPILITE
     *ierr = MPI_Comm_rank( MPI_COMM_WORLD, &SPROC );
     YPROC = SPROC%npey;
-    ZPROC = (SPROC - YPROC)/npey; 
+    ZPROC = (SPROC - YPROC)/npey;
     YPROC_LITE = YPROC;
     ZPROC_LITE = ZPROC;
     COMM_SPACE_LITE = 0;
@@ -398,7 +398,7 @@ int bcast_i_1d ( int *value, int ilen, MPI_Comm comm, int bproc, int nproc )
 /*******************************************************************************/
 
     if ( nproc == 1 ) return ierr;
-#ifndef MPILITE 
+#ifndef MPILITE
     if ( comm == MPI_COMM_NULL ) return ierr;
 #endif
 
@@ -421,7 +421,7 @@ int bcast_d_1d ( double *value, int dlen, MPI_Comm comm, int bproc, int nproc )
 /*******************************************************************************/
 
     if ( nproc == 1 ) return ierr;
-#ifndef MPILITE 
+#ifndef MPILITE
     if ( comm == MPI_COMM_NULL ) return ierr;
 #endif
 
@@ -501,7 +501,7 @@ int psend_d_3d ( double *value, int d1, int d2, int d3, MPI_Comm comm,
         if (linear_proc >= lsize) return ierr;
     }
     if (comm == ZCOMM_LITE) {
-        linear_proc = YPROC_LITE + proc * dims[1]; 
+        linear_proc = YPROC_LITE + proc * dims[1];
         if (linear_proc == lrank) return ierr;
         if (linear_proc >= lsize) return ierr;
     }
@@ -588,7 +588,7 @@ int precv_d_3d ( double *value, int d1, int d2, int d3, MPI_Comm comm,
             if (linear_proc >= lsize) return ierr;
     }
     if (comm == YCOMM_LITE) {
-            linear_proc = proc + ZPROC_LITE * dims[1]; 
+            linear_proc = proc + ZPROC_LITE * dims[1];
             if (linear_proc == lrank) return ierr;
             if (linear_proc >= lsize) return ierr;
     }
@@ -597,7 +597,7 @@ int precv_d_3d ( double *value, int d1, int d2, int d3, MPI_Comm comm,
             if (linear_proc == lrank) return ierr;
             if (linear_proc >= lsize) return ierr;
     }
-        
+
     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE, linear_proc, mtag,
                       MPI_COMM_WORLD, &istat );
 #else
