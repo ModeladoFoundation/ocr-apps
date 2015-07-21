@@ -8,6 +8,18 @@
 #include "hpgmg.h"
 #include "operators.h"
 
+#ifdef TG_ARCH
+float tanh_approx(float val){
+  float valsq, num, den;
+  valsq = val * val;
+  num = val * (135135.0 + valsq * (17325.0 + valsq * (378.0 + valsq)));
+  den = 135135.0 + valsq * (62370.0 + valsq * (3150.0 + valsq * 28.0));
+  return num / den;
+}
+void ABORT(int a) {
+}
+#endif
+
 
 double time() {
 #ifndef TG_ARCH

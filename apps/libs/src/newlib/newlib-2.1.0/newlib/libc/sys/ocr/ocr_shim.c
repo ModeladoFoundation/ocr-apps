@@ -1,11 +1,24 @@
 #include <stdlib.h>
 #include <malloc.h>
+#include <stdint.h>
+#include <reent.h>
 #include <sys/ocr.h>
+#include "ocr_shim.h"
 /*
  * OCR Shim Methods
  * These methods support translating between the libc notions of open
  * file ids and the associated OCR Guids
  */
+
+#ifdef _OCR_GLIBC
+static struct _reent reent;
+struct _reent *_get_reent()
+{
+    return & reent;
+}
+
+#endif
+
 //
 // Magic GUID definitions for stdin/out/err, for ocr scaffolding only
 //
@@ -19,6 +32,7 @@
 static int ocrLibInit( struct _reent * r )
 {
     if( ! r->_ocr.fileGuidMap ) {
+        r->_ocr.fileGuidSize = OCR_FILE_MAP_MAX;
         r->_ocr.fileGuidMap = (__int64_t *)malloc( r->_ocr.fileGuidSize *
                                                    sizeof(__int64_t) );
         if( r->_ocr.fileGuidMap ) {

@@ -13,12 +13,14 @@ ocrGS.h: contains the ARITY of the tree, the structure definition for the gsBloc
   N the number of workers
   T the maximum number of timesteps (the preconditioned version will stop early)
 
-cg.c: the "temporary" test driver for gsLib.c
-   the driver code must set numnodes in GSsharedBLock
-   the driver must launch GSiEDT before going parallel
-   GSiEDT creates the tree of size numnodes
-   GSiEDT returns to the parallel computation through a copy of computeInitEdt
-   computeInitEdt launches a copy of cgEdt
+Any driver code for the global sum library must:
+   create the computeInitEdt
+   set numnodes in GSsharedBLock
+   launch GSiEDT before going parallel
+GSiEDT creates the tree of size numnodes
+GSiEDT inializes the gsBlock
+GSiEDT returns to the parallel computation through a copy of computeInitEdt
+   computeInitEdt launches its copy of of the real compute code (cgEdt in this case)
 
 cgEdt implements conjugate gradients
    the matrix is diagonal with diagonal element equal to its row number (starting with 1)
@@ -29,7 +31,7 @@ cgEdt implements conjugate gradients
 
    after T iterations, each compute node prints out its x values (which should be close to 1)
 
-There are THREE version of "cg.c" in this directory
+There are THREE driver versions in this directory
 
 cgNoShim.c   is the prefered implementation where rtrold is updated "out of phase" to avoid a race condition
 
@@ -40,6 +42,6 @@ cgShim.c     creates a serial "shimEdt" between the end of the global sum and th
 a third driver pcg.c is provided.  It implements preconditioned conjugate gradients with a diagonal preconditioner
 where the diagonal elements of the preconditioner are 1 larger than the diagonal of the matrix.
 
-this requires THREE global sums per iteration but converges much faster.
+This requires THREE global sums per iteration but converges much faster.
 
-The bash script go.sh invokes all three versions of the code on all three x86 modes (x86, mpi)
+The bash script go.sh invokes all three versions of the code in x86 and mpi modes

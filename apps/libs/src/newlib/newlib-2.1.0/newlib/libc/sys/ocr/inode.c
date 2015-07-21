@@ -1,15 +1,15 @@
-#include <_ansi.h>
-#include <_syslist.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-//#include <dirent.h>
+#include <stdint.h>
 #include <reent.h>
+#include <_ansi.h>
 #include <sys/ocr.h>
 
 #include "ocr_shim.h"
 
 #if 0
+#include <dirent.h>
 int
 _DEFUN (getdents, (fd, dirp, count),
         unsigned int fd _AND
@@ -61,7 +61,7 @@ _DEFUN (_fstat, (fildes, st),
 }
 
 int
-_DEFUN (chdir, (path),
+_DEFUN (_chdir, (path),
         const char *path)
 {
   u8 ret = ocrUSalChdir (_REENT->_ocr.legacyContext, path);
@@ -70,7 +70,7 @@ _DEFUN (chdir, (path),
 }
 
 int
-_DEFUN (chmod, (path, mode),
+_DEFUN (_chmod, (path, mode),
         const char *path _AND
         mode_t mode)
 {
@@ -111,3 +111,12 @@ _DEFUN (_symlink, (path1, path2),
   return (int)ret;
 }
 
+weak_alias( _link, link )
+weak_alias( _unlink, unlink )
+weak_alias( _stat, stat )
+weak_alias( _fstat, fstat )
+weak_alias( _chdir, chdir )
+weak_alias( _chmod, chmod )
+weak_alias( _chown, chown )
+weak_alias( _readlink, readlink )
+weak_alias( _symlink, symlink )

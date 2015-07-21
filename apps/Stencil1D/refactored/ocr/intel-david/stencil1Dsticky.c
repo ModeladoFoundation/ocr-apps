@@ -16,7 +16,7 @@ This code does a 1D (3 point) stencil computation on a set of points in pure ocr
 
 N is the number of tasks
 M is the number of points in each task
-I is the number of iterations
+T is the number of timesteps
 
 the datapoints are initialized to zero except the boundary values which are set to 1
 the particular stencil implemented is anew(i) = .5*(a(i+1) + a(i-1))
@@ -178,8 +178,11 @@ N: output event of realmain
     double * data[N];
     for(i=0;i<N;i++) {
         data[i] = depv[i].ptr;
-        for(j=0;j<M;j++) PRINTF("%lld %lld %f \n", i, j, data[i][j]);
+        for(j=0;j<M;j++) PRINTF("%d %d %f \n", i, j, data[i][j]);
         }
+    if(M==50&&N==10&&T==10000) //default values for Jenkins
+        if(data[4][49] - .000836 < 1e-5) PRINTF("PASS\n");
+           else PRINTF("fail by %f\n", data[4][3]-.000836);
 
     ocrShutdown();
     return NULL_GUID;

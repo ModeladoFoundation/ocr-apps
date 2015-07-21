@@ -165,6 +165,9 @@ prints out the "answer"
         data[i] = depv[i].ptr;
         for(j=0;j<M;j++) PRINTF("%lld %lld %f \n", i, j, data[i][j]);
         }
+    if(M==50&&N==10&&T==10000) //default values for Jenkins
+        if(data[4][49] - .000836 < 1e-5) PRINTF("PASS\n");
+           else PRINTF("fail by %f\n", data[4][3]-.000836);
     ocrShutdown();
     return NULL_GUID;
 }

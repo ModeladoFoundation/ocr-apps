@@ -1,5 +1,5 @@
+#include <stdlib.h>
 #include <_ansi.h>
-#include <_syslist.h>
 #include <sys/ocr.h>
 
 int

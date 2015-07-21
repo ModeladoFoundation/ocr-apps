@@ -16,9 +16,9 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 OCR_ROOT ?= ../../../../../ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
 
-SRCS := ../mpilite.c ../mpi_ocr.c
-OBJS := mpilite.o mpi_ocr.o
-INCLUDES := ../mpi.h ../mpi_ocr_messaging.h
+SRCS := ../mpilite.c ../mpi_ocr.c ../mpi_ocr_messaging.c
+OBJS := mpilite.o mpi_ocr.o mpi_ocr_messaging.o
+INCLUDES := ../mpi.h ../mpi_ocr_messaging.h ../mpi_ocr.h
 LIB := libmpilite.a
 
 # installed files
@@ -65,14 +65,15 @@ $(LIB): $(OBJS)
 $(INSTALL_MPI_H): ../mpi.h
 	cp $< $@
 
-$(INSTALL_MPI_MESS_H): ../mpi_ocr_messaging.h
-	cp $< $@
+# Not used any more by users
+#$(INSTALL_MPI_MESS_H): ../mpi_ocr_messaging.h
+#	cp $< $@
 
 $(INSTALL_MPI_A): $(LIB)
 	cp $< $@
 
 .PHONY: install
-install: $(INSTALL_MPI_H) $(INSTALL_MPI_MESS_H) $(INSTALL_MPI_A)
+install: $(INSTALL_MPI_H) $(INSTALL_MPI_A)
 
 installold: $(INCLUDES) $(LIB)
 	@echo "Installing X86 standard files"
@@ -88,7 +89,7 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	for i in mpi.h mpi_ocr_messaging.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
+	for i in mpi.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
 	rm -f $(APPS_LIBS_ROOT)/lib/$(LIB)
 
 .PHONY: squeeky

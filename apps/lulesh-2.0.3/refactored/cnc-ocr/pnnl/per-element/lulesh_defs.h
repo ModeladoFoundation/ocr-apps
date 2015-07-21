@@ -3,7 +3,25 @@
 
 #include <math.h>
 
+#if CNCOCR_TG
+// Add naive cube root function for TG using newton's method
+inline double __attribute__((always_inline)) cbrt(double x) {
+    double ans = 1, old = 0;
+    while(fabs(old-ans) >= PRECISION)
+    {
+        old = ans;
+        ans = (x/(ans*ans) + 2*ans) / 3;
+    }
+    return ans;
+}
+extern void *memset(void *s, int c, size_t n);
+// Smaller problem size for TG
+#define EDGE_ELEMENTS 2
+#else
+// Larger problem size for x86
 #define EDGE_ELEMENTS 4
+#endif /* CNCOCR_TG */
+
 #define EDGE_NODES (EDGE_ELEMENTS + 1)
 #define NODES (EDGE_NODES * EDGE_NODES * EDGE_NODES)
 #define ELEMENTS (EDGE_ELEMENTS * EDGE_ELEMENTS * EDGE_ELEMENTS)

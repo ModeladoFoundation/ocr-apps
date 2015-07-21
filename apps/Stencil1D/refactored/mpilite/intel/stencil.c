@@ -116,7 +116,9 @@ int main (int argc, char **argv) {
 
         // stencil update
         for (i = 1; i < nloc + 1; i++) {
-            new [i] =  val [i] + 0.5 * ( val [i + 1] - val [i - 1] );
+            new [i] =  0.5*val [i] + 0.25 * ( val [i + 1] + val [i - 1] );
+            // use above line to avoid nans
+            // new [i] =  val [i] + 0.5 * ( val [i + 1] - val [i - 1] );
         }
         // copy values for next iteration
         for (i = 1; i < nloc + 1; i++) {
@@ -124,17 +126,14 @@ int main (int argc, char **argv) {
         }
     }
     {
-        int id;
-        for ( id = 0; id < Num_procs; id++ ) {
-            if (my_ID == id) {
-                for (i = 1; i < nloc + 1; i++) {
-                    //if ( i % 5 == 0) printf ( "val [%d} =  %f\n", i, val [i] );
-                    printf ( " Local results PID %d val [%d] =  %f\n", id, i, val [i] );
-                    //        printf ("DEBUG %d %d\n", i, nloc - 2);
-                    fflush (stdout);
+        int ub = (6 > (nloc+1)? nloc+1 : 6);
+        // print first MIN(5, nloc) elements
+        for (i = 1; i < ub; i++) {
+            //if ( i % 5 == 0) printf ( "val [%d} =  %f\n", i, val [i] );
+            printf ( " Local results PID %d val [%d] =  %f\n", my_ID, i, val [i] );
+            //        printf ("DEBUG %d %d\n", i, nloc - 2);
+            fflush (stdout);
                 }
-            }
-        }
         if ( my_ID == 0 ) {
             results [0] = 1.;
             for (i = 1; i < Num_procs; i++ ) {
@@ -158,8 +157,9 @@ int main (int argc, char **argv) {
                 results [i] = val [i];
                 //printf ( "results [%d] =  %f\n", i, val [i]);
             }
-            for (i = 0; i < nx; i++) {
+            for (i = 0; i < 5; i++) {
                 printf ( "results [%d] =  %f\n", i, results [i] );
+                printf ( "results [%d] =  %f\n", nx-1-i, results [nx-1-i] );
                 fflush (stdout);
             }
         }

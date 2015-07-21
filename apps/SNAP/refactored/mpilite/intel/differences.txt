@@ -1,0 +1,361 @@
+echo ************************* version.c **************************
+echo ************************* control.c **************************
+echo ************************* data.c **************************
+echo ************************* dealloc.c **************************
+echo ************************* dim1_sweep.c **************************
+echo ************************* dim3_sweep.c **************************
+echo ************************* expxs.c **************************
+echo ************************* geom.c **************************
+echo ************************* inner.c **************************
+echo ************************* input.c **************************
+969,971d968
+< #ifdef MPILITE
+<     int ilen = 22;
+< #else
+973d969
+< #endif
+977d972
+< #ifdef MPILITE
+979,981d973
+< #else
+<     int dlen = 5;
+< #endif
+1026,1028d1017
+< #ifdef MPILITE
+<             printf ( "Int value at %d: %d, from %d proc\n", i, ipak[i], IPROC );
+< #else
+1030d1018
+< #endif
+1034,1036d1021
+< #ifdef MPILITE
+<             printf ( "Double value at %d: %f, from %d proc\n", i, dpak[i], IPROC );
+< #else
+1038d1022
+< #endif
+1045a1030
+>
+1086,1088d1070
+< #ifdef MPILITE
+<             printf ( "Int value at %d: %d, from %d proc\n", i, ipak[i], IPROC );
+< #else
+1090,1091d1071
+< #endif
+<
+1095,1099c1075
+< #ifdef MPILITE
+<             printf ( "Double value at %d: %f, from %d proc after input\n", i, dpak[i], IPROC );
+< #else
+<             printf ( "Double value at %i: %.4E, from %i proc after input\n", i, dpak[i], IPROC );
+< #endif
+---
+>             printf ( "Double value at %i: %.4E, from %i proc\n", i, dpak[i], IPROC );
+1105d1080
+< //GJDEBUG
+echo ************************* mms.c **************************
+echo ************************* octsweep.c **************************
+echo ************************* outer.c **************************
+echo ************************* output.c **************************
+echo ************************* plib.c **************************
+10,18d9
+< #ifdef MPILITE
+< __thread int YPROC_LITE;
+< __thread int ZPROC_LITE;
+< __thread int COMM_SPACE_LITE =0;
+< __thread int YCOMM_LITE = 1;
+< __thread int ZCOMM_LITE = 2;
+< __thread int linear_proc;
+< __thread int dims [2];
+< #endif
+26,28d16
+< #ifdef MPILITE
+<     G_OFF = (int) pow ( 2, 1 );
+< #else
+30d17
+< #endif
+128,130d114
+< #ifdef MPILITE
+<     int periods[2], remain[2], reorder = 1;
+< #else
+132d115
+< #endif
+137,148d119
+< #ifdef MPILITE
+<     *ierr = MPI_Comm_rank( MPI_COMM_WORLD, &SPROC );
+<     YPROC = SPROC%npey;
+<     ZPROC = (SPROC - YPROC)/npey;
+<     YPROC_LITE = YPROC;
+<     ZPROC_LITE = ZPROC;
+<     COMM_SPACE_LITE = 0;
+<     dims[0] =  npez;
+<     dims[1] =  npey;
+<     periods[0] = 0;
+<     periods[1] = 0;
+< #else
+173d143
+< #endif
+245c215
+<     ierr = MPI_Allreduce( value, &x, 1, MPI_INT, MPI_MAX, comm );
+---
+>     ierr = MPI_Allreduce( value, &x, 1, MPI_INTEGER, MPI_MAX, comm );
+267c237
+<     ierr = MPI_Allreduce( value, &x, 1, MPI_DOUBLE, MPI_MAX, comm );
+---
+>     ierr = MPI_Allreduce( value, &x, 1, MPI_DOUBLE_PRECISION, MPI_MAX, comm );
+290c260
+<     ierr = MPI_Allreduce ( value, x, dlen, MPI_DOUBLE, MPI_MAX, comm );
+---
+>     ierr = MPI_Allreduce ( value, x, dlen, MPI_DOUBLE_PRECISION, MPI_MAX, comm );
+314c284
+<     ierr = MPI_Allreduce( value, &x, 1, MPI_INT, MPI_MIN, comm );
+---
+>     ierr = MPI_Allreduce( value, &x, 1, MPI_INTEGER, MPI_MIN, comm );
+337c307
+<     ierr = MPI_Allreduce ( value, &x, 1, MPI_DOUBLE, MPI_MIN, comm );
+---
+>     ierr = MPI_Allreduce ( value, &x, 1, MPI_DOUBLE_PRECISION, MPI_MIN, comm );
+357d326
+< #ifndef MPILITE
+359c328
+< #endif
+---
+>
+379d347
+< #ifndef MPILITE
+381d348
+< #endif
+383c350
+<     ierr = MPI_Bcast ( value, 1, MPI_DOUBLE, bproc, comm );
+---
+>     ierr = MPI_Bcast ( value, 1, MPI_DOUBLE_PRECISION, bproc, comm );
+401d367
+< #ifndef MPILITE
+403d368
+< #endif
+424d388
+< #ifndef MPILITE
+426d389
+< #endif
+428c391
+<     ierr = MPI_Bcast ( value, dlen, MPI_DOUBLE, bproc, comm );
+---
+>     ierr = MPI_Bcast ( value, dlen, MPI_DOUBLE_PRECISION, bproc, comm );
+436,439d398
+< #ifdef MPILITE
+< int psend_d_2d ( double *value, int d1, int d2, int comm,
+<                  int proc, int myproc, int mtag)
+< #else
+442d400
+< #endif
+455,459c413
+< #ifdef MPILITE
+<     ierr = MPI_Send ( value, dlen, MPI_DOUBLE, proc, mtag, MPI_COMM_WORLD );
+< #else
+<     ierr = MPI_Send ( value, dlen, MPI_DOUBLE, proc, mtag, comm );
+< #endif
+---
+>     ierr = MPI_Send ( value, dlen, MPI_DOUBLE_PRECISION, proc, mtag, comm );
+467,470d420
+< #ifdef MPILITE
+< int psend_d_3d ( double *value, int d1, int d2, int d3, int comm,
+<                  int proc, int myproc, int mtag)
+< #else
+473d422
+< #endif
+481,483c430
+< #ifdef MPILITE
+<     if ( proc == myproc ) return ierr;
+< #else
+---
+>
+485d431
+< #endif
+488,514c434,435
+< #ifdef MPILITE
+<     int lrank;
+<     int lsize;
+<     MPI_Comm_rank (MPI_COMM_WORLD, &lrank);
+<     MPI_Comm_size (MPI_COMM_WORLD, &lsize);
+<     if (comm == COMM_SPACE_LITE) {
+<         linear_proc = proc;
+<         if (linear_proc == lrank) return ierr;
+<         if (linear_proc >= lsize) return ierr;
+<     }
+<     if (comm == YCOMM_LITE) {
+<         linear_proc = proc + ZPROC_LITE * dims[1];
+<         if (linear_proc == lrank) return ierr;
+<         if (linear_proc >= lsize) return ierr;
+<     }
+<     if (comm == ZCOMM_LITE) {
+<         linear_proc = YPROC_LITE + proc * dims[1];
+<         if (linear_proc == lrank) return ierr;
+<         if (linear_proc >= lsize) return ierr;
+<     }
+<     if ((comm != COMM_SPACE_LITE)  && (comm != YCOMM_LITE) && (comm != ZCOMM_LITE)) {
+<         return ierr;
+<     }
+<     ierr = MPI_Send ( value, dlen, MPI_DOUBLE, linear_proc, mtag, MPI_COMM_WORLD );
+< #else
+<     ierr = MPI_Send ( value, dlen, MPI_DOUBLE, proc, mtag, comm );
+< #endif
+---
+>
+>     ierr = MPI_Send ( value, dlen, MPI_DOUBLE_PRECISION, proc, mtag, comm );
+522,525d442
+< #ifdef MPILITE
+< int precv_d_2d ( double *value, int d1, int d2, int comm,
+<                  int proc, int myproc, int mtag)
+< #else
+528d444
+< #endif
+537,539c453,454
+<     if ( proc == myproc || comm == MPI_COMM_NULL ) {
+<         return ierr;
+<     }
+---
+>     if ( proc == myproc || comm == MPI_COMM_NULL ) return ierr;
+>
+542,547c457
+< #ifdef MPILITE
+<     int lsize;
+<     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE, proc, mtag,
+<                       MPI_COMM_WORLD, &istat );
+< #else
+<     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE, proc, mtag,
+---
+>     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE_PRECISION, proc, mtag,
+549d458
+< #endif
+557,560d465
+< #ifdef MPILITE
+< int precv_d_3d ( double *value, int d1, int d2, int d3, int comm,
+<                  int proc, int myproc, int mtag)
+< #else
+563d467
+< #endif
+573,575d476
+< #ifdef MPILITE
+<     if ( proc == myproc ) return ierr;
+< #else
+577c478
+< #endif
+---
+>
+580,604c481
+< #ifdef MPILITE
+<     int lrank;
+<     int lsize;
+<     MPI_Comm_rank (MPI_COMM_WORLD, &lrank);
+<     MPI_Comm_size (MPI_COMM_WORLD, &lsize);
+<     if (comm == COMM_SPACE_LITE) {
+<             linear_proc = proc;
+<             if (linear_proc == lrank) return ierr;
+<             if (linear_proc >= lsize) return ierr;
+<     }
+<     if (comm == YCOMM_LITE) {
+<             linear_proc = proc + ZPROC_LITE * dims[1];
+<             if (linear_proc == lrank) return ierr;
+<             if (linear_proc >= lsize) return ierr;
+<     }
+<     if (comm == ZCOMM_LITE) {
+<             linear_proc = YPROC_LITE + proc * dims[1] ;
+<             if (linear_proc == lrank) return ierr;
+<             if (linear_proc >= lsize) return ierr;
+<     }
+<
+<     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE, linear_proc, mtag,
+<                       MPI_COMM_WORLD, &istat );
+< #else
+<     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE, proc, mtag,
+---
+>     ierr = MPI_Recv ( value, dlen, MPI_DOUBLE_PRECISION, proc, mtag,
+606c483
+< #endif
+---
+>
+623,626d499
+< #ifdef MPILITE
+<     //if (comm != COMM_SPACE_LITE) return ierr;
+<     *rank = coord[0] * dims[1] + coord [1];
+< #else
+631d503
+< #endif
+echo ************************* setup.c **************************
+echo ************************* sn.c **************************
+echo ************************* snap.h **************************
+15d14
+< #include <math.h>
+477,480d475
+< #ifdef MPILITE
+< int psend_d_2d ( double *value, int d1, int d2, int comm,
+<                  int proc, int myproc, int mtag);
+< #else
+483d477
+< #endif
+486,489d479
+< #ifdef MPILITE
+< int psend_d_3d ( double *value, int d1, int d2, int d3, int comm,
+<                  int proc, int myproc, int mtag);
+< #else
+492d481
+< #endif
+495d483
+< #ifdef MPILITE
+498,502d485
+< #else
+< int precv_d_2d ( double *value, int d1, int d2, int comm,
+<                  int proc, int myproc, int mtag);
+< #endif
+<
+505,509d487
+< #ifdef MPILITE
+< int precv_d_3d ( double *value, int d1, int d2, int d3, int comm,
+<                  int proc, int myproc, int mtag);
+<
+< #else
+512d489
+< #endif
+848d824
+<
+907c883
+<         perror("ALLOC_1D_MKL");                                             \
+---
+>         perror("ALLOC_1D");                                             \
+1026d1001
+<                 *IERR = 0; \
+1030c1005
+<                     perror("ALLOC_1D_calloc");                                 \
+---
+>                     perror("ALLOC_1D");                                 \
+echo ************************* snap_main.c **************************
+echo ************************* solvar.c **************************
+echo ************************* sweep.c **************************
+384,387d383
+< #ifdef MPILITE
+<     precv_d_3d( &JB_IN_4D(0,0,0,(g-1)), NANG, ICHUNK, NZ, 1, YP_RCV, YPROC, i );
+<     precv_d_3d( &KB_IN_4D(0,0,0,(g-1)), NANG, ICHUNK, NY, 2, ZP_RCV, ZPROC, i );
+< #else
+390d385
+< #endif
+410,413d404
+< #ifdef MPILITE
+<     psend_d_3d( &JB_OUT_4D(0,0,0,(g-1)), NANG, ICHUNK, NZ, 1, YP_SND, YPROC, i );
+<     psend_d_3d( &KB_OUT_4D(0,0,0,(g-1)), NANG, ICHUNK, NY, 2, ZP_SND, ZPROC, i );
+< #else
+416d406
+< #endif
+echo ************************* time.c **************************
+echo ************************* translv.c **************************
+echo ************************* utils.c **************************
+24d23
+< #ifdef MPILITE
+26,28d24
+< #else
+<     if ( argc < 5 )
+< #endif
+48,50d43
+< #ifdef MPILITE
+<         for ( arg_ind=1; arg_ind < argc; arg_ind++ )
+< #else
+52d44
+< #endif
+echo ************************* version.c **************************

@@ -31,7 +31,7 @@ typedef struct{
     u64 numnodes;
     ocrGuid_t userBlock;
     } GSsharedBlock_t;
-#define M 20  //dimension of each slice
-#define N 30  //number of participants
-#define T 10  //number of iterations
+#define M 300  //dimension of each slice
+#define N 20  //number of participants
+#define T 100  //number of iterations
 

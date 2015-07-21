@@ -38,9 +38,7 @@ void lulesh_compute_volume(cncTag_t iteration, cncTag_t element_id, vertex *neig
    	volume = fabs(relative_volume - 1.0) < ctx->cutoffs.v ? 1.0 : relative_volume;
 
    	// Check for negative volumes
-    if (volume <= 0.0) {
-    	exit(1);
-    }
+    ASSERT(volume > 0.0 && "Volume should be positive");
 
     //
     // OUTPUTS

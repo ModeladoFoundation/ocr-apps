@@ -1,0 +1,15 @@
+Building the ocr-glibc libraries (x86 ONLY)
+=====================
+
+To build for x86, change into the xstack/apps/libs/src/ocr-glibc directory.
+Run 'make' and 'make install'; this deposits resulting libraries into
+xstack/apps/libs/x86.
+
+After the build completes, the following is in the
+xstack/apps/libs/x86/lib/ directory:
+
+       libocr-glibc.a   libocr-glibcxx.a
+
+To clean use 'make clean'.  Note that this does NOT remove build results
+from the xstack/apps/libs/x86 area.
+

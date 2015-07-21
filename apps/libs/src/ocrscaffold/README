@@ -1,0 +1,51 @@
+Building the ocr scaffold library for XSTG, x86, and x86_glibc
+
+The ocr scaffold libraries are replacements (very simple) for the real
+OCR runtime/library.  The XSTG and x86 versions are associated with the
+newlib library.  The x86_glibc version is associated with a native
+glibc library.
+
+=====================
+
+To build for XSTG, change into the xstack/apps/libs/src/ocrscaffold
+directory.  Run 'make ARCH=tg'; this builds for the xstg target.  Then
+run 'make ARCH=tg install'; this deposits resulting library into
+xstack/apps/libs/tg.
+
+After the build completes, the following is in the
+xstack/apps/libs/tg/lib/ directory:
+
+       libocrscaffold.a
+
+To clean use 'make ARCH=tg clean'.  Note that this does NOT remove build
+results from the xstack/apps/libs/tg area.
+
+=====================
+
+To build for x86, change into the xstack/apps/libs/src/ocrscaffold
+directory.  Run 'make ARCH=x86'; this builds for the x86 target. Then
+run 'make ARCH=x86 install'; this deposits resulting library into
+xstack/apps/libs/x86.
+
+After the build completes, the following is in the
+xstack/apps/libs/x86/lib/ directory:
+
+       libocrscaffold.a
+
+To clean use 'make ARCH=x86 clean'.  Note that this does NOT remove build
+results from the xstack/apps/libs/x86 area.
+
+=====================
+
+To build for x86_glibc, change into the xstack/apps/libs/src/ocrscaffold
+directory.  Run 'make ARCH=x86_glibc'; this builds for the x86 target.
+Then run 'make ARCH=x86_glibc install'; this deposits resulting library into
+xstack/apps/libs/x86.
+
+After the build completes, the following is in the
+xstack/apps/libs/x86/lib/ directory:
+
+       libocrscaffold-glibc.a
+
+To clean use 'make ARCH=x86 clean'.  Note that this does NOT remove build
+results from the xstack/apps/libs/x86 area.

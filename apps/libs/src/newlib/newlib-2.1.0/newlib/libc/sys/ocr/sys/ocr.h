@@ -1,6 +1,7 @@
 #ifndef _OCR_H_
 #define _OCR_H_
 
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/times.h>
@@ -20,6 +21,7 @@ typedef enum {
 
 #define NULL_GUID ((ocrGuid_t)0x0)
 
+#define _NOARGS void
 /**
  * @brief Data-structure holding configuration elements for the runtime
  *
@@ -144,7 +146,7 @@ u8 ocrUSalStat(ocrGuid_t legacyContext, const char* file, struct stat* st);
 s64 ocrUSalLseek(ocrGuid_t legacyContext, ocrGuid_t handle, s64 offset, s32 whence);
 
 /**
- * @brief Links 'new' with the file pointed to by 'existing'
+ * @brief Links 'link' with the file pointed to by 'existing'
  *
  * @todo Define the behavior for various types of "files" (file, directory, symlink, etc.)
  * @param[in]  legacyContext  Legacy context for this call. Since this call maintains state across
@@ -155,7 +157,7 @@ s64 ocrUSalLseek(ocrGuid_t legacyContext, ocrGuid_t handle, s64 offset, s32 when
  *
  * @todo Currently not supported
  */
-u8 ocrUSalLink(ocrGuid_t legacyContext, const char* existing, const char* new);
+u8 ocrUSalLink(ocrGuid_t legacyContext, const char* existing, const char* link);
 
 /**
  * @brief Unlinks (deletes) a file

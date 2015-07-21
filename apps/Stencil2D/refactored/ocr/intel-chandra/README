@@ -1,0 +1,23 @@
+Running:
+
+make -f Makefile.<OCR_TYPE> run
+
+where OCR_TYPE can be
+x86
+x86-mpi
+tg-x86
+tg
+
+#Edit the WORKLOAD_ARGS variable in the corresponding Makefile.OCR_TYPE to change the problem size/iterations
+
+Set FULL_APP preprocessor variable to 0 to run the app as an OCR-skeleton - doing so will disable all the
+computations and the app only sets up the OCR tasks and thus helps to measure OCR overhead
+
+In stencil_2d.c
+#define FULL_APP 0 //To measure only the OCR overhead
+or
+#define FULL_APP 1 //To measure the full app performance
+
+To use AFFINITY (experimental OCR) API:
+1. Modify Makefile.x86-mpi
+    CFLAGS := -g -DENABLE_EXTENSION_AFFINITY

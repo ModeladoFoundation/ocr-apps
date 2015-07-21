@@ -2,6 +2,10 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef TG_ARCH
+#include "strings.h"
+#endif
+
 #include "hpgmg.h"
 #include "utils.h"
 #include "operators.h"
@@ -169,7 +173,7 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
 
   ocrDbCreate(&boxGuid, (void**)&boxPtr, totalMemSize, 0,NULL_GUID,NO_ALLOC);
 
-//  bzero(boxPtr, totalMemSize);
+  bzero(boxPtr, totalMemSize);
 
   lPtr->jStride = jStride; lPtr->kStride = kStride, lPtr->volume = boxVolume;
 
@@ -309,10 +313,23 @@ void evaluateBeta(double x, double y, double z, double *B, double *Bx, double *B
   double rx   = 0.5*r2x*pow(r2,-0.5);
   double ry   = 0.5*r2y*pow(r2,-0.5);
   double rz   = 0.5*r2z*pow(r2,-0.5);
+/*  *B  =           c1+c2*tanh( c3*(r-0.25) );
+  *Bx = c2*c3*rx*(1-pow(tanh( c3*(r-0.25) ),2));
+  *By = c2*c3*ry*(1-pow(tanh( c3*(r-0.25) ),2));
+  *Bz = c2*c3*rz*(1-pow(tanh( c3*(r-0.25) ),2));
+*/
+#ifndef TG_ARCH
   *B  =           c1+c2*tanh( c3*(r-0.25) );
   *Bx = c2*c3*rx*(1-pow(tanh( c3*(r-0.25) ),2));
   *By = c2*c3*ry*(1-pow(tanh( c3*(r-0.25) ),2));
   *Bz = c2*c3*rz*(1-pow(tanh( c3*(r-0.25) ),2));
+#else
+  *B  =           c1+c2*tanh_approx( c3*(r-0.25) );
+  *Bx = c2*c3*rx*(1-pow(tanh_approx( c3*(r-0.25) ),2));
+  *By = c2*c3*ry*(1-pow(tanh_approx( c3*(r-0.25) ),2));
+  *Bz = c2*c3*rz*(1-pow(tanh_approx( c3*(r-0.25) ),2));
+#endif
+
 }
 
 
@@ -550,6 +567,13 @@ void mg_build(mg_type* all_grids, level_type* fine_grid, double a, double b, int
 
   int level=1;
   int coarse_dim = fine_grid->dim.i;
+
+  // Initialize the structures
+  int i;
+  for (i =0; i < MG_MAXLEVELS; i++) {
+    dim_i[i] = 0; boxes_in_i[i] = 0; box_dim[i] = 0; box_ghosts[i] = 0;
+  }
+
 
   while( (coarse_dim>=2*minCoarseGridDim) && ((coarse_dim&0x1)==0) ) { // grid dimension is even and big enough...
     level++;
