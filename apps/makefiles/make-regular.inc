@@ -195,6 +195,7 @@ else
 libocr: $(OCR_BUILD)/Makefile
 	@echo "Checking on libocr.so..."
 	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
+$(OCR_INSTALL)/lib/libocr.so: libocr
 endif
 
 # If the visualizer is being used, add necessary CFLAGS to application's makefile
