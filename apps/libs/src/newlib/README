@@ -1,0 +1,36 @@
+Building newlib for x86 and XSTG
+=====================
+
+To build for x86, change into the xstack/apps/libs/src/newlib directory.
+Run 'make ARCH=x86'; this builds for the x86 target. Then run
+'make ARCH=x86 install'; this deposits resulting libraries and includes
+into xstack/apps/libs/x86.
+
+After the build completes, the following is in the
+xstack/apps/libs/x86/lib/ directory:
+
+       crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
+
+The xstack/apps/libs/x86/include directory is also populated with
+standard 'libc' headers.
+
+To clean use 'make ARCH=x86 clean'.  Note that this does NOT remove build
+results from the xstack/apps/libs/x86 area.
+
+=====================
+
+To build for the xstg architecture, change into the xstack/apps/libs/src/newlib
+directory.  Run 'make ARCH=tg'; this builds for the xstg target.  Then run
+'make ARCH=tg install'; this deposits resulting libraries and includes into
+xstack/apps/libs/tg.
+
+After the build completes, the following is in the
+xstack/apps/libs/tg/lib/ directory:
+
+       crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
+
+The xstack/apps/libs/tg/include directory is also populated with
+standard 'libc' headers.
+
+To clean use 'make ARCH=tg clean'.  Note that this does NOT remove build
+results from the xstack/apps/libs/tg area.

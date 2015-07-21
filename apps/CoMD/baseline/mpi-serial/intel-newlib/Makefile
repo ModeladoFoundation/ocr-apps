@@ -48,7 +48,7 @@ MPI_INCLUDE =
 
 ### A place to specify any other include or library switches your
 ### platform requires.
-OTHER_LIB = $(WORKLOAD_INSTALL_ROOT)/libocrshim.a
+OTHER_LIB = $(APPS_LIBS_ROOT)/lib/libocrscaffold.a
 OTHER_INCLUDE =
 
 #########################################

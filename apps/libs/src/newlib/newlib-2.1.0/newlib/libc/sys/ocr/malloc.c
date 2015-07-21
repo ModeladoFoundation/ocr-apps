@@ -321,7 +321,6 @@
 #endif /*Void_t*/
 
 #define _GNU_SOURCE
-#include <sys/features.h>
 // #define _LIBC 0
 #define NOT_IN_libc 1
 
@@ -1038,10 +1037,11 @@ extern Void_t*     sbrk();
 
 #endif /* _LIBC */
 
-#ifdef _LIBC
+#if defined(_LIBC) || defined(_OCR_GLIBC)
 
 #define cALLOc          __libc_calloc
 #define fREe            __libc_free
+#define cFREe           __libc_cfree
 #define mALLOc          __libc_malloc
 #define mEMALIGn        __libc_memalign
 #define rEALLOc         __libc_realloc
@@ -1061,6 +1061,7 @@ extern Void_t*     sbrk();
 
 #define cALLOc          calloc
 #define fREe            free
+#define cFREe           cfree
 #define mALLOc          malloc
 #define mEMALIGn        memalign
 #define rEALLOc         realloc
@@ -1093,6 +1094,7 @@ Void_t* vALLOc(size_t);
 Void_t* pvALLOc(size_t);
 Void_t* cALLOc(size_t, size_t);
 void    cfree(Void_t*);
+void    cFREe(Void_t*);
 int     mALLOC_TRIm(size_t);
 size_t  mALLOC_USABLE_SIZe(Void_t*);
 void    mALLOC_STATs(void);
@@ -1114,6 +1116,7 @@ Void_t* vALLOc();
 Void_t* pvALLOc();
 Void_t* cALLOc();
 void    cfree();
+void    cFREe();
 int     mALLOC_TRIm();
 size_t  mALLOC_USABLE_SIZe();
 void    mALLOC_STATs();
@@ -4563,9 +4566,9 @@ Void_t* cALLOc(n, elem_size) size_t n; size_t elem_size;
 
 #if !defined(_LIBC)
 #if __STD_C
-void cfree(Void_t *mem)
+void cFREe(Void_t *mem)
 #else
-void cfree(mem) Void_t *mem;
+void cFREe(mem) Void_t *mem;
 #endif
 {
   fREe(mem);
@@ -5670,23 +5673,35 @@ __posix_memalign (void **memptr, size_t alignment, size_t size)
 }
 weak_alias (__posix_memalign, posix_memalign)
 
+#endif /* _LIBC */
+
+#if defined(_LIBC) || defined(_OCR_GLIBC)
+#ifdef _OCR_GLIBC
+#define weak_alias(name, aliasname) \
+  extern __typeof (name) aliasname __attribute__ ((weak, alias (#name)));
+#endif
+
 weak_alias (__libc_calloc, __calloc) weak_alias (__libc_calloc, calloc)
-weak_alias (__libc_free, __cfree) weak_alias (__libc_free, cfree)
+weak_alias (__libc_cfree, __cfree) weak_alias (__libc_cfree, cfree)
 weak_alias (__libc_free, __free) weak_alias (__libc_free, free)
 weak_alias (__libc_malloc, __malloc) weak_alias (__libc_malloc, malloc)
 weak_alias (__libc_memalign, __memalign) weak_alias (__libc_memalign, memalign)
 weak_alias (__libc_realloc, __realloc) weak_alias (__libc_realloc, realloc)
+#ifndef _OCR_GLIBC
 weak_alias (__libc_valloc, __valloc) weak_alias (__libc_valloc, valloc)
 weak_alias (__libc_pvalloc, __pvalloc) weak_alias (__libc_pvalloc, pvalloc)
 weak_alias (__libc_mallinfo, __mallinfo) weak_alias (__libc_mallinfo, mallinfo)
+#endif
 weak_alias (__libc_mallopt, __mallopt) weak_alias (__libc_mallopt, mallopt)
 
-weak_alias (__malloc_stats, malloc_stats)
 weak_alias (__malloc_usable_size, malloc_usable_size)
 weak_alias (__malloc_trim, malloc_trim)
+#ifndef _OCR_GLIBC
+weak_alias (__malloc_stats, malloc_stats)
 weak_alias (__malloc_get_state, malloc_get_state)
 weak_alias (__malloc_set_state, malloc_set_state)
-#endif /* _LIBC */
+#endif
+#endif /* _LIBC || _OCR_GLIBC */
 
 /*
 

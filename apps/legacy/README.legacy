@@ -1,0 +1,176 @@
+Legacy C Environment Support:
+
+The goal is to allow a legacy C applications to run in the OCR runtime on the XSTG and the X86 architectures.
+
+While these examples will not make much use of OCR runtime abilities, it is a starting point for getting an
+application into the OCR runtime environment and thereby being able to take advantage of the XSTG parallelism.
+
+By legacy C, it is meant that the application knows nothing about the OCR runtime; it has no special OCR library
+calls within the application.  This 'legacy C' environment, links the legacy application with a special C runtime
+which calls upon OCR runtime to setup things before calling the application main().  Then after main() returns
+back to the C runtime, the OCR runtime is again called upon to break-down the OCR environment.
+
+Over time, the user can then add OCR calls into the application to obtain the performance improvements by fully
+using the OCR runtime.
+
+All the support defined below does 'static' linking ONLY; so use only '.a' libraries, and NOT '.so'.  This is
+true for all user libraries also.
+
+Sub-directory structure under xstack/apps/legacy:
+- tg         // example hello.c, Makefile, and xstg.ld linker script
+- x86        // example hello.c and Makefile
+- x86_glibc  // example chello.c, cxxhello.cc, and Makefile
+
+==================================
+XSTG (TG) Architecture Legacy C Support
+==================================
+
+XSTG Overview:
+
+The legacy support for the XSTG architecture can be thought of as four different pieces:
+1 - The legacy application,
+2 - the newlib libraries,
+3 - the ocr shim at the 'bottom' of newlib, and
+4 - the ocr runtime and library.
+
+As mentioned, a 'legacy' application is one that knows nothing about the OCR runtime.  It is compiled using the
+XSTG tool chain, consisting of the specital LLVM compiler and binutils GAS which have been ported to support the
+XSTG architecture.  The compiled object file is linked with newlib libraries.
+
+The newlib libraries are a special libc variant, which supports all the standard libc interfaces and has
+favorable licensing terms.  Whether 'legacy' or true OCR applications, whether C or C++, newlib is the core
+library for the XSTG application code.  See the README in apps/libs/src/newlib for more information.
+
+The newlib library includes a special C runtime support (crt0/init/fini) which does setup calls to initialize
+OCR, passing command line arguments to OCR, establishes a OCR DB for the stack, setting up the atexit function,
+and, finally, jumping to the legacy main().
+
+When the application is running, at the point where newlib would naturally transistion through 'system calls' to
+perform key tasks, there exists a special shim which converts these requests into OCR interface calls.  This
+interface, called OCRSal, allows calls such as memory management, file i/o, and standard i/o to be sent to the
+OCR runtime for handling.  Once handled by the OCR runtime, these calls are returned to newlib, which then returns
+back to the application.
+
+The OCR runtime handles all the special needs of the XSTG architecture.  This includes special memory management
+and data services to allow an application's data to be moved 'close' to the specific XE processor running the
+application code.  OCR also manages the 'spawning' of new XE processes.  Lastly, the OCR runtime supplies the
+necessary infrastructure to handle 'system calls' like file i/o and printf abilities.
+
+The OCR Scaffold:
+
+For tool chain and newlib testing a special library has been created which takes the place of the normal OCR
+runtime.  It is called the OCR Scaffold.  This 'scaffold' is a shell of the actual OCR runtime and only handles
+the 'system call' interfaces of OCRSal.  It does NOT support normal OCR runtime interfaces or abilities - and,
+therefore, is only meant for legacy application testing. In the case of the TG architecture, the scaffold library
+is a 'do nothing' skeleton.
+
+Buiding a Legacy C program for XSTG:
+
+There are a couple prerequisites:
+
+1 - Build newlib for TG.  Please see the xstack/apps/libs/src/newlib/README for information on building newlib.
+
+2 - If using the actual OCR runtime/library, build it for TG.  If using the OCR scaffold, build it for TG.  Please
+see xstack/apps/libs/src/ocrscaffold/README for information on building the scaffold library.
+
+Then compile and link your program as shown for the example 'Hello World' application in ./tg/ directory.
+
+Please see the ./tg/Makefile for details on compiling and linking your application.  Also included in the ./tg
+directory is a xstg.ld linker script.  The linker currently attempts to put the .text section (amoung others)
+into the L1 scratchpad area which is only 64KB.  The current linker script in the simple example, puts these
+sections into the DRAM area.
+
+The resulting executable can only be run on the fsim simulator at this time.
+
+==================================
+TBD: XSTG Architecture Legacy C++ Support
+==================================
+
+==================================
+X86 Architecture Legacy C and C++ Support
+==================================
+
+X86 Overview:
+
+For the x86 architecture there exists two solutions, one using newlib and the other using special glibc
+implementation.
+
+The newlib solution is basically for newlib testing, although it does allow a 'standard' main(), legacy,
+application to run on the x86 architecture.  It does have one failing: it does not implement an OCR DB for
+the stack.
+
+The glibc solution supports 'legacy' C applications and 'legacy' C++ application.  These solutions also
+do not implement an OCR DB for the stack and require the 'legacy' application to be VERY slightly
+modified. The applications main() entry point must be renamed to mainEdt().
+
+For all the x86 architecture support, a native x86_64 GCC tool chain is used.
+
+---------------------------
+Legacy support for the x86 architecture using newlib
+---------------------------
+
+This can be thought of as four different pieces:
+1 - The legacy application,
+2 - the newlib libraries,
+3 - the ocr shim at the 'bottom' of newlib, and
+4 - the ocr runtime and library.
+
+This support is very similar to the XSTG support, except the fact that an OCR stack is not implemented in the x86
+version of the special C runtime.  The native stack support is retained as the executable is started.
+
+If used, note that the x86 OCR scaffold is a variant of the XSTG OCR scaffold.
+
+Buiding a Legacy C program for x86 newlib:
+
+There are a couple prerequisites:
+
+1 - Build newlib for x86.  Please see the xstack/apps/libs/src/newlib/README for information on building newlib.
+
+2 - If using the actual OCR runtime/library, build it for x86.  If using the OCR scaffold, build it for x86.  Please
+see xstack/apps/libs/src/ocrscaffold/README for information on building the scaffold library.
+
+Then compile and link your program as shown for the example 'Hello World' application in ./x86/ directory. Please
+see the ./x86/Makefile for details on compiling and linking your application.
+
+The resulting executable can be run on the native x86 environment.
+
+---------------------------
+Legacy support for the x86 architecture using glibc
+---------------------------
+
+This can be thought of as four different pieces:
+1 - The legacy application,
+2 - the glibc libraries,
+3 - the ocr shim at the 'bottom' of glibc, and
+4 - the ocr runtime and library.
+
+This glibc support requires one change to a legacy application.  Instead of using main() as the initial fuction,
+users are required to change main() to mainEdt().  Otherwise the application is completely 'legacy'.
+
+The OCR shim is a small library which handles the OCRSal interface but does so for the glibc library.  There are
+actually two shim libraries: one for C and the other for C++.  These shims are called libocr-glibc.a and
+libocr-glibcxx.a.
+
+If used, note that the x86_glibc OCR scaffold is a variant of the XSTG OCR scaffold.
+
+Buiding a Legacy C program for x86 glibc:
+
+There are a couple prerequisites:
+
+1 - Build libocr-glibc.a and libocr-glibcxx.a libraries.  Please see the xstack/apps/libs/src/ocr-glibc/README
+for information.
+
+2 - If using the actual OCR runtime/library, build it for x86.  If using the OCR scaffold, build it for x86_glibc.
+Please see xstack/apps/libs/src/ocrscaffold/README for information on building the scaffold library.
+
+In the case of glibc solution, there are two example programs: chello.c and cxxhello.cc.  The first a 'legacy' C
+program (with main() -> mainEdt()), and the second a 'legacy' C++ program (also with main() -> mainEdt()).
+
+Compile and link your programs as shown for the example applications in the ./x86_glibc directory.  Please see the
+./86_glibc/Makefile for details on compiling and linking your applications.
+
+The resulting executable can be run on the native x86 environment.
+
+Note that the C and C++ runtimes are those given by the glibc environment.  The two shim libraries contain special
+'main' functions, which perform the same OCR initialization and setup as the newlib C runtime support.  These main
+functions will then call the mainEdt() entry points for the actual 'legacy' applications.

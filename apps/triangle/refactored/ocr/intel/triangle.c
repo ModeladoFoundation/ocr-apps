@@ -13,12 +13,21 @@ to count the number of solutions.
 
 See the README file for more information.
 
+The #ifdef RUN_JENKINS shrinks the level of search to lower the runtime to meet the Jenkins requirements
+
 */
 
 #include <ocr.h>
 #define BOARDSIZE 15
 #define MOVESIZE 36
-#define BOTTOM 13
+
+#if RUN_JENKINS
+int BOTTOM=6;
+#else
+int BOTTOM=13;
+#endif
+
+
 
 /*
 void printboard(u64 board[15]) {
@@ -123,8 +132,14 @@ look for legal moves
 ocrGuid_t wrapupTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 * count = depv[0].ptr;
     double starttime = paramv[0];
+
+#ifdef RUN_JENKINS
+    if(*count == 21530) PRINTF("PASS  final count %d \n", *count);
+        else PRINTF("FAIL final count %d should be 5072 \n", *count);
+#else
     if(*count == 29760) PRINTF("PASS  final count %d \n", *count);
         else PRINTF("FAIL final count %d should be 29760 \n", *count);
+#endif
     ocrShutdown();
     return NULL_GUID;
 }
@@ -222,6 +237,8 @@ ocrGuid_t mainEdt(){
     u64 *counter;
     ocrGuid_t realmain, realmainTemplate, counterDb, boardDb, oldboardDb, pmovesDb;
     u64 *oldboard, *board, *pmoves;
+PRINTF("triangle puzzle BOTTOM %d \n", BOTTOM);
+
     ocrDbCreate(&counterDb, (void**) &counter, sizeof(u64), 0, NULL_GUID, NO_ALLOC);
     ocrDbCreate(&oldboardDb, (void**) &oldboard, sizeof(u64)*BOARDSIZE, 0, NULL_GUID, NO_ALLOC);
     ocrDbCreate(&boardDb, (void**) &board, sizeof(u64)*BOARDSIZE, 0, NULL_GUID, NO_ALLOC);

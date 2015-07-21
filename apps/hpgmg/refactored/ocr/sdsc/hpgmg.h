@@ -2,8 +2,8 @@
 #define HPGMG_H
 
 #include <ocr.h>
-#define WARMUP 1
-#define TIMED 5
+#define WARMUP 0
+#define TIMED 1
 
 #define MG_MAXLEVELS 100
 #define NUM_VECTORS 12   // Manu:: added temporary array
@@ -161,6 +161,7 @@ ocrGuid_t print_timing_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 ocrGuid_t zero_vector(int l, mg_type* mg_ptr, u64 type, ocrGuid_t start);
 void restriction_f_all(level_type* l, box_type* lb, level_type* f, box_type* fb, int octant, int dim, int flag);
 void restrict_generic_all(level_type* l, box_type* lb, int l_off, level_type* f, box_type* fb, int f_off, int side);
+void restrict_generic(level_type* l, box_type* lb, int l_off, level_type* f, box_type* fb, int f_off, int octant, int dim, int side);
 void interpolation_pc_all(level_type* l, box_type* lb, level_type* f, box_type* fb, int octant);
 void interpolation_pl_all(level_type* l, box_type* lb, level_type* f, box_type* fb, int octant);
 

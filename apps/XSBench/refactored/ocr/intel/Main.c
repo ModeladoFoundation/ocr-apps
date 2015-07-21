@@ -17,9 +17,15 @@
 
 #include "ocr.h"
 #include "XSbench_header.h"
+#include "timers.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+
+
+#ifdef TG_ARCH
+void qsort(void *a, size_t n, size_t es, int (*cmp)(const void *, const void *));
 #endif
 
 typedef struct
@@ -58,6 +64,7 @@ typedef struct
 
 typedef struct
 {
+    ocrGuid_t DBK_timers;
     ocrGuid_t DBK_InputsH; // Commandline parameters/settings
     ocrGuid_t DBK_InputsHs; //-> Broadcasted parameters/settings Inputs[]
     ocrGuid_t DBK_rankHs; //--> rankH_t[]
@@ -82,6 +89,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
                     ocrGuid_t FNC_microxs(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                         ocrGuid_t FNC_microxs_0(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                             ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+    ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
@@ -97,15 +105,15 @@ ocrGuid_t FNC_settingsInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     PTR_InputsH_0->lookups = (s64) paramv[4];
     strcpy( PTR_InputsH_0->HM, "small" );
 
-    PRINTF("t %d i %ld m %ld g %ld l %ld s %s\n",
-            PTR_InputsH_0->nthreads, PTR_InputsH_0->n_isotopes, PTR_InputsH_0->n_mats, PTR_InputsH_0->n_gridpoints, PTR_InputsH_0->lookups, PTR_InputsH_0->HM);
+    //PRINTF("t %d i %ld m %ld g %ld l %ld s %s\n",
+    //        PTR_InputsH_0->nthreads, PTR_InputsH_0->n_isotopes, PTR_InputsH_0->n_mats, PTR_InputsH_0->n_gridpoints, PTR_InputsH_0->lookups, PTR_InputsH_0->HM);
 
     return NULL_GUID;
 }
 
 ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH_0 = depv[0].guid;
@@ -183,7 +191,7 @@ ocrGuid_t FNC_init_InputsH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
 ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
@@ -197,7 +205,7 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
     u64 nprocs = PTR_InputsH->nprocs;
 
     //spawn N intializer EDTs
-    PRINTF("#Subdomains %d\n", nprocs);
+    //PRINTF("#Subdomains %d\n", nprocs);
 
     MyOcrTaskStruct_t TS_rankInit; _paramc = 1; _depc = 3;
 
@@ -233,7 +241,7 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 
 ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH_0 = (ocrGuid_t) depv[0].guid;
@@ -301,7 +309,7 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     s64 id = (s64) paramv[0];
@@ -369,7 +377,7 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
@@ -395,6 +403,8 @@ ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int (*cmp) (const void *, const void *);
     cmp = NGP_compare;
 
+    unsigned long seed = (10+1)*19+17;
+
     s32 i;
 
     for( i = 0; i < n_isotopes; i++ )
@@ -404,12 +414,12 @@ ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         for( long j = 0; j < n_gridpoints; j++ )
         {
-            PTR_nuclide_data[j].energy        = ((double)rand()/(double)RAND_MAX);
-            PTR_nuclide_data[j].total_xs      = ((double)rand()/(double)RAND_MAX);
-            PTR_nuclide_data[j].elastic_xs    = ((double)rand()/(double)RAND_MAX);
-            PTR_nuclide_data[j].absorbtion_xs = ((double)rand()/(double)RAND_MAX);
-            PTR_nuclide_data[j].fission_xs    = ((double)rand()/(double)RAND_MAX);
-            PTR_nuclide_data[j].nu_fission_xs = ((double)rand()/(double)RAND_MAX);
+            PTR_nuclide_data[j].energy        = rn(&seed);
+            PTR_nuclide_data[j].total_xs      = rn(&seed);
+            PTR_nuclide_data[j].elastic_xs    = rn(&seed);
+            PTR_nuclide_data[j].absorbtion_xs = rn(&seed);
+            PTR_nuclide_data[j].fission_xs    = rn(&seed);
+            PTR_nuclide_data[j].nu_fission_xs = rn(&seed);
 
             //PRINTF("Init p %d e %f xs_0 %f xs_1 %f xs_2 %f xs_3 %f xs_4 %f\n", i, PTR_nuclide_data[j].energy, PTR_nuclide_data[j].total_xs, PTR_nuclide_data[j].elastic_xs, PTR_nuclide_data[j].absorbtion_xs, PTR_nuclide_data[j].fission_xs, PTR_nuclide_data[j].nu_fission_xs);
         }
@@ -477,7 +487,7 @@ ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t FNC_init_uEnergy(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
@@ -557,10 +567,11 @@ ocrGuid_t FNC_init_uEnergy_i(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     double quarry = *PTR_quarry;
     //PRINTF("here2 quarry %f\n", quarry);
     int thread_id = 0;
-    //if( thread_id == 0 && i % 200 == 0 )
-        printf("\rAligning Unionized Grid...(%.0lf%% complete)",
+    if( thread_id == 0 && i % 200 == 0 )
+        PRINTF("\rAligning Unionized Grid...(%.2f%% complete)",
                100.0 * (double) i / (n_isotopes*n_gridpoints /
                                      1/*omp_get_num_threads()*/)     );
+    if( i == n_isotopes*n_gridpoints-1 ) PRINTF("\n");
     _idep = 4;
     for( long j = 0; j < n_isotopes; j++ )
     {
@@ -577,7 +588,7 @@ ocrGuid_t FNC_init_uEnergy_i(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
 ocrGuid_t FNC_init_materials(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
@@ -617,7 +628,7 @@ ocrGuid_t FNC_init_materials(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
 ocrGuid_t FNC_init_materials_is(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
@@ -692,8 +703,9 @@ ocrGuid_t FNC_init_materials_is(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
         ocrDbCreate( &(PTR_material_guids_j->DBK_nucl_concs_list), (void **) &PTR_nucl_concs_list, sizeof(double)*num_nucs_j,
                      DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
+        unsigned long seed = (j+1)*19+17;
         for( int i = 0; i < num_nucs_j; i++ )
-            PTR_nucl_concs_list[i] = (double) rand() / (double) RAND_MAX;
+            PTR_nucl_concs_list[i] = rn(&seed);
 
         switch(j)
         {
@@ -749,12 +761,29 @@ ocrGuid_t FNC_init_materials_is(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
 
 ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalH = depv[0].guid;
 
     globalH_t *PTR_globalH = depv[0].ptr;
+
+    timer* PTR_timers;
+    ocrDbCreate( &PTR_globalH->DBK_timers, (void**) &PTR_timers, sizeof(timer)*number_of_timers,
+                 0, NULL_GUID, NO_ALLOC );
+    int i;
+    for( i = 0; i < number_of_timers; i++ )
+    {
+        PTR_timers[i].start = 0;
+        PTR_timers[i].total = 0;
+        PTR_timers[i].count = 0;
+        PTR_timers[i].elapsed = 0;
+    }
+    profile_start( total_timer, PTR_timers );
+    ocrDbRelease(PTR_globalH->DBK_timers);
+
+    ocrGuid_t TS_globalComputeSpawner_OET;
+    ocrEventCreate( &TS_globalComputeSpawner_OET, OCR_EVENT_STICKY_T, false );
 
     MyOcrTaskStruct_t TS_globalComputeSpawner; _paramc = 0; _depc = 3;
 
@@ -763,19 +792,49 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     ocrEdtCreate( &TS_globalComputeSpawner.EDT, TS_globalComputeSpawner.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
+                  EDT_PROP_FINISH, NULL_GUID, &TS_globalComputeSpawner.OET );
+
+    ocrAddDependence( TS_globalComputeSpawner.OET, TS_globalComputeSpawner_OET, 0, DB_MODE_NULL );
 
     _idep = 0;
     ocrAddDependence( PTR_globalH->DBK_InputsH, TS_globalComputeSpawner.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_globalH->DBK_InputsHs, TS_globalComputeSpawner.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_globalH->DBK_rankHs, TS_globalComputeSpawner.EDT, _idep++, DB_MODE_CONST );
 
+    MyOcrTaskStruct_t TS_timer; _paramc = 0; _depc = 3;
+
+    TS_timer.FNC = FNC_timer;
+    ocrEdtTemplateCreate( &TS_timer.TML, TS_timer.FNC, _paramc, _depc );
+
+    ocrEdtCreate( &TS_timer.EDT, TS_timer.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, NULL_GUID, &TS_timer.OET );
+
+    _idep = 0;
+    ocrAddDependence( PTR_globalH->DBK_InputsH, TS_timer.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( PTR_globalH->DBK_timers, TS_timer.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( TS_globalComputeSpawner_OET, TS_timer.EDT, _idep++, DB_MODE_NULL );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    Inputs *PTR_InputsH = depv[0].ptr;
+    timer* PTR_timers = depv[1].ptr;
+
+    profile_stop( total_timer, PTR_timers );
+    double runtime = get_elapsed_time( total_timer, PTR_timers );
+
+    PRINTF("\n");
+    print_results( *PTR_InputsH, 0, runtime, PTR_InputsH->nprocs );
+
     return NULL_GUID;
 }
 
 ocrGuid_t FNC_globalComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("\n%s\n", __func__);
+    //PRINTF("\n%s\n", __func__);
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
@@ -791,7 +850,7 @@ ocrGuid_t FNC_globalComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     u64 i;
 
-    PRINTF("#Subdomains %d\n", NR);
+    //PRINTF("#Subdomains %d\n", NR);
 
     MyOcrTaskStruct_t TS_rankCompute; _paramc = 4; _depc = 2;
 
@@ -799,7 +858,7 @@ ocrGuid_t FNC_globalComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     TS_rankCompute.FNC = FNC_rankCompute;
     ocrEdtTemplateCreate( &TS_rankCompute.TML, TS_rankCompute.FNC, _paramc, _depc );
-    u64 ilookup = 0, NL_SYNC = 100;
+    u64 ilookup = 0, NL_SYNC = 1000;
 
     for( i = 0; i < NR; i++ )
     {
@@ -915,7 +974,7 @@ ocrGuid_t FNC_rankMultiLookupSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
         //PRINTF("%d\n", ilookup);
 
         if( ilookup % 1000 == 0 )
-            printf("\rCalculating XS's... (%.0lf%% completed)",
+            PRINTF("\rCalculating XS's... (%.02f%% completed)",
                     (ilookup / ( (double)lookups ) * 100.0 ) );
 
         compute_paramv[0] = (u64) id;
@@ -961,7 +1020,7 @@ ocrGuid_t FNC_rankLookup(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int n_isotopes = PTR_InputsH->n_isotopes;
     int n_gridpoints = PTR_InputsH->n_gridpoints;
 
-    unsigned long seed = rand(); //(ilookup+1)*19+17;
+    unsigned long seed = (ilookup+1)*19+17;
 
     double p_energy = rn(&seed);
     int mat = pick_mat(&seed);
@@ -1150,7 +1209,7 @@ ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("\n%s\n", __func__);
+    //PRINTF("\n%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     ocrShutdown();
@@ -1159,7 +1218,7 @@ ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("%s\n", __func__);
+    //PRINTF("%s\n", __func__);
     u32 _paramc, _depc, _idep;
 
     int version = 13;
@@ -1212,7 +1271,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEventCreate( &TS_globalFinalize_OET, OCR_EVENT_STICKY_T, false );
 
     MyOcrTaskStruct_t TS_globalInit, TS_globalCompute, TS_globalFinalize;
-    _paramc = 0; _depc = 2;
+    _paramc = 0; _depc = 3;
 
     TS_globalInit.FNC = FNC_globalInit;
     ocrEdtTemplateCreate( &TS_globalInit.TML, TS_globalInit.FNC, _paramc, _depc );
@@ -1226,7 +1285,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     _idep = 0;
     ocrAddDependence( DBK_InputsH_0, TS_globalInit.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_globalH, TS_globalInit.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( TS_settingsInit_OET, TS_globalInit.EDT, _idep++, DB_MODE_NULL );
 
+    _paramc = 0; _depc = 2;
     TS_globalCompute.FNC = FNC_globalCompute;
     ocrEdtTemplateCreate( &TS_globalCompute.TML, TS_globalCompute.FNC, _paramc, _depc );
 
@@ -1240,6 +1301,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_globalH, TS_globalCompute.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( TS_globalInit_OET, TS_globalCompute.EDT, _idep++, DB_MODE_NULL);
 
+    _paramc = 0; _depc = 2;
     TS_globalFinalize.FNC = FNC_globalFinalize;
     ocrEdtTemplateCreate( &TS_globalFinalize.TML, TS_globalFinalize.FNC, _paramc, _depc );
 

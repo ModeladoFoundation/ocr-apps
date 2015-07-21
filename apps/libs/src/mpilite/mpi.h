@@ -29,7 +29,7 @@ extern "C" {
 #endif // ndef __x86_64__
 
 #define MPI_BOTTOM              ((void *)0)
-#define MPI_SUCCESS             (1)
+#define MPI_SUCCESS             (0)
 #define MPI_ERR_ARG             (-1)
 #define MPI_ERR_TYPE            (-2)
 #define MPI_ERR_REQUEST         (-3)

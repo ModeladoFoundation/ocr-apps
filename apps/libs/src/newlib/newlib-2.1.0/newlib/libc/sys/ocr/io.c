@@ -1,8 +1,9 @@
-#include <_ansi.h>
-#include <_syslist.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <reent.h>
 #include <errno.h>
 #include <sys/ocr.h>
+#include <_ansi.h>
 
 #include "ocr_shim.h"
 
@@ -86,3 +87,8 @@ _DEFUN (_lseek, (file, ptr, dir),
   return (off_t)ret;
 }
 
+weak_alias( _open, __open )
+weak_alias( _close, __close )
+weak_alias( _read, __read )
+weak_alias( _write, __write )
+weak_alias( _lseek, __lseek )

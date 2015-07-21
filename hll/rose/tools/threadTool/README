@@ -1,0 +1,36 @@
+
+This ROSE tool adds __thread to all global variables.
+
+If the ROSE compiler framework is not available on your system, see below.
+The ROSE compiler framework in available on the xstack.exascale-tech.com system.
+
+
+To build and execute this tool,
+    1. Execute the script to set up the ROSE environment.
+         % . ../../rose_env.sh
+
+    2. Build the tool.
+         % cd src
+         % make
+
+    3. Run the tool using the test case provided.
+         % cd ../tests/simple1
+         % make
+
+
+
+To build the ROSE compiler framework,
+    1. Download the ROSE compiler framework from http://rosecompiler.org.
+
+    2. Build the ROSE compiler framework. See http://rosecompiler.org/ROSE_InstallationInstructions.pdf.
+
+    3. Update the script which sets up the ROSE environment to reflect your system.
+         % xemacs ../../rose_env.sh &
+
+
+The ROSE compiler framework, developed at Lawrence Livermore National
+Laboratory (LLNL), is an open source compiler infrastructure to generate
+source-to-source analyzers and translators for multiple source languages
+including C, C++, and Fortran.  See http://www.rosecompiler.org/ for
+more information.
+

@@ -8,6 +8,7 @@ and cannot be distributed without it. This notice cannot be removed or modified.
 //this version of the driver program updates rtrold in the alternate phase (during the pAp computation)
 #include <ocr.h>
 #include <stdio.h>
+#include <math.h>
 #include "ocrGS.h"
 typedef struct {
     double x[M];
@@ -86,10 +87,12 @@ depv
 //compute beta
             if(timestep == 0) beta = 0;
                 else beta = SB->sum/SB->rtrold;
-            if(timestep == T){
-            for(i=0;i<M;i++) PRINTF("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
-            return NULL_GUID;
-        }
+            if(SB->sum/SB->rtr0 < 1e-13 || timestep == T) {
+                for(i=0;i<M;i++) PRINTF("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
+                if(mynode == 0 && M==300 && N==20 && T==100) {
+                  if(fabs(cgdata->x[0] - 0.462231) < 1e-5) PRINTF("PASS\n"); else PRINTF("FAIL difference %f is too large\n", cgdata->x[0] - .462231); }
+                return NULL_GUID;
+            }
 //update r
             for(i=0;i<M;i++) cgdata->p[i] = cgdata->r[i] + beta*cgdata->p[i];
 //compute Ap

@@ -12,7 +12,7 @@ See README file for more information
 */
 #include <ocr.h>
 #include <stdio.h>
-#define T 100    //number of timesteps
+#define T 300    //number of timesteps
 #define P 20     //number of workers
 #define K 20     //columns per worker
 #define M (P*K) //global number of columns

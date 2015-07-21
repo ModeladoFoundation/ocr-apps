@@ -54,6 +54,7 @@ start (int argc, char **argv, char **env)
     //
 }
 
+static void app_start () __asm__ ("_app_start") __attribute ((__used__));
 static void app_start( int argc, char ** argv )
 {
     // Call the user program.
@@ -77,7 +78,7 @@ __asm__
     "subI     r509, r509, 8, 64\n"
     "movimm   r2, 0, 64\n"
     "store    r2, r509, 0, 64\n"
-    "jlrel    r511, app_start\n"
+    "jlrel    r511, _app_start\n"
     "movimm   r2, 0, 64\n"
     "movimm   r3, 0, 64\n"
     "alarm    193\n"

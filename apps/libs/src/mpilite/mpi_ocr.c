@@ -13,11 +13,9 @@
 #include <ocr.h>
 
 #include <extensions/ocr-legacy.h>
-#if ENABLE_EXTENSION_LABELING
-    #include <extensions/ocr-labeling.h>
-#endif
+#include <extensions/ocr-labeling.h>
 
-#define DEBUG_MPI 1
+extern ocrGuid_t __ffwd_init(void * ffwd_add_ptr);
 
 void ERROR(char *s)
 {
@@ -30,7 +28,10 @@ void WARNING(char *s)
 }
 
 // HIDE all the debugging printfs
-#define PRINTF(a,...)
+#if !DEBUG_MPI
+     #define PRINTF(a,...)
+     #define fflush(a)
+#endif
 
 // fillArgv: create argc/argv for main() from OCR
 static void fillArgv(u64 argc, char *argv[],void *argcArgvPtr)
@@ -72,6 +73,7 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
       .numRanks = paramv[1],
       .maxTag = paramv[2],
       .mpiInitialized = FALSE,
+      .aggressiveNB = paramv[4],
       .sizeOf = {0,  // not-a-datatype
                  sizeof(char), // MPI_CHAR
                  sizeof(signed char), // MPI_SIGNED_CHAR
@@ -119,6 +121,18 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     ocrElsUserSet(RANK_CONTEXT_SLOT, (ocrGuid_t) &rankContext);
     ocrElsUserSet(MESSAGE_CONTEXT_SLOT, (ocrGuid_t) &messageContext);
 
+    // globals2db support
+    void * ffwd_addr_p=NULL;
+    ocrGuid_t ffwd_db_guid = NULL;
+    ffwd_db_guid = __ffwd_init(&ffwd_addr_p);
+    globalDBContext_t globalDBContext =
+        {
+            .dbGuid = ffwd_db_guid,
+            .addrPtr = ffwd_addr_p
+        };
+    ocrElsUserSet(GLOBAL_DB_SLOT, (ocrGuid_t)&globalDBContext);
+
+
     // Turn the argcArgv datablock into a "native" C argc & argv
     const u64 argc = getArgc(argcArgv->ptr);
     char *argv[argc];
@@ -141,15 +155,18 @@ static ocrGuid_t endEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 
-// parseAndShiftArgv extract numRanks "-r <int>" required,
-// and maxTag "-t <int>" optional
+// parseAndShiftArgv extract optional aggressive Non-Blocking "-a" (default
+// conservative; then numRanks "-r <int>" optional - otherwise use NbWorkers
+// and maxTag "-t <int>" optional; else use 0
+//     exe [-r <int>][-t <int>] <args for program>
 // arguments from argcArgv DB, and shift argv to left by number of items
 // extracted (reducing argc accordingly)
-static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
+static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *aggressiveNB )
 {
     *numRanks = 4;  // default
     *maxTag = 0;  // default
-    int shift = 0;      // amount to shift argv
+    *aggressiveNB = FALSE; // default non-aggressive
+    int shift = 0;      // amount to shift argv to remove mpilite args
 
     int argc = getArgc(argcArgv);
 
@@ -163,23 +180,42 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag)
     }
 #endif
 
-    if (argc < 3 || strcmp("-r", getArgv(argcArgv,1)))
+    if (argc > 1 && ! strcmp("-a", getArgv(argcArgv,1)))
+#if EVENT_ARRAY
+        {
+            // only supported for LABELing version of mpi-lite
+            *aggressiveNB = FALSE;
+            shift += 1;
+            WARNING("MPI startup: '-a' Aggressive Non-Blocking not supported in this version\n");
+        }
+#else
+        {
+            *aggressiveNB = TRUE;
+            shift += 1;
+        }
+#endif
+
+    if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
         {
             char msg[150];
-            sprintf(msg, "Command line should be 'exe -r <numRanks> [-t <maxTag>]\n"
-                    "Continuing with %d ranks and max tag %d", *numRanks,
-                    *maxTag);
+            *numRanks = ocrNbWorkers();
+            sprintf(msg, "MPI startup: numRanks not specified, using %d \n"
+                    , *numRanks);
             WARNING(msg);
-            return;
         }
-    // should check that is digits
-    *numRanks = atoi(getArgv(argcArgv, 2));
-    shift += 2;
-
-    if (argc >= 5 && !strcmp("-t", getArgv(argcArgv, 3)))
+    else
         {
             // should check that is digits
-            *maxTag = atoi(getArgv(argcArgv, 4));
+            *numRanks = atoi(getArgv(argcArgv, 2 + shift));
+            shift += 2;
+        }
+
+    // "-t" may be specified without "-a" and/or "-r", so have to look in position 1,2 or
+    // 3,4
+    if (argc >= (3+shift) && !strcmp("-t", getArgv(argcArgv, (1+shift))))
+        {
+            // should check that is digits
+            *maxTag = atoi(getArgv(argcArgv, (2+shift)));
             shift += 2;
         }
 
@@ -228,7 +264,7 @@ static ocrGuid_t createTaggedEvents(u32 numRanks, u32 maxTag)
     s64 dimensions[] = {numRanks, numRanks, maxTag+1};
 
     ocrGuidMapCreate(&messageEventMap, 3, messageEventMapFunc, dimensions,
-                     numRanks*numRanks*(maxTag+1) );
+                     numRanks*numRanks*(maxTag+1), GUID_USER_EVENT_STICKY);
     return messageEventMap;
 #endif
 }
@@ -288,10 +324,10 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     char ** newArgv = NULL;
     u32 numRanks = 0;
     u32 maxTag = 0;
-
+    bool aggressiveNB = FALSE;
 
     PRINTF("mainEdtHelper: Parse argv\n");
-    parseAndShiftArgv(argcArgv, &numRanks, &maxTag);
+    parseAndShiftArgv(argcArgv, &numRanks, &maxTag, &aggressiveNB);
 
     // CHECK that the number of threads in the ocr context is >= numRanks,
     // or might get hangs. [Don't know how to ask this]
@@ -306,7 +342,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             ERROR(msg); // exits
         }
 
-    PRINTF("mainEdtHelper: numRanks = %d; maxTag = %d\n", numRanks, maxTag);
+    PRINTF("mainEdtHelper: numRanks = %d; maxTag = %d, aggressiveNB = %d\n", numRanks, maxTag, aggressiveNB);
 
     // create rankEDTs - but don't add depv until endEdt has had their output
     // events added as its depv; so a rank doesn't complete before endEdt is ready.
@@ -314,7 +350,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     PRINTF("mainEdtHelper: creating rank edts\n");fflush(stdout);
 
     ocrGuid_t rankEdtTemplate;
-    ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, 4, 3);
+    ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, 5, 3);
 
 #if DONT_USE_FINISH_EDT
     ocrGuid_t ranks[numRanks];     // needed so dependences can be added to
@@ -336,7 +372,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     ocrGuid_t messageEventsDB=NULL_GUID, messageDataDB=NULL_GUID;
     createMessageEventsAndData(&messageEventsDB, &messageDataDB, numRanks, maxTag);
 
-    u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap};  //most params are the same
+    u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap, aggressiveNB};  //most params are the same
     ocrGuid_t rankDepv[] = {argcArgvDB->guid, messageEventsDB, messageDataDB };
 
     // create the rankEdts. since their deps are all satisfied, they can
@@ -366,11 +402,11 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             PRINTF("  rank %d edt 0x%llx\n",rank, ranks[rank]);
 
             // argcArgvDB: will only be read by ranks
-            ocrAddDependence(argcArgvDB->guid, ranks[rank], 0, DB_MODE_CONST);
+            ocrAddDependence(argcArgvDB->guid, ranks[rank], 0, DB_MODE_RO);
 
-            ocrAddDependence(messgeEventsDB, ranks[rank], 0, DB_MODE_RW);
+            ocrAddDependence(messgeEventsDB, ranks[rank], 0, DB_MODE_ITW);
 
-            ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_RW);
+            ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_ITW);
         }
 #endif
 
@@ -418,3 +454,53 @@ int __mpi_ocr_TRUE(void) {
 }
 
 
+ocrGuid_t __getGlobalDBGuid()
+{
+    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+    return globalDBContext->dbGuid;
+}
+
+u64 * __getGlobalDBAddr()
+{
+    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+    return globalDBContext->addrPtr;
+}
+
+
+
+// check the results from an OCR API call.
+void __ocrCheckStatus(u8 status, char * functionName)
+{
+    switch (status)
+    {
+      case OCR_ENXIO:
+        printf("%s: Error: Affinity is invalid.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_ENOMEM:
+        printf("%s: Error: Allocation failed because of insufficent memory.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_EINVAL:
+        printf("%s: Error: Invalid Arguments.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_EBUSY:
+        printf("%s: Error: The agent that is needed to process this request is busy.\n", functionName);
+        exit(1);
+        break;
+
+      case OCR_EPERM:
+        printf("%s: Error: Trying to allocate a restricted area of memory.\n", functionName);
+        exit(1);
+        break;
+
+      default:
+        ;  //  it is OK
+    }
+}

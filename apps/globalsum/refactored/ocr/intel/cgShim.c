@@ -14,7 +14,9 @@ This is the Shim version which has the global sum of r*r wake up a single ShimED
 */
 #include <ocr.h>
 #include <stdio.h>
+#include <math.h>
 #include "ocrGS.h"
+
 typedef struct {
     double x[M];
     double r[M];
@@ -94,8 +96,10 @@ depv
         case 1:
 // Consume rtr
             if(mynode == 0) PRINTF("time %d rtr %f \n", timestep, SB->sum);
-            if(timestep==T) {
+            if(SB->sum/SB->rtr0 < 1e-13 || timestep == T) {
                 for(i=0;i<M;i++) PRINTF("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
+                if(mynode == 0 && M==300 && N==20 && T==100) {
+                  if(fabs(cgdata->x[0] - 0.462231) < 1e-5) PRINTF("PASS\n"); else PRINTF("FAIL difference %f is too large\n", cgdata->x[0] - .462231); }
                 return NULL_GUID;
             }
             if(timestep == 0) {

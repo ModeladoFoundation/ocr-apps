@@ -5,6 +5,11 @@
 #include <math.h>
 #include "utils.h"
 
+#ifdef TG_ARCH
+#include "strings.h"
+#endif
+
+
 
 // deps: level0
 ocrGuid_t init_ur_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
@@ -12,13 +17,13 @@ ocrGuid_t init_ur_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
   VERBOSEP("init_ur_level_edt\n");
   level_type* l = (level_type*)depv[0].ptr;
   ocrGuid_t i_t, i;
-  ocrEdtTemplateCreate(&i_t, init_ur_edt, 3, 2);
+  ocrEdtTemplateCreate(&i_t, init_ur_edt, 4, 2);
   u64 pv[4] = {l->u, l->f_Av, l->f, paramv[0]};
   ocrGuid_t* boxes = (ocrGuid_t*)(((char*)l)+l->boxes);
 
   int b;
   for(b = 0; b < l->num_boxes; ++b) {
-    ocrEdtCreate(&i, i_t, 3, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
+    ocrEdtCreate(&i, i_t, 4, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
     ocrAddDependence(depv[0].guid, i, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], i, 1, DB_MODE_RW);
   }

@@ -106,6 +106,15 @@
 #else
 #define _ATTRIBUTE(attrs)
 #endif
+//
+// added to support OCR
+//
+#ifndef weak_alias
+
+#define weak_alias(name, aliasname) \
+  extern __typeof (name) aliasname __attribute__ ((weak, alias (#name)));
+
+#endif // weak_alias
 
 /*  The traditional meaning of 'extern inline' for GCC is not
   to emit the function body unless the address is explicitly

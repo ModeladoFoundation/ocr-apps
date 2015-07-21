@@ -13,6 +13,7 @@ see README for more documentation
 //this version of the driver program updates rtzold in the alternate phase (during the pAp computation)
 #include <ocr.h>
 #include <stdio.h>
+#include <math.h>
 #include "ocrGS.h"
 typedef struct {
     double x[M];
@@ -53,7 +54,7 @@ depv
         case 0:
 //Initial call only
 //Initialize matrix and vectors
-        sum = M*mynode;
+        sum = M*mynode+1;
         for(i=0;i<M;i++){
             cgdata->a[i] = sum;
             cgdata->b[i] = sum;
@@ -87,8 +88,10 @@ depv
 //consume rtr
         if(mynode==0) PRINTF("time %d rtr %f \n", timestep, SB->sum);
         if(timestep==0) SB->rtr0 = SB->sum;
-           else if(SB->sum/SB->rtr0 < .0000000001 || timestep == T) {
+           else if(SB->sum/SB->rtr0 < 1e-13 || timestep == T) {
              for(i=0;i<M;i++) PRINTF("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
+             if(mynode == 0 && M==300 && N==20 && T==100) {
+                if(fabs(cgdata->x[0] - .999794) < 1e-5) PRINTF("PASS\n"); else PRINTF("FAIL difference %f is too large\n", cgdata->x[0] - .999794); }
              return NULL_GUID;
         }
 //preconditioning
