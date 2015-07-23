@@ -33,6 +33,16 @@
  *    is not currently "created", an "error" is returned and execution can
  *    continue, non-blocked.
  *
+ * [This way of implementing Isend and Irecv is "aggressive", and
+ * potentially unsafe. If a source does 2 Isends in a row to same dest and
+ * tag, the first "trySend" might fail and be deferred till MPI_Wait, but the
+ * second "trySend" might succeed before the first Isend's Wait - causing the 2
+ * messages to get OUT OF ORDER!! A similar problem can occur with two
+ * Irecvs. Therefore, the command line must use "-a" (aggressive) in order
+ * to hvae this behavior. The advantage (if it's safe for the usage
+ * pattern) is that the Isend/Irecv can finish earlier and potentially
+ * improve overall performance.]
+ *
  * MPI_*Recv can have MPI_ANY_SOURCE and/or MPI_ANY_TAG as arguments. This
  * requires querying a sequence of source and/or tag values to see if there
  * is a matching message to receive. This is the second use for
@@ -81,8 +91,8 @@
 Static  int sendData(event, buf, bufSize){
 	DB = DbCreate(bufSize+header)
 	Fill in header, and copy buffer
-	Satisfy(event, DB);
 	Release (DB)
+	Satisfy(event, DB);
 	Return OK}
 
 mpiOcrSend( the rest of the stuff){
@@ -242,13 +252,13 @@ int mpiOcrTrySend(void *buf, int count, /*MPI_Datatype*/ int
 Static recvData(){
 	// compare counts, sizes of ptr->header
 	Outbuf = ptr->header.data
-	Delete event
-	Delete DB
+	Destroy DB
 	}
 
 mpiOcrRecv(){
 	Guid event = getTheGuid(src,dst,tag,hashGuid);
 	ocrLegacyBlockProgress()
+	Destroy event
 	vecvData(DB, ptr, inbuf, src,dst,tag,count);
 	}
 
@@ -257,6 +267,7 @@ mpiOcrTryRecv( bool *done){
 	ocrLegacyTryBlockProgress()
 	If (isReady(event)) // created or satisfied
 	{
+	Destroy event
 	recvData(DB, ptr, inbuf, src,dst,tag,count);
 	*done = true
 	} else{
