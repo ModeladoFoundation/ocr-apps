@@ -85,7 +85,7 @@ MKDIR   = mkdir
 CFLAGS  := $(CFLAGS_BASE) $(CFLAGS)
 LDFLAGS := $(LDFLAGS_BASE) $(LDFLAGS)
 
-OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(notdir $(SRCS:.c=.o)))
+OBJS := $(patsubst %.c,$(WORKLOAD_BUILD)/%.o,$(SRCS))
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
@@ -207,6 +207,7 @@ reqlibs: parallel-reqlibs
 
 # Require libocrxe as this means all include files are up-to-date
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
 #	$(CC) $(CFLAGS) -fno-builtin -c -o $@.tmp $<
 #	$(OBJCOPY) -R .data_local -R .rodata_local -R .bss_local -R .data_block -R .rodata_block -R .bss_block $@.tmp $@

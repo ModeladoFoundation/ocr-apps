@@ -74,8 +74,8 @@ RM	= rm
 CP      = cp
 MKDIR   = mkdir
 
-OBJS := $(notdir $(SRCS:.c=.o))
-OBJS := $(notdir $(OBJS:.cpp=.o))
+OBJS := $(SRCS:.c=.o)
+OBJS := $(OBJS:.cpp=.o)
 OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(OBJS))
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
@@ -185,9 +185,11 @@ reqlibs: parallel-reqlibs
 # that the header files may have also changed but it seems like a small
 # corner case
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
