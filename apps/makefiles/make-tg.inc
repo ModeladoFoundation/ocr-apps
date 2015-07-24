@@ -26,6 +26,8 @@ WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORK
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
+OCR_CE_CONFIG         := $(WORKLOAD_BUILD)/ce.cfg
+OCR_XE_CONFIG         := $(WORKLOAD_BUILD)/xe.cfg
 else
 TG_ROOT               := $(shell cd "${TG_ROOT}" && pwd)
 OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
@@ -36,6 +38,8 @@ WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORK
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
+OCR_CE_CONFIG         := $(WORKLOAD_BUILD)/ce.cfg
+OCR_XE_CONFIG         := $(WORKLOAD_BUILD)/xe.cfg
 endif
 
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
@@ -48,9 +52,8 @@ OCR_INSTALL_ROOT := $(shell mkdir -p ${OCR_INSTALL_ROOT} && cd "${OCR_INSTALL_RO
 OCR_INSTALL_XE   := ${OCR_INSTALL_ROOT}/${XE_TARGET}
 OCR_INSTALL_CE   := ${OCR_INSTALL_ROOT}/${CE_TARGET}
 
-FIX_CE_CONFIG    ?= ${OCR_ROOT}/scripts/Configs/ce_config_fix.py
-OCR_CE_CONFIG    ?= $(OCR_INSTALL_CE)/config/default.cfg
-OCR_XE_CONFIG    ?= $(OCR_INSTALL_XE)/config/default.cfg
+FIX_CE_CONFIG    := ${OCR_ROOT}/scripts/Configs/ce_config_fix.py
+FIX_MEM_CONFIG   := ${OCR_ROOT}/scripts/Configs/mem_config_fix.py
 
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 WORKLOAD_INSTALL      := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
@@ -70,6 +73,7 @@ CFLAGS_BASE	= -frmd-extensions -I $(OCR_INSTALL_XE)/include -DTG_ARCH -I $(APPS_
 
 OBJCOPY	= $(PREFIX)-objcopy
 STRIP	= $(PREFIX)-strip
+OBJDUMP = $(PREFIX)-objdump
 
 LD	= $(PREFIX)-ld
 LDFLAGS_BASE	= -L $(APPS_LIBS_ROOT)/lib -L $(TG_INSTALL)/ld-scripts -T fsim-xe-icache.ld -static -Map=$(WORKLOAD_BUILD)/out.map
@@ -242,7 +246,9 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_CE_CONFIG) $(WORKLOAD_SRC)/config.cfg
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe \
 $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg | rmdkrnl.dbg builderce $(WORKLOAD_BUILD)
 	@echo "#### BUILDING CE BLOB ####"
+	cp $(OCR_INSTALL_CE)/config/default.cfg $(OCR_CE_CONFIG)
 	$(FIX_CE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --ocrcfg $(OCR_CE_CONFIG)
+	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_CE_CONFIG) --binsize $(shell objdump -x $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg | grep " _end" | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_CE_CONFIG)
 
@@ -253,6 +259,8 @@ $(WORKLOAD_BUILD)/$(TARGET).dbg: | debug_post_prerun
 $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
 $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe | debug_post_prerun builderxe $(WORKLOAD_BUILD)
 	@echo "#### BUILDING XE BLOB ####"
+	cp $(OCR_INSTALL_XE)/config/default.cfg $(OCR_XE_CONFIG)
+	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binsize $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
 	$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
