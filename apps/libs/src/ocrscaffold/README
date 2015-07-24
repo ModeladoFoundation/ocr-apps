@@ -23,7 +23,8 @@ results from the xstack/apps/libs/tg area.
 =====================
 
 To build for x86, change into the xstack/apps/libs/src/ocrscaffold
-directory.  Run 'make ARCH=x86'; this builds for the x86 target. Then
+directory.  Run 'make ARCH=x86'; this builds for the x86 target and uses
+the native gcc tool chain (rev 4.7, 4.8, and 4.9 have been tested). Then
 run 'make ARCH=x86 install'; this deposits resulting library into
 xstack/apps/libs/x86.
 
@@ -38,7 +39,8 @@ results from the xstack/apps/libs/x86 area.
 =====================
 
 To build for x86_glibc, change into the xstack/apps/libs/src/ocrscaffold
-directory.  Run 'make ARCH=x86_glibc'; this builds for the x86 target.
+directory.  Run 'make ARCH=x86_glibc'; this builds for the x86 target and
+uses the native gcc tool chain (rev 4.7, 4.8, and 4.9 have been tested).
 Then run 'make ARCH=x86_glibc install'; this deposits resulting library into
 xstack/apps/libs/x86.
 

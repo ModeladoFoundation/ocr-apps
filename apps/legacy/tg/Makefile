@@ -16,7 +16,7 @@ TOOLBIN = $(TG_INSTALL)/bin
 TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
 CC = $(TOOL_PREFIX)clang
 LD = $(TOOL_PREFIX)ld
-CFLAGS = -Os -isystem -I$(OCR_INC)
+CFLAGS = -Os -isystem $(OCR_INC)
 LINKSCRPT = -T xstg.ld
 
 # Libraries to include from newlib

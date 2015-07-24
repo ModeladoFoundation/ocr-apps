@@ -3,10 +3,10 @@ except that it relies on newlib which runs on top of OCR.
 
 To compile:
     - Build newlib in apps/libs/src:
-        - cd ../../../../../apps/libs/src/newlib
-        - ARCH=x86 make all install
-    - Build the ocrshim library (temporary step):
-        - cd ocrshim
+        - cd xstack/apps/libs/src/newlib
+        - make ARCH=x86 all install
+    - Build the ocrscaffold library (temporary step):
+        - cd xstack/apps/libs/src/ocrscaffold
         - make all install
     - Build this application
         - make
@@ -17,4 +17,3 @@ The pots directory is in ../../../datasets.
 
 Note: Currently, newlib uses a OCR-shim layer for demonstration purposes; this
 will be replaced by the OCR runtime.
-
