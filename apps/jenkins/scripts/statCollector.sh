@@ -8,7 +8,7 @@ fi
 SCRIPT_FOLDER=${JJOB_SHARED_HOME}/xstack/apps/jenkins/scripts
 
 # Create archive dirs if the framework is being run manually ( i.e. local run and not by jenkin)
-if [ -z $WORKSPACE]; then
+if [ -z $WORKSPACE ]; then
     echo "---- Local execution of Regression Framework . Creating Archive dirs ----"
     mkdir ${JJOB_SHARED_HOME}/../regressionResults
     mkdir ${JJOB_SHARED_HOME}/../regressionResults/NightlyRegressionStat
@@ -26,7 +26,7 @@ fi
 
 # Generate plotGraph.py parsable stat file
 
-if [ -z $WORKSPACE]; then
+if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     python ${SCRIPT_FOLDER}/statFileFolderParser.py ${JJOB_SHARED_HOME}/../regressionResults/NightlyRegressionStat/ ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt
 else
@@ -40,7 +40,7 @@ else
     exit $RET_VAL
 fi
 
-if [ -z $WORKSPACE]; then
+if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     python ${SCRIPT_FOLDER}/statFileFolderParser.py ${JJOB_SHARED_HOME}/../regressionResults/NightlyScalingStat/ ${JJOB_SHARED_HOME}/../NightlyScalingStat.txt
 else
@@ -56,7 +56,7 @@ fi
 
 # Plot these stat files
 
-if [ -z $WORKSPACE]; then
+if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     cat ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt
     python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${JJOB_SHARED_HOME}/../RegressionTrendlineplot.png"
@@ -72,7 +72,7 @@ else
     exit $RET_VAL
 fi
 
-if [ -z $WORKSPACE]; then
+if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     cat ${JJOB_SHARED_HOME}/../NightlyScalingStat.txt
     python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyScalingStat.txt "Scaling Trend Line" "Build" "Scaling Slope [ Higher the better ]" "${JJOB_SHARED_HOME}/../ScalingTrendlineplot.png"
