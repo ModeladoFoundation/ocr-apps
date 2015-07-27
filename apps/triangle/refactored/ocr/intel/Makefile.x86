@@ -14,7 +14,6 @@ OCR_TARGET   ?= x86
 OCR_INSTALL_ROOT ?= ../../../../../ocr/install
 OCR_ROOT     ?= ../../../../../ocr
 OCR_BUILD_ROOT   ?= ../../../../../ocr/build
-OCR_CONFIG = ../../default.cfg
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
