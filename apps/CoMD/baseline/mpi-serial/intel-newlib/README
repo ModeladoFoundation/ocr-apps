@@ -7,7 +7,7 @@ To compile:
         - make ARCH=x86 all install
     - Build the ocrscaffold library (temporary step):
         - cd xstack/apps/libs/src/ocrscaffold
-        - make all install
+        - make ARCH=x86 all install
     - Build this application
         - make
 
@@ -15,5 +15,24 @@ The executable will be called CoMD-serial and will be located in install/x86.
 
 The pots directory is in ../../../datasets.
 
-Note: Currently, newlib uses a OCR-shim layer for demonstration purposes; this
+Note: Currently, CoMD uses a ocrscaffold layer for demonstration purposes; this
+will be replaced by the OCR runtime.
+
+------------------------
+CoMD with glibc:
+
+These is also a way to build CoMD and link it against glibc.  To build:
+    - Build newlib in apps/libs/src:
+        - cd xstack/apps/libs/src/newlib
+        - make ARCH=x86 all install
+    - Build the ocr-glibc shim library:
+        - cd xstack/apps/libs/src/ocr-glibc
+        - make all install
+    - Build the ocrscaffold library (temporary step):
+        - cd xstack/apps/libs/src/ocrscaffold
+        - make ARCH=x86_glibc all install
+    - Build this application
+        - make -f Makefile.x86_glibc
+
+Note: Currently, CoMD uses a ocrscaffold layer for demonstration purposes; this
 will be replaced by the OCR runtime.

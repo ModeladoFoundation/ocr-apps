@@ -106,7 +106,7 @@ modified. The applications main() entry point must be renamed to mainEdt().
 For all the x86 architecture support, a native x86_64 GCC tool chain is used.
 
 ---------------------------
-Legacy support for the x86 architecture using newlib
+Legacy C support for the x86 architecture using newlib
 ---------------------------
 
 This can be thought of as four different pieces:
@@ -135,7 +135,7 @@ see the ./x86/Makefile for details on compiling and linking your application.
 The resulting executable can be run on the native x86 environment.
 
 ---------------------------
-Legacy support for the x86 architecture using glibc
+Legacy C and C++ support for the x86 architecture using glibc
 ---------------------------
 
 This can be thought of as four different pieces:
