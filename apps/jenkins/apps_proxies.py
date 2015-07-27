@@ -200,8 +200,7 @@ job_ocr_run_kernel_xsbench_x86_remote_regression = {
                   'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/install',
-                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
-                  'OCR_CONFIG': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/default.cfg'}
+                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000'}
 }
 
 # job_ocr_run_kernel_xsbench_x86_remote_scaling = {
@@ -214,8 +213,7 @@ job_ocr_run_kernel_xsbench_x86_remote_regression = {
 #                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
 #                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel',
 #                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/install',
-#                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
-#                  'OCR_CONFIG': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/default.cfg'}
+#                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000'}
 # }
 
 # XSBench: Intel MPI-Lite
