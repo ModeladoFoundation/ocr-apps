@@ -111,11 +111,11 @@ LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTi
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2 -frmd-extensions -DORC
+all:	CFLAGS += -O2
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0 -frmd-extensions -DOCR
+debug:	CFLAGS += -O0 -DOCR
 debug:	TARGETS := debug
 debug:	default
 
