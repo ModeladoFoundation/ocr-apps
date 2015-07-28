@@ -131,8 +131,9 @@ ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
 ifeq ($(OCR_CONFIG), $(CONFIG_FILE))
+# Viz tool currently requires COUNTED_MAP guid provider (see issue #670)
 ifeq ($(ENABLE_VISUALIZER), yes)
-	$(CONFIG_GENERATE) --guid COUNTED_MAP --dbtype Regular --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
+	$(CONFIG_GENERATE) $(CONFIG_FLAGS) --guid COUNTED_MAP --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 else
 	$(CONFIG_GENERATE) $(CONFIG_FLAGS) --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 endif
