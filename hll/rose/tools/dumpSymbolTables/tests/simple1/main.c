@@ -4,24 +4,17 @@
  * removed or modified.
  */
 
-// Test case for globals2struct
-
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LEN4 4
-#define LEN5 5
-#define LEN6 6
+#define LEN 4
 
-int arr1d[LEN4]={1,2,3,4};
-#include "foo.h"
-//extern int arr2d[LEN4][LEN5];
-int arr3d[LEN4][LEN5][LEN6];
-int x=5, y=6, z=7;
-
-static int bar1d[LEN4]={5,6,7,8};
-
-extern int foo(int argc, char ** argv);
+int arr1d[LEN];
+int arr2d[LEN][LEN];
+static int arr3d[LEN][LEN][LEN];
+int x=5;
+int y=6;
+static int z=6;
 
 
 int main(int argc, char ** argv)
@@ -36,16 +29,17 @@ int main(int argc, char ** argv)
 
   int inp = atoi(argv[1]);
 
-  for (i=0; i<LEN4; i++) {
-    for (j=0; j<LEN5; j++) {
+  for (i=0; i<LEN; i++) {
+    arr1d[i]=0;
+    for (j=0; j<LEN; j++) {
       arr2d[i][j]=0;
-      for (k=0; k<LEN6; k++) {
+      for (k=0; k<LEN; k++) {
         arr3d[i][j][k]=0;
       }
     }
   }
 
-  for (i=0; i<LEN4; i++) {
+  for (i=0; i<LEN; i++) {
     arr1d[i] = arr1d[0] + (i+1)*inp;
     printf("%d\t", arr1d[i]);
   }
@@ -53,18 +47,18 @@ int main(int argc, char ** argv)
 
 
 
-  for (i=0; i<LEN4; i++) {
-      for (j=0; j<LEN5; j++) {
-      arr2d[i][j] = arr2d[i][0] + (j+1)*inp;
+  for (j=0; j<LEN; j++) {
+    for (i=0; i<LEN; i++) {
+      arr2d[i][j] = arr2d[j][0] + (j+1)*inp;
       printf("%d\t", arr2d[i][j]);
     }
     printf("\n");
   }
 
 
-  for (i=0; i<LEN4; i++) {
-    for (j=0; j<LEN5; j++) {
-      for (k=0; k<LEN6; k++) {
+  for (i=0; i<LEN; i++) {
+    for (j=0; j<LEN; j++) {
+      for (k=0; k<LEN; k++) {
         arr3d[i][j][k] = arr3d[i][j][0] + (k+1)*inp;
         printf("%d\t", arr3d[i][j][k]);
       }
@@ -72,24 +66,9 @@ int main(int argc, char ** argv)
     }
   }
 
-  for (i=0; i<LEN4; i++) {
-    bar1d[i] = bar1d[0] + (i+1)*inp;
-    printf("%d\t", bar1d[i]);
-  }
-  printf("\n");
-
-
-
   printf("x=%d\n", x*arr1d[1]);
   printf("y=%d\n", y*arr1d[2]);
   printf("z=%d\n", z*arr1d[3]);
-
-  // Call a function in a different file.
-  // foo() uses file statics.
-  // Ensure that they are initialized correctly.
-  foo(argc, argv);
-
-
   return 0;
 }
 

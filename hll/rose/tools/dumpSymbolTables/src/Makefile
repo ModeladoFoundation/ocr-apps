@@ -3,7 +3,7 @@
 # removed or modified.
 
 
-TOOL = globals2struct
+TOOL = dumpSymbolTables
 
 include $(CURDIR)/../../Makefile.def
 
