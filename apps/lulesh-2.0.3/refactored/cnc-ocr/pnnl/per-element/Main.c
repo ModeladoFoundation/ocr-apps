@@ -5,19 +5,16 @@ void init_graph_context(luleshCtx *ctx);
 
 int cncMain(int argc, char *argv[]) {
 
-	PRINTF("Hello!\n");
+	printf("Hello!\n");
 
     // Create a new graph context
     luleshCtx *context = lulesh_create();
-
-    // Set up arguments for new graph instantiation
-    luleshArgs args = {  };
 
     // initialize graph context parameters
 	init_graph_context(context);
 
     // Launch the graph for execution
-    lulesh_launch(&args, context);
+    lulesh_launch(NULL, context);
 
     // Exit when the graph execution completes
     CNC_SHUTDOWN_ON_FINISH(context);

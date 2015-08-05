@@ -85,12 +85,12 @@ void lulesh_compute_delta_time(cncTag_t iteration, double previous_delta_time, d
 		//
 
 	    // Put "delta_time_out" items
-	    double *delta_time_out = cncItemCreate_delta_time();
+	    double *delta_time_out = cncItemAlloc(sizeof(*delta_time_out));
 		*delta_time_out = delta_time;
 	    cncPut_delta_time(delta_time_out, iteration + 1, ctx);
 
 	    // Put "elapsed_time_out" items
-	    double *elapsed_time_out = cncItemCreate_elapsed_time();
+	    double *elapsed_time_out = cncItemAlloc(sizeof(*elapsed_time_out));
 		*elapsed_time_out = elapsed_time;
 	    cncPut_elapsed_time(elapsed_time_out, iteration + 1, ctx);
 

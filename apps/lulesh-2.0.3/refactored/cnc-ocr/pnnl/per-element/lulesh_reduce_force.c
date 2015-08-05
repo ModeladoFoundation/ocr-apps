@@ -28,7 +28,7 @@ void lulesh_reduce_force(cncTag_t iteration, cncTag_t node_id, vector *neighbor_
     //
 
     // Put "force_out" items
-    vector *force_out = cncItemCreate_force();
+    vector *force_out = cncItemAlloc(sizeof(*force_out));
 	*force_out = force;
     cncPut_force(force_out, iteration, node_id, ctx);
 
