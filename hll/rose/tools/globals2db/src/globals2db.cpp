@@ -58,6 +58,10 @@ class visitorTraversal : public AstSimpleProcessing
     //SgExprStatement* createInitStmt(DbElement* dbElement, SgBasicBlock* initBB,
     //                                SgVarRefExp* structPtrExp);
     SgExprStatement* createInitStmt(DbElement* dbElement, SgVarRefExp* structPtrExp);
+    bool isMagicalVariable(SgInitializedName * iname);
+    SgVariableSymbol* find_symbol_in_symbol_table(SgInitializedName* variableName);
+
+
 
     enum Status
     {
@@ -107,6 +111,13 @@ visitorTraversal::visitorTraversal(SgProject* project)
 }
 
 
+// TODO!!! There is a huge gaping hole in this implementation.  It relies on
+// the user to put all user-defined classes and structs and typedefs used by the
+// global and the file and function statics in an include fle.  The inclusion of
+// the file created here should be placed after all of the other includes.
+// It has to be done this way to the user-defined types will be known to the
+// compiler when processing the structure created below.
+//
 void visitorTraversal::writeHeaderFile(SgProject* project)
 {
     FILE *fp=NULL;
@@ -136,7 +147,7 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
          iter != _globalDeclList.end(); iter++)
     {
         DbElement* dbElement=(*iter);
-        string typeString = get_type_string(dbElement->get_base_type());
+        string typeString = get_type_string(dbElement);
         fprintf(fp, "    %s %s", typeString.c_str(), dbElement->get_new_name().c_str());
 
         Rose_STL_Container<SgExpression*>dimExprPtrList = dbElement->get_dim_expr_ptr_list();
@@ -329,6 +340,8 @@ void visitorTraversal::writeInitFunction(SgProject * project)
     appendStatement(returnStmt, globalInitBB);
 }
 
+
+
 void visitorTraversal::insertHeaders(SgProject* project)
 {
     for (Rose_STL_Container<SourceFile*>::iterator iter=_fileList.begin();
@@ -344,28 +357,23 @@ void visitorTraversal::insertHeaders(SgProject* project)
 }
 
 
+
 // mpilite redefines the "main" function to be called "__mpiOcrMain".
-SgFunctionDeclaration* findMpiOcrMain(SgNode* node)
+SgFunctionDeclaration* findMpiOcrMain( SgProject* project)
 {
-    if (node == 0)
-        return NULL;
+    Rose_STL_Container<SgNode*> funcList = NodeQuery::querySubTree(project, V_SgFunctionDeclaration);
+    for(Rose_STL_Container<SgNode*>::iterator i = funcList.begin(); i != funcList.end(); i++)
+    {
+        SgFunctionDeclaration* funcNode = isSgFunctionDeclaration(*i);
 
-    if (isSgFunctionDeclaration(node) &&
-        isSgGlobal(isSgStatement(node)->get_scope()) &&
-        isSgFunctionDeclaration(node)->get_name() == "__mpiOcrMain")
-        return isSgFunctionDeclaration(node);
-
-    vector<SgNode*> children = node->get_traversalSuccessorContainer();
-    for (vector<SgNode*>::const_iterator iter = children.begin();
-         iter != children.end(); iter++) {
-        SgFunctionDeclaration* mainDecl = findMpiOcrMain(*iter);
-        if (mainDecl) {
-            if (mainDecl->get_definingDeclaration() == mainDecl)
-                return mainDecl;
-        }
+        if (isSgGlobal(isSgStatement(funcNode)->get_scope()) &&
+            isSgFunctionDeclaration(funcNode)->get_name() == "__mpiOcrMain")
+            return funcNode;
     }
     return NULL;
 }
+
+
 
 #elif defined(__FFWD_STRUCT_)
 
@@ -612,6 +620,7 @@ TgvElement* visitorTraversal::onTgvList(string varName)
     return NULL;
 }
 
+
 // Create a file-specific init function.
 SgBasicBlock* visitorTraversal::createLocalInitFunction(DbElement* dbElement)
 {
@@ -675,6 +684,62 @@ SgExprStatement* visitorTraversal::createInitStmt(DbElement* dbElement,
 }
 
 
+bool visitorTraversal::isMagicalVariable(SgInitializedName * iname)
+{
+    const char * name = iname->get_name().getString().c_str();
+
+    if (strcmp(name, "__PRETTY_FUNCTION__") == 0)
+        return true;
+    if (strcmp(name, "__func__") == 0)
+        return true;
+    if (strcmp(name, "__FILE__") == 0)
+        return true;
+    if (strcmp(name, "__LINE__") == 0)
+        return true;
+    return false;
+}
+
+SgVariableSymbol* visitorTraversal::find_symbol_in_symbol_table(SgInitializedName* variableName)
+{
+    SgVariableSymbol* variableSymbol = isSgVariableSymbol(variableName->get_symbol_from_symbol_table());
+
+    if (variableSymbol == NULL)
+    {
+        // check the other symbol tables.
+        Rose_STL_Container<SgNode*> scopesList = NodeQuery::querySubTree(getFirstGlobalScope(getProject()),
+                                                                         V_SgScopeStatement);
+        for (Rose_STL_Container<SgNode *>::iterator iter = scopesList.begin();
+             iter != scopesList.end(); iter++)
+        {
+            SgScopeStatement* scope = isSgScopeStatement(*iter);
+            ROSE_ASSERT(scope != NULL);
+            SgSymbolTable * symTable = scope->get_symbol_table();
+            std::set<SgNode*> symbols = symTable->get_symbols();
+            for (std::set<SgNode*>::iterator it=symbols.begin(); it!=symbols.end(); it++)
+            {
+                SgVariableSymbol * sym = isSgVariableSymbol(*it);
+                if (sym != NULL)
+                {
+                    string symStr = sym->get_name().getString();
+                    if (strcmp(symStr.c_str(), variableName->get_name().getString().c_str()) == 0)
+                    {
+                        variableSymbol = sym;
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    if (variableSymbol == NULL)
+    {
+        if ( ! isMagicalVariable(variableName))
+            printf("Warning: find_symbol_in_symbol_table: Should %s be magical?\n",
+                   variableName->get_name().getString().c_str());
+    }
+    return variableSymbol;
+}
+
 
 
 void visitorTraversal::atTraversalStart()
@@ -708,8 +773,9 @@ void visitorTraversal::visit(SgNode* node)
                 DbElement * dbElement = NULL;
 
                 SgType* variableType = variableName->get_type();
-                SgVariableSymbol* variableSymbol = isSgVariableSymbol(variableName->get_symbol_from_symbol_table ());
+                SgVariableSymbol* variableSymbol = isSgVariableSymbol(find_symbol_in_symbol_table(variableName));
                 ROSE_ASSERT (variableSymbol != NULL);
+
 
                 if ( ! onGlobalDeclList(variableSymbol))
                 {
@@ -718,7 +784,7 @@ void visitorTraversal::visit(SgNode* node)
                         DbElement * dbElement = new DbElement(variableSymbol, isSgNode(*i));
                         _globalDeclList.push_back(dbElement);
                     }
-                 }
+                }
                 if ( ! isSgGlobal(variableName->get_scope())  && dbElement!=NULL)
                 {
                     // function static - replace the expression
@@ -728,6 +794,7 @@ void visitorTraversal::visit(SgNode* node)
                     SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, scope);
                     SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
                     replaceExpression(isSgExpression(*i), arrowExp, true);
+
 
                     // create a tool generated variable (TGV) that will indicate
                     // if the function static has been initialized.
@@ -769,7 +836,8 @@ void visitorTraversal::visit(SgNode* node)
             {
                 // declaration must be in a different file
                 // create a new DB entry if user's file
-                if (isNodeDefinedInUserLocation(varSymbol) == true) {
+                if (isNodeDefinedInUserLocation(varSymbol) == true)
+                {
                     element = new DbElement(varSymbol, node);
                     _globalDeclList.push_back(element);
                 }
@@ -820,64 +888,67 @@ void visitorTraversal::visit(SgNode* node)
     {
         SgFunctionCallExp * callExp = isSgFunctionCallExp(node);
         SgFunctionSymbol * funcSym = callExp->getAssociatedFunctionSymbol();
-        SgName funcName = funcSym->get_name();
-        SgScopeStatement * scope = funcSym->get_declaration()->get_scope();
-        if (strncmp(funcName.getString().c_str(), "MPI_", 4) == 0)
+        if (funcSym != NULL)
         {
-            if (strcmp(funcName.getString().c_str(), "MPI_Init") == 0)
-                _status=E_MPI_FOUND;
-
-            // MPI-lite uses different definitions of MPI_Comm, MPI_Op and
-            // MPI_Datatype, so if the app is using the real MPI definitions,
-            // they need to be replaced.
-            //
-            SgExprListExp * funcExprListExp = callExp->get_args();
-            if (funcExprListExp != NULL)
+            SgName funcName = funcSym->get_name();
+            SgScopeStatement * scope = funcSym->get_declaration()->get_scope();
+            if (strncmp(funcName.getString().c_str(), "MPI_", 4) == 0)
             {
-                SgExpressionPtrList & exprPtrList = funcExprListExp->get_expressions();
-                for (SgExpressionPtrList::iterator iter = exprPtrList.begin();
-                     iter != exprPtrList.end(); iter++)
-                {
-                    SgExpression * arg = *iter;
-                    string str = arg->unparseToString();
+                if (strcmp(funcName.getString().c_str(), "MPI_Init") == 0)
+                    _status=E_MPI_FOUND;
 
-                    if (strncmp(str.c_str(), "((MPI_Datatype )", 16) == 0)
+                // MPI-lite uses different definitions of MPI_Comm, MPI_Op and
+                // MPI_Datatype, so if the app is using the real MPI definitions,
+                // they need to be replaced.
+                //
+                SgExprListExp * funcExprListExp = callExp->get_args();
+                if (funcExprListExp != NULL)
+                {
+                    SgExpressionPtrList & exprPtrList = funcExprListExp->get_expressions();
+                    for (SgExpressionPtrList::iterator iter = exprPtrList.begin();
+                         iter != exprPtrList.end(); iter++)
                     {
-                        unsigned long datatype=get_mpi_datatype(str);
-                        SgUnsignedLongVal * newArg = buildUnsignedLongVal(datatype);
-                        string dataName("MPI_Datatype");
-                        SgTypedefDeclaration* typedefData =
-                            buildTypedefDeclaration(dataName, buildUnsignedLongType(), scope);
-                        SgTypedefType * datatypeType = typedefData->get_type();
-                        SgExpression * castData = buildCastExp(newArg, datatypeType,
-                                                               SgCastExp::e_C_style_cast);
-                        replaceExpression(arg, castData);
+                        SgExpression * arg = *iter;
+                        string str = arg->unparseToString();
+
+                        if (strncmp(str.c_str(), "((MPI_Datatype )", 16) == 0)
+                        {
+                            unsigned long datatype=get_mpi_datatype(str);
+                            SgUnsignedLongVal * newArg = buildUnsignedLongVal(datatype);
+                            string dataName("MPI_Datatype");
+                            SgTypedefDeclaration* typedefData =
+                                buildTypedefDeclaration(dataName, buildUnsignedLongType(), scope);
+                            SgTypedefType * datatypeType = typedefData->get_type();
+                            SgExpression * castData = buildCastExp(newArg, datatypeType,
+                                                                   SgCastExp::e_C_style_cast);
+                            replaceExpression(arg, castData);
+                        }
+                        else if (strncmp(str.c_str(), "((MPI_Comm )", 12) == 0)
+                        {
+                            unsigned long comm=get_mpi_comm(str);
+                            SgUnsignedLongVal * newArg = buildUnsignedLongVal(comm);
+                            string commName("MPI_Comm");
+                            SgTypedefDeclaration* typedefComm =
+                                buildTypedefDeclaration(commName, buildUnsignedLongType(), scope);
+                            SgTypedefType * commType = typedefComm->get_type();
+                            SgExpression * castComm = buildCastExp(newArg, commType,
+                                                                   SgCastExp::e_C_style_cast);
+                            replaceExpression(arg, castComm);
+                        }
+                        else if (strncmp(str.c_str(), "((MPI_Op )", 10) == 0)
+                        {
+                            unsigned long op=get_mpi_op(str);
+                            SgUnsignedLongVal * newArg = buildUnsignedLongVal(op);
+                            string opName("MPI_Op");
+                            SgTypedefDeclaration* typedefOp =
+                                buildTypedefDeclaration(opName, buildUnsignedLongType(), scope);
+                            SgTypedefType * opType = typedefOp->get_type();
+                            SgExpression * opComm = buildCastExp(newArg, opType,
+                                                                 SgCastExp::e_C_style_cast);
+                            replaceExpression(arg, opComm);
+                        }
+                        else ;
                     }
-                    else if (strncmp(str.c_str(), "((MPI_Comm )", 12) == 0)
-                    {
-                        unsigned long comm=get_mpi_comm(str);
-                        SgUnsignedLongVal * newArg = buildUnsignedLongVal(comm);
-                        string commName("MPI_Comm");
-                        SgTypedefDeclaration* typedefComm =
-                            buildTypedefDeclaration(commName, buildUnsignedLongType(), scope);
-                        SgTypedefType * commType = typedefComm->get_type();
-                        SgExpression * castComm = buildCastExp(newArg, commType,
-                                                               SgCastExp::e_C_style_cast);
-                        replaceExpression(arg, castComm);
-                    }
-                    else if (strncmp(str.c_str(), "((MPI_Op )", 10) == 0)
-                    {
-                        unsigned long op=get_mpi_op(str);
-                        SgUnsignedLongVal * newArg = buildUnsignedLongVal(op);
-                        string opName("MPI_Op");
-                        SgTypedefDeclaration* typedefOp =
-                            buildTypedefDeclaration(opName, buildUnsignedLongType(), scope);
-                        SgTypedefType * opType = typedefOp->get_type();
-                        SgExpression * opComm = buildCastExp(newArg, opType,
-                                                             SgCastExp::e_C_style_cast);
-                        replaceExpression(arg, opComm);
-                    }
-                    else ;
                 }
             }
         }
@@ -942,7 +1013,8 @@ void visitorTraversal::atTraversalEnd()
 #ifdef __FFWD_DB_
         if (mainDecl==0) {
             // mpi-lite redefines main to __mpiOcrMain.
-            mainDecl = findMpiOcrMain(getFirstGlobalScope(getProject()));
+            //mainDecl = findMpiOcrMain(getFirstGlobalScope(getProject()));
+            mainDecl = findMpiOcrMain(getProject());
         }
 #endif
         ROSE_ASSERT(mainDecl != 0);
@@ -1031,7 +1103,6 @@ void visitorTraversal::atTraversalEnd()
         insertStatementBefore(getFirstStatement(_mainScope), globalInitCall);
     }  // is main file
 #endif
-    //printf ("Traversal ends here. \n");
 }
 
 
@@ -1053,29 +1124,29 @@ int main ( int argc, char* argv[] )
 
     // Call the traversal function (member function of AstSimpleProcessing)
     // starting at the project node of the AST, using a preorder traversal.
-    printf("Traversing the input files\n");
+    //printf("Traversing the input files\n");
     exampleTraversal.traverseInputFiles(project,preorder);
 
     // Check for issues.
     exampleTraversal.errorCheck();
 
     // Write the header file.
-    printf("Writing the header file and init function\n");
+    //printf("Writing the header file and init function\n");
     exampleTraversal.insertHeaders(project);
     exampleTraversal.writeHeaderFile(project);
     exampleTraversal.writeInitFunction(project);
 
 
     // run all tests
-    printf("Running all tests\n\n");
+    //printf("Running all tests\n\n");
     printf("Emitting excessive warnings during AST Testing is one of ROSE's charms.\n\n");
     AstTests::runAllTests(project);
 
     // Generate source code from AST and call the vendor's compiler
-    printf("\nCalling backend\n");
+    //printf("\nCalling backend\n");
     int res = backend(project);
 
-    printf("Done!\n");
+    //printf("Done!\n");
     return (res);
 }
 

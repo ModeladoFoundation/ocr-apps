@@ -148,6 +148,7 @@ class DbElement
     string get_new_name() { return _newName; }
     SgScopeStatement* get_scope() { return _scope; }
     SgDeclarationStatement* get_declaration() { return _decl; }
+    string get_type_from_decl();
     TgvElement * get_tgv() { return _tgv; }
     void set_tgv(TgvElement * tgv) { _tgv = tgv; }
     bool is_initialized() { return _isInitialized; }
@@ -162,8 +163,6 @@ class DbElement
     int get_total_size() { return _totalSize; }
     Rose_STL_Container<SgExpression*> get_dim_expr_ptr_list() { return _dimExprPtrList; }
     void get_declarators(SgArrayType* arrayType );
-    //int get_first_array_dimension(SgArrayType arrayType);
-    //void get_empty_declarators(SgArrayType* arrayType);
 
 
   private:
@@ -175,6 +174,7 @@ class DbElement
     string _newName;
     SgScopeStatement* _scope;
     SgDeclarationStatement* _decl;
+    string _orig;
     TgvElement * _tgv;
     bool _isInitialized;
     bool _isStatic;
@@ -193,12 +193,31 @@ DbElement::DbElement(SgVariableSymbol* sym, SgNode* node)
     _sym = sym;
     _name = sym->get_declaration();
     ROSE_ASSERT (_name != NULL);
+
     _scope = _name->get_scope();
+    ROSE_ASSERT (_scope != NULL);
+
     _newName = create_new_name(_name, _scope);
 
-    ROSE_ASSERT (_scope != NULL);
-    SgDeclarationStatement* _decl = sym->get_declaration()->get_declaration();
-    ROSE_ASSERT(_decl);
+    SgDeclarationStatement* _decl = isSgDeclarationStatement(_name->get_declaration());
+    ROSE_ASSERT(_decl != NULL);
+
+    switch(_decl->variantT())
+    {
+      case V_SgVariableDeclaration:
+        _orig = isSgVariableDeclaration(_decl)->unparseToString();
+        break;
+      case V_SgTypedefDeclaration:
+        _orig = isSgTypedefDeclaration(_decl)->unparseToString();
+        break;
+      case V_SgClassDeclaration:
+        _orig = isSgClassDeclaration(_decl)->unparseToString();
+        break;
+      default:
+        break;
+    }
+    ROSE_ASSERT(_orig.length() > 0);
+
 
     _tgv = NULL;
 
@@ -233,9 +252,31 @@ DbElement::DbElement(SgVariableSymbol* sym, SgNode* node)
 }
 
 
-// Create a new variable name for the global and file static variables.
-// Globals are prepending with an underscore.  File statics are prepended
-// with an underscore and the main part of the file name.
+// String manipulation routine.  I cannot figure out how ROSE is storing
+// system-defined and user-defined types.  Instead, parse the original declation.
+string DbElement::get_type_from_decl()
+{
+    string orig = _orig;
+
+    if (strncmp(orig.c_str(), "static ", 7) == 0)
+        orig = orig.substr(7);
+    size_t pos = orig.find(this->get_name()->get_name().getString());
+    string typeStr = orig.substr(0,pos);
+    while(isspace(*typeStr.begin()))
+        typeStr.erase(typeStr.begin());
+    while(isspace(*typeStr.rbegin()))
+        typeStr.erase(typeStr.length()-1);
+    return typeStr;
+}
+
+
+
+// Create a new variable name for the global and file/function static variables.
+// Globals are prepended with an underscore, and appended with underscore and number.
+// File statics are prepended with an underscore and appended with the main part of
+// the file name and a number.
+// Function statics are prepended with an underscore and appended with the main part
+// of the file name, the function name and a number.
 //
 string create_new_name( SgInitializedName * name, SgScopeStatement * scope)
 {
@@ -264,7 +305,8 @@ string create_new_name( SgInitializedName * name, SgScopeStatement * scope)
             SgFunctionDeclaration * funcDecl = getEnclosingFunctionDeclaration(scope);
             if (funcDecl == 0)
             {
-                printf("create_new_name: funcDecl not found\n");
+                printf("Warning: create_new_name: Enclosing fnction not found for %s\n",
+                       name->get_name().getString().c_str());
                 return "";
             }
             string funcName = funcDecl->get_name().getString();
@@ -327,10 +369,21 @@ void DbElement::get_declarators(SgArrayType* arrayType )
           }
 
           else if (isSgValueExp(indexExp)) {
+              unsigned long long index=0;
               SgExpression* copyExp = deepCopy(indexExp);
               _dimExprPtrList.push_back(copyExp);
-              SgValueExp* valueExp = isSgValueExp(indexExp);
-              unsigned long long index = getIntegerConstantValue(valueExp);
+              if (isSgEnumVal(indexExp))
+              {
+                   index = isSgEnumVal(indexExp)->get_value();
+                   printf("index=%ld\n", index);
+              }
+              else
+              {
+                  index = getIntegerConstantValue(isSgValueExp(indexExp));
+                  //SgValueExp* valueExp = isSgValueExp(indexExp);
+                  //index = getIntegerConstantValue(valueExp);
+              }
+
               if (_numElements == 0)
                   _numElements = index;
               else
@@ -346,80 +399,6 @@ void DbElement::get_declarators(SgArrayType* arrayType )
       if (arraybase)
          get_declarators(arraybase);
 }
-
-#if 0
-// The SgAggregateInitializer support does not seem to be working correctly.
-// When I look at the AST for an array with an empty declaration, it clearly
-// shows that the SgInitializedName initptr points to the SgAggregateInitializer.
-// However, when I execute the code below, the aggregate initializer == NULL.
-// I am abandoning this for now.
-// if the first array dimension is non-static, compute it.
-int DbElement::get_first_array_dimension(SgArrayType arrayType)
-{
-    printf("get_first_array_dimension: entering\n");
-    int first;
-
-    if (_isInitialized)
-    {
-        //SgAggregateInitializer* aggInit = isSgAggregateInitializer(_name->get_initializer());
-        SgAggregateInitializer* aggInit = isSgAggregateInitializer(_name->get_initptr());
-        ROSE_ASSERT(aggInit != NULL);
-        SgExprListExp* initExprList = aggInit->get_initializers();
-        ROSE_ASSERT(initExprList != NULL);
-        SgExpressionPtrList exprPtrList = initExprList->get_expressions();
-        size_t size = exprPtrList.size();
-        printf("get_first_array_dimension: size = %d\n", size);
-
-        int count = 0;
-        size_t sz;
-        for(int i=0; i<size; i++)
-        {
-            SgExpression* expr = isSgExpression(exprPtrList[i]);
-            SgType * type = expr->get_type();
-            sz=sizeOfType(type);
-            printf("get_first_array_dimension: sizeOfType = %d\n", sizeOfType(type));
-            count++;
-        }
-        first = size/sz;
-        printf("get_first_array_dimension: count = %d\n", count);
-
-    }
-    printf("get_first_array_dimension: returning first element = %d\n", first);
-    return first;
-}
-#endif
-
-#if 0
-    // use std::vector<SgExpression*> SageInterface::get_C_array_dimensions(const SgArrayType& arrtype)
-    // to handle implicit first dimension for array initializers
-    // for something like
-    //      int p[][2][3] = {{{ 1, 2, 3 }, { 4, 5, 6 }}}
-    //  we can calculate the first dimension as
-    //      sizeof( p ) / ( sizeof( int ) * 2 * 3 )
-
-void DbElement::get_empty_declarator(SgArrayType* arrayType)
-{
-    Rose_STL_Container<SgExpression*> indices = get_C_array_dimensions(arrayType);
-    for (Rose_STL_Container<SgExpression*>::iterator it = indices.begin(); it != indices.end(); it++)
-    {
-        if (isSgNullExpression(*it))
-        {
-            int value = get_first_array_dimension
-
-
-        if (isSgValueExp(*it)) {
-            SgExpression* indexExp = isSgValueExp(*it);
-            SgExpression* copyExp = deepCopy(indexExp);
-            _dimExprPtrList.push_back(copyExp);
-            SgValueExp* valueExp = isSgValueExp(indexExp);
-            unsigned long long index = getIntegerConstantValue(valueExp);
-            _numElements *= index;
-            printf("get_empty_declaration:index=%ld\n", index);
-        }
-    }
-}
-
-#endif
 
 
 // Utilities
@@ -667,7 +646,8 @@ unsigned long get_mpi_op(string str)
     }
 }
 
-string get_type_string(const SgType * type)
+
+string get_type_string(DbElement * dbElement)
 {
     string strBool="bool";
     string strChar="char";
@@ -686,7 +666,7 @@ string get_type_string(const SgType * type)
     string strVoidStar="void *";
     string strNULL="";
 
-
+    const SgType * type = dbElement->get_base_type();
     const SgType *t = type->stripTypedefsAndModifiers();
     if      (isSgTypeBool(t)) return strBool;
     else if (isSgTypeChar(t)) return strChar;
@@ -706,13 +686,8 @@ string get_type_string(const SgType * type)
     else if (isSgTypeUnsignedLong(t)) return strULong;
     else if (isSgTypeUnsignedShort(t)) return strUShort;
     else if (isSgTypeWchar(t)) return strWChar;
-    else if (isSgPointerType(t)) return strVoidStar;
-    else {
-        printf("Warning: get_type_string(): unrecognized type\n");
-        return strNULL;
-    }
+    else return dbElement->get_type_from_decl();
 }
-
 
 
 size_t sizeOfType(const SgType *type) {
