@@ -2,10 +2,10 @@
 
 int cncMain(int argc, char *argv[]) {
 
+    CNC_REQUIRE(argc==3, "Compute n choose k\nUsage: %s n k\n", argv[0]);
+
     // Create a new graph context
     CombinationsCtx *context = Combinations_create();
-
-    CombinationsArgs args;
 
     // initialize graph context parameters
     // u32 n, k;
@@ -13,7 +13,7 @@ int cncMain(int argc, char *argv[]) {
     context->k = atoi(argv[2]);
 
     // Launch the graph for execution
-    Combinations_launch(&args, context);
+    Combinations_launch(NULL, context);
 
     // Exit when the graph execution completes
     CNC_SHUTDOWN_ON_FINISH(context);

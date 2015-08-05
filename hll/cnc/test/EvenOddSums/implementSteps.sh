@@ -2,15 +2,13 @@
 
 sed -i '{
 s`/. TODO: Initialize naturals ./`*naturals = _i;`;
-s`/. TODO: Do something with evensTotal ./`PRINTF("Even total = %d\\n", evensTotal);`;
-s`/. TODO: Do something with oddsTotal ./`PRINTF("Odd total = %d\\n", oddsTotal);`;
+s`/. TODO: Do something with evensTotal ./`printf("Even total = %d\\n", evensTotal);`;
+s`/. TODO: Do something with oddsTotal ./`printf("Odd total = %d\\n", oddsTotal);`;
 s`/.TODO./0`i*2 + 1`;
 }' EvenOddSums.c
 
 sed -i '{
-s`// TODO: initialize custom arguments`20`;
-/ Note that you should define the members of/d;
-/ this struct by editing EvenOddSums_defs.h./d;
+s`\(.*\)\(EvenOddSumsArgs.*=\)`\1\2 cncItemAlloc(sizeof(*args));\n\1args->n = 20;`;
 }' Main.c
 
 sed -i '{

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 sed -i '{
-s`/. TODO: Do something with data ./`PRINTF("result is %d\\n", data);`;
+s`/. TODO: Do something with data ./`printf("result is %ld\\n", data);`;
 }' BigTags.c
 
 sed -i '{

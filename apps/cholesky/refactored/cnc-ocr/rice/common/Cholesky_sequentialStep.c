@@ -10,14 +10,14 @@ void Cholesky_sequentialStep(cncTag_t k, double *data1D, CholeskyCtx *ctx) {
     double (*data)[t] = (double(*)[t])data1D;
 
     // Allocate new tile
-    double *lBlock1D = cncItemCreateVector_data(t*t);
+    double *lBlock1D = cncItemAlloc(sizeof(*lBlock1D) * t*t);
     double (*lBlock)[t] = (double(*)[t])lBlock1D;
 
     // Calculate tile values
     int kB, jB, jBB, iB;
     for (kB = 0 ; kB < t ; kB++) {
         CNC_REQUIRE(data[ kB ][ kB ] > 0.0,
-                    "[%d][%d] Error: Not a symmetric positive definite (SPD) matrix\n", k, kB);
+                    "[%ld][%d] Error: Not a symmetric positive definite (SPD) matrix\n", k, kB);
         lBlock[ kB ][ kB ] = sqrt( data[ kB ][ kB ] );
 
         for (jB = kB + 1; jB < t ; jB++)

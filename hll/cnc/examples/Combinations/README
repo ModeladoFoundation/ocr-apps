@@ -1,12 +1,12 @@
-Combinations (n choose k) example for CnC-OCR
+Combinations (n choose k) example for CnC
 =============================================
 
-Follow the instructions in the CnC-OCR README for building and installing the
-CnC-OCR runtime and toolchain.
+Follow the instructions in the CnC README for building and installing the
+CnC runtime and toolchain.
 
 This program finds the value "n choose k" by calculating the first n rows of
 Pascal's Triangle. This is also the primary example used in the CnC Overview
-document available here: https://habanero.rice.edu/CnC-OCR+Resources
+document available here: https://habanero.rice.edu/CnC+Resources
 
 This example includes the following files:
 
@@ -34,11 +34,11 @@ This example includes the following files:
         row (just like addToInside), but the addToRightEdge step additionally
         prescribes an extra entry to expand that edge of the triangle.
 
-You need to run the CnC-OCR graph translator tool to generate the scaffolding
+You need to run the CnC graph translator tool to generate the scaffolding
 code, and compile the application using the generated Makefile. You can also
 run the application via make. It takes the "n" and "k" values as an argument.
 
-        cncocr_t Combinations.cnc
+        ucnc_t Combinations.cnc
         make run WORKLOAD_ARGS="10 7"
 
 A successful run should yield output like the following:

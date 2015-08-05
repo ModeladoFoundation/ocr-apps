@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TEST_ROOT="${CNCOCR_ROOT-"${XSTACK_ROOT?Missing CNCOCR_ROOT or XSTACK_ROOT environment variable}/hll/cnc"}/test"
+TEST_ROOT="${UCNC_ROOT-"${XSTACK_ROOT?Missing UCNC_ROOT or XSTACK_ROOT environment variable}/hll/cnc"}/test"
 TOTAL=0
 FAILURES=0
 TEST_LOG="$TEST_ROOT/test.log"
@@ -18,7 +18,7 @@ for d in *; do
     echo ">>> Running test $d" | tee -a "$TEST_LOG"
 
     if true; then
-        cd $d && cncocr_t && ./implementSteps.sh
+        cd $d && ${CNC_T:-ucnc_t} && ./implementSteps.sh
     fi &>> "$TEST_LOG"
     RES1="$?"
     EXPECTED_OUTPUT=`tail -n1 README`

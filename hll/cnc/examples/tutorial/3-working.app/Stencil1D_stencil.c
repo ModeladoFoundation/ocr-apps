@@ -10,7 +10,7 @@ void Stencil1D_stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, flo
     // Put "newTile" items
     s32 j;
     const s32 lastJ = TILE_SIZE - 1;
-    float *newTile = cncItemCreateVector_tile(TILE_SIZE);
+    float *newTile = cncItemAlloc(sizeof(*newTile) * TILE_SIZE);
 
     // first (conditional, default=1)
     const float first = fromLeft ? *fromLeft : 1;
@@ -26,12 +26,12 @@ void Stencil1D_stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, flo
     cncPut_tile(newTile, i, t, ctx);
 
     // Put "toRight" items
-    float *toRight = cncItemCreate_fromLeft();
+    float *toRight = cncItemAlloc(sizeof(*toRight));
     *toRight = newTile[lastJ];
     cncPut_fromLeft(toRight, i+1, t, ctx);
 
     // Put "toLeft" items
-    float *toLeft = cncItemCreate_fromRight();
+    float *toLeft = cncItemAlloc(sizeof(*toLeft));
     *toLeft = newTile[0];
     cncPut_fromRight(toLeft, i-1, t, ctx);
 
