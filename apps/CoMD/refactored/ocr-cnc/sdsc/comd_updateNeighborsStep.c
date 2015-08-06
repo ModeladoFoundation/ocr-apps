@@ -6,7 +6,7 @@ void comd_updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoIt
     struct box *b = b1;
 
 //    if (i==0)
-//    PRINTF("updateNeighborsStep %d, %d, %d\n", i, j, iter);
+//    printf("updateNeighborsStep %d, %d, %d\n", i, j, iter);
 
 
     // move the atoms from "atomInfo" into "b"
@@ -42,7 +42,7 @@ void comd_updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoIt
     }
 
     if (next == -1) { // this is the last box to be updated
-        cncItemDestroy(ai1);
+        cncItemFree(ai1);
 //       if (i < 1727)
 //        if (i < 342)
         if (i < totalBoxes-1)
@@ -62,7 +62,7 @@ void comd_updateNeighborsStep (cncTag_t i, cncTag_t j, cncTag_t iter, AtomInfoIt
 
      // to be populated later -- if last neighbor
      if (1) {
-         cncItemDestroy(ai1);  /////////////// should be based on some condition
+         cncItemFree(ai1);  /////////////// should be based on some condition
          if (i < 1727)
          cncPrescribe_updateBoxStep(i+1, 0, iter, ctx);
      }

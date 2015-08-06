@@ -71,8 +71,8 @@ void processArgs(comdCtx *ctx, u32 argc, char *argv[]) {
 
   }
 
-  PRINTF("doeam = %d, nx = %d, ny = %d, nz = %d, xproc = %d, yproc = %d, zproc = %d\n", ctx->doeam, ctx->nx, ctx->ny, ctx->nz, ctx->xproc, ctx->yproc, ctx->zproc);
-  PRINTF("nSteps = %d, printRate = %d, dt = %f, lat = %f, temperature = %f, initialDelta = %f\n",  ctx->nSteps,  ctx->printRate,  ctx->dt, ctx->lat,  ctx->temperature,  ctx->initialDelta);
+  printf("doeam = %d, nx = %d, ny = %d, nz = %d, xproc = %d, yproc = %d, zproc = %d\n", ctx->doeam, ctx->nx, ctx->ny, ctx->nz, ctx->xproc, ctx->yproc, ctx->zproc);
+  printf("nSteps = %d, printRate = %d, dt = %f, lat = %f, temperature = %f, initialDelta = %f\n",  ctx->nSteps,  ctx->printRate,  ctx->dt, ctx->lat,  ctx->temperature,  ctx->initialDelta);
 
 }
 

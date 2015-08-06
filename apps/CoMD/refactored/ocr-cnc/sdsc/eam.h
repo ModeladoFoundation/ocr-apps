@@ -8,19 +8,19 @@
 #include "comd.h"
 
 #ifdef CNCOCR_TG
-int fprintf(FILE *s, const char *f, ...) {
+static inline int fprintf(FILE *s, const char *f, ...) {
   return 0;
 }
 
-int fscanf(FILE *stream, const char *format, ...) {
+static inline int fscanf(FILE *stream, const char *format, ...) {
   return 0;
 }
 
-int sscanf(const char *str, const char *format, ...) {
+static inline int sscanf(const char *str, const char *format, ...) {
   return 0;
 }
 
-int sprintf(char *str, const char *format, ...) {
+static inline int sprintf(char *str, const char *format, ...) {
   return 0;
 }
 #endif

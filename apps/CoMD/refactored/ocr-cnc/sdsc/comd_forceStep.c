@@ -31,7 +31,7 @@ void comd_forceStep (cncTag_t i, cncTag_t iter, BItem b1, comdCtx *ctx) {
 
     struct box *b = b1;
     if (i == 0)
-    PRINTF("CnC: 0 forceStep %lu, %lu\n", i, iter);
+    printf("CnC: 0 forceStep %lu, %lu\n", i, iter);
 
     int nbrBoxes[27];
 
@@ -45,7 +45,7 @@ void comd_forceStep (cncTag_t i, cncTag_t iter, BItem b1, comdCtx *ctx) {
     b->ePot = 0.0;
     b->eKin = 0.0;
 
-//    PRINTF("CnC: 1 forceStep %lu, %lu\n", i, iter);
+//    printf("CnC: 1 forceStep %lu, %lu\n", i, iter);
 
     cncPrescribe_computeForcefromNeighborsStep(i, nbrBoxes[0], nbrBoxes[1],nbrBoxes[2],nbrBoxes[3],nbrBoxes[4],nbrBoxes[5],nbrBoxes[6],nbrBoxes[7],nbrBoxes[8],nbrBoxes[9],nbrBoxes[10],nbrBoxes[11],nbrBoxes[12],nbrBoxes[14],nbrBoxes[15],nbrBoxes[16],nbrBoxes[17],nbrBoxes[18],nbrBoxes[19],nbrBoxes[20],nbrBoxes[21],nbrBoxes[22],nbrBoxes[23],nbrBoxes[24],nbrBoxes[25],nbrBoxes[26], iter, ctx);
 
@@ -53,7 +53,7 @@ if (ctx->doeam)
       cncPrescribe_computeForcefromNeighborsStep1(i, nbrBoxes[0], nbrBoxes[1],nbrBoxes[2],nbrBoxes[3],nbrBoxes[4],nbrBoxes[5],nbrBoxes[6],nbrBoxes[7],nbrBoxes[8],nbrBoxes[9],nbrBoxes[10],nbrBoxes[11],nbrBoxes[12],nbrBoxes[14],nbrBoxes[15],nbrBoxes[16],nbrBoxes[17],nbrBoxes[18],nbrBoxes[19],nbrBoxes[20],nbrBoxes[21],nbrBoxes[22],nbrBoxes[23],nbrBoxes[24],nbrBoxes[25],nbrBoxes[26], iter, ctx);
 
 
-//    PRINTF("CnC: 2 forceStep %lu, %lu\n", i, iter);
+//    printf("CnC: 2 forceStep %lu, %lu\n", i, iter);
 }
 
 void getTuple1(struct box *b, int iBox, int* ixp, int* iyp, int* izp) {
@@ -78,12 +78,12 @@ int getBoxFromTuple1(struct box *b, int ix, int iy, int iz) {
     const int* gridSize = b->gridSize; // alias
 
     iBox = ix + gridSize[0] * iy + gridSize[0] * gridSize[1] * iz;
-    ASSERT(iBox >= 0);
+    assert(iBox >= 0);
     if (iBox > b->nLocalBoxes) {
-      PRINTF("%d, %d, %d:: %d\n", ix, iy, iz, iBox);
-      PRINTF("%d, %d, %d\n",gridSize[0], gridSize[1], gridSize[2]);
+      printf("%d, %d, %d:: %d\n", ix, iy, iz, iBox);
+      printf("%d, %d, %d\n",gridSize[0], gridSize[1], gridSize[2]);
     }
-    ASSERT(iBox < b->nLocalBoxes);
+    assert(iBox < b->nLocalBoxes);
 
     return iBox;
 }
@@ -196,7 +196,7 @@ void sortAtomsInCell1(struct box *b) {
 int sortAtomsById1(const void* a, const void* b) {
    int aId = ((AMsg*) a)->gid;
    int bId = ((AMsg*) b)->gid;
-   ASSERT(aId != bId);
+   assert(aId != bId);
 
    if (aId < bId)
       return -1;

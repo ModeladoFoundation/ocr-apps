@@ -11,13 +11,13 @@
 void comd_cleanupInitStep(cncTag_t i, int *GID, int *ISP, real3 *R, real3 *P, real3 *F, real_t *U, comdCtx *ctx) {
 
    // destroy the items passed as they are not used again
-   PRINTF("Cleaning up initialized data\n");
+   printf("Cleaning up initialized data\n");
 
-   cncItemDestroy(GID);
-   cncItemDestroy(ISP);
-   cncItemDestroy(R);
-   cncItemDestroy(P);
-   cncItemDestroy(F);
-   cncItemDestroy(U);
+   cncItemFree(GID);
+   cncItemFree(ISP);
+   cncItemFree(R);
+   cncItemFree(P);
+   cncItemFree(F);
+   cncItemFree(U);
 
 }

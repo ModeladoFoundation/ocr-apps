@@ -1,8 +1,15 @@
-set XSTACK_ROOT to the xstack source directory
+Setup:
+  source setup_env.sh (located in xstack/hll/cnc),
+  then run the CnC translator tool:
 
-To run on x86s-x86 target:
-  e.g.: make run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
+To run on x86 target:
+  ucnc_t comd.cnc
+  make run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
 
-To run on TG target
-  e.eg.: make -f Makefile.tg run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
+To run on x86-mpi target:
+  ucnc_t --platform=ocr/mpi comd.cnc
+  make run WORKLOAD_ARGS="-x 5 -y 5 -z 5 -N 8"
 
+To run on TG target:
+  ucnc_t --platform=ocr/tg comd.cnc
+  make -f Makefile.tg run print WORKLOAD_ARGS="-x 4 -y 4 -z 4 -N 4"

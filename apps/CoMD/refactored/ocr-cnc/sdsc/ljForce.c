@@ -116,7 +116,7 @@ BasePotential* initLjPot(comdCtx *ctx)
 {
   // LjPotential *pot = (LjPotential*)comdMalloc(sizeof(LjPotential));
 
-   LjPotential *pot = cncItemCreate_POT();
+   LjPotential *pot = cncItemAlloc(sizeof(*pot));
 
    cncPut_POT(pot, 1, ctx);
 
@@ -187,7 +187,7 @@ int ljForce(SimFlat* s)
       {
          int jBox = nbrBoxes[jTmp];
 
-         ASSERT(jBox>=0);
+         assert(jBox>=0);
 
          int nJBox = s->boxes->nAtoms[jBox];
          if ( nJBox == 0 ) continue;

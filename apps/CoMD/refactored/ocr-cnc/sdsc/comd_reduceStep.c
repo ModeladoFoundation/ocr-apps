@@ -4,7 +4,7 @@
 void comd_reduceStep (cncTag_t i, cncTag_t iter, BItem b, redcItem rd, ITItem it, TBoxesItem tb, comdCtx *ctx) {
 
 //    if(i==0)
-//        PRINTF("reducesStep %d, %d, %d\n", i, iter, it );
+//        printf("reducesStep %d, %d, %d\n", i, iter, it );
     struct myReduction *r = rd;
     struct box *b1 = b;
 
@@ -27,7 +27,7 @@ void comd_reduceStep (cncTag_t i, cncTag_t iter, BItem b, redcItem rd, ITItem it
             p = r->ePot/b1->atoms.nGlobal;
             k = r->eKin/b1->atoms.nGlobal;
             t = p+k;
-            PRINTF("%4lu  %18.12f %18.12f %18.12f %6d\n",iter, t,p,k, r->nAtoms);
+            printf("%4lu  %18.12f %18.12f %18.12f %6d\n",iter, t,p,k, r->nAtoms);
         }
         r->ePot = 0.0;
         r->eKin = 0.0;
@@ -40,7 +40,7 @@ void comd_reduceStep (cncTag_t i, cncTag_t iter, BItem b, redcItem rd, ITItem it
             b1->eKin = 0;//b->eKin;
   //          cncPrescribe_reduceStep(ii, iter+1, ctx);
             cncPrescribe_advanceVelocityStep(ii, iter+1, ctx);
-//            PRINTF("CnC: In reduceStep-- cncPrescribe_advanceVelocityStep: %d, %lu\n", ii, iter+1);
+//            printf("CnC: In reduceStep-- cncPrescribe_advanceVelocityStep: %d, %lu\n", ii, iter+1);
         }
     }
     if (iter == it -1) {
@@ -51,7 +51,7 @@ void comd_reduceStep (cncTag_t i, cncTag_t iter, BItem b, redcItem rd, ITItem it
             p = r->ePot/b1->atoms.nGlobal;;
             k = r->eKin/b1->atoms.nGlobal;;
             t = p+k;
-            PRINTF("%4lu  %18.12f %18.12f %18.12f %6d\n",iter, t,p,k, r->nAtoms);
+            printf("%4lu  %18.12f %18.12f %18.12f %6d\n",iter, t,p,k, r->nAtoms);
         } else {
             cncPrescribe_reduceStep(i+1, iter, ctx);
         }

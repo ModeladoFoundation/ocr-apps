@@ -47,7 +47,7 @@ static void typeNotSupported(const char* callSite, const char* type);
 BasePotential* initEamPot(const char* dir, const char* file, const char* type)
 {
    EamPotential* pot = comdMalloc(sizeof(EamPotential));
-   ASSERT(pot);
+   assert(pot);
 //   pot->force = eamForce;
 //   pot->print = eamPrint;
 //   pot->destroy = eamDestroy;
@@ -92,7 +92,7 @@ BasePotential* initEamPot(const char* dir, const char* file, const char* type)
 int eamForce(SimFlat* s)
 {
    EamPotential* pot = (EamPotential*) s->pot;
-   ASSERT(pot);
+   assert(pot);
 
    // set up halo exchange and internal storage on first call to forces.
    if (pot->forceExchange == NULL)
@@ -287,7 +287,7 @@ void eamDestroy(BasePotential** pPot)
 /// read.  Hence we need to broadcast the potential to all other ranks.
 void eamBcastPotential(EamPotential* pot)
 {
-   ASSERT(pot);
+   assert(pot);
 
    struct
    {
@@ -335,10 +335,10 @@ InterpolationObject* initInterpolationObject(
 {
    InterpolationObject* table =
       (InterpolationObject *)comdMalloc(sizeof(InterpolationObject)) ;
-   ASSERT(table);
+   assert(table);
 
    table->values = (real_t*)comdCalloc(1, (n+3)*sizeof(real_t));
-   ASSERT(table->values);
+   assert(table->values);
 
    table->values++;
    table->n = n;
@@ -440,7 +440,7 @@ void bcastInterpolationObject(InterpolationObject** table)
 
    if (getMyRank() != 0)
    {
-      ASSERT(*table == NULL);
+      assert(*table == NULL);
       *table = comdMalloc(sizeof(InterpolationObject));
       (*table)->n      = buf.n;
       (*table)->x0     = buf.x0;
@@ -699,19 +699,19 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
 
 void fileNotFound(const char* callSite, const char* filename)
 {
-   PRINTF("%s: Can't open file %s.  Fatal Error.\n", callSite, filename);
-   ASSERT(0);
+   printf("%s: Can't open file %s.  Fatal Error.\n", callSite, filename);
+   assert(0);
 }
 
 void notAlloyReady(const char* callSite)
 {
-   PRINTF("%s: CoMD 1.1 does not support alloys and cannot\n"
+   printf("%s: CoMD 1.1 does not support alloys and cannot\n"
            "   read setfl files with multiple species.  Fatal Error.\n", callSite);
-   ASSERT(0);
+   assert(0);
 }
 
 void typeNotSupported(const char* callSite, const char* type)
 {
-   PRINTF("%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
-   ASSERT(0);
+   printf("%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
+   assert(0);
 }
