@@ -576,7 +576,7 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 HAVE_MACHINE_DIR_FALSE
 HAVE_MACHINE_DIR_TRUE
-CRT0
+CRT
 subdirs
 SED
 sys_dir
@@ -3560,24 +3560,18 @@ esac
 
 
 
+CRT=
 
 if test -n "${machine_dir}"; then
   case ${machine_dir} in
-	x86_64)
-
-subdirs="$subdirs x86_64"
+	x86_64) subdirs="$subdirs x86_64"
+            CRT=crt0.o
  ;;
 	xstg) subdirs="$subdirs xstg"
+          CRT="crt0.o crt0t.o crtend.o"
  ;;
   esac;
 fi
-
-CRT0=
-if test -n "${machine_dir}"; then
-  CRT0=crt0.o
-fi
-
-
  if test x${machine_dir} != x; then
   HAVE_MACHINE_DIR_TRUE=
   HAVE_MACHINE_DIR_FALSE='#'

@@ -21,7 +21,7 @@ ifndef ARCH
 $(error Need to specify ARCH! )
 endif
 
-ifeq (,$(findstring $(ARCH), $(ARCHES)) )
+ifeq (,$(findstring $(ARCH), $(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH)) ! )
 endif
 

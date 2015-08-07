@@ -105,7 +105,7 @@ CC = @CC@
 CCAS = @CCAS@
 CCASFLAGS = @CCASFLAGS@
 CCDEPMODE = @CCDEPMODE@
-CRT0 = @CRT0@
+CRT = @CRT@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -201,8 +201,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = cygnus
 SUBDIRS = $(machine_dir) .
-noinst_DATA = $(CRT0)
-CLEANFILES = $(CRT0)
+noinst_DATA = $(CRT)
+CLEANFILES = $(CRT)
 ACLOCAL_AMFLAGS = -I ../../../.. -I ../../../../..
 CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host
 all: all-recursive
@@ -499,12 +499,19 @@ uninstall-am:
 	tags-recursive uninstall uninstall-am
 
 
-$(CRT0): $(machine_dir)/$(CRT0)
+crt0.o: $(machine_dir)/crt0.o
 	rm -f $@
-	ln $(machine_dir)/$(CRT0) $@ >/dev/null 2>/dev/null \
-	 || cp $(machine_dir)/$(CRT0) $@
+	ln $(machine_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(machine_dir)/$@ $@
 
-$(machine_dir)/$(CRT0): ; @true
+crt0t.o: $(machine_dir)/crt0t.o
+	rm -f $@
+	ln $(machine_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(machine_dir)/$@ $@
+
+crtend.o: $(machine_dir)/crtend.o
+	rm -f $@
+	ln $(machine_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(machine_dir)/$@ $@
+
+$(CRT:%=$(machine_dir)/%): ; @true
 
 doc:
 

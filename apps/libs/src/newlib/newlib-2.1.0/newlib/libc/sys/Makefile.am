@@ -8,7 +8,7 @@ if HAVE_SYS_DIR
 SYSLIB = lib.a
 endif
 
-noinst_DATA = $(CRT0)
+noinst_DATA = $(CRT) $(CRT0)
 
 if USE_LIBTOOL
 else
@@ -22,14 +22,21 @@ endif # USE_LIBTOOL
 
 $(sys_dir)/libsys.$(aext): ; @true
 
-$(CRT0): $(sys_dir)/$(CRT0)
+crt0.o: $(sys_dir)/crt0.o
 	rm -f $@
-	ln $(sys_dir)/$(CRT0) $@ >/dev/null 2>/dev/null \
-	 || cp $(sys_dir)/$(CRT0) $@
+	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
 
-$(sys_dir)/$(CRT0): ; @true
+crt0t.o: $(sys_dir)/crt0t.o
+	rm -f $@
+	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
 
-CLEANFILES = $(CRT0)
+crtend.o: $(sys_dir)/crtend.o
+	rm -f $@
+	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
+
+$(CRT:%=$(sys_dir)/%) $(sys_dir)/$(CRT0): ; @true
+
+CLEANFILES = $(CRT0) $(CRT)
 
 doc:
 

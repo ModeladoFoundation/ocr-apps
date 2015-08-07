@@ -4,16 +4,23 @@ AUTOMAKE_OPTIONS = cygnus
 
 SUBDIRS = $(machine_dir) .
 
-noinst_DATA = $(CRT0)
+noinst_DATA = $(CRT)
 
-$(CRT0): $(machine_dir)/$(CRT0)
+crt0.o: $(machine_dir)/crt0.o
 	rm -f $@
-	ln $(machine_dir)/$(CRT0) $@ >/dev/null 2>/dev/null \
-	 || cp $(machine_dir)/$(CRT0) $@
+	ln $(machine_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(machine_dir)/$@ $@
 
-$(machine_dir)/$(CRT0): ; @true
+crt0t.o: $(machine_dir)/crt0t.o
+	rm -f $@
+	ln $(machine_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(machine_dir)/$@ $@
 
-CLEANFILES = $(CRT0)
+crtend.o: $(machine_dir)/crtend.o
+	rm -f $@
+	ln $(machine_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(machine_dir)/$@ $@
+
+$(CRT:%=$(machine_dir)/%): ; @true
+
+CLEANFILES = $(CRT)
 
 doc:
 

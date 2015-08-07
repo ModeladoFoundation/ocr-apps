@@ -44,7 +44,7 @@ SUBDIRS = argz stdlib ctype search $(STDIO_SUBDIR) $(STDIO64_SUBDIR) string $(SI
 	$(extra_dir) errno misc machine $(UNIX_SUBDIR) $(POSIX_SUBDIR) $(SYSCALLS_SUBDIR) $(NEWLIB_ICONV_DIRS) \
 	$(XDR_SUBDIR) .
 
-noinst_DATA = $(CRT0)
+noinst_DATA = $(CRT0) $(CRT)
 
 if USE_LIBTOOL
 noinst_LTLIBRARIES = libc.la
@@ -119,9 +119,17 @@ $(SUBLIBS): ; @true
 
 crt0.o: sys/crt0.o
 	rm -f $@
-	ln sys/crt0.o $@ >/dev/null 2>/dev/null || cp sys/crt0.o $@
+	ln sys/$@ $@ >/dev/null 2>/dev/null || cp sys/$@ $@
 
-sys/crt0.o: ; @true
+crt0t.o: sys/crt0t.o
+	rm -f $@
+	ln sys/$@ $@ >/dev/null 2>/dev/null || cp sys/$@ $@
+
+crtend.o: sys/crtend.o
+	rm -f $@
+	ln sys/$@ $@ >/dev/null 2>/dev/null || cp sys/$@ $@
+
+$(CRT:%=sys/%) sys/crt0.o: ; @true
 
 # This is a list of the stmp-def files in each subdirectory which
 # builds .def files.  We don't list subdirectories which don't build
@@ -226,7 +234,7 @@ libc_TEXINFOS = sigset.texi extra.texi posix.texi stdio64.texi iconvset.texi \
 .PHONY: force
 force:
 
-CLEANFILES = $(CRT0) \
+CLEANFILES = $(CRT0) $(CRT) \
 	sigset.texi stmp-sigset extra.texi stmp-extra \
 	stdio64.texi stmp-stdio64 targetdep.tex stmp-targetdep \
 	tmp-sigset.texi tmp-iconvset.texi tmp-extra.texi \

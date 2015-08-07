@@ -16,18 +16,20 @@ dnl line of the macro which fail because appropriate LDFLAGS are not set.
 _LT_DECL_SED
 _LT_PROG_ECHO_BACKSLASH
 
+CRT=
+
 if test -n "${machine_dir}"; then
   case ${machine_dir} in
-	x86_64) AC_CONFIG_SUBDIRS(x86_64) ;;
-	xstg) AC_CONFIG_SUBDIRS(xstg) ;;
+	x86_64) AC_CONFIG_SUBDIRS(x86_64)
+            CRT=crt0.o
+            ;;
+	xstg) AC_CONFIG_SUBDIRS(xstg)
+          CRT="crt0.o crt0t.o crtend.o"
+          ;;
   esac;
 fi
 
-CRT0=
-if test -n "${machine_dir}"; then
-  CRT0=crt0.o
-fi
-AC_SUBST(CRT0)
+AC_SUBST(CRT)
 
 AM_CONDITIONAL(HAVE_MACHINE_DIR, test x${machine_dir} != x)
 
