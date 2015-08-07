@@ -19,6 +19,6 @@ void SimpleGraph_cncInitialize(SimpleGraphArgs *args, SimpleGraphCtx *ctx) {
  */
 void SimpleGraph_cncFinalize(int X, int Y, SimpleGraphCtx *ctx) {
     // Print results
-    PRINTF("X = %d\n", X);
-    PRINTF("Y = %d\n", Y);
+    printf("X = %d\n", X);
+    printf("Y = %d\n", Y);
 }

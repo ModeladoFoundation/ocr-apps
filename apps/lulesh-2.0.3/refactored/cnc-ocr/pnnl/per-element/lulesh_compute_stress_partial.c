@@ -80,7 +80,7 @@ void lulesh_compute_stress_partial(cncTag_t iteration, cncTag_t element_id, doub
 			if(ctx->mesh.nodes_element_neighbors[node_id][local_element_id]==element_id){
 				// Then this is where we want to store the force value
 				int _map_id = (node_id << 3) | local_element_id;
-				vector *stress_partial_out = cncItemCreate_stress_partial();
+				vector *stress_partial_out = cncItemAlloc(sizeof(*stress_partial_out));
 				*stress_partial_out = forces_out[local_node_id];
 				cncPut_stress_partial(stress_partial_out, iteration, _map_id, ctx);
 

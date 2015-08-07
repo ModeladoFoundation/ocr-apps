@@ -54,7 +54,7 @@ void lulesh_compute_characteristic_length(cncTag_t iteration, cncTag_t element_i
     //
 
     // Put "characteristic_length_out" items
-    double *characteristic_length_out = cncItemCreate_characteristic_length();
+    double *characteristic_length_out = cncItemAlloc(sizeof(*characteristic_length_out));
     *characteristic_length_out = characteristic_length;
     cncPut_characteristic_length(characteristic_length_out, iteration, element_id, ctx);
 }

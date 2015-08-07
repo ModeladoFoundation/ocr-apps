@@ -1,6 +1,7 @@
 /// \file
 /// Handle command line arguments.
 
+#include "comd.h"
 #include "mycommand.h"
 
 #include <ocr.h>
@@ -217,7 +218,7 @@ Command parseCommandLine(int argc, char** argv)
    cmd.temperature = 600.0;
    cmd.initialDelta = 0.0;
 
-   PRINTF("CnC: Inside parseCommandLine %d, %d\n", cmd.nx, cmd.nSteps);
+   printf("CnC: Inside parseCommandLine %d, %d\n", cmd.nx, cmd.nSteps);
 
 //////////////////////////////////////////
    return cmd; // Manu:: should be removed once the below code is fixed
@@ -260,7 +261,7 @@ Command parseCommandLine(int argc, char** argv)
    {
 //      printArgs();
       freeArgs();
-//      ASSERT(0);
+//      assert(0);
    }
    freeArgs();
 

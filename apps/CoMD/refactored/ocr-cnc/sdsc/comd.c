@@ -41,6 +41,7 @@
 ///
 /// \subpage pg_whats_new
 
+#include "comd.h"
 
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -68,7 +69,6 @@
 
 
 
-#include "comd.h"
 
 struct DomainSt* initDecomposition(int xproc, int yproc, int zproc,
                                    real3 globalExtent, comdCtx *c);
@@ -90,14 +90,14 @@ BasePotential* initPotential(
    } else {
      pot = initLjPot(ctx);
    }
-   ASSERT(pot);
+   assert(pot);
    return pot;
 }
 
 SpeciesData* initSpecies(BasePotential* pot, comdCtx *ctx)
 {
  //  SpeciesData* species = comdMalloc(sizeof(SpeciesData));
-   SpeciesData* species = cncItemCreate_SPECIES();
+   SpeciesData* species = cncItemAlloc(sizeof(*species));
 
    cncPut_SPECIES(species, 1, ctx);
 
@@ -133,7 +133,7 @@ void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeT
    {
       failCode |= 1;
       if (printRank() )
-        PRINTF("\nNumber of MPI ranks must match xproc * yproc * zproc\n");
+        printf("\nNumber of MPI ranks must match xproc * yproc * zproc\n");
    }
 
    // Check whether simuation is too small (fail code 2)
@@ -148,7 +148,7 @@ void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeT
    {
       failCode |= 2;
       if (printRank())
-         PRINTF("\nSimulation too small.\n Increase the number of unit cells to make the simulation\n at least (%3.2f, %3.2f. %3.2f) Ansgstroms in size\n", minx, miny, minz);
+         printf("\nSimulation too small.\n Increase the number of unit cells to make the simulation\n at least (%3.2f, %3.2f. %3.2f) Ansgstroms in size\n", minx, miny, minz);
    }
 
    // Check for supported lattice structure (fail code 4)
@@ -156,13 +156,13 @@ void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeT
    {
       failCode |= 4;
       if ( printRank() )
-         PRINTF("\nOnly FCC Lattice type supported, not %s. Fatal Error.\n",latticeType);
+         printf("\nOnly FCC Lattice type supported, not %s. Fatal Error.\n",latticeType);
    }
    int checkCode = failCode;
 //   bcastParallel(&checkCode, sizeof(int), 0);  // ToDo: Manu
    // This assertion can only fail if different tasks failed different
    // sanity checks.  That should not be possible.
-   ASSERT(checkCode == failCode);
+   assert(checkCode == failCode);
 
 //   if (failCode != 0)
 //      exit(failCode);
@@ -171,7 +171,7 @@ void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeT
 
 SimFlat* initSimulationNew(Command *cmd, comdCtx *ctx) {
 
-   SimFlat *sim = cncItemCreate_SF();
+   SimFlat *sim = cncItemAlloc(sizeof(*sim));
 
    cncPut_SF(sim, 1, ctx);
 
@@ -229,7 +229,7 @@ SimFlat* initSimulationNew(Command *cmd, comdCtx *ctx) {
 
 //   kineticEnergy(sim);             /////////////////////////////////ToDo Manu: need to uncomment this
 
-//   PRINTF("======== %d, %d\n", sim->nSteps, sim->atoms);
+//   printf("======== %d, %d\n", sim->nSteps, sim->atoms);
 
    return sim;
 }
@@ -277,7 +277,7 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
 
     Command cmd = parseContext(ctx);
 
-    PRINTF("CnC:: Before initSimulation %d, %d \n", cmd.nx, cmd.nSteps);
+    printf("CnC:: Before initSimulation %d, %d \n", cmd.nx, cmd.nSteps);
     SimFlat* sim = initSimulationNew(&cmd, ctx);
 
 //    printf("Initial validation ... \n");
@@ -286,7 +286,7 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
     // This is the CoMD main loop
 
     // creating IT
-    struct cmdInfo *ci = cncItemCreate_CMD();
+    struct cmdInfo *ci = cncItemAlloc(sizeof(*ci));
     ci->nSteps = cmd.nSteps;
     ci->nx = cmd.nx; ci->ny = cmd.ny; ci->nz = cmd.nz;
     ci->xproc = cmd.xproc; ci->yproc = cmd.yproc; ci->zproc = cmd.zproc;
@@ -304,7 +304,7 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
     const int printRate = sim->printRate;
     int iStep = 0;
 
-    struct eamPot *potCnC = cncItemCreate_EAMPOT();
+    struct eamPot *potCnC = cncItemAlloc(sizeof(*potCnC));
 
     if (ctx->doeam) {
       // Initialize EAM potential
@@ -349,17 +349,17 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
     /////////////////
     numNbrs = 27;
 
-    PRINTF("CnC: Starting computation with totalBoxes = %d\n", totalBoxes);
+    printf("CnC: Starting computation with totalBoxes = %d\n", totalBoxes);
 
     int i,j;
     struct box *b;
 
     int sum = 0;
     real_t sump = 0.0, sumr = 0.0;
-    PRINTF("-----------------------------------------\n");
-    PRINTF("Total number of atoms == %d\n", sim->atoms->nGlobal);
+    printf("-----------------------------------------\n");
+    printf("Total number of atoms == %d\n", sim->atoms->nGlobal);
     for (i=0; i<totalBoxes; i++){
-        b = cncItemCreate_B();
+        b = cncItemAlloc(sizeof(*b));
 
         // Copy initialization data into CnC related data structures
         for (int iOff=MAXATOMS*i,ii=0; ii<sim->boxes->nAtoms[i]; ii++,iOff++) {
@@ -390,7 +390,7 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
 
         if (i == 0) {
             // Record the starting time of the computation
-            struct timeval *start = cncItemCreate_time();
+            struct timeval *start = cncItemAlloc(sizeof(*start));
 #ifndef CNCOCR_TG
             gettimeofday(start, 0);
 #endif
@@ -457,12 +457,12 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
     cncPrescribe_updateBoxStep(0, 0, 0, ctx);
 
 /*
-    int *s = cncItemCreate_s();
+    int *s = cncItemAlloc(sizeof(*s));
     *s = 0;
     cncPut_s(s, 0, 1, ctx);
 */
 
-    struct myReduction *rd = cncItemCreate_redc();
+    struct myReduction *rd = cncItemAlloc(sizeof(*rd));
     rd->i = 0;
     rd->ePot = 0.0;
     rd->eKin = 0.0;
@@ -470,12 +470,12 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
     cncPut_redc(rd, 0, 1, ctx);
 
     // creating IT
-    int *t = cncItemCreate_IT();
+    int *t = cncItemAlloc(sizeof(*t));
     *t = MAXIT;
     cncPut_IT(t, 0, ctx);
 
     // creating TBoxes
-    t = cncItemCreate_TBoxes();
+    t = cncItemAlloc(sizeof(*t));
     *t = totalBoxes;
     cncPut_TBoxes(t, 0, ctx);
 
@@ -483,18 +483,18 @@ void comd_cncInitialize(comdArgs *args, comdCtx *ctx) {
 
 
     // creating Nbs
-    t = cncItemCreate_Nbs();
+    t = cncItemAlloc(sizeof(*t));
     *t = numNbrs;
     cncPut_Nbs(t, 0, ctx);
 
-    PRINTF(" Loop      Total Energy     Potential Energy    Kinetic Energy  #Atoms\n");
+    printf(" Loop      Total Energy     Potential Energy    Kinetic Energy  #Atoms\n");
 //    cncPrescribe_cncEnvOut(totalBoxes-1, MAXIT-1, ctx);
     comd_await(totalBoxes-1, MAXIT-1, ctx);
 }
 
 
 void comd_cncFinalize(cncTag_t i, cncTag_t iter, struct box *B, struct myReduction *r, struct timeval *start, comdCtx *ctx) {
-  //  PRINTF("Box %d, iteration %d ends\n", i, iter);
+  //  printf("Box %d, iteration %d ends\n", i, iter);
     real_t p,k,t;
 //    p = r->ePot/32000;
 //    k = r->eKin/32000;
@@ -502,7 +502,7 @@ void comd_cncFinalize(cncTag_t i, cncTag_t iter, struct box *B, struct myReducti
     k = r->eKin/B->atoms.nGlobal;
     t = p+k;
 
-    PRINTF("Total energy = %18.12f, Potential energy = %18.12f, Kinetic energy = %18.12f\n",t,p,k);
+    printf("Total energy = %18.12f, Potential energy = %18.12f, Kinetic energy = %18.12f\n",t,p,k);
 
 #ifndef CNCOCR_TG
     struct timeval end;
@@ -512,7 +512,9 @@ void comd_cncFinalize(cncTag_t i, cncTag_t iter, struct box *B, struct myReducti
 #else
     t = 0.0;
 #endif
-    PRINTF("Time taken: %f seconds\n", t);
+    printf("Time taken: %f seconds\n", t);
 }
 
-
+#ifdef CNCOCR_TG
+void abort(void) { }
+#endif

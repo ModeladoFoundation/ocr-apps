@@ -8,4 +8,6 @@ typedef struct CholeskyArguments {
     char inFile[256];
 } CholeskyArgs;
 
+#define CHOLESKY_USE_FILE 1
+
 #endif /*_CNCOCR_CHOLESKY_TYPES_H_*/

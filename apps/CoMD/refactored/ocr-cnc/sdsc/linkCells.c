@@ -59,6 +59,7 @@
 ///
 /// \param [in] cutoff The cutoff distance of the potential.
 
+#include "comd.h"
 #include "linkCells.h"
 
 #include <stdio.h>
@@ -83,10 +84,10 @@ static void getTuple(LinkCell* boxes, int iBox, int* ixp, int* iyp, int* izp);
 
 LinkCell* initLinkCells(const Domain* domain, real_t cutoff, comdCtx *ctx)
 {
-   ASSERT(domain);
+   assert(domain);
 //   LinkCell* ll = comdMalloc(sizeof(LinkCell));
 
-   LinkCell *ll = cncItemCreate_LC();
+   LinkCell *ll = cncItemAlloc(sizeof(*ll));
    cncPut_LC(ll, 1, ctx);
 
 
@@ -109,14 +110,14 @@ LinkCell* initLinkCells(const Domain* domain, real_t cutoff, comdCtx *ctx)
    ll->nTotalBoxes = ll->nLocalBoxes + ll->nHaloBoxes;
 
 //   ll->nAtoms = comdMalloc(ll->nTotalBoxes*sizeof(int));
-   ll->nAtoms = cncItemCreateVector_NAtoms(ll->nTotalBoxes);
+   ll->nAtoms = cncItemAlloc(sizeof(*ll->nAtoms) * ll->nTotalBoxes);
    cncPut_NAtoms(ll->nAtoms, 1, ctx);
 
 
    for (int iBox=0; iBox<ll->nTotalBoxes; ++iBox)
       ll->nAtoms[iBox] = 0;
 
-   ASSERT ( (ll->gridSize[0] >= 2) && (ll->gridSize[1] >= 2) && (ll->gridSize[2] >= 2) );
+   assert ( (ll->gridSize[0] >= 2) && (ll->gridSize[1] >= 2) && (ll->gridSize[2] >= 2) );
    return ll;
 }
 
@@ -229,8 +230,8 @@ int getBoxFromTuple(LinkCell* boxes, int ix, int iy, int iz)
    {
       iBox = ix + gridSize[0]*iy + gridSize[0]*gridSize[1]*iz;
    }
-   ASSERT(iBox >= 0);
-   ASSERT(iBox < boxes->nTotalBoxes);
+   assert(iBox >= 0);
+   assert(iBox < boxes->nTotalBoxes);
 
    return iBox;
 }
@@ -246,7 +247,7 @@ void moveAtom(LinkCell* boxes, Atoms* atoms, int iId, int iBox, int jBox)
    copyAtom(boxes, atoms, iId, iBox, nj, jBox);
    boxes->nAtoms[jBox]++;
 
-   ASSERT(boxes->nAtoms[jBox] < MAXATOMS);
+   assert(boxes->nAtoms[jBox] < MAXATOMS);
 
    boxes->nAtoms[iBox]--;
    int ni = boxes->nAtoms[iBox];

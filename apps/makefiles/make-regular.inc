@@ -74,8 +74,8 @@ RM	= rm
 CP      = cp
 MKDIR   = mkdir
 
-OBJS := $(notdir $(SRCS:.c=.o))
-OBJS := $(notdir $(OBJS:.cpp=.o))
+OBJS := $(SRCS:.c=.o)
+OBJS := $(OBJS:.cpp=.o)
 OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(OBJS))
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
@@ -131,8 +131,9 @@ ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
 ifeq ($(OCR_CONFIG), $(CONFIG_FILE))
+# Viz tool currently requires COUNTED_MAP guid provider (see issue #670)
 ifeq ($(ENABLE_VISUALIZER), yes)
-	$(CONFIG_GENERATE) --guid COUNTED_MAP --dbtype Regular --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
+	$(CONFIG_GENERATE) $(CONFIG_FLAGS) --guid COUNTED_MAP --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 else
 	$(CONFIG_GENERATE) $(CONFIG_FLAGS) --threads $(CONFIG_NUM_THREADS) --remove-destination --output $(CONFIG_FILE)
 endif
@@ -185,9 +186,11 @@ reqlibs: parallel-reqlibs
 # that the header files may have also changed but it seems like a small
 # corner case
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)

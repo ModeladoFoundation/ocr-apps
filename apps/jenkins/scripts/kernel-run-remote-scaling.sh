@@ -13,7 +13,7 @@ fi
 # For now, we support only x86
 
 if [ $2 != 'x86' ]; then
-    echo "Only x86 supported"
+    echo "Only x86 supported currently"
     exit 1
 fi
 
@@ -26,17 +26,12 @@ echo "Running kernel '$1' for architecture '$2'"
 rm -f ${WORKLOAD_INSTALL}/runlog
 timeFile=$(mktemp)
 
-configFile=$(mktemp)
-
 RETURN_CODE=0
 for t in ${THREADS[*]}
 do
-    rm -f $configFile
-    ${JJOB_SHARED_HOME}/xstack/ocr/scripts/Configs/config-generator.py --threads $t --output $configFile
-
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
     for i in `seq 1 $4`; do
-        WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp OCR_CONFIG=$configFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
+        CONFIG_NUM_THREADS=$t WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
         RETURN_CODE=$?
         if [ $RETURN_CODE -ne 0 ]; then
             break
@@ -64,7 +59,6 @@ fi
 cp $timeFile ${JJOB_SHARED_HOME}/xstack/runtime/scale_$3.txt
 
 rm -f $timeFile
-rm -f $configFile
 unset RUN_TOOL
 
 exit $RETURN_CODE

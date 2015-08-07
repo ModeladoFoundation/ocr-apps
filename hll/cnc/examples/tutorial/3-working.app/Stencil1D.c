@@ -7,7 +7,7 @@ void Stencil1D_cncInitialize(Stencil1DArgs *args, Stencil1DCtx *ctx) {
 
     // Put "tile" items
     for (i = 0; i < NUM_TILES; i++) {
-        float *tile = cncItemCreateVector_tile(TILE_SIZE);
+        float *tile = cncItemAlloc(sizeof(*tile) * TILE_SIZE);
         for (j = 0; j < TILE_SIZE; j++) {
             tile[j] = 0;
         }
@@ -16,14 +16,14 @@ void Stencil1D_cncInitialize(Stencil1DArgs *args, Stencil1DCtx *ctx) {
 
     // Put "fromLeft" items
     for (i = 1; i < NUM_TILES; i++) {
-        float *fromLeft = cncItemCreate_fromLeft();
+        float *fromLeft = cncItemAlloc(sizeof(*fromLeft));
         *fromLeft = 0;
         cncPut_fromLeft(fromLeft, i, 0, ctx);
     }
 
     // Put "fromRight" items
     for (i = 0; i < NUM_TILES-1; i++) {
-        float *fromRight = cncItemCreate_fromRight();
+        float *fromRight = cncItemAlloc(sizeof(*fromRight));
         *fromRight = 0;
         cncPut_fromRight(fromRight, i, 0, ctx);
     }

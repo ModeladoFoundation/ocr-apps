@@ -10,7 +10,7 @@ timestep. In other words, (stencil i, t) prescribes (stencil i, t+1).
 Run the CnC graph translator tool with the provided specification
 file to generate a skeleton CnC-OCR project:
 
-cncocr_t Stencil1D.cnc
+ucnc_t Stencil1D.cnc
 
 The included Main.c file parses the command line arguments. Since
 these parameters are set in the global graph context, there is no

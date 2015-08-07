@@ -9,7 +9,7 @@ void Cholesky_trisolveStep(cncTag_t k, cncTag_t j, double *dataA1D, double *data
     double (*dataB)[t] = (double(*)[t])dataB1D;
 
     // Allocate new tile
-    double *loBlock1D = cncItemCreateVector_data(t*t);
+    double *loBlock1D = cncItemAlloc(sizeof(*loBlock1D) * t*t);
     double (*loBlock)[t] = (double(*)[t])loBlock1D;
 
     int kB, iB, jB;

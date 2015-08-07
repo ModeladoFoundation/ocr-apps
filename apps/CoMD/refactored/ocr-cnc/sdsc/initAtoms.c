@@ -1,6 +1,7 @@
 /// \file
 /// Initialize the atom configuration.
 
+#include "comd.h"
 #include "initAtoms.h"
 
 #include <math.h>
@@ -52,27 +53,27 @@ Atoms* initAtoms(LinkCell* boxes, comdCtx *context)
 {
 
    Atoms *atoms;
-   atoms = cncItemCreate_ATOMS();
+   atoms = cncItemAlloc(sizeof(*atoms));
    cncPut_ATOMS(atoms, 1, context);
 
    int maxTotalAtoms = MAXATOMS*boxes->nTotalBoxes;
 
-   atoms->gid = cncItemCreateVector_GID(maxTotalAtoms);
+   atoms->gid = cncItemAlloc(sizeof(*atoms->gid) * maxTotalAtoms);
    cncPut_GID(atoms->gid, 1, context);
 
-   atoms->iSpecies = cncItemCreateVector_ISP(maxTotalAtoms);
+   atoms->iSpecies = cncItemAlloc(sizeof(*atoms->iSpecies) * maxTotalAtoms);
    cncPut_ISP(atoms->iSpecies, 1, context);
 
-   atoms->r = cncItemCreateVector_R(maxTotalAtoms);
+   atoms->r = cncItemAlloc(sizeof(*atoms->r) * maxTotalAtoms);
    cncPut_R(atoms->r, 1, context);
 
-   atoms->p = cncItemCreateVector_P(maxTotalAtoms);
+   atoms->p = cncItemAlloc(sizeof(*atoms->p) * maxTotalAtoms);
    cncPut_P(atoms->p, 1, context);
 
-   atoms->f = cncItemCreateVector_F(maxTotalAtoms);
+   atoms->f = cncItemAlloc(sizeof(*atoms->f) * maxTotalAtoms);
    cncPut_F(atoms->f, 1, context);
 
-   atoms->U = cncItemCreateVector_U(maxTotalAtoms);
+   atoms->U = cncItemAlloc(sizeof(*atoms->U) * maxTotalAtoms);
    cncPut_U(atoms->U, 1, context);
 
    atoms->nLocal = 0;
@@ -137,7 +138,7 @@ void createFccLattice(int nx, int ny, int nz, real_t lat, SimFlat* s)
    addIntParallel(&s->atoms->nLocal, &s->atoms->nGlobal, 1);
  //  stopTimer(commReduceTimer);
 
-   ASSERT(s->atoms->nGlobal == nb*nx*ny*nz);
+   assert(s->atoms->nGlobal == nb*nx*ny*nz);
 }
 
 /// Sets the center of mass velocity of the system.
@@ -180,7 +181,7 @@ void setTemperature(SimFlat* s, real_t temperature)
 {
    // set initial velocities for the distribution
 
-   PRINTF("CnC: Inside setTemperature %f, %d\n",temperature, s->boxes->nLocalBoxes);
+   printf("CnC: Inside setTemperature %f, %d\n",temperature, s->boxes->nLocalBoxes);
 
    for (int iBox=0; iBox<s->boxes->nLocalBoxes; ++iBox)
    {

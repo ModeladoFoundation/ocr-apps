@@ -50,7 +50,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # default arguments here and the ones passed through
 # an environment variable
 # Similar to ss_medium, 4 ranks, 1 thread
-WORKLOAD_ARGS ?=   -r 4   -s large -g 1130 -l 1000000 -t 1
+WORKLOAD_ARGS ?=  -s large -g 1130 -l 1000000 -t 1
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -68,6 +68,9 @@ TARGET := XSBench
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := mpilite
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 

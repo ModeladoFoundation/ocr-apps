@@ -2,6 +2,11 @@
 // Author: Nick Vrvilo (nick.vrvilo@rice.edu)
 ////////////////////////////////////////////////////////////////////////////////
 
+$context {
+    int tw, th;
+    int ntw, nth;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // item collection declarations
 
@@ -13,20 +18,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Input output relationships
 
-( initAboveStep: tw, ntw ) -> [ above: 0, $range(ntw) ];
+( initAboveStep: () ) -> [ above: 0, $range(#ntw) ];
 
-( initLeftStep:  th, nth ) -> [ left:  $range(nth), 0 ];
+( initLeftStep:  () ) -> [ left:  $range(#nth), 0 ];
 
 ( swStep: i, j )
     <- [ data: () ], [ above: i, j ], [ left: i, j ]
     -> [ below @ above: i+1, j ], [ right @ left: i, j+1 ];
 
 // Write graph inputs and start steps
-( $initialize: ntw, nth, tw, th )
+( $initialize: () )
     -> [ startTime: () ],
-       ( initAboveStep: tw, ntw ),
-       ( initLeftStep: th, nth ),
-       ( swStep: $range(nth), $range(ntw) );
+       ( initAboveStep: #tw, #ntw ),
+       ( initLeftStep:  #th, #nth ),
+       ( swStep: $range(#nth), $range(#ntw) );
 
-( $finalize: ntw, nth, tw )
-    <- [ startTime: () ], [ above: nth, ntw-1 ];
+( $finalize: () )
+    <- [ startTime: () ], [ above: #nth, #ntw-1 ];

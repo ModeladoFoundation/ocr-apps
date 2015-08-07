@@ -48,11 +48,11 @@ struct constraints {
 struct constants {
 	double hgcoef, ss4o3, qstop, monoq_max_slope, monoq_limiter_mult, qlc_monoq,
 	qqc_monoq, qqc, eosvmax, eosvmin, pmin, emin,	dvovmax, refdens;
-} constants;
+};
 
 struct cutoffs {
 	double e, p, q, v, u;
-} cutoffs;
+};
 
 struct domain {
 	// Remains constant
@@ -71,7 +71,7 @@ struct domain {
 	double initial_pressure[ELEMENTS];
 	double initial_energy[ELEMENTS];
 	double initial_speed_sound[ELEMENTS];
-} domain;
+};
 
 struct mesh {
 	int number_nodes;
@@ -80,7 +80,7 @@ struct mesh {
 	int nodes_element_neighbors[NODES][8];				// 8 * number_nodes
 	int elements_node_neighbors[ELEMENTS][8];			// 8 * number_elements
 	int elements_element_neighbors[ELEMENTS][6];	// 6 * number_elements
-} mesh;
+};
 
 vertex vertex_new(double x, double y, double z);
 

@@ -14,7 +14,7 @@ void Cholesky_cncInitialize(CholeskyArgs *args, CholeskyCtx *ctx) {
     CNC_REQUIRE(f != NULL, "Cannot find file: %s\n", args->inFile);
 
     // Allocate memory for reading the whole temporary matrix
-    double *A1D = cncMalloc(matrixElementCount * sizeof(double));
+    double *A1D = cncLocalAlloc(matrixElementCount * sizeof(double));
 
     // Read the matrix
     for (i=0; i<matrixElementCount; i++) {
@@ -30,7 +30,7 @@ void Cholesky_cncInitialize(CholeskyArgs *args, CholeskyCtx *ctx) {
     for (i = 0; i < nt; i++){
         for (j = 0 ; j <= i ; j++ ) {
             int A_i, A_j, T_i, T_j;
-            double *temp1D = cncItemCreateVector_data(t*t);
+            double *temp1D = cncItemAlloc(sizeof(*temp1D) * t*t);
             // The 1D array of tile entries maps to a
             // 2D array corresponding to a t-by-t matrix tile
             double (*temp)[t] = (double(*)[t])temp1D;
@@ -45,14 +45,14 @@ void Cholesky_cncInitialize(CholeskyArgs *args, CholeskyCtx *ctx) {
         }
     }
     // Free temporary matrix (no longer needed)
-    cncFree(A1D);
+    cncLocalFree(A1D);
 
     // Record starting time
-#if CNCOCR_x86
-    struct timeval *startTime = cncItemCreate_startTime();
-    gettimeofday(startTime, 0);
-#else
+#if CNCOCR_TG
     struct timeval *startTime = NULL;
+#else
+    struct timeval *startTime = cncItemAlloc(sizeof(*startTime));
+    gettimeofday(startTime, 0);
 #endif
     cncPut_startTime(startTime, ctx);
 
@@ -69,13 +69,13 @@ void Cholesky_cncInitialize(CholeskyArgs *args, CholeskyCtx *ctx) {
  * typeof results is double *
  */
 void Cholesky_cncFinalize(cncTag_t tileCount, struct timeval *startTime, double **results, CholeskyCtx *ctx) {
-#if CNCOCR_x86
+#if !CNCOCR_TG
     // Report the total running time
     struct timeval endTime;
     gettimeofday(&endTime, 0);
     double secondsRun = endTime.tv_sec - startTime->tv_sec;
     secondsRun += (endTime.tv_usec - startTime->tv_usec) / 1000000.0;
-    PRINTF("The computation took %f seconds\n", secondsRun);
+    printf("The computation took %f seconds\n", secondsRun);
 #endif
     // Print the result matrix row-by-row (requires visiting each tile t times)
     int nt = ctx->numTiles;

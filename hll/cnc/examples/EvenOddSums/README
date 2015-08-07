@@ -1,8 +1,8 @@
-Simple summing example for CnC-OCR
+Simple summing example for CnC
 ==================================
 
-Follow the instructions in the CnC-OCR README for building and installing the
-CnC-OCR runtime and toolchain.
+Follow the instructions in the CnC README for building and installing the
+CnC runtime and toolchain.
 
 This program sums the even numbers and sums the odd numbers in the range from
 zero to n. The two sums are computed in parallel.
@@ -30,11 +30,11 @@ This example includes the following files:
         from zero to n. The two functions are actually identical except for
         the names of the identifiers used.
 
-You need to run the CnC-OCR graph translator tool to generate the scaffolding
+You need to run the CnC graph translator tool to generate the scaffolding
 code, and compile the application using the generated Makefile. You can also
 run the application via make. It takes the "n" value as an argument.
 
-        cncocr_t EvenOddSums.cnc
+        ucnc_t EvenOddSums.cnc
         make run WORKLOAD_ARGS=100
 
 A successful run should yield output like the following:

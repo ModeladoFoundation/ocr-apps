@@ -4,24 +4,24 @@
 void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
 
     // Put "stress_partial" items
-    vector *stress_partial = cncItemCreate_stress_partial();
+    vector *stress_partial = cncItemAlloc(sizeof(*stress_partial));
 	*stress_partial = vector_new(0.0, 0.0, 0.0);
     cncPut_stress_partial(stress_partial, -1, -1, ctx);
 
     // Put "hourglass_partial" items
-    vector *hourglass_partial = cncItemCreate_hourglass_partial();
+    vector *hourglass_partial = cncItemAlloc(sizeof(*hourglass_partial));
 	*hourglass_partial = vector_new(0.0, 0.0, 0.0);
     cncPut_hourglass_partial(hourglass_partial, -1, -1, ctx);
 
     // Put "velocity_gradient" items
-    vector *velocity_gradient = cncItemCreate_velocity_gradient();
+    vector *velocity_gradient = cncItemAlloc(sizeof(*velocity_gradient));
 	*velocity_gradient = vector_new(0.0, 0.0, 0.0);
     cncPut_velocity_gradient(velocity_gradient, -1, -1, ctx);
 
     { // Put "force" items
         s64 _node_id;
         for (_node_id = 0; _node_id < ctx->nodes; _node_id++) {
-            vector *force = cncItemCreate_force();
+            vector *force = cncItemAlloc(sizeof(*force));
 			*force = ctx->domain.initial_force[_node_id];
             cncPut_force(force, 0, _node_id, ctx);
         }
@@ -30,7 +30,7 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "position" items
         s64 _node_id;
         for (_node_id = 0; _node_id < ctx->nodes; _node_id++) {
-            vertex *position = cncItemCreate_position();
+            vertex *position = cncItemAlloc(sizeof(*position));
 			*position = ctx->domain.initial_position[_node_id];
             cncPut_position(position, 0, _node_id, ctx);
         }
@@ -39,7 +39,7 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "velocity" items
         s64 _node_id;
         for (_node_id = 0; _node_id < ctx->nodes; _node_id++) {
-            vector *velocity = cncItemCreate_velocity();
+            vector *velocity = cncItemAlloc(sizeof(*velocity));
 			*velocity = ctx->domain.initial_velocity[_node_id];
             cncPut_velocity(velocity, 0, _node_id, ctx);
         }
@@ -48,7 +48,7 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "volume" items
         s64 _element_id;
         for (_element_id = 0; _element_id < ctx->elements; _element_id++) {
-            double *volume = cncItemCreate_volume();
+            double *volume = cncItemAlloc(sizeof(*volume));
 			*volume = ctx->domain.initial_volume[_element_id];
             cncPut_volume(volume, 0, _element_id, ctx);
         }
@@ -57,7 +57,7 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "viscosity" items
         s64 _element_id;
         for (_element_id = 0; _element_id < ctx->elements; _element_id++) {
-            double *viscosity = cncItemCreate_viscosity();
+            double *viscosity = cncItemAlloc(sizeof(*viscosity));
 			*viscosity = ctx->domain.initial_viscosity[_element_id];
             cncPut_viscosity(viscosity, 0, _element_id, ctx);
         }
@@ -66,7 +66,7 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "pressure" items
         s64 _element_id;
         for (_element_id = 0; _element_id < ctx->elements; _element_id++) {
-            double *pressure = cncItemCreate_pressure();
+            double *pressure = cncItemAlloc(sizeof(*pressure));
 			*pressure = ctx->domain.initial_pressure[_element_id];
             cncPut_pressure(pressure, 0, _element_id, ctx);
         }
@@ -75,7 +75,7 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "energy" items
         s64 _element_id;
         for (_element_id = 0; _element_id < ctx->elements; _element_id++) {
-            double *energy = cncItemCreate_energy();
+            double *energy = cncItemAlloc(sizeof(*energy));
 			*energy = ctx->domain.initial_energy[_element_id];
             cncPut_energy(energy, 0, _element_id, ctx);
         }
@@ -84,19 +84,19 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
     { // Put "sound_speed" items
         s64 _element_id;
         for (_element_id = 0; _element_id < ctx->elements; _element_id++) {
-            double *sound_speed = cncItemCreate_sound_speed();
+            double *sound_speed = cncItemAlloc(sizeof(*sound_speed));
 			*sound_speed = ctx->domain.initial_speed_sound[_element_id];
             cncPut_sound_speed(sound_speed, 0, _element_id, ctx);
         }
     }
 
     // Put "elapsed_time" items
-    double *elapsed_time = cncItemCreate_elapsed_time();
+    double *elapsed_time = cncItemAlloc(sizeof(*elapsed_time));
 	*elapsed_time = ctx->domain.initial_delta_time; // Count the first time step
     cncPut_elapsed_time(elapsed_time, 1, ctx);
 
     // Put "delta_time" items
-    double *delta_time = cncItemCreate_delta_time();
+    double *delta_time = cncItemAlloc(sizeof(*delta_time));
 	*delta_time = ctx->domain.initial_delta_time;
     cncPut_delta_time(delta_time, 1, ctx);
 
@@ -133,8 +133,8 @@ void lulesh_cncInitialize(luleshArgs *args, luleshCtx *ctx) {
 void lulesh_cncFinalize(double final_origin_energy, luleshCtx *ctx) {
 
 
-	PRINTF("\nDomain Size = %d\n", EDGE_ELEMENTS);
-	PRINTF("Final Origin Energy =  %2.6e\n", final_origin_energy);
+	printf("\nDomain Size = %d\n", EDGE_ELEMENTS);
+	printf("Final Origin Energy =  %2.6e\n", final_origin_energy);
 
 }
 
