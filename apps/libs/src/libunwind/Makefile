@@ -39,12 +39,14 @@ LLVM_SRC = $(TG_INSTALL)/../xe-llvm
 
 BUILD = build_$(ARCH)
 
-COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++
+COMPILE_FLAGS = --target=$(TARGET) -D__ELF__
 COMPILE_FLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
 endif
+C_FLAGS = $(CFLAGS) $(COMPILE_FLAGS)
+CXX_FLAGS = -std=c++11 -nostdinc++ $(COMPILE_FLAGS)
 #
 # communicate the apps install root to clang
 #
@@ -64,8 +66,8 @@ CMAKE_ARGS =  -DLIBUNWIND_TARGET=XSTG \
 			  -DCMAKE_CXX_COMPILER_FORCED=TRUE \
 			  -DLIBUNWIND_ENABLE_SHARED=FALSE \
 			  -DLIBUNWIND_LINK_FLAGS="$(LINK_FLAGS)" \
-			  -DLIBUNWIND_COMPILE_FLAGS="$(COMPILE_FLAGS)" \
-			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)"
+			  -DCMAKE_C_FLAGS:STRING="$(C_FLAGS)" \
+			  -DCMAKE_CXX_FLAGS:STRING="$(CXX_FLAGS)"
 
 ##########################
 # Make Targets
@@ -90,11 +92,11 @@ TARGET = x86_64-linux-elf
 endif
 
 $(ARCHES) install: build
-	@echo "Installing libcxxabi"
+	@echo "Installing libunwind"
 	@make -C $(BUILD) install
 
 build: config
-	@echo "Building libcxxabi"
+	@echo "Building libunwind"
 	@make -C $(BUILD)
 
 config : clean

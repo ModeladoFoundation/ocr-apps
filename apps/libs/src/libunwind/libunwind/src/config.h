@@ -70,11 +70,14 @@
     abort();
   }
   #ifdef __XSTG__
-    #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 1
+    #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX    1
+    #define _LIBUNWIND_SUPPORT_DWARF_CACHE    0
     #define _LIBUNWIND_BUILD_ZERO_COST_APIS   1
     #define _LIBUNWIND_SUPPORT_FRAME_APIS     1
+    #define _LIBUNWIND_IS_BAREMETAL           1
+    #define _LIBUNWIND_HAS_PTHREAD            0
   #else // ! __XSTG__
 
     #define _LIBUNWIND_BUILD_ZERO_COST_APIS (defined(__i386__) || \
@@ -86,7 +89,9 @@
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND !defined(__arm__) || \
                                             defined(__ARM_DWARF_EH__)
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX _LIBUNWIND_SUPPORT_DWARF_UNWIND
+    #define _LIBUNWIND_SUPPORT_DWARF_CACHE _LIBUNWIND_SUPPORT_DWARF_UNWIND
   #endif // __XSTG__
+
   #define _LIBUNWIND_BUILD_SJLJ_APIS      0
   #define _LIBUNWIND_EXPORT               __attribute__((visibility("default")))
   #define _LIBUNWIND_HIDDEN               __attribute__((visibility("hidden")))

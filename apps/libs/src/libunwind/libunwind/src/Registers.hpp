@@ -1713,6 +1713,137 @@ inline void Registers_arm::setVectorRegister(int, v128) {
   _LIBUNWIND_ABORT("ARM vector support not implemented");
 }
 
+//
+// XSTG Register support
+//
+/// Registers_xstg  holds the register state of an XE CPU
+//
+class _LIBUNWIND_HIDDEN Registers_xstg {
+public:
+  Registers_xstg();
+  Registers_xstg(const void *registers);
+
+  bool        validRegister(int num) const;
+  uint64_t    getRegister(int num) const;
+  void        setRegister(int num, uint64_t value);
+  bool        validFloatRegister(int num) const;
+  double      getFloatRegister(int num) const;
+  void        setFloatRegister(int num, double value);
+  bool        validVectorRegister(int num) const;
+  v128        getVectorRegister(int num) const;
+  void        setVectorRegister(int num, v128 value);
+  const char *getRegisterName(int num);
+  void        jumpto();
+  static int  lastDwarfRegNum() { return 511; }
+
+  uint64_t  getSP() const         { return _registers.__r[UNW_XSTG_SP]; }
+  void      setSP(uint64_t value) { _registers.__r[UNW_XSTG_SP] = value; }
+  uint64_t  getIP() const         { return _registers.__pc; }
+  void      setIP(uint64_t value) { _registers.__pc = value; }
+  uint64_t  getFP() const         { return _registers.__r[UNW_XSTG_FP]; }
+  void      setFP(uint64_t value) { _registers.__r[UNW_XSTG_FP] = value; }
+
+private:
+  struct GPRs {
+    uint64_t __r[512]; // r0-r511
+    uint64_t __pc;     // Program counter
+  };
+
+  GPRs    _registers;
+  //
+  // Strings to return from getRegisterName()
+  //
+  static const char * const regNames[];
+};
+
+inline Registers_xstg::Registers_xstg(const void *registers) {
+  static_assert(sizeof(Registers_xstg) < sizeof(unw_context_t),
+                    "xstg registers do not fit into unw_context_t");
+  memcpy(&_registers, registers, sizeof(_registers));
+}
+
+inline Registers_xstg::Registers_xstg() {
+  memset(&_registers, 0, sizeof(_registers));
+}
+
+inline bool Registers_xstg::validRegister(int regNum) const {
+  if (regNum == UNW_REG_IP)
+    return true;
+
+  if (regNum == UNW_REG_SP)
+    return true;
+
+  return regNum >=0 && regNum < 512;
+}
+
+inline uint64_t Registers_xstg::getRegister(int regNum) const {
+  if (regNum == UNW_REG_IP)
+    return _registers.__pc;
+
+  if (regNum == UNW_REG_SP)
+    regNum = UNW_XSTG_SP;
+
+  if ((regNum >= 0) && (regNum < 512))
+    return _registers.__r[regNum];
+
+  _LIBUNWIND_ABORT("unsupported xstg register");
+}
+
+inline void Registers_xstg::setRegister(int regNum, uint64_t value) {
+  if (regNum == UNW_REG_IP)
+    _registers.__pc = value;
+
+  else {
+    if (regNum == UNW_REG_SP)
+      regNum = UNW_XSTG_SP;
+
+    if ((regNum >= 0) && (regNum < 512))
+      _registers.__r[regNum] = value;
+    else
+      _LIBUNWIND_ABORT("unsupported xstg register");
+  }
+}
+
+inline const char *Registers_xstg::getRegisterName(int regNum) {
+  if( regNum == UNW_REG_IP )
+    return "pc";
+  if( regNum == UNW_REG_SP )
+    return "sp";
+  if( regNum >=0 && regNum < 512 )
+    return regNames[regNum];
+  else
+    return "unknown register";
+}
+
+//
+// XXX Treat all registers as float?
+//
+inline bool Registers_xstg::validFloatRegister(int regNum) const {
+  return regNum >=0 && regNum < 512;
+}
+
+inline double Registers_xstg::getFloatRegister(int regNum) const {
+  assert(validFloatRegister(regNum));
+  return _registers.__r[regNum];
+}
+
+inline void Registers_xstg::setFloatRegister(int regNum, double value) {
+  assert(validFloatRegister(regNum));
+  _registers.__r[regNum] = value;
+}
+
+inline bool Registers_xstg::validVectorRegister(int) const {
+  return false;
+}
+
+inline v128 Registers_xstg::getVectorRegister(int) const {
+  _LIBUNWIND_ABORT("no xstg vector register support");
+}
+
+inline void Registers_xstg::setVectorRegister(int, v128) {
+  _LIBUNWIND_ABORT("no xstg vector register support");
+}
+
 } // namespace libunwind
 
 #endif // __REGISTERS_HPP__

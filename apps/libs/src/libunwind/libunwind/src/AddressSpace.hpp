@@ -71,6 +71,24 @@ extern EHTEntry __exidx_end;
 #endif
 #endif
 
+#if defined(_LIBUNWIND_IS_BAREMETAL)
+
+#include "EHHeaderParser.hpp"
+//
+// Crt0 provides this function
+// eh_frame_hdr may have 0 size, but the eh_frame section
+// always has
+//
+struct eh_info {
+	uintptr_t hdr_start;    // address of eh_frame_hdr
+	uintptr_t hdr_size;     // size of eh_frame_hdr
+	uintptr_t frame_start;  // address of eh_frame section
+	uintptr_t frame_size;   // size of eh_frame section
+};
+extern "C" void __get_eh_info( eh_info * info );
+
+#endif // _LIBUNWIND_IS_BAREMETAL
+
 namespace libunwind {
 
 /// Used by findUnwindSections() to return info about needed sections.
@@ -81,10 +99,17 @@ struct UnwindInfoSections {
   uintptr_t       dso_base;
 #endif
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
+  //
+  // This points to the .eh_frame section which is a list of CFI records
+  //
   uintptr_t       dwarf_section;
   uintptr_t       dwarf_section_length;
 #endif
 #if _LIBUNWIND_SUPPORT_DWARF_INDEX
+  //
+  // This points to the .eh_frame_hdr section which has a binary
+  // search table immediately after the defined hdr structure
+  //
   uintptr_t       dwarf_index_section;
   uintptr_t       dwarf_index_section_length;
 #endif
@@ -357,6 +382,9 @@ inline bool LocalAddressSpace::findUnwindSections(pint_t targetAddr,
     info.compact_unwind_section_length = dyldInfo.compact_unwind_section_length;
     return true;
   }
+//
+// ARM EHABI
+//
 #elif LIBCXXABI_ARM_EHABI
  #ifdef _LIBUNWIND_IS_BAREMETAL
   // Bare metal is statically linked, so no need to ask the dynamic loader
@@ -372,8 +400,41 @@ inline bool LocalAddressSpace::findUnwindSections(pint_t targetAddr,
                              info.arm_section, info.arm_section_length);
   if (info.arm_section && info.arm_section_length)
     return true;
+
+//
+// Baremetal / static linked
+//
+#elif _LIBUNWIND_IS_BAREMETAL
+    eh_info ehinfo;
+    EHHeaderParser<LocalAddressSpace>::EHHeaderInfo hdrInfo;
+    (void) targetAddr;  // unused
+
+    __get_eh_info( & ehinfo );
+
+    if( ehinfo.hdr_size == 0 )
+        return false;
+
+    info.dwarf_index_section = ehinfo.hdr_start;
+    info.dwarf_index_section_length = ehinfo.hdr_size;
+    EHHeaderParser<LocalAddressSpace>::decodeEHHdr(
+        *this, ehinfo.hdr_start, ehinfo.hdr_start + ehinfo.hdr_size, hdrInfo );
+
+    info.dwarf_index_section = ehinfo.hdr_start;
+    info.dwarf_index_section_length = ehinfo.hdr_size;
+
+    info.dwarf_section = hdrInfo.eh_frame_ptr;
+    info.dwarf_section_length = ehinfo.frame_size;
+
+//
+// Dynamic linked
+//
 #elif _LIBUNWIND_SUPPORT_DWARF_UNWIND
-#if _LIBUNWIND_SUPPORT_DWARF_INDEX
+
+#if ! _LIBUNWIND_SUPPORT_DWARF_INDEX
+#error "_LIBUNWIND_SUPPORT_DWARF_UNWIND requires"
+       "_LIBUNWIND_SUPPORT_DWARF_INDEX on this platform."
+#endif
+
   struct dl_iterate_cb_data {
     LocalAddressSpace *addressSpace;
     UnwindInfoSections *sects;
@@ -434,9 +495,9 @@ inline bool LocalAddressSpace::findUnwindSections(pint_t targetAddr,
       },
       &cb_data);
   return static_cast<bool>(found);
-#else
-#error "_LIBUNWIND_SUPPORT_DWARF_UNWIND requires _LIBUNWIND_SUPPORT_DWARF_INDEX on this platform."
-#endif
+
+#else // No known UNWIND support method!
+#error "No known UNWIND method defined"
 #endif
 
   return false;
@@ -467,6 +528,11 @@ inline bool LocalAddressSpace::findFunctionName(pint_t addr, char *buf,
     }
   }
 #endif
+  (void) addr;
+  (void) buf;
+  (void) bufLen;
+  (void) offset;
+
   return false;
 }
 

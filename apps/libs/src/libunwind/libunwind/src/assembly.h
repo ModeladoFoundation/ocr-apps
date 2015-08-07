@@ -36,13 +36,15 @@
 
 #if defined(__APPLE__)
 #define SYMBOL_IS_FUNC(name)
+
 #elif defined(__ELF__)
 #if defined(__arm__)
 #define SYMBOL_IS_FUNC(name) .type name,%function
 #else
 #define SYMBOL_IS_FUNC(name) .type name,@function
 #endif
-#else
+
+#else // not APPLE OR ELF
 #define SYMBOL_IS_FUNC(name)                                                   \
   .def name SEPARATOR                                                          \
     .scl 2 SEPARATOR                                                           \

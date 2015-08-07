@@ -36,8 +36,10 @@
 
 namespace libunwind {
 
-#if _LIBUNWIND_SUPPORT_DWARF_UNWIND
+#if _LIBUNWIND_SUPPORT_DWARF_CACHE
+
 /// Cache of recently found FDEs.
+
 template <typename A>
 class _LIBUNWIND_HIDDEN DwarfFDECache {
   typedef typename A::pint_t pint_t;
@@ -172,7 +174,7 @@ void DwarfFDECache<A>::iterateCacheEntries(void (*func)(
   }
   _LIBUNWIND_LOG_NON_ZERO(::pthread_rwlock_unlock(&_lock));
 }
-#endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
+#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
 
 
 #define arrayoffsetof(type, index, field) ((size_t)(&((type *)0)[index].field))
@@ -542,6 +544,10 @@ private:
   compact_unwind_encoding_t dwarfEncoding(Registers_arm64 &) const {
     return UNWIND_ARM64_MODE_DWARF;
   }
+
+  compact_unwind_encoding_t dwarfEncoding(Registers_xstg &) const {
+    return 0;
+  }
 #endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
 
 
@@ -810,7 +816,7 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
 
   return true;
 }
-#endif
+#endif // LIBCXXABI_ARM_EHABI
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
 template <typename A, typename R>
@@ -820,7 +826,6 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
   typename CFI_Parser<A>::FDE_Info fdeInfo;
   typename CFI_Parser<A>::CIE_Info cieInfo;
   bool foundFDE = false;
-  bool foundInCache = false;
   // If compact encoding table gave offset into dwarf section, go directly there
   if (fdeSectionOffsetHint != 0) {
     foundFDE = CFI_Parser<A>::findFDE(_addressSpace, pc, sects.dwarf_section,
@@ -835,6 +840,9 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
         (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo);
   }
 #endif
+#if _LIBUNWIND_SUPPORT_DWARF_CACHE
+  bool foundInCache = false;
+
   if (!foundFDE) {
     // otherwise, search cache of previously found FDEs.
     pint_t cachedFDE = DwarfFDECache<A>::findFDE(sects.dso_base, pc);
@@ -846,6 +854,7 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
       foundInCache = foundFDE;
     }
   }
+#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
   if (!foundFDE) {
     // Still not found, do full scan of __eh_frame section.
     foundFDE = CFI_Parser<A>::findFDE(_addressSpace, pc, sects.dwarf_section,
@@ -868,6 +877,7 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
       _info.unwind_info_size  = (uint32_t)fdeInfo.fdeLength;
       _info.extra             = (unw_word_t) sects.dso_base;
 
+  #if _LIBUNWIND_SUPPORT_DWARF_CACHE
       // Add to cache (to make next lookup faster) if we had no hint
       // and there was no index.
       if (!foundInCache && (fdeSectionOffsetHint == 0)) {
@@ -877,6 +887,7 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
         DwarfFDECache<A>::add(sects.dso_base, fdeInfo.pcStart, fdeInfo.pcEnd,
                               fdeInfo.fdeStart);
       }
+  #endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
       return true;
     }
   }
@@ -1204,6 +1215,8 @@ void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
   }
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
+
+#if _LIBUNWIND_SUPPORT_DWARF_CACHE
   // There is no static unwind info for this pc. Look to see if an FDE was
   // dynamically registered for it.
   pint_t cachedFDE = DwarfFDECache<A>::findFDE(0, pc);
@@ -1233,6 +1246,7 @@ void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
       }
     }
   }
+#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
 
   // Lastly, ask AddressSpace object about platform specific ways to locate
   // other FDEs.

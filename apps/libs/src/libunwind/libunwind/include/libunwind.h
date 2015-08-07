@@ -44,14 +44,19 @@ enum {
   UNW_EBADVERSION   = -6548, /* unwind info has unsupported version */
   UNW_ENOINFO       = -6549  /* no unwind info found */
 };
-
+//
+// This is really a Registers_XXX object for the XXX arch
+//
 struct unw_context_t {
-  uint64_t data[128];
+  uint64_t data[600];
 };
 typedef struct unw_context_t unw_context_t;
-
+//
+// This is an UnwindCursor<LocalAddressSpace, Registers_XXX> object
+// and contains a Registers_XXX and unw_proc_info_t, plus a little more
+//
 struct unw_cursor_t {
-  uint64_t data[140];
+  uint64_t data[600];
 };
 typedef struct unw_cursor_t unw_cursor_t;
 
@@ -496,5 +501,29 @@ enum {
   // 320-8191 -- Reserved
   // 8192-16383 -- Unspecified vendor co-processor register.
 };
+
+//
+// macros to generate all 512 XSTG register names
+//
+#define _R(N) UNW_XSTG_R##N,
+#define _R10(T) _R(T##0) _R(T##1) _R(T##2) _R(T##3) _R(T##4) _R(T##5) \
+_R(T##6) _R(T##7) _R(T##8) _R(T##9)
+#define _R100(H) _R10(H##0) _R10(H##1) _R10(H##2) _R10(H##3) _R10(H##4) \
+_R10(H##5) _R10(H##6) _R10(H##7) _R10(H##8) _R10(H##9)
+
+enum {
+    _R(0) _R(1) _R(2) _R(3) _R(4) _R(5) _R(6) _R(7) _R(8) _R(9)
+    _R10(1) _R10(2) _R10(3) _R10(4) _R10(5) _R10(6) _R10(7) _R10(8) _R10(9)
+    _R100(1) _R100(2) _R100(3) _R100(4) _R10(50) _R(510) _R(511)
+    //
+    // Aliases
+    //
+    UNW_XSTG_SP = UNW_XSTG_R509,
+    UNW_XSTG_FP = UNW_XSTG_R510,
+    UNW_XSTG_RA = UNW_XSTG_R511
+};
+#undef _R
+#undef _R10
+#undef _R100
 
 #endif

@@ -427,4 +427,30 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreiWMMXCont
 #endif
   JMP(lr)
 
+#elif defined(__XSTG__)
+
+//
+// void libunwind::Registers_xstg::jumpto()
+//
+// On entry:
+//  thread_state pointer is in R0
+//
+// An XE's register file is accessible via PRF memory address alias 0x38000
+// We loop restoring r2 - r511 via the PRF self-referential addr
+// Then explicitly use _pc as the return address and restore r0 and r1
+//
+  .align 8
+DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind14Registers_xstg6jumptoEv)
+  movimm    r1, 16, 64
+.Lloop:
+  load      r508, r1, r0, 64
+  store     r508, r1, 229376, 64
+  addI      r1, r1, 8, 64
+  cmpimm    r508, r1, 512 * 8, 0, 64, SLT
+  jcf       .Lloop, r508, 0, N
+  load      r511, r0, r1, 64    # set PC as return address
+  load      r1, r0, 8, 64       # recover r1 and r0 explicitly
+  load      r0, r0, 0, 64       #
+  jabs r511
+
 #endif

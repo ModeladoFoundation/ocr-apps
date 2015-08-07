@@ -17,6 +17,11 @@ Compiler Role
 
 Library Role
 
+Global Variables
+libunwind
+sThisAddressSpace
+unw_local_addr_space
+
 References
 Linux Foundation LSB 4.1.0 Spec - Chapter 10.6. Exception Frames
 LLVM Document - Exception Handling in LLVM
