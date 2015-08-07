@@ -16,7 +16,6 @@ OCR_TARGET   ?= x86-${COMM_LAYER}
 OCR_INSTALL_ROOT ?= ../../../../../ocr/install
 OCR_ROOT     ?= ../../../../../ocr
 OCR_BUILD_ROOT   ?= ../../../../../ocr/build
-OCR_CONFIG = ../../mach-hc-dist-mpi-clone-4w-lockable.cfg
 
 # APPLICATION
 WORKLOAD_SRC          ?= .

@@ -8,7 +8,7 @@ void comd_computeForcefromNeighborsStep (cncTag_t i, cncTag_t j1, cncTag_t j2, c
         BItem b1, BItem b2, BItem b3,BItem b4,BItem b5,BItem b6,BItem b7,BItem b8,BItem b9,BItem b10,BItem b11,BItem b12,BItem b13,BItem b14,BItem b15,BItem b16,BItem b17,BItem b18,BItem b19,BItem b20,BItem b21,BItem b22,BItem b23,BItem b24,BItem b25,BItem b26,BItem b27, EAMPOTItem eampot, comdCtx *ctx) {
 
   if (i == 0)
-    PRINTF("CnC: computeForcefromNeighborsStep %lu, %lu\n",i,iter);
+    printf("CnC: computeForcefromNeighborsStep %lu, %lu\n",i,iter);
 
     struct box *b, *bn[27];
     b = b1;
@@ -101,7 +101,7 @@ int force(int i, int iter, int k, struct box *b, struct box *bnAll[27]) {
 
        int jBox = bn->i;
 
-       ASSERT(jBox >= 0);
+       assert(jBox >= 0);
 
        int nJBox = bn->nAtoms;
        if (nJBox == 0) {
@@ -280,6 +280,7 @@ int force_eam(int i, int iter, int k, struct box *b, struct box *bnAll[27], stru
     }
 
     b->ePot = etot;
+    return 0;
 }
 
 

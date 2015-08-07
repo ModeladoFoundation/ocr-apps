@@ -7,6 +7,7 @@
 /// \author Sriram Swaminarayan
 /// \date July 24, 2007
 
+#include "comd.h"
 #include "cmdLineParser.h"
 
 #include <stdio.h>
@@ -126,7 +127,7 @@ void printArgs()
    MyOption* o = myargs;
    char s[4096];
    unsigned char *shortArg;
-   PRINTF("\n"
+   printf("\n"
       "  Arguments are: \n");
    sprintf(s,"   --%%-%ds",longest);
    while(o)
@@ -184,7 +185,7 @@ void processArgs(int argc, char** argv)
       o = findOption(myargs,c);
       if ( ! o )
       {
-         PRINTF("\n\n"
+         printf("\n\n"
             "    invalid switch : -%c in getopt()\n"
             "\n\n",
             c);

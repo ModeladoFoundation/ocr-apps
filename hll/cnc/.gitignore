@@ -1,4 +1,4 @@
 *.pyc
-py/*
-!py/bootstrap.sh
+tools/py/*
+!tools/py/bootstrap.sh
 *.o

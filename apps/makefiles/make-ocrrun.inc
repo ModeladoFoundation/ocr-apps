@@ -81,8 +81,8 @@ RM  = rm
 CP      = cp
 MKDIR   = mkdir
 
-OBJS := $(notdir $(SRCS:.c=.o))
-OBJS := $(notdir $(OBJS:.cpp=.o))
+OBJS := $(SRCS:.c=.o)
+OBJS := $(OBJS:.cpp=.o)
 OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(OBJS))
 
 # Pick between libocr.so and libocr.a
@@ -188,9 +188,11 @@ reqlibs: parallel-reqlibs
 
 # Require libocr as this means all include files are up-to-date
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocr $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | libocr $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)

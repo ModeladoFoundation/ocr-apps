@@ -123,7 +123,7 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
     // globals2db support
     void * ffwd_addr_p=NULL;
-    ocrGuid_t ffwd_db_guid = NULL;
+    ocrGuid_t ffwd_db_guid = NULL_GUID;
     ffwd_db_guid = __ffwd_init(&ffwd_addr_p);
     globalDBContext_t globalDBContext =
         {
@@ -139,8 +139,19 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     fillArgv(argc, argv, argcArgv->ptr);
 
     PRINTF("rankEdtFn %d calling main()\n",rank);
+
     extern int  __mpiOcrMain(int, char **);
     __mpiOcrMain(argc, argv);
+
+    if (0 == rank) {
+        if (NULL_GUID != argcArgv->guid) {
+            ocrDbDestroy(argcArgv->guid);
+        }
+
+        if (NULL_GUID != ffwd_db_guid) {
+            ocrDbDestroy(ffwd_db_guid);
+        }
+    }
 
     PRINTF("rankEdtFn %d:  main() is finished, returning\n",rank);
 
@@ -329,6 +340,10 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     PRINTF("mainEdtHelper: Parse argv\n");
     parseAndShiftArgv(argcArgv, &numRanks, &maxTag, &aggressiveNB);
 
+    // Don't need to touch argcArgv any more, so release it
+    ocrDbRelease(argcArgvDB->guid);
+
+
     // CHECK that the number of threads in the ocr context is >= numRanks,
     // or might get hangs. [Don't know how to ask this]
     const u64 numWorkers = ocrNbWorkers();
@@ -373,20 +388,42 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     createMessageEventsAndData(&messageEventsDB, &messageDataDB, numRanks, maxTag);
 
     u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap, aggressiveNB};  //most params are the same
+    //    ocrGuid_t rankDepv[] = {UNINITIALIZED_GUID, messageEventsDB,
+    //    messageDataDB };
     ocrGuid_t rankDepv[] = {argcArgvDB->guid, messageEventsDB, messageDataDB };
 
-    // create the rankEdts. since their deps are all satisfied, they can
-    // start immediately.
+    // create the rankEdts. Add argcArgv dep explicitly so argcArgv can be made
+    // CONST. When LABELing is used, the other two are NULL_GUID, so
+    // rankEdts in different Policy Domains (e.g., in x86-mpi) can have
+    // copies of the argcArgv DB; instead of taking turns if it were RW (which would not work since
+    // a rankEdt is long lived, and never releases the DB so only 1 PD would
+    // "own" argcArgv).
+    // Since the rankEdts' deps are all satisfied, they can start immediately.
     for (int rank = 0; rank<numRanks; rank++)
         {
             rankParamv[0] = rank;  // only param that changes
             ocrGuid_t rankEdt;
 
+#if 0
             ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
                          EDT_PARAM_DEF, rankDepv,  EDT_PROP_NONE, NO_ALLOC, NULL);
+
+#endif
+            // having trouble getting argcArgvDB added as CONST - hangs: bug
+            // 664
+#if 1
+            ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
+                         EDT_PARAM_DEF, NULL,  EDT_PROP_NONE, NO_ALLOC, NULL);
+
+            // argcArgvDB: will only be read by ranks
+            ocrAddDependence(argcArgvDB->guid, rankEdt, 0, DB_MODE_RO /* CONST hangs */);
+            ocrAddDependence(messageEventsDB, rankEdt, 1, DB_MODE_RW);
+            ocrAddDependence(messageDataDB, rankEdt, 2, DB_MODE_RW);
+#endif
+
             PRINTF("  rank %d edt 0x%llx\n",rank, rankEdt);fflush(stdout);
 
-    }
+        }
 
     ocrEdtTemplateDestroy(rankEdtTemplate);
 
@@ -410,6 +447,8 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
         }
 #endif
 
+    PRINTF("mainEdtHelper: finished\n");fflush(stdout);
+
     return NULL_GUID;
 }
 
@@ -424,9 +463,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     ocrGuid_t mainEdtHelperTemplate, mainEdtHelper, outputEvent;
     ocrEdtTemplateCreate(&mainEdtHelperTemplate, mainEdtHelperFn, paramc, 1);
-    ocrGuid_t helperDepv[] = {depv[0].guid};
+    ocrGuid_t argcArgv = depv[0].guid;
+    ocrDbRelease(argcArgv);
+
     ocrEdtCreate(&mainEdtHelper, mainEdtHelperTemplate, EDT_PARAM_DEF ,
-         paramv, EDT_PARAM_DEF, helperDepv, EDT_PROP_FINISH,
+         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH,
          NULL_GUID, &outputEvent);
 
     ocrEdtTemplateDestroy(mainEdtHelperTemplate);
@@ -437,6 +478,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtTemplateCreate(&endEdtTemplate, endEdtFn, 0, 1);
     ocrEdtCreate(&endEdt, endEdtTemplate, 0, NULL, EDT_PARAM_DEF, endDepv,
          EDT_PROP_NONE, NULL_GUID, NULL);
+
+    // Now that endEdt is started, we can fire up mainEdtHelper by
+    // satisfying it's dep. (Otherwise it could finish before endEdt gets
+    // started)
+    ocrAddDependence(argcArgv, mainEdtHelper, 0, DB_MODE_RW);
 
     ocrEdtTemplateDestroy(endEdtTemplate);
 

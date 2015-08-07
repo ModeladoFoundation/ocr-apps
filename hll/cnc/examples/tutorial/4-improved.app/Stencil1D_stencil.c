@@ -10,7 +10,7 @@ void Stencil1D_stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, flo
     // Put "newTile" items
     s32 j;
     const s32 lastJ = ctx->tileSize - 1;
-    float *newTile = cncItemCreateVector_tile(ctx->tileSize);
+    float *newTile = cncItemAlloc(sizeof(*newTile) * ctx->tileSize);
 
     // first (conditional, default=1)
     const float first = fromLeft ? *fromLeft : 1;
@@ -45,5 +45,5 @@ void Stencil1D_stencil(cncTag_t i, cncTag_t t, float *tile, float *fromLeft, flo
     }
 
     // free old tile memory
-    cncItemDestroy(tile);
+    cncItemFree(tile);
 }

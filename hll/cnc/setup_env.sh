@@ -1,27 +1,28 @@
 # Only execute from the installation directory
-if [ -f setup_env.sh ] && [ -f ./bin/cncocr_t ]; then
+if [ -f setup_env.sh ] && [ -f ./bin/ucnc_t ]; then
     if [ -d "$XSTACK_ROOT" ]; then
-        echo 'Using existing $XSTACK_ROOT'
+        echo 'Using existing $XSTACK_ROOT (CnC-OCR)'
     elif [ -d "$OCR_INSTALL_ROOT" ]; then
-        echo 'Using existing $OCR_INSTALL_ROOT'
+        echo 'Using existing $OCR_INSTALL_ROOT (CnC-OCR)'
     elif [ "$(basename $(dirname $PWD))" = hll ]; then
         export XSTACK_ROOT=$(dirname $(dirname $PWD))
         echo 'Set $XSTACK_ROOT'
+    elif [ -d "$CNCROOT" ]; then
+        echo 'Using existing $CNCROOT (iCnC)'
     else
         cat <<EOF
-Your CnC-OCR installation is not part of an XSTACK installation.
+The CnC framework can't locate a compatible runtime backend.
 You will need to manually configure some environment variables.
-You should set \$OCR_INSTALL_ROOT to point to your OCR installation directory.
-Alternatively, see the CnC-OCR installation documentation for the expected directory structure.
+Please see the CnC framework's readme for setup instructions.
 EOF
     fi
 
-    export CNCOCR_ROOT=$PWD
-    echo 'Set $CNCOCR_ROOT'
+    export UCNC_ROOT=$PWD
+    echo 'Set $UCNC_ROOT'
 
-    export PATH=$CNCOCR_ROOT/bin:$PATH
+    export PATH=$UCNC_ROOT/bin:$PATH
     echo 'Updated $PATH'
     echo 'Setup complete.'
 else
-    echo 'ERROR! Must source setup_env.sh from the CnC-OCR installation directory.'
+    echo 'ERROR! You must source setup_env.sh from the CnC framework installation directory.'
 fi

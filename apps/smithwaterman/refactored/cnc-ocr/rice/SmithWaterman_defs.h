@@ -2,6 +2,7 @@
 #define _CNCOCR_SMITHWATERMAN_TYPES_H_
 
 #include <sys/time.h>
+#include <math.h>
 
 #define GAP_PENALTY -1
 #define TRANSITION_PENALTY -2
@@ -17,16 +18,20 @@ enum Nucleotide {GAP=0, ADENINE, CYTOSINE, GUANINE, THYMINE};
 #define TSEQ2(seqDataPtr) ((char(*)[(seqDataPtr)->th])SEQ2(seqDataPtr))
 
 typedef struct {
-    s32 tw, th, ntw, nth;
-    s32 seq2offset;
+    s32 tw, th, seq2offset;
     signed char score_matrix[5][5];
     signed char strings[];
 } SeqData;
 
-typedef struct SmithWatermanArguments {
-    s32 tw, th;
-    char inpath1[256];
-    char inpath2[256];
-} SmithWatermanArgs;
+typedef SeqData SmithWatermanArgs;
+
+#ifdef CNC_DISTRIBUTED
+static inline cncLocation_t swDist(int i, int j, int rows, int cols, int ranks) {
+    const double width = (cols+rows) / ranks;
+    const int offset = width;
+    const int rawRank = ((int)floor((i-j+offset) / width)) % ranks;
+    return (rawRank + ranks) % ranks;
+}
+#endif /* CNC_DISTRIBUTED */
 
 #endif /*_CNCOCR_SMITHWATERMAN_TYPES_H_*/

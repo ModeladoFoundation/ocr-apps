@@ -2,7 +2,7 @@ This OCR implementation of XSBENCH requires up to 8GB of memory (depending on th
 To build and run
 
 x86:
-OCR_CONFIG=$PWD/default.cfg make -f Makefile.x86 clean run
+make -f Makefile.x86 clean run
 
 x86-mpi:
-OCR_CONFIG=$PWD/default_mpi.cfg make -f Makefile.x86-mpi clean run
+make -f Makefile.x86-mpi clean run

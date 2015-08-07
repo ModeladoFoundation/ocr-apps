@@ -39,12 +39,12 @@ void lulesh_compute_time_constraints(cncTag_t iteration, cncTag_t element_id, do
 	//
 
 	// Put "courant_out" items
-	double *courant_out = cncItemCreate_courant();
+	double *courant_out = cncItemAlloc(sizeof(*courant_out));
 	*courant_out = dtcourant;
 	cncPut_courant(courant_out, iteration, element_id, ctx);
 
 	// Put "hydro_out" items
-	double *hydro_out = cncItemCreate_hydro();
+	double *hydro_out = cncItemAlloc(sizeof(*hydro_out));
 	*hydro_out = dthydro;
 	cncPut_hydro(hydro_out, iteration, element_id, ctx);
 

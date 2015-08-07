@@ -7,22 +7,22 @@
 #include <stdlib.h>
 
 #ifdef CNCOCR_TG
-void *malloc(size_t i) {
+static inline void *malloc(size_t i) {
   // dummy function
   return NULL;
 }
 
-void *calloc(size_t s, size_t i) {
+static inline void *calloc(size_t s, size_t i) {
   // dummy function
   return NULL;
 }
 
-void *realloc(void *ptr, size_t i) {
+static inline void *realloc(void *ptr, size_t i) {
   // dummy function
   return NULL;
 }
 
-void free(void *i) {
+static inline void free(void *i) {
   // dummy function
 }
 #endif

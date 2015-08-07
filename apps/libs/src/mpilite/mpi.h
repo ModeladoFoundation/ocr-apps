@@ -14,6 +14,43 @@ extern "C" {
 // Rename user's main fn
 #define main __mpiOcrMain
 
+// The OCR x86-mpi runtime uses a "real" MPI, e.g. Intel MPI for
+// communicating between Policy Domains. The 11 function names below are
+// the ones used. However, MPI-Lite also provides these same
+// functions. When an app links against x86-mpi OCR, the executable only
+// gets the MPI-Lite versions of these functions, not the "real" ones, and
+// execution dies a horrible death.
+// The correct fix is for the OCR runtime to bind tightly to Intel MPI
+// functions, and not let them be exposed to the app. But this is not being
+// done.
+// Instead, a workaround is for MPI-Lite to rename these functions - both
+// the definition when mpilite is built, and the references in the user
+// program. That is what is done below if OCR_X86_MPI is set to 1. The
+// ifndef permits setting -DOCR_X86_MPI=1 during the mpilite build, and
+// also the app build.
+// The disadvantage is that in the debugger the name is MPILite_Init
+// instead of MPI_Init....
+
+#ifndef OCR_X86_MPI
+    #define OCR_X86_MPI 0
+#endif
+
+#if OCR_X86_MPI
+    // For ocr_type=x86-mpi, need to hide these symbols which are
+    // used by the runtime from Intel MPI
+    #define MPI_Init MPIlite_Init
+    #define MPI_Finalize MPIlite_Finalize
+    #define MPI_Irecv MPIlite_Irecv
+    #define MPI_Isend MPIlite_Isend
+    #define MPI_Iprobe MPIlite_Iprobe
+    #define MPI_Get_count MPIlite_Get_count
+    #define MPI_Recv MPIlite_Recv
+    #define MPI_Test MPIlite_Test
+    #define MPI_Comm_rank MPIlite_Comm_rank
+    #define MPI_Comm_size MPIlite_Comm_size
+    #define MPI_Barrier MPIlite_Barrier
+#endif
+
 #ifndef __x86_64__
  // If not on x86, only have PRINTF, so substitute it for printf
 // replace printf with PRINTF, but don't include ocr.h

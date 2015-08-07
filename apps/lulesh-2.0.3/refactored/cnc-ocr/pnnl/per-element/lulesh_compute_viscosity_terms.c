@@ -124,12 +124,12 @@ void lulesh_compute_viscosity_terms(cncTag_t iteration, cncTag_t element_id, dou
 	//
 
 	// Put "linear_viscosity_term_out" items
-	double *linear_viscosity_term_out = cncItemCreate_linear_viscosity_term();
+	double *linear_viscosity_term_out = cncItemAlloc(sizeof(*linear_viscosity_term_out));
 	*linear_viscosity_term_out = linear_viscosity_term;
 	cncPut_linear_viscosity_term(linear_viscosity_term_out, iteration, element_id, ctx);
 
 	// Put "quadratic_viscosity_term_out" items
-	double *quadratic_viscosity_term_out = cncItemCreate_quadratic_viscosity_term();
+	double *quadratic_viscosity_term_out = cncItemAlloc(sizeof(*quadratic_viscosity_term_out));
 	*quadratic_viscosity_term_out = quadratic_viscosity_term;
 	cncPut_quadratic_viscosity_term(quadratic_viscosity_term_out, iteration, element_id, ctx);
 

@@ -9,10 +9,10 @@ int cncMain(int argc, char *argv[]) {
 
 #if CHOLESKY_USE_FILE
     CNC_REQUIRE(argc==4,
-            "Usage: ./Cholesky matrixSize tileSize fileName (found %d args)\n", argc);
+            "Usage: ./Cholesky matrixSize tileSize fileName (found %d args)\n", argc-1);
 #else
     CNC_REQUIRE(argc==3,
-            "Usage: ./Cholesky matrixSize tileSize (found %d args)\n", argc);
+            "Usage: ./Cholesky matrixSize tileSize (found %d args)\n", argc-1);
 #endif
 
     // Create a new graph context
@@ -25,16 +25,16 @@ int cncMain(int argc, char *argv[]) {
     CNC_REQUIRE(matrixCols % tileSize == 0,
             "Incompatible tile size %d for the matrix of size %d\n", tileSize, matrixCols);
 
-    // Set up arguments for new graph instantiation
-    CholeskyArgs args;
-
 #if CHOLESKY_USE_FILE
+    CholeskyArgs *args = cncItemAlloc(sizeof(*args));
     // Matrix read from input file
-    char *lastChar = args.inFile + sizeof(args.inFile) - 1;
+    char *lastChar = args->inFile + sizeof(args->inFile) - 1;
     *lastChar = '\0';
-    strncpy(args.inFile, argv[3], sizeof(args.inFile));
+    strncpy(args->inFile, argv[3], sizeof(args->inFile));
     CNC_REQUIRE(*lastChar == '\0',
-            "Input path is longer than %d characters.\n", sizeof(args.inFile));
+            "Input path is longer than %lu characters.\n", sizeof(args->inFile));
+#else
+    CholeskyArgs *args = NULL;
 #endif
 
     // Set graph parameters
@@ -42,7 +42,7 @@ int cncMain(int argc, char *argv[]) {
     context->tileSize = tileSize;
 
     // Launch the graph for execution
-    Cholesky_launch(&args, context);
+    Cholesky_launch(args, context);
 
     // Exit when the graph execution completes
     CNC_SHUTDOWN_ON_FINISH(context);

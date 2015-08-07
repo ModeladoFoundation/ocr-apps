@@ -1,9 +1,9 @@
 #!/bin/sh
 
-ROOT=${CNCOCR_ROOT-"${XSTACK_ROOT?Missing CNCOCR_ROOT or XSTACK_ROOT environment variable}/hll/cnc"}
+ROOT=${UCNC_ROOT-"${XSTACK_ROOT?Missing UCNC_ROOT or XSTACK_ROOT environment variable}/hll/cnc"}
 
-[ -f $ROOT/py/.depsOK ] || bash $ROOT/py/bootstrap.sh
+[ -f $ROOT/tools/py/.depsOK ] || bash $ROOT/tools/py/bootstrap.sh
 
-source $ROOT/py/venv/bin/activate
+source $ROOT/tools/py/venv/bin/activate
 
-$ROOT/event_grapher.py "$@"
+python $ROOT/tools/event_grapher.py "$@"

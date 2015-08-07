@@ -1,0 +1,70 @@
+OCR implementation of HPCG
+Author David S. Scott
+
+HPCG computes 50 iterations of the preconditioned conjugate gradient algorithm to solve Ax = b, where A is a sparse matrix derived from a 27 point (3x3x3) stencil on a 3D grid of points.
+See https://software.sandia.gov/hpcg/ for the benchmark.
+
+The diagonal elements of A are set to 26 and all of the nonzero off diagonal elements are set to -1.  At the edge of the global grid, some of the -1s are missing but
+the diagonal value is still set to 26 so the matrix is not singular.  The right hand side b is set to the row sums of the matrix so the solution is all 1s.
+
+The matrix MUST be represented as a linear array of non zero elements with corresponding column indices.  The algorithm requires a sparse matrix vector product and 3 inner products
+in addition to the precondioner.
+
+
+
+Parallelism
+The code assumes the grid consists of N = NPX x NPY x NPZ blocks of size MxMxM.  There are N workers, one for each block.
+
+Inner products are implemented by reduceEDTs that start with one value from each worker and form a binary tree doing the additions.  The final result is then provided back to the workers
+
+The matrix vector product requires a halo exchange in which boundary values are traded with up to 26 neighbors.
+
+The preconditioner is 4 levels of multigrid using symmetric Gauss-Seidel sweeps
+
+
+Events:
+The code uses labeled GUIDs to create events, both for the halo exchanges and for the global sums.
+It uses ordinary events for returning to the next phase.
+
+
+Structure of the Code
+
+mainEdt:	creates the shared datablock, launches realmainEdt and wrapupEdt
+realmainEdt:	initializes the shared datablock and launches N initEdts with the shared block and "mynode" as a parameter
+
+N copies of
+
+InitEdt:	create the private block and launch hpcgInitEdt
+hpcgInitEdt:	populate the private block and launch hpcgEdt
+
+hpcgEdt:	written in a continuation style with a "phase" and a switch statement, each phase clones itself for the next phase
+
+Phase0:		initialize and launch global sum for rtr
+Phase1:		check convergence and launch mgEdt (preconditioner)
+Phase2: 	launch global sum for rtz
+Phase3:		launch halo exchange and spmv (sparse matrix vector product Ap)
+Phase4:		launch global sum for pAp
+Phase5:		launch global sum for rtr and return to phase 1 for next iteration
+
+haloExchange:	launches packANDsatisfy, launches unpack
+packANDsatisfy:	packs boundary values into small datablocks and satisfies events
+unpack:		depends on the 26 events to receive the neighbors buffer blocks.  Puts the values in the vector.  Satisfies an event to wake up spmv
+spmv:		actually do the matrix-vector product and satisfy an event to wake up the next phase
+
+
+mgEdt		also written in a continuation style with both phase(6) and level (4).
+
+Phase0:		launch Gauss-Seidel smoothing (starting with z=0) which depends on halo exchange (and pack and unpack) and then returns to phase 1 except at the lowest level when you return to Phase 3 of the higher level
+Phase1:		launch spmv which depends on Halo Exchange (and pack and unpack) and returns to Phase 2
+Phase2:		launch recursive call on smaller grid
+Phase3: 	launch smoother with halo exchange
+Phase4:		returns to next higher level (or Phase 3 or hpcg)
+
+
+The algorithm will terminate, either after 50 iterations or if the residual gets small enough.
+Each worker then delivers its part of the solution to wrapup which measures the variation from all 1s.
+
+All of the parameters are currently #defined in the source code
+It also #defines PRECONDITIONER.  If that is undefined, the code skips the preconditioning step
+
+

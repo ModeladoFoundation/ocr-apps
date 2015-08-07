@@ -89,7 +89,7 @@ void lulesh_compute_volume_derivative(cncTag_t iteration, cncTag_t element_id, d
     //
 
     // Put "volume_derivative_out" items
-    double *volume_derivative_out = cncItemCreate_volume_derivative();
+    double *volume_derivative_out = cncItemAlloc(sizeof(*volume_derivative_out));
 	*volume_derivative_out = volume_derivative;
     cncPut_volume_derivative(volume_derivative_out, iteration, element_id, ctx);
 

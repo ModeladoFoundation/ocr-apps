@@ -2,7 +2,7 @@
 
 sed -i '{
 s`/. TODO: Initialize data ./`*data = _i + _j * (_k + _l);`;
-s`/. TODO: Do something with sum ./`PRINTF("Sum is %d\\n", sum);`;
+s`/. TODO: Do something with sum ./`printf("Sum is %d\\n", sum);`;
 }' Range3D.c
 
 sed -i '{

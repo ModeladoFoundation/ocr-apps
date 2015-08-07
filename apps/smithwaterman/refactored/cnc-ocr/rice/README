@@ -60,7 +60,7 @@ A successful run should yield output like the following (the times will vary):
 
     Testing string1-small.txt vs string2-small.txt with width=3, height=3
     WORKLOAD_ARGS used: '.../xstack/apps/smithwaterman/datasets/string1-small.txt .../xstack/apps/smithwaterman/datasets/string2-small.txt 3 3'
-    OCR_CONFIG=.../xstack/hll/cnc/resources/cncocr/config/m8w.cfg ./SmithWaterman .../xstack/apps/smithwaterman/datasets/string1-small.txt .../xstack/apps/smithwaterman/datasets/string2-small.txt 3 3
+    OCR_CONFIG=./install/x86/generated.cfg ./SmithWaterman .../xstack/apps/smithwaterman/datasets/string1-small.txt .../xstack/apps/smithwaterman/datasets/string2-small.txt 3 3
     Tile width:  3
     Tile height: 3
     Size of input sequence 1 has length 9
@@ -71,7 +71,7 @@ A successful run should yield output like the following (the times will vary):
     OK
     Testing string1-large.txt vs string2-large.txt with width=569, height=1983
     WORKLOAD_ARGS used: '.../xstack/apps/smithwaterman/datasets/string1-large.txt .../xstack/apps/smithwaterman/datasets/string2-large.txt 569 1983'
-    OCR_CONFIG=.../xstack/hll/cnc/resources/cncocr/config/m8w.cfg ./SmithWaterman .../xstack/apps/smithwaterman/datasets/string1-large.txt .../xstack/apps/smithwaterman/datasets/string2-large.txt 569 1983
+    OCR_CONFIG=./install/x86/generated.cfg ./SmithWaterman .../xstack/apps/smithwaterman/datasets/string1-large.txt .../xstack/apps/smithwaterman/datasets/string2-large.txt 569 1983
     Tile width:  569
     Tile height: 1983
     Size of input sequence 1 has length 100713

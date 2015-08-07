@@ -10,7 +10,7 @@ void lulesh_produce_output(cncTag_t iteration, double final_energy, luleshCtx *c
     //
 
     // Put "final_origin_energy" items
-    double *final_origin_energy = cncItemCreate_final_origin_energy();
+    double *final_origin_energy = cncItemAlloc(sizeof(*final_origin_energy));
     *final_origin_energy = final_energy;
     cncPut_final_origin_energy(final_origin_energy, ctx);
 

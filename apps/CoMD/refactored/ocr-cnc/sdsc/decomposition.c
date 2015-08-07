@@ -4,6 +4,7 @@
 /// divided into equal size bricks by a grid that is xproc by yproc by
 /// zproc in size.
 
+#include "comd.h"
 #include "decomposition.h"
 //#include <assert.h>
 
@@ -17,12 +18,12 @@
 /// \param [in] globalExtent Size of the simulation domain (in Angstroms).
 Domain* initDecomposition(int xproc, int yproc, int zproc, real3 globalExtent, comdCtx *ctx)
 {
-   ASSERT( xproc * yproc * zproc == getNRanks());
+   assert( xproc * yproc * zproc == getNRanks());
 
-   PRINTF("CnC: Inside initDecomposition\n");
+   printf("CnC: Inside initDecomposition\n");
 
  //  Domain* dd = comdMalloc(sizeof(Domain));
-   Domain* dd = cncItemCreate_DD();
+   Domain* dd = cncItemAlloc(sizeof(*dd));
 
 
    dd->procGrid[0] = xproc;
@@ -51,7 +52,7 @@ Domain* initDecomposition(int xproc, int yproc, int zproc, real3 globalExtent, c
       dd->localMax[i] = dd->globalMin[i] + (dd->procCoord[i]+1) * dd->localExtent[i];
    }
 
-   PRINTF("CnC: End initDecomposition\n");
+   printf("CnC: End initDecomposition\n");
    cncPut_DD(dd, 1, ctx);
 
    return dd;

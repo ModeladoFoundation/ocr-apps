@@ -23,7 +23,7 @@ void EvenOddSums_sumOdds(cncTag_t n, int *odds, EvenOddSumsCtx *ctx) {
     //
 
     // Put "oddsTotal" items
-    int *oddsTotal = cncItemCreate_oddsTotal();
+    int *oddsTotal = cncItemAlloc(sizeof(*oddsTotal));
     *oddsTotal = sum;
     cncPut_oddsTotal(oddsTotal, ctx);
 

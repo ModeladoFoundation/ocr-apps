@@ -17,12 +17,6 @@ struct info;
 #include "initAtoms.h"
 //#include "haloExchange.h"
 
-// Manu:: workaround to avoid linking issues in TG arch
-#ifdef CNCOCR_TG
-void abort(void) {
-}
-#endif
-
 /// species data: chosen to match the data found in the setfl/funcfl files
 typedef struct SpeciesDataSt
 {
@@ -89,7 +83,7 @@ struct eamPot {
     InterpolationObjectNew rho;
     InterpolationObjectNew f;
 
-} pot;
+};
 
 
 typedef struct Atms {

@@ -170,22 +170,22 @@ void lulesh_compute_energy(cncTag_t iteration, cncTag_t element_id, double volum
     //
 
     // Put "energy_out" items
-    double *energy_out = cncItemCreate_energy();
+    double *energy_out = cncItemAlloc(sizeof(*energy_out));
 	*energy_out = energy;
     cncPut_energy(energy_out, iteration, element_id, ctx);
 
     // Put "pressure_out" items
-    double *pressure_out = cncItemCreate_pressure();
+    double *pressure_out = cncItemAlloc(sizeof(*pressure_out));
 	*pressure_out = pressure;
     cncPut_pressure(pressure_out, iteration, element_id, ctx);
 
     // Put "viscosity_out" items
-    double *viscosity_out = cncItemCreate_viscosity();
+    double *viscosity_out = cncItemAlloc(sizeof(*viscosity_out));
 	*viscosity_out = viscosity;
     cncPut_viscosity(viscosity_out, iteration, element_id, ctx);
 
     // Put "sound_speed_out" items
-    double *sound_speed_out = cncItemCreate_sound_speed();
+    double *sound_speed_out = cncItemAlloc(sizeof(*sound_speed_out));
 	*sound_speed_out = sound_speed;
     cncPut_sound_speed(sound_speed_out, iteration, element_id, ctx);
 

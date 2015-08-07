@@ -7,12 +7,11 @@ int cncMain(int argc, char *argv[]) {
     EvenOddSumsCtx *context = EvenOddSums_create();
 
     // Set up arguments for new graph instantiation
-    EvenOddSumsArgs args = {
-        atoi(argv[1])
-    };
-    
+    EvenOddSumsArgs *args = cncItemAlloc(sizeof(*args));
+    args->n = atoi(argv[1]);
+
     // Launch the graph for execution
-    EvenOddSums_launch(&args, context);
+    EvenOddSums_launch(args, context);
 
     // Exit when the graph execution completes
     CNC_SHUTDOWN_ON_FINISH(context);

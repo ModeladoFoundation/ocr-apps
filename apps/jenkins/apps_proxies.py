@@ -200,8 +200,7 @@ job_ocr_run_kernel_xsbench_x86_remote_regression = {
                   'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/install',
-                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
-                  'OCR_CONFIG': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/default.cfg'}
+                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000'}
 }
 
 # job_ocr_run_kernel_xsbench_x86_remote_scaling = {
@@ -214,8 +213,7 @@ job_ocr_run_kernel_xsbench_x86_remote_regression = {
 #                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
 #                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel',
 #                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/install',
-#                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
-#                  'OCR_CONFIG': '${JJOB_SHARED_HOME}/xstack/apps/XSBench/refactored/ocr/intel/default.cfg'}
+#                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000'}
 # }
 
 # XSBench: Intel MPI-Lite
@@ -248,25 +246,25 @@ job_ocr_run_kernel_xsbenchlite_x86_remote_regression = {
 }
 
 # LULESH 2.0: PNNL CnC-OCR
-job_cnc_ocr_gen_lulesh2pnnl_x86_regression = {
-    'name': 'cnc-ocr-gen-lulesh2pnnl-x86',
-    'depends': ('cnc-ocr-bootstrap-x86',),
-    'jobtype': 'cnc-ocr-app-gen',
-    'run-args': '${WORKLOAD_SRC} regression',
-    'sandbox': ('shared', 'inherit0'),
-    'env-vars': { 'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element', }
-}
+# job_cnc_ocr_gen_lulesh2pnnl_x86_regression = {
+#     'name': 'cnc-ocr-gen-lulesh2pnnl-x86',
+#     'depends': ('cnc-ocr-bootstrap-x86',),
+#     'jobtype': 'cnc-ocr-app-gen',
+#     'run-args': '${WORKLOAD_SRC} regression',
+#     'sandbox': ('shared', 'inherit0'),
+#     'env-vars': { 'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element', }
+# }
 
-job_cnc_ocr_build_kernel_lulesh2pnnl_x86_regression = {
-    'name': 'cnc-ocr-build-kernel-lulesh2pnnl-x86-regression',
-    'depends': ('cnc-ocr-gen-lulesh2pnnl-x86',),
-    'jobtype': 'cnc-ocr-app-build',
-    'run-args': '${WORKLOAD_SRC} regression',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element',
-                  'WORKLOAD_BUILD_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/build',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/install' }
-}
+# job_cnc_ocr_build_kernel_lulesh2pnnl_x86_regression = {
+#     'name': 'cnc-ocr-build-kernel-lulesh2pnnl-x86-regression',
+#     'depends': ('cnc-ocr-gen-lulesh2pnnl-x86',),
+#     'jobtype': 'cnc-ocr-app-build',
+#     'run-args': '${WORKLOAD_SRC} regression',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element',
+#                   'WORKLOAD_BUILD_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/build',
+#                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/install' }
+# }
 
 # XXX - Should remove this once Feature #567 is added
 jobtype_cnc_ocr_run_kernel_remote_regression = {
@@ -282,19 +280,19 @@ jobtype_cnc_ocr_run_kernel_remote_regression = {
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr/install'}
 }
 
-job_ocr_run_kernel_lulesh2pnnl_x86_remote_regression = {
-    'name': 'ocr-run-kernel-lulesh2pnnl-x86-remote-regression',
-    'depends': ('cnc-ocr-build-kernel-lulesh2pnnl-x86-regression',),
-    'jobtype': 'cnc-ocr-run-kernel-remote-regression',
-    'run-args': 'lulesh-2.0.3 x86 ocr-run-kernel-lulesh2pnnl-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack',
-                  'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
-                  'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element',
-                  'WORKLOAD_BUILD_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/build',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/install' }
-}
+# job_ocr_run_kernel_lulesh2pnnl_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-lulesh2pnnl-x86-remote-regression',
+#     'depends': ('cnc-ocr-build-kernel-lulesh2pnnl-x86-regression',),
+#     'jobtype': 'cnc-ocr-run-kernel-remote-regression',
+#     'run-args': 'lulesh-2.0.3 x86 ocr-run-kernel-lulesh2pnnl-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'XSTACK_ROOT': '${JJOB_SHARED_HOME}/xstack',
+#                   'APPS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps',
+#                   'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element',
+#                   'WORKLOAD_BUILD_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/build',
+#                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/lulesh-2.0.3/refactored/cnc-ocr/pnnl/per-element/install' }
+# }
 
 job_ocr_build_kernel_SNAPlite_x86_regression = {
     'name': 'ocr-build-kernel-SNAPlite-x86-regression',

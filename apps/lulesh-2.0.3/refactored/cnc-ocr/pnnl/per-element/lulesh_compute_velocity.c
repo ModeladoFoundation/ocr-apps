@@ -23,7 +23,7 @@ void lulesh_compute_velocity(cncTag_t iteration, cncTag_t node_id, double delta_
     //
 
     // Put "velocity_out" items
-    vector *velocity_out = cncItemCreate_velocity();
+    vector *velocity_out = cncItemAlloc(sizeof(*velocity_out));
 	*velocity_out = velocity;
     cncPut_velocity(velocity_out, iteration, node_id, ctx);
 

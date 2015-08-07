@@ -38,14 +38,14 @@ void lulesh_compute_volume(cncTag_t iteration, cncTag_t element_id, vertex *neig
    	volume = fabs(relative_volume - 1.0) < ctx->cutoffs.v ? 1.0 : relative_volume;
 
    	// Check for negative volumes
-    ASSERT(volume > 0.0 && "Volume should be positive");
+    assert(volume > 0.0 && "Volume should be positive");
 
     //
     // OUTPUTS
     //
 
     // Put "volume_out" items
-    double *volume_out = cncItemCreate_volume();
+    double *volume_out = cncItemAlloc(sizeof(*volume_out));
 	*volume_out = volume;
     cncPut_volume(volume_out, iteration, element_id, ctx);
 

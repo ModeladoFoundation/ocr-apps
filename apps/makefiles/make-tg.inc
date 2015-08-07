@@ -89,7 +89,7 @@ MKDIR   = mkdir
 CFLAGS  := $(CFLAGS_BASE) $(CFLAGS)
 LDFLAGS := $(LDFLAGS_BASE) $(LDFLAGS)
 
-OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(notdir $(SRCS:.c=.o)))
+OBJS := $(patsubst %.c,$(WORKLOAD_BUILD)/%.o,$(SRCS))
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
@@ -211,6 +211,7 @@ reqlibs: parallel-reqlibs
 
 # Require libocrxe as this means all include files are up-to-date
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
 #	$(CC) $(CFLAGS) -fno-builtin -c -o $@.tmp $<
 #	$(OBJCOPY) -R .data_local -R .rodata_local -R .bss_local -R .data_block -R .rodata_block -R .bss_block $@.tmp $@
@@ -264,6 +265,8 @@ $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.ex
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
 	$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
+# XE blob must be phony in order to rebuild the args blob on every run
+.PHONY: $(WORKLOAD_BUILD)/$(TARGET).blob.xe
 
 $(OCR_XE_CONFIG): | libocrxe
 

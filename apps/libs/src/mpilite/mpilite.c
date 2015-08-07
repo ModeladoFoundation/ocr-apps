@@ -1706,4 +1706,6 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 // Dummy init routine.  When using ROSE translation tool for handling globals,
 // this routine is replaced by a real function that will create the DB for each
 // rank.
-ocrGuid_t __attribute__((weak)) __ffwd_init(void ** ffwd_addr_p) {}
+ocrGuid_t __attribute__((weak)) __ffwd_init(void ** ffwd_addr_p) {
+    return NULL_GUID;
+}

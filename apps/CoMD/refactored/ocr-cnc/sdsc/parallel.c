@@ -59,7 +59,7 @@ void timestampBarrier(const char* msg)
    time_t t= time(NULL);
    char* timeString = ctime(&t);
    timeString[24] = '\0'; // clobber newline
-   PRINTF("%s: %s\n", timeString, msg);
+   printf("%s: %s\n", timeString, msg);
    fflush(screenOut);
 }
 */
@@ -107,7 +107,7 @@ int sendReceiveParallel(void* sendBuf, int sendLen, int dest,
 
    return bytesReceived;
 #else
-   ASSERT(source == dest);
+   assert(source == dest);
    memcpy(recvBuf, sendBuf, sendLen);
 
    return sendLen;

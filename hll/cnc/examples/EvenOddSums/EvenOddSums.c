@@ -7,7 +7,7 @@ void EvenOddSums_cncInitialize(EvenOddSumsArgs *args, EvenOddSumsCtx *ctx) {
     { // Put "naturals" items
         s64 _i;
         for (_i = 0; _i < args->n; _i++) {
-            int *naturals = cncItemCreate_naturals();
+            int *naturals = cncItemAlloc(sizeof(*naturals));
             *naturals = _i;
             cncPut_naturals(naturals, _i, ctx);
         }
@@ -27,9 +27,9 @@ void EvenOddSums_cncInitialize(EvenOddSumsArgs *args, EvenOddSumsCtx *ctx) {
 
 void EvenOddSums_cncFinalize(int evensTotal, int oddsTotal, EvenOddSumsCtx *ctx) {
 
-    PRINTF("Even total = %d\n", evensTotal);
+    printf("Even total = %d\n", evensTotal);
 
-    PRINTF("Odd total = %d\n", oddsTotal);
+    printf("Odd total = %d\n", oddsTotal);
 
 }
 

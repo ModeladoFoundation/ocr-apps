@@ -4,7 +4,7 @@
 
 void comd_generateDataforForceStep(cncTag_t i, cncTag_t iter, struct box *B, int totalBoxes, comdCtx *ctx) {
 
-//   PRINTF("CnC: Inside generateDataforForceStep %d\n", i);
+//   printf("CnC: Inside generateDataforForceStep %d\n", i);
 
 
     // sort the box -- required as updates are not ordered
