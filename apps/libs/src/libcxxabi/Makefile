@@ -28,10 +28,10 @@ endif
 LIBCXXABI_SRC = $(realpath libcxxabi)
 LIBCXXABI_INC = $(LIBCXXABI_SRC)/include
 
-LIBUNWIND_SRC = $(realpath ../libunwindX/libunwind)
+LIBUNWIND_SRC = $(realpath ../libunwind/libunwind)
 LIBUNWIND_INC = $(LIBUNWIND_SRC)/include
 
-LIBCXX_SRC = $(realpath ../libcxxX/libcxx)
+LIBCXX_SRC = $(realpath ../libcxx/libcxx)
 LIBCXX_INC = $(LIBCXX_SRC)/include
 LIBCXX_LIB = $(APPS_LIBS_ROOT)/lib
 

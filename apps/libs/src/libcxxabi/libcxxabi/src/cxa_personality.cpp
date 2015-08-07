@@ -447,7 +447,7 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     }
     return true;
 }
-#else
+#else // !LIBCXXABI_ARM_EHABI
 static
 bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
@@ -481,7 +481,7 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     }
     return true;
 }
-#endif
+#endif // !LIBCXXABI_ARM_EHABI
 
 static
 void*
