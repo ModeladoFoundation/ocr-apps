@@ -5,7 +5,7 @@
 # (c) 2010, Intel
 #
 # Authors:
-# 		Justin Teller, Intel
+#		Justin Teller, Intel
 #		EQware various
 #
 TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
@@ -21,7 +21,7 @@ ifndef ARCH
 $(error Need to specify ARCH! )
 endif
 
-ifeq (,$(findstring $(ARCH), $(ARCHES)) )
+ifeq (,$(findstring $(ARCH), $(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH)) ! )
 endif
 
@@ -36,16 +36,21 @@ LIB = $(BUILD_DIR)/libocrscaffold.a
 # XE Clang/llvm build
 #
 ifeq ($(ARCH), tg)
-TARGET = xstg-linux-elf
-TOOLBIN = $(TG_INSTALL)/bin
-TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
-CC = $(TOOL_PREFIX)clang
-AS = $(TOOL_PREFIX)as
-AR = $(TOOL_PREFIX)ar
-LD = $(TOOL_PREFIX)ld
-RANLIB = $(TOOL_PREFIX)ranlib
-SRCS = ocrscaffold.c
-CFLAGS = -Os -isystem $(OCR_INC)
+  TARGET = xstg-linux-elf
+  TOOLBIN = $(TG_INSTALL)/bin
+  TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+  CC = $(TOOL_PREFIX)clang
+  AS = $(TOOL_PREFIX)as
+  AR = $(TOOL_PREFIX)ar
+  LD = $(TOOL_PREFIX)ld
+  RANLIB = $(TOOL_PREFIX)ranlib
+  SRCS = ocrscaffold.c
+  CFLAGS = -Os
+  #CFLAGS = -Os -isystem $(OCR_INC)
+  #
+  # tell clang how to find includes/libs (clang 3.6)
+  #
+  export APPS_LIBS_ROOT
 endif
 #
 # X86_64 Clang/llvm build
@@ -69,10 +74,12 @@ endif
 # Make sure we get just the default platform build
 #
 ifeq ($(ARCH), x86_native)
-SRCS = ocrscaffold.c syscall.S
-INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
-CFLAGS += -std=c99
-RANLIB = /usr/bin/ranlib
+  SRCS = ocrscaffold.c syscall.S
+  INCS := -isystem /usr/include \
+          -isystem /usr/include/x86_64-linux-gnu \
+          -isystem $(OCR_INC)
+  CFLAGS += -std=c99
+  RANLIB = /usr/bin/ranlib
 endif
 #
 # This defines a native/platform GCC build
@@ -80,14 +87,16 @@ endif
 # Make sure we get just the default platform build
 #
 ifeq ($(ARCH), x86_glibc)
-# override - use the x86 architecture support
-APPS_LIBS_ROOT = $(APPS_ROOT)/libs/x86_native
-# override - make a special library for glibc
-LIB = $(BUILD_DIR)/libocrscaffold-glibc.a
-SRCS = ocrscaffold.c
-INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
-CFLAGS += -std=c99
-RANLIB = /usr/bin/ranlib
+  # override - use the x86 architecture support
+  APPS_LIBS_ROOT = $(APPS_ROOT)/libs/x86_native
+  # override - make a special library for glibc
+  LIB = $(BUILD_DIR)/libocrscaffold-glibc.a
+  SRCS = ocrscaffold.c
+  INCS := -isystem /usr/include \
+          -isystem /usr/include/x86_64-linux-gnu \
+          -isystem $(OCR_INC)
+  CFLAGS += -std=c99
+  RANLIB = /usr/bin/ranlib
 endif
 
 OBJS = $(patsubst %.c, $(BUILD_DIR)/%.o, $(patsubst %.S, $(BUILD_DIR)/%.o, $(SRCS)))
