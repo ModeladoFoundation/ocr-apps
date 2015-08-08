@@ -8,13 +8,19 @@
 #include "{{g.name}}.h"
 #include "cncocr_internal.h"
 
-/******************************\
- ******** ITEM GETTERS ********
-\******************************/
+/********************************\
+ ******** ITEM FUNCTIONS ********
+\********************************/
 
 {% for name, i in g.itemDeclarations.items() %}
 void cncGet_{{name}}({{ util.print_tag(i.key, typed=True) }}ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode, {{util.g_ctx_param()}});
 {% endfor %}
+
+#ifdef CNC_AFFINITIES
+{% for name, i in g.itemDeclarations.items() -%}
+static inline cncLocation_t _cncItemDistFn_{{name}}({{ util.print_tag(i.key, typed=True) ~ util.g_ctx_param()}}) { return {{g.itemDistFn(name, util.g_ctx_var()~"->_affinityCount")}}; }
+{% endfor -%}
+#endif /* CNC_AFFINITIES */
 
 /********************************\
  ******** STEP FUNCTIONS ********

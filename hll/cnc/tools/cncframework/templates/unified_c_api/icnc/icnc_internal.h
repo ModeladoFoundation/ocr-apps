@@ -21,6 +21,7 @@ extern "C" {
 #define XTRA_PRINTING 0
 #include <iostream>
 
+typedef int cncLocation_t;
 typedef std::valarray<cncTag_t> cncAggregateTag_t;
 
 template<typename T>

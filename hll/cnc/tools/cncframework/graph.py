@@ -7,7 +7,7 @@ from ordereddict import OrderedDict
 
 
 def expandExpr(x, collID="0", numRanks="CNC_NUM_RANKS"):
-    return x and (''.join(x).strip()
+    return x and (str(x).strip()
                   .replace("@", "args->").replace("#", "ctx->")
                   .replace("$ID", collID).replace("$RANKS", numRanks))
 
@@ -72,6 +72,7 @@ class StepRef(object):
 
 class ItemRef(object):
     def __init__(self, itemRef):
+        self.attrs = {}
         self.kind = 'ITEM'
         self.collName = itemRef.collName
         self.key = map(makeTagComponent, tuple(itemRef.key))
@@ -191,6 +192,8 @@ class StepFunction(object):
         self.inputCountExpr = " + ".join([i.rangeSize for i in self.inputItems]) or "0"
         # ranged inputs
         self.rangedInputItems = [ x for x in self.inputItems if x.keyRanges ]
+        # set up lookup tables
+        self.inputsDict = dict([(i.binding, i) for i in self.inputItems])
 
     def inputItemColls(self):
         return set( x.collName for x in self.inputItems )
@@ -234,8 +237,20 @@ def getDistFn(colls, collName, ranksExpr):
     decl = colls[collName]
     collID = str(list(colls.keys()).index(collName))
     rankVar = lastComponent(decl, collID)
-    defaultFn = "{0} % {1}".format(rankVar, ranksExpr)
-    rawFn = decl.attrs.get('distfn', defaultFn)
+    placeWithAttr = decl.attrs.get('placeWith')
+    # FIXME - need a better way to do handle this attribute
+    # that doesn't assume we have this function name declared
+    if placeWithAttr:
+        inputName = str(placeWithAttr).strip()
+        item = decl.inputsDict.get(inputName)
+        assert item, "Unknown input name: "+inputName
+        assert not item.keyRanges, "Cannot affinitize with ranged inputs: "+inputName
+        ikey = [ expandExpr(x.expr) for x in item.key ]
+        args = ", ".join(ikey + ["ctx"])
+        rawFn = "_cncItemDistFn_{0}({1})".format(item.collName, args)
+    else:
+        defaultFn = "{0} % {1}".format(rankVar, ranksExpr)
+        rawFn = decl.attrs.get('distfn', defaultFn)
     return expandExpr(rawFn, collID=collID, numRanks=ranksExpr)
 
 def getTuningFn(colls, collName, name, ranksExpr, default):
@@ -277,6 +292,9 @@ class CnCGraph(object):
     def hasTuning(self, name):
         return name in self.allAttrNames
 
+    def hasCustomDist(self):
+        return self.hasTuning('distfn') or self.hasTuning('placeWith')
+
     def lookupType(self, item):
         return self.itemDeclarations[item.collName].type
 
@@ -304,6 +322,11 @@ class CnCGraph(object):
         for t in tuningSpec.stepTunings:
             x = self.stepLikes.get(t.collName)
             assert x, "Unknown step in tuning: {0}".format(t.collName)
-            x.attrs.update(t.attrs)
-            self.allAttrNames.update(t.attrs.keys())
-        print self.allAttrNames
+            if t.inputName:
+                i = x.inputsDict.get(t.inputName)
+                assert i, "Unknown input in tuning: {0} <- {1}".format(t.collName, t.inputName)
+                i.attrs.update(t.attrs)
+                self.allAttrNames.update(t.attrs.keys())
+            else:
+                x.attrs.update(t.attrs)
+                self.allAttrNames.update(t.attrs.keys())
