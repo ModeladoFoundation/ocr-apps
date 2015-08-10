@@ -56,8 +56,8 @@ build:
 	make $(EXE)
 
 $(EXE): $(OBJ) $(KOKKOS_LINK_DEPENDS)
-	echo $(OBJ)
-	$(LINK) $(LINKFLAGS) $(OBJ) $(OCR_SHIM_LIB) $(KOKKOS_LIBS) $(OCR_LIB) -o $(EXE)
+	@echo ' - Linking $@'
+	@$(LINK) $(LINKFLAGS) $(OBJ) $(KOKKOS_LIBS) $(OCR_SHIM_LIB) $(OCR_LIB) -o $@
 
 clean:
 	rm -f $(OBJ) $(EXE)
@@ -65,6 +65,7 @@ clean:
 # Compilation rules
 
 %.o:%.cpp $(KOKKOS_CPP_DEPENDS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(EXTRA_INC) -c $<
+	@echo ' - $@'
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(EXTRA_INC) -c $<
 
 .PHONY: build clean hello
