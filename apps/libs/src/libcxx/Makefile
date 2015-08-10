@@ -31,7 +31,7 @@ LIBCXXABI_INC = $(LIBCXXABI_SRC)/include
 
 BUILD = build_$(ARCH)
 
-COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++
+COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
@@ -39,7 +39,7 @@ endif
 #
 # communicate the apps install root to clang
 #
-export APPS_ROOT = $(APPS_LIBS_ROOT)
+export APPS_LIBS_ROOT
 
 CMAKE_ARGS =  -DLIBCXX_TARGET=XSTG \
 			  -DLIBCXX_CXX_ABI=libcxxabi \

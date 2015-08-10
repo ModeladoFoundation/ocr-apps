@@ -39,7 +39,7 @@ LLVM_SRC = $(TG_INSTALL)/../xe-llvm
 
 BUILD = build_$(ARCH)
 
-COMPILE_FLAGS = --target=$(TARGET) -D__ELF__
+COMPILE_FLAGS = --target=$(TARGET) -D__ELF__ -U__STRICT_ANSI__
 COMPILE_FLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
 
 ifdef VERBOSE
@@ -50,7 +50,7 @@ CXX_FLAGS = -std=c++11 -nostdinc++ $(COMPILE_FLAGS)
 #
 # communicate the apps install root to clang
 #
-export APPS_ROOT = $(APPS_LIBS_ROOT)
+export APPS_LIBS_ROOT
 
 
 

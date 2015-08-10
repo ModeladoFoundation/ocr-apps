@@ -1389,7 +1389,9 @@ using ::log2;
 using ::log2f;
 
 inline _LIBCPP_INLINE_VISIBILITY float       log2(float __lcpp_x) _NOEXCEPT       {return log2f(__lcpp_x);}
+#if !defined(__XSTG__)
 inline _LIBCPP_INLINE_VISIBILITY long double log2(long double __lcpp_x) _NOEXCEPT {return log2l(__lcpp_x);}
+#endif
 
 template <class _A1>
 inline _LIBCPP_INLINE_VISIBILITY
@@ -1402,7 +1404,9 @@ using ::logb;
 using ::logbf;
 
 inline _LIBCPP_INLINE_VISIBILITY float       logb(float __lcpp_x) _NOEXCEPT       {return logbf(__lcpp_x);}
+#if !defined(__XSTG__)
 inline _LIBCPP_INLINE_VISIBILITY long double logb(long double __lcpp_x) _NOEXCEPT {return logbl(__lcpp_x);}
+#endif
 
 template <class _A1>
 inline _LIBCPP_INLINE_VISIBILITY
@@ -1445,7 +1449,7 @@ using ::nan;
 using ::nanf;
 #endif // _LIBCPP_MSVCRT
 
-#ifndef __sun__
+#if !defined(__sun__) && !defined(__XSTG__)
 #ifndef _LIBCPP_MSVCRT
 
 // nearbyint
