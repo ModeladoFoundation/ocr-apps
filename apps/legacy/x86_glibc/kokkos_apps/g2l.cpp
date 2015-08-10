@@ -43,9 +43,9 @@
 
 #include <Kokkos_Core.hpp>
 
-#include <G2L.hpp>
+#include <g2l.hpp>
 
-namespace G2L {
+namespace g2l {
 
 size_t run_serial(unsigned num_ids, unsigned num_find_iterations)
 {
@@ -87,7 +87,7 @@ size_t run_cuda(unsigned num_ids, unsigned num_find_iterations)
 #endif
 }
 
-} // namespace G2L
+} // namespace g2l
 
 
 int mainEdt(int argc, char *argv[])
@@ -121,25 +121,25 @@ int mainEdt(int argc, char *argv[])
 
   size_t num_errors = 0;
 
-  num_errors += G2L::run_serial(num_ids,num_find_iterations);
+  num_errors += g2l::run_serial(num_ids,num_find_iterations);
 
 #ifdef KOKKOS_HAVE_CUDA
   Kokkos::HostSpace::execution_space::initialize(threads_count);
   Kokkos::Cuda::initialize( Kokkos::Cuda::SelectDevice(0) );
-  num_errors += G2L::run_cuda(num_ids,num_find_iterations);
+  num_errors += g2l::run_cuda(num_ids,num_find_iterations);
   Kokkos::Cuda::finalize();
   Kokkos::HostSpace::execution_space::finalize();
 #endif
 
 #ifdef KOKKOS_HAVE_PTHREAD
   Kokkos::Threads::initialize( threads_count );
-  num_errors += G2L::run_threads(num_ids,num_find_iterations);
+  num_errors += g2l::run_threads(num_ids,num_find_iterations);
   Kokkos::Threads::finalize();
 #endif
 
 #ifdef KOKKOS_HAVE_OPENMP
   Kokkos::OpenMP::initialize( threads_count );
-  num_errors += G2L::run_openmp(num_ids,num_find_iterations);
+  num_errors += g2l::run_openmp(num_ids,num_find_iterations);
   Kokkos::OpenMP::finalize();
 #endif
 

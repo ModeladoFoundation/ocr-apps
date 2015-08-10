@@ -54,7 +54,7 @@
 
 // This test will simulate global ids
 
-namespace G2L {
+namespace g2l {
 
 static const unsigned begin_id_size = 256u;
 static const unsigned end_id_size = 1u << 25;
@@ -259,7 +259,7 @@ size_t run_test(unsigned num_ids, unsigned num_find_iterations)
 }
 
 
-} // namespace G2L
+} // namespace g2l
 
 
 #endif //KOKKOS_GLOBAL_TO_LOCAL_IDS_HPP

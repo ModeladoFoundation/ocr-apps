@@ -89,7 +89,7 @@ struct hello_world {
   }
 };
 
-int appmain (int argc, char* argv[]) {
+int mainEdt (int argc, char* argv[]) {
   // You must call initialize() before you may call Kokkos.
   //
   // With no arguments, this initializes the default execution space

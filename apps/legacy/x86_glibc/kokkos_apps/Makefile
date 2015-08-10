@@ -1,5 +1,4 @@
-KOKKOS_INSTALL = ../install
-KOKKOS_BUILD = ../build_kokkos/
+KOKKOS_INSTALL = ../../../libs/src/trilinos/install
 
 include $(KOKKOS_INSTALL)/include/Makefile.export.Kokkos
 
@@ -20,33 +19,23 @@ DEPFLAGS = -M
 # OCR libs
 #
 ARCH=x86
-APPS_ROOT  ?= $(realpath $(CURDIR)/../../../../)
+APPS_ROOT  ?= $(realpath $(CURDIR)/../../../)
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 LIBS = $(APPS_LIBS_ROOT)/lib
 OCR_SHIM_LIB = $(LIBS)/libocr-glibcxx.a
 OCR_LIB = $(LIBS)/libocrscaffold-glibc.a
 #OCR_LIB = cxxmain.o libocrsal.a
 
-export SRC ?=
-export OBJ ?= $(SRC:.cpp=.o)
-export EXE ?=
+OBJ = hello_world.o g2l.o
+EXE = hello_world g2l
 
 default: hello
 	echo "Start Build"
 
-############## hello_world app ##############
+all:
+	make build SRC=hello_world.cpp EXE=hello_world OBJ=hello_world.o
+	make build SRC=g2l.cpp EXE=g2l OBJ=g2l.o
 
-hello hello_clean : SRC = hello_world.cpp
-hello hello_clean : EXE = hello_world
-hello: build
-hello_clean: clean
-
-############## G2L app ##############
-
-g2l g2l_clean : SRC = G2L_Main.cpp
-g2l g2l_clean : EXE = G2L
-g2l: build
-g2l_clean: clean
 
 ############## Common ##############
 build:
