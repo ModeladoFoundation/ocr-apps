@@ -45,12 +45,12 @@ WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
 
 # Config file specific settings
 CONFIG_GENERATE       := ${OCR_ROOT}/scripts/Configs/config-generator.py
-CONFIG_FILE           := ${WORKLOAD_INSTALL}/generated.cfg
+GEN_CONFIG_FILE       := ${WORKLOAD_INSTALL}/generated.cfg
 CONFIG_NUM_THREADS    ?= 8
-
 ifeq ($(strip $(OCR_CONFIG)),)
-OCR_CONFIG ?= $(CONFIG_FILE)
+OCR_CONFIG := $(GEN_CONFIG_FILE)
 endif
+#CONFIG_FLAGS - may be set in user portion of Makefile
 
 REQ_LIBS ?=
 
@@ -109,6 +109,16 @@ install_internal: preinstall | $(WORKLOAD_INSTALL)
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
+ifeq ($(RUN_JENKINS), buildApp)
+ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
+	# Viz tool currently requires COUNTED_MAP guid provider (see issue #670)
+ifeq ($(ENABLE_VISUALIZER), yes)
+	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS) --guid $(COUNTED_MAP)
+else
+	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS)
+endif # Enable Visualizer
+endif # OCR_CONFIG
+endif # RUN_JENKINS
 
 postinstall: install_internal
 
@@ -139,12 +149,17 @@ run_internal: debug_post_prerun
 else
 debug_post_prerun: install
 run_internal: install debug_post_prerun
-endif
+ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
+# Viz tool currently requires COUNTED_MAP guid provider (see issue #670)
+ifeq ($(ENABLE_VISUALIZER), yes)
+	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS) --guid $(COUNTED_MAP)
+else
+	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS)
+endif # ENABLE_VISUALIZER
+endif # OCR_CONFIG
+endif # RUN_JENKINS
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
-endif
-ifeq ($(OCR_CONFIG), $(CONFIG_FILE))
-	$(CONFIG_GENERATE) --guid COUNTED_MAP --threads $(CONFIG_NUM_THREADS) --target $(COMM_LAYER) --remove-destination --output $(CONFIG_FILE)
 endif
 	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_ROOT) OCR_CONFIG=$(OCR_CONFIG) \
 	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) $(OCR_INSTALL)/bin/ocrrun ./$(TARGET) -ocr:cfg $(OCR_CONFIG) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
