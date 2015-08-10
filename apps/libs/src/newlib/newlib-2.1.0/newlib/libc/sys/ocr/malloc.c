@@ -1037,6 +1037,13 @@ extern Void_t*     sbrk();
 
 #endif /* _LIBC */
 
+#ifdef _OCR_GLIBC
+#define strong_alias(name, aliasname) \
+  extern __typeof (name) aliasname __attribute__ ((alias (#name)));
+#define weak_alias(name, aliasname) \
+  extern __typeof (name) aliasname __attribute__ ((weak, alias (#name)));
+#endif
+
 #if defined(_LIBC) || defined(_OCR_GLIBC)
 
 #define cALLOc          __libc_calloc
@@ -5649,7 +5656,9 @@ __default_morecore (int inc)
     return NULL;
   return result;
 }
+#endif /* _LIBC */
 
+#if defined(_LIBC) || defined(_OCR_GLIBC)
 /* We need a wrapper function for one of the additions of POSIX.  */
 int
 __posix_memalign (void **memptr, size_t alignment, size_t size)
@@ -5676,23 +5685,19 @@ weak_alias (__posix_memalign, posix_memalign)
 #endif /* _LIBC */
 
 #if defined(_LIBC) || defined(_OCR_GLIBC)
-#ifdef _OCR_GLIBC
-#define weak_alias(name, aliasname) \
-  extern __typeof (name) aliasname __attribute__ ((weak, alias (#name)));
-#endif
 
-weak_alias (__libc_calloc, __calloc) weak_alias (__libc_calloc, calloc)
-weak_alias (__libc_cfree, __cfree) weak_alias (__libc_cfree, cfree)
-weak_alias (__libc_free, __free) weak_alias (__libc_free, free)
-weak_alias (__libc_malloc, __malloc) weak_alias (__libc_malloc, malloc)
-weak_alias (__libc_memalign, __memalign) weak_alias (__libc_memalign, memalign)
-weak_alias (__libc_realloc, __realloc) weak_alias (__libc_realloc, realloc)
+strong_alias (__libc_calloc, __calloc)     weak_alias (__libc_calloc, calloc)
+strong_alias (__libc_cfree, __cfree)       weak_alias (__libc_cfree, cfree)
+strong_alias (__libc_free, __free)         strong_alias (__libc_free, free)
+strong_alias (__libc_malloc, __malloc)     strong_alias (__libc_malloc, malloc)
+strong_alias (__libc_memalign, __memalign) weak_alias (__libc_memalign, memalign)
+strong_alias (__libc_realloc, __realloc)   strong_alias (__libc_realloc, realloc)
 #ifndef _OCR_GLIBC
-weak_alias (__libc_valloc, __valloc) weak_alias (__libc_valloc, valloc)
-weak_alias (__libc_pvalloc, __pvalloc) weak_alias (__libc_pvalloc, pvalloc)
-weak_alias (__libc_mallinfo, __mallinfo) weak_alias (__libc_mallinfo, mallinfo)
+strong_alias (__libc_valloc, __valloc)     weak_alias (__libc_valloc, valloc)
+strong_alias (__libc_pvalloc, __pvalloc)   weak_alias (__libc_pvalloc, pvalloc)
+strong_alias (__libc_mallinfo, __mallinfo) weak_alias (__libc_mallinfo, mallinfo)
 #endif
-weak_alias (__libc_mallopt, __mallopt) weak_alias (__libc_mallopt, mallopt)
+strong_alias (__libc_mallopt, __mallopt)   weak_alias (__libc_mallopt, mallopt)
 
 weak_alias (__malloc_usable_size, malloc_usable_size)
 weak_alias (__malloc_trim, malloc_trim)
