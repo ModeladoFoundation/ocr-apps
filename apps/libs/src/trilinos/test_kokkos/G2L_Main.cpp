@@ -90,7 +90,7 @@ size_t run_cuda(unsigned num_ids, unsigned num_find_iterations)
 } // namespace G2L
 
 
-int appmain(int argc, char *argv[])
+int mainEdt(int argc, char *argv[])
 {
   unsigned num_ids = 100000;
   unsigned num_find_iterations = 1000;
