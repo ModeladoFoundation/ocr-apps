@@ -60,7 +60,7 @@ SRCS := printf.c
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
+CFLAGS := -I$(OCR_ROOT)/src/inc -I$(OCR_ROOT)/build/$(OCR_TYPE) -I$(OCR_ROOT)/src
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
