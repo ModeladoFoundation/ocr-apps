@@ -23,8 +23,6 @@ GENERAL_SOURCES = \
 	times.c \
 	wait.c
 
-CRT = crt0.o crt0t.o crtend.o
-
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(GENERAL_SOURCES)
 lib_a_CFLAGS = $(AM_CFLAGS)
@@ -46,7 +44,6 @@ crtend.o: machine/crtend.o
 	ln machine/$@ $@ >/dev/null 2>/dev/null || cp machine/$@ $@
 
 $(CRT:%=machine/%): ; @true
-# machine/crt0.o machine/crt0t.o machine/crtend.o: ; @true
 
 AM_CFLAGS = -I $(srcdir)/../../stdio
 ACLOCAL_AMFLAGS = -I ../../.. -I ../../../..

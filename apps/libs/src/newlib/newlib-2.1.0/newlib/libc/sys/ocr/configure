@@ -578,6 +578,7 @@ subdirs
 SED
 sys_dir
 machine_dir
+CRT
 libm_machine_dir
 lpfx
 aext
@@ -3603,6 +3604,12 @@ done
 
 subdirs="$subdirs machine"
 
+CRT=
+if test "x${machine_dir}" = "xxstg"; then
+	CRT="crt0.o crt0t.o crtend.o"
+else
+	CRT="crt0.o"
+fi
 
 ac_config_files="$ac_config_files Makefile"
 

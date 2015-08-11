@@ -129,7 +129,7 @@ crtend.o: sys/crtend.o
 	rm -f $@
 	ln sys/$@ $@ >/dev/null 2>/dev/null || cp sys/$@ $@
 
-$(CRT:%=sys/%) sys/crt0.o: ; @true
+$(CRT:%=sys/%) $(CRT0:%=sys/%): ; @true
 
 # This is a list of the stmp-def files in each subdirectory which
 # builds .def files.  We don't list subdirectories which don't build

@@ -34,7 +34,7 @@ crtend.o: $(sys_dir)/crtend.o
 	rm -f $@
 	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
 
-$(CRT:%=$(sys_dir)/%) $(sys_dir)/$(CRT0): ; @true
+$(CRT:%=$(sys_dir)/%) $(CRT0:%=$(sys_dir)/%): ; @true
 
 CLEANFILES = $(CRT0) $(CRT)
 

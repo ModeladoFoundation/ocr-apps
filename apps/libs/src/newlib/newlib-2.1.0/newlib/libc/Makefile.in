@@ -1048,7 +1048,7 @@ crtend.o: sys/crtend.o
 	rm -f $@
 	ln sys/$@ $@ >/dev/null 2>/dev/null || cp sys/$@ $@
 
-$(CRT:%=sys/%) sys/crt0.o: ; @true
+$(CRT:%=sys/%) $(CRT0:%=sys/%): ; @true
 
 libc.info: sigset.texi extra.texi stdio64.texi posix.texi iconvset.texi \
 	targetdep.tex $(SUBDEFS)

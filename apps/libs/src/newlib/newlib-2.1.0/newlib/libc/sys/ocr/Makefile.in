@@ -112,6 +112,7 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 ETAGS = etags
 CTAGS = ctags
 DIST_SUBDIRS = $(SUBDIRS)
+CRT = @CRT@
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -237,7 +238,6 @@ GENERAL_SOURCES = \
 	init.c \
 	fini.c
 
-CRT = crt0.o crt0t.o crtend.o
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(GENERAL_SOURCES)
 #lib_a_LIBADD = $(ADD_OBJS)
