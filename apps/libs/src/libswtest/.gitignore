@@ -1,4 +1,3 @@
-tmproot/
-build_*/
+build/
 # Vim swap files
 .*.swp
