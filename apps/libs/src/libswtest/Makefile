@@ -16,8 +16,10 @@ ARCH = tg
 
 INCS = libswtest.h
 SRCS = ce_intf.c nonewlib.c
-OBJS = $(SRCS:.c=.o)
-LIB = libswtest.a
+OBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(SRCS))
+LIB = $(BUILDDIR)/libswtest.a
+
+BUILDDIR = build
 
 # INCLUDES = -isystem $(XSTACK_REPO)/apps/libs/tg/include
 LLVM_BIN = $(TG_INSTALL)/bin
@@ -35,17 +37,24 @@ AR = $(LLVM_BIN)/$(ARCH_PREFIX)-ar
 #
 export APPS_LIBS_ROOT
 
-all: $(LIB)
+################### Targets #####################################
+default: all
+
+builddir:
+	@[ -d $(BUILDDIR) ] || mkdir -p $(BUILDDIR)
+
+all: builddir $(LIB)
+	@echo Done
 
 $(LIB) : $(OBJS)
 	@echo "  = $@"
-	@$(AR) -r $(LIB) $^
+	@$(AR) -r $@ $^
 
 $(OBJS) : libswtest.h
 
-%.o : %.c
+$(BUILDDIR)/%.o : %.c
 	@echo "  - $<"
-	@$(CC) $(CFLAGS) $(INCLUDES) -c $<
+	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 %.s : %.c
 	@echo Generating Assembler file $@ from $<
@@ -62,3 +71,5 @@ install: $(LIB)
 
 clean:
 	rm -rf $(LIB) $(OBJS)
+
+.PHONY: builddir clean
