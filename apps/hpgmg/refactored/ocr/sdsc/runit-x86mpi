@@ -1,0 +1,10 @@
+#!/bin/bash
+#cd $PBS_O_WORKDIR
+# example crip to run multi-node with x86mpi. Can be used for timing comparison with and without affinities
+pwd
+export REPO_ROOT=$HOME/xstg_v7/xstack
+export OCR_MPI_OPTS="-v"
+make -f Makefile.x86-mpi clean
+make OCR_MPI_OPTS="-v" OCR_NUM_NODES=2 WORKLOAD_ARGS='6 64' OCR_CONFIG=$REPO_ROOT/ocr/machine-configs/x86-mpi/mach-hc-dist-mpi-clone-2w-lockable.cfg  -f Makefile.x86-mpi run > ./hpgmg-fv-x86-mpi-2w-2nodes-1host.txt
+make OCR_MPI_OPTS="-v" OCR_NUM_NODES=2 WORKLOAD_ARGS='6 64' OCR_CONFIG=$REPO_ROOT/ocr/machine-configs/x86-mpi/mach-hc-dist-mpi-clone-4w-lockable.cfg  -f Makefile.x86-mpi run > ./hpgmg-fv-x86-mpi-4w-2nodes-1host.txt
+make OCR_MPI_OPTS="-v" OCR_NUM_NODES=2 WORKLOAD_ARGS='6 64' OCR_CONFIG=$REPO_ROOT/ocr/machine-configs/x86-mpi/mach-hc-dist-mpi-clone-8w-lockable.cfg  -f Makefile.x86-mpi run > ./hpgmg-fv-x86-mpi-8w-2nodes-1host.txt

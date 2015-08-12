@@ -1,6 +1,7 @@
 #include <ocr.h>
 #include <string.h>
 #include <math.h>
+#include <extensions/ocr-affinity.h>
 
 #ifdef TG_ARCH
 #include "strings.h"
@@ -27,6 +28,12 @@ int IterativeSolver_NumVectors(){
 
 
 void init_all(mg_type* mg_ptr, int box_dim, int boxes_in_i, int boundary_condition, int level) {
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+  PRINTF("Using affinity API\n");
+#else
+  PRINTF("NOTE: Not using affinity API\n");
+#endif
 
   level_type* fine_ptr = create_level(mg_ptr, box_dim, boxes_in_i, boundary_condition, 0);
   fine_ptr->level = level;
@@ -150,8 +157,8 @@ void initialize_valid_region(level_type * level){
   }
 }
 
-
 box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts,int box_num) {
+
 
   ocrGuid_t boxGuid;
   box_type *boxPtr;
@@ -170,8 +177,19 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
 
   boxVolume = (box_dim+2*num_ghosts)*kStride;
   totalMemSize = sizeof(box_type) + boxVolume*num_vecs*sizeof(double);
-
-  ocrDbCreate(&boxGuid, (void**)&boxPtr, totalMemSize, 0,NULL_GUID,NO_ALLOC);
+  ocrGuid_t currentAffinity = NULL_GUID;
+#ifdef ENABLE_EXTENSION_AFFINITY
+  u64 affinityCount;
+  ocrAffinityCount( AFFINITY_PD, &affinityCount );
+  ocrGuid_t DBK_affinityGuids;
+  ocrGuid_t* PTR_affinityGuids;
+  ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
+                                              DB_PROP_SINGLE_ASSIGNMENT, NULL_GUID, NO_ALLOC );
+  ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids );
+  ASSERT( affinityCount >= 1 );
+  currentAffinity = PTR_affinityGuids[box_num%affinityCount];
+#endif
+  ocrDbCreate(&boxGuid, (void**)&boxPtr, totalMemSize, 0, currentAffinity, NO_ALLOC);
 
   bzero(boxPtr, totalMemSize);
 
@@ -193,7 +211,7 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
     lPtr->u = lPtr->f_Av + boxVolume*sizeof(double);
     lPtr->vec_temp = lPtr->u + boxVolume*sizeof(double);
     box_type *const_box;
-    ocrDbCreate(&lPtr->constant_box_guid, (void**)&const_box, totalMemSize, 0,NULL_GUID,NO_ALLOC);
+    ocrDbCreate(&lPtr->constant_box_guid, (void**)&const_box, totalMemSize, 0, currentAffinity, NO_ALLOC);
     const_box->global_box_id = -1;
 
     bzero((char*)boxPtr + lPtr->u, (lPtr->volume)*sizeof(double));
@@ -567,13 +585,6 @@ void mg_build(mg_type* all_grids, level_type* fine_grid, double a, double b, int
 
   int level=1;
   int coarse_dim = fine_grid->dim.i;
-
-  // Initialize the structures
-  int i;
-  for (i =0; i < MG_MAXLEVELS; i++) {
-    dim_i[i] = 0; boxes_in_i[i] = 0; box_dim[i] = 0; box_ghosts[i] = 0;
-  }
-
 
   while( (coarse_dim>=2*minCoarseGridDim) && ((coarse_dim&0x1)==0) ) { // grid dimension is even and big enough...
     level++;

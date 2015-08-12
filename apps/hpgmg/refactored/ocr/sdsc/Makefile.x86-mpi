@@ -60,7 +60,8 @@ REQ_LIBS :=
 SRCS := hpgmg.c init.c utils.c mg.c mg_edt.c solve_edt.c test_edt.c residual_edt.c restrict_edt.c smooth_edt.c interpolate_edt.c
 
 #CFLAGS :=
-CFLAGS := -DOCR_RUNTIME_PROFILER -DPROFILE_KHZ=3400000
+#CFLAGS := -DOCR_RUNTIME_PROFILER -DPROFILE_KHZ=3400000
+#CFLAGS += -DENABLE_EXTENSION_AFFINITY -DVERBOSE
 LDFLAGS := -lpthread -lm
 
 # Targets:

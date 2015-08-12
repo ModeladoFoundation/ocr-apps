@@ -23,9 +23,14 @@ ocrGuid_t restrict_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
   // for all boxes create a restrict_edt
   int b;
+  ocrGuid_t currentAffinity = NULL_GUID;
   for(b = 0; b < c->num_boxes; ++b) {
     get_fine_boxes(l,c,b,fine);
-    ocrEdtCreate(&r, r_t, paramc, paramv, 3+count, NULL, 0, NULL_GUID, NULL);
+#ifdef ENABLE_EXTENSION_AFFINITY
+    u64 acount = 1;
+    ocrAffinityQuery(boxes[b], &acount, &currentAffinity);
+#endif
+    ocrEdtCreate(&r, r_t, paramc, paramv, 3+count, NULL, 0, currentAffinity, NULL);
     ocrAddDependence(depv[1].guid, r, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], r, 1, DB_MODE_RW);
     ocrAddDependence(depv[0].guid, r, 2, DB_MODE_CONST);
