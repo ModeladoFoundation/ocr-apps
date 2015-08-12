@@ -92,6 +92,16 @@ static void cncPrescribeInternal_{{stepfun.collName}}({{
         /*depc=*/_depc, /*depv=*/NULL,
         /*properties=*/EDT_PROP_NONE,
         /*affinity=*/_cncCurrentAffinity(), /*outEvent=*/NULL);
+    {% if g.hasTuning('priority') -%}
+    { // OCR hints
+        ocrHint_t _stepHints;
+        ocrHintInit(&_stepHints, OCR_HINT_EDT_T);
+        // priority
+        s64 _hintVal = {{g.priorityFn(stepfun.collName, util.g_ctx_var()~"->_affinityCount")}};
+        ocrSetHintValue(&_stepHints, OCR_HINT_EDT_PRIORITY, (u64)_hintVal);
+        ocrSetHint(_stepGuid, &_stepHints);
+    }
+    {%- endif %}
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
     ocrAddDependence({{util.g_ctx_var()}}->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
