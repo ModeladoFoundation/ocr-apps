@@ -1,0 +1,6 @@
+Build
+
+make -f Makefile.x86-pthread-x86 
+
+
+The app generates THRESHOLD # of compute-intensive tasks
