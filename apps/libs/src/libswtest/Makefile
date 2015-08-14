@@ -18,6 +18,7 @@ INCS = libswtest.h
 SRCS = ce_intf.c nonewlib.c
 OBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(SRCS))
 LIB = $(BUILDDIR)/libswtest.a
+LDSCRIPT = elf64_xstg.t
 
 BUILDDIR = build
 
@@ -64,6 +65,7 @@ install: $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
 	@mkdir -p $(APPS_LIBS_ROOT)/lib
 	@cp -u $(LIB) $(APPS_LIBS_ROOT)/lib
+	@cp -u $(LDSCRIPT) $(APPS_LIBS_ROOT)/lib
 	@echo Installing $(INCS) to $(APPS_LIBS_ROOT) ...
 	@mkdir -p $(APPS_LIBS_ROOT)/include
 	@cp -u $(INCS) $(APPS_LIBS_ROOT)/include

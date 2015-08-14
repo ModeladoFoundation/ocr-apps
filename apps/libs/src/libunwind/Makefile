@@ -6,6 +6,20 @@
 #
 # Authors:
 #		EQware various
+# Clang:
+#	This assumes that llvm/clang have been installed in the intel
+#	repo install root tree (intel/ss/install) and that the intel
+#	repo is actually named 'intel' and is at the same level in
+# 	the directory tree as this xstack repo.
+#
+#	However this install root location can be overridden by adding
+#	TG_INSTALL=<your_install_path> to the make cmd line or adding
+#	that same variable to your environment (properly exported).
+#
+# Xstack install:
+#	Similarly, the location of the xstack library install root
+#	(defaulting to xstack/apps/libs/<arch>) can be overridden by
+#	use of the APPS_LIBS_ROOT variable.
 #
 TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
 
@@ -18,34 +32,31 @@ APPS_LIBS_ROOT ?= $(realpath $(CURDIR)/../../$(ARCH))
 ARCHES = tg x86
 
 ifndef ARCH
-$(error Need to specify ARCH! )
+$(error Need to specify ARCH! use one of: $(ARCHES))
 endif
 
-ifeq (,$(findstring $(ARCH), $(ARCHES)) )
-$(error Unknown/unsupported  ARCH ($(ARCH)) ! )
+ifeq (,$(findstring $(ARCH),$(ARCHES)))
+$(error Unknown/unsupported  ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
-
-LIBCXXABI_SRC = $(realpath libcxxabi)
-LIBCXXABI_INC = $(LIBCXXABI_SRC)/include
-
+#
+# paths and flags
+#
 LIBUNWIND_SRC = $(realpath libunwind)
 LIBUNWIND_INC = $(LIBUNWIND_SRC)/include
-
-LIBCXX_SRC = $(realpath ../libcxxX/libcxx)
-LIBCXX_INC = $(LIBCXX_SRC)/include
-LIBCXX_LIB = $(APPS_LIBS_ROOT)/lib
 
 LLVM_SRC = $(TG_INSTALL)/../xe-llvm
 
 BUILD = build_$(ARCH)
 
 COMPILE_FLAGS = --target=$(TARGET) -D__ELF__ -U__STRICT_ANSI__
-COMPILE_FLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
+  C_FLAGS += -v
 endif
-C_FLAGS = $(CFLAGS) $(COMPILE_FLAGS)
+
+C_FLAGS = -I$(APPS_LIBS_ROOT)/include/c++/v1
+C_FLAGS += $(CFLAGS) $(COMPILE_FLAGS)
 CXX_FLAGS = -std=c++11 -nostdinc++ $(COMPILE_FLAGS)
 #
 # communicate the apps install root to clang
@@ -56,7 +67,7 @@ export APPS_LIBS_ROOT
 
 LINK_FLAGS = $(APPS_LIBS_ROOT)/lib/libc++.a
 
-CMAKE_ARGS =  -DLIBUNWIND_TARGET=XSTG \
+CMAKE_ARGS =  -DLIBUNWIND_TARGET=$(UNWIND_TARGET) \
 			  -DLLVM_PATH=$(LLVM_SRC) \
 			  -DLLVM_MAIN_SRC_DIR=$(LLVM_SRC) \
 			  -DCMAKE_INSTALL_PREFIX=$(APPS_LIBS_ROOT) \
@@ -81,6 +92,7 @@ ifeq ($(ARCH), tg)
 CC = $(TG_INSTALL)/bin/clang
 CXX = $(TG_INSTALL)/bin/clang++
 TARGET = xstg-linux-elf
+UNWIND_TARGET = XSTG
 endif
 #
 # This defines an x86_64 build using the XE compiler
@@ -89,6 +101,7 @@ ifeq ($(ARCH), x86)
 CC = $(TG_INSTALL)/bin/clang
 CXX = $(TG_INSTALL)/bin/clang++
 TARGET = x86_64-linux-elf
+UNWIND_TARGET = x86_64
 endif
 
 $(ARCHES) install: build
@@ -96,6 +109,7 @@ $(ARCHES) install: build
 	@make -C $(BUILD) install
 
 build: config
+	@echo APPS_LIBS_ROOT $(APPS_LIBS_ROOT)
 	@echo "Building libunwind"
 	@make -C $(BUILD)
 

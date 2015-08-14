@@ -7,6 +7,21 @@
 # Authors:
 #		EQware various
 #
+# Clang:
+#	This assumes that llvm/clang have been installed in the intel
+#	repo install root tree (intel/ss/install) and that the intel
+#	repo is actually named 'intel' and is at the same level in
+# 	the directory tree as this xstack repo.
+#
+#	However this install root location can be overridden by adding
+#	TG_INSTALL=<your_install_path> to the make cmd line or adding
+#	that same variable to your environment (properly exported).
+#
+# Xstack install:
+#	Similarly, the location of the xstack library install root
+#	(defaulting to xstack/apps/libs/<arch>) can be overridden by
+#	use of the APPS_LIBS_ROOT variable.
+#
 TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
@@ -18,13 +33,15 @@ APPS_LIBS_ROOT ?= $(realpath $(CURDIR)/../../$(ARCH))
 ARCHES = tg x86
 
 ifndef ARCH
-$(error Need to specify ARCH! )
+$(error Need to specify ARCH! use one of: $(ARCHES))
 endif
 
-ifeq (,$(findstring $(ARCH), $(ARCHES)) )
-$(error Unknown/unsupported  ARCH ($(ARCH)) ! )
+ifeq (,$(findstring $(ARCH),$(ARCHES)))
+$(error Unknown/unsupported  ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
-
+#
+# flags and paths
+#
 LIBCXXABI_SRC = $(realpath libcxxabi)
 LIBCXXABI_INC = $(LIBCXXABI_SRC)/include
 
@@ -49,11 +66,9 @@ endif
 #
 export APPS_LIBS_ROOT
 
-
-
 LINK_FLAGS = $(APPS_LIBS_ROOT)/lib/libc++.a
 
-CMAKE_ARGS =  -DLIBCXXABI_TARGET=XSTG \
+CMAKE_ARGS =  -DLIBCXXABI_TARGET=$(CXXABI_TARGET) \
 			  -DLIBCXXABI_LIBCXX_INCLUDES=$(LIBCXX_INC) \
 			  -DLIBCXXABI_LIBCXX_PATH=$(LIBCXX_SRC) \
 			  -DLIBCXXABI_LIBUNWIND_SOURCES=$(LIBUNWIND_SRC) \
@@ -84,6 +99,7 @@ ifeq ($(ARCH), tg)
 CC = $(TG_INSTALL)/bin/clang
 CXX = $(TG_INSTALL)/bin/clang++
 TARGET = xstg-linux-elf
+CXXABI_TARGET = XSTG
 endif
 #
 # This defines an x86_64 build using the XE compiler
@@ -92,6 +108,7 @@ ifeq ($(ARCH), x86)
 CC = $(TG_INSTALL)/bin/clang
 CXX = $(TG_INSTALL)/bin/clang++
 TARGET = x86_64-linux-elf
+CXXABI_TARGET = x86_64
 endif
 
 $(ARCHES) install: build
