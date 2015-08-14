@@ -10,7 +10,7 @@
 // Otherwise, it is assumed that param 0, 1, and 2 (r0, r1, r2) are initialized
 // as argc, argv, and envp, as CE OCR does.
 //
-// #define USE_STACK   1
+#define USE_STACK   1
 //
 // Defining OCR_INIT includes the OCR startup calls and init() that allocates
 // an ocrDb for the stack.
@@ -21,16 +21,14 @@
 extern u64 _init( int argc, char** argv, ocrConfig_t *oc );
 extern void _fini (void);
 
+static void change_stack( int argc, char** argv, uint64_t sp );
+
 #endif // OCR_INIT
 
 char ** environ;
 
 extern int main( int argc, char** argv, char **envp );
-static void app_start( int argc, char ** argv );
-
-//static void change_stack( int argc, char** argv, uint64_t sp );
-static void change_stack( int argc, char** argv, uint64_t sp )
-     __asm__ ("_change_stack") __attribute__ ((used));
+static void app_start( int argc, char ** argv ) __attribute__((used));
 
 //
 // SW alarm code to indicate successful crt startup
@@ -236,13 +234,13 @@ static void app_start( int argc, char ** argv )
     // Do C++ startup
     //
     __do_global_ctors();
-
     //
     // Call the user program.
     //
     exit( main( argc, argv, environ ) );
 }
 
+#ifdef OCR_INIT
 //
 // We change stacks here. The new SP is in r2.
 // app_start() just inherits the first 2 args (r0, r1).
@@ -250,23 +248,32 @@ static void app_start( int argc, char ** argv )
 // and if app_start() returns we alarm ASSERT_ERROR (0xC1 = 193)
 // with line and file str addr = 0.
 //
-//static void change_stack( int argc, char** argv, uint64_t sp )
-//     __asm__ ("_change_stack") __attribute__ ((used));
-
-__asm__
- (
-    "    .text\n"
-    "    .align    8\n"
-    "    .type    change_stack,@function\n"
-    "_change_stack:\n"
-    "    bitop1   r509, r2, 0, OR, 64\n"
-    "    subI     r509, r509, 8, 64\n"
-    "    movimm   r2, 0, 64\n"
-    "    store    r2, r509, 0, 64\n"
-    "    jlrel    r511, app_start\n"
-    "    movimm   r2, 0, 64\n"
-    "    movimm   r3, 0, 64\n"
-    "    alarm    193\n"        // XE_ASSERT_ERROR
-    ".Lcstmp:\n"
-    "    .size    _change_stack, .Lcstmp-_change_stack\n"
- );
+// Implementation works with no explicit opt and with -Os
+//
+static void change_stack( int argc, char** argv, uint64_t sp )
+{
+    //
+    // push a null on the new stack
+    //
+	sp -= 8;
+	*(uint64_t *)sp = 0;
+    //
+    // replace the stack ptr with new value
+    // and then call app_start to start executing on the new stack
+    // passing through argc and argv.
+    // the compiler function prolog hasn't modified r0,
+    // but we need to force it to preserve r1 (argv)
+    // alarm on return
+    //
+    __asm__(
+        "bitop1      r509, %0, 0, OR, 64\n"
+        "    bitop1      r0, %1, 0, OR, 64\n"
+        "    bitop1      r1, %2, 0, OR, 64\n"
+        "    jlrel       r511, app_start\n"
+        "    movimm      r2, 0, 64\n"
+        "    movimm      r3, 0, 64\n"
+        "    alarm       193"        // XE_ASSERT_ERROR
+        : /* no outputs */ : "r" (sp), "r" (argc), "r" (argv)
+        );
+ }
+ #endif // OCR_INIT

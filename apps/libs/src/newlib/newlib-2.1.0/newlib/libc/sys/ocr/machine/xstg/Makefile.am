@@ -21,11 +21,14 @@ include $(srcdir)/../../../../../Makefile.shared
 
 all-local: crt0.o crt0t.o crtend.o
 
-crt0.o: CFLAGS += -DOCR_INIT
+crt0.o: crt0.c
+	$(CC) -DOCR_INIT -Os -c $< -o $@
 
-crt0t.o: CFLAGS += -DUSE_STACK
 crt0t.o: crt0.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) -DUSE_STACK -Os -c $< -o $@
+
+crtend.o: crtend.c
+	$(CC) -Os -c $< -o $@
 
 ACLOCAL_AMFLAGS = -I ../../../../.. -I ../../../../../..
 CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host

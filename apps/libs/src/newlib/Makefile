@@ -1,12 +1,28 @@
 #
-# Makefile
-# vim:syntax=make noexpandtab:
+# newlib Makefile
 #
 # (c) 2010, Intel
 #
 # Authors:
 # 		Justin Teller, Intel
 #		EQware various
+#
+#	Variables - overrideable via cmd line or env. Defaults below.
+#		TG_INSTALL - top of the intel repo install root. Used to
+#					 find clang/llvm/binutils apps and includes.
+#		APPS_ROOT  - path to the apps directory in the xstack repo
+#					 Used to generate the path to the xstack repo
+#					 arch specific install root to install libs and
+#					 includes to.
+#		ARCH       - Architecture to build for. Required, no default.
+#					 Used to determine compiler/toolchain to use and
+#					 CPU arch to compile for. Also used to generate
+#				     build product directory name.
+#
+# Note that newlib is configured and built in BUILD_DIR (build_$(ARCH))
+# and it installs to an intermediate install root NEWLIB_INSTALL (tmproot).
+# This makefile then installs the build products from tmproot to the
+# libs install root APPS_LIBS_ROOT (xstack/apps/libs/$(ARCH)).
 #
 TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
 
@@ -18,11 +34,11 @@ APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 ARCHES = tg x86 x86_native
 
 ifndef ARCH
-$(error Need to specify ARCH! )
+$(error Need to specify ARCH! use one of: $(ARCHES))
 endif
 
-ifeq (,$(findstring $(ARCH), $(ARCHES)))
-$(error Unknown/unsupported  ARCH ($(ARCH)) ! )
+ifeq (,$(findstring $(ARCH),$(ARCHES)))
+$(error Unknown/unsupported  ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
 
 APPS_LIBS_ROOT ?= $(APPS_ROOT)/libs/$(ARCH)
@@ -68,7 +84,6 @@ export RANLIB_FOR_TARGET READELF_FOR_TARGET
 
 CFLAGS_FOR_BUILD = -g
 export CFLAGS_FOR_BUILD
-
 
 ##########################
 # Make Targets

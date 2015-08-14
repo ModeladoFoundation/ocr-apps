@@ -367,11 +367,14 @@ objectlist.awk.in: $(noinst_LTLIBRARIES)
 
 all-local: crt0.o crt0t.o crtend.o
 
-crt0.o: CFLAGS += -DOCR_INIT
+crt0.o: crt0.c
+	$(CC) -DOCR_INIT -Os -c $< -o $@
 
-crt0t.o: CFLAGS += -DUSE_STACK
 crt0t.o: crt0.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) -DUSE_STACK -Os -c $< -o $@
+
+crtend.o: crtend.c
+	$(CC) -Os -c $< -o $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
