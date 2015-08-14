@@ -2,6 +2,7 @@
 {{ util.auto_file_banner() }}
 
 #include "{{g.name}}_internal.h"
+#include <extensions/ocr-hints.h>
 
 {#/****** Item instance data cast ******/-#}
 {%- macro unpack_item(i) -%}
@@ -92,6 +93,14 @@ static void cncPrescribeInternal_{{stepfun.collName}}({{
         /*depc=*/_depc, /*depv=*/NULL,
         /*properties=*/EDT_PROP_NONE,
         /*affinity=*/_cncCurrentAffinity(), /*outEvent=*/NULL);
+
+    { // OCR hints
+        ocrHint_t _stepHints;
+        ocrHintInit(&_stepHints, OCR_HINT_EDT_T);
+        u64 _hintVal = {{ 1 if stepfun.attrs.stoker else 0 }};
+        ocrSetHintValue(&_stepHints, OCR_HINT_EDT_IS_STOKER, _hintVal);
+        ocrSetHint(_stepGuid, &_stepHints);
+    }
 
     s32 _edtSlot = 0; MAYBE_UNUSED(_edtSlot);
     ocrAddDependence({{util.g_ctx_var()}}->_guids.self, _stepGuid, _edtSlot++, DB_MODE_RO);
