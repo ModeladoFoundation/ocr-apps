@@ -10,7 +10,7 @@ typedef struct taskbombArguments {
      */
 } taskbombArgs;
 
-#define X 1000
+#define X 200
 #define Y 100
 #define Z 32
 
