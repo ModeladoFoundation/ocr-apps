@@ -15,7 +15,7 @@ APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 #
 # Supported ARCH values
 #
-ARCHES = tg x86 x86_glibc
+ARCHES = tg x86 x86_native x86_glibc
 
 ifndef ARCH
 $(error Need to specify ARCH! )
@@ -48,11 +48,27 @@ SRCS = ocrscaffold.c
 CFLAGS = -Os -isystem $(OCR_INC)
 endif
 #
+# X86_64 Clang/llvm build
+#
+ifeq ($(ARCH), x86)
+TARGET = x86_64-linux-elf
+TOOLBIN = $(TG_INSTALL)/bin
+TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+CC = $(TOOL_PREFIX)clang
+AS = $(TOOL_PREFIX)as
+AR = $(TOOL_PREFIX)ar
+LD = $(TOOL_PREFIX)ld
+RANLIB = $(TOOL_PREFIX)ranlib
+SRCS = ocrscaffold.c syscall.S
+INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
+CFLAGS += -std=c99
+endif
+#
 # This defines a native/platform GCC build
 # C99 is required to get the 'restrict' keyword
 # Make sure we get just the default platform build
 #
-ifeq ($(ARCH), x86)
+ifeq ($(ARCH), x86_native)
 SRCS = ocrscaffold.c syscall.S
 INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
 CFLAGS += -std=c99
@@ -65,7 +81,7 @@ endif
 #
 ifeq ($(ARCH), x86_glibc)
 # override - use the x86 architecture support
-APPS_LIBS_ROOT = $(APPS_ROOT)/libs/x86
+APPS_LIBS_ROOT = $(APPS_ROOT)/libs/x86_native
 # override - make a special library for glibc
 LIB = $(BUILD_DIR)/libocrscaffold-glibc.a
 SRCS = ocrscaffold.c

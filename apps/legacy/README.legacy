@@ -18,7 +18,8 @@ true for all user libraries also.
 
 Sub-directory structure under xstack/apps/legacy:
 - tg         // example hello.c, Makefile, and xstg.ld linker script
-- x86        // example hello.c and Makefile
+- x86        // example hello.c and Makefile built with x86_64 clang
+- x86_native // example hello.c and Makefile built with gcc
 - x86_glibc  // example chello.c, cxxhello.cc, and Makefile
 
 ==================================
@@ -103,7 +104,8 @@ The glibc solution supports 'legacy' C applications and 'legacy' C++ application
 do not implement an OCR DB for the stack and require the 'legacy' application to be VERY slightly
 modified. The applications main() entry point must be renamed to mainEdt().
 
-For all the x86 architecture support, a native x86_64 GCC tool chain is used.
+For x86_native and x86_glibc examples, a native x86_64 GCC tool chain is used.  For the x86 example, the
+x86_64 target version of the clang tool chain is used.
 
 ---------------------------
 Legacy C support for the x86 architecture using newlib
@@ -120,7 +122,7 @@ version of the special C runtime.  The native stack support is retained as the e
 
 If used, note that the x86 OCR scaffold is a variant of the XSTG OCR scaffold.
 
-Buiding a Legacy C program for x86 newlib:
+--- Buiding a Legacy C program for x86 newlib using the x86_64 clang:
 
 There are a couple prerequisites:
 
@@ -131,6 +133,20 @@ see xstack/apps/libs/src/ocrscaffold/README for information on building the scaf
 
 Then compile and link your program as shown for the example 'Hello World' application in ./x86/ directory. Please
 see the ./x86/Makefile for details on compiling and linking your application.
+
+The resulting executable can be run on the native x86 environment.
+
+--- Buiding a Legacy C program for x86 newlib using a native gcc:
+
+There are a couple prerequisites:
+
+1 - Build newlib for x86_native.  Please see the xstack/apps/libs/src/newlib/README for information on building newlib.
+
+2 - If using the actual OCR runtime/library, build it for x86 (native).  If using the OCR scaffold, build it for
+x86_native.  Please see xstack/apps/libs/src/ocrscaffold/README for information on building the scaffold library.
+
+Then compile and link your program as shown for the example 'Hello World' application in ./x86_native/ directory. Please
+see the ./x86_native/Makefile for details on compiling and linking your application.
 
 The resulting executable can be run on the native x86 environment.
 

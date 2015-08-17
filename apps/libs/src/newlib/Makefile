@@ -15,7 +15,7 @@ APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 #
 # Supported ARCH values
 #
-ARCHES = tg x86 x86_clang
+ARCHES = tg x86 x86_native
 
 ifndef ARCH
 $(error Need to specify ARCH! )
@@ -90,7 +90,7 @@ endif
 
 # This defines an x86_64 build using the XE compiler
 #
-ifeq ($(ARCH), x86_clang)
+ifeq ($(ARCH), x86)
 CC = clang
 CXX = clang++
 TARGET = x86_64-linux-elf
@@ -103,7 +103,7 @@ endif
 # But C99 turns on strict ansi, which we disable
 # Make sure we get just the default platform build
 #
-ifeq ($(ARCH), x86)
+ifeq ($(ARCH), x86_native)
 CFLAGS += -std=c99 -U__STRICT_ANSI__
 CONFIG_ARGS += --enable-multilib=no
 TARGET = x86_64-linux-elf
