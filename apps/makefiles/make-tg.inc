@@ -47,7 +47,7 @@ WORKLOAD_INSTALL      := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
 
 REQ_LIBS         ?=
 
-PREFIX           := $(TG_INSTALL)/bin/rmd-linux-elf
+PREFIX           := $(TG_INSTALL)/bin/xstg-linux-elf
 
 AS	= $(PREFIX)-as
 ASFLAGS	=
@@ -56,13 +56,13 @@ AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
 CC	= $(PREFIX)-clang
-CFLAGS_BASE	= -frmd-extensions -I $(OCR_INSTALL_XE)/include -DTG_ARCH -I $(APPS_LIBS_ROOT)/include -I $(TG_INSTALL)/include
+CFLAGS_BASE	= -fxstg-extensions -I $(OCR_INSTALL_XE)/include -DTG_ARCH -I $(APPS_LIBS_ROOT)/include -I $(TG_INSTALL)/include
 
 OBJCOPY	= $(PREFIX)-objcopy
 STRIP	= $(PREFIX)-strip
 
 LD	= $(PREFIX)-ld
-LDFLAGS_BASE	= -L $(APPS_LIBS_ROOT)/lib -L $(TG_INSTALL)/ld-scripts -T fsim-xe-icache.ld -static -Map=$(WORKLOAD_BUILD)/out.map
+LDFLAGS_BASE	= -L $(APPS_LIBS_ROOT)/lib -L $(TG_ROOT)/common/xe-ld-scripts -T dram-default.ld -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
 
 CUT	= cut
 GREP	= grep
@@ -109,11 +109,11 @@ endif
 	@echo "(from $(WORKLOAD_INSTALL)): ${RUN_CMD} -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET) $(WORKLOAD_INSTALL)/$(TARGET).blob
-	@$(RM) -f $(WORKLOAD_INSTALL)/config.cfg $(WORKLOAD_INSTALL)/rmdkrnl
+	@$(RM) -f $(WORKLOAD_INSTALL)/config.cfg $(WORKLOAD_INSTALL)/tgkrnl
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET).blob $(WORKLOAD_INSTALL)/
 	@$(CP) $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/
-	@$(CP) $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl $(WORKLOAD_INSTALL)/
+	@$(CP) $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl $(WORKLOAD_INSTALL)/
 
 postinstall: install_internal
 
@@ -171,8 +171,7 @@ prebuild: reqlibs
 # The next three rules force postbuild to run after build_internal
 # and default to run postbuild
 .PHONY: build_internal
-build_internal: reqlibs prebuild $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_BUILD)/$(TARGET).blob \
-  $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
+build_internal: reqlibs prebuild $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_BUILD)/$(TARGET).blob | $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl
 
 postbuild: build_internal
 
@@ -227,13 +226,13 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg | $(WORKLOAD_BUILD)
 # Build the CE blob
 $(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_CE_CONFIG) $(WORKLOAD_SRC)/config.cfg \
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe \
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg | rmdkrnl.dbg builderce $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | tgkrnl.dbg builderce $(WORKLOAD_BUILD)
 	@echo "#### BUILDING CE BLOB ####"
 	$(FIX_CE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --ocrcfg $(OCR_CE_CONFIG)
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_CE_CONFIG)
 
-$(OCR_CE_CONFIG): | rmdkrnl
+$(OCR_CE_CONFIG): | tgkrnl
 
 # Build the XE blob
 $(WORKLOAD_BUILD)/$(TARGET).dbg: | debug_post_prerun
@@ -279,7 +278,7 @@ libocrxe: $(OCR_BUILD_XE)/Makefile
 $(OCR_INSTALL_XE)/lib/libocr.a: | libocrxe
 endif
 
-# Note: builderxe, rmdkrnl, builderce all follow the same idea as libocrxe
+# Note: builderxe, tgkrnl, builderce all follow the same idea as libocrxe
 
 # XE builder
 # Phony target to check on build everytime
@@ -309,37 +308,40 @@ endif
 # We build locally so we can run without impacting TG_INSTALL
 # This will internally build libocrce.a if needed (ie: we don't build it
 # explicitly here)
-.PHONY: rmdkrnl.dbg
+.PHONY: tgkrnl.dbg
+tgkrnl.dbg: | $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
+.PHONY: tgkrnl
+tgkrnl: | $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl
 
-ifeq ($(RUN_JENKINS), run)
-rmdkrnl.dbg: ;
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: ;
-else ifeq ($(RUN_JENKINS), build)
+#ifeq ($(RUN_JENKINS), run)
+#tgkrnl.dbg: ;
+#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: ;
+#else ifeq ($(RUN_JENKINS), build)
+#
+#
+#.ONESHELL:
+#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
+#| $(WORKLOAD_BUILD)/build.tgkrnl
+#	@echo "#### BUILDING RMDKRNL FROM $(TG_ROOT) ####"
+#	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
+#	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
+#	$(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
+#else
+#
+#.ONESHELL:
+#tgkrnl.dbg: $(TG_ROOT)/build/build.tgkrnl/make-me.make | $(WORKLOAD_BUILD)/build.tgkrnl
+#	@echo "#### CHECKING RMDKRNL FROM $(TG_ROOT) ####"
+#	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
+#	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
+#	$(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
+#
+#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: | tgkrnl.dbg
+#endif
 
-rmdkrnl.dbg: | $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
-.ONESHELL:
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: $(TG_ROOT)/build/build.rmdkrnl/make-me.make \
-| $(WORKLOAD_BUILD)/build.rmdkrnl
-	@echo "#### BUILDING RMDKRNL FROM $(TG_ROOT) ####"
-	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
-	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
-	$(MAKE) -C $(WORKLOAD_BUILD)/build.rmdkrnl -f make-me.make $(TARGETS)
-else
+#.PHONY: tgkrnl
+#tgkrnl: tgkrnl.dbg
 
-.ONESHELL:
-rmdkrnl.dbg: $(TG_ROOT)/build/build.rmdkrnl/make-me.make | $(WORKLOAD_BUILD)/build.rmdkrnl
-	@echo "#### CHECKING RMDKRNL FROM $(TG_ROOT) ####"
-	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
-	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
-	$(MAKE) -C $(WORKLOAD_BUILD)/build.rmdkrnl -f make-me.make $(TARGETS)
-
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: | rmdkrnl.dbg
-endif
-
-.PHONY: rmdkrnl
-rmdkrnl: rmdkrnl.dbg
-
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg
+#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
 
 # CE builder
 .PHONY: builderce
@@ -374,10 +376,10 @@ uninstall:
 $(WORKLOAD_BUILD):
 	mkdir -p $(WORKLOAD_BUILD)
 
-$(WORKLOAD_BUILD)/build.rmdkrnl: $(TG_ROOT)/build/build.rmdkrnl/make-me.make | $(WORKLOAD_BUILD)
-	mkdir -p $(WORKLOAD_BUILD)/build.rmdkrnl
-	@$(RM) -f $(WORKLOAD_BUILD)/build.rmdkrnl/make-me.make
-	@$(CP) $(TG_ROOT)/build/build.rmdkrnl/make-me.make $(WORKLOAD_BUILD)/build.rmdkrnl
+$(WORKLOAD_BUILD)/build.tgkrnl: | $(WORKLOAD_BUILD) # $(TG_ROOT)/build/build.tgkrnl/make-me.make | $(WORKLOAD_BUILD)
+	mkdir -p $(WORKLOAD_BUILD)/build.tgkrnl
+	#@$(RM) -f $(WORKLOAD_BUILD)/build.tgkrnl/make-me.make
+	#@$(CP) $(TG_ROOT)/build/build.tgkrnl/make-me.make $(WORKLOAD_BUILD)/build.tgkrnl
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
