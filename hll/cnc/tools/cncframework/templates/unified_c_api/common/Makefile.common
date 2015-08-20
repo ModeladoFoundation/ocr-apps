@@ -28,7 +28,7 @@ WORKLOAD_SRC     ?= .
 WORKLOAD_BUILD   ?= ./build/$(CNC_TYPE)
 WORKLOAD_INSTALL ?= ./install/$(CNC_TYPE)
 WORKLOAD_EXEC    ?= $(WORKLOAD_INSTALL)
-CNC_SUPPORT_DIR  ?= ./cnc_support/{% block support_dir_name %}$(CNC_TYPE){% endblock %}
+CNC_SUPPORT_DIR  ?= $(WORKLOAD_SRC)/cnc_support/{% block support_dir_name %}$(CNC_TYPE){% endblock %}
 {% block env_setup_post %}{% endblock %}
 
 #################################################

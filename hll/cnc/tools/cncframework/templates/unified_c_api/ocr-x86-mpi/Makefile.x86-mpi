@@ -27,5 +27,5 @@ endif #OCR_NODEFILE
 	{% endblock %}
 
 {% block run_cmd -%}
-mpirun $(MPI_FLAGS) $(RUN_TOOL) ./$(TARGET) $(WORKLOAD_ARGS)
+mpirun $(MPI_FLAGS) $(RUN_TOOL) ./$(TARGET) -ocr:cfg $(OCR_CONFIG) $(WORKLOAD_ARGS)
 {%- endblock %}

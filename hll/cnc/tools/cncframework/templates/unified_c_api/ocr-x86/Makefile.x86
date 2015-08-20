@@ -76,6 +76,8 @@ endif #OCR_GENERATED_CONFIG
 run: install
 	{% block run_checks %}{% endblock -%}
 	cd $(WORKLOAD_EXEC) && \
+	{% block run_cmd -%}
 	OCR_CONFIG=$(OCR_CONFIG) \
-	{% block run_cmd %}$(RUN_TOOL) ./$(TARGET) $(WORKLOAD_ARGS){% endblock %}
+	$(RUN_TOOL) ./$(TARGET) $(WORKLOAD_ARGS)
+	{%- endblock %}
 {% endblock run_target %}
