@@ -8,6 +8,19 @@
 struct _reent * _impure_ptr = (struct _reent *)0L;
 int * __errno() { static int real_errno; return & real_errno; }
 //
+// clang helpfully optimizes a clear loop in crt0.c to use memset()
+// but without newlib to provide it we need to do it here
+//
+void *memset( void *s, int c, size_t n )
+{
+    uint8_t *p = s;
+    uint8_t *e = p + c * n;
+
+    while( p < e )
+        *p++ = 0;
+    return s;
+}
+//
 // These functions needed for non-newlib. Should be put in a libswtest.a
 //
 #define MAX_EXIT_FUNCS  32

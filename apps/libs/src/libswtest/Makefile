@@ -25,7 +25,7 @@ BUILDDIR = build
 # INCLUDES = -isystem $(XSTACK_REPO)/apps/libs/tg/include
 LLVM_BIN = $(TG_INSTALL)/bin
 
-CFLAGS += -std=c99 $(INCLUDES)
+CFLAGS += -Os -std=c99 $(INCLUDES)
 
 CXX = $(LLVM_BIN)/$(ARCH_PREFIX)-clang++
 CC = $(LLVM_BIN)/$(ARCH_PREFIX)-clang
