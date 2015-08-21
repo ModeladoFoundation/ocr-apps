@@ -17,15 +17,16 @@ TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
 CC = $(TOOL_PREFIX)clang
 LD = $(TOOL_PREFIX)ld
 CFLAGS = -Os -isystem $(OCR_INC)
-LINKSCRPT = -T xstg.ld
+LINKSCRPT = -T $(LIBS)/elf64_xstg.t
 
 # Libraries to include from newlib
-NL_LIBPREFIX = $(LIBS)/crt0.o
-NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
+NL_CRT = $(LIBS)/crt0.o
+NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
+NL_CRTEND = $(LIBS)/crtend.o
 
 # Other library - this uses the libocrscaffold.a, but it
 # should actually be the real ocr library/runtime.
-OCR_LIB = $(LIBS)/libocrscaffold.a
+OCR_LIB = $(LIBS)/libocrscaffold.a $(LIBS)/libswtest.a
 
 APP = hello
 APP_SRCS = hello.c
@@ -38,7 +39,7 @@ all: $(APP)
 default: all
 
 $(APP) : $(APP_OBJS)
-	@$(LD) $(LINKSCRPT) -g -o $@ $(NL_LIBPREFIX) $< $(APP_LIBS) $(NL_LIBSUFFIX) $(OCR_LIB)
+	@$(LD) -o $@ $(LINKSCRPT) $(NL_CRT) $< $(NL_LIBS) $(OCR_LIB) $(APP_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
 %.o : %.c
