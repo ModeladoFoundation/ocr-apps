@@ -13,7 +13,7 @@ than one of these.
 
 Also note that first, newlib must be built and installed for the appropriate
 architecture.
-Build newlib for 'tg' for libcxx 'tg', and 'x86_clang' for libcxx 'x86'
+Build newlib for 'tg' for libcxx 'tg', and 'x86' for libcxx 'x86'
 =====================
 To build for either architecture:
 
