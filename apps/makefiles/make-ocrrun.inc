@@ -111,12 +111,7 @@ install_internal: preinstall | $(WORKLOAD_INSTALL)
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 ifeq ($(RUN_JENKINS), buildApp)
 ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
-	# Viz tool currently requires COUNTED_MAP guid provider (see issue #670)
-ifeq ($(ENABLE_VISUALIZER), yes)
-	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS) --guid $(COUNTED_MAP)
-else
-	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS)
-endif # Enable Visualizer
+	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --guid COUNTED_MAP --target $(COMM_LAYER) $(CONFIG_FLAGS)
 endif # OCR_CONFIG
 endif # RUN_JENKINS
 
@@ -150,12 +145,7 @@ else
 debug_post_prerun: install
 run_internal: install debug_post_prerun
 ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
-# Viz tool currently requires COUNTED_MAP guid provider (see issue #670)
-ifeq ($(ENABLE_VISUALIZER), yes)
-	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS) --guid $(COUNTED_MAP)
-else
-	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) $(CONFIG_FLAGS)
-endif # ENABLE_VISUALIZER
+	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --guid COUNTED_MAP --target $(COMM_LAYER) $(CONFIG_FLAGS)
 endif # OCR_CONFIG
 endif # RUN_JENKINS
 ifeq ($(HOSTNAME), bar1)
