@@ -22,13 +22,13 @@ ifndef XSTACK_ROOT
     $(error Please define XSTACK_ROOT or APPS_ROOT)
   endif #APPS_ROOT
 else  #XSTACK_ROOT
-  OCR_INSTALL_ROOT ?= $(XSTACK_ROOT)/ocr/install/$(OCR_TYPE)
+  OCR_INSTALL_ROOT ?= $(XSTACK_ROOT)/ocr/install
   UCNC_ROOT        ?= $(XSTACK_ROOT)/hll/cnc
   APPS_ROOT        ?= $(XSTACK_ROOT)/apps
 endif #XSTACK_ROOT
 
-OCR_ROOT   ?= $(shell dirname `dirname $(OCR_INSTALL_ROOT)`)
-OCR_AR     ?= $(OCR_INSTALL_ROOT)/lib/{% block libocr %}libocr.a{% endblock %}
+OCR_ROOT   ?= $(shell dirname $(OCR_INSTALL_ROOT))
+OCR_AR     ?= $(OCR_INSTALL_ROOT)/$(OCR_TYPE)/lib/{% block libocr %}libocr.a{% endblock %}
 
 
 #################################################
@@ -44,11 +44,11 @@ WORKLOAD_ARGS ?=
 WORKLOAD_INPUT_FILE_IDX ?= 0
 {% endblock env_setup_post %}
 
-{% block xtra_incs %}-I$(OCR_INSTALL_ROOT)/include{% endblock %}
+{% block xtra_incs %}-I$(OCR_INSTALL_ROOT)/$(OCR_TYPE)/include{% endblock %}
 
 {% block xtra_srcs -%}
-SRCS += $(patsubst %,$(CNC_SUPPORT_DIR)/%.c,cncocr cnc_common cncocr_itemcoll)
-SRCS += $(patsubst %,$(CNC_SUPPORT_DIR)/{{g.name}}_%_ops.c,step item graph)
+SRCS += $(patsubst %,$(CNC_SUPPORT_BASE)/%.c,cncocr cnc_common cncocr_itemcoll)
+SRCS += $(patsubst %,$(CNC_SUPPORT_BASE)/{{g.name}}_%_ops.c,step item graph)
 {% endblock xtra_srcs %}
 
 {% block xtra_o_deps %}| $(OCR_AR){% endblock %}
@@ -61,6 +61,7 @@ SRCS += $(patsubst %,$(CNC_SUPPORT_DIR)/{{g.name}}_%_ops.c,step item graph)
 # build the ocr runtime (if needed)
 $(OCR_AR):
 	@echo OCR_ROOT=$(OCR_ROOT)
+	@echo OCR_INSTALL_ROOT=$(OCR_INSTALL_ROOT)
 	@[ -f "$(OCR_ROOT)/ocr.dox" ] \
 		|| (echo "ERROR: Can't build OCR runtime (can't find OCR build directory)" && exit 1)
 	OCR_TYPE=$(OCR_TYPE) make -C $(OCR_ROOT) install
