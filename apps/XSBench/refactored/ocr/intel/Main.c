@@ -812,7 +812,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     _idep = 0;
     ocrAddDependence( PTR_globalH->DBK_InputsH, TS_timer.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( PTR_globalH->DBK_timers, TS_timer.EDT, _idep++, DB_MODE_ITW );
+    ocrAddDependence( PTR_globalH->DBK_timers, TS_timer.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( TS_globalComputeSpawner_OET, TS_timer.EDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;

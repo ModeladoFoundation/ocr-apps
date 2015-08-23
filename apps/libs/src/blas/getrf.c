@@ -169,9 +169,9 @@ void NAME(getrf) (
     ADD_DEPENDENCE(getrfThunkOutputEvent, getrfWrapupEdt, NAME(getrf_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dbMat,                getrfThunkEdt, NAME(getrf_thunkDeps_t), dbMat,      ITW);
-    ADD_DEPENDENCE(dbPivotIdx,           getrfThunkEdt, NAME(getrf_thunkDeps_t), dbPivotIdx, ITW);
-    ADD_DEPENDENCE(dbInfo,               getrfThunkEdt, NAME(getrf_thunkDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(dbMat,                getrfThunkEdt, NAME(getrf_thunkDeps_t), dbMat,      RW);
+    ADD_DEPENDENCE(dbPivotIdx,           getrfThunkEdt, NAME(getrf_thunkDeps_t), dbPivotIdx, RW);
+    ADD_DEPENDENCE(dbInfo,               getrfThunkEdt, NAME(getrf_thunkDeps_t), dbInfo,     RW);
     printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the GETRF operation.\n", STRINGIFY(NAME(getrf))); fflush(stdout);
 
 } // ?getrf
@@ -211,7 +211,7 @@ static ocrGuid_t NAME(getrf_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEd
 // Add the dependences to the top level EDT.
     ADD_DEPENDENCE(thunkDeps->dbMat.guid,      getrfEdt, NAME(getrf_edtDeps_t), dbMat,           RO);
     ADD_DEPENDENCE(thunkDeps->dbPivotIdx.guid, getrfEdt, NAME(getrf_edtDeps_t), dbPivotIdx,      RO);
-    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     getrfEdt, NAME(getrf_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     getrfEdt, NAME(getrf_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,                  getrfEdt, NAME(getrf_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(getrf_thunkTask))); fflush(stdout);
@@ -282,9 +282,9 @@ ocrGuid_t NAME(getrf_task) (           // Spawnable externally, or spawned by th
     ocrEdtCreate(&getrfWorkerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&workerParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
 // Add the dependences to the worker.
-    ADD_DEPENDENCE(gMat,                 getrfWorkerEdt, NAME(getrf_workerDeps_t), dbMat,      ITW);
-    ADD_DEPENDENCE(gPivotIdx,            getrfWorkerEdt, NAME(getrf_workerDeps_t), dbPivotIdx, ITW);
-    ADD_DEPENDENCE(gInfo,                getrfWorkerEdt, NAME(getrf_workerDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(gMat,                 getrfWorkerEdt, NAME(getrf_workerDeps_t), dbMat,      RW);
+    ADD_DEPENDENCE(gPivotIdx,            getrfWorkerEdt, NAME(getrf_workerDeps_t), dbPivotIdx, RW);
+    ADD_DEPENDENCE(gInfo,                getrfWorkerEdt, NAME(getrf_workerDeps_t), dbInfo,     RW);
     ADD_DEPENDENCE(NULL_GUID,            getrfWorkerEdt, NAME(getrf_workerDeps_t), trigger,    RO);
     printf ("        %s exiting\n", STRINGIFY(NAME(getrf_task))); fflush(stdout);
     return NULL_GUID;
@@ -387,9 +387,9 @@ static ocrGuid_t NAME(getrf_workerTask) (    // This EDT performs one iteration 
                 ocrEdtCreate(&childWorkerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&childParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
                 // Add the dependences to the worker and TRSM, in reverse order.
-                ADD_DEPENDENCE(gMat,      childWorkerEdt, NAME(getrf_workerDeps_t), dbMat,      ITW);
-                ADD_DEPENDENCE(gPivotIdx, childWorkerEdt, NAME(getrf_workerDeps_t), dbPivotIdx, ITW);
-                ADD_DEPENDENCE(gInfo,     childWorkerEdt, NAME(getrf_workerDeps_t), dbInfo,     ITW);
+                ADD_DEPENDENCE(gMat,      childWorkerEdt, NAME(getrf_workerDeps_t), dbMat,      RW);
+                ADD_DEPENDENCE(gPivotIdx, childWorkerEdt, NAME(getrf_workerDeps_t), dbPivotIdx, RW);
+                ADD_DEPENDENCE(gInfo,     childWorkerEdt, NAME(getrf_workerDeps_t), dbInfo,     RW);
                 ADD_DEPENDENCE(LLNU_done, childWorkerEdt, NAME(getrf_workerDeps_t), trigger,    RO);
 
                 ADD_DEPENDENCE(gMat,      LLNUtrsmEdt, NAME(trsm_edtDeps_t), dba,             RO);
@@ -442,16 +442,16 @@ static ocrGuid_t NAME(getrf_workerTask) (    // This EDT performs one iteration 
                         ocrEdtCreate(&childWorkerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&childParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
                         // Add the dependences to the worker.
-                        ADD_DEPENDENCE(gMat,                 childWorkerEdt, NAME(getrf_workerDeps_t), dbMat,      ITW);
-                        ADD_DEPENDENCE(gPivotIdx,            childWorkerEdt, NAME(getrf_workerDeps_t), dbPivotIdx, ITW);
-                        ADD_DEPENDENCE(gInfo,                childWorkerEdt, NAME(getrf_workerDeps_t), dbInfo,     ITW);
+                        ADD_DEPENDENCE(gMat,                 childWorkerEdt, NAME(getrf_workerDeps_t), dbMat,      RW);
+                        ADD_DEPENDENCE(gPivotIdx,            childWorkerEdt, NAME(getrf_workerDeps_t), dbPivotIdx, RW);
+                        ADD_DEPENDENCE(gInfo,                childWorkerEdt, NAME(getrf_workerDeps_t), dbInfo,     RW);
                         ADD_DEPENDENCE(gemmDone,             childWorkerEdt, NAME(getrf_workerDeps_t), trigger,    RO);
                     }
 
 
                     ADD_DEPENDENCE(myDeps->dbMat.guid, gemmEdt, NAME(gemm_edtDeps_t), dba, RO);
                     ADD_DEPENDENCE(myDeps->dbMat.guid, gemmEdt, NAME(gemm_edtDeps_t), dbb, RO);
-                    ADD_DEPENDENCE(myDeps->dbMat.guid, gemmEdt, NAME(gemm_edtDeps_t), dbc, ITW);
+                    ADD_DEPENDENCE(myDeps->dbMat.guid, gemmEdt, NAME(gemm_edtDeps_t), dbc, RW);
                     ADD_DEPENDENCE(NULL_GUID,          gemmEdt, NAME(gemm_edtDeps_t), optionalTrigger, RO);
 
                     printf ("        %s exiting (STEP 2)\n", STRINGIFY(NAME(getrf_workerTask))); fflush(stdout);

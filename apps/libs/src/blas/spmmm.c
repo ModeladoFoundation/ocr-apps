@@ -775,13 +775,13 @@ static ocrGuid_t NAME(spmmmThunk_task) (  // Top-level EDT of the spmmmm OCR top
     ADD_DEPENDENCE(factorA_doneEvent,         doFullMatMul_edt, NAME(spmmm_doFullMatMul_deps_t), serializationTrigger1, RO);
     ADD_DEPENDENCE(factorB_doneEvent,         doFullMatMul_edt, NAME(spmmm_doFullMatMul_deps_t), serializationTrigger2, RO);
 
-    ADD_DEPENDENCE(tileCatalogOfB,            factorB_edt,      NAME(spmmm_factorInput_deps_t),  tileCatalog,          ITW);
+    ADD_DEPENDENCE(tileCatalogOfB,            factorB_edt,      NAME(spmmm_factorInput_deps_t),  tileCatalog,          RW);
 #ifdef SERIALIZEFORDEBUGGING
     ADD_DEPENDENCE(NULL_GUID,                 factorB_edt,      NAME(spmmm_factorInput_deps_t),  serializationTrigger,  RO);
 #else
     ADD_DEPENDENCE(factorA_doneEvent,         factorB_edt,      NAME(spmmm_factorInput_deps_t),  serializationTrigger,  RO);
 #endif
-    ADD_DEPENDENCE(tileCatalogOfA,            factorA_edt,      NAME(spmmm_factorInput_deps_t),  tileCatalog,          ITW);
+    ADD_DEPENDENCE(tileCatalogOfA,            factorA_edt,      NAME(spmmm_factorInput_deps_t),  tileCatalog,          RW);
     ADD_DEPENDENCE(NULL_GUID,                 factorA_edt,      NAME(spmmm_factorInput_deps_t),  serializationTrigger,  RO);
 
 
@@ -825,14 +825,14 @@ static ocrGuid_t NAME(spmmm_factorInput_task) (  // One EDT created for factorin
         myParams->firstRowNum += myParams->numStripsToAssay;
         ocrEdtCreate (&lowerStrips_edt, factorInput_template, EDT_PARAM_DEF, ((u64 *) (myParams)), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
-        ADD_DEPENDENCE(gTileCatalog,          lowerStrips_edt, NAME(spmmm_factorInput_deps_t), tileCatalog, ITW);
-        ADD_DEPENDENCE(gTileCatalog,          upperStrips_edt, NAME(spmmm_factorInput_deps_t), tileCatalog, ITW);
+        ADD_DEPENDENCE(gTileCatalog,          lowerStrips_edt, NAME(spmmm_factorInput_deps_t), tileCatalog, RW);
+        ADD_DEPENDENCE(gTileCatalog,          upperStrips_edt, NAME(spmmm_factorInput_deps_t), tileCatalog, RW);
 #ifdef SERIALIZEFORDEBUGGING
-        ADD_DEPENDENCE(upperStrips_doneEvent, lowerStrips_edt, NAME(spmmm_factorInput_deps_t), serializationTrigger, ITW);
+        ADD_DEPENDENCE(upperStrips_doneEvent, lowerStrips_edt, NAME(spmmm_factorInput_deps_t), serializationTrigger, RW);
 #else
-        ADD_DEPENDENCE(NULL_GUID,             lowerStrips_edt, NAME(spmmm_factorInput_deps_t), serializationTrigger, ITW);
+        ADD_DEPENDENCE(NULL_GUID,             lowerStrips_edt, NAME(spmmm_factorInput_deps_t), serializationTrigger, RW);
 #endif
-        ADD_DEPENDENCE(NULL_GUID,             upperStrips_edt, NAME(spmmm_factorInput_deps_t), serializationTrigger, ITW);
+        ADD_DEPENDENCE(NULL_GUID,             upperStrips_edt, NAME(spmmm_factorInput_deps_t), serializationTrigger, RW);
     } else {
 // This EDT's workload is single full-width strip.  Start the factoring process.
 
@@ -913,12 +913,12 @@ static ocrGuid_t NAME(spmmm_factorInput_task) (  // One EDT created for factorin
         ocrEdtCreate (&populateCRSTiles_edt, populateCRSTiles_template, EDT_PARAM_DEF, ((u64 *) (myParams)), numberOfDependences, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
         for (i = 0; i < numTilesAcross; i++) {
-            ADD_DEPENDENCE(pTileCatalog[i].tileCRS, populateCRSTiles_edt, NAME(spmmm_populateCRSTiles_deps_t), tile[i],  ITW);
+            ADD_DEPENDENCE(pTileCatalog[i].tileCRS, populateCRSTiles_edt, NAME(spmmm_populateCRSTiles_deps_t), tile[i],  RW);
         }
         // Above, we have given EDT its dependences for the CRS tile datablocks.  Now release the catalog, and give that to the EDT too, so that it can use it to assay CCS tiles and then catalog their guids.
         ocrGuid_t gTileCatalog = myDeps->tileCatalog.guid;  // Datablock for collecting tile assay information, and then for recording GUID of datablocks containing tiles.
         ocrDbRelease(gTileCatalog);
-        ADD_DEPENDENCE(gTileCatalog, populateCRSTiles_edt, NAME(spmmm_populateCRSTiles_deps_t), tileCatalog, ITW);
+        ADD_DEPENDENCE(gTileCatalog, populateCRSTiles_edt, NAME(spmmm_populateCRSTiles_deps_t), tileCatalog, RW);
     }
 
     //printf ("        %s function exiting.\n", STRINGIFY(NAME(spmmm_factorInput_task))); fflush(stdout);
@@ -1035,9 +1035,9 @@ static ocrGuid_t NAME(spmmm_populateCRSTiles_task) ( //  Populate the CRS tiles 
         ocrGuid_t assayCCSTile_edt;
         myParams->firstCol = i;
         ocrEdtCreate (&assayCCSTile_edt, assayCCSTile_template, EDT_PARAM_DEF, ((u64 *) (myParams)), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
-        ADD_DEPENDENCE(gTileCatalog,  assayCCSTile_edt, NAME(spmmm_assayCCSTile_deps_t), tileCatalog, ITW);
+        ADD_DEPENDENCE(gTileCatalog,  assayCCSTile_edt, NAME(spmmm_assayCCSTile_deps_t), tileCatalog, RW);
         ADD_DEPENDENCE(ptile[i].guid, assayCCSTile_edt, NAME(spmmm_assayCCSTile_deps_t), tileCRS,      RO);
-        ADD_DEPENDENCE(colIdxIdx,     assayCCSTile_edt, NAME(spmmm_assayCCSTile_deps_t), colIdxIdx,   ITW);
+        ADD_DEPENDENCE(colIdxIdx,     assayCCSTile_edt, NAME(spmmm_assayCCSTile_deps_t), colIdxIdx,   RW);
     }
 
     //printf ("        %s function exiting.\n", STRINGIFY(NAME(spmmm_populateCRSTiles_task))); fflush(stdout);
@@ -1151,9 +1151,9 @@ static ocrGuid_t NAME(spmmm_assayCCSTile_task) ( //  Assay the storage needs for
     ocrGuid_t populateCCSTile_edt;
     myParams->assayCCS = assayCCS;
     ocrEdtCreate (&populateCCSTile_edt, populateCCSTile_template, EDT_PARAM_DEF, ((u64 *) (myParams)), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
-    ADD_DEPENDENCE(gTileCatalog,        populateCCSTile_edt, NAME(spmmm_populateCCSTile_deps_t), tileCatalog, ITW);
+    ADD_DEPENDENCE(gTileCatalog,        populateCCSTile_edt, NAME(spmmm_populateCCSTile_deps_t), tileCatalog, RW);
     ADD_DEPENDENCE(gTileCRS,            populateCCSTile_edt, NAME(spmmm_populateCCSTile_deps_t), tileCRS,      RO);
-    ADD_DEPENDENCE(gColIdxIdx,          populateCCSTile_edt, NAME(spmmm_populateCCSTile_deps_t), colIdxIdx,   ITW);
+    ADD_DEPENDENCE(gColIdxIdx,          populateCCSTile_edt, NAME(spmmm_populateCCSTile_deps_t), colIdxIdx,   RW);
     ADD_DEPENDENCE(pTileDescr->tileCCS, populateCCSTile_edt, NAME(spmmm_populateCCSTile_deps_t), tileCCS,      RO);
 
     //printf ("        %s function exiting.\n", STRINGIFY(NAME(spmmm_assayCCSTile_task))); fflush(stdout);
@@ -1410,7 +1410,7 @@ static ocrGuid_t NAME(spmmm_doStripOfC_task) (  // Drive full matrix multiply ac
 
     ADD_DEPENDENCE(leftMosaic_datablock,  collateIntoOutput_edt, NAME(spmmm_collateIntoOutput_deps_t), mosaicCRSofC_0,        RO);
     ADD_DEPENDENCE(rightMosaic_datablock, collateIntoOutput_edt, NAME(spmmm_collateIntoOutput_deps_t), mosaicCRSofC_1,        RO);
-    ADD_DEPENDENCE(statisticsForStripOfC, collateIntoOutput_edt, NAME(spmmm_collateIntoOutput_deps_t), statisticsForStripOfC, ITW);
+    ADD_DEPENDENCE(statisticsForStripOfC, collateIntoOutput_edt, NAME(spmmm_collateIntoOutput_deps_t), statisticsForStripOfC, RW);
 
     ADD_DEPENDENCE(gTileCatalogOfA,       rightMosaic_edt,       NAME(spmmm_doTileOrMosaicOfC_deps_t), tileCatalogOfA,        RO);
     ADD_DEPENDENCE(gTileCatalogOfB,       rightMosaic_edt,       NAME(spmmm_doTileOrMosaicOfC_deps_t), tileCatalogOfB,        RO);
@@ -1669,7 +1669,7 @@ static ocrGuid_t NAME(spmmm_doTileOfAxB_1_task) (   // Do step1 (storage allocat
         ocrEdtCreate (&doTileOfAxB_2_edt, doTileOfAxB_2_template, EDT_PARAM_DEF, ((u64 *) myParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &resultAccTileCRSofC);
         ADD_DEPENDENCE(gTileMetaCRSofA, doTileOfAxB_2_edt, NAME(spmmm_doTileOfAxB_2_deps_t), tileCRSofA,   RO);
         ADD_DEPENDENCE(gTileMetaCCSofB, doTileOfAxB_2_edt, NAME(spmmm_doTileOfAxB_2_deps_t), tileCCSofB,   RO);
-        ADD_DEPENDENCE(thisTileOfAxB,   doTileOfAxB_2_edt, NAME(spmmm_doTileOfAxB_2_deps_t), tileCRSofAxB, ITW);
+        ADD_DEPENDENCE(thisTileOfAxB,   doTileOfAxB_2_edt, NAME(spmmm_doTileOfAxB_2_deps_t), tileCRSofAxB, RW);
     } else {
         resultAccTileCRSofC = NULL_GUID;
     }
@@ -1834,7 +1834,7 @@ static ocrGuid_t NAME(spmmm_collateMosaic_prelude_task) ( // Preamble for collat
     ocrEdtCreate (&collateMosaic_edt, collateMosaic_template, EDT_PARAM_DEF, ((u64 *) myParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &gNewAcc);
     ADD_DEPENDENCE(gCRS0,    collateMosaic_edt, NAME(spmmm_collateMosaic_deps_t), mosaicCRSofC_0, RO);
     ADD_DEPENDENCE(gCRS1,    collateMosaic_edt, NAME(spmmm_collateMosaic_deps_t), mosaicCRSofC_1, RO);
-    ADD_DEPENDENCE(dbNewAcc, collateMosaic_edt, NAME(spmmm_collateMosaic_deps_t), newAcc,         ITW);
+    ADD_DEPENDENCE(dbNewAcc, collateMosaic_edt, NAME(spmmm_collateMosaic_deps_t), newAcc,         RW);
     //printf ("        %s function exiting.\n", STRINGIFY(NAME(spmmm_collateMosaic_prelude_task))); fflush(stdout);
     return gNewAcc;
 } // ?spmmm_collateMosaic_prelude_task

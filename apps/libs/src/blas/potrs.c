@@ -149,9 +149,9 @@ void NAME(potrs) (                // Compute solution to a system of linear equa
     ADD_DEPENDENCE(potrsThunkOutputEvent, potrsWrapupEdt, NAME(potrs_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dba,                   potrsThunkEdt, NAME(potrs_thunkDeps_t), dba,        ITW);
-    ADD_DEPENDENCE(dbb,                   potrsThunkEdt, NAME(potrs_thunkDeps_t), dbb,        ITW);
-    ADD_DEPENDENCE(dbInfo,                potrsThunkEdt, NAME(potrs_thunkDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(dba,                   potrsThunkEdt, NAME(potrs_thunkDeps_t), dba,        RW);
+    ADD_DEPENDENCE(dbb,                   potrsThunkEdt, NAME(potrs_thunkDeps_t), dbb,        RW);
+    ADD_DEPENDENCE(dbInfo,                potrsThunkEdt, NAME(potrs_thunkDeps_t), dbInfo,     RW);
     printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the POTRS operation.\n", STRINGIFY(NAME(potrs))); fflush(stdout);
 
 } // ?potrs
@@ -203,7 +203,7 @@ static ocrGuid_t NAME(potrs_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEd
 // Add the dependences to the top level EDT.
     ADD_DEPENDENCE(thunkDeps->dba.guid,        potrsEdt, NAME(potrs_edtDeps_t), dba,             RO);
     ADD_DEPENDENCE(thunkDeps->dbb.guid,        potrsEdt, NAME(potrs_edtDeps_t), dbb,             RO);
-    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     potrsEdt, NAME(potrs_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     potrsEdt, NAME(potrs_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,                  potrsEdt, NAME(potrs_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(potrs_thunkTask))); fflush(stdout);

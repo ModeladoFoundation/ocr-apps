@@ -233,8 +233,8 @@ void NAME(trsm) (
     ADD_DEPENDENCE(trsmThunkOutputEvent, trsmWrapupEdt, NAME(trsm_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dba,                  trsmThunkEdt, NAME(trsm_thunkDeps_t), dba,        ITW);
-    ADD_DEPENDENCE(dbb,                  trsmThunkEdt, NAME(trsm_thunkDeps_t), dbb,        ITW);
+    ADD_DEPENDENCE(dba,                  trsmThunkEdt, NAME(trsm_thunkDeps_t), dba,        RW);
+    ADD_DEPENDENCE(dbb,                  trsmThunkEdt, NAME(trsm_thunkDeps_t), dbb,        RW);
     printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the GETRS operation.\n", STRINGIFY(NAME(trsm))); fflush(stdout);
 
 } // ?trsm
@@ -292,7 +292,7 @@ static ocrGuid_t NAME(trsm_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEdt
 
 // Add the dependences to the top level EDT.
     ADD_DEPENDENCE(thunkDeps->dba.guid,        trsmEdt, NAME(trsm_edtDeps_t), dba,             RO);
-    ADD_DEPENDENCE(thunkDeps->dbb.guid,        trsmEdt, NAME(trsm_edtDeps_t), dbb,             ITW);
+    ADD_DEPENDENCE(thunkDeps->dbb.guid,        trsmEdt, NAME(trsm_edtDeps_t), dbb,             RW);
     ADD_DEPENDENCE(NULL_GUID,                  trsmEdt, NAME(trsm_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(trsm_thunkTask))); fflush(stdout);
@@ -381,11 +381,11 @@ ocrGuid_t NAME(trsm_task) (            // Spawnable externally.  Spawn the top l
 
     ADD_DEPENDENCE(workerTreeOutputEvent, depostureA, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb,   RO);
     ADD_DEPENDENCE(posturedA,             depostureA, ocrPosture3dSubblockOutwardDeps_t, postured,             RO);
-    ADD_DEPENDENCE(myDeps->dba.guid,      depostureA, ocrPosture3dSubblockOutwardDeps_t, backingStore,         ITW);
+    ADD_DEPENDENCE(myDeps->dba.guid,      depostureA, ocrPosture3dSubblockOutwardDeps_t, backingStore,         RW);
     ADD_DEPENDENCE(NULL_GUID,             depostureA, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 
     ADD_DEPENDENCE(posturedA,             childEdt,   NAME(trsm_workerDeps_t),           dbPosturedA,          RO);
-    ADD_DEPENDENCE(myDeps->dbb.guid,      childEdt,   NAME(trsm_workerDeps_t),           dbb,                  ITW);
+    ADD_DEPENDENCE(myDeps->dbb.guid,      childEdt,   NAME(trsm_workerDeps_t),           dbb,                  RW);
     ADD_DEPENDENCE(NULL_GUID,             childEdt,   NAME(trsm_workerDeps_t),           optionalTrigger,      RO);
 
     ADD_DEPENDENCE(myDeps->dba.guid,      postureA,   ocrPosture3dSubblockInwardDeps_t,  backingStore,         RO);
@@ -532,7 +532,7 @@ ocrGuid_t NAME(trsm_workerTask) (            // Either perform the operation on 
             for (i--; i > 0; i--) {
                 // Add the dependences, in reverse order.
                 ADD_DEPENDENCE(gMatA,                   trsmEdt[i], NAME(trsm_workerDeps_t), dbPosturedA,     RO);
-                ADD_DEPENDENCE(gMatB,                   trsmEdt[i], NAME(trsm_workerDeps_t), dbb,             ITW);
+                ADD_DEPENDENCE(gMatB,                   trsmEdt[i], NAME(trsm_workerDeps_t), dbb,             RW);
 #if defined(TRAVERSE_TOPOLOGY_DEPTH_FIRST)
                 ADD_DEPENDENCE(serializationEvent[i-1], trsmEdt[i], NAME(trsm_workerDeps_t), optionalTrigger, RO);
 #else
@@ -540,7 +540,7 @@ ocrGuid_t NAME(trsm_workerTask) (            // Either perform the operation on 
 #endif
             }
             ADD_DEPENDENCE(gMatA,     trsmEdt[0], NAME(trsm_workerDeps_t), dbPosturedA,     RO);
-            ADD_DEPENDENCE(gMatB,     trsmEdt[0], NAME(trsm_workerDeps_t), dbb,             ITW);
+            ADD_DEPENDENCE(gMatB,     trsmEdt[0], NAME(trsm_workerDeps_t), dbb,             RW);
             ADD_DEPENDENCE(NULL_GUID, trsmEdt[0], NAME(trsm_workerDeps_t), optionalTrigger, RO);
             return NULL_GUID;  // All children spawned.  This worker is done.
         }

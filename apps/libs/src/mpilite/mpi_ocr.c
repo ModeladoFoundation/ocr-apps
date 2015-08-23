@@ -441,9 +441,9 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             // argcArgvDB: will only be read by ranks
             ocrAddDependence(argcArgvDB->guid, ranks[rank], 0, DB_MODE_RO);
 
-            ocrAddDependence(messgeEventsDB, ranks[rank], 0, DB_MODE_ITW);
+            ocrAddDependence(messgeEventsDB, ranks[rank], 0, DB_MODE_RW);
 
-            ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_ITW);
+            ocrAddDependence(messageDataDB, ranks[rank], 0, DB_MODE_RW);
         }
 #endif
 

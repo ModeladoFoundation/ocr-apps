@@ -161,8 +161,8 @@ void NAME(potrf) (
     ADD_DEPENDENCE(potrfThunkOutputEvent, potrfWrapupEdt, NAME(potrf_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dbMat,                potrfThunkEdt, NAME(potrf_thunkDeps_t), dbMat,      ITW);
-    ADD_DEPENDENCE(dbInfo,               potrfThunkEdt, NAME(potrf_thunkDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(dbMat,                potrfThunkEdt, NAME(potrf_thunkDeps_t), dbMat,      RW);
+    ADD_DEPENDENCE(dbInfo,               potrfThunkEdt, NAME(potrf_thunkDeps_t), dbInfo,     RW);
     printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the POTRF operation.\n", STRINGIFY(NAME(potrf))); fflush(stdout);
 
 } // ?potrf
@@ -201,7 +201,7 @@ static ocrGuid_t NAME(potrf_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEd
 
 // Add the dependences to the top level EDT.
     ADD_DEPENDENCE(thunkDeps->dbMat.guid,      potrfEdt, NAME(potrf_edtDeps_t), dbMat,           RO);
-    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     potrfEdt, NAME(potrf_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     potrfEdt, NAME(potrf_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,                  potrfEdt, NAME(potrf_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(potrf_thunkTask))); fflush(stdout);
@@ -273,8 +273,8 @@ pMat_glbl = pMat;
     ocrEdtCreate(&potrfWorkerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&workerParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
 // Add the dependences to the worker.
-    ADD_DEPENDENCE(gMat,                 potrfWorkerEdt, NAME(potrf_workerDeps_t), dbMat,      ITW);
-    ADD_DEPENDENCE(gInfo,                potrfWorkerEdt, NAME(potrf_workerDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(gMat,                 potrfWorkerEdt, NAME(potrf_workerDeps_t), dbMat,      RW);
+    ADD_DEPENDENCE(gInfo,                potrfWorkerEdt, NAME(potrf_workerDeps_t), dbInfo,     RW);
     ADD_DEPENDENCE(NULL_GUID,            potrfWorkerEdt, NAME(potrf_workerDeps_t), trigger,    RO);
     //printf ("        %s exiting\n", STRINGIFY(NAME(potrf_task))); fflush(stdout);
     return NULL_GUID;
@@ -399,8 +399,8 @@ static ocrGuid_t NAME(potrf_workerTask_upperTriangle) ( // This EDT performs one
                 ocrEdtCreate(&childWorkerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&childParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
                 // Add the dependences to the worker and TRSM and GEMM, in reverse order.
-                ADD_DEPENDENCE(gMat,      childWorkerEdt, NAME(potrf_workerDeps_t), dbMat,      ITW);
-                ADD_DEPENDENCE(gInfo,     childWorkerEdt, NAME(potrf_workerDeps_t), dbInfo,     ITW);
+                ADD_DEPENDENCE(gMat,      childWorkerEdt, NAME(potrf_workerDeps_t), dbMat,      RW);
+                ADD_DEPENDENCE(gInfo,     childWorkerEdt, NAME(potrf_workerDeps_t), dbInfo,     RW);
                 ADD_DEPENDENCE(LUTN_done, childWorkerEdt, NAME(potrf_workerDeps_t), trigger,    RO);
 
                 ADD_DEPENDENCE(gMat,      LUTNtrsmEdt, NAME(trsm_edtDeps_t), dba,             RO);
@@ -409,7 +409,7 @@ static ocrGuid_t NAME(potrf_workerTask_upperTriangle) ( // This EDT performs one
 
                 ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dba,             RO);
                 ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dbb,             RO);
-                ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dbc,             ITW);
+                ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dbc,             RW);
                 ADD_DEPENDENCE(NULL_GUID, gemmEdt, NAME(gemm_edtDeps_t), optionalTrigger, RO);
 
                 //printf ("        %s exiting (Step 1)\n", STRINGIFY(NAME(potrf_workerTask_upperTriangle))); fflush(stdout);
@@ -546,8 +546,8 @@ static ocrGuid_t NAME(potrf_workerTask_lowerTriangle) ( // This EDT performs one
                 ocrEdtCreate(&childWorkerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&childParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, NULL);
 
                 // Add the dependences to the worker and TRSM and GEMM, in reverse order.
-                ADD_DEPENDENCE(gMat,      childWorkerEdt, NAME(potrf_workerDeps_t), dbMat,      ITW);
-                ADD_DEPENDENCE(gInfo,     childWorkerEdt, NAME(potrf_workerDeps_t), dbInfo,     ITW);
+                ADD_DEPENDENCE(gMat,      childWorkerEdt, NAME(potrf_workerDeps_t), dbMat,      RW);
+                ADD_DEPENDENCE(gInfo,     childWorkerEdt, NAME(potrf_workerDeps_t), dbInfo,     RW);
                 ADD_DEPENDENCE(RLTN_done, childWorkerEdt, NAME(potrf_workerDeps_t), trigger,    RO);
 
                 ADD_DEPENDENCE(gMat,      RLTNtrsmEdt, NAME(trsm_edtDeps_t), dba,             RO);
@@ -556,7 +556,7 @@ static ocrGuid_t NAME(potrf_workerTask_lowerTriangle) ( // This EDT performs one
 
                 ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dba,             RO);
                 ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dbb,             RO);
-                ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dbc,             ITW);
+                ADD_DEPENDENCE(gMat,      gemmEdt, NAME(gemm_edtDeps_t), dbc,             RW);
                 ADD_DEPENDENCE(NULL_GUID, gemmEdt, NAME(gemm_edtDeps_t), optionalTrigger, RO);
 
                 //printf ("        %s exiting (Step 1)\n", STRINGIFY(NAME(potrf_workerTask_lowerTriangle))); fflush(stdout);
