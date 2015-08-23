@@ -15,13 +15,9 @@
 #define THRESHOLD 150//0
 
 
-//ocrHint_t app_type_hint_2;
 
 ocrGuid_t wrap_task_2 ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-/*    if(instances==0)
-        instances++;
-    else    
-*/        ocrShutdown();
+        ocrShutdown();
 }
 
 ocrGuid_t spawn_and_mem_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
@@ -111,25 +107,10 @@ ocrGuid_t spawn_and_mem_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
     return NULL_GUID;
 }
 
-//Just setting priority might not be very helpful
-//We can just do appTurn, since it's easier
-//Or progress rate?
-//What is the information that gets passed?
-//App sends information on lack of progress rate?
-//Runtime responds by re-adjusting?
-//The app itself can't calculate the lack of progress.
-//The app can provide information on every iteration or timestep finishing
-//The runtime can store this information, use previous timestep/expected timestep value to estimate if resources need to be increased, in order to allow for faster cleaning
-//
-//
 ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     PRINTF("\nStarted Analytics");
     u64 app_tag = 2;
 
-/* 
-    ocrHintInit(&app_type_hint_2, OCR_HINT_EDT_T);
-    ocrSetHintValue(&app_type_hint_2, OCR_HINT_EDT_APP_TYPE, 1);
-*/
     u64 func_args[2];
     func_args[0] = 0;
 
@@ -143,22 +124,12 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     func_args[1] = wrapEdtGuid;
 
-    //ocrGuid_t event_guid[THRESHOLD];
-    /*
-    u64 i;
-    for(i=0;i<THRESHOLD;i++){
-        ocrEventCreate(&(event_guid[i]), OCR_EVENT_STICKY_T, TRUE);
-        ocrAddDependence(event_guid[i], wrapEdtGuid, i, DB_MODE_ITW);
-	func_args[i+1] = event_guid[i];
-    }
-*/
     ocrGuid_t templateMemSpawner;
     ocrEdtTemplateCreate(&templateMemSpawner, spawn_and_mem_task, 2, 1);
    
     ocrGuid_t memoryEdtGuid; 
     ocrEdtCreate(&memoryEdtGuid, templateMemSpawner, 2, func_args, 1, NULL, PROPERTIES, affinity, NULL);
 
-//    ocrSetHint(memoryEdtGuid, &app_type_hint_2);
 
     ocrGuid_t depv_guid;
     void* db;
