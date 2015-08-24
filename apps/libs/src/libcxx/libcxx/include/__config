@@ -229,6 +229,10 @@
 #define _LIBCPP_ALTERNATE_STRING_LAYOUT
 #endif
 
+#if defined(__XSTG__)
+#define _LIBCPP_HAS_NO_THREADS
+#endif
+
 #if __has_feature(cxx_alignas)
 #  define _ALIGNAS_TYPE(x) alignas(x)
 #  define _ALIGNAS(x) alignas(x)
