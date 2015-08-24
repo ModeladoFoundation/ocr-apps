@@ -313,35 +313,35 @@ tgkrnl.dbg: | $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
 .PHONY: tgkrnl
 tgkrnl: | $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl
 
-#ifeq ($(RUN_JENKINS), run)
-#tgkrnl.dbg: ;
-#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: ;
-#else ifeq ($(RUN_JENKINS), build)
-#
-#
-#.ONESHELL:
-#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
-#| $(WORKLOAD_BUILD)/build.tgkrnl
-#	@echo "#### BUILDING RMDKRNL FROM $(TG_ROOT) ####"
-#	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
-#	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
-#	$(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
-#else
-#
-#.ONESHELL:
-#tgkrnl.dbg: $(TG_ROOT)/build/build.tgkrnl/make-me.make | $(WORKLOAD_BUILD)/build.tgkrnl
-#	@echo "#### CHECKING RMDKRNL FROM $(TG_ROOT) ####"
-#	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
-#	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
-#	$(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
-#
-#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: | tgkrnl.dbg
-#endif
+ifeq ($(RUN_JENKINS), run)
+tgkrnl.dbg: ;
+$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: ;
+else ifeq ($(RUN_JENKINS), build)
 
-#.PHONY: tgkrnl
-#tgkrnl: tgkrnl.dbg
 
-#$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
+.ONESHELL:
+$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
+| $(WORKLOAD_BUILD)/build.tgkrnl
+	@echo "#### BUILDING RMDKRNL FROM $(TG_ROOT) ####"
+	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
+	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
+	$(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
+else
+
+.ONESHELL:
+tgkrnl.dbg: $(TG_ROOT)/build/build.tgkrnl/make-me.make | $(WORKLOAD_BUILD)/build.tgkrnl
+	@echo "#### CHECKING RMDKRNL FROM $(TG_ROOT) ####"
+	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
+	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
+	$(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
+
+$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: | tgkrnl.dbg
+endif
+
+.PHONY: tgkrnl
+tgkrnl: tgkrnl.dbg
+
+$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
 
 # CE builder
 .PHONY: builderce
@@ -378,8 +378,8 @@ $(WORKLOAD_BUILD):
 
 $(WORKLOAD_BUILD)/build.tgkrnl: | $(WORKLOAD_BUILD) # $(TG_ROOT)/build/build.tgkrnl/make-me.make | $(WORKLOAD_BUILD)
 	mkdir -p $(WORKLOAD_BUILD)/build.tgkrnl
-	#@$(RM) -f $(WORKLOAD_BUILD)/build.tgkrnl/make-me.make
-	#@$(CP) $(TG_ROOT)/build/build.tgkrnl/make-me.make $(WORKLOAD_BUILD)/build.tgkrnl
+	@$(RM) -f $(WORKLOAD_BUILD)/build.tgkrnl/make-me.make
+	@$(CP) $(TG_ROOT)/build/build.tgkrnl/make-me.make $(WORKLOAD_BUILD)/build.tgkrnl
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
