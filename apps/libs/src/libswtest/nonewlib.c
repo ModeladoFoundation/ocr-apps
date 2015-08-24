@@ -5,12 +5,20 @@
 //
 // newlib placeholders ...
 //
+// It's possible that an application includes nothing that references
+// errno. However, the ocrscaffold lib and ce_intf.c does. This brings
+// in nonewlib.o in a newlib env causing multiple defines for exit and
+// a few other things. So, we declare those things 'weak'.
+//
+__attribute__((weak))
 struct _reent * _impure_ptr = (struct _reent *)0L;
+
 int * __errno() { static int real_errno; return & real_errno; }
 //
 // clang helpfully optimizes a clear loop in crt0.c to use memset()
 // but without newlib to provide it we need to do it here
 //
+__attribute__((weak))
 void *memset( void *s, int c, size_t n )
 {
     uint8_t *p = s;
@@ -30,6 +38,7 @@ typedef void (* fptr_t)( void );
 static fptr_t exit_funcs[ MAX_EXIT_FUNCS ];
 static int exit_func_cnt = 0;
 
+__attribute__((weak))
 int atexit( fptr_t f )
 {
     if( exit_func_cnt >= MAX_EXIT_FUNCS )
@@ -46,6 +55,7 @@ void _Exit( int retval )
     __builtin_unreachable();
 }
 
+__attribute__((weak))
 void exit( int retval )
 {
     for( int i = 0 ; i < exit_func_cnt ; i++ )
