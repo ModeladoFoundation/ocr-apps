@@ -17,13 +17,13 @@ All the support defined below does 'static' linking ONLY; so use only '.a' libra
 true for all user libraries also.
 
 Sub-directory structure under xstack/apps/legacy:
-- tg         // example hello.c, Makefile, and xstg.ld linker script
+- tg         // example hello.c, cxxhello.cpp, Makefile, and elf64_xstg.t linker script
 - x86        // example hello.c and Makefile built with x86_64 clang
 - x86_native // example hello.c and Makefile built with gcc
 - x86_glibc  // example chello.c, cxxhello.cc, and Makefile
 
 ==================================
-XSTG (TG) Architecture Legacy C Support
+XSTG (TG) Architecture Legacy C and C++ Support
 ==================================
 
 XSTG Overview:
@@ -63,7 +63,13 @@ For tool chain and newlib testing a special library has been created which takes
 runtime.  It is called the OCR Scaffold.  This 'scaffold' is a shell of the actual OCR runtime and only handles
 the 'system call' interfaces of OCRSal.  It does NOT support normal OCR runtime interfaces or abilities - and,
 therefore, is only meant for legacy application testing. In the case of the TG architecture, the scaffold library
-is a 'do nothing' skeleton.
+is for tool chain testing and 'converts' the OCRSal interface to CE interface calls (which end up doing 'alarms'
+to the CE processor).  Required for the TG scaffold is the libswtest.a library; this library allows
+the TG scaffold to satisfy CE interfaces for tool chain testing within a 'swtest-fsim'.
+
+---------------------------
+Legacy C support for the XSTG architecture using newlib
+---------------------------
 
 Buiding a Legacy C program for XSTG:
 
@@ -74,18 +80,42 @@ There are a couple prerequisites:
 2 - If using the actual OCR runtime/library, build it for TG.  If using the OCR scaffold, build it for TG.  Please
 see xstack/apps/libs/src/ocrscaffold/README for information on building the scaffold library.
 
-Then compile and link your program as shown for the example 'Hello World' application in ./tg/ directory.
+Then compile and link your program as shown for the example 'Hello World' application, hello.c, in ./tg/ directory.
 
-Please see the ./tg/Makefile for details on compiling and linking your application.  Also included in the ./tg
-directory is a xstg.ld linker script.  The linker currently attempts to put the .text section (amoung others)
-into the L1 scratchpad area which is only 64KB.  The current linker script in the simple example, puts these
-sections into the DRAM area.
+Please see the ./tg/Makefile for details on compiling and linking your application.  When building the C application,
+the built in linker script is used.  The linker currently attempts to put the .text section (amoung others)
+into the BLOCK_L2 area.
 
 The resulting executable can only be run on the fsim simulator at this time.
 
-==================================
-TBD: XSTG Architecture Legacy C++ Support
-==================================
+---------------------------
+Legacy C++ support for the XSTG architecture using newlib
+---------------------------
+
+Buiding a Legacy C++ program for XSTG:
+
+There are a couple prerequisites:
+
+1 - Build newlib for TG.  Please see the xstack/apps/libs/src/newlib/README for information on building newlib.
+
+2 - Build libcxx for TG.  Please see the xstack/apps/libs/src/libcxx/README for information on building libcxx.
+
+3 - Build libcxxabi for TG.  Please see the xstack/apps/libs/src/libcxxabi/README for information on building libcxxabi.
+
+4 - Build libunwind for TG.  Please see the xstack/apps/libs/src/libunwind/README for information on building libunwind.
+
+5 - If using the actual OCR runtime/library, build it for TG.  If using the OCR scaffold, build it for TG.  Please
+see xstack/apps/libs/src/ocrscaffold/README for information on building the scaffold library.  Also, if using the OCR
+scaffold, build the libswtest library; this is in xstack/apps/libs/src/libswtest.  Use 'make install' to create and
+install libswtest.a.
+
+Then compile and link your program as shown for the example 'Hello World' application, cxxhello.cpp, in ./tg/ directory.
+
+Please see the ./tg/Makefile for details on compiling and linking your application.  Also included in the ./tg
+directory is an elf64_ xstg.t linker script.  The difference between the built in linker script and this local one
+is that the .data_local and .bss_local are placed into BLOCK_L2 area.
+
+The resulting executable can only be run on the fsim simulator at this time.
 
 ==================================
 X86 Architecture Legacy C and C++ Support
