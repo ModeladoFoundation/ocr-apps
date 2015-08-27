@@ -4,7 +4,7 @@
 #
 ARCH=x86
 
-APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
+APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 LIBS = $(APPS_LIBS_ROOT)/lib

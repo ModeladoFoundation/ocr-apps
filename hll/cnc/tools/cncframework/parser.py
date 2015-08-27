@@ -47,7 +47,7 @@ cExpr = Forward() # forward-declaration
 cSubExpr = "(" + cExpr + ")" | "[" + cExpr + "]" | "{" + cExpr + "}"
 cExpr <<= ZeroOrMore(CharsNotIn("()[]{}") | cSubExpr) # concrete definition
 cExpr.leaveWhitespace()
-cTopExpr = ZeroOrMore(CharsNotIn("()[]{},") | cSubExpr)
+cTopExpr = joined(notSpace(ZeroOrMore(CharsNotIn("()[]{},") | cSubExpr)))
 
 # Unit expression (zero-tuple, kind of like "void")
 # (can be used as a singleton tag/key)
@@ -119,7 +119,7 @@ attrKey = cVar
 attrVal = cTopExpr
 attrPair = Group(attrKey + Suppress(":") + attrVal)
 attrDictSep = Suppress(",")
-attrDict = Suppress("{") + Dict(attrPair + ZeroOrMore(attrDictSep + attrPair)) + Suppress("}")
+attrDict = Suppress("{") + Optional(Dict(attrPair + ZeroOrMore(attrDictSep + attrPair))) + Suppress("}")
 optAttrs = Optional(attrDict)
 
 
@@ -216,7 +216,8 @@ cncGraphSpec.ignore(cppStyleComment)
 # (parses an entire tuning spec file)
 
 itemTune = Group("[" + cVar('collName') + "]" + ":" + attrDict('attrs') + ";")
-stepTune = Group("(" + cVar('collName') + ")" + ":" + attrDict('attrs') + ";")
+inputTune = Literal("<-") + "[" + cVar('inputName') + "]"
+stepTune = Group("(" + cVar('collName') + ")" + Optional(inputTune) + ":" + attrDict('attrs') + ";")
 
 itemTunings = ZeroOrMore(itemTune)('itemTunings')
 stepTunings = ZeroOrMore(stepTune)('stepTunings')

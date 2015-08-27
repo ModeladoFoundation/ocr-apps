@@ -18,29 +18,12 @@ void cncPut_{{i.collName}}({{i.type.ptrType}}_item, {{
         _cncItemToggleReleasedFlag(_item);
         ocrDbRelease(_handle);
     }
-    // Re-putting an updated item
-    else if (_item) {
-        #ifdef CNC_DISTRIBUTED
-        // XXX - it would be really nice if we didn't have to make a copy here
-        void *_oldItem = _item;
-        const size_t _bytes = _cncItemMeta(_item)->size;
-        _item = cncItemAlloc(_bytes);
-        _handle = _cncItemGuid(_item);
-        memcpy(_item, _oldItem, _bytes);
-        _cncItemToggleReleasedFlag(_item);
-        // FIXME - this doesn't work when there are multiple puts in the same step
-        // with the same item. Could fix this with OCR feature #678.
-        ocrDbRelease(_handle);
-        #else
-        // Don't need to do anything in shared memory
-        #endif /* CNC_DISTRIBUTED */
-    }
     #ifdef CNC_AFFINITIES
     // FIXME - Need to copy to remote node if the affinity doesn't match
-    const cncLocation_t _loc = {{g.itemDistFn(i.collName, util.g_ctx_var()~"->_affinityCount")}};
+    const cncLocation_t _loc = _cncItemDistFn_{{i.collName}}({{ util.print_tag(i.key) ~ util.g_ctx_var()}});
     #else
     const cncLocation_t _loc = CNC_CURRENT_LOCATION; MAYBE_UNUSED(_loc);
-    #endif
+    #endif /* CNC_AFFINITIES */
     {{ util.log_msg("PUT", i.collName, i.key) }}
     {% if i.key -%}
     cncTag_t _tag[] = { {{i.key|join(", ")}} };
@@ -69,10 +52,10 @@ void cncGet_{{i.collName}}({{ util.print_tag(i.key, typed=True) }}ocrGuid_t _des
     {#/*****NON-VIRTUAL*****/-#}
     {{ util.log_msg("GET-DEP", i.collName, i.key) }}
     #ifdef CNC_AFFINITIES
-    const cncLocation_t _loc = {{g.itemDistFn(i.collName, util.g_ctx_var()~"->_affinityCount")}};
+    const cncLocation_t _loc = _cncItemDistFn_{{i.collName}}({{ util.print_tag(i.key) ~ util.g_ctx_var()}});
     #else
     const cncLocation_t _loc = CNC_CURRENT_LOCATION; MAYBE_UNUSED(_loc);
-    #endif
+    #endif /* CNC_AFFINITIES */
     {% if i.key -%}
     cncTag_t _tag[] = { {{i.key|join(", ")}} };
     const size_t _tagSize = sizeof(_tag)/sizeof(*_tag);

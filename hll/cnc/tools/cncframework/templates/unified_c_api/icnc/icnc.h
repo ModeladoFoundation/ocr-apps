@@ -31,7 +31,7 @@ static inline void *cncLocalAlloc(size_t bytes) {
 }
 
 static inline void cncLocalFree(void *data) {
-    scalable_free(data);
+    if (data) { scalable_free(data); }
 }
 
 void *cncItemAlloc(size_t bytes);
@@ -58,11 +58,11 @@ typedef struct cncBoxedItemStruct {
 } cncBoxedItem_t;
 
 static inline void *_cncItemUnbox(cncBoxedItem_t *box) {
-    return (void*)(&box->size + 1);
+    return box ? (void*)(&box->size + 1) : NULL;
 }
 
 static inline cncBoxedItem_t *_cncItemRebox(void *item) {
-    return (cncBoxedItem_t*)(((char*)item)-sizeof(cncBoxedItem_t));
+    return item ? (cncBoxedItem_t*)(((char*)item)-sizeof(cncBoxedItem_t)) : NULL;
 }
 #else
 typedef void cncBoxedItem_t;

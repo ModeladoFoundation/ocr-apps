@@ -32,9 +32,9 @@ RET1=$?
 ### Test 2 (large) ###
 
 # str1 length factors: 3*59*569
-DIM1=$((3*569))
+DIM1=$((569))
 # str2 length factors: 3*3*17*661
-DIM2=$((3*3*661))
+DIM2=$((661))
 
 echo "Testing string1-large.txt vs string2-large.txt with width=${DIM1}, height=${DIM2}"
 make run WORKLOAD_ARGS="${DIM1} ${DIM2} ${DATA_DIR}/string1-large.txt ${DATA_DIR}/string2-large.txt" 2>&1 | tee $TMPFILE && fgrep -q 'score: 65386' < $TMPFILE

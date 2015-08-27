@@ -7,6 +7,12 @@ extern "C" {
 #include "{{g.name}}_internal.h"
 }
 
+{% if g.hasCustomDist() -%}
+static inline int numProcs() { return CnC::tuner_base::numProcs(); }
+{% for name, i in g.itemDeclarations.items() -%}
+static inline cncLocation_t _cncItemDistFn_{{name}}({{ util.print_tag(i.key, typed=True) ~ util.g_ctx_param()}}) { return {{g.itemDistFn(name, "numProcs()")}}; }
+{% endfor -%}
+{% endif %}
 CNC_BITWISE_SERIALIZABLE({{util.g_ctx_t()}});
 
 namespace {{g.name}} {
@@ -25,7 +31,7 @@ namespace {{g.name}} {
     {% set gCppCtx = g.name ~ "CppCtx" -%}
     struct {{gCppCtx}};
 
-    {% if g.hasTuning('distfn') -%}
+    {% if g.hasCustomDist() -%}
     {% for name, i in g.itemDeclarations.items() -%}
     struct cncItemTuner_{{name}}: public CnC::hashmap_tuner {
         {{gCppCtx}} &_cppCtx;
@@ -38,7 +44,7 @@ namespace {{g.name}} {
     {% for stepfun in g.finalAndSteps -%}
     // STEP {{stepfun.collName}}
     struct cncStepTuner_{{stepfun.collName}}: public CnC::step_tuner<> {
-        {% if g.hasTuning('distfn') -%}
+        {% if g.hasCustomDist() -%}
         int compute_on(const cncAggregateTag_t &_tag, {{gCppCtx}} &_cppCtx) const;
         {%- endif %}
         {% if g.hasTuning('priority') -%}
@@ -58,7 +64,7 @@ namespace {{g.name}} {
         // (probably need to update the serializer to set size to 1)
         // https://github.com/icnc/icnc/blob/v1.0.100/samples/blackscholes/blackscholes/blackscholes.h#L105-L113
         {%- for name, i in g.itemDeclarations.items() %}
-        {% if g.hasTuning('distfn') -%}
+        {% if g.hasCustomDist() -%}
         cncItemTuner_{{name}} ituner_{{name}};
         {% endif -%}
         CnC::item_collection<cncAggregateTag_t, cncBoxedItem_t*> i_{{name}};
@@ -77,11 +83,11 @@ namespace {{g.name}} {
             : CnC::context<{{gCppCtx}}>(),
               // init item colls
               {%- for name, i in g.itemDeclarations.items() %}
-              {% if g.hasTuning('distfn') -%}
+              {% if g.hasCustomDist() -%}
               ituner_{{name}}(*this),
               {% endif -%}
               i_{{name}}(*this, "[{{name}}]"
-                      {%- if g.hasTuning('distfn') -%}
+                      {%- if g.hasCustomDist() -%}
                       , ituner_{{name}}
                       {%- endif -%}
                       ),
@@ -220,7 +226,7 @@ extern "C" {
 
 
 namespace {{g.name}} {
-    {% if g.hasTuning('distfn') -%}
+    {% if g.hasCustomDist() -%}
     {% for name, i in g.itemDeclarations.items() -%}
     {% for f in ["produced_on", "consumed_on"] -%}
     int cncItemTuner_{{name}}::{{f}}(const cncAggregateTag_t &_tag) {
@@ -235,7 +241,7 @@ namespace {{g.name}} {
     {% endif -%}
     {% for stepfun in g.finalAndSteps -%}
     // STEP {{stepfun.collName}}
-    {% if g.hasTuning('distfn') -%}
+    {% if g.hasCustomDist() -%}
     int cncStepTuner_{{stepfun.collName}}::compute_on(const cncAggregateTag_t &_tag, {{gCppCtx}} &_cppCtx) const {
         {{util.g_ctx_param()}} = &_cppCtx.cctx; MAYBE_UNUSED({{util.g_ctx_var()}});
         {% for x in stepfun.tag -%}

@@ -28,7 +28,8 @@ WORKLOAD_SRC     ?= .
 WORKLOAD_BUILD   ?= ./build/$(CNC_TYPE)
 WORKLOAD_INSTALL ?= ./install/$(CNC_TYPE)
 WORKLOAD_EXEC    ?= $(WORKLOAD_INSTALL)
-CNC_SUPPORT_DIR  ?= ./cnc_support/{% block support_dir_name %}$(CNC_TYPE){% endblock %}
+CNC_SUPPORT_BASE ?= cnc_support/{% block support_dir_name %}$(CNC_TYPE){% endblock %}
+CNC_SUPPORT_DIR  ?= $(WORKLOAD_SRC)/$(CNC_SUPPORT_BASE)
 {% block env_setup_post %}{% endblock %}
 
 #################################################
@@ -45,14 +46,14 @@ include $(CNC_SUPPORT_DIR)/{{g.name}}_defs.mk
 {% block platform_flags %}{% endblock %}
 CC_OPTS += -pthread
 LDFLAGS += -lm $(CC_OPTS) {% block xtra_libs %}{% endblock %}
-IFLAGS  += -I. -I$(CNC_SUPPORT_DIR) {% block xtra_incs %}{% endblock %}
+IFLAGS  += -I$(WORKLOAD_SRC) -I$(CNC_SUPPORT_DIR) {% block xtra_incs %}{% endblock %}
 
-HEADERS := {{g.name}}_defs.h $(wildcard $(CNC_SUPPORT_DIR)/*.h)
+HEADERS := $(WORKLOAD_SRC)/{{g.name}}_defs.h $(wildcard $(CNC_SUPPORT_DIR)/*.h)
 SRCS := Main.c {{g.name}}.c $(CNC_STEP_SRCS)
 {% block xtra_srcs %}{% endblock %}
 # Optionally allow the user to provide some overrides in a separate makefile
 # (allowing you to keep using the auto-generated makefile for most settings)
--include {{g.name}}_overrides.mk
+-include $(WORKLOAD_SRC)/{{g.name}}_overrides.mk
 
 CFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall $(CC_OPTS)
 OBJS += $(SRCS:%.c=$(WORKLOAD_BUILD)/%.o)
@@ -85,7 +86,7 @@ $(WORKLOAD_INSTALL)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET)
 	cp $< $@
 
 # build C source files
-$(WORKLOAD_BUILD)/%.o: %.c $(HEADERS) {% block xtra_o_deps %}{% endblock %}
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(HEADERS) {% block xtra_o_deps %}{% endblock %}
 	$(ensure_dir)
 	$(CC) $(CFLAGS) -c $< -o $@
 {% block xtra_targets %}{% endblock %}

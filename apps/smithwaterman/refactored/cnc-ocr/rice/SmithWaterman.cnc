@@ -18,20 +18,18 @@ $context {
 ////////////////////////////////////////////////////////////////////////////////
 // Input output relationships
 
-( initAboveStep: () ) -> [ above: 0, $range(#ntw) ];
-
-( initLeftStep:  () ) -> [ left:  $range(#nth), 0 ];
-
 ( swStep: i, j )
-    <- [ data: () ], [ above: i, j ], [ left: i, j ]
-    -> [ below @ above: i+1, j ], [ right @ left: i, j+1 ];
+    <- [ data: () ],
+       [ above: i, j ] $when(i > 0),
+       [ left: i, j ]  $when(j > 0)
+    -> [ below @ above: i+1, j ],
+       [ right @ left:  i, j+1 ],
+       ( swStep: i+i, j ) $when(i+1 < #nth);
 
 // Write graph inputs and start steps
 ( $initialize: () )
     -> [ startTime: () ],
-       ( initAboveStep: #tw, #ntw ),
-       ( initLeftStep:  #th, #nth ),
-       ( swStep: $range(#nth), $range(#ntw) );
+       ( swStep: 0, $range(#ntw) );
 
 ( $finalize: () )
     <- [ startTime: () ], [ above: #nth, #ntw-1 ];
