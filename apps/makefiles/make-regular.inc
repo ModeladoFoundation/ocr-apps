@@ -21,6 +21,7 @@ WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 else
+TG_ROOT               := $(shell cd "${TG_ROOT}" && pwd)
 OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
 OCR_BUILD_ROOT        := $(shell cd "${OCR_BUILD_ROOT}" && pwd)
 OCR_BUILD             := ${OCR_BUILD_ROOT}/${OCR_TARGET}
@@ -36,6 +37,7 @@ RUN_TOOL              ?=
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
 HOSTNAME              := $(shell hostname)
+TG_INSTALL            := $(shell cd "${TG_INSTALL}" && pwd)
 
 OCR_INSTALL_ROOT := $(shell mkdir -p "${OCR_INSTALL_ROOT}" && cd "${OCR_INSTALL_ROOT}" && pwd)
 OCR_INSTALL      := ${OCR_INSTALL_ROOT}/${OCR_TARGET}
@@ -60,7 +62,7 @@ ifeq ($(CC), cc)
 CC = gcc
 endif
 
-CFLAGS_BASE =  -Werror -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include
+CFLAGS_BASE =  -Werror -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include -I $(TG_INSTALL)/include
 
 
 LDFLAGS_BASE = -L ${OCR_INSTALL}/lib -L $(APPS_LIBS_ROOT)/lib -locr

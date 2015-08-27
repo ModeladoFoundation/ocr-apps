@@ -114,7 +114,7 @@ ifeq ($(RUN_JENKINS), runApp)
 install_internal: preinstall | ${WORKLOAD_INSTALL}
 else
 # Order of both should not matter here
-install: preinstall $(WORKLOAD_SRC)/config.cfg | ${WORKLOAD_INSTALL}
+install: preinstall $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/rmdkrnl | ${WORKLOAD_INSTALL}
 endif
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
@@ -123,11 +123,10 @@ endif
 	@echo "(from $(WORKLOAD_INSTALL)): ${RUN_CMD} -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET) $(WORKLOAD_INSTALL)/$(TARGET).blob
-	@$(RM) -f $(WORKLOAD_INSTALL)/config.cfg $(WORKLOAD_INSTALL)/rmdkrnl
+	@$(RM) -f $(WORKLOAD_INSTALL)/config.cfg
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET).blob $(WORKLOAD_INSTALL)/
 	@$(CP) $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/
-	@$(CP) $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl $(WORKLOAD_INSTALL)/
 
 postinstall: install_internal
 
@@ -185,8 +184,7 @@ prebuild: reqlibs
 # The next three rules force postbuild to run after build_internal
 # and default to run postbuild
 .PHONY: build_internal
-build_internal: reqlibs prebuild $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_BUILD)/$(TARGET).blob \
-  $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
+build_internal: reqlibs prebuild $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_BUILD)/$(TARGET).blob rmdkrnl
 
 postbuild: build_internal
 
@@ -319,26 +317,38 @@ endif
 # We build locally so we can run without impacting TG_INSTALL
 # This will internally build libocrce.a if needed (ie: we don't build it
 # explicitly here)
-.PHONY: rmdkrnl.dbg
+.PHONY: rmdkrnl
 
 ifeq ($(RUN_JENKINS), runApp)
-rmdkrnl.dbg: ;
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: ;
+rmdkrnl: ;
+$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl: ;
+$(WORKLOAD_INSTALL)/rmdkrnl: ;
 else
-rmdkrnl.dbg: | $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg
+# In all other cases, we build the kernel
+# (including for building the app)
 .ONESHELL:
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: $(TG_ROOT)/build/build.rmdkrnl/make-me.make \
+rmdkrnl: $(TG_ROOT)/build/build.rmdkrnl/make-me.make \
 | $(WORKLOAD_BUILD)/build.rmdkrnl
 	@echo "Building rmdkrnl..."
 	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
 	$(MAKE) -C $(WORKLOAD_BUILD)/build.rmdkrnl -f make-me.make $(TARGETS)
+
+$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl: | rmdkrnl
+
+# This target will effectively always run which is what we want
+# because for some reason, pre-reqs are evaluated before (and so when rmdkrnl recipe
+# remakes build.rmdkrnl/rmdkrnl, nothing happens
+$(WORKLOAD_INSTALL)/rmdkrnl: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl rmdkrnl $(WORKLOAD_INSTALL)
+	@echo "Installing rmdkrnl..."
+	@$(RM) -f $(WORKLOAD_INSTALL)/rmdkrnl
+	@$(CP) $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl $(WORKLOAD_INSTALL)/
 endif
 
-.PHONY: rmdkrnl
-rmdkrnl: rmdkrnl.dbg
+.PHONY: rmdkrnl.dbg
+rmdkrnl.dbg: rmdkrnl
 
-$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg
+$(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl.dbg: $(WORKLOAD_BUILD)/build.rmdkrnl/rmdkrnl
 
 # CE builder
 .PHONY: builderce
