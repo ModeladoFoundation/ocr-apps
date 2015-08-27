@@ -215,6 +215,10 @@ ocrGuid_t finalPrintEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
             PRINTF("%d [%f + %fi]\n",i,X_real[i],X_imag[i]);
         }
     }
+    ocrDbDestroy(dataGuid);
+    ocrEdtTemplateDestroy(paramv[3]);
+    ocrEdtTemplateDestroy(paramv[4]);
+    ocrEdtTemplateDestroy(paramv[5]);
     PRINTF("FFT calling shutdown\n");
     ocrShutdown();
     return NULL_GUID;
@@ -271,7 +275,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtTemplateCreate(&startTempGuid, &fftStartEdt, 8, 1);
     ocrEdtTemplateCreate(&endTempGuid, &fftEndEdt, 8, 3);
     ocrEdtTemplateCreate(&endSlaveTempGuid, &fftEndSlaveEdt, 5, 1);
-    ocrEdtTemplateCreate(&printTempGuid, &finalPrintEdt, 3, 2);
+    ocrEdtTemplateCreate(&printTempGuid, &finalPrintEdt, 6, 2);
 
     // x_in, X_real, and X_imag in a contiguous block
     float *x;
@@ -303,15 +307,17 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtCreate(&edtGuid, iterationTempGuid, EDT_PARAM_DEF, edtParamv,
                  EDT_PARAM_DEF, NULL_GUID, EDT_PROP_FINISH, NULL_GUID,
                  &edtEventGuid);
+    ocrEdtTemplateDestroy(iterationTempGuid);
 
     if(verify) {
         edtEventGuid = setUpVerify(dataGuid, NULL_GUID, NULL_GUID, N, edtEventGuid);
     }
 
-    u64 printParamv[3] = { N, verbose, printResults };
+    u64 printParamv[6] = { N, verbose, printResults, startTempGuid, endTempGuid, endSlaveTempGuid };
     ocrGuid_t finishDependencies[2] = { edtEventGuid, dataGuid };
     ocrEdtCreate(&printEdtGuid, printTempGuid, EDT_PARAM_DEF, printParamv,
                  EDT_PARAM_DEF, finishDependencies, EDT_PROP_NONE, NULL_GUID, NULL);
+    ocrEdtTemplateDestroy(printTempGuid);
 
     edtEventGuid = NULL_GUID;
     ocrAddDependence(dataGuid, edtGuid, 0, DB_MODE_RW);

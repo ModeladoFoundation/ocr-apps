@@ -98,6 +98,13 @@ ocrGuid_t fftVerifyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
             break;
         }
     }
+    if(depc > 4) {
+        ocrDbDestroy(depv[3].guid);
+        ocrDbDestroy(depv[4].guid);
+    } else {
+        ocrDbDestroy(depv[1].guid);
+        ocrDbDestroy(depv[2].guid);
+    }
     if(intact) {
         PRINTF("Program produced correct results.\n");
     } else {
@@ -133,6 +140,7 @@ ocrGuid_t setUpVerify(ocrGuid_t inDB, ocrGuid_t XrealDB, ocrGuid_t XimagDB, u64 
         ocrEdtCreate(&vGuid, vTemp, EDT_PARAM_DEF, &N, 6, verifyDependencies,
                      EDT_PROP_NONE, NULL_GUID, &vEventGuid);
     }
+    ocrEdtTemplateDestroy(vTemp);
 
     return vEventGuid;
 }
