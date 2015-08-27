@@ -93,9 +93,23 @@ typedef struct
 
 typedef struct
 {
+    ocrGuid_t TML_FNC_Lsend;
+    ocrGuid_t TML_FNC_Rsend;
+    ocrGuid_t TML_FNC_Lrecv;
+    ocrGuid_t TML_FNC_Rrecv;
+    ocrGuid_t TML_FNC_Bsend;
+    ocrGuid_t TML_FNC_Tsend;
+    ocrGuid_t TML_FNC_Brecv;
+    ocrGuid_t TML_FNC_Trecv;
+    ocrGuid_t TML_FNC_update;
+} rankTemplateH_t;
+
+typedef struct
+{
     ocrGuid_t DBK_settingsH; //-->settingsH_t
     ocrGuid_t DBK_dataH; //--> dataH_t
     ocrGuid_t DBK_eventHs[2]; //--> eventH_t[2]
+    ocrGuid_t DBK_templatesH;
 } rankH_t;
 
 typedef struct
@@ -134,7 +148,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
                     ocrGuid_t FNC_Trecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     //ocrGuid_t FNC_verify(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]); //Verification is done at the end
                     ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+        ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
     ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
@@ -397,6 +411,10 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     dataH_t *PTR_dataH;
     ocrDbCreate( &(PTR_rankH->DBK_dataH), (void **) &PTR_dataH, sizeof(dataH_t),
                  DB_PROP_NONE, currentAffinity, NO_ALLOC );
+
+    rankTemplateH_t *PTR_templatesH;
+    ocrDbCreate( &(PTR_rankH->DBK_templatesH), (void **) &PTR_templatesH, sizeof(rankTemplateH_t),
+                 DB_PROP_NONE, currentAffinity, NO_ALLOC );
     s32 i;
     for( i = 0; i < 2; i++ )
     {
@@ -405,7 +423,7 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                         DB_PROP_NONE, currentAffinity, NO_ALLOC );
     }
 
-    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 6;
+    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 7;
 
     TS_init_rankH.FNC = FNC_init_rankH;
     ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
@@ -420,6 +438,7 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( PTR_rankH->DBK_dataH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_eventHs[0], TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_eventHs[1], TS_init_rankH.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_rankH->DBK_templatesH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( TS_init_gSettingsH_OET, TS_init_rankH.EDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;
@@ -540,6 +559,35 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         ocrEventCreate( &PTR_eventH->EVT_reduction, OCR_EVENT_STICKY_T, true );
     }
+
+    rankTemplateH_t *PTR_templatesH = depv[5].ptr;
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Lsend), FNC_Lsend, _paramc, _depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Rsend), FNC_Rsend, _paramc, _depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Lrecv), FNC_Lrecv, _paramc, _depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Rrecv), FNC_Rrecv, _paramc,_depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Bsend), FNC_Bsend, _paramc, _depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Tsend), FNC_Tsend, _paramc, _depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Brecv), FNC_Brecv, _paramc, _depc );
+
+    _paramc = 0; _depc = 4;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_Trecv), FNC_Trecv, _paramc,_depc );
+
+    _paramc = 0; _depc = 16;
+    ocrEdtTemplateCreate( &(PTR_templatesH->TML_FNC_update), FNC_update, _paramc, _depc );
 
     return NULL_GUID;
 }
@@ -892,7 +940,7 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     ocrGuid_t currentAffinity = NULL_GUID;
 
-    MyOcrTaskStruct_t TS_timestep; _paramc = 0; _depc = 9;
+    MyOcrTaskStruct_t TS_timestep; _paramc = 0; _depc = 10;
 
     TS_timestep.FNC = FNC_timestep;
     ocrEdtTemplateCreate( &TS_timestep.TML, TS_timestep.FNC, _paramc, _depc );
@@ -912,6 +960,7 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
     _idep = 0;
     ocrAddDependence( DBK_gSettingsH, TS_timestep.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_rankH->DBK_settingsH, TS_timestep.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_rankH->DBK_templatesH, TS_timestep.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_rankH->DBK_dataH, TS_timestep.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_eventHs[phase], TS_timestep.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( (id_x!=0) ? PTR_rankH_l->DBK_eventHs[phase] : NULL_GUID, TS_timestep.EDT, _idep++, DB_MODE_CONST );
@@ -962,18 +1011,20 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t DBK_gSettingsH = depv[0].guid;
     ocrGuid_t DBK_settingsH = depv[1].guid;
-    ocrGuid_t DBK_dataH = depv[2].guid;
-    ocrGuid_t DBK_eventH = depv[3].guid;
-    ocrGuid_t DBK_globalH = depv[8].guid;
+    ocrGuid_t DBK_templatesH = depv[2].guid;
+    ocrGuid_t DBK_dataH = depv[3].guid;
+    ocrGuid_t DBK_eventH = depv[4].guid;
+    ocrGuid_t DBK_globalH = depv[9].guid;
 
     gSettingsH_t* PTR_gSettingsH = depv[0].ptr;
     settingsH_t* PTR_settingsH = depv[1].ptr;
-    dataH_t* PTR_data = (dataH_t*) depv[2].ptr;
-    eventH_t* PTR_events = (eventH_t*) depv[3].ptr;
-    eventH_t* PTR_events_l = (eventH_t*) depv[4].ptr;
-    eventH_t* PTR_events_r = (eventH_t*) depv[5].ptr;
-    eventH_t* PTR_events_b = (eventH_t*) depv[6].ptr;
-    eventH_t* PTR_events_t = (eventH_t*) depv[7].ptr;
+    rankTemplateH_t* PTR_templatesH = depv[2].ptr;
+    dataH_t* PTR_data = (dataH_t*) depv[3].ptr;
+    eventH_t* PTR_events = (eventH_t*) depv[4].ptr;
+    eventH_t* PTR_events_l = (eventH_t*) depv[5].ptr;
+    eventH_t* PTR_events_r = (eventH_t*) depv[6].ptr;
+    eventH_t* PTR_events_b = (eventH_t*) depv[7].ptr;
+    eventH_t* PTR_events_t = (eventH_t*) depv[8].ptr;
 
     s64 NR = (s64) PTR_gSettingsH->NR;
     s64 NR_X = (s64) PTR_gSettingsH->NR_X;
@@ -997,9 +1048,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 4;
 
-    TS_Lsend.FNC = FNC_Lsend;
-    ocrEdtTemplateCreate( &TS_Lsend.TML, TS_Lsend.FNC, _paramc, _depc );
-
+    TS_Lsend.TML = PTR_templatesH->TML_FNC_Lsend;
     ocrEdtCreate( &TS_Lsend.EDT, TS_Lsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Lsend.OET);
@@ -1015,9 +1064,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Rsend; _paramc = 0; _depc = 4;
 
-    TS_Rsend.FNC = FNC_Rsend;
-    ocrEdtTemplateCreate( &TS_Rsend.TML, TS_Rsend.FNC, _paramc, _depc );
-
+    TS_Rsend.TML = PTR_templatesH->TML_FNC_Rsend;
     ocrEdtCreate( &TS_Rsend.EDT, TS_Rsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Rsend.OET);
@@ -1033,9 +1080,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Lrecv; _paramc = 0; _depc = 4;
 
-    TS_Lrecv.FNC = FNC_Lrecv;
-    ocrEdtTemplateCreate( &TS_Lrecv.TML, TS_Lrecv.FNC, _paramc, _depc );
-
+    TS_Lrecv.TML = PTR_templatesH->TML_FNC_Lrecv;
     ocrEdtCreate( &TS_Lrecv.EDT, TS_Lrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Lrecv.OET);
@@ -1050,9 +1095,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Rrecv; _paramc = 0; _depc = 4;
 
-    TS_Rrecv.FNC = FNC_Rrecv;
-    ocrEdtTemplateCreate( &TS_Rrecv.TML, TS_Rrecv.FNC, _paramc,_depc );
-
+    TS_Rrecv.TML = PTR_templatesH->TML_FNC_Rrecv;
     ocrEdtCreate( &TS_Rrecv.EDT, TS_Rrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Rrecv.OET);
@@ -1069,9 +1112,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     //Y direction communication
     MyOcrTaskStruct_t TS_Bsend; _paramc = 0; _depc = 4;
 
-    TS_Bsend.FNC = FNC_Bsend;
-    ocrEdtTemplateCreate( &TS_Bsend.TML, TS_Bsend.FNC, _paramc, _depc );
-
+    TS_Bsend.TML = PTR_templatesH->TML_FNC_Bsend;
     ocrEdtCreate( &TS_Bsend.EDT, TS_Bsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Bsend.OET);
@@ -1087,9 +1128,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Tsend; _paramc = 0; _depc = 4;
 
-    TS_Tsend.FNC = FNC_Tsend;
-    ocrEdtTemplateCreate( &TS_Tsend.TML, TS_Tsend.FNC, _paramc, _depc );
-
+    TS_Tsend.TML = PTR_templatesH->TML_FNC_Tsend;
     ocrEdtCreate( &TS_Tsend.EDT, TS_Tsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Tsend.OET);
@@ -1105,9 +1144,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Brecv; _paramc = 0; _depc = 4;
 
-    TS_Brecv.FNC = FNC_Brecv;
-    ocrEdtTemplateCreate( &TS_Brecv.TML, TS_Brecv.FNC, _paramc, _depc );
-
+    TS_Brecv.TML = PTR_templatesH->TML_FNC_Brecv;
     ocrEdtCreate( &TS_Brecv.EDT, TS_Brecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Brecv.OET);
@@ -1122,9 +1159,7 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     MyOcrTaskStruct_t TS_Trecv; _paramc = 0; _depc = 4;
 
-    TS_Trecv.FNC = FNC_Trecv;
-    ocrEdtTemplateCreate( &TS_Trecv.TML, TS_Trecv.FNC, _paramc,_depc );
-
+    TS_Trecv.TML = PTR_templatesH->TML_FNC_Trecv;
     ocrEdtCreate( &TS_Trecv.EDT, TS_Trecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_Trecv.OET);
@@ -1139,39 +1174,12 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //end
 
-#if 0
-    ocrGuid_t TS_verify_OET;
-    ocrEventCreate( &TS_verify_OET, OCR_EVENT_STICKY_T, false );
-
-    MyOcrTaskStruct_t TS_verify; _paramc = 0; _depc = 7;
-
-    TS_verify.FNC = FNC_verify;
-    ocrEdtTemplateCreate( &TS_verify.TML, TS_verify.FNC, _paramc, _depc );
-
-    ocrEdtCreate( &TS_verify.EDT, TS_verify.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, currentAffinity, &TS_verify.OET );
-
-    ocrAddDependence( TS_verify.OET, TS_verify_OET, 0, DB_MODE_RO );
-
-    _idep = 0;
-    ocrAddDependence( DBK_gSettingsH, TS_verify.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_settingsH, TS_verify.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( PTR_data->DBK_xIn, TS_verify.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( PTR_events->EVT_Lrecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( PTR_events->EVT_Rrecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( PTR_events->EVT_Brecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( PTR_events->EVT_Trecv_fin, TS_verify.EDT, _idep++, DB_MODE_NULL );
-#endif
-
     ocrGuid_t TS_update_OET;
     ocrEventCreate( &TS_update_OET, OCR_EVENT_STICKY_T, false );
 
     MyOcrTaskStruct_t TS_update; _paramc = 0; _depc = 16;
 
-    TS_update.FNC = FNC_update;
-    ocrEdtTemplateCreate( &TS_update.TML, TS_update.FNC, _paramc, _depc );
-
+    TS_update.TML = PTR_templatesH->TML_FNC_update;
     ocrEdtCreate( &TS_update.EDT, TS_update.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, currentAffinity, &TS_update.OET );

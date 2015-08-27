@@ -4,7 +4,7 @@
 #
 ARCH=tg
 
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../intel/ss/bin)
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../intel/ss/install)
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)

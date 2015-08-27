@@ -11,16 +11,10 @@ void SmithWaterman_cncInitialize(SeqData *data, SmithWatermanCtx *ctx) {
     gettimeofday(startTime, 0);
     cncPut_startTime(startTime, ctx);
 
-    // Seed edges
-    cncPrescribe_initAboveStep(ctx);
-    cncPrescribe_initLeftStep(ctx);
-
     { // Prescribe "swStep" steps
-        s64 _i, _j;
-        for (_i = 0; _i < ctx->nth; _i++) {
-            for (_j = 0; _j < ctx->ntw; _j++) {
-                cncPrescribe_swStep(_i, _j, ctx);
-            }
+        s64 _j;
+        for (_j = 0; _j < ctx->ntw; _j++) {
+            cncPrescribe_swStep(0, _j, ctx);
         }
     }
 

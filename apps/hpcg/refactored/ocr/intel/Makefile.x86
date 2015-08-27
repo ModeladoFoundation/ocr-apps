@@ -45,6 +45,8 @@ RUN_JENKINS ?= no
 ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
+CONFIG_FLAGS=--guid LABELED
+
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build

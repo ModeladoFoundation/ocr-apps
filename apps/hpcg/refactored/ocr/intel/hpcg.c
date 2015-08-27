@@ -22,9 +22,9 @@ More information is in README
 
 #define PRECONDITIONER  //undefine if you want to run without the precondition
 
-#define NPX 2  //number of workers is NPX x NPY x NPZ
-#define NPY 2
-#define NPZ 2
+#define NPX 3  //number of workers is NPX x NPY x NPZ
+#define NPY 4
+#define NPZ 5
 #define N (NPX*NPY*NPZ)
 #define M0 16   // size of local block
 #define M02 (M0*M0)
@@ -142,7 +142,7 @@ clones that receive will have one or two more dependencies, receiving other peop
 if(debug>0) printf("Rd%d Depc%d start with local sum %f\n", mynode, depc, PB->mySum);
 
 
-    *mydata = PB->mySum;
+//fprintf(stderr,"Rd%d transfer data %f\n", mynode, PB->mySum);
     void * yourdata;
     ocrGuid_t tempGuid;
     u64 errno, i, src, dest, nrecv, ndep;
@@ -159,12 +159,12 @@ if(debug>0) printf("Rd%d Depc%d clone with ndep %d \n", mynode, depc, ndep);
         ocrAddDependence(depv[2].guid, reduce, 2 , DB_MODE_RW);
 if(debug>0) printf("Rd%d Depc%d clone with guid %lx \n", mynode, depc, PB->reduceRecvGuid[0]);
         tempGuid = PB->reduceRecvGuid[0];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+        errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
         ocrAddDependence(PB->reduceRecvGuid[0], reduce, 3 , DB_MODE_RO);
         if(2*mynode+2 < numnodes) {
 if(debug>0) printf("Rd%d Depc%d clone with guid %lx \n", mynode, depc, PB->reduceRecvGuid[1]);
             tempGuid = PB->reduceRecvGuid[1];
-            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
             ocrAddDependence(PB->reduceRecvGuid[1], reduce, 4 , DB_MODE_RO);
         }
         return NULL_GUID;
@@ -174,27 +174,33 @@ if(debug>0) printf("Rd%d Depc%d clone with guid %lx \n", mynode, depc, PB->reduc
     if(depc > 3) {
 if(debug>0) printf("Rd%d P%d received \n", mynode, depc);
         double * yourdata = depv[3].ptr;
-        *mydata += *yourdata;
+        PB->mySum += *yourdata;
+//fprintf(stderr, "Rd%d YOURDATA %f\n", mynode, *yourdata);
+
         ocrEventDestroy(PB->reduceRecvGuid[0]);
     }
     if(depc > 4) {
 if(debug>0) printf("RdM%d P%d received \n", mynode, depc);
         double * yourdata = depv[4].ptr;
-        *mydata += *yourdata;
+        PB->mySum += *yourdata;
+//fprintf(stderr, "Rd%d YOURDATA %f\n", mynode, *yourdata);
         ocrEventDestroy(PB->reduceRecvGuid[1]);
     }
+//fprintf(stderr,"Rd%d AFTER ADD %f\n", mynode, *mydata);
 
 //send
+    *mydata = PB->mySum;
     if(mynode == 0) {
 if(debug>0) printf("Rd%d Depc%d send with guid %lx \n", mynode, depc, SB->onceGuid[PB->dotPhase]);
         ocrDbRelease(depv[2].guid);
+//fprintf(stderr,"Rd00 sending %f to %lx \n", *mydata, SB->onceGuid[PB->dotPhase]);
         ocrEventSatisfy(SB->onceGuid[PB->dotPhase], depv[2].guid);
         return NULL_GUID;
     }
 
 if(debug>0) printf("Rd%d Depc%d send with guid %lx \n", mynode, depc, PB->reduceSendGuid);
     tempGuid = PB->reduceSendGuid;
-    errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+    errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
     ocrDbRelease(depv[2].guid);
     ocrEventSatisfy(PB->reduceSendGuid, depv[2].guid);
 if(debug>0) printf("Rd%d Depc%d after satisfy \n", mynode, depc);
@@ -377,7 +383,8 @@ ocrGuid_t haloExchangeEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
 paramv
 0: matrixID
 1: vector index
-2: return event
+2: return event for unpack
+3: return event for pack
 
 depv
 0: shared block
@@ -410,7 +417,7 @@ if(debug > 1) for(i=0;i<26;i++) printf("HE%d i %d sendblock %lx \n", mynode, i, 
 
 fflush(stdout);
 
-    u64 paramvPack[3] = {paramv[0], paramv[1], phase};
+    u64 paramvPack[4] = {paramv[0], paramv[1], paramv[3], phase};
     ocrEdtCreate(&packEdt, SB->packTemplate, EDT_PARAM_DEF, paramvPack, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
     u64 paramvUnpack[4] = {paramv[0], paramv[1], paramv[2], phase};
     ocrEdtCreate(&unpackEdt, SB->unpackTemplate, EDT_PARAM_DEF, paramvUnpack, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
@@ -435,7 +442,7 @@ if(debug != 0) printf("HE%d after 0-2 \n", mynode);
 
         tempGuid = PB->haloRecvGuid[phase][i];
         if(tempGuid != NULL_GUID){
-            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
             ocrAddDependence(PB->haloRecvGuid[phase][i], unpackEdt, i+2, DB_MODE_RO);
             }
           else ocrAddDependence(NULL_GUID, unpackEdt, i+2, DB_MODE_RO);
@@ -454,7 +461,8 @@ ocrGuid_t packANDsatisfyEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 param
 0: matrixID
 1: vector index
-2: hePhase   //choose between two sets of GUIDs
+2: return event
+3: hePhase   //choose between two sets of GUIDs
 
 depv
 0: sharedBlock
@@ -468,7 +476,8 @@ send buffers are in lexicographic order
 */
     u64 matrixID = paramv[0];
     u64 vi = paramv[1];
-    u64 phase = paramv[2];
+    ocrGuid_t event = paramv[2];
+    u64 phase = paramv[3];
 
     sharedBlock_t * SB = depv[0].ptr;
 
@@ -487,7 +496,7 @@ if(debug != 0) printf("PK%d ID%d start P%d vi %d \n", mynode, matrixID, phase, v
     u64 * p1 = (g->p1[matrixID]);
     u64 * p2 = (g->p2[matrixID]);
 
-    u64 i, i1, i2;
+    u64 i, j, i1, i2;
     double *src, * s, * d;
 
     src = PB->vector[vi];
@@ -498,12 +507,14 @@ if(debug != 0) printf("PK%d ID%d start P%d vi %d \n", mynode, matrixID, phase, v
 if(debug != 0) printf("PK%d  ID%d start vi %d \n", mynode, matrixID, vi);
 if(debug > 1) for(i=0;i<28;i++) printf("PK%d ID%d depv[%d] %lx \n", mynode, matrixID, i, depv[i].guid);
 
-
     for(i=0;i<26;i++) {
 if(debug > 1) printf("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %lx\n", mynode, i, *start, *l1, *l2, *p1, *p2, *l1*(*l2), depv[i+2].guid);
         if(depv[i+2].guid != NULL_GUID) {
 
             d = depv[i+2].ptr;
+            s = src;
+
+
             s = src + *start;
             for(i2=0;i2<*l2;i2++) {
                 for(i1=0;i1<*l1;i1++) {
@@ -515,7 +526,7 @@ if(debug > 1) printf("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %l
 if(debug > 0) printf("PK%d DIR%d satisfy %lx with %lx\n", mynode, i, PB->haloSendGuid[phase][i], depv[i+2].guid);
 fflush(stdout);
             tempGuid = PB->haloSendGuid[phase][i];
-            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
             ocrDbRelease(depv[i+2].guid);
             ocrEventSatisfy(PB->haloSendGuid[phase][i], depv[i+2].guid);
          }
@@ -528,6 +539,8 @@ fflush(stdout);
     }
 if(debug != 0) printf("PK%d finish\n", mynode);
 fflush(stdout);
+
+ocrEventSatisfy(event, NULL_GUID);
 
 return(NULL_GUID);
 
@@ -600,7 +613,10 @@ if(debug > 1) printf("UN%d start i %d\n", mynode, i);
           else {
 if(debug >1) printf("UN%d i %d v %f\n", mynode, i, *b);
 
-            for(j=0;j<len;j++) *dest++ = *b++;
+            for(j=0;j<len;j++) {
+               *dest++ = *b++;
+            }
+
         }
     }
 
@@ -671,6 +687,7 @@ if(debug >= 1) printf("SM%d MID%d start \n", mynode, matrixID);
 
 
     u64 size = SB->size[matrixID];
+    u64 hsize = (size+2)*(size+2)*(size+2);
     size = size*size*size;
 
 
@@ -687,6 +704,7 @@ if(debug >= 1) printf("SM%d MID%d size %d \n", mynode, matrixID, size);
     u64 i, j;
     double sum;
 
+soln = solnbase;
 
 //forward sweep
     for(i=0;i<size;i++){
@@ -696,7 +714,7 @@ if(debug >= 2) printf("SM%d i %d rhs %f \n", mynode, i, rhs[i]);
 if(debug >= 2) printf("SM%d i %d j %d sum %f a %f ind %d z %f \n", mynode, i, j, sum, a[j], ind[j], solnbase[ind[j]]);
            sum -= a[j]*solnbase[ind[j]];
         }
-if(debug >= 1) printf("SM%d diag index %d diag value %f\n", mynode, *diag, abase[*diag]);
+if(debug >= 2) printf("SM%d diag index %d diag value %f\n", mynode, *diag, abase[*diag]);
 
         sum += abase[*diag]*solnbase[indbase[*diag]];
         *(soln++) = sum/abase[*(diag++)];
@@ -709,6 +727,7 @@ if(debug > 1){
     for(i=0;i<size;i++)
        printf("SM%d MID%d i %d val %f \n", mynode, matrixID, i, soln[i]);
 }
+
 if(debug >= 1) printf("SM%d MID%d finish forward\n", mynode, matrixID);
 fflush(stdout);
 //backward sweep
@@ -734,9 +753,11 @@ if(debug >= 2) printf("SM%d diag index %d diag value %f sum %f soln %f \n", myno
         a -= 27;
         ind -= 27;
     }
-    if(debug > 0){
-        soln = solnbase;
-    }
+
+
+sum = 0;
+soln = solnbase;
+for(i=0;i<size;i++) sum += *soln++;
 
     ocrDbRelease(depv[1].guid);
     ocrEventSatisfy(paramv[3], depv[1].guid);
@@ -844,7 +865,7 @@ this is the driver for the multigrid steps.
     privateBlock_t * PB = depv[1].ptr;
     u64 phase = PB->mgPhase[matrixID];
 
-    ocrGuid_t halo, haloEvent, smooth, smoothEvent, spmv, spmvEvent, mg, mgevent;
+    ocrGuid_t halo, packEvent, unpackEvent, smooth, smoothEvent, spmv, spmvEvent, mg, mgevent;
 
 if(debug > 0) printf("MG%d S%d P%d ID%d start\n", PB->mynode, mgStep, phase, matrixID);
 
@@ -887,12 +908,14 @@ if(debug > 0) printf("MG%d S%d P%d  create smooth\n", PB->mynode, mgStep, phase,
         u64 paramvsmooth0[4] = {matrixID, R, Z, smoothEvent};
         ocrEdtCreate(&smooth, SB->smoothTemplate, EDT_PARAM_DEF, paramvsmooth0, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, smooth, 0, DB_MODE_RO);
-        ocrEventCreate(&haloEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(haloEvent, smooth, 1, DB_MODE_RW);
+        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(unpackEvent, smooth, 1, DB_MODE_RW);
+        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(packEvent, smooth, 2, DB_MODE_RW);
 
 if(debug > 0) printf("MG%d S%d P%d  launch halo\n", PB->mynode, mgStep, phase, matrixID);
 //launch halo exchange
-        u64 paramvhalo0[3] = {matrixID, Z, haloEvent};
+        u64 paramvhalo0[4] = {matrixID, Z, unpackEvent, packEvent};
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo0, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
@@ -922,11 +945,13 @@ fflush(stdout);
         u64 paramvspmv1[4] = {matrixID, Z, AP, spmvEvent};
         ocrEdtCreate(&spmv, SB->spmvTemplate, EDT_PARAM_DEF, paramvspmv1, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, spmv, 0, DB_MODE_RO);
-        ocrEventCreate(&haloEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(haloEvent, spmv, 1, DB_MODE_RW);
+        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(unpackEvent, spmv, 1, DB_MODE_RW);
+        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(packEvent, spmv, 2, DB_MODE_RW);
 
 //launch halo exchange
-        u64 paramvhalo1[3] = {matrixID, Z, haloEvent};
+        u64 paramvhalo1[4] = {matrixID, Z, unpackEvent, packEvent};
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo1, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
@@ -985,7 +1010,7 @@ if(debug > 1) printf("i %d ap %f rold %f rnew %f \n", i, *ap, *rold, *(rnew-1));
            }
            break;
         case 3:
-printf("MG%d S%d P%d ID%d hit case 3 in restriction\n", PB->mynode, mgStep, phase, matrixID);
+PRINTF("MG%d S%d P%d ID%d hit case 3 in restriction\n", PB->mynode, mgStep, phase, matrixID);
 
         }
 
@@ -1056,12 +1081,14 @@ printf("MG%d S%d P%d ID%d hit case 3 in prolong\n", PB->mynode, mgStep, phase, m
         u64 paramvsmooth3[4] = {matrixID, R, Z, smoothEvent};
         ocrEdtCreate(&smooth, SB->smoothTemplate, EDT_PARAM_DEF, paramvsmooth3, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, smooth, 0, DB_MODE_RO);
-        ocrEventCreate(&haloEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(haloEvent, smooth, 1, DB_MODE_RW);
+        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(unpackEvent, smooth, 1, DB_MODE_RW);
+        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(packEvent, smooth, 2, DB_MODE_RW);
 
 if(debug > 0) printf("MG%d S%d P%d  launch halo\n", PB->mynode, mgStep, phase, matrixID);
 //launch halo exchange
-        u64 paramvhalo3[3] = {matrixID, R, haloEvent};
+        u64 paramvhalo3[4] = {matrixID, R, unpackEvent, packEvent};
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo3, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
@@ -1102,14 +1129,13 @@ only work done is local linear algebra
 
 if(debug > 0) printf("PCG%d T%d P%d begin shared %lx private %lx returnblock %lx \n", mynode, timestep, phase, depv[0].guid, depv[1].guid, depv[2].guid);
 
-    PB->dotPhase ^=  1; //toggle between 0 and 1
 
 if(debug > 0) printf("PCG%d T%d P%d dotPhase %d once %lx\n", mynode, timestep, phase, PB->dotPhase, SB->onceGuid[PB->dotPhase]);
 
     ocrGuid_t reduce, tempGuid;
     double *a, sum, pap, rtz, alpha, beta;
     u64 i, j, ind, errno;
-    ocrGuid_t mg, halo, spmv, haloEvent, spmvEvent, hpcg, hpcgEvent;
+    ocrGuid_t mg, halo, spmv, unpackEvent, packEvent, spmvEvent, hpcg, hpcgEvent;
 
     switch (phase) {
         case 0:
@@ -1129,16 +1155,19 @@ if(debug > 0) printf("PCG%d T%d P%d dotPhase %d once %lx\n", mynode, timestep, p
         for(i=0;i<MT0;i++) sum += PB->vector[R][i]*PB->vector[R][i];
         PB->mySum = sum;  //local sum
 if(debug > 0) printf("PCG%d T%d P%d rtr %f\n", mynode, timestep, phase, PB->mySum);
+//fprintf(stderr,"PCG%d T%d P%d rtr %f\n", mynode, timestep, phase, PB->mySum);
 
 //create clone
 
         PB->hpcgPhase = 1;
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        PB->dotPhase ^=  1; //toggle between 0 and 1
         tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
+//fprintf(stderr,"PCG%d add dependence with %lx\n", mynode, SB->onceGuid[PB->dotPhase]);
         ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2, DB_MODE_RO);
 
 //launch global sum
@@ -1158,7 +1187,8 @@ fflush(stdout);
 if(debug > 0) printf("PCG%d T%d P%d global rtr %f \n", mynode, timestep, phase, *reduceBlock);
         if(mynode==0) PRINTF("time %d rtr %f \n", timestep, *reduceBlock);
         if(timestep==0) PB->rtr0 = *reduceBlock;
-           else if(*reduceBlock/PB->rtr0 < 1e-13 || timestep == T) {
+           //else if(*reduceBlock/PB->rtr0 < 1e-13 || timestep == T) {
+           else if(*reduceBlock/PB->rtr0 < 1e-13 || timestep == 50) {
 if(debug > 0) printf("PCG%d T%d P%d finishing \n", mynode, timestep, phase);
 fflush(stdout);
              ocrAddDependence(depv[1].guid, SB->wrapup, mynode, DB_MODE_RO);
@@ -1204,6 +1234,7 @@ fflush(stdout);
 if(debug > 0) printf("PCG%d T%d P%d local rtz %f \n", mynode, timestep, phase, sum);
 if(debug > 1) for(i=0;i<MT0;i++) printf("PCG%d T%d P%d i %d Z %f R %f \n", mynode, timestep, phase, i, PB->vector[Z][i], PB->vector[R][i]);
 
+
 //Create clone
         PB->hpcgPhase = 3;
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
@@ -1213,8 +1244,9 @@ if(debug > 0) printf("PCG%d T%d P%d before 1\n", mynode, timestep, phase);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
 
+        PB->dotPhase ^=  1; //toggle between 0 and 1
         tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
         ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2, DB_MODE_RO);
 
 //launch global sum for rtz
@@ -1236,7 +1268,8 @@ if(debug > 0) printf("PCG%d T%d P%d before 1\n", mynode, timestep, phase);
 
 //compute Ap
 
-ocrEventCreate(&haloEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
 ocrEventCreate(&spmvEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
 
 //create clone
@@ -1251,10 +1284,11 @@ ocrEventCreate(&spmvEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         u64 paramvspmv[4] = {0, P, AP, spmvEvent};
         ocrEdtCreate(&spmv, SB->spmvTemplate, EDT_PARAM_DEF, paramvspmv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, spmv, 0, DB_MODE_RO);
-        ocrAddDependence(haloEvent, spmv, 1, DB_MODE_RW);
+        ocrAddDependence(unpackEvent, spmv, 1, DB_MODE_RW);
+        ocrAddDependence(packEvent, spmv, 2, DB_MODE_RW);
 
 //launch halo exchange
-        u64 paramvhalo[3] = {0, P, haloEvent};
+        u64 paramvhalo[4] = {0, P, unpackEvent, packEvent};
         ocrDbRelease(depv[1].guid);
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
@@ -1279,8 +1313,9 @@ if(debug > 0) printf("PCG%d T%d P%d pap %f \n", mynode, timestep, phase, sum);
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
+        PB->dotPhase ^=  1; //toggle between 0 and 1
         tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
         ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2 , DB_MODE_RO);
 
 //launch global sum
@@ -1317,8 +1352,10 @@ if(debug > 0) printf("PCG%d T%d P%d rtr %f \n", mynode, timestep, phase, sum);
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
+        PB->dotPhase ^=  1; //toggle between 0 and 1
         tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | EVT_PROP_TAKES_ARG);
+        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+//fprintf(stderr,"PCG%d add dependence with %lx\n", mynode, SB->onceGuid[PB->dotPhase]);
         ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2 , DB_MODE_RO);
 //launch global sum for rtr
         ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
@@ -1666,13 +1703,13 @@ for(i=0;i<N-1;i++) {
     ocrGuidFromIndex(&(SB->onceGuid[1]), onceRangeGuid, 1);
 
 
-    ocrEdtTemplateCreate(&(SB->packTemplate), packANDsatisfyEdt, 3, 28);
+    ocrEdtTemplateCreate(&(SB->packTemplate), packANDsatisfyEdt, 4, 28);
     ocrEdtTemplateCreate(&(SB->unpackTemplate), unpackEdt, 4, 28);
     ocrEdtTemplateCreate(&(SB->hpcgTemplate), hpcgEdt, 0, 3);
-    ocrEdtTemplateCreate(&(SB->spmvTemplate), spmvEdt, 4, 2);
+    ocrEdtTemplateCreate(&(SB->spmvTemplate), spmvEdt, 4, 3);
     ocrEdtTemplateCreate(&(SB->mgTemplate), mgEdt, 2, 2);
-    ocrEdtTemplateCreate(&(SB->haloTemplate), haloExchangeEdt, 3, 2);
-    ocrEdtTemplateCreate(&(SB->smoothTemplate), smoothEdt, 4, 2);
+    ocrEdtTemplateCreate(&(SB->haloTemplate), haloExchangeEdt, 4, 2);
+    ocrEdtTemplateCreate(&(SB->smoothTemplate), smoothEdt, 4, 3);
     ocrEdtTemplateCreate(&(SB->reduceTemplate), reduceEdt, 0, EDT_PARAM_UNK);
     ocrEdtTemplateCreate(&(SB->hpcgInitTemplate), hpcgInitEdt, 1, 2);
 

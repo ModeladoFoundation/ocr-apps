@@ -9,8 +9,8 @@ static inline int max_score(int x, int y) {
  * Step function defintion for "swStep"
  */
 void SmithWaterman_swStep(cncTag_t i, cncTag_t j, SeqData *data, int *above, int *left, SmithWatermanCtx *ctx) {
-    int index, ii, jj;
-    assert(above[0] == left[0] && "Diagonal values should match");
+    int ii, jj;
+    //assert(!above || !left || above[0] == left[0] && "Diagonal values should match");
 
     /* Allocate a haloed local matrix for calculating 'this' tile*/
     /* 2D-ify it for readability */
@@ -18,13 +18,27 @@ void SmithWaterman_swStep(cncTag_t i, cncTag_t j, SeqData *data, int *above, int
     int (*curr_tile)[ctx->tw+1] = cncLocalAlloc(sizeof(int)*entryCount);
 
     /* Set local_tile[i+1][0] (left column) from the right column of the left tile */
-    for (index = 0; index <= ctx->th; index++) {
-        curr_tile[index][0] = left[index];
+    if (left) {
+        for (ii = 0; ii <= ctx->th; ii++) {
+            curr_tile[ii][0] = left[ii];
+        }
+    }
+    else {
+        for (ii = 0; ii <= ctx->th; ii++) {
+            curr_tile[ii][0] = GAP_PENALTY * (i*ctx->th + ii);
+        }
     }
 
     /* Set local_tile[0][j+1] (top row) from the bottom row of the above tile */
-    for (index = 0; index <= ctx->tw; ++index) {
-        curr_tile[0][index] = above[index];
+    if (above) {
+        for (jj = 0; jj <= ctx->tw; ++jj) {
+            curr_tile[0][jj] = above[jj];
+        }
+    }
+    else {
+        for (jj = 0; jj <= ctx->th; jj++) {
+            curr_tile[0][jj] = GAP_PENALTY * (j*ctx->tw + jj);
+        }
     }
 
     /* Run a smith-waterman on the local tile */
@@ -44,18 +58,21 @@ void SmithWaterman_swStep(cncTag_t i, cncTag_t j, SeqData *data, int *above, int
     }
 
     int *right = cncItemAlloc(sizeof(*right) * (ctx->th+1));
-    for (index = 0; index <= ctx->th; index++) {
-        right[index] = curr_tile[index][ctx->tw];
+    for (ii = 0; ii <= ctx->th; ii++) {
+        right[ii] = curr_tile[ii][ctx->tw];
     }
     cncPut_left(right, i, j+1, ctx);
-    assert(above[ctx->tw] == right[0]);
 
     int *below = cncItemAlloc(sizeof(*below) * (ctx->tw+1));
-    for (index = 0; index <= ctx->tw; index++) {
-        below[index] = curr_tile[ctx->th][index];
+    for (jj = 0; jj <= ctx->tw; jj++) {
+        below[jj] = curr_tile[ctx->th][jj];
     }
     cncPut_above(below, i+1, j, ctx);
-    assert(left[ctx->th] == below[0]);
+
+    /* Prescribe step for same column, next row */
+    if (i+1 < ctx->nth) {
+        cncPrescribe_swStep(i+1, j, ctx);
+    }
 
     /* Cleanup */
     cncLocalFree(curr_tile);
