@@ -56,7 +56,7 @@ def plotLabels(xLabel , yLabel , title ):
 # Inserts lagends
 #-------------------------------------------------------------------------------
 def plotLegends():
-        plt.legend(prop={'size':6},loc='upper right')
+        plt.legend(prop={'size':6},loc='upper left')
 
 #-------------------------------------------------------------------------------
 # Generates an image file containing plots of the data from stat file
