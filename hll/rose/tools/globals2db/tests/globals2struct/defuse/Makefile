@@ -3,8 +3,8 @@
 # removed or modified.
 
 TARGET = main
-SRC = main.c foo.c
-ROSE_SRC = rose_main.c rose_foo.c
+SRC = main.c def.c use.c
+ROSE_SRC = rose_main.c rose_def.c rose_use.c
 TOOL = ../../../bin/globals2struct
 ROSE_TARGET = rose_$(TARGET)
 
@@ -19,9 +19,9 @@ $(ROSE_TARGET): $(SRC) $(TOOL)
 
 run: $(ROSE_TARGET)
 	$(CC) -g -O2  -I. $(ROSE_SRC) -o $(ROSE_TARGET)
-	./$(ROSE_TARGET) 8 > $(ROSE_TARGET).log
+	./$(ROSE_TARGET) > $(ROSE_TARGET).log
 	$(CC) -O2 $(SRC) -o $(TARGET)
-	./$(TARGET) 8 > $(TARGET).log
+	./$(TARGET) > $(TARGET).log
 	@if test `diff $(TARGET).log $(ROSE_TARGET).log  | wc -l` -eq 0; \
 		then echo "$(TOOL) PASSED!" $(OUTPUT) ; \
 		else echo "$(TOOL) FAILED." $(OUTPUT) ; \

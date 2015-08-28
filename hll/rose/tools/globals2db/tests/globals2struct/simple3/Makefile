@@ -33,7 +33,7 @@ dot:
 	$(ZGRVIEW) -Pdot $(TARGET).c.dot &
 
 clean:
-	rm -f *~ ffwd.h $(TARGET) $(TARGET).log $(ROSE_TARGET) $(ROSE_SRC) *.o $(TARGET).c.dot build.log $(ROSE_TARGET).log
+	rm -f *~ rose_ffwd.h $(TARGET) $(TARGET).log $(ROSE_TARGET) $(ROSE_SRC) *.o $(TARGET).c.dot build.log $(ROSE_TARGET).log
 
 
 

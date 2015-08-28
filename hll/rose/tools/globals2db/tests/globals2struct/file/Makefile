@@ -36,7 +36,7 @@ dot:
 	$(ZGRVIEW) -Pdot $(TARGET).c_WholeAST.dot &
 
 clean:
-	rm -f *~ ffwd.h $(TARGET) $(ROSE_TARGET) $(ROSE_SRC) *.o $(TARGET).c.dot build.log
+	rm -f *~ rose_ffwd.h $(TARGET) $(ROSE_TARGET) $(ROSE_SRC) *.o $(TARGET).c.dot build.log
 	rm -rf install build
 
 
