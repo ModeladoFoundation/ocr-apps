@@ -113,7 +113,7 @@ def main():
         sumy = 0
         sumx2 = 0
 
-        if(len(logY) != 0):
+        if(len(logY) == N):
             for i in logX:
                 sumxy = sumxy + logX[i]*logY[i]
                 sumx = sumx + logX[i]
