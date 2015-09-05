@@ -30,9 +30,10 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 # doesn't work with Jenkins, so reckon direclty from APPS_ROOT
 #SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
 
-SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
+# Use the ROSE translated sources.
+SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/intel/build_and_run/build/src
 
-WORKLOAD_SRC          ?= $(SRC_DIR)
+WORKLOAD_SRC          ?=  $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
 
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
@@ -73,18 +74,22 @@ REQ_LIBS := mpilite
 
 # Space separated list of source files
 
-## from sdsc SRCS := atoms.c  cells.c  comd.c  command.c  eam.c  lj.c  simulation.c timers.c  timestep.c
-SRCS := cmdLineParser.c  decomposition.c  haloExchange.c  linkCells.c  mycommand.c  performanceTimers.c  timestep.c CoMD.c           eam.c            initAtoms.c     ljForce.c    parallel.c   random.c             yamlOutput.c
+# Use the ROSE translated sources
+SRC_NAMES := cmdLineParser.c decomposition.c  haloExchange.c  \
+	linkCells.c mycommand.c performanceTimers.c  \
+	timestep.c CoMD.c eam.c initAtoms.c \
+	ljForce.c parallel.c random.c yamlOutput.c
 
-HDR_NAMES := cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h   parallel.h timestep.h CoMDTypes.h      eam.h            linkCells.h  mycommand.h  performanceTimers.h  yamlOutput.h constants.h      haloExchange.h   ljForce.h    mytype.h     random.h
+SRCS := $(addprefix rose_,$(SRC_NAMES))
+
+HDR_NAMES := cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h \
+	parallel.h timestep.h CoMDTypes.h eam.h  linkCells.h  mycommand.h \
+	performanceTimers.h  yamlOutput.h constants.h  haloExchange.h  \
+	ljForce.h  mytype.h  random.h
 
 HDRS := ./CoMD_info.h $(addprefix $(WORKLOAD_SRC)/,$(HDR_NAMES))
 
-#OBJS := $(notdir $(SRCS:.c=.o))
-OBJS := $(notdir $(source:.c=.o))
-
-## from sdsc $(OBJS): cells.h  CoMD_info.h  command.h  simulation.h  timers.h
-#$(OBJS): CoMD_info.h cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h   parallel.h timestep.h CoMDTypes.h      eam.h            linkCells.h  mycommand.h  performanceTimers.h  yamlOutput.h constants.h      haloExchange.h   ljForce.h    mytype.h     random.h
+OBJS := $(notdir $(SRCS:.c=.o))
 
 $(OBJS): $(HDRS)
 

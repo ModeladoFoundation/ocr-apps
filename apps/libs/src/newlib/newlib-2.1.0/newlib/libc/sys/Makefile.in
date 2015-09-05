@@ -124,6 +124,7 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CRT = @CRT@
 CRT0 = @CRT0@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -239,9 +240,9 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = cygnus
 SUBDIRS = $(sys_dir) .
 @HAVE_SYS_DIR_TRUE@SYSLIB = lib.a
-noinst_DATA = $(CRT0)
+noinst_DATA = $(CRT) $(CRT0)
 @USE_LIBTOOL_FALSE@noinst_LIBRARIES = $(SYSLIB)
-CLEANFILES = $(CRT0)
+CLEANFILES = $(CRT0) $(CRT)
 ACLOCAL_AMFLAGS = -I ../.. -I ../../..
 CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host
 all: all-recursive
@@ -582,12 +583,19 @@ uninstall-am:
 
 $(sys_dir)/libsys.$(aext): ; @true
 
-$(CRT0): $(sys_dir)/$(CRT0)
+crt0.o: $(sys_dir)/crt0.o
 	rm -f $@
-	ln $(sys_dir)/$(CRT0) $@ >/dev/null 2>/dev/null \
-	 || cp $(sys_dir)/$(CRT0) $@
+	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
 
-$(sys_dir)/$(CRT0): ; @true
+crt0t.o: $(sys_dir)/crt0t.o
+	rm -f $@
+	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
+
+crtend.o: $(sys_dir)/crtend.o
+	rm -f $@
+	ln $(sys_dir)/$@ $@ >/dev/null 2>/dev/null || cp $(sys_dir)/$@ $@
+
+$(CRT:%=$(sys_dir)/%) $(CRT0:%=$(sys_dir)/%): ; @true
 
 doc:
 

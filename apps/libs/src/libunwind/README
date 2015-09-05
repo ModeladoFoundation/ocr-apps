@@ -1,0 +1,37 @@
+Building libunwind for tg, and x86
+=====================
+
+This directory can build libunwind for two different architectures:
+1 - tg; this is for the xstg-linux-elf target and uses the new
+    llvm/clang/binutils tool chain in the intel repository:isa/4.1.0 branch.
+2 - x86; this is for the x86_64-linux-elf target and uses the
+    same toolchain as above.
+
+Note that the builds for each of these 'targets' is independent of the others.
+You don't need to do anything special if you want to build libunwind for more
+than one of these.
+
+Also note that first, newlib, libcxx, and libcxxabi must be built and
+installed for the appropriate architecture.
+Build newlib for 'tg' for libunwind 'tg', and 'x86_clang' for libunwind 'x86'
+Build libcxx for 'tg' for libunwind 'tg', and 'x86' for libunwind 'x86'
+Build libcxxabi for 'tg' for libunwind 'tg', and 'x86' for libunwind 'x86'
+=====================
+To build for either architecture:
+
+Change into the xstack/apps/libs/src/libunwind directory.
+Run 'make ARCH=<arch>'; where <arch> is one of 'tg' or 'x86'. This builds
+for the specified target and installs the resulting library and includes
+into the install root at xstack/apps/libs/<arch>.
+
+After the build completes, the following has been copied into the
+xstack/apps/libs/<arch>/lib/ directory:
+
+   libunwind.a
+
+No headers are installed.
+
+To just do a local build, but not install, run 'make ARCH=tg build'.
+
+To clean, use 'make ARCH=<arch> clean'.  Note that this does NOT uninstall
+from the xstack/apps/libs/<arch> install root area.

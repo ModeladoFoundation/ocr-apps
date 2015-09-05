@@ -5,20 +5,32 @@
 COMM_LAYER=mpi
 
 # APPS
-APPS_ROOT       ?= ../../../../../apps
-APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
+ifndef APPS_ROOT
+  $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+
+  MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
+
+
+  APPS_ROOT       = $(MYAPPS_ROOT)
+
+endif
+
+APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
 OCR_TARGET       ?= x86-${COMM_LAYER}
-OCR_ROOT         ?= ../../../../../ocr
+OCR_ROOT         ?= ${APPS_ROOT}/../ocr
 OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
-WORKLOAD_SRC          ?= .
+# Use the ROSE translated sources.
+SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/intel/build_and_run/build/src
+
+WORKLOAD_SRC          ?=  $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -53,19 +65,41 @@ TARGET := comd-ocrd
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := mpilite
 
 # Space separated list of source files
 
-SRCS := atoms.c  cells.c  comd.c  command.c  eam.c  lj.c  simulation.c	timers.c  timestep.c
-OBJS := $(notdir $(SRCS:.c=.o))
-$(OBJS): cells.h  CoMD_info.h  command.h  simulation.h  timers.h
+#SRCS := atoms.c  cells.c  comd.c  command.c  eam.c  lj.c  simulation.c	timers.c  timestep.c
+#OBJS := $(notdir $(SRCS:.c=.o))
+#$(OBJS): cells.h  CoMD_info.h  command.h  simulation.h  timers.h
+
+# Use the ROSE translated sources
+SRC_NAMES := cmdLineParser.c decomposition.c  haloExchange.c  \
+	linkCells.c mycommand.c performanceTimers.c  \
+	timestep.c CoMD.c eam.c initAtoms.c \
+	ljForce.c parallel.c random.c yamlOutput.c
+
+SRCS := $(addprefix rose_,$(SRC_NAMES))
+
+HDR_NAMES := cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h \
+	parallel.h timestep.h CoMDTypes.h eam.h  linkCells.h  mycommand.h \
+	performanceTimers.h  yamlOutput.h constants.h  haloExchange.h  \
+	ljForce.h  mytype.h  random.h
+
+HDRS := ./CoMD_info.h $(addprefix $(WORKLOAD_SRC)/,$(HDR_NAMES))
+
+OBJS := $(notdir $(source:.c=.o))
+
+$(OBJS): $(HDRS)
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
-LDFLAGS := -lpthread -lm
+CFLAGS := -g -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
+LDFLAGS := -lpthread -lm -lmpilite
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
 # Targets:
 #   - all:     Build the application.
@@ -105,6 +139,10 @@ install: all
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
 prerun: ;
+
+prebuild: CoMD_info.h
+CoMD_info.h:
+	${WORKLOAD_SRC}/generate_info_header ${TARGET} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated

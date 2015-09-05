@@ -18,20 +18,9 @@
 
 #define nextOption(o) ((MyOption*) o->next)
 
-typedef struct MyOptionSt
-{
-   char* help;
-   char* longArg;
-   unsigned char shortArg[2];
-   int argFlag;
-   char type;
-   int sz;
-   void* ptr;
-   void* next;
-} MyOption;
 
-static __thread int longest = 1;
-static __thread MyOption* myargs=NULL;
+static int longest = 1;
+static MyOption* myargs=NULL;
 
 static char* dupString(const char* s)
 {
@@ -47,7 +36,7 @@ static MyOption* myOptionAlloc(
    const char* longOption, const char shortOption,
    int has_arg, const char type, void* dataPtr, int dataSize, const char* help)
 {
-    static __thread int iBase=129;
+    static int iBase=129;
    MyOption* o = (MyOption*)comdCalloc(1, sizeof(MyOption));
    o->help = dupString(help);
    o->longArg = dupString(longOption);

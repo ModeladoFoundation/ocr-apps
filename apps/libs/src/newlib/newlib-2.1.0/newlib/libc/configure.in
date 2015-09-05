@@ -47,6 +47,18 @@ if test "x${have_crt0}" = "xyes"; then
 fi
 AC_SUBST(CRT0)
 
+CRT=
+if test "x${sys_dir}" = "xocr"; then
+    if test "x${machine_dir}" = "xxstg"; then
+        CRT="crt0.o crt0t.o crtend.o"
+    else
+        CRT="crt0.o"
+    fi
+    CRT0=
+fi
+AC_SUBST(CRT)
+
+
 dnl For each directory which we may or may not want, we define a name
 dnl for the library and an automake conditional for whether we should
 dnl build the library.

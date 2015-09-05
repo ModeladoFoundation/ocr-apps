@@ -411,31 +411,33 @@ job_ocr_build_kernel_Stencil1Dlite_x86_regression = {
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install'}
 }
 
-job_ocr_run_kernel_Stencil1Dlite_x86_remote_regression = {
-    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-regression',
-    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
-    'jobtype': 'ocr-run-kernel-remote-regression',
-    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
-                  'WORKLOAD_ARGS': '65538 20000' }
-}
+# Disabled, see bug #805
+#job_ocr_run_kernel_Stencil1Dlite_x86_remote_regression = {
+#    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-regression',
+#    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-regression',
+#    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-regression 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+#                  'WORKLOAD_ARGS': '65538 20000' }
+#}
 
 
+# Disabled, see bug #804
 # use different workload_args from plain "run" to get less negative scaling
-job_ocr_run_kernel_Stencil1Dlite_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
-    'jobtype': 'ocr-run-kernel-remote-scaling',
-    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
-                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
-                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
-                  'WORKLOAD_ARGS': '65538 20000'}
-}
+#job_ocr_run_kernel_Stencil1Dlite_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-Stencil1Dlite-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-Stencil1Dlite-x86-regression',),
+#    'jobtype': 'ocr-run-kernel-remote-scaling',
+#    'run-args': 'stencil x86 ocr-run-kernel-Stencil1Dlite-x86-remote-scaling 10',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
+#                  'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel',
+#                  'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/mpilite/intel/install',
+#                  'WORKLOAD_ARGS': '65538 20000'}
+#}
 
 #Aggregates execution times in csv file
 job_gatherStats = {

@@ -192,10 +192,10 @@ void NAME(gesv) (                 // Compute solution to a system of linear equa
     ADD_DEPENDENCE(gesvThunkOutputEvent,  gesvWrapupEdt, NAME(gesv_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dba,                  gesvThunkEdt, NAME(gesv_thunkDeps_t), dba,        ITW);
-    ADD_DEPENDENCE(dbb,                  gesvThunkEdt, NAME(gesv_thunkDeps_t), dbb,        ITW);
-    ADD_DEPENDENCE(dbPivotIdx,           gesvThunkEdt, NAME(gesv_thunkDeps_t), dbPivotIdx, ITW);
-    ADD_DEPENDENCE(dbInfo,               gesvThunkEdt, NAME(gesv_thunkDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(dba,                  gesvThunkEdt, NAME(gesv_thunkDeps_t), dba,        RW);
+    ADD_DEPENDENCE(dbb,                  gesvThunkEdt, NAME(gesv_thunkDeps_t), dbb,        RW);
+    ADD_DEPENDENCE(dbPivotIdx,           gesvThunkEdt, NAME(gesv_thunkDeps_t), dbPivotIdx, RW);
+    ADD_DEPENDENCE(dbInfo,               gesvThunkEdt, NAME(gesv_thunkDeps_t), dbInfo,     RW);
     printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the GESV operation.\n", STRINGIFY(NAME(gesv))); fflush(stdout);
 
 } // ?gesv
@@ -248,7 +248,7 @@ static ocrGuid_t NAME(gesv_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEdt
     ADD_DEPENDENCE(thunkDeps->dba.guid,        gesvEdt, NAME(gesv_edtDeps_t), dba,             RO);
     ADD_DEPENDENCE(thunkDeps->dbb.guid,        gesvEdt, NAME(gesv_edtDeps_t), dbb,             RO);
     ADD_DEPENDENCE(thunkDeps->dbPivotIdx.guid, gesvEdt, NAME(gesv_edtDeps_t), dbPivotIdx,      RO);
-    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     gesvEdt, NAME(gesv_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     gesvEdt, NAME(gesv_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,                  gesvEdt, NAME(gesv_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(gesv_thunkTask))); fflush(stdout);
@@ -324,12 +324,12 @@ ocrGuid_t NAME(gesv_task) (           // Spawnable externally, or spawned by the
     ADD_DEPENDENCE(gMatA,            gesv_Step2, NAME(gesv_Step2Deps_t), dba,             RO);
     ADD_DEPENDENCE(gMatB,            gesv_Step2, NAME(gesv_Step2Deps_t), dbb,             RO);
     ADD_DEPENDENCE(gPivotIdx,        gesv_Step2, NAME(gesv_Step2Deps_t), dbPivotIdx,      RO);
-    ADD_DEPENDENCE(gInfo,            gesv_Step2, NAME(gesv_Step2Deps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(gInfo,            gesv_Step2, NAME(gesv_Step2Deps_t), dbInfo,          RW);
     ADD_DEPENDENCE(getrfOutputEvent, gesv_Step2, NAME(gesv_Step2Deps_t), optionalTrigger, RO);
 
     ADD_DEPENDENCE(gMatA,            getrfEdt, NAME(getrf_edtDeps_t), dbMat,           RO);
     ADD_DEPENDENCE(gPivotIdx,        getrfEdt, NAME(getrf_edtDeps_t), dbPivotIdx,      RO);
-    ADD_DEPENDENCE(gInfo,            getrfEdt, NAME(getrf_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(gInfo,            getrfEdt, NAME(getrf_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,        getrfEdt, NAME(getrf_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting.\n", STRINGIFY(NAME(gesv_task))); fflush(stdout);
@@ -370,7 +370,7 @@ ocrGuid_t NAME(gesv_Step2) (              // Check the results of the factorizat
     ADD_DEPENDENCE(myDeps->dba.guid,        getrsEdt, NAME(getrs_edtDeps_t), dba,             RO);
     ADD_DEPENDENCE(myDeps->dbb.guid,        getrsEdt, NAME(getrs_edtDeps_t), dbb,             RO);
     ADD_DEPENDENCE(myDeps->dbPivotIdx.guid, getrsEdt, NAME(getrs_edtDeps_t), dbPivotIdx,      RO);
-    ADD_DEPENDENCE(myDeps->dbInfo.guid,     getrsEdt, NAME(getrs_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(myDeps->dbInfo.guid,     getrsEdt, NAME(getrs_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,               getrsEdt, NAME(getrs_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(gesv_Step2))); fflush(stdout);

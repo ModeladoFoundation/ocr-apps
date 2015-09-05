@@ -365,7 +365,16 @@ objectlist.awk.in: $(noinst_LTLIBRARIES)
 #lib_a_CCASFLAGS = $(AM_CCASFLAGS)
 #noinst_DATA =
 
-all-local: crt0.o
+all-local: crt0.o crt0t.o crtend.o
+
+crt0.o: crt0.c
+	$(CC) -DOCR_INIT -Os -c $< -o $@
+
+crt0t.o: crt0.c
+	$(CC) -DUSE_STACK -Os -c $< -o $@
+
+crtend.o: crtend.c
+	$(CC) -Os -c $< -o $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

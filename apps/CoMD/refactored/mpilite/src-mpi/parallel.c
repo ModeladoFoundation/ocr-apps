@@ -17,7 +17,7 @@
 #include <mpi.h>
 #endif
 
-static __thread int myRank = 0;
+static int myRank = 0;
 static int nRanks = 1;
 
 #ifdef DO_MPI

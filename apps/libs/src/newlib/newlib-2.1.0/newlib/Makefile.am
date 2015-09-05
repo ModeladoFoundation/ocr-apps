@@ -87,7 +87,7 @@ endif
 
 noinst_DATA = stmp-targ-include
 
-toollib_DATA = $(CRT0) $(CRT1)
+toollib_DATA = $(CRT0) $(CRT1) $(CRT)
 
 
 # The functions ldexp, frexp and modf are traditionally supplied in
@@ -177,12 +177,20 @@ libm/libm.a: ; @true
 
 endif # USE_LIBTOOL
 
-crt0.o: $(CRT0_DIR)$(CRT0)
+crt0.o: $(CRT0_DIR)$(CRT0) $(CRT_DIR)crt0.o
 	rm -f $@
-	ln $(CRT0_DIR)$(CRT0) $@ >/dev/null 2>/dev/null \
-	 || cp $(CRT0_DIR)$(CRT0) $@
+	ln $< $@ >/dev/null 2>/dev/null || cp < $@
+
+crt0t.o: $(CRT_DIR)crt0t.o
+	rm -f $@
+	ln $< $@ >/dev/null 2>/dev/null || cp < $@
+
+crtend.o: $(CRT_DIR)crtend.o
+	rm -f $@
+	ln $< $@ >/dev/null 2>/dev/null || cp < $@
 
 $(CRT0_DIR)$(CRT0): ; @true
+$(CRT:%=$(CRT_DIR)%): ; @true
 
 crt1.o: $(CRT1_DIR)$(CRT1)
 	rm -f $@

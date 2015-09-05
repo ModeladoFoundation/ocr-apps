@@ -113,14 +113,18 @@ def main():
         sumy = 0
         sumx2 = 0
 
-        for i in logX:
-            sumxy = sumxy + logX[i]*logY[i]
-            sumx = sumx + logX[i]
-            sumy = sumy + logY[i]
-            sumx2 = sumx2 + logX[i]*logX[i]
+        if(len(logY) == N):
+            for i in logX:
+                sumxy = sumxy + logX[i]*logY[i]
+                sumx = sumx + logX[i]
+                sumy = sumy + logY[i]
+                sumx2 = sumx2 + logX[i]*logX[i]
+
+            scalevalueList.append(-1 * (((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx))))
+        else:
+            scalevalueList.append(0)  # Erroneous run, just give a scaling of 0
 
         scalenameList.append(os.path.basename(file).split(".txt")[0])
-        scalevalueList.append(-1 * (((N*sumxy)-(sumx*sumy))/((N*sumx2)-(sumx*sumx))))
         print(scalenameList, scalevalueList)
 
     # Use build no as stat file name if jenkins running infra else use date time

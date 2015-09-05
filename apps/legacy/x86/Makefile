@@ -4,12 +4,18 @@
 #
 ARCH=x86
 
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../intel/ss/install)
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 LIBS = $(APPS_LIBS_ROOT)/lib
 OCR_INC = $(APPS_LIBS_ROOT)/include
 
+TARGET = x86_64-linux-elf
+TOOLBIN = $(TG_INSTALL)/bin
+TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+CC = $(TOOL_PREFIX)clang
+LD = $(TOOL_PREFIX)ld
 CFLAGS += -std=c99 -U__STRICT_ANSI__ -isystem $(OCR_INC)
 
 # Libraries to include from newlib

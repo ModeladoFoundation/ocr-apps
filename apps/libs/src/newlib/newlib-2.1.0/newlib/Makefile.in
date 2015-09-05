@@ -187,10 +187,12 @@ CC_FOR_NEWLIB = @CC_FOR_NEWLIB@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CRT = @CRT@
 CRT0 = @CRT0@
 CRT0_DIR = @CRT0_DIR@
 CRT1 = @CRT1@
 CRT1_DIR = @CRT1_DIR@
+CRT_DIR = @CRT_DIR@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -387,7 +389,7 @@ AR_FLAGS = rc
 @USE_LIBTOOL_FALSE@	libc.a
 
 noinst_DATA = stmp-targ-include
-toollib_DATA = $(CRT0) $(CRT1)
+toollib_DATA = $(CRT0) $(CRT1) $(CRT)
 
 # The functions ldexp, frexp and modf are traditionally supplied in
 # both libc.a and libm.a.  We build them in libm.a and copy them over,
@@ -923,12 +925,20 @@ uninstall-am: uninstall-toollibDATA uninstall-toollibLIBRARIES \
 
 @USE_LIBTOOL_FALSE@libm/libm.a: ; @true
 
-crt0.o: $(CRT0_DIR)$(CRT0)
+crt0.o: $(CRT0_DIR)$(CRT0) $(CRT_DIR)crt0.o
 	rm -f $@
-	ln $(CRT0_DIR)$(CRT0) $@ >/dev/null 2>/dev/null \
-	 || cp $(CRT0_DIR)$(CRT0) $@
+	ln $< $@ >/dev/null 2>/dev/null || cp < $@
+
+crt0t.o: $(CRT_DIR)crt0t.o
+	rm -f $@
+	ln $< $@ >/dev/null 2>/dev/null || cp < $@
+
+crtend.o: $(CRT_DIR)crtend.o
+	rm -f $@
+	ln $< $@ >/dev/null 2>/dev/null || cp < $@
 
 $(CRT0_DIR)$(CRT0): ; @true
+$(CRT:%=$(CRT_DIR)%): ; @true
 
 crt1.o: $(CRT1_DIR)$(CRT1)
 	rm -f $@

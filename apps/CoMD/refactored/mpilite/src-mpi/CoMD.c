@@ -366,8 +366,8 @@ void sumAtoms(SimFlat* s)
 void printThings(SimFlat* s, int iStep, double elapsedTime)
 {
    // keep track previous value of iStep so we can calculate number of steps.
-   static __thread int iStepPrev = -1;
-   static __thread int firstCall = 1;
+   static int iStepPrev = -1;
+   static int firstCall = 1;
 
    int nEval = iStep - iStepPrev; // gives nEval = 1 for zeroth step.
    iStepPrev = iStep;

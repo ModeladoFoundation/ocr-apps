@@ -25,9 +25,6 @@
 /// \see getTick
 ///
 
-
-#include "performanceTimers.h"
-
 #include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
@@ -60,34 +57,9 @@ char* timerName[numberOfTimers] = {
    "commReduce"
 };
 
-/// Timer data collected.  Also facilitates computing averages and
-/// statistics.
-typedef struct TimersSt
-{
-   uint64_t start;     //!< call start time
-   uint64_t total;     //!< current total time
-   uint64_t count;     //!< current call count
-   uint64_t elapsed;   //!< lap time
 
-   int minRank;        //!< rank with min value
-   int maxRank;        //!< rank with max value
-
-   double minValue;    //!< min over ranks
-   double maxValue;    //!< max over ranks
-   double average;     //!< average over ranks
-   double stdev;       //!< stdev across ranks
-} Timers;
-
-/// Global timing data collected.
-typedef struct TimerGlobalSt
-{
-   double atomRate;       //!< average time (us) per atom per rank
-   double atomAllRate;    //!< average time (us) per atom
-   double atomsPerUSec;   //!< average atoms per time (us)
-} TimerGlobal;
-
-static __thread Timers perfTimer[numberOfTimers];
-static __thread TimerGlobal perfGlobal;
+static Timers perfTimer[numberOfTimers];
+static TimerGlobal perfGlobal;
 
 void profileStart(const enum TimerHandle handle)
 {

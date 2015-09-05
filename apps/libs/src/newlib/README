@@ -4,28 +4,30 @@ Building newlib for tg, x86, and x86_clang
 This directory can build newlib for three different 'targets':
 1 - tg; this is for the xstg target and uses the new llvm/clang/binutils
        tool chain in the intel repository:isa/4.1.0 branch.
-2 - x86; this is for the x86 target and uses the native x86 tool chain;
+2 - x86; this is for the x86 target and uses the new llvm/clang/binutils
+       tool chain in the intel repository:isa/4.1.0 branch.
+3 - x86_native; this is for the x86 target and uses the native x86 tool chain;
        this has only been checked out using the gcc tool chain, revisions
        4.7, 4.8, and 4.9.
-3 - x86_clang; this is for the x86 target and uses the new llvm/clang/binutils
-       tool chain in the intel repository:isa/4.1.0 branch.
-
+Note that the builds for each of these 'targets' is independent of the others.
+You don't need to do anything special if you want to build newlib for more
+than one of these.
 =====================
 
 To build for the xstg architecture, change into the xstack/apps/libs/src/newlib
 directory.  Run 'make ARCH=tg'; this builds for the xstg target.  Then run
 'make ARCH=tg install'; this deposits resulting libraries and includes into
-xstack/apps/libs/tg.
+the install root at xstack/apps/libs/tg.
 
 After the build completes, the following is in the
 xstack/apps/libs/tg/lib/ directory:
 
-       crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
+   crt0.o  crt0t.o crtend.o libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
 The xstack/apps/libs/tg/include directory is also populated with
 standard 'libc' headers.
 
-To clean use 'make ARCH=tg clean'.  Note that this does NOT remove build
+To clean, use 'make ARCH=tg clean'.  Note that this does NOT remove build
 results from the xstack/apps/libs/tg area.
 
 =====================
@@ -48,18 +50,18 @@ results from the xstack/apps/libs/x86 area.
 
 =====================
 
-To build for x86_clang, change into the xstack/apps/libs/src/newlib directory.
-Run 'make ARCH=x86_clang'; this builds for the x86 target. Then run
-'make ARCH=x86_clang install'; this deposits resulting libraries and includes
-into xstack/apps/libs/x86_clang.
+To build for x86_native, change into the xstack/apps/libs/src/newlib directory.
+Run 'make ARCH=x86_native'; this builds for the x86 target. Then run
+'make ARCH=x86_native install'; this deposits resulting libraries and includes
+into xstack/apps/libs/x86_native.
 
 After the build completes, the following is in the
-xstack/apps/libs/x86_clang/lib/ directory:
+xstack/apps/libs/x86_native/lib/ directory:
 
        crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The xstack/apps/libs/x86_clang/include directory is also populated with
+The xstack/apps/libs/x86_native/include directory is also populated with
 standard 'libc' headers.
 
-To clean use 'make ARCH=x86_clang clean'.  Note that this does NOT remove build
-results from the xstack/apps/libs/x86_clang area.
+To clean use 'make ARCH=x86_native clean'.  Note that this does NOT remove build
+results from the xstack/apps/libs/x86_native area.
