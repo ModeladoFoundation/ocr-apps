@@ -19,7 +19,16 @@ AM_CCASFLAGS = -I$(srcdir)/../.. $(INCLUDES)
 
 include $(srcdir)/../../../../../Makefile.shared
 
-all-local: crt0.o
+all-local: crt0.o crt0t.o crtend.o
+
+crt0.o: crt0.c
+	$(CC) -DOCR_INIT -Os -c $< -o $@
+
+crt0t.o: crt0.c
+	$(CC) -DUSE_STACK -Os -c $< -o $@
+
+crtend.o: crtend.c
+	$(CC) -Os -c $< -o $@
 
 ACLOCAL_AMFLAGS = -I ../../../../.. -I ../../../../../..
 CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host

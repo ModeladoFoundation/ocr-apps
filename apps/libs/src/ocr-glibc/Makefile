@@ -4,7 +4,7 @@
 #	libocr-glibc.a		for use with C programs
 #	libocr-glibcxx.a	for use with C++ programs
 #
-ARCH=x86
+ARCH=x86_native
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 APPS_LIBS_ROOT ?= $(APPS_ROOT)/libs/$(ARCH)

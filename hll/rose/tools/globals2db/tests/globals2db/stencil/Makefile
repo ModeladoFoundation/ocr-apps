@@ -4,10 +4,10 @@
 
 MAKE := make
 
-#ifndef OCR_TYPE
-#  $(error Need to specify OCR_TYPE!)
-#endif
-OCR_TYPE=x86
+ifndef OCR_TYPE
+  $(error Need to specify OCR_TYPE!)
+endif
+OCR_TYPE ?= x86
 
 TARGET = stencil
 SRC = stencil.c
@@ -36,7 +36,7 @@ dot:
 	$(ZGRVIEW) -Pdot $(TARGET).c.dot &
 
 clean:
-	rm -f *~ ffwd.h $(TARGET) $(ROSE_TARGET) $(ROSE_SRC) *.o $(TARGET).c.dot build.log
+	rm -f *~ rose_ffwd.h $(TARGET) $(ROSE_TARGET) $(ROSE_SRC) *.o $(TARGET).c.dot build.log
 	rm -rf install build
 
 

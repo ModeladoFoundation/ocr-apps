@@ -59,6 +59,12 @@ extern "C" {
   #endif
 #endif
 
+/*
+ * Defines needed by libcxx
+ */
+#define _POSIX_MONOTONIC_CLOCK
+#define _POSIX_TIMERS
+
 #ifdef __cplusplus
 }
 #endif

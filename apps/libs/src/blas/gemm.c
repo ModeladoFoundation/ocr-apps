@@ -324,13 +324,13 @@ void NAME(gemm) ( // GEMM performs a matrix-matrix operation with matrices store
 // Add the dependences to the wrapup EDT.
     ADD_DEPENDENCE(dba,                  gemmWrapupEdt, NAME(gemm_wrapupDeps_t), dba, RO);
     ADD_DEPENDENCE(dbb,                  gemmWrapupEdt, NAME(gemm_wrapupDeps_t), dbb, RO);
-    ADD_DEPENDENCE(dbc,                  gemmWrapupEdt, NAME(gemm_wrapupDeps_t), dbc, ITW);
+    ADD_DEPENDENCE(dbc,                  gemmWrapupEdt, NAME(gemm_wrapupDeps_t), dbc, RW);
     ADD_DEPENDENCE(gemmThunkOutputEvent, gemmWrapupEdt, NAME(gemm_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dba,                  gemmThunkEdt, NAME(gemm_thunkDeps_t), dba, ITW);
-    ADD_DEPENDENCE(dbb,                  gemmThunkEdt, NAME(gemm_thunkDeps_t), dbb, ITW);
-    ADD_DEPENDENCE(dbc,                  gemmThunkEdt, NAME(gemm_thunkDeps_t), dbc, ITW);
+    ADD_DEPENDENCE(dba,                  gemmThunkEdt, NAME(gemm_thunkDeps_t), dba, RW);
+    ADD_DEPENDENCE(dbb,                  gemmThunkEdt, NAME(gemm_thunkDeps_t), dbb, RW);
+    ADD_DEPENDENCE(dbc,                  gemmThunkEdt, NAME(gemm_thunkDeps_t), dbc, RW);
 //    printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the GEMM operation.\n", STRINGIFY(NAME(gemm))); fflush(stdout);
 } // ?gemm
 
@@ -408,7 +408,7 @@ static ocrGuid_t NAME(gemm_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEdt
 
     ADD_DEPENDENCE(thunkDeps->dba.guid, gemmEdt, NAME(gemm_edtDeps_t), dba, RO);  // At top level, we don't really posture the backing-store, we just force its usage.
     ADD_DEPENDENCE(thunkDeps->dbb.guid, gemmEdt, NAME(gemm_edtDeps_t), dbb, RO);  // At top level, we don't really posture the backing-store, we just force its usage.
-    ADD_DEPENDENCE(thunkDeps->dbc.guid, gemmEdt, NAME(gemm_edtDeps_t), dbc, ITW);
+    ADD_DEPENDENCE(thunkDeps->dbc.guid, gemmEdt, NAME(gemm_edtDeps_t), dbc, RW);
     ADD_DEPENDENCE(NULL_GUID,           gemmEdt, NAME(gemm_edtDeps_t), optionalTrigger, RO);
 
 //    printf ("        %s exiting\n", STRINGIFY(NAME(gemm_thunkTask))); fflush(stdout);
@@ -479,7 +479,7 @@ ocrGuid_t NAME(gemm_task) (           // Spawns top-level worker EDT.
     ocrEdtCreate(&workerEdt, workerTemplate, EDT_PARAM_DEF, (u64 *) (&topLevelWorkerParams), EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &gemmDone);
     ADD_DEPENDENCE(myDeps->dba.guid, workerEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);  // At top level, we don't really posture the backing-store, we just force its usage.
     ADD_DEPENDENCE(myDeps->dbb.guid, workerEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);  // At top level, we don't really posture the backing-store, we just force its usage.
-    ADD_DEPENDENCE(myDeps->dbc.guid, workerEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW); // At top level, we don't really posture the backing-store, we just force its usage.
+    ADD_DEPENDENCE(myDeps->dbc.guid, workerEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW); // At top level, we don't really posture the backing-store, we just force its usage.
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
     ADD_DEPENDENCE(NULL_GUID,        workerEdt, NAME(gemm_workerDeps_t), serializationEvent, RO);
 #endif
@@ -630,10 +630,10 @@ C1          ADD_DEPENDENCE(lChildOutputEvent, rChildEdt, NAME(gemm_workerDeps_t)
 #endif
 C1          ADD_DEPENDENCE(gdbA, lChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C1          ADD_DEPENDENCE(gdbB, lChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C1          ADD_DEPENDENCE(gdbC, lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C1          ADD_DEPENDENCE(gdbC, lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C1          ADD_DEPENDENCE(gdbA, rChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C1          ADD_DEPENDENCE(gdbB, rChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C1          ADD_DEPENDENCE(gdbC, rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C1          ADD_DEPENDENCE(gdbC, rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C1      }
 C1      break;
 
@@ -671,13 +671,13 @@ C2          ADD_DEPENDENCE(lChildOutputEvent, rChildEdt, NAME(gemm_workerDeps_t)
 #endif
 C2          ADD_DEPENDENCE(gdbA,      rChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C2          ADD_DEPENDENCE(gdbB,      rChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C2          ADD_DEPENDENCE(gdbC,      rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C2          ADD_DEPENDENCE(gdbC,      rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
 C2          ADD_DEPENDENCE(NULL_GUID, lChildEdt, NAME(gemm_workerDeps_t), serializationEvent, RO);
 #endif
 C2          ADD_DEPENDENCE(gdbA,      lChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C2          ADD_DEPENDENCE(gdbB,      lChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C2          ADD_DEPENDENCE(gdbC,      lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C2          ADD_DEPENDENCE(gdbC,      lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C2      }
 C2      break;
 
@@ -748,7 +748,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            collectorEdt, NAME(gemm_collect
 C3
 C3          ADD_DEPENDENCE(rChildOutputEvent,    depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C3          ADD_DEPENDENCE(posturedBForRChild,   depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C3          ADD_DEPENDENCE(gdbB,                 depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C3          ADD_DEPENDENCE(gdbB,                 depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C3          ADD_DEPENDENCE(NULL_GUID,            depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C3
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -756,7 +756,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            rChildEdt, NAME(gemm_workerDeps
 #endif
 C3          ADD_DEPENDENCE(gdbA,                 rChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C3          ADD_DEPENDENCE(posturedBForRChild,   rChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C3          ADD_DEPENDENCE(gdbC,                 rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C3          ADD_DEPENDENCE(gdbC,                 rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C3
 C3          ADD_DEPENDENCE(gdbB,                 postureBForRChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -767,7 +767,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            postureBForRChildEdt, ocrPostur
 C3
 C3          ADD_DEPENDENCE(lChildOutputEvent,    depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C3          ADD_DEPENDENCE(posturedBForLChild,   depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C3          ADD_DEPENDENCE(gdbB,                 depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C3          ADD_DEPENDENCE(gdbB,                 depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C3          ADD_DEPENDENCE(NULL_GUID,            depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C3
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -775,7 +775,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            lChildEdt, NAME(gemm_workerDeps
 #endif
 C3          ADD_DEPENDENCE(gdbA,                 lChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C3          ADD_DEPENDENCE(posturedBForLChild,   lChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C3          ADD_DEPENDENCE(gdbC,                 lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C3          ADD_DEPENDENCE(gdbC,                 lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C3
 C3          ADD_DEPENDENCE(gdbB,                 postureBForLChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 C3          ADD_DEPENDENCE(NULL_GUID,            postureBForLChildEdt, ocrPosture3dSubblockInwardDeps_t, optionalTriggerEvent, RO);  // Left branch fires right away.
@@ -884,12 +884,12 @@ C4          ADD_DEPENDENCE(deposturedBForRChild, collectorEdt, NAME(gemm_collect
 C4
 C4          ADD_DEPENDENCE(rChildOutputEvent,    depostureCForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedCForRChild,   depostureCForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbC,                 depostureCForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbC,                 depostureCForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureCForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 C4          ADD_DEPENDENCE(rChildOutputEvent,    depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedBForRChild,   depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbB,                 depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbB,                 depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureBForRChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -897,7 +897,7 @@ C4          ADD_DEPENDENCE(NULL_GUID,            rChildEdt, NAME(gemm_workerDeps
 #endif
 C4          ADD_DEPENDENCE(gdbA,                 rChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C4          ADD_DEPENDENCE(posturedBForRChild,   rChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C4          ADD_DEPENDENCE(posturedCForRChild,   rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C4          ADD_DEPENDENCE(posturedCForRChild,   rChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C4
 C4          ADD_DEPENDENCE(gdbC,                 postureCForRChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -915,12 +915,12 @@ C4          ADD_DEPENDENCE(NULL_GUID,            postureBForRChildEdt, ocrPostur
 C4
 C4          ADD_DEPENDENCE(lChildOutputEvent,    depostureCForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedCForLChild,   depostureCForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbC,                 depostureCForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbC,                 depostureCForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureCForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 C4          ADD_DEPENDENCE(lChildOutputEvent,    depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedBForLChild,   depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbB,                 depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbB,                 depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureBForLChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -928,7 +928,7 @@ C4          ADD_DEPENDENCE(NULL_GUID,            lChildEdt, NAME(gemm_workerDeps
 #endif
 C4          ADD_DEPENDENCE(gdbA,                 lChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C4          ADD_DEPENDENCE(posturedBForLChild,   lChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C4          ADD_DEPENDENCE(posturedCForLChild,   lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C4          ADD_DEPENDENCE(posturedCForLChild,   lChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C4
 C4          ADD_DEPENDENCE(gdbC,                 postureCForLChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 C4          ADD_DEPENDENCE(NULL_GUID,            postureCForLChildEdt, ocrPosture3dSubblockInwardDeps_t, optionalTriggerEvent, RO);  // Left branch fires right away.
@@ -982,10 +982,10 @@ C1          ADD_DEPENDENCE(uChildOutputEvent, dChildEdt, NAME(gemm_workerDeps_t)
 #endif
 C1          ADD_DEPENDENCE(gdbA, uChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C1          ADD_DEPENDENCE(gdbB, uChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C1          ADD_DEPENDENCE(gdbC, uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C1          ADD_DEPENDENCE(gdbC, uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C1          ADD_DEPENDENCE(gdbA, dChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C1          ADD_DEPENDENCE(gdbB, dChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C1          ADD_DEPENDENCE(gdbC, dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C1          ADD_DEPENDENCE(gdbC, dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C1      }
 C1      break;
 
@@ -1029,14 +1029,14 @@ C2          ADD_DEPENDENCE(uChildOutputEvent, dChildEdt, NAME(gemm_workerDeps_t)
 #endif
 C2          ADD_DEPENDENCE(gdbA,      dChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C2          ADD_DEPENDENCE(gdbB,      dChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C2          ADD_DEPENDENCE(gdbC,      dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C2          ADD_DEPENDENCE(gdbC,      dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C2
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
 C2          ADD_DEPENDENCE(NULL_GUID, uChildEdt, NAME(gemm_workerDeps_t), serializationEvent, RO);
 #endif
 C2          ADD_DEPENDENCE(gdbA,      uChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C2          ADD_DEPENDENCE(gdbB,      uChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C2          ADD_DEPENDENCE(gdbC,      uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C2          ADD_DEPENDENCE(gdbC,      uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C2
 C2      }
 C2      break;
@@ -1114,7 +1114,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            collectorEdt, NAME(gemm_collect
 C3
 C3          ADD_DEPENDENCE(dChildOutputEvent,    depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C3          ADD_DEPENDENCE(posturedAForDChild,   depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C3          ADD_DEPENDENCE(gdbA,                 depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C3          ADD_DEPENDENCE(gdbA,                 depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C3          ADD_DEPENDENCE(NULL_GUID,            depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C3
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -1122,7 +1122,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            dChildEdt, NAME(gemm_workerDeps
 #endif
 C3          ADD_DEPENDENCE(posturedAForDChild,   dChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C3          ADD_DEPENDENCE(gdbB,                 dChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C3          ADD_DEPENDENCE(gdbC,                 dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C3          ADD_DEPENDENCE(gdbC,                 dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C3
 C3          ADD_DEPENDENCE(gdbA,                 postureAForDChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -1133,7 +1133,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            postureAForDChildEdt, ocrPostur
 C3
 C3          ADD_DEPENDENCE(uChildOutputEvent,    depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C3          ADD_DEPENDENCE(posturedAForUChild,   depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C3          ADD_DEPENDENCE(gdbA,                 depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C3          ADD_DEPENDENCE(gdbA,                 depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C3          ADD_DEPENDENCE(NULL_GUID,            depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C3
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -1141,7 +1141,7 @@ C3          ADD_DEPENDENCE(NULL_GUID,            uChildEdt, NAME(gemm_workerDeps
 #endif
 C3          ADD_DEPENDENCE(posturedAForUChild,   uChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C3          ADD_DEPENDENCE(gdbB,                 uChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C3          ADD_DEPENDENCE(gdbC,                 uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C3          ADD_DEPENDENCE(gdbC,                 uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C3
 C3          ADD_DEPENDENCE(gdbA,                 postureAForUChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 C3          ADD_DEPENDENCE(NULL_GUID,            postureAForUChildEdt, ocrPosture3dSubblockInwardDeps_t, optionalTriggerEvent, RO);  // Upper branch fires right away.
@@ -1255,12 +1255,12 @@ C4          ADD_DEPENDENCE(deposturedAForDChild, collectorEdt, NAME(gemm_collect
 C4
 C4          ADD_DEPENDENCE(dChildOutputEvent,    depostureCForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedCForDChild,   depostureCForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbC,                 depostureCForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbC,                 depostureCForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureCForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 C4          ADD_DEPENDENCE(dChildOutputEvent,    depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedAForDChild,   depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbA,                 depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbA,                 depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureAForDChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -1268,7 +1268,7 @@ C4          ADD_DEPENDENCE(NULL_GUID,            dChildEdt, NAME(gemm_workerDeps
 #endif
 C4          ADD_DEPENDENCE(posturedAForDChild,   dChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C4          ADD_DEPENDENCE(gdbB,                 dChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C4          ADD_DEPENDENCE(posturedCForDChild,   dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C4          ADD_DEPENDENCE(posturedCForDChild,   dChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C4
 C4          ADD_DEPENDENCE(gdbC,                 postureCForDChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -1286,12 +1286,12 @@ C4          ADD_DEPENDENCE(NULL_GUID,            postureAForDChildEdt, ocrPostur
 C4
 C4          ADD_DEPENDENCE(uChildOutputEvent,    depostureCForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedCForUChild,   depostureCForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbC,                 depostureCForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbC,                 depostureCForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureCForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 C4          ADD_DEPENDENCE(uChildOutputEvent,    depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, doneWithPosturedDb, RO);
 C4          ADD_DEPENDENCE(posturedAForUChild,   depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, postured, RO);
-C4          ADD_DEPENDENCE(gdbA,                 depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, ITW);
+C4          ADD_DEPENDENCE(gdbA,                 depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, backingStore, RW);
 C4          ADD_DEPENDENCE(NULL_GUID,            depostureAForUChildEdt, ocrPosture3dSubblockOutwardDeps_t, optionalTriggerEvent, RO);
 C4
 #ifdef TRAVERSE_TOPOLOGY_DEPTH_FIRST
@@ -1299,7 +1299,7 @@ C4          ADD_DEPENDENCE(NULL_GUID,            uChildEdt, NAME(gemm_workerDeps
 #endif
 C4          ADD_DEPENDENCE(posturedAForUChild,   uChildEdt, NAME(gemm_workerDeps_t), dbPosturedA, RO);
 C4          ADD_DEPENDENCE(gdbB,                 uChildEdt, NAME(gemm_workerDeps_t), dbPosturedB, RO);
-C4          ADD_DEPENDENCE(posturedCForUChild,   uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, ITW);
+C4          ADD_DEPENDENCE(posturedCForUChild,   uChildEdt, NAME(gemm_workerDeps_t), dbPosturedC, RW);
 C4
 C4          ADD_DEPENDENCE(gdbC,                 postureCForUChildEdt, ocrPosture3dSubblockInwardDeps_t, backingStore, RO);
 C4          ADD_DEPENDENCE(NULL_GUID,            postureCForUChildEdt, ocrPosture3dSubblockInwardDeps_t, optionalTriggerEvent, RO);  // Upper branch fires right away.

@@ -19,5 +19,14 @@ AC_PROG_AWK
 
 AC_CONFIG_SUBDIRS(machine)
 
+CRT=
+if test "x${machine_dir}" = "xxstg"; then
+	CRT="crt0.o crt0t.o crtend.o"
+else
+	CRT="crt0.o"
+fi
+
+AC_SUBST(CRT)
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

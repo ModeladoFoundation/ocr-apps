@@ -7,6 +7,19 @@
 #ifndef CMDLINEPARSER_H_
 #define CMDLINEPARSER_H_
 
+// Moved from cmdlineParser.c
+typedef struct MyOptionSt
+{
+   char* help;
+   char* longArg;
+   unsigned char shortArg[2];
+   int argFlag;
+   char type;
+   int sz;
+   void* ptr;
+   void* next;
+} MyOption;
+
 /// Specifies a command line argument that should be accepted by the program.
 /// \param [in]  longOption  The long name of option i.e., --optionname
 /// \param [in]  shortOption The short name of option i.e., -o

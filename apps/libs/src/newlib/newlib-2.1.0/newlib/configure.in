@@ -266,22 +266,41 @@ case $host in
 esac
 AC_SUBST(EXTRA_DIRS)
 
+CRT=
+CRT_DIR=
+
 CRT0=
 CRT0_DIR=
-if test "x${have_crt0}" = "xyes"; then
-  CRT0=crt0.o
-  CRT0_DIR=libc/
+
+CRT1=
+CRT1_DIR=
+
+if test "x${sys_dir}" = "xocr"; then
+    if test "x${machine_dir}" = "xxstg"; then
+      CRT="crt0.o crt0t.o crtend.o"
+    else
+      CRT=crt0.o
+    fi
+  CRT_DIR=libc/
+else
+  if test "x${have_crt0}" = "xyes"; then
+    CRT0=crt0.o
+    CRT0_DIR=libc/
+  fi
+
+  CRT1=${crt1}
+  if test -n "${crt1_dir}"; then
+    CRT1_DIR=${crt1_dir}/
+  fi
 fi
 AC_SUBST(CRT0)
 AC_SUBST(CRT0_DIR)
 
-CRT1=${crt1}
-CRT1_DIR=
-if test -n "${crt1_dir}"; then
-  CRT1_DIR=${crt1_dir}/
-fi
 AC_SUBST(CRT1)
 AC_SUBST(CRT1_DIR)
+
+AC_SUBST(CRT)
+AC_SUBST(CRT_DIR)
 
 if test -n "${libm_machine_dir}"; then
   LIBM_MACHINE_OBJECTLIST=libm/machine/${libm_machine_dir}/objectlist.awk.in

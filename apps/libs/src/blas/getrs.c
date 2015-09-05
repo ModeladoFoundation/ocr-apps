@@ -170,10 +170,10 @@ void NAME(getrs) (                // Compute solution to a system of linear equa
     ADD_DEPENDENCE(getrsThunkOutputEvent, getrsWrapupEdt, NAME(getrs_wrapupDeps_t), event_ThunkToWrapup, RO);
 
 // Add the dependences to the thunking EDT.
-    ADD_DEPENDENCE(dba,                   getrsThunkEdt, NAME(getrs_thunkDeps_t), dba,        ITW);
-    ADD_DEPENDENCE(dbb,                   getrsThunkEdt, NAME(getrs_thunkDeps_t), dbb,        ITW);
-    ADD_DEPENDENCE(dbPivotIdx,            getrsThunkEdt, NAME(getrs_thunkDeps_t), dbPivotIdx, ITW);
-    ADD_DEPENDENCE(dbInfo,                getrsThunkEdt, NAME(getrs_thunkDeps_t), dbInfo,     ITW);
+    ADD_DEPENDENCE(dba,                   getrsThunkEdt, NAME(getrs_thunkDeps_t), dba,        RW);
+    ADD_DEPENDENCE(dbb,                   getrsThunkEdt, NAME(getrs_thunkDeps_t), dbb,        RW);
+    ADD_DEPENDENCE(dbPivotIdx,            getrsThunkEdt, NAME(getrs_thunkDeps_t), dbPivotIdx, RW);
+    ADD_DEPENDENCE(dbInfo,                getrsThunkEdt, NAME(getrs_thunkDeps_t), dbInfo,     RW);
     printf("        Standard API %s function exiting.  TODO: evolve into WAITING for result of spawned OCR topology that does the GETRS operation.\n", STRINGIFY(NAME(getrs))); fflush(stdout);
 
 } // ?getrs
@@ -226,7 +226,7 @@ static ocrGuid_t NAME(getrs_thunkTask) (u32 paramc, u64 *paramv, u32 depc, ocrEd
     ADD_DEPENDENCE(thunkDeps->dba.guid,        getrsEdt, NAME(getrs_edtDeps_t), dba,             RO);
     ADD_DEPENDENCE(thunkDeps->dbb.guid,        getrsEdt, NAME(getrs_edtDeps_t), dbb,             RO);
     ADD_DEPENDENCE(thunkDeps->dbPivotIdx.guid, getrsEdt, NAME(getrs_edtDeps_t), dbPivotIdx,      RO);
-    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     getrsEdt, NAME(getrs_edtDeps_t), dbInfo,          ITW);
+    ADD_DEPENDENCE(thunkDeps->dbInfo.guid,     getrsEdt, NAME(getrs_edtDeps_t), dbInfo,          RW);
     ADD_DEPENDENCE(NULL_GUID,                  getrsEdt, NAME(getrs_edtDeps_t), optionalTrigger, RO);
 
     printf ("        %s exiting\n", STRINGIFY(NAME(getrs_thunkTask))); fflush(stdout);

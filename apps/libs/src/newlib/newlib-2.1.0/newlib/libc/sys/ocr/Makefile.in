@@ -112,6 +112,7 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 ETAGS = etags
 CTAGS = ctags
 DIST_SUBDIRS = $(SUBDIRS)
+CRT = @CRT@
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -237,7 +238,6 @@ GENERAL_SOURCES = \
 	init.c \
 	fini.c
 
-CRT = crt0.o
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(GENERAL_SOURCES)
 #lib_a_LIBADD = $(ADD_OBJS)
@@ -652,33 +652,22 @@ uninstall-am:
 	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
 	tags tags-recursive uninstall uninstall-am
 
-
-#lib.a:  $(lib_a_OBJECTS)
-#	rm -f $@
-#	$(AR) $(AR_FLAGS) $@ *.o
-#	$(RANLIB) $@
-
-#objectlist.awk.in: $(noinst_LTLIBRARIES) $(SUBLIBS)
-#	-rm -f objectlist.awk.in
-#	for i in `ls *.lo` ; \
-#	  do \
-#	    echo $$i `pwd`/$$i >> objectlist.awk.in ; \
-#	done
-#	for j in $(SUBLIBS) ; \
-#	  do \
-#	    export i=`echo $$j | sed -e 's,\(.*\)\/[^\/]*$$,\1,'`; \
-#	    if test $$i != "." && test -f $$i/objectlist.awk.in; then \
-#	        cat $$i/objectlist.awk.in >> objectlist.awk.in ; \
-#	    fi; \
-#	done
-
 all-local: $(CRT)
 
 crt0.o: machine/crt0.o
 	rm -f $@
-	ln machine/crt0.o $@ >/dev/null 2>/dev/null || cp machine/crt0.o $@
+	ln machine/$@ $@ >/dev/null 2>/dev/null || cp machine/$@ $@
 
-machine/crt0.o: ; @true
+crt0t.o: machine/crt0t.o
+	rm -f $@
+	ln machine/$@ $@ >/dev/null 2>/dev/null || cp machine/$@ $@
+
+crtend.o: machine/crtend.o
+	rm -f $@
+	ln machine/$@ $@ >/dev/null 2>/dev/null || cp machine/$@ $@
+
+#machine/crt0.o machine/crt0t.o machine/crtend.o: ; @true
+$(CRT:%=machine/%): ; @true
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
