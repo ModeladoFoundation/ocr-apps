@@ -19,15 +19,16 @@ import subprocess
 import sys
 import os
 import random
+
 #-------------------------------------------------------------------------------
 # Plots curve
 #-------------------------------------------------------------------------------
-def plotCurve(testname,stat,xrange, baseColor):
+def plotCurve(testname,stat,xrange, yMin, yMax, baseColor):
     plt.plot(xrange , stat,color = baseColor ,label=testname)
     plt.axhline(y=1,linestyle=':')
     plt.axvline(x=0)
     x1,x2,y1,y2 = plt.axis()
-    plt.axis((x1,x2,0,4))
+    plt.axis((x1,x2,float(yMin),float(yMax)))
 
 #-------------------------------------------------------------------------------
 # Plots markers
@@ -61,7 +62,7 @@ def plotLegends():
 #-------------------------------------------------------------------------------
 # Generates an image file containing plots of the data from stat file
 #-------------------------------------------------------------------------------
-def plotgraph(testname,buildList , exectimeList,baseColor = 'b'):
+def plotgraph(testname,buildList , exectimeList, yMin, yMax, baseColor = 'b'):
 
     stat          = exectimeList
     buildNo       = buildList
@@ -75,10 +76,10 @@ def plotgraph(testname,buildList , exectimeList,baseColor = 'b'):
     xlabel.xaxis.grid(True)
     plt.setp(xlabel.get_xticklabels(), rotation='vertical', fontsize=8)
     # Plot Curve
-    plotCurve(testname,stat,xaxisCount , baseColor )
+    plotCurve(testname,stat,xaxisCount,yMin,yMax,baseColor)
 
 def main():
-    if len(sys.argv) !=6 :
+    if len(sys.argv) !=8 :
         print("ERROR ! Correct Usage :python plotGraph.py inputStatfile plotName xlabel ylabel outputFileName\n")
         sys.exit(1)
 
@@ -86,7 +87,9 @@ def main():
     plotname     = sys.argv[2]
     xlabel       = sys.argv[3]
     ylabel       = sys.argv[4]
-    oFilePath    = sys.argv[5]
+    yMin         = sys.argv[5]
+    yMax         = sys.argv[6]
+    oFilePath    = sys.argv[7]
 
     fd = open(iFilePath, 'r')
     plotFileList = []
@@ -128,7 +131,7 @@ def main():
         buildStat = testStat[test]
         for build in buildList:
             modExectimeList.append(float(buildStat[build]) if (build in buildStat) else 0.0)
-        plotgraph(test,buildList,modExectimeList)
+        plotgraph(test,buildList,modExectimeList,yMin,yMax)
 
     # Plot legend
     plotLegends()

@@ -55,14 +55,16 @@ else
 fi
 
 # Plot these stat files
+YMIN="0"
+YMAX="4"
 
 if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     cat ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt
-    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${JJOB_SHARED_HOME}/../RegressionTrendlineplot.png"
+    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${YMIN}" "${YMAX}" "${JJOB_SHARED_HOME}/../RegressionTrendlineplot.png"
 else
     cat ${WORKSPACE}/NightlyRegressionStat.txt
-    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${WORKSPACE}/RegressionTrendlineplot.png"
+    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyRegressionStat.txt "Regression Trend Line" "Build" "Normalized Execution Time" "${YMIN}" "${YMAX}" "${WORKSPACE}/RegressionTrendlineplot.png"
 fi
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then
@@ -75,10 +77,10 @@ fi
 if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     cat ${JJOB_SHARED_HOME}/../NightlyScalingStat.txt
-    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyScalingStat.txt "Scaling Trend Line" "Build" "Scaling Slope [ Higher the better ]" "${JJOB_SHARED_HOME}/../ScalingTrendlineplot.png"
+    python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyScalingStat.txt "Scaling Trend Line" "Build" "Scaling Slope [ Higher the better ]"  "${YMIN}" "${YMAX}" "${JJOB_SHARED_HOME}/../ScalingTrendlineplot.png"
 else
     cat ${WORKSPACE}/NightlyScalingStat.txt
-    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyScalingStat.txt "Scaling Trend Line" "Build" "Scaling Slope [ Higher the better ]" "${WORKSPACE}/ScalingTrendlineplot.png"
+    python ${SCRIPT_FOLDER}/plotGraph.py ${WORKSPACE}/NightlyScalingStat.txt "Scaling Trend Line" "Build" "Scaling Slope [ Higher the better ]"  "${YMIN}" "${YMAX}" "${WORKSPACE}/ScalingTrendlineplot.png"
 fi
 RET_VAL=$?
 if [ $RET_VAL -eq 0 ]; then
