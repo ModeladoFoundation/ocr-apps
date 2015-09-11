@@ -1,0 +1,70 @@
+===============================
+ x86
+===============================
+To run
+  1. source setup_env.sh (located in xstack/hll/cnc)
+  2. ucnc_t hpgmg.cnc
+  3. make run
+
+You may need to explicitly specify the x86 (shared memory) makefile
+name if you generate multiple versions of the scaffoldiing code:
+
+    make -f Makefile.x86 run
+
+Problem size is set to:
+    - 2x2x2 blocks (at level 0)
+    - 16x16x16 cells (at level 0)
+    - 6 levels
+    - 10 cycles
+    - 4 smooth cycles
+ * modify these in hpgmg_defs.h
+
+The expected output for the problem size above is:
+
+Normal of residual 3.1955549317785881e-12
+norm_of_f: 0.21301702240106124
+norm_of_dinv: 1
+1.5001406440477351e-11
+3.1955549317785881e-12
+
+HPGMG Baseline instructions to match output
+    ./configure --CC=mpicc --no-fe --fv-cycle=V
+    make -j3 -C build
+    mpirun -n 4 ./build/bin/hpgmg-fv 4 4
+
+===============================
+ x86-mpi
+===============================
+All steps to build and run are the same as for x86 (shared memory),
+but the CnC translator tool needs to be invoked with a different platform:
+
+  1. source setup_env.sh (located in xstack/hll/cnc)
+  2. ucnc_t --platform=ocr/mpi hpgmg.cnc
+  3. make -f Makefile.x86-mpi run
+
+The results should match the baseline and shared memory versions.
+
+===============================
+ TG (FSim)
+===============================
+To run
+  1. source setup_env.sh (located in xstack/hll/cnc)
+  2. ucnc_t --platform=ocr/tg hpgmg.cnc
+  3. make -f Makefile.tg run
+  4. cat install/tg/console.out
+
+Problem size is set to:
+    - 2x2x2 blocks (at level 0)
+    - 16x16x16 cells (at level 0)
+    - 6 levels
+    - 10 cycles
+    - 4 smooth cycles
+ * modify these in hpgmg_defs.h
+
+The expected output for the problem size above is:
+
+Normal of residual 3.1955549317785881e-12
+norm_of_f: 0.21301702240106124
+norm_of_dinv: 1
+1.5001406440477351e-11
+3.1955549317785881e-12
