@@ -20,6 +20,8 @@ More information is in README
 #include "stdio.h"  //needed for printf debugging
 #include "math.h" //for integer abs
 
+#include "reduction.h"
+
 #define PRECONDITIONER  //undefine if you want to run without the precondition
 
 #define NPX 3  //number of workers is NPX x NPY x NPZ
@@ -60,9 +62,6 @@ typedef struct{
     u64 numnodes;
     u64 size[4];
     gather_t gather;
-    ocrGuid_t globalSum;
-    ocrGuid_t onceGuid[2];
-    ocrGuid_t reduceRangeGuid;
     ocrGuid_t haloRangeGuid;
     ocrGuid_t hpcgTemplate;
     ocrGuid_t spmvTemplate;
@@ -71,7 +70,6 @@ typedef struct{
     ocrGuid_t smoothTemplate;
     ocrGuid_t packTemplate;
     ocrGuid_t unpackTemplate;
-    ocrGuid_t reduceTemplate;
     ocrGuid_t hpcgInitTemplate;
     ocrGuid_t wrapup;
     } sharedBlock_t;
@@ -83,10 +81,6 @@ typedef struct{
     ocrGuid_t haloSendBlock[26];
     ocrGuid_t haloSendGuid[2][26];
     ocrGuid_t haloRecvGuid[2][26];
-    ocrGuid_t reduceSendGuid;
-    ocrGuid_t reduceRecvGuid[2];
-    ocrGuid_t reduceBlock;
-    u64 dotPhase;
     u64 hePhase;
     u64 hpcgPhase;
     u64 mgPhase[4];
@@ -112,100 +106,6 @@ typedef struct{
 
 
 u64 debug = 0; //controls debug printing..1 is some and 2 is LOTS
-
-ocrGuid_t reduceEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
-/*
-hardwired to binary tree and single element to add
-the sources are in the private blocks
-the answer is returned to all the workers in the shared block
-
-paramv none
-
-depv: variable
-
-in the initial call:
-0: shared block
-1: private blotk
-2: reduce block
-
-clones that receive will have one or two more dependencies, receiving other peoples reduce blocks
-
-*/
-    sharedBlock_t * SB = depv[0].ptr;
-    privateBlock_t * PB = depv[1].ptr;
-    double * mydata = depv[2].ptr;
-
-    u64 mynode = PB->mynode;
-    u64 numnodes = SB->numnodes;
-
-
-if(debug>0) printf("Rd%d Depc%d start with local sum %f\n", mynode, depc, PB->mySum);
-
-
-//fprintf(stderr,"Rd%d transfer data %f\n", mynode, PB->mySum);
-    void * yourdata;
-    ocrGuid_t tempGuid;
-    u64 errno, i, src, dest, nrecv, ndep;
-
-//check whether need to receive by cloning
-    if((depc == 3 ) && (2*mynode+1 < numnodes)) {
-        ocrGuid_t reduce;
-        ndep = 4;
-        if(2*mynode+2 < numnodes) ndep = 5;
-if(debug>0) printf("Rd%d Depc%d clone with ndep %d \n", mynode, depc, ndep);
-        ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, ndep, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, reduce, 0 , DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, reduce, 1 , DB_MODE_RO);
-        ocrAddDependence(depv[2].guid, reduce, 2 , DB_MODE_RW);
-if(debug>0) printf("Rd%d Depc%d clone with guid %lx \n", mynode, depc, PB->reduceRecvGuid[0]);
-        tempGuid = PB->reduceRecvGuid[0];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-        ocrAddDependence(PB->reduceRecvGuid[0], reduce, 3 , DB_MODE_RO);
-        if(2*mynode+2 < numnodes) {
-if(debug>0) printf("Rd%d Depc%d clone with guid %lx \n", mynode, depc, PB->reduceRecvGuid[1]);
-            tempGuid = PB->reduceRecvGuid[1];
-            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-            ocrAddDependence(PB->reduceRecvGuid[1], reduce, 4 , DB_MODE_RO);
-        }
-        return NULL_GUID;
-    }
-
-//I have received
-    if(depc > 3) {
-if(debug>0) printf("Rd%d P%d received \n", mynode, depc);
-        double * yourdata = depv[3].ptr;
-        PB->mySum += *yourdata;
-//fprintf(stderr, "Rd%d YOURDATA %f\n", mynode, *yourdata);
-
-        ocrEventDestroy(PB->reduceRecvGuid[0]);
-    }
-    if(depc > 4) {
-if(debug>0) printf("RdM%d P%d received \n", mynode, depc);
-        double * yourdata = depv[4].ptr;
-        PB->mySum += *yourdata;
-//fprintf(stderr, "Rd%d YOURDATA %f\n", mynode, *yourdata);
-        ocrEventDestroy(PB->reduceRecvGuid[1]);
-    }
-//fprintf(stderr,"Rd%d AFTER ADD %f\n", mynode, *mydata);
-
-//send
-    *mydata = PB->mySum;
-    if(mynode == 0) {
-if(debug>0) printf("Rd%d Depc%d send with guid %lx \n", mynode, depc, SB->onceGuid[PB->dotPhase]);
-        ocrDbRelease(depv[2].guid);
-//fprintf(stderr,"Rd00 sending %f to %lx \n", *mydata, SB->onceGuid[PB->dotPhase]);
-        ocrEventSatisfy(SB->onceGuid[PB->dotPhase], depv[2].guid);
-        return NULL_GUID;
-    }
-
-if(debug>0) printf("Rd%d Depc%d send with guid %lx \n", mynode, depc, PB->reduceSendGuid);
-    tempGuid = PB->reduceSendGuid;
-    errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-    ocrDbRelease(depv[2].guid);
-    ocrEventSatisfy(PB->reduceSendGuid, depv[2].guid);
-if(debug>0) printf("Rd%d Depc%d after satisfy \n", mynode, depc);
-    return NULL_GUID;
-}
 
 
 
@@ -397,7 +297,7 @@ launches unpack
 
 
     u64 i, errno;
-    ocrGuid_t tempGuid, packEdt, unpackEdt;
+    ocrGuid_t packEdt, unpackEdt;
 
     sharedBlock_t * SB = depv[0].ptr;
     privateBlock_t * PB = depv[1].ptr;
@@ -440,9 +340,8 @@ if(debug != 0) printf("HE%d after 0-2 \n", mynode);
 
     for(i=0;i<26;i++) {
 
-        tempGuid = PB->haloRecvGuid[phase][i];
-        if(tempGuid != NULL_GUID){
-            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+        if(PB->haloRecvGuid[phase][i] != NULL_GUID){
+            errno = ocrEventCreate(&(PB->haloRecvGuid[phase][i]), OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
             ocrAddDependence(PB->haloRecvGuid[phase][i], unpackEdt, i+2, DB_MODE_RO);
             }
           else ocrAddDependence(NULL_GUID, unpackEdt, i+2, DB_MODE_RO);
@@ -486,7 +385,6 @@ send buffers are in lexicographic order
 
 
 if(debug != 0) printf("PK%d ID%d start P%d vi %d \n", mynode, matrixID, phase, vi);
-    ocrGuid_t tempGuid;
     u64 errno;
 
     gather_t * g = &(SB->gather);
@@ -525,8 +423,7 @@ if(debug > 1) printf("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %l
             }
 if(debug > 0) printf("PK%d DIR%d satisfy %lx with %lx\n", mynode, i, PB->haloSendGuid[phase][i], depv[i+2].guid);
 fflush(stdout);
-            tempGuid = PB->haloSendGuid[phase][i];
-            errno = ocrEventCreate(&tempGuid, OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+            errno = ocrEventCreate(&(PB->haloSendGuid[phase][i]), OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
             ocrDbRelease(depv[i+2].guid);
             ocrEventSatisfy(PB->haloSendGuid[phase][i], depv[i+2].guid);
          }
@@ -722,7 +619,7 @@ if(debug >= 2) printf("SM%d diag index %d diag value %f sum %f soln %f \n", myno
         a += 27;
         ind += 27;
     }
-if(debug > 1){
+if(debug > 2){
     soln = solnbase;
     for(i=0;i<size;i++)
        printf("SM%d MID%d i %d val %f \n", mynode, matrixID, i, soln[i]);
@@ -742,7 +639,7 @@ fflush(stdout);
 
     for(i=size;i>0;i--){
         sum = rhs[i-1];
-if(debug >= 1) printf("SM%d i %d sum %f \n", mynode, i, sum);
+if(debug > 1) printf("SM%d i %d sum %f \n", mynode, i, sum);
         for(j=0;j<27;j++){
 if(debug >= 2) printf("SM%d i %d j %d sum %f a %f ind %d z %f \n", mynode, i-1, j, sum, a[j], ind[j], solnbase[ind[j]]);
            sum -= a[j]*solnbase[ind[j]];
@@ -829,7 +726,7 @@ if(debug >= 2) printf("SPMV%d i %d j %d dest %f a %f ind %d src %f \n", mynode, 
     if(matrixID == 1) dest += HT0;
     if(matrixID == 2) dest += HT0 + HT1;
     if(matrixID == 3) dest += HT0 + HT1 + HT2;
-if(debug > 0) for(i=0;i<size;i++)
+if(debug > 1) for(i=0;i<size;i++)
    printf("SPMV%d i %d val %f \n", mynode, i, dest[i]);
 
     ocrDbRelease(depv[1].guid);
@@ -867,7 +764,7 @@ this is the driver for the multigrid steps.
 
     ocrGuid_t halo, packEvent, unpackEvent, smooth, smoothEvent, spmv, spmvEvent, mg, mgevent;
 
-if(debug > 0) printf("MG%d S%d P%d ID%d start\n", PB->mynode, mgStep, phase, matrixID);
+if(debug > 0) printf("MG%d S%d P%d ID%d start return event %lx\n", PB->mynode, mgStep, phase, matrixID, paramv[1]);
 
 
     switch(phase) {
@@ -894,32 +791,33 @@ if(debug > 0) printf("MG%d S%d P%d ID%d start\n", PB->mynode, mgStep, phase, mat
         }
 
 if(debug > 0) printf("MG%d S%d P%d  create clone\n", PB->mynode, mgStep, phase, matrixID);
-//create clone
+//create clone, smooth, and halo
+
         PB->mgPhase[matrixID] = 1;
         ocrEdtCreate(&mg, SB->mgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
+
         ocrEventCreate(&smoothEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(smoothEvent, mg, 1, DB_MODE_RW);
-
-
-if(debug > 0) printf("MG%d S%d P%d  create smooth\n", PB->mynode, mgStep, phase, matrixID);
-//create smooth
         u64 paramvsmooth0[4] = {matrixID, R, Z, smoothEvent};
         ocrEdtCreate(&smooth, SB->smoothTemplate, EDT_PARAM_DEF, paramvsmooth0, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, smooth, 0, DB_MODE_RO);
+
+        ocrAddDependence(smoothEvent, mg, 1, DB_MODE_RW);
         ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         ocrAddDependence(unpackEvent, smooth, 1, DB_MODE_RW);
         ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         ocrAddDependence(packEvent, smooth, 2, DB_MODE_RW);
 
-if(debug > 0) printf("MG%d S%d P%d  launch halo\n", PB->mynode, mgStep, phase, matrixID);
-//launch halo exchange
         u64 paramvhalo0[4] = {matrixID, Z, unpackEvent, packEvent};
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo0, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+
+        ocrDbRelease(depv[0].guid);
+        ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
+        ocrAddDependence(depv[0].guid, smooth, 0, DB_MODE_RO);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
+
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, halo, 1, DB_MODE_RW);
+
 if(debug > 0) printf("MG%d S%d P%d ID%d finish\n", PB->mynode, mgStep, phase, matrixID);
 fflush(stdout);
 
@@ -936,25 +834,25 @@ fflush(stdout);
 //create clone
         PB->mgPhase[matrixID] = 2;
         ocrEdtCreate(&mg, SB->mgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
+
+
         ocrEventCreate(&spmvEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(spmvEvent, mg, 1, DB_MODE_RW);
-
-
-//create spmv
         u64 paramvspmv1[4] = {matrixID, Z, AP, spmvEvent};
         ocrEdtCreate(&spmv, SB->spmvTemplate, EDT_PARAM_DEF, paramvspmv1, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, spmv, 0, DB_MODE_RO);
-        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(unpackEvent, spmv, 1, DB_MODE_RW);
-        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(packEvent, spmv, 2, DB_MODE_RW);
 
-//launch halo exchange
+        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         u64 paramvhalo1[4] = {matrixID, Z, unpackEvent, packEvent};
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo1, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+        ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
+        ocrAddDependence(depv[0].guid, spmv, 0, DB_MODE_RO);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
+
         ocrDbRelease(depv[1].guid);
+        ocrAddDependence(spmvEvent, mg, 1, DB_MODE_RW);
+        ocrAddDependence(unpackEvent, spmv, 1, DB_MODE_RW);
+        ocrAddDependence(packEvent, spmv, 2, DB_MODE_RW);
         ocrAddDependence(depv[1].guid, halo, 1, DB_MODE_RW);
 if(debug > 0) printf("MG%d S%d P%d ID%d finish\n", PB->mynode, mgStep, phase, matrixID);
 fflush(stdout);
@@ -966,7 +864,9 @@ fflush(stdout);
 
         PB->mgPhase[matrixID] = 3;
         u64 paramvout[2] = {6-paramv[0], paramv[1]};
-        ocrEdtCreate(&mg, SB->mgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//needed because the template is used after the release of the shared block
+        ocrGuid_t sbMgTemplate = SB->mgTemplate;
+        ocrEdtCreate(&mg, sbMgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrDbRelease(depv[0].guid);
         ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
         ocrEventCreate(&returnEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
@@ -1020,12 +920,12 @@ PRINTF("MG%d S%d P%d ID%d hit case 3 in restriction\n", PB->mynode, mgStep, phas
         paramvout[1] = returnEvent;
         matrixID = 3 - abs(mgStep-3);
         PB->mgPhase[matrixID] = 0;
-        ocrEdtCreate(&mg, SB->mgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEdtCreate(&mg, sbMgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
-        ocrDbRelease(depv[1].guid);
-        ocrAddDependence(depv[1].guid, mg, 1, DB_MODE_RW);
 if(debug > 0) printf("MG%d S%d P%d ID%d finish\n", PB->mynode, mgStep, phase, matrixID);
 fflush(stdout);
+        ocrDbRelease(depv[1].guid);
+        ocrAddDependence(depv[1].guid, mg, 1, DB_MODE_RW);
         return NULL_GUID;
 
         case 3:  //return from recursive call
@@ -1039,7 +939,7 @@ fflush(stdout);
         switch(matrixID) {
         case 0:
            for(i=0;i<MT1;i++){
-if(debug > 0) printf("MG%d S%d P%d ID%d i %d z %f update %f\n", PB->mynode, mgStep, phase, matrixID, i, *z, *znew);
+if(debug > 1) printf("MG%d S%d P%d ID%d i %d z %f update %f\n", PB->mynode, mgStep, phase, matrixID, i, *z, *znew);
               *z += *(znew++);
               z += 2;
            }
@@ -1048,7 +948,7 @@ if(debug > 0) printf("MG%d S%d P%d ID%d i %d z %f update %f\n", PB->mynode, mgSt
            z += HT0;
            znew += HT1;
            for(i=0;i<MT2;i++){
-if(debug > 0) printf("MG%d S%d P%d ID%d i %d z %f update %f\n", PB->mynode, mgStep, phase, matrixID, i, *z, *znew);
+if(debug > 1) printf("MG%d S%d P%d ID%d i %d z %f update %f\n", PB->mynode, mgStep, phase, matrixID, i, *z, *znew);
               *z += *(znew++);
               z += 2;
            }
@@ -1069,33 +969,34 @@ printf("MG%d S%d P%d ID%d hit case 3 in prolong\n", PB->mynode, mgStep, phase, m
         ocrShutdown();
 
         }
-//create clone
+//create clone, smooth, and halo
+//
+if(debug > 0) printf("MG%d S%d P%d  launch halo\n", PB->mynode, mgStep, phase, matrixID);
+
         PB->mgPhase[matrixID] = 4;
         ocrEdtCreate(&mg, SB->mgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
-        ocrEventCreate(&smoothEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(smoothEvent, mg, 1, DB_MODE_RW);
 
-//create smooth
+        ocrEventCreate(&smoothEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         u64 paramvsmooth3[4] = {matrixID, R, Z, smoothEvent};
         ocrEdtCreate(&smooth, SB->smoothTemplate, EDT_PARAM_DEF, paramvsmooth3, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, smooth, 0, DB_MODE_RO);
-        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(unpackEvent, smooth, 1, DB_MODE_RW);
-        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(packEvent, smooth, 2, DB_MODE_RW);
 
-if(debug > 0) printf("MG%d S%d P%d  launch halo\n", PB->mynode, mgStep, phase, matrixID);
-//launch halo exchange
+        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+
         u64 paramvhalo3[4] = {matrixID, R, unpackEvent, packEvent};
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo3, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
-        ocrDbRelease(depv[1].guid);
-        ocrAddDependence(depv[1].guid, halo, 1, DB_MODE_RW);
-if(debug > 0) printf("MG%d S%d P%d ID%d finish\n", PB->mynode, mgStep, phase, matrixID);
-fflush(stdout);
 
+        ocrDbRelease(depv[0].guid);
+        ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
+        ocrAddDependence(depv[0].guid, smooth, 0, DB_MODE_RO);
+        ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
+
+        ocrAddDependence(smoothEvent, mg, 1, DB_MODE_RW);
+        ocrAddDependence(unpackEvent, smooth, 1, DB_MODE_RW);
+        ocrDbRelease(depv[1].guid);
+
+        ocrAddDependence(packEvent, smooth, 2, DB_MODE_RW);
+        ocrAddDependence(depv[1].guid, halo, 1, DB_MODE_RW);
         return NULL_GUID;
 
         case 4:  //return from final smooth
@@ -1113,14 +1014,18 @@ ocrGuid_t hpcgEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 depv
 0: sharedBlock
 1: privateBlock
-2: return block from Global Sums (or NULL_GUID)
+2: reduction private block
+3: my datablock
+3: return block from reduction (or NULL_GUID)
 
 hpcg driver.
 only work done is local linear algebra
 */
     sharedBlock_t * SB = depv[0].ptr;
     privateBlock_t * PB = depv[1].ptr;
-    double * reduceBlock = depv[2].ptr;
+//reduction private block is depv[2]
+    double * myDataBlock = depv[3].ptr;
+    double * returnBlock = depv[4].ptr;
 
     u64 mynode = PB->mynode;
     u64 timestep = PB->timestep;
@@ -1130,9 +1035,7 @@ only work done is local linear algebra
 if(debug > 0) printf("PCG%d T%d P%d begin shared %lx private %lx returnblock %lx \n", mynode, timestep, phase, depv[0].guid, depv[1].guid, depv[2].guid);
 
 
-if(debug > 0) printf("PCG%d T%d P%d dotPhase %d once %lx\n", mynode, timestep, phase, PB->dotPhase, SB->onceGuid[PB->dotPhase]);
-
-    ocrGuid_t reduce, tempGuid;
+    ocrGuid_t onceEvent;
     double *a, sum, pap, rtz, alpha, beta;
     u64 i, j, ind, errno;
     ocrGuid_t mg, halo, spmv, unpackEvent, packEvent, spmvEvent, hpcg, hpcgEvent;
@@ -1151,9 +1054,11 @@ if(debug > 0) printf("PCG%d T%d P%d dotPhase %d once %lx\n", mynode, timestep, p
 
 
 
+//local sum
         sum = 0;
         for(i=0;i<MT0;i++) sum += PB->vector[R][i]*PB->vector[R][i];
-        PB->mySum = sum;  //local sum
+        *myDataBlock = sum;  //local sum
+
 if(debug > 0) printf("PCG%d T%d P%d rtr %f\n", mynode, timestep, phase, PB->mySum);
 //fprintf(stderr,"PCG%d T%d P%d rtr %f\n", mynode, timestep, phase, PB->mySum);
 
@@ -1161,21 +1066,23 @@ if(debug > 0) printf("PCG%d T%d P%d rtr %f\n", mynode, timestep, phase, PB->mySu
 
         PB->hpcgPhase = 1;
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        PB->dotPhase ^=  1; //toggle between 0 and 1
-        tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+
+//get return event from reduction
+
+        onceEvent = reductionGetOnceEvent(depv[2].ptr, depv[2].guid);
+        ocrAddDependence(onceEvent, hpcg, 4, DB_MODE_RO);
+
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
-//fprintf(stderr,"PCG%d add dependence with %lx\n", mynode, SB->onceGuid[PB->dotPhase]);
-        ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2, DB_MODE_RO);
+        ocrAddDependence(depv[2].guid, hpcg, 2, DB_MODE_RW);
+        ocrAddDependence(depv[3].guid, hpcg, 3, DB_MODE_RW);
 
-//launch global sum
+//launch reduction
 
-        ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, reduce, 0, DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, reduce, 1, DB_MODE_RO);
-        ocrAddDependence(PB->reduceBlock, reduce, 2, DB_MODE_RW);
+        ocrDbRelease(depv[3].guid);
+        reductionLaunch(depv[2].ptr, depv[2].guid, depv[3].guid);
+
 if(debug > 0) printf("PCG%d T%d P%d finish \n", mynode, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
@@ -1184,11 +1091,11 @@ fflush(stdout);
     case 1:
 
 //consume rtr   CONVERGENCE test
-if(debug > 0) printf("PCG%d T%d P%d global rtr %f \n", mynode, timestep, phase, *reduceBlock);
-        if(mynode==0) PRINTF("time %d rtr %f \n", timestep, *reduceBlock);
-        if(timestep==0) PB->rtr0 = *reduceBlock;
-           //else if(*reduceBlock/PB->rtr0 < 1e-13 || timestep == T) {
-           else if(*reduceBlock/PB->rtr0 < 1e-13 || timestep == 50) {
+if(debug > 0) printf("PCG%d T%d P%d global rtr %f \n", mynode, timestep, phase, *returnBlock);
+        if(mynode==0) PRINTF("time %d rtr %f \n", timestep, *returnBlock);
+        if(timestep==0) PB->rtr0 = *returnBlock;
+           //else if(*returnBlock/PB->rtr0 < 1e-13 || timestep == T) {
+           else if(*returnBlock/PB->rtr0 < 1e-13 || timestep == 50) {
 if(debug > 0) printf("PCG%d T%d P%d finishing \n", mynode, timestep, phase);
 fflush(stdout);
              ocrAddDependence(depv[1].guid, SB->wrapup, mynode, DB_MODE_RO);
@@ -1201,18 +1108,27 @@ fflush(stdout);
 
 //create clone
         PB->hpcgPhase = 2;
-        ocrEventCreate(&hpcgEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
-        ocrAddDependence(hpcgEvent, hpcg, 1, DB_MODE_RW);
-        ocrAddDependence(NULL_GUID, hpcg, 2, DB_MODE_RW);
-//launch mg
         PB->mgPhase[0] = 0;
+
+        ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+        ocrEventCreate(&hpcgEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         u64 paramvMG[2] = {0, hpcgEvent};
         ocrEdtCreate(&mg, SB->mgTemplate, EDT_PARAM_DEF, paramvMG, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+if(debug > 0) printf("PCG%d T%d P%d return from mg event %lx \n", mynode, timestep, phase, hpcgEvent);
+        ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
+
+        ocrAddDependence(hpcgEvent, hpcg, 1, DB_MODE_RW);
+        ocrAddDependence(depv[2].guid, hpcg, 2, DB_MODE_RW);
+        ocrAddDependence(depv[3].guid, hpcg, 3, DB_MODE_RW);
+        ocrAddDependence(NULL_GUID, hpcg, 4, DB_MODE_RW);
+
         ocrAddDependence(depv[0].guid, mg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, mg, 1, DB_MODE_RW);
+
+
 if(debug > 0) printf("PCG%d T%d P%d finish \n", mynode, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
@@ -1230,39 +1146,41 @@ fflush(stdout);
             sum += PB->vector[Z][i]*PB->vector[R][i];
         }
 
-        PB->mySum = sum;
+        *myDataBlock = sum;
 if(debug > 0) printf("PCG%d T%d P%d local rtz %f \n", mynode, timestep, phase, sum);
 if(debug > 1) for(i=0;i<MT0;i++) printf("PCG%d T%d P%d i %d Z %f R %f \n", mynode, timestep, phase, i, PB->vector[Z][i], PB->vector[R][i]);
 
 
 //Create clone
         PB->hpcgPhase = 3;
+
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-if(debug > 0) printf("PCG%d T%d P%d before 0\n", mynode, timestep, phase);
+
+        onceEvent = reductionGetOnceEvent(depv[2].ptr, depv[2].guid);
+        ocrAddDependence(onceEvent, hpcg, 4, DB_MODE_RO);
+
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
-if(debug > 0) printf("PCG%d T%d P%d before 1\n", mynode, timestep, phase);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
+        ocrAddDependence(depv[2].guid, hpcg, 2, DB_MODE_RW);
+//note that depv[3] doesn't need to be released here, just before calling rductionLaunch
+        ocrAddDependence(depv[3].guid, hpcg, 3, DB_MODE_RW);
 
-        PB->dotPhase ^=  1; //toggle between 0 and 1
-        tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-        ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2, DB_MODE_RO);
+//launch reduction
 
-//launch global sum for rtz
-        ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, reduce, 0, DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, reduce, 1, DB_MODE_RO);
-        ocrAddDependence(PB->reduceBlock, reduce, 2, DB_MODE_RW);
+        ocrDbRelease(depv[3].guid);
+        reductionLaunch(depv[2].ptr, depv[2].guid, depv[3].guid);
+
+
         return NULL_GUID;
 
     case 3:
 //consume rtz
-        if(mynode==0) PRINTF("time %d rtz %f \n", timestep, *reduceBlock);
-        PB->rtz = *reduceBlock;
+        if(mynode==0) PRINTF("time %d rtz %f \n", timestep, *returnBlock);
+        PB->rtz = *returnBlock;
 //compute beta
         if(timestep == 0) beta = 0;
-               else beta = *reduceBlock/PB->rtzold;
+               else beta = *returnBlock/PB->rtzold;
 //update p
         for(i=0;i<MT0;i++) PB->vector[P][i] = PB->vector[Z][i] + beta*PB->vector[P][i];
 
@@ -1275,24 +1193,28 @@ ocrEventCreate(&spmvEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
 //create clone
         PB->hpcgPhase = 4;
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
-        ocrAddDependence(spmvEvent, hpcg, 1, DB_MODE_RW);
-        ocrAddDependence(NULL_GUID, hpcg, 2, DB_MODE_RW);
 
-//create spmv
         u64 paramvspmv[4] = {0, P, AP, spmvEvent};
         ocrEdtCreate(&spmv, SB->spmvTemplate, EDT_PARAM_DEF, paramvspmv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, spmv, 0, DB_MODE_RO);
-        ocrAddDependence(unpackEvent, spmv, 1, DB_MODE_RW);
-        ocrAddDependence(packEvent, spmv, 2, DB_MODE_RW);
 
-//launch halo exchange
         u64 paramvhalo[4] = {0, P, unpackEvent, packEvent};
-        ocrDbRelease(depv[1].guid);
         ocrEdtCreate(&halo, SB->haloTemplate, EDT_PARAM_DEF, paramvhalo, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+        ocrDbRelease(depv[0].guid);
+        ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
+        ocrAddDependence(depv[0].guid, spmv, 0, DB_MODE_RO);
         ocrAddDependence(depv[0].guid, halo, 0, DB_MODE_RO);
+
+        ocrDbRelease(depv[1].guid);
+        ocrAddDependence(spmvEvent, hpcg, 1, DB_MODE_RW);
+        ocrAddDependence(unpackEvent, spmv, 1, DB_MODE_RW);
+
+        ocrAddDependence(packEvent, spmv, 2, DB_MODE_RW);
+        ocrAddDependence(depv[2].guid, hpcg, 2, DB_MODE_RW);
+        ocrAddDependence(depv[3].guid, hpcg, 3, DB_MODE_RW);
+        ocrAddDependence(NULL_GUID, hpcg, 4, DB_MODE_RW);
         ocrAddDependence(depv[1].guid, halo, 1, DB_MODE_RW);
+
 
 if(debug > 0) printf("PCG%d T%d P%d finish \n", mynode, timestep, phase);
 fflush(stdout);
@@ -1305,63 +1227,70 @@ fflush(stdout);
     case 4:
         sum = 0;
         for(i=0;i<MT0;i++) sum += PB->vector[P][i]*PB->vector[AP][i];
-        PB->mySum = sum;
+        *myDataBlock= sum;
 if(debug > 0) printf("PCG%d T%d P%d pap %f \n", mynode, timestep, phase, sum);
 //Create clone
         PB->hpcgPhase=5;
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+        onceEvent = reductionGetOnceEvent(depv[2].ptr, depv[2].guid);
+        ocrAddDependence(onceEvent, hpcg, 4, DB_MODE_RO);
+
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
-        PB->dotPhase ^=  1; //toggle between 0 and 1
-        tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-        ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2 , DB_MODE_RO);
+        ocrAddDependence(depv[2].guid, hpcg, 2, DB_MODE_RW);
+//note that depv[3] doesn't need to be released here, just before calling rductionLaunch
+        ocrAddDependence(depv[3].guid, hpcg, 3, DB_MODE_RW);
 
-//launch global sum
-        ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, reduce, 0, DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, reduce, 1, DB_MODE_RO);
-        ocrAddDependence(PB->reduceBlock, reduce, 2, DB_MODE_RW);
+//launch reduction
+
+        ocrDbRelease(depv[3].guid);
+        reductionLaunch(depv[2].ptr, depv[2].guid, depv[3].guid);
+
 if(debug > 0) printf("PCG%d T%d P%d finish \n", mynode, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
 
     case 5:
 //consume pAp
-        pap = *reduceBlock;
+        pap = *returnBlock;
         alpha = PB->rtz/pap;
-if(debug > 0) printf("PCG%d T%d P%d pap %f rtz %f\n", mynode, timestep, phase, pap, *reduceBlock);
+if(debug > 0) printf("PCG%d T%d P%d pap %f rtz %f\n", mynode, timestep, phase, pap, *returnBlock);
         PB->rtzold = PB->rtz;  //safe time to move it
 //update x and r
         for(i=0;i<MT0;i++) {
             PB->vector[X][i] += alpha*PB->vector[P][i];
             PB->vector[R][i] -= alpha*PB->vector[AP][i];
-if(debug > 0) printf("PCG%d T%d P%d i %d x %f r %f p %f ap %f \n ", mynode, timestep, phase, i, PB->vector[X][i], PB->vector[R][i], PB->vector[P][i], PB->vector[AP][i]);
+if(debug > 1) printf("PCG%d T%d P%d i %d x %f r %f p %f ap %f \n ", mynode, timestep, phase, i, PB->vector[X][i], PB->vector[R][i], PB->vector[P][i], PB->vector[AP][i]);
 
         }
 //Prepare for the summation of rtr
         sum = 0;
         for(i=0;i<MT0;i++) sum += PB->vector[R][i]*PB->vector[R][i];
-        PB->mySum = sum;  //local sum
+        *myDataBlock = sum;  //local sum
 if(debug > 0) printf("PCG%d T%d P%d rtr %f \n", mynode, timestep, phase, sum);
 //create clone
         PB->hpcgPhase=1;
         PB->timestep++;
+
         ocrEdtCreate(&hpcg, SB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+        onceEvent = reductionGetOnceEvent(depv[2].ptr, depv[2].guid);
+        ocrAddDependence(onceEvent, hpcg, 4, DB_MODE_RO);
+
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
-        PB->dotPhase ^=  1; //toggle between 0 and 1
-        tempGuid = SB->onceGuid[PB->dotPhase];
-        errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-//fprintf(stderr,"PCG%d add dependence with %lx\n", mynode, SB->onceGuid[PB->dotPhase]);
-        ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2 , DB_MODE_RO);
-//launch global sum for rtr
-        ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, reduce, 0, DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, reduce, 1, DB_MODE_RO);
-        ocrAddDependence(PB->reduceBlock, reduce, 2, DB_MODE_RW);
+        ocrAddDependence(depv[2].guid, hpcg, 2, DB_MODE_RW);
+//note that depv[3] doesn't need to be released here, just before calling rductionLaunch
+        ocrAddDependence(depv[3].guid, hpcg, 3, DB_MODE_RW);
+
+//launch reduction
+
+        ocrDbRelease(depv[3].guid);
+        reductionLaunch(depv[2].ptr, depv[2].guid, depv[3].guid);
+
 if(debug > 0) printf("PCG%d T%d P%d finish \n", mynode, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
@@ -1377,6 +1306,8 @@ params
 depv
 0: sharedBlock
 1: privateBlock
+2: reduction shared block
+3: reduction private block
 
 Initialize private block
 launch hpcgEdt
@@ -1396,7 +1327,6 @@ if(debug > 0) printf("HI%d\n", mynode);
 
     PB->timestep = 0;
     PB->mynode = mynode;
-    PB->dotPhase = 0;
     PB->hePhase = 0;
     PB->hpcgPhase = 0;
 
@@ -1507,22 +1437,6 @@ if(debug > 1) printf("mynode %d mysource %d ind %d Send %lx  Recv %lx\n", mynode
         }
 if(debug > 0) for(i=0;i<26;i++) printf("HI%d i %d sendGuid %lx %lx recvGuid %lx %lx \n", mynode, i, PB->haloSendGuid[0][i], PB->haloSendGuid[1][i], PB->haloRecvGuid[0][i], PB->haloRecvGuid[1][i]);
 
-//initialize events for binary tree
-        ocrDbCreate(&(PB->reduceBlock), (void**) &dummy, sizeof(double), 0, NULL_GUID, NO_ALLOC);
-
-        PB->reduceRecvGuid[0] = NULL_GUID;
-        PB->reduceRecvGuid[1] = NULL_GUID;
-        if(mynode != 0) {
-            ocrGuidFromIndex(&(PB->reduceSendGuid), SB->reduceRangeGuid, mynode-1);
-        }
-        u64 src = 2*mynode+1;
-        if(src < numnodes) ocrGuidFromIndex(&(PB->reduceRecvGuid[0]), SB->reduceRangeGuid, src-1);
-
-        src = 2*mynode+2;
-        if(src < numnodes) ocrGuidFromIndex(&(PB->reduceRecvGuid[1]), SB->reduceRangeGuid, src-1);
-
-if(debug > 0) printf("HI%d RdsendGuid %lx RdrecvGuid %lx RdrecvGuid %lx\n", mynode, PB->reduceSendGuid, PB->reduceRecvGuid[0], PB->reduceRecvGuid[1]);
-
 //initialize four matrices
 //P vector used as scratch space
 
@@ -1609,7 +1523,14 @@ for(i=0;i<MT3;i++) printf("HI%d i %d B %f \n", mynode, i, *a++);
     ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
     ocrDbRelease(depv[1].guid);
     ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
-    ocrAddDependence(NULL_GUID, hpcg, 2, DB_MODE_RW);
+
+    reductionParallelInit(mynode, depv[2].ptr, depv[3].ptr, depv[3].guid);
+    ocrAddDependence(depv[3].guid, hpcg, 2, DB_MODE_RW);
+
+    ocrGuid_t dataBlock;
+    ocrDbCreate(&dataBlock, (void**) &dummy, sizeof(double), 0, NULL_GUID, NO_ALLOC);
+    ocrAddDependence(dataBlock, hpcg, 3, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, hpcg, 4, DB_MODE_RW);
 
 if(debug > 0) printf("HI%d finish \n", mynode);
 fflush(stdout);
@@ -1625,9 +1546,11 @@ params:
 
 depv:
 0: sharedblock
+1: reduction shared block
 
 create privateblock
-launches hpcgInitEdt with private block, shared block and mynode as param
+create reduction private block
+launches hpcgInitEdt with shared blocks, private blocks, mynode as param
 
 */
 
@@ -1648,6 +1571,10 @@ if(debug > 0) printf("I%d\n", mynode);
     ocrDbCreate(&tempDb, (void**) &dummy, sizeof(privateBlock_t), 0, NULL_GUID, NO_ALLOC);
     ocrAddDependence(tempDb, hpcgInit, 1, DB_MODE_RW);
 
+//reduction blocks
+    ocrAddDependence(depv[1].guid, hpcgInit, 2, DB_MODE_RO);
+    ocrAddDependence(reductionCreatePrivate(), hpcgInit, 3, DB_MODE_RW);
+
     return NULL_GUID;
 }
 
@@ -1657,10 +1584,12 @@ paramv
 0:  wrapupEdtGuid
 
 depv
-0: sharedblock
+0: shared block
+1: reduction Shared Block
 
 Initializes shared block
-It creates and launches NPZ*NPY*NPX InitEdt with sharedblock and mynode as param
+Initializes reduction shared block
+Creates and launches NPZ*NPY*NPX InitEdt with shared blocks and mynode as param
 */
 
     u64 i, j, k, m;
@@ -1674,6 +1603,8 @@ if(debug != 0) printf("RM start\n");
 
     sharedBlock_t * SB = depv[0].ptr;
 
+    reductionSerialInit(N, 1, REDUCTION_F8_ADD, depv[1].ptr, depv[1].guid);
+
     SB->wrapup = paramv[0];
     SB->numnodes = N;
     SB->size[0] = M0;
@@ -1684,34 +1615,18 @@ if(debug != 0) printf("RM start\n");
     ocrGuid_t tempDb;
     u64 dummy;
 
-    ocrDbCreate(&tempDb, (void**) &dummy, sizeof(double), 0, NULL_GUID, NO_ALLOC);
-    SB->globalSum = tempDb;
 
     ocrGuidRangeCreate(&(SB->haloRangeGuid),(u64) 2*26*N, GUID_USER_EVENT_STICKY);
-    ocrGuidRangeCreate(&(SB->reduceRangeGuid),(u64) N-1, GUID_USER_EVENT_STICKY);
-
-ocrGuid_t guid;
-
-for(i=0;i<N-1;i++) {
-    ocrGuidFromIndex(&guid, SB->reduceRangeGuid, i);
-
-}
-
-    ocrGuid_t onceRangeGuid;
-    ocrGuidRangeCreate(&onceRangeGuid,(u64) 2, GUID_USER_EVENT_ONCE);
-    ocrGuidFromIndex(&(SB->onceGuid[0]), onceRangeGuid, 0);
-    ocrGuidFromIndex(&(SB->onceGuid[1]), onceRangeGuid, 1);
 
 
     ocrEdtTemplateCreate(&(SB->packTemplate), packANDsatisfyEdt, 4, 28);
     ocrEdtTemplateCreate(&(SB->unpackTemplate), unpackEdt, 4, 28);
-    ocrEdtTemplateCreate(&(SB->hpcgTemplate), hpcgEdt, 0, 3);
+    ocrEdtTemplateCreate(&(SB->hpcgTemplate), hpcgEdt, 0, 5);
     ocrEdtTemplateCreate(&(SB->spmvTemplate), spmvEdt, 4, 3);
     ocrEdtTemplateCreate(&(SB->mgTemplate), mgEdt, 2, 2);
     ocrEdtTemplateCreate(&(SB->haloTemplate), haloExchangeEdt, 4, 2);
     ocrEdtTemplateCreate(&(SB->smoothTemplate), smoothEdt, 4, 3);
-    ocrEdtTemplateCreate(&(SB->reduceTemplate), reduceEdt, 0, EDT_PARAM_UNK);
-    ocrEdtTemplateCreate(&(SB->hpcgInitTemplate), hpcgInitEdt, 1, 2);
+    ocrEdtTemplateCreate(&(SB->hpcgInitTemplate), hpcgInitEdt, 1, 4);
 
 //table for packing communication blocks
 u64 start[4][26]= {{0, 0,  M0-1, 0,  0,   M0-1,M02-M0, M02-M0, M02-1, 0,    0,      M0-1, 0,   M0-1,  M02-M0, M02-M0,  M02-1, (M0-1)*M02,(M0-1)*M02,  M03-M02+M0-1, (M0-1)*M02, (M0-1)*M02, M03-M02+M0-1, M03-M0, M03-M0,  M03-1},
@@ -1746,12 +1661,13 @@ for(i=0;i<4;i++)
      }
 
     ocrGuid_t initTemplate, init;
-    ocrEdtTemplateCreate(&initTemplate, InitEdt, 1, 1);
+    ocrEdtTemplateCreate(&initTemplate, InitEdt, 1, 2);
     ocrDbRelease(depv[0].guid);
 
     for(i=0;i<N;i++){
         ocrEdtCreate(&init, initTemplate, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
         ocrAddDependence(depv[0].guid, init, 0, DB_MODE_RO);
+        ocrAddDependence(depv[1].guid, init, 1, DB_MODE_RO);
     }
 if(debug != 0) printf("RM finish\n");
 fflush(stdout);
@@ -1785,9 +1701,10 @@ ocrGuid_t mainEdt(){
 /*
 mainEdt is executed first
 Creates the shared datablock
+Creates the reduction shared datablock
 Creates wrapup
 Creates realmain passing in wrapupEdtGuid
-Passes the shared block to realmain
+Passes the shared blocks to realmain
 */
 
 u64 i;
@@ -1804,16 +1721,20 @@ ocrDbCreate(&sharedDb, (void**) &dummy, sizeof(sharedBlock_t), 0, NULL_GUID, NO_
 ocrGuid_t wrapupTemplate;
 ocrGuid_t wrapup;
 
+//initializing reduction library
+ocrGuid_t reductionSharedBlock = reductionCreateShared();
+
 ocrEdtTemplateCreate(&wrapupTemplate, wrapupEdt, 0, N);
 
 ocrEdtCreate(&wrapup, wrapupTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
 
-ocrEdtTemplateCreate(&realmainTemplate, realmainEdt, 1, 1);
+ocrEdtTemplateCreate(&realmainTemplate, realmainEdt, 1, 2);
 
 ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, &wrapup , EDT_PARAM_DEF, NULL,
   EDT_PROP_NONE, NULL_GUID, NULL);
 
 ocrAddDependence(sharedDb, realmain, 0, DB_MODE_RW);
+ocrAddDependence(reductionSharedBlock, realmain, 1, DB_MODE_RW);
 
 return NULL_GUID;
 
