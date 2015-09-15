@@ -60,6 +60,6 @@ for p in "${PATHS[@]}"
 #------------------------------------------------------------------------------
 # setup icc compiler variables
 #------------------------------------------------------------------------------
-if [ -x /opt/intel/tools/parallel_studio_xe_2015/psxevars.sh ]; then
-    source /opt/intel/tools/parallel_studio_xe_2015/psxevars.sh impi4
+if [ -x /opt/intel/tools/psxevars.sh ]; then
+    source /opt/intel/tools/psxevars.sh intel64 impi4
 fi

@@ -144,8 +144,8 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
         exit(-1) ;
     }
 
-    fprintf(fp, "#ifndef _FFWD_H_\n");
-    fprintf(fp, "#define _FFWD_H_\n\n");
+    fprintf(fp, "#ifndef _ROSE_FFWD_H_\n");
+    fprintf(fp, "#define _ROSE_FFWD_H_\n\n");
 
 
 
@@ -204,7 +204,6 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
 #ifdef __FFWD_DB_
     // these function are defined in mpi_ocr.c.
     fprintf(fp, "extern u64 * __getGlobalDBAddr();\n");
-    fprintf(fp, "extern void __setGlobalDBContext(ocrGuid_t * ffwd_db_guid, void ** ffwd_addr_ptr);\n");
     fprintf(fp, "extern void __ocrCheckStatus(u8 status, char * functionName);\n\n");
 #endif
 
@@ -402,7 +401,6 @@ void visitorTraversal::insertHeaders(SgProject* project)
         // at top, insert include files.  mpi.h should already be present.
         SgScopeStatement* fileScope=file->get_file_scope();
         insertHeader(strROSE_FFWDH, PreprocessingInfo::after, false, fileScope);
-        insertHeader("ocr.h", PreprocessingInfo::after, false, fileScope);
     }
 }
 
