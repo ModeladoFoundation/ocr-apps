@@ -8,13 +8,13 @@
 #include <math.h>
 #include <string.h>
 #ifdef MPILITE
-__thread int YPROC_LITE;
-__thread int ZPROC_LITE;
-__thread int COMM_SPACE_LITE =0;
-__thread int YCOMM_LITE = 1;
-__thread int ZCOMM_LITE = 2;
-__thread int linear_proc;
-__thread int dims [2];
+int YPROC_LITE;
+int ZPROC_LITE;
+int COMM_SPACE_LITE =0;
+int YCOMM_LITE = 1;
+int ZCOMM_LITE = 2;
+int linear_proc;
+int dims [2];
 #endif
 
 /*******************************************************************************

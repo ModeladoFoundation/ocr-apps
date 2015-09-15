@@ -70,14 +70,19 @@ CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 
-
-SRCS = snap_main.c utils.c version.c plib.c geom.c \
+# Use the ROSE translated sources
+SRC_NAMES = snap_main.c utils.c version.c plib.c geom.c \
        sn.c data.c control.c input.c setup.c dealloc.c \
        translv.c solvar.c outer.c expxs.c inner.c sweep.c \
        octsweep.c dim1_sweep.c dim3_sweep.c output.c time.c mms.c
 
+SRCS := $(addprefix rose_,$(SRC_NAMES))
+
+OBJS: $(ROSE_TARGET)
+
+
 #OBJS := $(notdir $(SRCS:.c=.o))
-CFLAGS=-O0 -g -std=c99 -DMPILITE -I./ -I${APPS_ROOT}/libs/x86/include
+CFLAGS=-O0 -g -std=c99 -DMPILITE -D__MACH__ -I./ -I${APPS_ROOT}/libs/x86/include
 #CFLAGS=-O0 -g -std=c99 -DMPILITE -DDEBUG=2 -I./ -I${APPS_ROOT}/libs/x86/include
 #CFLAGS :=  -DOCR_RUNTIME_PROFILER
 LDFLAGS := -fopenmp -lpthread -lm -lmpilite
@@ -97,6 +102,8 @@ debug:	TARGETS := debug
 debug:	default
 
 install: all
+
+.DEFAULT_GOAL := install
 
 # This rule will be executed prior to execution:
 #  - For the FSim target, this happens when the binary is built
@@ -121,6 +128,38 @@ install: all
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
 prerun: ;
+
+# ROSE support occurs here.
+
+include ${APPS_ROOT}/makefiles/make-rose.inc
+
+TARGET ?= snap_lite
+ROSE_TARGET = rose_$(TARGET)
+
+SRCDIR = $(APPS_ROOT)/SNAP/refactored/mpilite/intel
+BLDDIR = build/$(OCR_TYPE)
+
+SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
+
+prebuild: $(ROSE_TARGET)
+
+$(ROSE_TARGET): $(ROSE_TOOL) create_dir
+	cd $(BLDDIR) ; \
+	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(LD_FLAGS) $(MPI_FLAGS) >& $(HERE)/build.log ; \
+	cd $(HERE)
+
+
+$(ROSE_TOOL):
+	cd $(ROSE_TOOL_ROOT)/src ; \
+	make ; \
+	cd $(HERE)
+
+
+create_dir:
+	mkdir -p $(BLDDIR)
+
+
+rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
