@@ -193,11 +193,11 @@ reqlibs: parallel-reqlibs
 
 # Require libocr as this means all include files are up-to-date
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocr $(WORKLOAD_BUILD)
-	@mkdir -p $(@D)
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | libocr $(WORKLOAD_BUILD)
-	@mkdir -p $(@D)
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
