@@ -42,6 +42,8 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
+#CONFIG_NUM_THREADS ?= 4
+#WORKLOAD_ARGS ?= -r ${CONFIG_NUM_THREADS} -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04
 #WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin01 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout01
 WORKLOAD_ARGS ?= -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04
 #WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin12 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout12

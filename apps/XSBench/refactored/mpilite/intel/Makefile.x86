@@ -74,7 +74,7 @@ CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 
-SRCS = \
+SRC_NAMES = \
 Main.c \
 io.c \
 CalculateXS.c \
@@ -82,18 +82,18 @@ GridInit.c \
 XSutils.c \
 Materials.c
 
-# SRCS := $(patsubst %, ${WORKLOAD_SRC}/%, $(source))
+SRCS := $(addprefix rose_,$(SRC_NAMES))
 
 OBJS := $(notdir $(source:.c=.o))
 
-$(OBJS): $(WORKLOAD_SRC)/XSbench_header.h $(WORKLOAD_SRC)/omp.h
+$(OBJS): $(WORKLOAD_SRC)/XSbench_header.h $(WORKLOAD_SRC)/omp.h $(ROSE_TARGET)
 
 # icc is faster than gcc. turn off warning that OMP pragmas are off, which
 # becomes an error due to -Werror from make-regular.inc
 # jenkins doesn't set up icc so comment out for a while
 #CC=icc -wd3180
 
-CFLAGS := -g -DMPI -I $(WORKLOAD_SRC)
+CFLAGS := -g -DMPI -I$(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
 
 
@@ -111,6 +111,8 @@ debug:	TARGETS := debug
 debug:	default
 
 install: all
+
+.DEFAULT_GOAL := install
 
 # This rule will be executed prior to execution:
 #  - For the FSim target, this happens when the binary is built
@@ -135,6 +137,36 @@ install: all
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
 prerun: ;
+
+# ROSE support occurs here.
+
+include ${APPS_ROOT}/makefiles/make-rose.inc
+
+TARGET ?= XSBench
+ROSE_TARGET = rose_$(TARGET)
+
+SRCDIR = $(APPS_ROOT)/XSBench/refactored/mpilite/intel/src
+BLDDIR = build/$(OCR_TYPE)
+
+SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
+
+prebuild: $(ROSE_TARGET)
+
+$(ROSE_TARGET): $(ROSE_TOOL) create_dir
+	cd $(BLDDIR) ; \
+	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) >& $(HERE)/build.log ; \
+	cd $(HERE)
+
+$(ROSE_TOOL):
+	cd $(ROSE_TOOL_ROOT)/src ; \
+	make ; \
+	cd $(HERE)
+
+
+create_dir:
+	mkdir -p $(BLDDIR)
+
+rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated

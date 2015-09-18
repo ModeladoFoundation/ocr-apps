@@ -931,7 +931,6 @@ void visitorTraversal::visit(SgNode* node)
                     SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
                     replaceExpression(isSgExpression(*i), arrowExp, true);
 
-
                     // create a tool generated variable (TGV) that will indicate
                     // if the function static has been initialized.
                     string tgvName = newName + strUnderscore + strINIT;
@@ -1024,7 +1023,6 @@ void visitorTraversal::visit(SgNode* node)
                     if ( ! onTgvList(tgvName))
                     {
                         TgvElement * tgvElement = new TgvElement(tgvName, element->get_scope());
-                        fflush(stdout);
                         element->set_tgv(tgvElement);
                         _tgvList.push_back(tgvElement);
                     }
@@ -1225,33 +1223,36 @@ void visitorTraversal::atTraversalEnd()
             // if (__ffwd_p->tgv == 0) {
             //     __ffwd_p->fs = fs;
             //     __ffwd_p->tgv = 1;  }
-
-            TgvElement* tgv = dbElement->get_tgv();
-            if (tgv != NULL)
+            if ( ! dbElement->init_created())
             {
-                SgScopeStatement * scope = dbElement->get_scope();
-                SgBasicBlock * trueBB = buildBasicBlock();
+                TgvElement* tgv = dbElement->get_tgv();
+                if (tgv != NULL)
+                {
+                    dbElement->set_init_created(true);
+                    SgScopeStatement * scope = dbElement->get_scope();
+                    SgBasicBlock * trueBB = buildBasicBlock();
 
-                //     __ffwd_p->fs = fs;
-                SgVarRefExp* structPtrExp = buildVarRefExp(_ptrName, scope);
-                SgExprStatement* initStmt = createInitStmt(dbElement, structPtrExp);
-                dbElement->set_init_created(true);
-                appendStatement(initStmt, trueBB);
+                    //     __ffwd_p->fs = fs;
+                    SgVarRefExp* structPtrExp = buildVarRefExp(_ptrName, scope);
+                    SgExprStatement* initStmt = createInitStmt(dbElement, structPtrExp);
+                    dbElement->set_init_created(true);
+                    appendStatement(initStmt, trueBB);
 
-                //     __ffwd_p->tgv = 1;
-                string tgvName = tgv->get_name();
-                SgVarRefExp* newNameExp = buildVarRefExp(tgvName, scope);
-                SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, scope);
-                SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
-                SgExprStatement * assignOp = buildAssignStatement(arrowExp,
-                                                                  buildIntVal(1));
-                appendStatement(assignOp, trueBB);
+                    //     __ffwd_p->tgv = 1;
+                    string tgvName = tgv->get_name();
+                    SgVarRefExp* newNameExp = buildVarRefExp(tgvName, scope);
+                    SgVarRefExp* ptrNameExp = buildVarRefExp(_ptrName, scope);
+                    SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
+                    SgExprStatement * assignOp = buildAssignStatement(arrowExp,
+                                                                      buildIntVal(1));
+                    appendStatement(assignOp, trueBB);
 
-                // if (__ffwd_p->tgv == 0)
-                SgExpression * tgvEqualZero = buildEqualityOp(deepCopy(arrowExp),
+                    // if (__ffwd_p->tgv == 0)
+                    SgExpression * tgvEqualZero = buildEqualityOp(deepCopy(arrowExp),
                                                               buildIntVal(0));
-                SgIfStmt * ifStmt = buildIfStmt( tgvEqualZero, trueBB, NULL);
-                insertStatementAfterLastDeclaration(ifStmt, scope);
+                    SgIfStmt * ifStmt = buildIfStmt( tgvEqualZero, trueBB, NULL);
+                    insertStatementAfterLastDeclaration(ifStmt, scope);
+                }
             }
         }
     }  // globalDeclList
