@@ -7,7 +7,7 @@
 XSTACK_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/.*$$::')
 
 APPS_ROOT  ?= $(XSTACK_REPO)/apps
-TG_INSTALL ?= $(realpath $(XSTACK_REPO)/../intel/ss/install)
+TG_INSTALL ?= $(realpath $(XSTACK_REPO)/../tg/tg/install)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 
