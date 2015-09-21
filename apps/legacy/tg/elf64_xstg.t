@@ -1,6 +1,6 @@
 /* Default linker script, for normal executables */
 OUTPUT_FORMAT("elf64-xstg", "elf64-bigxstg", "elf64-xstg")
-SEARCH_DIR("/home/donn/Intel/eqware/intel/ss/bin/build.xe-binutils/install_xstg-linux-elf/xstg-linux-elf/lib");
+SEARCH_DIR("../../../../../tg/tg/install/xstg-linux-elf/lib");
 ENTRY (_start)
 
 /*

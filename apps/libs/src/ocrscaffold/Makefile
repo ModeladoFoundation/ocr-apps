@@ -8,7 +8,7 @@
 #		Justin Teller, Intel
 #		EQware various
 #
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../tg/tg/install)
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 

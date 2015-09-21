@@ -24,7 +24,7 @@
 # This makefile then installs the build products from tmproot to the
 # libs install root APPS_LIBS_ROOT (xstack/apps/libs/$(ARCH)).
 #
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../tg/tg/install)
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 

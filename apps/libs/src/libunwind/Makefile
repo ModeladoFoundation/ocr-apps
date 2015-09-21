@@ -21,7 +21,7 @@
 #	(defaulting to xstack/apps/libs/<arch>) can be overridden by
 #	use of the APPS_LIBS_ROOT variable.
 #
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../intel/ss/install)
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../tg/tg/install)
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 APPS_LIBS_ROOT ?= $(realpath $(CURDIR)/../../$(ARCH))
