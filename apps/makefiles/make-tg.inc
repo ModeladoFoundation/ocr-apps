@@ -52,6 +52,7 @@ OCR_INSTALL_ROOT := $(shell mkdir -p ${OCR_INSTALL_ROOT} && cd "${OCR_INSTALL_RO
 OCR_INSTALL_XE   := ${OCR_INSTALL_ROOT}/${XE_TARGET}
 OCR_INSTALL_CE   := ${OCR_INSTALL_ROOT}/${CE_TARGET}
 
+FIX_TG_FSIM_CONFIG := ${OCR_ROOT}/scripts/Configs/tg-fsim_config_fix.py
 FIX_CE_CONFIG    := ${OCR_ROOT}/scripts/Configs/ce_config_fix.py
 FIX_MEM_CONFIG   := ${OCR_ROOT}/scripts/Configs/mem_config_fix.py
 
@@ -127,6 +128,7 @@ endif
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 	@$(CP) $(WORKLOAD_BUILD)/$(TARGET).blob $(WORKLOAD_INSTALL)/
 	@$(CP) $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/
+	@$(FIX_TG_FSIM_CONFIG) --tginstall $(TG_INSTALL) --fsimcfg $(WORKLOAD_INSTALL)/config.cfg
 
 postinstall: install_internal
 
@@ -164,7 +166,7 @@ endif
 	@$(RM) -rf $(WORKLOAD_EXEC)/logs/*
 	@$(RM) -f $(WORKLOAD_EXEC)/console.out
 	WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) \
-	bash -ec 'cd $(WORKLOAD_EXEC) && $(RUN_CMD) -s $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg && \
+	bash -ec 'cd $(WORKLOAD_EXEC) && $(RUN_CMD) -s -L logs $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_EXEC)/logs/*brd*.chp*.unt*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
 
