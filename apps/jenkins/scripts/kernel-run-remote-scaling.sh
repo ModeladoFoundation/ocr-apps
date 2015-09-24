@@ -25,13 +25,17 @@ echo "Running kernel '$1' for architecture '$2'"
 
 rm -f ${WORKLOAD_INSTALL}/runlog
 timeFile=$(mktemp)
+cfgFile=$(mktemp)
 
 RETURN_CODE=0
 for t in ${THREADS[*]}
 do
+    rm -f $cfgFile
+    ${JJOB_SHARED_HOME}/xstack/ocr/scripts/Configs/config-generator.py --threads $t --output $cfgFile
+
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
     for i in `seq 1 $4`; do
-        CONFIG_NUM_THREADS=$t WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
+         WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp OCR_CONFIG=$cfgFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
         RETURN_CODE=$?
         if [ $RETURN_CODE -ne 0 ]; then
             break
@@ -59,6 +63,7 @@ fi
 cp $timeFile ${JJOB_SHARED_HOME}/xstack/runtime/scale_$3.txt
 
 rm -f $timeFile
+rm -f $cfgFile
 unset RUN_TOOL
 
 exit $RETURN_CODE
