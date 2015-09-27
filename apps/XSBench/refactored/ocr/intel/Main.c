@@ -43,23 +43,25 @@ typedef struct
 
 typedef struct
 {
-    int num_nucs;
-    ocrGuid_t DBK_nucl_index_list;
-    ocrGuid_t DBK_nucl_concs_list;
-} materialH_t;
+    ocrGuid_t DBK_nuclide_grids;
+    ocrGuid_t DBK_uEnergy, DBK_uEnergy_grid;
+    ocrGuid_t DBK_mat_num_nucs;
+    ocrGuid_t DBK_mat_nucl_index_list_guids;
+    ocrGuid_t DBK_nucl_concs_list_guids;
+} dataH_t;
 
 typedef struct
 {
-    ocrGuid_t DBK_nuclide_grids;
-    ocrGuid_t DBK_uEnergy, DBK_uEnergy_grid;
-    ocrGuid_t DBK_materials;
-} dataH_t;
+    ocrGuid_t TML_FNC_rankLookup;
+    ocrGuid_t TML_FNC_macroxs;
+    ocrGuid_t TML_FNC_microxsAggregator;
+} rankTemplateH_t;
 
 typedef struct
 {
     ocrGuid_t DBK_settingsH; //-->settingsH_t
     ocrGuid_t DBK_dataH; //--> dataH_t
-    ocrGuid_t DBK_eventHs[2]; //--> eventH_t[2]
+    ocrGuid_t DBK_templatesH;
 } rankH_t;
 
 typedef struct
@@ -79,16 +81,14 @@ ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_init_uEnergy(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                         ocrGuid_t FNC_init_uEnergy_i(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                     ocrGuid_t FNC_init_materials(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                        ocrGuid_t FNC_init_materials_is(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
     ocrGuid_t FNC_globalComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
         ocrGuid_t FNC_rankCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
             ocrGuid_t FNC_rankMultiLookupSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
                 ocrGuid_t FNC_rankLookup(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                    ocrGuid_t FNC_microxs(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                        ocrGuid_t FNC_microxs_0(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
-                            ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                    ocrGuid_t FNC_macroxs(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+                        ocrGuid_t FNC_microxsAggregator(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
     ocrGuid_t FNC_timer(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
@@ -277,17 +277,11 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrDbCreate( &(PTR_rankH->DBK_dataH), (void **) &PTR_dataH, sizeof(dataH_t),
                  DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
-    #if 0
-    s32 i;
-    for( i = 0; i < 2; i++ )
-    {
-        eventH_t* PTR_eventH;
-        ocrDbCreate(    &(PTR_rankH->DBK_eventHs[i]), (void **) &PTR_eventH, sizeof(eventH_t),
-                        DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-    }
-    #endif
+    rankTemplateH_t *PTR_rankTemplateH;
+    ocrDbCreate( &(PTR_rankH->DBK_templatesH), (void **) &PTR_rankTemplateH, sizeof(rankTemplateH_t),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
-    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 4;
+    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 5;
 
     TS_init_rankH.FNC = FNC_init_rankH;
     ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
@@ -300,8 +294,7 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_InputsH, TS_init_rankH.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_rankH->DBK_settingsH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_dataH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
-    //ocrAddDependence( PTR_rankH->DBK_eventHs[0], TS_init_rankH.EDT, _idep++, DB_MODE_RW );
-    //ocrAddDependence( PTR_rankH->DBK_eventHs[1], TS_init_rankH.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_rankH->DBK_templatesH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( TS_init_InputsH_OET, TS_init_rankH.EDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;
@@ -320,6 +313,7 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     Inputs *PTR_InputsH = (Inputs*) depv[0].ptr;
     settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
     dataH_t *PTR_dataH = (dataH_t*) depv[2].ptr;
+    rankTemplateH_t *PTR_rankTemplateH = (rankTemplateH_t*) depv[3].ptr;
 
     PTR_settingsH->id = id;
 
@@ -336,11 +330,24 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrDbCreate( &(PTR_dataH->DBK_uEnergy_grid), (void **) &PTR_uEnergy_grid, sizeof(ocrGuid_t)*(n_isotopes*n_gridpoints),
                  DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
-    ocrGuid_t *PTR_material_guids;
-    ocrDbCreate( &(PTR_dataH->DBK_materials), (void **) &PTR_material_guids, sizeof(ocrGuid_t)*(n_mats),
+    int *PTR_mat_num_nucs;
+    ocrDbCreate( &(PTR_dataH->DBK_mat_num_nucs), (void **) &PTR_mat_num_nucs, sizeof(int)*(n_mats),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrGuid_t *PTR_mat_nucl_index_list_guids;
+    ocrDbCreate( &(PTR_dataH->DBK_mat_nucl_index_list_guids), (void **) &PTR_mat_nucl_index_list_guids, sizeof(ocrGuid_t)*(n_mats),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrGuid_t *PTR_nucl_concs_list_guids;
+    ocrDbCreate( &(PTR_dataH->DBK_nucl_concs_list_guids), (void **) &PTR_nucl_concs_list_guids, sizeof(ocrGuid_t)*(n_mats),
                  DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
-    MyOcrTaskStruct_t TS_init_dataH; _paramc = 0; _depc = 6;
+    _paramc = 2; _depc = 8;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_rankLookup), FNC_rankLookup, _paramc, _depc );
+    _paramc = 3; _depc = 6;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_macroxs), FNC_macroxs, _paramc, _depc );
+    _paramc = 3; _depc = EDT_PARAM_UNK;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_microxsAggregator), FNC_microxsAggregator, _paramc, _depc );
+
+    MyOcrTaskStruct_t TS_init_dataH; _paramc = 0; _depc = 8;
 
     TS_init_dataH.FNC = FNC_init_dataH;
     ocrEdtTemplateCreate( &TS_init_dataH.TML, TS_init_dataH.FNC, _paramc, _depc );
@@ -355,22 +362,9 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( PTR_dataH->DBK_nuclide_grids, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_dataH->DBK_uEnergy, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_dataH->DBK_uEnergy_grid, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_dataH->DBK_materials, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
-
-    #if 0
-    s64 i;
-    for( i = 0; i < 2; i++ )
-    {
-        eventH_t *PTR_eventH = (eventH_t*) depv[3+i].ptr;
-
-        ocrEventCreate( &PTR_eventH->EVT_Lsend_fin, OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &PTR_eventH->EVT_Rsend_fin, OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &PTR_eventH->EVT_Lrecv_start, OCR_EVENT_STICKY_T, true );
-        ocrEventCreate( &PTR_eventH->EVT_Rrecv_start, OCR_EVENT_STICKY_T, true );
-        ocrEventCreate( &PTR_eventH->EVT_Lrecv_fin, OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &PTR_eventH->EVT_Rrecv_fin, OCR_EVENT_STICKY_T, false );
-    }
-    #endif
+    ocrAddDependence( PTR_dataH->DBK_mat_num_nucs, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_dataH->DBK_mat_nucl_index_list_guids, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_dataH->DBK_nucl_concs_list_guids, TS_init_dataH.EDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 }
@@ -385,14 +379,18 @@ ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t DBK_nuclide_grids = depv[2].guid;
     ocrGuid_t DBK_uEnergy = depv[3].guid;
     ocrGuid_t DBK_uEnergy_grid = depv[4].guid;
-    ocrGuid_t DBK_materials = depv[5].guid;
+    ocrGuid_t DBK_mat_num_nucs = depv[5].guid;
+    ocrGuid_t DBK_mat_nucl_index_list_guids = depv[6].guid;
+    ocrGuid_t DBK_nucl_concs_list_guids = depv[7].guid;
 
     Inputs *PTR_InputsH = (Inputs*) depv[0].ptr;
     settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
     ocrGuid_t *PTR_nuclide_grids = (ocrGuid_t*) depv[2].ptr;
     double *PTR_uEnergy = (double*) depv[3].ptr;
     ocrGuid_t *PTR_uEnergy_grid = (ocrGuid_t*) depv[4].ptr;
-    ocrGuid_t *PTR_material_guids = (ocrGuid_t*) depv[5].ptr;
+    int *PTR_mat_num_nucs = (int*) depv[5].ptr;
+    ocrGuid_t *PTR_mat_nucl_index_list_guids = depv[6].ptr;
+    ocrGuid_t *PTR_nucl_concs_list_guids = depv[7].ptr;
 
     int n_isotopes = PTR_InputsH->n_isotopes;
     int n_mats = PTR_InputsH->n_mats;
@@ -460,15 +458,7 @@ ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_uEnergy, TS_init_uEnergy.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_uEnergy_grid, TS_init_uEnergy.EDT, _idep++, DB_MODE_CONST );
 
-    materialH_t* PTR_materialH;
-
-    for( i = 0; i < n_mats; i++ )
-    {
-        ocrDbCreate( &(PTR_material_guids[i]), (void **) &PTR_materialH, sizeof(materialH_t),
-                     DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-    }
-
-    MyOcrTaskStruct_t TS_init_materials; _paramc = 0; _depc = 3;
+    MyOcrTaskStruct_t TS_init_materials; _paramc = 0; _depc = 5;
 
     TS_init_materials.FNC = FNC_init_materials;
     ocrEdtTemplateCreate( &TS_init_materials.TML, TS_init_materials.FNC, _paramc, _depc );
@@ -480,7 +470,9 @@ ocrGuid_t FNC_init_dataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     _idep = 0;
     ocrAddDependence( DBK_InputsH, TS_init_materials.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_settingsH, TS_init_materials.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_materials, TS_init_materials.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_mat_num_nucs, TS_init_materials.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_mat_nucl_index_list_guids, TS_init_materials.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_nucl_concs_list_guids, TS_init_materials.EDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 }
@@ -593,49 +585,15 @@ ocrGuid_t FNC_init_materials(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
     ocrGuid_t DBK_settingsH = depv[1].guid;
-    ocrGuid_t DBK_materials = depv[2].guid;
+    ocrGuid_t DBK_mat_num_nucs = depv[2].guid;
+    ocrGuid_t DBK_mat_nucl_index_list_guids = depv[3].guid;
+    ocrGuid_t DBK_nucl_concs_list_guids = depv[4].guid;
 
     Inputs *PTR_InputsH = (Inputs*) depv[0].ptr;
     settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
-    ocrGuid_t *PTR_material_guids = (ocrGuid_t*) depv[2].ptr;
-
-    int n_isotopes = PTR_InputsH->n_isotopes;
-    int n_mats = PTR_InputsH->n_mats;
-    int n_gridpoints = PTR_InputsH->n_gridpoints;
-
-    s32 i, j, k;
-
-    MyOcrTaskStruct_t TS_init_materials_is; _paramc = 0; _depc = 2+n_mats;
-
-    TS_init_materials_is.FNC = FNC_init_materials_is;
-    ocrEdtTemplateCreate( &TS_init_materials_is.TML, TS_init_materials_is.FNC, _paramc, _depc );
-
-    ocrEdtCreate( &TS_init_materials_is.EDT, TS_init_materials_is.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
-
-    _idep = 0;
-    ocrAddDependence( DBK_InputsH, TS_init_materials_is.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_settingsH, TS_init_materials_is.EDT, _idep++, DB_MODE_CONST );
-
-    for( j = 0; j < n_mats; j++ )
-    {
-        ocrAddDependence( PTR_material_guids[j], TS_init_materials_is.EDT, _idep++, DB_MODE_RW );
-    }
-
-    return NULL_GUID;
-}
-
-ocrGuid_t FNC_init_materials_is(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
-    //PRINTF("%s\n", __func__);
-    s32 _paramc, _depc, _idep;
-
-    ocrGuid_t DBK_InputsH = depv[0].guid;
-    ocrGuid_t DBK_settingsH = depv[1].guid;
-
-    Inputs *PTR_InputsH = (Inputs*) depv[0].ptr;
-    settingsH_t *PTR_settingsH = (settingsH_t*) depv[1].ptr;
+    int *PTR_mat_num_nucs = (int*) depv[2].ptr;
+    ocrGuid_t *PTR_mat_nucl_index_list_guids = depv[3].ptr;
+    ocrGuid_t *PTR_nucl_concs_list_guids = depv[4].ptr;
 
     int n_isotopes = PTR_InputsH->n_isotopes;
     int n_mats = PTR_InputsH->n_mats;
@@ -684,23 +642,20 @@ ocrGuid_t FNC_init_materials_is(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     int mats11[] = { 24, 41, 4, 5, 63, 64, 65, 66, 67 }; // bottom FA's
 
 
-    ocrGuid_t nucl_index_list;
-    ocrGuid_t nucl_concs_list;
     int* mats_ptr;
 
     _idep = 2;
     for( j = 0; j < n_mats; j++ )
     {
-        materialH_t* PTR_material_guids_j = depv[_idep++].ptr;
-        PTR_material_guids_j->num_nucs = num_nucs[j];
-        int num_nucs_j = PTR_material_guids_j->num_nucs;
+        int num_nucs_j = num_nucs[j];
+        PTR_mat_num_nucs[j] = num_nucs[j];
 
         int* PTR_nucl_index_list;
-        ocrDbCreate( &(PTR_material_guids_j->DBK_nucl_index_list), (void **) &PTR_nucl_index_list, sizeof(int)*num_nucs_j,
+        ocrDbCreate( &(PTR_mat_nucl_index_list_guids[j]), (void **) &PTR_nucl_index_list, sizeof(int)*num_nucs_j,
                      DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
         double* PTR_nucl_concs_list;;
-        ocrDbCreate( &(PTR_material_guids_j->DBK_nucl_concs_list), (void **) &PTR_nucl_concs_list, sizeof(double)*num_nucs_j,
+        ocrDbCreate( &(PTR_nucl_concs_list_guids[j]), (void **) &PTR_nucl_concs_list, sizeof(double)*num_nucs_j,
                      DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
         unsigned long seed = (j+1)*19+17;
@@ -858,7 +813,7 @@ ocrGuid_t FNC_globalComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     TS_rankCompute.FNC = FNC_rankCompute;
     ocrEdtTemplateCreate( &TS_rankCompute.TML, TS_rankCompute.FNC, _paramc, _depc );
-    u64 ilookup = 0, NL_SYNC = 1000;
+    u64 ilookup = 0, NL_SYNC = 1024;
 
     for( i = 0; i < NR; i++ )
     {
@@ -902,7 +857,7 @@ ocrGuid_t FNC_rankCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     if( ilookup < NL )
     {
         ocrGuid_t TS_rankMultiLookupSpawner_OET;
-        MyOcrTaskStruct_t TS_rankMultiLookupSpawner; _paramc = 3; _depc = 2;
+        MyOcrTaskStruct_t TS_rankMultiLookupSpawner; _paramc = 3; _depc = 3;
         u64 TS_rankMultiLookupSpawner_paramv[3] = {id, ilookup, ilookup_e};
 
         ocrEventCreate( &TS_rankMultiLookupSpawner_OET, OCR_EVENT_STICKY_T, false );
@@ -919,6 +874,7 @@ ocrGuid_t FNC_rankCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         _idep = 0;
         ocrAddDependence( DBK_InputsH, TS_rankMultiLookupSpawner.EDT, _idep++, DB_MODE_CONST );
         ocrAddDependence( PTR_rankH->DBK_dataH, TS_rankMultiLookupSpawner.EDT, _idep++, DB_MODE_CONST );
+        ocrAddDependence( PTR_rankH->DBK_templatesH, TS_rankMultiLookupSpawner.EDT, _idep++, DB_MODE_CONST );
 
         ilookup += NL_SYNC;
 
@@ -951,9 +907,11 @@ ocrGuid_t FNC_rankMultiLookupSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
     ocrGuid_t DBK_dataH =  depv[1].guid;
+    ocrGuid_t DBK_templatesH = depv[2].guid;
 
     Inputs* PTR_InputsH = depv[0].ptr;
     dataH_t* PTR_dataH = (dataH_t*) depv[1].ptr;
+    rankTemplateH_t* PTR_rankTemplateH = (rankTemplateH_t*) depv[2].ptr;
 
     u64 id = (u64) paramv[0];
     u64 ilookup_b = (u64) paramv[1];
@@ -962,12 +920,12 @@ ocrGuid_t FNC_rankMultiLookupSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
     int lookups = PTR_InputsH->lookups;
 
     #if 1
-    MyOcrTaskStruct_t TS_rankLookup; _paramc = 2; _depc = 5;
+    MyOcrTaskStruct_t TS_rankLookup; _paramc = 2; _depc = 8;
 
     u64 compute_paramv[2];
 
-    TS_rankLookup.FNC = FNC_rankLookup;
-    ocrEdtTemplateCreate( &TS_rankLookup.TML, TS_rankLookup.FNC, _paramc, _depc );
+    //TS_rankLookup.FNC = FNC_rankLookup;
+    //ocrEdtTemplateCreate( &TS_rankLookup.TML, TS_rankLookup.FNC, _paramc, _depc );
 
     for( u64 ilookup = ilookup_b; ilookup <= ilookup_e; ilookup++ )
     {
@@ -980,16 +938,21 @@ ocrGuid_t FNC_rankMultiLookupSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDe
         compute_paramv[0] = (u64) id;
         compute_paramv[1] = (u64) ilookup;
 
-        ocrEdtCreate( &TS_rankLookup.EDT, TS_rankLookup.TML,
+        #if 1
+        ocrEdtCreate( &TS_rankLookup.EDT, PTR_rankTemplateH->TML_FNC_rankLookup,
                       EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, NULL_GUID, NULL );
 
         _idep = 0;
         ocrAddDependence( DBK_InputsH, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
+        ocrAddDependence( DBK_templatesH, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
         ocrAddDependence( PTR_dataH->DBK_nuclide_grids, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
         ocrAddDependence( PTR_dataH->DBK_uEnergy, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
         ocrAddDependence( PTR_dataH->DBK_uEnergy_grid, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
-        ocrAddDependence( PTR_dataH->DBK_materials, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
+        ocrAddDependence( PTR_dataH->DBK_mat_num_nucs, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
+        ocrAddDependence( PTR_dataH->DBK_mat_nucl_index_list_guids, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
+        ocrAddDependence( PTR_dataH->DBK_nucl_concs_list_guids, TS_rankLookup.EDT, _idep++, DB_MODE_CONST );
+        #endif
 
     }
     #endif
@@ -1003,16 +966,22 @@ ocrGuid_t FNC_rankLookup(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
-    ocrGuid_t DBK_nuclide_grids =  depv[1].guid;
-    ocrGuid_t DBK_uEnergy =  depv[2].guid;
-    ocrGuid_t DBK_uEnergy_grid =  depv[3].guid;
-    ocrGuid_t DBK_materials =  depv[4].guid;
+    ocrGuid_t DBK_templatesH = depv[1].guid;
+    ocrGuid_t DBK_nuclide_grids =  depv[2].guid;
+    ocrGuid_t DBK_uEnergy =  depv[3].guid;
+    ocrGuid_t DBK_uEnergy_grid =  depv[4].guid;
+    ocrGuid_t DBK_mat_num_nucs = depv[5].guid;
+    ocrGuid_t DBK_mat_nucl_index_list_guids = depv[6].guid;
+    ocrGuid_t DBK_nucl_concs_list_guids = depv[7].guid;
 
     Inputs* PTR_InputsH = depv[0].ptr;
-    ocrGuid_t *PTR_nuclide_grids = (ocrGuid_t*) depv[1].ptr;
-    double *PTR_uEnergy = (double*) depv[2].ptr;
-    ocrGuid_t *PTR_uEnergy_grid = (ocrGuid_t*) depv[3].ptr;
-    ocrGuid_t *PTR_material_guids = (ocrGuid_t*) depv[4].ptr;
+    rankTemplateH_t* PTR_rankTemplateH = (rankTemplateH_t*) depv[1].ptr;
+    ocrGuid_t *PTR_nuclide_grids = (ocrGuid_t*) depv[2].ptr;
+    double *PTR_uEnergy = (double*) depv[3].ptr;
+    ocrGuid_t *PTR_uEnergy_grid = (ocrGuid_t*) depv[4].ptr;
+    int *PTR_mat_num_nucs = (int*) depv[5].ptr;
+    ocrGuid_t *PTR_mat_nucl_index_list_guids = depv[6].ptr;
+    ocrGuid_t *PTR_nucl_concs_list_guids = depv[7].ptr;
 
     u64 id = (u64) paramv[0]; //we need worker_id here in the rank
     u64 ilookup = (u64) paramv[1];
@@ -1030,132 +999,91 @@ ocrGuid_t FNC_rankLookup(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     long idx = 0;
     // binary search for energy on unionized energy grid (UEG)
     idx = grid_search_double( n_isotopes * n_gridpoints, p_energy,
-                       PTR_uEnergy);
+                              PTR_uEnergy);
     //PRINTF("e %f m %d idx %d\n", p_energy, mat, idx);
 
     #if 1
-    MyOcrTaskStruct_t TS_microxs; _paramc = 2; _depc = 4;
-    u64 compute_paramv[2];
+    MyOcrTaskStruct_t TS_macroxs; _paramc = 3; _depc = 6;
+    u64 compute_paramv[3];
 
-    TS_microxs.FNC = FNC_microxs;
-    ocrEdtTemplateCreate( &TS_microxs.TML, TS_microxs.FNC, _paramc, _depc );
+    //TS_macroxs.FNC = FNC_macroxs;
+    //ocrEdtTemplateCreate( &TS_macroxs.TML, TS_macroxs.FNC, _paramc, _depc );
 
     compute_paramv[0] = (u64) *PTR_p_energy_u64;
     compute_paramv[1] = (u64) mat;
+    compute_paramv[2] = (u64) PTR_mat_num_nucs[mat];
 
-    ocrEdtCreate( &TS_microxs.EDT, TS_microxs.TML,
+    ocrEdtCreate( &TS_macroxs.EDT, PTR_rankTemplateH->TML_FNC_macroxs,
                   EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, NULL_GUID, NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_InputsH, TS_microxs.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_nuclide_grids, TS_microxs.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_uEnergy_grid[idx], TS_microxs.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_material_guids[mat], TS_microxs.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_InputsH, TS_macroxs.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_templatesH, TS_macroxs.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_nuclide_grids, TS_macroxs.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( PTR_uEnergy_grid[idx], TS_macroxs.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( PTR_mat_nucl_index_list_guids[mat], TS_macroxs.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( PTR_nucl_concs_list_guids[mat], TS_macroxs.EDT, _idep++, DB_MODE_CONST );
     #endif
 
     return NULL_GUID;
 }
 
-ocrGuid_t FNC_microxs(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_macroxs(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     //PRINTF("%s\n", __func__);
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_InputsH = depv[0].guid;
-    ocrGuid_t DBK_nuclide_grids =  depv[1].guid;
-    ocrGuid_t DBK_uEnergy_grid_i =  depv[2].guid;
-    ocrGuid_t DBK_materials_i =  depv[3].guid;
+    ocrGuid_t DBK_templatesH = depv[1].guid;
+    ocrGuid_t DBK_nuclide_grids =  depv[2].guid;
+    ocrGuid_t DBK_uEnergy_grid_i =  depv[3].guid;
+    ocrGuid_t DBK_nucl_index_list = depv[4].guid;
+    ocrGuid_t DBK_nucl_concs_list = depv[5].guid;
 
     Inputs* PTR_InputsH = depv[0].ptr;
-    ocrGuid_t *PTR_nuclide_grids = (ocrGuid_t*) depv[1].ptr;
-    int* PTR_xs_indices = (int*) depv[2].ptr;;
-    materialH_t *PTR_materials_i = (materialH_t*) depv[3].ptr;
+    rankTemplateH_t* PTR_rankTemplateH = (rankTemplateH_t*) depv[1].ptr;
+    ocrGuid_t *PTR_nuclide_grids = (ocrGuid_t*) depv[2].ptr;
+    int* PTR_xs_indices = (int*) depv[3].ptr;;
+    int* PTR_nucl_index_list = (int*) depv[4].ptr;
+    double* PTR_nucl_concs_list = (double*) depv[5].ptr;
 
     u64 p_energy_u64 = paramv[0];
     double* PTR_p_energy = (double*) &p_energy_u64;
     double p_energy = *PTR_p_energy;
 
     int mat = paramv[1];
-
-    u64 num_nucs = PTR_materials_i->num_nucs;
+    u64 num_nucs = paramv[2];
 
     #if 1
-    MyOcrTaskStruct_t TS_microxs_0; _paramc = 3; _depc = 5;
-    u64 compute_paramv[3] = {p_energy_u64, num_nucs, mat};
+    MyOcrTaskStruct_t TS_microxsAggregator; _paramc = 3; _depc = 4 + num_nucs;
 
-    TS_microxs_0.FNC = FNC_microxs_0;
-    ocrEdtTemplateCreate( &TS_microxs_0.TML, TS_microxs_0.FNC, _paramc, _depc );
+    //TS_microxsAggregator.FNC = FNC_microxsAggregator;
+    //ocrEdtTemplateCreate( &TS_microxsAggregator.TML, TS_microxsAggregator.FNC, _paramc, _depc );
 
-    ocrEdtCreate( &TS_microxs_0.EDT, TS_microxs_0.TML,
-                  EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
+    ocrEdtCreate( &TS_microxsAggregator.EDT, PTR_rankTemplateH->TML_FNC_microxsAggregator,
+                  EDT_PARAM_DEF, paramv, _depc, NULL,
                   EDT_PROP_NONE, NULL_GUID, NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_InputsH, TS_microxs_0.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_nuclide_grids, TS_microxs_0.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_uEnergy_grid_i, TS_microxs_0.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_materials_i->DBK_nucl_index_list, TS_microxs_0.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_materials_i->DBK_nucl_concs_list, TS_microxs_0.EDT, _idep++, DB_MODE_CONST );
-    #endif
-
-    return NULL_GUID;
-}
-
-ocrGuid_t FNC_microxs_0(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
-    //PRINTF("%s\n", __func__);
-    u32 _paramc, _depc, _idep;
-
-    ocrGuid_t DBK_InputsH = depv[0].guid;
-    ocrGuid_t DBK_nuclide_grids =  depv[1].guid;
-    ocrGuid_t DBK_uEnergy_grid_i =  depv[2].guid;
-    ocrGuid_t DBK_nucl_index_list = depv[3].guid;
-    ocrGuid_t DBK_nucl_concs_list = depv[4].guid;
-
-    Inputs* PTR_InputsH = depv[0].ptr;
-    ocrGuid_t *PTR_nuclide_grids = (ocrGuid_t*) depv[1].ptr;
-    int* PTR_xs_indices = (int*) depv[2].ptr;;
-    int* PTR_nucl_index_list = (int*) depv[3].ptr;
-    double* PTR_nucl_concs_list = (double*) depv[4].ptr;
-
-    u64 p_energy_u64 = paramv[0];
-    double* PTR_p_energy = (double*) &p_energy_u64;
-    double p_energy = *PTR_p_energy;
-
-    u64 num_nucs = paramv[1];
-    int mat = paramv[2];
-
-    #if 1
-    MyOcrTaskStruct_t TS_microxs_1; _paramc = 3; _depc = 4 + num_nucs;
-    u64 compute_paramv[3] = {p_energy_u64, num_nucs, mat};
-
-    TS_microxs_1.FNC = FNC_microxs_1;
-    ocrEdtTemplateCreate( &TS_microxs_1.TML, TS_microxs_1.FNC, _paramc, _depc );
-
-    ocrEdtCreate( &TS_microxs_1.EDT, TS_microxs_1.TML,
-                  EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, NULL );
-
-    _idep = 0;
-    ocrAddDependence( DBK_InputsH, TS_microxs_1.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_uEnergy_grid_i, TS_microxs_1.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_nucl_index_list, TS_microxs_1.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_nucl_concs_list, TS_microxs_1.EDT, _idep++, DB_MODE_CONST );
-    #endif
+    ocrAddDependence( DBK_InputsH, TS_microxsAggregator.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_uEnergy_grid_i, TS_microxsAggregator.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_nucl_index_list, TS_microxsAggregator.EDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( DBK_nucl_concs_list, TS_microxsAggregator.EDT, _idep++, DB_MODE_CONST );
 
     int p_nuc;
 
     for( int j = 0; j < num_nucs; j++ )
     {
         p_nuc = PTR_nucl_index_list[j];
-        ocrAddDependence( PTR_nuclide_grids[p_nuc], TS_microxs_1.EDT, _idep++, DB_MODE_CONST );
+        ocrAddDependence( PTR_nuclide_grids[p_nuc], TS_microxsAggregator.EDT, _idep++, DB_MODE_CONST );
     }
+    #endif
 
     return NULL_GUID;
 }
 
-ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_microxsAggregator(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     //PRINTF("%s\n", __func__);
     u32 _paramc, _depc, _idep;
@@ -1174,8 +1102,8 @@ ocrGuid_t FNC_microxs_1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     double* PTR_p_energy = (double*) &p_energy_u64;
     double p_energy = *PTR_p_energy;
 
-    u64 num_nucs = paramv[1];
-    int mat = paramv[2];
+    int mat = paramv[1];
+    u64 num_nucs = paramv[2];
 
     int n_isotopes = PTR_InputsH->n_isotopes;
     int n_gridpoints = PTR_InputsH->n_gridpoints;

@@ -1,0 +1,1 @@
+../../../../Stencil2D/refactored/ocr/intel-chandra/stencil.h

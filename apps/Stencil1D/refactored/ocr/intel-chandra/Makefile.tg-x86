@@ -41,7 +41,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 4 4 10 5 -1 -1  #points subdomains timesteps sync_frequency
+WORKLOAD_ARGS ?= 12 4 10 5 -1 -1  #points subdomains timesteps sync_frequency
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -62,24 +62,24 @@ TARGET := stencil_1d
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := stencil_1d.c
+SRCS := stencil_1d.c timers.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
+CFLAGS := -DPROBLEM_TYPE=1
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread
+LDFLAGS := -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 
