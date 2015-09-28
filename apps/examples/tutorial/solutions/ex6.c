@@ -43,6 +43,12 @@ ocrGuid_t computeEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t updaterEdtGuid;
         u64 nparamv = i;
         ocrEdtCreate(&updaterEdtGuid, updaterEdtTemplateGuid, EDT_PARAM_DEF, &nparamv, EDT_PARAM_DEF, NULL, 0, NULL_GUID, NULL);
+        //TODO Add EDT hints here
+        ocrHint_t edtHint;
+        ocrHintInit(&edtHint, OCR_HINT_EDT_T);
+        ocrSetHintValue(&edtHint, OCR_HINT_EDT_PRIORITY, nparamv);
+        ocrSetHint(updaterEdtGuid, &edtHint);
+        //END-TODO
         ocrAddDependence(NULL_GUID, updaterEdtGuid, 0, DB_MODE_CONST);
         i++;
     }
@@ -68,4 +74,3 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     return NULL_GUID;
 }
-
