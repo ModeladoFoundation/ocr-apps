@@ -1,0 +1,6 @@
+_start
+_real_start
+_init
+_fini
+main
+atexit
