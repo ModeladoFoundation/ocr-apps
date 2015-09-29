@@ -18,11 +18,12 @@ OCR_SHIM_CXXLIB = $(LIBS)/libocr-glibcxx.a
 
 # Other library - this uses the libocrscaffoldi-glibc.a, but it
 # should actually be the real ocr library/runtime.
-OCR_LIB = $(LIBS)/libocrscaffold-glibc.a
+OCR_LIB = $(APPS_ROOT)/../ocr/build/x86_lib/objs/myocr.o
 
 CAPP = chello
 CAPP_SRCS = chello.c
-CAPP_LIBS =
+CAPP_LIBS = /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
+#CAPP_LIBS = /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
 CAPP_OBJS = $(CAPP_SRCS:.c=.o)
 
 CXXAPP = cxxhello
@@ -30,12 +31,19 @@ CXXAPP_SRCS = cxxhello.cc
 CXXAPP_LIBS =
 CXXAPP_OBJS = $(CXXAPP_SRCS:.cc=.o)
 
-all: $(CAPP) $(CXXAPP)
+#all: $(CAPP) $(CXXAPP)
+all: $(CAPP)
 
 default: all
 
-$(CAPP) : $(OCR_SHIM_CLIB) $(CAPP_LIBS) $(OCR_LIB)
-	$(CC) -static -o $@ $(CAPP_SRCS) $^
+#$(CAPP) : $(OCR_SHIM_CLIB) $(CAPP_LIBS) $(OCR_LIB)
+#	$(CC) -static -o $@ $(CAPP_SRCS) $^
+$(CAPP) :
+	@$(CC) -g -c -o tmp.o $(CAPP_SRCS)
+	@$(LD) -r -o tmp2.o tmp.o $(OCR_SHIM_CLIB) --start-group $(CAPP_LIBS) --end-group
+	@nm -u tmp2.o | grep -v " w " | sed 's/^.*U //' > syms
+	@objcopy -S --keep-symbols syms tmp2.o chello.o
+	@$(CC) -static -o $@ chello.o $(OCR_LIB)
 	@echo Successfully built $@
 
 $(CXXAPP) : $(OCR_SHIM_CXXLIB) $(CXXAPP_LIBS) $(OCR_LIB)
