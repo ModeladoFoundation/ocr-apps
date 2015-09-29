@@ -1165,17 +1165,19 @@ if(debug > 0) printf("PCG%d T%d P%d rtr %f\n", mynode, timestep, phase, PB->mySu
         tempGuid = SB->onceGuid[PB->dotPhase];
         errno = ocrEventCreate(&tempGuid, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
         ocrAddDependence(depv[0].guid, hpcg, 0, DB_MODE_RO);
+        u32 dotPhase = PB->dotPhase;
+        ocrGuid_t reduceBlockGuid = PB->reduceBlock;
         ocrDbRelease(depv[1].guid);
         ocrAddDependence(depv[1].guid, hpcg, 1, DB_MODE_RW);
 //fprintf(stderr,"PCG%d add dependence with %lx\n", mynode, SB->onceGuid[PB->dotPhase]);
-        ocrAddDependence(SB->onceGuid[PB->dotPhase], hpcg, 2, DB_MODE_RO);
+        ocrAddDependence(SB->onceGuid[dotPhase], hpcg, 2, DB_MODE_RO);
 
 //launch global sum
 
         ocrEdtCreate(&reduce, SB->reduceTemplate, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
         ocrAddDependence(depv[0].guid, reduce, 0, DB_MODE_RO);
         ocrAddDependence(depv[1].guid, reduce, 1, DB_MODE_RO);
-        ocrAddDependence(PB->reduceBlock, reduce, 2, DB_MODE_RW);
+        ocrAddDependence(reduceBlockGuid, reduce, 2, DB_MODE_RW);
 if(debug > 0) printf("PCG%d T%d P%d finish \n", mynode, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
