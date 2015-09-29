@@ -21,7 +21,7 @@ NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
 OCR_LIB = $(APPS_ROOT)/../ocr/build/x86_lib/objs/myocr.o
 
 APP = hello
-APP_SRCS = hello.c
+APP_SRCS = hello.c cmain.c
 APP_LIBS =
 
 APP_OBJS = $(APP_SRCS:.c=.o)
@@ -31,10 +31,10 @@ all: $(APP)
 default: all
 
 $(APP) : $(APP_OBJS)
-	@$(LD) -r -o tmp.o $< --start-group $(NL_LIBPREFIX) $(NL_LIBSUFFIX) --end-group
+	@$(LD) -r -o tmp.o $< --start-group $(NL_LIBSUFFIX) --end-group
 	@nm -u tmp.o | sed 's/^.*U //' > syms
 	@objcopy -S --keep-symbols keep --keep-symbols syms tmp.o
-	@$(LD) -nostdlib -static -o $@ tmp.o $(OCR_LIB)
+	@$(CC) -o $@ tmp.o $(OCR_LIB) -lthread_db
 #	$(LD) -r -s -o app.o --start-group $< $(CRT0) $(LIBC) --end-group # Link against newlib
 #	$(LD) -nostartfiles -nodefaultlibs -nostdlib -static -o $@ $(OCR_LIB) myapp.o -zmuldefs
 #	@$(LD) -g -o $@ $(NL_LIBPREFIX) $< $(APP_LIBS) $(NL_LIBSUFFIX) $(OCR_LIB)

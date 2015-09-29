@@ -1,0 +1,13 @@
+_GLOBAL_OFFSET_TABLE_
+ocrAffinityGetCurrent
+ocrDbCreate
+ocrDbDestroy
+ocrReadlink
+ocrUSalChdir
+ocrUSalChmod
+ocrUSalChown
+ocrUSalFStat
+ocrUSalLink
+ocrUSalStat
+ocrUSalSymlink
+ocrUSalUnlink

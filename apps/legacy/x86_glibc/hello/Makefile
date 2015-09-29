@@ -36,14 +36,15 @@ all: $(CAPP)
 
 default: all
 
-#$(CAPP) : $(OCR_SHIM_CLIB) $(CAPP_LIBS) $(OCR_LIB)
-#	$(CC) -static -o $@ $(CAPP_SRCS) $^
-$(CAPP) :
-	@$(CC) -g -c -o tmp.o $(CAPP_SRCS)
-	@$(LD) -r -o tmp2.o tmp.o $(OCR_SHIM_CLIB) --start-group $(CAPP_LIBS) --end-group
-	@nm -u tmp2.o | grep -v " w " | sed 's/^.*U //' > syms
-	@objcopy -S --keep-symbols syms tmp2.o chello.o
-	@$(CC) -static -o $@ chello.o $(OCR_LIB)
+$(CAPP) : $(OCR_SHIM_CLIB) $(CAPP_LIBS) $(OCR_LIB)
+	$(CC) -static -o $@ $(CAPP_SRCS) $^
+#$(CAPP) :
+##	@$(CC) -g -c -o tmp.o $(CAPP_SRCS)
+##	@$(LD) -r -o tmp2.o tmp.o --start-group $(OCR_SHIM_CLIB) $(CAPP_LIBS) --end-group
+##	@$(LD) -r -o tmp2.o tmp.o --start-group $(OCR_SHIM_CLIB) $(CAPP_LIBS) --end-group
+##	@nm -u tmp2.o | grep -v " w " | sed 's/^.*U //' > syms
+##	@objcopy -S --keep-symbols keep --keep-symbols syms tmp2.o chello.o
+##	@$(CC) -v -o $@ chello.o $(OCR_LIB)
 	@echo Successfully built $@
 
 $(CXXAPP) : $(OCR_SHIM_CXXLIB) $(CXXAPP_LIBS) $(OCR_LIB)
