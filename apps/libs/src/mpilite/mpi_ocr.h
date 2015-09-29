@@ -39,8 +39,9 @@ extern "C" {
 // Can define as 0 on compile line to test: -DEVENT_ARRAY=0
 // or set to 0 to turn off permanently in favor of Labeled Guids
 // 11-aug-2105: turn on labeled GUIDs or turn off the Event Array.
+// 22-sept-2015: Temporarily turn off labeled GUIDS for the Workshop.
 #ifndef EVENT_ARRAY
-    #define EVENT_ARRAY 0
+    #define EVENT_ARRAY 1
 #endif
 
 /* 4/21/15, ocrLegacyBlockProgress() has been working for a while, turn

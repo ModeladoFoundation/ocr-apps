@@ -1224,65 +1224,11 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     //Y direction communication
     MyOcrTaskStruct_t TS_Bsend; _paramc = 0; _depc = 4;
 
-    TS_Bsend.TML = PTR_rankTemplateH->TML_FNC_Bsend;
-    ocrEdtCreate( &TS_Bsend.EDT, TS_Bsend.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, currentAffinity, &TS_Bsend.OET);
-
-    if( id_y!=0 ) ocrAddDependence( TS_Bsend.OET, PTR_rankEvents_b->EVT_Trecv_start, 0, DB_MODE_RO );
-    ocrAddDependence( TS_Bsend.OET, PTR_rankEvents->EVT_Bsend_fin, 0, DB_MODE_NULL );
-
-    _idep = 0;
-    ocrAddDependence( DBK_globalParamH, TS_Bsend.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_rankParamH, TS_Bsend.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_data->DBK_xIn, TS_Bsend.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( PTR_data->DBK_BsendBufs[phase], TS_Bsend.EDT, _idep++, DB_MODE_RW );
-
     MyOcrTaskStruct_t TS_Tsend; _paramc = 0; _depc = 4;
-
-    TS_Tsend.TML = PTR_rankTemplateH->TML_FNC_Tsend;
-    ocrEdtCreate( &TS_Tsend.EDT, TS_Tsend.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, currentAffinity, &TS_Tsend.OET);
-
-    if( id_y != NR_Y - 1 ) ocrAddDependence( TS_Tsend.OET, PTR_rankEvents_t->EVT_Brecv_start, 0, DB_MODE_RO );
-    ocrAddDependence( TS_Tsend.OET, PTR_rankEvents->EVT_Tsend_fin, 0, DB_MODE_NULL );
-
-    _idep = 0;
-    ocrAddDependence( DBK_globalParamH, TS_Tsend.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_rankParamH, TS_Tsend.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_data->DBK_xIn, TS_Tsend.EDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( PTR_data->DBK_TsendBufs[phase], TS_Tsend.EDT, _idep++, DB_MODE_RW );
 
     MyOcrTaskStruct_t TS_Brecv; _paramc = 0; _depc = 4;
 
-    TS_Brecv.TML = PTR_rankTemplateH->TML_FNC_Brecv;
-    ocrEdtCreate( &TS_Brecv.EDT, TS_Brecv.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, currentAffinity, &TS_Brecv.OET);
-
-    ocrAddDependence( TS_Brecv.OET, PTR_rankEvents->EVT_Brecv_fin, 0, DB_MODE_NULL );
-
-    _idep = 0;
-    ocrAddDependence( DBK_globalParamH, TS_Brecv.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_rankParamH, TS_Brecv.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_data->DBK_xIn, TS_Brecv.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( (id_y!=0)?PTR_rankEvents->EVT_Brecv_start:NULL_GUID, TS_Brecv.EDT, _idep++, DB_MODE_RO );
-
     MyOcrTaskStruct_t TS_Trecv; _paramc = 0; _depc = 4;
-
-    TS_Trecv.TML = PTR_rankTemplateH->TML_FNC_Trecv;
-    ocrEdtCreate( &TS_Trecv.EDT, TS_Trecv.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, currentAffinity, &TS_Trecv.OET);
-
-    ocrAddDependence( TS_Trecv.OET, PTR_rankEvents->EVT_Trecv_fin, 0, DB_MODE_NULL );
-
-    _idep = 0;
-    ocrAddDependence( DBK_globalParamH, TS_Trecv.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_rankParamH, TS_Trecv.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_data->DBK_xIn, TS_Trecv.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( (id_y!=NR_Y-1)?PTR_rankEvents->EVT_Trecv_start:NULL_GUID, TS_Trecv.EDT, _idep++, DB_MODE_RO );
 
     //end
     #endif
@@ -1313,10 +1259,10 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( PTR_rankEvents->EVT_Lrecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
     ocrAddDependence( PTR_rankEvents->EVT_Rrecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
     #if PROBLEM_TYPE==2
-    ocrAddDependence( PTR_rankEvents->EVT_Bsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( PTR_rankEvents->EVT_Tsend_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( PTR_rankEvents->EVT_Brecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
-    ocrAddDependence( PTR_rankEvents->EVT_Trecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
+    ocrAddDependence( );
+    ocrAddDependence( );
+    ocrAddDependence( );
+    ocrAddDependence( );
     #endif
     //ocrAddDependence( TS_verify_OET, TS_update.EDT, _idep++, DB_MODE_NULL );
 

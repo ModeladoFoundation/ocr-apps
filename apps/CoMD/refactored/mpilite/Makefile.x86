@@ -31,7 +31,7 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 #SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
 
 # Use the ROSE translated sources.
-SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/intel/build_and_run/build/src
+SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/build_and_run/mpilite/build/x86
 
 WORKLOAD_SRC          ?=  $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
 
@@ -71,6 +71,9 @@ TARGET := comd-mpi
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := mpilite
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 
@@ -144,16 +147,12 @@ install: all
 .PHONY: prerun
 prerun: ;
 
-#prebuild: CoMD_info.h
-#CoMD_info.h: $(ROSE_TARGET)
-#	${WORKLOAD_SRC}/generate_info_header ${TARGET} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
-
 
 # ROSE support occurs here.
 
 include ${APPS_ROOT}/makefiles/make-rose.inc
 
-TARGET = comd-mpi
+TARGET ?= comd-mpi
 ROSE_TARGET = rose_$(TARGET)
 
 SRCDIR = $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi

@@ -1,0 +1,33 @@
+Stencil code as a tutorial:
+Runs in 1-D (by default)
+Can be changed to 2-D with some modifications (as a tutorial exercise) in the compute function implementation
+Has all other plumbing/set up work in place for 2-D.
+
+Tutorial Exercise:
+Modify stencil_tutorial.c to adapt it to 2-D
+
+* Go to FNC_timestep() Function in stencil_tutorial.c and add additional dependencies needed for y-direction halo exchanges
+* Change PROBLEM_TYPE=1 to PROBLEM_TYPE=2 in Makefile.{x86,x86-mpi,tg,tg-x86}
+* Run the app as
+
+1. For single node x86: #To run on 4 x86 cores/OCR workers
+    OCR_TYPE=x86 CONFIG_NUM_THREADS=4 make clean run
+
+2. For distributed OCR (on top MPI) on a single machine node: #To run on 2 nodes of 4 workers each (all 8 workers on the same machine node)
+    OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=4 OCR_NUM_NODES=2 make clean run
+
+3. For distributed OCR (on top MPI) on multiple machine nodes: #To run on 2 nodes - each with workers (4 workers on the first machine node and the other 4 on the next machine node)
+
+cat << END_CAT > node.list
+bar11
+bar12
+END_CAT
+
+    OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=4 OCR_NUM_NODES=2 OCR_NODEFILE=${PWD}/node.list make clean run
+
+
+To change the problem size:
+WORKLOAD_ARGS="Gridsize #subdomains #timesteps #timesteps-to-sync -1 -1"
+
+E.g.,: To run 2000 gridsize with 16 subdomains for 100 timesteps
+    OCR_TYPE=x86 CONFIG_NUM_THREADS=4 make clean run WORKLOAD_ARGS="2000 16 100 100 -1 -1"

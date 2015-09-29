@@ -200,11 +200,11 @@ reqlibs: parallel-reqlibs
 # that the header files may have also changed but it seems like a small
 # corner case
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
-	@mkdir -p $(@D)
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
-	@mkdir -p $(@D)
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
