@@ -1,0 +1,85 @@
+checkin by Gabriele Jost, Intel, September 2015, 2015
+
+This directory contains the baseline version of the Tempest atmosphere / Earth-sysem model developed by Paul Ullrich (UCDavis, LBL).
+It is downloaded from here:
+https://github.com/paullric/tempestmodel
+git status:
+commit 0b2a1c87f3250b3c67668a1ebe7ba43fe493a343
+Author: Paul Ullrich <paullrich@ucdavis.edu>
+Date:   Mon Aug 31 11:32:37 2015 -0700
+
+    - Added test/hpc/DataContainerTest
+============================================================================
+
+This is the directory structure:
+
+drwxr-xr-x 5 gjost xstack 4096 Feb  5 18:18 util
+drwxr-xr-x 5 gjost xstack 4096 Feb  5 18:18 test
+-rw-r--r-- 1 gjost xstack  214 Feb  5 18:18 Makefile
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:18 doc
+drwxr-xr-x 4 gjost xstack 4096 Feb  5 18:18 src
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:19 mk
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:21 lib
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:21 include
+
+The file mk/Make.defs contains the appropriate flags for building on the xstack cluster.
+
+To build:
+--------
+make clean
+make
+
+This will build the tempest libraries and several test cases in the test sub-directory
+
+An example for running a shallow water test:
+
+cd test/shallowwater_sphere/
+mpirun -np 4 ./SWTest2
+
+Output is generated in netcdf format in outSWTest2
+
+An example for running a DataContainer test:
+cd test/hpc/
+mpirun -np 2 ./DataContainetTest
+[gjost@bar4 hpc]$ mpirun -np 2 ./DataContainerTest
+Initializing Model and Grid ...
+Initializing Model and Grid ...
+WARNING: Lon/Lat not initialized
+WARNING: Lon/Lat not initialized
+WARNING: Lon/Lat not initialized
+GridPatch.Geometric Size:   29296512 bytes
+GridPatch.ActiveState Size: 5715360 bytes
+GridPatch.BufferState Size: 22861440 bytes
+WARNING: Lon/Lat not initialized
+GridPatch.Geometric Size:   29296512GridPatch.Auxiliary Size:   2822400 bytes
+Allocating data ...
+ bytes
+GridPatch.ActiveState Size: 5715360 bytes
+GridPatch.BufferState Size: 22861440 bytes
+GridPatch.Auxiliary Size:   2822400 bytes
+Allocating data ...
+Attaching data to DataContainers ...
+Attaching data to DataContainers ...
+Updating GridPatch data ...
+Detaching data from pPatchFirst ...
+Attaching data to pPatchSecond ...
+Checking GridPatch data ...
+Test (should be 1.0): 1
+Test Passed
+Updating GridPatch data ...
+Detaching data from pPatchFirst ...
+Attaching data to pPatchSecond ...
+Checking GridPatch data ...
+Test (should be 1.0): 1
+Test Passed
+
+
+
+
+Note:
+-----
+To compile and build we used:
+mpicxx --version
+g++ (GCC) 4.8.3 20140624 (Red Hat 4.8.3-1)
+Copyright (C) 2013 Free Software Foundation, Inc.
+
