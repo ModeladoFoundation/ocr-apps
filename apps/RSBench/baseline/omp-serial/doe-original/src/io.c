@@ -117,10 +117,7 @@ Input read_CLI( int argc, char * argv[] )
 			if( ++i < argc )
 			{
 				if( strcmp(argv[i], "small") == 0 )
-                {
 					input.HM = SMALL;
-                    input.n_nuclides = 68;
-                }
 				else if ( strcmp(argv[i], "large") == 0 )
 					input.HM = LARGE;
 				else
@@ -178,6 +175,8 @@ Input read_CLI( int argc, char * argv[] )
 
 	// Set HM size specific parameters
 	// (defaults to large)
+	if( input.HM == SMALL )
+		input.n_nuclides = 68;
 
 	// Return input struct
 	return input;
