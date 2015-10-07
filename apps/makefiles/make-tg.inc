@@ -249,7 +249,6 @@ $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | tgkrnl.dbg builderce $(WORKLOAD_BUIL
 	@echo "#### BUILDING CE BLOB ####"
 	cp $(OCR_INSTALL_CE)/config/default.cfg $(OCR_CE_CONFIG)
 	$(FIX_CE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --ocrcfg $(OCR_CE_CONFIG)
-	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_CE_CONFIG) --binsize $(shell objdump -x $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | grep " _end" | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
 	$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_CE_CONFIG)
 
@@ -261,7 +260,7 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
 $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe | debug_post_prerun builderxe $(WORKLOAD_BUILD)
 	@echo "#### BUILDING XE BLOB ####"
 	cp $(OCR_INSTALL_XE)/config/default.cfg $(OCR_XE_CONFIG)
-	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binsize $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
+	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep "^  0" | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
 	$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
