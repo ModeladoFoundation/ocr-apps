@@ -2,7 +2,7 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
-ARCH=x86
+ARCH=x86_native
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
 
