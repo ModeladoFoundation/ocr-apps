@@ -156,7 +156,7 @@ TARGET ?= comd-mpi
 ROSE_TARGET = rose_$(TARGET)
 
 SRCDIR = $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
-BLDDIR = build/$(OCR_TYPE)
+BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
 
 SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
 
