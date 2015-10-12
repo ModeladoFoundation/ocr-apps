@@ -166,7 +166,7 @@ endif
 	@$(RM) -rf $(WORKLOAD_EXEC)/logs/*
 	@$(RM) -f $(WORKLOAD_EXEC)/console.out
 	WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) \
-	bash -ec 'cd $(WORKLOAD_EXEC) && $(RUN_CMD) -s -L logs $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg && \
+	bash -ec 'cd $(WORKLOAD_EXEC) && $(RUN_CMD) -s -L logs $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_EXEC)/logs/*brd*.chp*.unt*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
 
