@@ -1,0 +1,48 @@
+Gabriele Jos, Intel, October, 2015
+
+This directory contains the baseline version of the Tempest atmosphere / Earth-sysem model developed by Paul Ulrich (UCDavis, LBL).
+It is downloaded from here:
+https://github.com/paullric/tempestmodel
+
+commit 8e974a6391cb0fa318fde161fc1c73bca94a9d67
+Author: Paul Ullrich <paullrich@ucdavis.edu>
+Date:   Thu Oct 8 14:40:05 2015 -0700
+
+This is the directory structure:
+
+drwxr-xr-x 5 gjost xstack 4096 Feb  5 18:18 util
+drwxr-xr-x 5 gjost xstack 4096 Feb  5 18:18 test
+-rw-r--r-- 1 gjost xstack  214 Feb  5 18:18 Makefile
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:18 doc
+drwxr-xr-x 4 gjost xstack 4096 Feb  5 18:18 src
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:19 mk
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:21 lib
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:21 include
+
+The file mk/Make.defs contains the appropriate flags for building on the xstack cluster.
+
+This version of Tempest provides a DataContainer class that facilitates copying of data contained
+in Tempest object into OCR data blocks.
+
+A simple test case to demontsrate the use of the DataContainer classhas been implemented in OCR.
+The test cases exercises a time stepping loop updating data contained within a Tempest Patch object.
+The purpose of the test case is two fold:
+- demonstrate the usability of the DataContainer class on OCR.
+- demonstarte the need for objects which are i
+  ** local to the woker thread
+  ** created and inititialized once start-up
+  ** RO after intitiliazation
+  ** accessible to all tasks performed by each worker
+
+This update does not require any neighbor data exchange.
+
+Note: The OCR implementation of the test case employs a pointer to a Grid object created by mainEdt.
+      This is a work around to the fact that no worker thread local, globally accessible objects are
+      supported by OCR. It violates the current OCR specification. It works on x86 but will fail
+      mpi-x86 until the necessay support is provided
+
+To build and run DataContainerTest:
+----------------------------------
+cd test/hpc
+make -f Makefile.x86 clean uninstall run;
+
