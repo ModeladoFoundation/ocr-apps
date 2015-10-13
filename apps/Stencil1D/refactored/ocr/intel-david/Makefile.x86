@@ -66,6 +66,15 @@ else ifeq ($(CODE_TYPE), 2)
 SRCS := stencil1Dguid.c
 else ifeq ($(CODE_TYPE), 3)
 SRCS := stencil1Donce.c
+else ifeq ($(CODE_TYPE), 4)
+SRCS := stencil1DstickyLG.c
+CONFIG_FLAGS := --guid LABELED
+else ifeq ($(CODE_TYPE), 5)
+SRCS := stencil1DoncePI.c
+CONFIG_FLAGS := --guid LABELED
+else ifeq ($(CODE_TYPE), 6)
+SRCS := stencil1DguidPI.c
+CONFIG_FLAGS := --guid LABELED
 endif
 
 # Additional CFLAGS. By default, it includes
