@@ -7,8 +7,8 @@ CXX=g++
 RM = rm -f
 
 # Jenkins needs to have the ROSE area defined.
-ROSE_INS=/opt/edg4x-rose/installTree
-BOOST_INS=/opt/boost_1_46_1/installTree
+ROSE_INS ?= /opt/edg4x-rose/installTree
+BOOST_INS ?= /opt/boost_1_46_1/installTree
 
 TOOL_INC=-I$(ROSE_INS)/include/rose  -I$(BOOST_INS)/include
 
