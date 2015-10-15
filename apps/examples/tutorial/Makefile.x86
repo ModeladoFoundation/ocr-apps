@@ -31,6 +31,10 @@ WORKLOAD_INSTALL_ROOT ?= ./install/${EXORSOL}
 # input file. Note that the index STARTS AT 1
 WORKLOAD_INPUT_FILE_IDX := 0
 
+# Specific CONFIG_FLAGS for ex7
+ifeq ($(TARGET), ex7)
+CONFIG_FLAGS := --guid LABELED
+endif
 # You can specify default arguments here. These
 # will be overriden by (in order):
 #   - the WORKLOAD_ARGS environment variable

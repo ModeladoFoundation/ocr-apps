@@ -27,7 +27,8 @@ templateEnv.globals['embed_b64'] = embed_b64
 templateEnv.globals['include_raw'] = include_raw
 
 def main():
-    arg_parser = ArgumentParser(prog="cncframework_eg",
+    bin_name = os.environ['BIN_NAME'] or "cncframework_eg"
+    arg_parser = ArgumentParser(prog=bin_name,
             description="Turn CnC event logs into graphs.")
     arg_parser.add_argument('logfile', help="CnC log file to process")
     arg_parser.add_argument('--html', action="store_true",
