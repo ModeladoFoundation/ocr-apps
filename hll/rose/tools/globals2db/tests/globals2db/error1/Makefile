@@ -7,7 +7,7 @@ SRC = main.c foo.c
 ROSE_SRC = rose_main.c rose_foo.c
 TOOL = ../../../bin/globals2db
 ROSE_TARGET = rose_$(TARGET)
-ROSE_OPT = -rose:binary
+ROSE_OPT = -rose:skipfinalCompileStep
 
 include $(CURDIR)/../../../../Makefile.def
 

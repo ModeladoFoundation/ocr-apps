@@ -10,7 +10,7 @@ LD_LIBRARY_PATH += $(ROSE_ROOT)/lib:$(BOOST_ROOT)/lib:/etc/alternatives/jre_1.7.
 
 ROSE_TOOL_ROOT = $(APPS_ROOT)/../hll/rose/tools/globals2db
 ROSE_TOOL = $(ROSE_TOOL_ROOT)/bin/globals2db
-ROSE_OPT = -rose:binary
+ROSE_OPT = -rose:skipfinalCompileStep
 
 CFLAGS += -D__leaf__=__externally_visible__
 CC_INC += -I. -I$(SRCDIR)

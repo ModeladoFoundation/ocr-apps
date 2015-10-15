@@ -146,7 +146,7 @@ TARGET ?= XSBench
 ROSE_TARGET = rose_$(TARGET)
 
 SRCDIR = $(APPS_ROOT)/XSBench/refactored/mpilite/intel/src
-BLDDIR = build/$(OCR_TYPE)
+BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
 
 SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
 

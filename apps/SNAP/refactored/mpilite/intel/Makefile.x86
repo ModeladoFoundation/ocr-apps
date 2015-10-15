@@ -139,7 +139,7 @@ TARGET ?= snap_lite
 ROSE_TARGET = rose_$(TARGET)
 
 SRCDIR = $(APPS_ROOT)/SNAP/refactored/mpilite/intel
-BLDDIR = build/$(OCR_TYPE)
+BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
 
 SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
 
@@ -148,6 +148,7 @@ prebuild: $(ROSE_TARGET)
 $(ROSE_TARGET): $(ROSE_TOOL) create_dir
 	cd $(BLDDIR) ; \
 	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(LD_FLAGS) $(MPI_FLAGS) >& $(HERE)/build.log ; \
+	$(CP) $(SRCDIR)/snap.h $(BLDDIR) ; \
 	cd $(HERE)
 
 

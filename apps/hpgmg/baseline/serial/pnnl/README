@@ -1,0 +1,20 @@
+This is an intermediate serial version of HPGMG,
+used to validate data structure refactor.
+
+gcc hpgmg.c
+
+Problem size is set to:
+    - 2x2x2 blocks (at level 0)
+    - 16x16x16 cells (at level 0)
+    - 6 levels
+    - 10 cycles
+    - 4 smooth cycles
+ * modify these in hpgmg_defs.h
+
+The expected output for the problem size above is:
+
+Normal of residual 3.1955549317785881e-12
+norm_of_f: 0.21301702240106124
+norm_of_dinv: 1
+1.5001406440477351e-11
+3.1955549317785881e-12

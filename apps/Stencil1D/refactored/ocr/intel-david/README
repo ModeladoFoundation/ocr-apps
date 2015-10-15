@@ -1,29 +1,39 @@
-Written by David S Scott
+Written by David S Scott and Bryan Pawlowski
 
 
-There are 3 versions of a 1D stencil computation
-All three use "buffer" datablocks to exchange halo values between EDTs
-All three use the "cloning" style in which a sequence of EDTs look after the same set of datapoints.
+There are 6 versions of a 1D stencil computation
+All six use "buffer" datablocks to exchange halo values between EDTs
+All six use the "cloning" style in which a sequence of EDTs look after the same set of datapoints.
 A new clone is launched at every iteration to gain access to the buffer blocks.
-The bufferblocks are sent back at the end of an iteration.  The three versions are:
+The bufferblocks are sent back at the end of an iteration.  The six versions are:
 
-"sticky" which uses sticky events to pass the buffer block.  The sender satisfies the event while the receiver
+1: "sticky" which uses sticky events to pass the buffer block.  The sender satisfies the event while the receiver
 makes its clone depend on the event.  A new event is created and sent with the halo data to facilitate the next
 iteration.  sticky events are required because there is no order relationship between the adding of the dependence
 and the satisfaction of the event.
 
-"once" breaks the race condition by having an EDT clone its grandchild and adding the dependence before sending
+2: "once" breaks the race condition by having an EDT clone its grandchild and adding the dependence before sending
 the event (and halo data) to its neighbor.
 
-"guid" doesn't use events at all.  Like "once" each EDT clones its grandchild but in the guid version,
+3: "guid" doesn't use events at all.  Like "once" each EDT clones its grandchild but in the guid version,
 it sends the guid of its grandchild with the halo data.  The other EDT can add the dependence directly
 rather than satisfying an event.
 
+4: "sticky with labeled GUIDs" which behaves identically to "sticky," but employs the use of labeled GUIDs and
+parallelizes the initialization.
 
-There are three parameters (defined in stencil1D.h)
+5: "once parallel init" Same behavior as "once," but the initialization has been parallelized to hopefully save
+time for large problem sets.
+
+6: "guid parallel init" Which, again, has the same behavior as "guid," but parallelizes the initialization.
+
+The steady state for code types 4, 5 and 6 remain unchanged.
+
+There are three parameters (defined in stencil1D.h by default, if no runtime params given)
   N is the number of tasks
   M is the number of points in each task
   T is the number of iterations
+*NOTE: Runtime params are given in the same order as listed above.*
 
 The datapoints are initialized to zero except the boundary values which are set to 1
 the particular stencil implemented is anew(i) = .5*(a(i+1) + a(i-1))
@@ -51,8 +61,16 @@ mainEDT
 
 realmain
   creates N stencilEdts for the "sticky" version but creates 2*N Edts for the other two.
-  initializes the data blocks
-  launches the first N stencilEdt with the correct datablocks attached
+  initializes the data blocks (if not parallel init version)
+  launches the first N stencilEdt with the correct datablocks attached (if not parallel init version)
+	*if parallel init version, launches N instances of initEdt
+
+initEdt *if parallel init version
+  creates private block, left and right buffer_t data blocks
+
+stencilInitEdt *if parallel init version
+  populates the private block
+  populates initial values for the buffer_t blocks.
 
 Each stencil event
   if(iteration == 0) initializes data
@@ -64,3 +82,7 @@ The values after final iteration are printed out in order by a wrapupEdt.
 To make sure wrapup doesn't start early, it depends on realmain
 which is declared to be a finish event (which means it
 doesn't satisfy its output event until ALL of its descendents are finished).
+
+NOTE: the wrapup behavior is essentially the same, however, in the Parallel Init versions of the code,
+each EDT's private block is given the Wrapup EDT's guid, so the wrapup task only has N dependencies and
+not N+1 (where the +1 came from the finish event).
