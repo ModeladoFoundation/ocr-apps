@@ -1,0 +1,108 @@
+This directory provides an implementation of reductions using labeled GUIDs.
+
+There is a driver code example in apps/reduction/refactored/ocr/intel
+apps/hpcg/refactored/ocr/intel/
+
+Labeled GUIDs are currently experimental so it is necessary to include
+
+#define ENABLE_EXTENSION_LABELING
+#include "extensions/ocr-labeling.h"
+
+it is also necessary to change the GUID factory to "LABELED"
+this can be accomplished by adding the line
+
+CONFIG_FLAGS=--guid LABELED
+
+in Makefile.x86 in your driver directory
+
+
+reduction.c : the reduction code.
+
+The reduction implements an ARITY tree to compute the reduction.  ARITY is defined in reduction.h
+It can
+
+
+Any driver code for the library must:
+
+make two function calls before going parallel:
+
+    ocrGuid_t reductionCreateShared();
+
+returns the GUID of a temporary datablock used to hold some parameters.  It must be passed down to a follow on EDT which calls:
+
+    void reductionSerialInit(u64 numnodes, u64 length, reductionOperator_t operator, reductionShared_t * shared, ocrGuid_t reductionSharedGuid);
+
+numnodes is the number of participating EDTs.
+length is the number of local elements to be reduced
+reductionOperator is an enum type (defined in reduction.h)
+shared is the pointer to the shared block
+reductionSharedGuid is the guid of the shared block (needed to release the initialized values)
+
+
+After going parallel, each chain must make two init calls (once each):
+
+    ocrGuid_t reductionCreatePrivate();
+
+Create a datablock of parameters for each EDT.  Must be passed down to a follow on EDT which calls
+
+    void reductionParallelInit(u64 mynode, reductionShared_t * shared, reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid);
+
+mynode is the "rank" of the particular EDT (between 0 and numnodes-1)
+shared is a pointer to the shared block
+private is a pointer to "my" private block
+reductionPrivateGuid is the guid of my private block (needed to release the initialized values)
+
+Note that the shared block is no longer needed after this call, but it is not easy to safely destroy it.
+
+
+
+Now the reduction library can be called by the numnodes compute EDTs using two calls:
+
+Create the return event with a call to
+
+    ocrGuid_t reductionGetOnceEvent(reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid);
+
+private is the pointer to my private block
+reductionPrivateGuid is the guid of my private block
+
+
+Create the clone of the computeEDT and have it depend on the Once event to receive the result of the reduction.
+To avoid a race condition this MUST be done before calling reductionLaunch since otherwise the once event might be
+satisfied by the reduction before the dependence is added to the clone.
+
+
+Compute the local contribution to be reduced, then call
+
+
+void reductionLaunch(reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid, ocrGuid_t mydataGuid);
+
+
+private is the pointer to my private datablock (needed to get the template)
+reductionPrivateGuid is the guid of my private block
+mydataGuid is the guid of the datablock containing my contribution to the global reduction
+
+
+reductionLaunch returns after launching the global sum algorithm.  The calling Edt should terminate soon after
+and wait for the clone to wake up.
+
+
+
+The library implements a reduction tree invoking the reduction operator at each stage.  This amounts to a global barrier since every node must
+contribute to the global reduction before Node zero returns the result by satisfying the event with a separate datablock
+
+Reductions can be run as often as desired.
+Also, separate shared and private blocks can be created for different reductions or different sets of "nodes"
+
+The available operations are defined in the enum type reductionOperator_t in reduction.h
+
+To add other operations requires three changes:
+
+add the new key word to the enum type reductionOperator_t (in reduction.h);
+
+add the new key word in reductionsizeof (in reduction.c)
+
+add the actual operation to reductionOperation (in reduction.c)
+
+recompile
+
+

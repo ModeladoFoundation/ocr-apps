@@ -291,7 +291,7 @@ bool DbElement::is_const_type()
 
 
 // String manipulation routine.  I cannot figure out how ROSE is storing
-// system-defined and user-defined types.  Instead, parse the original declation.
+// system-defined and user-defined types.  Instead, parse the original declaration.
 string DbElement::get_type_from_decl()
 {
     string orig = _orig;
@@ -302,6 +302,8 @@ string DbElement::get_type_from_decl()
         orig = orig.substr(7);
     if (strncmp(orig.c_str(), "const ", 6) == 0)
         orig = orig.substr(6);
+    if (strncmp(orig.c_str(), "__thread ", 9) == 0)
+        orig = orig.substr(9);
     size_t pos = orig.find(_name->get_name().getString());
     string typeStr = orig.substr(0,pos);
     while(isspace(*typeStr.begin()))

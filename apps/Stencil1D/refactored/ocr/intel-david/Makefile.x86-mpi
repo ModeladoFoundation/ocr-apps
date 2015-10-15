@@ -67,12 +67,21 @@ else ifeq ($(CODE_TYPE), 2)
 SRCS := stencil1Dguid.c
 else ifeq ($(CODE_TYPE), 3)
 SRCS := stencil1Donce.c
+else ifeq ($(CODE_TYPE), 4)
+SRCS := stencil1DstickyLG.c
+CONFIG_FLAGS := --guid LABELED
+else ifeq ($(CODE_TYPE), 5)
+SRCS := stencil1DoncePI.c
+CONFIG_FLAGS := --guid LABELED
+else ifeq ($(CODE_TYPE), 6)
+SRCS := stencil1DguidPI.c
+CONFIG_FLAGS = --guid LABELED
 endif
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
+CFLAGS := -g
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in

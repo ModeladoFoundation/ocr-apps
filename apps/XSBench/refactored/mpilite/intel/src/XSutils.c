@@ -91,22 +91,15 @@ double rn(unsigned long * seed)
 // From "Numerical Recipes" Second Edition
 double rn_v(void)
 {
-    //Mark: I had changed this to be a TLS, but then all the ranks on one
-    //node will be going through the SAME sequence of lookups, at about the
-    //same time, so on rank will heat up the cache for that lookup, and the
-    //others will only have to look in the cache, not in memory! So I'll
-    //let this be a "racy" random number generator, but at least they'll be
-    //geting different values and different lookups.
-
-    static/*  __thread */ unsigned long seed = 1337;
-	double ret;
-	unsigned long n1;
-	unsigned long a = 16807;
-	unsigned long m = 2147483647;
-	n1 = ( a * (seed) ) % m;
-	seed = n1;
-	ret = (double) n1 / m;
-	return ret;
+       static unsigned long seed = 1337;
+       double ret;
+       unsigned long n1;
+       unsigned long a = 16807;
+       unsigned long m = 2147483647;
+       n1 = ( a * (seed) ) % m;
+       seed = n1;
+       ret = (double) n1 / m;
+       return ret;
 }
 
 unsigned int hash(unsigned char *str, int nbins)

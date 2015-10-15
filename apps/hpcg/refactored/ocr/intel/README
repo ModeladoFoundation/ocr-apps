@@ -11,13 +11,13 @@ The matrix MUST be represented as a linear array of non zero elements with corre
 in addition to the precondioner.
 
 
-The code uses labeled GUIDs.  That is currently supported only on x86 so the go.sh script only exercises that version
+The code uses labeled GUIDs and the reduction library (which also uses labeled GUIDs) to compute global sums.
 
 
 Parallelism
 The code assumes the grid consists of N = NPX x NPY x NPZ blocks of size MxMxM.  One worker EDT per block.
 
-Inner products are implemented by reduceEDTs that start with one value from each worker and form a binary tree doing the additions.  The final result is then provided back to the workers
+Inner products are implemented using the reduction library with vectors of length one and reductionOperator REDUCTION_F8_ADD
 
 The matrix vector product requires a halo exchange in which boundary values are traded with up to 26 neighbors.
 
@@ -31,13 +31,13 @@ It uses ordinary events for returning to the next phase.
 
 Structure of the Code
 
-mainEdt:	creates the shared datablock, launches realmainEdt and wrapupEdt
-realmainEdt:	initializes the shared datablock and launches N initEdts with the shared block and "mynode" as a parameter
+mainEdt:	creates the shared datablock and the reduction shared block, launches realmainEdt and wrapupEdt
+realmainEdt:	initializes the shared datablock and the reduction shared datablock and launches N initEdts with the shared blocks and "mynode" as a parameter
 
-N copies of:
+Each of N copies of:
 
-InitEdt:	create the private block and launch hpcgInitEdt
-hpcgInitEdt:	populate the private block and launch hpcgEdt
+InitEdt:	creates the private block and the reduction private block and launches hpcgInitEdt
+hpcgInitEdt:	populates the private blocks and launches hpcgEdt
 
 hpcgEdt:	written in a continuation style with a "phase" and a switch statement, each phase clones itself for the next phase
 

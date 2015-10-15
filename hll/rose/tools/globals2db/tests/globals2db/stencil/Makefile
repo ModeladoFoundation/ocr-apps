@@ -14,7 +14,8 @@ SRC = stencil.c
 ROSE_SRC = rose_stencil.c
 ROSE_TOOL = ../../../bin/globals2db
 ROSE_TARGET = rose_$(TARGET)
-ROSE_OPT = -rose:binary
+ROSE_OPT = -rose:skipfinalCompileStep
+
 
 include $(CURDIR)/../../../../Makefile.def
 

@@ -1,4 +1,65 @@
 =====================================================================
+NEW IN VERSION 9
+=====================================================================
+- Changed the faddeeva function result variable in the micro_xs
+  lookup kernel to a complex double type, rather than simply a
+  double for proper arithmetic. Has a very small (several percent)
+  change in performance.
+
+=====================================================================
+NEW IN VERSION 8
+=====================================================================
+- Fixed a bug in initialization of one of the randomized arrays.
+  It was originally being allocated correctly but not properly
+  set to fully randomized values, instead just using whatever values
+  were in memory at the time (often zero). This has a very small,
+  but non-negligible, imact on performance.
+
+=====================================================================
+NEW IN VERSION 7
+=====================================================================
+- Temperature dependence default status has been reverted. Doppler
+  broadening / temperature dependence is now ON by default. This
+  means the Faddeeva function will be called by default.
+
+- The MIT Open Source Faddeeva function library used in Version
+  6 is no longer used, and that code has been removed. While accurate,
+  it was very slow, so we are using a much faster approximation.
+  This approximation loosens some of the restrictions due to the
+  nature of actual reactor physics calculations not needing full
+  machine precision.  The new algorithm now uses a fast three term
+  asymptotic approximation when the absolute value of Z is
+  less than 6.  For |z| > 6, a much higher precision computation
+  is done using the Abrarov approximation. The slower Abrarov region
+  of complex space is only expected to be hit 0.0027% to 0.5% of the
+  time. The randomized resonance data in RSBench has been tuned to
+  approximate this frequency (assuming worst case 0.5%) of usage.
+
+- Added counters and a printout to calculate the percentage of
+  faddeeva calls that have |z| < 6, thus requiring the higher
+  fidelity and slower calculation. Changes made to the code during
+  porting (particularly if changing RNGs) should ensure that this
+  percentage remains approximately constant.
+
+=====================================================================
+NEW IN VERSION 6
+=====================================================================
+- Temperature dependence has now been changed to off by default
+
+- The Faddeeva function evaluation has now been moved to an open
+  source library (included in this repo). This allows for true
+  complex evaluation of the pole data rather than the real conjugate
+  error function approximation previously used. It was previously
+  assumed that real erfc() could be used to approximate the full
+  computation of the complex version, but in reality it has been
+  found to be siginificantly more computationally difficult to compute
+  this function when complex space is added. As a result, this slows
+  down computation significantly.
+
+- Note that the new source files and Temperature dependence changes
+  DO NOT AFFECT the single temp (no Doppler) mode.
+
+=====================================================================
 NEW IN VERSION 5
 =====================================================================
 - Added a new temperature dependence feature that
@@ -7,10 +68,9 @@ arbitrary material temperature. This is accomplished by evaluating
 the Faddeeva function (via an exponential multiplied by the standard
 C error function).
 
-This new Doppler mode is by default not enabled in Version 5.
-
-It is set to default, but can be disabled via the "-d" flag on the
-command line.
+This new Doppler mode is by default enabled in Version 5.  It is
+set to default, but can be disabled via the "-d" flag on the command
+line.
 
 Impact varies by compiler, but is relatively small (only a
 ~10-15% slowdown).

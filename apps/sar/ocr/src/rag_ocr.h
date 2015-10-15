@@ -15,11 +15,8 @@
 
 #define GUID_VALUE(guid) ((uint64_t)(guid))
 
-#ifndef TG_ARCH
+// Used to be rmdglobal for TG but is not necessary anymore, as we rely on the allocator
 #define SHARED
-#else
-#define SHARED rmdglobal
-#endif
 
 #ifdef TG_ARCH
 #define RAG_FLUSH

@@ -1,47 +1,106 @@
 This directory provides an implementation of reductions using labeled GUIDs.
 
-***************************************************************************
-This code currently suffers from bug 627.  The print statement before the
-add dependency in test.c is uncommented to slow down the EDTs a bit and make it
-less likely to hit the bug.  If you get a SegFault in the AddDependency
-you have hit the bug.  If you make the "wait" longer you are less likely to
-hit it.
-******************************************************************************
-
-
 Labeled GUIDs are currently experimental so it is necessary to include
 
 #define ENABLE_EXTENSION_LABELING
 #include "extensions/ocr-labeling.h"
 
-it is also necessary to change the GUID factory to "LABELED" as done in the generated.cfg file in this directory
+it is also necessary to change the GUID factory to "LABELED"
+this is accomplished by adding the line
 
-****Note that labeled GUIDs are currently only supported on X86****
+CONFIG_FLAGS=--guid LABELED
+
+in Makefile.x86
 
 
-gsLib.c : the reduction code.
+drive.c : a sample driver which exercises double precision addition
 
-test.c : a sample driver which implements addition, but the reductionFunction can be changed to any desired reduction
+
 
 Any driver code for the library must:
-define reductionFunction
-reserve numnodes-1 STICKY GUIDs
-reserve 2 ONCE GUIDs
-create the reduceEdt Template
-create numnodes+1 datablocks
-launch numnodes computeEdts
 
-each computeEdt
-computes its local contribution to the reduction
-creates a once event (alternate between the two GUIDs)
-clones itself depending on the ONCE event
-creates and launches a reduceEdt
-ends
+make two function calls before going parallel:
 
-The reduceEdts cooperate the return the answer in the special datablock to
-all of the clones by satisfying the ONCE event
+    ocrGuid_t reductionCreateShared();
 
-The bash script go.sh invokes the code pointing to the local .cfg file
+returns the GUID of a temporary datablock used to hold some parameters.  It must be passed down to a follow on EDT which calls:
 
+    void reductionSerialInit(u64 numnodes, u64 length, reductionOperator_t operator, reductionShared_t * shared, ocrGuid_t reductionSharedGuid);
+
+numnodes is the number of participating EDTs.
+length is the number of local elements to be reduced
+reductionOperator is an enum type (defined in reduction.h)
+shared is the pointer to the shared block
+reductionSharedGuid is the guid of the shared block (needed to release the initialized values)
+
+
+After going parallel, each chain must make two init calls (once each):
+
+    ocrGuid_t reductionCreatePrivate();
+
+Create a datablock of parameters for each EDT.  Must be passed down to a follow on EDT which calls
+
+    void reductionParallelInit(u64 mynode, reductionShared_t * shared, reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid);
+
+mynode is the "rank" of the particular EDT (between 0 and numnodes-1)
+shared is a pointer to the shared block
+private is a pointer to "my" private block
+reductionPrivateGuid is the guid of my private block (needed to release the initialized values)
+
+Note that the shared block is no longer needed after this call, but it is not easy to safely destroy it.
+
+
+
+Now the reduction library can be called by the numnodes compute EDTs using two calls:
+
+Create the return event with a call to
+
+    ocrGuid_t reductionGetOnceEvent(reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid);
+
+private is the pointer to my private block
+reductionPrivateGuid is the guid of my private block
+
+
+Create the clone of the computeEDT and have it depend on the Once event to receive the result of the reduction.
+To avoid a race condition this MUST be done before calling reductionLaunch since otherwise the once event might be
+satisfied by the reduction before the dependence is added to the clone.
+
+
+Compute the local contribution to be reduced in a datablock
+**RELEASE THE DATA BLOCK***
+to make your changes visible and then call
+
+
+void reductionLaunch(reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid, ocrGuid_t mydataGuid);
+
+
+
+private is the pointer to my private datablock (needed to get the template)
+reductionPrivateGuid is the guid of my private block
+mydataGuid is the guid of the datablock containing my contribution to the global reduction
+
+
+reductionLaunch returns after launching the global sum algorithm.  The calling Edt should terminate soon after
+and wait for the clone to wake up.
+
+
+
+The library implements a reduction tree invoking the reduction operator at each stage.  This amounts to a global barrier since every node must
+contribute to the global reduction before Node zero returns the result by satisfying the event with a separate datablock
+
+Reductions can be run as often as desired.
+Also, separate shared and private blocks can be created for different reductions or different sets of "nodes"
+
+The available operations are defined in the enum type reductionOperator_t in reduction.h
+
+To add other operations requires three changes:
+
+add the new key word to the enum type reductionOperator_t (in reduction.h);
+
+add the new key word in reductionsizeof (in reductionLib.c)
+
+add the actual operation to reductionOperation (in reductionLib.c)
+
+recompile
 
 

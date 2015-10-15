@@ -45,17 +45,21 @@ RUN_JENKINS ?= no
 ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
+CONFIG_FLAGS=--guid LABELED
+
+
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := cg
+TARGET := driver
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+
+REQ_LIBS := reduction
 
 # Space separated list of source files
-SRCS := test.c gsLib.c
+SRCS := driver.c
 
 
 # Additional CFLAGS. By default, it includes
@@ -66,9 +70,9 @@ CFLAGS :=
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread
+LDFLAGS := -lpthread -lreduction
 
-# Targets:
+# Targets
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install

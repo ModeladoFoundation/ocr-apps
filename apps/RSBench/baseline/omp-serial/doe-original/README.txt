@@ -6,7 +6,7 @@
                    | | \ \ ____) | |_) |  __/ | | | (__| | | |
                    |_|  \_\_____/|____/ \___|_| |_|\___|_| |_|
 
-                                   Version 5
+                                   Version 9
 
 ==============================================================================
 Contact Information
@@ -15,7 +15,9 @@ Contact Information
 Organization:     Center for Exascale Simulation of Advanced Reactors (CESAR)
                   Argonne National Laboratory
 
-Development Lead: John Tramm <jtramm@mcs.anl.gov>
+Development Lead: John Tramm   <jtramm@mcs.anl.gov>
+                  Amanda Lund  <alund@anl.gov>
+                  Ron Rahaman  <rahaman@anl.gov>
 
 ==============================================================================
 What is RSBench?
@@ -131,12 +133,13 @@ Option - 2:
 		100.
 
 	-d
-		This flag disables temperature dependence in the calculation (i.e.,
-		Doppler broadening). This represents a calculation where the
-		temperature of the materials in the reactor are not considered
+		This flag disables Doppler broadening (temperature dependence) in the
+	    calculation. Doppler broadening represents a calculation where the
+		temperature of the materials in the reactor are considered and
 		Doppler broadening is accomplished via the evaluation of the Faddeeva
 		function for each pole within a window, which is accomplished by using
-		the C library error function conjugate and an exponential evaluation.
+	    a fast approximation method for the Faddeeva function. Disabling
+	    this feature represents a neutronics calculation done at 0K.
 
 ==============================================================================
 Debugging, Optimization & Profiling
@@ -163,4 +166,3 @@ STATUS    = yes
    Does not affect performance.
 
 ==============================================================================
-
