@@ -4,8 +4,8 @@
 
 # This file contains common definitions for using the ROSE tool globals2db.
 
-ROSE_ROOT=/opt/edg4x-rose/installTree
-BOOST_ROOT=/opt/boost_1_46_1/installTree
+ROSE_ROOT=/opt/bamboo_6_0/bin/rose
+BOOST_ROOT=/opt/bamboo_6_0/bin/boost
 LD_LIBRARY_PATH += $(ROSE_ROOT)/lib:$(BOOST_ROOT)/lib:/etc/alternatives/jre_1.7.0_openjdk/lib/amd64/server
 
 ROSE_TOOL_ROOT = $(APPS_ROOT)/../hll/rose/tools/globals2db

@@ -2,12 +2,11 @@
 
 # this script sets up the ROSE environment
 
-export ROSE_ROOT=/opt/edg4x-rose
+ROSE_ROOT=/opt/bamboo_6_0/bin/rose
+BOOST_ROOT=/opt/bamboo_6_0/bin/boost
 echo $ROSE_ROOT
-export BOOST_INS=/opt/boost_1_46_1/installTree
 
-export ROSE_BLD=$ROSE_ROOT/compileTree
-export ROSE_INS=$ROSE_ROSE/installTree
+export ROSE_INS=$ROSE_ROOT
 export LIBRARY_PATH=$ROSE_INS/lib
 export ROSE_TOP=$ROSE_ROOT
 

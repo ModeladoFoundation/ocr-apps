@@ -7,14 +7,13 @@ CXX=g++
 RM = rm -f
 
 # Jenkins needs to have the ROSE area defined.
-ROSE_INS ?= /opt/edg4x-rose/installTree
-BOOST_INS ?= /opt/boost_1_46_1/installTree
+ROSE_INS ?= /opt/bamboo_6_0/bin/rose
+BOOST_INS ?= /opt/bamboo_6_0/bin/boost
+JVM_LIB ?= /etc/alternatives/jre_1.7.0_openjdk/lib/amd64/server
 
 TOOL_INC=-I$(ROSE_INS)/include/rose  -I$(BOOST_INS)/include
 
-TOOL_LNK=$(ROSE_INS)/lib/librose.so -L$(BOOST_INS)/lib -lboost_date_time -lboost_thread -lboost_filesystem -lboost_program_options -lboost_regex -lboost_system -lboost_wave -lboost_iostreams $(ROSE_INS)/lib/libhpdf.so -Wl,-rpath -Wl,$(ROSE_INS)/lib -Wl,-rpath -Wl,$(ROSE_INS)/lib
-
-#TOOL_LNK=$(ROSE_INS)/lib/librose.so -L$(BOOST_INS)/lib -ldl -lboost_date_time -lboost_thread -lboost_filesystem -lboost_program_options -lboost_regex -lboost_system -lboost_wave -lboost_iostreams $(ROSE_INS)/lib/libhpdf.so -lm -pthread -Wl,-rpath -Wl,$(ROSE_INS)/lib -Wl,-rpath -Wl,$(ROSE_INS)/lib
+TOOL_LNK=$(ROSE_INS)/lib/librose.so -L$(BOOST_INS)/lib -lboost_date_time -lboost_thread -lboost_filesystem -lboost_program_options -lboost_regex -lboost_system -lboost_wave -lboost_iostreams $(ROSE_INS)/lib/libhpdf.so -Wl,-rpath -Wl,$(ROSE_INS)/lib -Wl,-rpath -Wl,$(ROSE_INS)/lib -Wl,-rpath -Wl,$(BOOST_INS)/lib -Wl,-rpath -Wl,$(JVM_LIB)
 
 
 CFLAGS=-D__leaf__=__externally_visible__
