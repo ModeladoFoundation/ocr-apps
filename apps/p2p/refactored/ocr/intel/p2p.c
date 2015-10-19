@@ -9,6 +9,8 @@ Copyright Intel Corporation 2015
 OCR version of the Parallel Research Kernel synch_p2p
 See README file for more information
 
+10/19 fixed assignment bug
+
 */
 #include <ocr.h>
 #include <stdio.h>
@@ -35,7 +37,7 @@ typedef struct{
     ocrGuid_t leftold;
     ocrGuid_t leftrecvevent; //used by node 0 to catch data from P-1 at the end of a timestep
     u64 next; //next block for node0 to send out
-    ocrGuid_t block[W];//list of guids for the buffer blocks (could be smaller if W<P);
+    ocrGuid_t block[W];//list of guids for the buffer blocks (could be smaller if P<W);
     } private0_t;
 typedef struct{
     u64 timestep;
@@ -171,11 +173,10 @@ Depv:
 
 ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 //params: none
-    ocrGuid_t p2pTemplate, Template0, p2pEdt[P];
-    u64 i, j, *dummy;
+    ocrGuid_t p2pTemplate, p2pEdt[P];
+    u64 i, j;
     ocrGuid_t sticky;
 
-    double * vector[P];
     private_t * private[P];
 
     ocrEdtTemplateCreate(&p2pTemplate, p2pTask, 0, 3);
@@ -185,7 +186,6 @@ ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 //PRINTF("RM db %d \n", depv[2*P].guid);
 
     for(i=0;i<P;i++){
-        vector[i] = depv[i].ptr;
         private[i] = depv[P+i].ptr;
     }
 
@@ -202,6 +202,8 @@ ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
     }
         ((private0_t *) private[0])->leftrecvevent = private[P-1]->sendrightevent;
 
+//set up left to right dependence
+
     for(i=0;i<P;i++) {
         j = P-i-1;
         ocrAddDependence(depv[j].guid, p2pEdt[j], 0, DB_MODE_RW);
@@ -209,7 +211,7 @@ ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
             ocrAddDependence(private[j-1]->sendrightevent, p2pEdt[j], 2, DB_MODE_RW);
             private[j]->leftold = private[j-1]->sendrightevent;
           }else{
-            private[0]->leftold == NULL_GUID;
+            private[0]->leftold = NULL_GUID;
             ocrAddDependence(depv[2*P].guid, p2pEdt[0], 2, DB_MODE_RW);
         }
         ocrDbRelease(depv[P+j].guid);
