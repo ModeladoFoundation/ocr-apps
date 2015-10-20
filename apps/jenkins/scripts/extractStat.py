@@ -134,8 +134,8 @@ def main():
         filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+ ".csv"
 
     # Now, record the plots for regression & scaling
-    output(statDir, filename, testnameList, elapsedTimeList,"regressionResults/NightlyRegressionStat")
-    output(statDir, filename, scalenameList, scalevalueList,"regressionResults/NightlyScalingStat")
+    output(statDir, filename, testnameList, elapsedTimeList,"performanceResults/NightlyPerfStatApps")
+    output(statDir, filename, scalenameList, scalevalueList,"performanceResults/NightlyPerfStatAppsScaling")
     shutil.rmtree(statDir)
 
 if __name__ == '__main__':
