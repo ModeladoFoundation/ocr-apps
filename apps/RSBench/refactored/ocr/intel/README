@@ -1,0 +1,11 @@
+To build and run
+
+x86:
+make -f Makefile.x86 clean run
+
+x86-mpi:
+make -f Makefile.x86-mpi clean run
+
+Change the problem size WORKLOAD_ARGS argument
+E.g.,
+    make -f Makefile.x86 clean run WORKLOAD_ARGS="-d -s small -l 1000000"
