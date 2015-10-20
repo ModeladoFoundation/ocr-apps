@@ -10,8 +10,8 @@ APPS_LIBS_ROOT  ?= ../../../apps/libs/tg
 OCR_TYPE        ?= tg
 
 # TG
-TG_INSTALL ?= ../../../../intel/ss/install
-TG_ROOT    ?= ../../../../intel/ss
+TG_INSTALL ?= ../../../../tg/tg/install
+TG_ROOT    ?= ../../../../tg/tg
 
 # OCR
 XE_TARGET   ?= tg-xe
