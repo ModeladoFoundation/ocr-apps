@@ -8,7 +8,7 @@
 #include <errno.h>
 
 int
-mainEdt( int argc, char **argv )
+main( int argc, char **argv )
 {
     void * addr;
     uint64_t len = 32*1024;
