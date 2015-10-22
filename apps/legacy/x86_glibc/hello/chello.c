@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/stat.h>
 
 int mainEdt( int argc, char **argv )
 {

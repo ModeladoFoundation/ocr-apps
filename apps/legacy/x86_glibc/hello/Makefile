@@ -8,8 +8,9 @@ APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 LIBS = $(APPS_LIBS_ROOT)/lib
+OCR_INC = $(APPS_ROOT)/../ocr/inc
 
-CFLAGS += -I../include -std=c99 -g
+CFLAGS += -isystem /usr/include -DENABLE_EXTENSION_LEGACY -DENABLE_EXTENSION_AFFINITY -std=c99 -g -isystem $(OCR_INC)
 
 # These are the ocr shim libraries.  See
 # libs/src/ocr-glibc/README for more info.
@@ -21,8 +22,8 @@ OCR_SHIM_CXXLIB = $(LIBS)/libocr-glibcxx.a
 OCR_LIB = $(APPS_ROOT)/../ocr/build/x86_lib/objs/myocr.o
 
 CAPP = chello
-CAPP_SRCS = chello.c
-CAPP_LIBS = /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
+CAPP_SRCS = cmain.c chello.c
+CAPP_LIBS = /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a /usr/lib/x86_64-linux-gnu/libpthread.a
 #CAPP_LIBS = /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc.a /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
 CAPP_OBJS = $(CAPP_SRCS:.c=.o)
 
@@ -36,8 +37,8 @@ all: $(CAPP)
 
 default: all
 
-$(CAPP) : $(OCR_SHIM_CLIB) $(CAPP_LIBS) $(OCR_LIB)
-	$(CC) -static -o $@ $(CAPP_SRCS) $^
+$(CAPP) : $(OCR_LIB) $(CAPP_LIBS)
+	$(CC) -static $(CFLAGS) -o $@ $(CAPP_SRCS) $^ -zmuldefs
 #$(CAPP) :
 ##	@$(CC) -g -c -o tmp.o $(CAPP_SRCS)
 ##	@$(LD) -r -o tmp2.o tmp.o --start-group $(OCR_SHIM_CLIB) $(CAPP_LIBS) --end-group
