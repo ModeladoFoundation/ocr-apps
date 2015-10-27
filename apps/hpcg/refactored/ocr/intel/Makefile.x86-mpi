@@ -6,15 +6,15 @@ COMM_LAYER=mpi
 
 # APPS
 APPS_ROOT       ?= ../../../../../apps
-APPS_LIBS_ROOT  ?= ../../../../../apps/libs/mpi
+APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
 OCR_TARGET   ?= x86-${COMM_LAYER}
-OCR_INSTALL_ROOT ?= ../../../../../ocr/install
 OCR_ROOT     ?= ../../../../../ocr
+OCR_INSTALL_ROOT ?= ../../../../../ocr/install
 OCR_BUILD_ROOT   ?= ../../../../../ocr/build
 
 # APPLICATION
@@ -36,7 +36,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 0
+WORKLOAD_ARGS ?= 3 4 5 16 50 0
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -46,6 +46,8 @@ RUN_JENKINS ?= no
 
 ## END of variables coming from user/environment
 
+CONFIG_FLAGS=--guid LABELED
+
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
@@ -53,7 +55,7 @@ TARGET := hpcg
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := reduction
 
 # Space separated list of source files
 SRCS := hpcg.c
@@ -66,14 +68,14 @@ CFLAGS :=
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm
+LDFLAGS := -lpthread -lreduction -lm
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:    CFLAGS += -O2
+all:    CFLAGS += -g -O2
 all:    TARGETS := all
 all:    default
 
