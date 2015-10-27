@@ -59,6 +59,9 @@ FIX_MEM_CONFIG   := ${OCR_ROOT}/scripts/Configs/mem_config_fix.py
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 WORKLOAD_INSTALL      := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
 
+WORKLOAD_EXEC         ?= $(WORKLOAD_INSTALL)
+WORKLOAD_LOGS         ?= $(WORKLOAD_EXEC)/logs
+
 REQ_LIBS         ?=
 
 PREFIX           := $(TG_INSTALL)/bin/xstg-linux-elf
@@ -121,7 +124,7 @@ endif
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or run manually:"
-	@echo "(from $(WORKLOAD_INSTALL)): ${RUN_CMD} -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
+	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} -L $(WORKLOAD_LOGS) -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET) $(WORKLOAD_INSTALL)/$(TARGET).blob
 	@$(RM) -f $(WORKLOAD_INSTALL)/config.cfg
@@ -153,7 +156,7 @@ endif
 .PHONY: run_internal
 .ONESHELL:
 .SHELLFLAGS=-ec
-run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
+run_internal:
 ifeq ($(RUN_JENKINS), runApp)
 run_internal:
 else
@@ -162,16 +165,16 @@ endif
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
-	@$(MKDIR) -p $(WORKLOAD_EXEC)/logs
-	@$(RM) -rf $(WORKLOAD_EXEC)/logs/*
+	@$(MKDIR) -p $(WORKLOAD_LOGS)
+	@$(RM) -rf $(WORKLOAD_LOGS)/*
 	@$(RM) -f $(WORKLOAD_EXEC)/console.out
-	WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) \
-	bash -ec 'cd $(WORKLOAD_EXEC) && $(RUN_CMD) -s -L logs $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
-	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_EXEC)/logs/*brd*.chp*.unt*.blk*.CE.00 \
+	WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
+	bash -ec 'cd $(WORKLOAD_LOGS) && $(RUN_CMD) -s -L $(WORKLOAD_LOGS) $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
+	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
 
 postrun: run_internal
-postrun: WORKLOAD_OUTS := `find -L $(WORKLOAD_EXEC)/logs/* -name '*.app_output' -print`
+postrun: WORKLOAD_OUTS := `find -L $(WORKLOAD_LOGS)/* -name '*.app_output' -print`
 
 .PHONY: run
 run: postrun
