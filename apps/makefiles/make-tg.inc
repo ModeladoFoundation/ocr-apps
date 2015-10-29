@@ -108,6 +108,9 @@ MACHINE_CONFIG :=
 endif
 
 ### Install rules ###
+
+debug: CFLAGS += -DOCR_ASSERT
+
 .PHONY: install_internal
 .ONESHELL:
 ifeq ($(RUN_JENKINS), runApp)

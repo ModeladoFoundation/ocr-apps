@@ -86,6 +86,8 @@ FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
 ### Install rules ###
 
+debug: CFLAGS += -DOCR_ASSERT
+
 .PHONY: install_internal
 .ONESHELL:
 install_internal: preinstall | $(WORKLOAD_INSTALL)
