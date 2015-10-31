@@ -383,7 +383,7 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_regression = {
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra/install',
-                  'WORKLOAD_ARGS': '1000 100 500 5 -1 -1'}
+                  'WORKLOAD_ARGS': '1000 100 500'}
 }
 
 job_ocr_run_kernel_Stencil1DChandra_x86_remote_scaling = {
@@ -395,7 +395,7 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_scaling = {
     'env-vars': { 'APPS_LIBS_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/libs/x86',
                   'WORKLOAD_SRC': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra',
                   'WORKLOAD_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/apps/Stencil1D/refactored/ocr/intel-chandra/install',
-                  'WORKLOAD_ARGS': '1000 100 500 5 -1 -1'}
+                  'WORKLOAD_ARGS': '1000 100 500'}
 }
 
 #1d Stencil - mpilite

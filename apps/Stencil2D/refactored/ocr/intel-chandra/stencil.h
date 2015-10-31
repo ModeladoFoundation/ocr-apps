@@ -1,19 +1,24 @@
 #include "ocr.h"
 #include "ocr-std.h"
 
+#define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+
 //default values
-#define NPOINTS 4
-#define NRANKS 4
+#define NPOINTS 1000
+#define NRANKS 16
 #define NTIMESTEPS 10
-#define NTIMESTEPS_SYNC 5
-#define ITIMESTEP0 1
-#define HALO_RADIUS 2
+
+//Compile time value (if not defined at compile time, set default)
+#ifndef HALO_RADIUS
+    #define HALO_RADIUS 2
+#endif
 
 #define EPSILON 1e-8
 
+#ifndef FULL_APP
 //#define FULL_APP 0 //To measure only the OCR overhead
-//or
 #define FULL_APP 1 //To measure the full app performance
+#endif
 
 #ifndef PROBLEM_TYPE
 #define PROBLEM_TYPE 2
@@ -64,8 +69,7 @@ typedef struct
     s64 NP_Y;
     s64 NR_Y; //ranks in x and y directions
     #endif
-    s64 NT, NT_SYNC, IT0;
-    s64 HR;
+    s64 NT;
 } globalParamH_t;
 
 typedef struct
@@ -98,7 +102,7 @@ typedef struct
     ocrGuid_t EVT_Brecv_start, EVT_Trecv_start;
     ocrGuid_t EVT_Brecv_fin, EVT_Trecv_fin;
     #endif
-    ocrGuid_t EVT_reduction;
+    ocrGuid_t EVT_IN_reduction;
 } rankEventH_t;
 
 typedef struct
@@ -126,16 +130,23 @@ typedef struct
 
 typedef struct
 {
+    ocrGuid_t DBK_globalParamH; // Commandline parameters/param
+
     s64 itimestep; //tag
     ocrGuid_t DBK_timers;
-    ocrGuid_t EDT_reduction;
-    ocrGuid_t DBK_globalParamH; // Commandline parameters/param
-    ocrGuid_t DBK_globalParamHs; //-> Broadcasted parameters/param globalParamH_t[]
+
+    //Reduction is implemented using an "reduction EDT" that depends on NumRanks #of
+    //input events and the final result datablock will be passed along an output event
+    //Each subdomain EDT satisfies the corresponding input reduction event
+    ocrGuid_t DBK_EVT_IN_reduction; //EVT_IN_reduction[NumRanks]
+    ocrGuid_t EVT_OUT_reduction;    //Reduction output event
+
     ocrGuid_t DBK_rankHs; //--> rankH_t[]
 } globalH_t;
 
 static void timestamp(const char* msg);
 void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e);
+int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y );
 
 static void timestamp(const char* msg)
 {
@@ -157,3 +168,7 @@ void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e)
     *e = (id+1)*N/R + lb_g - 1;
 }
 
+int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y )
+{
+    return NR_X*id_y + id_x;
+}
