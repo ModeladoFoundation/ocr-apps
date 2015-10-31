@@ -31,6 +31,12 @@ APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 endif
 
+ifeq (${OCR_ASAN}, yes) # Declare flags for AddressSanitizer
+ASAN_FLAGS := -g -fsanitize=address -fno-omit-frame-pointer
+CFLAGS := $(ASAN_FLAGS) $(CFLAGS)
+LDFLAGS := $(ASAN_FLAGS) $(LDFLAGS)
+endif
+
 # Tool to use as a wrapper to run
 RUN_TOOL              ?=
 
