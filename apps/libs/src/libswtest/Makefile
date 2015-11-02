@@ -2,7 +2,7 @@
 # Create a library for test env specific utility functions
 #
 # Find 'xstack' repo dir (actually, whatever's above 'apps')
-# And we assume the 'intel' repo is at the same level as 'xstack'
+# And we assume the 'tg' repo is at the same level as 'xstack'
 #
 XSTACK_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/.*$$::')
 
@@ -61,7 +61,7 @@ $(BUILDDIR)/%.o : %.c
 	@echo Generating Assembler file $@ from $<
 	@$(CC) $(CFLAGS) $(INCLUDES) -S $<
 
-install: $(LIB)
+install: builddir $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
 	@mkdir -p $(APPS_LIBS_ROOT)/lib
 	@cp -u $(LIB) $(APPS_LIBS_ROOT)/lib

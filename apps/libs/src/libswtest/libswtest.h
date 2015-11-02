@@ -28,10 +28,28 @@ int    ce_fstat( int fd, struct stat * stbuf );
 // Flush (Write-back) and/or invalidate lines in the addr range
 // 'flags' takes one of the following defines
 //
-#define CACHE_WB        0x02	// write-back
-#define CACHE_INVAL     0x04	// invalidate
-#define CACHE_WBINVAL   0x06	// write-back and invalidate
+#define CACHE_WB        0x02    // write-back
+#define CACHE_INVAL     0x04    // invalidate
+#define CACHE_WBINVAL   0x06    // write-back and invalidate
 
 void cache_range( unsigned char flags, void * from, void * to );
+//
+// XE location in the system.
+// Note that XEs have agent numbers 1 - 8
+//
+typedef struct {
+    uint64_t agent_addr: 17,
+             agent: 4,
+             block_spacer: 2,
+             block: 4,
+             cluster_spacer: 1,
+             cluster: 4,
+             socket_spacer: 13,
+             socket: 3,
+             cube: 6,
+             rack: 6;
+} XE_Id;
+
+XE_Id get_xe_id( void );
 
 #endif // __LIBSWTEST_H__
