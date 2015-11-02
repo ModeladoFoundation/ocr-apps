@@ -79,14 +79,16 @@ bool EHHeaderParser<A>::decodeTableEntry(
     typename CFI_Parser<A>::CIE_Info *cieInfo) {
   // Have to decode the whole FDE for the PC range anyway, so just throw away
   // the PC start.
-  addressSpace.getEncodedP(tableEntry, ehHdrEnd, tableEnc, ehHdrStart);
-  pint_t fde =
-      addressSpace.getEncodedP(tableEntry, ehHdrEnd, tableEnc, ehHdrStart);
+  pint_t te  = tableEntry;
+  pint_t pc  = addressSpace.getEncodedP(te, ehHdrEnd, tableEnc, ehHdrStart);
+  pint_t fde = addressSpace.getEncodedP(te, ehHdrEnd, tableEnc, ehHdrStart);
   const char *message =
       CFI_Parser<A>::decodeFDE(addressSpace, fde, fdeInfo, cieInfo);
   if (message != NULL) {
-    _LIBUNWIND_DEBUG_LOG("EHHeaderParser::decodeTableEntry: bad fde: %s\n",
-                         message);
+    _LIBUNWIND_DEBUG_LOG("EHHeaderParser::decodeTableEntry: bad fde: %s, "
+                         "entry at 0x%lx, fde at 0x%lx, pc 0x%lx\n",
+                         message, te, fde, pc);
+    (void) pc;
     return false;
   }
 
@@ -123,8 +125,12 @@ bool EHHeaderParser<A>::findFDE(A &addressSpace, pint_t pc, pint_t ehHdrStart,
       len /= 2;
     }
   }
-
   tableEntry = hdrInfo.table + low * tableEntrySize;
+
+  _LIBUNWIND_TRACE_UNWINDING("EHHeaderParser::findFDE pc = 0x%lx, index 0x%lx,"
+                             " te 0x%lx, table 0x%lx\n",
+                             pc, low, tableEntry, hdrInfo.table );
+
   if (decodeTableEntry(addressSpace, tableEntry, ehHdrStart, ehHdrEnd,
                        hdrInfo.table_enc, fdeInfo, cieInfo)) {
     if (pc >= fdeInfo->pcStart && pc < fdeInfo->pcEnd)
