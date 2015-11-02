@@ -424,7 +424,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveiWMMXControl
   .align 8
 DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   //
-  // An XE's register file is accessible via PRF memory address alias 0x38000
+  // An XE's register file is accessible via PRF memory address alias 0x2e000
   // We generate a loop to copy all 512 registers. This can be
   // unrolled some/all for greater speed.
   // Start by explicitly storing r0 and r1, freeing up r1 for the loop var
@@ -434,11 +434,12 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   store     r1, r0, 8, 64
   movimm    r1, 16, 64
 .Lloop:
-  load      r508, r1, 229376, 64
+  load      r508, r1, 188416, 64    # 0x2e000
   store     r508, r1, r0, 64
   addI      r1, r1, 8, 64
   cmpimm    r508, r1, 512 * 8, 0, 64, SLT
-  jcf       .Lloop, r508, 0, N
+  jct       .Lloop, r508, 0, N
   store     r511, r0, r1, 64    # store return address as PC
+  load      r1, r0, 8, 64       # restore r1 ???
   jabs r511
 #endif

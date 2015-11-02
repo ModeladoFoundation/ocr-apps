@@ -364,6 +364,15 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
   // fde is own mh_group
   DwarfFDECache<LocalAddressSpace>::removeAllIn((LocalAddressSpace::pint_t)fde);
 }
+#else  // ! _LIBUNWIND_SUPPORT_DWARF_CACHE
+void _unw_add_dynamic_fde(unw_word_t fde) {
+    _LIBUNWIND_DEBUG_LOG("_unw_add_dynamic_fde: %s", "not implemented");
+    (void) fde;
+}
+void _unw_remove_dynamic_fde(unw_word_t fde) {
+    _LIBUNWIND_DEBUG_LOG("_unw_remove_dynamic_fde: %s", "not implemented");
+    (void) fde;
+}
 #endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
 
 
@@ -375,6 +384,8 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
 _LIBUNWIND_HIDDEN
 bool logAPIs() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
+  //static bool checked = true;
+  //static bool log = true;
   static bool checked = false;
   static bool log = false;
   if (!checked) {
@@ -387,6 +398,8 @@ bool logAPIs() {
 _LIBUNWIND_HIDDEN
 bool logUnwinding() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
+  //static bool checked = true;
+  //static bool log = true;
   static bool checked = false;
   static bool log = false;
   if (!checked) {
