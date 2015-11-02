@@ -116,11 +116,11 @@ default: all
 .PHONY: $(LIB) setup clean
 
 setup:
-	@echo SRCS = $(SRCS)
-	@echo OBJS = $(OBJS)
-	@echo BUILD_DIR = $(BUILD_DIR)
-	@echo SRCDIR = $(SRCDIR)
-	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
+	@#echo SRCS = $(SRCS)
+	@#echo OBJS = $(OBJS)
+	@#echo BUILD_DIR = $(BUILD_DIR)
+	@#echo SRCDIR = $(SRCDIR)
+	@[ -d $(BUILD_DIR) ] ||  mkdir -p $(BUILD_DIR)
 
 $(LIB): $(OBJS)
 	@$(RM) -f $@
@@ -129,13 +129,14 @@ $(LIB): $(OBJS)
 	@echo Successfully built $@
 
 $(BUILD_DIR)/%.o : $(SRCDIR)/%.c
+	@echo "  - $<"
 	@$(CC) -c $(CFLAGS) $(INCS) $< -o $@
 
 $(BUILD_DIR)/%.o : $(SRCDIR)/%.S
 	@$(AS) $< -o $@
 
 .PHONY: install
-install: $(LIB)
+install: setup $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
 	@mkdir -p $(APPS_LIBS_ROOT)
 	@cp -u -R $(LIB) $(APPS_LIBS_ROOT)/lib

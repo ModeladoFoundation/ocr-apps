@@ -8,9 +8,9 @@
 #		EQware various
 #
 # Clang:
-#	This assumes that llvm/clang have been installed in the intel
-#	repo install root tree (tg/tg/install) and that the intel
-#	repo is actually named 'intel' and is at the same level in
+#	This assumes that llvm/clang have been installed in the tg
+#	repo install root tree (tg/tg/install) and that the tg
+#	repo is actually named 'tg' and is at the same level in
 # 	the directory tree as this xstack repo.
 #
 #	However this install root location can be overridden by adding
