@@ -8,7 +8,7 @@
 #		EQware various
 #
 #	Variables - overrideable via cmd line or env. Defaults below.
-#		TG_INSTALL - top of the intel repo install root. Used to
+#		TG_INSTALL - top of the tg repo install root. Used to
 #					 find clang/llvm/binutils apps and includes.
 #		APPS_ROOT  - path to the apps directory in the xstack repo
 #					 Used to generate the path to the xstack repo
@@ -119,7 +119,7 @@ endif
 # Make sure we get just the default platform build
 #
 ifeq ($(ARCH), x86_native)
-CFLAGS += -std=c99 -U__STRICT_ANSI__
+CFLAGS += -fPIC -std=c99 -U__STRICT_ANSI__
 CONFIG_ARGS += --enable-multilib=no
 TARGET = x86_64-linux-elf
 endif

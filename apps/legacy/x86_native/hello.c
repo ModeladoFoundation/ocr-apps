@@ -6,9 +6,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
 
 int
-main( int argc, char **argv )
+mainEdt( int argc, char **argv )
 {
     void * addr;
     uint64_t len = 32*1024;

@@ -10,7 +10,7 @@
 // Otherwise, it is assumed that param 0, 1, and 2 (r0, r1, r2) are initialized
 // as argc, argv, and envp, as CE OCR does.
 //
-#define USE_STACK   1
+// #define USE_STACK   1
 //
 // Defining OCR_INIT includes the OCR startup calls and init() that allocates
 // an ocrDb for the stack.
