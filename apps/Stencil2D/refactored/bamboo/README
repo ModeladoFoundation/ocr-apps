@@ -1,0 +1,50 @@
+Stencil2D with Bamboo/Tarragon
+
+This program tests the efficiency of a simple 2D stencil update.
+It employs a 2D decomposition of the space interval.
+Halo exchange uses MPI_Isend/Irecv using Bamboo/Tarragon.
+
+
+To build and run this test, type
+
+	% make
+
+
+Bamboo, Tarragon and ROSE can be found in /opt/bamboo_6_0 on xstack.exascale-tech.com.
+
+If you do not wish to use the Makefile,use these command instead.
+Refer to http://bamboo.ucsd.edu/documentation.html for additional information
+on the commands below.
+
+% /opt/bamboo_6_0/bin/bamboo-translate -I. stencil.c
+% /opt/bamboo_6_0/bin/bamboo-cxx  -I. -o bamboo_stencil bamboo_stencil.cpp MPI_bail_out.c wtime.c
+% /opt/bamboo_6_0/bin/bamboo-run -w 4 -x 4 ./bamboo_stencil 4 6
+
+
+For the bamboo-run command:
+	-w 	is the number of workers. Workers are a single kernel level thread,
+		which is mapped to a core.
+	-x	is the number of Bamboo tasks, which must be >= the number of ranks.
+
+
+The Stencil program takes as input the length of the grid, and the number of iterations.
+The grid is a square.
+
+
+	bamboo_stencil  < length of grid > <# iterations>
+
+
+
+
+Bamboo is a custom source-to-source translator, built using the ROSE Compiler
+Infrastructure, that transforms MPI C/C++ source into a data-driven form that
+automatically overlaps communication with available computation.  For more
+information, see http://bamboo.ucsd.edu/.
+
+Tarragon is a runtime library which executes a task graph.  For more information,
+see http://rosecompiler.org/ROSE_ResearchPapers/Nguyen12-Bamboo-SC12.pdf.
+
+ROSE is an open source compiler infrastructure to build source-to-source program
+transformation and analysis tools for large-scale applications. For more information,
+see http://rosecompiler.org.
+
