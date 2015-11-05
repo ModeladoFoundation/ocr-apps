@@ -7,19 +7,20 @@ Copywrite Intel Corporation 2015
 */
 
 /*
-See README and stencil1D.h for more documentation
+See README for more documentation
 
-There are 3 versions of a 1D stencil computation.
-This code uses STICKY events
+There are 6 versions of a 1D stencil computation.
+This code uses STICKY events with serial initialization
 
 This code does a 1D (3 point) stencil computation on a set of points in pure ocr
 
-N is the number of tasks
-M is the number of points in each task
-T is the number of timesteps
+nrank is the number of tasks
+npoints is the number of points in each task
+maxt is the number of timesteps
 
-the datapoints are initialized to zero except the boundary values which are set to 1
-the particular stencil implemented is anew(i) = .5*(a(i+1) + a(i-1))
+
+the datapoints are initialized to zero except the global boundary values which are set to 1
+the particular stencil implemented is anew(i) = .5*(a(i) + 0.25*(a(i+1) + a(i-1))
 which implements an elliptic solver using the 2nd order three point finite difference.
 The values converge (slowly) to all 1s.
 
@@ -28,299 +29,362 @@ would have to be increased.
 */
 #include <ocr.h>
 #include <stdio.h>
-#include "stencil1D.h"
 
+//there will be one private datablock per rank
+//the datablock contains the private structure padded by npoints of doubles to hold the values
 typedef struct{
-    u64 timestep;
-    u64 mynode;
-    ocrGuid_t leftevent;
-    ocrGuid_t rightevent;
-    ocrGuid_t leftold;
-    ocrGuid_t rightold;
-    ocrGuid_t template;
+    u32 nrank;
+    u32 npoints;
+    u32 maxt;
+    u32 timestep;
+    u32 myrank;
+    u32 dataOffset;
+    ocrGuid_t leftSendEVT;
+    ocrGuid_t rightSendEVT;
+    ocrGuid_t oldLeftRecvEVT;
+    ocrGuid_t oldRightRecvEVT;
+    ocrGuid_t stencilTML;
     } private_t;
-ocrGuid_t stencilTask(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+
+//this structure is used to pass boundary values between ranks
+typedef struct{
+    double buffer;
+    ocrGuid_t EVT;
+    } buffer_t;
+
+
+typedef struct {
+   ocrEdtDep_t private;
+   ocrEdtDep_t leftin;
+   ocrEdtDep_t rightin;
+} stencilDepv_t;
+
+
+#define DEPV(var,field) (stencilDEPV->var).field
+#define SLOT(var) (offsetof(stencilDepv_t,var)/sizeof(ocrEdtDep_t))
+
+
+ocrGuid_t stencilEDT(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 /*
 paramv[0]:
 
-depv[4]:
-0: My datablock
+depv[3]:
+0: Private block
 1: Leftin block (provided by my left neighbor)
 2: Rightin block (provided by my right neighbor)
-3: My private block
 */
     u64 i, phase, phasenext;
-    ocrGuid_t stencilEdt;
+    ocrGuid_t stencilGUID;
     ocrGuid_t sticky;
 
-    double * a = depv[0].ptr;
-    double * atemp = a + M;
-
-    buffer_t * leftin = depv[1].ptr;
-    buffer_t * rightin = depv[2].ptr;
-    private_t * private = depv[3].ptr;
-
-    u64 mynode = private->mynode;
-    u64 timestep = private->timestep;
-
-    ocrGuid_t leftinEvent = NULL_GUID;
-    ocrGuid_t rightinEvent = NULL_GUID;
-
-    if(private->leftold != NULL_GUID) ocrEventDestroy(private->leftold);
-    if(private->rightold != NULL_GUID) ocrEventDestroy(private->rightold);
+    stencilDepv_t * stencilDEPV = (stencilDepv_t *) depv;
 
 
-    if(timestep == 0) { //initialize
-        if(M==1) {  //special code for single data point
-            if(leftin == NULL || rightin == NULL) a[0] = 1;
+//unpack depv pointers
+    private_t * pbPTR = DEPV(private,ptr);
+    buffer_t * leftinPTR = DEPV(leftin,ptr);
+    buffer_t * rightinPTR = DEPV(rightin,ptr);
+
+//unpack private parameters
+    u64 myrank = pbPTR->myrank;
+    u64 timestep = pbPTR->timestep;
+    u64 maxt = pbPTR->maxt;
+    u64 npoints = pbPTR->npoints;
+    u64 nrank = pbPTR->nrank;
+
+    ocrGuid_t leftinEVT = NULL_GUID;
+    ocrGuid_t rightinEVT = NULL_GUID;
+
+    if(pbPTR->oldLeftRecvEVT != NULL_GUID) ocrEventDestroy(pbPTR->oldLeftRecvEVT);
+    if(pbPTR->oldRightRecvEVT!= NULL_GUID) ocrEventDestroy(pbPTR->oldRightRecvEVT);
+
+    double * a = (double *) (((u64) pbPTR) + pbPTR->dataOffset);
+
+
+//if first timestep initialize
+    if(timestep == 0) {
+        if(npoints==1) {  //special code for single data point
+            if(leftinPTR == NULL || rightinPTR == NULL) a[0] = 1;
               else a[0] = 0;
+            if(leftinPTR != NULL) {
+                if(myrank == 1) leftinPTR->buffer = 1.0;
+                  else leftinPTR->buffer= 0.0;
+            }
+            if(rightinPTR != NULL) {
+                if(myrank == nrank-2) rightinPTR->buffer = 1.0;
+                  else rightinPTR->buffer= 0.0;
+            }
           } else {
-            if(leftin == NULL) a[0] = 1;
+            if(leftinPTR == NULL) a[0] = 1;
               else {
-                a[0] = 0;
-                leftin->buffer = 0;
+                a[0] = 0.0;
+                leftinPTR->buffer = 0.0;
+            }
 
-                for(i=1;i<M-1;i++) a[i] = 0;
+            for(i=1;i<npoints-1;i++) a[i] = 0.0;
 
-                if(rightin == NULL) a[M-1] = 1;
-                    else {
-                    a[M-1] = 0;
-                    rightin->buffer = 0;
-                }
+            if(rightinPTR == NULL) a[npoints-1] = 1;
+              else {
+                a[npoints-1] = 0;
+                rightinPTR->buffer = 0;
             }
         }
     }
 
+    double asave;
 
-    if(timestep < T) {
+//save last value for serializing send right.
+    if(timestep == maxt && myrank != nrank-1) asave = a[npoints-1];
 
 
 //compute
+    double aleft, acenter;
 
-
-        if(M==1) {  //special code for single data point
-            if(leftin == NULL || rightin == NULL) atemp[0] = a[0];
-              else atemp[0] = 0.5*a[0] + 0.25*(leftin->buffer + rightin->buffer);
+        if(npoints==1) {  //special code for single data point
+            if(leftinPTR == NULL || rightinPTR == NULL) acenter = a[0];
+              else acenter = 0.5*a[0] + 0.25*(leftinPTR->buffer + rightinPTR->buffer);
+            a[0] = acenter;
           } else {
-
-
-            if(leftin != NULL) atemp[0] =  .5*a[0] + .25*(a[1] + leftin->buffer);
-                else atemp[0] = a[0];
-
-            for(i=1;i<M-1;i++) atemp[i] =  0.5*a[i] + 0.25*(a[i+1] + a[i-1]);
-                if(rightin != NULL) atemp[M-1] = 0.5* a[M-1] + .25*( (rightin->buffer) + a[M-2]);
-                    else atemp[M - 1] = a[M-1];
+            if(leftinPTR != NULL) aleft =  .5*a[0] + .25*(a[1] + leftinPTR->buffer);
+                else aleft = a[0];
+            for(i=1;i<npoints-1;i++) {
+                acenter =  0.5*a[i] + 0.25*(a[i+1] + a[i-1]);
+                a[i-1] = aleft;
+                aleft = acenter;
+            }
+            if(rightinPTR != NULL) acenter = 0.5* a[npoints-1] + .25*(rightinPTR->buffer + a[npoints-2]);
+                else acenter = a[npoints-1];
+            a[npoints-2] = aleft;
+            a[npoints-1] = acenter;
         }
 
-//could optimized by changing a pointer rather than actually copying
-        for(i=0;i<M;i++) a[i] = atemp[i];
-
-        if(leftin != NULL) { //leftin is NULL too
-            leftinEvent = leftin->control;
-            leftin->buffer = a[0];
-            ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-            leftin->control = sticky;
-            ocrDbRelease(depv[1].guid);
-            ocrEventSatisfy(private->leftevent, depv[1].guid);
-            private->leftevent = sticky;
+//send left
+    if(timestep < maxt) {
+        if(leftinPTR != NULL) {
+            leftinEVT = leftinPTR->EVT;
+            leftinPTR->buffer = a[0];
+//no new event for timestep==maxt-1
+            if(timestep<maxt-1) ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+            leftinPTR->EVT = sticky;
+            ocrDbRelease(DEPV(leftin,guid));
+            ocrEventSatisfy(pbPTR->leftSendEVT, DEPV(leftin,guid));
+            pbPTR->leftSendEVT = sticky;
         }
 
-        if(rightin != NULL) {
-            rightinEvent = rightin->control;
-            rightin->buffer = a[M-1];
-            ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-            rightin->control = sticky;
-            ocrDbRelease(depv[2].guid);
-            ocrEventSatisfy(private->rightevent, depv[2].guid);
-            private->rightevent = sticky;
+//send right
+        if(rightinPTR != NULL) {
+            rightinEVT = rightinPTR->EVT;
+            rightinPTR->buffer = a[npoints-1];
+//defer sending right when timestep == maxt-1
+            if(timestep<maxt-1) {
+                ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+                rightinPTR->EVT = sticky;
+                ocrDbRelease(DEPV(rightin,guid));
+                ocrEventSatisfy(pbPTR->rightSendEVT , DEPV(rightin,guid));
+                pbPTR->rightSendEVT  = sticky;
+            }
+        }
+    }
+    else {
+//last time step, serialized using send right.
+        if(myrank < nrank-1) {
+            for(i=0;i<npoints;i++) PRINTF("S%ld i%d valu %f \n", myrank, i, a[i]);
+                rightinPTR->buffer = asave;
+                ocrDbRelease(DEPV(rightin,guid));
+                ocrEventSatisfy(pbPTR->rightSendEVT,DEPV(rightin,guid));
+            } else {
+                for(i=0;i<npoints;i++) PRINTF("S%ld i%d valu %f \n", myrank, i, a[i]);
+                ocrShutdown();
+            }
+        return NULL_GUID;
         }
 
-        private->timestep = timestep+1;
-        private->leftold = leftinEvent;
-        private->rightold = rightinEvent;
+
+    pbPTR->timestep++;
+    pbPTR->oldLeftRecvEVT = leftinEVT;
+    pbPTR->oldRightRecvEVT = rightinEVT;
 
 
 //create clone
 
-        ocrEdtCreate(&stencilEdt, private->template, EDT_PARAM_DEF, NULL,
+    ocrEdtCreate(&stencilGUID, pbPTR->stencilTML, EDT_PARAM_DEF, NULL,
                 EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
-        ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, stencilEdt, 0 , DB_MODE_RW);
-
-        ocrAddDependence(leftinEvent, stencilEdt, 1 , DB_MODE_RW);
-        ocrAddDependence(rightinEvent, stencilEdt, 2 , DB_MODE_RW);
-
-        ocrDbRelease(depv[3].guid);
-        ocrAddDependence(depv[3].guid, stencilEdt, 3 , DB_MODE_RW);
-
-    }
+    ocrDbRelease(DEPV(private,guid));
+    ocrAddDependence(DEPV(private,guid), stencilGUID, SLOT(private), DB_MODE_RW);
+    ocrAddDependence(leftinEVT, stencilGUID, SLOT(leftin), DB_MODE_RW);
+    ocrAddDependence(rightinEVT, stencilGUID, SLOT(rightin), DB_MODE_RW);
 
     return NULL_GUID;
 }
 
 
-ocrGuid_t wrapupTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
-/*
-waits until realmain is done
-prints out the "answer"
+typedef struct {
+   u64 nrank;
+   u64 npoints;
+   u64 maxt;
+} realMainParam_t;
 
-params: none
-
-dependencies
-0-(N-1) the datablocks in order
-N: output event of realmain
-
-*/
-
-    u64 i, j;
-    double * data[N];
-    for(i=0;i<N;i++) {
-        data[i] = depv[i].ptr;
-        for(j=0;j<M;j++) PRINTF("%d %d %f \n", i, j, data[i][j]);
-        }
-    if(M==50&&N==10&&T==10000) //default values for Jenkins
-        if(data[4][49] - .000836 < 1e-5) PRINTF("PASS\n");
-           else PRINTF("fail by %f\n", data[4][3]-.000836);
-
-    ocrShutdown();
-    return NULL_GUID;
-}
-
-
-ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+ocrGuid_t realMainEDT(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 creates the first set of sticky events
-creates N stencilEdts
+disperses them amond the buffer blocks
+creates nranks stencilEdts
 passes in the main datablock and the correct set of 2 buffer blocks (or NULL_GUID)
-passes in the private block
 
-params: none
+paramv[3]:
+0: nrank
+1: npoints
+2: maxt
+
 dependencies:
-0 - (N-1) the N real datablocks
-N - (5N-5): the (2*N-2) communication datablocks
-  2*N-2 of them will be passed as dependencies to the stencilEdts
-  2*N-2 of them will be passed in as parameters for the next iteration
+0 - (nrank-1) the nrank private datablocks
+N - (3*nrank-3): the (2*nrank-2) buffer datablocks
 
 */
 
+    realMainParam_t * paramPTR = (realMainParam_t *) paramv;
 
-    u64 i, mynode;
-    ocrGuid_t stencilTemplate, stencilEdt[N];
-    ocrEdtTemplateCreate(&stencilTemplate, stencilTask, 0, 4);
+    u64 nrank = paramPTR->nrank;
+    u64 npoints = paramPTR->npoints;
+    u64 maxt = paramPTR->maxt;
+
+    u64 i, myrank;
+
+    ocrGuid_t stencilTML, stencilGUID, oldStencilGUID;
+    ocrEdtTemplateCreate(&stencilTML, stencilEDT, 0, 3);
+
+
     u64 *dummy;
     u64 j;
-    ocrGuid_t sticky;
+    ocrGuid_t rightSendEVT;
+    ocrGuid_t leftSendEVT;
+    buffer_t * bufferPTR;
 
-    double * a[N];
-    buffer_t * buffer[2*N-2];
-    private_t * private[N];
+    private_t * pbPTR = depv[0].ptr;
+    pbPTR->nrank = nrank;
+    pbPTR->npoints = npoints;
+    pbPTR->maxt = maxt;
+    pbPTR->myrank = 0;
+    pbPTR->timestep = 0;
+    pbPTR->dataOffset = sizeof(private_t);
+    pbPTR->stencilTML = stencilTML;
+    pbPTR->oldLeftRecvEVT = NULL_GUID;
+    pbPTR->leftSendEVT = NULL_GUID;
 
-    for(i=0;i<N;i++) a[i] = depv[i].ptr;
-    for(i=N;i<3*N-2;i++) buffer[i-N] = depv[i].ptr;
-    for(i=0;i<N;i++) private[i] = depv[3*N-2+i].ptr;
+    ocrEdtCreate(&stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrAddDependence(NULL_GUID, stencilGUID, 1, DB_MODE_RW);
 
-    u64 lin =  0;
-    u64 rin =  lin + N - 1;
+//index counts through the buffer blocks
+//i counts through the ranks
+//each sticky event gets put in two places
+//   the private block of the sender (in send{left,right}EVT)
+//   in the appropriate buffer block of the receiver
+//
+    u32 index = nrank;
 
-    private[0]->leftevent = NULL_GUID;
-    private[0]->leftold = NULL_GUID;
+    for(i=0;i<nrank-1;i++){
+        ocrEventCreate(&rightSendEVT, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+        bufferPTR = depv[index++].ptr;
+        bufferPTR->EVT = rightSendEVT;
+        pbPTR->rightSendEVT = rightSendEVT;
+        pbPTR->oldRightRecvEVT = NULL_GUID;
+//launch worker i
+        ocrDbRelease(depv[i].guid);
+        ocrAddDependence(depv[i].guid, stencilGUID, 0, DB_MODE_RW);
 
-    for(i=0;i<N-1;i++) {
-        private[i]->mynode = i;
-        private[i]->timestep = 0;
-        private[i]->template = stencilTemplate;
+//create worker i+1
+        oldStencilGUID = stencilGUID;
+        ocrEdtCreate(&stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
-        ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-        private[i]->rightevent = sticky;
-        buffer[lin++]->control = sticky;
-        private[i]->rightold = NULL_GUID;
+        pbPTR = depv[i+1].ptr;
+        pbPTR->nrank = nrank;
+        pbPTR->npoints = npoints;
+        pbPTR->maxt = maxt;
+        pbPTR->myrank = i+1;
+        pbPTR->timestep = 0;
+        pbPTR->dataOffset = sizeof(private_t);
+        pbPTR->stencilTML = stencilTML;
+        pbPTR->oldLeftRecvEVT = NULL_GUID;
 
-        ocrEventCreate(&sticky, OCR_EVENT_STICKY_T, true);
-        private[i+1]->leftevent = sticky;
-        buffer[rin++]->control = sticky;
-        private[i+1]->leftold = NULL_GUID;
+        ocrEventCreate(&leftSendEVT, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+        pbPTR->leftSendEVT = leftSendEVT;
+        pbPTR->oldLeftRecvEVT = NULL_GUID;
+        bufferPTR = depv[index++].ptr;
+        bufferPTR->EVT = leftSendEVT;
+
+        ocrDbRelease(depv[index-1].guid);
+        ocrAddDependence(depv[index-1].guid, oldStencilGUID, 2, DB_MODE_RW);
+        ocrDbRelease(depv[index-2].guid);
+        ocrAddDependence(depv[index-2].guid, stencilGUID, 1, DB_MODE_RW);
     }
 
-    private[N-1]->mynode = N-1;
-    private[N-1]->timestep = 0;
-    private[N-1]->template = stencilTemplate;
-    private[N-1]->rightevent = NULL_GUID;
-    private[N-1]->rightold = NULL_GUID;
-
-//create N stencil init events, attach the data db
-
-    for(i=0;i<4*N-2;i++) ocrDbRelease(depv[i].guid);  //release all dbs
-
-    for(i=0;i<N;i++) ocrEdtCreate(&stencilEdt[i], stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-//attach correct data blocks
-    lin = N;
-    rin =  lin + N - 1;
-    u64 pbuffer = 3*N-2;
-    ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_CONST);
-
-    for(i=0;i<N-1;i++){
-
-        ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_RW);
-        ocrAddDependence(depv[rin++].guid, stencilEdt[i], 2, DB_MODE_RW);
-        ocrAddDependence(depv[pbuffer++].guid, stencilEdt[i], 3, DB_MODE_RW);
-
-        ocrAddDependence(depv[lin++].guid, stencilEdt[i+1], 1, DB_MODE_RW);
-    }
-
-    ocrAddDependence(depv[N-1].guid, stencilEdt[N-1], 0, DB_MODE_RW);
-    ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_RW);
-    ocrAddDependence(depv[pbuffer++].guid, stencilEdt[N-1], 3, DB_MODE_RW);
+    pbPTR->oldRightRecvEVT = NULL_GUID;
+    ocrDbRelease(depv[nrank-1].guid);
+    ocrAddDependence(depv[nrank-1].guid, stencilGUID, 0, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, stencilGUID, 2, DB_MODE_RW);
 
     return NULL_GUID;
 }
 
 
 
-ocrGuid_t mainEdt(){
+ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
 /*
 mainEdt is executed first
 Creates the datablocks
-creates realmain
-creates wrapup
-launches wrapup
-launches realmian
+creates and launches realMain
 */
 
-    u64 i;
-    PRINTF("1D stencil code STICKY style: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
+    u64 i, nrank, npoints, maxt;
+
+
+    void * programArgv = depv[0].ptr;
+    u32 argc = getArgc(programArgv);
+    if(argc != 4) {
+        PRINTF("using default runtime args\n");
+        nrank = 4;
+        npoints = 10;
+        maxt = 100;
+    } else {
+        i = 1;
+        nrank = (u32) atoi(getArgv(programArgv, i++));
+        npoints = (u32) atoi(getArgv(programArgv, i++));
+        maxt = (u32) atoi(getArgv(programArgv, i++));
+    }
+
+
+    PRINTF("1D stencil code STICKY style: \n");
+    PRINTF("number of workers = %ld \n", nrank);
+    PRINTF("data on each worker = %ld \n", npoints);
+    PRINTF("number of timesteps = %ld \n", maxt);
+    if(nrank == 0 || npoints == 0 || maxt == 0) {
+        PRINTF("nrank, npoints, maxt, must all be positive\n");
+        ocrShutdown();
+        return NULL_GUID;
+    }
 
     u64 *dummy;
-    ocrGuid_t realmain, realmainOutputEvent, realmainTemplate, dataDb[N], privateDb[N], bufferDb[2*N-2];
-
-    for(i=0;i<2*N-2;i++) {
-       ocrDbCreate(&(bufferDb[i]), (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
-   }
+    ocrGuid_t realMainGUID, realMainTML;
 
 
-    for(i=0;i<N;i++) {
-       ocrDbCreate(&(privateDb[i]), (void**) &dummy, sizeof(private_t), 0, NULL_GUID, NO_ALLOC);
-       ocrDbCreate(&(dataDb[i]), (void**) &dummy, 2*M*sizeof(double), 0, NULL_GUID, NO_ALLOC);
-   }
+    ocrEdtTemplateCreate(&realMainTML, realMainEDT, 3, 3*nrank-2);
+    u64 paramvout[3] = {nrank, npoints, maxt};
+    ocrEdtCreate(&realMainGUID, realMainTML, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL,
+          EDT_PROP_NONE, NULL_GUID, NULL);
 
-    ocrGuid_t wrapupTemplate;
-    ocrGuid_t wrapupEdt;
+    ocrGuid_t privateDBK, bufferDBK;
 
-    ocrEdtTemplateCreate(&wrapupTemplate, wrapupTask, 0, N+1);
-    ocrEdtCreate(&wrapupEdt, wrapupTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-
-    ocrEdtTemplateCreate(&realmainTemplate, realmainTask, 0, 4*N-2);
-    ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-          EDT_PROP_FINISH, NULL_GUID, &realmainOutputEvent);
-
-    for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_RW);
-        ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_RW);
-
-    for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_RW);
-    for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_RW);
-    for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_RW);
+    for(i=0;i<nrank;i++)  {
+        ocrDbCreate(&privateDBK, (void**) &dummy, sizeof(private_t) + npoints*sizeof(double), 0, NULL_GUID, NO_ALLOC);
+        ocrAddDependence(privateDBK, realMainGUID, i, DB_MODE_RW);
+    }
+    for(i=0;i<2*nrank-2;i++)  {
+        ocrDbCreate(&bufferDBK, (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
+        ocrAddDependence(bufferDBK, realMainGUID, nrank+i, DB_MODE_RW);
+    }
 
     return NULL_GUID;
 }
