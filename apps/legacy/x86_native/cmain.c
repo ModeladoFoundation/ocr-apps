@@ -30,6 +30,7 @@ int main( int argc, char **argv )
     //
     if (ocrAffinityGetCurrent(&affinity) != 0)
         return 0L;
+#if 0
     //
     // funny calls to guarantee we get the ocr-glibc symbols
     //
@@ -40,6 +41,7 @@ int main( int argc, char **argv )
     (void) write( fd, "/dev/null", 0 );
     (void) __close( fd );
     (void) free( st );
+#endif
     //
     // call the application main()
     //
