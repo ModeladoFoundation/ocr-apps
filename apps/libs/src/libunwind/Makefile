@@ -107,6 +107,8 @@ UNWIND_TARGET = x86_64
 endif
 
 debug: BUILD_TYPE = DEBUG
+debug: C_FLAGS += -UNDEBUG -DLOG_DEFAULT=true
+debug: CXX_FLAGS += -UNDEBUG -DLOG_DEFAULT=true
 debug: $(ARCH)
 
 $(ARCHES) install: build
