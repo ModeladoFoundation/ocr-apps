@@ -381,13 +381,15 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
 #ifndef NDEBUG
 #include <stdlib.h>
 
+#ifndef LOG_DEFAULT
+#define LOG_DEFAULT false
+#endif
+
 _LIBUNWIND_HIDDEN
 bool logAPIs() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
-  //static bool checked = true;
-  //static bool log = true;
-  static bool checked = false;
-  static bool log = false;
+  static bool checked = LOG_DEFAULT;
+  static bool log = LOG_DEFAULT;
   if (!checked) {
     log = (getenv("LIBUNWIND_PRINT_APIS") != NULL);
     checked = true;
@@ -398,10 +400,8 @@ bool logAPIs() {
 _LIBUNWIND_HIDDEN
 bool logUnwinding() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
-  //static bool checked = true;
-  //static bool log = true;
-  static bool checked = false;
-  static bool log = false;
+  static bool checked = LOG_DEFAULT;
+  static bool log = LOG_DEFAULT;
   if (!checked) {
     log = (getenv("LIBUNWIND_PRINT_UNWINDING") != NULL);
     checked = true;
