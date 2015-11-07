@@ -120,64 +120,88 @@ WorkflowProcess(
 
 	   const DataArray3D<double> & dataZLevels	= pPatch->GetZLevels();
 
-			// Loop over all horizontal nodes in GridPatch
-			for (int i = box.GetAInteriorBegin(); i < box.GetAInteriorEnd(); i++) {
-			for (int j = box.GetBInteriorBegin(); j < box.GetBInteriorEnd(); j++) {
+		// Loop over all horizontal nodes in GridPatch
+		for (int i = box.GetAInteriorBegin(); i < box.GetAInteriorEnd(); i++) {
+		for (int j = box.GetBInteriorBegin(); j < box.GetBInteriorEnd(); j++) {
 
-				// Loop over all levels in column
-				for (int k = 0; k < pGrid->GetRElements(); k++) {
+			// Loop over all levels in column
+			for (int k = 0; k < pGrid->GetRElements(); k++) {
 
-					// Calculate pressure
-					double dPressure = phys.PressureFromRhoTheta(dataNode[RIx][k][i][j] *dataNode[TIx][k][i][j]);
+				// Total density
+				double dRho = dataNode[RIx][k][i][j];
 
-					// Pointwise temperature
-					double dT = dPressure / (dataNode[RIx][k][i][j] * phys.GetR());
+				// Dry air density
+				double dRhoD =
+					dRho
+					- dataTracer[0][k][i][j]
+					- dataTracer[1][k][i][j]
+					- dataTracer[2][k][i][j];
 
-					qv[k]=dataTracer[0][k][i][j]/dataNode[RIx][k][i][j];
+				// Virtual potential temperature
+				double dThetav = dataNode[TIx][k][i][j];
 
-					qc[k]=dataTracer[1][k][i][j]/dataNode[RIx][k][i][j];
+				// Calculate moist pressure
+				double dPressure =
+					phys.PressureFromRhoTheta(dRho * dThetav);
 
-					qr[k]=dataTracer[2][k][i][j]/dataNode[RIx][k][i][j];
+				// Pointwise virtual temperature
+				double dTv = dPressure / (dRho * phys.GetR());
 
-					t[k]=dataNode[TIx][k][i][j];
+				// Water vapor (RhoQv / Rho)
+				qv[k] = dataTracer[0][k][i][j] / dataNode[RIx][k][i][j];
 
-					rho[k]=dataNode[RIx][k][i][j];
+				// Cloud water (RhoQc / Rho)
+				qc[k] = dataTracer[1][k][i][j] / dataNode[RIx][k][i][j];
 
-					zc[k]=dataZLevels[k][i][j];
+				// Rain water (RhoQr / Rho)
+				qr[k] = dataTracer[2][k][i][j] / dataNode[RIx][k][i][j];
 
-					pk[k]=dataNode[TIx][k][i][j]/dT;
-				}
+				// Potential temperature
+				t[k] = dThetav / (1.0 + 0.61 * qv[k]);
 
-				double rainnc = 0.0;
-				kessler(
-					&(t[0]),
-					&(qv[0]),
-					&(qc[0]),
-					&(qr[0]),
-					&(rho[0]),
-					&(pk[0]),
-					&(dDeltaT),
-					&(zc[0]),
-					&nz,
-					&rainnc);
+				// Dry air density
+				rho[k] = dRhoD;
 
-				for (int k = 0; k < pGrid->GetRElements(); k++) {
-					dataNode[TIx][k][i][j]=t[k];
-					dataNode[RIx][k][i][j]=rho[k];
+				// Heights of each level
+				zc[k] = dataZLevels[k][i][j];
 
-					dataTracer[0][k][i][j]=qv[k]*dataNode[RIx][k][i][j];
-					dataTracer[1][k][i][j]=qc[k]*dataNode[RIx][k][i][j];
-					dataTracer[2][k][i][j]=qr[k]*dataNode[RIx][k][i][j];
-				}
-
-
-
-
+				// Exner function (Tv/theta)
+				pk[k] = dTv / dThetav;
 			}
+
+			double rainnc = 0.0;
+			kessler(
+				&(t[0]),
+				&(qv[0]),
+				&(qc[0]),
+				&(qr[0]),
+				&(rho[0]),
+				&(pk[0]),
+				&(dDeltaT),
+				&(zc[0]),
+				&nz,
+				&rainnc);
+
+			// Update variables
+			for (int k = 0; k < pGrid->GetRElements(); k++) {
+
+				// Moist density
+				dataNode[RIx][k][i][j]=
+					rho[k] / (1.0 - qv[k] - qc[k] - qr[k]);
+
+				// Virtual potential temperature
+				dataNode[TIx][k][i][j] =
+					t[k] * (1.0 + 0.61 * qv[k]);
+
+				dataTracer[0][k][i][j] = qv[k] * dataNode[RIx][k][i][j];
+				dataTracer[1][k][i][j] = qc[k] * dataNode[RIx][k][i][j];
+				dataTracer[2][k][i][j] = qr[k] * dataNode[RIx][k][i][j];
 			}
 		}
+		}
+	}
 
-		// Call up the stack to update performance time
+	// Call up the stack to update performance time
 	WorkflowProcess::Perform(time);
 }
 

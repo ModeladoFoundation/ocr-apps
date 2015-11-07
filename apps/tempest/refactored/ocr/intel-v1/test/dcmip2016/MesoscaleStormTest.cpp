@@ -16,6 +16,8 @@
 
 #include "Tempest.h"
 
+#include "KesslerPhysics.h"
+
 ///////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
@@ -99,7 +101,7 @@ public:
 		PhysicalConstants & phys
 	) const {
 		phys.SetEarthRadius(phys.GetEarthRadius() / m_dEarthScaling);
-		phys.SetOmega(phys.GetOmega() * m_dEarthScaling);
+		phys.SetOmega(0.0);
 	}
 
 	///	<summary>
@@ -217,7 +219,7 @@ try {
 		SetDefaultVerticalOrder(1);
 
 		CommandLineDouble(dZtop, "ztop", 10000.0);
-		CommandLineDouble(dEarthScaling, "X", 1.0);
+		CommandLineDouble(dEarthScaling, "X", 120.0);
 
 		ParseCommandLine(argc, argv);
 	EndTempestCommandLine(argv)
@@ -235,6 +237,9 @@ try {
 
 	TempestSetupCubedSphereModel(model);
 
+	model.GetGrid()->SetReferenceLength(
+		model.GetGrid()->GetReferenceLength() / dEarthScaling);
+
 	// Set the test case for the model
 	AnnounceStartBlock("Initializing test case");
 	model.SetTestCase(
@@ -242,13 +247,13 @@ try {
 			dZtop,
 			dEarthScaling));
 	AnnounceEndBlock("Done");
-/*
+
 	// Add Kessler physics
 	model.AttachWorkflowProcess(
 		new KesslerPhysics(
 			model,
 			model.GetDeltaT()));
-*/
+
 	// Begin execution
 	AnnounceBanner("SIMULATION");
 	model.Go();

@@ -27,6 +27,7 @@
 
 #include "Direction.h"
 
+#include "DataContainer.h"
 #include "DataArray1D.h"
 #include "DataArray3D.h"
 #include "DataArray4D.h"
@@ -35,7 +36,6 @@
 #include "mpi.h"
 #endif
 
-#include <map>
 #include <vector>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -47,58 +47,59 @@ class Connectivity;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class ExchangeBufferKey {
+#ifdef USE_MPI
+typedef int ExchangeBufferId;
+#endif
+#ifdef USE_OCR
+typedef int ExchangeBufferId;
+#endif
+#ifdef USE_HPX
+typedef int ExchangeBufferId;
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+
+class ExchangeBufferInfo {
 
 public:
 	///	<summary>
 	///		Default constructor.
 	///	</summary>
-	ExchangeBufferKey() :
+	ExchangeBufferInfo() :
 		ixSourcePatch(-1),
 		ixTargetPatch(-1),
-		dir(Direction_Middle)
-	{ }
-
-	///	<summary>
-	///		Constructor.
-	///	</summary>
-	ExchangeBufferKey(
-		int a_ixSourcePatch,
-		int a_ixTargetPatch,
-		Direction a_dir
-	) :
-		ixSourcePatch(a_ixSourcePatch),
-		ixTargetPatch(a_ixTargetPatch),
-		dir(a_dir)
+		dir(Direction_Middle),
+		dirOpposing(Direction_Middle),
+		sHaloElements(0),
+		sComponents(0),
+		sMaxRElements(0),
+		sBoundarySize(0),
+		sByteSize(0),
+		ixFirst(0),
+		ixSecond(0),
+		fReverseDirection(false),
+		fFlippedCoordinate(false)
 	{ }
 
 public:
 	///	<summary>
-	///		Comparator.
+	///		Calculate total data size (in bytes).
 	///	</summary>
-	bool operator<(const ExchangeBufferKey & key) const {
-		if (ixSourcePatch < key.ixSourcePatch) {
-			return true;
-		}
-		if (ixSourcePatch > key.ixSourcePatch) {
-			return false;
-		}
-		if (ixTargetPatch < key.ixTargetPatch) {
-			return true;
-		}
-		if (ixTargetPatch > key.ixTargetPatch) {
-			return false;
-		}
-		if (dir < key.dir) {
-			return true;
-		}
-		if (dir > key.dir) {
-			return false;
-		}
-		return false;
+	void CalculateByteSize() {
+		sByteSize =
+		  sBoundarySize
+		* sMaxRElements
+		* sHaloElements
+		* sComponents
+		* sizeof(double);
 	}
 
 public:
+	///	<summary>
+	///		Unique global id of this exchange buffer.
+	///	</summary>
+	ExchangeBufferId id;
+
 	///	<summary>
 	///		Source GridPatch index.
 	///	</summary>
@@ -113,22 +114,11 @@ public:
 	///		Direction.
 	///	</summary>
 	Direction dir;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
-class ExchangeBufferMeta {
-
-public:
-	///	<summary>
-	///		Initial coordinate index.
-	///	</summary>
-	int ixFirst;
 
 	///	<summary>
-	///		Final coordinate index.
+	///		Opposing direction.
 	///	</summary>
-	int ixSecond;
+	Direction dirOpposing;
 
 	///	<summary>
 	///		Number of halo elements.
@@ -146,9 +136,38 @@ public:
 	size_t sMaxRElements;
 
 	///	<summary>
-	///		Total data size.
+	///		Boundary size (lateral length)
 	///	</summary>
-	size_t sDataSize;
+	size_t sBoundarySize;
+
+	///	<summary>
+	///		Total data size (in bytes).
+	///	</summary>
+	size_t sByteSize;
+
+	///	<summary>
+	///		First local index (begin node for Right, Top, Left, Bottom and
+	///		alpha coordinate for TopRight, TopLeft, BottomLeft, BottomRight)
+	///	</summary>
+	int ixFirst;
+
+	///	<summary>
+	///		Second local index (end node for Right, Top, Left, Bottom and
+	///		beta coordinate for TopRight, TopLeft, BottomLeft, BottomRight)
+	///	</summary>
+	int ixSecond;
+
+	///	<summary>
+	///		Indicator of whether or not directions are flipped across the edge.
+	///	</summary>
+	bool fReverseDirection;
+
+	///	<summary>
+	///		Indicator of whether or not the direction of increasing coordinate
+	///		indices flips across the edge.
+	///	</summary>
+	bool fFlippedCoordinate;
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -157,15 +176,69 @@ class ExchangeBufferRegistry {
 
 public:
 	///	<summary>
-	///		Map from ExchangeBufferKey to unique identifier for ExchangeBuffer.
+	///		Vector of ExchangeBufferInfo objects.
 	///	</summary>
-	typedef std::map<ExchangeBufferKey, size_t> MapExchangeBuffer;
+	typedef std::vector<ExchangeBufferInfo> ExchangeBufferInfoVector;
+
+	///	<summary>
+	///		Vector of pointers to data.
+	///	</summary>
+	typedef std::vector<unsigned char *> DataPointerVector;
 
 public:
 	///	<summary>
 	///		Constructor.
 	///	</summary>
-	ExchangeBufferRegistry() {
+	ExchangeBufferRegistry();
+
+	///	<summary>
+	///		Destructor.
+	///	</summary>
+	virtual ~ExchangeBufferRegistry();
+
+	///	<summary>
+	///		Reclassify this ExchangeBuffer as one that does not own
+	///		its data.
+	///	</summary>
+	void SetNoDataOwnership();
+
+public:
+	///	<summary>
+	///		Get a reference to the registry.
+	///	</summary>
+	const ExchangeBufferInfoVector & GetRegistry() const {
+		return m_vecRegistry;
+	}
+
+	///	<summary>
+	///		Get the ExchangeBufferInfo object stored at index ix in the
+	///		registry.
+	///	</summary>
+	const ExchangeBufferInfo & GetExchangeBufferInfo(int ix) {
+		if ((ix < 0) || (ix > m_vecRegistry.size())) {
+			_EXCEPTIONT("ExchangeBuffer index out of range");
+		}
+		return m_vecRegistry[ix];
+	}
+
+	///	<summary>
+	///		Get the pointer for the specified recv buffer.
+	///	</summary>
+	unsigned char * GetRecvBufferPtr(int ix) {
+		if ((ix < 0) || (ix > m_vecRegistry.size())) {
+			_EXCEPTIONT("ExchangeBuffer index out of range");
+		}
+		return m_vecRecvBuffers[ix];
+	}
+
+	///	<summary>
+	///		Get the pointer for the specified send buffer.
+	///	</summary>
+	unsigned char * GetSendBufferPtr(int ix) {
+		if ((ix < 0) || (ix > m_vecRegistry.size())) {
+			_EXCEPTIONT("ExchangeBuffer index out of range");
+		}
+		return m_vecSendBuffers[ix];
 	}
 
 public:
@@ -173,34 +246,56 @@ public:
 	///		Register a new ExchangeBuffer.
 	///	</summary>
 	void Register(
-		const ExchangeBufferKey & key,
-		const ExchangeBufferMeta & meta
-	) {
-		size_t sNextEntry = m_vecMeta.size();
-
-		m_mapKeyToIndex.insert(
-			MapExchangeBuffer::value_type(key, sNextEntry));
-
-		m_vecMeta.push_back(meta);
-	}
-
-public:
-	///	<summary>
-	///		Map of ExchangeBufferKeys to vector indices.
-	///	</summary>
-	MapExchangeBuffer m_mapKeyToIndex;
+		const ExchangeBufferInfo & info
+	);
 
 	///	<summary>
-	///		Metadata for each exchange buffer.
+	///		Get all ExchangeBuffers with source patch index ixPatch.
 	///	</summary>
-	std::vector<ExchangeBufferMeta> m_vecMeta;
+	void GetExchangeBuffersBySourcePatchIx(
+		int ixSourcePatch,
+		std::vector<int> & vecExchangeBufferIndices
+	) const;
 
-#ifdef USE_MPI
 	///	<summary>
-	///		Data pointers for exchange buffer.
+	///		Allocate the specified recv/send buffers.
 	///	</summary>
-	std::vector<unsigned char *> m_vecData;
-#endif
+	void Allocate(int ix);
+
+	///	<summary>
+	///		Assign pointers to specified recv/send buffers.
+	///	</summary>
+	void Assign(
+		int ix,
+		unsigned char * pRecvBuffer,
+		unsigned char * pSendBuffer
+	);
+
+	///	<summary>
+	///		Unassign pointers to specified recv/send buffers.
+	///	</summary>
+	void Unassign(int ix);
+
+protected:
+	///	<summary>
+	///		A flag indicating this ExchangeBufferRegistry owns its own data.
+	///	</summary>
+	bool m_fOwnsData;
+
+	///	<summary>
+	///		Vector of exchange buffers.
+	///	</summary>
+	ExchangeBufferInfoVector m_vecRegistry;
+
+	///	<summary>
+	///		Vector of pointers to receive buffers.
+	///	</summary>
+	DataPointerVector m_vecRecvBuffers;
+
+	///	<summary>
+	///		Vector of pointers to send buffers.
+	///	</summary>
+	DataPointerVector m_vecSendBuffers;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -215,24 +310,8 @@ public:
 	///		Constructor.
 	///	</summary>
 	Neighbor(
-		int ixPatch,
-		int ixNeighbor,
-		bool fReverseDirection,
-		bool fFlippedCoordinate,
-		size_t sBoundarySize
-	) :
-		m_ixPatch(ixPatch),
-		m_ixNeighbor(ixNeighbor),
-		m_fReverseDirection(fReverseDirection),
-		m_fFlippedCoordinate(fFlippedCoordinate),
-		m_sBoundarySize(sBoundarySize),
-		m_sMaxRElements(0),
-		m_sHaloElements(0),
-		m_sComponents(0),
-		m_fComplete(false),
-		m_ixSendBuffer(0),
-		m_ixRecvBuffer(0)
-	{ }
+		const ExchangeBufferInfo & info
+	);
 
 	///	<summary>
 	///		Virtual destructor.
@@ -242,12 +321,16 @@ public:
 
 public:
 	///	<summary>
-	///		Initialize the exchange buffers.
+	///		Allocate the exchange buffers.
 	///	</summary>
-	void InitializeBuffers(
-		size_t sMaxRElements,
-		size_t sHaloElements,
-		size_t sComponents
+	void AllocateBuffers();
+
+	///	<summary>
+	///		Initialize the exchange buffers by pointer.
+	///	</summary>
+	void AttachBuffers(
+		unsigned char * pRecvBuffer,
+		unsigned char * pSendBuffer
 	);
 
 public:
@@ -273,7 +356,6 @@ public:
 	virtual void PrepareExchange(
 		const Grid & grid
 	) {
-
 		// Reset the send buffer index
 		m_ixSendBuffer = 0;
 
@@ -288,7 +370,6 @@ public:
 	///		Pack data into the send buffer.
 	///	</summary>
 	virtual void Pack(
-		const Grid & grid,
 		const DataArray3D<double> & data
 	) = 0;
 
@@ -305,10 +386,10 @@ public:
 	///	</summary>
 	void ResetSendBufferSize() {
 		m_ixSendBuffer =
-			  m_sBoundarySize
-			* m_sMaxRElements
-			* m_sHaloElements
-			* m_sComponents;
+			  m_info.sBoundarySize
+			* m_info.sMaxRElements
+			* m_info.sHaloElements
+			* m_info.sComponents;
 	}
 
 	///	<summary>
@@ -317,15 +398,14 @@ public:
 	virtual void Send(const Grid & grid) = 0;
 
 	///	<summary>
-	///		Receive data from other processors.
+	///		Unpack data from the receive buffer.
 	///	</summary>
 	virtual void Unpack(
-		const Grid & grid,
 		DataArray3D<double> & data
 	) = 0;
 
 	///	<summary>
-	///		Receive data from other processors.
+	///		Unpack data from the receive buffer.
 	///	</summary>
 	virtual void Unpack(
 		const Grid & grid,
@@ -347,45 +427,9 @@ public:
 
 public:
 	///	<summary>
-	///		Index of the source patch.
+	///		Exchange buffer information.
 	///	</summary>
-	int m_ixPatch;
-
-	///	<summary>
-	///		Index of the target patch.
-	///	</summary>
-	int m_ixNeighbor;
-
-	///	<summary>
-	///		Indicator of whether or not directions are flipped across the edge.
-	///	</summary>
-	bool m_fReverseDirection;
-
-	///	<summary>
-	///		Indicator of whether or not the direction of increasing coordinate
-	///		indices flips across the edge.
-	///	</summary>
-	bool m_fFlippedCoordinate;
-
-	///	<summary>
-	///		Number of independent grid cells along boundary.
-	///	</summary>
-	size_t m_sBoundarySize;
-
-	///	<summary>
-	///		Number of radial elements.
-	///	</summary>
-	size_t m_sMaxRElements;
-
-	///	<summary>
-	///		Number of halo elements.
-	///	</summary>
-	size_t m_sHaloElements;
-
-	///	<summary>
-	///		Number of variables.
-	///	</summary>
-	size_t m_sComponents;
+	ExchangeBufferInfo m_info;
 
 	///	<summary>
 	///		Flag indicating if this neighbor has been received and processed.
@@ -429,26 +473,9 @@ public:
 	///		Constructor.
 	///	</summary>
 	ExteriorNeighbor(
-		Direction dir,
-		Direction dirOpposite,
-		int ixPatch,
-		int ixNeighbor,
-		bool fReverseDirection,
-		bool fFlippedCoordinate,
-		size_t sBoundarySize,
-		int ixFirst,
-		int ixSecond
+		const ExchangeBufferInfo & info
 	) :
-		m_dir(dir),
-		m_dirOpposite(dirOpposite),
-		Neighbor(
-			ixPatch,
-			ixNeighbor,
-			fReverseDirection,
-			fFlippedCoordinate,
-			sBoundarySize),
-		m_ixFirst(ixFirst),
-		m_ixSecond(ixSecond)
+		Neighbor(info)
 	{ }
 
 public:
@@ -461,12 +488,12 @@ public:
 		int iA,
 		double dValue
 	) {
-		int ix = (iC * (m_sMaxRElements-1) + iK) * m_sBoundarySize;
+		int ix = (iC * (m_info.sMaxRElements-1) + iK) * m_info.sBoundarySize;
 
-		if (m_fReverseDirection) {
-			ix += m_ixSecond - iA - 1;
+		if (m_info.fReverseDirection) {
+			ix += m_info.ixSecond - iA - 1;
 		} else {
-			ix += iA - m_ixFirst;
+			ix += iA - m_info.ixFirst;
 		}
 
 		m_vecSendBuffer[ix] = dValue;
@@ -481,8 +508,8 @@ public:
 		int iA
 	) const {
 		int ix =
-			(iC * (m_sMaxRElements-1) + iK) * m_sBoundarySize
-				+ (iA - m_ixFirst);
+			(iC * (m_info.sMaxRElements-1) + iK) * m_info.sBoundarySize
+				+ (iA - m_info.ixFirst);
 
 		return m_vecRecvBuffer[ix];
 	}
@@ -499,7 +526,6 @@ public:
 	///		Pack data into the send buffer.
 	///	</summary>
 	virtual void Pack(
-		const Grid & grid,
 		const DataArray3D<double> & data
 	);
 
@@ -522,7 +548,6 @@ public:
 	///		Unpack data from the receive buffer.
 	///	</summary>
 	void Unpack(
-		const Grid & grid,
 		DataArray3D<double> & data
 	);
 
@@ -538,29 +563,6 @@ public:
 	///		Wait for the send request to complete.
 	///	</summary>
 	virtual void WaitSend();
-
-public:
-	///	<summary>
-	///		Direction on this block towards neighbor block.
-	///	</summary>
-	Direction m_dir;
-
-	///	<summary>
-	///		Directon on neighbor block towards this block.
-	///	</summary>
-	Direction m_dirOpposite;
-
-	///	<summary>
-	///		First local index (begin node for Right, Top, Left, Bottom and
-	///		alpha coordinate for TopRight, TopLeft, BottomLeft, BottomRight)
-	///	</summary>
-	int m_ixFirst;
-
-	///	<summary>
-	///		Second local index (end node for Right, Top, Left, Bottom and
-	///		beta coordinate for TopRight, TopLeft, BottomLeft, BottomRight)
-	///	</summary>
-	int m_ixSecond;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -661,6 +663,11 @@ public:
 	virtual ~Connectivity();
 
 public:
+	///	<summary>
+	///		Clear all neighbors from this connectivity object.
+	///	</summary>
+	void ClearNeighbors();
+
 	///	<summary>
 	///		Add a new exterior neighbor.
 	///	</summary>

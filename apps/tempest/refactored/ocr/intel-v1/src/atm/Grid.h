@@ -255,11 +255,6 @@ public:
 	}
 
 	///	<summary>
-	///		Get the longest perimeter over all patches.
-	///	</summary>
-	int GetLongestActivePatchPerimeter() const;
-
-	///	<summary>
 	///		Get the maximum number of nodes in 2D over all patches.
 	///	</summary>
 	int GetMaxNodeCount2D() const;
@@ -284,13 +279,13 @@ public:
 	int GetTotalNodeCount(
 		DataLocation loc = DataLocation_Node
 	) const;
-
+/*
 	///	<summary>
 	///		Get the maximum number of degrees of freedom required for a
 	///		consolidate operation, returned to the root node.
 	///	</summary>
 	int GetMaxDegreesOfFreedom() const;
-
+*/
 public:
 	///	<summary>
 	///		Receive a data object on the root process.
@@ -426,25 +421,10 @@ public:
 	}
 
 	///	<summary>
-	///		Initialize Patches from PatchBoxes.
-	///	</summary>
-	void InitializePatchesFromPatchBoxes();
-
-	///	<summary>
 	///		Return a pointer to a new GridPatch.
 	///	</summary>
 	virtual GridPatch * NewPatch(
 		int ixPatch
-	) {
-		_EXCEPTIONT("Not implemented");
-	}
-
-	///	<summary>
-	///		Add a patch to the grid with the specified index and PatchBox.
-	///	</summary>
-	virtual GridPatch * AddPatch(
-		int ixPatch,
-		const PatchBox & box
 	) {
 		_EXCEPTIONT("Not implemented");
 	}
@@ -486,6 +466,21 @@ protected:
 		const std::string & strGridFile
 	);
 
+public:
+	///	<summary>
+	///		Get a reference to the exchange buffer registry.
+	///	</summary>
+	const ExchangeBufferRegistry & GetExchangeBufferRegistry() const {
+		return m_aExchangeBufferRegistry;
+	}
+
+	///	<summary>
+	///		Get a reference to the exchange buffer registry.
+	///	</summary>
+	ExchangeBufferRegistry & GetExchangeBufferRegistry() {
+		return m_aExchangeBufferRegistry;
+	}
+
 protected:
 	///	<summary>
 	///		Distribute patches among processors and allocate local patches.
@@ -513,14 +508,29 @@ protected:
 	);
 
 	///	<summary>
+	///		Build exchange buffer information for the specified GridPatch.
+	///	</summary>
+	void InitializeExchangeBuffersFromPatch(
+		int ixSourcePatch
+	);
+
+public:
+	///	<summary>
+	///		Build active exchange buffer information using the grid layout.
+	///	</summary>
+	void InitializeExchangeBuffersFromActivePatches();
+
+	///	<summary>
 	///		Build all exchange buffer information using the grid layout.
 	///	</summary>
-	void InitializeExchangeBuffersFromLayout();
+	void InitializeAllExchangeBuffers();
 
 	///	<summary>
 	///		Initialize connectivity between patches.
 	///	</summary>
-	void InitializeConnectivity();
+	void InitializeConnectivity(
+		bool fAllocate = true
+	);
 
 public:
 	///	<summary>
@@ -612,7 +622,6 @@ public:
 				static_cast<unsigned int>(iRefineLevel)));
 	}
 
-
 public:
 /*
 	///	<summary>
@@ -637,26 +646,6 @@ public:
 	}
 */
 	///	<summary>
-	///		Get the patch with the specified index.
-	///	</summary>
-	GridPatch * GetPatch(int ix) {
-		if ((ix < 0) || (ix >= m_vecGridPatches.size())) {
-			_EXCEPTIONT("Invalid patch index");
-		}
-		return m_vecGridPatches[ix];
-	}
-
-	///	<summary>
-	///		Get the patch with the specified index.
-	///	</summary>
-	const GridPatch * GetPatch(int ix) const {
-		if ((ix < 0) || (ix >= m_vecGridPatches.size())) {
-			_EXCEPTIONT("Invalid patch index");
-		}
-		return m_vecGridPatches[ix];
-	}
-
-	///	<summary>
 	///		Get the active patch with the specified index.
 	///	</summary>
 	GridPatch * GetActivePatch(int ix) {
@@ -675,6 +664,18 @@ public:
 		}
 		return m_vecActiveGridPatches[ix];
 	}
+
+#ifdef USE_MPI
+	///	<summary>
+	///		Get the node that contains the specified GridPatch.
+	///	</summary>
+	const int GetPatchProcessor(int ixPatch) const {
+		if ((ixPatch < 0) || (ixPatch >= m_vecPatchProcessor.size())) {
+			_EXCEPTIONT("Invalid active patch index");
+		}
+		return m_vecPatchProcessor[ixPatch];
+	}
+#endif
 
 public:
 	///	<summary>
@@ -864,11 +865,6 @@ protected:
 	std::vector<int> m_vecCumulativePatch2DNodeIndex;
 */
 	///	<summary>
-	///		Vector of grid patches.
-	///	</summary>
-	GridPatchVector m_vecGridPatches;
-
-	///	<summary>
 	///		Vector of grid patches which are active locally.
 	///	</summary>
 	GridPatchVector m_vecActiveGridPatches;
@@ -877,6 +873,13 @@ protected:
 	///		Vector of grid patch ids which are active locally.
 	///	</summary>
 	std::vector<int> m_vecActiveGridPatchIndices;
+
+#ifdef USE_MPI
+	///	<summary>
+	///		Vector of processors that contain the specified GridPatch.
+	///	</summary>
+	std::vector<int> m_vecPatchProcessor;
+#endif
 
 	///	<summary>
 	///		Exchange buffer registry.

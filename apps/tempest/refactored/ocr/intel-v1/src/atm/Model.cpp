@@ -112,11 +112,9 @@ void Model::SetGrid(
 		int nCommSize;
 #ifdef USE_MPI
 		MPI_Comm_size(MPI_COMM_WORLD, &nCommSize);
-#else
-                printf ("ERROR: SHOULD NO COME HERE: OCR IS USED!\n");
 #endif
+
 		m_pGrid->ApplyDefaultPatchLayout(nCommSize);
-		m_pGrid->InitializePatchesFromPatchBoxes();
 
 	} else {
 		m_pGrid->FromFile(m_param.m_strRestartFile);
@@ -127,7 +125,7 @@ void Model::SetGrid(
 
 	if (fInitializeConnectivity) {
 		m_pGrid->DistributePatches();
-		m_pGrid->InitializeExchangeBuffersFromLayout();
+		m_pGrid->InitializeExchangeBuffersFromActivePatches();
 		m_pGrid->InitializeConnectivity();
 	}
 }
@@ -480,10 +478,7 @@ void Model::ComputeErrorNorms() {
 	int nRank;
 #ifdef USE_MPI
 	MPI_Comm_rank(MPI_COMM_WORLD, &nRank);
-#else
-        printf ("ERROR: SHOULD NO COME HERE: OCR IS USED!\n");
 #endif
-
 	// Initialize test case reference data
 	m_pGrid->EvaluateTestCase(*m_pTestCase, m_time, 1);
 

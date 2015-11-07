@@ -70,7 +70,9 @@ bool OutputManagerComposite::OpenFile(
 /*
 	// Determine processor rank
 	int nRank;
+#ifdef USE_MPI
 	MPI_Comm_rank(MPI_COMM_WORLD, &nRank);
+#endif
 
 	// The active model
 	const Model & model = m_grid.GetModel();
@@ -189,7 +191,9 @@ bool OutputManagerComposite::OpenFile(
 	}
 
 	// Wait for all processes to complete
+#ifdef USE_MPI
 	MPI_Barrier(MPI_COMM_WORLD);
+#endif
 */
 	return true;
 }

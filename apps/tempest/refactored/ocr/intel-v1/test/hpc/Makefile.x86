@@ -75,9 +75,10 @@ TARGET := DataContainerTest
 # Space separated list of source files
 
 SRCS :=  $(TARGET).cpp
+CONFIG_FLAGS := --guid LABELED
 OBJS := $(notdir $(SRCS:.cpp=.o))
 //CFLAGS := -O0 -g -I${TEMPESTBASEDIR}/include -I${HOME}/mpi-stub/include
-CFLAGS := -O0 -g -I${TEMPESTBASEDIR}/include
+CFLAGS := -O0 -g -DUSE_OCR -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include
 LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -lnetcdf -lnetcdf_c++ -llapack -lblas
 
 # Targets:
