@@ -40,8 +40,9 @@ extern "C" {
 // or set to 0 to turn off permanently in favor of Labeled Guids
 // 11-aug-2105: turn on labeled GUIDs or turn off the Event Array.
 // 22-sept-2015: Temporarily turn off labeled GUIDS for the Workshop.
+// 10-Nov-2015: Turn labeled GUIDs back on
 #ifndef EVENT_ARRAY
-    #define EVENT_ARRAY 1
+    #define EVENT_ARRAY 0   // Labeled guids is ON
 #endif
 
 /* 4/21/15, ocrLegacyBlockProgress() has been working for a while, turn

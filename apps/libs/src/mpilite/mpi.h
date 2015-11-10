@@ -32,7 +32,7 @@ extern "C" {
 // instead of MPI_Init....
 
 #ifndef OCR_X86_MPI
-    #define OCR_X86_MPI 0
+    #define OCR_X86_MPI 1
 #endif
 
 #if OCR_X86_MPI
