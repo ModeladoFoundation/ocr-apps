@@ -139,6 +139,11 @@ static int sendData(void *buf, int count, MPI_Datatype
     // copy buf starting at .data
     memcpy(&(ptr->data), buf, totalSize);
 
+    PRINTF("sendData: rank #%d: Send to %d tag:%d on event guid %ld, DB %ld, ptr %p\n"
+           "\tptr->{%lx,%lx,%lx,%lx}\n",
+           source,  dest, tag, messageEvent, DB, ptr,
+           ((u64*)ptr)[0],((u64*)ptr)[1],((u64*)ptr)[2],((u64*)ptr)[3]); fflush(stdout);
+
     ocrDbRelease(DB); // make sure it's visible to receiver
 
     // OK, Send the DB. [It's only going to be used in DB_MODE_CONST by the
@@ -292,6 +297,11 @@ static int recvData(void *buf, int count, MPI_Datatype
     int ret = MPI_SUCCESS;
     mpiOcrMessageP_t ptr = (mpiOcrMessageP_t) messagePtr;
 
+    PRINTF("recvData: rank #%d: Recved from %d tag:%d, DB %ld, ptr %p\n"
+           "\tptr->{%lx,%lx,%lx,%lx}\n",
+           dest, source, tag, DB, ptr,
+           ((u64*)ptr)[0],((u64*)ptr)[1],((u64*)ptr)[2],((u64*)ptr)[3]);  fflush(stdout);
+
     // Check message header components against the args. If they're wrong,
     // then the system got the wrong message!
 
@@ -366,7 +376,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
             ERROR(msg); // exits
         }
 
-    PRINTF("mpiOcrRecv: rank #%d: Recv from %d tag:%d on event guid %ld\n",
+    PRINTF("mpiOcrRecv: rank #%d: Recving from %d tag:%d on event guid %ld\n",
            dest, source, tag, messageEvent);  fflush(stdout);
 
     /* PRINTF("mpiOcrRecv: rank #%d: Recving on event guid %ld\n",
@@ -385,6 +395,11 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
                     dest, err, messageEvent);
             ERROR(msg); // exits
         }
+
+    PRINTF("mpiOcrRecv before sleep: rank #%d: Recved from %d tag:%d on event guid %ld, DB %ld, ptr %p\n"
+           "\tptr->{%lx,%lx,%lx,%lx}\n",
+           dest, source, tag, messageEvent, DB, myPtr,
+           ((u64*)myPtr)[0],((u64*)myPtr)[1],((u64*)myPtr)[2],((u64*)myPtr)[3]);  fflush(stdout);
     ocrEventDestroy(messageEvent);
 
     return recvData(buf, count, datatype, source, dest, tag, comm,
