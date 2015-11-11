@@ -44,7 +44,7 @@ ocrGuid_t fftIterationEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t edtGuid;
     ocrEdtCreate(&edtGuid, startTempGuid, EDT_PARAM_DEF, edtParamv, 1,
-                 dependencies, EDT_PROP_FINISH, NULL_GUID, NULL_GUID);
+                 dependencies, EDT_PROP_FINISH, NULL_GUID, NULL);
 
     return NULL_GUID;
 }
@@ -80,10 +80,10 @@ ocrGuid_t fftStartEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t edtGuid, edtGuid2, endEdtGuid, finishEventGuid, finishEventGuid2;
 
         ocrEdtCreate(&edtGuid, startGuid, EDT_PARAM_DEF, childParamv,
-                     EDT_PARAM_DEF, NULL_GUID, EDT_PROP_FINISH, NULL_GUID,
+                     EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID,
                      &finishEventGuid);
         ocrEdtCreate(&edtGuid2, startGuid, EDT_PARAM_DEF, childParamv2,
-                     EDT_PARAM_DEF, NULL_GUID, EDT_PROP_FINISH, NULL_GUID,
+                     EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID,
                      &finishEventGuid2);
             PRINTF("finishEventGuid after create: %lu\n",finishEventGuid);
 
@@ -305,7 +305,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     }
 
     ocrEdtCreate(&edtGuid, iterationTempGuid, EDT_PARAM_DEF, edtParamv,
-                 EDT_PARAM_DEF, NULL_GUID, EDT_PROP_FINISH, NULL_GUID,
+                 EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID,
                  &edtEventGuid);
     ocrEdtTemplateDestroy(iterationTempGuid);
 
