@@ -40,9 +40,14 @@ all: $(APP)
 default: all
 
 $(APP) : $(APP_OBJS)
-	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX)
+	# next attempt
+	$(LD) -static -o libhello.a hello.o $(NL_LIBSUFFIX) --unresolved-symbols=ignore-all
+	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.a $(LINK_OPTS)
+#	$(CC) -v -o $@ cmain.o $(OCR_LIB) libhello.a -zmuldefs
+	# method #7
+#	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX)
 #	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lnewlibc hello.o $(LINK_OPTS)
-	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
 #	$(CC) -v -o $@ cmain.o $(OCR_LIB) -L$(APPS_ROOT)/legacy/x86_native -lhello $(LINK_OPTS)
 #	$(LD) -static -o $@ $(GLIBC_LIBPREFIX) $(GLIBC_LIB_PATH) cmain.o -lhello -locr -L/usr/lib/x86_64-linux-gnu -lc -lpthread $(GLIBC_LIBSUFFIX)
 #	$(LD) -static -o hello $(APP_OBJS) $(NL_LIBSUFFIX) -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -locr -L/usr/lib/x86_64-linux-gnu -lc -lpthread
