@@ -1064,9 +1064,10 @@ void visitorTraversal::visit(SgNode* node)
         {
             SgName funcName = funcSym->get_name();
             SgScopeStatement * scope = funcSym->get_declaration()->get_scope();
-            if (strncmp(funcName.getString().c_str(), "MPI_", 4) == 0)
+            if (strncmp(funcName.getString().c_str(), "MPI", 3) == 0)
             {
-                if (strcmp(funcName.getString().c_str(), "MPI_Init") == 0)
+                if ((strcmp(funcName.getString().c_str(), "MPI_Init") == 0) ||
+                    (strcmp(funcName.getString().c_str(), "MPIlite_Init") == 0))
                     _status=E_MPI_FOUND;
 
                 // MPI-lite uses different definitions of MPI_Comm, MPI_Op and
