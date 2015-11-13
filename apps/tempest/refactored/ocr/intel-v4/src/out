@@ -1,0 +1,671 @@
+atm/ChecksumType.h
+atm/CommandLine.h
+atm/Connectivity.cpp
+134c134
+< ) {
+---
+> ) {
+152c152
+< ) :
+---
+> ) :
+305c305
+< 				m_vecSendBuffer[m_ixSendBuffer++] = data[k][i][j];
+---
+> 				m_vecSendBuffer[m_ixSendBuffer++] = data[k][i][j];
+310c310
+<
+---
+>
+416c416
+< 	// Pack data to send toprightward
+---
+> 	// Pack data to send toprightward
+422c422
+<
+---
+>
+453c453
+< 	// Pack data to send topleftward
+---
+> 	// Pack data to send topleftward
+459c459
+<
+---
+>
+490c490
+< 	// Pack data to send bottomleftward
+---
+> 	// Pack data to send bottomleftward
+496c496
+<
+---
+>
+527c527
+< 	// Pack data to send bottomrightward
+---
+> 	// Pack data to send bottomrightward
+533c533
+<
+---
+>
+967c967
+< 		if ((pNeighbor->m_info.dir == Direction_Right) ||
+---
+> 		if ((pNeighbor->m_info.dir == Direction_Right) ||
+atm/Connectivity.h
+22,27d21
+< //#define USE_MPI
+< //#define USE_HPX
+< #define USE_OCR
+<
+< ///////////////////////////////////////////////////////////////////////////////
+<
+atm/ConsolidationStatus.cpp
+31d30
+< #ifdef USE_MPI
+33d31
+< #endif
+119d116
+<
+126a124
+>
+atm/ConsolidationStatus.h
+23d22
+< #ifdef USE_MPI
+25,28d23
+< #endif
+< #ifdef USE_OCR
+< typedef int MPI_Request;
+< #endif
+atm/CubedSphereTrans.cpp
+98c98
+<
+---
+>
+493c493
+< 			dUlat =
+---
+> 			dUlat =
+507c507
+< 			dUlon =
+---
+> 			dUlon =
+533c533
+<
+---
+>
+587c587
+< 			dUbeta =
+---
+> 			dUbeta =
+601c601
+< 			dUalpha =
+---
+> 			dUalpha =
+621c621
+< 			dUalpha =
+---
+> 			dUalpha =
+atm/CubedSphereTrans.h
+63c63
+< 	///		Determine the (X, Y, idest) coordinates of a source point on
+---
+> 	///		Determine the (X, Y, idest) coordinates of a source point on
+103c103
+< 	///		Determine the (lat, lon) coordinates of a point in equiangular ABP
+---
+> 	///		Determine the (lat, lon) coordinates of a point in equiangular ABP
+1649c1649
+<
+---
+>
+1921c1921
+< 		dBeta =
+---
+> 		dBeta =
+1998c1998
+<
+---
+>
+atm/Defines.h
+atm/Direction.cpp
+atm/Direction.h
+atm/DynamicsUtilities.h
+atm/EquationSet.cpp
+atm/EquationSet.h
+atm/FluxCorrectionFunction.cpp
+atm/FluxCorrectionFunction.h
+atm/Grid.cpp
+448c448
+< 	} else if (eDataType == DataType_Tracers) {
+---
+> 	} else if (eDataType == DataType_Tracers) {
+1155c1155
+<
+---
+>
+atm/Grid.h
+atm/GridCSGLL.cpp
+420c420
+<
+---
+>
+424c424
+<
+---
+>
+atm/GridCSGLL.h
+atm/GridCartesianGLL.cpp
+83a84,88
+> 	// Verify patch count is positive
+> 	if (nPatchCount < 1) {
+> 		_EXCEPTIONT("nPatchCount must be a positive integer");
+> 	}
+>
+89,91d93
+<         printf("GJDEBUG0: nPatchCount = %d\n", (int)  nPatchCount);
+<         fflush (stdout);
+<
+98,99d99
+<         printf("GJDEBUG1: nProcsPerDirection = %d\n", (int)  nProcsPerDirection);
+<         fflush (stdout);
+105,106d104
+<         printf("GJDEBUG2: nProcsPerDirection = %d\n", (int)  nProcsPerDirection);
+<         fflush (stdout);
+atm/GridCartesianGLL.h
+59c59
+<
+---
+>
+85c85
+<
+---
+>
+97c97
+<
+---
+>
+163c163
+<
+---
+>
+atm/GridGLL.cpp
+552c552
+< 	}
+---
+> 	}
+atm/GridGLL.h
+atm/GridPatch.cpp
+23d22
+< #ifdef USE_MPI
+25d23
+< #endif
+49c47
+<
+---
+>
+135d132
+< #ifdef USE_MPI
+137d133
+< #endif
+442c438
+<
+---
+>
+atm/GridPatch.h
+atm/GridPatchCSGLL.cpp
+382c382
+< 		double dContraMetricScale =
+---
+> 		double dContraMetricScale =
+atm/GridPatchCSGLL.h
+atm/GridPatchCartesianGLL.cpp
+96c96
+< 	double dElementDeltaB = (gridCartesianGLL.GetMaximumY() -
+---
+> 	double dElementDeltaB = (gridCartesianGLL.GetMaximumY() -
+100c100
+<
+---
+>
+138c138
+<
+---
+>
+263,264c263,264
+< 	double dRefLat = gridCartesianGLL.GetReferenceLatitude();
+< 	double dy0 = 0.5 * fabs(gridCartesianGLL.GetMaximumY() -
+---
+> 	double dRefLat = gridCartesianGLL.GetReferenceLatitude();
+> 	double dy0 = 0.5 * fabs(gridCartesianGLL.GetMaximumY() -
+267c267
+< 	double dbetap = 2.0 * phys.GetOmega() * cos(dRefLat) /
+---
+> 	double dbetap = 2.0 * phys.GetOmega() * cos(dRefLat) /
+340c340
+< 				double dDxZ = m_grid.GetZtop() - dZs * m_grid.GetZtop() *
+---
+> 				double dDxZ = m_grid.GetZtop() - dZs * m_grid.GetZtop() *
+412c412
+< /*
+---
+> /*
+430c430
+< 				double dbZ = sinh(m_grid.GetZtop() * (1.0 - dREtaStretch) / m_dSL) /
+---
+> 				double dbZ = sinh(m_grid.GetZtop() * (1.0 - dREtaStretch) / m_dSL) /
+441c441
+< 				double dDxZ = m_grid.GetZtop() - dZs * m_grid.GetZtop() *
+---
+> 				double dDxZ = m_grid.GetZtop() - dZs * m_grid.GetZtop() *
+518c518
+<
+---
+>
+549,550c549,550
+< 			m_dataZLevels[k][i][j] = m_grid.GetZtop() * m_grid.GetREtaLevel(k) +
+< 			m_dataTopography[i][j] * sinh(m_grid.GetZtop() * (1.0 - m_grid.GetREtaLevel(k)) / m_dSL) /
+---
+> 			m_dataZLevels[k][i][j] = m_grid.GetZtop() * m_grid.GetREtaLevel(k) +
+> 			m_dataTopography[i][j] * sinh(m_grid.GetZtop() * (1.0 - m_grid.GetREtaLevel(k)) / m_dSL) /
+554,555c554,555
+< 			m_dataZInterfaces[k][i][j] = m_grid.GetZtop() * m_grid.GetREtaInterface(k) +
+< 			m_dataTopography[i][j] * sinh(m_grid.GetZtop() * (1.0 - m_grid.GetREtaInterface(k)) / m_dSL) /
+---
+> 			m_dataZInterfaces[k][i][j] = m_grid.GetZtop() * m_grid.GetREtaInterface(k) +
+> 			m_dataTopography[i][j] * sinh(m_grid.GetZtop() * (1.0 - m_grid.GetREtaInterface(k)) / m_dSL) /
+1231c1231
+<
+---
+>
+atm/GridPatchCartesianGLL.h
+atm/GridPatchGLL.cpp
+atm/GridPatchGLL.h
+atm/GridSpacing.cpp
+atm/GridSpacing.h
+atm/GridStaggering.h
+atm/HeldSuarezPhysics.cpp
+atm/HeldSuarezPhysics.h
+atm/HorizontalDynamics.h
+atm/HorizontalDynamicsDG.cpp
+256c256
+< 				dLocalUpdateUa -=
+---
+> 				dLocalUpdateUa -=
+455c455
+< #ifdef DIFFERENTIAL_FORM
+---
+> #ifdef DIFFERENTIAL_FORM
+577c577
+< #ifdef DIFFERENTIAL_FORM
+---
+> #ifdef DIFFERENTIAL_FORM
+892c892
+< 				dLocalUpdateUa -=
+---
+> 				dLocalUpdateUa -=
+1558c1558
+< 				double dDivUpdateAB =
+---
+> 				double dDivUpdateAB =
+atm/HorizontalDynamicsDG.h
+atm/HorizontalDynamicsFEM.cpp
+563c563
+<
+---
+>
+602c602
+<
+---
+>
+890c890
+< 							* dDxBasis1D[s][i];
+---
+> 							* dDxBasis1D[s][i];
+1344c1344
+< 					double dU0 =
+---
+> 					double dU0 =
+1350c1350
+< 					double dV0 =
+---
+> 					double dV0 =
+2189c2189
+< 	// Apply viscosity
+---
+> 	// Apply viscosity
+atm/HorizontalDynamicsFEM.h
+atm/HorizontalDynamicsStub.h
+atm/JacobianFreeNewtonKrylov.cpp
+223c223
+< 				m_dW[j] = (m_dW[j] - m_dFX[j]) * dInvEpsilon;
+---
+> 				m_dW[j] = (m_dW[j] - m_dFX[j]) * dInvEpsilon;
+atm/JacobianFreeNewtonKrylov.h
+112c112
+<
+---
+>
+147c147
+<
+---
+>
+atm/LinearColumnOperator.cpp
+atm/LinearColumnOperator.h
+atm/LinearColumnOperatorFEM.cpp
+277c277
+<
+---
+>
+408c408
+< 		double dDeltaREta =
+---
+> 		double dDeltaREta =
+atm/LinearColumnOperatorFEM.h
+atm/Makefile
+atm/Model.cpp
+97a98
+> 	int nPatchCount,
+112c113
+< 		int nCommSize;
+---
+>
+114c115,117
+< 		MPI_Comm_size(MPI_COMM_WORLD, &nCommSize);
+---
+> 		if (nPatchCount == (-1)) {
+> 			MPI_Comm_size(MPI_COMM_WORLD, &nPatchCount);
+> 		}
+117c120
+< 		m_pGrid->ApplyDefaultPatchLayout(nCommSize);
+---
+> 		m_pGrid->ApplyDefaultPatchLayout(nPatchCount);
+479d481
+< #ifdef USE_MPI
+481c483
+< #endif
+---
+>
+atm/Model.h
+107a108
+> 		int nPatchCount = (-1),
+atm/OutputManager.cpp
+26d25
+< #ifdef USE_MPI
+28d26
+< #endif
+59d56
+< #ifdef USE_MPI
+61d57
+< #endif
+atm/OutputManager.h
+atm/OutputManagerChecksum.cpp
+24d23
+< #ifdef USE_MPI
+26d24
+< #endif
+50d47
+< #ifdef USE_MPI
+52d48
+< #endif
+atm/OutputManagerChecksum.h
+atm/OutputManagerComposite.cpp
+26d25
+< #ifdef USE_MPI
+28d26
+< #endif
+73d70
+< #ifdef USE_MPI
+75d71
+< #endif
+194d189
+< #ifdef USE_MPI
+196d190
+< #endif
+199c193
+< }
+---
+> }
+atm/OutputManagerComposite.h
+atm/OutputManagerReference.cpp
+26d25
+< #ifdef USE_MPI
+28d26
+< #endif
+238d235
+< #ifdef USE_MPI
+240d236
+< #endif
+417d412
+< #ifdef USE_MPI
+419d413
+< #endif
+422c416
+< }
+---
+> }
+448d441
+< #ifdef USE_MPI
+450d442
+< #endif
+619d610
+< #ifdef USE_MPI
+621d611
+< #endif
+atm/OutputManagerReference.h
+atm/PatchBox.h
+atm/PhysicalConstants.cpp
+atm/PhysicalConstants.h
+atm/Tempest.h
+atm/TempestInitialize.h
+42d41
+< #ifdef USE_MPI
+44d42
+< #endif
+370c368
+<
+---
+>
+373d370
+< #ifdef USE_MPI
+375d371
+< #endif
+455d450
+< #ifdef USE_MPI
+457d451
+< #endif
+459c453
+< 	Grid * pGrid =
+---
+> 	Grid * pGrid =
+516d509
+< #ifdef USE_MPI
+519d511
+< #endif
+532d523
+< #ifdef USE_MPI
+534d524
+< #endif
+atm/TestCase.cpp
+atm/TestCase.h
+atm/TimestepScheme.h
+atm/TimestepSchemeARK2.cpp
+atm/TimestepSchemeARK2.h
+atm/TimestepSchemeARK3.cpp
+atm/TimestepSchemeARK3.h
+atm/TimestepSchemeARK4.cpp
+29c29
+< const double TimestepSchemeARK4::m_dTimeCf[6] = {1./3., 1./3.,
+---
+> const double TimestepSchemeARK4::m_dTimeCf[6] = {1./3., 1./3.,
+91c91
+<
+---
+>
+atm/TimestepSchemeARK4.h
+atm/TimestepSchemeStrang.cpp
+245c245
+<
+---
+>
+443c443
+<
+---
+>
+atm/TimestepSchemeStrang.h
+atm/VerticalDynamics.h
+atm/VerticalDynamicsFEM.cpp
+1581c1581
+< 		if (pGrid->GetVarLocation(PIx) == DataLocation_Node) {
+---
+> 		if (pGrid->GetVarLocation(PIx) == DataLocation_Node) {
+2478c2478
+< 			double dRHSWCoeff =
+---
+> 			double dRHSWCoeff =
+2488c2488
+< 					dRHSWCoeff
+---
+> 					dRHSWCoeff
+2539c2539
+< 			double dRHSWCoeff =
+---
+> 			double dRHSWCoeff =
+2549c2549
+< 					dRHSWCoeff
+---
+> 					dRHSWCoeff
+atm/VerticalDynamicsFEM.h
+atm/VerticalDynamicsStub.h
+atm/VerticalStretch.h
+atm/WorkflowProcess.cpp
+atm/WorkflowProcess.h
+base/Announce.cpp
+19d18
+< #ifdef USE_MPI
+21d19
+< #endif
+65d62
+< #ifdef USE_MPI
+67d63
+< #endif
+105d100
+< #ifdef USE_MPI
+107d101
+< #endif
+139d132
+< #ifdef USE_MPI
+141c134
+< #endif
+---
+>
+189d181
+< #ifdef USE_MPI
+191d182
+< #endif
+base/Announce.h
+base/CommandLine.h
+base/DataArray1D.h
+base/DataArray2D.h
+base/DataArray3D.h
+base/DataArray4D.h
+base/DataChunk.h
+base/DataContainer.cpp
+52c52
+<
+---
+>
+base/DataContainer.h
+base/DataLocation.h
+base/DataType.h
+base/DebugHelper.h
+base/Exception.cpp
+base/Exception.h
+69c69
+<
+---
+>
+84c84
+<
+---
+>
+94c94
+<
+---
+>
+106c106
+<
+---
+>
+111c111
+<
+---
+>
+base/FunctionTimer.cpp
+base/FunctionTimer.h
+base/GaussLobattoQuadrature.cpp
+186c186
+<
+---
+>
+base/GaussLobattoQuadrature.h
+base/GaussQuadrature.cpp
+base/GaussQuadrature.h
+base/LegendrePolynomial.cpp
+726c726
+< 			// Second derivative obtained from
+---
+> 			// Second derivative obtained from
+base/LegendrePolynomial.h
+83c83
+< 	///		Retrieve the specified root of the extended derivative of the
+---
+> 	///		Retrieve the specified root of the extended derivative of the
+base/LinearAlgebra.cpp
+base/LinearAlgebra.h
+77c77
+< int dgbsv_(int *n, int *kl, int *ku, int *nrhs, double *ab, int *ldab, int *ipiv, double *b, int *ldb, int *info);
+---
+> int dgbsv_(int *n, int *kl, int *ku, int *nrhs, double *ab, int *ldab, int *ipiv, double *b, int *ldb, int *info);
+base/Makefile
+base/MathHelper.cpp
+base/MathHelper.h
+base/MemoryTools.cpp
+base/MemoryTools.h
+base/PolynomialInterp.cpp
+base/PolynomialInterp.h
+base/Preferences.cpp
+base/Preferences.h
+base/STLStringHelper.h
+base/StringHelper.h
+base/TimeObj.cpp
+131c131
+< 	if ((m_eCalendarType == CalendarNoLeap) ||
+---
+> 	if ((m_eCalendarType == CalendarNoLeap) ||
+170c170
+< 	if ((m_eCalendarType == CalendarNoLeap) ||
+---
+> 	if ((m_eCalendarType == CalendarNoLeap) ||
+350c350
+<
+---
+>
+383c383
+<
+---
+>
+685c685
+< 			// Record second
+---
+> 			// Record second
+695c695
+< 			// Record microsecond
+---
+> 			// Record microsecond
+765c765
+< 		}
+---
+> 		}
+base/TimeObj.h
