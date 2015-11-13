@@ -13,7 +13,8 @@ LIBS = $(APPS_LIBS_ROOT)/lib
 OCR_INC = $(APPS_LIBS_ROOT)/include
 
 CFLAGS += -std=c99 -U__STRICT_ANSI__ -isystem $(OCR_INC)
-LINK_OPTS = -Xlinker -rpath=$(APPS_ROOT)/legacy/x86_native -Xlinker -rpath=$(APPS_ROOT)/../ocr/build/x86_lib/objs
+#LINK_OPTS = -Xlinker -rpath=$(APPS_ROOT)/legacy/x86_native -Xlinker -rpath=$(APPS_ROOT)/../ocr/build/x86_lib/objs
+LINK_OPTS = -Xlinker -rpath=$(APPS_ROOT)/../ocr/build/x86_lib/objs
 
 GLIBC_LIB_PATH = -L$(CURDIR) -L$(OCR_LIB_PATH) -L/usr/lib/x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/4.9 -L/lib/x86_64-linux-gnu -L/lib -L/usr/lib
 GLIBC_LIBPREFIX = /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/4.9/crtbegin.o
@@ -26,8 +27,8 @@ NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
 # Other library - this uses the libocrscaffold.a, but it
 # should actually be the real ocr library/runtime.
 OCR_LIB_PATH = $(APPS_ROOT)/../ocr/build/x86_lib/objs
-#OCR_LIB = $(OCR_LIB_PATH)/libocr.so
-OCR_LIB = $(OCR_LIB_PATH)/libocr.a
+OCR_LIB_A = $(OCR_LIB_PATH)/libocr.a
+OCR_LIB_O = $(OCR_LIB_PATH)/libocr.o
 
 APP = hello
 APP_SRCS = cmain.c hello.c
@@ -40,11 +41,46 @@ all: $(APP)
 default: all
 
 $(APP) : $(APP_OBJS)
-	# next attempt
-	$(LD) -static -o libhello.a hello.o $(NL_LIBSUFFIX) --unresolved-symbols=ignore-all
-	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.a $(LINK_OPTS)
-#	$(CC) -v -o $@ cmain.o $(OCR_LIB) libhello.a -zmuldefs
-	# method #7
+#
+# create re-linkable libhello.o...
+	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	$(CC) -v -o $@ cmain.o -Xlinker --start-group $(OCR_LIB_O) -Xlinker --end-group libhello.o -zmuldefs
+#
+# create re-linkable libhello.o...
+# link to re-linkable ocr/c/pthread library, using --start/end-group
+#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -locr libhello.o $(LINK_OPTS)
+#
+# create re-linkable libhello.o...
+# link to re-linkable ocr/c/pthread library...
+# .. main calls ocrInit, tries to open file, which results in a malloc which resolved to libhello.o - which tries to call OCR!...
+#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	$(CC) -v -o $@ cmain.o $(OCR_LIB_O) libhello.o -zmuldefs
+#	$(CC) -v -o $@ cmain.o -Xlinker --start-group $(OCR_LIB_O) -Xlinker --end-group libhello.o -zmuldefs
+#
+# create re-linkable libhello.o...
+# link to static ocr library, and dynamic link to native libs...
+# .. main calls ocrInit, tries to open file, which results in a malloc which resolved to libhello.o - which tries to call OCR!...
+#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	$(CC) -v -o $@ cmain.o $(OCR_LIB_A) -L/usr/lib/x86_64-linux-gnu -lc -lpthread libhello.o -zmuldefs
+#
+# create re-linkable libhello.o...
+# .. this produced a libhello.o which has relocs everywhere for undefined symbols
+# .. also, there are undefined symbols in the resulting hello
+# .. main calls ocrInit, tries to open file, which results in a malloc which resolved to libhello.o - which tries to call OCR!...
+#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.o $(LINK_OPTS)
+#
+# builds a statically linked libhello.a and uses ignore-all
+# .. this produced a libhello.a which no longer has relocs for undefined symbols
+# then, it dynamically links with ocr, c, pthread .sos
+#	$(LD) -static -o libhello.a hello.o $(NL_LIBSUFFIX) --unresolved-symbols=ignore-all
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.a $(LINK_OPTS)
+#
+# this atttempts to link everything statically...
+#	$(CC) -v -o $@ cmain.o libhello.a $(OCR_LIB) -zmuldefs
+#
+# method #7
 #	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX)
 #	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lnewlibc hello.o $(LINK_OPTS)
 #	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
@@ -61,11 +97,11 @@ $(APP) : $(APP_OBJS)
 	@echo Successfully built $@
 
 %.o : %.c
-	$(CC) -g -fPIC -O0 -c $(CFLAGS) $< -o $@
+	$(CC) -g -O0 -c $(CFLAGS) $< -o $@
 
 dump:
 	@echo APPS_ROOT = $(APPS_ROOT)
 	@echo LIBS = $(LIBS)
 
 clean:
-	@rm -f $(APP) $(APP_OBJS) *.so *.o
+	@rm -f $(APP) $(APP_OBJS) *.so *.o *.a
