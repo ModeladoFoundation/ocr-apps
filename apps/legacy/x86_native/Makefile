@@ -20,6 +20,11 @@ GLIBC_LIB_PATH = -L$(CURDIR) -L$(OCR_LIB_PATH) -L/usr/lib/x86_64-linux-gnu -L/us
 GLIBC_LIBPREFIX = /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/4.9/crtbegin.o
 GLIBC_LIBSUFFIX = /usr/lib/gcc/x86_64-linux-gnu/4.9/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o
 
+LIBC = /usr/lib/x86_64-linux-gnu/libc.a
+PTHREAD_LIB = /usr/lib/x86_64-linux-gnu/libpthread.a
+LIB_GCC = /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
+GLIBC_A = $(PTHREAD_LIB) $(LIB_GCC) $(LIBC)
+
 # Libraries to include from newlib
 NL_LIBPREFIX = $(LIBS)/crt0.o
 NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
@@ -41,6 +46,33 @@ all: $(APP)
 default: all
 
 $(APP) : $(APP_OBJS)
+#
+#	$(LD) -static -o libhello.o hello.o $(NL_LIBSUFFIX) #--emit-relocs --unresolved-symbols=ignore-all
+#	nm -u libhello.o | sed 's/^.*U //' > syms
+#	objcopy -S --keep-symbols keep --keep-symbols syms libhello.o
+#	$(CC) -v -o $@ cmain.o libhello.o -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread $(LINK_OPTS)
+#
+# use CC to do everything...
+#	$(CC) -v -o $@ cmain.o hello.o $(NL_LIBSUFFIX) -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread $(LINK_OPTS)
+#
+# use CC to do everything...
+#	$(CC) -v -static -o $@ cmain.o hello.o $(NL_LIBSUFFIX) $(OCR_LIB_A)
+#
+# create shared libhello.so from hello.o and newlib libs
+# create shared libtmp.so from cmain.o and libocr.so
+# then use CC to do final linking with libc and libpthread
+# .. can't find mainEdt
+#	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX)
+#	$(LD) -shared -o libtmp.so cmain.o $(APPS_ROOT)/../ocr/build/x86_lib/objs/libocr.so
+#	$(CC) -v -o $@ -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -ltmp -locr -lc -lpthread -lhello $(LINK_OPTS)
+#
+# create shared libhello.so
+#	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX) -rpath=$(APPS_ROOT)/legacy/x86_native
+#	$(LD) -shared -static -o libnewlibc.so $(NL_LIBSUFFIX)
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -Xlinker --start-group hello.o -lnewlibc -Xlinker --end-group $(LINK_OPTS)
+#	$(CC) -v -o $@ -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -Xlinker --start-group cmain.o -lhello -Xlinker --end-group $(LINK_OPTS)
+#	$(CC) -v -o $@ cmain.o $(LINK_OPTS) -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -lhello -locr
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
 #
 # create re-linkable libhello.o...
 	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
@@ -71,11 +103,11 @@ $(APP) : $(APP_OBJS)
 #	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
 #	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.o $(LINK_OPTS)
 #
-# builds a statically linked libhello.a and uses ignore-all
-# .. this produced a libhello.a which no longer has relocs for undefined symbols
-# then, it dynamically links with ocr, c, pthread .sos
-#	$(LD) -static -o libhello.a hello.o $(NL_LIBSUFFIX) --unresolved-symbols=ignore-all
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.a $(LINK_OPTS)
+# builds a statically linked libhello.o and uses ignore-all
+# .. this produced a libhello.o which no longer has relocs for undefined symbols
+# then, dynamically link with ocr, c, pthread .sos
+#	$(LD) -static -o libhello.o hello.o $(NL_LIBSUFFIX) --emit-relocs --unresolved-symbols=ignore-all
+#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.o $(LINK_OPTS)
 #
 # this atttempts to link everything statically...
 #	$(CC) -v -o $@ cmain.o libhello.a $(OCR_LIB) -zmuldefs
@@ -97,7 +129,7 @@ $(APP) : $(APP_OBJS)
 	@echo Successfully built $@
 
 %.o : %.c
-	$(CC) -g -O0 -c $(CFLAGS) $< -o $@
+	$(CC) -g -fPIC -O0 -c $(CFLAGS) $< -o $@
 
 dump:
 	@echo APPS_ROOT = $(APPS_ROOT)
