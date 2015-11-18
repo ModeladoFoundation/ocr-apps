@@ -119,7 +119,7 @@ endif
 # Make sure we get just the default platform build
 #
 ifeq ($(ARCH), x86_native)
-CFLAGS += -fPIC -std=c99 -U__STRICT_ANSI__
+CFLAGS += -std=c99 -U__STRICT_ANSI__
 CONFIG_ARGS += --enable-multilib=no
 TARGET = x86_64-linux-elf
 endif

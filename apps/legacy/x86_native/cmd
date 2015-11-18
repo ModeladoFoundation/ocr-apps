@@ -1,0 +1,1 @@
+nm libhello.o | grep -v  U  | sed 's/^.* . //' | sed 's/.*/& NL_&/' | less

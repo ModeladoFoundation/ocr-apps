@@ -34,6 +34,7 @@ NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
 OCR_LIB_PATH = $(APPS_ROOT)/../ocr/build/x86_lib/objs
 OCR_LIB_A = $(OCR_LIB_PATH)/libocr.a
 OCR_LIB_O = $(OCR_LIB_PATH)/libocr.o
+OCR_LIB_SO = $(OCR_LIB_PATH)/libocr.so
 
 APP = hello
 APP_SRCS = cmain.c hello.c
@@ -46,6 +47,13 @@ all: $(APP)
 default: all
 
 $(APP) : $(APP_OBJS)
+#
+# create re-linkable libhello.o...
+# use objcopy to redefine all defined symbols (except mainEdt) to have leading NL_
+# then statically link cmain.o with libhello.o, libocr.o, and glibc.a.
+	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+	objcopy --redefine-syms=r libhello.o
+	$(CC) -v -static -o $@ cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
 #
 #	$(LD) -static -o libhello.o hello.o $(NL_LIBSUFFIX) #--emit-relocs --unresolved-symbols=ignore-all
 #	nm -u libhello.o | sed 's/^.*U //' > syms
@@ -75,7 +83,7 @@ $(APP) : $(APP_OBJS)
 #	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
 #
 # create re-linkable libhello.o...
-	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
 #	$(CC) -v -o $@ cmain.o -Xlinker --start-group $(OCR_LIB_O) -Xlinker --end-group libhello.o -zmuldefs
 #
 # create re-linkable libhello.o...
@@ -129,7 +137,7 @@ $(APP) : $(APP_OBJS)
 	@echo Successfully built $@
 
 %.o : %.c
-	$(CC) -g -fPIC -O0 -c $(CFLAGS) $< -o $@
+	$(CC) -g -O0 -c $(CFLAGS) $< -o $@
 
 dump:
 	@echo APPS_ROOT = $(APPS_ROOT)
