@@ -29,6 +29,7 @@ extern "C" {
 #define ENABLE_EXTENSION_LEGACY 1
 #define ENABLE_EXTENSION_RTITF 1
 #define ENABLE_EXTENSION_LABELING  1
+#define ENABLE_EXTENSION_AFFINITY  1
 
 // debugging for mpi_ocr{,_messaging}.c, mpilite.c
 #define DEBUG_MPI 0
