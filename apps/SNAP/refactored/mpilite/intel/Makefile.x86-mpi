@@ -4,36 +4,30 @@
 
 COMM_LAYER=mpi
 
-# APPS
 ifndef APPS_ROOT
-  $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
-
-  MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
-
-
-  APPS_ROOT       = $(MYAPPS_ROOT)
-
+$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+APPS_ROOT ?= ../../../..
 endif
-APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
+REPO_TOP ?= ${APPS_ROOT}/..
+
+# APPS
+APPS_ROOT       ?= ${REPO_TOP}/apps
+APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
+#MPILITE  = $(APPS_ROOT)/libs/src/mpilite
+
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
+OCR_ROOT         ?= ${REPO_TOP}/ocr
 OCR_TARGET       ?= x86-${COMM_LAYER}
-OCR_ROOT         ?= $(APPS_ROOT)/../ocr
-OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
-OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
+OCR_SRC          ?= ${REPO_TOP}/ocr
+OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
 
 # APPLICATION
-#src dir - go upt to "intel" which has the "src' dir, then you are there. works if starting
-#  at "intel" or down under "build_and_run"
-# but does not seem to work with Jenkins....
-# SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src
-
-SRC_DIR = $(APPS_ROOT)/XSBench/refactored/mpilite/intel/src
-
-WORKLOAD_SRC          ?= $(SRC_DIR)
+WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -51,21 +45,26 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-# Similar to ss_medium, 4 ranks, 1 thread
-WORKLOAD_ARGS ?=  -r 4 -s large -g 1130 -l 1000000 -t 1
+#CONFIG_NUM_THREADS ?= 4
+#WORKLOAD_ARGS ?= -r ${CONFIG_NUM_THREADS} -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04
+#WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin01 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout01
+WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin04 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout04
+#WORKLOAD_ARGS ?= -r 4 -t 1600 --fi ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fin12 --fo ${APPS_ROOT}/SNAP/refactored/mpilite/intel/fout12
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
 # Set to "yes" if Jenkins is running this job as an automated test
 RUN_JENKINS ?= no
-
+# Set to yes if running visualizer or export as environment variable
+ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := XSBench
+TARGET ?= snap_lite
+#    $(CLINKER) -o $(TARGET) $(LIBPATHS)  $(CFLAGS) $(OBJS) $(EXTOBJS) $(LIBS)
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
@@ -76,39 +75,34 @@ CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 
-SRC_NAMES = \
-Main.c \
-io.c \
-CalculateXS.c \
-GridInit.c \
-XSutils.c \
-Materials.c
+# Use the ROSE translated sources
+SRC_NAMES = snap_main.c utils.c version.c plib.c geom.c \
+       sn.c data.c control.c input.c setup.c dealloc.c \
+       translv.c solvar.c outer.c expxs.c inner.c sweep.c \
+       octsweep.c dim1_sweep.c dim3_sweep.c output.c time.c mms.c
 
 SRCS := $(addprefix rose_,$(SRC_NAMES))
 
-OBJS := $(notdir $(source:.c=.o))
+OBJS: $(ROSE_TARGET)
 
-$(OBJS): $(WORKLOAD_SRC)/XSbench_header.h $(WORKLOAD_SRC)/omp.h $(ROSE_TARGET)
 
-# icc is faster than gcc. turn off warning that OMP pragmas are off, which
-# becomes an error due to -Werror from make-regular.inc
-# jenkins doesn't set up icc so comment out for a while
-#CC=icc -wd3180
-
-CFLAGS := -g -DMPI -I$(WORKLOAD_SRC)
-LDFLAGS := -lpthread -lm -lmpilite
-
+#OBJS := $(notdir $(SRCS:.c=.o))
+CFLAGS=-O0 -g -std=c99 -DMPILITE -D__MACH__ -I./ -I${APPS_ROOT}/libs/x86/include
+#CFLAGS=-O0 -g -std=c99 -DMPILITE -DDEBUG=2 -I./ -I${APPS_ROOT}/libs/x86/include
+#CFLAGS :=  -DOCR_RUNTIME_PROFILER
+LDFLAGS := -fopenmp -lpthread -lm -lmpilite
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3 -std=c99
+#all:	CFLAGS += -O3 -fno-inline
+all:	CFLAGS += -O0 -DMPILITE
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -g -O0 -std=c99
+debug:	CFLAGS += -O0
 debug:	TARGETS := debug
 debug:	default
 
@@ -144,10 +138,10 @@ prerun: ;
 
 include ${APPS_ROOT}/makefiles/make-rose.inc
 
-TARGET ?= XSBench
+TARGET ?= snap_lite
 ROSE_TARGET = rose_$(TARGET)
 
-SRCDIR = $(APPS_ROOT)/XSBench/refactored/mpilite/intel/src
+SRCDIR = $(APPS_ROOT)/SNAP/refactored/mpilite/intel
 BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
 
 SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
@@ -156,8 +150,10 @@ prebuild: $(ROSE_TARGET)
 
 $(ROSE_TARGET): $(ROSE_TOOL) create_dir
 	cd $(BLDDIR) ; \
-	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) >& $(HERE)/build.log ; \
+	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(LD_FLAGS) $(MPI_FLAGS) >& $(HERE)/build.log ; \
+	$(CP) $(SRCDIR)/snap.h $(BLDDIR) ; \
 	cd $(HERE)
+
 
 $(ROSE_TOOL):
 	cd $(ROSE_TOOL_ROOT)/src ; \
@@ -167,6 +163,7 @@ $(ROSE_TOOL):
 
 create_dir:
 	mkdir -p $(BLDDIR)
+
 
 rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 

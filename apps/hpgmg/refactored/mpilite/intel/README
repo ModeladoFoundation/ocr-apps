@@ -7,3 +7,22 @@ To run: OCR_TYPE=x86 make run <log of box dimension> <total number of boxes>
 Increasing the box dimension or total number of boxes may lead to out of memory errors. The OCR configuration file should be modified (with more memory) to work around this error.
 
 The current version implements the following configuration: BiCGSTAB+Cheby+FMGCycle. If comparing with Sam's code, then the following flags need to be used: -DUSE_BICGSTAB=1 -DUSE_SUBCOMM=1 -DUSE_FCYCLES=1 -DUSE_CHEBY=1  -DSTENCIL_FUSE_BC=1. The following HPGMG commit (Sam's code) was used for comparison: 762ce20259eba74e42df3aeb8f91a9074c4ff457 (Wed Sep 10 10:13:02)
+
+===
+To run on Distributed OCR,
+	OCR_TYPE=x86-mpi make run <log of box dimension> <total number of boxes>
+    Eg: OCR_TYPE=x86-mpi make run 4 8
+
+to obtain a number of policy domains different from the default 2:
+OCR_NUM_NODES=5 OCR_TYPE=x86-mpi make run ...
+
+and to use different machines in the cluster, make a file, e.g., named 4nodes,
+whose content is 4 cluster machine names, like
+bar4
+bar5
+bar6
+bar6
+
+and set the number of nodes to the same value as names in the file (you can
+repeat a name, like bar6)
+OCR_NUM_NODES=4 OCR_NODEFILE=4nodes OCR_TYPE=x86-mpi  make run ...

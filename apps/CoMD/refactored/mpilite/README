@@ -1,4 +1,4 @@
-CoMD with MPI-Lite can be built 2 ways
+CoMD with MPI-Lite can be built 3 ways
 
 1. in this directory
 	make OCR_TYPE=x86 install
@@ -14,6 +14,28 @@ CoMD with MPI-Lite can be built 2 ways
 
 	make OCR_TYPE=x86 run   #runs it
 
+3. To use Distributed OCR; in this directory
+	make OCR_TYPE=x86-mpi install
+
+	comd-mpi executable shows up in ./install/x86-mpi
+
+	make OCR_TYPE=x86-mpi run   #runs it
+
+to obtain a number of policy domains different from the default 2:
+OCR_NUM_NODES=5 make OCR_TYPE=x86-mpi run
+
+and to use different machines in the cluster, make a file, e.g., named 4nodes,
+whose content is 4 cluster machine names, like
+bar4
+bar5
+bar6
+bar6
+
+and set the number of nodes to the same value as names in the file (you can
+repeat a name, like bar6)
+OCR_NUM_NODES=4 OCR_NODEFILE=4nodes make OCR_TYPE=x86-mpi run
+
+---
 For running with multiple numbers of ranks, you can go to ./examples
 
 mpi-install-SS.sh - builds comd-mpi using the Makefile in .., and runs StrongScaling 1,2,4,8,16
