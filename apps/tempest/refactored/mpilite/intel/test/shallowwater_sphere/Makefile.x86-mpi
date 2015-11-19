@@ -4,38 +4,40 @@
 
 COMM_LAYER=mpi
 
-# APPS
 ifndef APPS_ROOT
-  $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
-
-  MYAPPS_ROOT:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "apps" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/apps
-
-
-  APPS_ROOT       = $(MYAPPS_ROOT)
-
+$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+APPS_ROOT ?= ../../../../../..
 endif
-APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
+REPO_TOP ?= ${APPS_ROOT}/..
+
+# ARCH
+ARCH            = x86
+
+# APPS
+APPS_ROOT       ?= ${REPO_TOP}/apps
+APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
+
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
-OCR_TARGET       ?= x86-${COMM_LAYER}
-OCR_ROOT         ?= $(APPS_ROOT)/../ocr
-OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
-OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_TARGET       ?= $(OCR_TYPE)
+OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
+OCR_ROOT         ?= ${REPO_TOP}/ocr
+OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
 
 # APPLICATION
-#src dir - go upt to "intel" which has the "src' dir, then you are there. works if starting
-#  at "intel" or down under "build_and_run"
-# but does not seem to work with Jenkins....
-# SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src
-
-SRC_DIR = $(APPS_ROOT)/XSBench/refactored/mpilite/intel/src
-
-WORKLOAD_SRC          ?= $(SRC_DIR)
+WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
+
+# Specific Tempest requirements
+TEMPESTBASEDIR := $(WORKLOAD_SRC)/../../
+
+# Cannonicalize the tempest paths
+TEMPESTBASEDIR := $(shell cd "${TEMPESTBASEDIR}" && pwd)
+TEMPESTLIBS    := $(TEMPESTBASEDIR)/lib
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -51,24 +53,27 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-# Similar to ss_medium, 4 ranks, 1 thread
-WORKLOAD_ARGS ?=  -r 4 -s large -g 1130 -l 1000000 -t 1
+WORKLOAD_ARGS ?= -r 4 -t 1600
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
 # Set to "yes" if Jenkins is running this job as an automated test
 RUN_JENKINS ?= no
-
+# Set to yes if running visualizer or export as environment variable
+ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := XSBench
+TARGET := SWTest2
+
+#SWTest2: $(TEMPESTLIBS)/libhardcoreatm.a $(TEMPESTLIBS)/libtempestbase.a
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
+#REQ_LIBS := mpilite
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
@@ -76,45 +81,31 @@ CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
 
-SRC_NAMES = \
-Main.c \
-io.c \
-CalculateXS.c \
-GridInit.c \
-XSutils.c \
-Materials.c
-
-SRCS := $(addprefix rose_,$(SRC_NAMES))
-
-OBJS := $(notdir $(source:.c=.o))
-
-$(OBJS): $(WORKLOAD_SRC)/XSbench_header.h $(WORKLOAD_SRC)/omp.h $(ROSE_TARGET)
-
-# icc is faster than gcc. turn off warning that OMP pragmas are off, which
-# becomes an error due to -Werror from make-regular.inc
-# jenkins doesn't set up icc so comment out for a while
-#CC=icc -wd3180
-
-CFLAGS := -g -DMPI -I$(WORKLOAD_SRC)
-LDFLAGS := -lpthread -lm -lmpilite
-
+SRCS :=  $(TARGET).cpp
+OBJS := $(notdir $(SRCS:.cpp=.o))
+CFLAGS := -O -I${TEMPESTBASEDIR}/include
+LDFLAGS := -lpthread -lm -lmpilite -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -lnetcdf -lnetcdf_c++ -llapack -lblas
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3 -std=c99
+all:	CFLAGS += -O3 -fno-inline
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -g -O0 -std=c99
+debug:	CFLAGS += -O0
 debug:	TARGETS := debug
 debug:	default
 
 install: all
 
-.DEFAULT_GOAL := install
+prebuild:
+	APPS_ROOT=$(APPS_ROOT) OCR_INSTALL_ROOT=$(OCR_INSTALL_ROOT) TEMPESTBASEDIR=$(TEMPESTBASEDIR) \
+	  $(MAKE) -C $(TEMPESTBASEDIR)/src/base
+	APPS_ROOT=$(APPS_ROOT) OCR_INSTALL_ROOT=$(OCR_INSTALL_ROOT) TEMPESTBASEDIR=$(TEMPESTBASEDIR) \
+	  $(MAKE) -C $(TEMPESTBASEDIR)/src/atm
 
 # This rule will be executed prior to execution:
 #  - For the FSim target, this happens when the binary is built
@@ -140,36 +131,6 @@ install: all
 .PHONY: prerun
 prerun: ;
 
-# ROSE support occurs here.
-
-include ${APPS_ROOT}/makefiles/make-rose.inc
-
-TARGET ?= XSBench
-ROSE_TARGET = rose_$(TARGET)
-
-SRCDIR = $(APPS_ROOT)/XSBench/refactored/mpilite/intel/src
-BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
-
-SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
-
-prebuild: $(ROSE_TARGET)
-
-$(ROSE_TARGET): $(ROSE_TOOL) create_dir
-	cd $(BLDDIR) ; \
-	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) >& $(HERE)/build.log ; \
-	cd $(HERE)
-
-$(ROSE_TOOL):
-	cd $(ROSE_TOOL_ROOT)/src ; \
-	make ; \
-	cd $(HERE)
-
-
-create_dir:
-	mkdir -p $(BLDDIR)
-
-rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
-
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
@@ -180,3 +141,6 @@ postrun: ;
 
 # Include common part
 include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+
+# Use g++ and not gcc
+CC := g++

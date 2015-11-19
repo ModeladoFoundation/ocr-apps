@@ -14,7 +14,6 @@ ifndef APPS_ROOT
   APPS_ROOT       = $(MYAPPS_ROOT)
 
 endif
-
 APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
@@ -22,15 +21,22 @@ OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
 OCR_TARGET       ?= x86-${COMM_LAYER}
-OCR_ROOT         ?= ${APPS_ROOT}/../ocr
+OCR_ROOT         ?= $(APPS_ROOT)/../ocr
 OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
+#WORKLOAD_SRC          ?= src-mpi
+#src dir - go upt to "intel" which has the "src' dir, then you are there. works if starting
+#  at "intel" or down under "build_and_run"
+# doesn't work with Jenkins, so reckon direclty from APPS_ROOT
+#SRC_DIR:=$(shell tmydir=`pwd`; tpath="." ; while [[ $$tmydir != "/" ]]; do if [[ -d "src-mpi" ]]; then break; fi; cd ..; tmydir=`pwd`; tpath=$$tpath/..; done; echo $$tmydir)/src-mpi
+
 # Use the ROSE translated sources.
-SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/intel/build_and_run/build/src
+SRC_DIR = $(APPS_ROOT)/CoMD/refactored/mpilite/build_and_run/mpilite/build/x86
 
 WORKLOAD_SRC          ?=  $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
+
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -48,7 +54,8 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= -x 5 -y 5 -z 5
+#  #ranks, -r, has to = i*j*k
+WORKLOAD_ARGS ?=  -r 4  -t 10  -e -i 2 -j 2 -k 1 -x 40 -y 40 -z 40 -d ../../pots
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -61,17 +68,16 @@ RUN_JENKINS ?= no
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := comd-ocrd
+TARGET := comd-mpi
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := mpilite
 
-# Space separated list of source files
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
 
-#SRCS := atoms.c  cells.c  comd.c  command.c  eam.c  lj.c  simulation.c	timers.c  timestep.c
-#OBJS := $(notdir $(SRCS:.c=.o))
-#$(OBJS): cells.h  CoMD_info.h  command.h  simulation.h  timers.h
+# Space separated list of source files
 
 # Use the ROSE translated sources
 SRC_NAMES := cmdLineParser.c decomposition.c  haloExchange.c  \
@@ -88,13 +94,14 @@ HDR_NAMES := cmdLineParser.h  decomposition.h  initAtoms.h  memUtils.h \
 
 HDRS := ./CoMD_info.h $(addprefix $(WORKLOAD_SRC)/,$(HDR_NAMES))
 
-OBJS := $(notdir $(source:.c=.o))
+OBJS := $(notdir $(SRCS:.c=.o))
 
-$(OBJS): $(HDRS)
+$(OBJS): $(ROSE_TARGET) $(HDRS)
 
-# Additional CFLAGS. By default, it includes
-# all OCR required includes and apps/libs/<target>/include
-# TG_ARCH is also defined for Fsim
+# icc is 15% faster than gcc
+#Jenkins does not set up icc.
+#CC=icc
+
 CFLAGS := -g -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
 
@@ -110,11 +117,13 @@ all:	CFLAGS += -O3 -std=c99
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0
+debug:	CFLAGS += -g -O0 -std=c99
 debug:	TARGETS := debug
 debug:	default
 
 install: all
+
+.DEFAULT_GOAL := install
 
 # This rule will be executed prior to execution:
 #  - For the FSim target, this happens when the binary is built
@@ -140,9 +149,42 @@ install: all
 .PHONY: prerun
 prerun: ;
 
-prebuild: CoMD_info.h
-CoMD_info.h:
-	${WORKLOAD_SRC}/generate_info_header ${TARGET} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
+
+# ROSE support occurs here.
+
+include ${APPS_ROOT}/makefiles/make-rose.inc
+
+TARGET ?= comd-mpi
+ROSE_TARGET = rose_$(TARGET)
+
+SRCDIR = $(APPS_ROOT)/CoMD/refactored/mpilite/src-mpi
+BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
+
+SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
+
+prebuild: $(ROSE_TARGET)
+
+$(ROSE_TARGET): $(ROSE_TOOL) create_dir CoMD_info
+	cd $(BLDDIR) ; \
+	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(MPI_FLAGS) >& $(HERE)/build.log ; \
+	cd $(HERE)
+
+$(ROSE_TOOL):
+	cd $(ROSE_TOOL_ROOT)/src ; \
+	make ; \
+	cd $(HERE)
+
+
+create_dir:
+	mkdir -p $(BLDDIR)
+
+
+CoMD_info:
+	cd $(BLDDIR) ; \
+	$(SRCDIR)/generate_info_header "CoMD_info.h"  "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" ; \
+	cd $(HERE)
+
+rose: $(ROSE_TOOL) create_dir CoMD_info $(ROSE_TARGET)
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated

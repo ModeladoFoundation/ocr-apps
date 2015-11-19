@@ -15,6 +15,25 @@ To build and execute use:
 make -f Makefile.x86 all install
 make -f Makefile.x86 run
 
+or using distributed OCR
+make OCR_TYPE=x86-mpi all install
+make OCR_TYPE=x86-mpi run
+
+to obtain a number of policy domains different from the default 2:
+OCR_NUM_NODES=5 make OCR_TYPE=x86-mpi run
+
+and to use different machines in the cluster, make a file, e.g., named 4nodes,
+whose content is 4 cluster machine names, like
+bar4
+bar5
+bar6
+bar6
+
+and set the number of nodes to the same value as names in the file (you can
+repeat a name, like bar6)
+OCR_NUM_NODES=4 OCR_NODEFILE=4nodes make OCR_TYPE=x86-mpi run
+
+
 Below is the DOE Original Readme.
 
 
