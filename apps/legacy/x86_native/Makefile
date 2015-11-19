@@ -52,8 +52,18 @@ $(APP) : $(APP_OBJS)
 # use objcopy to redefine all defined symbols (except mainEdt) to have leading NL_
 # then statically link cmain.o with libhello.o, libocr.o, and glibc.a.
 	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-	objcopy --redefine-syms=r libhello.o
+	nm libhello.o | grep -vE " U |mainEdt"  | sed 's/^.* . //' > s
+	objcopy --localize-symbols=s libhello.o
 	$(CC) -v -static -o $@ cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
+#
+# create re-linkable libhello.o...
+# use objcopy to redefine all defined symbols (except mainEdt) to have leading NL_
+# then statically link cmain.o with libhello.o, libocr.o, and glibc.a.
+#	$(LD) -r -static -o libhello.o $(NL_LIBPREFIX) hello.o $(NL_LIBSUFFIX)
+#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
+#	objcopy --redefine-syms=r libhello.o
+#	$(CC) -v -static -o $@ -Xlinker --entry=__start cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
+#	$(CC) -v -static -o $@ cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
 #
 #	$(LD) -static -o libhello.o hello.o $(NL_LIBSUFFIX) #--emit-relocs --unresolved-symbols=ignore-all
 #	nm -u libhello.o | sed 's/^.*U //' > syms
