@@ -14,6 +14,7 @@
 
 #include <extensions/ocr-legacy.h>
 #include <extensions/ocr-labeling.h>
+#include <extensions/ocr-affinity.h>
 
 extern ocrGuid_t __ffwd_init(void * ffwd_add_ptr);
 
@@ -166,10 +167,30 @@ static ocrGuid_t endEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 
+// max workers available as ranks is:
+//  if only 1 policy domain (== number of affinity PDs), then you can use
+//    all of the workers returned by ocrNbWorkers() (assuming this is NOT
+//    x86-mpi with only 1 PD)
+//  else this is x86-mpi, and one of the workers per PD is reserved for
+//    communication, so multiply PDs time #workers-1.
+//    Also subtract 1 as fudge factor so we're not too close to the
+//    edge, in case a startup EDT hangs around too long - don't want
+//    any of the long-lived RankEDTs to not get started because there's
+//    no available worker on a particular Policy Domain.
+static u32 maxWorkers(void)
+{
+    const u64 numWorkers = ocrNbWorkers(); // for a SINGLE PD
+    u64 numPDs;
+    ocrAffinityCount(AFFINITY_PD, &numPDs);
+
+    return (1 == numPDs ? numWorkers : numPDs * (numWorkers - 1) - 1);
+}
+
+
 // parseAndShiftArgv extract optional aggressive Non-Blocking "-a" (default
-// conservative; then numRanks "-r <int>" optional - otherwise use NbWorkers
+// conservative); then numRanks "-r <int>" optional - otherwise use maxWorkers()
 // and maxTag "-t <int>" optional; else use 0
-//     exe [-r <int>][-t <int>] <args for program>
+//     exe [-a][ -r <int>][ -t <int>] <args for program>
 // arguments from argcArgv DB, and shift argv to left by number of items
 // extracted (reducing argc accordingly)
 static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *aggressiveNB )
@@ -209,7 +230,7 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
     if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
         {
             char msg[150];
-            *numRanks = ocrNbWorkers();
+            *numRanks = maxWorkers();
             sprintf(msg, "MPI startup: numRanks not specified, using %d \n"
                     , *numRanks);
             WARNING(msg);
@@ -345,15 +366,14 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 
 
     // CHECK that the number of threads in the ocr context is >= numRanks,
-    // or might get hangs. [Don't know how to ask this]
-    const u64 numWorkers = ocrNbWorkers();
+    // or might get hangs.
 
-    if (numRanks > numWorkers)
+    if (numRanks > maxWorkers())
         {
             char msg[150];
             sprintf((char*)&msg, "numRanks %d exceeds number of OCR workers %d\n"
                     "Either use few ranks, or use a cfg with more workers.",
-                    numRanks, numWorkers);
+                    numRanks, maxWorkers());
             ERROR(msg); // exits
         }
 
