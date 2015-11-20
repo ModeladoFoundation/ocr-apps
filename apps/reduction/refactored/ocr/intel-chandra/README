@@ -1,0 +1,26 @@
+This driver is an example to do a scalar reduction in OCR from "N" EDTs that may run in parallel.
+
+From a black-box point of view, the reduction (MPI_Reduce equivalent) can be thought of as
+"N" input events for the reduction EDT and "1" output event. Different EDTs satisify different
+input events by satisfying the events with the input datablock. The block-box spawns a reduction tree
+where partial-sum EDTs compute result and propaget the final result datablock to the "black-box"'s
+output event.
+
+The reduction (implemented and available as a library call in reduction_v1.h from apps/libs/src/reduction)
+is done via two calls.
+
+1. Set up a reduction tree via a serial function call. This function sets up the reduction event, returns one
+   output event (where the reduction final result is available) and fills in "N" input entries corresponding to
+   the "N" input events of the reduction in a 1-D array pointer that the user passes.
+
+2. The user then will satisfy the input events potentially in "N" different EDTs and the final reduction output
+   datablock will be available via the output reduction event.
+
+Run this driver as:
+make -f Makefile.<OCR_TYPE>6 clean run #default configuration
+
+make -f Makefile.x86 clean run #default configuration
+
+WORKLOAD_ARGS="N"  #Number of participants in the reduction = N
+
+The "ARITY" of the tree is specified in apps/libs/src/reduction/reduction_v1.h (default=8)

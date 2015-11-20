@@ -16,13 +16,14 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 OCR_ROOT ?= ../../../../../ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
 
-SRCS := ../reduction.c
-OBJS := reduction.o
-INCLUDES := ../reduction.h
+SRCS := ../reduction.c ../reduction_v1.c
+OBJS := reduction.o reduction_v1.o
+INCLUDES := ../reduction.h ../reduction_v1.h
 LIB := libreduction.a
 
 # installed files
 INSTALL_REDUCTION_H := ${APPS_LIBS_ROOT}/include/reduction.h
+INSTALL_REDUCTION_H1 := ${APPS_LIBS_ROOT}/include/reduction_v1.h
 INSTALL_REDUCTION_A := ${APPS_LIBS_ROOT}/lib/libreduction.a
 
 CC := gcc
@@ -62,7 +63,10 @@ $(LIB): $(OBJS)
 	@$(AR) $(ARFLAGS) $(LIB) $^
 
 $(INSTALL_REDUCTION_H): ../reduction.h
-	cp $< $@
+	cp $^ $@
+
+$(INSTALL_REDUCTION_H1): ../reduction_v1.h
+	cp $^ $@
 
 # Not used any more by users
 #$(INSTALL_REDUCTION_MESS_H): ../mpi_ocr_messaging.h
@@ -72,7 +76,7 @@ $(INSTALL_REDUCTION_A): $(LIB)
 	cp $< $@
 
 .PHONY: install
-install: $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_A)
+install: $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_H1) $(INSTALL_REDUCTION_A)
 
 installold: $(INCLUDES) $(LIB)
 	@echo "Installing X86 standard files"
@@ -88,7 +92,7 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	for i in reduction.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
+	for i in reduction.h reduction_v1.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
 	rm -f $(APPS_LIBS_ROOT)/lib/$(LIB)
 
 .PHONY: squeeky
