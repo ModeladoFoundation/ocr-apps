@@ -80,7 +80,7 @@ STRIP	= $(PREFIX)-strip
 OBJDUMP = $(PREFIX)-objdump
 
 LD	= $(PREFIX)-ld
-LDFLAGS_BASE	= -L $(APPS_LIBS_ROOT)/lib -L $(TG_INSTALL)/ld-scripts -T dram-default.ld -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
+LDFLAGS_BASE	= -L $(APPS_LIBS_ROOT)/lib -L $(TG_INSTALL)/ld-scripts -T ocr-default.ld -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
 
 CUT	= cut
 GREP	= grep
