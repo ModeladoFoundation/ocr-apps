@@ -5,7 +5,7 @@
  */
 
 
-// The ROSE tool globals2db finds all globals and
+// The ROSE tool globals2db supports MPI-lite.  It finds all globals and
 // file statics, and
 //    1. Place them in a structure
 //    2. Creates an OCR Data Block.
@@ -92,6 +92,7 @@ class visitorTraversal : public AstSimpleProcessing
     SgScopeStatement* _fileScope;
     string _mainPathname;
     SgScopeStatement* _mainScope;
+    SgSourceFile* _sourceFileNode;
     SgStatement * _here;
     Status _status;
 };
@@ -108,6 +109,7 @@ visitorTraversal::visitorTraversal(SgProject* project)
     _isCreated=false;
     _mainPathname.clear();
     _mainScope=NULL;
+    _sourceFileNode=NULL;
     _here=NULL;
     _status=E_NO_MPI_FOUND;
 
@@ -395,9 +397,8 @@ void visitorTraversal::writeInitFunction(SgProject * project)
 
 void visitorTraversal::insertHeaders(SourceFile* file)
 {
-    // at top, insert include files.  mpi.h should already be present.
-    SgScopeStatement* fileScope=file->get_file_scope();
-    insertHeader(strROSE_FFWDH, PreprocessingInfo::after, false, fileScope);
+    // at top, insert include file.  mpi.h should already be present.
+    insertHeader(file->get_source_file_node(), strROSE_FFWDH, false, PreprocessingInfo::before);
 }
 
 
@@ -512,7 +513,7 @@ void visitorTraversal::insertHeaders(SourceFile* file)
     else
         scope = _globalScope;
 
-    insertHeader(strROSE_FFWDH, PreprocessingInfo::after,false, scope);
+    insertHeader(file->get_source_file_node(), strROSE_FFWDH, false, PreprocessingInfo::before);
 
     // Create a pointer to the new data structure
     // __ffwd_t *ffwd_p;
@@ -856,6 +857,7 @@ void visitorTraversal::findMainFn()
         ROSE_ASSERT(mainDef != NULL);
         _mainScope = mainDef->get_body();
         _mainPathname = mainDecl->get_file_info()->get_filename();
+        _sourceFileNode = getEnclosingSourceFile(mainDecl);
     }
 }
 
@@ -967,8 +969,10 @@ void visitorTraversal::visit(SgNode* node)
                 {
                     if (_fileScope == NULL)
                         _fileScope = variableName->get_scope();
-                    SourceFile * source = new SourceFile(_currentPathname, _fileScope);
-                    _fileList.push_back(source);
+                    SourceFile * source = new SourceFile(_currentPathname,
+                                                         getEnclosingSourceFile(node),
+                                                         _fileScope);
+                     _fileList.push_back(source);
                     insertHeaders(source);
                 }
             }
@@ -1026,7 +1030,9 @@ void visitorTraversal::visit(SgNode* node)
 
                 if ( ! onFileList(_currentPathname))
                 {
-                    SourceFile * source = new SourceFile(_currentPathname, varScope);
+                    SourceFile * source = new SourceFile(_currentPathname,
+                                                         getEnclosingSourceFile(node),
+                                                         varScope);
                     _fileList.push_back(source);
                     insertHeaders(source);
                 }
@@ -1200,7 +1206,7 @@ void visitorTraversal::atTraversalEnd()
     //
     if ( ! onFileList(_mainPathname))
     {
-        SourceFile * source = new SourceFile(_mainPathname, _globalScope);
+        SourceFile * source = new SourceFile(_mainPathname,_sourceFileNode, _globalScope);
         _fileList.push_back(source);
         insertHeaders(source);
     }

@@ -83,18 +83,22 @@ class IncElement
 class SourceFile
 {
   public:
-    SourceFile(string pathname, SgScopeStatement* fileScope)
+    SourceFile(string pathname, SgSourceFile* srcfile, SgScopeStatement* fileScope)
     {
         _pathname = pathname;
         _fileScope = fileScope;
+        _sgsourcefile = srcfile;
     }
     ~SourceFile() {};
     string get_path_name() { return _pathname; }
     SgScopeStatement * get_file_scope() { return _fileScope; }
+    SgSourceFile * get_source_file_node() { return _sgsourcefile; }
+
 
   private:
     string _pathname;
     SgScopeStatement * _fileScope;
+    SgSourceFile* _sgsourcefile;
 };
 
 
