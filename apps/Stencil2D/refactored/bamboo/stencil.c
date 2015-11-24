@@ -375,149 +375,127 @@ int main(int argc, char ** argv) {
       local_stencil_time = wtime();
     }
 
+
     /* need to fetch ghost point data from neighbors in y-direction                 */
     if (my_IDy < Num_procsy-1) {
         for (kk=0,j=jend-RADIUS+1; j<=jend; j++) for (i=istart; i<=iend; i++) {
                 top_buf_out[kk++]= IN(i,j);
             }
-
-
-        //printf("Rank %d: ready to execute olap region #1\n", my_ID);
-
-
-#pragma bamboo olap
-        {
-#pragma bamboo receive
-            {
-                MPI_Irecv(top_buf_in, RADIUS*width, MPI_DTYPE, top_nbr, 101,
-                          MPI_COMM_WORLD, &(request[1]));
-            }
-#pragma bamboo send
-            {
-                MPI_Isend(top_buf_out, RADIUS*width,MPI_DTYPE, top_nbr, 99,
-                          MPI_COMM_WORLD, &(request[0]));
-                MPI_Wait(&(request[0]), &(status[0]));
-                MPI_Wait(&(request[1]), &(status[1]));
-            }
-        }//olap
     }
-
-    /* need to fetch ghost point data from neighbors in x-direction                 */
     if (my_IDy > 0) {
         for (kk=0,j=jstart; j<=jstart+RADIUS-1; j++) for (i=istart; i<=iend; i++) {
                 bottom_buf_out[kk++]= IN(i,j);
             }
-        //printf("Rank %d: ready to execute olap region #2\n", my_ID);
+    }
+    /* need to fetch ghost point data from neighbors in x-direction                 */
+    if (my_IDx < Num_procsx-1) {
+        for (kk=0,j=jstart; j<=jend; j++) for (i=iend-RADIUS+1; i<=iend; i++) {
+                right_buf_out[kk++]= IN(i,j);
+            }
+    }
+    if (my_IDx > 0) {
+        for (kk=0,j=jstart; j<=jend; j++) for (i=istart; i<=istart+RADIUS-1; i++) {
+                left_buf_out[kk++]= IN(i,j);
+            }
+    }
+
+
 
 #pragma bamboo olap
         {
 #pragma bamboo receive
             {
-                MPI_Irecv(bottom_buf_in,RADIUS*width, MPI_DTYPE, bottom_nbr, 99,
-                          MPI_COMM_WORLD, &(request[3]));
-        }
+                if (my_IDy < Num_procsy-1) {
+                    MPI_Irecv(top_buf_in, RADIUS*width, MPI_DTYPE, top_nbr, 101,
+                              MPI_COMM_WORLD, &(request[1]));
+                }
+                if (my_IDy > 0) {
+                    MPI_Irecv(bottom_buf_in,RADIUS*width, MPI_DTYPE, bottom_nbr, 99,
+                              MPI_COMM_WORLD, &(request[3]));
+                }
+                if (my_IDx < Num_procsx-1) {
+                    MPI_Irecv(right_buf_in, RADIUS*height, MPI_DTYPE, right_nbr, 1010,
+                              MPI_COMM_WORLD, &(request[1+4]));
+                }
+                if (my_IDx > 0) {
+                    MPI_Irecv(left_buf_in, RADIUS*height, MPI_DTYPE, left_nbr, 990,
+                              MPI_COMM_WORLD, &(request[3+4]));
+                }
+            } // recv
 #pragma bamboo send
             {
-                MPI_Isend(bottom_buf_out, RADIUS*width,MPI_DTYPE, bottom_nbr, 101,
-                          MPI_COMM_WORLD, &(request[2]));
-                MPI_Wait(&(request[2]), &(status[2]));
-                MPI_Wait(&(request[3]), &(status[3]));
-            }
-        } //olap
-    }
+                if (my_IDy < Num_procsy-1) {
+                    MPI_Isend(top_buf_out, RADIUS*width,MPI_DTYPE, top_nbr, 99,
+                              MPI_COMM_WORLD, &(request[0]));
+                    MPI_Wait(&(request[0]), &(status[0]));
+                    MPI_Wait(&(request[1]), &(status[1]));
+                }
+                if (my_IDy > 0) {
+                    MPI_Isend(bottom_buf_out, RADIUS*width,MPI_DTYPE, bottom_nbr, 101,
+                              MPI_COMM_WORLD, &(request[2]));
+                    MPI_Wait(&(request[2]), &(status[2]));
+                    MPI_Wait(&(request[3]), &(status[3]));
+                }
+                if (my_IDx < Num_procsx-1) {
+                    MPI_Isend(right_buf_out, RADIUS*height, MPI_DTYPE, right_nbr, 990,
+                              MPI_COMM_WORLD, &(request[0+4]));
+                    MPI_Wait(&(request[0+4]), &(status[0+4]));
+                    MPI_Wait(&(request[1+4]), &(status[1+4]));
+                }
+                if (my_IDx > 0) {
+                    MPI_Isend(left_buf_out, RADIUS*height, MPI_DTYPE, left_nbr, 1010,
+                              MPI_COMM_WORLD, &(request[2+4]));
+                    MPI_Wait(&(request[2+4]), &(status[2+4]));
+                    MPI_Wait(&(request[3+4]), &(status[3+4]));
+                }
+            } // send
+
+#pragma bamboo compute
+            {
+                if (my_IDy < Num_procsy-1) {
+                    for (kk=0,j=jend+1; j<=jend+RADIUS; j++) for (i=istart; i<=iend; i++) {
+                            IN(i,j) = top_buf_in[kk++];
+                        }
+                }
+                if (my_IDy > 0) {
+                    for (kk=0,j=jstart-RADIUS; j<=jstart-1; j++) for (i=istart; i<=iend; i++) {
+                            IN(i,j) = bottom_buf_in[kk++];
+                        }
+                }
+                if (my_IDx < Num_procsx-1) {
+                    for (kk=0,j=jstart; j<=jend; j++) for (i=iend+1; i<=iend+RADIUS; i++) {
+                            IN(i,j) = right_buf_in[kk++];
+                        }
+                }
+                if (my_IDx > 0) {
+                    for (kk=0,j=jstart; j<=jend; j++) for (i=istart-RADIUS; i<=istart-1; i++) {
+                            IN(i,j) = left_buf_in[kk++];
+                        }
+                }
 
 
-    if (my_IDy < Num_procsy-1) {
-      for (kk=0,j=jend+1; j<=jend+RADIUS; j++) for (i=istart; i<=iend; i++) {
-          IN(i,j) = top_buf_in[kk++];
-      }
-    }
-    if (my_IDy > 0) {
-      for (kk=0,j=jstart-RADIUS; j<=jstart-1; j++) for (i=istart; i<=iend; i++) {
-          IN(i,j) = bottom_buf_in[kk++];
-      }
-    }
 
-    /* need to fetch ghost point data from neighbors in x-direction                 */
-    if (my_IDx < Num_procsx-1) {
-      for (kk=0,j=jstart; j<=jend; j++) for (i=iend-RADIUS+1; i<=iend; i++) {
-              right_buf_out[kk++]= IN(i,j);
-          }
+                /* Apply the stencil operator */
+                for (j=MAX(jstart,RADIUS); j<=MIN(n-RADIUS-1,jend); j++) {
+                    for (i=MAX(istart,RADIUS); i<=MIN(n-RADIUS-1,iend); i++) {
+                        for (jj=-RADIUS; jj<=RADIUS; jj++) {
+                            OUT(i,j) += WEIGHT(0,jj)*IN(i,j+jj);
+                        }
+                        for (ii=-RADIUS; ii<0; ii++) {
+                            OUT(i,j) += WEIGHT(ii,0)*IN(i+ii,j);
+                        }
+                        for (ii=1; ii<=RADIUS; ii++) {
+                            OUT(i,j) += WEIGHT(ii,0)*IN(i+ii,j);
 
-      //printf("Rank %d: ready to execute olap region #3\n", my_ID);
+                        }
+                    }
+                }
 
-#pragma bamboo olap
-          {
-#pragma bamboo receive
-              {
-                  MPI_Irecv(right_buf_in, RADIUS*height, MPI_DTYPE, right_nbr, 1010,
-                            MPI_COMM_WORLD, &(request[1+4]));
-              }
-#pragma bamboo send
-              {
-                  MPI_Isend(right_buf_out, RADIUS*height, MPI_DTYPE, right_nbr, 990,
-                            MPI_COMM_WORLD, &(request[0+4]));
-                  MPI_Wait(&(request[0+4]), &(status[0+4]));
-                  MPI_Wait(&(request[1+4]), &(status[1+4]));
-              }
-          } //olap
-    }
+                /* add constant to solution to force refresh of neighbor data, if any */
+                for (j=jstart; j<=jend; j++) for (i=istart; i<=iend; i++) IN(i,j)+= 1.0;
 
-    if (my_IDx > 0) {
-        for (kk=0,j=jstart; j<=jend; j++) for (i=istart; i<=istart+RADIUS-1; i++) {
-                left_buf_out[kk++]= IN(i,j);
-            }
-
-        //printf("Rank %d: ready to execute olap region #4\n", my_ID);
-
-#pragma bamboo olap
-          {
-#pragma bamboo receive
-              {
-                  MPI_Irecv(left_buf_in, RADIUS*height, MPI_DTYPE, left_nbr, 990,
-                            MPI_COMM_WORLD, &(request[3+4]));
-              }
-#pragma bamboo send
-              {
-                  MPI_Isend(left_buf_out, RADIUS*height, MPI_DTYPE, left_nbr, 1010,
-                            MPI_COMM_WORLD, &(request[2+4]));
-                  MPI_Wait(&(request[2+4]), &(status[2+4]));
-                  MPI_Wait(&(request[3+4]), &(status[3+4]));
-              }
-          } // olap
-    }
-
-
-    if (my_IDx < Num_procsx-1) {
-      for (kk=0,j=jstart; j<=jend; j++) for (i=iend+1; i<=iend+RADIUS; i++) {
-          IN(i,j) = right_buf_in[kk++];
-      }
-    }
-    if (my_IDx > 0) {
-      for (kk=0,j=jstart; j<=jend; j++) for (i=istart-RADIUS; i<=istart-1; i++) {
-          IN(i,j) = left_buf_in[kk++];
-      }
-    }
-
-    /* Apply the stencil operator */
-    for (j=MAX(jstart,RADIUS); j<=MIN(n-RADIUS-1,jend); j++) {
-      for (i=MAX(istart,RADIUS); i<=MIN(n-RADIUS-1,iend); i++) {
-        for (jj=-RADIUS; jj<=RADIUS; jj++) {
-          OUT(i,j) += WEIGHT(0,jj)*IN(i,j+jj);
-        }
-        for (ii=-RADIUS; ii<0; ii++) {
-          OUT(i,j) += WEIGHT(ii,0)*IN(i+ii,j);
-        }
-        for (ii=1; ii<=RADIUS; ii++) {
-          OUT(i,j) += WEIGHT(ii,0)*IN(i+ii,j);
-
-        }
-      }
-    }
-
-    /* add constant to solution to force refresh of neighbor data, if any */
-    for (j=jstart; j<=jend; j++) for (i=istart; i<=iend; i++) IN(i,j)+= 1.0;
-
+            } // compute
+        } // olap
   } /* end of iterations                                                   */
 
   local_stencil_time = wtime() - local_stencil_time;

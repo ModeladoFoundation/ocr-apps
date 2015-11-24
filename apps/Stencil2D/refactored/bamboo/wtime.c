@@ -75,8 +75,8 @@ double wtime() {
 #if defined(_OPENMP)
   time_seconds = omp_get_wtime();
 
-#elif defined(MPI)
-  time_seconds = MPI_Wtime();
+//#elif defined(MPI)
+//  time_seconds = MPI_Wtime();
 
 #else
   struct timeval  time_data; /* seconds since 0 GMT */
