@@ -10,8 +10,8 @@ APPS_LIBS_ROOT  ?= ../../../apps/libs/tg
 OCR_TYPE        ?= tg
 
 # TG
-TG_INSTALL ?= ../../../../intel/ss/install
-TG_ROOT    ?= ../../../../intel/ss
+TG_INSTALL ?= ../../../../tg/tg/install
+TG_ROOT    ?= ../../../../tg/tg
 
 # OCR
 XE_TARGET   ?= tg-xe
@@ -19,7 +19,7 @@ XE_BUILDER  ?= builder-xe
 CE_TARGET   ?= tg-ce
 CE_BUILDER  ?= builder-ce
 OCR_INSTALL_ROOT ?= ../../../ocr/install
-OCR_ROOT         ?= ../../../ocr
+OCR_ROOT     ?= ../../../ocr
 OCR_BUILD_ROOT   ?= ../../../ocr/build
 
 # APPLICATION
@@ -46,7 +46,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
-# Set to "yes" if Jenkins is running this job as an automated test
+# Set to "build" or "run" if Jenkins is running this job as an automated test
 RUN_JENKINS ?= no
 
 ## END of variables coming from user/environment
