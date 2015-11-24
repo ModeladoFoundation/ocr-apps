@@ -10,17 +10,17 @@ APPS_LIBS_ROOT  ?= ../../../apps/libs/tg
 OCR_TYPE        ?= tg
 
 # TG
-TG_INSTALL ?= ../../../../intel/ss/install
-TG_ROOT    ?= ../../../../intel/ss
+TG_INSTALL ?= ../../../../tg/tg/install
+TG_ROOT    ?= ../../../../tg/tg
 
 # OCR
 XE_TARGET   ?= tg-xe
 XE_BUILDER  ?= builder-xe
 CE_TARGET   ?= tg-ce
 CE_BUILDER  ?= builder-ce
-OCR_ROOT    ?= ../../../ocr
-OCR_BUILD_ROOT   ?= ../../../ocr/build
 OCR_INSTALL_ROOT ?= ../../../ocr/install
+OCR_ROOT     ?= ../../../ocr
+OCR_BUILD_ROOT   ?= ../../../ocr/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -41,7 +41,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 10
+#WORKLOAD_ARGS ?=
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque

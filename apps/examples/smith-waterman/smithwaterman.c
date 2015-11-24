@@ -75,6 +75,7 @@ s8* read_file( s8* filestart, u32* n_chars ) {
     ocrGuid_t filebuf;
     ocrDbCreate(&filebuf, (void **)&file_buffer, sizeof(s8)*(1+file_size), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
     fread(file_buffer, sizeof(s8), file_size, file);
+    file_buffer[file_size] = '\0';
 
     // Clean up what has been read
     *n_chars =  clear_whitespaces_do_mapping(file_buffer, file_size);
@@ -97,7 +98,7 @@ s8* read_file( s8* filename, u32* n_chars ) {
     ocrDbCreate( &filebuf, (void **)&file_buffer, sizeof(s8)*(1+file_size), DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
     fread(file_buffer, sizeof(s8), file_size, file);
-    file_buffer[file_size] = '\n';
+    file_buffer[file_size] = '\0';
 
     /* shams' sample inputs have newlines in them */
     *n_chars = clear_whitespaces_do_mapping(file_buffer, file_size);
@@ -202,8 +203,8 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
 
     /* Allocate datablock for bottom row of the local tile */
     ocrGuid_t db_guid_i_j_brow;
-    void* db_guid_i_j_brow_data;
-    ocrDbCreate( &db_guid_i_j_brow, &db_guid_i_j_brow_data, sizeof(s32)*tile_width, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    s32* db_guid_i_j_brow_data = NULL;
+    ocrDbCreate( &db_guid_i_j_brow, (void *)&db_guid_i_j_brow_data, sizeof(s32)*tile_width, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
     /* Satisfy the bottom row event of local tile with the data block allocated above */
     s32* curr_bottom_row = (s32*)db_guid_i_j_brow_data;
@@ -333,7 +334,7 @@ static u32 __attribute__ ((noinline)) ioHandling ( void* marshalled, s32* p_n_ti
     if(*p_string_2 == NULL) return 1;
     PRINTF("Size of input string 2 is %d\n", n_char_in_file_2 );
 
-    *check_score = atoi(read_file(file_name_score, &n_char_in_file_score));
+    *check_score = atoi((char *)read_file(file_name_score, &n_char_in_file_score));
     PRINTF("Score to get it %u\n", *check_score);
     PRINTF("Tile width is %d\n", *p_tile_width);
     PRINTF("Tile height is %d\n", *p_tile_height);
