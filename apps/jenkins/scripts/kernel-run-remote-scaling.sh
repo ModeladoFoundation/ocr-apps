@@ -35,7 +35,8 @@ do
 
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
     for i in `seq 1 $4`; do
-         WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp OCR_CONFIG=$cfgFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
+        # TODO: When TG support comes online, make sure to set WORKLOAD_LOGS to point to some non-shared directory
+        WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp OCR_CONFIG=$cfgFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
         RETURN_CODE=$?
         if [ $RETURN_CODE -ne 0 ]; then
             break

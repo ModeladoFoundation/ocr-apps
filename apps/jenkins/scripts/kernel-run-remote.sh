@@ -10,6 +10,11 @@ if [ $# -ne 4 ]; then
     exit 1
 fi
 
+if [ $2 != 'x86' ]; then
+    echo "Only x86 supported currently"
+    exit 1
+fi
+
 WORKLOAD_INSTALL=${WORKLOAD_INSTALL_ROOT}/$2
 
 echo "Running kernel '$1' for architecture '$2'"
@@ -17,6 +22,7 @@ rm -f ${WORKLOAD_INSTALL}/runlog
 timeFile=$(mktemp)
 export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
 for i in `seq 1 $4`; do
+    # TODO: When TG support comes online, make sure to set WORKLOAD_LOGS to point to some non-shared directory
     WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_JENKINS=runApp make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > ${WORKLOAD_INSTALL}/runlog
     RETURN_CODE=$?
     if [ $RETURN_CODE -ne 0 ]; then

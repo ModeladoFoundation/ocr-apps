@@ -98,7 +98,7 @@ OBJS := $(patsubst %.c,$(WORKLOAD_BUILD)/%.o,$(SRCS))
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
 ifeq ($(RUN_TORQUE), yes)
-RUN_CMD := $(TG_INSTALL)/bin/fsim-scripts/fsim-wrapper.sh
+RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-wrapper.sh
 MACHINE_CONFIG :=
 else
 RUN_CMD := $(TG_INSTALL)/bin/fsim
@@ -107,7 +107,7 @@ MACHINE_CONFIG := -c $(MACHINE_CONFIG)
 endif
 
 ifeq ($(RUN_JENKINS), runApp)
-RUN_CMD := $(TG_INSTALL)/bin/fsim-scripts/fsim-torque.sh
+RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
 MACHINE_CONFIG :=
 endif
 
