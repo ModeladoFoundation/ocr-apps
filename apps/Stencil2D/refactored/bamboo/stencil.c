@@ -152,7 +152,16 @@ int main(int argc, char ** argv) {
   MPI_Comm_rank(MPI_COMM_WORLD, &my_ID);
   MPI_Comm_size(MPI_COMM_WORLD, &Num_procs);
 
-  /*******************************************************************************
+  // Debugging!
+  char node_name[MPI_MAX_PROCESSOR_NAME];
+  int name_len;
+  // No support for MPI_Get_processor_name() in Bamboo yet.
+  // MPI_Get_processor_name(node_name, &name_len);
+  gethostname(node_name, MPI_MAX_PROCESSOR_NAME);
+  printf("Node %s, Rank %d out of %d nodes\n",
+           node_name, my_ID, Num_procs);
+
+  /*****************************************************************************
   ** process, test, and broadcast input parameters
   ********************************************************************************/
 
@@ -234,10 +243,15 @@ int main(int argc, char ** argv) {
     printf("Number of iterations   = %d\n", iterations);
   }
 
-// No support for Bast in Bamboo.
+// No support for Bcast in Bamboo yet.
 //  MPI_Bcast(&n,          1, MPI_INT, root, MPI_COMM_WORLD);
 //  MPI_Bcast(&iterations, 1, MPI_INT, root, MPI_COMM_WORLD);
-  //printf("Rank %d: ready to execute olap region #0\n", my_ID);
+
+  // Debugging!!
+  //printf("Node %s, Rank %d: ready to execute olap 0\n",
+  //        node_name, my_ID);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
 #pragma bamboo olap
   {
@@ -261,6 +275,12 @@ int main(int argc, char ** argv) {
           }
       }
   }  // olap
+
+  // Debugging!!
+  //printf("Node %s, Rank %d: completed olap 0\n",
+  //         node_name, my_ID);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
 
   /* compute amount of space required for input and solution arrays             */
@@ -399,6 +419,11 @@ int main(int argc, char ** argv) {
             }
     }
 
+  // Debugging!!
+  //printf("Node %s, Rank %d, iter %d: ready to execute olap 1\n",
+  //       node_name, my_ID, iter);
+
+    MPI_Barrier(MPI_COMM_WORLD);
 
 
 #pragma bamboo olap
@@ -495,14 +520,30 @@ int main(int argc, char ** argv) {
                 for (j=jstart; j<=jend; j++) for (i=istart; i<=iend; i++) IN(i,j)+= 1.0;
 
             } // compute
+
         } // olap
+
+          // Debugging!!
+        //  printf("Node %s, Rank %d, iter %d: completed olap 1\n",
+        //      node_name, my_ID, iter);
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
   } /* end of iterations                                                   */
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   local_stencil_time = wtime() - local_stencil_time;
   MPI_Reduce(&local_stencil_time, &stencil_time, 1, MPI_DOUBLE, MPI_MAX, root,
              MPI_COMM_WORLD);
 
-  /* compute L1 norm in parallel                                                */
+          // Debugging!!
+  //    printf("Node %s, Rank %d: completed reduce 1\n",
+  //           node_name, my_ID);
+
+   MPI_Barrier(MPI_COMM_WORLD);
+
+   /* compute L1 norm in parallel                                                */
   local_norm = (DTYPE) 0.0;
   for (j=MAX(jstart,RADIUS); j<=MIN(n-RADIUS-1,jend); j++) {
     for (i=MAX(istart,RADIUS); i<=MIN(n-RADIUS-1,iend); i++) {
@@ -512,6 +553,11 @@ int main(int argc, char ** argv) {
 
   MPI_Reduce(&local_norm, &norm, 1, MPI_DTYPE, MPI_SUM, root, MPI_COMM_WORLD);
 
+          // Debugging!!
+  //printf("Node %s, Rank %d: completed reduce 2\n",
+  //            node_name, my_ID);
+
+   MPI_Barrier(MPI_COMM_WORLD);
   /*******************************************************************************
   ** Analyze and output results.
   ********************************************************************************/
