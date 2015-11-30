@@ -12,6 +12,11 @@ Note: mpilite requires the addtional command line options:
 -t highes tag number
 -r number of ranks to run on
 
+The orignal code has been modified to provide for an extra compile time flag to allow to set
+the number of warm-up runs and number of solver runs to 1. This is useful for timing experiments.
+If desired specify -DONESOLVE.
+The modification is done in file hpgmg.c
+
 Below is the DOE original HPGMG README
 
  This is

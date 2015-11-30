@@ -195,8 +195,12 @@ int main(int argc, char **argv){
   int minCoarseDim = 1;
   MGBuild(&all_grids,&fine_grid,a,b,minCoarseDim); // build the Multigrid Hierarchy
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     int     doTiming;
-     int    minSolves = 10; // do at least minSolves MGSolves
+  int     doTiming;
+#ifdef ONESOLVE
+  int    minSolves = 1; // do 1  MGSolves
+#else
+  int    minSolves = 10; // do at least minSolves MGSolves
+#endif
   double timePerSolve = 0;
   for(doTiming=0;doTiming<=1;doTiming++){ // first pass warms up, second pass times
 
@@ -205,7 +209,11 @@ int main(int argc, char **argv){
     #endif
 
     #ifdef USE_MPI
-    double minTime   = 20.0; // minimum time in seconds that the benchmark should run
+#ifdef ONESOLVE
+    double minTime   = 0.0; // minimum time in seconds that the benchmark should run
+#else
+    double minTime   = 1.0; // minimum time in seconds that the benchmark should run
+#endif
     double startTime = MPI_Wtime();
     if(doTiming==1){
       if((minTime/timePerSolve)>minSolves)minSolves=(minTime/timePerSolve); // if one needs to do more than minSolves to run for minTime, change minSolves

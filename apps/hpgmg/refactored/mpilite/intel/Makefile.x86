@@ -70,7 +70,7 @@ CONFIG_FLAGS := --guid LABELED
 SRCS :=  $(TARGET).c  level.c operators.7pt.c solvers.o mg.c timers.c
 #OBJS := $(notdir $(SRCS:.c=.o))
 #$(OBJS):  $(PROGRAM).o  level.o operators.7pt.o solvers.o mg.o timers.o
-CFLAGS := -DUSE_FCYCLES -DUSE_CHEBY  -DUSE_MPI -DUSE_BICGSTAB  -I$(OCR_INSTALL)/include
+CFLAGS := -DONESOLVE -DUSE_FCYCLES -DUSE_CHEBY  -DUSE_MPI -DUSE_BICGSTAB  -I$(OCR_INSTALL)/include
 #CFLAGS :=  -DOCR_RUNTIME_PROFILER
 LDFLAGS := -lpthread -lm -lmpilite
 
