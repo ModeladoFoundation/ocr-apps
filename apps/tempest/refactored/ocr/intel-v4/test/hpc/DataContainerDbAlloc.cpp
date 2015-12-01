@@ -258,10 +258,14 @@ try {
         // pointer to the data blcok
         testGrid = ocrNew (GridCartesianGLL, model, nWorkers, nResolutionX, nResolutionY, 4,
                            nHorizontalOrder, nVerticalOrder, nLevels, dGDim, dRefLat, eVerticalStaggering);
-        testGrid->ApplyDefaultPatchLayout(nWorkers);
         const PatchBox & testBox = testGrid->GetPatchBox (0);
         auto testPatch = GridPatchCartesianGLL(*testGrid, 0, testBox, nHorizontalOrder, nVerticalOrder);
         int testIndex = testPatch.GetPatchIndex ();
+	testPatch.InitializeDataLocal(false, false, false, false);
+        testGrid->ApplyDefaultPatchLayout(nWorkers);
+	DataContainer & testGeometric = testPatch.GetDataContainerGeometric();
+	std::cout << "testPatch.Geometric Size:   " << testGeometric.GetTotalByteSize() << " bytes" << std::endl;
+
         PRINTF("GJDEBUG: testIndex = %d\n", testIndex);
 	// Apply the default patch layout
         for (int i = 0; i<nWorkers; i++) {
