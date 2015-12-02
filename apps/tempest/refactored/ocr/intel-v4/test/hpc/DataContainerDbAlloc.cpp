@@ -57,6 +57,12 @@ typedef struct
     ocrGuid_t DONE;
 } updateStateInfo_t;
 
+typedef struct
+{
+    RelPtr <Model> m;
+    RelPtr <GridCartesianGLL> g;
+} MG;
+
 ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int i, rank, len, dlen, step, maxStep, nRanks;
 
@@ -210,31 +216,43 @@ try {
 	const double dRefLat = 0.0;
 	const double dTopoHeight = 0.0;
 
-        // set mini heap data block to hold model and grid
-        void *arenaPtr;
-        GridCartesianGLL * testGrid;
-        ocrGuid_t arenaGuid;
-        ocrDbCreate(&arenaGuid, &arenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-        ocrAllocatorSetDb(arenaPtr, (size_t) ARENA_SIZE, true);
-
         Grid::VerticalStaggering eVerticalStaggering =
 		Grid::VerticalStaggering_Levels;
 
 	// Setup the Model
-	Model &model = *(ocrNew(Model,EquationSet::PrimitiveNonhydrostaticEquations));
+	Model model(EquationSet::PrimitiveNonhydrostaticEquations);
+
+	// Setup the testModel
+
+        // pointer to the data blcok
+        void *arenaPtr;
+        MG myMG;
+        ocrGuid_t arenaGuid;
+        ocrDbCreate(&arenaGuid, &arenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+        ocrAllocatorSetDb(arenaPtr, (size_t) ARENA_SIZE, true);
+	Model * testModel;
+        myMG.m = ocrNew (Model, EquationSet::PrimitiveNonhydrostaticEquations);
+        testModel = myMG.m;
+        assert((void*)testModel == arenaPtr);
 
 	// Set the parameters
 	ModelParameters param;
 
 	model.SetParameters(param);
+	testModel->SetParameters(param);
 
 	model.SetTimestepScheme(new TimestepSchemeStrang(model));
+	testModel->SetTimestepScheme(new TimestepSchemeStrang(*testModel));
 
 	model.SetHorizontalDynamics(
 		new HorizontalDynamicsStub(model));
+	testModel->SetHorizontalDynamics(
+		new HorizontalDynamicsStub(*testModel));
 
 	model.SetVerticalDynamics(
 		new VerticalDynamicsStub(model));
+	testModel->SetVerticalDynamics(
+		new VerticalDynamicsStub(*testModel));
 
 	// Set the model grid (one patch Cartesian grid)
         GridCartesianGLL * pGrid [nWorkers];
@@ -255,18 +273,17 @@ try {
         }
         // Create testGrid in a data block
 
-        // pointer to the data blcok
-        testGrid = ocrNew (GridCartesianGLL, model, nWorkers, nResolutionX, nResolutionY, 4,
+        GridCartesianGLL * testGrid;
+        myMG.g = ocrNew (GridCartesianGLL, *testModel, nWorkers, nResolutionX, nResolutionY, 4,
                            nHorizontalOrder, nVerticalOrder, nLevels, dGDim, dRefLat, eVerticalStaggering);
+        testGrid = myMG.g;
+        testGrid->ApplyDefaultPatchLayout(nWorkers);
         const PatchBox & testBox = testGrid->GetPatchBox (0);
         auto testPatch = GridPatchCartesianGLL(*testGrid, 0, testBox, nHorizontalOrder, nVerticalOrder);
         int testIndex = testPatch.GetPatchIndex ();
-	testPatch.InitializeDataLocal(false, false, false, false);
-        testGrid->ApplyDefaultPatchLayout(nWorkers);
-	DataContainer & testGeometric = testPatch.GetDataContainerGeometric();
-	std::cout << "testPatch.Geometric Size:   " << testGeometric.GetTotalByteSize() << " bytes" << std::endl;
-
-        PRINTF("GJDEBUG: testIndex = %d\n", testIndex);
+        testPatch.InitializeDataLocal(false, false, false, false);
+        DataContainer & testGeometric = testPatch.GetDataContainerGeometric();
+        std::cout << "testPatch.Geometric Size:   " << testGeometric.GetTotalByteSize() << " bytes" << std::endl;
 	// Apply the default patch layout
         for (int i = 0; i<nWorkers; i++) {
 	    pGrid[i]->ApplyDefaultPatchLayout(nWorkers);
