@@ -1,0 +1,23 @@
+This is a 2-D Stencil from the Parallel Research Kernels.
+
+Running:
+
+make -f Makefile.<OCR_TYPE> install run
+
+where OCR_TYPE can be:
+x86
+x86-mpi
+tg-x86
+tg
+
+Edit the WORKLOAD_ARGS variable in the corresponding Makefile.<OCR_TYPE>
+to change the problem size/iterations.  Or you can reset them on the
+command line.
+
+OCR_NODEFILE=/home/username/4nodes OCR_NUM_NODES=4 CONFIG_NUM_THREADS=4 make OCR_TYPE=x86-mpi run WORKLOAD_ARGS="-r 4 -t 110 64 100"
+
+-r # = the number of ranks
+-t # = the maximum tag value used. Keep the tag values small.
+64 is the length of one side of a square grid.
+100 is the number of iterations.
+
