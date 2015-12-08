@@ -12199,6 +12199,8 @@ CRT1_DIR=
 if test "x${sys_dir}" = "xocr"; then
     if test "x${machine_dir}" = "xxstg"; then
       CRT="crt0.o crt0t.o crtend.o"
+    elif test "x${machine_dir}" = "xx86_64"; then
+      CRT="crt0.o crtend.o"
     else
       CRT=crt0.o
     fi

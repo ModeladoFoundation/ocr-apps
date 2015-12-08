@@ -21,7 +21,7 @@ CRT=
 if test -n "${machine_dir}"; then
   case ${machine_dir} in
 	x86_64) AC_CONFIG_SUBDIRS(x86_64)
-            CRT=crt0.o
+            CRT="crt0.o crtend.o"
             ;;
 	xstg) AC_CONFIG_SUBDIRS(xstg)
           CRT="crt0.o crt0t.o crtend.o"
