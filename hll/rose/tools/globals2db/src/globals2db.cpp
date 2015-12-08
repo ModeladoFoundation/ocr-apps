@@ -210,12 +210,23 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
     // typedef struct __ffwd_s __ffwd_t;
     fprintf(fp, "typedef struct %s %s;\n\n", _structName.c_str(), strFFWDT.c_str());
 
+    // if this is a C++ file, we need to specify C-linkage.
+    fprintf(fp, "#ifdef __cplusplus\n");
+    fprintf(fp, "extern \"C\" {\n");
+    fprintf(fp, "#endif\n");
+
 #ifdef __FFWD_DB_
+    fprintf(fp, "int __mpiOcrMain(int argc,char **argv);\n");
+    fprintf(fp, "ocrGuid_t __ffwd_init(void **ffwd_addr_p);\n");
     // these function are defined in mpilite/mpi_ocr.c.
     fprintf(fp, "extern u64 * __getGlobalDBAddr();\n");
-    fprintf(fp, "extern void __ocrCheckStatus(u8 status, char * functionName);\n\n");
+    fprintf(fp, "extern void __ocrCheckStatus(u8 status, char * functionName);\n");
+#else
+    fprintf(fp, "void ffwd_init()\n");
 #endif
-
+    fprintf(fp, "#ifdef __cplusplus\n");
+    fprintf(fp, "}\n");
+    fprintf(fp, "#endif\n\n");
     fprintf(fp, "#endif\n");
 
     fclose(fp);
@@ -230,8 +241,8 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
     // __ffwd_t * ffwd_addr_ptr=NULL;
     // u8 ffwd_status;
     // ffwd_status = ocrDbCreate( &ffwd_db_guid, (void **)&ffwd_addr_ptr, sizeof(__ffwd_t),
-    //                            0, NULL_GUID, NO_ALLOC);
-    // __ocrCheckStatus(ffwd_status, "ocrDbCreate");
+    //                            0, 0, (ocrInDbAllocator_t)0);
+    // __ocrCheckStatus(ffwd_status, (char *)"ocrDbCreate");
     // ffwd2_<filename>_init();
     // *ffwd_addr_p = (void *)ffwd_addr_ptr;
     // return ffwd_db_guid;
@@ -285,9 +296,9 @@ void visitorTraversal::writeInitFunction(SgProject * project)
                                                                  NULL, globalInitBB);
     appendStatement(ffwdStatus, globalInitBB);
 
-
     // ffwd_status = ocrDbCreate( &ffwd_db_guid, (void **)&ffwd_addr_ptr, sizeof(__ffwd_t),
-    //                            0, NULL_GUID, NO_ALLOC);
+    //                            0, 0, (ocrInDbAllocator_t)0);
+    //
     SgExpression * addrOfDBGuid = buildAddressOfOp(buildVarRefExp(SgName(dbName),globalInitBB));
     SgPointerType * ptrPtrType = buildPointerType(buildPointerType(buildVoidType()));
     SgExpression * castExp = buildCastExp(buildAddressOfOp(buildVarRefExp(SgName(ptrName), globalInitBB)),
@@ -295,13 +306,23 @@ void visitorTraversal::writeInitFunction(SgProject * project)
 
     SgSizeOfOp* sizeofExp = buildSizeOfOp(ffwdType);
 
+    string declName("ocrInDbAllocator");
+    SgClassDeclaration* decl = buildStructDeclaration(declName, _globalScope);
+    //SgClassDefinition* def = buildClassDefinition(decl);
+    SgType* declType = decl->get_type();
+    string typedefName("ocrInDbAllocator_t");
+    SgTypedefDeclaration* typedefDecl = buildTypedefDeclaration(typedefName, declType, _globalScope);
+    SgTypedefType * typedefType = typedefDecl->get_type();
+    SgExpression * castExp2 = buildCastExp(buildIntVal(0), typedefType, SgCastExp::e_C_style_cast);
+
+
     SgExprListExp * arg_list = buildExprListExp();
     appendExpression(arg_list,addrOfDBGuid);
     appendExpression(arg_list,castExp);
     appendExpression(arg_list,sizeofExp);
     appendExpression(arg_list,buildIntVal(0));
     appendExpression(arg_list,buildIntVal(0));
-    appendExpression(arg_list,buildIntVal(0));
+    appendExpression(arg_list,castExp2);
 
     SgFunctionCallExp * dbCreateCall = buildFunctionCallExp("ocrDbCreate", (SgType *)buildShortType(),
                                                        arg_list, globalInitBB);
@@ -312,8 +333,8 @@ void visitorTraversal::writeInitFunction(SgProject * project)
 
 #if 0
     // DEBUGGING!!!!
-    // printf("writeInitFunction: ffwd_db_guid=%p, ffwd_addr_ptr=%p\n", ffwd_db_guid, ffwd_addr_ptr);
-    string message = "writeInitFunction: ffwd_db_guid=%p, ffwd_addr_ptr=%p\\n";
+    // printf("__ffwd_init: ffwd_db_guid=%p, ffwd_addr_ptr=%p\n", ffwd_db_guid, ffwd_addr_ptr);
+    string message = "__ffwd_init: ffwd_db_guid=%p, ffwd_addr_ptr=%p\\n";
     SgVarRefExp * ffwdGuidExp1 = buildVarRefExp(SgName("ffwd_db_guid"), globalInitBB);
     SgVarRefExp * ffwdAddrExp1 = buildVarRefExp(SgName("ffwd_addr_ptr"), globalInitBB);
 
@@ -326,12 +347,14 @@ void visitorTraversal::writeInitFunction(SgProject * project)
 
 
     // __ocrCheckStatus will exit if there is a failure.
-    // __ocrCheckStatus(ffwd_status, "ocrDbCreate");
+    // __ocrCheckStatus(ffwd_status, (char *)"ocrDbCreate");
     SgVarRefExp * statusExp = buildVarRefExp(SgName("ffwd_status"), globalInitBB);
     SgStringVal * stringVal = buildStringVal("ocrDbCreate");
+    SgPointerType * charPtrType = buildPointerType(buildCharType());
+    SgExpression * castExp3 = buildCastExp(stringVal, charPtrType, SgCastExp::e_C_style_cast);
     SgExprListExp * arg1_list = buildExprListExp();
     appendExpression(arg1_list,statusExp);
-    appendExpression(arg1_list,stringVal);
+    appendExpression(arg1_list,castExp3);
     SgExprStatement * checkStatusCall = buildFunctionCallStmt("__ocrCheckStatus", (SgType *)buildVoidType(),
                                                               arg1_list, globalInitBB);
     appendStatement(checkStatusCall, globalInitBB);
