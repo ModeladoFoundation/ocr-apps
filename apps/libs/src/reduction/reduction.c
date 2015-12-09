@@ -15,6 +15,9 @@ The code implements an ARITY tree to reduce a set of local values to a single "g
 
 ARITY is defined in reduction.h it can be changed and recompiled if desired.
 
+Dec 9, 2015: fixed early release of reductionPrivateGUID (moved from reductionGetOnceEvent to reductionLaunch)
+
+
 */
 
 #define ENABLE_EXTENSION_LABELING
@@ -295,13 +298,13 @@ ocrGuid_t reductionGetOnceEvent(reductionPrivate_t * private, ocrGuid_t reductio
     temp = private->finalSendGuid[private->phase];
     u64 errno = ocrEventCreate(&temp, OCR_EVENT_ONCE_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
 
-    ocrDbRelease(reductionPrivateGuid);
     return(temp);
 }
 
 void reductionLaunch(reductionPrivate_t * private, ocrGuid_t reductionPrivateGuid, ocrGuid_t mydataGuid){
     ocrGuid_t reduction;
     ocrEdtCreate(&reduction, private->Template, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrDbRelease(reductionPrivateGuid);
     ocrAddDependence(reductionPrivateGuid, reduction, 0, DB_MODE_RO);
     ocrAddDependence(mydataGuid, reduction, 1, DB_MODE_RW);
     return;

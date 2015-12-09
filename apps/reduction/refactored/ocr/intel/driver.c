@@ -48,9 +48,9 @@ N is the length of the vectors
 #include "string.h"
 #include "stdio.h"
 
-#define P 42  //number of tasks
-#define T 100  //number of iterations
-#define N 6  //length of vector
+#define P 17  //number of tasks
+#define T 10  //number of iterations
+#define N 2  //length of vector
 
 
 ocrGuid_t driverEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
