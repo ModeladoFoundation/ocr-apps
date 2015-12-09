@@ -358,6 +358,11 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     // available. Note: we are not done with the db, but we have extracted
     // the ptr and guid from the data array.
 
+#if DEBUG_MPI
+    PRINTF("Rank %d recving from %d tag %d DB %p on event %p\n",dest, source, tag, DB, *eventP);
+
+#endif
+
     ocrEventDestroy(*eventP);
     *eventP = NULL_GUID;
 
@@ -407,6 +412,10 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
         }
 
     // OK, finished with DB, delete it
+    #if DESTROY_NEEDS_RELEASE
+        ocrDbRelease(DB); // temporary till bug 879 fixed
+    #endif
+
     ocrDbDestroy(DB);
 
     return ret;
