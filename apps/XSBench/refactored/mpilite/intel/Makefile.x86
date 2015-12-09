@@ -150,7 +150,7 @@ BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
 
 SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
 
-prebuild: $(ROSE_TARGET)
+prebuild: libocr $(ROSE_TARGET)
 
 $(ROSE_TARGET): $(ROSE_TOOL) create_dir
 	cd $(BLDDIR) ; \
