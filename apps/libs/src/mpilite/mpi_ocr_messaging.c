@@ -348,6 +348,10 @@ static int recvData(void *buf, int count, MPI_Datatype
         }
 
     // OK, finished with DB, delete it
+    #if DESTROY_NEEDS_RELEASE
+        ocrDbRelease(DB); // temporary till bug 879 fixed
+    #endif
+
     ocrDbDestroy(DB);
 
     return ret;

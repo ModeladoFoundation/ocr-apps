@@ -31,6 +31,12 @@ extern "C" {
 #define ENABLE_EXTENSION_LABELING  1
 #define ENABLE_EXTENSION_AFFINITY  1
 
+// 12/9/15 ocrDbDestroy neglects to Release DBs for mpilite, even though
+// it is supposed to. bug 879. So temporarily, add them.
+#ifndef DESTROY_NEEDS_RELEASE
+    #define DESTROY_NEEDS_RELEASE 1
+#endif
+
 // debugging for mpi_ocr{,_messaging}.c, mpilite.c
 #define DEBUG_MPI 0
 
