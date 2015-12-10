@@ -138,4 +138,5 @@ include ${APPS_ROOT}/makefiles/make-regular.inc
 
 # Use g++ and not gcc
 CC := g++
+#CC := clang++
 #CC := mpicxx

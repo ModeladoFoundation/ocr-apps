@@ -27,10 +27,16 @@
 #endif
 
 #include <string>
+#ifdef USE_OCR
+#include "ocr_relative_ptr.hpp"
+#endif
+#ifdef USE_OCR_TEST
+#include "ocr_vector.hpp"
+#else
 #include <vector>
+#endif
 #include <map>
 
-#include "ocr_relative_ptr.hpp"
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -846,8 +852,12 @@ protected:
 	///	<summary>
 	///		Reference to the model.
 	///	</summary>
+#ifdef USE_OCR
 	// change reference to ptr Model & m_model;
         Ocr::OcrRelativePtr<Model> m_model;
+#else
+        Model & m_model;
+#endif
 
 	///	<summary>
 	///		Block exchange operations between processors.
@@ -875,9 +885,15 @@ protected:
 	///	<summary>
 	///		Vector of grid patch ids which are active locally.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	Ocr::Vector<int> m_vecActiveGridPatchIndices;
+#else
 	std::vector<int> m_vecActiveGridPatchIndices;
+#endif
 
-#ifdef USE_MPI
+#ifdef USE_OCR_TEST
+	Ocr::Vector<int> m_vecPatchProcessor;
+#else
 	///	<summary>
 	///		Vector of processors that contain the specified GridPatch.
 	///	</summary>

@@ -1,0 +1,10 @@
+cd src/base; make
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+rsync --checksum *.h ../../include
+rm -f ../../lib/libtempestbase.a
+ar -cqs ../../lib/libtempestbase.a build/*.o
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+cd src/atm; make
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/atm'
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/ConsolidationStatus.o ConsolidationStatus.cpp
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/atm'

@@ -26,8 +26,12 @@
 #ifdef USE_OCR
 typedef int MPI_Request;
 #endif
-
+#ifdef USE_OCR_TEST
+#include "ocr_vector.hpp"
+#else
 #include <vector>
+#endif
+
 #include <map>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -99,7 +103,11 @@ public:
 	///	</summary>
 	ConsolidationStatus(
 		const Grid & grid,
+#ifdef USE_OCR_TEST
+		const Ocr::Vector<DataTypeLocationPair> & vecDataTypes
+#else
 		const std::vector<DataTypeLocationPair> & vecDataTypes
+#endif
 	);
 
 public:
@@ -175,12 +183,20 @@ private:
 	///	<summary>
 	///		Total number of receives set.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	Ocr::Vector<int> m_vecReceiveStatusCount;
+#else
 	std::vector<int> m_vecReceiveStatusCount;
+#endif
 
 	///	<summary>
 	///		Vector of receive status.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	Ocr::Vector< Ocr::Vector<bool> > m_vecReceiveStatus;
+#else
 	std::vector< std::vector<bool> > m_vecReceiveStatus;
+#endif
 
 	///	<summary>
 	///		Current send request.
@@ -190,7 +206,11 @@ private:
 	///	<summary>
 	///		Vector of send requests.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	Ocr::Vector<MPI_Request> m_vecSendRequests;
+#else
 	std::vector<MPI_Request> m_vecSendRequests;
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -27,6 +27,11 @@
 #include "Connectivity.h"
 #include "ChecksumType.h"
 #include "DataContainer.h"
+#ifdef USE_OCR_TEST
+#include "ocr_vector.hpp"
+#else
+#include <vector>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -49,13 +54,21 @@ public:
 	///	<summary>
 	///		A vector containing panel indices.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	typedef Ocr::Vector<int> PanelIndexVector;
+#else
 	typedef std::vector<int> PanelIndexVector;
+#endif
 
 protected:
 	///	<summary>
 	///		A vector storing DataArray4D<double>.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	typedef Ocr::Vector< DataArray4D<double> > DataArray4DVector;
+#else
 	typedef std::vector< DataArray4D<double> > DataArray4DVector;
+#endif
 
 public:
 	///	<summary>
@@ -1273,14 +1286,25 @@ protected:
 //typedef std::vector<GridPatch*> GridPatchVector;
 
 class GridPatchVector
+#ifdef USE_OCR_TEST
+	: public Ocr::Vector <GridPatch*>
+#else
 	: public std::vector<GridPatch*>
+#endif
 {
 	public:
 		GridPatch * operator[](int i) const {
 			if (i == GridPatch::InvalidIndex) {
 				return NULL;
 			}
+#ifdef USE_OCR_TEST
+#define VECTOR_SIZE 1600
+                        //Ocr::Vector<GridPatch*> &gp = *ocrNew(Ocr::Vector<GridPatch*>, VECTOR_SIZE);
+                        return Ocr::Vector<GridPatch*>::operator[](i);
+#else
 			return std::vector<GridPatch*>::operator[](i);
+#endif
+
 		}
 };
 

@@ -70,10 +70,11 @@ endif
 ## Linux (agri)
 ifeq ($(system),Linux)
   #CC=mpiCC
-  CC=g++
+  #CC=g++
+  CC=clang++
   F90=mpif90
   FORTFLAGS+= -O3
-  CFLAGS+= -fPIC -O3 -DUSE_OCR
+  CFLAGS+= -fPIC -O3 -DUSE_OCR -I -I../../test/include
   LDFLAGS+= -fPIC -O3
 
   # Check for BLAS
