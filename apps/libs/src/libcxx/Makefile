@@ -81,19 +81,19 @@ all: $(ARCH)
 # XE Clang/llvm build
 #
 ifeq ($(ARCH), tg)
-CC = $(TG_INSTALL)/bin/clang
-CXX = $(TG_INSTALL)/bin/clang++
-TARGET = xstg-linux-elf
-CXX_TARGET = XSTG
+  CC = $(TG_INSTALL)/bin/clang
+  CXX = $(TG_INSTALL)/bin/clang++
+  TARGET = xstg-linux-elf
+  CXX_TARGET = XSTG
 endif
 #
 # This defines an x86_64 build using the XE compiler
 #
 ifeq ($(ARCH), x86)
-CC = $(TG_INSTALL)/bin/clang
-CXX = $(TG_INSTALL)/bin/clang++
-TARGET = x86_64-linux-elf
-CXX_TARGET = x86_64
+  CC = $(TG_INSTALL)/bin/clang
+  CXX = $(TG_INSTALL)/bin/clang++
+  TARGET = x86_64-linux-elf
+  CXX_TARGET = x86_64
 endif
 
 $(ARCHES) install: build
