@@ -1,11 +1,10 @@
-/* libc/sys/linux/crt0.c - Run-time initialization */
-
-/* FIXME: This should be rewritten in assembler and
-          placed in a subdirectory specific to a platform.
-          There should also be calls to run constructors. */
-
-/* Written 2000 by Werner Almesberger */
-
+//
+// libc/sys/ocr/machine/x86_64/crt0.c
+// - Run-time initialization with OCR
+//
+// Start running - collect our argc, argv, env, call _init() to change stacks
+// and then call main()
+//
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -19,6 +18,8 @@ extern char ** environ;
 extern u64 _init( int argc, char **argv, ocrConfig_t *oc );
 extern void _fini (void);
 extern int main( int argc,char **argv,char **envp );
+
+static void __do_global_ctors( void );
 
 /* x86_64 entry point stack state
 
@@ -60,6 +61,8 @@ void _start()
 // that it is only called by _start() and so merge the 2 functions, breaking
 // the code in _start().
 //
+// NOTE: we assume that the bss is cleared before we get here.
+//
 void _real_start( uint64_t * psp )
 {
     /*
@@ -85,6 +88,11 @@ void _real_start( uint64_t * psp )
     if (atexit (_fini) != 0)
       exit (-1);
 
+    //
+    // Do C++ startup
+    //
+    __do_global_ctors();
+
     /* Note: do not clear the .bss section.  When running with shared
      *       libraries, certain data items such __mb_cur_max or environ
      *       may get placed in the .bss, even though they are initialized
@@ -93,4 +101,70 @@ void _real_start( uint64_t * psp )
      *       by this time by Linux.  */
 
     exit( main( ocrConfig.userArgc, ocrConfig.userArgv, environ ) );
+}
+
+//
+// Utility types
+//
+typedef void (* fptr_t)(void);
+typedef unsigned long * ulongptr_t;    // not provided by stdint.h :-(
+
+//
+// C++ support - constructor list, w/placeholder first entry
+// Copied from XSTG implementation
+//
+const fptr_t __CTOR_LIST__[]
+    __attribute__ (( aligned(sizeof(void *)) ))
+    __attribute__ (( section(".ctors") )) = { (fptr_t) -1, };
+
+extern const fptr_t __CTOR_LIST_END__[];
+
+//
+// TODO: since clang registers destructors w/atexit() there's
+//       no need to keep a destructor list - remove
+// destructor list, w/placeholder first entry
+//
+const fptr_t __DTOR_LIST__[]
+    __attribute__ (( aligned(sizeof(void *)) ))
+    __attribute__ (( section(".dtors") )) = { (fptr_t) -1, };
+
+//
+// Stack unwinding support
+//
+// eh_frame_hdr and eh_frame list
+// The sections are added by the ldscript and it creates
+// the following symbols for access.
+// Sizes may be 0.
+//
+extern uint64_t __eh_frame_hdr_start;
+extern uint64_t __eh_frame_hdr_size;
+extern uint64_t __eh_frame_start;
+extern uint64_t __eh_frame_size;
+
+static struct eh_info {
+    ulongptr_t hdr_start;
+    ulongptr_t hdr_size;
+    ulongptr_t frame_start;
+    ulongptr_t frame_size;
+} eh_object = {
+    .hdr_start   = & __eh_frame_hdr_start,
+    .hdr_size    = & __eh_frame_hdr_size,
+    .frame_start = & __eh_frame_start,
+    .frame_size  = & __eh_frame_size
+};
+
+void __get_eh_info( struct eh_info * info )
+{
+    *info = eh_object;
+}
+//
+// initialize any static constructors
+//  Note that destructors are registered w/atexit() by clang in the ctors,
+//  so no corresponding __do_global_dtors().
+//
+static void __do_global_ctors( void )
+{
+    for (const fptr_t *p = __CTOR_LIST_END__; p > __CTOR_LIST__ + 1; ) {
+        (*(*--p))();
+    }
 }
