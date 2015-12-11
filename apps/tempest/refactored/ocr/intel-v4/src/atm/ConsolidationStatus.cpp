@@ -21,9 +21,19 @@
 
 ConsolidationStatus::ConsolidationStatus(
 	const Grid & grid,
+#ifdef USE_OCR_TEST
+	const Ocr::Vector<DataTypeLocationPair> & vecDataTypes
+#else
 	const std::vector<DataTypeLocationPair> & vecDataTypes
+#endif
 ) :
-	m_nCurrentSendRequest(0)
+#ifdef USE_OCR_TEST
+        m_vecReceiveStatusCount (256),
+        m_vecReceiveStatus (256),
+        m_vecSendRequests (256)
+#else
+	m_nCurrentSendRequest(0),
+#endif
 {
 
 	// Get process id

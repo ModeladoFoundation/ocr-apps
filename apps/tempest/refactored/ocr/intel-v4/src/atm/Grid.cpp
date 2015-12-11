@@ -43,6 +43,10 @@ Grid::Grid(
 	int nRElements,
 	VerticalStaggering eVerticalStaggering
 ) :
+#ifdef USE_OCR_TEST
+        m_vecActiveGridPatchIndices(128),
+        m_vecPatchProcessor(128),
+#endif
 	m_fInitialized(false),
 	m_model(&model),
 	m_fBlockParallelExchange(false),
