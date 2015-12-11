@@ -69,7 +69,7 @@
     assert(false);
     abort();
   }
-  #ifdef __XSTG__
+  #ifdef __XSTACK__
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX    1
