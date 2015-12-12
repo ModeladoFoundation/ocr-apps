@@ -30,10 +30,11 @@ ConsolidationStatus::ConsolidationStatus(
 #ifdef USE_OCR_TEST
         m_vecReceiveStatusCount (256),
         m_vecReceiveStatus (256),
-        m_vecSendRequests (256)
+        m_vecSendRequests (256),
 #else
-	m_nCurrentSendRequest(0),
+	// nothing specific...
 #endif
+	m_nCurrentSendRequest(0)
 {
 
 	// Get process id
