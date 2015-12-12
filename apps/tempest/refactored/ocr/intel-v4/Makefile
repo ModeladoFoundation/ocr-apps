@@ -2,9 +2,9 @@
 ## Build instructions
 ##
 all:
-	cd src/base; make
-	cd src/atm; make
-	cd test; make
+	cd src/base; make -j8
+	cd src/atm; make -j8
+	#cd test; make
 
 ##
 ## Clean
@@ -12,7 +12,7 @@ all:
 clean:
 	cd src/base; make clean
 	cd src/atm; make clean
-	cd test; make clean
+	#cd test; make clean
 	rm -f include/*.h
 
 # DO NOT DELETE
