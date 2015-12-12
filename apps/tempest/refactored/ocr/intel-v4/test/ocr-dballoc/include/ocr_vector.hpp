@@ -26,6 +26,8 @@ namespace Ocr {
 
             T &operator[](const size_t index) { return data[index]; }
 
+            const T &operator[](const size_t index) const { return data[index]; }
+
             void push_back(const T& value) { data[head++] = value; }
 
             size_t size(void) const { return head; }
@@ -43,6 +45,16 @@ namespace Ocr {
                 return pos;
             }
 
+            void resize(size_t s) {
+                throw "RESIZE NOT SUPPORTED FOR OCR VECTORS";
+            }
+
+    };
+
+    /** Vector defaulting to capacity of 256 */
+    template <typename T>
+    struct Vector256: public Vector<T> {
+        Vector256(): Vector<T>(256) { }
     };
 }
 

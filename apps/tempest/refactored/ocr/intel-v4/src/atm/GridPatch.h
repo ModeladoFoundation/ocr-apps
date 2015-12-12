@@ -55,7 +55,7 @@ public:
 	///		A vector containing panel indices.
 	///	</summary>
 #ifdef USE_OCR_TEST
-	typedef Ocr::Vector<int> PanelIndexVector;
+	typedef Ocr::Vector256<int> PanelIndexVector;
 #else
 	typedef std::vector<int> PanelIndexVector;
 #endif
@@ -65,7 +65,7 @@ protected:
 	///		A vector storing DataArray4D<double>.
 	///	</summary>
 #ifdef USE_OCR_TEST
-	typedef Ocr::Vector< DataArray4D<double> > DataArray4DVector;
+	typedef Ocr::Vector256< DataArray4D<double> > DataArray4DVector;
 #else
 	typedef std::vector< DataArray4D<double> > DataArray4DVector;
 #endif
@@ -1287,7 +1287,7 @@ protected:
 
 class GridPatchVector
 #ifdef USE_OCR_TEST
-	: public Ocr::Vector <GridPatch*>
+	: public Ocr::Vector256 <GridPatch*>
 #else
 	: public std::vector<GridPatch*>
 #endif
