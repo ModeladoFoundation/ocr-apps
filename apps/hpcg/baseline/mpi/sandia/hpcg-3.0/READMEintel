@@ -1,0 +1,31 @@
+####################################################
+High Performance Conjugate Gradient Benchmark (HPCG)
+####################################################
+
+version 3.0
+Checked in by David S. Scott
+
+to create an executable, do
+
+make arch=Linux_MPI
+
+in this directory.
+
+This will create an MPI executable "xhpcg" in the bin directory
+
+Execute it with mpirun -np XX ./xhpcg
+
+This will run with the parameters from the hpcg.dat file in bin
+
+
+HPCG benchmark input file
+Sandia National Laboratories; University of Tennessee, Knoxville
+104 104 104
+60
+
+
+That is currently set to a local brick size of 104x104x104
+
+It should produce two output files, .txt and .yaml
+
+
