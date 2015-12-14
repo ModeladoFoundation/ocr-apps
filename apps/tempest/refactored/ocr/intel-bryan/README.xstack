@@ -1,0 +1,33 @@
+Bryan Pawlowski, Intel, October, 2015
+
+This directory contains the baseline version of the
+Tempest atmosphere / Earth-sysem model developed by Paul Ulrich (UCDavis, LBL).
+It is downloaded from here:
+https://github.com/paullric/tempestmodel
+
+
+Note:
+-----
+This version was created as a proof-of concept of OCR-ifying the tempest framework.
+The code contains a raw-c overhaul of the important bits of functionality for the tempest framework.
+A dummy test will be implemented to show functionality and, optimistically, the shallow water test.
+=============================================================================================================
+
+
+
+For sanity checking purposes, I drew out a diagram similar to the one below.
+This helped corroborate the fact that my neighbor finding logic and data exchange.
+
+    |17 19|
+    |16 18|
+|1 3|5   7|9 11|13 15|
+|0 2|4   6|8 10|12 14|
+    |21 23|
+    |20 22|
+
+
+As it is, the current code passes data back and forth for a few timesteps, then cross-checks from whom it
+received data by printing out the patch number from where the data came. As it is now, the code seg faults
+following the final printout and I am now trying to track down where this is happening.
+
+To run, simply run the go.sh script included.
