@@ -23,7 +23,7 @@
 #include "ocr_relative_ptr.hpp"
 #include "ocr_db_alloc.hpp"
 #include <cstring>
-#include <unistd.h>
+#include <unistd.h> // FIXME - remove when we get rid of sleep() calls
 
 #define ARENA_SIZE 100000000
 
@@ -65,7 +65,7 @@ typedef struct
 } MG;
 
 ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    sleep(2);
+    sleep(2); // FIXME - this is debug code
     PRINTF (">>> updatePatch EDT start!\n");
     int i, rank, len, dlen, step, maxStep, nRanks;
 
@@ -152,7 +152,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 }
 
 ocrGuid_t outputEdt (u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    sleep(2);
+    sleep(2); // FIXME - this is debug code
     PRINTF (">>> outputEdt start!\n");
     char * localDataGeometric = (char *) depv[0].ptr;
     int nWorkers = (int) paramv [0];
@@ -226,12 +226,15 @@ try {
 
         // pointer to the memories serving as backups for ocrDblock to hold Model and Grids
         void *arenaPtr[nWorkers];
-        MG myMG [nWorkers];
+	// FIXME: this is temporary data--but still probably shouldn't use "new"
+        MG *myMG = new MG[nWorkers];
         ocrGuid_t arenaGuid[nWorkers];
 	ModelParameters param;
         for (int i = 0; i<nWorkers; i++) {
             ocrDbCreate(&arenaGuid[i], &arenaPtr[i], ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
         }
+	// FIXME: I don't know why the linker fails if I don't set up this constant
+	const int EQUATION_TYPE = EquationSet::PrimitiveNonhydrostaticEquations;
         ////////// test test test ////////////////////////
         MG testMG;
         void *testArenaPtr;
@@ -239,13 +242,13 @@ try {
         ocrDbCreate(&testArenaGuid, &testArenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
         ocrAllocatorSetDb(testArenaPtr, (size_t) ARENA_SIZE, true);
         Model * testModel;
-        testMG.m = ocrNew (Model, EquationSet::PrimitiveNonhydrostaticEquations);
+        testMG.m = ocrNew (Model, EQUATION_TYPE);
         testModel = testMG.m;
         assert((void*)testModel == testArenaPtr);
 	Model * model [nWorkers];
         for (int i=0; i<nWorkers; i++) {
             ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, true);
-            myMG [i].m = ocrNew (Model, EquationSet::PrimitiveNonhydrostaticEquations);
+            myMG [i].m = ocrNew (Model, EQUATION_TYPE);
             model [i] = myMG [i].m;
             assert((void*)model [i] == arenaPtr [i]);
 	    // Set the parameters
