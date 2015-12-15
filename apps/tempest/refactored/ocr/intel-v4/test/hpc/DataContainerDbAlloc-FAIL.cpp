@@ -125,7 +125,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         stateInfo->thisStep++;
         // change to local guid for EDT
         ocrEdtCreate(&stateInfo->EDT, stateInfo->TML, EDT_PARAM_DEF, paramv,
-                      EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                      EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
         // release data blocks
         ocrAddDependence(depv[0].guid, stateInfo->EDT, 0, DB_MODE_RW );
         ocrAddDependence(depv[1].guid, stateInfo->EDT, 1, DB_MODE_RW );
@@ -228,26 +228,27 @@ try {
 
         // pointer to the memories serving as backups for ocrDblock to hold Model and Grids
         void *arenaPtr[nWorkers];
-        MG myMG [nWorkers];
+        MG *myMG = new MG[nWorkers];
         ocrGuid_t arenaGuid[nWorkers];
 	ModelParameters param;
         for (int i = 0; i<nWorkers; i++) {
             ocrDbCreate(&arenaGuid[i], &arenaPtr[i], ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
         }
         ////////// test test test ////////////////////////
+	const int EQ_TEST = EquationSet::PrimitiveNonhydrostaticEquations;
         MG testMG;
         void *testArenaPtr;
         ocrGuid_t testArenaGuid;
         ocrDbCreate(&testArenaGuid, &testArenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
         ocrAllocatorSetDb(testArenaPtr, (size_t) ARENA_SIZE, true);
         Model * testModel;
-        testMG.m = ocrNew (Model, EquationSet::PrimitiveNonhydrostaticEquations);
+        testMG.m = ocrNew (Model, EQ_TEST);
         testModel = testMG.m;
         assert((void*)testModel == testArenaPtr);
 	Model * model [nWorkers];
         for (int i=0; i<nWorkers; i++) {
             ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, true);
-            myMG [i].m = ocrNew (Model, EquationSet::PrimitiveNonhydrostaticEquations);
+            myMG [i].m = ocrNew (Model, EQ_TEST);
             model [i] = myMG [i].m;
             assert((void*)model [i] == arenaPtr [i]);
 	    // Set the parameters
@@ -419,7 +420,7 @@ try {
 
             //u64 update_paramv [1] = {(u64) pGrid [i] };
             ocrEdtCreate(&updatePatch_t[i].EDT, updatePatch_t[i].TML, EDT_PARAM_DEF, NULL,
-                              EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                              EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
 
         }
         // add data dependences for updatePatch EDT
@@ -452,6 +453,7 @@ try {
 
 	// Deinitialize Tempest
 	//MPI_Finalize();
+	return NULL_GUID;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
