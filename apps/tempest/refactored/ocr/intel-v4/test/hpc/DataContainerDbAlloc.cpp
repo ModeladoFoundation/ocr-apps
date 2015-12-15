@@ -90,7 +90,9 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // These objects are created once within the mainEdt; each worker thread should have a local copy of the object; this objects should be globally
     // accessible for all tasks that this worker thread performs.
 
-    Grid * pGrid =  ((MG *) (depv [2].ptr))->g;
+    void * localArena =  depv[2].ptr;
+    ocrAllocatorSetDb(localArena, (size_t) ARENA_SIZE, false);
+    Grid * pGrid =  ((MG *) localArena)->g;
     //PRINTF("GJDEBUG: rank= %d grid pointer in updatePatch %lx\n", rank, pGrid);
 
     // activate the patch

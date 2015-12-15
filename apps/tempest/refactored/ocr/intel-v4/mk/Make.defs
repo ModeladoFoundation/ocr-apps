@@ -75,7 +75,7 @@ ifeq ($(system),Linux)
   F90=mpif90
   FORTFLAGS+= -O3
   CFLAGS+=-fPIC -O0 -DUSE_OCR -I -I../../test/include
-  CFLAGS+=-g #-DUSE_OCR_TEST
+  CFLAGS+=-g -DUSE_OCR_TEST
   LDFLAGS+= -fPIC
 
   # Check for BLAS

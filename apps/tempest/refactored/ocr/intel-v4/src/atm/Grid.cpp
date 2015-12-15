@@ -1295,7 +1295,11 @@ void Grid::DeactivatePatch(
 ) {
 	for (int i = 0; i < m_vecActiveGridPatchIndices.size(); i++) {
 		if (m_vecActiveGridPatchIndices[i] == ixPatch) {
+#ifdef USE_OCR_TEST
+			ocrDelete(m_vecActiveGridPatches[i]);
+#else
 			delete m_vecActiveGridPatches[i];
+#endif
 
 			m_vecActiveGridPatchIndices.erase(
 				m_vecActiveGridPatchIndices.begin() + i);
