@@ -64,6 +64,7 @@ ENABLE_VISUALIZER ?= no
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
+#TARGET := DataContainerDbAlloc
 TARGET := DataContainerDbAlloc
 
 #DataContainerTest: $(TEMPESTLIBS)/libhardcoreatm.a $(TEMPESTLIBS)/libtempestbase.a
@@ -77,6 +78,7 @@ SRCS :=  $(TARGET).cpp ../ocr-dballoc/src/ocr_db_alloc.cpp
 CONFIG_FLAGS := --guid LABELED
 OBJS := $(notdir $(SRCS:.cpp=.o))
 #CFLAGS := -O0 -g -I${TEMPESTBASEDIR}/include
+#CFLAGS := -O0 -g  -std=gnu++11 -g -DUSE_OCR -USE_OCR_TEST -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include -I../ocr-dballoc/include
 CFLAGS := -O0 -g  -std=gnu++11 -g -DUSE_OCR -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include -I../ocr-dballoc/include
 LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -lnetcdf -lnetcdf_c++ -llapack -lblas
 
