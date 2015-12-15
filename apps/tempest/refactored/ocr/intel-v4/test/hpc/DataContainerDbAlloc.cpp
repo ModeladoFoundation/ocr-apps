@@ -23,7 +23,6 @@
 #include "ocr_relative_ptr.hpp"
 #include "ocr_db_alloc.hpp"
 #include <cstring>
-#include <unistd.h> // FIXME - remove when we get rid of sleep() calls
 
 #define ARENA_SIZE 100000000
 
@@ -65,8 +64,6 @@ typedef struct
 } MG;
 
 ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    sleep(2); // FIXME - this is debug code
-    PRINTF (">>> updatePatch EDT start!\n");
     int i, rank, len, dlen, step, maxStep, nRanks;
 
     double * localDataGeometric = (double *) depv[0].ptr;
@@ -93,7 +90,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // These objects are created once within the mainEdt; each worker thread should have a local copy of the object; this objects should be globally
     // accessible for all tasks that this worker thread performs.
 
-    Grid * pGrid =  (Grid *) paramv [0];
+    Grid * pGrid =  ((MG *) (depv [2].ptr))->g;
     //PRINTF("GJDEBUG: rank= %d grid pointer in updatePatch %lx\n", rank, pGrid);
 
     // activate the patch
@@ -132,6 +129,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         // release data blocks
         ocrAddDependence(depv[0].guid, stateInfo->EDT, 0, DB_MODE_RW );
         ocrAddDependence(depv[1].guid, stateInfo->EDT, 1, DB_MODE_RW );
+        ocrAddDependence(depv[2].guid, stateInfo->EDT, 2, DB_MODE_RW );
 
     //    This data is currently not being used
     //    ocrAddDependence(depv[2].guid, stateInfo->EDT, 2, DB_MODE_RW );
@@ -143,6 +141,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         // TODO:  Release the data block which has been updated and is printed by outputEDT; important for x86-mpi;
         ocrDbRelease (depv[0].guid);
         ocrDbRelease (depv[1].guid);
+        ocrDbRelease (depv[2].guid);
         ocrEventSatisfy (stateInfo->DONE, NULL_GUID);
         PRINTF ("Good-by from Rank %d in updatePatch\n", rank);
     }
@@ -152,8 +151,6 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 }
 
 ocrGuid_t outputEdt (u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    sleep(2); // FIXME - this is debug code
-    PRINTF (">>> outputEdt start!\n");
     char * localDataGeometric = (char *) depv[0].ptr;
     int nWorkers = (int) paramv [0];
     int lastStep = (int) paramv[1];
@@ -224,33 +221,38 @@ try {
         Grid::VerticalStaggering eVerticalStaggering =
 		Grid::VerticalStaggering_Levels;
 
+	// Setup the Model
+	// Model model(EquationSet::PrimitiveNonhydrostaticEquations);
+
+	// Setup the Model
+
         // pointer to the memories serving as backups for ocrDblock to hold Model and Grids
         void *arenaPtr[nWorkers];
-	// FIXME: this is temporary data--but still probably shouldn't use "new"
-        MG *myMG = new MG[nWorkers];
+        MG *myMG[nWorkers];
         ocrGuid_t arenaGuid[nWorkers];
 	ModelParameters param;
         for (int i = 0; i<nWorkers; i++) {
             ocrDbCreate(&arenaGuid[i], &arenaPtr[i], ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
         }
+        ////////// test test test ////////////////////////
 	// FIXME: I don't know why the linker fails if I don't set up this constant
 	const int EQUATION_TYPE = EquationSet::PrimitiveNonhydrostaticEquations;
-        ////////// test test test ////////////////////////
-        MG testMG;
-        void *testArenaPtr;
-        ocrGuid_t testArenaGuid;
-        ocrDbCreate(&testArenaGuid, &testArenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-        ocrAllocatorSetDb(testArenaPtr, (size_t) ARENA_SIZE, true);
-        Model * testModel;
-        testMG.m = ocrNew (Model, EQUATION_TYPE);
-        testModel = testMG.m;
-        assert((void*)testModel == testArenaPtr);
+//        MG testMG;
+//        void *testArenaPtr;
+//        ocrGuid_t testArenaGuid;
+//        ocrDbCreate(&testArenaGuid, &testArenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+//        ocrAllocatorSetDb(testArenaPtr, (size_t) ARENA_SIZE, true);
+//        Model * testModel;
+//        testMG.m = ocrNew (Model, EQUATION_TYPE);
+//        testModel = testMG.m;
+//        assert((void*)testModel == testArenaPtr);
 	Model * model [nWorkers];
         for (int i=0; i<nWorkers; i++) {
             ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, true);
-            myMG [i].m = ocrNew (Model, EQUATION_TYPE);
-            model [i] = myMG [i].m;
-            assert((void*)model [i] == arenaPtr [i]);
+            myMG[i] = ocrNew(MG);
+            myMG[i]->m = ocrNew (Model, EQUATION_TYPE);
+            model [i] = myMG[i]->m;
+            assert((void*)myMG[i] == arenaPtr [i]);
 	    // Set the parameters
 	    model [i]->SetParameters(param);
 	    model [i]->SetHorizontalDynamics(
@@ -263,7 +265,8 @@ try {
 	// Set the model grid (one patch Cartesian grid)
         GridCartesianGLL * pGrid [nWorkers];
         for (int i = 0; i<nWorkers; i++) {
-            myMG [i].g = ocrNew (GridCartesianGLL,
+            ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, false);
+            myMG[i]->g = ocrNew (GridCartesianGLL,
 			*model [i],
                         nWorkers,
 			nResolutionX,
@@ -275,7 +278,7 @@ try {
 			dGDim,
 			dRefLat,
 			eVerticalStaggering);
-            pGrid [i] = myMG [i].g;
+            pGrid [i] = myMG[i]->g;
 
         }
         // Create testGrid in a data block
@@ -293,6 +296,7 @@ try {
         // std::cout << "testPatch.Geometric Size:   " << testGeometric.GetTotalByteSize() << " bytes" << std::endl;
 	// Apply the default patch layout
         for (int i = 0; i<nWorkers; i++) {
+            ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, false);
 	    pGrid[i]->ApplyDefaultPatchLayout(nWorkers);
         }
 
@@ -373,12 +377,13 @@ try {
             // Craete Template for updatePatch Edt
             // Parameters:
             //       1 pointer to global grid
-            // Dependences:2
+            // Dependences:3
             //      updated geometric data block
             //      state information
-            //      TODO: Add dependences on "magic" neighbor events to handle the data exchainge; 1 event per neighbor
+            //      arena holding grid+model data
+            //      TODO: Add dependences on "magic" neighbor events to handle the data exchange; 1 event per neighbor
 
-            ocrEdtTemplateCreate(&updatePatch_t[i].TML, updatePatch_t[i].FNC, 1, 2);
+            ocrEdtTemplateCreate(&updatePatch_t[i].TML, updatePatch_t[i].FNC, 0, 3);
 
             ocrDbCreate (&dataGuidState [i], (void **)&pStateInfo, (u64) (sizeof(updateStateInfo_t)), 0, NULL_GUID, NO_ALLOC);
             ocrDbCreate (&dataGuidGeometric[i], (void **)&pDataGeometric, (u64) dataGeometric.GetTotalByteSize(), 0, NULL_GUID, NO_ALLOC);
@@ -417,8 +422,8 @@ try {
         // NOTE: is currently illegal OCR. It will break on x86-mpi. It is a temporary workaround to demonstrate the need for
         // worker thread local globally accessible objects
 
-            u64 update_paramv [1] = {(u64) pGrid [i] };
-            ocrEdtCreate(&updatePatch_t[i].EDT, updatePatch_t[i].TML, EDT_PARAM_DEF, update_paramv,
+            //u64 update_paramv [1] = {(u64) pGrid [i] };
+            ocrEdtCreate(&updatePatch_t[i].EDT, updatePatch_t[i].TML, EDT_PARAM_DEF, NULL,
                               EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
 
         }
@@ -429,6 +434,7 @@ try {
             _idep = 0;
             ocrAddDependence(dataGuidGeometric[i], updatePatch_t[i].EDT, _idep++, DB_MODE_RW );
             ocrAddDependence(dataGuidState[i], updatePatch_t[i].EDT, _idep++, DB_MODE_RW );
+            ocrAddDependence(arenaGuid[i], updatePatch_t[i].EDT, _idep++, DB_MODE_RW );
             // This data is currently not being used, since our update is just a proof of concept
             //ocrAddDependence(dataGuidActiveState[i], updatePatch_t[i].EDT, _idep++, DB_MODE_RW );
             //ocrAddDependence(dataGuidBufferState[i], updatePatch_t[i].EDT, _idep++, DB_MODE_RW );
@@ -451,8 +457,7 @@ try {
 
 	// Deinitialize Tempest
 	//MPI_Finalize();
-    PRINTF (">>> mainEdt done!\n");
-    return NULL_GUID;
+	return NULL_GUID;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

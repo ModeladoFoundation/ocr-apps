@@ -228,29 +228,31 @@ try {
 
         // pointer to the memories serving as backups for ocrDblock to hold Model and Grids
         void *arenaPtr[nWorkers];
-        MG *myMG = new MG[nWorkers];
+        MG *myMG[nWorkers];
         ocrGuid_t arenaGuid[nWorkers];
 	ModelParameters param;
         for (int i = 0; i<nWorkers; i++) {
             ocrDbCreate(&arenaGuid[i], &arenaPtr[i], ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
         }
         ////////// test test test ////////////////////////
-	const int EQ_TEST = EquationSet::PrimitiveNonhydrostaticEquations;
-        MG testMG;
-        void *testArenaPtr;
-        ocrGuid_t testArenaGuid;
-        ocrDbCreate(&testArenaGuid, &testArenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-        ocrAllocatorSetDb(testArenaPtr, (size_t) ARENA_SIZE, true);
-        Model * testModel;
-        testMG.m = ocrNew (Model, EQ_TEST);
-        testModel = testMG.m;
-        assert((void*)testModel == testArenaPtr);
+	// FIXME: I don't know why the linker fails if I don't set up this constant
+	const int EQUATION_TYPE = EquationSet::PrimitiveNonhydrostaticEquations;
+//        MG testMG;
+//        void *testArenaPtr;
+//        ocrGuid_t testArenaGuid;
+//        ocrDbCreate(&testArenaGuid, &testArenaPtr, ARENA_SIZE, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+//        ocrAllocatorSetDb(testArenaPtr, (size_t) ARENA_SIZE, true);
+//        Model * testModel;
+//        testMG.m = ocrNew (Model, EQUATION_TYPE);
+//        testModel = testMG.m;
+//        assert((void*)testModel == testArenaPtr);
 	Model * model [nWorkers];
         for (int i=0; i<nWorkers; i++) {
             ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, true);
-            myMG [i].m = ocrNew (Model, EQ_TEST);
-            model [i] = myMG [i].m;
-            assert((void*)model [i] == arenaPtr [i]);
+            myMG[i] = ocrNew(MG);
+            myMG[i]->m = ocrNew (Model, EQUATION_TYPE);
+            model [i] = myMG[i]->m;
+            assert((void*)myMG[i] == arenaPtr [i]);
 	    // Set the parameters
 	    model [i]->SetParameters(param);
 	    model [i]->SetHorizontalDynamics(
@@ -263,7 +265,8 @@ try {
 	// Set the model grid (one patch Cartesian grid)
         GridCartesianGLL * pGrid [nWorkers];
         for (int i = 0; i<nWorkers; i++) {
-            myMG [i].g = ocrNew (GridCartesianGLL,
+            ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, false);
+            myMG[i]->g = ocrNew (GridCartesianGLL,
 			*model [i],
                         nWorkers,
 			nResolutionX,
@@ -275,7 +278,7 @@ try {
 			dGDim,
 			dRefLat,
 			eVerticalStaggering);
-            pGrid [i] = myMG [i].g;
+            pGrid [i] = myMG[i]->g;
 
         }
         // Create testGrid in a data block
@@ -293,6 +296,7 @@ try {
         // std::cout << "testPatch.Geometric Size:   " << testGeometric.GetTotalByteSize() << " bytes" << std::endl;
 	// Apply the default patch layout
         for (int i = 0; i<nWorkers; i++) {
+            ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, false);
 	    pGrid[i]->ApplyDefaultPatchLayout(nWorkers);
         }
 
