@@ -1,5 +1,5 @@
 # Test makefile
-TARGET := Grid2D
+TARGET := VectorTest
 
 # Library root
 OCR_ALLOC_LIB_ROOT ?= ../..

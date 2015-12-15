@@ -2,6 +2,8 @@
 #define _OCR_VECTOR_HPP_
 
 #include "ocr_db_alloc.hpp"
+#include <cstdlib>
+#include <cstdio>
 
 namespace Ocr {
     /**
@@ -13,16 +15,21 @@ namespace Ocr {
     template <typename T>
     struct Vector {
         private:
-            const int capacity;
-            int head;
+            const size_t capacity;
+            size_t head;
             T *const data;
 
         public:
             typedef T *iterator;
 
-            Vector(const size_t max_capacity):
+            Vector(const size_t initial_size, const size_t max_capacity):
                 capacity(max_capacity), head(0),
-                data(ocrNewArray(T, max_capacity)) { }
+                data(Ocr::NewArray<T>(max_capacity))
+            {
+                resize(initial_size);
+            }
+
+            Vector(const size_t size): Vector(size, size) { }
 
             T &operator[](const size_t index) { return data[index]; }
 
@@ -45,17 +52,31 @@ namespace Ocr {
                 return pos;
             }
 
-            void resize(size_t s) {
-                throw "RESIZE NOT SUPPORTED FOR OCR VECTORS";
+            void reserve(size_t size) {
+                if (size > capacity) {
+                    fprintf(stderr, "Resizing past initial capacity not supported for Ocr::Vector. (%zu > %zu)\n", size, capacity);
+                    abort();
+                }
+            }
+
+            void resize(size_t size) {
+                reserve(size);
+                for (size_t i=head; i<size; i++) {
+                    Ocr::TypeInitializer<T>::init(data[i]);
+                }
+                head = size;
             }
 
     };
 
-    /** Vector defaulting to capacity of 256 */
-    template <typename T>
-    struct Vector256: public Vector<T> {
-        Vector256(): Vector<T>(256) { }
+    /** Vector defaulting to capacity of N */
+    template <typename T, int N>
+    struct VectorN: public Vector<T> {
+        VectorN(size_t sz = 0): Vector<T>(sz, N) { }
     };
+
+    template <typename T> using Vector16  = VectorN<T, 16>;
+    template <typename T> using Vector256 = VectorN<T, 256>;
 }
 
 #endif /* _OCR_VECTOR_HPP_ */

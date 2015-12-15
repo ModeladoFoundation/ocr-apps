@@ -1,13 +1,11 @@
 #ifndef _OCR_DB_ALLOC_HPP_
 #define _OCR_DB_ALLOC_HPP_
 
-// Using placed-new syntax
-#define ocrNewIn(A, T, ...) (new ((A).allocate(sizeof(T))) T(__VA_ARGS__))
-#define ocrNew(T, ...) ocrNewIn(Ocr::SimpleDbAllocator::ocrAllocatorGet(), T, __VA_ARGS__)
+#define ocrNewIn(A, T, ...) (Ocr::NewIn<T>(A, __VA_ARGS__))
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
 
-// NOTE: No constructors are called here! Must call explicitly if needed.
-#define ocrNewArrayIn(A, T, SZ) ((T*) (A).allocate(sizeof(T), SZ))
-#define ocrNewArray(T, SZ) ocrNewArrayIn(Ocr::SimpleDbAllocator::ocrAllocatorGet(), T, SZ)
+#define ocrNewArrayIn(A, T, SZ) (Ocr::NewArrayIn<T>(A, __VA_ARGS__))
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
 
 // Currently deleting is a no-op. All memory is freed with the datablock.
 #define ocrDelete(ptr) /* NO-OP */
@@ -72,6 +70,55 @@ namespace Ocr {
         const DatablockAllocator &ocrAllocatorGet(void);
         void ocrAllocatorSetDb(void *dbPtr, size_t dbSize, bool needsInit);
     }
+
+    /////////////////////////////////////////////
+    // Ocr::New
+
+    template <typename T, typename ...Ts>
+    static inline T* NewIn(SimpleDbAllocator::DatablockAllocator arena, Ts&&... args) {
+        auto mem = arena.allocate(sizeof(T));
+        return new (mem) T(std::forward<Ts>(args)...);
+    }
+
+    template <typename T, typename ...Ts>
+    static inline T* New(Ts&&... args) {
+        SimpleDbAllocator::DatablockAllocator arena = Ocr::SimpleDbAllocator::ocrAllocatorGet();
+        return NewIn<T, Ts...>(arena, std::forward<Ts>(args)...);
+    }
+
+    /////////////////////////////////////////////
+    // Constructor helper for Ocr::NewArray
+
+    template <typename T, typename NoInit = void>
+    struct TypeInitializer {
+        static inline void init(T& target) {
+            new (&target) T();
+        }
+    };
+
+    template <typename T>
+    struct TypeInitializer<T, typename std::enable_if<std::is_scalar<T>::value>::type> {
+        static inline void init(T&) { }
+    };
+
+    /////////////////////////////////////////////
+    // Ocr::NewArray
+
+    template <typename T>
+    static inline T* NewArrayIn(SimpleDbAllocator::DatablockAllocator arena, size_t count) {
+        T* data = reinterpret_cast<T*>(arena.allocate(sizeof(T), count));
+        for (size_t i=0; i<count; i++) {
+            TypeInitializer<T>::init(data[i]);
+        }
+        return data;
+    }
+
+    template <typename T>
+    static inline T* NewArray(size_t count) {
+        SimpleDbAllocator::DatablockAllocator arena = Ocr::SimpleDbAllocator::ocrAllocatorGet();
+        return NewArrayIn<T>(arena, count);
+    }
+
 }
 
 #endif /* _OCR_DB_ALLOC_HPP_ */
