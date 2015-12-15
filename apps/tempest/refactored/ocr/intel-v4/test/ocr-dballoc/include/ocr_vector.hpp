@@ -76,6 +76,9 @@ namespace Ocr {
     };
 
     template <typename T> using Vector16  = VectorN<T, 16>;
+    template <typename T> using Vector32  = VectorN<T, 32>;
+    template <typename T> using Vector64  = VectorN<T, 64>;
+    template <typename T> using Vector128 = VectorN<T, 128>;
     template <typename T> using Vector256 = VectorN<T, 256>;
 }
 
