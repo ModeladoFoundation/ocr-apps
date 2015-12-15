@@ -184,7 +184,7 @@ private:
 	///		Total number of receives set.
 	///	</summary>
 #ifdef USE_OCR_TEST
-	Ocr::VectorN<int, 32> m_vecReceiveStatusCount;
+	Ocr::Vector32<int> m_vecReceiveStatusCount;
 #else
 	std::vector<int> m_vecReceiveStatusCount;
 #endif
@@ -193,7 +193,7 @@ private:
 	///		Vector of receive status.
 	///	</summary>
 #ifdef USE_OCR_TEST
-	Ocr::VectorN< Ocr::VectorN<bool, 32>, 32 > m_vecReceiveStatus;
+	Ocr::Vector32< Ocr::Vector32<bool> > m_vecReceiveStatus;
 #else
 	std::vector< std::vector<bool> > m_vecReceiveStatus;
 #endif
@@ -207,7 +207,7 @@ private:
 	///		Vector of send requests.
 	///	</summary>
 #ifdef USE_OCR_TEST
-	Ocr::VectorN<MPI_Request, 32> m_vecSendRequests;
+	Ocr::Vector32<MPI_Request> m_vecSendRequests;
 #else
 	std::vector<MPI_Request> m_vecSendRequests;
 #endif
