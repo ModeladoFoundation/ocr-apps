@@ -23,6 +23,7 @@
 #include "ocr_relative_ptr.hpp"
 #include "ocr_db_alloc.hpp"
 #include <cstring>
+#include <unistd.h>
 
 #define ARENA_SIZE 100000000
 
@@ -64,6 +65,8 @@ typedef struct
 } MG;
 
 ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    sleep(2);
+    PRINTF (">>> updatePatch EDT start!\n");
     int i, rank, len, dlen, step, maxStep, nRanks;
 
     double * localDataGeometric = (double *) depv[0].ptr;
@@ -125,7 +128,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         stateInfo->thisStep++;
         // change to local guid for EDT
         ocrEdtCreate(&stateInfo->EDT, stateInfo->TML, EDT_PARAM_DEF, paramv,
-                      EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                      EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
         // release data blocks
         ocrAddDependence(depv[0].guid, stateInfo->EDT, 0, DB_MODE_RW );
         ocrAddDependence(depv[1].guid, stateInfo->EDT, 1, DB_MODE_RW );
@@ -149,6 +152,8 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 }
 
 ocrGuid_t outputEdt (u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    sleep(2);
+    PRINTF (">>> outputEdt start!\n");
     char * localDataGeometric = (char *) depv[0].ptr;
     int nWorkers = (int) paramv [0];
     int lastStep = (int) paramv[1];
@@ -218,11 +223,6 @@ try {
 
         Grid::VerticalStaggering eVerticalStaggering =
 		Grid::VerticalStaggering_Levels;
-
-	// Setup the Model
-	// Model model(EquationSet::PrimitiveNonhydrostaticEquations);
-
-	// Setup the Model
 
         // pointer to the memories serving as backups for ocrDblock to hold Model and Grids
         void *arenaPtr[nWorkers];
@@ -416,7 +416,7 @@ try {
 
             u64 update_paramv [1] = {(u64) pGrid [i] };
             ocrEdtCreate(&updatePatch_t[i].EDT, updatePatch_t[i].TML, EDT_PARAM_DEF, update_paramv,
-                              EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                              EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
 
         }
         // add data dependences for updatePatch EDT
@@ -448,6 +448,8 @@ try {
 
 	// Deinitialize Tempest
 	//MPI_Finalize();
+    PRINTF (">>> mainEdt done!\n");
+    return NULL_GUID;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
