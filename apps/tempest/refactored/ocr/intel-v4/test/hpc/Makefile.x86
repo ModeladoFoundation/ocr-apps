@@ -78,8 +78,8 @@ SRCS :=  $(TARGET).cpp ../ocr-dballoc/src/ocr_db_alloc.cpp
 CONFIG_FLAGS := --guid LABELED
 OBJS := $(notdir $(SRCS:.cpp=.o))
 #CFLAGS := -O0 -g -I${TEMPESTBASEDIR}/include
-#CFLAGS := -O0 -g  -std=gnu++11 -g -DUSE_OCR -USE_OCR_TEST -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include -I../ocr-dballoc/include
-CFLAGS := -O0 -g  -std=gnu++11 -g -DUSE_OCR -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include -I../ocr-dballoc/include
+CFLAGS := -O0 -g  -std=c++11 -g -DUSE_OCR -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include -I../ocr-dballoc/include
+CFLAGS+=-g -DUSE_OCR_TEST
 LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -lnetcdf -lnetcdf_c++ -llapack -lblas
 
 # Targets:
@@ -87,7 +87,7 @@ LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -ln
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3 -fno-inline
+all:	CFLAGS += -O0 -fno-inline
 all:	TARGETS := all
 all:	default
 
@@ -139,6 +139,6 @@ postrun: ;
 include ${APPS_ROOT}/makefiles/make-regular.inc
 
 # Use g++ and not gcc
-CC := g++
-#CC := clang++
+#CC := g++
+CC := clang++
 #CC := mpicxx
