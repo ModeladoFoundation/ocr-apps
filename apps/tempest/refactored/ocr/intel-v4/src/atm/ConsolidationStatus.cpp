@@ -27,13 +27,6 @@ ConsolidationStatus::ConsolidationStatus(
 	const std::vector<DataTypeLocationPair> & vecDataTypes
 #endif
 ) :
-#ifdef USE_OCR_TEST
-        m_vecReceiveStatusCount (256),
-        m_vecReceiveStatus (256),
-        m_vecSendRequests (256),
-#else
-	// nothing specific...
-#endif
 	m_nCurrentSendRequest(0)
 {
 
