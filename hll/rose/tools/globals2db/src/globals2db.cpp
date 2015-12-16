@@ -1178,28 +1178,25 @@ void visitorTraversal::atTraversalEnd()
             SgStatement * firstStmt = getFirstStatement(funcDef);
             SgBasicBlock * funcBB =funcDef->get_body();
 
-            // __ffwd_t *  __ffwd_p;
+            // __ffwd_t * const __ffwd_p = (__ffwd_t * const )(__getGlobalDBAddr());
             SgTypedefDeclaration * ffwdTypedefDecl = buildTypedefDeclaration(strFFWDT,
                                                                              _structType,
                                                                              funcBB);
             SgTypedefType * ffwdType = ffwdTypedefDecl->get_type();
-            SgPointerType * ptrType = buildPointerType(ffwdType);
+            SgModifierType * modType = buildModifierType(buildPointerType(ffwdType));
+            modType->get_typeModifier().get_constVolatileModifier().setConst();
+
+            SgFunctionCallExp * funcCall = buildFunctionCallExp(SgName("__getGlobalDBAddr"),
+                                                               buildUnsignedLongLongType(),
+                                                               buildExprListExp(), funcBB);
+            SgExpression * castPtrExp = buildCastExp(funcCall, modType,
+                                                     SgCastExp::e_C_style_cast);
+            SgAssignInitializer * initCastPtrExp = buildAssignInitializer(castPtrExp, modType);
             SgVariableDeclaration* ffwdAddrPtr = buildVariableDeclaration(SgName(strFFWDP),
-                                                                          ptrType, NULL,
+                                                                          modType, initCastPtrExp,
                                                                           funcBB);
             insertStatementBefore(firstStmt, ffwdAddrPtr);
 
-
-            // __ffwd_p = (__ffwd_t *)__getGlobalDBAddr();
-            SgExprListExp * parameters = buildExprListExp();
-            SgFunctionCallExp * funcCall = buildFunctionCallExp(SgName("__getGlobalDBAddr"),
-                                                               buildUnsignedLongLongType(),
-                                                               parameters, _globalScope);
-            SgExpression * castPtrExp = buildCastExp(funcCall, ptrType,
-                                                     SgCastExp::e_C_style_cast);
-            SgVarRefExp * ffwdAddrExp = buildVarRefExp(SgName(strFFWDP), funcBB);
-            SgExprStatement * assignOp = buildAssignStatement(ffwdAddrExp, castPtrExp);
-            insertStatementBefore(firstStmt, assignOp);
 
 
 #if 0
