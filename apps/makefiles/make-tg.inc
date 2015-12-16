@@ -26,8 +26,8 @@ WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORK
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
-OCR_CE_CONFIG         := $(WORKLOAD_BUILD)/ce.cfg
-OCR_XE_CONFIG         := $(WORKLOAD_BUILD)/xe.cfg
+OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
+OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
 else
 TG_ROOT               := $(shell cd "${TG_ROOT}" && pwd)
 OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
@@ -38,8 +38,8 @@ WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORK
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
-OCR_CE_CONFIG         := $(WORKLOAD_BUILD)/ce.cfg
-OCR_XE_CONFIG         := $(WORKLOAD_BUILD)/xe.cfg
+OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
+OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
 endif
 
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
@@ -55,6 +55,16 @@ OCR_INSTALL_CE   := ${OCR_INSTALL_ROOT}/${CE_TARGET}
 FIX_TG_FSIM_CONFIG := ${OCR_ROOT}/scripts/Configs/tg-fsim_config_fix.py
 FIX_CE_CONFIG    := ${OCR_ROOT}/scripts/Configs/ce_config_fix.py
 FIX_MEM_CONFIG   := ${OCR_ROOT}/scripts/Configs/mem_config_fix.py
+
+OCR_CE_CONFIG ?= $(OCR_CE_CONFIG_DEFAULT)
+OCR_XE_CONFIG ?= $(OCR_XE_CONFIG_DEFAULT)
+
+# We modify the configuration so we use a modified copy
+OCR_CE_CONFIG_ORIG := $(OCR_CE_CONFIG)
+OCR_XE_CONFIG_ORIG := $(OCR_XE_CONFIG)
+
+OCR_CE_CONFIG := $(OCR_CE_CONFIG)_fix
+OCR_XE_CONFIG := $(OCR_XE_CONFIG)_fix
 
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
 WORKLOAD_INSTALL      := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
@@ -205,6 +215,8 @@ $(FULL_REQ_LIBS):
 	lockfile "/tmp/$(subst /,_,$@)_lock"; \
 	echo "Grabbed lock"; date; \
 	ARCH=tg APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
+	OCR_ROOT=$(OCR_ROOT) \
+	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) \
 	$(MAKE) -C $@ install; \
 	status=$$?; \
 	echo "Releasing lock"; date; \
@@ -252,19 +264,23 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_CE_CONFIG) $(WORKLOAD_SRC)/config.cfg
 $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe \
 $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | tgkrnl.dbg builderce $(WORKLOAD_BUILD)
 	@echo "#### BUILDING CE BLOB ####"
-	cp $(OCR_INSTALL_CE)/config/default.cfg $(OCR_CE_CONFIG)
 	$(FIX_CE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --ocrcfg $(OCR_CE_CONFIG)
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
 	$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_CE_CONFIG)
 
-$(OCR_CE_CONFIG): | tgkrnl
+$(OCR_CE_CONFIG_DEFAULT): $(OCR_INSTALL_CE)/config/default.cfg
+	cp $< $@
+
+# ALways remake this
+.PHONY: $(OCR_CE_CONFIG)
+$(OCR_CE_CONFIG): $(OCR_CE_CONFIG_ORIG)
+	cp $< $@
 
 # Build the XE blob
 $(WORKLOAD_BUILD)/$(TARGET).dbg: | debug_post_prerun
 $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
 $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe | debug_post_prerun builderxe $(WORKLOAD_BUILD)
 	@echo "#### BUILDING XE BLOB ####"
-	cp $(OCR_INSTALL_XE)/config/default.cfg $(OCR_XE_CONFIG)
 	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep "^  0" | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
@@ -272,7 +288,13 @@ $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.ex
 # XE blob must be phony in order to rebuild the args blob on every run
 .PHONY: $(WORKLOAD_BUILD)/$(TARGET).blob.xe
 
-$(OCR_XE_CONFIG): | libocrxe
+$(OCR_XE_CONFIG_DEFAULT): $(OCR_INSTALL_XE)/config/default.cfg
+	cp $< $@
+
+# Always remake this
+.PHONY: $(OCR_XE_CONFIG)
+$(OCR_XE_CONFIG): $(OCR_XE_CONFIG_ORIG)
+	cp $< $@
 
 # The arg blob is build automatically by the XE builder
 $(WORKLOAD_BUILD)/$(TARGET).blob.arg: $(WORKLOAD_BUILD)/$(TARGET).blob.xe | $(WORKLOAD_BUILD)

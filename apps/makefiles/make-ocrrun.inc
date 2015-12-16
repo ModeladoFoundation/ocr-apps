@@ -184,6 +184,7 @@ $(FULL_REQ_LIBS):
 	lockfile "/tmp/$(subst /,_,$@)_lock"; \
 	echo "Grabbed lock"; date; \
 	ARCH=x86 APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
+	OCR_ROOT=$(OCR_ROOT) \
 	$(MAKE) -C $@ install; \
 	status=$$?; \
 	echo "Releasing lock"; date; \
