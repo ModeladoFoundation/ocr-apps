@@ -1,0 +1,172 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+COMM_LAYER=mpi
+
+# APPS
+APPS_ROOT       ?= ../../../..
+APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
+
+# Repo top
+REPO_TOP        ?= ${APPS_ROOT}/..
+
+# OCR_TYPE
+OCR_TYPE        ?= x86-${COMM_LAYER}
+
+# OCR
+OCR_TARGET       ?= x86-${COMM_LAYER}
+OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
+OCR_ROOT         ?= ${REPO_TOP}/ocr
+OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
+
+# APPLICATION
+WORKLOAD_SRC          ?= ${APPS_ROOT}/hpcg/refactored/mpilite/intel/src
+WORKLOAD_BUILD_ROOT   ?= ./build
+WORKLOAD_INSTALL_ROOT ?= ./install
+
+# If 0, the workload has no input file
+# If 1+, this is the index in the argument
+# list after which everything is considered an
+# input file. Note that the index STARTS AT 1
+WORKLOAD_INPUT_FILE_IDX := 5
+
+# You can specify default arguments here. These
+# will be overriden by (in order):
+#   - the WORKLOAD_ARGS environment variable
+#   - the arguments passed to 'make run'
+# To restate, the arguments passed to make run have
+# the highest priority and will override both the
+# default arguments here and the ones passed through
+# an environment variable
+# ./hpcg.dat has size of cube, usually 104
+# ExchangeHalo uses single MPI_MY_TAG == 1
+
+CONFIG_NUM_THREADS ?= 8
+WORKLOAD_ARGS ?= -r 4 -t 1
+
+# Run mode (not fully supported)
+# Set to "yes" if running with torque
+RUN_TORQUE ?= no
+# Set to "yes" if Jenkins is running this job as an automated test
+RUN_JENKINS ?= no
+# Set to yes if running visualizer or export as environment variable
+ENABLE_VISUALIZER ?= no
+## END of variables coming from user/environment
+
+include $(APPS_ROOT)/makefiles/make-pre.inc
+
+# Name of the application to build
+TARGET ?= hpcg
+
+# Space separated list of directory names in apps/libs/src
+# that need to be built. These will be built for ARCH
+REQ_LIBS := mpilite
+
+# Space separated list of source files
+SRCS := ./main.cpp ./CG.cpp ./CG_ref.cpp ./TestCG.cpp ./ComputeResidual.cpp \
+         ./ExchangeHalo.cpp ./GenerateGeometry.cpp ./GenerateProblem.cpp \
+         ./GenerateProblem_ref.cpp ./CheckProblem.cpp \
+	 ./OptimizeProblem.cpp ./ReadHpcgDat.cpp ./ReportResults.cpp \
+	 ./SetupHalo.cpp ./SetupHalo_ref.cpp ./TestSymmetry.cpp ./TestNorms.cpp ./WriteProblem.cpp \
+         ./YAML_Doc.cpp ./YAML_Element.cpp ./ComputeDotProduct.cpp \
+         ./ComputeDotProduct_ref.cpp ./finalize.cpp ./init.cpp ./mytimer.cpp ./ComputeSPMV.cpp \
+         ./ComputeSPMV_ref.cpp ./ComputeSYMGS.cpp ./ComputeSYMGS_ref.cpp ./ComputeWAXPBY.cpp ./ComputeWAXPBY_ref.cpp \
+         ./ComputeMG_ref.cpp ./ComputeMG.cpp ./ComputeProlongation_ref.cpp ./ComputeRestriction_ref.cpp ./GenerateCoarseProblem.cpp \
+	 ./ComputeOptimalShapeXYZ.cpp ./MixedBaseCounter.cpp ./CheckAspectRatio.cpp
+
+# - Compile time options -----------------------------------------------
+#
+# -DHPCG_NO_MPI	        Define to disable MPI
+# -DHPCG_NO_OPENMP	Define to disable OPENMP
+# -DHPCG_DEBUG       	Define to enable debugging output
+# -DHPCG_DETAILED_DEBUG Define to enable very detailed debugging output
+#
+# By default HPCG will:
+#    *) Build with MPI enabled.
+#    *) Build with OpenMP enabled.
+#    *) Not generate debugging output.
+#
+HPCG_OPTS     = -I${WORKLOAD_SRC} -DHPCG_NO_OPENMP
+
+# Need to explicitly set to a c++ compiler. Although gcc will compile c++
+# correctly, in the link step it forgets it's c++ and will omit libg++,
+# generating zillions of unresolved refs.
+#CC = g++
+CC = icpc -xHost
+
+# Additional CFLAGS. By default, it includes
+# all OCR required includes and apps/libs/<target>/include
+# TG_ARCH is also defined for Fsim
+
+CFLAGS :=  ${HPCG_OPTS}
+# Additional LDFLAGS. By default, it includes
+# the required OCR library path and apps/libs/<target/lib
+# Note that none of the specific libraries specified in
+# REQ_LIBS are included.
+
+# I_MPI_ROOT should be set by apps/apps_env.bash; the value below is
+# only valid on foobar cluster
+I_MPI_ROOT ?= /opt/intel/tools/compilers_and_libraries_2016.0.109/linux/mpi
+
+# 12/17/15: explict linking of libmpi is temporary fix to make sure mpi
+# can "hook" malloc, according to Vincent.
+LDFLAGS := -L$(I_MPI_ROOT)/lib64 -lmpi -lm -lpthread -lmpilite -locr
+
+# MPILite config file needs LABELED
+CONFIG_FLAGS := --guid LABELED
+
+# Targets:
+#   - all:     Build the application.
+#   - debug:   Build the debug version of the application
+#   - install: Build and install
+#   - run:     Run the application
+all:	CFLAGS += -O3
+all:	TARGETS := all
+all:	default
+
+debug:	CFLAGS += -O0
+debug:	TARGETS := debug
+debug:	default
+
+install: all
+
+# This rule will be executed prior to execution:
+#  - For the FSim target, this happens when the binary is built
+#  - For all other targets this happens prior to running the
+#    executable
+# WORKLOAD_ARGS and WORKLOAD_INPUTS are available
+# to you and contain, respectively, the non file
+# arguments and the file arguments. They will be
+# passed directly to the application unless you
+# modify them. You can use the following
+# syntax to do so:
+# $(eval WORKLOAD_INPUTS := something) or
+# $(eval WORKLOAD_INPUTS := $(shell <script>))
+# The second syntax will execute <script> and assign
+# its output to WORKLOAD_INPUTS
+#
+# You may also want to assign a value to WORKLOAD_OUTS
+# which should contain the list of output files produced
+# by the application (to be passed to postrun). This is
+# taken-care of for you on FSim but not on any of the
+# other platforms.
+# 'prerun: ;' is an empty rule (the rule is required)
+.PHONY: prerun
+# prerun: ;
+prerun: $(WORKLOAD_INSTALL)/hpcg.dat
+
+$(WORKLOAD_INSTALL)/hpcg.dat: $(WORKLOAD_INSTALL) ./hpcg.dat
+	cp ./hpcg.dat $(WORKLOAD_INSTALL)
+
+# This rule will be executed after execution
+# The variable ${WORKLOAD_OUTS} contains a space separated
+# list of output files
+# 'postrun: ;' is an empty rule (the rule is required
+# to be present though)
+.PHONY: postrun
+postrun: ;
+
+# Include common part
+include $(APPS_ROOT)/makefiles/make-ocrrun.inc
+

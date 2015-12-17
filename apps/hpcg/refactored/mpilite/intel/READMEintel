@@ -1,0 +1,40 @@
+####################################################
+High Performance Conjugate Gradient Benchmark (HPCG)
+####################################################
+
+version 3.0
+Checked in by David S. Scott
+
+Copied from ../../../baseline/mpi/sandia/hpcg-3.0 .
+See that directory for more information about the benchmark,
+history, tuning, etc.
+
+to create an executable, do
+
+OCR_TYPE=<type> make run   # where <type> is {x86, x86-mpi, tg}
+
+in this directory.
+
+This will create an MPI-Lite executable "hpcg" in the ./install/<type> directory
+and run with the parameters from the hpcg.dat file copied into that directory.
+
+
+HPCG benchmark input file
+Sandia National Laboratories; University of Tennessee, Knoxville
+104 104 104
+60
+
+
+That is currently set to a local brick size of 104x104x104
+
+[If hpcg.dat is not in the directory with the executable, a much smaller
+problem is done, taking less than a second.]
+
+It should produce two output files, .txt and .yaml in ./install. .yaml has
+the most interesting info; particularly the GFlops.
+
+For x86, the number of ranks is defaulted to 4, or the value of
+CONFIG_NUM_THREADS. This can be set explicitly via the WORKLOAD_ARGS variable.
+
+
+
