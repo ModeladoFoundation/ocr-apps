@@ -1,0 +1,57 @@
+#cd src/base; make -j8
+cd src/base; make
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+Makefile:47: depend/Preferences.d: No such file or directory
+Makefile:47: depend/DataContainer.d: No such file or directory
+Makefile:47: depend/FunctionTimer.d: No such file or directory
+Makefile:47: depend/MathHelper.d: No such file or directory
+Makefile:47: depend/Exception.d: No such file or directory
+Makefile:47: depend/Announce.d: No such file or directory
+Makefile:47: depend/LinearAlgebra.d: No such file or directory
+Makefile:47: depend/LegendrePolynomial.d: No such file or directory
+Makefile:47: depend/PolynomialInterp.d: No such file or directory
+Makefile:47: depend/MemoryTools.d: No such file or directory
+Makefile:47: depend/GaussQuadrature.d: No such file or directory
+Makefile:47: depend/GaussLobattoQuadrature.d: No such file or directory
+Makefile:47: depend/TimeObj.d: No such file or directory
+-- Generating dependencies for TimeObj.cpp
+-- Generating dependencies for GaussLobattoQuadrature.cpp
+-- Generating dependencies for GaussQuadrature.cpp
+-- Generating dependencies for MemoryTools.cpp
+-- Generating dependencies for PolynomialInterp.cpp
+-- Generating dependencies for LegendrePolynomial.cpp
+-- Generating dependencies for LinearAlgebra.cpp
+-- Generating dependencies for Announce.cpp
+-- Generating dependencies for Exception.cpp
+-- Generating dependencies for MathHelper.cpp
+-- Generating dependencies for FunctionTimer.cpp
+-- Generating dependencies for DataContainer.cpp
+-- Generating dependencies for Preferences.cpp
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/Preferences.o Preferences.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/DataContainer.o DataContainer.cpp
+DataContainer.cpp:129:9: warning: Alignment may be an issue here on 32-bit systems [-W#pragma-messages]
+#pragma message "Alignment may be an issue here on 32-bit systems"
+        ^
+1 warning generated.
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/FunctionTimer.o FunctionTimer.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/MathHelper.o MathHelper.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/Exception.o Exception.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/Announce.o Announce.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/LinearAlgebra.o LinearAlgebra.cpp
+In file included from LinearAlgebra.cpp:17:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:127:29: error: invalid operands to binary expression ('double *' and 'size_t' (aka 'unsigned long'))
+                        m_data[i] = &m_data1D[i] * m_sSize[1];
+                                    ~~~~~~~~~~~~ ^ ~~~~~~~~~~
+./DataArray2D.h:210:4: note: in instantiation of member function 'DataArray2D<double>::BuildPointerTree' requested here
+                        BuildPointerTree();
+                        ^
+LinearAlgebra.cpp:521:7: note: in instantiation of member function 'DataArray2D<double>::Allocate' requested here
+        dOut.Allocate(dA.GetColumns(), dA.GetRows());
+             ^
+1 error generated.
+make[1]: *** [build/LinearAlgebra.o] Error 1
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+make: *** [all] Error 2

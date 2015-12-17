@@ -1,0 +1,231 @@
+cd src/base; make
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+Makefile:47: depend/Preferences.d: No such file or directory
+Makefile:47: depend/DataContainer.d: No such file or directory
+Makefile:47: depend/FunctionTimer.d: No such file or directory
+Makefile:47: depend/MathHelper.d: No such file or directory
+Makefile:47: depend/Exception.d: No such file or directory
+Makefile:47: depend/Announce.d: No such file or directory
+Makefile:47: depend/LinearAlgebra.d: No such file or directory
+Makefile:47: depend/LegendrePolynomial.d: No such file or directory
+Makefile:47: depend/PolynomialInterp.d: No such file or directory
+Makefile:47: depend/MemoryTools.d: No such file or directory
+Makefile:47: depend/GaussQuadrature.d: No such file or directory
+Makefile:47: depend/GaussLobattoQuadrature.d: No such file or directory
+Makefile:47: depend/TimeObj.d: No such file or directory
+-- Generating dependencies for TimeObj.cpp
+-- Generating dependencies for GaussLobattoQuadrature.cpp
+-- Generating dependencies for GaussQuadrature.cpp
+-- Generating dependencies for MemoryTools.cpp
+-- Generating dependencies for PolynomialInterp.cpp
+-- Generating dependencies for LegendrePolynomial.cpp
+-- Generating dependencies for LinearAlgebra.cpp
+-- Generating dependencies for Announce.cpp
+-- Generating dependencies for Exception.cpp
+-- Generating dependencies for MathHelper.cpp
+-- Generating dependencies for FunctionTimer.cpp
+-- Generating dependencies for DataContainer.cpp
+-- Generating dependencies for Preferences.cpp
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/Preferences.o Preferences.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/DataContainer.o DataContainer.cpp
+DataContainer.cpp: In member function 'void DataContainer::Allocate()':
+DataContainer.cpp:115:17: note: #pragma message: Alignment may be an issue here on 32-bit systems
+ #pragma message "Alignment may be an issue here on 32-bit systems"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/FunctionTimer.o FunctionTimer.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/MathHelper.o MathHelper.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/Exception.o Exception.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/Announce.o Announce.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/LinearAlgebra.o LinearAlgebra.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/LegendrePolynomial.o LegendrePolynomial.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/PolynomialInterp.o PolynomialInterp.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/MemoryTools.o MemoryTools.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/GaussQuadrature.o GaussQuadrature.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/GaussLobattoQuadrature.o GaussLobattoQuadrature.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -c -o build/TimeObj.o TimeObj.cpp
+rsync --checksum *.h ../../include
+rm -f ../../lib/libtempestbase.a
+ar -cqs ../../lib/libtempestbase.a build/*.o
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+cd src/atm; make
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/atm'
+Makefile:73: depend/CubedSphereTrans.d: No such file or directory
+Makefile:73: depend/GridSpacing.d: No such file or directory
+Makefile:73: depend/ConsolidationStatus.d: No such file or directory
+Makefile:73: depend/Connectivity.d: No such file or directory
+Makefile:73: depend/Model.d: No such file or directory
+Makefile:73: depend/EquationSet.d: No such file or directory
+Makefile:73: depend/TimestepSchemeStrang.d: No such file or directory
+Makefile:73: depend/TimestepSchemeARK2.d: No such file or directory
+Makefile:73: depend/TimestepSchemeARK3.d: No such file or directory
+Makefile:73: depend/TimestepSchemeARK4.d: No such file or directory
+Makefile:73: depend/HorizontalDynamicsFEM.d: No such file or directory
+Makefile:73: depend/HorizontalDynamicsDG.d: No such file or directory
+Makefile:73: depend/VerticalDynamicsFEM.d: No such file or directory
+Makefile:73: depend/JacobianFreeNewtonKrylov.d: No such file or directory
+Makefile:73: depend/FluxCorrectionFunction.d: No such file or directory
+Makefile:73: depend/LinearColumnOperator.d: No such file or directory
+Makefile:73: depend/LinearColumnOperatorFEM.d: No such file or directory
+Makefile:73: depend/OutputManager.d: No such file or directory
+Makefile:73: depend/OutputManagerComposite.d: No such file or directory
+Makefile:73: depend/OutputManagerReference.d: No such file or directory
+Makefile:73: depend/OutputManagerChecksum.d: No such file or directory
+Makefile:73: depend/PhysicalConstants.d: No such file or directory
+Makefile:73: depend/Grid.d: No such file or directory
+Makefile:73: depend/GridPatch.d: No such file or directory
+Makefile:73: depend/GridGLL.d: No such file or directory
+Makefile:73: depend/GridCSGLL.d: No such file or directory
+Makefile:73: depend/GridCartesianGLL.d: No such file or directory
+Makefile:73: depend/GridPatchGLL.d: No such file or directory
+Makefile:73: depend/GridPatchCSGLL.d: No such file or directory
+Makefile:73: depend/GridPatchCartesianGLL.d: No such file or directory
+Makefile:73: depend/Direction.d: No such file or directory
+Makefile:73: depend/TestCase.d: No such file or directory
+Makefile:73: depend/WorkflowProcess.d: No such file or directory
+Makefile:73: depend/HeldSuarezPhysics.d: No such file or directory
+-- Generating dependencies for HeldSuarezPhysics.cpp
+-- Generating dependencies for WorkflowProcess.cpp
+-- Generating dependencies for TestCase.cpp
+-- Generating dependencies for Direction.cpp
+-- Generating dependencies for GridPatchCartesianGLL.cpp
+-- Generating dependencies for GridPatchCSGLL.cpp
+-- Generating dependencies for GridPatchGLL.cpp
+-- Generating dependencies for GridCartesianGLL.cpp
+-- Generating dependencies for GridCSGLL.cpp
+-- Generating dependencies for GridGLL.cpp
+-- Generating dependencies for GridPatch.cpp
+-- Generating dependencies for Grid.cpp
+-- Generating dependencies for PhysicalConstants.cpp
+-- Generating dependencies for OutputManagerChecksum.cpp
+-- Generating dependencies for OutputManagerReference.cpp
+-- Generating dependencies for OutputManagerComposite.cpp
+-- Generating dependencies for OutputManager.cpp
+-- Generating dependencies for LinearColumnOperatorFEM.cpp
+-- Generating dependencies for LinearColumnOperator.cpp
+-- Generating dependencies for FluxCorrectionFunction.cpp
+-- Generating dependencies for JacobianFreeNewtonKrylov.cpp
+-- Generating dependencies for VerticalDynamicsFEM.cpp
+-- Generating dependencies for HorizontalDynamicsDG.cpp
+-- Generating dependencies for HorizontalDynamicsFEM.cpp
+-- Generating dependencies for TimestepSchemeARK4.cpp
+-- Generating dependencies for TimestepSchemeARK3.cpp
+-- Generating dependencies for TimestepSchemeARK2.cpp
+-- Generating dependencies for TimestepSchemeStrang.cpp
+-- Generating dependencies for EquationSet.cpp
+-- Generating dependencies for Model.cpp
+-- Generating dependencies for Connectivity.cpp
+-- Generating dependencies for ConsolidationStatus.cpp
+-- Generating dependencies for GridSpacing.cpp
+-- Generating dependencies for CubedSphereTrans.cpp
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/atm'
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/atm'
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/CubedSphereTrans.o CubedSphereTrans.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/GridSpacing.o GridSpacing.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/ConsolidationStatus.o ConsolidationStatus.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/Connectivity.o Connectivity.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/Model.o Model.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/EquationSet.o EquationSet.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/TimestepSchemeStrang.o TimestepSchemeStrang.cpp
+TimestepSchemeStrang.cpp: In member function 'virtual int TimestepSchemeStrang::SubStep(bool, bool, const Time&, double, int)':
+TimestepSchemeStrang.cpp:439:17: note: #pragma message: Merge this vertical timestep in above
+ #pragma message "Merge this vertical timestep in above"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/TimestepSchemeARK2.o TimestepSchemeARK2.cpp
+TimestepSchemeARK2.cpp:23:17: note: #pragma message: File tagged for cleanup
+ #pragma message "File tagged for cleanup"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/TimestepSchemeARK3.o TimestepSchemeARK3.cpp
+TimestepSchemeARK3.cpp:22:17: note: #pragma message: File tagged for cleanup
+ #pragma message "File tagged for cleanup"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/TimestepSchemeARK4.o TimestepSchemeARK4.cpp
+TimestepSchemeARK4.cpp:22:17: note: #pragma message: File tagged for cleanup
+ #pragma message "File tagged for cleanup"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/HorizontalDynamicsFEM.o HorizontalDynamicsFEM.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/HorizontalDynamicsDG.o HorizontalDynamicsDG.cpp
+HorizontalDynamicsDG.cpp:33:17: note: #pragma message: WARNING: DIFFERENTIAL_FORM will lose mass over topography
+ #pragma message "WARNING: DIFFERENTIAL_FORM will lose mass over topography"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/VerticalDynamicsFEM.o VerticalDynamicsFEM.cpp
+VerticalDynamicsFEM.cpp: In member function 'virtual void VerticalDynamicsFEM::FilterNegativeTracers(int)':
+VerticalDynamicsFEM.cpp:3156:17: note: #pragma message: Apply limiter only to finite element?
+ #pragma message "Apply limiter only to finite element?"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/JacobianFreeNewtonKrylov.o JacobianFreeNewtonKrylov.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/FluxCorrectionFunction.o FluxCorrectionFunction.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/LinearColumnOperator.o LinearColumnOperator.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/LinearColumnOperatorFEM.o LinearColumnOperatorFEM.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/OutputManager.o OutputManager.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/OutputManagerComposite.o OutputManagerComposite.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/OutputManagerReference.o OutputManagerReference.cpp
+OutputManagerReference.cpp: In member function 'virtual void OutputManagerReference::Output(const Time&)':
+OutputManagerReference.cpp:470:17: note: #pragma message: FIX: Doesn't give correct count of days
+ #pragma message "FIX: Doesn't give correct count of days"
+                 ^
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/OutputManagerChecksum.o OutputManagerChecksum.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/PhysicalConstants.o PhysicalConstants.cpp
+g++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O3 -DUSE_OCR -DUSE_OCR_TEST -I -I../../test/include -DUSEMKL -pthread -I../../include -c -o build/Grid.o Grid.cpp
+Grid.cpp: In constructor 'Grid::Grid(Model&, int, int, int, int, int, Grid::VerticalStaggering)':
+Grid.cpp:61:30: error: use of deleted function 'GridPatchVector::GridPatchVector()'
+  m_fHasRayleighFriction(false)
+                              ^
+In file included from Grid.h:20:0,
+                 from Grid.cpp:17:
+GridPatch.h:1288:7: note: 'GridPatchVector::GridPatchVector()' is implicitly deleted because the default definition would be ill-formed:
+ class GridPatchVector
+       ^
+GridPatch.h:1288:7: error: no matching function for call to 'Ocr::Vector<GridPatch*>::Vector()'
+GridPatch.h:1288:7: note: candidates are:
+In file included from GridPatch.h:31:0,
+                 from Grid.h:20,
+                 from Grid.cpp:17:
+../../test/ocr-dballoc/include/ocr_vector.hpp:23:13: note: Ocr::Vector<T>::Vector(size_t) [with T = GridPatch*; size_t = long unsigned int]
+             Vector(const size_t max_capacity):
+             ^
+../../test/ocr-dballoc/include/ocr_vector.hpp:23:13: note:   candidate expects 1 argument, 0 provided
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note: constexpr Ocr::Vector<GridPatch*>::Vector(const Ocr::Vector<GridPatch*>&)
+     struct Vector {
+            ^
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note:   candidate expects 1 argument, 0 provided
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note: constexpr Ocr::Vector<GridPatch*>::Vector(Ocr::Vector<GridPatch*>&&)
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note:   candidate expects 1 argument, 0 provided
+Grid.cpp:61:30: error: no matching function for call to 'Ocr::Vector<int>::Vector()'
+  m_fHasRayleighFriction(false)
+                              ^
+Grid.cpp:61:30: note: candidates are:
+In file included from GridPatch.h:31:0,
+                 from Grid.h:20,
+                 from Grid.cpp:17:
+../../test/ocr-dballoc/include/ocr_vector.hpp:23:13: note: Ocr::Vector<T>::Vector(size_t) [with T = int; size_t = long unsigned int]
+             Vector(const size_t max_capacity):
+             ^
+../../test/ocr-dballoc/include/ocr_vector.hpp:23:13: note:   candidate expects 1 argument, 0 provided
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note: constexpr Ocr::Vector<int>::Vector(const Ocr::Vector<int>&)
+     struct Vector {
+            ^
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note:   candidate expects 1 argument, 0 provided
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note: constexpr Ocr::Vector<int>::Vector(Ocr::Vector<int>&&)
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note:   candidate expects 1 argument, 0 provided
+Grid.cpp:61:30: error: no matching function for call to 'Ocr::Vector<int>::Vector()'
+  m_fHasRayleighFriction(false)
+                              ^
+Grid.cpp:61:30: note: candidates are:
+In file included from GridPatch.h:31:0,
+                 from Grid.h:20,
+                 from Grid.cpp:17:
+../../test/ocr-dballoc/include/ocr_vector.hpp:23:13: note: Ocr::Vector<T>::Vector(size_t) [with T = int; size_t = long unsigned int]
+             Vector(const size_t max_capacity):
+             ^
+../../test/ocr-dballoc/include/ocr_vector.hpp:23:13: note:   candidate expects 1 argument, 0 provided
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note: constexpr Ocr::Vector<int>::Vector(const Ocr::Vector<int>&)
+     struct Vector {
+            ^
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note:   candidate expects 1 argument, 0 provided
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note: constexpr Ocr::Vector<int>::Vector(Ocr::Vector<int>&&)
+../../test/ocr-dballoc/include/ocr_vector.hpp:14:12: note:   candidate expects 1 argument, 0 provided
+make[1]: *** [build/Grid.o] Error 1
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/atm'
+make: *** [all] Error 2

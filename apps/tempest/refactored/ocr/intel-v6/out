@@ -1,0 +1,80 @@
+cd src/base; make -j8
+make[1]: Entering directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/DataContainer.o DataContainer.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/LinearAlgebra.o LinearAlgebra.cpp
+clang++ -I../../include -I../../test/ocr-dballoc/include -std=c++11 -I/opt/local/include -fPIC -O0 -DUSE_OCR -I -I../../test/include -g -DUSE_OCR_TEST -DUSEMKL -pthread -c -o build/PolynomialInterp.o PolynomialInterp.cpp
+In file included from PolynomialInterp.cpp:20:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:202:15: error: expected expression
+                        m_data1D = ocrNewArray ((T *), MAX_CAPACITY);
+                                   ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:44: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                           ^
+In file included from PolynomialInterp.cpp:20:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:202:15: error: type name requires a specifier or qualifier
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:45: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                            ^
+In file included from PolynomialInterp.cpp:20:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:202:15: error: expected ')'
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:46: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                             ^
+./DataArray2D.h:202:15: note: to match this '('
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:45: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                            ^
+DataContainer.cpp:97:48: error: expected '(' after 'reinterpret_cast'
+                ocrNewArrad (reinterpret_cast<unsigned char*>, MAX_CAPACITY);
+                                                             ^
+                                                             (
+DataContainer.cpp:123:9: warning: Alignment may be an issue here on 32-bit systems [-W#pragma-messages]
+#pragma message "Alignment may be an issue here on 32-bit systems"
+        ^
+In file included from LinearAlgebra.cpp:17:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:202:15: error: expected expression
+                        m_data1D = ocrNewArray ((T *), MAX_CAPACITY);
+                                   ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:44: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                           ^
+In file included from LinearAlgebra.cpp:17:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:202:15: error: type name requires a specifier or qualifier
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:45: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                            ^
+In file included from LinearAlgebra.cpp:17:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:202:15: error: expected ')'
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:46: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                             ^
+./DataArray2D.h:202:15: note: to match this '('
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:45: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                            ^
+1 warning and 1 error generated.
+make[1]: *** [build/DataContainer.o] Error 1
+make[1]: *** Waiting for unfinished jobs....
+3 errors generated.
+make[1]: *** [build/PolynomialInterp.o] Error 1
+In file included from LinearAlgebra.cpp:17:
+In file included from ./LinearAlgebra.h:29:
+./DataArray2D.h:123:10: error: assigning to 'double **' from incompatible type 'Ocr::OcrRelativePtr<double> *'
+                m_data = Ocr::NewArray <RelPtr <T>>(MAX_CAPACITY);
+                       ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./DataArray2D.h:207:4: note: in instantiation of member function 'DataArray2D<double>::BuildPointerTree' requested here
+                        BuildPointerTree();
+                        ^
+LinearAlgebra.cpp:521:7: note: in instantiation of member function 'DataArray2D<double>::Allocate' requested here
+        dOut.Allocate(dA.GetColumns(), dA.GetRows());
+             ^
+4 errors generated.
+make[1]: *** [build/LinearAlgebra.o] Error 1
+make[1]: Leaving directory `/lustre/home/gjost/xstack_checkin/xstack_tempest2/apps/tempest/refactored/ocr/intel-v4/src/base'
+make: *** [all] Error 2

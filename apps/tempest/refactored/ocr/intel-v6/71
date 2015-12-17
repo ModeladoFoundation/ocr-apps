@@ -1,0 +1,142 @@
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:126:7: error: macro name missing
+#ifdef
+      ^
+../../include/DataArray4D.h:125:20: error: expected expression
+                m_data = ocrNew (<Rel<<RelPtr<RelPtr>> T, MAX_CAPACITY);
+                                 ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:5:34: note: expanded from macro 'ocrNew'
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
+                                 ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:125:21: error: use of undeclared identifier 'Rel'
+                m_data = ocrNew (<Rel<<RelPtr<RelPtr>> T, MAX_CAPACITY);
+                                  ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:5:34: note: expanded from macro 'ocrNew'
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
+                                 ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:125:33: error: use of class template 'RelPtr' requires template arguments
+                m_data = ocrNew (<Rel<<RelPtr<RelPtr>> T, MAX_CAPACITY);
+                                              ^~~~~~
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:5:34: note: expanded from macro 'ocrNew'
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
+                                 ^
+../../include/DataArray2D.h:33:23: note: template is declared here
+template <typename T> using RelPtr = Ocr::OcrRelativePtr<T>;
+                      ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:125:40: error: expected '(' for function-style cast or type construction
+                m_data = ocrNew (<Rel<<RelPtr<RelPtr>> T, MAX_CAPACITY);
+                                       ~~~~~~~~~~~~~~^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:5:34: note: expanded from macro 'ocrNew'
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
+                                 ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:125:12: error: expected ')'
+                m_data = ocrNew (<Rel<<RelPtr<RelPtr>> T, MAX_CAPACITY);
+                         ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:5:35: note: expanded from macro 'ocrNew'
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
+                                  ^
+../../include/DataArray4D.h:125:12: note: to match this '('
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:5:24: note: expanded from macro 'ocrNew'
+#define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
+                       ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:125:58: error: expected expression
+                m_data = ocrNew (<Rel<<RelPtr<RelPtr>> T, MAX_CAPACITY);
+                                                                       ^
+../../include/DataArray4D.h:238:63: error: use of class template 'RelPtr' requires template arguments
+                        m_data = ocrNewArray(reinterpret_cast<RelPtr T>, MAX_CAPACITY);
+                                                              ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:43: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                          ^
+../../include/DataArray2D.h:33:23: note: template is declared here
+template <typename T> using RelPtr = Ocr::OcrRelativePtr<T>;
+~~~~~~~~~~~~~~~~~~~~~ ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:238:70: error: expected '>'
+                        m_data = ocrNewArray(reinterpret_cast<RelPtr T>, MAX_CAPACITY);
+                                                                     ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:43: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                          ^
+../../include/DataArray4D.h:238:62: note: to match this '<'
+                        m_data = ocrNewArray(reinterpret_cast<RelPtr T>, MAX_CAPACITY);
+                                                             ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:43: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                          ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:238:34: error: type name requires a specifier or qualifier
+                        m_data = ocrNewArray(reinterpret_cast<RelPtr T>, MAX_CAPACITY);
+                                 ^
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:44: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                           ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:238:34: error: expected ')'
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:44: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                                           ^
+../../include/DataArray4D.h:238:34: note: to match this '('
+../../test/ocr-dballoc/include/ocr_db_alloc.hpp:8:28: note: expanded from macro 'ocrNewArray'
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+                           ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:24:
+../../include/DataArray4D.h:17:2: error: unterminated conditional directive
+#ifndef _DATAARRAY4D_H_
+ ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:27:
+In file included from ./Connectivity.h:27:
+../../include/DataArray4D.h:17:2: error: unterminated conditional directive
+#ifndef _DATAARRAY4D_H_
+ ^
+In file included from ConsolidationStatus.cpp:18:
+In file included from ./Grid.h:20:
+In file included from ./GridPatch.h:22:
+../../include/DataArray2D.h:126:14: error: no viable overloaded '='
+                        m_data[i] = m_data1D + i * m_sSize[1];
+                        ~~~~~~~~~ ^ ~~~~~~~~~~~~~~~~~~~~~~~~~
+../../include/DataArray2D.h:259:4: note: in instantiation of member function 'DataArray2D<double>::BuildPointerTree' requested here
+                        BuildPointerTree();
+                        ^
+./GridPatch.h:92:10: note: in instantiation of member function 'DataArray2D<double>::AttachToData' requested here
+        virtual ~GridPatch()
+                ^
+../../test/ocr-dballoc/include/ocr_relative_ptr.hpp:16:12: note: candidate function (the implicit copy assignment operator) not viable: no known conversion from 'double *' to 'const Ocr::OcrRelativePtr<Ocr::OcrRelativePtr<double> >' for 1st argument
+    struct OcrRelativePtr {
+           ^
+../../test/ocr-dballoc/include/ocr_relative_ptr.hpp:16:12: note: candidate function (the implicit move assignment operator) not viable: no known conversion from 'double *' to 'Ocr::OcrRelativePtr<Ocr::OcrRelativePtr<double> >' for 1st argument
+    struct OcrRelativePtr {
+           ^
+../../test/ocr-dballoc/include/ocr_relative_ptr.hpp:44:32: note: candidate function not viable: no known conversion from 'double *' to 'const Ocr::OcrRelativePtr<double> *' for 1st argument
+            OcrRelativePtr<T> &operator=(const T *other) {
+                               ^
+14 errors generated.
+make[1]: *** [build/ConsolidationStatus.o] Error 1
+make: *** [all] Error 2

@@ -1,0 +1,55 @@
+Gabriele Jos, Intel, October, 2015
+
+This directory contains the baseline version of the Tempest atmosphere / Earth-sysem model developed by Paul Ulrich (UCDavis, LBL).
+It is downloaded from here:
+https://github.com/paullric/tempestmodel
+
+commit c6f3d51a500639b64ecbfdc76cc0bdc49792d5f1
+Author: Paul Ullrich <paullrich@ucdavis.edu>
+Date:   Sat Oct 17 20:20:58 2015 -0700
+
+    - Updated TaskTest with exchange infrastructure
+
+This is the directory structure:
+
+drwxr-xr-x 5 gjost xstack 4096 Feb  5 18:18 util
+drwxr-xr-x 5 gjost xstack 4096 Feb  5 18:18 test
+-rw-r--r-- 1 gjost xstack  214 Feb  5 18:18 Makefile
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:18 doc
+drwxr-xr-x 4 gjost xstack 4096 Feb  5 18:18 src
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:19 mk
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:21 lib
+drwxr-xr-x 2 gjost xstack 4096 Feb  5 18:21 include
+
+The file mk/Make.defs contains the appropriate flags for building on the xstack cluster.
+
+This version of Tempest provides a DataContainer class that facilitates copying of data contained
+in Tempest object into OCR data blocks.
+
+A simple test case to demontsrate the use of the DataContainer classhas been implemented in OCR.
+The test cases exercises a time stepping loop updating data contained within a Tempest Patch object.
+Furthermore, it implements a simple data exchange during the time stepping loop.
+Labeled GUIDS for the event handling of events which indicate the availability of updated halo elemnts.
+The events are double buffered and are used alternating during the time stepping loop.
+The data exchange assumes a one dimensional distrbution, one halo element to the left and one to the right.
+A full tempest neighbor exchange will regquire at least 8 halo buffer: 4 edges and 4 corners of the patch.
+
+The purpose of the test case is two fold:
+- demonstrate the usability of the DataContainer class on OCR.
+- demonstrate the use of labeled GUIDS for a tempest data exchange
+- demonstarte the need for objects which are i
+  ** local to the woker thread
+  ** created and inititialized once start-up
+  ** RO after intitiliazation
+  ** accessible to all tasks performed by each worker
+
+Note: The OCR implementation of the test case employs a pointer to a Grid object created by mainEdt.
+      This is a work around to the fact that no worker thread local, globally accessible objects are
+      supported by OCR. It violates the current OCR specification. It works on x86 but will fail
+      mpi-x86 until the necessay support is provided
+
+To build and run DataContainerTest:
+----------------------------------
+cd test/hpc
+make -f Makefile.x86 clean uninstall run;
+
