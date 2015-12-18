@@ -2,7 +2,7 @@
 CC   = mpicc
 LD   = $(CC)
 CPPFLAGS = -I.
-CFLAGS = -O3
+CFLAGS = -O3 $(COMMS)
 LDFLAGS =
 LDLIBS = -lm
 

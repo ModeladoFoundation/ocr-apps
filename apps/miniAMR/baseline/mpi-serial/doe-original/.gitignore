@@ -1,0 +1,4 @@
+*.o
+miniAMR.x
+*.txt
+*.yaml
