@@ -4,8 +4,8 @@
 #define ocrNewIn(A, T, ...) (Ocr::NewIn<T>(A, __VA_ARGS__))
 #define ocrNew(T, ...) (Ocr::New<T>(__VA_ARGS__))
 
-#define ocrNewArrayIn(A, T, SZ) (Ocr::NewArrayIn<T>(A, __VA_ARGS__))
-#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(__VA_ARGS__))
+#define ocrNewArrayIn(A, T, SZ) (Ocr::NewArrayIn<T>(A, SZ))
+#define ocrNewArray(T, SZ) (Ocr::NewArray<T>(SZ))
 
 // Currently deleting is a no-op. All memory is freed with the datablock.
 #define ocrDelete(ptr) /* NO-OP */
@@ -22,14 +22,6 @@ namespace Ocr {
                 char *const m_dbBuf;
                 ptrdiff_t *const m_offset;
 
-                inline void *allocateAligned(size_t size, int alignment) const {
-                    assert(m_offset != nullptr && "Uninitialized allocator");
-                    ptrdiff_t start = *m_offset & (-alignment);
-                    *m_offset = start + size;
-                    assert(&m_dbBuf[*m_offset] <= (char*)m_offset && "Datablock allocator overflow");
-                    return (void*)&m_dbBuf[start];
-                }
-
             public:
                 constexpr DatablockAllocator(void):
                     m_dbBuf(nullptr), m_offset(nullptr) { }
@@ -45,7 +37,18 @@ namespace Ocr {
                     *m_offset = 0;
                 }
 
-                inline void *allocate(int size, int count) const {
+                inline void *allocateAligned(size_t size, int alignment) const {
+                    assert(m_offset != nullptr && "Uninitialized allocator");
+                    ptrdiff_t start = (*m_offset + alignment - 1) & (-alignment);
+                    *m_offset = start + size;
+                    assert(&m_dbBuf[*m_offset] <= (char*)m_offset && "Datablock allocator overflow");
+                    return (void*)&m_dbBuf[start];
+                }
+
+                // FIXME - I don't know if these alignment checks are sufficient,
+                // especially if we do weird things like allocate a char[N]
+                // so we have N bytes to store some struct or something.
+                inline void *allocate(size_t size, size_t count) const {
                     assert(size > 0);
                     if (size == 1) {
                         return allocateAligned(1*count, 1);
@@ -61,7 +64,7 @@ namespace Ocr {
                     }
                 }
 
-                inline void *allocate(int size) const {
+                inline void *allocate(size_t size) const {
                     return allocate(size, 1);
                 }
 

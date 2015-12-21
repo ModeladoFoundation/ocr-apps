@@ -19,6 +19,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#include "TempestRefactor.h"
 #include "Exception.h"
 #include "DataChunk.h"
 #include "DataType.h"
@@ -373,7 +374,7 @@ private:
 	///	<summary>
 	///		A pointer to the data for this DataArray1D.
 	///	</summary>
-	T * m_data;
+	TR::Ptr<T> m_data;
 
 };
 

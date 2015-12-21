@@ -56,6 +56,23 @@ namespace Ocr {
 
             /* TODO - implement math operators, like increment and decrement */
     };
+
+    template <typename T> using RelPtr = OcrRelativePtr<T>;
+
+    namespace Internal {
+        template <typename T, unsigned N>
+        struct PointerNester {
+            typedef RelPtr<typename PointerNester<T, N-1>::type> type;
+        };
+
+        template <typename T>
+        struct PointerNester<T, 0> {
+            typedef T type;
+        };
+    }
+
+    template <typename T, unsigned N> using NestedRelPtr = typename Internal::PointerNester<T,N>::type;
+
 }
 
 #endif /* _OCR_RELATIVE_PTR_HPP_ */

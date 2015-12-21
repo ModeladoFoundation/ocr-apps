@@ -2,6 +2,7 @@
 #define _OCR_VECTOR_HPP_
 
 #include "ocr_db_alloc.hpp"
+#include "ocr_relative_ptr.hpp"
 #include <cstdlib>
 #include <cstdio>
 
@@ -17,7 +18,7 @@ namespace Ocr {
         private:
             const size_t capacity;
             size_t head;
-            T *const data;
+            const RelPtr<T> data;
 
         public:
             typedef T *iterator;
@@ -70,7 +71,7 @@ namespace Ocr {
     };
 
     /** Vector defaulting to capacity of N */
-    template <typename T, int N>
+    template <typename T, size_t N>
     struct VectorN: public Vector<T> {
         VectorN(size_t sz = 0): Vector<T>(sz, N) { }
     };
