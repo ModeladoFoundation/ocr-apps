@@ -1,0 +1,36 @@
+This is a simple application to test the priority scheduler.
+
+The following options are set in the makefile to enable the
+priority scheduler heuristic and corresponding scheduler objects,
+and force the application to run with a single worker thread:
+
+    CONFIG_NUM_THREADS := 1
+
+Build and run the application using the following command:
+
+    make -f Makefile.x86 run
+
+The following is the expected output. Note that although the tasks
+are created in a shuffled order, they run from highest to lowest.
+
+    Hello from mainEdt()
+    CREATE 0
+    CREATE 1
+    CREATE 0
+    CREATE 1
+    CREATE 0
+    CREATE 1
+    CREATE 0
+    CREATE 1
+    CREATE 0
+    CREATE 1
+    Hello from 0
+    Hello from 0
+    Hello from 0
+    Hello from 0
+    Hello from 0
+    Hello from 1
+    Hello from 1
+    Hello from 1
+    Hello from 1
+    Hello from 1
