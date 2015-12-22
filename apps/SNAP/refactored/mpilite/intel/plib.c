@@ -225,6 +225,7 @@ void pcomm_set( int npey, int npez,  para_data *para_vars, int *ierr )
  *******************************************************************************/
 void pend ()
 {
+    MPI_Barrier( MPI_COMM_WORLD );
     MPI_Finalize();
 }
 
