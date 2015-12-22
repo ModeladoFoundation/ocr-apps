@@ -1282,10 +1282,12 @@ GridPatch * Grid::ActivateEmptyPatch(
 ) {
 	GridPatch * pPatch = NewPatch(ixPatch);
 
-	//m_vecActiveGridPatches.push_back(pPatch);
+        printf("GJDEBUG0 patch pointer %lx\n", pPatch);
+        fflush(stdout);
+	m_vecActiveGridPatches.push_back(pPatch);
         printf("GJDEBUG1\n");
         fflush(stdout);
-	//m_vecActiveGridPatchIndices.push_back(ixPatch);
+	m_vecActiveGridPatchIndices.push_back(ixPatch);
         printf("GJDEBUG2\n");
         fflush(stdout);
 
@@ -1297,8 +1299,9 @@ GridPatch * Grid::ActivateEmptyPatch(
 void Grid::DeactivatePatch(
 	int ixPatch
 ) {
-        printf("GJDEBUG: Early return from DeactivatePatch\n");
-        return;
+         printf ("GJDEBUG: Hello from DeactivatePatch %d %d\n", ixPatch, m_vecActiveGridPatchIndices.size());
+                         fflush(stdout);
+
 	for (int i = 0; i < m_vecActiveGridPatchIndices.size(); i++) {
 		if (m_vecActiveGridPatchIndices[i] == ixPatch) {
 #ifdef USE_OCR_TEST
@@ -1312,6 +1315,8 @@ void Grid::DeactivatePatch(
 			m_vecActiveGridPatches.erase(
 				m_vecActiveGridPatches.begin() + i);
 		}
+                printf ("GJDEBUG: DeactivatePatch %d \n", ixPatch);
+                fflush(stdout);
 	}
 }
 
