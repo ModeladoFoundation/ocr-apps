@@ -886,12 +886,14 @@ protected:
 	///		Vector of grid patch ids which are active locally.
 	///	</summary>
 #ifdef USE_OCR_TEST
+	//Ocr::Vector128<int> m_vecActiveGridPatchIndices;
 	Ocr::Vector128<int> m_vecActiveGridPatchIndices;
 #else
 	std::vector<int> m_vecActiveGridPatchIndices;
 #endif
 
 #ifdef USE_OCR_TEST
+	//Ocr::Vector128<int> m_vecPatchProcessor;
 	Ocr::Vector128<int> m_vecPatchProcessor;
 #else
 	///	<summary>

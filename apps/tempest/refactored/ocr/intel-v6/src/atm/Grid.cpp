@@ -44,8 +44,8 @@ Grid::Grid(
 	VerticalStaggering eVerticalStaggering
 ) :
 #ifdef USE_OCR_TEST
-        m_vecActiveGridPatchIndices(128),
-        m_vecPatchProcessor(128),
+        //m_vecActiveGridPatchIndices(128),
+        //m_vecPatchProcessor(128),
 #endif
 	m_fInitialized(false),
 	m_model(&model),
@@ -116,11 +116,20 @@ Grid::Grid(
 
 Grid::~Grid() {
 	if (m_pVerticalStretchF != NULL) {
+#ifdef USE_OCR_TEST
+                 ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pVerticalStretchF;
+
+#endif
 	}
 
 	for (int n = 0; n < m_vecActiveGridPatches.size(); n++) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_vecActiveGridPatches[n];
+#endif
 	}
 }
 
@@ -145,7 +154,11 @@ void Grid::SetVerticalStretchFunction(
 	VerticalStretchFunction * pVerticalStretchF
 ) {
 	if (m_pVerticalStretchF != NULL) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pVerticalStretchF;
+#endif
 	}
 
 	m_pVerticalStretchF = pVerticalStretchF;
@@ -1282,14 +1295,10 @@ GridPatch * Grid::ActivateEmptyPatch(
 ) {
 	GridPatch * pPatch = NewPatch(ixPatch);
 
-        printf("GJDEBUG0 patch pointer %lx\n", pPatch);
-        fflush(stdout);
+        //printf("GJDEBUG0 patch pointer %lx\n", pPatch);
+        //fflush(stdout);
 	m_vecActiveGridPatches.push_back(pPatch);
-        printf("GJDEBUG1\n");
-        fflush(stdout);
 	m_vecActiveGridPatchIndices.push_back(ixPatch);
-        printf("GJDEBUG2\n");
-        fflush(stdout);
 
 	return pPatch;
 }
@@ -1299,7 +1308,7 @@ GridPatch * Grid::ActivateEmptyPatch(
 void Grid::DeactivatePatch(
 	int ixPatch
 ) {
-         printf ("GJDEBUG: Hello from DeactivatePatch %d %d\n", ixPatch, m_vecActiveGridPatchIndices.size());
+         printf ("GJDEBUG: Hello from DeactivatePatch %d %d\n", ixPatch, (int) m_vecActiveGridPatchIndices.size());
                          fflush(stdout);
 
 	for (int i = 0; i < m_vecActiveGridPatchIndices.size(); i++) {
@@ -1315,7 +1324,6 @@ void Grid::DeactivatePatch(
 			m_vecActiveGridPatches.erase(
 				m_vecActiveGridPatches.begin() + i);
 		}
-                printf ("GJDEBUG: DeactivatePatch %d \n", ixPatch);
                 fflush(stdout);
 	}
 }

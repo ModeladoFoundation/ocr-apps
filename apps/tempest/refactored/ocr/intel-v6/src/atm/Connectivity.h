@@ -29,8 +29,11 @@
 #ifdef USE_MPI
 #include "mpi.h"
 #endif
-
+#ifdef USE_OCR_TEST
+#include "ocr_vector.hpp"
+#else
 #include <vector>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -172,12 +175,20 @@ public:
 	///	<summary>
 	///		Vector of ExchangeBufferInfo objects.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	typedef Ocr::Vector128<ExchangeBufferInfo> ExchangeBufferInfoVector;
+#else
 	typedef std::vector<ExchangeBufferInfo> ExchangeBufferInfoVector;
+#endif
 
 	///	<summary>
 	///		Vector of pointers to data.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	typedef Ocr::Vector128<unsigned char *> DataPointerVector;
+#else
 	typedef std::vector<unsigned char *> DataPointerVector;
+#endif
 
 public:
 	///	<summary>
@@ -248,7 +259,11 @@ public:
 	///	</summary>
 	void GetExchangeBuffersBySourcePatchIx(
 		int ixSourcePatch,
+#ifdef USE_OCR_TEST
+		Ocr::Vector128<int> & vecExchangeBufferIndices
+#else
 		std::vector<int> & vecExchangeBufferIndices
+#endif
 	) const;
 
 	///	<summary>
@@ -636,12 +651,20 @@ public:
 	///	<summary>
 	///		Vector of exterior boundary neighbors.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	typedef Ocr::Vector128<ExteriorNeighbor *> ExteriorNeighborVector;
+#else
 	typedef std::vector<ExteriorNeighbor *> ExteriorNeighborVector;
+#endif
 
 	///	<summary>
 	///		Vector of interior boundary neighbors.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	typedef Ocr::Vector128<InteriorNeighbor *> InteriorNeighborVector;
+#else
 	typedef std::vector<InteriorNeighbor *> InteriorNeighborVector;
+#endif
 
 public:
 	///	<summary>
@@ -817,7 +840,11 @@ private:
 	///	<summary>
 	///		Array indicating the panel in the specified direction.
 	///	</summary>
+#ifdef USE_OCR_TEST
+	Ocr::Vector128<int> m_ixPanelDirection;
+#else
 	std::vector<int> m_ixPanelDirection;
+#endif
 /*
 	///	<summary>
 	///		Pointer to exterior neighbors along edges, by index.

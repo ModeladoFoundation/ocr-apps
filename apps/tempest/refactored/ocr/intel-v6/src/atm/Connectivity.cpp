@@ -67,17 +67,30 @@ void ExchangeBufferRegistry::Register(
 	const ExchangeBufferInfo & info
 ) {
 	m_vecRegistry.push_back(info);
+#ifdef USE_OCR_TEST
+	m_vecRecvBuffers.resize(m_vecRegistry.size());
+	m_vecSendBuffers.resize(m_vecRegistry.size());
+#else
 	m_vecRecvBuffers.resize(m_vecRegistry.size(), NULL);
 	m_vecSendBuffers.resize(m_vecRegistry.size(), NULL);
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void ExchangeBufferRegistry::GetExchangeBuffersBySourcePatchIx(
 	int ixSourcePatch,
+#ifdef USE_OCR_TEST
+	Ocr::Vector128<int> & vecExchangeBufferIndices
+#else
 	std::vector<int> & vecExchangeBufferIndices
+#endif
 ) const {
+#ifdef USE_OCR_TEST
+    //currently not implemented in ocr_vector
+#else
 	vecExchangeBufferIndices.clear();
+#endif
 	for (int m = 0; m < m_vecRegistry.size(); m++) {
 		if (m_vecRegistry[m].ixSourcePatch == ixSourcePatch) {
 			vecExchangeBufferIndices.push_back(m);

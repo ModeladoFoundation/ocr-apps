@@ -90,14 +90,22 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     void * localArena =  depv[2].ptr;
     ocrAllocatorSetDb(localArena, (size_t) ARENA_SIZE, false);
     Grid * pGrid =  ((MG *) localArena)->g;
-    PRINTF("GJDEBUG: rank= %d grid pointer in updatePatch %lx\n", rank, pGrid);
-    const PatchBox & testBox = pGrid->GetPatchBox(rank);
-    int testPanel = testBox.GetPanel();
-    int testHalo= testBox.GetHaloElements();
-    //printf("GJDEBUG: rank = %d, panel  = %d\n", rank, testPanel);
+    Model * pModel =  ((MG *) localArena)->m;
+    PRINTF("GJDEBUG: rank= %d model and grid pointer in updatePatch %lx %lx\n", rank, pModel, pGrid);
+    double refLen = pGrid->GetReferenceLength();
+    int radElements = pGrid->GetRElements();
+    PhysicalConstants physConst;
+    double earthRadius = physConst.GetEarthRadius();
+    //int halos = pModel->GetHaloElements();
+    //printf("GJDEBUG: rank = %d, halos in the Model  = %d\n", rank, halos);
+    printf("GJDEBUG: rank = %d, refLength  = %f radial elements = %d earth radius = %f\n", rank, refLen, radElements, earthRadius);
+    //const PatchBox & testBox = pGrid->GetPatchBox(rank);
+    //int testPanel = testBox.GetPanel();
+    //int testHalo= testBox.GetHaloElements();
     int pCount = pGrid->GetPatchCount();
     int pActiveCount = pGrid->GetActivePatchCount();
     printf("GJDEBUG: rank = %d, patch count  = %d active patch count = %d\n", rank, pCount, pActiveCount);
+
     // activate the patch
     //GridPatch * pPatch = pGrid->ActivateEmptyPatch(rank);
     //PRINTF("GJDEBUG: rank= %d active patches %d\n",  rank, pGrid->GetActivePatchCount ());
@@ -110,19 +118,13 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 
 // Proof of concept to update data in a GridPatch
-    //TODO: Perform a functional update
-    //TODO: Destroy neighbor events
-    //TODO: unpack neighbor data
     for (i=0; i<dlen; i++) {
         newData [i] = newData [i] + (double) rank;
     }
-    //TODO: pack data for neighbor
-    //TODO: satisfy events for neighbors: note we need to double the events; alternate even/odd during iterations
     //
     //deactivate the GridPatch
     PRINTF ("Rank %d deactivates its patch in step %d \n", rank, step);
     pGrid->DeactivatePatch(rank);
-    //TODO:create neighbor events; use the guids from list created in main
 
 
 // create clone for next timestep or trigger output
@@ -136,14 +138,8 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrAddDependence(depv[1].guid, stateInfo->EDT, 1, DB_MODE_RW );
         ocrAddDependence(depv[2].guid, stateInfo->EDT, 2, DB_MODE_RW );
 
-    //    This data is currently not being used
-    //    ocrAddDependence(depv[2].guid, stateInfo->EDT, 2, DB_MODE_RW );
-    //    ocrAddDependence(depv[3].guid, stateInfo->EDT, 3, DB_MODE_RW );
-    //    ocrAddDependence(depv[4].guid, stateInfo->EDT, 4, DB_MODE_RW );
 
-        // TODO: Create "magic" neighbor events
     } else {
-        // TODO:  Release the data block which has been updated and is printed by outputEDT; important for x86-mpi;
         ocrDbRelease (depv[0].guid);
         ocrDbRelease (depv[1].guid);
         ocrDbRelease (depv[2].guid);
@@ -260,11 +256,16 @@ try {
             assert((void*)myMG[i] == arenaPtr [i]);
 	    // Set the parameters
 	    model [i]->SetParameters(param);
+//	    model [i]->SetHorizontalDynamics(
+//		new HorizontalDynamicsStub(*model [i]));
 	    model [i]->SetHorizontalDynamics(
-		new HorizontalDynamicsStub(*model [i]));
-	    model [i]->SetTimestepScheme(new TimestepSchemeStrang(*model [i]));
+		ocrNew(HorizontalDynamicsStub, *model [i]));
+//	    model [i]->SetTimestepScheme(new TimestepSchemeStrang(*model [i]));
+	    model [i]->SetTimestepScheme(ocrNew(TimestepSchemeStrang, *model [i]));
+//	    model [i]->SetVerticalDynamics(
+//		new VerticalDynamicsStub(*model [i]));
 	    model [i]->SetVerticalDynamics(
-		new VerticalDynamicsStub(*model [i]));
+		ocrNew(VerticalDynamicsStub, *model [i]));
         }
 
 	// Set the model grid (one patch Cartesian grid)

@@ -64,24 +64,48 @@ Model::Model(
 
 Model::~Model() {
 	if (m_pGrid != NULL) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pGrid;
+#endif
 	}
 	if (m_pTimestepScheme != NULL) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pTimestepScheme;
+#endif
 	}
 	if (m_pHorizontalDynamics != NULL) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pHorizontalDynamics;
+#endif
 	}
 	if (m_pVerticalDynamics != NULL) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pVerticalDynamics;
+#endif
 	}
 
 	for (int n = 0; n < m_vecOutMan.size(); n++) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_vecOutMan[n];
+#endif
 	}
 
 	if (m_pTestCase != NULL) {
+#ifdef USE_OCR_TEST
+                ocrDelete(m_vecActiveGridPatches[i]);
+#else
 		delete m_pTestCase;
+#endif
 	}
 }
 
