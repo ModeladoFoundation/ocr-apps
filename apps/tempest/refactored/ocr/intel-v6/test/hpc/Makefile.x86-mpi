@@ -79,10 +79,11 @@ TARGET := DataContainerDbAlloc
 
 SRCS :=  $(TARGET).cpp ../ocr-dballoc/src/ocr_db_alloc.cpp
 CONFIG_FLAGS := --guid LABELED
+#ASAN_FLAGS := -g -fsanitize=address -fno-omit-frame-pointer
 #CFLAGS := -O0 -g -I${TEMPESTBASEDIR}/include
 CFLAGS := -O0 -g  -std=c++11 -g -DUSE_OCR -DENABLE_EXTENSION_LABELING -I${TEMPESTBASEDIR}/include -I../ocr-dballoc/include
-CFLAGS += -DUSE_OCR_TEST
-LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -lnetcdf -lnetcdf_c++ -llapack -lblas
+CFLAGS += -DUSE_OCR_TEST $(ASAN_FLAGS)
+LDFLAGS := $(ASAN_FLAGS) -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -locr -lnetcdf -lnetcdf_c++ -llapack -lblas
 
 # Targets:
 #   - all:     Build the application.

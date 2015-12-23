@@ -227,7 +227,12 @@ public:
 			m_sSize[2] = sSize2;
 			m_sSize[3] = sSize3;
 
+#ifdef USE_OCR_NEW
+                        m_data1D = Ocr::NewArray<T>(sSize0*sSize1*sSzie2*sSize3);
+#else
+
 			m_data1D = reinterpret_cast<T *>(malloc(GetByteSize()));
+#endif
 
 			BuildPointerTree();
 		}
@@ -321,7 +326,11 @@ public:
 			m_data = NULL;
 		}
 		if ((m_fOwnsData) && (m_data1D != NULL)) {
+#ifdef USE_OCR_TEST
+			ocrDelete (m_data1D);
+#else
 			delete[] m_data1D;
+#endif
 		}
 		m_fOwnsData = true;
 		m_data1D = NULL;

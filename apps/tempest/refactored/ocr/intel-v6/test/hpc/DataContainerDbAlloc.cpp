@@ -91,14 +91,20 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrAllocatorSetDb(localArena, (size_t) ARENA_SIZE, false);
     Grid * pGrid =  ((MG *) localArena)->g;
     PRINTF("GJDEBUG: rank= %d grid pointer in updatePatch %lx\n", rank, pGrid);
-
+    const PatchBox & testBox = pGrid->GetPatchBox(rank);
+    int testPanel = testBox.GetPanel();
+    int testHalo= testBox.GetHaloElements();
+    //printf("GJDEBUG: rank = %d, panel  = %d\n", rank, testPanel);
+    int pCount = pGrid->GetPatchCount();
+    int pActiveCount = pGrid->GetActivePatchCount();
+    printf("GJDEBUG: rank = %d, patch count  = %d active patch count = %d\n", rank, pCount, pActiveCount);
     // activate the patch
-    GridPatch * pPatch = pGrid->ActivateEmptyPatch(rank);
-    PRINTF("GJDEBUG: rank= %d active patches %d\n",  rank, pGrid->GetActivePatchCount ());
+    //GridPatch * pPatch = pGrid->ActivateEmptyPatch(rank);
+    //PRINTF("GJDEBUG: rank= %d active patches %d\n",  rank, pGrid->GetActivePatchCount ());
 
     // Get DataContainers associated with GridPatch
 
-    DataContainer & dataGeometric = pPatch->GetDataContainerGeometric();
+    //DataContainer & dataGeometric = pPatch->GetDataContainerGeometric();
 
     unsigned char * pDataGeometric = (unsigned char*)(depv[0].ptr);
 
@@ -308,8 +314,11 @@ try {
         for (int i = 0; i<nWorkers; i++) {
        	    const PatchBox & box = pGrid[i]->GetPatchBox(i);
             assert(&box != nullptr);
+            int testHalo = box.GetHaloElements();
+            printf("GJDEBUG: mainEdt testHalo = %d\n", testHalo);
+            ocrAllocatorSetDb(arenaPtr[i], (size_t) ARENA_SIZE, false);
 	    pPatchFirst [i] =
-	    new GridPatchCartesianGLL(
+	    ocrNew (GridPatchCartesianGLL,
 			(*pGrid [i]),
 			0,
 			box,

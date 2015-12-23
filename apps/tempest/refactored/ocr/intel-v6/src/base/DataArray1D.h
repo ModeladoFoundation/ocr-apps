@@ -27,6 +27,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include "ocr_vector.hpp"
 
 template <typename T>
 class DataArray1D : public DataChunk {
@@ -114,7 +115,11 @@ public:
 
 			m_sSize = sSize;
 
+#ifdef USE_OCR_NEW
+                        m_data = Ocr::NewArray<T>(sSize);
+#else
 			m_data = reinterpret_cast<T *>(malloc(GetByteSize()));
+#endif
 		}
 
 		Zero();
@@ -160,7 +165,11 @@ public:
 	///	</summary>
 	virtual void Detach() {
 		if ((m_fOwnsData) && (m_data != NULL)) {
-			delete[] m_data;
+#ifdef USE_OCR_TEST
+                    ocrDelete(m_data);
+#else
+		    delete[] m_data;
+#endif
 		}
 		m_fOwnsData = true;
 		m_data = NULL;
