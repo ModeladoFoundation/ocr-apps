@@ -33,6 +33,8 @@ typedef struct _ocrConfig_t {
     const char * iniFile;
 } ocrConfig_t;
 
+_BEGIN_STD_C
+
 /**
  * @brief Opens a file handle
  *
@@ -473,5 +475,7 @@ u8 ocrWait (s32 *status);
 
 u8 ocrGetTimeofDay (struct timeval  *ptimeval, void *ptimezone);
 u8 ocrTimes (struct tms *buf, clock_t *ticks);
+
+_END_STD_C
 
 #endif // _OCR_H_
