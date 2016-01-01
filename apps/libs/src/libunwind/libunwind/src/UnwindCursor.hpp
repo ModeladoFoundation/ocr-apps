@@ -848,16 +848,18 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
                                     (uint32_t)sects.dwarf_section_length,
                                     sects.dwarf_section + fdeSectionOffsetHint,
                                     &fdeInfo, &cieInfo);
-    if( !foundFDE )
+    if( !foundFDE ) {
       _LIBUNWIND_DEBUG_LOG("UnwindCursor::getInfoFDS CFI_Parser::findFDE failed: pc 0x%lx\n", pc );
+    }
   }
 #if _LIBUNWIND_SUPPORT_DWARF_INDEX
   if (!foundFDE && (sects.dwarf_index_section != 0)) {
     foundFDE = EHHeaderParser<A>::findFDE(
         _addressSpace, pc, sects.dwarf_index_section,
         (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo);
-    if( !foundFDE )
+    if( !foundFDE ) {
       _LIBUNWIND_DEBUG_LOG("UnwindCursor::getInfoFDS EHHeaderParser::findFDE failed: pc 0x%lx\n", pc );
+    }
   }
 #endif
 #if _LIBUNWIND_SUPPORT_DWARF_CACHE

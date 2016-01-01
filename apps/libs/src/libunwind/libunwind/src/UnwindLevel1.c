@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "config.h"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -21,7 +22,6 @@
 
 #include "libunwind.h"
 #include "unwind.h"
-#include "config.h"
 
 #if !LIBCXXABI_ARM_EHABI
 
@@ -420,9 +420,10 @@ _Unwind_GetLanguageSpecificData(struct _Unwind_Context *context) {
       "_Unwind_GetLanguageSpecificData(context=%p) => 0x%" PRIxPTR "\n",
       (void *)context, result);
   if (result != 0) {
-    if (*((uint8_t *)result) != 0xFF)
+    if (*((uint8_t *)result) != 0xFF) {
       _LIBUNWIND_DEBUG_LOG("lsda at 0x%" PRIxPTR " does not start with 0xFF\n",
                            result);
+    }
   }
   return result;
 }

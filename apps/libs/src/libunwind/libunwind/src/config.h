@@ -14,18 +14,20 @@
 #ifndef LIBUNWIND_CONFIG_H
 #define LIBUNWIND_CONFIG_H
 
-#include <assert.h>
-#include <stdio.h>
-
 // Define static_assert() unless already defined by compiler.
 #ifndef __has_feature
   #define __has_feature(__x) 0
 #endif
 #if !(__has_feature(cxx_static_assert)) && !defined(static_assert)
+/*
   #define static_assert(__b, __m) \
       extern int compile_time_assert_failed[ ( __b ) ? 1 : -1 ]  \
                                                   __attribute__( ( unused ) );
+*/
 #endif
+
+#include <assert.h>
+#include <stdio.h>
 
 // Platform specific configuration defines.
 #ifdef __APPLE__
@@ -69,7 +71,7 @@
     assert(false);
     abort();
   }
-  #ifdef __XSTACK__
+  #if defined(__XSTACK__)
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX    1
@@ -78,7 +80,7 @@
     #define _LIBUNWIND_SUPPORT_FRAME_APIS     1
     #define _LIBUNWIND_IS_BAREMETAL           1
     #define _LIBUNWIND_HAS_PTHREAD            0
-  #else // ! __XSTG__
+  #else // ! __XSTACK__
 
     #define _LIBUNWIND_BUILD_ZERO_COST_APIS (defined(__i386__) || \
                                              defined(__x86_64__) || \
@@ -90,9 +92,11 @@
                                             defined(__ARM_DWARF_EH__)
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX _LIBUNWIND_SUPPORT_DWARF_UNWIND
     #define _LIBUNWIND_SUPPORT_DWARF_CACHE _LIBUNWIND_SUPPORT_DWARF_UNWIND
-  #endif // __XSTG__
+  #endif // __XSTACK__
 
-  #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+  #ifdef __clang__
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+  #endif
 
   #define _LIBUNWIND_BUILD_SJLJ_APIS      0
   #define _LIBUNWIND_EXPORT               __attribute__((visibility("default")))
@@ -104,7 +108,7 @@
 
 // Macros that define away in non-Debug builds
 #ifdef NDEBUG
-  #define _LIBUNWIND_DEBUG_LOG(msg, ...)
+  #define _LIBUNWIND_DEBUG_LOG(...)
   #define _LIBUNWIND_TRACE_API(msg, ...)
   #define _LIBUNWIND_TRACING_UNWINDING 0
   #define _LIBUNWIND_TRACE_UNWINDING(msg, ...)
