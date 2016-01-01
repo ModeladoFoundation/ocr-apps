@@ -10,6 +10,7 @@
 //  http://mentorembedded.github.io/cxx-abi/abi-eh.html
 //
 //===----------------------------------------------------------------------===//
+#include "__config"
 
 #include "config.h"
 #include "cxxabi.h"
