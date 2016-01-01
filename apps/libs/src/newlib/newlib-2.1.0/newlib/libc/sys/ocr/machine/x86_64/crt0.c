@@ -137,9 +137,12 @@ const fptr_t __DTOR_LIST__[]
 // Sizes may be 0.
 //
 extern uint64_t __eh_frame_hdr_start;
-extern uint64_t __eh_frame_hdr_size;
+extern uint64_t __eh_frame_hdr_end;
 extern uint64_t __eh_frame_start;
-extern uint64_t __eh_frame_size;
+extern uint64_t __eh_frame_end;
+
+uint64_t __eh_frame_size;
+uint64_t __eh_frame_hdr_size;
 
 static struct eh_info {
     ulongptr_t hdr_start;
@@ -155,6 +158,9 @@ static struct eh_info {
 
 void __get_eh_info( struct eh_info * info )
 {
+    __eh_frame_size = __eh_frame_end - __eh_frame_start;
+    __eh_frame_hdr_size = __eh_frame_hdr_end - __eh_frame_hdr_start;
+
     *info = eh_object;
 }
 //
