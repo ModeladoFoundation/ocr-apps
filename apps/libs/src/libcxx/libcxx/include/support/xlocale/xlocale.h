@@ -158,7 +158,11 @@ static inline size_t wcsxfrm_l(wchar_t *dest, const wchar_t *src, size_t n,
 }
 
 static inline long double strtold_l(const char *nptr, char **endptr, locale_t) {
+#if defined (_LIBCPP_HAS_LONG_DOUBLE)
   return strtold(nptr, endptr);
+#else
+  return (long double) strtol(nptr, endptr, 0);
+#endif // _LIBCPP_HAS_LONG_DOUBLE
 }
 
 static inline long long strtoll_l(const char *nptr, char **endptr, int base,
@@ -184,7 +188,11 @@ static inline unsigned long long wcstoull_l(const wchar_t *nptr,
 
 static inline long double wcstold_l(const wchar_t *nptr, wchar_t **endptr,
                                     locale_t) {
+#if defined (_LIBCPP_HAS_LONG_DOUBLE)
   return wcstold(nptr, endptr);
+#else
+  return wcstol(nptr, endptr, 0);
+#endif // _LIBCPP_HAS_LONG_DOUBLE
 }
 
 #ifdef __cplusplus

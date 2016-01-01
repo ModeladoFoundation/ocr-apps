@@ -6,6 +6,8 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+#include "__config"
+
 #include <stdlib.h>
 #include <stdio.h>
 
