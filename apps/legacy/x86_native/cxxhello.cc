@@ -31,7 +31,7 @@ foo * blah()
     return new foo( 10, 20, 100 );
 }
 
-int mainEdt( int argc, char **argv )
+int main( int argc, char **argv )
 {
     foo * f = blah();
 

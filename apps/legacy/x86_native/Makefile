@@ -2,23 +2,23 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
+# To run C example: ./chello -ocr:cfg ./generated.cfg
+# To run C++ example: ./cxxhello -ocr:cfg ./generated.cfg
+#
 ARCH=x86_native
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
-#TG_ROOT = $(APPS_ROOT)/../../tg
-#LD = $(TG_ROOT)/tg/install/bin/x86_64-linux-elf-ld
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 LIBS = $(APPS_LIBS_ROOT)/lib
 OCR_INC = $(APPS_LIBS_ROOT)/include
 
 CFLAGS += -std=c99 -U__STRICT_ANSI__ -isystem $(OCR_INC)
-#LINK_OPTS = -Xlinker -rpath=$(APPS_ROOT)/legacy/x86_native -Xlinker -rpath=$(APPS_ROOT)/../ocr/build/x86_lib/objs
-LINK_OPTS = -Xlinker -rpath=$(APPS_ROOT)/../ocr/build/x86_lib/objs
 
-GLIBC_LIB_PATH = -L$(CURDIR) -L$(OCR_LIB_PATH) -L/usr/lib/x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/4.9 -L/lib/x86_64-linux-gnu -L/lib -L/usr/lib
-GLIBC_LIBPREFIX = /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/4.9/crtbegin.o
-GLIBC_LIBSUFFIX = /usr/lib/gcc/x86_64-linux-gnu/4.9/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o
+CXXFLAGS += -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__ -isystem $(OCR_INC)
+CXXFLAGS += -fno-stack-protector -fno-use-cxa-atexit
+CXXFLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
+CXXFLAGS += -I$(APPS_LIBS_ROOT)/include
 
 LIBC = /usr/lib/x86_64-linux-gnu/libc.a
 PTHREAD_LIB = /usr/lib/x86_64-linux-gnu/libpthread.a
@@ -26,132 +26,56 @@ LIB_GCC = /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
 GLIBC_A = $(PTHREAD_LIB) $(LIB_GCC) $(LIBC)
 
 # Libraries to include from newlib
-NL_LIBPREFIX = $(LIBS)/crt0.o
-NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
+NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
+LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
-# Other library - this uses the libocrscaffold.a, but it
-# should actually be the real ocr library/runtime.
 OCR_LIB_PATH = $(APPS_ROOT)/../ocr/build/x86_lib/objs
-OCR_LIB_A = $(OCR_LIB_PATH)/libocr.a
-OCR_LIB_O = $(OCR_LIB_PATH)/libocr.o
-OCR_LIB_SO = $(OCR_LIB_PATH)/libocr.so
 
-APP = hello
-APP_SRCS = cmain.c hello.c
-APP_LIBS =
+# OCR library - this can be the libocrscaffold.a, or
+# the real ocr library/runtime. Uncomment the one you want.
+#OCR_LIB = $(LIBS)/libocrscaffold.a
+OCR_LIB = $(OCR_LIB_PATH)/libocr.o $(GLIBC_A)
 
-APP_OBJS = $(APP_SRCS:.c=.o)
+CAPP = chello
+CAPP_SRCS = chello.c
+CAPP_LIBS = $(NL_LIBS)
+CAPP_OBJS = $(CAPP_SRCS:.c=.o)
 
-all: $(APP)
+CXXAPP = cxxhello
+CXXAPP_SRCS = cxxhello.cc
+CXXAPP_LIBS = $(LIBCXX_LIBS) $(NL_LIBS)
+CXXAPP_OBJS = $(CXXAPP_SRCS:.cc=.o)
+
+PREMAIN_SRC = premain.cc
+PREMAIN_OBJ = $(PREMAIN_SRC:.cc=.o)
+
+all: $(CAPP) $(CXXAPP)
 
 default: all
 
-$(APP) : $(APP_OBJS)
-#
-# create re-linkable libhello.o...
-# use objcopy to redefine all defined symbols (except mainEdt) to have leading NL_
-# then statically link cmain.o with libhello.o, libocr.o, and glibc.a.
-	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-	nm libhello.o | grep -vE " U |mainEdt"  | sed 's/^.* . //' > s
-	objcopy --localize-symbols=s libhello.o
-	$(CC) -v -static -o $@ cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
-#
-# create re-linkable libhello.o...
-# use objcopy to redefine all defined symbols (except mainEdt) to have leading NL_
-# then statically link cmain.o with libhello.o, libocr.o, and glibc.a.
-#	$(LD) -r -static -o libhello.o $(NL_LIBPREFIX) hello.o $(NL_LIBSUFFIX)
-#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-#	objcopy --redefine-syms=r libhello.o
-#	$(CC) -v -static -o $@ -Xlinker --entry=__start cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
-#	$(CC) -v -static -o $@ cmain.o libhello.o $(OCR_LIB_O) $(GLIBC_A)
-#
-#	$(LD) -static -o libhello.o hello.o $(NL_LIBSUFFIX) #--emit-relocs --unresolved-symbols=ignore-all
-#	nm -u libhello.o | sed 's/^.*U //' > syms
-#	objcopy -S --keep-symbols keep --keep-symbols syms libhello.o
-#	$(CC) -v -o $@ cmain.o libhello.o -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread $(LINK_OPTS)
-#
-# use CC to do everything...
-#	$(CC) -v -o $@ cmain.o hello.o $(NL_LIBSUFFIX) -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread $(LINK_OPTS)
-#
-# use CC to do everything...
-#	$(CC) -v -static -o $@ cmain.o hello.o $(NL_LIBSUFFIX) $(OCR_LIB_A)
-#
-# create shared libhello.so from hello.o and newlib libs
-# create shared libtmp.so from cmain.o and libocr.so
-# then use CC to do final linking with libc and libpthread
-# .. can't find mainEdt
-#	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX)
-#	$(LD) -shared -o libtmp.so cmain.o $(APPS_ROOT)/../ocr/build/x86_lib/objs/libocr.so
-#	$(CC) -v -o $@ -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -ltmp -locr -lc -lpthread -lhello $(LINK_OPTS)
-#
-# create shared libhello.so
-#	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX) -rpath=$(APPS_ROOT)/legacy/x86_native
-#	$(LD) -shared -static -o libnewlibc.so $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -Xlinker --start-group hello.o -lnewlibc -Xlinker --end-group $(LINK_OPTS)
-#	$(CC) -v -o $@ -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -Xlinker --start-group cmain.o -lhello -Xlinker --end-group $(LINK_OPTS)
-#	$(CC) -v -o $@ cmain.o $(LINK_OPTS) -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -lhello -locr
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
-#
-# create re-linkable libhello.o...
-#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o -Xlinker --start-group $(OCR_LIB_O) -Xlinker --end-group libhello.o -zmuldefs
-#
-# create re-linkable libhello.o...
-# link to re-linkable ocr/c/pthread library, using --start/end-group
-#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -locr libhello.o $(LINK_OPTS)
-#
-# create re-linkable libhello.o...
-# link to re-linkable ocr/c/pthread library...
-# .. main calls ocrInit, tries to open file, which results in a malloc which resolved to libhello.o - which tries to call OCR!...
-#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o $(OCR_LIB_O) libhello.o -zmuldefs
-#	$(CC) -v -o $@ cmain.o -Xlinker --start-group $(OCR_LIB_O) -Xlinker --end-group libhello.o -zmuldefs
-#
-# create re-linkable libhello.o...
-# link to static ocr library, and dynamic link to native libs...
-# .. main calls ocrInit, tries to open file, which results in a malloc which resolved to libhello.o - which tries to call OCR!...
-#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o $(OCR_LIB_A) -L/usr/lib/x86_64-linux-gnu -lc -lpthread libhello.o -zmuldefs
-#
-# create re-linkable libhello.o...
-# .. this produced a libhello.o which has relocs everywhere for undefined symbols
-# .. also, there are undefined symbols in the resulting hello
-# .. main calls ocrInit, tries to open file, which results in a malloc which resolved to libhello.o - which tries to call OCR!...
-#	$(LD) -r -static -o libhello.o hello.o $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.o $(LINK_OPTS)
-#
-# builds a statically linked libhello.o and uses ignore-all
-# .. this produced a libhello.o which no longer has relocs for undefined symbols
-# then, dynamically link with ocr, c, pthread .sos
-#	$(LD) -static -o libhello.o hello.o $(NL_LIBSUFFIX) --emit-relocs --unresolved-symbols=ignore-all
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread libhello.o $(LINK_OPTS)
-#
-# this atttempts to link everything statically...
-#	$(CC) -v -o $@ cmain.o libhello.a $(OCR_LIB) -zmuldefs
-#
-# method #7
-#	$(LD) -shared -static -o libhello.so hello.o $(NL_LIBSUFFIX)
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lnewlibc hello.o $(LINK_OPTS)
-#	$(CC) -v -o $@ cmain.o -L$(APPS_ROOT)/legacy/x86_native -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -L/usr/lib/x86_64-linux-gnu -locr -lc -lpthread -lhello $(LINK_OPTS)
-#	$(CC) -v -o $@ cmain.o $(OCR_LIB) -L$(APPS_ROOT)/legacy/x86_native -lhello $(LINK_OPTS)
-#	$(LD) -static -o $@ $(GLIBC_LIBPREFIX) $(GLIBC_LIB_PATH) cmain.o -lhello -locr -L/usr/lib/x86_64-linux-gnu -lc -lpthread $(GLIBC_LIBSUFFIX)
-#	$(LD) -static -o hello $(APP_OBJS) $(NL_LIBSUFFIX) -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -locr -L/usr/lib/x86_64-linux-gnu -lc -lpthread
-#	nm -u libhello.so | sed 's/^.*U //' > syms
-#	objcopy -S --keep-symbols keep --keep-symbols syms libhello.so
-#	$(CC) -v -o $@ cmain.o hello.o -L$(APPS_ROOT)/../ocr/build/x86_lib/objs/ -locr
-#	$(CC) -o $@ -lhello $(OCR_LIB) -lthread_db
-#	$(LD) -r -s -o app.o --start-group $< $(CRT0) $(LIBC) --end-group # Link against newlib
-#	$(LD) -nostartfiles -nodefaultlibs -nostdlib -static -o $@ $(OCR_LIB) myapp.o -zmuldefs
-#	$(LD) -g -o $@ $(NL_LIBPREFIX) $< $(APP_LIBS) $(NL_LIBSUFFIX) $(OCR_LIB)
+$(CAPP) : $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
+	@$(LD) -r -static -o applib.o $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
+	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
+	@objcopy --localize-symbols=s applib.o
+	@$(CC) -static -o $@ applib.o $(OCR_LIB) -T elf64_x86_64.t
+	@echo Successfully built $@
+
+$(CXXAPP) : $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
+	@$(LD) -r -static -o applib.o $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
+	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
+	@objcopy --localize-symbols=s applib.o
+	@$(CXX) -static -o $@ applib.o $(OCR_LIB) -T elf64_x86_64.t
 	@echo Successfully built $@
 
 %.o : %.c
-	$(CC) -g -O0 -c $(CFLAGS) $< -o $@
+	@$(CC) -g -O0 -c $(CFLAGS) $< -o $@
+
+%.o : %.cc
+	@$(CXX) -g -O0 -c $(CXXFLAGS) $< -o $@
 
 dump:
 	@echo APPS_ROOT = $(APPS_ROOT)
 	@echo LIBS = $(LIBS)
 
 clean:
-	@rm -f $(APP) $(APP_OBJS) *.so *.o *.a
+	@rm -f $(CAPP) $(CAPP_OBJS) $(CXXAPP) $(CXXAPP_OBJS) $(PREMAIN_OBJ) *.o s
