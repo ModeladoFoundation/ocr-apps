@@ -11,6 +11,7 @@
 //  http://www.intel.com/design/itanium/downloads/245358.htm
 //
 //===----------------------------------------------------------------------===//
+#include "__config"
 
 #include <assert.h>
 #include <stdlib.h>

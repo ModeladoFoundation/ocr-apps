@@ -30,7 +30,7 @@ APPS_LIBS_ROOT ?= $(realpath $(CURDIR)/../../$(ARCH))
 #
 # Supported ARCH values
 #
-ARCHES = tg x86
+ARCHES = tg x86 x86_native
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -96,19 +96,37 @@ all: $(ARCH)
 # XE Clang/llvm build
 #
 ifeq ($(ARCH), tg)
-CC = $(TG_INSTALL)/bin/clang
-CXX = $(TG_INSTALL)/bin/clang++
-TARGET = xstg-linux-elf
-CXXABI_TARGET = XSTG
+  CC = $(TG_INSTALL)/bin/clang
+  CXX = $(TG_INSTALL)/bin/clang++
+  TARGET = xstg-linux-elf
+  CXXABI_TARGET = XSTG
 endif
 #
 # This defines an x86_64 build using the XE compiler
 #
 ifeq ($(ARCH), x86)
-CC = $(TG_INSTALL)/bin/clang
-CXX = $(TG_INSTALL)/bin/clang++
-TARGET = x86_64-linux-elf
-CXXABI_TARGET = x86_64
+  CC = $(TG_INSTALL)/bin/clang
+  CXX = $(TG_INSTALL)/bin/clang++
+  TARGET = x86_64-linux-elf
+  CXXABI_TARGET = x86_64
+endif
+#
+# This defines a native/platform GCC build
+# C99 is required to get the 'restrict' keyword
+# But C99 turns on strict ansi, which we disable
+# Make sure we get just the default platform build
+#
+ifeq ($(ARCH), x86_native)
+  CFLAGS += -std=c++11 -U__STRICT_ANSI__
+  CONFIG_ARGS += --enable-multilib=no
+  TARGET = x86_64-linux-gnu
+  CXXABI_TARGET = x86_64
+  COMPILE_FLAGS = -std=c++11 -nostdinc -nostdinc++ -U__STRICT_ANSI__ -D__LITTLE_ENDIAN__
+  COMPILE_FLAGS += -fno-stack-protector
+  COMPILE_FLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
+  COMPILE_FLAGS += -isystem $(TG_INSTALL)/include
+  COMPILE_FLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
+  COMPILE_FLAGS += -isystem $(APPS_LIBS_ROOT)/include
 endif
 
 $(ARCHES) install: build
