@@ -13,7 +13,7 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 
 # OCR top level directory
 #
-OCR_ROOT ?= ../../../../../ocr
+OCR_ROOT ?= ../../../../../../ocr/ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
 
 SRCS := ../mpilite.c ../mpi_ocr.c ../mpi_ocr_messaging.c

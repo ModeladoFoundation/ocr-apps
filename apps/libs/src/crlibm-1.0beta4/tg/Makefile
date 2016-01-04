@@ -3,7 +3,7 @@ CRLIBM_ROOT    ?= ../x86_64
 TG_ROOT        ?= ../../../../../../intel/ss
 TG_INSTALL     ?= ../../../../../../intel/ss/install
 
-OCR_ROOT       ?= ../../../../../ocr
+OCR_ROOT       ?= ../../../../../../ocr/ocr
 OCR_ROOT_BASE  ?= ../../../../../ocr/install
 
 APPS_ROOT      ?= ../../../../../apps

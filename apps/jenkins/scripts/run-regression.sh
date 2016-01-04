@@ -31,14 +31,14 @@ else
     echo "**** Run FAILURE ****"
 fi
 
-if [ -d "${JJOB_SHARED_HOME}/xstack/runtime" ]; then
-    echo "${JJOB_SHARED_HOME}/xstack/runtime already exists! Skipping mkdir .."
+if [ -d "${JJOB_SHARED_HOME}/apps/runtime" ]; then
+    echo "${JJOB_SHARED_HOME}/apps/runtime already exists! Skipping mkdir .."
 else
-    mkdir ${JJOB_SHARED_HOME}/xstack/runtime
+    mkdir ${JJOB_SHARED_HOME}/apps/runtime
 fi
 
 # copying timing file from local to shared runtime dir
-cp $timeFile ${JJOB_SHARED_HOME}/xstack/runtime/time_$3.txt
+cp $timeFile ${JJOB_SHARED_HOME}/apps/runtime/time_$3.txt
 rm -f $timeFile
 unset RUN_TOOL
 

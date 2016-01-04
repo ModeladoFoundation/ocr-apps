@@ -13,7 +13,7 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 
 # OCR top level directory
 #
-OCR_ROOT ?= ../../../../../ocr
+OCR_ROOT ?= ../../../../../../ocr/ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
 
 TG_ROOT        ?= ../../../../../../intel/ss

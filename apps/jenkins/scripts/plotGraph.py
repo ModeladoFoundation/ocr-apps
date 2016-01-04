@@ -20,6 +20,12 @@ import sys
 import os
 import random
 
+#
+# This file is duplicated across apps/apps/jenkins/scripts and
+#                                ocr/ocr/jenkins/scripts
+# Keep the two in sync manually
+#
+
 #-------------------------------------------------------------------------------
 # Plots curve
 #-------------------------------------------------------------------------------

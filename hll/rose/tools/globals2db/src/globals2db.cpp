@@ -434,9 +434,12 @@ SgFunctionDeclaration* findMpiOcrMain( SgProject* project)
     {
         SgFunctionDeclaration* funcNode = isSgFunctionDeclaration(*i);
 
-        if (isSgGlobal(isSgStatement(funcNode)->get_scope()) &&
-            isSgFunctionDeclaration(funcNode)->get_name() == "__mpiOcrMain")
-            return funcNode;
+        if ( funcNode == funcNode->get_definingDeclaration())
+        {
+            if (isSgGlobal(isSgStatement(funcNode)->get_scope()) &&
+                isSgFunctionDeclaration(funcNode)->get_name() == "__mpiOcrMain")
+                return funcNode;
+        }
     }
     return NULL;
 }

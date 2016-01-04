@@ -5,7 +5,7 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-SCRIPT_FOLDER=${JJOB_SHARED_HOME}/xstack/apps/jenkins/scripts
+SCRIPT_FOLDER=${JJOB_SHARED_HOME}/apps/apps/jenkins/scripts
 
 # Create archive dirs if the framework is being run manually ( i.e. local run and not by jenkin)
 if [ -z $WORKSPACE ]; then

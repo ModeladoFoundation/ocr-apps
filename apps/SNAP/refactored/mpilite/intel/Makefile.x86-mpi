@@ -20,11 +20,12 @@ APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
-OCR_ROOT         ?= ${REPO_TOP}/ocr
+OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
+OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_SRC          ?= ${OCR_ROOT}
+
 OCR_TARGET       ?= x86-${COMM_LAYER}
-OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
-OCR_SRC          ?= ${REPO_TOP}/ocr
-OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -146,7 +147,7 @@ BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
 
 SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
 
-prebuild: $(ROSE_TARGET)
+prebuild: libocr $(ROSE_TARGET)
 
 $(ROSE_TARGET): $(ROSE_TOOL) create_dir
 	cd $(BLDDIR) ; \

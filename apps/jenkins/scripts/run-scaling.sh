@@ -31,7 +31,7 @@ RETURN_CODE=0
 for t in ${THREADS[*]}
 do
     rm -f $cfgFile
-    ${JJOB_SHARED_HOME}/xstack/ocr/scripts/Configs/config-generator.py --threads $t --output $cfgFile
+    ${JJOB_SHARED_HOME}/ocr/ocr/scripts/Configs/config-generator.py --threads $t --output $cfgFile
 
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
     for i in `seq 1 $4`; do
@@ -53,14 +53,14 @@ else
     echo "**** Run FAILURE ****"
 fi
 
-if [ -d "${JJOB_SHARED_HOME}/xstack/runtime" ]; then
-    echo "${JJOB_SHARED_HOME}/xstack/runtime already exists! Skipping mkdir .."
+if [ -d "${JJOB_SHARED_HOME}/apps/runtime" ]; then
+    echo "${JJOB_SHARED_HOME}/apps/runtime already exists! Skipping mkdir .."
 else
-    mkdir ${JJOB_SHARED_HOME}/xstack/runtime
+    mkdir ${JJOB_SHARED_HOME}/apps/runtime
 fi
 
 # copying scaling file from local to shared runtime dir, after reformatting
-cp $timeFile ${JJOB_SHARED_HOME}/xstack/runtime/scale_$3.txt
+cp $timeFile ${JJOB_SHARED_HOME}/apps/runtime/scale_$3.txt
 
 rm -f $timeFile
 rm -f $cfgFile

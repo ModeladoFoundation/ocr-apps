@@ -10,18 +10,15 @@ REPO_TOP ?= ${APPS_ROOT}/..
 # APPS
 APPS_ROOT       ?= ${REPO_TOP}/apps
 APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
-#MPILITE  = $(APPS_ROOT)/libs/src/mpilite
-
 
 # OCR_TYPE
 OCR_TYPE        ?= x86
+OCR_TARGET       = ${OCR_TYPE}
 
 # OCR
-OCR_ROOT         ?= ${REPO_TOP}/ocr
-OCR_TARGET       ?= x86
-OCR_INSTALL_ROOT ?= ${REPO_TOP}/ocr/install
-OCR_SRC          ?= ${REPO_TOP}/ocr
-OCR_BUILD_ROOT   ?= ${REPO_TOP}/ocr/build
+OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
+OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .

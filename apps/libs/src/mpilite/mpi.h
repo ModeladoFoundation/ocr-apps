@@ -9,15 +9,16 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-// Rename user's main fn
-#define main __mpiOcrMain
 
 // Also need to add decl of main within the extern "C" context.
 // Otherwise C++ will mangle the name to _Z12__mpiOcrMainiPPc
 // and the linker will never resolve the reference to it from mpi_ocr.c
-extern int __mpiOcrMain(int argc, char * argv[]);
+int __mpiOcrMain(int argc, char * argv[]);
+
+#endif
+
+// Rename user's main fn
+#define main __mpiOcrMain
 
 // The OCR x86-mpi runtime uses a "real" MPI, e.g. Intel MPI for
 // communicating between Policy Domains. The 11 function names below are
