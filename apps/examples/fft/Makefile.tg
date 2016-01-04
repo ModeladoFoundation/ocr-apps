@@ -10,17 +10,17 @@ APPS_LIBS_ROOT  ?= ../../../apps/libs/tg
 OCR_TYPE        ?= tg
 
 # TG
-TG_INSTALL ?= ../../../../intel/ss/install
-TG_ROOT     ?= ../../../../intel/ss
+TG_INSTALL ?= ../../../../tg/tg/install
+TG_ROOT    ?= ../../../../tg/tg
 
 # OCR
 XE_TARGET   ?= tg-xe
 XE_BUILDER  ?= builder-xe
 CE_TARGET   ?= tg-ce
 CE_BUILDER  ?= builder-ce
-OCR_INSTALL_ROOT ?= ../../../ocr/install
-OCR_ROOT     ?= ../../../ocr
-OCR_BUILD_ROOT   ?= ../../../ocr/build/
+OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_ROOT     ?= ../../../../ocr/ocr
+OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -54,7 +54,7 @@ RUN_JENKINS ?= no
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET = fft
+TARGET := fft
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
@@ -123,5 +123,4 @@ postrun: ;
 
 # Include common part
 include ${APPS_ROOT}/makefiles/make-tg.inc
-
 

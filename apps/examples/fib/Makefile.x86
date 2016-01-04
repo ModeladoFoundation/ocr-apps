@@ -11,9 +11,9 @@ OCR_TYPE        ?= x86
 
 # OCR
 OCR_TARGET       ?= x86
-OCR_ROOT         ?= ../../../ocr
-OCR_BUILD_ROOT   ?= ../../../ocr/build
-OCR_INSTALL_ROOT ?= ../../../ocr/install
+OCR_ROOT         ?= ../../../../ocr/ocr
+OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
