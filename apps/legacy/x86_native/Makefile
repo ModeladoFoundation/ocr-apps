@@ -29,7 +29,7 @@ GLIBC_A = $(PTHREAD_LIB) $(LIB_GCC) $(LIBC)
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
-OCR_LIB_PATH = $(APPS_ROOT)/../ocr/build/x86_lib/objs
+OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/build/x86_lib/objs
 
 # OCR library - this can be the libocrscaffold.a, or
 # the real ocr library/runtime. Uncomment the one you want.
