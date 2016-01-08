@@ -54,17 +54,17 @@ all: $(CAPP) $(CXXAPP)
 default: all
 
 $(CAPP) : $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
-	@$(LD) -r -static -o applib.o $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
+	@$(LD) -r -static -o applib.o $(CAPP_OBJS) $(CAPP_LIBS)
 	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
 	@objcopy --localize-symbols=s applib.o
-	@$(CC) -static -o $@ applib.o $(OCR_LIB) -T elf64_x86_64.t
+	@$(CC) -static -o $@ applib.o $(PREMAIN_OBJ) $(OCR_LIB) -T elf64_x86_64.t
 	@echo Successfully built $@
 
 $(CXXAPP) : $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
-	@$(LD) -r -static -o applib.o $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
+	@$(LD) -r -static -o applib.o $(CXXAPP_OBJS) $(CXXAPP_LIBS)
 	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
 	@objcopy --localize-symbols=s applib.o
-	@$(CXX) -static -o $@ applib.o $(OCR_LIB) -T elf64_x86_64.t
+	@$(CXX) -static -o $@ applib.o $(PREMAIN_OBJ) $(OCR_LIB) -Wl,--eh-frame-hdr -T elf64_x86_64.t
 	@echo Successfully built $@
 
 %.o : %.c

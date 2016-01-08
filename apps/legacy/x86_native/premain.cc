@@ -35,8 +35,8 @@ static struct eh_info {
 _BEGIN_STD_C
 void __get_eh_info( struct eh_info * info )
 {
-    __eh_frame_size = __eh_frame_end - __eh_frame_start;
-    __eh_frame_hdr_size = __eh_frame_hdr_end - __eh_frame_hdr_start;
+    __eh_frame_size = &__eh_frame_end - &__eh_frame_start;
+    __eh_frame_hdr_size = &__eh_frame_hdr_end - &__eh_frame_hdr_start;
 
     *info = eh_object;
 }
@@ -69,5 +69,5 @@ void ocrfini( int argc, char **argv, char **envp )
     ocrFinalize(_REENT->_ocr.legacyContext);
 }
 
-__attribute__((section(".init_array"))) __typeof(ocrinit) *__init = ocrinit;
-__attribute__((section(".fini_array"))) __typeof(ocrfini) *__fini = ocrfini;
+__attribute__((section(".preinit_array"))) typeof(ocrinit) *__preinit = ocrinit;
+__attribute__((section(".fini_array"))) typeof(ocrfini) *__fini = ocrfini;

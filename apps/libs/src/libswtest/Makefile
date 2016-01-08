@@ -1,13 +1,13 @@
 #
 # Create a library for test env specific utility functions
 #
-# Find 'xstack' repo dir (actually, whatever's above 'apps')
+# Find 'apps' repo dir (actually, whatever's above 'apps')
 # And we assume the 'intel' repo is at the same level as 'xstack'
 #
-XSTACK_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/.*$$::')
+APPS_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/apps/.*$$:/apps/:')
 
-APPS_ROOT  ?= $(XSTACK_REPO)/apps
-TG_INSTALL ?= $(realpath $(XSTACK_REPO)/../tg/tg/install)
+APPS_ROOT  ?= $(APPS_REPO)/apps
+TG_INSTALL ?= $(realpath $(APPS_REPO)/../tg/tg/install)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 
@@ -74,4 +74,7 @@ install: $(LIB)
 clean:
 	rm -rf $(LIB) $(OBJS)
 
-.PHONY: builddir clean
+dump:
+	@echo $(APPS_REPO)
+
+.PHONY: builddir clean dump

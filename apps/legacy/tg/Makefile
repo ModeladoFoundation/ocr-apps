@@ -32,13 +32,23 @@ CAPP = hello
 CAPP_SRCS = hello.c
 CAPP_LIBS =
 CAPP_OBJS = $(CAPP_SRCS:.c=.o)
-CFLAGS = -Os -isystem $(OCR_INC)
+CFLAGS = -Os -nostdinc -isystem $(OCR_INC)
+CFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
+CFLAGS += -isystem $(TG_INSTALL)/include
+CFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
+CFLAGS += -isystem $(APPS_LIBS_ROOT)/include
 
 CXXAPP = cxxhello
 CXXAPP_SRCS = cxxhello.cpp
 CXXAPP_LIBS =
 CXXAPP_OBJS = $(CXXAPP_SRCS:.cpp=.o)
-CXXFLAGS = -Os -isystem $(OCR_INC)
+CXXFLAGS = -Os -nostdinc -nostdinc++ -isystem $(OCR_INC)
+CXXFLAGS += -isystem $(APPS_LIBS_ROOT)/include/c++/v1
+CXXFLAGS += -isystem $(APPS_ROOT)/libs/src/libunwind/libunwind/include
+CXXFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
+CXXFLAGS += -isystem $(TG_INSTALL)/include
+CXXFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
+CXXFLAGS += -isystem $(APPS_LIBS_ROOT)/include
 
 all: $(CAPP) $(CXXAPP)
 
