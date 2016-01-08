@@ -185,7 +185,7 @@ $(FULL_REQ_LIBS):
 	echo "Grabbed lock"; date; \
 	ARCH=x86 APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
 	$(MAKE) -C $@ install; \
-	status = $$?; \
+	status=$$?; \
 	echo "Releasing lock"; date; \
 	rm -f "/tmp/$(subst /,_,$@)_lock"; \
 	exit $$status
