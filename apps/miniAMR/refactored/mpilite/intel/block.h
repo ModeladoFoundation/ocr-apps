@@ -23,6 +23,8 @@
 //                    Richard F. Barrett (rfbarre@sandia.gov)
 //
 // ************************************************************************
+#ifndef _BLOCK_H_
+#define _BLOCK_H_
 
 typedef struct {
    int number;
@@ -140,3 +142,5 @@ typedef struct {
    int new_proc;
 } dot;
 dot *dots;
+
+#endif  //_BLOCK_H_

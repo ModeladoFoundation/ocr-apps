@@ -24,6 +24,9 @@
 //
 // ************************************************************************
 
+#ifndef _COMM_H_
+#define _COMM_H_
+
 /* comm partner variables */
 double *send_buff, *recv_buff;    /* use in comm and for balancing blocks */
 
@@ -73,3 +76,5 @@ int *bin,
 MPI_Comm *comms;
 int *me;
 int *np;
+
+#endif  // _COMM_H_

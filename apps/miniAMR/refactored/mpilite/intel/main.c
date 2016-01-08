@@ -39,7 +39,46 @@ int main(int argc, char** argv)
    int i, ierr, object_num;
    int params[35];
    double *objs;
-#include "param.h"
+   // The ROSE tools globals2db does not emit updated include (.h) files.
+   // There is probably a way to do this, but it is not done today.
+   // In order to work around this, the contents of param.h are include below.
+//#include "param.h"
+   max_num_blocks = 500;
+   target_active = 0;
+   target_max = 0;
+   target_min = 0;
+   num_refine = 5;
+   uniform_refine = 0;
+   x_block_size = 10;
+   y_block_size = 10;
+   z_block_size = 10;
+   num_vars = 40;
+   comm_vars = 0;
+   init_block_x = 1;
+   init_block_y = 1;
+   init_block_z = 1;
+   reorder = 1;
+   npx = 1;
+   npy = 1;
+   npz = 1;
+   inbalance = 0;
+   refine_freq = 5;
+   report_diffusion = 0;
+   error_tol = 8;
+   num_tsteps = 20;
+   stages_per_ts = 20;
+   checksum_freq = 5;
+   stencil = 7;
+   report_perf = 4;
+   plot_freq = 0;
+   num_objects = 0;
+   lb_opt = 1;
+   block_change = 0;
+   code = 0;
+   permute = 0;
+   nonblocking = 1;
+   refine_ghost = 0;
+   // end of param.h
 
    ierr = MPI_Init(&argc, &argv);
    ierr = MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL);

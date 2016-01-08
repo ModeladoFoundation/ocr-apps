@@ -24,6 +24,9 @@
 //
 // ************************************************************************
 
+#ifndef _PARAM_H_
+#define _PARAM_H_
+
 max_num_blocks = 500;
 target_active = 0;
 target_max = 0;
@@ -59,3 +62,5 @@ code = 0;
 permute = 0;
 nonblocking = 1;
 refine_ghost = 0;
+
+#endif // _PARAM_H_

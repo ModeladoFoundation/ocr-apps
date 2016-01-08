@@ -24,6 +24,10 @@
 //
 // ************************************************************************
 
+#ifndef _PROTO_H_
+#define _PROTO_H_
+
+
 #include <stddef.h>
 
 // main.c
@@ -124,3 +128,5 @@ void zero_refine(void);
 // util.c
 double timer(void);
 void *ma_malloc(size_t, char *, int);
+
+#endif  // _PROTO_H_
