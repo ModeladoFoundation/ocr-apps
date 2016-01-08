@@ -7,266 +7,633 @@ Copywrite Intel Corporation 2015
 */
 
 /*
+See README for more documentation
 
-See README and stencil1D.h for more documentation
+There are 6 versions of a 1D stencil computation (3 points wide).
 
-There are 3 versions of a 1D stencil computation.
-This code uses NO events passing guids of EDTs instead
+This code passes the GUID of the grandchild and uses no events with serial initialization
 
-This code does a 1D (3 point) stencil computation on a set of points in pure ocr
+nrank is the number of tasks
+npoints is the number of points in each task
+maxt is the number of timesteps
 
-There are three parameters defined in stencil1D.h:
-
-N is the number of tasks
-M is the number of points in each task
-I is the number of iterations
-
-the datapoints are initialized to zero except the boundary values which are set to 1
-the particular stencil implemented is anew(i) = .5*(a(i+1) + a(i-1))
-which implements an elliptic solver using the 2nd order three point finite difference.
+the datapoints are initialized to zero except the global boundary values which are set to 1
+the particular stencil implemented is anew(i) = .5*(a(i) + 0.25*(a(i+1) + a(i-1))
 The values converge (slowly) to all 1s.
 
 if the stencil is wider than 3 points, then the number of shared boundary values
 would have to be increased.
-
 */
-
 #include <ocr.h>
-#include <stdio.h>   //needed only to support debug printing
-#include "stencil1D.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef PARALLEL
+#define ENABLE_EXTENSION_LABELING
+#include<extensions/ocr-labeling.h>
+#define DEFAULT_LG_PROPS GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG
+typedef struct{
+    u64 nrank;
+    u64 npoints;
+    u64 maxt;
+    ocrGuid_t startDirs[2];
+} shared_t;
+#endif
+//there will be one private datablock per rank
+//the datablock contains the private structure padded by npoints of doubles to hold the values
 
 typedef struct{
-    u64 timestep;
-    u64 mynode;
-    ocrGuid_t template;
-    ocrGuid_t mychild;
+    u32 nrank;
+    u32 npoints;
+    u32 maxt;
+    u32 timestep;
+    u32 myrank;
+    u32 dataOffset;
+    ocrGuid_t myChildGUID;
+    ocrGuid_t rightGUID; //used only for the last iteration
+    ocrGuid_t stencilTML;
     } private_t;
 
-ocrGuid_t stencilTask(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
-/*
-Paramv[0]: none
+//this structure is used to pass boundary values between ranks
+typedef struct{
+    double buffer;
+    ocrGuid_t GUID;
+    } buffer_t;
 
-depv[4]:
-0: My datablock
-1: Left buffer block (provided by my left neighbor)
-2: Right buffer block (provided by my right neighbor)
-3: My private block
-*/
-    ocrGuid_t stencilEdt, oldEdt;
-    u64 i;
-
-    double * a = depv[0].ptr;
-    double * atemp = a + M;
-    buffer_t * leftin = depv[1].ptr;
-    buffer_t * rightin = depv[2].ptr;
-    private_t * private = depv[3].ptr;
-    u64 mynode = private->mynode;
-    u64 timestep = private->timestep;
-    ocrGuid_t leftinEvent = NULL_GUID;
-    ocrGuid_t rightinEvent = NULL_GUID;
-//initialize
-    if(timestep == 0) {
-        if(M==1) {  //special code for single data point
-            if(leftin == NULL || rightin == NULL) a[0] = 1;
-              else a[0] = 0;
-          }else{
-            if(leftin == NULL) a[0] = 1;
-              else {
-                a[0] = 0;
-                leftin->buffer = 0;
-            }
-
-            for(i=1;i<M-1;i++) a[i] = 0;
-
-            if(rightin == NULL) a[M-1] = 1;
-                else {
-                a[M-1] = 0;
-                rightin->buffer = 0;
-            }
-        }
-    }
+//this structure is used to unpack the dependencies of stencilEDT
+typedef struct {
+   ocrEdtDep_t leftIn;
+   ocrEdtDep_t private;
+   ocrEdtDep_t rightIn;
+} stencilDEPV_t;
 
 
-    if(timestep < T) {
-
-//compute
-        if(M==1) {  //special code for single data point
-            if(leftin == NULL || rightin == NULL) atemp[0] = a[0];
-              else atemp[0] = 0.5*a[0] + 0.25*(leftin->buffer + rightin->buffer);
-          } else {
-            if(leftin != NULL) atemp[0] =  .5*a[0] + .25*(a[1] + leftin->buffer);
-                else atemp[0] = a[0];
-
-            for(i=1;i<M-1;i++) atemp[i] =  0.5*a[i] + 0.25*(a[i+1] + a[i-1]);
-                if(rightin != NULL) atemp[M-1] = 0.5* a[M-1] + .25*( (rightin->buffer) + a[M-2]);
-                    else atemp[M - 1] = a[M-1];
-        }
-//could optimized by changing a pointer rather than actually copying
-        for(i=0;i<M;i++) a[i] = atemp[i];
-
-        if(timestep<T-1)ocrEdtCreate(&stencilEdt, private->template, EDT_PARAM_DEF, NULL,
-                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-            else stencilEdt = NULL_GUID;
-
-    ocrGuid_t mychild = private->mychild;
-    private->mychild = stencilEdt;
-    if(timestep<T-1) private->mychild = stencilEdt;
-
-        if(leftin != NULL) {
-            leftin->buffer = a[0];
-            oldEdt = leftin->control;
-            leftin->control= stencilEdt;
-            ocrDbRelease(depv[1].guid);
-            ocrAddDependence(depv[1].guid, oldEdt, 2, DB_MODE_RW);
-        }else ocrAddDependence(NULL_GUID, mychild, 1, DB_MODE_RW);
+//this macro is used to refer to dependencies
+#define DEPV(name,var,field) (name##DEPV->var).field
+//this macro computes the slot number (for ocrAddDependence)
+#define SLOT(name,var) (offsetof(name##DEPV_t,var)/sizeof(ocrEdtDep_t))
 
 
+ocrGuid_t stencilEDT(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
-        if(rightin != NULL) {
-            rightin->buffer = a[M-1];
-            oldEdt = rightin->control;
-            rightin->control = stencilEdt;
-            ocrDbRelease(depv[2].guid);
-            ocrAddDependence(depv[2].guid, oldEdt, 1, DB_MODE_RW);
-        }else ocrAddDependence(NULL_GUID, mychild, 2, DB_MODE_RW);
-
-
-        private->timestep = timestep+1;
-
-//create clone
-//
-        ocrDbRelease(depv[0].guid);
-        ocrAddDependence(depv[0].guid, mychild, 0 , DB_MODE_RW);
-        ocrDbRelease(depv[3].guid);
-        ocrAddDependence(depv[3].guid, mychild, 3 , DB_MODE_RW);
-    }
-    return NULL_GUID;
-}
-ocrGuid_t wrapupTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 /*
 paramv[0]:
-depv[N+1]:
-0-(N-1) the datablocks in order
-N: output event of realmain
 
-waits until realmain is done
-prints out the "answer"
+depv[3]:
+0: Leftin block (provided by my left neighbor)
+1: Private block
+2: Rightin block (provided by my right neighbor)
 */
-    u64 i, j;
-    double * data[N];
-    for(i=0;i<N;i++) {
-        data[i] = depv[i].ptr;
-        for(j=0;j<M;j++) PRINTF("%lld %lld %f \n", i, j, data[i][j]);
+    u64 i;
+    ocrGuid_t myGrandChildGUID;
+
+    stencilDEPV_t * stencilDEPV = (stencilDEPV_t *) depv;
+
+
+//unpack depv pointers
+    private_t * pbPTR = DEPV(stencil,private,ptr);
+    buffer_t * leftInPTR = DEPV(stencil,leftIn,ptr);
+    buffer_t * rightInPTR = DEPV(stencil,rightIn,ptr);
+
+//unpack private parameters
+    u64 myrank = pbPTR->myrank;
+    u64 timestep = pbPTR->timestep;
+    u64 maxt = pbPTR->maxt;
+    u64 npoints = pbPTR->npoints;
+    u64 nrank = pbPTR->nrank;
+
+
+//pointer to the "real" data
+    double * a = (double *) (((u64) pbPTR) + pbPTR->dataOffset);
+
+
+
+//if first timestep initialize
+    if(timestep == 0) {
+        if(npoints==1) {  //special code for single data point
+            if(leftInPTR == NULL || rightInPTR == NULL) a[0] = 1;
+              else a[0] = 0;
+            if(leftInPTR != NULL) {
+                if(myrank == 1) leftInPTR->buffer = 1.0;
+                  else leftInPTR->buffer= 0.0;
+            }
+            if(rightInPTR != NULL) {
+                if(myrank == nrank-2) rightInPTR->buffer = 1.0;
+                  else rightInPTR->buffer= 0.0;
+            }
+          } else {
+            if(leftInPTR == NULL) a[0] = 1;
+              else {
+                a[0] = 0.0;
+                leftInPTR->buffer = 0.0;
+            }
+
+            for(i=1;i<npoints-1;i++) a[i] = 0.0;
+
+            if(rightInPTR == NULL) a[npoints-1] = 1;
+              else {
+                a[npoints-1] = 0;
+                rightInPTR->buffer = 0;
+            }
         }
-    if(M==50&&N==10&&T==10000) //default values for Jenkins
-        if(data[4][49] - .000836 < 1e-5) PRINTF("PASS\n");
-           else PRINTF("fail by %f\n", data[4][3]-.000836);
-    ocrShutdown();
+    }
+
+    double asave;
+
+//save last value for serializing send right.
+    if(timestep == maxt && myrank != nrank-1) asave = a[npoints-1];
+
+
+//compute using temporaries to avoid doubling the required storage
+
+    double aleft, acenter;
+
+        if(npoints==1) {  //special code for single data point
+            if(leftInPTR == NULL || rightInPTR == NULL) acenter = a[0];
+              else acenter = 0.5*a[0] + 0.25*(leftInPTR->buffer + rightInPTR->buffer);
+            a[0] = acenter;
+          } else {//more than one datapoint
+            if(leftInPTR != NULL) aleft =  .5*a[0] + .25*(a[1] + leftInPTR->buffer);
+                else aleft = a[0];
+            for(i=1;i<npoints-1;i++) {
+                acenter =  0.5*a[i] + 0.25*(a[i+1] + a[i-1]);
+                a[i-1] = aleft;
+                aleft = acenter;
+            }
+            if(rightInPTR != NULL) acenter = 0.5* a[npoints-1] + .25*(rightInPTR->buffer + a[npoints-2]);
+                else acenter = a[npoints-1];
+            a[npoints-2] = aleft;
+            a[npoints-1] = acenter;
+        }
+
+    ocrGuid_t leftGUID, rightGUID;
+
+//create grandchild
+    if(timestep < maxt-1) ocrEdtCreate(&myGrandChildGUID, pbPTR->stencilTML, EDT_PARAM_DEF, NULL,
+                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+//send left
+    if(timestep < maxt) {
+        if(leftInPTR != NULL) {
+            leftGUID = leftInPTR->GUID;
+            leftInPTR->GUID = myGrandChildGUID;
+            leftInPTR->buffer = a[0];
+            ocrDbRelease(DEPV(stencil,leftIn,guid));
+//printf("S%ld T%ld blockGuid %lx leftGuid %lx slot %ld \n", myrank, timestep, DEPV(stencil,leftIn,guid), leftGUID, SLOT(stencil,rightIn));
+            ocrAddDependence(DEPV(stencil,leftIn,guid), leftGUID, SLOT(stencil,rightIn), DB_MODE_RW);
+
+        }
+
+
+//send right
+        if(rightInPTR != NULL) {
+            rightGUID = rightInPTR->GUID;
+            rightInPTR->GUID = myGrandChildGUID;
+            rightInPTR->buffer = a[npoints-1];
+            pbPTR->rightGUID  = rightGUID;
+
+//defer sending right when timestep == maxt-1
+            if(timestep<maxt-1) {
+                ocrDbRelease(DEPV(stencil,rightIn,guid));
+//printf("S%ld T%ld blockGuid %lx rightGuid %lx slot %ld \n", myrank, timestep, DEPV(stencil,rightIn,guid), rightGUID, SLOT(stencil,leftIn));
+                ocrAddDependence(DEPV(stencil,rightIn,guid), rightGUID, SLOT(stencil,leftIn), DB_MODE_RW);
+            }
+        }
+    } else {
+//last time step, serialized using send right.
+        if(myrank < nrank-1) {
+            for(i=0;i<npoints;i++) PRINTF("S%ld i%d value %f \n", myrank, i, a[i]);
+                rightInPTR->buffer = asave;
+                ocrDbRelease(DEPV(stencil,rightIn,guid));
+//printf("S%ld T%ld blockGuid %lx rightGuid %lx slot %ld \n", myrank, timestep, DEPV(stencil,rightIn,guid), rightGUID, SLOT(stencil,leftIn));
+                ocrAddDependence(DEPV(stencil,rightIn,guid), pbPTR->rightGUID, SLOT(stencil,leftIn), DB_MODE_RW);
+            } else {
+                for(i=0;i<npoints;i++) PRINTF("S%ld i%d valu %f \n", myrank, i, a[i]);
+                ocrShutdown();
+            }
+        return NULL_GUID;
+        }
+
+
+//launch child
+    pbPTR->timestep++;
+    ocrGuid_t myChildGUID = pbPTR->myChildGUID;
+    pbPTR->myChildGUID = myGrandChildGUID;
+    ocrDbRelease(DEPV(stencil,private,guid));
+    ocrAddDependence(DEPV(stencil,private,guid), myChildGUID, SLOT(stencil,private), DB_MODE_RW);
+    if(leftInPTR == NULL)  ocrAddDependence(NULL_GUID, myChildGUID, SLOT(stencil,leftIn), DB_MODE_RW);
+    if(rightInPTR == NULL) ocrAddDependence(NULL_GUID, myChildGUID, SLOT(stencil,rightIn), DB_MODE_RW);
     return NULL_GUID;
 }
-ocrGuid_t realmainTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+
+
+//used to unpack the parameters of realMainEDT
+typedef struct {
+   u64 nrank;
+   u64 npoints;
+   u64 maxt;
+} realMainPRM_t;
+#ifndef PARALLEL
+ocrGuid_t realMainEDT(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
-params: none
-depv[4N-2]:
-0 - (N-1) the N real datablocks
-N - (3N-3): the (2*N-2) buffer datablocks
-3N-2 to 4N-3: N private blocks
+creates the first two sets of once events
+disperses them among the buffer blocks and dependencies
+creates nrank stencilEDTs
+passes in the the private block and the correct set of 2 buffer blocks (or NULL_GUID)
 
-creates 2*N stencilEdts
-passes in the main datablock and the correct set of 2 buffer blocks (or NULL_GUID)
-passes in the private block
+paramv[3]:
+0: nrank
+1: npoints
+2: maxt
+
+dependencies:
+rank triples (buffer, private, buffer) all empty
+note that depv[0] and depv[3*nrank-1] are both NULL_GUID
+
 */
-    u64 i, mynode;
-    ocrGuid_t stencilTemplate, stencilEdt[N], childEdt[N], tempEdt;
-    ocrEdtTemplateCreate(&stencilTemplate, stencilTask, 0, 4);
-    u64 *dummy;
-    u64 j;
 
-    double * a[N];
-    buffer_t * buffer[2*N-2];
-    private_t * private[N];
+    realMainPRM_t * paramPTR = (realMainPRM_t *) paramv;
 
-    for(i=0;i<N;i++) a[i] = depv[i].ptr;
-    for(i=0;i<2*N-2;i++) buffer[i] = depv[N+i].ptr;
-    for(i=0;i<N;i++) private[i] = depv[3*N-2+i].ptr;
 
-    for(i=0;i<N;i++) {
-        private[i]->mynode = i;
-        private[i]->timestep = 0;
-        private[i]->template = stencilTemplate;
-        ocrEdtCreate(&stencilEdt[i], stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrEdtCreate(&childEdt[i], stencilTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        private[i]->mychild = childEdt[i];
-        }
+    u64 nrank = paramPTR->nrank;
+    u64 npoints = paramPTR->npoints;
+    u64 maxt = paramPTR->maxt;
 
-//march through buffer blocks
-    ocrAddDependence(NULL_GUID, stencilEdt[0], 1, DB_MODE_RW);
-    u64 toleft =  0;
-    u64 toright =  toleft + N - 1;
-    for(i=0;i<N-1;i++) {
-        buffer[toright]->control = childEdt[i];
-        ocrDbRelease(depv[N+toright].guid);
-        ocrAddDependence(depv[N+toright++].guid, stencilEdt[i+1], 1, DB_MODE_RW);
+    u64 i;
 
-        buffer[toleft]->control = childEdt[i+1];
-        ocrDbRelease(depv[N+toleft].guid);
-        ocrAddDependence(depv[N+toleft++].guid, stencilEdt[i], 2, DB_MODE_RW);
+    ocrGuid_t stencilTML, stencilGUID, leftStencilGUID;
+    ocrEdtTemplateCreate(&stencilTML, stencilEDT, 0, 3);
+
+
+    ocrGuid_t myChildGUID;
+    buffer_t * leftBufferPTR, * rightBufferPTR;
+
+    u64 lslot = 0; //slot zero is NULL_GUID, not used
+    u64 pslot = 1;
+    u64 rslot = 2;
+
+    ocrEdtCreate(&stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrEdtCreate(&myChildGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//printf("RM 0 childGUID %lx \n", myChildGUID);
+
+    ocrAddDependence(NULL_GUID, stencilGUID, 0, DB_MODE_RW);
+    lslot += 3;
+
+
+//i counts through the ranks
+//lslot, pslot, and rslot count through the datablocks
+//   each once event gets put in two places
+//   in the appropriate buffer block of the receiver
+//   as a dependence of the correct child
+
+
+    for(i=0;i<nrank-1;i++){
+
+
+
+        private_t * pbPTR = depv[pslot].ptr;
+        pbPTR->nrank = nrank;
+        pbPTR->npoints = npoints;
+        pbPTR->maxt = maxt;
+        pbPTR->myrank = i;
+        pbPTR->timestep = 0;
+        pbPTR->dataOffset = sizeof(private_t);
+        pbPTR->stencilTML = stencilTML;
+        pbPTR->myChildGUID = myChildGUID;
+        ocrDbRelease(depv[pslot].guid);
+        ocrAddDependence(depv[pslot].guid, stencilGUID, 1, DB_MODE_RW);
+        pslot += 3;
+
+        leftBufferPTR = depv[lslot].ptr;
+        leftBufferPTR->GUID = myChildGUID;
+
+
+        ocrEdtCreate(&myChildGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//printf("RM i%d childGUID %lx \n", i+1, myChildGUID);
+
+        rightBufferPTR = depv[rslot].ptr;
+        rightBufferPTR->GUID = myChildGUID;
+        ocrDbRelease(depv[rslot].guid);
+        ocrAddDependence(depv[rslot].guid, stencilGUID, 2, DB_MODE_RW);
+        rslot +=3;
+
+        ocrEdtCreate(&stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+
+        ocrDbRelease(depv[lslot].guid);
+        ocrAddDependence(depv[lslot].guid, stencilGUID, 0, DB_MODE_RW);
+        lslot += 3;
+
     }
-    ocrAddDependence(NULL_GUID, stencilEdt[N-1], 2, DB_MODE_RW);
-    private[N-1]->mynode = N-1;
-    private[N-1]->timestep = 0;
 
-//launch N stencil Edts, attach the data db and private db
+    private_t * pbPTR = depv[pslot].ptr;
+    pbPTR->nrank = nrank;
+    pbPTR->npoints = npoints;
+    pbPTR->maxt = maxt;
+    pbPTR->myrank = nrank-1;
+    pbPTR->timestep = 0;
+    pbPTR->dataOffset = sizeof(private_t);
+    pbPTR->stencilTML = stencilTML;
+    pbPTR->myChildGUID = myChildGUID;
 
-    for(i=0;i<N;i++) {
-        ocrDbRelease(depv[i].guid);  //release all dbs
-        ocrAddDependence(depv[i].guid, stencilEdt[i], 0, DB_MODE_RW);
-        ocrDbRelease(depv[3*N-2+i].guid);  //release all dbs
-        ocrAddDependence(depv[3*N-2+i].guid, stencilEdt[i], 3, DB_MODE_RW);
-    }
+    ocrDbRelease(depv[pslot].guid);
+    ocrAddDependence(depv[pslot].guid, stencilGUID, 1, DB_MODE_RW);
+
+    ocrAddDependence(NULL_GUID, stencilGUID, 2, DB_MODE_RW);
+
     return NULL_GUID;
 }
-ocrGuid_t mainEdt(){
+#endif
+
+
+#ifdef PARALLEL
+ocrGuid_t stencilInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+
+    /* paramv[1]:
+     *  0: myrank
+     *
+     * depv[1]:
+     *  0: shared block
+     *  1: empty private block
+     *  2: empty left block
+     *  3: empty right block
+     *
+     *  - initialize private block. This is the last place we'll use the shared
+     *      block.
+     *  - initialize the set of labeled GUIDs to start the steady state.
+     */
+
+    ocrGuid_t stencilTML, leftSendEVT, rightSendEVT, stencilGUID, myChildGUID;
+    ocrGuid_t leftinGUID = NULL_GUID, rightinGUID = NULL_GUID, leftoutGUID = NULL_GUID, rightoutGUID = NULL_GUID;
+                                                                    //we're basically going to toss
+                                                                    //empty datablocks to our neighbors
+                                                                    //to get things started.
+    shared_t * sharedPTR    = depv[0].ptr;
+
+    private_t * privPTR     = depv[1].ptr;
+    ocrGuid_t   privGUID    = depv[1].guid;
+
+    buffer_t *  leftPTR     = depv[2].ptr;
+    ocrGuid_t   leftGUID    = depv[2].guid;
+
+    buffer_t *  rightPTR    = depv[3].ptr;
+    ocrGuid_t   rightGUID   = depv[3].guid;
+
+    ocrEdtTemplateCreate( &stencilTML, stencilEDT, 0, 3 );
+
+    ocrEdtCreate( &stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+    ocrEdtCreate( &myChildGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+
+    privPTR->nrank = sharedPTR->nrank;
+    privPTR->npoints = sharedPTR->npoints;
+    privPTR->maxt = sharedPTR->maxt;
+    privPTR->timestep = 0;
+    privPTR->myrank = paramv[0];
+    privPTR->dataOffset = sizeof(private_t);
+    privPTR->myChildGUID = myChildGUID;
+    privPTR->stencilTML = stencilTML;
+
+
+    if( privPTR->myrank != 0 ) leftPTR->GUID   = myChildGUID;
+    if( privPTR->myrank != (privPTR->nrank - 1) ) rightPTR->GUID  = myChildGUID;
+
+
+    //set dependences for first iteration
+    if( privPTR->myrank != 0 ){
+        ocrGuidFromIndex( &leftinGUID, sharedPTR->startDirs[0], privPTR->myrank );
+        ocrEventCreate( &leftinGUID, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS );
+        ocrAddDependence( leftinGUID, stencilGUID, 0, DB_MODE_RW );
+    }else{
+        ocrAddDependence( NULL_GUID, stencilGUID, 0, DB_MODE_RW );
+    }
+
+
+    if( privPTR->myrank != (privPTR->nrank - 1) ){
+        ocrGuidFromIndex( &rightinGUID, sharedPTR->startDirs[1], privPTR->myrank );
+        ocrEventCreate( &rightinGUID, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS );
+        ocrAddDependence( rightinGUID, stencilGUID, 2, DB_MODE_RW );
+    }else{
+        ocrAddDependence( NULL_GUID, stencilGUID, 2, DB_MODE_RW );
+    }
+    //end set dependences for first iteration
+
+
+    if( privPTR->myrank != 0 ){
+        ocrGuidFromIndex( &leftoutGUID, sharedPTR->startDirs[1], privPTR->myrank - 1 );
+        ocrEventCreate( &leftoutGUID, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS );
+        ocrDbRelease( leftGUID );
+        ocrEventSatisfy( leftoutGUID, leftGUID );
+    }
+
+    if( privPTR->myrank != (privPTR->nrank - 1) ){
+        ocrGuidFromIndex( &rightoutGUID, sharedPTR->startDirs[0], privPTR->myrank + 1 );
+        ocrEventCreate( &rightoutGUID, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS );
+        ocrDbRelease( rightGUID );
+        ocrEventSatisfy( rightoutGUID, rightGUID );
+    }
+
+
+    //PRINTF("STENCIL INIT: %u\n", paramv[0]);
+    ocrDbRelease( depv[1].guid );
+    ocrAddDependence( depv[1].guid, stencilGUID, 1, DB_MODE_RW );
+
+    return NULL_GUID;
+}
+ocrGuid_t parallelInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+
+    /* paramv[1]:
+     *  0: myrank
+     *
+     * depv[1]:
+     * 0: populated shared block
+     *
+     *  -create datablocks needed by steady state of this rank.
+     */
+    shared_t *  sharedPTR   = depv[0].ptr;
+    ocrGuid_t   sharedGUID  = depv[0].guid;
+
+    double *dummy;
+
+
+    u64 npoints = sharedPTR->npoints;
+    u64 nrank = sharedPTR->nrank;
+
+    ocrGuid_t privateDBK, stencilInitTML, stencilInitGUID, leftDBK, rightDBK;
+
+    ocrEdtTemplateCreate( &stencilInitTML, stencilInitEDT, 1, 4 );
+
+    ocrDbCreate( &privateDBK, (void **) &dummy, sizeof(private_t) + npoints*sizeof(double), 0,
+            NULL_GUID, NO_ALLOC );
+
+    if( paramv[0] != 0 )ocrDbCreate( &leftDBK, (void **)&dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC );
+    if( paramv[0] != sharedPTR->nrank - 1 )ocrDbCreate(&rightDBK, (void **)&dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC );
+
+    ocrEdtCreate( &stencilInitGUID, stencilInitTML, EDT_PARAM_DEF, &paramv[0], EDT_PARAM_DEF, NULL,
+            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+
+    ocrDbRelease( sharedGUID );
+    ocrAddDependence( sharedGUID, stencilInitGUID, 0, DB_MODE_RO );
+    ocrAddDependence( privateDBK, stencilInitGUID, 1, DB_MODE_RW );
+
+    if( paramv[0] != 0 ){
+        ocrDbRelease( leftDBK );
+        ocrAddDependence( leftDBK, stencilInitGUID, 2, DB_MODE_RW );
+    }else{
+        ocrAddDependence( NULL_GUID, stencilInitGUID, 2, DB_MODE_RW );
+    }
+
+    if( paramv[0] != nrank - 1 ){
+        ocrDbRelease( rightDBK );
+        ocrAddDependence( rightDBK, stencilInitGUID, 3, DB_MODE_RW );
+    }else{
+        ocrAddDependence( NULL_GUID, stencilInitGUID, 3, DB_MODE_RW );
+    }
+
+
+    return NULL_GUID;
+}
+
+ocrGuid_t realMainEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    /* paramv[1]:
+     *  0: myrank
+     *
+     * depv[1]:
+     *  0: empty shared block
+     *
+     *  - get the shared block information all set up for use in the parallel initialization.
+     *  - this includes requesting the guid rangest to start the steady state.
+     */
+
+
+    realMainPRM_t * paramPTR = (realMainPRM_t *) paramv;
+
+    u64 nrank = paramPTR->nrank;
+    u64 npoints = paramPTR->npoints;
+    u64 maxt = paramPTR->maxt;
+    u64 i;
+    ocrGuid_t parallelInitGUID, parallelInitTML;
+
+    shared_t * sharedPTR  = depv[0].ptr;
+    ocrGuid_t  sharedGUID = depv[0].guid;
+
+    sharedPTR->nrank = nrank;
+    sharedPTR->npoints = npoints;
+    sharedPTR->maxt = maxt;
+
+    ocrGuidRangeCreate( &(sharedPTR->startDirs[0]), sharedPTR->nrank, GUID_USER_EVENT_STICKY );
+    ocrGuidRangeCreate( &(sharedPTR->startDirs[1]), sharedPTR->nrank, GUID_USER_EVENT_STICKY );
+
+    ocrEdtTemplateCreate( &parallelInitTML, parallelInitEDT, 1, 1 );
+
+    ocrDbRelease( sharedGUID );
+
+    for( i = 0; i < nrank; i++ ){
+        ocrEdtCreate( &parallelInitGUID, parallelInitTML, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL,
+                EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+
+        ocrAddDependence( sharedGUID, parallelInitGUID, 0, DB_MODE_RO );
+    }
+
+    return NULL_GUID;
+}
+
+#endif
+
+ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
 /*
 mainEdt is executed first
 Creates the datablocks
-creates wrapup
-creates realmain
-launches wrapup
-launches realmian
+creates and launches realMain
 */
 
-    u64 i;
+    u64 i, nrank, npoints, maxt;
+
+    void * programArgv = depv[0].ptr;
+    u32 argc = getArgc(programArgv);
+    if(argc != 4) {
+        PRINTF("using default runtime args\n");
+        nrank = 4;
+        npoints = 10;
+        maxt = 100;
+    } else {
+        i = 1;
+        nrank = (u32) atoi(getArgv(programArgv, i++));
+        npoints = (u32) atoi(getArgv(programArgv, i++));
+        maxt = (u32) atoi(getArgv(programArgv, i++));
+    }
+
+    #ifndef PARALLEL
+    PRINTF("1D stencil code GUID style: \n");
+    #endif
+
+    #ifdef PARALLEL
+    PRINTF("1D stencil code GUID style, parallel init: \n");
+    #endif
+
+    PRINTF("number of workers = %ld \n", nrank);
+    PRINTF("data on each worker = %ld \n", npoints);
+    PRINTF("number of timesteps = %ld \n", maxt);
+    if(nrank == 0 || npoints == 0 || maxt == 0) {
+        PRINTF("nrank, npoints, maxt, must all be positive\n");
+        ocrShutdown();
+        return NULL_GUID;
+    }
+
     u64 *dummy;
-    ocrGuid_t realmain, realmainOutputEvent, realmainTemplate, dataDb[N], privateDb[N], bufferDb[2*N-2];
- PRINTF("1D stencil code GUID style: \nnumber of workers = %d \ndata on each worker = %d \nnumber of timesteps = %d \n", N, M, T);
-    for(i=0;i<2*N-2;i++) {
-       ocrDbCreate(&(bufferDb[i]), (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
-   }
+    ocrGuid_t realMainGUID, realMainTML;
+
+    realMainPRM_t realMainPRM;
+
+    #ifndef PARALLEL
+    ocrEdtTemplateCreate(&realMainTML, realMainEDT, sizeof(realMainPRM_t)/sizeof(u64), 3*nrank);
+    realMainPRM.nrank = nrank;
+    realMainPRM.npoints = npoints;
+    realMainPRM.maxt = maxt;
 
 
-    for(i=0;i<N;i++) {
-       ocrDbCreate(&(privateDb[i]), (void**) &dummy, sizeof(private_t), 0, NULL_GUID, NO_ALLOC);
-       ocrDbCreate(&(dataDb[i]), (void**) &dummy, 2*M*sizeof(double), 0, NULL_GUID, NO_ALLOC);
-   }
+    ocrEdtCreate(&realMainGUID, realMainTML, EDT_PARAM_DEF, (u64 *) &realMainPRM, EDT_PARAM_DEF, NULL,
+          EDT_PROP_NONE, NULL_GUID, NULL);
 
-    ocrGuid_t wrapupTemplate;
-    ocrGuid_t wrapupEdt;
+    ocrGuid_t privateDBK, bufferDBK;
 
-    ocrEdtTemplateCreate(&wrapupTemplate, wrapupTask, 0, N+1);
-    ocrEdtCreate(&wrapupEdt, wrapupTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
+    u64 slot = 0;
+    ocrAddDependence(NULL_GUID, realMainGUID, slot++, DB_MODE_RW);
 
-    ocrEdtTemplateCreate(&realmainTemplate, realmainTask, 0, 4*N-2);
-    ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-          EDT_PROP_FINISH, NULL_GUID, &realmainOutputEvent);
+    for(i=0;i<nrank-1;i++)  {
 
-    for(i=0;i<N;i++)  ocrAddDependence(dataDb[i], wrapupEdt, i, DB_MODE_RW);
-        ocrAddDependence(realmainOutputEvent, wrapupEdt, N, DB_MODE_RW);
+        ocrDbCreate(&privateDBK, (void**) &dummy, sizeof(private_t) + npoints*sizeof(double), 0, NULL_GUID, NO_ALLOC);
+        ocrAddDependence(privateDBK, realMainGUID, slot++, DB_MODE_RW);
 
-    for(i=0;i<N;i++) ocrAddDependence(dataDb[i], realmain, i, DB_MODE_RW);
-    for(i=0;i<2*N-2;i++) ocrAddDependence(bufferDb[i], realmain, N+i, DB_MODE_RW);
-    for(i=0;i<N;i++) ocrAddDependence(privateDb[i], realmain, (3*N-2)+i, DB_MODE_RW);
+        ocrDbCreate(&bufferDBK, (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
+        ocrAddDependence(bufferDBK, realMainGUID, slot++, DB_MODE_RW);
+        ocrDbCreate(&bufferDBK, (void**) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC);
+        ocrAddDependence(bufferDBK, realMainGUID, slot++, DB_MODE_RW);
+    }
+    ocrDbCreate(&privateDBK, (void**) &dummy, sizeof(private_t) + npoints*sizeof(double), 0, NULL_GUID, NO_ALLOC);
+    ocrAddDependence(privateDBK, realMainGUID, slot++, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, realMainGUID, slot, DB_MODE_RW);
+    #endif
+
+    #ifdef PARALLEL
+    ocrEdtTemplateCreate( &realMainTML, realMainEDT, sizeof(realMainPRM_t)/sizeof(u64), 1 );
+    realMainPRM.nrank = nrank;
+    realMainPRM.npoints = npoints;
+    realMainPRM.maxt = maxt;
+    ocrEdtCreate( &realMainGUID, realMainTML, EDT_PARAM_DEF, (u64 *) &realMainPRM, EDT_PARAM_DEF, NULL,
+            EDT_PROP_NONE, NULL_GUID, NULL );
+
+    ocrGuid_t sharedDBK;
+
+    ocrDbCreate( &sharedDBK, (void **)&dummy, sizeof( shared_t ), 0, NULL_GUID, NO_ALLOC );
+
+    ocrAddDependence( sharedDBK, realMainGUID, 0, DB_MODE_RW );
+    #endif
 
     return NULL_GUID;
 }

@@ -58,6 +58,7 @@ REQ_LIBS :=
 # There are three versions of the Stencil code available; Pick one based on
 # this varibale
 # 1 - sticky; 2 - guid; 3 - once
+CFLAGS :=
 CODE_TYPE ?= 1
 
 ifeq ($(CODE_TYPE), 1)
@@ -67,20 +68,22 @@ SRCS := stencil1Dguid.c
 else ifeq ($(CODE_TYPE), 3)
 SRCS := stencil1Donce.c
 else ifeq ($(CODE_TYPE), 4)
-SRCS := stencil1DstickyLG.c
+SRCS := stencil1Dsticky.c
 CONFIG_FLAGS := --guid LABELED
+CFLAGS += -DPARALLEL
 else ifeq ($(CODE_TYPE), 5)
-SRCS := stencil1DoncePI.c
+SRCS := stencil1Dguid.c
 CONFIG_FLAGS := --guid LABELED
+CFLAGS += -DPARALLEL
 else ifeq ($(CODE_TYPE), 6)
-SRCS := stencil1DguidPI.c
+SRCS := stencil1Donce.c
 CONFIG_FLAGS := --guid LABELED
+CFLAGS += -DPARALLEL
 endif
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
