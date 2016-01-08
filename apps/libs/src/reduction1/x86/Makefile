@@ -16,15 +16,14 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 OCR_ROOT ?= ../../../../../../ocr/ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
 
-SRCS := ../reduction.c ../reduction_v1.c
-OBJS := reduction.o reduction_v1.o
-INCLUDES := ../reduction.h ../reduction_v1.h
-LIB := libreduction.a
+SRCS := ../reduction1.c
+OBJS := reduction1.o
+INCLUDES := ../reduction1.h
+LIB := libreduction1.a
 
 # installed files
-INSTALL_REDUCTION_H := ${APPS_LIBS_ROOT}/include/reduction.h
-INSTALL_REDUCTION_H1 := ${APPS_LIBS_ROOT}/include/reduction_v1.h
-INSTALL_REDUCTION_A := ${APPS_LIBS_ROOT}/lib/libreduction.a
+INSTALL_REDUCTION_H := ${APPS_LIBS_ROOT}/include/reduction1.h
+INSTALL_REDUCTION_A := ${APPS_LIBS_ROOT}/lib/libreduction1.a
 
 CC := gcc
 AR := ar
@@ -62,10 +61,7 @@ $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
 	@$(AR) $(ARFLAGS) $(LIB) $^
 
-$(INSTALL_REDUCTION_H): ../reduction.h
-	cp $^ $@
-
-$(INSTALL_REDUCTION_H1): ../reduction_v1.h
+$(INSTALL_REDUCTION_H): ../reduction1.h
 	cp $^ $@
 
 # Not used any more by users
@@ -92,7 +88,7 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	for i in reduction.h reduction_v1.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
+	for i in reduction1.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
 	rm -f $(APPS_LIBS_ROOT)/lib/$(LIB)
 
 .PHONY: squeeky

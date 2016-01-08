@@ -40,7 +40,7 @@ N is the length of the vectors
 
 */
 
-#include "reduction.h"
+#include "reduction1.h"
 
 #define ENABLE_EXTENSION_LABELING
 #include "ocr.h"

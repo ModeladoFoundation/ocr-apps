@@ -27,7 +27,7 @@ Dec 9, 2015: fixed early release of reductionPrivateGUID (moved from reductionGe
 #include "string.h"   //for memcpy
 #include "stdio.h"   //for debug print
 
-#include "reduction.h"
+#include "reduction1.h"
 
 
 u64 reductionsizeof(reductionOperator_t operator) {
