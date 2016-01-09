@@ -2,7 +2,7 @@
 # Create a library for test env specific utility functions
 #
 # Find 'apps' repo dir (actually, whatever's above 'apps')
-# And we assume the 'intel' repo is at the same level as 'xstack'
+# And we assume the 'intel' repo is at the same level as 'apps'
 #
 APPS_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/apps/.*$$:/apps/:')
 
