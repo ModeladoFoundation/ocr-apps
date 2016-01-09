@@ -17,28 +17,24 @@ extern uint64_t __eh_frame_hdr_end;
 extern uint64_t __eh_frame_start;
 extern uint64_t __eh_frame_end;
 
-uint64_t __eh_frame_size;
-uint64_t __eh_frame_hdr_size;
-
-static struct eh_info {
+struct eh_info {
     ulongptr_t hdr_start;
     ulongptr_t hdr_size;
     ulongptr_t frame_start;
     ulongptr_t frame_size;
-} eh_object = {
-    .hdr_start   = & __eh_frame_hdr_start,
-    .hdr_size    = & __eh_frame_hdr_size,
-    .frame_start = & __eh_frame_start,
-    .frame_size  = & __eh_frame_size
 };
 
 _BEGIN_STD_C
 void __get_eh_info( struct eh_info * info )
 {
-    __eh_frame_size = &__eh_frame_end - &__eh_frame_start;
-    __eh_frame_hdr_size = &__eh_frame_hdr_end - &__eh_frame_hdr_start;
+    info->frame_start = &__eh_frame_start;
+    info->frame_size  = (ulongptr_t) (&__eh_frame_end - &__eh_frame_start);
 
-    *info = eh_object;
+    info->hdr_start = &__eh_frame_hdr_start;
+    info->hdr_size = (ulongptr_t) (&__eh_frame_hdr_end - &__eh_frame_hdr_start);
+
+    if ( info->hdr_size == 0 || info->hdr_start == 0 )
+        info->hdr_size = info->hdr_start = 0;
 }
 _END_STD_C
 
