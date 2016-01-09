@@ -408,24 +408,30 @@ inline bool LocalAddressSpace::findUnwindSections(pint_t targetAddr,
 //
 #elif _LIBUNWIND_IS_BAREMETAL
     eh_info ehinfo;
-    EHHeaderParser<LocalAddressSpace>::EHHeaderInfo hdrInfo;
     (void) targetAddr;  // unused
 
     __get_eh_info( & ehinfo );
 
-    if( ehinfo.hdr_size == 0 )
+    if( ehinfo.frame_size == 0 )
         return false;
 
-    info.dwarf_index_section = ehinfo.hdr_start;
-    info.dwarf_index_section_length = ehinfo.hdr_size;
-    EHHeaderParser<LocalAddressSpace>::decodeEHHdr(
-        *this, ehinfo.hdr_start, ehinfo.hdr_start + ehinfo.hdr_size, hdrInfo );
-
-    info.dwarf_index_section = ehinfo.hdr_start;
-    info.dwarf_index_section_length = ehinfo.hdr_size;
-
-    info.dwarf_section = hdrInfo.eh_frame_ptr;
+    info.dwarf_section = ehinfo.frame_start;
     info.dwarf_section_length = ehinfo.frame_size;
+
+    info.dwarf_index_section = ehinfo.hdr_size ? ehinfo.hdr_start : 0;
+    info.dwarf_index_section_length = ehinfo.hdr_size;
+    //
+    // the value in the hdr should be the same as ehinfo.frame_start
+    // but ...
+    //
+    if ( info.dwarf_index_section ) {
+        EHHeaderParser<LocalAddressSpace>::EHHeaderInfo hdrInfo;
+
+        EHHeaderParser<LocalAddressSpace>::decodeEHHdr(
+            *this, ehinfo.hdr_start, ehinfo.hdr_start + ehinfo.hdr_size, hdrInfo );
+
+        info.dwarf_section = hdrInfo.eh_frame_ptr;
+    }
 
     return true;
 //

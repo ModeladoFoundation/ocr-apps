@@ -853,7 +853,8 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
     }
   }
 #if _LIBUNWIND_SUPPORT_DWARF_INDEX
-  if (!foundFDE && (sects.dwarf_index_section != 0)) {
+  if (!foundFDE &&
+      sects.dwarf_index_section != 0 && sects.dwarf_index_section_length != 0) {
     foundFDE = EHHeaderParser<A>::findFDE(
         _addressSpace, pc, sects.dwarf_index_section,
         (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo);
