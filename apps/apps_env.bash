@@ -62,4 +62,5 @@ for p in "${PATHS[@]}"
 #------------------------------------------------------------------------------
 if [ -x /opt/intel/tools/psxevars.sh ]; then
     source /opt/intel/tools/psxevars.sh intel64 impi4
+    export MANPATH=${MANPATH}:/usr/share/man
 fi
