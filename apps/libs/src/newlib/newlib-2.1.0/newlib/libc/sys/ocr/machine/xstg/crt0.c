@@ -71,21 +71,22 @@ extern uint64_t __eh_frame_hdr_size;
 extern uint64_t __eh_frame_start;
 extern uint64_t __eh_frame_size;
 
-static struct eh_info {
+struct eh_info {
     ulongptr_t hdr_start;
     ulongptr_t hdr_size;
     ulongptr_t frame_start;
     ulongptr_t frame_size;
-} eh_object = {
-    .hdr_start   = & __eh_frame_hdr_start,
-    .hdr_size    = & __eh_frame_hdr_size,
-    .frame_start = & __eh_frame_start,
-    .frame_size  = & __eh_frame_size
 };
 
 void __get_eh_info( struct eh_info * info )
 {
-    *info = eh_object;
+    info->hdr_start   = & __eh_frame_hdr_start;
+    info->hdr_size    = & __eh_frame_hdr_size;
+    info->frame_start = & __eh_frame_start;
+    info->frame_size  = & __eh_frame_size;
+
+    if ( info->hdr_size == 0 || info->hdr_start == 0 )
+        info->hdr_size = info->hdr_start = 0;
 }
 //
 // initialize any static constructors
