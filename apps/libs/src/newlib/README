@@ -14,54 +14,54 @@ You don't need to do anything special if you want to build newlib for more
 than one of these.
 =====================
 
-To build for the xstg architecture, change into the xstack/apps/libs/src/newlib
+To build for the xstg architecture, change into the apps/apps/libs/src/newlib
 directory.  Run 'make ARCH=tg'; this builds for the xstg target.  Then run
 'make ARCH=tg install'; this deposits resulting libraries and includes into
-the install root at xstack/apps/libs/tg.
+the install root at apps/apps/libs/tg.
 
 After the build completes, the following is in the
-xstack/apps/libs/tg/lib/ directory:
+apps/apps/libs/tg/lib/ directory:
 
    crt0.o  crt0t.o crtend.o libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The xstack/apps/libs/tg/include directory is also populated with
+The apps/apps/libs/tg/include directory is also populated with
 standard 'libc' headers.
 
 To clean, use 'make ARCH=tg clean'.  Note that this does NOT remove build
-results from the xstack/apps/libs/tg area.
+results from the apps/apps/libs/tg area.
 
 =====================
 
-To build for x86, change into the xstack/apps/libs/src/newlib directory.
+To build for x86, change into the apps/apps/libs/src/newlib directory.
 Run 'make ARCH=x86'; this builds for the x86 target. Then run
 'make ARCH=x86 install'; this deposits resulting libraries and includes
-into xstack/apps/libs/x86.
+into apps/apps/libs/x86.
 
 After the build completes, the following is in the
-xstack/apps/libs/x86/lib/ directory:
+apps/apps/libs/x86/lib/ directory:
 
-       crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
+       crt0.o  crtend.o libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The xstack/apps/libs/x86/include directory is also populated with
+The apps/apps/libs/x86/include directory is also populated with
 standard 'libc' headers.
 
 To clean use 'make ARCH=x86 clean'.  Note that this does NOT remove build
-results from the xstack/apps/libs/x86 area.
+results from the apps/apps/libs/x86 area.
 
 =====================
 
-To build for x86_native, change into the xstack/apps/libs/src/newlib directory.
+To build for x86_native, change into the apps/apps/libs/src/newlib directory.
 Run 'make ARCH=x86_native'; this builds for the x86 target. Then run
 'make ARCH=x86_native install'; this deposits resulting libraries and includes
-into xstack/apps/libs/x86_native.
+into apps/apps/libs/x86_native.
 
 After the build completes, the following is in the
-xstack/apps/libs/x86_native/lib/ directory:
+apps/apps/libs/x86_native/lib/ directory:
 
        crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The xstack/apps/libs/x86_native/include directory is also populated with
+The apps/apps/libs/x86_native/include directory is also populated with
 standard 'libc' headers.
 
 To clean use 'make ARCH=x86_native clean'.  Note that this does NOT remove build
-results from the xstack/apps/libs/x86_native area.
+results from the apps/apps/libs/x86_native area.
