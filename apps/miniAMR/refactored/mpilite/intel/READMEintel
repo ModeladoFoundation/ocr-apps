@@ -225,9 +225,29 @@ mpirun -n 3 ./miniAMR.x --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz
 mpirun -n 27 ./miniAMR.x --num_refine 4 --max_blocks 608 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4
 
 ====
-for mpilite, these are
- ./miniAMR.x -r 1 --num_refine 3 --max_blocks 5000 --npx 1  --npy 1 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+for mpilite, need to us blocking sends --blocking_send because there is no buffering so
+Isends won't complete in time for the matching Irecvs resulting in hangs.At least 50
+tags are used. Here are the command lines:
+
+ ./miniAMR.x -r 1 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 1  --npy 1 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
  
- ./miniAMR.x -r 3 --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+ ./miniAMR.x -r 3 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
  
- ./miniAMR.x -r 27 --num_refine 4 --max_blocks 608 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4
+ ./miniAMR.x -r 27 -t 50 --blocking_send --num_refine 4 --max_blocks 608 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4
+
+
+********** Mark: 1/14/16 The globals2db versions of x86 and x86-tg currently die in init(),
+both with -r 1 and -r3 versions.
+
+I make the Makefile*.norose which uses the bare program with lots of globals, which
+would normally fail in mpilite. But
+1. make OCR_TYPE=x86 -f Makefile.x86.rose run: will fail because the globals are shared. But if you
+use that executable with the workload using a Single rank: -r 1, it runs fine.
+
+2. make OCR_TYPE=x86-mpi -f Makefile.x86-x86.rose run :
+runs the -r 3 test, and fails again with shared globals. But
+ OCR_NUM_NODES=3 make OCR_TYPE=x86-mpi -f Makefile.x86-x86.rose run
+
+uses 3 policy domains (separate processes), and each of the 3 mpilite ranks runs
+in a separate process, so the globals are private to each rank, so it runs fine, as
+does the -r 1 workload.

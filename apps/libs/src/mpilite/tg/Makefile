@@ -16,12 +16,12 @@ APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
 OCR_ROOT ?= ../../../../../../ocr/ocr
 OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
 
-TG_ROOT        ?= ../../../../../../intel/ss
-TG_INSTALL     ?= ../../../../../../intel/ss/install
+TG_ROOT        ?= ../../../../../../tg/tg
+TG_INSTALL     ?= ../../../../../../tg/tg/install
 TG_ROOT        := $(shell cd "${TG_ROOT}" && pwd)
 TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
 
-TG_PREFIX     := $(TG_INSTALL)/bin/rmd-linux-elf
+TG_PREFIX     := $(TG_INSTALL)/bin/xstg-linux-elf
 OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-xe
 
 AS	= $(TG_PREFIX)-as
@@ -30,21 +30,26 @@ ASFLAGS	=
 AR	= $(TG_PREFIX)-ar
 ARFLAGS	= rcs
 
-CC	= $(TG_PREFIX)-clang -DOCR -DTG_ARCH -frmd-extensions
+#CC	= $(TG_PREFIX)-clang -DOCR -DTG_ARCH -frmd-extensions
+CC	= $(TG_PREFIX)-clang -DOCR -DTG_ARCH
 
 CP = cp
 RM = rm
 
-CFLAGS	= -g -ggdb -g3 -fno-builtin -DHAVE_CONFIG_H -I.
+CFLAGS	=  -ggdb -g3 -fno-builtin -DHAVE_CONFIG_H -I.
 
 OBJCOPY	= $(TG_PREFIX)-objcopy
 
-SRCS := ../mpilite.c ../mpi_ocr.c
-OBJS := mpilite.o mpi_ocr.o
-INCLUDES := ../mpi.h ../mpi_ocr_messaging.h
+SRCS := ../mpilite.c ../mpi_ocr.c../mpi_ocr_messaging.c
+OBJS := mpilite.o mpi_ocr.o mpi_ocr_messaging.o
+INCLUDES := ../mpi.h ../mpi_ocr_messaging.h ../mpi_ocr.h
 LIB := libmpilite.a
 
-INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
+# installed files
+INSTALL_MPI_H := ${APPS_LIBS_ROOT}/include/mpi.h
+INSTALL_MPI_A := ${APPS_LIBS_ROOT}/lib/$(LIB)
+
+INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -isystem $(APPS_LIBS_ROOT)/include
 
 CFLAGS += -std=c99
 
@@ -72,10 +77,18 @@ $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
 	@$(AR) $(ARFLAGS) $(LIB) $^
 
+$(INSTALL_MPI_H): ../mpi.h
+	cp $< $@
+
+$(INSTALL_MPI_A): $(LIB)
+	cp $< $@
+
 .PHONY: install
-install: $(INCLUDES) $(LIB)
-	@echo "Installing X86 standard files"
-	@cp $(INCLUDES) ${APPS_LIBS_ROOT}/include/
+install: $(INSTALL_MPI_H) $(INSTALL_MPI_A)
+
+installold: $(../mpi.h) $(LIB)
+	@echo "Installing tg standard files"
+	@cp $(../mpi.h) ${APPS_LIBS_ROOT}/include/
 	@cp $(LIB) ${APPS_LIBS_ROOT}/lib/
 
 .PHONY: run
@@ -87,7 +100,7 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	for i in mpi.h mpi_ocr_messaging.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
+	for i in mpi.h ; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
 	rm -f $(APPS_LIBS_ROOT)/lib/$(LIB)
 
 .PHONY: squeeky

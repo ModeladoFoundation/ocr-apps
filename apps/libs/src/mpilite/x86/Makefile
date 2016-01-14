@@ -33,7 +33,7 @@ ARFLAGS := rsv
 RANLIB := ranlib
 
 # 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
-OPT_FLAGS := -O0
+OPT_FLAGS := -O2
 INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
 CFLAGS := -std=c99 -g
 DEFINES := -DOCR_ENABLE_EDT_NAMING

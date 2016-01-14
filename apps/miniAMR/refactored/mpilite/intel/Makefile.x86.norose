@@ -66,14 +66,9 @@ TARGET ?= miniAMR
 REQ_LIBS := mpilite
 
 # Space separated list of source files
-# Use the ROSE translated sources
-SRC_NAMES := block.c check_sum.c comm_block.c comm.c comm_parent.c comm_refine.c \
+SRCS := block.c check_sum.c comm_block.c comm.c comm_parent.c comm_refine.c \
        comm_util.c driver.c init.c main.c move.c pack.c plot.c profile.c \
        rcb.c refine.c stencil.c target.c util.c
-
-SRCS := $(addprefix rose_,$(SRC_NAMES))
-
-OBJS: $(ROSE_TARGET)
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
@@ -106,8 +101,6 @@ debug:	default
 
 install: all
 
-.DEFAULT_GOAL := install
-
 # This rule will be executed prior to execution:
 #  - For the FSim target, this happens when the binary is built
 #  - For all other targets this happens prior to running the
@@ -131,40 +124,6 @@ install: all
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
 prerun: ;
-
-# ROSE support occurs here.
-
-include ${APPS_ROOT}/makefiles/make-rose.inc
-
-TARGET ?= miniAMR
-ROSE_TARGET = rose_$(TARGET)
-
-SRCDIR = $(APPS_ROOT)/miniAMR/refactored/mpilite/intel
-BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
-
-SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
-
-prebuild: libocr $(ROSE_TARGET)
-
-$(ROSE_TARGET): $(ROSE_TOOL) create_dir
-	cd $(BLDDIR) ; \
-	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(LD_FLAGS) $(MPI_FLAGS) >& $(HERE)/build.log ; \
-	$(CP) $(SRCDIR)/*.h $(BLDDIR) ; \
-	cd $(HERE)
-
-
-$(ROSE_TOOL):
-	cd $(ROSE_TOOL_ROOT)/src ; \
-	make ; \
-	cd $(HERE)
-
-
-create_dir:
-	mkdir -p $(BLDDIR)
-
-
-rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
-
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated

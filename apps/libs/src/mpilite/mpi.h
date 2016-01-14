@@ -210,7 +210,11 @@ int MPI_Op_free( MPI_Op *op);
 #define MPI_USER_FUNC_BASE      1024
 //ocr extern MPI_User_function *user_func_table[MPI_USER_FUNC_MAX];
 
+typedef int MPI_Errhandler;
 
+#define MPI_ERRORS_ARE_FATAL        (-1)
+#define MPI_ERRORS_RETURN           (-2)
+#define MPI_ERRORS_THROW_EXCEPTIONS (-3)
 
 typedef int MPI_Fint;
 
@@ -234,6 +238,7 @@ int MPI_Init_thread( int *argc, char ***argv, int required, int *provided );
 int MPI_Init(int *argc, char ***argv);
 int MPI_Initialized(int *flag);
 int MPI_Finalize(void);
+int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler);
 int MPI_Abort(MPI_Comm comm, int errorcode);
 double MPI_Wtick( void );	// Accuracy in seconds of Wtime
 double MPI_Wtime( void );    // Time in seconds since an arbitrary time in the past.
@@ -248,6 +253,8 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
 int MPI_Wait(MPI_Request *request, MPI_Status *status);
 int MPI_Waitall(int count, MPI_Request *array_of_requests,
                 MPI_Status *array_of_statuses);
+int MPI_Waitany(int count, MPI_Request *array_of_requests,
+                int *index, MPI_Status *status);
 int MPI_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                  int dest, int sendtag,
                  void *recvbuf, int recvcount, MPI_Datatype recvtype,

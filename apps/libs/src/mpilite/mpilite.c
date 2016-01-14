@@ -728,8 +728,10 @@ static void fillStatusFromRequest(MPI_Status *status, MPI_Request request)
 int MPI_Wait(MPI_Request *request, MPI_Status *status)
 {
     // for debugging
+#if DEBUG_MPI
     rankContextP_t rankContext = getRankContext();
     const u32 rank = rankContext->rank;
+#endif
 
     MPI_Request r;
 
@@ -797,8 +799,13 @@ int MPI_Waitall(int count, MPI_Request *array_of_requests,
     MPI_Status *array_of_statuses)
 {
     u32 i;
+#if DEBUG_MPI
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
 
-    //PRINTF("MPI_Waitall: %d aor %p aos %p\n", count, array_of_requests, array_of_statuses);
+    PRINTF("MPI_Waitall: rank #%d: %d aor %p aos %p\n", rank, count,
+           array_of_requests, array_of_statuses);
+#endif
 
     if (array_of_statuses == MPI_STATUSES_IGNORE)
         for(i=0;i<count;i++) {
@@ -819,6 +826,60 @@ int MPI_Waitall(int count, MPI_Request *array_of_requests,
                 MPI_Wait(&array_of_requests[i], &array_of_statuses[i]);
             }
         }
+    return MPI_SUCCESS;
+}
+
+
+// This is a marginal implementation of Waitany: it ALWAYS does a wait on
+// the first non-null Send request; and when there are no Sends left, it
+// then picks the first non-null Recv. This could cause hangs compared with
+// a more flexible implementation. For example, run throught the array of
+// requests and apply MPI_Test, and only do a Wait when Test says that the
+// request is already satisfied.
+//    However, unless mpilite is being used in -a "aggressive" mode, Isend
+// and Irecv don't actually do anything, so NO requests are complete....
+
+int MPI_Waitany(int count, MPI_Request *array_of_requests,
+                int * index, MPI_Status *status)
+{
+    u32 i;
+#if DEBUG_MPI
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+
+    PRINTF("MPI_Waitany: rank #%d: %d aor %p s %p\n", rank, count,
+           array_of_requests, status);
+#endif
+
+    // First try waiting only on the Sends, in case the Recvs need
+    // the send to happen. Only wait for the first non-null send, if any
+    // (Recall that Wait() will set the request to NULL.)
+    for(i=0; i<count; i++) {
+        MPI_Request *r = &array_of_requests[i];
+        if (MPI_REQUEST_NULL != *r && opIsend == (*r)->op)
+            {
+                MPI_Wait(r, status);
+                *index = i;
+                return MPI_SUCCESS;
+            }
+    }
+
+    // If we fall out of the previous loop, all Sends have ween waited for,
+    // so the only things left (if any) are recvs
+    for(i=0; i<count; i++) {
+        MPI_Request *r = &array_of_requests[i];
+        // Find first non-null request and wait on it.
+        if (MPI_REQUEST_NULL != *r)
+            {
+                MPI_Wait(r, status);
+                *index = i;
+                return MPI_SUCCESS;
+            }
+    }
+
+   // *** All requests were null, so set ret value of index to "Undefined"
+    *index = MPI_UNDEFINED;
+
     return MPI_SUCCESS;
 }
 
@@ -1674,6 +1735,13 @@ int MPI_Alltoall(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
     return MPI_SUCCESS;
 
 }
+
+int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler)
+{
+    // Hack: do nothing
+    return MPI_SUCCESS;
+}
+
 
 int MPI_Abort(MPI_Comm comm, int errorcode)
 {
