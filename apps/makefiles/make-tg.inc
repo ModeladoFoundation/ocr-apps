@@ -271,6 +271,9 @@ $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | tgkrnl.dbg builderce $(WORKLOAD_BUIL
 $(OCR_CE_CONFIG_DEFAULT): $(OCR_INSTALL_CE)/config/default.cfg
 	cp $< $@
 
+# Need libocrce (built internally by tgkrnl) to generate the config file
+$(OCR_INSTALL_CE)/config/default.cfg: | tgkrnl
+
 # ALways remake this
 .PHONY: $(OCR_CE_CONFIG)
 $(OCR_CE_CONFIG): $(OCR_CE_CONFIG_ORIG)
@@ -290,6 +293,9 @@ $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.ex
 
 $(OCR_XE_CONFIG_DEFAULT): $(OCR_INSTALL_XE)/config/default.cfg
 	cp $< $@
+
+# Need libocrxe to generate the config file
+$(OCR_INSTALL_XE)/config/default.cfg: | libocrxe
 
 # Always remake this
 .PHONY: $(OCR_XE_CONFIG)
