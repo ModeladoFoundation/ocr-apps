@@ -270,6 +270,9 @@ u8 ocrUSalClose(ocrGuid_t legacyContext, ocrGuid_t handle)
     ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
     ocr_assert( isGuidType( handle, GUID_FD ) );
 
+    if( ! find_guid(handle) )
+        return 1;
+
     int fd = getGuidValue( handle );
     int retval = ce_close( fd );
     rm_guid( handle );
