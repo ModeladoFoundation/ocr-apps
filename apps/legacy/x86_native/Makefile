@@ -2,6 +2,9 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
+# To run C example: ./chello -ocr:cfg ./generated.cfg
+# To run C++ example: ./cxxhello -ocr:cfg ./generated.cfg
+#
 ARCH=x86_native
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
@@ -12,34 +15,73 @@ OCR_INC = $(APPS_LIBS_ROOT)/include
 
 CFLAGS += -std=c99 -U__STRICT_ANSI__ -isystem $(OCR_INC)
 
+CXXFLAGS += -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__ -isystem $(OCR_INC)
+CXXFLAGS += -fno-stack-protector -fno-use-cxa-atexit
+CXXFLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
+CXXFLAGS += -I$(APPS_LIBS_ROOT)/include
+
+LIBC = /usr/lib/x86_64-linux-gnu/libc.a
+PTHREAD_LIB = /usr/lib/x86_64-linux-gnu/libpthread.a
+LIB_GCC = /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
+GLIBC_A = $(PTHREAD_LIB) $(LIB_GCC) $(LIBC)
+
 # Libraries to include from newlib
-NL_LIBPREFIX = $(LIBS)/crt0.o
-NL_LIBSUFFIX = $(LIBS)/libc.a $(LIBS)/libm.a
+NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
+LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
-# Other library - this uses the libocrscaffold.a, but it
-# should actually be the real ocr library/runtime.
-OCR_LIB = $(LIBS)/libocrscaffold.a
+OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/build/x86_lib/objs
 
-APP = hello
-APP_SRCS = hello.c
-APP_LIBS =
+# OCR library - this can be the libocrscaffold.a, or
+# the real ocr library/runtime. Uncomment the one you want.
+#OCR_LIB = $(LIBS)/libocrscaffold.a
+OCR_LIB = $(OCR_LIB_PATH)/libocr.o $(GLIBC_A)
 
-APP_OBJS = $(APP_SRCS:.c=.o)
+CAPP = chello
+CAPP_SRCS = chello.c
+CAPP_LIBS = $(NL_LIBS)
+CAPP_OBJS = $(CAPP_SRCS:.c=.o)
 
-all: $(APP)
+CXXAPP = cxxhello
+CXXAPP_SRCS = cxxhello.cc
+CXXAPP_LIBS = $(LIBCXX_LIBS) $(NL_LIBS)
+CXXAPP_OBJS = $(CXXAPP_SRCS:.cc=.o)
+
+PREMAIN_SRC = premain.cc
+PREMAIN_OBJ = $(PREMAIN_SRC:.cc=.o)
+
+all: $(CAPP) $(CXXAPP)
 
 default: all
 
-$(APP) : $(APP_OBJS)
-	@$(LD) -g -o $@ $(NL_LIBPREFIX) $< $(APP_LIBS) $(NL_LIBSUFFIX) $(OCR_LIB)
+$(CAPP) : $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
+	@echo "  - applib.o"
+	@$(LD) -r -static -o applib.o $(CAPP_OBJS) $(CAPP_LIBS)
+	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
+	@objcopy --localize-symbols=s applib.o
+	@echo "  - $@"
+	@$(CC) -static -o $@ applib.o $(PREMAIN_OBJ) $(OCR_LIB) -T elf64_x86_64.t
+	@echo Successfully built $@
+
+$(CXXAPP) : $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
+	@echo "  - applib.o"
+	@$(LD) -r -static -o applib.o $(CXXAPP_OBJS) $(CXXAPP_LIBS)
+	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
+	@objcopy --localize-symbols=s applib.o
+	@echo "  - $@"
+	@$(CXX) -static -o $@ applib.o $(PREMAIN_OBJ) $(OCR_LIB) -Wl,--eh-frame-hdr -T elf64_x86_64.t
 	@echo Successfully built $@
 
 %.o : %.c
-	@$(CC) -c $(CFLAGS) $< -o $@
+	@echo "  - $@"
+	@$(CC) -g -O0 -c $(CFLAGS) $< -o $@
+
+%.o : %.cc
+	@echo "  - $@"
+	@$(CXX) -g -O0 -c $(CXXFLAGS) $< -o $@
 
 dump:
 	@echo APPS_ROOT = $(APPS_ROOT)
 	@echo LIBS = $(LIBS)
 
 clean:
-	@rm -f $(APP) $(APP_OBJS)
+	@rm -f $(CAPP) $(CAPP_OBJS) $(CXXAPP) $(CXXAPP_OBJS) $(PREMAIN_OBJ) *.o s
