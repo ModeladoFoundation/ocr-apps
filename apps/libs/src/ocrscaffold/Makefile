@@ -8,9 +8,10 @@
 #		Justin Teller, Intel
 #		EQware various
 #
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../tg/tg/install)
+APPS_REPO ?= $(realpath $(CURDIR)/../../../..)
+TG_INSTALL ?= $(realpath $(APPS_REPO)/../tg/tg/install)
 
-APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
+APPS_ROOT  ?= $(realpath $(APPS_REPO)/apps)
 
 #
 # Supported ARCH values
@@ -113,13 +114,15 @@ debug: default
 default: all
 
 # Always try to build these when we get here
-.PHONY: $(LIB) setup clean
+.PHONY: $(LIB) showvars setup clean
 
-setup:
+showvars:
 	@echo SRCS = $(SRCS)
 	@echo OBJS = $(OBJS)
 	@echo BUILD_DIR = $(BUILD_DIR)
 	@echo SRCDIR = $(SRCDIR)
+
+setup:
 	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
 
 $(LIB): $(OBJS)
