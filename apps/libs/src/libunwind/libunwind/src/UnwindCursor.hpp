@@ -550,22 +550,6 @@ private:
   }
 #endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
 
-  void dump_info(const char * msg ) const {
-#ifdef NDEBUG
-    (void) msg;
-#else
-      _LIBUNWIND_DEBUG_LOG("%s: cursor _info\n"
-                            "  start_ip 0x%lx, end_ip 0x%lx\n"
-                            "  lsda 0x%lx, handler 0x%lx, gp 0x%lx\n"
-                            "  unwind_info 0x%lx, unwind_info_size 0x%d, format %d\n",
-                            msg,
-                            _info.start_ip, _info.end_ip,
-                            _info.lsda, _info.handler, _info.gp,
-                            _info.unwind_info, _info.unwind_info_size,
-                            _info.format
-                            );
-#endif
-  }
 
   A               &_addressSpace;
   R                _registers;
@@ -848,16 +832,12 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
                                     (uint32_t)sects.dwarf_section_length,
                                     sects.dwarf_section + fdeSectionOffsetHint,
                                     &fdeInfo, &cieInfo);
-    if( !foundFDE )
-      _LIBUNWIND_DEBUG_LOG("UnwindCursor::getInfoFDS CFI_Parser::findFDE failed: pc 0x%lx\n", pc );
   }
 #if _LIBUNWIND_SUPPORT_DWARF_INDEX
   if (!foundFDE && (sects.dwarf_index_section != 0)) {
     foundFDE = EHHeaderParser<A>::findFDE(
         _addressSpace, pc, sects.dwarf_index_section,
         (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo);
-    if( !foundFDE )
-      _LIBUNWIND_DEBUG_LOG("UnwindCursor::getInfoFDS EHHeaderParser::findFDE failed: pc 0x%lx\n", pc );
   }
 #endif
 #if _LIBUNWIND_SUPPORT_DWARF_CACHE
@@ -896,8 +876,6 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
       _info.unwind_info       = fdeInfo.fdeStart;
       _info.unwind_info_size  = (uint32_t)fdeInfo.fdeLength;
       _info.extra             = (unw_word_t) sects.dso_base;
-
-      this->dump_info("getInfoFromDwarfSection");
 
   #if _LIBUNWIND_SUPPORT_DWARF_CACHE
       // Add to cache (to make next lookup faster) if we had no hint
@@ -1179,7 +1157,6 @@ bool UnwindCursor<A, R>::getInfoFromCompactEncodingSection(pint_t pc,
 template <typename A, typename R>
 void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
   pint_t pc = (pint_t)this->getReg(UNW_REG_IP);
-  _LIBUNWIND_DEBUG_LOG("setInfoBOIR: pc = 0x%lx, isRet = %d\n", pc, isReturnAddress );
 #if LIBCXXABI_ARM_EHABI
   // Remove the thumb bit so the IP represents the actual instruction address.
   // This matches the behaviour of _Unwind_GetIP on arm.
@@ -1325,7 +1302,7 @@ int UnwindCursor<A, R>::step() {
               LIBCXXABI_ARM_EHABI
 #endif
 
-  // update _info based on new PC
+  // update info based on new PC
   if (result == UNW_STEP_SUCCESS) {
     this->setInfoBasedOnIPRegister(true);
     if (_unwindInfoMissing)

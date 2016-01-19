@@ -425,7 +425,6 @@ inline bool LocalAddressSpace::findUnwindSections(pint_t targetAddr,
     info.dwarf_section = hdrInfo.eh_frame_ptr;
     info.dwarf_section_length = ehinfo.frame_size;
 
-    return true;
 //
 // Dynamic linked
 //

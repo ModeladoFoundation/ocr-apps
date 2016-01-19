@@ -23,7 +23,7 @@
 #define LIBUNWIND_UNAVAIL
 #endif
 
-//#include <__cxxabi_config.h>
+#include <__cxxabi_config.h>
 
 typedef enum {
   _URC_NO_REASON = 0,

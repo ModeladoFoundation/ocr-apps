@@ -364,15 +364,6 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
   // fde is own mh_group
   DwarfFDECache<LocalAddressSpace>::removeAllIn((LocalAddressSpace::pint_t)fde);
 }
-#else  // ! _LIBUNWIND_SUPPORT_DWARF_CACHE
-void _unw_add_dynamic_fde(unw_word_t fde) {
-    _LIBUNWIND_DEBUG_LOG("_unw_add_dynamic_fde: %s", "not implemented");
-    (void) fde;
-}
-void _unw_remove_dynamic_fde(unw_word_t fde) {
-    _LIBUNWIND_DEBUG_LOG("_unw_remove_dynamic_fde: %s", "not implemented");
-    (void) fde;
-}
 #endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
 
 

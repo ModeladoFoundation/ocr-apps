@@ -1816,18 +1816,20 @@ inline const char *Registers_xstg::getRegisterName(int regNum) {
 }
 
 //
-// No float or vector specific registers
+// XXX Treat all registers as float?
 //
-inline bool Registers_xstg::validFloatRegister(int) const {
-  return false;
+inline bool Registers_xstg::validFloatRegister(int regNum) const {
+  return regNum >=0 && regNum < 512;
 }
 
-inline double Registers_xstg::getFloatRegister(int) const {
-  _LIBUNWIND_ABORT("no xstg float register support");
+inline double Registers_xstg::getFloatRegister(int regNum) const {
+  assert(validFloatRegister(regNum));
+  return _registers.__r[regNum];
 }
 
-inline void Registers_xstg::setFloatRegister(int, double) {
-  _LIBUNWIND_ABORT("no xstg float register support");
+inline void Registers_xstg::setFloatRegister(int regNum, double value) {
+  assert(validFloatRegister(regNum));
+  _registers.__r[regNum] = value;
 }
 
 inline bool Registers_xstg::validVectorRegister(int) const {

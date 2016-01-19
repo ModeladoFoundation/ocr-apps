@@ -92,12 +92,10 @@
     #define _LIBUNWIND_SUPPORT_DWARF_CACHE _LIBUNWIND_SUPPORT_DWARF_UNWIND
   #endif // __XSTG__
 
-  #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-
   #define _LIBUNWIND_BUILD_SJLJ_APIS      0
   #define _LIBUNWIND_EXPORT               __attribute__((visibility("default")))
   #define _LIBUNWIND_HIDDEN               __attribute__((visibility("hidden")))
-  #define _LIBUNWIND_LOG(msg, ...) fprintf(stdout, "libuwind: " msg, ##__VA_ARGS__)
+  #define _LIBUNWIND_LOG(msg, ...) fprintf(stderr, "libuwind: " msg, __VA_ARGS__)
   #define _LIBUNWIND_ABORT(msg) assert_rtn(__func__, __FILE__, __LINE__, msg)
 #endif
 
@@ -118,8 +116,7 @@
   #ifdef __cplusplus
     }
   #endif
-
-  #define _LIBUNWIND_DEBUG_LOG(msg, ...)  _LIBUNWIND_LOG(msg, ##__VA_ARGS__)
+  #define _LIBUNWIND_DEBUG_LOG(msg, ...)  _LIBUNWIND_LOG(msg, __VA_ARGS__)
   #define _LIBUNWIND_LOG_NON_ZERO(x) \
             do { \
               int _err = x; \
@@ -128,11 +125,11 @@
              } while (0)
   #define _LIBUNWIND_TRACE_API(msg, ...) \
             do { \
-              if ( logAPIs() ) _LIBUNWIND_LOG(msg, ##__VA_ARGS__); \
+              if ( logAPIs() ) _LIBUNWIND_LOG(msg, __VA_ARGS__); \
             } while(0)
   #define _LIBUNWIND_TRACE_UNWINDING(msg, ...) \
             do { \
-              if ( logUnwinding() ) _LIBUNWIND_LOG(msg, ##__VA_ARGS__); \
+              if ( logUnwinding() ) _LIBUNWIND_LOG(msg, __VA_ARGS__); \
             } while(0)
   #define _LIBUNWIND_TRACING_UNWINDING logUnwinding()
 #endif
