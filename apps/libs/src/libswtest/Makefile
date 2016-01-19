@@ -4,7 +4,7 @@
 # Find 'apps' repo dir (actually, whatever's above 'apps')
 # And we assume the 'intel' repo is at the same level as 'apps'
 #
-APPS_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/apps/.*$$:/apps/:')
+APPS_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/libs/.*$$::')
 
 APPS_ROOT  ?= $(APPS_REPO)/apps
 TG_INSTALL ?= $(realpath $(APPS_REPO)/../tg/tg/install)
@@ -22,7 +22,7 @@ LDSCRIPT = elf64_xstg.t
 
 BUILDDIR = build
 
-# INCLUDES = -isystem $(XSTACK_REPO)/apps/libs/tg/include
+# INCLUDES = -isystem $(APPS_REPO)/apps/libs/tg/include
 LLVM_BIN = $(TG_INSTALL)/bin
 
 CFLAGS += -Os -std=c99 $(INCLUDES)

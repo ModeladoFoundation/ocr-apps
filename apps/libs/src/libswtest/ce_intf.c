@@ -6,11 +6,28 @@
 //
 // These are defined in xe-sim/include/xe-abi.h
 //
-#define XE_ASSERT_ERROR 0xC1	// application failure indication
-#define XE_READY        0xF0	// provided by crt0 to indicate 'alive-ness'
-#define XE_MSG_READY    0xF1	// service request
-#define XE_CONOUT       0xFE	// simple string out to fsim 'console'
-#define XE_TERMINATE    0xFF	// provided by exit() to indicate done
+#define XE_ASSERT_ERROR 0xC1    // application failure indication
+#define XE_READY        0xF0    // provided by crt0 to indicate 'alive-ness'
+#define XE_MSG_READY    0xF1    // service request
+#define XE_CONOUT       0xFE    // simple string out to fsim 'console'
+#define XE_TERMINATE    0xFF    // provided by exit() to indicate done
+
+//
+// XE MSRs, defined in intel/tg/common/include/mmio-table.def
+//
+#define CORE_LOCATION_NUM   12
+
+XE_Id get_xe_id( void )
+{
+    XE_Id core_loc;
+
+    __asm__ __volatile__(
+        "loadmsr %0, %1, 64"
+        : /* outs */ "={r1}" (core_loc)
+        : /* ins  */  "L" (CORE_LOCATION_NUM)
+        );
+    return core_loc;
+}
 
 //
 // Cache builtin wrapper
@@ -86,7 +103,11 @@ static int send_req( uint64_t type, void * buf, uint64_t len )
     uint64_t r2 = CE_REQ_MAKE( type, len );
     uint64_t status;
 
+    cache_range( CACHE_WBINVAL, buf, buf + len );
+
     __asm__ __volatile__(
+        "flush B, N\n\t"
+        "fence 0xF, B\n\t"
         "alarm %3"
         : /* outs */ "={r2}" (status)
         : /* ins */ "{r2}" (r2), "{r3}" (buf), "L" (XE_MSG_READY)
@@ -106,9 +127,9 @@ void * ce_memalloc( uint64_t len )
     int status = send_req( CE_REQTYPE_MEMALLOC, & req, sizeof(req) );
 
     if( ! status )
-    return (void *) req.va;
+        return (void *) req.va;
     else
-    return (void *) 0L;
+        return (void *) 0L;
 }
 
 void ce_memfree( void * va )
@@ -166,6 +187,7 @@ int ce_close( int fd )
     struct {
         uint64_t fd; // in
     } req;
+    req.fd = fd;
 
     int status = send_req( CE_REQTYPE_FILECLOSE, & req, sizeof(req) );
 
@@ -196,7 +218,7 @@ int ce_read( int fd, void * buf, size_t count )
         errno = status;
         status = -1;
     } else
-        status = req.len;	// now bytes read
+        status = req.len;   // now bytes read
 
     return status;
 }
@@ -221,7 +243,7 @@ int ce_write( int fd, const void * buf, size_t count )
         errno = status;
         status = -1;
     } else
-        status = req.len;	// now bytes written
+        status = req.len;   // now bytes written
 
     return status;
 }
@@ -247,7 +269,7 @@ off_t ce_lseek( int fd, off_t offset, int whence )
     if( status ) {
         errno = status;
     } else
-        retval = (off_t) req.offset;	// new offset
+        retval = (off_t) req.offset;   // new offset
 
     return retval;
 }
