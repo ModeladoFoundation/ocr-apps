@@ -97,7 +97,7 @@ _BEGIN_STD_C
 
 #ifdef __XSTG__
 #define _JBTYPE long
-#define _JBLEN  48 /* This could probably be shorter ... but right now we save a lot */
+#define _JBLEN  448
 #endif
 
 #ifdef __i960__
