@@ -1,13 +1,13 @@
 #
 # Create a library for test env specific utility functions
 #
-# Find 'xstack' repo dir (actually, whatever's above 'apps')
-# And we assume the 'tg' repo is at the same level as 'xstack'
+# Find 'apps' repo dir (actually, whatever's above 'apps')
+# And we assume the 'intel' repo is at the same level as 'apps'
 #
-XSTACK_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/.*$$::')
+APPS_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/libs/.*$$::')
 
-APPS_ROOT  ?= $(XSTACK_REPO)/apps
-TG_INSTALL ?= $(realpath $(XSTACK_REPO)/../tg/tg/install)
+APPS_ROOT  ?= $(APPS_REPO)/apps
+TG_INSTALL ?= $(realpath $(APPS_REPO)/../tg/tg/install)
 
 APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
 
@@ -22,7 +22,7 @@ LDSCRIPT = elf64_xstg.t
 
 BUILDDIR = build
 
-# INCLUDES = -isystem $(XSTACK_REPO)/apps/libs/tg/include
+# INCLUDES = -isystem $(APPS_REPO)/apps/libs/tg/include
 LLVM_BIN = $(TG_INSTALL)/bin
 
 CFLAGS += -Os -std=c99 $(INCLUDES)
@@ -61,7 +61,7 @@ $(BUILDDIR)/%.o : %.c
 	@echo Generating Assembler file $@ from $<
 	@$(CC) $(CFLAGS) $(INCLUDES) -S $<
 
-install: builddir $(LIB)
+install: $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
 	@mkdir -p $(APPS_LIBS_ROOT)/lib
 	@cp -u $(LIB) $(APPS_LIBS_ROOT)/lib
@@ -74,4 +74,7 @@ install: builddir $(LIB)
 clean:
 	rm -rf $(LIB) $(OBJS)
 
-.PHONY: builddir clean
+dump:
+	@echo $(APPS_REPO)
+
+.PHONY: builddir clean dump

@@ -41,7 +41,6 @@ static int exit_func_cnt = 0;
 __attribute__((weak))
 int atexit( fptr_t f )
 {
-    ce_print("atexit");
     if( exit_func_cnt >= MAX_EXIT_FUNCS )
         return 1;
     else {
@@ -52,7 +51,6 @@ int atexit( fptr_t f )
 
 void _Exit( int retval )
 {
-    ce_print("_Exit");
     ce_exit( retval );
     __builtin_unreachable();
 }
@@ -60,7 +58,6 @@ void _Exit( int retval )
 __attribute__((weak))
 void exit( int retval )
 {
-    ce_print("exit");
     for( int i = 0 ; i < exit_func_cnt ; i++ )
         exit_funcs[i]();
     _Exit( retval );
