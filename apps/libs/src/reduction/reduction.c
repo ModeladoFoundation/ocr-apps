@@ -23,7 +23,7 @@ ARITY is defined in reduction.h it can be changed and recompiled if desired.
 #include "math.h"   //for min and max
 #include "string.h"   //for memcpy
 #include "stdio.h"   //for debug print
-//#include "macros.h"
+#include "macros.h"
 
 #include "reduction.h"
 

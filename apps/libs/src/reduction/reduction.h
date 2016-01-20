@@ -21,8 +21,6 @@ See README for more details
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 
-#include "macros.h"
-
 #define ARITY 7
 
 typedef enum {

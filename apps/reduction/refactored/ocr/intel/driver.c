@@ -48,8 +48,8 @@ N is the length of the vectors
 
 */
 
-#include "reduction1.h"
-//#include "macros.h"
+#include "reduction.h"
+#include "macros.h"
 
 #define ENABLE_EXTENSION_LABELING
 #include "ocr.h"
@@ -77,14 +77,14 @@ typedef struct {
     ocrEdtDep_t returnData;
 } driverDEPV_t;
 
-ocrGuid_t driverEDT(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+ocrGuid_t driverEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /* initializes the data on t=0
 
 runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum)
 
 */
 
-    driverPRM_t * driverPRM = (driverPRM_t *) paramv;
+    PRMDEF(driver);
 
     u64 myrank = PRM(driver,myrank);
     u64 ndata = PRM(driver,ndata);
@@ -93,7 +93,8 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
     ocrGuid_t driverTML = PRM(driver,driverTML);
 //printf("D%d ndata %d timestep %d maxtimestep %d \n", myrank, ndata, timestep, maxtimestep);
 
-    driverDEPV_t * driverDEPV = (driverDEPV_t *) depv;
+    DEPVDEF(driver);
+
     reductionPrivate_t * reductionPrivatePTR = DEPV(driver,reductionPrivate,ptr);
     double * a = DEPV(driver,myData,ptr);
     double * b = DEPV(driver,returnData,ptr); //will be NULL for T=0
@@ -119,23 +120,23 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
 
     PRM(driver,timestep)++;
 
-    ocrGuid_t driverGUID;
+    ocrGuid_t driverEDT;
 
 
 //clone
     reductionPrivatePTR->returnEVT = PRM(driver,returnEVT[PRM(driver,toggle)]);
     PRM(driver,toggle) ^= 1;
-    ocrEdtCreate(&driverGUID, driverTML, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrEdtCreate(&driverEDT, driverTML, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
 
-    ADDDEP(driver,reductionPrivate,RW);
+    ocrAddDependence(DEPV(driver,reductionPrivate,guid),driverEDT, SLOT(driver,reductionPrivate), DB_MODE_RW);
     ocrDbRelease(DEPV(driver,myData,guid));
-    ADDDEP(driver,myData,RW);
+    ocrAddDependence(DEPV(driver,myData,guid),driverEDT, SLOT(driver,myData), DB_MODE_RW);
 
     u32 errno = ocrEventCreate(&(reductionPrivatePTR->returnEVT), OCR_EVENT_ONCE_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
 
 
-    ocrAddDependence(reductionPrivatePTR->returnEVT, driverGUID, SLOT(driver,returnData), DB_MODE_RO);
+    ocrAddDependence(reductionPrivatePTR->returnEVT, driverEDT, SLOT(driver,returnData), DB_MODE_RO);
 
 //create and launch reduceEdt
 
@@ -157,7 +158,7 @@ typedef struct {
     ocrEdtDep_t reductionPrivate;
 } initRealDEPV_t;
 
-ocrGuid_t initRealEDT(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+ocrGuid_t initRealEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 paramv[0] = myrank;
 
@@ -192,13 +193,13 @@ launch driverEDT
 //extra can be used to pass extra data from rank 0 to all of the ranks
     reductionPrivatePTR->extra = 0;
 
-    ocrGuid_t driverTML, driverGUID, myDBK;
+    ocrGuid_t driverTML, driverEDT, myDBK;
 
 
     u64 dummy;
 
 
-    ocrEdtTemplateCreate(&driverTML, driverEDT, PRMNUM(driver), 3);
+    ocrEdtTemplateCreate(&driverTML, driverEdt, PRMNUM(driver), 3);
 
     driverPRM_t paramvout;
     driverPRM_t * driverPRM = (driverPRM_t *) &paramvout;
@@ -214,12 +215,12 @@ launch driverEDT
 
 //PRINTF("M%ld PBGUID %lx \n", myrank, DEPV(initReal,reductionPrivate, guid));
 
-    ocrEdtCreate(&driverGUID, driverTML, EDT_PARAM_DEF, (u64 *) &paramvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrEdtCreate(&driverEDT, driverTML, EDT_PARAM_DEF, (u64 *) &paramvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
     ocrDbRelease(DEPV(initReal,reductionPrivate,guid));
-    ocrAddDependence(DEPV(initReal,reductionPrivate,guid), driverGUID, SLOT(driver,reductionPrivate), DB_MODE_RW);
+    ocrAddDependence(DEPV(initReal,reductionPrivate,guid), driverEDT, SLOT(driver,reductionPrivate), DB_MODE_RW);
     ocrDbCreate(&myDBK, (void**) &dummy, ndata*sizeof(double), 0, NULL_GUID, NO_ALLOC);
-    ocrAddDependence(myDBK, driverGUID, 1, DB_MODE_RW);
-    ocrAddDependence(NULL_GUID, driverGUID, 2, DB_MODE_RW);
+    ocrAddDependence(myDBK, driverEDT, 1, DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, driverEDT, 2, DB_MODE_RW);
 //third dependency is the returned result
 
     return NULL_GUID;
@@ -232,7 +233,12 @@ typedef struct {
     ocrGuid_t onceRangeGUID;
 } initPRM_t;
 
-ocrGuid_t initEDT(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+typedef struct {
+    ocrEdtDep_t reductionSharedBlock;
+} initDEPV_t;
+
+
+ocrGuid_t initEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 paramv[0] = myrank
 
@@ -249,14 +255,14 @@ initPRM_t * initPRM = (initPRM_t *) paramv;
 
     u64 dummy;
 
-    ocrGuid_t initRealTML, reductionPrivateDBK, initRealGUID;
+    ocrGuid_t initRealTML, reductionPrivateDBK, initRealEDT;
 
     ocrDbCreate(&reductionPrivateDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_GUID, NO_ALLOC);
 
-    ocrEdtTemplateCreate(&initRealTML, initRealEDT, PRMNUM(initReal), DEPNUM(initReal));
-    ocrEdtCreate(&initRealGUID, initRealTML, EDT_PARAM_DEF, (u64 *) paramv, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    ocrAddDependence(depv[0].guid, initRealGUID, 0, DB_MODE_RO);
-    ocrAddDependence(reductionPrivateDBK, initRealGUID, 1, DB_MODE_RW);
+    ocrEdtTemplateCreate(&initRealTML, initRealEdt, PRMNUM(initReal), DEPVNUM(initReal));
+    ocrEdtCreate(&initRealEDT, initRealTML, EDT_PARAM_DEF, (u64 *) paramv, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrAddDependence(depv[0].guid, initRealEDT, 0, DB_MODE_RO);
+    ocrAddDependence(reductionPrivateDBK, initRealEDT, 1, DB_MODE_RW);
     return NULL_GUID;
 }
 
@@ -271,8 +277,8 @@ typedef struct {
     } realMainPRM_t;
 
 
-ocrGuid_t realMainEDT(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
-    realMainDEPV_t * realMainDEPV = (realMainDEPV_t *) depv;
+ocrGuid_t realMainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+    DEPVDEF(realMain);
 
     reductionPrivate_t * sharedPTR = DEPV(realMain,reductionShared,ptr);
 /*
@@ -292,7 +298,7 @@ launch parallel init with myrank as a parameter
 
 //PRINTF("returnEVT %lx \n", sharedPTR->returnEVT);
     u64 i;
-    ocrGuid_t init, initTemplate;
+    ocrGuid_t initEDT, initTML;
 
     initPRM_t paramvout;
     initPRM_t * initPRM = &paramvout;
@@ -300,17 +306,17 @@ launch parallel init with myrank as a parameter
     PRM(init,ndata) = PRM(realMain,ndata);
     PRM(init,maxtimestep) = PRM(realMain,maxtimestep);
 
-    ocrEdtTemplateCreate(&(initTemplate), initEDT, sizeof(initPRM_t)/sizeof(u64), 1);
+    ocrEdtTemplateCreate(&(initTML), initEdt, PRMNUM(init), DEPVNUM(init));
 
     for(i=0;i<nrank;i++) {
         PRM(init,myrank)= i;
-        ocrEdtCreate(&init, initTemplate, EDT_PARAM_DEF, (u64 *) &paramvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, init, 0, DB_MODE_RW);
+        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, (u64 *) &paramvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrAddDependence(depv[0].guid, initEDT, 0, DB_MODE_RW);
     }
     return NULL_GUID;
 }
 
-ocrGuid_t wrapupEDT(){
+ocrGuid_t wrapupEdt(){
     PRINTF("shutting down\n");
     ocrShutdown();
 }
@@ -355,22 +361,22 @@ launches realmain
          if(PRM(realMain,maxtimestep) == 0) bomb("number of timesteps must be positive");
          }
 
-    ocrGuid_t realMainGUID, realMainTML, outputEVT, wrapup, wrapupTML, reductionSharedDBK;
+    ocrGuid_t realMainEDT, realMainTML, outputEVT, wrapupEDT, wrapupTML, reductionSharedDBK;
     PRINTF("reduction driver \n");
     PRINTF("Number of workers is %d \n", PRM(realMain,nrank));
     PRINTF("data per worker %d \n", PRM(realMain,ndata));
     PRINTF("Number of timesteps is %d \n", PRM(realMain,maxtimestep));
-    ocrEdtTemplateCreate(&wrapupTML, wrapupEDT, 0, 1);
-    ocrEdtTemplateCreate(&realMainTML, realMainEDT, PRMNUM(realMain), 1);
-    ocrEdtCreate(&realMainGUID, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &outputEVT);
+    ocrEdtTemplateCreate(&wrapupTML, wrapupEdt, 0, 1);
+    ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
+    ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &outputEVT);
 
-    ocrEdtCreate(&wrapup, wrapupTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    ocrAddDependence(outputEVT, wrapup, 0, DB_MODE_RW);
+    ocrEdtCreate(&wrapupEDT, wrapupTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrAddDependence(outputEVT, wrapupEDT, 0, DB_MODE_RW);
 
     u64 dummy;
 
     ocrDbCreate(&reductionSharedDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_GUID, NO_ALLOC);
-    ocrAddDependence(reductionSharedDBK, realMainGUID, 0, DB_MODE_RW);
+    ocrAddDependence(reductionSharedDBK, realMainEDT, 0, DB_MODE_RW);
 
     return NULL_GUID;
 }
