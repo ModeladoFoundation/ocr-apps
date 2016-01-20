@@ -62,19 +62,29 @@ struct guidmap {
     uint64_t addr;
     uint64_t len;
 } Guids[NGUIDS] = {
+    //
+    // start with fds 0, 1, 2 defined
+    //
+    { .guid = setGuidType(0,GUID_FD), .addr = 0, .len = 0 },
+    { .guid = setGuidType(1,GUID_FD), .addr = 0, .len = 0 },
+    { .guid = setGuidType(2,GUID_FD), .addr = 0, .len = 0 },
     { .guid = INIT_GUID, .addr = 0, .len = 0 }
 };
+
+static void
+init_guids()
+{
+    if( Guids[3].guid == INIT_GUID ) {
+        for( int i = 3 ; i < NGUIDS ; i++ )
+            Guids[i].guid = FREE_GUID;
+    }
+}
 
 static int
 add_guid( ocrGuid_t guid, uint64_t addr, uint64_t len )
 {
-    //
-    // init on first use
-    //
-    if( Guids[0].guid == INIT_GUID ) {
-        for( int i = 0 ; i < NGUIDS ; i++ )
-            Guids[i].guid = FREE_GUID;
-    }
+    init_guids();
+
     for( int i = 0 ; i < NGUIDS ; i++ ) {
         if( Guids[i].guid == FREE_GUID ) {
             Guids[i].guid = guid;
@@ -89,6 +99,8 @@ add_guid( ocrGuid_t guid, uint64_t addr, uint64_t len )
 static int
 rm_guid( ocrGuid_t guid )
 {
+    init_guids();
+
     for( int i = 0 ; i < NGUIDS ; i++ ) {
         if( Guids[i].guid == guid ) {
             Guids[i].guid = FREE_GUID;
@@ -101,6 +113,8 @@ rm_guid( ocrGuid_t guid )
 static int
 get_guid( ocrGuid_t guid, uint64_t * addr, uint64_t * len )
 {
+    init_guids();
+
     for( int i = 0 ; i < NGUIDS ; i++ ) {
         if( Guids[i].guid == guid ) {
             if( addr != NULL ) {
@@ -255,6 +269,9 @@ u8 ocrUSalClose(ocrGuid_t legacyContext, ocrGuid_t handle)
         return -1;
     ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
     ocr_assert( isGuidType( handle, GUID_FD ) );
+
+    if( ! find_guid(handle) )
+        return 1;
 
     int fd = getGuidValue( handle );
     int retval = ce_close( fd );
