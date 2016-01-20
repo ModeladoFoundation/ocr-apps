@@ -20,10 +20,18 @@ CXXFLAGS += -fno-stack-protector -fno-use-cxa-atexit
 CXXFLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
 CXXFLAGS += -I$(APPS_LIBS_ROOT)/include
 
-LIBC = /usr/lib/x86_64-linux-gnu/libc.a
-PTHREAD_LIB = /usr/lib/x86_64-linux-gnu/libpthread.a
-LIB_GCC = /usr/lib/gcc/x86_64-linux-gnu/4.9/libgcc_eh.a
-GLIBC_A = $(PTHREAD_LIB) $(LIB_GCC) $(LIBC)
+ifneq ($(wildcard /etc/redhat-release),)
+  LIB_PATH = /usr/lib64
+  LIB_GCC_PATH = /usr/lib/gcc/x86_64-redhat-linux/4.8.3/
+else
+  LIB_PATH = /usr/lib/x86_64-linux-gnu
+  LIB_GCC_PATH = $(LIB_PATH)/4.9
+endif
+
+LIBC = $(LIB_PATH)/libc.a
+LIBPTHREAD = $(LIB_PATH)/libpthread.a
+LIBGCC_EH = $(LIB_GCC_PATH)/libgcc_eh.a
+GLIBC_A = $(LIBPTHREAD) $(LIBGCC_EH) $(LIBC)
 
 # Libraries to include from newlib
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
@@ -64,7 +72,7 @@ $(CAPP) : $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
 
 $(CXXAPP) : $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
 	@echo "  - applib.o"
-	@$(LD) -r -static -o applib.o $(CXXAPP_OBJS) $(CXXAPP_LIBS)
+	@$(LD) -r -static -zmuldefs -o applib.o $(CXXAPP_OBJS) $(CXXAPP_LIBS)
 	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
 	@objcopy --localize-symbols=s applib.o
 	@echo "  - $@"

@@ -14,6 +14,19 @@
 #ifndef LIBUNWIND_CONFIG_H
 #define LIBUNWIND_CONFIG_H
 
+#ifndef __has_include_next
+  #define __has_include_next(__x) 0
+#endif
+
+#if defined(__x86_64__)
+  #ifndef __INTPTR_WIDTH__
+    #define __INTPTR_WIDTH__ 64
+  #endif
+  #ifndef __have_long64
+    #define __have_long64 1
+  #endif
+#endif
+
 // Define static_assert() unless already defined by compiler.
 #ifndef __has_feature
   #define __has_feature(__x) 0
