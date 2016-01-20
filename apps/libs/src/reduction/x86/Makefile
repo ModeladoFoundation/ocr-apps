@@ -4,6 +4,7 @@
 
 
 # Library environment
+ARCH=x86
 APPS_LIBS_ROOT ?= ../../../x86
 APPS_ROOT ?= ../../../..
 
@@ -34,7 +35,7 @@ RANLIB := ranlib
 
 # 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
 OPT_FLAGS := -O0
-INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
+INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -I$(APPS_LIBS_ROOT)/include
 CFLAGS := -std=c99 -g
 DEFINES := -DOCR_ENABLE_EDT_NAMING
 
@@ -48,15 +49,16 @@ debug: CFLAGS += -g -O0
 debug: install
 
 .PHONY: compile
-compile: $(OBJS)
+compile: $(OBJS) $(MACROS_H)
 
 .PHONY: link
 link: $(LIB)
 
-%.o: ../%.c Makefile $(INCLUDES)
+REQ_LIBS := macros
+
+%.o: ../%.c Makefile $(INCLUDES) | reqlibs
 	@echo "Compiling $<"
 	$(CC) $(CFLAGS) -c $< -o $@
-
 
 $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
@@ -76,7 +78,7 @@ $(INSTALL_REDUCTION_A): $(LIB)
 	cp $< $@
 
 .PHONY: install
-install: $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_H1) $(INSTALL_REDUCTION_A)
+install:  $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_H1) $(INSTALL_REDUCTION_A)
 
 installold: $(INCLUDES) $(LIB)
 	@echo "Installing X86 standard files"
@@ -97,3 +99,5 @@ uninstall:
 
 .PHONY: squeeky
 squeeky: clean uninstall
+
+include $(APPS_ROOT)/makefiles/make-libs.inc
