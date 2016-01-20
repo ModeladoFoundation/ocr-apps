@@ -19,6 +19,10 @@
 #define _GNUC_VER (__GNUC__ * 100 + __GNUC_MINOR__)
 #endif
 
+#ifndef __has_feature
+#define __has_feature(__x) 0
+#endif
+
 #if !_WIN32
 #include <unistd.h>
 #endif
@@ -222,15 +226,15 @@
 #define _LIBCPP_ALWAYS_INLINE  __attribute__ ((__visibility__("hidden"), __always_inline__))
 #endif
 
+#if defined(__XSTACK__)
+#define _LIBCPP_HAS_NO_THREADS
+#endif
+
 #if defined(__clang__)
 
 #if defined(__APPLE__) && !defined(__i386__) && !defined(__x86_64__) &&        \
     !defined(__arm__)
 #define _LIBCPP_ALTERNATE_STRING_LAYOUT
-#endif
-
-#if defined(__XSTG__)
-#define _LIBCPP_HAS_NO_THREADS
 #endif
 
 #if __has_feature(cxx_alignas)
@@ -598,10 +602,6 @@ template <unsigned> struct __static_assert_check {};
 #define _NOALIAS __attribute__((__malloc__))
 #else
 #define _NOALIAS
-#endif
-
-#ifndef __has_feature
-#define __has_feature(__x) 0
 #endif
 
 #ifndef __has_builtin
