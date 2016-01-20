@@ -20,13 +20,35 @@ _DEFUN (getdents, (fd, dirp, count),
 }
 #endif
 
+/////////// link ///////////
+
+int
+_DEFUN (_link_r, (reent, existing, new),
+        struct _reent *reent _AND
+        const char *existing _AND
+        const char *new)
+{
+  u8 ret = ocrUSalLink (reent->_ocr.legacyContext, existing, new);
+  if (ret) reent->_errno = (int)ret;
+  return (int)ret;
+}
+
 int
 _DEFUN (_link, (existing, new),
-        char *existing _AND
-        char *new)
+        const char *existing _AND
+        const char *new)
 {
-  u8 ret = ocrUSalLink (_REENT->_ocr.legacyContext, existing, new);
-  if (ret) errno = (int)ret;
+    return _link_r( _REENT, existing, new );
+}
+
+/////////// unlink ///////////
+int
+_DEFUN (_unlink_r, (reent, name),
+        struct _reent *reent _AND
+        const char *name)
+{
+  u8 ret = ocrUSalUnlink (reent->_ocr.legacyContext, name);
+  if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }
 
@@ -34,8 +56,17 @@ int
 _DEFUN (_unlink, (name),
         char *name)
 {
-  u8 ret = ocrUSalUnlink (_REENT->_ocr.legacyContext, name);
-  if (ret) errno = (int)ret;
+    return _unlink_r( _REENT, name );
+}
+/////////// stat ///////////
+int
+_DEFUN (_stat_r, (reent, file, st),
+        struct _reent *reent _AND
+        const char  *file _AND
+        struct stat *st)
+{
+  u8 ret = ocrUSalStat (reent->_ocr.legacyContext, file, st);
+  if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }
 
@@ -44,8 +75,19 @@ _DEFUN (_stat, (file, st),
         const char  *file _AND
         struct stat *st)
 {
-  u8 ret = ocrUSalStat (_REENT->_ocr.legacyContext, file, st);
-  if (ret) errno = (int)ret;
+    return _stat_r( _REENT, file, st );
+}
+
+/////////// fstat ///////////
+int
+_DEFUN (_fstat_r, (reent, fildes, st),
+        struct _reent *reent _AND
+        int    fildes _AND
+        struct stat *st)
+{
+  ocrGuid_t guid = ocrLibFdToGuid( reent, fildes );
+  u8 ret = ocrUSalFStat (reent->_ocr.legacyContext, guid, st);
+  if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }
 
@@ -54,14 +96,13 @@ _DEFUN (_fstat, (fildes, st),
         int    fildes _AND
         struct stat *st)
 {
-  ocrGuid_t guid = ocrLibFdToGuid( _REENT, fildes );
-  u8 ret = ocrUSalFStat (_REENT->_ocr.legacyContext, guid, st);
-  if (ret) errno = (int)ret;
-  return (int)ret;
+    return _fstat_r( _REENT, fildes, st );
 }
 
+/////////// chdir ///////////
 int
-_DEFUN (_chdir, (path),
+_DEFUN (_chdir_r, (reent, path),
+        struct _reent *reent _AND
         const char *path)
 {
   u8 ret = ocrUSalChdir (_REENT->_ocr.legacyContext, path);
@@ -70,12 +111,42 @@ _DEFUN (_chdir, (path),
 }
 
 int
+_DEFUN (_chdir, (path),
+        const char *path)
+{
+    return _chdir_r( _REENT, path );
+}
+
+/////////// chmod ///////////
+int
+_DEFUN (_chmod_r, (reent, path, mode),
+        struct _reent *reent _AND
+        const char *path _AND
+        mode_t mode)
+{
+  u8 ret = ocrUSalChmod (reent->_ocr.legacyContext, path, mode);
+  if (ret) reent->_errno = (int)ret;
+  return (int)ret;
+}
+
+int
 _DEFUN (_chmod, (path, mode),
         const char *path _AND
         mode_t mode)
 {
-  u8 ret = ocrUSalChmod (_REENT->_ocr.legacyContext, path, mode);
-  if (ret) errno = (int)ret;
+    return _chmod_r( _REENT, path, mode );
+}
+
+/////////// chown ///////////
+int
+_DEFUN (_chown_r, (reent, path, owner, group),
+        struct _reent *reent _AND
+        const char *path  _AND
+        uid_t owner _AND
+        gid_t group)
+{
+  u8 ret = ocrUSalChown (reent->_ocr.legacyContext, path, owner, group);
+  if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }
 
@@ -85,8 +156,19 @@ _DEFUN (_chown, (path, owner, group),
         uid_t owner _AND
         gid_t group)
 {
-  u8 ret = ocrUSalChown (_REENT->_ocr.legacyContext, path, owner, group);
-  if (ret) errno = (int)ret;
+    return _chown_r( _REENT, path, owner, group );
+}
+
+/////////// readlink ///////////
+ssize_t
+_DEFUN (_readlink_r, (reent, path, buf, bufsize),
+        struct _reent *reent _AND
+        const char *path _AND
+        char *buf _AND
+        size_t bufsize)
+{
+  s64 ret = ocrReadlink (reent->_ocr.legacyContext, path, buf, bufsize);
+  if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }
 
@@ -96,19 +178,27 @@ _DEFUN (_readlink, (path, buf, bufsize),
         char *buf _AND
         size_t bufsize)
 {
-  s64 ret = ocrReadlink (_REENT->_ocr.legacyContext, path, buf, bufsize);
-  if (ret) errno = (int)ret;
+    return _readlink_r( _REENT, path, buf, bufsize );
+}
+/////////// symlink ///////////
+int
+_DEFUN (_symlink_r, (reent, path1, path2),
+        struct _reent *reent _AND
+        const char *path1 _AND
+        const char *path2)
+{
+  u8 ret = ocrUSalSymlink (reent->_ocr.legacyContext, path1, path2);
+  if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }
 
 int
 _DEFUN (_symlink, (path1, path2),
+        struct _reent *reent _AND
         const char *path1 _AND
         const char *path2)
 {
-  u8 ret = ocrUSalSymlink (_REENT->_ocr.legacyContext, path1, path2);
-  if (ret) errno = (int)ret;
-  return (int)ret;
+    return _symlink_r( _REENT, path1, path2 );
 }
 
 weak_alias( _link, link )

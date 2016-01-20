@@ -797,6 +797,7 @@ case "${host}" in
 	syscall_dir=syscalls
 	newlib_cflags="${newlib_cflags} -DMALLOC_PROVIDED"
 	newlib_cflags="${newlib_cflags} -D_COMPILING_NEWLIB"
+	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED"
 	;;
   xc16x-*)
           syscall_dir=syscalls
@@ -809,6 +810,7 @@ case "${host}" in
 	newlib_cflags="${newlib_cflags} -DMALLOC_PROVIDED"
 	newlib_cflags="${newlib_cflags} -DPREFER_SIZE_OVER_SPEED"
 	newlib_cflags="${newlib_cflags} -D_COMPILING_NEWLIB"
+	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED"
 	# REC: Added to make sure that reentrant versions of _write for example
 	# have _write declared (in reent/writer.c for example)
 	#       This is CRUCIAL because LLVM will treat an undeclared function as a vararg function

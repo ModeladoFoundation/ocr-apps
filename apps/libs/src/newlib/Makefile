@@ -8,7 +8,7 @@
 #		EQware various
 #
 #	Variables - overrideable via cmd line or env. Defaults below.
-#		TG_INSTALL - top of the intel repo install root. Used to
+#		TG_INSTALL - top of the tg repo install root. Used to
 #					 find clang/llvm/binutils apps and includes.
 #		APPS_ROOT  - path to the apps directory in the xstack repo
 #					 Used to generate the path to the xstack repo
