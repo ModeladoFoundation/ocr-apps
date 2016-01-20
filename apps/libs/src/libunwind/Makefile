@@ -7,9 +7,9 @@
 # Authors:
 #		EQware various
 # Clang:
-#	This assumes that llvm/clang have been installed in the intel
-#	repo install root tree (intel/ss/install) and that the intel
-#	repo is actually named 'intel' and is at the same level in
+#	This assumes that llvm/clang have been installed in the tg
+#	repo install root tree (tg/tg/install) and that the tg
+#	repo is actually named 'tg' and is at the same level in
 # 	the directory tree as this xstack repo.
 #
 #	However this install root location can be overridden by adding
@@ -47,23 +47,24 @@ LIBUNWIND_INC = $(LIBUNWIND_SRC)/include
 LLVM_SRC = $(TG_INSTALL)/../xe-llvm
 
 BUILD = build_$(ARCH)
+#
+# Default build type - overridden by debug target below
+#
+BUILD_TYPE = RELEASE
 
 COMPILE_FLAGS = --target=$(TARGET) -nostdinc++ -D__ELF__ -U__STRICT_ANSI__
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
-  C_FLAGS += -v
 endif
 
-C_FLAGS = -I$(APPS_LIBS_ROOT)/include/c++/v1
+C_FLAGS = -std=gnu11 -I$(APPS_LIBS_ROOT)/include/c++/v1
 C_FLAGS += $(CFLAGS) $(COMPILE_FLAGS)
-CXX_FLAGS = -std=c++11 -nostdinc++ $(COMPILE_FLAGS)
+CXX_FLAGS = -std=gnu++11 -nostdinc++ $(COMPILE_FLAGS)
 #
 # communicate the apps install root to clang
 #
 export APPS_LIBS_ROOT
-
-
 
 LINK_FLAGS = $(APPS_LIBS_ROOT)/lib/libc++.a
 
@@ -71,6 +72,7 @@ CMAKE_ARGS =  -DLIBUNWIND_TARGET=$(UNWIND_TARGET) \
 			  -DLLVM_PATH=$(LLVM_SRC) \
 			  -DLLVM_MAIN_SRC_DIR=$(LLVM_SRC) \
 			  -DCMAKE_INSTALL_PREFIX=$(APPS_LIBS_ROOT) \
+			  -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 			  -DCMAKE_C_COMPILER=$(CC) \
 			  -DCMAKE_C_COMPILER_FORCED=TRUE \
 			  -DCMAKE_CXX_COMPILER=$(CXX) \

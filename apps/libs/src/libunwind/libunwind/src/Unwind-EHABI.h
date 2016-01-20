@@ -11,9 +11,9 @@
 #ifndef __UNWIND_EHABI_H__
 #define __UNWIND_EHABI_H__
 
-#include <__cxxabi_config.h>
 
 #if LIBCXXABI_ARM_EHABI
+#include <__cxxabi_config.h>
 
 #include <stdint.h>
 #include <unwind.h>

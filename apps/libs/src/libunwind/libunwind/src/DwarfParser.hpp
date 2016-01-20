@@ -50,7 +50,7 @@ public:
     int       dataAlignFactor;
     bool      isSignalFrame;
     bool      fdesHaveAugmentationData;
-    uint8_t   returnAddressRegister;
+    uint32_t  returnAddressRegister;
   };
 
   /// Information about an FDE (Frame Description Entry)
@@ -64,7 +64,8 @@ public:
   };
 
   enum {
-    kMaxRegisterNumber = 120
+    // kMaxRegisterNumber = 120 - original
+    kMaxRegisterNumber = 512
   };
   enum RegisterSavedWhere {
     kRegisterUnused,
@@ -121,6 +122,7 @@ private:
 template <typename A>
 const char *CFI_Parser<A>::decodeFDE(A &addressSpace, pint_t fdeStart,
                                      FDE_Info *fdeInfo, CIE_Info *cieInfo) {
+  _LIBUNWIND_DEBUG_LOG("CFI_Parser::decodeFDE: fde: addr 0x%lx\n", fdeStart );
   pint_t p = fdeStart;
   pint_t cfiLength = (pint_t)addressSpace.get32(p);
   p += 4;
@@ -136,6 +138,7 @@ const char *CFI_Parser<A>::decodeFDE(A &addressSpace, pint_t fdeStart,
     return "FDE is really a CIE"; // this is a CIE not an FDE
   pint_t nextCFI = p + cfiLength;
   pint_t cieStart = p - ciePointer;
+  _LIBUNWIND_DEBUG_LOG("CFI_Parser::decodeFDE: cie: p 0x%lx, ptr 0x%08x, addr 0x%lx\n", p, ciePointer, cieStart );
   const char *err = parseCIE(addressSpace, cieStart, cieInfo);
   if (err != NULL)
     return err;
@@ -145,6 +148,7 @@ const char *CFI_Parser<A>::decodeFDE(A &addressSpace, pint_t fdeStart,
       addressSpace.getEncodedP(p, nextCFI, cieInfo->pointerEncoding);
   pint_t pcRange =
       addressSpace.getEncodedP(p, nextCFI, cieInfo->pointerEncoding & 0x0F);
+  _LIBUNWIND_DEBUG_LOG("CFI_Parser::decodeFDE: start 0x%lx, range 0x%lx\n", pcStart, pcRange);
   // parse rest of info
   fdeInfo->lsda = 0;
   // check for augmentation length
@@ -279,8 +283,10 @@ const char *CFI_Parser<A>::parseCIE(A &addressSpace, pint_t cie,
   if (cieLength == 0)
     return NULL;
   // CIE ID is always 0
-  if (addressSpace.get32(p) != 0)
+  if (addressSpace.get32(p) != 0) {
+    _LIBUNWIND_DEBUG_LOG("CFI_Parser::parseCIE: bad cie: addr 0x%lx\n", cie );
     return "CIE ID is not zero";
+  }
   p += 4;
   // Version is always 1 or 3
   uint8_t version = addressSpace.get8(p);
@@ -298,8 +304,8 @@ const char *CFI_Parser<A>::parseCIE(A &addressSpace, pint_t cie,
   cieInfo->dataAlignFactor = (int)addressSpace.getSLEB128(p, cieContentEnd);
   // parse return address register
   uint64_t raReg = addressSpace.getULEB128(p, cieContentEnd);
-  assert(raReg < 255 && "return address register too large");
-  cieInfo->returnAddressRegister = (uint8_t)raReg;
+  assert(raReg <= kMaxRegisterNumber && "return address register too large");
+  cieInfo->returnAddressRegister = raReg;
   // parse augmentation data based on augmentation string
   const char *result = NULL;
   if (addressSpace.get8(strStart) == 'z') {
@@ -360,6 +366,11 @@ bool CFI_Parser<A>::parseFDEInstructions(A &addressSpace,
 }
 
 /// "run" the dwarf instructions
+/// Capturing the register instructions for all registers
+/// from the FDE->pcstart to FDE->pcstart + pcoffset.
+/// Also specifically capturing the appropriate stack pointer reg (cfaRegister)
+/// and frame stack offset (cfaRegisterOffset).
+///
 template <typename A>
 bool CFI_Parser<A>::parseInstructions(A &addressSpace, pint_t instructions,
                                       pint_t instructionsEnd,
@@ -371,8 +382,8 @@ bool CFI_Parser<A>::parseInstructions(A &addressSpace, pint_t instructions,
   pint_t codeOffset = 0;
   PrologInfo initialState = *results;
   if (logDwarf)
-    fprintf(stderr, "parseInstructions(instructions=0x%0" PRIx64 ")\n",
-            (uint64_t)instructionsEnd);
+    fprintf(stderr, "parseInstructions(pcoffset=0x%0lx, end=0x%0" PRIx64 ")\n",
+            pcoffset, (uint64_t)instructionsEnd);
 
   // see Dwarf Spec, section 6.4.2 for details on unwind opcodes
   while ((p < instructionsEnd) && (codeOffset < pcoffset)) {
@@ -549,8 +560,8 @@ bool CFI_Parser<A>::parseInstructions(A &addressSpace, pint_t instructions,
                                   addressSpace.getULEB128(p, instructionsEnd);
       results->codeOffsetAtStackDecrement = (uint32_t)codeOffset;
       if (logDwarf)
-        fprintf(stderr, "DW_CFA_def_cfa_offset(%d)\n",
-                results->cfaRegisterOffset);
+        fprintf(stderr, "DW_CFA_def_cfa_offset(regOffset=%d, codeOffset=%d)\n",
+                results->cfaRegisterOffset, results->codeOffsetAtStackDecrement);
       break;
     case DW_CFA_def_cfa_expression:
       results->cfaRegister = 0;
