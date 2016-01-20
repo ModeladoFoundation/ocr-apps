@@ -10,13 +10,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "config.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "config.h"
 #include "libunwind_ext.h"
 #include "libunwind.h"
 #include "Unwind-EHABI.h"
