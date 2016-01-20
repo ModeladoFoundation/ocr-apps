@@ -142,9 +142,7 @@ using ::ungetwc;
 using ::wcstod;
 #ifndef _LIBCPP_MSVCRT
 using ::wcstof;
-#if defined(_LIBCPP_HAS_LONG_DOUBLE)
 using ::wcstold;
-#endif
 #endif // _LIBCPP_MSVCRT
 using ::wcstol;
 #ifndef _LIBCPP_HAS_NO_LONG_LONG

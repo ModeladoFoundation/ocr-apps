@@ -8,9 +8,9 @@
 #		EQware various
 #
 # Clang:
-#	This assumes that llvm/clang have been installed in the tg
-#	repo install root tree (tg/tg/install) and that the tg
-#	repo is actually named 'tg' and is at the same level in
+#	This assumes that llvm/clang have been installed in the intel
+#	repo install root tree (tg/tg/install) and that the intel
+#	repo is actually named 'intel' and is at the same level in
 # 	the directory tree as this xstack repo.
 #
 #	However this install root location can be overridden by adding
@@ -30,7 +30,7 @@ APPS_LIBS_ROOT ?= $(realpath $(CURDIR)/../../$(ARCH))
 #
 # Supported ARCH values
 #
-ARCHES = tg x86 x86_native
+ARCHES = tg x86
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -85,7 +85,6 @@ ifeq ($(ARCH), tg)
   CXX = $(TG_INSTALL)/bin/clang++
   TARGET = xstg-linux-elf
   CXX_TARGET = XSTG
-  CFLAGS += -D_LIBCPP_HAS_LONG_DOUBLE
 endif
 #
 # This defines an x86_64 build using the XE compiler
@@ -95,26 +94,6 @@ ifeq ($(ARCH), x86)
   CXX = $(TG_INSTALL)/bin/clang++
   TARGET = x86_64-linux-elf
   CXX_TARGET = x86_64
-  COMPILE_FLAGS += -fno-use-cxa-atexit
-endif
-
-#
-# This defines a native/platform GCC build
-# C99 is required to get the 'restrict' keyword
-# But C99 turns on strict ansi, which we disable
-# Make sure we get just the default platform build
-#
-ifeq ($(ARCH), x86_native)
-  CFLAGS += -std=c++11 -U__STRICT_ANSI__
-  CONFIG_ARGS += --enable-multilib=no
-  TARGET = x86_64-linux-gnu
-  CXX_TARGET = x86_64
-  COMPILE_FLAGS =  -std=c++11 -nostdinc -nostdinc++ -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
-  COMPILE_FLAGS += -fno-stack-protector -fno-use-cxa-atexit
-  COMPILE_FLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
-  COMPILE_FLAGS += -isystem $(TG_INSTALL)/include
-  COMPILE_FLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
-  COMPILE_FLAGS += -isystem $(APPS_LIBS_ROOT)/include
 endif
 
 $(ARCHES) install: build

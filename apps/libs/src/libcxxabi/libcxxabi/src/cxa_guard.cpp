@@ -6,7 +6,6 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-#include "__config"
 
 #include "abort_message.h"
 #include "config.h"

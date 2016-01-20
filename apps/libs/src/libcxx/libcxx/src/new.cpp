@@ -9,8 +9,6 @@
 
 #define _LIBCPP_BUILDING_NEW
 
-#include "__config"
-
 #include <stdlib.h>
 
 #include "new"

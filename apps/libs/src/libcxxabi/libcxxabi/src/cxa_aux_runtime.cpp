@@ -9,7 +9,6 @@
 // This file implements the "Auxiliary Runtime APIs"
 // http://mentorembedded.github.io/cxx-abi/abi-eh.html#cxx-aux
 //===----------------------------------------------------------------------===//
-#include "__config"
 
 #include "cxxabi.h"
 #include <new>
