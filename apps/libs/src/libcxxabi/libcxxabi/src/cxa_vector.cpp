@@ -10,6 +10,7 @@
 //  http://mentorembedded.github.io/cxx-abi/abi.html#array-ctor
 //
 //===----------------------------------------------------------------------===//
+#include "__config"
 
 #include "cxxabi.h"
 
