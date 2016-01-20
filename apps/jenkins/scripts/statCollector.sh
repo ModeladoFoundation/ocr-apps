@@ -74,6 +74,9 @@ else
     exit $RET_VAL
 fi
 
+#Adjusted y-axis range for scaling lines
+YMAX="3"
+
 if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
     cat ${JJOB_SHARED_HOME}/../NightlyPerfStatAppsScaling.txt
