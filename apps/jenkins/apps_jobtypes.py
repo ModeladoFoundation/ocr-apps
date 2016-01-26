@@ -42,7 +42,9 @@ jobtype_ocr_build_app = {
                   'OCR_ROOT': '${JJOB_PRIVATE_HOME}/ocr/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'OCR_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/ocr/ocr/build',
-                  'WORKLOAD_SRC': '${APPS_ROOT}/${T_PATH}',
+                  'APPS_MAKEFILE': '${APPS_ROOT}/${T_PATH}/Makefile',
+                  'S_PATH': '${T_PATH}',
+                  'WORKLOAD_SRC': '${APPS_ROOT}/${S_PATH}',
                   'WORKLOAD_BUILD_ROOT': '${APPS_ROOT_PRIV}/${T_PATH}/build',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${T_PATH}/install'
               }
@@ -65,7 +67,9 @@ jobtype_ocr_build_app_tg = {
                   'OCR_ROOT': '${JJOB_PRIVATE_HOME}/xstack/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr/install',
                   'OCR_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/ocr/build',
-                  'WORKLOAD_SRC': '${APPS_ROOT}/${T_PATH}',
+                  'APPS_MAKEFILE': '${APPS_ROOT}/${T_PATH}/Makefile',
+                  'S_PATH':'${T_PATH}',
+                  'WORKLOAD_SRC': '${APPS_ROOT}/${S_PATH}',
                   'WORKLOAD_BUILD_ROOT': '${APPS_ROOT_PRIV}/${T_PATH}/build',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${T_PATH}/install'
               }
@@ -120,7 +124,8 @@ jobtype_ocr_run_app_regression = {
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/${T_ARCH}',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
-                  'WORKLOAD_SRC': '${APPS_ROOT}/${T_PATH}',
+                  'S_PATH':'${T_PATH}',
+                  'WORKLOAD_SRC': '${APPS_ROOT}/${S_PATH}',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${T_PATH}/install'
               }
 }
@@ -139,7 +144,8 @@ jobtype_ocr_run_app_scaling = {
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/${T_ARCH}',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
                   'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
-                  'WORKLOAD_SRC': '${APPS_ROOT}/${T_PATH}',
+                  'S_PATH':'${T_PATH}',
+                  'WORKLOAD_SRC': '${APPS_ROOT}/${S_PATH}',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${T_PATH}/install'
               }
 }

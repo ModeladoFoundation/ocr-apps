@@ -46,9 +46,9 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 # # Disabled until feature #806 is added
 # # CoMD: MPI-Lite Intel
 # job_ocr_build_kernel_comdlite_x86_regression = {
-#     'name': 'ocr-build-kernel-comdlite-x86-regression',
+#     'name': 'ocr-build-kernel-comdlite-x86',
 #     'depends': ('ocr-build-x86',),
-#     'jobtype': 'ocr-build-kernel-regression',
+#     'jobtype': 'ocr-build-app',
 #     'run-args': 'comdlite x86',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -61,8 +61,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 # # the run takes 27 seconds
 # job_ocr_run_kernel_comdlite_x86_remote_regression = {
 #     'name': 'ocr-run-kernel-comdlite-x86-remote-regression',
-#     'depends': ('ocr-build-kernel-comdlite-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
+#     'depends': ('ocr-build-kernel-comdlite-x86',),
+#     'jobtype': 'ocr-run-app-regression',
 #     'run-args': 'comdlite x86 ocr-run-kernel-comdlite-x86-remote-regression 10',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -73,9 +73,9 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # # hpgmg-lite
 # job_ocr_build_kernel_hpgmglite_x86_regression = {
-#     'name': 'ocr-build-kernel-hpgmglite-x86-regression',
+#     'name': 'ocr-build-kernel-hpgmglite-x86',
 #     'depends': ('ocr-build-x86',),
-#     'jobtype': 'ocr-build-kernel-regression',
+#     'jobtype': 'ocr-build-app',
 #     'run-args': 'hpgmg x86',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -87,8 +87,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
 #    'name': 'ocr-run-kernel-hpgmglite-x86-remote-regression',
-#    'depends': ('ocr-build-kernel-hpgmglite-x86-regression',),
-#    'jobtype': 'ocr-run-kernel-remote-regression',
+#    'depends': ('ocr-build-kernel-hpgmglite-x86',),
+#    'jobtype': 'ocr-run-app-regression',
 #    'run-args': 'hpgmg x86 ocr-run-kernel-hpgmglite-x86-remote-regression 5',
 #    'sandbox': ('shared','inherit0'),
 #    'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -97,48 +97,47 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 #                  'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/hpgmg/refactored/mpilite/intel/install'}
 # }
 
-# # hpgmg: sdsc ocr
-# job_ocr_build_kernel_hpgmgsdsc_x86_regression = {
-#     'name': 'ocr-build-kernel-hpgmgsdsc-x86-regression',
-#     'depends': ('ocr-build-x86',),
-#     'jobtype': 'ocr-build-kernel-regression',
-#     'run-args': 'hpgmg x86',
-#     'sandbox': ('shared','inherit0'),
-#     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
-#                   'WORKLOAD_SRC': '${APPS_ROOT}/hpgmg/refactored/ocr/sdsc',
-#                   'WORKLOAD_BUILD_ROOT': '${APPS_ROOT_PRIV}/hpgmg/refactored/ocr/sdsc/build',
-#                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/hpgmg/refactored/ocr/sdsc/install'}
-# }
+# hpgmg: sdsc ocr
+job_ocr_build_kernel_hpgmgsdsc_x86_regression = {
+    'name': 'ocr-build-kernel-hpgmgsdsc-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'hpgmg x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpgmg/refactored/ocr/sdsc',
+                }
+}
 
-# #job_ocr_run_kernel_hpgmglite_x86_remote_scaling = {
-# #    'name': 'ocr-run-kernel-hpgmglite-x86-remote-scaling',
-# #    'depends': ('ocr-build-kernel-hpgmglite-x86-regression',),
-# #    'jobtype': 'ocr-run-kernel-remote-scaling',
-# #    'run-args': 'hpgmg x86 ocr-run-kernel-hpgmglite-x86-remote-scaling 5',
-# #    'sandbox': ('shared','inherit0'),
-# #    'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
-# #                  'WORKLOAD_SRC': '${APPS_ROOT}/hpgmg/refactored/mpilite/intel',
-# #                  'WORKLOAD_ARGS': '',
-# #                  'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/hpgmg/refactored/mpilite/intel/install'}
-# #}
+job_ocr_run_kernel_hpgmgsdsc_x86_remote_regression = {
+    'name': 'ocr-run-kernel-hpgmgsdsc-x86-remote-regression',
+    'depends': ('ocr-build-kernel-hpgmgsdsc-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'hpgmg x86 ocr-run-kernel-hpgmgsdsc-x86-remote-regression 3',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpgmg/refactored/ocr/sdsc',
+                  'WORKLOAD_ARGS': '4 8',
+                }
+}
 
-# job_ocr_run_kernel_hpgmgsdsc_x86_remote_regression = {
-#     'name': 'ocr-run-kernel-hpgmgsdsc-x86-remote-regression',
-#     'depends': ('ocr-build-kernel-hpgmgsdsc-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
-#     'run-args': 'hpgmg x86 ocr-run-kernel-hpgmgsdsc-x86-remote-regression 3',
-#     'sandbox': ('shared','inherit0'),
-#     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
-#                   'WORKLOAD_SRC': '${APPS_ROOT}/hpgmg/refactored/ocr/sdsc',
-#                   'WORKLOAD_ARGS': '4 8',
-#                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/hpgmg/refactored/ocr/sdsc/install'}
-# }
+#job_ocr_run_kernel_hpgmglite_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-hpgmglite-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-hpgmgsdsc-x86',),
+#    'jobtype': 'ocr-run-app-scaling',
+#    'run-args': 'hpgmg x86 ocr-run-kernel-hpgmglite-x86-remote-scaling 5',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'T_ARCH': 'x86',
+#                  'T_PATH': 'hpgmg/refactored/ocr/sdsc',
+#                  'WORKLOAD_ARGS': '4 8',
+#                }
+#}
 
 # # tempest-lite
 # job_ocr_build_kernel_tempestsw2lite_x86_regression = {
-#     'name': 'ocr-build-kernel-tempestsw2lite-x86-regression',
+#     'name': 'ocr-build-kernel-tempestsw2lite-x86',
 #     'depends': ('ocr-build-x86',),
-#     'jobtype': 'ocr-build-kernel-regression',
+#     'jobtype': 'ocr-build-app',
 #     'run-args': 'SWTest2 x86',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -149,8 +148,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # job_ocr_run_kernel_tempestsw2lite = {
 #     'name': 'ocr-run-kernel-tempestsw2lite-x86-remote-regression',
-#     'depends': ('ocr-build-kernel-tempestsw2lite-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
+#     'depends': ('ocr-build-kernel-tempestsw2lite-x86',),
+#     'jobtype': 'ocr-run-app-regression',
 #     'run-args': 'SWTest2 x86 ocr-run-kernel-tempestsw2lite-x86-remote-regression 10',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -161,8 +160,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # #job_ocr_run_kernel_tempestsw2lite_scaling = {
 # #    'name': 'ocr-run-kernel-tempestsw2lite-x86-remote-scaling',
-# #    'depends': ('ocr-build-kernel-tempestsw2lite-x86-regression',),
-# #    'jobtype': 'ocr-run-kernel-remote-scaling',
+# #    'depends': ('ocr-build-kernel-tempestsw2lite-x86',),
+# #    'jobtype': 'ocr-run-app-scaling',
 # #    'run-args': 'SWTest2 x86 ocr-run-kernel-tempestsw2lite-x86-remote-scaling 10',
 # #    'sandbox': ('shared','inherit0'),
 # #    'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -171,48 +170,86 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 # #                  'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/tempest/refactored/mpilite/intel/test/shallowwater_sphere/install'}
 # #}
 
-# # XSBench: Intel ocr
-# job_ocr_build_kernel_xsbench_x86_regression = {
-#     'name': 'ocr-build-kernel-xsbench-x86-regression',
-#     'depends': ('ocr-build-x86',),
-#     'jobtype': 'ocr-build-kernel-regression',
-#     'run-args': 'XSBench x86',
-#     'sandbox': ('shared','inherit0'),
-#     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
-#                   'WORKLOAD_SRC': '${APPS_ROOT}/XSBench/refactored/ocr/intel',
-#                   'WORKLOAD_BUILD_ROOT': '${APPS_ROOT_PRIV}/XSBench/refactored/ocr/intel/build',
-#                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/XSBench/refactored/ocr/intel/install'}
-# }
+# XSBench: Intel ocr
+job_ocr_build_kernel_xsbench_x86_regression = {
+    'name': 'ocr-build-kernel-xsbench-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'XSBench x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel',
+                }
+}
 
-# job_ocr_run_kernel_xsbench_x86_remote_regression = {
-#     'name': 'ocr-run-kernel-xsbench-x86-remote-regression',
-#     'depends': ('ocr-build-kernel-xsbench-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
-#     'run-args': 'XSBench x86 ocr-run-kernel-xsbench-x86-remote-regression 10',
-#     'sandbox': ('shared','inherit0'),
-#     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
-#                   'WORKLOAD_SRC': '${APPS_ROOT}/XSBench/refactored/ocr/intel',
-#                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/XSBench/refactored/ocr/intel/install',
-#                   'WORKLOAD_ARGS': '-s small -g 1000 -l 100000'}
-# }
+job_ocr_run_kernel_xsbench_x86_remote_regression = {
+    'name': 'ocr-run-kernel-xsbench-x86-remote-regression',
+    'depends': ('ocr-build-kernel-xsbench-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'XSBench x86 ocr-run-kernel-xsbench-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel',
+                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
+                }
+}
 
-# # job_ocr_run_kernel_xsbench_x86_remote_scaling = {
-# #    'name': 'ocr-run-kernel-xsbench-x86-remote-scaling',
-# #    'depends': ('ocr-build-kernel-xsbench-x86-regression',),
-# #    'jobtype': 'ocr-run-kernel-remote-scaling',
-# #    'run-args': 'XSBench x86 ocr-run-kernel-xsbench-x86-remote-scaling 10',
-# #    'sandbox': ('shared','inherit0'),
-# #    'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
-# #                  'WORKLOAD_SRC': '${APPS_ROOT}/XSBench/refactored/ocr/intel',
-# #                  'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/XSBench/refactored/ocr/intel/install',
-# #                  'WORKLOAD_ARGS': '-s small -g 1000 -l 100000'}
-# # }
+job_ocr_run_kernel_xsbench_x86_remote_scaling = {
+   'name': 'ocr-run-kernel-xsbench-x86-remote-scaling',
+   'depends': ('ocr-build-kernel-xsbench-x86',),
+   'jobtype': 'ocr-run-app-scaling',
+   'run-args': 'XSBench x86 ocr-run-kernel-xsbench-x86-remote-scaling 10',
+   'sandbox': ('shared','inherit0'),
+   'env-vars': { 'T_ARCH': 'x86',
+                 'T_PATH': 'XSBench/refactored/ocr/intel',
+                 'WORKLOAD_ARGS': '-s small -g 1000 -l 100000',
+               }
+}
+
+# RSBench: Intel ocr
+job_ocr_build_kernel_rsbench_x86_regression = {
+    'name': 'ocr-build-kernel-rsbench-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'RSBench x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'RSBench/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}/src'
+                }
+}
+
+job_ocr_run_kernel_rsbench_x86_remote_regression = {
+    'name': 'ocr-run-kernel-rsbench-x86-remote-regression',
+    'depends': ('ocr-build-kernel-rsbench-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'RSBench x86 ocr-run-kernel-rsbench-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'RSBench/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}/src',
+                  'WORKLOAD_ARGS': '-d -s small -l 100000',
+                }
+}
+
+job_ocr_run_kernel_rsbench_x86_remote_scaling = {
+   'name': 'ocr-run-kernel-rsbench-x86-remote-scaling',
+   'depends': ('ocr-build-kernel-rsbench-x86',),
+   'jobtype': 'ocr-run-app-scaling',
+   'run-args': 'RSBench x86 ocr-run-kernel-rsbench-x86-remote-scaling 10',
+   'sandbox': ('shared','inherit0'),
+   'env-vars': { 'T_ARCH': 'x86',
+                 'T_PATH': 'RSBench/refactored/ocr/intel',
+                 'S_PATH': '${T_PATH}/src',
+                 'WORKLOAD_ARGS': '-d -s small -l 100000',
+               }
+}
 
 # # XSBench: Intel MPI-Lite
 # job_ocr_build_kernel_xsbenchlite_x86_regression = {
-#         'name': 'ocr-build-kernel-xsbenchlite-x86-regression',
+#         'name': 'ocr-build-kernel-xsbenchlite-x86',
 #         'depends': ('ocr-build-x86',),
-#         'jobtype': 'ocr-build-kernel-regression',
+#         'jobtype': 'ocr-build-app',
 #         'run-args': 'XSBenchlite x86',
 #         'sandbox': ('shared','inherit0'),
 #         'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -224,8 +261,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # job_ocr_run_kernel_xsbenchlite_x86_remote_regression = {
 #         'name': 'ocr-run-kernel-xsbenchlite-x86-remote-regression',
-#         'depends': ('ocr-build-kernel-xsbenchlite-x86-regression',),
-#         'jobtype': 'ocr-run-kernel-remote-regression',
+#         'depends': ('ocr-build-kernel-xsbenchlite-x86',),
+#         'jobtype': 'ocr-run-app-regression',
 #         'run-args': 'XSBenchlite x86 ocr-run-kernel-xsbenchlite-x86-remote-regression 10',
 #         'sandbox': ('shared','inherit0'),
 #         'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -246,7 +283,7 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 # }
 
 # job_cnc_ocr_build_kernel_lulesh2pnnl_x86_regression = {
-#     'name': 'cnc-ocr-build-kernel-lulesh2pnnl-x86-regression',
+#     'name': 'cnc-ocr-build-kernel-lulesh2pnnl-x86',
 #     'depends': ('cnc-ocr-gen-lulesh2pnnl-x86',),
 #     'jobtype': 'cnc-ocr-app-build',
 #     'run-args': '${WORKLOAD_SRC} regression',
@@ -258,8 +295,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # job_ocr_run_kernel_lulesh2pnnl_x86_remote_regression = {
 #     'name': 'ocr-run-kernel-lulesh2pnnl-x86-remote-regression',
-#     'depends': ('cnc-ocr-build-kernel-lulesh2pnnl-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
+#     'depends': ('cnc-ocr-build-kernel-lulesh2pnnl-x86',),
+#     'jobtype': 'ocr-run-app-regression',
 #     'keywords': ('cnc-ocr',),
 #     'run-args': 'lulesh-2.0.3 x86 ocr-run-kernel-lulesh2pnnl-x86-remote-regression 10',
 #     'sandbox': ('shared','inherit0'),
@@ -281,7 +318,7 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 # }
 
 # job_cnc_ocr_build_kernel_hpgmg_pnnl_x86_regression = {
-#     'name': 'cnc-ocr-build-kernel-hpgmg-pnnl-x86-regression',
+#     'name': 'cnc-ocr-build-kernel-hpgmg-pnnl-x86',
 #     'depends': ('cnc-ocr-gen-hpgmg-pnnl-x86',),
 #     'jobtype': 'cnc-ocr-app-build',
 #     'run-args': '${WORKLOAD_SRC} regression',
@@ -293,8 +330,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # job_ocr_run_kernel_hpgmg_pnnl_x86_remote_regression = {
 #     'name': 'ocr-run-kernel-hpgmg-pnnl-x86-remote-regression',
-#     'depends': ('cnc-ocr-build-kernel-hpgmg-pnnl-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
+#     'depends': ('cnc-ocr-build-kernel-hpgmg-pnnl-x86',),
+#     'jobtype': 'ocr-run-app-regression',
 #     'keywords': ('cnc-ocr',),
 #     'run-args': 'hpgmg x86 ocr-run-kernel-hpgmg-pnnl-x86-remote-regression 10',
 #     'sandbox': ('shared','inherit0'),
@@ -306,9 +343,9 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 # }
 
 # job_ocr_build_kernel_SNAPlite_x86_regression = {
-#     'name': 'ocr-build-kernel-SNAPlite-x86-regression',
+#     'name': 'ocr-build-kernel-SNAPlite-x86',
 #     'depends': ('ocr-build-x86',),
-#     'jobtype': 'ocr-build-kernel-regression',
+#     'jobtype': 'ocr-build-app',
 #     'run-args': 'snap_lite x86',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -319,8 +356,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # job_ocr_run_kernel_SNAPlite = {
 #     'name': 'ocr-run-kernel-SNAPlite-x86-remote-regression',
-#     'depends': ('ocr-build-kernel-SNAPlite-x86-regression',),
-#     'jobtype': 'ocr-run-kernel-remote-regression',
+#     'depends': ('ocr-build-kernel-SNAPlite-x86',),
+#     'jobtype': 'ocr-run-app-regression',
 #     'run-args': 'snap_lite x86 ocr-run-kernel-SNAPlite-x86-remote-regression 10',
 #     'sandbox': ('shared','inherit0'),
 #     'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',
@@ -331,8 +368,8 @@ job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
 
 # #job_ocr_run_kernel_SNAPlite_scaling = {
 # #    'name': 'ocr-run-kernel-SNAPlite-x86-remote-scaling',
-# #    'depends': ('ocr-build-kernel-SNAPlite-x86-regression',),
-# #    'jobtype': 'ocr-run-kernel-remote-scaling',
+# #    'depends': ('ocr-build-kernel-SNAPlite-x86',),
+# #    'jobtype': 'ocr-run-app-scaling',
 # #    'run-args': 'snap_lite x86 ocr-run-kernel-SNAPlite-x86-remote-scaling 10',
 # #    'sandbox': ('shared','inherit0'),
 # #    'env-vars': { 'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/x86',

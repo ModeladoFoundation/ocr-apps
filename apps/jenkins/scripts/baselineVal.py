@@ -38,6 +38,8 @@ test_baseval={
                 'scale_ocr-run-kernel-tempestsw2lite-x86-remote-scaling':1,
                 'time_ocr-run-kernel-xsbench-x86-remote-regression':2.904,
                 'scale_ocr-run-kernel-xsbench-x86-remote-scaling':1,
+                'time_ocr-run-kernel-rsbench-x86-remote-regression':2.30,
+                'scale_ocr-run-kernel-rsbench-x86-remote-scaling':1,
                 'time_ocr-run-kernel-xsbenchlite-x86-remote-regression':0.967,
                 'time_ocr-run-kernel-lulesh2pnnl-x86-remote-regression':0.023,
                 'time_ocr-run-kernel-hpgmg-pnnl-x86-remote-regression':0.365,
