@@ -16,7 +16,7 @@
 #include <extensions/ocr-labeling.h>
 #include <extensions/ocr-affinity.h>
 
-extern ocrGuid_t __ffwd_init(void * ffwd_add_ptr);
+extern ocrGuid_t __ffwd_init(void ** ffwd_add_ptr);
 
 void ERROR(char *s)
 {
@@ -144,14 +144,21 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     extern int  __mpiOcrMain(int, char **);
     __mpiOcrMain(argc, argv);
 
+#if 0
+        // race condition! other ranks may not have looked in argcargv yet,
+        // although its the first thing everyone does
+
     if (0 == rank) {
+
         if (NULL_GUID != argcArgv->guid) {
             ocrDbDestroy(argcArgv->guid);
         }
+    }
 
-        if (NULL_GUID != ffwd_db_guid) {
-            ocrDbDestroy(ffwd_db_guid);
-        }
+#endif
+
+    if (NULL_GUID != ffwd_db_guid) {
+        ocrDbDestroy(ffwd_db_guid);
     }
 
     PRINTF("rankEdtFn %d:  main() is finished, returning\n",rank);
@@ -490,6 +497,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
          paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH,
          NULL_GUID, &outputEvent);
 
+    PRINTF("mainEdtHelper: edt %p\n", mainEdtHelper);
+
     ocrEdtTemplateDestroy(mainEdtHelperTemplate);
 
     // Now endEdt can be created with all ouputEvent of mainEdtHelper
@@ -498,6 +507,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtTemplateCreate(&endEdtTemplate, endEdtFn, 0, 1);
     ocrEdtCreate(&endEdt, endEdtTemplate, 0, NULL, EDT_PARAM_DEF, endDepv,
          EDT_PROP_NONE, NULL_GUID, NULL);
+
+    PRINTF("endEdt: edt %p\n", endEdt);
 
     // Now that endEdt is started, we can fire up mainEdtHelper by
     // satisfying it's dep. (Otherwise it could finish before endEdt gets

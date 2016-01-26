@@ -124,9 +124,17 @@ static int sendData(void *buf, int count, MPI_Datatype
 {
     mpiOcrMessageP_t ptr;
     ocrGuid_t DB;
+    s32 err;
 
-    ocrDbCreate(&DB, (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
-                DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    if (err = ocrDbCreate(&DB, (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
+                          DB_PROP_NONE, NULL_GUID, NO_ALLOC))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrDbCreate",
+                    source, err);
+            ERROR(msg); // exits
+        }
+
     // fill message header
     ptr->header.count = count;
     ptr->header.datatype = datatype;
@@ -149,7 +157,13 @@ static int sendData(void *buf, int count, MPI_Datatype
     // OK, Send the DB. [It's only going to be used in DB_MODE_CONST by the
     // receiver, but you can only say that when adding a dependence
     // directly to an EDT; not to an Event....]
-    ocrEventSatisfy(messageEvent, DB);
+    if (err = ocrEventSatisfy(messageEvent, DB))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrEventSatisfy",
+                    source, err);
+            ERROR(msg); // exits
+        }
 
     return MPI_SUCCESS;
 }
@@ -323,15 +337,16 @@ static int recvData(void *buf, int count, MPI_Datatype
     // Make sure receiving buffer is big enough, else warning with truncation
     if (count < ptr->header.count)
         {
-            char msg[100];
-            sprintf((char*)&msg, "MPI_Recv: count %d < message count %d ", count, ptr->header.count);
+            char msg[150];
+            sprintf((char*)&msg, "MPI_Recv: rank #%d: count %d < message count %d ",
+                    dest, count, ptr->header.count);
             MPI_INFO(msg, ret = MPI_ERR_TRUNCATE);
         }
     else if (totalSize < ptr->header.totalSize)
         {
-            char msg[100];
-            sprintf((char*)&msg, "MPI_Recv: buf size %d < message size %d ", totalSize,
-                    ptr->header.totalSize);
+            char msg[150];
+            sprintf((char*)&msg, "MPI_Recv: rank #%d: buf size %d < message size %d ",
+                    dest, totalSize, ptr->header.totalSize);
             MPI_INFO(msg, ret = MPI_ERR_TRUNCATE);
         }
 
