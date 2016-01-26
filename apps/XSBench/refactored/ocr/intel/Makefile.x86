@@ -59,7 +59,7 @@ TARGET := XSBench
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := timer
 
 # Space separated list of source files
 SRCS := \
@@ -82,7 +82,7 @@ timers.c
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm
+LDFLAGS := -ltimer -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
@@ -132,5 +132,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-ocrrun.inc
 

@@ -1,5 +1,7 @@
 #include "XSbench_header.h"
 #include "ocr.h"
+// OCR timer library
+#include "timer.h"
 
 #ifdef MPI
 #include<mpi.h>
@@ -64,8 +66,8 @@ void print_results( Inputs in, int mype, double runtime, int nprocs )
         #else
         PRINTF("Runtime:     %.3f seconds\n", runtime);
         PRINTF("Lookups:     "); fancy_int(in.lookups);
-        PRINTF("Lookups/s:   ");
-        fancy_int(lookups_per_sec);
+        PRINTF("Lookups/s:   "); fancy_int(lookups_per_sec);
+        print_throughput_custom("Lookups", (unsigned long long) in.lookups, runtime, (double)lookups_per_sec);
         #endif
         //#ifdef VERIFICATION
         //PRINTF("Verification checksum: %llu\n", vhash);
@@ -220,8 +222,9 @@ Inputs read_CLI( int argc, char * argv[] )
             else
                 print_CLI_error();
         }
-        else
+        else {
             print_CLI_error();
+        }
     }
 
     // Validate Input
