@@ -1,0 +1,12 @@
+
+= Description =
+
+Provides basic timer service for OCR Applications and Benchmarks.
+
+The print format is parsable by various scripts under tests to generate reports.
+
+
+= Limitations =
+
+On distributed-OCR, a timer call gives the time as returned on the currently executing machine.
+The library doesn't guarantee any form of time synchronization across multiple machines.
