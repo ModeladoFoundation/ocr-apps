@@ -1,11 +1,12 @@
 XSTACK=../../..
 
-OCR_INSTALL= ../../../ocr/install/x86
+OCR_INSTALL= ../../../ocr/install
 CRLIBM_INC = ../../../apps/libs/x86/include
+OCR_TYPE=x86
 
 CC=gcc
 CFLAGS=-g -std=c99 -I$(OCR_INSTALL)/include -I$(CRLIBM_INC) -DRAG
-LDFLAGS=-L$(OCR_INSTALL)/lib -Xlinker -rpath=$(OCR_INSTALL)/lib -Wl,-Bstatic -locr -Wl,-Bdynamic -lpthread -lm
+LDFLAGS=-L$(OCR_INSTALL)/lib -Xlinker -rpath=$(OCR_INSTALL)/lib -Wl,-Bstatic -locr_$(OCR_TYPE) -Wl,-Bdynamic -lpthread -lm
 
 all:	viewImage    viewCorr    dataImage    viewData \
 	viewImageTxt viewCorrTxt dataImageAsm detects_ascii_to_txt

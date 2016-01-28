@@ -18,7 +18,7 @@ XE_TARGET   ?= tg-xe
 XE_BUILDER  ?= builder-xe
 CE_TARGET   ?= tg-ce
 CE_BUILDER  ?= builder-ce
-OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_INSTALL ?= ${OCR_ROOT}/install
 OCR_ROOT     ?= ../../../../../../ocr/ocr
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 

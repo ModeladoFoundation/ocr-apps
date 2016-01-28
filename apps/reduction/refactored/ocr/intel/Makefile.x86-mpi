@@ -12,9 +12,9 @@ APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
-OCR_TARGET   ?= x86-${COMM_LAYER}
+
 OCR_ROOT     ?= ../../../../../ocr
-OCR_INSTALL_ROOT ?= ../../../../../ocr/install
+OCR_INSTALL ?= ../../../../../ocr/install
 OCR_BUILD_ROOT   ?= ../../../../../ocr/build
 
 # APPLICATION

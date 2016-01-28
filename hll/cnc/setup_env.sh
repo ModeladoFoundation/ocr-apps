@@ -2,8 +2,8 @@
 if [ -f setup_env.sh ] && [ -f ./bin/ucnc_t ]; then
     if [ -d "$XSTACK_ROOT" ]; then
         echo 'Using existing $XSTACK_ROOT (CnC-OCR)'
-    elif [ -d "$OCR_INSTALL_ROOT" ]; then
-        echo 'Using existing $OCR_INSTALL_ROOT (CnC-OCR)'
+    elif [ -d "$OCR_INSTALL" ]; then
+        echo 'Using existing $OCR_INSTALL (CnC-OCR)'
     elif [ "$(basename $(dirname $PWD))" = hll ]; then
         export XSTACK_ROOT=$(dirname $(dirname $PWD))
         echo 'Set $XSTACK_ROOT'

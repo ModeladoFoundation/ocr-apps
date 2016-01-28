@@ -39,9 +39,11 @@ MPI_INCLUDE = -I$(APPS_LIBS_ROOT)/include
 # OCR top level directory
 #
 OCR_ROOT ?= $(APPS_ROOT)/../ocr
-OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
-OTHER_LIB = -L$(OCR_ROOT)/install/x86/lib -locr -lpthread
-OTHER_INCLUDE = -I$(OCR_ROOT)/inc
+OCR_INSTALL ?= $(OCR_ROOT)/install
+OCR_ROOT    := $(shell cd "${OCR_ROOT}" && pwd)
+OCR_INSTALL := $(shell cd "$(OCR_INSTALL)" && pwd)
+OTHER_LIB = -L$(OCR_INSTALL)/lib -locr_$(OCR_TYPE) -lpthread
+OTHER_INCLUDE = -I$(OCR_INSTALL)/include
 
 #########################################
 ### Below here, it is pitch black.

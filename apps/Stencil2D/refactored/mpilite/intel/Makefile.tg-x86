@@ -13,9 +13,9 @@ REPO_TOP        ?= ${APPS_ROOT}/..
 OCR_TYPE        ?= tg-x86
 
 # OCR
-OCR_TARGET       ?= tg-x86
+
 OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
-OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_INSTALL ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 # Override the configuration file generated.  Not supported yet. (13-jan-2016)
 OCR_CONFIG       := ${OCR_ROOT}/machine-configs/tg-x86/mach-1block-labeled.cfg
@@ -74,7 +74,7 @@ CFLAGS := -std=c99
 # the required OCR library path and apps/libs/<target>/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lm -lpthread -lmpilite -locr
+LDFLAGS := -lm -lpthread -lmpilite
 
 # MPILite config file needs LABELED
 CONFIG_FLAGS := --guid LABELED

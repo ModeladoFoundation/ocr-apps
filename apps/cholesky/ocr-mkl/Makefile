@@ -3,17 +3,21 @@ PROG=ocr_mkl_cholesky
 SUFFIX=.exe
 CFLAGS= -O2 -g -mkl
 CLIBS= -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lm
-OCR_FLAGS=-I${OCR_INSTALL}/include -L${OCR_INSTALL}/lib -locr
+OCR_FLAGS=-I${OCR_INSTALL}/include -L${OCR_INSTALL}/lib -locr_$(OCR_TYPE)
 OCR_INPUT=${OCR_INPUT_HOME}/cholesky/datasets
 CC=icc
 CPP=icc
+
+ifndef OCR_TYPE
+$(error OCR_TYPE not set)
+endif
 
 ifndef OCR_INSTALL
 $(error OCR_INSTALL not set)
 endif
 
 ifndef OCR_CONFIG
-OCR_CONFIG=${OCR_INSTALL}/config/default.cfg
+OCR_CONFIG=${OCR_INSTALL}/share/ocr/config/$(OCR_TYPE)/default.cfg
 $(warning OCR_CONFIG not set, defaulting to ${OCR_CONFIG})
 endif
 

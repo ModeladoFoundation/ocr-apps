@@ -12,8 +12,8 @@ To build:
 Options:
     - You can modify Makefile.x86 or set appropriate environment
       variables to override where the program is built (WORKLOAD_BUILD) and
-      installed (WORKLOAD_INSTALL) as well as where OCR resides (OCR_INSTALL_ROOT
-      and OCR_BUILD_ROOT) and which implementation of OCR to use (OCR_TARGET)
+      installed (WORKLOAD_INSTALL) as well as where OCR resides (OCR_INSTALL
+      and OCR_BUILD_ROOT) and which implementation of OCR to use (OCR_TYPE)
 
 ###
 # RUN

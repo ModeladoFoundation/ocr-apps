@@ -15,9 +15,9 @@ REPO_TOP        ?= ${APPS_ROOT}/..
 OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
-OCR_TARGET       ?= x86-${COMM_LAYER}
+
 OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
-OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_INSTALL ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
@@ -71,7 +71,7 @@ CFLAGS := -std=c99
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lmpilite -locr
+LDFLAGS := -lpthread -lmpilite
 
 # MPILite config file needs LABELED
 CONFIG_FLAGS := --guid LABELED

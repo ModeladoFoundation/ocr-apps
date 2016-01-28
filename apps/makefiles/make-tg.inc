@@ -48,13 +48,11 @@ HOSTNAME              := $(shell hostname)
 
 TG_INSTALL            := $(shell cd "${TG_INSTALL}" && pwd)
 
-OCR_INSTALL_ROOT := $(shell mkdir -p ${OCR_INSTALL_ROOT} && cd "${OCR_INSTALL_ROOT}" && pwd)
-OCR_INSTALL_XE   := ${OCR_INSTALL_ROOT}/${XE_TARGET}
-OCR_INSTALL_CE   := ${OCR_INSTALL_ROOT}/${CE_TARGET}
+OCR_INSTALL := $(shell mkdir -p ${OCR_INSTALL} && cd "${OCR_INSTALL}" && pwd)
 
-FIX_TG_FSIM_CONFIG := ${OCR_ROOT}/scripts/Configs/tg-fsim_config_fix.py
-FIX_CE_CONFIG    := ${OCR_ROOT}/scripts/Configs/ce_config_fix.py
-FIX_MEM_CONFIG   := ${OCR_ROOT}/scripts/Configs/mem_config_fix.py
+FIX_TG_FSIM_CONFIG := ${OCR_INSTALL}/share/ocr/scripts/Configs/tg-fsim_config_fix.py
+FIX_CE_CONFIG    := ${OCR_INSTALL}/share/ocr/scripts/Configs/ce_config_fix.py
+FIX_MEM_CONFIG   := ${OCR_INSTALL}/share/ocr/scripts/Configs/mem_config_fix.py
 
 OCR_CE_CONFIG ?= $(OCR_CE_CONFIG_DEFAULT)
 OCR_XE_CONFIG ?= $(OCR_XE_CONFIG_DEFAULT)
@@ -83,7 +81,7 @@ AR	= $(PREFIX)-ar
 ARFLAGS	= rcs
 
 CC	= $(PREFIX)-clang
-CFLAGS_BASE	= -fxstg-extensions -I $(OCR_INSTALL_XE)/include -DTG_ARCH -I $(APPS_LIBS_ROOT)/include -I $(TG_INSTALL)/include
+CFLAGS_BASE	= -fxstg-extensions -I $(OCR_INSTALL)/include -DTG_ARCH -I $(APPS_LIBS_ROOT)/include -I $(TG_INSTALL)/include
 
 OBJCOPY	= $(PREFIX)-objcopy
 STRIP	= $(PREFIX)-strip
@@ -243,8 +241,8 @@ $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
 # Before that, thought, we need to check if we need to update the .a and that is the purpose
 # of the libocrxe dependence
 # Other rules for the blobs follow similar ideas
-$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) $(OCR_INSTALL_XE)/lib/libocr.a | libocrxe $(WORKLOAD_BUILD)
-	$(LD) -o $@ $(OBJS) $(LDFLAGS) --whole-archive $(OCR_INSTALL_XE)/lib/libocr.a
+$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a | libocrxe $(WORKLOAD_BUILD)
+	$(LD) -o $@ $(OBJS) $(LDFLAGS) --whole-archive $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	@$(RM) -f $(WORKLOAD_BUILD)/$(TARGET)
@@ -253,7 +251,7 @@ $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 
 # Build the final blob
 # Note the order of the dependence. IMPORTANT!! Do not randomly change
-$(WORKLOAD_BUILD)/$(TARGET).blob: $(OCR_ROOT)/scripts/Blob/aggregate_binary_files.sh \
+$(WORKLOAD_BUILD)/$(TARGET).blob: $(OCR_INSTALL)/share/ocr/scripts/Blob/aggregate_binary_files.sh \
 $(WORKLOAD_BUILD)/$(TARGET).blob.ce $(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 $(WORKLOAD_BUILD)/$(TARGET).blob.arg | $(WORKLOAD_BUILD)
 	echo "WORKLOAD_INPUTS is $(WORKLOAD_INPUTS) and args are ###$^###"
@@ -261,18 +259,18 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg | $(WORKLOAD_BUILD)
 
 # Build the CE blob
 $(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_CE_CONFIG) $(WORKLOAD_SRC)/config.cfg \
-$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe \
+$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe \
 $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | tgkrnl.dbg builderce $(WORKLOAD_BUILD)
 	@echo "#### BUILDING CE BLOB ####"
 	$(FIX_CE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --ocrcfg $(OCR_CE_CONFIG)
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
-	$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_CE_CONFIG)
+	$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe -ocr:cfg $(OCR_CE_CONFIG)
 
-$(OCR_CE_CONFIG_DEFAULT): $(OCR_INSTALL_CE)/config/default.cfg
+$(OCR_CE_CONFIG_DEFAULT): $(OCR_INSTALL)/share/ocr/config/$(CE_TARGET)/default.cfg
 	cp $< $@
 
 # Need libocrce (built internally by tgkrnl) to generate the config file
-$(OCR_INSTALL_CE)/config/default.cfg: | tgkrnl
+$(OCR_INSTALL)/share/ocr/config/$(CE_TARGET)/default.cfg: | tgkrnl
 
 # ALways remake this
 .PHONY: $(OCR_CE_CONFIG)
@@ -282,20 +280,20 @@ $(OCR_CE_CONFIG): $(OCR_CE_CONFIG_ORIG)
 # Build the XE blob
 $(WORKLOAD_BUILD)/$(TARGET).dbg: | debug_post_prerun
 $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
-$(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe | debug_post_prerun builderxe $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe | debug_post_prerun builderxe $(WORKLOAD_BUILD)
 	@echo "#### BUILDING XE BLOB ####"
 	$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep "^  0" | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
-	$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
+	$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
 # XE blob must be phony in order to rebuild the args blob on every run
 .PHONY: $(WORKLOAD_BUILD)/$(TARGET).blob.xe
 
-$(OCR_XE_CONFIG_DEFAULT): $(OCR_INSTALL_XE)/config/default.cfg
+$(OCR_XE_CONFIG_DEFAULT): $(OCR_INSTALL)/share/ocr/config/$(XE_TARGET)/default.cfg
 	cp $< $@
 
 # Need libocrxe to generate the config file
-$(OCR_INSTALL_XE)/config/default.cfg: | libocrxe
+$(OCR_INSTALL)/share/ocr/config/$(XE_TARGET)/default.cfg: | libocrxe
 
 # Always remake this
 .PHONY: $(OCR_XE_CONFIG)
@@ -309,21 +307,21 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg: $(WORKLOAD_BUILD)/$(TARGET).blob.xe | $(WO
 .PHONY: libocrxe
 ifeq ($(RUN_JENKINS), runApp)
 libocrxe: ;
-$(OCR_INSTALL_XE)/lib/libocr.a: ;
+$(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: ;
 else ifeq ($(RUN_JENKINS), buildApp)
 # If we are running in Jenkins, and building the app, we just need to make sure the library is built
 # This will error out if it is not
-libocrxe: | $(OCR_INSTALL_XE)/lib/libocr.a
-	@echo "Checked that XE libocr.a exists."
-$(OCR_INSTALL_XE)/lib/libocr.a:
-	$(error Cannot find XE libocr.a in $(OCR_INSTALL_XE))
+libocrxe: | $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a
+	@echo "Checked that XE libocr_$(XE_TARGET).a exists."
+$(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a:
+	$(error Cannot find XE libocr_$(XE_TARGET).a in $(OCR_INSTALL))
 else
 # In all other cases, we build the library
 libocrxe: $(OCR_BUILD_XE)/Makefile
 	@echo "Building XE libocr.a..."
-	OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL_XE) OCR_ROOT=$(OCR_ROOT) \
+	OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) \
 	$(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
-$(OCR_INSTALL_XE)/lib/libocr.a: | libocrxe
+$(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: | libocrxe
 endif
 
 # Note: builderxe, tgkrnl, builderce all follow the same idea as libocrxe
@@ -332,19 +330,19 @@ endif
 .PHONY: builderxe
 ifeq ($(RUN_JENKINS), runApp)
 builderxe: ;
-$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: ;
+$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe: ;
 else ifeq ($(RUN_JENKINS), buildApp)
-builderxe: | $(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe
+builderxe: | $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe
 	@echo "Checked that XE builder exists."
-$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe:
-	$(error Cannot find XE builder in $(OCR_INSTALL_ROOT)/$(XE_BUILDER))
+$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe:
+	$(error Cannot find XE builder in $(OCR_INSTALL))
 else
 # In all other cases, we build the builder
 builderxe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
 	@echo "Building XE builder..."
-	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(XE_BUILDER) OCR_ROOT=$(OCR_ROOT) \
+	OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) \
 	$(MAKE) -C $(OCR_BUILD_ROOT)/$(XE_BUILDER) $(TARGETS) install
-$(OCR_INSTALL_ROOT)/$(XE_BUILDER)/bin/builder.exe: | builderxe
+$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe: | builderxe
 endif
 
 # Local version of the TGKRNL (built with the CE's libocr)
@@ -364,7 +362,7 @@ else
 tgkrnl: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
 | $(WORKLOAD_BUILD)/build.tgkrnl
 	@echo "Building tgkrnl..."
-	OCR_ROOT=$(OCR_ROOT) OCR_TARGET=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL_CE) OCR_BUILD=$(OCR_BUILD_CE) \
+	OCR_ROOT=$(OCR_ROOT) OCR_TYPE=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL) OCR_BUILD=$(OCR_BUILD_CE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_JENKINS=$(RUN_JENKINS) \
 	WITH_LIBOCR=yes $(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
 	strip -s -o $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
@@ -389,19 +387,19 @@ $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl
 .PHONY: builderce
 ifeq ($(RUN_JENKINS), runApp)
 builderce: ;
-$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: ;
+$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe: ;
 else ifeq ($(RUN_JENKINS), buildApp)
-builderce: | $(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe
+builderce: | $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe
 	@echo "Checked that CE builder exists."
-$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe:
-	$(error Cannot find CE builder in $(OCR_INSTALL_ROOT)/$(CE_BUILDER))
+$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe:
+	$(error Cannot find CE builder in $(OCR_INSTALL))
 else
 # In all other cases, we build the builder
 builderce: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
 	@echo "Building CE builder..."
-	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL_ROOT)/$(CE_BUILDER) OCR_ROOT=$(OCR_ROOT) \
+	OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) \
 	$(MAKE) -C $(OCR_BUILD_ROOT)/$(CE_BUILDER) $(TARGETS) install
-$(OCR_INSTALL_ROOT)/$(CE_BUILDER)/bin/builder.exe: | builderce
+$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe: | builderce
 endif
 
 .PHONY: clean

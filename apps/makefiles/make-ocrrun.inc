@@ -13,17 +13,13 @@ WORKLOAD_BUILD        :=
 APPS_ROOT             :=
 WORKLOAD_SRC          :=
 else ifeq ($(RUN_JENKINS), buildApp)
-OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
-OCR_BUILD_ROOT        :=
-OCR_BUILD             :=
 WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 else
-OCR_ROOT               := $(shell cd "${OCR_ROOT}" && pwd)
 OCR_BUILD_ROOT        := $(shell cd "${OCR_BUILD_ROOT}" && pwd)
-OCR_BUILD             := ${OCR_BUILD_ROOT}/${OCR_TARGET}
+OCR_BUILD             := ${OCR_BUILD_ROOT}/${OCR_TYPE}
 WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)
 WORKLOAD_BUILD        := ${WORKLOAD_BUILD_ROOT}/${OCR_TYPE}
 APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
@@ -37,14 +33,13 @@ APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
 HOSTNAME              := $(shell hostname)
 
-OCR_INSTALL_ROOT      := $(shell mkdir -p "${OCR_INSTALL_ROOT}" && cd "${OCR_INSTALL_ROOT}" && pwd)
-OCR_INSTALL      := ${OCR_INSTALL_ROOT}/${OCR_TARGET}
+OCR_INSTALL := $(shell mkdir -p "${OCR_INSTALL}" && cd "${OCR_INSTALL}" && pwd)
 
 WORKLOAD_INSTALL_ROOT := $(shell mkdir -p "${WORKLOAD_INSTALL_ROOT}" && cd "${WORKLOAD_INSTALL_ROOT}" && pwd)
-WORKLOAD_INSTALL := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
+WORKLOAD_INSTALL      := ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}
 
 # Config file specific settings
-CONFIG_GENERATE       := ${OCR_ROOT}/scripts/Configs/config-generator.py
+CONFIG_GENERATE       := ${OCR_INSTALL}/share/ocr/scripts/Configs/config-generator.py
 GEN_CONFIG_FILE       := ${WORKLOAD_INSTALL}/generated.cfg
 CONFIG_NUM_THREADS    ?= 8
 ifeq ($(strip $(OCR_CONFIG)),)
@@ -68,7 +63,7 @@ endif
 
 CFLAGS_BASE = ${CFLAGS_BASE_WARN_ERROR} -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include
 
-LDFLAGS_BASE = -L ${OCR_INSTALL}/lib -L $(APPS_LIBS_ROOT)/lib -locr
+LDFLAGS_BASE = -L ${OCR_INSTALL}/lib -L $(APPS_LIBS_ROOT)/lib -locr_${OCR_TYPE}
 
 CFLAGS  := $(CFLAGS_BASE) $(CFLAGS)
 LDFLAGS := $(LDFLAGS_BASE) $(LDFLAGS)
@@ -98,13 +93,13 @@ FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
 .PHONY: install_internal
 .ONESHELL:
-install_internal: preinstall | $(WORKLOAD_INSTALL)
+install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or, manually (in bash):"
 	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=${OCR_INSTALL}/lib "\
-	"&& export OCR_CONFIG=${OCR_INSTALL}/config/default.cfg (default one) and run "\
+	"&& export OCR_CONFIG=${OCR_INSTALL}/share/ocr/config/${OCR_TYPE}/default.cfg (default one) and run "\
 	"the executable $(TARGET) in $(WORKLOAD_INSTALL)"
 	@echo "####"
 	@$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
@@ -143,7 +138,7 @@ ifeq ($(RUN_JENKINS), runApp)
 run_internal: debug_post_prerun
 else
 debug_post_prerun: install
-run_internal: install debug_post_prerun
+run_internal: install debug_post_prerun $(CONFIG_GENERATE)
 ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
 	$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --guid COUNTED_MAP --target $(COMM_LAYER) $(CONFIG_FLAGS)
 endif # OCR_CONFIG
@@ -151,8 +146,8 @@ endif # RUN_JENKINS
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
-	LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_ROOT) OCR_CONFIG=$(OCR_CONFIG) \
-	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) $(OCR_INSTALL)/bin/ocrrun ./$(TARGET) -ocr:cfg $(OCR_CONFIG) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
+	OCR_INSTALL=$(OCR_INSTALL) LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_ROOT) OCR_CONFIG=$(OCR_CONFIG) \
+	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) $(OCR_INSTALL)/bin/ocrrun_$(OCR_TYPE) ./$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
 
 postrun: run_internal
 
@@ -195,11 +190,14 @@ $(FULL_REQ_LIBS):
 reqlibs: parallel-reqlibs
 
 # Require libocr as this means all include files are up-to-date
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocr $(WORKLOAD_BUILD)
+# Note that we include libocr in order only dependences because it is a
+# phony target and would infect things.
+# We add the library in the regular dependences as well to catch header changes
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | libocr $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
@@ -219,17 +217,20 @@ libocr: ;
 else ifeq ($(RUN_JENKINS), buildApp)
 # If we are running in Jenkins and building the app, we just need to make sure the library is built
 # This will error out if it is not
-libocr: | $(OCR_INSTALL)/lib/libocr.$(LIBOCREXT)
-	@echo "Checked that libocr.$(LIBOCREXT) exists."
-$(OCR_INSTALL)/lib/libocr.$(LIBOCREXT):
-	$(error Cannot find libocr.$(LIBOCREXT) in $(OCR_INSTALL))
+libocr: | $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT)
+	@echo "Checked that libocr_$(OCR_TYPE).$(LIBOCREXT) exists."
+$(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT):
+	$(error Cannot find libocr_$(OCR_TYPE).$(LIBOCREXT) in $(OCR_INSTALL))
 else
 # In all other cases, we build the library
 libocr: $(OCR_BUILD)/Makefile
-	@echo "Building libocr.$(LIBOCREXT)..."
+	@echo "Building libocr_$(OCR_TYPE).$(LIBOCREXT)..."
 	OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
-$(OCR_INSTALL)/lib/libocr.$(LIBOCREXT): | libocr
+$(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT): | libocr
 endif
+
+# The config generator should be installed when libocr is installed
+$(CONFIG_GENERATE) : | libocr
 
 # If the visualizer is being used, add necessary CFLAGS to application's makefile
 ifeq ($(ENABLE_VISUALIZER), yes)

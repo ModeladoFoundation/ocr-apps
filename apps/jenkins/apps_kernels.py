@@ -154,7 +154,7 @@ job_ocr_run_kernel_fft_tgemul = {
     'sandbox': ('inherit0',),
     'env-vars': { 'T_ARCH': 'x86',
                   'T_PATH': 'fft/ocr',
-                  'OCR_CONFIG': '${OCR_INSTALL}/config/mach-1block.cfg'
+                  'OCR_CONFIG': '${OCR_INSTALL}/share/ocr/config/tg-x86/mach-1block.cfg'
               }
 }
 
@@ -360,7 +360,7 @@ job_ocr_run_kernel_cholesky_tgemul = {
     'env-vars': { 'T_ARCH': 'x86',
                   'T_PATH': 'cholesky/ocr',
                   'WORKLOAD_ARGS': '--ds 1000 --ts 50 --fi ${APPS_ROOT}/cholesky/datasets/m_1000.in',
-                  'OCR_CONFIG': '${OCR_INSTALL}/config/mach-1block.cfg'
+                  'OCR_CONFIG': '${OCR_INSTALL}/share/ocr/config/tg-x86/mach-1block.cfg'
               }
 }
 
@@ -562,7 +562,7 @@ job_ocr_run_kernel_fibonacci_tgemul = {
     'sandbox': ('inherit0',),
     'env-vars': { 'T_ARCH': 'x86',
                   'T_PATH': 'fibonacci/ocr',
-                  'OCR_CONFIG': '${OCR_INSTALL}/config/mach-1block.cfg'
+                  'OCR_CONFIG': '${OCR_INSTALL}/share/ocr/config/tg-x86/mach-1block.cfg'
               }
 }
 
@@ -769,7 +769,7 @@ job_ocr_run_kernel_smithwaterman_tgemul = {
     'env-vars': { 'T_ARCH': 'x86',
                   'T_PATH': 'smithwaterman/ocr',
                   'WORKLOAD_ARGS': '100 100 ${APPS_ROOT}/smithwaterman/datasets/string1-medium-large.txt  ${APPS_ROOT}/smithwaterman/datasets/string2-medium-large.txt ${APPS_ROOT}/smithwaterman/datasets/score-medium-large.txt',
-                  'OCR_CONFIG': '${OCR_INSTALL}/config/mach-1block.cfg'
+                  'OCR_CONFIG': '${OCR_INSTALL}/share/ocr/config/tg-x86/mach-1block.cfg'
               }
 }
 

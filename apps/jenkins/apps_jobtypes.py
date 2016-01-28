@@ -40,7 +40,7 @@ jobtype_ocr_build_app = {
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/${T_ARCH}',
                   'APPS_ROOT_PRIV': '${JJOB_PRIVATE_HOME}/apps/apps',
                   'OCR_ROOT': '${JJOB_PRIVATE_HOME}/ocr/ocr',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'OCR_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/ocr/ocr/build',
                   'APPS_MAKEFILE': '${APPS_ROOT}/${T_PATH}/Makefile',
                   'S_PATH': '${T_PATH}',
@@ -67,7 +67,7 @@ jobtype_ocr_build_app_tg = {
                   'APPS_ROOT': '${JJOB_INITDIR_XSTACK}/apps',
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/tg',
                   'OCR_ROOT': '${JJOB_PRIVATE_HOME}/xstack/ocr',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/xstack/ocr/install',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/xstack/ocr/install',
                   'OCR_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/ocr/build',
                   'APPS_MAKEFILE': '${APPS_ROOT}/${T_PATH}/Makefile',
                   'S_PATH':'${T_PATH}',
@@ -91,7 +91,7 @@ jobtype_ocr_run_app_nonregression = {
     'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps', # Use this for the makefiles
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/${T_ARCH}',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'I_PATH': '${T_PATH}/install',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${I_PATH}'
               }
@@ -110,7 +110,7 @@ jobtype_ocr_run_app_tg = {
     'env-vars': { 'TG_INSTALL': '${JJOB_ENVDIR}',
                   'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps', # Use this for the makefiles
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/tg',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'I_PATH': '${T_PATH}/install',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${I_PATH}'
               }
@@ -129,7 +129,7 @@ jobtype_ocr_run_app_regression = {
                   'APPS_ROOT_PRIV': '${JJOB_PRIVATE_HOME}/apps/apps',
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/${T_ARCH}',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'S_PATH':'${T_PATH}',
                   'B_PATH': '${T_PATH}/build',
                   'I_PATH': '${T_PATH}/install',
@@ -151,7 +151,7 @@ jobtype_ocr_run_app_scaling = {
                   'APPS_ROOT_PRIV': '${JJOB_PRIVATE_HOME}/apps/apps',
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/${T_ARCH}',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
-                  'OCR_INSTALL_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr/install',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'S_PATH':'${T_PATH}',
                   'B_PATH': '${T_PATH}/build',
                   'I_PATH': '${T_PATH}/install',

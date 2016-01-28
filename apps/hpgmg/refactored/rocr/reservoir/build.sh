@@ -17,7 +17,7 @@
 export CC=gcc
 export CXX=g++
 RSTREAM_DIST=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rstream
-LDLIBS="-lrstream_ocr -Wl,-rpath=$RSTREAM_DIST -L$RSTREAM_DIST -locr -L$OCR_INSTALL/lib"
+LDLIBS="-lrstream_ocr -Wl,-rpath=$RSTREAM_DIST -L$RSTREAM_DIST -locr_$(OCR_TYPE) -L$OCR_INSTALL/lib"
 
 #=== "MODERN" =================================================================
 

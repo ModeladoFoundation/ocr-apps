@@ -13,10 +13,10 @@ OCR_TYPE         ?= tg-x86
 DATA             = /opt/share/xstack_app_input/sar/huge/x86
 
 # OCR
-OCR_TARGET       ?= tg-x86
+
 OCR_ROOT         ?= ../../../../../ocr/ocr
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
-OCR_INSTALL_ROOT ?= ${OCR_ROOT}/install
+OCR_INSTALL ?= ${OCR_ROOT}/install
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
