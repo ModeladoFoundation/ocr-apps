@@ -12,7 +12,7 @@ RM=rm -f
 CP=cp -f
 MKDIR=mkdir -p
 
-TG_AS=../../../../ss/install/bin/rmd-linux-elf-as
+TG_AS=../../../../../tg/tg/install/bin/xstg-linux-elf-as
 
 all:	Radar.txt
 

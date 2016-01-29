@@ -3,8 +3,8 @@
 # removed or modified.
 
 # APPS
-APPS_ROOT        ?= ../../../../apps
-APPS_LIBS_ROOT   ?= ../../../../apps/libs/tg
+APPS_ROOT        ?= ../../../../../apps/apps
+APPS_LIBS_ROOT   ?= ../../../../../apps/apps/libs/tg
 
 # OCR_TYPE
 OCR_TYPE         ?= tg
@@ -13,8 +13,8 @@ OCR_TYPE         ?= tg
 DATA             = /opt/share/xstack_app_input/sar/tiny/tg
 
 # TG
-TG_ROOT          ?= ../../../../../intel/ss
-TG_INSTALL       ?= ../../../../../intel/ss/install
+TG_ROOT          ?= ../../../../../tg/tg
+TG_INSTALL       ?= ../../../../../tg/tg/install
 
 # OCR
 XE_TARGET        ?= tg-xe
@@ -61,7 +61,7 @@ TARGET := sscp
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for OCR_TYPE
-REQ_LIBS := crlibm-1.0beta4
+REQ_LIBS := crlibm-1.0beta5
 
 # Space separated list of source files
 SRCS :=	main.c \
@@ -155,7 +155,7 @@ prerun:
 .PHONY: postrun
 postrun:
 	find . -name \*.CE.00 -print
-	grep CONSOLE:\ XE\[0\-7\] ./install/tg/logs/*.brd*.chp*.unt*.blk*.CE.00
+	grep CONSOLE:\ XE\[0\-7\] ./install/tg/logs/*.rck???.cub??.skt?.cls???.blk??.CE.00
 
 # Any additional rules required can go here
 

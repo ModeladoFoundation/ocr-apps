@@ -1,4 +1,4 @@
-CRLIBM=../../../apps/libs/x86
+CRLIBM=../../../../apps/apps/libs/x86
 
 all: sscp sscp.dbg clustering
 

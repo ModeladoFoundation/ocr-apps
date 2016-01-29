@@ -1,8 +1,7 @@
 XSTACK=../../..
 
-OCR_INSTALL= ../../../ocr/install
-CRLIBM_INC = ../../../apps/libs/x86/include
-OCR_TYPE=x86
+OCR_INSTALL= ../../../../ocr/ocr/install/x86
+CRLIBM_INC = ../../../../apps/apps/libs/x86/include
 
 CC=gcc
 CFLAGS=-g -std=c99 -I$(OCR_INSTALL)/include -I$(CRLIBM_INC) -DRAG

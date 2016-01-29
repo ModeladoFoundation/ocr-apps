@@ -10,6 +10,7 @@ INSTALL_DIR = /opt/share/xstack_app_input/sar/huge
 
 RM=rm -f
 CP=cp -f
+MKDIR=mkdir -p
 
 all:	Radar.txt
 
@@ -25,6 +26,7 @@ clean:
 		ref.bmp cur.bmp
 
 install:
+	$(MKDIR) $(INSTALL_DIR)
 	$(CP)	Data.bin PlatformPosition.bin PulseTransmissionTime.bin \
 		Parameters.txt Targets.txt Radar.txt \
 		$(INSTALL_DIR)
