@@ -296,6 +296,40 @@ job_ocr_run_kernel_xsbenchlite_x86_remote_regression = {
                 }
 }
 
+# SAR: Intel ocr
+job_ocr_build_kernel_sar_tiny_x86_regression = {
+    'name': 'ocr-build-kernel-sar-tiny-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'sar x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'sar/ocr/tiny',
+                }
+}
+
+job_ocr_run_kernel_sar_tiny_x86_remote_regression = {
+    'name': 'ocr-run-kernel-sar-tiny-x86-remote-regression',
+    'depends': ('ocr-build-kernel-sar-tiny-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'sar x86 ocr-run-kernel-sar-tiny-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'sar/ocr/tiny'
+                }
+}
+
+job_ocr_run_kernel_sar_tiny_x86_remote_scaling = {
+   'name': 'ocr-run-kernel-sar-tiny-x86-remote-scaling',
+   'depends': ('ocr-build-kernel-sar-tiny-x86',),
+   'jobtype': 'ocr-run-app-scaling',
+   'run-args': 'sar x86 ocr-run-kernel-sar-tiny-x86-remote-scaling 10',
+   'sandbox': ('shared','inherit0'),
+   'env-vars': { 'T_ARCH': 'x86',
+                 'T_PATH': 'sar/ocr/tiny'
+               }
+}
+
 # # LULESH 2.0: PNNL CnC-OCR
 # job_cnc_ocr_gen_lulesh2pnnl_x86_regression = {
 #     'name': 'cnc-ocr-gen-lulesh2pnnl-x86',
