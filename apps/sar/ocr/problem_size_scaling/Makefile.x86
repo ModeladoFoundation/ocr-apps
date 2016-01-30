@@ -3,8 +3,8 @@
 # removed or modified.
 
 # APPS
-APPS_ROOT        ?= ../../../../apps
-APPS_LIBS_ROOT   ?= ../../../../apps/libs/x86
+APPS_ROOT        ?= ../../../../../apps/apps
+APPS_LIBS_ROOT   ?= ../../../../../apps//appslibs/x86
 
 # OCR_TYPE
 OCR_TYPE         ?= x86
@@ -54,7 +54,7 @@ TARGET := sscp
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for OCR_TYPE
-REQ_LIBS := crlibm-1.0beta4
+REQ_LIBS := crlibm-1.0beta5
 
 # Space separated list of source files
 SRCS :=	main.c \

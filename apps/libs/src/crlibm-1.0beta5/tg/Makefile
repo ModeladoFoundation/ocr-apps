@@ -1,25 +1,26 @@
 CRLIBM_ROOT    ?= ../x86_64
 
 TG_ROOT        ?= ../../../../../../tg/tg
-TG_INSTALL     ?= ../../../../../../tg/tg/install
+TG_INSTALL     ?= ${TG_ROOT}/install
 
 OCR_ROOT       ?= ../../../../../../ocr/ocr
-OCR_ROOT_BASE  ?= ../../../../../../ocr/ocr/install
+OCR_BUILD_ROOT ?= ${OCR_ROOT}/build
+OCR_INSTALL    ?= ${OCR_ROOT}/install
 
 APPS_ROOT      ?= ../../../../../../apps/apps
-APPS_LIBS_ROOT ?= ../../../../../../apps/apps/libs/tg
+APPS_LIBS_ROOT ?= ${APPS_ROOT}/libs/tg
 
-
-CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
-TG_ROOT        := $(shell cd "${TG_ROOT}" && pwd)
-TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
-OCR_ROOT       := $(shell cd "${OCR_ROOT}" && pwd)
-OCR_ROOT_BASE  := $(shell cd "${OCR_ROOT_BASE}" && pwd)
-APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+# RAG -- WHY ARE THESE HERE?
+#CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
+#TG_ROOT        := $(shell cd "${TG_ROOT}" && pwd)
+#TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
+#OCR_ROOT       := $(shell cd "${OCR_ROOT}" && pwd)
+#OCR_ROOT_BASE  := $(shell cd "${OCR_ROOT_BASE}" && pwd)
+#APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
+#APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+#OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-xe
 
 TG_PREFIX     := $(TG_INSTALL)/bin/xstg-linux-elf
-OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-xe
 
 AS	= $(TG_PREFIX)-as
 ASFLAGS	=

@@ -11,8 +11,8 @@ OCR_TYPE         ?= x86
 
 # OCR
 OCR_ROOT         ?= ../../../../ocr/ocr
-OCR_INSTALL      ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_INSTALL      ?= ${OCR_ROOT}/install
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -81,7 +81,7 @@ INCS :=	uts.h $(RNG_INCS) c99onOCR.h
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -DDEBUG_off -DTRACE_off -DSTATS -g -std=c99 -DRAG $(RNG_DEFS) -I. -DPARALLEL_off -DRAG_FOR_I
+CFLAGS := -DDEBUG_off -DTRACE_off -DSTATS -g -std=c99 -DRAG $(RNG_DEFS) -I. -DPARALLEL -DRAG_FOR_I
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in

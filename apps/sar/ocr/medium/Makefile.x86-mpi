@@ -7,10 +7,10 @@ SORT	?= sort
 
 # APPS
 APPS_ROOT        ?= ../../../../../apps/apps
-APPS_LIBS_ROOT   ?= ${APPS_ROOT}/libs/tg
+APPS_LIBS_ROOT   ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
-OCR_TYPE         ?= tg
+OCR_TYPE         ?= x86-mpi
 
 # OCR
 OCR_ROOT         ?= ../../../../../ocr/ocr
@@ -23,17 +23,7 @@ WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
 # DATA
-DATA             = /opt/share/xstack_app_input/sar/small/tg
-
-# TG
-TG_ROOT          ?= ../../../../../tg/tg
-TG_INSTALL       ?= ${TG_ROOT}/install
-
-# OCR
-XE_TARGET        ?= tg-xe
-XE_BUILDER       ?= builder-xe
-CE_TARGET        ?= tg-ce
-CE_BUILDER       ?= builder-ce
+DATA             = /opt/share/xstack_app_input/sar/medium/x86
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -95,7 +85,7 @@ INCS :=	common.h rag-ocr.h fftw3.h Parameters.h argv.h
 #	-DTRACE -DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3 -DTRACE_LVL_4 -DTRACE_LVL_5 \
 #  TODO: file bugs keeping fftw from being built with hc
 CFLAGS := -g -O2 -std=c99 \
-	-DDEBUG_SSCP_off -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
+	-DDEBUG_SSCP -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
 	-DTRACE \
 	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
 	-DRAG_IMPLICIT_INPUTS \
@@ -109,7 +99,7 @@ CFLAGS := -g -O2 -std=c99 \
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
-	 -lcrlibm
+	 -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
@@ -159,10 +149,12 @@ prerun:
 # 'postrun: ;' is an empty rule (the rule is required)
 .PHONY: postrun
 postrun:
-	find . -name \*.CE.00 -print
-	grep CONSOLE:\ XE\[0\-7\] ./install/tg/logs/*.rck???.cub??.skt?.cls???.blk??.CE.00
+	$(SORT) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt \
+	-o $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt
+	$(CP) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt ./Detects.txt
+	cat ./Detects.txt
 
 # Any additional rules required can go here
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-tg.inc
+include ${APPS_ROOT}/makefiles/make-regular.inc

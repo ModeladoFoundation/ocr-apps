@@ -14,10 +14,10 @@ if [ 1 == 1 ]; then
 
 echo run with 1 XE in the block
 
-OCR_INSTALL=$HOME/ocr/ocr/install/x86 \
+OCR_INSTALL=$HOME/ocr/ocr/install \
 LD_LIBRARY_PATH=$HOME/ocr/ocr/install/lib:$HOME/apps/apps/libs/x86/lib \
 OCR_CONFIG=$HOME/apps/apps/uts-1.1/ocr/default1.cfg \
-time $HOME/apps/apps/uts-1.1/ocr/install/x86/uts
+$HOME/apps/apps/uts-1.1/ocr/install/x86/uts >& j1.txt
 
 fi
 
@@ -25,9 +25,9 @@ if [ 1 == 1 ]; then
 
 echo run with 8 XEs in the block
 
-OCR_INSTALL=$HOME/ocr/ocr/install/x86 \
+OCR_INSTALL=$HOME/ocr/ocr/install \
 LD_LIBRARY_PATH=$HOME/ocr/ocr/install/lib:$HOME/apps/apps/libs/x86/lib \
 OCR_CONFIG=$HOME/apps/apps/uts-1.1/ocr/default8.cfg \
-time $HOME/apps/apps/uts-1.1/ocr/install/x86/uts
+$HOME/apps/apps/uts-1.1/ocr/install/x86/uts >& j8.txt
 
 fi

@@ -4,8 +4,8 @@
 
 CRLIBM_ROOT     ?= ../x86_64
 
-APPS_ROOT       ?= ../../../../../apps
-APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
+APPS_ROOT       ?= ../../../../../../apps/apps
+APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
 
 CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
 APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)

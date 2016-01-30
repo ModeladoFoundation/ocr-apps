@@ -2,38 +2,22 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-# CMDS
-SORT	?= sort
-
 # APPS
-APPS_ROOT        ?= ../../../../../apps/apps
-APPS_LIBS_ROOT   ?= ${APPS_ROOT}/libs/tg
+APPS_ROOT        ?= ../../../../../../apps/apps
+APPS_LIBS_ROOT   ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
-OCR_TYPE         ?= tg
+OCR_TYPE         ?= x86-mpi
 
 # OCR
-OCR_ROOT         ?= ../../../../../ocr/ocr
-OCR_INSTALL      ?= ${OCR_ROOT}/install
+OCR_ROOT         ?= ../../../../../../ocr/ocr
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_INSTALL      ?= ${OCR_ROOT}/install
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
-
-# DATA
-DATA             = /opt/share/xstack_app_input/sar/small/tg
-
-# TG
-TG_ROOT          ?= ../../../../../tg/tg
-TG_INSTALL       ?= ${TG_ROOT}/install
-
-# OCR
-XE_TARGET        ?= tg-xe
-XE_BUILDER       ?= builder-xe
-CE_TARGET        ?= tg-ce
-CE_BUILDER       ?= builder-ce
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -62,54 +46,24 @@ RUN_JENKINS ?= no
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := sscp
+TARGET := test
 
 # Space separated list of directory names in apps/libs/src
-# that need to be built. These will be built for OCR_TYPE
+# that need to be built. These will be built for ARCH
 REQ_LIBS := crlibm-1.0beta5
 
 # Space separated list of source files
-SRCS :=	main.c \
-	inputs.c \
-	digspot.c \
-	registration.c \
-	cfar.c \
-	sinc_interp.c \
-	sinc.c \
-	image_formation.c \
-	back_proj.c \
-	ccd.c \
-	fftw3.c \
-	rag_ocr.c
-
-# Space separated list of include files
-INCS :=	common.h rag-ocr.h fftw3.h Parameters.h argv.h
+SRCS := test.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-# -DDEBUG_SSCP can be used to output binary data for debugging purposes
-# -D__float128=char is a fix for fftw-3.3 built with gcc 4.6 and quad precision
-#  and building the app with hc.
-#	-DDEBUG -DDEBUG_LVL_1 -DDEBUG_LVL_2 -DDEBUG_LVL_3 -DDEBUG_LVL_4 -DDEBUG_LVL_5 \
-#	-DTRACE -DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3 -DTRACE_LVL_4 -DTRACE_LVL_5 \
-#  TODO: file bugs keeping fftw from being built with hc
-CFLAGS := -g -O2 -std=c99 \
-	-DDEBUG_SSCP_off -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
-	-DTRACE \
-	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
-	-DRAG_IMPLICIT_INPUTS \
-	-DRAG_PURE_FLOAT -DRAG_SINCOS \
-	-DRAG_CRLIBM -DRAG_PETER_DIST_AND_TRIG \
-	-DRAG_SPAD -DRAG_DRAM \
-	-DGANESH_STRENGTH_RED_OPT \
-	-I. -I./src -I $(APPS_LIBS_ROOT)/include
+CFLAGS :=
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
-	 -lcrlibm
+LDFLAGS := -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
@@ -148,21 +102,15 @@ install: all
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
-prerun:
-	$(MKDIR) -p $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)
-	$(CP) ./Parameters.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Parameters.txt
-	$(RM) -f ./Detects.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt
+prerun: ;
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
 # 'postrun: ;' is an empty rule (the rule is required)
 .PHONY: postrun
-postrun:
-	find . -name \*.CE.00 -print
-	grep CONSOLE:\ XE\[0\-7\] ./install/tg/logs/*.rck???.cub??.skt?.cls???.blk??.CE.00
-
-# Any additional rules required can go here
+postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-tg.inc
+include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+

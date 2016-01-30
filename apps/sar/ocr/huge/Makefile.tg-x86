@@ -2,26 +2,28 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+# CMDS
+SORT	?= sort
+
 # APPS
-APPS_ROOT        ?= ../../../../apps
-APPS_LIBS_ROOT   ?= ../../../../apps/libs/x86
+APPS_ROOT        ?= ../../../../../apps/apps
+APPS_LIBS_ROOT   ?= ${APPS_ROOT}/libs/x86
 
 # OCR_TYPE
 OCR_TYPE         ?= tg-x86
 
-# DATA
-DATA             = /opt/share/xstack_app_input/sar/huge/x86
-
 # OCR
-
 OCR_ROOT         ?= ../../../../../ocr/ocr
+OCR_INSTALL      ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
-OCR_INSTALL ?= ${OCR_ROOT}/install
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
+
+# DATA
+DATA             = /opt/share/xstack_app_input/sar/huge/x86
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -54,7 +56,7 @@ TARGET := sscp
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for OCR_TYPE
-REQ_LIBS := crlibm-1.0beta4
+REQ_LIBS := crlibm-1.0beta5
 
 # Space separated list of source files
 SRCS :=	main.c \
@@ -82,11 +84,11 @@ INCS :=	common.h rag-ocr.h fftw3.h Parameters.h argv.h
 #	-DDEBUG -DDEBUG_LVL_1 -DDEBUG_LVL_2 -DDEBUG_LVL_3 -DDEBUG_LVL_4 -DDEBUG_LVL_5 \
 #	-DTRACE -DTRACE_LVL_1 -DTRACE_LVL_2 -DTRACE_LVL_3 -DTRACE_LVL_4 -DTRACE_LVL_5 \
 #  TODO: file bugs keeping fftw from being built with hc
-CFLAGS := -g -O2 -std=c99 -DTG_ARCH_off \
-	-DDEBUG_SSCP_off -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=50 \
+CFLAGS := -g -O2 -std=c99 \
+	-DDEBUG_SSCP -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
 	-DTRACE \
 	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
-	-DRAG_IMPLICIT_INPUTS_off \
+	-DRAG_IMPLICIT_INPUTS \
 	-DRAG_PURE_FLOAT -DRAG_SINCOS \
 	-DRAG_CRLIBM -DRAG_PETER_DIST_AND_TRIG \
 	-DRAG_SPAD -DRAG_DRAM \
@@ -96,7 +98,8 @@ CFLAGS := -g -O2 -std=c99 -DTG_ARCH_off \
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
+LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
+	 -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
@@ -138,13 +141,18 @@ install: all
 prerun:
 	$(MKDIR) -p $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)
 	$(CP) ./Parameters.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Parameters.txt
+	$(RM) -f ./Detects.txt $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
 # 'postrun: ;' is an empty rule (the rule is required)
 .PHONY: postrun
-postrun: ;
+postrun:
+	$(SORT) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt \
+	-o $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt
+	$(CP) $(WORKLOAD_INSTALL_ROOT)/$(OCR_TYPE)/Detects.txt ./Detects.txt
+	cat ./Detects.txt
 
 # Any additional rules required can go here
 
