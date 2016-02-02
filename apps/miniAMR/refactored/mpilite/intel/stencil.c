@@ -33,8 +33,14 @@
 // This routine does the stencil calculations.
 void stencil_calc(int var)
 {
+    // gail: added to work-around a ROSE issue
+    int my_x_block_size = x_block_size;
+    int my_y_block_size = y_block_size;
+    int my_z_block_size = z_block_size;
+
+
    int n, i, j, k, in;
-   double sb, sm, sf, work[x_block_size+2][y_block_size+2][z_block_size+2];
+   double sb, sm, sf, work[my_x_block_size+2][my_y_block_size+2][my_z_block_size+2];
    block *bp;
 
    if (stencil == 7) {

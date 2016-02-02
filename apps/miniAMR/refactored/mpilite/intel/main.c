@@ -42,6 +42,8 @@ int main(int argc, char** argv)
    // The ROSE tools globals2db does not emit updated include (.h) files.
    // There is probably a way to do this, but it is not done today.
    // In order to work around this, the contents of param.h are include below.
+   // Note that all of these global variables are can be reset on the command line,
+   // and are passed to the other MPI Ranks in the params array declared above.
 //#include "param.h"
    max_num_blocks = 500;
    target_active = 0;
@@ -87,6 +89,28 @@ int main(int argc, char** argv)
 
    counter_malloc = 0;
    size_malloc = 0.0;
+
+   // gail: some globals relied on the compiler initialization.
+   for (i = 0; i < 3; i++) {
+       num_comm_partners[i]=0;
+       comm_partner[i]=0;
+       max_comm_part[i]=0;
+       send_size[i]=0;
+       recv_size[i]=0;
+       comm_index[i]=0;
+       comm_num[i]=0;
+       comm_block[i]=0;
+       comm_face_case[i]=0;
+       comm_pos[i]=0;
+       comm_pos1[i]=0;
+       comm_send_off[i]=0;
+       comm_recv_off[i]=0;
+       num_cases[i]=0;
+       max_num_cases[i]=0;
+       s_buf_num[i]=0;
+       r_buf_num[i]=0;
+   }
+
 
    /* set initial values */
    if (!my_pe) {
@@ -473,6 +497,7 @@ void allocate(void)
          max_num_cases[i] = 2*init_block_x*init_block_z;
       else
          max_num_cases[i] = 2*init_block_x*init_block_y;
+
       comm_block[i] = (int *) ma_malloc(max_num_cases[i]*sizeof(int),
                                         __FILE__, __LINE__);
       comm_face_case[i] = (int *) ma_malloc(max_num_cases[i]*sizeof(int),

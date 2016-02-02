@@ -35,8 +35,14 @@
 // Initialize the problem and setup initial blocks.
 void init(void)
 {
+    // gail: ROSE does not support replacing dimensions in an array declaration.
+    int my_num_pes = num_pes;
+    int my_npx = npx;
+    int my_npy = npy;
+    int my_npz = npz;
+
    int n, var, i, j, k, l, m, o, size, dir, i1, i2, j1, j2, k1, k2, ib, jb, kb;
-   int start[num_pes], pos[3][num_pes], pos1[npx][npy][npz], set,
+   int start[my_num_pes], pos[3][my_num_pes], pos1[my_npx][my_npy][my_npz], set,
        num, npx1, npy1, npz1, pes, fact, fac[25], nfac, f;
    block *bp;
 

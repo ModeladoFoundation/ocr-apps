@@ -359,6 +359,21 @@ void visitorTraversal::writeInitFunction(SgProject * project)
                                                               arg1_list, globalInitBB);
     appendStatement(checkStatusCall, globalInitBB);
 
+    // If there a function static variables, initialize the TGV which guards their initialization.
+    for (Rose_STL_Container<TgvElement *>::iterator iter = _tgvList.begin();
+         iter != _tgvList.end(); iter++)
+    {
+        //     ffwd_addr_ptr->tgv = 0;
+        TgvElement* tgv=(*iter);
+        string tgvName = tgv->get_name();
+        SgVarRefExp* newNameExp = buildVarRefExp(tgvName, globalInitBB);
+        SgVarRefExp* ptrNameExp = buildVarRefExp(ptrName, globalInitBB);
+        SgExpression* arrowExp = buildArrowExp(ptrNameExp, newNameExp);
+        SgExprStatement * assignOp = buildAssignStatement(arrowExp,
+                                                          buildIntVal(0));
+        appendStatement(assignOp, globalInitBB);
+    }
+
 
      // call ffwd_filename_init() functions here
     if ( ! _localFileList.empty() )

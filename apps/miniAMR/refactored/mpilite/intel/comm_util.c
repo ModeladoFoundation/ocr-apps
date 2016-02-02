@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <mpi.h>
+#include <stdio.h>
 
 #include "block.h"
 #include "comm.h"
@@ -36,6 +37,8 @@
 void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
 {
    int i, j, s_len, r_len, *tmp;
+
+
 
    /* set indexes for send and recieve to determine length of message:
     * for example, if we send a whole face to a quarter face, we will
@@ -71,6 +74,7 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
 
    /* i is being used below as an index where information about this
     * block should go */
+
    if (i < num_comm_partners[dir] && comm_partner[dir][i] == pe) {
       send_size[dir][i] += s_len;
       recv_size[dir][i] += r_len;
@@ -82,6 +86,7 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
       // move stuff i and above up one
       if (num_comm_partners[dir] == max_comm_part[dir]) {
          max_comm_part[dir] = (int)(2.0*((double) (num_comm_partners[dir]+1)));
+
          tmp = (int *) ma_malloc(max_comm_part[dir]*sizeof(int),
                                  __FILE__, __LINE__);
          for (j = 0; j < i; j++)
@@ -92,6 +97,7 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
          comm_partner[dir] = tmp;
          tmp = (int *) ma_malloc(max_comm_part[dir]*sizeof(int),
                                  __FILE__, __LINE__);
+
          for (j = 0; j < i; j++)
             tmp[j] = send_size[dir][j];
          for (j = i; j < num_comm_partners[dir]; j++)
@@ -100,6 +106,7 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
          send_size[dir] = tmp;
          tmp = (int *) ma_malloc(max_comm_part[dir]*sizeof(int),
                                  __FILE__, __LINE__);
+
          for (j = 0; j < i; j++)
             tmp[j] = recv_size[dir][j];
          for (j = i; j < num_comm_partners[dir]; j++)
@@ -108,6 +115,7 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
          recv_size[dir] = tmp;
          tmp = (int *) ma_malloc(max_comm_part[dir]*sizeof(int),
                                  __FILE__, __LINE__);
+
          for (j = 0; j <= i; j++)   // Note that this one is different
             tmp[j] = comm_index[dir][j];
          for (j = i; j < num_comm_partners[dir]; j++)
@@ -122,7 +130,8 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
             tmp[j+1] = comm_num[dir][j];
          free(comm_num[dir]);
          comm_num[dir] = tmp;
-      } else {
+      }
+      else {
          for (j = num_comm_partners[dir]; j > i; j--) {
             comm_partner[dir][j] = comm_partner[dir][j-1];
             send_size[dir][j] = send_size[dir][j-1];
@@ -145,43 +154,51 @@ void add_comm_list(int dir, int block_f, int pe, int fcase, int pos, int pos1)
    }
 
    if ((num_cases[dir]+1) > max_num_cases[dir]) {
-      max_num_cases[dir] = (int)(2.0*((double) (num_cases[dir]+1)));
-      tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
+       max_num_cases[dir] = (int)(2.0*((double) (num_cases[dir]+1)));
+
+       tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
                               __FILE__, __LINE__);
-      for (j = 0; j < num_cases[dir]; j++)
-         tmp[j] = comm_block[dir][j];
-      free(comm_block[dir]);
-      comm_block[dir] = tmp;
-      tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
+       for (j = 0; j < num_cases[dir]; j++)
+       {
+           tmp[j] = comm_block[dir][j];
+       }
+
+       free(comm_block[dir]);
+       comm_block[dir] = tmp;
+       tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
                               __FILE__, __LINE__);
-      for (j = 0; j < num_cases[dir]; j++)
+       for (j = 0; j < num_cases[dir]; j++)
+       {
          tmp[j] = comm_face_case[dir][j];
-      free(comm_face_case[dir]);
-      comm_face_case[dir] = tmp;
-      tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
-                              __FILE__, __LINE__);
-      for (j = 0; j < num_cases[dir]; j++)
-         tmp[j] = comm_pos[dir][j];
-      free(comm_pos[dir]);
-      comm_pos[dir] = tmp;
-      tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
-                              __FILE__, __LINE__);
-      for (j = 0; j < num_cases[dir]; j++)
-         tmp[j] = comm_pos1[dir][j];
-      free(comm_pos1[dir]);
-      comm_pos1[dir] = tmp;
-      tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
-                              __FILE__, __LINE__);
-      for (j = 0; j < num_cases[dir]; j++)
-         tmp[j] = comm_send_off[dir][j];
-      free(comm_send_off[dir]);
-      comm_send_off[dir] = tmp;
-      tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
-                              __FILE__, __LINE__);
-      for (j = 0; j < num_cases[dir]; j++)
-         tmp[j] = comm_recv_off[dir][j];
-      free(comm_recv_off[dir]);
-      comm_recv_off[dir] = tmp;
+       }
+
+       free(comm_face_case[dir]);
+       comm_face_case[dir] = tmp;
+
+       tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
+                               __FILE__, __LINE__);
+       for (j = 0; j < num_cases[dir]; j++)
+           tmp[j] = comm_pos[dir][j];
+       free(comm_pos[dir]);
+       comm_pos[dir] = tmp;
+       tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
+                               __FILE__, __LINE__);
+       for (j = 0; j < num_cases[dir]; j++)
+           tmp[j] = comm_pos1[dir][j];
+       free(comm_pos1[dir]);
+       comm_pos1[dir] = tmp;
+       tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
+                               __FILE__, __LINE__);
+       for (j = 0; j < num_cases[dir]; j++)
+           tmp[j] = comm_send_off[dir][j];
+       free(comm_send_off[dir]);
+       comm_send_off[dir] = tmp;
+       tmp = (int *) ma_malloc(max_num_cases[dir]*sizeof(int),
+                               __FILE__, __LINE__);
+       for (j = 0; j < num_cases[dir]; j++)
+           tmp[j] = comm_recv_off[dir][j];
+       free(comm_recv_off[dir]);
+       comm_recv_off[dir] = tmp;
    }
    if (comm_index[dir][i] == num_cases[dir]) {
       // at end
@@ -302,6 +319,15 @@ void del_comm_list(int dir, int block_f, int pe, int fcase)
    r_buf_num[dir] -= r_len;
 }
 
+void init_par_comm(par_comm *pc)
+{
+    pc->num_comm_part=0;
+    pc->comm_num=0;
+    pc->max_part=0;
+    pc->num_cases=0;
+    pc->max_cases=0;
+}
+
 void zero_comm_list(void)
 {
    int i;
@@ -312,6 +338,9 @@ void zero_comm_list(void)
       comm_index[i][0] = 0;
       comm_send_off[i][0] = comm_recv_off[i][0] = 0;
    }
+   init_par_comm(&par_p);
+   init_par_comm(&par_b);
+   init_par_comm(&par_p1);
 }
 
 // check sizes of send and recv buffers and adjust, if necessary

@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <mpi.h>
 
 #include "block.h"
@@ -43,6 +44,7 @@ void *ma_malloc(size_t size, char *file, int line)
    void *ptr;
 
    ptr = (void *) malloc(size);
+   memset(ptr, 0, size);
 
    if (ptr == NULL) {
       printf("NULL pointer from malloc call in %s at %d\n", file, line);

@@ -473,8 +473,11 @@ void reset_neighbors(void)
 void redistribute_blocks(double *tp, double *tm, double *tu, double *time,
                          int *num_moved, int num_split)
 {
+    // gail: added to work-around a ROSE issue
+    int my_num_pes = num_pes;
+
    int i, in, m, n, p, need, excess, my_excess, target, rem, sum, my_active,
-       space[num_pes], use[num_pes];
+       space[my_num_pes], use[my_num_pes];
    double t1;
    block *bp;
    parent *pp;
