@@ -105,7 +105,13 @@ the POSIX threads library is required for running all Legion applications.  For
 running applications on clusters and GPUs, we require at least CUDA 4.2 and
 and an installation of GASNET.  Verify that the correct locations of these installations
 are set in 'runtime/runtime.mk'.  At least Python 2.4 is required to run the
-'legion_spy' debugging tool.
+'legion_spy' debugging tool. To run legion on top of OCR, install OCR using the 
+following steps:
+    - Compile OCR, set OCR_TYPE to the target and OCR_INSTALL to the installation point of OCR
+    - Set and export LD_LIBRARY_PATH to ${OCR_INSTALL}/lib:LD_LIBRARY_PATH
+    - Set and export OCR_CONFIG to the configuration you want to use for OCR
+      (usually ${OCR_INSTALL}/config/default.cfg)
+    - For more details refer https://xstack.exascale-tech.com
 
 Running Programs
 ==================================================================================

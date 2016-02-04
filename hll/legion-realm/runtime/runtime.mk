@@ -240,6 +240,20 @@ ifeq ($(strip $(USE_HDF)), 1)
   LEGION_LD_FLAGS      += -lhdf5
 endif
 
+# general low-level doesn't use OCR by default
+USE_OCR ?= 0
+ifeq ($(strip $(USE_OCR)), 1)
+  ifndef OCR_INSTALL
+    $(error OCR_INSTALL variable is not defined, aborting build)
+  endif
+  ifndef OCR_TYPE
+    $(error OCR_TYPE variable is not defined, aborting build)
+  endif
+  INC_FLAGS    += -I${OCR_INSTALL}/include
+  CC_FLAGS      += -DENABLE_EXTENSION_LEGACY -DUSE_OCR_LAYER
+  LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr
+endif
+
 SKIP_MACHINES= titan% daint%
 #Extra options for MPI support in GASNet
 ifeq ($(strip $(USE_MPI)),1)
@@ -268,7 +282,7 @@ endif
 CC_FLAGS	+= -DCOMPILE_TIME_MIN_LEVEL=$(OUTPUT_LEVEL)
 
 # demand warning-free compilation
-CC_FLAGS        += -Wall -Wno-strict-overflow -Werror
+CC_FLAGS        += -Wall -Wno-strict-overflow -Wno-unused-function -Wno-unused-variable -Werror
 
 #CC_FLAGS += -DUSE_MASKED_COPIES
 

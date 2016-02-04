@@ -198,6 +198,14 @@ namespace Realm {
       MachineImpl *machine;
 
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
+#ifdef USE_OCR_LAYER
+      struct TaskPtrContainer
+      {
+          Processor::TaskFuncPtr fnptr;
+      };
+      std::map<Processor::TaskFuncID, TaskPtrContainer> ocr_task_ptr_table;
+      ocrGuid_t ocr_cfg_guid;
+#endif
 
 #ifdef NODE_LOGGING
       static const char *prefix;

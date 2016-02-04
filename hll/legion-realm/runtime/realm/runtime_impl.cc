@@ -120,6 +120,9 @@ namespace Realm {
     {
       assert(impl != 0);
 
+#ifdef USE_OCR_LAYER
+      return ((RuntimeImpl *)impl)->register_task(taskid, taskptr);
+#else
       CodeDescriptor codedesc(taskptr);
       ProfilingRequestSet prs;
       std::set<Event> events;
@@ -133,6 +136,7 @@ namespace Realm {
 
       Event::merge_events(events).wait();
       return true;
+#endif
 #if 0
       if(((RuntimeImpl *)impl)->task_table.count(taskid) > 0)
 	return false;
@@ -409,6 +413,15 @@ namespace Realm {
 
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
+#ifdef USE_OCR_LAYER
+      ocrConfig_t ocr_cfg;
+      //ocrGuid_t ocr_cfg_guid;
+
+      ocrParseArgs(*argc,(const char**)*argv, &ocr_cfg);
+      ocrLegacyInit(&ocr_cfg_guid, &ocr_cfg);
+
+      return true;
+#else
       // have to register domain mappings too
       LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<1> >();
       LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<2> >();
@@ -1031,7 +1044,16 @@ namespace Realm {
       }
 
       return true;
+#endif
     }
+
+#ifdef USE_OCR_LAYER
+    bool RuntimeImpl::register_task(Processor::TaskFuncID taskid, Processor::TaskFuncPtr taskptr)
+    {  
+      ocr_task_ptr_table[taskid].fnptr = taskptr;
+      return true;
+    }
+#endif
 
     struct MachineRunArgs {
       RuntimeImpl *r;
@@ -1066,11 +1088,44 @@ namespace Realm {
       return 0;
     }
 
+#ifdef USE_OCR_LAYER
+    ocrGuid_t ocr_realm_conversion_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+    {
+      assert(argc == 1 && depc == 2);
+      Processor::TaskFuncPtr task_func = ((RuntimeImpl::TaskPtrContainer*)argv)->fnptr;
+      void *args = depv[0].ptr;
+      size_t *arglen = (size_t*)depv[1].ptr;
+      task_func(args, *arglen, NULL, 0, Processor::NO_PROC);
+      ocrDbDestroy(depv[0].guid);
+      ocrDbDestroy(depv[1].guid);
+      return NULL_GUID;
+    }
+#endif
+
     void RuntimeImpl::run(Processor::TaskFuncID task_id /*= 0*/,
 			  Runtime::RunStyle style /*= ONE_TASK_ONLY*/,
 			  const void *args /*= 0*/, size_t arglen /*= 0*/,
 			  bool background /*= false*/)
     { 
+#ifdef USE_OCR_LAYER //currently only considering background=false
+      ocrGuid_t db_guid[2];
+
+      void *args_copy;
+      ocrDbCreate(&db_guid[0], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+      memcpy(args_copy, args, arglen);
+
+      size_t *arglen_copy;
+      ocrDbCreate(&db_guid[1], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+      arglen_copy[0] = arglen;
+
+      ocrGuid_t ocr_realm_conversion_edt_t, ocr_realm_conversion_edt, output_event;
+      ocrEdtTemplateCreate(&ocr_realm_conversion_edt_t, ocr_realm_conversion_func, 1, 2);
+      ocrEdtCreate(&ocr_realm_conversion_edt, ocr_realm_conversion_edt_t, EDT_PARAM_DEF, (u64*)(&ocr_task_ptr_table[task_id]), EDT_PARAM_DEF, db_guid, EDT_PROP_NONE, NULL_GUID, &output_event);
+      ocrEdtTemplateDestroy(ocr_realm_conversion_edt_t);
+
+      u8 ret = ocrLegacyFinalize(ocr_cfg_guid, true);
+      exit(ret);
+#else
       if(background) {
         log_runtime.info("background operation requested\n");
 	fflush(stdout);
@@ -1224,10 +1279,14 @@ namespace Realm {
 	delete this;
 	exit(0);
       }
+#endif
     }
 
     void RuntimeImpl::shutdown(bool local_request /*= true*/)
     {
+#ifdef USE_OCR_LAYER
+      ocrShutdown();
+#else
       if(local_request) {
 	log_runtime.info("shutdown request - notifying other nodes\n");
 	for(unsigned i = 0; i < gasnet_nodes(); i++)
@@ -1254,6 +1313,7 @@ namespace Realm {
 	shutdown_requested = true;
 	shutdown_condvar.broadcast();
       }
+#endif
     }
 
     void RuntimeImpl::wait_for_shutdown(void)
