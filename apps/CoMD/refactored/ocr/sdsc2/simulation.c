@@ -58,7 +58,7 @@ u8 init_simulation(command_t* cmd_p, simulation_t* sim_p, mdtimer_t* timer_p)
 
   PRINTF("Simulation data: \n");
   PRINTF("  Total atoms        : %d\n", sim_p->atoms);
-  PRINTF("  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n", 0,0,0);
+  PRINTF("  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n", 0.0,0.0,0.0);
   PRINTF("  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
          sim_p->boxes.domain[0], sim_p->boxes.domain[1], sim_p->boxes.domain[2]);
   PRINTF("  Boxes        : %6d,%6d,%6d = %8d\n",
@@ -371,6 +371,8 @@ ocrGuid_t init_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //depv: sim, boxes, rpfs
 ocrGuid_t fork_init_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+  ocrGuid_t sim_g = depv[0].guid;
+
   simulation_t* sim = (simulation_t*)depv[0].ptr;
 
   u32* grid = (u32*)paramv;
@@ -400,6 +402,8 @@ ocrGuid_t fork_init_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   reduction->reduction = build_reduction(depv[0].guid, sim->reduction, sim->boxes.boxes_num, leaves_p+sim->boxes.boxes_num,   3, red_paramv, tred_edt);
   red_paramv[1] = reduction->reduction;
   reduction->reduction = build_reduction(depv[0].guid, sim->reduction, sim->boxes.boxes_num, leaves_p,                        2, red_paramv, vred_edt);
+
+  ocrDbRelease(sim->reduction);
 
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp,init_edt,8,33);

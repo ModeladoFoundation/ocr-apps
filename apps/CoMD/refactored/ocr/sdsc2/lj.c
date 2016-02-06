@@ -131,8 +131,9 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtCreate(&tmpg, tmp, 8, paramv, 56, NULL, EDT_PROP_NONE, NULL_GUID, (ocrGuid_t*)depv[28].ptr);
     ocrEdtTemplateDestroy(tmp);
     ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
-    for(n=1; n < 29; ++n)
+    for(n=1; n < 28; ++n)
       ocrAddDependence(depv[n].guid, tmpg, n, DB_MODE_RO);
+    ocrAddDependence(depv[n].guid, tmpg, n, DB_MODE_RW);
     ocrAddDependence(rpf->nextpf, tmpg, 29, DB_MODE_NULL);
     for(n=30; n < 56; ++n)
       ocrAddDependence(nrpf[n-30]->nextpf, tmpg, n, DB_MODE_NULL);

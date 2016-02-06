@@ -15,12 +15,22 @@ static ocrGuid_t exchange_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 //depv: timer, sim, mass, boxs, rpfs
 ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  simulation_t* sim_p = (simulation_t*)depv[1].ptr;
+
+  ocrGuid_t timer_g = depv[0].guid;
+  ocrGuid_t sim_g = depv[1].guid;
+  ocrGuid_t mass_g = depv[2].guid;
+  ocrGuid_t boxes_g = depv[3].guid;
+  ocrGuid_t rpfs_g = depv[4].guid;
+
   mdtimer_t* timer_p = (mdtimer_t*)depv[0].ptr;
+  simulation_t* sim_p = (simulation_t*)depv[1].ptr;
+  mass_t* mass_p = depv[2].ptr;
+  ocrGuid_t* boxes_p = (ocrGuid_t*)depv[3].ptr;
+  ocrGuid_t* rpfs_p = (ocrGuid_t*)depv[4].ptr;
 
   profile_stop(total_timer, timer_p);
   profile_start(total_timer, timer_p);
-  print_status(sim_p, (mass_t*)depv[2].ptr, get_elapsed_time(total_timer, timer_p));
+  print_status(sim_p, mass_p, get_elapsed_time(total_timer, timer_p));
   u64 ds = sim_p->step+sim_p->period<=sim_p->steps?sim_p->period:sim_p->steps-sim_p->step;
   sim_p->step+=ds;
 
@@ -30,11 +40,11 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate(&tmp, period_edt, 1, 6);
     ocrEdtCreate(&tmp_g, tmp, 1, paramv, 6, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
     ocrEdtTemplateDestroy(tmp);
-    ocrAddDependence(depv[0].guid,tmp_g,0,DB_MODE_RW);
-    ocrAddDependence(depv[1].guid,tmp_g,1,DB_MODE_RO);
-    ocrAddDependence(depv[2].guid,tmp_g,2,DB_MODE_RO);
-    ocrAddDependence(depv[3].guid,tmp_g,3,DB_MODE_RO);
-    ocrAddDependence(depv[4].guid,tmp_g,4,DB_MODE_RO);
+    ocrAddDependence(timer_g,tmp_g,0,DB_MODE_RW);
+    ocrAddDependence(sim_g,tmp_g,1,DB_MODE_RW);
+    ocrAddDependence(mass_g,tmp_g,2,DB_MODE_RO);
+    ocrAddDependence(boxes_g,tmp_g,3,DB_MODE_RO);
+    ocrAddDependence(rpfs_g,tmp_g,4,DB_MODE_RO);
   }
 
   u64 pv[12] = {0,sim_p->pot.potential&LJ ? *(u64*)&sim_p->pot.lj.epsilon:1,
@@ -45,17 +55,14 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                  ds, sim_p->dt, 0, 0};
   ocrGuid_t* leaves_p; ocrGuid_t leaves_g;
   ocrDbCreate(&leaves_g, (void**)&leaves_p, sizeof(ocrGuid_t)*5*sim_p->boxes.boxes_num, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-  ocrGuid_t reduction = build_reduction(depv[1].guid, sim_p->reduction, sim_p->boxes.boxes_num, leaves_p, 2, pv, ured_edt);
+  ocrGuid_t reduction = build_reduction(sim_g, sim_p->reduction, sim_p->boxes.boxes_num, leaves_p, 2, pv, ured_edt);
   ocrAddDependence(reduction,tmp_g,5,DB_MODE_RO);
-
-  ocrGuid_t* rpfs = (ocrGuid_t*)depv[4].ptr;
-  ocrGuid_t* boxes = (ocrGuid_t*)depv[3].ptr;
 
   pv[0] = ds;
   ocrGuid_t tmpp,tmpf,tmpx;
   ocrEdtTemplateCreate(&tmpp, position_edt, 4, 29);
   ocrEdtTemplateCreate(&tmpf, sim_p->pot.forcevel_edt, 8, 56);
-  ocrEdtTemplateCreate(&tmpx, exchange_edt, 0, 2);
+  ocrEdtTemplateCreate(&tmpx, exchange_edt, 1, 2);
 
   u32 b;
   ocrGuid_t* pe = leaves_p+sim_p->boxes.boxes_num;
@@ -63,17 +70,18 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t* pf = fe+sim_p->boxes.boxes_num;
   ocrGuid_t* ff = pf+sim_p->boxes.boxes_num;
   for(b = 0; b < sim_p->boxes.boxes_num; ++b) {
-    pv[1] = sim_p->dt; pv[11] = boxes[b];
-    ocrEdtCreate((ocrGuid_t*)(pv+10), tmpx, 0, NULL, 2, NULL, EDT_PROP_FINISH, NULL_GUID, pf+b);
+    pv[1] = sim_p->dt; pv[11] = boxes_p[b];
+    ocrEdtCreate((ocrGuid_t*)(pv+10), tmpx, 1, pv+8, 2, NULL, EDT_PROP_FINISH, NULL_GUID, pf+b);
     ocrEdtCreate(pe+b, tmpp, 4, pv+8, 29, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-    ocrAddDependence(rpfs[b], pe[b], 0, DB_MODE_RW);
-    ocrAddDependence(depv[2].guid, pe[b], 1, DB_MODE_RO);
+    ocrAddDependence(rpfs_p[b], pe[b], 0, DB_MODE_RW);
+    ocrAddDependence(mass_g, pe[b], 1, DB_MODE_RO);
     pv[1] = leaves_p[b];
     ocrGuid_t* ffp;
     ocrDbCreate(ff+b, (void**)&ffp, sizeof(ocrGuid_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
     ocrEdtCreate(fe+b, tmpf, 8, pv, 56, NULL, EDT_PROP_NONE, NULL_GUID, ffp);
-    ocrAddDependence(rpfs[b], fe[b], 0, DB_MODE_RW);
-    ocrAddDependence(depv[1].guid, fe[b], 27, DB_MODE_RO);
+    ocrDbRelease(ff[b]);
+    ocrAddDependence(rpfs_p[b], fe[b], 0, DB_MODE_RW);
+    ocrAddDependence(sim_g, fe[b], 27, DB_MODE_RO);
     ocrAddDependence(ff[b], fe[b], 28, DB_MODE_RW);
     ocrAddDependence(pf[b], fe[b], 29, DB_MODE_NULL);
   }
@@ -86,12 +94,13 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     u8 n;
     for(n=0; n<26; ++n) {
       u32 i = neighbor_id(n,ijk,sim_p->boxes.grid);
-      ocrAddDependence(rpfs[i], fe[b], 1+n, DB_MODE_RO);
+      ocrAddDependence(rpfs_p[i], fe[b], 1+n, DB_MODE_RO);
       ocrAddDependence(pf[i], fe[b], 30+n, DB_MODE_NULL);
       ocrAddDependence(ff[i], pe[b], 3+n, DB_MODE_RO);
     }
     ++b;
   }
+
   for(b = 0; b < sim_p->boxes.boxes_num; ++b)
     ocrAddDependence(ff[b], pe[b], 2, DB_MODE_RO);
 
@@ -131,8 +140,8 @@ ocrGuid_t position_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tmp,tmpg,exc;
   exc = *(ocrGuid_t*)(paramv+2);
   if(--paramv[0]) {
-    ocrEdtTemplateCreate(&tmp, exchange_edt, 0, 2);
-    ocrEdtCreate((ocrGuid_t*)(paramv+2), tmp, 0, NULL, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &rpf->nextpf);
+    ocrEdtTemplateCreate(&tmp, exchange_edt, 1, 2);
+    ocrEdtCreate((ocrGuid_t*)(paramv+2), tmp, 1, paramv, 2, NULL, EDT_PROP_FINISH, NULL_GUID, &rpf->nextpf);
     ocrEdtTemplateDestroy(tmp);
     ocrEdtTemplateCreate(&tmp, position_edt, 4, 29);
     ocrEdtCreate(&tmpg, tmp, 4, paramv, 29, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
@@ -143,8 +152,8 @@ ocrGuid_t position_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     for(n=2; n < 29; ++n)
       ocrAddDependence(*(ocrGuid_t*)depv[n].ptr, tmpg, n, DB_MODE_RO);
   }
-  ocrAddDependence(depv[0].guid, exc, 0, DB_MODE_RO);
-  ocrAddDependence(*(ocrGuid_t*)(paramv+3), exc, 1, DB_MODE_RO);
+  ocrAddDependence(depv[0].guid, exc, 0, DB_MODE_RW);
+  ocrAddDependence(*(ocrGuid_t*)(paramv+3), exc, 1, DB_MODE_RW);
 
   return NULL_GUID;
 }

@@ -16,9 +16,9 @@ char* timer_name[number_of_timers] = {
   "commReduce"
 };
 
-void print_timers(mdtimer_t* timers_p, u32 atoms)
+void print_timers(mdtimer_t* timers_p, u32 atoms, u32 steps)
 {
-  double loop_time = timers_p[loop_timer].total*TICK;
+  double loop_time = timers_p[total_timer].total*TICK;
 
   PRINTF("\n\nTimings\n");
   PRINTF("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
@@ -35,8 +35,8 @@ void print_timers(mdtimer_t* timers_p, u32 atoms)
              timer_name[ii], timers_p[ii].count, total/(double)timers_p[ii].count,
              total, total/loop_time*100.0);
   }
-  //double rate = timers_p[compute_force_timer].total / (atoms * timers_p[compute_force_timer].count);
-  double rate = 1; //FIXME
+  double rate = timers_p[total_timer].total / (atoms * steps);
+  //double rate = 1; //FIXME
   PRINTF("\n---------------------------------------------------\n");
   PRINTF(" Average atom update rate: %6.2f us/atom/task\n", rate);
   PRINTF("---------------------------------------------------\n\n");

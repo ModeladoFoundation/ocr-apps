@@ -58,6 +58,6 @@ static inline double get_total_time(const enum timer_name handle, mdtimer_t* tim
   return TICK * (double)timers_p[handle].total;
 }
 
-void print_timers(mdtimer_t* timers_p, u32 atoms);
+void print_timers(mdtimer_t* timers_p, u32 atoms, u32 steps);
 
 #endif

@@ -25,88 +25,161 @@ static inline void timestamp(const char* msg)
 ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 ocrGuid_t end_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
-ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t FNC_preInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+ocrGuid_t FNC_setUpGraph(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+
+ocrGuid_t FNC_preInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  u64 argc = getArgc(depv[0].ptr);
-  ocrGuid_t argv_g;
-  char** argv;
-  ocrDbCreate(&argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-  for(u32 a = 0; a < argc; ++a)
-    argv[a] = getArgv(depv[0].ptr,a);
 
-  ocrGuid_t timer_g;
-  mdtimer_t* timers_p;
-  ocrDbCreate(&timer_g, (void**)&timers_p, sizeof(mdtimer_t)*number_of_timers, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
+    ocrGuid_t timer_g = depv[1].guid;
+    ocrGuid_t cmd_g = depv[2].guid;
+    ocrGuid_t sim_g = depv[3].guid;
+
+    void* PTR_cmdLineArgs = depv[0].ptr;
+    mdtimer_t* timers_p = depv[1].ptr;
+    command_t* cmd_p = depv[2].ptr;
+    simulation_t* sim_p = depv[3].ptr;
+
+    u64 argc = getArgc(PTR_cmdLineArgs);
+    ocrGuid_t argv_g;
+    char** argv;
+    ocrDbCreate(&argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    for(u32 a = 0; a < argc; ++a)
+      argv[a] = getArgv(PTR_cmdLineArgs,a);
+
 #ifndef TG_ARCH
-  memset(timers_p, 0, sizeof(mdtimer_t)*number_of_timers);
+    memset(timers_p, 0, sizeof(mdtimer_t)*number_of_timers);
 #else
-  for(u32 a = 0; a < sizeof(mdtimer_t)*number_of_timers; ++a) ((char*)timers_p)[a]='\0';
+    for(u32 a = 0; a < sizeof(mdtimer_t)*number_of_timers; ++a) ((char*)timers_p)[a]='\0';
 #endif
-  timestamp("Starting Initialization\n");
-  profile_start(total_timer, timers_p);
+    timestamp("Starting Initialization\n");
+    profile_start(total_timer, timers_p);
 
-  ocrGuid_t cmd_g;
-  command_t* cmd_p;
-  ocrDbCreate(&cmd_g, (void**)&cmd_p, sizeof(command_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-  parse_command(argc, argv, cmd_p);
-  ocrDbDestroy(argv_g);
+    parse_command(argc, argv, cmd_p);
+    ocrDbDestroy(argv_g);
 
-  ocrGuid_t sim_g;
-  simulation_t* sim_p;
-  ocrDbCreate(&sim_g, (void**)&sim_p, sizeof(simulation_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-  u8 insane = init_simulation(cmd_p, sim_p, timers_p);
-  ocrDbDestroy(depv[0].guid);
+    u8 insane = init_simulation(cmd_p, sim_p, timers_p);
+    ocrDbDestroy(DBK_cmdLineArgs);
 
-  ocrGuid_t tmp_g,edt_g;
-  if(insane) {
-    ocrDbDestroy(timer_g);
-    ocrDbDestroy(sim_g);
-    timestamp("CoMD ending with initialization error\n");
-    ocrShutdown();
-  }
-  else {
-    ocrEdtTemplateCreate(&tmp_g, end_edt, 0, 6);
-    ocrEdtCreate(&edt_g, tmp_g, 0, NULL, 6, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-    ocrEdtTemplateDestroy(tmp_g);
-    ocrAddDependence(timer_g,edt_g,0,DB_MODE_RW);
-    ocrAddDependence(sim_g,edt_g,1,DB_MODE_RO);
-    ocrAddDependence(sim_p->boxes.box,edt_g,2,DB_MODE_RO);
-    ocrAddDependence(sim_p->boxes.rpf,edt_g,3,DB_MODE_RO);
-    ocrAddDependence(sim_p->pot.mass,edt_g,4,DB_MODE_RO);
+    if(insane) {
+      ocrDbDestroy(timer_g);
+      ocrDbDestroy(sim_g);
+      timestamp("CoMD ending with initialization error\n");
+      ocrShutdown();
+    }
 
-    ocrGuid_t fin, fin_g;
-    if(sim_p->steps) {
-      fin_g = edt_g;
-      ocrEdtTemplateCreate(&tmp_g, period_edt, 1, 6);
-      ocrEdtCreate(&edt_g, tmp_g, 1, (u64*)&fin_g, 6, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    return NULL_GUID;
+}
+
+ocrGuid_t FNC_setUpGraph(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    ocrGuid_t timer_g = depv[0].guid;
+    ocrGuid_t cmd_g = depv[1].guid;
+    ocrGuid_t sim_g = depv[2].guid;
+
+    mdtimer_t* timer_p = (mdtimer_t*)depv[0].ptr;
+    command_t* cmd_p = depv[1].ptr;
+    simulation_t* sim_p = (simulation_t*)depv[2].ptr;
+
+    ocrGuid_t tmp_g,edt_g;
+    //if(insane) {
+    //  ocrDbDestroy(timer_g);
+    //  ocrDbDestroy(sim_g);
+    //  timestamp("CoMD ending with initialization error\n");
+    //  ocrShutdown();
+    //}
+    //else
+    {
+      ocrEdtTemplateCreate(&tmp_g, end_edt, 0, 6);
+      ocrEdtCreate(&edt_g, tmp_g, 0, NULL, 6, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
       ocrEdtTemplateDestroy(tmp_g);
       ocrAddDependence(timer_g,edt_g,0,DB_MODE_RW);
       ocrAddDependence(sim_g,edt_g,1,DB_MODE_RW);
-      ocrAddDependence(sim_p->pot.mass,edt_g,2,DB_MODE_RO);
-      ocrAddDependence(sim_p->boxes.box,edt_g,3,DB_MODE_RO);
-      ocrAddDependence(sim_p->boxes.rpf,edt_g,4,DB_MODE_RO);
+      ocrAddDependence(sim_p->boxes.box,edt_g,2,DB_MODE_RO);
+      ocrAddDependence(sim_p->boxes.rpf,edt_g,3,DB_MODE_RO);
+      ocrAddDependence(sim_p->pot.mass,edt_g,4,DB_MODE_RO);
+
+      ocrGuid_t fin, fin_g;
+      if(sim_p->steps) {
+        fin_g = edt_g;
+        ocrEdtTemplateCreate(&tmp_g, period_edt, 1, 6);
+        ocrEdtCreate(&edt_g, tmp_g, 1, (u64*)&fin_g, 6, NULL, EDT_PROP_FINISH, NULL_GUID, NULL_GUID);
+        ocrEdtTemplateDestroy(tmp_g);
+        ocrAddDependence(timer_g,edt_g,0,DB_MODE_RW);
+        ocrAddDependence(sim_g,edt_g,1,DB_MODE_RW);
+        ocrAddDependence(sim_p->pot.mass,edt_g,2,DB_MODE_RO);
+        ocrAddDependence(sim_p->boxes.box,edt_g,3,DB_MODE_RO);
+        ocrAddDependence(sim_p->boxes.rpf,edt_g,4,DB_MODE_RO);
+      }
+
+      ocrEdtTemplateCreate(&tmp_g, fork_init_edt, 5, 3);
+      u64 pv[5] = {0,0,0,0,0};
+      ((u32*)pv)[0] = sim_p->boxes.grid[0];
+      ((u32*)pv)[1] = sim_p->boxes.grid[1];
+      ((u32*)pv)[2] = sim_p->boxes.grid[2];
+      ((u32*)pv)[3] = cmd_p->nx;
+      ((u32*)pv)[4] = cmd_p->ny;
+      ((u32*)pv)[5] = cmd_p->nz;
+      *((real_t*)pv+3) = cmd_p->delta;
+      *((real_t*)pv+4) = cmd_p->temperature;
+      ocrEdtCreate(&fin_g, tmp_g, 5, pv, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
+      ocrEdtTemplateDestroy(tmp_g);
+      ocrAddDependence(fin,edt_g,5,DB_MODE_NULL);
+      ocrAddDependence(sim_g,fin_g,0,DB_MODE_RW);
+      ocrAddDependence(sim_p->boxes.box,fin_g,1,DB_MODE_RO);
+      ocrAddDependence(sim_p->boxes.rpf,fin_g,2,DB_MODE_RO);
     }
+    ocrDbDestroy(cmd_g);
 
-    ocrEdtTemplateCreate(&tmp_g, fork_init_edt, 5, 3);
-    u64 pv[5] = {0,0,0,0,0};
-    ((u32*)pv)[0] = sim_p->boxes.grid[0];
-    ((u32*)pv)[1] = sim_p->boxes.grid[1];
-    ((u32*)pv)[2] = sim_p->boxes.grid[2];
-    ((u32*)pv)[3] = cmd_p->nx;
-    ((u32*)pv)[4] = cmd_p->ny;
-    ((u32*)pv)[5] = cmd_p->nz;
-    *((real_t*)pv+3) = cmd_p->delta;
-    *((real_t*)pv+4) = cmd_p->temperature;
-    ocrEdtCreate(&fin_g, tmp_g, 5, pv, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &fin);
-    ocrEdtTemplateDestroy(tmp_g);
-    ocrAddDependence(fin,edt_g,5,DB_MODE_NULL);
-    ocrAddDependence(sim_g,fin_g,0,DB_MODE_RO);
-    ocrAddDependence(sim_p->boxes.box,fin_g,1,DB_MODE_RO);
-    ocrAddDependence(sim_p->boxes.rpf,fin_g,2,DB_MODE_RO);
-  }
-  ocrDbDestroy(cmd_g);
+    return NULL_GUID;
+}
 
-  return NULL_GUID;
+ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
+{
+    ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
+
+    ocrGuid_t timer_g;
+    mdtimer_t* timers_p;
+    ocrDbCreate(&timer_g, (void**)&timers_p, sizeof(mdtimer_t)*number_of_timers, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+
+    ocrGuid_t cmd_g;
+    command_t* cmd_p;
+    ocrDbCreate(&cmd_g, (void**)&cmd_p, sizeof(command_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+
+    ocrGuid_t sim_g;
+    simulation_t* sim_p;
+    ocrDbCreate(&sim_g, (void**)&sim_p, sizeof(simulation_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+
+    ocrGuid_t TML_preInit;
+    ocrGuid_t EDT_preInit;
+
+    ocrGuid_t OET_preInit;
+    ocrGuid_t OET_preInit_Sticky;
+    ocrEventCreate( &OET_preInit_Sticky, OCR_EVENT_STICKY_T, false );
+
+    ocrEdtTemplateCreate(&TML_preInit, FNC_preInit, 0, 4);
+    ocrEdtCreate(&EDT_preInit, TML_preInit, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, &OET_preInit);
+
+    ocrAddDependence( OET_preInit, OET_preInit_Sticky, 0, DB_MODE_NULL );
+
+    ocrAddDependence(DBK_cmdLineArgs, EDT_preInit, 0, DB_MODE_RO);
+    ocrAddDependence(timer_g, EDT_preInit, 1, DB_MODE_RW);
+    ocrAddDependence(cmd_g, EDT_preInit, 2, DB_MODE_RW);
+    ocrAddDependence(sim_g, EDT_preInit, 3, DB_MODE_RW);
+
+    ocrGuid_t TML_setUpGraph;
+    ocrGuid_t EDT_setUpGraph;
+
+    ocrEdtTemplateCreate(&TML_setUpGraph, FNC_setUpGraph, 0, 4);
+    ocrEdtCreate(&EDT_setUpGraph, TML_setUpGraph, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+
+    ocrAddDependence(timer_g, EDT_setUpGraph, 0, DB_MODE_RW);
+    ocrAddDependence(cmd_g, EDT_setUpGraph, 1, DB_MODE_RO);
+    ocrAddDependence(sim_g, EDT_setUpGraph, 2, DB_MODE_RW);
+    ocrAddDependence(OET_preInit_Sticky, EDT_setUpGraph, 3, DB_MODE_RW);
+
+    return NULL_GUID;
 }
 
 void print_status(simulation_t* sim_p, mass_t* mass, double time)
@@ -124,7 +197,10 @@ void print_status(simulation_t* sim_p, mass_t* mass, double time)
   real_t e_u = sim_p->e_potential / sim_p->atoms;
   real_t temp = e_k / kB_eV_1_5;
 
-  double time_per_atom = 1.0e6*time/(double)((sim_p->period > sim_p->step ? sim_p->period : 1)*sim_p->atoms);
+  int nEval = (sim_p->step % sim_p->period == 0) ? sim_p->period : (sim_p->step % sim_p->period);
+  if( sim_p->step == 0 ) nEval = 1;
+
+  double time_per_atom = 1.0e6*time/(double)(nEval*sim_p->atoms);
   PRINTF("%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
          sim_p->step, sim_p->step*sim_p->dt, energy, e_u, e_k, temp, time_per_atom, sim_p->atoms);
 }
@@ -136,7 +212,7 @@ ocrGuid_t end_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   mdtimer_t* timer_p = (mdtimer_t*)depv[0].ptr;
 
   profile_stop(total_timer, timer_p);
-  print_status(sim_p, (mass_t*)depv[4].ptr, get_total_time(total_timer, timer_p));
+  print_status(sim_p, (mass_t*)depv[4].ptr, get_elapsed_time(total_timer, timer_p));
   timestamp("Ending simulation\n");
 
   real_t energy = (sim_p->e_potential + sim_p->e_kinetic) / sim_p->atoms;
@@ -154,7 +230,7 @@ ocrGuid_t end_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PRINTF("#############################\n");
   }
 
-  print_timers(timer_p, sim_p->atoms);
+  print_timers(timer_p, sim_p->atoms, sim_p->steps);
 
   ocrGuid_t* box = (ocrGuid_t*) depv[2].ptr;
   ocrGuid_t* rpf = (ocrGuid_t*) depv[3].ptr;

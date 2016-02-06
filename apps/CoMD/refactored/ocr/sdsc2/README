@@ -1,10 +1,16 @@
-Owner: Pietro Cicotti (pcicotti@sdsc.edu)
-Checked-in By: Chandra S. Martha (cmarth@intel.com) on 11/23/2015
+Original Owner: Pietro Cicotti (pcicotti@sdsc.edu)
+Current Owner:  Chandra S. Martha (chandra.martha@intel.com)
 
 This is alternative implementation of CoMD from SDSC done as part of XSTACK program and is incomplete due to time constraints.
     *Much more asynchronous than the other CoMD implementation from SDSC (checked in under sdsc/)
     *Only Lennard-Jones Potential is implemented.
-    *There could be potential bugs lurking around.
+
+LOG
+=====
+* Chandra: 11/23/2015 - Checked in original implemenation "as is"
+* Chandra: 02/15/2016 - Fixed bugs in the original implementation to run on distributed OCR
+=====
+
 
 To build and run:
 make -f Makefile.<OCR_TYPE> clean run
