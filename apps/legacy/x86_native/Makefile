@@ -37,11 +37,7 @@ GLIBC_A = $(LIBPTHREAD) $(LIBGCC_EH) $(LIBC)
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
-OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/build/x86_lib/objs
-
-# OCR library - this can be the libocrscaffold.a, or
-# the real ocr library/runtime. Uncomment the one you want.
-#OCR_LIB = $(LIBS)/libocrscaffold.a
+OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/build/x86-newlib/objs
 OCR_LIB = $(OCR_LIB_PATH)/libocr.o $(GLIBC_A)
 
 CAPP = chello
