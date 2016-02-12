@@ -199,11 +199,7 @@ namespace Realm {
 
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
 #ifdef USE_OCR_LAYER
-      struct TaskPtrContainer
-      {
-          Processor::TaskFuncPtr fnptr;
-      };
-      std::map<Processor::TaskFuncID, TaskPtrContainer> ocr_task_ptr_table;
+      //Guid of the legacy ocr module used for initilize and finalize
       ocrGuid_t ocr_cfg_guid;
 #endif
 
@@ -248,6 +244,11 @@ namespace Realm {
       const std::vector<DMAChannel *>& get_dma_channels(void) const;
 
     protected:
+      //create a processor and add to the list of processors
+      void create_processors();
+      //create a memory and add to the list of memories
+      void create_memories();
+ 
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;

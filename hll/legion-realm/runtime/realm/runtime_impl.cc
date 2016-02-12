@@ -121,7 +121,20 @@ namespace Realm {
       assert(impl != 0);
 
 #ifdef USE_OCR_LAYER
-      return ((RuntimeImpl *)impl)->register_task(taskid, taskptr);
+      //registers the task on each processor
+      CodeDescriptor codedesc(taskptr);
+      ProfilingRequestSet prs;
+      std::set<Event> events;
+      std::vector<ProcessorImpl *>& procs = ((RuntimeImpl *)impl)->nodes[gasnet_mynode()].processors;
+      for(std::vector<ProcessorImpl *>::iterator it = procs.begin();
+	  it != procs.end();
+	  it++) {
+	Event e = (*it)->me.register_task(taskid, codedesc, prs);
+	events.insert(e);
+      }
+
+      Event::merge_events(events).wait();
+      return true;
 #else
       CodeDescriptor codedesc(taskptr);
       ProfilingRequestSet prs;
@@ -411,6 +424,25 @@ namespace Realm {
 	}
     }
 
+#ifdef USE_OCR_LAYER
+    void RuntimeImpl::create_processors()
+    {
+      //only one processor
+      Processor p = next_local_processor_id();
+      ProcessorImpl *pi = new OCRProcessor(p);
+      add_processor(pi); 
+    }
+
+    void RuntimeImpl::create_memories()
+    {
+      //only one memory
+      size_t sysmem_size_in_mb = 512;
+      Memory m = next_local_memory_id();
+      MemoryImpl *mi = new LocalCPUMemory(m, sysmem_size_in_mb << 20);
+      add_memory(mi);
+    }
+#endif
+
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
 #ifdef USE_OCR_LAYER
@@ -419,6 +451,54 @@ namespace Realm {
 
       ocrParseArgs(*argc,(const char**)*argv, &ocr_cfg);
       ocrLegacyInit(&ocr_cfg_guid, &ocr_cfg);
+
+      //create the nodes which contains processors and memory 
+      nodes = new Node[gasnet_nodes()];
+      Node *n = &nodes[gasnet_mynode()];
+      create_processors();
+      create_memories();
+
+      // iterate over all local processors and add affinities for them
+      // all of this should eventually be moved into appropriate modules
+      std::map<Processor::Kind, std::set<Processor> > procs_by_kind;
+      
+      for(std::vector<ProcessorImpl *>::const_iterator it = n->processors.begin();
+          it != n->processors.end();
+          it++)
+        if(*it) {
+          Processor p = (*it)->me;
+          Processor::Kind k = (*it)->me.kind();
+      
+          procs_by_kind[k].insert(p);
+        }
+
+      // now iterate over memories too
+	std::map<Memory::Kind, std::set<Memory> > mems_by_kind;
+	for(std::vector<MemoryImpl *>::const_iterator it = n->memories.begin();
+	    it != n->memories.end();
+	    it++)
+	  if(*it) {
+	    Memory m = (*it)->me;
+	    Memory::Kind k = (*it)->me.kind();
+
+	    mems_by_kind[k].insert(m);
+	  }
+
+      std::set<Processor::Kind> local_cpu_kinds;
+      local_cpu_kinds.insert(Processor::OCR_PROC);
+
+      for(std::set<Processor::Kind>::const_iterator it = local_cpu_kinds.begin();
+          it != local_cpu_kinds.end();
+          it++) {
+        Processor::Kind k = *it;
+      
+        add_proc_mem_affinities(machine,
+      			  procs_by_kind[k],
+      			  mems_by_kind[Memory::SYSTEM_MEM],
+      			  100, // "large" bandwidth
+      			  1   // "small" latency
+      			  );
+     } 
 
       return true;
 #else
@@ -1047,14 +1127,6 @@ namespace Realm {
 #endif
     }
 
-#ifdef USE_OCR_LAYER
-    bool RuntimeImpl::register_task(Processor::TaskFuncID taskid, Processor::TaskFuncPtr taskptr)
-    {  
-      ocr_task_ptr_table[taskid].fnptr = taskptr;
-      return true;
-    }
-#endif
-
     struct MachineRunArgs {
       RuntimeImpl *r;
       Processor::TaskFuncID task_id;
@@ -1088,41 +1160,25 @@ namespace Realm {
       return 0;
     }
 
-#ifdef USE_OCR_LAYER
-    ocrGuid_t ocr_realm_conversion_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
-    {
-      assert(argc == 1 && depc == 2);
-      Processor::TaskFuncPtr task_func = ((RuntimeImpl::TaskPtrContainer*)argv)->fnptr;
-      void *args = depv[0].ptr;
-      size_t *arglen = (size_t*)depv[1].ptr;
-      task_func(args, *arglen, NULL, 0, Processor::NO_PROC);
-      ocrDbDestroy(depv[0].guid);
-      ocrDbDestroy(depv[1].guid);
-      return NULL_GUID;
-    }
-#endif
-
     void RuntimeImpl::run(Processor::TaskFuncID task_id /*= 0*/,
 			  Runtime::RunStyle style /*= ONE_TASK_ONLY*/,
 			  const void *args /*= 0*/, size_t arglen /*= 0*/,
 			  bool background /*= false*/)
     { 
 #ifdef USE_OCR_LAYER //currently only considering background=false
-      ocrGuid_t db_guid[2];
-
-      void *args_copy;
-      ocrDbCreate(&db_guid[0], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-      memcpy(args_copy, args, arglen);
-
-      size_t *arglen_copy;
-      ocrDbCreate(&db_guid[1], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-      arglen_copy[0] = arglen;
-
-      ocrGuid_t ocr_realm_conversion_edt_t, ocr_realm_conversion_edt, output_event;
-      ocrEdtTemplateCreate(&ocr_realm_conversion_edt_t, ocr_realm_conversion_func, 1, 2);
-      ocrEdtCreate(&ocr_realm_conversion_edt, ocr_realm_conversion_edt_t, EDT_PARAM_DEF, (u64*)(&ocr_task_ptr_table[task_id]), EDT_PARAM_DEF, db_guid, EDT_PROP_NONE, NULL_GUID, &output_event);
-      ocrEdtTemplateDestroy(ocr_realm_conversion_edt_t);
-
+      const std::vector<ProcessorImpl *>& local_procs = nodes[gasnet_mynode()].processors;
+      if(task_id != 0 && 
+	 ((style != Runtime::ONE_TASK_ONLY) || 
+	  (gasnet_mynode() == 0))) {//(gasnet_nodes()-1)))) {
+	for(std::vector<ProcessorImpl *>::const_iterator it = local_procs.begin();
+	    it != local_procs.end();
+	    it++) {
+	  (*it)->me.spawn(task_id, args, arglen, ProfilingRequestSet(),
+			  Event::NO_EVENT, 0/*priority*/);
+	  if(style != Runtime::ONE_TASK_PER_PROC) break;
+	}
+      }
+     
       u8 ret = ocrLegacyFinalize(ocr_cfg_guid, true);
       exit(ret);
 #else
