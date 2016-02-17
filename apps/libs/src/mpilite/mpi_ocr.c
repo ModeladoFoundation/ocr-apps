@@ -16,6 +16,13 @@
 #include <extensions/ocr-labeling.h>
 #include <extensions/ocr-affinity.h>
 
+
+// 2/3/16 need patch 2442 to define and have OCR use this, else make it
+// zero so don't get an error
+#ifndef EDT_PROP_LONG
+    #define EDT_PROP_LONG 0
+#endif
+
 extern ocrGuid_t __ffwd_init(void ** ffwd_add_ptr);
 
 void ERROR(char *s)
@@ -177,34 +184,39 @@ static ocrGuid_t endEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 // max workers available as ranks is:
 //  if only 1 policy domain (== number of affinity PDs), then you can use
 //    all of the workers returned by ocrNbWorkers() (assuming this is NOT
-//    x86-mpi with only 1 PD)
+//    x86-mpi with only 1 PD [no way to figure this out])
 //  else this is x86-mpi, and one of the workers per PD is reserved for
-//    communication, so multiply PDs time #workers-1.
-//    Also subtract 1 as fudge factor so we're not too close to the
-//    edge, in case a startup EDT hangs around too long - don't want
-//    any of the long-lived RankEDTs to not get started because there's
-//    no available worker on a particular Policy Domain.
+//    communication, another to service the PD, so multiply PDs time #workers-2.
+//    (according to Vincent 2/3/16)
 static u32 maxWorkers(void)
 {
     const u64 numWorkers = ocrNbWorkers(); // for a SINGLE PD
     u64 numPDs;
     ocrAffinityCount(AFFINITY_PD, &numPDs);
 
-    return (1 == numPDs ? numWorkers : numPDs * (numWorkers - 1) - 1);
+    return (1 == numPDs ? numWorkers : numPDs * (numWorkers - 2));
 }
 
+// Affinity Kinds
+#define AFFINITY_NONE        0
+#define AFFINITY_SEQUENTIAL  1
+#define AFFINITY_ROUND_ROBIN 2
 
-// parseAndShiftArgv extract optional aggressive Non-Blocking "-a" (default
-// conservative); then numRanks "-r <int>" optional - otherwise use maxWorkers()
+// parseAndShiftArgv extract
+// optional aggressive Non-Blocking "-a" (default conservative);
+// then optional sequential affinity "-aff_seq" (else round-robin);
+// then numRanks "-r <int>" optional - otherwise use maxWorkers()
 // and maxTag "-t <int>" optional; else use 0
 //     exe [-a][ -r <int>][ -t <int>] <args for program>
 // arguments from argcArgv DB, and shift argv to left by number of items
 // extracted (reducing argc accordingly)
-static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *aggressiveNB )
+static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *aggressiveNB,
+                              u32 *affinity)
 {
     *numRanks = 4;  // default
     *maxTag = 0;  // default
     *aggressiveNB = FALSE; // default non-aggressive
+    *affinity = AFFINITY_NONE;
     int shift = 0;      // amount to shift argv to remove mpilite args
 
     int argc = getArgc(argcArgv);
@@ -233,6 +245,11 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
             shift += 1;
         }
 #endif
+    if (argc > 1 && ! strcmp("-aff_seq", getArgv(argcArgv,1)))
+        {
+            *affinity = AFFINITY_SEQUENTIAL;
+            shift += 1;
+        }
 
     if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
         {
@@ -364,9 +381,11 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     u32 numRanks = 0;
     u32 maxTag = 0;
     bool aggressiveNB = FALSE;
+    u32 affinity = AFFINITY_NONE;
+    int rank;
 
     PRINTF("mainEdtHelper: Parse argv\n");
-    parseAndShiftArgv(argcArgv, &numRanks, &maxTag, &aggressiveNB);
+    parseAndShiftArgv(argcArgv, &numRanks, &maxTag, &aggressiveNB, &affinity);
 
     // Don't need to touch argcArgv any more, so release it
     ocrDbRelease(argcArgvDB->guid);
@@ -426,31 +445,90 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     // a rankEdt is long lived, and never releases the DB so only 1 PD would
     // "own" argcArgv).
     // Since the rankEdts' deps are all satisfied, they can start immediately.
-    for (int rank = 0; rank<numRanks; rank++)
+    u64 count;
+    ocrAffinityCount(AFFINITY_PD, &count);
+    ocrGuid_t aff[count];
+    ocrAffinityGet(AFFINITY_PD, &count, aff);
+
+    ocrGuid_t rankEdt;
+
+    if (AFFINITY_SEQUENTIAL == affinity)
         {
-            rankParamv[0] = rank;  // only param that changes
-            ocrGuid_t rankEdt;
+            int numRanksPerPD = numRanks / count;
+            int remRanks = numRanks % count;
+            // for the first (count - remRanks) PDs, assign contiguous chunks
+            // of numRanksPerPD ranks. For the last remRanks PDs, increase the
+            // numRanksPerPD by 1 once, so that the contiguous chunks are 1 rank
+            // longer than the first group of ranks.
+
+            rank = 0;
+            for (int PDindex = 0; PDindex < count; PDindex++)
+                {
+                    const ocrGuid_t PD = aff[PDindex];
+                    if (count == (PDindex + remRanks))
+                        {
+                            // There will be remRanks more PDs processed,
+                            // so increase the size of numRanksPerPD by 1
+                            numRanksPerPD ++;
+                        }
+
+                    for (int r = 0; r < numRanksPerPD; r++)
+                        {
+
+                            rankParamv[0] = rank;  // only param that changes
+                            //printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, PD, PDindex);
+                            //fflush(stdout);
+                            ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
+                                         EDT_PARAM_DEF, NULL,  EDT_PROP_LONG, PD, NULL);
+
+                            //printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, PD);
+                            //fflush(stdout);
+
+                            rank ++ ;
+                            // argcArgvDB: will only be read by ranks
+                            ocrAddDependence(argcArgvDB->guid, rankEdt, 0, DB_MODE_RO /* CONST hangs */);
+                            ocrAddDependence(messageEventsDB, rankEdt, 1, DB_MODE_RW);
+                            ocrAddDependence(messageDataDB, rankEdt, 2, DB_MODE_RW);
+
+                        }
+                }
+            assert(rank == numRanks);  // they have all been assigned
+        }
+    else  // affinity == AFFINITY_NONE or AFFINITY_ROUND_ROBIN
+        {
+
+
+            for (rank = 0; rank<numRanks; rank++)
+                {
+                    rankParamv[0] = rank;  // only param that changes
+                    const ocrGuid_t affWhere = (AFFINITY_NONE == affinity ? NO_ALLOC: aff[rank%count]);
 
 #if 0
-            ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
-                         EDT_PARAM_DEF, rankDepv,  EDT_PROP_NONE, NO_ALLOC, NULL);
+                    ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
+                                 EDT_PARAM_DEF, rankDepv,  EDT_PROP_NONE, NO_ALLOC, NULL);
 
 #endif
-            // having trouble getting argcArgvDB added as CONST - hangs: bug
-            // 664
+                    // having trouble getting argcArgvDB added as CONST - hangs: bug
+                    // 664
 #if 1
-            ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
-                         EDT_PARAM_DEF, NULL,  EDT_PROP_NONE, NO_ALLOC, NULL);
+                    //            printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, aff[rank%count], rank%count);
+                    //            fflush(stdout);
+                    ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
+                                 EDT_PARAM_DEF, NULL,  EDT_PROP_LONG, affWhere, NULL);
+                    //            printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, aff[rank%count]);
+                    //            fflush(stdout);
 
-            // argcArgvDB: will only be read by ranks
-            ocrAddDependence(argcArgvDB->guid, rankEdt, 0, DB_MODE_RO /* CONST hangs */);
-            ocrAddDependence(messageEventsDB, rankEdt, 1, DB_MODE_RW);
-            ocrAddDependence(messageDataDB, rankEdt, 2, DB_MODE_RW);
+                    // argcArgvDB: will only be read by ranks
+                    ocrAddDependence(argcArgvDB->guid, rankEdt, 0, DB_MODE_RO /* CONST hangs */);
+                    ocrAddDependence(messageEventsDB, rankEdt, 1, DB_MODE_RW);
+                    ocrAddDependence(messageDataDB, rankEdt, 2, DB_MODE_RW);
 #endif
 
-            PRINTF("  rank %d edt 0x%llx\n",rank, rankEdt);fflush(stdout);
+                    PRINTF("  rank %d edt 0x%llx\n",rank, rankEdt);fflush(stdout);
 
+                }
         }
+
 
     ocrEdtTemplateDestroy(rankEdtTemplate);
 
@@ -494,7 +572,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbRelease(argcArgv);
 
     ocrEdtCreate(&mainEdtHelper, mainEdtHelperTemplate, EDT_PARAM_DEF ,
-         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH,
+         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH | EDT_PROP_LONG,
          NULL_GUID, &outputEvent);
 
     PRINTF("mainEdtHelper: edt %p\n", mainEdtHelper);
