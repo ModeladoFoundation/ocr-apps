@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,6 +85,14 @@ namespace Realm {
       log_inst.info("instance destroyed: space=" IDFMT " id=" IDFMT "",
 	       i_impl->metadata.is.id, this->id);
       get_runtime()->get_memory_impl(i_impl->memory)->destroy_instance(*this, true);
+    }
+
+    void RegionInstance::destroy(const std::vector<DestroyedField>& destroyed_fields,
+				 Event wait_on /*= Event::NO_EVENT*/) const
+    {
+      // TODO: actually call destructor
+      assert(destroyed_fields.empty());
+      destroy(wait_on);
     }
 
     /*static*/ const RegionInstance RegionInstance::NO_INST = { 0 };

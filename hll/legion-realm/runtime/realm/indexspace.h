@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 
 #include "lowlevel_config.h"
 #include "arrays.h"
+#include "custom_serdez.h"
 
 namespace Realm {
 
@@ -923,13 +924,16 @@ namespace Realm {
                                           legion_lowlevel_file_mode_t file_mode) const;
       struct CopySrcDstField {
       public:
-        CopySrcDstField(void)
-          : inst(RegionInstance::NO_INST), offset(0), size(0) { }
+        CopySrcDstField(void) 
+          : inst(RegionInstance::NO_INST), offset(0), size(0), serdez_id(0) { }
         CopySrcDstField(RegionInstance i, unsigned o, unsigned s)
-          : inst(i), offset(o), size(s) { }
+          : inst(i), offset(o), size(s), serdez_id(0) { }
+        CopySrcDstField(RegionInstance i, unsigned o, unsigned s, CustomSerdezID sid)
+          : inst(i), offset(o), size(s), serdez_id(sid) { }
       public:
 	RegionInstance inst;
 	unsigned offset, size;
+	CustomSerdezID serdez_id;
       };
 
       Event fill(const std::vector<CopySrcDstField> &dsts,
@@ -976,6 +980,18 @@ namespace Realm {
 		 Event wait_on = Event::NO_EVENT,
 		 ReductionOpID redop_id = 0, bool red_fold = false) const;
     };
+
+    inline std::ostream& operator<<(std::ostream& os, Domain d) 
+    {
+      switch(d.get_dim()) {
+      case 0: return os << d.get_index_space();
+      case 1: return os << d.get_rect<1>();
+      case 2: return os << d.get_rect<2>();
+      case 3: return os << d.get_rect<3>();
+      default: assert(0);
+      }
+      return os;
+    }
 
     class IndexSpaceAllocator {
     protected:

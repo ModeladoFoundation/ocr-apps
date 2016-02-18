@@ -1,4 +1,4 @@
--- Copyright 2015 Stanford University
+-- Copyright 2016 Stanford University
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ do
   local runtime_dir = root_dir .. "../../runtime/"
   local legion_dir = runtime_dir .. "legion/"
   local mapper_dir = runtime_dir .. "mappers/"
+  local realm_dir = runtime_dir .. "realm/"
   local pennant_cc = root_dir .. "pennant.cc"
   local pennant_so = os.tmpname() .. ".so" -- root_dir .. "pennant.so"
   local cxx = os.getenv('CXX') or 'c++'
@@ -55,14 +56,15 @@ do
 
   local cmd = (cxx .. " " .. cxx_flags .. " -I " .. runtime_dir .. " " ..
                 " -I " .. mapper_dir .. " " .. " -I " .. legion_dir .. " " ..
-                 pennant_cc .. " -o " .. pennant_so)
+                " -I " .. realm_dir .. " " ..  pennant_cc .. " -o " .. pennant_so)
   if os.execute(cmd) ~= 0 then
     print("Error: failed to compile " .. pennant_cc)
     assert(false)
   end
   terralib.linklibrary(pennant_so)
   cpennant = terralib.includec("pennant.h", {"-I", root_dir, "-I", runtime_dir,
-                                             "-I", mapper_dir, "-I", legion_dir})
+                                             "-I", mapper_dir, "-I", legion_dir,
+                                             "-I", realm_dir})
 end
 
 local c = regentlib.c
@@ -1367,7 +1369,7 @@ do
     __demand(__parallel)
     for i = 0, conf.npieces do
       adv_pos_half(rp_all_private_p[i],
-                   rp_spans_private[i].partition,
+                   rp_spans_private[i],
                    dt,
                    conf.nspans_points,
                    enable)
@@ -1375,7 +1377,7 @@ do
     __demand(__parallel)
     for i = 0, conf.npieces do
       adv_pos_half(rp_all_shared_p[i],
-                   rp_spans_shared[i].partition,
+                   rp_spans_shared[i],
                    dt,
                    conf.nspans_points,
                    enable)
@@ -1387,8 +1389,8 @@ do
                       rp_all_private_p[i],
                       rp_all_ghost_p[i],
                       rs_all_p[i],
-                      rz_spans[i].partition,
-                      rs_spans[i].partition,
+                      rz_spans[i],
+                      rs_spans[i],
                       alfa, gamma, ssmin, dt,
                       q1, q2,
                       conf.nspans_zones,
@@ -1398,7 +1400,7 @@ do
     __demand(__parallel)
     for i = 0, conf.npieces do
       adv_pos_full(rp_all_private_p[i],
-                   rp_spans_private[i].partition,
+                   rp_spans_private[i],
                    dt,
                    conf.nspans_points,
                    enable)
@@ -1406,7 +1408,7 @@ do
     __demand(__parallel)
     for i = 0, conf.npieces do
       adv_pos_full(rp_all_shared_p[i],
-                   rp_spans_shared[i].partition,
+                   rp_spans_shared[i],
                    dt,
                    conf.nspans_points,
                    enable)
@@ -1418,8 +1420,8 @@ do
                            rp_all_private_p[i],
                            rp_all_ghost_p[i],
                            rs_all_p[i],
-                           rz_spans[i].partition,
-                           rs_spans[i].partition,
+                           rz_spans[i],
+                           rs_spans[i],
                            dt,
                            conf.nspans_zones,
                            use_foreign, enable)
@@ -1429,7 +1431,7 @@ do
     __demand(__parallel)
     for i = 0, conf.npieces do
       dthydro min= calc_dt_hydro(rz_all_p[i],
-                                 rz_spans[i].partition,
+                                 rz_spans[i],
                                  dt, dtmax, cfl, cflv,
                                  conf.nspans_zones,
                                  enable)
@@ -1484,37 +1486,37 @@ do
   for i = 0, conf.npieces do
     init_pointers(
       rz_all_p[i], rp_all_private_p[i], rp_all_ghost_p[i],
-      rs_all_p[i], rs_spans[i].partition, conf.nspans_zones)
+      rs_all_p[i], rs_spans[i], conf.nspans_zones)
   end
 
   for i = 0, conf.npieces do
     init_mesh_zones(
-      rz_all_p[i], rz_spans[i].partition, conf.nspans_zones)
+      rz_all_p[i], rz_spans[i], conf.nspans_zones)
   end
 
   for i = 0, conf.npieces do
     calc_centers_full(
       rz_all_p[i], rp_all_private_p[i], rp_all_ghost_p[i],
-      rs_all_p[i], rs_spans[i].partition, conf.nspans_zones,
+      rs_all_p[i], rs_spans[i], conf.nspans_zones,
       enable)
   end
 
   for i = 0, conf.npieces do
     calc_volumes_full(
       rz_all_p[i], rp_all_private_p[i], rp_all_ghost_p[i],
-      rs_all_p[i], rs_spans[i].partition, conf.nspans_zones,
+      rs_all_p[i], rs_spans[i], conf.nspans_zones,
       enable)
   end
 
   for i = 0, conf.npieces do
     init_side_fracs(
       rz_all_p[i], rp_all_private_p[i], rp_all_ghost_p[i],
-      rs_all_p[i], rs_spans[i].partition, conf.nspans_zones)
+      rs_all_p[i], rs_spans[i], conf.nspans_zones)
   end
 
   for i = 0, conf.npieces do
     init_hydro(
-      rz_all_p[i], rz_spans[i].partition,
+      rz_all_p[i], rz_spans[i],
       rinit, einit, rinitsub, einitsub,
       subregion[0], subregion[1], subregion[2], subregion[3],
       conf.nspans_zones)
@@ -1522,12 +1524,12 @@ do
 
   for i = 0, conf.npieces do
     init_radial_velocity(
-      rp_all_private_p[i], rp_spans_private[i].partition,
+      rp_all_private_p[i], rp_spans_private[i],
       uinitradial, conf.nspans_points)
   end
   for i = 0, conf.npieces do
     init_radial_velocity(
-      rp_all_shared_p[i], rp_spans_shared[i].partition,
+      rp_all_shared_p[i], rp_spans_shared[i],
       uinitradial, conf.nspans_points)
   end
 

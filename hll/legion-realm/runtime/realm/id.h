@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,6 @@
 
 #ifndef REALM_ID_H
 #define REALM_ID_H
-
-// support old define name
-#ifdef LEGION_IDS_ARE_64BIT
-#  define REALM_IDS_ARE_64BIT
-#endif
 
 namespace Realm {
 

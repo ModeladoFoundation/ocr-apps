@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@
       DESTROY_INST_MSGID,
       REMOTE_WRITE_MSGID,
       REMOTE_REDUCE_MSGID,
+      REMOTE_SERDEZ_MSGID,
       REMOTE_WRITE_FENCE_MSGID,
       REMOTE_WRITE_FENCE_ACK_MSGID,
       DESTROY_LOCK_MSGID,
@@ -59,6 +60,8 @@
       METADATA_RESPONSE_MSGID, // should really be a reply
       METADATA_INVALIDATE_MSGID,
       METADATA_INVALIDATE_ACK_MSGID,
+      REGISTER_TASK_MSGID,
+      REGISTER_TASK_COMPLETE_MSGID,
     };
 
 

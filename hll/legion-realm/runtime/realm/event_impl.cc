@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -774,17 +774,12 @@ namespace Realm {
     {
       GASNetCondVar cv(mutex);
       PthreadCondWaiter w(cv);
+      add_waiter(gen_needed, &w);
       {
 	AutoHSLLock a(mutex);
 
-	if(gen_needed > generation) {
-	  local_waiters.push_back(&w);
-    
-	  if((owner != gasnet_mynode()) && (gen_needed > gen_subscribed)) {
-	    printf("AAAH!  Can't subscribe to another node's event in external_wait()!\n");
-	    exit(1);
-	  }
-
+	// re-check condition before going to sleep
+	while(gen_needed > generation) {
 	  // now just sleep on the condition variable - hope we wake up
 	  cv.wait();
 	}

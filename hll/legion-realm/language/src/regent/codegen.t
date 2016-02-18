@@ -1,4 +1,4 @@
--- Copyright 2015 Stanford University, NVIDIA Corporation
+-- Copyright 2016 Stanford University, NVIDIA Corporation
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -225,8 +225,6 @@ function context:add_region_root(region_type, logical_region, field_paths,
     setmetatable(
       {
         logical_region = logical_region,
-        default_partition = nil,
-        default_product = nil,
         field_paths = field_paths,
         privilege_field_paths = privilege_field_paths,
         field_privileges = field_privileges,
@@ -240,7 +238,6 @@ function context:add_region_root(region_type, logical_region, field_paths,
 end
 
 function context:add_region_subregion(region_type, logical_region,
-                                      default_partition, default_product,
                                       parent_region_type)
   if not self.regions then
     error("not in task context", 2)
@@ -260,8 +257,6 @@ function context:add_region_subregion(region_type, logical_region,
     setmetatable(
       {
         logical_region = logical_region,
-        default_partition = default_partition,
-        default_product = default_product,
         field_paths = self:region(parent_region_type).field_paths,
         privilege_field_paths = self:region(parent_region_type).privilege_field_paths,
         field_privileges = self:region(parent_region_type).field_privileges,
@@ -553,7 +548,7 @@ local function unpack_region(cx, region_expr, region_type, static_region_type)
   end
 
   cx:add_ispace_subispace(region_type:ispace(), is, isa, it, parent_region_type:ispace())
-  cx:add_region_subregion(region_type, r, false, false, parent_region_type)
+  cx:add_region_subregion(region_type, r, parent_region_type)
 
   return expr.just(actions, r)
 end
@@ -658,9 +653,17 @@ function value:get_index(cx, index, result_type)
 end
 
 function value:unpack(cx, value_type, field_name, field_type)
+  local base_value_type = value_type
+  if std.is_bounded_type(base_value_type) and
+    not std.get_field(base_value_type.index_type.base_type, field_name)
+  then
+    assert(base_value_type:is_ptr())
+    base_value_type = base_value_type.points_to_type
+  end
   local unpack_type = std.as_read(field_type)
+
   if std.is_region(unpack_type) and not cx:has_region(unpack_type) then
-    local static_region_type = std.get_field(value_type, field_name)
+    local static_region_type = std.get_field(base_value_type, field_name)
     local region_expr = self:__get_field(cx, value_type, field_name):read(cx)
     region_expr = unpack_region(cx, region_expr, unpack_type, static_region_type)
     region_expr = expr.just(region_expr.actions, self.expr.value)
@@ -686,13 +689,13 @@ function value:unpack(cx, value_type, field_name, field_type)
     assert(#region_types == 1)
     local region_type = region_types[1]
 
-    local static_ptr_type = std.get_field(value_type, field_name)
+    local static_ptr_type = std.get_field(base_value_type, field_name)
     local static_region_types = static_ptr_type:bounds()
     assert(#static_region_types == 1)
     local static_region_type = static_region_types[1]
 
     local region_field_name
-    for _, entry in pairs(value_type:getentries()) do
+    for _, entry in pairs(base_value_type:getentries()) do
       local entry_type = entry[2] or entry.type
       if entry_type == static_region_type then
         region_field_name = entry[1] or entry.field
@@ -876,7 +879,7 @@ function ref:__ref(cx, expr_type)
   end
 
   local values
-  if not expr_type or std.as_read(expr_type) == value_type then
+  if not expr_type or std.type_maybe_eq(std.as_read(expr_type), value_type) then
     values = data.zip(field_types, base_pointers, strides):map(
       function(field)
         local field_type, base_pointer, stride = unpack(field)
@@ -1548,39 +1551,16 @@ end
 
 function codegen.expr_field_access(cx, node)
   local value_type = std.as_read(node.value.expr_type)
-  if std.is_region(value_type) then
-    local value = codegen.expr(cx, node.value):read(cx)
-    local actions = quote
-      [value.actions];
-      [emit_debuginfo(node)]
-    end
-
-    assert(cx:has_region(value_type))
-    local lp
-    if value_type:has_default_partition() and node.field_name == "partition"
-    then
-      lp = cx:region(value_type).default_partition
-    elseif value_type:has_default_product() and node.field_name == "product"
-    then
-      lp = cx:region(value_type).default_product
-    end
-    assert(lp)
-
-    return values.value(
-      expr.once_only(actions, lp),
-      node.expr_type)
-  else
-    local field_name = node.field_name
-    local field_type = node.expr_type
-    return codegen.expr(cx, node.value):get_field(cx, field_name, field_type, node.value.expr_type)
-  end
+  local field_name = node.field_name
+  local field_type = node.expr_type
+  return codegen.expr(cx, node.value):get_field(cx, field_name, field_type, node.value.expr_type)
 end
 
 function codegen.expr_index_access(cx, node)
   local value_type = std.as_read(node.value.expr_type)
   local expr_type = std.as_read(node.expr_type)
 
-  if std.is_partition(value_type) or std.is_cross_product(value_type) then
+  if std.is_partition(value_type) then
     local value = codegen.expr(cx, node.value):read(cx)
     local index = codegen.expr(cx, node.index):read(cx)
 
@@ -1592,47 +1572,6 @@ function codegen.expr_index_access(cx, node)
 
     if cx:has_region(expr_type) then
       local lr = cx:region(expr_type).logical_region
-      if std.is_cross_product(value_type) then
-        local ip = terralib.newsymbol(c.legion_index_partition_t, "ip")
-        local lp = terralib.newsymbol(c.legion_logical_partition_t, "lp")
-        actions = quote
-          [actions]
-          var [ip] = c.legion_terra_index_cross_product_get_subpartition_by_color(
-            [cx.runtime], [cx.context],
-            [value.value].product, [index.value])
-          var [lp] = c.legion_logical_partition_create(
-            [cx.runtime], [cx.context], [lr].impl, [ip])
-        end
-
-        if not cx:region(expr_type).default_partition then
-          local subpartition_type = expr_type:default_partition()
-          local subpartition = terralib.newsymbol(subpartition_type, "subpartition")
-
-          actions = quote
-            [actions]
-            var [subpartition] = [subpartition_type] { impl = [lp] }
-          end
-          cx:region(expr_type).default_partition = subpartition
-        end
-        if #value_type:partitions() > 2 and not cx:region(expr_type).default_product then
-          local subproduct_type = expr_type:default_product()
-          local subproduct = terralib.newsymbol(subproduct_type, "subproduct")
-
-          actions = quote
-            [actions]
-            var ip2 = [value.value].partitions[2]
-            var [subproduct] = [subproduct_type] {
-              impl = [lp],
-              product = c.legion_terra_index_cross_product_t {
-                partition = [ip],
-                other = ip2,
-              },
-              -- FIXME: partitions
-            }
-          end
-          cx:region(expr_type).default_product = subproduct
-        end
-      end
       return values.value(expr.just(actions, lr), expr_type)
     end
 
@@ -1674,47 +1613,99 @@ function codegen.expr_index_access(cx, node)
       end
     end
 
-    local subpartition, subproduct = false, false
-    if std.is_cross_product(value_type) then
-      assert(expr_type:has_default_partition())
-      local subpartition_type = expr_type:default_partition()
-      subpartition = terralib.newsymbol(subpartition_type, "subpartition")
-
-      local ip = terralib.newsymbol(c.legion_index_partition_t, "ip")
-      local lp = terralib.newsymbol(c.legion_logical_partition_t, "lp")
-      actions = quote
-        [actions]
-        var [ip] = c.legion_terra_index_cross_product_get_subpartition_by_color(
-          [cx.runtime], [cx.context],
-          [value.value].product, [index.value])
-        var [lp] = c.legion_logical_partition_create(
-          [cx.runtime], [cx.context], [lr], [ip])
-        var [subpartition] = [subpartition_type] { impl = [lp] }
-      end
-
-      if expr_type:has_default_product() then
-        local subproduct_type = expr_type:default_product()
-        subproduct = terralib.newsymbol(subproduct_type, "subproduct")
-
-        actions = quote
-          [actions]
-          var ip2 = [value.value].partitions[2]
-          var [subproduct] = [subproduct_type] {
-            impl = [lp],
-            product = c.legion_terra_index_cross_product_t {
-              partition = [ip],
-              other = ip2,
-            },
-            -- FIXME: partitions
-          }
-        end
-      end
-    end
-
     cx:add_ispace_subispace(expr_type:ispace(), is, isa, it, parent_region_type:ispace())
-    cx:add_region_subregion(expr_type, r, subpartition, subproduct, parent_region_type)
+    cx:add_region_subregion(expr_type, r, parent_region_type)
 
     return values.value(expr.just(actions, r), expr_type)
+  elseif std.is_cross_product(value_type) then
+    local value = codegen.expr(cx, node.value):read(cx)
+    local index = codegen.expr(cx, node.index):read(cx)
+
+    local actions = quote
+      [value.actions];
+      [index.actions];
+      [emit_debuginfo(node)]
+    end
+
+    local region_type = expr_type:parent_region()
+    local lr
+    if not cx:has_region(region_type) then
+      local parent_region_type = value_type:parent_region()
+
+      local r = terralib.newsymbol(region_type, "r")
+      lr = terralib.newsymbol(c.legion_logical_region_t, "lr")
+      local is = terralib.newsymbol(c.legion_index_space_t, "is")
+      local isa = false
+      if not cx.leaf then
+        isa = terralib.newsymbol(c.legion_index_allocator_t, "isa")
+      end
+      local it = false
+      if cache_index_iterator then
+        it = terralib.newsymbol(c.legion_terra_cached_index_iterator_t, "it")
+      end
+      actions = quote
+        [actions]
+        var [lr] = c.legion_logical_partition_get_logical_subregion_by_color(
+          [cx.runtime], [cx.context],
+          [value.value].impl, [index.value])
+        var [is] = [lr].index_space
+        var [r] = [region_type] { impl = [lr] }
+      end
+
+      if not cx.leaf then
+        actions = quote
+          [actions]
+          var [isa] = c.legion_index_allocator_create(
+            [cx.runtime], [cx.context], [is])
+        end
+      end
+
+      if cache_index_iterator then
+        actions = quote
+          [actions]
+          var [it] = c.legion_terra_cached_index_iterator_create(
+            [cx.runtime], [cx.context], [is])
+        end
+      end
+
+      cx:add_ispace_subispace(region_type:ispace(), is, isa, it, parent_region_type:ispace())
+      cx:add_region_subregion(region_type, r, parent_region_type)
+    else
+      lr = `([cx:region(region_type).logical_region]).impl
+    end
+
+    local result = terralib.newsymbol(expr_type, "subpartition")
+    local ip = terralib.newsymbol(c.legion_index_partition_t, "ip")
+    local lp = terralib.newsymbol(c.legion_logical_partition_t, "lp")
+    actions = quote
+      [actions]
+      var [ip] = c.legion_terra_index_cross_product_get_subpartition_by_color(
+        [cx.runtime], [cx.context],
+        [value.value].product, [index.value])
+      var [lp] = c.legion_logical_partition_create(
+        [cx.runtime], [cx.context], [lr], [ip])
+    end
+
+    if std.is_partition(expr_type) then
+      actions = quote
+        [actions]
+        var [result] = [expr_type] { impl = [lp] }
+      end
+    elseif std.is_cross_product(expr_type) then
+      actions = quote
+        [actions]
+        var ip2 = [value.value].partitions[2]
+        var [result] = [expr_type] {
+          impl = [lp],
+          product = c.legion_terra_index_cross_product_t {
+            partition = [ip],
+            other = ip2,
+          },
+          -- FIXME: partitions
+        }
+      end
+    end
+    return values.value(expr.just(actions, result), expr_type)
   elseif std.is_region(value_type) then
     local index = codegen.expr(cx, node.index):read(cx)
     return values.ref(index, node.expr_type.pointer_type)
@@ -2024,11 +2015,17 @@ local function expr_call_setup_region_arg(
     add_field = c.legion_index_launcher_add_field
   end
 
+  local add_flags = c.legion_task_launcher_add_flags
+  if index then
+    add_flags = c.legion_index_launcher_add_flags
+  end
+
   for i, privilege in ipairs(privileges) do
     local field_paths = privilege_field_paths[i]
     local field_types = privilege_field_types[i]
     local privilege_mode = privilege_modes[i]
     local coherence_mode = coherence_modes[i]
+    local flag = std.flag_mode(flags[i])
 
     local reduction_op
     if std.is_reduction_op(privilege) then
@@ -2083,6 +2080,7 @@ local function expr_call_setup_region_arg(
                  [launcher], [requirement], [field_id], true)
              end
            end)]
+        [add_flags]([launcher], [requirement], [flag])
       end)
   end
 end
@@ -2101,7 +2099,7 @@ end
 local function setup_list_of_regions_add_region(
     cx, param_type, container_type, value_type, value,
     region, parent, field_paths, add_requirement, get_requirement,
-    add_field, has_field, requirement_args, launcher)
+    add_field, has_field, add_flags, requirement_args, flag, launcher)
   return quote
     var [region] = [raise_privilege_depth(cx, `([value].impl), param_type)]
     var [parent] = [raise_privilege_depth(cx, `([value].impl), container_type)]
@@ -2109,6 +2107,7 @@ local function setup_list_of_regions_add_region(
     if requirement == [uint32](-1) then
       requirement = [add_requirement]([requirement_args])
     end
+    [add_flags]([launcher], requirement, [flag])
     [field_paths:map(
        function(field_path)
          local field_id = cx:list_of_regions(container_type):field_id(field_path)
@@ -2124,7 +2123,7 @@ end
 local function setup_list_of_regions_add_list(
     cx, param_type, container_type, value_type, value,
     region, parent, field_paths, add_requirement, get_requirement,
-    add_field, has_field, requirement_args, launcher)
+    add_field, has_field, add_flags, requirement_args, flag, launcher)
   local element = terralib.newsymbol()
   if std.is_list(value_type.element_type) then
     return quote
@@ -2133,7 +2132,7 @@ local function setup_list_of_regions_add_list(
         [setup_list_of_regions_add_list(
            cx, param_type, container_type, value_type.element_type, element,
            region, parent, field_paths, add_requirement, get_requirement,
-           add_field, has_field, requirement_args, launcher)]
+           add_field, has_field, add_flags, requirement_args, flag, launcher)]
       end
     end
   else
@@ -2143,7 +2142,7 @@ local function setup_list_of_regions_add_list(
         [setup_list_of_regions_add_region(
            cx, param_type, container_type, value_type.element_type, element,
            region, parent, field_paths, add_requirement, get_requirement,
-           add_field, has_field, requirement_args, launcher)]
+           add_field, has_field, add_flags, requirement_args, flag, launcher)]
       end
     end
   end
@@ -2167,11 +2166,17 @@ local function expr_call_setup_list_of_regions_arg(
     assert(false)
   end
 
+  local add_flags = c.legion_task_launcher_add_flags
+  if index then
+    add_flags = c.legion_index_launcher_add_flags
+  end
+
   for i, privilege in ipairs(privileges) do
     local field_paths = privilege_field_paths[i]
     local field_types = privilege_field_types[i]
     local privilege_mode = privilege_modes[i]
     local coherence_mode = coherence_modes[i]
+    local flag = std.flag_mode(flags[i])
 
     local reduction_op
     if std.is_reduction_op(privilege) then
@@ -2229,7 +2234,7 @@ local function expr_call_setup_list_of_regions_arg(
       setup_list_of_regions_add_list(
         cx, param_type, arg_type, arg_type, list,
         region, parent, field_paths, add_requirement, get_requirement,
-        add_field, has_field, requirement_args, launcher))
+        add_field, has_field, add_flags, requirement_args, flag, launcher))
   end
 end
 
@@ -2249,6 +2254,7 @@ local function expr_call_setup_partition_arg(
     local field_types = privilege_field_types[i]
     local privilege_mode = privilege_modes[i]
     local coherence_mode = coherence_modes[i]
+    local flag = std.flag_mode(flags[i])
 
     local reduction_op
     if std.is_reduction_op(privilege) then
@@ -2293,6 +2299,7 @@ local function expr_call_setup_partition_arg(
                  [launcher], [requirement], [field_id], true)
              end
            end)]
+      c.legion_index_launcher_add_flags([launcher], [requirement], [flag])
       end)
   end
 end
@@ -2301,10 +2308,15 @@ function codegen.expr_call(cx, node)
   local fn = codegen.expr(cx, node.fn):read(cx)
   local args = node.args:map(
     function(arg) return codegen.expr(cx, arg):read(cx, arg.expr_type) end)
+  local conditions = node.conditions:map(
+    function(condition)
+      return codegen.expr_condition(cx, condition)
+    end)
 
   local actions = quote
     [fn.actions];
     [args:map(function(arg) return arg.actions end)];
+    [conditions:map(function(condition) return condition.actions end)];
     [emit_debuginfo(node)]
   end
 
@@ -2350,9 +2362,9 @@ function codegen.expr_call(cx, node)
       end
     end
 
-    -- Pass phase barriers.
-    local conditions = fn.value:get_conditions()
-    for condition, args_enabled in pairs(conditions) do
+    -- Pass phase barriers (from annotations on parameters).
+    local param_conditions = fn.value:get_conditions()
+    for condition, args_enabled in pairs(param_conditions) do
       for i, arg_type in ipairs(arg_types) do
         if args_enabled[i] then
           assert(std.is_phase_barrier(arg_type) or
@@ -2362,6 +2374,16 @@ function codegen.expr_call(cx, node)
             cx, fn.value, arg_value, condition,
             launcher, false, args_setup, arg_type)
         end
+      end
+    end
+
+    -- Pass phase barriers (from extra conditions).
+    for i, condition in ipairs(node.conditions) do
+      local condition_expr = conditions[i]
+      for _, condition_kind in ipairs(condition.conditions) do
+        expr_call_setup_phase_barrier_arg(
+          cx, fn.value, condition_expr.value, condition_kind,
+          launcher, false, args_setup, std.as_read(condition.expr_type))
       end
     end
 
@@ -4296,9 +4318,8 @@ function codegen.expr_unary(cx, node)
         options = ast.default_options(),
         span = node.span,
       },
-      inline = "allow",
-      fn_unspecialized = false,
       args = terralib.newlist({node.rhs}),
+      conditions = terralib.newlist(),
       expr_type = expr_type,
       options = node.options,
       span = node.span,
@@ -4371,9 +4392,8 @@ function codegen.expr_binary(cx, node)
         options = ast.default_options(),
         span = node.span,
       },
-      inline = "allow",
-      fn_unspecialized = false,
       args = terralib.newlist({node.lhs, node.rhs}),
+      conditions = terralib.newlist(),
       expr_type = expr_type,
       options = node.options,
       span = node.span,
@@ -5190,6 +5210,10 @@ function codegen.stat_index_launch(cx, node)
     end
     args_partitions:insert(partition)
   end
+  local conditions = node.call.conditions:map(
+    function(condition)
+      return codegen.expr_condition(cx, condition)
+    end)
 
   local actions = quote
     [domain[1].actions];
@@ -5212,7 +5236,8 @@ function codegen.stat_index_launch(cx, node)
          end
 
          return arg_actions
-       end)]
+       end)];
+    [conditions:map(function(condition) return condition.actions end)]
   end
 
   local arg_types = terralib.newlist()
@@ -5263,8 +5288,8 @@ function codegen.stat_index_launch(cx, node)
   end
 
   -- Pass phase barriers.
-  local conditions = fn.value:get_conditions()
-  for condition, args_enabled in pairs(conditions) do
+  local param_conditions = fn.value:get_conditions()
+  for condition, args_enabled in pairs(param_conditions) do
     for i, arg_type in ipairs(arg_types) do
       if args_enabled[i] then
         assert(std.is_phase_barrier(arg_type))
@@ -5273,6 +5298,16 @@ function codegen.stat_index_launch(cx, node)
           cx, fn.value, arg_value, condition,
           launcher, true, args_setup, arg_type)
       end
+    end
+  end
+
+  -- Pass phase barriers (from extra conditions).
+  for i, condition in ipairs(node.call.conditions) do
+    local condition_expr = conditions[i]
+    for _, condition_kind in ipairs(condition.conditions) do
+      expr_call_setup_phase_barrier_arg(
+        cx, fn.value, condition_expr.value, condition_kind,
+        launcher, false, args_setup, std.as_read(condition.expr_type))
     end
   end
 

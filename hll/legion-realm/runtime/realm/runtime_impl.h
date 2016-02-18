@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,6 +166,16 @@ namespace Realm {
 
       bool register_task(Processor::TaskFuncID taskid, Processor::TaskFuncPtr taskptr);
       bool register_reduction(ReductionOpID redop_id, const ReductionOpUntyped *redop);
+      bool register_custom_serdez(CustomSerdezID serdez_id, const CustomSerdezUntyped *serdez);
+
+      Event collective_spawn(Processor target_proc, Processor::TaskFuncID task_id, 
+			     const void *args, size_t arglen,
+			     Event wait_on = Event::NO_EVENT, int priority = 0);
+
+      Event collective_spawn_by_kind(Processor::Kind target_kind, Processor::TaskFuncID task_id, 
+				     const void *args, size_t arglen,
+				     bool one_per_node = false,
+				     Event wait_on = Event::NO_EVENT, int priority = 0);
 
       void run(Processor::TaskFuncID task_id = 0, 
 	       Runtime::RunStyle style = Runtime::ONE_TASK_ONLY,
@@ -198,13 +208,10 @@ namespace Realm {
       MachineImpl *machine;
 
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
-#ifdef USE_OCR_LAYER
-      //Guid of the legacy ocr module used for initilize and finalize
-      ocrGuid_t ocr_cfg_guid;
-#endif
+      std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
 
 #ifdef NODE_LOGGING
-      static const char *prefix;
+      std::string prefix;
 #endif
 
       Node *nodes;
@@ -215,7 +222,8 @@ namespace Realm {
       IndexSpaceTableAllocator::FreeList *local_index_space_free_list;
       ProcessorGroupTableAllocator::FreeList *local_proc_group_free_list;
 
-      pthread_t *background_pthread;
+      // legacy behavior if Runtime::run() is used
+      bool run_method_called;
 #ifdef DEADLOCK_TRACE
       unsigned next_thread;
       unsigned signaled_threads;
@@ -244,11 +252,6 @@ namespace Realm {
       const std::vector<DMAChannel *>& get_dma_channels(void) const;
 
     protected:
-      //create a processor and add to the list of processors
-      void create_processors();
-      //create a memory and add to the list of memories
-      void create_memories();
- 
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;

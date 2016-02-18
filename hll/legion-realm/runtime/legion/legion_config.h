@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,14 @@
 #ifndef MAX_NUM_PROCS
 #define MAX_NUM_PROCS                   64
 #endif
+// Maximum ID for an application task ID 
+#ifndef MAX_APPLICATION_TASK_ID
+#define MAX_APPLICATION_TASK_ID         (1<<20)
+#endif
+// Maximum ID for an application mapper ID
+#ifndef MAX_APPLICATION_MAPPER_ID
+#define MAX_APPLICATION_MAPPER_ID       (1<<20)
+#endif
 // Default number of mapper slots
 #ifndef DEFAULT_MAPPER_SLOTS
 #define DEFAULT_MAPPER_SLOTS            8
@@ -87,10 +95,6 @@
 // interconnect networks.
 #ifndef DEFAULT_MAX_MESSAGE_SIZE
 #define DEFAULT_MAX_MESSAGE_SIZE        16384
-#endif
-// Maximum number of tasks in logical region node before consolidation
-#ifndef DEFAULT_MAX_FILTER_SIZE
-#define DEFAULT_MAX_FILTER_SIZE         0
 #endif
 // Timeout before checking for whether a logical user
 // should be pruned from the logical region tree data strucutre
@@ -151,9 +155,12 @@
                    (x==24) ? 26 : (x==25) ? 12 : (x==26) ? 18 : (x==27) ? 6 : \
                    (x==28) ? 11 : (x==29) ? 5 : (x==30) ? 10 : 9)
 
-#ifndef FIELD_LOG2
-#define FIELD_LOG2         STATIC_LOG2(MAX_FIELDS) // log2(MAX_FIELDS)
+#ifndef LEGION_FIELD_LOG2
+#define LEGION_FIELD_LOG2         STATIC_LOG2(MAX_FIELDS) // log2(MAX_FIELDS)
 #endif
+
+#define LEGION_STRINGIFY(x) #x
+#define LEGION_MACRO_TO_STRING(x) LEGION_STRINGIFY(x)
 
 // The following enums are all re-exported by
 // LegionRuntime::HighLevel. These versions are here to facilitate the
@@ -294,9 +301,21 @@ typedef enum legion_error_t {
   ERROR_NO_PROCESSORS = 131,
   ERROR_ILLEGAL_REDUCTION_VIRTUAL_MAPPING = 132,
   ERROR_INVALID_MAPPED_REGION_LOCATION = 133,
-  ERROR_TRACE_VIOLATION = 134,
-  ERROR_INVALID_TARGET_PROC = 135,
-  ERROR_INCOMPLETE_TRACE = 136,
+  ERROR_RESERVED_SERDEZ_ID = 134,
+  ERROR_DUPLICATE_SERDEZ_ID = 135,
+  ERROR_INVALID_SERDEZ_ID = 136,
+  ERROR_TRACE_VIOLATION = 137,
+  ERROR_INVALID_TARGET_PROC = 138,
+  ERROR_INCOMPLETE_TRACE = 139,
+  ERROR_STATIC_CALL_POST_RUNTIME_START = 140,
+  ERROR_ILLEGAL_GLOBAL_VARIANT_REGISTRATION = 141,
+  ERROR_ILLEGAL_USE_OF_NON_GLOBAL_VARIANT = 142,
+  ERROR_RESERVED_CONSTRAINT_ID = 143,
+  ERROR_DUPLICATE_CONSTRAINT_ID = 144,
+  ERROR_INVALID_CONSTRAINT_ID = 145,
+  ERROR_ILLEGAL_WAIT_FOR_SHUTDOWN = 146,
+  ERROR_MAX_APPLICATION_TASK_ID_EXCEEDED = 147,
+  ERROR_MAX_APPLICATION_MAPPER_ID_EXCEEDED = 148,
 }  legion_error_t;
 
 // enum and namepsaces don't really get along well
@@ -375,6 +394,7 @@ typedef legion_lowlevel_processor_kind_t legion_processor_kind_t;
 typedef legion_lowlevel_memory_kind_t legion_memory_kind_t;
 typedef legion_lowlevel_domain_max_rect_dim_t legion_domain_max_rect_dim_t;
 typedef legion_lowlevel_reduction_op_id_t legion_reduction_op_id_t;
+typedef legion_lowlevel_custom_serdez_id_t legion_custom_serdez_id_t;
 typedef legion_lowlevel_address_space_t legion_address_space_t;
 typedef int legion_task_priority_t;
 typedef unsigned int legion_color_t;
@@ -400,6 +420,7 @@ typedef unsigned long legion_semantic_tag_t;
 typedef unsigned long long legion_unique_id_t;
 typedef unsigned long long legion_version_id_t;
 typedef legion_lowlevel_task_func_id_t legion_task_id_t;
+typedef unsigned long legion_layout_constraint_id_t;
 
 
 #endif // __LEGION_CONFIG_H__

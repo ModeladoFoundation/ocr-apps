@@ -1,4 +1,4 @@
--- Copyright 2015 Stanford University, NVIDIA Corporation
+-- Copyright 2016 Stanford University, NVIDIA Corporation
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -436,90 +436,61 @@ function type_check.expr_field_access(cx, node)
   local value = type_check.expr(cx, node.value)
   local value_type = value.expr_type -- Keep references, do NOT std.check_read
 
-  if std.is_region(std.as_read(value_type)) then
-    local region_type = std.check_read(cx, value)
-    local field_type
-    if node.field_name == "partition" and region_type:has_default_partition()
-    then
-      field_type = region_type:default_partition()
-    elseif node.field_name == "product" and region_type:has_default_product()
-    then
-      field_type = region_type:default_product()
-    else
-      log.error(node, "no field '" .. node.field_name .. "' in type " ..
-                  tostring(std.as_read(value_type)))
-    end
+  local unpack_type, constraints
 
-    return ast.typed.expr.FieldAccess {
-      value = value,
-      field_name = node.field_name,
-      expr_type = field_type,
-      options = node.options,
-      span = node.span,
-    }
+  -- Resolve automatic dereferences.
+  if std.is_bounded_type(std.as_read(value_type)) and
+    std.as_read(value_type):is_ptr() and
+    -- Note: Bounded types with fields take precedence over dereferences.
+    not std.get_field(std.as_read(value_type).index_type.base_type, node.field_name)
+  then
+    -- Check privileges on the pointer itself.
+    unpack_type = std.ref(std.check_read(cx, value))
   else
-    -- If the value is an fspace instance, or a index or bounded type,
-    -- unpack before allowing access.
-    local unpack_type, constraints, rewrap_ptrs
-    if std.is_index_type(std.as_read(value_type)) then
-      unpack_type = std.as_read(value_type).base_type
-    elseif (std.is_bounded_type(value_type) and
-              std.get_field(value_type.index_type.base_type, node.field_name)) or
-      (std.is_bounded_type(std.as_read(value_type)) and
-         std.get_field(std.as_read(value_type).index_type.base_type, node.field_name))
-    then
-      -- Note: Bounded types with fields take precedence over dereferences.
-      unpack_type = std.as_read(value_type).index_type.base_type
-    elseif std.is_fspace_instance(value_type) or
-      (std.is_bounded_type(value_type) and value_type:is_ptr() and
-         std.is_fspace_instance(value_type.points_to_type)) or
-      (std.is_fspace_instance(std.as_read(value_type))) or
-      (std.is_bounded_type(std.as_read(value_type)) and
-         std.as_read(value_type):is_ptr() and
-         std.is_fspace_instance(std.as_read(value_type).points_to_type))
-    then
-      local fspace = std.as_read(value_type)
-      if std.is_bounded_type(fspace) then
-        fspace = fspace.points_to_type
-      end
-      unpack_type, constraints = std.unpack_fields(fspace)
-      rewrap_ptrs = true
-    end
-
-    if unpack_type then
-      if rewrap_ptrs and std.is_bounded_type(std.as_read(value_type)) then
-        local ptr_type = std.as_read(value_type)
-        unpack_type = std.ref(ptr_type.index_type(unpack_type, unpack(ptr_type.bounds_symbols)))
-      elseif std.is_ref(value_type) then
-        unpack_type = std.ref(value_type.pointer_type.index_type(unpack_type, unpack(value_type.bounds_symbols)))
-      elseif std.is_rawref(value_type) then
-        unpack_type = std.rawref(&unpack_type)
-      end
-    end
-
-    if not unpack_type then
-      unpack_type = value_type
-    end
-
-    if constraints then
-      std.add_constraints(cx, constraints)
-    end
-
-    local field_type = std.get_field(unpack_type, node.field_name)
-
-    if not field_type then
-      log.error(node, "no field '" .. node.field_name .. "' in type " ..
-                  tostring(std.as_read(value_type)))
-    end
-
-    return ast.typed.expr.FieldAccess {
-      value = value,
-      field_name = node.field_name,
-      expr_type = field_type,
-      options = node.options,
-      span = node.span,
-    }
+    unpack_type = value_type
   end
+
+  -- Resolve index and bounded types and automatic unpacks of fspaces.
+  if std.is_index_type(std.as_read(unpack_type)) then
+    unpack_type = std.as_read(unpack_type).base_type
+  elseif std.is_bounded_type(std.as_read(unpack_type)) and
+    std.get_field(std.as_read(unpack_type).index_type.base_type, node.field_name)
+  then
+    unpack_type = std.as_read(unpack_type).index_type.base_type
+  elseif std.is_fspace_instance(std.as_read(unpack_type)) then
+    local result_type, result_constraints = std.unpack_fields(std.as_read(unpack_type))
+
+    -- Since we may have stripped off a reference from the incoming
+    -- type, restore it before continuing.
+    if not std.type_eq(std.as_read(unpack_type), result_type) then
+      constraints = result_constraints
+      if std.is_ref(unpack_type) then
+        unpack_type = std.ref(unpack_type.pointer_type.index_type(result_type, unpack(unpack_type.bounds_symbols)),
+                              unpack(unpack_type.field_path))
+      elseif std.is_rawref(unpack_type) then
+        unpack_type = std.rawref(&result_type)
+      end
+    end
+  end
+
+  if constraints then
+    std.add_constraints(cx, constraints)
+  end
+
+  local field_type = std.get_field(unpack_type, node.field_name)
+
+  if not field_type then
+    log.error(node, "no field '" .. node.field_name .. "' in type " ..
+                tostring(std.as_read(value_type)))
+  end
+
+  return ast.typed.expr.FieldAccess {
+    value = value,
+    field_name = node.field_name,
+    expr_type = field_type,
+    options = node.options,
+    span = node.span,
+  }
 end
 
 function type_check.expr_index_access(cx, node)
@@ -528,19 +499,18 @@ function type_check.expr_index_access(cx, node)
   local index = type_check.expr(cx, node.index)
   local index_type = std.check_read(cx, index)
 
-  if std.is_partition(value_type) or std.is_cross_product(value_type) then
+  if std.is_partition(value_type) then
     if not std.validate_implicit_cast(index_type, int) then
       log.error(node, "type mismatch: expected " .. tostring(int) .. " but got " .. tostring(index_type))
     end
 
+    local partition = value_type:partition()
+    local parent = value_type:parent_region()
+    local subregion
     if index:is(ast.typed.expr.Constant) or
       (index:is(ast.typed.expr.ID) and not std.is_rawref(index.expr_type))
     then
-      local parent = value_type:parent_region()
-      local partition = value_type:partition()
-      local subregion = value_type:subregion_constant(index.value)
-      std.add_constraint(cx, partition, parent, "<=", false)
-      std.add_constraint(cx, subregion, partition, "<=", false)
+      subregion = value_type:subregion_constant(index.value)
 
       if value_type:is_disjoint() then
         local other_subregions = value_type:subregions_constant()
@@ -550,29 +520,58 @@ function type_check.expr_index_access(cx, node)
           end
         end
       end
-
-      return ast.typed.expr.IndexAccess {
-        value = value,
-        index = index,
-        expr_type = subregion,
-        options = node.options,
-        span = node.span,
-      }
     else
-      local parent = value_type:parent_region()
-      local partition = value_type:partition()
-      local subregion = value_type:subregion_dynamic()
-      std.add_constraint(cx, partition, parent, "<=", false)
-      std.add_constraint(cx, subregion, partition, "<=", false)
-
-      return ast.typed.expr.IndexAccess {
-        value = value,
-        index = index,
-        expr_type = subregion,
-        options = node.options,
-        span = node.span,
-      }
+      subregion = value_type:subregion_dynamic()
     end
+
+    std.add_constraint(cx, partition, parent, "<=", false)
+    std.add_constraint(cx, subregion, partition, "<=", false)
+
+    return ast.typed.expr.IndexAccess {
+      value = value,
+      index = index,
+      expr_type = subregion,
+      options = node.options,
+      span = node.span,
+    }
+  elseif std.is_cross_product(value_type) then
+    if not std.validate_implicit_cast(index_type, int) then
+      log.error(node, "type mismatch: expected " .. tostring(int) .. " but got " .. tostring(index_type))
+    end
+
+    local partition = value_type:partition()
+    local parent = value_type:parent_region()
+    local subregion, subpartition
+    if index:is(ast.typed.expr.Constant) or
+      (index:is(ast.typed.expr.ID) and not std.is_rawref(index.expr_type))
+    then
+      subpartition = value_type:subpartition_constant(index.value)
+      subregion = subpartition:parent_region()
+
+      if value_type:is_disjoint() then
+        local other_subregions = value_type:subregions_constant()
+        for other_index, other_subregion in pairs(other_subregions) do
+          if index.value ~= other_index then
+            std.add_constraint(cx, subregion, other_subregion, "*", true)
+          end
+        end
+      end
+    else
+      subpartition = value_type:subpartition_dynamic()
+      subregion = subpartition:parent_region()
+    end
+
+    std.add_constraint(cx, partition, parent, "<=", false)
+    std.add_constraint(cx, subregion, partition, "<=", false)
+    std.add_constraint(cx, subpartition:partition(), subregion, "<=", false)
+
+    return ast.typed.expr.IndexAccess {
+      value = value,
+      index = index,
+      expr_type = subpartition,
+      options = node.options,
+      span = node.span,
+    }
   elseif std.is_region(value_type) then
     -- FIXME: Need to check if this is a bounded type (with the right
     -- bound) and, if not, insert a dynamic cast.
@@ -819,6 +818,7 @@ function type_check.expr_call(cx, node)
   local result = ast.typed.expr.Call {
     fn = fn,
     args = args,
+    conditions = terralib.newlist(),
     expr_type = expr_type,
     options = node.options,
     span = node.span,
@@ -957,14 +957,28 @@ function type_check.expr_raw_context(cx, node)
   }
 end
 
+local function extract_field_path(node)
+  if node:is(ast.specialized.expr.ID) then
+    return node, data.newtuple()
+  elseif node:is(ast.specialized.expr.FieldAccess) then
+    local base, path = extract_field_path(node.value)
+    return base, path .. data.newtuple(node.field_name)
+  else
+    log.error(node, "unexpected type of expression in raw operator")
+  end
+end
+
 function type_check.expr_raw_fields(cx, node)
-  local region = type_check.expr(cx, node.region)
+  local base, region_field_path = extract_field_path(node.region)
+  local region = type_check.expr(cx, base)
   local region_type = std.check_read(cx, region)
 
   local field_paths, _ = std.flatten_struct_fields(region_type:fspace())
   local privilege_fields = terralib.newlist()
   for _, field_path in ipairs(field_paths) do
-    if std.check_any_privilege(cx, region_type, field_path) then
+    if std.check_any_privilege(cx, region_type, field_path) and
+       field_path:starts_with(region_field_path)
+    then
       privilege_fields:insert(field_path)
     end
   end
@@ -980,13 +994,16 @@ function type_check.expr_raw_fields(cx, node)
 end
 
 function type_check.expr_raw_physical(cx, node)
-  local region = type_check.expr(cx, node.region)
+  local base, region_field_path = extract_field_path(node.region)
+  local region = type_check.expr(cx, base)
   local region_type = std.check_read(cx, region)
 
   local field_paths, _ = std.flatten_struct_fields(region_type:fspace())
   local privilege_fields = terralib.newlist()
   for _, field_path in ipairs(field_paths) do
-    if std.check_any_privilege(cx, region_type, field_path) then
+    if std.check_any_privilege(cx, region_type, field_path) and
+       field_path:starts_with(region_field_path)
+    then
       privilege_fields:insert(field_path)
     end
   end

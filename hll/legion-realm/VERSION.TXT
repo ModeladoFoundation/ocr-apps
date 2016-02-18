@@ -1,3 +1,9 @@
+commit 4fc956c72698b7fe8337827c10a8471aa26ed8fc
+Author: Mike <mbauer@nvidia.com>
+Date:   Mon Feb 8 19:11:17 2016 -0800
+
+    legion: fixing a small typing bug
+
 commit a819f84349f6b0132097040e99fa3783239167ed
 Merge: 7de9abd ab5192e
 Author: streichler <sjt@cs.stanford.edu>
@@ -6,4 +12,6 @@ Date:   Mon Dec 14 07:06:53 2015 -0800
     Merge pull request #115 from StanfordLegion/master
     
     November/December update of stable branch
+
+
 

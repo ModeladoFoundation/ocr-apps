@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -251,6 +251,9 @@ namespace Realm {
 
       std::set<Thread *> all_hosts;
       std::set<Thread *> all_workers;
+
+      int host_startups_remaining;
+      GASNetCondVar host_startup_condvar;
 
     public:
       int cfg_num_host_threads;

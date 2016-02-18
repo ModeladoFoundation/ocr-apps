@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
  */
 
 #include "legion_config.h"
-#include "lowlevel.h"
+#include "realm.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -88,12 +88,13 @@ namespace LegionRuntime {
 
     // Runtime task numbering 
     enum {
-      INIT_FUNC_ID            = LowLevel::Processor::TASK_ID_PROCESSOR_INIT,
-      SHUTDOWN_FUNC_ID        = LowLevel::Processor::TASK_ID_PROCESSOR_SHUTDOWN,
-      HLR_TASK_ID             = LowLevel::Processor::TASK_ID_FIRST_AVAILABLE,
-      HLR_LEGION_PROFILING_ID = LowLevel::Processor::TASK_ID_FIRST_AVAILABLE+1,
-      HLR_MAPPER_PROFILING_ID = LowLevel::Processor::TASK_ID_FIRST_AVAILABLE+2,
-      TASK_ID_AVAILABLE       = LowLevel::Processor::TASK_ID_FIRST_AVAILABLE+3,
+      INIT_TASK_ID            = Realm::Processor::TASK_ID_PROCESSOR_INIT,
+      SHUTDOWN_TASK_ID        = Realm::Processor::TASK_ID_PROCESSOR_SHUTDOWN,
+      HLR_TASK_ID             = Realm::Processor::TASK_ID_FIRST_AVAILABLE,
+      HLR_LEGION_PROFILING_ID = Realm::Processor::TASK_ID_FIRST_AVAILABLE+1,
+      HLR_MAPPER_PROFILING_ID = Realm::Processor::TASK_ID_FIRST_AVAILABLE+2,
+      HLR_LAUNCH_TOP_LEVEL_ID = Realm::Processor::TASK_ID_FIRST_AVAILABLE+3,
+      TASK_ID_AVAILABLE       = Realm::Processor::TASK_ID_FIRST_AVAILABLE+4,
     };
 
     // redop IDs - none used in HLR right now, but 0 isn't allowed
@@ -104,7 +105,6 @@ namespace LegionRuntime {
     // Enumeration of high-level runtime tasks
     enum HLRTaskID {
       HLR_SCHEDULER_ID,
-      HLR_MESSAGE_ID,
       HLR_POST_END_ID,
       HLR_DEFERRED_MAPPING_TRIGGER_ID,
       HLR_DEFERRED_RESOLUTION_TRIGGER_ID,
@@ -142,12 +142,15 @@ namespace LegionRuntime {
       HLR_WINDOW_WAIT_TASK_ID,
       HLR_ISSUE_FRAME_TASK_ID,
       HLR_CONTINUATION_TASK_ID,
+      HLR_TASK_IMPL_SEMANTIC_INFO_REQ_TASK_ID,
       HLR_INDEX_SPACE_SEMANTIC_INFO_REQ_TASK_ID,
       HLR_INDEX_PART_SEMANTIC_INFO_REQ_TASK_ID,
       HLR_FIELD_SPACE_SEMANTIC_INFO_REQ_TASK_ID,
       HLR_FIELD_SEMANTIC_INFO_REQ_TASK_ID,
       HLR_REGION_SEMANTIC_INFO_REQ_TASK_ID,
       HLR_PARTITION_SEMANTIC_INFO_REQ_TASK_ID,
+      HLR_MESSAGE_ID, // These four must be last (see issue_runtime_meta_task)
+      HLR_SHUTDOWN_ATTEMPT_TASK_ID,
       HLR_SHUTDOWN_NOTIFICATION_TASK_ID,
       HLR_SHUTDOWN_RESPONSE_TASK_ID,
       HLR_LAST_TASK_ID, // This one should always be last
@@ -158,7 +161,6 @@ namespace LegionRuntime {
 #define HLR_TASK_DESCRIPTIONS(name)                               \
       const char *name[HLR_LAST_TASK_ID] = {                      \
         "Scheduler",                                              \
-        "Remote Message",                                         \
         "Post-Task Execution",                                    \
         "Deferred Mapping Trigger",                               \
         "Deferred Resolution Trigger",                            \
@@ -196,12 +198,15 @@ namespace LegionRuntime {
         "Window Wait",                                            \
         "Issue Frame",                                            \
         "Legion Continuation",                                    \
+        "Task Impl Semantic Request",                             \
         "Index Space Semantic Request",                           \
         "Index Partition Semantic Request",                       \
         "Field Space Semantic Request",                           \
         "Field Semantic Request",                                 \
         "Region Semantic Request",                                \
         "Partition Semantic Request",                             \
+        "Remote Message",                                         \
+        "Shutdown Attempt",                                       \
         "Shutdown Notification",                                  \
         "Shutdown Response",                                      \
       };
@@ -227,6 +232,7 @@ namespace LegionRuntime {
       SEND_INDEX_PARTITION_NODE,
       SEND_INDEX_PARTITION_REQUEST,
       SEND_INDEX_PARTITION_RETURN,
+      SEND_INDEX_PARTITION_CHILD_REQUEST,
       SEND_FIELD_SPACE_NODE,
       SEND_FIELD_SPACE_REQUEST,
       SEND_FIELD_SPACE_RETURN,
@@ -272,12 +278,14 @@ namespace LegionRuntime {
       SEND_UNMAKE_PERSISTENT,
       SEND_MAPPER_MESSAGE,
       SEND_MAPPER_BROADCAST,
+      SEND_TASK_IMPL_SEMANTIC_REQ,
       SEND_INDEX_SPACE_SEMANTIC_REQ,
       SEND_INDEX_PARTITION_SEMANTIC_REQ,
       SEND_FIELD_SPACE_SEMANTIC_REQ,
       SEND_FIELD_SEMANTIC_REQ,
       SEND_LOGICAL_REGION_SEMANTIC_REQ,
       SEND_LOGICAL_PARTITION_SEMANTIC_REQ,
+      SEND_TASK_IMPL_SEMANTIC_INFO,
       SEND_INDEX_SPACE_SEMANTIC_INFO,
       SEND_INDEX_PARTITION_SEMANTIC_INFO,
       SEND_FIELD_SPACE_SEMANTIC_INFO,
@@ -294,6 +302,13 @@ namespace LegionRuntime {
       SEND_REDUCTION_CREATION,
       SEND_CREATION_RESPONSE,
       SEND_BACK_LOGICAL_STATE,
+      SEND_VARIANT_REQUEST,
+      SEND_VARIANT_RESPONSE,
+      SEND_CONSTRAINT_REQUEST,
+      SEND_CONSTRAINT_RESPONSE,
+      SEND_CONSTRAINT_RELEASE,
+      SEND_TOP_LEVEL_TASK_REQUEST,
+      SEND_TOP_LEVEL_TASK_COMPLETE,
       SEND_SHUTDOWN_NOTIFICATION,
       SEND_SHUTDOWN_RESPONSE,
       LAST_SEND_KIND, // This one must be last
@@ -311,6 +326,7 @@ namespace LegionRuntime {
         "Send Index Partition Node",                                  \
         "Send Index Partition Request",                               \
         "Send Index Partition Return",                                \
+        "Send Index Partition Child Request",                         \
         "Send Field Space Node",                                      \
         "Send Field Space Request",                                   \
         "Send Field Space Return",                                    \
@@ -356,12 +372,14 @@ namespace LegionRuntime {
         "Send Unmake Persistent",                                     \
         "Send Mapper Message",                                        \
         "Send Mapper Broadcast",                                      \
+        "Send Task Impl Semantic Req",                                \
         "Send Index Space Semantic Req",                              \
         "Send Index Partition Semantic Req",                          \
         "Send Field Space Semantic Req",                              \
         "Send Field Semantic Req",                                    \
         "Send Logical Region Semantic Req",                           \
         "Send Logical Partition Semantic Req",                        \
+        "Send Task Impl Semantic Info",                               \
         "Send Index Space Semantic Info",                             \
         "Send Index Partition Semantic Info",                         \
         "Send Field Space Semantic Info",                             \
@@ -378,9 +396,26 @@ namespace LegionRuntime {
         "Send Reduction Creation",                                    \
         "Send Creation Response",                                     \
         "Send Back Logical State",                                    \
+        "Send Task Variant Request",                                  \
+        "Send Task Variant Response",                                 \
+        "Send Constraint Request",                                    \
+        "Send Constraint Response",                                   \
+        "Send Constraint Release",                                    \
+        "Top Level Task Request",                                     \
+        "Top Level Task Complete",                                    \
         "Send Shutdown Notification",                                 \
         "Send Shutdown Response",                                     \
       };
+
+    enum SemanticInfoKind {
+      INDEX_SPACE_SEMANTIC,
+      INDEX_PARTITION_SEMANTIC,
+      FIELD_SPACE_SEMANTIC,
+      FIELD_SEMANTIC,
+      LOGICAL_REGION_SEMANTIC,
+      LOGICAL_PARTITION_SEMANTIC,
+      TASK_SEMANTIC,
+    };
 
     // Forward declarations for user level objects
     // legion.h
@@ -404,6 +439,8 @@ namespace LegionRuntime {
     struct CopyLauncher;
     struct AcquireLauncher;
     struct ReleaseLauncher;
+    struct LayoutConstraintRegistrar;
+    struct TaskVariantRegistrar;
     class Future;
     class FutureMap;
     class Predicate;
@@ -447,6 +484,9 @@ namespace LegionRuntime {
     class ProcessorManager;
     class MessageManager;
     class GarbageCollectionEpoch;
+    class TaskImpl;
+    class VariantImpl;
+    class LayoutConstraints;
     class Internal;
 
     // legion_ops.h
@@ -563,6 +603,26 @@ namespace LegionRuntime {
     class TreeClose;
     struct CloseInfo;
 
+    // legion_constraint.h
+    class ISAConstraint;
+    class ProcessorConstraint;
+    class ResourceConstraint;
+    class LaunchConstraint;
+    class ColocationConstraint;
+    class ExecutionConstraintSet;
+
+    class SpecializedConstraint;
+    class MemoryConstraint;
+    class FieldConstraint;
+    class OrderingConstraint;
+    class SplittingConstraint;
+    class DimensionConstraint;
+    class AlignmentConstraint;
+    class OffsetConstraint;
+    class PointerConstraint;
+    class LayoutConstraintSet;
+    class TaskLayoutConstraintSet;
+
     // legion_utilities.h
     struct RegionUsage;
     class AutoLock;
@@ -585,38 +645,42 @@ namespace LegionRuntime {
     template<typename T, unsigned LOG2MAX> class BitPermutation;
     template<typename IT, typename DT, bool BIDIR = false> class IntegerSet;
 
-    // legion_logging.h
+    // legion_spy.h
     class TreeStateLogger;
 
     // legion_profiling.h
     class LegionProfiler;
     class LegionProfInstance;
 
-    typedef LowLevel::Runtime RealmRuntime;
-    typedef LowLevel::Machine Machine;
-    typedef LowLevel::Domain Domain;
-    typedef LowLevel::DomainPoint DomainPoint;
-    typedef LowLevel::IndexSpaceAllocator IndexSpaceAllocator;
-    typedef LowLevel::RegionInstance PhysicalInstance;
-    typedef LowLevel::Memory Memory;
-    typedef LowLevel::Processor Processor;
-    typedef LowLevel::Event Event;
-    typedef LowLevel::Event MapperEvent;
-    typedef LowLevel::UserEvent UserEvent;
-    typedef LowLevel::Reservation Reservation;
-    typedef LowLevel::Barrier Barrier;
+    typedef Realm::Runtime RealmRuntime;
+    typedef Realm::Machine Machine;
+    typedef Realm::Domain Domain;
+    typedef Realm::DomainPoint DomainPoint;
+    typedef Realm::IndexSpaceAllocator IndexSpaceAllocator;
+    typedef Realm::RegionInstance PhysicalInstance;
+    typedef Realm::Memory Memory;
+    typedef Realm::Processor Processor;
+    typedef Realm::CodeDescriptor CodeDescriptor;
+    typedef Realm::Event Event;
+    typedef Realm::Event MapperEvent;
+    typedef Realm::UserEvent UserEvent;
+    typedef Realm::Reservation Reservation;
+    typedef Realm::Barrier Barrier;
     typedef ::legion_reduction_op_id_t ReductionOpID;
-    typedef LowLevel::ReductionOpUntyped ReductionOp;
-    typedef LowLevel::Machine::ProcessorMemoryAffinity ProcessorMemoryAffinity;
-    typedef LowLevel::Machine::MemoryMemoryAffinity MemoryMemoryAffinity;
-    typedef LowLevel::ElementMask::Enumerator Enumerator;
-    typedef LowLevel::IndexSpace::FieldDataDescriptor FieldDataDescriptor;
-    typedef std::map<LowLevel::ReductionOpID, 
-            const LowLevel::ReductionOpUntyped *> ReductionOpTable;
+    typedef Realm::ReductionOpUntyped ReductionOp;
+    typedef ::legion_custom_serdez_id_t CustomSerdezID;
+    typedef Realm::CustomSerdezUntyped SerdezOp;
+    typedef Realm::Machine::ProcessorMemoryAffinity ProcessorMemoryAffinity;
+    typedef Realm::Machine::MemoryMemoryAffinity MemoryMemoryAffinity;
+    typedef Realm::ElementMask::Enumerator Enumerator;
+    typedef Realm::IndexSpace::FieldDataDescriptor FieldDataDescriptor;
+    typedef std::map<CustomSerdezID, const Realm::CustomSerdezUntyped *> SerdezOpTable;
+    typedef std::map<Realm::ReductionOpID, 
+            const Realm::ReductionOpUntyped *> ReductionOpTable;
     typedef void (*SerdezInitFnptr)(const ReductionOp*, void *&, size_t&);
     typedef void (*SerdezFoldFnptr)(const ReductionOp*, void *&, size_t&,
-                                    const void*, bool);
-    typedef std::map<LowLevel::ReductionOpID, SerdezRedopFns> SerdezRedopTable;
+                                    const void*);
+    typedef std::map<Realm::ReductionOpID, SerdezRedopFns> SerdezRedopTable;
     typedef ::legion_address_space_t AddressSpace;
     typedef ::legion_task_priority_t TaskPriority;
     typedef ::legion_color_t Color;
@@ -642,6 +706,7 @@ namespace LegionRuntime {
     typedef ::legion_unique_id_t UniqueID;
     typedef ::legion_version_id_t VersionID;
     typedef ::legion_task_id_t TaskID;
+    typedef ::legion_layout_constraint_id_t LayoutConstraintID;
     typedef SingleTask* Context;
     typedef std::map<Color,ColoredPoints<ptr_t> > Coloring;
     typedef std::map<Color,Domain> DomainColoring;
@@ -661,20 +726,17 @@ namespace LegionRuntime {
       RegionProjectionTable;
     typedef std::map<ProjectionID,PartitionProjectionFnptr> 
       PartitionProjectionTable;
-    typedef void (*LowLevelFnptr)(const void*,size_t,
-				  const void*,size_t,Processor);
-    typedef std::map<Processor::TaskFuncID, LowLevelFnptr> TaskIDTable;
-    typedef void (*InlineFnptr)(const Task*,const std::vector<PhysicalRegion>&,
-                                Context,Runtime*,void*&,size_t&);
+    typedef void (*RealmFnptr)(const void*,size_t,
+			       const void*,size_t,Processor);
     // A little bit of logic here to figure out the 
     // kind of bit mask to use for FieldMask
 
 // The folowing macros are used in the FieldMask instantiation of BitMask
 // If you change one you probably have to change the others too
-#define FIELD_TYPE          uint64_t 
-#define FIELD_SHIFT         6
-#define FIELD_MASK          0x3F
-#define FIELD_ALL_ONES      0xFFFFFFFFFFFFFFFF
+#define LEGION_FIELD_MASK_FIELD_TYPE          uint64_t 
+#define LEGION_FIELD_MASK_FIELD_SHIFT         6
+#define LEGION_FIELD_MASK_FIELD_MASK          0x3F
+#define LEGION_FIELD_MASK_FIELD_ALL_ONES      0xFFFFFFFFFFFFFFFF
 
 #if defined(__AVX__)
 #if (MAX_FIELDS > 256)
@@ -684,7 +746,9 @@ namespace LegionRuntime {
 #elif (MAX_FIELDS > 64)
     typedef SSEBitMask<MAX_FIELDS> FieldMask;
 #else
-    typedef BitMask<FIELD_TYPE,MAX_FIELDS,FIELD_SHIFT,FIELD_MASK> FieldMask;
+    typedef BitMask<LEGION_FIELD_MASK_FIELD_TYPE,MAX_FIELDS,
+                    LEGION_FIELD_MASK_FIELD_SHIFT,
+                    LEGION_FIELD_MASK_FIELD_MASK> FieldMask;
 #endif
 #elif defined(__SSE2__)
 #if (MAX_FIELDS > 128)
@@ -692,28 +756,34 @@ namespace LegionRuntime {
 #elif (MAX_FIELDS > 64)
     typedef SSEBitMask<MAX_FIELDS> FieldMask;
 #else
-    typedef BitMask<FIELD_TYPE,MAX_FIELDS,FIELD_SHIFT,FIELD_MASK> FieldMask;
+    typedef BitMask<LEGION_FIELD_MASK_FIELD_TYPE,MAX_FIELDS,
+                    LEGION_FIELD_MASK_FIELD_SHIFT,
+                    LEGION_FIELD_MASK_FIELD_MASK> FieldMask;
 #endif
 #else
 #if (MAX_FIELDS > 64)
-    typedef TLBitMask<FIELD_TYPE,MAX_FIELDS,FIELD_SHIFT,FIELD_MASK> FieldMask;
+    typedef TLBitMask<LEGION_FIELD_MASK_FIELD_TYPE,MAX_FIELDS,
+                      LEGION_FIELD_MASK_FIELD_SHIFT,
+                      LEGION_FIELD_MASK_FIELD_MASK> FieldMask;
 #else
-    typedef BitMask<FIELD_TYPE,MAX_FIELDS,FIELD_SHIFT,FIELD_MASK> FieldMask;
+    typedef BitMask<LEGION_FIELD_MASK_FIELD_TYPE,MAX_FIELDS,
+                    LEGION_FIELD_MASK_FIELD_SHIFT,
+                    LEGION_FIELD_MASK_FIELD_MASK> FieldMask;
 #endif
 #endif
-    typedef BitPermutation<FieldMask,FIELD_LOG2> FieldPermutation;
+    typedef BitPermutation<FieldMask,LEGION_FIELD_LOG2> FieldPermutation;
     typedef Fraction<unsigned long> InstFrac;
-#undef FIELD_SHIFT
-#undef FIELD_MASK
+#undef LEGION_FIELD_MASK_FIELD_SHIFT
+#undef LEGION_FIELD_MASK_FIELD_MASK
 
     // Similar logic as field masks for node masks
 
 // The following macros are used in the NodeMask instantiation of BitMask
 // If you change one you probably have to change the others too
-#define NODE_TYPE           uint64_t
-#define NODE_SHIFT          6
-#define NODE_MASK           0x3F
-#define NODE_ALL_ONES       0xFFFFFFFFFFFFFFFF
+#define LEGION_NODE_MASK_NODE_TYPE           uint64_t
+#define LEGION_NODE_MASK_NODE_SHIFT          6
+#define LEGION_NODE_MASK_NODE_MASK           0x3F
+#define LEGION_NODE_MASK_NODE_ALL_ONES       0xFFFFFFFFFFFFFFFF
 
 #if defined(__AVX__)
 #if (MAX_NUM_NODES > 256)
@@ -723,7 +793,9 @@ namespace LegionRuntime {
 #elif (MAX_NUM_NODES > 64)
     typedef SSEBitMask<MAX_NUM_NODES> NodeMask;
 #else
-    typedef BitMask<NODE_TYPE,MAX_NUM_NODES,NODE_SHIFT,NODE_MASK> NodeMask;
+    typedef BitMask<LEGION_NODE_MASK_NODE_TYPE,MAX_NUM_NODES,
+                    LEGION_NODE_MASK_NODE_SHIFT,
+                    LEGION_NODE_MASK_NODE_MASK> NodeMask;
 #endif
 #elif defined(__SSE2__)
 #if (MAX_NUM_NODES > 128)
@@ -731,26 +803,32 @@ namespace LegionRuntime {
 #elif (MAX_NUM_NODES > 64)
     typedef SSEBitMask<MAX_NUM_NODES> NodeMask;
 #else
-    typedef BitMask<NODE_TYPE,MAX_NUM_NODES,NODE_SHIFT,NODE_MASK> NodeMask;
+    typedef BitMask<LEGION_NODE_MASK_NODE_TYPE,MAX_NUM_NODES,
+                    LEGION_NODE_MASK_NODE_SHIFT,
+                    LEGION_NODE_MASK_NODE_MASK> NodeMask;
 #endif
 #else
 #if (MAX_NUM_NODES > 64)
-    typedef TLBitMask<NODE_TYPE,MAX_NUM_NODES,NODE_SHIFT,NODE_MASK> NodeMask;
+    typedef TLBitMask<LEGION_NODE_MASK_NODE_TYPE,MAX_NUM_NODES,
+                      LEGION_NODE_MASK_NODE_SHIFT,
+                      LEGION_NODE_MASK_NODE_MASK> NodeMask;
 #else
-    typedef BitMask<NODE_TYPE,MAX_NUM_NODES,NODE_SHIFT,NODE_MASK> NodeMask;
+    typedef BitMask<LEGION_NODE_MASK_NODE_TYPE,MAX_NUM_NODES,
+                    LEGION_NODE_MASK_NODE_SHIFT,
+                    LEGION_NODE_MASK_NODE_MASK> NodeMask;
 #endif
 #endif
     typedef IntegerSet<AddressSpaceID,NodeMask> NodeSet;
 
-#undef NODE_SHIFT
-#undef NODE_MASK
+#undef LEGION_NODE_MASK_NODE_SHIFT
+#undef LEGION_NODE_MASK_NODE_MASK
 
 // The following macros are used in the ProcessorMask instantiation of BitMask
 // If you change one you probably have to change the others too
-#define PROC_TYPE           uint64_t
-#define PROC_SHIFT          6
-#define PROC_MASK           0x3F
-#define PROC_ALL_ONES       0xFFFFFFFFFFFFFFFF
+#define LEGION_PROC_MASK_PROC_TYPE           uint64_t
+#define LEGION_PROC_MASK_PROC_SHIFT          6
+#define LEGION_PROC_MASK_PROC_MASK           0x3F
+#define LEGION_PROC_MASK_PROC_ALL_ONES       0xFFFFFFFFFFFFFFFF
 
 #if defined(__AVX__)
 #if (MAX_NUM_PROCS > 256)
@@ -760,7 +838,9 @@ namespace LegionRuntime {
 #elif (MAX_NUM_PROCS > 64)
     typedef SSEBitMask<MAX_NUM_PROCS> ProcessorMask;
 #else
-    typedef BitMask<PROC_TYPE,MAX_NUM_PROCS,PROC_SHIFT,PROC_MASK> ProcessorMask;
+    typedef BitMask<LEGION_PROC_MASK_PROC_TYPE,MAX_NUM_PROCS,
+                    LEGION_PROC_MASK_PROC_SHIFT,
+                    LEGION_PROC_MASK_PROC_MASK> ProcessorMask;
 #endif
 #elif defined(__SSE2__)
 #if (MAX_NUM_PROCS > 128)
@@ -768,14 +848,19 @@ namespace LegionRuntime {
 #elif (MAX_NUM_PROCS > 64)
     typedef SSEBitMask<MAX_NUM_PROCS> ProcessorMask;
 #else
-    typedef BitMask<PROC_TYPE,MAX_NUM_PROCS,PROC_SHIFT,PROC_MASK> ProcessorMask;
+    typedef BitMask<LEGION_PROC_MASK_PROC_TYPE,MAX_NUM_PROCS,
+                    LEGION_PROC_MASK_PROC_SHIFT,
+                    LEGION_PROC_MASK_PROC_MASK> ProcessorMask;
 #endif
 #else
 #if (MAX_NUM_PROCS > 64)
-    typedef TLBitMask<PROC_TYPE,MAX_NUM_PROCS,PROC_SHIFT,PROC_MASK> 
-                                                                  ProcessorMask;
+    typedef TLBitMask<LEGION_PROC_MASK_PROC_TYPE,MAX_NUM_PROCS,
+                      LEGION_PROC_MASK_PROC_SHIFT,
+                      LEGION_PROC_MASK_PROC_MASK> ProcessorMask;
 #else
-    typedef BitMask<PROC_TYPE,MAX_NUM_PROCS,PROC_SHIFT,PROC_MASK> ProcessorMask;
+    typedef BitMask<LEGION_PROC_MASK_PROC_TYPE,MAX_NUM_PROCS,
+                    LEGION_PROC_MASK_PROC_SHIFT,
+                    LEGION_PROC_MASK_PROC_MASK> ProcessorMask;
 #endif
 #endif
 
@@ -785,6 +870,7 @@ namespace LegionRuntime {
 #define FRIEND_ALL_RUNTIME_CLASSES                \
     friend class Runtime;                         \
     friend class Internal;                        \
+    friend class TaskImpl;                        \
     friend class FuturePredicate;                 \
     friend class NotPredicate;                    \
     friend class AndPredicate;                    \

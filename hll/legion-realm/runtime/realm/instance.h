@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,9 @@
 #include "memory.h"
 
 #include "accessor.h"
+#include "custom_serdez.h"
+
+#include <vector>
 
 namespace Realm {
 
@@ -42,6 +45,21 @@ namespace Realm {
       Memory get_location(void) const;
 
       void destroy(Event wait_on = Event::NO_EVENT) const;
+
+      struct DestroyedField {
+      public:
+        DestroyedField(void) 
+          : offset(0), size(0), serdez_id(0) { }
+        DestroyedField(unsigned o, unsigned s, CustomSerdezID sid)
+          : offset(o), size(s), serdez_id(sid) { }
+      public:
+	unsigned offset, size;
+	CustomSerdezID serdez_id;
+      };
+
+      // if any fields in the instance need custom destruction, use this version
+      void destroy(const std::vector<DestroyedField>& destroyed_fields,
+		   Event wait_on = Event::NO_EVENT) const;
 
       AddressSpace address_space(void) const;
       id_t local_id(void) const;

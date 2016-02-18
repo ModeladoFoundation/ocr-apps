@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ namespace LegionRuntime {
     // importing stuff into this namespace for backwards compatibility
     typedef Realm::ReductionOpID ReductionOpID;
     typedef Realm::ReductionOpUntyped ReductionOpUntyped;
+    typedef Realm::CustomSerdezID CustomSerdezID;
+    typedef Realm::CustomSerdezUntyped CustomSerdezUntyped;
     typedef Realm::Event Event;
     typedef Realm::UserEvent UserEvent;
     typedef Realm::Barrier Barrier;

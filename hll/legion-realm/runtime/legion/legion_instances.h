@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,9 +67,11 @@ namespace LegionRuntime {
                                 std::vector<Domain::CopySrcDstField> &fields);
     public:
       void add_field_info(FieldID fid, unsigned index,
-                          size_t offset, size_t field_size);
+                          size_t offset, size_t field_size,
+                          CustomSerdezID serdez_id);
       const Domain::CopySrcDstField& find_field_info(FieldID fid) const;
       size_t get_layout_size(void) const;
+      void get_fields(std::vector<FieldID>& fields) const;
     public:
       bool match_shape(const size_t field_size) const;
       bool match_shape(const std::vector<size_t> &field_sizes, 
@@ -105,8 +107,8 @@ namespace LegionRuntime {
       std::map<unsigned/*offset*/,unsigned/*size*/> offset_size_map;
     protected:
       Reservation layout_lock; 
-      std::map<FIELD_TYPE,LegionVector<OffsetEntry>::aligned > 
-                                                  memoized_offsets;
+      std::map<LEGION_FIELD_MASK_FIELD_TYPE,
+               LegionVector<OffsetEntry>::aligned > memoized_offsets;
       NodeSet known_nodes;
     };
  

@@ -1,4 +1,4 @@
-# Copyright 2015 Stanford University
+# Copyright 2016 Stanford University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,9 +65,6 @@ SED	:= sed
 ECHO	:= echo
 TOUCH	:= touch
 MAKE	:= make
-ifndef GCC
-GCC	:= g++
-endif
 ifndef NVCC
 NVCC	:= $(CUDA)/bin/nvcc
 endif
@@ -100,22 +97,22 @@ all:
 $(OUTFILE) : $(ALL_OBJS)
 	@echo "---> Linking objects into one binary: $(OUTFILE)"
 ifdef SHARED_LOWLEVEL
-	$(GCC) -o $(OUTFILE) $(ALL_OBJS) $(LD_FLAGS) $(GASNET_FLAGS)
+	$(CXX) -o $(OUTFILE) $(ALL_OBJS) $(LD_FLAGS) $(GASNET_FLAGS)
 else
 	$(NVCC) -o $(OUTFILE) $(ALL_OBJS) $(LD_FLAGS) $(GASNET_FLAGS)
 endif
 
 $(GEN_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
+	$(CXX) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
 
 $(LOW_RUNTIME_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
+	$(CXX) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
 
 $(HIGH_RUNTIME_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
+	$(CXX) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
 
 $(MAPPER_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
+	$(CXX) -o $@ -c $< $(INC_FLAGS) $(CC_FLAGS)
 
 $(GEN_GPU_OBJS) : %.o : %.cu
 	$(NVCC) -o $@ -c $< $(INC_FLAGS) $(NVCC_FLAGS)

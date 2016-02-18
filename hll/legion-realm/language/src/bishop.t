@@ -1,4 +1,4 @@
--- Copyright 2015 Stanford University, NVIDIA Corporation
+-- Copyright 2016 Stanford University, NVIDIA Corporation
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -57,10 +57,10 @@ local language = {
 function language:statement(lex)
   local node = parser:parse(lex)
   local function ctor(environment_function)
-    node = specialize.rules(node)
-    node = type_check.rules(node)
+    node = specialize.mapper(node)
+    node = type_check.mapper(node)
     return function()
-      return codegen.rules(node)
+      return codegen.mapper(node)
     end
   end
   return ctor, {"__bishop_jit_mappers__"}

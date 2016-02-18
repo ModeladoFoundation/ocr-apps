@@ -1,4 +1,4 @@
--- Copyright 2015 Stanford University
+-- Copyright 2016 Stanford University
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ log.error = function(node, ...)
   -- The compiler cannot handle running past an error anyway, so just
   -- build the diagnostics object here and don't bother reusing it.
   local diag = terralib.newdiagnostics()
-  diag:reporterror(node.position)
-  diag:finishandabortiferrors(..., 2)
+  diag:reporterror(node.position, ...)
+  diag:finishandabortiferrors("Errors reported during typechecking.", 2)
   assert(false) -- unreachable
 end
 

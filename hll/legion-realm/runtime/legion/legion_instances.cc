@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include "legion_tasks.h"
 #include "region_tree.h"
 #include "legion_spy.h"
-#include "legion_logging.h"
 #include "legion_profiling.h"
 #include "legion_instances.h"
 #include "legion_views.h"
@@ -99,7 +98,8 @@ namespace LegionRuntime {
       // First check to see if we've memoized this result 
       {
         AutoLock o_lock(layout_lock,1,false/*exclusive*/);
-        std::map<FIELD_TYPE,LegionVector<OffsetEntry>::aligned >::const_iterator
+        std::map<LEGION_FIELD_MASK_FIELD_TYPE,
+                 LegionVector<OffsetEntry>::aligned >::const_iterator
           finder = memoized_offsets.find(hash_key);
         if (finder != memoized_offsets.end())
         {
@@ -163,7 +163,8 @@ namespace LegionRuntime {
 #endif
       // Add this to the results
       AutoLock o_lock(layout_lock);
-      std::map<FIELD_TYPE,LegionVector<OffsetEntry>::aligned >::iterator
+      std::map<LEGION_FIELD_MASK_FIELD_TYPE,
+               LegionVector<OffsetEntry>::aligned >::iterator
         finder = memoized_offsets.find(hash_key);
       if (finder == memoized_offsets.end())
         memoized_offsets[hash_key].push_back(OffsetEntry(copy_mask,local));
@@ -195,7 +196,8 @@ namespace LegionRuntime {
 
     //--------------------------------------------------------------------------
     void LayoutDescription::add_field_info(FieldID fid, unsigned index,
-                                           size_t offset, size_t field_size)
+                                           size_t offset, size_t field_size,
+                                           CustomSerdezID serdez_id)
     //--------------------------------------------------------------------------
     {
 #ifdef DEBUG_HIGH_LEVEL
@@ -205,7 +207,7 @@ namespace LegionRuntime {
       // Use annonymous instances when creating these field infos since
       // we specifying layouts independently of any one instance
       field_infos[fid] = Domain::CopySrcDstField(PhysicalInstance::NO_INST,
-                                                 offset, field_size);
+                                                 offset, field_size, serdez_id);
       field_indexes[index] = fid;
 #ifdef DEBUG_HIGH_LEVEL
       assert(offset_size_map.find(offset) == offset_size_map.end());
@@ -239,6 +241,20 @@ namespace LegionRuntime {
       }
       result *= volume;
       return result;
+    }
+
+    //--------------------------------------------------------------------------
+    void LayoutDescription::get_fields(std::vector<FieldID>& fields) const
+    //--------------------------------------------------------------------------
+    {
+      // order field ids by their offsets by inserting them to std::map
+      std::map<unsigned, FieldID> offsets;
+      for (std::map<FieldID, Domain::CopySrcDstField>::const_iterator it =
+            field_infos.begin(); it != field_infos.end(); ++it)
+        offsets[it->second.offset] = it->first;
+      for (std::map<unsigned, FieldID>::const_iterator it = offsets.begin();
+           it != offsets.end(); ++it)
+        fields.push_back(it->second);
     }
 
     //--------------------------------------------------------------------------
@@ -365,6 +381,7 @@ namespace LegionRuntime {
           rez.serialize(it->second);
           rez.serialize(finder->second.offset);
           rez.serialize(finder->second.size);
+          rez.serialize(finder->second.serdez_id);
         }
       }
     }
@@ -381,15 +398,14 @@ namespace LegionRuntime {
         derez.deserialize(fid);
         unsigned index = owner->get_field_index(fid);
         field_indexes[index] = fid;
-        unsigned offset, size;
-        derez.deserialize(offset);
-        derez.deserialize(size);
-        field_infos[fid] = 
-          Domain::CopySrcDstField(PhysicalInstance::NO_INST, offset, size);
+        Domain::CopySrcDstField &info = field_infos[fid];
+        derez.deserialize(info.offset);
+        derez.deserialize(info.size);
+        derez.deserialize(info.serdez_id);
 #ifdef DEBUG_HIGH_LEVEL
-        assert(offset_size_map.find(offset) == offset_size_map.end());
+        assert(offset_size_map.find(info.offset) == offset_size_map.end());
 #endif
-        offset_size_map[offset] = size;
+        offset_size_map[info.offset] = info.size;
       }
     }
 
@@ -450,7 +466,7 @@ namespace LegionRuntime {
     {
       if (d.get_dim() == 0)
       {
-        const LowLevel::ElementMask &mask = 
+        const Realm::ElementMask &mask = 
           d.get_index_space().get_valid_mask();
         return mask.get_num_elmts();
       }
@@ -1132,7 +1148,7 @@ namespace LegionRuntime {
       size_t result = op->sizeof_rhs;
       if (ptr_space.get_dim() == 0)
       {
-        const LowLevel::ElementMask &mask = 
+        const Realm::ElementMask &mask = 
           ptr_space.get_index_space().get_valid_mask();
         result *= mask.get_num_elmts();
       }
@@ -1309,7 +1325,7 @@ namespace LegionRuntime {
       const Domain &d = region_node->row_source->get_domain_blocking();
       if (d.get_dim() == 0)
       {
-        const LowLevel::ElementMask &mask = 
+        const Realm::ElementMask &mask = 
           d.get_index_space().get_valid_mask();
         result *= mask.get_num_elmts();
       }

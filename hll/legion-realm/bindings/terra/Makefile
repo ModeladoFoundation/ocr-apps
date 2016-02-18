@@ -1,4 +1,4 @@
-# Copyright 2015 Stanford University
+# Copyright 2016 Stanford University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ GASNET_FLAGS ?=
 INC_FLAGS += -I$(TERRA_DIR)/release/include/terra -I$(TERRA_DIR)/include/terra
 LD_FLAGS +=
 
-CC_FLAGS += -fPIC
+CC_FLAGS += -fPIC -DASSUME_UNALLOCABLE
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -dynamiclib -single_module -undefined dynamic_lookup -fPIC
 else

@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University
+/* Copyright 2016 Stanford University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1152,7 +1152,7 @@ bool PennantMapper::map_inline(Inline *inline_operation)
   // req.target_ranking.push_back(local_regmem);
 
   log_pennant.debug(
-    "inline mapping region (%d,%d,%d) target ranking front %d (size %lu)",
+    "inline mapping region (%d,%d,%d) target ranking front " IDFMT " (size %lu)",
     req.region.get_index_space().get_id(),
     req.region.get_field_space().get_id(),
     req.region.get_tree_id(),
@@ -1181,7 +1181,7 @@ void PennantMapper::notify_mapping_failed(const Mappable *mappable)
       RegionRequirement &req = _inline->requirement;
       LogicalRegion region = req.region;
       log_pennant.warning(
-        "mapping %s on inline region (%d,%d,%d) memory %d",
+        "mapping %s on inline region (%d,%d,%d) memory " IDFMT,
         (req.mapping_failed ? "failed" : "succeeded"),
         region.get_index_space().get_id(),
         region.get_field_space().get_id(),

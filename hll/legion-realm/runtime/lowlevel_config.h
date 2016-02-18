@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,29 +27,26 @@
 // LegionRuntime::LowLevel. These versions are here to facilitate the
 // C API. If you are writing C++ code, use the namespaced versions.
 
-#ifdef LEGION_IDS_ARE_64BIT
+#define REALM_IDS_ARE_64BIT
 typedef unsigned long long legion_lowlevel_id_t;
 #define IDFMT "%llx"
-#else
-typedef unsigned legion_lowlevel_id_t;
-#define IDFMT "%x"
-#endif
 
 typedef unsigned int legion_lowlevel_address_space_t;
 typedef unsigned legion_lowlevel_task_func_id_t;
 typedef int legion_lowlevel_reduction_op_id_t;
+typedef int legion_lowlevel_custom_serdez_id_t;
+typedef unsigned legion_lowlevel_event_gen_t;
+typedef unsigned long long legion_lowlevel_barrier_timestamp_t;
 
 // Different Processor types
 // Keep this in sync with Processor::Kind in lowlevel.h
 typedef enum legion_lowlevel_processor_kind_t {
+  NO_KIND,
   TOC_PROC, // Throughput core
   LOC_PROC, // Latency core
   UTIL_PROC, // Utility core
   IO_PROC, // I/O core
   PROC_GROUP, // Processor group
-#ifdef USE_OCR_LAYER
-  OCR_PROC, //OCR processor
-#endif
 } legion_lowlevel_processor_kind_t;
 
 // Different Memory types

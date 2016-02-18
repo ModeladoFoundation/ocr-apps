@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
  */
 
 #include "legion_types.h"
+#include "legion_constraint.h"
 
 // temporary helper macro to turn link errors into runtime errors
 #define UNIMPLEMENTED_METHOD(retval) do { assert(0); return retval; } while(0)
@@ -130,6 +131,7 @@ namespace LegionRuntime {
       inline bool operator<(const FieldSpace &rhs) const;
       inline bool operator>(const FieldSpace &rhs) const;
       inline FieldSpaceID get_id(void) const { return id; }
+      inline bool exists(void) const { return (id != 0); }
     private:
       FieldSpaceID id;
     };
@@ -167,6 +169,7 @@ namespace LegionRuntime {
       inline IndexSpace get_index_space(void) const { return index_space; }
       inline FieldSpace get_field_space(void) const { return field_space; }
       inline RegionTreeID get_tree_id(void) const { return tree_id; }
+      inline bool exists(void) const { return (tree_id != 0); } 
     private:
       // These are private so the user can't just arbitrarily change them
       RegionTreeID tree_id;
@@ -209,6 +212,7 @@ namespace LegionRuntime {
         { return index_partition; }
       inline FieldSpace get_field_space(void) const { return field_space; }
       inline RegionTreeID get_tree_id(void) const { return tree_id; }
+      inline bool exists(void) const { return (tree_id != 0); }
     private:
       // These are private so the user can't just arbitrary change them
       RegionTreeID tree_id;
@@ -310,10 +314,14 @@ namespace LegionRuntime {
        * @param desired_fieldid field ID to be assigned to the
        *   field or AUTO_GENERATE_ID to specify that the runtime
        *   should assign a fresh field ID
+       * @param serdez_id optional parameter for specifying a
+       *   custom serdez object for serializing and deserializing
+       *   a field when it is moved.
        * @return field ID for the allocated field
        */
       inline FieldID allocate_field(size_t field_size, 
-              FieldID desired_fieldid = AUTO_GENERATE_ID);
+              FieldID desired_fieldid = AUTO_GENERATE_ID,
+              CustomSerdezID serdez_id = 0);
       /**
        * Deallocate the specified field from the field space.
        * @param fid the field ID to be deallocated
@@ -328,7 +336,8 @@ namespace LegionRuntime {
        * allocated completes.
        */
       inline FieldID allocate_local_field(size_t field_size,
-              FieldID desired_fieldid = AUTO_GENERATE_ID);
+              FieldID desired_fieldid = AUTO_GENERATE_ID,
+              CustomSerdezID serdez_id = 0);
       /**
        * Allocate a collection of fields with the specified sizes.
        * Optionally pass in a set of field IDs to use when allocating
@@ -344,7 +353,8 @@ namespace LegionRuntime {
        *    the length of field_sizes with field IDs specified
        */
       inline void allocate_fields(const std::vector<size_t> &field_sizes,
-                                  std::vector<FieldID> &resulting_fields);
+                                  std::vector<FieldID> &resulting_fields,
+                                  CustomSerdezID serdez_id = 0);
       /**
        * Free a collection of field IDs
        * @param to_free set of field IDs to be freed
@@ -358,7 +368,8 @@ namespace LegionRuntime {
        * they were created completes.
        */
       inline void allocate_local_fields(const std::vector<size_t> &field_sizes,
-                                        std::vector<FieldID> &resulting_fields);
+                                        std::vector<FieldID> &resulting_fields,
+                                        CustomSerdezID serdez_id = 0);
       /**
        * @return field space associated with this allocator
        */
@@ -1280,6 +1291,94 @@ namespace LegionRuntime {
       MapperID                        map_id;
       MappingTagID                    tag;
     };
+
+    //==========================================================================
+    //                          Task Variant Registrars 
+    //==========================================================================
+
+    /**
+     * \struct LayoutConstraintRegistrar
+     * A layout description registrar is the mechanism by which application
+     * can register a set of constraints with a specific ID. This ID can
+     * then be used globally to refer to this set of constraints. All 
+     * constraint sets are associated with a specifid field space which
+     * contains the FieldIDs used in the constraints. This can be a 
+     * NO_SPACE if there are no field constraints. All the rest of the 
+     * constraints can be optionally specified.
+     */
+    struct LayoutConstraintRegistrar {
+    public:
+      LayoutConstraintRegistrar(void);
+      LayoutConstraintRegistrar(FieldSpace handle, 
+                                 const char *layout_name = NULL);
+    public:
+      inline LayoutConstraintRegistrar&
+        add_constraint(const SpecializedConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const MemoryConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const OrderingConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const SplittingConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const FieldConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const DimensionConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const AlignmentConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const OffsetConstraint &constraint);
+      inline LayoutConstraintRegistrar&
+        add_constraint(const PointerConstraint &constraint); 
+    public:
+      FieldSpace                                handle;
+      LayoutConstraintSet                       layout_constraints;
+      const char*                               layout_name;
+    };
+
+    /**
+     * \struct TaskVariantRegistrar
+     * This structure captures all the meta-data information necessary for
+     * describing a task variant including the logical task ID, the execution
+     * constraints, the layout constraints, and any properties of the task.
+     * This structure is used for registering task variants and is also
+     * the output type for variants created by task variant generators.
+     */
+    struct TaskVariantRegistrar {
+    public:
+      TaskVariantRegistrar(void);
+      TaskVariantRegistrar(TaskID task_id, bool global = true,
+                           const char *variant_name = NULL);
+    public: // Add execution constraints
+      inline TaskVariantRegistrar& 
+        add_constraint(const ISAConstraint &constraint);
+      inline TaskVariantRegistrar&
+        add_constraint(const ProcessorConstraint &constraint);
+      inline TaskVariantRegistrar& 
+        add_constraint(const ResourceConstraint &constraint);
+      inline TaskVariantRegistrar&
+        add_constraint(const LaunchConstraint &constraint);
+      inline TaskVariantRegistrar&
+        add_constraint(const ColocationConstraint &constraint);
+    public: // Add layout constraint sets
+      inline TaskVariantRegistrar&
+        add_layout_constraint_set(unsigned index, LayoutConstraintID desc);
+    public: // Set properties
+      inline void set_leaf(bool is_leaf = true);
+      inline void set_inner(bool is_inner = true);
+      inline void set_idempotent(bool is_idempotent = true);
+    public:
+      TaskID                            task_id;
+      bool                              global_registration;
+      const char*                       task_variant_name;
+    public: // constraints
+      ExecutionConstraintSet            execution_constraints; 
+      TaskLayoutConstraintSet           layout_constraints;
+    public: // properties
+      bool                              leaf_variant;
+      bool                              inner_variant;
+      bool                              idempotent_variant;
+    };
  
     //==========================================================================
     //                          Physical Data Classes
@@ -1342,6 +1441,14 @@ namespace LegionRuntime {
        */
       Accessor::RegionAccessor<Accessor::AccessorType::Generic> 
         get_field_accessor(FieldID field) const; 
+      /**
+       * Return the memories where the underlying physical instances locate.
+       */
+      void get_memories(std::set<Memory>& memories) const;
+      /**
+       * Return a list of fields that the physical region contains.
+       */
+      void get_fields(std::vector<FieldID>& fields) const;
     };
 
     /**
@@ -1594,7 +1701,7 @@ namespace LegionRuntime {
       Task(void);
     public:
       // Task argument information
-      Processor::TaskFuncID task_id; 
+      Processor::TaskFuncID               task_id; 
       std::vector<IndexSpaceRequirement>  indexes;
       std::vector<RegionRequirement>      regions;
       std::vector<Future>                 futures;
@@ -1659,6 +1766,7 @@ namespace LegionRuntime {
       virtual Acquire* as_mappable_acquire(void) const = 0;
       virtual Release* as_mappable_release(void) const = 0;
       virtual UniqueID get_unique_mappable_id(void) const = 0;
+      virtual const char* get_task_name(void) const = 0;
       virtual unsigned get_depth(void) const;
     };
 
@@ -1842,7 +1950,7 @@ namespace LegionRuntime {
                        Processor::Kind kind, 
                        bool single, bool index,
                        bool inner, bool leaf,
-                       VariantID &vid);
+                       VariantID vid);
       const Variant& select_variant(bool single, bool index, 
                                     Processor::Kind kind);
     public:
@@ -1880,7 +1988,8 @@ namespace LegionRuntime {
        */
       const Variant& get_variant(VariantID vid);
 
-      const std::map<VariantID,Variant>& get_all_variants(void) const { return variants; }
+      const std::map<VariantID,Variant>& get_all_variants(void) const
+        { return variants; }
     public:
       const Processor::TaskFuncID user_id;
       const char *name;
@@ -4798,14 +4907,26 @@ namespace LegionRuntime {
       // Semantic Information 
       //------------------------------------------------------------------------
       /**
+       * Attach semantic information to a logical task
+       * @param handle task_id the ID of the task
+       * @param tag the semantic tag
+       * @param buffer pointer to a buffer
+       * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
+       */
+      void attach_semantic_information(TaskID task_id, SemanticTag tag,
+                     const void *buffer, size_t size, bool is_mutable = false);
+
+      /**
        * Attach semantic information to an index space
        * @param handle index space handle
        * @param tag semantic tag
        * @param buffer pointer to a buffer
        * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
        */
       void attach_semantic_information(IndexSpace handle, SemanticTag tag,
-                                       const void *buffer, size_t size);
+                     const void *buffer, size_t size, bool is_mutable = false);
 
       /**
        * Attach semantic information to an index partition 
@@ -4813,9 +4934,10 @@ namespace LegionRuntime {
        * @param tag semantic tag
        * @param buffer pointer to a buffer
        * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
        */
       void attach_semantic_information(IndexPartition handle, SemanticTag tag,
-                                       const void *buffer, size_t size);
+                     const void *buffer, size_t size, bool is_mutable = false);
 
       /**
        * Attach semantic information to a field space
@@ -4823,9 +4945,10 @@ namespace LegionRuntime {
        * @param tag semantic tag
        * @param buffer pointer to a buffer
        * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
        */
       void attach_semantic_information(FieldSpace handle, SemanticTag tag,
-                                       const void *buffer, size_t size);
+                     const void *buffer, size_t size, bool is_mutable = false);
 
       /**
        * Attach semantic information to a specific field 
@@ -4834,10 +4957,11 @@ namespace LegionRuntime {
        * @param tag semantic tag
        * @param buffer pointer to a buffer
        * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
        */
       void attach_semantic_information(FieldSpace handle, FieldID fid, 
-                                       SemanticTag tag,
-                                       const void *buffer, size_t size);
+                                       SemanticTag tag, const void *buffer, 
+                                       size_t size, bool is_mutable = false);
 
       /**
        * Attach semantic information to a logical region 
@@ -4845,9 +4969,10 @@ namespace LegionRuntime {
        * @param tag semantic tag
        * @param buffer pointer to a buffer
        * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
        */
       void attach_semantic_information(LogicalRegion handle, SemanticTag tag,
-                                       const void *buffer, size_t size);
+                     const void *buffer, size_t size, bool is_mutable = false);
       
       /**
        * Attach semantic information to a logical partition 
@@ -4855,53 +4980,85 @@ namespace LegionRuntime {
        * @param tag semantic tag
        * @param buffer pointer to a buffer
        * @param size size of the buffer to save
+       * @param is_mutable can the tag value be changed later
        */
       void attach_semantic_information(LogicalPartition handle, 
-                                       SemanticTag tag,
-                                       const void *buffer, size_t size);
+                                       SemanticTag tag, const void *buffer, 
+                                       size_t size, bool is_mutable = false);
+
+      /**
+       * Attach a name to a task
+       * @param task_id the ID of the task
+       * @param name pointer to the name
+       * @param is_mutable can the name be changed later
+       */
+      void attach_name(TaskID task_id, const char *name, 
+                       bool is_mutable = false);
 
       /**
        * Attach a name to an index space
        * @param handle index space handle
        * @param name pointer to a name
+       * @param is_mutable can the name be changed later
        */
-      void attach_name(IndexSpace handle, const char *name);
+      void attach_name(IndexSpace handle, const char *name,
+                       bool is_mutable = false);
 
       /**
        * Attach a name to an index partition
        * @param handle index partition handle
        * @param name pointer to a name
+       * @param is_mutable can the name be changed later
        */
-      void attach_name(IndexPartition handle, const char *name);
+      void attach_name(IndexPartition handle, const char *name,
+                       bool is_mutable = false);
 
       /**
        * Attach a name to a field space
        * @param handle field space handle
        * @param name pointer to a name
+       * @param is_mutable can the name be changed later
        */
-      void attach_name(FieldSpace handle, const char *name);
+      void attach_name(FieldSpace handle, const char *name,
+                       bool is_mutable = false);
 
       /**
        * Attach a name to a specific field
        * @param handle field space handle
        * @param fid field ID
        * @param name pointer to a name
+       * @param is_mutable can the name be changed later
        */
-      void attach_name(FieldSpace handle, FieldID fid, const char *name);
+      void attach_name(FieldSpace handle, FieldID fid, 
+                       const char *name, bool is_mutable = false);
 
       /**
        * Attach a name to a logical region
        * @param handle logical region handle
        * @param name pointer to a name
+       * @param is_mutable can the name be changed later
        */
-      void attach_name(LogicalRegion handle, const char *name);
+      void attach_name(LogicalRegion handle, const char *name,
+                       bool is_mutable = false);
 
       /**
        * Attach a name to a logical partition
        * @param handle logical partition handle
        * @param name pointer to a name
+       * @param is_mutable can the name be changed later
        */
-      void attach_name(LogicalPartition handle, const char *name);
+      void attach_name(LogicalPartition handle, const char *name,
+                       bool is_mutable = false);
+
+      /**
+       * Retrieve semantic information for a task
+       * @param task_id the ID of the task
+       * @param tag semantic tag
+       * @param result pointer to assign to the semantic buffer
+       * @param size where to write the size of the semantic buffer
+       */
+      void retrieve_semantic_information(TaskID task_id, SemanticTag tag,
+                                         const void *&result, size_t &size);
 
       /**
        * Retrieve semantic information for an index space
@@ -4967,6 +5124,13 @@ namespace LegionRuntime {
                                          const void *&result, size_t &size);
 
       /**
+       * Retrieve the name of a task
+       * @param task_id the ID of the task
+       * @param result pointer to assign to the name
+       */
+      void retrieve_name(TaskID task_id, const char *&result);
+
+      /**
        * Retrieve the name of an index space
        * @param handle index space handle
        * @param result pointer to assign to the name
@@ -5015,6 +5179,22 @@ namespace LegionRuntime {
       // function called before start-up.  This function is specified
       // by calling the 'set_registration_callback' static method.
       //------------------------------------------------------------------------
+
+      /**
+       * Dynamically generate a unique Mapper ID for use across the machine
+       * @return a Mapper ID that is globally unique across the machine
+       */
+      MapperID generate_dynamic_mapper_id(void);
+
+      /**
+       * Statically generate a unique Mapper ID for use across the machine.
+       * This can only be called prior to the runtime starting. It must
+       * be invoked symmetrically across all nodes in the machine prior
+       * to starting the rutnime.
+       * @return a MapperID that is globally unique across the machine
+       */
+      static MapperID generate_static_mapper_id(void);
+
       /**
        * Add a mapper at the given mapper ID for the runtime
        * to use when mapping tasks.  Note that this call should
@@ -5106,13 +5286,6 @@ namespace LegionRuntime {
        * ---------------------
        *  Dependence Analysis
        * ---------------------
-       * -hl:filter <int> Maximum number of tasks allowed in logical
-       *              or physical epochs.  Default value is 32.
-       * -hl:imprecise Enable imprecise filtering. This improves the
-       *              effectiveness of the previous flag at the cost that
-       *              it may add imprecision to the analysis and introduce
-       *              additional dependences. It is unsafe to use this flag
-       *              with applications that use phase barriers.
        * -hl:no_dyn   Disable dynamic disjointness tests when the runtime
        *              has been compiled with macro DYNAMIC_TESTS defined
        *              which enables dynamic disjointness testing.
@@ -5159,6 +5332,12 @@ namespace LegionRuntime {
        * -------------
        *  Profiling
        * -------------
+       * -hl:spy      Enable light-weight logging for Legion Spy which
+       *              is valuable for understanding properties of an
+       *              application such as the shapes of region trees
+       *              and the kinds of tasks/operations that are created.
+       *              Checking of the runtime with Legion Spy will still
+       *              require the runtime to be compiled with -DLEGION_SPY.
        * -hl:prof <int> Specify the number of nodes on which to enable
        *              profiling information to be collected.  By default
        *              all nodes are enabled.  Zero will disable all
@@ -5174,8 +5353,8 @@ namespace LegionRuntime {
 
       /**
        * Blocking call to wait for the runtime to shutdown when
-       * running in background mode.  Otherwise this call should
-       * never be used.
+       * running in background mode.  Otherwise it is illegal to 
+       * invoke this method.
        */
       static void wait_for_shutdown(void);
       
@@ -5233,6 +5412,24 @@ namespace LegionRuntime {
        * @return a pointer to the reduction operation object if it exists
        */
       static const ReductionOp* get_reduction_op(ReductionOpID redop_id);
+
+      /**
+       * Register custom serialize/deserialize operation with the
+       * runtime. This can be used for providing custom serialization
+       * and deserialization method for fields that are not trivially
+       * copied (e.g. byte-wise copies). The type being registered
+       * must conform to the Realm definition of a CustomSerdez
+       * object (see realm/custom_serdez.h).
+       */
+      template<typename SERDEZ>
+      static void register_custom_serdez_op(CustomSerdezID serdez_id);
+
+      /**
+       * Return a pointer to the given custom serdez operation object.
+       * @param serdez_id ID of the serdez operation to find
+       * @return a pointer to the serdez operation object if it exists
+       */
+      static const SerdezOp* get_serdez_op(CustomSerdezID serdez_id);
 
       /**
        * Register a region projection function that can be used to map
@@ -5295,9 +5492,201 @@ namespace LegionRuntime {
       static void dump_profiling(void);
     public:
       //------------------------------------------------------------------------
-      // Task Registration Operations
+      // Layout Registration Operations
       //------------------------------------------------------------------------
       /**
+       * Register a new layout description with the runtime. The runtime will
+       * return an ID that is a globally unique name for this set of 
+       * constraints and can be used anywhere in the machine. Once this set 
+       * of constraints is set, it cannot be changed.
+       * @param registrar a layout description registrar 
+       * @return a unique layout ID assigned to this set of constraints 
+       */
+      LayoutConstraintID register_layout(
+                                    const LayoutConstraintRegistrar &registrar);
+
+      /**
+       * Release the set of constraints associated the given layout ID.
+       * This promises that this set of constraints will never be used again.
+       * @param layout_id the name for the set of constraints to release
+       */
+      void release_layout(LayoutConstraintID layout_id);
+
+      /**
+       * A static version of the method above to register layout
+       * descriptions prior to the runtime starting. Attempting to
+       * use this method after the runtime starts will result in a 
+       * failure. All of the calls to this method must specifiy layout
+       * descriptions that are not associated with a field space.
+       * This call must be made symmetrically across all nodes.
+       * @param registrar a layout description registrar
+       * @param layout_id the ID to associate with the description
+       * @return the layout id assigned to the set of constraints
+       */
+      static LayoutConstraintID preregister_layout(
+                               const LayoutConstraintRegistrar &registrar,
+                               LayoutConstraintID layout_id = AUTO_GENERATE_ID);
+
+      /**
+       * Get the field space for a specific layout description
+       * @param layout_id the layout ID for which to obtain the field space
+       * @return the field space handle for the layout description
+       */
+      FieldSpace get_layout_constraint_field_space(
+                                  LayoutConstraintID layout_id);
+
+      /**
+       * Get the constraints for a specific layout description
+       * @param layout_id the layout ID for which to obtain the constraints
+       * @param layout_constraints a LayoutConstraintSet to populate
+       */
+      void get_layout_constraints(LayoutConstraintID layout_id,
+                                  LayoutConstraintSet &layout_constraints);
+
+      /**
+       * Get the name associated with a particular layout description
+       * @param layout_id the layout ID for which to obtain the name
+       * @return a pointer to a string of the name of the layou description
+       */
+      const char* get_layout_constraints_name(LayoutConstraintID layout_id);
+    public:
+      //------------------------------------------------------------------------
+      // Task Registration Operations
+      //------------------------------------------------------------------------
+      
+      /**
+       * Dynamically generate a unique Task ID for use across the machine
+       * @return a Task ID that is globally unique across the machine
+       */
+      TaskID generate_dynamic_task_id(void);
+
+      /**
+       * Statically generate a unique Task ID for use across the machine.
+       * This can only be called prior to the runtime starting. It must
+       * be invoked symmetrically across all nodes in the machine prior
+       * to starting the runtime.
+       * @return a TaskID that is globally unique across the machine
+       */
+      static TaskID generate_static_task_id(void);
+
+      /**
+       * Dynamically register a new task variant with the runtime with
+       * a non-void return type.
+       * @param registrar the task variant registrar for describing the task
+       * @return variant ID for the task
+       */
+      template<typename T,
+        T (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                      Context, Runtime*)>
+      VariantID register_task_variant(const TaskVariantRegistrar &registrar);
+
+      /**
+       * Dynamically register a new task variant with the runtime with
+       * a non-void return type and user data.
+       * @param registrar the task variant registrar for describing the task
+       * @param user_data the user data to associate with the task variant
+       * @return variant ID for the task
+       */
+      template<typename T, typename UDT,
+        T (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                      Context, Runtime*, const UDT&)>
+      VariantID register_task_variant(const TaskVariantRegistrar &registrar,
+                                      const UDT &user_data);
+
+      /**
+       * Dynamically register a new task variant with the runtime with
+       * a void return type.
+       * @param registrar the task variant registrar for describing the task
+       * @return variant ID for the task
+       */
+      template<
+        void (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                         Context, Runtime*)>
+      VariantID register_task_variant(const TaskVariantRegistrar &registrar);
+
+      /**
+       * Dynamically register a new task variant with the runtime with
+       * a void return type and user data.
+       * @param registrar the task variant registrar for describing the task
+       * @param user_data the user data to associate with the task variant
+       * @return variant ID for the task
+       */
+      template<typename UDT,
+        void (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                         Context, Runtime*, const UDT&)>
+      VariantID register_task_variant(const TaskVariantRegistrar &registrar,
+                                      const UDT &user_data);
+
+      /**
+       * Statically register a new task variant with the runtime with
+       * a non-void return type prior to the runtime starting. This call
+       * must be made on all nodes and it will fail if done after the
+       * Runtime::start method has been invoked.
+       * @param registrar the task variant registrar for describing the task
+       * @param task_name an optional name to assign to the logical task
+       * @return variant ID for the task
+       */
+      template<typename T,
+        T (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                      Context, Runtime*)>
+      static VariantID preregister_task_variant(
+                                    const TaskVariantRegistrar &registrar,
+                                    const char *task_name = NULL);
+
+      /**
+       * Statically register a new task variant with the runtime with
+       * a non-void return type and userd data prior to the runtime 
+       * starting. This call must be made on all nodes and it will 
+       * fail if done after the Runtime::start method has been invoked.
+       * @param registrar the task variant registrar for describing the task
+       * @param user_data the user data to associate with the task variant
+       * @param task_name an optional name to assign to the logical task
+       * @return variant ID for the task
+       */
+      template<typename T, typename UDT,
+        T (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                      Context, Runtime*, const UDT&)>
+      static VariantID preregister_task_variant(
+                      const TaskVariantRegistrar &registrar, 
+                      const UDT &user_data, const char *task_name = NULL);
+       
+      /**
+       * Statically register a new task variant with the runtime with
+       * a void return type prior to the runtime starting. This call
+       * must be made on all nodes and it will fail if done after the
+       * Runtime::start method has been invoked.
+       * @param registrar the task variant registrar for describing the task
+       * @param an optional name to assign to the logical task
+       * @return variant ID for the task
+       */
+      template<
+        void (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                         Context, Runtime*)>
+      static VariantID preregister_task_variant(
+                                    const TaskVariantRegistrar &registrar,
+                                    const char *task_name = NULL);
+
+      /**
+       * Statically register a new task variant with the runtime with
+       * a void return type and user data prior to the runtime starting. 
+       * This call must be made on all nodes and it will fail if done 
+       * after the Runtime::start method has been invoked.
+       * @param registrar the task variant registrar for describing the task
+       * @param user_data the user data to associate with the task variant
+       * @param an optional name to assign to the logical task
+       * @return variant ID for the task
+       */
+      template<typename UDT,
+        void (*TASK_PTR)(const Task*, const std::vector<PhysicalRegion>&,
+                         Context, Runtime*, const UDT&)>
+      static VariantID preregister_task_variant(
+              const TaskVariantRegistrar &registrar, 
+              const UDT &user_data, const char *task_name = NULL);
+
+    public:
+      // ------------------ Deprecated task registration -----------------------
+      /**
+       * @deprecated
        * Register a task with a template return type for the given
        * kind of processor.
        * @param id the ID to assign to the task
@@ -5318,6 +5707,7 @@ namespace LegionRuntime {
                               TaskConfigOptions options = TaskConfigOptions(),
                                          const char *task_name = NULL);
       /**
+       * @deprecated
        * Register a task with a void return type for the given
        * kind of processor.
        * @param id the ID to assign to the task 
@@ -5338,6 +5728,7 @@ namespace LegionRuntime {
                              TaskConfigOptions options = TaskConfigOptions(),
                                          const char *task_name = NULL);
       /**
+       * @deprecated
        * Same as the register_legion_task above, but allow for users to
        * pass some static data that will be passed as an argument to
        * all invocations of the function.
@@ -5361,6 +5752,7 @@ namespace LegionRuntime {
                               TaskConfigOptions options = TaskConfigOptions(),
                                          const char *task_name = NULL);
       /**
+       * @deprecated
        * Same as the register_legion_task above, but allow for users to
        * pass some static data that will be passed as an argument to
        * all invocations of the function.
@@ -5383,109 +5775,6 @@ namespace LegionRuntime {
                                          VariantID vid = AUTO_GENERATE_ID,
                               TaskConfigOptions options = TaskConfigOptions(),
                                          const char *task_name = NULL);
-      /**
-       * @deprecated
-       * Register a single task with a template return type for the given
-       * task ID and the processor kind.  Optionally specify whether the
-       * task is a leaf task or give it a name for debugging error messages.
-       * @param id the ID at which to assign the task
-       * @param proc_kind the processor kind on which the task can run
-       * @param leaf whether the task is a leaf task (makes no runtime calls)
-       * @param name for the task in error messages
-       * @param vid the variant ID to assign to the task
-       * @param inner whether the task is an inner task
-       * @param idempotent whether the task is idempotent
-       * @return the ID the task was assigned
-       */
-      template<typename T,
-        T (*TASK_PTR)(const void*,size_t,
-                      const std::vector<RegionRequirement>&,
-                      const std::vector<PhysicalRegion>&,
-                      Context, Runtime*)>
-      static TaskID register_single_task(TaskID id, Processor::Kind proc_kind,
-                                         bool leaf = false,
-                                         const char *name = NULL,
-                                         VariantID vid = AUTO_GENERATE_ID,
-                                         bool inner = false,
-                                         bool idempotent = false);
-      /**
-       * @deprecated
-       * Register a single task with a void return type for the given
-       * task ID and the processor kind.  Optionally specify whether the
-       * task is a leaf task or give it a name for debugging error messages.
-       * @param id the ID at which to assign the task
-       * @param proc_kind the processor kind on which the task can run
-       * @param leaf whether the task is a leaf task (makes no runtime calls)
-       * @param name for the task in error messages
-       * @param vid the variant ID to assign to the task
-       * @param inner whether the task is an inner task
-       * @param idempotent whether the task is idempotent
-       * @return the ID the task was assigned
-       */
-      template<
-        void (*TASK_PTR)(const void*,size_t,
-                         const std::vector<RegionRequirement>&,
-                         const std::vector<PhysicalRegion>&,
-                         Context, Runtime*)>
-      static TaskID register_single_task(TaskID id, Processor::Kind proc_kind,
-                                         bool leaf = false,
-                                         const char *name = NULL,
-                                         VariantID vid = AUTO_GENERATE_ID,
-                                         bool inner = false,
-                                         bool idempotent = false);
-      /**
-       * @deprecated
-       * Register an index space task with a template return type
-       * for the given task ID and processor kind.  Optionally specify
-       * whether the task is a leaf task or give it a name for 
-       * debugging error messages.
-       * @param id the ID at which to assign the task
-       * @param proc_kind the processor kind on which the task can run
-       * @param leaf whether the task is a leaf task (makes no runtime calls)
-       * @param name for the task in error messages
-       * @param vid the variant ID to assign to the task
-       * @param inner whether the task is an inner task
-       * @param idempotent whether the task is idempotent
-       * @return the ID the task was assigned
-       */
-      template<typename T,
-        T (*TASK_PTR)(const void*,size_t,const void*,size_t,const DomainPoint&,
-                      const std::vector<RegionRequirement>&,
-                      const std::vector<PhysicalRegion>&,
-                      Context, Runtime*)>
-      static TaskID register_index_task(TaskID id, Processor::Kind proc_kind,
-                                        bool leaf = false,
-                                        const char *name = NULL,
-                                        VariantID vid = AUTO_GENERATE_ID,
-                                        bool inner = false,
-                                        bool idempotent = false); 
-      /**
-       * @deprecated
-       * Register an index space task with a void return type
-       * for the given task ID and processor kind.  Optionally specify
-       * whether the task is a leaf task or give it a name for 
-       * debugging error messages.
-       * @param id the ID at which to assign the task
-       * @param proc_kind the processor kind on which the task can run
-       * @param leaf whether the task is a leaf task (makes no runtime calls)
-       * @param name for the task in error messages
-       * @param vid the variant ID to assign to the task
-       * @param inner whether the task is an inner task
-       * @param idempotent whether the task is idempotent
-       * @return the ID the task was assigned
-       */
-      template<
-        void (*TASK_PTR)(const void*,size_t,const void*,size_t,
-                         const DomainPoint&,
-                         const std::vector<RegionRequirement>&,
-                         const std::vector<PhysicalRegion>&,
-                         Context, Runtime*)>
-      static TaskID register_index_task(TaskID id, Processor::Kind proc_kind,
-                                        bool leaf = false,
-                                        const char *name = NULL,
-                                        VariantID vid = AUTO_GENERATE_ID,
-                                        bool inner = false,
-                                        bool idempotent = false);
     public:
       /**
        * Provide a mechanism for finding the high-level runtime
@@ -5498,11 +5787,13 @@ namespace LegionRuntime {
     private:
       friend class FieldAllocator;
       FieldID allocate_field(Context ctx, FieldSpace space, 
-                             size_t field_size, FieldID fid, bool local);
+                             size_t field_size, FieldID fid, bool local,
+                             CustomSerdezID serdez_id);
       void free_field(Context ctx, FieldSpace space, FieldID fid);
       void allocate_fields(Context ctx, FieldSpace space, 
                            const std::vector<size_t> &sizes,
-                           std::vector<FieldID> &resulting_fields, bool local);
+                           std::vector<FieldID> &resulting_fields, 
+                           bool local, CustomSerdezID serdez_id);
       void free_fields(Context ctx, FieldSpace space, 
                        const std::set<FieldID> &to_free);
     private:
@@ -5510,33 +5801,29 @@ namespace LegionRuntime {
       friend class LegionTaskWrapper;
       friend class LegionSerialization;
       const std::vector<PhysicalRegion>& begin_task(Context ctx);
+      const std::vector<PhysicalRegion>& begin_inline_task(Context ctx);
       void end_task(Context ctx, const void *result, size_t result_size,
                     bool owned = false);
+      void end_inline_task(Context ctx, const void *result, size_t result_size,
+                           bool owned = false);
       Future from_value(const void *value, size_t value_size, bool owned);
-      const void* get_local_args(Context ctx, DomainPoint &point, 
-                                 size_t &local_size);
     private:
       static ProjectionID register_region_projection_function(
                                     ProjectionID handle, void *func_ptr);
       static ProjectionID register_partition_projection_function(
                                     ProjectionID handle, void *func_ptr);
-      static TaskID update_collection_table(
-                      LowLevelFnptr low_ptr, InlineFnptr inline_ptr,
-                      TaskID uid, Processor::Kind proc_kind, 
-                      bool single_task, bool index_space_task,
-                      VariantID vid, size_t return_size,
-                      const TaskConfigOptions &options,
-                      const char *task_name);
-      static TaskID update_collection_table(
-                      LowLevelFnptr low_ptr, InlineFnptr inline_ptr,
-                      TaskID uid, Processor::Kind proc_kind, 
-                      bool single_task, bool index_space_task,
-                      VariantID vid, size_t return_size,
-                      const TaskConfigOptions &options,
-                      const char *task_name,
-                      const void *user_data, size_t user_data_size);
-      static const void* find_user_data(TaskID tid, VariantID vid);
+    private:
+      VariantID register_variant(const TaskVariantRegistrar &registrar,bool ret,
+                                 const void *user_data, size_t user_data_size,
+                                 CodeDescriptor *realm, CodeDescriptor *indesc);
+      static VariantID preregister_variant(const TaskVariantRegistrar &reg,
+                                 const void *user_data, size_t user_data_size,
+                                 CodeDescriptor *realm, CodeDescriptor *indesc,
+                                 bool has_return, const char *task_name,
+                                 bool check_task_id = true);
+    private:
       static ReductionOpTable& get_reduction_table(void);
+      static SerdezOpTable& get_serdez_table(void);
       static SerdezRedopTable& get_serdez_redop_table(void);
     private:
       friend class Mapper;

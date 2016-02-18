@@ -1,4 +1,4 @@
--- Copyright 2015 Stanford University, NVIDIA Corporation
+-- Copyright 2016 Stanford University, NVIDIA Corporation
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ function parser.option_name(p)
     return "spmd"
   elseif p:nextif("__vectorize") then
     return "vectorize"
+  else
+    p:error("expected option name")
   end
 end
 
@@ -933,11 +935,7 @@ function parser.expr_primary(p)
   while true do
     if p:nextif(".") then
       local field_names = terralib.newlist()
-      if p:nextif("partition") then
-        field_names:insert("partition")
-      elseif p:nextif("product") then
-        field_names:insert("product")
-      elseif p:nextif("{") then
+      if p:nextif("{") then
         repeat
           if p:matches("}") then break end
           local field_name = p:next(p.name).value

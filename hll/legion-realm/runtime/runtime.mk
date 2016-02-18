@@ -33,8 +33,6 @@ endif
 CONDUIT ?= udp
 ifdef GASNET_ROOT
 GASNET ?= $(GASNET_ROOT)
-else
-GASNET ?= $(LG_RT_DIR)/gasnet/release
 endif
 
 # generate libraries for Legion and Realm
@@ -80,7 +78,7 @@ CONDUIT=ibv
 GPU_ARCH=fermi
 endif
 ifeq ($(findstring titan,$(shell uname -n)),titan)
-GCC=CC
+CXX=CC
 F90=ftn
 # without this, lapack stuff will link, but generate garbage output - thanks Cray!
 LAPACK_LIBS=-L/opt/acml/5.3.1/gfortran64_fma4/lib -Wl,-rpath=/opt/acml/5.3.1/gfortran64_fma4/lib -lacml
@@ -93,7 +91,7 @@ LEGION_LD_FLAGS += ${CRAY_UGNI_POST_LINK_OPTS}
 LEGION_LD_FLAGS += ${CRAY_PMI_POST_LINK_OPTS}
 endif
 ifeq ($(findstring daint,$(shell uname -n)),daint)
-GCC=CC
+CXX=CC
 F90=ftn
 # Cray's magic wrappers automatically provide LAPACK goodness?
 LAPACK_LIBS=
@@ -139,12 +137,14 @@ endif
 # Flags for running in the general low-level runtime
 ifeq ($(strip $(SHARED_LOWLEVEL)),0)
 
-# general low-level uses CUDA by default
-USE_CUDA ?= 1
-ifeq ($(strip $(USE_CUDA)),1)
-  ifndef CUDA
+# general low-level uses CUDA if requested
+ifeq ($(strip $(CUDA)),)
+  USE_CUDA ?= 0
+  ifeq ($(strip $(USE_CUDA)),1)
     $(error CUDA variable is not defined, aborting build)
   endif
+else
+  USE_CUDA ?= 1
 endif
 
 # General CUDA variables
@@ -179,13 +179,17 @@ endif
 NVCC_FLAGS	+= -Xptxas "-v" #-abi=no"
 endif
 
-# general low-level uses GASNet by default
-USE_GASNET ?= 1
-ifeq ($(strip $(USE_GASNET)),1)
-  ifndef GASNET
+# general low-level uses GASNet if requested
+ifeq ($(strip $(GASNET)),)
+  USE_GASNET ?= 0
+  ifeq ($(strip $(USE_GASNET)),1)
     $(error GASNET variable is not defined, aborting build)
   endif
+else
+  USE_GASNET ?= 1
+endif
 
+ifeq ($(strip $(USE_GASNET)),1)
   # General GASNET variables
   INC_FLAGS	+= -I$(GASNET)/include
   ifneq ($(shell uname -s),Darwin)
@@ -240,20 +244,6 @@ ifeq ($(strip $(USE_HDF)), 1)
   LEGION_LD_FLAGS      += -lhdf5
 endif
 
-# general low-level doesn't use OCR by default
-USE_OCR ?= 0
-ifeq ($(strip $(USE_OCR)), 1)
-  ifndef OCR_INSTALL
-    $(error OCR_INSTALL variable is not defined, aborting build)
-  endif
-  ifndef OCR_TYPE
-    $(error OCR_TYPE variable is not defined, aborting build)
-  endif
-  INC_FLAGS    += -I${OCR_INSTALL}/include
-  CC_FLAGS      += -DENABLE_EXTENSION_LEGACY -DUSE_OCR_LAYER
-  LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr
-endif
-
 SKIP_MACHINES= titan% daint%
 #Extra options for MPI support in GASNet
 ifeq ($(strip $(USE_MPI)),1)
@@ -261,7 +251,6 @@ ifeq ($(strip $(USE_MPI)),1)
   ifeq ($(filter-out $(SKIP_MACHINES),$(shell uname -n)),$(shell uname -n))
     CC		:= mpicc
     CXX		:= mpicxx
-    GCC		:= $(CXX)
     F90         := mpif90
     LEGION_LD_FLAGS	+= -L$(MPI)/lib -lmpi
     LAPACK_LIBS ?= -lblas
@@ -282,7 +271,10 @@ endif
 CC_FLAGS	+= -DCOMPILE_TIME_MIN_LEVEL=$(OUTPUT_LEVEL)
 
 # demand warning-free compilation
-CC_FLAGS        += -Wall -Wno-strict-overflow -Wno-unused-function -Wno-unused-variable -Werror
+CC_FLAGS        += -Wall -Wno-strict-overflow
+ifeq ($(strip $(WARNINGS_ARE_ERRORS)),1)
+CC_FLAGS        += -Werror
+endif
 
 #CC_FLAGS += -DUSE_MASKED_COPIES
 
@@ -297,7 +289,6 @@ ifeq ($(strip $(SHARED_LOWLEVEL)),0)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/runtime_impl.cc \
 	           $(LG_RT_DIR)/lowlevel_dma.cc \
 	           $(LG_RT_DIR)/realm/module.cc \
-	           $(LG_RT_DIR)/realm/codedesc.cc \
 	           $(LG_RT_DIR)/realm/threads.cc \
 		   $(LG_RT_DIR)/realm/operation.cc \
 	           $(LG_RT_DIR)/realm/tasks.cc \
@@ -326,6 +317,7 @@ endif
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/logging.cc \
 	           $(LG_RT_DIR)/realm/cmdline.cc \
 		   $(LG_RT_DIR)/realm/profiling.cc \
+	           $(LG_RT_DIR)/realm/codedesc.cc \
 		   $(LG_RT_DIR)/realm/timers.cc
 
 # If you want to go back to using the shared mapper, comment out the next line
@@ -348,6 +340,7 @@ HIGH_RUNTIME_SRC += $(LG_RT_DIR)/legion/legion.cc \
 		    $(LG_RT_DIR)/legion/legion_instances.cc \
 		    $(LG_RT_DIR)/legion/legion_views.cc \
 		    $(LG_RT_DIR)/legion/legion_analysis.cc \
+		    $(LG_RT_DIR)/legion/legion_constraint.cc \
 		    $(LG_RT_DIR)/legion/region_tree.cc \
 		    $(LG_RT_DIR)/legion/runtime.cc \
 		    $(LG_RT_DIR)/legion/garbage_collection.cc
@@ -364,9 +357,6 @@ SED	:= sed
 ECHO	:= echo
 TOUCH	:= touch
 MAKE	:= make
-ifndef GCC
-GCC	:= g++
-endif
 ifndef NVCC
 NVCC	:= $(CUDA)/bin/nvcc
 endif
@@ -394,7 +384,7 @@ all: $(OUTFILE)
 # If we're using the general low-level runtime we have to link with nvcc
 $(OUTFILE) : $(GEN_OBJS) $(GEN_GPU_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $(SLIB_SHAREDLLR)
 	@echo "---> Linking objects into one binary: $(OUTFILE)"
-	$(GCC) -o $(OUTFILE) $(GEN_OBJS) $(GEN_GPU_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) $(GASNET_FLAGS)
+	$(CXX) -o $(OUTFILE) $(GEN_OBJS) $(GEN_GPU_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) $(GASNET_FLAGS)
 
 $(SLIB_LEGION) : $(HIGH_RUNTIME_OBJS) $(MAPPER_OBJS)
 	rm -f $@
@@ -411,19 +401,19 @@ $(SLIB_SHAREDLLR) : $(LOW_RUNTIME_OBJS)
 endif
 
 $(GEN_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
+	$(CXX) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
 
 $(ASM_OBJS) : %.o : %.S
-	$(GCC) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
+	$(CXX) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
 
 $(LOW_RUNTIME_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
+	$(CXX) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
 
 $(HIGH_RUNTIME_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
+	$(CXX) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
 
 $(MAPPER_OBJS) : %.o : %.cc
-	$(GCC) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
+	$(CXX) -o $@ -c $< $(CC_FLAGS) $(INC_FLAGS)
 
 $(GEN_GPU_OBJS) : %.o : %.cu
 	$(NVCC) -o $@ -c $< $(NVCC_FLAGS) $(INC_FLAGS)

@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,6 +135,7 @@ namespace LegionRuntime {
     struct OffsetsAndSize {
       off_t src_offset, dst_offset;
       int size;
+      CustomSerdezID serdez_id;
     };
     typedef std::vector<OffsetsAndSize> OASVec;
 
@@ -198,6 +199,7 @@ namespace LegionRuntime {
     public:
       static MemPairCopier* create_copier(Memory src_mem, Memory dst_mem,
 					  ReductionOpID redop_id = 0,
+					  CustomSerdezID serdez_id = 0,
 					  bool fold = false);
 
       MemPairCopier(void);

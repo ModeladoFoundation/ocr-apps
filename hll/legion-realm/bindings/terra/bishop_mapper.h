@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ namespace LegionRuntime {
 			public:
 				BishopMapper(const std::vector<bishop_task_rule_t>&,
                      const std::vector<bishop_region_rule_t>&,
+                     bishop_mapper_state_init_fn_t,
                      Machine, HighLevelRuntime*, Processor);
 				~BishopMapper();
 
@@ -50,6 +51,8 @@ namespace LegionRuntime {
       private:
         std::vector<bishop_task_rule_t> task_rules;
         std::vector<bishop_region_rule_t> region_rules;
+        bishop_mapper_state_init_fn_t mapper_init;
+        bishop_mapper_state_t mapper_state;
 		};
 
 	};

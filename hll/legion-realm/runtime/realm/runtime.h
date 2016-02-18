@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,9 @@
 
 #include "processor.h"
 #include "redop.h"
+#include "custom_serdez.h"
 
 #include "lowlevel_config.h"
-
-#ifdef USE_OCR_LAYER
-#include "ocr.h"
-#include "extensions/ocr-legacy.h"
-#endif
 
 namespace Realm {
 
@@ -50,6 +46,27 @@ namespace Realm {
       bool register_task(Processor::TaskFuncID taskid, Processor::TaskFuncPtr taskptr);
 
       bool register_reduction(ReductionOpID redop_id, const ReductionOpUntyped *redop);
+      template <typename REDOP>
+      bool register_reduction(ReductionOpID redop_id)
+      {
+	return register_reduction(redop_id, ReductionOpUntyped::create_reduction_op<REDOP>());
+      }
+
+      bool register_custom_serdez(CustomSerdezID serdez_id, const CustomSerdezUntyped *serdez);
+      template <typename SERDEZ>
+      bool register_custom_serdez(CustomSerdezID serdez_id)
+      {
+	return register_custom_serdez(serdez_id, CustomSerdezUntyped::create_custom_serdez<SERDEZ>());
+      }
+
+      Event collective_spawn(Processor target_proc, Processor::TaskFuncID task_id, 
+			     const void *args, size_t arglen,
+			     Event wait_on = Event::NO_EVENT, int priority = 0);
+
+      Event collective_spawn_by_kind(Processor::Kind target_kind, Processor::TaskFuncID task_id, 
+				     const void *args, size_t arglen,
+				     bool one_per_node = false,
+				     Event wait_on = Event::NO_EVENT, int priority = 0);
 
       // there are three potentially interesting ways to start the initial
       // tasks:
@@ -60,10 +77,11 @@ namespace Realm {
       };
 
       void run(Processor::TaskFuncID task_id = 0, RunStyle style = ONE_TASK_ONLY,
-	       const void *args = 0, size_t arglen = 0, bool background = false);
+	       const void *args = 0, size_t arglen = 0, bool background = false)
+	__attribute__((deprecated("use collect_spawn calls instead")));
 
       // requests a shutdown of the runtime
-      void shutdown(void);
+      void shutdown(Event wait_on = Event::NO_EVENT);
 
       void wait_for_shutdown(void);
     };

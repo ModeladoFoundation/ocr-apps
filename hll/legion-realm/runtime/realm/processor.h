@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,14 +53,12 @@ namespace Realm {
       // Different Processor types
       // Keep this in sync with legion_processor_kind_t in lowlevel_config.h
       enum Kind {
+	NO_KIND,
         TOC_PROC = ::TOC_PROC, // Throughput core
         LOC_PROC = ::LOC_PROC, // Latency core
         UTIL_PROC = ::UTIL_PROC, // Utility core
         IO_PROC = ::IO_PROC, // I/O core
         PROC_GROUP = ::PROC_GROUP, // Processor group
-#ifdef USE_OCR_LAYER
-        OCR_PROC, //OCR processor
-#endif
       };
 
       // Return what kind of processor this is

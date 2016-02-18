@@ -1,4 +1,4 @@
-/* Copyright 2015 Stanford University, NVIDIA Corporation
+/* Copyright 2016 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include <string.h>
 #include <vector>
 #include <map>
+#include <ostream>
 
 #include <cassert>
 #ifndef __GNUC__
@@ -316,6 +317,16 @@ namespace LegionRuntime {
     }
 
     template <unsigned DIM>
+    inline std::ostream& operator<<(std::ostream& os, const Point<DIM>& p)
+    {
+      os << '(' << p[0];
+      for(unsigned i = 1; i < DIM; i++)
+	os << ',' << p[i];
+      os << ')';
+      return os;
+    }
+
+    template <unsigned DIM>
     class Rect {
     public:
       Rect(void) {}
@@ -394,6 +405,13 @@ namespace LegionRuntime {
   
       Point<DIM> lo, hi;
     };
+
+    template <unsigned DIM>
+    inline std::ostream& operator<<(std::ostream& os, const Rect<DIM>& r)
+    {
+      os << '[' << r.lo << ',' << r.hi << ']';
+      return os;
+    }
 
     template <typename T> class GenericDenseSubrectIterator;
     template <typename T> class GenericLinearSubrectIterator;
