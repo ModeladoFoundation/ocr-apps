@@ -210,6 +210,16 @@ namespace Realm {
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
 
+#ifdef USE_OCR_LAYER
+      struct TaskTableEntry {
+        Processor::TaskFuncPtr fnptr;
+        ByteArray user_data;
+      };
+
+     std::map<Processor::TaskFuncID, TaskTableEntry> task_table;
+     ocrGuid_t ocr_cfg_guid;
+#endif
+
 #ifdef NODE_LOGGING
       std::string prefix;
 #endif
