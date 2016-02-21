@@ -30,6 +30,10 @@ endif
 # Tool to use as a run wrapper
 RUN_TOOL              ?=
 
+# Use Vienna's OCR version. Set to yes if you want to link with
+# the Vienna version of OCR
+OCR_VIENNA            ?= no
+
 APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
 HOSTNAME              := $(shell hostname)
@@ -64,7 +68,15 @@ endif
 
 CFLAGS_BASE = ${CFLAGS_BASE_WARN_ERROR} -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include
 
+ifeq ($(OCR_VIENNA), yes)
+ifeq ($(OCR_TYPE), tg-x86)
+$(error OCR_VIENNA is not compatible with tg-x86)
+endif
+CC = g++
+LDFLAGS_BASE = -L /opt/vienna/lib -locr_vsm -L /opt/intel/tools/tbb/lib/intel64/gcc4.4 -ltbb -ltbbmalloc -L $(APPS_LIBS_ROOT)/lib
+else
 LDFLAGS_BASE = -L ${OCR_INSTALL}/lib -L $(APPS_LIBS_ROOT)/lib -locr_${OCR_TYPE}
+endif
 
 CFLAGS  := $(CFLAGS_BASE) $(CFLAGS)
 LDFLAGS := $(LDFLAGS_BASE) $(LDFLAGS)
