@@ -109,8 +109,8 @@ ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrGuid_t qsortLowEdt, qsortHighEdt;
         ocrGuid_t qsortLowDataEvt, qsortHighDataEvt;
 
-        ocrEventCreate(&qsortLowDataEvt, OCR_EVENT_ONCE_T, EVT_PROP_NONE);
-        ocrEventCreate(&qsortHighDataEvt, OCR_EVENT_ONCE_T, EVT_PROP_NONE);
+        ocrEventCreate(&qsortLowDataEvt, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&qsortHighDataEvt, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
 
 //DSS: removed unnecessary if test
 //        if(pivotIndex <=1){
@@ -177,4 +177,5 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate(&finishTemplate, finishTask, 1, 2);
     ocrEdtCreate(&finishEdt, finishTemplate, EDT_PARAM_DEF, &finishParamv,
         EDT_PARAM_DEF, finishDepv, 0, NULL_GUID, NULL);
+    return NULL_GUID;
 }
