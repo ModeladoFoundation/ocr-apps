@@ -47,6 +47,9 @@ typedef enum legion_lowlevel_processor_kind_t {
   UTIL_PROC, // Utility core
   IO_PROC, // I/O core
   PROC_GROUP, // Processor group
+#ifdef USE_OCR_LAYER
+  OCR_PROC, //OCR processor
+#endif
 } legion_lowlevel_processor_kind_t;
 
 // Different Memory types

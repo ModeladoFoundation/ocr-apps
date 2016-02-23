@@ -123,7 +123,20 @@ namespace Realm {
       assert(impl != 0);
 
 #ifdef USE_OCR_LAYER
-      return ((RuntimeImpl *)impl)->register_task(taskid, taskptr);
+      //registers the task on each processor
+      CodeDescriptor codedesc(taskptr);
+      ProfilingRequestSet prs;
+      std::set<Event> events;
+      std::vector<ProcessorImpl *>& procs = ((RuntimeImpl *)impl)->nodes[gasnet_mynode()].processors;
+      for(std::vector<ProcessorImpl *>::iterator it = procs.begin();
+         it != procs.end();
+         it++) {
+       Event e = (*it)->me.register_task(taskid, codedesc, prs);
+       events.insert(e);
+      }
+
+      Event::merge_events(events).wait();
+      return true;
 #else
       CodeDescriptor codedesc(taskptr);
       ProfilingRequestSet prs;
@@ -488,12 +501,80 @@ namespace Realm {
 	}
     }
 
+#ifdef USE_OCR_LAYER
+    void RuntimeImpl::create_processors()
+    {
+      //only one processor
+      Processor p = next_local_processor_id();
+      ProcessorImpl *pi = new OCRProcessor(p);
+      add_processor(pi); 
+    }
+
+    void RuntimeImpl::create_memories()
+    {
+      //only one memory
+      size_t sysmem_size_in_mb = 512;
+      Memory m = next_local_memory_id();
+      MemoryImpl *mi = new LocalCPUMemory(m, sysmem_size_in_mb << 20);
+      add_memory(mi);
+    }
+#endif
+
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
 #ifdef USE_OCR_LAYER
       ocrConfig_t ocr_cfg;
       ocrParseArgs(*argc,(const char**)*argv, &ocr_cfg);
       ocrLegacyInit(&ocr_cfg_guid, &ocr_cfg);
+
+      //create the nodes which contains processors and memory 
+      nodes = new Node[gasnet_nodes()];
+      Node *n = &nodes[gasnet_mynode()];
+      create_processors();
+      create_memories();
+
+      // iterate over all local processors and add affinities for them
+      // all of this should eventually be moved into appropriate modules
+      std::map<Processor::Kind, std::set<Processor> > procs_by_kind;
+      
+      for(std::vector<ProcessorImpl *>::const_iterator it = n->processors.begin();
+          it != n->processors.end();
+          it++)
+        if(*it) {
+          Processor p = (*it)->me;
+          Processor::Kind k = (*it)->me.kind();
+      
+          procs_by_kind[k].insert(p);
+        }
+
+      // now iterate over memories too
+       std::map<Memory::Kind, std::set<Memory> > mems_by_kind;
+       for(std::vector<MemoryImpl *>::const_iterator it = n->memories.begin();
+           it != n->memories.end();
+           it++)
+         if(*it) {
+           Memory m = (*it)->me;
+           Memory::Kind k = (*it)->me.kind();
+
+           mems_by_kind[k].insert(m);
+         }
+
+      std::set<Processor::Kind> local_cpu_kinds;
+      local_cpu_kinds.insert(Processor::OCR_PROC);
+
+      for(std::set<Processor::Kind>::const_iterator it = local_cpu_kinds.begin();
+          it != local_cpu_kinds.end();
+          it++) {
+        Processor::Kind k = *it;
+      
+        add_proc_mem_affinities(machine,
+                         procs_by_kind[k],
+                         mems_by_kind[Memory::SYSTEM_MEM],
+                         100, // "large" bandwidth
+                         1   // "small" latency
+                         );
+     } 
+
       return true;
 #else
       // have to register domain mappings too
@@ -1130,14 +1211,6 @@ namespace Realm {
 #endif
     }
 
-#ifdef USE_OCR_LAYER
-    bool RuntimeImpl::register_task(Processor::TaskFuncID taskid, Processor::TaskFuncPtr taskptr)
-    {  
-      task_table[taskid].fnptr = taskptr;
-      return true;
-    }
-#endif
-
   template <typename T>
   void spawn_on_all(const T& container_of_procs,
 		    Processor::TaskFuncID func_id,
@@ -1175,26 +1248,6 @@ namespace Realm {
   }
 #endif
 
-#ifdef USE_OCR_LAYER
-  //convert from OCR functinon calls to realm function calls
-  //function pointer of the realm function call is in argv[0] parameter
-  //args parameter of realm function call is in first dependency data block, depv[0]
-  //arglen paramter of realm function call is in second dependency data block, depv[1]
-  //ideally parameters should come inside argv and not data blocks
-  //data blocks should only be used to encode dependences
-  ocrGuid_t ocr_realm_conversion_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
-  {
-    assert(argc == 1 && depc == 2);
-    Processor::TaskFuncPtr task_func = ((RuntimeImpl::TaskTableEntry*)argv)->fnptr;
-    void *args = depv[0].ptr;
-    size_t *arglen = (size_t*)depv[1].ptr;
-    task_func(args, *arglen, NULL, 0, Processor::NO_PROC);
-    ocrDbDestroy(depv[0].guid);
-    ocrDbDestroy(depv[1].guid);
-    return NULL_GUID;
-  }
-#endif
-
     Event RuntimeImpl::collective_spawn(Processor target_proc, Processor::TaskFuncID task_id, 
 					const void *args, size_t arglen,
 					Event wait_on /*= Event::NO_EVENT*/, int priority /*= 0*/)
@@ -1202,25 +1255,12 @@ namespace Realm {
       log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " before=" << wait_on;
 
 #ifdef USE_OCR_LAYER
-  //create two dependency data blocks for args and arglen
-  ocrGuid_t db_guid[2];
+      //same as the non gasnet case
+      Event finish_event = target_proc.spawn(task_id, args, arglen, wait_on, priority);
 
-  void *args_copy;
-  ocrDbCreate(&db_guid[0], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-  memcpy(args_copy, args, arglen);
+      log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
 
-  size_t *arglen_copy;
-  ocrDbCreate(&db_guid[1], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-  arglen_copy[0] = arglen;
-
-  //create and call the Edt with the user function pointer as the parameter
-  ocrGuid_t ocr_realm_conversion_edt_t, ocr_realm_conversion_edt, output_event;
-  ocrEdtTemplateCreate(&ocr_realm_conversion_edt_t, ocr_realm_conversion_func, 1, 2);
-  ocrEdtCreate(&ocr_realm_conversion_edt, ocr_realm_conversion_edt_t, EDT_PARAM_DEF, 
-    (u64*)(&task_table[task_id]), EDT_PARAM_DEF, db_guid, 
-    EDT_PROP_NONE, NULL_GUID, &output_event);
-  ocrEdtTemplateDestroy(ocr_realm_conversion_edt_t);
-  return Event::NO_EVENT;
+      return finish_event;
 #else
 #ifdef USE_GASNET
 #ifdef DEBUG_COLLECTIVES

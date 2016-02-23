@@ -211,12 +211,7 @@ namespace Realm {
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
 
 #ifdef USE_OCR_LAYER
-      struct TaskTableEntry {
-        Processor::TaskFuncPtr fnptr;
-        ByteArray user_data;
-      };
-
-     std::map<Processor::TaskFuncID, TaskTableEntry> task_table;
+     //Guid of the legacy ocr module used for initilize and finalize
      ocrGuid_t ocr_cfg_guid;
 #endif
 
@@ -262,6 +257,12 @@ namespace Realm {
       const std::vector<DMAChannel *>& get_dma_channels(void) const;
 
     protected:
+#ifdef USE_OCR_LAYER
+      //create a processor and add to the list of processors
+      void create_processors();
+      //create a memory and add to the list of memories
+      void create_memories();
+#endif
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;

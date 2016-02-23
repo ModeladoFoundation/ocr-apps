@@ -113,6 +113,15 @@ namespace Realm {
 			   //std::set<RegionInstance> instances_needed,
 			   Event wait_on, int priority) const
     {
+#ifdef USE_OCR_LAYER
+      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
+      //GenEventImpl *finish_event = GenEventImpl::create_genevent();
+      //Event e = finish_event->current_event();
+      Event e = Event::NO_EVENT;
+      p->spawn_task(func_id, args, arglen, ProfilingRequestSet(),
+                   wait_on, e, priority);
+      return e;
+#else
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
@@ -132,12 +141,22 @@ namespace Realm {
       p->spawn_task(func_id, args, arglen, ProfilingRequestSet(),
 		    wait_on, e, priority);
       return e;
+#endif
     }
 
     Event Processor::spawn(TaskFuncID func_id, const void *args, size_t arglen,
                            const ProfilingRequestSet &reqs,
 			   Event wait_on, int priority) const
     {
+#ifdef USE_OCR_LAYER
+      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
+      //GenEventImpl *finish_event = GenEventImpl::create_genevent();
+      //Event e = finish_event->current_event();
+      Event e = Event::NO_EVENT;
+      p->spawn_task(func_id, args, arglen, reqs,
+                   wait_on, e, priority);
+      return e;
+#else
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
@@ -157,6 +176,7 @@ namespace Realm {
       p->spawn_task(func_id, args, arglen, reqs,
 		    wait_on, e, priority);
       return e;
+#endif
     }
 
     AddressSpace Processor::address_space(void) const
@@ -181,6 +201,11 @@ namespace Realm {
 	assert(0);
       }
 
+#ifdef USE_OCR_LAYER //ignores prs parameter
+      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
+      p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len)); 
+      return Event::NO_EVENT;
+#else
       // TODO: special case - registration on a local processor with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
@@ -250,6 +275,7 @@ namespace Realm {
 
       tro->mark_finished();
       return finish_event;
+#endif
     }
 
     /*static*/ Event Processor::register_task_by_kind(Kind target_kind, bool global,
@@ -265,6 +291,19 @@ namespace Realm {
 	assert(0);
       }
 
+#ifdef USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
+      //ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
+      //p->register_task(func_id, codedesc, ByteArrayRef(user_data, user_data_len)); 
+      std::set<Processor> local_procs;
+      get_runtime()->machine->get_local_processors_by_kind(local_procs, target_kind);
+      for(std::set<Processor>::const_iterator it = local_procs.begin();
+          it != local_procs.end();
+          it++) {
+        ProcessorImpl *p = get_runtime()->get_processor_impl(*it);
+        p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
+      }
+      return Event::NO_EVENT;
+#else
       // TODO: special case - registration on local processord with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
@@ -311,6 +350,7 @@ namespace Realm {
 
       tro->mark_finished();
       return finish_event;
+#endif
     }
 
 
@@ -922,6 +962,136 @@ namespace Realm {
     delete core_rsrv;
   }
 
+#ifdef USE_OCR_LAYER
+  ////////////////////////////////////////////////////////////////////////
+  //
+  // class OCRProcessor
+  //
+
+  OCRProcessor::OCRProcessor(Processor _me)
+    : ProcessorImpl(_me, Processor::OCR_PROC)
+  {
+  }
+
+  OCRProcessor::~OCRProcessor(void)
+  {
+  }
+
+  void OCRProcessor::enqueue_task(Task *task)
+  {
+    assert(0);
+  }
+
+  //convert from OCR functinon calls to realm function calls
+  //function pointer of the realm function call is in argv[0] parameter
+  //args parameter of realm function call is in first dependency data block, depv[0]
+  //arglen paramter of realm function call is in second dependency data block, depv[1]
+  //ideally parameters should come inside argv and not data blocks
+  //data blocks should only be used to encode dependences
+  ocrGuid_t ocr_realm_conversion_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+  {
+    assert(argc == 1 && depc == 2);
+    Processor::TaskFuncPtr task_func = ((OCRProcessor::TaskTableEntry*)argv)->fnptr;
+    void *args = depv[0].ptr;
+    size_t *arglen = (size_t*)depv[1].ptr;
+    task_func(args, *arglen, NULL, 0, Processor::NO_PROC);
+    ocrDbDestroy(depv[0].guid);
+    ocrDbDestroy(depv[1].guid);
+    return NULL_GUID;
+  }
+
+  //creates a OCR edt that calls the realm function
+  //function pointer of the realm function call is put in argv[0] parameter
+  //args parameter of realm function call is put in in first dependency data block
+  //arglen paramter of realm function call is put in second dependency data block
+  void OCRProcessor::spawn_task(Processor::TaskFuncID func_id,
+                                const void *args, size_t arglen,
+                               const ProfilingRequestSet &reqs,
+                               Event start_event, Event finish_event,
+                               int priority)
+  {
+  //ignores reqs, start_event, finish_event, priority
+ 
+  //create two dependency data blocks for args and arglen
+  ocrGuid_t db_guid[2];
+
+  void *args_copy;
+  ocrDbCreate(&db_guid[0], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+  memcpy(args_copy, args, arglen);
+
+  size_t *arglen_copy;
+  ocrDbCreate(&db_guid[1], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+  arglen_copy[0] = arglen;
+
+  //create and call the Edt
+  ocrGuid_t ocr_realm_conversion_edt_t, ocr_realm_conversion_edt, output_event;
+  ocrEdtTemplateCreate(&ocr_realm_conversion_edt_t, ocr_realm_conversion_func, 1, 2);
+  ocrEdtCreate(&ocr_realm_conversion_edt, ocr_realm_conversion_edt_t, EDT_PARAM_DEF, 
+    (u64*)(&task_table[func_id]), EDT_PARAM_DEF, db_guid, 
+    EDT_PROP_NONE, NULL_GUID, &output_event);
+  ocrEdtTemplateDestroy(ocr_realm_conversion_edt_t);
+  }
+
+  void OCRProcessor::shutdown()
+  {
+    assert(0);
+  }
+
+
+  void OCRProcessor::add_to_group(ProcessorGroup *group)
+  {
+    assert(0);
+  }
+
+  //register_task creates a mapping from func_id to the function pointer using the tak_table map
+  void OCRProcessor::register_task(Processor::TaskFuncID func_id,
+                                         CodeDescriptor& codedesc,
+                                         const ByteArrayRef& user_data)
+  {
+    // first, make sure we haven't seen this task id before
+    if(task_table.count(func_id) > 0) {
+      log_taskreg.fatal() << "duplicate task registration: proc=" << me << " func=" << func_id;
+      assert(0);
+    }
+
+    // next, get see if we have a function pointer to register
+    Processor::TaskFuncPtr fnptr;
+    const FunctionPointerImplementation *fpi = codedesc.find_impl<FunctionPointerImplementation>();
+
+    while(!fpi) {
+#ifdef REALM_USE_DLFCN
+      // can we make it from a DSO reference?
+      const DSOReferenceImplementation *dsoref = codedesc.find_impl<DSOReferenceImplementation>();
+      if(dsoref) {
+        FunctionPointerImplementation *newfpi = cvt_dsoref_to_fnptr(dsoref);
+	if(newfpi) {
+	  codedesc.add_implementation(newfpi);
+	  fpi = newfpi;
+	  continue;
+        }
+      }
+#endif
+
+      // no other options?  give up
+      assert(0);
+    }
+
+    fnptr = (Processor::TaskFuncPtr)(fpi->fnptr);
+
+    log_taskreg.info() << "task " << func_id << " registered on " << me << ": " << codedesc;
+
+    TaskTableEntry &tte = task_table[func_id];
+    tte.fnptr = fnptr;
+    tte.user_data = user_data;
+  }
+
+  void OCRProcessor::execute_task(Processor::TaskFuncID func_id,
+                                const ByteArrayRef& task_args)
+  {
+    assert(0);
+  }
+  
+#endif
 
   ////////////////////////////////////////////////////////////////////////
   //
