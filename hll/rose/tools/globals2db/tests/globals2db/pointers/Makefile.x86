@@ -1,21 +1,19 @@
 # This file is subject to the license agreement located in the file LICENSE
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
-ifndef APPS_ROOT
-$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
-APPS_ROOT ?= ../../../../../../../apps
-endif
-REPO_TOP ?= ${APPS_ROOT}/..
 
 # APPS
-APPS_ROOT       ?= ${REPO_TOP}/apps
-APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
+APPS_ROOT       ?= ../../../../../../../apps
+APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
+
+# Repo top
+REPO_TOP        ?= ${APPS_ROOT}/..
 
 # OCR_TYPE
 OCR_TYPE        ?= x86
-OCR_TARGET       = ${OCR_TYPE}
 
 # OCR
+OCR_TARGET       ?= x86
 OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
 OCR_INSTALL      ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
@@ -39,9 +37,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-CONFIG_NUM_THREADS ?= 4
-WORKLOAD_ARGS ?= -r $(CONFIG_NUM_THREADS) -t 0 6 4
-
+WORKLOAD_ARGS ?= -r 4 -t 0 18 10
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -52,50 +48,45 @@ RUN_JENKINS ?= no
 ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
-include ${APPS_ROOT}/makefiles/make-pre.inc
+include $(APPS_ROOT)/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET ?= stencil
-
+TARGET ?= pointers
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := mpilite
 
+# Space separated list of source files
+SRCS := $(TARGET).c
+
+# Additional CFLAGS. By default, it includes
+# all OCR required includes and apps/libs/<target>/include
+# TG_ARCH is also defined for Fsim
+CFLAGS := -std=c99
+# Additional LDFLAGS. By default, it includes
+# the required OCR library path and apps/libs/<target/lib
+# Note that none of the specific libraries specified in
+# REQ_LIBS are included.
+LDFLAGS := -lpthread -lmpilite
+
 # MPILite config file needs LABELED
 CONFIG_FLAGS := --guid LABELED
-
-# Space separated list of source files
-
-# Use the ROSE translated sources
-SRC_NAMES = stencil.cpp
-
-SRCS := $(addprefix rose_,$(SRC_NAMES))
-
-OBJS: $(ROSE_TARGET)
-
-CC=g++
-
-CFLAGS+= -g  -DMPILITE -I./ -I${APPS_ROOT}/libs/x86/include
-CXXFLAGS+= -O2 $(CFLAGS)
-LDFLAGS :=  -lpthread -lm -lmpilite
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+all:	CFLAGS += -O2 -I$(APPS_LIBS_ROOT)/include -I$(OCR_INSTALL)/include
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0
+debug:	CFLAGS += -O0 -g
 debug:	TARGETS := debug
 debug:	default
 
 install: all
-
-.DEFAULT_GOAL := install
 
 # This rule will be executed prior to execution:
 #  - For the FSim target, this happens when the binary is built
@@ -121,38 +112,6 @@ install: all
 .PHONY: prerun
 prerun: ;
 
-# ROSE support occurs here.
-
-include ${APPS_ROOT}/makefiles/make-rose.inc
-
-TARGET ?= stencil
-ROSE_TARGET = rose_$(TARGET)
-
-SRCDIR = $(HERE)
-BLDDIR = $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)
-
-SRC := $(addprefix $(SRCDIR)/,$(SRC_NAMES))
-
-prebuild: $(ROSE_TARGET)
-
-$(ROSE_TARGET): $(ROSE_TOOL) create_dir
-	cd $(BLDDIR) ; \
-	$(ROSE_TOOL) $(ROSE_OPT) $(CFLAGS) $(CC_INC) $(SRC) $(LD_FLAGS) $(MPI_FLAGS) >& $(HERE)/build.log ; \
-	cd $(HERE)
-
-
-$(ROSE_TOOL):
-	cd $(ROSE_TOOL_ROOT)/src ; \
-	make ; \
-	cd $(HERE)
-
-
-create_dir:
-	mkdir -p $(BLDDIR)
-
-
-rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
-
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
@@ -162,10 +121,5 @@ rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include $(APPS_ROOT)/makefiles/make-regular.inc
 
-CXX ?= g++
-
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr.so | libocr $(WORKLOAD_BUILD)
-	mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -c -o $@ $<

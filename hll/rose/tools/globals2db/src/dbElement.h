@@ -35,6 +35,7 @@ size_t sizeOfType(const SgType *type);
 static void printNode(SgNode* node);
 string create_new_name(SgInitializedName * name,  SgScopeStatement * scope);
 string get_type_string(SgType * type);
+bool isKnownType(SgType * type);
 
 
 
@@ -135,6 +136,54 @@ FileElement::FileElement(Sg_File_Info* fileInfo, SgBasicBlock* initFunc, SgName*
 }
 
 
+
+// This class stores information about the header files
+// which declare globals.  Source file is the first source
+// file that includes the header file.
+class HeaderFileElement
+{
+  public:
+    HeaderFileElement(
+        Sg_File_Info* headerFileInfo, SgScopeStatement* headerFileScope,
+        Sg_File_Info* sourceFileInfo, SgScopeStatement* sourceFileScope,
+        SgBasicBlock* initFunc, SgName* initName);
+
+    ~HeaderFileElement() {};
+    Sg_File_Info* get_header_file_info() { return _headerFileInfo; }
+    string get_header_file_name() { return _headerFileInfo->get_filename(); }
+    SgScopeStatement* get_header_file_scope() { return _headerFileScope; }
+    Sg_File_Info* get_source_file_info() { return _sourceFileInfo; }
+    SgScopeStatement* get_source_file_scope() { return _sourceFileScope; }
+    SgBasicBlock* get_init_func() { return _initFunc; }
+    SgName* get_init_name() { return _initName; }
+
+
+
+  private:
+    Sg_File_Info* _headerFileInfo;
+    SgScopeStatement* _headerFileScope;
+    Sg_File_Info* _sourceFileInfo;
+    SgScopeStatement* _sourceFileScope;
+    SgBasicBlock* _initFunc;
+    SgName* _initName;
+};
+
+
+// constructor
+HeaderFileElement::HeaderFileElement(
+    Sg_File_Info* headerFileInfo, SgScopeStatement* headerFileScope,
+    Sg_File_Info* sourceFileInfo, SgScopeStatement* sourceFileScope,
+    SgBasicBlock* initFunc, SgName* initName)
+{
+    _headerFileInfo = headerFileInfo;
+    _headerFileScope = headerFileScope;
+    _sourceFileInfo = sourceFileInfo;
+    _sourceFileScope = sourceFileScope;
+    _initFunc = initFunc;
+    _initName = initName;
+}
+
+
 // This class stores information about the functions which contain
 // references to global and file static variables.
 class FunctionElement
@@ -163,12 +212,14 @@ FunctionElement::FunctionElement(SgFunctionDefinition * func, SgNode * node)
 class DbElement
 {
   public:
+
     DbElement(SgVariableSymbol* sym, SgNode* node);
     ~DbElement(){};
     SgNode* get_node() { return _node; }
     SgVariableSymbol* get_symbol() { return _sym; }
     SgType* get_base_type() { return _baseType; }
     bool is_const() {return _isConst; }
+    bool is_pointer() { return _isPointer; }
     SgInitializedName* get_name() { return _name; }
     string get_new_name() { return _newName; }
     SgScopeStatement* get_scope() { return _scope; }
@@ -197,6 +248,7 @@ class DbElement
     Sg_File_Info* _fileInfo;
     SgType* _baseType;
     bool _isConst;
+    bool _isPointer;
     SgInitializedName* _name;
     string _newName;
     SgScopeStatement* _scope;
@@ -250,6 +302,14 @@ DbElement::DbElement(SgVariableSymbol* sym, SgNode* node)
     _fileInfo=isSgNode(_decl)->get_file_info();
 
     _baseType= _name->get_type()->findBaseType();
+
+    string typeStr = get_type_str();
+    if (typeStr.find("*") != std::string::npos) {
+        _isPointer=true;
+    }
+    else {
+        _isPointer=false;
+    }
 
     _isConst = is_const_type();
 
@@ -451,6 +511,58 @@ void DbElement::get_declarators(SgArrayType* arrayType )
 
 // Utilities
 
+
+bool isKnownType(SgType * t)
+{
+    if      (isSgTypeBool(t)) return true;
+    else if (isSgTypeChar(t)) return true;
+    else if (isSgTypeDouble(t)) return true;
+    else if (isSgTypeLongDouble(t)) return true;
+    else if (isSgTypeFloat(t)) return true;
+    else if (isSgTypeInt(t)) return true;
+    else if (isSgTypeLong(t)) return true;
+    else if (isSgTypeLongLong(t)) return true;
+    else if (isSgTypeShort(t)) return true;
+    else if (isSgTypeSignedChar(t)) return true;
+    else if (isSgTypeSignedInt(t)) return true;
+    else if (isSgTypeSignedLong(t)) return true;
+    else if (isSgTypeSignedShort(t)) return true;
+    else if (isSgTypeUnsignedChar(t)) return true;
+    else if (isSgTypeUnsignedInt(t)) return true;
+    else if (isSgTypeUnsignedLong(t)) return true;
+    else if (isSgTypeUnsignedShort(t)) return true;
+    else if (isSgTypeWchar(t)) return true;
+    else return false;
+}
+
+// Build the correctly typed expression for initialization.
+
+SgExpression * buildInitVal(DbElement * dbElement)
+{
+    SgExpression * exp = NULL;
+
+    SgType * t = dbElement->get_base_type();
+    if      (isSgTypeBool(t)) { exp = buildBoolValExp(0); }
+    else if (isSgTypeChar(t)) { exp = buildCharVal(0); }
+    else if (isSgTypeDouble(t)){ exp = buildDoubleVal(0.0); }
+    else if (isSgTypeLongDouble(t)) { exp = buildLongDoubleVal(0.0); }
+    else if (isSgTypeFloat(t)) { exp = buildFloatVal(0.0); }
+    else if (isSgTypeInt(t)) { exp = buildIntVal(0); }
+    else if (isSgTypeLong(t)) { exp = buildLongIntVal(0); }
+    else if (isSgTypeLongLong(t)) { exp = buildLongLongIntVal(0); }
+    else if (isSgTypeShort(t)) { exp = buildShortVal(0); }
+    else if (isSgTypeSignedChar(t)) { exp = buildCharVal(0); }
+    else if (isSgTypeSignedInt(t))  { exp = buildIntVal(0); }
+    else if (isSgTypeSignedLong(t)) { exp = buildLongIntVal(0); }
+    else if (isSgTypeSignedShort(t)) { exp = buildShortVal(0); }
+    else if (isSgTypeUnsignedChar(t)) { exp = buildUnsignedCharVal(0); }
+    else if (isSgTypeUnsignedInt(t)) { exp = buildUnsignedIntVal(0); }
+    else if (isSgTypeUnsignedLong(t)) { exp = buildUnsignedLongVal(0); }
+    else if (isSgTypeUnsignedShort(t)) { exp = buildUnsignedShortVal(0); }
+    else if (isSgTypeWchar(t)) { exp = buildWcharVal(0); }
+    else    { printf("Warning: no known type found.\n"); }
+    return exp;
+}
 
 
 string get_type_string(SgType * t)

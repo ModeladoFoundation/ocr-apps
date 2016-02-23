@@ -1,0 +1,7 @@
+This test case ensures that globals and function statics
+are initialized properly.
+
+To run:
+
+% make OCR_TYPE=x86
+

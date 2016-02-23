@@ -90,27 +90,6 @@ int main(int argc, char** argv)
    counter_malloc = 0;
    size_malloc = 0.0;
 
-   // gail: some globals relied on the compiler initialization.
-   for (i = 0; i < 3; i++) {
-       num_comm_partners[i]=0;
-       comm_partner[i]=0;
-       max_comm_part[i]=0;
-       send_size[i]=0;
-       recv_size[i]=0;
-       comm_index[i]=0;
-       comm_num[i]=0;
-       comm_block[i]=0;
-       comm_face_case[i]=0;
-       comm_pos[i]=0;
-       comm_pos1[i]=0;
-       comm_send_off[i]=0;
-       comm_recv_off[i]=0;
-       num_cases[i]=0;
-       max_num_cases[i]=0;
-       s_buf_num[i]=0;
-       r_buf_num[i]=0;
-   }
-
 
    /* set initial values */
    if (!my_pe) {
