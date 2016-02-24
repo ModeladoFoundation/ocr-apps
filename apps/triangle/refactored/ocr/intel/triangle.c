@@ -125,7 +125,6 @@ look for legal moves
 //print final count
 ocrGuid_t wrapupTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 * count = depv[0].ptr;
-    double starttime = paramv[0];
     if(*count == 29760) PRINTF("PASS  final count %d \n", *count);
         else PRINTF("FAIL final count %d should be 29760 \n", *count);
 
