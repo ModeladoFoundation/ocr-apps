@@ -278,7 +278,7 @@ if (line <= 1000000) {
    result = MPI_Wait(req, status);
    //DEBRIEF_SUSPENDABLE_FUNCTION(-9999)
 #elif defined(BUILD_OCR_VERSION)
-   if (comm != MPI_COMM_WORLD) {
+   if (indexOfCommunicator >= 0) {    // Less than zero implies that (comm == MPI_COMM_WORLD)
       // Hackish code for OCR version.  Fortunately, when the communicator isn't MPI_COMM_WORLD, there is only one other case in this application, and we can derive the PEs that make up the communicator
       // from other data that we have lying around.
 
@@ -451,7 +451,7 @@ if (line <= 1000000) {
    result = MPI_Wait(req, &status);
    gasket__free(&dbmeta__tmpDb7, (void **) &tmpDb7, __FILE__, __LINE__);
 #elif defined(BUILD_OCR_VERSION)
-   if (comm != MPI_COMM_WORLD) {
+   if (indexOfCommunicator >= 0) {    // Less than zero implies that (comm == MPI_COMM_WORLD)
       // Hackish code for OCR version.  Fortunately, when the communicator isn't MPI_COMM_WORLD, there is only one other case in this application, and we can derive the PEs that make up the communicator
       // from other data that we have lying around.
 
@@ -696,7 +696,7 @@ if (line <= 1000000) {
    }
 
 #ifdef BUILD_OCR_VERSION
-   if (comm == MPI_COMM_WORLD) {
+   if (indexOfCommunicator < 0) {    // Less than zero implies that (comm == MPI_COMM_WORLD)
       grpSize = num_pes;
       myRank  = my_pe;
       offsetFromGroupRootToItsRankInWorld = 0;

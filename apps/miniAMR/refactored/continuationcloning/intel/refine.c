@@ -104,7 +104,7 @@ void refine(Globals_t * const glbl, int const ts)
          if (num_blocks[j]) {
             cur_max_level = j;
             break;
-      }
+         }
       reset_all(glbl);
       if (uniform_refine) {
          for (in = 0; in < sorted_index[num_refine+1]; in++) {

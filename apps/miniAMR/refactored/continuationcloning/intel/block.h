@@ -423,6 +423,8 @@ typedef struct {
 #define       tos                     (glbl->global__tos)
    PtrAdjustmentRecord_t *                   global__topPtrAdjRec;
 #define       topPtrAdjRec            (glbl->global__topPtrAdjRec)
+   int                                       global__topPtrAdjRecOffset;
+#define       topPtrAdjRecOffset      (glbl->global__topPtrAdjRecOffset)
    int                                       global__my_pe;
 #define       my_pe                   (glbl->global__my_pe)
    void *                                    global__newResource;

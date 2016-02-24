@@ -512,6 +512,7 @@ contin_cnt++;
       }
       dbmeta__gbin.guid                     = myDeps->dep_gbin.guid;                      gbin                     = myDeps->dep_gbin.ptr;
       dbmeta__recv_buff.guid                = myDeps->dep_recv_buff.guid;                 recv_buff                = myDeps->dep_recv_buff.ptr;
+      topPtrAdjRec                          = ((PtrAdjustmentRecord_t *) (((unsigned long long) glbl->stack) + topPtrAdjRecOffset));
    } // if (myParams->isFirstInstance)
 
    continuationOpcode = ContinuationOpcodeUnspecified;
@@ -519,6 +520,8 @@ contin_cnt++;
    topOfStack[1].validate_callers_prep_for_suspension = 1;                  // Set "canary trap" for first callee.
    driver__soup_to_nuts(glbl, my_pe);
    if (topOfStack[1].resumption_case_num != 0) { // Create a continuation EDT, cause it to fire, and cause this EDT has to terminate.
+
+      topPtrAdjRecOffset = ((int) ((unsigned long long) topPtrAdjRec) - ((unsigned long long) glbl->stack));
 
       referenceVersionsMain_Params_t paramsForContinuation;
       paramsForContinuation.prm_continuationTemplate = continuationTemplate;
