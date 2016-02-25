@@ -54,13 +54,27 @@ endif
 
 REQ_LIBS ?=
 
+# Controls whether CC default value should be left alone
+FORCE_CC ?= no
+
+ifeq ($(FORCE_CC), no)
+# For the MPI backend we favor using mpicc unless indicated otherwise.
+ifeq ($(OCR_TYPE), x86-mpi)
+$(info MPI_X86)
 ifeq ($(CC), cc)
-# We want to use gcc as the default
-# but allow for the user to set something else if needed
+$(info set cc is mpicc)
+# default to mpicc if CC=cc (that's the default value from make)
+CC = mpicc
+# else use the CC value set by the caller
+endif
+else
+# default to gcc for not MPI
 CC = gcc
+endif
 endif
 
 CC_LINK = $(CC)
+
 ifeq ($(CFLAGS_WARN_ERROR), no)
 CFLAGS_BASE_WARN_ERROR =
 else
