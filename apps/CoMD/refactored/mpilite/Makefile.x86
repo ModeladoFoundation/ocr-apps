@@ -55,6 +55,8 @@ WORKLOAD_INPUT_FILE_IDX := 0
 #  #ranks, -r, has to = i*j*k
 WORKLOAD_ARGS ?=  -r 4  -t 10  -e -i 2 -j 2 -k 1 -x 40 -y 40 -z 40 -d ../../pots
 
+#WORKLOAD_ARGS ?=  -r 1  -t 10  -e -i 1 -j 1 -k 1 -x 40 -y 40 -z 40 -d ../../pots
+
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
@@ -100,7 +102,7 @@ $(OBJS): $(ROSE_TARGET) $(HDRS)
 #Jenkins does not set up icc.
 #CC=icc
 
-CFLAGS := -g -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
+CFLAGS := -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
 
 # MPILite config file needs LABELED
@@ -111,7 +113,7 @@ CONFIG_FLAGS := --guid LABELED
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3 -std=c99
+all:	CFLAGS += -g -O3 -std=c99
 all:	TARGETS := all
 all:	default
 

@@ -83,7 +83,7 @@ OBJS: $(ROSE_TARGET)
 # TG_ARCH is also defined for Fsim
 
 CC = icc
-CFLAGS := -g -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+CFLAGS := -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
@@ -99,11 +99,11 @@ CONFIG_FLAGS := --guid LABELED
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3
+all:	CFLAGS += -g -O3
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0
+debug:	CFLAGS += -g -O0
 debug:	TARGETS := debug
 debug:	default
 
