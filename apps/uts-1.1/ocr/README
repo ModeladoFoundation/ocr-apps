@@ -1,0 +1,20 @@
+This is the hand translation of the uts benchmark to OCR using continuations.
+
+The Makefile.x86 builds a serial, by hand attempt to be an OCR compiler of the code.
+
+In Makefile.x86 if you change -DPARALLEL_off to -DPARALLEL you will get a parallel version of the code.
+The parallel version does the next depth set if recursive calls in parallel.
+
+This code is still under develepment and could use some cleaning up and readability edits.
+
+TODO:
+(1) is get the other makefiles working.
+(2) understand the performance issues
+    currently there is a 1:2:4:7 ratio of slowdowns
+    from serial 1 worker : serial 8 workers : parallel 1 worker : parallel 8 workers
+    while it would be expected that the ratio should be 1:1:1+:1-
+
+Roger
+P.S.
+the j.sh script shows how to rebuild and run the two cases of 1 worker and 8 workers.:w
+

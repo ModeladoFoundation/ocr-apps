@@ -1,0 +1,30 @@
+# look at RAG 1 open and close
+# look at missing open and close
+# look at __paramv_j alive across RAG 2 into RAG 3
+
+  if (((const int) __frame->numChildren) > 0)
+    { // RAG IF
+      { // RAG 1
+	{ // RAG 2
+	  __continuation_args_t *__paramv_i = malloc();
+	} // RAG 2
+      __uts_TreeSearch_top_of_loop_i:
+	{ // RAG 3
+	  free (__paramv_j);
+	  return ((ocrGuid_t) 0x0);
+	} // RAG 3
+      __uts_TreeSearch_top_of_loop_j:
+	{ // RAG 4
+	} // RAG 4
+      __uts_TreeSearch_bottom_of_loop_j:
+	{ // RAG 5
+	} // RAG 5
+	return ((ocrGuid_t) 0x0);
+/* RAG MISSING CLOSE */
+      __uts_TreeSearch_TreeSearch_returned:
+/* RAG MISSING OPEN ?? */
+      __uts_TreeSearch_bottom_of_LOOP_I:
+/* RAG MISSING CLOSE ?? */
+      } // RAG 1 ??
+    __uts_TreeSearch_bottom_of_loop_i:
+    } // RAG IF
