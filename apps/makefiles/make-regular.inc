@@ -62,15 +62,22 @@ ifeq ($(CC), cc)
 CC = gcc
 endif
 
+CC_LINK = $(CC)
 CFLAGS_BASE =  -Werror -I. -I${OCR_INSTALL}/include -I $(APPS_LIBS_ROOT)/include -I $(TG_INSTALL)/include
 
 
-ifeq ($(OCR_VIENNA), yes)
+ifneq ($(OCR_VIENNA), no)
+
 ifeq ($(OCR_TYPE), tg-x86)
 $(error OCR_VIENNA is not compatible with tg-x86)
 endif
-CC = g++
-LDFLAGS_BASE = -L /opt/vienna/lib -locr_vsm -L /opt/intel/tools/tbb/lib/intel64/gcc4.4 -ltbb -ltbbmalloc -L $(APPS_LIBS_ROOT)/lib
+
+# If we have gcc, we need to link with g++
+ifeq ($(CC), gcc)
+CC_LINK = g++
+endif
+
+LDFLAGS_BASE = -L /opt/vienna/lib -locr_$(OCR_VIENNA) -L /opt/intel/tools/tbb/lib/intel64/gcc4.4 -ltbb -ltbbmalloc -L $(APPS_LIBS_ROOT)/lib
 else
 LDFLAGS_BASE = -L ${OCR_INSTALL}/lib -L $(APPS_LIBS_ROOT)/lib -locr_${OCR_TYPE}
 endif
@@ -235,7 +242,7 @@ $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr_$(OCR_TYP
 	@rm -f $(@:.o=.d.tmp)
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
-	$(CC) -o $@ $(OBJS) $(LDFLAGS)
+	$(CC_LINK) -o $@ $(OBJS) $(LDFLAGS)
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	@$(RM) -f $(WORKLOAD_BUILD)/$(TARGET)
