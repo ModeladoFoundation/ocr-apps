@@ -648,16 +648,16 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     {
         rankEventH_t *PTR_rankEventH = (rankEventH_t*) depv[5+i].ptr;
 
-        ocrEventCreate( &PTR_rankEventH->EVT_Lsend_fin, OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &PTR_rankEventH->EVT_Rsend_fin, OCR_EVENT_STICKY_T, false );
+        ocrEventCreate( &PTR_rankEventH->EVT_Lsend_fin, OCR_EVENT_STICKY_T, true );
+        ocrEventCreate( &PTR_rankEventH->EVT_Rsend_fin, OCR_EVENT_STICKY_T, true );
         ocrEventCreate( &PTR_rankEventH->EVT_Lrecv_start, OCR_EVENT_STICKY_T, true );
         ocrEventCreate( &PTR_rankEventH->EVT_Rrecv_start, OCR_EVENT_STICKY_T, true );
         ocrEventCreate( &PTR_rankEventH->EVT_Lrecv_fin, OCR_EVENT_STICKY_T, false );
         ocrEventCreate( &PTR_rankEventH->EVT_Rrecv_fin, OCR_EVENT_STICKY_T, false );
 
         #if PROBLEM_TYPE==2
-        ocrEventCreate( &PTR_rankEventH->EVT_Bsend_fin, OCR_EVENT_STICKY_T, false );
-        ocrEventCreate( &PTR_rankEventH->EVT_Tsend_fin, OCR_EVENT_STICKY_T, false );
+        ocrEventCreate( &PTR_rankEventH->EVT_Bsend_fin, OCR_EVENT_STICKY_T, true );
+        ocrEventCreate( &PTR_rankEventH->EVT_Tsend_fin, OCR_EVENT_STICKY_T, true );
         ocrEventCreate( &PTR_rankEventH->EVT_Brecv_start, OCR_EVENT_STICKY_T, true );
         ocrEventCreate( &PTR_rankEventH->EVT_Trecv_start, OCR_EVENT_STICKY_T, true );
         ocrEventCreate( &PTR_rankEventH->EVT_Brecv_fin, OCR_EVENT_STICKY_T, false );
@@ -1721,9 +1721,9 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     globalParamH_t* PTR_globalParamH = depv[0].ptr;
     rankParamH_t* PTR_rankParamH = depv[1].ptr;
-    double *restrict weight = (double*) depv[2].ptr;
-    double *restrict xIn = (double*) depv[3].ptr;
-    double *restrict xOut = (double*) depv[4].ptr;
+    double *weight = (double*) depv[2].ptr;
+    double *xIn = (double*) depv[3].ptr;
+    double *xOut = (double*) depv[4].ptr;
     double* refNorm = (double*) depv[5].ptr;
     rankEventH_t* PTR_rankEvents = (rankEventH_t*) depv[6].ptr;
 
@@ -1791,8 +1791,8 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEventDestroy( PTR_rankEvents->EVT_Lrecv_fin );
     ocrEventDestroy( PTR_rankEvents->EVT_Rrecv_fin );
 
-    ocrEventCreate( &PTR_rankEvents->EVT_Lsend_fin, OCR_EVENT_STICKY_T, false);
-    ocrEventCreate( &PTR_rankEvents->EVT_Rsend_fin, OCR_EVENT_STICKY_T, false);
+    ocrEventCreate( &PTR_rankEvents->EVT_Lsend_fin, OCR_EVENT_STICKY_T, true);
+    ocrEventCreate( &PTR_rankEvents->EVT_Rsend_fin, OCR_EVENT_STICKY_T, true);
     ocrEventCreate( &PTR_rankEvents->EVT_Lrecv_start, OCR_EVENT_STICKY_T, true);
     ocrEventCreate( &PTR_rankEvents->EVT_Rrecv_start, OCR_EVENT_STICKY_T, true);
     ocrEventCreate( &PTR_rankEvents->EVT_Lrecv_fin, OCR_EVENT_STICKY_T, false );
@@ -1806,8 +1806,8 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEventDestroy( PTR_rankEvents->EVT_Brecv_fin );
     ocrEventDestroy( PTR_rankEvents->EVT_Trecv_fin );
 
-    ocrEventCreate( &PTR_rankEvents->EVT_Bsend_fin, OCR_EVENT_STICKY_T, false);
-    ocrEventCreate( &PTR_rankEvents->EVT_Tsend_fin, OCR_EVENT_STICKY_T, false);
+    ocrEventCreate( &PTR_rankEvents->EVT_Bsend_fin, OCR_EVENT_STICKY_T, true);
+    ocrEventCreate( &PTR_rankEvents->EVT_Tsend_fin, OCR_EVENT_STICKY_T, true);
     ocrEventCreate( &PTR_rankEvents->EVT_Brecv_start, OCR_EVENT_STICKY_T, true);
     ocrEventCreate( &PTR_rankEvents->EVT_Trecv_start, OCR_EVENT_STICKY_T, true);
     ocrEventCreate( &PTR_rankEvents->EVT_Brecv_fin, OCR_EVENT_STICKY_T, false );
