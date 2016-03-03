@@ -7,4 +7,5 @@ ROOT=${UCNC_ROOT-"${XSTG_ROOT?Missing UCNC_ROOT or XSTG_ROOT environment variabl
 source $ROOT/tools/py/venv/bin/activate
 
 export BIN_NAME=$(basename "$0")
-python $ROOT/tools/debug_cnc_events.py "$@"
+python $ROOT/tools/step_inverse.py "$@"
+

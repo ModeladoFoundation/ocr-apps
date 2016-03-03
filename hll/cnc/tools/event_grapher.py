@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-import subprocess
+import subprocess, os
 from argparse import ArgumentParser
 from base64 import b64encode
 from os.path import join
