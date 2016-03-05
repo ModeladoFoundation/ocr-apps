@@ -523,9 +523,9 @@ namespace Realm {
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
 #ifdef USE_OCR_LAYER
-      ocrConfig_t ocr_cfg;
-      ocrParseArgs(*argc,(const char**)*argv, &ocr_cfg);
-      ocrLegacyInit(&ocr_cfg_guid, &ocr_cfg);
+      //ocrConfig_t ocr_cfg;
+      //ocrParseArgs(*argc,(const char**)*argv, &ocr_cfg);
+      //ocrLegacyInit(&ocr_cfg_guid, &ocr_cfg);
 
       //create the nodes which contains processors and memory 
       nodes = new Node[gasnet_nodes()];
@@ -1603,7 +1603,7 @@ namespace Realm {
     void RuntimeImpl::wait_for_shutdown(void)
     {
 #ifdef USE_OCR_LAYER
-      u8 ret = ocrLegacyFinalize(ocr_cfg_guid, true);
+      //u8 ret = ocrLegacyFinalize(ocr_cfg_guid, true);
 #else
 #if 0
       bool exit_process = true;

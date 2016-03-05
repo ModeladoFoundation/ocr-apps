@@ -109,22 +109,20 @@ void top_level_task(const void *args, size_t arglen,
   done1.wait();
   done2.wait();
   done3.wait();
-
-  Runtime rt = Runtime::get_runtime();
-  rt.shutdown();
 }
 
-int main(int argc, char **argv)
+int app_main(int argc, char **argv)
 {
   Runtime rt;
 
   int ret = rt.init(&argc, &argv);
   printf("init return %d\n", ret);
-
+  
   rt.register_task(TOP_LEVEL_TASK, top_level_task);
   rt.register_task(FIRST_WORKER_TASK, first_worker_task);
   rt.register_task(SECOND_WORKER_TASK, second_worker_task);
  
+  //deprecated
   //rt.run(TOP_LEVEL_TASK, Runtime::ONE_TASK_ONLY, &argc, sizeof(int));
   
   // select a processor to run the top level task on
@@ -143,9 +141,30 @@ int main(int argc, char **argv)
   assert(p.exists());
 
   Event e = rt.collective_spawn(p, TOP_LEVEL_TASK, &argc, sizeof(int));
+
+  // request shutdown once that task is complete
+  //rt.shutdown();
   
   // sleep this thread until shutdown actually happens
-  rt.wait_for_shutdown();
-
+  //rt.wait_for_shutdown();
+  //
   return 0;
 }
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
+{
+  int argc = getArgc(depv[0].ptr), i;
+  char *argv[argc];
+  for(i=0;i<argc;i++)
+    argv[i] = getArgv(depv[0].ptr, i);
+
+  int ret = app_main(argc, argv);
+  return ret;
+}
+#ifdef __cplusplus
+}
+#endif
+

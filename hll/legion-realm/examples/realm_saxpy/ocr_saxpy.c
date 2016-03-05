@@ -29,6 +29,8 @@ struct param_type_t
 
 typedef struct param_type_t param_type;
 
+
+//shutdown  task
 ocrGuid_t shutdown_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
 	assert(argc == 0 && depc == 1);
@@ -36,6 +38,7 @@ ocrGuid_t shutdown_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
         return NULL_GUID;
 }
 
+//check-result task that verifies saxpy(X,Y) == Z
 ocrGuid_t check_result_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
 	assert(argc == 2 && depc == 3);
@@ -65,6 +68,7 @@ ocrGuid_t check_result_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 	return NULL_GUID;
 }
 
+//calculate-saxpy task that computes Z=saxpy(X,Y)
 ocrGuid_t cpu_saxpy_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
 	assert(argc == 2 && depc == 2);
@@ -80,6 +84,7 @@ ocrGuid_t cpu_saxpy_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 	return z_db_guid;
 }
 
+//fill task that initializes all elements of the array with initial value
 ocrGuid_t fill_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
         assert(argc == 2 && depc ==1);
@@ -92,6 +97,7 @@ ocrGuid_t fill_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 	return depv[0].guid;
 }
 
+//create the task to fill initial values of the array
 ocrGuid_t fill(ocrGuid_t fill_edt_t, ocrGuid_t db_guid, int count, float init_value)
 {
 	param_type params = {count, init_value};
@@ -100,11 +106,13 @@ ocrGuid_t fill(ocrGuid_t fill_edt_t, ocrGuid_t db_guid, int count, float init_va
 	return out_evt;
 }
 
+//top-level task that computes saxpy and verifies the result
 ocrGuid_t top_level_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
 	float *inst_x, *inst_y;
         ocrGuid_t x_db_guid, y_db_guid;
 	int count = 16383;
+	//create data blocks for X and Y
         ocrDbCreate(&x_db_guid, (void **)(&inst_x), count*sizeof(float), DB_PROP_NO_ACQUIRE, NULL_GUID, NO_ALLOC);
         ocrDbCreate(&y_db_guid, (void **)(&inst_y), count*sizeof(float), DB_PROP_NO_ACQUIRE, NULL_GUID, NO_ALLOC);
 	PRINTF("Created data blocks - X:0x%lx Y:0x%lx\n", x_db_guid, y_db_guid);
@@ -112,17 +120,20 @@ ocrGuid_t top_level_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
         float init_x_value = drand48();
         float init_y_value = drand48();
 
+	//invoke fill task to fill X and Y with inital values
 	ocrGuid_t fill_edt_t, out_evt[3];
 	ocrEdtTemplateCreate(&fill_edt_t, fill_func, 2, 1);
 	out_evt[0] = fill(fill_edt_t, x_db_guid, count, init_x_value);
 	out_evt[1] = fill(fill_edt_t, y_db_guid, count, init_y_value);
 	out_evt[2] = UNINITIALIZED_GUID;
 
+	//calculate saxpy and return Z
 	param_type params = {count, drand48()};
 	ocrGuid_t cpu_edt_t, cpu_edt, cpu_out_evt;
 	ocrEdtTemplateCreate(&cpu_edt_t, cpu_saxpy_func, 2, 2);
 	ocrEdtCreate(&cpu_edt, cpu_edt_t, EDT_PARAM_DEF, (u64*)&params, EDT_PARAM_DEF, out_evt, EDT_PROP_NONE, NULL_GUID, &cpu_out_evt);
 
+	//check result and verify saxpy(X,Y) == Z
 	ocrGuid_t check_edt_t, check_edt, check_out_edt;
 	ocrEdtTemplateCreate(&check_edt_t, check_result_func, 2, 3);
 	ocrEdtCreate(&check_edt, check_edt_t, EDT_PARAM_DEF, (u64*)&params, EDT_PARAM_DEF, out_evt, EDT_PROP_NONE, NULL_GUID, &check_out_edt);
@@ -135,10 +146,12 @@ ocrGuid_t mainEdt(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
 	PRINTF("starting mainEdt\n");
 
+	//top level task
 	ocrGuid_t top_edt_t, top_edt, top_out_evt;
 	ocrEdtTemplateCreate(&top_edt_t, top_level_func, 0, 0);
 	ocrEdtCreate(&top_edt, top_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &top_out_evt);
 
+	//shutdown task
 	ocrGuid_t sd_edt_t, sd_edt;
 	ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
 	ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, &top_out_evt, EDT_PROP_NONE, NULL_GUID, NULL);

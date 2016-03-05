@@ -212,7 +212,7 @@ namespace Realm {
 
 #ifdef USE_OCR_LAYER
      //Guid of the legacy ocr module used for initilize and finalize
-     ocrGuid_t ocr_cfg_guid;
+     //ocrGuid_t ocr_cfg_guid;
 #endif
 
 #ifdef NODE_LOGGING

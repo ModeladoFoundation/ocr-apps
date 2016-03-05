@@ -254,7 +254,7 @@ ifeq ($(strip $(USE_OCR)), 1)
     $(error OCR_TYPE variable is not defined, aborting build)
   endif
   INC_FLAGS    += -I${OCR_INSTALL}/include
-  CC_FLAGS      += -DENABLE_EXTENSION_LEGACY -DUSE_OCR_LAYER
+  CC_FLAGS      += -DUSE_OCR_LAYER
   LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr_${OCR_TYPE}
 endif
 
