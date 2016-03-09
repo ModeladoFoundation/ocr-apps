@@ -17,19 +17,17 @@
 
 //nParticipants:    IN
 //      Number of participants in the overall reduction
-//PTR_EVT_inputs:   INOUT
-//      The user provides a pointer to "N" events to store input events for the reduction
-//      This function basically stores "N" input events to the reduction operation in the provided pointer and returns an output event
-//      which will be satisfied by the whole reduction result
+//PTR_EVT_inputs:   IN
+//      The user provides a pointer to "N" events of the reduction input events
 //      The function sets up the appropriate "ARITY"-ary reduction tree in the whole process
+//EVT_reduction_out: IN
+//      Output event for the reduction operation
+//      Any EDT that depends on this event will be able to access the final reduction result
 //FNC_reduction:    IN
 //      Pointer to EDT function implementing the reduction for atmost "ARITY" input datablocks
-//
-//RETURN:
-//  Output event for the reduction result
-//  Any EDT that depends on the returned output event will be able to access the final reduction result
 
-ocrGuid_t ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, ocrGuid_t (*FNC_reduction) (u32, u64*, u32, ocrEdtDep_t*) );
+void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, ocrGuid_t EVT_reduction_out,
+                                        ocrGuid_t (*FNC_reduction) (u32, u64*, u32, ocrEdtDep_t*) );
 extern ocrGuid_t FNC_reduction_double(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 #endif

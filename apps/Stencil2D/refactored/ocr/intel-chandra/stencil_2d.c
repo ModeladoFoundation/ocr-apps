@@ -26,6 +26,7 @@
 #include <math.h>
 
 #include "stencil.h"
+#include "reduction_v1.h"
 
 //mainEdt
 // Macro _OCR_TASK_FNC_( FNC_name ) expands to ocrGuid_t FNC_name( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
@@ -205,7 +206,6 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
         npoints = (npoints != -1) ? npoints : NPOINTS;
         nranks = (nranks != -1) ? nranks : NRANKS;
         ntimesteps = (ntimesteps != -1) ? ntimesteps : NTIMESTEPS;
-        PRINTF("HELLO\n");
     }
 
     PTR_globalParamH->NP = npoints; //squre global tile is assumed; side
@@ -803,22 +803,24 @@ ocrGuid_t FNC_globalCompute_setUp(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t
 
     u64 NR = PTR_globalParamH->NR;
 
-    MyOcrTaskStruct_t TS_reduction; _paramc = 1; _depc = NR;
+    //MyOcrTaskStruct_t TS_reduction; _paramc = 1; _depc = NR;
 
-    TS_reduction.FNC = FNC_reduction;
-    ocrEdtTemplateCreate( &TS_reduction.TML, TS_reduction.FNC, _paramc, _depc );
+    //TS_reduction.FNC = FNC_reduction;
+    //ocrEdtTemplateCreate( &TS_reduction.TML, TS_reduction.FNC, _paramc, _depc );
 
-    ocrEdtCreate( &TS_reduction.EDT, TS_reduction.TML,
-                  EDT_PARAM_DEF, &NR, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, NULL_GUID, &TS_reduction.OET );
+    //ocrEdtCreate( &TS_reduction.EDT, TS_reduction.TML,
+    //              EDT_PARAM_DEF, &NR, EDT_PARAM_DEF, NULL,
+    //              EDT_PROP_FINISH, NULL_GUID, &TS_reduction.OET );
 
-    ocrAddDependence( TS_reduction.OET, PTR_globalH->EVT_OUT_reduction, 0, DB_MODE_RW );
+    //ocrAddDependence( TS_reduction.OET, PTR_globalH->EVT_OUT_reduction, 0, DB_MODE_RW );
 
-    s64 i = 0;
-    for( i = 0; i < NR; i++ )
-    {
-        ocrAddDependence( PTR_EVT_IN_reduction[i], TS_reduction.EDT, i, DB_MODE_RO );
-    }
+    //s64 i = 0;
+    //for( i = 0; i < NR; i++ )
+    //{
+    //    ocrAddDependence( PTR_EVT_IN_reduction[i], TS_reduction.EDT, i, DB_MODE_RO );
+    //}
+
+    ocrLibRed_setup_tree_serial( NR, PTR_EVT_IN_reduction, PTR_globalH->EVT_OUT_reduction, FNC_reduction_double );
 
     return NULL_GUID;
 }

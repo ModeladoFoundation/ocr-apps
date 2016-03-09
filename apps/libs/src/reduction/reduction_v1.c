@@ -21,22 +21,21 @@ void getNodesAtDepth( int querydepth, int maxleaves, int* leaves, int* nodes );
 
 //nParticipants:    IN
 //      Number of participants in the overall reduction
-//PTR_EVT_inputs:   INOUT
-//      The user provides a pointer to "N" events to store input events for the reduction
-//      This function basically stores "N" input events to the reduction operation in the provided pointer and returns an output event
-//      which will be satisfied by the whole reduction result
+//PTR_EVT_inputs:   IN
+//      The user provides a pointer to "N" events of the reduction input events
 //      The function sets up the appropriate "ARITY"-ary reduction tree in the whole process
+//EVT_reduction_out: IN
+//      Output event for the reduction operation
+//      Any EDT that depends on this event will be able to access the final reduction result
 //FNC_reduction:    IN
 //      Pointer to EDT function implementing the reduction for atmost "ARITY" input datablocks
-//      Any user-implemented function cab be pased to the setup function.
-//
-//RETURN value:
-//  Output event for the reduction result
-//  Any EDT that depends on the returned output event will be able to access the final reduction result
 
-ocrGuid_t ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, ocrGuid_t (*FNC_reduction) (u32, u64*, u32, ocrEdtDep_t*) )
+void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, ocrGuid_t EVT_reduction_out, ocrGuid_t (*FNC_reduction) (u32, u64*, u32, ocrEdtDep_t*) )
 {
-    ocrGuid_t EVT_reduction_out; //This is the output reduction event; This event will be satisfied by the final reduced result datablock.
+    ocrGuid_t DBK_reductionTreeHs;
+    ocrGuid_t *PTR_reductionTreeHs;
+    ocrDbCreate( &DBK_reductionTreeHs, (void **) &PTR_reductionTreeHs, nParticipants*sizeof(ocrGuid_t),
+                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
 
     ocrGuid_t TML_reduction;
 
@@ -53,10 +52,10 @@ ocrGuid_t ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inp
     int leaves_lowerLevel, nodes_lowerLevel, rem_lowerLevel;
     getNodesAtDepth( idepth, maxleaves, &leaves, &nodes );
 
-    ocrGuid_t EVT_out;
-    ocrEventCreate( &EVT_out, OCR_EVENT_STICKY_T, true );
-    ocrEdtCreate( &PTR_EVT_inputs[0], TML_reduction, EDT_PARAM_DEF, NULL, leaves, NULL, EDT_PROP_NONE, NULL_GUID, &EVT_reduction_out );
-    ocrAddDependence( EVT_reduction_out, EVT_out, 0, DB_MODE_RW );
+    ocrGuid_t EVT_reduction_out_once; //This is the output reduction event; This event will be satisfied by the final reduced result datablock.
+
+    ocrEdtCreate( &PTR_reductionTreeHs[0], TML_reduction, EDT_PARAM_DEF, NULL, leaves, NULL, EDT_PROP_NONE, NULL_GUID, &EVT_reduction_out_once );
+    ocrAddDependence( EVT_reduction_out_once, EVT_reduction_out, 0, DB_MODE_RW );
 
     //PRINTF("maxleaves = %d maxdepth = %d ARITY = %d\n", maxleaves, maxdepth, ARITY);
     //PRINTF("Creating EDT %d(level=%d) with depc %d\n", 0, idepth, leaves);
@@ -76,7 +75,7 @@ ocrGuid_t ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inp
 
         for( int inode=0; inode < nodes; inode++ )
         {
-            ocrGuid_t EDT_node = PTR_EVT_inputs[inode*nodeGap]; //Already created before
+            ocrGuid_t EDT_node = PTR_reductionTreeHs[inode*nodeGap]; //Already created before
 
             //Create leaf EDTs and set up dependencies for the pre-existing node EDT
             int nleaves_node = ( inode != nodes-1 ) ? (ARITY) : ( (rem==0) ? ARITY : rem ); //Only the last node's reduction EDT will have "reminder" deps
@@ -89,7 +88,7 @@ ocrGuid_t ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inp
                 ocrGuid_t event, EVT_out;
                 ocrEventCreate( &EVT_out, OCR_EVENT_STICKY_T, true ); //TODO: How to destroy these later when no longer needed?
                 _depc = ndep_leaf;
-                ocrEdtCreate( &(PTR_EVT_inputs[inode*nodeGap+ileaf*leafGap]), TML_reduction, EDT_PARAM_DEF, NULL, _depc, NULL, EDT_PROP_NONE, NULL_GUID, &event);
+                ocrEdtCreate( &(PTR_reductionTreeHs[inode*nodeGap+ileaf*leafGap]), TML_reduction, EDT_PARAM_DEF, NULL, _depc, NULL, EDT_PROP_NONE, NULL_GUID, &event);
                 ocrAddDependence( event, EVT_out, 0, ileaf ? DB_MODE_RO : DB_MODE_RW );
                 ocrAddDependence( EVT_out, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
                 //PRINTF("Creating EDT %d(level=%d) with depc %d with output slot triggering edt %d(level=%d) on slot %d\n",
@@ -109,24 +108,24 @@ ocrGuid_t ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inp
 
     for( int inode=0; inode < nodes; inode++ )
     {
-        ocrGuid_t EDT_node = PTR_EVT_inputs[inode*nodeGap];//Already created before
+        ocrGuid_t EDT_node = PTR_reductionTreeHs[inode*nodeGap];//Already created before
 
         //Create child EDTs and set up dependencies for the pre-existing node
         int nleaves_node = ( inode != nodes-1 ) ? (ARITY) : ( (rem==0) ? ARITY : rem ); //Only the last node reduction EDT will have "reminder" deps
 
         for( int ileaf = 0; ileaf < nleaves_node; ileaf++ )
         {
-            ocrGuid_t event;
-            ocrEventCreate( &event, OCR_EVENT_STICKY_T, true ); //TODO: How to destroy these later when no longer needed?
+            ocrGuid_t event = PTR_EVT_inputs[inode*nodeGap+ileaf*leafGap];
             ocrAddDependence( event, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
-            PTR_EVT_inputs[inode*nodeGap+ileaf*leafGap] = event;
             //PRINTF("Creating event guid %d which triggers EDT guid %d(level=%d) on slot %d\n", inode*nodeGap+ileaf*leafGap, inode*nodeGap, idepth, ileaf);
         }
     }
 
     ocrEdtTemplateDestroy( TML_reduction );
 
-    return EVT_out;
+    ocrDbDestroy( DBK_reductionTreeHs );
+
+    return;
 }
 
 ocrGuid_t FNC_reduction_double(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])

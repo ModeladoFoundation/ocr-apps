@@ -108,7 +108,10 @@ ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t* PTR_reductionEventsH = depv[1].ptr;
 
-    PTR_reductionEventsH[N] = ocrLibRed_setup_tree_serial( N, PTR_reductionEventsH, FNC_reduction_double );
+    for( u32 i = 0; i < N+1; i++ )
+        ocrEventCreate( &PTR_reductionEventsH[i], OCR_EVENT_STICKY_T, true );
+
+    ocrLibRed_setup_tree_serial( N, PTR_reductionEventsH, PTR_reductionEventsH[N], FNC_reduction_double );
 
     return NULL_GUID;
 }
