@@ -35,7 +35,7 @@ ocrGuid_t stepA_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     ocrGuid_t stepBEdtGuid;
     ocrEdtCreate(&stepBEdtGuid, stepBEdtTemplateGuid, EDT_PARAM_DEF, paramv,
-                 EDT_PARAM_DEF, &dataGuid, /*prop=*/EDT_PROP_NONE, NULL_GUID, NULL);
+                 EDT_PARAM_DEF, &dataGuid, /*prop=*/EDT_PROP_NONE, NULL_HINT, NULL);
 
     return NULL_GUID;
 }
@@ -51,7 +51,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t dataGuid;
     //Create datablock to hold a block of 'array size' u64 elements
     ocrDbCreate(&dataGuid,(void **) &dataArray, sizeof(u64)*arraySize,
-                /*flags=*/0, /*loc=*/NULL_GUID, NO_ALLOC);
+                /*flags=*/0, /*hint=*/NULL_HINT, NO_ALLOC);
 
     ocrGuid_t stepAEdtTemplateGuid;
     ocrEdtTemplateCreate(&stepAEdtTemplateGuid, stepA_edt, 1 /*paramc*/, 1 /*depc*/);
@@ -59,7 +59,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // Create the EDT not specifying the dependence vector at creation
     ocrGuid_t stepAEdtGuid;
     ocrEdtCreate(&stepAEdtGuid, stepAEdtTemplateGuid, EDT_PARAM_DEF, nparamv, 1, NULL,
-                /*prop=*/EDT_PROP_NONE, NULL_GUID, NULL);
+                /*prop=*/EDT_PROP_NONE, NULL_HINT, NULL);
 
     ocrGuid_t triggerEventGuid;
     //TODO Setup event used to trigger stepA

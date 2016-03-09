@@ -29,7 +29,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t dataGuid;
     //TODO Create datablock to hold a block of 'array size' u64 elements
     ocrDbCreate(&dataGuid, (void **) &dataArray, sizeof(u64)*arraySize,
-                /*flags=*/0, /*loc=*/PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+                /*flags=*/0, /*hint=*/NULL_HINT, NO_ALLOC);
     //END-TODO
 
     // Set element at 'index'
@@ -39,7 +39,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     //This is equivalent to directly satisffying the first dependence slot of the EDT
     ocrGuid_t stepAEdtGuid;
     ocrEdtCreate(&stepAEdtGuid, stepAEdtTemplateGuid, EDT_PARAM_DEF, nparamv, 1, &dataGuid,
-                /*prop=*/EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                /*prop=*/EDT_PROP_NONE, NULL_HINT, NULL);
     //END-TODO
 
     return NULL_GUID;

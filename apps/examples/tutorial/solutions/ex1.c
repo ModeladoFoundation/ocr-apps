@@ -18,7 +18,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     //TODO Create an EDT out of the EDT template
     ocrGuid_t appEdtGuid;
     ocrEdtCreate(&appEdtGuid, appEdtTemplateGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                /*prop=*/EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                /*prop=*/EDT_PROP_NONE, NULL_HINT, NULL);
     //END-TODO
     return NULL_GUID;
 }

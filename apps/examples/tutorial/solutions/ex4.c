@@ -46,20 +46,20 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // dependence later
     ocrGuid_t stepAGuid;
     ocrEdtCreate(&stepAGuid, stepAEdtTemplateGuid, EDT_PARAM_DEF, nparamv,
-                 EDT_PARAM_DEF, NULL, /*prop=*/0, PICK_1_1(NULL_HINT,NULL_GUID), &outputAGuid);
+                 EDT_PARAM_DEF, NULL, /*prop=*/0, NULL_HINT, &outputAGuid);
     //END-TODO
 
     //TODO Create stepB depending on 'outputAGuid'
     ocrGuid_t stepBGuid;
     ocrEdtCreate(&stepBGuid, stepBEdtTemplateGuid, EDT_PARAM_DEF, nparamv,
-                 EDT_PARAM_DEF, &outputAGuid, /*prop=*/0, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                 EDT_PARAM_DEF, &outputAGuid, /*prop=*/0, NULL_HINT, NULL);
     //END-TODO
 
     // Setup datablock
     u64 * dataArray;
     ocrGuid_t dataGuid;
     ocrDbCreate(&dataGuid, (void **) &dataArray, sizeof(u64)*arraySize,
-                /*flags=*/0, /*loc=*/PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+                /*flags=*/0, /*hint=*/NULL_HINT, NO_ALLOC);
 
     ocrAddDependence(dataGuid, stepAGuid, 0, DB_MODE_EW);
     // All dependences of stepA are provided

@@ -15,7 +15,14 @@
 // depv[2]: X on input fib(X) on output
 ocrGuid_t complete(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
-    ocrGuid_t mapGuid = (ocrGuid_t)(paramv[0]);
+    typedef union {
+        u64 param64[3*sizeof(ocrGuid_t)/sizeof(u64)];
+        ocrGuid_t paramGuid[3];
+    } paramvExtract;
+
+    paramvExtract *extract = (paramvExtract*)paramv;
+
+    ocrGuid_t mapGuid = (ocrGuid_t)extract->paramGuid[0];
     u32 in1, in2;
     u32 out;
 
@@ -78,8 +85,8 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     /* create the completion EDT and pass it the in/out argument as a dependency */
     /* create the EDT with the done_event as the argument */
-    ocrEdtCreate(&comp, compTemplateGuid, sizeof(ocrGuid_t)/sizeof(u64), paramv, 3, NULL, EDT_PROP_NONE,
-                 PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+    ocrEdtCreate(&comp, compTemplateGuid, sizeof(ocrGuid_t)/sizeof(u64), (u64*)extract, 3, NULL, EDT_PROP_NONE,
+                 NULL_HINT, NULL);
 
     PRINTF("In fibEdt(%d) -- checking for required answers\n", n);
 
@@ -90,11 +97,11 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         PRINTF("In fibEdt(%d), reusing answer for %d\n", n, n-1);
     } else {
         // We created the event so we need to launch the computation
-        ocrDbCreate(&dbArg, (void**)&ptr, sizeof(u32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
-        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID 0x%llx\n", n, n-1, dbArg);
+        ocrDbCreate(&dbArg, (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID 0x"GUIDSx"\n", n, n-1, GUIDFS(dbArg));
         *((u32*)ptr) = n-1;
         ocrEdtCreate(&fibEdt, fibTemplateGuid, 3*sizeof(ocrGuid_t)/sizeof(u64), paramv, 1, &dbArg, EDT_PROP_NONE,
-                     PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                     NULL_HINT, NULL);
     }
     ocrAddDependence(evt0, comp, 0, DB_DEFAULT_MODE);
 
@@ -105,15 +112,15 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         PRINTF("In fibEdt(%d), reusing answer for %d\n", n, n-2);
     } else {
         // We created the event so we need to launch the computation
-        ocrDbCreate(&dbArg, (void**)&ptr, sizeof(u32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
-        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID 0x%llx\n", n, n-2, dbArg);
+        ocrDbCreate(&dbArg, (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID 0x"GUIDSx"\n", n, n-2, GUIDFS(dbArg));
         *((u32*)ptr) = n-2;
         ocrEdtCreate(&fibEdt, fibTemplateGuid, 3*sizeof(ocrGuid_t)/sizeof(u64), paramv, 1, &dbArg, EDT_PROP_NONE,
-                     PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                     NULL_HINT, NULL);
     }
     ocrAddDependence(evt1, comp, 1, DB_DEFAULT_MODE);
 
-    PRINTF("In fibEdt(%u) -- spawned complete EDT GUID 0x%llx\n", n, (u64)comp);
+    PRINTF("In fibEdt(%u) -- spawned complete EDT GUID "GUIDSx"\n", n, GUIDFS(comp));
     ocrAddDependence(depv[0].guid, comp, 2, DB_DEFAULT_MODE);
 
     PRINTF("Returning from fibEdt(%u)\n", n);
@@ -160,9 +167,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // Create the base case DBs
     ocrGuid_t ans0, ans1;
     u32* addr;
-    ocrDbCreate(&ans0, (void**)&addr, sizeof(u32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&ans0, (void**)&addr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     *addr = 0;
-    ocrDbCreate(&ans1, (void**)&addr, sizeof(u32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&ans1, (void**)&addr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     *addr = 1;
 
     ocrDbRelease(ans0);
@@ -188,10 +195,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     {
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, absFinal, 1, 1);
-        PRINTF("Created template and got GUID 0x%llx\n", templateGuid);
+        PRINTF("Created template and got GUID 0x"GUIDSx"\n", GUIDFS(templateGuid));
         ocrEdtCreate(&absFinalEdt, templateGuid, 1, &correctAns, 1, NULL, EDT_PROP_NONE,
-                     PICK_1_1(NULL_HINT,NULL_GUID), NULL);
-        PRINTF("Created ABS EDT and got  GUID 0x%llx\n", absFinalEdt);
+                     NULL_HINT, NULL);
+        PRINTF("Created ABS EDT and got  GUID 0x"GUIDSx"\n", GUIDFS(absFinalEdt));
         ocrEdtTemplateDestroy(templateGuid);
     }
 
@@ -200,7 +207,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32* res;
 
     PRINTF("Before 1st DB create\n");
-    ocrDbCreate(&fibArg, (void**)&res, sizeof(u32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&fibArg, (void**)&res, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     PRINTF("Got DB created\n");
 
     /* DB is in/out */
@@ -230,7 +237,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         paramv.paramGuid[1] = templateGuid;
 
         ocrEdtCreate(&fibC, templateGuid, 3*sizeof(ocrGuid_t)/sizeof(u64), &(paramv.param64[0]), 1, &depv, EDT_PROP_NONE,
-                     PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                     NULL_HINT, NULL);
     }
 
     return NULL_GUID;

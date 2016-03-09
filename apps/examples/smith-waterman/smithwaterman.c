@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "macros.h"
 
 #define GAP_PENALTY -1
 #define TRANSITION_PENALTY -2
@@ -15,6 +16,16 @@
 #define MATCH 2
 
 enum Nucleotide {GAP=0, ADENINE, CYTOSINE, GUANINE, THYMINE};
+
+typedef struct{
+    u64 i;
+    u64 j;
+    ocrGuid_t bottom_right_event_guid;
+    ocrGuid_t right_column_event_guid;
+    ocrGuid_t bottom_row_event_guid;
+    u32 score;
+}smithWatermanPRM_t;
+
 
 s8 char_mapping ( char c ) {
     s8 to_be_returned = -1;
@@ -73,7 +84,7 @@ s8* read_file( s8* filestart, u32* n_chars ) {
     if(file==NULL) file = fopen((const char *)filestart, "r");
     u32 file_size = *n_chars;
     ocrGuid_t filebuf;
-    ocrDbCreate(&filebuf, (void **)&file_buffer, sizeof(s8)*(1+file_size), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&filebuf, (void **)&file_buffer, sizeof(s8)*(1+file_size), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     fread(file_buffer, sizeof(s8), file_size, file);
     file_buffer[file_size] = '\0';
 
@@ -95,7 +106,7 @@ s8* read_file( s8* filename, u32* n_chars ) {
     ocrGuid_t filebuf;
 
     s8 *file_buffer;
-    ocrDbCreate( &filebuf, (void **)&file_buffer, sizeof(s8)*(1+file_size), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( &filebuf, (void **)&file_buffer, sizeof(s8)*(1+file_size), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
     fread(file_buffer, sizeof(s8), file_size, file);
     file_buffer[file_size] = '\0';
@@ -121,9 +132,11 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     s32* diagonal_tile_bottom_right = (s32 *) depv[2].ptr;
     u64* dbparamv = (u64 *) depv[3].ptr;
 
+    smithWatermanPRM_t *smithWatermanParamvIn = (smithWatermanPRM_t *)paramv;
+
     /* Unbox parameters */
-    s32 i = (s32) paramv[0];
-    s32 j = (s32) paramv[1];
+    s32 i = (s32) smithWatermanParamvIn->i;
+    s32 j = (s32) smithWatermanParamvIn->j;
     s32 tile_width = (s32) dbparamv[0];
     s32 tile_height = (s32) dbparamv[1];
     s32 n_tiles_height = (s32) dbparamv[2];
@@ -135,10 +148,10 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     ocrGuid_t db_curr_tile_tmp, db_curr_tile;
 
     /* Allocate a haloed local matrix for calculating 'this' tile*/
-    ocrDbCreate(&db_curr_tile_tmp, (void **)&curr_tile_tmp, sizeof(u32)*(1+tile_width)*(1+tile_height), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&db_curr_tile_tmp, (void **)&curr_tile_tmp, sizeof(u32)*(1+tile_width)*(1+tile_height), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     s32 ** curr_tile;
     /* 2D-ify it for readability */
-    ocrDbCreate(&db_curr_tile, (void **)&curr_tile, sizeof(u32 *)*(1+tile_height), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&db_curr_tile, (void **)&curr_tile, sizeof(u32 *)*(1+tile_height), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 
     for (index = 0; index < tile_height+1; ++index) {
         curr_tile[index] = &curr_tile_tmp[index*(1+tile_width)];
@@ -179,19 +192,21 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     /* Allocate datablock for bottom right of the local tile */
     ocrGuid_t db_guid_i_j_br;
     void* db_guid_i_j_br_data;
-    ocrDbCreate( &db_guid_i_j_br, &db_guid_i_j_br_data, sizeof(s32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( &db_guid_i_j_br, &db_guid_i_j_br_data, sizeof(s32), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
     /* Satisfy the bottom right event of local tile with the data block allocated above */
     s32* curr_bottom_right = (s32*)db_guid_i_j_br_data;
     curr_bottom_right[0] = curr_tile[tile_height][tile_width];
 
     ocrDbRelease(db_guid_i_j_br); // For now, no auto-release it seems...
-    ocrEventSatisfy((ocrGuid_t) paramv[2], db_guid_i_j_br);
+
+    ocrGuid_t bottom_right_event_guid = smithWatermanParamvIn->bottom_right_event_guid;
+    ocrEventSatisfy(bottom_right_event_guid, db_guid_i_j_br);
 
     /* Allocate datablock for right column of the local tile */
     ocrGuid_t db_guid_i_j_rc;
     void* db_guid_i_j_rc_data;
-    ocrDbCreate( &db_guid_i_j_rc, &db_guid_i_j_rc_data, sizeof(s32)*tile_height, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( &db_guid_i_j_rc, &db_guid_i_j_rc_data, sizeof(s32)*tile_height, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
     /* Satisfy the right column event of local tile with the data block allocated above */
     s32* curr_right_column = (s32*)db_guid_i_j_rc_data;
@@ -199,12 +214,13 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
         curr_right_column[index] = curr_tile[index+1][tile_width];
     }
     ocrDbRelease(db_guid_i_j_rc);
-    ocrEventSatisfy((ocrGuid_t) paramv[3], db_guid_i_j_rc);
+    ocrGuid_t right_column_event_guid = smithWatermanParamvIn->right_column_event_guid;
+    ocrEventSatisfy(right_column_event_guid, db_guid_i_j_rc);
 
     /* Allocate datablock for bottom row of the local tile */
     ocrGuid_t db_guid_i_j_brow;
     s32* db_guid_i_j_brow_data = NULL;
-    ocrDbCreate( &db_guid_i_j_brow, (void *)&db_guid_i_j_brow_data, sizeof(s32)*tile_width, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( &db_guid_i_j_brow, (void *)&db_guid_i_j_brow_data, sizeof(s32)*tile_width, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
     /* Satisfy the bottom row event of local tile with the data block allocated above */
     s32* curr_bottom_row = (s32*)db_guid_i_j_brow_data;
@@ -212,7 +228,8 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
         curr_bottom_row[index] = curr_tile[tile_height][index+1];
     }
     ocrDbRelease(db_guid_i_j_brow);
-    ocrEventSatisfy((ocrGuid_t) paramv[4], db_guid_i_j_brow);
+    ocrGuid_t bottom_row_event_guid = smithWatermanParamvIn->bottom_row_event_guid;
+    ocrEventSatisfy(bottom_row_event_guid, db_guid_i_j_brow);
 
     ocrDbDestroy(db_curr_tile);
     ocrDbDestroy(db_curr_tile_tmp);
@@ -223,7 +240,8 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     /* If this is the last tile (bottom right most tile), finish */
     if ( i == n_tiles_height && j == n_tiles_width ) {
         PRINTF("score: %d\n", curr_bottom_row[tile_width-1]);
-        VERIFY(curr_bottom_row[tile_width-1] == paramv[5], "Expected score: %d\n", (s32)paramv[5]);
+        u32 score = smithWatermanParamvIn->score;
+        VERIFY(curr_bottom_row[tile_width-1] == score, "Expected score: %d\n", score);
         ocrShutdown();
     }
     return NULL_GUID;
@@ -234,7 +252,7 @@ static void initialize_border_values( Tile_t** tile_matrix, s32 n_tiles_width, s
     /* Create a datablock for the bottom right element for tile[0][0] */
     ocrGuid_t db_guid_0_0_br;
     void* db_guid_0_0_br_data;
-    ocrDbCreate( &db_guid_0_0_br, &db_guid_0_0_br_data, sizeof(s32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( &db_guid_0_0_br, &db_guid_0_0_br_data, sizeof(s32), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
     /* Satisfy the bottom right event for tile[0][0] with the respective datablock */
     s32* allocated = (s32*)db_guid_0_0_br_data;
     allocated[0] = 0;
@@ -246,7 +264,7 @@ static void initialize_border_values( Tile_t** tile_matrix, s32 n_tiles_width, s
     for ( j = 1; j < n_tiles_width + 1; ++j ) {
         ocrGuid_t db_guid_0_j_brow;
         void* db_guid_0_j_brow_data;
-        ocrDbCreate( &db_guid_0_j_brow, &db_guid_0_j_brow_data, sizeof(s32)*tile_width, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+        ocrDbCreate( &db_guid_0_j_brow, &db_guid_0_j_brow_data, sizeof(s32)*tile_width, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
         allocated = (s32*)db_guid_0_j_brow_data;
         for( i = 0; i < tile_width ; ++i ) {
@@ -257,7 +275,7 @@ static void initialize_border_values( Tile_t** tile_matrix, s32 n_tiles_width, s
 
         ocrGuid_t db_guid_0_j_br;
         void* db_guid_0_j_br_data;
-        ocrDbCreate( &db_guid_0_j_br, &db_guid_0_j_br_data, sizeof(s32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+        ocrDbCreate( &db_guid_0_j_br, &db_guid_0_j_br_data, sizeof(s32), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
         allocated = (s32*)db_guid_0_j_br_data;
         allocated[0] = GAP_PENALTY*(j*tile_width); //sagnak: needed to handle tilesize 2
 
@@ -270,7 +288,7 @@ static void initialize_border_values( Tile_t** tile_matrix, s32 n_tiles_width, s
     for ( i = 1; i < n_tiles_height + 1; ++i ) {
         ocrGuid_t db_guid_i_0_rc;
         void* db_guid_i_0_rc_data;
-        ocrDbCreate( &db_guid_i_0_rc, &db_guid_i_0_rc_data, sizeof(s32)*tile_height, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+        ocrDbCreate( &db_guid_i_0_rc, &db_guid_i_0_rc_data, sizeof(s32)*tile_height, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
         allocated = (s32*)db_guid_i_0_rc_data;
         for ( j = 0; j < tile_height ; ++j ) {
             allocated[j] = GAP_PENALTY*((i-1)*tile_height+j+1);
@@ -280,7 +298,7 @@ static void initialize_border_values( Tile_t** tile_matrix, s32 n_tiles_width, s
 
         ocrGuid_t db_guid_i_0_br;
         void* db_guid_i_0_br_data;
-        ocrDbCreate( &db_guid_i_0_br, &db_guid_i_0_br_data, sizeof(s32), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+        ocrDbCreate( &db_guid_i_0_br, &db_guid_i_0_br_data, sizeof(s32), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
         allocated = (s32*)db_guid_i_0_br_data;
         allocated[0] = GAP_PENALTY*(i*tile_height); //sagnak: needed to handle tilesize 2
@@ -360,6 +378,8 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     s8* string_2;
     u32 check_score;
 
+    smithWatermanPRM_t smithWatermanParamv;
+
     if(ioHandling(depv[0].ptr, &n_tiles_height, &n_tiles_width, &tile_width, &tile_height, &string_1, &string_2, &check_score))
     {
         ocrShutdown();
@@ -371,9 +391,9 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t db_tmp;
     Tile_t** tile_matrix;
 
-    ocrDbCreate(&db_tmp, (void **)&tile_matrix, sizeof(Tile_t*)*(n_tiles_height+1), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&db_tmp, (void **)&tile_matrix, sizeof(Tile_t*)*(n_tiles_height+1), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     for ( i = 0; i < n_tiles_height+1; ++i ) {
-        ocrDbCreate(&db_tmp, (void **)&tile_matrix[i], sizeof(Tile_t)*(n_tiles_width+1), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+        ocrDbCreate(&db_tmp, (void **)&tile_matrix[i], sizeof(Tile_t)*(n_tiles_width+1), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
         for ( j = 0; j < n_tiles_width+1; ++j ) {
             /* Create readiness events for every tile */
             ocrEventCreate(&(tile_matrix[i][j].bottom_row_event_guid ), OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
@@ -385,9 +405,8 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     PRINTF("Allocated tile matrix\n");
 
     initialize_border_values(tile_matrix, n_tiles_width, n_tiles_height, tile_width, tile_height);
-
     ocrGuid_t smith_waterman_task_template_guid;
-    ocrEdtTemplateCreate(&smith_waterman_task_template_guid, smith_waterman_task, 6 /*paramc*/, 4 /*depc*/);
+    ocrEdtTemplateCreate(&smith_waterman_task_template_guid, smith_waterman_task, PRMNUM(smithWaterman) /*paramc*/, 4 /*depc*/);
 
     // Common information to all tasks
     u64 string1Length = tile_width * n_tiles_width;
@@ -404,7 +423,7 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 string2Offset = (dbHeaderSize+string1Size);
     ocrGuid_t dbParamsGuid;
     u64 *params;
-    ocrDbCreate(&dbParamsGuid, (void **)&params, dbSize, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(&dbParamsGuid, (void **)&params, dbSize, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     params[0]=(u64) tile_width;
     params[1]=(u64) tile_height;
     params[2]=(u64) n_tiles_height;
@@ -431,19 +450,20 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     for ( i = 1; i < n_tiles_height+1; ++i ) {
         for ( j = 1; j < n_tiles_width+1; ++j ) {
             /* Box function parameters and put them on the heap for lifetime */
-            u64 indices[6] = {(u64)i,(u64)j,
-                              // forcefully pass guids we need to satisfy on completion
-                              (u64)tile_matrix[i][j].bottom_right_event_guid,
-                              (u64)tile_matrix[i][j].right_column_event_guid,
-                              (u64)tile_matrix[i][j].bottom_row_event_guid,
-                              check_score
-            };
+
+            smithWatermanParamv.i = i;
+            smithWatermanParamv.j = j;
+            // forcefully pass guids we need to satisfy on completion
+            smithWatermanParamv.bottom_right_event_guid = tile_matrix[i][j].bottom_right_event_guid;
+            smithWatermanParamv.right_column_event_guid = tile_matrix[i][j].right_column_event_guid;
+            smithWatermanParamv.bottom_row_event_guid   = tile_matrix[i][j].bottom_row_event_guid;
+            smithWatermanParamv.score = check_score;
             /* Create an event-driven tasks of smith_waterman tasks */
             ocrGuid_t task_guid;
             ocrEdtCreate(&task_guid, smith_waterman_task_template_guid,
-                        EDT_PARAM_DEF, indices /*paramv*/,
+                        EDT_PARAM_DEF, (u64 *)&smithWatermanParamv /*paramv*/,
                         EDT_PARAM_DEF, NULL /*depv*/,
-                        EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID) /*affinity*/, NULL /*outputEvent*/);
+                        EDT_PROP_NONE, NULL_HINT /*hint*/, NULL /*outputEvent*/);
 
             /* add dependency to the EDT from the west tile's right column ready event */
             ocrAddDependence(tile_matrix[i][j-1].right_column_event_guid, task_guid, 0, DB_MODE_CONST);

@@ -52,7 +52,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 * dataArray;
     ocrGuid_t dataGuid;
     ocrDbCreate(&dataGuid,(void **) &dataArray, sizeof(u64)*arraySize,
-                /*flags=*/0, /*loc=*/NULL_GUID, NO_ALLOC);
+                /*flags=*/0, /*hint=*/NULL_HINT, NO_ALLOC);
 
     ocrAddDependence(dataGuid, stepAGuid, 0, DB_MODE_EW);
     // All dependences of stepA are provided

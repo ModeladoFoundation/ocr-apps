@@ -75,7 +75,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     /* create the completion EDT and pass it the in/out argument as a dependency */
     /* create the EDT with the done_event as the argument */
     ocrEdtCreate(&comp, compTemplateGuid, sizeof(ocrGuid_t)/sizeof(u64), paramv, 3, NULL, EDT_PROP_NONE,
-                 NULL_GUID, NULL);
+                 NULL_HINT, NULL);
 
     PRINTF("In fibEdt(%d) -- checking for required answers\n", n);
 
@@ -146,9 +146,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // Create the base case DBs
     ocrGuid_t ans0, ans1;
     u32* addr;
-    ocrDbCreate(&ans0, (void**)&addr, sizeof(u32), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&ans0, (void**)&addr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     *addr = 0;
-    ocrDbCreate(&ans1, (void**)&addr, sizeof(u32), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&ans1, (void**)&addr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     *addr = 1;
 
     ocrDbRelease(ans0);
@@ -165,7 +165,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrEdtTemplateCreate(&templateGuid, absFinal, 1, 1);
         PRINTF("Created template and got GUID 0x%llx\n", templateGuid);
         ocrEdtCreate(&absFinalEdt, templateGuid, 1, &correctAns, 1, NULL, EDT_PROP_NONE,
-                     NULL_GUID, NULL);
+                     NULL_HINT, NULL);
         PRINTF("Created ABS EDT and got  GUID 0x%llx\n", absFinalEdt);
         ocrEdtTemplateDestroy(templateGuid);
     }
@@ -175,7 +175,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32* res;
 
     PRINTF("Before 1st DB create\n");
-    ocrDbCreate(&fibArg, (void**)&res, sizeof(u32), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&fibArg, (void**)&res, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     PRINTF("Got DB created\n");
 
     /* DB is in/out */
@@ -204,7 +204,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         paramv.paramGuid[1] = templateGuid;
 
         ocrEdtCreate(&fibC, templateGuid, 3*sizeof(ocrGuid_t)/sizeof(u64), &(paramv.param64[0]), 1, &depv, EDT_PROP_NONE,
-                     NULL_GUID, NULL);
+                     NULL_HINT, NULL);
     }
 
     return NULL_GUID;

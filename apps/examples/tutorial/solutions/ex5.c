@@ -50,18 +50,18 @@ ocrGuid_t pipelineEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     //Create stepA EDT with an output-event and provide dependences later
     ocrGuid_t stepAGuid;
     ocrEdtCreate(&stepAGuid, stepAEdtTemplateGuid, EDT_PARAM_DEF, nparamv,
-                 EDT_PARAM_DEF, NULL, /*prop=*/0, PICK_1_1(NULL_HINT,NULL_GUID), &outputAGuid);
+                 EDT_PARAM_DEF, NULL, /*prop=*/0, NULL_HINT, &outputAGuid);
 
     //Create stepB depending on 'outputAGuid'
     ocrGuid_t stepBGuid;
     ocrEdtCreate(&stepBGuid, stepBEdtTemplateGuid, EDT_PARAM_DEF, nparamv, EDT_PARAM_DEF, &outputAGuid,
-                /*prop=*/0, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                /*prop=*/0, NULL_HINT, NULL);
 
     // Setup datablock
     u64 * dataArray;
     ocrGuid_t dataGuid;
     ocrDbCreate(&dataGuid, (void **) &dataArray, sizeof(u64)*100, /*flags=*/0,
-                /*loc=*/PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+                /*hint=*/NULL_HINT, NO_ALLOC);
 
     //Setup datablock dependence to trigger stepA
     ocrAddDependence(dataGuid, stepAGuid, 0, DB_MODE_EW);
@@ -79,7 +79,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     //TODO Create pipeline EDT as a finish-EDT
     ocrGuid_t pipeGuid;
     ocrEdtCreate(&pipeGuid, pipeTemplateGuid, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                /*prop=*/EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &outputEventGuid);
+                /*prop=*/EDT_PROP_FINISH, NULL_HINT, &outputEventGuid);
     //END-TODO
 
     // In this example we chain the output-event of the pipeline EDT
@@ -92,7 +92,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t terminateGuid;
     //TODO Create terminate EDT depending on the output-event of the pipeline EDT
     ocrEdtCreate(&terminateGuid, terminateTemplateGuid, EDT_PARAM_DEF, 0,
-                 EDT_PARAM_DEF, &outputEventGuid, /*prop=*/0, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                 EDT_PARAM_DEF, &outputEventGuid, /*prop=*/0, NULL_HINT, NULL);
     //END-TODO
     // TODO Release pipeline EDT
     ocrAddDependence(NULL_GUID, pipeGuid, 0, DB_DEFAULT_MODE);

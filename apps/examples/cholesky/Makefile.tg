@@ -58,7 +58,7 @@ TARGET := cholesky
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := libc
+REQ_LIBS := libc macros
 
 # Space separated list of source files
 SRCS := cholesky.c
