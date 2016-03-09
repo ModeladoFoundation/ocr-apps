@@ -6,7 +6,7 @@
 
 ROSE_ROOT=/opt/bamboo_6_0/bin/rose
 BOOST_ROOT=/opt/bamboo_6_0/bin/boost
-LD_LIBRARY_PATH += $(ROSE_ROOT)/lib:$(BOOST_ROOT)/lib:/etc/alternatives/jre_1.7.0_openjdk/lib/amd64/server
+LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(ROSE_ROOT)/lib:$(BOOST_ROOT)/lib:/etc/alternatives/jre_1.7.0_openjdk/lib/amd64/server
 
 ROSE_TOOL_ROOT = $(APPS_ROOT)/../hll/rose/tools/globals2db
 ROSE_TOOL = $(ROSE_TOOL_ROOT)/bin/globals2db
