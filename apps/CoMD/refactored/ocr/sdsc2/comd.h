@@ -98,9 +98,9 @@ typedef struct
 typedef struct
 {
   real3_t value;
-  ocrGuid_t reduction;
+  ocrGuid_t OEVT_reduction;
   ocrGuid_t sim;
-} reduction_t;
+} reductionH_t;
 
 typedef struct
 {
@@ -120,7 +120,7 @@ typedef struct
   double energy0;
   u32 atoms0;
 
-  ocrGuid_t reduction;
+  ocrGuid_t reductionH_g;
 
 } simulation_t;
 

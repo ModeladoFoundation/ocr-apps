@@ -75,7 +75,7 @@ LDFLAGS := -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3 -std=c99
+all:	CFLAGS += -g -O3 -std=c99
 all:	TARGETS := all
 all:	default
 

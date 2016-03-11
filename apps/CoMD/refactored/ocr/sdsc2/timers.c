@@ -35,7 +35,7 @@ void print_timers(mdtimer_t* timers_p, u32 atoms, u32 steps)
              timer_name[ii], timers_p[ii].count, total/(double)timers_p[ii].count,
              total, total/loop_time*100.0);
   }
-  double rate = timers_p[total_timer].total / (atoms * steps);
+  double rate = (double) timers_p[total_timer].total / (atoms * steps);
   //double rate = 1; //FIXME
   PRINTF("\n---------------------------------------------------\n");
   PRINTF(" Average atom update rate: %6.2f us/atom/task\n", rate);
