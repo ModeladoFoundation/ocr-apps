@@ -247,7 +247,7 @@ namespace Realm {
     {
       log_runtime.info() << "shutdown requested - wait_on=" << wait_on;
 #ifdef USE_OCR_LAYER
-      ((RuntimeImpl *)impl)->shutdown(true);
+      ((RuntimeImpl *)impl)->shutdown(wait_on);
 #else
       if(wait_on.has_triggered())
 	((RuntimeImpl *)impl)->shutdown(true); // local request
@@ -523,10 +523,10 @@ namespace Realm {
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
 #ifdef USE_OCR_LAYER
-      //ocrConfig_t ocr_cfg;
-      //ocrParseArgs(*argc,(const char**)*argv, &ocr_cfg);
-      //ocrLegacyInit(&ocr_cfg_guid, &ocr_cfg);
+      DetailedTimer::init_timers();
 
+      OCREventImpl::static_init();
+      OCRProcessor::static_init();
       //create the nodes which contains processors and memory 
       nodes = new Node[gasnet_nodes()];
       Node *n = &nodes[gasnet_mynode()];
@@ -1554,19 +1554,27 @@ namespace Realm {
     //EDT for the shutdown
     ocrGuid_t shutdown_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
     {
+        assert(argc == 0 && depc == 1);
         ocrShutdown();
         return NULL_GUID;
+    }
+
+    void RuntimeImpl::shutdown(Event wait_on)
+    {
+        //invoke the showtdown EDT
+        ocrGuid_t sd_edt_t, sd_edt, out_sd_edt, persistent_evt_guid;
+        ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
+        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, &wait_on.evt_guid, EDT_PROP_NONE, NULL_GUID, &out_sd_edt);
+
+	//create another persistent event and attach it to the edt since legacy_block_progress needs persistent event 
+	ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+	ocrAddDependence(out_sd_edt, persistent_evt_guid, 0, DB_MODE_RO);
+        ocr_shutdown_guid = persistent_evt_guid;
     }
 #endif
 
     void RuntimeImpl::shutdown(bool local_request /*= true*/)
     {
-#ifdef USE_OCR_LAYER
-        //invoke the showtdown EDT
-        ocrGuid_t sd_edt_t, sd_edt;
-        ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 0);
-        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-#else
       // filter out duplicate requests
       bool already_started = (__sync_fetch_and_add(&shutdown_count, 1) > 0);
       if(already_started)
@@ -1597,13 +1605,14 @@ namespace Realm {
 	shutdown_requested = true;
 	shutdown_condvar.broadcast();
       }
-#endif
     }
 
     void RuntimeImpl::wait_for_shutdown(void)
     {
 #ifdef USE_OCR_LAYER
-      //u8 ret = ocrLegacyFinalize(ocr_cfg_guid, true);
+    OCREventImpl::wait(ocr_shutdown_guid);
+    OCREventImpl::static_destroy();
+    OCRProcessor::static_destroy();
 #else
 #if 0
       bool exit_process = true;

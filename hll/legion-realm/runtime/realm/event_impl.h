@@ -279,6 +279,31 @@ namespace Realm {
 			       const void *data, size_t datalen);
     };
 
+
+#ifdef USE_OCR_LAYER
+
+    class OCREventImpl{
+    public:
+      static const ID::ID_Types ID_TYPE = ID::ID_EVENT;
+      static ocrGuid_t merge_events_edt_t;
+
+      static void static_init(void);
+      static void static_destroy(void);
+
+      static bool has_triggered(ocrGuid_t);
+
+      static void wait(ocrGuid_t);
+
+      static void external_wait(ocrGuid_t);
+
+      static Event merge_events(const std::set<Event>& wait_for);
+      static Event merge_events(Event ev1, Event ev2,
+                                Event ev3 = Event::NO_EVENT, Event ev4 = Event::NO_EVENT,
+                                Event ev5 = Event::NO_EVENT, Event ev6 = Event::NO_EVENT);
+      //private:
+      //  ocrGuid_t evt_guid;
+    };
+#endif
 	
 }; // namespace Realm
 

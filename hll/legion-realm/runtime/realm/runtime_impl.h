@@ -184,6 +184,10 @@ namespace Realm {
       // requests a shutdown of the runtime
       void shutdown(bool local_request);
 
+#ifdef USE_OCR_LAYER
+      void shutdown(Event wait_on);
+#endif
+
       void wait_for_shutdown(void);
 
       // three event-related impl calls - get_event_impl() will give you either
@@ -211,8 +215,7 @@ namespace Realm {
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
 
 #ifdef USE_OCR_LAYER
-     //Guid of the legacy ocr module used for initilize and finalize
-     //ocrGuid_t ocr_cfg_guid;
+     ocrGuid_t ocr_shutdown_guid;
 #endif
 
 #ifdef NODE_LOGGING

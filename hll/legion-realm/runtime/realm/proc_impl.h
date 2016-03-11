@@ -153,8 +153,12 @@ namespace Realm {
     //doesnt have a scheduler since scheduling is done by OCR
     class OCRProcessor : public ProcessorImpl {
     public:
+      static ocrGuid_t ocr_realm_conversion_edt_t;
       OCRProcessor(Processor _me);
       virtual ~OCRProcessor(void);
+
+      static void static_init(void);
+      static void static_destroy(void);
 
       virtual void enqueue_task(Task *task);
 
@@ -163,6 +167,11 @@ namespace Realm {
                               const ProfilingRequestSet &reqs,
                              Event start_event, Event finish_event,
                               int priority);
+
+      virtual Event spawn_task_ret_event(Processor::TaskFuncID func_id,
+                             const void *args, size_t arglen,
+                              const ProfilingRequestSet &reqs,
+                             Event start_event, int priority);
 
       virtual void shutdown(void);
 

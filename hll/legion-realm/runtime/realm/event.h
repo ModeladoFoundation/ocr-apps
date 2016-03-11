@@ -25,6 +25,10 @@
 #include <set>
 #include <iostream>
 
+#ifdef USE_OCR_LAYER
+#include "ocr.h"
+#endif
+
 namespace Realm {
 
     class Event {
@@ -34,17 +38,16 @@ namespace Realm {
 
       id_t id;
       gen_t gen;
-      bool operator<(const Event& rhs) const 
-      { 
-        if (id < rhs.id)
-          return true;
-        else if (id > rhs.id)
-          return false;
-        else
-          return (gen < rhs.gen);
-      }
-      bool operator==(const Event& rhs) const { return (id == rhs.id) && (gen == rhs.gen); }
-      bool operator!=(const Event& rhs) const { return (id != rhs.id) || (gen != rhs.gen); }
+#ifdef USE_OCR_LAYER
+      ocrGuid_t evt_guid;
+//this should have been an else with gen
+#endif
+
+      bool operator<(const Event& rhs) const;
+
+      bool operator==(const Event& rhs) const; 
+
+      bool operator!=(const Event& rhs) const;
 
       static const Event NO_EVENT;
 

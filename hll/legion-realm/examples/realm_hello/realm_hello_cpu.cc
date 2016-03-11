@@ -143,11 +143,11 @@ int app_main(int argc, char **argv)
   Event e = rt.collective_spawn(p, TOP_LEVEL_TASK, &argc, sizeof(int));
 
   // request shutdown once that task is complete
-  //rt.shutdown();
+  rt.shutdown(e);
   
   // sleep this thread until shutdown actually happens
-  //rt.wait_for_shutdown();
-  //
+  rt.wait_for_shutdown();
+  
   return 0;
 }
 
