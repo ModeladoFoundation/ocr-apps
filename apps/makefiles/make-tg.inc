@@ -121,6 +121,7 @@ endif
 
 ### Install rules ###
 .PHONY: install_internal
+.ONESHELL:
 ifeq ($(RUN_JENKINS), runApp)
 install_internal: preinstall | ${WORKLOAD_INSTALL}
 else
@@ -161,6 +162,7 @@ debug_post_prerun: prerun
 endif
 
 .PHONY: run_internal
+.ONESHELL:
 .SHELLFLAGS=-ec
 run_internal:
 ifeq ($(RUN_JENKINS), runApp)
@@ -225,11 +227,7 @@ reqlibs: parallel-reqlibs
 # Require libocrxe as this means all include files are up-to-date
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -fno-builtin -MMD -c $< -o $@
-	@cp -f $(@:.o=.d) $(@:.o=.d.tmp)
-	@sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
-	sed -e 's/^ *//' -e 's/$$/:/' >> $(@:.o=.d)
-	@rm -f $(@:.o=.d.tmp)
+	$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
 #	$(CC) $(CFLAGS) -fno-builtin -c -o $@.tmp $<
 #	$(OBJCOPY) -R .data_local -R .rodata_local -R .bss_local -R .data_block -R .rodata_block -R .bss_block $@.tmp $@
 #	$(RM) $@.tmp
@@ -360,6 +358,7 @@ $(WORKLOAD_INSTALL)/tgkrnl: ;
 else
 # In all other cases, we build the kernel
 # (including for building the app)
+.ONESHELL:
 tgkrnl: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
 | $(WORKLOAD_BUILD)/build.tgkrnl
 	@echo "Building tgkrnl..."
@@ -421,9 +420,6 @@ $(WORKLOAD_BUILD)/build.tgkrnl: | $(WORKLOAD_BUILD) # $(TG_ROOT)/build/build.tgk
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
-
-# Include .d files as well
--include $(OBJS:.o=.d)
 
 # Default rules. If the user defines them later, those recipes will be used
 # Otherwise, the recipe does nothing by default

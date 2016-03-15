@@ -102,7 +102,6 @@ FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 ### Install rules ###
 
 .PHONY: install_internal
-.ONESHELL:
 install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
@@ -147,6 +146,7 @@ debug_post_prerun: prerun
 endif
 
 .PHONY: run_internal
+.ONESHELL:
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
 
 ifeq ($(RUN_JENKINS), runApp)
@@ -214,32 +214,13 @@ reqlibs: parallel-reqlibs
 # Note that we include libocr in order only dependences because it is a
 # phony target and would infect things.
 # We add the library in the regular dependences as well to catch header changes
-# Explanation for complicated .d generation:
-# This does a more complicate dependency computation so all the prereqs listed
-# will also become command-less, prereq-less targets. This causes make
-# to remake anything that depends on that file which is
-# exactly what we want. This is adapted from:
-# http://scottmcpeak.com/autodepend/autodepend.html
-#   sed:    strip the target (everything before colon)
-#   sed:    remove any continuation backslashes
-#   fmt -1: list words one per line
-#   sed:    strip leading spaces
-#   sed:    add trailing colons
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).so | libocr $(WORKLOAD_BUILD)
-	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -MMD -c $< -o $@
-	@cp -f $(@:.o=.d) $(@:.o=.d.tmp)
-	@sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
-	sed -e 's/^ *//' -e 's/$$/:/' >> $(@:.o=.d)
-	@rm -f $(@:.o=.d.tmp)
+	mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).so | libocr $(WORKLOAD_BUILD)
-	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -MMD -c $< -o $@
-	@cp -f $(@:.o=.d) $(@:.o=.d.tmp)
-	@sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
-	sed -e 's/^ *//' -e 's/$$/:/' >> $(@:.o=.d)
-	@rm -f $(@:.o=.d.tmp)
+	mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
 	$(CC_LINK) -o $@ $(OBJS) $(LDFLAGS)
@@ -290,9 +271,6 @@ $(WORKLOAD_BUILD):
 
 $(WORKLOAD_INSTALL):
 	mkdir -p $(WORKLOAD_INSTALL)
-
-# Include .d files as well
--include $(OBJS:.o=.d)
 
 # Default rules. If the user defines them later, those recipes will be used
 # Otherwise, the recipe does nothing by default
