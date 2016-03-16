@@ -146,6 +146,8 @@ typedef struct
 
 static void timestamp(const char* msg);
 void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e);
+void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id);
+void splitDimension(s64 Num_procs, s64 *Num_procsx, s64 *Num_procsy);
 int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y );
 
 static void timestamp(const char* msg)
@@ -166,6 +168,40 @@ void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e)
 
     *s = id*N/R + lb_g;
     *e = (id+1)*N/R + lb_g - 1;
+}
+
+void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id)
+{
+    s64 N = ub_g - lb_g + 1;
+    s64 s, e;
+
+    s64 r;
+
+    for( r = 0; r < R; r++ )
+    {
+        s = r*N/R + lb_g;
+        e = (r+1)*N/R + lb_g - 1;
+        if( s <= i && i <= e )
+            break;
+    }
+
+    *id = r;
+}
+
+void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy)
+{
+    s64 nx, ny;
+
+    nx = (int) sqrt(Num_procs+1);
+    for(; nx>0; nx--)
+    {
+        if (!(Num_procs%nx))
+        {
+            ny = Num_procs/nx;
+            break;
+        }
+    }
+    *Num_procsx = nx; *Num_procsy = ny;
 }
 
 int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y )
