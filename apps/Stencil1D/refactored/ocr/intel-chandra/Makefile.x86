@@ -41,7 +41,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 12 4 10 5 -1 -1  #points subdomains timesteps sync_frequency
+WORKLOAD_ARGS ?= 6 2 4 #points subdomains timesteps
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -59,7 +59,7 @@ TARGET := stencil_1d
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := reduction
 
 # Space separated list of source files
 SRCS := stencil_1d.c timers.c
@@ -69,11 +69,12 @@ SRCS := stencil_1d.c timers.c
 # TG_ARCH is also defined for Fsim
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
 CFLAGS := -g -DENABLE_EXTENSION_AFFINITY -DPROBLEM_TYPE=1
+CFLAGS += -DFULL_APP=1
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm
+LDFLAGS := -lpthread -lm -lreduction
 
 # Targets:
 #   - all:     Build the application.
