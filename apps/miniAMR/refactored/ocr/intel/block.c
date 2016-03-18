@@ -1,4 +1,3 @@
-// TODO: FIXME:  UPDATE Copyright notice!
 // ************************************************************************
 //
 // miniAMR: stencil computations with boundary exchange and AMR.
@@ -6,6 +5,8 @@
 // Copyright (2014) Sandia Corporation. Under the terms of Contract
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
 //
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
@@ -190,8 +191,6 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
    meta->profileCloneDb.size      = sizeof_Profile_t;
 #endif
 
-   meta->checksumDb.size          = sizeof_Checksum_t;
-
    // The first successor will initialize the profile collection datablock.  We create it here.
    gasket__ocrDbCreate(&meta->profileDb.dblk,   (void **) &dummy,   sizeof_Profile_t, __FILE__, __func__, __LINE__);
    meta->profileDb.size           = sizeof_Profile_t;
@@ -199,11 +198,39 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
 
 // The catalog of datablocks is complete.  Now init other meta variables.
 
-   meta->refinementLevel        = myParams->refinementLevel;
-   meta->xPos                   = myParams->xPos;
-   meta->yPos                   = myParams->yPos;
-   meta->zPos                   = myParams->zPos;
-   meta->conveyOperand_Event    = myParams->conveyOperand_Event;   // Event to satisfy dependence at parent, by which he is awaiting Operand_dblk from us.
+   int size = control->p2[control->num_refine+1];     // Block size is p2[num_refine+1-level].  Smallest block is size p2[1], so can find its center
+
+   meta->refinementLevel                 = myParams->refinementLevel;
+   meta->xPos                            = myParams->xPos;
+   meta->yPos                            = myParams->yPos;
+   meta->zPos                            = myParams->zPos;
+   meta->cen[0]                          = myParams->xPos * size + (size >> 1);
+   meta->cen[1]                          = myParams->yPos * size + (size >> 1);
+   meta->cen[2]                          = myParams->zPos * size + (size >> 1);
+   meta->conveyOperandUpward_Event       = myParams->conveyOperandUpward_Event;   // Event to satisfy dependence at parent, by which he is awaiting Operand_dblk from us.
+   meta->labeledGuidRangeForHaloExchange = myParams->labeledGuidRangeForHaloExchange;
+
+   int dir, pole, qrtr;
+   for (dir = 0; dir < 3; dir++) {
+      for (pole = 0; pole <= 1; pole++) {
+//         meta->conveyFaceToFinerNeighbor_Event      [dir][pole]      = NULL_GUID;   // Create event upon first demand, via labeled-guid lookup
+//         meta->conveyFaceToSameGrainedNeighbor_Event[dir][pole]      = NULL_GUID;   // Create event upon first demand, via labeled-guid lookup
+         for (qrtr = 0; qrtr < 4; qrtr++) {
+//            meta->conveyFaceToCoarserNeighbor_Event[dir][pole][qrtr] = NULL_GUID;   // Create event upon first demand, via labeled-guid lookup
+            meta->conveyFaceToNeighbor_Event [dir][pole][qrtr] = NULL_GUID; // Create event upon first demand, via labeled-guid lookup
+            meta->onDeckToReceiveFace_Event[dir][pole][qrtr]   = NULL_GUID; // Create event upon first demand, via labeled-guid lookup
+         }
+      }
+   }
+
+// TODO:  Change, when refinement is implemented
+
+   meta->neighborRefinementLevel[0][0] = meta->xPos == 0                ? -2 : 0;
+   meta->neighborRefinementLevel[0][1] = meta->xPos == control->npx - 1 ? -2 : 0;
+   meta->neighborRefinementLevel[1][0] = meta->yPos == 0                ? -2 : 0;
+   meta->neighborRefinementLevel[1][1] = meta->yPos == control->npy - 1 ? -2 : 0;
+   meta->neighborRefinementLevel[2][0] = meta->zPos == 0                ? -2 : 0;
+   meta->neighborRefinementLevel[2][1] = meta->zPos == control->npz - 1 ? -2 : 0;
 
 // Init other datablocks.
 
@@ -311,7 +338,7 @@ ocrGuid_t blockContinuation_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
    Control_t  const * control      = meta->controlDb.base;
 
    meta->cloningState.cloneNum++;
-printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos, meta->cloningState.cloneNum); fflush(stdout);
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos, meta->cloningState.cloneNum); fflush(stdout);
 
    meta->cloningState.continuationOpcode = ContinuationOpcodeUnspecified;
    Frame_Header_t * topOfStack  = (Frame_Header_t *) meta->cloningState.stack;
@@ -357,8 +384,8 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
       case SeasoningOneOrMoreDbCreates:
          // TODO:  If a newResource SLOT exists, we will need to satisfy it with NULL_GUID for this opcode:  ADD_DEPENDENCE(NULL_GUID, blockContinuation_Edt, blockContinuation_Deps_t, dep_newResource, RO);
          break;
-#if 0
       case ReceivingACommunication:
+#if 0
          ocrGuidFromIndex(&resource, shared->labeledGuidRange, (((my_pe*num_pes+continuationDetail)*GUID_ROUND_ROBIN_SPAN)+guid_toggle__recv[continuationDetail]));
          guid_toggle__recv[continuationDetail] = (guid_toggle__recv[continuationDetail] + 1) & (GUID_ROUND_ROBIN_SPAN - 1);
 #define DEFAULT_LG_PROPS GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG
@@ -369,8 +396,8 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
          printf ("pe %d is regaining control after utilizing massive OpenMP-like parallelism, such as for the stencil operation\n", my_pe); fflush(stdout);
          *((int *) 0) = 123;
          ADD_DEPENDENCE(NULL_GUID, continuation, referenceVersionsMain_Deps_t, dep_newResource, RO);
-         break;
 #endif
+         break;
       default:
          printf ("Continuation opcode not yet handled\n"); fflush(stdout);
          ocrShutdown();
@@ -384,10 +411,12 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
          } else {
             ocrGuid_t         dblk = meta->dbCatalog[i].dblk;
             ocrDbAccessMode_t acMd = meta->dbCatalog[i].acMd;
+//printf ("zPos = %d, Adding dependence of i = %d, dblk = 0x%lx, base = 0x%lx, size = %d\n", meta->zPos, i, (unsigned long long) dblk, (unsigned long long) meta->dbCatalog[i].base, meta->dbCatalog[i].size); fflush(stdout);
             meta->dbCatalog[i].dblk = NULL_GUID;
             meta->dbCatalog[i].base = NULL;
-            ocrDbRelease(dblk);     // Release the guid.  Warning:  in the last loop iteration, this releases meta, which is why we copied dblk and acMd to temps above.
+            //ocrDbRelease(dblk);     // Release the guid.  Warning:  in the last loop iteration, this releases meta, which is why we copied dblk and acMd to temps above.
             ADD_DEPENDENCE(dblk, blockContinuation_Edt, blockContinuation_Deps_t, dependence[i], acMd);
+            //meta->dbCatalog[i].acMd = DB_MODE_NULL;
          }
       }
 
@@ -416,17 +445,32 @@ void blockContinuation_SoupToNuts (BlockMeta_t * meta) {
 
    typedef struct {
       Frame_Header_t myFrame;
-      double t1, t2;
+      double t1, t2, t3, t4;
+      int ts, var, start, number, stage, comm_stage;
       struct {
+         Control_t * control;
+         Profile_t * profile;
       } pointers;
       Frame_Header_t calleeFrame;
    } Frame__blockContinuation_SoupToNuts_t;
 
-#define t1 (lcl->t1)
-#define t2 (lcl->t2)
+#define t1         (lcl->t1)
+#define t2         (lcl->t2)
+#define t3         (lcl->t3)
+#define t4         (lcl->t4)
+#define ts         (lcl->ts)
+#define var        (lcl->var)
+#define start      (lcl->start)
+#define number     (lcl->number)
+#define stage      (lcl->stage)
+#define comm_stage (lcl->comm_stage)
+#define control    (lcl->pointers.control)
+#define profile    (lcl->pointers.profile)
+
    SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__blockContinuation_SoupToNuts_t)
 printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos, meta->cloningState.cloneNum); fflush(stdout);
-
+   control = meta->controlDb.base;
+   profile = meta->profileDb.base;
 
    if (meta->refinementLevel == 0) {
       // Initialize the unrefined mesh block to random cell contents.
@@ -437,49 +481,126 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
       // TODO: refine octant of parent's block into this block.
    }
    CALL_SUSPENDABLE_CALLEE
-   checksum(meta);
+   transmitBlockContributionForChecksum(meta, 0);
    DEBRIEF_SUSPENDABLE_FUNCTION(;)
 
    init_profile(meta);    // Initialize the performance metrics information for this block.
 
    t1 = timer();
 
-   if (meta->controlDb.base->num_refine != 0 || meta->controlDb.base->uniform_refine) {
+   if (control->num_refine != 0 || control->uniform_refine) {
       CALL_SUSPENDABLE_CALLEE
       refine(meta, 0);
       DEBRIEF_SUSPENDABLE_FUNCTION(;)
    }
 
    t2 = timer();
-   meta->profileDb.base->timer_refine_all += t2 - t1;
+   profile->timer_refine_all += t2 - t1;
 
+   if (control->plot_freq) {
+      CALL_SUSPENDABLE_CALLEE
+      transmitBlockContributionForPlot(meta, 0);
+      DEBRIEF_SUSPENDABLE_FUNCTION(;)
+   }
+   t3 = timer();
+   profile->timer_plot += t3 - t2;
 
-// TODO:  All the processing stuff needs to go here!
+//===
+//TODO:   nb_min = nb_max = global_active;
 
-   // Done with this block.  Pass the profile information up to the parent for aggregation into its total.
+   for (comm_stage = 0, ts = 1; ts <= control->num_tsteps; ts++) {
+      for (stage = 0; stage < control->stages_per_ts; stage++, comm_stage++) {
+//TODO:         total_blocks += global_active;
+//TODO:         if (global_active < nb_min)
+//TODO:            nb_min = global_active;
+//TODO:         if (global_active > nb_max)
+//TODO:            nb_max = global_active;
+         for (start = 0; start < control->num_vars; start += control->comm_vars) {
+            number = ((start + control->comm_vars) > control->num_vars) ? (control->num_vars - start) : control->comm_vars;
+            t3 = timer();
+//printf ("comm_stage = %d, ts = %d, num_tsteps = %d, stage = %d, stages_per_ts = %d, start = %d, num_vars = %d, comm_vars = %d\n",
+//comm_stage, ts, control->num_tsteps, stage, control->stages_per_ts, start, control->num_vars, control->comm_vars); fflush(stdout);
+            CALL_SUSPENDABLE_CALLEE
+            comm (meta, start, number, comm_stage);
+            DEBRIEF_SUSPENDABLE_FUNCTION(;)
+            t4 = timer();
+            profile->timer_comm_all += t4 - t3;
+            for (var = start; var < (start+number); var++) {
+               stencil_calc(meta, var);
+               t3 = timer();
+               profile->timer_calc_all += t3 - t4;
+               t4 = t3;
+            }
 
-   void * dummy;
-
+            // Reference code does the following if-stmt inside the above for-loop, i.e. does checksums comm_vars at a time.  OCR version does all at once.
+            if (control->checksum_freq && !(stage%control->checksum_freq)) {
+               CALL_SUSPENDABLE_CALLEE
+               transmitBlockContributionForChecksum(meta, ts);
+               DEBRIEF_SUSPENDABLE_FUNCTION(;)
 #if 0
-   ocrGuid_t conveyOperand_Event         = meta->conveyOperand_Event;                                           // Jot down the At Bat Event.
-   Profile_t * pProfile = meta->profile.base;
-   pProfile->dbCommHeader.serviceOpcode = Operation_Profile;
-   pProfile->dbCommHeader.atBat_Event   = conveyOperand_Event;                                                  // Convey At Bat Event to parent so that he can destroy the event.
-   ocrEventCreate(                        &meta->conveyOperand_Event, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);  // Create the On Deck Event; record it in our metaDb.
-   pProfile->dbCommHeader.onDeck_Event  = meta->conveyOperand_Event;                                            // Convey On Deck Event to parent so that he can make his clone depend upon it.
-   ocrDbRelease(meta->profile.dblk);                               meta->profile.base = pProfile = NULL;
-   ocrEventSatisfy(conveyOperand_Event,    meta->profile.dblk);    meta->profile.dblk = NULL_GUID;              // Satisfy the parent's operand1 dependence.
+Move to rootProgenitor:
+               if (report_diffusion && !my_pe) {
+                  printf("%d var %d sum %lf old %lf diff %lf tol %lf\n", ts, var, sum, grid_sum[var], (fabs(sum - grid_sum[var])/grid_sum[var]), tol);
+               }
+               if (fabs(sum - grid_sum[var])/grid_sum[var] > tol) {
+                  if (!my_pe)
+                     printf("Time step %d sum %lf (old %lf) variable %d difference too large\n", ts, sum, grid_sum[var], var);
+                  SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)
+               }
+               grid_sum[var] = sum;
 #endif
+            }
+            t4 = timer();
+            profile->timer_cs_all += t4 - t3;
+         }
+      }
 
-   // We are done with this block.  If we are at a refinementLevel > 0, we need to give our block back to our parent to consolidate it with our siblings and produce an unrefined aggregate.  If we are already
-   // at refinementLevel == 0 (i.e. totally unrefined), then we are ready to shutdown the application, but that is a duty of our parent, the rootProgenitor.  Just use the meta_t datablock to carry the
-   // Operation_Shutdown message for that service.
+      if (control->num_refine && !control->uniform_refine) {
+         CALL_SUSPENDABLE_CALLEE
+         move(meta);
+         DEBRIEF_SUSPENDABLE_FUNCTION(;)
+         if (!(ts%control->refine_freq)) {
+            CALL_SUSPENDABLE_CALLEE
+            refine(meta, ts);
+            DEBRIEF_SUSPENDABLE_FUNCTION(;)
+         }
+      }
+      t2 = timer();
+      profile->timer_refine_all += t2 - t4;
+
+      t3 = timer();
+      if (control->plot_freq && ((ts % control->plot_freq) == 0)) {
+         CALL_SUSPENDABLE_CALLEE
+         transmitBlockContributionForPlot(meta, ts);
+         DEBRIEF_SUSPENDABLE_FUNCTION(;)
+      }
+      profile->timer_plot += timer() - t3;
+   }
+   profile->timer_all = timer() - t1;
+
+
+   // We are done with this block.  If we are at a refinementLevel > 0, we need to give our block back to our parent to consolidate it with our siblings and produce an unrefined aggregate.  We will also
+   // need to send of profile datablock up to the parent for aggregation into the total.
+   //
+   // If we are at refinementLevel == 0 (i.e. totally unrefined), then we are ready to shutdown the application, but that is a duty of our parent, the rootProgenitor.  Just pass him our profile datablock
+   // and know that we will never hear from him again.
 
    if (meta->refinementLevel == 0) {
-      ocrEventSatisfy(meta->conveyOperand_Event, NULL_GUID);  // Satisfying the rootProgenitor's operand dependency with the NULL_GUID tells it to shutdown.  (The event gets leaked, but it doesn't matter.)
+      ocrGuid_t conveyOperandUpward_Event  = meta->conveyOperandUpward_Event;                                     // Jot down the At Bat Event.
+      profile->dbCommHeader.serviceOpcode  = Operation_Profile;
+      profile->dbCommHeader.timeStep       = ts;
+      profile->dbCommHeader.atBat_Event    = conveyOperandUpward_Event;                                           // Convey At Bat Event to parent so that he can destroy the event.
+      meta->conveyOperandUpward_Event      = NULL_GUID;                                                           // Cease creating an On Deck Event for the next time;  there is no next time.
+      profile->dbCommHeader.onDeck_Event   = NULL_GUID;                                                           // Convey that NULL_GUID to parent, too.
+      ocrDbRelease(meta->profileDb.dblk);
+      ocrEventSatisfy(conveyOperandUpward_Event, meta->profileDb.dblk);                                           // Satisfy the parent's operand1 dependence.
+      meta->profileDb.base = profile = NULL;
+      meta->profileDb.dblk = NULL_GUID;
+      meta->profileDb.size = -9999;
+      meta->profileDb.acMd = DB_MODE_NULL;
       SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)    // Top-level will sense normal completion, and just end this EDT (without creating any more clones).
    } else {
-printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos, meta->cloningState.cloneNum); fflush(stdout);
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos, meta->cloningState.cloneNum); fflush(stdout);
       *((int *) (123)) = 456;   // TODO  FIXME   crash the application until we implement unrefinement.
       SUSPEND__RESUME_IN_CONTINUATION_EDT(;)   // TODO:  Is this needed?
       SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)
@@ -487,4 +608,15 @@ printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos
    SUSPENDABLE_FUNCTION_EPILOGUE
 #undef t1
 #undef t2
+#undef t3
+#undef t4
+#undef ts
+#undef var
+#undef start
+#undef number
+#undef stage
+#undef comm_stage
+#undef control
+#undef profile
+
 } // blockContinuation_SoupToNuts

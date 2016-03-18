@@ -6,6 +6,8 @@
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
 //
+// Portions Copyright (2016) Intel Corporation.
+//
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
 // published by the Free Software Foundation; either version 2.1 of the

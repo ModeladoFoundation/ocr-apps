@@ -34,7 +34,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= --num_refine 4 --max_blocks 608 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4
+WORKLOAD_ARGS ?= --num_refine 4 --max_blocks 608 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4 --plot_freq 10
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque

@@ -58,7 +58,7 @@ TARGET := miniAMR.x
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := block.c  checksum.c  continuationcloner.c  init.c  profile.c  refine.c  root.c  util.c wtime.c
+SRCS := block.c  checksum.c  comm.c  continuationcloner.c  init.c  move.c  plot.c  profile.c  stencil.c  refine.c  root.c  util.c  wtime.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include

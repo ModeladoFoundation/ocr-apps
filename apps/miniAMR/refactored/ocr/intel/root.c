@@ -1,4 +1,3 @@
-// TODO: FIXME:  UPDATE Copyright notice!
 // ************************************************************************
 //
 // miniAMR: stencil computations with boundary exchange and AMR.
@@ -6,6 +5,8 @@
 // Copyright (2014) Sandia Corporation. Under the terms of Contract
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
 //
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
@@ -28,11 +29,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 //#include <mpi.h> TODO
 
 #include <ocr.h>
 #include <ocr-std.h>
-//#include <extensions/ocr-labeling.h>
+#include <extensions/ocr-labeling.h>
 #include "ocr-macros_brn.h"
 
 #include "control.h"
@@ -288,7 +290,7 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
          control->report_perf = atoi(getArgv(argv, ++i));
       } else if (!strcmp(getArgv(argv, i), "--plot_freq")) {
          control->plot_freq = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--code")) {                // TODO:  Determine if this is really still needed.  (Note: help message should be changed accordingly.
+      } else if (!strcmp(getArgv(argv, i), "--code")) {
          control->code = atoi(getArgv(argv, ++i));
       } else if (!strcmp(getArgv(argv, i), "--permute")) {
          control->permute = 1;
@@ -334,6 +336,28 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
 #endif
       }
    }
+
+   if (check_input(control)) {
+      *((int *) 123) = 456;
+      ocrShutdown();
+   }
+
+   if (!control->block_change) {
+      control->block_change = control->num_refine;
+   }
+
+
+// Init some derived control information
+
+   control->tol = pow(10.0, ((double) -control->error_tol));
+
+   control->p2[0] = /* p8 not used.  commented out!  p8[0] = */ 1;
+   for (i = 0; i < (control->num_refine+1); i++) {
+      // Not used:  p8[i+1] = p8[i]*8;
+      control->p2[i+1] = control->p2[i]*2;
+      // sorted_index[i] = 0;
+   }
+
 
 // Init out meta data.
 // First, init the Continuation Cloning State.
@@ -425,6 +449,13 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
                          blockContinuation_Func,                                   // Top level function of EDT
                          countof_blockContinuation_Params_t,                       // Number of params
                          countof_blockContinuation_Deps_t);                        // Number of dependencies
+// Create a labeled guid range, providing one index for each potential face exchange (36 per block -- 6 towards coarser neighbors, 6 towards same-grained neighbors, 24 toward finer neighbors) times the
+// number of blocks possible at ALL refinement levels.
+   unsigned long long numBlksAllLevels = (011111111111111111LL & ((1LL << (control->num_refine * 8LL)) - 1LL)) * control->npx * control->npy * control->npz;
+   unsigned long long roundRobinSpan   = 1; // TODO:  if we decide we need more than 1 "robin in the nest", modify both here and at usage site.  Usage site presently just assumes ONE, as I think this is enough.
+   unsigned long long numCommBatches   = 1; // TODO:  if we decide to fan-out and perform the comm_vars-sized batches in openMP-style parallelism, increase to ceiling(num_vars/comm_vars).  Propagate change.
+   ocrGuidRangeCreate (&blockLaunch_Params.labeledGuidRangeForHaloExchange, numBlksAllLevels * 36 * roundRobinSpan * numCommBatches, GUID_USER_EVENT_STICKY);
+
    blockLaunch_Params.refinementLevel = 0;
 
    int xLim, yLim, zLim, idep;
@@ -438,9 +469,9 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
    for (      blockLaunch_Params.xPos = 0; blockLaunch_Params.xPos < xLim; blockLaunch_Params.xPos++) {
       for (   blockLaunch_Params.yPos = 0; blockLaunch_Params.yPos < yLim; blockLaunch_Params.yPos++) {
          for (blockLaunch_Params.zPos = 0; blockLaunch_Params.zPos < zLim; blockLaunch_Params.zPos++) {
-            ocrEventCreate(&blockLaunch_Params.conveyOperand_Event, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+            ocrEventCreate(&blockLaunch_Params.conveyOperandUpward_Event, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
 
-            ADD_DEPENDENCE(blockLaunch_Params.conveyOperand_Event, rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, annex[idep].serviceRequestOperand_Dep, DB_MODE_RO);
+            ADD_DEPENDENCE(blockLaunch_Params.conveyOperandUpward_Event, rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, annex[idep].serviceRequestOperand_Dep, DB_MODE_RO);
 
             ocrGuid_t   blockLaunch_Edt;
             ocrEdtCreate(&blockLaunch_Edt,
@@ -616,7 +647,6 @@ void rootProgenitorContinuation_SoupToNuts(RootProgenitorMeta_t * meta, rootProg
    typedef struct {
       Frame_Header_t myFrame;
       //double t1, t2;
-      int idep;
       DataExchangeOpcode_t opcode;
       struct {
          Control_t * control;
@@ -624,7 +654,6 @@ void rootProgenitorContinuation_SoupToNuts(RootProgenitorMeta_t * meta, rootProg
       Frame_Header_t calleeFrame;
    } Frame__rootProgenitorContinuation_SoupToNuts_t;
 
-#define idep    (lcl->idep)
 #define control (lcl->pointers.control)
 #define opcode  (lcl->opcode)
 
@@ -639,6 +668,7 @@ printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, 
    do {
 
       if (meta->annexDb[0].serviceRequestOperand.dblk == NULL_GUID) {  // NULL_GUID on the Operand dependency signals final shutdown.
+         int idep;
          for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
             if (meta->annexDb[0].serviceRequestOperand.dblk != NULL_GUID) {
                printf ("Error!  Inconsistency in shutdown signal provided to continuationRootProgenitor\n"); fflush(stdout);
@@ -654,106 +684,23 @@ printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, 
       opcode = (((DbCommHeader_t *) (meta->annexDb[0].serviceRequestOperand.base)))->serviceOpcode;
 
       if (opcode == Operation_Checksum) {
-         // Perform the final accumulation of partial contributions to the checksum.  If this is the first time, we record this as the "golden" checksum;  otherwise we compare it against the "golden"
-         // values and complain if they differ.  Note that this particular service does NOT return anything to the children, nor do they expect anything back.  If the checksum is bad, this EDT will
-         // simply report the mismatch and shutdown the run.
-
-
-         int isFirstChecksum = myParams->isFirstChecksum;     // Note whether this is the first time we are calculating a checksum (i.e. the "golden" one) ...
-         myParams->isFirstChecksum = 0;                       // ... but tell the continuation EDT that the "golden" one is now in hand.
-
-         // If this is the golden one, we want to accumulate into the golden checksum.  Otherwise, we accumulate into child[0][0][0]'s contribution.
-
-         Checksum_t * accumulator = meta->goldenChecksumDb.base;  // Speculate this being the first time.
-         if (!isFirstChecksum) {
-            gasket__ocrDbCreate(&meta->scratchChecksumDb.dblk,  (void **) &meta->scratchChecksumDb.base, sizeof_Checksum_t, __FILE__, __func__, __LINE__);
-            meta->scratchChecksumDb.acMd = DB_MODE_RW;
-            meta->cloningState.continuationOpcode = SeasoningOneOrMoreDbCreates;
-            SUSPEND__RESUME_IN_CONTINUATION_EDT(;)
-            accumulator = meta->scratchChecksumDb.base;
-         }
-
-         int i;
-         for (i = 0; i < control->num_vars; i++) {
-             accumulator->sum[i] = 0.0;
-         }
-
-         for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
-
-            // The operand to Operation_Checksum is the child's contribution to the overall checksum.  Add it into our accumulator.
-
-            ocrGuid_t    operand_dblk =                 (meta->annexDb[idep].serviceRequestOperand.dblk);
-            Checksum_t * operand      = ((Checksum_t *) (meta->annexDb[idep].serviceRequestOperand.base));
-
-            if (operand->dbCommHeader.serviceOpcode != opcode) {
-               printf ("Error!  Inconsistency in opcodes provided to continuationRootProgenitor\n"); fflush(stdout);
-               *((int *) 123) = 456;
-               ocrShutdown();
-            }
-
-            for (i = 0; i < control->num_vars; i++) {
-                accumulator->sum[i] = accumulator->sum[i] + operand->sum[i];
-            }
-         }
-
-         double total = 0.0;
-         for (i = 0; i < control->num_vars; i++) {
-            total += accumulator->sum[i];
-            if (accumulator->sum[i] != meta->goldenChecksumDb.base->sum[i]) {
-               printf ("Checksum failure! var index = %ld, acc->sum[i] = %lf/0x%lx, golden->sum[i] = %lf/0x%lx\n", ((unsigned long long) i),
-                       accumulator->sum[i], (*((unsigned long long *) &(accumulator->sum[i]))),
-                       meta->goldenChecksumDb.base->sum[i], (*((unsigned long long *) &(meta->goldenChecksumDb.base->sum[i])))); fflush(stdout);   // TODO:  Probably needs to allow some wee epsilon
-               * ((int *) 123) = 456;
-               ocrShutdown();
-            } else {
-            }
-         }
-printf ("Grand Total Checksum == %lf\n", total); fflush(stdout);
-
-         if (meta->scratchChecksumDb.dblk != NULL_GUID) {
-            ocrDbDestroy(meta->scratchChecksumDb.dblk);  meta->scratchChecksumDb.dblk = NULL_GUID; meta->scratchChecksumDb.base = NULL;
-            meta->scratchChecksumDb.acMd = DB_MODE_NULL;
-         }
-
+         CALL_SUSPENDABLE_CALLEE
+         doFinalChecksumAggregationAtRootProgenitor (meta, myParams);
+         DEBRIEF_SUSPENDABLE_FUNCTION(;)
+      } else if (opcode == Operation_Plot) {
+         doFinalPlotFileGeneration (meta);
       } else if (opcode == Operation_Profile) {
-         // Aggregate the performance profile contributions of dying children to the aggregate.
-
-         Profile_t profile;  // NOTE:  I assume that the stack can accomodate this structure.  If, on some platform, it throws stack overflow exceptions, we could "strip-mine" the aggregation and reporting.
-         memset (&profile, 0, sizeof_Profile_t);
-
-         for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
-
-            // The operand to Operation_Checksum is the child's contribution to the overall checksum.  Add it into our accumulator.
-
-            ocrGuid_t   operand_dblk =                (meta->annexDb[idep].serviceRequestOperand.dblk);
-            Profile_t * operand      = ((Profile_t *) (meta->annexDb[idep].serviceRequestOperand.base));
-
-            if (operand->dbCommHeader.serviceOpcode != opcode) {
-               printf ("Error!  Inconsistency in opcodes provided to continuationRootProgenitor\n"); fflush(stdout);
-               *((int *) 123) = 456;
-               ocrShutdown();
-            }
-
-            int i;
-            for (i = 0; i < NUM_PROFILE_DOUBLES; i++) {
-               profile.allDoubles[i] += operand->allDoubles[i];
-            }
-            for (i = 0; i < NUM_PROFILE_INTS; i++) {
-               profile.allInts[i] += operand->allInts[i];
-            }
-
-         }
-
-         // Report out the results of the profiling information
-
-         report_profile_results(control, &profile);
-
+         //CALL_SUSPENDABLE_CALLEE
+         reportProfileResults (meta);
+         //DEBRIEF_SUSPENDABLE_FUNCTION(;)
       } else {
          printf ("Unrecognized opcode received by rootProgenitiorContinuation\n"); fflush(stdout);
+         *((int *) 123) = 456;
          ocrShutdown();
       } // opcode
 
       // Now for each block, clean up event that brought THIS operand to us, and put "on deck" event into the catalog so that it will be used to plumb operand dependence next time a service request is sought.
+      int idep;
       for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
          ocrGuid_t        operand_dblk =                (meta->annexDb[idep].serviceRequestOperand.dblk);
          DbCommHeader_t * operand = ((DbCommHeader_t *) (meta->annexDb[idep].serviceRequestOperand.base));
@@ -772,7 +719,6 @@ printf ("Grand Total Checksum == %lf\n", total); fflush(stdout);
 
    SUSPENDABLE_FUNCTION_EPILOGUE
 
-#undef  idep
 #undef  control
 #undef  opcode
 
@@ -818,7 +764,7 @@ void print_help_message() {
    printf("--report_diffusion - (>= 0) none if 0\n");
    printf("--report_perf - 0, 1, 2\n");
    printf("--plot_freq - frequency (timesteps) of plotting (0 for none)\n");
-   printf("??????   --code - closely minic communication of different codes\n");
+   printf("--code - closely mimic communication of different applications (for which this is merely a proxy-app)\n");
    printf("         0 minimal sends, 1 send ghosts, 2 send ghosts and process on send\n");
    printf("--permute - altenates directions in communication\n");
    printf("--refine_ghost - use full extent of block (including ghosts) to determine if block is refined\n");
@@ -827,3 +773,55 @@ void print_help_message() {
 
    printf("All associated settings are integers except for objects\n"); fflush(stdout);
 } // print_help_message
+
+
+int check_input(Control_t * control) {
+   int error = 0;
+
+   if (control->x_block_size < 1 || control->y_block_size < 1 || control->z_block_size < 1) {
+      printf("block size must be positive\n"); fflush(stdout);
+      error = 1;
+   }
+   if (((control->x_block_size/2)*2) != control->x_block_size) {
+      printf("block size in x direction must be even\n"); fflush(stdout);
+      error = 1;
+   }
+   if (((control->y_block_size/2)*2) != control->y_block_size) {
+      printf("block size in y direction must be even\n"); fflush(stdout);
+      error = 1;
+   }
+   if (((control->z_block_size/2)*2) != control->z_block_size) {
+      printf("block size in z direction must be even\n"); fflush(stdout);
+      error = 1;
+   }
+   if (control->num_refine < 0) {
+      printf("number of refinement levels must be non-negative\n"); fflush(stdout);
+      error = 1;
+   }
+   if (control->num_refine > 10) {
+      printf("number of refinement levels must not exceed ten\n"); fflush(stdout);
+      error = 1;
+   }
+   if (control->block_change < 0) {
+      printf("number of refinement levels must be non-negative\n"); fflush(stdout);
+      error = 1;
+   }
+   if (control->num_vars < 1) {
+      printf("number of variables must be positive\n"); fflush(stdout);
+      error = 1;
+   }
+   if (control->stencil != 7 && control->stencil != 27) {
+      printf("illegal value for stencil\n"); fflush(stdout);
+      error = 1;
+   }
+   if (control->stencil == 27 && control->num_refine && !control->uniform_refine)
+      printf("WARNING: 27 point stencil with non-uniform refinement: answers may diverge\n"); fflush(stdout);
+   if (control->comm_vars == 0 || control->comm_vars > control->num_vars)
+      control->comm_vars = control->num_vars;
+   if (control->code < 0 || control->code > 2) {
+      printf("code must be 0, 1, or 2\n"); fflush(stdout);
+      error = 1;
+   }
+
+   return (error);
+}

@@ -1,4 +1,11 @@
-// TODO: FIXME:  copyright notice
+/*
+Author: Brian R Nickerson
+Copyright Intel Corporation 2016
+
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
+
 
 // These are macros that Brian Nickerson uses for productivity when writing OCR application code.
 

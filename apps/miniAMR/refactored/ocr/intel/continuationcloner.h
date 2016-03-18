@@ -1,29 +1,10 @@
-// TODO: FIXME:  Adjust copyrights
-// ************************************************************************
-//
-// miniAMR: stencil computations with boundary exchange and AMR.
-//
-// Copyright (2014) Sandia Corporation. Under the terms of Contract
-// DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
-// retains certain rights in this software.
-//
-// This library is free software; you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as
-// published by the Free Software Foundation; either version 2.1 of the
-// License, or (at your option) any later version.
-//
-// This library is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
-// Questions? Contact Courtenay T. Vaughan (ctvaugh@sandia.gov)
-//                    Richard F. Barrett (rfbarre@sandia.gov)
-//
-// ************************************************************************
+/*
+Author: Brian R Nickerson
+Copyright Intel Corporation 2016
+
+ This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
+ and cannot be distributed without it. This notice cannot be removed or modified.
+*/
 
 #ifndef __CONTINUATIONCLONER_H__
 #define __CONTINUATIONCLONER_H__
@@ -137,14 +118,14 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
    __COUNTER__; /* Assure that the counter is NOT zero */ \
    do { /* Create an opening bracket that is closed by the Eplilogue.  It is of the form do { ... } while (false); so only executes the do-loop once, but the form makes it more clear if there is a failure to match the prologue with the epilogue. */ \
    switch (lcl->myFrame.resumption_case_num) { \
-   case 0:
+   case 0: ;
 
 
 // Caller has to precede the call to a suspendable function with this macro.  Otherwise a "canary trap" is triggered in the SUSPENDABLE_FUNCTION_ENTRY_SEQUENCE of
 // the callee, to report that the call site probably has not been modified yet to convey a possible suspension of the callee back up the calling chain to the root.
 #define CALL_SUSPENDABLE_CALLEE \
    do { /* Create an opening bracket that is closed by the Debrief.  It is of the form do { ... } while (false); so only executes the do-loop once, but the form makes it more clear if there is a failure to match the Calling macro with the debriefing macro. */ \
-      case __COUNTER__: \
+      case __COUNTER__: ; \
          lcl->calleeFrame.validate_callers_prep_for_suspension = 1;  /* Assure callee that it can suspend activation back to me and I will unwind. */
 
 

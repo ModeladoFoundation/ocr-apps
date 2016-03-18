@@ -26,45 +26,28 @@
 //
 // ************************************************************************
 
-#ifndef __CONTROL_H__
-#define __CONTROL_H__
+#ifndef __PLOT_H__
+#define __PLOT_H__
 
-#include <ocr.h>
+typedef struct Plot_t Plot_t;
 
-// These are the "control variables" that are parsed from the command line or otherwise derived therefrom.  When
-// passed in to the EDT that processes a block ("DriveBlock_Func"), the contents of this datablock are READ-ONLY,
-// and it is shared among all instances of that EDT.
+#include "dbcommheader.h"
+#include "control.h"
 
-typedef struct {
-   ocrGuid_t driveBlock_Template;
-   double tol;
-   int x_block_size;
-   int y_block_size;
-   int z_block_size;
-   int npx;
-   int npy;
-   int npz;
-   int num_refine;
-   int block_change;
-   int uniform_refine;
-   int refine_freq;
-   int num_vars;
-   int comm_vars;
-   int num_tsteps;
-   int stages_per_ts;
-   int checksum_freq;
-   int stencil;
-   int error_tol;
-   int report_diffusion;
-   int report_perf;
-   int plot_freq;
-   int code;
-   int permute;
-   int refine_ghost;
-   int num_objects;
-   int p2[18];       // Number of elements is max number of refinement levels, plust two.
-} Control_t;
+typedef struct Plot_Annex_t {
+   unsigned int level:4;
+   unsigned int cenx:20;
+   unsigned int ceny:20;
+   unsigned int cenz:20;
+} Plot_Annex_t;
 
-#define sizeof_Control_t (sizeof(Control_t))
+typedef struct Plot_t {
+   DbCommHeader_t  dbCommHeader;
+   int numBlocks;
+   int ts;
+   Plot_Annex_t annex[0];
+} Plot_t;
 
-#endif // __CONTROL_H__
+#define sizeof_Plot_t(numBlocks) (sizeof(Plot_t) + sizeof(Plot_Annex_t) * numBlocks)
+
+#endif // __PLOT_H__

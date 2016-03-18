@@ -34,7 +34,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= --num_refine 4 --npx 2 --npy 2 --npz 2 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4 --plot_freq 10
+WORKLOAD_ARGS ?= --num_refine 4 --npx 6 --npy 7 --npz 8 --nx 8 --ny 10 --nz 12 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 40 --comm_vars 7 --plot_freq 10
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -57,12 +57,12 @@ TARGET := miniAMR.x
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := block.c  checksum.c  continuationcloner.c  init.c  profile.c  refine.c  root.c  util.c wtime.c
+SRCS := block.c  checksum.c  comm.c  continuationcloner.c  init.c  move.c  plot.c  profile.c  stencil.c  refine.c  root.c  util.c  wtime.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -DBUILD_OCR_VERSION -DENABLE_EXTENSION_LABELING -DRELAX_DATABLOCK_SEASONINGx -DALLOW_DATABLOCK_REWRITESx
+CFLAGS := -DBUILD_OCR_VERSION -DENABLE_EXTENSION_LABELING -DRELAX_DATABLOCK_SEASONINGx -DALLOW_DATABLOCK_REWRITESx -g
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in

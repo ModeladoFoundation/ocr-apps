@@ -6,6 +6,8 @@
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
 //
+// Portions Copyright (2016) Intel Corporation.
+//
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
 // published by the Free Software Foundation; either version 2.1 of the
@@ -40,9 +42,11 @@ typedef struct {
          double    XXXstddev[128];
          double    XXXminimum[128];
          double    XXXmaximum[128];
-         double    XXXtimer_all;
-         double    XXXtimer_comm_all;
-         double    XXXtimer_comm_dir[3];
+#endif
+         double    timer_all;
+         double    timer_comm_all;
+         double    timer_comm_dir[3];
+#if 0
          double    XXXtimer_comm_recv[3];
          double    XXXtimer_comm_pack[3];
          double    XXXtimer_comm_send[3];
@@ -51,8 +55,10 @@ typedef struct {
          double    XXXtimer_comm_bc[3];
          double    XXXtimer_comm_wait[3];
          double    XXXtimer_comm_unpack[3];
-         double    XXXtimer_calc_all;
-         double    XXXtimer_cs_all;
+#endif
+         double    timer_calc_all;
+         double    timer_cs_all;
+#if 0
          double    XXXtimer_cs_red;
          double    XXXtimer_cs_calc;
 #endif
@@ -93,7 +99,9 @@ typedef struct {
          double    XXXtimer_rs_pa;
          double    XXXtimer_rs_mv;
          double    XXXtimer_rs_un;
-         double    XXXtimer_plot;
+#endif
+         double    timer_plot;
+#if 0
          double    XXXsize_mesg_recv[3];
          double    XXXsize_mesg_send[3];
          double    XXXsize_malloc;

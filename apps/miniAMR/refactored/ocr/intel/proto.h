@@ -1,4 +1,3 @@
-// TODO: FIXME:  adjust this copyright stuff
 // ************************************************************************
 //
 // miniAMR: stencil computations with boundary exchange and AMR.
@@ -6,6 +5,8 @@
 // Copyright (2014) Sandia Corporation. Under the terms of Contract
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
 //
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
@@ -164,7 +165,8 @@ typedef struct {
 
 
 // ***************************************************************************************************************************************************************************************
-// print_help_message
+// root.c   Other functions.
+int check_input(Control_t * control);
 void print_help_message();
 
 
@@ -198,7 +200,8 @@ typedef struct {
    int              xPos;
    int              yPos;
    int              zPos;
-   ocrGuid_t        conveyOperand_Event;   // Event that child satisfies with Operand_dblk in order to obtain a service from the parent. (Applicable first time; thereafter, child provides next event to parent.)
+   ocrGuid_t        conveyOperandUpward_Event;   // Event that child satisfies with Operand_dblk to obtain a service from the parent. (Applicable first time; thereafter, child provides next event to parent.)
+   ocrGuid_t        labeledGuidRangeForHaloExchange;
 } blockLaunch_Params_t;
 #define sizeof_blockLaunch_Params_t  (sizeof(blockLaunch_Params_t))
 #define countof_blockLaunch_Params_t (sizeof_blockLaunch_Params_t / paramsCountDivisor)
@@ -252,9 +255,8 @@ typedef struct {
          ocrEdtDep_t allObjectsClone_Dep;           // The object(s) being modeled as they migrate through the mesh domain.
          ocrEdtDep_t profileClone_Dep;              // Performance metrics.
 #endif
-         ocrEdtDep_t checksum_Dep;                  // Storage for accumulating the block's contributiton to a checksum.
-         ocrEdtDep_t fullFace_Dep[2];               // Storage for full faces, to exchange between neighbors.
-         ocrEdtDep_t qrtrFace_Dep[2][2][2];         // Storage for quarter faces, to exchange between neighbors.
+         ocrEdtDep_t upboundOperand_Dep;            // For example, Storage for accumulating the block's contributiton to a checksum or a plot.
+         ocrEdtDep_t face_Dep[2][2][2];             // Storage for quarter faces (or full faces), to exchange between neighbors.
       };
    };
 } blockContinuation_Deps_t;
@@ -278,18 +280,24 @@ void blockContinuation_SoupToNuts(BlockMeta_t * meta);
 
 // **************************************************************************************************************************************************************************************************************
 
+// comm.c
+void comm(BlockMeta_t * const meta, int const start, int const num_comm, int const stage);
+
 // init.c
 void init (BlockMeta_t * meta);
 
 // checksum.c
-void checksum (BlockMeta_t * meta);
+void transmitBlockContributionForChecksum (BlockMeta_t * meta, int timeStep);
+void doFinalChecksumAggregationAtRootProgenitor (RootProgenitorMeta_t * meta, rootProgenitorContinuation_Params_t * myParams);
+
+// move.c
+void move(BlockMeta_t * meta);
 
 // profile.c
-void report_profile_results(Control_t * control, Profile_t * profile);
+void reportProfileResults (RootProgenitorMeta_t * meta);
 void profile_report_perf_2and4 (FILE * fp, Control_t * control, Profile_t * profile, char * version);
 void calculate_results(Profile_t * profile);
 void init_profile(BlockMeta_t * const meta);
-
 
 // refine.c
 void refine(BlockMeta_t * meta, int const ts);
@@ -298,6 +306,10 @@ void refine(BlockMeta_t * meta, int const ts);
 //void reset_neighbors(Globals_t * const glbl);
 //void redistribute_blocks(Globals_t * const glbl, double * const tp, double * const tm, double * const tu, double * const time, int * const num_moved, int const num_split);
 
+
+// plot.c
+void transmitBlockContributionForPlot (BlockMeta_t * meta, int const ts);
+void doFinalPlotFileGeneration (RootProgenitorMeta_t * meta);
 
 // util.c
 double timer(void);

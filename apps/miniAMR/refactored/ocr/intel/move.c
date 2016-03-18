@@ -27,13 +27,34 @@
 // ************************************************************************
 
 #include <stdio.h>
-#include <mpi.h>
+//#include <mpi.h>
 #include <math.h>
 
 #include "block.h"
-#include "comm.h"
+//#include "comm.h"
 #include "proto.h"
 
+// This routine moves the objects that determine the refinement and checks
+// the blocks against those objects to determine which blocks will refine.
+void move(BlockMeta_t * meta) {
+
+   typedef struct {
+      Frame_Header_t myFrame;
+      struct {
+      } pointers;
+      Frame_Header_t calleeFrame;
+   } Frame__move_t;
+
+   SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__move_t)
+
+printf ("**************************** MOVE called.  Presently stubbed out!!!  TODO\n");
+
+   SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)
+   SUSPENDABLE_FUNCTION_EPILOGUE
+
+} // move
+
+#if 0
 // This routine moves the objects that determine the refinement and checks
 // the blocks against those objects to determine which blocks will refine.
 void move(Globals_t * const glbl)
@@ -624,3 +645,4 @@ int check_block(Globals_t * const glbl, double cor[3][2])
    }
    return(intersect);
 }
+#endif

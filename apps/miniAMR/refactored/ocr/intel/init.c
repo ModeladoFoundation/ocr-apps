@@ -1,4 +1,3 @@
-// TODO: FIXME: Adjust this copyright notice
 // ************************************************************************
 //
 // miniAMR: stencil computations with boundary exchange and AMR.
@@ -6,6 +5,8 @@
 // Copyright (2014) Sandia Corporation. Under the terms of Contract
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
 //
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
@@ -41,26 +42,35 @@ void init (BlockMeta_t * meta) {
       Frame_Header_t calleeFrame;
    } Frame__init_t;
 
-   Control_t    * pControl  = meta->controlDb.base;
-   typedef double BlockCells_t [pControl->num_vars][pControl->x_block_size+2][pControl->y_block_size+2][pControl->z_block_size+2];
-   BlockCells_t * pCells = ((BlockCells_t *) (meta->blockDb.base->cells));
+   Control_t    * control  = meta->controlDb.base;
+   double (* pCells) /*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2] =
+           (double(*)/*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2]) (meta->blockDb.base->cells);
 
    SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__init_t)
 printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
-   int seed = meta->xPos + (meta->yPos * pControl->npx) + (meta->zPos * pControl->npx * pControl->npy);
-   int var, i, j, k;
-   for (var = 0; var < pControl->num_vars; var++) {
-      for (i = 1; i <= pControl->x_block_size; i++) {
-         for (j = 1; j <= pControl->y_block_size; j++) {
-            for (k = 1; k <= pControl->z_block_size; k++) {
-               (*pCells)[var][i][j][k] = ((double) rand_r(&seed))/((double) RAND_MAX);
+   int seed = meta->xPos + (meta->yPos * control->npx) + (meta->zPos * control->npx * control->npy);
+   int var, i, j, k, l;
+   l = 0;
+   for (var = 0; var < control->num_vars; var++) {
+      for (i = 0; i <= control->x_block_size+1; i++) {
+         for (j = 0; j <= control->y_block_size+1; j++) {
+            for (k = 0; k <= control->z_block_size+1; k++) {
+               pCells[var][i][j][k] = 999900 + l++;
+            }
+         }
+      }
+      for (i = 1; i <= control->x_block_size; i++) {
+         for (j = 1; j <= control->y_block_size; j++) {
+            for (k = 1; k <= control->z_block_size; k++) {
+               pCells[var][i][j][k] = ((double) rand_r(&seed))/((double) RAND_MAX);
+               //pCells[var][i][j][k] = ((double) ((meta->xPos * 2 + i) * 100 + (meta->yPos * 2 + j) * 10 + (meta->zPos * 2 + k)));
             }
          }
       }
    }
    // Generate the golden checksum.
    CALL_SUSPENDABLE_CALLEE
-   checksum(meta);
+   transmitBlockContributionForChecksum(meta, 0);
    DEBRIEF_SUSPENDABLE_FUNCTION(;)
    SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)
    SUSPENDABLE_FUNCTION_EPILOGUE

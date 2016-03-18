@@ -28,70 +28,700 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h>
+//#include <mpi.h>
 
 #include "block.h"
-#include "comm.h"
-#include "timer.h"
+//#include "comm.h"
+#include "profile.h"
 #include "proto.h"
+#include <ocr.h>
+#include <ocr-std.h>
+#include <extensions/ocr-labeling.h>
 
-// The routines in this file are used in the communication of ghost values
-// between blocks, both on processor and off processor.
+// The routines in this file are used in the communication of ghost values between blocks.
 
-// Main communication routine that sends and recieves ghost values between
-// blocks on different processors and directos blocks on the same processor
-// to exchange their ghost values.
-void comm(Globals_t * const glbl, int const start, int const num_comm, int const stage)
-{
-   OBTAIN_ACCESS_TO_sorted_list
-   OBTAIN_ACCESS_TO_blocks
-   OBTAIN_ACCESS_TO_cells
+// Values of the "code" command-line argument:
+#define MinimalSends                   0
+#define SendGhosts                     1
+#define SendGhosts_ProcessOnSenderSide 2
 
-   int permutations[6][3] = { {0, 1, 2}, {1, 2, 0}, {2, 0, 1},
-                              {0, 2, 1}, {1, 0, 2}, {2, 1, 0} };
+void dump (BlockMeta_t * meta) {
+#if 0
+
+
+CAREFUL:  "buffer" will overflow if x_block_size is too big
+
+   if (meta->xPos != 0 || meta->yPos != 0 || meta->zPos != 1) return;
+
+   Control_t * control = meta->controlDb.base;
+   int i, j, k, l;
+   char buffer[200];
+   double (* cp4) /*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2] =
+        (double(*)/*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2]) (meta->blockDb.base->cells);
+
+   for (i = 0; i < 1 /*control->num_vars*/; i++) {
+      for (j = 0; j <= control->z_block_size + 1; j++) {
+         for (k = 0; k <= control->y_block_size + 1; k++) {
+            sprintf (buffer, "XXX var = %d, z = %d, y = %d:", i, j, k);
+            for (l = 0; l <= control->x_block_size + 1; l++) {
+               sprintf (buffer, "%s  %15f", buffer, cp4[i][l][k][j]);
+            }
+            printf ("%s\n", buffer); fflush(stdout);
+         }
+         printf ("\n"); fflush(stdout);
+      }
+      printf ("\n"); fflush(stdout);
+   }
+   printf ("\n"); fflush(stdout);
+#endif
+}
+
+void comm(BlockMeta_t * const meta, int const start, int const num_comm, int const stage) {
+
+   char permutations[6][3] = { {0, 1, 2}, {1, 2, 0}, {2, 0, 1},
+                               {0, 2, 1}, {1, 0, 2}, {2, 1, 0} };
 
    typedef struct {
       Frame_Header_t myFrame;
-      int i, j, k, l, m, n, dir, o, in, which, offset, type;
-      double t1, t2, t3, t4;
-      MPI_Status status;
+      double t1;
+      int directionIterator;
+      int dir;
+      int planeCountInBlk;
+      int planePitchInBlk;
+      int rowCountInPlaneOfBlk;
+      int rowPitchInPlaneOfBlk;
+      int rowOffsetInPlaneOfBlk;
+      int colCountInPlaneOfBlk;
+      int colPitchInPlaneOfBlk;
+      int colOffsetInPlaneOfBlk;
+      int firstRowInPlaneOfBlk;
+      int firstColInPlaneOfBlk;
+      int pole;
+      int rowCountInGst;
+      int colCountInGst;
+      int blkPlane;
+      int haloPlane;
+      int var;
+      int row;
+      int col;
+      int qrtrHaloLeftRight;
+      int qrtrHaloUpDown;
       struct {
-         Block_t *bp;
-         Cell_t  *cp;
       } pointers;
       Frame_Header_t calleeFrame;
    } Frame__comm_t;
 
-#define i                 (lcl->i)
-#define j                 (lcl->j)
-#define k                 (lcl->k)
-#define l                 (lcl->l)
-#define m                 (lcl->m)
-// #define n                 (lcl->n)  // Overloaded.  Use fully-qualified symbol at point of reference.
-#define dir               (lcl->dir)
-#define o                 (lcl->o)
-#define in                (lcl->in)
-#define which             (lcl->which)
-#define offset            (lcl->offset)
-#define type              (lcl->type)
-#define t1                (lcl->t1)
-#define t2                (lcl->t2)
-#define t3                (lcl->t3)
-#define t4                (lcl->t4)
-#define status            (lcl->status)
-#define bp                (lcl->pointers.bp)
-#define cp                (lcl->pointers.cp)
+#define t1                       (lcl->t1)
+#define directionIterator        (lcl->directionIterator)
+#define dir                      (lcl->dir)
+#define planeCountInBlk          (lcl->planeCountInBlk)
+#define planePitchInBlk          (lcl->planePitchInBlk)
+#define rowCountInPlaneOfBlk     (lcl->rowCountInPlaneOfBlk)
+#define rowPitchInPlaneOfBlk     (lcl->rowPitchInPlaneOfBlk)
+#define rowOffsetInPlaneOfBlk    (lcl->rowOffsetInPlaneOfBlk)
+#define colCountInPlaneOfBlk     (lcl->colCountInPlaneOfBlk)
+#define colPitchInPlaneOfBlk     (lcl->colPitchInPlaneOfBlk)
+#define colOffsetInPlaneOfBlk    (lcl->colOffsetInPlaneOfBlk)
+#define pole                     (lcl->pole)
+#define rowCountInGst            (lcl->rowCountInGst)
+#define colCountInGst            (lcl->colCountInGst)
+#define firstRowInPlaneOfBlk     (lcl->firstRowInPlaneOfBlk)
+#define firstColInPlaneOfBlk     (lcl->firstColInPlaneOfBlk)
+#define blkPlane                 (lcl->blkPlane)
+#define haloPlane                (lcl->haloPlane)
+#define var                      (lcl->var)
+#define row                      (lcl->row)
+#define col                      (lcl->col)
+#define qrtrHaloLeftRight        (lcl->qrtrHaloLeftRight)
+#define qrtrHaloUpDown           (lcl->qrtrHaloUpDown)
 
-   SUSPENDABLE_FUNCTION_PROLOGUE(Frame__comm_t)
-   TRACE
+   Control_t * control = meta->controlDb.base;
 
-   for (o = 0; o < 3; o++) {
-      if (permute)
-         dir = permutations[stage%6][o];
+   typedef double BlockCells_flat_t /*[control->num_vars]*/[(control->x_block_size+2)*(control->y_block_size+2)*(control->z_block_size+2)];
+   BlockCells_flat_t * cp = ((BlockCells_flat_t *) (meta->blockDb.base->cells));
+
+#define checkAddressing
+#ifdef checkAddressing
+   double (* cp4) /*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2] =
+        (double(*)/*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2]) (meta->blockDb.base->cells);
+#endif
+
+//printf ("num_vars = %d, x/y/z block_size = %d %d %d.  sizeof cp = %d, sizeof cp4 = %d.  cp at %p, cp4 at %p\n", control->num_vars, control->x_block_size, control->y_block_size, control->z_block_size,
+//            sizeof(BlockCells_flat_t), sizeof(cp4), cp, cp4); fflush(stdout);
+
+//printf ("<<<<<< at line %d,   zPos = %d,  %p %p\n", __LINE__, meta->zPos, meta->faceDb[0][0][0].base, meta->faceDb[0][0][1].base); fflush(stdout);
+   SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__comm_t)
+
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+
+dump(meta);
+
+   for (directionIterator = 0; directionIterator < 3; directionIterator++) {
+//printf ("<<<<<< at line %d,   zPos = %d,  %p %p\n", __LINE__, meta->zPos, meta->faceDb[0][0][0].base, meta->faceDb[0][0][1].base); fflush(stdout);
+      if (control->permute)
+         dir = permutations[stage%6][directionIterator];
       else
-         dir = o;
-      type = dir;
+         dir = directionIterator;
       t1 = timer();
+
+      // Calculate the characteristics of the two block faces for this dir.
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+
+      switch (dir) {
+      case 0:   // Doing halo exchange for East/West faces, i.e. in the x-direction, i.e. writing the planes where the first dimension of the block is 1 and x_blocks_size, and reading 0 and x_block_size+1.
+         // Planes of x, comprised of rows of y by columns of z.
+         planeCountInBlk = (control->x_block_size);                                  // x_block_size, i.e. number of planes in the x-directed stack, not counting the two halo planes.
+         planePitchInBlk = (control->y_block_size+2) * (control->z_block_size+2);    // Distance from a row and column in one x-plane to its counterpart in the next.
+         rowCountInPlaneOfBlk   = (control->y_block_size+2);                                // Number of rows    (aka length of columns) in the plane, including halos
+         colCountInPlaneOfBlk   = (control->z_block_size+2);                                // Number of columns (aka length of rows)   in the plane, including halos
+         rowPitchInPlaneOfBlk   = (control->z_block_size+2);                                // Distance from one row    of y in the x-plane to the next row    of y in the same plane.
+         colPitchInPlaneOfBlk   = 1;                                                        // Distance from one column of z in the x-plane to the next column of z in the same plane.
+#ifdef checkAddressing
+         if (&cp4[1][3][5][7] != &cp[1][planePitchInBlk*3+rowPitchInPlaneOfBlk*5+colPitchInPlaneOfBlk*7]) {
+            printf ("Addressing mismatch, %s line %d, dir = %d, planeCountInBlk = %d, planePitchInBlk = %d rowCountInPlaneOfBlk = %d, colCountInPlaneOfBlk = %d, rowPitchInPlaneOfBlk = %d, colPitchInPlaneOfBlk = %d\n",
+                    __FILE__, __LINE__, dir, planeCountInBlk, planePitchInBlk, rowCountInPlaneOfBlk, rowPitchInPlaneOfBlk, colCountInPlaneOfBlk, colPitchInPlaneOfBlk); fflush(stdout);
+            *((int *) 123) = 456;
+         }
+#endif
+         break;
+      case 1:   // Doing halo exchange for North/South faces, i.e. in the y-direction, i.e. writing the planes where the second dimension of the block is 1 and y_blocks_size, and reading 0 and y_block_size+1.
+         // Planes of y, comprised of rows of x by columns of z.
+         planeCountInBlk = (control->y_block_size);                                  // y_block_size, i.e. number of planes in the y-directed stack, not counting the two halo planes.
+         planePitchInBlk = (control->z_block_size+2);                                // Distance from a row and column in one y-plane to its counterpart in the next.
+         rowCountInPlaneOfBlk   = (control->x_block_size+2);                                // Number of rows    (aka length of columns) in the plane, including halos
+         colCountInPlaneOfBlk   = (control->z_block_size+2);                                // Number of columns (aka length of rows)    in the plane, including halos
+         rowPitchInPlaneOfBlk   = (control->y_block_size+2) * (control->z_block_size+2);    // Distance from one row of the y-plane to the next.
+         colPitchInPlaneOfBlk   = 1;                                                        // Distance from one column of the y-plane to the next.
+#ifdef checkAddressing
+         if (&cp4[1][3][5][7] != &cp[1][planePitchInBlk*5+rowPitchInPlaneOfBlk*3+colPitchInPlaneOfBlk*7]) {
+            printf ("Addressing mismatch, %s line %d, dir = %d, planeCountInBlk = %d, planePitchInBlk = %d rowCountInPlaneOfBlk = %d, rowPitchInPlaneOfBlk = %d, colCountInPlaneOfBlk = %d, colPitchInPlaneOfBlk = %d\n",
+                    __FILE__, __LINE__, dir, planeCountInBlk, planePitchInBlk, rowCountInPlaneOfBlk, rowPitchInPlaneOfBlk, colCountInPlaneOfBlk, colPitchInPlaneOfBlk); fflush(stdout);
+            *((int *) 123) = 456;
+         }
+#endif
+         break;
+      case 2:   // Doing halo exchange for Up/Down faces, i.e. in the z-direction, i.e. writing the planes where the third dimension of the block is 1 and z_blocks_size, and reading 0 and z_block_size+1.
+         // Planes of z, comprised of rows of x by columns of y.
+         planeCountInBlk = (control->z_block_size);                                  // z_block_size, i.e. number of planes in the z-directed stack, not counting the two halo planes.
+         planePitchInBlk = 1;                                                        // Distance from a row and column in one z-plane to its counterpart in the next.
+         rowCountInPlaneOfBlk   = (control->x_block_size+2);                                // Number of rows    (aka length of columns) in the plane, including halos
+         colCountInPlaneOfBlk   = (control->y_block_size+2);                                // Number of columns (aka length of rows)    in the plane, including halos
+         rowPitchInPlaneOfBlk   = (control->y_block_size+2) * (control->z_block_size+2);    // Distance from one row of the y-plane to the next.
+         colPitchInPlaneOfBlk   = (control->z_block_size+2);                                // Distance from one column of the y-plane to the next.
+#ifdef checkAddressing
+         if (&cp4[1][3][5][7] != &cp[1][planePitchInBlk*7+rowPitchInPlaneOfBlk*3+colPitchInPlaneOfBlk*5]) {
+            printf ("Addressing mismatch, %s line %d, dir = %d, planeCountInBlk = %d, planePitchInBlk = %d rowCountInPlaneOfBlk = %d, rowPitchInPlaneOfBlk = %d, colCountInPlaneOfBlk = %d, colPitchInPlaneOfBlk = %d\n",
+                    __FILE__, __LINE__, dir, planeCountInBlk, planePitchInBlk, rowCountInPlaneOfBlk, rowPitchInPlaneOfBlk, colCountInPlaneOfBlk, colPitchInPlaneOfBlk); fflush(stdout);
+            *((int *) 123) = 456;
+         }
+#endif
+         break;
+      }
+
+      // Calculate the shape of the halo faces or quarter faces, and allocate datablocks for them.
+
+      for (pole = 0; pole <= 1; pole++) {                                                     // West then East (for dir=0); South then North (for dir=1); Down then Up (for dir=2)
+         if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel) {             // Neighbor block is at same refinement level.
+            if (control->code == MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               rowCountInGst = rowCountInPlaneOfBlk - 2;
+               colCountInGst = colCountInPlaneOfBlk - 2;
+               firstRowInPlaneOfBlk = 1;
+               firstColInPlaneOfBlk = 1;
+            } else if (control->code == SendGhosts) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else if (control->code == SendGhosts_ProcessOnSenderSide) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else {
+               printf ("%s line %d, case not yet known!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            }
+
+            meta->faceDb[0][0][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[0][0][pole].acMd = DB_MODE_RW;
+            gasket__ocrDbCreate(&meta->faceDb[0][0][pole].dblk,  (void **) &meta->faceDb[0][0][pole].base, meta->faceDb[0][0][pole].size, __FILE__, __func__, __LINE__);
+#ifndef RELAX_DATABLOCK_SEASONING
+            meta->cloningState.continuationOpcode = SeasoningOneOrMoreDbCreates;
+#endif
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel - 1) {  // Neighbor is coarser.  Our full face provides only a quarter face to it.
+*((int *) 123) = 456;
+            if (control->code == MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               rowCountInGst = (rowCountInPlaneOfBlk - 2) >> 1;
+               colCountInGst = (colCountInPlaneOfBlk - 2) >> 1;
+               firstRowInPlaneOfBlk = 1;
+               firstColInPlaneOfBlk = 1;
+            } else if (control->code == SendGhosts) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else if (control->code == SendGhosts_ProcessOnSenderSide) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else {
+               printf ("%s line %d, case not yet known!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            }
+
+            meta->faceDb[0][0][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[0][0][pole].acMd = DB_MODE_RW;
+            gasket__ocrDbCreate(&meta->faceDb[0][0][pole].dblk,  (void **) &meta->faceDb[0][0][pole].base, meta->faceDb[0][0][pole].size, __FILE__, __func__, __LINE__);
+#ifndef RELAX_DATABLOCK_SEASONING
+            meta->cloningState.continuationOpcode = SeasoningOneOrMoreDbCreates;
+#endif
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel + 1) {  // Neighbor is finer.  Our face provides quarter faces to each of four neighbors.
+*((int *) 123) = 456;
+            if (control->code == MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               rowCountInGst = (rowCountInPlaneOfBlk - 2) >> 1;
+               colCountInGst = (colCountInPlaneOfBlk - 2) >> 1;
+               firstRowInPlaneOfBlk = 1;
+               firstColInPlaneOfBlk = 1;
+            } else if (control->code == SendGhosts) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else if (control->code == SendGhosts_ProcessOnSenderSide) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else {
+               printf ("%s line %d, case not yet known!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            }
+
+            meta->faceDb[0][0][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[0][1][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[1][0][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[1][1][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[0][0][pole].acMd = DB_MODE_RW;
+            meta->faceDb[0][1][pole].acMd = DB_MODE_RW;
+            meta->faceDb[1][0][pole].acMd = DB_MODE_RW;
+            meta->faceDb[1][1][pole].acMd = DB_MODE_RW;
+            gasket__ocrDbCreate(&meta->faceDb[0][0][pole].dblk,  (void **) &meta->faceDb[0][0][pole].base, meta->faceDb[0][0][pole].size, __FILE__, __func__, __LINE__);
+            gasket__ocrDbCreate(&meta->faceDb[0][1][pole].dblk,  (void **) &meta->faceDb[0][1][pole].base, meta->faceDb[0][1][pole].size, __FILE__, __func__, __LINE__);
+            gasket__ocrDbCreate(&meta->faceDb[1][0][pole].dblk,  (void **) &meta->faceDb[1][0][pole].base, meta->faceDb[1][0][pole].size, __FILE__, __func__, __LINE__);
+            gasket__ocrDbCreate(&meta->faceDb[1][1][pole].dblk,  (void **) &meta->faceDb[1][1][pole].base, meta->faceDb[1][1][pole].size, __FILE__, __func__, __LINE__);
+#ifndef RELAX_DATABLOCK_SEASONING
+            meta->cloningState.continuationOpcode = SeasoningOneOrMoreDbCreates;
+#endif
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+         } else if (meta->neighborRefinementLevel[dir][pole] == -2) {                         // Neighbor is off edge of mesh, i.e. non-existent.  Do nothing now except setup to deal with this case later.
+            if (control->code == MinimalSends) {                                              // Halo replication will only need to cover the exact face;  no need to expand to include edges and corners.
+               rowCountInGst = rowCountInPlaneOfBlk - 2;
+               colCountInGst = colCountInPlaneOfBlk - 2;
+               firstRowInPlaneOfBlk = 1;
+               firstColInPlaneOfBlk = 1;
+            } else if (control->code == SendGhosts) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else if (control->code == SendGhosts_ProcessOnSenderSide) {   // TODO
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            } else {
+               printf ("%s line %d, case not yet known!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+            }
+         } else {
+            printf ("%d line %d, error: neighbor is not within one refinement level.\n"); fflush(stdout);
+            *((int *) 123) = 456;
+         }
+      }
+
+      // Season the datablocks for the halo data.
+
+#ifndef RELAX_DATABLOCK_SEASONING
+      if (meta->cloningState.continuationOpcode == SeasoningOneOrMoreDbCreates) {
+         SUSPEND__RESUME_IN_CONTINUATION_EDT(;)
+      }
+#endif
+
+      // Populate the halo faces
+
+      for (pole = 0, blkPlane = 1; pole <= 1; pole++, blkPlane = planeCountInBlk) {           // West then East (for dir=0); South then North (for dir=1); Down then Up (for dir=2)
+         if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel) {             // Neighbor block is at same refinement level.
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+
+            double * halo = meta->faceDb[0][0][pole].base->cells;
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+            for (var = 0; var < num_comm; var++) {
+               for (row = 0; row < rowCountInGst; row++) {
+                  for (col = 0; col < colCountInGst; col++) {
+                     *halo++ = cp[start+var][(blkPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk) * colPitchInPlaneOfBlk)];
+                  }
+               }
+            }
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel - 1) {  // Neighbor is coarser.  Our full face provides only a quarter face to it.
+*((int *) 123) = 456;
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+
+            double * halo = meta->faceDb[0][0][pole].base->cells;
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+            for (var = 0; var < num_comm; var++) {
+               for (row = 0; row < rowCountInGst; row+=2) {
+                  for (col = 0; col < colCountInGst; col+=2) {
+                     *halo++ = cp[start+var][(blkPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk    ) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk    ) * colPitchInPlaneOfBlk)] +
+                               cp[start+var][(blkPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk    ) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk + 1) * colPitchInPlaneOfBlk)] +
+                               cp[start+var][(blkPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk + 1) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk    ) * colPitchInPlaneOfBlk)] +
+                               cp[start+var][(blkPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk + 1) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk + 1) * colPitchInPlaneOfBlk)];
+                  }
+               }
+            }
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel + 1) {  // Neighbor is finer.  Our face provides quarter faces to each of four neighbors.
+*((int *) 123) = 456;
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+            for (qrtrHaloLeftRight = 0, colOffsetInPlaneOfBlk = 0; qrtrHaloLeftRight <= 1; qrtrHaloLeftRight++, colOffsetInPlaneOfBlk = rowCountInGst) {
+               for (qrtrHaloUpDown = 0, rowOffsetInPlaneOfBlk = 0; qrtrHaloUpDown    <= 1; qrtrHaloUpDown++,    rowOffsetInPlaneOfBlk = colCountInGst) {
+                  double * halo = meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base->cells;
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+                  for (var = 0; var < num_comm; var++) {
+                     for (row = 0; row < rowCountInGst; row++) {
+                        for (col = 0; col < colCountInGst; col++) {
+                           *halo++ = cp[start+var][(blkPlane * planePitchInBlk) +
+                                                   ((row + firstRowInPlaneOfBlk + rowOffsetInPlaneOfBlk) * rowPitchInPlaneOfBlk) +
+                                                   ((col + firstColInPlaneOfBlk + colOffsetInPlaneOfBlk) * colPitchInPlaneOfBlk)] * 0.25;
+                        }
+                     }
+                  }
+               }
+            }
+         } else if (meta->neighborRefinementLevel[dir][pole] == -2) {                         // Neighbor is off edge of mesh, i.e. non-existent.  Do nothing now; deal with this case later.
+            ;
+         }
+      }
+
+      // Now transmit the halo faces to the neighbors.
+
+      for (pole = 0, blkPlane = 1; pole <= 1; pole++, blkPlane = planeCountInBlk) {           // West then East (for dir=0); South then North (for dir=1); Down then Up (for dir=2)
+         if (meta->neighborRefinementLevel[dir][pole] == -2) continue;                        // Neighbor is off edge of mesh, i.e. non-existent.  We do NOT send a halo in that case.
+         if (meta->neighborRefinementLevel[dir][pole] <= meta->refinementLevel) {             // Neighbor block is at same refinement level, or one level coarser.  Send ONE halo per dir/pole.
+            Face_t * halo = meta->faceDb[0][0][pole].base;
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+            ocrGuid_t conveyFaceToNeighbor_Event = meta->conveyFaceToNeighbor_Event[dir][pole][0];
+            if (conveyFaceToNeighbor_Event == NULL_GUID) {                                            // First time.  Use labeled guid.
+               unsigned long long index =
+                  (((01111111111111110LL & (((unsigned long long) meta->refinementLevel) << 3LL)) +   // This component gets the first labeled guid first for the refinement level of this block ...
+                     ((((meta->xPos  * (control->npy << meta->refinementLevel)) +                     // ... to which we add the linearized posigion of the block in the mesh.
+                         meta->yPos) * (control->npz << meta->refinementLevel)) +
+                         meta->zPos)) *
+                    36) +                                                                             // We scale all that by 36 (6 for when nbr coarser; six for when nbr same; 24 for when nbr finer).
+                  dir * 2 + pole +                                                                    // Now select which of the 36 comm events to use: for nbr coarser, 0=W, 1=E, 2=S, 3=N,  4=D,  5=U, ...
+                  (meta->neighborRefinementLevel[dir][pole] < meta->refinementLevel ? 0 : 6);         // ... but for nbr at same refinement level:                       6=W, 7=E, 8=S, 9=N, 10=D, 11=U.
+//printf ("***** at line %d, index = %ld / 0x%lx    dir = %d  pole = %d  level = %d %d  pos = %d %d %d  numBlks = %d %d %d\n",
+//__LINE__, index, index, dir, pole, meta->refinementLevel, meta->neighborRefinementLevel[dir][pole], meta->xPos, meta->yPos, meta->zPos, control->npx, control->npy, control->npz); fflush(stdout);
+//printf ("xPos = %d, yPos = %d, zPos %d, refLvl = %d, sending to %c nbr (%s) via index = %ld / 0x%lx\n", meta->xPos, meta->yPos, meta->zPos, meta->refinementLevel, dir==0?(pole==0?'W':'E'):dir==1?(pole==0?'S':'N'):(pole==0?'D':'U'), meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel ? "sameLvl" : "coarser", index, index); fflush(stdout);
+               ocrGuidFromIndex(&conveyFaceToNeighbor_Event, meta->labeledGuidRangeForHaloExchange, index);
+#define DEFAULT_LG_PROPS GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG
+               ocrEventCreate(&conveyFaceToNeighbor_Event, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS);
+            }
+            halo->dbCommHeader.atBat_Event = conveyFaceToNeighbor_Event;                                              // Convey At Bat Event to neighbor so that she can destroy the event.
+            ocrEventCreate(&meta->conveyFaceToNeighbor_Event[dir][pole][0], OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);  // Create the On Deck Event; record it in our meta.
+            halo->dbCommHeader.onDeck_Event = meta->conveyFaceToNeighbor_Event[dir][pole][0];                         // Convey On Deck Event to parent so that she can make her clone depend upon it.
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+            //ocrDbRelease(meta->faceDb[0][0][pole].dblk);
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+            ocrEventSatisfy(conveyFaceToNeighbor_Event, meta->faceDb[0][0][pole].dblk);                               // Satisfy the neighbors's dependence for this face.
+//printf ("Function %36s, File %30s, line %4d, for block at (lvl=%d, xPos=%d, yPos=%d, zPos=%d)\n", __func__, __FILE__, __LINE__, meta->refinementLevel, meta->xPos, meta->yPos, meta->zPos); fflush(stdout);
+            meta->faceDb[0][0][pole].base = halo = NULL;
+            meta->faceDb[0][0][pole].dblk = NULL_GUID;
+            meta->faceDb[0][0][pole].size = -9999;
+            meta->faceDb[0][0][pole].acMd = DB_MODE_NULL;
+         } else {                                                                             // Neighbor is finer.  Our face provides quarter faces to each of four neighbors.
+*((int *) 123) = 456;
+            int idep = 0;
+            for (qrtrHaloLeftRight = 0; qrtrHaloLeftRight <= 1; qrtrHaloLeftRight++) {        // Left /Right quadrant of quarter-face planes
+               for (qrtrHaloUpDown = 0; qrtrHaloUpDown    <= 1; qrtrHaloUpDown++) {           // Upper/Lower quadrant of quarter-face planes
+                  Face_t * halo = meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base;
+                  ocrGuid_t conveyFaceToNeighbor_Event = meta->conveyFaceToNeighbor_Event[dir][pole][idep];
+                  if (conveyFaceToNeighbor_Event == NULL_GUID) {                                                 // First time.  Use labeled guid.
+                     unsigned long long index =
+                        (((01111111111111110LL & (((unsigned long long) meta->refinementLevel) << 3LL)) +   // This component gets the first labeled guid first for the refinement level of this block ...
+                           ((((meta->xPos  * (control->npy << meta->refinementLevel)) +                     // ... to which we add the linearized posigion of the block in the mesh.
+                               meta->yPos) * (control->npz << meta->refinementLevel)) +
+                               meta->zPos)) *
+                          36) +                                                                             // We scale all that by 36 (6 for when nbr coarser; six for when nbr same; 24 for when nbr finer).
+                        dir * 8 + pole *4 + idep + 12;                                                      // Now select: 12:15 = W, 16:19 = E, 20:23 = S, 24:27 = N, 28:31 = D, 32:35 = U, neighbor finer.
+//printf ("xPos = %d, yPos = %d, zPos %d, refLvl = %d, sending to %c nbr ( finer ) via index = %ld / 0x%lx\n", meta->xPos, meta->yPos, meta->zPos, meta->refinementLevel, dir==0?(pole==0?'W':'E'):dir==1?(pole==0?'S':'N'):(pole==0?'D':'U'), index, index); fflush(stdout);
+                     ocrGuidFromIndex(&conveyFaceToNeighbor_Event, meta->labeledGuidRangeForHaloExchange, index);
+                     ocrEventCreate(&conveyFaceToNeighbor_Event, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS);
+                  }
+                  halo->dbCommHeader.atBat_Event = conveyFaceToNeighbor_Event;                                                // Convey At Bat Event to neighbor so that she can destroy the event.
+                  ocrEventCreate(&meta->conveyFaceToNeighbor_Event[dir][pole][idep], OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG); // Create the On Deck Event; record it in our meta.
+                  halo->dbCommHeader.onDeck_Event = meta->conveyFaceToNeighbor_Event[dir][pole][idep];                        // Convey On Deck Event to parent so that she can make her clone depend upon it.
+                  ocrDbRelease(meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk);
+                  ocrEventSatisfy(conveyFaceToNeighbor_Event, meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk);    // Satisfy the neighbors's dependence for this face.
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base = halo = NULL;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk = NULL_GUID;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].size = -9999;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].acMd = DB_MODE_NULL;
+                  idep++;
+               }
+            }
+         }
+      }
+
+      // Now fill out halo planes at edges of the full mesh.
+
+      for (pole = 0, blkPlane = 1, haloPlane = 0; pole <= 1; pole++, blkPlane = planeCountInBlk, haloPlane = planeCountInBlk+1) {  // W then E (for dir=0); S then N (for dir=1); D then U (for dir=2)
+         if (meta->neighborRefinementLevel[dir][pole] == -2) {                                // Neighbor is off edge of mesh.  Deal with it now.
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+
+//printf ("dir = %d, pole = %d, num_comm = %d, rowCountInGst = %d, colCountInGst = %d, start = %d\n", dir, pole, num_comm, rowCountInGst, colCountInGst, start); fflush(stdout);
+
+            for (var = 0; var < num_comm; var++) {
+               for (row = 0; row < rowCountInGst; row++) {
+                  for (col = 0; col < colCountInGst; col++) {
+                     cp   [start+var][(haloPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk) * colPitchInPlaneOfBlk)] =
+                        cp[start+var][(blkPlane  * planePitchInBlk) + ((row + firstRowInPlaneOfBlk) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk) * colPitchInPlaneOfBlk)];
+                  }
+               }
+            }
+         }
+      }
+
+      // Now set up for our clone to receive halos from neighbors
+
+      for (pole = 0, blkPlane = 1; pole <= 1; pole++, blkPlane = planeCountInBlk) { // West then East (for dir=0); South then North (for dir=1); Down then Up (for dir=2)
+         if (meta->neighborRefinementLevel[dir][pole] == -2) continue;              // Neighbor is off edge of mesh, i.e. non-existent.  We do NOT receive a halo in that case.
+         meta->cloningState.continuationOpcode = ReceivingACommunication;           // One or both poles does indeed have a neighbor.  Set the continuationOpcode, which we test and act upon after this loop.
+         if (meta->neighborRefinementLevel[dir][pole] < meta->refinementLevel) {    // Neighbor block is or one level coarser.  Receive ONE halo per dir/pole.
+*((int *) 123) = 456;
+            meta->faceDb[0][0][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[0][0][pole].acMd = DB_MODE_RO;
+            meta->faceDb[0][0][pole].base = NULL;
+            meta->faceDb[0][0][pole].dblk = meta->onDeckToReceiveFace_Event[dir][pole][0];
+            if (meta->faceDb[0][0][pole].dblk == NULL_GUID) {                                         // First time.  Use labeled guid.
+               unsigned long long index =
+                  (((((01111111111111110LL & (((unsigned long long) meta->refinementLevel) << 3LL)) + // This component gets the first labeled guid first for the refinement level of this block ...
+                      (((meta->xPos >> 1) * control->npz * control->npy) +                            // ... to which we add the linearized position of our parent block in the mesh, which ...
+                       ((meta->yPos >> 1) * control->npz)                +                            // ...
+                       ((meta->zPos >> 1)) +                                                          // ...
+                       (((pole == 0) ? -1 : 1) *                                                      // ... is here adjusted to the position of the neighbor, which is plus or minus ...
+                        ((dir == 2) ? 1 :                                                             // ... 1, i.e.  distanct to next z-block at neighbor's refinement level, or ...
+                           ((control->npz >> (meta->refinementLevel-1)) * ((dir == 1) ? 1 :           // ... distance to next y-block at neighbor's refinement level, or ...
+                            (control->npy >> (meta->refinementLevel-1)))))))) *                       // ... distance to next x-block at neibhgor's refinement level.  Multiply all of the above by ...
+                     36) +                                                                            // ... 36 (6 for when nbr coarser; six for when nbr same; 24 for when nbr finer).  Then...
+                    dir * 2 + pole)                                                                   // ... select which of 36 to use: 0=W, 1=E, 2=S, 3=N, 4=D, 5=U; nbr coarser.
+                   ^ 1);                                                                              // BUT FLIP POLE: my W comms with nbrs S; etc.
+//printf ("***** at line %d,  index = %ld / 0x%lx    dir = %d  pole = %d  level = %d %d  pos = %d %d %d  numBlks = %d %d %d\n",
+//__LINE__, index, index, dir, pole, meta->refinementLevel, meta->neighborRefinementLevel[dir][pole], meta->xPos, meta->yPos, meta->zPos, control->npx, control->npy, control->npz); fflush(stdout);
+//printf ("xPos = %d, yPos = %d, zPos %d, refLvl = %d, receiving from %c nbr (coarser) via index = %ld / 0x%lx\n", meta->xPos, meta->yPos, meta->zPos, meta->refinementLevel, dir==0?(pole==0?'W':'E'):dir==1?(pole==0?'S':'N'):(pole==0?'D':'U'), index, index); fflush(stdout);
+               ocrGuidFromIndex(&meta->faceDb[0][0][pole].dblk, meta->labeledGuidRangeForHaloExchange, index);
+               ocrEventCreate(&meta->faceDb[0][0][pole].dblk, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS);
+            }
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel) {             // Neighbor block is at same refinement level.  Receive ONE halo per dir/pole.
+            meta->faceDb[0][0][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+            meta->faceDb[0][0][pole].acMd = DB_MODE_RO;
+            meta->faceDb[0][0][pole].base = NULL;
+            meta->faceDb[0][0][pole].dblk = meta->onDeckToReceiveFace_Event[dir][pole][0];
+            if (meta->faceDb[0][0][pole].dblk == NULL_GUID) {                                         // First time.  Use labeled guid.
+               unsigned long long index =
+                  (((((01111111111111110LL & (((unsigned long long) meta->refinementLevel) << 3LL)) + // This component gets the first labeled guid first for the refinement level of this block ...
+                      (((meta->xPos) * control->npz * control->npy) +                                 // ... to which we add the linearized position of our parent block in the mesh, which ...
+                       ((meta->yPos) * control->npz)                +                                 // ...
+                       ((meta->zPos)) +                                                               // ...
+                       (((pole == 0) ? -1 : 1) *                                                      // ... is here adjusted to the position of the neighbor, which is plus or minus ...
+                        ((dir == 2) ? 1 :                                                             // ... 1, i.e.  distanct to next z-block at neighbor's refinement level, or ...
+                           ((control->npz >> (meta->refinementLevel)) * ((dir == 1) ? 1 :             // ... distance to next y-block at neighbor's refinement level, or ...
+                            (control->npy >> (meta->refinementLevel)))))))) *                         // ... distance to next x-block at neibhgor's refinement level.  Multiply all of the above by ...
+                     36) +                                                                            // ... 36 (6 for when nbr coarser; six for when nbr same; 24 for when nbr finer).  Then...
+                    dir * 2 + pole + 6)                                                               // ... select which of 36 to use: 6=W, 7=E, 8=S, 9=N, 10=D, 11=U; nbr is at same refinement level.
+                   ^ 1);                                                                              // BUT FLIP POLE: my W comms with nbrs S; etc.
+//printf ("***** at line %d,  index = %ld / 0x%lx    dir = %d  pole = %d  level = %d %d  pos = %d %d %d  numBlks = %d %d %d\n",
+//__LINE__, index, index, dir, pole, meta->refinementLevel, meta->neighborRefinementLevel[dir][pole], meta->xPos, meta->yPos, meta->zPos, control->npx, control->npy, control->npz); fflush(stdout);
+//printf ("xPos = %d, yPos = %d, zPos %d, refLvl = %d, receiving from %c nbr (sameLvl) via index = %ld / 0x%lx\n", meta->xPos, meta->yPos, meta->zPos, meta->refinementLevel, dir==0?(pole==0?'W':'E'):dir==1?(pole==0?'S':'N'):(pole==0?'D':'U'), index, index); fflush(stdout);
+               ocrGuidFromIndex(&meta->faceDb[0][0][pole].dblk, meta->labeledGuidRangeForHaloExchange, index);
+//printf ("*********** got event 0x%lx for pole = %d\n", (unsigned long long) meta->faceDb[0][0][pole].dblk, pole); fflush(stdout);
+               ocrEventCreate(&meta->faceDb[0][0][pole].dblk, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS);
+//printf ("*********** got event 0x%lx for pole = %d\n", (unsigned long long) meta->faceDb[0][0][pole].dblk, pole); fflush(stdout);
+            }
+         } else {                                                                             // Neighbor is finer.  We receive quarter faces from each of four neighbors.
+*((int *) 123) = 456;
+            int idep = 0;
+            for (qrtrHaloLeftRight = 0; qrtrHaloLeftRight <= 1; qrtrHaloLeftRight++) {        // Left /Right quadrant of quarter-face planes
+               for (qrtrHaloUpDown = 0; qrtrHaloUpDown    <= 1; qrtrHaloUpDown++) {           // Upper/Lower quadrant of quarter-face planes
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].size = sizeof_Face_BasePart_t + num_comm * rowCountInGst * colCountInGst * sizeof(double);
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].acMd = DB_MODE_RO;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base = NULL;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk = meta->onDeckToReceiveFace_Event[dir][pole][idep];
+                  if (meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk == NULL_GUID) {                     // First time.  Use labeled guid.
+                     unsigned long long index =
+                        (((((01111111111111110LL & (((unsigned long long) meta->refinementLevel) << 3LL)) + // This component gets the first labeled guid first for the refinement level of this block ...
+                            (((meta->xPos << 1) * control->npz * control->npy) +                            // ... to which we add the linearized position of our parent block in the mesh, which ...
+                             ((meta->yPos << 1) * control->npz)                +                            // ...
+                             ((meta->zPos << 1)) +                                                          // ...
+                             (((pole == 0) ? -1 : 1) *                                                      // ... is here adjusted to the position of the neighbor, which is plus or minus ...
+                              ((dir == 2) ? 1 :                                                             // ... 1, i.e.  distanct to next z-block at neighbor's refinement level, or ...
+                                 ((control->npz >> (meta->refinementLevel+1)) * ((dir == 1) ? 1 :           // ... distance to next y-block at neighbor's refinement level, or ...
+                                  (control->npy >> (meta->refinementLevel+1)))))))) *                       // ... distance to next x-block at neibhgor's refinement level.  Multiply all of the above by ...
+                           36) +                                                                            // ... 36 (6 for when nbr coarser; six for when nbr same; 24 for when nbr finer).  Then...
+                          dir * 8 + pole * 4 + 12)                                                          // ... select which of 36 to use: 12:15=W, 16:19=E, 20:23=S, 24:27=N, 28:31=D, 32:35=U; nbr finer.
+                         ^ 4);                                                                              // BUT FLIP POLE: my W comms with nbrs S; etc.
+//printf ("xPos = %d, yPos = %d, zPos %d, refLvl = %d, receiving from %c nbr ( finer ) via index = %ld / 0x%lx\n", meta->xPos, meta->yPos, meta->zPos, meta->refinementLevel, dir==0?(pole==0?'W':'E'):dir==1?(pole==0?'S':'N'):(pole==0?'D':'U'), index, index); fflush(stdout);
+                     ocrGuidFromIndex(&meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk, meta->labeledGuidRangeForHaloExchange, index);
+                     ocrEventCreate(&meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS);
+                  }
+                  idep++;
+               }
+            }
+         }
+      }
+
+      // Now clone, so that our continuation EDT receives the halos
+
+      if (meta->cloningState.continuationOpcode == ReceivingACommunication) {    // If one or both poles does have a neighbor, clone so that we can get the halo(s).
+//printf ("SUSPENDING TO GET INCOMING HALOS, dir = %d, zPos = %d  0x%lx 0x%lx\n", dir, meta->zPos, (unsigned long long) meta->faceDb[0][0][0].dblk, (unsigned long long) meta->faceDb[0][0][1].dblk); fflush(stdout);
+         meta->cloningState.continuationOpcode = ReceivingACommunication;
+         SUSPEND__RESUME_IN_CONTINUATION_EDT(;)
+      }
+
+      // Now move the halo material to its position in the block.  While doing so, also destroy the halo datablocks and the events that brought them to us, and set up the next At-Bat event.
+
+      for (pole = 0, haloPlane = 0; pole <= 1; pole++, haloPlane = planeCountInBlk + 1) {     // West then East (for dir=0); South then North (for dir=1); Down then Up (for dir=2)
+         if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel) {             // Neighbor block is at same refinement level.
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+
+            double * halo = meta->faceDb[0][0][pole].base->cells;
+//printf (">>>>>>>>> halo = 0x%lx, zPos = %d\n", halo, meta->zPos); fflush(stdout);
+            for (var = 0; var < num_comm; var++) {
+               for (row = 0; row < rowCountInGst; row++) {
+                  for (col = 0; col < colCountInGst; col++) {
+//printf ("<<<<<< at line %d,   zPos = %d,  %p %p\n", __LINE__, meta->zPos, meta->faceDb[0][0][0].base, meta->faceDb[0][0][1].base); fflush(stdout);
+                     cp[start+var][(haloPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk) * colPitchInPlaneOfBlk)] = *halo++;
+                  }
+               }
+            }
+            ocrGuid_t        halo_dblk =   meta->faceDb[0][0][pole].dblk;
+            DbCommHeader_t * halo_comm = &(meta->faceDb[0][0][pole].base->dbCommHeader);
+            ocrEventDestroy(halo_comm->atBat_Event);     // Destroy the event that brought us our halo datablock.
+            meta->onDeckToReceiveFace_Event[dir][pole][0] = halo_comm->onDeck_Event;
+            ocrDbDestroy(halo_dblk);
+            meta->faceDb[0][0][pole].dblk = NULL_GUID;
+            meta->faceDb[0][0][pole].base = NULL;
+            meta->faceDb[0][0][pole].size = -9999;
+            meta->faceDb[0][0][pole].acMd = DB_MODE_NULL;
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel - 1) {  // Neighbor is coarser.
+*((int *) 123) = 456;
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+
+            // Neighbor provided a qrtr face, which we replicate to our full face.
+            double * halo = meta->faceDb[0][0][pole].base->cells;
+            for (var = 0; var < num_comm; var++) {
+               for (row = 0; row < rowCountInGst; row+=2) {
+                  for (col = 0; col < colCountInGst; col+=2) {
+                     cp[start+var][(haloPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk    ) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk    ) * colPitchInPlaneOfBlk)] = *halo;
+                     cp[start+var][(haloPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk    ) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk + 1) * colPitchInPlaneOfBlk)] = *halo;
+                     cp[start+var][(haloPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk + 1) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk    ) * colPitchInPlaneOfBlk)] = *halo;
+                     cp[start+var][(haloPlane * planePitchInBlk) + ((row + firstRowInPlaneOfBlk + 1) * rowPitchInPlaneOfBlk) + ((col + firstColInPlaneOfBlk + 1) * colPitchInPlaneOfBlk)] = *halo;
+                     halo++;
+                  }
+               }
+            }
+            ocrGuid_t        halo_dblk =   meta->faceDb[0][0][pole].dblk;
+            DbCommHeader_t * halo_comm = &(meta->faceDb[0][0][pole].base->dbCommHeader);
+            ocrEventDestroy(halo_comm->atBat_Event);     // Destroy the event that brought us our halo datablock.
+            meta->onDeckToReceiveFace_Event[dir][pole][0] = halo_comm->onDeck_Event;
+            ocrDbDestroy(halo_dblk);
+            meta->faceDb[0][0][pole].dblk = NULL_GUID;
+            meta->faceDb[0][0][pole].base = NULL;
+            meta->faceDb[0][0][pole].size = -9999;
+            meta->faceDb[0][0][pole].acMd = DB_MODE_NULL;
+         } else if (meta->neighborRefinementLevel[dir][pole] == meta->refinementLevel + 1) {  // Neighbor is finer.  We receive four quarter faces.
+*((int *) 123) = 456;
+            if (control->code != MinimalSends) {                                              // Halo exchange will only need to cover the exact face;  no need to expand to include edges and corners.
+               printf ("%s line %d, case not yet implemented!\n", __FILE__, __LINE__); fflush(stdout);
+               *((int *) 123) = 456;
+               // Consider whether the code needs to be different for this case.
+            }
+            int idep = 0;
+            for (qrtrHaloLeftRight = 0, colOffsetInPlaneOfBlk = 0; qrtrHaloLeftRight <= 1; qrtrHaloLeftRight++, colOffsetInPlaneOfBlk = rowCountInGst) {
+               for (qrtrHaloUpDown = 0, rowOffsetInPlaneOfBlk = 0; qrtrHaloUpDown    <= 1; qrtrHaloUpDown++,    rowOffsetInPlaneOfBlk = colCountInGst) {
+                  double * halo = meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base->cells;
+                  for (var = 0; var < num_comm; var++) {
+                     for (row = 0; row < rowCountInGst; row++) {
+                        for (col = 0; col < colCountInGst; col++) {
+                           cp[start+var][(haloPlane * planePitchInBlk) +
+                                         ((row + firstRowInPlaneOfBlk + rowOffsetInPlaneOfBlk) * rowPitchInPlaneOfBlk) +
+                                         ((col + firstColInPlaneOfBlk + colOffsetInPlaneOfBlk) * colPitchInPlaneOfBlk)]  = *halo++;
+                        }
+                     }
+                  }
+                  ocrGuid_t        halo_dblk =   meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk;
+                  DbCommHeader_t * halo_comm = &(meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base->dbCommHeader);
+                  ocrEventDestroy(halo_comm->atBat_Event);     // Destroy the event that brought us our halo datablock.
+                  meta->onDeckToReceiveFace_Event[dir][pole][idep] = halo_comm->onDeck_Event;
+                  ocrDbDestroy(halo_dblk);
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk = NULL_GUID;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base = NULL;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].size = -9999;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].acMd = DB_MODE_NULL;
+                  idep++;
+               }
+            }
+         }
+      }
+      meta->profileDb.base->timer_comm_dir[dir] += timer() - t1;
+dump(meta);
+   }
+
+   SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)
+   SUSPENDABLE_FUNCTION_EPILOGUE
+
+} // comm
+
+#if 0
+===
+         } else {                                                                             // Neighbor is finer.  Our face provides quarter faces to each of four neighbors.
+            int idep = 0;
+            for (qrtrHaloLeftRight = 0; qrtrHaloLeftRight <= 1; qrtrHaloLeftRight++) {        // Left /Right quadrant of quarter-face planes
+               for (qrtrHaloUpDown = 0; qrtrHaloUpDown    <= 1; qrtrHaloUpDown++) {           // Upper/Lower quadrant of quarter-face planes
+                  Face_t * halo = (Face_t *) &meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base;
+                  ocrGuid_t conveyFaceToNeighbor_Event = meta->conveyFaceToNeighbor_Event[dir][pole][idep];
+                  if (conveyFaceToNeighbor_Event == NULL_GUID) {                                                              // First time.  Use labeled guid.
+                     index = ((01111111111111110LL & ((((unsigned long long) meta->refinementLevel) * 8LL) - 1LL) * 36)) +    // This component gets the first index for this refinement level.
+                             dir * 8 + pole *4 + idep + 12;                                                                   // 12:15 = W, 16:19 = E, 20:23 = S, 24:27 = N, 28:31 = D, 32:35 = U, neighbor finer.
+                     ocrGuidFromIndex(&conveyFaceToNeighbor_Event, meta->labledGuidRangeForHaloExchange, index);
+                     ocrEventCreate(&conveyFaceToNeighbor_Event, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS);
+                  }
+                  halo->dbCommHeader.atBat_Event = conveyFaceToNeighbor_Event;                                                // Convey At Bat Event to neighbor so that she can destroy the event.
+                  ocrEventCreate(&meta->conveyFaceToNeighbor_Event[dir][pole][idep], OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG); // Create the On Deck Event; record it in our meta.
+                  halo->dbCommHeader.onDeck_Event = meta->conveyFaceToNeighbor_Event[dir][pole][idep];                        // Convey On Deck Event to parent so that she can make her clone depend upon it.
+                  ocrDbRelease(meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk);
+                  ocrEventSatisfy(conveyFaceToNeighbor_Event, meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk);    // Satisfy the neighbors's dependence for this face.
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].base = halo = NULL;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].dblk = NULL_GUID;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].size = -9999;
+                  meta->faceDb[qrtrHaloLeftRight][qrtrHaloUpDown][pole].acMd = DB_MODE_NULL;
+                  idep++;
+               }
+            }
+         }
+      }
+
+
+//====
       for (i = 0; i < num_comm_partners[dir]; i++) {
          gasket__mpi_Irecv(glbl, &recv_buff[comm_recv_off[dir][comm_index[dir][i]]],
                    recv_size[dir][i], MPI_DOUBLE,
@@ -1984,3 +2614,4 @@ void apply_bc(Globals_t * const glbl, int l, void *cp_arg, int start, int num_co
                  break;
       }
 }
+#endif

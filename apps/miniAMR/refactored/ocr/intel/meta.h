@@ -1,4 +1,30 @@
-// TODO: FIXME:  add copyright stuff
+// ************************************************************************
+//
+// miniAMR: stencil computations with boundary exchange and AMR.
+//
+// Copyright (2014) Sandia Corporation. Under the terms of Contract
+// DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
+// retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
+//
+// This library is free software; you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation; either version 2.1 of the
+// License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+// Questions? Contact Courtenay T. Vaughan (ctvaugh@sandia.gov)
+//                    Richard F. Barrett (rfbarre@sandia.gov)
+//
+// ************************************************************************
 
 #ifndef __META_H__
 #define __META_H__
@@ -71,11 +97,9 @@ typedef struct RootProgenitorMeta_t {
                ocrDbAccessMode_t   acMd;
             } serviceRequestOperand;
          } annexDb[0];               // Size of the annex struct determined at run time as npx*npy*npz, and is invariant after initial determination.
-         // CAUTION:  These must agree in number and order with the dependencies in roogProgenitorContinuation_Dep_t, declared in root.c
+         // CAUTION:  These must agree in number and order with the dependencies in roogProgenitorContinuation_Deps_t, declared in proto.h
       };
    };
-
-// Caution:  PUT NOTHING ELSE HERE!!! Put the datablock catalog LAST in the meta struct.
 
 } RootProgenitorMeta_t;
 #define sizeof_RootProgenitorMeta_t              (sizeof(RootProgenitorMeta_t)+sizeof(genericDbCatalogEntry_t)*control->npx*control->npy*control->npz)
@@ -88,12 +112,22 @@ typedef struct BlockMeta_t {
 
    ContinuationCloning_t cloningState;
 
-   int refinementLevel;
+   ocrGuid_t  labeledGuidRangeForHaloExchange;
+
+   char neighborRefinementLevel[3][2];    // Refinement level of neighbor blocks
+   char refinementLevel;
    int xPos;
    int yPos;
    int zPos;
+   int cen[3];      // "cen"ter position, as figured in the reference version.
 
-   ocrGuid_t        conveyOperand_Event;    // Event that child satisfies with Operand_dblk in order to obtain a service from the parent. (Applicable first time; thereafter, child provides next event to parent.)
+   ocrGuid_t        conveyOperandUpward_Event;                      // Event that child satisfies with Operand_dblk in order to obtain a service from the parent.
+   ocrGuid_t        conveyFaceToNeighbor_Event[3][2][4];            // For each of three cardinal directions, times two poles, we have events to send either one full face or four quarter faces.
+   ocrGuid_t        onDeckToReceiveFace_Event[3][2][4];             // For each of three cardinal directions, times two poles, the On Deck event whereby we would receive the next furl or qrtr halo face Db.
+   //ocrGuid_t        conveyFaceToCoarserNeighbor_Event[3][2];        // For each of six directions, event to send my full face to my coarser-grained neighbor's quarter face.
+   //ocrGuid_t        conveyFaceToSameGrainedNeighbor_Event[3][2];    // For each of six directions, event to send my full face to my same-grained neighbor's full face.
+   //ocrGuid_t        conveyFaceToFinerNeighbor_Event[3][2][4];       // For each of six directions, event to send my quarter faces to the finer-grained full faces of four different neighbors.
+
 
 // Put the datablock catalog LAST in the meta struct.
 
@@ -163,27 +197,19 @@ typedef struct BlockMeta_t {
          // All remaining datablocks are created only upon demand, and then conveyed immediately to a remote EDT, i.e. to a neighboring block, or to a parent for requesting a service (e.g. checksum).
          struct {
             ocrGuid_t              dblk;
-            Checksum_t           * base;
+            void                 * base;
             int                    size;
             ocrDbAccessMode_t      acMd;
-         } checksumDb;
+         } upboundOperandDb;
          struct {
             ocrGuid_t              dblk;
-            double               * base;
+            Face_t               * base;
             int                    size;
             ocrDbAccessMode_t      acMd;
-         } fullFaceDb[2];
-         struct {
-            ocrGuid_t              dblk;
-            double               * base;
-            int                    size;
-            ocrDbAccessMode_t      acMd;
-         } qrtrFaceDb[2][2][2];
-         // CAUTION:  These must agree in number and order with the dependencies in blockContinuation_Dep_t, declared in block.c
+         } faceDb[2][2][2];          // First dimension: row of quarter face; Second dimension: column of quarter face;  Third dimension: plane (0=0; 1=block_size+1).  For full face, use [0][0][0:1]
+         // CAUTION:  These must agree in number and order with the dependencies in blockContinuation_Deps_t, declared in proto.h
       };
    };
-
-// Caution:  PUT NOTHING ELSE HERE!!! Put the datablock catalog LAST in the meta struct.
 
 } BlockMeta_t;
 #define sizeof_BlockMeta_t                   (sizeof(BlockMeta_t))

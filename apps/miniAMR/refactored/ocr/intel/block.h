@@ -1,4 +1,3 @@
-// TODO:  modify copyright
 // ************************************************************************
 //
 // miniAMR: stencil computations with boundary exchange and AMR.
@@ -6,6 +5,8 @@
 // Copyright (2014) Sandia Corporation. Under the terms of Contract
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
 //
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
@@ -56,5 +57,13 @@ typedef struct Block_t {
 } Block_t;
 
 #define sizeof_Block_t (sizeof(Block_t) + ((control->x_block_size + 2) * (control->y_block_size + 2) * (control->z_block_size + 2) * control->num_vars * sizeof(double)))
+
+typedef struct Face_t {
+   DbCommHeader_t  dbCommHeader;
+   double          cells[0];
+} Face_t;
+
+#define sizeof_Face_BasePart_t (sizeof(Face_t))
+
 
 #endif // __BLOCK_H__

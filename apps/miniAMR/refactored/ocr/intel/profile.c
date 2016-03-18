@@ -1,4 +1,3 @@
-// TODO: FIXME: Adjust this copyright notice
 // ************************************************************************
 //
 // miniAMR: stencil computations with boundary exchange and AMR.
@@ -6,6 +5,8 @@
 // Copyright (2014) Sandia Corporation. Under the terms of Contract
 // DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
 // retains certain rights in this software.
+//
+// Portions Copyright (2016) Intel Corporation.
 //
 // This library is free software; you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as
@@ -37,7 +38,43 @@
 #include <string.h>
 
 // Profiling output.
-void report_profile_results(Control_t * control, Profile_t * profile) {
+void reportProfileResults (RootProgenitorMeta_t * meta) {
+
+printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->cloningState.cloneNum); fflush(stdout);
+
+   // Aggregate the performance profile contributions of dying children to the aggregate.
+
+   Control_t * control = meta->controlDb.base;
+
+   Profile_t profile;  // NOTE:  I assume that the stack can accomodate this structure.  If, on some platform, it throws stack overflow exceptions, we could "strip-mine" the aggregation and reporting.
+   memset (&profile, 0, sizeof_Profile_t);
+
+   int idep;
+   for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
+
+      // The operand to Operation_Checksum is the child's contribution to the overall checksum.  Add it into our accumulator.
+
+      ocrGuid_t   operand_dblk =                (meta->annexDb[idep].serviceRequestOperand.dblk);
+      Profile_t * operand      = ((Profile_t *) (meta->annexDb[idep].serviceRequestOperand.base));
+
+      if (operand->dbCommHeader.serviceOpcode != Operation_Profile) {
+         printf ("Error!  Inconsistency in opcodes provided to continuationRootProgenitor\n"); fflush(stdout);
+         *((int *) 123) = 456;
+         ocrShutdown();
+      }
+
+      int i;
+      for (i = 0; i < NUM_PROFILE_DOUBLES; i++) {
+         profile.allDoubles[i] += operand->allDoubles[i];
+      }
+      for (i = 0; i < NUM_PROFILE_INTS; i++) {
+         profile.allInts[i] += operand->allInts[i];
+      }
+
+   }
+
+   // Report out the results of the profiling information
+
 //   int i;
 //   double total_gflops, gflops_rank, total_fp_ops, total_fp_adds, total_fp_divs;
    char version[24];
@@ -49,7 +86,7 @@ void report_profile_results(Control_t * control, Profile_t * profile) {
 
    strcpy (version, "1.0 provisional -- OCR");
 
-   calculate_results(profile);
+   calculate_results(&profile);
 #if 0
 TODO?
    total_fp_divs = ((double) total_blocks)*((double) x_block_size)*
@@ -476,16 +513,16 @@ Root progenitor has NOT been tracking movement of object(s).  If this is really 
 
    if (control->report_perf & 2) {
       fp = fopen("results.txt", "w");
-      profile_report_perf_2and4 (fp, control, profile, version);
+      profile_report_perf_2and4 (fp, control, &profile, version);
       fclose(fp);
       fp = NULL;
    }
 
    if (control->report_perf & 4) {
-      profile_report_perf_2and4 (stdout, control, profile, version);
+      profile_report_perf_2and4 (stdout, control, &profile, version);
    }
 
-} // report_profile_results
+} // reportProfileResults
 
 
 void profile_report_perf_2and4 (FILE * fp, Control_t * control, Profile_t * profile, char * version) {
@@ -588,7 +625,7 @@ Root progenitor has NOT been tracking movement of object(s).  If this is really 
 #endif
       }
       fprintf(fp, "\nNumber of timesteps is %d\n", control->num_tsteps);
-      fprintf(fp, "Communicaion/computation stages per timestep is %d\n", control->stages_per_ts);
+      fprintf(fp, "Communication/computation stages per timestep is %d\n", control->stages_per_ts);
 #if 0
 // TODO:  relevant?
       if (control->nonblocking) {
@@ -863,14 +900,16 @@ TODO!
 
 void calculate_results(Profile_t * profile) {
    double results[128], stddev_sum[128];
-#if 0
    int i;
 
-   results[0] = timer_all;
+   results[0] = profile->timer_all;
+#if 0
    for (i = 0; i < 9; i++)
       results[i+1] = 0.0;
+#endif
    for (i = 0; i < 3; i++) {
-      results[1] += results[10+9*i] = timer_comm_dir[i];
+      results[1] += results[10+9*i] = profile->timer_comm_dir[i];
+#if 0
       results[2] += results[11+9*i] = timer_comm_recv[i];
       results[3] += results[12+9*i] = timer_comm_pack[i];
       results[4] += results[13+9*i] = timer_comm_send[i];
@@ -879,10 +918,12 @@ void calculate_results(Profile_t * profile) {
       results[7] += results[16+9*i] = timer_comm_bc[i];
       results[8] += results[17+9*i] = timer_comm_wait[i];
       results[9] += results[18+9*i] = timer_comm_unpack[i];
+#endif
    }
-   results[37] = timer_comm_all;
-   results[38] = timer_calc_all;
-   results[39] = timer_cs_all;
+   results[37] = profile->timer_comm_all;
+   results[38] = profile->timer_calc_all;
+   results[39] = profile->timer_cs_all;
+#if 0
    results[40] = timer_cs_red;
    results[41] = timer_cs_calc;
 #endif
@@ -918,7 +959,9 @@ void calculate_results(Profile_t * profile) {
    results[116] = timer_lb_misc;
    results[117] = timer_lb_mb;
    results[118] = timer_lb_ma;
-   results[67] = timer_plot;
+#endif
+   results[67] = profile->timer_plot;
+#if 0
    results[123] = timer_rs_all;
    results[124] = timer_rs_ca;
    results[125] = timer_rs_pa;

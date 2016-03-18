@@ -28,42 +28,138 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <mpi.h>
+//#include <mpi.h>
 
 #include "block.h"
-#include "comm.h"
+// TODO:  #include "comm.h"
 #include "proto.h"
+#include "plot.h"
 
-// Write block information (level and center) to plot file.
-void plot(Globals_t * const glbl, int const ts)
-{
+// Write block information (level and center) to plot file.  This is done by sending this block's contribution up the line all the way to the rootProgenitor, which aggregates all contributions and writes file.
+void transmitBlockContributionForPlot(BlockMeta_t * meta, int const ts) {
 
-   OBTAIN_ACCESS_TO_blocks
+   // TODO OBTAIN_ACCESS_TO_blocks
 
    typedef struct {
       Frame_Header_t myFrame;
-      int i, j, n, total_num_blocks, plot_buf_size, size;
-      char fname[20];
-      MPI_Status status;
       struct {
-         Block_t *bp;
-         FILE *fp;
+         Plot_t * plot;
       } pointers;
       Frame_Header_t calleeFrame;
    } Frame__plot_t;
 
-#define i                 (lcl->i)
-#define j                 (lcl->j)
-#define n                 (lcl->n)
-#define total_num_blocks  (lcl->total_num_blocks)
-#define plot_buf_size     (lcl->plot_buf_size)
-#define size              (lcl->size)
-#define fname             (lcl->fname)
-#define bp                (lcl->pointers.bp)
-#define fp                (lcl->pointers.fp)
-#define status            (lcl->status)
+#define plot         (lcl->pointers.plot)
 
-   SUSPENDABLE_FUNCTION_PROLOGUE(Frame__plot_t)
+   SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__plot_t)
+
+   // Get a datablock for writing this block's contribution toward the plot information.
+   gasket__ocrDbCreate(&meta->upboundOperandDb.dblk, (void **) &meta->upboundOperandDb.base, sizeof_Plot_t(1),   __FILE__, __func__, __LINE__);
+   meta->upboundOperandDb.size = sizeof_Plot_t(1);
+   meta->upboundOperandDb.acMd = DB_MODE_RW;                          // Continuation clone will write to plot datablock.
+   meta->cloningState.continuationOpcode = SeasoningOneOrMoreDbCreates;
+   SUSPEND__RESUME_IN_CONTINUATION_EDT(;)
+   plot = meta->upboundOperandDb.base;
+
+   // Fill in plot contribution HERE!!!
+
+   plot->numBlocks      = 1;
+   plot->ts             = ts;
+   plot->annex[0].level = meta->refinementLevel;
+   plot->annex[0].cenx  = meta->cen[0];
+   plot->annex[0].ceny  = meta->cen[1];
+   plot->annex[0].cenz  = meta->cen[2];
+
+   // This block's contribution to the plot will be passed to the parent as operand, requesting the AccumulatePlot service.
+   // In like manner, the partial accumulations will progagate all they way up to the rootProgenitor.
+
+   void * dummy;
+
+   ocrGuid_t conveyOperandUpward_Event = meta->conveyOperandUpward_Event;                                           // Jot down the At Bat Event.
+   plot->dbCommHeader.serviceOpcode    = Operation_Plot;
+   plot->dbCommHeader.timeStep         = ts;
+   plot->dbCommHeader.atBat_Event      = conveyOperandUpward_Event;                                                 // Convey At Bat Event to parent so that he can destroy the event.
+   ocrEventCreate(                      &meta->conveyOperandUpward_Event, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);  // Create the On Deck Event; record it in our meta.
+   plot->dbCommHeader.onDeck_Event     = meta->conveyOperandUpward_Event;                                           // Convey On Deck Event to parent so that he can make his clone depend upon it.
+   ocrDbRelease(meta->upboundOperandDb.dblk);
+   ocrEventSatisfy(conveyOperandUpward_Event, meta->upboundOperandDb.dblk);                                         // Satisfy the parent's operand1 dependence.
+   meta->upboundOperandDb.base = plot = NULL;
+   meta->upboundOperandDb.dblk = NULL_GUID;
+   meta->upboundOperandDb.size = -9999;
+   meta->upboundOperandDb.acMd = DB_MODE_NULL;
+
+   SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)
+   SUSPENDABLE_FUNCTION_EPILOGUE
+
+#undef  plot
+} // transmitBlockContributionForPlot
+
+void doFinalPlotFileGeneration (RootProgenitorMeta_t * meta) {
+
+   Control_t * control = meta->controlDb.base;
+   int total_num_blocks = 0;
+   int idep;
+   int i, j, n;
+   char fname[20];
+   Plot_t * operand;
+   FILE * fp;
+
+   // Perform the final aggregation of partial contributions to the plot file report.
+
+   // First, count how many blocks there are in the mesh
+   for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
+      Plot_t * operand = ((Plot_t *) (meta->annexDb[idep].serviceRequestOperand.base));
+      if (operand->dbCommHeader.serviceOpcode != Operation_Plot) {
+         printf ("Error!  Inconsistency in opcodes provided to continuationRootProgenitor\n"); fflush(stdout);
+         *((int *) 123) = 456;
+         ocrShutdown();
+      }
+      total_num_blocks += operand->numBlocks;
+   }
+
+   // Open output file.
+
+   operand = ((Plot_t *) (meta->annexDb[0].serviceRequestOperand.base));
+   fname[0] = 'p';
+   fname[1] = 'l';
+   fname[2] = 'o';
+   fname[3] = 't';
+   fname[4] = '.';
+   for (n = 1, j = 0; n < control->num_tsteps; j++, n *= 10) ;
+   for (n = 1, i = 0; i <= j; i++, n *= 10)
+      fname[5+j-i] = (char) ('0' + (operand->ts/n)%10);
+   fname[6+j] = '\0';
+   fp = fopen(fname, "w");
+
+   // Write first line of file.  Reference code prints out total_num_blocks, num_refine, npx*init_block_x, npy*init_block_y, and npz*init_z.
+   // Analagous elements for OCR native version:
+   // total_num_blocks:       We need to count up the total_num_blocks from the plot contributions that were handed up to us by our npx*npy*npz children
+   // num_refine:             We have this in our control datablock.
+   // npx*init_block_x, etc:  The first term is in our control datablock.  The second term is NOT applicable for the OCR native version.
+
+   fprintf(fp, "%d %d %d %d %d\n", total_num_blocks, control->num_refine, control->npx, control->npy, control->npz);
+
+   for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
+      operand = ((Plot_t *) (meta->annexDb[idep].serviceRequestOperand.base));
+
+      // The next line is a single number that, in the reference version, indicates how many active blocks are being processed by an MPI rank.  The OCR
+      // version doesn't have any MPI ranks; or another way of looking at it is that every single block is its own "rank".  Lacking anything more sensible
+      // to write here, we will simply fill in how many "leaf" blocks exist at the topology below each unrefined block.  This happens to be the very value
+      // that is in the operand datablock we are receiving from each child of this rootProgenitor EDT.
+
+      fprintf(fp, "%d\n", operand->numBlocks);
+
+      // Now comes one line per block, consisting of the refinementLevel of the block and its cenx, ceny, and cenz positions.
+
+      for (i = 0; i < operand->numBlocks; i++) {
+         fprintf(fp, "%d %d %d %d\n", operand->annex[i].level, operand->annex[i].cenx, operand->annex[i].ceny, operand->annex[i].cenz);
+      }
+   }
+
+   fclose(fp);
+
+} // doFinalChecksumAggregationAtRootProgenitor
+#if 0
+
    TRACE
    fp = NULL;
    bp = NULL;
@@ -172,3 +268,4 @@ void plot(Globals_t * const glbl, int const ts)
 #undef  fp
 #undef  status
 }
+#endif
