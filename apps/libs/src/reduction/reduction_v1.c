@@ -35,7 +35,7 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
     ocrGuid_t DBK_reductionTreeHs;
     ocrGuid_t *PTR_reductionTreeHs;
     ocrDbCreate( &DBK_reductionTreeHs, (void **) &PTR_reductionTreeHs, nParticipants*sizeof(ocrGuid_t),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+                 DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
     ocrGuid_t TML_reduction;
 
@@ -54,7 +54,7 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
 
     ocrGuid_t EVT_reduction_out_once; //This is the output reduction event; This event will be satisfied by the final reduced result datablock.
 
-    ocrEdtCreate( &PTR_reductionTreeHs[0], TML_reduction, EDT_PARAM_DEF, NULL, leaves, NULL, EDT_PROP_NONE, NULL_GUID, &EVT_reduction_out_once );
+    ocrEdtCreate( &PTR_reductionTreeHs[0], TML_reduction, EDT_PARAM_DEF, NULL, leaves, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &EVT_reduction_out_once );
     ocrAddDependence( EVT_reduction_out_once, EVT_reduction_out, 0, DB_MODE_RW );
 
     //PRINTF("maxleaves = %d maxdepth = %d ARITY = %d\n", maxleaves, maxdepth, ARITY);
@@ -88,7 +88,7 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
                 ocrGuid_t event, EVT_out;
                 ocrEventCreate( &EVT_out, OCR_EVENT_STICKY_T, true ); //TODO: How to destroy these later when no longer needed?
                 _depc = ndep_leaf;
-                ocrEdtCreate( &(PTR_reductionTreeHs[inode*nodeGap+ileaf*leafGap]), TML_reduction, EDT_PARAM_DEF, NULL, _depc, NULL, EDT_PROP_NONE, NULL_GUID, &event);
+                ocrEdtCreate( &(PTR_reductionTreeHs[inode*nodeGap+ileaf*leafGap]), TML_reduction, EDT_PARAM_DEF, NULL, _depc, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &event);
                 ocrAddDependence( event, EVT_out, 0, ileaf ? DB_MODE_RO : DB_MODE_RW );
                 ocrAddDependence( EVT_out, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
                 //PRINTF("Creating EDT %d(level=%d) with depc %d with output slot triggering edt %d(level=%d) on slot %d\n",

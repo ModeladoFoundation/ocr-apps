@@ -281,7 +281,7 @@ ARITY+2 final send block (rank 0 only)
     u64 errno, i, src, dest, nrecv, ndep;
     if(rpPTR->new) {
         rpPTR->new = 0;
-        if(myrank == 0) ocrDbCreate(&rpPTR->returnDBK, (void**) &dummy, ndata*reductionsizeof(rpPTR->reductionOperator)+rpPTR->extra, 0, NULL_GUID, NO_ALLOC);
+        if(myrank == 0) ocrDbCreate(&rpPTR->returnDBK, (void**) &dummy, ndata*reductionsizeof(rpPTR->reductionOperator)+rpPTR->extra, 0, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
         if(myrank > 0) ocrGuidFromIndex(&(rpPTR->sendEVT), rpPTR->rangeGUID, myrank-1);
 //PRINTF("M%d SendEVT %lx \n", myrank, rpPTR->sendEVT);
         for(i=0;i<ARITY;i++) {
@@ -300,11 +300,11 @@ ARITY+2 final send block (rank 0 only)
         ndep = ARITY + 2;
         if(myrank == 0) ndep++;
 //PRINTF("R%ld cloneing ndep %ld \n", myrank, ndep);
-        ocrEdtCreate(&reductionGUID, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, ndep, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEdtCreate(&reductionGUID, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, ndep, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
         ocrAddDependence(DEPV(reduction,reductionPrivate,guid), reductionGUID, SLOT(reduction,reductionPrivate), DB_MODE_RO);
         ocrAddDependence(DEPV(reduction,mydata,guid), reductionGUID, SLOT(reduction,mydata), DB_MODE_RW);
         for(i=0;i<ARITY;i++) {
-            if(rpPTR->recvEVT[i] != NULL_GUID) errno = ocrEventCreate(&(rpPTR->recvEVT[i]), OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+            if( !IS_GUID_NULL(rpPTR->recvEVT[i]) ) errno = ocrEventCreate(&(rpPTR->recvEVT[i]), OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
             ocrAddDependence(rpPTR->recvEVT[i], reductionGUID, i+2, DB_MODE_RO);
         }
 
@@ -317,7 +317,7 @@ ARITY+2 final send block (rank 0 only)
 //I have received
         for(i=0;i<ARITY;i++) {
 //PRINTF("M%ld myvalue %f mySrc %ld \n", myrank, *((double *) mydataPTR), myrank*ARITY+1+i);
-            if(DEPV(reduction,yourdata[i],guid)!= NULL_GUID) {
+            if( !IS_GUID_NULL(DEPV(reduction,yourdata[i],guid)) ) {
 //PRINTF("M%ld i %d guid %lx \n", myrank, i, DEPV(reduction,yourdata[i],guid));
                 ocrEventDestroy(rpPTR->recvEVT[i]);
                 yourdataPTR = DEPV(reduction,yourdata[i],ptr);
@@ -353,8 +353,8 @@ ARITY+2 final send block (rank 0 only)
 
 void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID, ocrGuid_t mydataGUID){
     ocrGuid_t reductionGUID;
-    if(rpPTR->reductionTML == NULL_GUID) ocrEdtTemplateCreate(&(rpPTR->reductionTML), reductionEDT, 0, EDT_PARAM_UNK);
-    ocrEdtCreate(&reductionGUID, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    if(IS_GUID_NULL(rpPTR->reductionTML)) ocrEdtTemplateCreate(&(rpPTR->reductionTML), reductionEDT, 0, EDT_PARAM_UNK);
+    ocrEdtCreate(&reductionGUID, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
     ocrAddDependence(reductionPrivateGUID, reductionGUID, 0, DB_MODE_RW);
     ocrAddDependence(mydataGUID, reductionGUID, 1, DB_MODE_RW);
     return;
