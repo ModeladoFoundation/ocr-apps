@@ -85,7 +85,7 @@ int MPI_Comm_size(MPI_Comm comm, int *size)
     return(MPI_SUCCESS);
 }
 
-static inline u64 index(int source, int dest, int tag, int numRanks, int maxTag)
+u64 guidIndex(int source, int dest, int tag, int numRanks, int maxTag)
 {
     return ((numRanks*source + dest)*(maxTag+1) + tag);
 }
@@ -136,7 +136,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
     const u32 numRanks = rankContext->numRanks;
     const u32 maxTag = rankContext->maxTag;
     PRINTF("MPI_Isend: rank #%d: Sending on index %d\n", source,
-           index(source, dest, tag, numRanks, maxTag));
+           guidIndex(source, dest, tag, numRanks, maxTag));
 #endif    // end of debugging
 
     *request = (MPI_Request)malloc(sizeof(**request));
@@ -157,7 +157,7 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     const u32 maxTag = rankContext->maxTag;
     const u64 totalSize = count * rankContext->sizeOf[datatype];
 
-    //PRINTF("MPI_Send: rank #%d: Sending on index %d\n", source, index(source, dest, tag, numRanks, maxTag));
+    //PRINTF("MPI_Send: rank #%d: Sending on index %d\n", source, guidIndex(source, dest, tag, numRanks, maxTag));
     CHECK_RANGE(dest, numRanks, "MPI_Send", "dest");
     CHECK_RANGE(tag, maxTag+1, "MPI_Send", "tag");
 
@@ -166,9 +166,9 @@ int MPI_Send(void *buf,int count, MPI_Datatype
 
     // need volatile so while loop keeps loading each iteration
     volatile ocrGuid_t *eventP =
-        &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
+        &(messageContext->messageEvents[guidIndex(source, dest, tag, numRanks, maxTag)]);
 
-    while (NULL_GUID != *eventP);  // wait till slot is not busy
+    while (!IS_GUID_NULL(*eventP));  // wait till slot is not busy
 
     // OK, the location is free: time to create the event and DB
     ocrEventCreate((ocrGuid_t *)eventP, OCR_EVENT_STICKY_T, TRUE);
@@ -178,7 +178,7 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     ocrGuid_t DB;
 
     ocrDbCreate(&DB, (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
-                DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+                DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
 
 #ifdef DB_ARRAY
     // Have to put the DB into a parallel array, because ocrWait does not
@@ -186,7 +186,7 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     // Thus it has to be accessed from here by the receiver, who can check
     // that the DB guid delivered by ocrWait == the guid stashed in the array.
     ocrEdtDep_t *dataP =
-        &(messageContext->messageData[index(source, dest, tag, numRanks, maxTag)]);
+        &(messageContext->messageData[guidIndex(source, dest, tag, numRanks, maxTag)]);
 
     dataP->ptr = (void *)ptr;
     dataP->data = DB;
@@ -250,9 +250,9 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
 
         // need volatile so while loop keeps loading each iteration
         volatile ocrGuid_t *vEventP =
-            &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
+            &(messageContext->messageEvents[guidIndex(source, dest, tag, numRanks, maxTag)]);
 
-        while (NULL_GUID == *vEventP);  // wait till slot has event guid
+        while (!IS_GUID_NULL(*vEventP));  // wait till slot has event guid
 
         // OK, the location is full: time to wait on the event
         eventP = (ocrGuid_t *)vEventP;
@@ -266,8 +266,8 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
                 for (u32 source = 0; source < numRanks; source++) {
                     for (u32 tag = 0; tag <= maxTag; tag++){
                         eventP =
-                            &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                        if (NULL_GUID != *eventP) {
+                            &(messageContext->messageEvents[guidIndex(source, dest, tag, numRanks, maxTag)]);
+                        if (!IS_GUID_NULL(*eventP) {
                             done = TRUE;
                             break;
                         }
@@ -285,8 +285,8 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
             while(!done){
                 for (u32 source = 0; source < numRanks; source++) {
                     eventP =
-                        &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                    if (NULL_GUID != *eventP){
+                        &(messageContext->messageEvents[guidIndex(source, dest, tag, numRanks, maxTag)]);
+                    if (!IS_GUID_NULL(*eventP)){
                         done = TRUE;
                         break;
                     }
@@ -300,8 +300,8 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
             while(!done){
                 for (u32 tag = 0; tag <= maxTag; tag++){
                     eventP =
-                        &(messageContext->messageEvents[index(source, dest, tag, numRanks, maxTag)]);
-                    if (NULL_GUID != *eventP){
+                        &(messageContext->messageEvents[guidIndex(source, dest, tag, numRanks, maxTag)]);
+                    if (!IS_GUID_NULL(*eventP)){
                         done = TRUE;
                         break;
                     }
@@ -328,7 +328,7 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     // Thus it has to be accessed from here by the receiver, who can check
     // that the DB guid delivered by ocrWait == the guid stashed in the array.
     ocrEdtDep_t *dataP =
-        &(messageContext->messageData[index(source, dest, tag, numRanks, maxTag)]);
+        &(messageContext->messageData[guidIndex(source, dest, tag, numRanks, maxTag)]);
     //    assert(dataP == myPtr);
 
     ocrGuid_t receivedGuid = dataP->guid;

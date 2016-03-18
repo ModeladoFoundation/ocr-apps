@@ -242,7 +242,7 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
 // write a global initialization routine
 //
 // ocrGuid_t  __ffwd_init(void** ffwd_addr_p){...}
-    // ocrGuid_t ffwd_db_guid=0;
+    // ocrGuid_t ffwd_db_guid;
     // __ffwd_t * ffwd_addr_ptr=NULL;
     // u8 ffwd_status;
     // ffwd_status = ocrDbCreate( &ffwd_db_guid, (void **)&ffwd_addr_ptr, sizeof(__ffwd_t),
@@ -275,11 +275,10 @@ void visitorTraversal::writeInitFunction(SgProject * project)
     SgBasicBlock * globalInitBB = globalInit->get_definition()->get_body();
     SgScopeStatement * globalInitScope = globalInit->get_scope();
 
-    // ocrGuid_t ffwd_db_guid=0;
+    // ocrGuid_t ffwd_db_guid;
     string dbName("ffwd_db_guid");
-    SgInitializer* dbInitializer = buildAssignInitializer(buildLongIntVal(0),ocrGuidType);
     SgVariableDeclaration* ffwdDBGuid = buildVariableDeclaration(SgName(dbName), ocrGuidType,
-                                                                   dbInitializer, globalInitBB);
+                                                                   NULL, globalInitBB);
     appendStatement(ffwdDBGuid, globalInitBB);
 
     // __ffwd_t * ffwd_addr_ptr=NULL;

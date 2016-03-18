@@ -77,7 +77,7 @@ TARGET := SWTest2
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
+CONFIG_FLAGS := --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
 
 # Space separated list of source files
 
@@ -144,3 +144,9 @@ include ${APPS_ROOT}/makefiles/make-ocrrun.inc
 
 # Use g++ and not gcc
 CC := g++
+
+ifeq ($(OCRRUN_ITAC), yes)
+CC=mpiicpc
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif

@@ -72,7 +72,8 @@ TARGET ?= snap_lite
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
+MPILITE=yes
+CONFIG_FLAGS := --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
 
 # Space separated list of source files
 
@@ -86,12 +87,18 @@ SRCS := $(addprefix rose_,$(SRC_NAMES))
 
 OBJS: $(ROSE_TARGET)
 
+ifeq ($(OCRRUN_ITAC), yes)
+CC=mpiicc
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif
 
 #OBJS := $(notdir $(SRCS:.c=.o))
-CFLAGS=-O0 -g -std=c99 -DMPILITE -D__MACH__ -I./ -I${APPS_ROOT}/libs/x86/include
-#CFLAGS=-O0 -g -std=c99 -DMPILITE -DDEBUG=2 -I./ -I${APPS_ROOT}/libs/x86/include
-#CFLAGS :=  -DOCR_RUNTIME_PROFILER
+CFLAGS += -g -std=c99 -DMPILITE -D__MACH__ -I./ -I${APPS_ROOT}/libs/x86/include
+#CFLAGS += -g -std=c99 -DMPILITE -DDEBUG=2 -I./ -I${APPS_ROOT}/libs/x86/include
+#CFLAGS +=  -DOCR_RUNTIME_PROFILER
 LDFLAGS := -fopenmp -lpthread -lm -lmpilite
+
 
 # Targets:
 #   - all:     Build the application.
@@ -99,7 +106,7 @@ LDFLAGS := -fopenmp -lpthread -lm -lmpilite
 #   - install: Build and install
 #   - run:     Run the application
 #all:	CFLAGS += -O3 -fno-inline
-all:	CFLAGS += -O0 -DMPILITE
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 

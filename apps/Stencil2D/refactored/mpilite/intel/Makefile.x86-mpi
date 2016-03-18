@@ -76,7 +76,14 @@ CFLAGS := -std=c99
 LDFLAGS := -lm -lpthread -lmpilite
 
 # MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
+MPILITE=yes
+CONFIG_FLAGS := --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
+
+ifeq ($(OCRRUN_ITAC), yes)
+CC=mpiicc
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif
 
 # Targets:
 #   - all:     Build the application.

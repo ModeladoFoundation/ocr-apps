@@ -12,9 +12,11 @@
 #include <mpi_ocr.h>  // must come before ocr.h, as it sets defines
 #include <ocr.h>
 
+
 #include <extensions/ocr-legacy.h>
 #include <extensions/ocr-labeling.h>
 #include <extensions/ocr-affinity.h>
+#include <extensions/ocr-hints.h>
 
 
 // 2/3/16 need patch 2442 to define and have OCR use this, else make it
@@ -73,15 +75,30 @@ typedef struct {
     int b;
 } double_int;
 
+typedef struct
+{
+    u64 rank;
+    u64 numRanks;
+    u64 maxTag;
+    ocrGuid_t messageEventRange;
+    u64 aggressiveNB;
+}
+    rankEdtParamv_t;
+
+#define paramcCount(__type)   ((sizeof(__type)+sizeof(u64)-1) / (sizeof(u64)))
+
+
 static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    const u64 rank = paramv[0];
+    const rankEdtParamv_t *rankEdtParamvP = (rankEdtParamv_t *) paramv;
+    const u64 rank = rankEdtParamvP -> rank;
+
     rankContext_t rankContext =
     { .rank = rank,
-      .numRanks = paramv[1],
-      .maxTag = paramv[2],
+      .numRanks = rankEdtParamvP -> numRanks,
+      .maxTag = rankEdtParamvP -> maxTag,
       .mpiInitialized = FALSE,
-      .aggressiveNB = paramv[4],
+      .aggressiveNB = rankEdtParamvP -> aggressiveNB,
       .sizeOf = {0,  // not-a-datatype
                  sizeof(char), // MPI_CHAR
                  sizeof(signed char), // MPI_SIGNED_CHAR
@@ -114,7 +131,7 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 #if EVENT_ARRAY
         .messageEvents = (ocrGuid_t *)(depv[1].ptr)
 #else
-        .messageEventMap = (ocrGuid_t) (paramv[3])
+        .messageEventRange = rankEdtParamvP -> messageEventRange,
 #endif
 #ifdef DB_ARRAY
         , .messageData = (ocrEdtDep_t *)(depv[2].ptr)
@@ -126,8 +143,11 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     // users code completes, so this stack frame, and these *context structs
     // addresses remain valid during the whole program, e.g., when the MPI_*
     // functions are called.
-    ocrElsUserSet(RANK_CONTEXT_SLOT, (ocrGuid_t) &rankContext);
-    ocrElsUserSet(MESSAGE_CONTEXT_SLOT, (ocrGuid_t) &messageContext);
+    elsUnion u;
+    u.ptr = &rankContext;
+    ocrElsUserSet(RANK_CONTEXT_SLOT, u.guid);
+    u.ptr = &messageContext;
+    ocrElsUserSet(MESSAGE_CONTEXT_SLOT, u.guid);
 
     // globals2db support
     void * ffwd_addr_p=NULL;
@@ -138,7 +158,8 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
             .dbGuid = ffwd_db_guid,
             .addrPtr = ffwd_addr_p
         };
-    ocrElsUserSet(GLOBAL_DB_SLOT, (ocrGuid_t)&globalDBContext);
+    u.ptr = &globalDBContext;
+    ocrElsUserSet(GLOBAL_DB_SLOT, u.guid);
 
 
     // Turn the argcArgv datablock into a "native" C argc & argv
@@ -157,14 +178,14 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
     if (0 == rank) {
 
-        if (NULL_GUID != argcArgv->guid) {
+        if (!IS_GUID_NULL(argcArgv->guid))) {
             ocrDbDestroy(argcArgv->guid);
         }
     }
 
 #endif
 
-    if (NULL_GUID != ffwd_db_guid) {
+if (!IS_GUID_NULL(ffwd_db_guid)) {
         ocrDbDestroy(ffwd_db_guid);
     }
 
@@ -251,6 +272,12 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
             shift += 1;
         }
 
+    if (argc > 1 && ! strcmp("-aff_rr", getArgv(argcArgv,1)))
+        {
+            *affinity = AFFINITY_ROUND_ROBIN;
+            shift += 1;
+        }
+
     if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
         {
             char msg[150];
@@ -295,20 +322,6 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
 #endif
 }
 
-static ocrGuid_t messageEventMapFunc(ocrGuid_t startGuid, u64 skipGuid,
-                                     s64* params, s64* tuple)
-{
-    const s64 dim0=params[0], dim1=params[1], dim2=params[2];
-    const s64 i0=tuple[0], i1=tuple[1], i2=tuple[2];
-    // bounds check
-    for(int i=0; i<3; i++) {
-        if (tuple[i]<0 || tuple[i] >= params[i])
-            ERROR("messageEventMapFunc: index out of range");
-    }
-
-    s64 index = ((dim1*i0 + i1)*dim2 + i2);
-    return startGuid + skipGuid * index;
-}
 
 static ocrGuid_t createTaggedEvents(u32 numRanks, u32 maxTag)
 {
@@ -316,12 +329,12 @@ static ocrGuid_t createTaggedEvents(u32 numRanks, u32 maxTag)
     // Tagging is NYI in OCR
     return NULL_GUID;
 #else
-    ocrGuid_t messageEventMap;
-    s64 dimensions[] = {numRanks, numRanks, maxTag+1};
+    ocrGuid_t messageEventRange;
 
-    ocrGuidMapCreate(&messageEventMap, 3, messageEventMapFunc, dimensions,
-                     numRanks*numRanks*(maxTag+1), GUID_USER_EVENT_STICKY);
-    return messageEventMap;
+    ocrGuidRangeCreate(&messageEventRange, numRanks*numRanks*(maxTag+1),
+                       GUID_USER_EVENT_STICKY);
+    return messageEventRange;
+
 #endif
 }
 
@@ -342,12 +355,12 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
     ocrGuid_t *events;
 
     ocrDbCreate(messageEventsDB, (void*)&events,
-                numElements * sizeof (ocrGuid_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+                numElements * sizeof (ocrGuid_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
 
 #ifdef DB_ARRAY
     ocrEdtDep_t *data ;
     ocrDbCreate(messageDataDB, (void*)&data,
-                numElements * sizeof (ocrEdtDep_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+                numElements * sizeof (ocrEdtDep_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
 #endif
 
     for (int i = 0; i < numElements; i++)
@@ -411,7 +424,8 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     PRINTF("mainEdtHelper: creating rank edts\n");fflush(stdout);
 
     ocrGuid_t rankEdtTemplate;
-    ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, 5, 3);
+    ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, paramcCount(rankEdtParamv_t),
+                         /*num deps*/ 3);
 
 #if DONT_USE_FINISH_EDT
     ocrGuid_t ranks[numRanks];     // needed so dependences can be added to
@@ -421,7 +435,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 #endif
 
     // Mapping from [sourceRank x destRank x maxTag+1] to a tagged event
-    ocrGuid_t messageEventMap = createTaggedEvents(numRanks, maxTag);
+    ocrGuid_t messageEventRange = createTaggedEvents(numRanks, maxTag);
 
     // But, Until OCR tagging is implemented, we need the shared array of message
     // events in a DB. And until ocrLegacyProgressBlock() is implemented to
@@ -433,7 +447,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     ocrGuid_t messageEventsDB=NULL_GUID, messageDataDB=NULL_GUID;
     createMessageEventsAndData(&messageEventsDB, &messageDataDB, numRanks, maxTag);
 
-    u64 rankParamv[] = {0, numRanks, maxTag, messageEventMap, aggressiveNB};  //most params are the same
+    rankEdtParamv_t rankEdtParamv = {0, numRanks, maxTag, messageEventRange, aggressiveNB};  //most params are the same
     //    ocrGuid_t rankDepv[] = {UNINITIALIZED_GUID, messageEventsDB,
     //    messageDataDB };
     ocrGuid_t rankDepv[] = {argcArgvDB->guid, messageEventsDB, messageDataDB };
@@ -449,6 +463,8 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     ocrAffinityCount(AFFINITY_PD, &count);
     ocrGuid_t aff[count];
     ocrAffinityGet(AFFINITY_PD, &count, aff);
+    ocrHint_t hint;
+    ocrHintInit( &hint, OCR_HINT_EDT_T );
 
     ocrGuid_t rankEdt;
 
@@ -465,6 +481,9 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             for (int PDindex = 0; PDindex < count; PDindex++)
                 {
                     const ocrGuid_t PD = aff[PDindex];
+#ifdef ENABLE_EXTENSION_AFFINITY
+                    ocrSetHintValue( &hint, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PD) );
+#endif
                     if (count == (PDindex + remRanks))
                         {
                             // There will be remRanks more PDs processed,
@@ -475,14 +494,16 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                     for (int r = 0; r < numRanksPerPD; r++)
                         {
 
-                            rankParamv[0] = rank;  // only param that changes
-                            //printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, PD, PDindex);
-                            //fflush(stdout);
-                            ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
-                                         EDT_PARAM_DEF, NULL,  EDT_PROP_LONG, PD, NULL);
+                            rankEdtParamv.rank = rank;  // only param that changes
+                            printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, PD, PDindex);
+                            fflush(stdout);
+                            ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
+                                         (u64 *) &rankEdtParamv,
+                                         EDT_PARAM_DEF, NULL,  EDT_PROP_LONG,
+                                         PICK_1_1(&hint,PD), NULL);
 
-                            //printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, PD);
-                            //fflush(stdout);
+                            printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, PD);
+                            fflush(stdout);
 
                             rank ++ ;
                             // argcArgvDB: will only be read by ranks
@@ -500,23 +521,28 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 
             for (rank = 0; rank<numRanks; rank++)
                 {
-                    rankParamv[0] = rank;  // only param that changes
-                    const ocrGuid_t affWhere = (AFFINITY_NONE == affinity ? NO_ALLOC: aff[rank%count]);
+                    rankEdtParamv.rank = rank;  // only param that changes
+                    const ocrGuid_t affWhere = (AFFINITY_NONE == affinity ? NULL_GUID: aff[rank%count]);
+                    ocrSetHintValue( &hint, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(affWhere) );
 
 #if 0
-                    ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
-                                 EDT_PARAM_DEF, rankDepv,  EDT_PROP_NONE, NO_ALLOC, NULL);
+                    ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
+                                 (u64 *) &rankEdtParamv,
+                                 EDT_PARAM_DEF, rankDepv,  EDT_PROP_NONE,
+                                 PICK_1_1(&hint,affWhere), NULL);
 
 #endif
                     // having trouble getting argcArgvDB added as CONST - hangs: bug
                     // 664
 #if 1
-                    //            printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, aff[rank%count], rank%count);
-                    //            fflush(stdout);
-                    ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF, rankParamv,
-                                 EDT_PARAM_DEF, NULL,  EDT_PROP_LONG, affWhere, NULL);
-                    //            printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, aff[rank%count]);
-                    //            fflush(stdout);
+                                printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, aff[rank%count], rank%count);
+                                fflush(stdout);
+                    ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
+                                 (u64 *) &rankEdtParamv,
+                                 EDT_PARAM_DEF, NULL,  EDT_PROP_LONG,
+                                 PICK_1_1(&hint,affWhere), NULL);
+                                printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, aff[rank%count]);
+                                fflush(stdout);
 
                     // argcArgvDB: will only be read by ranks
                     ocrAddDependence(argcArgvDB->guid, rankEdt, 0, DB_MODE_RO /* CONST hangs */);
@@ -572,8 +598,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbRelease(argcArgv);
 
     ocrEdtCreate(&mainEdtHelper, mainEdtHelperTemplate, EDT_PARAM_DEF ,
-         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH | EDT_PROP_LONG,
-         NULL_GUID, &outputEvent);
+   // Vincent had this as long??        paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH | EDT_PROP_LONG,
+         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH,
+         PICK_1_1(NULL_HINT,NULL_GUID), &outputEvent);
 
     PRINTF("mainEdtHelper: edt %p\n", mainEdtHelper);
 
@@ -584,7 +611,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t endDepv[] = {outputEvent};
     ocrEdtTemplateCreate(&endEdtTemplate, endEdtFn, 0, 1);
     ocrEdtCreate(&endEdt, endEdtTemplate, 0, NULL, EDT_PARAM_DEF, endDepv,
-         EDT_PROP_NONE, NULL_GUID, NULL);
+                 EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
 
     PRINTF("endEdt: edt %p\n", endEdt);
 
@@ -608,21 +635,19 @@ int __mpi_ocr_TRUE(void) {
     return TRUE;
 }
 
-
 ocrGuid_t __getGlobalDBGuid()
 {
-    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
-
-    return globalDBContext->dbGuid;
+    elsUnion u;
+    u.guid = ocrElsUserGet(GLOBAL_DB_SLOT);
+    return (((globalDBContextP_t)(u.ptr))->dbGuid);
 }
 
 u64 * __getGlobalDBAddr()
 {
-    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
-
-    return globalDBContext->addrPtr;
+    elsUnion u;
+    u.guid = ocrElsUserGet(GLOBAL_DB_SLOT);
+    return (((globalDBContextP_t)(u.ptr))->addrPtr);
 }
-
 
 
 // check the results from an OCR API call.

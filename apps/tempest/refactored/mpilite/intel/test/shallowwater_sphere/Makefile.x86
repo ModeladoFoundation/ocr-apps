@@ -74,6 +74,7 @@ TARGET := SWTest2
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
+MPILITE=yes
 CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files

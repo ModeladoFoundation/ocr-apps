@@ -95,11 +95,17 @@ HPCG_OPTS     = -I${WORKLOAD_SRC} -DHPCG_NO_OPENMP
 #CC = g++
 CC = icpc -xHost
 
+ifeq ($(OCRRUN_ITAC), yes)
+CC=mpiicpc -xHost
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif
+
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
 
-CFLAGS :=  ${HPCG_OPTS}
+CFLAGS +=  -g ${HPCG_OPTS}
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
@@ -114,7 +120,7 @@ I_MPI_ROOT ?= /opt/intel/tools/compilers_and_libraries_2016.0.109/linux/mpi
 LDFLAGS := -L$(I_MPI_ROOT)/lib64 -lmpi -lm -lpthread -lmpilite
 
 # MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
+CONFIG_FLAGS := --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
 
 # Targets:
 #   - all:     Build the application.

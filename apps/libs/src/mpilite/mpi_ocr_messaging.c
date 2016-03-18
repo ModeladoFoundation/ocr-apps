@@ -127,7 +127,7 @@ static int sendData(void *buf, int count, MPI_Datatype
     s32 err;
 
     if (err = ocrDbCreate(&DB, (void **)&ptr, totalSize + sizeof(mpiOcrMessage_t),
-                          DB_PROP_NONE, NULL_GUID, NO_ALLOC))
+                          DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC))
         {
             char msg[150];
             sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrDbCreate",
@@ -176,16 +176,18 @@ static int sendData(void *buf, int count, MPI_Datatype
 int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
                datatype, int source, int dest, int tag, MPI_Comm comm, u64 totalSize)
 {
-    const ocrGuid_t messageEventMap = getMessageContext()->messageEventMap;
+    const ocrGuid_t messageEventRange = getMessageContext()->messageEventRange;
     ocrGuid_t messageEvent;
 
-    s64 indexes[3] = {source, dest, tag};
-    s32 err;
+    rankContextP_t rankContext = getRankContext();
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
 
-    if (err=ocrGuidFromLabel(&messageEvent, messageEventMap, indexes))
+    s32 err;
+    if (err=ocrGuidFromIndex(&messageEvent, messageEventRange, guidIndex(source, dest, tag, numRanks, maxTag)))
         {
             char msg[150];
-            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrGuidFromLabel",
+            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrGuidFromIndex",
                     source, err);
             ERROR(msg); // exits
         }
@@ -218,16 +220,18 @@ int mpiOcrTrySend(void *buf, int count, /*MPI_Datatype*/ int
                datatype, int source, int dest, int tag, MPI_Comm comm, u64
                   totalSize, bool *done)
 {
-    const ocrGuid_t messageEventMap = getMessageContext()->messageEventMap;
+    const ocrGuid_t messageEventRange = getMessageContext()->messageEventRange;
     ocrGuid_t messageEvent;
 
-    s64 indexes[3] = {source, dest, tag};
-    u32 err;
+    rankContextP_t rankContext = getRankContext();
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
 
-    if (err=ocrGuidFromLabel(&messageEvent, messageEventMap, indexes))
+    u32 err;
+    if (err=ocrGuidFromIndex(&messageEvent, messageEventRange, guidIndex(source, dest, tag, numRanks, maxTag)))
         {
             char msg[150];
-            sprintf((char*)&msg, "mpiOcrTrySend:rank:%d, error %d from ocrGuidFromLabel",
+            sprintf((char*)&msg, "mpiOcrTrySend:rank:%d, error %d from ocrGuidFromIndex",
                     source, err);
             ERROR(msg); // exits
         }
@@ -301,7 +305,7 @@ mpiOcrTryRecv( bool *done){
 
    Note: MPI_ANY_{SOURCE,TAG} have been eliminated by caller, so source and tag
    are real values, and should match what is in the message. (If not, then
-   the Send and/or Recv have indexed incorrectly into the messageEventMap
+   the Send and/or Recv have indexed incorrectly into the messageEventRange
    and someone has the wrong messageEvent guid!)
 */
 static int recvData(void *buf, int count, MPI_Datatype
@@ -381,16 +385,18 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
                datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
                totalSize, /*MPI_Status*/ void *status)
 {
-    const ocrGuid_t messageEventMap = getMessageContext()->messageEventMap;
+    const ocrGuid_t messageEventRange = getMessageContext()->messageEventRange;
     ocrGuid_t messageEvent;
 
-    s64 indexes[3] = {source, dest, tag};
-    s32 err;
+    rankContextP_t rankContext = getRankContext();
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
 
-    if (err=ocrGuidFromLabel(&messageEvent, messageEventMap, indexes))
+    s32 err;
+    if (err=ocrGuidFromIndex(&messageEvent, messageEventRange, guidIndex(source, dest, tag, numRanks, maxTag)))
         {
             char msg[150];
-            sprintf((char*)&msg, "mpiOcrRecv:rank:%d, error %d from ocrGuidFromLabel",
+            sprintf((char*)&msg, "mpiOcrRecv:rank:%d, error %d from ocrGuidFromIndex",
                     dest, err);
             ERROR(msg); // exits
         }
@@ -434,16 +440,18 @@ int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
                   datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
                   totalSize, /*MPI_Status*/ void *status, bool *done)
 {
-    const ocrGuid_t messageEventMap = getMessageContext()->messageEventMap;
+    const ocrGuid_t messageEventRange = getMessageContext()->messageEventRange;
     ocrGuid_t messageEvent;
 
-    s64 indexes[3] = {source, dest, tag};
-    s32 err;
+    rankContextP_t rankContext = getRankContext();
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
 
-    if (err=ocrGuidFromLabel(&messageEvent, messageEventMap, indexes))
+    s32 err;
+    if (err=ocrGuidFromIndex(&messageEvent, messageEventRange, guidIndex(source, dest, tag, numRanks, maxTag)))
         {
             char msg[150];
-            sprintf((char*)&msg, "mpiOcrTryRecv:rank:%d, error %d from ocrGuidFromLabel",
+            sprintf((char*)&msg, "mpiOcrTryRecv:rank:%d, error %d from ocrGuidFromIndex",
                     dest, err);
             ERROR(msg); // exits
         }

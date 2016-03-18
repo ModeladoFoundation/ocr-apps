@@ -81,8 +81,14 @@ OBJS: $(ROSE_TARGET)
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
 
-CC = icc
-CFLAGS := -g -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+CC = mpicc
+CFLAGS = -g -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+
+ifeq ($(OCRRUN_ITAC), yes)
+CC=mpiicc
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
@@ -91,7 +97,8 @@ CFLAGS := -g -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
 LDFLAGS := -lm -lpthread -lmpilite
 
 # MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
+MPILITE=yes
+CONFIG_FLAGS := --guid LABELED  --scheduler LEGACY --dequetype LOCKED_DEQUE
 
 # Targets:
 #   - all:     Build the application.

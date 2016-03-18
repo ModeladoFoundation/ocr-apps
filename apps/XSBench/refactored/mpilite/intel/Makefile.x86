@@ -70,6 +70,7 @@ TARGET := XSBench
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
+MPILITE=yes
 CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
@@ -93,7 +94,7 @@ $(OBJS): $(WORKLOAD_SRC)/XSbench_header.h $(WORKLOAD_SRC)/omp.h $(ROSE_TARGET)
 # jenkins doesn't set up icc so comment out for a while
 #CC=icc -wd3180
 
-CFLAGS := -g -DMPI -I$(WORKLOAD_SRC)
+CFLAGS += -g -std=c99 -DMPI -I$(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
 
 
@@ -102,11 +103,11 @@ LDFLAGS := -lpthread -lm -lmpilite
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3 -std=c99
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -g -O0 -std=c99
+debug:	CFLAGS += -O0
 debug:	TARGETS := debug
 debug:	default
 

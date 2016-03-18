@@ -113,8 +113,9 @@ typedef struct messageContext_t
     // 3 D array of events
     ocrGuid_t *messageEvents;
 #endif
-    // 3 D map of event guid s
-    ocrGuid_t messageEventMap;
+
+    // Range of event guids
+    ocrGuid_t messageEventRange;
 
 #ifdef DB_ARRAY
     ocrEdtDep_t *messageData;
@@ -134,12 +135,23 @@ typedef struct globalDBContext_t
 #define MESSAGE_CONTEXT_SLOT 1
 #define GLOBAL_DB_SLOT 2
 
+typedef union {
+    void * ptr;
+    ocrGuid_t guid;
+} elsUnion;
+
 static inline rankContextP_t getRankContext() {
-    return ((rankContextP_t)( ocrElsUserGet(RANK_CONTEXT_SLOT)));
+    elsUnion u;
+    u.guid = ocrElsUserGet(RANK_CONTEXT_SLOT);
+    return ((rankContextP_t)(u.ptr));
 }
+
 static inline messageContextP_t getMessageContext() {
-    return ((messageContextP_t)( ocrElsUserGet(MESSAGE_CONTEXT_SLOT)));
+    elsUnion u;
+    u.guid = ocrElsUserGet(MESSAGE_CONTEXT_SLOT);
+    return ((messageContextP_t)(u.ptr));
 }
+
 
 int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
                datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64 totalSize);
@@ -155,6 +167,9 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
 int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
                   datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
                   totalSize, /*MPI_Status*/ void *status, bool *done);
+
+u64 guidIndex(int source, int dest, int tag, int numRanks, int maxTag);
+
 
 /* prints error and exits program */
 void ERROR(char *s);

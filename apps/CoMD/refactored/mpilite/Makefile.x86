@@ -75,6 +75,7 @@ TARGET := comd-mpi
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
+MPILITE=yes
 CONFIG_FLAGS := --guid LABELED
 
 # Space separated list of source files
@@ -105,8 +106,6 @@ $(OBJS): $(ROSE_TARGET) $(HDRS)
 CFLAGS := -DDO_MPI -DDOUBLE -I $(WORKLOAD_SRC)
 LDFLAGS := -lpthread -lm -lmpilite
 
-# MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
 
 # Targets:
 #   - all:     Build the application.

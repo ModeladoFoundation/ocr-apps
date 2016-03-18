@@ -66,7 +66,14 @@ TARGET ?= hpgmg
 REQ_LIBS := mpilite
 
 # MPILite config file needs LABELED
-CONFIG_FLAGS := --guid LABELED
+MPILITE=yes
+CONFIG_FLAGS := --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
+
+ifeq ($(OCRRUN_ITAC), yes)
+CC=mpiicc
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif
 
 # Space separated list of source files
 
