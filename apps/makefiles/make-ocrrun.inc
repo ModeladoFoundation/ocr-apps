@@ -60,12 +60,15 @@ FORCE_CC ?= no
 ifeq ($(FORCE_CC), no)
 # For the MPI backend we favor using mpicc unless indicated otherwise.
 ifeq ($(OCR_TYPE), x86-mpi)
-$(info MPI_X86)
 ifeq ($(CC), cc)
-$(info set cc is mpicc)
 # default to mpicc if CC=cc (that's the default value from make)
 CC = mpicc
-# else use the CC value set by the caller
+else
+# else use the CC value set by the caller or
+# automatically override icc to mpiicc
+ifeq ($(CC), icc)
+CC = mpiicc
+endif
 endif
 else
 # default to gcc for not MPI
