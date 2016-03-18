@@ -22,23 +22,20 @@
 #   - TG_INSTALL        Path to the TG environment installation
 #   - TG_ROOT           Path to the TG root
 
-ifndef ARCH
-endif
-
-ifeq ($(RUN_JENKINS), runApp)
-APPS_ROOT             :=
-else ifeq ($(RUN_JENKINS), buildApp)
-OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
-APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
+# APPS_ROOT needs to be defined at a minimum
+ifeq (,$(APPS_ROOT))
+$(error APPS_ROOT needs to be defined)
 else
-TG_ROOT               := $(shell cd "${TG_ROOT}" && pwd)
-OCR_ROOT              := $(shell cd "${OCR_ROOT}" && pwd)
-APPS_ROOT             := $(shell cd "${APPS_ROOT}" && pwd)
+_T := $(APPS_ROOT)
+APPS_ROOT := $(realpath $(_T))
+ifeq (,$(APPS_ROOT))
+$(error APPS_ROOT is not a valid path: $(_T))
+endif
 endif
 
-APPS_LIBS_ROOT        := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
-
-TG_INSTALL            := $(shell cd "${TG_INSTALL}" && pwd)
+# Check all other variables using varcheck
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
 
 REQ_LIBS ?=
 
@@ -50,14 +47,18 @@ parallel-reqlibs: $(FULL_REQ_LIBS)
 
 .PHONY: $(FULL_REQ_LIBS)
 $(FULL_REQ_LIBS):
-	lockfile "/tmp/$(subst /,_,$@)_lock"
+	$(AT)lockfile "/tmp/$(subst /,_,$@)_lock"; \
 	echo "Grabbed lock"; date; \
-	ARCH=$(ARCH) APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
-	OCR_ROOT=$(OCR_ROOT) \
+	V=$(V) ARCH=$(ARCH) APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
+	APPS_LIBS_INSTALL_ROOT=$(APPS_LIBS_INSTALL_ROOT) APPS_LIBS_INSTALL=$(APPS_LIBS_INSTALL) \
+	OCR_ROOT=$(OCR_ROOT) OCR_BUILD_ROOT=$(OCR_BUILD_ROOT) \
+	OCR_INSTALL=$(OCR_INSTALL) OCR_TYPE=$(OCR_TYPE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) \
 	$(MAKE) -C $@ install; \
-	echo "Releasing lock"; date
-	rm -f "/tmp/$(subst /,_,$@)_lock"
+	status=$$?; \
+	echo "Releasing lock"; date; \
+	rm -f "/tmp/$(subst /,_,$@)_lock"; \
+	exit $$status
 
 .PHONY: reqlibs
 reqlibs: parallel-reqlibs

@@ -3,29 +3,15 @@
 # removed or modified.
 
 
-# Library environment
-ARCH=x86
-APPS_LIBS_ROOT ?= ../../../x86
-APPS_ROOT ?= ../../../..
-
-
-APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
-APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-
-# OCR top level directory
-#
-OCR_ROOT ?= ../../../../../../ocr/ocr
-OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
-
 SRCS := ../reduction.c ../reduction_v1.c
 OBJS := reduction.o reduction_v1.o
 INCLUDES := ../reduction.h ../reduction_v1.h
 LIB := libreduction.a
 
 # installed files
-INSTALL_REDUCTION_H := ${APPS_LIBS_ROOT}/include/reduction.h
-INSTALL_REDUCTION_H1 := ${APPS_LIBS_ROOT}/include/reduction_v1.h
-INSTALL_REDUCTION_A := ${APPS_LIBS_ROOT}/lib/libreduction.a
+INSTALL_REDUCTION_H := ${APPS_LIBS_INSTALL}/include/reduction.h
+INSTALL_REDUCTION_H1 := ${APPS_LIBS_INSTALL}/include/reduction_v1.h
+INSTALL_REDUCTION_A := ${APPS_LIBS_INSTALL}/lib/libreduction.a
 
 CC := gcc
 AR := ar
@@ -35,7 +21,7 @@ RANLIB := ranlib
 
 # 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
 OPT_FLAGS := -O0
-INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -I$(APPS_LIBS_ROOT)/include
+INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -I$(APPS_LIBS_INSTALL)/include
 CFLAGS := -std=c99 -g
 DEFINES := -DOCR_ENABLE_EDT_NAMING
 
@@ -49,7 +35,7 @@ debug: CFLAGS += -g -O0
 debug: install
 
 .PHONY: compile
-compile: $(OBJS) $(MACROS_H)
+compile: $(OBJS)
 
 .PHONY: link
 link: $(LIB)
@@ -58,46 +44,49 @@ REQ_LIBS := macros
 
 %.o: ../%.c Makefile $(INCLUDES) | reqlibs
 	@echo "Compiling $<"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(AT)$(CC) $(CFLAGS) -c $< -o $@
 
 $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
-	@$(AR) $(ARFLAGS) $(LIB) $^
+	$(AT)$(AR) $(ARFLAGS) $(LIB) $^
 
-$(INSTALL_REDUCTION_H): ../reduction.h
-	cp $^ $@
+$(INSTALL_REDUCTION_H): ../reduction.h | $(APPS_LIBS_INSTALL)/include
+	$(AT)cp $^ $@
 
-$(INSTALL_REDUCTION_H1): ../reduction_v1.h
-	cp $^ $@
+$(INSTALL_REDUCTION_H1): ../reduction_v1.h | $(APPS_LIBS_INSTALL)/include
+	$(AT)cp $^ $@
 
 # Not used any more by users
 #$(INSTALL_REDUCTION_MESS_H): ../mpi_ocr_messaging.h
 #	cp $< $@
 
-$(INSTALL_REDUCTION_A): $(LIB)
-	cp $< $@
+$(INSTALL_REDUCTION_A): $(LIB) | $(APPS_LIBS_INSTALL)/lib
+	$(AT)cp $< $@
 
 .PHONY: install
 install:  $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_H1) $(INSTALL_REDUCTION_A)
-
-installold: $(INCLUDES) $(LIB)
-	@echo "Installing X86 standard files"
-	@cp  $(INCLUDES) ${APPS_LIBS_ROOT}/include/
-	@cp  $(LIB) ${APPS_LIBS_ROOT}/lib/
 
 .PHONY: run
 run:
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(LIB)
+	$(AT)rm -f $(OBJS) $(LIB)
 
 .PHONY: uninstall
 uninstall:
-	for i in reduction.h reduction_v1.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
-	rm -f $(APPS_LIBS_ROOT)/lib/$(LIB)
+	$(AT)for i in reduction.h reduction_v1.h; do rm -f ${APPS_LIBS_INSTALL}/include/$$i ; done
+	$(AT)rm -f $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 .PHONY: squeeky
 squeeky: clean uninstall
+
+.PHONY: $(APPS_LIBS_INSTALL)/include
+$(APPS_LIBS_INSTALL)/include:
+	$(AT)mkdir -p $@
+
+.PHONY: $(APPS_LIBS_INSTALL)/lib
+$(APPS_LIBS_INSTALL)/lib:
+	$(AT)mkdir -p $@
 
 include $(APPS_ROOT)/makefiles/make-libs.inc

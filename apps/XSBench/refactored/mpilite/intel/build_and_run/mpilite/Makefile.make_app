@@ -41,7 +41,7 @@ obj := $(source:.c=.o)
 
 APPS_ROOT ?= ../../../../../..
 APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-APPS_LIBS_ROOT := $(APPS_ROOT)/libs/x86
+#APPS_LIBS_ROOT := $(APPS_ROOT)/libs/x86
 
 MPI_LIB = -L$(APPS_LIBS_ROOT)/lib -lmpilite
 MPI_INCLUDE = -I$(APPS_LIBS_ROOT)/include

@@ -4,7 +4,7 @@ TEMPESTBASEDIR= ../..
 # Compile with BLAS libraries
 #USEBLAS= true
 USEBLAS= false
-MPILITE=$(APPS_ROOT)/libs/x86/lib
+MPILITE=$(APPS_LIBS_INSTALL)/lib
 CFLAGS+=-O0 -g
 
 # Load system-specific defaults

@@ -2,6 +2,8 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+OCR_TYPE := x86
+
 ifndef APPS_ROOT
 $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
 APPS_ROOT ?= ../../../..
@@ -9,18 +11,7 @@ endif
 
 REPO_TOP ?= ${APPS_ROOT}/..
 
-# APPS
 APPS_ROOT       ?= ${REPO_TOP}/apps
-APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
-
-# OCR_TYPE
-OCR_TYPE        ?= x86
-
-# OCR
-
-OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
-OCR_INSTALL ?= ${OCR_ROOT}/install
-OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
 WORKLOAD_SRC          ?= .

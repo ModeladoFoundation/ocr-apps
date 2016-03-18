@@ -18,14 +18,14 @@ DO_MPI = OFF
 
 ARCH           ?= x86
 APPS_ROOT      ?= ../../../../
-APPS_LIBS_ROOT ?= $(APPS_ROOT)/libs/$(ARCH)
+#APPS_LIBS_ROOT ?= $(APPS_ROOT)/libs/$(ARCH)
 
 WORKLOAD_SRC          ?= ./src
 WORKLOAD_BUILD_ROOT   ?= ./build/$(ARCH)
 WORKLOAD_INSTALL_ROOT ?= ./install/$(ARCH)
 
 APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
+#APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
 WORKLOAD_SRC          := $(shell cd "${WORKLOAD_SRC}" && pwd)
 WORKLOAD_BUILD_ROOT   := $(shell mkdir -p "${WORKLOAD_BUILD_ROOT}" && cd "${WORKLOAD_BUILD_ROOT}" && pwd)

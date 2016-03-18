@@ -4,7 +4,7 @@
 
 # APPS
 APPS_ROOT       ?= ../../../apps
-APPS_LIBS_ROOT  ?= ../../../apps/libs/x86
+#APPS_LIBS_ROOT  ?= ../../../apps/libs/x86
 
 # OCR_TYPE
 OCR_TYPE        ?= x86
@@ -81,4 +81,4 @@ prerun: ;
 .PHONY: postrun
 postrun: ;
 
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc

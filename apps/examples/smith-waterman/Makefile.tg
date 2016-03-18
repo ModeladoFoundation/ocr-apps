@@ -2,25 +2,12 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+# ARCH
+ARCH        := tg-xe
 # APPS
-APPS_ROOT       ?= ../../../apps
-APPS_LIBS_ROOT  ?= ../../../apps/libs/tg
-
+APPS_ROOT   ?= ../../../apps
 # OCR_TYPE
-OCR_TYPE        ?= tg
-
-# TG
-TG_INSTALL ?= ../../../../tg/tg/install
-TG_ROOT    ?= ../../../../tg/tg
-
-# OCR
-XE_TARGET   ?= tg-xe
-XE_BUILDER  ?= builder-xe
-CE_TARGET   ?= tg-ce
-CE_BUILDER  ?= builder-ce
-OCR_INSTALL ?= ${OCR_ROOT}/install
-OCR_ROOT     ?= ../../../../ocr/ocr
-OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_TYPE    := tg
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -46,10 +33,15 @@ WORKLOAD_INPUT_FILE_IDX := 3
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
-# Set to "build" or "run" if Jenkins is running this job as an automated test
-RUN_JENKINS ?= no
+# By default, the make system will make sure OCR is properly
+# built. You can override this here:
+#  - Set to buildApp if you just want to build the app (OCR must be built)
+#  - Set to runApp if you just want to run the app (the app and OCR must be built)
+# This is mostly used by Jenkins as it splits out the build and run phases for
+# a test
+RUN_MODE ?=
 
-## END of variables coming from user/environment
+# END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -64,11 +56,11 @@ REQ_LIBS := libc macros
 SRCS := smithwaterman.c
 
 # Additional CFLAGS. By default, it includes
-# all OCR required includes and apps/libs/<target>/include
+# all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 CFLAGS :=
 # Additional LDFLAGS. By default, it includes
-# the required OCR library path and apps/libs/<target/lib
+# the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS :=
@@ -90,7 +82,7 @@ debug:	default
 install: all
 
 # This rule will be executed prior to execution:
-#  - For the FSim target, this happens when the binary is built
+#  - For the TG target, this happens when the binary is built
 #  - For all other targets this happens prior to running the
 #    executable
 # WORKLOAD_ARGS and WORKLOAD_INPUTS are available
@@ -107,11 +99,10 @@ install: all
 # You may also want to assign a value to WORKLOAD_OUTS
 # which should contain the list of output files produced
 # by the application (to be passed to postrun). This is
-# taken-care of for you on FSim but not on any of the
+# taken-care of for you on TG but not on any of the
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
-.ONESHELL:
 prerun: $(WORKLOAD_SRC)/prepare_inputs.sh
 	$(eval WORKLOAD_ARGS += $(shell cd $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE) && $(WORKLOAD_SRC)/prepare_inputs.sh $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)))
 	$(eval WORKLOAD_INPUTS := $(WORKLOAD_BUILD_ROOT)/$(OCR_TYPE)/smithwaterman_output.bin)
@@ -126,4 +117,5 @@ postrun: ;
 # Any additional rules required can go here
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-tg.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
+

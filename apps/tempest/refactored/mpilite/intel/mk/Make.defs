@@ -34,9 +34,9 @@ LDFLAGS+= -L$(TEMPESTBASEDIR)/lib
 
 # NETCDF directories
 ifndef NO_NETCDF
-  CFLAGS+=  -I$(NETCDF_INCLUDEDIR) -I$(APPS_ROOT)/libs/x86/include -I$(OCR_INSTALL)/include
+  CFLAGS+=  -I$(NETCDF_INCLUDEDIR) -I$(APPS_LIBS_INSTALL)/include -I$(OCR_INSTALL)/include
   LDFILES+= -lmpilite  -locr_$(OCR_TYPE) -lnetcdf -lnetcdf_c++
-  LDFLAGS+= -L$(NETCDF_LIBDIR)  -L$(OCR_INSTALL)/lib -L$(APPS_ROOT)/libs/x86/lib
+  LDFLAGS+= -L$(NETCDF_LIBDIR)  -L$(OCR_INSTALL)/lib -L$(APPS_INSTALL)/lib
 endif
 
 # PetSc include directory

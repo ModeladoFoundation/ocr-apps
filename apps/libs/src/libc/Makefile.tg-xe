@@ -1,0 +1,26 @@
+.PHONY: all
+all:
+
+.PHONY: debug
+debug:
+
+.PHONY: install
+install: | ${APPS_LIBS_INSTALL}/include
+	@echo "Installing TG standard files"
+	$(AT)cp ${APPS_LIBS_ROOT}/libc/tg-includes/* ${APPS_LIBS_INSTALL}/include/
+
+.PHONY: ${APPS_LIBS_INSTALL}/include
+${APPS_LIBS_INSTALL}/include:
+	$(AT)mkdir -p $@
+
+.PHONY: run
+run:
+
+.PHONY: clean
+clean:
+
+.PHONY: uninstall
+uninstall:
+	$(AT)for i in `ls -1 ${APPS_LIBS_ROOT}/libc/tg-includes/`; do rm -f ${APPS_LIBS_INSTALL}/include/$$i ; done
+
+

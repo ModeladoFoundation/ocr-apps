@@ -9,13 +9,14 @@ fi
 APPS_MAKEFILE=${APPS_MAKEFILE:-${WORKLOAD_SRC}/Makefile}
 
 echo "Building kernel '$1' for architecture '$2'"
-RUN_JENKINS=buildApp make -f ${APPS_MAKEFILE}.$2 all install
+RUN_MODE=buildApp make -f ${APPS_MAKEFILE}.$2 all install
 RETURN_CODE=$?
 
 if [ $RETURN_CODE -eq 0 ]; then
     # Copy the makefile over
     # This is to enable running remote jobs from the install directory
-    cp ${APPS_MAKEFILE}.$2 ${WORKLOAD_INSTALL_ROOT}/$2/
+    cp ${APPS_MAKEFILE}.* ${WORKLOAD_INSTALL_ROOT}/$2/
+
     echo "**** Build SUCCESS ****"
 else
     echo "**** Build FAILURE ****"

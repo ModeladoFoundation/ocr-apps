@@ -2,28 +2,14 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-
-# Library environment
-APPS_LIBS_ROOT ?= ../../../x86
-APPS_ROOT ?= ../../../..
-
-
-APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
-APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-
-# OCR top level directory
-#
-OCR_ROOT ?= ../../../../../ocr
-OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
-
 SRCS := timer.c
 OBJS := timer.o
 INCLUDES := ../timer.h
 LIB := timer.a
 
 # installed files
-INSTALL_TIMER_H := ${APPS_LIBS_ROOT}/include/timer.h
-INSTALL_TIMER_A := ${APPS_LIBS_ROOT}/lib/libtimer.a
+INSTALL_TIMER_H := ${APPS_LIBS_INSTALL}/include/timer.h
+INSTALL_TIMER_A := ${APPS_LIBS_INSTALL}/lib/libtimer.a
 
 CC := gcc
 AR := ar
@@ -70,8 +56,8 @@ install: $(INSTALL_TIMER_H) $(INSTALL_TIMER_A)
 
 installold: $(INCLUDES) $(LIB)
 	@echo "Installing X86 standard files"
-	@cp  $(INCLUDES) ${APPS_LIBS_ROOT}/include/
-	@cp  $(LIB) ${APPS_LIBS_ROOT}/lib/
+	@cp  $(INCLUDES) ${APPS_LIBS_INSTALL}/include/
+	@cp  $(LIB) ${APPS_LIBS_INSTALL}/lib/
 
 .PHONY: run
 run:
@@ -82,8 +68,8 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	for i in timer.h; do rm -f ${APPS_LIBS_ROOT}/include/$$i ; done
-	rm -f $(APPS_LIBS_ROOT)/lib/$(LIB)
+	for i in timer.h; do rm -f ${APPS_LIBS_INSTALL}/include/$$i ; done
+	rm -f $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 .PHONY: squeaky
 squeaky: clean uninstall

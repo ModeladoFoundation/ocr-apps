@@ -4,7 +4,7 @@
 
 # APPS
 APPS_ROOT        ?= ../../../../../apps/apps
-APPS_LIBS_ROOT   ?= ../../../../../apps//appslibs/x86
+#APPS_LIBS_ROOT   ?= ../../../../../apps//appslibs/x86
 
 # OCR_TYPE
 OCR_TYPE         ?= x86

@@ -7,7 +7,7 @@ SORT	?= sort
 
 # APPS
 APPS_ROOT        ?= ../../../../../apps/apps
-APPS_LIBS_ROOT   ?= ../../../../../apps/apps/libs/tg
+#APPS_LIBS_ROOT   ?= ../../../../../apps/apps/libs/tg
 
 # OCR_TYPE
 OCR_TYPE         ?= tg

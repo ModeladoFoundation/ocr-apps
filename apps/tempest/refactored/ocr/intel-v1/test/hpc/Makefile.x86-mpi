@@ -14,7 +14,7 @@ ARCH            = x86
 
 # APPS
 APPS_ROOT       ?= ${REPO_TOP}/apps
-APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
+#APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
 
 
 # OCR_TYPE

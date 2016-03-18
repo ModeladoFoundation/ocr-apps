@@ -1,28 +1,7 @@
 # This file is subject to the license agreement located in the file LICENSE
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
-
-
-# Library environment
-APPS_LIBS_ROOT ?= ../../../tg
-APPS_ROOT ?= ../../../..
-
-
-APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
-APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-
-# OCR top level directory
-#
-OCR_ROOT ?= ../../../../../../ocr/ocr
-OCR_ROOT := $(shell cd "${OCR_ROOT}" && pwd)
-
-TG_ROOT        ?= ../../../../../../tg/tg
-TG_INSTALL     ?= ../../../../../../tg/tg/install
-TG_ROOT        := $(shell cd "${TG_ROOT}" && pwd)
-TG_INSTALL     := $(shell cd "${TG_INSTALL}" && pwd)
-
 TG_PREFIX     := $(TG_INSTALL)/bin/xstg-linux-elf
-OCR_INSTALL   := $(OCR_ROOT_BASE)/tg-xe
 
 AS	= $(TG_PREFIX)-as
 ASFLAGS	=
@@ -46,10 +25,10 @@ INCLUDES := ../mpi.h ../mpi_ocr_messaging.h ../mpi_ocr.h
 LIB := libmpilite.a
 
 # installed files
-INSTALL_MPI_H := ${APPS_LIBS_ROOT}/include/mpi.h
-INSTALL_MPI_A := ${APPS_LIBS_ROOT}/lib/$(LIB)
+INSTALL_MPI_H := ${APPS_LIBS_INSTALL}/include/mpi.h
+INSTALL_MPI_A := ${APPS_LIBS_INSTALL}/lib/$(LIB)
 
-INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -isystem $(APPS_LIBS_ROOT)/include
+INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -isystem $(APPS_LIBS_INSTALL)/include
 
 CFLAGS += -std=c99
 
@@ -70,18 +49,18 @@ link: $(LIB)
 
 %.o: ../%.c Makefile $(INCLUDES)
 	@echo "Compiling $<"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(AT)$(CC) $(CFLAGS) -c $< -o $@
 
 
 $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
-	@$(AR) $(ARFLAGS) $(LIB) $^
+	$(AT)$(AR) $(ARFLAGS) $(LIB) $^
 
-$(INSTALL_MPI_H): ../mpi.h
-	cp $< $@
+$(INSTALL_MPI_H): ../mpi.h | $(APPS_LIBS_INSTALL)/include
+	$(AT)cp $< $@
 
-$(INSTALL_MPI_A): $(LIB)
-	cp $< $@
+$(INSTALL_MPI_A): $(LIB) | $(APPS_LIBS_INSTALL)/lib
+	$(AT)cp $< $@
 
 .PHONY: install
 install: $(INSTALL_MPI_H) $(INSTALL_MPI_A)
@@ -90,6 +69,10 @@ installold: $(../mpi.h) $(LIB)
 	@echo "Installing tg standard files"
 	@cp $(../mpi.h) ${APPS_LIBS_ROOT}/include/
 	@cp $(LIB) ${APPS_LIBS_ROOT}/lib/
+
+.PHONY: $(APPS_LIBS_INSTALL)/include $(APPS_LIBS_INSTALL)/lib
+$(APPS_LIBS_INSTALL)/include $(APPS_LIBS_INSTALL)/lib:
+	$(AT)mkdir -p $@
 
 .PHONY: run
 run:

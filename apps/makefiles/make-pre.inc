@@ -1,3 +1,9 @@
+# Verbosity of make
+V ?= 0
+AT_0 := @
+AT_1 :=
+AT = $(AT_$(V))
+
 found_run := $(strip $(foreach count, $(shell seq -s ' ' $(words $(MAKECMDGOALS))), $(if $(findstring run,$(word $(count), $(MAKECMDGOALS))),$(count))))
 ifneq (,$(found_run))
   # use the rest as arguments for "run" (only if there are some)

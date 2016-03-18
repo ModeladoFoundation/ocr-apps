@@ -4,12 +4,7 @@
 
 CRLIBM_ROOT     ?= ../x86_64
 
-APPS_ROOT       ?= ../../../../../../apps/apps
-APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
-
 CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)
-APPS_ROOT      := $(shell cd "${APPS_ROOT}" && pwd)
-APPS_LIBS_ROOT := $(shell cd "${APPS_LIBS_ROOT}" && pwd)
 
 CP=cp
 RM=rm
@@ -17,49 +12,53 @@ MKDIR=mkdir
 
 .PHONY: squeaky
 squeaky:
-	(cd $(CRLIBM_ROOT);./RAG-clobber.sh)
+	$(AT)(cd $(CRLIBM_ROOT);./RAG-clobber.sh)
 
 .PHONY: configure
 configure: $(CRLIBM_ROOT)/Makefile
 
 $(CRLIBM_ROOT)/Makefile: $(CRLIBM_ROOT)/RAG-install.sh
-	(cd $(CRLIBM_ROOT);./RAG-install.sh)
+	$(AT)(cd $(CRLIBM_ROOT);./RAG-install.sh)
 
 .PHONY: all
 all: $(CRLIBM_ROOT)/Makefile
-	$(MAKE) -C $(CRLIBM_ROOT) all
-	$(MKDIR) -p lib include
-	$(CP) $(CRLIBM_ROOT)/crlibm.h    include/crlibm.h
-	$(CP) $(CRLIBM_ROOT)/libcrlibm.a lib/libcrlibm.a
+	$(AT)$(MAKE) -C $(CRLIBM_ROOT) all
+	$(AT)$(MKDIR) -p lib include
+	$(AT)$(CP) $(CRLIBM_ROOT)/crlibm.h    include/crlibm.h
+	$(AT)$(CP) $(CRLIBM_ROOT)/libcrlibm.a lib/libcrlibm.a
 
 .PHONY: clean
 clean:
-	$(RM) -rf lib include bin \
+	$(AT)$(RM) -rf lib include bin \
 	$(CRLIBM_ROOT)/scs_lib/*.o \
 	$(CRLIBM_ROOT)/tests/*.o \
 	$(CRLIBM_ROOT)/*.o
 
 .PHONY: check
 check:
-	$(MAKE) -C $(CRLIBM_ROOT) check
+	$(AT)$(MAKE) -C $(CRLIBM_ROOT) check
 
 lib/libcrlibm.a: | all
 
 include/crlibm.h: | all
 
-$(APPS_LIBS_ROOT)/lib/libcrlibm.a: lib/libcrlibm.a
-	$(CP) -f lib/libcrlibm.a $(APPS_LIBS_ROOT)/lib/libcrlibm.a
+$(APPS_LIBS_INSTALL)/lib/libcrlibm.a: lib/libcrlibm.a | $(APPS_LIBS_INSTALL)/lib
+	$(AT)$(CP) -f lib/libcrlibm.a $(APPS_LIBS_INSTALL)/lib/libcrlibm.a
 
-$(APPS_LIBS_ROOT)/include/crlibm.h: include/crlibm.h
-	$(CP) -f include/crlibm.h $(APPS_LIBS_ROOT)/include/crlibm.h
+$(APPS_LIBS_INSTALL)/include/crlibm.h: include/crlibm.h | $(APPS_LIBS_INSTALL)/include
+	$(AT)$(CP) -f include/crlibm.h $(APPS_LIBS_INSTALL)/include/crlibm.h
+
+.PHONY: $(APPS_LIBS_INSTALL)/lib $(APPS_LIBS_INSTALL)/include
+$(APPS_LIBS_INSTALL)/lib $(APPS_LIBS_INSTALL)/include:
+	$(AT)mkdir -p $@
 
 .PHONY: install
-install: $(APPS_LIBS_ROOT)/lib/libcrlibm.a $(APPS_LIBS_ROOT)/include/crlibm.h
+install: $(APPS_LIBS_INSTALL)/lib/libcrlibm.a $(APPS_LIBS_INSTALL)/include/crlibm.h
 
 .PHONY: uninstall
 uninstall:
-	$(RM) -f $(APPS_LIBS_ROOT)/lib/libcrlibm.a
-	$(RM) -f $(APPS_LIBS_ROOT)/include/crlibm.h
+	$(AT)$(RM) -f $(APPS_LIBS_INSTALL)/lib/libcrlibm.a
+	$(AT)$(RM) -f $(APPS_LIBS_INSTALL)/include/crlibm.h
 
 .PHONY: debug
 debug:
