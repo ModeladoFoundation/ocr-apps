@@ -18,7 +18,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     for (i=0; i<30; i+=3) {
         u64 n = i%10;
-        ocrEdtCreate(&edt, template, 1, &n, 1, &event, EDT_PROP_NONE, NULL_GUID, NULL);
+        ocrEdtCreate(&edt, template, 1, &n, 1, &event, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
         { // OCR hints
             ocrHint_t _stepHints;
             ocrHintInit(&_stepHints, OCR_HINT_EDT_T);

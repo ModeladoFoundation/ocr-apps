@@ -44,7 +44,7 @@ ocrGuid_t fftIterationEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t edtGuid;
     ocrEdtCreate(&edtGuid, startTempGuid, EDT_PARAM_DEF, edtParamv, 1,
-                 dependencies, EDT_PROP_FINISH, NULL_GUID, NULL);
+                 dependencies, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
 
     return NULL_GUID;
 }
@@ -80,17 +80,17 @@ ocrGuid_t fftStartEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t edtGuid, edtGuid2, endEdtGuid, finishEventGuid, finishEventGuid2;
 
         ocrEdtCreate(&edtGuid, startGuid, EDT_PARAM_DEF, childParamv,
-                     EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID,
+                     EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID),
                      &finishEventGuid);
         ocrEdtCreate(&edtGuid2, startGuid, EDT_PARAM_DEF, childParamv2,
-                     EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID,
+                     EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID),
                      &finishEventGuid2);
             PRINTF("finishEventGuid after create: %lu\n",finishEventGuid);
 
         ocrGuid_t endDependencies[3] = { dataGuid, finishEventGuid, finishEventGuid2 };
         // Do calculations after having divided and conquered
         ocrEdtCreate(&endEdtGuid, endGuid, EDT_PARAM_DEF, paramv, 3,
-                     endDependencies, EDT_PROP_FINISH, NULL_GUID, NULL);
+                     endDependencies, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
 
         ocrAddDependence(dataGuid, edtGuid, 0, DB_MODE_RW);
         ocrAddDependence(dataGuid, edtGuid2, 0, DB_MODE_RW);
@@ -133,7 +133,7 @@ ocrGuid_t fftEndEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
             ocrEdtCreate(slaveGuids+i, endSlaveGuid, EDT_PARAM_DEF,
                          slaveParamv+i*5, EDT_PARAM_DEF, &dataGuid,
-                         EDT_PROP_NONE, NULL_GUID, NULL);
+                         EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
         }
     } else {
         ocrGuid_t slaveGuids[1];
@@ -146,7 +146,7 @@ ocrGuid_t fftEndEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         slaveParamv[4] = N/2;
 
         ocrEdtCreate(slaveGuids, endSlaveGuid, EDT_PARAM_DEF, slaveParamv,
-                     EDT_PARAM_DEF, &dataGuid, EDT_PROP_NONE, NULL_GUID, NULL);
+                     EDT_PARAM_DEF, &dataGuid, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
     }
     return NULL_GUID;
 }
@@ -281,7 +281,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     float *x;
     ocrGuid_t dataGuid;
     // TODO: OCR cannot handle large datablocks
-    ocrDbCreate(&dataGuid, (void **) &x, sizeof(float) * N * 3, 0, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&dataGuid, (void **) &x, sizeof(float) * N * 3, 0, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
     if(verbose) {
         PRINTF("Datablock of size %lu (N=%lu) created\n",sizeof(float)*N*3,N);
     }
@@ -305,7 +305,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     }
 
     ocrEdtCreate(&edtGuid, iterationTempGuid, EDT_PARAM_DEF, edtParamv,
-                 EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID,
+                 EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID),
                  &edtEventGuid);
     ocrEdtTemplateDestroy(iterationTempGuid);
 
@@ -316,7 +316,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 printParamv[6] = { N, verbose, printResults, startTempGuid, endTempGuid, endSlaveTempGuid };
     ocrGuid_t finishDependencies[2] = { edtEventGuid, dataGuid };
     ocrEdtCreate(&printEdtGuid, printTempGuid, EDT_PARAM_DEF, printParamv,
-                 EDT_PARAM_DEF, finishDependencies, EDT_PROP_NONE, NULL_GUID, NULL);
+                 EDT_PARAM_DEF, finishDependencies, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
     ocrEdtTemplateDestroy(printTempGuid);
 
     edtEventGuid = NULL_GUID;

@@ -47,7 +47,7 @@ ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDe
     ocrGuid_t out_lkji_kkkp1_db_affinity = NULL_GUID;
 
     ocrDbCreate(&out_lkji_kkkp1_db_guid, &lBlock_db,
-             sizeof(double)*tileSize*tileSize, FLAGS, NULL_GUID /*out_lkji_kkkp1_db_affinity*/, NO_ALLOC);
+             sizeof(double)*tileSize*tileSize, FLAGS, PICK_1_1(NULL_HINT,NULL_GUID) /*out_lkji_kkkp1_db_affinity*/, NO_ALLOC);
 
     double* lBlock = (double*) lBlock_db;
 
@@ -97,7 +97,7 @@ ocrGuid_t trisolve_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     void* loBlock_db;
 
     ocrDbCreate(&out_lkji_jkkp1_db_guid, &loBlock_db,
-             sizeof(double)*tileSize*tileSize, FLAGS, NULL_GUID /*out_lkji_jkkp1_db_affinity*/, NO_ALLOC);
+             sizeof(double)*tileSize*tileSize, FLAGS, PICK_1_1(NULL_HINT,NULL_GUID) /*out_lkji_jkkp1_db_affinity*/, NO_ALLOC);
 
     double * loBlock = (double*) loBlock_db;
 
@@ -297,7 +297,7 @@ inline static void sequential_cholesky_task_prescriber (ocrGuid_t edtTemp, u32 k
     func_args[3] = (u64)(lkji_event_guids[k][k][k+1]);
 
     ocrGuid_t affinity = NULL_GUID;
-    ocrEdtCreate(&seq_cholesky_task_guid, edtTemp, 4, func_args, 1, NULL, PROPERTIES, NULL_GUID /*affinity*/, NULL);
+    ocrEdtCreate(&seq_cholesky_task_guid, edtTemp, 4, func_args, 1, NULL, PROPERTIES, PICK_1_1(NULL_HINT,NULL_GUID) /*affinity*/, NULL);
 
     ocrAddDependence(lkji_event_guids[k][k][k], seq_cholesky_task_guid, 0, DB_MODE_RW);
 }
@@ -314,7 +314,7 @@ inline static void trisolve_task_prescriber ( ocrGuid_t edtTemp, u32 k, u32 j, u
     func_args[4] = (u64)(lkji_event_guids[j][k][k+1]);
 
     ocrGuid_t affinity = NULL_GUID;
-    ocrEdtCreate(&trisolve_task_guid, edtTemp, 5, func_args, 2, NULL, PROPERTIES, NULL_GUID /* affinity*/, NULL);
+    ocrEdtCreate(&trisolve_task_guid, edtTemp, 5, func_args, 2, NULL, PROPERTIES, PICK_1_1(NULL_HINT,NULL_GUID) /* affinity*/, NULL);
 
     ocrAddDependence(lkji_event_guids[j][k][k], trisolve_task_guid, 0, DB_MODE_RW);
     ocrAddDependence(lkji_event_guids[k][k][k+1], trisolve_task_guid, 1, DB_MODE_RW);
@@ -333,7 +333,7 @@ inline static void update_nondiagonal_task_prescriber ( ocrGuid_t edtTemp, u32 k
     func_args[5] = (u64)(lkji_event_guids[j][i][k+1]);
 
     ocrGuid_t affinity = NULL_GUID;
-    ocrEdtCreate(&update_nondiagonal_task_guid, edtTemp, 6, func_args, 3, NULL, PROPERTIES, NULL_GUID /*affinity*/, NULL);
+    ocrEdtCreate(&update_nondiagonal_task_guid, edtTemp, 6, func_args, 3, NULL, PROPERTIES, PICK_1_1(NULL_HINT,NULL_GUID) /*affinity*/, NULL);
 
     ocrAddDependence(lkji_event_guids[j][i][k], update_nondiagonal_task_guid, 0, DB_MODE_RW);
     ocrAddDependence(lkji_event_guids[j][k][k+1], update_nondiagonal_task_guid, 1, DB_MODE_RW);
@@ -354,7 +354,7 @@ inline static void update_diagonal_task_prescriber ( ocrGuid_t edtTemp, u32 k, u
     func_args[5] = (u64)(lkji_event_guids[j][j][k+1]);
 
     ocrGuid_t affinity = NULL_GUID;
-    ocrEdtCreate(&update_diagonal_task_guid, edtTemp, 6, func_args, 2, NULL, PROPERTIES, NULL_GUID /*affinity*/, NULL);
+    ocrEdtCreate(&update_diagonal_task_guid, edtTemp, 6, func_args, 2, NULL, PROPERTIES, PICK_1_1(NULL_HINT,NULL_GUID) /*affinity*/, NULL);
 
     ocrAddDependence(lkji_event_guids[j][j][k], update_diagonal_task_guid, 0, DB_MODE_RW);
     ocrAddDependence(lkji_event_guids[j][k][k+1], update_diagonal_task_guid, 1, DB_MODE_RW);
@@ -371,7 +371,7 @@ inline static void wrap_up_task_prescriber ( ocrGuid_t edtTemp, u32 numTiles, u3
     func_args[2]=(u32)outSelLevel;
 
     ocrGuid_t affinity = NULL_GUID;
-    ocrEdtCreate(&wrap_up_task_guid, edtTemp, 3, func_args, (numTiles+1)*numTiles/2, NULL, PROPERTIES, NULL_GUID /*affinity*/, NULL);
+    ocrEdtCreate(&wrap_up_task_guid, edtTemp, 3, func_args, (numTiles+1)*numTiles/2, NULL, PROPERTIES, PICK_1_1(NULL_HINT,NULL_GUID) /*affinity*/, NULL);
 
     u32 index = 0;
     for ( i = 0; i < numTiles; ++i ) {
@@ -390,17 +390,17 @@ inline static ocrGuid_t*** allocateCreateEvents ( u32 numTiles ) {
     ocrGuid_t lkji_event_guids_db_guid;
 
     ocrDbCreate(&lkji_event_guids_db_guid, &lkji_event_guids_db, sizeof(ocrGuid_t **)*numTiles,
-                 FLAGS, NULL_GUID, NO_ALLOC);
+                 FLAGS, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
 
     lkji_event_guids = (ocrGuid_t ***) (lkji_event_guids_db);
     for( i = 0 ; i < numTiles ; ++i ) {
         ocrDbCreate(&lkji_event_guids_db_guid, (void *)&lkji_event_guids[i],
                     sizeof(ocrGuid_t *)*(i+1),
-                    FLAGS, NULL_GUID, NO_ALLOC);
+                    FLAGS, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
         for( j = 0 ; j <= i ; ++j ) {
             ocrDbCreate(&lkji_event_guids_db_guid, (void *)&lkji_event_guids[i][j],
                     sizeof(ocrGuid_t)*(numTiles+1),
-                    FLAGS, NULL_GUID, NO_ALLOC);
+                    FLAGS, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
             for( k = 0 ; k <= numTiles ; ++k ) {
                 ocrEventCreate(&(lkji_event_guids[i][j][k]), OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
 }
@@ -425,7 +425,7 @@ inline static void satisfyInitialTiles(u32 numTiles, u32 tileSize,
     for( i = 0 ; i < numTiles ; ++i ) {
         for( j = 0 ; j <= i ; ++j ) {
             ocrDbCreate(&db_guid, &temp_db, sizeof(double)*tileSize*tileSize,
-                     FLAGS, NULL_GUID /*db_affinity*/, NO_ALLOC);
+                     FLAGS, PICK_1_1(NULL_HINT,NULL_GUID) /*db_affinity*/, NO_ALLOC);
 
             fread(temp_db, sizeof(double)*tileSize*tileSize, 1, fin);
             ocrEventSatisfy(lkji_event_guids[i][j][0], db_guid);
@@ -449,13 +449,13 @@ inline static void satisfyInitialTiles(u32 numTiles, u32 tileSize, double** matr
             void* temp_db;
             ocrGuid_t tmpdb_guid;
             ocrDbCreate(&db_guid, &temp_db, sizeof(double)*tileSize*tileSize,
-                     FLAGS, NULL_GUID /*db_affinity*/, NO_ALLOC);
+                     FLAGS, PICK_1_1(NULL_HINT,NULL_GUID) /*db_affinity*/, NO_ALLOC);
 
             double* temp = (double*) temp_db;
             double** temp2D;
 
             ocrDbCreate(&tmpdb_guid, (void *)&temp2D, sizeof(double*)*tileSize,
-                        FLAGS, NULL_GUID, NO_ALLOC);
+                        FLAGS, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
 
             for( index = 0; index < tileSize; ++index )
                 temp2D [index] = &(temp[index*tileSize]);

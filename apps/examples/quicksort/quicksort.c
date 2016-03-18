@@ -120,12 +120,12 @@ ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //        }else{
         u64 qsortLowParamv[3] = {low, pivotIndex-1, qsortTemplate};
         ocrEdtCreate(&qsortLowEdt, qsortTemplate, EDT_PARAM_DEF, qsortLowParamv,
-                 EDT_PARAM_DEF, &qsortLowDataEvt, EDT_PROP_FINISH, NULL_GUID, NULL);
+                 EDT_PARAM_DEF, &qsortLowDataEvt, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
 
  //       }
         u64 qsortHighParamv[3] = {pivotIndex+1, high, qsortTemplate};
         ocrEdtCreate(&qsortHighEdt, qsortTemplate, EDT_PARAM_DEF, qsortHighParamv,
-                 EDT_PARAM_DEF, &qsortHighDataEvt, EDT_PROP_FINISH, NULL_GUID, NULL);
+                 EDT_PARAM_DEF, &qsortHighDataEvt, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
 
         ocrEventSatisfy(qsortLowDataEvt, depv[0].guid);
         ocrEventSatisfy(qsortHighDataEvt, depv[0].guid);
@@ -160,7 +160,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate(&qsortTemplate, qsortTask, 3, 1);
 
     ocrDbCreate(&dataDb, (void**)&data, sizeof(u64) * (ARRAY_SIZE),
-        /*flags=*/0, /*location=*/NULL_GUID, NO_ALLOC);
+        /*flags=*/0, /*location=*/PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
 
     u64 i;
     for(i = 0; i < ARRAY_SIZE; i++)
@@ -168,7 +168,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     u64 qsortParamv[3] = {0, ARRAY_SIZE-1, qsortTemplate};
     ocrEdtCreate(&qsortEdt, qsortTemplate, EDT_PARAM_DEF, qsortParamv,
-        EDT_PARAM_DEF, &dataDb, EDT_PROP_FINISH, NULL_GUID, &outEvt);
+        EDT_PARAM_DEF, &dataDb, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &outEvt);
 
     ocrGuid_t finishTemplate;
     ocrGuid_t finishEdt;
@@ -176,6 +176,6 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     u64 finishDepv[2] = {dataDb, outEvt};
     ocrEdtTemplateCreate(&finishTemplate, finishTask, 1, 2);
     ocrEdtCreate(&finishEdt, finishTemplate, EDT_PARAM_DEF, &finishParamv,
-        EDT_PARAM_DEF, finishDepv, 0, NULL_GUID, NULL);
+        EDT_PARAM_DEF, finishDepv, 0, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
     return NULL_GUID;
 }
