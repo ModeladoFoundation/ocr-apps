@@ -1,31 +1,23 @@
-# This file is subject to the license agreement located in the file LICENSE
-# and cannot be distributed without it. This notice cannot be
-# removed or modified.
-
-
 MAKE := make
 
 ifndef ARCH
-$(error Need to specify ARCH!)
+	$(error Need to specify ARCH!)
 endif
 
 all:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
+	@$(MAKE) -f Makefile.$(ARCH) $@
 
 debug:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
+	@$(MAKE) -f Makefile.$(ARCH) $@
 
 install:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
+	@$(MAKE) -f Makefile.$(ARCH) $@
 
 run:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
+	@$(MAKE) -f Makefile.$(ARCH) $@
 
 clean:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
-
-squeeky:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
+	@$(MAKE) -f Makefile.$(ARCH) $@
 
 uninstall:
-	@$(MAKE) -C $(ARCH) -f Makefile $@
+	@$(MAKE) -f Makefile.$(ARCH) $@
