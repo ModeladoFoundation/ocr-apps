@@ -122,6 +122,7 @@ typedef struct
 
 typedef struct
 {
+    ocrGuid_t DBK_globalParamH_rankCopy;
     ocrGuid_t DBK_rankParamH; //-->rankParamH_t
     ocrGuid_t DBK_rankDataH; //--> rankDataH_t
     ocrGuid_t DBK_rankEventHs[2]; //--> rankEventH_t[2]
