@@ -20,17 +20,9 @@ CXXFLAGS += -fno-stack-protector -fno-use-cxa-atexit
 CXXFLAGS += -I$(APPS_LIBS_ROOT)/include/c++/v1
 CXXFLAGS += -I$(APPS_LIBS_ROOT)/include
 
-ifneq ($(wildcard /etc/redhat-release),)
-  LIB_PATH = /usr/lib64
-  LIB_GCC_PATH = /usr/lib/gcc/x86_64-redhat-linux/4.8.3/
-else
-  LIB_PATH = /usr/lib/x86_64-linux-gnu
-  LIB_GCC_PATH = $(LIB_PATH)/4.9
-endif
-
-LIBC = $(LIB_PATH)/libc.a
-LIBPTHREAD = $(LIB_PATH)/libpthread.a
-LIBGCC_EH = $(LIB_GCC_PATH)/libgcc_eh.a
+LIBC = `gcc -print-file-name=libc.a`
+LIBPTHREAD = `gcc -print-file-name=libpthread.a`
+LIBGCC_EH = `gcc -print-file-name=libgcc_eh.a`
 GLIBC_A = $(LIBPTHREAD) $(LIBGCC_EH) $(LIBC)
 
 # Libraries to include from newlib

@@ -116,12 +116,9 @@ ifeq ($(ARCH), x86_native)
   CONFIG_ARGS += --enable-multilib=no
   TARGET = x86_64-linux-gnu
   UNWIND_TARGET = x86_64
-  COMPILE_FLAGS = -std=c++11 -nostdinc -nostdinc++ -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
+  COMPILE_FLAGS = -std=c++11 -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
   COMPILE_FLAGS += -isystem $(APPS_LIBS_ROOT)/include/c++/v1
   COMPILE_FLAGS += -isystem $(APPS_ROOT)/libs/src/libunwind/libunwind/include
-  COMPILE_FLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
-  COMPILE_FLAGS += -isystem $(TG_INSTALL)/include
-  COMPILE_FLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
   COMPILE_FLAGS += -isystem $(APPS_LIBS_ROOT)/include
 endif
 
