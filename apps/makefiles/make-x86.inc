@@ -43,6 +43,16 @@ CONFIG_FLAGS          ?=
 # Visualizer support
 ENABLE_VISUALIZER     ?= no
 
+# Profiling support
+# To enable set to yes. You may also optionally specify a focus function as well as a focus
+# depth and whether or not to ignore all RT calls (and lump them with their parent).
+# See common.mk in ocr/build/ for more detail on the profiler
+ENABLE_PROFILER       ?= no
+PROFILER_FOCUS        ?=
+PROFILER_FOCUS_DEPTH  ?=
+PROFILER_IGNORE_RT    ?= no
+PROFILER_COUNT_OTHER  ?= no
+
 # If set to yes, adds -Werror
 CFLAGS_BASE_WARN_ERROR ?= no
 
@@ -139,6 +149,40 @@ endif
 ifeq ( ,$(filter-out x86-mpi x86-gasnet, $(OCR_TYPE)))
 CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
+
+# Profiler support
+# If you run the profiler, you cannot be in runApp or buildApp mode since the runtime will need
+# to be rebuilt (probably)
+ifeq ($(ENABLE_PROFILER), yes)
+ifeq (,$(filter-out runApp buildApp, $(RUN_MODE)))
+$(error Cannot run with profiler in runApp or buildApp mode)
+endif
+endif
+
+# Form the flags needed
+RT_PROFILER_FLAGS :=
+PROFILE_FILE :=
+ifeq ($(ENABLE_PROFILER), yes)
+CFLAGS += -DOCR_RUNTIME_PROFILER -I$(OCR_BUILD)/src
+RT_PROFILER_FLAGS += -DOCR_RUNTIME_PROFILER -DPROFILER_KHZ=3400000 -DPROFILER_W_APPS
+ifneq ($(PROFILER_FOCUS),)
+RT_PROFILER_FLAGS += -DPROFILER_FOCUS=$(PROFILER_FOCUS)
+endif
+ifneq ($(PROFILER_FOCUS_DEPTH),)
+RT_PROFILER_FLAGS += -DPROFILER_FOCUS_DEPTH=$(PROFILER_FOCUS_DEPTH)
+endif
+ifeq ($(PROFILER_IGNORE_RT), yes)
+RT_PROFILER_FLAGS += -DPROFILER_IGNORE_RT
+endif
+ifeq ($(PROFILER_COUNT_OTHER), yes)
+RT_PROFILER_FLAGS += -DPROFILER_COUNT_OTHER
+GENPROFILE_OPTS := --otherbucket
+else
+GENPROFILE_OPTS :=
+endif
+
+PROFILE_FILE := $(OCR_BUILD)/src/profilerAutoGenApp.h
+endif # ENABLE_PROFILER
 
 STRIP   = strip
 CUT     = cut
@@ -301,9 +345,13 @@ $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT):
 	$(error Cannot find libocr_$(OCR_TYPE).$(LIBOCREXT) in $(OCR_INSTALL))
 else
 # In all other cases, we build the library
-libocr: $(OCR_BUILD)/Makefile
+# The dependence on $(PROFILE_FILE), which is always rebuilt, will force the proper profile file
+# to be generated PRIOR to building the runtime. This will also make sure that the options we specify
+# here (in terms of focus and what not) are taken into account since rebuilding the auto-generated app file
+# will cause the profile.c to also be rebuilt which is exactly what we want
+libocr: $(OCR_BUILD)/Makefile $(PROFILE_FILE)
 	@echo "Building libocr_$(OCR_TYPE).$(LIBOCREXT)..."
-	$(AT)V=$(V) OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
+	$(AT)V=$(V) OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) CFLAGS="$(RT_PROFILER_FLAGS)" $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
 $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT): | libocr
 endif
 
@@ -314,6 +362,14 @@ $(CONFIG_GENERATE) : | libocr
 ifeq ($(ENABLE_VISUALIZER), yes)
 CFLAGS += -DOCR_ENABLE_EDT_NAMING -DOCR_ENABLE_VISUALIZER
 endif
+
+# We *always* regenerate this file because we can't be sure
+# if the file that exists is for this app.
+.PHONY: $(PROFILE_FILE)
+$(PROFILE_FILE):
+	@echo "Generating profile file..."
+	$(AT)$(OCR_ROOT)/scripts/Profiler/generateProfilerFile.py -m app --rtfile $(OCR_BUILD)/src/profilerAutoGen --exclude .git --exclude build --exclude install $(GENPROFILE_OPTS) $(WORKLOAD_SRC)
+	@echo "\tDone."
 
 .PHONY: clean
 clean:
