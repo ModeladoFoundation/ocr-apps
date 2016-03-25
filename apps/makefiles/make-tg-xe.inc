@@ -3,7 +3,7 @@
 # removed or modified.
 
 ifneq (, $(filter-out tg-xe, $(ARCH)))
-$(error Wrong Makefile included. make-tg.inc only allows ARCH=tg-xe: got $(ARCH))
+  $(error Wrong Makefile included. make-tg.inc only allows ARCH=tg-xe: got $(ARCH))
 endif
 
 # Get absolute paths. This is useful since we go in
@@ -41,22 +41,22 @@ CE_BUILDER  ?= builder-ce
 HOSTNAME              := $(shell hostname)
 
 ifeq ($(RUN_MODE), runApp)
-OCR_BUILD_XE          :=
-OCR_BUILD_CE          :=
+  OCR_BUILD_XE          :=
+  OCR_BUILD_CE          :=
 else ifeq ($(RUN_MODE), buildApp)
-OCR_BUILD_XE          :=
-OCR_BUILD_CE          :=
-OCR_BUILD_XEBUILDER   :=
-OCR_BUILD_CEBUILDER   :=
-OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
-OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
+  OCR_BUILD_XE          :=
+  OCR_BUILD_CE          :=
+  OCR_BUILD_XEBUILDER   :=
+  OCR_BUILD_CEBUILDER   :=
+  OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
+  OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
 else
-OCR_BUILD_XE          := ${OCR_BUILD_ROOT}/${XE_TARGET}
-OCR_BUILD_CE          := ${OCR_BUILD_ROOT}/${CE_TARGET}
-OCR_BUILD_XEBUILDER   := $(OCR_BUILD_ROOT)/$(XE_BUILDER)
-OCR_BUILD_CEBUILDER   := $(OCR_BUILD_ROOT)/$(CE_BUILDER)
-OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
-OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
+  OCR_BUILD_XE          := ${OCR_BUILD_ROOT}/${XE_TARGET}
+  OCR_BUILD_CE          := ${OCR_BUILD_ROOT}/${CE_TARGET}
+  OCR_BUILD_XEBUILDER   := $(OCR_BUILD_ROOT)/$(XE_BUILDER)
+  OCR_BUILD_CEBUILDER   := $(OCR_BUILD_ROOT)/$(CE_BUILDER)
+  OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
+  OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
 endif
 
 FIX_TG_FSIM_CONFIG := ${OCR_INSTALL}/share/ocr/scripts/Configs/tg-fsim_config_fix.py
@@ -64,10 +64,10 @@ FIX_CE_CONFIG    := ${OCR_INSTALL}/share/ocr/scripts/Configs/ce_config_fix.py
 FIX_MEM_CONFIG   := ${OCR_INSTALL}/share/ocr/scripts/Configs/mem_config_fix.py
 
 ifeq (,$(strip $(OCR_CE_CONFIG)))
-OCR_CE_CONFIG := $(OCR_CE_CONFIG_DEFAULT)
+  OCR_CE_CONFIG := $(OCR_CE_CONFIG_DEFAULT)
 endif
 ifeq (,$(strip $(OCR_XE_CONFIG)))
-OCR_XE_CONFIG := $(OCR_XE_CONFIG_DEFAULT)
+  OCR_XE_CONFIG := $(OCR_XE_CONFIG_DEFAULT)
 endif
 
 # We modify the configuration so we use a modified copy
@@ -116,16 +116,16 @@ OBJS := $(patsubst %.c,$(WORKLOAD_BUILD)/%.o,$(SRCS))
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
 ifeq ($(RUN_TORQUE), yes)
-RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-wrapper.sh
-MACHINE_CONFIG :=
+  RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-wrapper.sh
+  MACHINE_CONFIG :=
 else
-RUN_CMD := $(TG_INSTALL)/bin/fsim
-MACHINE_CONFIG := -c $(MACHINE_CONFIG)
+  RUN_CMD := $(TG_INSTALL)/bin/fsim
+  MACHINE_CONFIG := -c $(MACHINE_CONFIG)
 endif
 
 ifeq ($(RUN_MODE), runApp)
-RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
-MACHINE_CONFIG :=
+  RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
+  MACHINE_CONFIG :=
 endif
 
 .PHONY: all
@@ -134,10 +134,10 @@ all: $(WORKLOAD_BUILD)/$(TARGET).blob $(WORKLOAD_BUILD)/$(TARGET)
 ### Install rules ###
 .PHONY: install_internal
 ifeq ($(RUN_MODE), runApp)
-install_internal: preinstall | ${WORKLOAD_INSTALL}
+  install_internal: preinstall | ${WORKLOAD_INSTALL}
 else
-# Order of both should not matter here
-install: preinstall $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/tgkrnl | ${WORKLOAD_INSTALL}
+  # Order of both should not matter here
+  install: preinstall $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/tgkrnl | ${WORKLOAD_INSTALL}
 endif
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
@@ -159,25 +159,25 @@ install: postinstall
 
 ### Run rules ###
 ifeq (yes, $(DEBUGMAKE))
-.PHONY: debug_pre_prerun
-debug_pre_prerun:
+  .PHONY: debug_pre_prerun
+  debug_pre_prerun:
 	@echo "Initial arguments are '${WORKLOAD_ARGS}' and inputs are '${WORKLOAD_INPUTS}'"
 
-prerun: debug_pre_prerun
+  prerun: debug_pre_prerun
 
-debug_post_prerun: prerun
+  debug_post_prerun: prerun
 	@echo "Post prerun arguments are '${WORKLOAD_ARGS}' and inputs are '${WORKLOAD_INPUTS}'"
 else
-debug_post_prerun: prerun
+  debug_post_prerun: prerun
 
 endif
 
 .PHONY: run_internal
 run_internal:
 ifeq ($(RUN_MODE), runApp)
-run_internal:
+  run_internal:
 else
-run_internal: install
+  run_internal: install
 endif
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
@@ -318,23 +318,23 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg: $(WORKLOAD_BUILD)/$(TARGET).blob.xe | $(WO
 # XE libocr
 .PHONY: libocrxe
 ifeq ($(RUN_MODE), runApp)
-libocrxe: ;
-$(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: ;
+  libocrxe: ;
+  $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: ;
 else ifeq ($(RUN_MODE), buildApp)
-# If we are running in Jenkins, and building the app, we just need to make sure the library is built
-# This will error out if it is not
-libocrxe: | $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a
+  # If we are running in Jenkins, and building the app, we just need to make sure the library is built
+  # This will error out if it is not
+  libocrxe: | $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a
 	@echo "Checked that XE libocr_$(XE_TARGET).a exists."
-$(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a:
+  $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a:
 	$(error Cannot find XE libocr_$(XE_TARGET).a in $(OCR_INSTALL))
 else
-# In all other cases, we build the library
-libocrxe: $(OCR_BUILD_XE)/Makefile
+  # In all other cases, we build the library
+  libocrxe: $(OCR_BUILD_XE)/Makefile
 	@echo "Building XE libocr.a..."
 	$(AT)V=$(V) OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) OCR_BUILD=$(OCR_BUILD_XE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) \
 	$(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
-$(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: | libocrxe
+  $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: | libocrxe
 endif
 
 # Note: builderxe, tgkrnl, builderce all follow the same idea as libocrxe
@@ -342,21 +342,21 @@ endif
 # XE builder
 .PHONY: builderxe
 ifeq ($(RUN_MODE), runApp)
-builderxe: ;
-$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe: ;
+  builderxe: ;
+  $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe: ;
 else ifeq ($(RUN_MODE), buildApp)
-builderxe: | $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe
+  builderxe: | $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe
 	@echo "Checked that XE builder exists."
-$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe:
+  $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe:
 	$(error Cannot find XE builder in $(OCR_INSTALL))
 else
-# In all other cases, we build the builder
-builderxe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
+  # In all other cases, we build the builder
+  builderxe: $(OCR_BUILD_ROOT)/$(XE_BUILDER)/Makefile
 	@echo "Building XE builder..."
 	$(AT)OCR_TYPE=$(XE_BUILDER) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) OCR_BUILD=$(OCR_BUILD_XEBUILDER) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) \
 	$(MAKE) -C $(OCR_BUILD_ROOT)/$(XE_BUILDER) $(TARGETS) install
-$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe: | builderxe
+  $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe: | builderxe
 endif
 
 # Local version of the TGKRNL (built with the CE's libocr)
@@ -366,26 +366,26 @@ endif
 .PHONY: tgkrnl
 
 ifeq ($(RUN_MODE), runApp)
-tgkrnl: ;
-$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: ;
-$(WORKLOAD_INSTALL)/tgkrnl: ;
+  tgkrnl: ;
+  $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: ;
+  $(WORKLOAD_INSTALL)/tgkrnl: ;
 else
-# In all other cases, we build the kernel
-# (including for building the app)
-tgkrnl: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
-| $(WORKLOAD_BUILD)/build.tgkrnl
+  # In all other cases, we build the kernel
+  # (including for building the app)
+  tgkrnl: $(TG_ROOT)/build/build.tgkrnl/make-me.make \
+  | $(WORKLOAD_BUILD)/build.tgkrnl
 	@echo "Building tgkrnl..."
 	$(AT)V=$(V) OCR_ROOT=$(OCR_ROOT) OCR_TYPE=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL) OCR_BUILD=$(OCR_BUILD_CE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_MODE=$(RUN_MODE) \
 	WITH_LIBOCR=yes $(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
 	strip -s -o $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
 
-$(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: | tgkrnl
+  $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: | tgkrnl
 
-# This target will effectively always run which is what we want
-# because for some reason, pre-reqs are evaluated before (and so when tgkrnl recipe
-# remakes build.tgkrnl/tgkrnl, nothing happens
-$(WORKLOAD_INSTALL)/tgkrnl: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl tgkrnl $(WORKLOAD_INSTALL)
+  # This target will effectively always run which is what we want
+  # because for some reason, pre-reqs are evaluated before (and so when tgkrnl recipe
+  # remakes build.tgkrnl/tgkrnl, nothing happens
+  $(WORKLOAD_INSTALL)/tgkrnl: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl tgkrnl $(WORKLOAD_INSTALL)
 	@echo "Installing tgkrnl..."
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/tgkrnl
 	$(AT)$(CP) $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl $(WORKLOAD_INSTALL)/
@@ -399,20 +399,20 @@ $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg: $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl
 # CE builder
 .PHONY: builderce
 ifeq ($(RUN_MODE), runApp)
-builderce: ;
-$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe: ;
+  builderce: ;
+  $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe: ;
 else ifeq ($(RUN_MODE), buildApp)
-builderce: | $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe
+  builderce: | $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe
 	@echo "Checked that CE builder exists."
-$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe:
+  $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe:
 	$(error Cannot find CE builder in $(OCR_INSTALL))
 else
-# In all other cases, we build the builder
-builderce: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
+  # In all other cases, we build the builder
+  builderce: $(OCR_BUILD_ROOT)/$(CE_BUILDER)/Makefile
 	@echo "Building CE builder..."
 	$(AT)OCR_TYPE=$(CE_BUILDER) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) OCR_BUILD=$(OCR_BUILD_CEBUILDER) \
 	$(MAKE) -C $(OCR_BUILD_ROOT)/$(CE_BUILDER) $(TARGETS) install
-$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe: | builderce
+  $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe: | builderce
 endif
 
 .PHONY: clean

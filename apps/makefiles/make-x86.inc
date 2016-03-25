@@ -4,7 +4,7 @@
 # removed or modified.
 
 ifneq (, $(filter-out x86 x86-test, $(ARCH)))
-$(error Wrong Makefile included. make-x86.inc only allows ARCH=x86 or x86-test: got $(ARCH))
+  $(error Wrong Makefile included. make-x86.inc only allows ARCH=x86 or x86-test: got $(ARCH))
 endif
 
 ##########################################
@@ -34,12 +34,12 @@ endif
 
 # Support for ITAC Support
 ifeq ($(OCRRUN_ITAC), yes)
-ifneq ($(OCR_TYPE), x86-mpi)
-  $(error ITAC is only supported on x86-mpi)
-endif
-CC=mpiicc
-LD=$(CC)
-CFLAGS += -fno-omit-frame-pointer
+  ifneq ($(OCR_TYPE), x86-mpi)
+    $(error ITAC is only supported on x86-mpi)
+  endif
+  CC=mpiicc
+  LD=$(CC)
+  CFLAGS += -fno-omit-frame-pointer
 endif
 
 # Number of threads in the auto-generated configuration file
@@ -48,13 +48,13 @@ CONFIG_NUM_THREADS    ?= 4
 # Legacy support for COMM_LAYER flag
 CONFIG_COMM_LAYER     ?= $(COMM_LAYER)
 ifeq ($(strip $(CONFIG_COMM_LAYER)),)
-ifeq ($(OCR_TYPE), x86-mpi)
-CONFIG_COMM_LAYER     := mpi
-else ifeq ($(OCR_TYPE), x86-gasnet)
-CONFIG_COMM_LAYER     := gasnet
-else
-CONFIG_COMM_LAYER     := x86
-endif
+  ifeq ($(OCR_TYPE), x86-mpi)
+    CONFIG_COMM_LAYER     := mpi
+  else ifeq ($(OCR_TYPE), x86-gasnet)
+    CONFIG_COMM_LAYER     := gasnet
+  else
+    CONFIG_COMM_LAYER     := x86
+  endif
 endif
 # Other flags for the auto-generated configuration file
 CONFIG_FLAGS          ?=
@@ -84,15 +84,15 @@ OCR_BUILD := $(OCR_BUILD_ROOT)/$(OCR_TYPE)
 
 # Config file specific settings
 ifneq ( ,$(OCR_INSTALL))
-CONFIG_GENERATE       := ${OCR_INSTALL}/share/ocr/scripts/Configs/config-generator.py
+  CONFIG_GENERATE       := ${OCR_INSTALL}/share/ocr/scripts/Configs/config-generator.py
 else
-CONFIG_GENERATE       := "INVALID USE OF CONFIG GENERATE"
+  CONFIG_GENERATE       := "INVALID USE OF CONFIG GENERATE"
 endif
 
 GEN_CONFIG_FILE       := ${WORKLOAD_INSTALL}/generated.cfg
 
 ifeq ($(strip $(OCR_CONFIG)),)
-OCR_CONFIG := $(GEN_CONFIG_FILE)
+  OCR_CONFIG := $(GEN_CONFIG_FILE)
 endif
 
 REQ_LIBS ?=
@@ -102,57 +102,55 @@ REQ_LIBS ?=
 FORCE_CC ?= no
 
 ifeq ($(FORCE_CC), no)
-# For the MPI backend we favor using mpicc unless indicated otherwise.
-ifeq ($(CC), cc)
+  # For the MPI backend we favor using mpicc unless indicated otherwise.
+  ifeq ($(CC), cc)
 
-# This is the default value set by make. We override that
-ifeq ($(OCR_TYPE), x86-mpi)
-$(info Setting CC to mpicc)
-# default to mpicc if CC=cc (that's the default value from make)
-CC = mpicc
-else
-# For other platforms, use gcc
-$(info Setting CC to gcc)
-CC = gcc
-endif # End of ifeq x86-mpi
+    # This is the default value set by make. We override that
+    ifeq ($(OCR_TYPE), x86-mpi)
+      $(info Setting CC to mpicc)
+      # default to mpicc if CC=cc (that's the default value from make)
+      CC = mpicc
+    else
+      # For other platforms, use gcc
+      $(info Setting CC to gcc)
+      CC = gcc
+    endif # End of ifeq x86-mpi
+  endif # End of ifeq cc
 
-endif # End of ifeq cc
-
-ifeq ($(CC), icc)
-ifeq ($(OCR_TYPE), x86-mpi)
-$(info Setting CC to mpiicc)
-CC = mpiicc
-endif
-endif
+  ifeq ($(CC), icc)
+    ifeq ($(OCR_TYPE), x86-mpi)
+      $(info Setting CC to mpiicc)
+      CC = mpiicc
+    endif
+  endif
 endif # End of ifeq force_cc
 
 CC_LINK = $(CC)
 ifeq ($(CFLAGS_WARN_ERROR), no)
-CFLAGS_BASE_WARN_ERROR =
+  CFLAGS_BASE_WARN_ERROR =
 else
-CFLAGS_BASE_WARN_ERROR = -Werror
+  CFLAGS_BASE_WARN_ERROR = -Werror
 endif
 
 CFLAGS_BASE := $(CFLAGS_BASE_WARN_ERROR) -I. -I$(APPS_LIBS_INSTALL)/include -I$(OCR_INSTALL)/include
 
 ifneq (,$(TG_INSTALL))
-CFLAGS_BASE += -I$(TG_INSTALL)/include
+  CFLAGS_BASE += -I$(TG_INSTALL)/include
 endif
 
 ifneq ($(OCR_VIENNA), no)
+  ifneq ($(OCR_TYPE), x86)
+    $(error OCR_VIENNA is only compatible with x86)
+  endif
 
-ifneq ($(OCR_TYPE), x86)
-$(error OCR_VIENNA is only compatible with x86)
-endif
+  # If we have gcc, we need to link with g++
+  ifeq ($(CC), gcc)
+    CC_LINK = g++
+  endif
 
-# If we have gcc, we need to link with g++
-ifeq ($(CC), gcc)
-CC_LINK = g++
-endif
-
-LDFLAGS_BASE := -L/opt/vienna/lib -locr_$(OCR_VIENNA) -L/opt/intel/tools/tbb/lib/intel64/gcc4.4 -ltbb -ltbbmalloc -L$(APPS_LIBS_INSTALL)/lib
+  LDFLAGS_BASE := -L/opt/vienna/lib -locr_$(OCR_VIENNA) -L/opt/intel/tools/tbb/lib/intel64/gcc4.4 -ltbb -ltbbmalloc -L$(APPS_LIBS_INSTALL)/lib
 else
-LDFLAGS_BASE := -L${OCR_INSTALL}/lib -L$(APPS_LIBS_INSTALL)/lib -locr_${OCR_TYPE}
+  LDFLAGS_BASE := -L${OCR_INSTALL}/lib -L$(APPS_LIBS_INSTALL)/lib -locr_${OCR_TYPE}
 endif
 
 CFLAGS  := $(CFLAGS_BASE) $(CFLAGS)
@@ -162,45 +160,45 @@ LDFLAGS := $(LDFLAGS_BASE) $(LDFLAGS)
 CONFIG_FLAGS_BASE :=
 # Visualizer requires COUNTED_MAP. See #670
 ifeq ($(ENABLE_VISUALIZER), yes)
-CONFIG_FLAGS_BASE := --guid COUNTED_MAP
+  CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
 
 ifeq ( ,$(filter-out x86-mpi x86-gasnet, $(OCR_TYPE)))
-CONFIG_FLAGS_BASE := --guid COUNTED_MAP
+  CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
 
 # Profiler support
 # If you run the profiler, you cannot be in runApp or buildApp mode since the runtime will need
 # to be rebuilt (probably)
 ifeq ($(ENABLE_PROFILER), yes)
-ifeq (,$(filter-out runApp buildApp, $(RUN_MODE)))
-$(error Cannot run with profiler in runApp or buildApp mode)
-endif
+  ifeq (,$(filter-out runApp buildApp, $(RUN_MODE)))
+    $(error Cannot run with profiler in runApp or buildApp mode)
+  endif
 endif
 
 # Form the flags needed
 RT_PROFILER_FLAGS :=
 PROFILE_FILE :=
 ifeq ($(ENABLE_PROFILER), yes)
-CFLAGS += -DOCR_RUNTIME_PROFILER -I$(OCR_BUILD)/src
-RT_PROFILER_FLAGS += -DOCR_RUNTIME_PROFILER -DPROFILER_KHZ=3400000 -DPROFILER_W_APPS
-ifneq ($(PROFILER_FOCUS),)
-RT_PROFILER_FLAGS += -DPROFILER_FOCUS=$(PROFILER_FOCUS)
-endif
-ifneq ($(PROFILER_FOCUS_DEPTH),)
-RT_PROFILER_FLAGS += -DPROFILER_FOCUS_DEPTH=$(PROFILER_FOCUS_DEPTH)
-endif
-ifeq ($(PROFILER_IGNORE_RT), yes)
-RT_PROFILER_FLAGS += -DPROFILER_IGNORE_RT
-endif
-ifeq ($(PROFILER_COUNT_OTHER), yes)
-RT_PROFILER_FLAGS += -DPROFILER_COUNT_OTHER
-GENPROFILE_OPTS := --otherbucket
-else
-GENPROFILE_OPTS :=
-endif
+  CFLAGS += -DOCR_RUNTIME_PROFILER -I$(OCR_BUILD)/src
+  RT_PROFILER_FLAGS += -DOCR_RUNTIME_PROFILER -DPROFILER_KHZ=3400000 -DPROFILER_W_APPS
+  ifneq ($(PROFILER_FOCUS),)
+    RT_PROFILER_FLAGS += -DPROFILER_FOCUS=$(PROFILER_FOCUS)
+  endif
+  ifneq ($(PROFILER_FOCUS_DEPTH),)
+    RT_PROFILER_FLAGS += -DPROFILER_FOCUS_DEPTH=$(PROFILER_FOCUS_DEPTH)
+  endif
+  ifeq ($(PROFILER_IGNORE_RT), yes)
+    RT_PROFILER_FLAGS += -DPROFILER_IGNORE_RT
+  endif
+  ifeq ($(PROFILER_COUNT_OTHER), yes)
+    RT_PROFILER_FLAGS += -DPROFILER_COUNT_OTHER
+    GENPROFILE_OPTS := --otherbucket
+  else
+    GENPROFILE_OPTS :=
+  endif
 
-PROFILE_FILE := $(OCR_BUILD)/src/profilerAutoGenApp.h
+  PROFILE_FILE := $(OCR_BUILD)/src/profilerAutoGenApp.h
 endif # ENABLE_PROFILER
 
 STRIP   = strip
@@ -218,7 +216,7 @@ OBJS := $(addprefix $(WORKLOAD_BUILD)/,$(OBJS))
 # Gasnet uses libocr.a
 LIBOCREXT = so
 ifeq ($(OCR_TYPE), x86-gasnet)
-LIBOCREXT = a
+  LIBOCREXT = a
 endif
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
@@ -240,9 +238,9 @@ install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 ifeq ($(RUN_MODE), buildApp)
-ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
+  ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
 	$(AT)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
-endif # OCR_CONFIG
+  endif # OCR_CONFIG
 endif # RUN_MODE
 
 postinstall: install_internal
@@ -253,30 +251,29 @@ install: postinstall
 ### Run rules ###
 
 ifeq (1, $(V))
-.PHONY: debug_pre_prerun
-debug_pre_prerun:
+  .PHONY: debug_pre_prerun
+  debug_pre_prerun:
 	@echo "Initial arguments are '${WORKLOAD_ARGS}' and inputs are '${WORKLOAD_INPUTS}'"
 
-prerun: debug_pre_prerun
+  prerun: debug_pre_prerun
 
-debug_post_prerun: prerun
+  debug_post_prerun: prerun
 	@echo "Post prerun arguments are '${WORKLOAD_ARGS}' and inputs are '${WORKLOAD_INPUTS}'"
 else
-debug_post_prerun: prerun
-
+  debug_post_prerun: prerun
 endif
 
 .PHONY: run_internal
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
 
 ifeq ($(RUN_MODE), runApp)
-run_internal: debug_post_prerun
+  run_internal: debug_post_prerun
 else
-debug_post_prerun: install
-run_internal: install debug_post_prerun $(CONFIG_GENERATE)
-ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
+  debug_post_prerun: install
+  run_internal: install debug_post_prerun $(CONFIG_GENERATE)
+  ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
 	$(AT)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
-endif # OCR_CONFIG
+  endif # OCR_CONFIG
 endif # RUN_MODE
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
@@ -351,26 +348,26 @@ $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 # libocr
 .PHONY: libocr
 ifeq ($(RUN_MODE), runApp)
-# When running with Jenkins, we don't check anything and
-# assume that it is all built and up to date
-libocr: ;
+  # When running with Jenkins, we don't check anything and
+  # assume that it is all built and up to date
+  libocr: ;
 else ifeq ($(RUN_MODE), buildApp)
-# If we are running in Jenkins and building the app, we just need to make sure the library is built
-# This will error out if it is not
-libocr: | $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT)
+  # If we are running in Jenkins and building the app, we just need to make sure the library is built
+  # This will error out if it is not
+  libocr: | $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT)
 	@echo "Checked that libocr_$(OCR_TYPE).$(LIBOCREXT) exists."
-$(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT):
+  $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT):
 	$(error Cannot find libocr_$(OCR_TYPE).$(LIBOCREXT) in $(OCR_INSTALL))
 else
-# In all other cases, we build the library
-# The dependence on $(PROFILE_FILE), which is always rebuilt, will force the proper profile file
-# to be generated PRIOR to building the runtime. This will also make sure that the options we specify
-# here (in terms of focus and what not) are taken into account since rebuilding the auto-generated app file
-# will cause the profile.c to also be rebuilt which is exactly what we want
-libocr: $(OCR_BUILD)/Makefile $(PROFILE_FILE)
+  # In all other cases, we build the library
+  # The dependence on $(PROFILE_FILE), which is always rebuilt, will force the proper profile file
+  # to be generated PRIOR to building the runtime. This will also make sure that the options we specify
+  # here (in terms of focus and what not) are taken into account since rebuilding the auto-generated app file
+  # will cause the profile.c to also be rebuilt which is exactly what we want
+  libocr: $(OCR_BUILD)/Makefile $(PROFILE_FILE)
 	@echo "Building libocr_$(OCR_TYPE).$(LIBOCREXT)..."
 	$(AT)V=$(V) OCR_TYPE=$(OCR_TYPE) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) CFLAGS="$(RT_PROFILER_FLAGS)" $(MAKE) -C $(OCR_BUILD) $(TARGETS) install
-$(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT): | libocr
+  $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT): | libocr
 endif
 
 # The config generator should be installed when libocr is installed
@@ -378,7 +375,7 @@ $(CONFIG_GENERATE) : | libocr
 
 # If the visualizer is being used, add necessary CFLAGS to application's makefile
 ifeq ($(ENABLE_VISUALIZER), yes)
-CFLAGS += -DOCR_ENABLE_EDT_NAMING -DOCR_ENABLE_VISUALIZER
+  CFLAGS += -DOCR_ENABLE_EDT_NAMING -DOCR_ENABLE_VISUALIZER
 endif
 
 # We *always* regenerate this file because we can't be sure
