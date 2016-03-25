@@ -2,33 +2,16 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+# ARCH
+ARCH        := tg-xe
+# APPS
 ifndef APPS_ROOT
 $(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
-APPS_ROOT ?= ../../../..
+APPS_ROOT ?= ../../../../../apps
 endif
 
-REPO_TOP ?= ${APPS_ROOT}/..
-
-# APPS
-APPS_ROOT       ?= ${REPO_TOP}/apps
-#APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/tg
-
 # OCR_TYPE
-OCR_TYPE        ?= tg
-
-# TG
-TG_ROOT    ?= ${REPO_TOP}/../tg/tg
-TG_INSTALL ?= ${REPO_TOP}/../tg/tg/install
-TG_SRC     ?= ${REPO_TOP}/../tg/tg
-
-# OCR
-XE_TARGET   ?= tg-xe
-XE_BUILDER  ?= builder-xe
-CE_TARGET   ?= tg-ce
-CE_BUILDER  ?= builder-ce
-OCR_ROOT         ?= ${REPO_TOP}/../ocr/ocr
-OCR_INSTALL ?= ${OCR_ROOT}/install
-OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
+OCR_TYPE    := tg
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -49,15 +32,20 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 12 4 10 5 -1 -1  #points subdomains timesteps sync_frequency
+WORKLOAD_ARGS ?= 6 2 4 #points subdomains timesteps
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
-# Set to "build" or "run" if Jenkins is running this job as an automated test
-RUN_JENKINS ?= no
+# By default, the make system will make sure OCR is properly
+# built. You can override this here:
+#  - Set to buildApp if you just want to build the app (OCR must be built)
+#  - Set to runApp if you just want to run the app (the app and OCR must be built)
+# This is mostly used by Jenkins as it splits out the build and run phases for
+# a test
+RUN_MODE ?=
 
-## END of variables coming from user/environment
+# END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -66,20 +54,20 @@ TARGET := stencil_1d
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := libc
+REQ_LIBS := libc reduction
 
 # Space separated list of source files
 SRCS := stencil_1d.c timers.c
 
 # Additional CFLAGS. By default, it includes
-# all OCR required includes and apps/libs/<target>/include
+# all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -DPROBLEM_TYPE=1
+CFLAGS := -g -std=c99 -DENABLE_EXTENSION_AFFINITY -DPROBLEM_TYPE=1 -DFULL_APP=1
 # Additional LDFLAGS. By default, it includes
-# the required OCR library path and apps/libs/<target/lib
+# the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS :=
+LDFLAGS := -lm -lreduction
 
 # Targets:
 #   - all:     Build the application.
@@ -97,7 +85,7 @@ debug:	default
 install: all
 
 # This rule will be executed prior to execution:
-#  - For the FSim target, this happens when the binary is built
+#  - For the TG target, this happens when the binary is built
 #  - For all other targets this happens prior to running the
 #    executable
 # WORKLOAD_ARGS and WORKLOAD_INPUTS are available
@@ -114,7 +102,7 @@ install: all
 # You may also want to assign a value to WORKLOAD_OUTS
 # which should contain the list of output files produced
 # by the application (to be passed to postrun). This is
-# taken-care of for you on FSim but not on any of the
+# taken-care of for you on TG but not on any of the
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
@@ -130,5 +118,5 @@ postrun: ;
 # Any additional rules required can go here
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-tg.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 
