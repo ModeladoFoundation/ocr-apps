@@ -171,8 +171,10 @@ endif
 # If you run the profiler, you cannot be in runApp or buildApp mode since the runtime will need
 # to be rebuilt (probably)
 ifeq ($(ENABLE_PROFILER), yes)
-  ifeq (,$(filter-out runApp buildApp, $(RUN_MODE)))
-    $(error Cannot run with profiler in runApp or buildApp mode)
+  ifneq (,$(strip $(RUN_MODE)))
+    ifeq (,$(filter-out runApp buildApp, $(RUN_MODE)))
+      $(error Cannot run with profiler in runApp or buildApp mode)
+    endif
   endif
 endif
 
