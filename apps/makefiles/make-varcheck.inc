@@ -4,6 +4,12 @@ AT_0 := @
 AT_1 :=
 AT = $(AT_$(V))
 
+# This is for Info
+I ?= 0
+ATI_0 := @
+ATI_1 :=
+ATI = $(AT_$(I))
+
 # This is set to yes by the make-libs.inc file because
 # for libraries, there is no workload to define
 _INTERNAL_NO_CHECK_WORKLOAD ?= no

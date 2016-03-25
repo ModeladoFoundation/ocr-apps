@@ -239,7 +239,7 @@ install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 ifeq ($(RUN_MODE), buildApp)
   ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
-	$(AT)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
+	$(ATI)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
   endif # OCR_CONFIG
 endif # RUN_MODE
 
@@ -272,13 +272,13 @@ else
   debug_post_prerun: install
   run_internal: install debug_post_prerun $(CONFIG_GENERATE)
   ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
-	$(AT)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
+	$(ATI)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
   endif # OCR_CONFIG
 endif # RUN_MODE
 ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
-	$(AT)OCR_INSTALL=$(OCR_INSTALL) LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:$(LD_LIBRARY_PATH) OCR_CONFIG=$(OCR_CONFIG) \
+	$(ATI)OCR_INSTALL=$(OCR_INSTALL) LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:$(LD_LIBRARY_PATH) OCR_CONFIG=$(OCR_CONFIG) \
 	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) $(OCR_INSTALL)/bin/ocrrun_$(OCR_TYPE) ./$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
 
 postrun: run_internal

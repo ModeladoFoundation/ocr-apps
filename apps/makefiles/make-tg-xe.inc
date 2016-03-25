@@ -143,7 +143,7 @@ endif
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or run manually:"
-	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} -L $(WORKLOAD_LOGS) -s ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg"
+	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} -s -L $(WORKLOAD_LOGS) ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET) $(WORKLOAD_INSTALL)/$(TARGET).blob
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/config.cfg
@@ -185,7 +185,7 @@ endif
 	$(AT)$(MKDIR) -p $(WORKLOAD_LOGS)
 	$(AT)$(RM) -rf $(WORKLOAD_LOGS)/*
 	$(AT)$(RM) -f $(WORKLOAD_EXEC)/console.out
-	$(AT)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
+	$(ATI)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
 	bash -ec 'cd $(WORKLOAD_LOGS) && $(RUN_CMD) -s -L $(WORKLOAD_LOGS) $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
