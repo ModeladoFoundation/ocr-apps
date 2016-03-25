@@ -109,6 +109,8 @@ void _real_start( uint64_t * psp )
 typedef void (* fptr_t)(void);
 typedef unsigned long * ulongptr_t;    // not provided by stdint.h :-(
 
+void *__dso_handle __attribute__ ((weak));
+
 //
 // C++ support - constructor list, w/placeholder first entry
 // Copied from XSTG implementation

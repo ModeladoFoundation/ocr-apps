@@ -2,17 +2,16 @@
 # Create a library for test env specific utility functions
 #
 # Find 'apps' repo dir (actually, whatever's above 'apps')
-# And we assume the 'intel' repo is at the same level as 'apps'
+# And we assume the 'tg' repo is at the same level as 'apps'
 #
-APPS_REPO ?= $(shell echo $(CURDIR) | sed -e 's:/apps/libs/.*$$::')
-
-APPS_ROOT  ?= $(APPS_REPO)/apps
-TG_INSTALL ?= $(realpath $(APPS_REPO)/../tg/tg/install)
-
-APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
+TG_ROOT ?= $(realpath $(CURDIR)/../../../../../tg/tg)
+TG_INSTALL ?= $(TG_ROOT)/install
+APPS_ROOT ?= $(realpath $(CURDIR)/../../..)
+APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
+APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 
 ARCH_PREFIX = xstg-linux-elf
-ARCH = tg
+ARCH = tg-xe
 
 INCS = libswtest.h
 SRCS = ce_intf.c nonewlib.c
@@ -36,7 +35,7 @@ AR = $(LLVM_BIN)/$(ARCH_PREFIX)-ar
 #
 # for clang to find includes
 #
-export APPS_LIBS_ROOT
+export APPS_LIBS_INSTALL
 
 ################### Targets #####################################
 default: all
@@ -62,19 +61,22 @@ $(BUILDDIR)/%.o : %.c
 	@$(CC) $(CFLAGS) $(INCLUDES) -S $<
 
 install: $(LIB)
-	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
-	@mkdir -p $(APPS_LIBS_ROOT)/lib
-	@cp -u $(LIB) $(APPS_LIBS_ROOT)/lib
-	@cp -u $(LDSCRIPT) $(APPS_LIBS_ROOT)/lib
-	@echo Installing $(INCS) to $(APPS_LIBS_ROOT) ...
-	@mkdir -p $(APPS_LIBS_ROOT)/include
-	@cp -u $(INCS) $(APPS_LIBS_ROOT)/include
+	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
+	@mkdir -p $(APPS_LIBS_INSTALL)/lib
+	@cp -u $(LIB) $(APPS_LIBS_INSTALL)/lib
+	@cp -u $(LDSCRIPT) $(APPS_LIBS_INSTALL)/lib
+	@echo Installing $(INCS) to $(APPS_LIBS_INSTALL) ...
+	@mkdir -p $(APPS_LIBS_INSTALL)/include
+	@cp -u $(INCS) $(APPS_LIBS_INSTALL)/include
 	@echo Installation complete
 
 clean:
 	rm -rf $(LIB) $(OBJS)
 
 dump:
-	@echo $(APPS_REPO)
+	@echo TG_ROOT= $(TG_ROOT)
+	@echo TG_INSTALL= $(TG_INSTALL)
+	@echo APPS_ROOT= $(APPS_ROOT)
+	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
 
 .PHONY: builddir clean dump

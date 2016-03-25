@@ -5,18 +5,18 @@
 # (c) 2010, Intel
 #
 # Authors:
-#		Justin Teller, Intel
 #		EQware various
 #
-APPS_REPO ?= $(realpath $(CURDIR)/../../../..)
-TG_INSTALL ?= $(realpath $(APPS_REPO)/../tg/tg/install)
-
-APPS_ROOT  ?= $(realpath $(APPS_REPO)/apps)
+TG_ROOT ?= $(realpath $(CURDIR)/../../../../../tg/tg)
+TG_INSTALL ?= $(TG_ROOT)/install
+APPS_ROOT ?= $(realpath $(CURDIR)/../../..)
+APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
+APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 
 #
 # Supported ARCH values
 #
-ARCHES = tg x86 x86_native x86_glibc
+ARCHES = tg-xe x86 x86-test
 
 ifndef ARCH
 $(error Need to specify ARCH! )
@@ -28,15 +28,14 @@ endif
 
 BUILD_DIR = build-$(ARCH)
 
-APPS_LIBS_ROOT = $(APPS_ROOT)/libs/$(ARCH)
-OCR_INC = $(APPS_LIBS_ROOT)/include
+OCR_INC = $(APPS_LIBS_INSTALL)/include
 
 SRCDIR  = $(CURDIR)/$(ARCH)
 LIB = $(BUILD_DIR)/libocrscaffold.a
 #
 # XE Clang/llvm build
 #
-ifeq ($(ARCH), tg)
+ifeq ($(ARCH), tg-xe)
   TARGET = xstg-linux-elf
   TOOLBIN = $(TG_INSTALL)/bin
   TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
@@ -46,56 +45,35 @@ ifeq ($(ARCH), tg)
   LD = $(TOOL_PREFIX)ld
   RANLIB = $(TOOL_PREFIX)ranlib
   SRCS = ocrscaffold.c
+  INCS := -isystem $(OCR_INC)
   CFLAGS = -Os
-  #CFLAGS = -Os -isystem $(OCR_INC)
-  #
-  # tell clang how to find includes/libs (clang 3.6)
-  #
-  export APPS_LIBS_ROOT
+  export APPS_LIBS_INSTALL
 endif
 #
 # X86_64 Clang/llvm build
 #
-ifeq ($(ARCH), x86)
-TARGET = x86_64-linux-elf
-TOOLBIN = $(TG_INSTALL)/bin
-TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
-CC = $(TOOL_PREFIX)clang
-AS = $(TOOL_PREFIX)as
-AR = $(TOOL_PREFIX)ar
-LD = $(TOOL_PREFIX)ld
-RANLIB = $(TOOL_PREFIX)ranlib
-SRCS = ocrscaffold.c syscall.S
-INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
-CFLAGS += -std=c99
-endif
-#
-# This defines a native/platform GCC build
-# C99 is required to get the 'restrict' keyword
-# Make sure we get just the default platform build
-#
-ifeq ($(ARCH), x86_native)
+ifeq ($(ARCH), x86-test)
+  TARGET = x86_64-linux-elf
+  TOOLBIN = $(TG_INSTALL)/bin
+  TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+  CC = $(TOOL_PREFIX)clang
+  AS = $(TOOL_PREFIX)as
+  AR = $(TOOL_PREFIX)ar
+  LD = $(TOOL_PREFIX)ld
+  RANLIB = $(TOOL_PREFIX)ranlib
   SRCS = ocrscaffold.c syscall.S
-  INCS := -isystem /usr/include \
-          -isystem /usr/include/x86_64-linux-gnu \
-          -isystem $(OCR_INC)
+  INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
   CFLAGS += -std=c99
-  RANLIB = /usr/bin/ranlib
+  export APPS_LIBS_INSTALL
 endif
 #
 # This defines a native/platform GCC build
 # C99 is required to get the 'restrict' keyword
 # Make sure we get just the default platform build
 #
-ifeq ($(ARCH), x86_glibc)
-  # override - use the x86 architecture support
-  APPS_LIBS_ROOT = $(APPS_ROOT)/libs/x86_native
-  # override - make a special library for glibc
-  LIB = $(BUILD_DIR)/libocrscaffold-glibc.a
-  SRCS = ocrscaffold.c
-  INCS := -isystem /usr/include \
-          -isystem /usr/include/x86_64-linux-gnu \
-          -isystem $(OCR_INC)
+ifeq ($(ARCH), x86)
+  SRCS = ocrscaffold.c syscall.S
+  INCS := -isystem /usr/include -isystem /usr/include/x86_64-linux-gnu -isystem $(OCR_INC)
   CFLAGS += -std=c99
   RANLIB = /usr/bin/ranlib
 endif
@@ -139,9 +117,9 @@ $(BUILD_DIR)/%.o : $(SRCDIR)/%.S
 
 .PHONY: install
 install: $(LIB)
-	@echo Installing $(LIB) to $(APPS_LIBS_ROOT) ...
-	@mkdir -p $(APPS_LIBS_ROOT)
-	@cp -u -R $(LIB) $(APPS_LIBS_ROOT)/lib
+	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
+	@mkdir -p $(APPS_LIBS_INSTALL)
+	@cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib
 	@echo Installation complete
 
 .PHONY: uninstall

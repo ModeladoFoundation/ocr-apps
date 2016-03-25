@@ -10,8 +10,8 @@
 #	Variables - overrideable via cmd line or env. Defaults below.
 #		TG_INSTALL - top of the tg repo install root. Used to
 #					 find clang/llvm/binutils apps and includes.
-#		APPS_ROOT  - path to the apps directory in the xstack repo
-#					 Used to generate the path to the xstack repo
+#		APPS_ROOT  - path to the apps directory in the apps repo (apps/apps).
+#					 Used to generate the path to the apps repo
 #					 arch specific install root to install libs and
 #					 includes to.
 #		ARCH       - Architecture to build for. Required, no default.
@@ -22,16 +22,18 @@
 # Note that newlib is configured and built in BUILD_DIR (build_$(ARCH))
 # and it installs to an intermediate install root NEWLIB_INSTALL (tmproot).
 # This makefile then installs the build products from tmproot to the
-# libs install root APPS_LIBS_ROOT (xstack/apps/libs/$(ARCH)).
+# libs install root APPS_LIBS_INSTALL (apps/apps/libs/install/$(ARCH)).
 #
-TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../tg/tg/install)
-
-APPS_ROOT  ?= $(realpath $(CURDIR)/../../..)
+TG_ROOT ?= $(realpath $(CURDIR)/../../../../../tg/tg)
+TG_INSTALL ?= $(TG_ROOT)/install
+APPS_ROOT ?= $(realpath $(CURDIR)/../../..)
+APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
+APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 
 #
 # Supported ARCH values
 #
-ARCHES = tg x86 x86_native
+ARCHES = tg-xe x86 x86-test
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -41,13 +43,9 @@ ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
 
-APPS_LIBS_ROOT ?= $(APPS_ROOT)/libs/$(ARCH)
-
 NEWLIB_BUILD   = $(CURDIR)
 NEWLIB_INSTALL = $(NEWLIB_BUILD)/tmproot
 NEWLIB_SRCDIR  = $(CURDIR)/newlib-2.1.0
-
-TARGET = "xstg-linux-elf"
 
 #
 # per-target build dir
@@ -61,7 +59,6 @@ CONFIG_ARGS ?= --target=$(TARGET) --prefix=$(NEWLIB_INSTALL) --with-newlib
 # common cflags
 #
 CFLAGS ?= -Os -mstackrealign -fno-stack-protector -I$(NEWLIB_SRCDIR)/newlib/libc/include $(DEFINES)
-#CFLAGS += -I$(TG_SRCDIR)/xe-sim/include
 
 #
 # Environment variables for newlib configure
@@ -94,23 +91,25 @@ all: $(ARCH)
 #
 # XE Clang/llvm build
 #
-ifeq ($(ARCH), tg)
-CC = clang
-CXX = clang++
-TARGET = xstg-linux-elf
-TOOLBIN = $(TG_INSTALL)/bin
-TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+ifeq ($(ARCH), tg-xe)
+  CC = clang
+  CXX = clang++
+  TARGET = xstg-linux-elf
+  TOOLBIN = $(TG_INSTALL)/bin
+  TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+  export APPS_LIBS_INSTALL
 endif
 #
 
 # This defines an x86_64 build using the XE compiler
 #
-ifeq ($(ARCH), x86)
-CC = clang
-CXX = clang++
-TARGET = x86_64-linux-elf
-TOOLBIN = $(TG_INSTALL)/bin
-TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+ifeq ($(ARCH), x86-test)
+  CC = clang
+  CXX = clang++
+  TARGET = x86_64-linux-elf
+  TOOLBIN = $(TG_INSTALL)/bin
+  TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+  export APPS_LIBS_INSTALL
 endif
 #
 # This defines a native/platform GCC build
@@ -118,10 +117,10 @@ endif
 # But C99 turns on strict ansi, which we disable
 # Make sure we get just the default platform build
 #
-ifeq ($(ARCH), x86_native)
-CFLAGS += -std=c99 -U__STRICT_ANSI__
-CONFIG_ARGS += --enable-multilib=no
-TARGET = x86_64-linux-elf
+ifeq ($(ARCH), x86)
+  CFLAGS += -std=c99 -U__STRICT_ANSI__
+  CONFIG_ARGS += --enable-multilib=no
+  TARGET = x86_64-linux-elf
 endif
 
 $(ARCHES): show_args
@@ -184,10 +183,10 @@ newlib_install: $(NEWLIB)
 .PHONY: install
 install: root_install
 root_install: newlib_install
-	@echo Installing Newlib to $(APPS_LIBS_ROOT) ...
-	@mkdir -p $(APPS_LIBS_ROOT)
-	@cp -u -R $(NEWLIB_INSTALL)/$(TARGET)/include $(APPS_LIBS_ROOT)/
-	@cp -u -R $(NEWLIB_INSTALL)/$(TARGET)/lib $(APPS_LIBS_ROOT)/
+	@echo Installing Newlib to $(APPS_LIBS_INSTALL) ...
+	@mkdir -p $(APPS_LIBS_INSTALL)
+	@cp -u -R $(NEWLIB_INSTALL)/$(TARGET)/include $(APPS_LIBS_INSTALL)/
+	@cp -u -R $(NEWLIB_INSTALL)/$(TARGET)/lib $(APPS_LIBS_INSTALL)/
 	@echo Installation complete
 
 .PHONY: uninstall

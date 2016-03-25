@@ -2,16 +2,16 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
-ARCH=tg
+ARCH=x86-test
 
 TG_INSTALL ?= $(realpath $(CURDIR)/../../../../tg/tg/install)
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
+export APPS_LIBS_INSTALL?=$(APPS_ROOT)/libs/install/$(ARCH)
 
-export APPS_LIBS_ROOT=$(APPS_ROOT)/libs/$(ARCH)
-LIBS = $(APPS_LIBS_ROOT)/lib
-OCR_INC = $(APPS_LIBS_ROOT)/include
+LIBS = $(APPS_LIBS_INSTALL)/lib
+OCR_INC = $(APPS_LIBS_INSTALL)/include
 
-TARGET = xstg-linux-elf
+TARGET = x86_64-linux-elf
 TOOLBIN = $(TG_INSTALL)/bin
 TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
 CC = $(TOOL_PREFIX)clang
@@ -26,7 +26,7 @@ NL_CRTEND = $(LIBS)/crtend.o
 
 # Other library - this uses the libocrscaffold.a, but it
 # should actually be the real ocr library/runtime.
-OCR_LIB = $(LIBS)/libocrscaffold.a $(LIBS)/libswtest.a
+OCR_LIB = $(LIBS)/libocrscaffold.a
 
 CAPP = hello
 CAPP_SRCS = hello.c
@@ -36,33 +36,28 @@ CFLAGS = -Os -nostdinc -isystem $(OCR_INC)
 CFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
 CFLAGS += -isystem $(TG_INSTALL)/include
 CFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
-CFLAGS += -isystem $(APPS_LIBS_ROOT)/include
 
 CXXAPP = cxxhello
 CXXAPP_SRCS = cxxhello.cpp
 CXXAPP_LIBS =
 CXXAPP_OBJS = $(CXXAPP_SRCS:.cpp=.o)
-CXXFLAGS = -Os -nostdinc -nostdinc++ -isystem $(OCR_INC)
-CXXFLAGS += -isystem $(APPS_LIBS_ROOT)/include/c++/v1
+CXXFLAGS = -Os -nostdinc -isystem $(OCR_INC)
+CXXFLAGS += -isystem $(APPS_LIBS_INSTALL)/include/c++/v1
 CXXFLAGS += -isystem $(APPS_ROOT)/libs/src/libunwind/libunwind/include
 CXXFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
 CXXFLAGS += -isystem $(TG_INSTALL)/include
 CXXFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
-CXXFLAGS += -isystem $(APPS_LIBS_ROOT)/include
 
 all: $(CAPP) $(CXXAPP)
 
 default: all
 
 $(CAPP) : $(CAPP_OBJS)
-	@$(LD) -o $@ -T $(LIBS)/elf64_xstg.t $(NL_CRT) $< $(NL_LIBS) $(OCR_LIB) $(CAPP_LIBS) $(NL_CRTEND)
+	@$(LD) -o $@ $(NL_CRT) $< $(NL_LIBS) $(OCR_LIB) $(CAPP_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
-#$(CAPP) : $(CAPP_SRCS)
-#	@$(CXX) $(CXXFLAGS) -o $@ $<
-
 $(CXXAPP) : $(CXXAPP_OBJS)
-	@$(LD) -o $@ -T elf64_xstg.t $(NL_CRT) $< $(CPP_LIBS) $(NL_LIBS) $(OCR_LIB) $(CXXAPP_LIBS) $(NL_CRTEND)
+	@$(LD) -o $@ $(NL_CRT) $< $(CPP_LIBS) $(NL_LIBS) $(OCR_LIB) $(CXXAPP_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
 %.o : %.c
