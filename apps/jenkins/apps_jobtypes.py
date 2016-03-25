@@ -92,7 +92,8 @@ jobtype_ocr_run_app_nonregression = {
     'timeout': 300,
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('apps', 'ocr'),
-    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps', # Use this for the makefiles
+    'env-vars': { 'TG_INSTALL': '${JJOB_ENVDIR}',
+                  'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps', # Use this for the makefiles
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/src',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
                   'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
@@ -129,7 +130,8 @@ jobtype_ocr_run_app_regression = {
     'timeout': 900,
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('apps', 'ocr'),
-    'env-vars': { 'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps',
+    'env-vars': { 'TG_INSTALL': '${JJOB_ENVDIR}',
+                  'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps',
                   'APPS_ROOT_PRIV': '${JJOB_PRIVATE_HOME}/apps/apps',
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/src',
                   'OCR_ROOT': '${JJOB_SHARED_HOME}/ocr/ocr',
