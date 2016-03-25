@@ -2,6 +2,13 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+ARCH                 	?= x86
+OCR_TYPE                ?= x86
+APPS_ROOT               ?= ../../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
+
 SRCS := ../mpilite.c ../mpi_ocr.c ../mpi_ocr_messaging.c
 OBJS := mpilite.o mpi_ocr.o mpi_ocr_messaging.o
 INCLUDES := ../mpi.h ../mpi_ocr_messaging.h ../mpi_ocr.h

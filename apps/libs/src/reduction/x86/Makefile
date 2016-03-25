@@ -2,6 +2,12 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+ARCH                 	?= x86
+OCR_TYPE                ?= x86
+APPS_ROOT               ?= ../../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
 
 SRCS := ../reduction.c ../reduction_v1.c
 OBJS := reduction.o reduction_v1.o
@@ -64,7 +70,7 @@ $(INSTALL_REDUCTION_A): $(LIB) | $(APPS_LIBS_INSTALL)/lib
 	$(AT)cp $< $@
 
 .PHONY: install
-install:  $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_H1) $(INSTALL_REDUCTION_A)
+install: $(INSTALL_REDUCTION_H) $(INSTALL_REDUCTION_H1) $(INSTALL_REDUCTION_A)
 
 .PHONY: run
 run:

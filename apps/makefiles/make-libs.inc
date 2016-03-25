@@ -22,21 +22,6 @@
 #   - TG_INSTALL        Path to the TG environment installation
 #   - TG_ROOT           Path to the TG root
 
-# APPS_ROOT needs to be defined at a minimum
-ifeq (,$(APPS_ROOT))
-$(error APPS_ROOT needs to be defined)
-else
-_T := $(APPS_ROOT)
-APPS_ROOT := $(realpath $(_T))
-ifeq (,$(APPS_ROOT))
-$(error APPS_ROOT is not a valid path: $(_T))
-endif
-endif
-
-# Check all other variables using varcheck
-_INTERNAL_NO_CHECK_WORKLOAD := yes
-include $(APPS_ROOT)/makefiles/make-varcheck.inc
-
 REQ_LIBS ?=
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))

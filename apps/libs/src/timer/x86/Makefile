@@ -2,6 +2,13 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+ARCH                 	?= x86
+OCR_TYPE                ?= x86
+APPS_ROOT               ?= ../../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
+
 SRCS := timer.c
 OBJS := timer.o
 INCLUDES := ../timer.h
@@ -38,38 +45,37 @@ link: $(LIB)
 
 %.o: ../%.c Makefile $(INCLUDES)
 	@echo "Compiling $<"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(AT)$(CC) $(CFLAGS) -c $< -o $@
 
 
 $(LIB): $(OBJS)
 	@echo "Linking static library ${$LIB}"
-	@$(AR) $(ARFLAGS) $(LIB) $^
+	$(AT)$(AR) $(ARFLAGS) $(LIB) $^
 
-$(INSTALL_TIMER_H): timer.h
-	cp $< $@
+$(INSTALL_TIMER_H): timer.h | $(APPS_LIBS_INSTALL)/include
+	$(AT)cp $< $@
 
-$(INSTALL_TIMER_A): $(LIB)
-	cp $< $@
+$(INSTALL_TIMER_A): $(LIB) | $(APPS_LIBS_INSTALL)/lib
+	$(AT)cp $< $@
 
 .PHONY: install
 install: $(INSTALL_TIMER_H) $(INSTALL_TIMER_A)
-
-installold: $(INCLUDES) $(LIB)
-	@echo "Installing X86 standard files"
-	@cp  $(INCLUDES) ${APPS_LIBS_INSTALL}/include/
-	@cp  $(LIB) ${APPS_LIBS_INSTALL}/lib/
 
 .PHONY: run
 run:
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(LIB)
+	$(AT)rm -f $(OBJS) $(LIB)
 
 .PHONY: uninstall
 uninstall:
-	for i in timer.h; do rm -f ${APPS_LIBS_INSTALL}/include/$$i ; done
-	rm -f $(APPS_LIBS_INSTALL)/lib/$(LIB)
+	$(AT)for i in timer.h; do rm -f ${APPS_LIBS_INSTALL}/include/$$i ; done
+	$(AT)rm -f $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 .PHONY: squeaky
 squeaky: clean uninstall
+
+.PHONY: $(APPS_LIBS_INSTALL)/include $(APPS_LIBS_INSTALL)/lib
+$(APPS_LIBS_INSTALL)/include $(APPS_LIBS_INSTALL)/lib:
+	$(AT)mkdir -p $@

@@ -1,6 +1,14 @@
 # This file is subject to the license agreement located in the file LICENSE
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
+
+ARCH                 	?= tg-xe
+OCR_TYPE                ?= tg-xe
+APPS_ROOT               ?= ../../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
+
 TG_PREFIX     := $(TG_INSTALL)/bin/xstg-linux-elf
 
 AS	= $(TG_PREFIX)-as

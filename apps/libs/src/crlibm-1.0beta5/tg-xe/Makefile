@@ -1,3 +1,10 @@
+ARCH                 	?= tg-xe
+OCR_TYPE                ?= tg-xe
+APPS_ROOT               ?= ../../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
+
 CRLIBM_ROOT    ?= ../x86_64
 
 CRLIBM_ROOT    := $(shell cd "${CRLIBM_ROOT}" && pwd)

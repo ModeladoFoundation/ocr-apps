@@ -1,3 +1,10 @@
+ARCH                 	?= x86
+OCR_TYPE                ?= x86
+APPS_ROOT               ?= ../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
+
 .PHONY: all
 all:
 
@@ -6,7 +13,7 @@ debug:
 
 .PHONY: install
 install: | ${APPS_LIBS_INSTALL}/include
-	@echo "Installing TG macro files"
+	@echo "Installing X86 macro files"
 	$(AT)cp ${APPS_LIBS_ROOT}/macros/macros/* ${APPS_LIBS_INSTALL}/include/
 
 .PHONY: ${APPS_LIBS_INSTALL}/include
