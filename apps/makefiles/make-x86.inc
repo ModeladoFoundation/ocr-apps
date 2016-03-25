@@ -20,8 +20,27 @@ OCR_VIENNA            ?= no
 # Configuration to use
 OCR_CONFIG ?=
 
-# Compiler to use (defaults to GCC if it says cc)
-CC                    ?= cc
+# Default configuration values for mpilite
+ifeq ($(MPILITE),yes)
+  ifeq ($(OCR_TYPE), x86-mpi)
+    CONFIG_NUM_THREADS  ?= 8
+    CONFIG_FLAGS        ?= --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
+   else
+    CONFIG_FLAGS        ?= --guid LABELED
+  endif
+  REQ_LIBS += mpilite
+  LDFLAGS  += -lmpilite
+endif
+
+# Support for ITAC Support
+ifeq ($(OCRRUN_ITAC), yes)
+ifneq ($(OCR_TYPE), x86-mpi)
+  $(error ITAC is only supported on x86-mpi)
+endif
+CC=mpiicc
+LD=$(CC)
+CFLAGS += -fno-omit-frame-pointer
+endif
 
 # Number of threads in the auto-generated configuration file
 CONFIG_NUM_THREADS    ?= 4
@@ -216,8 +235,7 @@ install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or, manually (in bash):"
 	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$$(LD_LIBRARY_PATH) "\
-	"&& export OCR_CONFIG=${OCR_INSTALL}/share/ocr/config/${OCR_TYPE}/default.cfg (default one) and run "\
-	"the executable $(TARGET) in $(WORKLOAD_INSTALL)"
+	"&& export OCR_CONFIG=${OCR_CONFIG} and run the executable $(TARGET) in $(WORKLOAD_INSTALL)"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/

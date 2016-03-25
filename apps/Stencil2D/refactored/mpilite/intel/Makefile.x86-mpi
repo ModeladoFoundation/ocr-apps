@@ -60,7 +60,7 @@ TARGET ?= stencil
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := mpilite
+REQ_LIBS :=
 
 # Space separated list of source files
 SRCS := stencil.c MPI_bail_out.c wtime.c
@@ -73,17 +73,9 @@ CFLAGS := -std=c99
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lm -lpthread -lmpilite
+LDFLAGS := -lm -lpthread
 
-# MPILite config file needs LABELED
-MPILITE=yes
-CONFIG_FLAGS := --guid LABELED --scheduler LEGACY --dequetype LOCKED_DEQUE
-
-ifeq ($(OCRRUN_ITAC), yes)
-CC=mpiicc
-LD=$(CC)
-CFLAGS += -fno-omit-frame-pointer
-endif
+MPILITE:=yes
 
 # Targets:
 #   - all:     Build the application.
