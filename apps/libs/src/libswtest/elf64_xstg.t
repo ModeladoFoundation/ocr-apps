@@ -6,30 +6,33 @@ ENTRY (_start)
 /*
  * XSTG memory region definitions. For fsim test configurations we use
  * the full 4MB block L2 space available.
- * NOTE: All these addresses are self-referential.
+ *
+ * NOTE: Any region that can contain executable code should be rendered
+ *       as a machine relative address to avoid breaking the C++ libraries
+ *       (exception handling) and gdb. Other addresses can be self-referential.
  */
 MEMORY
 {
   /*
-   * Agent L1 in self-map
+   * Agent L1 in self-map (agent relative)
    */
   AGENT_L1     : ORIGIN = 0x000000030000, LENGTH = 64K
   /*
-   * Block L2 in self-map
+   * Block L2 in machine relative
    */
-  BLOCK_L2     : ORIGIN = 0x000000c00000, LENGTH = 4096K /* 4MB */
+  BLOCK_L2     : ORIGIN = 0x1000000000400000, LENGTH = 4096K /* 4MB */
   /*
    * Cluster L3 in self-map
    */
   CLUSTER_L3   : ORIGIN = 0x000018000000, LENGTH = 8192K /* 8MB */
   /*
-   * Socket IPM in self-map
+   * Socket IPM in machine relative
    */
-  SOCKET_IPM   : ORIGIN = 0x240000000000, LENGTH = 134217728K /* 128GB */
+  SOCKET_IPM   : ORIGIN = 0x1000040000000000, LENGTH = 134217728K /* 128GB */
   /*
-   * Socket DRAM in self-map
+   * Socket DRAM in machine relative
    */
-  SOCKET_DRAM  : ORIGIN = 0x280000000000, LENGTH = 536870912K /* 512GB */
+  SOCKET_DRAM  : ORIGIN = 0x1000080000000000, LENGTH = 536870912K /* 512GB */
   /*
    * Socket NVM in self-map
    */
