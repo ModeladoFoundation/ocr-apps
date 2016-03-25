@@ -150,7 +150,7 @@ WORKLOAD_INSTALL := $(realpath $(_T))
 endif
 endif
 
-ifeq (, $(filter-out tg, $(OCR_TYPE)))
+ifeq (, $(filter-out tg tg-x86, $(OCR_TYPE)))
 TG_INSTALL := $(realpath $(TG_INSTALL))
 ifeq (,$(TG_INSTALL))
 # We do not install this because we never build the
@@ -222,11 +222,14 @@ $(shell mkdir -p "$(_T)")
 OCR_BUILD_ROOT := $(realpath $(_T))
 endif
 
+ifeq (, $(filter-out tg tg-x86, $(OCR_TYPE)))
 # TG root
 _T := $(TG_ROOT)
 TG_ROOT := $(realpath $(_T))
 ifeq (,$(TG_ROOT))
 $(error TG_ROOT is not a valid path: $(_T))
 endif
+endif
 
 endif # End of RUN_MODE ifeq
+
