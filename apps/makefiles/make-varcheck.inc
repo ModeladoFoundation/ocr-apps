@@ -8,7 +8,7 @@ AT = $(AT_$(V))
 I ?= 0
 ATI_0 := @
 ATI_1 :=
-ATI = $(AT_$(I))
+ATI = $(ATI_$(I))
 
 # This is set to yes by the make-libs.inc file because
 # for libraries, there is no workload to define
@@ -68,7 +68,7 @@ ifeq ($(_INTERNAL_NO_CHECK_WORKLOAD), no)
     WORKLOAD_INSTALL_ROOT := $(realpath $(_T))
     ifeq (,$(WORKLOAD_INSTALL_ROOT))
       # We can create this directory
-      @echo "Creating WORKLOAD_INSTALL_ROOT: $(_T)"
+      $(info Creating WORKLOAD_INSTALL_ROOT: $(_T))
       $(shell mkdir -p "$(_T)")
       WORKLOAD_INSTALL_ROOT := $(realpath $(_T))
     endif
@@ -113,7 +113,7 @@ _T := $(OCR_INSTALL)
 OCR_INSTALL := $(realpath $(_T))
 ifeq (,$(OCR_INSTALL))
   # Create the directory
-  @echo "Creating OCR_INSTALL: $(_T)"
+  $(info Creating OCR_INSTALL: $(_T))
   $(shell mkdir -p "$(_T)")
   OCR_INSTALL := $(realpath $(_T))
 endif
@@ -128,7 +128,7 @@ _T := $(APPS_LIBS_INSTALL_ROOT)
 APPS_LIBS_INSTALL_ROOT := $(realpath $(_T))
 ifeq (,$(APPS_LIBS_INSTALL_ROOT))
   # Create the directory
-  @echo "Creating APPS_LIBS_INSTALL_ROOT: $(_T)"
+  $(info Creating APPS_LIBS_INSTALL_ROOT: $(_T))
   $(shell mkdir -p "$(_T)")
   APPS_LIBS_INSTALL_ROOT := $(realpath $(_T))
 endif
@@ -138,7 +138,7 @@ _T := $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 APPS_LIBS_INSTALL := $(realpath $(_T))
 ifeq (,$(APPS_LIBS_INSTALL))
   # Create the directory
-  @echo "Creating APPS_LIBS_INSTALL: $(_T)"
+  $(info Creating APPS_LIBS_INSTALL: $(_T))
   $(shell mkdir -p "$(_T)")
   APPS_LIBS_INSTALL := $(realpath $(_T))
 endif
@@ -148,7 +148,7 @@ ifeq ($(_INTERNAL_NO_CHECK_WORKLOAD), no)
   WORKLOAD_INSTALL := $(realpath $(_T))
   ifeq (,$(WORKLOAD_INSTALL))
     # Create the directory
-    @echo "Creating WORKLOAD_INSTALL: $(_T)"
+    $(info Creating WORKLOAD_INSTALL: $(_T))
     $(shell mkdir -p "$(_T)")
     WORKLOAD_INSTALL := $(realpath $(_T))
   endif
@@ -175,7 +175,7 @@ else ifeq ($(RUN_MODE), buildApp)
     WORKLOAD_BUILD := $(realpath $(_T))
     ifeq (,$(WORKLOAD_BUILD))
       # Create the directory
-      @echo "Creating WORKLOAD_BUILD: $(_T)"
+      $(info Creating WORKLOAD_BUILD: $(_T))
       $(shell mkdir -p "$(_T)")
       WORKLOAD_BUILD := $(realpath $(_T))
     endif
@@ -196,7 +196,7 @@ else
     WORKLOAD_BUILD := $(realpath $(_T))
     ifeq (,$(WORKLOAD_BUILD))
       # Create the directory
-      @echo "Creating WORKLOAD_BUILD: $(_T)"
+      $(info Creating WORKLOAD_BUILD: $(_T))
       $(shell mkdir -p "$(_T)")
       WORKLOAD_BUILD := $(realpath $(_T))
     endif
@@ -221,7 +221,7 @@ else
   _T := $(OCR_BUILD_ROOT)
   OCR_BUILD_ROOT := $(realpath $(_T))
   ifeq (,$(OCR_BUILD_ROOT))
-    @echo "Creating OCR_BUILD_ROOT: $(_T)"
+    $(info Creating OCR_BUILD_ROOT: $(_T))
     $(shell mkdir -p "$(_T)")
     OCR_BUILD_ROOT := $(realpath $(_T))
   endif
@@ -236,3 +236,22 @@ else
   endif
 
 endif # End of RUN_MODE ifeq
+
+ifeq ($(I), 1)
+  $(info ARCH              is $(ARCH))
+  $(info OCR_TYPE          is $(OCR_TYPE))
+  $(info APPS_ROOT         is $(APPS_ROOT))
+  $(info APPS_LIBS_ROOT    is $(APPS_LIBS_ROOT))
+  $(info APPS_LIBS_INSTALL is $(APPS_LIBS_INSTALL))
+  $(info OCR_ROOT          is $(OCR_ROOT))
+  $(info OCR_BUILD_ROOT    is $(OCR_BUILD_ROOT))
+  $(info OCR_INSTALL       is $(OCR_INSTALL))
+  $(info TG_ROOT           is $(TG_ROOT))
+  $(info TG_INSTALL        is $(TG_INSTALL))
+  $(info RUN_MODE          is $(RUN_MODE))
+  ifeq ($(_INTERNAL_NO_CHECK_WORKLOAD), no)
+    $(info WORKLOAD_SRC      is $(WORKLOAD_SRC))
+    $(info WORKLOAD_BUILD    is $(WORKLOAD_BUILD))
+    $(info WORKLOAD_INSTALL  is $(WORKLOAD_INSTALL))
+  endif
+endif

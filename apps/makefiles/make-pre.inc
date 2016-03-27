@@ -8,7 +8,7 @@ AT = $(AT_$(V))
 I ?= 0
 ATI_0 := @
 ATI_1 :=
-ATI = $(AT_$(I))
+ATI = $(ATI_$(I))
 
 found_run := $(strip $(foreach count, $(shell seq -s ' ' $(words $(MAKECMDGOALS))), $(if $(findstring run,$(word $(count), $(MAKECMDGOALS))),$(count))))
 ifneq (,$(found_run))
