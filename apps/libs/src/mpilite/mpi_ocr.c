@@ -237,7 +237,9 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
     *numRanks = 4;  // default
     *maxTag = 0;  // default
     *aggressiveNB = FALSE; // default non-aggressive
-    *affinity = AFFINITY_NONE;
+    //    *affinity = AFFINITY_NONE;
+    // need explicit affinity or hpgmg hangs
+    *affinity = AFFINITY_ROUND_ROBIN;
     int shift = 0;      // amount to shift argv to remove mpilite args
 
     int argc = getArgc(argcArgv);
