@@ -36,11 +36,12 @@ PRINTF("//// leave CCD_edt\n");RAG_FLUSH;
 
 ocrGuid_t ccd_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    ccdAsyncPRM_t *ccdAsyncParamvIn = (ccdAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_3
 PRINTF("////// enter ccd_async_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
-	struct corners_t *corners = (struct corners_t *)paramv;
+	assert(PRMNUM(ccdAsync));
+	struct corners_t *corners = &(ccdAsyncParamvIn->corners);
 	int m1   = corners->m1;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
@@ -149,8 +150,8 @@ PRINTF("//// create a template for ccd_async function\n");RAG_FLUSH;
 	ocrGuid_t ccd_async_clg;
 	retval = ocrEdtTemplateCreate(
 			&ccd_async_clg,		// ocrGuid_t *new_guid
-			 ccd_async_edt, 	// ocr_edt_ptr func_ptr
-			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+			ccd_async_edt, 	// ocr_edt_ptr func_ptr
+			PRMNUM(ccdAsync), // paramc
 			4);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = ccd_async_clg;
@@ -176,15 +177,17 @@ PRINTF("//// create a template for ccd_async function\n");RAG_FLUSH;
 PRINTF("//// create an edt for ccd_async\n");RAG_FLUSH;
 #endif
 			ocrGuid_t ccd_async_scg;
+            ccdAsyncPRM_t ccdAsyncParamv;
+            ccdAsyncParamv.corners = async_corners;
 			retval = ocrEdtCreate(
 					&ccd_async_scg,		// *created_edt_guid
 					 ccd_async_clg,		// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					(uint64_t*)&async_corners, // *paramv
+					(u64 *)&ccdAsyncParamv, // *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
-					NULL_GUID,		// affinity
+					NULL_HINT,		// affinity
 					NULL);			// *outputEvent
 			assert(retval==0);
 

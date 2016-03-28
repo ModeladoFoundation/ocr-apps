@@ -211,11 +211,12 @@ int ReadParams(struct RadarParams *radar_params, struct ImageParams *image_param
 
 ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
+  readDataPRM_t *readDataParamvIn = (readDataPRM_t *)paramv;
 #ifdef TRACE_LVL_2
   PRINTF("//// enter ReadData_edt\n");RAG_FLUSH;
 #endif
-  assert(paramc==1);
-  ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // FormImage_scg or refFormImage_scg
+  assert(paramc==PRMNUM(readData));
+  ocrGuid_t arg_scg = readDataParamvIn->arg_scg;; // FormImage_scg or refFormImage_scg
   assert(depc==5);
   RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,0);
   RAG_REF_MACRO_SPAD(struct file_args_t,file_args,file_args_ptr,file_args_lcl,file_args_dbg,1);

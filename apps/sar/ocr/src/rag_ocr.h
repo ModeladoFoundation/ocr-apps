@@ -36,21 +36,21 @@ void ocr_exit(void); // RAG ocr_exit() non-public
 #endif
 
 #ifdef TG_ARCH
-#define OCR_DB_CREATE(guid,addr,len,affinity) \
+#define OCR_DB_CREATE(guid,addr,len,hint) \
 do { \
 	u8 __retval__; \
-	__retval__ = ocrDbCreate(&(guid),(void *)&(addr),(len),DB_PROP_NONE,(affinity),NO_ALLOC); \
+	__retval__ = ocrDbCreate(&(guid),(void *)&(addr),(len),DB_PROP_NONE,(hint),NO_ALLOC); \
 	rag_printf("OCR_DB_C %16.16lx \n",GUID_VALUE(guid));rag_flush; \
 	if (__retval__ != 0) { \
 		PRINTF("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
 	} /* else { PRINTF("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
 } while(0)
 #else
-#define OCR_DB_CREATE(guid,addr,len,affinity) \
+#define OCR_DB_CREATE(guid,addr,len,hint) \
 do { \
 	u8 __retval__; \
-	__retval__ = ocrDbCreate(&(guid),&(addr),(len),DB_PROP_NONE,(affinity),NO_ALLOC); \
-	rag_printf("OCR_DB_C %16.16lx \n",GUID_VALUE(guid));rag_flush; \
+	__retval__ = ocrDbCreate(&(guid),&(addr),(len),DB_PROP_NONE,(hint),NO_ALLOC); \
+	rag_printf("OCR_DB_C "GUIDF" \n",GUIDA(guid));rag_flush; \
 	if (__retval__ != 0) { \
 		PRINTF("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
 	} /* else { PRINTF("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
@@ -60,10 +60,10 @@ do { \
 #define OCR_DB_RELEASE(guid) \
 do { \
 	u8  __retval__; \
-	rag_printf("OCR_DB_R %16.16lx \n",GUID_VALUE(guid));rag_flush; \
+	rag_printf("OCR_DB_R "GUIDF" \n",GUIDA(guid));rag_flush; \
 	__retval__ = ocrDbRelease(guid); \
 	if (__retval__ != 0) { \
-		PRINTF("ocrDbRelease ERROR arg=%ld %s:%d\n", GUID_VALUE(guid), __FILE__, __LINE__); \
+		PRINTF("ocrDbRelease ERROR arg="GUIDF" %s:%d\n", GUIDA(guid), __FILE__, __LINE__); \
 		xe_exit(__retval__); \
 	} \
 } while(0)
@@ -75,10 +75,10 @@ do { \
 #define OCR_DB_FREE(addr,guid) \
 do { \
 	u8 __retval__; \
-	rag_printf("OCR_DB_D %16.16lx \n",GUID_VALUE(guid));rag_flush; \
+	rag_printf("OCR_DB_D "GUIDF" \n",GUIDA(guid));rag_flush; \
 	__retval__ = ocrDbDestroy((guid)); \
 	if (__retval__ != 0) { \
-		PRINTF("ocrDbDestroy ERROR arg=%ld %s:%d\n", GUID_VALUE(guid), __FILE__, __LINE__); \
+		PRINTF("ocrDbDestroy ERROR arg="GUIDF" %s:%d\n", GUIDA(guid), __FILE__, __LINE__); \
 		xe_exit(__retval__); \
 	} \
 } while(0)
@@ -190,31 +190,31 @@ void DRAMtoDRAM(void *out, void *in, size_t size);
 
 #define RAG_DEF_MACRO_SPAD(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
  	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_RW); assert(retval==0); \
-	rag_printf("DEF_SPAD %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+	rag_printf("DEF_SPAD "GUIDF" \n",GUIDA(dbg));rag_flush;
 
 #define RAG_DEF_MACRO_BSM(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
  	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_RW); assert(retval==0); \
-	rag_printf("DEF_BSM  %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+	rag_printf("DEF_BSM  "GUIDF" \n",GUIDA(dbg));rag_flush;
 
 #define RAG_DEF_MACRO_PASS(scg,no_type,no_var,no_ptr,no_lcl,dbg,slot) \
  	retval = ocrAddDependence(dbg,scg,slot,DB_MODE_RW); assert(retval==0); \
-	rag_printf("DEF_PASS %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+	rag_printf("DEF_PASS "GUIDF" \n",GUIDA(dbg));rag_flush;
 
 #define RAG_REF_MACRO_SPAD(type,var,ptr_var,lcl_var,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
 	type *var, *ptr_var= (void *)depv[slot].ptr, lcl_var; \
 	REM_LDX_ADDR(lcl_var, ptr_var, type); \
 	var = &lcl_var; \
-	rag_printf("REF_SPAD %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+	rag_printf("REF_SPAD "GUIDF" \n",GUIDA(dbg));rag_flush;
 
 #define RAG_REF_MACRO_BSM(type,var,no_ptr,no_lcl,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
 	type var = (void *)depv[slot].ptr; \
-	rag_printf("REF_BSM  %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+	rag_printf("REF_BSM  "GUIDF" \n",GUIDA(dbg));rag_flush;
 
 #define RAG_REF_MACRO_PASS(no_type,no_var,no_ptr,no_lcl,dbg,slot) \
 	ocrGuid_t dbg = depv[slot].guid; \
-	rag_printf("REF_PASS %16.16lx \n",GUID_VALUE(dbg));rag_flush;
+	rag_printf("REF_PASS "GUIDF" \n",GUIDA(dbg));rag_flush;
 
 #ifndef RAG_NEW_BLK_SIZE
 static int blk_size(int n,int max_blk_size) {

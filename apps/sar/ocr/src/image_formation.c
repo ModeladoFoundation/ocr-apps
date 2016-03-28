@@ -4,11 +4,12 @@
 
 ocrGuid_t post_FormImage_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    postFormImagePRM_t *postFormImageParamvIn = (postFormImagePRM_t *)paramv;
 #ifdef TRACE_LVL_2
 PRINTF("//// enter post_FormImage_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // ReadData_edt or Affine_edt
+	assert(paramc==PRMNUM(postFormImage));
+	ocrGuid_t arg_scg = postFormImageParamvIn->arg_scg; // ReadData_edt or Affine_edt
 #ifdef RAG_DIG_SPOT
 	assert(depc==9);
 #else
@@ -26,19 +27,19 @@ RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,dig_spot_dbg,7);
 #endif
 
 #ifdef RAG_TG_ARCH_NULL_GUID_WORKAROUND
-	if( GUID_VALUE(refImage_dbg) == GUID_VALUE(curImage_dbg) ) {	// RAG NULL_GUID FSIM BUG WORKAROUND
+	if( ocrGuidIsEq(refImage_dbg, curImage_dbg)) {	// RAG NULL_GUID FSIM BUG WORKAROUND
 #else
-	if( GUID_VALUE(refImage_dbg) == GUID_VALUE(NULL_GUID) ) {	// RAG NULL_GUID FSIM BUG WORKAROUND
+	if(ocrGuidIsNull(refImage_dbg)) {	// RAG NULL_GUID FSIM BUG WORKAROUND
 #endif
 #ifdef TRACE_LVL_2
-PRINTF("//// refImage_dbg == NULL_GUID (next guid = %ld) %ld\n",GUID_VALUE(arg_scg),GUID_VALUE(X_dbg));RAG_FLUSH;
+PRINTF("//// refImage_dbg == NULL_GUID (next guid = "GUIDF") "GUIDF"\n",GUIDA(arg_scg),GUIDA(X_dbg));RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,X_dbg,2);	// ReadData_edt
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Pt_dbg,3);	// ReadData_edt
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Tp_dbg,4);	// ReadData_edt
 	} else {
 #ifdef TRACE_LVL_2
-PRINTF("//// refImage_dbg == struct complexData ** (next guid = %ld) %ld\n",GUID_VALUE(arg_scg),GUID_VALUE(curImage_dbg));RAG_FLUSH;
+PRINTF("//// refImage_dbg == struct complexData ** (next guid = "GUIDF") "GUIDF"\n",GUIDA(arg_scg),GUIDA(curImage_dbg));RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);	// Affine_edt
 	}
@@ -50,11 +51,12 @@ PRINTF("//// leave post_FormImage_edt\n");RAG_FLUSH;
 
 ocrGuid_t FormImage_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    formImagePRM_t *formImageParamvIn = (formImagePRM_t *)paramv;
 #ifdef TRACE_LVL_2
 PRINTF("//// enter FormImage_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	ocrGuid_t arg_scg = (ocrGuid_t)paramv[0]; // ReadData_edt or Affine_edt
+	assert(paramc==PRMNUM(formImage));
+	ocrGuid_t arg_scg = formImageParamvIn->arg_scg; // ReadData_edt or Affine_edt
 #ifdef RAG_DIG_SPOT
 	assert(depc==8);
 #else
@@ -79,7 +81,7 @@ PRINTF("//// create a template for post_FormImage function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&post_FormImage_clg,	// ocrGuid_t *new_guid
 		 	post_FormImage_edt,	// ocr_edt_ptr func_ptr
-			1,			// paramc
+			PRMNUM(postFormImage),			// paramc
 #ifdef RAG_DIG_SPOT
 			9			// depc
 #else
@@ -93,15 +95,17 @@ PRINTF("//// create a template for post_FormImage function\n");RAG_FLUSH;
 PRINTF("//// create an edt for post_FormImage\n");RAG_FLUSH;
 #endif
 	ocrGuid_t post_FormImage_scg;
+    postFormImagePRM_t postFormImageParamv;
+    postFormImageParamv.arg_scg = arg_scg;
 	retval = ocrEdtCreate(
 			&post_FormImage_scg,	// *created_edt_guid
 			 post_FormImage_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv (arg_scg, i.e. ReadData_edt or Affine_edt)
+			(u64 *)&postFormImageParamv,			// *paramv (arg_scg, i.e. ReadData_edt or Affine_edt)
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 	assert(retval==0);
 
@@ -229,7 +233,7 @@ PRINTF("//// create a template for BackProj function\n");RAG_FLUSH;
 		retval = ocrEdtTemplateCreate(
 				&BackProj_clg,		// ocrGuid_t *new_guid
 			 	 BackProj_edt,		// ocr_edt_ptr func_ptr
-				(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+				PRMNUM(backProj), // paramc
 				7);			// depc
 		assert(retval==0);
 		templateList[__sync_fetch_and_add(&templateIndex,1)] = BackProj_clg;
@@ -238,15 +242,17 @@ PRINTF("//// create a template for BackProj function\n");RAG_FLUSH;
 PRINTF("//// create an edt for BackProj\n");RAG_FLUSH;
 #endif
 		ocrGuid_t BackProj_scg, BackProj_evg;
+        backProjPRM_t backProjParamv;
+        backProjParamv.corners = corners;
 		retval = ocrEdtCreate(
 				&BackProj_scg,		// *created_edt_guid
 				 BackProj_clg,		// edt_template_guid
 				EDT_PARAM_DEF,		// paramc
-				(uint64_t *)&corners,	// *paramv
+				(u64 *)&backProjParamv,	// *paramv
 				EDT_PARAM_DEF,		// depc
 				NULL,			// *depv
 				EDT_PROP_FINISH,	// properties
-				NULL_GUID,		// affinity
+				NULL_HINT,		// affinity
 				&BackProj_evg);		// *outputEvent
 		assert(retval==0);
 

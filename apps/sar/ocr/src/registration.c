@@ -57,12 +57,13 @@ PRINTF("//// leave post_Affine_edt\n");RAG_FLUSH;
 
 ocrGuid_t Affine_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    affinePRM_t *affineParamvIn = (affinePRM_t *)paramv;
 #ifdef TRACE_LVL_2
 PRINTF("//// enter Affine_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==2);
-	ocrGuid_t post_Affine_scg		= (ocrGuid_t)paramv[0]; // post_Afine_scg
-	ocrGuid_t post_affine_async_1_scg	= (ocrGuid_t)paramv[1]; // post_affine_async_1_scg
+	assert(paramc==PRMNUM(affine));
+	ocrGuid_t post_Affine_scg		= affineParamvIn->post_Affine_scg; // post_Afine_scg
+	ocrGuid_t post_affine_async_1_scg	= affineParamvIn->post_affine_async_scg;; // post_affine_async_1_scg
 	assert(depc==4);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
 RAG_REF_MACRO_BSM( struct complexData **,refImage,NULL,NULL,refImage_dbg,1);
@@ -96,11 +97,12 @@ struct point corr2D(struct point ctrl_pt, int Nwin, int R,
 
 ocrGuid_t post_affine_async_1_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    postAffineAsyncPRM_t *postAffineAsyncParamvIn  = (postAffineAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_3
 PRINTF("////// enter post_affine_async_1_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	ocrGuid_t post_affine_async_2_scg = (ocrGuid_t)paramv[0]; // post_affine_async_2_scg
+	assert(paramc==PRMNUM(postAffineAsync));
+	ocrGuid_t post_affine_async_2_scg = postAffineAsyncParamvIn->post_affine_async_scg; // post_affine_async_2_scg
 	assert(depc==9); // 9th is post_Affine_evg
 	if(depc!=9) { PRINTF("// RAG // RAG // Need to handle N (affine_params->Nc) == 0 case // RAG // RAG// \n");RAG_FLUSH; }
 RAG_REF_MACRO_SPAD(struct async_1_args_t,post_affine_async_1_args,post_affine_async_1_args_ptr,post_affine_async_1_args_lcl,post_affine_async_1_args_dbg,0);
@@ -283,7 +285,7 @@ ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 	retval = ocrEdtTemplateCreate(
 			&affine_async_2_clg,	// ocrGuid_t *new_guid
 			 affine_async_2_edt,	// ocr_edt_ptr func_ptr
-			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+			PRMNUM(affineAsync), // paramc
 			5);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = affine_async_2_clg;
@@ -323,15 +325,17 @@ ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 PRINTF("////// create an edt for affine_async_2\n");RAG_FLUSH;
 #endif
 			ocrGuid_t affine_async_2_scg;
+            affineAsyncPRM_t affineAsyncParamv;
+            affineAsyncParamv.corners = async_corners;
 			retval = ocrEdtCreate(
 					&affine_async_2_scg,	// *created_edt_guid
 					 affine_async_2_clg,	// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					(uint64_t *)&async_corners, // *paramv
+					(u64 *)&affineAsyncParamv, // *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
-					NULL_GUID,		// affinity
+					NULL_HINT,		// affinity
 					NULL);			// *outputEvent
 			assert(retval==0);
 
@@ -451,11 +455,12 @@ PRINTF("////// leave post_affine_async_2_edt\n");RAG_FLUSH;
 
 ocrGuid_t affine_async_2_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    affineAsyncPRM_t *affineAsyncParamvIn = (affineAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_3
 PRINTF("////// enter affine_async_2_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
-	struct corners_t *corners = (struct corners_t *)paramv;
+	assert(PRMNUM(affineAsync));
+	struct corners_t *corners = &(affineAsyncParamvIn->corners);
 	int m1   = corners->m1;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
@@ -685,7 +690,7 @@ PRINTF("//// create an edt for affine_async_1 m=%d n=%d\n",m,n);RAG_FLUSH;
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
-					NULL_GUID,		// affinity
+					NULL_HINT,		// affinity
 					NULL);			// *outputEvent
 			assert(retval==0);
 

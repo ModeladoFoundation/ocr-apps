@@ -88,7 +88,7 @@ CFLAGS := -g -O2 -std=c99 \
 	-DDEBUG_SSCP -DRAG_TG_ARCH_NULL_GUID_WORKAROUND -DRAG_NEW_BLK_SIZE=32 \
 	-DTRACE \
 	-DRAG_DIG_SPOT_ON=0 -DRAG_AFFINE_ON=1 -DRAG_QSORT_ON=0 \
-	-DRAG_IMPLICIT_INPUTS \
+	-DRAG_IMPLICIT_INPUTS_off \
 	-DRAG_PURE_FLOAT -DRAG_SINCOS \
 	-DRAG_CRLIBM -DRAG_PETER_DIST_AND_TRIG \
 	-DRAG_SPAD -DRAG_DRAM \
@@ -98,8 +98,9 @@ CFLAGS := -g -O2 -std=c99 \
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
-	 -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
+#LDFLAGS := $(DATA)/Data.o $(DATA)/PlatformPosition.o $(DATA)/PulseTransmissionTime.o \
+#	 -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
+LDFLAGS := -Wl,-Bstatic -lcrlibm -Wl,-Bdynamic -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.
@@ -157,4 +158,4 @@ postrun:
 # Any additional rules required can go here
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc

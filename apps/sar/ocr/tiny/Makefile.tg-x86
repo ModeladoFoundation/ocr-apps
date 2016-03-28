@@ -13,7 +13,6 @@ APPS_ROOT        ?= ../../../../../apps/apps
 OCR_TYPE         ?= tg-x86
 
 # OCR
-
 OCR_ROOT         ?= ../../../../../ocr/ocr
 OCR_INSTALL      ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
@@ -158,4 +157,4 @@ postrun:
 # Any additional rules required can go here
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc

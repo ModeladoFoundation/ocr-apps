@@ -8,14 +8,15 @@
 
 ocrGuid_t post_CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    postCFARPRM_t *postCFARParamvIn  = (postCFARPRM_t *)paramv;
 #ifdef TRACE_LVL_2
 PRINTF("//// enter post_CFAR_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==1);
 #ifdef TG_ARCH
-       void *pOutFile = (void *)paramv[0];
+       void *pOutFile = postCFARParamvIn->pOutFile;
 #else
-       FILE *pOutFile = (FILE *)paramv[0];
+       FILE *pOutFile = postCFARParamvIn->pOutFile;
 #endif
 #ifdef TRACE_LVL_2
 PRINTF("//// pOutFile = %lx\n",pOutFile);RAG_FLUSH;
@@ -60,11 +61,12 @@ PRINTF("//// leave post_CFAR_edt\n");RAG_FLUSH;
 
 ocrGuid_t CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    CFARPRM_t *CFARParamvIn = (CFARPRM_t *)paramv;
 #ifdef TRACE_LVL_2
 PRINTF("//// enter CFAR_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	ocrGuid_t post_CFAR_scg = (ocrGuid_t)paramv[0];
+	assert(paramc==PRMNUM(CFAR));
+	ocrGuid_t post_CFAR_scg = CFARParamvIn->post_CFAR_scg;
 	assert(depc==5);
 RAG_REF_MACRO_BSM( struct point **,corr_map,NULL,NULL,corr_map_dbg,0);
 RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params_lcl,image_params_dbg,1);
@@ -111,11 +113,12 @@ static int compare_detects(const void * _lhs, const void * _rhs)
 
 ocrGuid_t cfar_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
+    CFARAsyncPRM_t *CFARAsyncParamvIn = (CFARAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_3
 PRINTF("////// enter cfar_async_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
-        struct corners_t *corners = (struct corners_t *)paramv;
+	assert(paramc==PRMNUM(CFARAsync));
+    struct corners_t *corners = &(CFARAsyncParamvIn->corners);
 	int m1   = corners->m1;
 	int m2   = corners->m2;
 	int n1   = corners->n1;
@@ -266,8 +269,8 @@ PRINTF("//// create a template for cfar_async function\n");RAG_FLUSH;
 	ocrGuid_t cfar_async_clg;
 	retval = ocrEdtTemplateCreate(
 			&cfar_async_clg,	// ocrGuid_t *new_guid
-			 cfar_async_edt,	// ocr_edt_ptr func_ptr
-			(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+			cfar_async_edt,	// ocr_edt_ptr func_ptr
+			PRMNUM(CFARAsync), // paramc
 			5);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = cfar_async_clg;
@@ -293,15 +296,17 @@ PRINTF("//// create a template for cfar_async function\n");RAG_FLUSH;
 PRINTF("////// create an edt for cfar_async\n");RAG_FLUSH;
 #endif
 			ocrGuid_t cfar_async_scg;
+            CFARAsyncPRM_t cfarAsyncParamv;
+            cfarAsyncParamv.corners = async_corners;
 			retval = ocrEdtCreate(
 					&cfar_async_scg,	// *created_edt_guid
 					 cfar_async_clg,	// edt_template_guid
 					EDT_PARAM_DEF,		// paramc
-					(uint64_t *)&async_corners,			// *paramv
+					(u64 *)&cfarAsyncParamv,			// *paramv
 					EDT_PARAM_DEF,		// depc
 					NULL,			// *depv
 					EDT_PROP_NONE,		// properties
-					NULL_GUID,		// affinity
+					NULL_HINT,		// affinity
 					NULL);			// *outputEvent
 			assert(retval==0);
 

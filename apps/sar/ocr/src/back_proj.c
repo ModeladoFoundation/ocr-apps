@@ -10,11 +10,12 @@
 
 ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
+  backProjAsyncPRM_t *backProjAsyncParamvIn = (backProjAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_4
   PRINTF("//////// enter backproject_async\n");RAG_FLUSH;
 #endif
-  assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
-  struct corners_t *corners = (struct corners_t *)paramv;
+  assert(paramc==(PRMNUM(backProjAsync)));
+  struct corners_t *corners = &(backProjAsyncParamvIn->corners);
   int m1   = corners->m1;
   int m2   = corners->m2;
   int n1   = corners->n1;
@@ -504,7 +505,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     retval = ocrEdtTemplateCreate(
 	&backproject_async_clg, // ocrGuid_t *new_guid
 	 backproject_async_edt,	// ocr_edt_ptr func_ptr
-	(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+	PRMNUM(backProjAsync),
 	6);			// depc
     assert(retval==0);
     templateList[__sync_fetch_and_add(&templateIndex,1)] = backproject_async_clg;
@@ -530,15 +531,17 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	PRINTF("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
 	ocrGuid_t backproject_async_scg;
+    backProjAsyncPRM_t backProjAsyncParamv;
+    backProjAsyncParamv.corners = async_corners;
 	retval = ocrEdtCreate(
 			&backproject_async_scg,	// *created_edt_guid
 			 backproject_async_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			(uint64_t *)&async_corners, // *paramv
+			(u64 *)&backProjAsyncParamv, // *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 	assert(retval==0);
 
@@ -579,8 +582,8 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     ocrGuid_t backproject_async_clg;
     retval = ocrEdtTemplateCreate(
 	&backproject_async_clg, // ocrGuid_t *new_guid
-	 backproject_async_edt,	// ocr_edt_ptr func_ptr
-	(sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t), // paramc
+	backproject_async_edt,	// ocr_edt_ptr func_ptr
+	PRMNUM(backProjAsync), // paramc
 	6);			// depc
     assert(retval==0);
     templateList[__sync_fetch_and_add(&templateIndex,1)] = backproject_async_clg;
@@ -606,15 +609,17 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	PRINTF("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
 	ocrGuid_t backproject_async_scg;
+    backProjAsyncPRM_t backProjAsyncParamv;
+    backProjAsyncParamv.corners = async_corners;
 	retval = ocrEdtCreate(
 			&backproject_async_scg,	// *created_edt_guid
 			 backproject_async_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			(uint64_t *)&async_corners, // *paramv
+			(u64 *)&backProjAsyncParamv, // *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 	assert(retval==0);
 

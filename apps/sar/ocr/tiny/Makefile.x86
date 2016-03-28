@@ -157,4 +157,4 @@ postrun:
 # Any additional rules required can go here
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc

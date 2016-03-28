@@ -577,7 +577,7 @@ PRINTF("// create an edt for post_main_edt\n");RAG_FLUSH;
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 	assert(retval==0);
 
@@ -608,7 +608,7 @@ PRINTF("// create a template for main_body_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&main_body_clg,		// ocrGuid_t *new_guid
 			 main_body_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			PRMNUM(mainBody),			// paramc
 			12);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = main_body_clg;
@@ -617,16 +617,18 @@ PRINTF("// create a template for main_body_edt function\n");RAG_FLUSH;
 PRINTF("// create an edt for main_body_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t main_body_scg, main_body_evg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_main_scg) };
+    mainBodyPRM_t mainBodyParamv;
+    mainBodyParamv.post_main_scg = post_main_scg;
+{
 	retval = ocrEdtCreate(
 			&main_body_scg,		// *created_edt_guid
 			 main_body_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&mainBodyParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			&main_body_evg);	// *outputEvent
 }
 	assert(retval==0);
@@ -663,11 +665,12 @@ PRINTF("// leave mainEdt\n");RAG_FLUSH;
 ocrGuid_t main_body_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv)
 {
 	int retval;
+    mainBodyPRM_t *mainBodyParamvIn = (mainBodyPRM_t *)paramv;
 #ifdef TRACE_LVL_1
 PRINTF("// enter main_body_edt\n");RAG_FLUSH;
 #endif
-	assert(paramc==1);
-	ocrGuid_t post_main_scg = (ocrGuid_t)paramv[0];
+	assert(paramc == PRMNUM(mainBody));
+	ocrGuid_t post_main_scg = mainBodyParamvIn->post_main_scg;
 
 	assert(depc==12);
 RAG_REF_MACRO_BSM( struct complexData **,curImage,NULL,NULL,curImage_dbg,0);
@@ -691,7 +694,7 @@ PRINTF("// create a template for ReadData_edt\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&ReadData_clg,		// ocrGuid_t *new_guid
 			 ReadData_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			PRMNUM(readData),			// paramc
 			5);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = ReadData_clg;
@@ -704,7 +707,7 @@ PRINTF("// create a template for FormImage_edt\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&FormImage_clg,		// ocrGuid_t *new_guid
 			 FormImage_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			PRMNUM(formImage),			// paramc
 #ifdef RAG_DIG_SPOT
 			8			// depc
 #else
@@ -722,7 +725,7 @@ PRINTF("// create a template for Affine_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&Affine_clg,		// ocrGuid_t *new_guid
 			 Affine_edt,		// ocr_edt_ptr func_ptr
-			2,			// paramc
+			PRMNUM(affine),			// paramc
 			4);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = Affine_clg;
@@ -748,7 +751,7 @@ PRINTF("// create a template for post_affine_async_1_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&post_affine_async_1_clg,	// ocrGuid_t *new_guid
 			 post_affine_async_1_edt,	// ocr_edt_ptr func_ptr
-			1,				// paramc
+			PRMNUM(postAffineAsync),				// paramc
 			9);				// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_affine_async_1_clg;
@@ -786,7 +789,7 @@ PRINTF("// create a template for post_CFAR function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&post_CFAR_clg,		// ocrGuid_t *new_guid
 			 post_CFAR_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			PRMNUM(postCFAR),			// paramc
 			3);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_CFAR_clg;
@@ -806,7 +809,7 @@ PRINTF("// main pOutFile = %lx\n",file_args_lcl.pOutFile);RAG_FLUSH;
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			&post_CFAR_evg);	// *outputEvent
 	assert(retval==0);
 
@@ -818,7 +821,7 @@ PRINTF("// create a template for CFAR_edt function\n");RAG_FLUSH;
 	retval = ocrEdtTemplateCreate(
 			&CFAR_clg,		// ocrGuid_t *new_guid
 			 CFAR_edt,		// ocr_edt_ptr func_ptr
-			1,			// paramc
+			PRMNUM(CFAR),			// paramc
 			5);			// depc
 	assert(retval==0);
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = CFAR_clg;
@@ -827,16 +830,18 @@ PRINTF("// create a template for CFAR_edt function\n");RAG_FLUSH;
 PRINTF("// create an edt for CFAR_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t CFAR_scg, CFAR_evg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_CFAR_scg) };
+    CFARPRM_t CFARParamv;
+    CFARParamv.post_CFAR_scg = post_CFAR_scg;
+{
 	retval = ocrEdtCreate(
 			&CFAR_scg,		// *created_edt_guid
 			 CFAR_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&CFARParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			&CFAR_evg);		// *outputEvent
 }
 	assert(retval==0);
@@ -853,7 +858,7 @@ PRINTF("// create an edt for curImage/refImage CDD_edt\n");RAG_FLUSH;
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			&CCD_evg);		// *outputEven
 	assert(retval==0);
 
@@ -869,7 +874,7 @@ PRINTF("// create an edt for post_Affine\n");RAG_FLUSH;
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			&post_Affine_evg);	// *outputEvent
 	assert(retval==0);
 
@@ -885,7 +890,7 @@ PRINTF("// create an edt for post_affine_async_2_edt\n");RAG_FLUSH;
 			EDT_PARAM_DEF,			// depc
 			NULL,				// *depv
 			EDT_PROP_FINISH,		// properties
-			NULL_GUID,			// affinity
+			NULL_HINT,			// affinity
 			&post_affine_async_2_evg);	// *outputEvent
 	assert(retval==0);
 
@@ -893,16 +898,18 @@ PRINTF("// create an edt for post_affine_async_2_edt\n");RAG_FLUSH;
 PRINTF("// create an edt post_affine_async_1_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t post_affine_async_1_scg, post_affine_async_1_evg;
-{	uint64_t paramv[1] = { GUID_VALUE(post_affine_async_2_scg) };
+    postAffineAsyncPRM_t postAffineAsyncParamv;
+    postAffineAsyncParamv.post_affine_async_scg = post_affine_async_2_scg;
+{
 	retval = ocrEdtCreate(
 			&post_affine_async_1_scg,	// *created_edt_guid
 			 post_affine_async_1_clg, 	// edt_template_guid
 			EDT_PARAM_DEF,			// paramc
-			paramv,				// *paramv
+			(u64 *)&postAffineAsyncParamv,				// *paramv
 			EDT_PARAM_DEF,			// depc
 			NULL,				// *depv
 			EDT_PROP_FINISH,		// properties
-			NULL_GUID,			// affinity
+			NULL_HINT,			// affinity
 			&post_affine_async_1_evg);	// *outputEvent
 }
 	assert(retval==0);
@@ -911,16 +918,20 @@ PRINTF("// create an edt post_affine_async_1_edt\n");RAG_FLUSH;
 PRINTF("// create an edt for curImage/refImage Affine_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t Affine_scg, Affine_evg;
-{	uint64_t paramv[2] = { GUID_VALUE(post_Affine_scg), GUID_VALUE(post_affine_async_1_scg) };
+    affinePRM_t affineParamv;
+    affineParamv.post_Affine_scg = post_Affine_scg;
+    affineParamv.post_affine_async_scg = post_affine_async_1_scg;
+
+{
 	retval = ocrEdtCreate(
 			&Affine_scg,		// *created_edt_guid
 			 Affine_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&affineParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_FINISH,	// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			&Affine_evg);		// *outputEvent
 }
 	assert(retval==0);
@@ -929,16 +940,18 @@ PRINTF("// create an edt for curImage/refImage Affine_edt\n");RAG_FLUSH;
 PRINTF("// create an edt for curImage FormImage_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t FormImage_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(Affine_scg) };
+    formImagePRM_t formImageParamv;
+    formImageParamv.arg_scg = Affine_scg;
+{
 	retval = ocrEdtCreate(
 			&FormImage_scg,		// *created_edt_guid
 			 FormImage_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&formImageParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
@@ -947,16 +960,18 @@ PRINTF("// create an edt for curImage FormImage_edt\n");RAG_FLUSH;
 PRINTF("// create an edt for curImage ReadData_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t ReadData_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(FormImage_scg) };
+    readDataPRM_t readDataParamv;
+    readDataParamv.arg_scg = FormImage_scg;
+{
 	retval = ocrEdtCreate(
 			&ReadData_scg,		// *created_edt_guid
 			 ReadData_clg,		// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&readDataParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
@@ -965,16 +980,18 @@ PRINTF("// create an edt for curImage ReadData_edt\n");RAG_FLUSH;
 PRINTF("// create an edt for refImage FormImage_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t refFormImage_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(ReadData_scg) };
+    formImagePRM_t refFormImageParamv;
+    refFormImageParamv.arg_scg = ReadData_scg;
+{
 	retval = ocrEdtCreate(
 			&refFormImage_scg,	// *created_edt_guid
 			    FormImage_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&refFormImageParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 }
 	assert(retval==0);
@@ -983,16 +1000,18 @@ PRINTF("// create an edt for refImage FormImage_edt\n");RAG_FLUSH;
 PRINTF("// create an edt for refImage ReadData_edt\n");RAG_FLUSH;
 #endif
 	ocrGuid_t refReadData_scg;
-{	uint64_t paramv[1] = { GUID_VALUE(refFormImage_scg) };
+    readDataPRM_t refReadDataParamv;
+    refReadDataParamv.arg_scg = refFormImage_scg;
+{
 	retval = ocrEdtCreate(
 			&refReadData_scg,	// *created_edt_guid
 			    ReadData_clg,	// edt_template_guid
 			EDT_PARAM_DEF,		// paramc
-			paramv,			// *paramv
+			(u64 *)&refReadDataParamv,			// *paramv
 			EDT_PARAM_DEF,		// depc
 			NULL,			// *depv
 			EDT_PROP_NONE,		// properties
-			NULL_GUID,		// affinity
+			NULL_HINT,		// affinity
 			NULL);			// *outputEvent
 }
 	assert(retval==0);

@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #endif
 
+#include "macros.h"
 #include <fftw3.h>
 #ifndef TG_ARCH
 #include <stdio.h>
@@ -111,6 +112,77 @@ struct file_args_t {
 struct corners_t {
 	int m1; int m2; int n1; int n2;
 };
+
+/* Paramv for main_body_edt */
+typedef struct{
+    ocrGuid_t post_main_scg;
+} mainBodyPRM_t;
+
+/* Paramv for ReadData_edt */
+typedef struct{
+    ocrGuid_t arg_scg;
+} readDataPRM_t;
+
+/* Paramv for FormImage_edt */
+typedef struct{
+    ocrGuid_t arg_scg;
+} formImagePRM_t;
+
+/* Paramv for post_FormImage_edt */
+typedef struct{
+    ocrGuid_t arg_scg;
+} postFormImagePRM_t;
+
+/* Paramv for Affine_edt */
+typedef struct{
+    ocrGuid_t post_Affine_scg;
+    ocrGuid_t post_affine_async_scg;
+} affinePRM_t;
+
+/* Paramv for affine_async_edt(s) */
+typedef struct{
+    struct corners_t corners;
+}affineAsyncPRM_t;
+
+/* Paramv for post_affine_async_edt(s) */
+typedef struct{
+    ocrGuid_t post_affine_async_scg;
+} postAffineAsyncPRM_t;
+
+/* Paramv for ccd_async_edt */
+typedef struct{
+    struct corners_t corners;
+} ccdAsyncPRM_t;
+
+/* Paramv for CFAR_edt */
+typedef struct{
+    ocrGuid_t post_CFAR_scg;
+} CFARPRM_t;
+
+/* Paramv for cfar_async_edt */
+typedef struct{
+    //ocrGuid_t post_CFAR_scg;
+    struct corners_t corners;
+} CFARAsyncPRM_t;
+
+/* Paramv for post_CFAR_edt */
+typedef struct{
+#ifdef TG_ARCH
+    void* pOutFile;
+#else
+    FILE* pOutFile;
+#endif
+} postCFARPRM_t;
+
+/* Paramv for BackProj_edt */
+typedef struct{
+    struct corners_t corners;
+} backProjPRM_t;
+
+/* Paramv for backproject_async_edt */
+typedef struct{
+    struct corners_t corners;
+}backProjAsyncPRM_t;
 
 int  ReadParams(struct RadarParams*,  struct ImageParams*, \
                 struct AffineParams*, struct CfarParams*);
