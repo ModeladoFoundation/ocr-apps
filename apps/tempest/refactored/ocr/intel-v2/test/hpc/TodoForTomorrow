@@ -1,0 +1,20 @@
+TODO for 3/24/2016
+
+[] use channel evts for the steady state.
+
+[] get a 1-to-1 patch-to-edt setup working.
+
+[] Model::SubStep()
+
+[] Use NeighborFind lib for now. Talk to paul more about EBRs.
+
+OPTIONAL{
+
+[] Use the EBRs to get the LabeledGUIDs going
+    [] Ensure Labeled GUIDs are connected properly
+
+[] After steady state established, get Model.Substep working.
+
+[] Use the EBR functionality to pack/unpack data to send.
+
+}
