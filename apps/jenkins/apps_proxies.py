@@ -84,7 +84,7 @@ job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
    'run-args': 'hpgmg x86 ocr-run-kernel-hpgmglite-x86-remote-regression 5',
    'sandbox': ('shared','inherit0'),
    'env-vars': { 'T_ARCH': 'x86',
-                 'T_PATH': 'hpgmg/refactored/ocr/sdsc',
+                 'T_PATH': 'hpgmg/refactored/mpilite/intel',
                  'WORKLOAD_ARGS': '-r 4 -t 1600 4 8',
                }
 }
@@ -96,7 +96,7 @@ job_ocr_run_kernel_hpgmglite_x86_remote_regression = {
 #    'run-args': 'hpgmg x86 ocr-run-kernel-hpgmglite-x86-remote-scaling 5',
 #    'sandbox': ('shared','inherit0'),
 #    'env-vars': { 'T_ARCH': 'x86',
-#                  'T_PATH': 'hpgmg/refactored/ocr/sdsc',
+#                  'T_PATH': 'hpgmg/refactored/mpilite/intel',
 #                  'WORKLOAD_ARGS': '4 8',
 #                }
 #}
