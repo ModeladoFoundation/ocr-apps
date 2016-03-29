@@ -18,6 +18,10 @@
 #include <extensions/ocr-affinity.h>
 #include <extensions/ocr-hints.h>
 
+// affinity debug
+#ifndef MPI_DEBUG_AFF
+    #define MPI_DEBUG_AFF MPI_DEBUG
+#endif
 
 // 2/3/16 need patch 2442 to define and have OCR use this, else make it
 // zero so don't get an error
@@ -280,6 +284,12 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
             shift += 1;
         }
 
+    if (argc > 1 && ! strcmp("-aff_none", getArgv(argcArgv,1)))
+        {
+            *affinity = AFFINITY_NONE;
+            shift += 1;
+        }
+
     if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
         {
             char msg[150];
@@ -497,15 +507,17 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                         {
 
                             rankEdtParamv.rank = rank;  // only param that changes
+#if MPI_DEBUG_AFF
                             printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, PD, PDindex);
                             fflush(stdout);
+#endif
                             ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
                                          (u64 *) &rankEdtParamv,
                                          EDT_PARAM_DEF, NULL,  EDT_PROP_LONG,
                                          PICK_1_1(&hint,PD), NULL);
 
-                            printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, PD);
-                            fflush(stdout);
+                            // printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, PD);
+                            // fflush(stdout);
 
                             rank ++ ;
                             // argcArgvDB: will only be read by ranks
@@ -537,14 +549,16 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                     // having trouble getting argcArgvDB added as CONST - hangs: bug
                     // 664
 #if 1
-                                printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, aff[rank%count], rank%count);
-                                fflush(stdout);
+#if MPI_DEBUG_AFF
+                    printf("Spawning rank#%d @ affinity 0x%lx PD %d\n", rank, aff[rank%count], rank%count);
+                    fflush(stdout);
+#endif
                     ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
                                  (u64 *) &rankEdtParamv,
                                  EDT_PARAM_DEF, NULL,  EDT_PROP_LONG,
                                  PICK_1_1(&hint,affWhere), NULL);
-                                printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, aff[rank%count]);
-                                fflush(stdout);
+                    // printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, aff[rank%count]);
+                    // fflush(stdout);
 
                     // argcArgvDB: will only be read by ranks
                     ocrAddDependence(argcArgvDB->guid, rankEdt, 0, DB_MODE_RO /* CONST hangs */);
