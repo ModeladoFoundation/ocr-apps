@@ -6,6 +6,7 @@
 # To run C++ example: ./cxxhello -ocr:cfg ./test_config.cfg
 #
 ARCH=x86
+OCR_TYPE=x86-newlib
 
 APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
 
@@ -29,8 +30,8 @@ GLIBC_A = $(LIBPTHREAD) $(LIBGCC_EH) $(LIBC)
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
-OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/build/x86-newlib/objs
-OCR_LIB = $(OCR_LIB_PATH)/libocr.o $(GLIBC_A)
+OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/install/lib/
+OCR_LIB = $(OCR_LIB_PATH)/libocr_$(OCR_TYPE).a $(GLIBC_A)
 
 CAPP = chello
 CAPP_SRCS = chello.c
