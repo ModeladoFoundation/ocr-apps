@@ -98,7 +98,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     } else {
         // We created the event so we need to launch the computation
         ocrDbCreate(&dbArg, (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID 0x"GUIDSx"\n", n, n-1, GUIDFS(dbArg));
+        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID "GUIDF"\n", n, n-1, GUIDA(dbArg));
         *((u32*)ptr) = n-1;
         ocrEdtCreate(&fibEdt, fibTemplateGuid, 3*sizeof(ocrGuid_t)/sizeof(u64), paramv, 1, &dbArg, EDT_PROP_NONE,
                      NULL_HINT, NULL);
@@ -113,14 +113,14 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     } else {
         // We created the event so we need to launch the computation
         ocrDbCreate(&dbArg, (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID 0x"GUIDSx"\n", n, n-2, GUIDFS(dbArg));
+        PRINTF("In fibEdt(%u) -- created arg DB for %d GUID "GUIDF"\n", n, n-2, GUIDA(dbArg));
         *((u32*)ptr) = n-2;
         ocrEdtCreate(&fibEdt, fibTemplateGuid, 3*sizeof(ocrGuid_t)/sizeof(u64), paramv, 1, &dbArg, EDT_PROP_NONE,
                      NULL_HINT, NULL);
     }
     ocrAddDependence(evt1, comp, 1, DB_DEFAULT_MODE);
 
-    PRINTF("In fibEdt(%u) -- spawned complete EDT GUID "GUIDSx"\n", n, GUIDFS(comp));
+    PRINTF("In fibEdt(%u) -- spawned complete EDT GUID "GUIDF"\n", n, GUIDA(comp));
     ocrAddDependence(depv[0].guid, comp, 2, DB_DEFAULT_MODE);
 
     PRINTF("Returning from fibEdt(%u)\n", n);
@@ -195,10 +195,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     {
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, absFinal, 1, 1);
-        PRINTF("Created template and got GUID 0x"GUIDSx"\n", GUIDFS(templateGuid));
+        PRINTF("Created template and got GUID 0x"GUIDF"\n", GUIDA(templateGuid));
         ocrEdtCreate(&absFinalEdt, templateGuid, 1, &correctAns, 1, NULL, EDT_PROP_NONE,
                      NULL_HINT, NULL);
-        PRINTF("Created ABS EDT and got  GUID 0x"GUIDSx"\n", GUIDFS(absFinalEdt));
+        PRINTF("Created ABS EDT and got  GUID 0x"GUIDF"\n", GUIDA(absFinalEdt));
         ocrEdtTemplateDestroy(templateGuid);
     }
 

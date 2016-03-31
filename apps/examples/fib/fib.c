@@ -9,6 +9,7 @@
 #include "ocr-std.h"
 #include "macros.h"
 
+
 #include "stdlib.h"
 
 typedef struct {
@@ -24,7 +25,6 @@ typedef struct {
 }absFinalPRM_t;
 
 ocrGuid_t complete(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-
     completePRM_t *completeParamvIn = (completePRM_t *)paramv;
     ocrGuid_t arg = completeParamvIn->depGuid;
     ocrGuid_t inDep;
@@ -62,7 +62,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 n = *(u32*)(depv[0].ptr);
     PRINTF("Starting fibEdt(%u)\n", n);
     if (n < 2) {
-        PRINTF("In fibEdt(%d) -- done (sat "GUIDSx")\n", n, GUIDFS(inDep));
+        PRINTF("In fibEdt(%d) -- done (sat "GUIDF")\n", n, GUIDA(inDep));
         ocrEventSatisfy(inDep, depv[0].guid);
         return NULL_GUID;
     }
@@ -90,7 +90,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     /* allocate the argument to pass to fib(n-1) */
 
     ocrDbCreate(&fibArg[0], (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-    PRINTF("In fibEdt(%u) -- created arg DB GUID 0x"GUIDSx"\n", n, GUIDFS(fibArg[0]));
+    PRINTF("In fibEdt(%u) -- created arg DB GUID "GUIDF"\n", n, GUIDA(fibArg[0]));
     *((u32*)ptr) = n-1;
     /* sched the EDT, passing the fibDone event as it's argument */
     fibPRM_t fibParamv0;
@@ -105,10 +105,10 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrEdtTemplateDestroy(templateGuid);
     }
 
-    PRINTF("In fibEdt(%u) -- spawned first sub-part EDT GUID 0x"GUIDSx"\n", n, GUIDFS(fib0));
+    PRINTF("In fibEdt(%u) -- spawned first sub-part EDT GUID "GUIDF"\n", n, GUIDA(fib0));
     /* then do the exact same thing for n-2 */
     ocrDbCreate(&fibArg[1], (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-    PRINTF("In fibEdt(%u) -- created arg DB GUID 0x"GUIDSx"\n", n, GUIDFS(fibArg[1]));
+    PRINTF("In fibEdt(%u) -- created arg DB GUID "GUIDF"\n", n, GUIDA(fibArg[1]));
     *((u32*)ptr) = n-2;
 
     fibPRM_t fibParamv1;
@@ -122,7 +122,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
                      NULL_HINT, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }
-    PRINTF("In fibEdt(%u) -- spawned first sub-part EDT GUID 0x"GUIDSx"\n", n, GUIDFS(fib1));
+    PRINTF("In fibEdt(%u) -- spawned first sub-part EDT GUID "GUIDF"\n", n, GUIDA(fib1));
 
     PRINTF("Returning from fibEdt(%u)\n", n);
     return NULL_GUID;
@@ -168,10 +168,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     {
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, absFinal, PRMNUM(absFinal), 1);
-        PRINTF("Created template and got GUID 0x"GUIDSx"\n", GUIDFS(templateGuid));
+        PRINTF("Created template and got GUID "GUIDF"\n", GUIDA(templateGuid));
         ocrEdtCreate(&absFinalEdt, templateGuid, EDT_PARAM_DEF, (u64 *)&absFinalParamv, 1, NULL, EDT_PROP_NONE,
                      NULL_HINT, NULL);
-        PRINTF("Created ABS EDT and got  GUID 0x"GUIDSx"\n", GUIDFS(absFinalEdt));
+        PRINTF("Created ABS EDT and got  GUID "GUIDF"\n", GUIDA(absFinalEdt));
         ocrEdtTemplateDestroy(templateGuid);
     }
 

@@ -82,8 +82,8 @@ ocrGuid_t sequential_cholesky_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDe
 
     double* aBlock = (double*) (depv[0].ptr);
 
-    if (printStatOut == 1) PRINTF("RUNNING sequential_cholesky %d with "GUIDSx" to satisfy\n", k,
-                                GUIDFS(out_lkji_kkkp1_event_guid));
+    if (printStatOut == 1) PRINTF("RUNNING sequential_cholesky %d with "GUIDF" to satisfy\n", k,
+                                GUIDA(out_lkji_kkkp1_event_guid));
 
     void* lBlock_db;
     ocrGuid_t out_lkji_kkkp1_db_guid;

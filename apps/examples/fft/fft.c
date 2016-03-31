@@ -164,7 +164,7 @@ ocrGuid_t fftStartEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrEdtCreate(&edtGuid2, startGuid, EDT_PARAM_DEF, (u64 *)&childParamv2,
                      EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_HINT,
                      &finishEventGuid2);
-            PRINTF("finishEventGuid after create: 0x"GUIDSx"\n", GUIDFS(finishEventGuid));
+            PRINTF("finishEventGuid after create: 0x"GUIDF"\n", GUIDA(finishEventGuid));
 
         ocrGuid_t endDependencies[3] = { dataGuid, finishEventGuid, finishEventGuid2 };
         // Do calculations after having divided and conquered
