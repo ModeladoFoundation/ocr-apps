@@ -11,6 +11,7 @@ extern "C" {
 #include <alloca.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 /*
  * c99 on OCR support
@@ -51,7 +52,25 @@ extern "C" {
 
 typedef struct ocrPtr_t { size_t offset; ocrGuid_t guid; } ocrPtr_t;
 
-const ocrPtr_t __ocrNULL  = { .offset = (size_t)NULL,  .guid = NULL_GUID };
+#ifndef RAG_NULL_GUID
+#ifdef ENABLE_128_BIT_GUID
+#if 1 // WORKAROUND
+#define RAG_NULL_GUID {((const intptr_t)NULL),((const intptr_t)NULL)}
+#else // WORKAROUND
+#define RAG_NULL_GUID NULL_GUID
+#endif // WORKAROUND
+#else // ENABLE_128_BIT_GUID
+#if 1 // WORKAROUND
+#define RAG_NULL_GUID {((const intptr_t)NULL)}
+#else  // WORKAROUND
+#define RAG_NULL_GUID NULL_GUID
+#endif // WORKAROUND
+#endif // ENABLE_128_BIT_GUID
+#endif // RAG_NULL_GUID
+
+
+const static ocrPtr_t __ocrNULL  = {	.offset = (size_t)NULL,
+					.guid   = RAG_NULL_GUID };
 
 /*
  * memory management
@@ -61,7 +80,7 @@ static void *ocrPtrMalloc(ocrPtr_t *ocrPtr, size_t size) {
    int __ret_val;
    void *ptr = NULL;
    ocrPtr->offset = (size_t)NULL;
-   __ret_val = ocrDbCreate( &ocrPtr->guid, &ptr, size, DB_PROP_NONE, NULL_GUID, NULL_GUID );
+   __ret_val = ocrDbCreate( &ocrPtr->guid, &ptr, size, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
    CHECK_RET_VAL("ocrPtrMalloc()->ocrDbCreate",__ret_val);
 #ifdef DEBUG
 printf("ocrPtrMalloc -- guid:base:offset %16.16" PRIx64 ":%p:%16.16" PRIx64 "\n",
@@ -93,7 +112,7 @@ static inline ocrPtr_t ocrPtrFromSelectorOffset(ocrGuid_t selector, size_t offse
 
 static inline void *__gblOcrPtr(ocrPtr_t ocrPtr) {
     /* NULL_GUID is used for globals */
-    assert( ocrPtr.guid == NULL_GUID );
+    assert( IS_GUID_NULL( ocrPtr.guid ) );
 #ifdef DEBUG
 printf("gblOcrPtr -- guid:base:offset %16.16" PRIx64 ":%p:%16.16" PRIx64 "\n",
        ocrPtr.guid, NULL, ocrPtr.offset);fflush(stdout);
@@ -106,7 +125,7 @@ static inline void *castablePtrFromSegmentOffset(ocrEdtDep_t segment, size_t off
 #ifdef DEBUG
 printf("castablePtrFromSegmentOffset -- guid:base:offset %16.16" PRIx64 ":%p:%16.16" PRIx64 "\n",segment.guid,segment.ptr,offset);fflush(stdout);
 #endif
-    void *ptr = (segment.guid == NULL_GUID) ? NULL + offset : segment.ptr + offset;
+    void *ptr = ( IS_GUID_NULL( segment.guid) ) ? NULL + offset : segment.ptr + offset;
     return ptr;
 } /* castablePtrFromSegmentOffset() */
 
@@ -144,7 +163,7 @@ typedef union __iter_work_args_t {
 
 ocrGuid_t __iter_work( uint32_t __paramc, __continuation_args_t  *__paramv,
                        uint32_t __depc,   __continuation_guids_t *__depv );
-ocrPtr_t  __template_iter_work = { .offset = (size_t)__iter_work, .guid = NULL_GUID };
+ocrPtr_t  __template_iter_work = { .offset = (size_t)__iter_work, .guid = RAG_NULL_GUID };
 
 /*
  * void __iter_wait(...)(..., ocrGuid_t finish_event);
@@ -160,7 +179,7 @@ typedef union __iter_wait_guids_t {
 
 ocrGuid_t __iter_wait( uint32_t __paramc, __continuation_args_t  *__paramv,
                        uint32_t __depc,   __continuation_guids_t *__depv );
-ocrPtr_t  __template_iter_wait = { .offset = (size_t)__iter_wait, .guid = NULL_GUID };
+ocrPtr_t  __template_iter_wait = { .offset = (size_t)__iter_wait, .guid = RAG_NULL_GUID };
 
 //-------------------------------------------------------------------
 // void __iter_work(..., int first, int last, int inc, int blk)(...);
@@ -170,9 +189,9 @@ ocrGuid_t __iter_work( uint32_t __paramc, __continuation_args_t  *__paramv,
                        uint32_t __depc,   __continuation_guids_t *__depv ) {
   int __ret_val;
 
-  assert( __paramv->context.new_pc.guid   == __template_iter_work.guid );
+  assert( IS_GUID_EQUAL(__paramv->context.new_pc.guid, __template_iter_work.guid) );
   assert( __paramv->context.new_pc.offset == __ocrNULL.offset );
-  assert( __paramv->context.old_pc.guid   != __ocrNULL.guid );
+  assert( !IS_GUID_EQUAL(__paramv->context.old_pc.guid, __ocrNULL.guid) );
   assert( ((int64_t)__paramv->context.old_pc.offset) >= ((int64_t)NULL) ); // RAG -- new check
   assert( ((int64_t)__paramv->context.new_pc.offset) >= ((int64_t)NULL) ); // RAG -- new check
 
@@ -185,7 +204,7 @@ ocrGuid_t __iter_work( uint32_t __paramc, __continuation_args_t  *__paramv,
 #ifdef DEBUG
   printf("Enter __iter_work (paramc = %d, depc = %d) %s\n",
          __paramc, __depc,
-         (__depv->segment.new_frame.guid == NULL_GUID ) ? "new frame" : "reuse frame" );fflush(stdout);
+         IS_GUID_NULL(__depv->segment.new_frame.guid) ? "new frame" : "reuse frame" );fflush(stdout);
 #else
 //putchar('<');fflush(stdout);
 #endif
@@ -235,7 +254,7 @@ TRACE1("__iter_work about to pass params on to top_of_loop");
   __paramv->context.old_pc = __frame->paramv.context.old_pc; /* RAG was ocrNULL */
 
 TRACE1("__iter_work about to pass guids on to top_of_loop");
-  __continuation_guids_t *__guids = (__continuation_guids_t *) ALLOC( ( __depc )*sizeof(uint64_t) );
+  __continuation_guids_t *__guids = (__continuation_guids_t *) ALLOC( ( __depc )*sizeof(ocrGuid_t) );
         CHECK_RET_VAL("guids ALLOC",(__guids == NULL));
 	/* depv */
         for(int i=0;i<__depc;i++)
@@ -246,7 +265,7 @@ TRACE1("__iter_work about to create edt for top_of_loop");
   __ret_val = ocrEdtCreate(&__edt_top_of_loop_guid, __paramv->context.new_pc.guid,
                          __paramc, &__paramv->paramv[0],
                          __depc,   &__guids->guids[0],
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("__iter_work()->ocrEdtCreate",__ret_val);
 
 TRACE1("__iter_work()<>offset_zero");
@@ -263,9 +282,9 @@ ocrGuid_t __iter_wait( uint32_t __paramc, __continuation_args_t  *__paramv,
                        uint32_t __depc,   __continuation_guids_t *__depv ) {
   int __ret_val;
 
-  assert( __paramv->context.new_pc.guid   == __template_iter_wait.guid );
+  assert( IS_GUID_EQUAL(__paramv->context.new_pc.guid, __template_iter_wait.guid) );
   assert( __paramv->context.new_pc.offset == __ocrNULL.offset );
-  assert( __paramv->context.old_pc.guid   != __ocrNULL.guid );
+  assert( !IS_GUID_EQUAL(__paramv->context.old_pc.guid, __ocrNULL.guid) );
   assert( ((int64_t)__paramv->context.old_pc.offset) >= ((int64_t)NULL) ); // RAG -- new check
   assert( ((int64_t)__paramv->context.new_pc.offset) >= ((int64_t)NULL) ); // RAG -- new check
 
@@ -276,7 +295,7 @@ ocrGuid_t __iter_wait( uint32_t __paramc, __continuation_args_t  *__paramv,
 //  printf("__iter_wait DEV[%d].GUID = %" PRIx64 "\n", i, __depv->depv[i].guid );fflush(stdout);
 //printf("__iter_wait dep[%d].guid = %" PRIx64 "\n", 0, __iter_wait_depv->depv[0].guid );fflush(stdout);
 #endif
-  assert(__iter_wait_depv->depv[0].guid  == __ocrNULL.guid );
+  assert( IS_GUID_EQUAL(__iter_wait_depv->depv[0].guid, __ocrNULL.guid) );
 
 #ifdef DEBUG
   printf("Enter __iter_wait (paramc = %d, depc = %d) finish_event = %" PRIx64 "\n", __paramc, __depc, __depv->depv[__depc-1].guid);fflush(stdout);
@@ -319,7 +338,7 @@ TRACE1("__iter_wait about to create edt for bottom_of_loop continuation");
   __ret_val = ocrEdtCreate(&__edt_bottom_of_loop_guid, __paramv->context.new_pc.guid,
                          (uint32_t)(__paramc), &__paramv->paramv[0],
                          (uint32_t)(__depc-WORDS_iter_wait_guids_t), NULL,
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("__iter_wait()->ocrEdtCreate",__ret_val);
 
 TRACE1("__iter_wait about to pass guids on to bottom_of_loop");

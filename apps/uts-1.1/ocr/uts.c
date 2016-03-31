@@ -12,7 +12,9 @@
  *  State University.  See AUTHORS file for more information.
  *
  */
+
 #include <ocr.h>
+
 #if 1
 #define ALLOC(size) malloc(size)
 #define FREE(ptr)   free(ptr)
@@ -55,13 +57,13 @@ char * uts_geoshapes_str[] = { "Linear decrease", "Exponential decrease", "Cycli
  *   root and binomial distributions towards the leaves.
  */
 tree_t type  = GEO; // Default tree type
-const ocrPtr_t __type = { .offset = (size_t)&type, .guid = NULL_GUID };
+const ocrPtr_t __type = { .offset = (size_t)&type, .guid = RAG_NULL_GUID };
 
 double b_0   = 4.0; // default branching factor at the root
-const ocrPtr_t __b_0 = { .offset = (size_t)&b_0, .guid = NULL_GUID };
+const ocrPtr_t __b_0 = { .offset = (size_t)&b_0, .guid = RAG_NULL_GUID };
 
 int   rootId = 0;   // default seed for RNG state at root
-const ocrPtr_t __rootId = { .offset = (size_t)&rootId, .guid = NULL_GUID };
+const ocrPtr_t __rootId = { .offset = (size_t)&rootId, .guid = RAG_NULL_GUID };
 
 /*  Tree type BIN (BINOMIAL)
  *  The branching factor at the root is specified by b_0.
@@ -73,10 +75,10 @@ const ocrPtr_t __rootId = { .offset = (size_t)&rootId, .guid = NULL_GUID };
  *  Default parameter values
  */
 int    nonLeafBF   = 4;            // m
-const ocrPtr_t __nonLeafBF = { .offset = (size_t)&nonLeafBF, .guid = NULL_GUID };
+const ocrPtr_t __nonLeafBF = { .offset = (size_t)&nonLeafBF, .guid = RAG_NULL_GUID };
 
 double nonLeafProb = 15.0 / 64.0;  // q
-const ocrPtr_t __nonLeafProb = { .offset = (size_t)&nonLeafProb, .guid = NULL_GUID };
+const ocrPtr_t __nonLeafProb = { .offset = (size_t)&nonLeafProb, .guid = RAG_NULL_GUID };
 
 /*  Tree type GEO (GEOMETRIC)
  *  The branching factor follows a geometric distribution with
@@ -93,25 +95,25 @@ const ocrPtr_t __nonLeafProb = { .offset = (size_t)&nonLeafProb, .guid = NULL_GU
  *  Default parameter values
  */
 int        gen_mx   = 6;      // default depth of tree
-const ocrPtr_t __gen_mx = { .offset = (size_t)&gen_mx, .guid = NULL_GUID };
+const ocrPtr_t __gen_mx = { .offset = (size_t)&gen_mx, .guid = RAG_NULL_GUID };
 
 geoshape_t shape_fn = LINEAR; // default shape function (b_i decr linearly)
-const ocrPtr_t __shape_fn = { .offset = (size_t)&shape_fn, .guid = NULL_GUID };
+const ocrPtr_t __shape_fn = { .offset = (size_t)&shape_fn, .guid = RAG_NULL_GUID };
 
 /*  In type HYBRID trees, each node is either type BIN or type
  *  GEO, with the generation strategy changing from GEO to BIN
  *  at a fixed depth, expressed as a fraction of gen_mx
  */
 double shiftDepth = 0.5;
-const ocrPtr_t __shiftDepth = { .offset = (size_t)&shiftDepth, .guid = NULL_GUID };
+const ocrPtr_t __shiftDepth = { .offset = (size_t)&shiftDepth, .guid = RAG_NULL_GUID };
 
 /* compute granularity - number of rng evaluations per tree node */
 int computeGranularity = 1;
-const ocrPtr_t __computeGranularity = { .offset = (size_t)&computeGranularity, .guid = NULL_GUID };
+const ocrPtr_t __computeGranularity = { .offset = (size_t)&computeGranularity, .guid = RAG_NULL_GUID };
 
 /* display parameters */
 int verbose  = 1;
-const ocrPtr_t __verbose = { .offset = (size_t)&verbose, .guid = NULL_GUID };
+const ocrPtr_t __verbose = { .offset = (size_t)&verbose, .guid = RAG_NULL_GUID };
 
 /***********************************************************
  *                                                         *
@@ -338,10 +340,10 @@ ocrGuid_t uts_printParams( uint32_t __paramc, __uts_printParams_args_t  *__param
   int __ret_val;
   assert( __paramc == WORDS_uts_printParams_args_t);
   assert( __depc   == WORDS_uts_printParams_guids_t);
-  assert( __paramv->vars.std.context.new_pc.guid == __template_uts_printParams.guid );
+  assert( IS_GUID_EQUAL(__paramv->vars.std.context.new_pc.guid, __template_uts_printParams.guid) );
   printf("Enter uts_printParams (paramc = %d, depc = %d) %s\n",
          __paramc, __depc,
-         (__depv->segment.new_frame.guid == NULL_GUID ) ? "new frame" : "reuse frame" );fflush(stdout);
+         IS_GUID_NULL(__depv->segment.new_frame.guid) ? "new frame" : "reuse frame" );fflush(stdout);
 
 #define WORDS_uts_printParams_locals_t ((sizeof(__uts_printParams_locals_t)+sizeof(uint64_t)-1)/sizeof(uint64_t))
   typedef struct __uts_printParams_locals_t {
@@ -408,7 +410,7 @@ TRACE0("uts_printParams()@offset_zero");
   }
 
 TRACE1("uts_printParams about to create edt for for continuation");
-  assert(  (__frame->paramv.vars.std.context.old_pc.guid == __template_uts_main.guid) );
+  assert(  IS_GUID_EQUAL(__frame->paramv.vars.std.context.old_pc.guid, __template_uts_main.guid) );
 
   __continuation_args_t *__old_frame = (__continuation_args_t *)castablePtrFromSegmentOffset(__depv->segment.old_frame,
                                        __paramv->vars.std.context.old_frame);
@@ -420,7 +422,7 @@ TRACE1("uts_printParams about to create edt for for continuation");
   __ret_val = ocrEdtCreate(&__edt_continuation_guid, __old_frame->context.new_pc.guid,
                          __old_frame->context.paramc, (uint64_t *)((void *)__old_frame),
                          __old_frame->context.depc,   (ocrGuid_t *)((void *)__old_frame+ __old_frame->context.paramc*sizeof(uint64_t)),
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_printParams->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_printParams()<>offset_zero");
@@ -452,10 +454,10 @@ ocrGuid_t uts_parseParams( uint32_t __paramc, __uts_parseParams_args_t  *__param
     char *__argv_ip1;
   } __uts_parseParams_locals_t;
 
-  assert( __paramv->vars.std.context.new_pc.guid == __template_uts_parseParams.guid );
+  assert( IS_GUID_EQUAL(__paramv->vars.std.context.new_pc.guid, __template_uts_parseParams.guid) );
   printf("Enter uts_parseParams (paramc = %d, depc = %d) %s\n",
          __paramc, __depc,
-         (__depv->segment.new_frame.guid == NULL_GUID ) ? "new frame" : "reuse frame" );fflush(stdout);
+         IS_GUID_NULL(__depv->segment.new_frame.guid) ? "new frame" : "reuse frame" );fflush(stdout);
 
   ocrPtr_t  __FRAME = __ocrNULL;
   __uts_parseParams_locals_t *__frame = (__uts_parseParams_locals_t *) castablePtrFromSegmentOffset( __depv->segment.new_frame,
@@ -569,7 +571,7 @@ TRACE1("uts_parseParams about to __depv_0 for uts_parseParams for argv_i");
   /* depv */
 #if 1
 // RAG -- why new __FRAME.offset above, but new_frame.guid here?
-assert(__frame->depv.selector.new_frame == __FRAME.guid);
+assert( IS_GUID_EQUAL(__frame->depv.selector.new_frame, __FRAME.guid) );
 #endif
   __depv_0->selector.new_frame = __frame->depv.selector.new_frame;
   __depv_0->selector.old_frame = __frame->depv.selector.old_frame;
@@ -582,7 +584,7 @@ TRACE1("uts_parseParams about to create edt for uts_parseParams for argv_i");
   __ret_val = ocrEdtCreate(&__edt_uts_parseParams_guid, __template_uts_parseParams.guid,
             WORDS_uts_parseParams_args_t  + 1, &__paramv_0->paramv[0],
             WORDS_uts_parseParams_guids_t + 1, &__depv_0->guids[0],
-            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+            EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_parseParams()->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_parseParams()<>offset_zero");
@@ -640,7 +642,7 @@ TRACE1("uts_parseParams about to __depv_0 for uts_parseParams for argv_i and arg
   /* depv */
 #if 1
 // RAG -- why new __FRAME.offset above, but new_frame.guid here?
-assert(__frame->depv.selector.new_frame == __FRAME.guid);
+assert( IS_GUID_EQUAL(__frame->depv.selector.new_frame, __FRAME.guid) );
 #endif
   __depv_0->selector.new_frame = __frame->depv.selector.new_frame;
   __depv_0->selector.old_frame = __frame->depv.selector.old_frame;
@@ -654,7 +656,7 @@ TRACE1("uts_parseParams about to create edt for uts_parseParams for argv_i and a
   __ret_val = ocrEdtCreate(&__edt_uts_parseParams_guid, __template_uts_parseParams.guid,
             WORDS_uts_parseParams_args_t  + 2, &__paramv_0->paramv[0],
             WORDS_uts_parseParams_guids_t + 2, &__depv_0->guids[0],
-            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+            EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_parseParams()->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_parseParams()<>argv_i");
@@ -721,7 +723,7 @@ printf("the %d switch is %s with option %s\n",__frame->i,__frame->__argv_i,__fra
   }
 
 TRACE1("uts_parseParams about to create edt for continuation");
-  assert(  (__frame->paramv.vars.std.context.old_pc.guid == __template_uts_main.guid) );
+  assert(  IS_GUID_EQUAL(__frame->paramv.vars.std.context.old_pc.guid, __template_uts_main.guid) );
 
   __continuation_args_t *__old_frame = (__continuation_args_t *)castablePtrFromSegmentOffset(__depv->segment.old_frame,
                                        __paramv->vars.std.context.old_frame);
@@ -733,7 +735,7 @@ TRACE1("uts_parseParams about to create edt for continuation");
   __ret_val = ocrEdtCreate(&__edt_continuation_guid, __old_frame->context.new_pc.guid,
                          __old_frame->context.paramc, (uint64_t *)((void *)__old_frame),
                          __old_frame->context.depc,   (ocrGuid_t *)((void *)__old_frame+ __old_frame->context.paramc*sizeof(uint64_t)),
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_parseParams->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_parseParams()<>argv_ip1\n");
@@ -766,13 +768,13 @@ ocrGuid_t uts_TreeSearch( uint32_t __paramc, __uts_TreeSearch_args_t  *__paramv,
   int __ret_val;
   assert( __paramc >= WORDS_uts_TreeSearch_args_t);
   assert( __depc   >= WORDS_uts_TreeSearch_guids_t);
-  assert( __paramv->vars.std.context.new_pc.guid == __template_uts_TreeSearch.guid );
+  assert( IS_GUID_EQUAL(__paramv->vars.std.context.new_pc.guid, __template_uts_TreeSearch.guid) );
 /* only do "Enter" prinf for first (non-recursive) call */
-  if ( ( __paramv->vars.std.context.old_pc.guid != __template_uts_TreeSearch.guid )
+  if ( ( !IS_GUID_EQUAL(__paramv->vars.std.context.old_pc.guid, __template_uts_TreeSearch.guid) )
     && ( __paramv->vars.std.context.new_pc.offset == (size_t)NULL ) )
   printf("Enter uts_TreeSearch (paramc = %d, depc = %d) %s\n",
          __paramc, __depc,
-         (__depv->segment.new_frame.guid == NULL_GUID ) ? "new frame" : "reuse frame" );fflush(stdout);
+         IS_GUID_NULL(__depv->segment.new_frame.guid) ? "new frame" : "reuse frame" );fflush(stdout);
 
 #define WORDS_uts_TreeSearch_locals_t ((sizeof(__uts_TreeSearch_locals_t)+sizeof(uint64_t)-1)/sizeof(uint64_t))
   typedef struct __uts_TreeSearch_locals_t {
@@ -943,7 +945,7 @@ TRACE1("uts_TreeSearch about to create finish edt for __iter_work for_i");
         __ret_val = ocrEdtCreate(&__edt_iter_work, __template_iter_work.guid,
                                (uint32_t)(__paramc+WORDS_iter_work_args_t), &__paramv_i->paramv[0],
                                __depc, NULL,
-                               EDT_PROP_FINISH, NULL_GUID, &__finish_event_iter_work);
+                               EDT_PROP_FINISH, NULL_HINT, &__finish_event_iter_work);
         CHECK_RET_VAL("uts_TreeSearch()->ocrEdtCreate",__ret_val);
 #ifdef DEBUG
 printf("__finish_event_iter_work = %" PRIx64 "\n",__finish_event_iter_work);fflush(stdout);
@@ -959,7 +961,7 @@ TRACE1("uts_TreeSearch about to create edt for __iter_wait i");
         __ret_val = ocrEdtCreate(&__edt_iter_wait, __template_iter_wait.guid,
                                __paramc, &__paramv_i->paramv[0],
                                __depc+1, NULL,
-                               EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                               EDT_PROP_NONE, NULL_HINT, NULL );
         CHECK_RET_VAL("uts_TreeSearch()->ocrEdtCreate",__ret_val);
 
 TRACE1("uts_TreeSearch about to pass guids on to __iter_(wait|work) i");
@@ -1060,7 +1062,7 @@ TRACE1("uts_TreeSearch about to create finish edt for __iter_work for_j");
         __ret_val = ocrEdtCreate(&__edt_iter_work, __template_iter_work.guid,
                                (uint32_t)(__paramc+WORDS_iter_work_args_t), &__paramv_j->paramv[0],
                                __depc, NULL,
-                               EDT_PROP_FINISH, NULL_GUID, &__finish_event_iter_work);
+                               EDT_PROP_FINISH, NULL_HINT, &__finish_event_iter_work);
         CHECK_RET_VAL("uts_TreeSearch()->ocrEdtCreate",__ret_val);
 #ifdef DEBUG
 printf("__finish_event_iter_work = %" PRIx64 "\n",__finish_event_iter_work);fflush(stdout);
@@ -1076,7 +1078,7 @@ TRACE1("uts_TreeSearch about to create edt for __iter_wait j");
         __ret_val = ocrEdtCreate(&__edt_iter_wait, __template_iter_wait.guid,
                                __paramc, &__paramv_j->paramv[0],
                                __depc+1, NULL,
-                               EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                               EDT_PROP_NONE, NULL_HINT, NULL );
         CHECK_RET_VAL("uts_TreeSearch()->ocrEdtCreate",__ret_val);
 
 TRACE1("uts_TreeSearch about to pass guids on to __iter_(wait|work) j");
@@ -1172,7 +1174,7 @@ TRACE1("uts_TreeSearch about to create edt for uts_TreeSearch");
         __ret_val = ocrEdtCreate(&__edt_uts_TreeSearch,             __paramv_0.vars.std.context.new_pc.guid,
                                __paramv_0.vars.std.context.paramc, &__paramv_0.paramv[0],
                                __paramv_0.vars.std.context.depc,   &__depv_0.guids[0],
-                               EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                               EDT_PROP_NONE, NULL_HINT, NULL );
         CHECK_RET_VAL("uts_TreeSearch()->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_TreeSearch()<->TreeSearch");
@@ -1296,7 +1298,7 @@ TRACE1("uts_TreeSearch about to create edt for uts_TreeSearch");
         __ret_val = ocrEdtCreate(&__edt_uts_TreeSearch,             __paramv_0.vars.std.context.new_pc.guid,
                                __paramv_0.vars.std.context.paramc, &__paramv_0.paramv[0],
                                __paramv_0.vars.std.context.depc,   &__depv_0.guids[0],
-                               EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                               EDT_PROP_NONE, NULL_HINT, NULL );
         CHECK_RET_VAL("uts_TreeSearch()->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_TreeSearch()<->TreeSearch");
@@ -1349,8 +1351,8 @@ printf("PARENT->numChildren = %d\n",__frame->parent->numChildren);fflush(stdout)
 #endif
 
 TRACE1("uts_TreeSearch about to create edt for for continuation");
-  assert(  (__frame->paramv.vars.std.context.old_pc.guid == __template_uts_main.guid)
-        || (__frame->paramv.vars.std.context.old_pc.guid == __template_uts_TreeSearch.guid) );
+  assert(  IS_GUID_EQUAL(__frame->paramv.vars.std.context.old_pc.guid, __template_uts_main.guid)
+        || IS_GUID_EQUAL(__frame->paramv.vars.std.context.old_pc.guid, __template_uts_TreeSearch.guid) );
 
   __continuation_args_t *__old_frame = (__continuation_args_t *)castablePtrFromSegmentOffset(__depv->segment.old_frame,
                                        __paramv->vars.std.context.old_frame);
@@ -1362,7 +1364,7 @@ TRACE1("uts_TreeSearch about to create edt for for continuation");
   __ret_val = ocrEdtCreate(&__edt_continuation_guid, __old_frame->context.new_pc.guid,
                          __old_frame->context.paramc, (uint64_t *)((void *)__old_frame),
                          __old_frame->context.depc,   (ocrGuid_t *)((void *)__old_frame+ __old_frame->context.paramc*sizeof(uint64_t)),
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_TreeSearch->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_TreeSearch()<>offset_zero");
@@ -1377,10 +1379,10 @@ ocrGuid_t uts_initTreeRoot( uint32_t __paramc, __uts_initTreeRoot_args_t  *__par
   int __ret_val;
   assert( __paramc == WORDS_uts_initTreeRoot_args_t );
   assert( __depc   == WORDS_uts_initTreeRoot_guids_t );
-  assert( __paramv->vars.std.context.new_pc.guid == __template_uts_initTreeRoot.guid );
+  assert( IS_GUID_EQUAL(__paramv->vars.std.context.new_pc.guid, __template_uts_initTreeRoot.guid) );
   printf("Enter uts_initTreeRoot (paramc = %d, depc = %d) %s\n",
          __paramc, __depc,
-         (__depv->segment.new_frame.guid == NULL_GUID ) ? "new frame" : "reuse frame" );fflush(stdout);
+         IS_GUID_NULL(__depv->segment.new_frame.guid) ? "new frame" : "reuse frame" );fflush(stdout);
 
 #define WORDS_uts_initTreeRoot_locals_t ((sizeof(__uts_initTreeRoot_locals_t)+sizeof(uint64_t)-1)/sizeof(uint64_t))
   typedef struct __uts_initTreeRoot_locals_t {
@@ -1472,7 +1474,7 @@ printf("root->state.state = "); for(int i=0;i<20;i++)printf("%2.2x",__frame->roo
 #endif
 
 TRACE1("uts_initTreeRoot about to create edt for for continuation");
-  assert(__frame->paramv.vars.std.context.old_pc.guid == __template_uts_main.guid );
+  assert( IS_GUID_EQUAL(__frame->paramv.vars.std.context.old_pc.guid, __template_uts_main.guid) );
 
   __continuation_args_t *__old_frame = (__continuation_args_t *)castablePtrFromSegmentOffset(__depv->segment.old_frame,
                                        __paramv->vars.std.context.old_frame);
@@ -1484,7 +1486,7 @@ TRACE1("uts_initTreeRoot about to create edt for for continuation");
   __ret_val = ocrEdtCreate(&__edt_continuation_guid, __old_frame->context.new_pc.guid,
                          __old_frame->context.paramc, (uint64_t *)((void *)__old_frame),
                          __old_frame->context.depc,   (ocrGuid_t *)((void *)__old_frame+ __old_frame->context.paramc*sizeof(uint64_t)),
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_initTreeRoot->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_initTreeRoot()<>offset_zero");
@@ -1517,10 +1519,10 @@ ocrGuid_t uts_main( uint32_t __paramc, __uts_main_args_t  *__paramv,
 
   assert( __paramc == WORDS_uts_main_args_t );
   assert( __depc   == WORDS_uts_main_guids_t );
-  assert( __paramv->vars.std.context.new_pc.guid == __template_uts_main.guid );
+  assert( IS_GUID_EQUAL(__paramv->vars.std.context.new_pc.guid, __template_uts_main.guid) );
   printf("Enter uts_main (paramc = %d, depc = %d) %s\n",
          __paramc, __depc,
-         (__depv->segment.new_frame.guid == NULL_GUID ) ? "new frame" : "reuse frame" );fflush(stdout);
+         IS_GUID_NULL(__depv->segment.new_frame.guid) ? "new frame" : "reuse frame" );fflush(stdout);
 
   ocrPtr_t  __FRAME = __ocrNULL;
   __uts_main_locals_t *__frame =
@@ -1636,7 +1638,7 @@ TRACE1("uts_main about to pass guids on to uts_parseParams");
   __ret_val = ocrEdtCreate(&__edt_uts_parseParams_guid, __template_uts_parseParams.guid,
                          WORDS_uts_main_args_t,  &__paramv_0.paramv[0],
                          WORDS_uts_main_guids_t, &__depv_0.guids[0],
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   printf("uts_main()->ocrEdtCreate (paramc = %d, depc = %d)\n",
                          WORDS_uts_parseParams_args_t,
                          WORDS_uts_parseParams_guids_t);fflush(stdout);
@@ -1677,7 +1679,7 @@ TRACE1("uts_main about to create edt for uts_printParams");
   __ret_val = ocrEdtCreate(&__edt_uts_printParams,  __paramv_0.vars.std.context.new_pc.guid,
                          __paramv_0.vars.std.context.paramc, &__paramv_0.paramv[0],
                          __paramv_0.vars.std.context.depc,   &__depv_0.guids[0],
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_main()->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_main()<->printParams");
@@ -1716,7 +1718,7 @@ TRACE1("uts_main about to create edt for uts_initTreeRoot");
   __ret_val = ocrEdtCreate(&__edt_uts_initTreeRoot, __paramv_0.vars.std.context.new_pc.guid, //__template_uts_initTreeRoot.guid,
                          __paramv_0.vars.std.context.paramc, &__paramv_0.paramv[0],
                          __paramv_0.vars.std.context.depc,   &__depv_0.guids[0],
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_main()->ocrEdtCreate",__ret_val);
 
 TRACE0("uts_main()<->initTreeRoot");
@@ -1766,7 +1768,7 @@ TRACE1("uts_main about to create edt for uts_TreeSearch");
   __ret_val = ocrEdtCreate(&__edt_uts_TreeSearch,             __paramv_0.vars.std.context.new_pc.guid,
                          __paramv_0.vars.std.context.paramc, &__paramv_0.paramv[0],
                          __paramv_0.vars.std.context.depc,   &__depv_0.guids[0],
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("uts_main()->ocrEdtCreate",__ret_val);
 TRACE0("uts_main()<->TreeSearch");
   return NULL_GUID;
@@ -1819,7 +1821,7 @@ T1WL="-t 1 -a 3 -d 18 -b 4 -r 19"
 T2WL="-t 0 -b 2000 -q 0.4999999995 -m 2 -r 559"
 T3WL="-t 0 -b 2000 -q 0.4999995 -m 2 -r 559"
 #endif
-#if 1
+#if 0
 /* T4 */
     int argc = 17;
     char *argv[] = { "uts",
@@ -1828,8 +1830,8 @@ T3WL="-t 0 -b 2000 -q 0.4999995 -m 2 -r 559"
 #else
 /* T2L */
     int argc = 13;
-    char *argv[] = { "uts",
-	"-g", "1", "-t", "1", "-a", "2", "-d", "23", "-b", "7", "-r", "220",
+    char *argv[] = { "uts", /* RAG "-d" was "23" but made smaller to have a tiny problem */
+	"-g", "1", "-t", "1", "-a", "2", "-d", "10", "-b", "7", "-r", "220",
     };
 #endif
 #elif 0
@@ -1926,7 +1928,7 @@ TRACE0("mainEdt about to create edt for uts_main");
   __ret_val = ocrEdtCreate(&__edt_uts_main_guid, __paramv_0.vars.std.context.new_pc.guid, //__template_uts_main.guid,
                          __paramv_0.vars.std.context.paramc, &__paramv_0.paramv[0],
                          __paramv_0.vars.std.context.depc,   &__depv_0.guids[0],
-                         EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                         EDT_PROP_NONE, NULL_HINT, NULL );
   CHECK_RET_VAL("mainEdt()->ocrEdtCreate",__ret_val);
 
   return NULL_GUID;
