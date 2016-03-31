@@ -84,7 +84,7 @@ endif # _INTERNAL_NO_CHECK_WORKLOAD
 APPS_LIBS_ROOT         ?= $(APPS_ROOT)/libs/src/
 APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install/
 OCR_ROOT               ?= $(APPS_ROOT)/../../ocr/ocr/
-OCR_INSTALL            ?= $(APPS_ROOT)/../../ocr/ocr/install/
+OCR_INSTALL            ?= $(OCR_ROOT)/install/
 TG_ROOT                ?= $(APPS_ROOT)/../../tg/tg/
 TG_INSTALL             ?= $(APPS_ROOT)/../../tg/tg/install/
 
