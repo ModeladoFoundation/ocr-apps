@@ -281,7 +281,7 @@ ifeq ($(HOSTNAME), bar1)
 	$(error Please refrain from running jobs on bar1!)
 endif
 	$(ATI)OCR_INSTALL=$(OCR_INSTALL) LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:$(LD_LIBRARY_PATH) OCR_CONFIG=$(OCR_CONFIG) \
-	bash -c 'cd $(WORKLOAD_EXEC) && $(RUN_TOOL) $(OCR_INSTALL)/bin/ocrrun_$(OCR_TYPE) ./$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
+	bash -c 'cd $(WORKLOAD_EXEC) && $(OCR_INSTALL)/bin/ocrrun_$(OCR_TYPE) $(RUN_TOOL) ./$(TARGET) $(WORKLOAD_ARGS) $(WORKLOAD_INPUTS)'
 
 postrun: run_internal
 
