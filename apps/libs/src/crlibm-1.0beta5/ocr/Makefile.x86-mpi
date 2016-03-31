@@ -112,5 +112,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 

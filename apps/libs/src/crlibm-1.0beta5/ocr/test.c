@@ -1,7 +1,6 @@
 #ifdef TG_ARCH
-#include "../tg/stdio.h"
-#include "../tg/stdlib.h"
-// #include "../tg/stdint.h"
+#include "../tg-xe/stdio.h"
+#include "../tg-xe/stdlib.h"
 #else
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +42,7 @@ int main (int argc, char *argv[])
   double arg2   = 1.0/5.0;
   double result = 1.0/7.0;
 
-#if 1
+#if 0
   result = pow_rn(arg1,arg2);
 #ifdef TG_ARCH
   PRINTF("pow_rn(0x%16.16llx,%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&arg2,*(unsigned long long *)&result);
@@ -53,7 +52,7 @@ int main (int argc, char *argv[])
 #endif
 #endif
 
-#if 1
+#if 0
   result = log_rn(arg1);
 #ifdef TG_ARCH
   PRINTF("log_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
@@ -103,7 +102,7 @@ int main (int argc, char *argv[])
 #endif
 #endif
 
-#if 1
+#if 0
 
   arg2   = pow_rn(2.0,120.0);
   result = sin_rn(arg2);
