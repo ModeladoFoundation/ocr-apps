@@ -108,7 +108,7 @@ CFLAGS_BASE  := -fxstg-extensions -I $(OCR_INSTALL)/include -DTG_ARCH -I $(APPS_
 LDFLAGS_BASE := -L $(APPS_LIBS_INSTALL)/lib -L $(TG_INSTALL)/ld-scripts -T ocr-default.ld -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
 
 
-CFLAGS  := $(CFLAGS_BASE) $(CFLAGS)
+CFLAGS  := $(CFLAGS_BASE) $(CFLAGS) -DOCR_TYPE_H=$(XE_TARGET).h
 LDFLAGS := $(LDFLAGS_BASE) $(LDFLAGS)
 
 OBJS := $(patsubst %.c,$(WORKLOAD_BUILD)/%.o,$(SRCS))
