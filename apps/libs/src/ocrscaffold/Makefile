@@ -116,7 +116,7 @@ $(BUILD_DIR)/%.o : $(SRCDIR)/%.S
 	@$(AS) $< -o $@
 
 .PHONY: install
-install: $(LIB)
+install: setup $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)
 	@cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib
