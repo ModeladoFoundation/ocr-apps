@@ -102,7 +102,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_globalCompute.EDT, TS_globalCompute.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &TS_globalCompute.OET );
+                  EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &TS_globalCompute.OET );
 
     ocrAddDependence( TS_globalCompute.OET, TS_globalCompute_OET, 0, DB_MODE_NULL );
 
@@ -110,18 +110,18 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_globalH, TS_globalCompute.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( TS_globalInit_OET, TS_globalCompute.EDT, _idep++, DB_MODE_NULL);
 
-    TS_globalFinalize.FNC = FNC_globalFinalize;
-    ocrEdtTemplateCreate( &TS_globalFinalize.TML, TS_globalFinalize.FNC, 0, 2 );
+    //TS_globalFinalize.FNC = FNC_globalFinalize;
+    //ocrEdtTemplateCreate( &TS_globalFinalize.TML, TS_globalFinalize.FNC, 0, 2 );
 
-    ocrEdtCreate( &TS_globalFinalize.EDT, TS_globalFinalize.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &TS_globalFinalize.OET );
+    //ocrEdtCreate( &TS_globalFinalize.EDT, TS_globalFinalize.TML,
+    //              EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    //              EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &TS_globalFinalize.OET );
 
-    ocrAddDependence( TS_globalFinalize.OET, TS_globalFinalize_OET, 0, DB_MODE_NULL);
+    //ocrAddDependence( TS_globalFinalize.OET, TS_globalFinalize_OET, 0, DB_MODE_NULL);
 
-    _idep = 0;
-    ocrAddDependence( DBK_globalH, TS_globalFinalize.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( TS_globalCompute_OET, TS_globalFinalize.EDT, _idep++, DB_MODE_NULL);
+    //_idep = 0;
+    //ocrAddDependence( DBK_globalH, TS_globalFinalize.EDT, _idep++, DB_MODE_RW );
+    //ocrAddDependence( TS_globalCompute_OET, TS_globalFinalize.EDT, _idep++, DB_MODE_NULL);
 
     return NULL_GUID;
 }
@@ -807,7 +807,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     ocrEdtCreate( &TS_rankComputeSpawner.EDT, TS_rankComputeSpawner.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &TS_rankComputeSpawner.OET );
+                  EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &TS_rankComputeSpawner.OET );
 
     ocrAddDependence( TS_rankComputeSpawner.OET, TS_rankComputeSpawner_OET, 0, DB_MODE_NULL );
 
@@ -1918,6 +1918,8 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     double flops = (double) (2*stencil_size+1) * f_active_points;
     PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",
            1.0E-06 * flops/avgtime, avgtime);
+
+    ocrShutdown();
 
     return NULL_GUID;
 }
