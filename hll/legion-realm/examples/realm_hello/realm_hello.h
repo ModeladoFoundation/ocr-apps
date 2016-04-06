@@ -19,5 +19,13 @@
 #include "realm.h"
 
 using namespace Realm;
+using namespace LegionRuntime::Arrays;
+using namespace LegionRuntime::Accessor;
+
+struct HelloArgs
+{
+    RegionInstance x_inst, y_inst, z_inst;
+    Rect<1> bounds;
+};
 
 #endif

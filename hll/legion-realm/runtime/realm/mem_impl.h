@@ -48,7 +48,10 @@ namespace Realm {
 	MKIND_DISK,    // disk memory accessible by owner node
 	MKIND_FILE,    // file memory accessible by owner node
 #ifdef USE_HDF
-	MKIND_HDF      // HDF memory accessible by owner node
+	MKIND_HDF,      // HDF memory accessible by owner node
+#endif
+#ifdef USE_OCR_LAYER
+        MKIND_OCR,      //OCR Data block
 #endif
       };
 
@@ -171,6 +174,47 @@ namespace Realm {
       char *base, *base_orig;
       bool prealloced, registered;
     };
+
+#ifdef USE_OCR_LAYER
+
+    struct DB_Alloc_Data
+    {
+      char *base_addr;
+      ocrGuid_t buff_db_guid, block_evt_guid;
+    };
+
+    class OCRMemory : public MemoryImpl {
+    public:
+      static const size_t ALIGNMENT = 256;
+
+      OCRMemory(Memory _me, size_t _size);
+
+      virtual ~OCRMemory(void);
+
+      virtual RegionInstance create_instance(IndexSpace r,
+					     const int *linearization_bits,
+					     size_t bytes_needed,
+					     size_t block_size,
+					     size_t element_size,
+					     const std::vector<size_t>& field_sizes,
+					     ReductionOpID redopid,
+					     off_t list_size,
+                                             const ProfilingRequestSet &reqs,
+					     RegionInstance parent_inst);
+      virtual void destroy_instance(RegionInstance i, 
+				    bool local_destroy);
+      virtual off_t alloc_bytes(size_t size);
+      virtual void free_bytes(off_t offset, size_t size);
+      virtual void get_bytes(off_t offset, void *dst, size_t size);
+      virtual void put_bytes(off_t offset, const void *src, size_t size);
+      virtual void *get_direct_ptr(off_t offset, size_t size);
+      virtual int get_home_node(off_t offset, size_t size);
+
+    private:
+      ocrGuid_t ocr_db_guid, ocr_evt_guid;
+      char *base, *base_orig;
+    };
+#endif
 
     class GASNetMemory : public MemoryImpl {
     public:

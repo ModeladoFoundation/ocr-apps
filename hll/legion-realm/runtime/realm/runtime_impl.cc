@@ -515,7 +515,7 @@ namespace Realm {
       //only one memory
       size_t sysmem_size_in_mb = 512;
       Memory m = next_local_memory_id();
-      MemoryImpl *mi = new LocalCPUMemory(m, sysmem_size_in_mb << 20);
+      MemoryImpl *mi = new OCRMemory(m, sysmem_size_in_mb << 20);
       add_memory(mi);
     }
 #endif
@@ -523,6 +523,16 @@ namespace Realm {
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
 #ifdef USE_OCR_LAYER
+
+      // have to register domain mappings too
+      LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<1> >();
+      LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<2> >();
+      LegionRuntime::Arrays::Mapping<3,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<3> >();
+      LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<1> >();
+      LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<2> >();
+      LegionRuntime::Arrays::Mapping<3,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<3> >();
+      LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::Translation<1> >();
+
       DetailedTimer::init_timers();
 
       OCREventImpl::static_init();
@@ -569,7 +579,7 @@ namespace Realm {
       
         add_proc_mem_affinities(machine,
                          procs_by_kind[k],
-                         mems_by_kind[Memory::SYSTEM_MEM],
+                         mems_by_kind[Memory::OCR_MEM],
                          100, // "large" bandwidth
                          1   // "small" latency
                          );
@@ -1613,6 +1623,16 @@ namespace Realm {
     OCREventImpl::wait(ocr_shutdown_guid);
     OCREventImpl::static_destroy();
     OCRProcessor::static_destroy();
+
+    // delete processors, memories, nodes, etc.
+    {
+      for(gasnet_node_t i = 0; i < gasnet_nodes(); i++) {
+        Node& n = nodes[i];
+
+        delete_container_contents(n.memories);
+        delete_container_contents(n.processors);
+      }
+    }
 #else
 #if 0
       bool exit_process = true;

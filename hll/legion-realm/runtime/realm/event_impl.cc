@@ -20,7 +20,9 @@
 #include "logging.h"
 #include "threads.h"
 
+#ifdef USE_OCR_LAYER
 #include "extensions/ocr-legacy.h"
+#endif
 
 namespace Realm {
 

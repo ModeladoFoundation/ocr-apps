@@ -1030,7 +1030,7 @@ namespace Realm {
     //create three dependencies : start_event, args and arglen
     ocrGuid_t db_guid[num_dep];
   
-    db_guid[0] = start_event.evt_guid;
+    db_guid[0] = UNINITIALIZED_GUID; //start_event.evt_guid;
   
     void *args_copy;
     ocrDbCreate(&db_guid[1], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
@@ -1049,6 +1049,10 @@ namespace Realm {
     //create another persistent event and attach it to the edt since legacy_block_progress needs persistent event
     ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
     ocrAddDependence(out_ocr_realm_conversion_edt, persistent_evt_guid, 0, DB_MODE_RO);
+
+    //satsify the dependency after setting the sticky event to prevent the edt from starting before adding dependence to the sticky event
+    ocrAddDependence(start_event.evt_guid, ocr_realm_conversion_edt, 0, DB_MODE_RO);
+
     Event finish_event = ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0).convert<Event>();
     finish_event.evt_guid = persistent_evt_guid;
     return finish_event;
