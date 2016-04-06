@@ -46,7 +46,7 @@ ocrGuid_t FNC_preInit( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     u64 argc = getArgc( PTR_cmdLineArgs );
     ocrGuid_t argv_g;
     char** argv;
-    ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
       argv[a] = getArgv( PTR_cmdLineArgs,a );
 
@@ -89,22 +89,22 @@ ocrGuid_t FNC_setUpGraph( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t tmp_g;
     ocrGuid_t EDT_init, EDT_compute, EDT_finalize;
 
-    u64 pv[5] = {0,0,0,0,0};
-    ((u32*)pv)[0] = sim_p->boxes.grid[0];
-    ((u32*)pv)[1] = sim_p->boxes.grid[1];
-    ((u32*)pv)[2] = sim_p->boxes.grid[2];
-    ((u32*)pv)[3] = cmd_p->nx;
-    ((u32*)pv)[4] = cmd_p->ny;
-    ((u32*)pv)[5] = cmd_p->nz;
-    *((real_t*)pv+3) = cmd_p->delta;
-    *((real_t*)pv+4) = cmd_p->temperature;
+    PRM_fork_init_edt_t PRM_fork_init_edt;
+    PRM_fork_init_edt.grid[0] = sim_p->boxes.grid[0];
+    PRM_fork_init_edt.grid[1] = sim_p->boxes.grid[1];
+    PRM_fork_init_edt.grid[2] = sim_p->boxes.grid[2];
+    PRM_fork_init_edt.lattice[0] = cmd_p->nx;
+    PRM_fork_init_edt.lattice[1] = cmd_p->ny;
+    PRM_fork_init_edt.lattice[2] = cmd_p->nz;
+    PRM_fork_init_edt.delta = cmd_p->delta;
+    PRM_fork_init_edt.temperature = cmd_p->temperature;
 
     ocrGuid_t OET_init, OETS_init;
     ocrEventCreate( &OETS_init, OCR_EVENT_STICKY_T, false );
 
     ocrGuid_t TML_fork_init;
-    ocrEdtTemplateCreate( &TML_fork_init, fork_init_edt, 5, 3 );
-    ocrEdtCreate( &EDT_init, TML_fork_init, 5, pv, 3, NULL, EDT_PROP_FINISH, NULL_GUID, &OET_init );
+    ocrEdtTemplateCreate( &TML_fork_init, fork_init_edt, sizeof(PRM_fork_init_edt_t)/sizeof(u64), 3 );
+    ocrEdtCreate( &EDT_init, TML_fork_init, 5, (u64*)&PRM_fork_init_edt, 3, NULL, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &OET_init );
     ocrEdtTemplateDestroy( TML_fork_init );
 
     ocrAddDependence( OET_init, OETS_init, 0, DB_MODE_NULL );
@@ -115,13 +115,14 @@ ocrGuid_t FNC_setUpGraph( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t TML_end;
     ocrEdtTemplateCreate( &TML_end, end_edt, 0, 6 );
-    ocrEdtCreate( &EDT_finalize, TML_end, 0, NULL, 6, NULL, EDT_PROP_NONE, NULL_GUID, NULL );
+    ocrEdtCreate( &EDT_finalize, TML_end, 0, NULL, 6, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
     ocrEdtTemplateDestroy( TML_end );
 
     if( sim_p->steps ) {
         ocrGuid_t TML_period;
-        ocrEdtTemplateCreate( &TML_period, period_edt, 1, 6 );
-        ocrEdtCreate( &EDT_compute, TML_period, 1, (u64*)&EDT_finalize, 6, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+        PRM_period_edt_t PRM_period_edt = { .EDT_finalize = EDT_finalize };
+        ocrEdtTemplateCreate( &TML_period, period_edt, sizeof(PRM_period_edt_t)/sizeof(u64), 6 );
+        ocrEdtCreate( &EDT_compute, TML_period, 1, (u64*)&PRM_period_edt, 6, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
         //EDT_compute sets up the 6th dependency for EDT_finalize
         ocrEdtTemplateDestroy( TML_period );
 
@@ -152,15 +153,15 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t timer_g;
     mdtimer_t* timers_p;
-    ocrDbCreate( &timer_g, (void**)&timers_p, sizeof(mdtimer_t)*number_of_timers, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &timer_g, (void**)&timers_p, sizeof(mdtimer_t)*number_of_timers, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
     ocrGuid_t cmd_g;
     command_t* cmd_p;
-    ocrDbCreate( &cmd_g, (void**)&cmd_p, sizeof(command_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &cmd_g, (void**)&cmd_p, sizeof(command_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
     ocrGuid_t sim_g;
     simulation_t* sim_p;
-    ocrDbCreate( &sim_g, (void**)&sim_p, sizeof(simulation_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &sim_g, (void**)&sim_p, sizeof(simulation_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
     ocrGuid_t TML_preInit;
     ocrGuid_t EDT_preInit;
@@ -170,7 +171,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEventCreate( &OET_preInit_Sticky, OCR_EVENT_STICKY_T, false );
 
     ocrEdtTemplateCreate( &TML_preInit, FNC_preInit, 0, 4 );
-    ocrEdtCreate( &EDT_preInit, TML_preInit, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, &OET_preInit );
+    ocrEdtCreate( &EDT_preInit, TML_preInit, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &OET_preInit );
 
     ocrAddDependence( OET_preInit, OET_preInit_Sticky, 0, DB_MODE_NULL );
 
@@ -183,7 +184,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t EDT_setUpGraph;
 
     ocrEdtTemplateCreate( &TML_setUpGraph, FNC_setUpGraph, 0, 4 );
-    ocrEdtCreate( &EDT_setUpGraph, TML_setUpGraph, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+    ocrEdtCreate( &EDT_setUpGraph, TML_setUpGraph, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
 
     ocrAddDependence( timer_g, EDT_setUpGraph, 0, DB_MODE_RW );
     ocrAddDependence( cmd_g, EDT_setUpGraph, 1, DB_MODE_RO );

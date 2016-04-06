@@ -5,8 +5,9 @@
 #include "reductions.h"
 
 ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 leaves, ocrGuid_t* leaves_p,
-                          u32 paramc, u64* paramv, ocrGuid_t (*red_edt)(u32, u64*, u32, ocrEdtDep_t*))
+                          u32 paramc, PRM_red_t* PTR_PRM_red, ocrGuid_t (*red_edt)(u32, u64*, u32, ocrEdtDep_t*), int key)
 {
+
   ocrGuid_t root,tmp[FANIN];
   u32 f;
   for(f=0;f<FANIN;++f)
@@ -20,11 +21,35 @@ ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 leaves, o
 
   ocrGuid_t rtmp;
   ocrEdtTemplateCreate(&rtmp,red_edt,paramc,f+2);
-  paramv[0]=f;
-  ocrEdtCreate(leaves_p, rtmp, paramc, paramv, f+2, NULL, EDT_PROP_NONE, NULL_GUID, &root);
+  PRM_ured_edt_t PRM_ured_edt;
+  PRM_tred_edt_t PRM_tred_edt;
+  PRM_vred_edt_t PRM_vred_edt;
+
+    switch(key)
+    {
+        case 0: //u_red_edt
+            PRM_ured_edt.n = f;
+            PRM_ured_edt.epsilon = PTR_PRM_red->epsilon;
+            ocrEdtCreate(leaves_p, rtmp, sizeof(PRM_ured_edt_t)/sizeof(u64), (u64*)&PRM_ured_edt, f+2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &root);
+            break;
+        case 1:
+            PRM_tred_edt.n = f;
+            PRM_tred_edt.temperature = PTR_PRM_red->temperature;
+            PRM_tred_edt.guid = PTR_PRM_red->guid;
+            ocrEdtCreate(leaves_p, rtmp, sizeof(PRM_tred_edt_t)/sizeof(u64), (u64*)&PRM_tred_edt, f+2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &root);
+            break;
+        case 2:
+            PRM_vred_edt.n = f;
+            PRM_vred_edt.guid = PTR_PRM_red->guid;
+            ocrEdtCreate(leaves_p, rtmp, sizeof(PRM_vred_edt_t)/sizeof(u64), (u64*)&PRM_vred_edt, f+2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &root);
+            break;
+    }
+
   ocrAddDependence(sim_g,*leaves_p,f,DB_MODE_RW);
   ocrAddDependence(reductionH_g,*leaves_p,f+1,DB_MODE_RW);
   ocrEdtTemplateDestroy(rtmp);
+
+  u64 paramv[1];
 
   u32 l;
   u32 gap = FANIN;
@@ -45,7 +70,7 @@ ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 leaves, o
         fff += FANIN;
         u32 ddd = fff>ff ? ff+FANIN-fff : FANIN;
         paramv[0] = ddd;
-        ocrEdtCreate(leaves_p+ll*gap+d*newgap, tmp[ddd-1], 1, paramv, ddd, NULL, EDT_PROP_NONE, NULL_GUID, &event);
+        ocrEdtCreate(leaves_p+ll*gap+d*newgap, tmp[ddd-1], 1, paramv, ddd, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &event);
         ocrAddDependence(event,edt,d,d?DB_MODE_RO:DB_MODE_RW);
       }
     }
@@ -78,7 +103,9 @@ ocrGuid_t ured_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t uk0_g = depv[0].guid;
   real_t* u = (real_t*)depv[0].ptr;
 
-  u32 d; u64 n = *(u64*)paramv;
+  PRM_ured_edt_t* PTR_PRM_ured_edt = (PRM_ured_edt_t*)paramv;
+
+  u32 d; u64 n = PTR_PRM_ured_edt->n;
 
   for(d=1; d<n; ++d) {
     u[0] += ((real_t*)depv[d].ptr)[0];
@@ -89,7 +116,7 @@ ocrGuid_t ured_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   if(paramc>1) {
     ocrGuid_t sim_g = depv[n].guid;
     simulation_t* sim_p = depv[n].ptr;
-    sim_p->e_potential = u[0]**(double*)(paramv+1);
+    sim_p->e_potential = u[0]*PTR_PRM_ured_edt->epsilon;
     sim_p->e_kinetic = u[1];
 
     reductionH_t* reductionH_p = (reductionH_t*)depv[depc-1].ptr;
@@ -111,7 +138,9 @@ ocrGuid_t vred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t vcm0_g = depv[0].guid;
   real_t* vcm0 = (real_t*)depv[0].ptr;
 
-  u32 d; u64 n = *(u64*)paramv;
+  PRM_vred_edt_t* PTR_PRM_vred_edt = (PRM_vred_edt_t*)paramv;
+
+  u32 d; u64 n = PTR_PRM_vred_edt->n;
 
   for(d=1; d<n; ++d) {
     real_t* vcm1 = (real_t*)depv[d].ptr;
@@ -133,7 +162,7 @@ ocrGuid_t vred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     reductionH_p->value[0] = -vcm0[0]/vcm0[3];
     reductionH_p->value[1] = -vcm0[1]/vcm0[3];
     reductionH_p->value[2] = -vcm0[2]/vcm0[3];
-    reductionH_p->OEVT_reduction = *(ocrGuid_t*)(paramv+1); //OEVT_tred
+    reductionH_p->OEVT_reduction = PTR_PRM_vred_edt->guid; //OEVT_tred
 
     ocrDbDestroy(vcm0_g);
     return reductionH_g;
@@ -149,7 +178,9 @@ ocrGuid_t tred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t ek0_g = depv[0].guid;
   real_t* ek = (real_t*)depv[0].ptr;
 
-  u32 d; u64 n = *(u64*)paramv;
+  PRM_tred_edt_t* PTR_PRM_tred_edt = (PRM_tred_edt_t*)paramv;
+
+  u32 d; u64 n = PTR_PRM_tred_edt->n;
 
   for(d=1; d<n; ++d) {
     *ek += *(real_t*)depv[d].ptr;
@@ -163,8 +194,8 @@ ocrGuid_t tred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t reductionH_g = depv[depc-1].guid;
     reductionH_t* reductionH_p = (reductionH_t*)depv[depc-1].ptr;
-    reductionH_p->value[0] = sqrt((*(double*)(paramv+1))/ *ek);
-    reductionH_p->OEVT_reduction = *(ocrGuid_t*)(paramv+2); //OEVT_ured
+    reductionH_p->value[0] = sqrt((double)PTR_PRM_tred_edt->temperature/ *ek);
+    reductionH_p->OEVT_reduction = PTR_PRM_tred_edt->guid; //OEVT_ured
 
     ocrDbDestroy(ek0_g);
     return reductionH_g;

@@ -45,6 +45,7 @@ typedef struct
   u8 potential;
 
   real_t cutoff;
+  real_t massFloat;
   ocrGuid_t mass;
   real_t lat;
   u32 atomic_no;
@@ -123,6 +124,92 @@ typedef struct
   ocrGuid_t reductionH_g;
 
 } simulation_t;
+
+//Param structs
+typedef struct
+{
+    ocrGuid_t EDT_finalize;
+} PRM_period_edt_t;
+
+typedef struct
+{
+    u32 grid[3];
+    u32 lattice[3];
+    real_t delta, temperature;
+} PRM_fork_init_edt_t;
+
+typedef struct
+{
+    u32 coords[3];
+    u32 lattice[3];
+    real_t delta, temperature;
+    ocrGuid_t vleaf, tleaf, uleaf;
+} PRM_FNC_init_t;
+
+typedef struct
+{
+    ocrGuid_t tleaf;
+    ocrGuid_t EDT_sched;
+} PRM_vcm_edt_t;
+
+typedef struct
+{
+    real_t dt;
+    ocrGuid_t uleaf;
+} PRM_ukvel_edt_t;
+
+typedef struct
+{
+    lj_t lj;
+    real_t cutoff;
+    real_t domain[3];
+} PRM_force_edt_t;
+
+typedef struct
+{
+    u32 n;
+    real_t temperature, epsilon;
+    ocrGuid_t guid;
+} PRM_red_t;
+
+typedef struct
+{
+    u32 n;
+    real_t epsilon;
+} PRM_ured_edt_t;
+
+typedef struct
+{
+    u32 n;
+    real_t temperature;
+    ocrGuid_t guid;
+} PRM_tred_edt_t;
+
+typedef struct
+{
+    u32 n;
+    ocrGuid_t guid;
+} PRM_vred_edt_t;
+
+typedef struct
+{
+    real_t ds, dt;
+    ocrGuid_t EDT_exchange, boxes_g;
+} PRM_position_edt_t;
+
+typedef struct
+{
+    real_t ds, sigma, epsilon, cutoff;
+    real_t domain[3];
+    ocrGuid_t leaves_g;
+} PRM_forcevel_edt_t;
+
+typedef struct
+{
+    real_t dt;
+    ocrGuid_t leaves_g;
+} PRM_veluk_edt_t;
+
 
 static inline u32 neighbor_id(u8 n, u32* coordinates, u32* grid)
 {

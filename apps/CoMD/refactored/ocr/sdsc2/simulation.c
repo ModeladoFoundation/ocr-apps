@@ -77,15 +77,15 @@ u8 init_simulation( command_t* cmd_p, simulation_t* sim_p, mdtimer_t* timer_p )
 
   ocrGuid_t* box_p;
   ocrGuid_t* rpf_p;
-  ocrDbCreate( &sim_p->boxes.box, (void**)&box_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
-  ocrDbCreate( &sim_p->boxes.rpf, (void**)&rpf_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &sim_p->boxes.box, (void**)&box_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+  ocrDbCreate( &sim_p->boxes.rpf, (void**)&rpf_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
   //TODO: Use affinity hints here to distribute the datablocks across policy domains
   u32 b;
   for( b=0; b<sim_p->boxes.boxes_num; ++b ) {
     void* ptr;
-    ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NO_ACQUIRE, NULL_GUID, NO_ALLOC );
-    ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NO_ACQUIRE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NO_ACQUIRE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NO_ACQUIRE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
   }
 
   ocrDbRelease( sim_p->boxes.box );
@@ -130,11 +130,15 @@ u64 mk_seed( u32 i, u32 c )
 //depv: rpf, mass
 ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+  PRM_ukvel_edt_t* PTR_PRM_ukvel_edt = (PRM_ukvel_edt_t*) paramv;
+
+  real_t dt = PTR_PRM_ukvel_edt->dt;
+  ocrGuid_t uleaf = PTR_PRM_ukvel_edt->uleaf;
+
   ocrGuid_t uk_g; real_t* uk_p;
-  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
   uk_p[0] = uk_p[1] = 0;
 
-  real_t* dt = (real_t*)paramv;
   rpf_t* rpf = (rpf_t*)depv[0].ptr;
   mass_t* mass = (mass_t*)depv[1].ptr;
 
@@ -143,12 +147,13 @@ ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     uk_p[0] += rpf->u[a];
     uk_p[1] += (rpf->p[a][0]*rpf->p[a][0]+rpf->p[a][1]*rpf->p[a][1]+rpf->p[a][2]*rpf->p[a][2])*
                mass->inv_mass_2[rpf->s[a]];
-    rpf->p[a][0] += *dt*rpf->f[a][0];
-    rpf->p[a][1] += *dt*rpf->f[a][1];
-    rpf->p[a][2] += *dt*rpf->f[a][2];
+    rpf->p[a][0] += dt*rpf->f[a][0];
+    rpf->p[a][1] += dt*rpf->f[a][1];
+    rpf->p[a][2] += dt*rpf->f[a][2];
   }
 
-  ocrEventSatisfy( *(ocrGuid_t*)(paramv+1),uk_g );
+  ocrDbRelease( uk_g ); //uk_g was created and updated in the same EDT. Must Release the changes before EventSatisfy.
+  ocrEventSatisfy( uleaf,uk_g );
 
   return NULL_GUID;
 }
@@ -157,18 +162,22 @@ ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 //depv: rpf, mass
 ocrGuid_t veluk_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-  real_t* dt = (real_t*)paramv;
+  PRM_veluk_edt_t* PTR_veluk_edt = (PRM_veluk_edt_t*) paramv;
+
+  real_t dt = PTR_veluk_edt->dt;
+  ocrGuid_t leaves_g = PTR_veluk_edt->leaves_g;
+
   rpf_t* rpf = (rpf_t*)depv[0].ptr;
   mass_t* mass = (mass_t*)depv[1].ptr;
   ocrGuid_t uk_g; real_t* uk_p;
-  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
   uk_p[0] = uk_p[1]= 0;
 
   u8 a;
   for( a=0; a<rpf->atoms; ++a ) {
-    rpf->p[a][0] += *dt*rpf->f[a][0];
-    rpf->p[a][1] += *dt*rpf->f[a][1];
-    rpf->p[a][2] += *dt*rpf->f[a][2];
+    rpf->p[a][0] += dt*rpf->f[a][0];
+    rpf->p[a][1] += dt*rpf->f[a][1];
+    rpf->p[a][2] += dt*rpf->f[a][2];
     uk_p[0] += rpf->u[a];
     uk_p[1] += (rpf->p[a][0]*rpf->p[a][0]+rpf->p[a][1]*rpf->p[a][1]+rpf->p[a][2]*rpf->p[a][2])*
                mass->inv_mass_2[rpf->s[a]];
@@ -207,11 +216,16 @@ ocrGuid_t temp_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 //depv: reduction, rpf, mass
 ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+  PRM_vcm_edt_t* PTR_PRM_vcm_edt = (PRM_vcm_edt_t*) paramv;
+
+  ocrGuid_t tleaf = PTR_PRM_vcm_edt->tleaf;
+  ocrGuid_t EDT_sched = PTR_PRM_vcm_edt->EDT_sched;
+
   reductionH_t* reductionH_p = (reductionH_t*)depv[0].ptr;
   rpf_t* rpf = (rpf_t*)depv[1].ptr;
   mass_t* mass = (mass_t*)depv[2].ptr;
   ocrGuid_t ek_g; real_t* ek_p;
-  ocrDbCreate( &ek_g, (void**)&ek_p, sizeof(real_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &ek_g, (void**)&ek_p, sizeof(real_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
   *ek_p = 0;
 
   u32 a;
@@ -224,8 +238,8 @@ ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
               mass->inv_mass_2[rpf->s[a]];
   }
 
-  ocrAddDependence( reductionH_p->OEVT_reduction, *(ocrGuid_t*)(paramv+1), 0, DB_MODE_RO );
-  ocrAddDependence( ek_g, *(ocrGuid_t*)paramv, 0, DB_MODE_RO );
+  ocrAddDependence( reductionH_p->OEVT_reduction, EDT_sched, 0, DB_MODE_RO );
+  ocrAddDependence( ek_g, tleaf, 0, DB_MODE_RO );
 
   return NULL_GUID;
 }
@@ -234,6 +248,15 @@ ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 //{ sim_g<RO>, mass_g<RW>, reduction_g<RW>, ibox_g<RW>, irpf_g<RW>, sched0<RW>, sched1<RW>, ..., sched25<RW>, sched26<RO>, rb_g<RO> }
 ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    PRM_FNC_init_t* PTR_PRM_FNC_init = (PRM_FNC_init_t*) paramv;
+
+    u32* coords = PTR_PRM_FNC_init->coords;
+    u32* lattice = PTR_PRM_FNC_init->lattice;
+    real_t delta = PTR_PRM_FNC_init->delta;
+    real_t temperature = PTR_PRM_FNC_init->temperature;
+    ocrGuid_t vleaf = PTR_PRM_FNC_init->vleaf;
+    ocrGuid_t tleaf = PTR_PRM_FNC_init->tleaf;
+    ocrGuid_t uleaf = PTR_PRM_FNC_init->uleaf;
 
     ocrGuid_t sim_g = depv[0].guid;
     ocrGuid_t mass_g = depv[1].guid;
@@ -262,9 +285,9 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   for( u32 m=0; m<sizeof(rpf_t); ++m ) ((char*)rpf_p)[m]=0;
 #endif
 
-  box_p->coordinates[0] = ((u32*)paramv)[0];
-  box_p->coordinates[1] = ((u32*)paramv)[1];
-  box_p->coordinates[2] = ((u32*)paramv)[2];
+  box_p->coordinates[0] = PTR_PRM_FNC_init->coords[0];
+  box_p->coordinates[1] = PTR_PRM_FNC_init->coords[1];
+  box_p->coordinates[2] = PTR_PRM_FNC_init->coords[2];
 
   box_p->min[0] = box_p->coordinates[0]*sim_p->boxes.box_size[0];
   box_p->min[1] = box_p->coordinates[1]*sim_p->boxes.box_size[1];
@@ -282,7 +305,6 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
                       {0.25, 0.75, 0.75},
                       {0.75, 0.25, 0.75},
                       {0.75, 0.75, 0.25}};
-  u32* lattice = ((u32*)paramv)+3;
 
   if( box_p->coordinates[0]==0 ) rpf_p->nmask|=1;
   if( box_p->coordinates[0]==sim_p->boxes.grid[0]-1 ) rpf_p->nmask|=2;
@@ -300,16 +322,13 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
   ocrGuid_t vcm_g;
   real_t* vcm_p;
-  ocrDbCreate( &vcm_g, (void**)&vcm_p, sizeof(real_t)*4+sizeof(u64), DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &vcm_g, (void**)&vcm_p, sizeof(real_t)*4+sizeof(u64), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 #ifndef TG_ARCH
   memset( vcm_p,0,sizeof(real_t)*4+sizeof(u64));
 #else
   for( u32 m=0; m<sizeof(real_t)*4+sizeof(u64); ++m ) ((char*)vcm_p)[m]=0;
 #endif
   u64* atoms = (u64*)(vcm_p+4);
-
-  real_t delta = *(real_t*)(paramv+3);
-  real_t temperature = *(real_t*)(paramv+4);
 
   s32 i,j,k,b;
   for( i = begin[0]; i<end[0]; ++i )
@@ -344,29 +363,36 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
   ocrGuid_t fin;
   ocrEdtTemplateCreate( &tmp,temp_edt,0,3 );
-  ocrEdtCreate( &edt, tmp, 0, NULL, 3, NULL, EDT_PROP_NONE, NULL_GUID, &fin );
+  ocrEdtCreate( &edt, tmp, 0, NULL, 3, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &fin );
   ocrAddDependence( irpf_g, edt, 1, DB_MODE_RW );
   ocrAddDependence( sched26_g, edt, 2, DB_MODE_RO );
   ocrEdtTemplateDestroy( tmp );
 
-  u64 pv[6];
-  pv[0] = paramv[6]; pv[1] = (u64)edt;
+  PRM_vcm_edt_t PRM_vcm_edt;
 
-  ocrEdtTemplateCreate( &tmp,vcm_edt,2,3 );
-  ocrEdtCreate( &edt, tmp, 2, pv, 3, NULL, EDT_PROP_NONE, NULL_GUID, NULL );
+  PRM_vcm_edt.tleaf = tleaf;
+  PRM_vcm_edt.EDT_sched = edt;
+
+  ocrEdtTemplateCreate( &tmp,vcm_edt,sizeof(PRM_vcm_edt_t)/sizeof(u64),3 );
+  ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_vcm_edt, 3, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
   ocrAddDependence( reductionH_p->OEVT_reduction, edt, 0, DB_MODE_RO );
   ocrAddDependence( irpf_g, edt, 1, DB_MODE_RW );
   ocrAddDependence( mass_g, edt, 2, DB_MODE_RO );
   ocrEdtTemplateDestroy( tmp );
 
-  if( sim_p->pot.potential&LJ) {
-    pv[0] = *(u64*)&sim_p->pot.lj.sigma; pv[1] = *(u64*)&sim_p->pot.lj.epsilon;
-    pv[2] = *(u64*)&sim_p->pot.cutoff; pv[3] = *(u64*)&sim_p->boxes.domain[0];
-    pv[4] = *(u64*)&sim_p->boxes.domain[1]; pv[5] = *(u64*)&sim_p->boxes.domain[2];
+  if( sim_p->pot.potential&LJ)
+  {
+    PRM_force_edt_t PRM_force_edt;
+    PRM_force_edt.lj.sigma = sim_p->pot.lj.sigma;
+    PRM_force_edt.lj.epsilon = sim_p->pot.lj.epsilon;
+    PRM_force_edt.cutoff = sim_p->pot.cutoff;
+    PRM_force_edt.domain[0] = sim_p->boxes.domain[0];
+    PRM_force_edt.domain[1] = sim_p->boxes.domain[1];
+    PRM_force_edt.domain[2] = sim_p->boxes.domain[2];
 
     ocrGuid_t tfin=fin;
-    ocrEdtTemplateCreate( &tmp,sim_p->pot.force_edt,6,27 );
-    ocrEdtCreate( &edt, tmp, 6, pv, 27, NULL, EDT_PROP_NONE, NULL_GUID, &fin );
+    ocrEdtTemplateCreate( &tmp,sim_p->pot.force_edt,sizeof(PRM_force_edt_t)/sizeof(u64),27 );
+    ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_force_edt, 27, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &fin );
     ocrAddDependence( tfin, edt, 0, DB_MODE_RW );
     ocrEdtTemplateDestroy( tmp );
   }
@@ -380,14 +406,18 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     schedule[n] = edt;
   }
 
-  *(real_t*)pv = 0.5; pv[1] = paramv[7];
-  ocrEdtTemplateCreate( &tmp,ukvel_edt,2,2 );
-  ocrEdtCreate( &edt, tmp, 2, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL );
+  PRM_ukvel_edt_t PRM_ukvel_edt;
+
+  PRM_ukvel_edt.dt = 0.5;
+  PRM_ukvel_edt.uleaf = uleaf;
+
+  ocrEdtTemplateCreate( &tmp,ukvel_edt,sizeof(PRM_ukvel_edt_t)/sizeof(u64),2 );
+  ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_ukvel_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
   ocrEdtTemplateDestroy( tmp );
   ocrAddDependence( fin, edt, 0, DB_MODE_RW );
   ocrAddDependence( mass_g, edt, 1, DB_MODE_RO );
 
-  ocrEventSatisfy( *(ocrGuid_t*)(paramv+5), vcm_g );
+  ocrEventSatisfy( vleaf, vcm_g );
 
   return NULL_GUID;
 }
@@ -396,6 +426,8 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 // { sim_g<RW>, box<RO>, rpf<RO> }
 ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+  PRM_fork_init_edt_t* PTR_PRM_fork_init_edt = (PRM_fork_init_edt_t*) paramv;
+
   ocrGuid_t sim_g = depv[0].guid;
   ocrGuid_t box_g = depv[1].guid;
   ocrGuid_t rpf_g = depv[2].guid;
@@ -404,56 +436,71 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   ocrGuid_t* box_p = (ocrGuid_t*)depv[1].ptr;
   ocrGuid_t* rpf_p = (ocrGuid_t*)depv[2].ptr;
 
-  u32* grid = (u32*)paramv;
-  u32* lattice = grid+3;
-  u32 ijk[16] = {0,0,0,lattice[0],lattice[1],lattice[2],0,0,0,0,0,0,0,0,0,0};
-  ((u64*)ijk)[3] = paramv[3];
-  ((u64*)ijk)[4] = paramv[4];
+  u32* grid = PTR_PRM_fork_init_edt->grid;
+  u32* lattice = PTR_PRM_fork_init_edt->lattice;
+  real_t delta = PTR_PRM_fork_init_edt->delta;
+  real_t temperature = PTR_PRM_fork_init_edt->temperature;
 
   ocrGuid_t sch_g, *sch_p;
-  ocrDbCreate( &sch_g, (void**)&sch_p, sizeof( ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &sch_g, (void**)&sch_p, sizeof( ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
   u32 b; void* p;
   //TODO: affinity hints here
   for( b=0; b < sim_p->boxes.boxes_num; ++b )
-    ocrDbCreate( sch_p+b, &p, sizeof(ocrGuid_t)*26, DB_PROP_NO_ACQUIRE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( sch_p+b, &p, sizeof(ocrGuid_t)*26, DB_PROP_NO_ACQUIRE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
   reductionH_t* reductionH_p;
-  ocrDbCreate( &sim_p->reductionH_g, (void**)&reductionH_p, sizeof(reductionH_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &sim_p->reductionH_g, (void**)&reductionH_p, sizeof(reductionH_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
   ocrGuid_t* leaves_p; ocrGuid_t leaves_g;
-  ocrDbCreate( &leaves_g, (void**)&leaves_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num*3, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+  ocrDbCreate( &leaves_g, (void**)&leaves_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num*3, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
-  u64 red_paramv[3];
-  red_paramv[1] = sim_p->pot.potential&LJ ? *(u64*)&sim_p->pot.lj.epsilon : 1;
+  PRM_red_t PRM_red;
+
+  PRM_red.n = 0; //Update later
+  PRM_red.temperature = temperature;
+  PRM_red.epsilon = sim_p->pot.potential&LJ ? sim_p->pot.lj.epsilon : 1;
+  PRM_red.guid = NULL_GUID;
 
   reductionH_p->OEVT_reduction = build_reduction( sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p+sim_p->boxes.boxes_num*2,
-                                            2, red_paramv, ured_edt );
+                                            sizeof(PRM_ured_edt_t)/sizeof(u64), &PRM_red, ured_edt, 0 );
 
-  red_paramv[1] = paramv[4]; red_paramv[2] = reductionH_p->OEVT_reduction;
+  PRM_red.guid = reductionH_p->OEVT_reduction;
 
   reductionH_p->OEVT_reduction = build_reduction( sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p+sim_p->boxes.boxes_num,
-                                            3, red_paramv, tred_edt );
+                                            sizeof(PRM_tred_edt_t)/sizeof(u64), &PRM_red, tred_edt, 1 );
 
-  red_paramv[1] = reductionH_p->OEVT_reduction;
+  PRM_red.guid = reductionH_p->OEVT_reduction;
 
   reductionH_p->OEVT_reduction = build_reduction( sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p,
-                                            2, red_paramv, vred_edt );
+                                            sizeof(PRM_vred_edt_t)/sizeof(u64), &PRM_red, vred_edt, 2 );
 
   ocrDbRelease( sim_p->reductionH_g );
 
   ocrGuid_t tmp, EDT_init;
-  ocrEdtTemplateCreate( &tmp,FNC_init,8,33 );
+  ocrEdtTemplateCreate( &tmp,FNC_init,sizeof(PRM_FNC_init_t)/sizeof(u64),33 );
+
+  PRM_FNC_init_t PRM_FNC_init;
+  PRM_FNC_init.lattice[0] = lattice[0];
+  PRM_FNC_init.lattice[1] = lattice[1];
+  PRM_FNC_init.lattice[2] = lattice[2];
+  PRM_FNC_init.delta = delta;
+  PRM_FNC_init.temperature = temperature;
+
+  u32 ijk[3];
 
   u32 leaf = 0;
   for( ijk[0]=0; ijk[0]<grid[0]; ++ijk[0] )
   for( ijk[1]=0; ijk[1]<grid[1]; ++ijk[1] )
   for( ijk[2]=0; ijk[2]<grid[2]; ++ijk[2] ) {
-    ((u64*)ijk)[5] = leaves_p[leaf]; //vred_leaf
-    ((u64*)ijk)[6] = leaves_p[leaf+sim_p->boxes.boxes_num]; //tred_leaf
-    ((u64*)ijk)[7] = leaves_p[leaf+sim_p->boxes.boxes_num*2]; //ured_leaf
+    PRM_FNC_init.coords[0] = ijk[0];
+    PRM_FNC_init.coords[1] = ijk[1];
+    PRM_FNC_init.coords[2] = ijk[2];
+    PRM_FNC_init.vleaf = leaves_p[leaf]; //vred_leaf
+    PRM_FNC_init.tleaf = leaves_p[leaf+sim_p->boxes.boxes_num]; //tred_leaf
+    PRM_FNC_init.uleaf = leaves_p[leaf+sim_p->boxes.boxes_num*2]; //ured_leaf
 
-    ocrEdtCreate( &EDT_init, tmp, 8, (u64*)ijk, 33, NULL, EDT_PROP_NONE, NULL_GUID, NULL );
+    ocrEdtCreate( &EDT_init, tmp, EDT_PARAM_DEF, (u64*)&PRM_FNC_init, 33, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
 
     ocrAddDependence( sim_g, EDT_init, 0, DB_MODE_RO );
     ocrAddDependence( sim_p->pot.mass, EDT_init, 1, DB_MODE_RW );
@@ -463,7 +510,7 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     ocrGuid_t rb; ocrGuid_t* rbp;
     //TODO: affinity hints here?
-    ocrDbCreate( &rb, (void**)&rbp, sizeof(ocrGuid_t)*52, DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &rb, (void**)&rbp, sizeof(ocrGuid_t)*52, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
     for( b=0; b < 26; ++b ) {
       u32 n = neighbor_id(b,ijk,grid);

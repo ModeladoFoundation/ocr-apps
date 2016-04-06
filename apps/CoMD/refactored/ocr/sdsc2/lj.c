@@ -81,10 +81,11 @@ ocrGuid_t ljforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   for(m=0; m<sizeof(real_t)*rpf->atoms; ++m) ((char*)rpf->u)[m]='\0';
 #endif
 
-  real_t sigma = *(real_t*)paramv;
-  real_t epsilon = *(real_t*)(paramv+1);
-  real_t cut = *(real_t*)(paramv+2);
-  real_t* shift = (real_t*)paramv+3;
+  PRM_force_edt_t* PTR_PRM_force_edt = (PRM_force_edt_t*) paramv;
+  real_t sigma = PTR_PRM_force_edt->lj.sigma;
+  real_t epsilon = PTR_PRM_force_edt->lj.epsilon;
+  real_t cut = PTR_PRM_force_edt->cutoff;
+  real_t* shift = PTR_PRM_force_edt->domain;
 
   rpf_t* nrpf[26];
   u8 n;
@@ -110,10 +111,12 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   for(m=0; m<sizeof(real_t)*rpf->atoms; ++m) ((char*)rpf->u)[m]='\0';
 #endif
 
-  real_t sigma = *(real_t*)(paramv+2);
-  real_t epsilon = *(real_t*)(paramv+3);
-  real_t cut = *(real_t*)(paramv+4);
-  real_t* shift = (real_t*)paramv+5;
+  PRM_forcevel_edt_t* PTR_PRM_forcevel_edt = (PRM_forcevel_edt_t*) paramv;
+  real_t ds = PTR_PRM_forcevel_edt->ds;
+  real_t sigma = PTR_PRM_forcevel_edt->sigma;
+  real_t epsilon = PTR_PRM_forcevel_edt->epsilon;
+  real_t cut = PTR_PRM_forcevel_edt->cutoff;
+  real_t* shift = PTR_PRM_forcevel_edt->domain;
 
   rpf_t* nrpf[26];
   u8 n;
@@ -125,10 +128,11 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   simulation_t* sim = (simulation_t*)depv[27].ptr;
 
   ocrGuid_t tmp, tmpg;
-  if(--paramv[0]) {
+  if(--ds) {
+    PTR_PRM_forcevel_edt->ds = ds;
     velocity(rpf, sim->dt);
-    ocrEdtTemplateCreate(&tmp, ljforcevel_edt, 8, 56);
-    ocrEdtCreate(&tmpg, tmp, 8, paramv, 56, NULL, EDT_PROP_NONE, NULL_GUID, (ocrGuid_t*)depv[28].ptr);
+    ocrEdtTemplateCreate(&tmp, ljforcevel_edt, sizeof(PRM_forcevel_edt_t)/sizeof(u64), 56);
+    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)PTR_PRM_forcevel_edt, 56, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), (ocrGuid_t*)depv[28].ptr);
     ocrEdtTemplateDestroy(tmp);
     ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
     for(n=1; n < 28; ++n)
@@ -140,9 +144,11 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     return depv[28].guid;
   }
   else {
-    u64 pv[2]; *((real_t*)pv) = 0.5*sim->dt; pv[1]=paramv[1];
-    ocrEdtTemplateCreate(&tmp, veluk_edt, 2, 2);
-    ocrEdtCreate(&tmpg, tmp, 2, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    PRM_veluk_edt_t PRM_veluk_edt;
+    PRM_veluk_edt.dt = 0.5*sim->dt;
+    PRM_veluk_edt.leaves_g = PTR_PRM_forcevel_edt->leaves_g;
+    ocrEdtTemplateCreate(&tmp, veluk_edt, sizeof(PRM_veluk_edt_t)/sizeof(u64), 2);
+    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)&PRM_veluk_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
     ocrEdtTemplateDestroy(tmp);
     ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
     ocrAddDependence(sim->pot.mass, tmpg, 1, DB_MODE_RO);
@@ -158,7 +164,7 @@ void print_lj(void* po)
   PRINTF("  Potential type   : Lennard-Jones\n");
   PRINTF("  Species name     : Cu\n");
   PRINTF("  Atomic number    : %u\n", p->atomic_no);
-  PRINTF("  Mass             : %.3f amu\n", p->mass / amu2internal_mass);
+  PRINTF("  Mass             : %.3f amu\n", p->massFloat / amu2internal_mass);
   PRINTF("  Lattice Type     : FCC\n");
   PRINTF("  Lattice spacing  : %.3f Angstroms\n", p->lat);
   PRINTF("  Cutoff           : %.3f Angstroms\n", p->cutoff);
@@ -180,9 +186,11 @@ void init_lj(potential_t* p, real_t dt)
   p->print = print_lj;
 
   mass_t* mass_p;
-  ocrDbCreate(&p->mass, (void**)&mass_p, sizeof(mass_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+  ocrDbCreate(&p->mass, (void**)&mass_p, sizeof(mass_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
   mass_p->mass[0] = 63.55 * amu2internal_mass;
   mass_p->inv_mass[0] = 1.0/mass_p->mass[0];
   mass_p->inv_mass_2[0] = 0.5/mass_p->mass[0];
   mass_p->inv_mass_dt[0] = dt/mass_p->mass[0];
+
+  p->massFloat = mass_p->mass[0];
 }
