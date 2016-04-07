@@ -1,0 +1,37 @@
+#!/bin/bash -l
+#SBATCH -p ARG_QUEUE
+#SBATCH -N ARG_NODE_SCALING
+#SBATCH -t ARG_HOUR:ARG_MIN:00
+#SBATCH -J ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGxARG_CORE_SCALING
+#SBATCH -o ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGxARG_CORE_SCALING
+#SBATCH -L SCRATCH
+
+export CC=mpiicc
+export RUN_MODE=runApp
+
+export REPO_TOP=ARG_REPO_TOP
+. ~/xs-tools/jump_mpi_ws ${REPO_TOP}
+
+cd ${REPO_TOP}/apps/apps/Stencil2D/refactored/ocr/intel-channelEVTs
+export OCR_NUM_NODES=ARG_NODE_SCALING
+export CONFIG_NUM_THREADS=ARG_CORE_SCALING
+
+function myroot()
+{
+    local v1=`echo "e(l($1)/$2)" | bc -l`
+    awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'
+}
+
+export SCALING_TYPE="ARG_SCALING_TYPE"
+
+echo "SLURM_JOB_NUM_NODES=${SLURM_JOB_NUM_NODES}"
+if [[ "${SCALING_TYPE}" == "ws" ]]; then
+    scale_factor=`myroot ${SLURM_JOB_NUM_NODES} 2`
+else
+    scale_factor=1
+fi
+
+export NODE_SCALING="ARG_NODE_SCALING"
+export CORE_SCALING="ARG_CORE_SCALING"
+export WORKLOAD_ARGS="$((8640*${scale_factor})) $((${CONFIG_NUM_THREADS}*${OCR_NUM_NODES})) 40"
+./scripts/scaling.sh
