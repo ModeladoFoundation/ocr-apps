@@ -1034,6 +1034,530 @@ int MPI_Get_count(
 }
 
 
+
+// can use other values; could even have as an argument
+#ifndef ARITY
+     #define ARITY 2
+#endif
+
+// Use a tree for collectives
+// "root" of tree is at 0; 2nd level is 0*ARITY+1, 0*ARITY+2, .., 0*ARITY+(ARITY),
+// which is {1,2,..,ARITY}. third level is 1*ARITY+1, 1*ARITY+2, ... which is
+// {ARITY+1, ARITY+2, .. 2*ARITY} {2*ARITY+1, 2*ARITY+2 ..}..{.. ARITY*ARITY}
+
+//  Normally this adjustment occurs inside the computation of parents (subtract 1)
+// or children (start by adding 1, instead of starting at 0).
+//
+// The one complicating factor is that the tree computations expect to be rooted
+// at zero. However, the user can specify a root value. So if the root is not
+// zero, we have to "swap" the behavior of zero and root. But not only when they
+// are the actor, but also when they are the source or dest of one of the other ranks.
+// So there need to be explicit checks for this case.
+//
+// Another approach would be to ALWAYS use 0 as the virtual root, and
+// exchange values with root (bcast: before; reduce: after) so the reight
+// answer is gotten. Some possible complication with MPI_IN_PLACE..
+//
+// The other wrinkle is that the tree is not necessarily complete, so when you
+// look toward the leaves, you need to check that the chhild's value you are
+// expecting is < numRanks. Otherwise you need to behave accordingly. For bcast
+// toward the leaves, you just don't send. For reduce, you don't receive, AND
+// you have to adjust the reduce operation, e.g., leaves don't combine any values
+// from other ranks.
+//
+// The algorithm works for any base for the number of descendents of each tree node:
+// collective base, or ARITY.
+
+#ifndef TREE_REDUCE
+    #define TREE_REDUCE 1
+#endif
+
+#if  TREE_REDUCE
+
+int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
+    MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm)
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+    const u32 maxTag = rankContext->maxTag;
+    const u64 totalSize = count * rankContext->sizeOf[datatype];
+
+    if (root >= numRanks) {
+        MPI_ERROR("MPI_Reduce: root >= group size? invalid rank\n");
+    }
+
+    if (sendbuf == MPI_IN_PLACE) {
+        sendbuf = recvbuf;
+    }
+
+    // If only 1 rank, then copy result to recvbuf and return
+    if (1 == numRanks) {
+        memcpy(recvbuf, sendbuf, totalSize);
+        return MPI_SUCCESS;
+    }
+
+    // swap root and zero (and if root==0, vRank will be 0)
+    const s32 vRank = (root == rank ? 0 : (0 == rank ? root : rank));
+
+    // make vRank signed, so if vRank==0, this divide doesn't become
+    // (uintMax / ARITY)=> huge positive number. If it is signed, it
+    // results in 0.
+    s32 vDest = (vRank - 1) / ARITY;
+
+    // Have to set the real dest to the actual rank for the Send.
+    vDest = ((root == vDest)? 0 : ((0 == vDest)? root : vDest));
+
+    // If this is a leaf rank, there is nothing to recv from children,
+    // so no computation needed. It's a leaf if its first
+    // child is >= numRanks.
+    // The value is still in the sendbuf, so send that and we're done.
+
+    if ((vRank * ARITY + 1) >= numRanks){
+        MPI_Send(sendbuf, count, datatype, vDest, 0 /*tag*/, comm);
+
+#if DEBUG_MPI
+        PRINTF("Reduce: rank#%d leaf sends to %d\n", rank, vDest);
+        fflush(stdout);
+#endif
+
+        return MPI_SUCCESS;
+    }
+
+#if DEBUG_MPI
+    int srcs[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+#endif
+
+    // Initialize recvbuf from sendbuf
+    memcpy(recvbuf, sendbuf, totalSize);
+
+    // make a buffer to receive one child's data
+    char buffer[totalSize];
+    void * p = &buffer;
+
+    // Get the values from your children
+    // Here is the right shift, the +1 by iterating 1..ARITY
+    for (u32 i = 1; i <= ARITY; i++){
+        u32 vSrc = vRank * ARITY + i;
+
+        if (vSrc >= numRanks){
+            // If vSrc is not a tree node, none of the successive
+            // vSrc+1, +2, ... are in the tree, so we can stop
+            break;
+        }
+
+        // root will never be a source; make sure to take the value from 0
+        if (root == vSrc) {
+            vSrc = 0;
+        }
+#if DEBUG_MPI
+        s32 srcs[i-1] = vSrc;
+#endif
+
+        MPI_Recv(p, count, datatype, vSrc, 0 /*tag*/, comm, MPI_STATUS_IGNORE);
+
+        // "Reduce" result into recvbuf
+        //        computeReduction(recvbuf, p, count, datatype, op);
+        int j;
+
+        if (datatype == MPI_INT) {
+            int *a = recvbuf;
+            int *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+            } else if (op == MPI_LAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] && b[j];
+                }
+            } else if (op == MPI_BAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] & b[j];
+                }
+            } else if (op == MPI_LOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] || b[j];
+                }
+            } else if (op == MPI_BOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] | b[j];
+                }
+            } else if (op == MPI_LXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                }
+            } else if (op == MPI_BXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] ^ b[j];
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_LONG) {
+            long *a = recvbuf;
+            long *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+            } else if (op == MPI_LAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] && b[j];
+                }
+            } else if (op == MPI_BAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] & b[j];
+                }
+            } else if (op == MPI_LOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] || b[j];
+                }
+            } else if (op == MPI_BOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] | b[j];
+                }
+            } else if (op == MPI_LXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                }
+            } else if (op == MPI_BXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] ^ b[j];
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_LONG_LONG || datatype == MPI_LONG_LONG_INT) {
+            long long *a = recvbuf;
+            long long *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+            } else if (op == MPI_LAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] && b[j];
+                }
+            } else if (op == MPI_BAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] & b[j];
+                }
+            } else if (op == MPI_LOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] || b[j];
+                }
+            } else if (op == MPI_BOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] | b[j];
+                }
+            } else if (op == MPI_LXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                }
+            } else if (op == MPI_BXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] ^ b[j];
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_UNSIGNED) {
+            unsigned *a = recvbuf;
+            unsigned *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+            } else if (op == MPI_LAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] && b[j];
+                }
+            } else if (op == MPI_BAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] & b[j];
+                }
+            } else if (op == MPI_LOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] || b[j];
+                }
+            } else if (op == MPI_BOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] | b[j];
+                }
+            } else if (op == MPI_LXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                }
+            } else if (op == MPI_BXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] ^ b[j];
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_UNSIGNED_LONG) {
+            unsigned long *a = recvbuf;
+            unsigned long *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+            } else if (op == MPI_LAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] && b[j];
+                }
+            } else if (op == MPI_BAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] & b[j];
+                }
+            } else if (op == MPI_LOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] || b[j];
+                }
+            } else if (op == MPI_BOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] | b[j];
+                }
+            } else if (op == MPI_LXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                }
+            } else if (op == MPI_BXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] ^ b[j];
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_UNSIGNED_LONG_LONG) {
+            unsigned long long *a = recvbuf;
+            unsigned long long *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+            } else if (op == MPI_LAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] && b[j];
+                }
+            } else if (op == MPI_BAND) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] & b[j];
+                }
+            } else if (op == MPI_LOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] || b[j];
+                }
+            } else if (op == MPI_BOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] | b[j];
+                }
+            } else if (op == MPI_LXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j] && b[j]) || (!a[j] && !b[j]);
+                }
+            } else if (op == MPI_BXOR) {
+                for(j=0;j<count;j++) {
+                    a[j] = a[j] ^ b[j];
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_FLOAT) {
+            float *a = recvbuf;
+            float *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+                // no LAND/BAND/LOR/BOR/LXOR/BXOR
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_DOUBLE) {
+            double *a = recvbuf;
+            double *b = p;
+            if (op == MPI_SUM) {
+                for(j=0;j<count;j++) {
+                    a[j] += b[j];
+                }
+            } else if (op == MPI_MIN) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]>b[j]) ? b[j] : a[j];
+                }
+            } else if (op == MPI_MAX) {
+                for(j=0;j<count;j++) {
+                    a[j] = (a[j]<b[j]) ? b[j] : a[j];
+                }
+                // no MINLOC/MAXLOC
+            } else if (op == MPI_PROD) {
+                for(j=0;j<count;j++) {
+                    a[j] *= b[j];
+                }
+                // no LAND/BAND/LOR/BOR/LXOR/BXOR
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else if (datatype == MPI_DOUBLE_INT) {
+            double_int *a = recvbuf;
+            double_int *b = p;
+            if (op == MPI_MINLOC) {
+                for(j=0;j<count;j++) {
+                    if (a[j].a > b[j].a) {
+                        a[j].a = b[j].a;
+                        a[j].b = b[j].b;
+                    } else if (a[j].a == b[j].a) {  // get min index if equals
+                        if (a[j].b > b[j].b)
+                            a[j].b = b[j].b;
+                    }
+                }
+            } else if (op == MPI_MAXLOC) {
+                for(j=0;j<count;j++) {
+                    if (a[j].a < b[j].a) {
+                        a[j].a = b[j].a;
+                        a[j].b = b[j].b;
+                    } else if (a[j].a == b[j].a) {  // get min index if equal
+                        if (a[j].b > b[j].b)
+                            a[j].b = b[j].b;
+                    }
+                }
+            } else {
+                char msg[100];
+                sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+                MPI_ERROR(msg);
+            }
+        } else {
+            char msg[100];
+            sprintf((char *)&msg, "MPI_Reduce: Unsupported MPI_Op: %d, type: %d\n", op, datatype);
+            MPI_ERROR(msg);
+        }
+    }
+
+    if (rank != root){
+        MPI_Send(recvbuf, count, datatype, vDest, 0 /*tag*/, comm);
+    }
+
+
+#if DEBUG_MPI
+        PRINTF("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest
+               srcs[0], srcs[1], srcs[2], srcs[3]);
+        fflush(stdout);
+#endif
+
+    return MPI_SUCCESS;
+}
+
+#else // ! TREE_REDUCE
+
+// send directly to root
 int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
     MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm)
 {
@@ -1456,6 +1980,8 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
     return MPI_SUCCESS;
 }
 
+#endif // TREE_REDUCE
+
 #define ALLREDUCE_ROOT 0
 int MPI_Allreduce ( void *sendbuf, void *recvbuf, int count,
                     MPI_Datatype datatype, MPI_Op op, MPI_Comm comm )
@@ -1472,7 +1998,70 @@ int MPI_Allreduce ( void *sendbuf, void *recvbuf, int count,
 }
 
 
-#if 1   // this works
+#ifndef TREE_BCAST
+    #define  TREE_BCAST 1
+#endif
+
+#if TREE_BCAST
+
+int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
+               MPI_Comm comm )
+{
+    rankContextP_t rankContext = getRankContext();
+    const u32 rank = rankContext->rank;
+    const u32 numRanks = rankContext->numRanks;
+
+    //PRINTF("MPI_Bcast buffer %p, count %d, type %d, rank %d\n", buffer,
+    //       count, datatype, rank);
+
+    if (numRanks == 1)  // e.g. comm_self
+        return MPI_SUCCESS;
+
+    if (root >= numRanks) {
+        MPI_ERROR("MPI_Bcast: root >= group size? invalid rank\n");
+    }
+
+    // swap root and zero (and if root==0, vRank will be 0)
+    const u32 vRank = ((root == rank) ? 0 : (0 == rank ? root : rank));
+
+    // vRank 0 gets the value in buffer in the arg list; everyone else
+    // has to receive it from the parent.
+    if (vRank != 0) {
+        u32 sender = (vRank - 1) / ARITY;
+        u32 vSender = ((root == sender) ? 0 : (0 == sender ? root : sender));
+
+        MPI_Recv(buffer, count, datatype, vSender, 0 /* tag */, comm, MPI_STATUS_IGNORE);
+    }
+
+    // Now send it to your children
+    // Here is the right shift, the +1 by iterating 1..ARITY
+    // vDest will never be computed as 0, always starts at least at 1
+    for (u32 i = 1; i <= ARITY; i++){
+        u32 vDest = vRank * ARITY + i;
+
+        // Is vDest still "in" the tree?
+        if (vDest >= numRanks){
+            // If vDest is not a tree node, none of the successive
+            // vDest+1, +2, ... are in the tree, so we can stop
+            break;
+        }
+
+        // root already has the buffer, make sure to send buffer to zero instead!
+        if (root == vDest) {
+            vDest = 0;
+        }
+
+        MPI_Send(buffer, count, datatype, vDest, 0 /* tag */, comm);
+    }
+
+    return MPI_SUCCESS;
+}
+
+
+#else // non TREE_BCAST: root sends to everyone
+
+    #if 1   // this works
+
 int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
                MPI_Comm comm )
 {
@@ -1505,7 +2094,9 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     }
     return MPI_SUCCESS;
 }
-#else  //this works, too.
+
+    #else  //this works, too.
+
 int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
                MPI_Comm comm )
 {
@@ -1544,8 +2135,8 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     }
     return MPI_SUCCESS;
 }
-#endif
-
+    #endif
+#endif // TREE_BCAST
 
 int MPI_Barrier(MPI_Comm comm)
 {
