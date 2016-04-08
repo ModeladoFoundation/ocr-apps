@@ -1,6 +1,8 @@
 #include <math.h>
 #include <ocr.h>
 
+#include "extensions/ocr-affinity.h"
+
 #include "comd.h"
 #include "command.h"
 #include "timers.h"
@@ -80,16 +82,64 @@ u8 init_simulation( command_t* cmd_p, simulation_t* sim_p, mdtimer_t* timer_p )
   ocrDbCreate( &sim_p->boxes.box, (void**)&box_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
   ocrDbCreate( &sim_p->boxes.rpf, (void**)&rpf_p, sizeof(ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
-  //TODO: Use affinity hints here to distribute the datablocks across policy domains
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+    s64 affinityCount;
+    ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    ocrGuid_t DBK_affinityGuids;
+    ocrGuid_t* PTR_affinityGuids;
+    ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
+                 DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ); //Get all the available Policy Domain affinity guids
+    ASSERT( affinityCount >= 1 );
+    PRINTF("Using affinity API\n");
+    s64 PD_X, PD_Y, PD_Z;
+    splitDimension(affinityCount, &PD_X, &PD_Y, &PD_Z); //Split available PDs into a 3-D grid
+#else
+    PRINTF("NOT Using affinity API\n");
+#endif
+
   u32 b;
-  for( b=0; b<sim_p->boxes.boxes_num; ++b ) {
+  u32* grid = sim_p->boxes.grid;
+  for( b=0; b<sim_p->boxes.boxes_num; ++b )
+  {
+#ifdef ENABLE_EXTENSION_AFFINITY
+        int id_x = (b/grid[0])/grid[1];
+        s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
+
+        int id_y = (b/grid[0])%grid[1];
+        s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
+
+        int id_z = b%grid[0];
+        s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
+
+        //Each linkcell, with id=b, is mapped to a PD. The mapping similar to how the link cells map to
+        //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
+        //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
+
+        int pd = globalRankFromCoords(pd_z, pd_y, pd_x, PD_X, PD_Y, PD_Z);
+        //PRINTF("box %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+        PDaffinityGuid = PTR_affinityGuids[pd];
+        //PDaffinityGuid = NULL_GUID;
+        ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
     void* ptr;
-    ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NO_ACQUIRE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
-    ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NO_ACQUIRE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    //ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NO_ACQUIRE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
+    //ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NO_ACQUIRE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
+    ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC ); //TODO:DB_PROP_NO_ACQUIRE results in a hang with affinity hints
+    ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
   }
 
   ocrDbRelease( sim_p->boxes.box );
   ocrDbRelease( sim_p->boxes.rpf );
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+  ocrDbDestroy( DBK_affinityGuids );
+#endif
 
   return 0;
 }
@@ -130,13 +180,24 @@ u64 mk_seed( u32 i, u32 c )
 //depv: rpf, mass
 ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+    ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
   PRM_ukvel_edt_t* PTR_PRM_ukvel_edt = (PRM_ukvel_edt_t*) paramv;
 
   real_t dt = PTR_PRM_ukvel_edt->dt;
   ocrGuid_t uleaf = PTR_PRM_ukvel_edt->uleaf;
 
   ocrGuid_t uk_g; real_t* uk_p;
-  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
   uk_p[0] = uk_p[1] = 0;
 
   rpf_t* rpf = (rpf_t*)depv[0].ptr;
@@ -162,6 +223,17 @@ ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 //depv: rpf, mass
 ocrGuid_t veluk_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+    ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
   PRM_veluk_edt_t* PTR_veluk_edt = (PRM_veluk_edt_t*) paramv;
 
   real_t dt = PTR_veluk_edt->dt;
@@ -170,7 +242,7 @@ ocrGuid_t veluk_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   rpf_t* rpf = (rpf_t*)depv[0].ptr;
   mass_t* mass = (mass_t*)depv[1].ptr;
   ocrGuid_t uk_g; real_t* uk_p;
-  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+  ocrDbCreate( &uk_g, (void**)&uk_p, sizeof(real_t)*2, DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC);
   uk_p[0] = uk_p[1]= 0;
 
   u8 a;
@@ -216,6 +288,17 @@ ocrGuid_t temp_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 //depv: reduction, rpf, mass
 ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+    ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
   PRM_vcm_edt_t* PTR_PRM_vcm_edt = (PRM_vcm_edt_t*) paramv;
 
   ocrGuid_t tleaf = PTR_PRM_vcm_edt->tleaf;
@@ -225,7 +308,7 @@ ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   rpf_t* rpf = (rpf_t*)depv[1].ptr;
   mass_t* mass = (mass_t*)depv[2].ptr;
   ocrGuid_t ek_g; real_t* ek_p;
-  ocrDbCreate( &ek_g, (void**)&ek_p, sizeof(real_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+  ocrDbCreate( &ek_g, (void**)&ek_p, sizeof(real_t), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
   *ek_p = 0;
 
   u32 a;
@@ -248,6 +331,16 @@ ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 //{ sim_g<RO>, mass_g<RW>, reduction_g<RW>, ibox_g<RW>, irpf_g<RW>, sched0<RW>, sched1<RW>, ..., sched25<RW>, sched26<RO>, rb_g<RO> }
 ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+    ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
     PRM_FNC_init_t* PTR_PRM_FNC_init = (PRM_FNC_init_t*) paramv;
 
     u32* coords = PTR_PRM_FNC_init->coords;
@@ -277,6 +370,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t* rbp = (ocrGuid_t*)depv[32].ptr;
 
     rpf_p->box = ibox_g;
+    //PRINTF("%s %d %d %d\n", __func__, coords[0], coords[1], coords[2]);
 
 #ifndef TG_ARCH
   memset( box_p,0,sizeof(box_t)); memset(rpf_p,0,sizeof(rpf_t));
@@ -322,7 +416,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
   ocrGuid_t vcm_g;
   real_t* vcm_p;
-  ocrDbCreate( &vcm_g, (void**)&vcm_p, sizeof(real_t)*4+sizeof(u64), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+  ocrDbCreate( &vcm_g, (void**)&vcm_p, sizeof(real_t)*4+sizeof(u64), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
 #ifndef TG_ARCH
   memset( vcm_p,0,sizeof(real_t)*4+sizeof(u64));
 #else
@@ -363,7 +457,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
   ocrGuid_t fin;
   ocrEdtTemplateCreate( &tmp,temp_edt,0,3 );
-  ocrEdtCreate( &edt, tmp, 0, NULL, 3, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &fin );
+  ocrEdtCreate( &edt, tmp, 0, NULL, 3, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), &fin );
   ocrAddDependence( irpf_g, edt, 1, DB_MODE_RW );
   ocrAddDependence( sched26_g, edt, 2, DB_MODE_RO );
   ocrEdtTemplateDestroy( tmp );
@@ -374,7 +468,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   PRM_vcm_edt.EDT_sched = edt;
 
   ocrEdtTemplateCreate( &tmp,vcm_edt,sizeof(PRM_vcm_edt_t)/sizeof(u64),3 );
-  ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_vcm_edt, 3, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
+  ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_vcm_edt, 3, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL );
   ocrAddDependence( reductionH_p->OEVT_reduction, edt, 0, DB_MODE_RO );
   ocrAddDependence( irpf_g, edt, 1, DB_MODE_RW );
   ocrAddDependence( mass_g, edt, 2, DB_MODE_RO );
@@ -392,7 +486,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     ocrGuid_t tfin=fin;
     ocrEdtTemplateCreate( &tmp,sim_p->pot.force_edt,sizeof(PRM_force_edt_t)/sizeof(u64),27 );
-    ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_force_edt, 27, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &fin );
+    ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_force_edt, 27, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), &fin );
     ocrAddDependence( tfin, edt, 0, DB_MODE_RW );
     ocrEdtTemplateDestroy( tmp );
   }
@@ -412,7 +506,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   PRM_ukvel_edt.uleaf = uleaf;
 
   ocrEdtTemplateCreate( &tmp,ukvel_edt,sizeof(PRM_ukvel_edt_t)/sizeof(u64),2 );
-  ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_ukvel_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
+  ocrEdtCreate( &edt, tmp, EDT_PARAM_DEF, (u64*)&PRM_ukvel_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL );
   ocrEdtTemplateDestroy( tmp );
   ocrAddDependence( fin, edt, 0, DB_MODE_RW );
   ocrAddDependence( mass_g, edt, 1, DB_MODE_RO );
@@ -444,10 +538,52 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   ocrGuid_t sch_g, *sch_p;
   ocrDbCreate( &sch_g, (void**)&sch_p, sizeof( ocrGuid_t)*sim_p->boxes.boxes_num, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
 
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+    s64 affinityCount;
+    ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    ocrGuid_t DBK_affinityGuids;
+    ocrGuid_t* PTR_affinityGuids;
+    ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
+                 DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ) //Get all the available Policy Domain affinity guids;
+    ASSERT( affinityCount >= 1 );
+    //PRINTF("Using affinity API\n");
+    s64 PD_X, PD_Y, PD_Z;
+    splitDimension(affinityCount, &PD_X, &PD_Y, &PD_Z); //Split available PDs into a 3-D grid
+#else
+    //PRINTF("NOT Using affinity API\n");
+#endif
+
   u32 b; void* p;
-  //TODO: affinity hints here
-  for( b=0; b < sim_p->boxes.boxes_num; ++b )
-    ocrDbCreate( sch_p+b, &p, sizeof(ocrGuid_t)*26, DB_PROP_NO_ACQUIRE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+  for( b=0; b<sim_p->boxes.boxes_num; ++b )
+  {
+#ifdef ENABLE_EXTENSION_AFFINITY
+        int id_x = (b/grid[0])/grid[1];
+        s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
+
+        int id_y = (b/grid[0])%grid[1];
+        s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
+
+        int id_z = b%grid[0];
+        s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
+
+        //Each linkcell, with id=b, is mapped to a PD. The mapping similar to how the link cells map to
+        //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
+        //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
+        //
+        int pd = globalRankFromCoords(pd_z, pd_y, pd_x, PD_X, PD_Y, PD_Z);
+        //PRINTF("box %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+        PDaffinityGuid = PTR_affinityGuids[pd];
+        ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+    //ocrDbCreate( sch_p+b, &p, sizeof(ocrGuid_t)*26, DB_PROP_NO_ACQUIRE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC ); //TODO: DB_PROP_NO_ACQUIRE issue
+    ocrDbCreate( sch_p+b, &p, sizeof(ocrGuid_t)*26, DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
+  }
 
   reductionH_t* reductionH_p;
   ocrDbCreate( &sim_p->reductionH_g, (void**)&reductionH_p, sizeof(reductionH_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
@@ -487,7 +623,11 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   PRM_FNC_init.delta = delta;
   PRM_FNC_init.temperature = temperature;
 
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+
   u32 ijk[3];
+  PDaffinityGuid = NULL_GUID;
 
   u32 leaf = 0;
   for( ijk[0]=0; ijk[0]<grid[0]; ++ijk[0] )
@@ -500,17 +640,23 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     PRM_FNC_init.tleaf = leaves_p[leaf+sim_p->boxes.boxes_num]; //tred_leaf
     PRM_FNC_init.uleaf = leaves_p[leaf+sim_p->boxes.boxes_num*2]; //ured_leaf
 
-    ocrEdtCreate( &EDT_init, tmp, EDT_PARAM_DEF, (u64*)&PRM_FNC_init, 33, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL );
+#ifdef ENABLE_EXTENSION_AFFINITY
+        u64 count = 1;
+        ocrAffinityQuery(box_p[leaf], &count, &PDaffinityGuid);
+        ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+        ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
+    ocrEdtCreate( &EDT_init, tmp, EDT_PARAM_DEF, (u64*)&PRM_FNC_init, 33, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL );
 
     ocrAddDependence( sim_g, EDT_init, 0, DB_MODE_RO );
-    ocrAddDependence( sim_p->pot.mass, EDT_init, 1, DB_MODE_RW );
-    ocrAddDependence( sim_p->reductionH_g, EDT_init, 2, DB_MODE_RW );
+    ocrAddDependence( sim_p->pot.mass, EDT_init, 1, DB_MODE_RO );
+    ocrAddDependence( sim_p->reductionH_g, EDT_init, 2, DB_MODE_RO );
     ocrAddDependence( box_p[leaf], EDT_init, 3, DB_MODE_RW );
     ocrAddDependence( rpf_p[leaf], EDT_init, 4, DB_MODE_RW );
 
     ocrGuid_t rb; ocrGuid_t* rbp;
-    //TODO: affinity hints here?
-    ocrDbCreate( &rb, (void**)&rbp, sizeof(ocrGuid_t)*52, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrDbCreate( &rb, (void**)&rbp, sizeof(ocrGuid_t)*52, DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
 
     for( b=0; b < 26; ++b ) {
       u32 n = neighbor_id(b,ijk,grid);
@@ -531,6 +677,9 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
   ocrDbDestroy( leaves_g );
   ocrDbDestroy( sch_g );
+#ifdef ENABLE_EXTENSION_AFFINITY
+  ocrDbDestroy( DBK_affinityGuids );
+#endif
 
   return NULL_GUID;
 }

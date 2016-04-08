@@ -1,6 +1,8 @@
 #include <string.h>
 #include <ocr.h>
 
+#include "extensions/ocr-affinity.h"
+
 #include "comd.h"
 #include "constants.h"
 #include "potentials.h"
@@ -101,6 +103,14 @@ ocrGuid_t ljforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //depv: rpf0, .., rpf26, sim, nextff, signals0, .., signals26
 ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
   rpf_t* rpf = (rpf_t*)depv[0].ptr;
 #ifndef TG_ARCH
   memset(rpf->f,0,sizeof(real3_t)*rpf->atoms);
@@ -132,7 +142,7 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PTR_PRM_forcevel_edt->ds = ds;
     velocity(rpf, sim->dt);
     ocrEdtTemplateCreate(&tmp, ljforcevel_edt, sizeof(PRM_forcevel_edt_t)/sizeof(u64), 56);
-    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)PTR_PRM_forcevel_edt, 56, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), (ocrGuid_t*)depv[28].ptr);
+    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)PTR_PRM_forcevel_edt, 56, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), (ocrGuid_t*)depv[28].ptr);
     ocrEdtTemplateDestroy(tmp);
     ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
     for(n=1; n < 28; ++n)
@@ -148,7 +158,7 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PRM_veluk_edt.dt = 0.5*sim->dt;
     PRM_veluk_edt.leaves_g = PTR_PRM_forcevel_edt->leaves_g;
     ocrEdtTemplateCreate(&tmp, veluk_edt, sizeof(PRM_veluk_edt_t)/sizeof(u64), 2);
-    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)&PRM_veluk_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)&PRM_veluk_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL);
     ocrEdtTemplateDestroy(tmp);
     ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
     ocrAddDependence(sim->pot.mass, tmpg, 1, DB_MODE_RO);

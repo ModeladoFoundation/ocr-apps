@@ -270,3 +270,53 @@ ocrGuid_t end_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   return NULL_GUID;
 }
+
+void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id)
+{
+    s64 N = ub_g - lb_g + 1;
+    s64 s, e;
+
+    s64 r;
+
+    for( r = 0; r < R; r++ )
+    {
+        s = r*N/R + lb_g;
+        e = (r+1)*N/R + lb_g - 1;
+        if( s <= i && i <= e )
+            break;
+    }
+
+    *id = r;
+}
+
+void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_procsz)
+{
+    s64 nx, ny, nz;
+
+    nx = (int) pow(Num_procs+1,0.33);
+    for(; nx>0; nx--)
+    {
+        if (!(Num_procs%nx))
+        {
+            ny = Num_procs/nx;
+            break;
+        }
+    }
+    *Num_procsx = nx;
+
+    Num_procs = Num_procs/nx;
+
+    ny = (int) sqrt(Num_procs+1);
+    for(; ny>0; ny--)
+    {
+        if (!(Num_procs%nx))
+        {
+            nz = Num_procs/ny;
+            break;
+        }
+    }
+
+    *Num_procsy = ny;
+
+    *Num_procsz = Num_procs/(*Num_procsy);
+}

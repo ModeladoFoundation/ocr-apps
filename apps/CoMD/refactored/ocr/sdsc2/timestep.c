@@ -1,6 +1,8 @@
 #include <math.h>
 #include <ocr.h>
 
+#include "extensions/ocr-affinity.h"
+
 #include "comd.h"
 #include "command.h"
 #include "timers.h"
@@ -15,7 +17,7 @@ static ocrGuid_t exchange_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 //depv: timer, sim, mass, boxs, rpfs
 ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-
+  //PRINTF("%s\n",__func__);
   PRM_period_edt_t* PTR_PRM_period_edt = (PRM_period_edt_t*) paramv;
 
   ocrGuid_t timer_g = depv[0].guid;
@@ -87,29 +89,44 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrEdtTemplateCreate(&tmpf, sim_p->pot.forcevel_edt, sizeof(PRM_forcevel_edt_t)/sizeof(u64), 56);
   ocrEdtTemplateCreate(&tmpx, exchange_edt, 1, 2);
 
-
-  u32 b;
   ocrGuid_t* pe = leaves_p+sim_p->boxes.boxes_num;
   ocrGuid_t* fe = pe+sim_p->boxes.boxes_num;
   ocrGuid_t* pf = fe+sim_p->boxes.boxes_num;
   ocrGuid_t* ff = pf+sim_p->boxes.boxes_num;
-  for(b = 0; b < sim_p->boxes.boxes_num; ++b)
+
+  //TODO: affinity hints here
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+    ocrHint_t HNT_db;
+    ocrHintInit( &HNT_db, OCR_HINT_DB_T );
+
+  //TODO: Use affinity hints here to distribute the datablocks across policy domains
+  u32 b;
+  for( b=0; b<sim_p->boxes.boxes_num; ++b )
   {
+#ifdef ENABLE_EXTENSION_AFFINITY
+        u64 count = 1;
+        ocrAffinityQuery(boxes_p[b], &count, &PDaffinityGuid);
+        ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+        ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
     ocrGuid_t EDT_exchange;
     PRM_position_edt.boxes_g = boxes_p[b];
-    ocrEdtCreate(&EDT_exchange, tmpx, 1, (u64*) &ds, 2, NULL, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), pf+b);
+    ocrEdtCreate(&EDT_exchange, tmpx, 1, (u64*) &ds, 2, NULL, EDT_PROP_FINISH, PICK_1_1(&HNT_edt,PDaffinityGuid), pf+b);
     PRM_position_edt.EDT_exchange = EDT_exchange;
 
-    ocrEdtCreate(pe+b, tmpp, EDT_PARAM_DEF, (u64*)&PRM_position_edt, 29, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+    ocrEdtCreate(pe+b, tmpp, EDT_PARAM_DEF, (u64*)&PRM_position_edt, 29, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL);
     ocrAddDependence(rpfs_p[b], pe[b], 0, DB_MODE_RW);
     ocrAddDependence(mass_g, pe[b], 1, DB_MODE_RO);
 
     ocrGuid_t* ffp;
-    ocrDbCreate(ff+b, (void**)&ffp, sizeof(ocrGuid_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+    ocrDbCreate(ff+b, (void**)&ffp, sizeof(ocrGuid_t), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC);
 
     PRM_forcevel_edt.leaves_g = leaves_p[b];
 
-    ocrEdtCreate(fe+b, tmpf, EDT_PARAM_DEF, (u64*)&PRM_forcevel_edt, 56, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), ffp);
+    ocrEdtCreate(fe+b, tmpf, EDT_PARAM_DEF, (u64*)&PRM_forcevel_edt, 56, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), ffp);
     ocrDbRelease(ff[b]);
 
     ocrAddDependence(rpfs_p[b], fe[b], 0, DB_MODE_RW);
@@ -158,6 +175,14 @@ void velocity(rpf_t* rpf, real_t dt)
 //depv: rpf0, mass, ff0, .., ff26
 ocrGuid_t position_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
   PRM_position_edt_t* PTR_PRM_position_edt = (PRM_position_edt_t*) paramv;
   real_t ds = PTR_PRM_position_edt->ds;
   real_t dt = PTR_PRM_position_edt->dt;
@@ -179,10 +204,10 @@ ocrGuid_t position_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   if(--ds) {
     PTR_PRM_position_edt->ds = ds;
     ocrEdtTemplateCreate(&tmp, exchange_edt, 1, 2);
-    ocrEdtCreate(&PTR_PRM_position_edt->EDT_exchange, tmp, 1, (u64*)&ds, 2, NULL, EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &rpf->nextpf);
+    ocrEdtCreate(&PTR_PRM_position_edt->EDT_exchange, tmp, 1, (u64*)&ds, 2, NULL, EDT_PROP_FINISH, PICK_1_1(&HNT_edt,PDaffinityGuid), &rpf->nextpf);
     ocrEdtTemplateDestroy(tmp);
     ocrEdtTemplateCreate(&tmp, position_edt, sizeof(PRM_position_edt_t)/sizeof(u64), 29);
-    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)PTR_PRM_position_edt, 29, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+    ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)PTR_PRM_position_edt, 29, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL);
     ocrEdtTemplateDestroy(tmp);
     ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
     ocrAddDependence(depv[1].guid, tmpg, 1, DB_MODE_RO);
@@ -237,6 +262,14 @@ ocrGuid_t move_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //depv: rpf0, box0
 ocrGuid_t exchange_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+    ocrGuid_t PDaffinityGuid = NULL_GUID;
+    ocrHint_t HNT_edt;
+    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetCurrent(&PDaffinityGuid);
+    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
   rpf_t* rpf = (rpf_t*)depv[0].ptr;
   box_t* box = (box_t*)depv[1].ptr;
   u32 x=0;
@@ -268,7 +301,7 @@ ocrGuid_t exchange_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrEdtTemplateCreate(&tmp, move_edt, 0, 4);
   for(f=0; f<26; ++f)
     if((1<<f)&x) {
-      ocrEdtCreate(&edtg, tmp, 0, NULL, 4, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+      ocrEdtCreate(&edtg, tmp, 0, NULL, 4, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL);
       ocrAddDependence(depv[0].guid, edtg, 0, DB_MODE_EW);
       ocrAddDependence(depv[1].guid, edtg, 1, DB_MODE_EW);
       ocrAddDependence(rpfs[f], edtg, 2, DB_MODE_EW);

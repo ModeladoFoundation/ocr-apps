@@ -2,9 +2,13 @@
 #define COMD_H
 
 #include <string.h>
+#include <math.h>
 #include <ocr.h>
 
 #include "constants.h"
+
+void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id);
+void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_procsz);
 
 typedef double real_t;
 typedef real_t real3_t[3];
@@ -237,6 +241,11 @@ static inline u32 neighbor_id(u8 n, u32* coordinates, u32* grid)
   c[0] = (c[0]+grid[0]-1+n)%grid[0];
 
   return (c[0]*grid[1]+c[1])*grid[2]+c[2];
+}
+
+static inline int globalRankFromCoords( int id_x, int id_y, int id_z, int NR_X, int NR_Y, int NR_Z )
+{
+    return NR_X*NR_Y*id_z + NR_X*id_y + id_x;
 }
 
 #endif
