@@ -117,6 +117,24 @@ namespace LegionRuntime {
     {
     }
 
+#ifdef USE_OCR_LAYER
+
+    ocrGuid_t DmaRequest::ocr_realm_perform_dma_edt_t = NULL_GUID;
+
+    ocrGuid_t ocr_realm_perform_dma_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[]);
+
+  /*static*/ void DmaRequest::static_init(void)
+  {
+    //create the dma conversion edt template
+    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, 0, 1);
+  }
+
+  /*static*/ void DmaRequest::static_destroy(void)
+  {
+    //delete the dma conversion edt template
+    ocrEdtTemplateDestroy(DmaRequest::ocr_realm_perform_dma_edt_t);
+  }
+#endif
 
   ////////////////////////////////////////////////////////////////////////
   //
@@ -154,7 +172,9 @@ namespace LegionRuntime {
 
       size_t compute_size(void) const;
       void serialize(void *buffer);
-
+#ifdef USE_OCR_LAYER
+      virtual Event check_readiness() {return Event::NO_EVENT;}
+#endif
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq);
 
       void perform_dma_mask(MemPairCopier *mpc);
@@ -197,6 +217,9 @@ namespace LegionRuntime {
       size_t compute_size(void);
       void serialize(void *buffer);
 
+#ifdef USE_OCR_LAYER
+      virtual Event check_readiness() {return Event::NO_EVENT;}
+#endif
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq);
 
       void perform_dma_mask(MemPairCopier *mpc);
@@ -239,6 +262,9 @@ namespace LegionRuntime {
       size_t compute_size(void);
       void serialize(void *buffer);
 
+#ifdef USE_OCR_LAYER
+      virtual Event check_readiness();
+#endif
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq);
 
       virtual void perform_dma(void);
@@ -3914,6 +3940,43 @@ namespace LegionRuntime {
       clear_profiling();
     }
 
+#ifdef USE_OCR_LAYER
+    ocrGuid_t ocr_realm_perform_dma_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+    {
+      assert(argc == 0 && depc == 1);
+
+      //The type should be a switch-case based on argv[0]
+      DmaRequest *r;
+      r = (FillRequest *)depv[0].ptr;
+
+      r->perform_dma();
+      ocrDbDestroy(depv[0].guid);
+      return NULL_GUID;
+   }
+
+    Event FillRequest::check_readiness()
+    {
+      ocrGuid_t db_guid;
+      void *this_copy;
+      ocrDbCreate(&db_guid, (void **)(&this_copy), sizeof(*this), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+      memcpy(this_copy, this, sizeof(*this));
+
+      //invoke the Edt that calls perform_dma
+      ocrGuid_t ocr_realm_perform_dma_edt, out_ocr_realm_perform_dma_edt, persistent_evt_guid;
+      ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t, EDT_PARAM_DEF,
+        NULL, EDT_PARAM_DEF, &db_guid,
+        EDT_PROP_NONE, NULL_GUID, &out_ocr_realm_perform_dma_edt);
+
+      //create another persistent event and attach it to the edt since legacy_block_progress needs persistent event
+      //should change after Event reorganization
+      ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+      ocrAddDependence(out_ocr_realm_perform_dma_edt, persistent_evt_guid, 0, DB_MODE_RO);
+      Event finish_event = ID(ID::ID_EVENT, gasnet_mynode(), 0).convert<Event>();
+      finish_event.evt_guid = persistent_evt_guid;
+      return finish_event;
+    }
+#endif
+
     bool FillRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
       if(state == STATE_INIT)
@@ -4006,6 +4069,9 @@ namespace LegionRuntime {
           (mem_kind == MemoryImpl::MKIND_ZEROCOPY) ||
           (mem_kind == MemoryImpl::MKIND_RDMA) ||
           (mem_kind == MemoryImpl::MKIND_GPUFB) ||
+#ifdef USE_OCR_LAYER
+          (mem_kind == MemoryImpl::MKIND_OCR) ||
+#endif
           (mem_kind == MemoryImpl::MKIND_ZEROCOPY))
       {
         switch (domain.get_dim()) {
@@ -4271,15 +4337,28 @@ namespace Realm {
       for (std::vector<CopySrcDstField>::const_iterator it = dsts.begin();
             it != dsts.end(); it++)
       {
+#ifdef USE_OCR_LAYER
+        Event ev;
+#else
         Event ev = GenEventImpl::create_genevent()->current_event();
+#endif
+
         FillRequest *r = new FillRequest(*this, *it, fill_value,
                                          fill_value_size, wait_on,
                                          ev, 0/*priority*/, requests);
         Memory mem = it->inst.get_location();
         int node = ID(mem).node();
         if (((unsigned)node) == gasnet_mynode()) {
+#ifdef USE_OCR_LAYER
+//this should go away after Event reorganization
+          ev = r->check_readiness();
+#else
           r->check_readiness(false, dma_queue);
+#endif
         } else {
+#ifdef USE_OCR_LAYER
+          assert(false);
+#endif
           RemoteFillArgs args;
           args.inst = it->inst;
           args.offset = it->offset;
@@ -4297,7 +4376,11 @@ namespace Realm {
         }
         finish_events.insert(ev);
       }
+#ifdef USE_OCR_LAYER
+      return OCREventImpl::merge_events(finish_events);
+#else
       return GenEventImpl::merge_events(finish_events);
+#endif
     }
     
     Event Domain::copy(RegionInstance src_inst, RegionInstance dst_inst,

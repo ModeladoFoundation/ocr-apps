@@ -248,7 +248,7 @@ void top_level_task(const void *args, size_t arglen,
   done_verify.wait();
 }
 
-int app_main(int argc, char **argv)
+int legion_ocr_main(int argc, char **argv)
 {
   Runtime rt;
 
@@ -289,21 +289,4 @@ int app_main(int argc, char **argv)
   
   return 0;
 }
-
-#ifdef __cplusplus
-extern "C"{
-#endif
-ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
-{
-  int argc = getArgc(depv[0].ptr), i;
-  char *argv[argc];
-  for(i=0;i<argc;i++)
-    argv[i] = getArgv(depv[0].ptr, i);
-
-  int ret = app_main(argc, argv);
-  return ret;
-}
-#ifdef __cplusplus
-}
-#endif
 

@@ -19,6 +19,10 @@
 #include "lowlevel_impl.h"
 #include "activemsg.h"
 
+#ifdef USE_OCR_LAYER
+#include "ocr.h"
+#endif
+
 namespace Realm {
   class CoreReservationSet;
 };
@@ -97,6 +101,12 @@ namespace LegionRuntime {
 
       virtual ~DmaRequest(void);
 
+#ifdef USE_OCR_LAYER
+      static ocrGuid_t ocr_realm_perform_dma_edt_t;
+      static void static_init(void);
+      static void static_destroy(void);
+      virtual Event check_readiness() = 0; //This api should be removed after event refactoring
+#endif
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq) = 0;
 
       virtual bool handler_safe(void) = 0;

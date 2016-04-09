@@ -537,6 +537,7 @@ namespace Realm {
 
       OCREventImpl::static_init();
       OCRProcessor::static_init();
+      LegionRuntime::LowLevel::DmaRequest::static_init();
       //create the nodes which contains processors and memory 
       nodes = new Node[gasnet_nodes()];
       Node *n = &nodes[gasnet_mynode()];
@@ -1623,6 +1624,7 @@ namespace Realm {
     OCREventImpl::wait(ocr_shutdown_guid);
     OCREventImpl::static_destroy();
     OCRProcessor::static_destroy();
+    LegionRuntime::LowLevel::DmaRequest::static_destroy();
 
     // delete processors, memories, nodes, etc.
     {
@@ -2006,3 +2008,32 @@ namespace Realm {
 
   
 }; // namespace Realm
+
+#ifdef USE_OCR_LAYER
+
+int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
+{
+    printf("error: no legion_ocr_main defined.\n");
+    ASSERT(false);
+    ocrShutdown();
+    return 0;
+}
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
+{
+  int argc = getArgc(depv[0].ptr), i;
+  char *argv[argc];
+  for(i=0;i<argc;i++)
+    argv[i] = getArgv(depv[0].ptr, i);
+
+  int ret = legion_ocr_main(argc, argv);
+  return ret;
+}
+#ifdef __cplusplus
+}
+#endif
+
+#endif //USE_OCR_LAYER
