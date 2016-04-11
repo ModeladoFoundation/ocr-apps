@@ -1,8 +1,10 @@
 #include <ocr.h>
 
 #ifdef ENABLE_EXTENSION_CHANNEL_EVT
+
 #define ENABLE_EXTENSION_LABELING
 #include<extensions/ocr-labeling.h>
+
 #define DEFAULT_LG_PROPS GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG
 #include<extensions/ocr-affinity.h>
 
@@ -75,7 +77,7 @@ ocrGuid_t stencilEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     buffer_t * leftInPTR = depv[1].ptr;
     buffer_t * rightInPTR = depv[2].ptr;
 
-            u64 i;
+    u64 i;
 
     ocrGuid_t currentAffinity = NULL_GUID;
     ocrHint_t HNT_edt;
@@ -447,12 +449,7 @@ ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     #ifdef ENABLE_EXTENSION_AFFINITY
     PRINTF( "Affinity API\n" );
     s64 affinityCount;
-    ocrGuid_t DBK_affinityGuids;
-    ocrGuid_t * PTR_affinityGuids;
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    ocrDbCreate( &DBK_affinityGuids, (void **)&PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
-            DB_PROP_SINGLE_ASSIGNMENT, NULL_HINT, NO_ALLOC );
-    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids );
 
     PRINTF( "affinityCount, %ld\n", affinityCount );
     #else
@@ -466,7 +463,8 @@ ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         u64 pd = i / bucket;
 
         PRINTF("pd: %ld\n", pd);
-        currentAffinity = PTR_affinityGuids[pd];
+        ocrAffinityGetAt( AFFINITY_PD, pd, &(currentAffinity) );
+
         ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue( currentAffinity ) );
         ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue( currentAffinity ) );
         #endif

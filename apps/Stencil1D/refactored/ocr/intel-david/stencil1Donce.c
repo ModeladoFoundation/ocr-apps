@@ -176,7 +176,7 @@ depv[3]:
 //create grandchild
 
     if(timestep < maxt-1) ocrEdtCreate(&myGrandChildGUID, pbPTR->stencilTML, EDT_PARAM_DEF, NULL,
-                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
 
 //send left
     if(timestep < maxt) {
@@ -394,9 +394,9 @@ ocrGuid_t stencilInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] 
 
     ocrEdtTemplateCreate( &stencilTML, stencilEDT, 0, 3 );
     ocrEdtCreate( &stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_GUID, NULL );
+            EDT_PROP_NONE, NULL_HINT, NULL );
     ocrEdtCreate( &myChildGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_GUID, NULL );
+            EDT_PROP_NONE, NULL_HINT, NULL );
 
     privPTR->nrank = sharedPTR->nrank;
     privPTR->npoints = sharedPTR->npoints;
@@ -485,13 +485,13 @@ ocrGuid_t parallelInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]
     ocrEdtTemplateCreate( &stencilInitTML, stencilInitEDT, 1, 4 );
 
     ocrDbCreate( &privateDBK, (void **) &dummy, sizeof(private_t) + npoints*sizeof(double), 0,
-            NULL_GUID, NO_ALLOC );
+            NULL_HINT, NO_ALLOC );
 
-    if( paramv[0] != 0 )ocrDbCreate( &leftDBK, (void **)&dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC );
-    if( paramv[0] != sharedPTR->nrank - 1) ocrDbCreate(&rightDBK, (void **)&dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC );
+    if( paramv[0] != 0 )ocrDbCreate( &leftDBK, (void **)&dummy, sizeof(buffer_t), 0, NULL_HINT, NO_ALLOC );
+    if( paramv[0] != sharedPTR->nrank - 1) ocrDbCreate(&rightDBK, (void **)&dummy, sizeof(buffer_t), 0, NULL_HINT, NO_ALLOC );
 
     ocrEdtCreate( &stencilInitGUID, stencilInitTML, EDT_PARAM_DEF, &paramv[0], EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+            EDT_PROP_NONE, NULL_HINT, NULL );
 
     ocrDbRelease( sharedGUID );
     ocrAddDependence( sharedGUID, stencilInitGUID, 0, DB_MODE_RO );
@@ -553,7 +553,7 @@ ocrGuid_t realMainEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
 
     for( i = 0; i < nrank; i++ ){
         ocrEdtCreate( &parallelInitGUID, parallelInitTML, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL,
-                EDT_PROP_NONE, NULL_GUID, NULL );
+                EDT_PROP_NONE, NULL_HINT, NULL );
         ocrAddDependence( sharedGUID, parallelInitGUID, 0, DB_MODE_RO );
     }
 
@@ -641,11 +641,11 @@ creates and launches realMain
     realMainPRM.npoints = npoints;
     realMainPRM.maxt = maxt;
     ocrEdtCreate( &realMainGUID, realMainTML, EDT_PARAM_DEF, (u64 *) &realMainPRM, EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_GUID, NULL );
+            EDT_PROP_NONE, NULL_HINT, NULL );
 
     ocrGuid_t sharedDBK;
 
-    ocrDbCreate( &sharedDBK, (void **)&dummy, sizeof( shared_t ), 0, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &sharedDBK, (void **)&dummy, sizeof( shared_t ), 0, NULL_HINT, NO_ALLOC );
     ocrDbRelease( sharedDBK );
     ocrAddDependence( sharedDBK, realMainGUID, 0, DB_MODE_RW );
     #endif

@@ -113,8 +113,8 @@ depv[3]:
     ocrGuid_t rightInEVT = NULL_GUID;
 
 //destroy old events (if any)
-    if(pbPTR->oldLeftRecvEVT != NULL_GUID) ocrEventDestroy(pbPTR->oldLeftRecvEVT);
-    if(pbPTR->oldRightRecvEVT!= NULL_GUID) ocrEventDestroy(pbPTR->oldRightRecvEVT);
+    if( !ocrGuidIsNull( pbPTR->oldLeftRecvEVT ) ) ocrEventDestroy(pbPTR->oldLeftRecvEVT);
+    if( !ocrGuidIsNull( pbPTR->oldRightRecvEVT ) ) ocrEventDestroy(pbPTR->oldRightRecvEVT);
 
 //pointer to the "real" data
     double * a = (double *) (((u64) pbPTR) + pbPTR->dataOffset);
@@ -231,7 +231,7 @@ depv[3]:
 //create clone
 
     ocrEdtCreate(&stencilGUID, pbPTR->stencilTML, EDT_PARAM_DEF, NULL,
-                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
     ocrAddDependence(leftInEVT, stencilGUID, SLOT(stencil,leftIn), DB_MODE_RW);
     ocrDbRelease(DEPV(stencil,private,guid));
@@ -422,7 +422,7 @@ ocrGuid_t stencilInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] 
     privPTR->stencilTML = stencilTML;
 
     ocrEdtCreate( &stencilGUID, stencilTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-        EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+        EDT_PROP_NONE, NULL_HINT, NULL );
 
     //set event to satisfy for leftblock;
     if( privPTR->myrank != 0 ){
@@ -478,12 +478,12 @@ ocrGuid_t parallelInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]
 
     ocrEdtTemplateCreate( &stencilInitTML, stencilInitEDT, 2, 4 );
 
-    ocrDbCreate(&privateDBK, (void**) &dummy, sizeof(private_t) + npoints*sizeof(double), 0, NULL_GUID, NO_ALLOC);
-    if( paramv[0] != 0 )ocrDbCreate(&leftDBK, (void **) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC );
-    if( paramv[0] != sharedPTR->nrank - 1 )ocrDbCreate(&rightDBK, (void **) &dummy, sizeof(buffer_t), 0, NULL_GUID, NO_ALLOC );
+    ocrDbCreate(&privateDBK, (void**) &dummy, sizeof(private_t) + npoints*sizeof(double), 0, NULL_HINT, NO_ALLOC);
+    if( paramv[0] != 0 )ocrDbCreate(&leftDBK, (void **) &dummy, sizeof(buffer_t), 0, NULL_HINT, NO_ALLOC );
+    if( paramv[0] != sharedPTR->nrank - 1 )ocrDbCreate(&rightDBK, (void **) &dummy, sizeof(buffer_t), 0, NULL_HINT, NO_ALLOC );
 
     ocrEdtCreate( &stencilInitGUID, stencilInitTML, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+            EDT_PROP_NONE, NULL_HINT, NULL );
 
 
     ocrDbRelease( sharedGUID );
@@ -546,7 +546,7 @@ ocrGuid_t realMainEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] ){
     for( i = 0; i < nrank; i++ ){
         params[0] = i;
         ocrEdtCreate( &parallelInitGUID, parallelInitTML, EDT_PARAM_DEF, params, EDT_PARAM_DEF, NULL,
-                EDT_PROP_NONE, NULL_GUID, NULL_GUID );
+                EDT_PROP_NONE, NULL_HINT, NULL );
 
         ocrAddDependence( sharedGUID, parallelInitGUID, 0, DB_MODE_RO );
     }
@@ -640,9 +640,9 @@ creates and launches realMain
     ocrGuid_t sharedDBK;
 
     ocrEdtCreate( &realMainGUID, realMainTML, EDT_PARAM_DEF, (u64 *) &realMainPRM, EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_GUID, NULL );
+            EDT_PROP_NONE, NULL_HINT, NULL );
 
-    ocrDbCreate( &sharedDBK, (void **)&dummy, sizeof(shared_t), 0, NULL_GUID, NO_ALLOC );
+    ocrDbCreate( &sharedDBK, (void **)&dummy, sizeof(shared_t), 0, NULL_HINT, NO_ALLOC );
 
     ocrAddDependence( sharedDBK, realMainGUID, 0, DB_MODE_RW );
     #endif

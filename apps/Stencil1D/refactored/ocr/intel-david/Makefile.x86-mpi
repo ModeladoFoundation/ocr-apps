@@ -78,8 +78,16 @@ CONFIG_FLAGS := --guid LABELED
 CFLAGS += -DPARALLEL
 else ifeq ($(CODE_TYPE), 6)
 SRCS := stencil1Donce.c
-CONFIG_FLAGS = --guid LABELED
+CONFIG_FLAGS := --guid LABELED
 CFLAGS += -DPARALLEL
+else ifeq ($(CODE_TYPE), 7)
+SRCS := stencil1Dchannel.c
+CONFIG_FLAGS := --guid LABELED
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+CFLAGS += -DENABLE_EXTENSION_AFFINITY
+CFLAGS += -DOCR_ASSERT
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
 endif
 
 # Additional CFLAGS. By default, it includes
@@ -96,7 +104,7 @@ LDFLAGS := -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:    CFLAGS += -O2
+all:    CFLAGS += -O3
 all:    TARGETS := all
 all:    default
 

@@ -6,6 +6,7 @@ OCR_TYPE=x86-mpi CODE_TYPE=3 make clean uninstall run 15 10 1500
 OCR_TYPE=x86-mpi CODE_TYPE=4 make clean uninstall run 15 10 1500
 OCR_TYPE=x86-mpi CODE_TYPE=5 make clean uninstall run 15 10 1500
 OCR_TYPE=x86-mpi CODE_TYPE=6 make clean uninstall run 15 10 1500
+OCR_TYPE=x86-mpi CODE_TYPE=7 make clean uninstall run 15 10 1500
 #OCR_TYPE=x86-mpi   WORKLOAD_ARGS="15, 10, 1500" CODE_TYPE=1 make clean uninstall run
 #OCR_TYPE=x86  WORKLOAD_ARGS="3, 10, 30" CODE_TYPE=1 CONFIG_NUM_THREADS=1 make clean uninstall run
 #OCR_TYPE=x86-mpi  CODE_TYPE=1 make clean run >> outSticky
