@@ -805,11 +805,16 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 {
 	int size = comm->group->size;
 	int colors[size];
+	int keys[size];
 
-	// TODO : key is ignored for now..
-	// need to send <color, key>; and as a rank finds other ranks of the same color, it needs to e.g., do an insertion sort depending on the key value.
 	MPI_Allgather(&color, 1, MPI_INT, colors, 1, MPI_INT, comm);
-	int i;
+	MPI_Allgather(&key  , 1, MPI_INT, keys  , 1, MPI_INT, comm);
+
+	if (color == MPI_UNDEFINED) {
+		*newcomm = MPI_COMM_NULL;
+		return MPI_SUCCESS;
+	}
+	assert(color >= 0); // The color must be non-negative or MPI_UNDEFINED.
 
 #ifdef DEBUG_MPI
 	printf("global colors:");
@@ -818,13 +823,31 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 	}
 	printf("\n");
 #endif
+	int i,j,tmp;
 	int ranks[size];
+	int keys2[size];
 	int count = 0;
 	for(i=0;i<size;i++) {
 		if (colors[i] != color)
 			continue;
+		keys2[count  ] = keys[i];
 		ranks[count++] = i;
 	}
+
+	// sorting by key values -- yes, it's O(n^2)
+	for(i=0;i<count-1;i++) {
+		for(j=i+1;j<count;j++) {
+			if (keys2[i]>keys2[j]) {
+				tmp = ranks[i];
+				ranks[i] = ranks[j];
+				ranks[j] = tmp;
+				tmp = keys2[i];
+				keys2[i] = keys2[j];
+				keys2[j] = tmp;
+			}
+		}
+	}
+
 	MPI_Group newgroup;
 	MPI_Group_incl(comm->group, count, ranks, &newgroup);
 #ifdef DEBUG_MPI
@@ -835,6 +858,7 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 	printf("\n");
 #endif
 	MPI_Comm_create(comm, newgroup, newcomm);
+	return MPI_SUCCESS;
 }
 
 #endif
