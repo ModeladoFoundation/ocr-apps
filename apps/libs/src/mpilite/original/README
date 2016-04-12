@@ -1,0 +1,71 @@
+/*
+* This file is subject to the license agreement located in the file LICENSE
+* and cannot be distributed without it. This notice cannot be
+* removed or modified.
+*/
+
+
+== MPI-lite ==
+
+MPI-lite is not intended to be best-performing, optimized mpi library. It's rather a portable lightweight mpi library for research projects. MPI-lite implementes a subset of MPI functions -- it doesn't support all MPI functions. It still has much rooms for optimizations. At this moment, functionality is the area of focus.
+
+MPI-lite is process-based. i.e. one process is one rank. It has experimental thread-based model which is disabled by default. MPI-lite supports threading i.e. MPI_THREAD_MULTIPLE is supported.
+
+== QUICK RUN ==
+
+Unpack mpi-lite somewhere and set the include path to that mpi-lite directory and compile two .c files together with your apps code. See Makefile for example.
+
+e.g.)
+gcc -Ipath-to-mpilite path-to-mpilite/messaging.c path-to-mpilite/mpi.c apps.c -o apps
+
+
+== BUILD ==
+
+1) compile two files messaging.c and mpi.c with apps files. add "-I." so that gcc can pick up mpi.h file in current directory. see Makefile for example.
+
+2) environmental variable MPILITE_RANK specifies how many ranks to be createad. Default value is 8 ( see mpilite.h ) but you can easily change it by adding MPILITE_RANK=xxx to your command line, or export it.
+
+e.g.)
+MPILITE_RANK=4 ./a.out
+or
+export MPILITE_RANK=4
+./a.out
+
+Similarly, internal communication buffer size can be given by MPILITE_COMMBUFF in MB. Default value is 256 MB in mpilite.h.
+
+e.g.)
+MPILITE_COMMBUFF=4 ./a.out
+or
+export MPILITE_COMMBUFF=4
+./a.out
+
+== MPIRUN ==
+
+Currently mpi-lite doesn't have mpirun script. you simple run the generated executable then it will fork processes for each rank. So, for now, do this to remove mpirun and directly run the executable
+
+Instead of this line,
+
+mpirun -n ${RANKS} a.out ....
+
+try this
+
+MPILITE_RANK=${RANKS} a.out ....
+
+
+== DEBUG ==
+
+How to debug? Some tips..
+
+1) There is DEBUG_MPI define in mpi.c. You can uncomment it to enable debugging messages. Probably this is what you want if you want to see MPI-lite internals.
+
+2) There is MESSAGING_DEBUG_MESSAGE define in messaging.c that you can uncomment to see debugging message passings. This is low-level message passings that you probably don't want to see.
+
+3) When you run mpilite apps, you'll see all messages from all ranks are mixed in outputs. One simple hack is to add rank number to each printf calls -- This is what printf() define macro does in mpilite.h. Uncomment it and try run mpilite app again.
+
+
+
+== CONTACT ==
+
+You can reach me at min.lee@intel.com
+Thanks,
+Min Lee
