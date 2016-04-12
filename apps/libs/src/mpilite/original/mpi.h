@@ -317,6 +317,10 @@ int MPI_Cart_get(MPI_Comm comm, int maxdims, int dims[], int periods[],
                  int coords[]);
 int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int coords[]);
 
+int MPI_Cart_sub(MPI_Comm comm, int *remain_dims, MPI_Comm *newcomm);
+
+int MPI_Cart_rank(MPI_Comm comm, const int coords[], int *rank);
+
 #endif
 
 #ifdef __cplusplus

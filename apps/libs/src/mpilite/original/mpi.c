@@ -795,7 +795,7 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 		return error_handling(MPI_ERR_INTERN);
 	}
 #ifdef DEBUG_MPI
-  printf("MPI_Comm_dup: success, comm: 0x%p, *newcomm:%p\n", comm, *newcomm);
+	printf("MPI_Comm_dup: success, comm: 0x%p, *newcomm:%p\n", comm, *newcomm);
 #endif
 	return MPI_SUCCESS;
 }
@@ -804,18 +804,21 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
 int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 {
 	int size = comm->group->size;
-	int *colors = malloc(sizeof(int) * size);
-	assert(colors);
-	MPI_Allgather(&color, 1, MPI_INT, colors, 1, MPI_INT, comm);
+	int colors[size];
 
+	// TODO : key is ignored for now..
+	// need to send <color, key>; and as a rank finds other ranks of the same color, it needs to e.g., do an insertion sort depending on the key value.
+	MPI_Allgather(&color, 1, MPI_INT, colors, 1, MPI_INT, comm);
 	int i;
+
+#ifdef DEBUG_MPI
 	printf("global colors:");
 	for(i=0;i<size;i++) {
 		printf("%d ", colors[i]);
 	}
 	printf("\n");
-
-	int *ranks = malloc(sizeof(int) * size);
+#endif
+	int ranks[size];
 	int count = 0;
 	for(i=0;i<size;i++) {
 		if (colors[i] != color)
@@ -824,15 +827,14 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 	}
 	MPI_Group newgroup;
 	MPI_Group_incl(comm->group, count, ranks, &newgroup);
-/*	// print group
-printf("newgroup size:%d rank:%d gpid:", newgroup->size, newgroup->rank);
-for(i=0;i<newgroup->size;i++)
-	printf("%d ", newgroup->gpid[i]);
-printf("\n");
-*/
+#ifdef DEBUG_MPI
+	// print group
+	printf("newgroup size:%d rank:%d gpid:", newgroup->size, newgroup->rank);
+	for(i=0;i<newgroup->size;i++)
+		printf("%d ", newgroup->gpid[i]);
+	printf("\n");
+#endif
 	MPI_Comm_create(comm, newgroup, newcomm);
-	free(ranks);
-	free(colors);
 }
 
 #endif
@@ -3627,6 +3629,18 @@ int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int coords[])
 	}
 	return MPI_SUCCESS;
 }
+
+int MPI_Cart_sub(MPI_Comm comm, int *remain_dims, MPI_Comm *newcomm)
+{
+	printf("TODO : not implemented yet -- mpi_cart_sub\n");
+}
+
+int MPI_Cart_rank(MPI_Comm comm, const int coords[], int *rank)
+{
+	printf("TODO : not implemented yet -- mpi_cart_rank\n");
+}
+
+
 #endif
 #ifdef MPILITE_FORTRAN
 //------------ support for Fortran -----------------------
