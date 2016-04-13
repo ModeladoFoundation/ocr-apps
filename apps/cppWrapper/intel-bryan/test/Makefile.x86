@@ -103,7 +103,7 @@ all:	CFLAGS += -O0 -g -std=c++11
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0 -std=c++11
+debug:	CFLAGS += -O0
 debug:	TARGETS := debug
 debug:	default
 

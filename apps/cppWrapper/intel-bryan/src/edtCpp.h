@@ -9,7 +9,7 @@ class EdtProducer { //meant to be a producer EDT.
         EdtProducer( ocrGuid_t, u32, u32, bool );
 
         /*-------------member functions--------------*/
-        ocrGuid_t create( );
+        ocrGuid_t create( u64 * paramPTR = NULL);
         /*-----------end member functions------------*/
 
         /*-------------getters/setters---------------*/

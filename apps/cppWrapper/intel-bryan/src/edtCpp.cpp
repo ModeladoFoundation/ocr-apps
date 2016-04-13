@@ -33,17 +33,13 @@ EdtProducer::EdtProducer( ocrGuid_t tml, u32 paramc, u32 depc, bool isFinish ) {
     TML = tml;
 }
 
-ocrGuid_t EdtProducer::create( )
+ocrGuid_t EdtProducer::create( u64 * paramPTR )
 {
 
 
     ocrGuid_t edt = NULL_GUID;
 
-    u64 * paramPTR = NULL;
-
-    if( paramSize != 0 ) paramPTR = params;
-
-    if( IS_GUID_NULL( TML ) ){
+    if( ocrGuidIsNull( TML ) ){
         std::cout << "this edt class has not been initialized (TML == NULL_GUID)!" << std::endl;
     }else{
         if( finish ) ocrEdtCreate( &edt, TML, EDT_PARAM_DEF, paramPTR, EDT_PARAM_DEF, NULL,
