@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <inttypes.h>    // for PRIx64
 #include "mpi.h"
 //#define DEBUG_MPI 1
 
@@ -807,6 +808,8 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 	int colors[size];
 	int keys[size];
 
+	// TODO you can cut the amount of communication in half if you make a struct with the <color,key> duple
+	// instead of allreducing each one separately.
 	MPI_Allgather(&color, 1, MPI_INT, colors, 1, MPI_INT, comm);
 	MPI_Allgather(&key  , 1, MPI_INT, keys  , 1, MPI_INT, comm);
 
@@ -823,7 +826,7 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 	}
 	printf("\n");
 #endif
-	int i,j,tmp;
+	int i,j,tmp,swapped;
 	int ranks[size];
 	int keys2[size];
 	int count = 0;
@@ -835,17 +838,22 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
 	}
 
 	// sorting by key values -- yes, it's O(n^2)
-	for(i=0;i<count-1;i++) {
-		for(j=i+1;j<count;j++) {
-			if (keys2[i]>keys2[j]) {
-				tmp = ranks[i];
-				ranks[i] = ranks[j];
-				ranks[j] = tmp;
-				tmp = keys2[i];
-				keys2[i] = keys2[j];
-				keys2[j] = tmp;
+	// This reserves rank ordering in the old group
+	for(i=count-1;i>0;i--) {
+		swapped = 0;
+		for(j=0;j<i;j++) {
+			if (keys2[j]>keys2[j+1]) {
+				tmp = ranks[j];
+				ranks[j] = ranks[j+1];
+				ranks[j+1] = tmp;
+				tmp = keys2[j];
+				keys2[j] = keys2[j+1];
+				keys2[j+1] = tmp;
+				swapped = 1;
 			}
 		}
+		if (!swapped)	// exit early
+			break;
 	}
 
 	MPI_Group newgroup;
