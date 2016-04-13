@@ -58,7 +58,7 @@ u8 init_simulation( command_t* cmd_p, simulation_t* sim_p, mdtimer_t* timer_p )
   sim_p->boxes.inv_box_size[1] = 1/sim_p->boxes.box_size[1];
   sim_p->boxes.inv_box_size[2] = 1/sim_p->boxes.box_size[2];
 
-  //TODO: sim_p->atoms uninitialized here
+  sim_p->atoms = 4*(cmd_p->nx*cmd_p->ny*cmd_p->nz); //TODO: Hard-coded to copper BCC linkcells
 
   PRINTF( "Simulation data: \n");
   PRINTF( "  Total atoms        : %d\n", sim_p->atoms );
@@ -76,6 +76,19 @@ u8 init_simulation( command_t* cmd_p, simulation_t* sim_p, mdtimer_t* timer_p )
   //PRINTF( "  Max Link Cell Occupancy: %d of %d\n\n", sim_p->boxes.max_occupancy, MAXATOMS );
   PRINTF( "\nPotential data: \n");
   sim_p->pot.print( &sim_p->pot );
+
+   // Memory footprint diagnostics
+   int perAtomSize = 10*sizeof(real_t)+2*sizeof(int);
+   float atomMemGlobal = (float)(perAtomSize*sim_p->atoms)/1024/1024;
+
+   int nTotalBoxes = sim_p->boxes.boxes_num;
+   float linkCellMemTotal = (float) nTotalBoxes*(perAtomSize*MAXATOMS)/1024/1024;
+
+   PRINTF( "\n" );
+   PRINTF("Memory data: \n");
+   PRINTF( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
+   PRINTF( "  Total atom footprint     = %7.3f MB\n", atomMemGlobal);
+   PRINTF( "  Link cell atom footprint = %7.3f MB/node\n\n", linkCellMemTotal);
 
   ocrGuid_t* box_p;
   ocrGuid_t* rpf_p;
@@ -108,30 +121,17 @@ u8 init_simulation( command_t* cmd_p, simulation_t* sim_p, mdtimer_t* timer_p )
   for( b=0; b<sim_p->boxes.boxes_num; ++b )
   {
 #ifdef ENABLE_EXTENSION_AFFINITY
-        int id_x = (b/grid[0])/grid[1];
-        s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
-
-        int id_y = (b/grid[0])%grid[1];
-        s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
-
-        int id_z = b%grid[0];
-        s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
-
-        //Each linkcell, with id=b, is mapped to a PD. The mapping similar to how the link cells map to
-        //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
-        //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
-
-        int pd = globalRankFromCoords(pd_z, pd_y, pd_x, PD_X, PD_Y, PD_Z);
-        //PRINTF("box %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+        int pd = getPoliyDomainID( b, grid, PD_X, PD_Y, PD_Z );
         PDaffinityGuid = PTR_affinityGuids[pd];
-        //PDaffinityGuid = NULL_GUID;
         ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
     void* ptr;
     //ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NO_ACQUIRE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
     //ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NO_ACQUIRE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
-    ocrDbCreate( box_p+b, &ptr, sizeof(box_t), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC ); //TODO:DB_PROP_NO_ACQUIRE results in a hang with affinity hints
-    ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t), DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
+    ocrDbCreate( box_p+b, &ptr, sizeof(box_t),
+                    DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC ); //TODO:DB_PROP_NO_ACQUIRE results in a hang with affinity hints
+    ocrDbCreate( rpf_p+b, &ptr, sizeof(rpf_t),
+                    DB_PROP_NONE, PICK_1_1(&HNT_db,PDaffinityGuid), NO_ALLOC );
   }
 
   ocrDbRelease( sim_p->boxes.box );
@@ -181,13 +181,10 @@ u64 mk_seed( u32 i, u32 c )
 ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     ocrGuid_t PDaffinityGuid = NULL_GUID;
-    ocrHint_t HNT_edt;
-    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
     ocrHint_t HNT_db;
     ocrHintInit( &HNT_db, OCR_HINT_DB_T );
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityGetCurrent(&PDaffinityGuid);
-    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
     ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
 
@@ -224,13 +221,10 @@ ocrGuid_t ukvel_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 ocrGuid_t veluk_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     ocrGuid_t PDaffinityGuid = NULL_GUID;
-    ocrHint_t HNT_edt;
-    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
     ocrHint_t HNT_db;
     ocrHintInit( &HNT_db, OCR_HINT_DB_T );
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityGetCurrent(&PDaffinityGuid);
-    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
     ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
 
@@ -289,13 +283,10 @@ ocrGuid_t temp_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 ocrGuid_t vcm_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     ocrGuid_t PDaffinityGuid = NULL_GUID;
-    ocrHint_t HNT_edt;
-    ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
     ocrHint_t HNT_db;
     ocrHintInit( &HNT_db, OCR_HINT_DB_T );
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityGetCurrent(&PDaffinityGuid);
-    ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
     ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
 
@@ -563,21 +554,7 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   for( b=0; b<sim_p->boxes.boxes_num; ++b )
   {
 #ifdef ENABLE_EXTENSION_AFFINITY
-        int id_x = (b/grid[0])/grid[1];
-        s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
-
-        int id_y = (b/grid[0])%grid[1];
-        s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
-
-        int id_z = b%grid[0];
-        s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
-
-        //Each linkcell, with id=b, is mapped to a PD. The mapping similar to how the link cells map to
-        //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
-        //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
-        //
-        int pd = globalRankFromCoords(pd_z, pd_y, pd_x, PD_X, PD_Y, PD_Z);
-        //PRINTF("box %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+        int pd = getPoliyDomainID( b, grid, PD_X, PD_Y, PD_Z );
         PDaffinityGuid = PTR_affinityGuids[pd];
         ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
@@ -599,17 +576,17 @@ ocrGuid_t fork_init_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
   PRM_red.guid = NULL_GUID;
 
   reductionH_p->OEVT_reduction = build_reduction( sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p+sim_p->boxes.boxes_num*2,
-                                            sizeof(PRM_ured_edt_t)/sizeof(u64), &PRM_red, ured_edt, 0 );
+                                            sizeof(PRM_ured_edt_t)/sizeof(u64), &PRM_red, ured_edt, grid, 0 );
 
   PRM_red.guid = reductionH_p->OEVT_reduction;
 
   reductionH_p->OEVT_reduction = build_reduction( sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p+sim_p->boxes.boxes_num,
-                                            sizeof(PRM_tred_edt_t)/sizeof(u64), &PRM_red, tred_edt, 1 );
+                                            sizeof(PRM_tred_edt_t)/sizeof(u64), &PRM_red, tred_edt, grid, 1 );
 
   PRM_red.guid = reductionH_p->OEVT_reduction;
 
   reductionH_p->OEVT_reduction = build_reduction( sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p,
-                                            sizeof(PRM_vred_edt_t)/sizeof(u64), &PRM_red, vred_edt, 2 );
+                                            sizeof(PRM_vred_edt_t)/sizeof(u64), &PRM_red, vred_edt, grid, 2 );
 
   ocrDbRelease( sim_p->reductionH_g );
 

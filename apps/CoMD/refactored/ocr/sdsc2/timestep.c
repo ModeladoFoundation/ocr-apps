@@ -32,6 +32,8 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t* boxes_p = (ocrGuid_t*)depv[3].ptr;
   ocrGuid_t* rpfs_p = (ocrGuid_t*)depv[4].ptr;
 
+  u32* grid = sim_p->boxes.grid;
+
   profile_stop(total_timer, timer_p);
   profile_start(total_timer, timer_p);
   print_status(sim_p, mass_p, get_elapsed_time(total_timer, timer_p));
@@ -50,7 +52,7 @@ ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   PRM_red.guid = NULL_GUID;
 
   ocrGuid_t OEVT_reduction = build_reduction(sim_g, sim_p->reductionH_g, sim_p->boxes.boxes_num, leaves_p,
-                                             sizeof(PRM_ured_edt_t)/sizeof(u64), &PRM_red, ured_edt, 0 );
+                                             sizeof(PRM_ured_edt_t)/sizeof(u64), &PRM_red, ured_edt, grid, 0 );
 
   if(sim_p->step!=sim_p->steps) {
     ocrGuid_t tmp, next_period_edt;
