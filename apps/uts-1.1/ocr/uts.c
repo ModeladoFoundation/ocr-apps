@@ -57,13 +57,13 @@ char * uts_geoshapes_str[] = { "Linear decrease", "Exponential decrease", "Cycli
  *   root and binomial distributions towards the leaves.
  */
 tree_t type  = GEO; // Default tree type
-const ocrPtr_t __type = { .offset = (size_t)&type, .guid = RAG_NULL_GUID };
+const ocrPtr_t __type = { .offset = (size_t)&type, .guid = NULL_GUID_INITIALIZER };
 
 double b_0   = 4.0; // default branching factor at the root
-const ocrPtr_t __b_0 = { .offset = (size_t)&b_0, .guid = RAG_NULL_GUID };
+const ocrPtr_t __b_0 = { .offset = (size_t)&b_0, .guid = NULL_GUID_INITIALIZER };
 
 int   rootId = 0;   // default seed for RNG state at root
-const ocrPtr_t __rootId = { .offset = (size_t)&rootId, .guid = RAG_NULL_GUID };
+const ocrPtr_t __rootId = { .offset = (size_t)&rootId, .guid = NULL_GUID_INITIALIZER };
 
 /*  Tree type BIN (BINOMIAL)
  *  The branching factor at the root is specified by b_0.
@@ -75,10 +75,10 @@ const ocrPtr_t __rootId = { .offset = (size_t)&rootId, .guid = RAG_NULL_GUID };
  *  Default parameter values
  */
 int    nonLeafBF   = 4;            // m
-const ocrPtr_t __nonLeafBF = { .offset = (size_t)&nonLeafBF, .guid = RAG_NULL_GUID };
+const ocrPtr_t __nonLeafBF = { .offset = (size_t)&nonLeafBF, .guid = NULL_GUID_INITIALIZER };
 
 double nonLeafProb = 15.0 / 64.0;  // q
-const ocrPtr_t __nonLeafProb = { .offset = (size_t)&nonLeafProb, .guid = RAG_NULL_GUID };
+const ocrPtr_t __nonLeafProb = { .offset = (size_t)&nonLeafProb, .guid = NULL_GUID_INITIALIZER };
 
 /*  Tree type GEO (GEOMETRIC)
  *  The branching factor follows a geometric distribution with
@@ -95,25 +95,25 @@ const ocrPtr_t __nonLeafProb = { .offset = (size_t)&nonLeafProb, .guid = RAG_NUL
  *  Default parameter values
  */
 int        gen_mx   = 6;      // default depth of tree
-const ocrPtr_t __gen_mx = { .offset = (size_t)&gen_mx, .guid = RAG_NULL_GUID };
+const ocrPtr_t __gen_mx = { .offset = (size_t)&gen_mx, .guid = NULL_GUID_INITIALIZER };
 
 geoshape_t shape_fn = LINEAR; // default shape function (b_i decr linearly)
-const ocrPtr_t __shape_fn = { .offset = (size_t)&shape_fn, .guid = RAG_NULL_GUID };
+const ocrPtr_t __shape_fn = { .offset = (size_t)&shape_fn, .guid = NULL_GUID_INITIALIZER };
 
 /*  In type HYBRID trees, each node is either type BIN or type
  *  GEO, with the generation strategy changing from GEO to BIN
  *  at a fixed depth, expressed as a fraction of gen_mx
  */
 double shiftDepth = 0.5;
-const ocrPtr_t __shiftDepth = { .offset = (size_t)&shiftDepth, .guid = RAG_NULL_GUID };
+const ocrPtr_t __shiftDepth = { .offset = (size_t)&shiftDepth, .guid = NULL_GUID_INITIALIZER };
 
 /* compute granularity - number of rng evaluations per tree node */
 int computeGranularity = 1;
-const ocrPtr_t __computeGranularity = { .offset = (size_t)&computeGranularity, .guid = RAG_NULL_GUID };
+const ocrPtr_t __computeGranularity = { .offset = (size_t)&computeGranularity, .guid = NULL_GUID_INITIALIZER };
 
 /* display parameters */
 int verbose  = 1;
-const ocrPtr_t __verbose = { .offset = (size_t)&verbose, .guid = RAG_NULL_GUID };
+const ocrPtr_t __verbose = { .offset = (size_t)&verbose, .guid = NULL_GUID_INITIALIZER };
 
 /***********************************************************
  *                                                         *

@@ -51,26 +51,8 @@ extern "C" {
  */
 
 typedef struct ocrPtr_t { size_t offset; ocrGuid_t guid; } ocrPtr_t;
-
-#ifndef RAG_NULL_GUID
-#ifdef ENABLE_128_BIT_GUID
-#if 1 // WORKAROUND
-#define RAG_NULL_GUID {((const intptr_t)NULL),((const intptr_t)NULL)}
-#else // WORKAROUND
-#define RAG_NULL_GUID NULL_GUID
-#endif // WORKAROUND
-#else // ENABLE_128_BIT_GUID
-#if 1 // WORKAROUND
-#define RAG_NULL_GUID {((const intptr_t)NULL)}
-#else  // WORKAROUND
-#define RAG_NULL_GUID NULL_GUID
-#endif // WORKAROUND
-#endif // ENABLE_128_BIT_GUID
-#endif // RAG_NULL_GUID
-
-
 const static ocrPtr_t __ocrNULL  = {	.offset = (size_t)NULL,
-					.guid   = RAG_NULL_GUID };
+					.guid   = NULL_GUID_INITIALIZER };
 
 /*
  * memory management
@@ -163,7 +145,7 @@ typedef union __iter_work_args_t {
 
 ocrGuid_t __iter_work( uint32_t __paramc, __continuation_args_t  *__paramv,
                        uint32_t __depc,   __continuation_guids_t *__depv );
-ocrPtr_t  __template_iter_work = { .offset = (size_t)__iter_work, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_iter_work = { .offset = (size_t)__iter_work, .guid = NULL_GUID_INITIALIZER };
 
 /*
  * void __iter_wait(...)(..., ocrGuid_t finish_event);
@@ -179,7 +161,7 @@ typedef union __iter_wait_guids_t {
 
 ocrGuid_t __iter_wait( uint32_t __paramc, __continuation_args_t  *__paramv,
                        uint32_t __depc,   __continuation_guids_t *__depv );
-ocrPtr_t  __template_iter_wait = { .offset = (size_t)__iter_wait, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_iter_wait = { .offset = (size_t)__iter_wait, .guid = NULL_GUID_INITIALIZER };
 
 //-------------------------------------------------------------------
 // void __iter_work(..., int first, int last, int inc, int blk)(...);

@@ -107,7 +107,7 @@ typedef union __uts_main_guids_t {
 
 ocrGuid_t uts_main( uint32_t __paramc, __uts_main_args_t  *__paramv,
                     uint32_t __depc,   __uts_main_guids_t *__depv );
-ocrPtr_t  __template_uts_main = { .offset = (size_t)uts_main, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_uts_main = { .offset = (size_t)uts_main, .guid = NULL_GUID_INITIALIZER };
 
 /*
  * void uts_parseParams(int argc, char **argv);
@@ -129,7 +129,7 @@ typedef union __uts_parseParams_guids_t {
 
 ocrGuid_t uts_parseParams( uint32_t __paramc, __uts_parseParams_args_t  *__paramv,
                     uint32_t __depc,   __uts_parseParams_guids_t *__depv );
-ocrPtr_t  __template_uts_parseParams = { .offset = (size_t)uts_parseParams, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_uts_parseParams = { .offset = (size_t)uts_parseParams, .guid = NULL_GUID_INITIALIZER };
 
 /*
  * void uts_printParams();
@@ -150,7 +150,7 @@ typedef union __uts_printParams_guids_t {
 
 ocrGuid_t uts_printParams( uint32_t __paramc, __uts_printParams_args_t  *__paramv,
                            uint32_t __depc,   __uts_printParams_guids_t *__depv );
-ocrPtr_t  __template_uts_printParams = { .offset = (size_t)uts_printParams, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_uts_printParams = { .offset = (size_t)uts_printParams, .guid = NULL_GUID_INITIALIZER };
 
 /*
  * void uts_initTreeRoot( Node *root, int type );
@@ -172,7 +172,7 @@ typedef union __uts_initTreRoot_guids_t {
 
 ocrGuid_t uts_initTreeRoot( uint32_t paramc, __uts_initTreeRoot_args_t  *paramv,
                             uint32_t depc  , __uts_initTreeRoot_guids_t *depv );
-ocrPtr_t  __template_uts_initTreeRoot = { .offset = (size_t)uts_initTreeRoot, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_uts_initTreeRoot = { .offset = (size_t)uts_initTreeRoot, .guid = NULL_GUID_INITIALIZER };
 
 /*
  * void uts_TreeSearch( Node *parent );
@@ -194,7 +194,7 @@ typedef union __uts_TreeSearch_guids_t {
 
 ocrGuid_t uts_TreeSearch( uint32_t paramc, __uts_TreeSearch_args_t  *__paramv,
                           uint32_t depc,   __uts_TreeSearch_guids_t *__depv );
-ocrPtr_t  __template_uts_TreeSearch = { .offset = (size_t)uts_TreeSearch, .guid = RAG_NULL_GUID };
+ocrPtr_t  __template_uts_TreeSearch = { .offset = (size_t)uts_TreeSearch, .guid = NULL_GUID_INITIALIZER };
 
 /* RAG -- TODO: make the rest of the uts_ functions edts */
 

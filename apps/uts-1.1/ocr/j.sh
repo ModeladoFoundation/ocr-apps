@@ -14,11 +14,11 @@ if [ 1 == 1 ]; then
 
 rm -f j1.txt
 echo run with 1 XE in the block
-
-OCR_INSTALL=$HOME/ocr/ocr/install \
-LD_LIBRARY_PATH=$HOME/ocr/ocr/install/lib:$HOME/apps/apps/libs/install/x86/lib \
-OCR_CONFIG=$HOME/apps/apps/uts-1.1/ocr/default1.cfg \
-time $HOME/apps/apps/uts-1.1/ocr/install/x86/uts >& j1.txt
+export XSTG_ROOT=$(dirname $(dirname $(dirname $(dirname $PWD))))
+OCR_INSTALL=$XSTG_ROOT/ocr/ocr/install \
+LD_LIBRARY_PATH=$XSTG_ROOT/ocr/ocr/install/lib:$XSTG_ROOT/apps/apps/libs/install/x86/lib \
+OCR_CONFIG=$XSTG_ROOT/apps/apps/uts-1.1/ocr/default1.cfg \
+time $XSTG_ROOT/apps/apps/uts-1.1/ocr/install/x86/uts >& j1.txt
 
 #$HOME/sde*/sde  -top_blocks 1000 -omix worker1.txt -- \
 #
@@ -29,10 +29,10 @@ if [ 1 == 1 ]; then
 rm -f j8.txt
 echo run with 8 XEs in the block
 
-OCR_INSTALL=$HOME/ocr/ocr/install \
-LD_LIBRARY_PATH=$HOME/ocr/ocr/install/lib:$HOME/apps/apps/libs/install/x86/lib \
-OCR_CONFIG=$HOME/apps/apps/uts-1.1/ocr/default8.cfg \
-time $HOME/apps/apps/uts-1.1/ocr/install/x86/uts >& j8.txt
+OCR_INSTALL=$XSTG_ROOT/ocr/ocr/install \
+LD_LIBRARY_PATH=$XSTG_ROOT/ocr/ocr/install/lib:$XSTG_ROOT/apps/apps/libs/install/x86/lib \
+OCR_CONFIG=$XSTG_ROOT/apps/apps/uts-1.1/ocr/default8.cfg \
+time $XSTG_ROOT/apps/apps/uts-1.1/ocr/install/x86/uts >& j8.txt
 
 #$HOME/sde*/sde  -top_blocks 1000 -omix worker8.txt -- \
 #
