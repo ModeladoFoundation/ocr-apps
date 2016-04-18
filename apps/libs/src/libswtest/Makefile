@@ -81,14 +81,23 @@ $(BUILDPDIR)/%.p.o : %.c | $(BUILDPDIR)
 	@echo Generating Assembler file $@ from $<
 	@$(CC) $(CFLAGS) $(INCLUDES) -S $<
 
-install: $(LIB) $(LIB_P)
-	@echo Installing $(LIBS) to $(APPS_LIBS_INSTALL) ...
+install-$(LIB) install-static : $(LIB)
+	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)/lib
-	@cp -u $(LIBS) $(APPS_LIBS_INSTALL)/lib
+	@cp -u $(LIB) $(APPS_LIBS_INSTALL)/lib
 	@cp -u $(LDSCRIPT) $(APPS_LIBS_INSTALL)/lib
+
+install-$(LIB_P) install-pie : $(LIB_P)
+	@echo Installing $(LIB_P) to $(APPS_LIBS_INSTALL) ...
+	@mkdir -p $(APPS_LIBS_INSTALL)/lib
+	@cp -u $(LIB_P) $(APPS_LIBS_INSTALL)/lib
+
+install-incs :
 	@echo Installing $(INCS) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)/include
 	@cp -u $(INCS) $(APPS_LIBS_INSTALL)/include
+
+install: install-$(LIB) install-$(LIB_P) install-incs
 	@echo Installation complete
 
 clean:

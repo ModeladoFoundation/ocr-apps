@@ -169,6 +169,7 @@ show_args:
 	@echo TG_INSTALL= $(TG_INSTALL)
 	@echo APPS_ROOT= $(APPS_ROOT)
 	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
+	@echo APPS_LIBS_ROOT $(APPS_LIBS_ROOT)
 
 #
 # Create a new build dir
