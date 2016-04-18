@@ -13,13 +13,24 @@ APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 ARCH_PREFIX = xstg-linux-elf
 ARCH = tg-xe
 
+#.SECONDEXPANSION:
+
 INCS = libswtest.h
 SRCS = ce_intf.c nonewlib.c
+
 OBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(SRCS))
 LIB = $(BUILDDIR)/libswtest.a
+
+OBJS_P = $(patsubst %.c,$(BUILDPDIR)/%.p.o,$(SRCS))
+LIB_P = $(BUILDPDIR)/libswtest.p.a
+
+LIBS = $(LIB) $(LIB_P)
+
 LDSCRIPT = elf64_xstg.t
 
 BUILDDIR = build
+BUILDPDIR = build_p
+BUILDDIRS = $(BUILDDIR) $(BUILDPDIR)
 
 # INCLUDES = -isystem $(APPS_REPO)/apps/libs/tg/include
 LLVM_BIN = $(TG_INSTALL)/bin
@@ -40,30 +51,40 @@ export APPS_LIBS_INSTALL
 ################### Targets #####################################
 default: all
 
-builddir:
-	@[ -d $(BUILDDIR) ] || mkdir -p $(BUILDDIR)
+$(BUILDDIRS) :
+	@[ -d $@ ] || mkdir -p $@
 
-all: builddir $(LIB)
+all: $(LIB) $(LIB_P)
 	@echo Done
+
+$(LIB_P) : CFLAGS += -fpie
 
 $(LIB) : $(OBJS)
 	@echo "  = $@"
-	@$(AR) -r $@ $^
+	@$(AR) -r $@ $^ > /dev/null 2>&1
 
-$(OBJS) : libswtest.h
+$(LIB_P) : $(OBJS_P)
+	@echo "  = $@"
+	@$(AR) -r $@ $^ > /dev/null 2>&1
 
-$(BUILDDIR)/%.o : %.c
-	@echo "  - $<"
+$(OBJS) $(OBJS_P) : libswtest.h
+
+$(BUILDDIR)/%.o : %.c | $(BUILDDIR)
+	@echo "  - $@"
+	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(BUILDPDIR)/%.p.o : %.c | $(BUILDPDIR)
+	@echo "  - $@"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 %.s : %.c
 	@echo Generating Assembler file $@ from $<
 	@$(CC) $(CFLAGS) $(INCLUDES) -S $<
 
-install: $(LIB)
-	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
+install: $(LIB) $(LIB_P)
+	@echo Installing $(LIBS) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)/lib
-	@cp -u $(LIB) $(APPS_LIBS_INSTALL)/lib
+	@cp -u $(LIBS) $(APPS_LIBS_INSTALL)/lib
 	@cp -u $(LDSCRIPT) $(APPS_LIBS_INSTALL)/lib
 	@echo Installing $(INCS) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)/include
@@ -71,7 +92,7 @@ install: $(LIB)
 	@echo Installation complete
 
 clean:
-	rm -rf $(LIB) $(OBJS)
+	rm -rf $(BUILDDIRS)
 
 dump:
 	@echo TG_ROOT= $(TG_ROOT)
@@ -79,4 +100,4 @@ dump:
 	@echo APPS_ROOT= $(APPS_ROOT)
 	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
 
-.PHONY: builddir clean dump
+.PHONY: builddir clean dump all

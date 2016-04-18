@@ -33,7 +33,8 @@ APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 #
 # Supported ARCH values
 #
-ARCHES = tg-xe x86 x86-test
+X86_ARCHES = x86 x86-test
+ARCHES = tg-xe $(X86_ARCHES)
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -42,19 +43,20 @@ endif
 ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
+#
+# per-target build and local install dirs
+#
+BUILD_DIR = build-$(ARCH)$(BTYPE)
+TMPROOT   = tmproot-$(ARCH)$(BTYPE)
 
-NEWLIB_BUILD   = $(CURDIR)
-NEWLIB_INSTALL = $(NEWLIB_BUILD)/tmproot
 NEWLIB_SRCDIR  = $(CURDIR)/newlib-2.1.0
+NEWLIB_BUILD   = $(CURDIR)
+NEWLIB_TMPROOT = $(NEWLIB_BUILD)/$(TMPROOT)
+NEWLIB_INSTALL = $(NEWLIB_TMPROOT)/$(TARGET)
 
-#
-# per-target build dir
-#
-BUILD_DIR = build_$(ARCH)
+NEWLIB   = $(NEWLIB_INSTALL)/lib/libc.a
 
-NEWLIB   = $(NEWLIB_INSTALL)/$(TARGET)/lib/libc.a
-CONFIG_ARGS ?= --target=$(TARGET) --prefix=$(NEWLIB_INSTALL) --with-newlib
-
+CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
 #
 # common cflags
 #
@@ -82,12 +84,6 @@ export RANLIB_FOR_TARGET READELF_FOR_TARGET
 CFLAGS_FOR_BUILD = -g
 export CFLAGS_FOR_BUILD
 
-##########################
-# Make Targets
-#
-
-all: $(ARCH)
-	@echo Done making all
 #
 # XE Clang/llvm build
 #
@@ -97,10 +93,19 @@ ifeq ($(ARCH), tg-xe)
   TARGET = xstg-linux-elf
   TOOLBIN = $(TG_INSTALL)/bin
   TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+  BTYPE = -static
   export APPS_LIBS_INSTALL
 endif
-#
 
+ifdef PIE
+  ifneq ($(ARCH), tg-xe)
+    $(error PIE is only valid for ARCH tg-xe)
+  endif
+  BTYPE = -pie
+  CFLAGS += -fPIE
+  # XXX donn-devel TOOLBIN = /build/eqware/pie/install/bin
+endif
+#
 # This defines an x86_64 build using the XE compiler
 #
 ifeq ($(ARCH), x86-test)
@@ -123,8 +128,26 @@ ifeq ($(ARCH), x86)
   TARGET = x86_64-linux-elf
 endif
 
-$(ARCHES): show_args
-	$(MAKE) TARGET=$(TARGET) newlib
+##########################
+# Make Targets
+#
+default: all
+
+all: $(ARCH)
+	@echo Done making all
+#
+# ARCH specific targets
+#
+tg-xe-pie:
+	$(MAKE) PIE=1 install
+
+tg-xe-static:
+	$(MAKE) install
+
+tg-xe: show_args tg-xe-pie tg-xe-static
+
+$(X86_ARCHES): show_args
+	$(MAKE) install
 #
 # Debug assist
 #
@@ -143,21 +166,21 @@ show_args:
 	@echo RANLIB_FOR_TARGET =  $(RANLIB_FOR_TARGET)
 	@echo READELF_FOR_TARGET =  $(READELF_FOR_TARGET)
 	@echo CONFIG_ARGS =  $(CONFIG_ARGS)
+	@echo BUILDDIR =  $(BUILD_DIR)
+	@echo NEWLIB_INSTALL =  $(NEWLIB_INSTALL)
 
 # Modify this target when newlib supports debug and non-debug builds
 debug: default
 
-default: all
-
 # Always try to build these when we get here
-.PHONY: $(NEWLIB) clean newlib tg_install show_args
+.PHONY: $(NEWLIB) clean newlib show_args
 
 $(NEWLIB_BUILD):
 	@[ -d $(NEWLIB_BUILD) ] || mkdir -p $(NEWLIB_BUILD)
 #
-# Configure and build newlib
+# Configure and build newlib, installing to tmproot
 #
-newlib: show_args $(NEWLIB) newlib_install
+newlib: show_args newlib_install
 
 newlib-config $(BUILD_DIR)/config.log:
 	@echo Configuring Newlib ...
@@ -174,20 +197,30 @@ $(NEWLIB): $(BUILD_DIR)/config.log
 #
 newlib_install: $(NEWLIB)
 	@echo Installing Newlib to tmproot ...
-	@rm -rf $(NEWLIB_INSTALL)/$(TARGET)
+	@rm -rf $(NEWLIB_INSTALL)
 	@mkdir -p $(NEWLIB_INSTALL)
 	@$(MAKE) -C $(NEWLIB_BUILD)/$(BUILD_DIR) install
 #
 # Copy from the tmp install tree to the actual install tree
+# For PIE builds we need to rename the files in lib as we copy them
+# inserting a '.p' before the file suffix.
 #
-.PHONY: install
-install: root_install
 root_install: newlib_install
 	@echo Installing Newlib to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)
-	@cp -u -R $(NEWLIB_INSTALL)/$(TARGET)/include $(APPS_LIBS_INSTALL)/
-	@cp -u -R $(NEWLIB_INSTALL)/$(TARGET)/lib $(APPS_LIBS_INSTALL)/
+	@cp -u -R $(NEWLIB_INSTALL)/include $(APPS_LIBS_INSTALL)/
+	@if [ -z $(PIE) ] ; then \
+	   cp -u -R $(NEWLIB_INSTALL)/lib $(APPS_LIBS_INSTALL)/ ; \
+	 else \
+	   for f in $(NEWLIB_INSTALL)/lib/*.[oa] ; do \
+	     fp=`basename $$f | sed -e 's/\(..\)$$/.p\1/'` ;        \
+	     cp -u $$f $(APPS_LIBS_INSTALL)/lib/$$fp ; \
+	   done ; \
+	 fi
 	@echo Installation complete
+
+.PHONY: install
+install: show_args root_install
 
 .PHONY: uninstall
 uninstall: # Doesn't actually do anything.

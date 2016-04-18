@@ -10,7 +10,7 @@
 // Otherwise, it is assumed that param 0, 1, and 2 (r0, r1, r2) are initialized
 // as argc, argv, and envp, as CE OCR does.
 //
-// #define USE_STACK   1
+//#define USE_STACK   1
 //
 // Defining OCR_INIT includes the OCR startup calls and init() that allocates
 // an ocrDb for the stack.
@@ -40,26 +40,7 @@ static void app_start( int argc, char ** argv ) __attribute__((used));
 typedef void (* fptr_t)(void);
 typedef unsigned long * ulongptr_t;    // not provided by stdint.h :-(
 
-//
-// constructor list, w/placeholder first entry
-//
-const fptr_t __CTOR_LIST__[]
-    __attribute__ (( aligned(sizeof(void *)) ))
-    __attribute__ (( section(".ctors") )) = { (fptr_t) -1, };
-
-extern const fptr_t __CTOR_LIST_END__[];
-
-//
-// TODO: since clang registers destructors w/atexit() there's
-//       no need to keep a destructor list - remove
-// destructor list, w/placeholder first entry
-//
-const fptr_t __DTOR_LIST__[]
-    __attribute__ (( aligned(sizeof(void *)) ))
-    __attribute__ (( section(".dtors") )) = { (fptr_t) -1, };
-
-//
-// Stack unwinding support
+//////////////////// Stack unwinding support /////////////////////////
 //
 // eh_frame_hdr and eh_frame list
 // The sections are added by the ldscript and it creates
@@ -88,6 +69,25 @@ void __get_eh_info( struct eh_info * info )
     if ( info->hdr_size == 0 || info->hdr_start == 0 )
         info->hdr_size = info->hdr_start = 0;
 }
+
+///////////////////// C++ constructor support ////////////////////////
+// constructor list, w/placeholder first entry
+//
+const fptr_t __CTOR_LIST__[]
+    __attribute__ (( aligned(sizeof(void *)) ))
+    __attribute__ (( section(".ctors") )) = { (fptr_t) -1, };
+
+extern const fptr_t __CTOR_LIST_END__[];
+
+//
+// TODO: since clang registers destructors w/atexit() there's
+//       no need to keep a destructor list - remove
+// destructor list, w/placeholder first entry
+//
+const fptr_t __DTOR_LIST__[]
+    __attribute__ (( aligned(sizeof(void *)) ))
+    __attribute__ (( section(".dtors") )) = { (fptr_t) -1, };
+
 //
 // initialize any static constructors
 //  Note that destructors are registered w/atexit() by clang in the ctors,
@@ -100,7 +100,7 @@ static void __do_global_ctors( void )
     }
 }
 
-//
+///////////////////// BSS initialization ////////////////////////////
 // Clear all our bss regions
 // Everything is 8-byte aligned so we do it by longs (ints are 32b)
 //
@@ -124,6 +124,50 @@ static void __init_bss()
 
 		for( ; p < e ; p++ )
 			*p = 0L;
+    }
+}
+
+/////////////////////// PIE runtime relocations //////////////////////
+// Do the runtime data relocations necessary due to
+// pointers in initialized data.
+// We assume the RAR registers have been initialized
+// before we started running.
+//
+__attribute__((weak))
+extern unsigned long __rtreloc_start;
+
+__attribute__((weak))
+extern unsigned long __rtreloc_end;
+
+__attribute__((weak))
+extern unsigned long __rtreloc_size;
+
+typedef struct {
+    unsigned long target_offset : 32,
+                  target_rar    : 16,
+                  symbol_rar    : 16;
+} rtreloc_entry;
+
+#define PRF_ADDR    ((unsigned long *)0x2e000L)    // XE agent relative PRF address
+#define REG_ADDR(r) (PRF_ADDR + (r))
+
+
+void __rtreloc( void )
+{
+    rtreloc_entry * entries = (rtreloc_entry *) & __rtreloc_start;
+    // unsigned long reloc_count = (&__rtreloc_end - & __rtreloc_start);
+    // uint64_t reloc_count = ((uint64_t) &__rtreloc_size) >> 3;
+    uint64_t reloc_count = ((uint64_t) &__rtreloc_size);
+    reloc_count >>= 3;
+    int count = 0;
+
+    for( ; count < reloc_count ; entries++, count++ ) {
+        if( entries->symbol_rar != 0 && entries->target_rar != 0 ) {
+            unsigned long *target =
+                    (unsigned long *) (*REG_ADDR(entries->target_rar) +
+                                          entries->target_offset);
+            *target += * REG_ADDR(entries->symbol_rar);
+        }
     }
 }
 
@@ -187,6 +231,8 @@ start (int argc, char **argv, char **envp)
 #endif // USE_STACK
 
     environ = envp;
+
+    __rtreloc();
 
 #ifdef OCR_INIT
     //

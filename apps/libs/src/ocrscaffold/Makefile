@@ -16,7 +16,8 @@ APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 #
 # Supported ARCH values
 #
-ARCHES = tg-xe x86 x86-test
+X86_ARCHES = x86 x86-test
+ARCHES = tg-xe $(X86_ARCHES)
 
 ifndef ARCH
 $(error Need to specify ARCH! )
@@ -26,11 +27,12 @@ ifeq (,$(findstring $(ARCH), $(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH)) ! )
 endif
 
-BUILD_DIR = build-$(ARCH)
+BUILD_DIR = build-$(ARCH)$(BTYPE)
 
 OCR_INC = $(APPS_LIBS_INSTALL)/include
 
 SRCDIR  = $(CURDIR)/$(ARCH)
+OBJS = $(patsubst %.c, $(BUILD_DIR)/%.o, $(patsubst %.S, $(BUILD_DIR)/%.o, $(SRCS)))
 LIB = $(BUILD_DIR)/libocrscaffold.a
 #
 # XE Clang/llvm build
@@ -47,7 +49,15 @@ ifeq ($(ARCH), tg-xe)
   SRCS = ocrscaffold.c
   INCS := -isystem $(OCR_INC)
   CFLAGS = -Os
+  BTYPE = -static
   export APPS_LIBS_INSTALL
+endif
+ifdef PIE
+  ifneq ($(ARCH), tg-xe)
+    $(error PIE is only valid for ARCH tg-xe)
+  endif
+  BTYPE = -pie
+  # CFLAGS += -fpie
 endif
 #
 # X86_64 Clang/llvm build
@@ -78,18 +88,29 @@ ifeq ($(ARCH), x86)
   RANLIB = /usr/bin/ranlib
 endif
 
-OBJS = $(patsubst %.c, $(BUILD_DIR)/%.o, $(patsubst %.S, $(BUILD_DIR)/%.o, $(SRCS)))
 
 ##########################
 # Make Targets
 #
-all: setup $(LIB)
-	@echo Done making all
-# Modify this target when ocrscaffold supports debug and non-debug builds
-
+debug: CFLAGS += -g
 debug: default
 
 default: all
+
+all: setup $(ARCH)
+	@echo Done making all
+
+tg-xe-pie :
+	@echo Building tg-xe for PIE
+	$(MAKE) PIE=1 install
+
+tg-xe-static :
+	@echo Building tg-xe static
+	$(MAKE) install
+
+tg-xe : tg-xe-static tg-xe-pie
+
+$(X86ARCHES) : install
 
 # Always try to build these when we get here
 .PHONY: $(LIB) showvars setup clean
@@ -103,11 +124,14 @@ showvars:
 setup:
 	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
 
-$(LIB): $(OBJS)
+$(LIB): $(BUILD_DIR) $(OBJS)
 	@$(RM) -f $@
 	@$(AR) cru $@ $(OBJS)
 	@$(RANLIB) $@
 	@echo Successfully built $@
+
+$(BUILD_DIR):
+	@[ -d $(BUILD_DIR) ] || mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/%.o : $(SRCDIR)/%.c
 	@$(CC) -c $(CFLAGS) $(INCS) $< -o $@
@@ -120,6 +144,11 @@ install: setup $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)
 	@cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib
+	@if [ -z $(PIE) ] ; then \
+	   cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib ; \
+	 else \
+	   cp -u $(BUILD_DIR)/libocrscaffold.a $(APPS_LIBS_INSTALL)/lib/libocrscaffold.p.a ; \
+	 fi
 	@echo Installation complete
 
 .PHONY: uninstall
