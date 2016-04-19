@@ -147,13 +147,15 @@ namespace Realm {
       CoreReservation *core_rsrv;
     };
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     //OCR processor that implements the required processor functionalities 
     //using OCR calls. Compared to other processor implementaions this 
     //doesnt have a scheduler since scheduling is done by OCR
     class OCRProcessor : public ProcessorImpl {
     public:
+      //EDT template for the EDT that converts OCR function to realm user function
       static ocrGuid_t ocr_realm_conversion_edt_t;
+
       OCRProcessor(Processor _me);
       virtual ~OCRProcessor(void);
 
@@ -167,11 +169,6 @@ namespace Realm {
                               const ProfilingRequestSet &reqs,
                              Event start_event, Event finish_event,
                               int priority);
-
-      virtual Event spawn_task_ret_event(Processor::TaskFuncID func_id,
-                             const void *args, size_t arglen,
-                              const ProfilingRequestSet &reqs,
-                             Event start_event, int priority);
 
       virtual void shutdown(void);
 
@@ -192,7 +189,7 @@ namespace Realm {
 
       std::map<Processor::TaskFuncID, TaskTableEntry> task_table;
     };
-#endif
+#endif // USE_OCR_LAYER
 
     class RemoteProcessor : public ProcessorImpl {
     public:

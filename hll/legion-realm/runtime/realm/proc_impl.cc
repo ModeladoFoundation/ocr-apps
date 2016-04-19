@@ -114,16 +114,15 @@ namespace Realm {
 			   Event wait_on, int priority) const
     {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
-      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
-      Event e = ((OCRProcessor*)p)->spawn_task_ret_event(func_id, args, arglen,
-                   ProfilingRequestSet(), wait_on, priority);
-      return e;
-#else
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
+#if USE_OCR_LAYER
+      Event e = OCREventImpl::create_ocrevent();
+#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
+#endif // USE_OCR_LAYER
+
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
       log_event_graph.info("Task Request: %d " IDFMT 
@@ -138,7 +137,6 @@ namespace Realm {
       p->spawn_task(func_id, args, arglen, ProfilingRequestSet(),
 		    wait_on, e, priority);
       return e;
-#endif
     }
 
     Event Processor::spawn(TaskFuncID func_id, const void *args, size_t arglen,
@@ -146,19 +144,15 @@ namespace Realm {
 			   Event wait_on, int priority) const
     {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
-      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
-      //GenEventImpl *finish_event = GenEventImpl::create_genevent();
-      //Event e = finish_event->current_event();
-      Event e = Event::NO_EVENT;
-      p->spawn_task(func_id, args, arglen, reqs,
-                   wait_on, e, priority);
-      return e;
-#else
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
+#if USE_OCR_LAYER
+      Event e = OCREventImpl::create_ocrevent();
+#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
+#endif // USE_OCR_LAYER
+
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
       log_event_graph.info("Task Request: %d " IDFMT 
@@ -173,7 +167,6 @@ namespace Realm {
       p->spawn_task(func_id, args, arglen, reqs,
 		    wait_on, e, priority);
       return e;
-#endif
     }
 
     AddressSpace Processor::address_space(void) const
@@ -198,7 +191,7 @@ namespace Realm {
 	assert(0);
       }
 
-#ifdef USE_OCR_LAYER //ignores prs parameter
+#if USE_OCR_LAYER //ignores prs parameter
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
       p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len)); 
       return Event::NO_EVENT;
@@ -272,7 +265,7 @@ namespace Realm {
 
       tro->mark_finished();
       return finish_event;
-#endif
+#endif // USE_OCR_LAYER
     }
 
     /*static*/ Event Processor::register_task_by_kind(Kind target_kind, bool global,
@@ -288,9 +281,7 @@ namespace Realm {
 	assert(0);
       }
 
-#ifdef USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
-      //ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
-      //p->register_task(func_id, codedesc, ByteArrayRef(user_data, user_data_len)); 
+#if USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
       std::set<Processor> local_procs;
       get_runtime()->machine->get_local_processors_by_kind(local_procs, target_kind);
       for(std::set<Processor>::const_iterator it = local_procs.begin();
@@ -347,7 +338,7 @@ namespace Realm {
 
       tro->mark_finished();
       return finish_event;
-#endif
+#endif // USE_OCR_LAYER
     }
 
 
@@ -959,7 +950,7 @@ namespace Realm {
     delete core_rsrv;
   }
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
   ////////////////////////////////////////////////////////////////////////
   //
   // class OCRProcessor
@@ -1015,15 +1006,12 @@ namespace Realm {
     ocrEdtTemplateDestroy(OCRProcessor::ocr_realm_conversion_edt_t);
   }
 
-  //creates a OCR edt that calls the realm user function
-  //function pointer of the realm function call is put in argv[0] parameter
-  //start_event is put in first dependency data block
-  //args parameter of realm function call is put in second dependency data block
-  //arglen paramter of realm function call is put in third dependency data block
-  Event OCRProcessor::spawn_task_ret_event(Processor::TaskFuncID func_id,
+  //creates a OCR edt that calls the realm function
+  void OCRProcessor::spawn_task(Processor::TaskFuncID func_id,
                                 const void *args, size_t arglen,
                                const ProfilingRequestSet &reqs,
-                               Event start_event, int priority)
+                               Event start_event, Event finish_event,
+                               int priority)
   {
     //ignores reqs, priority
    
@@ -1040,34 +1028,18 @@ namespace Realm {
     ocrDbCreate(&db_guid[2], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
     arglen_copy[0] = arglen;
   
-    //create and call the Edt (move out the template to a static variable)
+    //create and call the EDT 
     ocrGuid_t ocr_realm_conversion_edt, out_ocr_realm_conversion_edt, persistent_evt_guid;
     ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t, EDT_PARAM_DEF, 
       (u64*)(&task_table[func_id]), EDT_PARAM_DEF, db_guid, 
       EDT_PROP_NONE, NULL_GUID, &out_ocr_realm_conversion_edt);
      
-    //create another persistent event and attach it to the edt since legacy_block_progress needs persistent event
-    ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
-    ocrAddDependence(out_ocr_realm_conversion_edt, persistent_evt_guid, 0, DB_MODE_RO);
+    //attach the output of EDT to the finish_event
+    ocrAddDependence(out_ocr_realm_conversion_edt, finish_event.evt_guid, 0, DB_MODE_RO);
 
-    //satsify the dependency after setting the sticky event to prevent the edt from starting before adding dependence to the sticky event
+    //satsify the dependency after setting the sticky event to prevent the 
+    //EDT from starting before adding dependence to the sticky event
     ocrAddDependence(start_event.evt_guid, ocr_realm_conversion_edt, 0, DB_MODE_RO);
-
-    Event finish_event = ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0).convert<Event>();
-    finish_event.evt_guid = persistent_evt_guid;
-    return finish_event;
-  }
-
-  //creates a OCR edt that calls the realm function
-  //not used since the finish event was requried in return
-  //because no table is maintained to map event and its implementation
-  void OCRProcessor::spawn_task(Processor::TaskFuncID func_id,
-                                const void *args, size_t arglen,
-                               const ProfilingRequestSet &reqs,
-                               Event start_event, Event finish_event,
-                               int priority)
-  {
-    assert(0);
   }
 
   void OCRProcessor::shutdown()
@@ -1129,7 +1101,7 @@ namespace Realm {
     assert(0);
   }
   
-#endif
+#endif // USE_OCR_LAYER
 
   ////////////////////////////////////////////////////////////////////////
   //

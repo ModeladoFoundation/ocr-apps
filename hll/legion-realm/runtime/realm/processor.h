@@ -59,9 +59,9 @@ namespace Realm {
         UTIL_PROC = ::UTIL_PROC, // Utility core
         IO_PROC = ::IO_PROC, // I/O core
         PROC_GROUP = ::PROC_GROUP, // Processor group
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 	OCR_PROC = ::OCR_PROC, //OCR processor
-#endif
+#endif // USE_OCR_LAYER
       };
 
       // Return what kind of processor this is

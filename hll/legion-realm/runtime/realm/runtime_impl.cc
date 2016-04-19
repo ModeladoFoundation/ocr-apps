@@ -122,22 +122,6 @@ namespace Realm {
     {
       assert(impl != 0);
 
-#ifdef USE_OCR_LAYER
-      //registers the task on each processor
-      CodeDescriptor codedesc(taskptr);
-      ProfilingRequestSet prs;
-      std::set<Event> events;
-      std::vector<ProcessorImpl *>& procs = ((RuntimeImpl *)impl)->nodes[gasnet_mynode()].processors;
-      for(std::vector<ProcessorImpl *>::iterator it = procs.begin();
-         it != procs.end();
-         it++) {
-       Event e = (*it)->me.register_task(taskid, codedesc, prs);
-       events.insert(e);
-      }
-
-      Event::merge_events(events).wait();
-      return true;
-#else
       CodeDescriptor codedesc(taskptr);
       ProfilingRequestSet prs;
       std::set<Event> events;
@@ -153,7 +137,7 @@ namespace Realm {
       log_taskreg.info() << "waiting on event: " << merged;
       merged.wait();
       return true;
-#endif
+//#endif
 #if 0
       if(((RuntimeImpl *)impl)->task_table.count(taskid) > 0)
 	return false;
@@ -243,17 +227,17 @@ namespace Realm {
       fprintf(f, "deferred shutdown");
     }
 
-   void Runtime::shutdown(Event wait_on /*= Event::NO_EVENT*/)
+    void Runtime::shutdown(Event wait_on /*= Event::NO_EVENT*/)
     {
       log_runtime.info() << "shutdown requested - wait_on=" << wait_on;
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
       ((RuntimeImpl *)impl)->shutdown(wait_on);
 #else
       if(wait_on.has_triggered())
 	((RuntimeImpl *)impl)->shutdown(true); // local request
       else
 	EventImpl::add_waiter(wait_on, new DeferredShutdown((RuntimeImpl *)impl));
-#endif
+#endif // USE_OCR_LAYER
     }
 
     void Runtime::wait_for_shutdown(void)
@@ -381,6 +365,9 @@ namespace Realm {
   
     RuntimeImpl::RuntimeImpl(void)
       : machine(0), 
+#if USE_OCR_LAYER
+        ocr_shutdown_guid(NULL_GUID),
+#endif // USE_OCR_LAYER
 #ifdef NODE_LOGGING
 	prefix("."),
 #endif
@@ -397,6 +384,9 @@ namespace Realm {
 
     RuntimeImpl::~RuntimeImpl(void)
     {
+#if USE_OCR_LAYER
+      ocrEventDestroy(ocr_shutdown_guid);
+#endif // USE_OCR_LAYER
       delete machine;
     }
 
@@ -501,7 +491,7 @@ namespace Realm {
 	}
     }
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     void RuntimeImpl::create_processors()
     {
       //only one processor
@@ -518,11 +508,11 @@ namespace Realm {
       MemoryImpl *mi = new OCRMemory(m, sysmem_size_in_mb << 20);
       add_memory(mi);
     }
-#endif
+#endif // USE_OCR_LAYER
 
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 
       // have to register domain mappings too
       LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<1> >();
@@ -587,7 +577,7 @@ namespace Realm {
      } 
 
       return true;
-#else
+#else // USE_OCR_LAYER
       // have to register domain mappings too
       LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<1> >();
       LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<2> >();
@@ -1219,7 +1209,7 @@ namespace Realm {
       }
 
       return true;
-#endif
+#endif // USE_OCR_LAYER
     }
 
   template <typename T>
@@ -1265,14 +1255,14 @@ namespace Realm {
     {
       log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " before=" << wait_on;
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
       //same as the non gasnet case
       Event finish_event = target_proc.spawn(task_id, args, arglen, wait_on, priority);
 
       log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
 
       return finish_event;
-#else
+#else // USE_OCR_LAYER
 #ifdef USE_GASNET
 #ifdef DEBUG_COLLECTIVES
       broadcast_check(target_proc, "target_proc");
@@ -1336,7 +1326,7 @@ namespace Realm {
 
       return finish_event;
 #endif
-#endif
+#endif // USE_OCR_LAYER
     }
 
     Event RuntimeImpl::collective_spawn_by_kind(Processor::Kind target_kind, Processor::TaskFuncID task_id, 
@@ -1561,7 +1551,7 @@ namespace Realm {
     // this is not member data of RuntimeImpl because we don't want use-after-free problems
     static int shutdown_count = 0;
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     //EDT for the shutdown
     ocrGuid_t shutdown_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
     {
@@ -1575,14 +1565,17 @@ namespace Realm {
         //invoke the showtdown EDT
         ocrGuid_t sd_edt_t, sd_edt, out_sd_edt, persistent_evt_guid;
         ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
-        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, &wait_on.evt_guid, EDT_PROP_NONE, NULL_GUID, &out_sd_edt);
+        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, &out_sd_edt);
 
-	//create another persistent event and attach it to the edt since legacy_block_progress needs persistent event 
-	ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
-	ocrAddDependence(out_sd_edt, persistent_evt_guid, 0, DB_MODE_RO);
-        ocr_shutdown_guid = persistent_evt_guid;
+	//create another persistent event for use in wait_for_shutdown and 
+	//attach it to the EDT since legacy_block_progress needs persistent event 
+	ocrEventCreate(&ocr_shutdown_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+	ocrAddDependence(out_sd_edt, ocr_shutdown_guid, 0, DB_MODE_RO);
+
+        //start the EDT by statisfying dependency only after linking to the return event
+	ocrAddDependence(wait_on.evt_guid, sd_edt, 0, DB_MODE_RO);
     }
-#endif
+#endif // USE_OCR_LAYER
 
     void RuntimeImpl::shutdown(bool local_request /*= true*/)
     {
@@ -1620,7 +1613,7 @@ namespace Realm {
 
     void RuntimeImpl::wait_for_shutdown(void)
     {
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     OCREventImpl::wait(ocr_shutdown_guid);
     OCREventImpl::static_destroy();
     OCRProcessor::static_destroy();
@@ -1635,7 +1628,7 @@ namespace Realm {
         delete_container_contents(n.processors);
       }
     }
-#else
+#else // USE_OCR_LAYER
 #if 0
       bool exit_process = true;
       if (background_pthread != 0)
@@ -1748,7 +1741,7 @@ namespace Realm {
       // would be nice to fix this...
       //if (exit_process)
       //  gasnet_exit(0);
-#endif
+#endif // USE_OCR_LAYER
     }
 
     EventImpl *RuntimeImpl::get_event_impl(Event e)
@@ -2009,7 +2002,7 @@ namespace Realm {
   
 }; // namespace Realm
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 
 int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
 {

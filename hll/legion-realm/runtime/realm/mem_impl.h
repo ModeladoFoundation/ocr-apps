@@ -50,9 +50,9 @@ namespace Realm {
 #ifdef USE_HDF
 	MKIND_HDF,      // HDF memory accessible by owner node
 #endif
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
         MKIND_OCR,      //OCR Data block
-#endif
+#endif // USE_OCR_LAYER
       };
 
       MemoryImpl(Memory _me, size_t _size, MemoryKind _kind, size_t _alignment, Memory::Kind _lowlevel_kind);
@@ -175,8 +175,9 @@ namespace Realm {
       bool prealloced, registered;
     };
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 
+    //this structure is used to pass information between EDT and constructor
     struct DB_Alloc_Data
     {
       char *base_addr;
@@ -211,10 +212,13 @@ namespace Realm {
       virtual int get_home_node(off_t offset, size_t size);
 
     private:
-      ocrGuid_t ocr_db_guid, ocr_evt_guid;
+      //guid of the giant data block that represents memory
+      ocrGuid_t ocr_db_guid;
+      //guid of the event that holds alive the EDT which created the memory data block
+      ocrGuid_t ocr_evt_guid;
       char *base, *base_orig;
     };
-#endif
+#endif // USE_OCR_LAYER
 
     class GASNetMemory : public MemoryImpl {
     public:

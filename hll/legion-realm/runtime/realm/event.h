@@ -25,9 +25,9 @@
 #include <set>
 #include <iostream>
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 #include "ocr.h"
-#endif
+#endif // USE_OCR_LAYER
 
 namespace Realm {
 
@@ -38,10 +38,9 @@ namespace Realm {
 
       id_t id;
       gen_t gen;
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
       ocrGuid_t evt_guid;
-//this should have been an else with gen
-#endif
+#endif // USE_OCR_LAYER
 
       bool operator<(const Event& rhs) const;
 

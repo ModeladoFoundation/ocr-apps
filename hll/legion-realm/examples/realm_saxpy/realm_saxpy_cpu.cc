@@ -313,6 +313,7 @@ void check_result_task(const void *args, size_t arglen,
   for (unsigned idx = 0; idx < num_elements; idx++)
   {
     float expected = saxpy_args->alpha * x_ptr[idx] + y_ptr[idx];
+    //printf("verify %f %f %f %f\n", x_ptr[idx], y_ptr[idx], z_ptr[idx], expected); 
     float actual = z_ptr[idx];
     // FMAs are too acurate
     float diff = (actual >= expected) ? actual - expected : expected - actual;

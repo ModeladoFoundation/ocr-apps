@@ -46,9 +46,9 @@ namespace Realm {
 
       // Different Memory types
       enum Kind {
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
         OCR_MEM, //for now the single big datablock exposed by OCR
-#endif
+#endif // USE_OCR_LAYER
         GLOBAL_MEM, // Guaranteed visible to all processors on all nodes (e.g. GASNet memory, universally slow)
         SYSTEM_MEM, // Visible to all processors on a node
         REGDMA_MEM, // Registered memory visible to all processors on a node, can be a target of RDMA

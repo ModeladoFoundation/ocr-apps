@@ -20,9 +20,9 @@
 #include "logging.h"
 #include "threads.h"
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 #include "extensions/ocr-legacy.h"
-#endif
+#endif // USE_OCR_LAYER
 
 namespace Realm {
 
@@ -35,9 +35,9 @@ namespace Realm {
   //
 
   /*static*/ const Event Event::NO_EVENT = { 0, 0
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     , NULL_GUID
-#endif
+#endif // USE_OCR_LAYER
  };
 
   // Take this you POS c++ type system
@@ -51,53 +51,50 @@ namespace Realm {
         else if (id > rhs.id)
           return false;
         else
-#ifdef USE_OCR_LAYER
-          //return *((OCREventImpl*)impl) < *((OCREventImpl*)(rhs.impl));
-	  return (evt_guid < rhs.evt_guid);
+#if USE_OCR_LAYER
+	  return OCREventImpl::guid_less(evt_guid, rhs.evt_guid);
 #else
           return (gen < rhs.gen);
-#endif
+#endif // USE_OCR_LAYER
       }
 
       bool Event::operator==(const Event& rhs) const { return (id == rhs.id)
-#ifdef USE_OCR_LAYER
-	//&& *(OCREventImpl*)impl == *(OCREventImpl*)(rhs.impl)
-	&& (evt_guid == rhs.evt_guid)
+#if USE_OCR_LAYER
+	&& OCREventImpl::guid_eq(evt_guid, rhs.evt_guid)
 #else
 	&& (gen == rhs.gen)
-#endif
+#endif // USE_OCR_LAYER
 ; }
 
       bool Event::operator!=(const Event& rhs) const { return (id != rhs.id)
-#ifdef USE_OCR_LAYER
-	//&& *(OCREventImpl*)impl != *(OCREventImpl*)(rhs.impl)
-	&& (evt_guid != rhs.evt_guid)
+#if USE_OCR_LAYER
+	&& OCREventImpl::guid_neq(evt_guid, rhs.evt_guid)
 #else
 	&& (gen != rhs.gen)
-#endif
+#endif // USE_OCR_LAYER
 ; }
 
   bool Event::has_triggered(void) const
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
+    if(!id) return true; // special case: NO_EVENT has always triggered
+#if USE_OCR_LAYER
     return OCREventImpl::has_triggered(evt_guid);
 #else
-    if(!id) return true; // special case: NO_EVENT has always triggered
     EventImpl *e = get_runtime()->get_event_impl(*this);
     return e->has_triggered(gen);
-#endif
+#endif // USE_OCR_LAYER
   }
 
   // creates an event that won't trigger until all input events have
   /*static*/ Event Event::merge_events(const std::set<Event>& wait_for)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     return OCREventImpl::merge_events(wait_for);
 #else
     return GenEventImpl::merge_events(wait_for);
-#endif
+#endif // USE_OCR_LAYER
   }
 
   /*static*/ Event Event::merge_events(Event ev1, Event ev2,
@@ -105,11 +102,11 @@ namespace Realm {
 				       Event ev5 /*= NO_EVENT*/, Event ev6 /*= NO_EVENT*/)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
     return OCREventImpl::merge_events(ev1, ev2, ev3, ev4, ev5, ev6);
 #else
     return GenEventImpl::merge_events(ev1, ev2, ev3, ev4, ev5, ev6);
-#endif
+#endif // USE_OCR_LAYER
   }
 
   class EventTriggeredCondition {
@@ -160,11 +157,10 @@ namespace Realm {
   void Event::wait(void) const
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
     if(!id) return;  // special case: never wait for NO_EVENT
-
+#if USE_OCR_LAYER
     // early out case too
-    if(has_triggered()) return;
+    if(OCREventImpl::has_triggered(evt_guid)) return;
 
     // waiting on an event does not count against the low level's time
     DetailedTimer::ScopedPush sp2(TIME_NONE);
@@ -175,7 +171,6 @@ namespace Realm {
 
     return;
 #else
-    if(!id) return;  // special case: never wait for NO_EVENT
     EventImpl *e = get_runtime()->get_event_impl(*this);
 
     // early out case too
@@ -196,26 +191,24 @@ namespace Realm {
     assert(0); // if we're not a Thread, we have a problem
     return;
     //assert(ptr != 0);
-#endif
+#endif // USE_OCR_LAYER
   }
 
   void Event::external_wait(void) const
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
-#ifdef USE_OCR_LAYER
     if(!id) return;  // special case: never wait for NO_EVENT
-
+#if USE_OCR_LAYER
     // early out case too
-    if(has_triggered()) return;
+    if(OCREventImpl::has_triggered(evt_guid)) return;
 
     // waiting on an event does not count against the low level's time
     DetailedTimer::ScopedPush sp2(TIME_NONE);
 
     log_event.info() << "external thread blocked: event=" << *this;
-    OCREventImpl::wait(evt_guid);
+    OCREventImpl::external_wait(evt_guid);
     log_event.info() << "external thread resumed: event=" << *this;
 #else
-    if(!id) return;  // special case: never wait for NO_EVENT
     EventImpl *e = get_runtime()->get_event_impl(*this);
 
     // early out case too
@@ -227,7 +220,7 @@ namespace Realm {
     log_event.info() << "external thread blocked: event=" << *this;
     e->external_wait(gen);
     log_event.info() << "external thread resumed: event=" << *this;
-#endif
+#endif // USE_OCR_LAYER
   }
 
 
@@ -1676,20 +1669,21 @@ static void *bytedup(const void *data, size_t datalen)
       return true;
     }
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
   ////////////////////////////////////////////////////////////////////////
   //
   // class OCREvents implementation
   //
     
     ocrGuid_t OCREventImpl::merge_events_edt_t = NULL_GUID;
+    const ID OCREventImpl::ocr_event_impl = ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
 
-    //This function is used to create an EDT so that it waits till all dependencies are met.
+    //This function is used to create a dummy EDT so that it waits till all dependencies are met.
     //This is used to merge events i.e create an event that waits for all the input event to be met
     ocrGuid_t ocr_realm_merge_events_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
     {
     	assert(argc==0 && argv==NULL);
-	assert(depc > 1);
+	assert(depc >= 1);
 	return NULL_GUID;
     }
 
@@ -1703,6 +1697,28 @@ static void *bytedup(const void *data, size_t datalen)
     {
       //delete the merge events edt template
       ocrEdtTemplateDestroy(OCREventImpl::merge_events_edt_t);
+    }
+
+    /*static*/ Event OCREventImpl::create_ocrevent(void)
+    { 
+      Event e = OCREventImpl::ocr_event_impl.convert<Event>();
+      ocrEventCreate(&e.evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+      return e;
+    }
+
+    /*static*/ bool OCREventImpl::guid_less(const ocrGuid_t& lhs, const ocrGuid_t& rhs)
+    {
+      return lhs < rhs;
+    }
+
+    /*static*/ bool OCREventImpl::guid_eq(const ocrGuid_t& lhs, const ocrGuid_t& rhs)
+    {
+      return lhs == rhs;
+    }
+
+    /*static*/ bool OCREventImpl::guid_neq(const ocrGuid_t& lhs, const ocrGuid_t& rhs)
+    {
+      return lhs != rhs;
     }
 
     /*static*/ bool OCREventImpl::has_triggered(ocrGuid_t evt)
@@ -1722,7 +1738,7 @@ static void *bytedup(const void *data, size_t datalen)
     }
 
     //create an EDT with an array of wait_for events as dependency
-    /*static*/ Event OCREventImpl::merge_events(const std::set<Event>& wait_for)
+    /*static*/Event OCREventImpl::merge_events(const std::set<Event>& wait_for)
     {
       if (wait_for.empty())
         return Event::NO_EVENT;
@@ -1731,23 +1747,26 @@ static void *bytedup(const void *data, size_t datalen)
       else
       {
         const unsigned size = wait_for.size();
-        ocrGuid_t wait_for_arr[size], merge_events_edt, out_merge_events_edt, persistent_evt_guid;
-	Event ret_evt = ID(ID_TYPE, gasnet_mynode(), 0).convert<Event>();
+        ocrGuid_t wait_for_arr[size], merge_events_edt, out_merge_events_edt;
 
-	//convert Event set to an array of Guid and pass it to EDT as dependency
+	Event ret_evt = OCREventImpl::create_ocrevent();
+
+	//convert Event set to an array of guids and pass it to EDT as dependency
 	std::set<Event>::iterator it; int i;
         for(it = wait_for.begin(), i=0; it!=wait_for.end(); it++,i++)
         {
           wait_for_arr[i] = it->evt_guid;
         }
+	wait_for_arr[0] = UNINITIALIZED_GUID;
 
 	ocrEdtCreate(&merge_events_edt, OCREventImpl::merge_events_edt_t, EDT_PARAM_DEF, NULL, size, 
                      wait_for_arr, EDT_PROP_NONE, NULL_GUID, &out_merge_events_edt);
 
-	//create another persistent event and attach it to the edt since legacy_block_progress needs persistent event	
-        ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
-	ocrAddDependence(out_merge_events_edt, persistent_evt_guid, 0, DB_MODE_RO);
-	ret_evt.evt_guid = persistent_evt_guid;
+	//attach the sticky finish event to the edt since legacy_block_progress needs persistent event	
+	ocrAddDependence(out_merge_events_edt, ret_evt.evt_guid, 0, DB_MODE_RO);
+
+        //start the EDT by statisfying dependency only after linking to the return event
+        ocrAddDependence(wait_for.begin()->evt_guid, merge_events_edt, 0, DB_MODE_RO);
 	
         return ret_evt;
       }
@@ -1759,9 +1778,10 @@ static void *bytedup(const void *data, size_t datalen)
                                                 Event ev5 /*= NO_EVENT*/, Event ev6 /*= NO_EVENT*/)
     {
       const unsigned size=6;
-      ocrGuid_t wait_for_arr[size], merge_events_edt, out_merge_events_edt, persistent_evt_guid;
-      Event ret_evt = ID(ID_TYPE, gasnet_mynode(), 0).convert<Event>();
+      ocrGuid_t wait_for_arr[size], merge_events_edt, out_merge_events_edt, tmp_first_event;
       int count=0;
+
+      Event ret_evt = OCREventImpl::create_ocrevent();
 
       //convert Event parameters to an array of Guid and pass it to EDT as dependency
       if(ev1.exists()) {
@@ -1789,16 +1809,23 @@ static void *bytedup(const void *data, size_t datalen)
          wait_for_arr[count++] =  ev6.evt_guid;
       }
       
+      if(count == 0)
+        return Event::NO_EVENT;
+
+      tmp_first_event = wait_for_arr[0];
+      wait_for_arr[0] = UNINITIALIZED_GUID;
+
       ocrEdtCreate(&merge_events_edt, OCREventImpl::merge_events_edt_t, EDT_PARAM_DEF, NULL, count, 
                    wait_for_arr, EDT_PROP_NONE, NULL_GUID, &out_merge_events_edt);
 
-      //create another persistent event and attach it to the edt since legacy_block_progress needs persistent event	
-      ocrEventCreate(&persistent_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
-      ocrAddDependence(out_merge_events_edt, persistent_evt_guid, 0, DB_MODE_RO);
-      ret_evt.evt_guid = persistent_evt_guid;
+      //attach the sticky finish event to the edt since legacy_block_progress needs persistent event	
+      ocrAddDependence(out_merge_events_edt, ret_evt.evt_guid, 0, DB_MODE_RO);
+
+      //start the EDT by statisfying dependency only after linking to the return event
+      ocrAddDependence(tmp_first_event, merge_events_edt, 0, DB_MODE_RO);
 
       return ret_evt;
     }
-#endif
+#endif // USE_OCR_LAYER
 }; // namespace Realm
 

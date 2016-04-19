@@ -184,9 +184,9 @@ namespace Realm {
       // requests a shutdown of the runtime
       void shutdown(bool local_request);
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
       void shutdown(Event wait_on);
-#endif
+#endif // USE_OCR_LAYER
 
       void wait_for_shutdown(void);
 
@@ -214,9 +214,11 @@ namespace Realm {
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
+     //guid of the event on which wait_for_shutdown() blocks since
+     //shutdown() needs to wait on that event
      ocrGuid_t ocr_shutdown_guid;
-#endif
+#endif // USE_OCR_LAYER
 
 #ifdef NODE_LOGGING
       std::string prefix;
@@ -260,12 +262,12 @@ namespace Realm {
       const std::vector<DMAChannel *>& get_dma_channels(void) const;
 
     protected:
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
       //create a processor and add to the list of processors
       void create_processors();
       //create a memory and add to the list of memories
       void create_memories();
-#endif
+#endif // USE_OCR_LAYER
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;

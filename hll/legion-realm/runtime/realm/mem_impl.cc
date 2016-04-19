@@ -21,9 +21,9 @@
 #include "inst_impl.h"
 #include "runtime_impl.h"
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 #include "extensions/ocr-legacy.h"
-#endif
+#endif // USE_OCR_LAYER
 
 namespace Realm {
 
@@ -536,7 +536,7 @@ namespace Realm {
   };
   
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 
   ////////////////////////////////////////////////////////////////////////
   //
@@ -561,13 +561,14 @@ namespace Realm {
 
     //satisfy the event on which the memory constructor is blocked
     //return the base_addr, db guid and block evt guid
+    ocrDbRelease(ret_db_guid);
     ocrEventSatisfy(*((ocrGuid_t *)depv[0].ptr), ret_db_guid);
 
     //block the thread until memory destructor satisfies the event
     ocrLegacyBlockProgress(data->block_evt_guid, NULL, NULL, NULL, LEGACY_PROP_NONE);
-    //cleanup the event and datablock returned
+
+    //cleanup the event
     ocrEventDestroy(data->block_evt_guid);
-    ocrDbDestroy(ret_db_guid);
 
     return NULL_GUID;
   }
@@ -583,13 +584,13 @@ namespace Realm {
     ocrGuid_t ret_evt_guid, ret_db_guid, ocr_realm_alloc_db_edt_t, ocr_realm_alloc_db_edt;
     ocrEdtTemplateCreate(&ocr_realm_alloc_db_edt_t, ocr_realm_alloc_db_func, 1, 1);
 
-    //create the event on which this constructor should be blocked while datablock is created
-    ocrEventCreate(&ret_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
     //create a data block and pass ret_evt_guid using it
     size_t align_size = _size + ALIGNMENT - 1;
-    ocrGuid_t db_guid, *ret_evt_db_guid;
-    ocrDbCreate(&db_guid, (void **)(&ret_evt_db_guid), sizeof(ocrGuid_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-    *ret_evt_db_guid = ret_evt_guid;
+    ocrGuid_t db_guid, *db_buff;
+    ocrDbCreate(&db_guid, (void **)(&db_buff), sizeof(ocrGuid_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    //create the event on which this constructor should be blocked while datablock is created
+    ocrEventCreate(&ret_evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+    *db_buff = ret_evt_guid;
 
     //invoke the EDT to create the data block
     ocrEdtCreate(&ocr_realm_alloc_db_edt, ocr_realm_alloc_db_edt_t, EDT_PARAM_DEF,
@@ -597,7 +598,7 @@ namespace Realm {
         EDT_PROP_NONE, NULL_GUID, NULL);
     ocrEdtTemplateDestroy(ocr_realm_alloc_db_edt_t);
 
-    //task that allocates the db returns the base address, db guid and guid of the event on which that task is blocked
+    //task that allocates the db returns the base address, db guid and guid of the event on which that EDT is blocked
     DB_Alloc_Data *ret_data;
     size_t ret_size;
     ocrLegacyBlockProgress(ret_evt_guid, &ret_db_guid, (void**)&ret_data, &ret_size, LEGACY_PROP_NONE);
@@ -609,6 +610,7 @@ namespace Realm {
     //cleanup
     ocrEventDestroy(ret_evt_guid);
     ocrDbDestroy(db_guid);
+    ocrDbDestroy(ret_db_guid);
 
     size_t ofs = reinterpret_cast<size_t>(base_orig) % ALIGNMENT;
     if(ofs > 0) {
@@ -682,7 +684,7 @@ namespace Realm {
     return gasnet_mynode();
   }
 
-#endif
+#endif // USE_OCR_LAYER
 
   ////////////////////////////////////////////////////////////////////////
   //

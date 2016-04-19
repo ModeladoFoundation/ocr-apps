@@ -24,9 +24,9 @@
 
 #include "lowlevel_config.h"
 
-#ifdef USE_OCR_LAYER
+#if USE_OCR_LAYER
 #include "ocr.h"
-#endif
+#endif // USE_OCR_LAYER
 
 namespace Realm {
 

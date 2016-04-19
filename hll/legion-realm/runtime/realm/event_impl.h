@@ -280,15 +280,27 @@ namespace Realm {
     };
 
 
-#ifdef USE_OCR_LAYER
-
+#if USE_OCR_LAYER
     class OCREventImpl{
+
     public:
       static const ID::ID_Types ID_TYPE = ID::ID_EVENT;
+      //EDT template for the merge events function
       static ocrGuid_t merge_events_edt_t;
+      //an  object of type ID which is used to call the convert function
+      static const ID ocr_event_impl; //= ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
 
       static void static_init(void);
       static void static_destroy(void);
+
+      //create an OCR event. Almost equivalent of create_genevent()
+      static Event create_ocrevent(void);
+
+      static bool guid_less(const ocrGuid_t& first, const ocrGuid_t& second);
+
+      static bool guid_eq(const ocrGuid_t& first, const ocrGuid_t& second);
+
+      static bool guid_neq(const ocrGuid_t& first, const ocrGuid_t& second);
 
       static bool has_triggered(ocrGuid_t);
 
@@ -303,7 +315,7 @@ namespace Realm {
       //private:
       //  ocrGuid_t evt_guid;
     };
-#endif
+#endif // USE_OCR_LAYER
 	
 }; // namespace Realm
 
