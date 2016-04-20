@@ -1,0 +1,11 @@
+This version of Smith-Waterman has been modified to use distribution (affinity)
+hints, as well as task priorities. The main work task also has an extra sleep
+routine added so as to make a human-recognizable delay, and some extra printf
+calls are included to make an execution trace.
+
+The BAD_AFFINITIES environment variable controls the priorities used. The
+affinity is always row-block-cyclic. Setting BAD_AFFINITIES=0 makes the
+priorities match the affinities, whereas BAD_AFFINITIES=1 makes the priority
+hints clash with the row-block-cyclic affinities.
+
+Use the included run.sh to run the program.
