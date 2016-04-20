@@ -25,13 +25,14 @@ AR := ar
 ARFLAGS := rsv
 RANLIB := ranlib
 
-# 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
+# USER_FLAGS, for any special -D defines, like -DDEBUG_MPI=1
+USER_FLAGS ?=
 OPT_FLAGS := -O2
 INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
 CFLAGS := -std=c99 -g
 DEFINES := -DOCR_ENABLE_EDT_NAMING
 
-CFLAGS := $(CFLAGS) $(INC_FLAGS)  $(OPT_FLAGS) -DOCR_TYPE_H=$(OCR_TYPE).h
+CFLAGS := $(CFLAGS) $(INC_FLAGS)  $(OPT_FLAGS) $(USER_FLAGS) -DOCR_TYPE_H=$(OCR_TYPE).h
 
 .PHONY: all
 all: install

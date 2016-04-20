@@ -30,6 +30,8 @@ extern "C" {
 #define ENABLE_EXTENSION_RTITF 1
 #define ENABLE_EXTENSION_LABELING  1
 #define ENABLE_EXTENSION_AFFINITY  1
+#define ENABLE_EXTENSION_CHANNEL_EVT 1
+#define ENABLE_EXTENSION_PARAMS_EVT 1
 
 // 12/9/15 ocrDbDestroy neglects to Release DBs for mpilite, even though
 // it is supposed to. bug 879. So temporarily, add them.
@@ -38,7 +40,9 @@ extern "C" {
 #endif
 
 // debugging for mpi_ocr{,_messaging}.c, mpilite.c
-#define DEBUG_MPI 0
+#ifndef DEBUG_MPI
+    #define DEBUG_MPI 0
+#endif
 
 // Defines to simulate OCR tagging for events, and ocrLegacyBlockProgress
 // for datablocks

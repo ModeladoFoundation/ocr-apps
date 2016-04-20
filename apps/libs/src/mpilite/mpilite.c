@@ -1151,7 +1151,7 @@ int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
             vSrc = 0;
         }
 #if DEBUG_MPI
-        s32 srcs[i-1] = vSrc;
+        srcs[i-1] = vSrc;
 #endif
 
         MPI_Recv(p, count, datatype, vSrc, 0 /*tag*/, comm, MPI_STATUS_IGNORE);
@@ -1547,7 +1547,7 @@ int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
 
 
 #if DEBUG_MPI
-        PRINTF("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest
+    PRINTF("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest,
                srcs[0], srcs[1], srcs[2], srcs[3]);
         fflush(stdout);
 #endif
