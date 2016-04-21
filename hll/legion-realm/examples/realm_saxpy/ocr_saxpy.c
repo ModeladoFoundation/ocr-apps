@@ -29,7 +29,6 @@ struct param_type_t
 
 typedef struct param_type_t param_type;
 
-
 //shutdown  task
 ocrGuid_t shutdown_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 {
@@ -158,3 +157,4 @@ ocrGuid_t mainEdt(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
 
 	return NULL_GUID;
 }
+

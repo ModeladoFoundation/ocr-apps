@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -279,47 +280,11 @@ namespace Realm {
 			       const void *data, size_t datalen);
     };
 
-
-#if USE_OCR_LAYER
-    class OCREventImpl{
-
-    public:
-      static const ID::ID_Types ID_TYPE = ID::ID_EVENT;
-      //EDT template for the merge events function
-      static ocrGuid_t merge_events_edt_t;
-      //an  object of type ID which is used to call the convert function
-      static const ID ocr_event_impl; //= ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
-
-      static void static_init(void);
-      static void static_destroy(void);
-
-      //create an OCR event. Almost equivalent of create_genevent()
-      static Event create_ocrevent(void);
-
-      static bool guid_less(const ocrGuid_t& first, const ocrGuid_t& second);
-
-      static bool guid_eq(const ocrGuid_t& first, const ocrGuid_t& second);
-
-      static bool guid_neq(const ocrGuid_t& first, const ocrGuid_t& second);
-
-      static bool has_triggered(ocrGuid_t);
-
-      static void wait(ocrGuid_t);
-
-      static void external_wait(ocrGuid_t);
-
-      static Event merge_events(const std::set<Event>& wait_for);
-      static Event merge_events(Event ev1, Event ev2,
-                                Event ev3 = Event::NO_EVENT, Event ev4 = Event::NO_EVENT,
-                                Event ev5 = Event::NO_EVENT, Event ev6 = Event::NO_EVENT);
-      //private:
-      //  ocrGuid_t evt_guid;
-    };
-#endif // USE_OCR_LAYER
 	
 }; // namespace Realm
 
 //include "event_impl.inl"
+#include "ocr/ocr_event_impl.h"
 
 #endif // ifndef REALM_EVENT_IMPL_H
 

@@ -2007,8 +2007,8 @@ namespace Realm {
 int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
 {
     printf("error: no legion_ocr_main defined.\n");
-    ASSERT(false);
     ocrShutdown();
+    ASSERT(false);
     return 0;
 }
 

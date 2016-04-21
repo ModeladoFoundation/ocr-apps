@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -4744,6 +4745,8 @@ namespace LegionRuntime {
     //start the EDT by statisfying dependency only after linking to the finish event
     ocrAddDependence(db_guid, ocr_realm_perform_dma_edt, 0, DB_MODE_RO);
   }
-#endif // USE_OCR_LAYER
  };
 };
+
+#endif // USE_OCR_LAYER
+

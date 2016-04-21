@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -174,51 +175,6 @@ namespace Realm {
       char *base, *base_orig;
       bool prealloced, registered;
     };
-
-#if USE_OCR_LAYER
-
-    //this structure is used to pass information between EDT and constructor
-    struct DB_Alloc_Data
-    {
-      char *base_addr;
-      ocrGuid_t buff_db_guid, block_evt_guid;
-    };
-
-    class OCRMemory : public MemoryImpl {
-    public:
-      static const size_t ALIGNMENT = 256;
-
-      OCRMemory(Memory _me, size_t _size);
-
-      virtual ~OCRMemory(void);
-
-      virtual RegionInstance create_instance(IndexSpace r,
-					     const int *linearization_bits,
-					     size_t bytes_needed,
-					     size_t block_size,
-					     size_t element_size,
-					     const std::vector<size_t>& field_sizes,
-					     ReductionOpID redopid,
-					     off_t list_size,
-                                             const ProfilingRequestSet &reqs,
-					     RegionInstance parent_inst);
-      virtual void destroy_instance(RegionInstance i, 
-				    bool local_destroy);
-      virtual off_t alloc_bytes(size_t size);
-      virtual void free_bytes(off_t offset, size_t size);
-      virtual void get_bytes(off_t offset, void *dst, size_t size);
-      virtual void put_bytes(off_t offset, const void *src, size_t size);
-      virtual void *get_direct_ptr(off_t offset, size_t size);
-      virtual int get_home_node(off_t offset, size_t size);
-
-    private:
-      //guid of the giant data block that represents memory
-      ocrGuid_t ocr_db_guid;
-      //guid of the event that holds alive the EDT which created the memory data block
-      ocrGuid_t ocr_evt_guid;
-      char *base, *base_orig;
-    };
-#endif // USE_OCR_LAYER
 
     class GASNetMemory : public MemoryImpl {
     public:
@@ -723,6 +679,8 @@ namespace Realm {
                                 unsigned count, RemoteWriteFence *fence);
     
 }; // namespace Realm
+
+#include "ocr/ocr_mem_impl.h"
 
 #endif // ifndef REALM_MEM_IMPL_H
 
