@@ -66,11 +66,13 @@ ENABLE_VISUALIZER     ?= no
 # To enable set to yes. You may also optionally specify a focus function as well as a focus
 # depth and whether or not to ignore all RT calls (and lump them with their parent).
 # See common.mk in ocr/build/ for more detail on the profiler
-ENABLE_PROFILER       ?= no
-PROFILER_FOCUS        ?=
-PROFILER_FOCUS_DEPTH  ?=
-PROFILER_IGNORE_RT    ?= no
-PROFILER_COUNT_OTHER  ?= no
+ENABLE_PROFILER        ?= no
+PROFILER_FOCUS         ?=
+PROFILER_PEEK          ?=
+PROFILER_FOCUS_DEPTH   ?=
+PROFILER_IGNORE_RT     ?= no
+PROFILER_COUNT_OTHER   ?= no
+PROFILER_CONSIDER_USER ?=
 
 # If set to yes, adds -Werror
 CFLAGS_BASE_WARN_ERROR ?= no
@@ -187,6 +189,9 @@ ifeq ($(ENABLE_PROFILER), yes)
   ifneq ($(PROFILER_FOCUS),)
     RT_PROFILER_FLAGS += -DPROFILER_FOCUS=$(PROFILER_FOCUS)
   endif
+  ifneq ($(PROFILER_PEEK),)
+    RT_PROFILER_FLAGS += -DPROFILER_PEEK=$(PROFILER_PEEK)
+  endif
   ifneq ($(PROFILER_FOCUS_DEPTH),)
     RT_PROFILER_FLAGS += -DPROFILER_FOCUS_DEPTH=$(PROFILER_FOCUS_DEPTH)
   endif
@@ -200,6 +205,9 @@ ifeq ($(ENABLE_PROFILER), yes)
     GENPROFILE_OPTS :=
   endif
 
+  ifneq ($(PROFILER_CONSIDER_USER),)
+    RT_PROFILER_FLAGS += $(foreach func, $(PROFILER_CONSIDER_USER), -DPROFILER_$(func)_ISRT=0)
+  endif
   PROFILE_FILE := $(OCR_BUILD)/src/profilerAutoGenApp.h
 endif # ENABLE_PROFILER
 
