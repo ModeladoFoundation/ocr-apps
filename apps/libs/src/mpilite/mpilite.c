@@ -916,6 +916,7 @@ int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
             return MPI_SUCCESS;
         }
 
+
     bool done = (FFWD_MQ_DONE == r->status);
 
 #if DEBUG_MPI
@@ -1059,11 +1060,23 @@ int MPI_Get_count(
 // answer is gotten. Some possible complication with MPI_IN_PLACE..
 //
 // The other wrinkle is that the tree is not necessarily complete, so when you
-// look toward the leaves, you need to check that the chhild's value you are
+// look toward the leaves, you need to check that the child's "rank" number you are
 // expecting is < numRanks. Otherwise you need to behave accordingly. For bcast
-// toward the leaves, you just don't send. For reduce, you don't receive, AND
-// you have to adjust the reduce operation, e.g., leaves don't combine any values
-// from other ranks.
+// toward the leaves, you just don't send. For reduce, you don't receive from
+// that child , AND
+// you have to adjust the reduce operation by iterating fewer times.
+// And leaves don't combine any values from other ranks, they just send their
+// sendbuf to the parent.
+//
+// Two other wrinkles:
+// 1. sendbuf may == MPI_IN_PLACE, which means resultbuf is both input and
+// output, so need to get sendbuf to point to resultbuf. Note, this is
+// supposed to only be for the ROOT, because other ranks don't use their
+// resultbuf; but it's easy to handle it correctly if the user mis-uses this
+// feature.
+// 2. Since non-root doesn't need resultbuf, user may pass in NULL, or put in
+// a pointer to data that SHOULD NOT BE WRITTEN ON! Therefore, never use
+// resultbuf as a target for Recv-ing data from children (except for root).
 //
 // The algorithm works for any base for the number of descendents of each tree node:
 // collective base, or ARITY.
@@ -1074,7 +1087,7 @@ int MPI_Get_count(
 
 #if  TREE_REDUCE
 
-int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
+int MPI_Reduce (void *sendbuf, void *resultbuf, int count,
     MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm)
 {
     rankContextP_t rankContext = getRankContext();
@@ -1087,13 +1100,28 @@ int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
         MPI_ERROR("MPI_Reduce: root >= group size? invalid rank\n");
     }
 
+    // usually only do IN_PLACE for root, because resultbuf is not used in
+    // non-root ranks
     if (sendbuf == MPI_IN_PLACE) {
-        sendbuf = recvbuf;
+        sendbuf = resultbuf;
+    }
+    else if (root == rank) {
+        // Root needs to initialize resultbuf from sendbuf, because the
+        // reduce operation will be "sendbuf op= <data from child>".
+        //      But if
+        // sendbuf is MPI_IN_PLACE, we already have the effect of the copy
+        // from the assignment in the first part of the if.
+        memcpy(resultbuf, sendbuf, totalSize);
     }
 
-    // If only 1 rank, then copy result to recvbuf and return
     if (1 == numRanks) {
-        memcpy(recvbuf, sendbuf, totalSize);
+        // If only 1 rank, then root == rank, and we just made sure
+        // resultbuf[*] == sendbuf[*], so we're done!
+#if DEBUG_MPI
+        PRINTF("Reduce: root rank#%d returns value\n", rank);
+        fflush(stdout);
+#endif
+
         return MPI_SUCCESS;
     }
 
@@ -1128,12 +1156,55 @@ int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
     int srcs[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 #endif
 
-    // Initialize recvbuf from sendbuf
-    memcpy(recvbuf, sendbuf, totalSize);
+    // make small buffers to receive childens's data, if too small will use
+    // malloc later
+    const int smallSize = 64;
+    char buffer1[smallSize],buffer2[smallSize];
+    void * buf1Ptr, * buf2Ptr;
 
-    // make a buffer to receive one child's data
-    char buffer[totalSize];
-    void * p = &buffer;
+    // Mark apologizes for using "p" and "recvbuf", but I stole the pages of
+    // reduction computation code and did not want to risk introducing
+    // errors by doing renamings. (e.g., we never mpi_recv into "recvbuf",
+    // instead "receiver" is used.)
+    void * p;        // source: right-hand side of reduction
+    void * recvbuf;  // target: left-hand side of reduction
+    void * receiver; // where the MPI_Recv will put its value
+
+
+    if (totalSize <= smallSize){
+        // we can use the stack buffers
+        buf1Ptr = & buffer1;
+        buf2Ptr = & buffer2;
+    } else {
+        // We'll need more space. We KNOW there is at least one child, so
+        // we'll need buf1Ptr, but don't know
+        // yet if we'll need buf2Ptr, so make it NULL so we'll know whether to
+        // free it after the loop
+        buf1Ptr = malloc(totalSize);
+        buf2Ptr = NULL;
+    }
+
+    // Lots of pointer shuffling to minimize amount of copying needed,
+    // and the amount of mallocing if the buffers are big (e.g.,
+    // Tempest has 500k buffers)
+
+    if (root == rank){
+        // If we're at the root, resultbuf has to be the target, and buf1Ptr
+        // will be the receiver and the reduce src. buf2Ptr will not be needed
+        // This mapping will NOT change in the loop.
+        receiver = p = buf1Ptr;
+        recvbuf = resultbuf;
+    } else {
+        // Otherwise, avoid the extra copy that would have to be done to
+        // sendbuf on the first iteration to make it suitable for being
+        // the target of the reduction. Instead, make the first buffer
+        // received from MPI_Recv be the target.
+        //      This mapping WILL BE CHANGED on the second iteration, if there
+        // is more than 1 child: can't receive into buf1Ptr because that's holding
+        // the intermediate result; now we'll need buf2Ptr. See inside the loop
+        p = sendbuf;
+        recvbuf = receiver = buf1Ptr;
+    }
 
     // Get the values from your children
     // Here is the right shift, the +1 by iterating 1..ARITY
@@ -1154,10 +1225,18 @@ int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
         srcs[i-1] = vSrc;
 #endif
 
-        MPI_Recv(p, count, datatype, vSrc, 0 /*tag*/, comm, MPI_STATUS_IGNORE);
+        // Arrange the src "p" and target "recvptr" pointers
+        if (2 == i && root != rank){
+            // If it's the second iteration and not the root, we need
+            // to set up buf2Ptr, and use it as receiver and src:p for
+            // the rest of the iterations (think ARITY=16)
+            p = receiver = buf2Ptr = (totalSize <= smallSize ? &buffer2 : malloc(totalSize));
+        }
 
-        // "Reduce" result into recvbuf
-        //        computeReduction(recvbuf, p, count, datatype, op);
+        MPI_Recv(receiver, count, datatype, vSrc, 0 /*tag*/, comm, MPI_STATUS_IGNORE);
+
+        // *** "Reduce" result into recvbuf  ***
+
         int j;
 
         if (datatype == MPI_INT) {
@@ -1543,14 +1622,24 @@ int MPI_Reduce (void *sendbuf, void *recvbuf, int count,
 
     if (rank != root){
         MPI_Send(recvbuf, count, datatype, vDest, 0 /*tag*/, comm);
-    }
-
 
 #if DEBUG_MPI
-    PRINTF("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest,
+        PRINTF("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest,
                srcs[0], srcs[1], srcs[2], srcs[3]);
         fflush(stdout);
+    } else {
+        PRINTF("Reduce: root rank#%d returns value\n", rank);
+        fflush(stdout);
 #endif
+    }
+
+    if (totalSize > smallSize){
+        // need to free stuff that was malloc-ed
+        free(buf1Ptr);
+        if (NULL != buf2Ptr){
+            free(buf2Ptr);
+        }
+    }
 
     return MPI_SUCCESS;
 }
