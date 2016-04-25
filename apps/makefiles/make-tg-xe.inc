@@ -307,6 +307,9 @@ $(OCR_XE_CONFIG_DEFAULT): $(OCR_INSTALL)/share/ocr/config/$(XE_TARGET)/default.c
 # Need libocrxe to generate the config file
 $(OCR_INSTALL)/share/ocr/config/$(XE_TARGET)/default.cfg: | libocrxe
 
+# Need libocrxe (or one of them) to get the aggregate script
+$(OCR_INSTALL)/share/ocr/scripts/Blob/aggregate_binary_files.sh: | libocrxe
+
 # Always remake this
 .PHONY: $(OCR_XE_CONFIG)
 $(OCR_XE_CONFIG): $(OCR_XE_CONFIG_ORIG)
