@@ -31,7 +31,8 @@ APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 #
 # Supported ARCH values
 #
-ARCHES = tg-xe x86 x86-test
+X86_ARCHES = x86 x86-test
+ARCHES = tg-xe $(X86_ARCHES)
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -43,6 +44,8 @@ endif
 #
 # flags and paths
 #
+LIB = libc++abi.a
+
 LIBCXXABI_SRC = $(realpath libcxxabi)
 LIBCXXABI_INC = $(LIBCXXABI_SRC)/include
 
@@ -55,7 +58,8 @@ LIBCXX_LIB = $(APPS_LIBS_INSTALL)/lib
 
 LLVM_SRC = $(TG_ROOT)/xe-llvm
 
-BUILD = build_$(ARCH)
+BUILD_PREF = build-
+BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
 COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__
 
@@ -87,11 +91,6 @@ CMAKE_ARGS =  -DLIBCXXABI_TARGET=$(CXXABI_TARGET) \
 			  -DLIBCXXABI_USE_LLVM_UNWINDER=TRUE \
 			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)"
 
-##########################
-# Make Targets
-#
-all: $(ARCH)
-	@echo Done making all
 #
 # XE Clang/llvm build
 #
@@ -100,7 +99,17 @@ ifeq ($(ARCH), tg-xe)
   CXX = $(TG_INSTALL)/bin/clang++
   TARGET = xstg-linux-elf
   CXXABI_TARGET = XSTG
+  BTYPE = -static
   export APPS_LIBS_INSTALL
+endif
+
+ifdef PIE
+  ifneq ($(ARCH), tg-xe)
+    $(error PIE is only valid for ARCH tg-xe)
+  endif
+  BTYPE = -pie
+  COMPILE_FLAGS += -fPIE
+  LIB = libc++abi.p.a
 endif
 #
 # This defines an x86_64 build using the XE compiler
@@ -128,26 +137,49 @@ ifeq ($(ARCH), x86)
   COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include
 endif
 
-$(ARCHES) install: build
-	@echo "Installing libcxxabi"
-	@make -C $(BUILD) install
+##########################
+# Make Targets
+#
+default: all
+
+all: $(ARCH)
+	@echo Done making all
+#
+# ARCH specific targets
+#
+tg-xe-pie:
+	$(MAKE) PIE=1 install
+
+tg-xe-static:
+	$(MAKE) install
+
+tg-xe: show_args tg-xe-pie tg-xe-static
+
+$(X86_ARCHES): show_args
+	$(MAKE) install
+
+install: build
+	@echo "Installing $(LIB)"
+	@cp -u $(BUILD_DIR)/lib/libc++abi.a $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 build: config
-	@echo "Building libcxxabi"
-	@make -C $(BUILD)
+	@echo "Building $(LIB)"
+	@make -C $(BUILD_DIR)
 
 config : clean
+	@(cd $(BUILD_DIR) ; cmake $(CMAKE_ARGS) $(LIBCXXABI_SRC) )
+
+show_args :
 	@echo TG_ROOT= $(TG_ROOT)
 	@echo TG_INSTALL= $(TG_INSTALL)
 	@echo APPS_ROOT= $(APPS_ROOT)
 	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
-	@(cd $(BUILD) ; cmake $(CMAKE_ARGS) $(LIBCXXABI_SRC) )
 
 #
 # Create a new build dir
 #
 clean :
-	@-[ -d $(BUILD) ] && rm -rf $(BUILD)
-	@mkdir -p $(BUILD)
+	@rm -rf $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 
 .PHONY: config clean build

@@ -30,7 +30,8 @@ APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 #
 # Supported ARCH values
 #
-ARCHES = tg-xe x86 x86-test
+X86_ARCHES = x86 x86-test
+ARCHES = tg-xe $(X86_ARCHES)
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -44,14 +45,18 @@ endif
 #
 LIBUNWIND_SRC = $(realpath libunwind)
 LIBUNWIND_INC = $(LIBUNWIND_SRC)/include
+LIB = libunwind.a
 
-BUILD = build_$(ARCH)
+BUILD_PREF = build-
+BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
+
 #
 # Default build type - overridden by debug target below
 #
-BUILD_TYPE = RELEASE
+BUILD_TYPE ?= RELEASE
 
 COMPILE_FLAGS = --target=$(TARGET) -nostdinc++ -D__ELF__ -U__STRICT_ANSI__
+COMPILE_FLAGS += $(DBG_FLAGS)
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
@@ -80,21 +85,27 @@ CMAKE_ARGS =  -DLIBUNWIND_TARGET=$(UNWIND_TARGET) \
 			  -DCMAKE_C_FLAGS:STRING="$(C_FLAGS)" \
 			  -DCMAKE_CXX_FLAGS:STRING="$(CXX_FLAGS)"
 
-##########################
-# Make Targets
-#
-all: $(ARCH)
-	@echo Done making all
 #
 # XE Clang/llvm build
 #
 ifeq ($(ARCH), tg-xe)
   CC = $(TG_INSTALL)/bin/clang
   CXX = $(TG_INSTALL)/bin/clang++
+  COMPILE_FLAGS += -I$(TG_ROOT)/common/include
   TARGET = xstg-linux-elf
   UNWIND_TARGET = XSTG
   LLVM_SRC = $(TG_ROOT)/xe-llvm
+  BTYPE = -static
   export APPS_LIBS_INSTALL
+endif
+
+ifdef PIE
+  ifneq ($(ARCH), tg-xe)
+    $(error PIE is only valid for ARCH tg-xe)
+  endif
+  BTYPE = -pie
+  COMPILE_FLAGS += -fPIE
+  LIB = libunwind.p.a
 endif
 #
 # This defines an x86_64 build using the XE compiler
@@ -125,31 +136,54 @@ ifeq ($(ARCH), x86)
   COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include
 endif
 
-debug: BUILD_TYPE = DEBUG
-debug: C_FLAGS += -UNDEBUG -DLOG_DEFAULT=true
-debug: CXX_FLAGS += -UNDEBUG -DLOG_DEFAULT=true
-debug: $(ARCH)
+##########################
+# Make Targets
+#
+default: all
 
-$(ARCHES) install: build
-	@echo "Installing libunwind"
-	@make -C $(BUILD) install
+all: $(ARCH)
+	@echo Done making all
+
+debug: export BUILD_TYPE = DEBUG
+debug: export DBG_FLAGS = -UNDEBUG -DLOG_DEFAULT=true
+debug: $(ARCH)
+#
+# ARCH specific targets
+#
+tg-xe-pie:
+	$(MAKE) PIE=1 install
+
+tg-xe-static:
+	$(MAKE) install
+
+tg-xe: show_args tg-xe-pie tg-xe-static
+
+$(X86_ARCHES): show_args
+	$(MAKE) install
+
+install: build
+	@echo "Installing $(LIB)"
+	@cp -u $(BUILD_DIR)/lib/libunwind.a $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 build: config
+	@echo "Building $(LIB)"
+	@make -C $(BUILD_DIR)
+
+config : show_args clean
+	@(cd $(BUILD_DIR) ; cmake $(CMAKE_ARGS) $(LIBUNWIND_SRC) )
+
+show_args :
 	@echo TG_ROOT= $(TG_ROOT)
 	@echo TG_INSTALL= $(TG_INSTALL)
 	@echo APPS_ROOT= $(APPS_ROOT)
 	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
-	@echo "Building libunwind"
-	@make -C $(BUILD)
-
-config : clean
-	@(cd $(BUILD) ; cmake $(CMAKE_ARGS) $(LIBUNWIND_SRC) )
-
+	@echo BUILD_DIR $(BUILD_DIR)
+	@echo COMPILE_FLAGS $(COMPILE_FLAGS)
 #
 # Create a new build dir
 #
 clean :
-	@-[ -d $(BUILD) ] && rm -rf $(BUILD)
-	@mkdir -p $(BUILD)
+	@rm -rf $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 
-.PHONY: config clean build
+.PHONY: config clean build show_args

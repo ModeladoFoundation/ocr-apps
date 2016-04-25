@@ -75,8 +75,10 @@
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX    0
   #endif
 
-#else
+#else   // NOT __APPLE__
+
   #include <stdlib.h>
+  #include <stdbool.h>
 
   static inline void assert_rtn(const char* func, const char* file, int line, const char* msg)  __attribute__ ((noreturn));
   static inline void assert_rtn(const char* func, const char* file, int line, const char* msg) {

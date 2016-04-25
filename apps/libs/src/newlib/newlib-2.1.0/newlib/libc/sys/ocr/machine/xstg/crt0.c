@@ -128,10 +128,9 @@ static void __init_bss()
 }
 
 /////////////////////// PIE runtime relocations //////////////////////
-// Do the runtime data relocations necessary due to
-// pointers in initialized data.
-// We assume the RAR registers have been initialized
-// before we started running.
+// Do the runtime data relocations necessary due to pointers in
+// initialized data. We assume the RAR registers have been initialized
+// before we started running and that all locations are 8-byte aligned.
 //
 __attribute__((weak))
 extern unsigned long __rtreloc_start;
@@ -148,23 +147,19 @@ typedef struct {
                   symbol_rar    : 16;
 } rtreloc_entry;
 
-#define PRF_ADDR    ((unsigned long *)0x2e000L)    // XE agent relative PRF address
-#define REG_ADDR(r) (PRF_ADDR + (r))
+#define AR_PRF_ADDR ((ulongptr_t)0x2e000L)    // XE agent relative PRF address
+#define REG_ADDR(r) (AR_PRF_ADDR + (r))
 
 
 void __rtreloc( void )
 {
     rtreloc_entry * entries = (rtreloc_entry *) & __rtreloc_start;
-    // unsigned long reloc_count = (&__rtreloc_end - & __rtreloc_start);
-    // uint64_t reloc_count = ((uint64_t) &__rtreloc_size) >> 3;
-    uint64_t reloc_count = ((uint64_t) &__rtreloc_size);
-    reloc_count >>= 3;
-    int count = 0;
+    uint64_t reloc_count = ((uint64_t) &__rtreloc_size) >> 3;
 
-    for( ; count < reloc_count ; entries++, count++ ) {
+    for(  ; reloc_count > 0 ; entries++, reloc_count-- ) {
         if( entries->symbol_rar != 0 && entries->target_rar != 0 ) {
-            unsigned long *target =
-                    (unsigned long *) (*REG_ADDR(entries->target_rar) +
+            ulongptr_t target =
+                    (ulongptr_t) (*REG_ADDR(entries->target_rar) +
                                           entries->target_offset);
             *target += * REG_ADDR(entries->symbol_rar);
         }

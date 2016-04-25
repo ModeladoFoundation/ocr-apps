@@ -438,16 +438,17 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreiWMMXCont
 // An XE's register file is accessible via PRF memory address alias 0x2e000
 // We loop restoring r2 - r511 via the PRF self-referential addr
 // Then explicitly use _pc as the return address and restore r0 and r1
+  // We use the 'burned' reg 504 for a load/store tmp and cmp result
 //
   .align 8
 DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind14Registers_xstg6jumptoEv)
   movimm    r1, 16, 64
 .Lloop:
-  load      r508, r1, r0, 64
-  store     r508, r1, 188416, 64
+  load      r504, r1, r0, 64
+  store     r504, r1, 0x2e000, 64
   addI      r1, r1, 8, 64
-  cmpimm    r508, r1, 512 * 8, 0, 64, SLT
-  jct       .Lloop, r508, 0, N
+  cmpimm    r504, r1, 512 * 8, 0, 64, SLT
+  jct       .Lloop, r504, 0, N
   load      r511, r0, r1, 64    # set PC as return address
   load      r1, r0, 8, 64       # recover r1 and r0 explicitly
   load      r0, r0, 0, 64       #
