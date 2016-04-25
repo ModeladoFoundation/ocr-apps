@@ -27,7 +27,8 @@ ifeq (,$(findstring $(ARCH), $(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH)) ! )
 endif
 
-BUILD_DIR = build-$(ARCH)$(BTYPE)
+BUILD_ROOT = build-
+BUILD_DIR = $(BUILD_ROOT)$(ARCH)$(BTYPE)
 
 OCR_INC = $(APPS_LIBS_INSTALL)/include
 
@@ -52,12 +53,13 @@ ifeq ($(ARCH), tg-xe)
   BTYPE = -static
   export APPS_LIBS_INSTALL
 endif
+
 ifdef PIE
   ifneq ($(ARCH), tg-xe)
     $(error PIE is only valid for ARCH tg-xe)
   endif
   BTYPE = -pie
-  # CFLAGS += -fpie
+  CFLAGS += -fPIE
 endif
 #
 # X86_64 Clang/llvm build
@@ -120,6 +122,7 @@ showvars:
 	@echo OBJS = $(OBJS)
 	@echo BUILD_DIR = $(BUILD_DIR)
 	@echo SRCDIR = $(SRCDIR)
+	@echo LIB = $(LIB)
 
 setup:
 	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
@@ -143,7 +146,6 @@ $(BUILD_DIR)/%.o : $(SRCDIR)/%.S
 install: setup $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
 	@mkdir -p $(APPS_LIBS_INSTALL)
-	@cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib
 	@if [ -z $(PIE) ] ; then \
 	   cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib ; \
 	 else \
@@ -156,4 +158,4 @@ uninstall: # Doesn't actually do anything.
 	@echo Uninstall is not implemented for this library
 
 clean:
-	@-rm -rf $(BUILD_DIR)
+	@-rm -rf $(BUILD_ROOT)$(ARCH)*

@@ -46,43 +46,23 @@ endif
 #
 # per-target build and local install dirs
 #
-BUILD_DIR = build-$(ARCH)$(BTYPE)
-TMPROOT   = tmproot-$(ARCH)$(BTYPE)
+BUILD_PREF = build-
+BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
+
+TMP_PREF = tmproot-
+TMP_ROOT   = $(TMP_PREF)$(ARCH)$(BTYPE)
 
 NEWLIB_SRCDIR  = $(CURDIR)/newlib-2.1.0
 NEWLIB_BUILD   = $(CURDIR)
-NEWLIB_TMPROOT = $(NEWLIB_BUILD)/$(TMPROOT)
+NEWLIB_TMPROOT = $(NEWLIB_BUILD)/$(TMP_ROOT)
 NEWLIB_INSTALL = $(NEWLIB_TMPROOT)/$(TARGET)
 
 NEWLIB   = $(NEWLIB_INSTALL)/lib/libc.a
 
-CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
 #
 # common cflags
 #
-CFLAGS ?= -Os -mstackrealign -fno-stack-protector -I$(NEWLIB_SRCDIR)/newlib/libc/include $(DEFINES)
-
-#
-# Environment variables for newlib configure
-#
-CFLAGS_FOR_TARGET ?= $(CFLAGS)
-CC_FOR_TARGET  ?= $(TOOL_PREFIX)$(CC)
-LD_FOR_TARGET  ?= $(TOOL_PREFIX)ld
-CXX_FOR_TARGET ?= $(TOOL_PREFIX)$(CXX)
-AR_FOR_TARGET  ?= $(TOOL_PREFIX)ar
-AS_FOR_TARGET  ?= $(TOOL_PREFIX)as
-NM_FOR_TARGET  ?= $(TOOL_PREFIX)nm
-CPP_FOR_TARGET ?= $(TOOL_PREFIX)$(CPP)
-RANLIB_FOR_TARGET ?= $(TOOL_PREFIX)ranlib
-READELF_FOR_TARGET ?= $(TOOL_PREFIX)readelf
-
-export CFLAGS CONFIG_ARGS
-export CFLAGS_FOR_TARGET CC_FOR_TARGET CXX_FOR_TARGET CPP_FOR_TARGET
-export AS_FOR_TARGET LD_FOR_TARGET NM_FOR_TARGET AR_FOR_TARGET
-export RANLIB_FOR_TARGET READELF_FOR_TARGET
-
-CFLAGS_FOR_BUILD = -g
-export CFLAGS_FOR_BUILD
+CFLAGS = -Os -mstackrealign -fno-stack-protector -I$(NEWLIB_SRCDIR)/newlib/libc/include $(DEFINES)
 
 #
 # XE Clang/llvm build
@@ -128,6 +108,29 @@ ifeq ($(ARCH), x86)
   TARGET = x86_64-linux-elf
 endif
 
+CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
+#
+# Environment variables for newlib configure
+#
+CFLAGS_FOR_TARGET = $(CFLAGS)
+CC_FOR_TARGET  ?= $(TOOL_PREFIX)$(CC)
+LD_FOR_TARGET  ?= $(TOOL_PREFIX)ld
+CXX_FOR_TARGET ?= $(TOOL_PREFIX)$(CXX)
+AR_FOR_TARGET  ?= $(TOOL_PREFIX)ar
+AS_FOR_TARGET  ?= $(TOOL_PREFIX)as
+NM_FOR_TARGET  ?= $(TOOL_PREFIX)nm
+CPP_FOR_TARGET ?= $(TOOL_PREFIX)$(CPP)
+RANLIB_FOR_TARGET ?= $(TOOL_PREFIX)ranlib
+READELF_FOR_TARGET ?= $(TOOL_PREFIX)readelf
+
+export CFLAGS CONFIG_ARGS
+export CFLAGS_FOR_TARGET CC_FOR_TARGET CXX_FOR_TARGET CPP_FOR_TARGET
+export AS_FOR_TARGET LD_FOR_TARGET NM_FOR_TARGET AR_FOR_TARGET
+export RANLIB_FOR_TARGET READELF_FOR_TARGET
+
+CFLAGS_FOR_BUILD = -g
+export CFLAGS_FOR_BUILD
+
 ##########################
 # Make Targets
 #
@@ -155,6 +158,7 @@ show_args:
 	@echo APPS_ROOT = $(APPS_ROOT)
 	@echo ARCH = $(ARCH)
 	@echo TARGET = $(TARGET)
+	@echo CFLAGS = $(CFLAGS)
 	@echo CFLAGS_FOR_TARGET = $(CFLAGS)
 	@echo CC_FOR_TARGET =  $(CC_FOR_TARGET)
 	@echo LD_FOR_TARGET =  $(LD_FOR_TARGET)
@@ -185,7 +189,7 @@ newlib: show_args newlib_install
 newlib-config $(BUILD_DIR)/config.log:
 	@echo Configuring Newlib ...
 	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
-	@cd $(BUILD_DIR); $(NEWLIB_SRCDIR)/configure $(CONFIG_ARGS)
+	cd $(BUILD_DIR); $(NEWLIB_SRCDIR)/configure $(CONFIG_ARGS)
 
 $(NEWLIB): $(BUILD_DIR)/config.log
 	@echo Building Newlib ...
@@ -228,8 +232,6 @@ uninstall: # Doesn't actually do anything.
 
 clean:
 	@-if test -d $(NEWLIB_BUILD) ; then          \
-	    cd $(NEWLIB_BUILD);                     \
-	    [ -d $(BUILD_DIR) ] && $(MAKE) -C $(BUILD_DIR) -ik clean;  \
-	    rm -rf $(BUILD_DIR); \
+	    rm -rf $(BUILD_PREF)$(ARCH)*; \
+		rm -rf $(NEWLIB_BUILD)/$(TMP_PREF)$(ARCH)* ; \
 	 fi
-	@rm -rf $(NEWLIB_INSTALL)

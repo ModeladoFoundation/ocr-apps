@@ -57,7 +57,7 @@ $(BUILDDIRS) :
 all: $(LIB) $(LIB_P)
 	@echo Done
 
-$(LIB_P) : CFLAGS += -fpie
+$(LIB_P) : CFLAGS += -fPIE
 
 $(LIB) : $(OBJS)
 	@echo "  = $@"
