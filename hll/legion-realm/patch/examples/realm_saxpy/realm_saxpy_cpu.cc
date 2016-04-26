@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +42,13 @@ void find_processors(Processor &first_cpu, Processor &first_gpu)
     Processor::Kind kind = it->kind();
     switch (kind)
     {
+       case OCR_PROC:
+        {
+          if (!first_cpu.exists())
+            first_cpu = *it;
+          printf("OCR Processor " IDFMT "\n", it->id);
+          break;
+        }
       case LOC_PROC:
         {
           if (!first_cpu.exists())
@@ -89,6 +97,14 @@ void find_memories(Processor cpu, Processor gpu,
     Memory::Kind kind = it->kind();
     switch (kind)
     {
+        case Memory::OCR_MEM:
+        {
+          system = *it;
+          printf("OCR Memory " IDFMT " for CPU Processor " IDFMT
+                 " has capacity %ld MB\n", it->id, cpu.id,
+                 (it->capacity() >> 20));
+          break;
+        }
       case Memory::SYSTEM_MEM:
         {
           system = *it;
@@ -319,7 +335,7 @@ extern void gpu_saxpy_task(const void *args, size_t arglen,
                            const void *userdata, size_t userlen, Processor p);
 #endif
 
-int main(int argc, char **argv)
+int legion_ocr_main(int argc, char **argv)
 {
   Runtime rt;
 
@@ -340,7 +356,7 @@ int main(int argc, char **argv)
     for(std::set<Processor>::const_iterator it = all_procs.begin();
         it != all_procs.end();
         it++)
-      if(it->kind() == Processor::LOC_PROC) {
+      if(it->kind() == Processor::OCR_PROC) {
         p = *it;
         break;
       }
@@ -358,3 +374,4 @@ int main(int argc, char **argv)
 
   return 0;
 }
+
