@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -138,7 +139,7 @@ namespace Realm {
       // used to adjust a barrier's arrival count either up or down
       // if delta > 0, timestamp is current time (on requesting node)
       // if delta < 0, timestamp says which positive adjustment this arrival must wait for
-      void adjust_arrival(Event::gen_t barrier_gen, int delta, 
+      void adjust_arrival(Event::gen_t barrier_gen, int delta,
 			  Barrier::timestamp_t timestamp, Event wait_on,
 			  const void *reduce_value, size_t reduce_value_size);
 
@@ -164,8 +165,8 @@ namespace Realm {
 	int unguarded_delta;
 	std::vector<EventWaiter *> local_waiters;
 	std::map<int, PerNodeUpdates *> pernode;
-      
-	
+
+
 	Generation(void);
 	~Generation(void);
 
@@ -279,10 +280,11 @@ namespace Realm {
 			       const void *data, size_t datalen);
     };
 
-	
+
 }; // namespace Realm
 
 //include "event_impl.inl"
+#include "ocr/ocr_event_impl.h"
 
 #endif // ifndef REALM_EVENT_IMPL_H
 

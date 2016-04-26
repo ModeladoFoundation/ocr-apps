@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +26,10 @@
 #include <set>
 #include <iostream>
 
+#if USE_OCR_LAYER
+#include "ocr.h"
+#endif // USE_OCR_LAYER
+
 namespace Realm {
 
     class Event {
@@ -34,17 +39,15 @@ namespace Realm {
 
       id_t id;
       gen_t gen;
-      bool operator<(const Event& rhs) const 
-      { 
-        if (id < rhs.id)
-          return true;
-        else if (id > rhs.id)
-          return false;
-        else
-          return (gen < rhs.gen);
-      }
-      bool operator==(const Event& rhs) const { return (id == rhs.id) && (gen == rhs.gen); }
-      bool operator!=(const Event& rhs) const { return (id != rhs.id) || (gen != rhs.gen); }
+#if USE_OCR_LAYER
+      ocrGuid_t evt_guid;
+#endif // USE_OCR_LAYER
+
+      bool operator<(const Event& rhs) const;
+
+      bool operator==(const Event& rhs) const;
+
+      bool operator!=(const Event& rhs) const;
 
       static const Event NO_EVENT;
 

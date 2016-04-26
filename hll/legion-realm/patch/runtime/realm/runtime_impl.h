@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,8 +74,8 @@ namespace Realm {
       typedef DynamicTableNode<DynamicTableNodeBase<LT, IT> *, 1 << INNER_BITS, LT, IT> INNER_TYPE;
       typedef DynamicTableNode<ET, 1 << LEAF_BITS, LT, IT> LEAF_TYPE;
       typedef DynamicTableFreeList<DynamicTableAllocator<ET, _INNER_BITS, _LEAF_BITS> > FreeList;
-      
-      static LEAF_TYPE *new_leaf_node(IT first_index, IT last_index, 
+
+      static LEAF_TYPE *new_leaf_node(IT first_index, IT last_index,
 				      int owner, FreeList *free_list)
       {
 	LEAF_TYPE *leaf = new LEAF_TYPE(0, first_index, last_index);
@@ -87,7 +88,7 @@ namespace Realm {
 	  free_list->lock.lock();
 
 	  for(IT i = 0; i <= last_ofs; i++)
-	    leaf->elems[i].next_free = ((i < last_ofs) ? 
+	    leaf->elems[i].next_free = ((i < last_ofs) ?
 					  &(leaf->elems[i+1]) :
 					  free_list->first_free);
 
@@ -168,21 +169,25 @@ namespace Realm {
       bool register_reduction(ReductionOpID redop_id, const ReductionOpUntyped *redop);
       bool register_custom_serdez(CustomSerdezID serdez_id, const CustomSerdezUntyped *serdez);
 
-      Event collective_spawn(Processor target_proc, Processor::TaskFuncID task_id, 
+      Event collective_spawn(Processor target_proc, Processor::TaskFuncID task_id,
 			     const void *args, size_t arglen,
 			     Event wait_on = Event::NO_EVENT, int priority = 0);
 
-      Event collective_spawn_by_kind(Processor::Kind target_kind, Processor::TaskFuncID task_id, 
+      Event collective_spawn_by_kind(Processor::Kind target_kind, Processor::TaskFuncID task_id,
 				     const void *args, size_t arglen,
 				     bool one_per_node = false,
 				     Event wait_on = Event::NO_EVENT, int priority = 0);
 
-      void run(Processor::TaskFuncID task_id = 0, 
+      void run(Processor::TaskFuncID task_id = 0,
 	       Runtime::RunStyle style = Runtime::ONE_TASK_ONLY,
 	       const void *args = 0, size_t arglen = 0, bool background = false);
 
       // requests a shutdown of the runtime
       void shutdown(bool local_request);
+
+#if USE_OCR_LAYER
+      void shutdown(Event wait_on);
+#endif // USE_OCR_LAYER
 
       void wait_for_shutdown(void);
 
@@ -209,6 +214,12 @@ namespace Realm {
 
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
+
+#if USE_OCR_LAYER
+     //guid of the event on which wait_for_shutdown() blocks since
+     //shutdown() needs to wait on that event
+     ocrGuid_t ocr_shutdown_guid;
+#endif // USE_OCR_LAYER
 
 #ifdef NODE_LOGGING
       std::string prefix;
@@ -252,6 +263,12 @@ namespace Realm {
       const std::vector<DMAChannel *>& get_dma_channels(void) const;
 
     protected:
+#if USE_OCR_LAYER
+      //create a processor and add to the list of processors
+      void create_processors();
+      //create a memory and add to the list of memories
+      void create_memories();
+#endif // USE_OCR_LAYER
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;
@@ -278,7 +295,7 @@ namespace Realm {
 
       static void send_request(gasnet_node_t target);
     };
-      
+
 }; // namespace Realm
 
 #endif // ifndef REALM_RUNTIME_IMPL_H

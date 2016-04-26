@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,24 +31,67 @@ namespace Realm {
   // class Event
   //
 
-  /*static*/ const Event Event::NO_EVENT = { 0, 0 };
+  /*static*/ const Event Event::NO_EVENT = { 0, 0
+#if USE_OCR_LAYER
+    , NULL_GUID
+#endif // USE_OCR_LAYER
+ };
+
   // Take this you POS c++ type system
-  /* static */ const UserEvent UserEvent::NO_USER_EVENT = 
+  /* static */ const UserEvent UserEvent::NO_USER_EVENT =
     *(static_cast<UserEvent*>(const_cast<Event*>(&Event::NO_EVENT)));
+
+      bool Event::operator<(const Event& rhs) const
+      {
+        if (id < rhs.id)
+          return true;
+        else if (id > rhs.id)
+          return false;
+        else
+#if USE_OCR_LAYER
+          return OCREventImpl::guid_less(evt_guid, rhs.evt_guid);
+#else
+          return (gen < rhs.gen);
+#endif // USE_OCR_LAYER
+      }
+
+      bool Event::operator==(const Event& rhs) const { return (id == rhs.id)
+#if USE_OCR_LAYER
+        && OCREventImpl::guid_eq(evt_guid, rhs.evt_guid)
+#else
+        && (gen == rhs.gen)
+#endif // USE_OCR_LAYER
+; }
+
+      bool Event::operator!=(const Event& rhs) const { return (id != rhs.id)
+#if USE_OCR_LAYER
+        && OCREventImpl::guid_neq(evt_guid, rhs.evt_guid)
+#else
+        && (gen != rhs.gen)
+#endif // USE_OCR_LAYER
+; }
 
   bool Event::has_triggered(void) const
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return true; // special case: NO_EVENT has always triggered
+#if USE_OCR_LAYER
+    return OCREventImpl::has_triggered(evt_guid);
+#else
     EventImpl *e = get_runtime()->get_event_impl(*this);
     return e->has_triggered(gen);
+#endif // USE_OCR_LAYER
   }
 
   // creates an event that won't trigger until all input events have
   /*static*/ Event Event::merge_events(const std::set<Event>& wait_for)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    return OCREventImpl::merge_events(wait_for);
+#else
     return GenEventImpl::merge_events(wait_for);
+#endif // USE_OCR_LAYER
   }
 
   /*static*/ Event Event::merge_events(Event ev1, Event ev2,
@@ -55,7 +99,11 @@ namespace Realm {
 				       Event ev5 /*= NO_EVENT*/, Event ev6 /*= NO_EVENT*/)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    return OCREventImpl::merge_events(ev1, ev2, ev3, ev4, ev5, ev6);
+#else
     return GenEventImpl::merge_events(ev1, ev2, ev3, ev4, ev5, ev6);
+#endif // USE_OCR_LAYER
   }
 
   class EventTriggeredCondition {
@@ -89,7 +137,7 @@ namespace Realm {
   EventTriggeredCondition::Callback::~Callback(void)
   {
   }
-  
+
   bool EventTriggeredCondition::Callback::event_triggered(void)
   {
     // call through to the actual callback
@@ -101,12 +149,25 @@ namespace Realm {
   void EventTriggeredCondition::Callback::print_info(FILE *f)
   {
     fprintf(f, "EventTriggeredCondition (thread unknown)");
-  }  
+  }
 
   void Event::wait(void) const
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return;  // special case: never wait for NO_EVENT
+#if USE_OCR_LAYER
+    // early out case too
+    if(OCREventImpl::has_triggered(evt_guid)) return;
+
+    // waiting on an event does not count against the low level's time
+    DetailedTimer::ScopedPush sp2(TIME_NONE);
+
+    log_event.info() << "thread blocked: event=" << *this;
+    OCREventImpl::wait(evt_guid);
+    log_event.info() << "thread resumed: event=" << *this;
+
+    return;
+#else
     EventImpl *e = get_runtime()->get_event_impl(*this);
 
     // early out case too
@@ -127,23 +188,36 @@ namespace Realm {
     assert(0); // if we're not a Thread, we have a problem
     return;
     //assert(ptr != 0);
+#endif // USE_OCR_LAYER
   }
 
   void Event::external_wait(void) const
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return;  // special case: never wait for NO_EVENT
+#if USE_OCR_LAYER
+    // early out case too
+    if(OCREventImpl::has_triggered(evt_guid)) return;
+
+    // waiting on an event does not count against the low level's time
+    DetailedTimer::ScopedPush sp2(TIME_NONE);
+
+    log_event.info() << "external thread blocked: event=" << *this;
+    OCREventImpl::external_wait(evt_guid);
+    log_event.info() << "external thread resumed: event=" << *this;
+#else
     EventImpl *e = get_runtime()->get_event_impl(*this);
 
     // early out case too
     if(e->has_triggered(gen)) return;
-    
+
     // waiting on an event does not count against the low level's time
     DetailedTimer::ScopedPush sp2(TIME_NONE);
-    
+
     log_event.info() << "external thread blocked: event=" << *this;
     e->external_wait(gen);
     log_event.info() << "external thread resumed: event=" << *this;
+#endif // USE_OCR_LAYER
   }
 
 
@@ -172,7 +246,7 @@ namespace Realm {
     GenEventImpl *e = get_runtime()->get_genevent_impl(*this);
 #ifdef EVENT_GRAPH_TRACE
     Event enclosing = find_enclosing_termination_event();
-    log_event_graph.info("Event Trigger: (" IDFMT ",%d) (" IDFMT 
+    log_event_graph.info("Event Trigger: (" IDFMT ",%d) (" IDFMT
 			 ",%d) (" IDFMT ",%d)",
 			 id, gen, wait_on.id, wait_on.gen,
 			 enclosing.id, enclosing.gen);
@@ -391,7 +465,7 @@ namespace Realm {
       Event e = finish_event->current_event();
 
 #ifdef EVENT_GRAPH_TRACE
-      log_event_graph.info("Event Merge: (" IDFMT ",%d) %ld", 
+      log_event_graph.info("Event Merge: (" IDFMT ",%d) %ld",
 			   e.id, e.gen, wait_for.size());
 #endif
 
@@ -538,7 +612,7 @@ namespace Realm {
 #endif
       return impl;
     }
-    
+
     void GenEventImpl::check_for_catchup(Event::gen_t implied_trigger_gen)
     {
       // early out before we take a lock
@@ -671,7 +745,7 @@ namespace Realm {
 #ifdef EVENT_TRACING
       {
         EventTraceItem &item = Tracer<EventTraceItem>::trace_item();
-        item.event_id = args.event.id; 
+        item.event_id = args.event.id;
         item.event_gen = args.event.gen;
         item.action = EventTraceItem::ACT_WAIT;
       }
@@ -712,7 +786,7 @@ namespace Realm {
 		    args.node, args.event.id, args.event.gen, impl->generation);
 	}
       }
-    } 
+    }
 
     /*static*/ void EventTriggerMessage::handle_request(EventTriggerMessage::RequestArgs args)
     {
@@ -752,7 +826,7 @@ namespace Realm {
         : cv(_cv)
       {
       }
-      virtual ~PthreadCondWaiter(void) 
+      virtual ~PthreadCondWaiter(void)
       {
       }
 
@@ -830,7 +904,7 @@ namespace Realm {
 	return;
       }
 
-      log_event.spew("event triggered: event=" IDFMT "/%d by node %d", 
+      log_event.spew("event triggered: event=" IDFMT "/%d by node %d",
 		me.id(), gen_triggered, trigger_node);
 #ifdef EVENT_TRACING
       {
@@ -870,7 +944,7 @@ namespace Realm {
           {
 	    Event triggered = me.convert<Event>();
 	    triggered.gen = gen_triggered;
-	    
+
             NodeSet send_mask;
             send_mask.swap(remote_waiters);
 	    EventTriggerMessage::broadcast_request(send_mask, triggered);
@@ -1004,11 +1078,11 @@ namespace Realm {
 						       const void *data, size_t datalen)
     {
       RequestArgs args;
-      
+
       args.barrier = barrier;
       args.delta = delta;
       args.wait_on = wait_on;
-      
+
       Message::request(target, args, data, datalen, PAYLOAD_COPY);
     }
 
@@ -1019,7 +1093,7 @@ namespace Realm {
       args.node = gasnet_mynode();
       args.barrier_id = barrier_id;
       args.subscribe_gen = subscribe_gen;
-      
+
       Message::request(target, args);
     }
 
@@ -1143,7 +1217,7 @@ static void *bytedup(const void *data, size_t datalen)
     // used to adjust a barrier's arrival count either up or down
     // if delta > 0, timestamp is current time (on requesting node)
     // if delta < 0, timestamp says which positive adjustment this arrival must wait for
-    void BarrierImpl::adjust_arrival(Event::gen_t barrier_gen, int delta, 
+    void BarrierImpl::adjust_arrival(Event::gen_t barrier_gen, int delta,
 				     Barrier::timestamp_t timestamp, Event wait_on,
 				     const void *reduce_value, size_t reduce_value_size)
     {
@@ -1166,12 +1240,12 @@ static void *bytedup(const void *data, size_t datalen)
 #endif
 	log_barrier.info("deferring barrier arrival: delta=%d in=" IDFMT "/%d out=" IDFMT "/%d (%llx)",
 			 delta, wait_on.id, wait_on.gen, me.id(), barrier_gen, timestamp);
-	EventImpl::add_waiter(wait_on, new DeferredBarrierArrival(b, delta, 
+	EventImpl::add_waiter(wait_on, new DeferredBarrierArrival(b, delta,
 								  reduce_value, reduce_value_size));
 	return;
       }
 
-      log_barrier.info("barrier adjustment: event=" IDFMT "/%d delta=%d ts=%llx", 
+      log_barrier.info("barrier adjustment: event=" IDFMT "/%d delta=%d ts=%llx",
 		       me.id(), barrier_gen, delta, timestamp);
 
 #ifdef DEBUG_BARRIER_REDUCTIONS
@@ -1232,7 +1306,7 @@ static void *bytedup(const void *data, size_t datalen)
 		(it->first == (generation + 1)) &&
 		((base_arrival_count + it->second->unguarded_delta) == 0)) {
 	    // keep the list of local waiters to wake up once we release the lock
-	    local_notifications.insert(local_notifications.end(), 
+	    local_notifications.insert(local_notifications.end(),
 				       it->second->local_waiters.begin(), it->second->local_waiters.end());
 	    trigger_gen = generation = it->first;
 	    delete it->second;
@@ -1310,7 +1384,7 @@ static void *bytedup(const void *data, size_t datalen)
       }
 
       if(trigger_gen != 0) {
-	log_barrier.info("barrier trigger: event=" IDFMT "/%d", 
+	log_barrier.info("barrier trigger: event=" IDFMT "/%d",
 			 me.id(), trigger_gen);
 
 	// notify local waiters first
@@ -1445,7 +1519,7 @@ static void *bytedup(const void *data, size_t datalen)
 	    // new subscription - don't reset remote_trigger_gens because the node may have
 	    //  been subscribed in the past
 	    // NOTE: remote_subscribe_gens should only hold subscriptions for
-	    //  generations that haven't triggered, so if we're subscribing to 
+	    //  generations that haven't triggered, so if we're subscribing to
 	    //  an old generation, don't add it
 	    if(args.subscribe_gen > impl->generation)
 	      impl->remote_subscribe_gens[args.node] = args.subscribe_gen;
@@ -1535,7 +1609,7 @@ static void *bytedup(const void *data, size_t datalen)
 	} else {
 	  // hold this trigger until we get messages for the earlier generation(s)
 	  log_barrier.info("holding future trigger: " IDFMT "/%d (%d -> %d)",
-			   args.barrier_id, impl->generation, 
+			   args.barrier_id, impl->generation,
 			   args.previous_gen, args.trigger_gen);
 	  impl->held_triggers[args.previous_gen] = args.trigger_gen;
 	}

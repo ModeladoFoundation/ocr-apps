@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,7 +69,7 @@ namespace Realm {
     public:
       Processor me;
       Processor::Kind kind;
-    }; 
+    };
 
     // generic local task processor - subclasses must create and configure a task
     // scheduler and pass in with the set_scheduler() method
@@ -196,13 +197,13 @@ namespace Realm {
 
       void request_group_members(void);
 
-      PriorityQueue<Task *, GASNetHSL> task_queue;      
+      PriorityQueue<Task *, GASNetHSL> task_queue;
     };
-    
+
     // this is generally useful to all processor implementations, so put it here
     class DeferredTaskSpawn : public EventWaiter {
     public:
-      DeferredTaskSpawn(ProcessorImpl *_proc, Task *_task) 
+      DeferredTaskSpawn(ProcessorImpl *_proc, Task *_task)
         : proc(_proc), task(_task) {}
 
       virtual ~DeferredTaskSpawn(void)
@@ -268,7 +269,7 @@ namespace Realm {
 			       Event start_event, Event finish_event,
 			       int priority);
     };
-    
+
     struct RegisterTaskMessage {
       struct RequestArgs : public BaseMedium {
 	gasnet_node_t sender;
@@ -291,7 +292,7 @@ namespace Realm {
 			       const void *userdata, size_t userlen,
 			       RemoteTaskRegistration *reg_op);
     };
-    
+
     struct RegisterTaskCompleteMessage {
       struct RequestArgs {
 	gasnet_node_t sender;
@@ -309,5 +310,7 @@ namespace Realm {
     };
 
 }; // namespace Realm
+
+#include "ocr/ocr_proc_impl.h"
 
 #endif // ifndef REALM_PROC_IMPL_H

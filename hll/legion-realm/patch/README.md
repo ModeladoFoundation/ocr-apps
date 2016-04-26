@@ -12,14 +12,14 @@ of parallel algorithms from their mapping onto distributed heterogeneous archite
 running on the target class of machines requires distributing not just computation but data
 as well, Legion presents the abstraction of logical regions for describing the structure of
 program data in a machine independent way.  Programmers specify the partitioning of logical
-regions into subregions, which provides a mechanism for communicating both the independence 
+regions into subregions, which provides a mechanism for communicating both the independence
 and locality of program data to the programming system.  Since the programming system
 has knowledge of both the structure of tasks and data within the program, it can aid the
 programmer in host of problems that are commonly the burden of the programmer:
 
   * Discovering/verifying correctness of parallel execution: determining when two tasks
     can be run in parallel without a data race is often difficult.  Legion provides mechanisms
-    for creating both implicit and explicit parallel task launches.  For implicit constructs 
+    for creating both implicit and explicit parallel task launches.  For implicit constructs
     Legion will automatically discover parallelism.  For explicit constructs, Legion will
     notify the programmer if there are potential data races between tasks intended to be
     run in parallel.
@@ -33,13 +33,13 @@ The Legion programming model is designed to abstract computations in a way that 
 them portable across many different potential architectures.  The challenge then is to make
 it easy to map the abstracted computation of the program onto actual architectures.  At
 a high level, mapping a Legion program entails making two kinds of decisions:
-  
+
   1. For each task: select a processor on which to run the task.
   2. For each logical region a task needs: select a memory in which to create
      a physical instance of the logical region for the task to use.
 
 To facilitate this process Legion introduces a novel runtime 'mapping' interface.  One of the
-NON-goals of the Legion project was to design a programming system that was magically capable 
+NON-goals of the Legion project was to design a programming system that was magically capable
 of making intelligent mapping decisions.  Instead the mapping interface provides a declarative
 mechanism for the programmer to communicate mapping decisions to the runtime system
 without having to actually write any code to perform the mapping (e.g. actually writing
@@ -64,7 +64,7 @@ capable of impacting the correctness of the program.  Consequently, all mapping 
 made are only performance decisions.  Programmers can then easily tune a Legion application
 by modifying the mapping interface implementation without needing to be concerned
 with how their decisions impact correctness.  Ultimately, this makes it possible in Legion
-to explore whole spaces of mapping choices (which tasks run on CPUs or GPUs, or where data 
+to explore whole spaces of mapping choices (which tasks run on CPUs or GPUs, or where data
 gets placed in the memory hierarchy) simply by enumerating all the possible mapping
 decisions and trying them.
 
@@ -105,15 +105,21 @@ the POSIX threads library is required for running all Legion applications.  For
 running applications on clusters and GPUs, we require at least CUDA 4.2 and
 and an installation of GASNET.  Verify that the correct locations of these installations
 are set in 'runtime/runtime.mk'.  At least Python 2.4 is required to run the
-'legion_spy' debugging tool.
+'legion_spy' debugging tool. To run legion on top of OCR, install OCR using the
+following steps:
+    - Compile OCR, set OCR_TYPE to the target and OCR_INSTALL to the installation point of OCR
+    - Set and export LD_LIBRARY_PATH to ${OCR_INSTALL}/lib:LD_LIBRARY_PATH
+    - Set and export OCR_CONFIG to the configuration you want to use for OCR
+      (usually ${OCR_INSTALL}/share/ocr/config/${OCR_TYPE}/default.cfg)
+    - For more details refer https://xstack.exascale-tech.com
 
 Running Programs
 ==================================================================================
-When running applications users must set the 'LG_RT_DIR' environment variable to 
+When running applications users must set the 'LG_RT_DIR' environment variable to
 point to the 'runtime' directory for the repository.  Makefiles will report an error
 if the environment variable is not set.
 
-Each application has a Makefile in its directory that is used to control the 
+Each application has a Makefile in its directory that is used to control the
 compilation of the application.  At the top of the Makefile there are several
 different variables that can be used to control how the application is built.
 By default, applications are compiled in debug mode.  This can be changed by
@@ -167,7 +173,7 @@ applications directory.  Make a copy of the 'Makefile.template' file in the
 at the top of the Makefile so that they contain the file names for each of
 the different files needed for your application.
 
-To begin writing Legion applications you should only need to include the 
+To begin writing Legion applications you should only need to include the
 'legion.h' header file.  The Makefile guarantees this file will be in the
 include path for you application when compiling.  More documentation of
 the 'legion.h' header file is currently in progress.
@@ -177,17 +183,17 @@ into whatever file has the declaration for your custom mapper.
 
 Debugging Programs
 ==================================================================================
-Legion currently has two primary tools for doing debugging.  The first is the 
+Legion currently has two primary tools for doing debugging.  The first is the
 'legion_spy' tool contained in the 'tools' directory.  To use legion spy, first
 add the '-DLEGION_SPY' flag to 'CC_FLAGS' in the Makefile of your application
 and recompile in DEBUG mode.  The run your application with the following flags
-'-cat legion_spy -level 1' and dump the results of standard error to a file.  
+'-cat legion_spy -level 1' and dump the results of standard error to a file.
 Then run legion spy as follows:
 
 python legion_spy -l -p <file>
 
 The legion spy tool will parse the results of the log file.  The '-l' flag will
-check the results of the logical region dependence analysis.  If there are any 
+check the results of the logical region dependence analysis.  If there are any
 errors they should be reported to the Legion developers.  The '-p' file will
 dump event graphs corresponding to all of the low-level runtime event dependencies
 between any tasks, copies, reductions, or inline mapping operations.  These graphs
@@ -208,7 +214,7 @@ accesses by compiling with the '-DBOUNDS_CHECKS' flag.
 in program order by compiling with the '-DINORDER_EXECUTION' flag and then passing
 '-hl:inorder' flag as an input to the application.
 
-- Dynamic Independence Tests: Users can request the high-level runtime perform 
+- Dynamic Independence Tests: Users can request the high-level runtime perform
 dynamic independence tests between regions and partitions by compiling with
 the '-DDYNAMIC_TESTS' flag and then passing '-hl:dynamic' flag as input.
 

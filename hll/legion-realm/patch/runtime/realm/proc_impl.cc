@@ -1,4 +1,6 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
+ *
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +48,7 @@ namespace Realm {
   // class Processor
   //
 
-    /*static*/ const Processor Processor::NO_PROC = { 0 }; 
+    /*static*/ const Processor Processor::NO_PROC = { 0 };
 
   namespace ThreadLocal {
     __thread Processor current_processor;
@@ -84,7 +86,7 @@ namespace Realm {
             offset += written;
           }
           log_event_graph.info("Group: " IDFMT " %ld%s",
-                                grp->me.id, members.size(), buffer); 
+                                grp->me.id, members.size(), buffer);
           if (buffer_size >= base_size)
             free(buffer);
         }
@@ -116,11 +118,16 @@ namespace Realm {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
+#if USE_OCR_LAYER
+      Event e = OCREventImpl::create_ocrevent();
+#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
+#endif // USE_OCR_LAYER
+
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
-      log_event_graph.info("Task Request: %d " IDFMT 
+      log_event_graph.info("Task Request: %d " IDFMT
                             " (" IDFMT ",%d) (" IDFMT ",%d)"
                             " (" IDFMT ",%d) %d %p %ld",
                             func_id, id, e.id, e.gen,
@@ -141,11 +148,16 @@ namespace Realm {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
+#if USE_OCR_LAYER
+      Event e = OCREventImpl::create_ocrevent();
+#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
+#endif // USE_OCR_LAYER
+
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
-      log_event_graph.info("Task Request: %d " IDFMT 
+      log_event_graph.info("Task Request: %d " IDFMT
                             " (" IDFMT ",%d) (" IDFMT ",%d)"
                             " (" IDFMT ",%d) %d %p %ld",
                             func_id, id, e.id, e.gen,
@@ -181,12 +193,17 @@ namespace Realm {
 	assert(0);
       }
 
+#if USE_OCR_LAYER //ignores prs parameter
+      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
+      p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
+      return Event::NO_EVENT;
+#else
       // TODO: special case - registration on a local processor with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
       Event finish_event = GenEventImpl::create_genevent()->current_event();
 
-      TaskRegistration *tro = new TaskRegistration(codedesc, 
+      TaskRegistration *tro = new TaskRegistration(codedesc,
 						   ByteArrayRef(user_data, user_data_len),
 						   finish_event, prs);
       tro->mark_ready();
@@ -225,7 +242,7 @@ namespace Realm {
 	  assert(0);
 	}
       }
-	 
+
       // local processor(s) can be called directly
       if(!local_procs.empty()) {
 	for(std::vector<Processor>::const_iterator it = local_procs.begin();
@@ -250,6 +267,7 @@ namespace Realm {
 
       tro->mark_finished();
       return finish_event;
+#endif // USE_OCR_LAYER
     }
 
     /*static*/ Event Processor::register_task_by_kind(Kind target_kind, bool global,
@@ -265,12 +283,23 @@ namespace Realm {
 	assert(0);
       }
 
+#if USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
+      std::set<Processor> local_procs;
+      get_runtime()->machine->get_local_processors_by_kind(local_procs, target_kind);
+      for(std::set<Processor>::const_iterator it = local_procs.begin();
+          it != local_procs.end();
+          it++) {
+        ProcessorImpl *p = get_runtime()->get_processor_impl(*it);
+        p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
+      }
+      return Event::NO_EVENT;
+#else
       // TODO: special case - registration on local processord with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
       Event finish_event = GenEventImpl::create_genevent()->current_event();
 
-      TaskRegistration *tro = new TaskRegistration(codedesc, 
+      TaskRegistration *tro = new TaskRegistration(codedesc,
 						   ByteArrayRef(user_data, user_data_len),
 						   finish_event, prs);
       tro->mark_ready();
@@ -311,6 +340,7 @@ namespace Realm {
 
       tro->mark_finished();
       return finish_event;
+#endif // USE_OCR_LAYER
     }
 
 
@@ -375,7 +405,7 @@ namespace Realm {
     {
       // can only be perform on owner node
       assert(ID(me).node() == gasnet_mynode());
-      
+
       // can only be done once
       assert(!members_valid);
 
@@ -484,7 +514,7 @@ namespace Realm {
     ProfilingRequestSet prs;
     if(fbd.bytes_left() > 0)
       fbd >> prs;
-      
+
     p->spawn_task(args.func_id, data, args.user_arglen, prs,
 		  start_event, finish_event, args.priority);
   }
@@ -506,7 +536,7 @@ namespace Realm {
     r_args.finish_gen = finish_event.gen;
     r_args.priority = priority;
     r_args.user_arglen = arglen;
-    
+
     if(!prs) {
       // no profiling, so task args are the only payload
       Message::request(target, r_args, args, arglen, PAYLOAD_COPY);
@@ -546,7 +576,7 @@ namespace Realm {
       // use the supplied kind and find all procs of that kind
       std::set<Processor> local_procs;
       get_runtime()->machine->get_local_processors_by_kind(local_procs, args.kind);
-    
+
       for(std::set<Processor>::const_iterator it = local_procs.begin();
 	  it != local_procs.end();
 	  it++) {
@@ -656,7 +686,7 @@ namespace Realm {
 				     start_event, finish_event, priority);
     }
 
-  
+
   ////////////////////////////////////////////////////////////////////////
   //
   // class LocalTaskProcessor
@@ -683,7 +713,7 @@ namespace Realm {
     // this should be requested from outside now
 #if 0
     // if we have an init task, queue that up (with highest priority)
-    Processor::TaskIDTable::iterator it = 
+    Processor::TaskIDTable::iterator it =
       get_runtime()->task_table.find(Processor::TASK_ID_PROCESSOR_INIT);
     if(it != get_runtime()->task_table.end()) {
       Task *t = new Task(me, Processor::TASK_ID_PROCESSOR_INIT,
@@ -801,7 +831,7 @@ namespace Realm {
     // this should be requested from outside now
 #if 0
     // enqueue a shutdown task, if it exists
-    Processor::TaskIDTable::iterator it = 
+    Processor::TaskIDTable::iterator it =
       get_runtime()->task_table.find(Processor::TASK_ID_PROCESSOR_SHUTDOWN);
     if(it != get_runtime()->task_table.end()) {
       Task *t = new Task(me, Processor::TASK_ID_PROCESSOR_SHUTDOWN,
@@ -815,7 +845,7 @@ namespace Realm {
 
     sched->shutdown();
   }
-  
+
 
   ////////////////////////////////////////////////////////////////////////
   //

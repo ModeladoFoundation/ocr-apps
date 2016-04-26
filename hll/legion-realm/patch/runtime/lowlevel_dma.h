@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +19,10 @@
 
 #include "lowlevel_impl.h"
 #include "activemsg.h"
+
+#if USE_OCR_LAYER
+#include "ocr.h"
+#endif
 
 namespace Realm {
   class CoreReservationSet;
@@ -65,7 +70,7 @@ namespace LegionRuntime {
 
     /*
     extern Event enqueue_dma(IndexSpace idx,
-			     RegionInstance src, 
+			     RegionInstance src,
 			     RegionInstance target,
 			     size_t elmt_size,
 			     size_t bytes_to_copy,
@@ -97,6 +102,16 @@ namespace LegionRuntime {
 
       virtual ~DmaRequest(void);
 
+#if USE_OCR_LAYER
+      //EDT template for the perform_dma function
+      static ocrGuid_t ocr_realm_perform_dma_edt_t;
+      //initialize static variables
+      static void static_init(void);
+      //cleanup static variables
+      static void static_destroy(void);
+      //equivalent of check_readiness() function which uses OCR
+      virtual void ocr_check_readiness(size_t);
+#endif //USE_OCR_LAYER
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq) = 0;
 
       virtual bool handler_safe(void) = 0;
@@ -166,8 +181,8 @@ namespace LegionRuntime {
     template <typename T>
     class SpanBasedInstPairCopier : public InstPairCopier {
     public:
-      SpanBasedInstPairCopier(T *_span_copier, 
-                              RegionInstance _src_inst, 
+      SpanBasedInstPairCopier(T *_span_copier,
+                              RegionInstance _src_inst,
                               RegionInstance _dst_inst,
                               OASVec &_oas_vec);
 
@@ -221,7 +236,7 @@ namespace LegionRuntime {
     };
 
     // each DMA "channel" implements one of these to describe (implicitly) which copies it
-    //  is capable of performing and then to actually construct a MemPairCopier for copies 
+    //  is capable of performing and then to actually construct a MemPairCopier for copies
     //  between a given pair of memories
     class MemPairCopierFactory {
     public:

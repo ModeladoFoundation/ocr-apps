@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,7 +101,7 @@ namespace LegionRuntime {
   // class DmaRequest
   //
 
-    DmaRequest::DmaRequest(int _priority, Event _after_copy) 
+    DmaRequest::DmaRequest(int _priority, Event _after_copy)
       : Operation(_after_copy, Realm::ProfilingRequestSet()),
 	state(STATE_INIT), priority(_priority)
     {
@@ -224,7 +225,7 @@ namespace LegionRuntime {
       FillRequest(const void *data, size_t msglen,
                   RegionInstance inst,
                   unsigned offset, unsigned size,
-                  Event _before_fill, 
+                  Event _before_fill,
                   Event _after_fill,
                   int priority);
       FillRequest(const Domain &_domain,
@@ -346,9 +347,9 @@ namespace LegionRuntime {
       }
 
       queue_mutex.unlock();
-      
+
       return r;
-    } 
+    }
 
     CopyRequest::CopyRequest(const void *data, size_t datalen,
 			     Event _before_copy,
@@ -397,7 +398,7 @@ namespace LegionRuntime {
 	  oasvec.push_back(oas);
 	}
       }
-      // Unpack any profiling requests 
+      // Unpack any profiling requests
       // TODO: unbreak once the serialization stuff is repaired
       //const void *result = requests.deserialize(idata);
       //Realm::Operation::reconstruct_measurements();
@@ -411,9 +412,9 @@ namespace LegionRuntime {
 
       log_dma.info("dma request %p deserialized - " IDFMT "[%zd]->" IDFMT "[%zd]:%d (+%zd) (" IDFMT ") " IDFMT "/%d " IDFMT "/%d",
 		   this,
-		   oas_by_inst->begin()->first.first.id, 
+		   oas_by_inst->begin()->first.first.id,
 		   oas_by_inst->begin()->second[0].src_offset,
-		   oas_by_inst->begin()->first.second.id, 
+		   oas_by_inst->begin()->first.second.id,
 		   oas_by_inst->begin()->second[0].dst_offset,
 		   oas_by_inst->begin()->second[0].size,
 		   oas_by_inst->begin()->second.size() - 1,
@@ -444,7 +445,7 @@ namespace LegionRuntime {
 	    it->first.first << "[" << it2->src_offset << "]->" <<
 	    it->first.second << "[" << it2->dst_offset << "] size=" << it2->size;
     }
- 
+
     CopyRequest::~CopyRequest(void)
     {
       delete oas_by_inst;
@@ -490,7 +491,7 @@ namespace LegionRuntime {
 	}
       }
       // TODO: unbreak once the serialization stuff is repaired
-      //requests.serialize(msgptr); 
+      //requests.serialize(msgptr);
       // We sent this message remotely, so we need to clear the profiling
       // so it doesn't get sent accidentally
       ByteCountSerializer counter;
@@ -502,7 +503,7 @@ namespace LegionRuntime {
       clear_profiling();
     }
 
-    void DmaRequest::Waiter::sleep_on_event(Event e, 
+    void DmaRequest::Waiter::sleep_on_event(Event e,
 					    Reservation l /*= Reservation::NO_RESERVATION*/)
     {
       current_lock = l;
@@ -519,7 +520,7 @@ namespace LegionRuntime {
 	current_lock = Reservation::NO_RESERVATION;
       }
 
-      // this'll enqueue the DMA if it can, or wait on another event if it 
+      // this'll enqueue the DMA if it can, or wait on another event if it
       //  can't
       req->check_readiness(false, queue);
 
@@ -529,7 +530,7 @@ namespace LegionRuntime {
 
     void DmaRequest::Waiter::print_info(FILE *f)
     {
-      fprintf(f,"dma request %p: after " IDFMT "/%d\n", 
+      fprintf(f,"dma request %p: after " IDFMT "/%d\n",
 	      req, req->get_finish_event().id, req->get_finish_event().gen);
     }
 
@@ -687,7 +688,7 @@ namespace LegionRuntime {
 	{
 	  off_t byte_offset = offset * elmt_size;
 	  size_t byte_count = count * elmt_size;
-	
+
 	  tgt_mem->put_bytes(tgt_offset + byte_offset,
 			     src_ptr + byte_offset,
 			     byte_count);
@@ -712,7 +713,7 @@ namespace LegionRuntime {
 	{
 	  off_t byte_offset = offset * elmt_size;
 	  size_t byte_count = count * elmt_size;
-	
+
 	  offsets.push_back(tgt_offset + byte_offset);
 	  srcs.push_back(src_ptr + byte_offset);
 	  sizes.push_back(byte_count);
@@ -765,7 +766,7 @@ namespace LegionRuntime {
 			       redop->sizeof_lhs);
 
 	    redop->apply(buffer, src_ptr + src_byte_offset, 1, true);
-	      
+
 	    tgt_mem->put_bytes(tgt_offset + tgt_byte_offset,
 			       buffer,
 			       redop->sizeof_lhs);
@@ -828,7 +829,7 @@ namespace LegionRuntime {
 						entry_buffer);
 		} else {
 		  do_remote_apply_red_list(i, tgt_mem->me, tgt_offset,
-					   redopid, 
+					   redopid,
 					   entry_buffer, pos * redop->sizeof_list_entry, 0);
 		}
 		pos = 0;
@@ -840,7 +841,7 @@ namespace LegionRuntime {
 					      entry_buffer);
 	      } else {
 		do_remote_apply_red_list(i, tgt_mem->me, tgt_offset,
-					 redopid, 
+					 redopid,
 					 entry_buffer, pos * redop->sizeof_list_entry, 0);
 	      }
 	    }
@@ -868,7 +869,7 @@ namespace LegionRuntime {
 	{
 	  off_t byte_offset = offset * elmt_size;
 	  size_t byte_count = count * elmt_size;
-	
+
 	  DetailedTimer::ScopedPush sp(TIME_SYSTEM);
 	  src_mem->get_bytes(src_offset + byte_offset,
 			     tgt_ptr + byte_offset,
@@ -894,7 +895,7 @@ namespace LegionRuntime {
 	{
 	  off_t byte_offset = offset * elmt_size;
 	  size_t byte_count = count * elmt_size;
-	
+
 	  offsets.push_back(src_offset + byte_offset);
 	  dsts.push_back(tgt_ptr + byte_offset);
 	  sizes.push_back(byte_count);
@@ -1084,9 +1085,9 @@ namespace LegionRuntime {
   // class MemPairCopier
   //
 
-    MemPairCopier::MemPairCopier(void) 
+    MemPairCopier::MemPairCopier(void)
       : total_reqs(0), total_bytes(0)
-    { 
+    {
     }
 
     MemPairCopier::~MemPairCopier(void)
@@ -1148,7 +1149,7 @@ namespace LegionRuntime {
       virtual InstPairCopier *inst_pair(RegionInstance src_inst, RegionInstance dst_inst,
                                         OASVec &oas_vec)
       {
-	return new SpanBasedInstPairCopier<BufferedMemPairCopier>(this, src_inst, 
+	return new SpanBasedInstPairCopier<BufferedMemPairCopier>(this, src_inst,
                                                           dst_inst, oas_vec);
       }
 
@@ -1186,7 +1187,7 @@ namespace LegionRuntime {
       MemoryImpl *src_mem, *dst_mem;
       char *buffer;
     };
-     
+
     class MemcpyMemPairCopier : public MemPairCopier {
     public:
       MemcpyMemPairCopier(Memory _src_mem, Memory _dst_mem)
@@ -1205,7 +1206,7 @@ namespace LegionRuntime {
       virtual InstPairCopier *inst_pair(RegionInstance src_inst, RegionInstance dst_inst,
                                         OASVec &oas_vec)
       {
-	return new SpanBasedInstPairCopier<MemcpyMemPairCopier>(this, src_inst, 
+	return new SpanBasedInstPairCopier<MemcpyMemPairCopier>(this, src_inst,
                                                           dst_inst, oas_vec);
       }
 
@@ -1254,7 +1255,7 @@ namespace LegionRuntime {
       virtual InstPairCopier *inst_pair(RegionInstance src_inst, RegionInstance dst_inst,
                                         OASVec &oas_vec)
       {
-	return new SpanBasedInstPairCopier<LocalReductionMemPairCopier>(this, src_inst, 
+	return new SpanBasedInstPairCopier<LocalReductionMemPairCopier>(this, src_inst,
 									dst_inst, oas_vec);
       }
 
@@ -1326,7 +1327,7 @@ namespace LegionRuntime {
       virtual InstPairCopier *inst_pair(RegionInstance src_inst, RegionInstance dst_inst,
                                         OASVec &oas_vec)
       {
-	return new SpanBasedInstPairCopier<BufferedReductionMemPairCopier>(this, src_inst, 
+	return new SpanBasedInstPairCopier<BufferedReductionMemPairCopier>(this, src_inst,
 									   dst_inst, oas_vec);
       }
 
@@ -1379,7 +1380,7 @@ namespace LegionRuntime {
       const ReductionOpUntyped *redop;
       bool fold;
     };
-     
+
 #if 0
     // a MemPairCopier that keeps a list of events for component copies and doesn't trigger
     //  the completion event until they're all done
@@ -1388,7 +1389,7 @@ namespace LegionRuntime {
       DelayedMemPairCopierX(void) {}
 
       virtual ~DelayedMemPairCopierX(void) {}
-      
+
       virtual void flush(Event after_copy)
       {
 	// create a merged event for all the copies and used that to perform a delayed trigger
@@ -1423,7 +1424,7 @@ namespace LegionRuntime {
       std::set<Event> events;
     };
 #endif
-     
+
     static unsigned rdma_sequence_no = 1;
 
     class RemoteWriteMemPairCopier : public MemPairCopier {
@@ -1450,7 +1451,7 @@ namespace LegionRuntime {
       virtual InstPairCopier *inst_pair(RegionInstance src_inst, RegionInstance dst_inst,
                                         OASVec &oas_vec)
       {
-	return new SpanBasedInstPairCopier<RemoteWriteMemPairCopier>(this, src_inst, 
+	return new SpanBasedInstPairCopier<RemoteWriteMemPairCopier>(this, src_inst,
                                                               dst_inst, oas_vec);
       }
 
@@ -1476,7 +1477,7 @@ namespace LegionRuntime {
 #ifdef DEBUG_REMOTE_WRITES
 	  printf("remote write of %zd bytes (" IDFMT ":%zd -> " IDFMT ":%zd)\n", bytes, src_mem->me.id, src_offset, dst_mem->me.id, dst_offset);
 #endif
-	  num_writes += do_remote_write(dst_mem->me, dst_offset, src_base + src_offset, bytes, 
+	  num_writes += do_remote_write(dst_mem->me, dst_offset, src_base + src_offset, bytes,
 					sequence_id, false /* no copy */);
 	} else {
 	  // see if this can be added to an existing gather
@@ -1547,7 +1548,7 @@ namespace LegionRuntime {
           record_bytes(bytes * lines);
 	  return;
 	}
-	
+
 	// default is to unroll the lines here, and let the PendingGather code try to
 	//  put things back in bigger pieces
 	while(lines-- > 0) {
@@ -1577,7 +1578,7 @@ namespace LegionRuntime {
 #endif
 	  // TODO: handle case where single write can include event trigger in message
 	  //num_writes += do_remote_write(dst_mem->me, g->dst_start, span.first, span.second, trigger, false /* no copy */);
-	  num_writes += do_remote_write(dst_mem->me, g->dst_start, span.first, span.second, 
+	  num_writes += do_remote_write(dst_mem->me, g->dst_start, span.first, span.second,
 					sequence_id, false /* no copy */);
           return;
         }
@@ -1588,7 +1589,7 @@ namespace LegionRuntime {
 	printf("remote write of %zd bytes (gather -> " IDFMT ":%zd), trigger=" IDFMT "/%d\n", g->dst_size, dst_mem->me.id, g->dst_start, trigger.id, trigger.gen);
 #endif
 	// TODO: handle case where single write can include event trigger in message
-	num_writes += do_remote_write(dst_mem->me, g->dst_start, 
+	num_writes += do_remote_write(dst_mem->me, g->dst_start,
 				      g->src_spans, g->dst_size,
 				      sequence_id, false /* no copy - data won't change til copy event triggers */);
 #ifdef TIME_REMOTE_WRITES
@@ -1632,7 +1633,7 @@ namespace LegionRuntime {
         unsigned long long stop = TimeStamp::get_current_time_in_micros();
         gather_time += (stop - start);
         printf("Remote Write: span time: %lld  gather time %lld "
-                "total gathers %ld total spans %d\n", 
+                "total gathers %ld total spans %d\n",
                 span_time, gather_time, total_gathers, total_spans);
 #endif
 
@@ -1649,7 +1650,7 @@ namespace LegionRuntime {
 #endif
       unsigned sequence_id, num_writes;
     };
-     
+
     class RemoteReduceMemPairCopier : public MemPairCopier {
     public:
       RemoteReduceMemPairCopier(Memory _src_mem, Memory _dst_mem,
@@ -1676,7 +1677,7 @@ namespace LegionRuntime {
       virtual InstPairCopier *inst_pair(RegionInstance src_inst, RegionInstance dst_inst,
                                         OASVec &oas_vec)
       {
-	return new SpanBasedInstPairCopier<RemoteReduceMemPairCopier>(this, src_inst, 
+	return new SpanBasedInstPairCopier<RemoteReduceMemPairCopier>(this, src_inst,
 								      dst_inst, oas_vec);
       }
 
@@ -1706,7 +1707,7 @@ namespace LegionRuntime {
 	//  copy_span(src_offset, dst_offset, bytes * lines);
 	//  return;
 	//}
-	
+
 	// default is to unroll the lines here
 	while(lines-- > 0) {
 	  copy_span(src_offset, dst_offset, bytes);
@@ -1819,7 +1820,7 @@ namespace LegionRuntime {
       CustomSerdezID serdez_id;
       const CustomSerdezUntyped *serdez_op;
     };
-    
+
     class AsyncFileIOContext {
     public:
       AsyncFileIOContext(int _max_depth);
@@ -2098,7 +2099,7 @@ namespace LegionRuntime {
 #endif
     }
 
-    void AsyncFileIOContext::enqueue_write(int fd, size_t offset, 
+    void AsyncFileIOContext::enqueue_write(int fd, size_t offset,
 					   size_t bytes, const void *buffer)
     {
 #ifdef REALM_USE_KERNEL_AIO
@@ -2118,7 +2119,7 @@ namespace LegionRuntime {
       }
     }
 
-    void AsyncFileIOContext::enqueue_read(int fd, size_t offset, 
+    void AsyncFileIOContext::enqueue_read(int fd, size_t offset,
 					  size_t bytes, void *buffer)
     {
 #ifdef REALM_USE_KERNEL_AIO
@@ -2253,7 +2254,7 @@ namespace LegionRuntime {
     class DiskfromCPUMemPairCopier : public MemPairCopier {
     public:
       DiskfromCPUMemPairCopier(Memory _src_mem, int _fd)
-      { 
+      {
 	MemoryImpl *src_impl = get_runtime()->get_memory_impl(_src_mem);
         src_base = (char *)(src_impl->get_direct_ptr(0, src_impl->size));
         assert(src_base);
@@ -2489,7 +2490,7 @@ namespace LegionRuntime {
       char *dst_base;
       FileMemory *src_mem;
     };
-     
+
     // most of the smarts from MemPairCopier::create_copier are now captured in the various factories
 
     class MemcpyMemPairCopierFactory : public MemPairCopierFactory {
@@ -2509,14 +2510,14 @@ namespace LegionRuntime {
 
 	MemoryImpl *src_impl = get_runtime()->get_memory_impl(src_mem);
 	MemoryImpl::MemoryKind src_kind = src_impl->kind;
-	
+
 	if((src_kind != MemoryImpl::MKIND_SYSMEM) &&
 	   (src_kind != MemoryImpl::MKIND_ZEROCOPY))
 	  return false;
 
 	MemoryImpl *dst_impl = get_runtime()->get_memory_impl(dst_mem);
 	MemoryImpl::MemoryKind dst_kind = dst_impl->kind;
-	
+
 	if((dst_kind != MemoryImpl::MKIND_SYSMEM) &&
 	   (dst_kind != MemoryImpl::MKIND_ZEROCOPY))
 	  return false;
@@ -2561,7 +2562,7 @@ namespace LegionRuntime {
 	}
       }
 
-      // old style - various options in here are being turned into assert(0)'s as they are 
+      // old style - various options in here are being turned into assert(0)'s as they are
       //  replaced by DMA channel-provided copiers
 
       MemoryImpl *src_impl = get_runtime()->get_memory_impl(src_mem);
@@ -2726,7 +2727,7 @@ namespace LegionRuntime {
 	} else {
 	  rlen_target = 1;
 	}
-	
+
 	ElementMask::Enumerator *e = ispace->valid_mask->enumerate_enabled();
 	int rstart, rlen;
 	while(e->get_next(rstart, rlen)) {
@@ -2776,7 +2777,7 @@ namespace LegionRuntime {
 
 	RegionInstanceImpl *src_impl = get_runtime()->get_instance_impl(src_inst);
 	RegionInstanceImpl *dst_impl = get_runtime()->get_instance_impl(dst_inst);
-	
+
 	assert(src_impl->metadata.is_valid());
 	assert(dst_impl->metadata.is_valid());
 
@@ -2884,9 +2885,9 @@ namespace LegionRuntime {
 
       log_dma.info("dma request %p finished - " IDFMT "[%zd]->" IDFMT "[%zd]:%d (+%zd) (" IDFMT ") " IDFMT "/%d " IDFMT "/%d",
 		   this,
-		   oas_by_inst->begin()->first.first.id, 
+		   oas_by_inst->begin()->first.first.id,
 		   oas_by_inst->begin()->second[0].src_offset,
-		   oas_by_inst->begin()->first.second.id, 
+		   oas_by_inst->begin()->first.second.id,
 		   oas_by_inst->begin()->second[0].dst_offset,
 		   oas_by_inst->begin()->second[0].size,
 		   oas_by_inst->begin()->second.size() - 1,
@@ -2897,7 +2898,7 @@ namespace LegionRuntime {
       mpc->flush(this);
 
       if(measurements.wants_measurement<Realm::ProfilingMeasurements::OperationMemoryUsage>()) {
-        const InstPair &pair = oas_by_inst->begin()->first; 
+        const InstPair &pair = oas_by_inst->begin()->first;
 
         Realm::ProfilingMeasurements::OperationMemoryUsage usage;
         usage.source = pair.first.get_location();
@@ -3051,7 +3052,7 @@ namespace LegionRuntime {
 		assert(finish_event == after_copy);
 		get_runtime()->get_singleevent_impl(finish_event)->trigger(finish_event.gen, gasnet_mynode());
 	      }
-	      
+
 	      return;
 	    }
 
@@ -3072,10 +3073,10 @@ namespace LegionRuntime {
 
 	      assert(!redop);
 #ifdef USE_BATCHED_GASNET_XFERS
-	      RangeExecutors::GasnetGetBatched rexec(tgt_ptr, src_mem, 
+	      RangeExecutors::GasnetGetBatched rexec(tgt_ptr, src_mem,
 						     src_data->alloc_offset, elmt_size);
 #else
-	      RangeExecutors::GasnetGet rexec(tgt_ptr, src_mem, 
+	      RangeExecutors::GasnetGet rexec(tgt_ptr, src_mem,
 					      src_data->alloc_offset, elmt_size);
 #endif
 	      ElementMask::forall_ranges(rexec, *is_impl->valid_mask);
@@ -3192,7 +3193,7 @@ namespace LegionRuntime {
 
       log_dma.debug("finished copy " IDFMT " (%d) -> " IDFMT " (%d) - %zd bytes (%zd), event=" IDFMT "/%d", src.id, src_mem->kind, target.id, tgt_mem->kind, bytes_to_copy, elmt_size, after_copy.id, after_copy.gen);
 #endif
-    } 
+    }
 
     ReduceRequest::ReduceRequest(const void *data, size_t datalen,
 				 ReductionOpID _redop_id,
@@ -3260,11 +3261,11 @@ namespace LegionRuntime {
 				 bool _red_fold,
 				 Event _before_copy,
 				 Event _after_copy,
-				 int _priority, 
+				 int _priority,
                                  const Realm::ProfilingRequestSet &reqs)
       : DmaRequest(_priority, _after_copy, reqs),
 	domain(_domain),
-	dst(_dst), 
+	dst(_dst),
 	inst_lock_needed(_inst_lock_needed), inst_lock_event(Event::NO_EVENT),
 	redop_id(_redop_id), red_fold(_red_fold),
 	before_copy(_before_copy)
@@ -3545,7 +3546,7 @@ namespace LegionRuntime {
 	  }
 
 	  // fall through - just identify dense (sub)subrects and copy them
-	  
+
 	  // iterate by output rectangle first - this gives us a chance to gather data when linearizations
 	  //  don't match up
 	  for(Arrays::GenericDenseSubrectIterator<Arrays::Mapping<DIM, 1> > dso(lsi.subrect, *dst_linearization); dso; dso++) {
@@ -3556,7 +3557,7 @@ namespace LegionRuntime {
 	      Rect<DIM> subrect_check;
 	      Rect<1> orect = dst_linearization->image_dense_subrect(dsi.subrect, subrect_check);
 	      assert(dsi.subrect == subrect_check);
-	      
+
 	      //for(OASVec::iterator it2 = oasvec.begin(); it2 != oasvec.end(); it2++)
 	      for (unsigned idx = 0; idx < oasvec.size(); idx++)
 		ipc->copy_field(irect.lo, orect.lo, irect.hi[0] - irect.lo[0] + 1, idx);
@@ -3565,7 +3566,7 @@ namespace LegionRuntime {
 	  }
 	}
       }
-      
+
       delete ipc;
     }
 
@@ -3828,7 +3829,7 @@ namespace LegionRuntime {
 		   get_finish_event().id, get_finish_event().gen);
 
       if(measurements.wants_measurement<Realm::ProfilingMeasurements::OperationMemoryUsage>()) {
-        Realm::ProfilingMeasurements::OperationMemoryUsage usage;  
+        Realm::ProfilingMeasurements::OperationMemoryUsage usage;
         // Not precise, but close enough for now
         usage.source = srcs[0].inst.get_location();
         usage.target = dst.inst.get_location();
@@ -3868,7 +3869,7 @@ namespace LegionRuntime {
       //assert((((unsigned long)result) - ((unsigned long)data)) == datalen);
     }
 
-    FillRequest::FillRequest(const Domain &d, 
+    FillRequest::FillRequest(const Domain &d,
                              const Domain::CopySrcDstField &_dst,
                              const void *_fill_value, size_t _fill_size,
                              Event _before_fill, Event _after_fill, int _priority,
@@ -3900,7 +3901,7 @@ namespace LegionRuntime {
     void FillRequest::serialize(void *buffer)
     {
       IDType *msgptr = domain.serialize((IDType *)buffer);
-      
+
       assert(dst.size == fill_size);
       size_t elmts = (fill_size + sizeof(IDType) - 1)/sizeof(IDType);
       *msgptr++ = elmts;
@@ -3916,6 +3917,11 @@ namespace LegionRuntime {
 
     bool FillRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
+
+#if USE_OCR_LAYER
+      DmaRequest::ocr_check_readiness(sizeof(*this));
+      return true;
+#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -3954,7 +3960,7 @@ namespace LegionRuntime {
             }
           }
 	}
-        // No need to check the instance, we are on its local node 
+        // No need to check the instance, we are on its local node
         state = STATE_BEFORE_EVENT;
       }
 
@@ -3993,6 +3999,7 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
+#endif // USE_OCR_LAYER
     }
 
     void FillRequest::perform_dma(void)
@@ -4006,12 +4013,15 @@ namespace LegionRuntime {
           (mem_kind == MemoryImpl::MKIND_ZEROCOPY) ||
           (mem_kind == MemoryImpl::MKIND_RDMA) ||
           (mem_kind == MemoryImpl::MKIND_GPUFB) ||
+#if USE_OCR_LAYER
+          (mem_kind == MemoryImpl::MKIND_OCR) ||
+#endif
           (mem_kind == MemoryImpl::MKIND_ZEROCOPY))
       {
         switch (domain.get_dim()) {
           case 0:
             {
-              // Iterate over all the points and get the 
+              // Iterate over all the points and get the
               IndexSpaceImpl *ispace = get_runtime()->get_index_space_impl(domain.get_index_space());
               assert(ispace->valid_mask_complete);
               RegionInstanceImpl *inst_impl = get_runtime()->get_instance_impl(dst.inst);
@@ -4022,19 +4032,19 @@ namespace LegionRuntime {
               int fill_elmts = 1;
               // Optimize our buffer for the target instance
               size_t fill_elmts_size = optimize_fill_buffer(inst_impl, fill_elmts);
-              Arrays::Mapping<1, 1> *dst_linearization = 
+              Arrays::Mapping<1, 1> *dst_linearization =
                 inst_impl->metadata.linearization.get_mapping<1>();
               ElementMask::Enumerator *e = ispace->valid_mask->enumerate_enabled();
               int rstart, elem_count;
               while(e->get_next(rstart, elem_count)) {
-                int dst_index = dst_linearization->image(rstart); 
+                int dst_index = dst_linearization->image(rstart);
                 int done = 0;
                 while (done < elem_count) {
-                  int dst_in_this_block = inst_impl->metadata.block_size - 
+                  int dst_in_this_block = inst_impl->metadata.block_size -
                               ((dst_index + done) % inst_impl->metadata.block_size);
                   int todo = min(elem_count, dst_in_this_block);
                   off_t dst_start = calc_mem_loc(inst_impl->metadata.alloc_offset,
-                                                 field_start, field_size, 
+                                                 field_start, field_size,
                                                  inst_impl->metadata.elmt_size,
                                                  inst_impl->metadata.block_size,
                                                  dst_index + done);
@@ -4062,12 +4072,12 @@ namespace LegionRuntime {
             }
           case 2:
             {
-              perform_dma_rect<2>(mem_impl); 
+              perform_dma_rect<2>(mem_impl);
               break;
             }
           case 3:
             {
-              perform_dma_rect<3>(mem_impl); 
+              perform_dma_rect<3>(mem_impl);
               break;
             }
           default:
@@ -4094,23 +4104,23 @@ namespace LegionRuntime {
       find_field_start(inst_impl->metadata.field_sizes, dst.offset,
                        dst.size, field_start, field_size);
       assert(field_size <= (int)fill_size);
-      typename Arrays::Mapping<DIM, 1> *dst_linearization = 
+      typename Arrays::Mapping<DIM, 1> *dst_linearization =
         inst_impl->metadata.linearization.get_mapping<DIM>();
       typename Arrays::Rect<DIM> rect = domain.get_rect<DIM>();
       int fill_elmts = 1;
       // Optimize our buffer for the target instance
       size_t fill_elmts_size = optimize_fill_buffer(inst_impl, fill_elmts);
-      for (typename Arrays::Mapping<DIM, 1>::LinearSubrectIterator lso(rect, 
+      for (typename Arrays::Mapping<DIM, 1>::LinearSubrectIterator lso(rect,
             *dst_linearization); lso; lso++) {
         int dst_index = lso.image_lo[0];
         int elem_count = lso.subrect.volume();
-        int done = 0; 
+        int done = 0;
         while (done < elem_count) {
-          int dst_in_this_block = inst_impl->metadata.block_size - 
+          int dst_in_this_block = inst_impl->metadata.block_size -
                       ((dst_index + done) % inst_impl->metadata.block_size);
           int todo = min(elem_count, dst_in_this_block);
           off_t dst_start = calc_mem_loc(inst_impl->metadata.alloc_offset,
-                                         field_start, field_size, 
+                                         field_start, field_size,
                                          inst_impl->metadata.elmt_size,
                                          inst_impl->metadata.block_size,
                                          dst_index + done);
@@ -4118,7 +4128,7 @@ namespace LegionRuntime {
           done += todo;
           // Now do as many bulk transfers as we can
           while (todo >= fill_elmts) {
-            mem_impl->put_bytes(dst_start, fill_buffer, fill_elmts_size); 
+            mem_impl->put_bytes(dst_start, fill_buffer, fill_elmts_size);
             dst_start += fill_elmts_size;
             todo -= fill_elmts;
           }
@@ -4132,15 +4142,15 @@ namespace LegionRuntime {
 
     size_t FillRequest::optimize_fill_buffer(RegionInstanceImpl *inst_impl, int &fill_elmts)
     {
-      const size_t max_size = 1024; 
+      const size_t max_size = 1024;
       // Only do this optimization for "small" fields
       // which are less than half a page
       if (fill_size <= max_size)
       {
-        // If we have a single-field instance or we have a set 
+        // If we have a single-field instance or we have a set
         // of contiguous elmts then make a bulk buffer to use
         if ((inst_impl->metadata.elmt_size == fill_size) ||
-            (inst_impl->metadata.block_size > 1)) 
+            (inst_impl->metadata.block_size > 1))
         {
           fill_elmts = min(inst_impl->metadata.block_size,2*max_size/fill_size);
           size_t fill_elmts_size = fill_elmts * fill_size;
@@ -4230,7 +4240,7 @@ namespace LegionRuntime {
 	worker_threads.push_back(t);
       }
     }
-    
+
     void start_dma_worker_threads(int count, Realm::CoreReservationSet& crs)
     {
       aio_context = new AsyncFileIOContext(256);
@@ -4267,11 +4277,16 @@ namespace Realm {
                        const void *fill_value, size_t fill_value_size,
                        Event wait_on /*= Event::NO_EVENT*/) const
     {
-      std::set<Event> finish_events; 
+      std::set<Event> finish_events;
       for (std::vector<CopySrcDstField>::const_iterator it = dsts.begin();
             it != dsts.end(); it++)
       {
+#if USE_OCR_LAYER
+        Event ev = OCREventImpl::create_ocrevent();
+#else
         Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
+
         FillRequest *r = new FillRequest(*this, *it, fill_value,
                                          fill_value_size, wait_on,
                                          ev, 0/*priority*/, requests);
@@ -4280,6 +4295,9 @@ namespace Realm {
         if (((unsigned)node) == gasnet_mynode()) {
           r->check_readiness(false, dma_queue);
         } else {
+#if USE_OCR_LAYER
+          assert(false); //only dealing with one node now
+#endif
           RemoteFillArgs args;
           args.inst = it->inst;
           args.offset = it->offset;
@@ -4297,9 +4315,13 @@ namespace Realm {
         }
         finish_events.insert(ev);
       }
+#if USE_OCR_LAYER
+      return OCREventImpl::merge_events(finish_events);
+#else
       return GenEventImpl::merge_events(finish_events);
+#endif // USE_OCR_LAYER
     }
-    
+
     Event Domain::copy(RegionInstance src_inst, RegionInstance dst_inst,
 		       size_t elem_size, Event wait_on,
 		       ReductionOpID redop_id, bool red_fold) const
@@ -4424,7 +4446,7 @@ namespace Realm {
 	  // printf("I:(%x/%x) M:(%x/%x) sub:(%d/%d) src=(%d/%d) dst=(%d/%d)\n",
 	  //        ip.first.id, ip.second.id, mp.first.id, mp.second.id,
 	  //        src_suboffset, dst_suboffset,
-	  //        src_it->offset, src_it->size, 
+	  //        src_it->offset, src_it->size,
 	  //        dst_it->offset, dst_it->size);
 
 	  OffsetsAndSize oas;
@@ -4525,16 +4547,16 @@ namespace Realm {
 	  else if (get_runtime()->get_memory_impl(dst_mem)->kind == MemoryImpl::MKIND_GPUFB)
 	    priority = 1;
 
-	  CopyRequest *r = new CopyRequest(*this, oas_by_inst, 
+	  CopyRequest *r = new CopyRequest(*this, oas_by_inst,
 					   wait_on, ev, priority, requests);
 
 	  // ask which node should perform the copy
 	  int dma_node = select_dma_node(src_mem, dst_mem, redop_id, red_fold);
 	  log_dma.info("copy: srcmem=" IDFMT " dstmem=" IDFMT " node=%d", src_mem.id, dst_mem.id, dma_node);
-	  
+
 	  if(((unsigned)dma_node) == gasnet_mynode()) {
 	    log_dma.info("performing copy on local node");
-	  
+
 	    r->check_readiness(false, dma_queue);
 
 	    finish_events.insert(ev);
@@ -4553,7 +4575,7 @@ namespace Realm {
 
 	    log_dma.info("performing copy on remote node (%d), event=" IDFMT "/%d", dma_node, args.after_copy.id, args.after_copy.gen);
 	    RemoteCopyMessage::request(dma_node, args, msgdata, msglen, PAYLOAD_FREE);
-	  
+
 	    finish_events.insert(ev);
 
 	    // done with the local copy of the request
@@ -4591,7 +4613,7 @@ namespace Realm {
 
 	Event ev = GenEventImpl::create_genevent()->current_event();
 
-	ReduceRequest *r = new ReduceRequest(*this, 
+	ReduceRequest *r = new ReduceRequest(*this,
 					     srcs, dsts[0],
 					     inst_lock_needed,
 					     redop_id, red_fold,
@@ -4600,7 +4622,7 @@ namespace Realm {
 
 	if(((unsigned)src_node) == gasnet_mynode()) {
 	  log_dma.info("performing reduction on local node");
-	  
+
 	  r->check_readiness(false, dma_queue);
 	} else {
 	  RemoteCopyArgs args;
@@ -4623,7 +4645,7 @@ namespace Realm {
 
 	return ev;
       }
-    } 
+    }
 
     Event Domain::copy(const std::vector<CopySrcDstField>& srcs,
 		       const std::vector<CopySrcDstField>& dsts,
@@ -4662,3 +4684,70 @@ namespace Realm {
     }
 
 };
+
+#if USE_OCR_LAYER
+namespace LegionRuntime {
+  namespace LowLevel {
+
+  ocrGuid_t DmaRequest::ocr_realm_perform_dma_edt_t = NULL_GUID;
+
+  //EDT function that calls perform_dma
+  //depv[0] is the object whose perform_dma needs to be called
+  //ideally I like this to be passed using argv rather than depv
+  ocrGuid_t ocr_realm_perform_dma_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+  {
+    assert(argc == 0 && depc == 1);
+
+    DmaRequest *r;
+    r = (FillRequest *)depv[0].ptr;
+
+    r->perform_dma();
+    ocrDbDestroy(depv[0].guid);
+    return NULL_GUID;
+  }
+
+  /*static*/ void DmaRequest::static_init(void)
+  {
+    //create the perform_dma conversion edt template
+    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, 0, 1);
+  }
+
+  /*static*/ void DmaRequest::static_destroy(void)
+  {
+    //delete the perform_dma conversion edt template
+    ocrEdtTemplateDestroy(DmaRequest::ocr_realm_perform_dma_edt_t);
+  }
+
+  //function that invokes the OCR EDT that calls perform_dma
+  //this_size is the size of the object that invokes ocr_check_readiness
+  void DmaRequest::ocr_check_readiness(size_t this_size)
+  {
+    //if size is zero then use size of current this object
+    if(this_size == 0)
+      this_size = sizeof(*this);
+
+    //pass this object using data block to the EDT
+    ocrGuid_t db_guid;
+    void *this_copy;
+    ocrDbCreate(&db_guid, (void **)(&this_copy), this_size, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    //'this' pointer is the dma descriptor with information such as size etc
+    memcpy(this_copy, this, this_size);
+
+    //invoke the EDT that calls perform_dma
+    ocrGuid_t ocr_realm_perform_dma_edt, out_ocr_realm_perform_dma_edt, persistent_evt_guid;
+    ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t, EDT_PARAM_DEF,
+      NULL, EDT_PARAM_DEF, NULL,
+      EDT_PROP_NONE, NULL_GUID, &out_ocr_realm_perform_dma_edt);
+
+    //attach finish_event to the EDT
+    Event finish_event = get_finish_event();
+    ocrAddDependence(out_ocr_realm_perform_dma_edt, finish_event.evt_guid, 0, DB_MODE_RO);
+
+    //start the EDT by statisfying dependency only after linking to the finish event
+    ocrAddDependence(db_guid, ocr_realm_perform_dma_edt, 0, DB_MODE_RO);
+  }
+ };
+};
+
+#endif // USE_OCR_LAYER
+

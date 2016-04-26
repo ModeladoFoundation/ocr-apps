@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,15 +50,18 @@ namespace Realm {
         GLOBAL_MEM, // Guaranteed visible to all processors on all nodes (e.g. GASNet memory, universally slow)
         SYSTEM_MEM, // Visible to all processors on a node
         REGDMA_MEM, // Registered memory visible to all processors on a node, can be a target of RDMA
-        SOCKET_MEM, // Memory visible to all processors within a node, better performance to processors on same socket 
-        Z_COPY_MEM, // Zero-Copy memory visible to all CPUs within a node and one or more GPUs 
+        SOCKET_MEM, // Memory visible to all processors within a node, better performance to processors on same socket
+        Z_COPY_MEM, // Zero-Copy memory visible to all CPUs within a node and one or more GPUs
         GPU_FB_MEM,   // Framebuffer memory for one GPU and all its SMs
         DISK_MEM,   // Disk memory visible to all processors on a node
         HDF_MEM,    // HDF memory visible to all processors on a node
         FILE_MEM,   // file memory visible to all processors on a node
-        LEVEL3_CACHE, // CPU L3 Visible to all processors on the node, better performance to processors on same socket 
+        LEVEL3_CACHE, // CPU L3 Visible to all processors on the node, better performance to processors on same socket
         LEVEL2_CACHE, // CPU L2 Visible to all processors on the node, better performance to one processor
         LEVEL1_CACHE, // CPU L1 Visible to all processors on the node, better performance to one processor
+#if USE_OCR_LAYER
+        OCR_MEM, //for now the single big datablock exposed by OCR
+#endif // USE_OCR_LAYER
       };
 
       // Return what kind of memory this is
@@ -67,7 +71,7 @@ namespace Realm {
     };
 
     inline std::ostream& operator<<(std::ostream& os, Memory m) { return os << std::hex << m.id << std::dec; }
-	
+
 }; // namespace Realm
 
 //include "memory.inl"

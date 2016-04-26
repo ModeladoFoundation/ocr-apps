@@ -1,4 +1,5 @@
 # Copyright 2015 Stanford University, NVIDIA Corporation
+# Portions Copyright 2016 Rice University, Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -116,7 +117,7 @@ LEGION_LD_FLAGS	+= -lpthread
 endif
 
 ifeq ($(strip $(USE_HWLOC)),1)
-  ifndef HWLOC 
+  ifndef HWLOC
     $(error HWLOC variable is not defined, aborting build)
   endif
   CC_FLAGS        += -DREALM_USE_HWLOC
@@ -151,7 +152,7 @@ endif
 ifeq ($(strip $(USE_CUDA)),1)
 CC_FLAGS        += -DUSE_CUDA
 NVCC_FLAGS      += -DUSE_CUDA
-INC_FLAGS	+= -I$(CUDA)/include 
+INC_FLAGS	+= -I$(CUDA)/include
 ifeq ($(strip $(DEBUG)),1)
 NVCC_FLAGS	+= -DDEBUG_LOW_LEVEL -DDEBUG_HIGH_LEVEL -g
 #NVCC_FLAGS	+= -G
@@ -196,7 +197,7 @@ ifeq ($(strip $(USE_GASNET)),1)
     LEGION_LD_FLAGS	+= -L$(GASNET)/lib -lrt -lm
   else
     LEGION_LD_FLAGS	+= -L$(GASNET)/lib -lm
-  endif 
+  endif
   CC_FLAGS	+= -DUSE_GASNET
   # newer versions of gasnet seem to need this
   CC_FLAGS	+= -DGASNETI_BUG1389_WORKAROUND=1
@@ -244,6 +245,20 @@ ifeq ($(strip $(USE_HDF)), 1)
   LEGION_LD_FLAGS      += -lhdf5
 endif
 
+# general low-level doesn't use OCR by default
+USE_OCR ?= 0
+ifeq ($(strip $(USE_OCR)), 1)
+  ifndef OCR_INSTALL
+    $(error OCR_INSTALL variable is not defined, aborting build)
+  endif
+  ifndef OCR_TYPE
+    $(error OCR_TYPE variable is not defined, aborting build)
+  endif
+  INC_FLAGS    += -I${OCR_INSTALL}/include
+  CC_FLAGS      += -DUSE_OCR_LAYER=1 -DENABLE_EXTENSION_LEGACY
+  LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr_${OCR_TYPE}
+endif
+
 SKIP_MACHINES= titan% daint%
 #Extra options for MPI support in GASNet
 ifeq ($(strip $(USE_MPI)),1)
@@ -271,7 +286,7 @@ endif
 CC_FLAGS	+= -DCOMPILE_TIME_MIN_LEVEL=$(OUTPUT_LEVEL)
 
 # demand warning-free compilation
-CC_FLAGS        += -Wall -Wno-strict-overflow
+CC_FLAGS        += -Wall -Wno-strict-overflow -Wno-unused-function -Wno-unused-variable
 ifeq ($(strip $(WARNINGS_ARE_ERRORS)),1)
 CC_FLAGS        += -Werror
 endif
@@ -306,13 +321,18 @@ ifeq ($(strip $(USE_CUDA)),1)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/cuda/cuda_module.cc \
 		   $(LG_RT_DIR)/realm/cuda/cudart_hijack.cc
 endif
+ifeq ($(strip $(USE_OCR)),1)
+LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/ocr/ocr_event_impl.cc \
+                   $(LG_RT_DIR)/realm/ocr/ocr_mem_impl.cc \
+                   $(LG_RT_DIR)/realm/ocr/ocr_proc_impl.cc
+endif
 ifeq ($(strip $(USE_GASNET)),1)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/activemsg.cc
 endif
 GPU_RUNTIME_SRC +=
 else
 CC_FLAGS	+= -DSHARED_LOWLEVEL
-LOW_RUNTIME_SRC	+= $(LG_RT_DIR)/shared_lowlevel.cc 
+LOW_RUNTIME_SRC	+= $(LG_RT_DIR)/shared_lowlevel.cc
 endif
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/logging.cc \
 	           $(LG_RT_DIR)/realm/cmdline.cc \
@@ -368,7 +388,7 @@ LOW_RUNTIME_OBJS:= $(LOW_RUNTIME_SRC:.cc=.o)
 HIGH_RUNTIME_OBJS:=$(HIGH_RUNTIME_SRC:.cc=.o)
 MAPPER_OBJS	:= $(MAPPER_SRC:.cc=.o)
 ASM_OBJS	:= $(ASM_SRC:.S=.o)
-# Only compile the gpu objects if we need to 
+# Only compile the gpu objects if we need to
 ifeq ($(strip $(SHARED_LOWLEVEL)),0)
 GEN_GPU_OBJS	:= $(GEN_GPU_SRC:.cu=.o)
 GPU_RUNTIME_OBJS:= $(GPU_RUNTIME_SRC:.cu=.o)

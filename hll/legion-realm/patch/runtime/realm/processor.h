@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +60,9 @@ namespace Realm {
         UTIL_PROC = ::UTIL_PROC, // Utility core
         IO_PROC = ::IO_PROC, // I/O core
         PROC_GROUP = ::PROC_GROUP, // Processor group
+#if USE_OCR_LAYER
+        OCR_PROC = ::OCR_PROC, //OCR processor
+#endif // USE_OCR_LAYER
       };
 
       // Return what kind of processor this is
@@ -112,7 +116,7 @@ namespace Realm {
     };
 
     inline std::ostream& operator<<(std::ostream& os, Processor p) { return os << std::hex << p.id << std::dec; }
-	
+
 }; // namespace Realm
 
 #include "processor.inl"
