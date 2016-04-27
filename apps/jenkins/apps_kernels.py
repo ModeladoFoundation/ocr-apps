@@ -1004,6 +1004,42 @@ job_ocr_run_kernel_Stencil1DChandra_x86_remote_scaling = {
               }
 }
 
+# 2D Stencil (Chandra Martha)
+job_ocr_build_kernel_Stencil2DChandra_x86_regression = {
+    'name': 'ocr-build-kernel-Stencil2DChandra-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'stencil_1d x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-chandra',
+              }
+}
+
+job_ocr_run_kernel_Stencil2DChandra_x86_remote_regression = {
+    'name': 'ocr-run-kernel-Stencil2DChandra-x86-remote-regression',
+    'depends': ('ocr-build-kernel-Stencil2DChandra-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'stencil_1d x86 ocr-run-kernel-Stencil2DChandra-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-chandra',
+                  'WORKLOAD_ARGS': '2048 32 1000'
+              }
+}
+
+job_ocr_run_kernel_Stencil2DChandra_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-Stencil2DChandra-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-Stencil2DChandra-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'Stencil2DChandra x86 ocr-run-kernel-Stencil2DChandra-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil1D/refactored/ocr/intel-chandra',
+                  'WORKLOAD_ARGS': '2048 32 1000'
+              }
+}
+
 # 1D Stencil - mpilite
 job_ocr_build_kernel_Stencil1Dlite_x86_regression = {
     'name': 'ocr-build-kernel-Stencil1Dlite-x86',

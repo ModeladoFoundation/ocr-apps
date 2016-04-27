@@ -1,38 +1,74 @@
 #!/usr/bin/env python
 
-# CoMD: sdsc ocr
-job_ocr_build_kernel_comdsdsc_x86_regression = {
-    'name': 'ocr-build-kernel-comdsdsc-x86',
+# CoMD: sdsc ocr - inactive implementation
+#job_ocr_build_kernel_comdsdsc_x86_regression = {
+#    'name': 'ocr-build-kernel-comdsdsc-x86',
+#    'depends': ('ocr-build-x86',),
+#    'jobtype': 'ocr-build-app',
+#    'run-args': 'comdsdsc x86',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'T_ARCH': 'x86',
+#                  'T_PATH': 'CoMD/refactored/ocr/sdsc',
+#                }
+#}
+#
+#job_ocr_run_kernel_comdsdsc_x86_remote_regression = {
+#    'name': 'ocr-run-kernel-comdsdsc-x86-remote-regression',
+#    'depends': ('ocr-build-kernel-comdsdsc-x86',),
+#    'jobtype': 'ocr-run-app-regression',
+#    'run-args': 'comdsdsc x86 ocr-run-kernel-comdsdsc-x86-remote-regression 3',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'T_ARCH': 'x86',
+#                  'T_PATH': 'CoMD/refactored/ocr/sdsc',
+#                  'WORKLOAD_ARGS': '-x 5 -y 5 -z 5 -d ${APPS_ROOT}/CoMD/datasets/pots',
+#                }
+#}
+#
+#job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
+#    'name': 'ocr-run-kernel-comdsdsc-x86-remote-scaling',
+#    'depends': ('ocr-build-kernel-comdsdsc-x86',),
+#    'jobtype': 'ocr-run-app-scaling',
+#    'run-args': 'comdsdsc x86 ocr-run-kernel-comdsdsc-x86-remote-scaling 3',
+#    'sandbox': ('shared','inherit0'),
+#    'env-vars': { 'T_ARCH': 'x86',
+#                  'T_PATH': 'CoMD/refactored/ocr/sdsc',
+#                  'WORKLOAD_ARGS': '-x 5 -y 5 -z 5 -d ${APPS_ROOT}/CoMD/datasets/pots',
+#                }
+#}
+
+# CoMD: sdsc ocr version2 - active implementation
+job_ocr_build_kernel_comdsdsc2_x86_regression = {
+    'name': 'ocr-build-kernel-comdsdsc2-x86',
     'depends': ('ocr-build-x86',),
     'jobtype': 'ocr-build-app',
-    'run-args': 'comdsdsc x86',
+    'run-args': 'comdsdsc2 x86',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'CoMD/refactored/ocr/sdsc',
+                  'T_PATH': 'CoMD/refactored/ocr/sdsc2',
                 }
 }
 
-job_ocr_run_kernel_comdsdsc_x86_remote_regression = {
-    'name': 'ocr-run-kernel-comdsdsc-x86-remote-regression',
-    'depends': ('ocr-build-kernel-comdsdsc-x86',),
+job_ocr_run_kernel_comdsdsc2_x86_remote_regression = {
+    'name': 'ocr-run-kernel-comdsdsc2-x86-remote-regression',
+    'depends': ('ocr-build-kernel-comdsdsc2-x86',),
     'jobtype': 'ocr-run-app-regression',
-    'run-args': 'comdsdsc x86 ocr-run-kernel-comdsdsc-x86-remote-regression 10',
+    'run-args': 'comdsdsc2 x86 ocr-run-kernel-comdsdsc2-x86-remote-regression 3',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'CoMD/refactored/ocr/sdsc',
-                  'WORKLOAD_ARGS': '-x 5 -y 5 -z 5 -d ${APPS_ROOT}/CoMD/datasets/pots',
+                  'T_PATH': 'CoMD/refactored/ocr/sdsc2',
+                  'WORKLOAD_ARGS': '-x 15 -y 15 -z 15',
                 }
 }
 
-job_ocr_run_kernel_comdsdsc_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-comdsdsc-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-comdsdsc-x86',),
+job_ocr_run_kernel_comdsdsc2_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-comdsdsc2-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-comdsdsc2-x86',),
     'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'comdsdsc x86 ocr-run-kernel-comdsdsc-x86-remote-scaling 10',
+    'run-args': 'comdsdsc2 x86 ocr-run-kernel-comdsdsc2-x86-remote-scaling 3',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'CoMD/refactored/ocr/sdsc',
-                  'WORKLOAD_ARGS': '-x 5 -y 5 -z 5 -d ${APPS_ROOT}/CoMD/datasets/pots',
+                  'T_PATH': 'CoMD/refactored/ocr/sdsc2',
+                  'WORKLOAD_ARGS': '-x 15 -y 15 -z 15',
                 }
 }
 
@@ -56,7 +92,7 @@ job_ocr_run_kernel_comdlite_x86_remote_regression = {
     'name': 'ocr-run-kernel-comdlite-x86-remote-regression',
     'depends': ('ocr-build-kernel-comdlite-x86',),
     'jobtype': 'ocr-run-app-regression',
-    'run-args': 'comdlite x86 ocr-run-kernel-comdlite-x86-remote-regression 10',
+    'run-args': 'comdlite x86 ocr-run-kernel-comdlite-x86-remote-regression 3',
     'sandbox': ('shared','inherit0'),
     'env-vars': { 'T_ARCH': 'x86',
                   'T_PATH': 'CoMD/refactored/mpilite',
