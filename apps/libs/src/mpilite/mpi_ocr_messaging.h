@@ -83,7 +83,4 @@ void ffwd_mq_add_laundry(struct ffwd_message *pp);
 #define FFWD_MQ_ANY_SOURCE      (-1)
 #define FFWD_MQ_ANY_TAG         (-1)
 
-#define FFWD_GLOBAL_MAX         (FlixCurrentDomain()->process_count * FlixCurrentSocket()->domain_count)
-#define FFWD_GLOBAL_PID         (FlixCurrentDomain()->process_count * FlixCurrentDomain()->did + FlixCurrentProcess()->pid)
-
 #endif

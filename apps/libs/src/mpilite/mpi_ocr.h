@@ -12,6 +12,8 @@
 extern "C" {
 #endif
 
+#include "mpi.h"
+
 /****************************************************/
 /* MPI_OCR                                          */
 /****************************************************/
@@ -92,7 +94,7 @@ typedef struct mpiOcrMessage_t
         int source;
         int dest;
         int tag;
-        /*MPI_Comm*/ int comm;
+        MPI_Comm comm;
         u64 totalSize;
     } header;
     u64 data[];
@@ -108,7 +110,7 @@ typedef struct rankContext_t
 
     u32 maxComm,    // communicators range from 0..maxComm
         commArrayLen; // current length of the "communicators" array ( > maxComm)
-    void ** communicators;  // array of ptrs to communicator structure
+    MPI_Comm * communicators;  // array of ptrs to communicator structure
 } rankContext_t, *rankContextP_t;
 
 typedef struct messageContext_t
@@ -158,21 +160,21 @@ static inline messageContextP_t getMessageContext() {
 
 
 int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
-               datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64 totalSize);
+               datatype, int source, int dest, int tag, MPI_Comm  comm, u64 totalSize);
 
 int mpiOcrTrySend(void *buf, int count, /*MPI_Datatype*/ int
-               datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
+               datatype, int source, int dest, int tag, MPI_Comm comm, u64
                   totalSize, bool *done);
 
 int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
-               datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
+               datatype, int source, int dest, int tag, MPI_Comm comm, u64
                totalSize, /*MPI_Status*/ void *status);
 
 int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
-                  datatype, int source, int dest, int tag, /*MPI_Comm*/ int comm, u64
+                  datatype, int source, int dest, int tag, MPI_Comm comm, u64
                   totalSize, /*MPI_Status*/ void *status, bool *done);
 
-u64 guidIndex(int source, int dest, int tag, int numRanks, int maxTag);
+u64 guidIndex(int source, int dest, int tag);
 
 
 /* prints error and exits program */

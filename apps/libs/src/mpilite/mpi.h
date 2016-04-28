@@ -92,9 +92,10 @@ int __mpiOcrMain(int argc, char * argv[]);
 #define MPI_IN_PLACE            ((void *)-1)  // currently only for Reduce/Allreduce
 
 #define MPI_GROUP_NULL          ((void *)0)
-#define MPI_GROUP_MAX           (64)    // must be >= FFWD_GLOBAL_MAX
+
 typedef struct {
-    int gpid[MPI_GROUP_MAX];
+    int *gpid_array;
+    int gpid;
     int size;
     int rank;    // cached value 'my rank' this is process-private value
 } _MPI_Group;
@@ -112,14 +113,15 @@ typedef _MPI_Topology    *MPI_Topology;
 
 typedef struct {
     MPI_Group     group;
-    MPI_Topology    topology;
+    MPI_Topology    topology;   // topology not used
     // plus context
 } _MPI_Comm;
-typedef int    MPI_Comm;
+typedef _MPI_Comm    *MPI_Comm;
 
-#define MPI_COMM_NULL    (-1)
-#define MPI_COMM_WORLD   ( 0)
-#define MPI_COMM_SELF    (-2)
+#define MPI_COMM_NULL    ((MPI_Comm)0)
+#define MPI_COMM_WORLD   ((MPI_Comm)0x44000000)
+#define MPI_COMM_SELF    ((MPI_Comm)0x44000001)
+
 
 struct ffwd_status {
     int count;
@@ -134,7 +136,7 @@ struct ffwd_message {
     int datatype;
     int tag;
     int rank;    // dest or source depending on context.. global pid
-    int comm;
+    MPI_Comm comm;
     int flag;
     volatile int status;
     void *buf;

@@ -74,11 +74,6 @@ static void fillArgv(u64 argc, char *argv[],void *argcArgvPtr)
 // rankContext: "MPI" info for this rank
 // get argc/argv ready, and call user's main(argc, argv);
 
-typedef struct {
-    double a;
-    int b;
-} double_int;
-
 typedef struct
 {
     u64 rank;
@@ -121,9 +116,8 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
                  sizeof(double), // MPI_DOUBLE
                  sizeof(double_int)}, // MPI_DOUBLE_INT
       .maxComm = 1,
-      .commArrayLen = 1,
-      .communicators = NULL //
-      // TBD real communicators
+      .commArrayLen = 0,
+      .communicators = NULL
     };
 
     PRINTF("Starting rankEdtFn %d of %d\n",rank, rankContext.numRanks);
@@ -182,14 +176,14 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
     if (0 == rank) {
 
-        if (!IS_GUID_NULL(argcArgv->guid))) {
+        if (!ocrGuidIsNull(argcArgv->guid))) {
             ocrDbDestroy(argcArgv->guid);
         }
     }
 
 #endif
 
-if (!IS_GUID_NULL(ffwd_db_guid)) {
+if (!ocrGuidIsNull(ffwd_db_guid)) {
         ocrDbDestroy(ffwd_db_guid);
     }
 
@@ -367,12 +361,12 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
     ocrGuid_t *events;
 
     ocrDbCreate(messageEventsDB, (void*)&events,
-                numElements * sizeof (ocrGuid_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+                numElements * sizeof (ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 
 #ifdef DB_ARRAY
     ocrEdtDep_t *data ;
     ocrDbCreate(messageDataDB, (void*)&data,
-                numElements * sizeof (ocrEdtDep_t), DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC);
+                numElements * sizeof (ocrEdtDep_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 #endif
 
     for (int i = 0; i < numElements; i++)
@@ -514,7 +508,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                             ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
                                          (u64 *) &rankEdtParamv,
                                          EDT_PARAM_DEF, NULL,  EDT_PROP_LONG,
-                                         PICK_1_1(&hint,PD), NULL);
+                                         &hint, NULL);
 
                             // printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, PD);
                             // fflush(stdout);
@@ -543,7 +537,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                     ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
                                  (u64 *) &rankEdtParamv,
                                  EDT_PARAM_DEF, rankDepv,  EDT_PROP_NONE,
-                                 PICK_1_1(&hint,affWhere), NULL);
+                                 &hint, NULL);
 
 #endif
                     // having trouble getting argcArgvDB added as CONST - hangs: bug
@@ -556,7 +550,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                     ocrEdtCreate(& rankEdt, rankEdtTemplate, EDT_PARAM_DEF,
                                  (u64 *) &rankEdtParamv,
                                  EDT_PARAM_DEF, NULL,  EDT_PROP_LONG,
-                                 PICK_1_1(&hint,affWhere), NULL);
+                                 &hint, NULL);
                     // printf("Done Spawning rank#%d @ affinity 0x%lx\n", rank, aff[rank%count]);
                     // fflush(stdout);
 
@@ -613,10 +607,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t argcArgv = depv[0].guid;
     ocrDbRelease(argcArgv);
 
-    ocrEdtCreate(&mainEdtHelper, mainEdtHelperTemplate, EDT_PARAM_DEF ,
-   // Vincent had this as long??        paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH | EDT_PROP_LONG,
-         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH,
-         PICK_1_1(NULL_HINT,NULL_GUID), &outputEvent);
+    // Vincent had this as long??
+    // paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH | EDT_PROP_LONG,
+    ocrEdtCreate(&mainEdtHelper, mainEdtHelperTemplate, EDT_PARAM_DEF,
+         paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_HINT, &outputEvent);
 
     PRINTF("mainEdtHelper: edt %p\n", mainEdtHelper);
 
@@ -627,7 +621,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t endDepv[] = {outputEvent};
     ocrEdtTemplateCreate(&endEdtTemplate, endEdtFn, 0, 1);
     ocrEdtCreate(&endEdt, endEdtTemplate, 0, NULL, EDT_PARAM_DEF, endDepv,
-                 EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NULL);
+                 EDT_PROP_NONE, NULL_HINT, NULL);
 
     PRINTF("endEdt: edt %p\n", endEdt);
 

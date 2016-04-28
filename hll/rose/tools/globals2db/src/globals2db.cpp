@@ -1262,64 +1262,12 @@ void visitorTraversal::visit(SgNode* node)
                     (strcmp(funcName.getString().c_str(), "MPIlite_Init") == 0))
                     _status=E_MPI_FOUND;
 
-                // MPI-lite uses different definitions of MPI_Comm, MPI_Op and
-                // MPI_Datatype, so if the app is using the real MPI definitions,
-                // they need to be replaced.
-                //
-                SgExprListExp * funcExprListExp = callExp->get_args();
-                if (funcExprListExp != NULL)
-                {
-                    SgExpressionPtrList & exprPtrList = funcExprListExp->get_expressions();
-                    for (SgExpressionPtrList::iterator iter = exprPtrList.begin();
-                         iter != exprPtrList.end(); iter++)
-                    {
-                        SgExpression * arg = *iter;
-                        string str = arg->unparseToString();
-
-                        if (strncmp(str.c_str(), "((MPI_Datatype )", 16) == 0)
-                        {
-                            unsigned long datatype=get_mpi_datatype(str);
-                            SgUnsignedLongVal * newArg = buildUnsignedLongVal(datatype);
-                            string dataName("MPI_Datatype");
-                            SgTypedefDeclaration* typedefData =
-                                buildTypedefDeclaration(dataName, buildUnsignedLongType(), scope);
-                            SgTypedefType * datatypeType = typedefData->get_type();
-                            SgExpression * castData = buildCastExp(newArg, datatypeType,
-                                                                   SgCastExp::e_C_style_cast);
-                            replaceExpression(arg, castData);
-                        }
-                        else if (strncmp(str.c_str(), "((MPI_Comm )", 12) == 0)
-                        {
-                            unsigned long comm=get_mpi_comm(str);
-                            SgUnsignedLongVal * newArg = buildUnsignedLongVal(comm);
-                            string commName("MPI_Comm");
-                            SgTypedefDeclaration* typedefComm =
-                                buildTypedefDeclaration(commName, buildUnsignedLongType(), scope);
-                            SgTypedefType * commType = typedefComm->get_type();
-                            SgExpression * castComm = buildCastExp(newArg, commType,
-                                                                   SgCastExp::e_C_style_cast);
-                            replaceExpression(arg, castComm);
-                        }
-                        else if (strncmp(str.c_str(), "((MPI_Op )", 10) == 0)
-                        {
-                            unsigned long op=get_mpi_op(str);
-                            SgUnsignedLongVal * newArg = buildUnsignedLongVal(op);
-                            string opName("MPI_Op");
-                            SgTypedefDeclaration* typedefOp =
-                                buildTypedefDeclaration(opName, buildUnsignedLongType(), scope);
-                            SgTypedefType * opType = typedefOp->get_type();
-                            SgExpression * opComm = buildCastExp(newArg, opType,
-                                                                 SgCastExp::e_C_style_cast);
-                            replaceExpression(arg, opComm);
-                        }
-                        else ;
-                    }
-                }
             }
         }
     } // isSgFunctionCallExp
 #endif
 }
+
 
 
 // atTraversalEnd() is called at the end of every source file that is processed.
