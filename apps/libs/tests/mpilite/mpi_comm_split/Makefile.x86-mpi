@@ -24,8 +24,6 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
-DOUBLEFLAG = -DDOUBLE
-STARFLAG   = -DSTAR
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -42,6 +40,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # default arguments here and the ones passed through
 # an environment variables
 OCR_NODES ?= 4
+OCR_NODEFILE ?= $(HOME)/4nodes
 WORKLOAD_ARGS ?= -r $(OCR_NODES) -t 10
 
 # Run mode (not fully supported)
@@ -82,11 +81,11 @@ MPILITE:=yes
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2 $(DOUBLEFLAG) $(STARFLAG)
+all:	CFLAGS += -O2
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0 $(DOUBLEFLAG) $(STARFLAG)
+debug:	CFLAGS += -O0
 debug:	TARGETS := debug
 debug:	default
 
@@ -125,5 +124,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include $(APPS_ROOT)/makefiles/make-ocrrun.inc
+include $(APPS_ROOT)/makefiles/make-inc.inc
 

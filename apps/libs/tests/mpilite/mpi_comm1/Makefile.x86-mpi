@@ -2,6 +2,8 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+COMM_LAYER=mpi
+
 # APPS
 APPS_ROOT       ?= ../../../..
 #APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs/x86
@@ -10,7 +12,7 @@ APPS_ROOT       ?= ../../../..
 REPO_TOP        ?= ${APPS_ROOT}/..
 
 # OCR_TYPE
-OCR_TYPE        ?= x86
+OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
 
@@ -22,7 +24,6 @@ OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
-
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -37,9 +38,8 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # To restate, the arguments passed to make run have
 # the highest priority and will override both the
 # default arguments here and the ones passed through
-# an environment variable
-CONFIG_NUM_THREADS ?= 4
-WORKLOAD_ARGS ?= -r $(CONFIG_NUM_THREADS) -t 10
+# an environment variables
+WORKLOAD_ARGS ?= -r 8 -t 10
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -53,11 +53,11 @@ ENABLE_VISUALIZER ?= no
 include $(APPS_ROOT)/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET ?= mpi_comm_split
+TARGET ?= mpi_comm1
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := mpilite
+REQ_LIBS :=
 
 # Space separated list of source files
 SRCS := $(TARGET).c
@@ -70,11 +70,9 @@ CFLAGS := -std=c99
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lm -lpthread -lmpilite
+LDFLAGS := -lm -lpthread
 
-# MPILite config file needs LABELED
-MPILITE=yes
-CONFIG_FLAGS := --guid LABELED
+MPILITE:=yes
 
 # Targets:
 #   - all:     Build the application.

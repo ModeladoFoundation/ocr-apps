@@ -1,0 +1,27 @@
+This file is subject to the license agreement located in the file LICENSE
+and cannot be distributed without it. This notice cannot be
+removed or modified.
+
+This is a small test suite for MPI-Lite on FFWD-2.  Many of these tests were
+originally part of the FFWD-1 MPI-Lite unit tests.
+
+The tests are all executed by the Makefile in this directory.
+The last line contains the number of pass/fails.
+
+        % make > test.log 2>&1
+
+Each test has its own directory, and its own makefile.
+The tests can be executed individually from their own directory as well.
+
+        % cd mpi_comm1
+        % make OCR_TYPE=x86
+
+
+If you wish to add a test to this suite, please follow these conventions.
+1. create a directory with a meaningful name (not "test").
+2. place your sources in the directory.
+3. copy a makefile from one of the other directories, and update it for your test.
+        - change TARGET and the verification criteria in the "grep".
+4. test!
+5. add your directory name to the top-level makefile.
+

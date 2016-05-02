@@ -38,7 +38,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-CONFIG_NUM_THREADS ?= 4
+CONFIG_NUM_THREADS ?= 16
 WORKLOAD_ARGS ?= -r $(CONFIG_NUM_THREADS) -t 10
 
 # Run mode (not fully supported)
@@ -53,7 +53,7 @@ ENABLE_VISUALIZER ?= no
 include $(APPS_ROOT)/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET ?= mpi_comm_split
+TARGET ?= mpi_comm2
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH

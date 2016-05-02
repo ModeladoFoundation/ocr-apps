@@ -1,3 +1,7 @@
+/* This file is subject to the license agreement located in the file LICENSE
+ * and cannot be distributed without it. This notice cannot be
+ * removed or modified.
+ */
 /*
  * Shows a short cut method to create a collection of communicators.
  * All processors with the "same color" will be in the same communicator.
