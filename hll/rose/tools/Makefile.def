@@ -21,13 +21,9 @@ CXXFLAGS=
 CC_INC=-I.
 
 
-MPI_VERSION=../../../../../../../apps/libs/x86
+MPI_VERSION=../../../../../../../apps/libs/install/x86
 MPICC = $(CC)
 MPI_FLAGS=-I$(MPI_VERSION)/include -D__leaf__=__externally_visible__ -L$(MPI_VERSION)/lib/release -L$(MPI_VERSION)/lib -lmpifort -lmpi -lmpigi -ldl -lrt -lpthread -lgcc
 
-#MPI_VERSION=/opt/intel/tools//impi/5.0.1.035/intel64
-#MPICC = mpicc
-#MPIRUN = mpirun
-#MPI_FLAGS=-I$(MPI_VERSION)/include -D__leaf__=__externally_visible__ -L$(MPI_VERSION)/lib/release -L$(MPI_VERSION)/lib -lmpifort -lmpi -lmpigi -ldl -lrt -lpthread -lgcc
 
 ZGRVIEW=java -jar /opt/ZGRViewer-0.8.2/zgrviewer/target/zgrviewer-0.8.2.jar

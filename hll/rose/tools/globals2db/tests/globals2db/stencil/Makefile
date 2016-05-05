@@ -10,8 +10,8 @@ endif
 OCR_TYPE ?= x86
 
 TARGET = stencil
-SRC = stencil.c
-ROSE_SRC = rose_stencil.c
+SRC = $(TARGET).c
+ROSE_SRC = rose_$(TARGET).c
 ROSE_TOOL = ../../../bin/globals2db
 ROSE_TARGET = rose_$(TARGET)
 ROSE_OPT = -rose:skipfinalCompileStep

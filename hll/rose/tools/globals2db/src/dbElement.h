@@ -241,7 +241,6 @@ class DbElement
     Rose_STL_Container<SgExpression*> get_dim_expr_ptr_list() { return _dimExprPtrList; }
     void get_declarators(SgArrayType* arrayType );
 
-
   private:
     SgNode* _node;
     SgVariableSymbol* _sym;
@@ -359,7 +358,6 @@ bool DbElement::is_const_type()
 string DbElement::get_type_from_decl()
 {
     string orig = _orig;
-
     if (strncmp(orig.c_str(), "static ", 7) == 0)
         orig = orig.substr(7);
     if (strncmp(orig.c_str(), "extern ", 7) == 0)
@@ -368,7 +366,7 @@ string DbElement::get_type_from_decl()
         orig = orig.substr(6);
     if (strncmp(orig.c_str(), "__thread ", 9) == 0)
         orig = orig.substr(9);
-    size_t pos = orig.find(_name->get_name().getString());
+    size_t pos = orig.rfind(_name->get_name().getString(), string::npos);
     string typeStr = orig.substr(0,pos);
     while(isspace(*typeStr.begin()))
         typeStr.erase(typeStr.begin());
@@ -442,8 +440,8 @@ string create_new_name( SgInitializedName * name, SgScopeStatement * scope)
 }
 
 
-
 // get_dim_info() does not work for C++.  Use get_index() to get the indices of an array.
+//
 void DbElement::get_declarators(SgArrayType* arrayType )
 {
       SgExpression* indexExp =  arrayType->get_index();
@@ -451,32 +449,25 @@ void DbElement::get_declarators(SgArrayType* arrayType )
       {   // this is the dimension for the array
           // int a[] = {0, 1, 2};  get_index() returns SgNullExpression
           // int b[3];             get_index() returns 3 in form of an SgValueExp.
-          // int c[i];             allowed in C; get_index() returns an expression
+          // int c[i];             allowed in C; get_index() returns an SgExpression
 
           if (isSgNullExpression(indexExp)) {
-              printf("Error: [] is not supported.\n");
-              exit(1);
-#if 0
-              printf("get_declarators:: [] WIP\n");
-              int index = get_first_array_dimension(arrayType);
-              printf("get_declarators:: index=%d\n", index);
-              if (_numElements == 0)
-                  _numElements = index;
-              else
-                  _numElements *= index;
+              SgInitializer * initptr = _name->get_initializer();
+              if (isSgAggregateInitializer(initptr))
+              {
+                  SgAggregateInitializer * aggInit = isSgAggregateInitializer(initptr);
+                  SgExprListExp * exprList = aggInit->get_initializers();
+                  SgExpressionPtrList exprPtrList = exprList->get_expressions();
+                  int size = exprPtrList.size();
+                  if (_numElements == 0)
+                      _numElements = size;
+                  else
+                      _numElements *= size;
 
-              // This should be a SgValueExp, but the function to build this
-              // is TBD.  Try to use an SgExpression.  If that does not work,
-              // try to write the buildSgValueExp() function.
-              //SgValueExp* valueExp = buildSgValueExp(buildIntVal(index));
-              //ROSE_ASSERT(valueExp != NULL);
-              //SgExpression* indexExp = isSgExpression(valueExp);
-              SgExpression* indexExp = isSgExpression(buildIntVal(index));
-              ROSE_ASSERT(indexExp != NULL);
-              _dimExprPtrList.push_back(indexExp);
-#endif
+                  SgExpression* indexExp = isSgExpression(buildIntVal(size));
+                  _dimExprPtrList.push_back(indexExp);
+              }
           }
-
           else if (isSgValueExp(indexExp)) {
               unsigned long long index=0;
               SgExpression* copyExp = deepCopy(indexExp);
@@ -488,8 +479,6 @@ void DbElement::get_declarators(SgArrayType* arrayType )
               else
               {
                   index = getIntegerConstantValue(isSgValueExp(indexExp));
-                  //SgValueExp* valueExp = isSgValueExp(indexExp);
-                  //index = getIntegerConstantValue(valueExp);
               }
 
               if (_numElements == 0)
@@ -503,6 +492,7 @@ void DbElement::get_declarators(SgArrayType* arrayType )
               exit(1);
           }
       }
+
       SgArrayType* arraybase = isSgArrayType(arrayType->get_base_type());
       if (arraybase)
          get_declarators(arraybase);
@@ -653,7 +643,6 @@ unsigned long long getIntegerConstantValue(SgValueExp* expr) {
     }
     return 0;
 }
-
 
 
 static void printNode(SgNode* node)

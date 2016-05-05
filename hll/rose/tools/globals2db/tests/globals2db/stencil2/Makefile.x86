@@ -9,7 +9,7 @@ REPO_TOP ?= ${APPS_ROOT}/..
 
 # APPS
 APPS_ROOT       ?= ${REPO_TOP}/apps
-APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/x86
+APPS_LIBS_ROOT  ?= ${REPO_TOP}/apps/libs/install/x86
 
 # OCR_TYPE
 OCR_TYPE        ?= x86
@@ -162,7 +162,7 @@ rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 
 CXX ?= g++
 
