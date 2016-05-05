@@ -52,17 +52,22 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 # Name of the application to build
 TARGET := driver
 
+CFLAGS :=
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+
+
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := reduction macros
 
 # Space separated list of source files
-SRCS := driver.c
+SRCS := driver.c wtime.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
@@ -117,5 +122,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 

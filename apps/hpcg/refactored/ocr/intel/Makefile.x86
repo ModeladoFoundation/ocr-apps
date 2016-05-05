@@ -45,7 +45,7 @@ RUN_JENKINS ?= no
 ENABLE_VISUALIZER ?= no
 ## END of variables coming from user/environment
 
-CONFIG_FLAGS=--guid LABELED
+CONFIG_FLAGS=--guid LABELED --binding seq
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -54,33 +54,31 @@ TARGET := hpcg
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := reduction
+REQ_LIBS := macros reduction
 
 # Space separated list of source files
-SRCS := hpcg.c
+SRCS := hpcg.c wtime.c
 
-# Additional CFLAGS. By default, it includes
-# all OCR required includes and apps/libs/<target>/include
-# TG_ARCH is also defined for Fsim
-CFLAGS :=
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lreduction
 
-# Targets:
-#   - all:     Build the application.
-#   - debug:   Build the debug version of the application
-#   - install: Build and install
-#   - run:     Run the application
-all:	CFLAGS += -O2 -g
+LDFLAGS := -lpthread -lreduction -lm
+
+
+
+all:	CFLAGS += -g -O2
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0
-debug:	TARGETS := debug
-debug:	default
+#debug:	CFLAGS += -O0
+#debug:	TARGETS := debug
+#debug:	default
 
 install: all
 
@@ -117,5 +115,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 

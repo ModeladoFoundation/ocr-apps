@@ -3,10 +3,11 @@
 # removed or modified.
 
 COMM_LAYER=mpi
+MPI_ROOT=/mnt/nordicfs/opt/intel/impi/5.1.2.150/intel64
 
 # APPS
 APPS_ROOT       ?= ../../../../../apps
-#APPS_LIBS_ROOT  ?= ../../../../../apps/libs/x86
+//APPS_LIBS_ROOT  ?= ${APPS_ROOT}/libs
 
 # OCR_TYPE
 OCR_TYPE        ?= x86-${COMM_LAYER}
@@ -46,7 +47,7 @@ RUN_JENKINS ?= no
 
 ## END of variables coming from user/environment
 
-CONFIG_FLAGS=--guid LABELED
+CONFIG_FLAGS=--guid LABELED --binding seq
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -55,15 +56,25 @@ TARGET := hpcg
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := reduction
+REQ_LIBS := reduction macros
 
 # Space separated list of source files
-SRCS := hpcg.c
+SRCS := hpcg.c wtime.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS :=
+ifneq (${NO_DEBUG}, yes)
+CFLAGS := -O3
+CFLAGS += -DOCR_ASSERT
+endif
+
+#CFLAGS += -DENABLE_EXTENSION_AFFINITY
+#CFLAGS += -DENABLE_EXTENSION_LABELING
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
@@ -118,5 +129,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 

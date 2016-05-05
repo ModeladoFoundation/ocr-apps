@@ -56,16 +56,27 @@ typedef struct {
     u64 nrank;
     u64 myrank;
     u64 ndata;      //number of elements to be reduced
+    u64 phase;
+/*
+0 only used when new is true
+1 receiving from below
+2 sending up
+3 receiving from above
+4 sending down (and returning answer)
+*/
     u64 new; //should be set to true on first call or if any parameters change
-    u64 extra; //used for rank 0 passing something to all of the ranks (along with answer).  Typically a new once event if not using labeled GUIDs.
+    u64 all; //should be 1 for ALL-REDUCE and 0 for only rank 0 returns
+    u64 up;
     reductionOperator_t reductionOperator; //which reduction to do (in reduction.h)
-    ocrGuid_t rangeGUID; //nrank-1 labeled STICKY GUIDs
-    ocrGuid_t sendEVT;
-    ocrGuid_t recvEVT[ARITY];
-    ocrGuid_t returnEVT; //ONCE event to return the result, provided by the user (presumably labeled)
+    ocrGuid_t rangeGUID; //nrank-1 labeled STICKY GUIDs (used only once to set up channels)
+    ocrGuid_t sendUpEVT;
+    ocrGuid_t recvUpEVT[ARITY];
+    ocrGuid_t sendDownEVT[ARITY];
+    ocrGuid_t recvDownEVT;
+    ocrGuid_t returnEVT; //ONCE event to return the result, different for each rank
+    ocrGuid_t downDBK;
     ocrGuid_t reductionTML;    //initialized to NULL_GUID
-    ocrGuid_t returnDBK;  //initialized to NULL_GUID
-    u64 sizeOfreturnDBK;  //doesn’t need to be initialized
+    ocrHint_t myAffinity;
 } reductionPrivate_t;
 
 //prototypes

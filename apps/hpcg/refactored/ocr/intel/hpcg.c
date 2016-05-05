@@ -9,25 +9,39 @@ Copywrite Intel Corporation 2015
 
 /*
 This code implements HPCG in OCR.
-It uses labelled GUIDs that are currently an extension
+It uses labelled GUIDs and channel events that are currently extensions
+
 More information is in README
+
 October 25 2015: added runtime arguments
 October 27 2015: fixed "RO" to "RW" for the private block
+November 15 2015: changed to the newer reduction library
+November 30 2015: added AFFINITY extensions
+December 8 2015: added macros "library" and structures for params and deps
+April 2016:	added channel events, brought up to release 1.1.0 including affinity HINTS
+
 
 */
 
-#define COMPUTE
+#define COMPUTE  //undefine to suppress compute
+#define PRECONDITIONER  //undefine if you want to run without the precondition
+//#define RECEIVER_OWNS_CHANNEL_EVENT //undefine to make the sender own it
 
 #define ENABLE_EXTENSION_LABELING
+#define ENABLE_EXTENSION_AFFINITY
+
 #include "ocr.h"
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
+#include "extensions/ocr-affinity.h" //needed for affinity
+
+
 #include "string.h" //if memcpy is needed
 #include "stdio.h"  //needed for PRINTF debugging
 #include "math.h" //for integer abs
 
 #include "reduction.h"
+#include "macros.h"
 
-#define PRECONDITIONER  //undefine if you want to run without the precondition
 
 #define NPX 3  //number of workers is NPX x NPY x NPZ
 #define NPY 4
@@ -35,14 +49,18 @@ October 27 2015: fixed "RO" to "RW" for the private block
 #define M 16   // size of local block
 #define T 50  //number of time steps
 #define DEBUG 0 //debug print level 0: none 1: some 2: LOTS
-#define Z 0 //4*ht
-#define R 1 //4*mt
+//           sizes of the vectors
+#define Z 0 //4 levels of ht
+#define R 1 //4 levels of mt
 #define AP 2 //1*mt (reused)
 #define X 3 //1*mt
 #define P 4 //1*ht
 #define B 5 //1*mt
 
+extern double wtime();
+
 typedef struct{
+    u32 length[26];
     u32 start[26];
     u32 l1[26];
     u32 l2[26];
@@ -55,16 +73,17 @@ typedef struct{
     u32 npy;
     u32 npz;
     u32 m;
-    u32 t;
+    u32 maxIter;
     u32 debug;
-    ocrGuid_t wrapup;
-    ocrGuid_t haloRangeGuid;
+    ocrGuid_t haloRangeGUID;
+    ocrGuid_t reductionRangeGUID;
+    ocrGuid_t finalOnceEVT;
 } sharedBlock_t;
 
 
 typedef struct{
-    u32 numnodes;
-    u32 mynode;
+    u32 nrank;
+    u32 myrank;
     u32 timestep;
     u32 npx;
     u32 npy;
@@ -75,7 +94,6 @@ typedef struct{
     u32 mt[4];
     u32 ht[4];
     u32 hpcgPhase;
-    u32 hePhase;
     u32 mgPhase[4];
 //offsets in bytes for the various structures in the datablock beyond the private structure
     u32 matrix_offset[4];
@@ -87,18 +105,19 @@ typedef struct{
     double rtz;
     double rtzold;
     gather_t gather[4];
-    ocrGuid_t haloRangeGuid;
-    ocrGuid_t hpcgTemplate;
-    ocrGuid_t spmvTemplate;
-    ocrGuid_t mgTemplate;
-    ocrGuid_t haloTemplate;
-    ocrGuid_t smoothTemplate;
-    ocrGuid_t packTemplate;
-    ocrGuid_t unpackTemplate;
-    ocrGuid_t wrapup;
-    ocrGuid_t haloSendBlock[26];
-    ocrGuid_t haloSendGuid[2][26];
-    ocrGuid_t haloRecvGuid[2][26];
+    ocrGuid_t reductionReturnEVT;
+    ocrHint_t myAffinityHNT;
+    ocrGuid_t haloRangeGUID;
+    ocrGuid_t hpcgTML;
+    ocrGuid_t spmvTML;
+    ocrGuid_t mgTML;
+    ocrGuid_t haloExchangeTML;
+    ocrGuid_t smoothTML;
+    ocrGuid_t packTML;
+    ocrGuid_t unpackTML;
+    ocrGuid_t haloSendEVT[26];
+    ocrGuid_t haloRecvEVT[26];
+    ocrGuid_t finalOnceEVT;
     } privateBlock_t;
 
 //indices of vectors (arbitrary order)
@@ -113,6 +132,33 @@ return;
 void gatherfill(gather_t * g, u32 m1){
 u32 m2 = m1*m1;
 u32 m3 = m1*m1*m1;
+
+g->length[0] = 1;
+g->length[1] = m1;
+g->length[2] = 1;
+g->length[3] = m1;
+g->length[4] = m2;
+g->length[5] = m1;
+g->length[6] = 1;
+g->length[7] = m1;
+g->length[8] = 1;
+g->length[9] = m1;
+g->length[10] = m2;
+g->length[11] = m1;
+g->length[12] = m2;
+g->length[13] = m2;
+g->length[14] = m1;
+g->length[15] = m2;
+g->length[16] = m1;
+g->length[17] = 1;
+g->length[18] = m1;
+g->length[19] = 1;
+g->length[20] = m1;
+g->length[21] = m2;
+g->length[22] = m1;
+g->length[23] = 1;
+g->length[24] = m1;
+g->length[25] = 1;
 
 g->start[0] = 0;
 g->start[1] = 0;
@@ -341,13 +387,13 @@ void vectorfill(u32 length, double * v, double * a) {
     return;
 }
 
-void matrixfill(u32 npx, u32 npy, u32 npz, u32 m, u32 mynode, double * a, u32 * diag, u32 * ind, s32 * column_index) {
+void matrixfill(u32 npx, u32 npy, u32 npz, u32 m, u32 myrank, double * a, u32 * diag, u32 * ind, s32 * column_index) {
 //m is one of m[]
 //a and ind  are 27*m*m*m
 //diag is length m*m*m
 //column index is (m+2)^3 which holds column offsets
 
-if(DEBUG > 0) PRINTF("MF%d m %d \n", mynode, m);
+if(DEBUG > 0) PRINTF("MF%d m %d \n", myrank, m);
     u32 n = m*m*m;
     s32 i, j, k, ml;
     s64 offset[27], *p;
@@ -360,10 +406,10 @@ if(DEBUG > 0) PRINTF("MF%d m %d \n", mynode, m);
     s64 zpoff[9] = {-9,-8,-7,-6,-5,-4,-3,-2,-1};
     s64 ypoff[9] = {-21,-20,-19,-12,-11,-10,-3,-2,-1};
     s64 xpoff[9] = {-25,-22,-19,-16,-13,-10,-7,-4,-1};
-//locate mynode
-    u32 pz = mynode/(npx*npy);
-    u32 py = (mynode/npx)%npy;
-    u32 px = mynode%(npx);
+//locate myrank
+    u32 pz = myrank/(npx*npy);
+    u32 py = (myrank/npx)%npy;
+    u32 px = myrank%(npx);
 
     u32 counter = 0;
     double * asave;
@@ -373,7 +419,7 @@ if(DEBUG > 0) PRINTF("MF%d m %d \n", mynode, m);
     diagsave = diag;
 
 
-if(DEBUG > 0) PRINTF("MF%d px %d py %d pz %d \n", mynode, px, py, pz);
+if(DEBUG > 0) PRINTF("MF%d px %d py %d pz %d \n", myrank, px, py, pz);
 
     p = offset;
 
@@ -384,7 +430,7 @@ if(DEBUG > 0) PRINTF("MF%d px %d py %d pz %d \n", mynode, px, py, pz);
     }
 fflush(stdout);
 
-if(DEBUG > 1) for(i=0;i<27;i++) PRINTF("MF%d offset %d value %d \n", mynode, i, offset[i]);
+if(DEBUG > 1) for(i=0;i<27;i++) PRINTF("MF%d offset %d value %d \n", myrank, i, offset[i]);
 
     compute_column_indices(m+2, column_index);
 
@@ -417,101 +463,25 @@ if(DEBUG > 1) for(i=0;i<27;i++) PRINTF("MF%d offset %d value %d \n", mynode, i, 
     }
 
 if(DEBUG > 1) for(i=0;i<m*m*m;i++) PRINTF("MF i %d diag %d a %f\n", i, diagsave[i], asave[diagsave[i]]);
-if(DEBUG > 0) PRINTF("MF%d finish %d \n", mynode, m);
+if(DEBUG > 0) PRINTF("MF%d finish %d \n", myrank, m);
 fflush(stdout);
 }
 
 
 
 
+typedef struct{
+    u64 level;
+    u64 vectorIndex;
+    ocrGuid_t returnEVT;
+    } packPRM_t;
 
-ocrGuid_t haloExchangeEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
-/*
-paramv
-0: level
-1: vector index
-2: return event for unpack
-3: return event for pack
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t block[26];
+    } packDEPV_t;
 
-depv
-0: private block
-
-launches packANDsatisfy
-launches unpack
-
-*/
-
-
-
-    u64 level = paramv[0];
-    u64 vectorIndex = paramv[1];
-    ocrGuid_t unpackEvent = paramv[2];
-    ocrGuid_t packEvent = paramv[3];
-
-    ocrGuid_t PBguid = depv[0].guid;
-    privateBlock_t * PB = depv[0].ptr;
-
-    PB->hePhase ^= 1;      //toggle between 0 and 1
-
-    u32 mynode = PB->mynode;
-    u32 phase = PB->hePhase;
-
-    u32 i, errno;
-    ocrGuid_t packEdt, unpackEdt;
-
-
-if(DEBUG != 0) PRINTF("HE%d phase %d \n", mynode, PB->hePhase);
-
-
-if(DEBUG != 0) PRINTF("HE%d start\n", mynode);
-if(DEBUG != 0) PRINTF("HE%d start PBguid %lx \n", mynode, PBguid);
-if(DEBUG != 0) PRINTF("HE%d start level %d \n", mynode, level);
-if(DEBUG != 0) PRINTF("HE%d start vectorIndex %d \n", mynode, vectorIndex);
-if(DEBUG != 0) PRINTF("HE%lx start unpackEvent %lx \n", mynode, unpackEvent);
-if(DEBUG != 0) PRINTF("HE%lx start packEvent %lx \n", mynode, packEvent);
-
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendevent %lx \n", mynode, i, PB->haloSendGuid[phase][i]);
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d recvevent %lx \n", mynode, i, PB->haloRecvGuid[phase][i]);
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendblock %lx \n", mynode, i, PB->haloSendBlock[i]);
-
-fflush(stdout);
-
-    u64 paramvPack[3] = {level, vectorIndex, packEvent};
-    ocrEdtCreate(&packEdt, PB->packTemplate, EDT_PARAM_DEF, paramvPack, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    u64 paramvUnpack[3] = {level, vectorIndex, unpackEvent};
-    ocrEdtCreate(&unpackEdt, PB->unpackTemplate, EDT_PARAM_DEF, paramvUnpack, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-
-if(DEBUG > 1) PRINTF("HE%d after create \n", mynode);
-
-if(DEBUG > 1) PRINTF("HE%d after 0-1\n", mynode);
-    for(i=0;i<26;i++) {
-if(DEBUG > 1) PRINTF("HE%d attach sendblock %lx in slot(+1) %d  \n", mynode, PB->haloSendBlock[i], i );
-        ocrAddDependence(PB->haloSendBlock[i], packEdt, i+1, DB_MODE_RW);
-    }
-if(DEBUG != 0) PRINTF("HE%d after sendblocks\n", mynode);
-
-    for(i=0;i<26;i++) {
-
-        if(PB->haloRecvGuid[phase][i] != NULL_GUID){
-            errno = ocrEventCreate(&(PB->haloRecvGuid[phase][i]), OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-
-            ocrAddDependence(PB->haloRecvGuid[phase][i], unpackEdt, i+1, DB_MODE_RW);
-        } else {
-            ocrAddDependence(NULL_GUID, unpackEdt, i+1, DB_MODE_RW);
-        }
-    }
-    ocrDbRelease(PBguid);
-    ocrAddDependence(PBguid, packEdt, 0, DB_MODE_RW);
-    ocrAddDependence(PBguid, unpackEdt, 0, DB_MODE_RW);
-
-if(DEBUG != 0) PRINTF("HE%d finish\n", mynode);
-fflush(stdout);
-
-    return(NULL_GUID);
-
-}
-
-ocrGuid_t packANDsatisfyEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t packEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 /*
 param
@@ -529,39 +499,39 @@ send buffers are in lexicographic order
 
 */
 
-    u64 level = paramv[0];
-    u64 vector_index = paramv[1];
-    ocrGuid_t returnEvent = paramv[2];
+    PRMDEF(pack);
+    u64 level = PRM(pack,level);
+    u64 vectorIndex = PRM(pack,vectorIndex);
+    ocrGuid_t returnEVT = PRM(pack,returnEVT);
 
 
+    DEPVDEF(pack);
+    ocrGuid_t pbDBK = DEPV(pack,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(pack,privateBlock,ptr);
+    void * ptr = (void *) pbPTR;
 
 
-    ocrGuid_t PBguid = depv[0].guid;
-    void * ptr = depv[0].ptr;
-    privateBlock_t * PB = (privateBlock_t *) ptr;
-
-
-    double * sendBlockPtr[26];
-    ocrGuid_t sendBlockGuid[26];
+    double * sendPTR[26];
+    ocrGuid_t sendDBK[26];
 
     u32 j;
 
     for(j=0;j<26;j++) {
-        sendBlockGuid[j] = depv[j+1].guid;
-        sendBlockPtr[j] = (double *) depv[j+1].ptr;
+        sendDBK[j] = DEPVARRAY(pack,block,j,guid);
+        sendPTR[j] = DEPVARRAY(pack,block,j,ptr);
     }
 
-    double * vector = (double *) (((u64)ptr) + PB->vector_offset[level][vector_index]);
+    double * vector = (double *) (((u64)ptr) + pbPTR->vector_offset[level][vectorIndex]);
 
-    u32 phase = PB->hePhase;
-    u32 mynode = PB->mynode;
-    u32 debug = PB->debug;
-    gather_t * gather = &(PB->gather[level]);
+    u32 myrank = pbPTR->myrank;
+    u32 debug = pbPTR->debug;
+    gather_t * gather = &(pbPTR->gather[level]);
+if(debug != 0) PRINTF("PK%d L%d \n", myrank, level);
 
     u32 i, i1, i2;
 
-if(debug != 0) PRINTF("PK%d L%d start P%d vi %d PBguid %lx \n", mynode, level, phase, vector_index, PBguid);
-if(debug > 1) for(i=0;i<27;i++) PRINTF("PK%d sendBlockGuid[i] %lx \n", mynode, i, sendBlockGuid[i]);
+if(debug != 0) PRINTF("PK%d L%d start vi %d pbDBK %lx \n", myrank, level, vectorIndex, pbDBK);
+if(debug > 1) for(i=0;i<26;i++) PRINTF("PK%d sendDBK[%d] %lx \n", myrank, i, sendDBK[i]);
 
     u32 errno;
 
@@ -577,11 +547,11 @@ if(debug > 1) for(i=0;i<27;i++) PRINTF("PK%d sendBlockGuid[i] %lx \n", mynode, i
 
 
     for(i=0;i<26;i++) {
-if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %lx\n", mynode, i, *start, *l1, *l2, *p1, *p2, *l1*(*l2), depv[i+1].guid);
-        if(depv[i+1].guid != NULL_GUID) {
+if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %lx\n", myrank, i, *start, *l1, *l2, *p1, *p2, *l1*(*l2), depv[i+1].guid);
+        if(!ocrGuidIsNull(depv[i+1].guid)) {
 #ifdef COMPUTE
 
-            d = sendBlockPtr[i];
+            d = sendPTR[i];
 
             s = src + *start;
             for(i2=0;i2<*l2;i2++) {
@@ -591,12 +561,11 @@ if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %l
                 }
                 s += *p2;
             }
-if(debug > 0) PRINTF("PK%d DIR%d satisfy %lx with %lx\n", mynode, i, PB->haloSendGuid[phase][i], sendBlockGuid[i]);
-fflush(stdout);
 #endif
-            errno = ocrEventCreate(&(PB->haloSendGuid[phase][i]), OCR_EVENT_STICKY_T, GUID_PROP_IS_LABELED | GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-            ocrDbRelease(sendBlockGuid[i]);
-            ocrEventSatisfy(PB->haloSendGuid[phase][i], sendBlockGuid[i]);
+if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy %lx with %lx errno %d\n", myrank, level, i, pbPTR->haloSendEVT[i], sendDBK[i],errno);
+fflush(stdout);
+            ocrDbRelease(sendDBK[i]);
+            ocrEventSatisfy(pbPTR->haloSendEVT[i], sendDBK[i]);
          }
 
          start++;
@@ -606,14 +575,27 @@ fflush(stdout);
          p2++;
 
     }
-if(debug != 0) PRINTF("PK%d finish\n", mynode);
+if(debug != 0) PRINTF("PK%d finish\n", myrank);
 fflush(stdout);
 
-ocrEventSatisfy(returnEvent, NULL_GUID);
+ocrDbRelease(pbDBK);
+ocrEventSatisfy(returnEVT, NULL_GUID);
 
 return(NULL_GUID);
 
 }
+
+typedef struct{
+    u64 level;
+    u64 vectorIndex;
+    ocrGuid_t returnEVT;
+    } unpackPRM_t;
+
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t block[26];
+    } unpackDEPV_t;
+
 
 ocrGuid_t unpackEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
@@ -621,7 +603,7 @@ ocrGuid_t unpackEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 param
 0: level
 1: vector index
-2: returnEvent
+2: returnEVT
 
 
 depv
@@ -631,31 +613,36 @@ depv
 copies the values from the received data blocks into the destination vector
 sends the private block (to either spmv or smooth)
 */
-    u64 level = paramv[0];
-    u64 vectorIndex = paramv[1];
-    ocrGuid_t returnEvent = paramv[2];
 
-    void * ptr = depv[0].ptr;
-    ocrGuid_t PBguid = depv[0].guid;
-    privateBlock_t * PB = depv[0].ptr;
-    u32 mynode = PB->mynode;
-    u32 phase = PB->hePhase;
-    u32 debug = PB->debug;
-    gather_t * gather = &(PB->gather[level]);
+    PRMDEF(unpack);
+    u64 level = PRM(unpack,level);
+    u64 vectorIndex = PRM(unpack,vectorIndex);
+    ocrGuid_t returnEVT = PRM(unpack,returnEVT);
 
-    ocrGuid_t recvBlockGuid[26];
-    double * recvBlockPtr[26];
 
-if(debug != 0) PRINTF("UN%d L%d start P%d PBguid %lx \n", mynode, level, phase, PBguid);
+    DEPVDEF(unpack);
+    ocrGuid_t pbDBK = DEPV(unpack,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(unpack,privateBlock,ptr);
+    void * ptr = (void *) pbPTR;
+
+
+    double * recvPTR[26];
+    ocrGuid_t recvBlockGUID[26];
 
     u32 i;
-    for(i=0;i<26;i++) {
-        recvBlockGuid[i] = depv[i+1].guid;
-        recvBlockPtr[i] = (double *) depv[i+1].ptr;
-    }
-    double * dest = (double *) (((u64) ptr) + PB->vector_offset[level][vectorIndex]);
 
-if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] %lx \n", mynode, i, depv[i].guid);
+    for(i=0;i<26;i++) {
+        recvPTR[i] = DEPVARRAY(unpack,block,i,ptr);
+        }
+
+    u32 myrank = pbPTR->myrank;
+    u32 debug = pbPTR->debug;
+    gather_t * gather = &(pbPTR->gather[level]);
+
+
+    double * dest = (double *) (((u64) ptr) + pbPTR->vector_offset[level][vectorIndex]);
+
+if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] %lx \n", myrank, i, depv[i].guid);
 
 
 
@@ -663,22 +650,15 @@ if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] %lx \n", mynode, i, depv[i
     ocrGuid_t sticky;
 
 
-    if(debug > 0) PRINTF("UN%d phase %d \n", mynode, phase);
+    if(debug > 0) PRINTF("UN%d L%d \n", myrank, level);
     double * b;
-if(debug >1 ) for(i=0;i<PB->mt[level];i++) PRINTF("UN%d i %d v %f \n", mynode, i, *(dest+i));
+if(debug >1 ) for(i=0;i<pbPTR->mt[level];i++) PRINTF("UN%d i %d v %f \n", myrank, i, *(dest+i));
 
-    dest += PB->mt[level];  //skip over existing vector
-
-
+    dest += pbPTR->mt[level];  //skip over existing vector
 
 
-    for(i=0;i<26;i++) {
-        if(PB->haloRecvGuid[phase][i] != NULL_GUID) {
-if(debug > 0) PRINTF("UN%d L%d i %d destroy %lx \n", mynode, level,  i, PB->haloRecvGuid[phase][i]);
-            ocrEventDestroy(PB->haloRecvGuid[phase][i]);
-            PB->haloSendBlock[i] = recvBlockGuid[i];
-        }
-    }
+
+
 
 
     u32 j, len;
@@ -686,14 +666,14 @@ if(debug > 0) PRINTF("UN%d L%d i %d destroy %lx \n", mynode, level,  i, PB->halo
 
 #ifdef COMPUTE
     for(i=0;i<26;i++) {
-if(debug > 1) PRINTF("UN%d start i %d\n", mynode, i);
-        b = recvBlockPtr[i];
+if(debug > 1) PRINTF("UN%d start i %d\n", myrank, i);
+        b = recvPTR[i];
         len = gather->l1[i]*gather->l2[i];
         if(b == NULL) for(j=0;j<len;j++) *dest++ = 0.0;
           else {
 
             for(j=0;j<len;j++) {
-if(debug >1) PRINTF("UN%d i %d v %f\n", mynode, i, *b);
+if(debug >1) PRINTF("UN%d i %d v %f\n", myrank, i, *b);
                *dest++ = *b++;
             }
 
@@ -701,13 +681,129 @@ if(debug >1) PRINTF("UN%d i %d v %f\n", mynode, i, *b);
     }
 #endif
 
-    ocrDbRelease(PBguid);
-    ocrEventSatisfy(returnEvent, PBguid);
+    for(i=0;i<26;i++) {
+        if(!ocrGuidIsNull(pbPTR->haloRecvEVT[i])) {
+            ocrDbDestroy(DEPVARRAY(unpack,block,i,guid));
+        }
+    }
+
+    ocrDbRelease(pbDBK);
+    ocrEventSatisfy(returnEVT, pbDBK);
     return(NULL_GUID);
 }
 
 
+typedef struct{
+    u64 level;
+    u64 vectorIndex;
+    ocrGuid_t unpackEVT;
+    ocrGuid_t packEVT;
+    } haloExchangePRM_t;
 
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    } haloExchangeDEPV_t;
+
+ocrGuid_t haloExchangeEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+/*
+paramv
+0: level
+1: vector index
+2: return event for unpack
+3: return event for pack
+
+depv
+0: private block
+
+launches pack
+launches unpack
+
+*/
+
+
+
+    PRMDEF(haloExchange);
+    u64 level = PRM(haloExchange,level);
+    u64 vectorIndex = PRM(haloExchange,vectorIndex);
+    ocrGuid_t unpackEVT = PRM(haloExchange,unpackEVT);
+    ocrGuid_t packEVT = PRM(haloExchange,packEVT);
+
+    DEPVDEF(haloExchange);
+    ocrGuid_t pbDBK = DEPV(haloExchange,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(haloExchange,privateBlock,ptr);
+
+
+    u32 myrank = pbPTR->myrank;
+
+    u32 i, errno;
+    ocrGuid_t packEDT, unpackEDT;
+
+
+if(DEBUG != 0) PRINTF("HE%d start\n", myrank);
+if(DEBUG != 0) PRINTF("HE%d start pbDBK %lx \n", myrank, pbDBK);
+if(DEBUG != 0) PRINTF("HE%d start level %d \n", myrank, level);
+if(DEBUG != 0) PRINTF("HE%d start vectorIndex %d \n", myrank, vectorIndex);
+if(DEBUG != 0) PRINTF("HE%lx start unpackEVT %lx \n", myrank, unpackEVT);
+if(DEBUG != 0) PRINTF("HE%lx start packEVT %lx \n", myrank, packEVT);
+
+if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendevent %lx \n", myrank, i, pbPTR->haloSendEVT[i]);
+if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d recvevent %lx \n", myrank, i, pbPTR->haloRecvEVT[i]);
+
+fflush(stdout);
+
+    packPRM_t paramPack;
+    packPRM_t * packPRM = &paramPack;
+    PRM(pack,level) = level;
+    PRM(pack,vectorIndex) = vectorIndex;
+    PRM(pack,returnEVT) = packEVT;
+    ocrEdtCreate(&packEDT, pbPTR->packTML, EDT_PARAM_DEF, (u64 *) packPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+    unpackPRM_t paramUnpack;
+    unpackPRM_t * unpackPRM = &paramUnpack;
+    PRM(unpack,level) = level;
+    PRM(unpack,vectorIndex) = vectorIndex;
+    PRM(unpack,returnEVT) = unpackEVT;
+    ocrEdtCreate(&unpackEDT, pbPTR->unpackTML, EDT_PARAM_DEF, (u64 *) unpackPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+
+if(DEBUG > 1) PRINTF("HE%d after create \n", myrank);
+
+if(DEBUG > 1) PRINTF("HE%d after 0-1\n", myrank);
+    ocrGuid_t haloDBK;
+    double dummy;
+    for(i=0;i<26;i++)
+        if(!ocrGuidIsNull(pbPTR->haloSendEVT[i])) {
+            ocrDbCreate(&haloDBK, (void**) &dummy, (pbPTR->gather[level]).length[i]*sizeof(double), 0, NULL_HINT, NO_ALLOC);
+            ocrAddDependence(haloDBK, packEDT, SLOTARRAY(pack,block,i), DB_MODE_RW);
+//printf("packSlot %d \n", SLOTARRAY(pack,block,i));
+        }else ocrAddDependence(NULL_GUID, packEDT, SLOTARRAY(pack,block,i), DB_MODE_RW);
+if(DEBUG != 0) PRINTF("HE%d after sendblocks\n", myrank);
+
+    for(i=0;i<26;i++) {
+        ocrAddDependence(pbPTR->haloRecvEVT[i], unpackEDT, SLOTARRAY(unpack,block,i), DB_MODE_RW);
+    }
+    ocrDbRelease(pbDBK);
+    ocrAddDependence(pbDBK, packEDT, SLOT(pack,privateBlock), DB_MODE_RW);
+    ocrAddDependence(pbDBK, unpackEDT, SLOT(unpack,privateBlock), DB_MODE_RW);
+
+if(DEBUG != 0) PRINTF("HE%d finish\n", myrank);
+fflush(stdout);
+
+    return(NULL_GUID);
+
+}
+
+
+
+typedef struct{
+    u64 level;
+    u64 vectorIndex;
+    u64 rhsIndex;
+    ocrGuid_t returnEVT;
+    } smoothPRM_t;
+
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t packEVT;
+    } smoothDEPV_t;
 
 
 ocrGuid_t smoothEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]){
@@ -719,40 +815,42 @@ paramv
 3: return event
 
 depv
-0: private block from unpack through unpackEvent
-1: packEvent (control)
+0: private block from unpack through unpackEVT
+1: packEVT (control)
 
 smooth does a forward and backward Gauss-Seidel sweep
 then sends the private block back
 
 */
-    u64 level = paramv[0];
-    u64 vector_index = paramv[1];
-    u64 rhs_index = paramv[2];
-    ocrGuid_t returnEvent = paramv[3];
+    PRMDEF(smooth);
+    u64 level = PRM(smooth,level);
+    u64 vectorIndex = PRM(smooth,vectorIndex);
+    u64 rhsIndex = PRM(smooth,rhsIndex);
+    ocrGuid_t returnEVT = PRM(smooth,returnEVT);
 
-    ocrGuid_t PBguid = depv[0].guid;
-    void * ptr = depv[0].ptr;
-    privateBlock_t * PB = ptr;
-
-
-    double * abase = (double *) (((u64) ptr) + PB->matrix_offset[level]);
-    u32 * indbase = (u32 *) (((u64) ptr) + PB->column_index_offset[level]);
-    u32 * diagbase = (u32 *) (((u64) ptr) + PB->diagonal_index_offset[level]);
-    double * vectorbase = (double *) (((u64) ptr) + PB->vector_offset[level][vector_index]);
-    double * rhsbase = (double *) (((u64) ptr) + PB->vector_offset[level][rhs_index]);
-
-    u32 length = PB->mt[level];
-    u32 mynode = PB->mynode;
-    u32 debug = PB->debug;
+    DEPVDEF(smooth);
+    ocrGuid_t pbDBK = DEPV(smooth,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(smooth,privateBlock,ptr);
+    void * ptr = pbPTR;
 
 
-    u32 i, j;
+    double * abase = (double *) (((u64) ptr) + pbPTR->matrix_offset[level]);
+    u32 * indbase = (u32 *) (((u64) ptr) + pbPTR->column_index_offset[level]);
+    u32 * diagbase = (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[level]);
+    double * vectorbase = (double *) (((u64) ptr) + pbPTR->vector_offset[level][vectorIndex]);
+    double * rhsbase = (double *) (((u64) ptr) + pbPTR->vector_offset[level][rhsIndex]);
+
+    u32 length = pbPTR->mt[level];
+    u32 myrank = pbPTR->myrank;
+    u32 debug = pbPTR->debug;
+
+
+    s32 i, j;
     double sum;
 
 
 
-if(debug >= 1) PRINTF("SM%d L%d V%d rhs%d start \n", mynode, level, vector_index, rhs_index);
+if(debug >= 1) PRINTF("SM%d L%d V%d rhs%d start \n", myrank, level, vectorIndex, rhsIndex);
 
     u32 * ind = indbase;
     u32 * diag = diagbase;
@@ -763,27 +861,27 @@ if(debug >= 1) PRINTF("SM%d L%d V%d rhs%d start \n", mynode, level, vector_index
 #ifdef COMPUTE
 //forward sweep
     for(i=0;i<length;i++){
-if(debug >= 2) PRINTF("SM%d i %d rhs %f \n", mynode, i, rhs[i]);
+if(debug >= 2) PRINTF("SM%d i %d rhs %f \n", myrank, i, rhs[i]);
         sum = rhs[i];
         for(j=0;j<27;j++){
-if(debug >= 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", mynode, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
+if(debug >= 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", myrank, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
            sum -= a[j]*vectorbase[ind[j]];
         }
-if(debug >= 2) PRINTF("SM%d diag index %d diag value %f\n", mynode, *diag, abase[*diag]);
+if(debug >= 2) PRINTF("SM%d diag index %d diag value %f\n", myrank, *diag, abase[*diag]);
 
         sum += abase[*diag]*vectorbase[indbase[*diag]];
         *(vector++) = sum/abase[*(diag++)];
-if(debug >= 2) PRINTF("SM%d diag index %d diag value %f sum %f vector %f \n", mynode, *(diag-1), abase[*(diag-1)], sum, *(vector-1));
+if(debug >= 2) PRINTF("SM%d diag index %d diag value %f sum %f vector %f \n", myrank, *(diag-1), abase[*(diag-1)], sum, *(vector-1));
         a += 27;
         ind += 27;
     }
 if(debug > 2){
     vector = vectorbase;
-    for(i=0;i<PB->mt[level];i++)
-       PRINTF("SM%d L%d i %d val %f \n", mynode, level, i, vector[i]);
+    for(i=0;i<pbPTR->mt[level];i++)
+       PRINTF("SM%d L%d i %d val %f \n", myrank, level, i, vector[i]);
 }
 
-if(debug >= 1) PRINTF("SM%d L%d finish forward\n", mynode, level);
+if(debug >= 1) PRINTF("SM%d L%d finish forward\n", myrank, level);
 fflush(stdout);
 
 //backward sweep
@@ -796,9 +894,9 @@ fflush(stdout);
 
     for(i=length;i>0;i--){
         sum = rhsbase[i-1];
-if(DEBUG > 1) PRINTF("SM%d i %d sum %f \n", mynode, i, sum);
-        for(j=0;j<27;j++){
-if(DEBUG > 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", mynode, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
+if(DEBUG > 1) PRINTF("SM%d i %d sum %f \n", myrank, i, sum);
+        for(j=26;j>=0;j--){
+if(DEBUG > 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", myrank, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
            sum -= a[j]*vectorbase[ind[j]];
         }
         sum += abase[*diag]*vectorbase[indbase[*diag]];
@@ -809,10 +907,22 @@ if(DEBUG > 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", mynode, i, j, 
 #endif
 
 
-    ocrDbRelease(PBguid);
-    ocrEventSatisfy(returnEvent, PBguid);
+    ocrDbRelease(pbDBK);
+    ocrEventSatisfy(returnEVT, pbDBK);
     return NULL_GUID;
 }
+
+typedef struct{
+    u64 level;
+    u64 sourceIndex;
+    u64 resultIndex;
+    ocrGuid_t returnEVT;
+    } spmvPRM_t;
+
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t packEVT;
+    } spmvDEPV_t;
 
 ocrGuid_t spmvEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
@@ -823,33 +933,37 @@ paramv
 3: return event
 
 depv
-0: private block (from pack through packEvent)
-1: unpackEvent (just control)
+0: private block (from unpack through unpackEVT)
+1: packEVT (just control)
 
 
 computes the local sparse matrix-vector product
 sends the private block back
 */
-    u64 level = paramv[0];
-    u64 source_index = paramv[1];
-    u64 result_index = paramv[2];
-    ocrGuid_t returnEvent = paramv[3];
 
-    ocrGuid_t PBguid = depv[0].guid;
-    void * ptr = depv[0].ptr;
-    privateBlock_t * PB = ptr;
+    PRMDEF(spmv);
+    u64 level = PRM(spmv,level);
+    u64 sourceIndex = PRM(spmv,sourceIndex);
+    u64 resultIndex = PRM(spmv,resultIndex);
+    ocrGuid_t returnEVT = PRM(spmv,returnEVT);
+
+    DEPVDEF(spmv);
+
+    ocrGuid_t pbDBK = DEPV(spmv,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(spmv,privateBlock,ptr);
+    void * ptr = pbPTR;
 
 #ifdef COMPUTE
 
-    double * srcbase = (double *) ((u64) (ptr + PB->vector_offset[level][source_index]));
-    double * destbase = (double *) ((u64) (ptr + PB->vector_offset[level][result_index]));
-    double * abase = (double *) ((u64) (ptr + PB->matrix_offset[level]));
-    u32 * indbase = (u32 *) ((u64) (ptr + PB->column_index_offset[level]));
+    double * srcbase = (double *) ((u64) (ptr + pbPTR->vector_offset[level][sourceIndex]));
+    double * destbase = (double *) ((u64) (ptr + pbPTR->vector_offset[level][resultIndex]));
+    double * abase = (double *) ((u64) (ptr + pbPTR->matrix_offset[level]));
+    u32 * indbase = (u32 *) ((u64) (ptr + pbPTR->column_index_offset[level]));
 
-    u32 length = PB->mt[level];
+    u32 length = pbPTR->mt[level];
 
-    u32 mynode = PB->mynode;
-    u32 debug = PB->debug;
+    u32 myrank = pbPTR->myrank;
+    u32 debug = pbPTR->debug;
 
 
     u32 i, j;
@@ -862,24 +976,32 @@ sends the private block back
     for(i=0;i<length;i++){
         sum = 0;
         for(j=0;j<27;j++){
-if(debug >= 2) PRINTF("SPMV%d i %d j %d dest %f a %f ind %d src %f \n", mynode, i, j, sum, a[j], ind[j], src[ind[j]]);
+if(debug >= 2) PRINTF("SPMV%d i %d j %d dest %f a %f ind %d src %f \n", myrank, i, j, sum, a[j], ind[j], src[ind[j]]);
            sum += a[j]*src[ind[j]];
         }
         *(dest++) = sum;
         a += 27;
         ind += 27;
     }
-
-if(debug > 1) for(i=0;i<PB->mt[level];i++)
-   PRINTF("SPMV%d i %d val %f \n", mynode, i, destbase[i]);
-
 #endif
 
-    ocrDbRelease(PBguid);
-    ocrEventSatisfy(returnEvent, PBguid);
+if(debug > 1) for(i=0;i<pbPTR->mt[level];i++)
+   PRINTF("SPMV%d i %d val %f \n", myrank, i, destbase[i]);
+
+    ocrDbRelease(pbDBK);
+    ocrEventSatisfy(returnEVT, pbDBK);
     return NULL_GUID;
 }
 
+
+typedef struct{
+    u64 mgStep;
+    ocrGuid_t returnEVT;
+    } mgPRM_t;
+
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    } mgDEPV_t;
 
 ocrGuid_t mgEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
@@ -895,70 +1017,81 @@ this is the driver for the multigrid steps.
 
 */
 
-    u64 mgStep = paramv[0];
-    ocrGuid_t returnEvent = paramv[1];
+    PRMDEF(mg);
+    u64 mgStep = PRM(mg,mgStep);;
+    ocrGuid_t returnEVT = PRM(mg,returnEVT);
 
     u32 level = 3 - abs(mgStep-3);
 
+    DEPVDEF(mg);
+    ocrGuid_t pbDBK = DEPV(mg,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(mg,privateBlock,ptr);
+    void * ptr = (void *) pbPTR;
 
-    ocrGuid_t PBguid = depv[0].guid;
-    void * ptr = depv[0].ptr;
-    privateBlock_t * PB = ptr;
 
-
-    u32 m = PB->m[level];
-    u32 phase = PB->mgPhase[level];
-    u32 mynode = PB->mynode;
-    u32 debug = PB->debug;
+    u32 m = pbPTR->m[level];
+    u32 phase = pbPTR->mgPhase[level];
+    u32 myrank = pbPTR->myrank;
+    u32 debug = pbPTR->debug;
 
 
     u32 i;
 
     double * z, *ap, *zold, *znew, *r, *rold, *rnew;
 
-    ocrGuid_t halo, packEvent, unpackEvent, smooth, smoothEvent, spmv, spmvEvent, mg, mgevent;
+    ocrGuid_t haloExchange, packEVT, unpackEVT, smooth, smoothEVT, spmv, spmvEVT, mg, mgevent;
+    haloExchangePRM_t haloExchangeParamv;
+    haloExchangePRM_t * haloExchangePRM = &haloExchangeParamv;
+    smoothPRM_t smoothParamv;
+    smoothPRM_t * smoothPRM = &smoothParamv;
+    spmvPRM_t spmvParamv;
+    spmvPRM_t * spmvPRM = &spmvParamv;
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event %lx\n", PB->mynode, mgStep, phase, level, returnEvent);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event %lx\n", &pbPTR->myrank, mgStep, phase, level, returnEVT);
 
     switch(phase) {
 
         case 0: //smoothing
 
 #ifdef COMPUTE
-        z = (double *) (((u64) ptr) + PB->vector_offset[level][Z]);
-        for(i=0;i<PB->mt[level];i++) z[i] = 0.0;
+        z = (double *) (((u64) ptr) + pbPTR->vector_offset[level][Z]);
+        for(i=0;i<pbPTR->mt[level];i++) z[i] = 0.0;
 #endif
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", PB->mynode, mgStep, phase, level);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep, phase, level);
 
 //create clone, smooth, and halo
 //TODO phase vs step??
 
-        PB->mgPhase[level] = 1;
+        pbPTR->mgPhase[level] = 1;
 
-        ocrEdtCreate(&mg, PB->mgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//create clone which depends on smooth
+        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEventCreate(&smoothEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(smoothEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
 
-        ocrEventCreate(&smoothEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+//make smooth wait for both Pack and Unpack
+        PRM(smooth,level) = level;
+        PRM(smooth,vectorIndex) = Z;
+        PRM(smooth,rhsIndex) = R;
+        PRM(smooth,returnEVT) = smoothEVT;
+        ocrEdtCreate(&smooth, pbPTR->smoothTML, EDT_PARAM_DEF, (u64 *) smoothPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(unpackEVT, smooth, SLOT(smooth,privateBlock), DB_MODE_RW);
+        ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(packEVT, smooth, SLOT(smooth,packEVT), DB_MODE_RW);
 
-        u64 paramvsmooth0[4] = {(u64) level, (u64) Z, (u64) R, (u64) smoothEvent};
-        ocrEdtCreate(&smooth, PB->smoothTemplate, EDT_PARAM_DEF, paramvsmooth0, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//launch halo
+        PRM(haloExchange,level) = level;
+        PRM(haloExchange,vectorIndex) = Z;
+        PRM(haloExchange,unpackEVT) = unpackEVT;
+        PRM(haloExchange,packEVT) = packEVT;
 
-        ocrAddDependence(smoothEvent, mg, 0, DB_MODE_RW);
+        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
-        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(unpackEvent, smooth, 0, DB_MODE_RW);
-
-        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(packEvent, smooth, 1, DB_MODE_RW);
-
-        u64 paramvhalo0[4] = {(u64) level, (u64) Z, unpackEvent, packEvent};
-        ocrEdtCreate(&halo, PB->haloTemplate, EDT_PARAM_DEF, paramvhalo0, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-
-
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, halo, 0, DB_MODE_RW);
-
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", PB->mynode, mgStep, phase, level);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
 
         return NULL_GUID;
@@ -967,34 +1100,40 @@ fflush(stdout);
 
 //return if at the bottom
         if(paramv[0] == 3) {
-            ocrDbRelease(PBguid);
-            ocrEventSatisfy(returnEvent, PBguid);
+            ocrDbRelease(pbDBK);
+            ocrEventSatisfy(returnEVT, pbDBK);
             return NULL_GUID;
         }
 
-//create clone
-        PB->mgPhase[level] = 2;
-        ocrEdtCreate(&mg, PB->mgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+//create clone and have it depend on spmv
+        pbPTR->mgPhase[level] = 2;
+        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEventCreate(&spmvEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(spmvEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
 
+//make spmv depend on pack and unpack
+        PRM(spmv,level) = level;
+        PRM(spmv,sourceIndex) = Z;
+        PRM(spmv,resultIndex) = AP;
+        PRM(spmv,returnEVT) = spmvEVT;
+        ocrEdtCreate(&spmv, pbPTR->spmvTML, EDT_PARAM_DEF, (u64 *) spmvPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(unpackEVT, spmv, SLOT(spmv,privateBlock), DB_MODE_RW);
+        ocrAddDependence(packEVT, spmv, SLOT(spmv,packEVT), DB_MODE_RW);
 
-        ocrEventCreate(&spmvEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        u64 paramvspmv1[4] = {(u64) level, (u64) Z, (u64) AP, spmvEvent};
-        ocrEdtCreate(&spmv, PB->spmvTemplate, EDT_PARAM_DEF, paramvspmv1, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        PRM(haloExchange,level) = level;
+        PRM(haloExchange,vectorIndex) = Z;
+        PRM(haloExchange,packEVT) = packEVT;
+        PRM(haloExchange,unpackEVT) = unpackEVT;
+        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-
-        u64 paramvhalo1[4] = {(u64) level, (u64) Z, unpackEvent, packEvent};
-        ocrEdtCreate(&halo, PB->haloTemplate, EDT_PARAM_DEF, paramvhalo1, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", PB->mynode, mgStep, phase, level);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
 
-        ocrAddDependence(spmvEvent, mg, 0, DB_MODE_RW);
-        ocrAddDependence(unpackEvent, spmv, 0, DB_MODE_RW);
-        ocrAddDependence(packEvent, spmv, 1, DB_MODE_RW);
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, halo, 0, DB_MODE_RW);
+//launch halo
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
 
             return NULL_GUID;
@@ -1002,21 +1141,22 @@ fflush(stdout);
 
 //create clone
 
-        PB->mgPhase[level] = 3;
-        u64 paramvout[2] = {6-paramv[0], paramv[1]};
+        pbPTR->mgPhase[level] = 3;
+        PRM(mg,mgStep) = 6-mgStep;
+        PRM(mg,returnEVT) = returnEVT;
 //needed because the template is used after the release of the shared block
-        ocrGuid_t sbMgTemplate = PB->mgTemplate;
-        ocrEdtCreate(&mg, sbMgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrEventCreate(&returnEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(returnEvent, mg, 0, DB_MODE_RW);
+        ocrGuid_t sbMgTML = pbPTR->mgTML;
+        ocrEdtCreate(&mg, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEventCreate(&returnEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrAddDependence(returnEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
 
 #ifdef COMPUTE
 //create restriction
-        ap  = (double *) (((u64) ptr) + PB->vector_offset[level][AP]);
-        rold  = (double *) (((u64) ptr) + PB->vector_offset[level][R]);
-        rnew  = (double *) (((u64) ptr) + PB->vector_offset[level+1][R]);
+        ap  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][AP]);
+        rold  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][R]);
+        rnew  = (double *) (((u64) ptr) + pbPTR->vector_offset[level+1][R]);
 
-        for(i=0;i<PB->mt[level+1];i++) {
+        for(i=0;i<pbPTR->mt[level+1];i++) {
             *(rnew++) = *rold - *ap;
             ap += 2;
             rold += 2;
@@ -1025,15 +1165,16 @@ fflush(stdout);
 
 //create recursive call
         mgStep++;
-        paramvout[0] = mgStep;
-        paramvout[1] = returnEvent;
+
+        PRM(mg,mgStep) = mgStep;
+        PRM(mg,returnEVT) = returnEVT;
         level = 3 - abs(mgStep-3);
-        PB->mgPhase[level] = 0;
-        ocrEdtCreate(&mg, sbMgTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", PB->mynode, mgStep, phase, level);
+        pbPTR->mgPhase[level] = 0;
+        ocrEdtCreate(&mg, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, mg, 0, DB_MODE_RW);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, mg, SLOT(mg,privateBlock), DB_MODE_RW);
 
         return NULL_GUID;
 
@@ -1044,53 +1185,68 @@ fflush(stdout);
 
 #ifdef COMPUTE
 
-           z  = (double *) (((u64) ptr) + PB->vector_offset[level][Z]);
-           znew  = (double *) (((u64) ptr) + PB->vector_offset[level+1][Z]);
+           z  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][Z]);
+           znew  = (double *) (((u64) ptr) + pbPTR->vector_offset[level+1][Z]);
 
-           for(i=0;i<PB->mt[level+1];i++) {
-if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d z %f update %f\n", PB->mynode, mgStep, phase, level, i, *z, *znew);
+           for(i=0;i<pbPTR->mt[level+1];i++) {
+if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d z %f update %f\n", &pbPTR->myrank, mgStep, phase, level, i, *z, *znew);
                *z += *(znew++);
                z += 2;
            }
 #endif
 
 //create clone, smooth, and halo
-//
-if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", PB->mynode, mgStep, phase, level);
 
-        PB->mgPhase[level] = 4;
-        ocrEdtCreate(&mg, PB->mgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phase, level);
 
-        ocrEventCreate(&smoothEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        u64 paramvsmooth3[4] = {(u64) level, (u64) Z, (u64) R, smoothEvent};
-        ocrEdtCreate(&smooth, PB->smoothTemplate, EDT_PARAM_DEF, paramvsmooth3, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        pbPTR->mgPhase[level] = 4;
+        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&smoothEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        PRM(smooth,level) = level;
+        PRM(smooth,vectorIndex) = Z;
+        PRM(smooth,rhsIndex) = R;
+        PRM(smooth,returnEVT) = smoothEVT;
+        ocrEdtCreate(&smooth, pbPTR->smoothTML, EDT_PARAM_DEF, (u64 *) smoothPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        u64 paramvhalo3[4] = {(u64) level, (u64) R, unpackEvent, packEvent};
-        ocrEdtCreate(&halo, PB->haloTemplate, EDT_PARAM_DEF, paramvhalo3, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
 
 
-        ocrAddDependence(smoothEvent, mg, 0, DB_MODE_RW);
+        PRM(haloExchange,level) = level;
+        PRM(haloExchange,vectorIndex) = R;
+        PRM(haloExchange,unpackEVT) = unpackEVT;
+        PRM(haloExchange,packEVT) = packEVT;
+        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrAddDependence(unpackEvent, smooth, 0, DB_MODE_RW);
-        ocrAddDependence(packEvent, smooth, 1, DB_MODE_RW);
 
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, halo, 0, DB_MODE_RW);
+        ocrAddDependence(smoothEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+
+        ocrAddDependence(unpackEVT, smooth, SLOT(smooth,privateBlock), DB_MODE_RW);
+        ocrAddDependence(packEVT, smooth, SLOT(smooth,packEVT), DB_MODE_RW);
+
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
         return NULL_GUID;
 
         case 4:  //return from final smooth
-        ocrDbRelease(PBguid);
-        ocrEventSatisfy(returnEvent, PBguid);
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", PB->mynode, mgStep, phase, level);
+        ocrDbRelease(pbDBK);
+        ocrEventSatisfy(returnEVT, pbDBK);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
         return NULL_GUID;
     }
 
 }
+
+
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t reductionPrivateBlock;
+    ocrEdtDep_t myDataBlock;
+    } hpcgDEPV_t;
+
 
 ocrGuid_t hpcgEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
@@ -1105,80 +1261,89 @@ hpcg driver.
 only work done is local linear algebra
 */
 
-    ocrGuid_t PBguid = depv[0].guid;
-    void * ptr = depv[0].ptr;
-    privateBlock_t * PB = (privateBlock_t *) ptr;
-    ocrGuid_t reductionPrivateGuid = depv[1].guid;
-    void * reductionPrivatePtr = depv[1].ptr;
-    ocrGuid_t myDataBlockGuid = depv[2].guid;
-    double * myDataBlockPtr = (double *) depv[2].ptr;
-    ocrGuid_t returnBlockGuid = depv[3].guid;
-    double * returnBlockPtr = (double *) depv[3].ptr;
+    DEPVDEF(hpcg);
+    ocrGuid_t pbDBK = DEPV(hpcg,privateBlock,guid);
+//printf("pbDBK %lx \n", pbDBK);
+//fflush(stdout);
+    privateBlock_t * pbPTR = (privateBlock_t *) DEPV(hpcg,privateBlock,ptr);
+    void * ptr = pbPTR;
+//printf("pbPTR %lx \n", pbPTR);
+//fflush(stdout);
+    ocrGuid_t rpDBK = DEPV(hpcg,reductionPrivateBlock,guid);
+    reductionPrivate_t * rpPTR = (reductionPrivate_t *) DEPV(hpcg,reductionPrivateBlock,ptr);
+    ocrGuid_t myDataDBK = DEPV(hpcg,myDataBlock,guid);
+    double * myDataPTR = (double *) DEPV(hpcg,myDataBlock,ptr);
 
-    u32 mynode = PB->mynode;
-    u32 timestep = PB->timestep;
-    u32 phase = PB->hpcgPhase;
+    u32 myrank = pbPTR->myrank;
+    u32 timestep = pbPTR->timestep;
+    u32 phase = pbPTR->hpcgPhase;
 
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx mydata %lx return block %lx \n", mynode, timestep, phase, PBguid, reductionPrivateGuid, myDataBlockGuid, returnBlockGuid);
+//PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx mydata %lx \n", myrank, timestep, phase, pbDBK, rpDBK, myDataDBK);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx mydata %lx \n", myrank, timestep, phase, pbDBK, rpDBK, myDataDBK);
 
 
-    ocrGuid_t onceEvent;
+    ocrGuid_t onceEVT;
     double *a, *p, *x, *ap, *r, *z, *b, sum, pap, rtz, alpha, beta;
     u32 i, j, ind, errno;
-    ocrGuid_t mg, halo, spmv, unpackEvent, packEvent, spmvEvent, hpcg, hpcgEvent;
+    ocrGuid_t mg, haloExchange, spmv, unpackEVT, packEVT, spmvEVT, hpcg, hpcgEVT;
+
+    haloExchangePRM_t haloExchangeParamv;
+    haloExchangePRM_t * haloExchangePRM = &haloExchangeParamv;
+    spmvPRM_t spmvParamv;
+    spmvPRM_t * spmvPRM = &spmvParamv;
+    mgPRM_t mgParamv;
+    mgPRM_t * mgPRM = &mgParamv;
 
     switch (phase) {
         case 0:
 //Initial call only
 
-        x = (double *) (((u64) ptr) + PB->vector_offset[0][X]);
+        x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
 
-        for(i=0;i<PB->mt[0];i++) *x++ = 0.0;
+        for(i=0;i<pbPTR->mt[0];i++) *x++ = 0.0;
 
-        a = (double *) (((u64) ptr) + PB->matrix_offset[0]);;
-        r = (double *) (((u64) ptr) + PB->vector_offset[0][R]);;
-        b = (double *) (((u64) ptr) + PB->vector_offset[0][B]);;
-        for(i=0;i<PB->mt[0];i++){
+        a = (double *) (((u64) ptr) + pbPTR->matrix_offset[0]);;
+        r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);;
+        b = (double *) (((u64) ptr) + pbPTR->vector_offset[0][B]);;
+        for(i=0;i<pbPTR->mt[0];i++){
             r[i] = 0.0;
             for(j=0;j<27;j++) r[i] += *(a++);
             b[i] = r[i];
         }
 
-
-
-
 //local sum
         sum = 0;
 #ifdef COMPUTE
-        double * r = (double *) (((u64) ptr) + PB->vector_offset[0][R]);
-        for(i=0;i<PB->mt[0];i++) sum += r[i]*r[i];
+        double * r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);
+        for(i=0;i<pbPTR->mt[0];i++) sum += r[i]*r[i];
 #endif
-        *myDataBlockPtr = sum;  //local sum
+        *myDataPTR = sum;  //local sum
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d rtr %f\n", mynode, timestep, phase, *myDataBlockPtr);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %f\n", myrank, timestep, phase, *myDataPTR);
 
 //create clone
 
-        ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-//get return event from reduction
 
-        onceEvent = reductionGetOnceEvent(reductionPrivatePtr, reductionPrivateGuid);
-        ocrAddDependence(onceEvent, hpcg, 3, DB_MODE_RO);
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d finishing \n", mynode, timestep, phase);
+
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase);
 fflush(stdout);
 
-        PB->hpcgPhase = 1;
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, hpcg, 0, DB_MODE_RW);
-        ocrAddDependence(reductionPrivateGuid, hpcg, 1, DB_MODE_RW);
-        ocrAddDependence(myDataBlockGuid, hpcg, 2, DB_MODE_RW);
+        pbPTR->hpcgPhase = 1;
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+
+//get return event from reduction
+//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
+        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
 //launch reduction
 
-        reductionLaunch(reductionPrivatePtr, reductionPrivateGuid, myDataBlockGuid);
+        reductionLaunch(rpPTR, rpDBK, myDataDBK);
 
         return NULL_GUID;
 
@@ -1186,15 +1351,21 @@ fflush(stdout);
     case 1:
 
 //consume rtr   CONVERGENCE test
-if(PB->debug > 0) PRINTF("CG%d T%d P%d global rtr %f \n", mynode, timestep, phase, *returnBlockPtr);
-        if(mynode==0) PRINTF("time %d rtr %f \n", timestep, *returnBlockPtr);
-        if(timestep==0) PB->rtr0 = *returnBlockPtr;
-           else if(*returnBlockPtr/PB->rtr0 < 1e-13 || timestep == PB->maxIter) {
-if(PB->debug > 0) PRINTF("CG%d T%d P%d finishing \n", mynode, timestep, phase);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d global rtr %f \n", myrank, timestep, phase, *myDataPTR);
+        if(myrank==0) PRINTF("time %d rtr %f \n", timestep, *myDataPTR);
+        if(timestep==0) pbPTR->rtr0 = *myDataPTR;
+           else if(*myDataPTR/pbPTR->rtr0 < 1e-13 || timestep == pbPTR->maxIter) {
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase);
 fflush(stdout);
-ocrGuid_t wrapup=PB->wrapup;
-             ocrDbRelease(PBguid);
-             ocrAddDependence(PBguid, wrapup, mynode, DB_MODE_RO);
+            x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
+            sum = 0;
+            for(i=0;i<pbPTR->mt[0];i++) sum += (1-x[i])*(1-x[i]);
+            *myDataPTR = sum;
+            ocrDbRelease(DEPV(hpcg,myDataBlock,guid));
+            rpPTR->all = 0;
+	    rpPTR->returnEVT = pbPTR->finalOnceEVT;
+            reductionLaunch(rpPTR, rpDBK, myDataDBK);
+
              return NULL_GUID;
         }
 
@@ -1203,33 +1374,34 @@ ocrGuid_t wrapup=PB->wrapup;
 //preconditioning...launch mg
 
 //create clone
-        PB->hpcgPhase = 2;
-        PB->mgPhase[0] = 0;
+        pbPTR->hpcgPhase = 2;
+        pbPTR->mgPhase[0] = 0;
 
-        ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrEventCreate(&hpcgEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        u64 paramvMG[2] = {(u64) 0, hpcgEvent};
-        ocrEdtCreate(&mg, PB->mgTemplate, EDT_PARAM_DEF, paramvMG, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEventCreate(&hpcgEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        PRM(mg,mgStep) = 0;
+        PRM(mg,returnEVT) = hpcgEVT;
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d return from mg event %lx \n", mynode, timestep, phase, hpcgEvent);
+        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrAddDependence(hpcgEvent, hpcg, 0, DB_MODE_RW);
-        ocrAddDependence(reductionPrivateGuid, hpcg, 1, DB_MODE_RW);
-        ocrAddDependence(myDataBlockGuid, hpcg, 2, DB_MODE_RW);
-        ocrAddDependence(NULL_GUID, hpcg, 3, DB_MODE_RW);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event %lx \n", myrank, timestep, phase, hpcgEVT);
 
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, mg, 0, DB_MODE_RW);
+        ocrAddDependence(hpcgEVT, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, mg, SLOT(mg,privateBlock), DB_MODE_RW);
 
 fflush(stdout);
         return NULL_GUID;
 
 #else
 //preconditioning NOT, just copy R to Z
-        r = (double *) (((u64) ptr) + PB->vector_offset[0][R]);
-        z = (double *) (((u64) ptr) + PB->vector_offset[0][Z]);
-        for(i=0;i<PB->mt[0];i++) z[i] = r[i];
+        r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);
+        z = (double *) (((u64) ptr) + pbPTR->vector_offset[0][Z]);
+        for(i=0;i<pbPTR->mt[0];i++) z[i] = r[i];
 #endif
     case 2:
 
@@ -1237,80 +1409,85 @@ fflush(stdout);
 //compute local rtz
         sum = 0;
 #ifdef COMPUTE
-        z = (double *) (((u64) ptr) + PB->vector_offset[0][Z]);
-        r = (double *) (((u64) ptr) + PB->vector_offset[0][R]);
-if(PB->debug > 1) for(i=0;i<PB->mt[0];i++) PRINTF("CG%d T%d P%d i %d Z %f R %f \n", mynode, timestep, phase, i, z[i], r[i]);
-        for(i=0;i<PB->mt[0];i++) {
+        z = (double *) (((u64) ptr) + pbPTR->vector_offset[0][Z]);
+        r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);
+if(pbPTR->debug > 1) for(i=0;i<pbPTR->mt[0];i++) PRINTF("CG%d T%d P%d i %d Z %f R %f \n", myrank, timestep, phase, i, z[i], r[i]);
+        for(i=0;i<pbPTR->mt[0];i++) {
             sum += z[i]*r[i];
         }
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", mynode, timestep, phase, sum);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", myrank, timestep, phase, sum);
 #endif
-        *myDataBlockPtr = sum;
+        *myDataPTR = sum;
 
 
 //Create clone
-        PB->hpcgPhase = 3;
+        pbPTR->hpcgPhase = 3;
 
-        ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
 
-        onceEvent = reductionGetOnceEvent(reductionPrivatePtr, reductionPrivateGuid);
-        ocrAddDependence(onceEvent, hpcg, 3, DB_MODE_RO);
+        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrAddDependence(PBguid, hpcg, 0, DB_MODE_RW);
-        ocrAddDependence(reductionPrivateGuid, hpcg, 1, DB_MODE_RW);
-        ocrAddDependence(myDataBlockGuid, hpcg, 2, DB_MODE_RW);
+//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
+        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
 
 //launch reduction
 
-        reductionLaunch(reductionPrivatePtr, reductionPrivateGuid, myDataBlockGuid);
+        reductionLaunch(rpPTR, rpDBK, myDataDBK);
 
         return NULL_GUID;
 
     case 3:
 //consume rtz
-        if(mynode==0) PRINTF("time %d rtz %f \n", timestep, *returnBlockPtr);
-        PB->rtz = *returnBlockPtr;
+        if(myrank==0) PRINTF("time %d rtz %f \n", timestep, *myDataPTR);
+        pbPTR->rtz = *myDataPTR;
 #ifdef COMPUTE
 //compute beta
         if(timestep == 0) beta = 0;
-               else beta = *returnBlockPtr/PB->rtzold;
+               else beta = *myDataPTR/pbPTR->rtzold;
 //update p
-        z = (double *) (((u64) ptr) + PB->vector_offset[0][Z]);
-        p = (double *) (((u64) ptr) + PB->vector_offset[0][P]);
-        for(i=0;i<PB->mt[0];i++) p[i] = z[i] + beta*p[i];
+        z = (double *) (((u64) ptr) + pbPTR->vector_offset[0][Z]);
+        p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
+        for(i=0;i<pbPTR->mt[0];i++) p[i] = z[i] + beta*p[i];
 #endif
 
 //compute Ap
 
-ocrEventCreate(&packEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-ocrEventCreate(&unpackEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-ocrEventCreate(&spmvEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&spmvEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
 
 //create clone
-        PB->hpcgPhase = 4;
-        ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        pbPTR->hpcgPhase = 4;
+        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        u64 paramvspmv[4] = {(u64) 0, (u64) P, (u64) AP, spmvEvent};
-        ocrEdtCreate(&spmv, PB->spmvTemplate, EDT_PARAM_DEF, paramvspmv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        PRM(spmv,level) = 0;
+        PRM(spmv,sourceIndex) = P;
+        PRM(spmv,resultIndex) = AP;
+        PRM(spmv,returnEVT) = spmvEVT;
+        ocrEdtCreate(&spmv, pbPTR->spmvTML, EDT_PARAM_DEF, (u64 *) spmvPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        u64 paramvhalo[4] = {(u64) 0, (u64) P, unpackEvent, packEvent};
-        ocrEdtCreate(&halo, PB->haloTemplate, EDT_PARAM_DEF, paramvhalo, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        PRM(haloExchange,level) = 0;
+        PRM(haloExchange,vectorIndex) = P;
+        PRM(haloExchange,unpackEVT) = unpackEVT;
+        PRM(haloExchange,packEVT) = packEVT;
+        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrAddDependence(spmvEvent, hpcg, 0, DB_MODE_RW);
-        ocrAddDependence(reductionPrivateGuid, hpcg, 1, DB_MODE_RW);
-        ocrAddDependence(myDataBlockGuid, hpcg, 2, DB_MODE_RW);
-        ocrAddDependence(NULL_GUID, hpcg, 3, DB_MODE_RW);
-
-
-        ocrAddDependence(unpackEvent, spmv, 0, DB_MODE_RW);
-        ocrAddDependence(packEvent, spmv, 1, DB_MODE_RW);
+        ocrAddDependence(spmvEVT, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
 
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, halo, 0, DB_MODE_RW);
+        ocrAddDependence(unpackEVT, spmv, SLOT(spmv,privateBlock), DB_MODE_RW);
+        ocrAddDependence(packEVT, spmv, SLOT(spmv,packEVT), DB_MODE_RW);
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d finish \n", mynode, timestep, phase);
+
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
+
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
 
@@ -1319,321 +1496,441 @@ fflush(stdout);
 //compute pAp (consuming Ap)
 
     case 4:
-        ap = (double *) (((u64) ptr) + PB->vector_offset[0][AP]);
-        p = (double *) (((u64) ptr) + PB->vector_offset[0][P]);
+        ap = (double *) (((u64) ptr) + pbPTR->vector_offset[0][AP]);
+        p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
         sum = 0;
 #ifdef COMPUTE
-        for(i=0;i<PB->mt[0];i++) sum += p[i]*ap[i];
+        for(i=0;i<pbPTR->mt[0];i++) sum += p[i]*ap[i];
 #endif
-        *myDataBlockPtr = sum;
-if(PB->debug > 0) PRINTF("CG%d T%d P%d pap %f \n", mynode, timestep, phase, sum);
+        *myDataPTR = sum;
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f \n", myrank, timestep, phase, sum);
 //Create clone
-        PB->hpcgPhase=5;
-        ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        pbPTR->hpcgPhase=5;
+        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        onceEvent = reductionGetOnceEvent(reductionPrivatePtr, reductionPrivateGuid);
-        ocrAddDependence(onceEvent, hpcg, 3, DB_MODE_RO);
-
-        ocrAddDependence(PBguid, hpcg, 0, DB_MODE_RW);
-        ocrAddDependence(reductionPrivateGuid, hpcg, 1, DB_MODE_RW);
-//note that depv[2] doesn't need to be released here, just before calling reductionLaunch
-        ocrAddDependence(myDataBlockGuid, hpcg, 2, DB_MODE_RW);
+//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
+        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
 
 //launch reduction
 
-        reductionLaunch(reductionPrivatePtr, reductionPrivateGuid, myDataBlockGuid);
+        reductionLaunch(rpPTR, rpDBK, myDataDBK);
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d finish \n", mynode, timestep, phase);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
 
     case 5:
 //consume pAp
-        pap = *returnBlockPtr;
+        pap = *myDataPTR;
 #ifdef COMPUTE
-        alpha = PB->rtz/pap;
-if(PB->debug > 0) PRINTF("CG%d T%d P%d pap %f rtz %f\n", mynode, timestep, phase, pap, *returnBlockPtr);
-        PB->rtzold = PB->rtz;  //safe time to move it
+        alpha = pbPTR->rtz/pap;
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f rtz %f\n", myrank, timestep, phase, pap, *myDataPTR);
+        pbPTR->rtzold = pbPTR->rtz;  //safe time to move it
 //update x and r
-        ap = (double *) (((u64) ptr) + PB->vector_offset[0][AP]);
-        p = (double *) (((u64) ptr) + PB->vector_offset[0][P]);
-        r = (double *) (((u64) ptr) + PB->vector_offset[0][R]);
-        x = (double *) (((u64) ptr) + PB->vector_offset[0][X]);
-        for(i=0;i<PB->mt[0];i++) {
+        ap = (double *) (((u64) ptr) + pbPTR->vector_offset[0][AP]);
+        p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
+        r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);
+        x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
+        for(i=0;i<pbPTR->mt[0];i++) {
             x[i] += alpha*p[i];
             r[i] -= alpha*ap[i];
-if(PB->debug > 1) PRINTF("CG%d T%d P%d i %d x %f r %f p %f ap %f \n ", mynode, timestep, phase, i, x[i], r[i], p[i], ap[i]);
+if(pbPTR->debug > 1) PRINTF("CG%d T%d P%d i %d x %f r %f p %f ap %f \n ", myrank, timestep, phase, i, x[i], r[i], p[i], ap[i]);
 
         }
 //Prepare for the summation of rtr
-        r = (double *) (((u64) ptr) + PB->vector_offset[0][R]);
-#endif
+        r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);
         sum = 0;
-#ifdef COMPUTE
-        for(i=0;i<PB->mt[0];i++) sum += r[i]*r[i];
+        for(i=0;i<pbPTR->mt[0];i++) sum += r[i]*r[i];
 #endif
-        *myDataBlockPtr = sum;  //local sum
-if(PB->debug > 0) PRINTF("CG%d T%d P%d rtr %f \n", mynode, timestep, phase, sum);
+        *myDataPTR = sum;  //local sum
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %f \n", myrank, timestep, phase, sum);
 //create clone
-        PB->hpcgPhase=1;
-        PB->timestep++;
+        pbPTR->hpcgPhase=1;
+        pbPTR->timestep++;
 
-        ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        onceEvent = reductionGetOnceEvent(depv[1].ptr, depv[1].guid);
-        ocrAddDependence(onceEvent, hpcg, 3, DB_MODE_RO);
+//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
+        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
-        ocrDbRelease(PBguid);
-        ocrAddDependence(PBguid, hpcg, 0, DB_MODE_RW);
-        ocrAddDependence(reductionPrivateGuid, hpcg, 1, DB_MODE_RW);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
 //note that depv[2] doesn't need to be released here, just before calling rductionLaunch
-        ocrAddDependence(myDataBlockGuid, hpcg, 2, DB_MODE_RW);
 
 //launch reduction
 
-        ocrDbRelease(myDataBlockGuid);
-        reductionLaunch(reductionPrivatePtr, reductionPrivateGuid, myDataBlockGuid);
+        ocrDbRelease(myDataDBK);
+        reductionLaunch(rpPTR, rpDBK, myDataDBK);
 
-if(PB->debug > 0) PRINTF("CG%d T%d P%d finish \n", mynode, timestep, phase);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
         return NULL_GUID;
         }
 }
 
+
+typedef struct{
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t reductionPrivateBlock;
+    ocrEdtDep_t channel[26];
+    } channelInitDEPV_t;
+
+ocrGuid_t channelInitEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+
+    DEPVDEF(channelInit);
+    ocrGuid_t pbDBK = DEPV(channelInit,privateBlock,guid);
+    ocrGuid_t rpDBK = DEPV(channelInit,reductionPrivateBlock,guid);
+
+    privateBlock_t * pbPTR = (privateBlock_t *) DEPV(channelInit,privateBlock,ptr);
+
+if(pbPTR->debug > 0) PRINTF("CI%d start \n", &pbPTR->myrank);
+
+    u64 i, dummy;
+
+#ifdef RECEIVER_OWNS_CHANNEL_EVENT
+    ocrGuid_t temp;
+#endif
+
+//record received channel events
+
+    for(i=0;i<26;i++) {
+        if(!ocrGuidIsNull(DEPVARRAY(channelInit,channel,i,guid))) {
+            pbPTR->haloRecvEVT[i] = (ocrGuid_t) * (ocrGuid_t *)DEPVARRAY(channelInit,channel,i,ptr);
+            ocrDbDestroy(DEPVARRAY(channelInit,channel,i,guid));
+          } else
+            pbPTR->haloRecvEVT[i] = NULL_GUID;
+#ifdef RECEIVER_OWNS_CHANNEL_EVENT
+        temp = pbPTR->haloRecvEVT[i];
+        pbPTR->haloRecvEVT[i] = pbPTR->haloSendEVT[i];
+        pbPTR->haloSendEVT[i] = temp;
+
+#endif
+    }
+
+//launch hpcg
+
+    ocrGuid_t hpcg;
+    ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+      EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+
+    ocrGuid_t dataBlock;
+    ocrDbCreate(&dataBlock, (void**) &dummy, sizeof(double), 0, NULL_HINT, NO_ALLOC);
+
+    ocrDbRelease(pbDBK);
+    ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
+    ocrDbRelease(rpDBK);  //not needed?
+    ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+    ocrAddDependence(dataBlock, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+
+
+if(pbPTR->debug > 0) PRINTF("CI%d end \n", &pbPTR->myrank);
+
+return NULL_GUID;
+}
+
+typedef struct{
+    u64 myrank;
+    } hpcgInitPRM_t;
+
+typedef struct{
+    ocrEdtDep_t sharedBlock;
+    ocrEdtDep_t privateBlock;
+    ocrEdtDep_t reductionPrivateBlock;
+    ocrEdtDep_t blocks[26];
+    } hpcgInitDEPV_t;
+
 ocrGuid_t hpcgInitEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 params
-0:  mynode
+0:  myrank
 
 depv
 0: hpcg shared block  //not used after this EDT
 1: hpcg private block
-2: reduction shared block //not used after this EDT
-3: reduction private block
+2: reduction private block
 
 Initialize private blocks
-launch hpcgEdt
+launch hpcgEDT
 */
 
 
-    u32 mynode = paramv[0];
-    sharedBlock_t * SB = depv[0].ptr;
-    void * ptr = depv[1].ptr;
-    ocrGuid_t PBguid = depv[1].guid;
-    privateBlock_t * PB = (privateBlock_t *) depv[1].ptr;
+    PRMDEF(hpcgInit);
+    u32 myrank = PRM(hpcgInit,myrank);
+
+    DEPVDEF(hpcgInit);
+    sharedBlock_t * sbPTR = DEPV(hpcgInit,sharedBlock,ptr);
+    ocrGuid_t pbDBK = DEPV(hpcgInit,privateBlock,guid);
+    privateBlock_t * pbPTR = DEPV(hpcgInit,privateBlock,ptr);
+    void * ptr = (void *) pbPTR;
+    reductionPrivate_t * rpPTR = DEPV(hpcgInit,reductionPrivateBlock,ptr);
+    ocrGuid_t rpDBK = DEPV(hpcgInit,reductionPrivateBlock,guid);
 
 
-
-    PB->numnodes = SB->npx * SB->npy * SB->npz;
-    PB->mynode = paramv[0];
-    PB->timestep = 0;
-    PB->npx = SB->npx;
-    PB->npy = SB->npy;
-    PB->npz = SB->npz;
-    PB->maxIter = SB->t;
-    PB->debug = SB->debug;
-    PB->wrapup = SB->wrapup;
-    PB->m[0] = SB->m;
-    PB->m[1] = (PB->m[0]+1)/2;
-    PB->m[2] = (PB->m[1]+1)/2;
-    PB->m[3] = (PB->m[2]+1)/2;
-    u32 m0 = PB->m[0];
-    u32 m1 = PB->m[1];
-    u32 m2 = PB->m[2];
-    u32 m3 = PB->m[3];
-    PB->mt[0] = m0*m0*m0;
-    PB->mt[1] = m1*m1*m1;
-    PB->mt[2] = m2*m2*m2;
-    PB->mt[3] = m3*m3*m3;
-    PB->ht[0] = (m0+2)*(m0+2)*(m0+2);
-    PB->ht[1] = (m1+2)*(m1+2)*(m1+2);
-    PB->ht[2] = (m2+2)*(m2+2)*(m2+2);
-    PB->ht[3] = (m3+2)*(m3+2)*(m3+2);
-    PB->hpcgPhase = 0;
-    PB->hePhase = 0;
-
-
-    PB->matrix_offset[0] = sizeof(privateBlock_t);
-    PB->matrix_offset[1] = PB->matrix_offset[0] + 27*m0*m0*m0*sizeof(double);
-    PB->matrix_offset[2] = PB->matrix_offset[1] + 27*m1*m1*m1*sizeof(double);
-    PB->matrix_offset[3] = PB->matrix_offset[2] + 27*m2*m2*m2*sizeof(double);
-
-    PB->column_index_offset[0] = PB->matrix_offset[3] + 27*m3*m3*m3*sizeof(double);
-    PB->column_index_offset[1] = PB->column_index_offset[0] + 27*m0*m0*m0*sizeof(u32);
-    PB->column_index_offset[2] = PB->column_index_offset[1] + 27*m1*m1*m1*sizeof(u32);
-    PB->column_index_offset[3] = PB->column_index_offset[2] + 27*m2*m2*m2*sizeof(u32);
-
-    PB->diagonal_index_offset[0] = PB->column_index_offset[3] + 27*m3*m3*m3*sizeof(u32);
-
-    PB->diagonal_index_offset[1] = PB->diagonal_index_offset[0] + m0*m0*m0*sizeof(u32);
-    PB->diagonal_index_offset[2] = PB->diagonal_index_offset[1] + m1*m1*m1*sizeof(u32);
-    PB->diagonal_index_offset[3] = PB->diagonal_index_offset[2] + m2*m2*m2*sizeof(u32);
-
-    PB->vector_offset[0][Z] = PB->diagonal_index_offset[3] + m3*m3*m3*sizeof(u32);
-    PB->vector_offset[1][Z] = PB->vector_offset[0][Z] + (m0+2)*(m0+2)*(m0+2)*sizeof(double);
-    PB->vector_offset[2][Z] = PB->vector_offset[1][Z] + (m1+2)*(m1+2)*(m1+2)*sizeof(double);
-    PB->vector_offset[3][Z] = PB->vector_offset[2][Z] + (m2+2)*(m2+2)*(m2+2)*sizeof(double);
-    PB->vector_offset[0][R] = PB->vector_offset[3][Z] + (m3+2)*(m3+2)*(m3+2)*sizeof(double);
-    PB->vector_offset[1][R] = PB->vector_offset[0][R] + m0*m0*m0*sizeof(double);
-    PB->vector_offset[2][R] = PB->vector_offset[1][R] + m1*m1*m1*sizeof(double);
-    PB->vector_offset[3][R] = PB->vector_offset[2][R] + m2*m2*m2*sizeof(double);
-    PB->vector_offset[0][AP] = PB->vector_offset[3][R] + m3*m3*m3*sizeof(double);
-    PB->vector_offset[1][AP] = PB->vector_offset[0][AP];
-    PB->vector_offset[2][AP] = PB->vector_offset[0][AP];
-    PB->vector_offset[3][AP] = PB->vector_offset[0][AP];
-    PB->vector_offset[0][X] = PB->vector_offset[0][AP] + m0*m0*m0*sizeof(double);
-    PB->vector_offset[1][X] = 1000000000;
-    PB->vector_offset[2][X] = 1000000000;
-    PB->vector_offset[3][X] = 1000000000;
-
-    PB->vector_offset[0][P] = PB->vector_offset[0][X] + m0*m0*m0*sizeof(double);
-    PB->vector_offset[1][P] = 1000000000;
-    PB->vector_offset[2][P] = 1000000000;
-    PB->vector_offset[3][P] = 1000000000;
-
-    PB->vector_offset[0][B] = PB->vector_offset[0][P] + (m0+2)*(m0+2)*(m0+2)*sizeof(double);
-    PB->vector_offset[1][B] = 1000000000;
-    PB->vector_offset[2][B] = 1000000000;
-    PB->vector_offset[3][B] = 1000000000;
-
-
-//printf("matrixoff %lx %lx %lx %lx\n", PB->matrix_offset[0], PB->matrix_offset[1], PB->matrix_offset[2], PB->matrix_offset[3]);
-//printf("column_indexoff %lx %lx %lx %lx\n", PB->column_index_offset[0], PB->column_index_offset[1], PB->column_index_offset[2], PB->column_index_offset[3]);
-//printf("diagonal_indexoff %lx %lx %lx %lx\n", PB->diagonal_index_offset[0], PB->diagonal_index_offset[1], PB->diagonal_index_offset[2], PB->diagonal_index_offset[3]);
-//printf("vectorZoff %lx %lx %lx %lx\n", PB->vector_offset[0][Z], PB->vector_offset[1][Z], PB->vector_offset[2][Z], PB->vector_offset[3][Z]);
-//printf("vectorRoff %lx %lx %lx %lx\n", PB->vector_offset[0][R], PB->vector_offset[1][R], PB->vector_offset[2][R], PB->vector_offset[3][R]);
-//printf("vectorAPoff %lx %lx %lx %lx\n", PB->vector_offset[0][AP], PB->vector_offset[1][AP], PB->vector_offset[2][AP], PB->vector_offset[3][AP]);
-//printf("vectorXoff %lx %lx %lx %lx\n", PB->vector_offset[0][X], PB->vector_offset[1][X], PB->vector_offset[2][X], PB->vector_offset[3][X]);
-//printf("vectorPoff %lx %lx %lx %lx\n", PB->vector_offset[0][P], PB->vector_offset[1][P], PB->vector_offset[2][P], PB->vector_offset[3][P]);
-//printf("vectorBoff %lx %lx %lx %lx\n", PB->vector_offset[0][B], PB->vector_offset[1][B], PB->vector_offset[2][B], PB->vector_offset[3][B]);
-
-
-    ocrEdtTemplateCreate(&(PB->hpcgTemplate), hpcgEdt, 0, 4);
-    ocrEdtTemplateCreate(&(PB->mgTemplate), mgEdt, 2, 1);
-    ocrEdtTemplateCreate(&(PB->haloTemplate), haloExchangeEdt, 4, 1);
-    ocrEdtTemplateCreate(&(PB->packTemplate), packANDsatisfyEdt, 3, 27);
-    ocrEdtTemplateCreate(&(PB->unpackTemplate), unpackEdt, 3, 27);
-    ocrEdtTemplateCreate(&(PB->spmvTemplate), spmvEdt, 4, 2);
-    ocrEdtTemplateCreate(&(PB->smoothTemplate), smoothEdt, 4, 2);
-
+    rpPTR->nrank = sbPTR->npx * sbPTR->npy * sbPTR->npz;
+    rpPTR->myrank = paramv[0];
+    rpPTR->ndata = 1;
+    rpPTR->reductionOperator = REDUCTION_F8_ADD;
+    rpPTR->rangeGUID = sbPTR->reductionRangeGUID;
+    rpPTR->reductionTML = NULL_GUID;
+    rpPTR->new = 1;  //first time
+    rpPTR->all = 1;  //go up and down (ALL_REDUCE)
     u64 dummy;
+    if(myrank == 0) ocrDbCreate(&(rpPTR->downDBK), (void**) &dummy, sizeof(double), 0, NULL_HINT, NO_ALLOC);
 
-if(PB->debug > 0) PRINTF("HI%d\n", mynode);
+    ocrEventParams_t params;
+    params.EVENT_CHANNEL.maxGen = 2;
+    params.EVENT_CHANNEL.nbSat = 1;
+    params.EVENT_CHANNEL.nbDeps = 1;
 
-    u32 numnodes = PB->numnodes;
+    ocrEventCreateParams(&(rpPTR->returnEVT), OCR_EVENT_CHANNEL_T, false, &params);
+//PRINTF("HI%d returnEVT %lx \n", paramv[0], rpPTR->returnEVT);
 
-    u32 pz = mynode/(PB->npx*PB->npy);
-    u32 py = (mynode/PB->npx)%PB->npy;
-    u32 px = mynode%(PB->npx);
+    pbPTR->nrank = sbPTR->npx * sbPTR->npy * sbPTR->npz;
+    pbPTR->myrank = paramv[0];
+    pbPTR->timestep = 0;
+    pbPTR->npx = sbPTR->npx;
+    pbPTR->npy = sbPTR->npy;
+    pbPTR->npz = sbPTR->npz;
+    pbPTR->maxIter = sbPTR->maxIter;
+    pbPTR->debug = sbPTR->debug;
+
+
+
+    pbPTR->finalOnceEVT = sbPTR->finalOnceEVT;
+    pbPTR->m[0] = sbPTR->m;
+    pbPTR->m[1] = (pbPTR->m[0]+1)/2;
+    pbPTR->m[2] = (pbPTR->m[1]+1)/2;
+    pbPTR->m[3] = (pbPTR->m[2]+1)/2;
+    u32 m0 = pbPTR->m[0];
+    u32 m1 = pbPTR->m[1];
+    u32 m2 = pbPTR->m[2];
+    u32 m3 = pbPTR->m[3];
+    pbPTR->mt[0] = m0*m0*m0;
+    pbPTR->mt[1] = m1*m1*m1;
+    pbPTR->mt[2] = m2*m2*m2;
+    pbPTR->mt[3] = m3*m3*m3;
+    pbPTR->ht[0] = (m0+2)*(m0+2)*(m0+2);
+    pbPTR->ht[1] = (m1+2)*(m1+2)*(m1+2);
+    pbPTR->ht[2] = (m2+2)*(m2+2)*(m2+2);
+    pbPTR->ht[3] = (m3+2)*(m3+2)*(m3+2);
+    pbPTR->hpcgPhase = 0;
+
+
+    pbPTR->matrix_offset[0] = sizeof(privateBlock_t);
+    pbPTR->matrix_offset[1] = pbPTR->matrix_offset[0] + 27*m0*m0*m0*sizeof(double);
+    pbPTR->matrix_offset[2] = pbPTR->matrix_offset[1] + 27*m1*m1*m1*sizeof(double);
+    pbPTR->matrix_offset[3] = pbPTR->matrix_offset[2] + 27*m2*m2*m2*sizeof(double);
+
+    pbPTR->column_index_offset[0] = pbPTR->matrix_offset[3] + 27*m3*m3*m3*sizeof(double);
+    pbPTR->column_index_offset[1] = pbPTR->column_index_offset[0] + 27*m0*m0*m0*sizeof(u32);
+    pbPTR->column_index_offset[2] = pbPTR->column_index_offset[1] + 27*m1*m1*m1*sizeof(u32);
+    pbPTR->column_index_offset[3] = pbPTR->column_index_offset[2] + 27*m2*m2*m2*sizeof(u32);
+
+    pbPTR->diagonal_index_offset[0] = pbPTR->column_index_offset[3] + 27*m3*m3*m3*sizeof(u32);
+
+    pbPTR->diagonal_index_offset[1] = pbPTR->diagonal_index_offset[0] + m0*m0*m0*sizeof(u32);
+    pbPTR->diagonal_index_offset[2] = pbPTR->diagonal_index_offset[1] + m1*m1*m1*sizeof(u32);
+    pbPTR->diagonal_index_offset[3] = pbPTR->diagonal_index_offset[2] + m2*m2*m2*sizeof(u32);
+
+    pbPTR->vector_offset[0][Z] = pbPTR->diagonal_index_offset[3] + m3*m3*m3*sizeof(u32);
+    pbPTR->vector_offset[1][Z] = pbPTR->vector_offset[0][Z] + (m0+2)*(m0+2)*(m0+2)*sizeof(double);
+    pbPTR->vector_offset[2][Z] = pbPTR->vector_offset[1][Z] + (m1+2)*(m1+2)*(m1+2)*sizeof(double);
+    pbPTR->vector_offset[3][Z] = pbPTR->vector_offset[2][Z] + (m2+2)*(m2+2)*(m2+2)*sizeof(double);
+    pbPTR->vector_offset[0][R] = pbPTR->vector_offset[3][Z] + (m3+2)*(m3+2)*(m3+2)*sizeof(double);
+    pbPTR->vector_offset[1][R] = pbPTR->vector_offset[0][R] + m0*m0*m0*sizeof(double);
+    pbPTR->vector_offset[2][R] = pbPTR->vector_offset[1][R] + m1*m1*m1*sizeof(double);
+    pbPTR->vector_offset[3][R] = pbPTR->vector_offset[2][R] + m2*m2*m2*sizeof(double);
+    pbPTR->vector_offset[0][AP] = pbPTR->vector_offset[3][R] + m3*m3*m3*sizeof(double);
+    pbPTR->vector_offset[1][AP] = pbPTR->vector_offset[0][AP];
+    pbPTR->vector_offset[2][AP] = pbPTR->vector_offset[0][AP];
+    pbPTR->vector_offset[3][AP] = pbPTR->vector_offset[0][AP];
+    pbPTR->vector_offset[0][X] = pbPTR->vector_offset[0][AP] + m0*m0*m0*sizeof(double);
+    pbPTR->vector_offset[1][X] = 1000000000;
+    pbPTR->vector_offset[2][X] = 1000000000;
+    pbPTR->vector_offset[3][X] = 1000000000;
+
+    pbPTR->vector_offset[0][P] = pbPTR->vector_offset[0][X] + m0*m0*m0*sizeof(double);
+    pbPTR->vector_offset[1][P] = 1000000000;
+    pbPTR->vector_offset[2][P] = 1000000000;
+    pbPTR->vector_offset[3][P] = 1000000000;
+
+    pbPTR->vector_offset[0][B] = pbPTR->vector_offset[0][P] + (m0+2)*(m0+2)*(m0+2)*sizeof(double);
+    pbPTR->vector_offset[1][B] = 1000000000;
+    pbPTR->vector_offset[2][B] = 1000000000;
+    pbPTR->vector_offset[3][B] = 1000000000;
+
+
+//printf("matrixoff %lx %lx %lx %lx\n", pbPTR->matrix_offset[0], pbPTR->matrix_offset[1], pbPTR->matrix_offset[2], pbPTR->matrix_offset[3]);
+//printf("column_indexoff %lx %lx %lx %lx\n", pbPTR->column_index_offset[0], pbPTR->column_index_offset[1], pbPTR->column_index_offset[2], pbPTR->column_index_offset[3]);
+//printf("diagonal_indexoff %lx %lx %lx %lx\n", pbPTR->diagonal_index_offset[0], pbPTR->diagonal_index_offset[1], pbPTR->diagonal_index_offset[2], pbPTR->diagonal_index_offset[3]);
+//printf("vectorZoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][Z], pbPTR->vector_offset[1][Z], pbPTR->vector_offset[2][Z], pbPTR->vector_offset[3][Z]);
+//printf("vectorRoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][R], pbPTR->vector_offset[1][R], pbPTR->vector_offset[2][R], pbPTR->vector_offset[3][R]);
+//printf("vectorAPoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][AP], pbPTR->vector_offset[1][AP], pbPTR->vector_offset[2][AP], pbPTR->vector_offset[3][AP]);
+//printf("vectorXoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][X], pbPTR->vector_offset[1][X], pbPTR->vector_offset[2][X], pbPTR->vector_offset[3][X]);
+//printf("vectorPoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][P], pbPTR->vector_offset[1][P], pbPTR->vector_offset[2][P], pbPTR->vector_offset[3][P]);
+//printf("vectorBoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][B], pbPTR->vector_offset[1][B], pbPTR->vector_offset[2][B], pbPTR->vector_offset[3][B]);
+
+
+    ocrEdtTemplateCreate(&(pbPTR->hpcgTML), hpcgEdt, 0, DEPVNUM(hpcg));
+    ocrEdtTemplateCreate(&(pbPTR->mgTML), mgEdt, PRMNUM(mg), DEPVNUM(mg));
+    ocrEdtTemplateCreate(&(pbPTR->haloExchangeTML), haloExchangeEdt, PRMNUM(haloExchange), DEPVNUM(haloExchange));
+    ocrEdtTemplateCreate(&(pbPTR->packTML), packEdt, PRMNUM(pack), DEPVNUM(pack));
+    ocrEdtTemplateCreate(&(pbPTR->unpackTML), unpackEdt, PRMNUM(unpack), DEPVNUM(unpack));
+    ocrEdtTemplateCreate(&(pbPTR->spmvTML), spmvEdt, PRMNUM(spmv), DEPVNUM(spmv));
+    ocrEdtTemplateCreate(&(pbPTR->smoothTML), smoothEdt, PRMNUM(smooth), DEPVNUM(smooth));
+
+
+if(pbPTR->debug > 0) PRINTF("HI%d start\n", myrank);
+
+    u32 nrank = pbPTR->nrank;
+
+    u32 pz = myrank/(pbPTR->npx*pbPTR->npy);
+    u32 py = (myrank/pbPTR->npx)%pbPTR->npy;
+    u32 px = myrank%(pbPTR->npx);
     s32 i, j, k;
 
-//initialize sendBlock, sendEvent, and recvEvent
+//initialize sendBlock, sendEVT, and recvEVT
+
 
     for(i=0;i<26;i++) {
-        PB->haloSendBlock[i] = 1;
+        pbPTR->haloSendEVT[i] = UNINITIALIZED_GUID;
     }
+
 
     if(pz == 0) {
-        PB->haloSendBlock[0] = NULL_GUID;
-        PB->haloSendBlock[1] = NULL_GUID;
-        PB->haloSendBlock[2] = NULL_GUID;
-        PB->haloSendBlock[3] = NULL_GUID;
-        PB->haloSendBlock[4] = NULL_GUID;
-        PB->haloSendBlock[5] = NULL_GUID;
-        PB->haloSendBlock[6] = NULL_GUID;
-        PB->haloSendBlock[7] = NULL_GUID;
-        PB->haloSendBlock[8] = NULL_GUID;
+        pbPTR->haloSendEVT[0] = NULL_GUID;
+        pbPTR->haloSendEVT[1] = NULL_GUID;
+        pbPTR->haloSendEVT[2] = NULL_GUID;
+        pbPTR->haloSendEVT[3] = NULL_GUID;
+        pbPTR->haloSendEVT[4] = NULL_GUID;
+        pbPTR->haloSendEVT[5] = NULL_GUID;
+        pbPTR->haloSendEVT[6] = NULL_GUID;
+        pbPTR->haloSendEVT[7] = NULL_GUID;
+        pbPTR->haloSendEVT[8] = NULL_GUID;
     }
 
-    if(pz == PB->npz-1) {
-        PB->haloSendBlock[17] = NULL_GUID;
-        PB->haloSendBlock[18] = NULL_GUID;
-        PB->haloSendBlock[19] = NULL_GUID;
-        PB->haloSendBlock[20] = NULL_GUID;
-        PB->haloSendBlock[21] = NULL_GUID;
-        PB->haloSendBlock[22] = NULL_GUID;
-        PB->haloSendBlock[23] = NULL_GUID;
-        PB->haloSendBlock[24] = NULL_GUID;
-        PB->haloSendBlock[25] = NULL_GUID;
+    if(pz == pbPTR->npz-1) {
+        pbPTR->haloSendEVT[17] = NULL_GUID;
+        pbPTR->haloSendEVT[18] = NULL_GUID;
+        pbPTR->haloSendEVT[19] = NULL_GUID;
+        pbPTR->haloSendEVT[20] = NULL_GUID;
+        pbPTR->haloSendEVT[21] = NULL_GUID;
+        pbPTR->haloSendEVT[22] = NULL_GUID;
+        pbPTR->haloSendEVT[23] = NULL_GUID;
+        pbPTR->haloSendEVT[24] = NULL_GUID;
+        pbPTR->haloSendEVT[25] = NULL_GUID;
     }
 
 
     if(py == 0) {
-        PB->haloSendBlock[0] = NULL_GUID;
-        PB->haloSendBlock[1] = NULL_GUID;
-        PB->haloSendBlock[2] = NULL_GUID;
-        PB->haloSendBlock[9] = NULL_GUID;
-        PB->haloSendBlock[10] = NULL_GUID;
-        PB->haloSendBlock[11] = NULL_GUID;
-        PB->haloSendBlock[17] = NULL_GUID;
-        PB->haloSendBlock[18] = NULL_GUID;
-        PB->haloSendBlock[19] = NULL_GUID;
+        pbPTR->haloSendEVT[0] = NULL_GUID;
+        pbPTR->haloSendEVT[1] = NULL_GUID;
+        pbPTR->haloSendEVT[2] = NULL_GUID;
+        pbPTR->haloSendEVT[9] = NULL_GUID;
+        pbPTR->haloSendEVT[10] = NULL_GUID;
+        pbPTR->haloSendEVT[11] = NULL_GUID;
+        pbPTR->haloSendEVT[17] = NULL_GUID;
+        pbPTR->haloSendEVT[18] = NULL_GUID;
+        pbPTR->haloSendEVT[19] = NULL_GUID;
     }
 
-    if(py == PB->npy-1) {
-        PB->haloSendBlock[6] = NULL_GUID;
-        PB->haloSendBlock[7] = NULL_GUID;
-        PB->haloSendBlock[8] = NULL_GUID;
-        PB->haloSendBlock[14] = NULL_GUID;
-        PB->haloSendBlock[15] = NULL_GUID;
-        PB->haloSendBlock[16] = NULL_GUID;
-        PB->haloSendBlock[23] = NULL_GUID;
-        PB->haloSendBlock[24] = NULL_GUID;
-        PB->haloSendBlock[25] = NULL_GUID;
+    if(py == pbPTR->npy-1) {
+        pbPTR->haloSendEVT[6] = NULL_GUID;
+        pbPTR->haloSendEVT[7] = NULL_GUID;
+        pbPTR->haloSendEVT[8] = NULL_GUID;
+        pbPTR->haloSendEVT[14] = NULL_GUID;
+        pbPTR->haloSendEVT[15] = NULL_GUID;
+        pbPTR->haloSendEVT[16] = NULL_GUID;
+        pbPTR->haloSendEVT[23] = NULL_GUID;
+        pbPTR->haloSendEVT[24] = NULL_GUID;
+        pbPTR->haloSendEVT[25] = NULL_GUID;
     }
 
 
     if(px == 0) {
-        PB->haloSendBlock[0] = NULL_GUID;
-        PB->haloSendBlock[3] = NULL_GUID;
-        PB->haloSendBlock[6] = NULL_GUID;
-        PB->haloSendBlock[9] = NULL_GUID;
-        PB->haloSendBlock[12] = NULL_GUID;
-        PB->haloSendBlock[14] = NULL_GUID;
-        PB->haloSendBlock[17] = NULL_GUID;
-        PB->haloSendBlock[20] = NULL_GUID;
-        PB->haloSendBlock[23] = NULL_GUID;
+        pbPTR->haloSendEVT[0] = NULL_GUID;
+        pbPTR->haloSendEVT[3] = NULL_GUID;
+        pbPTR->haloSendEVT[6] = NULL_GUID;
+        pbPTR->haloSendEVT[9] = NULL_GUID;
+        pbPTR->haloSendEVT[12] = NULL_GUID;
+        pbPTR->haloSendEVT[14] = NULL_GUID;
+        pbPTR->haloSendEVT[17] = NULL_GUID;
+        pbPTR->haloSendEVT[20] = NULL_GUID;
+        pbPTR->haloSendEVT[23] = NULL_GUID;
     }
 
-    if(px == PB->npx-1) {
-        PB->haloSendBlock[2] = NULL_GUID;
-        PB->haloSendBlock[5] = NULL_GUID;
-        PB->haloSendBlock[8] = NULL_GUID;
-        PB->haloSendBlock[11] = NULL_GUID;
-        PB->haloSendBlock[13] = NULL_GUID;
-        PB->haloSendBlock[16] = NULL_GUID;
-        PB->haloSendBlock[19] = NULL_GUID;
-        PB->haloSendBlock[22] = NULL_GUID;
-        PB->haloSendBlock[25] = NULL_GUID;
+    if(px == pbPTR->npx-1) {
+        pbPTR->haloSendEVT[2] = NULL_GUID;
+        pbPTR->haloSendEVT[5] = NULL_GUID;
+        pbPTR->haloSendEVT[8] = NULL_GUID;
+        pbPTR->haloSendEVT[11] = NULL_GUID;
+        pbPTR->haloSendEVT[13] = NULL_GUID;
+        pbPTR->haloSendEVT[16] = NULL_GUID;
+        pbPTR->haloSendEVT[19] = NULL_GUID;
+        pbPTR->haloSendEVT[22] = NULL_GUID;
+        pbPTR->haloSendEVT[25] = NULL_GUID;
     }
 
 
-    u32 m = PB->m[0];
-    u32 size[26] = {1, m, 1, m, m*m, m, 1, m, 1, m, m*m, m, m*m, m*m, m, m*m, m, 1, m, 1, m, m*m, m, 1, m, 1};
+    ocrGuid_t hpcgEDT;
+    ocrGuid_t cbDBK;
+    ocrGuid_t cbPTR;
+    ocrGuid_t channelEVT;
+    ocrGuid_t channelInitTML;
+    ocrGuid_t channelInitEDT;
+    ocrGuid_t stickyEVT;
+
+    ocrGuid_t myAffinity;
+    ocrHintInit(&pbPTR->myAffinityHNT,OCR_HINT_EDT_T);
+    ocrAffinityGetCurrent(&myAffinity);
+    ocrSetHintValue(&pbPTR->myAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+
+
+
+    ocrEdtTemplateCreate(&channelInitTML, channelInitEdt, 0, DEPVNUM(channelInit));
+    ocrEdtCreate(&channelInitEDT, channelInitTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+    ocrGuid_t * blockPTR;
+
+    u32 errno;
     u32 ind = 0;
     u32 partner;
     for(k=-1;k<2;k++)
         for(j=-1;j<2;j++)
             for(i=-1;i<2;i++) {
                 if(i==0 && j==0 && k==0) continue; //skip "center" of cube
-if(PB->debug > 1) PRINTF("ind %d \n", ind);
-                if(PB->haloSendBlock[ind] == NULL_GUID) {
-                    PB->haloRecvGuid[0][ind] = NULL_GUID;
-                    PB->haloRecvGuid[1][ind] = NULL_GUID;
-                    PB->haloSendGuid[0][ind] = NULL_GUID;
-                    PB->haloSendGuid[1][ind++] = NULL_GUID;
+if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
+                if(ocrGuidIsNull(pbPTR->haloSendEVT[ind])) {
+                    pbPTR->haloRecvEVT[ind] = NULL_GUID;
+                    ocrDbDestroy(DEPVARRAY(hpcgInit,blocks,ind,guid)); //destroy unneeded channel message block)
+                    ocrAddDependence(NULL_GUID, channelInitEDT, SLOTARRAY(channelInit,channel,ind), DB_MODE_RW);
+                    ind++;
                 } else {
-                    ocrDbCreate(&(PB->haloSendBlock[ind]), (void**) &dummy, size[ind]*sizeof(double), 0, NULL_GUID, NO_ALLOC);
-                    ocrGuidFromIndex(&(PB->haloSendGuid[0][ind]), SB->haloRangeGuid, 52*mynode + ind);
-                    ocrGuidFromIndex(&(PB->haloSendGuid[1][ind]), SB->haloRangeGuid, 52*mynode + 26 + ind);
-                    ocrGuidFromIndex(&(PB->haloRecvGuid[0][ind]), SB->haloRangeGuid, 52*(mynode + k*PB->npx*PB->npy + j*PB->npx + i) + 25-ind);
-                    ocrGuidFromIndex(&(PB->haloRecvGuid[1][ind++]), SB->haloRangeGuid, 52*(mynode + k*PB->npx*PB->npy + j*PB->npx + i) + 26 + 25-ind);
-if(PB->debug > 1) PRINTF("mynode %d mysource %d ind %d Send %lx  Recv %lx\n", mynode, mynode+k*PB->npx*PB->npy+j*PB->npx + i, ind-1,PB->haloSendGuid[ind-1], PB->haloRecvGuid[ind-1]);
+
+//send
+                    ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, 26*myrank + ind);
+                    ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+                    ocrEventCreateParams(&(pbPTR->haloSendEVT[ind]), OCR_EVENT_CHANNEL_T, false, &params);
+                    blockPTR = DEPVARRAY(hpcgInit,blocks,ind,ptr);
+                    *blockPTR = pbPTR->haloSendEVT[ind];
+                    ocrDbRelease(DEPVARRAY(hpcgInit,blocks,ind,guid));
+                    ocrEventSatisfy(stickyEVT, DEPVARRAY(hpcgInit,blocks,ind,guid));
+
+//receive
+                    ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, 26*(myrank + k*pbPTR->npx*pbPTR->npy + j*pbPTR->npx + i) + 25-ind);
+                    ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
+                    ocrAddDependence(stickyEVT, channelInitEDT, SLOTARRAY(channelInit,channel,ind), DB_MODE_RW);
+
+
+                    ind++;
                 }
 
 
         }
-if(PB->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendGuid %lx %lx recvGuid %lx %lx \n", mynode, i, PB->haloSendGuid[0][i], PB->haloSendGuid[1][i], PB->haloRecvGuid[0][i], PB->haloRecvGuid[1][i]);
+if(pbPTR->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT %lx recvEVT %lx \n", myrank, i, pbPTR->haloSendEVT[i], pbPTR->haloRecvEVT[i]);
 
 //initialize four matrices
 //P vector used as scratch space
@@ -1641,88 +1938,94 @@ if(PB->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendGuid %lx %lx recvGuid 
 
 
 
-//printf("void* %lx, void %d char %d mo %lx dio %lx cio %lx ZO %lx\n", sizeof(void *), sizeof(void), sizeof(char), (u64) PB->matrix_offset[0], (u64) PB->diagonal_index_offset[0], (u64) PB->column_index_offset[0], (u64) PB->vector_offset[0][Z]);
-//printf("ptr %lx mo %lx dio %lx cio %lx ZO %lx\n", ptr, (u64) (ptr + (u64) PB->matrix_offset[0]), (u64) (ptr + (u64) PB->diagonal_index_offset[0]), (u64) (ptr + (u64) PB->column_index_offset[0]), (u64) (((u64) ptr) + PB->vector_offset[0][Z]));
+//printf("void* %lx, void %d char %d mo %lx dio %lx cio %lx ZO %lx\n", sizeof(void *), sizeof(void), sizeof(char), (u64) pbPTR->matrix_offset[0], (u64) pbPTR->diagonal_index_offset[0], (u64) pbPTR->column_index_offset[0], (u64) pbPTR->vector_offset[0][Z]);
+//printf("ptr %lx mo %lx dio %lx cio %lx ZO %lx\n", ptr, (u64) (ptr + (u64) pbPTR->matrix_offset[0]), (u64) (ptr + (u64) pbPTR->diagonal_index_offset[0]), (u64) (ptr + (u64) pbPTR->column_index_offset[0]), (u64) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
 
 
 
-    matrixfill(PB->npx, PB->npy, PB->npz, PB->m[0], mynode, (double *) (((u64) ptr) + (u64) PB->matrix_offset[0]), (u32 *) (((u64) ptr) + (u64) PB->diagonal_index_offset[0]), (u32 *)(((u64) ptr) + (u64) PB->column_index_offset[0]), (u32 *) (((u64) ptr) + (u64) PB->vector_offset[0][Z]));
-    matrixfill(PB->npx, PB->npy, PB->npz, PB->m[1], mynode, (double *) (((u64) ptr) + PB->matrix_offset[1]), (u32 *) (((u64) ptr) + PB->diagonal_index_offset[1]), (u32 *)(((u64) ptr) + PB->column_index_offset[1]), (u32 *) (((u64) ptr) + PB->vector_offset[0][Z]));
-    matrixfill(PB->npx, PB->npy, PB->npz, PB->m[2], mynode, (double *) (((u64) ptr) + PB->matrix_offset[2]), (u32 *) (((u64) ptr) + PB->diagonal_index_offset[2]), (u32 *)(((u64) ptr) + PB->column_index_offset[2]), (u32 *) (((u64) ptr) + PB->vector_offset[0][Z]));
-    matrixfill(PB->npx, PB->npy, PB->npz, PB->m[3], mynode, (double *) (((u64) ptr) + PB->matrix_offset[3]), (u32 *) (((u64) ptr) + PB->diagonal_index_offset[3]), (u32 *)(((u64) ptr) + PB->column_index_offset[3]), (u32 *) (((u64) ptr) + PB->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[0], myrank, (double *) (((u64) ptr) + (u64) pbPTR->matrix_offset[0]), (u32 *) (((u64) ptr) + (u64) pbPTR->diagonal_index_offset[0]), (u32 *)(((u64) ptr) + (u64) pbPTR->column_index_offset[0]), (u32 *) (((u64) ptr) + (u64) pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[1], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[1]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[1]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[1]), (u32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[2], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[2]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[2]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[2]), (u32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[3], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[3]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[3]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[3]), (u32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
 
 //initialize b vector
 
-    vectorfill(PB->mt[0], (double *) (((u64) ptr) + PB->vector_offset[0][B]), (double *) (((u64) ptr) + PB->matrix_offset[0]));
+    vectorfill(pbPTR->mt[0], (double *) (((u64) ptr) + pbPTR->vector_offset[0][B]), (double *) (((u64) ptr) + pbPTR->matrix_offset[0]));
 
-    gatherfill(&PB->gather[0], PB->m[0]);
-    gatherfill(&PB->gather[1], PB->m[1]);
-    gatherfill(&PB->gather[2], PB->m[2]);
-    gatherfill(&PB->gather[3], PB->m[3]);
-
-
-
-//launch hpcg
-    ocrGuid_t hpcg;
-    ocrEdtCreate(&hpcg, PB->hpcgTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-      EDT_PROP_NONE, NULL_GUID, NULL);
-
-if(PB->debug > 0) PRINTF("HI%d finish \n", mynode);
-fflush(stdout);
-
-    ocrDbRelease(PBguid);
-    ocrAddDependence(PBguid, hpcg, 0, DB_MODE_RW);
+    gatherfill(&pbPTR->gather[0], pbPTR->m[0]);
+    gatherfill(&pbPTR->gather[1], pbPTR->m[1]);
+    gatherfill(&pbPTR->gather[2], pbPTR->m[2]);
+    gatherfill(&pbPTR->gather[3], pbPTR->m[3]);
 
 
-    reductionParallelInit(mynode, depv[2].ptr, depv[3].ptr, depv[3].guid);
 
-    ocrAddDependence(depv[3].guid, hpcg, 1, DB_MODE_RW);
-
-    ocrGuid_t dataBlock;
-    ocrDbCreate(&dataBlock, (void**) &dummy, sizeof(double), 0, NULL_GUID, NO_ALLOC);
-    ocrAddDependence(dataBlock, hpcg, 2, DB_MODE_RW);
-    ocrAddDependence(NULL_GUID, hpcg, 3, DB_MODE_RW);
+//launch
 
 
+    ocrDbRelease(pbDBK);
+    ocrAddDependence(pbDBK, channelInitEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+    ocrDbRelease(rpDBK);
+    ocrAddDependence(rpDBK, channelInitEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
 
 return NULL_GUID;
 }
 
 
-ocrGuid_t InitEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+
+typedef struct{
+    u64 myrank;
+    } initPRM_t;
+
+typedef struct{
+    ocrEdtDep_t sharedBlock;
+    } initDEPV_t;
+
+ocrGuid_t initEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 params:
-0:  mynode
+0:  myrank
 
 depv:
 0: hpcg shared block
-1: reduction shared block
 
 create privateblock
 create reduction private block
 
-launches hpcgInitEdt with shared blocks, private blocks, mynode as param
+launches hpcgInitEDT with shared blocks, private blocks, myrank as param
 
 */
-    ocrGuid_t SBguid = depv[0].guid;
-    sharedBlock_t * SB = (sharedBlock_t *) depv[0].ptr;
 
-    ocrGuid_t hpcgInit, hpcgInitTemplate;
+    PRMDEF(init);
+    DEPVDEF(init);
+    ocrGuid_t sbDBK = DEPV(init,sharedBlock,guid);
+    sharedBlock_t * sbPTR = (sharedBlock_t *) DEPV(init,sharedBlock,ptr);
 
-if(SB->debug > 0) PRINTF("I%d\n", paramv[0]);
+    ocrGuid_t hpcgInitEDT, hpcgInitTML;
+    hpcgInitPRM_t hpcgInitParamv;
+    hpcgInitPRM_t * hpcgInitPRM = &hpcgInitParamv;
 
-    ocrEdtTemplateCreate(&hpcgInitTemplate, hpcgInitEdt, 1, 4);
+if(sbPTR->debug > 0) PRINTF("I%d\n", paramv[0]);
 
-    ocrEdtCreate(&hpcgInit, hpcgInitTemplate, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-      EDT_PROP_NONE, NULL_GUID, NULL);
+    ocrHint_t myHNT;
+    ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+    ocrGuid_t myAffinity;
+    ocrAffinityGetCurrent(&myAffinity);
+    ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
 
 
-    ocrAddDependence(SBguid, hpcgInit, 0, DB_MODE_RO);
+    ocrEdtTemplateCreate(&hpcgInitTML, hpcgInitEdt, PRMNUM(hpcgInit), DEPVNUM(hpcgInit));
+
+    PRM(hpcgInit,myrank) = PRM(init,myrank);
+    ocrEdtCreate(&hpcgInitEDT, hpcgInitTML, EDT_PARAM_DEF, (u64 *) hpcgInitPRM, EDT_PARAM_DEF, NULL,
+      EDT_PROP_NONE, &myHNT, NULL);
+    ocrEdtTemplateDestroy(hpcgInitTML);
+
+    ocrAddDependence(sbDBK, hpcgInitEDT, SLOT(hpcgInit,sharedBlock), DB_MODE_RO);
 
     ocrGuid_t tempDb;
     u64 dummy;
     u64 size;
-    u64 m0 = SB->m;
+    u64 m0 = sbPTR->m;
     u64 m1 = m0/2;
     u64 m2 = m1/2;
     u64 m3 = m2/2;
@@ -1754,17 +2057,61 @@ if(SB->debug > 0) PRINTF("I%d\n", paramv[0]);
       + m0*m0*m0*sizeof(double);           //level 0 B vector
 
 
-    ocrDbCreate(&tempDb, (void**) &dummy, size, 0, NULL_GUID, NO_ALLOC);
-    ocrAddDependence(tempDb, hpcgInit, 1, DB_MODE_RW);
+    ocrDbCreate(&tempDb, (void**) &dummy, size, 0, NULL_HINT, NO_ALLOC);
+    ocrAddDependence(tempDb, hpcgInitEDT, SLOT(hpcgInit,privateBlock), DB_MODE_RW);
 
-//reduction blocks
-    ocrAddDependence(depv[1].guid, hpcgInit, 2, DB_MODE_RO);
-    ocrAddDependence(reductionCreatePrivate(), hpcgInit, 3, DB_MODE_RW);
+//reduction block
+    ocrDbCreate(&tempDb, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC);
+    ocrAddDependence(tempDb, hpcgInitEDT, SLOT(hpcgInit,reductionPrivateBlock), DB_MODE_RW);
 
+    u64 i;
+
+    for(i=0;i<26;i++) {
+
+        ocrDbCreate(&tempDb, (void**) &dummy, sizeof(ocrGuid_t), 0, NULL_HINT, NO_ALLOC);
+        ocrAddDependence(tempDb, hpcgInitEDT, SLOTARRAY(hpcgInit,blocks,i), DB_MODE_RW);
+    }
     return NULL_GUID;
 }
 
-ocrGuid_t realmainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+typedef struct {
+    double startTime;
+} wrapUpPRM_t;
+
+typedef struct {
+    ocrEdtDep_t returnBlock;
+} wrapUpDEPV_t;
+
+ocrGuid_t wrapUpEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
+//prints out the sum of deviations from all 1s
+
+    DEPVDEF(wrapUp);
+    PRMDEF(wrapUp);
+    double * returnPTR = (double *) DEPV(wrapUp,returnBlock,ptr);
+    PRINTF("final deviation: %f \n", returnPTR[0]);
+    double stop =  wtime();
+    double elapsed = stop - PRM(wrapUp,startTime);
+    PRINTF("elapsed time: %f \n", elapsed);
+    ocrShutdown();
+    return NULL_GUID;
+}
+
+typedef struct{
+    u64 npx;
+    u64 npy;
+    u64 npz;
+    u64 m;
+    u64 maxIter;
+    u64 debug;
+    double startTime;
+    } realMainPRM_t;
+
+typedef struct{
+    ocrEdtDep_t sharedBlock;
+    } realMainDEPV_t;
+
+
+ocrGuid_t realMainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 paramv
 0:  npx
@@ -1773,104 +2120,127 @@ paramv
 3:  m
 4:  t
 5:  debug
-6:  wrapup
 
 depv
 0: hpcg Shared Block
-1: reduction Shared Block
 
 Initializes reduction shared block
-Creates and launches NPZ*NPY*NPX InitEdt with shared blocks and mynode as a param
+Creates wrapUp
+Creates and launches NPZ*NPY*NPX initEDT with shared blocks and myrank as a param
 
 */
 
+    PRMDEF(realMain);
 
-    ocrGuid_t SBguid = depv[0].guid;
-    sharedBlock_t * SB = depv[0].ptr;
+    DEPVDEF(realMain);
+    ocrGuid_t sbDBK = DEPV(realMain,sharedBlock,guid);
+    sharedBlock_t * sbPTR = DEPV(realMain,sharedBlock,ptr);
+
+
+
+    u64 npx        = PRM(realMain,npx);
+    sbPTR->npx     = npx;
+    u64 npy        = PRM(realMain,npy);
+    sbPTR->npy     = npy;
+    u64 npz        = PRM(realMain,npz);
+    sbPTR->npz     = npz;
+    sbPTR->m       = PRM(realMain,m);
+    sbPTR->maxIter = PRM(realMain,maxIter);
+    sbPTR->debug   = PRM(realMain,debug);
+    u64 nrank = npx * npy * npz;
 
     u64 i;
-    u64 n = paramv[0]*paramv[1]*paramv[2];
+
+if(sbPTR->debug != 0) PRINTF("RM start nrank %d npx %d npy %d npz %d m %d t %d debug %d \n", nrank, sbPTR->npx, sbPTR->npy, sbPTR->npz, sbPTR->m, sbPTR->maxIter, sbPTR->debug);
 
 
-    SB->npx     = paramv[0];
-    SB->npy     = paramv[1];
-    SB->npz     = paramv[2];
-    SB->m       = paramv[3];
-    SB->t       = paramv[4];
-    SB->debug   = paramv[5];
-    SB->wrapup  = paramv[6];
-if(SB->debug != 0) PRINTF("RM start n %d npx %d npy %d npz %d m %d t %d debug %d wrapup %lx \n", n, SB->npx, SB->npy, SB->npz, SB->m, SB->t, SB->debug, SB->wrapup);
 
-    ocrGuidRangeCreate(&(SB->haloRangeGuid), 2*26*n, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(sbPTR->haloRangeGUID), 26*nrank, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(sbPTR->reductionRangeGUID), nrank, GUID_USER_EVENT_STICKY);
 
-printf("n %d rangeGuid %lx \n", n, SB->haloRangeGuid);
-    ocrDbRelease(SBguid);
 
-    reductionSerialInit(n, 1, REDUCTION_F8_ADD, depv[1].ptr, depv[1].guid);
+    ocrGuid_t wrapUpTML, wrapUpEDT;
+    ocrEdtTemplateCreate(&wrapUpTML, wrapUpEdt, PRMNUM(wrapUp), DEPVNUM(wrapUp));
+    ocrEdtCreate(&wrapUpEDT, wrapUpTML, EDT_PARAM_DEF, (u64 *) &(PRM(realMain,startTime)), EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+    ocrEventCreate(&(sbPTR->finalOnceEVT), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+    ocrEdtTemplateDestroy(wrapUpTML);
+//printf("finalEVT %lx slot %d \n", sbPTR->finalOnceEVT, SLOT(wrapUp,returnBlock));
 
-    ocrGuid_t initTemplate, init;
-    ocrEdtTemplateCreate(&initTemplate, InitEdt, 1, 2);
+    ocrAddDependence(sbPTR->finalOnceEVT, wrapUpEDT, SLOT(wrapUp,returnBlock), DB_MODE_RO);
 
-    for(i=0;i<n;i++){
-        ocrEdtCreate(&init, initTemplate, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-        ocrAddDependence(SBguid, init, 0, DB_MODE_RO);
-        ocrAddDependence(depv[1].guid, init, 1, DB_MODE_RO);
+//printf("n %d rangeGUID %lx \n", n, sbPTR->haloRangeGUID);
+    ocrDbRelease(sbDBK);
+
+    ocrGuid_t initTML, initEDT;
+    ocrEdtTemplateCreate(&initTML, initEdt, PRMNUM(init), DEPVNUM(init));
+
+    ocrGuid_t myAffinity;
+    ocrHint_t myHNT;
+    ocrAffinityGetCurrent(&(myAffinity));
+    u64 count, myPD, block, nx, ny, nz;
+    ocrAffinityCount(AFFINITY_PD, &count);
+    block = (nrank + count - 1)/count;
+    u64 linear = (((nx&1)||(ny&1)||(nz&1)) || (8*count != nrank)); //not even numbers, use linear map
+
+    for(i=0;i<nrank;i++) {
+        if(linear) myPD = i/block;
+          else {
+            nx = (i%npx)/2;
+            ny = ((i/npx)%(npy))/2;
+            nz = (i/(npx*npy))/2;
+//printf("i %d nx %d ny %d nz %d \n", i, nx, ny, nz);
+            myPD = nz*(npx*npy)/4 + ny*npx/2 + nx ;
+        }
+        ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
+        ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+        ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+
+
+
+//printf("i %d count %d block %d myPD %d myAffinity %lx \n", i, count, block, myPD, myAffinity);
+
+        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
+        ocrAddDependence(sbDBK, initEDT, SLOT(init,sharedBlock), DB_MODE_RO);
     }
+    ocrEdtTemplateDestroy(initTML);
 
-if(paramv[5] != 0) PRINTF("RM finish\n");
+if(PRM(realMain,debug) != 0) PRINTF("RM finish\n");
 fflush(stdout);
 
 return NULL_GUID;
 }
 
-ocrGuid_t wrapupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
-//prints out the deviations from all 1s (which could be done by each rank but this gets them in order
 
 
-
-    u32 i, j;
-    privateBlock_t * PB = depv[0].ptr;
-    double * x = (double *) (((u64)depv[0].ptr) + PB->vector_offset[0][X]);
-    double sum;
-    for(i=0;i<PB->numnodes;i++) {
-      PB = depv[i].ptr;
-      sum = 0.0;
-      for(j=0;j<PB->mt[0];j++) sum += fabs(1.0-x[j]);
-      PRINTF("average deviation for node %d is %f \n", i, sum/PB->mt[0]);
-    }
-
-    ocrShutdown();
-    return NULL_GUID;
-}
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 
 /*
-mainEdt is executed first
+mainEDT is executed first
 Creates the shared datablock
 Creates the reduction shared datablock
-Creates wrapup
-Creates realmain passing in wrapupEdtGuid
-Passes the shared blocks to realmain
+Passes the shared blocks to realMain
 */
 
 u32 i;
-u64 npx, npy, npz, m, t, debug;
+u64 npx, npy, npz, m, maxIter, debug;
 
 u32 _paramc, _depc, _idep;
 
 void * programArgv = depv[0].ptr;
 u32 argc = getArgc(programArgv);
 
+double startTime = wtime();
 npx = NPX;
 npy = NPY;
 npz = NPZ;
 m = M;
-t = T;
+maxIter = T;
 debug = DEBUG;
 
-printf("argc %d \n", argc);
+
+//printf("argc %d \n", argc);
 //if(argc ==2 || argc ==3) bomb("number of run time parameters cannot be 1 or 2");
 
 if(argc > 3) {
@@ -1890,7 +2260,7 @@ if(argc > 4) {
     }
 
 if(argc > 5) {
-    t = (u64) atoi(getArgv(programArgv, 5));
+    maxIter = (u64) atoi(getArgv(programArgv, 5));
     }
 
 if(argc>6) {
@@ -1898,34 +2268,39 @@ if(argc>6) {
     }
 
 
-
-PRINTF("NPX = %d \nNPY= %d \nNPZ= %d \nM = %d\nt == %d\ndebug = %d\n", npx, npy, npz, m, t, debug);
+PRINTF("NPX = %d \n", npx);
+PRINTF("NPY= %d \n", npy);
+PRINTF("NPZ= %d \n", npz);
+PRINTF("M = %d\n", m);
+PRINTF("maxIter = %d\n", maxIter);
+PRINTF("debug = %d\n", debug);
+PRINTF("startTime %f \n", startTime);
 
 
 u64 *dummy;
 
-ocrGuid_t realmain, realmainTemplate, sharedDb, reductionSharedBlock;
+ocrGuid_t realMainEDT, realMainTML, sharedDBK, reductionSharedDBK;
 
+ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
 
-ocrGuid_t wrapupTemplate;
-ocrGuid_t wrapup;
+realMainPRM_t realMainParamv;
+realMainPRM_t * realMainPRM = &realMainParamv;
 
+PRM(realMain,npx) = npx;
+PRM(realMain,npy) = npy;
+PRM(realMain,npz) = npz;
+PRM(realMain,m) = m;
+PRM(realMain,maxIter) = maxIter;
+PRM(realMain,debug) = debug;
+PRM(realMain,startTime) = startTime;
 
-ocrEdtTemplateCreate(&wrapupTemplate, wrapupEdt, 0, npx*npy*npz);
-ocrEdtCreate(&wrapup, wrapupTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
+ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
-ocrEdtTemplateCreate(&realmainTemplate, realmainEdt, 7, 2);
+ocrDbCreate(&sharedDBK, (void**) &dummy, sizeof(sharedBlock_t), 0, NULL_HINT, NO_ALLOC);
+ocrAddDependence(sharedDBK, realMainEDT, SLOT(realMain,sharedBlock), DB_MODE_RW);
 
-u64 paramvout[7] = {npx, npy, npz, m, t, debug, wrapup};
-
-ocrEdtCreate(&realmain, realmainTemplate, EDT_PARAM_DEF, paramvout, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
-
-ocrDbCreate(&sharedDb, (void**) &dummy, sizeof(sharedBlock_t), 0, NULL_GUID, NO_ALLOC);
-ocrAddDependence(sharedDb, realmain, 0, DB_MODE_RW);
-
+ocrEdtTemplateDestroy(realMainTML);
 //initializing reduction library
-reductionSharedBlock = reductionCreateShared();
-ocrAddDependence(reductionSharedBlock, realmain, 1, DB_MODE_RW);
 
 return NULL_GUID;
 

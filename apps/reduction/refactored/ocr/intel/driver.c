@@ -8,13 +8,14 @@ Author: David S Scott
 */
 
 /*
-driver for reduction "library"
+driver for the reduction "library"
+it uses the macros.h file from the macros "library"
 
-the source code and include file of the library are in xstack/apps/libs/src/reduction1
+the source code and include file of the reduction library are in xstack/apps/libs/src/reduction
 
-To use the library requires two lines in the makefile.*:
+To use the libraries requires two lines in the makefile.*:
 
-REQ_LIBS := reduction
+REQ_LIBS := reduction macros
 LD_FLAGS := lreduction
 
 This driver shows one way to do global reductions in an OCR code
@@ -23,6 +24,7 @@ The reduction is done by the participants calling a C function
 reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID, ocrGuid_t mydataGUID)
 
 However before calling reductionLaunch the user must
+
 1. create a reductionPrivate datablock for each participating rank
 2. create a clone to receive the result of the reduction
 3. initialize some of the values in the reductionPrivate datablock
@@ -30,21 +32,21 @@ However before calling reductionLaunch the user must
     myrank: my number
     ndata: number of elements to be reduced
     new: set to TRUE for the first call
+    all: set to TRUE if everyone is getting the result back.  if false only rank 0s event is satisfied
     reductionOperator: choose which reduction to do (choices in reduction1.h)
     rangeGUID: a set of at least nrank-1 labeled STICKY event GUIDs
-    returnEVT: a ONCE event (presumably labeled) that rank 0 will use
-       to return the reduced data to the clones
+    returnEVT: a channel event, different for each rank used to return the result
 4. make the clone depend on the returnEVT
 
 
-This code uses macros currently defined in reduction1.h but they may get moved.
 
-
-There are 3 parameters defined below:
+There are 3 parameters with default values defined below:
 
 P is the number of tasks ("numranks")
 T is the number of iterations
 N is the length of the vectors
+
+These values can be entered as RUNTIME_ARGS
 
 */
 
@@ -52,8 +54,10 @@ N is the length of the vectors
 #include "macros.h"
 
 #define ENABLE_EXTENSION_LABELING
+#define ENABLE_EXTENSION_AFFINITY
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
+#include "extensions/ocr-affinity.h"
 #include "string.h"
 #include "stdio.h"
 
@@ -61,17 +65,50 @@ N is the length of the vectors
 #define DEFAULTndata 2  //length of vector
 #define DEFAULTmaxtimestep 300  //number of iterations
 
+extern double wtime();
+
 typedef struct {
+    u64 nrank;
+    u64 ndata;
+    u64 maxtimestep;
+    ocrGuid_t wrapupEDT;
+    ocrGuid_t reductionRangeGUID;
+} shared_t;
+
+typedef struct {
+    u64 nrank;
     u64 myrank;
     u64 ndata;
     u64 timestep;
     u64 maxtimestep;
-    u64 toggle;
-    ocrGuid_t returnEVT[2];
+    ocrHint_t myAffinityHNT;
     ocrGuid_t driverTML;
+    ocrGuid_t wrapupEDT; //needed only by rank 0
+} private_t;
+
+
+typedef struct {
+    double start;
+} wrapupPRM_t;
+
+typedef struct {
+    ocrEdtDep_t control;
+} wrapupDEPV_t;
+
+ocrGuid_t wrapupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+    PRMDEF(wrapup);
+    double end = wtime();
+
+    PRINTF("elapsed time %f shutting down\n", end - PRM(wrapup,start));
+    ocrShutdown();
+}
+
+
+typedef struct {
 } driverPRM_t;
 
 typedef struct {
+    ocrEdtDep_t private;
     ocrEdtDep_t reductionPrivate;
     ocrEdtDep_t myData;
     ocrEdtDep_t returnData;
@@ -84,20 +121,17 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
 
 */
 
-    PRMDEF(driver);
-
-    u64 myrank = PRM(driver,myrank);
-    u64 ndata = PRM(driver,ndata);
-    u64 timestep = PRM(driver,timestep);
-    u64 maxtimestep = PRM(driver,maxtimestep);
-    ocrGuid_t driverTML = PRM(driver,driverTML);
-//printf("D%d ndata %d timestep %d maxtimestep %d \n", myrank, ndata, timestep, maxtimestep);
-
     DEPVDEF(driver);
-
+    private_t * privatePTR = DEPV(driver,private,ptr);
     reductionPrivate_t * reductionPrivatePTR = DEPV(driver,reductionPrivate,ptr);
     double * a = DEPV(driver,myData,ptr);
     double * b = DEPV(driver,returnData,ptr); //will be NULL for T=0
+
+    u64 nrank = privatePTR->nrank;
+    u64 myrank = privatePTR->myrank;
+    u64 ndata = privatePTR->ndata;
+    u64 timestep = privatePTR->timestep;
+    u64 maxtimestep = privatePTR->maxtimestep;
 
     u64 i;
 
@@ -108,6 +142,7 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
         }
      }else{
 //copy
+
         if(myrank == 0) {
             for(i=0;i<ndata;i++) PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
         }
@@ -116,26 +151,34 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
         }
     }
 
-    if(timestep >= maxtimestep) return NULL_GUID;
+    if(timestep >= maxtimestep) {
+        if(myrank == 0) ocrAddDependence(NULL_GUID, privatePTR->wrapupEDT, SLOT(wrapup, control), DB_MODE_RO);
+        return NULL_GUID;
+    }
 
-    PRM(driver,timestep)++;
+    privatePTR->timestep++;
 
     ocrGuid_t driverEDT;
 
 
+    if(privatePTR->timestep == privatePTR->maxtimestep) {
+        reductionPrivatePTR->all = 0;
+        if(myrank != 0) {
+            reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), DEPV(driver,myData,guid));
+            return NULL_GUID;
+        }
+    }
+
 //clone
-    reductionPrivatePTR->returnEVT = PRM(driver,returnEVT[PRM(driver,toggle)]);
-    PRM(driver,toggle) ^= 1;
-    ocrEdtCreate(&driverEDT, driverTML, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrEdtCreate(&driverEDT, privatePTR->driverTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &(privatePTR->myAffinityHNT), NULL);
 
 
+
+    ocrDbRelease(DEPV(driver,private,guid));
+    ocrAddDependence(DEPV(driver,private,guid),driverEDT, SLOT(driver,private), DB_MODE_RW);
     ocrAddDependence(DEPV(driver,reductionPrivate,guid),driverEDT, SLOT(driver,reductionPrivate), DB_MODE_RW);
     ocrDbRelease(DEPV(driver,myData,guid));
     ocrAddDependence(DEPV(driver,myData,guid),driverEDT, SLOT(driver,myData), DB_MODE_RW);
-
-    u32 errno = ocrEventCreate(&(reductionPrivatePTR->returnEVT), OCR_EVENT_ONCE_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
-
-
     ocrAddDependence(reductionPrivatePTR->returnEVT, driverEDT, SLOT(driver,returnData), DB_MODE_RO);
 
 //create and launch reduceEdt
@@ -148,13 +191,11 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
 
 typedef struct {
     u64 myrank;
-    u64 ndata;
-    u64 maxtimestep;
-    ocrGuid_t onceRangeGUID;
 } initRealPRM_t;
 
 typedef struct {
-    ocrEdtDep_t reductionShared;
+    ocrEdtDep_t shared;
+    ocrEdtDep_t private;
     ocrEdtDep_t reductionPrivate;
 } initRealDEPV_t;
 
@@ -164,77 +205,91 @@ paramv[0] = myrank;
 
 depv[0] = shared;
 depv[1] = private;
+depv[2] reductionPrivate
 
 initialize the private block from the shared block
 launch driverEDT
 
 */
 
+    PRMDEF(initReal);
+    DEPVDEF(initReal);
 
-    initRealPRM_t * initRealPRM = (initRealPRM_t *) paramv;
     u64 myrank = PRM(initReal,myrank);
-    u64 ndata = PRM(initReal,ndata);
-    u64 maxtimestep = PRM(initReal,maxtimestep);
-//printf("IR%d ndata %d \n", myrank, ndata);
-//fflush(stdout);
-    ocrGuid_t onceRangeGUID = PRM(initReal,onceRangeGUID);
 
-    initRealDEPV_t * initRealDEPV = (initRealDEPV_t *) depv;
-    reductionPrivate_t * reductionSharedPTR = DEPV(initReal,reductionShared,ptr);
+    shared_t * sharedPTR = DEPV(initReal,shared,ptr);
+    private_t * privatePTR = DEPV(initReal,private,ptr);
     reductionPrivate_t * reductionPrivatePTR = DEPV(initReal,reductionPrivate,ptr);
 
-    reductionPrivatePTR->nrank = reductionSharedPTR->nrank;
+//printf("IR%d ndata %d \n", myrank, sharedPTR->ndata);
+//fflush(stdout);
+    u64 dummy;
+
+    reductionPrivatePTR->nrank = sharedPTR->nrank;
     reductionPrivatePTR->myrank = myrank;
-    reductionPrivatePTR->ndata = reductionSharedPTR->ndata;
+    reductionPrivatePTR->ndata = sharedPTR->ndata;
     reductionPrivatePTR->reductionOperator = REDUCTION_F8_ADD;
-    reductionPrivatePTR->rangeGUID = reductionSharedPTR->rangeGUID;
+    reductionPrivatePTR->rangeGUID = sharedPTR->reductionRangeGUID;
     reductionPrivatePTR->reductionTML = NULL_GUID;
     reductionPrivatePTR->new = 1;
-//extra can be used to pass extra data from rank 0 to all of the ranks
-    reductionPrivatePTR->extra = 0;
+    reductionPrivatePTR->all = 1;
+//printf("IR%d ndata %d \n", myrank, reductionPrivatePTR->ndata);
+//fflush(stdout);
+    ocrDbCreate(&(reductionPrivatePTR->downDBK), (void**) &dummy, reductionPrivatePTR->ndata*sizeof(double), 0, NULL_HINT, NO_ALLOC);
+
+    ocrEventParams_t params;
+    params.EVENT_CHANNEL.maxGen = 2;
+    params.EVENT_CHANNEL.nbSat = 1;
+    params.EVENT_CHANNEL.nbDeps = 1;
+
+    ocrEventCreateParams(&(reductionPrivatePTR->returnEVT), OCR_EVENT_CHANNEL_T, false, &params);
+
 
     ocrGuid_t driverTML, driverEDT, myDBK;
 
 
-    u64 dummy;
 
 
-    ocrEdtTemplateCreate(&driverTML, driverEdt, PRMNUM(driver), 3);
+    ocrEdtTemplateCreate(&(privatePTR->driverTML), driverEdt, PRMNUM(driver), DEPVNUM(driver));
 
-    driverPRM_t paramvout;
-    driverPRM_t * driverPRM = (driverPRM_t *) &paramvout;
+    privatePTR->nrank = sharedPTR->nrank;
+    privatePTR->myrank = myrank;
+    privatePTR->ndata = sharedPTR->ndata;
+    privatePTR->timestep = 0;
+    privatePTR->maxtimestep = sharedPTR->maxtimestep;
+    privatePTR->wrapupEDT = sharedPTR->wrapupEDT;
 
-    PRM(driver,myrank) = myrank;
-    PRM(driver,ndata) = ndata;
-    PRM(driver,timestep) = 0;
-    PRM(driver,maxtimestep) = maxtimestep;
-    PRM(driver,toggle) = 0;
-    ocrGuidFromIndex(&(PRM(driver,returnEVT[0])),onceRangeGUID,0);
-    ocrGuidFromIndex(&(PRM(driver,returnEVT[1])),onceRangeGUID,1);
-    paramvout.driverTML = driverTML;
+    ocrHint_t myHNT;
+    ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+    ocrGuid_t myAffinity;
+    ocrAffinityGetCurrent(&myAffinity);
+    ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+    privatePTR->myAffinityHNT = myHNT;
+
+
+
 
 //PRINTF("M%ld PBGUID %lx \n", myrank, DEPV(initReal,reductionPrivate, guid));
+//
 
-    ocrEdtCreate(&driverEDT, driverTML, EDT_PARAM_DEF, (u64 *) &paramvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
+    ocrEdtCreate(&driverEDT, privatePTR->driverTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &(privatePTR->myAffinityHNT), NULL);
+    ocrDbRelease(DEPV(initReal,private,guid));
+    ocrAddDependence(DEPV(initReal,private,guid), driverEDT, SLOT(driver,private), DB_MODE_RW);
     ocrDbRelease(DEPV(initReal,reductionPrivate,guid));
     ocrAddDependence(DEPV(initReal,reductionPrivate,guid), driverEDT, SLOT(driver,reductionPrivate), DB_MODE_RW);
-    ocrDbCreate(&myDBK, (void**) &dummy, ndata*sizeof(double), 0, NULL_GUID, NO_ALLOC);
-    ocrAddDependence(myDBK, driverEDT, 1, DB_MODE_RW);
-    ocrAddDependence(NULL_GUID, driverEDT, 2, DB_MODE_RW);
-//third dependency is the returned result
+    ocrDbCreate(&myDBK, (void**) &dummy, privatePTR->ndata*sizeof(double), 0, NULL_HINT, NO_ALLOC);
+    ocrAddDependence(myDBK, driverEDT, SLOT(driver,myData), DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, driverEDT, SLOT(driver,returnData), DB_MODE_RW);
 
     return NULL_GUID;
 }
 
 typedef struct {
     u64 myrank;
-    u64 ndata;
-    u64 maxtimestep;
-    ocrGuid_t onceRangeGUID;
 } initPRM_t;
 
 typedef struct {
-    ocrEdtDep_t reductionSharedBlock;
+    ocrEdtDep_t shared;
 } initDEPV_t;
 
 
@@ -242,32 +297,44 @@ ocrGuid_t initEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 paramv[0] = myrank
 
-depv[0] = reductionSharedBlock
+depv[0] = shared
 
 create private block
+create reductionPrivate block
 launch initReal
 */
 
-initPRM_t * initPRM = (initPRM_t *) paramv;
+    PRMDEF(init);
+    DEPVDEF(init);
 
 //printf("I%d ndata %d maxtimestep %d \n", PRM(init,myrank), PRM(init,ndata), PRM(init,maxtimestep));
 
 
+    u64 myrank = PRM(init,myrank);
     u64 dummy;
 
-    ocrGuid_t initRealTML, reductionPrivateDBK, initRealEDT;
-
-    ocrDbCreate(&reductionPrivateDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_GUID, NO_ALLOC);
+    ocrGuid_t initRealTML, reductionPrivateDBK, privateDBK, initRealEDT;
+    ocrDbCreate(&reductionPrivateDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC);
+    ocrDbCreate(&privateDBK, (void**) &dummy, sizeof(private_t), 0, NULL_HINT, NO_ALLOC);
 
     ocrEdtTemplateCreate(&initRealTML, initRealEdt, PRMNUM(initReal), DEPVNUM(initReal));
-    ocrEdtCreate(&initRealEDT, initRealTML, EDT_PARAM_DEF, (u64 *) paramv, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    ocrAddDependence(depv[0].guid, initRealEDT, 0, DB_MODE_RO);
-    ocrAddDependence(reductionPrivateDBK, initRealEDT, 1, DB_MODE_RW);
+
+    ocrHint_t myHNT;
+    ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+    ocrGuid_t myAffinity;
+    ocrAffinityGetCurrent(&myAffinity);
+    ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+
+
+    ocrEdtCreate(&initRealEDT, initRealTML, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
+    ocrAddDependence(DEPV(init,shared,guid), initRealEDT, SLOT(initReal,shared), DB_MODE_RO);
+    ocrAddDependence(reductionPrivateDBK, initRealEDT, SLOT(initReal,reductionPrivate), DB_MODE_RW);
+    ocrAddDependence(privateDBK, initRealEDT, SLOT(initReal,private), DB_MODE_RW);
     return NULL_GUID;
 }
 
 typedef struct {
-    ocrEdtDep_t reductionShared;
+    ocrEdtDep_t shared;
 } realMainDEPV_t;
 
 typedef struct {
@@ -278,47 +345,63 @@ typedef struct {
 
 
 ocrGuid_t realMainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+
+    PRMDEF(realMain);
     DEPVDEF(realMain);
 
-    reductionPrivate_t * sharedPTR = DEPV(realMain,reductionShared,ptr);
 /*
 initialize shared block
 launch parallel init with myrank as a parameter
 */
-    realMainPRM_t * realMainPRM = (realMainPRM_t *) paramv;
+
     u64 nrank = PRM(realMain,nrank);
     u64 ndata = PRM(realMain,ndata);
 
-    sharedPTR->nrank = nrank;
-    sharedPTR->ndata = ndata;
-    ocrGuid_t onceRangeGUID;
-    if(sharedPTR->nrank > 1) ocrGuidRangeCreate(&(sharedPTR->rangeGUID), nrank-1, GUID_USER_EVENT_STICKY);
-      else sharedPTR->rangeGUID = NULL_GUID;
-    ocrGuidRangeCreate(&onceRangeGUID, 2, GUID_USER_EVENT_ONCE);
+    shared_t * sharedPTR = DEPV(realMain,shared,ptr);
+    ocrGuid_t sharedDBK = DEPV(realMain,shared,guid);
+
+    sharedPTR->nrank = PRM(realMain,nrank);
+    sharedPTR->ndata = PRM(realMain,ndata);
+    sharedPTR->maxtimestep = PRM(realMain,maxtimestep);
+
+    ocrGuidRangeCreate(&(sharedPTR->reductionRangeGUID), nrank, GUID_USER_EVENT_STICKY);
+    double time = wtime();
+    wrapupPRM_t wrapupPRM;
+    wrapupPRM.start = time;
+
+    ocrGuid_t wrapupTML;
+
+    ocrEdtTemplateCreate(&wrapupTML, wrapupEdt, PRMNUM(wrapup), DEPVNUM(wrapup));
+    ocrEdtCreate(&(sharedPTR->wrapupEDT), wrapupTML, EDT_PARAM_DEF, (u64 *) &wrapupPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
 //PRINTF("returnEVT %lx \n", sharedPTR->returnEVT);
     u64 i;
     ocrGuid_t initEDT, initTML;
 
-    initPRM_t paramvout;
-    initPRM_t * initPRM = &paramvout;
-    PRM(init,onceRangeGUID) = onceRangeGUID;
-    PRM(init,ndata) = PRM(realMain,ndata);
-    PRM(init,maxtimestep) = PRM(realMain,maxtimestep);
+    initPRM_t initPRM;
 
     ocrEdtTemplateCreate(&(initTML), initEdt, PRMNUM(init), DEPVNUM(init));
 
+    ocrGuid_t myAffinity;
+    ocrHint_t myHNT;
+    ocrAffinityGetCurrent(&(myAffinity));
+    u64 count, myPD, block;
+    ocrAffinityCount(AFFINITY_PD, &count);
+    block = (nrank + count - 1)/count;
+
+    ocrDbRelease(DEPV(realMain,shared,guid));
     for(i=0;i<nrank;i++) {
-        PRM(init,myrank)= i;
-        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, (u64 *) &paramvout, EDT_PARAM_DEF, NULL_GUID, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-        ocrAddDependence(depv[0].guid, initEDT, 0, DB_MODE_RW);
+        myPD = i/block;
+//printf("i %d count %d myPD %d slot %d \n", i, count, myPD, SLOT(init,shared));
+        ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
+        ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+        ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+
+        initPRM.myrank = i;
+        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, (u64 *) &initPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
+        ocrAddDependence(DEPV(realMain,shared,guid), initEDT, SLOT(init,shared), DB_MODE_RO);
     }
     return NULL_GUID;
-}
-
-ocrGuid_t wrapupEdt(){
-    PRINTF("shutting down\n");
-    ocrShutdown();
 }
 
 void bomb(char * s){
@@ -361,22 +444,22 @@ launches realmain
          if(PRM(realMain,maxtimestep) == 0) bomb("number of timesteps must be positive");
          }
 
-    ocrGuid_t realMainEDT, realMainTML, outputEVT, wrapupEDT, wrapupTML, reductionSharedDBK;
+    ocrGuid_t realMainEDT, realMainTML,  wrapupEDT, wrapupTML, sharedDBK, reductionSharedDBK;
+
     PRINTF("reduction driver \n");
     PRINTF("Number of workers is %d \n", PRM(realMain,nrank));
     PRINTF("data per worker %d \n", PRM(realMain,ndata));
     PRINTF("Number of timesteps is %d \n", PRM(realMain,maxtimestep));
-    ocrEdtTemplateCreate(&wrapupTML, wrapupEdt, 0, 1);
-    ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
-    ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &outputEVT);
 
-    ocrEdtCreate(&wrapupEDT, wrapupTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    ocrAddDependence(outputEVT, wrapupEDT, 0, DB_MODE_RW);
+
+
+    ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
+    ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
     u64 dummy;
 
-    ocrDbCreate(&reductionSharedDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_GUID, NO_ALLOC);
-    ocrAddDependence(reductionSharedDBK, realMainEDT, 0, DB_MODE_RW);
+    ocrDbCreate(&sharedDBK, (void**) &dummy, sizeof(shared_t), 0, NULL_HINT, NO_ALLOC);
+    ocrAddDependence(sharedDBK, realMainEDT, SLOT(realMain,shared), DB_MODE_RW);
 
     return NULL_GUID;
 }
