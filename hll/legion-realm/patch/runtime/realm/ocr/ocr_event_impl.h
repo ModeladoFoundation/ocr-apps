@@ -39,12 +39,6 @@ namespace Realm {
       //create an OCR event. Almost equivalent of create_genevent()
       static Event create_ocrevent(void);
 
-      static bool guid_less(const ocrGuid_t& first, const ocrGuid_t& second);
-
-      static bool guid_eq(const ocrGuid_t& first, const ocrGuid_t& second);
-
-      static bool guid_neq(const ocrGuid_t& first, const ocrGuid_t& second);
-
       static bool has_triggered(ocrGuid_t);
 
       static void wait(ocrGuid_t);

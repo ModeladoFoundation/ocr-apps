@@ -64,21 +64,6 @@ namespace Realm {
       return e;
     }
 
-    /*static*/ bool OCREventImpl::guid_less(const ocrGuid_t& lhs, const ocrGuid_t& rhs)
-    {
-      return lhs < rhs;
-    }
-
-    /*static*/ bool OCREventImpl::guid_eq(const ocrGuid_t& lhs, const ocrGuid_t& rhs)
-    {
-      return lhs == rhs;
-    }
-
-    /*static*/ bool OCREventImpl::guid_neq(const ocrGuid_t& lhs, const ocrGuid_t& rhs)
-    {
-      return lhs != rhs;
-    }
-
     /*static*/ bool OCREventImpl::has_triggered(ocrGuid_t evt)
     {
       //inefficient but works for now
@@ -118,7 +103,7 @@ namespace Realm {
         wait_for_arr[0] = UNINITIALIZED_GUID;
 
         ocrEdtCreate(&merge_events_edt, OCREventImpl::merge_events_edt_t, EDT_PARAM_DEF, NULL, size,
-                     wait_for_arr, EDT_PROP_NONE, NULL_GUID, &out_merge_events_edt);
+                     wait_for_arr, EDT_PROP_NONE, NULL_HINT, &out_merge_events_edt);
 
         //attach the sticky finish event to the edt since legacy_block_progress needs persistent event
         ocrAddDependence(out_merge_events_edt, ret_evt.evt_guid, 0, DB_MODE_RO);
@@ -174,7 +159,7 @@ namespace Realm {
       wait_for_arr[0] = UNINITIALIZED_GUID;
 
       ocrEdtCreate(&merge_events_edt, OCREventImpl::merge_events_edt_t, EDT_PARAM_DEF, NULL, count,
-                   wait_for_arr, EDT_PROP_NONE, NULL_GUID, &out_merge_events_edt);
+                   wait_for_arr, EDT_PROP_NONE, NULL_HINT, &out_merge_events_edt);
 
       //attach the sticky finish event to the edt since legacy_block_progress needs persistent event
       ocrAddDependence(out_merge_events_edt, ret_evt.evt_guid, 0, DB_MODE_RO);

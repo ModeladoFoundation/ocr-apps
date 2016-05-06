@@ -1564,7 +1564,7 @@ namespace Realm {
         //invoke the showtdown EDT
         ocrGuid_t sd_edt_t, sd_edt, out_sd_edt, persistent_evt_guid;
         ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
-        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, &out_sd_edt);
+        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, &out_sd_edt);
 
         //create another persistent event for use in wait_for_shutdown and
         //attach it to the EDT since legacy_block_progress needs persistent event
@@ -2021,7 +2021,8 @@ ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
   for(i=0;i<argc;i++)
     argv[i] = getArgv(depv[0].ptr, i);
 
-  int ret = legion_ocr_main(argc, argv);
+  ocrGuid_t ret;
+  GUIDA(ret) = legion_ocr_main(argc, argv);
   return ret;
 }
 #ifdef __cplusplus

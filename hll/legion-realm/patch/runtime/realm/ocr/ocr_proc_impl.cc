@@ -92,18 +92,18 @@ namespace Realm {
     db_guid[0] = UNINITIALIZED_GUID; //start_event.evt_guid;
 
     void *args_copy;
-    ocrDbCreate(&db_guid[1], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&db_guid[1], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     memcpy(args_copy, args, arglen);
 
     size_t *arglen_copy;
-    ocrDbCreate(&db_guid[2], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&db_guid[2], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     arglen_copy[0] = arglen;
 
     //create and call the EDT
     ocrGuid_t ocr_realm_conversion_edt, out_ocr_realm_conversion_edt, persistent_evt_guid;
     ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t, EDT_PARAM_DEF,
       (u64*)(&task_table[func_id]), EDT_PARAM_DEF, db_guid,
-      EDT_PROP_NONE, NULL_GUID, &out_ocr_realm_conversion_edt);
+      EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_conversion_edt);
 
     //attach the output of EDT to the finish_event
     ocrAddDependence(out_ocr_realm_conversion_edt, finish_event.evt_guid, 0, DB_MODE_RO);

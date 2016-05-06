@@ -49,7 +49,7 @@ namespace Realm {
           return false;
         else
 #if USE_OCR_LAYER
-          return OCREventImpl::guid_less(evt_guid, rhs.evt_guid);
+          return ocrGuidIsLt(evt_guid, rhs.evt_guid);
 #else
           return (gen < rhs.gen);
 #endif // USE_OCR_LAYER
@@ -57,7 +57,7 @@ namespace Realm {
 
       bool Event::operator==(const Event& rhs) const { return (id == rhs.id)
 #if USE_OCR_LAYER
-        && OCREventImpl::guid_eq(evt_guid, rhs.evt_guid)
+        && ocrGuidIsEq(evt_guid, rhs.evt_guid)
 #else
         && (gen == rhs.gen)
 #endif // USE_OCR_LAYER
@@ -65,7 +65,7 @@ namespace Realm {
 
       bool Event::operator!=(const Event& rhs) const { return (id != rhs.id)
 #if USE_OCR_LAYER
-        && OCREventImpl::guid_neq(evt_guid, rhs.evt_guid)
+        && ! ocrGuidIsEq(evt_guid, rhs.evt_guid)
 #else
         && (gen != rhs.gen)
 #endif // USE_OCR_LAYER

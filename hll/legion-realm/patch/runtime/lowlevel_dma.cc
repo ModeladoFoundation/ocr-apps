@@ -4729,7 +4729,7 @@ namespace LegionRuntime {
     //pass this object using data block to the EDT
     ocrGuid_t db_guid;
     void *this_copy;
-    ocrDbCreate(&db_guid, (void **)(&this_copy), this_size, DB_PROP_NONE, NULL_GUID, NO_ALLOC);
+    ocrDbCreate(&db_guid, (void **)(&this_copy), this_size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     //'this' pointer is the dma descriptor with information such as size etc
     memcpy(this_copy, this, this_size);
 
@@ -4737,7 +4737,7 @@ namespace LegionRuntime {
     ocrGuid_t ocr_realm_perform_dma_edt, out_ocr_realm_perform_dma_edt, persistent_evt_guid;
     ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t, EDT_PARAM_DEF,
       NULL, EDT_PARAM_DEF, NULL,
-      EDT_PROP_NONE, NULL_GUID, &out_ocr_realm_perform_dma_edt);
+      EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_perform_dma_edt);
 
     //attach finish_event to the EDT
     Event finish_event = get_finish_event();
