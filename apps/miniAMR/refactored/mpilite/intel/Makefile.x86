@@ -41,14 +41,22 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # Must use blocking sends, otherwise hangs because all the ranks to Irecs, then Isends,
 # and then they all wait on the Irecs; and in mpilite none of the Isends has been done,
 # so HANG. (Gets part way through with mpilite aggressive "-a" mode)
-#WORKLOAD_ARGS ?=  -r 3 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+#WORKLOAD_ARGS ?=  -r 3 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
 
+# this works
 CONFIG_NUM_THREADS ?= 3
-WORKLOAD_ARGS ?=  -r ${CONFIG_NUM_THREADS} -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx ${CONFIG_NUM_THREADS}  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+WORKLOAD_ARGS ?=  -r ${CONFIG_NUM_THREADS} -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx ${CONFIG_NUM_THREADS}  --npy 1 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+
+# hangs
+CONFIG_NUM_THREADS = 9
+WORKLOAD_ARGS ?=  -r 9 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 3 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+
+#WORKLOAD_ARGS ?=  -r 210 -t 50 --blocking_send --num_refine 2 --max_blocks 400 --npx 5  --npy 6 --npz 7 --init_x 1 --init_y 1 --init_z 1 --nx 2 --ny 2 --nz 2 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 1
 
 #WORKLOAD_ARGS ?= -r 1 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 1  --npy 1 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
 
-#WORKLOAD_ARGS ?= -r 27 -t 50 --blocking_send --num_refine 4 --max_blocks 608 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4
+# hangs with and without ONE_COMM
+#WORKLOAD_ARGS ?= -r 27 -t 50 --blocking_send --num_refine 3 --max_blocks 1000 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 4
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -83,7 +91,8 @@ OBJS: $(ROSE_TARGET)
 # TG_ARCH is also defined for Fsim
 
 CC = icc
-CFLAGS := -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+#CFLAGS := -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+CFLAGS := -std=c99 -DMPI_INTEGER=MPI_INT
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
@@ -179,5 +188,5 @@ rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 postrun: ;
 
 # Include common part
-include $(APPS_ROOT)/makefiles/make-regular.inc
+include $(APPS_ROOT)/makefiles/make-inc.inc
 

@@ -223,7 +223,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
               MPI_Comm comm, MPI_Request *request)
 {
     comm=getComm(comm);
-    dest = rank_to_gpid(comm, dest);
+    //dest = rank_to_gpid(comm, dest); //gail
 
 #if DEBUG_MPI    // Only needed for debugging....
     rankContextP_t rankContext = getRankContext();
@@ -316,8 +316,6 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
               int tag, MPI_Comm comm, MPI_Request *request)
 {
     comm = getComm(comm);
-    source = rank_to_gpid(comm, source);
-
     *request = (MPI_Request)malloc(sizeof(**request));
     initRequest(*request, opIrecv, count, datatype, tag, source, comm,
                 buf, FALSE);
@@ -413,7 +411,6 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
             }
 
         }
-        //#endif
     }
     // Here *eventP is not NULL_GUID, so something to wait on
     ocrGuid_t DB; //= ocrWait(*eventP);
@@ -538,7 +535,6 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
 {
     //  Need original rank for communication
     comm = getComm(comm);
-    dest = rank_to_gpid(comm,dest);
 
     rankContextP_t rankContext = getRankContext();
     const bool aggressiveNB = rankContext->aggressiveNB;
@@ -613,7 +609,6 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
 {
     //  Need original rank for communication
     comm = getComm(comm);
-    source = rank_to_gpid(comm,source);
 
     rankContextP_t rankContext = getRankContext();
     const u32 dest = rankContext->rank;
@@ -1776,8 +1771,6 @@ int MPI_Reduce(void *sendbuf, void *recvbuf, int count,
     comm = getComm(comm);
 
     rankContextP_t rankContext = getRankContext();
-    //const u32 rank = rankContext->rank;
-    //const u32 numRanks = rankContext->numRanks;
     const u32 rank = gpid_to_rank(comm, rankContext->rank);
     const u32 groupSize = comm->group_size;
     const u32 maxTag = rankContext->maxTag;
@@ -2221,19 +2214,12 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     comm = getComm(comm);
 
     rankContextP_t rankContext = getRankContext();
-    //const u32 rank = rankContext->rank;
-    //const u32 numRanks = rankContext->numRanks;
     const u32 rank = gpid_to_rank(comm, rankContext->rank);
     const u32 groupSize = comm->group->size;
 
-    //PRINTF("MPI_Bcast buffer %p, count %d, type %d, rank %d\n", buffer,
-    //       count, datatype, rank);
-
-    //if (numRanks == 1)  // e.g. comm_self
     if (groupSize == 1)  // e.g. comm_self
         return MPI_SUCCESS;
 
-    //if (root >= numRanks) {
     if (root >= groupSize) {
         MPI_ERROR("MPI_Bcast: root >= group size? invalid rank\n");
     }
@@ -2286,26 +2272,18 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     comm = getComm(comm);
 
     rankContextP_t rankContext = getRankContext();
-    //const u32 rank = rankContext->rank;
-    //const u32 numRanks = rankContext->numRanks;
     const u32 rank = gpid_to_rank(rankContext->rank);
     const u32 groupSize = comm->group->size;
 
-    //if (numRanks == 1)  // e.g. comm_self
     if (groupSize == 1)  // e.g. comm_self
         return MPI_SUCCESS;
 
-    //PRINTF("MPI_Bcast buffer %p, count %d, type %d, rank %d\n", buffer,
-    //       count, datatype, rank);
-
-    //if (root >= numRanks) {
     if (root >= groupSize) {
         MPI_ERROR("MPI_Bcast: root >= group size? invalid rank\n");
     }
 
     if (root == rank) {
         u32 i;
-        //for(i=0;i<numRanks;i++) {
         for(i=0;i<groupSize;i++) {
             if (i != root) {
                 MPI_Send(buffer, count, datatype, i, 0 /* tag */, comm);
@@ -2326,16 +2304,11 @@ int MPI_Bcast (void *buffer, int count, MPI_Datatype datatype, int root,
     comm = getComm(comm);
 
     rankContextP_t rankContext = getRankContext();
-    //const u32 rank = rankContext->rank;
-    //const u32 numRanks = rankContext->numRanks;
     const u32 rank = gpid_to_rank(comm, rankContext->rank);
     const u32 groupSize = comm->group->size;
 
     if (groupSize == 1)  // e.g. comm_self
         return MPI_SUCCESS;
-
-    //PRINTF("MPI_Bcast buffer %p , count %d , type %d, root %d\n", buffer,
-    //       count, datatype, root);
 
     if (root >= groupSize) {
         MPI_ERROR("MPI_Bcast: root >= group size? invalid rank\n");
@@ -2691,7 +2664,10 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
         return MPI_ERR_INTERN;
     }
 
+#ifdef DEBUG_MPI
     PRINTF("MPI_Comm_dup: success, comm: 0x%p, *newcomm:%p\n", comm, *newcomm);
+    fflush(stdout);
+#endif
     return MPI_SUCCESS;
 }
 
@@ -2729,7 +2705,7 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
         if (colors[i] != color)
             continue;
         keys2[count  ] = keys[i];
-        ranks[count++] = i;
+        ranks[count++] = comm->group->gpid_array[i];
     }
 
     // sorting by key values -- yes, it's O(n^2)
@@ -2752,24 +2728,19 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
     }
     MPI_Group newgroup;
     MPI_Group_incl(comm->group, count, ranks, &newgroup);
-#if 0
-#ifdef DEBUG_MPI
-    // print group
-    int ii;
-    printf("MPI_Comm_split %d: oldgroup: size:%d gpid:%d gpid_array:",
-           gpid, comm->group->size, comm->group->gpid);
-    for(ii=0;ii<comm->group->size;ii++)
-        printf("%d ", comm->group->gpid_array[ii]);
-    printf("\n");
-    printf("MPI_Comm_split %d: newgroup: size:%d gpid:%d gpid_array:",
+
+#if DEBUG_MPI
+    PRINTF("MPI_Comm_split %d: newgroup: size:%d gpid:%d gpid_array={",
            gpid, newgroup->size, newgroup->gpid);
+    int ii;
     for(ii=0;ii<newgroup->size;ii++)
-        printf("%d ", newgroup->gpid_array[ii]);
-    printf("\n");
+        PRINTF("%d ", newgroup->gpid_array[ii]);
+    PRINTF("}\n");
 #endif
-#endif
+
     MPI_Comm_create(comm, newgroup, newcomm);
 }
+
 
 // TODO maybe: in real MPI, the Comm is not freed until all references
 // to it are removed. We do not do reference counting in MPI-Lite.

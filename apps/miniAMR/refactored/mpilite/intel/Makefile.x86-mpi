@@ -43,7 +43,13 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # Must use blocking sends, otherwise hangs because all the ranks to Irecs, then Isends,
 # and then they all wait on the Irecs; and in mpilite none of the Isends has been done,
 # so HANG. (Gets part way through with mpilite aggressive "-a" mode)
-WORKLOAD_ARGS ?=  -r 3 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+
+#this works
+#WORKLOAD_ARGS ?=  -r 3 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+
+WORKLOAD_ARGS ?=  -r 9 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 1 --npz 1 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
+
+#WORKLOAD_ARGS ?=  -r 27 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 3  --npy 3 --npz 3 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
 
 #WORKLOAD_ARGS ?= -r 1 -t 50 --blocking_send --num_refine 3 --max_blocks 5000 --npx 1  --npy 1 --npz 1 --init_x 3 --init_y 3 --init_z 3 --nx 6 --ny 6 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 4
 
@@ -82,7 +88,8 @@ OBJS: $(ROSE_TARGET)
 # TG_ARCH is also defined for Fsim
 
 CC = mpicc
-CFLAGS = -g -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+#CFLAGS = -g -std=c99 -DONE_COMM -DMPI_INTEGER=MPI_INT
+CFLAGS = -g -std=c99 -DMPI_INTEGER=MPI_INT
 
 ifeq ($(OCRRUN_ITAC), yes)
 CC=mpiicc
@@ -184,5 +191,5 @@ rose: $(ROSE_TOOL) create_dir $(ROSE_TARGET)
 postrun: ;
 
 # Include common part
-include $(APPS_ROOT)/makefiles/make-ocrrun.inc
+include $(APPS_ROOT)/makefiles/make-inc.inc
 
