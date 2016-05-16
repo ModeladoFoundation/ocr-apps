@@ -63,6 +63,7 @@ NEWLIB   = $(NEWLIB_INSTALL)/lib/libc.a
 # common cflags
 #
 CFLAGS = -Os -mstackrealign -fno-stack-protector -I$(NEWLIB_SRCDIR)/newlib/libc/include $(DEFINES)
+CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
 
 #
 # XE Clang/llvm build
@@ -108,7 +109,6 @@ ifeq ($(ARCH), x86)
   TARGET = x86_64-linux-elf
 endif
 
-CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
 #
 # Environment variables for newlib configure
 #
