@@ -1718,6 +1718,7 @@ inline void Registers_arm::setVectorRegister(int, v128) {
   _LIBUNWIND_ABORT("ARM vector support not implemented");
 }
 
+#if defined(__XSTG__)
 //
 // XSTG Register support
 //
@@ -1766,6 +1767,8 @@ static uint64_t tg_addr_mask( uint64_t base )
 
     return mask;
 }
+
+#endif // __XSTG__
 
 //
 /// Registers_xstg  holds the register state of an XE CPU
@@ -1828,6 +1831,7 @@ inline bool Registers_xstg::validRegister(int regNum) const {
   return regNum >=0 && regNum < 512;
 }
 
+#if defined(__XSTG__)
 uint64_t Registers_xstg::getRegister(int regNum) const {
   if (regNum == UNW_REG_IP) {
     uint64_t text_base = (uint64_t) & _ftext;
@@ -1859,6 +1863,7 @@ uint64_t Registers_xstg::getRegister(int regNum) const {
 
   _LIBUNWIND_ABORT("unsupported xstg register");
 }
+#endif //__XSTG__
 
 inline void Registers_xstg::setRegister(int regNum, uint64_t value) {
   if (regNum == UNW_REG_IP)
