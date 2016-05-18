@@ -1746,7 +1746,7 @@ inline void Registers_arm::setVectorRegister(int, v128) {
  If we assume the convention of the .text section ALWAYS being at the start
  of the text segment, then we can use the _ftext symbol to derive the RAR.
  */
-static uint64_t tg_addr_mask( uint64_t base )
+static uint64_t __attribute__((unused)) tg_addr_mask( uint64_t base )
 {
     uint64_t mask = 0;
 
@@ -1834,17 +1834,16 @@ inline bool Registers_xstg::validRegister(int regNum) const {
 #if defined(__XSTG__)
 uint64_t Registers_xstg::getRegister(int regNum) const {
   if (regNum == UNW_REG_IP) {
-    uint64_t text_base = (uint64_t) & _ftext;
-    uint64_t mask = tg_addr_mask( text_base );
 #if __PIE__
     //
-    // for PIE 'text_base' is our text RAR value and may be in MR or a
-    // more relative form. The PC is always MR. So the offset into the text
-    // segment is the PC - RAR masked by the memory region mask.
+    // For PIE we can just return the PC since almost all the eh_frame
+    // record values are text relative encoded. Only the personality
+    // fn isn't and it is explicitly dealt with when referenced.
     //
-    // return (_registers.__pc - text_base) & mask;
     return _registers.__pc;
 #else   // not PIE
+    uint64_t text_base = (uint64_t) & _ftext;
+    uint64_t mask = tg_addr_mask( text_base );
     //
     // For just static linked executables the 'text_base' could be in any
     // number of relative forms, but the PC is always MR. So we need to

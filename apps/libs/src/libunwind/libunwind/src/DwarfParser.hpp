@@ -25,6 +25,14 @@
 
 #include "AddressSpace.hpp"
 
+#if defined(__PIE__) && defined(__XSTG__)
+        //
+        // In XSTG PIE we need to add in the run-time text start
+        //
+        extern uint64_t _ftext;
+
+#endif // PIE && XSTG
+
 namespace libunwind {
 
 /// CFI_Parser does basic parsing of a CFI (Call Frame Information) records.
@@ -322,6 +330,13 @@ const char *CFI_Parser<A>::parseCIE(A &addressSpace, pint_t cie,
         cieInfo->personalityOffsetInCIE = (uint8_t)(p - cie);
         cieInfo->personality = addressSpace
             .getEncodedP(p, cieContentEnd, cieInfo->personalityEncoding);
+#if defined(__PIE__) && defined(__XSTG__)
+        //
+        // In XSTG PIE this will be text segment based and from 0
+        // we need to add in the run-time text start
+        //
+        cieInfo->personality += (pint_t) &_ftext;
+#endif // PIE && XSTG
         break;
       case 'L':
         cieInfo->lsdaEncoding = addressSpace.get8(p);
