@@ -42,6 +42,12 @@ ifeq ($(OCRRUN_ITAC), yes)
   CFLAGS += -fno-omit-frame-pointer
 endif
 
+ifeq ($(OCR_ASAN), yes)
+  ASAN_FLAGS := -g -fsanitize=address -fno-omit-frame-pointer
+  CFLAGS += $(ASAN_FLAGS)
+  LDFLAGS += $(ASAN_FLAGS) $(LDFLAGS)
+endif
+
 # Number of threads in the auto-generated configuration file
 CONFIG_NUM_THREADS    ?= 4
 # Communication layer for the auto-gnerated configuration file
