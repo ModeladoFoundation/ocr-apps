@@ -28,7 +28,7 @@ RANLIB := ranlib
 # 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
 OPT_FLAGS := -O3
 INC_FLAGS := -I.. -I$(OCR_ROOT)/inc -I$(APPS_LIBS_INSTALL)/include
-CFLAGS := -std=c99 -g
+CFLAGS := -g
 CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
 CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
 CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT

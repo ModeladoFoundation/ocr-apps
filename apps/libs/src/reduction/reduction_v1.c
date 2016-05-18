@@ -72,15 +72,15 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
         rem_lowerLevel = leaves_lowerLevel&(ARITY-1);
 
         int inode_lowerLevel = 0;
-
-        for( int inode=0; inode < nodes; inode++ )
+	int inode=0;
+        for(; inode < nodes; inode++ )
         {
             ocrGuid_t EDT_node = PTR_reductionTreeHs[inode*nodeGap]; //Already created before
 
             //Create leaf EDTs and set up dependencies for the pre-existing node EDT
             int nleaves_node = ( inode != nodes-1 ) ? (ARITY) : ( (rem==0) ? ARITY : rem ); //Only the last node's reduction EDT will have "reminder" deps
-
-            for( int ileaf = 0; ileaf < nleaves_node; ileaf++, inode_lowerLevel++ )
+	    int ileaf=0;
+            for(; ileaf < nleaves_node; ileaf++, inode_lowerLevel++ )
             {
                 int ndep_leaf = ( inode_lowerLevel != nodes_lowerLevel-1 ) ? (ARITY) : ( (rem_lowerLevel==0) ? ARITY : rem_lowerLevel );
                 //Only the last leaf reduction EDT participating in the last "node" reduction EDT will have "reminder" deps
@@ -105,15 +105,15 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
 
     getNodesAtDepth( idepth, maxleaves, &leaves, &nodes );
     rem = leaves&(ARITY-1);
-
-    for( int inode=0; inode < nodes; inode++ )
+    int inode=0;
+    for(; inode < nodes; inode++ )
     {
         ocrGuid_t EDT_node = PTR_reductionTreeHs[inode*nodeGap];//Already created before
 
         //Create child EDTs and set up dependencies for the pre-existing node
         int nleaves_node = ( inode != nodes-1 ) ? (ARITY) : ( (rem==0) ? ARITY : rem ); //Only the last node reduction EDT will have "reminder" deps
-
-        for( int ileaf = 0; ileaf < nleaves_node; ileaf++ )
+	int ileaf=0;
+        for(; ileaf < nleaves_node; ileaf++ )
         {
             ocrGuid_t event = PTR_EVT_inputs[inode*nodeGap+ileaf*leafGap];
             ocrAddDependence( event, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
@@ -177,8 +177,8 @@ int getMaxDepth( int maxleaves )
 void getNodesAtDepth( int querydepth, int maxleaves, int* leaves, int* nodes )
 {
     *nodes = maxleaves;
-
-    for( int idepth = 1; idepth <= querydepth; idepth++ )
+    int idepth = 1;
+    for(; idepth <= querydepth; idepth++ )
     {
         *leaves = *nodes;
         *nodes = *leaves/ARITY + ( *leaves&(ARITY-1) ? 1 : 0 );
