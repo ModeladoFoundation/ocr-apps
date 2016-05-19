@@ -293,30 +293,30 @@ void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_pr
 {
     s64 nx, ny, nz;
 
-    nx = (int) pow(Num_procs+1,0.33);
-    for(; nx>0; nx--)
+    nz = (int) pow(Num_procs+1,0.33);
+    for(; nz>0; nz--)
     {
-        if (!(Num_procs%nx))
+        if (!(Num_procs%nz))
         {
-            ny = Num_procs/nx;
+            ny = Num_procs/nz;
             break;
         }
     }
-    *Num_procsx = nx;
+    *Num_procsz = nz;
 
-    Num_procs = Num_procs/nx;
+    Num_procs = Num_procs/nz;
 
     ny = (int) sqrt(Num_procs+1);
     for(; ny>0; ny--)
     {
-        if (!(Num_procs%nx))
+        if (!(Num_procs%nz))
         {
-            nz = Num_procs/ny;
+            nx = Num_procs/ny;
             break;
         }
     }
 
     *Num_procsy = ny;
 
-    *Num_procsz = Num_procs/(*Num_procsy);
+    *Num_procsx = Num_procs/(*Num_procsy);
 }

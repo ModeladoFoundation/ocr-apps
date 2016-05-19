@@ -250,21 +250,20 @@ static inline int globalRankFromCoords( int id_x, int id_y, int id_z, int NR_X, 
 
 static inline int getPoliyDomainID( int b, u32* grid, int PD_X, int PD_Y, int PD_Z )
 {
-    int id_x = (b/grid[0])/grid[1];
+    int id_x = (b/grid[2])/grid[1];
+    int id_y = (b/grid[2])%grid[1];
+    int id_z = b%grid[2];
+
     s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
-
-    int id_y = (b/grid[0])%grid[1];
     s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
-
-    int id_z = b%grid[0];
     s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
 
     //Each linkcell, with id=b, is mapped to a PD. The mapping is similar to how the link cells map to
     //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
     //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
     //
-    int pd = globalRankFromCoords(pd_z, pd_y, pd_x, PD_X, PD_Y, PD_Z);
-    //PRINTF("box %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    int pd = globalRankFromCoords(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
+    //PRINTF("%d box %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
 
     return pd;
 }
