@@ -99,7 +99,7 @@ debug: default
 
 default: all
 
-all: setup $(ARCH)
+all: $(ARCH)
 	@echo Done making all
 
 tg-xe-pie :
@@ -115,7 +115,7 @@ tg-xe : tg-xe-static tg-xe-pie
 $(X86ARCHES) : install
 
 # Always try to build these when we get here
-.PHONY: $(LIB) showvars setup clean
+.PHONY: $(LIB) showvars clean
 
 showvars:
 	@echo SRCS = $(SRCS)
@@ -123,9 +123,6 @@ showvars:
 	@echo BUILD_DIR = $(BUILD_DIR)
 	@echo SRCDIR = $(SRCDIR)
 	@echo LIB = $(LIB)
-
-setup:
-	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
 
 $(LIB): $(BUILD_DIR) $(OBJS)
 	@$(RM) -f $@
@@ -143,9 +140,8 @@ $(BUILD_DIR)/%.o : $(SRCDIR)/%.S
 	@$(AS) $< -o $@
 
 .PHONY: install
-install: setup $(LIB)
+install: $(LIB)
 	@echo Installing $(LIB) to $(APPS_LIBS_INSTALL) ...
-	@mkdir -p $(APPS_LIBS_INSTALL)
 	@if [ -z $(PIE) ] ; then \
 	   cp -u -R $(LIB) $(APPS_LIBS_INSTALL)/lib ; \
 	 else \

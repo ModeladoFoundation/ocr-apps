@@ -136,7 +136,10 @@ all: $(ARCH)
 tg-xe-pie:
 	$(MAKE) PIE=1 install
 
-tg-xe-static:
+# This really doesn't have a dependency on building pie first. The
+# dependency was added just in case you run it with -j so that only
+# one is being built at a time.
+tg-xe-static: tg-xe-pie
 	$(MAKE) install
 
 tg-xe: show_args tg-xe-pie tg-xe-static
@@ -155,9 +158,10 @@ install: build
 
 build: config
 	@echo "Building $(LIB)"
-	@make -C $(BUILD_DIR)
+	@$(MAKE) -C $(BUILD_DIR)
 
-config : clean
+config:
+	@mkdir -p $(BUILD_DIR)
 	@(cd $(BUILD_DIR) ; cmake $(CMAKE_ARGS) $(LIBCXX_SRC) )
 
 show_args:
@@ -169,8 +173,14 @@ show_args:
 #
 # Create a new build dir
 #
-clean :
+clean: $(ARCH)-clean
+
+x86-test-clean x86-clean:
 	@rm -rf $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)
+
+
+tg-xe-clean:
+	@rm -rf $(BUILD_PREF)$(ARCH)*
+
 
 .PHONY: config clean build

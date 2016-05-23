@@ -38,12 +38,12 @@ libunwind: newlib libcxx libcxxabi
 	$(MAKE) -C libunwind
 	$(MAKE) -C libunwind install
 
-ocrscaffold: newlib
-	$(MAKE) -C ocrscaffold
-	$(MAKE) -C ocrscaffold install
-
 libswtest: newlib
 	$(MAKE) -C libswtest
 	$(MAKE) -C libswtest install
+
+ocrscaffold: newlib libswtest
+	$(MAKE) -C ocrscaffold
+	$(MAKE) -C ocrscaffold install
 
 .PHONY: all clean newlib libcxx libcxxabi libunwind ocrscaffold libswtest

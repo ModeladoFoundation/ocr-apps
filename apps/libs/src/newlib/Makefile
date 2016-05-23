@@ -211,7 +211,7 @@ newlib_install: $(NEWLIB)
 #
 root_install: newlib_install
 	@echo Installing Newlib to $(APPS_LIBS_INSTALL) ...
-	@mkdir -p $(APPS_LIBS_INSTALL)
+	@mkdir -p $(APPS_LIBS_INSTALL)/lib
 	@cp -u -R $(NEWLIB_INSTALL)/include $(APPS_LIBS_INSTALL)/
 	@if [ -z $(PIE) ] ; then \
 	   cp -u -R $(NEWLIB_INSTALL)/lib $(APPS_LIBS_INSTALL)/ ; \

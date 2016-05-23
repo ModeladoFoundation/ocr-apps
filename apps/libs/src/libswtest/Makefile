@@ -28,8 +28,8 @@ LIBS = $(LIB) $(LIB_P)
 
 LDSCRIPT = elf64_xstg.t
 
-BUILDDIR = build
-BUILDPDIR = build_p
+BUILDDIR = build-tg-xe-static
+BUILDPDIR = build-tg-xe-pie
 BUILDDIRS = $(BUILDDIR) $(BUILDPDIR)
 
 # INCLUDES = -isystem $(APPS_REPO)/apps/libs/tg/include
