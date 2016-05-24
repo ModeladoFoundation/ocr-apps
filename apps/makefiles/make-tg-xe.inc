@@ -191,7 +191,7 @@ endif
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
 
 postrun: run_internal
-postrun: WORKLOAD_OUTS := $(AT)`find -L $(WORKLOAD_LOGS)/* -name '*.app_output' -print`
+postrun: WORKLOAD_OUTS := `find -L $(WORKLOAD_LOGS)/* -name '*.app_output' -print`
 
 .PHONY: run
 run: postrun
