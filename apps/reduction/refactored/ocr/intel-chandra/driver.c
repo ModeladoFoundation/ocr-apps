@@ -22,6 +22,12 @@ typedef struct
     ocrGuid_t OET;
 } MyOcrTaskStruct_t;
 
+typedef struct
+{
+    u32 id;
+    ocrGuid_t EVT_reduction;
+} rankPartialSumCompute_t;
+
 ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
     ocrGuid_t FNC_rankPartialSumCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
@@ -44,7 +50,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t* PTR_reductionEventsH;
 
     ocrDbCreate( &DBK_reductionEventsH, (void **) &PTR_reductionEventsH, (N+1)*sizeof(ocrGuid_t),
-                 DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+                 DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
     ocrGuid_t TS_globalInit_OET, TS_globalCompute_OET, TS_globalFinalize_OET;
 
@@ -59,7 +65,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_globalInit.EDT, TS_globalInit.TML,
                   EDT_PARAM_DEF, &N, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, NULL_GUID, &TS_globalInit.OET );
+                  EDT_PROP_NONE, NULL_HINT, &TS_globalInit.OET );
 
     ocrAddDependence( TS_globalInit.OET, TS_globalInit_OET, 0, DB_MODE_NULL );
 
@@ -72,7 +78,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_globalCompute.EDT, TS_globalCompute.TML,
                   EDT_PARAM_DEF, &N, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, NULL_GUID, &TS_globalCompute.OET );
+                  EDT_PROP_FINISH, NULL_HINT, &TS_globalCompute.OET );
 
     ocrAddDependence( TS_globalCompute.OET, TS_globalCompute_OET, 0, DB_MODE_RO );
 
@@ -85,7 +91,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrEdtCreate( &TS_globalFinalize.EDT, TS_globalFinalize.TML,
                   EDT_PARAM_DEF, &N, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, NULL_GUID, NULL);
+                  EDT_PROP_FINISH, NULL_HINT, NULL);
 
     _idep = 0;
     ocrAddDependence( DBK_reductionEventsH, TS_globalFinalize.EDT, _idep++, DB_MODE_RW );
@@ -129,25 +135,26 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     u64 compute_paramv[2];
 
+    rankPartialSumCompute_t PRM_rankPartialSumCompute_t;
     MyOcrTaskStruct_t TS_rankPartialSumCompute;
-    _paramc = 2; _depc = 1;
+    _paramc = sizeof(PRM_rankPartialSumCompute_t)/sizeof(u64); _depc = 1;
     TS_rankPartialSumCompute.FNC = FNC_rankPartialSumCompute;
     ocrEdtTemplateCreate( &TS_rankPartialSumCompute.TML, TS_rankPartialSumCompute.FNC, _paramc, _depc );
 
     //PRINTF("Timestep# %d NR = %d\n", itimestep, NR);
     for( u64 I = 0; I < N; I++ )
     {
-        compute_paramv[0] = (u64) I;
-        compute_paramv[1] = (u64) PTR_reductionEventsH[I];
+        PRM_rankPartialSumCompute_t.id = I;
+        PRM_rankPartialSumCompute_t.EVT_reduction = PTR_reductionEventsH[I];
 
         double* PTR_reduction_in;
         ocrGuid_t DBK_reduction_in;
         ocrDbCreate( &DBK_reduction_in, (void **) &PTR_reduction_in, (1)*sizeof(double),
-                     DB_PROP_NONE, NULL_GUID, NO_ALLOC );
+                     DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
         ocrEdtCreate( &TS_rankPartialSumCompute.EDT, TS_rankPartialSumCompute.TML,
-                      EDT_PARAM_DEF, compute_paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, NULL_GUID, NULL );
+                      EDT_PARAM_DEF, (u64*)&PRM_rankPartialSumCompute_t, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, NULL_HINT, NULL );
 
         _idep = 0;
         ocrAddDependence( DBK_reduction_in, TS_rankPartialSumCompute.EDT, _idep++, DB_MODE_RW );
@@ -163,8 +170,10 @@ ocrGuid_t FNC_rankPartialSumCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep
 
     _idep = 0;
 
-    u64 I = paramv[0];
-    ocrGuid_t EVT_reduction_in = (ocrGuid_t) paramv[1];
+    rankPartialSumCompute_t* PTR_PRM_rankPartialSumCompute_t = (rankPartialSumCompute_t*) paramv;
+
+    u64 I = PTR_PRM_rankPartialSumCompute_t->id;
+    ocrGuid_t EVT_reduction_in = PTR_PRM_rankPartialSumCompute_t->EVT_reduction;
 
     ocrGuid_t DBK_reduction_in = depv[0].guid;
     double* PTR_reduction_in = depv[0].ptr;

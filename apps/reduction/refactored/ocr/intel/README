@@ -16,7 +16,7 @@ driver.c : a sample driver which exercises double precision addition
 
 
 Any driver code for the library must:
-   create and initialize a reductionPrivate datablock (defined in reduction1.h)
+   create and initialize a reductionPrivate datablock (defined in reduction.h)
 
 However before calling reductionLaunch the user must
   1. create a reductionPrivate datablock for each participating rank
@@ -26,28 +26,28 @@ However before calling reductionLaunch the user must
       myrank: my number
       ndata: number of elements to be reduced
       new: set to TRUE for the first call
-      reductionOperator: choose which reduction to do (choices in reduction1.h)
+      reductionOperator: choose which reduction to do (choices in reduction.h)
       rangeGUID: a set of at least nrank-1 labeled STICKY event GUIDs
-      returnEVT: a ONCE event (presumably labeled) that rank 0 will use
-         to return the reduced data to the clones
+      returnEVT: an event that each rank will use
+         to return the reduced data to the clones.
+         Can be reused if made a channel event.
    4. make the clone depend on the returnEVT
 
-After the first call to reductionLaunch, subsequent reductions only require changing the
-returnEVT (which should alternate between 2 labeled ONCE guids)
+It is good hygiene to destroy the datablock that is returned with the answer (will be different on each rank)
+
+After the first call to reductionLaunch, subsequent reductions only require a valid return event
 
 
 Now the reduction library can be called by the nrank compute EDTs using one call:
 
 
 Compute the local contribution to be reduced in a datablock
-**RELEASE THE DATA BLOCK***
-to make your changes visible and then call
 
-void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID, ocrGuid_t mydataGUID);
+void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID, void *mydataPTR);
 
 rpPTR is the pointer to my reductionPrivate datablock
 reductionPrivateGUID is the guid of my reductionPrivate block
-mydataGUID is the guid of the datablock containing my contribution to the global reduction
+mydataPRT is a pointer to the data to be reduced (will be copied to a separate datablock)
 
 reductionLaunch returns after launching the global sum algorithm.  The calling Edt should terminate soon after
 and wait for the clone to wake up.
@@ -59,7 +59,7 @@ contribute to the global reduction before Node zero returns the result by satisf
 
 Reductions can be run as often as desired.
 
-The available operations are defined in the enum type reductionOperator_t in reduction1.h
+The available operations are defined in the enum type reductionOperator_t in reduction.h
 
 To add other operations requires three changes:
 

@@ -21,7 +21,7 @@ See README for more details
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 
-#define ARITY 7
+#define ARITY 10
 
 typedef enum {
     REDUCTION_F8_ADD,
@@ -56,7 +56,6 @@ typedef struct {
     u64 nrank;
     u64 myrank;
     u64 ndata;      //number of elements to be reduced
-    u64 phase;
 /*
 0 only used when new is true
 1 receiving from below
@@ -74,7 +73,6 @@ typedef struct {
     ocrGuid_t sendDownEVT[ARITY];
     ocrGuid_t recvDownEVT;
     ocrGuid_t returnEVT; //ONCE event to return the result, different for each rank
-    ocrGuid_t downDBK;
     ocrGuid_t reductionTML;    //initialized to NULL_GUID
     ocrHint_t myAffinity;
 } reductionPrivate_t;
@@ -83,6 +81,6 @@ typedef struct {
 
 u64 reductionsizeof(reductionOperator_t operator);
 
-void reductionLaunch(reductionPrivate_t * rbPTR, ocrGuid_t reductionPrivateGUID, ocrGuid_t mydataGUID);
+void reductionLaunch(reductionPrivate_t * rbPTR, ocrGuid_t reductionPrivateGUID, void * mydataPTR);
 
 ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]);

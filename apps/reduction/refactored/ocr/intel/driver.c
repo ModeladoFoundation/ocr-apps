@@ -143,7 +143,7 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
      }else{
 //copy
 
-        if(myrank == 0) {
+        if(myrank == 0 && timestep >= maxtimestep) {
             for(i=0;i<ndata;i++) PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
         }
         for(i=0;i<ndata;i++) {
@@ -164,26 +164,26 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
     if(privatePTR->timestep == privatePTR->maxtimestep) {
         reductionPrivatePTR->all = 0;
         if(myrank != 0) {
-            reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), DEPV(driver,myData,guid));
+            reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), DEPV(driver,myData,ptr));
             return NULL_GUID;
         }
     }
 
-//clone
+//create clone
     ocrEdtCreate(&driverEDT, privatePTR->driverTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &(privatePTR->myAffinityHNT), NULL);
-
-
 
     ocrDbRelease(DEPV(driver,private,guid));
     ocrAddDependence(DEPV(driver,private,guid),driverEDT, SLOT(driver,private), DB_MODE_RW);
     ocrAddDependence(DEPV(driver,reductionPrivate,guid),driverEDT, SLOT(driver,reductionPrivate), DB_MODE_RW);
-    ocrDbRelease(DEPV(driver,myData,guid));
-    ocrAddDependence(DEPV(driver,myData,guid),driverEDT, SLOT(driver,myData), DB_MODE_RW);
     ocrAddDependence(reductionPrivatePTR->returnEVT, driverEDT, SLOT(driver,returnData), DB_MODE_RO);
 
 //create and launch reduceEdt
 
-    reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), DEPV(driver,myData,guid));
+    reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), a);
+
+//finish clone
+    ocrDbRelease(DEPV(driver,myData,guid));
+    ocrAddDependence(DEPV(driver,myData,guid),driverEDT, SLOT(driver,myData), DB_MODE_RW);
 
 //PRINTF("C%d T%d return NULL_GUID \n", myrank, timestep);
     return NULL_GUID;
@@ -230,12 +230,13 @@ launch driverEDT
     reductionPrivatePTR->ndata = sharedPTR->ndata;
     reductionPrivatePTR->reductionOperator = REDUCTION_F8_ADD;
     reductionPrivatePTR->rangeGUID = sharedPTR->reductionRangeGUID;
-    reductionPrivatePTR->reductionTML = NULL_GUID;
     reductionPrivatePTR->new = 1;
     reductionPrivatePTR->all = 1;
 //printf("IR%d ndata %d \n", myrank, reductionPrivatePTR->ndata);
 //fflush(stdout);
-    ocrDbCreate(&(reductionPrivatePTR->downDBK), (void**) &dummy, reductionPrivatePTR->ndata*sizeof(double), 0, NULL_HINT, NO_ALLOC);
+    //ocrDbCreate(&(reductionPrivatePTR->downDBK), (void**) &dummy, reductionPrivatePTR->ndata*sizeof(double), 0, NULL_HINT, NO_ALLOC);
+
+//printf("D %d downDBK "GUIDF" \n", myrank, reductionPrivatePTR->downDBK);
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 2;
@@ -412,8 +413,6 @@ void bomb(char * s){
 ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
 mainEdt is executed first
-creates realmain as a FINISH EDT
-creates wrapup to depend on realmain
 creates shared block
 launches realmain
 */

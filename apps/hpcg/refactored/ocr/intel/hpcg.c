@@ -892,8 +892,8 @@ fflush(stdout);
     rhs = rhsbase+length-1;;
 
 
-    for(i=length;i>0;i--){
-        sum = rhsbase[i-1];
+    for(i=length-1;i>=0;i--){
+        sum = rhsbase[i];
 if(DEBUG > 1) PRINTF("SM%d i %d sum %f \n", myrank, i, sum);
         for(j=26;j>=0;j--){
 if(DEBUG > 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", myrank, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
@@ -1343,7 +1343,7 @@ fflush(stdout);
 
 //launch reduction
 
-        reductionLaunch(rpPTR, rpDBK, myDataDBK);
+        reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
         return NULL_GUID;
 
@@ -1364,7 +1364,7 @@ fflush(stdout);
             ocrDbRelease(DEPV(hpcg,myDataBlock,guid));
             rpPTR->all = 0;
 	    rpPTR->returnEVT = pbPTR->finalOnceEVT;
-            reductionLaunch(rpPTR, rpDBK, myDataDBK);
+            reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
              return NULL_GUID;
         }
@@ -1435,7 +1435,7 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", myrank, timestep, ph
 
 //launch reduction
 
-        reductionLaunch(rpPTR, rpDBK, myDataDBK);
+        reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
         return NULL_GUID;
 
@@ -1516,7 +1516,7 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f \n", myrank, timestep, phase, s
 
 //launch reduction
 
-        reductionLaunch(rpPTR, rpDBK, myDataDBK);
+        reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
@@ -1564,7 +1564,7 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %f \n", myrank, timestep, phase, s
 //launch reduction
 
         ocrDbRelease(myDataDBK);
-        reductionLaunch(rpPTR, rpDBK, myDataDBK);
+        reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
@@ -1679,7 +1679,6 @@ launch hpcgEDT
     rpPTR->new = 1;  //first time
     rpPTR->all = 1;  //go up and down (ALL_REDUCE)
     u64 dummy;
-    if(myrank == 0) ocrDbCreate(&(rpPTR->downDBK), (void**) &dummy, sizeof(double), 0, NULL_HINT, NO_ALLOC);
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 2;
