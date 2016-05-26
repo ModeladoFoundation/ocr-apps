@@ -9,9 +9,9 @@ APPS_ROOT               ?= ../../../..
 _INTERNAL_NO_CHECK_WORKLOAD := yes
 include $(APPS_ROOT)/makefiles/make-varcheck.inc
 
-SRCS := ../mpilite.c ../mpi_ocr.c ../mpi_ocr_messaging.c
-OBJS := mpilite.o mpi_ocr.o mpi_ocr_messaging.o
-INCLUDES := ../mpi.h ../mpi_ocr_messaging.h ../mpi_ocr.h
+SRCS := ../mpilite.c ../mpi_ocr.c ../mpi_ocr_messaging.c ../mpi_ocr_hashtable.c
+OBJS := mpilite.o mpi_ocr.o mpi_ocr_messaging.o mpi_ocr_hashtable.o
+INCLUDES := ../mpi.h ../mpi_ocr.h ../mpi_ocr_messaging.h ../mpi_ocr_hashtable.h
 LIB := libmpilite.a
 
 # installed files
@@ -28,7 +28,7 @@ RANLIB := ranlib
 # USER_FLAGS, for any special -D defines, like -DDEBUG_MPI=1
 USER_FLAGS ?=
 OPT_FLAGS := -O2
-INC_FLAGS := -I.. -I$(OCR_ROOT)/inc
+INC_FLAGS := -I.. -I$(OCR_INSTALL)/include
 CFLAGS := -std=c99 -g
 DEFINES := -DOCR_ENABLE_EDT_NAMING
 

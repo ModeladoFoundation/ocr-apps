@@ -71,11 +71,13 @@
 #include <sys/time.h>
 #include <mpi_ocr.h>  // must come before ocr.h, as it sets defines
 #include <ocr.h>
+#include <ocr-types.h>
 
 #include <extensions/ocr-legacy.h>
 #include <extensions/ocr-labeling.h>
 
 #include <mpi.h>  // get some decls and error codes
+
 
      // USE_CHANNEL can be changed when making mpilite by setting
      // USER_FLAGS='-DUSE_CHANNEL=0'
@@ -84,7 +86,7 @@
     // since it is needed for recv of MPI_ANY_{SOURCE,TAG}. Asking for
     // ocrChannelIsEmpty so we can decide if there is a message on a
     // particular channel to blockProgress on.
-    #define USE_CHANNEL 0
+#define USE_CHANNEL 0
 #endif
 
 
@@ -103,6 +105,7 @@ typedef struct
     eventPair_t, * eventPairP_t;
 
 #define MPI_INFO(s,w) {PRINTF("WARNING: %s, will return" #w "\n",(s));}
+#define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
 
 // HIDE all the debugging printfs if debug off
 #if !DEBUG_MPI
@@ -156,7 +159,7 @@ static int sendData(void *buf, int count, MPI_Datatype
                           DB_PROP_NONE, NULL_HINT, NO_ALLOC))
         {
             char msg[150];
-            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrDbCreate",
+            sprintf((char*)&msg, "sendData:rank:%d, error %d from ocrDbCreate",
                     source, err);
             ERROR(msg); // exits
         }
@@ -186,7 +189,7 @@ static int sendData(void *buf, int count, MPI_Datatype
     if (err = ocrEventSatisfy(messageEvent, DB))
         {
             char msg[150];
-            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrEventSatisfy",
+            sprintf((char*)&msg, "sendData:rank:%d, error %d from ocrEventSatisfy",
                     source, err);
             ERROR(msg); // exits
         }
@@ -204,25 +207,30 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
 {
     const ocrGuid_t messageEventRange = getMessageContext()->messageEventRange;
     ocrGuid_t messageEvent,   // eventually passed to sendData
-        labeledEvent;         // sticky event in the labeled map
+        labeledEvent,         // sticky event in the labeled map
+        channelEvent;         // cannot add dependency to a channel event
 
     rankContextP_t rankContext = getRankContext();
     const u32 numRanks = rankContext->numRanks;
     const u32 maxTag = rankContext->maxTag;
-
     s32 err;
-    if (err=ocrGuidFromIndex(&labeledEvent, messageEventRange, guidIndex(source, dest, tag)))
+    ocrGuid_t DB;
+    void *myPtr;
+    u64 dbSize;
+
+    u32 index = guidIndex(source, dest, tag);
+
+#if ! USE_CHANNEL
+
+    // Old style where message is put on the labeled sticky event
+
+    if (err=ocrGuidFromIndex(&labeledEvent, messageEventRange, index))
     {
         char msg[150];
         sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrGuidFromIndex",
                 source, err);
         ERROR(msg); // exits
     }
-
-#if ! USE_CHANNEL
-        // Old style where message is put on the labeled sticky event
-    PRINTF("mpiOcrSend: rank #%d: Sending to %d tag:%d on event guid %p\n",
-           source,  dest, tag, labeledEvent); fflush(stdout);
 
     // Block until it is "legal" to create or recreate an event using the
     // labeledEvent guid.
@@ -235,124 +243,157 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
         ERROR(msg); // exits
     }
 
+    PRINTF("mpiOcrSend: rank #%d: Sending to %d tag:%d on event guid %p\n",
+           source,  dest, tag, labeledEvent); fflush(stdout);
+
     // We've got a valid event, so use it for the send
     messageEvent = labeledEvent;
 
+    return sendData(buf, count, datatype, source, dest, tag, comm,
+                    totalSize, messageEvent);
+
 #else  // USE_CHANNEL
 
-    PRINTF("mpiOcrSend: rank #%d got labeled event guid %p\n", source, labeledEvent);
-    fflush(stdout);
+   // see if the labeled event is in the local hashtable.
+    ocrGuid_t * labeledEventPtr = (ocrGuid_t *)mpiHashtableGet(rankContext->labeledEventsCache,
+                                                 index);
+    if (labeledEventPtr == NULL){
+        labeledEvent = NULL_GUID;
+    }
+    else {
+        labeledEvent = *labeledEventPtr;
+    }
 
-    ocrGuid_t DB, channelEvent;
-    void *myPtr;
-    u64 dbSize;
-
-    // This event create checks if the labeled event has already been
-    // created. It will never be destroyed, so if it already exists, we
-    // don't have to create a channel or attach a DB to
-    // labeledEvent. (Unlike the case above)
-
-    if (err=ocrEventCreate(&labeledEvent, OCR_EVENT_STICKY_T,
-                           EVT_PROP_TAKES_ARG | GUID_PROP_CHECK | GUID_PROP_IS_LABELED))
+    if ( ! ocrGuidIsNull(labeledEvent))
     {
-        if (err != OCR_EGUIDEXISTS)
-                    {
-                        // Oops, something's wrong
-                        char msg[150];
-                        sprintf((char*)&msg, "mpiOcrSend: rank #%d error %d from STICKY ocrEventCreate(%p)",
-                                source, err, labeledEvent);
-                        ERROR(msg); // exits
-                    }
-                else
-                    {
-                        // OCR_EGUIDEXISTS, so not the first time for this labeled event,
-                        //  so the channel event also exists. Have
-                        // to extract the DB from labeled event
-                        // via blockProgress, and then extract the channelEvent
-                        // guid from the DB. Note, don't have to
-                        // wait for create in the blockProgress...
+        // Extract the DB from labeled event via BlockProgress
+        // and then extract the channelEvent GUID from the DB.
+        // Note, don't have to wait for create in the blockProgress...
 
-                        PRINTF("mpiOcrSend: rank #%d labeled event %p already exists\n",
-                               source, labeledEvent);
-                        fflush(stdout);
+        PRINTF("mpiOcrSend: rank #%d labeled event %p already exists\n",
+               source, labeledEvent);
+        fflush(stdout);
 
-                        if(err=ocrLegacyBlockProgress(labeledEvent, &DB, &myPtr, &dbSize,
-                                                      LEGACY_PROP_NONE))
-                            {
-                                char msg[150];
-                                sprintf((char*)&msg, "mpiOcrSend num:%d, error %d from ocrLegacyBlockProgress on labeled event(%p)",
-                                        source, err, labeledEvent);
-                                ERROR(msg); // exits
-                            }
+        if(err=ocrLegacyBlockProgress(labeledEvent, &DB, &myPtr, &dbSize,
+                                      LEGACY_PROP_NONE))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend num:%d, error %d from ocrLegacyBlockProgress on labeled event(%p)",
+                    source, err, labeledEvent);
+            ERROR(msg); // exits
+        }
 
-                        // DB has single element - the channel's Guid
-                        channelEvent = ((eventPairP_t) myPtr) -> channelEvent;
-                        ocrDbRelease(DB);
+        // DB has single element - the channel's Guid
+        channelEvent = ((eventPairP_t) myPtr) -> channelEvent;
+        ocrDbRelease(DB);
 
-                        PRINTF( "mpiOcrSend: rank #%d , got channel %p from ocrLegacyBlockProgress(%p)\n",
-                                source ,channelEvent, labeledEvent);
 
-                    }
-            }
+        PRINTF("mpiOcrSend: rank #%d, got channel %p from ocrLegacyBlockProgress(%p)\n",
+               source ,channelEvent, labeledEvent);
+        fflush(stdout);
 
-        else  // Not an error to create the labeled event
+    }
+
+    else   // labeledEvent == 0
+    {
+        // First time for this map index for labeled event, so
+        // set everything up.
+
+        if (err=ocrGuidFromIndex(&labeledEvent, messageEventRange, index))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend:rank:%d, error %d from ocrGuidFromIndex",
+                    source, err);
+            ERROR(msg); // exits
+        }
+
+        PRINTF("mpiOcrSend: rank #%d got labeled event guid %p\n", source, labeledEvent);
+        fflush(stdout);
+
+
+        // This event create checks if the labeled event has already been
+        // created. It will never be destroyed, so if it already exists, we
+        // don't have to create a channel or attach a DB to
+        // labeledEvent. (Unlike the case above)
+
+        if (err=ocrEventCreate(&labeledEvent, OCR_EVENT_STICKY_T,
+                               EVT_PROP_TAKES_ARG | GUID_PROP_CHECK | GUID_PROP_IS_LABELED))
+        {
+            if (err != OCR_EGUIDEXISTS)
             {
-                // First time for this map index for labeled event, so
-                // set everything up.
-                PRINTF("mpiOcrSend: rank #%d created labeled event %p\n",source, labeledEvent); fflush(stdout);
+                // Oops, something's wrong
+                char msg[150];
+                sprintf((char*)&msg, "mpiOcrSend: rank #%d error %d from STICKY ocrEventCreate(%p)",
+                        source, err, labeledEvent);
+                ERROR(msg); // exits
+            }
+        }
 
-                // Create the channel, put its Guid in a db, and attach to the labeled
-                // sticky event.
-                ocrEventParams_t channelParams = { .EVENT_CHANNEL =
-                                                   {
-                                                       .maxGen = 10 /* EVENT_CHANNEL_UNBOUNDED */,
-                                                       .nbSat =   1 ,
-                                                       .nbDeps =  1
-                                                   }};
+        PRINTF("mpiOcrSend: rank #%d created labeled event %p\n",source, labeledEvent);
+        fflush(stdout);
 
-                if (err=ocrEventCreateParams(&channelEvent, OCR_EVENT_CHANNEL_T, EVT_PROP_TAKES_ARG,
-                                             &channelParams))
-                    {
-                        char msg[150];
-                        sprintf((char*)&msg, "mpiOcrSend: rank #%d  error %d from CHANNEL ocrEventCreateParams()",
-                                source, err);
-                        ERROR(msg); // exits
-                    }
+        // Create the channel, put its Guid in a db, and attach to the labeled
+        // sticky event.
+        ocrEventParams_t channelParams = { .EVENT_CHANNEL =
+                                           {
+                                               .maxGen = 16 /* EVENT_CHANNEL_UNBOUNDED */,
+                                               .nbSat =   1 ,
+                                               .nbDeps =  1
+                                           }};
 
-                PRINTF("mpiOcrSend: rank #%d created channelEvent %p\n", source, channelEvent); fflush(stdout);
+        if (err=ocrEventCreateParams(&channelEvent, OCR_EVENT_CHANNEL_T, EVT_PROP_TAKES_ARG,
+                                     &channelParams))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend: rank #%d  error %d from CHANNEL ocrEventCreateParams()",
+                    source, err);
+            ERROR(msg); // exits
+        }
 
-                if (err = ocrDbCreate(&DB, (void **)&myPtr,  sizeof(ocrGuid_t),
-                                      DB_PROP_NONE, NULL_HINT, NO_ALLOC))
-                    {
-                        char msg[150];
-                        sprintf((char*)&msg, "mpiOcrSend: rank #%d  error %d from ocrDbCreate",
-                                source, err);
-                        ERROR(msg); // exits
-                    }
+        PRINTF("mpiOcrSend: rank #%d created channelEvent %p\n", source, channelEvent); fflush(stdout);
 
-                // eventPair in DB: fill in channelEvent, and NULL_GUID for localEvent
-                ((eventPairP_t) myPtr) -> channelEvent = channelEvent;
-                ((eventPairP_t) myPtr) -> localEvent = NULL_GUID;
-                ocrDbRelease(DB);
 
-                if (err = ocrEventSatisfy(labeledEvent, DB))
-                    {
-                        char msg[150];
-                        sprintf((char*)&msg, "mpiOcrSend: rank #%d error %d from ocr(labeled)EventSatisfy(%p)",
-                                source, err, labeledEvent);
-                        ERROR(msg); // exits
-                    }
-                PRINTF("mpiOcrSend: rank #%d satisfied labeled event %p with DB %p containing channel %p\n",
-                       source, labeledEvent, DB, channelEvent); fflush(stdout);
+        if (err = ocrDbCreate(&DB, (void **)&myPtr,  sizeof(ocrGuid_t),
+                              DB_PROP_NONE, NULL_HINT, NO_ALLOC))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend: rank #%d  error %d from ocrDbCreate",
+                    source, err);
+            ERROR(msg); // exits
+        }
 
-            }   // endif err=createLabeledEvent(labeledEvent)
+        // eventPair in DB: fill in channelEvent, and NULL_GUID for localEvent
+        ((eventPairP_t) myPtr) -> channelEvent = channelEvent;
+        ((eventPairP_t) myPtr) -> localEvent = NULL_GUID;
+        ocrDbRelease(DB);
 
-        messageEvent = channelEvent;
+        // only need to satisfy the event once. it will always return the same DB.
+        if (err = ocrEventSatisfy(labeledEvent, DB))
+        {
+            char msg[150];
+            sprintf((char*)&msg, "mpiOcrSend: rank #%d error %d from ocr(labeled)EventSatisfy(%p)",
+                    source, err, labeledEvent);
+            ERROR(msg); // exits
+        }
+        PRINTF("mpiOcrSend: rank #%d satisfied labeled event %p with DB %p containing channel %p\n",
+               source, labeledEvent, DB, channelEvent); fflush(stdout);
+
+
+        // place the labeled event in a local hashtable for later communication
+        ocrGuid_t * labeledEventPtr = malloc(sizeof(ocrGuid_t));
+        *labeledEventPtr = labeledEvent;
+        mpiHashtablePut(rankContext->labeledEventsCache, index,
+                        labeledEventPtr);
+
+    }   // endif err=createLabeledEvent(labeledEvent)
+
+    messageEvent = channelEvent;
+
+    return sendData(buf, count, datatype, source, dest, tag, comm,
+                    totalSize, messageEvent);
 
 #endif  // USE_CHANNEL
 
-        return sendData(buf, count, datatype, source, dest, tag, comm,
-                        totalSize, messageEvent);
 }
 
 /* Try to do a Send. If the event can't be created, return done=FALSE.
@@ -481,6 +522,11 @@ static int recvData(void *buf, int count, MPI_Datatype
     // isn't smaller than send size
     // ptr->header.datatype != datatype;
 
+    if (ptr->header.dest != dest)
+    {
+        printf("recvData: rank #%d: ptr->header.dest=%d, dest=%d.\n", dest, ptr->header.dest, dest);
+    }
+
     assert(ptr->header.source == source);
     assert(ptr->header.dest == dest);
     assert(ptr->header.tag == tag);
@@ -544,9 +590,66 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
     rankContextP_t rankContext = getRankContext();
     const u32 numRanks = rankContext->numRanks;
     const u32 maxTag = rankContext->maxTag;
+    u32 index = guidIndex(source, dest, tag);
 
     s32 err;
-    if (err=ocrGuidFromIndex(&labeledEvent, messageEventRange, guidIndex(source, dest, tag)))
+    ocrGuid_t DB;
+    void *myPtr;
+    u64 dbSize;
+
+#if ! USE_CHANNEL
+
+    // Old style where message is put on the labeled sticky event
+
+    if (err=ocrGuidFromIndex(&labeledEvent, messageEventRange, index))
+    {
+        char msg[150];
+        sprintf((char*)&msg, "mpiOcrRecv:rank:%d, error %d from ocrGuidFromIndex",
+                dest, err);
+        ERROR(msg); // exits
+    }
+
+    PRINTF("mpiOcrRecv: rank #%d: Recving from %d tag:%d on event guid %p\n",
+           dest, source, tag, labeledEvent);  fflush(stdout);
+
+    // Block until event is "legal" , and has been satisfied
+    if(err=ocrLegacyBlockProgress(labeledEvent, &DB, &myPtr, &dbSize,
+                                  LEGACY_PROP_WAIT_FOR_CREATE))
+    {
+        char msg[150];
+        sprintf((char*)&msg, "mpiOcrRecv:rank:%d, error %d from ocrLegacyBlockProgress(%p)",
+                dest, err, labeledEvent);
+        ERROR(msg); // exits
+    }
+
+    // Old style: we've got everything we need
+    PRINTF("mpiOcrRecv before recvData: rank #%d: Recved from %d tag:%d on event guid %p, DB %p, ptr %p\n"
+           "\tptr->{%lx,%lx,%lx,%lx}\n",
+           dest, source, tag, labeledEvent, DB, myPtr,
+           ((u64*)myPtr)[0],((u64*)myPtr)[1],((u64*)myPtr)[2],((u64*)myPtr)[3]);  fflush(stdout);
+
+    // Destroy labeledEvent so it can be reused by sender
+    ocrEventDestroy(labeledEvent);
+
+    return recvData(buf, count, datatype, source, dest, tag, comm,
+                   totalSize, status, DB, myPtr);
+
+#else  // USE_CHANNEL
+
+    // see if the labeled event is in the local hashtable.
+    ocrGuid_t * labeledEventPtr = (ocrGuid_t *)mpiHashtableGet(rankContext->labeledEventsCache,
+                                                             index);
+    if (labeledEventPtr == NULL){
+        labeledEvent = NULL_GUID;
+    }
+    else {
+        labeledEvent = *labeledEventPtr;
+    }
+
+
+    if ( ocrGuidIsNull(labeledEvent))
+    {
+        if (err=ocrGuidFromIndex(&labeledEvent, messageEventRange, index))
         {
             char msg[150];
             sprintf((char*)&msg, "mpiOcrRecv:rank:%d, error %d from ocrGuidFromIndex",
@@ -554,17 +657,19 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
             ERROR(msg); // exits
         }
 
+        ocrGuid_t * labeledEventPtr = malloc(sizeof(ocrGuid_t));
+        *labeledEventPtr = labeledEvent;
+        mpiHashtablePut(rankContext->labeledEventsCache, index,
+                      labeledEventPtr);
+    }
+
+
+
     PRINTF("mpiOcrRecv: rank #%d: Recving from %d tag:%d on event guid %p\n",
            dest, source, tag, labeledEvent);  fflush(stdout);
 
-    /* PRINTF("mpiOcrRecv: rank #%d: Recving on event guid %p\n",
-       source, labeledEvent); */
 
     // Block until event is "legal" , and has been satisfied
-    ocrGuid_t DB;
-    void *myPtr;
-    u64 dbSize;
-
     if(err=ocrLegacyBlockProgress(labeledEvent, &DB, &myPtr, &dbSize,
                                   LEGACY_PROP_WAIT_FOR_CREATE))
         {
@@ -574,24 +679,13 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
             ERROR(msg); // exits
         }
 
-#if ! USE_CHANNEL
-    // Old style: we've got everything we need
-    PRINTF("mpiOcrRecv before recvData: rank #%d: Recved from %d tag:%d on event guid %p, DB %p, ptr %p\n"
-           "\tptr->{%lx,%lx,%lx,%lx}\n",
-           dest, source, tag, labeledEvent, DB, myPtr,
-           ((u64*)myPtr)[0],((u64*)myPtr)[1],((u64*)myPtr)[2],((u64*)myPtr)[3]);  fflush(stdout);
-
-
-    // Destroy labeledEvent so it can be reused by sender
-    ocrEventDestroy(labeledEvent);
-
-#else  // USE_CHANNEL
     // DB has eventPair - extract the two fields. do the DBrelease in the IF below
     ocrGuid_t channelEvent = ((eventPairP_t) myPtr) -> channelEvent;
     ocrGuid_t localEvent = ((eventPairP_t) myPtr) -> localEvent;
 
     PRINTF( "mpiOcrRecv: rank #%d , got channel %p from ocrLegacyBlockProgress(%p)\n",
             dest ,channelEvent, labeledEvent);
+    fflush(stdout);
 
     // In order to use the channel, it first has to be added as a dependence
     // on something, that's what gets the next data block in the channel ready
@@ -660,12 +754,12 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
           ((u64*)myPtr)[0],((u64*)myPtr)[1],((u64*)myPtr)[2],((u64*)myPtr)[3]);  fflush(stdout);
 
    // Done with localEvent...
-   ocrEventDestroy(localEvent);
-
-#endif   // USE_CHANNEL
+   //ocrEventDestroy(localEvent);
 
    return recvData(buf, count, datatype, source, dest, tag, comm,
                    totalSize, status, DB, myPtr);
+#endif   // USE_CHANNEL
+
 }
 
 /* Try to do a Recv. If the event hasn't been created, return done=FALSE.

@@ -12,19 +12,6 @@
 extern "C" {
 #endif
 
-#include "mpi.h"
-
-/****************************************************/
-/* MPI_OCR                                          */
-/****************************************************/
-
-/**
- * @brief Abstracts the interface between MPI and OCR
- *
- * Until all legacy support is implemented in OCR, it will have to be
- * simulated here.
- */
-
 // mpi_ocr.h must be included before any ocr*.h files.
 
 // Turn on legacy capabilities of OCR.
@@ -40,6 +27,21 @@ extern "C" {
 #ifndef DESTROY_NEEDS_RELEASE
     #define DESTROY_NEEDS_RELEASE 1
 #endif
+
+#include <ocr-types.h>
+#include "mpi.h"
+#include "mpi_ocr_hashtable.h"
+
+/****************************************************/
+/* MPI_OCR                                          */
+/****************************************************/
+
+/**
+ * @brief Abstracts the interface between MPI and OCR
+ *
+ * Until all legacy support is implemented in OCR, it will have to be
+ * simulated here.
+ */
 
 // debugging for mpi_ocr{,_messaging}.c, mpilite.c
 #ifndef DEBUG_MPI
@@ -107,6 +109,7 @@ typedef struct rankContext_t
     u32 rank, numRanks, maxTag, mpiInitialized;
     bool aggressiveNB; // aggressive non-blocking implementation
     unsigned char sizeOf[17];  // sizeof each datatype
+    hashtable_t * labeledEventsCache;  // local hash table
 
     u32 maxComm,    // communicators range from 0..maxComm
         commArrayLen; // current length of the "communicators" array ( > maxComm)

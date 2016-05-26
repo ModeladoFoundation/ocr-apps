@@ -115,6 +115,7 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
                  sizeof(float), // MPI_FLOAT
                  sizeof(double), // MPI_DOUBLE
                  sizeof(double_int)}, // MPI_DOUBLE_INT
+      .labeledEventsCache = mpiNewHashtableModulo(rankEdtParamvP->numRanks),
       .maxComm = 1,
       .commArrayLen = 0,
       .communicators = NULL
