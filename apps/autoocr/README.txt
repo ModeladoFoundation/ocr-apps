@@ -1,3 +1,5 @@
+This directory structure contains examples for autoocr.
+
 Directory contents:
  keyword - source input for autoocr
  autoocr - generated output from autoocr
@@ -21,10 +23,19 @@ fib/Makefile
    run.fib.con - executes hero/build/fib.con
    fib.rag - compiles hero/fib.rag.c into hero/build/fib.rag
    run.fib.rag - executes hero/build/fib.rag
-   rib-contn - hero/fib-contn.c needs to be upgraded to OCR 1.1.0
+
+   fib-block - compiles hero/fib-block.c into hero/build/fib-block
+   run.fib-block - execites hero/build/fib-block
+                     (THIS EXAMPLE DOES NOT WORK - needs to be upgraded to OCR 1.1.0)
+
+   fib-contn - compiles hero/fib-contn.c into hero/build/fib-contn
+   run.fib-contn - executes hero/build/fib-contn
+                     (THIS EXAMPLE DOES NOT WORK - needs to be upgraded to OCR 1.1.0)
 
 qsort/Makefile
    qsort.con - compiles hero/qsort.con.c into hero/build/qsort.con
    run.qsort.con - executes hero/build/qsort.con
-   qsort - not supported, confusing to have a make qsort rule and a make raw rule
-   qsort_raw - also not supported for the same reason
+
+   qsort-block - compiles hero/qsort-block.c into hero/build/qsort-block ???
+   run.qsort-block - executes hero/build/qsort-block ???
+                     (THIS EXAMPLE DOES NOT WORK - needs to be upgraded to OCR 1.1.0)

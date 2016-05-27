@@ -4,10 +4,8 @@ include ../Makefile.common
 
 
 clean:
-	@cd autoocr && rm -f newton.c
-	@cd autoocr/build && rm -f newton
-	@cd hero/build && rm -f *
-	@cd raw/build && rm -f newton
+	@rm -rf autoocr
+	@rm -rf raw/build
 	@rm -f default.cfg
 
 ########
@@ -15,10 +13,11 @@ clean:
 ########
 raw:	raw/build/newton
 raw/build/newton: raw/newton.c
-	@gcc raw/newton.c -o raw/build/newton -lm
+	@mkdir -p raw/build
+	gcc raw/newton.c -o raw/build/newton -lm
 
 check_input_raw:
-	@[ "$(E)" != "" -a "$(B)" != "" ] || (make Usage TYPE=raw && exit 1);
+	@[ "$(E)" != "" -a "$(B)" != "" ] || ($(MAKE) Usage TYPE=raw && exit 1);
 
 Usage:
 	@echo ""
@@ -43,15 +42,18 @@ run.raw:	raw/build/newton check_input_raw
 ######## keyword / autoocr
 ########
 autoocr/newton.c:	keyword/newton.c
-	make run INPUT=$(CURDIR)/keyword/newton.c
+	@mkdir -p autoocr
+	$(MAKE) run INPUT=$(CURDIR)/keyword/newton.c
 	mv keyword/newton.ocr.c autoocr/newton.c
 
-ocr:	autoocr/newton.c
-	@gcc   -g -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/newton.c -o autoocr/build/newton -lm
+ocr:	autoocr/build/newton
+autoocr/build/newton: autoocr/newton.c
+	@mkdir -p autoocr/build
+	gcc   -g -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/newton.c -o autoocr/build/newton -lm
 
 
 check_input_ocr:
-	@[ "$(E)" != "" -a "$(B)" != "" ] || (make Usage TYPE=ocr && exit 1);
+	@[ "$(E)" != "" -a "$(B)" != "" ] || ($(MAKE) Usage TYPE=ocr && exit 1);
 
 run.ocr:	ocr check_input_ocr
 	@echo ""

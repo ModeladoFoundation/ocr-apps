@@ -42,10 +42,8 @@ all:	raw ocr
 uts:	all
 
 clean:
-	@cd autoocr && rm -f uts.c
-	@cd autoocr/build && rm -f uts
-	@cd raw/build && rm -f uts
-	@cd hero/build && rm -f *
+	@rm -rf autoocr
+	@rm -rf raw/build
 	@rm -f default.cfg
 
 ########
@@ -53,6 +51,7 @@ clean:
 ########
 raw:	raw/build/uts
 raw/build/uts:	$(RAW_INCS) $(RAW_SRCS) raw/$(RNG_INCS) raw/$(RNG_SRCS)
+	@mkdir -p raw/build
 	$(CC) $(UTS_CFLAGS) $(RNG_DEFS) -o raw/build/uts $+ $(LDFLAGS)
 
 run.raw:	raw
@@ -76,10 +75,13 @@ run_long_orig: uts_orig
 ######## keyword / autoocr
 ########
 $(OCR_SRCS):	keyword/uts.c
-	make run INPUT=$(CURDIR)/raw/uts.c
+	@mkdir -p autoocr
+	$(MAKE) run INPUT=$(CURDIR)/raw/uts.c
 	mv raw/uts.ocr.c autoocr/uts.c
 
-ocr:	$(INCS) $(OCR_SRCS) keyword/$(RNG_INCS) keyword/$(RNG_SRCS)
+ocr:	autoocr/build/uts
+autoocr/build/uts: $(INCS) $(OCR_SRCS) keyword/$(RNG_INCS) keyword/$(RNG_SRCS)
+	@mkdir -p autoocr/build
 	$(CC) -Ikeyword -o autoocr/build/uts $(OCR_CFLAGS) $(RNG_DEFS) $+ $(LDFLAGS)
 
 

@@ -1,27 +1,34 @@
 # top level Makefile for autoocr tests
+all: ocr raw
+
+ocr:
+	-cd fib && $(MAKE) ocr
+	-cd newton-raphson && $(MAKE) ocr
+	-cd qsort && $(MAKE) ocr
+	-cd uts && $(MAKE) ocr
+
+raw:
+	-cd fib && $(MAKE) raw
+	-cd newton-raphson && $(MAKE) raw
+	-cd qsort && $(MAKE) raw
+	-cd uts && $(MAKE) raw
+
 clean:
-	-cd fib && make clean
-	-cd newton-raphson && make clean
-	-cd qsort && make clean
-	-cd uts && make clean
-all:
-	-cd fib && make raw
-	-cd fib && make ocr
-	-cd newton-raphson && make raw
-	-cd newton-raphson && make ocr
-	-cd qsort && make raw
-	-cd qsort && make ocr
-	-cd uts && make raw
-	-cd uts && make ocr
+	-cd fib && $(MAKE) clean
+	-cd newton-raphson && $(MAKE) clean
+	-cd qsort && $(MAKE) clean
+	-cd uts && $(MAKE) clean
 
 run.ocr:
-	-cd fib && make run.ocr N=8
-	-cd newton-raphson && make run.ocr B=3 E=5
-	-cd qsort && make run.ocr
-	-cd uts && make run.ocr
+	-cd fib && $(MAKE) run.ocr N=8
+	-cd newton-raphson && $(MAKE) run.ocr B=3 E=5
+	-cd qsort && $(MAKE) run.ocr
+	-cd uts && $(MAKE) run.ocr
 
 run.raw:
-	-cd fib && make run.raw N=8
-	-cd newton-raphson && make run.raw B=3 E=5
-	-cd qsort && make run.raw
-	-cd uts && make run.raw
+	-cd fib && $(MAKE) run.raw N=8
+	-cd newton-raphson && $(MAKE) run.raw B=3 E=5
+	-cd qsort && $(MAKE) run.raw
+	-cd uts && $(MAKE) run.raw
+
+.PHONY: all clean ocr raw run.ocr run.raw
