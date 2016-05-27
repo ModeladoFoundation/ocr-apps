@@ -2,8 +2,15 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
+# If run as `make OCRSCAFFOLD=yes' then the examples will be compiled
+# against ocrscaffold instead of libocr.
+#
+# If compiled without OCRSCAFFOLD=yes then run like this:
+#
 # To run C example: ./chello -ocr:cfg ./test_config.cfg
 # To run C++ example: ./cxxhello -ocr:cfg ./test_config.cfg
+#
+# If compiled with OCRSCAFFOLD=yes then run directly without arguments.
 #
 ARCH=x86
 OCR_TYPE=x86-newlib
@@ -30,8 +37,12 @@ GLIBC_A = $(LIBPTHREAD) $(LIBGCC_EH) $(LIBC)
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
+ifeq ($(OCRSCAFFOLD),yes)
+OCR_LIB = $(LIBS)/libocrscaffold.a
+else
 OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/install/lib/
 OCR_LIB = $(OCR_LIB_PATH)/libocr_$(OCR_TYPE).a $(GLIBC_A)
+endif
 
 CAPP = chello
 CAPP_SRCS = chello.c
@@ -53,7 +64,7 @@ default: all
 $(CAPP) : $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
 	@echo "  - applib.o"
 	@$(LD) -r -static -o applib.o $(CAPP_OBJS) $(CAPP_LIBS)
-	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
+	@nm applib.o | grep -vE " U |main|__errno|_impure_ptr"  | sed 's/^.* . //' > s
 	@objcopy --localize-symbols=s applib.o
 	@echo "  - $@"
 	@$(CC) -static -o $@ applib.o $(PREMAIN_OBJ) $(OCR_LIB) -T elf64_x86_64.t
@@ -62,7 +73,7 @@ $(CAPP) : $(PREMAIN_OBJ) $(CAPP_OBJS) $(CAPP_LIBS)
 $(CXXAPP) : $(PREMAIN_OBJ) $(CXXAPP_OBJS) $(CXXAPP_LIBS)
 	@echo "  - applib.o"
 	@$(LD) -r -static -zmuldefs -o applib.o $(CXXAPP_OBJS) $(CXXAPP_LIBS)
-	@nm applib.o | grep -vE " U |main|__errno"  | sed 's/^.* . //' > s
+	@nm applib.o | grep -vE " U |main|__errno|_impure_ptr"  | sed 's/^.* . //' > s
 	@objcopy --localize-symbols=s applib.o
 	@echo "  - $@"
 	@$(CXX) -static -o $@ applib.o $(PREMAIN_OBJ) $(OCR_LIB) -Wl,--eh-frame-hdr -T elf64_x86_64.t
