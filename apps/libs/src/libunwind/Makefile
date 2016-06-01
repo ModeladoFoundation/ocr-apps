@@ -174,7 +174,7 @@ build: config
 
 config : show_args
 	@mkdir -p $(BUILD_DIR)
-	@(cd $(BUILD_DIR) ; cmake $(CMAKE_ARGS) $(LIBUNWIND_SRC) )
+	@(cd $(BUILD_DIR) ; rm -rf CMakeFiles ; cmake $(CMAKE_ARGS) $(LIBUNWIND_SRC) )
 
 show_args :
 	@echo TG_ROOT= $(TG_ROOT)
