@@ -1,7 +1,9 @@
 #ifndef _MISC_H_
 #define _MISC_H_
 
-#define BLOB_START (0x1F400000 + 0x3400) // Hardcoded, in IPM, to be fixed (bug #139)
+#include "xstg-map.h"
+
+#define BLOB_START (SR_IPM_BASE + 0x1F400000 + 0x3400) // Hardcoded, in IPM, to be fixed (bug #139)
 
 /* This is basically lifted from OCR, but for the apps */
 
