@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "dbElement.h"
-#include "mpi2mpilite.h"
+
 
 using namespace std;
 using namespace SageBuilder;
@@ -64,7 +64,7 @@ class visitorTraversal : public AstSimpleProcessing
     SgVariableSymbol* find_symbol_in_symbol_table(SgInitializedName* variableName);
     void findMainFn();
 
-
+    // the beginning of error checking.
     enum Status
     {
         E_NONE,
@@ -76,13 +76,27 @@ class visitorTraversal : public AstSimpleProcessing
 
 
     private:
+    // the list of global and static variables.
     Rose_STL_Container<DbElement *> _globalDeclList;
+
+    // the list of files that contain file static variables.
     Rose_STL_Container<FileElement *> _localFileList;
+
+    // the list of include files that contain file static variables.
     Rose_STL_Container<HeaderFileElement *> _headerFileList;
+
+    // list of files that contain global or static variables.
     Rose_STL_Container<SourceFile *> _fileList;
+
+    // the list of functions that contain references to globals or statics.
     Rose_STL_Container<FunctionElement *> _functionList;
+
+    // the list of tool generated variables (tgv).
     Rose_STL_Container<TgvElement *> _tgvList;
+
+    // the list of include files used by the application.
     Rose_STL_Container<IncElement *>_incList;
+
     SgScopeStatement* _globalScope;
     string _structName;
     SgClassDeclaration* _structDecl;
@@ -139,6 +153,9 @@ visitorTraversal::visitorTraversal(SgProject* project)
 }
 
 
+// There is no way to tell ROSE that there is a new application file.
+// Just use normal print statement to create this file.
+//
 void visitorTraversal::writeHeaderFile(SgProject* project)
 {
     FILE *fp=NULL;
@@ -156,7 +173,7 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
 
 
 
-    // Add include files.  At te moment, I am adding all of the includes files,
+    // Add include files.  At the moment, I am adding all of the includes files,
     // because i have not found a reliable way to determine which include files
     // are needed, and which ones are not.
     for (Rose_STL_Container<IncElement *>::iterator iter = _incList.begin();
@@ -171,7 +188,7 @@ void visitorTraversal::writeHeaderFile(SgProject* project)
     // struct __ffwd2_s {...};
     fprintf(fp, "struct %s\n{\n", _structName.c_str());
 
-
+    // add the list of globals, file statics and function statics.
     for (Rose_STL_Container<DbElement *>::iterator iter = _globalDeclList.begin();
          iter != _globalDeclList.end(); iter++)
     {
@@ -654,6 +671,7 @@ void visitorTraversal::errorCheck()
         ;
 }
 
+// the list of global and static variables.
 DbElement* visitorTraversal::onGlobalDeclList(SgVariableSymbol* sym)
 {
     SgInitializedName * iName = sym->get_declaration();
@@ -682,6 +700,7 @@ DbElement* visitorTraversal::onGlobalDeclList(SgVariableSymbol* sym)
 }
 
 
+// the list of files that contain file static variables.
 FileElement* visitorTraversal::onLocalFileList(string filename)
 {
     if(_localFileList.empty())
@@ -699,7 +718,7 @@ FileElement* visitorTraversal::onLocalFileList(string filename)
     return NULL;
 }
 
-
+// the list of include files that contain file static variables.
 HeaderFileElement* visitorTraversal::onHeaderFileList(string filename)
 {
     if(_headerFileList.empty())
@@ -718,6 +737,7 @@ HeaderFileElement* visitorTraversal::onHeaderFileList(string filename)
 }
 
 
+// list of files that contain global or static variables.
 SourceFile * visitorTraversal::onFileList(string pathname)
 {
     if(_fileList.empty())
@@ -736,6 +756,7 @@ SourceFile * visitorTraversal::onFileList(string pathname)
 }
 
 
+// the list of functions that contains references to global or static variables.
 FunctionElement* visitorTraversal::onFunctionList(SgFunctionDefinition * func)
 {
     if(_functionList.empty())
@@ -754,6 +775,7 @@ FunctionElement* visitorTraversal::onFunctionList(SgFunctionDefinition * func)
 }
 
 
+// the list of tool generated variables (tgv).
 TgvElement* visitorTraversal::onTgvList(string varName)
 {
     if(_tgvList.empty())
@@ -772,6 +794,7 @@ TgvElement* visitorTraversal::onTgvList(string varName)
 }
 
 
+// the list of include files used by the application.
 IncElement* visitorTraversal::onIncList(string nodeStr)
 {
     if(_incList.empty())
@@ -1079,6 +1102,7 @@ void visitorTraversal::visit(SgNode* node)
         findMainFn();
     }
 
+    // find the included files.
     if (isSgLocatedNode(node))    // preprocessing directives...
     {
         SgLocatedNode * locatedNode = isSgLocatedNode(node);
@@ -1248,6 +1272,9 @@ void visitorTraversal::visit(SgNode* node)
     } // isSgVarRefExp
 
 #ifdef __FFWD_DB_
+    // check that this application actually uses MPI.  It is not clear that this
+    // error checking is helpful.
+    //
     if (isSgFunctionCallExp(node) != NULL)
     {
         SgFunctionCallExp * callExp = isSgFunctionCallExp(node);

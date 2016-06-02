@@ -1,0 +1,415 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Globals2db Documentation</title>
+  </head>
+
+  <body>
+    <h1>Globals2db Documentation</h1>
+
+    <h2>Table of Contents</h2>
+    <ul>
+	<li><a href="#Information">Practical Information</a></li>
+	<li><a href="#Introduction">Introduction</a></li>
+	<li><a href="#Include">The Include File, rose_ffwd.h</a></li>
+	<li><a href="#Initialization">Create the OCR DB and Initialization</a></li>
+	<li><a href="#Context">DB Context in ELS</a></li>
+	<li><a href="#Update">Update the References to Globals and Statics</a></li>
+	<li><a href="#Source">Globals2db Source Code</a></li>
+	<li><a href="#DOT">DOT Generation</a></li>
+    </ul>
+
+
+    <h2><a name="Information">Practical Information</a></h2>
+
+    <p>	Globals2db source code resides in xstack/apps/hll/rose/tools/globals2db/src.
+	It can be built by going to this directory, and typing "make".  (Note that the ROSE environment must be set up by executing xstack/apps/apps/apps_env.bash.)</p>
+
+    <p>Globals2db tests reside in xstack/apps/hll/rose/tools/globals2db/tests.  Each test has its own directory, with its own makefile.  Each test can be built by going into its directory, and typing "make OCR_TYPE=x86".   Only x86 tests exist at this time. </p>
+
+	<p>Four applications use globals2db: CoMD, miniAMR, SNAP and XSBench.  CoMD is the best to use for testing purposes.  miniAMR is good, too, but it is fragile (with and without mpilite).  But all applications must be tested before checking in any change.</p>
+
+    <p>Documentation and downloads of ROSE can be found <a href="http://rosecompiler.org/">here</a>.
+Be aware that most of the documentation is out-of-date.  The best resource is the "projects" subdirectory.  Use "grep" to find other projects that are solving the same problem you are.   To discover what the proper APIs are,  use Google to find the doxygen pages.  Some of the functionality that is written out in the projects directory have now been wrapped in an official API.  For instance, there is now a "buildSizeOfOp(SgType *)".   In the projects directory, there is code that builds the "sizeof()" function call.  It is worth the time to check and see if an API exists.</p>
+
+    <p>A typical ROSE compilation produces many, many warnings.  This is a result of the optional call to AstTests::runAllTests(project).  If this was ever to become a product, I would disable this call.  There are two reasons for the stream of warnings.</p>
+    <ul>
+      <li>
+It is the policy of the ROSE development team to produce warnings for things that are not done in the expected way.   There is no documented "expected way" and the error message is generic, so you cannot determine how this issue should be fixed.  You cannot figure out the "expected way" by looking at their test programs, either.  When you run the test programs provided with the release, the test programs also results in warnings flying off the screen.    Gail spent some time trying to figure out what to do here before talking to people at LLNL, who advised her to abandon all hope of resolving this issue.  Now the output is redirected to a log file.</li>
+<li>
+The include file rose_ffwd.h is generated using printfs.  As of this writing, there is no way to tell ROSE about an additional include file that was not part of the original application.  Therefore, everything that is contained in the include file is not recognized.  This results in many warnings as well.</li>
+</ul>
+
+<p>	At this writing, on the foobar and nordic systems, we are using the version of ROSE that is used by Bamboo.  When Gail installed Bamboo, its version of ROSE was newer than the one she as originally using, so she just used that one.  But one could easily replace that with a newer version by installing the newer version in a globally accessible location, such as "/opt", and updating apps_env.bash.  Also, Jenkins needs to be alerted to the new location.</p>
+<br>
+
+    <h2><a name="Introduction">Introduction</a></h2>
+
+    <p>	The ROSE tool globals2db supports MPI-lite.  It finds all globals and file statics and function statics.  All globals must be placed in DBs so they can be passed to the long-lived EDT.   Also, when more than one rankEDT runs on a system, they are EDTs and not processes, so they share memory.  We do not want the rankEDTs to share globals with other rankEDTs.</p>
+
+    <p>	The basic steps are:
+<ol>
+		<li>Place the globals and statics in a structure with a new name.
+		<li>Create a new include file that contains the structure.
+		<li>Create an OCR Data Block.
+		<li>Initialize the globals and statics to their original value or zero.
+		<li>Update the references to the globals and statics to reflect their new location.
+		<li>Place the pointer to the OCR Data Block in ELS.
+</ol></p>
+
+	<p>Note that the original declarations remain, because they are needed in the initialization routines.</p>
+<br>
+
+    <h2><a name="Include">The include file, rose_ffwd.h</a></h2>
+
+	<p>globals2db generates an include file that contains the structure that contains the globals and statics.  This is the rose_ffwd.h generated for CoMD.</p>
+<pre>
+		#ifndef _ROSE_FFWD_H_
+		#define _ROSE_FFWD_H_
+
+		#include <stdlib.h>
+		#include <string.h>
+		#include <stdio.h>
+		#include <mpi.h>
+		#include <ocr.h>
+		#include "cmdLineParser.h"
+		#include <getopt.h>
+		#include "mytype.h"
+		#include "memUtils.h"
+		#include "decomposition.h"
+		#include <assert.h>
+		#include "parallel.h"
+		#include "haloExchange.h"
+		#include "CoMDTypes.h"
+		#include "linkCells.h"
+		#include "eam.h"
+		#include "performanceTimers.h"
+		#include <math.h>
+		#include "mycommand.h"
+		#include <sys/time.h>
+		#include <stdint.h>
+		#include <inttypes.h>
+		#include "yamlOutput.h"
+		#include "timestep.h"
+		#include <strings.h>
+		#include <unistd.h>
+		#include "ljForce.h"
+		#include "initAtoms.h"
+		#include "constants.h"
+		#include "random.h"
+		#include <time.h>
+		#include "CoMD_info.h"
+
+		struct __ffwd_s
+		{
+		    int _cmdLineParser_longest_;
+		    MyOption * _cmdLineParser_myargs_;
+		    int _cmdLineParser_myOptionAlloc_iBase_;
+		    char * _timerName_[numberOfTimers];
+		    Timers _performanceTimers_perfTimer_[numberOfTimers];
+		    TimerGlobal _performanceTimers_perfGlobal_;
+		    FILE * _yamlFile_;
+		    int _CoMD_printThings_iStepPrev_;
+		    int _CoMD_printThings_firstCall_;
+		    double _constants_kB_eV_;
+		    double _constants_amuToInternalMass_;
+		    double _constants_hartreeToEv_;
+		    double _constants_bohrToAngs_;
+		    int _parallel_myRank_;
+		    int _parallel_nRanks_;
+		    double _random_lcg61_convertToDouble_;
+		    char * _yamlOutput_CoMDVersion_;
+		    char * _yamlOutput_CoMDVariant_;
+		    int _cmdLineParser_myOptionAlloc_iBase__init;
+		    int _CoMD_printThings_iStepPrev__init;
+		    int _CoMD_printThings_firstCall__init;
+		    int _random_lcg61_convertToDouble__init;
+		};
+
+		typedef struct __ffwd_s __ffwd_t;
+
+		#ifdef __cplusplus
+		extern "C" {
+		#endif
+		int __mpiOcrMain(int argc,char **argv);
+		ocrGuid_t __ffwd_init(void **ffwd_addr_p);
+		extern u64 * __getGlobalDBAddr();
+		extern void __ocrCheckStatus(u8 status, char * functionName);
+		#ifdef __cplusplus
+		}
+
+		#endif
+
+		#endif
+</pre>
+
+    <p>The first thing you notice is that there are a lot of include files.  All files that are included in any source file is included in rose_ffwd.h  This ensures that all types used for globals and statics are defined in rose_ffwd.h.  [There is probably a way to determine where the type is defined, and only include that include file, but Gail never had the time to pursue this.]</p>
+
+    <p>	The second item is the "_ffwd_s" structure.  This is where all of the globals and statics are placed.  Each entry is given a new name.  This is to differentiate it from its original declaration (which remains in the source code).  It also differentiates it from other file or function statics that have the same name.  </p>
+
+    <p>	The naming convention for globals is to use the name of the global with underscores.</p>
+
+    <pre>	FILE *yamlFile = ((void *)0); -> FILE * _yamlFile_;</pre>
+
+    <p>	The naming convention for file statics is to prepend the name of the file to the name of the file static.</p>
+
+    <pre>	Static int longest = 1;  -> int _cmdLineParser_longest_;</pre>
+
+    <p>	The naming convention for the function statics is to prepend the name of the file and the name of the function to the name of the function static.</p>
+
+    <pre>	static int firstCall = 1; -> int _CoMD_printThings_firstCall_;</pre>
+
+    <p>	The function statics also require a guard variable to ensure that they are only initialized once.  Globals2db introduces a new guard variable for each function static.  Its name is the name of the variable that it is guarding, with "_init" appended.</p>
+
+    <pre>	    int _CoMD_printThings_firstCall__init;</pre>
+
+    <p>	This makes for very long names, particularly once you add the pointer to the structure.  The pointer to the structure is named "__ffwd_t".</p>
+
+    <p>	The last thing in file is the external declaration of new functions that are called.</p>
+
+    <pre>	int __mpiOcrMain(int argc,char **argv);
+	ocrGuid_t __ffwd_init(void **ffwd_addr_p);
+	extern u64 * __getGlobalDBAddr();
+	extern void __ocrCheckStatus(u8 status, char * functionName);</pre>
+
+<p>	__mpiOcrMain() is the application's "main()".  MPI-Lite renames this functions using "#define".<br>
+	__ffwd_init() is the top-level initialization file that is generated by globals2db.  <br>
+	__getGlobalDBAddr() returns a pointer to the DB address in ELS.<br>
+	__ocrCheckStatus() check the return values from OCR calls.<br.</p>
+<br>
+
+
+
+    <h2><a name="Initialization">Create the OCR DB & Initialization</a></h2>
+
+
+    <p>	All global and static variables are initialized.  If the application initialized the global or static to a value, globals2db initializes it to the same value.  If the application relied on the compiler to initialize the value to zero, globals2db initializes it to zero.</p>
+
+    <p>	The top-level initialization function is called __ffwd_init().  It is generated by globals2db.</p>
+
+    <pre>		ocrGuid_t __ffwd_init(void **ffwd_addr_p)
+		{
+		  ocrGuid_t ffwd_db_guid;
+		  __ffwd_t *ffwd_addr_ptr = 0L;
+		  short ffwd_status;
+
+		  ffwd_status = ocrDbCreate(&ffwd_db_guid, ((void **)(&ffwd_addr_ptr)),
+		       sizeof(__ffwd_t ), 0, 0, ((ocrInDbAllocator_t )0));
+
+		  __ocrCheckStatus(ffwd_status, ((char *)"ocrDbCreate"));
+
+		  ffwd_addr_ptr -> _cmdLineParser_myOptionAlloc_iBase__init = 0;
+		  ffwd_addr_ptr -> _CoMD_printThings_iStepPrev__init = 0;
+		  ffwd_addr_ptr -> _CoMD_printThings_firstCall__init = 0;
+		  ffwd_addr_ptr -> _random_lcg61_convertToDouble__init = 0;
+
+		  ffwd_cmdLineParser_init(ffwd_addr_ptr);
+		  ffwd_performanceTimers_init(ffwd_addr_ptr);
+		  ffwd_parallel_init(ffwd_addr_ptr);
+		  ffwd_yamlOutput_init(ffwd_addr_ptr);
+		  ffwd_yamlOutput_h_init(ffwd_addr_ptr);
+		  ffwd_constants_h_init(ffwd_addr_ptr);
+
+		   *ffwd_addr_p = ((void *)ffwd_addr_ptr);
+		  return ffwd_db_guid;
+		}
+</pre>
+
+    <p>	__ffwd_init() creates the global DB, and checks the status of the call.  It will report an error if this is unsuccessful.  It then initializes the guard values for the function statics to zero.  Next the file-specific initialization functions are called.  Each file that has a file static value must be initialized in that file, because if it is not zero, it will use the original variable name for initialization.</p>
+
+    <p>	__ffwd_init() returns two values.  The GUID of the global DB, and the pointer to the global structure.  The values will be stored in ELS so they can be obtained by the functions that access these globals and statics.</p>
+
+
+    <p>	The file specific initialization functions are named ffwd_<filename>_init().</p>
+
+    <pre>		void ffwd_cmdLineParser_init(__ffwd_t *__ffwd_p)
+		{
+		  __ffwd_p -> _cmdLineParser_longest_ = longest;
+		  __ffwd_p -> _cmdLineParser_myargs_ = myargs;
+		}
+</pre>
+
+    <p>	This init routine initializes the file static values to their original values. </p>
+
+    <p>	The function statics are initialized in the function where they are defined.  The guard variables is tested.  The function variable is only initialized the first time.</p>
+
+    <pre>	  if (__ffwd_p -> _CoMD_printThings_firstCall__init == 0) {
+	    __ffwd_p -> _CoMD_printThings_firstCall_ = firstCall;
+	    __ffwd_p -> _CoMD_printThings_firstCall__init = 1;
+	  }
+</pre>
+    <br>
+
+    <h2><a name="Context">DB Context in ELS</a></h2>
+
+
+    <p>	The function __ffwd_init() is called from the main() function in mpi_ocr.c.  When this function returns, the global DB has been created, and the pointer to the global structure in valid.  These two values are stored in a globalDBContext structure.  A pointer to this structure is stored in the ELS slot number 2 (the third slot).  </p>
+
+    <pre>
+            // globals2db support
+	    void * ffwd_addr_p=NULL;
+	    ocrGuid_t ffwd_db_guid = NULL_GUID;
+	    ffwd_db_guid = __ffwd_init(&ffwd_addr_p);
+
+	    globalDBContext_t globalDBContext =
+	        {
+	            .dbGuid = ffwd_db_guid,
+	            .addrPtr = ffwd_addr_p
+	        };
+	    ocrElsUserSet(GLOBAL_DB_SLOT, (ocrGuid_t)&globalDBContext);
+</pre>
+
+    <p>	When a function needs to access the global DB, it calls the function getGlobalDBAddr(), which accesses ELS, and gets the global DB address.  Each function that references a global or a file static needs to make this call.</p>
+
+    <pre>
+	  __ffwd_t *const __ffwd_p = (__ffwd_t *const )(__getGlobalDBAddr());
+	  MyOption *o = __ffwd_p -> _cmdLineParser_myargs_;
+
+</pre>
+
+<p>This function resides in mpi_ocr.c:</p>
+
+<pre>
+	u64 * __getGlobalDBAddr()
+	{
+	    globalDBContextP_t globalDBContext = (globalDBContextP_t)(ocrElsUserGet(GLOBAL_DB_SLOT));
+
+	    return globalDBContext->addrPtr;
+	}
+</pre>
+<br>
+
+    <h2><a name="Update">Update the References to Globals and Statics</a></h2>
+
+
+    <p>	All references to the global and static variables are updated to access the value in the OCR DB.</p>
+
+    <pre>		  if (!myargs)
+		    myargs = o;
+		   else {
+		    p = lastOption(myargs);
+		    p -> next = ((void *)o);
+		  }
+</pre>
+    <p>	Becomes</p>
+
+    <pre>		  if (!__ffwd_p -> _cmdLineParser_myargs_)
+		    __ffwd_p -> _cmdLineParser_myargs_ = o;
+		   else {
+		    p = lastOption(__ffwd_p -> _cmdLineParser_myargs_);
+		    p -> next = ((void *)o);
+		  }
+</pre>
+<br>
+
+    <h2><a name="Source">Globals2db Source Code</a></h2>
+
+
+    <p>	The globals2db source code can be found in xstack/apps/hll/rose/tools/globals2db/src.  The tests are in globals2db/tests/globals2db.  There is also a tool called globals2struct. This is a version of the tool that does not require MPI-Lite.   It is still compiled with globals2db (same source base), but Gail has not tested it in a while.</p>
+
+    <p>	At this writing, there files are contained in the "src' directory. </p>
+    <ul>
+      <li>globals2db.cpp - all VisitorTraversal functions and main.</li>
+      <li>DbElement.h - all classes and utility functions</li>
+      <li>Makefile</li>
+      <li>Mpi2mpilite.h - no longer needed</li>
+      <li>LICENSE</li>
+    </ul>
+
+    <p>	This is the main() routine in globals2db.cpp:</p>
+
+    <pre>		int main ( int argc, char* argv[] )
+		{
+		    SgProject* project = frontend(argc,argv);
+		    ROSE_ASSERT (project != NULL);
+
+		    // Build the traversal object
+		    visitorTraversal exampleTraversal(project);
+
+		    // Call the traversal function
+		    // (member function of AstSimpleProcessing)
+		    // starting at the project node of the AST,
+		    // using a preorder traversal.
+		    exampleTraversal.traverseInputFiles(project,preorder);
+
+		    // Check for issues.
+		    exampleTraversal.errorCheck();
+
+		    // Write the header file.
+		    exampleTraversal.writeHeaderFile(project);
+		    exampleTraversal.writeInitFunction(project);
+
+
+		    // run all tests
+		    AstTests::runAllTests(project);
+
+		    // Generate source code from AST
+		    int res = backend(project);
+
+		    return (res);
+		}
+</pre>
+    <p>[Note that if you remove the runAllTests() function, the stream of warnings will be not emitted.]</p>
+
+    <p>	VisitorTraversal() is a ROSE class provided to traverse the files in an application.  A ROSE project is created calling the function frontend().  This function creates the AST, which is accessed using SgProject.  The function backend() generates the annotated source code from the AST.</p>
+
+    <p>	The VisitorTraversal::traverseInputFiles() calls the functions below for each and every source file.</p>
+    <ul>
+      <li>atTraversalStart() initializes some variables.
+      <li>visit() visits each node in the AST.  This is where the global and static definitions are references are discovered.
+      <li>atTraversalEnd() inserts the additional lines of code into the AST.
+</ul>
+
+    <p>The writeHeaderFile() function creates the file rose_ffwd.h.  This is done with normal print statements.  At this writing, there is no way to create a new include file that ROSE has knowledge of.</p>
+
+    <p>	The writeInitFunction() function creates the ffwd_init() function using ROSE function calls.  </p>
+
+
+    <p>	The VisitorTraversal::visit() function visits each node in the AST.  By testing the kind of node it is, globals2db acts on only the nodes of interest.</p>
+    <ul>
+      <li>SgLocatedNode is the preprocessing directives.  It finds the #include statements, and save the string.
+      <li>SgVariableDeclaration is the variable declaration list.  This is a list!  You may recall that multiple variables can be declare with one type declaration.  If the variable is global or static, it puts the variable on the globalDeclList.    It adds the filename to the fileList.
+      <li>SgVarRefExp is the reference to the global variable.  The reference to the global is replaced by a reference to the structure in the data block.   The function name is added to the function list, so the call to getGlobalDBAddr() can be inserted.
+</ul>
+
+    <p>	The VisitorTraversal::atTraversalEnd() function is called at the end of processing each source file in the application.  For each function that references a global or static, the call to getGlobalDBAddr() is inserted at the top of the function.  This sets up the pointer __ffwd_p, which is used in all references in the function.  The globals and statics are initialized to their original value, or to zero.</p>
+
+
+<br>
+    <h2><a name="DOT">DOT generation</a></h2>
+
+
+    <p>	When adding new support to globals2db, or writing a new ROSE tool, it is helpful to use the DOT generator, which will generate a picture of the AST.   This quickly becomes unwieldy, so it is important to use a small test case which only exposes your area of interest.  Remove all includes files from your test case.  </p>
+
+    <p>	The version of ROSE that is built with Bamboo does not have the DOT generator tools.  You have to build your own version of ROSE to obtain this.  The tool is <build-area>/bin/dotGenerator.</p>
+
+    <pre>
+	% export PATH=$PATH:/&lt;ROSE installation path&gt;/bin
+	% export LD_LIBRARY_PATH=/etc/alternatives/jre_1.7.0_openjdk/lib/amd64/server:$LD_LIBRARY_PATH
+	% export ZGRV_HOME=/opt/ZGRViewer-0.8.2/zgrviewer
+	% export ZGRVIEW="java -jar $ZGRV_HOME/target/zgrviewer-0.8.2.jar"
+
+	% dotGenerator &lt;filename&gt;.c
+	% $(ZGRVIEW) -Pdot &lt;filename&gt;.c.dot &
+
+</pre>
+    <p>Ignore the compilation errors; this is because you have commented out the #include lines.</p>
+
+    <p>	This DAG will show you what the program looks like to ROSE.  This is extremely helpful.  You cannot guess.  You need to know.</p>
+
+    <p>	When adding ROSE calls to build a new statement, code up the statement in a C program, and then dump the DAG.  This will tell you what constructs you should be using to create your new statement.</p>
+
+
+<br>
+<i>
+	Developed at Lawrence Livermore National Laboratory (LLNL), ROSE is an open source compiler infrastructure to build source-to-source program transformation and analysis tools for large-scale C (C89 and C98), C++ (C++98 and C++11), UPC, Fortran (77/95/2003), OpenMP, Java, Python and PHP applications.
+</i>
+<br>
+    <hr>
+    <address><a href="mailto:gail.lyons@intel.com">Gail Lyons</a></address>
+<!-- Created: Wed Jun  1 10:40:48 PDT 2016 -->
+<!-- hhmts start -->
+Last modified: Wed Jun  1 14:00:50 PDT 2016
+<!-- hhmts end -->
+  </body>
+</html>
