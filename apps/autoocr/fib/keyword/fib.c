@@ -10,9 +10,7 @@
  */
 int __task fib(int n) {
     if(n > N) {
-        int n1 = fib(n-1);
-        int n2 = fib(n-2);
-        return (n1 +n2);
+        return (fib(n-1)+ fib(n-2));
     } else {
         return n;
     }

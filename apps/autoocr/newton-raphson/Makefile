@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export REL=../../../../ocr/ocr
-export TG=../../../../tg/tg
+include ../Makefile.common
 
 
 clean:
@@ -44,7 +43,7 @@ run.raw:	raw/build/newton check_input_raw
 ######## keyword / autoocr
 ########
 autoocr/newton.c:	keyword/newton.c
-	cd $(TG)/autoocr && make run INPUT=$(CURDIR)/keyword/newton.c
+	make run INPUT=$(CURDIR)/keyword/newton.c
 	mv keyword/newton.ocr.c autoocr/newton.c
 
 ocr:	autoocr/newton.c
@@ -54,7 +53,7 @@ ocr:	autoocr/newton.c
 check_input_ocr:
 	@[ "$(E)" != "" -a "$(B)" != "" ] || (make Usage TYPE=ocr && exit 1);
 
-run.ocr:	autoocr/build/newton check_input_ocr
+run.ocr:	ocr check_input_ocr
 	@echo ""
 	@echo ""
 	@echo "Running OCR Legacy newton with 64 threads, |threads| < |EDTs|"

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export REL=../../../../ocr/ocr
-export TG=../../../../tg/tg
+include ../Makefile.common
 
 
 clean:
@@ -9,7 +8,7 @@ clean:
 	@cd autoocr/build && rm -f qsort
 	@cd hero/build && rm -fr *
 	@cd raw/build && rm -f qsort
-	@rm default.cfg
+	@rm -f default.cfg
 
 
 ########
@@ -31,7 +30,7 @@ run.raw:	raw/build/qsort
 ######## keyword / autoocr
 ########
 autoocr/qsort.c:	keyword/qsort.c
-	cd $(TG)/autoocr && make run INPUT=$(CURDIR)/keyword/qsort.c
+	make run INPUT=$(CURDIR)/keyword/qsort.c
 	mv keyword/qsort.ocr.c autoocr/qsort.c
 
 ocr:	autoocr/qsort.c

@@ -1,7 +1,8 @@
 #!/bin/bash
 
-export REL=../../../../ocr/ocr
-export TG=../../../../tg/tg
+include ../Makefile.common
+#export REL=../../../../ocr/ocr
+#export TG=../../../../tg/tg
 
 
 clean:
@@ -34,7 +35,7 @@ run.raw:	raw/build/fib check_input
 ######## keyword / autoocr
 ########
 autoocr/fib.c:	keyword/fib.c
-	cd $(TG)/autoocr && make run INPUT=$(CURDIR)/keyword/fib.c
+	make run INPUT=$(CURDIR)/keyword/fib.c
 	mv keyword/fib.ocr.c autoocr/fib.c
 
 ocr:	autoocr/fib.c

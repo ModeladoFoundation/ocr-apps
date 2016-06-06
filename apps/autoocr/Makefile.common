@@ -1,0 +1,88 @@
+#
+# Makefile for autoocr
+# Targets:
+#    run INPUT=<filename> - runs clang w/the plugin and input src file <filename>
+#
+#  You can provide plugin args to 'run' via the ARGS var by adding
+#  ARGS=<arg> or ARGS="<arg> <arg>..." to the cmd line.
+#
+#  Understood args are:
+#		debug - enable debug prints
+#		dump  - dump the rewriten AST (just the functions)
+#		legacy  - use legacy (blocking ) OCR
+#		-o <fn>  - write translated code to file <fn>
+#		help  - print the meager plugin help
+#
+export REL=../../../../ocr/ocr
+export TG=../../../../tg
+
+ifeq ($(realpath $(TG)/ss/xe-llvm-3.5.0),)
+    CLANG_LIB_INC = $(LLVM_BUILD)/lib/clang/3.6.0/include
+    LLVM_SRC = $(TG)/tg/xe-llvm
+    LLVM_BUILD = $(TG)/tg/build/build.xe-llvm/build_llvm
+else
+    CLANG_LIB_INC = $(LLVM_BUILD)/lib/clang/3.5.0/include
+    LLVM_SRC = $(TG)/ss/xe-llvm-3.5.0
+    LLVM_BUILD = $(TG)/ss/bin/build.xe-llvm
+endif
+
+LLVM_INC = $(LLVM_SRC)/include
+LLVM_BUILD_INC = $(LLVM_BUILD)/include
+
+CLANG = $(LLVM_BUILD)/bin/clang
+CLANG-CHECK = $(LLVM_BUILD)/bin/clang-check
+CLANG_INC = $(LLVM_SRC)/tools/clang/include
+CLANG_BUILD_INC = $(LLVM_BUILD)/tools/clang/include
+#
+# All the source files that are part of the plugin
+#
+SRCS = autoocr.cpp output.cpp rewrite.cpp param_output.cpp output_legacy.cpp
+OBJS = $(SRCS:.cpp=.o)
+#
+# library names
+#
+LIB = autoocr.so
+PLUGIN_NAME = auto-ocr
+default: run
+
+#
+# targets for running
+#
+check_args:
+	@[ "$(INPUT)" != "" ] || (echo "No input defined!" && exit 1)
+#
+# Turn ARGS into the proper syntax for plugin args
+#
+PLUGIN_ARGS = $(patsubst %, -plugin-arg-auto-ocr %, $(ARGS))
+
+#
+# Run the plugin on input file INPUT
+#
+run: export LD_LIBRARY_PATH = $(TG)/tg/autoocr
+run: CFLAGS = -DBRG_RNG -I/usr/include -I/usr/include/x86_64-linux-gnu -internal-isystem $(CLANG_LIB_INC)
+run: check_args
+	@echo Running the $(PLUGIN_NAME) plugin with input $(INPUT)
+	@$(CLANG) -cc1 -triple x86_64-linux-elf $(CFLAGS) $(PLUGIN_FLAGS) -fsyntax-only \
+	         -load $(LIB) -plugin $(PLUGIN_NAME) $(PLUGIN_ARGS) $(INPUT)
+
+#
+# Perform an AST dump on the AST from filename INPUT
+#
+dump: CFLAGS = -I/usr/include -I/usr/include/x86_64-linux-gnu \
+                -internal-isystem $(CLANG_LIB_INC)
+dump: OUTPUT = $(INPUT:.c=.astdump)
+dump: check_args
+	@echo Dumping the AST for input $(INPUT) to $(OUTPUT)
+	$(CLANG) -cc1 -ast-dump $(INPUT) > $(OUTPUT) 2>&1
+
+list: OUTPUT = $(INPUT:.c=.astlist)
+list: check_args
+	@echo Listing the AST for input $(INPUT) to $(OUTPUT)
+	$(CLANG) -cc1 -ast-list $(INPUT) > $(OUTPUT) 2>&1
+
+check: OUTPUT = $(INPUT:.c=.astcheck)
+check: check_args
+	@echo Checking the AST for input $(INPUT) to $(OUTPUT)
+	$(CLANG-CHECK) input/test.c -ast-dump -ast-dump-filter=node_t > $(OUTPUT) 2>&1
+
+.PHONY: run check_args

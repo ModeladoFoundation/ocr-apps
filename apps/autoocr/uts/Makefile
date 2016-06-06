@@ -1,6 +1,6 @@
 ###  UTS - Unbalanced Tree Search  ###
-REL=../../../../ocr/ocr
-export TG=../../../../tg/tg
+
+include ../Makefile.common
 
 RAW_SRCS = raw/uts.c
 OCR_SRCS = autoocr/uts.c
@@ -76,7 +76,7 @@ run_long_orig: uts_orig
 ######## keyword / autoocr
 ########
 $(OCR_SRCS):	keyword/uts.c
-	cd $(TG)/autoocr && make run INPUT=$(CURDIR)/raw/uts.c
+	make run INPUT=$(CURDIR)/raw/uts.c
 	mv raw/uts.ocr.c autoocr/uts.c
 
 ocr:	$(INCS) $(OCR_SRCS) keyword/$(RNG_INCS) keyword/$(RNG_SRCS)
