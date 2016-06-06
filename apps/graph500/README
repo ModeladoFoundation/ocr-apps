@@ -1,0 +1,28 @@
+Graph500 native OCR implementation
+
+To speed up unimportant parts of the test (data generation and preparation), the application can be configured (via #define-s) to save the prepared data into a set of files. By default (another #define) these files are stored in data subfolder of wherever it runs. Since x86 and x86-mpi run in the corresponding install/* folder, it may be a good idea to create the data folder in the application's root and link from both installs:
+mkdir data
+cd install/x86
+ln -s ../../data data
+cd ../x86-mpi
+ln -s ../../data data
+
+The application expect four arguments:
+SCALE - the scale of the problem to run; the graph has 2^SCALE nodes
+EDGEFACTOR - the average number of edges per node; the official Graph500 benchmark uses 16
+R - the number of row blocks to use when partitioning the adjecency matrix
+C - the number of column block
+
+If the preprocessed data is being stored in files, a separate set of files is created for every combination of options. The application can use R*C worker threads and there will be R*C files with data.
+
+The important #define-s are the following:
+NO_MAP - if defined, do not use labelled GUIDs
+VALIDATION_MODE - 0/2; enable validation of result
+SAVE_CHUNKS - 0/1 enable saving of the preprocessed data
+TRY_LOAD_CHUNKS - load preprocessed data, if the corresponding files exist
+
+The number of graph searches to perform is defined by the NUMBER_OF_SEARCH variable in mainEdt. However, with NO_MAP defined, the only correct value is 1.
+
+At the moment (06/06/2016), only Vienna OCR can be used with labelled GUIDs. In that case, HAND_OVER_TORUN_IN_SEARCH and HAND_OVER_TORUN_IN_DISTRIBUTE can be used to enable data block pass-by-value extensions available in Vienna OCR.
+
+There is also vertexType typedef, which can be used to select the number of bites used to represent graph nodes. Supported are u32, u48, and u64. The official benchmark requires at least 48 bits to be used, however the performance of u48 implementation is poor. Using u32 provides the best performance, but is non-compliant.
