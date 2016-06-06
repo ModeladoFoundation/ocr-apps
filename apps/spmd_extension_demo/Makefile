@@ -2,7 +2,10 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-OCR_TYPE := x86
+MAKE := make
 
-TOP := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(TOP)/Makefile.x86-base
+ifndef OCR_TYPE
+  $(error Need to specify OCR_TYPE!)
+endif
+
+include Makefile.$(OCR_TYPE)

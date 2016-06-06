@@ -133,7 +133,7 @@ ifeq ($(FORCE_CC), no)
   endif
 endif # End of ifeq force_cc
 
-CC_LINK = $(CC)
+CC_LINK ?= $(CC)
 ifeq ($(CFLAGS_WARN_ERROR), no)
   CFLAGS_BASE_WARN_ERROR =
 else

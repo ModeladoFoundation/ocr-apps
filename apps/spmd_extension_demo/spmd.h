@@ -1,8 +1,9 @@
-#define ENABLE_EXTENSION_LABELING
-#define ENABLE_EXTENSION_CHANNEL_EVT
-#define ENABLE_EXTENSION_PARAMS_EVT
-#define ENABLE_EXTENSION_COUNTED_EVT
-#define ENABLE_EXTENSION_RTITF
+/*
+ * This file is subject to the license agreement located in the file
+ * LICENSE_UNIVIE and cannot be distributed without it. This notice
+ * cannot be removed or modified.
+ */
+
 #include <ocr.h>
 #include <extensions/ocr-labeling.h>
 #include <extensions/ocr-runtime-itf.h>
@@ -20,11 +21,14 @@
 extern "C" {
 #endif
 
+	#define SPMD_ANY_SOURCE ((u64)-2)
+	#define SPMD_ANY_TAG ((u32)-2)
+
 	//The following functions have to be called by the application instead of the corresponding OCR functions.
 	//They have the same effect as the original calls, but do the extra "magic" required to manage the rank data.
 	u8 spmd_ocrEdtTemplateCreate_internal(ocrGuid_t *guid, ocrEdt_t funcPtr, u32 paramc, u32 depc, const char* name);
 	u8 spmd_ocrEdtTemplateDestroy(ocrGuid_t guid);
-	u8 spmd_ocrEdtCreate(ocrGuid_t * guid, ocrGuid_t templateGuid, u32 paramc, u64* paramv, u32 depc, ocrGuid_t *depv, u16 properties, ocrGuid_t affinity, ocrGuid_t *outputEvent);
+	u8 spmd_ocrEdtCreate(ocrGuid_t * guid, ocrGuid_t templateGuid, u32 paramc, u64* paramv, u32 depc, ocrGuid_t *depv, u16 properties, ocrHint_t* hint, ocrGuid_t *outputEvent);
 	void spmd_ocrShutdown();
 	ocrGuid_t spmd_ocrElsUserGet(u8 offset);
 	void spmd_ocrElsUserSet(u8 offset, ocrGuid_t data);
@@ -35,30 +39,66 @@ extern "C" {
 
 	//The following functions expose the extra functionality provided by the library.
 
-	//The spmdEdtCreateWithRank is used to create an EDT and set it's rank. All children of that EDT will inherit the
-	//rank when they are created using ocrEdtCreate (which is mapped to spmd_ocrEdtCreate).
-	//It's assumed (but not enforced) that an EDT with a rank won't create an EDT with a different rank.
-	u8 spmdEdtCreateWithRank(ocrGuid_t * guid, ocrGuid_t templateGuid, u32 paramc, u64* paramv, u32 depc, ocrGuid_t *depv, u16 properties, ocrGuid_t affinity, ocrGuid_t *outputEvent, u64 rank);
 	//Gets the rank of the current node or (u64)-1 if it doesn't have one
 	u64 spmdMyRank();
 	//The size of the communicator
 	u64 spmdSize();
-	//The spmdSend sends a data block to a different rank. The precondition may be NULL_GUID or a event that has to be
-	//satisfied before the send is performed. The completion event is either NULL or an output parameter that provides
-	//an event that will be satisfied once the data block can be reused. Since the event is "once", the precondition
-	//needs to be specified, otherwise the event could get triggered and be destroyed even before spmdSend returns.
-	//The take_db_ownership arguments instructs the send not to make a copy but rather directly send the data block
-	//to the recipient.
-	u8 spmdSend(u64 to, ocrGuid_t data, u64 size, ocrGuid_t precondition, ocrGuid_t* completion_event, bool take_db_ownership);
-	//The spmdRecv sets up a receive operation, that should match spmdSend on the other rank. Once the data is received,
-	//the completion_event returned by the function will be satisfied with the data block. Since the data block was
-	//either newly created by the spmdSend or take_db_ownership was specified by the sender, it is usually the recipient's
-	//resposibility to dispose of the data block when it is no longer needed. The completion_event is of such a type,
-	//that it is guaranteed not to be destroyed until it is used to set up a dependence, but it is either persistent
-	//or destroyed automatically. Therefore, the recipient is reponsible for making exactly one
-	//ocrAddDependence(*completion_event, ...) call.
-	u8 spmdRecv(u64 from, u64 size, ocrGuid_t* completion_event);
 
+	//Send modes:
+	//P - send pointer + size, blocks until data can be reused
+	//G - send DB preserving DB's guid on destination, no completion event, DB does not have to be acquired by sender (can released or not held at all). If the DB is still held by the sender, the recipient may not see the chages made by the sender.
+	//C - send DB not preserving DB's guid on destination (making a copy), completion event to signal origin can be reused, DB is not acquired by sender (released or not held at all)
+	//R - send DB not preserving DB's guid on destination (making a copy), completion event to signal origin can be reused, DB is still acquired, will be released before call returns (it may not need to, but that would be hard to conditionally use); needs the whole ocrEdtDep_t
+	//M - move DB in the most efficient way, either moving the original DB or making a copy and destroying the original; needs the whole ocrEdtDep_t
+	//D - similar to G, but destroys the source data block; only available with reduce, not with send
+
+	//Parameters:
+	//to, from, tag - the usul ones; receive supports SPMD_ANY_SOURCE and SPMD_ANY_TAG
+	//ptr, size - size and pointer to the data
+	//dbOrEvent - input data; GUID of a data block or an event, which will provide the data block
+	//dbGuid - input data; has to be a data block
+	//triggerEvent - an optional event, which has to be satisfied before the operation is put to the queue
+	//destroyTriggerEvent - a flag indicating, whether the triggerEvent should be automatically destroyed by the SPMD library using ocrEventDestroy
+	//continuationEvent - an optional event, which will be satisfied at some point in the future; any operation invoked after the event will be added to the queue after the current operation
+	//reuseEvent - an optional event, which will be satisfied once the input data block can be modified or destroyed without affecting the data received on the other end; (tentative) always happens before satisfaction of the continuation event
+
+	u8 spmdPSend(u64 to, u32 tag, void* ptr, u64 size, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);
+	u8 spmdGSend(u64 to, u32 tag, ocrGuid_t dbOrEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);
+	u8 spmdCSend(u64 to, u32 tag, ocrGuid_t dbOrEvent, ocrGuid_t reuseEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);//not implemented
+	u8 spmdRSend(u64 to, u32 tag, ocrGuid_t dbGuid, ocrGuid_t reuseEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);//not implemented
+	u8 spmdMSend(u64 to, u32 tag, ocrGuid_t dbGuid);//not implemented
+
+	u8 spmdRecv(u64 from, u32 tag, ocrGuid_t destinationEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);
+
+	//Parameters:
+	//completionEvent - indicates that the barrier has been reached by all ranks; always comes after continuationEvent
+	//note that satisfaction of the continuation event does not necessarily mean that the barrier was reached, it only indicates the order among concurrent collective operations
+	u8 spmdBarrier(ocrGuid_t completionEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);//not implemented
+
+	enum reduceType_t
+	{
+		SPMD_REDUCE_TYPE_DOUBLE,
+	};
+
+	enum reduceOperation_t
+	{
+		SPMD_REDUCE_OP_SUM,
+	};
+
+	//Parameters:
+	//type, operation, count, root - the usual ones
+	//rootOutputEvent - (root only) event which will be satisfied by a newly created data block with the result
+	u8 spmdPReduce(reduceType_t type, reduceOperation_t operation, u64 count, u64 root, void* data, ocrGuid_t rootOutputEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);
+	u8 spmdGReduce(reduceType_t type, reduceOperation_t operation, u64 count, u64 root, ocrGuid_t dbOrEvent, ocrGuid_t reuseEvent, ocrGuid_t rootOutputEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);
+	u8 spmdDReduce(reduceType_t type, reduceOperation_t operation, u64 count, u64 root, ocrGuid_t dbOrEvent, ocrGuid_t rootOutputEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);//destroys each source data block
+	u8 spmdRReduce(reduceType_t type, reduceOperation_t operation, u64 count, u64 root, ocrGuid_t dbGuid, ocrGuid_t localCompletionEvent, ocrGuid_t rootOutputEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);//not implemented
+	u8 spmdMReduce(reduceType_t type, reduceOperation_t operation, u64 count, u64 root, ocrGuid_t dbGuid, ocrGuid_t rootOutputEvent, ocrGuid_t triggerEvent, bool destroyTriggerEvent, ocrGuid_t continuationEvent);//not implemented
+
+	u8 spmdEdtSpawn(ocrGuid_t templateGuid, u64 count, u32 paramc, u64* paramv, u32 depc, ocrGuid_t* depv, ocrDbAccessMode_t* modes, ocrHint_t* hint, ocrGuid_t finishEvent);
+	u8 spmdRankFinalize(ocrGuid_t triggerEvent, bool destroyTriggerEvent);
+
+	//depv has to be specified
+	//possble upgrade: if GUID in depv is a range, each dependence is connected from the item at the corresponding index in the map; this is not possible to implement on top of the current API
 
 	//The following macros "redirect" the normal OCR functions to their library counterparts.
 #ifndef SPMD_IMPLEMENTATION
