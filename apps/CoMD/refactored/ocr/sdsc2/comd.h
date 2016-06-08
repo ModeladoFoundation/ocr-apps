@@ -74,9 +74,9 @@ typedef struct
   real3_t f[MAXATOMS];
   real_t u[MAXATOMS];
   u8 s[MAXATOMS];
-  ocrGuid_t box;
+  ocrGuid_t linkCellGuid;
   ocrGuid_t nextpf;
-} rpf_t;
+} atomData_t;
 
 typedef struct
 {
@@ -85,20 +85,20 @@ typedef struct
   real3_t max;
   u32 max_occupancy;
   u32 gid[MAXATOMS];
-  ocrGuid_t rneighbors[26];
-  ocrGuid_t bneighbors[26];
-} box_t;
+  ocrGuid_t nbr_atomDataGuids[26];
+  ocrGuid_t nbr_linkCellGuids[26];
+} linkCellH_t;
 
 typedef struct
 {
   real3_t domain;
   u32 grid[3];
-  u32 boxes_num;
-  real3_t box_size;
-  real3_t inv_box_size;
-  ocrGuid_t box;
-  ocrGuid_t rpf;
-} boxes_t;
+  u32 b_num;
+  real3_t b_size;
+  real3_t inv_b_size;
+  ocrGuid_t DBK_linkCellGuidsH;
+  ocrGuid_t DBK_atomDataGuidsH;
+} boxDataStH_t;
 
 typedef struct
 {
@@ -116,7 +116,7 @@ typedef struct
 
   potential_t pot;
 
-  boxes_t boxes;
+  boxDataStH_t boxDataStH;
 
   real_t e_potential;
   real_t e_kinetic;
@@ -127,7 +127,7 @@ typedef struct
 
   ocrGuid_t reductionH_g;
 
-} simulation_t;
+} simulationH_t;
 
 //Param structs
 typedef struct
@@ -140,7 +140,7 @@ typedef struct
     u32 grid[3];
     u32 lattice[3];
     real_t delta, temperature;
-} PRM_fork_init_edt_t;
+} PRM_EDT_init_fork_t;
 
 typedef struct
 {
@@ -198,7 +198,7 @@ typedef struct
 typedef struct
 {
     real_t ds, dt;
-    ocrGuid_t EDT_exchange, boxes_g;
+    ocrGuid_t EDT_exchange, DBK_linkCellH;
 } PRM_position_edt_t;
 
 typedef struct
@@ -263,7 +263,7 @@ static inline int getPoliyDomainID( int b, u32* grid, int PD_X, int PD_Y, int PD
     //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
     //
     int pd = globalRankFromCoords(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
-    //PRINTF("%d box %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
 
     return pd;
 }

@@ -4,7 +4,7 @@
 #include "constants.h"
 #include "potentials.h"
 
-//depv: rpf0, .., rpf25
+//depv: DBK_atomDataH0, .., DBK_atomDataH25
 ocrGuid_t eamforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
   return NULL_GUID;

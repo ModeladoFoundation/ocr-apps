@@ -65,7 +65,7 @@ $(OBJS): comd.h	command.h  constants.h	potentials.h  reductions.h  simulation.h 
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
-CFLAGS := -g -std=c99 -DENABLE_EXTENSION_AFFINITY
+CFLAGS := -g -std=c99 -DENABLE_EXTENSION_AFFINITY -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in

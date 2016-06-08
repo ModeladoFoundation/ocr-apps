@@ -8,7 +8,7 @@
 #include "potentials.h"
 #include "simulation.h"
 
-void ljforce(rpf_t* rpf, rpf_t** nrpf, real_t sigma, real_t epsilon, real_t cut, real_t* shift)
+void ljforce(atomData_t* PTR_atomData, atomData_t** nPTR_atomData, real_t sigma, real_t epsilon, real_t cut, real_t* shift)
 {
   real_t pot = 0;
   real_t cut2 = cut*cut;
@@ -17,12 +17,12 @@ void ljforce(rpf_t* rpf, rpf_t** nrpf, real_t sigma, real_t epsilon, real_t cut,
   real_t pshift = POT_SHIFT*cut6*(cut6-1.0);
 
   u8 aa,bb;
-  for(aa = 0; aa < rpf->atoms; ++aa)
-    for(bb = aa+1; bb < rpf->atoms; ++bb) {
+  for(aa = 0; aa < PTR_atomData->atoms; ++aa)
+    for(bb = aa+1; bb < PTR_atomData->atoms; ++bb) {
       real_t r2; real3_t dr;
-      dr[0] = rpf->r[aa][0]-rpf->r[bb][0];
-      dr[1] = rpf->r[aa][1]-rpf->r[bb][1];
-      dr[2] = rpf->r[aa][2]-rpf->r[bb][2];
+      dr[0] = PTR_atomData->r[aa][0]-PTR_atomData->r[bb][0];
+      dr[1] = PTR_atomData->r[aa][1]-PTR_atomData->r[bb][1];
+      dr[2] = PTR_atomData->r[aa][2]-PTR_atomData->r[bb][2];
       r2=dr[0]*dr[0]+dr[1]*dr[1]+dr[2]*dr[2];
 
       if(r2 > cut2) continue;
@@ -30,27 +30,27 @@ void ljforce(rpf_t* rpf, rpf_t** nrpf, real_t sigma, real_t epsilon, real_t cut,
 
       real_t r6 = s6 * (r2*r2*r2);
       real_t energy = (r6*(r6-1.0)-pshift)*0.5;
-      rpf->u[aa]+=energy;
-      rpf->u[bb]+=energy;
+      PTR_atomData->u[aa]+=energy;
+      PTR_atomData->u[bb]+=energy;
 
       real_t fr = -epsilon*r6*r2*(12.0*r6-6.0);
-      rpf->f[aa][0]-=dr[0]*fr;
-      rpf->f[aa][1]-=dr[1]*fr;
-      rpf->f[aa][2]-=dr[2]*fr;
-      rpf->f[bb][0]+=dr[0]*fr;
-      rpf->f[bb][1]+=dr[1]*fr;
-      rpf->f[bb][2]+=dr[2]*fr;
+      PTR_atomData->f[aa][0]-=dr[0]*fr;
+      PTR_atomData->f[aa][1]-=dr[1]*fr;
+      PTR_atomData->f[aa][2]-=dr[2]*fr;
+      PTR_atomData->f[bb][0]+=dr[0]*fr;
+      PTR_atomData->f[bb][1]+=dr[1]*fr;
+      PTR_atomData->f[bb][2]+=dr[2]*fr;
     }
 
   u8 n;
   for(n = 0; n < 26; ++n) {
-    rpf_t* brpf = nrpf[n];
-    for(aa = 0; aa < rpf->atoms; ++aa)
-      for(bb = 0; bb < brpf->atoms; ++bb) {
+    atomData_t* bPTR_atomData = nPTR_atomData[n];
+    for(aa = 0; aa < PTR_atomData->atoms; ++aa)
+      for(bb = 0; bb < bPTR_atomData->atoms; ++bb) {
         real_t r2; real3_t dr;
-        dr[0] = rpf->r[aa][0]-(brpf->r[bb][0]+FSHIFT_X(rpf->nmask,n));
-        dr[1] = rpf->r[aa][1]-(brpf->r[bb][1]+FSHIFT_Y(rpf->nmask,n));
-        dr[2] = rpf->r[aa][2]-(brpf->r[bb][2]+FSHIFT_Z(rpf->nmask,n));
+        dr[0] = PTR_atomData->r[aa][0]-(bPTR_atomData->r[bb][0]+FSHIFT_X(PTR_atomData->nmask,n));
+        dr[1] = PTR_atomData->r[aa][1]-(bPTR_atomData->r[bb][1]+FSHIFT_Y(PTR_atomData->nmask,n));
+        dr[2] = PTR_atomData->r[aa][2]-(bPTR_atomData->r[bb][2]+FSHIFT_Z(PTR_atomData->nmask,n));
         r2=dr[0]*dr[0]+dr[1]*dr[1]+dr[2]*dr[2];
 
         if(r2 > cut2) continue;
@@ -58,29 +58,29 @@ void ljforce(rpf_t* rpf, rpf_t** nrpf, real_t sigma, real_t epsilon, real_t cut,
 
         real_t r6 = s6 * (r2*r2*r2);
         real_t energy = (r6*(r6-1.0)-pshift)*0.5;
-        rpf->u[aa]+=energy;
+        PTR_atomData->u[aa]+=energy;
 
         real_t fr = -epsilon*r6*r2*(12.0*r6-6.0);
-        rpf->f[aa][0]-=dr[0]*fr;
-        rpf->f[aa][1]-=dr[1]*fr;
-        rpf->f[aa][2]-=dr[2]*fr;
+        PTR_atomData->f[aa][0]-=dr[0]*fr;
+        PTR_atomData->f[aa][1]-=dr[1]*fr;
+        PTR_atomData->f[aa][2]-=dr[2]*fr;
       }
   }
 
 }
 
 //params: sigma, epsilon, cutoff, shiftx, shifty, shiftz
-//depv: rpf0, .., rpf26
+//depv: DBK_atomDataH0, .., DBK_atomDataH26
 ocrGuid_t ljforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  rpf_t* rpf = (rpf_t*)depv[0].ptr;
+  atomData_t* PTR_atomData = (atomData_t*)depv[0].ptr;
 #ifndef TG_ARCH
-  memset(rpf->f,0,sizeof(real3_t)*rpf->atoms);
-  memset(rpf->u,0,sizeof(real_t)*rpf->atoms);
+  memset(PTR_atomData->f,0,sizeof(real3_t)*PTR_atomData->atoms);
+  memset(PTR_atomData->u,0,sizeof(real_t)*PTR_atomData->atoms);
 #else
   u32 m;
-  for(m=0; m<sizeof(real3_t)*rpf->atoms; ++m) ((char*)rpf->f)[m]='\0';
-  for(m=0; m<sizeof(real_t)*rpf->atoms; ++m) ((char*)rpf->u)[m]='\0';
+  for(m=0; m<sizeof(real3_t)*PTR_atomData->atoms; ++m) ((char*)PTR_atomData->f)[m]='\0';
+  for(m=0; m<sizeof(real_t)*PTR_atomData->atoms; ++m) ((char*)PTR_atomData->u)[m]='\0';
 #endif
 
   PRM_force_edt_t* PTR_PRM_force_edt = (PRM_force_edt_t*) paramv;
@@ -89,18 +89,18 @@ ocrGuid_t ljforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   real_t cut = PTR_PRM_force_edt->cutoff;
   real_t* shift = PTR_PRM_force_edt->domain;
 
-  rpf_t* nrpf[26];
+  atomData_t* nPTR_atomData[26];
   u8 n;
   for(n = 0; n < 26; ++n)
-    nrpf[n] = (rpf_t*)depv[n+1].ptr;
+    nPTR_atomData[n] = (atomData_t*)depv[n+1].ptr;
 
-  ljforce(rpf, nrpf, sigma, epsilon, cut, shift);
+  ljforce(PTR_atomData, nPTR_atomData, sigma, epsilon, cut, shift);
 
   return depv[0].guid;
 }
 
 //params: count, leaf, sigma, epsilon, cutoff, shiftx, shifty, shiftz
-//depv: rpf0, .., rpf26, sim, nextff, signals0, .., signals26
+//depv: DBK_atomDataH0, .., DBK_atomDataH26, sim, nextff, signals0, .., signals26
 ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     ocrGuid_t PDaffinityGuid = NULL_GUID;
@@ -111,14 +111,16 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
 
-  rpf_t* rpf = (rpf_t*)depv[0].ptr;
+  ocrGuid_t DBK_atomDataH = depv[0].guid;
+
+  atomData_t* PTR_atomData = (atomData_t*)depv[0].ptr;
 #ifndef TG_ARCH
-  memset(rpf->f,0,sizeof(real3_t)*rpf->atoms);
-  memset(rpf->u,0,sizeof(real_t)*rpf->atoms);
+  memset(PTR_atomData->f,0,sizeof(real3_t)*PTR_atomData->atoms);
+  memset(PTR_atomData->u,0,sizeof(real_t)*PTR_atomData->atoms);
 #else
   u32 m;
-  for(m=0; m<sizeof(real3_t)*rpf->atoms; ++m) ((char*)rpf->f)[m]='\0';
-  for(m=0; m<sizeof(real_t)*rpf->atoms; ++m) ((char*)rpf->u)[m]='\0';
+  for(m=0; m<sizeof(real3_t)*PTR_atomData->atoms; ++m) ((char*)PTR_atomData->f)[m]='\0';
+  for(m=0; m<sizeof(real_t)*PTR_atomData->atoms; ++m) ((char*)PTR_atomData->u)[m]='\0';
 #endif
 
   PRM_forcevel_edt_t* PTR_PRM_forcevel_edt = (PRM_forcevel_edt_t*) paramv;
@@ -128,29 +130,31 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   real_t cut = PTR_PRM_forcevel_edt->cutoff;
   real_t* shift = PTR_PRM_forcevel_edt->domain;
 
-  rpf_t* nrpf[26];
+  atomData_t* nPTR_atomData[26];
   u8 n;
   for(n = 0; n < 26; ++n)
-    nrpf[n] = (rpf_t*)depv[n+1].ptr;
+    nPTR_atomData[n] = (atomData_t*)depv[n+1].ptr;
 
-  ljforce(rpf, nrpf, sigma, epsilon, cut, shift);
+  ljforce(PTR_atomData, nPTR_atomData, sigma, epsilon, cut, shift);
 
-  simulation_t* sim = (simulation_t*)depv[27].ptr;
+  simulationH_t* sim = (simulationH_t*)depv[27].ptr;
 
   ocrGuid_t tmp, tmpg;
   if(--ds) {
     PTR_PRM_forcevel_edt->ds = ds;
-    velocity(rpf, sim->dt);
+    velocity(PTR_atomData, sim->dt);
     ocrEdtTemplateCreate(&tmp, ljforcevel_edt, sizeof(PRM_forcevel_edt_t)/sizeof(u64), 56);
     ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)PTR_PRM_forcevel_edt, 56, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), (ocrGuid_t*)depv[28].ptr);
+    ocrDbRelease(depv[28].guid);
     ocrEdtTemplateDestroy(tmp);
-    ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
+    ocrAddDependence(PTR_atomData->nextpf, tmpg, 29, DB_MODE_NULL);
+    ocrDbRelease(DBK_atomDataH);
+    ocrAddDependence(DBK_atomDataH, tmpg, 0, DB_MODE_RW);
     for(n=1; n < 28; ++n)
       ocrAddDependence(depv[n].guid, tmpg, n, DB_MODE_RO);
     ocrAddDependence(depv[n].guid, tmpg, n, DB_MODE_RW);
-    ocrAddDependence(rpf->nextpf, tmpg, 29, DB_MODE_NULL);
     for(n=30; n < 56; ++n)
-      ocrAddDependence(nrpf[n-30]->nextpf, tmpg, n, DB_MODE_NULL);
+      ocrAddDependence(nPTR_atomData[n-30]->nextpf, tmpg, n, DB_MODE_NULL);
     return depv[28].guid;
   }
   else {
@@ -160,7 +164,8 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate(&tmp, veluk_edt, sizeof(PRM_veluk_edt_t)/sizeof(u64), 2);
     ocrEdtCreate(&tmpg, tmp, EDT_PARAM_DEF, (u64*)&PRM_veluk_edt, 2, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL);
     ocrEdtTemplateDestroy(tmp);
-    ocrAddDependence(depv[0].guid, tmpg, 0, DB_MODE_RW);
+    ocrDbRelease(DBK_atomDataH);
+    ocrAddDependence(DBK_atomDataH, tmpg, 0, DB_MODE_RW);
     ocrAddDependence(sim->pot.mass, tmpg, 1, DB_MODE_RO);
     ocrDbDestroy(depv[28].guid);
   }

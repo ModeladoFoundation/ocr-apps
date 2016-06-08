@@ -10,7 +10,7 @@ int mypow( int base, int exponent);
 int getMaxDepth( int maxleaves );
 void getNodesAtDepth( int querydepth, int maxleaves, int* leaves, int* nodes );
 
-ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 nParticipants, ocrGuid_t* leaves_p,
+ocrGuid_t build_reduction(ocrGuid_t simH_g, ocrGuid_t reductionH_g, u32 nParticipants, ocrGuid_t* leaves_p,
                           u32 paramc, PRM_red_t* PTR_PRM_red, ocrGuid_t (*red_edt)(u32, u64*, u32, ocrEdtDep_t*), u32* grid, int key)
 {
   ocrGuid_t root;
@@ -46,14 +46,14 @@ ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 nParticip
     ocrGuid_t* PTR_affinityGuids;
     ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
                  DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
-    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ) //Get all the available Policy Domain affinity guids;
+    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ); //Get all the available Policy Domain affinity guids;
     ASSERT( affinityCount >= 1 );
     //PRINTF("Using affinity API\n");
     s64 PD_X, PD_Y, PD_Z;
     splitDimension(affinityCount, &PD_X, &PD_Y, &PD_Z); //Split available PDs into a 3-D grid
 
     int pd = globalRankFromCoords(0, 0, 0, PD_X, PD_Y, PD_Z);
-    //PRINTF("box %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    //PRINTF("linkCell %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
     PDaffinityGuid = PTR_affinityGuids[pd];
     ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #else
@@ -83,7 +83,7 @@ ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 nParticip
             break;
     }
 
-  ocrAddDependence(sim_g,leaves_p[0],leaves,DB_MODE_RW);
+  ocrAddDependence(simH_g,leaves_p[0],leaves,DB_MODE_RW);
   ocrAddDependence(reductionH_g,leaves_p[0],leaves+1,DB_MODE_RW);
 
   u64 paramv[1];
@@ -148,10 +148,13 @@ ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 nParticip
         //Create child EDTs and set up dependencies for the pre-existing node
         int nleaves_node = ( inode != nodes-1 ) ? (FANIN) : ( (rem==0) ? FANIN : rem ); //Only the last node reduction EDT will have "reminder" deps
 
+        ocrEventParams_t params;
+        params.EVENT_COUNTED.nbDeps = 27;
         for( int ileaf = 0; ileaf < nleaves_node; ileaf++ )
         {
             ocrGuid_t event;
-            ocrEventCreate(&event,OCR_EVENT_ONCE_T,1);
+            //ocrEventCreate(&event,OCR_EVENT_ONCE_T,1);
+            ocrEventCreateParams(&event,OCR_EVENT_COUNTED_T,1,&params);
             ocrAddDependence( event, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
             leaves_p[inode*nodeGap+ileaf*leafGap] = event;
             //PRINTF("Creating event guid %d which triggers EDT guid %d(level=%d) on slot %d\n", inode*nodeGap+ileaf*leafGap, inode*nodeGap, idepth, ileaf);
@@ -164,11 +167,19 @@ ocrGuid_t build_reduction(ocrGuid_t sim_g, ocrGuid_t reductionH_g, u32 nParticip
     ocrEdtTemplateDestroy( TML_reduction );
 #endif
 
-  return root;
+
+   ocrGuid_t rootDummy;
+   ocrEventParams_t params;
+   params.EVENT_COUNTED.nbDeps = nParticipants;
+   ocrEventCreateParams(&rootDummy,OCR_EVENT_COUNTED_T,1,&params);
+
+   ocrAddDependence( root, rootDummy, 0, DB_MODE_RW );
+
+  return rootDummy;
 }
 
 //params: n, epsilon
-//depv: uk0..ukn-1, [sim_g, reductionH_g]
+//depv: uk0..ukn-1, [simH_g, reductionH_g]
 ocrGuid_t ured_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
   ocrGuid_t uk0_g = depv[0].guid;
@@ -185,17 +196,17 @@ ocrGuid_t ured_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   }
 
   if(paramc>1) {
-    ocrGuid_t sim_g = depv[n].guid;
-    simulation_t* sim_p = depv[n].ptr;
-    sim_p->e_potential = u[0]*PTR_PRM_ured_edt->epsilon;
-    sim_p->e_kinetic = u[1];
+    ocrGuid_t simH_g = depv[n].guid;
+    simulationH_t* simH_p = depv[n].ptr;
+    simH_p->e_potential = u[0]*PTR_PRM_ured_edt->epsilon;
+    simH_p->e_kinetic = u[1];
 
     reductionH_t* reductionH_p = (reductionH_t*)depv[depc-1].ptr;
     reductionH_p->OEVT_reduction = NULL_GUID;
 
     ocrDbDestroy(uk0_g);
 
-    return sim_g;
+    return simH_g;
 
   }
 
@@ -203,7 +214,7 @@ ocrGuid_t ured_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 //params: n, OEVT_tred
-//depv: vcm0..vcmn-1, [sim_g,reductionH_g]
+//depv: vcm0..vcmn-1, [simH_g,reductionH_g]
 ocrGuid_t vred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
   ocrGuid_t vcm0_g = depv[0].guid;
@@ -224,9 +235,9 @@ ocrGuid_t vred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   }
 
   if(paramc>1) {
-    ocrGuid_t sim_g = depv[n].guid;
-    simulation_t* sim_p = (simulation_t*)depv[n].ptr;
-    sim_p->atoms0 = sim_p->atoms = ((u64*)vcm0)[4];
+    ocrGuid_t simH_g = depv[n].guid;
+    simulationH_t* simH_p = (simulationH_t*)depv[n].ptr;
+    simH_p->atoms0 = simH_p->atoms = ((u64*)vcm0)[4];
 
     ocrGuid_t reductionH_g = depv[depc-1].guid;
     reductionH_t* reductionH_p = (reductionH_t*)depv[depc-1].ptr;
@@ -243,7 +254,7 @@ ocrGuid_t vred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 //params: n, temperature, OEVT_ured
-//depv: ek0..ekn-1, [sim_g,reductionH_g]
+//depv: ek0..ekn-1, [simH_g,reductionH_g]
 ocrGuid_t tred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
   ocrGuid_t ek0_g = depv[0].guid;
@@ -259,9 +270,9 @@ ocrGuid_t tred_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   }
 
   if(paramc>1) {
-    ocrGuid_t sim_g = depv[n].guid;
-    simulation_t* sim_p = depv[n].ptr;
-    *ek /= (sim_p->atoms*kB_eV_1_5);
+    ocrGuid_t simH_g = depv[n].guid;
+    simulationH_t* simH_p = depv[n].ptr;
+    *ek /= (simH_p->atoms*kB_eV_1_5);
 
     ocrGuid_t reductionH_g = depv[depc-1].guid;
     reductionH_t* reductionH_p = (reductionH_t*)depv[depc-1].ptr;
