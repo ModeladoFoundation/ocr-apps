@@ -1,0 +1,69 @@
+NOTES:
+2016Jun2 - dvillen
+
+The script "recursiveBinaryTree_full.py" is an example on how OCT autogen can be used to produce
+the OCR skeleton code for a recursive binary tree algorithm.
+As such, the graph implemented is the minimal graph one needs to make it work;
+bigger graphs are not needed.
+
+This version of the graph is not written in compact form. So everything is laid out
+flat.  That makes for more coding but it is easy enough to follow.
+
+Also in this directory is a JPEG image of this minimal graph, showing the naming
+convention followed.
+
+The output in the format ".DOT" is a graph viewing format used by Graphviz
+(http://www.graphviz.org/), where some viewers can be found. For the impatient ones,
+please consider http://www.webgraphviz.com/
+
+==> For a description of the terminology used here, please consult the notes at the
+beginning of the tool script called "ocr_autogen.py".  Perusing  "ocr_autogen.py"
+can provide a wealth of information about assumptions and constraints made.
+
+The graph's strategy is as follows:
+
+= All EDT, Event and data blocks are expected to be unique by name.
+  So no two things of the same type can share the same name.
+  The code uses that extensively.
+
+= It expects that the data block dSet is going to receive data from say a file.
+  That is why dSet is HOPed in the main EDT.
+
+  This dSet is expected to be split into two subsets: dSet1 and dSet2.
+  dSet1 & dSet2 are going to be launched to their next respective EDT A & B.
+
+  Following dSet1 & dSet2, are two boundary data blocks, boundary1 & boundary2.
+  Each boundary data block is to store the begin, end offset as positioned
+  in the original dSet, at all times throughout the entire graph.
+
+  The EDTs with capitalized letters (mainEDT is A) are the scattering EDTs,
+  splitting their input set until it is sufficiently small.  These scattering EDTs
+  create their corresponding gathering EDTs, and they are responsible with
+  communicating the guid of these scattering EDTs to where they will be needed.
+
+  That is why, for example, A= mainEDT, also sends out as data blocks, called
+  scatter1 and scatter2, the guid of their corresponding gather EDT.
+
+= The strategy followed for "who is in charge of destroying the data blocks" was
+  simply to use a repeated pattern of TAKEOFF and LANDING, instead of TAGOing them.
+  This way one is guaranteed proper life cycle maintenance.  On a distributed
+  systems, the TAKEOFF+LANDING strategy might be better than TAGOs;
+  on a shared memory system, TAGOing might be better.
+
+=In the generated code, there are many expectation placed on the programmer
+ properly complete the code:
+
+ - A function/algorithm must be provided to split the data set in two.
+ - A condition must be put in place in order to know when to stop splitting
+ - In some EDT, e.g. "B", the guid gd_gather must be initialized with the
+   incoming scatter? guid it contains.
+ - Similarly, it is up to the programmers to properly filled the different sets.
+ - The coder is expected to put in proper values to the placeholder counts:
+          123456
+        10123456
+        20123456
+ -A function/algorithm for combining the subsets during the gathering phase
+  is to be provided.
+ -The last EDT "a" should probably do something to show some work was done
+  before it shuts down.
+
