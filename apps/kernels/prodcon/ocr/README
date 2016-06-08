@@ -1,0 +1,5 @@
+This kernel demonstrates the use of tagged scheduler with an iterative producer-consumer pattern.
+Run as follows:
+ CONFIG_FLAGS='--guid=LABELED --threads=16 --binding=seq --scheduler=TAGGED' make -f Makefile.x86 uninstall clean run 2>&1
+compared against:
+ CONFIG_FLAGS='--guid=LABELED --threads=16 --binding=seq' make -f Makefile.x86 uninstall clean run 2>&1
