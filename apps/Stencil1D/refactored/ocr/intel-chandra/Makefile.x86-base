@@ -31,6 +31,8 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # an environment variable
 WORKLOAD_ARGS ?= 6 2 4 #points subdomains timesteps
 
+# Set to yes if running visualizer or export as environment variable
+ENABLE_VISUALIZER ?= no
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -43,7 +45,7 @@ RUN_TORQUE ?= no
 # a test
 RUN_MODE ?=
 
-# END of variables coming from user/environment
+## END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -51,7 +53,7 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 TARGET := stencil_1d
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
-#CC := icc
+CC := icc
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
@@ -60,11 +62,23 @@ REQ_LIBS := reduction
 # Space separated list of source files
 SRCS := stencil_1d.c timers.c
 
+USE_REDUCTIONLIBRARY := yes  #USE D. Scott reduction library: yes/no ?
+
+ifeq ($(USE_REDUCTIONLIBRARY), yes)
+CONFIG_FLAGS=--guid LABELED
+endif
+
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
 CFLAGS := -g -std=c99 -DENABLE_EXTENSION_AFFINITY -DPROBLEM_TYPE=1 -DFULL_APP=1
+ifeq ($(USE_REDUCTIONLIBRARY), yes)
+CFLAGS += -DUSE_REDUCTIONLIBRARY
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+endif
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
