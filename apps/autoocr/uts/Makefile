@@ -76,8 +76,8 @@ run_long_orig: uts_orig
 ########
 $(OCR_SRCS):	keyword/uts.c
 	@mkdir -p autoocr
-	$(MAKE) run INPUT=$(CURDIR)/raw/uts.c
-	mv raw/uts.ocr.c autoocr/uts.c
+	$(MAKE) run INPUT=$(CURDIR)/keyword/uts.c
+	mv keyword/uts.ocr.c autoocr/uts.c
 
 ocr:	autoocr/build/uts
 autoocr/build/uts: $(INCS) $(OCR_SRCS) keyword/$(RNG_INCS) keyword/$(RNG_SRCS)
