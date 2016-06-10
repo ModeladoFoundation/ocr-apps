@@ -46,14 +46,14 @@ RUN_MODE ?=
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := spmd_test
+TARGET := spmd_stencil2d
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := macros
+REQ_LIBS := spmd
 
 # Space separated list of source files
-SRCS := spmd.cpp spmd_test.cpp
+SRCS := spmd_stencil2d.cpp
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
@@ -63,7 +63,7 @@ CFLAGS := -DENABLE_EXTENSION_CHANNEL_EVT -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread $(EXTRALDFLAGS)
+LDFLAGS := -lpthread -lspmd $(EXTRALDFLAGS)
 
 # Targets:
 #   - all:     Build the application.

@@ -4,8 +4,12 @@
  * cannot be removed or modified.
  */
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 #include "spmd.h"
 #include <assert.h>
+//#include "parallelization.h"//for tbb thread
+#include "extensions/ocr-affinity.h"
 
 #define USE_NEW_INTERFACE
 
@@ -26,7 +30,9 @@ ocrGuid_t run(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 	assert(paramc == RUN_ARGS_SIZE);
 	run_args* args = (run_args*)paramv;
 	if (!ocrGuidIsNull(args->event_to_destroy)) ocrEventDestroy(args->event_to_destroy);
-	PRINTF("%d: continuation %d\n", (int)spmdMyRank(), (int)(args->it));
+	ocrGuid_t my_affinity;
+	ocrAffinityGetCurrent(&my_affinity);
+	PRINTF("%d: continuation %d running at " GUIDF " (%" PRId64 ")\n", (int)spmdMyRank(), (int)(args->it), GUIDA(my_affinity), ocrAffinityToHintValue(my_affinity));
 	//sleep_seconds(1);
 	if (args->it == 0)
 	{
@@ -144,7 +150,9 @@ ocrGuid_t run2(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 	assert(paramc == RUN_ARGS_SIZE);
 	run_args* args = (run_args*)paramv;
 	if (!ocrGuidIsNull(args->event_to_destroy)) ocrEventDestroy(args->event_to_destroy);
-	PRINTF("2-%d: continuation %d\n", (int)spmdMyRank(), (int)(args->it));
+	ocrGuid_t my_affinity;
+	ocrAffinityGetCurrent(&my_affinity);
+	PRINTF("2-%d: continuation %d running at " GUIDF " (%" PRId64 ")\n", (int)spmdMyRank(), (int)(args->it), GUIDA(my_affinity), ocrAffinityToHintValue(my_affinity));
 	//sleep_seconds(1);
 	if (args->it == 0)
 	{
@@ -204,7 +212,9 @@ ocrGuid_t run3(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 	assert(paramc == RUN_ARGS_SIZE);
 	run_args* args = (run_args*)paramv;
 	if (!ocrGuidIsNull(args->event_to_destroy)) ocrEventDestroy(args->event_to_destroy);
-	PRINTF("3-%d: continuation %d\n", (int)spmdMyRank(), (int)(args->it));
+	ocrGuid_t my_affinity;
+	ocrAffinityGetCurrent(&my_affinity);
+	PRINTF("3-%d: continuation %d running at " GUIDF " (%" PRId64 ")\n", (int)spmdMyRank(), (int)(args->it), GUIDA(my_affinity), ocrAffinityToHintValue(my_affinity));
 	//sleep_seconds(1);
 	if (args->it == 0)
 	{
@@ -305,12 +315,23 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 	ocrEventCreate(&launcher, OCR_EVENT_ONCE_T, EVT_PROP_NONE);
 	ocrDbAccessMode_t modes[] = { DB_MODE_NULL };
 	ocrGuid_t deps1[] = { launcher };
-	spmdEdtSpawn(args.runTML, 2, RUN_ARGS_SIZE, (u64*)&args, 1, deps1, modes, NULL_HINT, join1);
+	spmdEdtSpawn(args.runTML, 2, RUN_ARGS_SIZE, (u64*)&args, 1, deps1, modes, 1, join1);
 	ocrGuid_t deps2[] = { join1 };
-	spmdEdtSpawn(args.run2TML, 14, RUN_ARGS_SIZE, (u64*)&args, 1, deps2, modes, NULL_HINT, join2);
+	spmdEdtSpawn(args.run2TML, 14, RUN_ARGS_SIZE, (u64*)&args, 1, deps2, modes, 0, join2);
 	ocrGuid_t deps3[] = { join2 };
-	spmdEdtSpawn(args.run3TML, 2, RUN_ARGS_SIZE, (u64*)&args, 1, deps3, modes, NULL_HINT, join3);
+	spmdEdtSpawn(args.run3TML, 2, RUN_ARGS_SIZE, (u64*)&args, 1, deps3, modes, 1, join3);
 	ocrAddDependence(NULL_GUID, launcher, 0, DB_DEFAULT_MODE);
 	ocrEdtTemplateDestroy(downTMP);
 	return NULL_GUID;
 }
+
+#ifdef ENABLE_EXTENSION_HETEROGENEOUS_FUNCTIONS
+void registerEdtFunctions()
+{
+	ocrRegisterEdtFuntion(mainEdt);
+	ocrRegisterEdtFuntion(run);
+	ocrRegisterEdtFuntion(run2);
+	ocrRegisterEdtFuntion(run3);
+	ocrRegisterEdtFuntion(down);
+}
+#endif

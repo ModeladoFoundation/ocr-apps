@@ -257,7 +257,7 @@ struct spmd_send_or_recv_record
 	} data;
 };
 
-#define SPMD_MAX_RECORDS 1
+#define SPMD_MAX_RECORDS 16
 
 ocrGuid_t spmdCommCleaner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
