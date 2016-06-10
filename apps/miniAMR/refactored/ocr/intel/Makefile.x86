@@ -34,7 +34,20 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= --num_refine 4 --npx 6 --npy 7 --npz 8 --nx 8 --ny 10 --nz 12 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 40 --checksum_freq 1 --report_perf 15 --num_vars 40 --comm_vars 7 --plot_freq 10
+#WORKLOAD_ARGS ?= --num_refine 5 --npx 4 --npy 3 --npz 4 --nx 10 --ny 8 --nz 6 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 100 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 3
+#WORKLOAD_ARGS ?= --num_refine 4 --npx 3 --npy 3 --npz 3 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.40 0.40 0.40 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 4 --npx 3 --npy 1 --npz 1 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 4 --npx 2 --npy 1 --npz 1 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 10 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 4 --ny 4 --nz 4 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 50 --checksum_freq 50 --report_perf 15 --num_vars 1 --comm_vars 1 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 2 --ny 2 --nz 2 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.40 0.80 0.80 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 4 --checksum_freq 50 --report_perf 15 --num_vars 1 --comm_vars 1 --plot_freq 50 --stages_per_ts 1 --refine_freq 1 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 2 --npx 2 --npy 2 --npz 2 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+##WORKLOAD_ARGS ?= --num_refine 3 --npx 2 --npy 1 --npz 1 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+WORKLOAD_ARGS ?= --num_refine 2 --npx 2 --npy 1 --npz 1 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_changex 2
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 1 --checksum_freq 1 --report_perf 15 --num_vars 1 --comm_vars 2 --plot_freq 1 --stages_per_ts 1 --refine_freq 2 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 2 --ny 2 --nz 4 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 1 --checksum_freq 10 --report_perf 15 --num_vars 1 --comm_vars 2 --plot_freq 10 --stages_per_ts 1 --refine_freq 1 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 2 --ny 2 --nz 2 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 1 --comm_vars 1 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 2
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 2 --ny 2 --nz 2 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 1 --comm_vars 1 --plot_freq 1 --stages_per_ts 2 --refine_freq 2 --block_change 1
+#WORKLOAD_ARGS ?= --num_refine 1 --npx 2 --npy 1 --npz 1 --nx 2 --ny 2 --nz 2 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 100 --report_perf 15 --num_vars 1 --comm_vars 1 --plot_freq 100 --stages_per_ts 2 --refine_freq 2 --block_change 1
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -57,12 +70,18 @@ TARGET := miniAMR.x
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := block.c  checksum.c  comm.c  continuationcloner.c  init.c  move.c  plot.c  profile.c  stencil.c  refine.c  root.c  util.c  wtime.c
+SRCS := block.c  chksum.c  comm.c  clone.c  init.c  move.c  parent.c  plot.c  stencil.c  refine.c  root.c  util.c  wtime.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -DBUILD_OCR_VERSION -DENABLE_EXTENSION_LABELING -DRELAX_DATABLOCK_SEASONINGx -DALLOW_DATABLOCK_REWRITESx -g
+CFLAGS := -Wall -fms-extensions -DBUILD_OCR_VERSION -DENABLE_EXTENSION_LABELING -DRELAX_DATABLOCK_SEASONINGx -DNANNY_ON_STEROIDSx -DNANNY_FUNC_NAMES -lefence -g -O0
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+CFLAGS += -DENABLE_EXTENSION_AFFINITY
+CFLAGS += -DOCR_ASSERT
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
@@ -118,5 +137,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-regular.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 

@@ -29,102 +29,86 @@
 //#include <mpi.h>
 
 #include "block.h"
-//#include "comm.h"
+#include "control.h"
 #include "proto.h"
 
+#ifdef NANNY_FUNC_NAMES
+#line __LINE__ "stencil"
+#endif
+
 // This routine does the stencil calculations.
-void stencil_calc(BlockMeta_t * const meta, int var)
-{
-   Control_t    * control  = meta->controlDb.base;
+void stencil_calc(u32 depc, ocrEdtDep_t depv[], int var) {
+
+   blockClone_Deps_t * myDeps  = (blockClone_Deps_t *) depv;
+   Control_t         * control = myDeps->control_Dep.ptr;
+   Block_t           * block   = myDeps->block_Dep.ptr;
    double (* cp) /*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2] =
-       (double(*)/*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2]) (meta->blockDb.base->cells);
-//TODO:   int n, i, j, k, in;
+       (double(*)/*[control->num_vars]*/ [control->x_block_size+2] [control->y_block_size+2] [control->z_block_size+2]) (block->cells);
    int i, j, k;
    double sb, sm, sf, work[control->x_block_size+2][control->y_block_size+2][control->z_block_size+2];
-//TODO:   OBTAIN_ACCESS_TO_sorted_list
-//TODO:   OBTAIN_ACCESS_TO_blocks
-//TODO:   OBTAIN_ACCESS_TO_cells
-//TODO:   Block_t *bp;
-//TODO:   Cell_t  *cp;
-//TODO:   TRACE
-
 
    if (control->stencil == 7) {
-//TODO:      for (in = 0; in < sorted_index[num_refine+1]; in++) {
-//TODO:         n = sorted_list[in].n;
-//TODO:         bp = &blocks[n];
-//TODO:         cp = &cells[n];
-//TODO:         if (bp->number >= 0) {
-            for (i = 1; i <= control->x_block_size; i++) {
-               for (j = 1; j <= control->y_block_size; j++) {
-                  for (k = 1; k <= control->z_block_size; k++) {
-                     work[i][j][k] = (cp[var][i-1][j  ][k  ] +
-                                      cp[var][i  ][j-1][k  ] +
-                                      cp[var][i  ][j  ][k-1] +
-                                      cp[var][i  ][j  ][k  ] +
-                                      cp[var][i  ][j  ][k+1] +
-                                      cp[var][i  ][j+1][k  ] +
-                                      cp[var][i+1][j  ][k  ])/7.0;
-                  }
-               }
+      for (i = 1; i <= control->x_block_size; i++) {
+         for (j = 1; j <= control->y_block_size; j++) {
+            for (k = 1; k <= control->z_block_size; k++) {
+               work[i][j][k] = (cp[var][i-1][j  ][k  ] +
+                                cp[var][i  ][j-1][k  ] +
+                                cp[var][i  ][j  ][k-1] +
+                                cp[var][i  ][j  ][k  ] +
+                                cp[var][i  ][j  ][k+1] +
+                                cp[var][i  ][j+1][k  ] +
+                                cp[var][i+1][j  ][k  ])/7.0;
             }
-            for (i = 1; i <= control->x_block_size; i++) {
-               for (j = 1; j <= control->y_block_size; j++) {
-                  for (k = 1; k <= control->z_block_size; k++) {
-                     cp[var][i][j][k] = work[i][j][k];
-                  }
-               }
+         }
+      }
+      for (i = 1; i <= control->x_block_size; i++) {
+         for (j = 1; j <= control->y_block_size; j++) {
+            for (k = 1; k <= control->z_block_size; k++) {
+               cp[var][i][j][k] = work[i][j][k];
             }
-//TODO:         }
-//TODO:      }
+         }
+      }
    } else {
-//TODO:      for (in = 0; in < sorted_index[num_refine+1]; in++) {
-//TODO:         n = sorted_list[in].n;
-//TODO:         bp = &blocks[n];
-//TODO:         cp = &cells[n];
-//TODO:         if (bp->number >= 0) {
-            for (i = 1; i <= control->x_block_size; i++) {
-               for (j = 1; j <= control->y_block_size; j++) {
-                  for (k = 1; k <= control->z_block_size; k++) {
-                     sb = cp[var][i-1][j-1][k-1] +
-                          cp[var][i-1][j-1][k  ] +
-                          cp[var][i-1][j-1][k+1] +
-                          cp[var][i-1][j  ][k-1] +
-                          cp[var][i-1][j  ][k  ] +
-                          cp[var][i-1][j  ][k+1] +
-                          cp[var][i-1][j+1][k-1] +
-                          cp[var][i-1][j+1][k  ] +
-                          cp[var][i-1][j+1][k+1];
-                     sm = cp[var][i  ][j-1][k-1] +
-                          cp[var][i  ][j-1][k  ] +
-                          cp[var][i  ][j-1][k+1] +
-                          cp[var][i  ][j  ][k-1] +
-                          cp[var][i  ][j  ][k  ] +
-                          cp[var][i  ][j  ][k+1] +
-                          cp[var][i  ][j+1][k-1] +
-                          cp[var][i  ][j+1][k  ] +
-                          cp[var][i  ][j+1][k+1];
-                     sf = cp[var][i+1][j-1][k-1] +
-                          cp[var][i+1][j-1][k  ] +
-                          cp[var][i+1][j-1][k+1] +
-                          cp[var][i+1][j  ][k-1] +
-                          cp[var][i+1][j  ][k  ] +
-                          cp[var][i+1][j  ][k+1] +
-                          cp[var][i+1][j+1][k-1] +
-                          cp[var][i+1][j+1][k  ] +
-                          cp[var][i+1][j+1][k+1];
-                     work[i][j][k] = (sb + sm + sf)/27.0;
-                  }
-               }
+      for (i = 1; i <= control->x_block_size; i++) {
+         for (j = 1; j <= control->y_block_size; j++) {
+            for (k = 1; k <= control->z_block_size; k++) {
+               sb = cp[var][i-1][j-1][k-1] +
+                    cp[var][i-1][j-1][k  ] +
+                    cp[var][i-1][j-1][k+1] +
+                    cp[var][i-1][j  ][k-1] +
+                    cp[var][i-1][j  ][k  ] +
+                    cp[var][i-1][j  ][k+1] +
+                    cp[var][i-1][j+1][k-1] +
+                    cp[var][i-1][j+1][k  ] +
+                    cp[var][i-1][j+1][k+1];
+               sm = cp[var][i  ][j-1][k-1] +
+                    cp[var][i  ][j-1][k  ] +
+                    cp[var][i  ][j-1][k+1] +
+                    cp[var][i  ][j  ][k-1] +
+                    cp[var][i  ][j  ][k  ] +
+                    cp[var][i  ][j  ][k+1] +
+                    cp[var][i  ][j+1][k-1] +
+                    cp[var][i  ][j+1][k  ] +
+                    cp[var][i  ][j+1][k+1];
+               sf = cp[var][i+1][j-1][k-1] +
+                    cp[var][i+1][j-1][k  ] +
+                    cp[var][i+1][j-1][k+1] +
+                    cp[var][i+1][j  ][k-1] +
+                    cp[var][i+1][j  ][k  ] +
+                    cp[var][i+1][j  ][k+1] +
+                    cp[var][i+1][j+1][k-1] +
+                    cp[var][i+1][j+1][k  ] +
+                    cp[var][i+1][j+1][k+1];
+               work[i][j][k] = (sb + sm + sf)/27.0;
             }
-            for (i = 1; i <= control->x_block_size; i++) {
-               for (j = 1; j <= control->y_block_size; j++) {
-                  for (k = 1; k <= control->z_block_size; k++) {
-                     cp[var][i][j][k] = work[i][j][k];
-                  }
-               }
+         }
+      }
+      for (i = 1; i <= control->x_block_size; i++) {
+         for (j = 1; j <= control->y_block_size; j++) {
+            for (k = 1; k <= control->z_block_size; k++) {
+               cp[var][i][j][k] = work[i][j][k];
             }
-//TODO:         }
-//TODO:      }
+         }
+      }
    }
 }

@@ -63,6 +63,7 @@ typedef struct {
    int refine_ghost;
    int num_objects;
    int p2[18];       // Number of elements is max number of refinement levels, plust two.
+   int mesh_size[3];
 } Control_t;
 
 #define sizeof_Control_t (sizeof(Control_t))

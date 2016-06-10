@@ -12,10 +12,14 @@ Copyright Intel Corporation 2016
 #include <stdio.h>
 #include <string.h>
 #include <ocr.h>
-#include "continuationcloner.h"
+#include <ocr-guid-functions.h>
+#include "clone.h"
 
+#ifdef NANNY_FUNC_NAMES
+#line __LINE__ "clone  "
+#endif
 
-void CastPointerToDbIndexAndOffset(ContinuationCloning_t * cloningState, void * ptrToCast, int * dbIndex, int * offset, char * filename, const char * funcname, int linenum, int ptrnum) {
+void CastPointerToDbIndexAndOffset(Clone_t * cloningState, ocrEdtDep_t * depv, DbSize_t * dbSize, void * ptrToCast, int * dbIndex, int * offset, char * filename, const char * funcname, int linenum, int ptrnum) {
 
    if (ptrToCast == NULL) {
       *dbIndex = -1;
@@ -23,12 +27,10 @@ void CastPointerToDbIndexAndOffset(ContinuationCloning_t * cloningState, void * 
       return;
    }
 
-   genericDbCatalogEntry_t * dbCatalog = ((genericDbCatalogEntry_t *) (((unsigned long long) cloningState) + cloningState->offsetToCatalogOfDatablocks));
-
    for (*dbIndex = 0; *dbIndex < cloningState->numberOfDatablocks; (*dbIndex)++) {
-      if (dbCatalog[*dbIndex].dblk != NULL_GUID) {
-         long long ptrOffset = ((long long) ptrToCast) - ((long long) dbCatalog[*dbIndex].base);
-         if (ptrOffset >= 0 && ptrOffset < dbCatalog[*dbIndex].size) {
+      if (!ocrGuidIsNull(depv[*dbIndex].guid)) {
+         long long ptrOffset = ((long long) ptrToCast) - ((long long) depv[*dbIndex].ptr);
+         if (ptrOffset >= 0 && ptrOffset < DbSize(depv[*dbIndex])) {
             *offset = (int) ptrOffset;
             return;
          }
@@ -42,19 +44,18 @@ void CastPointerToDbIndexAndOffset(ContinuationCloning_t * cloningState, void * 
    *((int *) 123) = 456;
 } // CastPointerToGuidAndOffset
 
-void CapturePointerBaseAndOffset(ContinuationCloning_t * cloningState, void * ptrToCapture, char * filename, const char * funcname, int linenum, int ptrnum) {
+void CapturePointerBaseAndOffset(Clone_t * cloningState, ocrEdtDep_t * depv, DbSize_t * dbSize, void * ptrToCapture, char * filename, const char * funcname, int linenum, int ptrnum) {
    cloningState->topPtrAdjRec++;
-   CastPointerToDbIndexAndOffset(cloningState, ptrToCapture, &(cloningState->topPtrAdjRec->serialNum), &(cloningState->topPtrAdjRec->ptrOffset), filename, funcname, linenum, ptrnum);
+   CastPointerToDbIndexAndOffset(cloningState, depv, dbSize, ptrToCapture, &(cloningState->topPtrAdjRec->serialNum), &(cloningState->topPtrAdjRec->ptrOffset), filename, funcname, linenum, ptrnum);
 } // CapturePointerBaseAndOffset
 
 
-void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** ptrToRestore, char * filename, const char * funcname, int linenum, int ptrnum) {
-   genericDbCatalogEntry_t * dbCatalog = ((genericDbCatalogEntry_t *) (((unsigned long long) cloningState) + cloningState->offsetToCatalogOfDatablocks));
+void RestorePointerBaseAndOffset(Clone_t * cloningState, ocrEdtDep_t * depv, void ** ptrToRestore, char * filename, const char * funcname, int linenum, int ptrnum) {
    if (cloningState->topPtrAdjRec->serialNum == -1) {    // NULL pointer:
       *ptrToRestore = NULL;
    } else if (cloningState->topPtrAdjRec->serialNum >= 0 &&
               cloningState->topPtrAdjRec->serialNum < cloningState->numberOfDatablocks) {  // A viable datablock.
-      *ptrToRestore = ((void *) (((unsigned long long) dbCatalog[cloningState->topPtrAdjRec->serialNum].base) + cloningState->topPtrAdjRec->ptrOffset));
+      *ptrToRestore = ((void *) (((unsigned long long) depv[cloningState->topPtrAdjRec->serialNum].ptr) + cloningState->topPtrAdjRec->ptrOffset));
    } else {
        printf ("Corrupt serialNum 0x%x taken from 0x%p for pointer in need of adjustment\n", cloningState->topPtrAdjRec->serialNum, cloningState->topPtrAdjRec);fflush(stdout);
        *((int *) 0) = 123;

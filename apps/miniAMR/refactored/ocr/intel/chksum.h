@@ -31,7 +31,7 @@
 
 typedef struct Checksum_t Checksum_t;
 
-#include "dbcommheader.h"
+#include "commhdr.h"
 #include "control.h"
 
 typedef struct Checksum_t {

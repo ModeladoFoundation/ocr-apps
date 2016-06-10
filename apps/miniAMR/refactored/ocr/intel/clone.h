@@ -6,24 +6,14 @@ Copyright Intel Corporation 2016
  and cannot be distributed without it. This notice cannot be removed or modified.
 */
 
-#ifndef __CONTINUATIONCLONER_H__
-#define __CONTINUATIONCLONER_H__
+#ifndef __CLONE_H__
+#define __CLONE_H__
 
 #include <stdio.h>
 #include <ocr.h>
 
-#ifdef ALLOW_DATABLOCK_REWRITES
-#define DB_MODE_UPDATE  DB_MODE_RW     // Rewriting is allowed, so we can grant read-write access.
-#else
-#define DB_MODE_UPDATE  DB_MODE_RO     // Single assignment is enforced.  Recipient is obligated to clone the datablock to a new copy, delete the old, rename, and then it can overwrite.
-#endif
-
-typedef struct {
-   ocrGuid_t              dblk; // Guid of datablock.
-   void                 * base; // Base address of datablock.
-   int                    size; // Size in bytes.
-   ocrDbAccessMode_t      acMd; // Access Mode for datablock (at its next passing to a recipient, and at the entry to that recipient.  The entry code then sets acMd for its own descendent).
-} genericDbCatalogEntry_t;
+typedef int DbSize_t;
+#define DbSize(dep)                (dbSize[&dep-depv])
 
 typedef struct {
    int  serialNum;          // Serial number of the datablock into which this pointer points.
@@ -32,7 +22,7 @@ typedef struct {
 #define sizeof_PtrAdjustmentRecord_t (sizeof(PtrAdjustmentRecord_t))
 
 
-// This is the continuation-cloner-managed stack, and related metadata.
+// This is the cloner-managed stack, and related metadata.
 typedef struct {
    char *                               tos;                              // Pointer to top of stack.  This is the stack of activation records.
    PtrAdjustmentRecord_t *              topPtrAdjRec;
@@ -41,19 +31,21 @@ typedef struct {
    int                                  returnCanary;                     // Canary trap variable for detecting a return through a return statement.  Need to return via macro!
 
    enum  {
-      ContinuationOpcodeUnspecified,    // Coding error:  at the point where continuation cloning is triggered, need to provide a continuationOpcode.
       SeasoningOneOrMoreDbCreates,      // Did one or more ocrDbCreates (and no other operation that triggers a clone) and now need to "season" the datablock(s)
       ReceivingACommunication,          // A remote EDT is sending us something.
+      Fork,                             // Classic fork operation, but with number and/or kind of prongs being context specific.  (If need to implement multiple kinds, provide details in a fashion TBD.)
+      Join,                             // Classic join operation, but with number and/or kind of prongs being context specific.  (If need to implement multiple kinds, provide details in a fashion TBD.)
+      OpcodeUnspecified,                // Coding error:  at the point where cloning operation is triggered, need to provide an opcode.
+      Shutdown,                         // Shutdown.
+      Special,                          // Special case.  Perform an operation not generic enough to belong in this generalized API.  (If need to implement multiple kinds, provide details in a fashion TBD.)
       MassParallelismDone}              // We are collecting the results of a OpenMP-like fan-out operation.
-   continuationOpcode;
+   cloningOpcode;
 
 
 #define                                 SIZEOFSTACK 1024
    char                                 stack[SIZEOFSTACK+64];            // Stack space, including a little extra "slop" space.
-   int                                  numberOfDatablocks;               // Number of datablocks the continuation cloner has to rationalize pointers against.
-   int                                  offsetToCatalogOfDatablocks;      // Distance in bytes from base of cloningState struct to the catalog of datablocks for which we have to convert pointer to
-                                                                          // guid descriptors on crawl out, and convert those back to pointers on crawl in.
-} ContinuationCloning_t;
+   int                                  numberOfDatablocks;               // Number of datablocks the cloner has to rationalize pointers against.
+} Clone_t;
 
 
 // This is a frame header upon the above stack, one per activation record, followed by local variables.
@@ -70,17 +62,14 @@ typedef struct {
 } Frame_Header_t;
 #define sizeof_Frame_Header_t (sizeof(Frame_Header_t))
 
-#define ContinuationOpcode_Initializaton   0
-#define ContinuationOpcode_Unspecified    -1
 
-
-void CastPointerToDbIndexAndOffset(ContinuationCloning_t * cloningState, void * ptrToCast, int * dbIndex, int * offset, char * filename, const char * funcname, int linenum, int ptrnum);
-void CapturePointerBaseAndOffset(ContinuationCloning_t * cloningState, void *  ptrToCapture, char * filename, const char * funcname, int linenum, int ptrnum);
-void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** ptrToRestore, char * filename, const char * funcname, int linenum, int ptrnum);
+void CastPointerToDbIndexAndOffset(Clone_t * cloningState, ocrEdtDep_t * depv, DbSize_t * dbSize, void * ptrToCast, int * dbIndex, int * offset, char * filename, const char * funcname, int linenum, int ptrnum);
+void CapturePointerBaseAndOffset(Clone_t * cloningState, ocrEdtDep_t * depv, DbSize_t * dbSize, void * ptrToCapture, char * filename, const char * funcname, int linenum, int ptrnum);
+void RestorePointerBaseAndOffset(Clone_t * cloningState, ocrEdtDep_t * depv, void ** ptrToRestore, char * filename, const char * funcname, int linenum, int ptrnum);
 
 // A suspendable function starts with this macro, which obtains (or re-obtains) the stack frame, generates the switch statement boilerplate, and the case 0 label (initial call)
 #define SUSPENDABLE_FUNCTION_PROLOGUE(baseStruct, frameName) \
-   ContinuationCloning_t * cloningState = &(baseStruct->cloningState); \
+   Clone_t * cloningState = &(baseStruct->cloningState); \
    cloningState->tos += ((Frame_Header_t *) cloningState->tos)->my_size;                /* Here, "my_size" is actually my caller's frame size.  Advance TOS to MY frame header. */ \
    cloningState->returnCanary  = 1;       /* Set "return canary trap" "live" so it will scream if we attempt to return to our callee through a return statement.  Must return through macro. */ \
    if ((((unsigned long long) cloningState->tos) + sizeof(frameName)) >= ((unsigned long long) &cloningState->stack[SIZEOFSTACK])) { \
@@ -112,10 +101,9 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
       } \
       int pointerCounter; \
       for (pointerCounter = sizeof(lcl->pointers)/sizeof(void *); --pointerCounter >= 0; ) { \
-         RestorePointerBaseAndOffset(cloningState, &(((void **) (&(lcl->pointers)))[pointerCounter]), __FILE__, __func__, __LINE__, pointerCounter); \
+         RestorePointerBaseAndOffset(cloningState, depv, &(((void **) (&(lcl->pointers)))[pointerCounter]), __FILE__, __func__, __LINE__, pointerCounter); \
       } \
    } \
-   __COUNTER__; /* Assure that the counter is NOT zero */ \
    do { /* Create an opening bracket that is closed by the Eplilogue.  It is of the form do { ... } while (false); so only executes the do-loop once, but the form makes it more clear if there is a failure to match the prologue with the epilogue. */ \
    switch (lcl->myFrame.resumption_case_num) { \
    case 0: ;
@@ -125,7 +113,7 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
 // the callee, to report that the call site probably has not been modified yet to convey a possible suspension of the callee back up the calling chain to the root.
 #define CALL_SUSPENDABLE_CALLEE \
    do { /* Create an opening bracket that is closed by the Debrief.  It is of the form do { ... } while (false); so only executes the do-loop once, but the form makes it more clear if there is a failure to match the Calling macro with the debriefing macro. */ \
-      case __COUNTER__: ; \
+      case __COUNTER__+1: ; \
          lcl->calleeFrame.validate_callers_prep_for_suspension = 1;  /* Assure callee that it can suspend activation back to me and I will unwind. */
 
 
@@ -135,16 +123,17 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
       if (cloningState->returnCanary == 1) {  /* If the return canary is "live" the callee must have used a return statement.  We need it to use the macro! */ \
          printf ("ERROR: %s at line %d: Canary trap on RETURN from the callee.  Change callee to return through the NORMAL_RETURN_SEQUENCE macro.\n", __FILE__, __LINE__); fflush(stdout); \
          printf ("ERROR: Other possibility is that callee is not (yet) a SUSPENDABLE function, but it is being identified as such by the caller.\n"); fflush(stdout); \
+         printf ("ERROR: And another possibility is that you commented out the call, but forgot to comment out the surrounding macros.\n"); fflush(stdout); \
          *((int *) 123) = 456; \
          ocrShutdown(); \
       } \
       if(lcl->calleeFrame.resumption_case_num != 0) {          /* If the callee suspended, we have to do likewise, so that activations unwind all the way up to the root. Prep for eventual reactivation. */ \
-         lcl->myFrame.resumption_case_num = __COUNTER__-1;     /* Inform my caller that I am NOT done, and when it resumes me, this is the case number I need to return to. */ \
+         lcl->myFrame.resumption_case_num = __COUNTER__;       /* Inform my caller that I am NOT done, and when it resumes me, this is the case number I need to return to. */ \
          cloningState->tos -= ((Frame_Header_t *) cloningState->tos)->caller_size;     /* Retreat TOS to my caller's frame header. */  \
          { \
             int pointerCounter; \
             for (pointerCounter = 0; pointerCounter < sizeof(lcl->pointers)/sizeof(void *); pointerCounter ++) { \
-               CapturePointerBaseAndOffset(cloningState, ((void **) (&(lcl->pointers)))[pointerCounter], __FILE__, __func__, __LINE__, pointerCounter); \
+               CapturePointerBaseAndOffset(cloningState, depv, meta->dbSize, ((void **) (&(lcl->pointers)))[pointerCounter], __FILE__, __func__, __LINE__, pointerCounter); \
                ((void **) (&(lcl->pointers)))[pointerCounter] = NULL; \
             } \
          } \
@@ -162,7 +151,7 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
    cloningState->returnCanary = 2;       /* Set "return canary trap" "dead" so caller will know it regained control by way of it's callee's use of a macro. */ \
    return normalReturnValue;
 
-// Trigger suspension of the current EDT, unwinding the stack back to the root EDT function (so that it can "return" and thus terminate the EDT).  The current EDT should have created a continuation EDT,
+// Trigger suspension of the current EDT, unwinding the stack back to the root EDT function (so that it can "return" and thus terminate the EDT).  The current EDT should have created a clone EDT,
 // and when that EDT's events are satisfied, it will crawl back through the stack to the current point, and carry-on herefrom.
 //
 // This is like an expansion of CALL_SUSPENDABLE_CALLEE immediately followed by DEBRIEF..., but without a function call.  We are NOT trying to call a SUSPENDABLE function, but rather, we called something
@@ -171,23 +160,23 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
 // 1) the reference code did a malloc, and then used the new block.  We instead do an ocrDbCreate.  Good form is for the creator of a datablock to NOT write to it, but rather to feed it to a child EDT
 // for first access.  (The reason has to do with the future implementation of resiliency.)  So we need to follow the ocrDbCreate with an ocrEdtCreate of an EDT that will receive that datablock.
 //
-// 2) the reference code did an MPI_recv.  We have to do that by receiving that message block as an EDT.  The call gets replaced by this SUSPEND macro, and when the continuation EDT RESUMEs at this point,
+// 2) the reference code did an MPI_recv.  We have to do that by receiving that message block as an EDT.  The call gets replaced by this SUSPEND macro, and when the clone EDT RESUMEs at this point,
 // we need to take the datablock that satisfied our EDT's dependency and stitch it into where the reference version's MPI_recv call received its message.
 // If the function is of type void, use a semi-colon for the argument to the macro.
-#define SUSPEND__RESUME_IN_CONTINUATION_EDT(suspensionReturnValue) \
+#define SUSPEND__RESUME_IN_CLONE_EDT(suspensionReturnValue) \
    cloningState->topPtrAdjRec = (PtrAdjustmentRecord_t *) (((unsigned long long) &(lcl->calleeFrame)) + sizeof(Frame_Header_t)); /* Use this as cursor for adding Pointer Adjustment Records as we crawl out. */ \
-   lcl->myFrame.resumption_case_num = __COUNTER__;   /* Inform my caller that I am NOT done, and when it resumes me, this is the case number I need to return to. */ \
+   lcl->myFrame.resumption_case_num = __COUNTER__+1;   /* Inform my caller that I am NOT done, and when it resumes me, this is the case number I need to return to. */ \
    cloningState->tos -= ((Frame_Header_t *) cloningState->tos)->caller_size;     /* Retreat TOS to my caller's frame header. */  \
    { \
       int pointerCounter; \
       for (pointerCounter = 0; pointerCounter < sizeof(lcl->pointers)/sizeof(void *); pointerCounter ++) { \
-         CapturePointerBaseAndOffset(cloningState, ((void **) (&(lcl->pointers)))[pointerCounter], __FILE__, __func__, __LINE__, pointerCounter); \
+         CapturePointerBaseAndOffset(cloningState, depv, meta->dbSize, ((void **) (&(lcl->pointers)))[pointerCounter], __FILE__, __func__, __LINE__, pointerCounter); \
          ((void **) (&(lcl->pointers)))[pointerCounter] = NULL; \
       } \
    } \
    cloningState->returnCanary = 2;       /* Set "return canary trap" "dead" so caller will know it regained control by way of it's callee's use of a macro. */ \
    return suspensionReturnValue; \
-   case __COUNTER__-1: ;
+   case __COUNTER__: ;
 
 // A suspendable function has to finish (lexically) with the following boilerplate.
 #define SUSPENDABLE_FUNCTION_EPILOGUE \
@@ -201,4 +190,4 @@ void RestorePointerBaseAndOffset(ContinuationCloning_t * cloningState, void ** p
    } /* switch */ \
    } while (0);  /* This is the closing bracket to match up with the opening bracket expanded in the SUSPENDABLE_FUNCTION_PROLOGUE macro */
 
-#endif // __CONTINUATIONCLONER_H__
+#endif // __CLONE_H__

@@ -68,6 +68,9 @@ History:   Written by Tim Mattson, Dec 1, 1988
   #define  USEC_TO_SEC   1.0e-6    /* to convert microsecs to secs */
 #endif
 
+#ifdef NANNY_FUNC_NAMES
+#line __LINE__ "wtime  "
+#endif
 
 double wtime() {
   double time_seconds;

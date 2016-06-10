@@ -29,7 +29,7 @@
 #ifndef __PROFILE_H__
 #define __PROFILE_H__
 
-#include "dbcommheader.h"
+#include "commhdr.h"
 
 typedef struct {
    DbCommHeader_t  dbCommHeader;

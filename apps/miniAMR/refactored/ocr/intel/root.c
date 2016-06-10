@@ -30,21 +30,25 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-//#include <mpi.h> TODO
 
 #include <ocr.h>
+#include <ocr-guid-functions.h>
 #include <ocr-std.h>
 #include <extensions/ocr-labeling.h>
-#include "ocr-macros_brn.h"
+#include "ocrmacs.h"
 
 #include "control.h"
-#include "meta.h"
 #include "object.h"
-#include "checksum.h"
+#include "chksum.h"
 #include "block.h"
-#include "profile.h"
+#include "root.h"
+//PROFILE:#include "profile.h"
 #include "proto.h"
-#include "continuationcloner.h"
+#include "clone.h"
+
+#ifdef NANNY_FUNC_NAMES
+#line __LINE__ "root   "
+#endif
 
 // root.c          This is the "root progenitor", i.e. the "Adam"-level parent of the entire mesh.
 // ***************************************************************************************************************************************************************************************
@@ -54,25 +58,24 @@
 //
 // This is the EDT that the OCR startup instantiates.  It creates only ONE instance of this EDT.  The name "mainEdt" is essentially just a generic name made necessary by the fact that
 // the OCR startup doesn't know the context of what will be done at the very start.  To make this more clear, we will simply make this function call a function whose name reflects what we
-// need to do first:  rootProgenitorLaunch_Func.
+// need to do first:  rootLaunch_Func.
 
 ocrGuid_t mainEdt (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
-   return rootProgenitorLaunch_Func(paramc, paramv, depc, depv);
+   return rootLaunch_Func(paramc, paramv, depc, depv);
 } // mainEdt
 
 // ***************************************************************************************************************************************************************************************
-// rootProgenitorLaunch_Func  -- "Thunked" to by mainEdt, i.e. called as a function directly from mainEdt, NOT created as an EDT therefrom.
+// rootLaunch_Func  -- "Thunked" to by mainEdt, i.e. called as a function directly from mainEdt, NOT created as an EDT therefrom.
 // -- Topology:  mainEdt --> Launch(create datablocks) --> Init(initialize contents of datablocks, create children) --> Clone(steady state: perform service requests of children; clone again)
 //
-// rootProgenitorLaunch_Func does the following:
+// rootLaunch_Func does the following:
 //   * Process the command-line arguments only sufficiently to figure out how many objects will be modeled to move through the mesh.  Creates a "scratch" datablock for same.
 //   * Creates a "control" datablock for an instance of the shared struct of parsed command line arguments and derived control variables.
-//   * Creates a "wrapup" EDT, which will gain control when the parseCmdLine finish EDT terminates.  It will shut down the application.
-//   * Passes control to the EDT that starts at rootProgenitorInit_Func.
+//   * Passes control to the EDT that starts at rootInit_Func.
 
-ocrGuid_t rootProgenitorLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t rootLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
-   rootProgenitorLaunch_Deps_t * myDeps = (rootProgenitorLaunch_Deps_t *) depv;
+   rootLaunch_Deps_t * myDeps = (rootLaunch_Deps_t *) depv;
    char      ** argv      = ((char **) (myDeps->argv_Dep.ptr));
    ocrGuid_t    argv_dblk =            (myDeps->argv_Dep.guid);
    u32 argc = getArgc(argv);
@@ -87,10 +90,12 @@ ocrGuid_t rootProgenitorLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdt
       if (!strcmp(getArgv(argv, i), "--num_objects")) {
          if (num_objects != -9999) {
             printf ("--num_objects should only appear once on the command line.\n"); fflush(stdout);
+            *((int *) 123) = 456;
             ocrShutdown();
          }
          if (i == argc) {
             printf ("Number of objects must appear after the --num_objects keyword on the command-line.\n"); fflush(stdout);
+            *((int *) 123) = 456;
             ocrShutdown();
          }
          num_objects = atoi(getArgv(argv, ++i));
@@ -100,10 +105,10 @@ ocrGuid_t rootProgenitorLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdt
       }
    }
    if (num_objects == -9999) num_objects = 1;
-   if (num_blocks > 1000) {
+   if (num_blocks > MAX_NUM_UNREFINED_BLOCKS) {
       printf ("Number of totally unrefined blocks, i.e. npx*npy*npz, is excessive.  Recommendation:\n");
       printf ("reduce, and plan to do more refinement.  Otherwise, modify limits and try again.\n");
-      printf ("Note, though, that the rootProgenitorContinuatin function has to have an input dependency\n");
+      printf ("Note, though, that the rootClone function has to have an input dependency\n");
       printf ("for each and every unrefined block of the mesh (plus a few more), and that might hit up\n");
       printf ("against limits in OCR itself.  Those limits can be increased too, but it means rebuilding OCR.\n"); fflush(stdout);
       *((int *) 123) = 456;
@@ -115,10 +120,10 @@ ocrGuid_t rootProgenitorLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdt
    ocrGuid_t meta_dblk;
    ocrGuid_t control_dblk;
    ocrGuid_t scratchAllObjects_dblk;
-   void * dummy;
+   void * dummy = NULL;
 
 #define control (&hack)   // In all other contexts, the control_t datablock (which contains npx, npy, npz, and num_objects) will be available, but here, we need to hack a look-alike so that
-                          // the sizeof_AllObjects_t and sizeof_RootProgenitorMeta_t macros will work.
+                          // the sizeof_AllObjects_t and sizeof_RootMeta_t macros will work.
    struct {
       int num_objects;
       int npx, npy, npz;
@@ -127,96 +132,82 @@ ocrGuid_t rootProgenitorLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdt
    hack.npx = num_blocks;
    hack.npy = 1;
    hack.npz = 1;
-   gasket__ocrDbCreate(&meta_dblk,              &dummy, sizeof_RootProgenitorMeta_t, __FILE__, __func__, __LINE__);
-   gasket__ocrDbCreate(&scratchAllObjects_dblk, &dummy, sizeof_AllObjects_t,         __FILE__, __func__, __LINE__);
+   gasket__ocrDbCreate(&meta_dblk,              &dummy, sizeof_RootMeta_t,   __FILE__, __func__, __LINE__, "rootLaunch", "meta");
+   gasket__ocrDbCreate(&scratchAllObjects_dblk, &dummy, sizeof_AllObjects_t, __FILE__, __func__, __LINE__, "rootLaunch", "allObjects");
 #undef control            // Clean up the above hack, so that it's effects will not propagate to any code below.
-   gasket__ocrDbCreate(&control_dblk,           &dummy, sizeof_Control_t,            __FILE__, __func__, __LINE__);
+   gasket__ocrDbCreate(&control_dblk,           &dummy, sizeof_Control_t,    __FILE__, __func__, __LINE__, "rootLaunch", "control");
 
-// Create the rootProgenitorInit object as successor to this EDT. Postpone plumbing its dependencies to it until after setting up the wrapup object.
+// Create the rootInit object as successor to this EDT.
 
-   ocrGuid_t rootProgenitorInit_Template;
-   ocrEdtTemplateCreate(&rootProgenitorInit_Template,                 // Guid of template
-                        rootProgenitorInit_Func,                      // Top level function of EDT
-                        countof_rootProgenitorInit_Params_t,          // Number of params
-                        countof_rootProgenitorInit_Deps_t);           // Number of dependencies
+   ocrGuid_t rootInit_Template;
+   ocrEdtTemplateCreate(&rootInit_Template,                 // Guid of template
+                        rootInit_Func,                      // Top level function of EDT
+                        countof_rootInit_Params_t,          // Number of params
+                        countof_rootInit_Deps_t);           // Number of dependencies
 
-   ocrGuid_t rootProgenitorInit_Edt;
-   ocrGuid_t rootProgenitorInit_DoneEvent;
-   rootProgenitorInit_Params_t rootProgenitorInit_Params;
-   rootProgenitorInit_Params.dummy_Prm = 9999;                        // No parameters to pass to rootProgenitorInit_Func.
-   ocrEdtCreate(&rootProgenitorInit_Edt,                              // Guid of the EDT created to start at function realMainEdt.
-                rootProgenitorInit_Template,                          // Template for the EDT we are creating.
-                EDT_PARAM_DEF,
-                (u64 *) &rootProgenitorInit_Params,
-                EDT_PARAM_DEF,
-                NULL,
-                EDT_PROP_FINISH,
-                NULL_GUID,
-                &rootProgenitorInit_DoneEvent);
-   ocrEdtTemplateDestroy(rootProgenitorInit_Template);
+   ocrGuid_t rootInit_Edt;
+   rootInit_Params_t rootInit_Params;
+   rootInit_Params.dummy_Prm = 9999;                        // No parameters to pass to rootInit_Func.
+   gasket__ocrEdtCreate(&rootInit_Edt,                              // Guid of the EDT created to start at function realMainEdt.
+                        SLOT(rootInit_Deps_t, whoAmI_Dep),
+                        rootInit_Template,                          // Template for the EDT we are creating.
+                        EDT_PARAM_DEF,
+                        (u64 *) &rootInit_Params,
+                        EDT_PARAM_DEF,
+                        NULL,
+                        EDT_PROP_NONE,
+                        NULL_HINT,
+                        NULL,
+                        __FILE__,
+                        __func__,
+                        __LINE__,
+                        " ",
+                        "rootInit");
+   ocrEdtTemplateDestroy(rootInit_Template);
 
-// Create the wrapup object, and plumb its dependency.
+// Plumb the dependencies to the rootInit object.
 
-   ocrGuid_t wrapup_Template;
-   ocrEdtTemplateCreate(&wrapup_Template,                       // Guid of template
-                        wrapup_Func,                            // Top level function of EDT
-                        countof_wrapup_Params_t,                // Number of params
-                        countof_wrapup_Deps_t);                 // Number of dependencies
+   gasket__ocrDbRelease  (argv_dblk, __FILE__, __func__, __LINE__, " ", "argv -- NOTE: STARTUP DID ocrDbCreate, so IGNORE AUDIT MESSAGES REGARDING THIS."); argv = NULL;
+   ADD_DEPENDENCE(argv_dblk,              rootInit_Edt, rootInit_Deps_t, argv_Dep,              DB_MODE_RO, "rootLaunch", "argv -- NOTE: STARTUP DID ocrDbCreate, so IGNORE AUDIT MESSAGES REGARDING THIS."); // Provide datablock containing command line argument list.
+   ADD_DEPENDENCE(meta_dblk,              rootInit_Edt, rootInit_Deps_t, meta_Dep,              DB_MODE_RW, "rootLaunch", "meta"); // Provide datablock into which the continuatio cloning stack resides.
+   ADD_DEPENDENCE(control_dblk,           rootInit_Edt, rootInit_Deps_t, control_Dep,           DB_MODE_RW, "rootLaunch", "control"); // Provide datablock into which it is to parse the command line.
+   ADD_DEPENDENCE(scratchAllObjects_dblk, rootInit_Edt, rootInit_Deps_t, scratchAllObjects_Dep, DB_MODE_RW, "rootLaunch", "scratchAllObjects"); // Provide db into which it is to describe the objects to model.
 
-   ocrGuid_t wrapup_Edt;
-   wrapup_Params_t wrapup_Params;
-   wrapup_Params.dummy_Prm = 9999;                              // No parameters to pass to wrapup_Func.
-   ocrEdtCreate(&wrapup_Edt,
-                wrapup_Template,
-                EDT_PARAM_DEF,
-                (u64 *) &wrapup_Params,
-                EDT_PARAM_DEF,
-                NULL,
-                EDT_PROP_NONE,
-                NULL_GUID,
-                NULL_GUID);
-   ocrEdtTemplateDestroy(wrapup_Template);
-
-   ADD_DEPENDENCE(rootProgenitorInit_DoneEvent, wrapup_Edt, wrapup_Deps_t, triggerEvent_Dep, DB_MODE_RO);
-
-// Plumb the dependencies to the rootProgenitorInit object.
-
-   ocrDbRelease  (argv_dblk); argv = NULL;
-   ADD_DEPENDENCE(argv_dblk,              rootProgenitorInit_Edt, rootProgenitorInit_Deps_t, argv_Dep,              DB_MODE_RO); // Provide datablock containing command line argument list.
-   ADD_DEPENDENCE(meta_dblk,              rootProgenitorInit_Edt, rootProgenitorInit_Deps_t, meta_Dep,              DB_MODE_RW); // Provide datablock into which the continuatio cloning stack resides.
-   ADD_DEPENDENCE(control_dblk,           rootProgenitorInit_Edt, rootProgenitorInit_Deps_t, control_Dep,           DB_MODE_RW); // Provide datablock into which it is to parse the command line.
-   ADD_DEPENDENCE(scratchAllObjects_dblk, rootProgenitorInit_Edt, rootProgenitorInit_Deps_t, scratchAllObjects_Dep, DB_MODE_RW); // Provide datablock into which it is to describe the objects to model.
-
-// This EDT is done, and should die.  rootProgenitorInit_Edt should fire now, and wrapup_Edt should wait for it as a finish EDT.
+// This EDT is done, and should die.  rootInit_Edt should fire now.
 
    return NULL_GUID;
-} // rootProgenitorLaunch
+} // rootLaunch
 
 
 // **************************************************************************************************************************************************************************************************************
-// rootProgenitorInit_Func
+// rootInit_Func
 // -- Topology:  mainEdt --> Launch(create datablocks) --> Init(initialize contents of datablocks, create children) --> Clone(steady state: perform service requests of children; clone again)
 //
 // This EDT does the following:
 //   * Parses the command line into control_t and allScratchObjects_t.
-//   * Creates one instance of blockLaunch for each unrefined block in the problem mesh, of which there are npx*npy*npz of them.  These are the "children".  Identify position of each by parameters thereto.
-//   * Creates the first in the series of rootProgenitorContinuation clones, to await the first service request from the children.
+//   * Creates one instance of blockLaunch for each unrefined block in the problem mesh, of which there are npx*npy*npz of them.  These are the "children" of the root.  Identify position of each by
+//     parameters thereto.
+//   * Creates the first in the series of rootClone clones, to await the first service request from the children.
 
-ocrGuid_t rootProgenitorInit_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t rootInit_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
    int i;
 
-printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); fflush(stdout);
-   rootProgenitorInit_Deps_t  * myDeps = (rootProgenitorInit_Deps_t  *) depv;
-   char                 ** argv                   = ((char **)                (myDeps->argv_Dep.ptr));
-   ocrGuid_t               argv_dblk              =                           (myDeps->argv_Dep.guid);
-   ocrGuid_t               meta_dblk              =                           (myDeps->meta_Dep.guid);
-   RootProgenitorMeta_t  * meta                   = ((RootProgenitorMeta_t *) (myDeps->meta_Dep.ptr));
-   Control_t             * control                = ((Control_t *)            (myDeps->control_Dep.ptr));
-   ocrGuid_t               control_dblk           =                           (myDeps->control_Dep.guid);
-   AllObjects_t          * scratchAllObjects      = ((AllObjects_t *)         (myDeps->scratchAllObjects_Dep.ptr));
-   ocrGuid_t               scratchAllObjects_dblk =                           (myDeps->scratchAllObjects_Dep.guid);
+//printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); fflush(stdout);
+   rootInit_Deps_t  * myDeps = (rootInit_Deps_t  *) depv;
+   char         ** argv                   = ((char **)        (myDeps->argv_Dep.ptr));
+   ocrGuid_t       meta_dblk              =                   (myDeps->meta_Dep.guid);
+   RootMeta_t    * meta                   = ((RootMeta_t *)   (myDeps->meta_Dep.ptr));
+   Control_t     * control                = ((Control_t *)    (myDeps->control_Dep.ptr));
+   ocrGuid_t       control_dblk           =                   (myDeps->control_Dep.guid);
+   AllObjects_t  * scratchAllObjects      = ((AllObjects_t *) (myDeps->scratchAllObjects_Dep.ptr));
+   ocrGuid_t       scratchAllObjects_dblk =                   (myDeps->scratchAllObjects_Dep.guid);
    u32 argc = getArgc(argv);
+
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->argv_Dep,              rootInit_Deps_t, argv_Dep,              " ", "argv");
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->meta_Dep,              rootInit_Deps_t, meta_Dep,              " ", "meta");
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->control_Dep,           rootInit_Deps_t, control_Dep,           " ", "control");
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->scratchAllObjects_Dep, rootInit_Deps_t, scratchAllObjects_Dep, " ", "scratchAllObjects");
 
 // Set defaults for command line arguments
 
@@ -302,6 +293,7 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
       } else if (!strcmp(getArgv(argv, i), "--object")) {
          if (object_num >= control->num_objects) {
             printf("object number greater than num_objects\n"); fflush(stdout);
+            *((int *) 123) = 456;
             ocrShutdown();
          }
          scratchAllObjects->object[object_num].type    = atoi(getArgv(argv, ++i));
@@ -321,19 +313,13 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
          object_num++;
       } else if (!strcmp(getArgv(argv, i), "--help")) {
          print_help_message();
-#ifdef BUILD_OCR_VERSION
+         *((int *) 123) = 456;
          ocrShutdown();
-#else
-         MPI_Abort(MPI_COMM_WORLD, -1);
-#endif
       } else {
          printf("** Error ** Unknown input parameter %s\n", getArgv(argv, i)); fflush(stdout);
          print_help_message();
-#ifdef BUILD_OCR_VERSION
+         *((int *) 123) = 456;
          ocrShutdown();
-#else
-         MPI_Abort(MPI_COMM_WORLD, -1);
-#endif
       }
    }
 
@@ -357,10 +343,36 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
       control->p2[i+1] = control->p2[i]*2;
       // sorted_index[i] = 0;
    }
+   int size = control->p2[control->num_refine+1];  // block size is p2[num_refine+1-level] smallest block is size p2[1], so can find its center
+   control->mesh_size[0] = control->npx*size;
+   control->mesh_size[1] = control->npy*size;
+   control->mesh_size[2] = control->npz*size;
+#if 0
+TODO:
+   control->max_mesh_size = mesh_size[0];
+   if (mesh_size[1] > max_mesh_size)
+      max_mesh_size = mesh_size[1];
+   if (mesh_size[2] > max_mesh_size)
+      max_mesh_size = mesh_size[2];
+   if ((num_pes+1) > max_mesh_size)
+      max_mesh_size = num_pes + 1;
+#endif
 
+   rootClone_Deps_t cloneDeps;
+   depv = &cloneDeps.firstDependenceSlot;
+   DbSize_t * dbSize = meta->dbSize;
 
-// Init out meta data.
-// First, init the Continuation Cloning State.
+   DbSize(cloneDeps.whoAmI_Dep)               = sizeof(ocrGuid_t);
+   DbSize(cloneDeps.meta_Dep)                 = sizeof_RootMeta_t;
+   DbSize(cloneDeps.control_Dep)              = sizeof_Control_t;
+   DbSize(cloneDeps.goldenChecksum_Dep)       = sizeof_Checksum_t;
+   DbSize(cloneDeps.scratchChecksum_Dep)      = sizeof_Checksum_t;
+   for(i = 0; i < countof_rootClone_AnnexDeps_t; i++) {
+      DbSize(cloneDeps.serviceRequest_Dep[i]) = -9999;
+   }
+
+// Init our meta data.
+// First, init the Cloning State.
 
    Frame_Header_t * topOfStack  = (Frame_Header_t *) meta->cloningState.stack;
    topOfStack[0].resumption_case_num                  = -9999;                  // Irrelevant for topmost activation record.
@@ -371,278 +383,326 @@ printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); f
    topOfStack[1].my_size                              = -9999;                  // Size of callee's frame is not known by caller.
    topOfStack[1].caller_size                          = sizeof_Frame_Header_t;  // To tell callee how much to pop when it returns.
    meta->cloningState.topPtrAdjRecOffset              = -9999;
-   meta->cloningState.numberOfDatablocks              = numDatablocksInRootProgenitorMetaCatalog;
-   meta->cloningState.offsetToCatalogOfDatablocks     = ((unsigned long long) (&(meta->dbCatalog[0]))) - ((unsigned long long) (&(meta->cloningState)));
+   meta->cloningState.numberOfDatablocks              = countof_rootClone_Deps_t;
    meta->cloningState.cloneNum                        = 0;
 
-// First, init all the datablocks in the catalog to null.
+//   * Create the first in the series of root clones, to await the first service request from the children.
 
-   for (i = 0; i < meta->cloningState.numberOfDatablocks; i++) {
-      meta->dbCatalog[i].dblk = NULL_GUID;      // Default to the datablock NOT existing yet.
-      meta->dbCatalog[i].base = NULL;           // Default to its pointer also indicating it does not exist yet.
-      meta->dbCatalog[i].size = -9999;          // Default that, when it ultimately is created, its size will have to be filled in at that time, as it is unknowable in advance.
-      meta->dbCatalog[i].acMd = DB_MODE_NULL;   // Default to it having no access rights yet.
-  }
-
-// Now flesh out more details about the datablocks that we know more about.
-
-   meta->metaDb.dblk              = meta_dblk;                   // If this looks a bit "self-referential", it is because it unions with an array that holds the meta info about ALL the other
-   meta->metaDb.base              = meta;                        // datablocks too, and we use that array to convert between pointers(used in the body of EDTs) and datablock-index-and-offset
-   meta->metaDb.size              = sizeof_RootProgenitorMeta_t; // (used to communicate the pointers from one EDT to another, wherein OCR might move the datablock to a new address).
-   meta->metaDb.acMd              = DB_MODE_UPDATE;              // We are writing to this datablock here, in this very instance of this EDT, but it will be updated by our successor EDT.
-
-   meta->controlDb.dblk           = control_dblk;                // This datablock is read-only, and shared among all children below this point.
-   meta->controlDb.base           = control;
-   meta->controlDb.size           = sizeof_Control_t;
-   meta->controlDb.acMd           = DB_MODE_RO;                  // We are writing to this databock in this very EDT (we did so just above), but hereafter, this one will be read-only to our successor lineage.
-
-   void * dummy;
-#ifndef ALLOW_DATABLOCK_REWRITES
-   // The first successor will surely need to clone meta.  Create its datablock for doing same.
-   gasket__ocrDbCreate(&meta->metaCloneDb.dblk, (void **) &dummy, sizeof_RootProgenitorMeta_t,    __FILE__, __func__, __LINE__);
-   meta->metaCloneDb.size         = sizeof_RootProgenitorMeta_t;
-   meta->metaCloneDb.acMd         = DB_MODE_RW;                  // Our successor EDT will surely update this datablock.
+   rootClone_Params_t rootClone_Params;
+   rootClone_Params.isFirstChecksum = 1;                               // Init to TRUE
+   rootClone_Params.scratchAllObjects_dblk = scratchAllObjects_dblk;   // Pass in as a param, so first instance of rootClone can clean up.
+   ocrEdtTemplateCreate (&rootClone_Params.rootClone_Template,         // Guid of template
+                         rootClone_Func,                               // Top level function of EDT
+                         countof_rootClone_Params_t,                   // Number of params
+                         countof_rootClone_Deps_t);                    // Number of dependencies
+   ocrGuid_t     rootClone_Edt;
+#ifdef NANNY_ON_STEROIDS
+#define NANNYLEN 200
+           char nanny[NANNYLEN];
+   sprintf(nanny, "clone=%5d", meta->cloningState.cloneNum);
+#else
+#define nanny NULL
 #endif
-
-   meta->goldenChecksumDb.size    = sizeof_Checksum_t;
-   meta->goldenChecksumDb.acMd    = DB_MODE_RO;                  // Actually, we make this one DB_MODE_RW explicitly, just below, where we pass it to the FIRST continuation clone.  After THAT, it will be RO.
-   meta->scratchChecksumDb.size   = sizeof_Checksum_t;
-
-//   * Create the first in the series of rootProgenitorContinuation clones, to await the first service request from the children.
-
-   rootProgenitorContinuation_Params_t rootProgenitorContinuation_Params;
-   rootProgenitorContinuation_Params.isFirstChecksum = 1;                                           // Init to TRUE
-   ocrEdtTemplateCreate (&rootProgenitorContinuation_Params.rootProgenitorContinuation_Template,    // Guid of template
-                         rootProgenitorContinuation_Func,                                           // Top level function of EDT
-                         countof_rootProgenitorContinuation_Params_t,                               // Number of params
-                         countof_rootProgenitorContinuation_Deps_t);                                // Number of dependencies
-   ocrGuid_t     rootProgenitorContinuation_Edt;
-   ocrEdtCreate (&rootProgenitorContinuation_Edt,
-                 rootProgenitorContinuation_Params.rootProgenitorContinuation_Template,
-                 EDT_PARAM_DEF,
-                 (u64 *) &rootProgenitorContinuation_Params,
-                 EDT_PARAM_DEF,
-                 NULL,
-                 EDT_PROP_NONE,
-                 NULL_GUID,
-                 NULL_GUID);
+   gasket__ocrEdtCreate (&rootClone_Edt,
+                         SLOT(rootClone_Deps_t, whoAmI_Dep),
+                         rootClone_Params.rootClone_Template,
+                         EDT_PARAM_DEF,
+                         (u64 *) &rootClone_Params,
+                         EDT_PARAM_DEF,
+                         NULL,
+                         EDT_PROP_NONE,
+                         NULL_HINT,
+                         NULL,
+                        __FILE__,
+                        __func__,
+                        __LINE__,
+                        nanny,
+                        "rootClone");
    ocrGuid_t     goldenChecksum_dblk;
-   ocrGuid_t     scratchChecksum_dblk;
-   gasket__ocrDbCreate(&goldenChecksum_dblk,  &dummy, sizeof_Checksum_t, __FILE__, __func__, __LINE__);
-   ADD_DEPENDENCE(goldenChecksum_dblk,  rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, goldenChecksum_Dep,  DB_MODE_RW);
-   ADD_DEPENDENCE(NULL_GUID,            rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, scratchChecksum_Dep, DB_MODE_NULL);
-   ADD_DEPENDENCE(control_dblk,         rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, control_Dep,         DB_MODE_RO);
+   void * dummy = NULL;
+   gasket__ocrDbCreate(&goldenChecksum_dblk,  &dummy, sizeof_Checksum_t, __FILE__, __func__, __LINE__,      "rootInit", "goldenChecksum");
+   ADD_DEPENDENCE(goldenChecksum_dblk,  rootClone_Edt, rootClone_Deps_t, goldenChecksum_Dep,  DB_MODE_RW,   "rootInit", "goldenChecksum");
+   ADD_DEPENDENCE(NULL_GUID,            rootClone_Edt, rootClone_Deps_t, scratchChecksum_Dep, DB_MODE_NULL, "rootInit", "scratchChecksum");
+   ADD_DEPENDENCE(control_dblk,         rootClone_Edt, rootClone_Deps_t, control_Dep,         DB_MODE_RO,   "rootInit", "control");
 
 //   * Create one instance of blockLaunch for each unrefined block in the problem mesh, of which there are npx*npy*npz of them.  These are the "children".  Identify position of each by parameters thereto.
 
    blockLaunch_Params_t blockLaunch_Params;
 
-   ocrEdtTemplateCreate (&blockLaunch_Params.template.blockLaunch_Template,        // Guid of template
-                         blockLaunch_Func,                                         // Top level function of EDT
-                         countof_blockLaunch_Params_t,                             // Number of params
-                         countof_blockLaunch_Deps_t);                              // Number of dependencies
-   ocrEdtTemplateCreate (&blockLaunch_Params.template.blockInit_Template,          // Guid of template
-                         blockInit_Func,                                           // Top level function of EDT
-                         countof_blockInit_Params_t,                               // Number of params
-                         countof_blockInit_Deps_t);                                // Number of dependencies
-   ocrEdtTemplateCreate (&blockLaunch_Params.template.blockContinuation_Template,  // Guid of template
-                         blockContinuation_Func,                                   // Top level function of EDT
-                         countof_blockContinuation_Params_t,                       // Number of params
-                         countof_blockContinuation_Deps_t);                        // Number of dependencies
+   ocrEdtTemplateCreate (&blockLaunch_Params.template.blockLaunch_Template,   // Guid of template
+                         blockLaunch_Func,                                    // Top level function of EDT
+                         countof_blockLaunch_Params_t,                        // Number of params
+                         countof_blockLaunch_Deps_t);                         // Number of dependencies
+   ocrEdtTemplateCreate (&blockLaunch_Params.template.blockInit_Template,     // Guid of template
+                         blockInit_Func,                                      // Top level function of EDT
+                         countof_blockInit_Params_t,                          // Number of params
+                         countof_blockInit_Deps_t);                           // Number of dependencies
+   ocrEdtTemplateCreate (&blockLaunch_Params.template.blockClone_Template,    // Guid of template
+                         blockClone_Func,                                     // Top level function of EDT
+                         countof_blockClone_Params_t,                         // Number of params
+                         EDT_PARAM_UNK);                                      // Number of dependencies
+   ocrEdtTemplateCreate (&blockLaunch_Params.template.parentInit_Template,    // Guid of template
+                         parentInit_Func,                                     // Top level function of EDT
+                         countof_parentInit_Params_t,                         // Number of params
+                         countof_parentInit_Deps_t);                          // Number of dependencies
+   ocrEdtTemplateCreate (&blockLaunch_Params.template.parentClone_Template,   // Guid of template
+                         parentClone_Func,                                    // Top level function of EDT
+                         countof_parentClone_Params_t,                        // Number of params
+                         countof_parentClone_Deps_t);                         // Number of dependencies
 // Create a labeled guid range, providing one index for each potential face exchange (36 per block -- 6 towards coarser neighbors, 6 towards same-grained neighbors, 24 toward finer neighbors) times the
 // number of blocks possible at ALL refinement levels.
-   unsigned long long numBlksAllLevels = (011111111111111111LL & ((1LL << (control->num_refine * 8LL)) - 1LL)) * control->npx * control->npy * control->npz;
+   unsigned long long numBlksAllLevels = (011111111111111111LL & ((1LL << ((control->num_refine+1) * 3LL)) - 1LL)) * control->npx * control->npy * control->npz;
    unsigned long long roundRobinSpan   = 1; // TODO:  if we decide we need more than 1 "robin in the nest", modify both here and at usage site.  Usage site presently just assumes ONE, as I think this is enough.
    unsigned long long numCommBatches   = 1; // TODO:  if we decide to fan-out and perform the comm_vars-sized batches in openMP-style parallelism, increase to ceiling(num_vars/comm_vars).  Propagate change.
    ocrGuidRangeCreate (&blockLaunch_Params.labeledGuidRangeForHaloExchange, numBlksAllLevels * 36 * roundRobinSpan * numCommBatches, GUID_USER_EVENT_STICKY);
-
-   blockLaunch_Params.refinementLevel = 0;
 
    int xLim, yLim, zLim, idep;
    xLim     = control->npx;
    yLim     = control->npy;
    zLim     = control->npz;
-   ocrDbRelease(control_dblk);            control           = NULL;
-   ocrDbRelease(scratchAllObjects_dblk);  scratchAllObjects = NULL;
+   gasket__ocrDbRelease  (control_dblk,           __FILE__, __func__, __LINE__, " ", "control");           control = NULL;
+   gasket__ocrDbRelease  (scratchAllObjects_dblk, __FILE__, __func__, __LINE__, " ", "scratchAllObjects"); scratchAllObjects = NULL;
 
    idep = 0;
    for (      blockLaunch_Params.xPos = 0; blockLaunch_Params.xPos < xLim; blockLaunch_Params.xPos++) {
       for (   blockLaunch_Params.yPos = 0; blockLaunch_Params.yPos < yLim; blockLaunch_Params.yPos++) {
          for (blockLaunch_Params.zPos = 0; blockLaunch_Params.zPos < zLim; blockLaunch_Params.zPos++) {
-            ocrEventCreate(&blockLaunch_Params.conveyOperandUpward_Event, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+            gasket__ocrEventCreate(&blockLaunch_Params.conveyServiceRequestToParent_Event, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG, __FILE__, __func__, __LINE__, nanny, "conveyServiceRequestToParent");  // Create the On Deck Event; record it in our meta.
 
-            ADD_DEPENDENCE(blockLaunch_Params.conveyOperandUpward_Event, rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, annex[idep].serviceRequestOperand_Dep, DB_MODE_RO);
+#ifdef NANNY_ON_STEROIDS
+           char nanny[NANNYLEN];
+           sprintf(nanny, "serviceRequest[%12d], for unrefined block[%4d][%4d][%4d]", idep, blockLaunch_Params.xPos, blockLaunch_Params.yPos, blockLaunch_Params.zPos);
+#else
+#define nanny NULL
+#endif
+            EVT_DEPENDENCE(blockLaunch_Params.conveyServiceRequestToParent_Event, rootClone_Edt, rootClone_Deps_t, serviceRequest_Dep[idep], DB_MODE_RO, "rootInit", nanny);
 
             ocrGuid_t   blockLaunch_Edt;
-            ocrEdtCreate(&blockLaunch_Edt,
-                         blockLaunch_Params.template.blockLaunch_Template,
-                         EDT_PARAM_DEF,
-                         (u64 *) &blockLaunch_Params,
-                         EDT_PARAM_DEF,
-                         NULL,
-                         EDT_PROP_NONE,
-                         NULL_GUID,
-                         NULL_GUID);
+#ifdef NANNY_ON_STEROIDS
+            sprintf(nanny, "creating: xPos=%4d, yPos=%4d, zPos=%4d, clone=%5d", blockLaunch_Params.xPos, blockLaunch_Params.yPos, blockLaunch_Params.zPos, meta->cloningState.cloneNum);
+#else
+#define nanny NULL
+#endif
+            gasket__ocrEdtCreate(&blockLaunch_Edt,
+                                 SLOT(blockLaunch_Deps_t, whoAmI_Dep),
+                                 blockLaunch_Params.template.blockLaunch_Template,
+                                 EDT_PARAM_DEF,
+                                 (u64 *) &blockLaunch_Params,
+                                 EDT_PARAM_DEF,
+                                 NULL,
+                                 EDT_PROP_NONE,
+                                 NULL_HINT,
+                                 NULL,
+                                __FILE__,
+                                __func__,
+                                __LINE__,
+                                nanny,
+                                "blockLaunch");
 
-            ADD_DEPENDENCE(control_dblk,           blockLaunch_Edt, blockLaunch_Deps_t, control_Dep,    DB_MODE_RO);
-            ADD_DEPENDENCE(scratchAllObjects_dblk, blockLaunch_Edt, blockLaunch_Deps_t, allObjects_Dep, DB_MODE_RO);
-            ADD_DEPENDENCE(NULL_GUID,              blockLaunch_Edt, blockLaunch_Deps_t, block_Dep,      DB_MODE_NULL);
+#ifdef NANNY_ON_STEROIDS
+            sprintf(nanny, "xPos=%4d, yPos=%4d, zPos=%4d, clone=%5d", blockLaunch_Params.xPos, blockLaunch_Params.yPos, blockLaunch_Params.zPos, meta->cloningState.cloneNum);
+#else
+#define nanny NULL
+#endif
+            ADD_DEPENDENCE(control_dblk,           blockLaunch_Edt, blockLaunch_Deps_t, control_Dep,    DB_MODE_RO,    nanny, "control");
+            ADD_DEPENDENCE(scratchAllObjects_dblk, blockLaunch_Edt, blockLaunch_Deps_t, allObjects_Dep, DB_MODE_RO,    nanny, "scratchAllObjects");
 
             idep++;
          }
       }
    }
 
-#ifndef ALLOW_DATABLOCK_REWRITES
-   ADD_DEPENDENCE(meta->metaCloneDb.dblk, rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, metaClone_Dep, meta->metaCloneDb.acMd);
+#ifdef NANNY_ON_STEROIDS
+   sprintf(nanny, "xPos=%4d, yPos=%4d, zPos=%4d, clone=%5d", blockLaunch_Params.xPos, blockLaunch_Params.yPos, blockLaunch_Params.zPos, meta->cloningState.cloneNum);
+#else
+#define nanny NULL
 #endif
-   ocrDbAccessMode_t acMd = meta->metaDb.acMd;
-   ocrDbRelease  (meta_dblk); meta = NULL;
-   ADD_DEPENDENCE(meta_dblk,            rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, meta_Dep,      acMd);
+   gasket__ocrDbRelease  (meta_dblk, __FILE__, __func__, __LINE__, " ", "meta"); meta = NULL;
+   ADD_DEPENDENCE(meta_dblk,  rootClone_Edt, rootClone_Deps_t, meta_Dep,     DB_MODE_RW, nanny, "meta");
+   REPORT_EDT_DEMISE(myDeps->whoAmI_Dep);
+   // Defeat OCR's habit of releasing the input ocrEdtDep_t's, because we have changed many of them to other guids, including some events, which simply must not be released.  This is just a debugging expedient.
+   {
+      myDeps->whoAmI_Dep.guid              = NULL_GUID;
+      myDeps->argv_Dep.guid                = NULL_GUID;
+      myDeps->meta_Dep.guid                = NULL_GUID;
+      myDeps->control_Dep.guid             = NULL_GUID;
+      myDeps->scratchAllObjects_Dep.guid   = NULL_GUID;
+   }
 
    return NULL_GUID;
 
-} // rootProgenitorInit_Func
+} // rootInit_Func
 
 
 // **************************************************************************************************************************************************************************************************************
-// rootProgenitorContinuation_Func
+// rootClone_Func
 // -- Topology:  mainEdt --> rPLaunch(create datablocks) --> rPInit(initialize contents of datablocks, create children) --> rPClone(steady state: perform service requests of children; clone again)
 //
 // Provide services to the top-level blocks (i.e. the blocks that are totally unrefined, or the parents of refined blocks descended from them.)
 
-ocrGuid_t rootProgenitorContinuation_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+ocrGuid_t rootClone_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
    int i;
 
-printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); fflush(stdout);
-   rootProgenitorContinuation_Deps_t   * myDeps   = (rootProgenitorContinuation_Deps_t   *) depv;
-   rootProgenitorContinuation_Params_t * myParams = (rootProgenitorContinuation_Params_t *) paramv;
+   rootClone_Deps_t   * myDeps   = (rootClone_Deps_t   *) depv;
+   rootClone_Params_t * myParams = (rootClone_Params_t *) paramv;
 
-   // First prepare meta datablock.   To do so, we also need the control datablock.
+   RootMeta_t * meta    = (RootMeta_t *) myDeps->meta_Dep.ptr;
+   Control_t  * control = (Control_t *)  myDeps->control_Dep.ptr;
 
-   ocrGuid_t                    control_dblk         =                           (myDeps->control_Dep.guid);
-   Control_t *                  control              = ((Control_t *)            (myDeps->control_Dep.ptr));
-#ifdef ALLOW_DATABLOCK_REWRITES
-   ocrGuid_t                    meta_dblk            =                           (myDeps->meta_Dep.guid);
-   RootProgenitorMeta_t       * meta                 = ((RootProgenitorMeta_t *) (myDeps->meta_Dep.ptr));
+#ifdef NANNY_ON_STEROIDS
+   char nanny[NANNYLEN];
+   sprintf(nanny, "clone=%5d", meta->cloningState.cloneNum);
 #else
-   ocrGuid_t                    oldMeta_dblk         =                           (myDeps->meta_Dep.guid);
-   RootProgenitorMeta_t const * oldMeta              = ((RootProgenitorMeta_t *) (myDeps->meta_Dep.ptr));
-   ocrGuid_t                    meta_dblk            =                           (myDeps->metaClone_Dep.guid);
-   RootProgenitorMeta_t       * meta                 = ((RootProgenitorMeta_t *) (myDeps->metaClone_Dep.ptr));
-   memcpy (meta, oldMeta, sizeof_RootProgenitorMeta_t);
-   ocrDbDestroy(oldMeta_dblk);  oldMeta_dblk = NULL_GUID; oldMeta = NULL;
-   meta->metaCloneDb.dblk                            = NULL_GUID;
-   meta->metaCloneDb.base                            = NULL;
+#define nanny NULL
 #endif
 
-   meta->metaDb.dblk                                 = meta_dblk;
-   meta->metaDb.base                                 = meta;
-   meta->cloningState.tos                            = ((char *)                  (((unsigned long long) meta->cloningState.stack)));
-   meta->cloningState.topPtrAdjRec                   = ((PtrAdjustmentRecord_t *) (((unsigned long long) meta->cloningState.stack) + meta->cloningState.topPtrAdjRecOffset));
-
-// Now prepare all other datablocks.
-
-   for (i = 0; i < meta->cloningState.numberOfDatablocks; i++) {
-      if (&meta->dbCatalog[i].dblk == &meta->metaDb.dblk)         continue;    // meta already prepared.
-#ifndef ALLOW_DATABLOCK_REWRITES
-      if (&meta->dbCatalog[i].dblk == &meta->metaCloneDb.dblk)    continue;    // already done with metaClone, above.
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->meta_Dep,              rootClone_Deps_t, meta_Dep,             nanny, "meta");
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->control_Dep,           rootClone_Deps_t, control_Dep,          nanny, "control");
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->goldenChecksum_Dep,    rootClone_Deps_t, goldenChecksum_Dep,   nanny, "goldenChecksum");
+   INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->scratchChecksum_Dep,   rootClone_Deps_t, scratchChecksum_Dep,  nanny, "scratchChecksum");
+   for (i = 0; i < countof_rootClone_AnnexDeps_t; i++) {
+#ifdef NANNY_ON_STEROIDS
+      char name[NANNYLEN];
+      sprintf(name, "serviceRequest[%8d]", i);
+#else
+#define name NULL
 #endif
-      meta->dbCatalog[i].dblk = (myDeps->dependence[i].guid);
-      meta->dbCatalog[i].base = (myDeps->dependence[i].ptr);
+      INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->serviceRequest_Dep[i], rootClone_Deps_t, serviceRequest_Dep[i], nanny, name);
    }
 
-   meta->cloningState.cloneNum++;
-printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->cloningState.cloneNum); fflush(stdout);
+   // If this is the first exectuion of the rootClone, we can clean up some initialization datablocks.
 
-   meta->cloningState.continuationOpcode = ContinuationOpcodeUnspecified;
+   if (!ocrGuidIsNull(myParams->scratchAllObjects_dblk)) {
+      void * dummy = NULL;
+      gasket__ocrDbDestroy(&myParams->scratchAllObjects_dblk, &dummy, __FILE__, __func__, __LINE__, "rootClone", "scratchAllObjects");
+   }
+
+   meta    = (RootMeta_t *)  myDeps->meta_Dep.ptr;
+   control = (Control_t *)   myDeps->control_Dep.ptr;
+
+//printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); fflush(stdout);
+
+
+   meta->cloningState.tos          = ((char *)                  (((unsigned long long) meta->cloningState.stack)));
+   meta->cloningState.topPtrAdjRec = ((PtrAdjustmentRecord_t *) (((unsigned long long) meta->cloningState.stack) + meta->cloningState.topPtrAdjRecOffset));
+   meta->cloningState.cloneNum++;
+//printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->cloningState.cloneNum); fflush(stdout);
+   meta->cloningState.cloningOpcode = OpcodeUnspecified;
    Frame_Header_t * topOfStack  = (Frame_Header_t *) meta->cloningState.stack;
 
-   topOfStack[1].validate_callers_prep_for_suspension = 1;                    // Set "canary trap" for first callee.
-   meta->cloningState.returnCanary                    = 1;                    // Init the "return canary trap" to "live", to detect a return from a suspendable function via a return stmt instead of the macro.
-   rootProgenitorContinuation_SoupToNuts(meta, myParams);                     // Resume (or start, the first time) the algorithm.  When we get back, it is either done or needing to clone.
-   if (meta->cloningState.returnCanary == 1) {  // If the return canary is "live" the callee must have used a return statement.  We need it to use the macro!
+   topOfStack[1].validate_callers_prep_for_suspension = 1;     // Set "canary trap" for first callee.
+   meta->cloningState.returnCanary                    = 1;     // Init the "return canary trap" to "live", to detect a return from a suspendable function via a return stmt instead of the macro.
+   rootClone_SoupToNuts(myParams, depc, depv, meta->dbSize);   // Resume (or start, the first time) the algorithm.  When we get back, it is either done or needing to clone.
+   if (meta->cloningState.returnCanary == 1) {                 // If the return canary is "live" the callee must have used a return statement.  We need it to use the macro!
       printf ("ERROR: %s at line %d: Canary trap on RETURN from the callee.  Change callee to return through the NORMAL_RETURN_SEQUENCE macro.\n", __FILE__, __LINE__); fflush(stdout); \
       printf ("ERROR: Other possibility is that callee is not (yet) a SUSPENDABLE function, but it is being identified as such by the caller.\n"); fflush(stdout); \
       *((int *) 123) = 456; \
       ocrShutdown();
    }
 
-   if (topOfStack[1].resumption_case_num != 0) {                              // Create a continuation EDT, cause it to fire, and cause this EDT has to terminate.
+   if (topOfStack[1].resumption_case_num != 0) {               // Create a clone EDT, cause it to fire, and cause this EDT has to terminate.
 
       meta->cloningState.topPtrAdjRecOffset = ((int) ((unsigned long long) meta->cloningState.topPtrAdjRec) - ((unsigned long long) meta->cloningState.stack));
 
-      ocrGuid_t rootProgenitorContinuation_Edt;
-      ocrEdtCreate(&rootProgenitorContinuation_Edt,                           // Guid of the EDT created to continue at function blockContinuaiton_Func.
-                   myParams->rootProgenitorContinuation_Template,             // Template for the EDT we are creating.
-                   EDT_PARAM_DEF,
-                   (u64 *) myParams,
-                   EDT_PARAM_DEF,
-                   NULL,
-                   EDT_PROP_NONE,
-                   NULL_GUID,
-                   NULL_GUID);
-
-#ifndef ALLOW_DATABLOCK_REWRITES
-      gasket__ocrDbCreate(&meta->metaCloneDb.dblk,    (void **) &meta->metaCloneDb.base,    sizeof_RootProgenitorMeta_t,    __FILE__, __func__, __LINE__);
-      meta->metaCloneDb.base       = NULL;
+      ocrGuid_t rootClone_Edt;
+#ifdef NANNY_ON_STEROIDS
+      char nanny[NANNYLEN];
+      sprintf(nanny, "clone=%5d", meta->cloningState.cloneNum);
+#else
+#define nanny NULL
 #endif
+      gasket__ocrEdtCreate(&rootClone_Edt,                             // Guid of the EDT created to continue at function blockContinuaiton_Func.
+                           SLOT(rootClone_Deps_t, whoAmI_Dep),
+                           myParams->rootClone_Template,               // Template for the EDT we are creating.
+                           EDT_PARAM_DEF,
+                           (u64 *) myParams,
+                           EDT_PARAM_DEF,
+                           NULL,
+                           EDT_PROP_NONE,
+                           NULL_HINT,
+                           NULL,
+                           __FILE__,
+                           __func__,
+                           __LINE__,
+                           nanny,
+                           "rootClone");
 
-      switch (meta->cloningState.continuationOpcode) {
-      case ContinuationOpcodeUnspecified:
-         printf ("In Root Progenitor, Continuation opcode unspecified\n"); fflush(stdout);
-         ocrShutdown();
+      switch (meta->cloningState.cloningOpcode) {
+      case OpcodeUnspecified:
+         printf ("In Root, Cloning opcode unspecified\n"); fflush(stdout);
          *((int *) 0) = 123;
+         ocrShutdown();
          break;
       case SeasoningOneOrMoreDbCreates:
-         // TODO:  If a newResource SLOT exists, we will need to satisfy it with NULL_GUID for this opcode:  ADD_DEPENDENCE(NULL_GUID, blockContinuation_Edt, blockContinuation_Deps_t, dep_newResource, RO);
-         break;
       case ReceivingACommunication:
          // The site that sent us this opcode has put the guid of the events for the remote newResources into the catalog already.  Just drop out of this switch statement and add dependencies of our clone.
          break;
       default:
-         printf ("In Root Progenitor, Continuation opcode not yet handled,  opcode = %d / 0x%x\n", meta->cloningState.continuationOpcode, meta->cloningState.continuationOpcode); fflush(stdout);
-         ocrShutdown();
+         printf ("In Root, Cloning opcode not yet handled,  opcode = %d / 0x%x\n", meta->cloningState.cloningOpcode, meta->cloningState.cloningOpcode); fflush(stdout);
          *((int *) 0) = 123;
+         ocrShutdown();
          break;
       }
 
-      for (i = meta->cloningState.numberOfDatablocks-1; i >= 0; i--) {
-         if (meta->dbCatalog[i].dblk == NULL_GUID) {
-            ADD_DEPENDENCE(NULL_GUID, rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, dependence[i], DB_MODE_NULL);
+      gasket__ocrDbRelease(   myDeps->control_Dep.guid,                                                                               __FILE__, __func__, __LINE__, nanny, "control");
+      ADD_DEPENDENCE(         myDeps->control_Dep.guid,                 rootClone_Edt, rootClone_Deps_t, control_Dep,                 DB_MODE_RW,                   nanny, "control")
+      gasket__ocrDbRelease(   myDeps->goldenChecksum_Dep.guid,                                                                        __FILE__, __func__, __LINE__, nanny, "goldenChecksum");
+      ADD_DEPENDENCE(         myDeps->goldenChecksum_Dep.guid,          rootClone_Edt, rootClone_Deps_t, goldenChecksum_Dep,          DB_MODE_RO,                   nanny, "goldenChecksum")
+      if (ocrGuidIsNull(myDeps->scratchChecksum_Dep.guid)) {
+         ADD_DEPENDENCE(      NULL_GUID,                                rootClone_Edt, rootClone_Deps_t, scratchChecksum_Dep,         DB_MODE_NULL,                 nanny, "scratchChecksum")
+      } else {
+         gasket__ocrDbRelease(myDeps->scratchChecksum_Dep.guid,                                                                       __FILE__, __func__, __LINE__, nanny, "scratchChecksum");
+         ADD_DEPENDENCE(      myDeps->scratchChecksum_Dep.guid,         rootClone_Edt, rootClone_Deps_t, scratchChecksum_Dep,         DB_MODE_RW,                   nanny, "scratchChecksum")
+      }
+      for (i = 0; i < countof_rootClone_AnnexDeps_t; i++) {
+#ifdef NANNY_ON_STEROIDS
+         char name[NANNYLEN];
+         sprintf(name, "serviceRequest[%8d]", i);
+#else
+#define nanny NULL
+#endif
+         if (meta->cloningState.cloningOpcode == SeasoningOneOrMoreDbCreates) {
+            ADD_DEPENDENCE(      myDeps->serviceRequest_Dep[i].guid, rootClone_Edt, rootClone_Deps_t, serviceRequest_Dep[i], DB_MODE_RO,                   nanny, name);
          } else {
-            ocrGuid_t         dblk = meta->dbCatalog[i].dblk;
-            ocrDbAccessMode_t acMd = meta->dbCatalog[i].acMd;
-            meta->dbCatalog[i].dblk = NULL_GUID;
-            meta->dbCatalog[i].base = NULL;
-            //ocrDbRelease(dblk);     // Release the guid.  Warning:  in the last loop iteration, this releases meta, which is why we copied dblk and acMd to temps above.
-            ADD_DEPENDENCE(dblk, rootProgenitorContinuation_Edt, rootProgenitorContinuation_Deps_t, dependence[i], acMd);
+            EVT_DEPENDENCE(      myDeps->serviceRequest_Dep[i].guid, rootClone_Edt, rootClone_Deps_t, serviceRequest_Dep[i], DB_MODE_RO,                   nanny, name);
+            myDeps->serviceRequest_Dep[i].guid = NULL_GUID;
          }
       }
 
+      gasket__ocrDbRelease(   myDeps->meta_Dep.guid,                                                                                  __FILE__, __func__, __LINE__, nanny, "meta");
+      ADD_DEPENDENCE(         myDeps->meta_Dep.guid,                    rootClone_Edt, rootClone_Deps_t, meta_Dep,                    DB_MODE_RW,                   nanny, "meta")
+
    } else {  // (topOfStack[1].resumption_case_num != 0)    If that was the very last iteration, clean up and shut down.
+      gasket__ocrDbDestroy(&myDeps->goldenChecksum_Dep.guid, &myDeps->goldenChecksum_Dep.ptr, __FILE__, __func__, __LINE__, "rootClone", "goldenChecksum");
+      gasket__ocrDbDestroy(&myDeps->control_Dep.guid,        &myDeps->control_Dep.ptr,        __FILE__, __func__, __LINE__, "rootClone", "control");
+      gasket__ocrDbDestroy(&myDeps->meta_Dep.guid,           &myDeps->meta_Dep.ptr,           __FILE__, __func__, __LINE__, "rootClone", "meta");
+      printf ("Success!  miniAMR shutting down normally.\n"); fflush(stdout);
+      ocrShutdown();
+   }
+
+   // Defeat OCR's habit of releasing the input ocrEdtDep_t's, because we have changed many of them to other guids, including some events, which simply must not be released.  This is just a debugging expedient.
+   REPORT_EDT_DEMISE(myDeps->whoAmI_Dep);
+   {
+      myDeps->meta_Dep.guid                = NULL_GUID;
+      myDeps->whoAmI_Dep.guid              = NULL_GUID;
+      myDeps->control_Dep.guid             = NULL_GUID;
+      myDeps->goldenChecksum_Dep.guid      = NULL_GUID;
+      myDeps->scratchChecksum_Dep.guid     = NULL_GUID;
       int i;
-      for (i = 1; i < meta->cloningState.numberOfDatablocks; i++) {     // Skip over meta_t (until after this loop).
-         if (meta->dbCatalog[i].dblk != NULL_GUID) {
-            ocrDbDestroy(meta->dbCatalog[i].dblk);
-            meta->dbCatalog[i].dblk = NULL_GUID;
-            meta->dbCatalog[i].base = NULL;
-         }
-      }
-      ocrDbDestroy(meta_dblk);
+      for (i=0; i < countof_rootClone_AnnexDeps_t; i++) myDeps->serviceRequest_Dep[i].guid = NULL_GUID;
    }
    return NULL_GUID;
 
-} // rootProgenitorContinuation_Func
+} // rootClone_Func
 
 
 // **************************************************************************************************************************************************************************************************************
-// rootProgenitorContinuation_SoupToNuts
+// rootClone_SoupToNuts
 //
-// This is the top-level function in the calling topology of the several functions that do the actual processing of the root progenitor's service duties.
+// This is the top-level function in the calling topology of the several functions that do the actual processing of the root's service duties.
 //
-void rootProgenitorContinuation_SoupToNuts(RootProgenitorMeta_t * meta, rootProgenitorContinuation_Params_t * myParams) {
+void rootClone_SoupToNuts(rootClone_Params_t * myParams, u32 depc, ocrEdtDep_t depv[], DbSize_t * dbSize) {
 
    typedef struct {
       Frame_Header_t myFrame;
@@ -652,68 +712,73 @@ void rootProgenitorContinuation_SoupToNuts(RootProgenitorMeta_t * meta, rootProg
          Control_t * control;
       } pointers;
       Frame_Header_t calleeFrame;
-   } Frame__rootProgenitorContinuation_SoupToNuts_t;
+   } Frame__rootClone_SoupToNuts_t;
 
 #define control (lcl->pointers.control)
 #define opcode  (lcl->opcode)
 
-   SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__rootProgenitorContinuation_SoupToNuts_t)
+   int idep;
+   rootClone_Deps_t * myDeps = (rootClone_Deps_t *) depv;
+   RootMeta_t       * meta   = myDeps->meta_Dep.ptr;
 
-printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->cloningState.cloneNum); fflush(stdout);
+   SUSPENDABLE_FUNCTION_PROLOGUE(meta, Frame__rootClone_SoupToNuts_t)
 
-   control = meta->controlDb.base;
+//printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, __LINE__, meta->cloningState.cloneNum); fflush(stdout);
+
+   control = myDeps->control_Dep.ptr;
 
 // Looping, perform the operations requested by the children.  Keep doing so until the final shutdown request arrives.
 
    do {
 
-      if (meta->annexDb[0].serviceRequestOperand.dblk == NULL_GUID) {  // NULL_GUID on the Operand dependency signals final shutdown.
-         int idep;
-         for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
-            if (meta->annexDb[0].serviceRequestOperand.dblk != NULL_GUID) {
-               printf ("Error!  Inconsistency in shutdown signal provided to continuationRootProgenitor\n"); fflush(stdout);
-               *((int *) 123) = 456;
-               ocrShutdown();
-            }
+      // Process the service requested from children.
+
+      opcode = (((DbCommHeader_t *) (myDeps->serviceRequest_Dep[0].ptr)))->serviceOpcode;
+      for (idep = 1; idep < countof_rootClone_AnnexDeps_t; idep++) {
+         if (((DbCommHeader_t *) (myDeps->serviceRequest_Dep[idep].ptr))->serviceOpcode != opcode) {
+            *((int *) 123) = 456;   // Service opcodes from children don't match!
          }
-         SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)    // Top-level will sense normal completion, and just end this EDT (without creating any more clones).
       }
-
-// Service requested from children.
-
-      opcode = (((DbCommHeader_t *) (meta->annexDb[0].serviceRequestOperand.base)))->serviceOpcode;
 
       if (opcode == Operation_Checksum) {
          CALL_SUSPENDABLE_CALLEE
-         doFinalChecksumAggregationAtRootProgenitor (meta, myParams);
+         checksum_RootFinalAggregation (depc, depv, myParams);
          DEBRIEF_SUSPENDABLE_FUNCTION(;)
       } else if (opcode == Operation_Plot) {
-         doFinalPlotFileGeneration (meta);
-      } else if (opcode == Operation_Profile) {
-         //CALL_SUSPENDABLE_CALLEE
-         reportProfileResults (meta);
-         //DEBRIEF_SUSPENDABLE_FUNCTION(;)
-      } else {
-         printf ("Unrecognized opcode received by rootProgenitiorContinuation\n"); fflush(stdout);
+//printf ("Function %36s, File %30s, line %4d, clone=%4d    calling propagatePlot)\n", __func__, __FILE__, __LINE__, meta->cloningState.cloneNum); fflush(stdout);
+         plot_RootFinalAggregation (depc, depv);
+//PROFILE:      } else if (opcode == Operation_Profile) {
+//PROFILE:         //CALL_SUSPENDABLE_CALLEE
+//PROFILE:         reportProfileResults (meta);
+//PROFILE:         //DEBRIEF_SUSPENDABLE_FUNCTION(;)
+      } else if (opcode != Operation_Shutdown) {
+         printf ("Unrecognized opcode received by rootClone, opcode = %d\n", opcode); fflush(stdout);
          *((int *) 123) = 456;
          ocrShutdown();
       } // opcode
 
       // Now for each block, clean up event that brought THIS operand to us, and put "on deck" event into the catalog so that it will be used to plumb operand dependence next time a service request is sought.
-      int idep;
-      for (idep = 0; idep < countof_rootProgenitorContinuation_AnnexDeps_t; idep++) {
-         ocrGuid_t        operand_dblk =                (meta->annexDb[idep].serviceRequestOperand.dblk);
-         DbCommHeader_t * operand = ((DbCommHeader_t *) (meta->annexDb[idep].serviceRequestOperand.base));
-         ocrEventDestroy(operand->atBat_Event);     // Destroy event that brought us our operand
-         meta->annexDb[idep].serviceRequestOperand.dblk = operand->onDeck_Event;
-         meta->annexDb[idep].serviceRequestOperand.acMd = DB_MODE_RO;
-         ocrDbDestroy   (operand_dblk); operand = NULL;
+      for (idep = 0; idep < countof_rootClone_AnnexDeps_t; idep++) {
+         DbCommHeader_t * operand = ((DbCommHeader_t *) (myDeps->serviceRequest_Dep[idep].ptr));
+#ifdef NANNY_ON_STEROIDS
+         char nanny[NANNYLEN];
+         sprintf(nanny, "clone=%5d  index=[%d]", meta->cloningState.cloneNum, idep);
+#else
+#define nanny NULL
+#endif
+         gasket__ocrEventDestroy(&operand->atBat_Event, __FILE__, __func__, __LINE__, nanny, "serviceRequest[...]");     // Destroy event that brought us our operand
+         ocrGuid_t onDeck = operand->onDeck_Event;
+         gasket__ocrDbDestroy(&myDeps->serviceRequest_Dep[idep].guid, &myDeps->serviceRequest_Dep[idep].ptr, __FILE__, __func__, __LINE__, nanny, "serviceRequest[...]");
+         myDeps->serviceRequest_Dep[idep].guid = onDeck;
       }
 
-      // Start a cloning request, to obtain the next service request from rootProgenitor's children.
+      // Start a cloning request, to obtain the next service request from root's children.
 
-      meta->cloningState.continuationOpcode = ReceivingACommunication;
-      SUSPEND__RESUME_IN_CONTINUATION_EDT(;)
+      if (opcode == Operation_Shutdown) {
+         SUSPENDABLE_FUNCTION_NORMAL_RETURN_SEQUENCE(;)    // Top-level will sense normal completion, and just end this EDT (without creating any more clones).
+      }
+      meta->cloningState.cloningOpcode = ReceivingACommunication;
+      SUSPEND__RESUME_IN_CLONE_EDT(;)
 
    } while (1);
 
@@ -722,20 +787,8 @@ printf ("Function %36s, File %30s, line %4d, clone=%4d)\n", __func__, __FILE__, 
 #undef  control
 #undef  opcode
 
-} // rootProgenitorContinuation_Func
+} // rootClone_SoupToNuts
 
-
-// ***************************************************************************************************************************************************************************************
-// wrapup_Func
-
-ocrGuid_t wrapup_Func( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] ) {
-// One instance of this EDT is created by mainEdt, and gains control after the finish EDT parseCmdLine and ALL the topology below it terminates.
-
-printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); fflush(stdout);
-   printf ("wrapupEdt about to call ocrShutdown\n"); fflush(stdout);
-   ocrShutdown();
-   return NULL_GUID;
-} // wrapup_Func
 
 
 // ***************************************************************************************************************************************************************************************
@@ -750,7 +803,7 @@ void print_help_message() {
    printf("--npx - number of blocks in the x direction, before any refinement\n");
    printf("--npy - number of blocks in the y direction, before any refinement\n");
    printf("--npz - number of blocks in the z direction, before any refinement\n");
-   printf("--num_refine - (>= 0) number of levels of refinement\n");
+   printf("--num_refine - (>= 0, <= 15) number of levels of refinement\n");
    printf("--block_change - (>= 0) number of levels a block can change in a timestep\n");
    printf("--uniform_refine - if 1, then grid is uniformly refined\n");
    printf("--refine_freq - frequency (in timesteps) of checking for refinement\n");
@@ -798,8 +851,8 @@ int check_input(Control_t * control) {
       printf("number of refinement levels must be non-negative\n"); fflush(stdout);
       error = 1;
    }
-   if (control->num_refine > 10) {
-      printf("number of refinement levels must not exceed ten\n"); fflush(stdout);
+   if (control->num_refine > 15) {
+      printf("number of refinement levels must not exceed fifteen\n"); fflush(stdout);
       error = 1;
    }
    if (control->block_change < 0) {

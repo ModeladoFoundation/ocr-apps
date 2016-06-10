@@ -31,7 +31,7 @@
 
 typedef struct Plot_t Plot_t;
 
-#include "dbcommheader.h"
+#include "commhdr.h"
 #include "control.h"
 
 typedef struct Plot_Annex_t {
