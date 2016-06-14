@@ -33,10 +33,10 @@ export RUNNER_TYPE="Application"
 #   'WORKLOAD_ARGS' for runtime
 # - Outputs report will be located in the current folder
 if [[ -n "${SWEEP_FILE}" ]]; then
-    OPTS+="-sweepfile ${SWEEP_FILE}"
+    OPTS += "-sweepfile ${SWEEP_FILE}"
 fi
 
-${SCRIPT_ROOT}/perfDriver.sh ${OPTS} -target ${OCR_TYPE} ${APP_NAME}
+. ${SCRIPT_ROOT}/perfDriver.sh ${OPTS} -target ${OCR_TYPE} ${APP_NAME}
 
 # Do avoid side-effect when this script is sourced in current shell
 unset OCR_INSTALL
