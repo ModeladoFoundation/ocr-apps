@@ -8,6 +8,18 @@
 #include <errno.h>
 
 int
+sub2( int value )
+{
+    return 2*value;
+}
+
+int
+sub1( int value )
+{
+    return value + sub2(value);
+}
+
+int
 main( int argc, char **argv )
 {
     void * addr;
@@ -21,6 +33,9 @@ main( int argc, char **argv )
     fprintf(stdout, "time = %s\n", timeString);
 
     printf("float = %f\n", 1.0);
+
+    int ret = sub1(5);
+    printf("ret = %d\n", ret);
 
     return 0;
 }

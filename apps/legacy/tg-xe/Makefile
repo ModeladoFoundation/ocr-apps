@@ -32,7 +32,7 @@ CAPP = hello
 CAPP_SRCS = hello.c
 CAPP_LIBS =
 CAPP_OBJS = $(CAPP_SRCS:.c=.o)
-CFLAGS = -Os -nostdinc -isystem $(OCR_INC)
+CFLAGS = -g -O0 -nostdinc -isystem $(OCR_INC)
 CFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
 CFLAGS += -isystem $(TG_INSTALL)/include
 CFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
@@ -42,7 +42,7 @@ CXXAPP = cxxhello
 CXXAPP_SRCS = cxxhello.cpp
 CXXAPP_LIBS =
 CXXAPP_OBJS = $(CXXAPP_SRCS:.cpp=.o)
-CXXFLAGS = -Os -nostdinc -isystem $(OCR_INC)
+CXXFLAGS = -g -O0 -nostdinc -isystem $(OCR_INC)
 CXXFLAGS += -isystem $(APPS_LIBS_INSTALL)/include/c++/v1
 CXXFLAGS += -isystem $(APPS_ROOT)/libs/src/libunwind/libunwind/include
 CXXFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
@@ -74,7 +74,11 @@ $(CXXAPP) : $(CXXAPP_OBJS)
 dump:
 	@echo TG_INSTALL = $(TG_INSTALL)
 	@echo APPS_ROOT = $(APPS_ROOT)
+	@echo APPS_LIBS_INSTALL = $(APPS_LIBS_INSTALL)
 	@echo LIBS = $(LIBS)
+	@echo CC = $(CC)
+	@echo CXX = $(CXX)
+	@echo LD = $(LD)
 
 clean:
 	@rm -f $(CAPP) $(CAPP_OBJS) $(CXXAPP) $(CXXAPP_OBJS)
