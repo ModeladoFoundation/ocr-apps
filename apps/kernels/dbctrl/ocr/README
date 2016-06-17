@@ -1,0 +1,1 @@
+CONFIG_FLAGS='--sysworker --threads=16 --binding=seq' WORKLOAD_ARGS='100 1000 256' make -f Makefile.x86 uninstall clean run
