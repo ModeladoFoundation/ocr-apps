@@ -23,10 +23,6 @@
  */
 #include <stdlib.h>
 #include "ocr.h"
-#include "alloca.h"
-
-
-ocrGuid_t fib_launch(int , int, ocrGuid_t);
 
 ocrGuid_t fib_edt(u32 ocrparamc, u64* ocrparams,
                       u32 ocrdepc, ocrEdtDep_t ocrdepv[]);
@@ -37,35 +33,26 @@ ocrGuid_t finish_edt(u32 ocrparamc, u64* ocrparams,
 ocrGuid_t done_edt(u32 ocrparamc, u64* ocrparams,
                       u32 ocrdepc, ocrEdtDep_t ocrdepv[]);
 
-ocrGuid_t fib_template() {
-    static ocrGuid_t templateGuid;
-
-    ocrEdtTemplateCreate(&templateGuid, &fib_edt, 3, 1);
-    return templateGuid;
-}
 /*
  * the termination event triggers here
  */
 ocrGuid_t done_template() {
     static ocrGuid_t doneGuid;
-    ocrEdtTemplateCreate(&doneGuid, &done_edt, 0, 1);
+    ocrEdtTemplateCreate(&doneGuid, &done_edt, 1, 1);
     return doneGuid;
 }
-ocrGuid_t done_launch(ocrGuid_t returnEvent) {
+
+ocrGuid_t done_launch(int n, ocrGuid_t returnEvent) {
     ocrGuid_t done_edt;
-    ocrGuid_t * ocrdeps = (ocrGuid_t *)alloca(sizeof(ocrGuid_t));
-    *(ocrGuid_t *) (ocrdeps) = returnEvent;
+    ocrGuid_t ocrdeps[1];
+    u64 ocrparams[1];
+    ocrdeps[0] = returnEvent;
+    *(u64 *)(ocrparams) = n;
+
     ocrEdtCreate( &done_edt, done_template(), EDT_PARAM_DEF,
-                  NULL, EDT_PARAM_DEF, ocrdeps, EDT_PROP_NONE,
+                  ocrparams, EDT_PARAM_DEF, ocrdeps, EDT_PROP_NONE,
                   NULL_HINT, NULL);
 
-    return NULL_GUID;
-}
-ocrGuid_t done_edt(u32 ocrparamc, u64* ocrparams,
-                      u32 ocrdepc, ocrEdtDep_t ocrdepv[]) {
-    int fibn_1 = *(int *)(ocrdepv[0].ptr);
-    printf ("fib is %d\n", fibn_1);
-    ocrShutdown();
     return NULL_GUID;
 }
 /*
@@ -76,24 +63,22 @@ ocrGuid_t done_edt(u32 ocrparamc, u64* ocrparams,
 ocrGuid_t finish_template() {
     static ocrGuid_t templateGuid;
 
-    ocrEdtTemplateCreate(&templateGuid, &finish_edt, 3, 2);
+    ocrEdtTemplateCreate(&templateGuid, &finish_edt, 1, 2);
     return templateGuid;
 }
 
-ocrGuid_t finish_launch(int n, ocrGuid_t evt1, ocrGuid_t evt2, ocrGuid_t returnEvent) {
+ocrGuid_t finish_launch(ocrGuid_t evt1, ocrGuid_t evt2, ocrGuid_t returnEvent) {
     //
     // Create a parameter and dependency array
     //
-    u64 *ocrparams = (u64 *) alloca(sizeof(u64)*3);
-    ocrGuid_t *ocrdeps = (ocrGuid_t *) alloca(sizeof(ocrGuid_t));
+    u64 ocrparams[1];
+    ocrGuid_t ocrdeps[2];
     //
     // Marshall parameters
     //
-    *(int *)(ocrparams) = n;
-    *(ocrGuid_t *) (ocrparams+1) = returnEvent;
-    *ocrdeps = evt1;;
-    *(ocrdeps+1) = evt2;;
-
+    *(ocrGuid_t *)(ocrparams) = returnEvent;
+    ocrdeps[0] = evt1;
+    ocrdeps[1] = evt2;
 
     ocrGuid_t finish_edt;
 
@@ -106,52 +91,30 @@ ocrGuid_t finish_launch(int n, ocrGuid_t evt1, ocrGuid_t evt2, ocrGuid_t returnE
 
     return returnEvent;
 }
-/*
- * has two pre-slots which contain
- * fib(n-1) and fib(n-2) values. sum them and
- * return them via continuation to fib_edt()
- */
-ocrGuid_t finish_edt(u32 ocrparamc, u64* ocrparams,
-                      u32 ocrdepc, ocrEdtDep_t ocrdepv[]) {
-    /* Get event to satisfy */
-    //ocrGuid_t ocrOutEvt = *(ocrGuid_t *)ocrparams;
-    int fibn_1 = *(int *)(ocrdepv[0].ptr);
-    int fibn_2 = *(int *)(ocrdepv[1].ptr);
-    int retval = fibn_1 + fibn_2;
-    int n = *(int *)(ocrparams);
-    ocrGuid_t outEvt = *(ocrGuid_t*)(ocrparams+1);
+ocrGuid_t fib_template() {
+    static ocrGuid_t templateGuid;
 
-    int * dbPtr;
-    ocrGuid_t dbGuid;
-    ocrDbCreate(&dbGuid, (void**)(&dbPtr), sizeof(int),
-                DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-    *dbPtr = retval;
-    ocrDbRelease(dbGuid);
-    ocrEventSatisfy(outEvt, dbGuid);
-    // return this to fib_edt via a continuation call
-    fib_launch(n, 1, dbGuid);
-    return dbGuid;
+    ocrEdtTemplateCreate(&templateGuid, &fib_edt, 2, 1);
+    return templateGuid;
 }
 
-ocrGuid_t fib_launch(int n, int which, ocrGuid_t resultDb) {
+ocrGuid_t fib_launch(int n, ocrGuid_t resultDb) {
     //
     // Create a parameter and dependency array
     //
-    u64 *ocrparams = (u64 *) alloca(sizeof(u64)*2);
-    ocrGuid_t *ocrdeps = (ocrGuid_t *) alloca(sizeof(ocrGuid_t));
+    u64 ocrparams[2];
+    ocrGuid_t ocrdeps[1];
     //
     // Create an event to synchronize completion with
     //
     ocrGuid_t returnEvent;
     ocrEventCreate(&returnEvent, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
-    *(ocrGuid_t *) ocrparams = returnEvent;
-    *ocrdeps = resultDb;
+    *(ocrGuid_t *)(ocrparams) = returnEvent;
+    ocrdeps[0] = resultDb;
     //
     // Marshall parameters
     //
-    *(int *)(ocrparams + 1) = n;
-    *(int *)(ocrparams + 2) = which;
-
+    *(u64 *)(ocrparams + 1) = n;
 
     ocrGuid_t edtGuid;
 
@@ -170,35 +133,14 @@ ocrGuid_t fib_edt(u32 ocrparamc, u64* ocrparams,
     /* Get event to satisfy */
     ocrGuid_t ocrOutEvt = *(ocrGuid_t *)ocrparams;
     ocrGuid_t ocrDb = ocrdepv[0].guid;
-
-
     int n = *(int *)(ocrparams + 1);
-    int which = *(int *)(ocrparams + 2);
-    if (n > 1) {
-        switch (which) {
-            case 0:
-            {
-                ocrGuid_t ocrCallEvt0 = fib_launch(n - 1, 0, ocrDb);
-                ocrGuid_t ocrCallEvt1 = fib_launch(n - 2, 0, ocrDb);
-                finish_launch(n, ocrCallEvt0, ocrCallEvt1, ocrOutEvt);
-                break;
-            }
-            case 1:
-            {
-            // fib_finish call back     just return the resultDB
-                ocrGuid_t dbGuid = *(ocrGuid_t *)ocrdepv;
-                ocrDbRelease(dbGuid);
-                ocrEventSatisfy(ocrOutEvt, dbGuid);
-                return dbGuid;
-            }
-            default:
-            {
-                break;
-            }
-        }
+
+    if (n > N) {
+        ocrGuid_t ocrCallEvt0 = fib_launch(n - 1, ocrDb);
+        ocrGuid_t ocrCallEvt1 = fib_launch(n - 2, ocrDb);
+        finish_launch(ocrCallEvt0, ocrCallEvt1, ocrOutEvt);
         return NULL_GUID;
     } else {
-        //fib_finish(n, ocrOutEvt) .. dont need an EDT
         ocrGuid_t dbGuid;
         int * dbPtr;
         ocrDbCreate(&dbGuid, (void**)(&dbPtr), sizeof(int),
@@ -208,7 +150,31 @@ ocrGuid_t fib_edt(u32 ocrparamc, u64* ocrparams,
         ocrEventSatisfy(ocrOutEvt, dbGuid);
         return dbGuid;
     }
- }
+}
+
+/*
+ * has two pre-slots which contain
+ * fib(n-1) and fib(n-2) values. sum them and
+ * return them via continuation to fib_edt()
+ */
+ocrGuid_t finish_edt(u32 ocrparamc, u64* ocrparams,
+                      u32 ocrdepc, ocrEdtDep_t ocrdepv[]) {
+    /* Get event to satisfy */
+    //ocrGuid_t ocrOutEvt = *(ocrGuid_t *)ocrparams;
+    int fibn_1 = *(int *)(ocrdepv[0].ptr);
+    int fibn_2 = *(int *)(ocrdepv[1].ptr);
+    int retval = fibn_1 + fibn_2;
+    ocrGuid_t outEvt = *(ocrGuid_t*)(ocrparams);
+
+    int * dbPtr;
+    ocrGuid_t dbGuid;
+    ocrDbCreate(&dbGuid, (void**)(&dbPtr), sizeof(int),
+                DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+    *dbPtr = retval;
+    ocrDbRelease(dbGuid);
+    ocrEventSatisfy(outEvt, dbGuid);
+    return dbGuid;
+}
 
 ocrGuid_t mainEdt(u32 ocrparamc, u64* ocrparams,
                       u32 ocrdepc, ocrEdtDep_t ocrdepv[]) {
@@ -227,7 +193,17 @@ ocrGuid_t mainEdt(u32 ocrparamc, u64* ocrparams,
     // placeholder, not used for this call
     ocrGuid_t dbGuid;
 
-    ocrGuid_t finalEvent =fib_launch(initN, 0, dbGuid);
-    done_launch(finalEvent);
+    ocrGuid_t finalEvent = fib_launch(initN, dbGuid);
+    done_launch(initN, finalEvent);
     return NULL_GUID;
- }
+}
+
+ocrGuid_t done_edt(u32 ocrparamc, u64* ocrparams,
+                      u32 ocrdepc, ocrEdtDep_t ocrdepv[]) {
+    int result = *(int *)(ocrdepv[0].ptr);
+    int initN = *(int *)(ocrparams);
+
+    printf("Result: fib(%d) = %d\n", initN, result);
+    ocrShutdown();
+    return NULL_GUID;
+}
