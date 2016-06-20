@@ -15,7 +15,8 @@
 	<li><a href="#Initialization">Create the OCR DB and Initialization</a></li>
 	<li><a href="#Context">DB Context in ELS</a></li>
 	<li><a href="#Update">Update the References to Globals and Statics</a></li>
-	<li><a href="#Source">Globals2db Source Code</a></li>
+	<li><a href="#Source">globals2db Source Code</a></li>
+	<li><a href="#Limitations">Limitations of the globals2db Tool</a></li>
 	<li><a href="#DOT">DOT Generation</a></li>
     </ul>
 
@@ -373,7 +374,14 @@ The include file rose_ffwd.h is generated using printfs.  As of this writing, th
 </ul>
 
     <p>	The VisitorTraversal::atTraversalEnd() function is called at the end of processing each source file in the application.  For each function that references a global or static, the call to getGlobalDBAddr() is inserted at the top of the function.  This sets up the pointer __ffwd_p, which is used in all references in the function.  The globals and statics are initialized to their original value, or to zero.</p>
+<br>
 
+    <h2><a name="Limitations">Limitations of the globals2db Tool</a></h2>
+<ul>
+      <li>Only applications written in C are supported.
+      <li>C++ applications have not been tested at all.
+      <li>If a C++ application has a static constructor, the constructor may not be invoked in the order required by MPI-Lite.
+</ul>
 
 <br>
     <h2><a name="DOT">DOT generation</a></h2>
@@ -409,7 +417,7 @@ The include file rose_ffwd.h is generated using printfs.  As of this writing, th
     <address><a href="mailto:gail.lyons@intel.com">Gail Lyons</a></address>
 <!-- Created: Wed Jun  1 10:40:48 PDT 2016 -->
 <!-- hhmts start -->
-Last modified: Wed Jun  1 14:00:50 PDT 2016
+Last modified: Mon Jun 20 12:42:41 PDT 2016
 <!-- hhmts end -->
   </body>
 </html>

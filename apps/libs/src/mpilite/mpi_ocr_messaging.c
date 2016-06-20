@@ -353,7 +353,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
         PRINTF("mpiOcrSend: rank #%d created channelEvent %p\n", source, channelEvent); fflush(stdout);
 
 
-        if (err = ocrDbCreate(&DB, (void **)&myPtr,  sizeof(ocrGuid_t),
+        if (err = ocrDbCreate(&DB, (void **)&myPtr,  sizeof(eventPair_t),
                               DB_PROP_NONE, NULL_HINT, NO_ALLOC))
         {
             char msg[150];
