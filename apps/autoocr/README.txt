@@ -1,5 +1,8 @@
 This directory structure contains examples for autoocr.
 
+If `make ARGS=legacy ocr' is used then the ocr examples will be
+compiled in legacy (blocking) mode.
+
 Directory contents:
  keyword - source input for autoocr
  autoocr - generated output from autoocr
