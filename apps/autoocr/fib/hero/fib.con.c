@@ -191,7 +191,7 @@ ocrGuid_t mainEdt(u32 ocrparamc, u64* ocrparams,
     char *arg1 = getArgv(ocrdepv[0].ptr, 1);
     int initN=atoi(arg1);
     // placeholder, not used for this call
-    ocrGuid_t dbGuid;
+    ocrGuid_t dbGuid = {0};
 
     ocrGuid_t finalEvent = fib_launch(initN, dbGuid);
     done_launch(initN, finalEvent);
