@@ -10,12 +10,12 @@
 #OCR_TYPE=x86  make -j32 uninstall clean install
 #OCR_TYPE=x86-mpi  make -j32 uninstall clean install
 #WORKLOAD_ARGS="30 1 10" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 make uninstall clean run
-WORKLOAD_ARGS="8 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile1" make uninstall clean run
-WORKLOAD_ARGS="16 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile2" make uninstall clean run
-WORKLOAD_ARGS="32 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile4" make uninstall clean run
-WORKLOAD_ARGS="64 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile8" make uninstall clean run
-WORKLOAD_ARGS="128 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile16" make uninstall clean run
-WORKLOAD_ARGS="256 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile32" make uninstall clean run
+#WORKLOAD_ARGS="8 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile1" make uninstall clean run
+#WORKLOAD_ARGS="16 1 900" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile2" make uninstall clean run
+#WORKLOAD_ARGS="32 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile4" make uninstall clean run
+#WORKLOAD_ARGS="64 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile8" make uninstall clean run
+WORKLOAD_ARGS="128 1 900" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/home/dsscott/repo11/apps/apps/hpcg/refactored/ocr/intel/nodefile16" make uninstall clean run
+#WORKLOAD_ARGS="256 1 90" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile32" make uninstall clean run
 #WORKLOAD_ARGS="2 2 2 64 30 0" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=2 OCR_NUM_NODES=1  make uninstall clean run
 #WORKLOAD_ARGS="2 2 2 64 30 0" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile1" make uninstall clean run
 #WORKLOAD_ARGS="2 2 2 64 30 0" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="/mnt/nordicfs/dsscott/repo/apps/apps/hpcg/refactored/ocr/intel/nodefile1" make uninstall clean run

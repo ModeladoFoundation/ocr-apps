@@ -18,6 +18,7 @@ ARITY is defined in reduction.h it can be changed and recompiled if desired.
 March 2016: modify to use channel events
 April 2016: modify to send results back down tree
 May 2016: fixed bug to use local downDBK (rather than everyone using the one from rank 0)
+June 2016: fixed a race condition and added a release to reductionLaunch
 
 */
 
@@ -256,11 +257,10 @@ ocrGuid_t reductionSendChannelEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
     ocrGuid_t rpDBK = DEPV(reductionSendChannel,reductionPrivate,guid);
     reductionPrivate_t * rpPTR = DEPV(reductionSendChannel,reductionPrivate,ptr);
 
-//PRINTF("Send %d Start \n", rpPTR->myrank);
     ocrGuid_t bufferDBK = DEPVARRAY(reductionSendChannel,buffer,0,guid);
     ocrGuid_t * bufferPTR = (ocrGuid_t *) DEPVARRAY(reductionSendChannel,buffer,0,ptr);
 
-//create channel event
+//create channel events
     ocrGuid_t channelUpEVT, channelDownEVT;
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 2;
@@ -270,13 +270,11 @@ ocrGuid_t reductionSendChannelEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
     rpPTR->sendUpEVT = channelUpEVT;
     ocrEventCreateParams(&channelDownEVT, OCR_EVENT_CHANNEL_T, false, &params);
     rpPTR->recvDownEVT = channelDownEVT;
-//PRINTF("Send %d channelUpEVT "GUIDF" channelDownEVT "GUIDF"\n", rpPTR->myrank, GUIDA(channelUpEVT), GUIDA(channelDownEVT));
 
 
 //send channel events
     ocrGuid_t sendEVT;
     ocrGuidFromIndex(&sendEVT, rpPTR->rangeGUID, rpPTR->myrank-1);
-//PRINTF("S%d range "GUIDF" sendEVT "GUIDF" \n", rpPTR->myrank, GUIDA(rpPTR->rangeGUID), GUIDA(sendEVT));
     u64 errno = ocrEventCreate(&sendEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
     bufferPTR[0] = channelUpEVT;
     bufferPTR[1] = channelDownEVT;
@@ -295,7 +293,6 @@ typedef struct{
 } reductionRecvChannelDEPV_t;
 
 ocrGuid_t reductionRecvChannelEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
-//TODO destroy labeled events (!)
 
     DEPVDEF(reductionRecvChannel);
     ocrGuid_t rpDBK = DEPV(reductionRecvChannel,reductionPrivate,guid);
@@ -304,16 +301,13 @@ ocrGuid_t reductionRecvChannelEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
     u64 nrank = rpPTR->nrank;
     u64 myrank = rpPTR->myrank;
 
-//PRINTF("Recv %d Start depv0 guid "GUIDF" depv1 guid "GUIDF"\n", rpPTR->myrank, depv[0].guid, depv[1].guid);
 
     u64 i, src;
 
     for(i=0;i<ARITY;i++)
         if(DEPVARRAY(reductionRecvChannel,buffer,i,ptr) != NULL){
             rpPTR->recvUpEVT[i] =  ((ocrGuid_t *) DEPVARRAY(reductionRecvChannel,buffer,i,ptr))[0];
-//PRINTF("R%d i%d recvUpEVT "GUIDF" \n", myrank, i, rpPTR->recvUpEVT[i]);
             rpPTR->sendDownEVT[i] =  ((ocrGuid_t *) DEPVARRAY(reductionRecvChannel,buffer,i,ptr))[1];
-//PRINTF("R%d i%d sendDownEVT "GUIDF" \n", myrank, i, rpPTR->sendDownEVT[i]);
             ocrDbDestroy(DEPVARRAY(reductionRecvChannel,buffer,i,guid));
         } else {
             rpPTR->recvUpEVT[i] = NULL_GUID;
@@ -339,8 +333,8 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 depv
 0: private block
 1: mydata
-2-ARITY+1 your datablocks from your children
-ARITY+2 final send block (rank 0 only)
+2 to ARITY+1: the datablocks from your children
+going down, yourdata[0] is the result to send back and down
 */
 
 
@@ -360,9 +354,6 @@ ARITY+2 final send block (rank 0 only)
     ocrGuid_t reductionEDT;
     ocrGuid_t destEVT, recvEVT;
     u64 errno, i, src, dest, nrecv, ndep;
-//PRINTF("Red %d depc %d", myrank, depc);
-//for(i=0;i<depc;i++) PRINTF(" "GUIDF" ",GUIDA(depv[i].guid));
-//PRINTF(" \n");
 
     if(rpPTR->new == 1) { //create channel events and use labeled GUIDs to initialize tree
         rpPTR->new = 0;
@@ -379,22 +370,17 @@ ARITY+2 final send block (rank 0 only)
 
 //create clone to continue after channel events are installed
 
-//PRINTF("Red %d create clone to initialize\n", myrank);
         ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, NULL);
         ocrAddDependence(DEPV(reduction,mydata,guid), reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
-
-//INTF("Red %d after clone\n", myrank);
-
-//create Send
 
         ocrGuid_t SendOutputEVT = NULL_GUID;
         ocrGuid_t reductionSendChannelTML, reductionSendChannelEDT, bufferDBK;
 
+//create send
 
         if(myrank !=0) {
             ocrEdtTemplateCreate(&reductionSendChannelTML, reductionSendChannelEdt, 0, DEPVNUM(reductionSendChannel));
             ocrEdtCreate(&reductionSendChannelEDT, reductionSendChannelTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, &SendOutputEVT);
-//PRINTF("Red %d create SendChannel output "GUIDF" \n", myrank, SendOutputEVT);
             ocrDbCreate(&bufferDBK, (void**) &dummy, 2*sizeof(ocrGuid_t), 0, NULL_HINT, NO_ALLOC);
             ocrAddDependence(bufferDBK, reductionSendChannelEDT, SLOT(reductionSendChannel,buffer), DB_MODE_RW);
         }
@@ -409,14 +395,12 @@ ARITY+2 final send block (rank 0 only)
         if(myrank*ARITY+1 < nrank) {
             ocrEdtTemplateCreate(&reductionRecvChannelTML, reductionRecvChannelEdt, 0, DEPVNUM(reductionRecvChannel));
             ocrEdtCreate(&reductionRecvChannelEDT, reductionRecvChannelTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, &RecvOutputEVT);
-//PRINTF("Red %d create RecvChannel guid "GUIDF" slots %d output "GUIDF" \n", myrank, reductionRecvChannelEDT, DEPVNUM(reductionRecvChannel), RecvOutputEVT);
             for(i=0;i<ARITY;i++) {
                 src = myrank*ARITY+i+1;
                 if(src < nrank) {
                     ocrGuidFromIndex(&recvEVT, rpPTR->rangeGUID, src-1);
                     errno = ocrEventCreate(&recvEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     ocrAddDependence(recvEVT, reductionRecvChannelEDT, SLOTARRAY(reductionRecvChannel,buffer,i), DB_MODE_RO);
-//PRINTF("add dep %d recvEVT guid "GUIDF" errno %d\n", SLOTARRAY(reductionRecvChannel,buffer,i), GUIDA(reductionRecvChannelEDT), errno);
               } else {
                     ocrAddDependence(NULL_GUID, reductionRecvChannelEDT, SLOTARRAY(reductionRecvChannel,buffer,i), DB_MODE_RO);
                 }
@@ -426,20 +410,15 @@ ARITY+2 final send block (rank 0 only)
 
 //launch all
 
-//PRINTF("Launch %d Send "GUIDF" Recv "GUIDF" \n", myrank, GUIDA(SendOutputEVT), GUIDA(RecvOutputEVT));
         ocrDbRelease(DEPV(reduction,reductionPrivate,guid));
         if(ocrGuidIsNull(SendOutputEVT)) //no send
             if(ocrGuidIsNull(RecvOutputEVT)){ //neither
                 ocrAddDependence(DEPV(reduction,reductionPrivate,guid), reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
-//PRINTF("Red %d neither \n", myrank);
-
             } else { //only Recv
                 ocrAddDependence(RecvOutputEVT, reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
                 ocrAddDependence(DEPV(reduction,reductionPrivate,guid), reductionRecvChannelEDT, SLOT(reductionRecvChannel,reductionPrivate), DB_MODE_RW);
-//PRINTF("Red %d Recv only guid "GUIDF" add dep %d\n", myrank, GUIDA(reductionRecvChannelEDT), SLOT(reductionRecvChannel,reductionPrivate));
             }
           else if(ocrGuidIsNull(RecvOutputEVT)) {//only send
-//PRINTF("Red %d send only\n", myrank);
                 ocrAddDependence(SendOutputEVT, reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
                 ocrAddDependence(DEPV(reduction,reductionPrivate,guid), reductionSendChannelEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
             } else { //all 3
@@ -456,12 +435,11 @@ ARITY+2 final send block (rank 0 only)
 
 ocrGuid_t localDBK;
 void * localPTR;
+
         if(depc == 2) { //first "real" call, heading up
-//PRINTF("Red %d depc 2 recvUp "GUIDF" \n", myrank, GUIDA(rpPTR->recvUpEVT[0]));
-            if(!ocrGuidIsNull(rpPTR->recvUpEVT[0])) { //need to receive
+            if(!ocrGuidIsNull(rpPTR->recvUpEVT[0])) { //clone to receive
                 rpPTR->up = 1;
                 ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, ARITY+2, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, NULL);
-//PRINTF("Red %d create clone for first real time\n", myrank);
                 ocrDbRelease(DEPV(reduction,mydata,guid));  //should not be needed since mydata hasn't changed
                 ocrAddDependence(DEPV(reduction,mydata,guid), reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
                 for(i=0;i<ARITY;i++) ocrAddDependence(rpPTR->recvUpEVT[i], reductionEDT, SLOTARRAY(reduction,yourdata,i), DB_MODE_RO);
@@ -473,18 +451,16 @@ void * localPTR;
 
             if(ocrGuidIsNull(rpPTR->sendUpEVT)) { //must be the only active rank...just return the input
                 ocrDbRelease(DEPV(reduction,mydata,guid));
-//PRINTF("Red %d satisfying local\n", myrank);
-                ocrEventSatisfy(rpPTR->returnEVT,DEPV(reduction,mydata,guid));
+                ocrEventSatisfy(rpPTR->returnEVT, DEPV(reduction,mydata,guid));
                 return NULL_GUID;
             }
 
 //send up
-//PRINTF("Red %d send up "GUIDF" \n", myrank, GUIDA(rpPTR->sendUpEVT));
 
             ocrDbRelease(DEPV(reduction,mydata,guid));
             ocrEventSatisfy(rpPTR->sendUpEVT, DEPV(reduction,mydata,guid));
 
-//clone to receive down
+//clone to receive down (if needed)
             if(rpPTR->all) {
                 rpPTR->up = 0;
                 ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, NULL);
@@ -500,34 +476,28 @@ void * localPTR;
 
 u64 j;
 
-        if(rpPTR->up == true){ //I have received up
-
-//PRINTF("Red %d I have received \n", myrank);
+        if(rpPTR->up){ //I have received up
 
 //combine values
             for(i=0;i<ARITY;i++) {
                 if(!ocrGuidIsNull(DEPVARRAY(reduction,yourdata,i,guid))) {
                     yourdataPTR = DEPVARRAY(reduction,yourdata,i,ptr);
-//for(j=0;j<rpPTR->ndata;j++)  PRINTF("Red %d i %d j %d yourdata %f \n", myrank, i, j, ((double *) yourdataPTR)[j]);
                     reductionOperation(rpPTR->ndata,mydataPTR, yourdataPTR, rpPTR->reductionOperator);
-//for(j=0;j<rpPTR->ndata;j++)  PRINTF("Red %d i %d j %d mydata %f \n", myrank, i, j, ((double *) mydataPTR)[j]);
                 }
             }
 
-//for(j=0;j<rpPTR->ndata;j++)  PRINTF("Red %d i %d j %d mydata %f \n", myrank, i, j, ((double *) mydataPTR)[j]);
-            ocrDbRelease(DEPV(reduction,mydata,guid));
 
             if(ocrGuidIsNull(rpPTR->sendUpEVT)) { //top of the tree
-//PRINTF("Red %d local satisfy "GUIDF" \n", myrank, GUIDA(rpPTR->returnEVT));
 
-//send back
-                ocrEventSatisfy(rpPTR->returnEVT,DEPV(reduction,mydata,guid));
-                if(!rpPTR->all) return NULL_GUID; //not going down
+                if(!rpPTR->all) { //not going down, just send back
+                    ocrDbRelease(DEPV(reduction,mydata,guid));
+                    ocrEventSatisfy(rpPTR->returnEVT,DEPV(reduction,mydata,guid));
+                    return NULL_GUID; //not going down
+                }
 
-//send down
+//send down from top
 
                 for(i=0;i<ARITY;i++) {
-//PRINTF("Red %d sendDownEVT "GUIDF" block "GUIDF" \n", myrank, GUIDA(rpPTR->sendDownEVT[i]), GUIDA(DEPV(reduction,mydata,guid)));
                     if(!ocrGuidIsNull(rpPTR->sendDownEVT[i])){
                         ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator), 0, NULL_HINT, NO_ALLOC);
                         memcpy(localPTR, mydataPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator));
@@ -536,12 +506,14 @@ u64 j;
                     }
                 }
 
-//PRINTF("Red %d satisfying local\n", myrank);
+//send back from top
+                ocrDbRelease(DEPV(reduction,mydata,guid));
+                ocrEventSatisfy(rpPTR->returnEVT,DEPV(reduction,mydata,guid));
                 return NULL_GUID;
-//PRINTF("Red %d sendUpEVT "GUIDF" block "GUIDF" \n", myrank, GUIDA(rpPTR->sendUpEVT), GUIDA(DEPV(reduction,mydata,guid)));
         }
 
 //send up
+            ocrDbRelease(DEPV(reduction,mydata,guid));
             ocrEventSatisfy(rpPTR->sendUpEVT, DEPV(reduction,mydata,guid));
 
             if(!rpPTR->all) return NULL_GUID;  //done if only going up
@@ -549,7 +521,6 @@ u64 j;
 //clone to receive down
             rpPTR->up = false;
             ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 3, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, NULL);
-//PRINTF("Red %d create clone for receive down\n", myrank);
             ocrAddDependence(DEPV(reduction,mydata,guid), reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
             ocrAddDependence(rpPTR->recvDownEVT, reductionEDT, SLOTARRAY(reduction,yourdata,0), DB_MODE_RO);
             ocrDbRelease(DEPV(reduction,reductionPrivate,guid));  //should not be needed since mydata hasn't changed
@@ -557,19 +528,15 @@ u64 j;
             return NULL_GUID;
         }
 
-// must be on the way down, copy, send down and return
+// must be on the way down
 
-//PRINTF("Red %d on way down\n", myrank);
-//for(j=0;j<rpPTR->ndata;j++)  PRINTF("Red recv down and out %d j %d mydata %f \n", myrank, j, ((double *) yourdataPTR)[j]);
-
-
-
+// copy
 memcpy(mydataPTR,DEPVARRAY(reduction,yourdata,0,ptr), rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator));
-//for(j=0;j<rpPTR->ndata;j++)  PRINTF("Red send down and out %d j %d mydata %f \n", myrank, j, ((double *) mydataPTR)[j]);
 ocrDbDestroy(DEPVARRAY(reduction,yourdata,0,guid));
 
+
+// send down
         for(i=0;i<ARITY;i++) {
-//PRINTF("Red %d sendDownEVT "GUIDF" block "GUIDF" \n", myrank, GUIDA(rpPTR->sendDownEVT[i]), GUIDA(DEPV(reduction,mydata,guid)));
             if(!ocrGuidIsNull(rpPTR->sendDownEVT[i])){
                 ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator), 0, NULL_HINT, NO_ALLOC);
                 memcpy(localPTR, mydataPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator));
@@ -578,8 +545,8 @@ ocrDbDestroy(DEPVARRAY(reduction,yourdata,0,guid));
             }
         }
 
-//PRINTF("Red %d local satisfy "GUIDF" \n", myrank, GUIDA(rpPTR->returnEVT));
 
+//send back
         ocrDbRelease(DEPV(reduction,mydata,guid));
         ocrEventSatisfy(rpPTR->returnEVT, DEPV(reduction,mydata,guid));
         return NULL_GUID;
@@ -590,9 +557,9 @@ C function callable from an SPMD set of EDTs to execute a reduction tree and ret
 Requires setting certain parameters in a "reductionPrivate" block
 */
 
-void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID, void * mydataPTR){
+void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateDBK, void * mydataPTR){
     ocrGuid_t reductionEDT, localDBK;
-    double * localPTR;
+    void * localPTR;
     if(rpPTR->new) {
         ocrEdtTemplateCreate(&(rpPTR->reductionTML), reductionEdt, 0, EDT_PARAM_UNK);
         ocrHintInit(&rpPTR->myAffinity,OCR_HINT_EDT_T);
@@ -607,11 +574,12 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID,
     }
 
     ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, NULL);
-    ocrAddDependence(reductionPrivateGUID, reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
     ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator), 0, NULL_HINT, NO_ALLOC);
     memcpy(localPTR, mydataPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator));
-
+    ocrDbRelease(localDBK);
     ocrAddDependence(localDBK, reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
+    ocrDbRelease(reductionPrivateDBK);
+    ocrAddDependence(reductionPrivateDBK, reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
     return;
 }
 

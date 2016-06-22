@@ -1,18 +1,15 @@
-This directory provides an implementation of reductions using labeled GUIDs.
+This directory provides a test driver for the reduction library in
+apps/libs/src/reduction
 
-Labeled GUIDs are currently experimental so it is necessary to include
+See the README in that directory for more details.
 
-#define ENABLE_EXTENSION_LABELING
-#include "extensions/ocr-labeling.h"
+The driver implements double precision global sum.
 
-it is also necessary to change the GUID factory to "LABELED"
-this is accomplished by adding the line
+It takes three input parameters:
+number of ranks
+number of elements to be reduce
+number of reductions
 
-CONFIG_FLAGS=--guid LABELED
-
-in Makefile.x86 and Makefile.x86-mpi
-
-driver.c : a sample driver which exercises double precision addition
 
 
 Any driver code for the library must:

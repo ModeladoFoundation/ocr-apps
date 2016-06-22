@@ -1,6 +1,6 @@
 /*
 Author David S. Scott
-Copywrite Intel Corporation 2015
+Copywrite Intel Corporation 2016
 
  This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
  and cannot be distributed without it. This notice cannot be removed or modified.
@@ -19,11 +19,13 @@ November 15 2015: changed to the newer reduction library
 November 30 2015: added AFFINITY extensions
 December 8 2015: added macros "library" and structures for params and deps
 April 2016:	added channel events, brought up to release 1.1.0 including affinity HINTS
+June 2016: added "AFFINITY" definition to allow it to be turned off easily
 
 
 */
 
 #define COMPUTE  //undefine to suppress compute
+#define AFFINITY //undefine to suppress affinity
 #define PRECONDITIONER  //undefine if you want to run without the precondition
 //#define RECEIVER_OWNS_CHANNEL_EVENT //undefine to make the sender own it
 
@@ -33,7 +35,6 @@ April 2016:	added channel events, brought up to release 1.1.0 including affinity
 #include "ocr.h"
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
 #include "extensions/ocr-affinity.h" //needed for affinity
-
 
 #include "string.h" //if memcpy is needed
 #include "stdio.h"  //needed for PRINTF debugging
@@ -358,10 +359,10 @@ for(i=0;i<size;i++) ind[size*size*size - size + i] = c++;
         c=0;
         for(k=0;k<size;k++) {
 
-            printf("%d \n", k);
+            PRINTF("%d \n", k);
             for(j=0;j<size;j++) {
-                for(i=0;i<size;i++) printf("%5d ", ind[c++]);
-                printf("\n");
+                for(i=0;i<size;i++) PRINTF("%5d ", ind[c++]);
+                PRINTF("\n");
             }
         }
     }
@@ -530,8 +531,8 @@ if(debug != 0) PRINTF("PK%d L%d \n", myrank, level);
 
     u32 i, i1, i2;
 
-if(debug != 0) PRINTF("PK%d L%d start vi %d pbDBK %lx \n", myrank, level, vectorIndex, pbDBK);
-if(debug > 1) for(i=0;i<26;i++) PRINTF("PK%d sendDBK[%d] %lx \n", myrank, i, sendDBK[i]);
+if(debug != 0) PRINTF("PK%d L%d start vi %d pbDBK "GUIDF" \n", myrank, level, vectorIndex, GUIDA(pbDBK));
+if(debug > 1) for(i=0;i<26;i++) PRINTF("PK%d sendDBK[%d] "GUIDF" \n", myrank, i, GUIDA(sendDBK[i]));
 
     u32 errno;
 
@@ -547,7 +548,7 @@ if(debug > 1) for(i=0;i<26;i++) PRINTF("PK%d sendDBK[%d] %lx \n", myrank, i, sen
 
 
     for(i=0;i<26;i++) {
-if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %lx\n", myrank, i, *start, *l1, *l2, *p1, *p2, *l1*(*l2), depv[i+1].guid);
+if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block "GUIDF"\n", myrank, i, *start, *l1, *l2, *p1, *p2, *l1*(*l2), GUIDA(depv[i+1].guid));
         if(!ocrGuidIsNull(depv[i+1].guid)) {
 #ifdef COMPUTE
 
@@ -562,7 +563,7 @@ if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block %l
                 s += *p2;
             }
 #endif
-if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy %lx with %lx errno %d\n", myrank, level, i, pbPTR->haloSendEVT[i], sendDBK[i],errno);
+if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" errno %d\n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i]), GUIDA(sendDBK[i]),errno);
 fflush(stdout);
             ocrDbRelease(sendDBK[i]);
             ocrEventSatisfy(pbPTR->haloSendEVT[i], sendDBK[i]);
@@ -578,7 +579,6 @@ fflush(stdout);
 if(debug != 0) PRINTF("PK%d finish\n", myrank);
 fflush(stdout);
 
-ocrDbRelease(pbDBK);
 ocrEventSatisfy(returnEVT, NULL_GUID);
 
 return(NULL_GUID);
@@ -627,7 +627,7 @@ sends the private block (to either spmv or smooth)
 
 
     double * recvPTR[26];
-    ocrGuid_t recvBlockGUID[26];
+    ocrGuid_t recvDBK[26];
 
     u32 i;
 
@@ -642,7 +642,7 @@ sends the private block (to either spmv or smooth)
 
     double * dest = (double *) (((u64) ptr) + pbPTR->vector_offset[level][vectorIndex]);
 
-if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] %lx \n", myrank, i, depv[i].guid);
+if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] "GUIDF" \n", myrank, i, GUIDA(depv[i].guid));
 
 
 
@@ -740,14 +740,14 @@ launches unpack
 
 
 if(DEBUG != 0) PRINTF("HE%d start\n", myrank);
-if(DEBUG != 0) PRINTF("HE%d start pbDBK %lx \n", myrank, pbDBK);
+if(DEBUG != 0) PRINTF("HE%d start pbDBK "GUIDF" \n", myrank, GUIDA(pbDBK));
 if(DEBUG != 0) PRINTF("HE%d start level %d \n", myrank, level);
 if(DEBUG != 0) PRINTF("HE%d start vectorIndex %d \n", myrank, vectorIndex);
-if(DEBUG != 0) PRINTF("HE%lx start unpackEVT %lx \n", myrank, unpackEVT);
-if(DEBUG != 0) PRINTF("HE%lx start packEVT %lx \n", myrank, packEVT);
+if(DEBUG != 0) PRINTF("HE%d start unpackEVT "GUIDF" \n", myrank, GUIDA(unpackEVT));
+if(DEBUG != 0) PRINTF("HE%d start packEVT "GUIDF" \n", myrank, GUIDA(packEVT));
 
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendevent %lx \n", myrank, i, pbPTR->haloSendEVT[i]);
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d recvevent %lx \n", myrank, i, pbPTR->haloRecvEVT[i]);
+if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendevent "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[i]));
+if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d recvevent "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloRecvEVT[i]));
 
 fflush(stdout);
 
@@ -773,15 +773,14 @@ if(DEBUG > 1) PRINTF("HE%d after 0-1\n", myrank);
         if(!ocrGuidIsNull(pbPTR->haloSendEVT[i])) {
             ocrDbCreate(&haloDBK, (void**) &dummy, (pbPTR->gather[level]).length[i]*sizeof(double), 0, NULL_HINT, NO_ALLOC);
             ocrAddDependence(haloDBK, packEDT, SLOTARRAY(pack,block,i), DB_MODE_RW);
-//printf("packSlot %d \n", SLOTARRAY(pack,block,i));
         }else ocrAddDependence(NULL_GUID, packEDT, SLOTARRAY(pack,block,i), DB_MODE_RW);
 if(DEBUG != 0) PRINTF("HE%d after sendblocks\n", myrank);
 
     for(i=0;i<26;i++) {
-        ocrAddDependence(pbPTR->haloRecvEVT[i], unpackEDT, SLOTARRAY(unpack,block,i), DB_MODE_RW);
+        ocrAddDependence(pbPTR->haloRecvEVT[i], unpackEDT, SLOTARRAY(unpack,block,i), DB_MODE_RO);
     }
     ocrDbRelease(pbDBK);
-    ocrAddDependence(pbDBK, packEDT, SLOT(pack,privateBlock), DB_MODE_RW);
+    ocrAddDependence(pbDBK, packEDT, SLOT(pack,privateBlock), DB_MODE_RO);
     ocrAddDependence(pbDBK, unpackEDT, SLOT(unpack,privateBlock), DB_MODE_RW);
 
 if(DEBUG != 0) PRINTF("HE%d finish\n", myrank);
@@ -1039,7 +1038,7 @@ this is the driver for the multigrid steps.
 
     double * z, *ap, *zold, *znew, *r, *rold, *rnew;
 
-    ocrGuid_t haloExchange, packEVT, unpackEVT, smooth, smoothEVT, spmv, spmvEVT, mg, mgevent;
+    ocrGuid_t haloExchangeEDT, packEVT, unpackEVT, smoothEDT, smoothEVT, spmvEDT, spmvEVT, mgEDT;
     haloExchangePRM_t haloExchangeParamv;
     haloExchangePRM_t * haloExchangePRM = &haloExchangeParamv;
     smoothPRM_t smoothParamv;
@@ -1047,7 +1046,7 @@ this is the driver for the multigrid steps.
     spmvPRM_t spmvParamv;
     spmvPRM_t * spmvPRM = &spmvParamv;
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event %lx\n", &pbPTR->myrank, mgStep, phase, level, returnEVT);
+if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event "GUIDF"\n", &pbPTR->myrank, mgStep, phase, level, GUIDA(returnEVT));
 
     switch(phase) {
 
@@ -1066,20 +1065,20 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep,
         pbPTR->mgPhase[level] = 1;
 
 //create clone which depends on smooth
-        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&mgEDT, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
         ocrEventCreate(&smoothEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(smoothEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(smoothEVT, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
 //make smooth wait for both Pack and Unpack
         PRM(smooth,level) = level;
         PRM(smooth,vectorIndex) = Z;
         PRM(smooth,rhsIndex) = R;
         PRM(smooth,returnEVT) = smoothEVT;
-        ocrEdtCreate(&smooth, pbPTR->smoothTML, EDT_PARAM_DEF, (u64 *) smoothPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&smoothEDT, pbPTR->smoothTML, EDT_PARAM_DEF, (u64 *) smoothPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
         ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(unpackEVT, smooth, SLOT(smooth,privateBlock), DB_MODE_RW);
+        ocrAddDependence(unpackEVT, smoothEDT, SLOT(smooth,privateBlock), DB_MODE_RW);
         ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(packEVT, smooth, SLOT(smooth,packEVT), DB_MODE_RW);
+        ocrAddDependence(packEVT, smoothEDT, SLOT(smooth,packEVT), DB_MODE_RW);
 
 //launch halo
         PRM(haloExchange,level) = level;
@@ -1087,9 +1086,9 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep,
         PRM(haloExchange,unpackEVT) = unpackEVT;
         PRM(haloExchange,packEVT) = packEVT;
 
-        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
@@ -1107,36 +1106,38 @@ fflush(stdout);
 
 //create clone and have it depend on spmv
         pbPTR->mgPhase[level] = 2;
-        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&mgEDT, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
         ocrEventCreate(&spmvEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(spmvEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(spmvEVT, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
 //make spmv depend on pack and unpack
         PRM(spmv,level) = level;
         PRM(spmv,sourceIndex) = Z;
         PRM(spmv,resultIndex) = AP;
         PRM(spmv,returnEVT) = spmvEVT;
-        ocrEdtCreate(&spmv, pbPTR->spmvTML, EDT_PARAM_DEF, (u64 *) spmvPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&spmvEDT, pbPTR->spmvTML, EDT_PARAM_DEF, (u64 *) spmvPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
         ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(unpackEVT, spmv, SLOT(spmv,privateBlock), DB_MODE_RW);
-        ocrAddDependence(packEVT, spmv, SLOT(spmv,packEVT), DB_MODE_RW);
+        ocrAddDependence(unpackEVT, spmvEDT, SLOT(spmv,privateBlock), DB_MODE_RW);
+        ocrAddDependence(packEVT, spmvEDT, SLOT(spmv,packEVT), DB_MODE_RW);
 
         PRM(haloExchange,level) = level;
         PRM(haloExchange,vectorIndex) = Z;
         PRM(haloExchange,packEVT) = packEVT;
         PRM(haloExchange,unpackEVT) = unpackEVT;
-        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
 
 //launch halo
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
 
-            return NULL_GUID;
+        return NULL_GUID;
+
+
         case 2:  //return from SPMV, launch recursive call
 
 //create clone
@@ -1146,9 +1147,9 @@ fflush(stdout);
         PRM(mg,returnEVT) = returnEVT;
 //needed because the template is used after the release of the shared block
         ocrGuid_t sbMgTML = pbPTR->mgTML;
-        ocrEdtCreate(&mg, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&mgEDT, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
         ocrEventCreate(&returnEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-        ocrAddDependence(returnEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(returnEVT, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
 #ifdef COMPUTE
 //create restriction
@@ -1170,11 +1171,12 @@ fflush(stdout);
         PRM(mg,returnEVT) = returnEVT;
         level = 3 - abs(mgStep-3);
         pbPTR->mgPhase[level] = 0;
-        ocrEdtCreate(&mg, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&mgEDT, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", &pbPTR->myrank, mgStep, phase, level);
 fflush(stdout);
+
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
         return NULL_GUID;
 
@@ -1200,14 +1202,14 @@ if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d z %f update %f\n", &pbPTR->myrank, m
 if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phase, level);
 
         pbPTR->mgPhase[level] = 4;
-        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&mgEDT, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
         ocrEventCreate(&smoothEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         PRM(smooth,level) = level;
         PRM(smooth,vectorIndex) = Z;
         PRM(smooth,rhsIndex) = R;
         PRM(smooth,returnEVT) = smoothEVT;
-        ocrEdtCreate(&smooth, pbPTR->smoothTML, EDT_PARAM_DEF, (u64 *) smoothPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&smoothEDT, pbPTR->smoothTML, EDT_PARAM_DEF, (u64 *) smoothPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
         ocrEventCreate(&unpackEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         ocrEventCreate(&packEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
@@ -1217,20 +1219,21 @@ if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phas
         PRM(haloExchange,vectorIndex) = R;
         PRM(haloExchange,unpackEVT) = unpackEVT;
         PRM(haloExchange,packEVT) = packEVT;
-        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
 
-        ocrAddDependence(smoothEVT, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(smoothEVT, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
-        ocrAddDependence(unpackEVT, smooth, SLOT(smooth,privateBlock), DB_MODE_RW);
-        ocrAddDependence(packEVT, smooth, SLOT(smooth,packEVT), DB_MODE_RW);
+        ocrAddDependence(unpackEVT, smoothEDT, SLOT(smooth,privateBlock), DB_MODE_RW);
+        ocrAddDependence(packEVT, smoothEDT, SLOT(smooth,packEVT), DB_MODE_RW);
 
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
         return NULL_GUID;
 
         case 4:  //return from final smooth
+
         ocrDbRelease(pbDBK);
         ocrEventSatisfy(returnEVT, pbDBK);
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
@@ -1245,6 +1248,7 @@ typedef struct{
     ocrEdtDep_t privateBlock;
     ocrEdtDep_t reductionPrivateBlock;
     ocrEdtDep_t myDataBlock;
+    ocrEdtDep_t returnBlock;
     } hpcgDEPV_t;
 
 
@@ -1263,30 +1267,27 @@ only work done is local linear algebra
 
     DEPVDEF(hpcg);
     ocrGuid_t pbDBK = DEPV(hpcg,privateBlock,guid);
-//printf("pbDBK %lx \n", pbDBK);
-//fflush(stdout);
     privateBlock_t * pbPTR = (privateBlock_t *) DEPV(hpcg,privateBlock,ptr);
     void * ptr = pbPTR;
-//printf("pbPTR %lx \n", pbPTR);
-//fflush(stdout);
     ocrGuid_t rpDBK = DEPV(hpcg,reductionPrivateBlock,guid);
     reductionPrivate_t * rpPTR = (reductionPrivate_t *) DEPV(hpcg,reductionPrivateBlock,ptr);
     ocrGuid_t myDataDBK = DEPV(hpcg,myDataBlock,guid);
     double * myDataPTR = (double *) DEPV(hpcg,myDataBlock,ptr);
+    ocrGuid_t returnDBK = DEPV(hpcg,returnBlock,guid);
+    double * returnPTR = DEPV(hpcg,returnBlock,ptr);
 
     u32 myrank = pbPTR->myrank;
     u32 timestep = pbPTR->timestep;
     u32 phase = pbPTR->hpcgPhase;
 
 
-//PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx mydata %lx \n", myrank, timestep, phase, pbDBK, rpDBK, myDataDBK);
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx mydata %lx \n", myrank, timestep, phase, pbDBK, rpDBK, myDataDBK);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private "GUIDF" reduceprivate "GUIDF" mydata "GUIDF" \n", myrank, timestep, phase, GUIDA(pbDBK), GUIDA(rpDBK), GUIDA(myDataDBK));
 
 
     ocrGuid_t onceEVT;
     double *a, *p, *x, *ap, *r, *z, *b, sum, pap, rtz, alpha, beta;
     u32 i, j, ind, errno;
-    ocrGuid_t mg, haloExchange, spmv, unpackEVT, packEVT, spmvEVT, hpcg, hpcgEVT;
+    ocrGuid_t mgEDT, haloExchangeEDT, spmvEDT, unpackEVT, packEVT, spmvEVT, hpcgEDT, hpcgEVT;
 
     haloExchangePRM_t haloExchangeParamv;
     haloExchangePRM_t * haloExchangePRM = &haloExchangeParamv;
@@ -1296,8 +1297,7 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx my
     mgPRM_t * mgPRM = &mgParamv;
 
     switch (phase) {
-        case 0:
-//Initial call only
+        case 0: //Initial call only
 
         x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
 
@@ -1320,12 +1320,15 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private %lx reduceprivate %lx my
 #endif
         *myDataPTR = sum;  //local sum
 
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %f\n", myrank, timestep, phase, *myDataPTR);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %e\n", myrank, timestep, phase, *myDataPTR);
 
 //create clone
 
-        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
-
+#ifdef AFFINITY
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
 
 
 
@@ -1334,16 +1337,18 @@ fflush(stdout);
 
         pbPTR->hpcgPhase = 1;
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
 
 //get return event from reduction
-//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
-        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+//PRINTF("CG%d T%d P%d local "GUIDF" \n", myrank, timestep, phase, GUIDA(rpPTR->returnEVT));
+        ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
 
 //launch reduction
 
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
+
+        ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
         return NULL_GUID;
 
@@ -1351,20 +1356,20 @@ fflush(stdout);
     case 1:
 
 //consume rtr   CONVERGENCE test
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d global rtr %f \n", myrank, timestep, phase, *myDataPTR);
-        if(myrank==0) PRINTF("time %d rtr %f \n", timestep, *myDataPTR);
-        if(timestep==0) pbPTR->rtr0 = *myDataPTR;
-           else if(*myDataPTR/pbPTR->rtr0 < 1e-13 || timestep == pbPTR->maxIter) {
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d global rtr %f \n", myrank, timestep, phase, *returnPTR);
+        if(myrank==0) PRINTF("time %d rtr %f \n", timestep, *returnPTR);
+        if(timestep==0) pbPTR->rtr0 = *returnPTR;
+           else if(*returnPTR/pbPTR->rtr0 < 1e-13 || timestep == pbPTR->maxIter) {
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase);
 fflush(stdout);
             x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
             sum = 0;
             for(i=0;i<pbPTR->mt[0];i++) sum += (1-x[i])*(1-x[i]);
             *myDataPTR = sum;
-            ocrDbRelease(DEPV(hpcg,myDataBlock,guid));
             rpPTR->all = 0;
 	    rpPTR->returnEVT = pbPTR->finalOnceEVT;
             reductionLaunch(rpPTR, rpDBK, myDataPTR);
+            ocrDbDestroy(returnDBK);
 
              return NULL_GUID;
         }
@@ -1377,28 +1382,35 @@ fflush(stdout);
         pbPTR->hpcgPhase = 2;
         pbPTR->mgPhase[0] = 0;
 
-        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#ifdef AFFINITY
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
 
         ocrEventCreate(&hpcgEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         PRM(mg,mgStep) = 0;
         PRM(mg,returnEVT) = hpcgEVT;
 
-        ocrEdtCreate(&mg, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event %lx \n", myrank, timestep, phase, hpcgEVT);
+        ocrEdtCreate(&mgEDT, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrAddDependence(hpcgEVT, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
-        ocrAddDependence(myDataDBK, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event "GUIDF" \n", myrank, timestep, phase, GUIDA(hpcgEVT));
+
+        ocrAddDependence(hpcgEVT, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+        ocrAddDependence(NULL_GUID, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RW);
 
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, mg, SLOT(mg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
+
 
 fflush(stdout);
         return NULL_GUID;
 
 #else
-//preconditioning NOT, just copy R to Z
+//preconditioning NOT, just copy R to Z AND THEN FALL THROUGH TO PHASE 3!!
         r = (double *) (((u64) ptr) + pbPTR->vector_offset[0][R]);
         z = (double *) (((u64) ptr) + pbPTR->vector_offset[0][Z]);
         for(i=0;i<pbPTR->mt[0];i++) z[i] = r[i];
@@ -1416,7 +1428,7 @@ if(pbPTR->debug > 1) for(i=0;i<pbPTR->mt[0];i++) PRINTF("CG%d T%d P%d i %d Z %f 
             sum += z[i]*r[i];
         }
 
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", myrank, timestep, phase, sum);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %e \n", myrank, timestep, phase, sum);
 #endif
         *myDataPTR = sum;
 
@@ -1425,13 +1437,18 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", myrank, timestep, ph
         pbPTR->hpcgPhase = 3;
 
 
-        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#ifdef AFFINITY
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
 
-//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
-        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+//PRINTF("CG%d T%d P%d local "GUIDF" \n", myrank, timestep, phase, GUIDA(rpPTR->returnEVT));
+        ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
 //launch reduction
 
@@ -1441,12 +1458,13 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", myrank, timestep, ph
 
     case 3:
 //consume rtz
-        if(myrank==0) PRINTF("time %d rtz %f \n", timestep, *myDataPTR);
-        pbPTR->rtz = *myDataPTR;
+        if(myrank==0) PRINTF("time %d rtz %f \n", timestep, *returnPTR);
+        pbPTR->rtz = *returnPTR;
 #ifdef COMPUTE
 //compute beta
         if(timestep == 0) beta = 0;
-               else beta = *myDataPTR/pbPTR->rtzold;
+               else beta = *returnPTR/pbPTR->rtzold;
+        ocrDbDestroy(returnDBK);
 //update p
         z = (double *) (((u64) ptr) + pbPTR->vector_offset[0][Z]);
         p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
@@ -1461,34 +1479,39 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %f \n", myrank, timestep, ph
 
 //create clone
         pbPTR->hpcgPhase = 4;
-        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#ifdef AFFINITY
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
 
         PRM(spmv,level) = 0;
         PRM(spmv,sourceIndex) = P;
         PRM(spmv,resultIndex) = AP;
         PRM(spmv,returnEVT) = spmvEVT;
-        ocrEdtCreate(&spmv, pbPTR->spmvTML, EDT_PARAM_DEF, (u64 *) spmvPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&spmvEDT, pbPTR->spmvTML, EDT_PARAM_DEF, (u64 *) spmvPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
         PRM(haloExchange,level) = 0;
         PRM(haloExchange,vectorIndex) = P;
         PRM(haloExchange,unpackEVT) = unpackEVT;
         PRM(haloExchange,packEVT) = packEVT;
-        ocrEdtCreate(&haloExchange, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+        ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-        ocrAddDependence(spmvEVT, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
-        ocrAddDependence(myDataDBK, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
-
-
-        ocrAddDependence(unpackEVT, spmv, SLOT(spmv,privateBlock), DB_MODE_RW);
-        ocrAddDependence(packEVT, spmv, SLOT(spmv,packEVT), DB_MODE_RW);
+        ocrAddDependence(spmvEVT, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+        ocrAddDependence(NULL_GUID, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
 
 
-        ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, haloExchange, SLOT(haloExchange,privateBlock), DB_MODE_RW);
+        ocrAddDependence(unpackEVT, spmvEDT, SLOT(spmv,privateBlock), DB_MODE_RW);
+        ocrAddDependence(packEVT, spmvEDT, SLOT(spmv,packEVT), DB_MODE_RW);
+
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
+
         return NULL_GUID;
 
 
@@ -1506,29 +1529,35 @@ fflush(stdout);
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f \n", myrank, timestep, phase, sum);
 //Create clone
         pbPTR->hpcgPhase=5;
-        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#ifdef AFFINITY
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
 
-//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
-        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+//PRINTF("CG%d T%d P%d local "GUIDF" \n", myrank, timestep, phase, GUIDA(rpPTR->returnEVT));
+        ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
+fflush(stdout);
         ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
 //launch reduction
 
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
-fflush(stdout);
         return NULL_GUID;
 
     case 5:
 //consume pAp
-        pap = *myDataPTR;
+        pap = *returnPTR;
 #ifdef COMPUTE
         alpha = pbPTR->rtz/pap;
-if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f rtz %f\n", myrank, timestep, phase, pap, *myDataPTR);
+if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f rtz %f\n", myrank, timestep, phase, pap, *returnPTR);
         pbPTR->rtzold = pbPTR->rtz;  //safe time to move it
+        ocrDbDestroy(returnDBK);
 //update x and r
         ap = (double *) (((u64) ptr) + pbPTR->vector_offset[0][AP]);
         p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
@@ -1551,23 +1580,26 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %f \n", myrank, timestep, phase, s
         pbPTR->hpcgPhase=1;
         pbPTR->timestep++;
 
-        ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#ifdef AFFINITY
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+        ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
 
-//PRINTF("CG%d T%d P%d local %lx \n", myrank, timestep, phase, rpPTR->returnEVT);
-        ocrAddDependence(rpPTR->returnEVT, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
-
-        ocrDbRelease(pbDBK);
-        ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-        ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
-//note that depv[2] doesn't need to be released here, just before calling rductionLaunch
-
-//launch reduction
-
-        ocrDbRelease(myDataDBK);
-        reductionLaunch(rpPTR, rpDBK, myDataPTR);
+//PRINTF("CG%d T%d P%d local "GUIDF" \n", myrank, timestep, phase, GUIDA(rpPTR->returnEVT));
+        ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 fflush(stdout);
+        ocrDbRelease(pbDBK);
+        ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+        ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+        ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+
+//launch reduction
+
+        reductionLaunch(rpPTR, rpDBK, myDataPTR);
+
         return NULL_GUID;
         }
 }
@@ -1613,21 +1645,23 @@ if(pbPTR->debug > 0) PRINTF("CI%d start \n", &pbPTR->myrank);
 
 //launch hpcg
 
-    ocrGuid_t hpcg;
-    ocrEdtCreate(&hpcg, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    ocrGuid_t hpcgEDT;
+    ocrEdtCreate(&hpcgEDT, pbPTR->hpcgTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
       EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
     ocrGuid_t dataBlock;
     ocrDbCreate(&dataBlock, (void**) &dummy, sizeof(double), 0, NULL_HINT, NO_ALLOC);
 
-    ocrDbRelease(pbDBK);
-    ocrAddDependence(pbDBK, hpcg, SLOT(hpcg,privateBlock), DB_MODE_RW);
-    ocrDbRelease(rpDBK);  //not needed?
-    ocrAddDependence(rpDBK, hpcg, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
-    ocrAddDependence(dataBlock, hpcg, SLOT(hpcg,myDataBlock), DB_MODE_RW);
-
-
 if(pbPTR->debug > 0) PRINTF("CI%d end \n", &pbPTR->myrank);
+
+    ocrDbRelease(pbDBK);
+    ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+    ocrDbRelease(rpDBK);  //not needed?
+    ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+    ocrAddDependence(dataBlock, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
+    ocrAddDependence(NULL_GUID, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
+
+
 
 return NULL_GUID;
 }
@@ -1686,7 +1720,7 @@ launch hpcgEDT
     params.EVENT_CHANNEL.nbDeps = 1;
 
     ocrEventCreateParams(&(rpPTR->returnEVT), OCR_EVENT_CHANNEL_T, false, &params);
-//PRINTF("HI%d returnEVT %lx \n", paramv[0], rpPTR->returnEVT);
+//PRINTF("HI%d returnEVT "GUIDF" \n", paramv[0], GUIDA(rpPTR->returnEVT));
 
     pbPTR->nrank = sbPTR->npx * sbPTR->npy * sbPTR->npz;
     pbPTR->myrank = paramv[0];
@@ -1761,18 +1795,6 @@ launch hpcgEDT
     pbPTR->vector_offset[1][B] = 1000000000;
     pbPTR->vector_offset[2][B] = 1000000000;
     pbPTR->vector_offset[3][B] = 1000000000;
-
-
-//printf("matrixoff %lx %lx %lx %lx\n", pbPTR->matrix_offset[0], pbPTR->matrix_offset[1], pbPTR->matrix_offset[2], pbPTR->matrix_offset[3]);
-//printf("column_indexoff %lx %lx %lx %lx\n", pbPTR->column_index_offset[0], pbPTR->column_index_offset[1], pbPTR->column_index_offset[2], pbPTR->column_index_offset[3]);
-//printf("diagonal_indexoff %lx %lx %lx %lx\n", pbPTR->diagonal_index_offset[0], pbPTR->diagonal_index_offset[1], pbPTR->diagonal_index_offset[2], pbPTR->diagonal_index_offset[3]);
-//printf("vectorZoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][Z], pbPTR->vector_offset[1][Z], pbPTR->vector_offset[2][Z], pbPTR->vector_offset[3][Z]);
-//printf("vectorRoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][R], pbPTR->vector_offset[1][R], pbPTR->vector_offset[2][R], pbPTR->vector_offset[3][R]);
-//printf("vectorAPoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][AP], pbPTR->vector_offset[1][AP], pbPTR->vector_offset[2][AP], pbPTR->vector_offset[3][AP]);
-//printf("vectorXoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][X], pbPTR->vector_offset[1][X], pbPTR->vector_offset[2][X], pbPTR->vector_offset[3][X]);
-//printf("vectorPoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][P], pbPTR->vector_offset[1][P], pbPTR->vector_offset[2][P], pbPTR->vector_offset[3][P]);
-//printf("vectorBoff %lx %lx %lx %lx\n", pbPTR->vector_offset[0][B], pbPTR->vector_offset[1][B], pbPTR->vector_offset[2][B], pbPTR->vector_offset[3][B]);
-
 
     ocrEdtTemplateCreate(&(pbPTR->hpcgTML), hpcgEdt, 0, DEPVNUM(hpcg));
     ocrEdtTemplateCreate(&(pbPTR->mgTML), mgEdt, PRMNUM(mg), DEPVNUM(mg));
@@ -1929,16 +1951,11 @@ if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
 
 
         }
-if(pbPTR->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT %lx recvEVT %lx \n", myrank, i, pbPTR->haloSendEVT[i], pbPTR->haloRecvEVT[i]);
+if(pbPTR->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT "GUIDF" recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[i]), GUIDA(pbPTR->haloRecvEVT[i]));
 
 //initialize four matrices
 //P vector used as scratch space
 //
-
-
-
-//printf("void* %lx, void %d char %d mo %lx dio %lx cio %lx ZO %lx\n", sizeof(void *), sizeof(void), sizeof(char), (u64) pbPTR->matrix_offset[0], (u64) pbPTR->diagonal_index_offset[0], (u64) pbPTR->column_index_offset[0], (u64) pbPTR->vector_offset[0][Z]);
-//printf("ptr %lx mo %lx dio %lx cio %lx ZO %lx\n", ptr, (u64) (ptr + (u64) pbPTR->matrix_offset[0]), (u64) (ptr + (u64) pbPTR->diagonal_index_offset[0]), (u64) (ptr + (u64) pbPTR->column_index_offset[0]), (u64) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
 
 
 
@@ -2021,7 +2038,7 @@ if(sbPTR->debug > 0) PRINTF("I%d\n", paramv[0]);
 
     ocrAddDependence(sbDBK, hpcgInitEDT, SLOT(hpcgInit,sharedBlock), DB_MODE_RO);
 
-    ocrGuid_t tempDb;
+    ocrGuid_t tempDBK;
     u64 dummy;
     u64 size;
     u64 m0 = sbPTR->m;
@@ -2056,19 +2073,19 @@ if(sbPTR->debug > 0) PRINTF("I%d\n", paramv[0]);
       + m0*m0*m0*sizeof(double);           //level 0 B vector
 
 
-    ocrDbCreate(&tempDb, (void**) &dummy, size, 0, NULL_HINT, NO_ALLOC);
-    ocrAddDependence(tempDb, hpcgInitEDT, SLOT(hpcgInit,privateBlock), DB_MODE_RW);
+    ocrDbCreate(&tempDBK, (void**) &dummy, size, 0, NULL_HINT, NO_ALLOC);
+    ocrAddDependence(tempDBK, hpcgInitEDT, SLOT(hpcgInit,privateBlock), DB_MODE_RW);
 
 //reduction block
-    ocrDbCreate(&tempDb, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC);
-    ocrAddDependence(tempDb, hpcgInitEDT, SLOT(hpcgInit,reductionPrivateBlock), DB_MODE_RW);
+    ocrDbCreate(&tempDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC);
+    ocrAddDependence(tempDBK, hpcgInitEDT, SLOT(hpcgInit,reductionPrivateBlock), DB_MODE_RW);
 
     u64 i;
 
     for(i=0;i<26;i++) {
 
-        ocrDbCreate(&tempDb, (void**) &dummy, sizeof(ocrGuid_t), 0, NULL_HINT, NO_ALLOC);
-        ocrAddDependence(tempDb, hpcgInitEDT, SLOTARRAY(hpcgInit,blocks,i), DB_MODE_RW);
+        ocrDbCreate(&tempDBK, (void**) &dummy, sizeof(ocrGuid_t), 0, NULL_HINT, NO_ALLOC);
+        ocrAddDependence(tempDBK, hpcgInitEDT, SLOTARRAY(hpcgInit,blocks,i), DB_MODE_RW);
     }
     return NULL_GUID;
 }
@@ -2163,11 +2180,9 @@ if(sbPTR->debug != 0) PRINTF("RM start nrank %d npx %d npy %d npz %d m %d t %d d
     ocrEdtCreate(&wrapUpEDT, wrapUpTML, EDT_PARAM_DEF, (u64 *) &(PRM(realMain,startTime)), EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
     ocrEventCreate(&(sbPTR->finalOnceEVT), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
     ocrEdtTemplateDestroy(wrapUpTML);
-//printf("finalEVT %lx slot %d \n", sbPTR->finalOnceEVT, SLOT(wrapUp,returnBlock));
 
     ocrAddDependence(sbPTR->finalOnceEVT, wrapUpEDT, SLOT(wrapUp,returnBlock), DB_MODE_RO);
 
-//printf("n %d rangeGUID %lx \n", n, sbPTR->haloRangeGUID);
     ocrDbRelease(sbDBK);
 
     ocrGuid_t initTML, initEDT;
@@ -2179,7 +2194,7 @@ if(sbPTR->debug != 0) PRINTF("RM start nrank %d npx %d npy %d npz %d m %d t %d d
     u64 count, myPD, block, nx, ny, nz;
     ocrAffinityCount(AFFINITY_PD, &count);
     block = (nrank + count - 1)/count;
-    u64 linear = (((nx&1)||(ny&1)||(nz&1)) || (8*count != nrank)); //not even numbers, use linear map
+    u64 linear = (((npx&1)||(npy&1)||(npz&1)) || (8*count != nrank)); //not even numbers, use linear map
 
     for(i=0;i<nrank;i++) {
         if(linear) myPD = i/block;
@@ -2187,16 +2202,11 @@ if(sbPTR->debug != 0) PRINTF("RM start nrank %d npx %d npy %d npz %d m %d t %d d
             nx = (i%npx)/2;
             ny = ((i/npx)%(npy))/2;
             nz = (i/(npx*npy))/2;
-//printf("i %d nx %d ny %d nz %d \n", i, nx, ny, nz);
             myPD = nz*(npx*npy)/4 + ny*npx/2 + nx ;
         }
         ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
         ocrHintInit(&myHNT,OCR_HINT_EDT_T);
         ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
-
-
-
-//printf("i %d count %d block %d myPD %d myAffinity %lx \n", i, count, block, myPD, myAffinity);
 
         ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
         ocrAddDependence(sbDBK, initEDT, SLOT(init,sharedBlock), DB_MODE_RO);
@@ -2238,9 +2248,7 @@ m = M;
 maxIter = T;
 debug = DEBUG;
 
-
-//printf("argc %d \n", argc);
-//if(argc ==2 || argc ==3) bomb("number of run time parameters cannot be 1 or 2");
+if(argc ==2 || argc ==3) bomb("number of run time parameters cannot be 1 or 2");
 
 if(argc > 3) {
     u32 k = 1;

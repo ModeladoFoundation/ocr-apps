@@ -12,16 +12,13 @@ CONFIG_FLAGS=--guid LABELED
 
 in Makefile.x86 and Makefile.x86-mpi
 
-driver.c : a sample driver which exercises double precision addition
+driver.c : a sample driver which exercises double precision addition (in apps/reduction/refactored/ocr/intel
 
 
-Any driver code for the library must:
-   create and initialize a reductionPrivate datablock (defined in reduction.h)
 
 However before calling reductionLaunch the user must
   1. create a reductionPrivate datablock for each participating rank
-  2. create a clone to receive the result of the reduction
-  3. initialize some of the values in the reductionPrivate datablock
+  2. initialize some of the values in the reductionPrivate datablock
       nrank: number of participating ranks
       myrank: my number
       ndata: number of elements to be reduced
@@ -31,11 +28,11 @@ However before calling reductionLaunch the user must
       returnEVT: an event that each rank will use
          to return the reduced data to the clones.
          Can be reused if made a channel event.
-   4. make the clone depend on the returnEVT
+   3. make the clone depend on the returnEVT
 
 It is good hygiene to destroy the datablock that is returned with the answer (will be different on each rank)
 
-After the first call to reductionLaunch, subsequent reductions only require a valid return event
+After the first call to reductionLaunch, subsequent reductions only require a valid return event (and the source data)
 
 
 Now the reduction library can be called by the nrank compute EDTs using one call:
@@ -47,27 +44,33 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateGUID,
 
 rpPTR is the pointer to my reductionPrivate datablock
 reductionPrivateGUID is the guid of my reductionPrivate block
-mydataPRT is a pointer to the data to be reduced (will be copied to a separate datablock)
+mydataPTR is a pointer to the data to be reduced (will be copied to a separate datablock)
 
-reductionLaunch returns after launching the global sum algorithm.  The calling Edt should terminate soon after
+reductionLaunch returns after launching the reduction algorithm.  The calling Edt should terminate soon after
 and wait for the clone to wake up.
 
 
 
-The library implements a reduction tree invoking the reduction operator at each stage.  This amounts to a global barrier since every node must
-contribute to the global reduction before Node zero returns the result by satisfying the event with a separate datablock
+The library implements a reduction tree invoking the reduction operator at each stage.  This amounts to a global barrier since every rank must
+contribute to the global reduction before the answer comes back
 
 Reductions can be run as often as desired.
 
+If multiple reductions need to be in flight at the same time, they will require separate reductionPrivate datablocks
+
+If different reductions are needed at different times, it is only necessary to change the reductionOperator in the reductionPrivate block
+
+
 The available operations are defined in the enum type reductionOperator_t in reduction.h
+
 
 To add other operations requires three changes:
 
 add the new key word to the enum type reductionOperator_t (in reduction.h);
 
-add the new key word in reductionsizeof (in reductionLib.c)
+add the new key word in reductionsizeof (in reduction.c)
 
-add the actual operation to reductionOperation (in reductionLib.c)
+add the actual operation to reductionOperation (in reduction.c)
 
 recompile
 

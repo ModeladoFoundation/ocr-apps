@@ -143,7 +143,7 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
      }else{
 //copy
 
-        if(myrank == 0 && timestep >= maxtimestep) {
+        if(myrank == 0) {
             for(i=0;i<ndata;i++) PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
         }
         for(i=0;i<ndata;i++) {
