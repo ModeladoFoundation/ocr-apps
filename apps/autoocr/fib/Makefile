@@ -39,7 +39,7 @@ autoocr/fib.c:	keyword/fib.c
 ocr:	autoocr/build/fib
 autoocr/build/fib: autoocr/fib.c
 	@mkdir -p autoocr/build
-	gcc   -g -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/fib.c -o autoocr/build/fib
+	gcc   -g -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/fib.c -o autoocr/build/fib
 
 run.ocr:	ocr check_input
 	@echo ""
@@ -53,13 +53,12 @@ run.ocr:	ocr check_input
 	@echo ""
 	@echo "Finished"
 
-
 ########
 ######## HERO
 ########
 fib.rag:      hero/fib.rag.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib.rag.c -lm -o hero/build/fib.rag
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib.rag.c -lm -o hero/build/fib.rag
 
 run.fib.rag:  fib.rag check_input
 	@rm -f default.cfg
@@ -68,7 +67,7 @@ run.fib.rag:  fib.rag check_input
 
 fib.con:      hero/fib.con.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib.con.c -lm -o hero/build/fib.con
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib.con.c -lm -o hero/build/fib.con
 
 run.fib.con:  fib.con check_input
 	@rm -f default.cfg
@@ -77,7 +76,7 @@ run.fib.con:  fib.con check_input
 
 fib-block:      hero/fib-block.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib-block.c -lm -o hero/build/fib-block
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib-block.c -lm -o hero/build/fib-block
 
 run.fib-block:  fib-block check_input
 	@rm -f default.cfg
@@ -86,7 +85,7 @@ run.fib-block:  fib-block check_input
 
 fib-contn:      hero/fib-contn.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib-contn.c -lm -o hero/build/fib-contn
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/fib-contn.c -lm -o hero/build/fib-contn
 
 run.fib-contn:  fib-contn check_input
 	@rm -f default.cfg

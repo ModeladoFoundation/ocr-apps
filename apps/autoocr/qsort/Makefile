@@ -37,7 +37,7 @@ autoocr/qsort.c:	keyword/qsort.c
 ocr:	autoocr/build/qsort
 autoocr/build/qsort:	autoocr/qsort.c
 	@mkdir -p autoocr/build
-	gcc   -g -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/qsort.c -o autoocr/build/qsort
+	gcc   -g -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/qsort.c -o autoocr/build/qsort
 
 
 run.ocr:	ocr
@@ -58,7 +58,7 @@ run.ocr:	ocr
 ########
 qsort.con:      hero/qsort.con.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/qsort.con.c -lm -o hero/build/qsort.con
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/qsort.con.c -lm -o hero/build/qsort.con
 
 run.qsort.con:  qsort.con
 	@mkdir -p hero/build
@@ -68,7 +68,7 @@ run.qsort.con:  qsort.con
 
 qsort-block:      hero/qsort-block.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/qsort-block.c -lm -o hero/build/qsort-block
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/qsort-block.c -lm -o hero/build/qsort-block
 
 run.qsort-block:  qsort-block
 	@rm -f default.cfg

@@ -34,7 +34,7 @@ endif
 
 CC=gcc
 UTS_CFLAGS=-O3 -std=c99
-OCR_CFLAGS=-O3 -std=c99 -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread
+OCR_CFLAGS=-O3 -std=c99 -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread
 LDFLAGS=-lm
 
 all:	raw ocr
