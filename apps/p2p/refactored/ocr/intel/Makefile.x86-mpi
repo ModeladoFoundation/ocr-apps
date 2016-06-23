@@ -13,12 +13,12 @@ OCR_TYPE        ?= x86-${COMM_LAYER}
 
 # OCR
 
-OCR_INSTALL ?= ${OCR_ROOT}/install
 OCR_ROOT     ?= ../../../../../../ocr/ocr
+OCR_INSTALL ?= ${OCR_ROOT}/install
 OCR_BUILD_ROOT   ?= ${OCR_ROOT}/build
 
 # APPLICATION
-WORKLOAD_SRC          ?= .
+WORKLOAD_SRC		?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
@@ -46,6 +46,8 @@ RUN_JENKINS ?= no
 
 ## END of variables coming from user/environment
 
+CONFIG_FLAGS=--guid LABELED --binding seq
+
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
@@ -53,15 +55,21 @@ TARGET := p2p
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := macros
 
 # Space separated list of source files
-SRCS := p2p.c
+SRCS := p2p.c wtime.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include
 # TG_ARCH is also defined for Fsim
 CFLAGS :=
+
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+
+
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and apps/libs/<target/lib
 # Note that none of the specific libraries specified in
@@ -73,7 +81,7 @@ LDFLAGS := -lpthread -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:    CFLAGS += -O2
+all:    CFLAGS += -g -O2
 all:    TARGETS := all
 all:    default
 
@@ -116,5 +124,5 @@ prerun: ;
 postrun: ;
 
 # Include common part
-include ${APPS_ROOT}/makefiles/make-ocrrun.inc
+include ${APPS_ROOT}/makefiles/make-inc.inc
 

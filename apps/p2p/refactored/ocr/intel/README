@@ -1,79 +1,111 @@
 OCR version of the Parallel Research Kernel synch_p2p
 Written by David Scott
+June 2016
+
 
 This code implements multiple "sweeps" across an MxN 2D grid
 The grid is initialized to zero except the first row and column
 that are equal to max(rownum, columnnum)
 
-The grid is split into block columns across P workers.
-M is assumed to be P*K for some K (so every worker has the same number of columns).
+The code uses the domain decomposition style of virtual "ranks" which are
+a sequence of EDTs that are responsible for the same subset of data.
+
+
+The grid is split into block columns across P "ranks".
 
 The sweep starts at Array(1,1) and progresses by rows computing
 Array(i,j) = Array(i-1,j) + Array(i,j-1) - Array(i-1,j-1)
 
-After computing the first row, Node 0 could pass two numbers onto
-Node 1 to allow Node 1 to start computing.  However if the
-communication is expensive, it may be better for Node 0 to
-compute several rows before sending data on.  The parameter B
-is this blocking factor.
+After computing the first row, rank 0 should pass two numbers onto
+rank 1 to allow rank 1 to start computing.  However if the
+communication is expensive, it may be faster for rank 0 to
+compute several rows before sending data on.  The optional input parameter
+gf is this "group factor".  Note that a value of gf other than 1 is
+considered "cheating" and will be marked by recording the megaflop rate
+as negative
 
-The number of rows is defined to be B*W+1
-so that there are W phases of communication.
-
-W phases defines one "timestep".  At the end of each timestep
-node P-1 sends the value of Array(N-1,M-1) to Node 0 who sets
+At the end of each timestep rank P-1 sends the value of Array(N-1,M-1) to rank 0 who sets
 Array(0,0) = -Array(N-1,M-1) before starting the next timestep.
 
 This makes node 0 wait for the previous timestep to finish and
 also provides a way of verifying that the computation is done
 correctly
 
-All the parameters are defined inside the code and can be changed
-as desired.
+All the parameters are defined inside the code:
 
 #define T 100    //number of timesteps
 #define P 10     //number of workers
-#define K 5     //columns per worker
-#define M (P*K) //global number of columns
-#define B 3     //blocking factor
-#define W 8     //number of blocks in vertical direction
-#define N (B*W+1) //number of rows
+#define M 1000   //global number of columns
+#define N 100    //number of rows
+#define GF 1     //the blocking factor
 
-code structure
+but can be overridden with run time arguments
+(or just changed inside the code)
 
-mainEdt creates the datablocks and passes them to realmain
 
-realmain creates P EDTs and passes in a "data" block and a
-"private" block.  It also links them in a circle, creating
-sticky events, setting dependencies, and storing the events
-in the appropriate private blocks.  This allows a "send right"
-to be accomplished by one EDT satisfying the event with a
-buffer block and the other EDT having had a dependence on
-that event.  The receiving EDT also destroys the event.
 
-The connection from nodeP-1 back to node0 is special in that
-it is used only once per timestep (instead of once per phase).
+The code follows the current BKMs for OCR including:
 
-Buffer block management:
-Node 0 creates P-1 buffer blocks at the beginning (and receives one from
-realmain).  It stores the P guids in its "special" private block
-The EDT that is Node 0 could last for a whole timestep but both to avoid having
-all P buffer blocks "live" at the same time and in keeping with the "small"
-EDT concept it clones itself every phase just like the rest of the EDTs
-It passes in the "next" buffer block to its clone to have a block available to
-send data to Node1 at the end of a phase.  The exception is the first phase
-of a timestep when the block is received from NodeP-1
 
-The intermediate nodes just pass the received buffer block onto the next node.
+datablocks should be created by the "rank" that uses them
 
-Node P-1 needs no buffer block for sending except for the last phase of a timestep
-when it sends the block it received back to Node 0.  This means that the blocks
-are used in a slightly different order during each timestep.
+"message" datablocks should be created, filled, sent, and destroyed
 
-As usual the code can be executed using
-OCR_TYPE=x86-pthread-x86  make run
+labeled GUIDs should be used for initialization only, being used
+to send channel Events that will be used for sending/receving data
 
-Note that currently realmain receives 2*P blocks from mainEdt, so if you
-chose to run with P>32 it is necessary to change OCR_MAX_MULTI_SLOT
-in common.mk which by default set to 1 (x64).
+affinity hints should be used to initially distribute the ranks
+among the available Policy Domains and then used to keep
+all the EDTs of a rank in the same Policy Domain.
 
+the code uses macros from macros.h "library" to simplify using
+structures for all paramvs and depvs.
+
+
+
+the code (like all OCR codes) starts in mainEdt which
+creates a shared datablock and passes it to realmainEdt
+
+realmain fills the shared datablock
+creates P initEDTs and passes in the shared block and a rank
+number as a parameter
+
+(note that since it is no longer deprecated to use a datablock
+you create, these two could be combined)
+
+InitEDT creates local datablocks and passes them to p2pInitEdt
+
+p2pInitEdt fills the private blocks, creates channelEvents,
+creates the first version of p2pEdt and launches channelInitEdt
+
+(similarly initEDT and p2pInitEDT could be combined)
+
+channelInitEdt receives the channelEvt and stores it in the
+private block.  It then launches p2pEdt
+
+p2pEdt does the computation, sends the end data, and then clones
+itself to receive the next datavalues (rank0 clones itself
+at each phase although that is not required).
+
+After finishing an iteration, rank P-1 send a single value
+back to rank0 to start the next iteration.
+
+The elapsed time of all but the first iteration is computed
+using wtime().  Rank0 puts the start time in a special timer
+datablock.  Rank P-1 receives the timerdatablock in the last
+instantiation to record the elapsed time.
+
+
+As usual the code can be executed setting OCR_TYPE
+and then
+
+make run
+
+Note: to run on multiple hardware nodes on x86-mpi requires
+specifying a "nodefile" with a list of nodes to run on
+
+The directory has an example nodefile16 and a go.sh
+script that invokes it.
+
+Both of them will probably have to be patched to
+correspond to the environment you are running on.
