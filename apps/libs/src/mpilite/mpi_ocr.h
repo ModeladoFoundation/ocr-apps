@@ -109,7 +109,7 @@ typedef struct rankContext_t
     u32 rank, numRanks, maxTag, mpiInitialized;
     bool aggressiveNB; // aggressive non-blocking implementation
     unsigned char sizeOf[17];  // sizeof each datatype
-    hashtable_t * labeledEventsCache;  // local hash table
+    hashtable_t * channelEventsCache;  // local hash table
 
     u32 maxComm,    // communicators range from 0..maxComm
         commArrayLen; // current length of the "communicators" array ( > maxComm)
