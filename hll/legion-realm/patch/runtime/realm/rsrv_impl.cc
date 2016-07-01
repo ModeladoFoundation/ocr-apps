@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -115,12 +116,46 @@ namespace Realm {
   // class Reservation
   //
 
-    /*static*/ const Reservation Reservation::NO_RESERVATION = { 0 };
+    /*static*/ const Reservation Reservation::NO_RESERVATION = { 0
+#if USE_OCR_LAYER
+    , NULL_GUID
+#endif // USE_OCR_LAYER
+    };
+
+    bool Reservation::operator<(const Reservation& rhs) const
+    {
+#if USE_OCR_LAYER
+        return ocrGuidIsLt(res_guid, rhs.res_guid);
+#else
+        return id < rhs.id;
+#endif
+    }
+
+    bool Reservation::operator==(const Reservation& rhs) const
+    {
+#if USE_OCR_LAYER
+        return ocrGuidIsEq(res_guid, rhs.res_guid);
+#else
+        return id == rhs.id;
+#endif
+    }
+
+    bool Reservation::operator!=(const Reservation& rhs) const
+    {
+#if USE_OCR_LAYER
+        return ! ocrGuidIsEq(res_guid, rhs.res_guid);
+#else
+        return id != rhs.id;
+#endif
+    }
 
     Event Reservation::acquire(unsigned mode /* = 0 */, bool exclusive /* = true */,
 		     Event wait_on /* = Event::NO_EVENT */) const
     {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+      return OCRReservationImpl::acquire(res_guid, mode, exclusive, wait_on);
+#else  //USE_OCR_LAYER
       //printf("LOCK(" IDFMT ", %d, %d, " IDFMT ") -> ", id, mode, exclusive, wait_on.id);
       // early out - if the event has obviously triggered (or is NO_EVENT)
       //  don't build up continuation
@@ -137,12 +172,16 @@ namespace Realm {
 	//printf("*(" IDFMT "/%d)\n", after_lock.id, after_lock.gen);
 	return e;
       }
+#endif  //USE_OCR_LAYER
     }
 
     // releases a held lock - release can be deferred until an event triggers
     void Reservation::release(Event wait_on /* = Event::NO_EVENT */) const
     {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+      OCRReservationImpl::release(res_guid, wait_on);
+#else
       // early out - if the event has obviously triggered (or is NO_EVENT)
       //  don't build up continuation
       if(wait_on.has_triggered()) {
@@ -152,12 +191,16 @@ namespace Realm {
 	log_reservation.info() << "reservation release: rsrv=" << *this << " wait_on=" << wait_on;
 	EventImpl::add_waiter(wait_on, new DeferredUnlockRequest(*this));
       }
+#endif  //USE_OCR_LAYER
     }
 
     // Create a new lock, destroy an existing lock
     /*static*/ Reservation Reservation::create_reservation(size_t _data_size /*= 0*/)
     {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+      return OCRReservationImpl::create_reservation(_data_size);
+#else
       //DetailedTimer::ScopedPush sp(18);
 
       // see if the freelist has an event we can reuse
@@ -181,6 +224,8 @@ namespace Realm {
       }
       assert(false);
       return Reservation::NO_RESERVATION;
+#endif  //USE_OCR_LAYER
+
 #if 0
       // TODO: figure out if it's safe to iterate over a vector that is
       //  being resized?
@@ -225,7 +270,9 @@ namespace Realm {
     void Reservation::destroy_reservation()
     {
       log_reservation.info() << "reservation destroyed: rsrv=" << *this;
-
+#if USE_OCR_LAYER
+      OCRReservationImpl::destroy_reservation(res_guid);
+#else
       // a lock has to be destroyed on the node that created it
       if(ID(*this).node() != gasnet_mynode()) {
 	DestroyLockMessage::send_request(ID(*this).node(), *this);
@@ -241,6 +288,7 @@ namespace Realm {
 	// got grant immediately - can release reservation now
 	lock_impl->release_reservation();
       }
+#endif  //USE_OCR_LAYER
     }
 
   ////////////////////////////////////////////////////////////////////////

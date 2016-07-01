@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +29,14 @@ namespace Realm {
     public:
       typedef ::legion_lowlevel_id_t id_t;
       id_t id;
-      bool operator<(const Reservation& rhs) const { return id < rhs.id; }
-      bool operator==(const Reservation& rhs) const { return id == rhs.id; }
-      bool operator!=(const Reservation& rhs) const { return id != rhs.id; }
+
+#if USE_OCR_LAYER
+      ocrGuid_t res_guid;
+#endif // USE_OCR_LAYER
+
+      bool operator<(const Reservation& rhs) const;
+      bool operator==(const Reservation& rhs) const;
+      bool operator!=(const Reservation& rhs) const;
 
       static const Reservation NO_RESERVATION;
 
