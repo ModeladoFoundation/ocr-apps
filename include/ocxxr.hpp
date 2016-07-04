@@ -11,26 +11,12 @@ extern "C" {
 namespace ocxxr {
 
 namespace internal {
+
 template <typename T>
 struct IsLegalHandle {
     // Check if a type can be reinterpreted to/from ocrGuid_t
     static constexpr bool value = std::is_trivially_copyable<T>::value &&
                                   sizeof(T) == sizeof(ocrGuid_t);
-};
-
-template <typename T>
-struct FnInfo;
-
-template <typename R, typename... Args>
-struct FnInfo<R(Args...)> {
-    static constexpr size_t arg_count = sizeof...(Args);
-    typedef std::function<R(Args...)> fn_type;
-    typedef std::tuple<Args...> arg_types;
-    typedef R result_type;
-    template <size_t I>
-    struct arg {
-        typedef typename std::tuple_element<I, arg_types>::type type;
-    };
 };
 
 // Check error status of C API call
@@ -158,7 +144,52 @@ class AcquiredDatablock : public Datablock<T> {
     T *const data_;
 };
 
-// FIXME - move to internal namespace
+namespace internal {
+
+template <typename T>
+struct FnInfo;
+
+template <typename R, typename... Args>
+struct FnInfo<R(Args...)> {
+    static constexpr size_t arg_count = sizeof...(Args);
+    typedef std::function<R(Args...)> fn_type;
+    typedef std::tuple<Args...> arg_types;
+    typedef R result_type;
+    template <size_t I>
+    struct arg {
+        typedef typename std::tuple_element<I, arg_types>::type type;
+    };
+};
+
+template <typename T>
+struct DependenceArgFor;
+
+template <typename T>
+struct DependenceArgFor<Datablock<T>> {
+    typedef AcquiredDatablock<T> type;
+};
+template <>
+struct DependenceArgFor<NullHandle> {
+    typedef AcquiredDatablock<void> type;
+};
+
+template <typename T, typename... U>
+struct TaskArgsMatchDeps;
+
+// XXX - this could be simplified with a C++17 fold expression
+template <typename R, typename A, typename... Args, typename D,
+          typename... Deps>
+struct TaskArgsMatchDeps<R(A, Args...), D, Deps...> {
+    static constexpr bool value =
+            std::is_base_of<typename DependenceArgFor<A>::type, D>::value &&
+            TaskArgsMatchDeps<R(Args...), Deps...>::value;
+};
+
+template <typename R>
+struct TaskArgsMatchDeps<R()> {
+    static constexpr bool value = true;
+};
+
 template <typename T>
 class TaskImplementation;
 
@@ -177,6 +208,8 @@ class TaskImplementation<R(Args...)> {
     }
 
  private:
+    // XXX - using index_sequence requires C++14,
+    // but we could roll our own if we really want C++11 compatibility.
     template <size_t... Indices>
     static ocrGuid_t launch(F user_fn, ocrEdtDep_t deps[],
                             std::index_sequence<Indices...>) {
@@ -185,31 +218,7 @@ class TaskImplementation<R(Args...)> {
     }
 };
 
-// FIXME - move to internal namespace
-template <typename T>
-struct DependenceArgFor;
-template <typename T>
-struct DependenceArgFor<Datablock<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <>
-struct DependenceArgFor<NullHandle> {
-    typedef AcquiredDatablock<void> type;
-};
-
-// FIXME - move to internal namespace
-template <typename T, typename... U>
-struct TaskArgsMatchDeps;
-// static_assert(false, "Task dependence arguments must be OCR object
-// handles.");
-
-// TODO - re-write this so it works in C++14
-template <typename R, typename... Args, typename... Deps>
-struct TaskArgsMatchDeps<R(Args...), Deps...> {
-    static constexpr bool value =
-            (... && std::is_base_of<typename DependenceArgFor<Args>::type,
-                                    Deps>::value);
-};
+}  // namespace internal
 
 template <typename F>
 class TaskTemplate : public ObjectHandle {
@@ -221,6 +230,7 @@ class TaskTemplate : public ObjectHandle {
  private:
     static ocrGuid_t init(F *user_fn) {
         ocrGuid_t guid;
+        // FIXME - this is wrong, but it compiles...?
         ocrEdt_t internal_fn = TaskImplementation<F>::internal_fn<&user_fn>(1);
         constexpr u64 depc = FnInfo<F>::args_count;
         ocrEdtTemplateCreate(&guid, internal_fn, 0, depc);
