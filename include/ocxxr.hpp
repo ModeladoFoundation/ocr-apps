@@ -296,11 +296,19 @@ class TaskImplementation<F, user_fn, R(Args...)> {
  private:
     // XXX - using index_sequence requires C++14,
     // but we could roll our own if we really want C++11 compatibility.
-    template <size_t... Indices>
-    static ocrGuid_t launch(ocrEdtDep_t deps[],
-                            std::index_sequence<Indices...>) {
+    template <typename U = R, size_t... Indices>
+    static enable_if_not_void_t<U, ocrGuid_t> launch(
+            ocrEdtDep_t deps[], std::index_sequence<Indices...>) {
         // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
         return user_fn((Args{deps[Indices]})...).guid();
+    }
+
+    template <typename U = R, size_t... Indices>
+    static enable_if_void_t<U, ocrGuid_t> launch(
+            ocrEdtDep_t deps[], std::index_sequence<Indices...>) {
+        // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
+        user_fn((Args{deps[Indices]})...);
+        return NULL_GUID;
     }
 };
 
@@ -317,7 +325,8 @@ class TaskTemplateBase : public ObjectHandle {
     explicit TaskTemplateBase(ocrGuid_t guid) : ObjectHandle(guid) {}
 
     typedef typename FnInfo<F>::result_type R;
-    static_assert(std::is_base_of<ObjectHandle, R>::value,
+    static_assert(std::is_same<void, R>::value ||
+                          std::is_base_of<ObjectHandle, R>::value,
                   "User's task function must return an OCR object type.");
 };
 

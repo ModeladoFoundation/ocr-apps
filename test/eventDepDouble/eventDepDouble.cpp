@@ -2,12 +2,11 @@
 
 static constexpr double kPayload = 7.65;
 
-ocxxr::NullHandle ChildTask(ocxxr::AcquiredDatablock<double> arg) {
+void ChildTask(ocxxr::AcquiredDatablock<double> arg) {
     PRINTF("Child task ran with event! (arg=%.2f)\n", arg.data());
     ASSERT(kPayload == arg.data());
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
-    return ocxxr::NullHandle();
 }
 
 extern "C" ocrGuid_t mainEdt(u32 paramc, u64 paramv[], u32 depc,

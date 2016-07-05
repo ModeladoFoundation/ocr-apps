@@ -1,10 +1,9 @@
 #include <ocxxr.hpp>
 
-ocxxr::NullHandle ChildTask() {
+void ChildTask() {
     PRINTF("Child task ran!\n");
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
-    return ocxxr::NullHandle();
 }
 
 extern "C" ocrGuid_t mainEdt(u32 paramc, u64 paramv[], u32 depc,
