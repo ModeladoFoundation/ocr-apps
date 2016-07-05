@@ -49,7 +49,7 @@ class ObjectHandle {
     ~ObjectHandle() = default;
 
  protected:
-    ObjectHandle(ocrGuid_t guid) : guid_(guid) {}
+    explicit ObjectHandle(ocrGuid_t guid) : guid_(guid) {}
 
  private:
     const ocrGuid_t guid_;
@@ -58,6 +58,8 @@ class ObjectHandle {
 static_assert(IsLegalHandle<ObjectHandle>::value,
               "ObjectHandle must be castable to/from ocrGuid_t.");
 
+// FIXME - this can't be its own class
+// I'll need a Null() function on each of the concrete handle classes
 class NullHandle : public ObjectHandle {
  public:
     NullHandle() : ObjectHandle(NULL_GUID) {}
@@ -91,16 +93,16 @@ template <typename T>
 class Datablock : public ObjectHandle {
  public:
     // TODO - add overloaded versions supporting hint, etc.
-    Datablock(u64 count = 1)
+    explicit Datablock(u64 count = 1)
             : ObjectHandle(init(sizeof(T) * count, false, nullptr)) {}
 
-    Datablock(T **data_ptr, u64 count = 1)
+    explicit Datablock(T **data_ptr, u64 count = 1)
             : ObjectHandle(init(data_ptr, sizeof(T) * count, true, nullptr)) {}
 
     void Destroy() const { OK(ocrDbDestroy(guid())); }
 
  protected:
-    Datablock(ocrGuid_t guid) : ObjectHandle(guid) {}
+    explicit Datablock(ocrGuid_t guid) : ObjectHandle(guid) {}
 
  private:
     static ocrGuid_t init(u64 bytes, const Hint *hint) {
@@ -115,26 +117,29 @@ class Datablock : public ObjectHandle {
         // TODO - open bug for adding const qualifiers in OCR C API.
         // E.g., "const ocrHint_t *hint" in ocrDbCreate.
         ocrHint_t *raw_hint = const_cast<ocrHint_t *>(hint->internal());
-        void **raw_data_ptr = static_cast<void **>(data_ptr);
+        void **raw_data_ptr = reinterpret_cast<void **>(data_ptr);
         OK(ocrDbCreate(&guid, raw_data_ptr, bytes, flags, raw_hint, NO_ALLOC));
         return guid;
     }
-
-    static_assert(IsLegalHandle<Datablock<T>>::value,
-                  "Datablock must be castable to/from ocrGuid_t.");
 };
+
+static_assert(IsLegalHandle<Datablock<int>>::value,
+              "Datablock must be castable to/from ocrGuid_t.");
 
 template <typename T>
 class AcquiredDatablock : public Datablock<T> {
  public:
     // TODO - add overloaded versions supporting hint, count, etc.
-    AcquiredDatablock(u64 count = 1) : AcquiredDatablock(nullptr, count) {}
+    explicit AcquiredDatablock(u64 count = 1)
+            : AcquiredDatablock(nullptr, count) {}
 
     // This version gets called from the task setup code
-    AcquiredDatablock(ocrEdtDep_t dep)
+    explicit AcquiredDatablock(ocrEdtDep_t dep)
             : Datablock<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
 
-    T *data() const { return data_; }
+    T &data() const { return *data_; }
+
+    T *data_ptr() const { return data_; }
 
     void Release() const { OK(ocrDbRelease(this->guid())); }
 
@@ -168,6 +173,10 @@ template <typename T>
 struct DependenceArgFor<Datablock<T>> {
     typedef AcquiredDatablock<T> type;
 };
+template <typename T>
+struct DependenceArgFor<AcquiredDatablock<T>> {
+    typedef AcquiredDatablock<T> type;
+};
 template <>
 struct DependenceArgFor<NullHandle> {
     typedef AcquiredDatablock<void> type;
@@ -181,7 +190,7 @@ template <typename R, typename A, typename... Args, typename D,
           typename... Deps>
 struct TaskArgsMatchDeps<R(A, Args...), D, Deps...> {
     static constexpr bool value =
-            std::is_base_of<typename DependenceArgFor<A>::type, D>::value &&
+            std::is_base_of<typename DependenceArgFor<D>::type, A>::value &&
             TaskArgsMatchDeps<R(Args...), Deps...>::value;
 };
 
@@ -190,28 +199,28 @@ struct TaskArgsMatchDeps<R()> {
     static constexpr bool value = true;
 };
 
-template <typename T>
+template <typename T, T *t, typename U>
 class TaskImplementation;
 
 // TODO - add static check to make sure Args have AcquiredDatablock types
-template <typename R, typename... Args>
-class TaskImplementation<R(Args...)> {
+template <typename F, F *user_fn, typename R, typename... Args>
+class TaskImplementation<F, user_fn, R(Args...)> {
  public:
-    typedef R(F)(Args...);
+    static_assert(std::is_same<F, R(Args...)>::value,
+                  "Task function must have a consistent type.");
 
-    template <F *user_fn>
     static ocrGuid_t internal_fn(u32 paramc, u64 *paramv, u32 depc,
                                  ocrEdtDep_t depv[]) {
         ASSERT(paramc == 0);
         ASSERT(depc == sizeof...(Args));
-        return launch(depv);
+        return launch(depv, std::index_sequence_for<Args...>{});
     }
 
  private:
     // XXX - using index_sequence requires C++14,
     // but we could roll our own if we really want C++11 compatibility.
     template <size_t... Indices>
-    static ocrGuid_t launch(F user_fn, ocrEdtDep_t deps[],
+    static ocrGuid_t launch(ocrEdtDep_t deps[],
                             std::index_sequence<Indices...>) {
         // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
         return user_fn((Args{deps[Indices]})...).guid();
@@ -221,26 +230,16 @@ class TaskImplementation<R(Args...)> {
 }  // namespace internal
 
 template <typename F>
-class TaskTemplate : public ObjectHandle {
+class TaskTemplateBase : public ObjectHandle {
  public:
-    TaskTemplate(F *fn) : ObjectHandle(init(fn)) {}
+    ~TaskTemplateBase() = default;
 
     void Destroy() const { OK(ocrEdtTemplateDestroy(guid())); }
 
- private:
-    static ocrGuid_t init(F *user_fn) {
-        ocrGuid_t guid;
-        // FIXME - this is wrong, but it compiles...?
-        ocrEdt_t internal_fn = TaskImplementation<F>::internal_fn<&user_fn>(1);
-        constexpr u64 depc = FnInfo<F>::args_count;
-        ocrEdtTemplateCreate(&guid, internal_fn, 0, depc);
-        return guid;
-    }
+ protected:
+    explicit TaskTemplateBase(ocrGuid_t guid) : ObjectHandle(guid) {}
 
-    static_assert(IsLegalHandle<TaskTemplate<F>>::value,
-                  "TaskTemplate must be castable to/from ocrGuid_t.");
-
-    typedef typename std::result_of<F>::value R;
+    typedef typename FnInfo<F>::result_type R;
     static_assert(std::is_base_of<ObjectHandle, R>::value,
                   "User's task function must return an OCR object type.");
 };
@@ -250,7 +249,7 @@ template <typename F, typename... Deps>
 class Task : public ObjectHandle {
  public:
     // TODO - add support for hints, output events, etc
-    Task(TaskTemplate<F> task_template, Deps... deps)
+    Task(TaskTemplateBase<F> task_template, Deps... deps)
             : ObjectHandle(init(task_template, deps...)) {}
 
     void Destroy() const { OK(ocrEdtDestroy(guid())); }
@@ -258,13 +257,14 @@ class Task : public ObjectHandle {
     // TODO - AddDependence
 
  private:
-    static constexpr u64 depc = FnInfo<F>::args_count;
+    static constexpr u64 depc = FnInfo<F>::arg_count;
 
-    static ocrGuid_t init(TaskTemplate<F> task_template, Deps... deps) {
+    static ocrGuid_t init(TaskTemplateBase<F> task_template, Deps... deps) {
         ocrGuid_t guid;
-        ocrGuid_t depv[depc] = {(deps.guid())...};
+        ocrGuid_t depv[depc + 1] = {(deps.guid())..., NULL_GUID};
         ocrEdtCreate(&guid, task_template.guid(), EDT_PARAM_DEF, nullptr,
-                     EDT_PARAM_DEF, depv, EDT_PROP_NONE, nullptr, nullptr);
+                     EDT_PARAM_DEF, depc ? depv : nullptr, EDT_PROP_NONE,
+                     nullptr, nullptr);
         return guid;
     }
 
@@ -273,14 +273,52 @@ class Task : public ObjectHandle {
 
     static_assert(TaskArgsMatchDeps<F, Deps...>::value,
                   "Dependence argument types must match task argument types.");
-
-    static_assert(IsLegalHandle<TaskTemplate<F>>::value,
-                  "Task must be castable to/from ocrGuid_t.");
-
-    typedef typename std::result_of<F>::value R;
-    static_assert(std::is_base_of<ObjectHandle, R>::value,
-                  "User's task function must return an OCR object type.");
 };
 
+template <typename F>
+class TaskTemplate : public TaskTemplateBase<F> {
+ public:
+    template <F *user_fn>
+    static TaskTemplate<F> Create() {
+        ocrGuid_t guid;
+        ocrEdt_t internal_fn = TaskImplementation<F, user_fn, F>::internal_fn;
+        constexpr u64 depc = FnInfo<F>::arg_count;
+        ocrEdtTemplateCreate(&guid, internal_fn, 0, depc);
+        return TaskTemplate<F>(guid);
+    }
+
+    template <typename... Deps>
+    Task<F, Deps...> CreateTask(Deps... deps) {
+        return Task<F, Deps...>(*this, deps...);
+    }
+
+    ~TaskTemplate() = default;
+
+ private:
+    explicit TaskTemplate(ocrGuid_t guid) : TaskTemplateBase<F>(guid) {}
+};
+
+namespace internal {
+
+typedef NullHandle DummyTaskFnType(AcquiredDatablock<int>,
+                                   AcquiredDatablock<double>);
+
+typedef Task<DummyTaskFnType, Datablock<int>, Datablock<double>> DummyTaskType;
+
+}  // namespace internal
+
+static_assert(IsLegalHandle<TaskTemplateBase<DummyTaskFnType>>::value,
+              "TaskTemplateBase must be castable to/from ocrGuid_t.");
+
+static_assert(IsLegalHandle<DummyTaskType>::value,
+              "Task must be castable to/from ocrGuid_t.");
+
+static_assert(IsLegalHandle<TaskTemplate<DummyTaskFnType>>::value,
+              "TaskTemplate must be castable to/from ocrGuid_t.");
+
 }  // namespace ocxxr
+
+#define OCXXR_TEMPLATE_FOR(fn_ptr) \
+    ocxxr::TaskTemplate<decltype(fn_ptr)>::Create<fn_ptr>();
+
 #endif  // OCXXR_H_
