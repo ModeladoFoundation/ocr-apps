@@ -35,11 +35,14 @@ OCR_AR     ?= $(OCR_INSTALL_ROOT)/lib/libocr_$(OCR_TYPE).a
 
 # Optimization flags
 CXXFLAGS += -std=c++14 -g -O2 -DOCR_TYPE_H=$(OCR_TYPE).h
-CXXFLAGS += -ferror-limit=3
 
 # Enable AddressSanitizer checks
 #CXX_OPTS += -g -fsanitize=address -fno-omit-frame-pointer
 
+# don't flood us with errors
+CXXFLAGS += -ferror-limit=4
+# always color the output (even when piped)
+#CXXFLAGS += -fdiagnostics-color=always
 
 #################################################
 # RUN CONFIGURATION
