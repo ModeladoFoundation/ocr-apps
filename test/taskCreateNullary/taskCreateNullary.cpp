@@ -1,7 +1,8 @@
 #include <ocxxr.hpp>
 
 ocxxr::NullHandle ChildTask() {
-    PRINTF("Child task ran! Shutting down...\n");
+    PRINTF("Child task ran!\n");
+    PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
     return ocxxr::NullHandle();
 }

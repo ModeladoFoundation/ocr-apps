@@ -1,11 +1,10 @@
 #include <ocxxr.hpp>
 
-static constexpr u32 kPayload = 765;
+static constexpr u32 kPayload = 7;
 
 ocxxr::NullHandle ChildTask(ocxxr::AcquiredDatablock<u32> arg) {
-    PRINTF("Child task ran! (arg=%d)\n", arg.data());
+    PRINTF("Child task ran (arg=%d)! Shutting down...\n", arg.data());
     ASSERT(arg.data() == kPayload);
-    PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
     return ocxxr::NullHandle();
 }
