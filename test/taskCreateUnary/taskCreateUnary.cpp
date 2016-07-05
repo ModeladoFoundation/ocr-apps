@@ -5,7 +5,7 @@ static constexpr u32 kPayload = 7;
 ocxxr::NullHandle ChildTask(ocxxr::AcquiredDatablock<u32> arg) {
     PRINTF("Child task ran (arg=%d)! Shutting down...\n", arg.data());
     ASSERT(arg.data() == kPayload);
-    ocrShutdown();
+    ocxxr::Shutdown();
     return ocxxr::NullHandle();
 }
 

@@ -2,7 +2,7 @@
 
 ocxxr::NullHandle ChildTask() {
     PRINTF("Child task ran! Shutting down...\n");
-    ocrShutdown();
+    ocxxr::Shutdown();
     return ocxxr::NullHandle();
 }
 
