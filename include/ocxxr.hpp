@@ -19,6 +19,14 @@ struct IsLegalHandle {
                                   sizeof(T) == sizeof(ocrGuid_t);
 };
 
+template <typename T, typename U = void>
+using enable_if_void_t =
+        typename std::enable_if<std::is_same<void, T>::value, U>::type;
+
+template <typename T, typename U = void>
+using enable_if_not_void_t =
+        typename std::enable_if<!std::is_same<void, T>::value, U>::type;
+
 // Check error status of C API call
 inline void OK(u8 status) { ASSERT(status == 0); }
 }
@@ -58,14 +66,16 @@ class ObjectHandle {
 static_assert(IsLegalHandle<ObjectHandle>::value,
               "ObjectHandle must be castable to/from ocrGuid_t.");
 
-// FIXME - this can't be its own class
-// I'll need a Null() function on each of the concrete handle classes
-class NullHandle : public ObjectHandle {
+template <typename T>
+class DataHandle : public ObjectHandle {
  public:
-    NullHandle() : ObjectHandle(NULL_GUID) {}
+    ~DataHandle() = default;
+
+ protected:
+    explicit DataHandle(ocrGuid_t guid) : ObjectHandle(guid) {}
 };
 
-static_assert(IsLegalHandle<ObjectHandle>::value,
+static_assert(IsLegalHandle<DataHandle<int>>::value,
               "NullHandle must be castable to/from ocrGuid_t.");
 
 void Shutdown() { ocrShutdown(); }
@@ -88,21 +98,21 @@ class Hint {
     ocrHint_t hint_;
 };
 
-//! Datablock creation.
+//! Datablocks
 template <typename T>
-class Datablock : public ObjectHandle {
+class Datablock : public DataHandle<T> {
  public:
     // TODO - add overloaded versions supporting hint, etc.
     explicit Datablock(u64 count = 1)
-            : ObjectHandle(init(sizeof(T) * count, false, nullptr)) {}
+            : DataHandle<T>(init(sizeof(T) * count, false, nullptr)) {}
 
     explicit Datablock(T **data_ptr, u64 count = 1)
-            : ObjectHandle(init(data_ptr, sizeof(T) * count, true, nullptr)) {}
+            : DataHandle<T>(init(data_ptr, sizeof(T) * count, true, nullptr)) {}
 
-    void Destroy() const { OK(ocrDbDestroy(guid())); }
+    void Destroy() const { OK(ocrDbDestroy(this->guid())); }
 
  protected:
-    explicit Datablock(ocrGuid_t guid) : ObjectHandle(guid) {}
+    explicit Datablock(ocrGuid_t guid) : DataHandle<T>(guid) {}
 
  private:
     static ocrGuid_t init(u64 bytes, const Hint *hint) {
@@ -137,7 +147,12 @@ class AcquiredDatablock : public Datablock<T> {
     explicit AcquiredDatablock(ocrEdtDep_t dep)
             : Datablock<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
 
-    T &data() const { return *data_; }
+    template <typename U = T>
+    enable_if_not_void_t<U, U> &data() const {
+        // The template type U is only here to get enable_if to work.
+        static_assert(std::is_same<T, U>::value, "Template types must match.");
+        return *data_;
+    }
 
     T *data_ptr() const { return data_; }
 
@@ -148,6 +163,50 @@ class AcquiredDatablock : public Datablock<T> {
             : Datablock<T>(&tmp, count), data_(tmp) {}
     T *const data_;
 };
+
+//! Events
+template <typename T>
+class Event : public DataHandle<T> {
+ public:
+    // TODO - I should make subclasses for all the types of events
+    explicit Event(ocrEventTypes_t type) : DataHandle<T>(init(type)) {}
+
+    void Destroy() const { OK(ocrEventDestroy(this->guid())); }
+
+    void Satisfy() const { OK(ocrEventSatisfy(this->guid(), NULL_GUID)); }
+
+    void Satisfy(DataHandle<T> data) const {
+        OK(ocrEventSatisfy(this->guid(), data.guid()));
+    }
+
+ private:
+    static ocrGuid_t init(ocrEventTypes_t type) {
+        ocrGuid_t guid;
+        static constexpr bool kIsVoid = std::is_same<void, T>::value;
+        constexpr u16 flags = kIsVoid ? EVT_PROP_NONE : EVT_PROP_TAKES_ARG;
+        OK(ocrEventCreate(&guid, type, flags));
+        return guid;
+    }
+};
+
+static_assert(IsLegalHandle<Event<int>>::value,
+              "Event must be castable to/from ocrGuid_t.");
+
+class NullHandle : public ObjectHandle {
+ public:
+    NullHandle() : ObjectHandle(NULL_GUID) {}
+
+    // conversion to datablock type
+    template <typename T>
+    const operator Datablock<T>() const {
+        return *reinterpret_cast<const Datablock<T> *>(this);
+    }
+
+    // TODO - add conversions for all other ObjectHandle types
+};
+
+static_assert(IsLegalHandle<NullHandle>::value,
+              "NullHandle must be castable to/from ocrGuid_t.");
 
 namespace internal {
 
@@ -169,6 +228,10 @@ struct FnInfo<R(Args...)> {
 template <typename T>
 struct DependenceArgFor;
 
+template <typename T>
+struct DependenceArgFor<Event<T>> {
+    typedef AcquiredDatablock<T> type;
+};
 template <typename T>
 struct DependenceArgFor<Datablock<T>> {
     typedef AcquiredDatablock<T> type;
@@ -234,7 +297,7 @@ class TaskTemplateBase : public ObjectHandle {
  public:
     ~TaskTemplateBase() = default;
 
-    void Destroy() const { OK(ocrEdtTemplateDestroy(guid())); }
+    void Destroy() const { OK(ocrEdtTemplateDestroy(this->guid())); }
 
  protected:
     explicit TaskTemplateBase(ocrGuid_t guid) : ObjectHandle(guid) {}
@@ -252,7 +315,7 @@ class Task : public ObjectHandle {
     Task(TaskTemplateBase<F> task_template, Deps... deps)
             : ObjectHandle(init(task_template, deps...)) {}
 
-    void Destroy() const { OK(ocrEdtDestroy(guid())); }
+    void Destroy() const { OK(ocrEdtDestroy(this->guid())); }
 
     // TODO - AddDependence
 
