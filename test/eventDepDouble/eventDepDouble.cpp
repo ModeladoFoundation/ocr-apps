@@ -11,7 +11,7 @@ void ChildTask(ocxxr::AcquiredDatablock<double> arg) {
 
 void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task...\n");
-    auto event = ocxxr::Event<double>(OCR_EVENT_STICKY_T);
+    auto event = ocxxr::StickyEvent<double>();
     auto datablock = ocxxr::AcquiredDatablock<double>();
     datablock.data() = kPayload;
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);

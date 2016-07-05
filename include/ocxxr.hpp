@@ -192,6 +192,43 @@ class Event : public DataHandle<T> {
 static_assert(IsLegalHandle<Event<int>>::value,
               "Event must be castable to/from ocrGuid_t.");
 
+template <typename T>
+class OnceEvent : public Event<T> {
+ public:
+    explicit OnceEvent() : Event<T>(OCR_EVENT_ONCE_T) {}
+};
+
+static_assert(IsLegalHandle<OnceEvent<int>>::value,
+              "OnceEvent must be castable to/from ocrGuid_t.");
+
+template <typename T>
+class IdempotentEvent : public Event<T> {
+ public:
+    explicit IdempotentEvent() : Event<T>(OCR_EVENT_IDEM_T) {}
+};
+
+static_assert(IsLegalHandle<IdempotentEvent<int>>::value,
+              "IdempotentEvent must be castable to/from ocrGuid_t.");
+
+template <typename T>
+class StickyEvent : public Event<T> {
+ public:
+    explicit StickyEvent() : Event<T>(OCR_EVENT_STICKY_T) {}
+};
+
+static_assert(IsLegalHandle<StickyEvent<int>>::value,
+              "StickyEvent must be castable to/from ocrGuid_t.");
+
+template <typename T>
+class LatchEvent : public Event<T> {
+ public:
+    explicit LatchEvent() : Event<T>(OCR_EVENT_LATCH_T) {}
+    // TODO - satisfy slot
+};
+
+static_assert(IsLegalHandle<LatchEvent<int>>::value,
+              "LatchEvent must be castable to/from ocrGuid_t.");
+
 class NullHandle : public ObjectHandle {
  public:
     NullHandle() : ObjectHandle(NULL_GUID) {}
@@ -230,6 +267,22 @@ struct DependenceArgFor;
 
 template <typename T>
 struct DependenceArgFor<Event<T>> {
+    typedef AcquiredDatablock<T> type;
+};
+template <typename T>
+struct DependenceArgFor<OnceEvent<T>> {
+    typedef AcquiredDatablock<T> type;
+};
+template <typename T>
+struct DependenceArgFor<IdempotentEvent<T>> {
+    typedef AcquiredDatablock<T> type;
+};
+template <typename T>
+struct DependenceArgFor<StickyEvent<T>> {
+    typedef AcquiredDatablock<T> type;
+};
+template <typename T>
+struct DependenceArgFor<LatchEvent<T>> {
     typedef AcquiredDatablock<T> type;
 };
 template <typename T>
@@ -354,10 +407,8 @@ class Task : public ObjectHandle {
         return guid;
     }
 
-    // Note: this assertion won't ever fail because another
-    // insertion
-    // in the internal checks will always fail first (or none at
-    // all).
+    // Note: this assertion won't ever fail because another insertion
+    // in the internal checks will always fail first (or none at all).
     static_assert(TaskArgCountCheck<sizeof...(Deps), depc>::value &&
                           TaskArgsMatchDeps<0, F, Deps...>::value,
                   "Check for args/paramters mismatch.");

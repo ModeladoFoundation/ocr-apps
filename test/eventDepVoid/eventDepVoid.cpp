@@ -8,7 +8,7 @@ void ChildTask(ocxxr::AcquiredDatablock<void>) {
 
 void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task...\n");
-    auto event = ocxxr::Event<void>(OCR_EVENT_STICKY_T);
+    auto event = ocxxr::StickyEvent<void>();
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     task_template.CreateTask(event);
     event.Satisfy();
