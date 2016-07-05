@@ -9,12 +9,10 @@ void ChildTask(ocxxr::AcquiredDatablock<u32> arg) {
     ocxxr::Shutdown();
 }
 
-extern "C" ocrGuid_t mainEdt(u32 paramc, u64 paramv[], u32 depc,
-                             ocrEdtDep_t depv[]) {
+void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
     auto datablock = ocxxr::AcquiredDatablock<u32>();
     datablock.data() = kPayload;
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     task_template.CreateTask(datablock);
-    return NULL_GUID;
 }

@@ -73,7 +73,7 @@ IFLAGS  += -I$(WORKLOAD_SRC) -I$(OCXXR_LIB_ROOT)/include -I$(OCR_INSTALL_ROOT)/i
 
 SRCS := $(TARGET).cpp #$(OCXXR_LIB_ROOT)/src/ocr_db_alloc.cpp
 
-CXXFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall $(CXX_OPTS)
+CXXFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall -Wextra $(CXX_OPTS)
 OBJS += $(SRCS:%.cpp=$(WORKLOAD_BUILD)/%.o)
 
 

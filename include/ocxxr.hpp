@@ -286,7 +286,7 @@ class TaskImplementation<F, user_fn, R(Args...)> {
     static_assert(std::is_same<F, R(Args...)>::value,
                   "Task function must have a consistent type.");
 
-    static ocrGuid_t internal_fn(u32 paramc, u64 *paramv, u32 depc,
+    static ocrGuid_t internal_fn(u32 paramc, u64 /*paramv*/[], u32 depc,
                                  ocrEdtDep_t depv[]) {
         ASSERT(paramc == 0);
         ASSERT(depc == sizeof...(Args));
@@ -404,9 +404,20 @@ static_assert(IsLegalHandle<DummyTaskType>::value,
 static_assert(IsLegalHandle<TaskTemplate<DummyTaskFnType>>::value,
               "TaskTemplate must be castable to/from ocrGuid_t.");
 
+// prototype for user's main function
+void Main(AcquiredDatablock<MainTaskArgs> args);
+
 }  // namespace ocxxr
 
 #define OCXXR_TEMPLATE_FOR(fn_ptr) \
     ocxxr::TaskTemplate<decltype(fn_ptr)>::Create<fn_ptr>();
+
+// XXX - Need to move this to source file!
+extern "C" ocrGuid_t mainEdt(u32 paramc, u64 /*paramv*/[], u32 depc,
+                             ocrEdtDep_t depv[]) {
+    ASSERT(paramc == 0 && depc == 1);
+    ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>(depv[0]));
+    return NULL_GUID;
+}
 
 #endif  // OCXXR_H_

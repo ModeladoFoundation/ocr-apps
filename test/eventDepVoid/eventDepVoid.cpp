@@ -6,12 +6,10 @@ void ChildTask(ocxxr::AcquiredDatablock<void>) {
     ocxxr::Shutdown();
 }
 
-extern "C" ocrGuid_t mainEdt(u32 paramc, u64 paramv[], u32 depc,
-                             ocrEdtDep_t depv[]) {
+void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task...\n");
     auto event = ocxxr::Event<void>(OCR_EVENT_STICKY_T);
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     task_template.CreateTask(event);
     event.Satisfy();
-    return NULL_GUID;
 }
