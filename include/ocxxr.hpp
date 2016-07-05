@@ -20,17 +20,23 @@ struct IsLegalHandle {
 };
 
 template <typename T, typename U = void>
-using enable_if_void_t =
+using EnableIfVoid =
         typename std::enable_if<std::is_same<void, T>::value, U>::type;
 
 template <typename T, typename U = void>
-using enable_if_not_void_t =
+using EnableIfNotVoid =
         typename std::enable_if<!std::is_same<void, T>::value, U>::type;
+
+template <typename T, typename U, typename V = void>
+using EnableIfBaseOf =
+        typename std::enable_if<std::is_base_of<T, U>::value, V>::type;
 
 // Check error status of C API call
 inline void OK(u8 status) { ASSERT(status == 0); }
 }
 
+// NOTE: I add more declarations to the internal namespace later,
+// but this directive brings them all into the current scope.
 using namespace internal;
 
 //! Abstract base class for all OCR objects with GUIDs.
@@ -147,8 +153,12 @@ class AcquiredDatablock : public Datablock<T> {
     explicit AcquiredDatablock(ocrEdtDep_t dep)
             : Datablock<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
 
+    // create empty datablock
+    AcquiredDatablock(std::nullptr_t)
+            : Datablock<T>(NULL_GUID), data_(nullptr) {}
+
     template <typename U = T>
-    enable_if_not_void_t<U, U> &data() const {
+    EnableIfNotVoid<U, U> &data() const {
         // The template type U is only here to get enable_if to work.
         static_assert(std::is_same<T, U>::value, "Template types must match.");
         return *data_;
@@ -168,7 +178,6 @@ class AcquiredDatablock : public Datablock<T> {
 template <typename T>
 class Event : public DataHandle<T> {
  public:
-    // TODO - I should make subclasses for all the types of events
     explicit Event(ocrEventTypes_t type) : DataHandle<T>(init(type)) {}
 
     void Destroy() const { OK(ocrEventDestroy(this->guid())); }
@@ -223,7 +232,9 @@ template <typename T>
 class LatchEvent : public Event<T> {
  public:
     explicit LatchEvent() : Event<T>(OCR_EVENT_LATCH_T) {}
-    // TODO - satisfy slot
+    // TODO - SatisfySlot
+    // TODO - Up
+    // TODO - Down
 };
 
 static_assert(IsLegalHandle<LatchEvent<int>>::value,
@@ -233,13 +244,20 @@ class NullHandle : public ObjectHandle {
  public:
     NullHandle() : ObjectHandle(NULL_GUID) {}
 
-    // conversion to datablock type
+    // auto-convert NullHandle to any ObjectHandle type
     template <typename T>
-    const operator Datablock<T>() const {
-        return *reinterpret_cast<const Datablock<T> *>(this);
+    const operator T() const {
+        static_assert(std::is_base_of<ObjectHandle, T>::value,
+                      "Only use NullHandle for ObjectHandle types.");
+        static_assert(IsLegalHandle<T>::value,
+                      "Only use NullHandle for simple handle types.");
+        return *reinterpret_cast<const T *>(this);
     }
 
-    // TODO - add conversions for all other ObjectHandle types
+    template <typename T>
+    const operator AcquiredDatablock<T>() const {
+        return AcquiredDatablock<T>(nullptr);
+    }
 };
 
 static_assert(IsLegalHandle<NullHandle>::value,
@@ -262,36 +280,14 @@ struct FnInfo<R(Args...)> {
     };
 };
 
+// NOTE: These definitions are separate from those of the associated data types
+// in order to break the cyclic dependence between the two types.
 template <typename T>
 struct DependenceArgFor;
 
-template <typename T>
-struct DependenceArgFor<Event<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <typename T>
-struct DependenceArgFor<OnceEvent<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <typename T>
-struct DependenceArgFor<IdempotentEvent<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <typename T>
-struct DependenceArgFor<StickyEvent<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <typename T>
-struct DependenceArgFor<LatchEvent<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <typename T>
-struct DependenceArgFor<Datablock<T>> {
-    typedef AcquiredDatablock<T> type;
-};
-template <typename T>
-struct DependenceArgFor<AcquiredDatablock<T>> {
-    typedef AcquiredDatablock<T> type;
+template <template <typename> class T, typename U>
+struct DependenceArgFor<T<U>> {
+    typedef EnableIfBaseOf<DataHandle<U>, T<U>, AcquiredDatablock<U>> type;
 };
 template <>
 struct DependenceArgFor<NullHandle> {
@@ -350,15 +346,15 @@ class TaskImplementation<F, user_fn, R(Args...)> {
     // XXX - using index_sequence requires C++14,
     // but we could roll our own if we really want C++11 compatibility.
     template <typename U = R, size_t... Indices>
-    static enable_if_not_void_t<U, ocrGuid_t> launch(
+    static EnableIfNotVoid<U, ocrGuid_t> launch(
             ocrEdtDep_t deps[], std::index_sequence<Indices...>) {
         // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
         return user_fn((Args{deps[Indices]})...).guid();
     }
 
     template <typename U = R, size_t... Indices>
-    static enable_if_void_t<U, ocrGuid_t> launch(
-            ocrEdtDep_t deps[], std::index_sequence<Indices...>) {
+    static EnableIfVoid<U, ocrGuid_t> launch(ocrEdtDep_t deps[],
+                                             std::index_sequence<Indices...>) {
         // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
         user_fn((Args{deps[Indices]})...);
         return NULL_GUID;
