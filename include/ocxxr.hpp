@@ -245,20 +245,34 @@ struct DependenceArgFor<NullHandle> {
     typedef AcquiredDatablock<void> type;
 };
 
-template <typename T, typename... U>
-struct TaskArgsMatchDeps;
-
-// XXX - this could be simplified with a C++17 fold expression
-template <typename R, typename A, typename... Args, typename D,
-          typename... Deps>
-struct TaskArgsMatchDeps<R(A, Args...), D, Deps...> {
-    static constexpr bool value =
-            std::is_base_of<typename DependenceArgFor<D>::type, A>::value &&
-            TaskArgsMatchDeps<R(Args...), Deps...>::value;
+template <size_t ArgCount, size_t ParamCount>
+struct TaskArgCountCheck {
+    static_assert(ArgCount == ParamCount,
+                  "Dependence argument count must match task parameter count.");
+    static constexpr bool value = true;
 };
 
-template <typename R>
-struct TaskArgsMatchDeps<R()> {
+template <typename A, typename D, size_t Position>
+struct TaskArgTypeMatchesParamType {
+    typedef typename DependenceArgFor<D>::type DT;
+    static_assert(std::is_base_of<DT, A>::value,
+                  "Dependence argument type must match task parameter type.");
+    static constexpr bool value = true;
+};
+
+template <size_t Posiiton, typename T, typename... U>
+struct TaskArgsMatchDeps;
+
+template <size_t Position, typename R, typename A, typename... Args, typename D,
+          typename... Deps>
+struct TaskArgsMatchDeps<Position, R(A, Args...), D, Deps...> {
+    static constexpr bool value =
+            TaskArgTypeMatchesParamType<A, D, Position>::value &&
+            TaskArgsMatchDeps<Position + 1, R(Args...), Deps...>::value;
+};
+
+template <size_t Position, typename R>
+struct TaskArgsMatchDeps<Position, R()> {
     static constexpr bool value = true;
 };
 
@@ -331,11 +345,13 @@ class Task : public ObjectHandle {
         return guid;
     }
 
-    static_assert(depc == sizeof...(Deps),
-                  "Dependence argument count must match task argument count.");
-
-    static_assert(TaskArgsMatchDeps<F, Deps...>::value,
-                  "Dependence argument types must match task argument types.");
+    // Note: this assertion won't ever fail because another
+    // insertion
+    // in the internal checks will always fail first (or none at
+    // all).
+    static_assert(TaskArgCountCheck<sizeof...(Deps), depc>::value &&
+                          TaskArgsMatchDeps<0, F, Deps...>::value,
+                  "Check for args/paramters mismatch.");
 };
 
 template <typename F>
