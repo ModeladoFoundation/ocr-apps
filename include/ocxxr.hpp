@@ -105,16 +105,17 @@ template <typename T>
 class Datablock : public DataHandle<T> {
  public:
     // TODO - add overloaded versions supporting hint, etc.
-    explicit Datablock(u64 count = 1)
+    explicit Datablock(u64 count)
             : DataHandle<T>(Init(sizeof(T) * count, false, nullptr)) {}
 
-    explicit Datablock(T **data_ptr, u64 count = 1)
+    explicit Datablock(T **data_ptr, u64 count)
             : DataHandle<T>(Init(data_ptr, sizeof(T) * count, true, nullptr)) {}
 
     void Destroy() const { internal::OK(ocrDbDestroy(this->guid())); }
 
- protected:
-    explicit Datablock(ocrGuid_t guid) : DataHandle<T>(guid) {}
+    explicit Datablock(ocrGuid_t guid = NULL_GUID) : DataHandle<T>(guid) {}
+
+    static Datablock<T> Create(u64 count = 1) { return Datablock<T>(count); }
 
  private:
     static ocrGuid_t Init(u64 bytes, const Hint *hint) {
@@ -144,16 +145,19 @@ template <typename T>
 class AcquiredDatablock : public Datablock<T> {
  public:
     // TODO - add overloaded versions supporting hint, count, etc.
-    explicit AcquiredDatablock(u64 count = 1)
-            : AcquiredDatablock(nullptr, count) {}
+    explicit AcquiredDatablock(u64 count) : AcquiredDatablock(nullptr, count) {}
 
     // This version gets called from the task setup code
     explicit AcquiredDatablock(ocrEdtDep_t dep)
             : Datablock<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
 
     // create empty datablock
-    explicit AcquiredDatablock(std::nullptr_t)
-            : Datablock<T>(NULL_GUID), data_(nullptr) {}
+    explicit AcquiredDatablock(std::nullptr_t np = nullptr)
+            : Datablock<T>(NULL_GUID), data_(np) {}
+
+    static AcquiredDatablock<T> Create(u64 count = 1) {
+        return AcquiredDatablock<T>(count);
+    }
 
     template <typename U = T, internal::EnableIfNotVoid<U> = 0>
     U &data() const {

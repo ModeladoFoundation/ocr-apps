@@ -13,7 +13,7 @@ void ChildTask(ocxxr::AcquiredDatablock<u32>,
 
 void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
-    auto datablock = ocxxr::AcquiredDatablock<u32>();
+    auto datablock = ocxxr::AcquiredDatablock<u32>::Create();
     datablock.data() = kPayload;
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     task_template.CreateTask(datablock);
