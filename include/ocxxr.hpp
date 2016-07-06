@@ -116,6 +116,7 @@ class DatablockHandle : public DataHandle<T> {
     explicit DatablockHandle(ocrGuid_t guid = NULL_GUID)
             : DataHandle<T>(guid) {}
 
+    // create a datablock, but don't acquire it.
     static DatablockHandle<T> Create(u64 count = 1) {
         return DatablockHandle<T>(count);
     }
@@ -143,20 +144,19 @@ class DatablockHandle : public DataHandle<T> {
 static_assert(internal::IsLegalHandle<DatablockHandle<int>>::value,
               "DatablockHandle must be castable to/from ocrGuid_t.");
 
-// TODO - use composition instead of inheritance (but add a conversion)
 template <typename T>
-class Datablock : public DatablockHandle<T> {
+class Datablock {
  public:
     // TODO - add overloaded versions supporting hint, count, etc.
     explicit Datablock(u64 count) : Datablock(nullptr, count) {}
 
     // This version gets called from the task setup code
     explicit Datablock(ocrEdtDep_t dep)
-            : DatablockHandle<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
+            : handle_(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
 
     // create empty datablock
     explicit Datablock(std::nullptr_t np = nullptr)
-            : DatablockHandle<T>(NULL_GUID), data_(np) {}
+            : handle_(NULL_GUID), data_(np) {}
 
     static Datablock<T> Create(u64 count = 1) { return Datablock<T>(count); }
 
@@ -169,11 +169,15 @@ class Datablock : public DatablockHandle<T> {
 
     T *data_ptr() const { return data_; }
 
+    DatablockHandle<T> handle() const { return handle_; }
+
     void Release() const { internal::OK(ocrDbRelease(this->guid())); }
 
+    operator DatablockHandle<T>() const { return handle_; }
+
  private:
-    Datablock(T *tmp, u64 count)
-            : DatablockHandle<T>(&tmp, count), data_(tmp) {}
+    Datablock(T *tmp, u64 count) : handle_(&tmp, count), data_(tmp) {}
+    const DatablockHandle<T> handle_;
     T *const data_;
 };
 
@@ -300,22 +304,25 @@ struct TypeMapping;
 
 template <template <typename> class T, typename U>
 struct TypeMapping<T<U>> {
-    static_assert(std::is_base_of<DataHandle<U>, T<U>>::value,
+    static_assert(std::is_convertible<T<U>, DataHandle<U>>::value,
                   "Generic type mappings only available for OCR data handles.");
     typedef U Parameter;
     // TODO - get rid of "Type" from these names
     typedef Datablock<Parameter> DepType;
+    typedef DataHandle<Parameter> Handle;
     typedef Event<Parameter> OutEventType;
 };
 template <>
 struct TypeMapping<NullHandle> {
     typedef void Parameter;
     typedef Datablock<Parameter> DepType;
+    typedef DataHandle<Parameter> Handle;
     typedef Event<Parameter> OutEventType;
 };
 template <>
 struct TypeMapping<void> {
     typedef void Parameter;
+    typedef DataHandle<Parameter> Handle;
     typedef Event<Parameter> OutEventType;
 };
 
@@ -423,13 +430,17 @@ class Task : public ObjectHandle {
     }
 
  private:
+    template <typename T>
+    using DataHandleOf = typename internal::TypeMapping<T>::Handle;
+
     static ocrGuid_t Init(Event<R> *out_event,
                           TaskTemplateBase<F> task_template, Deps... deps) {
         ocrGuid_t guid;
         bool is_future = out_event != nullptr;
         ocrGuid_t *out_guid = reinterpret_cast<ocrGuid_t *>(out_event);
         ocrGuid_t last_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
-        ocrGuid_t depv[kDepc + 1] = {(deps.guid())..., last_dep};
+        ocrGuid_t depv[kDepc + 1] = {
+                (static_cast<DataHandleOf<Deps>>(deps).guid())..., last_dep};
         ocrEdtCreate(&guid, task_template.guid(), EDT_PARAM_DEF, nullptr,
                      EDT_PARAM_DEF, depv, EDT_PROP_NONE, nullptr, out_guid);
         return guid;
@@ -441,8 +452,6 @@ class Task : public ObjectHandle {
     static_assert(std::is_same<R, Parameter>::value,
                   "Must have consistent result parameter type.");
 
-    // Note: this assertion won't ever fail because another insertion
-    // in the internal checks will always fail first (or none at all).
     static_assert(internal::TaskArgCountCheck<sizeof...(Deps), kDepc>::value &&
                           internal::TaskArgsMatchDeps<0, F, Deps...>::value,
                   "Check for args/paramters mismatch.");
