@@ -110,10 +110,10 @@ class Datablock : public DataHandle<T> {
  public:
     // TODO - add overloaded versions supporting hint, etc.
     explicit Datablock(u64 count = 1)
-            : DataHandle<T>(init(sizeof(T) * count, false, nullptr)) {}
+            : DataHandle<T>(Init(sizeof(T) * count, false, nullptr)) {}
 
     explicit Datablock(T **data_ptr, u64 count = 1)
-            : DataHandle<T>(init(data_ptr, sizeof(T) * count, true, nullptr)) {}
+            : DataHandle<T>(Init(data_ptr, sizeof(T) * count, true, nullptr)) {}
 
     void Destroy() const { OK(ocrDbDestroy(this->guid())); }
 
@@ -121,12 +121,12 @@ class Datablock : public DataHandle<T> {
     explicit Datablock(ocrGuid_t guid) : DataHandle<T>(guid) {}
 
  private:
-    static ocrGuid_t init(u64 bytes, const Hint *hint) {
+    static ocrGuid_t Init(u64 bytes, const Hint *hint) {
         T **data_ptr;
-        return init(&data_ptr, bytes, false, hint);
+        return Init(&data_ptr, bytes, false, hint);
     }
 
-    static ocrGuid_t init(T **data_ptr, u64 bytes, bool acquire,
+    static ocrGuid_t Init(T **data_ptr, u64 bytes, bool acquire,
                           const Hint *hint) {
         ocrGuid_t guid;
         const u16 flags = acquire ? DB_PROP_NONE : DB_PROP_NO_ACQUIRE;
@@ -178,7 +178,7 @@ class AcquiredDatablock : public Datablock<T> {
 template <typename T>
 class Event : public DataHandle<T> {
  public:
-    explicit Event(ocrEventTypes_t type) : DataHandle<T>(init(type)) {}
+    explicit Event(ocrEventTypes_t type) : DataHandle<T>(Init(type)) {}
 
     void Destroy() const { OK(ocrEventDestroy(this->guid())); }
 
@@ -189,7 +189,7 @@ class Event : public DataHandle<T> {
     }
 
  private:
-    static ocrGuid_t init(ocrEventTypes_t type) {
+    static ocrGuid_t Init(ocrEventTypes_t type) {
         ocrGuid_t guid;
         static constexpr bool kIsVoid = std::is_same<void, T>::value;
         constexpr u16 flags = kIsVoid ? EVT_PROP_NONE : EVT_PROP_TAKES_ARG;
@@ -270,13 +270,13 @@ struct FnInfo;
 
 template <typename R, typename... Args>
 struct FnInfo<R(Args...)> {
-    static constexpr size_t arg_count = sizeof...(Args);
-    typedef std::function<R(Args...)> fn_type;
-    typedef std::tuple<Args...> arg_types;
-    typedef R result_type;
+    static constexpr size_t kArgCount = sizeof...(Args);
+    typedef std::function<R(Args...)> FnType;
+    typedef std::tuple<Args...> ArgTypes;
+    typedef R ResultType;
     template <size_t I>
-    struct arg {
-        typedef typename std::tuple_element<I, arg_types>::type type;
+    struct Arg {
+        typedef typename std::tuple_element<I, ArgTypes>::type Type;
     };
 };
 
@@ -287,11 +287,11 @@ struct DependenceArgFor;
 
 template <template <typename> class T, typename U>
 struct DependenceArgFor<T<U>> {
-    typedef EnableIfBaseOf<DataHandle<U>, T<U>, AcquiredDatablock<U>> type;
+    typedef EnableIfBaseOf<DataHandle<U>, T<U>, AcquiredDatablock<U>> Type;
 };
 template <>
 struct DependenceArgFor<NullHandle> {
-    typedef AcquiredDatablock<void> type;
+    typedef AcquiredDatablock<void> Type;
 };
 
 template <size_t ArgCount, size_t ParamCount>
@@ -303,7 +303,7 @@ struct TaskArgCountCheck {
 
 template <typename A, typename D, size_t Position>
 struct TaskArgTypeMatchesParamType {
-    typedef typename DependenceArgFor<D>::type DT;
+    typedef typename DependenceArgFor<D>::Type DT;
     static_assert(std::is_base_of<DT, A>::value,
                   "Dependence argument type must match task parameter type.");
     static constexpr bool value = true;
@@ -373,7 +373,7 @@ class TaskTemplateBase : public ObjectHandle {
  protected:
     explicit TaskTemplateBase(ocrGuid_t guid) : ObjectHandle(guid) {}
 
-    typedef typename FnInfo<F>::result_type R;
+    typedef typename FnInfo<F>::ResultType R;
     static_assert(std::is_same<void, R>::value ||
                           std::is_base_of<ObjectHandle, R>::value,
                   "User's task function must return an OCR object type.");
@@ -385,16 +385,16 @@ class Task : public ObjectHandle {
  public:
     // TODO - add support for hints, output events, etc
     Task(TaskTemplateBase<F> task_template, Deps... deps)
-            : ObjectHandle(init(task_template, deps...)) {}
+            : ObjectHandle(Init(task_template, deps...)) {}
 
     void Destroy() const { OK(ocrEdtDestroy(this->guid())); }
 
     // TODO - AddDependence
 
  private:
-    static constexpr u64 depc = FnInfo<F>::arg_count;
+    static constexpr u64 depc = FnInfo<F>::kArgCount;
 
-    static ocrGuid_t init(TaskTemplateBase<F> task_template, Deps... deps) {
+    static ocrGuid_t Init(TaskTemplateBase<F> task_template, Deps... deps) {
         ocrGuid_t guid;
         ocrGuid_t depv[depc + 1] = {(deps.guid())..., NULL_GUID};
         ocrEdtCreate(&guid, task_template.guid(), EDT_PARAM_DEF, nullptr,
@@ -413,11 +413,13 @@ class Task : public ObjectHandle {
 template <typename F>
 class TaskTemplate : public TaskTemplateBase<F> {
  public:
+    typedef typename FnInfo<F>::ResultType ResultType;
+
     template <F *user_fn>
     static TaskTemplate<F> Create() {
         ocrGuid_t guid;
         ocrEdt_t internal_fn = TaskImplementation<F, user_fn, F>::internal_fn;
-        constexpr u64 depc = FnInfo<F>::arg_count;
+        constexpr u64 depc = FnInfo<F>::kArgCount;
         ocrEdtTemplateCreate(&guid, internal_fn, 0, depc);
         return TaskTemplate<F>(guid);
     }
@@ -425,6 +427,11 @@ class TaskTemplate : public TaskTemplateBase<F> {
     template <typename... Deps>
     Task<F, Deps...> CreateTask(Deps... deps) {
         return Task<F, Deps...>(*this, deps...);
+    }
+
+    template <typename... Deps>
+    Task<F, Deps...> CreateTask(Event<ResultType> out_event, Deps... deps) {
+        return Task<F, Deps...>(*this, out_event, deps...);
     }
 
     ~TaskTemplate() = default;
