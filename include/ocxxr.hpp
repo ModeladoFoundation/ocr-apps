@@ -102,20 +102,23 @@ class Hint {
 
 //! Datablocks
 template <typename T>
-class Datablock : public DataHandle<T> {
+class DatablockHandle : public DataHandle<T> {
  public:
     // TODO - add overloaded versions supporting hint, etc.
-    explicit Datablock(u64 count)
+    explicit DatablockHandle(u64 count)
             : DataHandle<T>(Init(sizeof(T) * count, false, nullptr)) {}
 
-    explicit Datablock(T **data_ptr, u64 count)
+    explicit DatablockHandle(T **data_ptr, u64 count)
             : DataHandle<T>(Init(data_ptr, sizeof(T) * count, true, nullptr)) {}
 
     void Destroy() const { internal::OK(ocrDbDestroy(this->guid())); }
 
-    explicit Datablock(ocrGuid_t guid = NULL_GUID) : DataHandle<T>(guid) {}
+    explicit DatablockHandle(ocrGuid_t guid = NULL_GUID)
+            : DataHandle<T>(guid) {}
 
-    static Datablock<T> Create(u64 count = 1) { return Datablock<T>(count); }
+    static DatablockHandle<T> Create(u64 count = 1) {
+        return DatablockHandle<T>(count);
+    }
 
  private:
     static ocrGuid_t Init(u64 bytes, const Hint *hint) {
@@ -137,27 +140,25 @@ class Datablock : public DataHandle<T> {
     }
 };
 
-static_assert(internal::IsLegalHandle<Datablock<int>>::value,
-              "Datablock must be castable to/from ocrGuid_t.");
+static_assert(internal::IsLegalHandle<DatablockHandle<int>>::value,
+              "DatablockHandle must be castable to/from ocrGuid_t.");
 
 // TODO - use composition instead of inheritance (but add a conversion)
 template <typename T>
-class AcquiredDatablock : public Datablock<T> {
+class Datablock : public DatablockHandle<T> {
  public:
     // TODO - add overloaded versions supporting hint, count, etc.
-    explicit AcquiredDatablock(u64 count) : AcquiredDatablock(nullptr, count) {}
+    explicit Datablock(u64 count) : Datablock(nullptr, count) {}
 
     // This version gets called from the task setup code
-    explicit AcquiredDatablock(ocrEdtDep_t dep)
-            : Datablock<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
+    explicit Datablock(ocrEdtDep_t dep)
+            : DatablockHandle<T>(dep.guid), data_(static_cast<T *>(dep.ptr)) {}
 
     // create empty datablock
-    explicit AcquiredDatablock(std::nullptr_t np = nullptr)
-            : Datablock<T>(NULL_GUID), data_(np) {}
+    explicit Datablock(std::nullptr_t np = nullptr)
+            : DatablockHandle<T>(NULL_GUID), data_(np) {}
 
-    static AcquiredDatablock<T> Create(u64 count = 1) {
-        return AcquiredDatablock<T>(count);
-    }
+    static Datablock<T> Create(u64 count = 1) { return Datablock<T>(count); }
 
     template <typename U = T, internal::EnableIfNotVoid<U> = 0>
     U &data() const {
@@ -171,8 +172,8 @@ class AcquiredDatablock : public Datablock<T> {
     void Release() const { internal::OK(ocrDbRelease(this->guid())); }
 
  private:
-    AcquiredDatablock(T *tmp, u64 count)
-            : Datablock<T>(&tmp, count), data_(tmp) {}
+    Datablock(T *tmp, u64 count)
+            : DatablockHandle<T>(&tmp, count), data_(tmp) {}
     T *const data_;
 };
 
@@ -190,7 +191,7 @@ class Event : public DataHandle<T> {
         internal::OK(ocrEventSatisfy(this->guid(), NULL_GUID));
     }
 
-    void Satisfy(Datablock<T> data) const {
+    void Satisfy(DatablockHandle<T> data) const {
         internal::OK(ocrEventSatisfy(this->guid(), data.guid()));
     }
 
@@ -267,8 +268,8 @@ class NullHandle : public ObjectHandle {
     }
 
     template <typename T>
-    const operator AcquiredDatablock<T>() const {
-        return AcquiredDatablock<T>(nullptr);
+    const operator Datablock<T>() const {
+        return Datablock<T>(nullptr);
     }
 };
 
@@ -303,13 +304,13 @@ struct TypeMapping<T<U>> {
                   "Generic type mappings only available for OCR data handles.");
     typedef U Parameter;
     // TODO - get rid of "Type" from these names
-    typedef AcquiredDatablock<Parameter> DepType;
+    typedef Datablock<Parameter> DepType;
     typedef Event<Parameter> OutEventType;
 };
 template <>
 struct TypeMapping<NullHandle> {
     typedef void Parameter;
-    typedef AcquiredDatablock<Parameter> DepType;
+    typedef Datablock<Parameter> DepType;
     typedef Event<Parameter> OutEventType;
 };
 template <>
@@ -352,7 +353,7 @@ struct TaskArgsMatchDeps<Position, R()> {
 template <typename T, T *t, typename U>
 class TaskImplementation;
 
-// TODO - add static check to make sure Args have AcquiredDatablock types
+// TODO - add static check to make sure Args have Datablock types
 template <typename F, F *user_fn, typename R, typename... Args>
 class TaskImplementation<F, user_fn, R(Args...)> {
  public:
@@ -371,13 +372,13 @@ class TaskImplementation<F, user_fn, R(Args...)> {
     // but we could roll our own if we really want C++11 compatibility.
     template <typename U = R, EnableIfNotVoid<U> = 0, size_t... I>
     static ocrGuid_t Launch(ocrEdtDep_t deps[], std::index_sequence<I...>) {
-        // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
+        // This calls the Datablock(ocrEdtDep_t) constructor
         return user_fn((Args{deps[I]})...).guid();
     }
 
     template <typename U = R, EnableIfVoid<U> = 0, size_t... I>
     static ocrGuid_t Launch(ocrEdtDep_t deps[], std::index_sequence<I...>) {
-        // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
+        // This calls the Datablock(ocrEdtDep_t) constructor
         user_fn((Args{deps[I]})...);
         return NULL_GUID;
     }
@@ -507,10 +508,10 @@ class TaskTemplate : public TaskTemplateBase<F> {
 
 namespace internal {
 
-typedef NullHandle DummyTaskFnType(AcquiredDatablock<int>,
-                                   AcquiredDatablock<double>);
+typedef NullHandle DummyTaskFnType(Datablock<int>, Datablock<double>);
 
-typedef Task<void, DummyTaskFnType, Datablock<int>, Datablock<double>>
+typedef Task<void, DummyTaskFnType, DatablockHandle<int>,
+             DatablockHandle<double>>
         DummyTaskType;
 
 typedef TaskTemplateBase<DummyTaskFnType> DummyTemplateBaseType;
@@ -529,7 +530,7 @@ static_assert(internal::IsLegalHandle<internal::DummyTemplateType>::value,
               "TaskTemplate must be castable to/from ocrGuid_t.");
 
 // prototype for user's main function
-void Main(AcquiredDatablock<MainTaskArgs> args);
+void Main(Datablock<MainTaskArgs> args);
 
 }  // namespace ocxxr
 
@@ -540,7 +541,7 @@ void Main(AcquiredDatablock<MainTaskArgs> args);
 extern "C" ocrGuid_t mainEdt(u32 paramc, u64 /*paramv*/[], u32 depc,
                              ocrEdtDep_t depv[]) {
     ASSERT(paramc == 0 && depc == 1);
-    ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>(depv[0]));
+    ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>(depv[0]));
     return NULL_GUID;
 }
 

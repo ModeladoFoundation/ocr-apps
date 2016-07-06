@@ -2,18 +2,17 @@
 
 static constexpr u32 kPayload = 765;
 
-void ChildTask(ocxxr::AcquiredDatablock<u32>,
-               ocxxr::AcquiredDatablock<double> arg,
-               ocxxr::AcquiredDatablock<u32>) {
+void ChildTask(ocxxr::Datablock<u32>, ocxxr::Datablock<double> arg,
+               ocxxr::Datablock<u32>) {
     PRINTF("Child task ran! (arg=%d)\n", arg.data());
     ASSERT(arg.data() == kPayload);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
 }
 
-void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
+void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
-    auto datablock = ocxxr::AcquiredDatablock<u32>::Create();
+    auto datablock = ocxxr::Datablock<u32>::Create();
     datablock.data() = kPayload;
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     task_template.CreateTask(datablock);

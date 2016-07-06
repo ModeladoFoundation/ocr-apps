@@ -1,24 +1,24 @@
 #include <ocxxr.hpp>
 
-ocxxr::Datablock<char> TaskA(ocxxr::AcquiredDatablock<char> arg) {
+ocxxr::DatablockHandle<char> TaskA(ocxxr::Datablock<char> arg) {
     char label[] = {arg.data(), '\0'};
     PRINTF("Running task %s...\n", label);
     arg.data() = 'B';
     return arg;
 }
 
-void TaskB(ocxxr::AcquiredDatablock<char> arg) {
+void TaskB(ocxxr::Datablock<char> arg) {
     char label[] = {arg.data(), '\0'};
     PRINTF("Running task %s...\n", label);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
 }
 
-void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
+void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child tasks...\n");
     // set up task A
     auto template_a = OCXXR_TEMPLATE_FOR(TaskA);
-    auto task_arg = ocxxr::AcquiredDatablock<char>::Create();
+    auto task_arg = ocxxr::Datablock<char>::Create();
     task_arg.data() = 'A';
     auto future = template_a.CreateFuture(task_arg);
     // set up task B

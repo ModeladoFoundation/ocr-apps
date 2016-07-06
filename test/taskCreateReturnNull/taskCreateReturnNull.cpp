@@ -7,7 +7,7 @@ ocxxr::NullHandle ChildTask() {
     return ocxxr::NullHandle();
 }
 
-void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
+void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     task_template.CreateTask();
