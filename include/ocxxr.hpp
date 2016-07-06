@@ -33,7 +33,7 @@ using EnableIfBaseOf =
 
 // Check error status of C API call
 inline void OK(u8 status) { ASSERT(status == 0); }
-}
+}  // namespace internal
 
 //! Abstract base class for all OCR objects with GUIDs.
 class ObjectHandle {
@@ -187,6 +187,12 @@ class Event : public DataHandle<T> {
         internal::OK(ocrEventSatisfy(this->guid(), data.guid()));
     }
 
+    void AddDependence(DataHandle<T> src) const {
+        constexpr u32 slot = 0;
+        constexpr ocrDbAccessMode_t mode = DB_DEFAULT_MODE;
+        internal::OK(ocrAddDependence(src.guid(), this->guid(), slot, mode));
+    }
+
  private:
     static ocrGuid_t Init(ocrEventTypes_t type) {
         ocrGuid_t guid;
@@ -282,16 +288,21 @@ struct FnInfo<R(Args...)> {
 // NOTE: These definitions are separate from those of the associated data types
 // in order to break the cyclic dependence between the two types.
 template <typename T>
-struct DependenceArgFor;
+struct TypeMapping;
 
 template <template <typename> class T, typename U>
-struct DependenceArgFor<T<U>> {
-    typedef internal::EnableIfBaseOf<DataHandle<U>, T<U>, AcquiredDatablock<U>>
-            Type;
+struct TypeMapping<T<U>> {
+    typedef EnableIfBaseOf<DataHandle<U>, T<U>, AcquiredDatablock<U>> DepType;
+    typedef EnableIfBaseOf<DataHandle<U>, T<U>, Event<U>> OutEventType;
 };
 template <>
-struct DependenceArgFor<NullHandle> {
-    typedef AcquiredDatablock<void> Type;
+struct TypeMapping<NullHandle> {
+    typedef AcquiredDatablock<void> DepType;
+    typedef Event<void> OutEventType;
+};
+template <>
+struct TypeMapping<void> {
+    typedef Event<void> OutEventType;
 };
 
 template <size_t ArgCount, size_t ParamCount>
@@ -303,7 +314,7 @@ struct TaskArgCountCheck {
 
 template <typename A, typename D, size_t Position>
 struct TaskArgTypeMatchesParamType {
-    typedef typename DependenceArgFor<D>::Type DT;
+    typedef typename TypeMapping<D>::DepType DT;
     static_assert(std::is_base_of<DT, A>::value,
                   "Dependence argument type must match task parameter type.");
     static constexpr bool value = true;
@@ -346,15 +357,15 @@ class TaskImplementation<F, user_fn, R(Args...)> {
     // XXX - using index_sequence requires C++14,
     // but we could roll our own if we really want C++11 compatibility.
     template <typename U = R, size_t... Indices>
-    static internal::EnableIfNotVoid<U, ocrGuid_t> Launch(
+    static EnableIfNotVoid<U, ocrGuid_t> Launch(
             ocrEdtDep_t deps[], std::index_sequence<Indices...>) {
         // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
         return user_fn((Args{deps[Indices]})...).guid();
     }
 
     template <typename U = R, size_t... Indices>
-    static internal::EnableIfVoid<U, ocrGuid_t> Launch(
-            ocrEdtDep_t deps[], std::index_sequence<Indices...>) {
+    static EnableIfVoid<U, ocrGuid_t> Launch(ocrEdtDep_t deps[],
+                                             std::index_sequence<Indices...>) {
         // This calls the AcquiredDatablock(ocrEdtDep_t) constructor
         user_fn((Args{deps[Indices]})...);
         return NULL_GUID;
@@ -383,23 +394,46 @@ class TaskTemplateBase : public ObjectHandle {
 template <typename F, typename... Deps>
 class Task : public ObjectHandle {
  public:
+    typedef typename internal::TypeMapping<
+            typename internal::FnInfo<F>::ResultType>::OutEventType
+            OutEventType;
+
     // TODO - add support for hints, output events, etc
     Task(TaskTemplateBase<F> task_template, Deps... deps)
-            : ObjectHandle(Init(task_template, deps...)) {}
+            : ObjectHandle(Init(NullHandle(), task_template, deps...)) {}
+
+    Task(OutEventType out_event, TaskTemplateBase<F> task_template,
+         Deps... deps)
+            : ObjectHandle(Init(out_event, task_template, deps...)) {}
 
     void Destroy() const { internal::OK(ocrEdtDestroy(this->guid())); }
 
     // TODO - AddDependence
 
  private:
-    static constexpr u64 depc = internal::FnInfo<F>::kArgCount;
+    static constexpr u32 depc = internal::FnInfo<F>::kArgCount;
 
-    static ocrGuid_t Init(TaskTemplateBase<F> task_template, Deps... deps) {
+    static ocrGuid_t Init(OutEventType user_out_event,
+                          TaskTemplateBase<F> task_template, Deps... deps) {
+        bool is_future = !user_out_event.is_null();
         ocrGuid_t guid;
+        ocrGuid_t internal_out_event;
+        ocrGuid_t *out_ptr = is_future ? &internal_out_event : nullptr;
         ocrGuid_t depv[depc + 1] = {(deps.guid())..., NULL_GUID};
+        ocrGuid_t last_dep;
+        if (is_future) {
+            last_dep = depv[depc - 1];
+            depv[depc - 1] = UNINITIALIZED_GUID;
+        }
         ocrEdtCreate(&guid, task_template.guid(), EDT_PARAM_DEF, nullptr,
                      EDT_PARAM_DEF, depc ? depv : nullptr, EDT_PROP_NONE,
-                     nullptr, nullptr);
+                     nullptr, out_ptr);
+        if (is_future) {
+            ocrAddDependence(internal_out_event, user_out_event.guid(), 0,
+                             DB_DEFAULT_MODE);
+            // satisfy last slot
+            ocrAddDependence(last_dep, guid, depc - 1, DB_DEFAULT_MODE);
+        }
         return guid;
     }
 
@@ -413,7 +447,9 @@ class Task : public ObjectHandle {
 template <typename F>
 class TaskTemplate : public TaskTemplateBase<F> {
  public:
-    typedef typename internal::FnInfo<F>::ResultType ResultType;
+    typedef typename internal::TypeMapping<
+            typename internal::FnInfo<F>::ResultType>::OutEventType
+            OutEventType;
 
     template <F *user_fn>
     static TaskTemplate<F> Create() {
@@ -431,8 +467,8 @@ class TaskTemplate : public TaskTemplateBase<F> {
     }
 
     template <typename... Deps>
-    Task<F, Deps...> CreateTask(Event<ResultType> out_event, Deps... deps) {
-        return Task<F, Deps...>(*this, out_event, deps...);
+    Task<F, Deps...> CreateFuture(OutEventType out_event, Deps... deps) {
+        return Task<F, Deps...>(out_event, *this, deps...);
     }
 
     ~TaskTemplate() = default;
