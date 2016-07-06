@@ -16,11 +16,14 @@ void TaskB(ocxxr::AcquiredDatablock<char> arg) {
 
 void ocxxr::Main(ocxxr::AcquiredDatablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child tasks...\n");
+    // set up task A
     auto template_a = OCXXR_TEMPLATE_FOR(TaskA);
-    auto template_b = OCXXR_TEMPLATE_FOR(TaskB);
-    auto out_event = ocxxr::OnceEvent<char>();
-    template_b.CreateTask(out_event);
     auto task_arg = ocxxr::AcquiredDatablock<char>();
     task_arg.data() = 'A';
-    template_a.CreateFuture(out_event, task_arg);
+    auto future = template_a.CreateFuture(task_arg);
+    // set up task B
+    auto template_b = OCXXR_TEMPLATE_FOR(TaskB);
+    template_b.CreateTask(future.event());
+    // release task A (future)
+    future.Release();
 }
