@@ -183,7 +183,7 @@ class Event : public DataHandle<T> {
         internal::OK(ocrEventSatisfy(this->guid(), NULL_GUID));
     }
 
-    void Satisfy(DataHandle<T> data) const {
+    void Satisfy(Datablock<T> data) const {
         internal::OK(ocrEventSatisfy(this->guid(), data.guid()));
     }
 
