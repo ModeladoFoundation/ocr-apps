@@ -295,62 +295,52 @@ namespace internal {
 template <typename T>
 struct FnInfo;
 
-template <typename R, typename... Args>
-struct FnInfo<R(Args...)> {
-    static constexpr size_t kArgCount = sizeof...(Args);
-    typedef std::function<R(Args...)> FnType;
-    typedef std::tuple<Args...> ArgTypes;
-    typedef R ResultType;
+template <typename R, typename... As>
+struct FnInfo<R(As...)> {
+    static constexpr size_t kArgCount = sizeof...(As);
+    typedef std::function<R(As...)> Fn;
+    typedef std::tuple<As...> Args;
+    typedef R Result;
     template <size_t I>
     struct Arg {
-        typedef typename std::tuple_element<I, ArgTypes>::type Type;
+        typedef typename std::tuple_element<I, Args>::type Type;
     };
 };
 
-// NOTE: These definitions are separate from those of the associated data types
-// in order to break the cyclic dependence between the two types.
 template <typename T>
-struct TypeMapping;
+struct Unpack;
 
 template <template <typename> class T, typename U>
-struct TypeMapping<T<U>> {
-    static_assert(std::is_convertible<T<U>, DataHandle<U>>::value,
-                  "Generic type mappings only available for OCR data handles.");
+struct Unpack<T<U>> {
     typedef U Parameter;
-    // TODO - get rid of "Type" from these names
-    typedef Datablock<Parameter> DepType;
-    typedef DataHandle<Parameter> Handle;
-    typedef Event<Parameter> OutEventType;
+    static_assert(std::is_convertible<T<U>, DataHandle<U>>::value,
+                  "Expected an OCR data container type.");
 };
 template <>
-struct TypeMapping<NullHandle> {
+struct Unpack<NullHandle> {
     typedef void Parameter;
-    typedef Datablock<Parameter> DepType;
-    typedef DataHandle<Parameter> Handle;
-    typedef Event<Parameter> OutEventType;
 };
 template <>
-struct TypeMapping<void> {
+struct Unpack<void> {
     typedef void Parameter;
-    typedef DataHandle<Parameter> Handle;
-    typedef Event<Parameter> OutEventType;
 };
 
 template <typename F>
 using ReturnTypeParameter =
-        typename TypeMapping<typename FnInfo<F>::ResultType>::Parameter;
+        typename Unpack<typename FnInfo<F>::Result>::Parameter;
 
 template <size_t ArgCount, size_t ParamCount>
 struct TaskArgCountCheck {
-    static_assert(ArgCount == ParamCount,
-                  "Dependence argument count must match task parameter count.");
+    static_assert(
+            ArgCount <= ParamCount,
+            "Dependence argument count must not exceed task parameter count.");
     static constexpr bool value = true;
 };
 
 template <typename A, typename D, size_t Position>
 struct TaskArgTypeMatchesParamType {
-    typedef typename TypeMapping<D>::DepType DT;
-    static_assert(std::is_base_of<DT, A>::value,
+    typedef Datablock<typename Unpack<D>::Parameter> DB;
+    static_assert(std::is_base_of<A, DB>::value,
                   "Dependence argument type must match task parameter type.");
     static constexpr bool value = true;
 };
@@ -429,6 +419,9 @@ class Task : public ObjectHandle {
  protected:
     friend class TaskTemplate<F>;
 
+    template <typename T>
+    using DataHandleOf = DataHandle<typename internal::Unpack<T>::Parameter>;
+
     // TODO - add support for hints, output events, etc
     Task(Event<R> *out_event, ocrGuid_t task_template, ocrGuid_t depv[])
             : ObjectHandle(Init(out_event, task_template, depv)) {}
@@ -450,9 +443,6 @@ class Task : public ObjectHandle {
     }
 
  private:
-    template <typename T>
-    using DataHandleOf = typename internal::TypeMapping<T>::Handle;
-
     static ocrGuid_t Init(Event<R> *out_event, ocrGuid_t task_template,
                           ocrGuid_t depv[]) {
         ocrGuid_t guid;
@@ -521,9 +511,9 @@ class TaskTemplate : public ObjectHandle {
  private:
     explicit TaskTemplate(ocrGuid_t guid) : ObjectHandle(guid) {}
 
-    typedef typename internal::FnInfo<F>::ResultType RT;
-    static_assert(std::is_same<void, RT>::value ||
-                          std::is_base_of<ObjectHandle, RT>::value,
+    typedef typename internal::FnInfo<F>::Result Res;
+    static_assert(std::is_same<void, Res>::value ||
+                          std::is_base_of<ObjectHandle, Res>::value,
                   "User's task function must return an OCR object type.");
 };
 
