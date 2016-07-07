@@ -408,22 +408,6 @@ class TaskImplementation<F, user_fn, R(Args...)> {
 }  // namespace internal
 
 template <typename F>
-class TaskTemplateBase : public ObjectHandle {
- public:
-    ~TaskTemplateBase() = default;
-
-    void Destroy() const { internal::OK(ocrEdtTemplateDestroy(this->guid())); }
-
- protected:
-    explicit TaskTemplateBase(ocrGuid_t guid) : ObjectHandle(guid) {}
-
-    typedef typename internal::FnInfo<F>::ResultType R;
-    static_assert(std::is_same<void, R>::value ||
-                          std::is_base_of<ObjectHandle, R>::value,
-                  "User's task function must return an OCR object type.");
-};
-
-template <typename F>
 class TaskTemplate;
 
 // TODO - Add static check to make sure Deps are convertible to DataHandle
@@ -503,7 +487,7 @@ class DelayedFuture {
 };
 
 template <typename F>
-class TaskTemplate : public TaskTemplateBase<F> {
+class TaskTemplate : public ObjectHandle {
  public:
     typedef internal::ReturnTypeParameter<F> R;
 
@@ -517,6 +501,8 @@ class TaskTemplate : public TaskTemplateBase<F> {
         ocrEdtTemplateCreate(&guid, internal_fn, 0, 1 + depc);
         return TaskTemplate<F>(guid);
     }
+
+    void Destroy() const { internal::OK(ocrEdtTemplateDestroy(this->guid())); }
 
     template <typename... Deps>
     Task<F> CreateTask(Deps... deps) {
@@ -533,7 +519,12 @@ class TaskTemplate : public TaskTemplateBase<F> {
     ~TaskTemplate() = default;
 
  private:
-    explicit TaskTemplate(ocrGuid_t guid) : TaskTemplateBase<F>(guid) {}
+    explicit TaskTemplate(ocrGuid_t guid) : ObjectHandle(guid) {}
+
+    typedef typename internal::FnInfo<F>::ResultType RT;
+    static_assert(std::is_same<void, RT>::value ||
+                          std::is_base_of<ObjectHandle, RT>::value,
+                  "User's task function must return an OCR object type.");
 };
 
 namespace internal {
@@ -542,14 +533,9 @@ typedef NullHandle DummyTaskFnType(Datablock<int>, Datablock<double>);
 
 typedef Task<DummyTaskFnType> DummyTaskType;
 
-typedef TaskTemplateBase<DummyTaskFnType> DummyTemplateBaseType;
-
 typedef TaskTemplate<DummyTaskFnType> DummyTemplateType;
 
 }  // namespace internal
-
-static_assert(internal::IsLegalHandle<internal::DummyTemplateBaseType>::value,
-              "TaskTemplateBase must be castable to/from ocrGuid_t.");
 
 static_assert(internal::IsLegalHandle<internal::DummyTaskType>::value,
               "Task must be castable to/from ocrGuid_t.");
