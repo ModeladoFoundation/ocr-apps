@@ -78,7 +78,7 @@ class DataHandle : public ObjectHandle {
 };
 
 static_assert(internal::IsLegalHandle<DataHandle<int>>::value,
-              "NullHandle must be castable to/from ocrGuid_t.");
+              "DataHandle must be castable to/from ocrGuid_t.");
 
 void Shutdown() { ocrShutdown(); }
 
@@ -280,6 +280,16 @@ class NullHandle : public ObjectHandle {
 static_assert(internal::IsLegalHandle<NullHandle>::value,
               "NullHandle must be castable to/from ocrGuid_t.");
 
+// Used only for placing "holes" during task dependence creation
+template <typename T>
+class UnknownDependence : public DataHandle<T> {
+ public:
+    UnknownDependence() : ObjectHandle(UNINITIALIZED_GUID) {}
+};
+
+static_assert(internal::IsLegalHandle<UnknownDependence<int>>::value,
+              "UnknownDependence must be castable to/from ocrGuid_t.");
+
 namespace internal {
 
 template <typename T>
@@ -409,7 +419,10 @@ class TaskTemplateBase : public ObjectHandle {
                   "User's task function must return an OCR object type.");
 };
 
-// TODO - add static check to make sure Deps extend ObjectHandle
+// TODO - Add static check to make sure Deps are convertible to DataHandle
+// TODO - Get rid of ...Deps and R types in template signature.
+// These overly-complicate the type of the task. In fact, the Deps type
+// information is only useful in the task creation call.
 template <typename R, typename F, typename... Deps>
 class Task : public ObjectHandle {
  public:
