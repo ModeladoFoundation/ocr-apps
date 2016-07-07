@@ -19,10 +19,8 @@
 #include "ocr-std.h"
 #include "extensions/ocr-affinity.h"
 
-#ifdef USE_REDUCTIONLIBRARY
 #define ENABLE_EXTENSION_LABELING
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
-#endif
 
 #ifndef TG_ARCH
 #include "time.h"
@@ -32,11 +30,7 @@
 #include <math.h>
 
 #include "stencil.h"
-#ifdef USE_REDUCTIONLIBRARY
 #include "reduction.h"
-#else
-#include "reduction_v1.h"
-#endif
 
 //mainEdt
 // Macro _OCR_TASK_FNC_( FNC_name ) expands to ocrGuid_t FNC_name( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
@@ -51,7 +45,6 @@ _OCR_TASK_FNC_( FNC_globalInit );
                     _OCR_TASK_FNC_( FNC_init_rankDataH ); //         _OCR_TASK_FNC_( FNC_init_rankDataH ); //         _OCR_TASK_FNC_( FNC_init_rankDataH );
 
 _OCR_TASK_FNC_( FNC_globalCompute );
-    _OCR_TASK_FNC_( FNC_globalCompute_setUp );
     _OCR_TASK_FNC_( FNC_rankComputeSpawner );
     //              /                                                   /                                                   /
         _OCR_TASK_FNC_( FNC_rankMultiTimestepper);        //  _OCR_TASK_FNC_( FNC_rankMultiTimestepper );  //  _OCR_TASK_FNC_( FNC_rankMultiTimestepper );
@@ -119,19 +112,6 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     _idep = 0;
     ocrAddDependence( DBK_globalH, TS_globalCompute.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( TS_globalInit_OET, TS_globalCompute.EDT, _idep++, DB_MODE_NULL);
-
-    //TS_globalFinalize.FNC = FNC_globalFinalize;
-    //ocrEdtTemplateCreate( &TS_globalFinalize.TML, TS_globalFinalize.FNC, 0, 2 );
-
-    //ocrEdtCreate( &TS_globalFinalize.EDT, TS_globalFinalize.TML,
-    //              EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-    //              EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &TS_globalFinalize.OET );
-
-    //ocrAddDependence( TS_globalFinalize.OET, TS_globalFinalize_OET, 0, DB_MODE_NULL);
-
-    //_idep = 0;
-    //ocrAddDependence( DBK_globalH, TS_globalFinalize.EDT, _idep++, DB_MODE_RW );
-    //ocrAddDependence( TS_globalCompute_OET, TS_globalFinalize.EDT, _idep++, DB_MODE_NULL);
 
     return NULL_GUID;
 }
@@ -323,35 +303,13 @@ ocrGuid_t FNC_init_globalH_part1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 
     u64 NR = PTR_globalParamH->NR;
 
-    PTR_globalH->itimestep = 1; //Initial timestep is 1
+    PTR_globalH->itimestep = 0; //Initial timestep is 0
 
-    timer* PTR_timers;
-    ocrDbCreate( &PTR_globalH->DBK_timers, (void**) &PTR_timers, sizeof(timer)*number_of_timers,
-                 DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+    ocrEventCreate( &PTR_globalH->EVT_OUT_norm_reduction, OCR_EVENT_STICKY_T, true );
+    ocrEventCreate( &PTR_globalH->EVT_OUT_timer_reduction, OCR_EVENT_STICKY_T, true );
 
-    s64 i;
-    for( i = 0; i < number_of_timers; i++ )
-    {
-        PTR_timers[i].start = 0;
-        PTR_timers[i].total = 0;
-        PTR_timers[i].count = 0;
-        PTR_timers[i].elapsed = 0;
-    }
-
-    ocrEventCreate( &PTR_globalH->EVT_OUT_reduction, OCR_EVENT_STICKY_T, true );
-
-#ifdef USE_REDUCTIONLIBRARY
     ocrGuidRangeCreate(&(PTR_globalH->EVT_RANGE_reduction), NR, GUID_USER_EVENT_STICKY);
-#else
-    ocrGuid_t* PTR_EVT_IN_reduction;
-    ocrDbCreate( &PTR_globalH->DBK_EVT_IN_reduction, (void**) &PTR_EVT_IN_reduction, sizeof(ocrGuid_t)*NR,
-                 DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
-#endif
-
-//    for( i = 0; i < NR; i++ )
-//    {
-//        ocrEventCreate( &PTR_EVT_IN_reduction[i], OCR_EVENT_STICKY_T, true );
-//    }
+    ocrGuidRangeCreate(&(PTR_globalH->EVT_RANGE_timer_reduction), NR, GUID_USER_EVENT_STICKY);
 
     return NULL_GUID;
 }
@@ -399,11 +357,6 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 #ifdef ENABLE_EXTENSION_AFFINITY
     s64 affinityCount;
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    ocrGuid_t DBK_affinityGuids;
-    ocrGuid_t* PTR_affinityGuids;
-    ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
-                 DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
-    ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids );
     ASSERT( affinityCount >= 1 );
     PRINTF("Using affinity API\n");
     s64 PD_X, PD_Y;
@@ -428,7 +381,7 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
         pd = globalRankFromCoords(pd_x, pd_y, PD_X, PD_Y);
         #endif
         //PRINTF("rank %d, policy domain %d\n", i, pd);
-        currentAffinity = PTR_affinityGuids[pd];
+        ocrAffinityGetAt( AFFINITY_PD, pd, &(currentAffinity) );
         ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
         ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
 #endif
@@ -444,11 +397,7 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 
         _idep = 0;
         ocrAddDependence( DBK_globalParamH, TS_rankInit.EDT, _idep++, DB_MODE_CONST );
-#ifdef USE_REDUCTIONLIBRARY
         ocrAddDependence( DBK_globalH, TS_rankInit.EDT, _idep++, DB_MODE_RO );
-#else
-        ocrAddDependence( PTR_globalH->DBK_EVT_IN_reduction, TS_rankInit.EDT, _idep++, DB_MODE_RW );
-#endif
         ocrAddDependence( PTR_rankHs[i], TS_rankInit.EDT, _idep++, DB_MODE_RW );
     }
 
@@ -463,19 +412,11 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalParamH = (ocrGuid_t) depv[0].guid;
-#ifdef USE_REDUCTIONLIBRARY
     ocrGuid_t DBK_globalH = (ocrGuid_t) depv[1].guid;
-#else
-    ocrGuid_t DBK_EVT_IN_reduction = (ocrGuid_t) depv[1].guid;
-#endif
     ocrGuid_t DBK_rankH = (ocrGuid_t) depv[2].guid;
 
     globalParamH_t *PTR_globalParamH = depv[0].ptr;
-#ifdef USE_REDUCTIONLIBRARY
     globalH_t* PTR_globalH = depv[1].ptr;
-#else
-    ocrGuid_t* PTR_EVT_IN_reduction = depv[1].ptr;
-#endif
     rankH_t *PTR_rankH = (rankH_t*) depv[2].ptr;
 
     ocrGuid_t currentAffinity = NULL_GUID;
@@ -500,15 +441,20 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrDbCreate( &(PTR_rankH->DBK_rankDataH), (void **) &PTR_rankDataH, sizeof(rankDataH_t),
                  DB_PROP_NONE, PICK_1_1(&HNT_db,currentAffinity), NO_ALLOC );
 
+    timer* PTR_timers;
+    ocrDbCreate( &(PTR_rankH->DBK_timers), (void **) &PTR_timers, sizeof(timer)*number_of_timers,
+                 DB_PROP_NONE, PICK_1_1(&HNT_db,currentAffinity), NO_ALLOC );
+
     rankTemplateH_t *PTR_rankTemplateH;
     ocrDbCreate( &(PTR_rankH->DBK_rankTemplateH), (void **) &PTR_rankTemplateH, sizeof(rankTemplateH_t),
                  DB_PROP_NONE, PICK_1_1(&HNT_db,currentAffinity), NO_ALLOC );
 
-#ifdef USE_REDUCTIONLIBRARY
     reductionPrivate_t* PTR_reductionH;
     ocrDbCreate( &(PTR_rankH->DBK_reductionH), (void **) &PTR_reductionH, sizeof(reductionPrivate_t),
                  DB_PROP_NONE, PICK_1_1(&HNT_db,currentAffinity), NO_ALLOC );
-#endif
+    reductionPrivate_t* PTR_timer_reductionH;
+    ocrDbCreate( &(PTR_rankH->DBK_timer_reductionH), (void **) &PTR_timer_reductionH, sizeof(reductionPrivate_t),
+                 DB_PROP_NONE, PICK_1_1(&HNT_db,currentAffinity), NO_ALLOC );
 
     s32 i;
     for( i = 0; i < 2; i++ )
@@ -518,10 +464,7 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                         DB_PROP_NONE, PICK_1_1(&HNT_db,currentAffinity), NO_ALLOC );
     }
 
-    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 8;
-#ifdef USE_REDUCTIONLIBRARY
-    _depc++;
-#endif
+    MyOcrTaskStruct_t TS_init_rankH; _paramc = 1; _depc = 11;
 
     TS_init_rankH.FNC = FNC_init_rankH;
     ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
@@ -532,20 +475,16 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     _idep = 0;
     ocrAddDependence( DBK_globalParamH, TS_init_rankH.EDT, _idep++, DB_MODE_CONST );
-#ifdef USE_REDUCTIONLIBRARY
     ocrAddDependence( DBK_globalH, TS_init_rankH.EDT, _idep++, DB_MODE_RO );
-#else
-    ocrAddDependence( DBK_EVT_IN_reduction, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
-#endif
     ocrAddDependence( PTR_rankH->DBK_globalParamH_rankCopy, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_rankParamH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_rankDataH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_rankH->DBK_timers, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_rankEventHs[0], TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_rankEventHs[1], TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_rankTemplateH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
-#ifdef USE_REDUCTIONLIBRARY
     ocrAddDependence( PTR_rankH->DBK_reductionH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
-#endif
+    ocrAddDependence( PTR_rankH->DBK_timer_reductionH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 }
@@ -562,23 +501,28 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 id = (s64) paramv[0];
 
     ocrGuid_t DBK_globalParamH = depv[0].guid;
-#ifdef USE_REDUCTIONLIBRARY
     ocrGuid_t DBK_globalH = depv[1].guid;
-#else
-    ocrGuid_t DBK_EVT_IN_reduction = depv[1].guid;
-#endif
     ocrGuid_t DBK_globalParamH_rankCopy = depv[2].guid;
     ocrGuid_t DBK_rankParamH = depv[3].guid;
+    ocrGuid_t DBK_timers = depv[4].guid;
 
     globalParamH_t *PTR_globalParamH = (globalParamH_t*) depv[0].ptr;
-#ifdef USE_REDUCTIONLIBRARY
     globalH_t *PTR_globalH = depv[1].ptr;
-#else
-    ocrGuid_t* PTR_EVT_IN_reduction = depv[1].ptr;
-#endif
     globalParamH_t *PTR_globalParamH_rankCopy = (globalParamH_t*) depv[2].ptr;
     rankParamH_t *PTR_rankParamH = (rankParamH_t*) depv[3].ptr;
     rankDataH_t *PTR_rankDataH = (rankDataH_t*) depv[4].ptr;
+    timer* PTR_timers = depv[5].ptr;
+
+    s64 i;
+    for( i = 0; i < number_of_timers; i++ )
+    {
+        PTR_timers[i].start = 0;
+        PTR_timers[i].total = 0;
+        PTR_timers[i].count = 0;
+        PTR_timers[i].elapsed = 0;
+    }
+
+    ocrDbRelease(DBK_timers);
 
     ocrGuid_t currentAffinity = NULL_GUID;
     ocrHint_t HNT_edt;
@@ -619,7 +563,7 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 np_y = PTR_rankParamH->np_y;
     #endif
 
-    PTR_rankParamH->itimestep = 1; //Initial timestep is 1
+    PTR_rankParamH->itimestep = 0; //Initial timestep is 0
 
     double *xIn, *xOut, *weight, *refNorm;
     #if PROBLEM_TYPE==2
@@ -690,16 +634,9 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( PTR_rankDataH->DBK_weight, TS_init_rankDataH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankDataH->DBK_refNorm, TS_init_rankDataH.EDT, _idep++, DB_MODE_RW );
 
-#ifndef USE_REDUCTIONLIBRARY
-    ocrGuid_t EVT_reduction;
-    ocrEventCreate( &EVT_reduction, OCR_EVENT_STICKY_T, true );
-    PTR_EVT_IN_reduction[id] = EVT_reduction;
-#endif
-
-    s64 i;
     for( i = 0; i < 2; i++ )
     {
-        rankEventH_t *PTR_rankEventH = (rankEventH_t*) depv[5+i].ptr;
+        rankEventH_t *PTR_rankEventH = (rankEventH_t*) depv[6+i].ptr;
 
         ocrEventCreate( &PTR_rankEventH->EVT_Lsend_fin, OCR_EVENT_STICKY_T, false );
         ocrEventCreate( &PTR_rankEventH->EVT_Rsend_fin, OCR_EVENT_STICKY_T, false );
@@ -716,13 +653,9 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrEventCreate( &PTR_rankEventH->EVT_Brecv_fin, OCR_EVENT_STICKY_T, false );
         ocrEventCreate( &PTR_rankEventH->EVT_Trecv_fin, OCR_EVENT_STICKY_T, false );
         #endif
-
-#ifndef USE_REDUCTIONLIBRARY
-        PTR_rankEventH->EVT_IN_reduction = EVT_reduction;
-#endif
     }
 
-    rankTemplateH_t *PTR_rankTemplateH = depv[7].ptr;
+    rankTemplateH_t *PTR_rankTemplateH = depv[8].ptr;
 
     _paramc = 0; _depc = 4;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_Lsend), FNC_Lsend, _paramc, _depc );
@@ -739,17 +672,15 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     #endif
 
     #if PROBLEM_TYPE==2
-    _paramc = 0; _depc = 15;
+    _paramc = 0; _depc = 18;
     #elif PROBLEM_TYPE==1
-    _paramc = 0; _depc = 11;
+    _paramc = 0; _depc = 14;
     #endif
-#ifdef USE_REDUCTIONLIBRARY
-    _depc++;
-#endif
+
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_update), FNC_update, _paramc, _depc );
 
-#ifdef USE_REDUCTIONLIBRARY
-    reductionPrivate_t* PTR_reductionH = depv[8].ptr;
+    reductionPrivate_t* PTR_reductionH = depv[9].ptr;
+    reductionPrivate_t* PTR_timer_reductionH = depv[10].ptr;
 
     PTR_reductionH->nrank = PTR_globalParamH_rankCopy->NR;
     PTR_reductionH->myrank = id;
@@ -758,10 +689,20 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PTR_reductionH->rangeGUID = PTR_globalH->EVT_RANGE_reduction;
     PTR_reductionH->reductionTML = NULL_GUID;
     PTR_reductionH->new = 1;  //first time
-    PTR_reductionH->all = 1;  //go up and down (ALL_REDUCE)
-    ocrEventCreate(&(PTR_reductionH->returnEVT), OCR_EVENT_ONCE_T, true);
-    if(id==0) PTR_reductionH->returnEVT = PTR_globalH->EVT_OUT_reduction;
-#endif
+    PTR_reductionH->all = 0;  //go up and down (ALL_REDUCE)
+    //ocrEventCreate(&(PTR_reductionH->returnEVT), OCR_EVENT_ONCE_T, true);
+    if(id==0) PTR_reductionH->returnEVT = PTR_globalH->EVT_OUT_norm_reduction;
+
+    PTR_timer_reductionH->nrank = PTR_globalParamH_rankCopy->NR;
+    PTR_timer_reductionH->myrank = id;
+    PTR_timer_reductionH->ndata = 1;
+    PTR_timer_reductionH->reductionOperator = REDUCTION_F8_MAX;
+    PTR_timer_reductionH->rangeGUID = PTR_globalH->EVT_RANGE_timer_reduction;
+    PTR_timer_reductionH->reductionTML = NULL_GUID;
+    PTR_timer_reductionH->new = 1;  //first time
+    PTR_timer_reductionH->all = 0;  //go up and down (ALL_REDUCE)
+    //ocrEventCreate(&(PTR_timer_reductionH->returnEVT), OCR_EVENT_ONCE_T, true);
+    if(id==0) PTR_timer_reductionH->returnEVT = PTR_globalH->EVT_OUT_timer_reduction;
 
     return NULL_GUID;
 }
@@ -851,34 +792,10 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     globalH_t *PTR_globalH = depv[0].ptr;
 
-    MyOcrTaskStruct_t TS_globalCompute_setUp; _paramc = 0; _depc = 4;
-#ifdef USE_REDUCTIONLIBRARY
-    _depc = 3;
-#endif
-    ocrGuid_t TS_globalCompute_setUp_OET;
-    ocrEventCreate( &TS_globalCompute_setUp_OET, OCR_EVENT_STICKY_T, false );
-
-    TS_globalCompute_setUp.FNC = FNC_globalCompute_setUp;
-    ocrEdtTemplateCreate( &TS_globalCompute_setUp.TML, TS_globalCompute_setUp.FNC, _paramc, _depc );
-
-    ocrEdtCreate( &TS_globalCompute_setUp.EDT, TS_globalCompute_setUp.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &TS_globalCompute_setUp.OET );
-
-    ocrAddDependence( TS_globalCompute_setUp.OET, TS_globalCompute_setUp_OET, 0, DB_MODE_NULL );
-
-    _idep = 0;
-    ocrAddDependence( PTR_globalH->DBK_globalParamH, TS_globalCompute_setUp.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( DBK_globalH, TS_globalCompute_setUp.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_globalH->DBK_timers, TS_globalCompute_setUp.EDT, _idep++, DB_MODE_RW );
-#ifndef USE_REDUCTIONLIBRARY
-    ocrAddDependence( PTR_globalH->DBK_EVT_IN_reduction, TS_globalCompute_setUp.EDT, _idep++, DB_MODE_CONST );
-#endif
-
     ocrGuid_t TS_rankComputeSpawner_OET;
     ocrEventCreate( &TS_rankComputeSpawner_OET, OCR_EVENT_STICKY_T, false );
 
-    MyOcrTaskStruct_t TS_rankComputeSpawner; _paramc = 0; _depc = 4;
+    MyOcrTaskStruct_t TS_rankComputeSpawner; _paramc = 0; _depc = 3;
 
     TS_rankComputeSpawner.FNC = FNC_rankComputeSpawner;
     ocrEdtTemplateCreate( &TS_rankComputeSpawner.TML, TS_rankComputeSpawner.FNC, _paramc, _depc );
@@ -893,7 +810,6 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
     ocrAddDependence( PTR_globalH->DBK_globalParamH, TS_rankComputeSpawner.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_globalH, TS_rankComputeSpawner.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_globalH->DBK_rankHs, TS_rankComputeSpawner.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( TS_globalCompute_setUp_OET, TS_rankComputeSpawner.EDT, _idep++, DB_MODE_NULL );
 
     MyOcrTaskStruct_t TS_summary; _paramc = 0; _depc = 4;
 
@@ -906,58 +822,9 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
     _idep = 0;
     ocrAddDependence( PTR_globalH->DBK_globalParamH, TS_summary.EDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_globalH->DBK_timers, TS_summary.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_globalH->EVT_OUT_reduction, TS_summary.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_globalH->EVT_OUT_timer_reduction, TS_summary.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_globalH->EVT_OUT_norm_reduction, TS_summary.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( TS_rankComputeSpawner_OET, TS_summary.EDT, _idep++, DB_MODE_NULL );
-
-    return NULL_GUID;
-}
-
-//( )
-//{ DBK_globalParamH <COST>, DBK_globalH <RW>, DBK_timers <RW>, DBK_EVT_IN_reduction <COST> }
-ocrGuid_t FNC_globalCompute_setUp(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
-    //PRINTF("%s\n", __func__);
-    u32 _paramc, _depc, _idep;
-
-    ocrGuid_t DBK_globalParamH = depv[0].guid;
-    ocrGuid_t DBK_globalH = depv[1].guid;
-    ocrGuid_t DBK_timers = depv[2].guid;
-#ifndef USE_REDUCTIONLIBRARY
-    ocrGuid_t DBK_EVT_IN_reduction = depv[3].guid;
-#endif
-
-    globalParamH_t* PTR_globalParamH = depv[0].ptr;
-    globalH_t *PTR_globalH = depv[1].ptr;
-    timer* PTR_timers = depv[2].ptr;
-#ifndef USE_REDUCTIONLIBRARY
-    ocrGuid_t* PTR_EVT_IN_reduction = depv[3].ptr;
-#endif
-
-    profile_start( total_timer, PTR_timers );
-
-    u64 NR = PTR_globalParamH->NR;
-
-    //MyOcrTaskStruct_t TS_reduction; _paramc = 1; _depc = NR;
-
-    //TS_reduction.FNC = FNC_reduction;
-    //ocrEdtTemplateCreate( &TS_reduction.TML, TS_reduction.FNC, _paramc, _depc );
-
-    //ocrEdtCreate( &TS_reduction.EDT, TS_reduction.TML,
-    //              EDT_PARAM_DEF, &NR, EDT_PARAM_DEF, NULL,
-    //              EDT_PROP_FINISH, PICK_1_1(NULL_HINT,NULL_GUID), &TS_reduction.OET );
-
-    //ocrAddDependence( TS_reduction.OET, PTR_globalH->EVT_OUT_reduction, 0, DB_MODE_RW );
-
-    //s64 i = 0;
-    //for( i = 0; i < NR; i++ )
-    //{
-    //    ocrAddDependence( PTR_EVT_IN_reduction[i], TS_reduction.EDT, i, DB_MODE_RO );
-    //}
-
-#ifndef USE_REDUCTIONLIBRARY
-    ocrLibRed_setup_tree_serial( NR, PTR_EVT_IN_reduction, PTR_globalH->EVT_OUT_reduction, FNC_reduction_double );
-#endif
 
     return NULL_GUID;
 }
@@ -1093,14 +960,10 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     MyOcrTaskStruct_t TS_timestep;
     #if PROBLEM_TYPE==2
-    _paramc = 0; _depc = 9;
+    _paramc = 0; _depc = 12;
     #elif PROBLEM_TYPE==1
-    _paramc = 0; _depc = 7;
+    _paramc = 0; _depc = 10;
     #endif
-
-#if USE_REDUCTIONLIBRARY
-    _depc++;
-#endif
 
     TS_timestep.FNC = FNC_timestep;
     ocrEdtTemplateCreate( &TS_timestep.TML, TS_timestep.FNC, _paramc, _depc );
@@ -1120,9 +983,9 @@ ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_
 
     _idep = 0;
     ocrAddDependence( PTR_rankH->DBK_globalParamH_rankCopy, TS_timestep.EDT, _idep++, DB_MODE_CONST );
-#ifdef USE_REDUCTIONLIBRARY
+    ocrAddDependence( PTR_rankH->DBK_timers, TS_timestep.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_reductionH, TS_timestep.EDT, _idep++, DB_MODE_CONST );
-#endif
+    ocrAddDependence( PTR_rankH->DBK_timer_reductionH, TS_timestep.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_rankH->DBK_rankParamH, TS_timestep.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_rankTemplateH, TS_timestep.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_rankH->DBK_rankDataH, TS_timestep.EDT, _idep++, DB_MODE_RW );
@@ -1182,9 +1045,9 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     _idep = 0;
     ocrGuid_t DBK_globalParamH_rankCopy = depv[_idep++].guid;
-#ifdef USE_REDUCTIONLIBRARY
+    ocrGuid_t DBK_timers = depv[_idep++].guid;
     ocrGuid_t DBK_reductionH = depv[_idep++].guid;
-#endif
+    ocrGuid_t DBK_timer_reductionH = depv[_idep++].guid;
     ocrGuid_t DBK_rankParamH = depv[_idep++].guid;
     ocrGuid_t DBK_rankTemplateH = depv[_idep++].guid;
     ocrGuid_t DBK_rankDataH = depv[_idep++].guid;
@@ -1192,9 +1055,9 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     _idep = 0;
     globalParamH_t* PTR_globalParamH_rankCopy = depv[_idep++].ptr;
-#ifdef USE_REDUCTIONLIBRARY
+    timer* PTR_timers = depv[_idep++].ptr;
     reductionPrivate_t* PTR_reductionH = depv[_idep++].ptr;
-#endif
+    reductionPrivate_t* PTR_timer_reductionH = depv[_idep++].ptr;
     rankParamH_t* PTR_rankParamH = depv[_idep++].ptr;
     rankTemplateH_t* PTR_rankTemplateH = depv[_idep++].ptr;
     rankDataH_t* PTR_data = (rankDataH_t*) depv[_idep++].ptr;
@@ -1222,6 +1085,13 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     //PRINTF("%s id %d x %d y %d\n", __func__, id, id_x, id_y);
     //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+
+    if(itimestep==1) //Do not time iteration 0
+    {
+        profile_start( total_timer, PTR_timers );
+        //PRINTF("Starting profile\n");
+        ocrDbRelease( DBK_timers );
+    }
 
     ocrGuid_t currentAffinity = NULL_GUID;
     ocrHint_t HNT_edt;
@@ -1376,9 +1246,9 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     _idep = 0;
     ocrAddDependence( DBK_globalParamH_rankCopy, TS_update.EDT, _idep++, DB_MODE_CONST );
-#ifdef USE_REDUCTIONLIBRARY
+    ocrAddDependence( DBK_timers, TS_update.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_reductionH, TS_update.EDT, _idep++, DB_MODE_RW );
-#endif
+    ocrAddDependence( DBK_timer_reductionH, TS_update.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_rankParamH, TS_update.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_data->DBK_weight, TS_update.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( PTR_data->DBK_xIn, TS_update.EDT, _idep++, DB_MODE_RW );
@@ -1819,18 +1689,16 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     u32 _paramc, _depc, _idep;
 
-#ifdef USE_REDUCTIONLIBRARY
-    ocrGuid_t DBK_reductionH = depv[1].guid;
-    ocrGuid_t DBK_refNorm = depv[6].guid;
-#else
-    ocrGuid_t DBK_refNorm = depv[5].guid;
-#endif
+    ocrGuid_t DBK_timers = depv[1].guid;
+    ocrGuid_t DBK_reductionH = depv[2].guid;
+    ocrGuid_t DBK_timer_reductionH = depv[3].guid;
+    ocrGuid_t DBK_refNorm = depv[8].guid;
 
     _idep = 0;
     globalParamH_t* PTR_globalParamH = depv[_idep++].ptr;
-#ifdef USE_REDUCTIONLIBRARY
+    timer* PTR_timers = depv[_idep++].ptr;
     reductionPrivate_t* PTR_reductionH = depv[_idep++].ptr;
-#endif
+    reductionPrivate_t* PTR_timer_reductionH = depv[_idep++].ptr;
     rankParamH_t* PTR_rankParamH = depv[_idep++].ptr;
     double *restrict weight = (double*) depv[_idep++].ptr;
     double *restrict xIn = (double*) depv[_idep++].ptr;
@@ -1941,13 +1809,15 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         #endif
 #endif
         ocrDbRelease(DBK_refNorm);
-#ifdef USE_REDUCTIONLIBRARY
+
+        profile_stop( total_timer, PTR_timers );
+        ocrDbRelease(DBK_timers);
+
         reductionLaunch(PTR_reductionH, DBK_reductionH, refNorm);
-#else
-        //Satisfy "Reduction" EDT input events with the just "released" local norm Datablock
-        //The "Reduction" EDT was already setup before the computation started
-        ocrEventSatisfy( PTR_rankEvents->EVT_IN_reduction, DBK_refNorm);
-#endif
+
+        double stencil_time = get_elapsed_time( total_timer, PTR_timers );
+        //PRINTF("time %f\n", stencil_time);
+        reductionLaunch(PTR_timer_reductionH, DBK_timer_reductionH, &stencil_time);
     }
 
     return NULL_GUID;
@@ -1985,7 +1855,7 @@ ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 }
 
 //( )
-//{ DBK_globalParamH<CONST>, DBK_timers<RW>, EVT_OUT_reduction <RW>, EVT_control_dep<NULL> }
+//{ DBK_globalParamH<CONST>, DBK_timers<RW>, EVT_OUT_norm_reduction <RW>, EVT_control_dep<NULL> }
 ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
     //PRINTF("%s\n", __func__);
@@ -1993,10 +1863,10 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t DBK_norm = depv[2].guid;
 
     globalParamH_t *PTR_globalParamH = depv[0].ptr;
-    timer* PTR_timers = depv[1].ptr;
+    double* stencil_time = depv[1].ptr;
     double* PTR_norm = depv[2].ptr;
 
-    profile_stop( total_timer, PTR_timers );
+    //profile_stop( total_timer, PTR_timers );
 
     s64 NT = PTR_globalParamH->NT;
     s64 NR = PTR_globalParamH->NR;
@@ -2005,10 +1875,10 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     #if PROBLEM_TYPE==2
     s64 NP_Y = PTR_globalParamH->NP_Y;
     double f_active_points = (double) ( (NP_X - 2*HALO_RADIUS) * (NP_Y - 2*HALO_RADIUS) );
-    double reference_norm = (double) (NT)*2;
+    double reference_norm = (double) (NT+1)*2;
     int stencil_size = 4*HALO_RADIUS + 1;
     #elif PROBLEM_TYPE==1
-    double reference_norm = (double) (NT)*1;
+    double reference_norm = (double) (NT+1)*1;
     double f_active_points = (double) ( (NP_X - 2*HALO_RADIUS) );
     int stencil_size = 2*HALO_RADIUS + 1;
     #endif
@@ -2027,8 +1897,8 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     }
 #endif
 
-    double stencil_time = get_elapsed_time( total_timer, PTR_timers );
-    double avgtime = stencil_time/(double)NT;
+    //double stencil_time = get_elapsed_time( total_timer, PTR_timers );
+    double avgtime = stencil_time[0]/(double)NT;
 
     double flops = (double) (2*stencil_size+1) * f_active_points;
     PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",

@@ -125,11 +125,11 @@ typedef struct
     ocrGuid_t DBK_globalParamH_rankCopy;
     ocrGuid_t DBK_rankParamH; //-->rankParamH_t
     ocrGuid_t DBK_rankDataH; //--> rankDataH_t
+    ocrGuid_t DBK_timers;
     ocrGuid_t DBK_rankEventHs[2]; //--> rankEventH_t[2]
     ocrGuid_t DBK_rankTemplateH;
-#ifdef USE_REDUCTIONLIBRARY
     ocrGuid_t DBK_reductionH; //->reductionPrivate_t
-#endif
+    ocrGuid_t DBK_timer_reductionH;
 } rankH_t;
 
 typedef struct
@@ -137,18 +137,13 @@ typedef struct
     ocrGuid_t DBK_globalParamH; // Commandline parameters/param
 
     s64 itimestep; //tag
-    ocrGuid_t DBK_timers;
+    ocrGuid_t DBK_timers_g;
 
-#ifdef USE_REDUCTIONLIBRARY
     ocrGuid_t EVT_RANGE_reduction;
-#else
-    //Reduction is implemented using an "reduction EDT" that depends on NumRanks #of
-    //input events and the final result datablock will be passed along an output event
-    //Each subdomain EDT satisfies the corresponding input reduction event
-    ocrGuid_t DBK_EVT_IN_reduction; //EVT_IN_reduction[NumRanks]
-#endif
+    ocrGuid_t EVT_RANGE_timer_reduction;
 
-    ocrGuid_t EVT_OUT_reduction;    //Reduction output event
+    ocrGuid_t EVT_OUT_norm_reduction;    //Reduction output event
+    ocrGuid_t EVT_OUT_timer_reduction;
 
     ocrGuid_t DBK_rankHs; //--> rankH_t[]
 } globalH_t;
