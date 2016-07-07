@@ -74,8 +74,8 @@ else
     exit $RET_VAL
 fi
 
-#Adjusted y-axis range for scaling lines
-YMAX="3"
+#Adjusted y-axis range for scaling lines (perfect scaling should have a slope of 1)
+YMAX="1"
 
 if [ -z $WORKSPACE ]; then
     #  Manually execution of framework( i.e. local run and not by jenkin)
