@@ -34,7 +34,7 @@ endif
 
 CC=gcc
 UTS_CFLAGS=-O3 -std=c99
-OCR_CFLAGS=-O3 -std=c99 -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread
+OCR_CFLAGS=-O3 -std=c99 -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${OCR_ROOT}/install/include -L${OCR_ROOT}/install/lib -locr_x86 -lpthread
 LDFLAGS=-lm
 
 all:	raw ocr
@@ -76,8 +76,7 @@ run_long_orig: uts_orig
 ########
 $(OCR_SRCS):	keyword/uts.c
 	@mkdir -p autoocr
-	$(MAKE) run INPUT=$(CURDIR)/keyword/uts.c
-	mv keyword/uts.ocr.c autoocr/uts.c
+	$(MAKE) run INPUT=$(CURDIR)/keyword/uts.c OUTPUT=$(CURDIR)/autoocr/uts.c
 
 ocr:	autoocr/build/uts
 autoocr/build/uts: $(INCS) $(OCR_SRCS) keyword/$(RNG_INCS) keyword/$(RNG_SRCS)
@@ -89,5 +88,5 @@ run.ocr:	ocr
 	@echo "===================== UTS OCR ============================"
 	@echo "(T6) Hybrid ------------------ Tree size = 3443, tree depth  = 42, num leaves = 2575 (74.79%)"
 	@rm -f default.cfg
-	@${REL}/scripts/Configs/config-generator.py --threads 64
-	OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${REL}/install/lib time autoocr/build/uts -g 1 -t 2 -a 0 -d 8 -b 4 -r 1 -q 0.234375 -m 4
+	@${OCR_ROOT}/scripts/Configs/config-generator.py --threads 32
+	OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${OCR_ROOT}/install/lib time autoocr/build/uts -g 1 -t 2 -a 0 -d 8 -b 4 -r 1 -q 0.234375 -m 4

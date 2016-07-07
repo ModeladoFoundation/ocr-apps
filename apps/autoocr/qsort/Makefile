@@ -31,24 +31,23 @@ run.raw:	raw/build/qsort
 ########
 autoocr/qsort.c:	keyword/qsort.c
 	@mkdir -p autoocr
-	$(MAKE) run INPUT=$(CURDIR)/keyword/qsort.c
-	@mv keyword/qsort.ocr.c autoocr/qsort.c
+	$(MAKE) run INPUT=$(CURDIR)/keyword/qsort.c OUTPUT=$(CURDIR)/autoocr/qsort.c
 
 ocr:	autoocr/build/qsort
 autoocr/build/qsort:	autoocr/qsort.c
 	@mkdir -p autoocr/build
-	gcc   -g -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread autoocr/qsort.c -o autoocr/build/qsort
+	gcc   -g -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${OCR_ROOT}/install/include -L${OCR_ROOT}/install/lib -locr_x86 -lpthread autoocr/qsort.c -o autoocr/build/qsort
 
 
 run.ocr:	ocr
 	@echo ""
 	@echo ""
-	@echo "Running OCR Legacy qsort with 64 threads, |threads| < |EDTs|"
+	@echo "Running OCR Legacy qsort with 32 threads, |threads| < |EDTs|"
 	@echo "   n = $N"
 	@echo ""
 	@rm -f default.cfg
-	@${REL}/scripts/Configs/config-generator.py --threads 64
-	@OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${REL}/install/lib autoocr/build/qsort $N
+	@${OCR_ROOT}/scripts/Configs/config-generator.py --threads 32
+	@OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${OCR_ROOT}/install/lib autoocr/build/qsort $N
 	@echo ""
 	@echo "Finished"
 
@@ -58,19 +57,19 @@ run.ocr:	ocr
 ########
 qsort.con:      hero/qsort.con.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/qsort.con.c -lm -o hero/build/qsort.con
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${OCR_ROOT}/install/include -L${OCR_ROOT}/install/lib -locr_x86 -lpthread hero/qsort.con.c -lm -o hero/build/qsort.con
 
 run.qsort.con:  qsort.con
 	@mkdir -p hero/build
 	@rm -f default.cfg
-	@${REL}/scripts/Configs/config-generator.py --threads 64
-	@OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${REL}/install/lib hero/build/qsort.con $N
+	@${OCR_ROOT}/scripts/Configs/config-generator.py --threads 32
+	@OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${OCR_ROOT}/install/lib hero/build/qsort.con $N
 
 qsort-block:      hero/qsort-block.c
 	@mkdir -p hero/build
-	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${REL}/install/include -L${REL}/install/lib -locr_x86 -lpthread hero/qsort-block.c -lm -o hero/build/qsort-block
+	gcc   -Wall -g -Werror -DOCR_TYPE_H=x86.h -DOCR_ENABLE_EDT_NAMING -DOCR_ASSERT -DENABLE_EXTENSION_AFFINITY -I${OCR_ROOT}/install/include -L${OCR_ROOT}/install/lib -locr_x86 -lpthread hero/qsort-block.c -lm -o hero/build/qsort-block
 
 run.qsort-block:  qsort-block
 	@rm -f default.cfg
-	@${REL}/scripts/Configs/config-generator.py --threads 64
-	@OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${REL}/install/lib hero/build/qsort-block $N
+	@${OCR_ROOT}/scripts/Configs/config-generator.py --threads 32
+	@OCR_CONFIG=default.cfg LD_LIBRARY_PATH=${OCR_ROOT}/install/lib hero/build/qsort-block $N
