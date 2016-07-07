@@ -31,6 +31,10 @@ template <typename T, typename U, typename V = int>
 using EnableIfBaseOf =
         typename std::enable_if<std::is_base_of<T, U>::value, V>::type;
 
+template <typename T, typename U, typename V = int>
+using EnableIfSame =
+        typename std::enable_if<std::is_same<T, U>::value, V>::type;
+
 // Check error status of C API call
 inline void OK(u8 status) { ASSERT(status == 0); }
 }  // namespace internal
@@ -337,10 +341,11 @@ struct TaskArgCountCheck {
     static constexpr bool value = true;
 };
 
-template <typename A, typename D, size_t Position>
+template <typename D, typename A, size_t Position>
 struct TaskArgTypeMatchesParamType {
-    typedef Datablock<typename Unpack<D>::Parameter> DB;
-    static_assert(std::is_base_of<A, DB>::value,
+    typedef Datablock<typename Unpack<D>::Parameter> DepDH;
+    typedef Datablock<typename Unpack<A>::Parameter> ArgDH;
+    static_assert(std::is_base_of<ArgDH, DepDH>::value,
                   "Dependence argument type must match task parameter type.");
     static constexpr bool value = true;
 };
@@ -403,6 +408,13 @@ class TaskTemplate;
 // TODO - Add static check to make sure Deps are convertible to DataHandle
 template <typename F>
 class Task : public ObjectHandle {
+ private:
+    template <typename T>
+    using DataHandleOf = DataHandle<typename internal::Unpack<T>::Parameter>;
+
+    template <size_t I>
+    using ArgAt = typename internal::FnInfo<F>::template Arg<I>::Type;
+
  public:
     static constexpr u32 kDepc = internal::FnInfo<F>::kArgCount;
 
@@ -411,16 +423,17 @@ class Task : public ObjectHandle {
 
     void Destroy() const { internal::OK(ocrEdtDestroy(this->guid())); }
 
-    void AddDependence(DataHandle<R> src, u32 slot,
-                       ocrDbAccessMode_t mode = DB_DEFAULT_MODE) const {
-        internal::OK(ocrAddDependence(src.guid(), this->guid(), slot, mode));
+    template <u32 slot, typename U>
+    void AddDependence(U src, ocrDbAccessMode_t mode = DB_DEFAULT_MODE) const {
+        static_assert(internal::TaskArgTypeMatchesParamType<ArgAt<slot>, U,
+                                                            slot>::value,
+                      "Dependence argument must match slot type.");
+        ocrGuid_t src_guid = static_cast<DataHandleOf<U>>(src).guid();
+        internal::OK(ocrAddDependence(src_guid, this->guid(), slot, mode));
     }
 
  protected:
     friend class TaskTemplate<F>;
-
-    template <typename T>
-    using DataHandleOf = DataHandle<typename internal::Unpack<T>::Parameter>;
 
     // TODO - add support for hints, output events, etc
     Task(Event<R> *out_event, ocrGuid_t task_template, ocrGuid_t depv[])
@@ -436,9 +449,15 @@ class Task : public ObjectHandle {
                         internal::TaskArgsMatchDeps<0, F, Deps...>::value,
                 "Check for args/paramters mismatch.");
         bool is_future = out_event != nullptr;
-        ocrGuid_t dummy_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
+        // Set provided dependences
         ocrGuid_t depv[1 + kDepc] = {
-                (static_cast<DataHandleOf<Deps>>(deps).guid())..., dummy_dep};
+                (static_cast<DataHandleOf<Deps>>(deps).guid())...};
+        // Mark missing dependences
+        for (u32 i = sizeof...(Deps); i < kDepc; i++) {
+            depv[i] = UNINITIALIZED_GUID;
+        }
+        // Set dummy dependence
+        depv[kDepc] = is_future ? UNINITIALIZED_GUID : NULL_GUID;
         return Task<F>(out_event, task_template, depv);
     }
 
