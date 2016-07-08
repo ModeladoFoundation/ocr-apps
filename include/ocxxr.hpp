@@ -467,9 +467,12 @@ template <typename F>
 class TaskTemplate;
 
 template <typename F>
+class TaskBuilder;
+
+template <typename F>
 class Task;
 
-// TODO - Add static check to make sure Deps are convertible to DataHandle
+// TODO - optimize case when no deps are provided (or needed)
 template <typename Ret, typename... Args>
 class Task<Ret(Args...)> : public ObjectHandle {
  public:
@@ -492,19 +495,23 @@ class Task<Ret(Args...)> : public ObjectHandle {
 
  protected:
     // TODO - paramv support (check if first arg of F isn't a Datablock)
-    friend class TaskTemplate<F>;
+    friend class TaskBuilder<F>;
 
     // TODO - add support for hints, output events, etc
-    Task(Event<R> *out_event, ocrGuid_t task_template, ocrGuid_t depv[])
-            : ObjectHandle(Init(out_event, task_template, depv)) {}
+    Task(Event<R> *out_event, ocrGuid_t task_template, ocrGuid_t depv[],
+         const Hint *hint, u16 flags)
+            : ObjectHandle(Init(out_event, task_template, depv, hint, flags)) {}
 
  private:
     static ocrGuid_t Init(Event<R> *out_event, ocrGuid_t task_template,
-                          ocrGuid_t depv[]) {
+                          ocrGuid_t depv[], const Hint *hint, u16 flags) {
         ocrGuid_t guid;
         ocrGuid_t *out_guid = reinterpret_cast<ocrGuid_t *>(out_event);
+        // TODO - open bug for adding const qualifiers in OCR C API.
+        // E.g., "const ocrHint_t *hint" in ocrEdtCreate.
+        ocrHint_t *raw_hint = const_cast<ocrHint_t *>(hint->internal());
         ocrEdtCreate(&guid, task_template, EDT_PARAM_DEF, nullptr,
-                     EDT_PARAM_DEF, depv, EDT_PROP_NONE, nullptr, out_guid);
+                     EDT_PARAM_DEF, depv, flags, raw_hint, out_guid);
         return guid;
     }
 };
@@ -533,12 +540,46 @@ class DelayedFuture {
 };
 
 template <typename Ret, typename... Args>
-class TaskTemplate<Ret(Args...)> : public ObjectHandle {
+class TaskBuilder<Ret(Args...)> {
  public:
     typedef Ret(F)(Args...);
     typedef typename internal::Unpack<Ret>::Parameter R;
 
+    TaskBuilder(ocrGuid_t template_guid, const Hint *hint, u16 flags)
+            : template_guid_(template_guid), hint_(hint), flags_(flags) {}
+
+    Task<F> CreateTask(DataHandleOf<Args>... deps = DefaultDependence()) {
+        return CreateTask(nullptr, deps...);
+    }
+
+    DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
+        Event<R> out_event;
+        auto task = CreateTask(&out_event, deps...);
+        return DelayedFuture<F>(task, out_event);
+    }
+
+ private:
+    Task<F> CreateTask(Event<R> *out_event, DataHandleOf<Args>... deps) {
+        namespace i = internal;
+        bool is_future = out_event != nullptr;
+        // Set provided dependences
+        ocrGuid_t dummy_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
+        ocrGuid_t depv[1 + Task<F>::kDepc] = {
+                (static_cast<DataHandleOf<Args>>(deps).guid())..., dummy_dep};
+        // Set dummy dependence
+        return Task<F>(out_event, template_guid_, depv, hint_, flags_);
+    }
+
+    const ocrGuid_t template_guid_;
+    const Hint *const hint_;
+    const u16 flags_;
+};
+
+template <typename F>
+class TaskTemplate : public ObjectHandle {
+ public:
     // TODO - add support for paramv
+    // TODO - ensure that function's parameters are Datablocks
     template <F *user_fn>
     static TaskTemplate<F> Create() {
         ocrGuid_t guid;
@@ -549,37 +590,25 @@ class TaskTemplate<Ret(Args...)> : public ObjectHandle {
         return TaskTemplate<F>(guid);
     }
 
+    TaskBuilder<F> operator()(u16 flags = EDT_PROP_NONE) const {
+        return TaskBuilder<F>(this->guid(), nullptr, flags);
+    }
+
+    TaskBuilder<F> operator()(const Hint &hint,
+                              u16 flags = EDT_PROP_NONE) const {
+        return TaskBuilder<F>(this->guid(), &hint, flags);
+    }
+
     void Destroy() const { internal::OK(ocrEdtTemplateDestroy(this->guid())); }
-
-    Task<F> CreateTask(DataHandleOf<Args>... deps = DefaultDependence()) {
-        return CreateTask(nullptr, this->guid(), deps...);
-    }
-
-    DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
-        Event<R> out_event;
-        auto task = CreateTask(&out_event, this->guid(), deps...);
-        return DelayedFuture<F>(task, out_event);
-    }
 
     ~TaskTemplate() = default;
 
  private:
     explicit TaskTemplate(ocrGuid_t guid) : ObjectHandle(guid) {}
 
-    static Task<F> CreateTask(Event<R> *out_event, ocrGuid_t task_template,
-                              DataHandleOf<Args>... deps) {
-        namespace i = internal;
-        bool is_future = out_event != nullptr;
-        // Set provided dependences
-        ocrGuid_t dummy_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
-        ocrGuid_t depv[1 + Task<F>::kDepc] = {
-                (static_cast<DataHandleOf<Args>>(deps).guid())..., dummy_dep};
-        // Set dummy dependence
-        return Task<F>(out_event, task_template, depv);
-    }
-
-    static_assert(std::is_same<void, Ret>::value ||
-                          std::is_base_of<ObjectHandle, Ret>::value,
+    typedef typename internal::FnInfo<F>::Result Result;
+    static_assert(std::is_same<void, Result>::value ||
+                          std::is_base_of<ObjectHandle, Result>::value,
                   "User's task function must return an OCR object type.");
 };
 

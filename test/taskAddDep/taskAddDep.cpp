@@ -14,7 +14,7 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     datablock.data() = kPayload;
     PRINTF("Creating child task...\n");
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    auto task = task_template.CreateTask();
+    auto task = task_template().CreateTask();
     PRINTF("Adding dependence...\n");
     task.AddDependence<0>(datablock);
 }

@@ -20,10 +20,10 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     auto template_a = OCXXR_TEMPLATE_FOR(TaskA);
     auto task_arg = ocxxr::Datablock<char>::Create();
     task_arg.data() = 'A';
-    auto future = template_a.CreateFuture(task_arg);
+    auto future = template_a().CreateFuture(task_arg);
     // set up task B
     auto template_b = OCXXR_TEMPLATE_FOR(TaskB);
-    template_b.CreateTask(future.event());
+    template_b().CreateTask(future.event());
     // release task A (future)
     future.Release();
 }

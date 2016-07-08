@@ -10,6 +10,6 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task...\n");
     auto event = ocxxr::StickyEvent<void>();
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    task_template.CreateTask(event);
+    task_template().CreateTask(event);
     event.Satisfy();
 }

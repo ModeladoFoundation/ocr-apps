@@ -15,6 +15,6 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     auto datablock = ocxxr::Datablock<double>::Create();
     datablock.data() = kPayload;
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    task_template.CreateTask(event);
+    task_template().CreateTask(event);
     event.Satisfy(datablock);
 }
