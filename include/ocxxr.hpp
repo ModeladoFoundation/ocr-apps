@@ -284,11 +284,24 @@ static_assert(internal::IsLegalHandle<NullHandle>::value,
 template <typename T>
 class UnknownDependence : public DataHandle<T> {
  public:
-    UnknownDependence() : ObjectHandle(UNINITIALIZED_GUID) {}
+    UnknownDependence() : DataHandle<T>(UNINITIALIZED_GUID) {}
 };
 
 static_assert(internal::IsLegalHandle<UnknownDependence<int>>::value,
               "UnknownDependence must be castable to/from ocrGuid_t.");
+
+class DefaultDependence : public ObjectHandle {
+ public:
+    DefaultDependence() : ObjectHandle(UNINITIALIZED_GUID) {}
+
+    template <typename T>
+    operator DataHandle<T>() const {
+        return UnknownDependence<T>();
+    }
+};
+
+static_assert(internal::IsLegalHandle<DefaultDependence>::value,
+              "DefaultDependence must be castable to/from ocrGuid_t.");
 
 namespace internal {
 
@@ -399,31 +412,31 @@ class TaskImplementation<F, user_fn, R(Args...)> {
 
 }  // namespace internal
 
+template <typename T>
+using DataHandleOf = DataHandle<typename internal::Unpack<T>::Parameter>;
+
 template <typename F>
 class TaskTemplate;
 
-// TODO - Add static check to make sure Deps are convertible to DataHandle
 template <typename F>
-class Task : public ObjectHandle {
- private:
-    template <typename T>
-    using DataHandleOf = DataHandle<typename internal::Unpack<T>::Parameter>;
+class Task;
 
-    template <size_t I>
-    using ArgAt = typename internal::FnInfo<F>::template Arg<I>::Type;
-
+// TODO - Add static check to make sure Deps are convertible to DataHandle
+template <typename Ret, typename... Args>
+class Task<Ret(Args...)> : public ObjectHandle {
  public:
-    static constexpr u32 kDepc = internal::FnInfo<F>::kArgCount;
+    typedef Ret(F)(Args...);
+    typedef typename internal::Unpack<Ret>::Parameter R;
 
-    // Parameter type of the task's return-type container object
-    typedef internal::ReturnTypeParameter<F> R;
+    static constexpr u32 kDepc = sizeof...(Args);
 
     void Destroy() const { internal::OK(ocrEdtDestroy(this->guid())); }
 
     template <u32 slot, typename U>
     void AddDependence(U src, ocrDbAccessMode_t mode = DB_DEFAULT_MODE) const {
-        static_assert(internal::TaskArgTypeMatchesParamType<ArgAt<slot>, U,
-                                                            slot>::value,
+        namespace i = internal;
+        using Expected = typename i::FnInfo<F>::template Arg<slot>::Type;
+        static_assert(i::TaskArgTypeMatchesParamType<Expected, U, slot>::value,
                       "Dependence argument must match slot type.");
         ocrGuid_t src_guid = static_cast<DataHandleOf<U>>(src).guid();
         internal::OK(ocrAddDependence(src_guid, this->guid(), slot, mode));
@@ -436,28 +449,6 @@ class Task : public ObjectHandle {
     // TODO - add support for hints, output events, etc
     Task(Event<R> *out_event, ocrGuid_t task_template, ocrGuid_t depv[])
             : ObjectHandle(Init(out_event, task_template, depv)) {}
-
-    template <typename... Deps>
-    static Task<F> CreateTask(Event<R> *out_event, ocrGuid_t task_template,
-                              Deps... deps) {
-        // Note: this assertion will never fail because another assertion
-        // in the internal checks will always fail first (or none at all).
-        static_assert(
-                internal::TaskArgCountCheck<sizeof...(Deps), kDepc>::value &&
-                        internal::TaskArgsMatchDeps<0, F, Deps...>::value,
-                "Check for args/paramters mismatch.");
-        bool is_future = out_event != nullptr;
-        // Set provided dependences
-        ocrGuid_t depv[1 + kDepc] = {
-                (static_cast<DataHandleOf<Deps>>(deps).guid())...};
-        // Mark missing dependences
-        for (u32 i = sizeof...(Deps); i < kDepc; i++) {
-            depv[i] = UNINITIALIZED_GUID;
-        }
-        // Set dummy dependence
-        depv[kDepc] = is_future ? UNINITIALIZED_GUID : NULL_GUID;
-        return Task<F>(out_event, task_template, depv);
-    }
 
  private:
     static ocrGuid_t Init(Event<R> *out_event, ocrGuid_t task_template,
@@ -493,10 +484,11 @@ class DelayedFuture {
     const Event<R> event_;
 };
 
-template <typename F>
-class TaskTemplate : public ObjectHandle {
+template <typename Ret, typename... Args>
+class TaskTemplate<Ret(Args...)> : public ObjectHandle {
  public:
-    typedef internal::ReturnTypeParameter<F> R;
+    typedef Ret(F)(Args...);
+    typedef typename internal::Unpack<Ret>::Parameter R;
 
     // TODO - add support for paramv
     template <F *user_fn>
@@ -511,15 +503,13 @@ class TaskTemplate : public ObjectHandle {
 
     void Destroy() const { internal::OK(ocrEdtTemplateDestroy(this->guid())); }
 
-    template <typename... Deps>
-    Task<F> CreateTask(Deps... deps) {
-        return Task<F>::CreateTask(nullptr, this->guid(), deps...);
+    Task<F> CreateTask(DataHandleOf<Args>... deps = DefaultDependence()) {
+        return CreateTask(nullptr, this->guid(), deps...);
     }
 
-    template <typename... Deps>
-    DelayedFuture<F> CreateFuture(Deps... deps) {
+    DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
         Event<R> out_event;
-        auto task = Task<F>::CreateTask(&out_event, this->guid(), deps...);
+        auto task = CreateTask(&out_event, this->guid(), deps...);
         return DelayedFuture<F>(task, out_event);
     }
 
@@ -528,9 +518,20 @@ class TaskTemplate : public ObjectHandle {
  private:
     explicit TaskTemplate(ocrGuid_t guid) : ObjectHandle(guid) {}
 
-    typedef typename internal::FnInfo<F>::Result Res;
-    static_assert(std::is_same<void, Res>::value ||
-                          std::is_base_of<ObjectHandle, Res>::value,
+    static Task<F> CreateTask(Event<R> *out_event, ocrGuid_t task_template,
+                              DataHandleOf<Args>... deps) {
+        namespace i = internal;
+        bool is_future = out_event != nullptr;
+        // Set provided dependences
+        ocrGuid_t dummy_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
+        ocrGuid_t depv[1 + Task<F>::kDepc] = {
+                (static_cast<DataHandleOf<Args>>(deps).guid())..., dummy_dep};
+        // Set dummy dependence
+        return Task<F>(out_event, task_template, depv);
+    }
+
+    static_assert(std::is_same<void, Ret>::value ||
+                          std::is_base_of<ObjectHandle, Ret>::value,
                   "User's task function must return an OCR object type.");
 };
 
