@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 static constexpr u32 kPayload = 765;
 

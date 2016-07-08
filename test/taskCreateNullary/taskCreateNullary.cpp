@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 void ChildTask() {
     PRINTF("Child task ran!\n");

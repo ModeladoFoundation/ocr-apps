@@ -88,13 +88,6 @@ void Shutdown() { ocrShutdown(); }
 
 void Abort(u8 error_code) { ocrAbort(error_code); }
 
-//! Wrapper class for datablock argument of the mainEdt.
-class MainTaskArgs {
- public:
-    u64 argc() { return getArgc(this); }
-    char *argv(u64 index) { return getArgv(this, index); }
-};
-
 // TODO - add Hint subclasses: TaskHint, DatablockHint
 class Hint {
  public:
@@ -552,20 +545,9 @@ static_assert(internal::IsLegalHandle<internal::DummyTaskType>::value,
 static_assert(internal::IsLegalHandle<internal::DummyTemplateType>::value,
               "TaskTemplate must be castable to/from ocrGuid_t.");
 
-// prototype for user's main function
-void Main(Datablock<MainTaskArgs> args);
-
 }  // namespace ocxxr
 
 #define OCXXR_TEMPLATE_FOR(fn_ptr) \
     ocxxr::TaskTemplate<decltype(fn_ptr)>::Create<fn_ptr>();
-
-// XXX - Need to move this to source file!
-extern "C" ocrGuid_t mainEdt(u32 paramc, u64 /*paramv*/[], u32 depc,
-                             ocrEdtDep_t depv[]) {
-    ASSERT(paramc == 0 && depc == 1);
-    ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>(depv[0]));
-    return NULL_GUID;
-}
 
 #endif  // OCXXR_H_

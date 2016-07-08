@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 static constexpr float kPayload = 7.65f;
 

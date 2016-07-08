@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 void ChildTask(ocxxr::Datablock<void>) {
     PRINTF("Child task ran with event!\n");

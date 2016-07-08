@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     ocxxr::Event<void> v0 = NullHandle();

@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 void ChildTask(ocxxr::Datablock<u32>) {
     PRINTF("Child task ran! (BAD!)\n");

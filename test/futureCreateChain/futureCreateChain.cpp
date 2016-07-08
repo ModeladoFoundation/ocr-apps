@@ -1,4 +1,4 @@
-#include <ocxxr.hpp>
+#include <ocxxr-main.hpp>
 
 ocxxr::DatablockHandle<char> TaskA(ocxxr::Datablock<char> arg) {
     char label[] = {arg.data(), '\0'};
