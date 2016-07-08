@@ -13,7 +13,7 @@ WORKLOAD_BUILD   ?= ./build/$(OCR_TYPE)
 WORKLOAD_INSTALL ?= ./install/$(OCR_TYPE)
 WORKLOAD_EXEC    ?= $(WORKLOAD_INSTALL)
 
-# Make sure we can find OCR and CnC-OCR
+# Make sure we can find OCR
 ifndef XSTG_ROOT
   ifndef OCR_INSTALL_ROOT
     $(error Please define XSTG_ROOT or OCR_INSTALL_ROOT)
