@@ -182,7 +182,12 @@ class Datablock {
 template <typename T>
 class Event : public DataHandle<T> {
  public:
-    explicit Event(ocrEventTypes_t type) : DataHandle<T>(Init(type)) {}
+    static constexpr bool kIsVoid = std::is_same<void, T>::value;
+    static constexpr u16 kDefaultFlags =
+            kIsVoid ? EVT_PROP_NONE : EVT_PROP_TAKES_ARG;
+
+    explicit Event(ocrEventTypes_t type, u16 flags = kDefaultFlags)
+            : DataHandle<T>(Init(type, flags)) {}
 
     explicit Event(ocrGuid_t guid = NULL_GUID) : DataHandle<T>(guid) {}
 
@@ -203,10 +208,8 @@ class Event : public DataHandle<T> {
     }
 
  private:
-    static ocrGuid_t Init(ocrEventTypes_t type) {
+    static ocrGuid_t Init(ocrEventTypes_t type, u16 flags) {
         ocrGuid_t guid;
-        static constexpr bool kIsVoid = std::is_same<void, T>::value;
-        constexpr u16 flags = kIsVoid ? EVT_PROP_NONE : EVT_PROP_TAKES_ARG;
         internal::OK(ocrEventCreate(&guid, type, flags));
         return guid;
     }
@@ -277,7 +280,7 @@ class NullHandle : public ObjectHandle {
 static_assert(internal::IsLegalHandle<NullHandle>::value,
               "NullHandle must be castable to/from ocrGuid_t.");
 
-// Used only for placing "holes" during task dependence creation
+// Used only for placing "holes" in a task dependence list
 template <typename T>
 class UnknownDependence : public DataHandle<T> {
  public:
@@ -326,6 +329,7 @@ template <typename F>
 using ReturnTypeParameter =
         typename Unpack<typename FnInfo<F>::Result>::Parameter;
 
+// XXX - all non-type template arguments should use variable naming style
 template <size_t ArgCount, size_t ParamCount>
 struct TaskArgCountCheck {
     static_assert(
@@ -426,6 +430,7 @@ class Task : public ObjectHandle {
     }
 
  protected:
+    // TODO - paramv support (check if first arg of F isn't a Datablock)
     friend class TaskTemplate<F>;
 
     // TODO - add support for hints, output events, etc
