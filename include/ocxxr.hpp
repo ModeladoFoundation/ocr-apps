@@ -567,16 +567,26 @@ class TaskBuilder<Ret(Args...)> {
         // in the internal checks will always fail first (or none at all).
         static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
                       "Check for args/paramters mismatch.");
-        static_assert(sizeof...(Deps) < sizeof...(Args),
-                      "Correct total number of arguments for task.");
-        PRINTF("part\n");
-        return CreateTaskPadded(std::make_index_sequence<kMissing>{}, deps...);
+        return PadTask(std::make_index_sequence<kMissing>{}, deps...);
     }
 
     DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
         Event<R> out_event;
         auto task = HelpCreateTask(&out_event, deps...);
         return DelayedFuture<F>(task, out_event);
+    }
+
+    template <typename... Deps,
+              internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
+    Task<F> CreateFuture(Deps... deps) {
+        constexpr s64 kDeps = sizeof...(Deps);
+        constexpr s64 kArgs = sizeof...(Args);
+        constexpr s64 kMissing = kArgs - kDeps;
+        // Note: this assertion will never fail because another assertion
+        // in the internal checks will always fail first (or none at all).
+        static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
+                      "Check for args/paramters mismatch.");
+        return PadFuture(std::make_index_sequence<kMissing>{}, deps...);
     }
 
  private:
@@ -592,10 +602,17 @@ class TaskBuilder<Ret(Args...)> {
     }
 
     template <size_t... I, typename... Deps>
-    Task<F> CreateTaskPadded(std::index_sequence<I...>, Deps... deps) {
+    Task<F> PadTask(std::index_sequence<I...>, Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
         return CreateTask(deps..., DefaultDependence(I)...);
+    }
+
+    template <size_t... I, typename... Deps>
+    Task<F> PadFuture(std::index_sequence<I...>, Deps... deps) {
+        static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
+                      "Correct total number of arguments for task.");
+        return CreateFuture(deps..., DefaultDependence(I)...);
     }
 
     const ocrGuid_t template_guid_;
