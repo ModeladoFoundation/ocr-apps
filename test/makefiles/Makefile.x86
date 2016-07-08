@@ -40,7 +40,8 @@ CXXFLAGS += -std=c++14 -g -O2 -DOCR_TYPE_H=$(OCR_TYPE).h
 #CXX_OPTS += -g -fsanitize=address -fno-omit-frame-pointer
 
 # don't flood us with errors
-CXXFLAGS += -ferror-limit=4
+#CXXFLAGS += -ferror-limit=4 # clang
+#CXXFLAGS += -fmax-errors=4 # gcc
 # always color the output (even when piped)
 #CXXFLAGS += -fdiagnostics-color=always
 

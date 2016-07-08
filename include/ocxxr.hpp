@@ -19,21 +19,20 @@ struct IsLegalHandle {
                                   sizeof(T) == sizeof(ocrGuid_t);
 };
 
-template <typename T, typename U = int>
-using EnableIfVoid =
-        typename std::enable_if<std::is_same<void, T>::value, U>::type;
+template <bool condition, typename T = int>
+using EnableIf = typename std::enable_if<condition, T>::type;
 
 template <typename T, typename U = int>
-using EnableIfNotVoid =
-        typename std::enable_if<!std::is_same<void, T>::value, U>::type;
+using EnableIfVoid = EnableIf<std::is_same<void, T>::value, U>;
+
+template <typename T, typename U = int>
+using EnableIfNotVoid = EnableIf<!std::is_same<void, T>::value, U>;
 
 template <typename T, typename U, typename V = int>
-using EnableIfBaseOf =
-        typename std::enable_if<std::is_base_of<T, U>::value, V>::type;
+using EnableIfBaseOf = EnableIf<std::is_base_of<T, U>::value, V>;
 
 template <typename T, typename U, typename V = int>
-using EnableIfSame =
-        typename std::enable_if<std::is_same<T, U>::value, V>::type;
+using EnableIfSame = EnableIf<std::is_same<T, U>::value, V>;
 
 // Check error status of C API call
 inline void OK(u8 status) { ASSERT(status == 0); }
@@ -311,16 +310,20 @@ class NullHandle : public ObjectHandle {
 
     // auto-convert NullHandle to any ObjectHandle type
     template <typename T>
-    const operator T() const {
+    operator T() const {
         static_assert(std::is_base_of<ObjectHandle, T>::value,
                       "Only use NullHandle for ObjectHandle types.");
         static_assert(internal::IsLegalHandle<T>::value,
                       "Only use NullHandle for simple handle types.");
-        return *reinterpret_cast<const T *>(this);
+        // Note: this is a bit ugly, but since the base class ObjectHandle
+        // guarantees that the internal guid is immutable, it should be OK.
+        // Plus this is returning by-value, so unless it's captured as an
+        // rvalue reference or something, we'll get a copy anyway.
+        return *reinterpret_cast<T *>(const_cast<NullHandle *>(this));
     }
 
     template <typename T>
-    const operator Datablock<T>() const {
+    operator Datablock<T>() const {
         return Datablock<T>(nullptr);
     }
 };
@@ -341,6 +344,8 @@ static_assert(internal::IsLegalHandle<UnknownDependence<int>>::value,
 class DefaultDependence : public ObjectHandle {
  public:
     DefaultDependence() : ObjectHandle(UNINITIALIZED_GUID) {}
+
+    explicit DefaultDependence(size_t) : DefaultDependence() {}
 
     template <typename T>
     operator DataHandle<T>() const {
@@ -548,18 +553,34 @@ class TaskBuilder<Ret(Args...)> {
     TaskBuilder(ocrGuid_t template_guid, const Hint *hint, u16 flags)
             : template_guid_(template_guid), hint_(hint), flags_(flags) {}
 
-    Task<F> CreateTask(DataHandleOf<Args>... deps = DefaultDependence()) {
-        return CreateTask(nullptr, deps...);
+    Task<F> CreateTask(DataHandleOf<Args>... deps) {
+        return HelpCreateTask(nullptr, deps...);
+    }
+
+    template <typename... Deps,
+              internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
+    Task<F> CreateTask(Deps... deps) {
+        constexpr s64 kDeps = sizeof...(Deps);
+        constexpr s64 kArgs = sizeof...(Args);
+        constexpr s64 kMissing = kArgs - kDeps;
+        // Note: this assertion will never fail because another assertion
+        // in the internal checks will always fail first (or none at all).
+        static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
+                      "Check for args/paramters mismatch.");
+        static_assert(sizeof...(Deps) < sizeof...(Args),
+                      "Correct total number of arguments for task.");
+        PRINTF("part\n");
+        return CreateTaskPadded(std::make_index_sequence<kMissing>{}, deps...);
     }
 
     DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
         Event<R> out_event;
-        auto task = CreateTask(&out_event, deps...);
+        auto task = HelpCreateTask(&out_event, deps...);
         return DelayedFuture<F>(task, out_event);
     }
 
  private:
-    Task<F> CreateTask(Event<R> *out_event, DataHandleOf<Args>... deps) {
+    Task<F> HelpCreateTask(Event<R> *out_event, DataHandleOf<Args>... deps) {
         namespace i = internal;
         bool is_future = out_event != nullptr;
         // Set provided dependences
@@ -568,6 +589,13 @@ class TaskBuilder<Ret(Args...)> {
                 (static_cast<DataHandleOf<Args>>(deps).guid())..., dummy_dep};
         // Set dummy dependence
         return Task<F>(out_event, template_guid_, depv, hint_, flags_);
+    }
+
+    template <size_t... I, typename... Deps>
+    Task<F> CreateTaskPadded(std::index_sequence<I...>, Deps... deps) {
+        static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
+                      "Correct total number of arguments for task.");
+        return CreateTask(deps..., DefaultDependence(I)...);
     }
 
     const ocrGuid_t template_guid_;
