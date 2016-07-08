@@ -143,12 +143,14 @@ class DatablockHint : public Hint {
 template <typename T>
 class DatablockHandle : public DataHandle<T> {
  public:
-    // TODO - add overloaded versions supporting hint, etc.
     explicit DatablockHandle(u64 count)
             : DataHandle<T>(Init(sizeof(T) * count, false, nullptr)) {}
 
-    explicit DatablockHandle(T **data_ptr, u64 count)
-            : DataHandle<T>(Init(data_ptr, sizeof(T) * count, true, nullptr)) {}
+    explicit DatablockHandle(u64 count, const Hint &hint)
+            : DataHandle<T>(Init(sizeof(T) * count, false, &hint)) {}
+
+    explicit DatablockHandle(T **data_ptr, u64 count, const Hint *hint)
+            : DataHandle<T>(Init(data_ptr, sizeof(T) * count, true, hint)) {}
 
     void Destroy() const { internal::OK(ocrDbDestroy(this->guid())); }
 
@@ -186,8 +188,10 @@ static_assert(internal::IsLegalHandle<DatablockHandle<int>>::value,
 template <typename T>
 class Datablock {
  public:
-    // TODO - add overloaded versions supporting hint, count, etc.
-    explicit Datablock(u64 count) : Datablock(nullptr, count) {}
+    explicit Datablock(u64 count) : Datablock(nullptr, count, nullptr) {}
+
+    explicit Datablock(u64 count, const Hint &hint)
+            : Datablock(nullptr, count, &hint) {}
 
     // This version gets called from the task setup code
     explicit Datablock(ocrEdtDep_t dep)
@@ -215,7 +219,9 @@ class Datablock {
     operator DatablockHandle<T>() const { return handle_; }
 
  private:
-    Datablock(T *tmp, u64 count) : handle_(&tmp, count), data_(tmp) {}
+    Datablock(T *tmp, u64 count, const Hint *hint)
+            : handle_(&tmp, count, hint), data_(tmp) {}
+
     const DatablockHandle<T> handle_;
     T *const data_;
 };
