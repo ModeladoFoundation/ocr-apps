@@ -10,7 +10,7 @@ struct DummyLookup {
     static constexpr bool value = true;
 };
 
-// std::is_trivially_copyable is missing in GCC's C++11
+// std::is_trivially_copyable is missing in GCC-4
 template <typename T>
 using IsTriviallyCopyable = DummyLookup<T>;
 

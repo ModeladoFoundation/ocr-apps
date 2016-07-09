@@ -19,7 +19,7 @@ namespace ocxxr {
 namespace internal {
 
 #ifdef OCXXR_USING_CXX14
-// std::is_trivially_copyable is missing in GCC's C++11
+// std::is_trivially_copyable is missing in GCC-4
 template <typename T>
 using IsTriviallyCopyable = std::is_trivially_copyable<T>;
 
