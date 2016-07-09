@@ -365,18 +365,57 @@ static_assert(internal::IsLegalHandle<UnknownDependence<int>>::value,
 namespace internal {
 
 template <typename T>
+struct ParamInfo;
+
+template <typename R>
+struct ParamInfo<R()> {
+    static constexpr bool kHasParam = false;
+    static constexpr size_t kParamBytes = 0;
+    typedef void(ParamFn)();
+    typedef void(DepsFn)();
+};
+
+template <typename R, typename T, typename... As>
+struct ParamInfo<R(Datablock<T>, As...)> {
+    static constexpr bool kHasParam = false;
+    static constexpr size_t kParamBytes = 0;
+    typedef void(ParamFn)();
+    typedef void(DepsFn)(Datablock<T>, As...);
+};
+
+template <typename R, typename P, typename... As>
+struct ParamInfo<R(P, As...)> {
+    typedef typename std::remove_reference<P>::type RawP;
+    static constexpr bool kHasParam = true;
+    static constexpr size_t kParamBytes = sizeof(RawP);
+    typedef void(ParamFn)(P);
+    typedef void(DepsFn)(As...);
+    // This is going to get memcpy'd
+    static_assert(IsTriviallyCopyable<RawP>::value,
+                  "Task parameter must be trivially copyable.");
+};
+
+template <typename T>
 struct FnInfo;
 
 template <typename R, typename... As>
 struct FnInfo<R(As...)> {
-    static constexpr size_t kArgCount = sizeof...(As);
-    typedef std::function<R(As...)> Fn;
+    static constexpr size_t kTotalArgCount = sizeof...(As);
+    typedef R(Fn)(As...);
     typedef std::tuple<As...> Args;
     typedef R Result;
     template <size_t I>
     struct Arg {
         typedef typename std::tuple_element<I, Args>::type Type;
     };
+    static constexpr bool kHasParam = ParamInfo<Fn>::kHasParam;
+    static constexpr size_t kParamCount = kHasParam ? 1 : 0;
+    static constexpr size_t kDepStart = kParamCount;
+    static constexpr size_t kDepCount = sizeof...(As)-kDepStart;
+    typedef typename ParamInfo<Fn>::ParamFn ParamFn;
+    typedef typename ParamInfo<Fn>::DepsFn DepsFn;
+    static constexpr size_t kParamWordCount =
+            (ParamInfo<Fn>::kParamBytes + sizeof(u64) - 1) / sizeof(u64);
 };
 
 template <typename T>
@@ -421,39 +460,54 @@ struct TaskArgTypeMatchesParamType {
     static constexpr bool value = true;
 };
 
-template <typename T, T *t, typename U>
+template <typename T, T *t, typename U, typename V>
 class TaskImplementation;
 
 // TODO - add static check to make sure Args have Datablock types
-template <typename F, F *user_fn, typename R, typename... Args>
-class TaskImplementation<F, user_fn, R(Args...)> {
+template <typename F, F *user_fn, typename... Params, typename... Args>
+class TaskImplementation<F, user_fn, void(Params...), void(Args...)> {
  public:
-    static_assert(std::is_same<F, R(Args...)>::value,
+    static constexpr size_t kDepc = internal::FnInfo<F>::kDepCount;
+    static constexpr size_t kParamc = internal::FnInfo<F>::kParamCount;
+    typedef typename internal::FnInfo<F>::Result R;
+
+    static_assert(std::is_same<F, R(Params..., Args...)>::value,
                   "Task function must have a consistent type.");
 
-    static ocrGuid_t InternalFn(u32 paramc, u64 /*paramv*/[], u32 depc,
+    static ocrGuid_t InternalFn(u32 paramc, u64 paramv[], u32 depc,
                                 ocrEdtDep_t depv[]) {
-        ASSERT(paramc == 0);
-        ASSERT(depc - 1 == sizeof...(Args));
-        return Launch(depv);
+        ASSERT(paramc == internal::FnInfo<F>::kParamWordCount);
+        ASSERT(depc - 1 == kDepc);  // includes dummy dependence
+        return Launch(paramv, depv);
     }
 
  private:
     template <typename U = R, EnableIfVoid<U> = 0>
-    static ocrGuid_t Launch(ocrEdtDep_t deps[]) {
-        UnpackDeps(deps, internal::IndexSeqFor<Args...>());
+    static ocrGuid_t Launch(u64 paramv[], ocrEdtDep_t depv[]) {
+        UnpackArgs(paramv, depv, internal::MakeIndexSeq<kParamc>(),
+                   internal::MakeIndexSeq<kDepc>());
         return NULL_GUID;
     }
 
     template <typename U = R, EnableIfNotVoid<U> = 0>
-    static ocrGuid_t Launch(ocrEdtDep_t deps[]) {
-        return UnpackDeps(deps, internal::IndexSeqFor<Args...>()).guid();
+    static ocrGuid_t Launch(u64 paramv[], ocrEdtDep_t depv[]) {
+        return UnpackArgs(paramv, depv, internal::MakeIndexSeq<kParamc>(),
+                          internal::MakeIndexSeq<kDepc>())
+                .guid();
     }
 
-    template <size_t... I>
-    static R UnpackDeps(ocrEdtDep_t deps[], internal::IndexSeq<I...>) {
-        static_cast<void>(deps);  // possibly unused if deps is empty
-        return user_fn((Args{deps[I]})...);
+    template <typename T, typename U = typename std::remove_reference<T>::type>
+    static U *UnpackParam(u64 *param) {
+        return reinterpret_cast<U *>(param);
+    }
+
+    template <size_t... I, size_t... J>
+    static R UnpackArgs(u64 paramv[], ocrEdtDep_t depv[],
+                        internal::IndexSeq<I...>, internal::IndexSeq<J...>) {
+        static_cast<void>(paramv);  // unused if no parameters
+        static_cast<void>(depv);    // unused if no deps
+        return user_fn((*UnpackParam<Params>(&paramv[I]))...,
+                       (Args{depv[J]})...);
     }
 };
 
@@ -480,7 +534,7 @@ using DataHandleOf = DataHandle<typename internal::Unpack<T>::Parameter>;
 template <typename F>
 class TaskTemplate;
 
-template <typename F>
+template <typename T, typename U, typename V>
 class TaskBuilder;
 
 template <typename F>
@@ -493,39 +547,48 @@ class Task<Ret(Args...)> : public ObjectHandle {
     typedef Ret(F)(Args...);
     typedef typename internal::Unpack<Ret>::Parameter R;
 
-    static constexpr u32 kDepc = sizeof...(Args);
+    static constexpr size_t kDepc = internal::FnInfo<F>::kDepCount;
+    static constexpr size_t kParamc = internal::FnInfo<F>::kParamCount;
 
     void Destroy() const { internal::OK(ocrEdtDestroy(this->guid())); }
 
     template <u32 slot, typename U>
-    void AddDependence(U src, ocrDbAccessMode_t mode = DB_DEFAULT_MODE) const {
+    const Task<F> &AddDependence(
+            U src, ocrDbAccessMode_t mode = DB_DEFAULT_MODE) const {
         namespace i = internal;
-        using Expected = typename i::FnInfo<F>::template Arg<slot>::Type;
+        static_assert(slot < kDepc, "Slot too high.");
+        constexpr u32 dep_slot = slot + i::FnInfo<F>::kDepStart;
+        using Expected = typename i::FnInfo<F>::template Arg<dep_slot>::Type;
         static_assert(i::TaskArgTypeMatchesParamType<Expected, U, slot>::value,
                       "Dependence argument must match slot type.");
         ocrGuid_t src_guid = static_cast<DataHandleOf<U>>(src).guid();
         internal::OK(ocrAddDependence(src_guid, this->guid(), slot, mode));
+        return *this;
     }
 
  protected:
     // TODO - paramv support (check if first arg of F isn't a Datablock)
-    friend class TaskBuilder<F>;
+    template <typename T, typename U, typename V>
+    friend class TaskBuilder;
 
     // TODO - add support for hints, output events, etc
-    Task(Event<R> *out_event, ocrGuid_t task_template, ocrGuid_t depv[],
-         const Hint *hint, u16 flags)
-            : ObjectHandle(Init(out_event, task_template, depv, hint, flags)) {}
+    Task(Event<R> *out_event, ocrGuid_t task_template, u64 paramv[],
+         ocrGuid_t depv[], const Hint *hint, u16 flags)
+            : ObjectHandle(Init(out_event, task_template, paramv, depv, hint,
+                                flags)) {}
 
  private:
     static ocrGuid_t Init(Event<R> *out_event, ocrGuid_t task_template,
-                          ocrGuid_t depv[], const Hint *hint, u16 flags) {
+                          u64 paramv[], ocrGuid_t depv[], const Hint *hint,
+                          u16 flags) {
         ocrGuid_t guid;
         ocrGuid_t *out_guid = reinterpret_cast<ocrGuid_t *>(out_event);
+        ASSERT(paramv != nullptr || kParamc == 0);
         // TODO - open bug for adding const qualifiers in OCR C API.
         // E.g., "const ocrHint_t *hint" in ocrEdtCreate.
         ocrHint_t *raw_hint = const_cast<ocrHint_t *>(hint->internal());
-        ocrEdtCreate(&guid, task_template, EDT_PARAM_DEF, nullptr,
-                     EDT_PARAM_DEF, depv, flags, raw_hint, out_guid);
+        ocrEdtCreate(&guid, task_template, EDT_PARAM_DEF, paramv, EDT_PARAM_DEF,
+                     depv, flags, raw_hint, out_guid);
         return guid;
     }
 };
@@ -553,67 +616,78 @@ class DelayedFuture {
     const Event<R> event_;
 };
 
-template <typename Ret, typename... Args>
-class TaskBuilder<Ret(Args...)> {
+template <typename F, typename... Params, typename... Args>
+class TaskBuilder<F, void(Params...), void(Args...)> {
  public:
-    typedef Ret(F)(Args...);
+    typedef typename internal::FnInfo<F>::Result Ret;
+    static_assert(std::is_same<F, Ret(Params..., Args...)>::value,
+                  "Task function must have a consistent type.");
     typedef typename internal::Unpack<Ret>::Parameter R;
 
     TaskBuilder(ocrGuid_t template_guid, const Hint *hint, u16 flags)
             : template_guid_(template_guid), hint_(hint), flags_(flags) {}
 
-    Task<F> CreateTask(DataHandleOf<Args>... deps) {
-        return HelpCreateTask(nullptr, deps...);
+    Task<F> CreateTask(Params... params, DataHandleOf<Args>... deps) {
+        return HelpCreateTask(nullptr, params..., deps...);
     }
 
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
-    Task<F> CreateTask(Deps... deps) {
+    Task<F> CreateTask(Params... params, Deps... deps) {
         constexpr short kMissing =
                 internal::CountMissingDeps<sizeof...(Deps),
                                            sizeof...(Args)>::value;
-        return PadTask(internal::MakeIndexSeq<kMissing>{}, deps...);
+        return PadTask(internal::MakeIndexSeq<kMissing>{}, params..., deps...);
     }
 
-    DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
+    DelayedFuture<F> CreateFuture(Params... params,
+                                  DataHandleOf<Args>... deps) {
         Event<R> out_event;
-        auto task = HelpCreateTask(&out_event, deps...);
+        auto task = HelpCreateTask(&out_event, params..., deps...);
         return DelayedFuture<F>(task, out_event);
     }
 
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
-    Task<F> CreateFuture(Deps... deps) {
+    DelayedFuture<F> CreateFuture(Params... params, Deps... deps) {
         constexpr short kMissing =
                 internal::CountMissingDeps<sizeof...(Deps),
                                            sizeof...(Args)>::value;
-        return PadFuture(internal::MakeIndexSeq<kMissing>{}, deps...);
+        return PadFuture(internal::MakeIndexSeq<kMissing>{}, params...,
+                         deps...);
     }
 
  private:
-    Task<F> HelpCreateTask(Event<R> *out_event, DataHandleOf<Args>... deps) {
+    Task<F> HelpCreateTask(Event<R> *out_event, Params... params,
+                           DataHandleOf<Args>... deps) {
         namespace i = internal;
         bool is_future = out_event != nullptr;
         // Set provided dependences
         ocrGuid_t dummy_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
+        u64 *param_ptr[1 + Task<F>::kParamc] = {
+                reinterpret_cast<u64 *>(&params)..., nullptr};
         ocrGuid_t depv[1 + Task<F>::kDepc] = {
                 (static_cast<DataHandleOf<Args>>(deps).guid())..., dummy_dep};
         // Set dummy dependence
-        return Task<F>(out_event, template_guid_, depv, hint_, flags_);
+        return Task<F>(out_event, template_guid_, param_ptr[0], depv, hint_,
+                       flags_);
     }
 
     template <size_t... I, typename... Deps>
-    Task<F> PadTask(internal::IndexSeq<I...>, Deps... deps) {
+    Task<F> PadTask(internal::IndexSeq<I...>, Params... params, Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
-        return CreateTask(deps..., internal::DefaultDependence(I)...);
+        return CreateTask(params..., deps...,
+                          internal::DefaultDependence(I)...);
     }
 
     template <size_t... I, typename... Deps>
-    Task<F> PadFuture(internal::IndexSeq<I...>, Deps... deps) {
+    DelayedFuture<F> PadFuture(internal::IndexSeq<I...>, Params... params,
+                               Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
-        return CreateFuture(deps..., internal::DefaultDependence(I)...);
+        return CreateFuture(params..., deps...,
+                            internal::DefaultDependence(I)...);
     }
 
     const ocrGuid_t template_guid_;
@@ -624,25 +698,30 @@ class TaskBuilder<Ret(Args...)> {
 template <typename F>
 class TaskTemplate : public ObjectHandle {
  public:
-    // TODO - add support for paramv
+    typedef typename internal::FnInfo<F>::ParamFn PF;
+    typedef typename internal::FnInfo<F>::DepsFn DF;
+
     // TODO - ensure that function's parameters are Datablocks
+    // TODO - ensure that there is only one by-value parameter
+    // (and update badTask2Params with the static assert message)
     template <F *user_fn>
     static TaskTemplate<F> Create() {
         ocrGuid_t guid;
         ocrEdt_t internal_fn =
-                internal::TaskImplementation<F, user_fn, F>::InternalFn;
-        constexpr u64 depc = internal::FnInfo<F>::kArgCount;
-        ocrEdtTemplateCreate(&guid, internal_fn, 0, 1 + depc);
+                internal::TaskImplementation<F, user_fn, PF, DF>::InternalFn;
+        constexpr u16 depc = internal::FnInfo<F>::kDepCount;
+        constexpr u16 paramc = internal::FnInfo<F>::kParamWordCount;
+        ocrEdtTemplateCreate(&guid, internal_fn, paramc, 1 + depc);
         return TaskTemplate<F>(guid);
     }
 
-    TaskBuilder<F> operator()(u16 flags = EDT_PROP_NONE) const {
-        return TaskBuilder<F>(this->guid(), nullptr, flags);
+    TaskBuilder<F, PF, DF> operator()(u16 flags = EDT_PROP_NONE) const {
+        return TaskBuilder<F, PF, DF>(this->guid(), nullptr, flags);
     }
 
-    TaskBuilder<F> operator()(const Hint &hint,
-                              u16 flags = EDT_PROP_NONE) const {
-        return TaskBuilder<F>(this->guid(), &hint, flags);
+    TaskBuilder<F, PF, DF> operator()(const Hint &hint,
+                                      u16 flags = EDT_PROP_NONE) const {
+        return TaskBuilder<F, PF, DF>(this->guid(), &hint, flags);
     }
 
     void Destroy() const { internal::OK(ocrEdtTemplateDestroy(this->guid())); }
@@ -660,7 +739,7 @@ class TaskTemplate : public ObjectHandle {
 
 namespace internal {
 
-typedef NullHandle DummyTaskFnType(Datablock<int>, Datablock<double>);
+typedef NullHandle(DummyTaskFnType)(Datablock<int>, Datablock<double>);
 
 typedef Task<DummyTaskFnType> DummyTaskType;
 
