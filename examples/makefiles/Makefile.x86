@@ -12,7 +12,7 @@ ifndef XSTG_ROOT
   endif #APPS_ROOT
 else  #XSTG_ROOT
   OCR_INSTALL_ROOT ?= $(XSTG_ROOT)/ocr/ocr/install
-  APPS_ROOT        ?= $(XSTG_ROOT)/apps/apps
+  APPS_ROOT        ?= $(XSTG_ROOT)/apps
 endif #XSTG_ROOT
 
 # Name of the application to build
@@ -68,7 +68,7 @@ include $(APPS_ROOT)/makefiles/make-pre.inc
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := $(TARGET).c
+SRCS := $(TARGET).cpp
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
@@ -130,4 +130,31 @@ postrun: ;
 
 # Include common part
 include $(APPS_ROOT)/makefiles/make-inc.inc
+
+#################################################
+# OTHER COMPILER CONFIG
+
+CHECK_CXX_OPT_SUPPORT := echo | $(CXX) -fsyntax-only -xc++ -
+
+# Try C++14, otherwise fall back to C++11
+ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -std=c++14 2>&1),)
+CXXFLAGS += -std=c++14
+else
+$(info No C++14 support. Falling back to C++11.)
+CXXFLAGS += -std=c++11
+endif
+
+ERROR_LIMIT := 4
+
+# Try C++14, otherwise fall back to C++11
+ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -ferror-limit=1 2>&1),)
+$(warning CLANG $(CXX))
+CFLAGS += -ferror-limit=$(ERROR_LIMIT) # clang
+else
+$(warning GCC)
+CFLAGS += -fmax-errors=$(ERROR_LIMIT) # gcc
+endif
+
+# always color the output (even when piped)
+#CFLAGS += -fdiagnostics-color=always
 

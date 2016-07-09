@@ -23,7 +23,7 @@ ifndef XSTG_ROOT
   endif #APPS_ROOT
 else  #XSTG_ROOT
   OCR_INSTALL_ROOT ?= $(XSTG_ROOT)/ocr/ocr/install
-  APPS_ROOT        ?= $(XSTG_ROOT)/apps/apps
+  APPS_ROOT        ?= $(XSTG_ROOT)/apps
 endif #XSTG_ROOT
 
 OCR_ROOT   ?= $(shell dirname $(OCR_INSTALL_ROOT))
@@ -39,10 +39,10 @@ CXXFLAGS += -g -O2 -DOCR_TYPE_H=$(OCR_TYPE).h
 # Enable AddressSanitizer checks
 #CXX_OPTS += -g -fsanitize=address -fno-omit-frame-pointer
 
-CHECK_CXX_OPT_SUPPORT := echo | $(CXX) -fsyntax-only -xc++ -
-
 #################################################
 # OTHER COMPILER CONFIG
+
+CHECK_CXX_OPT_SUPPORT := echo | $(CXX) -fsyntax-only -xc++ -
 
 # Try C++14, otherwise fall back to C++11
 ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -std=c++14 2>&1),)
@@ -52,14 +52,17 @@ $(info No C++14 support. Falling back to C++11.)
 CXXFLAGS += -std=c++11
 endif
 
+ERROR_LIMIT := 4
+
 # Try C++14, otherwise fall back to C++11
 ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -ferror-limit=1 2>&1),)
 $(warning CLANG $(CXX))
-CXXFLAGS += -ferror-limit=4 # clang
+CXXFLAGS += -ferror-limit=$(ERROR_LIMIT) # clang
 else
 $(warning GCC)
-CXXFLAGS += -fmax-errors=4 # gcc
+CXXFLAGS += -fmax-errors=$(ERROR_LIMIT) # gcc
 endif
+
 # always color the output (even when piped)
 #CXXFLAGS += -fdiagnostics-color=always
 
