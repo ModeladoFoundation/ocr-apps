@@ -39,6 +39,8 @@ struct IsLegalHandle {
             IsTriviallyCopyable<T>::value && sizeof(T) == sizeof(ocrGuid_t);
 };
 
+// TODO - move all of these to a "util" namespace
+// (nothing in "internal" should be in the public API)
 template <bool condition, typename T = int>
 using EnableIf = typename std::enable_if<condition, T>::type;
 
@@ -107,7 +109,6 @@ void Shutdown() { ocrShutdown(); }
 
 void Abort(u8 error_code) { ocrAbort(error_code); }
 
-// TODO - add Hint subclasses: TaskHint, DatablockHint
 class Hint {
  public:
     Hint(ocrHintType_t hint_type) {
@@ -361,21 +362,6 @@ class UnknownDependence : public DataHandle<T> {
 static_assert(internal::IsLegalHandle<UnknownDependence<int>>::value,
               "UnknownDependence must be castable to/from ocrGuid_t.");
 
-class DefaultDependence : public ObjectHandle {
- public:
-    DefaultDependence() : ObjectHandle(UNINITIALIZED_GUID) {}
-
-    explicit DefaultDependence(size_t) : DefaultDependence() {}
-
-    template <typename T>
-    operator DataHandle<T>() const {
-        return UnknownDependence<T>();
-    }
-};
-
-static_assert(internal::IsLegalHandle<DefaultDependence>::value,
-              "DefaultDependence must be castable to/from ocrGuid_t.");
-
 namespace internal {
 
 template <typename T>
@@ -416,12 +402,14 @@ using ReturnTypeParameter =
         typename Unpack<typename FnInfo<F>::Result>::Parameter;
 
 // XXX - all non-type template arguments should use variable naming style
-template <size_t ArgCount, size_t ParamCount>
-struct TaskArgCountCheck {
+// using short here because we shouldn't have that many arguments!
+template <short arg_count, short param_count>
+struct CountMissingDeps {
     static_assert(
-            ArgCount <= ParamCount,
+            arg_count <= param_count,
             "Dependence argument count must not exceed task parameter count.");
-    static constexpr bool value = true;
+    static constexpr short diff = param_count - arg_count;
+    static constexpr short value = diff > 0 ? diff : 0;
 };
 
 template <typename D, typename A, size_t Position>
@@ -430,22 +418,6 @@ struct TaskArgTypeMatchesParamType {
     typedef Datablock<typename Unpack<A>::Parameter> ArgDH;
     static_assert(std::is_base_of<ArgDH, DepDH>::value,
                   "Dependence argument type must match task parameter type.");
-    static constexpr bool value = true;
-};
-
-template <size_t Posiiton, typename T, typename... U>
-struct TaskArgsMatchDeps;
-
-template <size_t Position, typename R, typename A, typename... Args, typename D,
-          typename... Deps>
-struct TaskArgsMatchDeps<Position, R(A, Args...), D, Deps...> {
-    static constexpr bool value =
-            TaskArgTypeMatchesParamType<A, D, Position>::value &&
-            TaskArgsMatchDeps<Position + 1, R(Args...), Deps...>::value;
-};
-
-template <size_t Position, typename F>
-struct TaskArgsMatchDeps<Position, F> {
     static constexpr bool value = true;
 };
 
@@ -481,10 +453,24 @@ class TaskImplementation<F, user_fn, R(Args...)> {
     template <size_t... I>
     static R UnpackDeps(ocrEdtDep_t deps[], internal::IndexSeq<I...>) {
         static_cast<void>(deps);  // possibly unused if deps is empty
-        static_assert(sizeof...(Args) == sizeof...(I), "?!");
         return user_fn((Args{deps[I]})...);
     }
 };
+
+class DefaultDependence : public ObjectHandle {
+ public:
+    DefaultDependence() : ObjectHandle(UNINITIALIZED_GUID) {}
+
+    explicit DefaultDependence(size_t) : DefaultDependence() {}
+
+    template <typename T>
+    operator DataHandle<T>() const {
+        return UnknownDependence<T>();
+    }
+};
+
+static_assert(internal::IsLegalHandle<DefaultDependence>::value,
+              "DefaultDependence must be castable to/from ocrGuid_t.");
 
 }  // namespace internal
 
@@ -583,15 +569,9 @@ class TaskBuilder<Ret(Args...)> {
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
     Task<F> CreateTask(Deps... deps) {
-        constexpr s64 kDeps = sizeof...(Deps);
-        constexpr s64 kArgs = sizeof...(Args);
-        constexpr s64 kDiff = kArgs - kDeps;
-        // XXX - std::max isn't constexpr in C++11
-        constexpr s64 kMissing = kDiff < 0 ? 0 : kDiff;
-        // Note: this assertion will never fail because another assertion
-        // in the internal check will always fail first (or none at all).
-        static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
-                      "Check for args/paramters mismatch.");
+        constexpr short kMissing =
+                internal::CountMissingDeps<sizeof...(Deps),
+                                           sizeof...(Args)>::value;
         return PadTask(internal::MakeIndexSeq<kMissing>{}, deps...);
     }
 
@@ -604,15 +584,9 @@ class TaskBuilder<Ret(Args...)> {
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
     Task<F> CreateFuture(Deps... deps) {
-        constexpr s64 kDeps = sizeof...(Deps);
-        constexpr s64 kArgs = sizeof...(Args);
-        constexpr s64 kDiff = kArgs - kDeps;
-        // XXX - std::max isn't constexpr in C++11
-        constexpr s64 kMissing = kDiff < 0 ? 0 : kDiff;
-        // Note: this assertion will never fail because another assertion
-        // in the internal check will always fail first (or none at all).
-        static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
-                      "Check for args/paramters mismatch.");
+        constexpr short kMissing =
+                internal::CountMissingDeps<sizeof...(Deps),
+                                           sizeof...(Args)>::value;
         return PadFuture(internal::MakeIndexSeq<kMissing>{}, deps...);
     }
 
@@ -632,14 +606,14 @@ class TaskBuilder<Ret(Args...)> {
     Task<F> PadTask(internal::IndexSeq<I...>, Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
-        return CreateTask(deps..., DefaultDependence(I)...);
+        return CreateTask(deps..., internal::DefaultDependence(I)...);
     }
 
     template <size_t... I, typename... Deps>
     Task<F> PadFuture(internal::IndexSeq<I...>, Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
-        return CreateFuture(deps..., DefaultDependence(I)...);
+        return CreateFuture(deps..., internal::DefaultDependence(I)...);
     }
 
     const ocrGuid_t template_guid_;
