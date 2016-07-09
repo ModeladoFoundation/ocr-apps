@@ -8,15 +8,35 @@ extern "C" {
 #include <ocr.h>
 }
 
+#if __cplusplus >= 201402L  // C++14
+#define OCXXR_USING_CXX14
+#else  // C++11
+#include <ocxxr-cxx11-compat.hpp>
+#endif
+
 namespace ocxxr {
 
 namespace internal {
 
+#ifdef OCXXR_USING_CXX14
+// std::is_trivially_copyable is missing in GCC's C++11
+template <typename T>
+using IsTriviallyCopyable = std::is_trivially_copyable<T>;
+
+// index_sequence is C++14 only
+template <size_t... Indices>
+using IndexSeq = std::index_sequence<Indices...>;
+template <size_t N>
+using MakeIndexSeq = std::make_index_sequence<N>;
+template <typename... T>
+using IndexSeqFor = std::index_sequence_for<T...>;
+#endif
+
 template <typename T>
 struct IsLegalHandle {
     // Check if a type can be reinterpreted to/from ocrGuid_t
-    static constexpr bool value = std::is_trivially_copyable<T>::value &&
-                                  sizeof(T) == sizeof(ocrGuid_t);
+    static constexpr bool value =
+            IsTriviallyCopyable<T>::value && sizeof(T) == sizeof(ocrGuid_t);
 };
 
 template <bool condition, typename T = int>
@@ -443,23 +463,26 @@ class TaskImplementation<F, user_fn, R(Args...)> {
                                 ocrEdtDep_t depv[]) {
         ASSERT(paramc == 0);
         ASSERT(depc - 1 == sizeof...(Args));
-        return Launch(depv, std::index_sequence_for<Args...>{});
+        return Launch(depv);
     }
 
  private:
-    // XXX - using index_sequence requires C++14,
-    // but we could roll our own if we really want C++11 compatibility.
-    template <typename U = R, EnableIfNotVoid<U> = 0, size_t... I>
-    static ocrGuid_t Launch(ocrEdtDep_t deps[], std::index_sequence<I...>) {
-        // This calls the Datablock(ocrEdtDep_t) constructor
-        return user_fn((Args{deps[I]})...).guid();
+    template <typename U = R, EnableIfVoid<U> = 0>
+    static ocrGuid_t Launch(ocrEdtDep_t deps[]) {
+        UnpackDeps(deps, internal::IndexSeqFor<Args...>());
+        return NULL_GUID;
     }
 
-    template <typename U = R, EnableIfVoid<U> = 0, size_t... I>
-    static ocrGuid_t Launch(ocrEdtDep_t deps[], std::index_sequence<I...>) {
-        // This calls the Datablock<?>(ocrEdtDep_t) constructor
-        user_fn((Args{deps[I]})...);
-        return NULL_GUID;
+    template <typename U = R, EnableIfNotVoid<U> = 0>
+    static ocrGuid_t Launch(ocrEdtDep_t deps[]) {
+        return UnpackDeps(deps, internal::IndexSeqFor<Args...>()).guid();
+    }
+
+    template <size_t... I>
+    static R UnpackDeps(ocrEdtDep_t deps[], internal::IndexSeq<I...>) {
+        static_cast<void>(deps);  // possibly unused if deps is empty
+        static_assert(sizeof...(Args) == sizeof...(I), "?!");
+        return user_fn((Args{deps[I]})...);
     }
 };
 
@@ -562,12 +585,14 @@ class TaskBuilder<Ret(Args...)> {
     Task<F> CreateTask(Deps... deps) {
         constexpr s64 kDeps = sizeof...(Deps);
         constexpr s64 kArgs = sizeof...(Args);
-        constexpr s64 kMissing = kArgs - kDeps;
+        constexpr s64 kDiff = kArgs - kDeps;
+        // XXX - std::max isn't constexpr in C++11
+        constexpr s64 kMissing = kDiff < 0 ? 0 : kDiff;
         // Note: this assertion will never fail because another assertion
-        // in the internal checks will always fail first (or none at all).
+        // in the internal check will always fail first (or none at all).
         static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
                       "Check for args/paramters mismatch.");
-        return PadTask(std::make_index_sequence<kMissing>{}, deps...);
+        return PadTask(internal::MakeIndexSeq<kMissing>{}, deps...);
     }
 
     DelayedFuture<F> CreateFuture(DataHandleOf<Args>... deps) {
@@ -581,12 +606,14 @@ class TaskBuilder<Ret(Args...)> {
     Task<F> CreateFuture(Deps... deps) {
         constexpr s64 kDeps = sizeof...(Deps);
         constexpr s64 kArgs = sizeof...(Args);
-        constexpr s64 kMissing = kArgs - kDeps;
+        constexpr s64 kDiff = kArgs - kDeps;
+        // XXX - std::max isn't constexpr in C++11
+        constexpr s64 kMissing = kDiff < 0 ? 0 : kDiff;
         // Note: this assertion will never fail because another assertion
-        // in the internal checks will always fail first (or none at all).
+        // in the internal check will always fail first (or none at all).
         static_assert(internal::TaskArgCountCheck<kDeps, kArgs>::value,
                       "Check for args/paramters mismatch.");
-        return PadFuture(std::make_index_sequence<kMissing>{}, deps...);
+        return PadFuture(internal::MakeIndexSeq<kMissing>{}, deps...);
     }
 
  private:
@@ -602,14 +629,14 @@ class TaskBuilder<Ret(Args...)> {
     }
 
     template <size_t... I, typename... Deps>
-    Task<F> PadTask(std::index_sequence<I...>, Deps... deps) {
+    Task<F> PadTask(internal::IndexSeq<I...>, Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
         return CreateTask(deps..., DefaultDependence(I)...);
     }
 
     template <size_t... I, typename... Deps>
-    Task<F> PadFuture(std::index_sequence<I...>, Deps... deps) {
+    Task<F> PadFuture(internal::IndexSeq<I...>, Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
         return CreateFuture(deps..., DefaultDependence(I)...);

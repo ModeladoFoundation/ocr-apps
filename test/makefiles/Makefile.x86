@@ -34,14 +34,32 @@ OCR_AR     ?= $(OCR_INSTALL_ROOT)/lib/libocr_$(OCR_TYPE).a
 # DEBUG / OPTIMIZATION OPTIONS
 
 # Optimization flags
-CXXFLAGS += -std=c++14 -g -O2 -DOCR_TYPE_H=$(OCR_TYPE).h
+CXXFLAGS += -g -O2 -DOCR_TYPE_H=$(OCR_TYPE).h
 
 # Enable AddressSanitizer checks
 #CXX_OPTS += -g -fsanitize=address -fno-omit-frame-pointer
 
-# don't flood us with errors
-#CXXFLAGS += -ferror-limit=4 # clang
-#CXXFLAGS += -fmax-errors=4 # gcc
+CHECK_CXX_OPT_SUPPORT := echo | $(CXX) -fsyntax-only -xc++ -
+
+#################################################
+# OTHER COMPILER CONFIG
+
+# Try C++14, otherwise fall back to C++11
+ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -std=c++14 2>&1),)
+CXXFLAGS += -std=c++14
+else
+$(info No C++14 support. Falling back to C++11.)
+CXXFLAGS += -std=c++11
+endif
+
+# Try C++14, otherwise fall back to C++11
+ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -ferror-limit=1 2>&1),)
+$(warning CLANG $(CXX))
+CXXFLAGS += -ferror-limit=4 # clang
+else
+$(warning GCC)
+CXXFLAGS += -fmax-errors=4 # gcc
+endif
 # always color the output (even when piped)
 #CXXFLAGS += -fdiagnostics-color=always
 
