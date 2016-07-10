@@ -12,7 +12,7 @@ ifndef XSTG_ROOT
   endif #APPS_ROOT
 else  #XSTG_ROOT
   OCR_INSTALL_ROOT ?= $(XSTG_ROOT)/ocr/ocr/install
-  APPS_ROOT        ?= $(XSTG_ROOT)/apps
+  APPS_ROOT        ?= $(XSTG_ROOT)/apps/apps
 endif #XSTG_ROOT
 
 # Name of the application to build
@@ -25,7 +25,7 @@ OCR_TYPE := x86
 # ARCH
 ARCH        := x86
 # APPS
-APPS_ROOT   ?= $(XSTG_ROOT)/apps
+APPS_ROOT   ?= $(XSTG_ROOT)/apps/apps
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -148,7 +148,6 @@ ERROR_LIMIT := 4
 
 # Try C++14, otherwise fall back to C++11
 ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -ferror-limit=1 2>&1),)
-$(warning CLANG $(CXX))
 CFLAGS += -ferror-limit=$(ERROR_LIMIT) # clang
 else
 $(warning GCC)
