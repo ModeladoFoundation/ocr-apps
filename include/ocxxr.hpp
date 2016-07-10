@@ -368,6 +368,7 @@ struct ParamInfo;
 
 template <typename R>
 struct ParamInfo<R()> {
+    typedef void Type;
     static constexpr bool kHasParam = false;
     static constexpr size_t kParamBytes = 0;
     typedef void(ParamFn)();
@@ -376,6 +377,7 @@ struct ParamInfo<R()> {
 
 template <typename R, typename T, typename... As>
 struct ParamInfo<R(Datablock<T>, As...)> {
+    typedef void Type;
     static constexpr bool kHasParam = false;
     static constexpr size_t kParamBytes = 0;
     typedef void(ParamFn)();
@@ -384,14 +386,28 @@ struct ParamInfo<R(Datablock<T>, As...)> {
 
 template <typename R, typename P, typename... As>
 struct ParamInfo<R(P, As...)> {
-    typedef typename std::remove_reference<P>::type RawP;
+    typedef P Type;
     static constexpr bool kHasParam = true;
-    static constexpr size_t kParamBytes = sizeof(RawP);
     typedef void(ParamFn)(P);
     typedef void(DepsFn)(As...);
+};
+
+template <typename P>
+struct FullParamInfo {
+    typedef typename std::remove_reference<P>::type RawP;
+    static constexpr size_t kParamBytes = sizeof(RawP);
+    static constexpr size_t kParamWordCount =
+            (kParamBytes + sizeof(u64) - 1) / sizeof(u64);
     // This is going to get memcpy'd
     static_assert(IsTriviallyCopyable<RawP>::value,
                   "Task parameter must be trivially copyable.");
+};
+
+template <>
+struct FullParamInfo<void> {
+    typedef void RawP;
+    static constexpr size_t kParamBytes = 0;
+    static constexpr size_t kParamWordCount = 0;
 };
 
 template <typename T>
@@ -413,8 +429,6 @@ struct FnInfo<R(As...)> {
     static constexpr size_t kDepCount = sizeof...(As)-kDepStart;
     typedef typename ParamInfo<Fn>::ParamFn ParamFn;
     typedef typename ParamInfo<Fn>::DepsFn DepsFn;
-    static constexpr size_t kParamWordCount =
-            (ParamInfo<Fn>::kParamBytes + sizeof(u64) - 1) / sizeof(u64);
 };
 
 template <typename T>
@@ -475,7 +489,8 @@ class TaskImplementation<F, user_fn, void(Params...), void(Args...)> {
 
     static ocrGuid_t InternalFn(u32 paramc, u64 paramv[], u32 depc,
                                 ocrEdtDep_t depv[]) {
-        ASSERT(paramc == internal::FnInfo<F>::kParamWordCount);
+        typedef typename internal::ParamInfo<F>::Type P;
+        ASSERT(paramc == internal::FullParamInfo<P>::kParamWordCount);
         ASSERT(depc - 1 == kDepc);  // includes dummy dependence
         return Launch(paramv, depv);
     }
@@ -709,7 +724,8 @@ class TaskTemplate : public ObjectHandle {
         ocrEdt_t internal_fn =
                 internal::TaskImplementation<F, user_fn, PF, DF>::InternalFn;
         constexpr u16 depc = internal::FnInfo<F>::kDepCount;
-        constexpr u16 paramc = internal::FnInfo<F>::kParamWordCount;
+        typedef typename internal::ParamInfo<F>::Type P;
+        constexpr u16 paramc = internal::FullParamInfo<P>::kParamWordCount;
         ocrEdtTemplateCreate(&guid, internal_fn, paramc, 1 + depc);
         return TaskTemplate<F>(guid);
     }
