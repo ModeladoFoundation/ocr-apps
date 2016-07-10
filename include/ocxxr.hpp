@@ -647,7 +647,7 @@ class TaskBuilder<F, void(Params...), void(Args...)> {
 
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
-    Task<F> CreateTask(Params... params, Deps... deps) {
+    Task<F> CreateTaskPartial(Params... params, Deps... deps) {
         constexpr short kMissing =
                 internal::CountMissingDeps<sizeof...(Deps),
                                            sizeof...(Args)>::value;
@@ -663,7 +663,7 @@ class TaskBuilder<F, void(Params...), void(Args...)> {
 
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
-    DelayedFuture<F> CreateFuture(Params... params, Deps... deps) {
+    DelayedFuture<F> CreateFuturePartial(Params... params, Deps... deps) {
         constexpr short kMissing =
                 internal::CountMissingDeps<sizeof...(Deps),
                                            sizeof...(Args)>::value;

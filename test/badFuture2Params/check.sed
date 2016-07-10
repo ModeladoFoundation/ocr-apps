@@ -1,2 +1,3 @@
 # No specific static assertion error right now...
-/error: no matching member function for call to 'CreateFuture'/!d
+/error:/!d
+/CreateFuture/!d

@@ -1,2 +1,4 @@
 # No specific static assertion error right now...
-/error: no matching member function for call to 'CreateTask'/!d
+/error:/!d
+/CreateTask/!d
+

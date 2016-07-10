@@ -14,5 +14,5 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     auto datablock = ocxxr::Datablock<u32>::Create();
     datablock.data() = kPayload;
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    task_template().CreateFuture(datablock, datablock);
+    task_template().CreateFuturePartial(datablock, datablock);
 }
