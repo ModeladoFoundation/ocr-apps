@@ -50,6 +50,8 @@ CXXFLAGS += -std=c++14
 else
 $(info No C++14 support. Falling back to C++11.)
 CXXFLAGS += -std=c++11
+# older GCC needs this, otherwise integer format macros are missing
+CFLAGS += -D__STDC_FORMAT_MACROS
 endif
 
 ERROR_LIMIT := 4
