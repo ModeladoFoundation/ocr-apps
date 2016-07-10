@@ -1,3 +1,6 @@
+#ifndef OCXXR_CXX11_COMPAT_H_
+#define OCXXR_CXX11_COMPAT_H_
+
 namespace ocxxr {
 namespace internal {
 
@@ -24,3 +27,5 @@ using IndexSeqFor = typename fromboost::make_index_sequence<sizeof...(T)>;
 
 }  // namespace internal
 }  // namespace ocxxr
+
+#endif  // OCXXR_CXX11_COMPAT_H_
