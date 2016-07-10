@@ -87,7 +87,7 @@ class ObjectHandle {
     explicit ObjectHandle(ocrGuid_t guid) : guid_(guid) {}
 
  private:
-    const ocrGuid_t guid_;
+    ocrGuid_t guid_;
 };
 
 static_assert(internal::IsLegalHandle<ObjectHandle>::value,
@@ -336,10 +336,9 @@ class NullHandle : public ObjectHandle {
                       "Only use NullHandle for ObjectHandle types.");
         static_assert(internal::IsLegalHandle<T>::value,
                       "Only use NullHandle for simple handle types.");
-        // Note: this is a bit ugly, but since the base class ObjectHandle
-        // guarantees that the internal guid is immutable, it should be OK.
-        // Plus this is returning by-value, so unless it's captured as an
-        // rvalue reference or something, we'll get a copy anyway.
+        // Note: this is a bit ugly, but I think it does what the user
+        // would expect it to do, i.e., this NullHandle is actually
+        // converted to whatever T-type handle they wanted.
         return *reinterpret_cast<T *>(const_cast<NullHandle *>(this));
     }
 
