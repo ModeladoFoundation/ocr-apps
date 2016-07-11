@@ -24,5 +24,4 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     auto future = task_template().CreateFuturePartial(kPayload0, dep1);
     future.task().AddDependence<1>(dep2);
-    future.Release();
 }

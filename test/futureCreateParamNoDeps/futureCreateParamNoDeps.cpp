@@ -2,7 +2,7 @@
 
 constexpr double kPayload = 123.45;
 
-ocxxr::NullHandle ChildTask(double param) {
+ocxxr::NullHandle ChildTask(double param, ocxxr::Datablock<void>) {
     PRINTF("Child task ran! (param=%.2f)\n", param);
     ASSERT(param == kPayload);
     PRINTF("Shutting down...\n");
@@ -13,5 +13,6 @@ ocxxr::NullHandle ChildTask(double param) {
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    task_template().CreateFuture(kPayload).Release();
+    auto future = task_template().CreateFuturePartial(kPayload);
+    future.task().AddDependence<0>(NullHandle());
 }

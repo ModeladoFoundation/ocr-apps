@@ -56,6 +56,9 @@ using EnableIfBaseOf = EnableIf<std::is_base_of<T, U>::value, V>;
 template <typename T, typename U, typename V = int>
 using EnableIfSame = EnableIf<std::is_same<T, U>::value, V>;
 
+template <typename T, typename U, typename V = int>
+using EnableIfNotSame = EnableIf<!std::is_same<T, U>::value, V>;
+
 // Check error status of C API call
 inline void OK(u8 status) { ASSERT(status == 0); }
 }  // namespace internal
@@ -246,6 +249,10 @@ class Datablock {
     T *const data_;
 };
 
+// TODO - Add Arenas (and ArenaHandles)
+// They'll be very similar to the Datablock classes,
+// but incorporate code from my db-alloc repo.
+
 //! Events
 template <typename T>
 class Event : public DataHandle<T> {
@@ -330,10 +337,8 @@ class NullHandle : public ObjectHandle {
     NullHandle() : ObjectHandle(NULL_GUID) {}
 
     // auto-convert NullHandle to any ObjectHandle type
-    template <typename T>
+    template <typename T, internal::EnableIfBaseOf<ObjectHandle, T> = 0>
     operator T() const {
-        static_assert(std::is_base_of<ObjectHandle, T>::value,
-                      "Only use NullHandle for ObjectHandle types.");
         static_assert(internal::IsLegalHandle<T>::value,
                       "Only use NullHandle for simple handle types.");
         // Note: this is a bit ugly, but I think it does what the user
@@ -461,7 +466,10 @@ struct CountMissingDeps {
             arg_count <= param_count,
             "Dependence argument count must not exceed task parameter count.");
     static constexpr short diff = param_count - arg_count;
-    static constexpr short value = diff > 0 ? diff : 0;
+    static constexpr size_t value = diff > 0 ? diff : 0;
+    static decltype(MakeIndexSeq<value>()) indices() {
+        return MakeIndexSeq<value>();
+    }
 };
 
 template <typename D, typename A, size_t Position>
@@ -491,7 +499,7 @@ class TaskImplementation<F, user_fn, void(Params...), void(Args...)> {
                                 ocrEdtDep_t depv[]) {
         typedef typename internal::ParamInfo<F>::Type P;
         ASSERT(paramc == internal::FullParamInfo<P>::kParamWordCount);
-        ASSERT(depc - 1 == kDepc);  // includes dummy dependence
+        ASSERT(depc == kDepc);
         return Launch(paramv, depv);
     }
 
@@ -554,7 +562,6 @@ class TaskBuilder;
 template <typename F>
 class Task;
 
-// TODO - optimize case when no deps are provided (or needed)
 template <typename Ret, typename... Args>
 class Task<Ret(Args...)> : public ObjectHandle {
  public:
@@ -618,13 +625,6 @@ class DelayedFuture {
 
     Event<R> event() const { return event_; }
 
-    void Release() const {
-        constexpr u32 slot = Task<F>::kDepc;  // dummy slot is last
-        ocrGuid_t dest = task_.guid();
-        constexpr ocrDbAccessMode_t mode = DB_DEFAULT_MODE;
-        internal::OK(ocrAddDependence(NULL_GUID, dest, slot, mode));
-    }
-
  private:
     const Task<F> task_;
     const Event<R> event_;
@@ -642,48 +642,47 @@ class TaskBuilder<F, void(Params...), void(Args...)> {
             : template_guid_(template_guid), hint_(hint), flags_(flags) {}
 
     Task<F> CreateTask(Params... params, DataHandleOf<Args>... deps) {
-        return HelpCreateTask(nullptr, params..., deps...);
+        return HelpCreateTask<Args...>(nullptr, params..., deps...);
     }
 
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
     Task<F> CreateTaskPartial(Params... params, Deps... deps) {
-        constexpr short kMissing =
-                internal::CountMissingDeps<sizeof...(Deps),
-                                           sizeof...(Args)>::value;
-        return PadTask(internal::MakeIndexSeq<kMissing>{}, params..., deps...);
-    }
-
-    DelayedFuture<F> CreateFuture(Params... params,
-                                  DataHandleOf<Args>... deps) {
-        Event<R> out_event;
-        auto task = HelpCreateTask(&out_event, params..., deps...);
-        return DelayedFuture<F>(task, out_event);
+        if (sizeof...(Deps) == 0) {
+            return HelpCreateTask<>(nullptr, params...);
+        } else {
+            auto missing_indices =
+                    internal::CountMissingDeps<sizeof...(Deps),
+                                               sizeof...(Args)>::indices();
+            return PadTask(missing_indices, params..., deps...);
+        }
     }
 
     template <typename... Deps,
               internal::EnableIf<sizeof...(Deps) != sizeof...(Args)> = 0>
     DelayedFuture<F> CreateFuturePartial(Params... params, Deps... deps) {
-        constexpr short kMissing =
+        auto missing_indices =
                 internal::CountMissingDeps<sizeof...(Deps),
-                                           sizeof...(Args)>::value;
-        return PadFuture(internal::MakeIndexSeq<kMissing>{}, params...,
-                         deps...);
+                                           sizeof...(Args)>::indices();
+        return PadFuture(missing_indices, params..., deps...);
     }
 
  private:
+    template <typename... Deps>
     Task<F> HelpCreateTask(Event<R> *out_event, Params... params,
-                           DataHandleOf<Args>... deps) {
-        namespace i = internal;
-        bool is_future = out_event != nullptr;
-        // Set provided dependences
-        ocrGuid_t dummy_dep = is_future ? UNINITIALIZED_GUID : NULL_GUID;
+                           DataHandleOf<Deps>... deps) {
+        static_assert(
+                sizeof...(Deps) == sizeof...(Args) || sizeof...(Deps) == 0,
+                "Must either provide all dependence args or none.");
+        // Set params (if any)
         u64 *param_ptr[1 + Task<F>::kParamc] = {
                 reinterpret_cast<u64 *>(&params)..., nullptr};
+        // Set provided dependences
         ocrGuid_t depv[1 + Task<F>::kDepc] = {
-                (static_cast<DataHandleOf<Args>>(deps).guid())..., dummy_dep};
-        // Set dummy dependence
-        return Task<F>(out_event, template_guid_, param_ptr[0], depv, hint_,
+                (static_cast<DataHandleOf<Deps>>(deps).guid())..., NULL_GUID};
+        ocrGuid_t *depv_ptr = sizeof...(Deps) ? depv : nullptr;
+        // Create the task
+        return Task<F>(out_event, template_guid_, param_ptr[0], depv_ptr, hint_,
                        flags_);
     }
 
@@ -700,8 +699,18 @@ class TaskBuilder<F, void(Params...), void(Args...)> {
                                Deps... deps) {
         static_assert(sizeof...(I) + sizeof...(Deps) == sizeof...(Args),
                       "Correct total number of arguments for task.");
-        return CreateFuture(params..., deps...,
-                            internal::DefaultDependence(I)...);
+        return CreateFuture<Args...>(params..., deps...,
+                                     internal::DefaultDependence(I)...);
+    }
+
+    // This is private because the output event is useless if all deps are
+    // provided up-front (due to the data race with the corresponding task).
+    template <typename... Deps>
+    DelayedFuture<F> CreateFuture(Params... params,
+                                  DataHandleOf<Deps>... deps) {
+        Event<R> out_event;
+        auto task = HelpCreateTask<Deps...>(&out_event, params..., deps...);
+        return DelayedFuture<F>(task, out_event);
     }
 
     const ocrGuid_t template_guid_;
@@ -726,7 +735,7 @@ class TaskTemplate : public ObjectHandle {
         constexpr u16 depc = internal::FnInfo<F>::kDepCount;
         typedef typename internal::ParamInfo<F>::Type P;
         constexpr u16 paramc = internal::FullParamInfo<P>::kParamWordCount;
-        ocrEdtTemplateCreate(&guid, internal_fn, paramc, 1 + depc);
+        ocrEdtTemplateCreate(&guid, internal_fn, paramc, depc);
         return TaskTemplate<F>(guid);
     }
 

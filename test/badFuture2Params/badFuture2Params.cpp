@@ -13,5 +13,5 @@ ocxxr::NullHandle ChildTask(double param1, double param2) {
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    task_template().CreateFuture(kPayload, kPayload);
+    task_template().CreateFuturePartial(kPayload, kPayload);
 }

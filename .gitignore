@@ -1,2 +1,5 @@
-/test/**/build/
-/test/**/install/
+/test/*/build/
+/test/*/install/
+
+/examples/*/build/
+/examples/*/install/
