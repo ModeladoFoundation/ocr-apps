@@ -143,8 +143,6 @@ CFLAGS += -std=c++14
 else
 $(info No C++14 support. Falling back to C++11.)
 CFLAGS += -std=c++11
-# older GCC needs this, otherwise integer format macros are missing
-CFLAGS += -D__STDC_FORMAT_MACROS
 endif
 
 ERROR_LIMIT := 4
@@ -153,8 +151,9 @@ ERROR_LIMIT := 4
 ifeq ($(shell $(CHECK_CXX_OPT_SUPPORT) -ferror-limit=1 2>&1),)
 CFLAGS += -ferror-limit=$(ERROR_LIMIT) # clang
 else
-$(warning GCC)
 CFLAGS += -fmax-errors=$(ERROR_LIMIT) # gcc
+# GCC needs this, otherwise integer format macros are missing
+CFLAGS += -D__STDC_FORMAT_MACROS
 endif
 
 # always color the output (even when piped)
