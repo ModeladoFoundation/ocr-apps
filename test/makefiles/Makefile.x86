@@ -27,7 +27,7 @@ else  #XSTG_ROOT
 endif #XSTG_ROOT
 
 OCR_ROOT   ?= $(shell dirname $(OCR_INSTALL_ROOT))
-OCR_AR     ?= $(OCR_INSTALL_ROOT)/lib/libocr_$(OCR_TYPE).a
+OCR_LIB    ?= $(OCR_INSTALL_ROOT)/lib/libocr_$(OCR_TYPE).so
 
 
 #################################################
@@ -106,7 +106,7 @@ OBJS += $(SRCS:%.cpp=$(WORKLOAD_BUILD)/%.o)
 
 all: build install
 
-pre_build: $(OCR_AR)
+pre_build: $(OCR_LIB)
 
 
 build: pre_build $(WORKLOAD_BUILD)/$(TARGET) $(OCR_GENERATED_CONFIG)
@@ -126,12 +126,12 @@ $(WORKLOAD_INSTALL)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET)
 	cp $< $@
 
 # build C source files
-$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | $(OCR_AR)
+$(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | $(OCR_LIB)
 	$(ensure_dir)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # build the ocr runtime (if needed)
-$(OCR_AR):
+$(OCR_LIB):
 	@echo OCR_ROOT=$(OCR_ROOT)
 	@echo OCR_INSTALL_ROOT=$(OCR_INSTALL_ROOT)
 	@[ -f "$(OCR_ROOT)/ocr.dox" ] \
@@ -145,7 +145,7 @@ $(OCR_GENERATED_CONFIG):
 endif #OCR_GENERATED_CONFIG
 
 # link the binary
-$(WORKLOAD_BUILD)/$(TARGET): $(OBJS) $(OCR_AR)
+$(WORKLOAD_BUILD)/$(TARGET): $(OBJS) $(OCR_LIB)
 	$(ensure_dir)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
