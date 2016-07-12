@@ -3,16 +3,16 @@
 # removed or modified.
 
 # ARCH
-ARCH        := x86
+ARCH        := tg-xe
 # APPS
 APPS_ROOT   ?= ../../apps
+# OCR_TYPE
+OCR_TYPE    := tg
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
-
-#CC=g++
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -28,7 +28,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?=
+WORKLOAD_ARGS ?= 4 8 4 4
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -41,7 +41,7 @@ RUN_TORQUE ?= no
 # a test
 RUN_MODE ?=
 
-## END of variables coming from user/environment
+# END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -50,27 +50,28 @@ TARGET := graph500
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := macros
+REQ_LIBS := libc macros
 
 # Space separated list of source files
-SRCS := graph500.c
+SRCS := graph500.c qsort.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
-CFLAGS := -DNO_MAP --std=c99
+CFLAGS := -DON_TG -DNO_MAP -DNO_FILES -DNO_AFFINITIES -DNO_TIME
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm $(EXTRALDFLAGS)
+LDFLAGS :=
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+#  FIXME bug #871 causes this to be at -O0 and not -O2
+all:	CFLAGS += -O0
 all:	TARGETS := all
 all:	default
 
@@ -79,6 +80,9 @@ debug:	TARGETS := debug
 debug:	default
 
 install: all
+# We make sure to install this during install so Jenkins
+# can run it properly
+install:
 
 # This rule will be executed prior to execution:
 #  - For the TG target, this happens when the binary is built
@@ -102,16 +106,16 @@ install: all
 # other platforms.
 # 'prerun: ;' is an empty rule (the rule is required)
 .PHONY: prerun
-prerun: ;
+prerun:
 
 # This rule will be executed after execution
 # The variable ${WORKLOAD_OUTS} contains a space separated
 # list of output files
-# 'postrun: ;' is an empty rule (the rule is required
-# to be present though)
+# 'postrun: ;' is an empty rule (the rule is required)
 .PHONY: postrun
-postrun: ;
+postrun:
+
+# Any additional parts
 
 # Include common part
 include ${APPS_ROOT}/makefiles/make-inc.inc
-

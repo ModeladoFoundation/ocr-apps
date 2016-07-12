@@ -1,32 +1,77 @@
-#include <time.h>
+//#define NO_MAP //do not use labelled EDTs. Instead, an array of pre-created EDTs for 10 iterations is created at startup
+//#define NO_AFFINITIES //do not use affinities to distribute EDTs. Only relevant with NO_MAP
+//#define ON_TG //run on TG - fill in the missing libc functions (+other necessary hacks)
+//#define NO_TIME //do not use timing functions
+//#define NO_FILES	//do not use any files - generate graph always in load ..... !!!! set validation mode to 0 or 3
+
+
 #include <math.h>
-#define NO_MAP
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+#ifndef NO_AFFINITIES
 #define ENABLE_EXTENSION_AFFINITY
+#endif
 #include <ocr.h>
 #ifndef NO_MAP
 //#define ENABLE_EXTENSION_LABELING
 #include <extensions/ocr-labeling.h>
 #endif
+#ifndef NO_AFFINITIES
 #include <extensions/ocr-affinity.h>
-#include <stdio.h>
+#endif
+#ifdef ON_TG
+#define assert(FOO)
+#else
 #include <assert.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <stdlib.h>
-#include <inttypes.h>
+#endif
+#ifdef NO_AFFINITIES
+#define HINT(X) NULL_HINT
+#else
+#define HINT(X) (X)
+#endif
 
 #ifndef PRId64
 #define PRId64 "lld"
 #endif
 
-#ifdef __cplusplus
+#ifndef UINT64_C
+#define UINT64_C(c) c ## ULL
+#endif
+
+//The following defines pick the way local arrays are allocated (as STL vectors, local arrays with variable size, malloc-ed blocks, OCR data blocks)
+//#define USING_VECTORS
+//#define USING_DYN_ARRAYS
+//#define USING_MALLOC_ARRAYS
+#define USING_DATABLOCKS
+
+#ifdef USING_VECTORS
 #include <vector>
 #define LOCAL_VAR_ARRAY(TYPE,NAME,SIZE) std::vector<TYPE> NAME(SIZE)
 #define LOCAL_VAR_ARRAY_PTR(VAR) (&VAR.front())
+#define LOCAL_VAR_ARRAY_DESTROY(NAME)
 #else
+#ifdef USING_MALLOC_ARRAYS
+#define LOCAL_VAR_ARRAY(TYPE,NAME,SIZE) TYPE* NAME=(TYPE*)malloc(sizeof(TYPE)*SIZE)
+#define LOCAL_VAR_ARRAY_PTR(VAR) (VAR)
+#define LOCAL_VAR_ARRAY_DESTROY(NAME) free(NAME)
+#else
+#ifdef USING_DYN_ARRAYS
 #define LOCAL_VAR_ARRAY(TYPE,NAME,SIZE) TYPE NAME[SIZE]
 #define LOCAL_VAR_ARRAY_PTR(VAR) (VAR)
+#define LOCAL_VAR_ARRAY_DESTROY(NAME)
+#else
+#ifdef USING_DATABLOCKS
+#define LOCAL_VAR_ARRAY(TYPE,NAME,SIZE) TYPE* NAME; ocrGuid_t NAME ## _DBK; ocrDbCreate(&NAME ## _DBK, (void**)&NAME, SIZE*sizeof(TYPE), DB_PROP_NONE, NULL_HINT, NO_ALLOC)
+#define LOCAL_VAR_ARRAY_PTR(VAR) (VAR)
+#define LOCAL_VAR_ARRAY_DESTROY(NAME) ocrDbDestroy(NAME ## _DBK)
 #endif
+#endif
+#endif
+#endif
+
 
 // TORUN GUIDS (for each workerEDT)
 #define INDEX_OF_TORUNGUID0 (0)
@@ -135,9 +180,11 @@
 //#define PRINT_DEBUG_INFORMATION
 //#define FLOWGRAPH_VISUALIZATION_MODE
 
+
 #define VALIDATION_MODE 0			//no Validation
 //#define VALIDATION_MODE 1			//offline Validation
 //#define VALIDATION_MODE 2			//validation in FinishEdt
+//#define VALIDATION_MODE 3			//validation in FinishEdt without input files
 
 #define TORUN_DESTROY_MODE
 
@@ -145,20 +192,87 @@
 #define FILE_NAME_READ "input.dat"
 //#define FILE_NAME_READ "out.dat"
 #define CHUNK_FILE_NAME_PATTERN "data/s%d.edgefactor%d.r%d.c%d.worker%05d.dat"
-#define SAVE_CHUNKS 1
-#define TRY_LOAD_CHUNKS 1
+#define SAVE_CHUNKS 0		//saving graph divided to workers - 1, do not save 0
+#define TRY_LOAD_CHUNKS 1	// if there are edges for each worker try to use it 1, do not try 0
 #define TRY_SKIP_GRAPH_GENERATION TRY_LOAD_CHUNKS
 //#define HAND_OVER_TORUN_IN_SEARCH		//mostly helpful if rows are on the same node, i.e., the wokers are "transposed"
 //#define HAND_OVER_TORUN_IN_DISTRIBUTE	//mostly helpful if rows are on different nodes, i.e., the default layout, with C==comm_size
 
+#ifdef NO_FILES
+#if VALIDATION_MODE!=0 && VALIDATION_MODE!=3
+#error with on-the-fly graph generation, only validation modes 0 and 3 are supported
+#endif
+#else
 #if TRY_SKIP_GRAPH_GENERATION==1
 #if VALIDATION_MODE>0
 #error validation mode requires the graph to be fully generated, not loaded from cache
 #endif
 #endif
+#endif
+
+#ifdef ON_TG
+#ifndef NO_MAP
+#error Labelled EDTs not supported on TG
+#endif
+#ifndef NO_AFFINITIES
+#error EDT affinities not supported on TG
+#endif
+#ifndef NO_TIME
+#error Timing functions not supported on TG
+#endif
+#ifndef NO_FILES
+#error File IO not supported on TG
+#endif
+#endif
+
+#ifdef __cplusplus
+#ifdef USING_DYN_ARRAYS
+#error cpp does not support array[N]
+#endif
+#else
+#ifdef USING_VECTORS
+#error C does not support vectors
+#endif
+#endif
+
+#ifdef ON_TG
+#define FLUSH
+/*u64 pow(u64 base, u64 exponent)
+{
+	u64 res = 1;
+	while (exponent--)
+	{
+		res *= base;
+	}
+	return res;
+}*/
+//#define abs(X) ((X)<0 ? (-(X)) : (X))
+void qsort(void *a, size_t n, size_t es, int(*cmp)(const void *, const void *));
+#else
+#define FLUSH fflush(0)
+#endif
 
 //u8 fakeDbDestroy(ocrGuid_t g){ return 0;}
 //#define ocrDbDestroy fakeDbDestroy
+
+#ifdef NO_TIME
+typedef struct timeval {
+	long tv_sec;
+	long tv_usec;
+} timeval;
+typedef struct timezone
+{
+	int foo;
+} timezone;
+int gettimeofday(struct timeval * tp, struct timezone * tzp)
+{
+	tp->tv_sec = 7;
+	tp->tv_usec = 7;
+	return 0;
+}
+#else
+#include <sys/time.h>
+#endif
 
 #ifdef __cplusplus
 struct u48
@@ -323,6 +437,7 @@ void vertex2vIndex2(vertexType v, u64 * id, u64 R, u64 C, u64 SIZE) {
 }
 
 //GRAPH
+#ifndef NO_FILES
 void fillEdges(FILE* f, u64* M, u64 N, u64 MAX_EDGE_SIZE) {
 	struct timeval pt0;
 	gettimeofday(&pt0, 0);
@@ -339,6 +454,7 @@ void fillEdges(FILE* f, u64* M, u64 N, u64 MAX_EDGE_SIZE) {
 	}
 	*M = MAX_EDGE_SIZE;
 }
+#endif
 
 // sorting edges and vertices
 int edgeCompare(const void* vl, const void* vr) {
@@ -404,6 +520,13 @@ u64 getAffinityIndex(u64 w, u64 R, u64 C, u64 affinityCount) {
 }
 #endif
 
+u64 xorshift64star(u64 *x) {
+	*x ^= *x >> 12; // a
+	*x ^= *x << 25; // b
+	*x ^= *x >> 27; // c
+	return *x * UINT64_C(2685821657736338717);
+}
+
 //EDTS
 ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//creates graph data for each worker (matrix, visited)
 	u64 myId = paramv[0];
@@ -411,6 +534,7 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 	u64* paramPTR = (u64*)depv[LOAD_SLOT_PARAM].ptr;
 	u64 SIZE = paramPTR[0]; u64 R = paramPTR[1]; u64 C = paramPTR[2]; u64 aSIZE = paramPTR[3]; u64 vSIZE = paramPTR[4];
 	u64 EDGE_SIZE = paramPTR[5];
+	u64 SEED = paramPTR[6];
 	ocrDbRelease(depv[LOAD_SLOT_PARAM].guid);
 
 	ocrGuid_t* constguidPTR = (ocrGuid_t*)depv[LOAD_SLOT_CONSTGUID].ptr;
@@ -422,6 +546,54 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 #endif
 
 	vertexType* arrayPTR;
+#ifdef NO_FILES
+	u64 myEdgeCount = 0;
+	u64 copyseed = SEED;
+	for (u64 i = 0; i < EDGE_SIZE; i++) {
+		edge A;
+		A.source = (vertexType)(xorshift64star(&copyseed) % SIZE);
+		A.destination = (vertexType)(xorshift64star(&copyseed) % SIZE);
+		if (A.destination == A.source) continue;
+		u64 worker1 = arrayindex2workerid(A.source, A.destination, R, C, SIZE);
+		u64 worker2 = arrayindex2workerid(A.destination, A.source, R, C, SIZE);
+		if (myId == worker1) myEdgeCount++;
+		if (myId == worker2) myEdgeCount++;
+	}
+	assert(fitsInVertexType(myEdgeCount));
+
+	ocrDbCreate(&arrayDBK, (void**)&arrayPTR, (1 + 2 * myEdgeCount) * sizeof(vertexType), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+	arrayPTR[0] = (vertexType)myEdgeCount;
+	u64 index = 1;
+
+	copyseed = SEED;
+	for (u64 i = 0; i < EDGE_SIZE; i++) {
+		edge A;
+		A.source = (vertexType)(xorshift64star(&copyseed) % SIZE);
+		A.destination = (vertexType)(xorshift64star(&copyseed) % SIZE);
+		if (A.destination == A.source) continue;
+		u64 worker1 = arrayindex2workerid(A.source, A.destination, R, C, SIZE);
+		u64 worker2 = arrayindex2workerid(A.destination, A.source, R, C, SIZE);
+		if (myId == worker1) {
+			arrayPTR[index++] = A.source;
+			arrayPTR[index++] = A.destination;
+#ifdef PRINT_DEBUG_INFORMATION
+			PRINTF("(%" PRId64 ",%" PRId64 ") ", A.source, A.destination);
+#endif
+		}
+		if (myId == worker2) {
+			arrayPTR[index++] = A.destination;
+			arrayPTR[index++] = A.source;
+#ifdef PRINT_DEBUG_INFORMATION
+			PRINTF("(%" PRId64 ",%" PRId64 ") ", A.destination, A.source);
+#endif
+		}
+	}
+	qsort(arrayPTR + 1, myEdgeCount, 2 * sizeof(vertexType), &edgeCompare);
+#ifdef PRINT_DEBUG_INFORMATION
+	PRINTF("\n");
+#endif
+
+#else
 	bool loaded = false;
 	if (TRY_LOAD_CHUNKS) {
 		char filename[256];
@@ -527,12 +699,13 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 			sprintf(filename, CHUNK_FILE_NAME_PATTERN, (int)p, (int)(EDGE_SIZE / SIZE), (int)R, (int)C, (int)myId);
 			FILE* f = fopen(filename, "wb");
 			if (f) {
-				std::size_t written = fwrite(arrayPTR, sizeof(vertexType), 1 + 2 * myEdgeCount, f);
+				size_t written = fwrite(arrayPTR, sizeof(vertexType), 1 + 2 * myEdgeCount, f);
 				assert(written == 1 + 2 * myEdgeCount);
 				fclose(f);
 			}
 		}
 	}
+#endif
 	ocrDbRelease(arrayDBK);
 
 	ocrGuid_t dataEVT;
@@ -555,7 +728,7 @@ ocrGuid_t createEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) { 	//
 	u64 myId = paramv[0];
 	vertexType ROOT = (vertexType)paramv[1];
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("Create %" PRId64 "", myId); fflush(0);
+	PRINTF("Create %" PRId64 "", myId); FLUSH;
 #endif
 	u64* paramPTR = (u64*)depv[CREATE_SLOT_PARAM].ptr;
 	u64 SIZE = paramPTR[0]; u64 R = paramPTR[1]; u64 C = paramPTR[2]; u64 aSIZE = paramPTR[3]; u64 vSIZE = paramPTR[4];
@@ -613,7 +786,7 @@ ocrGuid_t createEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) { 	//
 	ocrDbRelease(visitedDBK);
 
 #ifdef PRINT_DEBUG_INFORMATION
-	if (myId == ROOT_WORKER) PRINTF("*"); fflush(0);
+	if (myId == ROOT_WORKER) PRINTF("*"); FLUSH;
 #endif
 
 	// create Level0 (distribute, search, apply)
@@ -674,19 +847,23 @@ ocrGuid_t startEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//s
 		struct timeval t1;
 		gettimeofday(&t1, 0);
 		double elapsed = (double)((t1.tv_sec - t0sec) * 1000000 + t1.tv_usec - t0usec);
-		PRINTF("[kernel1 time %f]\n", elapsed / 1000000); fflush(0);
+		PRINTF("[kernel1 time %f]\n", elapsed / 1000000); FLUSH;
 	}
 	// create finish, stop etc.
 	ocrGuid_t* constguidPTR = (ocrGuid_t*)depv[START_SLOT_CONSTGUID].ptr;
 
 	ocrGuid_t local_affinity = NULL_GUID;
 	ocrHint_t* local_hint = NULL_HINT;
+#ifndef NO_AFFINITIES
 	ocrAffinityGetCurrent(&local_affinity);
 	ocrHint_t hint;
 	ocrHintInit(&hint, OCR_HINT_EDT_T);
 	ocrSetHintValue(&hint, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(local_affinity));
 	local_hint = &hint;
+#endif
 
+#ifdef NO_MAP
+#ifndef NO_AFFINITIES
 	u64 af_count;
 	ocrAffinityCount(AFFINITY_PD, &af_count);
 	assert(af_count >= 1);
@@ -697,6 +874,8 @@ ocrGuid_t startEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//s
 		ocrHintInit(&hints[i], OCR_HINT_EDT_T);
 		ocrSetHintValue(&hints[i], OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(affinities[i]));
 	}
+#endif
+#endif
 
 	ocrGuid_t finishTMP = constguidPTR[INDEX_OF_FINISHTMP];
 	ocrGuid_t finishEDT;
@@ -742,13 +921,19 @@ ocrGuid_t startEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//s
 		ocrGuidFromIndex(&cEDT, create_map, w);
 		ocrEdtCreate(&cEDT, createTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, GUID_PROP_IS_LABELED, NULL_HINT, NULL);
 #else
-		ocrEdtCreate(&cEDT, createTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &hints[getAffinityIndex(w, R, C, af_count)], NULL);
+		ocrEdtCreate(&cEDT, createTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, HINT(&hints[getAffinityIndex(w, R, C, af_count)]), NULL);
 #endif
 		ocrAddDependence(depv[START_SLOT_CONSTGUID].guid, cEDT, CREATE_SLOT_CONSTGUID, DB_MODE_CONST);
 		ocrAddDependence(depv[START_SLOT_PARAM].guid, cEDT, CREATE_SLOT_PARAM, PARAMDBK_MODE);
 	}
 
 
+#ifdef NO_MAP
+#ifndef NO_AFFINITIES
+	LOCAL_VAR_ARRAY_DESTROY(affinities);
+	LOCAL_VAR_ARRAY_DESTROY(hints);
+#endif
+#endif
 	ocrEdtTemplateDestroy(createTMP);
 
 	return NULL_GUID;
@@ -783,7 +968,7 @@ ocrGuid_t distributeEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 #ifdef PRINT_DEBUG_INFORMATION
 	PRINTF("L%" PRId64 ": distribute%" PRId64 " (", Level, myId);
 	PRINTF(GUIDF, GUIDA(depv[DISTRIBUTE_SLOT_TORUN].guid));
-	PRINTF(")[size%" PRId64 "]\n", toRunPTR[0]);
+	PRINTF(")[size%" PRId64 "]\n", toRunGuidPTR[0]);
 #endif
 
 	//create nextEVT if you are worker 0
@@ -973,6 +1158,11 @@ ocrGuid_t searchEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		id += C;
 	}
 
+	//destroy LOCAL_ARRAYS
+	LOCAL_VAR_ARRAY_DESTROY(destVertices);
+	LOCAL_VAR_ARRAY_DESTROY(counts);
+	LOCAL_VAR_ARRAY_DESTROY(positions);
+
 	//send necessary DBs (edgesDBK - slot R+1, paramDBK - slot R+2, guidDBK - slot R+3) to APPLY with myId
 	ocrGuid_t myNext;
 	myNext = getApply(constguidPTR, Level, myId, R, C);
@@ -1118,6 +1308,9 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	PRINTF("\n");
 #endif
 
+	//destroy LOCAL_ARRAYS
+	LOCAL_VAR_ARRAY_DESTROY(toRunBool);
+
 	ocrGuid_t* constguidPTR = (ocrGuid_t*)depv[APPLY_SLOT_CONSTGUID].ptr;
 	ocrGuid_t finishEDT = constguidPTR[INDEX_OF_FINISHEDT];
 	ocrGuid_t stopEDT = constguidPTR[INDEX_OF_STOPEDT];
@@ -1218,7 +1411,7 @@ ocrGuid_t stopEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	gettimeofday(&t1, 0);
 
 	double etime = (double)((t1.tv_sec - t0sec) * 1000000 + t1.tv_usec - t0usec);
-	PRINTF("[kernel2 time %f]\n", (etime) / 1000000); fflush(0);
+	PRINTF("[kernel2 time %f]\n", (etime) / 1000000); FLUSH;
 
 	if (paramv[0] == 1) ocrDbDestroy(depv[STOP_SLOT_TIME1].guid);
 
@@ -1238,8 +1431,9 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	u64* paramPTR = (u64*)depv[FINISH_SLOT_PARAM1].ptr;
 	u64 SIZE = paramPTR[0]; u64 R = paramPTR[1]; u64 C = paramPTR[2]; u64 aSIZE = paramPTR[3]; u64 vSIZE = paramPTR[4];
-	u64 EDGE_SIZE = paramPTR[5];
+	u64 EDGE_SIZE = paramPTR[5]; u64 SEED = paramPTR[6];
 	ocrDbRelease(depv[FINISH_SLOT_PARAM].guid);
+
 
 	evalData* dat = (evalData*)depv[FINISH_SLOT_FROMSTOP].ptr;
 	dat->ROOT = ROOT;
@@ -1302,6 +1496,54 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	}
 	PRINTF("VAL1 OK\nVAL2 OK\n");
 
+#ifdef NO_FILES
+	u64 edge_count = 0;
+	u64 copyseed = SEED;
+	for (u64 i = 0; i < EDGE_SIZE; i++) {
+		edge A;
+		A.source = (vertexType)(xorshift64star(&copyseed) % SIZE);
+		A.destination = (vertexType)(xorshift64star(&copyseed) % SIZE);
+
+		if ((visited[A.destination].level != (u64)-1) || (visited[A.source].level != (u64)-1)) {
+			// the BFS tree spans an entire connected component's vertices (VAL4)
+			if ((visited[A.destination].level == (u64)-1) || (visited[A.source].level == (u64)-1))
+				PRINTF("ERR:NOT IN COMP vertex %" PRId64 " or vertex %" PRId64 "\n", A.source, A.destination);
+			assert((visited[A.destination].level != (u64)-1) && (visited[A.source].level != (u64)-1));
+			// every edge in the input list has vertices with levels that differ by at most one (or that both are not in the BFS tree) (VAL3)
+			u64 level1 = visited[A.destination].level;
+			u64 level2 = visited[A.source].level;
+			if (abs((int)(level1 - level2))>1)
+				PRINTF("ERR:EDGE LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") and vertex %" PRId64 "(l%" PRId64 ")\n", A.source, level2, A.destination, level1);
+			assert(abs((int)(level1 - level2)) <= 1);
+			++edge_count;
+		}
+	}
+	PRINTF("VAL3 OK\nVAL4 OK\n");
+
+	copyseed = SEED;
+	for (u64 i = 0; i < EDGE_SIZE; i++) {
+		edge A;
+		A.source = (vertexType)(xorshift64star(&copyseed) % SIZE);
+		A.destination = (vertexType)(xorshift64star(&copyseed) % SIZE);
+
+		if (A.source == A.destination) continue;
+		if (visited[A.source].parent == A.destination) {
+			assert(visited[A.destination].parent != A.source);
+			visited[A.source].level = 0;
+		}
+		else if (visited[A.destination].parent == A.source) {
+			visited[A.destination].level = 0;
+		}
+	}
+
+	for (vertexType i = 0; i<SIZE; i++) {
+		if ((visited[i].level != 0) && (visited[i].level != (u64)-1))
+			PRINTF("ERR:PARENT-CHILD EDGE MISSING vertex %" PRId64 " and parent %" PRId64 "\n", i, visited[i].parent);
+		assert((visited[i].level == 0) || (visited[i].level == (u64)-1));
+	}
+	PRINTF("VAL5 OK\n");
+
+#else
 	FILE *f = fopen(FILE_NAME_READ, "rb");
 	assert(f);
 	u64 edge_count = 0;
@@ -1342,12 +1584,15 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		}
 	}
 	fclose(f);
+
 	for (vertexType i = 0; i<SIZE; i++) {
 		if ((visited[i].level != 0) && (visited[i].level != (u64)-1))
 			PRINTF("ERR:PARENT-CHILD EDGE MISSING vertex %" PRId64 " and parent %" PRId64 "\n", i, visited[i].parent);
 		assert((visited[i].level == 0) || (visited[i].level == (u64)-1));
 	}
 	PRINTF("VAL5 OK\n");
+#endif
+	LOCAL_VAR_ARRAY_DESTROY(visited);
 #endif
 
 	dat->kernel_2_nedge = edge_count;
@@ -1360,8 +1605,8 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	myAddDependence(depv[FINISH_SLOT_FROMSTOP].guid, shutDownEDT, (u32)searchId, DB_MODE_EW);
 
-	ocrGuid_t nextEVT;
 #ifndef NO_MAP
+	ocrGuid_t nextEVT;
 	ocrGuidFromIndex(&nextEVT, constguidPTR[INDEX_OF_NEXTEVT_MAP], 0);
 	ocrEventDestroy(nextEVT);
 #else
@@ -1371,8 +1616,8 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 #endif
 
 	if (searchId + 1<NUMBER_OF_SEARCH) {
-		ocrGuid_t startEVT;
 #ifndef NO_MAP
+		ocrGuid_t startEVT;
 		ocrGuidFromIndex(&startEVT, constguidPTR[INDEX_OF_START_MAP], searchId + 1);
 		ocrEventSatisfy(startEVT, NULL_GUID);
 #else
@@ -1454,20 +1699,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	u64 MAX_EDGE_SIZE = SIZE*EDGEFACTOR;
 	u64 EDGE_SIZE;
 
-	PRINTF("STARTING Graph 500 SCALE=%" PRId64 " SIZE=%lld NUMBER_OF_SEARCH=%" PRId64 "\n", SCALE, SIZE, NUMBER_OF_SEARCH); fflush(0);
-	PRINTF("WORKERS %" PRId64 ": R=%" PRId64 " C=%" PRId64 "\n", R*C, R, C); fflush(0);
+	PRINTF("STARTING Graph 500 SCALE=%" PRId64 " SIZE=%lld NUMBER_OF_SEARCH=%" PRId64 "\n", SCALE, SIZE, NUMBER_OF_SEARCH); FLUSH;
+	PRINTF("WORKERS %" PRId64 ": R=%" PRId64 " C=%" PRId64 "\n", R*C, R, C); FLUSH;
 
-	bool generate = true;
-	if (TRY_SKIP_GRAPH_GENERATION) {
-		char filename[256];
-		sprintf(filename, CHUNK_FILE_NAME_PATTERN, (int)SCALE, (int)(EDGEFACTOR), (int)R, (int)C, (int)0);
-		FILE* f = fopen(filename, "rb");
-		if (f) {
-			generate = false;
-			fclose(f);
-			PRINTF("will REUSE saved data\n");
-		}
-	}
 #ifdef HAND_OVER_TORUN_IN_SEARCH
 	PRINTF("using DB handover in search\n");
 #endif
@@ -1482,6 +1716,23 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		PRINTF("using u48 C++ vertices\n");
 	}
 #endif
+
+#ifdef NO_FILES
+	PRINTF("using on-the-fly graph generation (no files)\n");
+	EDGE_SIZE = MAX_EDGE_SIZE;
+#else
+	bool generate = true;
+	if (TRY_SKIP_GRAPH_GENERATION) {
+		char filename[256];
+		sprintf(filename, CHUNK_FILE_NAME_PATTERN, (int)SCALE, (int)(EDGEFACTOR), (int)R, (int)C, (int)0);
+		FILE* f = fopen(filename, "rb");
+		if (f) {
+			generate = false;
+			fclose(f);
+			PRINTF("will REUSE saved data\n");
+		}
+	}
+
 	if (generate) {
 		FILE *f = fopen(FILE_NAME_WRITE, "wb");
 		assert(f);
@@ -1490,6 +1741,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	} else {
 		EDGE_SIZE = MAX_EDGE_SIZE;
 	}
+#endif
 	PRINTF("EDGE_SIZE=%" PRId64 "\n", EDGE_SIZE);
 
 	u64 aSIZE = (SIZE / C)*(SIZE / R);  	//array size for worker
@@ -1503,8 +1755,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	vertex2vIndex(ROOT, &ROOT_WORKER, &ROOT_ID, R, C, SIZE);
 
 #ifdef PRINT_DEBUG_INFORMATION_MORE
-	PRINTF("SIZE=%" PRId64 " EDGE_SIZE=%" PRId64 " asize=%" PRId64 " vsize=%" PRId64 "\n", SIZE, EDGE_SIZE, aSIZE, vSIZE); fflush(0);
-	PRINTF("ROOT=%" PRId64 " ROOT_WORKER=%" PRId64 " ROOT_ID=%" PRId64 "\n", ROOT, ROOT_WORKER, ROOT_ID); fflush(0);
+	PRINTF("SIZE=%" PRId64 " EDGE_SIZE=%" PRId64 " asize=%" PRId64 " vsize=%" PRId64 "\n", SIZE, EDGE_SIZE, aSIZE, vSIZE); FLUSH;
+	PRINTF("ROOT=%" PRId64 " ROOT_WORKER=%" PRId64 " ROOT_ID=%" PRId64 "\n", ROOT, ROOT_WORKER, ROOT_ID); FLUSH;
 
 	PRINTF("Matrix distributed to workers\n");
 	for (u64 u = 0; u<SIZE; u++) {
@@ -1533,13 +1785,16 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	ocrGuid_t local_affinity = NULL_GUID;
 	ocrHint_t* local_hint = NULL_HINT;
+#ifndef NO_AFFINITIES
 	ocrAffinityGetCurrent(&local_affinity);
 	ocrHint_t hint;
 	ocrHintInit(&hint, OCR_HINT_EDT_T);
 	ocrSetHintValue(&hint, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(local_affinity));
 	local_hint = &hint;
+#endif
 
 #ifdef NO_MAP
+#ifndef NO_AFFINITIES
 	u64 af_count;
 	ocrAffinityCount(AFFINITY_PD, &af_count);
 	assert(af_count >= 1);
@@ -1552,6 +1807,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	}
 	PRINTF("NOT using MAPS, affinity count: %" PRId64 "\n", af_count);
 #endif
+#endif
 
 	struct timeval* pt0;
 	ocrGuid_t timeDBK;
@@ -1559,12 +1815,13 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	gettimeofday(pt0, 0);
 	u64 t0sec = pt0->tv_sec;
 	u64 t0usec = pt0->tv_usec;
+	u64 SEED = (u64)pt0->tv_sec;
 	ocrDbRelease(timeDBK);
 
 	ocrGuid_t paramDBK;
 	u64* paramPTR;
-	ocrDbCreate(&paramDBK, (void**)&paramPTR, 6 * sizeof(u64), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-	paramPTR[0] = SIZE; paramPTR[1] = R; paramPTR[2] = C; paramPTR[3] = aSIZE; paramPTR[4] = vSIZE; paramPTR[5] = EDGE_SIZE;
+	ocrDbCreate(&paramDBK, (void**)&paramPTR, 7 * sizeof(u64), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+	paramPTR[0] = SIZE; paramPTR[1] = R; paramPTR[2] = C; paramPTR[3] = aSIZE; paramPTR[4] = vSIZE; paramPTR[5] = EDGE_SIZE; paramPTR[6] = SEED;
 	ocrDbRelease(paramDBK);
 
 	ocrGuid_t constguidDBK;
@@ -1603,11 +1860,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		for (u64 w = 0; w<R*C; w++) {
 			ocrGuid_t aEDT, sEDT, dEDT;
 			u64 PRM[2]; PRM[0] = w; PRM[1] = level;
-			ocrEdtCreate(&aEDT, applyTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &hints[getAffinityIndex(w, R, C, af_count)], NULL);
+			ocrEdtCreate(&aEDT, applyTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, HINT(&hints[getAffinityIndex(w, R, C, af_count)]), NULL);
 			constguidPTR[INDEX_OF_APPLYEDT(w, level)] = aEDT;
-			ocrEdtCreate(&sEDT, searchTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &hints[getAffinityIndex(w, R, C, af_count)], NULL);
+			ocrEdtCreate(&sEDT, searchTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, HINT(&hints[getAffinityIndex(w, R, C, af_count)]), NULL);
 			constguidPTR[INDEX_OF_SEARCHEDT(w, level)] = sEDT;
-			ocrEdtCreate(&dEDT, distributeTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &hints[getAffinityIndex(w, R, C, af_count)], NULL);
+			ocrEdtCreate(&dEDT, distributeTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, HINT(&hints[getAffinityIndex(w, R, C, af_count)]), NULL);
 			constguidPTR[INDEX_OF_DISTRIBUTEEDT(w, level)] = dEDT;
 		}
 	}
@@ -1674,19 +1931,27 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		ocrGuid_t lEDT;
 		PRMl[0] = w; // worker
 
-					 //create loadEDT and add its dependences
+		//create loadEDT and add its dependences
 #ifndef NO_MAP
 		ocrGuidFromIndex(&lEDT, loadMap, w);
 		ocrEdtCreate(&lEDT, loadTMP, EDT_PARAM_DEF, PRMl, EDT_PARAM_DEF, NULL, GUID_PROP_IS_LABELED, NULL_HINT, NULL);
 #else
-		ocrEdtCreate(&lEDT, loadTMP, EDT_PARAM_DEF, PRMl, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &hints[getAffinityIndex(w, R, C, af_count)], NULL);
+		ocrEdtCreate(&lEDT, loadTMP, EDT_PARAM_DEF, PRMl, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, HINT(&hints[getAffinityIndex(w, R, C, af_count)]), NULL);
 #endif
 		myAddDependence(constguidDBK, lEDT, LOAD_SLOT_CONSTGUID, DB_MODE_CONST);
 		myAddDependence(paramDBK, lEDT, LOAD_SLOT_PARAM, PARAMDBK_MODE);
 	}
 
+#ifdef NO_MAP
+#ifndef NO_AFFINITIES
+	// destroy LOCAL_ARRAYS
+	LOCAL_VAR_ARRAY_DESTROY(affinities);
+	LOCAL_VAR_ARRAY_DESTROY(hints);
+#endif
+#endif
+
 	ocrEdtTemplateDestroy(loadTMP);
 	ocrDbDestroy(depv[0].guid);
-	//PRINTF("main end"); fflush(0);
+	//PRINTF("main end"); FLUSH;
 	return NULL_GUID;
 }
