@@ -1,5 +1,5 @@
-#ifndef OCXXR_MAIN_H_
-#define OCXXR_MAIN_H_
+#ifndef OCXXR_MAIN_HPP_
+#define OCXXR_MAIN_HPP_
 
 #include <ocxxr.hpp>
 
@@ -27,4 +27,4 @@ ocrGuid_t mainEdt(u32 paramc, u64 /*paramv*/[], u32 depc, ocrEdtDep_t depv[]) {
 }
 }
 
-#endif  // OCXXR_MAIN_H_
+#endif  // OCXXR_MAIN_HPP_
