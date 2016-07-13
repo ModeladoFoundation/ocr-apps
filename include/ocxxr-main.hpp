@@ -27,4 +27,35 @@ ocrGuid_t mainEdt(u32 paramc, u64 /*paramv*/[], u32 depc, ocrEdtDep_t depv[]) {
 }
 }
 
+// Arena support
+
+namespace ocxxr {
+namespace internal {
+namespace dballoc {
+
+#ifdef __APPLE__
+// For some reason they don't support the standard C++ thread_local,
+// but they *do* support the non-standard __thread extension for C.
+#define thread_local __thread
+#endif /* __APPLE__ */
+
+static thread_local DatablockAllocator _localDbAllocator;
+
+DatablockAllocator &AllocatorGet(void) { return _localDbAllocator; }
+
+void AllocatorSetDb(void *dbPtr) {
+    new (&_localDbAllocator) DatablockAllocator(dbPtr);
+}
+
+void AllocatorDbInit(void *dbPtr, size_t dbSize) {
+    DbArenaHeader *const info = (DbArenaHeader *)dbPtr;
+    assert(dbSize >= sizeof(*info) && "Datablock is too small for allocator");
+    info->size = dbSize;
+    info->offset = sizeof(*info);
+}
+
+}  // namespace dballoc
+}  // namespace internal
+}  // namespace ocxxr
+
 #endif  // OCXXR_MAIN_HPP_

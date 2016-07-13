@@ -6,6 +6,9 @@
 
 namespace ocxxr {
 
+// TODO - Rename variables (imported from older repo)
+// TODO - Get rid of C-style casts
+
 /**
  * This is our "relative pointer" class.
  * You should be able to use it pretty much just like a normal pointer.

@@ -10,6 +10,8 @@ extern "C" {
 #endif
 
 #include <ocxxr-core.hpp>
+
+#include <ocxxr-arena.hpp>
 #include <ocxxr-relptr.hpp>
 
 #endif  // OCXXR_HPP_

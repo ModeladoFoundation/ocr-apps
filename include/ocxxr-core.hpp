@@ -103,6 +103,9 @@ class DataHandle : public ObjectHandle {
 static_assert(internal::IsLegalHandle<DataHandle<int>>::value,
               "DataHandle must be castable to/from ocrGuid_t.");
 
+// base class for Datablock, etc
+class AcquiredData {};
+
 void Shutdown() { ocrShutdown(); }
 
 void Abort(u8 error_code) { ocrAbort(error_code); }
@@ -180,7 +183,7 @@ class DatablockHandle : public DataHandle<T> {
         return DatablockHandle<T>(count);
     }
 
- private:
+ protected:
     static ocrGuid_t Init(u64 bytes, const Hint *hint) {
         T **data_ptr;
         return Init(&data_ptr, bytes, false, hint);
@@ -204,7 +207,7 @@ static_assert(internal::IsLegalHandle<DatablockHandle<int>>::value,
               "DatablockHandle must be castable to/from ocrGuid_t.");
 
 template <typename T>
-class Datablock {
+class Datablock : public AcquiredData {
  public:
     explicit Datablock(u64 count) : Datablock(nullptr, count, nullptr) {}
 
@@ -342,9 +345,10 @@ class NullHandle : public ObjectHandle {
         return *reinterpret_cast<T *>(const_cast<NullHandle *>(this));
     }
 
-    template <typename T>
-    operator Datablock<T>() const {
-        return Datablock<T>(nullptr);
+    // auto-convert NullHandle to Datablock, etc
+    template <typename T, internal::EnableIfBaseOf<AcquiredData, T> = 0>
+    operator T() const {
+        return T(nullptr);
     }
 };
 
@@ -758,7 +762,7 @@ class TaskTemplate : public ObjectHandle {
 
 namespace internal {
 
-typedef NullHandle(DummyTaskFnType)(Datablock<int>, Datablock<double>);
+typedef DataHandle<void>(DummyTaskFnType)(Datablock<int>, Datablock<double>);
 
 typedef Task<DummyTaskFnType> DummyTaskType;
 
