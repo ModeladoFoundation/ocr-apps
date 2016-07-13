@@ -127,8 +127,9 @@ _DEFUN (_lseek_r, (reent, file, ptr, dir),
         off_t   ptr   _AND
         int   dir)
 {
-  s64 ret = ocrUSalLseek (reent->_ocr.legacyContext, (s32)file, (s32)ptr, (s32)dir);
-  if (ret) {
+  ocrGuid_t guid = ocrLibFdToGuid( reent, file );
+  s64 ret = ocrUSalLseek (reent->_ocr.legacyContext, guid, (s32)ptr, (s32)dir);
+  if (ret == -1) {
     reent->_errno = (int)ret;
     ret = (s64)-1;
   }
