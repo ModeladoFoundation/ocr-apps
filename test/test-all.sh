@@ -20,7 +20,7 @@ fi
 
 for dir in *; do
     if [ -d "$dir" ] && [ $dir != makefiles ]; then
-        if [[ $dir == bad* ]]; then
+        if [[ $dir == Bad* ]]; then
             negative_tests+="$dir "
             continue
         fi
