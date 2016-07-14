@@ -35,8 +35,9 @@ to your include path in your makefile.
 
 If you want to use the provided makefiles, then you should set `XSTG_ROOT`
 to point to the directory containing both your OCR and OCR-Apps trees.
-You might also want to set `OCXXR_LIB_ROOT` to point to this directory
-(the root directory of the ocxxr codebase) for easier use in your makefiles.
+You might also want to set `OCXXR_LIB_ROOT` to point to
+the directory containing this README (the ocxxr project root)
+for easier use in your makefiles.
 
 Testing
 -------
@@ -44,4 +45,4 @@ Testing
     $ cd tests
     $ ./test-all.sh
     ...
-    > All 13 tests passed!
+    > All 24 tests passed!
