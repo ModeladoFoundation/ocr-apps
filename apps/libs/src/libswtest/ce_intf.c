@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include "libswtest.h"
 //
@@ -91,6 +92,7 @@ typedef enum {
     CE_REQTYPE_FILELSEEK,
     CE_REQTYPE_FILESTAT,
     CE_REQTYPE_FILEFSTAT,
+    CE_REQTYPE_GETTIMEOFDAY,
     CE_REQTYPE_LAST
 } ce_request_type;
 
@@ -327,3 +329,20 @@ int ce_fstat( int fd, struct stat * stbuf )
     return status;
 }
 
+int ce_gettimeofday( struct timeval  *ptimeval, void *ptimezone )
+{
+    struct {
+        uint64_t timeval_ptr; // in
+        uint64_t timezone_ptr; // in
+    } req;
+    req.timeval_ptr = (uint64_t) ptimeval;
+    req.timezone_ptr = (uint64_t) ptimezone;
+
+    int status = send_req( CE_REQTYPE_GETTIMEOFDAY, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    }
+    return status;
+}

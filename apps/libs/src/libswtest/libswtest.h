@@ -23,6 +23,7 @@ int    ce_write( int fd, const void * buf, size_t count );
 off_t  ce_lseek( int fd, off_t offset, int whence );
 int    ce_stat( const char * file, struct stat * stbuf );
 int    ce_fstat( int fd, struct stat * stbuf );
+int    ce_gettimeofday( struct timeval *ptimeval, void *ptimezone );
 //
 // Cache builtin wrapper
 // Flush (Write-back) and/or invalidate lines in the addr range

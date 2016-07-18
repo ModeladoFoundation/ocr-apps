@@ -430,5 +430,6 @@ u8 ocrKill (s32 pid, s32 sig)
 
 u8 ocrGetTimeofDay (struct timeval  *ptimeval, void *ptimezone)
 {
-    return 1;
+    int ret = ce_gettimeofday( ptimeval, ptimezone );
+    return (u8) ret;
 }

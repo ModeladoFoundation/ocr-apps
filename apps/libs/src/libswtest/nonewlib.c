@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include "libswtest.h"
 //
 // newlib placeholders ...
