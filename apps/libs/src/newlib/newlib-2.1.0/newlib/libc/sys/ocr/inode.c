@@ -20,6 +20,35 @@ _DEFUN (getdents, (fd, dirp, count),
 }
 #endif
 
+/////////// getcwd ///////////
+
+char *
+_DEFUN (_getcwd_r, (reent, buf, size),
+        struct _reent *reent _AND
+        char *buf _AND
+        size_t size)
+{
+    if (size == 0 && buf != NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (ocrUSalGetcwd(reent->_ocr.legacyContext, buf, size) != 0) {
+        return NULL;
+    }
+
+    return buf;
+}
+
+char *
+_DEFUN (_getcwd, (buf, size),
+        char * buf _AND
+        size_t size)
+{
+    return _getcwd_r( _REENT, buf, size);
+}
+
 /////////// link ///////////
 
 int
@@ -194,7 +223,6 @@ _DEFUN (_symlink_r, (reent, path1, path2),
 
 int
 _DEFUN (_symlink, (path1, path2),
-        struct _reent *reent _AND
         const char *path1 _AND
         const char *path2)
 {

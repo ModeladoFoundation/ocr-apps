@@ -156,8 +156,6 @@ s64 ocrUSalLseek(ocrGuid_t legacyContext, ocrGuid_t handle, s64 offset, s32 when
  * @param[in]  existing       Path to an existing file
  * @param[in]  new            New directory entry (path) to create referring to 'existing'
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalLink(ocrGuid_t legacyContext, const char* existing, const char* link);
 
@@ -169,8 +167,6 @@ u8 ocrUSalLink(ocrGuid_t legacyContext, const char* existing, const char* link);
  *                            invocations, it implies a legacy context
  * @param[in]  name           Path to an existing file to delete
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalUnlink(ocrGuid_t legacyContext, const char* name);
 
@@ -185,8 +181,6 @@ u8 ocrUSalUnlink(ocrGuid_t legacyContext, const char* name);
  * @param[in]  path1          Path to link to
  * @param[in]  path2          Path of link
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalSymlink(ocrGuid_t legacyContext, const char* path1, const char* path2);
 
@@ -200,8 +194,6 @@ u8 ocrUSalSymlink(ocrGuid_t legacyContext, const char* path1, const char* path2)
  * @param[in]  owner          Owner to set for 'path'
  * @param[in]  group          Group to set for 'path'
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalChown(ocrGuid_t legacyContext, const char* path, uid_t owner, gid_t group);
 
@@ -214,8 +206,6 @@ u8 ocrUSalChown(ocrGuid_t legacyContext, const char* path, uid_t owner, gid_t gr
  * @param[in]  path           Path to change the mode of
  * @param[in]  mode           Permission/mode for the file
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalChmod(ocrGuid_t legacyContext, const char* path, mode_t mode);
 
@@ -227,8 +217,6 @@ u8 ocrUSalChmod(ocrGuid_t legacyContext, const char* path, mode_t mode);
  *                            invocations, it implies a legacy context
  * @param[in]  path           Path to the directory to change to
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalChdir(ocrGuid_t legacyContext, const char* path);
 
@@ -241,8 +229,6 @@ u8 ocrUSalChdir(ocrGuid_t legacyContext, const char* path);
  * @param[out] buf            Buffer to store the path information in
  * @param[in]  bufSize        Size of 'buf' in bytes
  * @return 0 on success or a non-zero error code
- *
- * @todo Currently not supported
  */
 u8 ocrUSalGetcwd(ocrGuid_t legacyContext, char* buf, u64 bufSize);
 

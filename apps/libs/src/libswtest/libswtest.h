@@ -16,6 +16,13 @@ void   ce_memfree( void * va );
 // These map directly to Linux system calls and have the
 // same prototypes.
 //
+char * ce_getcwd( char * buf, size_t size );
+int    ce_chdir( const char * path );
+int    ce_chmod( const char * path, mode_t mode);
+int    ce_chown( const char * path, uid_t owner, gid_t group);
+int    ce_link( const char * oldpath, const char * newpath);
+int    ce_symlink( const char * oldpath, const char * newpath);
+int    ce_unlink( const char * pathname );
 int    ce_open( const char * file, int flags, int mode );
 int    ce_close( int fd );
 int    ce_read( int fd, void * buf, size_t count );

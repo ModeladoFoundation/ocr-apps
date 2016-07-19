@@ -85,6 +85,13 @@ typedef enum {
     CE_REQTYPE_FIRST    = 0,
     CE_REQTYPE_MEMALLOC = CE_REQTYPE_FIRST,
     CE_REQTYPE_MEMFREE,
+    CE_REQTYPE_GETCWD,
+    CE_REQTYPE_CHDIR,
+    CE_REQTYPE_CHMOD,
+    CE_REQTYPE_CHOWN,
+    CE_REQTYPE_LINK,
+    CE_REQTYPE_SYMLINK,
+    CE_REQTYPE_UNLINK,
     CE_REQTYPE_FILEOPEN,
     CE_REQTYPE_FILECLOSE,
     CE_REQTYPE_FILEREAD,
@@ -144,6 +151,219 @@ void ce_memfree( void * va )
     int status = send_req( CE_REQTYPE_MEMFREE, & req, sizeof(req) );
 
     return;
+}
+
+//
+// Get the CWD
+//
+char * ce_getcwd( char * buf, size_t size )
+{
+    struct {
+        uint64_t buf_ptr;     // in
+        uint64_t size;        // in
+    } req;
+    req.buf_ptr = (uint64_t)buf;
+    req.size = size;
+
+    int status = send_req( CE_REQTYPE_GETCWD, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        return NULL;
+    }
+    return buf;
+}
+
+//
+// Change the CWD
+//
+int ce_chdir( const char * path )
+{
+    struct {
+        uint64_t path_ptr;        // in
+        uint64_t path_len;        // in (len not including terminal '\0')
+    } req;
+
+    const char *p = path;
+    while( *p )
+        p++;
+
+    req.path_ptr = (uint64_t)path;
+    req.path_len = (uint64_t)(p - path);
+
+    int status = send_req( CE_REQTYPE_CHDIR, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    } else
+        status = 0;
+
+    return status;
+}
+
+//
+// Change the permissions of file
+//
+int ce_chmod( const char * path, mode_t mode)
+{
+    struct {
+        uint64_t path_ptr;        // in
+        uint64_t path_len;        // in (len not including terminal '\0')
+        uint64_t mode;            // in
+    } req;
+
+    const char *p = path;
+    while( *p )
+        p++;
+
+    req.path_ptr = (uint64_t)path;
+    req.path_len = (uint64_t)(p - path);
+    req.mode = (uint64_t)mode;
+
+    int status = send_req( CE_REQTYPE_CHMOD, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    } else
+        status = 0;
+
+    return status;
+}
+
+//
+// Change the ownership of file
+//
+int ce_chown( const char * path, uid_t owner, gid_t group)
+{
+    struct {
+        uint64_t path_ptr;        // in
+        uint64_t path_len;        // in (len not including terminal '\0')
+        uint64_t owner;           // in
+        uint64_t group;           // in
+    } req;
+
+    const char *p = path;
+    while( *p )
+        p++;
+
+    req.path_ptr = (uint64_t)path;
+    req.path_len = (uint64_t)(p - path);
+    req.owner = (uint64_t)owner;
+    req.group = (uint64_t)group;
+
+    int status = send_req( CE_REQTYPE_CHOWN, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    } else
+        status = 0;
+
+    return status;
+}
+
+//
+// Make a new name for a file
+//
+int ce_link( const char * oldpath, const char * newpath)
+{
+    struct {
+        uint64_t oldpath_ptr;        // in
+        uint64_t oldpath_len;        // in (len not including terminal '\0')
+        uint64_t newpath_ptr;        // in
+        uint64_t newpath_len;        // in (len not including terminal '\0')
+    } req;
+
+    const char *p = oldpath;
+    while( *p )
+        p++;
+
+    req.oldpath_ptr = (uint64_t)oldpath;
+    req.oldpath_len = (uint64_t)(p - oldpath);
+
+    p = newpath;
+    while( *p )
+        p++;
+
+    req.newpath_ptr = (uint64_t)newpath;
+    req.newpath_len = (uint64_t)(p - newpath);
+
+    int status = send_req( CE_REQTYPE_LINK, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    } else
+        status = 0;
+
+    return status;
+}
+
+//
+// Make a new symbolic link for a file
+//
+int ce_symlink( const char * oldpath, const char * newpath)
+{
+    struct {
+        uint64_t oldpath_ptr;        // in
+        uint64_t oldpath_len;        // in (len not including terminal '\0')
+        uint64_t newpath_ptr;        // in
+        uint64_t newpath_len;        // in (len not including terminal '\0')
+    } req;
+
+    const char *p = oldpath;
+    while( *p )
+        p++;
+
+    req.oldpath_ptr = (uint64_t)oldpath;
+    req.oldpath_len = (uint64_t)(p - oldpath);
+
+    p = newpath;
+    while( *p )
+        p++;
+
+    req.newpath_ptr = (uint64_t)newpath;
+    req.newpath_len = (uint64_t)(p - newpath);
+
+    int status = send_req( CE_REQTYPE_SYMLINK, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    } else
+        status = 0;
+
+    return status;
+}
+
+//
+// Remove a name from filesystem.
+//
+int ce_unlink( const char * pathname )
+{
+    struct {
+        uint64_t path_ptr;        // in
+        uint64_t path_len;        // in (len not including terminal '\0')
+    } req;
+
+    const char *p = pathname;
+    while( *p )
+        p++;
+
+    req.path_ptr = (uint64_t)pathname;
+    req.path_len = (uint64_t)(p - pathname);
+
+    int status = send_req( CE_REQTYPE_UNLINK, & req, sizeof(req) );
+
+    if( status ) {
+        errno = status;
+        status = -1;
+    } else
+        status = 0;
+
+    return status;
 }
 
 //

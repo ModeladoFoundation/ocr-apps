@@ -247,6 +247,78 @@ u8 ocrLegacyContextRemoveMemory( ocrGuid_t legacyContext,
 ///////////////////////////////////////////////////////////////////////////////
 // OCR SAL methods
 //
+u8 ocrUSalGetcwd( ocrGuid_t legacyContext, char * buf, u64 bufSize )
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( buf != NULL );
+
+    char * retval = ce_getcwd( buf, bufSize );
+
+    return retval == NULL;
+}
+
+u8 ocrUSalChdir(ocrGuid_t legacyContext, const char* path)
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( path != NULL );
+
+    int retval = ce_chdir( path );
+
+    return retval < 0;
+}
+
+u8 ocrUSalChmod(ocrGuid_t legacyContext, const char* path, mode_t mode)
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( path != NULL );
+
+    int retval = ce_chmod( path, mode );
+
+    return retval < 0;
+}
+
+u8 ocrUSalChown(ocrGuid_t legacyContext, const char* path, uid_t owner, gid_t group)
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( path != NULL );
+
+    int retval = ce_chown( path, owner, group );
+
+    return retval < 0;
+}
+
+u8 ocrUSalLink(ocrGuid_t legacyContext, const char* existing, const char* new)
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( existing != NULL );
+    ocr_assert( new != NULL );
+
+    int retval = ce_link( existing, new );
+
+    return retval < 0;
+}
+
+u8 ocrUSalSymlink(ocrGuid_t legacyContext, const char* existing, const char* new)
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( existing != NULL );
+    ocr_assert( new != NULL );
+
+    int retval = ce_symlink( existing, new );
+
+    return retval < 0;
+}
+
+u8 ocrUSalUnlink(ocrGuid_t legacyContext, const char* name)
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( name != NULL );
+
+    int retval = ce_unlink( name );
+
+    return retval < 0;
+}
+
 u8 ocrUSalOpen( ocrGuid_t legacyContext, ocrGuid_t* handle,
                 const char * file, s32 flags, s32 mode )
 {
@@ -350,6 +422,12 @@ s64 ocrUSalLseek(ocrGuid_t legacyContext, ocrGuid_t handle, s64 offset, s32 when
     return (s64) ret;
 }
 
+u8 ocrGetTimeofDay (struct timeval  *ptimeval, void *ptimezone)
+{
+    int ret = ce_gettimeofday( ptimeval, ptimezone );
+    return (u8) ret;
+}
+
 //
 // debugging hook
 //
@@ -361,24 +439,6 @@ void do_catch()
 ///////////////////// Unimplemented CE interfaces ///////////////////////
 // Return interface appropriate error
 //
-u8 ocrUSalChown(ocrGuid_t legacyContext, const char* path, uid_t owner, gid_t group)
-{
-    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
-    return 1;
-}
-
-u8 ocrUSalChmod(ocrGuid_t legacyContext, const char* path, mode_t mode)
-{
-    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
-    return 1;
-}
-
-u8 ocrUSalChdir(ocrGuid_t legacyContext, const char* path)
-{
-    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
-    return 1;
-}
-
 u8 ocrIsAtty (s32 file)
 {
     do_catch(); return 0;
@@ -390,23 +450,6 @@ s64 ocrReadlink (ocrGuid_t legacyContext, const char *path, char *buf, size_t bu
     return -1;
 }
 
-u8 ocrUSalSymlink(ocrGuid_t legacyContext, const char* path1, const char* path2)
-{
-    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
-    return 1;
-}
-
-u8 ocrUSalLink(ocrGuid_t legacyContext, const char* existing, const char* new)
-{
-    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
-    return 1;
-}
-
-u8 ocrUSalUnlink(ocrGuid_t legacyContext, const char* name)
-{
-    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
-    return 1;
-}
 
 u8 ocrFork (_NOARGS)
 {
@@ -426,10 +469,4 @@ u8 ocrGetPID (_NOARGS)
 u8 ocrKill (s32 pid, s32 sig)
 {
     return 1;
-}
-
-u8 ocrGetTimeofDay (struct timeval  *ptimeval, void *ptimezone)
-{
-    int ret = ce_gettimeofday( ptimeval, ptimezone );
-    return (u8) ret;
 }
