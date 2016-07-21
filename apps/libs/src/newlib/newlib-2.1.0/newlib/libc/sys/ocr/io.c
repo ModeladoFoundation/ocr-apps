@@ -145,7 +145,6 @@ _DEFUN (_lseek, (file, ptr, dir),
     return _lseek_r( _REENT, file, ptr, dir );
 }
 
-weak_alias( _getcwd, getcwd )
 weak_alias( _open, __open )
 weak_alias( _close, __close )
 weak_alias( _read, __read )

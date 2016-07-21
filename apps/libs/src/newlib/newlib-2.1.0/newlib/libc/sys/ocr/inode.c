@@ -229,6 +229,7 @@ _DEFUN (_symlink, (path1, path2),
     return _symlink_r( _REENT, path1, path2 );
 }
 
+weak_alias( _getcwd, getcwd )
 weak_alias( _link, link )
 weak_alias( _unlink, unlink )
 weak_alias( _stat, stat )

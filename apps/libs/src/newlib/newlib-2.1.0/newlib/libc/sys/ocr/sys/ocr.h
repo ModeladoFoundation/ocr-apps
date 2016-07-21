@@ -454,7 +454,7 @@ s64 ocrReadlink (ocrGuid_t legacyContext, const char *path, char *buf, size_t bu
 //s32 ocrGetdents (u32 fd, struct dirent *dirp, u32 count);
 
 u8 ocrFork (_NOARGS);
-u8 ocrEvecve (char *name, char **argv, char **env);
+u8 ocrEvecve (const char *name, char * const *argv, char * const *env);
 u8 ocrGetPID (_NOARGS);
 u8 ocrKill (s32 pid, s32 sig);
 u8 ocrWait (s32 *status);
