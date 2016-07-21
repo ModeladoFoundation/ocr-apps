@@ -2,22 +2,15 @@
 #define APP_OCR_UTIL_H
 
 #include <ocr.h>
+#include "../../tools/app_ocr_err_util.h"
 
 //-----------------------------------------------------------------------------
 #define EDT_PRINTEXIT(label, x,line,filename) if(!(x)){PRINTF("%s: %s : line=%d, file=%s\n",label, #x,line,filename); ocrShutdown();}
 #define EDT_PRINTERROREXIT(label, x,line,filename) if(x){PRINTF("%s: %u : line=%d, file=%s\n",label, (unsigned int)x,line,filename); ocrShutdown();}
-#define Err_t u32
-#define IFEB if(err) break
 #define EDT_ASSERT(x) EDT_PRINTEXIT(     "ASSERT", x,__LINE__,__FILE__)
 #define EDT_ERROR(x)  EDT_PRINTERROREXIT("ERROR", x,__LINE__,__FILE__)
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc , ocrEdtDep_t depv[]
 //-----------------------------------------------------------------------------
-
-
-
-
-
-
 
 //-----------------------------------------------------------------------------
 //The input parameter x must be a sized array.
@@ -56,5 +49,13 @@ Err_t ocrEdtXCreate(ocrEdt_t in_funcPtr,
                     u16 in_flags, ocrHint_t * in_hint,
                     ocrGuid_t * o_guid, ocrGuid_t * io_outputEvent
                    );
+
+Err_t ocrXHookup(ocrEventTypes_t in_eventType,
+                 u16 in_eventFlags,
+                 ocrGuid_t in_EDTguid,
+                 u32 in_slotNumber,
+                 ocrDbAccessMode_t in_accessMode,
+                 ocrGuid_t in_DBKguid
+                 );
 
 #endif // APP_OCR_UTIL_H

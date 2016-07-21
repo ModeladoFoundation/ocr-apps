@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+#----- First make the reference output file
+rm -f ./z_ref_output
+echo "TESTIO> CONDITION: Checking iteration 0 in [0, 5[ by step of 1 : True" > z_ref_output
+echo "TESTIO> IF-THEN: Performing iteration 0 in [0, 5[ : Work is ok." >> z_ref_output
+echo "TESTIO> CONDITION: Checking iteration 1 in [0, 5[ by step of 1 : True" >> z_ref_output
+echo "TESTIO> IF-THEN: Performing iteration 1 in [0, 5[ : Work is ok." >> z_ref_output
+echo "TESTIO> CONDITION: Checking iteration 2 in [0, 5[ by step of 1 : True" >> z_ref_output
+echo "TESTIO> IF-THEN: Performing iteration 2 in [0, 5[ : Work is ok." >> z_ref_output
+echo "TESTIO> CONDITION: Checking iteration 3 in [0, 5[ by step of 1 : True" >> z_ref_output
+echo "TESTIO> IF-THEN: Performing iteration 3 in [0, 5[ : Work is ok." >> z_ref_output
+echo "TESTIO> CONDITION: Checking iteration 4 in [0, 5[ by step of 1 : True" >> z_ref_output
+echo "TESTIO> IF-THEN: Performing iteration 4 in [0, 5[ : Work is ok." >> z_ref_output
+echo "TESTIO> CONDITION: Checking iteration 5 in [0, 5[ by step of 1 : False" >> z_ref_output
+echo "TESTIO> ELSE: Work is ok." >> z_ref_output
+echo "TESTIO> Concluding: Work is ok." >> z_ref_output
+
+if [ ! -s "z_ref_output" ]
+then
+echo "ERROR: Unusable reference output file"
+exit 20
+fi
+
+#----- Create the OCR C file
+python ./TailRecursion.py > /dev/null
+if [ ! -s "z_tailRecursion.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+#----- Compile and run
+rm -f z_output
+OCR_TYPE=x86-mpi make run | grep "TESTIO>" > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+#----- Compare
+if [ "$(diff -w --brief z_ref_output z_output)" ]
+then
+echo "ERROR: Black box test failed."
+exit 50
+fi
+
+#----- Clean up
+rm -f z_*
+
+
+

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+#----- First make the reference output file
+rm -f ./z_ref_output
+echo "TESTIO> Setup used the parabola (x^2,x,1) = (1, 2, 1)." > z_ref_output
+echo "TESTIO> The Solver for roots 1.00000000000000e+00 and 1.00000000000000e+00." >> z_ref_output
+echo "TESTIO> Checking for duplicate roots." >> z_ref_output
+echo "TESTIO> The double root is 1.00000000000000e+00" >> z_ref_output
+
+if [ ! -s "z_ref_output" ]
+then
+echo "ERROR: Unusable reference output file"
+exit 20
+fi
+
+#----- Create the OCR C file
+python ./helloWorld.py > /dev/null
+if [ ! -s "z_helloWorld.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+#----- Compile and run
+rm -f z_output
+OCR_TYPE=x86-mpi make run | grep "TESTIO>" > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+#----- Compare
+if [ "$(diff -w --brief z_ref_output z_output)" ]
+then
+echo "ERROR: Black box test failed."
+exit 50
+fi
+
+#----- Clean up
+rm -f z_*
+
+
+

@@ -72,7 +72,7 @@
 #   So, at the risk of being sub-optimal, but portable, the literals will need to be stuffed
 #   in a data block; ironically this data block of literals will have to be referenced.
 #
-#2016may: More deliberation on the life management of globals
+# 2016may: More deliberation on the life management of globals
 #           This started as BKM1: How to make ocrEdtTemplate available, similar to how to handle a global
 #  Source: dvillen
 #   - There are three ways to make an ocrEdtTemplate's guid available for the creation of an ocrEdt:
@@ -87,7 +87,8 @@
 #           option D3: Never delete, let the system do automatic garbage collection
 #       Transmission Issue:
 #           Option T1: Never transmit from one Edt to another
-#           Option T2: Transmit using the point-to-point method, i.e. a multi-cast, to where the template's guid is needed.
+#           Option T2: Transmit using the point-to-point method, i.e. a multi-cast,
+#                      to where the template's guid is needed.
 #           Option T3: Transmit using a chain-of-responsibility type of propagation
 #
 #   - From a user of OCR, the easiest to code is options C3-D3-T1, of which only D3 is currently doable
@@ -124,7 +125,7 @@
 #           then when templates are managed within the app.
 #
 #
-#2016may11: BKM1: Handling of literals
+# 2016may11: BKM1: Handling of literals
 #  Source: Donald Villeneuve
 #       There seems to be a limit to how many paramv one can pass into an Edt, on some systems.
 #       So, at the risk of being sub-optimal, but portable, the literals will need to be stuffed
@@ -158,10 +159,10 @@ import networkx as GraphTool
 
 # ------------------------------------------------------------------------------
 def whereAmI():
-    print("DEV> Currently in: " + inspect.stack()[1][3] )
+    print("//================== DEV> Currently in: " + inspect.stack()[1][3] )
 # ------------------------------------------------------------------------------
-#The class Globals contains all global variables and constants.
-#It forms a singleton named G.
+# The class Globals contains all global variables and constants.
+# It forms a singleton named G.
 class Globals:
     def __init__(self):
         self.MAINNODE = 0
@@ -170,7 +171,7 @@ class Globals:
         self.NOTA_OFFSET = -1
         self.genAUTO = "_auto_"  #Use genAUTO to let the system determine the dependency count.
         self.TABunit = "    "
-        self.app_ocr_util_filename = 'app_ocr_util.h'
+        self.app_ocr_util_filename = '../../tools/app_ocr_util.h'
 
         self.TMPL_structName_type = 'OCRmetaData_t'
         self.TMPL_structName      = 'OCRmetaData'
@@ -185,9 +186,13 @@ class Globals:
 
         self.display_literals_content = 1
 
-        self.notaSlot = -1 # The undefined value for a slot offset
+        self.notaSlot = -1  # The undefined value for a slot offset
+
+        self.nota_multiplicity = -1  # The not-in-use value for multiplicity: mAtOrigin & mAtDest
 
         self.debug_DBK_flights = False
+
+        self.use_verbose_way_to_eventsText = False
 
 GBL = Globals()
 # ------------------------------------------------------------------------------
@@ -314,25 +319,38 @@ class ocrDataBlock:
         self.flags        = 'DB_PROP_NONE'
         self.hint         = 'NULL_HINT'
         self.allocator    = 'NO_ALLOC'
-        self.multiplicity = 1  # The number of data blocks to create, as in an array of data blocks
-        self.flight       = 'flUNDEF'
+        self.flight       = 'flUNDEF'  # See flightEnum_is_bad(in_flightEnum) for options.
+        self.localname    = ""  # This is the name the customer would like to use upon LANDing
+                                # or flTAGOing.  So basically how to call the ocrEdtDep_t.ptr.
+                                # The pointer generated will be of type (void*).
+                                # If not specified, no cutomer friendly named pointer will be inserted.
+
+        self.localText = []  # This is closely related to self.localname field. It is to store a list of cutomer OCR
+                             # code to be placed in close proximity to self.localname.  For example, it can
+                             # further help with the unpacking of the DBK.
 
     def toDictio(self):
         longform = GBL.EDT_longform_print
         d = {}
         if longform:
-            d["count"]=        self.count
-            d["type"]=         self.type
-            d["flags"]=        self.flags
-            d["hint"]=         self.hint
-            d["allocator"]=    self.allocator
-            d["multiplicity"]= self.multiplicity
-        d["name"]=         self.name
-        d["flight"]=       self.flight
+            d["count"] = self.count
+            d["type"] = self.type
+            d["flags"] = self.flags
+            d["hint"] = self.hint
+            d["allocator"] = self.allocator
+            d["localname"] = self.localname
+            d["localText"] = self.localText
+        d["name"] = self.name
+        d["flight"] = self.flight
         return d
 
+    def addLocalText(self, in_text):
+        self.localText.append(in_text)
+    def getLocalTexts(self):
+        return self.localText
+
     def text_for_sizeName(self):
-        t = 'count_' + self.name
+        t = 'ocrItemCount_' + self.name
         return t
 
     def text_for_ocrDbCreate(self, in_tab, in_True_to_use_sizeName):
@@ -341,10 +359,13 @@ class ocrDataBlock:
             return t
 
         gd_name = makeGuidDataBlockname(self.name)
+
         db_name = makeNameDataBlock(self.name)
+        if len(self.localname) >0:
+            db_name = self.localname
 
         t  = in_tab+ 'ocrGuid_t '+ gd_name +'= NULL_GUID;\n'
-        t += in_tab+ self.type +'* '+ db_name +'=NULL;\n'
+        t += in_tab+ self.type +' * '+ db_name +'=NULL;\n'
 
         t += in_tab+ 'err = ocrDbCreate( &' + gd_name +', (void**)&'+ db_name
         if in_True_to_use_sizeName:
@@ -446,7 +467,16 @@ class ocrEvent:
 
         self.fertile = True  # Set to True if the parent EDT will create the children EDT; False otherwise.
                              # Here the parent EDT refers to the EDT where this event starts;
-                             # and the children EDt is where this event ends.
+                             # and the children EDT is where this event ends.
+
+        self.isTheLead = True # Set to True if this edge DBK is the one to consider for deletion during flLANDING.
+                              # This is used to avoid deletion of the same data block multiple times.
+
+        # The following is intended for the compact graph representation.
+        self.mAtOrigin = GBL.nota_multiplicity  # Edge multiplicity at the emitting EDT, i.e.
+                                                # how many edges does the originating EDT emits.
+        self.mAtDest   = GBL.nota_multiplicity  # Edge multiplicity at the receiving EDT, i.e.
+                                                # how many edges does the destination EDT receives.
 
     def toDictio(self):
         d={}
@@ -454,7 +484,11 @@ class ocrEvent:
         d["eflag"] = self.eflag
         d["accessMode"] = self.accessMode
         d["calculatedSlot"] = self.calculatedSlot
+        d["satisfy"] = self.satisfy
         d["fertile"] = self.fertile
+        d["isTheLead"] = self.isTheLead
+        d["mAtOrigin"] = self.mAtOrigin
+        d["mAtDest"] = self.mAtDest
         return d
 
     def text_for_ocrEventCreate(self, in_tab, in_eventGuidName):
@@ -465,17 +499,31 @@ class ocrEvent:
         return t
 
     def text_for_ocrAddDependence(self, in_tab, in_sourceEventGuidName, in_targetEdtGuidName):
-        t = in_tab + 'ocrAddDependence( ' + in_sourceEventGuidName
+        t = in_tab + 'err = ocrAddDependence( ' + in_sourceEventGuidName
         t += ', ' + in_targetEdtGuidName
         t += ', ' + str(self.calculatedSlot)
         t += ', ' + self.accessMode + '); IFEB;\n'
         return t
 
-    def text_for_ocrEventSatisfySlot(self, in_tab, in_eventGuidName, in_dataGuid):
-        t = in_tab + 'ocrEventSatisfySlot( ' + in_eventGuidName
-        t += ', ' + in_dataGuid
-        t += ', ' + str(self.calculatedSlot) + '); IFEB;\n'
+    def text_for_ocrEventSatisfySlot(self, in_tab, in_eventGuidName, in_dataGuid, in_true_to_useEventSlots=None):
+        t = ""
+        if in_true_to_useEventSlots == None:
+            in_true_to_useEventSlots = False
+        if in_true_to_useEventSlots:
+            t = in_tab + 'err = ocrEventSatisfySlot( ' + in_eventGuidName
+            t += ', ' + in_dataGuid
+            t += ', ' + str(0) + '); IFEB;\n'  # self.calculatedSlot is not an event slot
+        else:
+            t = in_tab + 'err = ocrEventSatisfy( ' + in_eventGuidName
+            t += ', ' + in_dataGuid + '); IFEB;\n'
         return t
+
+    def text_for_ocrHookUp(self, in_tab, in_targetEdtGuidName, in_dataGuid):
+        t = in_tab
+        t += 'err = ocrXHookup(' + self.etype + ', ' + self.eflag + ', ' + in_targetEdtGuidName + ', '
+        t += str(self.calculatedSlot) + ', ' + self.accessMode + ', ' + in_dataGuid + '); IFEB;'
+        return t
+
 # ------------------------------------------------------------------------------
 def errmsg(in_erri, in_text=""):
     if not in_erri:
@@ -485,9 +533,23 @@ def errmsg(in_erri, in_text=""):
     else:
         print("ERROR: " + str(in_erri) +" : "+ in_text)
 # ------------------------------------------------------------------------------
+def warnmsg(in_erri, in_text=""):
+    if len(in_text) == 0:
+        print("WARNING: " + str(in_erri))
+    else:
+        print("WARNING: " + str(in_erri) + " : " + in_text)
+# ------------------------------------------------------------------------------
 def setupGraph(io_G, in_name):
     io_G.graph['name'] =in_name
     io_G.graph['nodeIDs'] = {}
+    io_G.graph['customerHeader'] = []
+# ------------------------------------------------------------------------------
+# This list of text will be put at the beginning of the file
+def addHeader(io_G, in_text):
+    io_G.graph['customerHeader'].append(in_text)
+# ------------------------------------------------------------------------------
+def getHeader(io_G):
+    return io_G.graph['customerHeader']
 # ------------------------------------------------------------------------------
 def getNode(io_G,in_nodeNumber ):
     return io_G.node[in_nodeNumber]
@@ -500,6 +562,9 @@ def getNodebyitsName(in_G, in_name):
         return getNodeNames(in_G)[in_name]
     else:
         return GBL.NOTA_NODE_ID
+# ------------------------------------------------------------------------------
+def getNodeparents(io_G,in_nodeNumber):
+    return io_G.node[in_nodeNumber]["parents"]
 # ------------------------------------------------------------------------------
 def getMyTask(io_G, in_nodeNumber):
     return getNode(io_G,in_nodeNumber)["myTask"]
@@ -516,6 +581,21 @@ def getDestroys(io_G, in_nodeNumber):
 def getReleases(io_G, in_nodeNumber):
     return getNode(io_G,in_nodeNumber)["release"]
 # ------------------------------------------------------------------------------
+def getOutgoings(io_G, in_nodeNumber):
+    return getNode(io_G,in_nodeNumber)["outgoing"]
+# ------------------------------------------------------------------------------
+def addCustomText(io_G, in_nodeNumber, in_text):
+    getNode(io_G, in_nodeNumber)["customerText"].append(in_text)
+# ------------------------------------------------------------------------------
+def getCustomTexts(io_G, in_nodeNumber):
+    return getNode(io_G, in_nodeNumber)["customerText"]
+# ------------------------------------------------------------------------------
+def addIFconditionText(io_G, in_nodeNumber, in_text):
+    getNode(io_G, in_nodeNumber)["IFconditionText"] = in_text
+# ------------------------------------------------------------------------------
+def getIFconditionText(io_G, in_nodeNumber):
+    return getNode(io_G, in_nodeNumber)["IFconditionText"]
+# ------------------------------------------------------------------------------
 def graphAddNode(io_G,in_nodeNumber, in_nodename):
     erri=0
     while not erri:
@@ -527,15 +607,36 @@ def graphAddNode(io_G,in_nodeNumber, in_nodename):
         io_G.add_node(in_nodeNumber)
         io_G.graph['nodeIDs'][in_nodename]=in_nodeNumber
 
-        getNode(io_G, in_nodeNumber)["parents"] = []    # A list of number node numbers of its parents
+        getNode(io_G, in_nodeNumber)["parents"] = []    # A list of node numbers whose edge (parent->thisNode) points
+                                                        # to this node.
+
         getNode(io_G, in_nodeNumber)["datablock"] = []  # a list of ocrDataBlock
         getNode(io_G, in_nodeNumber)["destroy"] = []    # a list of contextedGuid
         getNode(io_G, in_nodeNumber)["release"] = []  # a list of contextedGuid
         getNode(io_G, in_nodeNumber)["edts"] = []  # a list of ocrEdt objects that needs to be created by the current EDT.
                                                    # It can contain reference to specific EDT by their graph node name.
 
-        getNode(io_G, in_nodeNumber)["outgoing"] = []  # This is for data blocks which are TAGO or PASSTRU.
+        getNode(io_G, in_nodeNumber)["outgoing"] = []  # This is for data blocks which are flTAGO or flPASSTRU.
                                                        # It stores (DBK name, DBK guid)
+
+        getNode(io_G, in_nodeNumber)["customerText"] = []  # This is the text line given by the customer/programmer
+                                                           # will be added.  They usually are for code.
+
+        getNode(io_G, in_nodeNumber)["IFconditionText"] = ""  # - If not empty, this indicates that this nodes if the THEN
+                                                              # part of the IF-THEN-ELSE pattern.
+                                                              # - For the ELSe part, see leads_to_ElseClause on the edges.
+                                                              # - This text will literally use as follows:
+                                                              #         if( IFconditionText ){
+                                                              #             MyTask  # From getMyTask
+                                                              #         } else{
+                                                              #             EDT from edge marked with leads_to_ElseClause
+                                                              #         }
+
+        getNode(io_G, in_nodeNumber)["istheELSEclause"] = False  # This is the counterpart to ["IFconditionText"]
+                                                                 # If ["IFconditionText"] is not empty, then there must
+                                                                 # be another EDT which will be the ELSEclause.
+                                                                 # That other EDT must have its ["istheELSEclause"]
+                                                                 # field set to True. See leads_to_ElseClause on the edges.
 
         getNode(io_G, in_nodeNumber)["myTask"] = ocrEdt()  # This is used for the creation of this Edt encapsulated by this node.
         getMyTask(io_G, in_nodeNumber).aname = in_nodename
@@ -544,13 +645,13 @@ def graphAddNode(io_G,in_nodeNumber, in_nodename):
     return erri
 # ------------------------------------------------------------------------------
 def flightEnum_is_bad(in_flightEnum):
-    q = ['flUNDEF', 'PASSTRU', 'TAGO', 'LANDING', 'TAKEOFF', 'HOP', 'FLYOVER']
+    q = ['flUNDEF', 'flPASSTRU', 'flTAGO', 'flLANDING', 'flTAKEOFF', 'flHOP', 'flFLYOVER']
 
     if in_flightEnum in q:
-        if in_flightEnum == 'FLYOVER':
-            return 1 # Mark as bad 'FLYOVER' as it should not be used
-        return 0  # Zero means false
-    return 1
+        if in_flightEnum == 'flFLYOVER':
+            return True # Mark 'flFLYOVER' as bad  because it is not currently in use
+        return False
+    return True
 # ------------------------------------------------------------------------------
 def ocrObjectEnum_is_bad(in_ocrType):
     q = [ 'otUNDEF', 'DBK', 'TMPL', 'TASK', 'EVT' ]
@@ -600,6 +701,10 @@ def getEvent(io_G, in_labeled_edgeTuple):
     # in_labeled_edgeTuple = ( edge, label) where edge is (nodeA,nodeB) and label is a string
     return getEdge(io_G, in_labeled_edgeTuple[0])["events"][in_labeled_edgeTuple[1]]
 # ------------------------------------------------------------------------------
+def sharedConx(io_G, in_edgeTuple):
+    # in_edgeTuple = edge where edge is (nodeA,nodeB) and node(A|B) are node numbers.
+    return getEdge(io_G, in_edgeTuple)["sharedConx"]
+# ------------------------------------------------------------------------------
 def graphAddEdge(io_G, in_from_nodeName, in_to_nodeName, in_label):
     #whereAmI()
     e=edgeNames2tuple(io_G, in_from_nodeName, in_to_nodeName)
@@ -613,6 +718,24 @@ def graphAddEdge(io_G, in_from_nodeName, in_to_nodeName, in_label):
         getEdge(io_G, e)["derefs"] = [] # A list by text name of the data blocks that needs to be received and dereferenced.
         getEdge(io_G, e)["slotCount"] = 0  # A non-zero positive integer counting how many slots an edge requires.
                                            # The slot count of an EDt is the sum(slotCount, over all edges incident on that EDT).
+
+        # -An edge can share a connection with another edge.  This means that both edges will be using
+        # the same slot.  The current edge, the one with the valid "sharedConx" should be the one
+        # holding the overloading the connection.
+        # -A connection is made up of all slots an edge uses upon entry in a node.
+        # -If a connection is shared between two edges, then both edges must have
+        #  identically matching paramv and depv.
+        # -For example, a shared edge can occur during a recursion pattern.
+        #==>"sharedConx" is used to break cycles in the Graph in order to have a simple DAG.
+        #    The graph will be broken on the edge having the "sharedConx" set.
+        getEdge(io_G,e)["sharedConx"] = []  # A list of (node source, node target) 2-tuple
+                                            # This list should have a length of at most one.
+                                            # I had to use a list in order to get a nice accessor sharedConx()
+
+        getEdge(io_G,e)["leads_to_ElseClause"] = False  # - This is intended for the IF-THE-ELSE pattern.
+                                                        # - Set to True is this leads to the False Clause
+                                                        #   of the IF-THEN_ELSE pattern.
+
     return e, in_label
 # ------------------------------------------------------------------------------
 def printGraph(in_G):
@@ -653,9 +776,19 @@ def printGraph(in_G):
                 for db in getDataBlocks(in_G,n):
                     print(tab2 +"DBK:"+ str(hex(id(db))) ),
                     print(db.toDictio())
+
             if len(getDestroys(in_G, n))>0:
                 for troy in getDestroys(in_G, n):
-                    print(tab2 +"Destroy: " + str(troy.toTuple()) )
+                    print(tab2 +"Destroys: " + str(hex(id(troy))) + ' ' + str(troy.toTuple()) )
+
+            if len(getReleases(in_G, n))>0:
+                for rel in getReleases(in_G, n):
+                    print(tab2 +"Releases: " + str(hex(id(rel))) + ' ' + str(rel.toTuple()) )
+
+            if len(getOutgoings(in_G, n)) > 0:
+                for outg in getOutgoings(in_G, n):
+                    print(tab2 + "Outgoings: " + str(hex(id(outg))) + ' ' + str(outg))
+
     elen=len(in_G.edges())
     print(tab + "edge count = " + str(elen))
     if nlen >0:
@@ -676,31 +809,35 @@ def outputDot(in_G, in_filename):
 
     tab = GBL.TABunit
     fo = -1
-    erri=0
+    erri = 0
     while not erri:
         fo = open(in_filename,'w')
         if fo == -1:
-            erri=inspect.currentframe().f_lineno
+            erri = inspect.currentframe().f_lineno
             break
 
-        fo.write("strict digraph " + str(in_G.graph['name'])+ " {\n")
+        fo.write("digraph " + str(in_G.graph['name']) + " {\n")
 
         if len(in_G.nodes()) == 0:
             break
 
         for n in in_G.nodes():
-            fo.write(tab +"\""+ getMyTask(in_G,n).aname + "\"");
-            fo.write(" [idnb=" + str(n) +"];\n")
+            fo.write(tab + '"' + getMyTask(in_G,n).aname + '"')
+            fo.write(' [idnb=' + str(n) + '];\n')
 
         if len(in_G.edges()) == 0:
             break
 
         for e in in_G.edges():
             events = getEvents(in_G,e)
+            is_elseClause = getEdge(in_G,e)["leads_to_ElseClause"]
             for name, evt in events.iteritems():
                 From = getMyTask(in_G,e[0]).aname
                 To   = getMyTask(in_G,e[1]).aname
-                fo.write(tab +'"'+ From +'" -> "'+ To +'" [ label="'+ name +'"];\n')
+                nom = name
+                if is_elseClause:
+                    nom = 'ELSEclause'
+                fo.write(tab + '"' + From + '" -> "' + To + '" [ label="'+ nom + '"];\n')
 
         break
     if not fo == -1:
@@ -708,6 +845,82 @@ def outputDot(in_G, in_filename):
         fo.close()
         fo = -1
 
+    return erri
+# ------------------------------------------------------------------------------
+def check_for_cycles(io_G):
+    # NOTES:
+    # 1) One needs to break cycles on shared connections. See sharedConx().
+    # 2) Make sure nodes with a ELSE edge properly handled. See leads_to_ElseClause.
+
+    #When it is done: whereAmI()
+
+    erri=0
+    while not erri:
+        if len(io_G.nodes())==0: break;
+
+        ## TODO: Although that I was hopeful that the cycle algorithm below was correct.  It is wrong.
+        #
+        # # Strategy: First annotate the edges, then find the back edge, finally check
+        # #           that all back edges have a shared connection.
+        #
+        # visited = {}  # A dictionary (parent nodeid, nodeid)
+        # ages = {}  # The dictionary (nodeID -> age) where ages tells you when the node was first encountered.
+        # # The root node is age = 0; all other are older.  i.e. DFS order.
+        # currage = 0
+        # stack = []
+        # stack.append((GBL.NOTA_NODE_ID,GBL.MAINNODE))
+        # ages[GBL.MAINNODE] = 0
+        #
+        # while len(stack) > 0:
+        #     cur = stack.pop();
+        #     k = cur[1]
+        #     if k in visited:
+        #         visited[k].append(cur)
+        #         continue
+        #     else:
+        #         visited[k] = [cur]
+        #
+        #     bors = io_G.neighbors(k)
+        #     # print('cur = ' + str(k) + ' B= ' + str(bors) )
+        #     for b in bors:
+        #         if not b in ages:
+        #             ages[b] = ages[k] + 1
+        #     for b in bors:
+        #         stack.append((k, b))
+        #
+        # if 1 == 1:
+        #     for k in ages:
+        #         print("k= " + str(k) + "  ages[k]= " + str(ages[k]))
+        #
+        #     print("All edges :")
+        #     for k in visited:
+        #         print("k = " + str(k) + " : "),
+        #         print(visited[k])
+        #
+        # backedges = {}  # node id -> back edge list
+        # for k in visited:
+        #     if len(visited[k]) == 0:
+        #         continue
+        #     if len(visited[k]) < 2:
+        #         v = visited[k][0]
+        #         if v[0] == v[1]:
+        #             erri = inspect.currentframe().f_lineno
+        #             errmsg(erri, 'Self edge ' + str(v) + 'has no one to share the connection to node "' + str(k) + '".\n')
+        #             break
+        #         continue
+        #     for v in visited[k]:
+        #         if ages[v[0]] > ages[v[1]] or v[0] == v[1]:
+        #             if k in backedges:
+        #                 backedges[k].append(v)
+        #             else:
+        #                 backedges[k] = [v]
+        # if erri: break
+        # if 1 == 1:
+        #     print("All back edges: "),
+        #     print(backedges)
+
+
+        break # while not erri:
     return erri
 # ------------------------------------------------------------------------------
 def check_flight_enum(in_G):
@@ -729,14 +942,222 @@ def check_flight_enum(in_G):
         break # while not erri:
     return erri
 # ------------------------------------------------------------------------------
-def check_for_colliding_data_flights(in_G):
+def isa_DBK_access_code(in_access_code):
+    if in_access_code in ['DB_MODE_CONST', 'DB_MODE_RW', 'DB_MODE_EW', 'DB_MODE_RO']:
+        return 1
+    return 0
+# ------------------------------------------------------------------------------
+def check_datablock_access_code(in_G):
     whereAmI()
     erri=0
     while not erri:
         if len(in_G.nodes())==0: break;
 
-        # for n in in_G.nodes():
+        for n in in_G.nodes():
+            parents = getNodeparents(in_G,n)
+            for p in parents:
+                edg = (p,n)
+                events = getEvents(in_G, edg)
+                for evtName in events:
+                    if evtName == 'NULL_GUID':
+                        continue  # One cannot collide NULL_GUIDs.
+                    evt = events[evtName]
+                    edghex = hex(id(evt))
+                    if not isa_DBK_access_code(evt.accessMode):
+                        erri = inspect.currentframe().f_lineno
+                        t = 'Edge ' + edg + ' ' + edghex + ' has an invalid access code: ' + evt.accessMode +'\n'
+                        errmsg(erri, t)
+                        break
+
+                if erri: break  # for evtName in events:
+            if erri: break  # for p in parents:
+        if erri: break  # n in in_G.nodes():
+
+        break # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
+# An EDT has multiple incoming edges, each edge potentially carrying multiple DBKs.
+# By name, each event must uniquely map to a single DBK in the receiving EDT.
+# An exception has been made for DBK which lands and take-offs within the same EDT,
+# as this is a classic mean of insuring locality and ownership transfer.
+def check_datablock_integrity(in_G):
+    whereAmI()
+    erri=0
+    while not erri:
+        if len(in_G.nodes())==0: break;
+
+        for n in in_G.nodes():
+            parents = getNodeparents(in_G,n)
+            for p in parents:
+                edg = (p,n)
+                events = getEvents(in_G, edg)
+                for evtName in events:
+                    if evtName == 'NULL_GUID':
+                        continue  # One cannot collide NULL_GUIDs.
+
+                    evt = events[evtName]
+                    edghex = hex(id(evt))  # This provide a very unique identifier
+
+                    flights = []
+                    count = 0
+                    for db in getDataBlocks(in_G, n):
+                        if db.name == evtName:
+                            count += 1
+                            flights.append(db.flight)
+                    if not count == 1:
+                        if count == 0:
+                            erri = inspect.currentframe().f_lineno
+                            t = 'DBK "' + evtName + '" on Edge ' + edg + ' ' + edghex
+                            t += ' has no flight data in the receiving EDT.\n'
+                            errmsg(erri, t)
+                            break
+                        else:
+                            exception_found = False
+                            if count == 2:
+                                fcheck = 0
+                                if 'flLANDING' in flights:
+                                    fcheck += 1
+                                if 'flTAKEOFF' in flights:
+                                    fcheck += 1
+                                if fcheck == 2:
+                                    exception_found = True
+                            if exception_found:
+                                # NOTE 802: 2016jun15: It is assumed that both a flLANDING DBK and a
+                                #                      flTAKEOFF DBK can share a DBK name because
+                                #                      the landing DBK will have its name-mangled
+                                #                      upon entry.  Thus the flTAKEOFF DBK can take
+                                #                      that name without worrying about name collision.
+                                t = 'DBK "' + evtName + '" in EDT called "' + getMyTask(in_G,n).aname + '"'
+                                t += ' both LANDs and TAKEOFFs. Exception made.\n'
+                                warnmsg(inspect.currentframe().f_lineno, t)
+                            else:
+                                erri = inspect.currentframe().f_lineno
+                                t = 'DBK "' + evtName + '" in EDT called "' + getMyTask(in_G,n).aname + '"'
+                                t += ' must be unique with the EDT. So only one DBK can be called by that name.\n'
+                                errmsg(erri, t)
+                                break
+                if erri: break
+            if erri: break
         if erri: break
+
+        break # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
+# inputs: DB_MODE_CONST, DB_MODE_RW, DB_MODE_EW, DB_MODE_RO
+# Outputs:
+#   0 --> all is ok.
+#   positive number --> error
+#   negative number --> warning because workable
+def compare_DBK_access(in_access_left, in_access_right):
+    if not isa_DBK_access_code(in_access_left):
+        erri = inspect.currentframe().f_lineno
+        return erri
+    if not isa_DBK_access_code(in_access_right):
+        erri = inspect.currentframe().f_lineno
+        return erri
+
+    choice_table = {}
+    # Use 0 for ok, 1 for error, -1 for warning
+    choice_table['DB_MODE_CONST'] = {'DB_MODE_CONST': 0, 'DB_MODE_RO':-1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 1}
+    choice_table['DB_MODE_RO']    = {'DB_MODE_CONST':-1, 'DB_MODE_RO': 0, 'DB_MODE_RW':-1, 'DB_MODE_EW':-1}
+    choice_table['DB_MODE_RW']    = {'DB_MODE_CONST': 1, 'DB_MODE_RO':-1, 'DB_MODE_RW': 0, 'DB_MODE_EW': 1}
+    choice_table['DB_MODE_EW']    = {'DB_MODE_CONST': 1, 'DB_MODE_RO':-1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 0}
+
+    return choice_table[in_access_left][in_access_right]
+# ------------------------------------------------------------------------------
+def check_for_colliding_data_flights(io_G):
+    whereAmI()
+    erri=0
+    while not erri:
+        if len(io_G.nodes())==0: break;
+
+        for n in io_G.nodes():
+            # First collect the info on all incoming data blocks
+            founds = {}
+            parents = getNodeparents(io_G, n)
+            for p in parents:
+                edg = (p,n)
+                events = getEvents(io_G, edg)
+                for evtName in events:
+                    if evtName == 'NULL_GUID':
+                        continue  # One cannot collide NULL_GUIDs.
+                    if not evtName in founds:
+                        founds[evtName] = []
+                    evt = events[evtName]
+                    edghex = hex(id(evt))  # This will be used as a more precise edge ID.
+
+                    flight = "flUNDEF"
+                    for dbk in getDataBlocks(io_G, n):  # A data block is local to an EDT
+                        if dbk.name == evtName:
+                            if flight == 'flUNDEF':
+                                flight = dbk.flight
+                            elif flight == 'flLANDING' and dbk.flight == 'flTAKEOFF':
+                                # The effect of NOTE 802 is felt here: One DBK by name lands, another takes off.
+                                flight = 'flLANDING'  # Bias toward landing
+                            elif dbk.flight == 'flLANDING' and flight == 'flTAKEOFF':
+                                # The effect of NOTE 802 is felt here: One DBK by name lands, another takes off.
+                                flight = dbk.flight # Bias toward landing
+                            else:
+                                erri = inspect.currentframe().f_lineno
+                                # I do not think we should be able to get here,due to previous checks.
+                                break
+                    if erri: break
+                    founds[evtName].append([edg, edghex, evt.accessMode, flight])
+                if erri: break
+            if erri: break
+
+            # Then analyze what we got
+            iedg = 0
+            ihex = 1
+            iaccessm  = 2
+            ifl  = 3
+            for evtName in founds:
+                sameDBKs = founds[evtName]
+                if len(sameDBKs) == 1:
+                    continue
+
+                landings = []
+
+                # Compare every DBK of a given name with every other DBK of the same name.
+                for i in range(len(sameDBKs)):
+                    d1 = sameDBKs[i]
+                    if d1[ifl] == 'flLANDING':
+                        landings.append(d1)
+                    for j in range(i + 1, len(sameDBKs)):
+                        d2 = sameDBKs[j]
+                        if not d1[ifl] == d2[ifl]:
+                            erri = inspect.currentframe().f_lineno
+                            t = str(d1) + ' flight plan differs from ' + str(d2) + '\n'
+                            errmsg(erri, t)
+                            break
+
+                        check = compare_DBK_access(d1[iaccessm], d2[iaccessm])
+                        if check:
+                            if check == -1:
+                                t = 'DBK "' + evtName + '" : EVT' + str(d1) + ' has different DBK access code from EVT' + str(d2) + '. Exception made.\n'
+                                warnmsg(inspect.currentframe().f_lineno, t)
+                            else:
+                                erri = inspect.currentframe().f_lineno
+                                t = 'DBK "' + evtName + '" : EVT' + str(d1) + ' has an incompatible DBK access code from EVT' + str(d2) + '\n'
+                                errmsg(erri, t)
+                                break
+                    if erri: break  # for j in range(i
+                if erri: break  # for i in range
+
+                if len(landings) > 1:
+                    # Only one of these landings can perform the deletion
+                    for i in range(len(landings)):
+                        the_edg = landings[i][iedg]
+                        labeled_edge = (the_edg, evtName)
+                        if i == 0:
+                            getEvent(io_G, labeled_edge).isTheLead = True
+                            t = 'The LANDINGs DBK "' + evtName + '" from edge "' + str(landings[i]) + '" has been chosen to be the leading edge.\n'
+                            warnmsg(inspect.currentframe().f_lineno, t)
+                        else:
+                            getEvent(io_G, labeled_edge).isTheLead = False
+
+            if erri: break  # for evtName in founds:
+        if erri: break  # for n in io_G.nodes():
 
         break # while not erri:
     return erri
@@ -749,21 +1170,17 @@ def set_parents(io_G):
     while not erri:
         if len(io_G.nodes())==0: break;
 
-        q = [] # Using a list as a stack --> Doing a DF search
-        x = (0, GBL.NOTA_NODE_ID) #Current node starts at ID=0 and has no parents
-        q.append(x)
-        while not len(q) == 0:
-            x = q.pop()
-            pkey = "parent"
-            p=x[1]
-            n=x[0]
-            if not p == GBL.NOTA_NODE_ID:
-                if not p in getNode(io_G,n)["parents"]:  #Added this in case io_G is a multi-graph.
-                    getNode(io_G,n)["parents"].append(p)
-
+        for n in io_G.nodes():
             bors=io_G.neighbors(n)
             for b in bors:
-                q.append((b,n))
+                if not n in getNodeparents(io_G, b):
+                    getNodeparents(io_G, b).append(n)
+
+        debug = False
+        if debug == True:
+            for n in io_G.nodes():
+                print( 'n=' + str(n) + '  parents=' + str(getNodeparents(io_G, n)))
+
         break # while not erri:
     return erri
 # ------------------------------------------------------------------------------
@@ -783,43 +1200,53 @@ def init_slotCounts_for_param(io_G):
 # 1) Find out what leaves node A,
 # 2) Find out how it is used in B,
 # 3) Classify depending on B usage
+#NOTE: This function will not capture the info incoming into an ELSE EDT, because
+#      the IF-THEN edt will handle that.
 def find_IN_literals_and_dereferenceds(io_G):
     whereAmI()
     debug1 = GBL.debug_DBK_flights
     erri=0
     while not erri:
         for n in io_G.nodes():
+
             bors = io_G.neighbors(n)
             for b in bors:
                 edg = (n,b)
+
+                if debug1: print('DBG1160> find lits derefs>  node=' + str(n) + '  bor=' + str(b))
+
                 events = getEvents(io_G, edg)
                 for evtName in events:
                     if evtName == 'NULL_GUID':
                         literals(io_G, edg).append(evtName)  # @MARK709  Search for this mark for more details
                         continue
-                    # NOTE:710: When looking for literals and derefs, begin_flight info is not pertinent to analysis.
-                    # NOTE:710: But it serves here as a good check.
-                    evt = events[evtName]
-                    # DEV DBG> print("DEV680>" + evtName +"  "+ str(evt.toDictio()) )
-                    # Get the info from the starting node
-                    if debug1: print('DBG1> Node='+str(n)+ ' Edge=' +str(edg) + '  DBK= ' + evtName)
-                    begin_flight = 'flUNDEF'
-                    if len(getDataBlocks(io_G,n))>0:
-                        for db in getDataBlocks(io_G,n):
-                            if db.name == evtName:
-                                begin_flight = db.flight
-                                break
-                    if debug1: print(begin_flight )
-                    if begin_flight in ['LANDING, HOP', 'FLYOVER']:
-                        # If landing,hop or flyover, it should not be on an outgoing edge
-                        erri=inspect.currentframe().f_lineno
-                        errmsg(erri, 'Node='+str(n)+ ' Edge=' +str(edg)+ ' : Data block "'+evtName+'" of type '+ begin_flight +' cannot be on outgoing edge.\n')
-                        break
 
-                    if begin_flight in ['flUNDEF']:
-                        erri=inspect.currentframe().f_lineno
-                        errmsg(erri, 'Node='+str(n)+ ' Edge=' +str(edg)+ ' : Data block "'+evtName+'" of type '+ begin_flight +' needs to be defined.\n')
-                        break
+                    # DEV DBG> evt = events[evtName]; print("DEV680>" + evtName +"  "+ str(evt.toDictio()) )
+                    if debug1: print('DBG1> Node='+str(n)+ ' Edge=' +str(edg) + '  DBK= ' + evtName)
+
+                    if 1 == 1:
+                        # Get the info from the starting node
+                        # NOTE:710: When looking for literals and derefs, begin_flight info is not pertinent to analysis.
+                        # NOTE:710: But it serves here as a good check.
+                        begin_flight = 'flUNDEF'
+                        if len(getDataBlocks(io_G,n))>0:
+                            for db in getDataBlocks(io_G,n):
+                                if db.name == evtName:
+                                    begin_flight = db.flight
+                                    break
+
+                        if debug1: print('\tbegin_flight=' + begin_flight)
+
+                        if begin_flight in ['flLANDING, flHOP', 'flFLYOVER']:
+                            # If landing,hop or flyover, it should not be on an outgoing edge
+                            erri=inspect.currentframe().f_lineno
+                            errmsg(erri, 'Node='+str(n)+ ' Edge=' +str(edg)+ ' : Data block "'+evtName+'" of type '+ begin_flight +' cannot be on outgoing edge.\n')
+                            break
+
+                        if begin_flight in ['flUNDEF']:
+                            erri=inspect.currentframe().f_lineno
+                            errmsg(erri, 'Node='+str(n)+ ' Edge=' +str(edg)+ ' : Data block "'+evtName+'" of type '+ begin_flight +' needs to be defined.\n')
+                            break
 
                     # Get the info from the ending node
                     end_flight = 'flUNDEF'
@@ -829,9 +1256,9 @@ def find_IN_literals_and_dereferenceds(io_G):
                                 end_flight = db.flight
                                 break
 
-                    if debug1: print(end_flight)
+                    if debug1: print('\tend_flight=' + end_flight)
 
-                    if end_flight in ['TAKEOFF', 'HOP','FLYOVER']:
+                    if end_flight in ['flTAKEOFF', 'flHOP','flFLYOVER']:
                         # If landing,hop or flyover, it should not be on an outgoing edge
                         erri=inspect.currentframe().f_lineno
                         errmsg(erri, 'Node='+str(n)+ ' Edge=' +str(edg)+ ' : Data block "'+evtName+'" of type '+ end_flight +' cannot be on outgoing edge.\n')
@@ -843,16 +1270,30 @@ def find_IN_literals_and_dereferenceds(io_G):
                         break
 
                     # Decide what to do
-                    # begin q = [           'PASSTRU', 'TAGO',            'TAKEOFF',                 ]
-                    # end   q = [           'PASSTRU', 'TAGO', 'LANDING',                            ]
-                    if end_flight == 'PASSTRU':
-                        literals(io_G, edg).append(evtName)
-                    elif end_flight == 'TAGO' or end_flight == 'LANDING':
+                    # begin q = [           'flPASSTRU', 'flTAGO',            'flTAKEOFF',                 ]
+                    # end   q = [           'flPASSTRU', 'flTAGO', 'flLANDING',                            ]
+                    if end_flight == 'flPASSTRU':
+                        #
+                        # --> DEV not finished yet.  So flag them as errors for now.
+                        erri = inspect.currentframe().f_lineno
+                        txt = 'The handling of flPASSTRU data blocks has not been fully implemented yet.'
+                        txt += ' Please use TAGO instead for now.'
+                        errmsg(erri, txt)
+                        #  literals(io_G, edg).append(evtName)
+                        # if has_ELSEedt:  --> Fill up the rest
+                    elif end_flight == 'flTAGO' or end_flight == 'flLANDING':
                         dereferenciables(io_G, edg).append(evtName)
                     else:
                         erri=inspect.currentframe().f_lineno
                         break
                 if erri: break  # for evtName in events:
+
+                if debug1:
+                    print('>DBG1160> find lits derefs>  node=' + str(n) + '  bor=' + str(b))
+                    print('\t edg=' + str(edg))
+                    print('\t lits=' + str(literals(io_G, edg)))
+                    print('\t derefs=' + str(dereferenciables(io_G, edg)))
+
             if erri: break  # for b in bors:
         if erri: break  # for n in io_G.nodes():
 
@@ -862,42 +1303,312 @@ def find_IN_literals_and_dereferenceds(io_G):
 
     return erri
 # ------------------------------------------------------------------------------
+# inputs: 'flUNDEF', 'flPASSTRU', 'flTAGO', 'flLANDING', 'flTAKEOFF', 'flHOP', 'flFLYOVER'
+#           See flightEnum_is_bad(in_flightEnum) for details
+#         In this context, 'flUNDEF' means that the flight was not found, e.g. that DBK is not present.
+# Outputs:
+#   0 --> all is ok.
+#   positive number --> error
+#   negative number --> warning because workable
+# NOTE:
+#  2016jun: The matrix is symmetric for now.  That seems to make sense at this time.
+def flight_are_compatible_for_IFTHENELSE(in_ThenFlight, in_ElseFlight):
+    choice_table = {}
+    # Use 0 for ok, 1 for error, -1 for warning
+
+    # Note: Two 'flUNDEF' --> How do one get there?  --> Error.
+    # Note: Only flHOP and flTAKEOFF seems to make sense.
+    choice_table['flUNDEF']   = {'flUNDEF':1, 'flPASSTRU':1, 'flTAGO':1, 'flLANDING':1, 'flTAKEOFF':0, 'flHOP':0, 'flFLYOVER':1}
+
+    choice_table['flPASSTRU'] = {'flUNDEF':1, 'flPASSTRU':0, 'flTAGO':0, 'flLANDING':0, 'flTAKEOFF':1, 'flHOP':1, 'flFLYOVER':1}
+    choice_table['flTAGO']    = {'flUNDEF':1, 'flPASSTRU':0, 'flTAGO':0, 'flLANDING':0, 'flTAKEOFF':1, 'flHOP':1, 'flFLYOVER':1}
+    choice_table['flLANDING'] = {'flUNDEF':1, 'flPASSTRU':0, 'flTAGO':0, 'flLANDING':0, 'flTAKEOFF':1, 'flHOP':1, 'flFLYOVER':1}
+    choice_table['flTAKEOFF'] = {'flUNDEF':0, 'flPASSTRU':1, 'flTAGO':1, 'flLANDING':1, 'flTAKEOFF':0, 'flHOP':0, 'flFLYOVER':1}
+
+    # Note: flHOP is local, and it should not interfere, or be interfered with, other data blocks.
+    choice_table['flHOP']     = {'flUNDEF':0, 'flPASSTRU':1, 'flTAGO':1, 'flLANDING':1, 'flTAKEOFF':0, 'flHOP':0, 'flFLYOVER':1}
+    # Note: Anything flFLYOVER should be an error.  No clue how it would get here.
+    choice_table['flFLYOVER'] = {'flUNDEF':1, 'flPASSTRU':1, 'flTAGO':1, 'flLANDING':1, 'flTAKEOFF':1, 'flHOP':1, 'flFLYOVER':1}
+
+    return choice_table[in_ThenFlight][in_ElseFlight];
+
+# ------------------------------------------------------------------------------
+def validate_IFthenELSE(io_G):
+    whereAmI()
+    erri=0
+    while not erri:
+
+        # First find all IF-THEN-ELSE edges
+        ifedges = []
+        for e in io_G.edges():
+            if getEdge(io_G,e)["leads_to_ElseClause"]:
+                ifedges.append(e)
+
+        if len(ifedges)==0:
+            break  # Not much to do
+
+        # Process I-T-E edges for validity
+        for edg in ifedges:
+            FROM = edg[0]
+            TO = edg[1]
+
+            # Making we have an IF conditional
+            if len(getIFconditionText(io_G, FROM))==0:
+                erri=inspect.currentframe().f_lineno
+                t = "Missing IF condition for the IF-THEN-ELSE edge = " + str(edg)
+                errmsg(erri,t)
+                break
+
+            countDBK_from = len(getDataBlocks(io_G,FROM))
+            done_FROM=[]
+            for i in range(countDBK_from):
+                done_FROM.append(False)
+
+            countDBK_to = len(getDataBlocks(io_G, TO))
+            done_TO=[]
+            for i in range(countDBK_to):
+                done_TO.append(False)
+
+            for f, bf in enumerate(getDataBlocks(io_G,FROM)):
+                vol = 'flUNDEF'
+                name = ""
+                for t, bt in enumerate(getDataBlocks(io_G, TO)):
+                    if done_TO[t]:
+                        continue
+                    name = bt.name
+                    if bf.name == name:
+                        done_TO[t] = True
+                        vol = bt.flight
+                        break
+
+                check = flight_are_compatible_for_IFTHENELSE(bf.flight, vol)
+                if check:
+                    erri = inspect.currentframe().f_lineno
+                    t = 'On the IF-THEN-ELSE edge = ' + str(edg) + ', the data blocks "' + bf.name + '" '
+                    t += 'and "' + name + '" have incompatible flights, repectively: ' + bf.flight + '" "'
+                    t += vol + '".'
+                    errmsg(erri, t)
+            if erri: break  # for f, bf in
+
+            for t, bt in enumerate(getDataBlocks(io_G,TO)):
+                vol = 'flUNDEF'
+                name = ""
+                for f, bf in enumerate(getDataBlocks(io_G, FROM)):
+                    if done_FROM[f]:
+                        continue
+                    name = bf.name
+                    if bt.name == name:
+                        done_FROM[f] = True
+                        vol = bf.flight
+                        break
+
+                check = flight_are_compatible_for_IFTHENELSE(bt.flight, vol)
+                if check:
+                    erri = inspect.currentframe().f_lineno
+                    t = 'On the IF-THEN-ELSE edge = ' + str(edg) + ', the data blocks "' + bf.name + '" '
+                    t += 'and "' + name + '" have incompatible flights, repectively: ' + bf.flight + '" "'
+                    t += vol + '".'
+                    errmsg(erri, t)
+                if erri: break  # for t, bt in
+
+            if erri: break  # for f, bF in e
+        if erri: break  # for edg in ifedges:
+
+        break # while not erri:
+
+    return erri
+# ------------------------------------------------------------------------------
+#NOTE: For ELSE edt, because they do not have explicit literals nor dereferentiables (they are handled by the IF edt),
+#      shared connections cannot be put on ELSE EDTs.
+def check_shared_connections(in_G):
+    erri=0
+    while not erri:
+        for n in in_G.nodes():
+            for p in getNodeparents(in_G,n):
+                edg = (p, n)
+                lits   = literals(in_G, edg)
+                derefs = dereferenciables(in_G, edg)
+
+                if len(sharedConx(in_G,edg)) == 0:
+                    continue
+                shared_conx = ()
+                for cx in sharedConx(in_G,edg):
+                    if n == cx[1]:
+                        shared_conx = cx  # So the current edge shares the connection cx
+                        break
+                if shared_conx == ():
+                    continue
+
+                litsCX = literals(in_G, shared_conx)
+                derefsCX = dereferenciables(in_G, shared_conx)
+
+                if not sorted(lits) == sorted(litsCX):
+                    erri = inspect.currentframe().f_lineno
+                    t = 'Edge "' + str(edg) + '" must have the same literals as its shared connection "'
+                    t += str(shared_conx) + '".\n'
+                    errmsg(erri,t)
+
+                if not sorted(derefs) == sorted(derefsCX):
+                    erri = inspect.currentframe().f_lineno
+                    t = 'Edge "' + str(edg) + '" must have the same dereferentiables as its shared connection "'
+                    t += str(shared_conx) + '".\n'
+                    errmsg(erri,t)
+
+                if erri: break
+            if erri: break  # for p in getNodeparents(in_G,n):
+
+        if erri: break  # for n in in_G.nodes():
+
+        break  # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
 def assign_slots_for_literals_and_dereferenceds(io_G):
     erri=0
     while not erri:
         for n in io_G.nodes():
             local_slot_offset = 0
-            for p in getNode(io_G,n)['parents']:
+            for p in getNodeparents(io_G,n):
                 edg = (p,n)
                 lits   = literals(io_G, edg)
                 derefs = dereferenciables(io_G, edg)
-                # print('E  '+ str(edg) +'  '+ str(lits) +'  '+ str(derefs))
+                # print("\nDBG1452> n = " + str(n))
+                # print('DBG1452> edg='+ str(edg) +'  lits='+ str(lits) +'  derefs='+ str(derefs))
+
+                shared_conx = False
+                for cx in sharedConx(io_G,edg):
+                    if n == cx[1]:
+                        shared_conx = True
+                        break
+                if shared_conx: continue
+                #Shared connection will be handle separately, below, after these n:p loops.
+
+                if len(lits) > 1:
+                    # 2016jun29: lits are expected to be empty or contain a single 'NULL_GUID',
+                    #            So I put the check in order to ascertain that.
+                    #            See @MARK709 for more details
+                    erri = inspect.currentframe().f_lineno
+                    break
 
                 getEdge(io_G, edg)["slotCount"] = 0
-                if not len(lits)== 0:
-                    getEdge(io_G, edg)["slotCount"] = 1  # All literals will end up in one struct in one data block.
-                                                         # NOTE: That I put 'NULL_GUID's in literals  # @MARK709  Search for this mark for more details
+                for lt in lits:
+                    if lt == 'NULL_GUID':
+                        getEdge(io_G, edg)["slotCount"] += 1  # All literals will end up in one struct in one data block.
+                                                              # NOTE: That I put 'NULL_GUID's in literals
+                                                              # @MARK709  Search for this mark for more details
+                    else:
+                        # Incomplete code --> No clue how to handle non-NULL_GUID events.
+                        erri = inspect.currentframe().f_lineno
+                        break
+                if erri: break
+
                 getEdge(io_G, edg)["slotCount"] += len(derefs) # One slot per deref
 
                 events = getEvents(io_G, edg)
+
+                # print('DBG1499> lits = ' + str(lits))
+                # print('DBG1499> derefs = ' + str(derefs))
 
                 if lits:
                     for lit in lits:
                         events[lit].calculatedSlot = local_slot_offset
                         # print(lit + '  ' + str(local_slot_offset))
-                    # Lits are all bunched up in one struct so they get only one slot.
-                    local_slot_offset += 1
 
-                for deref in derefs:
-                    events[deref].calculatedSlot = local_slot_offset
-                    # print(deref + '  ' + str(local_slot_offset))
-                    local_slot_offset += 1
-            if erri: break  # for p in getNode(io_G,n)[parents]:
+                        # Lits are all bunched up in one struct so they get only one slot.
+                        #But we could have multiple NULL_GUIDs. # @MARK709
+                        local_slot_offset += 1
+
+                if derefs:
+                    for deref in derefs:
+                        events[deref].calculatedSlot = local_slot_offset
+                        # print('DBG1328> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
+                        # print(deref + '  ' + str(local_slot_offset))
+                        local_slot_offset += 1
+            if erri: break  # for p in getNodeparents(io_G,n):
 
             getMyTask(io_G, n).depc = local_slot_offset
             getMyTask(io_G, n).depv = 'NULL'  # Using events to fill the slots
 
         if erri: break  # for n in io_G.nodes():
+
+        #Now handle the shared connections
+        for n2 in io_G.nodes():
+            for p2 in getNodeparents(io_G,n2):
+                edg = (p2, n2)
+                lits   = literals(io_G, edg)
+                derefs = dereferenciables(io_G, edg)
+                # print("\nDBG1516> n = " + str(n2))
+                # print('DBG1516> edg='+ str(edg) + '  lits= '+ str(lits) + '  derefs=' + str(derefs))
+
+                shared_conx = ()
+                for cx in sharedConx(io_G,edg):
+                    if n2 == cx[1]:
+                        shared_conx = cx  # So the current edge shares the connection cx
+                        break
+                if shared_conx == ():
+                    continue
+
+                events = getEvents(io_G, edg)
+                sharedEV = getEvents(io_G, shared_conx)
+
+                if 1 == 2:
+                    print('DBG1531> events   = ' + str(events))
+                    print('DBG1531> sharedEV = ' + str(sharedEV))
+                    print('DBG1531> lits = ' + str(lits))
+                    print('DBG1531> derefs = ' + str(derefs))
+
+                if lits:
+                    for lit in lits:
+                        events[lit].calculatedSlot = sharedEV[lit].calculatedSlot
+                if derefs:
+                    for deref in derefs:
+                        events[deref].calculatedSlot = sharedEV[deref].calculatedSlot
+                        # print('DBG1369> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
+
+            if erri: break  # for p2 in getNodeparents(io_G,n):
+
+        if erri: break  # for n2 in io_G.nodes():
+
+        break  # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
+def set_the_ELSEclause_field(io_G):
+    erri=0
+    while not erri:
+        for n in io_G.nodes():
+            if len(getIFconditionText(io_G,n)) == 0:
+                continue
+            linking_event_name = ""
+            count_evt = 0
+            count_edg = 0
+            for bor in io_G.neighbors(n):
+                edg = (n, bor)
+                if not getEdge(io_G, edg)["leads_to_ElseClause"]:
+                    continue
+                for evtName in getEvents(io_G, edg):
+                    getEvents(io_G, edg)[evtName].fertile = False  # ELSE edt are merged with the IF-THEN edt.
+                    count_evt += 1
+                    linking_event_name = evtName
+                getNode(io_G,bor)["istheELSEclause"] = True
+                count_edg += 1
+            if not count_edg == 1:
+                erri = inspect.currentframe().f_lineno
+                t = 'On node ' + str(n) + ', IF EDT found.  But invalid ELSE condition count found :' + str(count_edg)
+                t += '. Only single count, i.e. edge from IF-THEN to ELSE, of an ELSE condition is allowed.'
+                errmsg(erri, t)
+                break
+            if not count_evt == 1:
+                erri = inspect.currentframe().f_lineno
+                t = 'On node ' + str(n) + ', IF EDT found.  Only one event is allowd on the edge leading to '
+                t += 'the ELSE EDT: ' + str(count_evt) + ' events were found.'
+                errmsg(erri, t)
+                break
+            if not linking_event_name == 'NULL_GUID':
+                erri = inspect.currentframe().f_lineno
+                t = 'On node ' + str(n) + ', IF EDT found.  Only a NULL_GUID DBK can be used on the event linking '
+                t += 'the IF-THEN EDT to the ELSE EDT: Found = ' + linking_event_name
+                errmsg(erri, t)
+                break
+        if erri: break
 
         break  # while not erri:
     return erri
@@ -908,30 +1619,135 @@ def OCRanalysis(io_G):
     while not erri:
         erri = check_flight_enum(io_G)
         if erri: break
+        erri = check_for_cycles(io_G)
+        if erri: break
         erri = set_parents(io_G)
         if erri: break
-        erri = check_for_colliding_data_flights(io_G)
+        erri = set_the_ELSEclause_field(io_G)  # This must be before find_IN_literals_and_dereferenceds(io_G)
+        if erri: break
+        erri = init_slotCounts_for_param(io_G)
+        if erri: break
+        erri = check_datablock_access_code(io_G)  # Keep this before check_datablock_integrity
+        if erri: break
+        erri = check_datablock_integrity(io_G)
+        if erri: break
+        erri = check_for_colliding_data_flights(io_G)  # In addition to checking, this also sets the "isTheLead" field.
         if erri: break
         erri = find_IN_literals_and_dereferenceds(io_G)
         if erri: break
-        erri = assign_slots_for_literals_and_dereferenceds(io_G)
+        erri = check_shared_connections(io_G)
         if erri: break
-        erri = init_slotCounts_for_param(io_G)
+        erri = assign_slots_for_literals_and_dereferenceds(io_G)
         if erri: break
         break
     return erri
 # ------------------------------------------------------------------------------
-def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
-    tab2 = in_tab + GBL.TABunit
+def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
+    whereAmI()
     erri = 0
     while not erri:
-        io_file.write(in_tab + '//----- Setup input data structs\n')
+        if not getNode(io_G, in_nodeIndex)["istheELSEclause"]:
+            break
 
-        for p in getNode(io_G, in_nodeIndex)['parents']:
+        #Since this is an ELSE edt, first find its IF-THEN edt
+        nodeIF = GBL.NOTA_NODE_ID
+        for p in getNodeparents(io_G,in_nodeIndex):
+            edg = (p,in_nodeIndex)
+            if getEdge(io_G,edg)["leads_to_ElseClause"]:
+                nodeIF = p
+                break
+        if nodeIF == GBL.NOTA_NODE_ID:
+            erri = inspect.currentframe().f_lineno
+            errmsg(erri, 'The IF clause for node "' + str(in_nodeIndex) + '" could not be found.')
+            break
+
+        for dbk in getDataBlocks(io_G, in_nodeIndex):
+
+            if dbk.flight in ['flUNDEF', 'flFLYOVER']:
+                erri = inspect.currentframe().f_lineno
+                errmsg(erri, 'Invalid DBK flight found: "' + dbk.flight + '"')
+                break
+
+            if dbk.name =='NULL_GUID':
+                # 'NULL_GUID' do not need to be released, nor detroyed, and they are always outgoing.
+                continue
+
+            parentIF = GBL.NOTA_NODE_ID
+            for pi in getNodeparents(io_G, nodeIF):
+                edg = (pi, nodeIF)
+
+                is_shared = False
+                for cx in sharedConx(io_G, edg):
+                    if nodeIF == cx[1]:
+                        # This connection is shared with another
+                        is_shared = True
+                        break
+                if is_shared:
+                    continue  # Only kept the true connection, not those that piggybacks.
+
+                events = getEvents(io_G, edg)
+                for evtName in events:
+                    if evtName == dbk.name:
+                        parentIF = pi
+                        break
+            if parentIF == GBL.NOTA_NODE_ID:
+                erri = inspect.currentframe().f_lineno
+                t = 'The DBK "' + dbk.name + '" of node "' + str(in_nodeIndex) + '"  could not be found among its IF '
+                t += 'clause EDT (node="' + str(nodeIF) + '")'
+                errmsg(erri, t)
+                break
+
+            edgIF = (parentIF, nodeIF)
+            edgName = makeInDerefsName(io_G, edgIF)
+            drname = edgName + '_' + makeEdtDepName(dbk.name)
+
+            if dbk.flight in ['flPASSTRU', 'flTAGO', 'flTAKEOFF']:
+                addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname+'.guid'))
+
+            if dbk.flight in ['flLANDING', 'flHOP']:
+                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+        if erri: break
+
+        debug = False
+        if debug:
+            print('DBG1714>node = ' + str(in_nodeIndex))
+            print('DBG1714>\tDESTROY list:'),
+            print(getDestroys(io_G,in_nodeIndex))
+            print('DBG1714>\tRELEASE list:'),
+            print(getReleases(io_G, in_nodeIndex))
+            print('DBG1714>\tOUTGOING list:'),
+            print(getOutgoings(io_G, in_nodeIndex))
+
+        break  # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
+def find_destroy_outgoing_release(io_G, in_nodeIndex):
+    whereAmI()
+    #print('DBG1714> nod=' + str(in_nodeIndex) )
+
+    erri = 0
+    while not erri:
+
+        isaELSEedt = getNode(io_G, in_nodeIndex)["istheELSEclause"]
+        if isaELSEedt:
+            erri = find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex)
+            break
+
+        for p in getNodeparents(io_G, in_nodeIndex):
             edg = (p, in_nodeIndex)
+
+            is_shared = False
+            for cx in sharedConx(io_G, edg):
+                if in_nodeIndex == cx[1]:
+                    # This connection is shared with another
+                    is_shared = True
+                    break
+            if is_shared:
+                continue
+
             lits   = literals(io_G, edg)
             derefs = dereferenciables(io_G, edg)
-            # print('Ein  '+ str(edg) +'  '+ str(lits) +'  '+ str(derefs))
 
             len_lits = len(lits)
             for lit in lits:
@@ -939,56 +1755,124 @@ def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
                     len_lits += -1
 
             if len_lits > 0:
+                warnmsg(inspect.currentframe().f_lineno, "DEV> Handling of literals not fully debugged yet.\n")
+
                 edgName = makeInLiteralsName(io_G, edg)
-                edgName_t = makeInLiteralsNameStruct(io_G, edg)
-                io_file.write(in_tab + 'typedef struct ' + edgName_t + '{\n')
 
                 litsOffset = -1
 
                 for k, lit in enumerate(lits):
                     if lit == 'NULL_GUID':
                         continue
-                    endword = ',\n'
-                    if k + 1 == len_lits:
-                        endword = '\n'
-                    io_file.write(tab2 + 'ocrGuid_t ' + makeGuidDataBlockname(lit) +endword)
+
                     if litsOffset == -1:
                         events = getEvents(io_G, edg)
                         litsOffset = events[lit].calculatedSlot
                     for dbk in getDataBlocks(io_G, in_nodeIndex):
                         if not dbk.name == lit:
                             continue
-                        if dbk.flight == 'LANDING':
+                        if getEvent(io_G, (edg, dbk.name)).isTheLead:
                             litName = edgName + '.' + makeGuidDataBlockname(lit)
-                            addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', litName, 'DBK'))
-                            if erri: break
-                        if dbk.flight in ['TAGO', 'PASSTRU']:
-                            addToOutgoing(io_G, in_nodeIndex, (lit, litName))
-                if erri: break
+                            if dbk.flight in ['flLANDING', 'flHOP']:
+                                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', litName, 'DBK'))
+                            if dbk.flight in ['flTAGO', 'flPASSTRU']:
+                                addToOutgoing(io_G, in_nodeIndex, (lit, litName))
 
-                io_file.write(in_tab+ '} '+ edgName_t +';\n')
-                io_file.write(in_tab+ edgName_t + ' ' +edgName+';\n')
+            if len(derefs) > 0:
+                edgName = makeInDerefsName(io_G, edg)
+                for k, deref in enumerate(derefs):
+                    drname = edgName + '_' + makeEdtDepName(deref)
 
-                io_file.write(in_tab + edgName + '= depv[' + litsOffset + '];\n')
+                    for dbk in getDataBlocks(io_G, in_nodeIndex):
+                        if not dbk.name == deref:
+                            continue
+                        if getEvent(io_G, (edg, dbk.name)).isTheLead:
+                            if dbk.flight in ['flLANDING', 'flHOP']:
+                                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                            if dbk.flight in ['flTAGO', 'flPASSTRU']:
+                                addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                                addToOutgoing(io_G, in_nodeIndex, (deref, drname+'.guid'))
+
+        if erri: break  # for p in getNodeparents(in_G,n):
+
+        debug = False
+        if debug:
+            print('DBG1714>\tDESTROY list:'),
+            print(getDestroys(io_G,in_nodeIndex))
+            print('DBG1714>\tRELEASE list:'),
+            print(getReleases(io_G, in_nodeIndex))
+            print('DBG1714>\tOUTGOING list:'),
+            print(getOutgoings(io_G, in_nodeIndex))
+
+        break  # while not erri:
+
+    return erri
+# ------------------------------------------------------------------------------
+def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
+    whereAmI()
+    #print('DBG1800> node=' + str(in_nodeIndex) )
+    tab2 = in_tab + GBL.TABunit
+    erri = 0
+    while not erri:
+        io_file.write(in_tab + '//----- Setup input data structs\n')
+
+        for p in getNodeparents(io_G, in_nodeIndex):
+            edg = (p, in_nodeIndex)
+            lits   = literals(io_G, edg)
+            derefs = dereferenciables(io_G, edg)
+            # print('Ein  '+ str(edg) +'  '+ str(lits) +'  '+ str(derefs))
+
+            is_shared = False
+            for cx in sharedConx(io_G, edg):
+                if in_nodeIndex == cx[1]:
+                    # This connection is shared with another
+                    is_shared = True
+                    break
+            if is_shared:
+                #print('DBG1832> Ein  '+ str(edg) +'  '+ str(lits) +'  '+ str(derefs))
+                continue
+
+            len_lits = len(lits)
+            for lit in lits:
+                if lit == 'NULL_GUID':
+                    len_lits += -1
+
+            if len_lits > 0:
+                erri = inspect.currentframe().f_lineno
+                errmsg(erri, "DEV> Handling of literals not fully implemented yet.\n")
+                break
 
             if len(derefs) > 0:
                 edgName = makeInDerefsName(io_G, edg)
                 for k, deref in enumerate(derefs):
                     calcSlot = getEvents(io_G, edg)[deref].calculatedSlot
                     drname = edgName + '_' + makeEdtDepName(deref)
-                    text = in_tab + 'ocrEdtDep_t ' + drname + ' = depv[' + str(calcSlot) + '];\n'
+                    text = in_tab + 'ocrEdtDep_t ' + drname + ' = depv[' + str(calcSlot) + '];'
+                    text += '\n'
                     io_file.write(text)
                     for dbk in getDataBlocks(io_G, in_nodeIndex):
                         if not dbk.name == deref:
                             continue
-                        if dbk.flight == 'LANDING':
-                            addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
-                        if dbk.flight in ['TAGO', 'PASSTRU']:
-                            addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
-                            addToOutgoing(io_G, in_nodeIndex, (deref, drname+'.guid'))
+                        if dbk.flight == 'flLANDING':
+                            if len(dbk.localname) > 0:
+                                text = in_tab + dbk.type + ' * ' + dbk.localname + ' = ' + drname + '.ptr;\n'
+                                io_file.write(text)
+                            if len(dbk.getLocalTexts()) > 0:
+                                for lt in dbk.getLocalTexts():
+                                    text = in_tab + lt + '\n'
+                                    io_file.write(text)
+                        if dbk.flight in ['flTAGO', 'flPASSTRU']:
+                            if dbk.flight in 'flTAGO':
+                                if len(dbk.localname) > 0:
+                                    text = in_tab + dbk.type + ' * ' + dbk.localname + ' = ' + drname + '.ptr;\n'
+                                    io_file.write(text)
+                                if len(dbk.getLocalTexts()) > 0:
+                                    for lt in dbk.getLocalTexts():
+                                        text = in_tab + lt + '\n'
+                                        io_file.write(text)
                 if erri: break
 
-        if erri: break  # for p in getNode(in_G,n)[parents]:
+        if erri: break  # for p in getNodeparents(in_G,n):
 
         io_file.write('\n')
 
@@ -999,16 +1883,16 @@ def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
 def create_dataBlocks(in_G, in_nodeIndex, in_tab, io_file):
     erri = 0
     while not erri:
-        if len(in_G.nodes()) ==0:
-            erri=inspect.currentframe().f_lineno
+        if len(in_G.nodes()) == 0:
+            erri = inspect.currentframe().f_lineno
             break
-        if len(getDataBlocks(in_G, in_nodeIndex))==0:
+        if len(getDataBlocks(in_G, in_nodeIndex)) == 0:
             break
-        io_file.write(in_tab+ '//----- Create_dataBlocks\n')
+        io_file.write(in_tab + '//----- Create_dataBlocks\n')
         for dbk in getDataBlocks(in_G, in_nodeIndex):
             if dbk.name == 'NULL_GUID':
                 continue
-            if not dbk.flight in ['TAKEOFF', 'HOP']:
+            if not dbk.flight in ['flTAKEOFF', 'flHOP']:
                 continue
             t = in_tab + 'u64 ' + dbk.text_for_sizeName() + ' = ' + str(dbk.count) + ';\n'
             io_file.write(t)
@@ -1016,7 +1900,7 @@ def create_dataBlocks(in_G, in_nodeIndex, in_tab, io_file):
         for dbk in getDataBlocks(in_G, in_nodeIndex):
             if dbk.name == 'NULL_GUID':
                 continue
-            if not dbk.flight in ['TAKEOFF', 'HOP']:
+            if not dbk.flight in ['flTAKEOFF', 'flHOP']:
                 continue
             t = dbk.text_for_ocrDbCreate(in_tab, True)
             io_file.write(t)
@@ -1025,10 +1909,15 @@ def create_dataBlocks(in_G, in_nodeIndex, in_tab, io_file):
         break  # while not erri
     return erri
 # ------------------------------------------------------------------------------
-def write_user_section(in_tab, io_file):
-    io_file.write(in_tab + '//vvvvv Start of user section vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n')
-    io_file.write('\n')
-    io_file.write(in_tab + '//^^^^^ End of user section ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+def write_user_section(in_G, in_nodeIndex, in_tab, io_file):
+    io_file.write(in_tab + '//----- User section\n')
+
+    customs = getCustomTexts(in_G, in_nodeIndex);
+    if len(customs) > 0:
+        for line in customs:
+            io_file.write(in_tab + line +'\n')
+    else:
+        io_file.write('\n')
     io_file.write('\n')
 # ------------------------------------------------------------------------------
 def write_children_EDT(in_G, in_nodeIndex, in_tab, io_file):
@@ -1041,6 +1930,7 @@ def write_children_EDT(in_G, in_nodeIndex, in_tab, io_file):
         io_file.write(in_tab+ "//----- Create children EDTs\n")
 
         bors=in_G.neighbors(in_nodeIndex)
+
         for b in bors:
             edg = (in_nodeIndex, b)
             events = getEvents(in_G,edg)
@@ -1077,6 +1967,8 @@ def write_children_EDT(in_G, in_nodeIndex, in_tab, io_file):
     return erri
 # ------------------------------------------------------------------------------
 def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
+    whereAmI()
+    debug = False
     erri = 0
     while not erri:
         if len(in_G.nodes()) == 0:
@@ -1085,8 +1977,11 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
 
         io_file.write(in_tab + '//----- Release or destroy data blocks\n')
 
+        if debug:
+            print('DBG2006> n = ' + str(in_nodeIndex) + ' DBKs= '+ str(getDataBlocks(in_G, in_nodeIndex)))
+
         for dbk in getDataBlocks(in_G, in_nodeIndex):
-            if dbk.flight in ['flUNDEF', 'FLYOVER']:
+            if dbk.flight in ['flUNDEF', 'flFLYOVER']:
                 erri=inspect.currentframe().f_lineno
                 break
 
@@ -1094,24 +1989,24 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
             cguid = contextedGuid("", '', 'DBK')
             cguid.guidName = makeGuidDataBlockname(dbk.name)
 
-            if dbk.flight == 'LANDING':
+            if dbk.flight == 'flLANDING':
                 if dbk.name == 'NULL_GUID':
                     io_file.write(in_tab + '//Skipping destruction of a NULL_GUID data block.\n')
                     continue
                 continue # Use the section on "Destruction for landing blocks" below
-            elif dbk.flight == 'HOP':
+            elif dbk.flight == 'flHOP':
                 if dbk.name == 'NULL_GUID':
                     erri=inspect.currentframe().f_lineno
                     break
                 fcn = 'ocrDbDestroy'
                 cguid.structName = ""
-            elif dbk.flight == 'TAKEOFF':
+            elif dbk.flight == 'flTAKEOFF':
                 if dbk.name == 'NULL_GUID':
                     io_file.write(in_tab + '//Skipping release of a NULL_GUID data block.\n')
                     continue
                 fcn = 'ocrDbRelease'
                 cguid.structName = ""
-            elif dbk.flight in ['PASSTRU', 'TAGO']:
+            elif dbk.flight in ['flPASSTRU', 'flTAGO']:
                 continue  # Use the Release section below
             else:
                 erri=inspect.currentframe().f_lineno
@@ -1120,7 +2015,14 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
             io_file.write(in_tab + 'err = '+fcn+'(' +cguid.toName()+ '); IFEB;\n')
         if erri: break
 
-        # Destruction for landing blocks
+        if debug:
+            print('DBG2006> node = ' + str(in_nodeIndex))
+            print('DBG2006> To be Destroyed = '),
+            print(getDestroys(in_G, in_nodeIndex))
+            print('DBG2006> To be Released = '),
+            print(getReleases(in_G, in_nodeIndex))
+
+        # Destruction for blocks
         for dtor in getDestroys(in_G, in_nodeIndex):
             t = dtor.getDestroyText()
             io_file.write(in_tab + t + '\n')
@@ -1136,6 +2038,7 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
 # ------------------------------------------------------------------------------
 def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
     tab2 = in_tab + GBL.TABunit
+    debug = False
     erri = 0
     while not erri:
         if len(in_G.nodes()) == 0:
@@ -1146,10 +2049,13 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
 
         bors = in_G.neighbors(in_nodeIndex)
         for b in bors:
+            if debug: print('DBG2039> evt2child> n=' + str(in_nodeIndex) + '  b= ' + str(b) + '  isELSE=' + str(getNode(in_G, b)["istheELSEclause"]) )
+            if getNode(in_G, b)["istheELSEclause"]:
+                continue
             edg = (in_nodeIndex, b)
             lits   = literals(in_G, edg)
             derefs = dereferenciables(in_G, edg)
-            #print('Eout  ' + str(edg) + '  ' + str(lits) + '  ' + str(derefs))
+            if debug: print('DBG2039> evt2child> Eout  ' + str(edg) + '  ' + str(lits) + '  ' + str(derefs))
 
             if len(lits) > 0 and GBL.display_literals_content:
                 len_lits = len(lits)
@@ -1203,17 +2109,18 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
 
             if erri: break
 
+            # print('DBG1757> len(derefs)=' + str(len(derefs)))
             if len(derefs) > 0:
-                for k, deref in enumerate(derefs):
+                for deref in derefs:
                     calcSlot = getEvents(in_G, edg)[deref].calculatedSlot
                     drname = ''
                     for dbk in getDataBlocks(in_G, in_nodeIndex):
                         if not dbk.name == deref:
                             continue
-                        if dbk.flight == 'TAKEOFF':
+                        if dbk.flight == 'flTAKEOFF':
                             drname = makeGuidDataBlockname(deref)
-                        elif dbk.flight in ['TAGO', 'PASSTRU'] :
-                            outs = getNode(in_G, in_nodeIndex)['outgoing']
+                        elif dbk.flight in ['flTAGO', 'flPASSTRU'] :
+                            outs = getOutgoings(in_G, in_nodeIndex)
                             for dbkID,dbkGuid in outs:
                                 if deref == dbkID:
                                     drname = dbkGuid
@@ -1221,9 +2128,13 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
                         else:
                             outDerefName = makeOutDerefsName(in_G, edg)
                             drname = outDerefName + '_' + makeGuidDataBlockname(deref)
+                    if drname == '':
+                        erri = inspect.currentframe().f_lineno
+                        break
                     slots_entries.append((deref, drname, calcSlot))
                 if erri: break
 
+            # print('DBG1779> len(slots_entries)=' + str(len(slots_entries)))
             if len(slots_entries) > 0:
                 for dbkID, guidName, calcSlot in slots_entries:
                     targetEdtName = getMyTask(in_G, b).aname
@@ -1234,14 +2145,18 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
 
                     events = getEvents(in_G, edg)
                     evt = events[dbkID]
-                    t = evt.text_for_ocrEventCreate(in_tab, ge_event)
-                    io_file.write(t)
+                    if GBL.use_verbose_way_to_eventsText:
+                        t = evt.text_for_ocrEventCreate(in_tab, ge_event)
+                        io_file.write(t)
 
-                    t = evt.text_for_ocrAddDependence(in_tab, ge_event, targetEdtGuid)
-                    io_file.write(t)
+                        t = evt.text_for_ocrAddDependence(in_tab, ge_event, targetEdtGuid)
+                        io_file.write(t)
 
-                    t = evt.text_for_ocrEventSatisfySlot(in_tab, ge_event, guidName)
-                    io_file.write(t)
+                        t = evt.text_for_ocrEventSatisfySlot(in_tab, ge_event, guidName)
+                        io_file.write(t)
+                    else:
+                        t = evt.text_for_ocrHookUp(in_tab, targetEdtGuid, guidName)
+                        io_file.write(t)
 
                     io_file.write('\n')
                 if erri: break
@@ -1261,16 +2176,86 @@ def write_finalEDT(in_G, in_tab, io_file):
         break #while not erri
     return erri
 # ------------------------------------------------------------------------------
-def write_the_header(io_file):
+def write_the_header(in_G, io_file):
     whereAmI()
     io_file.write("#include <ocr.h>\n")
     io_file.write('#include "' + GBL.app_ocr_util_filename +'"\n' )
+
+    customs = getHeader(in_G)
+    for aline in customs:
+        io_file.write(aline + '\n')
+
     io_file.write("\n")
+# ------------------------------------------------------------------------------
+def outputOCR_writeSubclause(io_G, in_nodeIndex, in_tab, io_file):
+    erri = 0
+    while not erri:
+        erri = create_dataBlocks(io_G, in_nodeIndex, in_tab, io_file)
+        if erri: break
+
+        erri = write_children_EDT(io_G, in_nodeIndex, in_tab, io_file)
+        if erri: break
+
+        write_user_section(io_G, in_nodeIndex, in_tab, io_file)
+
+        release_and_destroy_DBKs(io_G, in_nodeIndex, in_tab, io_file)
+
+        erri = write_events2children_EDT(io_G, in_nodeIndex, in_tab, io_file)
+        if erri: break
+
+        if in_nodeIndex == GBL.FINALNODE:
+            write_finalEDT(io_G, in_tab, io_file)
+            if erri: break
+
+        break  # while not erri
+    return erri
+
+# ------------------------------------------------------------------------------
+def outputOCR_writeEDT(io_G, in_nodeIndex, in_tab, io_file):
+    tab2 = in_tab + GBL.TABunit
+    erri = 0
+    while not erri:
+        if in_nodeIndex == GBL.MAINNODE:
+            pass
+
+        erri = setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file)
+        if erri: break
+
+        if len(getIFconditionText(io_G, in_nodeIndex)) == 0:
+            erri = outputOCR_writeSubclause(io_G, in_nodeIndex, in_tab, io_file)
+            if erri: break
+        else:
+            io_file.write(in_tab + 'if( ')
+            t = getIFconditionText(io_G, in_nodeIndex)
+            io_file.write(t + ' ){\n')
+
+            erri = outputOCR_writeSubclause(io_G, in_nodeIndex, tab2, io_file)
+
+            io_file.write(in_tab + '}else{\n')
+
+            for bor in io_G.neighbors(in_nodeIndex):
+                edg = (in_nodeIndex, bor)
+                if not getEdge(io_G,edg)["leads_to_ElseClause"]:
+                    continue
+                erri = outputOCR_writeSubclause(io_G, bor, tab2, io_file)
+                if erri:
+                    t = 'outputOCR_writeSubclause failed for IF-THEN node "' + str(in_nodeIndex) +'" '
+                    t += 'and ELSE node "' + str(bor) + '"'
+                    errmsg(erri, t)
+                    break
+                break  # Only output the first one as there should only be one.
+            if erri: break
+
+            io_file.write(in_tab + '}\n')
+
+        break  # while not erri
+    return erri
 # ------------------------------------------------------------------------------
 def outputOCR(in_G, in_filename):
     whereAmI()
     tab = "    "
     tab2 = tab + GBL.TABunit
+    tab3 = tab2 + GBL.TABunit
     erri = 0
     while not erri:
         if len(in_G.nodes()) ==0:
@@ -1282,13 +2267,45 @@ def outputOCR(in_G, in_filename):
             fo = open(in_filename, 'w')
         except:
             erri=inspect.currentframe().f_lineno
-            erri=inspect.currentframe().f_lineno
             break
 
-        write_the_header(fo)
+        write_the_header(in_G, fo)
+
+        # ----- Forward declarations
+        for n in in_G.nodes():
+            if getNode(in_G, n)["istheELSEclause"]:
+                # Skip any ELSEclause nodes as they will be handled by their
+                # corresponding IFconditionText & THEN node.
+                continue
+            # ----- start of the task
+            name = getMyTask(in_G, n).aname
+            fo.write("ocrGuid_t " + name + "(EDT_ARGS);\n")
+        fo.write("\n")
 
         # ----- Write the EDTs
         for n in in_G.nodes():
+            #print('DBG2265> ====== node = ' + str(n))
+            if not getNode(in_G, n)["istheELSEclause"]:
+                erri = find_destroy_outgoing_release(in_G, n)
+                if erri: break
+            if not len(getIFconditionText(in_G, n)) == 0:  # We are on the IF-THEN edt.
+                # We have to also process the ELSE edt here before it enters outputOCR_writeEDT(...)
+                elseEDT = GBL.NOTA_NODE_ID
+                bors = in_G.neighbors(n)
+                for b in bors:
+                    edg = (n,b)
+                    if getEdge(in_G,edg)["leads_to_ElseClause"]:
+                        elseEDT = b
+                        break
+                if elseEDT == GBL.NOTA_NODE_ID:
+                    erri = inspect.currentframe().f_lineno
+                    break
+                erri = find_destroy_outgoing_release(in_G, elseEDT)
+                if erri: break
+
+            if getNode(in_G, n)["istheELSEclause"]:  # Skip any ELSEclause nodes as they will be handled by their
+                                                     # corresponding IFconditionText & THEN node.
+                continue
             # ----- start of the task
             name = getMyTask(in_G,n).aname
             fo.write("ocrGuid_t " + name + "(EDT_ARGS)\n")
@@ -1300,33 +2317,13 @@ def outputOCR(in_G, in_filename):
             fo.write(t)
             fo.write("\n")
 
-            fo.write(tab + "Err_t err=0\n")
+            fo.write(tab + "Err_t err=0;\n")
             fo.write(tab + "while(!err){\n")
 
+            erri = outputOCR_writeEDT(in_G, n, tab2, fo)
+            if erri: break
+
             # -----
-            if n == GBL.MAINNODE:
-                pass
-
-            erri = setup_inputs_structs(in_G, n, tab2, fo)
-            if erri: break
-
-            erri = create_dataBlocks(in_G, n, tab2, fo)
-            if erri: break
-
-            write_user_section(tab2, fo)
-
-            erri = write_children_EDT(in_G, n, tab2, fo)
-            if erri: break
-
-            release_and_destroy_DBKs(in_G, n, tab2, fo)
-
-            erri = write_events2children_EDT(in_G, n, tab2, fo)
-            if erri: break
-
-            if n == GBL.FINALNODE:
-                write_finalEDT(in_G, tab2, fo)
-                if erri: break
-
             fo.write(tab2+ "break; //while(!err)\n")
             fo.write(tab + "}\n")
 

@@ -9,6 +9,8 @@ def theMain():
 
     OA.setupGraph(G,"HelloWorld")
 
+    OA.addHeader(G, '#include "helloworld.h" ')  # This will be put at the beginning of the file
+
     # ----- Data Blocks
     dbk = OA.ocrDataBlock();  dbk.name = 'NULL_GUID'
     dbk_nullGuid = dbk
@@ -22,30 +24,34 @@ def theMain():
     # ----- NODES
     # Always root the starting/root/main EDT at ID=0 = OA.GBL.MAINNODE
     # Always cap all ending EDT by the FinalEDT at ID=1 = OA.GBL.FINALNODE
-    nc = OA.GBL.MAINNODE;    taskName = "mainEDT";     OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'TAKEOFF';    OA.addDataBlocks(G,nc,dbk)
+    nc = OA.GBL.MAINNODE;    taskName = "mainEdt"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'flTAKEOFF'; OA.addDataBlocks(G,nc,dbk)
 
-    nc = OA.GBL.FINALNODE;   taskName="finalEDT";    OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'LANDING';    OA.addDataBlocks(G,nc,dbk)
+    nc = OA.GBL.FINALNODE;   taskName="finalEDT"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
 
-    nc += 1;  taskName="beginAlgoEDT";    OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_parabola); dbk.flight = 'TAKEOFF';    OA.addDataBlocks(G,nc,dbk)
+    nc += 1;  taskName="beginAlgoEDT"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_parabola); dbk.flight = 'flTAKEOFF';  dbk.localname='o_parabola'; OA.addDataBlocks(G,nc,dbk)
+    OA.addCustomText(G, nc, 'err = setupTheParabola(o_parabola); IFEB;')
 
-    nc += 1;  taskName="SolveEDT";        OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_parabola); dbk.flight = 'LANDING';    OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_roots);    dbk.flight = 'TAKEOFF';    OA.addDataBlocks(G,nc,dbk)
+    nc += 1;  taskName="SolveEDT"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_parabola); dbk.flight = 'flLANDING'; dbk.localname='in_parabola'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_roots); dbk.flight = 'flTAKEOFF'; dbk.localname='o_roots'; OA.addDataBlocks(G,nc,dbk)
+    OA.addCustomText(G, nc, 'err = solveForRoots(in_parabola, o_roots); IFEB;')
 
-    nc += 1;  taskName="CountEDT";        OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_roots);   dbk.flight = 'TAGO';    OA.addDataBlocks(G,nc,dbk)
+    nc += 1;  taskName="CountEDT"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_roots); dbk.flight = 'flTAGO'; dbk.localname='io_roots'; OA.addDataBlocks(G,nc,dbk)
+    OA.addCustomText(G, nc, 'err = deduplicateRoots(io_roots); IFEB;')
 
-    nc += 1;  taskName="PrintEDT";        OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_roots);   dbk.flight = 'TAGO';    OA.addDataBlocks(G,nc,dbk)
+    nc += 1;  taskName="PrintEDT"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_roots); dbk.flight = 'flTAGO'; dbk.localname='io_roots'; OA.addDataBlocks(G,nc,dbk)
+    OA.addCustomText(G, nc, 'err = printRoots(io_roots); IFEB;')
 
-    nc += 1;  taskName="endAlgoEDT";      OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_roots);   dbk.flight = 'LANDING';    OA.addDataBlocks(G,nc,dbk)
+    nc += 1;  taskName="endAlgoEDT"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_roots); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
 
     # ----- EDGES
-    edg = OA.graphAddEdge(G,     "mainEDT", "beginAlgoEDT", "NULL_GUID")
+    edg = OA.graphAddEdge(G,     "mainEdt", "beginAlgoEDT", "NULL_GUID")
     OA.getEvent(G, edg).eflag = 'EVT_PROP_NONE'
     OA.getEvent(G, edg).satisfy = 'NULL_GUID'
 
@@ -85,7 +91,7 @@ def theMain():
             erri = OA.outputOCR(G, "z_helloWorld.c")
             if erri: break
 
-        if 1 == 1: OA.printGraph(G)
+        if 1 == 2: OA.printGraph(G)
 
         break  # while not erri
     OA.errmsg(erri)
