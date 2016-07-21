@@ -29,7 +29,7 @@ _DEFUN (_execve_r, (reent, name, argv, env),
         char * const *argv  _AND
         char * const *env)
 {
-  u8 ret = ocrEvecve (name, argv, env);
+  u8 ret = ocrExecve (name, argv, env);
   if (ret) reent->_errno = (int)ret;
   return (int)ret;
 }

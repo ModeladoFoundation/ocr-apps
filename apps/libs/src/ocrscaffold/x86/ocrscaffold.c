@@ -538,7 +538,7 @@ u8 ocrFork (_NOARGS)
 {
     return -1;
 }
-u8 ocrEvecve (char *name, char **argv, char **env)
+u8 ocrExecve (char *name, char **argv, char **env)
 {
     return -1;
 }
