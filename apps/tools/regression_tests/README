@@ -1,0 +1,92 @@
+=======================================================
+"Other" Regression Test Suit
+=======================================================
+
+-----------------
+Running the tests
+-----------------
+
+Before running a test, you must build all of the required files first. See the section
+`Building for the Tests' below.
+
+This test suite consists of several sets of tests which test fsim, fsim-rtlsim, and fsim-swtest.
+The files which can be run are:
+
+    * run-fsim-tests.sh
+    * run-fsim-rtlsim-tests.sh
+    * run-fsim-swtest-tests.sh
+
+Each test will run all of its subtests by default, but you may specify which test(s) to run by passing them
+in as command line parameters. To see the tests avaliable, run one of these test scripts with just the '-h'
+argument.
+
+If you want to see all of the output of fsim as it is being tested by the scripts, set the environmental
+variable VERBOSE to a non-empty string.
+
+You may also set the envionmental variable TG_INSTALL to point to the location of tg/tg/install.
+Note: this program assumes that the apps repository is located in the same directory as the tg repository.
+
+
+----------------------
+Building for the Tests
+----------------------
+
+The tests require a completely built tg tree (along with fsim-swtest, fsim-rtlsim, and swtest tests) and
+requires that apps/libs, apps/legacy, and apps/examples all be built for ARCH=tg-xe.
+
+--- To build the tg tree:
+
+cd tg/tg
+make
+cd build/build.fsim
+make -f make-me.make install-fsim-rtlsim
+make -f make-me.make install-fsim-swtest
+cd ../../fsim/swtest
+make DEBUG=1 cdemo
+make DEBUG=1 cxxdemo
+make DEBUG=1 throw
+
+--- To build apps/libs
+
+cd apps/apps/libs/src
+make -f Makefile.core ARCH=tg-xe
+
+--- To build apps/legacy
+
+cd apps/apps/legacy/tg-xe
+make DEBUG=1 hello
+make DEBUG=1 cxxhello
+make DEBUG=1 iotest
+make DEBUG=1 timetest
+
+--- To build apps/examples
+
+cd apps/apps/examples/printf
+make -f Makefile.tg install
+cd ../cholesky
+make -f Makefile.tg install
+cd ../fib
+make -f Makefile.tg install
+cd ../smith-waterman
+make -f Makefile.tg install
+
+------------------
+Creating new tests
+------------------
+
+To create a new fsim test, modify the appropriate run-fsim*-tests.sh file. In this file you will need
+to modify three things:
+
+1) Add the test name to the list of tests in the TESTS variable.
+2) In the first switch statement, export the environmental variables WORKLOAD_INSTALL and FSIM_ARGS.
+   Also export any other environmental variables that are needed, and perform the rest of setup.
+   You may also optionally add tests to the REGEX array.
+3) In the final switch statement, unset any extra environmental variables you exported, and perform
+   any nessesary cleanup and extra tests. If any test fails. Print the error message and set SUCCESS to 0;
+
+The REGEX array is a list of regular expressions to test for (using grep) in the output of fsim. Each
+regex must be matched to the output for the test to pass. The regex's must be matched in order and output
+line can only be matched to one regex.
+
+If you need to inspect the output of fsim beyond what a regex can tell you, you may find it in the
+direcory $LOGS_DIR under the name fsim_output.
