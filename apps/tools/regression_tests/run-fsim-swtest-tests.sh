@@ -2,7 +2,7 @@
 
 # This script may accept command line parameters of which test(s) to run.
 # Possible tests:
-#  cdemo_nonewlib cdemo cxxdemo tg_cxxhello tg_hello tg_iotest throw
+#  cdemo_nonewlib cdemo cxxdemo tg_cxxhello tg_hello tg_iotest throw PIE_fptr_simple PIE_multi_seg
 #
 # Defaults to running all tests
 #
@@ -17,7 +17,7 @@ source ./setup-test-env.sh
 export FSIM_EXE="fsim-swtest"
 
 # Tests to run
-TESTS="cdemo_nonewlib cdemo cxxdemo tg_cxxhello tg_hello tg_iotest throw"
+TESTS="cdemo_nonewlib cdemo cxxdemo tg_cxxhello tg_hello tg_iotest throw PIE_fptr_simple PIE_multi_seg"
 if [[ $1 == "-h" ]]; then
   echo -e "You may specify one or more of:\n$TESTS\nDefaults to all tests"
   exit
@@ -84,6 +84,23 @@ for TEST in $TESTS; do
       REGEXS+=("33" "may_throw: Throwing error = 7" "52" "struct error(.*) = 10 destructor")
       REGEXS+=("36" "Caught throw (error = 7)" "51" "struct error(.*) = 7 destructor")
       REGEXS+=("51" "struct error(.*) = 7 destructor")
+    ;;
+    PIE_fptr_simple)
+      export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
+      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/fptr_simple"
+      REGEXS+=("v2 is: 6" "PASSED: v2 == 6" "terminate alarm")
+    ;;
+    PIE_multi_seg)
+      export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
+      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/multi_seg"
+      REGEXS+=("\*b is: 42, \*y\[0] is: 42, xint is: 42"
+               "\*b is: 42, \*y\[0] is: 7, xint is: 42"
+               "\*b is: 7, \*y\[0] is: 7, xint is: 42"
+               "\*b is: 42, \*y\[0] is: 7, xint is: 42"
+               "\*b is: 43, \*y\[0] is: 7, xint is: 43"
+               "\*\*a = 43"
+               "\*\*a is: 10, \*y\[0] is: 10"
+               "PASSED" "terminate alarm")
     ;;
   esac
 
