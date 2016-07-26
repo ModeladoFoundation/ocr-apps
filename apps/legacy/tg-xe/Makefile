@@ -19,7 +19,7 @@ CXX = $(TOOL_PREFIX)clang++
 LD = $(TOOL_PREFIX)ld
 
 # Libraries to include from newlib
-NL_CRT = $(LIBS)/crt0.o
+NL_CRT = $(LIBS)/crt0t.o
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 CPP_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 NL_CRTEND = $(LIBS)/crtend.o
@@ -28,20 +28,14 @@ NL_CRTEND = $(LIBS)/crtend.o
 # should actually be the real ocr library/runtime.
 OCR_LIB = $(LIBS)/libocrscaffold.a $(LIBS)/libswtest.a
 
-CAPP = hello
-CAPP_SRCS = hello.c
-CAPP_LIBS =
-CAPP_OBJS = $(CAPP_SRCS:.c=.o)
+C_LIBS =
 CFLAGS = -g -O0 -nostdinc -isystem $(OCR_INC)
 CFLAGS += -isystem $(TG_INSTALL)/lib/clang/3.6.0/include
 CFLAGS += -isystem $(TG_INSTALL)/include
 CFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
 CFLAGS += -isystem $(APPS_LIBS_INSTALL)/include
 
-CXXAPP = cxxhello
-CXXAPP_SRCS = cxxhello.cpp
-CXXAPP_LIBS =
-CXXAPP_OBJS = $(CXXAPP_SRCS:.cpp=.o)
+CXX_LIBS =
 CXXFLAGS = -g -O0 -nostdinc -isystem $(OCR_INC)
 CXXFLAGS += -isystem $(APPS_LIBS_INSTALL)/include/c++/v1
 CXXFLAGS += -isystem $(APPS_ROOT)/libs/src/libunwind/libunwind/include
@@ -50,25 +44,26 @@ CXXFLAGS += -isystem $(TG_INSTALL)/include
 CXXFLAGS += -isystem $(TG_INSTALL)/include/x86_64-linux-elf
 CXXFLAGS += -isystem $(APPS_LIBS_INSTALL)/include
 
-all: $(CAPP) $(CXXAPP)
+SRCS = $(wildcard *.c) $(wildcard *.cpp)
+OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
+APPS = $(OBJS:.o=)
+
+all: $(APPS)
 
 default: all
 
-$(CAPP) : $(CAPP_OBJS)
-	@$(LD) -o $@ -T $(LIBS)/elf64_xstg.t $(NL_CRT) $< $(NL_LIBS) $(OCR_LIB) $(CAPP_LIBS) $(NL_CRTEND)
+%: %.o %.c
+	@$(LD) -o $@ -T $(LIBS)/elf64_xstg.t $(NL_CRT) $@.o $(NL_LIBS) $(OCR_LIB) $(C_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
-#$(CAPP) : $(CAPP_SRCS)
-#	@$(CXX) $(CXXFLAGS) -o $@ $<
-
-$(CXXAPP) : $(CXXAPP_OBJS)
-	@$(LD) -o $@ -T elf64_xstg.t $(NL_CRT) $< $(CPP_LIBS) $(NL_LIBS) $(OCR_LIB) $(CXXAPP_LIBS) $(NL_CRTEND)
+%: %.o %.cpp
+	@$(LD) -o $@ -T elf64_xstg.t $(NL_CRT) $@.o $(CPP_LIBS) $(NL_LIBS) $(OCR_LIB) $(CXX_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
-%.o : %.c
+%.o: %.c
 	@$(CC) -c $(CFLAGS) $< -o $@
 
-%.o : %.cpp
+%.o: %.cpp
 	@$(CXX) -c $(CXXFLAGS) $< -o $@
 
 dump:
@@ -81,4 +76,12 @@ dump:
 	@echo LD = $(LD)
 
 clean:
-	@rm -f $(CAPP) $(CAPP_OBJS) $(CXXAPP) $(CXXAPP_OBJS)
+	@rm -f $(APPS) $(OBJS)
+
+# Disable implicit rules
+.SUFFIXES:
+
+# Don't remove the .o files when finished building
+.PRECIOUS: %.o
+
+.PHONY: all default dump clean
