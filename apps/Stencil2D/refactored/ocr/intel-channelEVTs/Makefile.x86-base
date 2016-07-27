@@ -45,6 +45,9 @@ RUN_TORQUE ?= no
 # a test
 RUN_MODE ?=
 
+#set to 1 if you would like to use the static scheduler for this app
+STATIC_SCHEDULER ?= 0
+
 ## END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
@@ -62,7 +65,7 @@ REQ_LIBS := reduction
 # Space separated list of source files
 SRCS := stencil_2d.c timers.c
 
-CONFIG_FLAGS=--guid LABELED
+CONFIG_FLAGS=--guid LABELED --binding seq
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
@@ -70,6 +73,15 @@ CONFIG_FLAGS=--guid LABELED
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
 CFLAGS := -g -std=c99 -DFULL_APP=1
 CFLAGS += -DUSE_REDUCTIONLIBRARY -DENABLE_EXTENSION_AFFINITY -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT -DENABLE_EXTENSION_CHANNEL_EVT
+
+ifeq ($(STATIC_SCHEDULER),1)
+CFLAGS += -DUSE_STATIC_SCHEDULER
+CONFIG_FLAGS += --scheduler STATIC
+endif
+
+ifeq ($(ENABLE_PROFILER),yes)
+CFLAGS += -DUSE_PROFILER
+endif
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib

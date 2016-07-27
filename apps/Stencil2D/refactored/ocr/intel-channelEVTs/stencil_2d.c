@@ -12,6 +12,9 @@ Copywrite Intel Corporation 2015
 #include "ocr.h"
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
 #include "extensions/ocr-affinity.h" //needed for affinity
+#ifdef USE_PROFILER
+#include "extensions/ocr-profiler.h"
+#endif
 
 #ifndef TG_ARCH
 #include "time.h"
@@ -396,6 +399,9 @@ _OCR_TASK_FNC_( FNC_Trecv )
 
 _OCR_TASK_FNC_( FNC_update )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_update );
+#endif
     s32 itimestep = paramv[0];
     u32 _paramc, _depc, _idep;
 
@@ -485,6 +491,10 @@ _OCR_TASK_FNC_( FNC_update )
         //PRINTF("time %f %f\n", stencil_time, refNorm[0]);
         reductionLaunch(PTR_timer_reductionH, DBK_timer_reductionH, &stencil_time);
     }
+
+#ifdef USE_PROFILER
+    RETURN_PROFILE(NULL_GUID);
+#endif
 
     return NULL_GUID;
 }
@@ -1362,6 +1372,112 @@ void forkSpmdEdts( s64* edtGridDims, s64* pdGridDims, ocrGuid_t* spmdDepv )
     }
 }
 
+#ifdef USE_STATIC_SCHEDULER
+
+typedef struct
+{
+    u64 PD_id;
+    s64 edtGridDims[2];
+    s64 pdGridDims[2];
+} PDinitEdt_paramv_t;
+
+_OCR_TASK_FNC_( PDinitEdt )
+{
+    PDinitEdt_paramv_t* PTR_PDinitEdt_paramv = (PDinitEdt_paramv_t*) paramv;
+
+    u64 PD_id;
+    s64 edtGridDims[2];
+    s64 pdGridDims[2];
+
+    PD_id = PTR_PDinitEdt_paramv->PD_id;
+    edtGridDims[0] = PTR_PDinitEdt_paramv->edtGridDims[0];
+    edtGridDims[1] = PTR_PDinitEdt_paramv->edtGridDims[1];
+    pdGridDims[0] = PTR_PDinitEdt_paramv->pdGridDims[0];
+    pdGridDims[1] = PTR_PDinitEdt_paramv->pdGridDims[1];
+
+    ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
+    ocrGuid_t DBK_globalParamH = depv[1].guid;
+
+    void *PTR_cmdLineArgs = depv[0].ptr;
+    globalParamH_t *PTR_globalParamH = (globalParamH_t *) depv[1].ptr;
+
+    ocrGuid_t initTML, EDT_init;
+    ocrEdtTemplateCreate( &initTML, initEdt, 1, 2 );
+
+    ocrHint_t myEdtAffinityHNT;
+    ocrHintInit( &myEdtAffinityHNT, OCR_HINT_EDT_T );
+
+    ocrGuid_t PDaffinityGuid;
+
+    s64 PD_X = PD_id % pdGridDims[0];
+    s64 PD_Y = PD_id / pdGridDims[0];
+
+    s64 edtGridDims_lb_x, edtGridDims_ub_x;
+    s64 edtGridDims_lb_y, edtGridDims_ub_y;
+
+    partition_bounds(PD_X, 0, edtGridDims[0]-1, pdGridDims[0], &edtGridDims_lb_x, &edtGridDims_ub_x);
+    partition_bounds(PD_Y, 0, edtGridDims[1]-1, pdGridDims[1], &edtGridDims_lb_y, &edtGridDims_ub_y);
+
+    s64 i, j;
+    for( j = edtGridDims_lb_y; j <= edtGridDims_ub_y ; ++j )
+    for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
+    {
+        u64 myRank = globalRankFromCoords( i, j, edtGridDims[0], edtGridDims[1] );
+        //PRINTF("id %d map PD %d\n", myRank, PD_id);
+        ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
+
+        ocrEdtCreate( &EDT_init, initTML, EDT_PARAM_DEF, (u64*)&myRank, EDT_PARAM_DEF, NULL,
+                        EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //initEdt
+        ocrAddDependence( DBK_cmdLineArgs, EDT_init, 0, DB_MODE_RO );
+        ocrAddDependence( DBK_globalParamH, EDT_init, 1, DB_MODE_RO );
+    }
+
+}
+
+void forkSpmdEdts_staticScheduler( s64* edtGridDims, s64* pdGridDims, ocrGuid_t* spmdDepv )
+{
+    u64 i;
+    u64 nPDs = pdGridDims[0]*pdGridDims[1];
+
+    ocrGuid_t DBK_cmdLineArgs = spmdDepv[0];
+    ocrGuid_t DBK_globalParamH = spmdDepv[1];
+
+    //The EDTs are mapped to the policy domains (nodes) through EDT hints
+    //There are more subdomains than the # of policy domains.
+    //A 2-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
+    //to minimize data movement between the policy domains
+
+    ocrGuid_t PDinitTML, EDT_PDinit;
+    PDinitEdt_paramv_t PDinitEdt_paramv;
+    ocrEdtTemplateCreate( &PDinitTML, PDinitEdt, sizeof(PDinitEdt_paramv_t)/sizeof(u64), 2 );
+
+    PDinitEdt_paramv.edtGridDims[0] = edtGridDims[0];
+    PDinitEdt_paramv.edtGridDims[1] = edtGridDims[1];
+    PDinitEdt_paramv.pdGridDims[0] = pdGridDims[0];
+    PDinitEdt_paramv.pdGridDims[1] = pdGridDims[1];
+
+    ocrHint_t myEdtAffinityHNT;
+    ocrHintInit( &myEdtAffinityHNT, OCR_HINT_EDT_T );
+
+    ocrGuid_t PDaffinityGuid;
+
+    for( i = 0; i < nPDs; ++i )
+    {
+        int pd = i;
+        //PRINTF("id %d map PD %d\n", i, pd);
+        ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
+        ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+
+        PDinitEdt_paramv.PD_id = pd;
+
+        ocrEdtCreate( &EDT_PDinit, PDinitTML, EDT_PARAM_DEF, (u64*)&PDinitEdt_paramv, EDT_PARAM_DEF, NULL,
+                        EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //PDinitEdt
+        ocrAddDependence( spmdDepv[0], EDT_PDinit, 0, DB_MODE_RO );
+        ocrAddDependence( spmdDepv[1], EDT_PDinit, 1, DB_MODE_RO );
+    }
+}
+#endif  //USE_STATIC_SCHEDULER
+
 ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     u32 _paramc, _depc, _idep;
@@ -1410,7 +1526,12 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t spmdDepv[2] = {DBK_cmdLineArgs, DBK_globalParamH};
 
     //2-D Cartesian grid of SPMD EDTs get mapped to a 2-D Cartesian grid of PDs
+#ifdef USE_STATIC_SCHEDULER
+    PRINTF("Using STATIC scheduler\n");
+    forkSpmdEdts_staticScheduler( edtGridDims, pdGridDims, spmdDepv );
+#else
     forkSpmdEdts( edtGridDims, pdGridDims, spmdDepv );
+#endif
 
     return NULL_GUID;
 }
