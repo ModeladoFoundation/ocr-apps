@@ -229,11 +229,18 @@ namespace Realm {
   /*static*/ UserEvent UserEvent::create_user_event(void)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    Event e = OCREventImpl::create_ocrevent();
+#else //USE_OCR_LAYER
     Event e = GenEventImpl::create_genevent()->current_event();
+#endif //USE_OCR_LAYER
     assert(e.id != 0);
     UserEvent u;
     u.id = e.id;
     u.gen = e.gen;
+#if USE_OCR_LAYER
+    u.evt_guid = e.evt_guid;
+#endif //USE_OCR_LAYER
     log_event.info() << "user event created: event=" << e;
     return u;
   }
@@ -243,6 +250,10 @@ namespace Realm {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
 
     log_event.info() << "user event trigger: event=" << *this << " wait_on=" << wait_on;
+#if USE_OCR_LAYER
+    OCREventImpl::trigger(evt_guid, wait_on);
+#else //USE_OCR_LAYER
+
     GenEventImpl *e = get_runtime()->get_genevent_impl(*this);
 #ifdef EVENT_GRAPH_TRACE
     Event enclosing = find_enclosing_termination_event();
@@ -252,6 +263,7 @@ namespace Realm {
 			 enclosing.id, enclosing.gen);
 #endif
     e->trigger(gen, gasnet_mynode(), wait_on);
+#endif //USE_OCR_LAYER
   }
 
 

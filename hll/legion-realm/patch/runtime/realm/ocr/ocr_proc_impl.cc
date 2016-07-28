@@ -28,7 +28,6 @@ namespace Realm {
   //
 
   ocrGuid_t OCRProcessor::ocr_realm_conversion_edt_t = NULL_GUID;
-  const int num_dep = 3;
 
   OCRProcessor::OCRProcessor(Processor _me)
     : ProcessorImpl(_me, Processor::OCR_PROC)
@@ -45,30 +44,32 @@ namespace Realm {
   }
 
   //convert from OCR function call to realm function call provided by user
-  //argv[0] is the function pointer of the realm function call
+  //argv is the ArgsEDT struct
   //depv[0] is the event dependency that the edt wait on
   //depv[1] is the args parameter of realm function call
-  //depv[2] is the arglen paramter of realm function call
   //ideally these parameters should come inside argv and not data blocks
   ocrGuid_t ocr_realm_conversion_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
   {
-    assert(argc == 1 && depc == 3);
+    assert(argc > 0 && depc == 2);
+
+    OCRProcessor::ArgsEDT *argv_ptr = (OCRProcessor::ArgsEDT *)argv;
+    //make sure the current processor is set during execution of the task
+    //This might have to move to ELS
+    ThreadLocal::current_processor = argv_ptr->p;
     //extract the function pointer to be executed
-    Processor::TaskFuncPtr task_func = ((OCRProcessor::TaskTableEntry*)argv)->fnptr;
+    Processor::TaskFuncPtr task_func = (argv_ptr->task_entry).fnptr;
     //extract args and arglen and pass it to the function
     void *args = depv[1].ptr;
-    size_t *arglen = (size_t*)depv[2].ptr;
-    task_func(args, *arglen, NULL, 0, Processor::NO_PROC);
+    task_func(args, argv_ptr->arglen, NULL, 0, argv_ptr->p);
 
     ocrDbDestroy(depv[1].guid);
-    ocrDbDestroy(depv[2].guid);
     return NULL_GUID;
   }
 
   /*static*/ void OCRProcessor::static_init(void)
   {
     //create the function conversion edt template
-    ocrEdtTemplateCreate(&OCRProcessor::ocr_realm_conversion_edt_t, ocr_realm_conversion_func, 1, 3);
+    ocrEdtTemplateCreate(&OCRProcessor::ocr_realm_conversion_edt_t, ocr_realm_conversion_func, EDT_PARAM_UNK, EDT_PARAM_UNK);
   }
 
   /*static*/ void OCRProcessor::static_destroy(void)
@@ -87,6 +88,7 @@ namespace Realm {
     //ignores reqs, priority
 
     //create three dependencies : start_event, args and arglen
+    const int num_dep = 2; //start_event and args
     ocrGuid_t db_guid[num_dep];
 
     db_guid[0] = UNINITIALIZED_GUID; //start_event.evt_guid;
@@ -95,15 +97,13 @@ namespace Realm {
     ocrDbCreate(&db_guid[1], (void **)(&args_copy), arglen, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     memcpy(args_copy, args, arglen);
 
-    size_t *arglen_copy;
-    ocrDbCreate(&db_guid[2], (void **)(&arglen_copy), sizeof(size_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-    arglen_copy[0] = arglen;
+    ArgsEDT argv = {task_table[func_id], arglen, me};
+    u32 argc = (sizeof(argv)+7) / sizeof(u64);
 
     //create and call the EDT
     ocrGuid_t ocr_realm_conversion_edt, out_ocr_realm_conversion_edt, persistent_evt_guid;
-    ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t, EDT_PARAM_DEF,
-      (u64*)(&task_table[func_id]), EDT_PARAM_DEF, db_guid,
-      EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_conversion_edt);
+    ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t, argc,
+      (u64*)&argv, num_dep, db_guid, EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_conversion_edt);
 
     //attach the output of EDT to the finish_event
     ocrAddDependence(out_ocr_realm_conversion_edt, finish_event.evt_guid, 0, DB_MODE_RO);

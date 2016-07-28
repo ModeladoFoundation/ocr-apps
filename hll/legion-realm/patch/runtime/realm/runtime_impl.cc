@@ -533,6 +533,9 @@ namespace Realm {
       create_processors();
       create_memories();
 
+      //create a persistent event for use in wait_for_shutdown and
+      ocrEventCreate(&ocr_shutdown_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+
       // iterate over all local processors and add affinities for them
       // all of this should eventually be moved into appropriate modules
       std::map<Processor::Kind, std::set<Processor> > procs_by_kind;
@@ -1335,6 +1338,16 @@ namespace Realm {
     {
       log_collective.info() << "collective spawn: kind=" << target_kind << " func=" << task_id << " priority=" << priority << " before=" << wait_on;
 
+#if USE_OCR_LAYER
+      const std::vector<ProcessorImpl *>& local_procs = nodes[gasnet_mynode()].processors;
+      assert(local_procs.size() == 1 && local_procs[0]->me.kind() == Processor::OCR_PROC && target_kind == Processor::OCR_PROC);
+      Event finish_event = local_procs[0]->me.spawn(task_id, args, arglen, wait_on, priority);
+
+      log_collective.info() << "collective spawn: kind=" << target_kind << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
+
+      return finish_event;
+#else // USE_OCR_LAYER
+
 #ifdef USE_GASNET
 #ifdef DEBUG_COLLECTIVES
       broadcast_check(target_kind, "target_kind");
@@ -1454,6 +1467,7 @@ namespace Realm {
 
       return my_finish;
 #endif
+#endif //USE_OCR_LAYER
     }
 
 #if 0
@@ -1566,9 +1580,7 @@ namespace Realm {
         ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
         ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, &out_sd_edt);
 
-        //create another persistent event for use in wait_for_shutdown and
-        //attach it to the EDT since legacy_block_progress needs persistent event
-        ocrEventCreate(&ocr_shutdown_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+        //attach shutdown EDT to ocr_shutdown_guid sticky event since legacy_block_progress needs persistent event
         ocrAddDependence(out_sd_edt, ocr_shutdown_guid, 0, DB_MODE_RO);
 
         //start the EDT by statisfying dependency only after linking to the return event

@@ -59,6 +59,12 @@ namespace Realm {
         ByteArray user_data;
       };
 
+      struct ArgsEDT{
+        TaskTableEntry task_entry;
+        size_t arglen;
+        Processor p;
+      };
+
     protected:
       virtual void execute_task(Processor::TaskFuncID func_id,
                                const ByteArrayRef& task_args);

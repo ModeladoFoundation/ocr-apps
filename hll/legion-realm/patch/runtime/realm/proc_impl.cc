@@ -284,6 +284,7 @@ namespace Realm {
       }
 
 #if USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
+      assert(target_kind == Processor::OCR_PROC);
       std::set<Processor> local_procs;
       get_runtime()->machine->get_local_processors_by_kind(local_procs, target_kind);
       for(std::set<Processor>::const_iterator it = local_procs.begin();

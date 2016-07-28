@@ -66,8 +66,8 @@ namespace Realm {
 
     /*static*/ bool OCREventImpl::has_triggered(ocrGuid_t evt)
     {
-      //inefficient but works for now
-      return false;
+      u8 ret = ocrLegacyBlockProgress(evt, NULL, NULL, NULL, LEGACY_PROP_CHECK);
+      return OCR_EINVAL != ret;
     }
 
     /*static*/ void OCREventImpl::wait(ocrGuid_t evt)
@@ -169,6 +169,12 @@ namespace Realm {
 
       return ret_evt;
     }
+
+    /*static*/ void OCREventImpl::trigger(ocrGuid_t evt, Event wait_on /*= Event::NO_EVENT*/)
+    {
+      ocrAddDependence(wait_on.evt_guid, evt, 0, DB_MODE_RO);
+    }
+
 }; // namespace Realm
 
 #endif // USE_OCR_LAYER

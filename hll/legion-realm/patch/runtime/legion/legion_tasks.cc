@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -5198,6 +5199,22 @@ namespace LegionRuntime {
           Realm::ProfilingMeasurements::OperationTimeline>();
         // Record the event for when we are done profiling
         profiling_done = info.profiling_done;
+#if USE_OCR_LAYER
+        info.profiling_done.trigger();
+
+        //hack to trigger profiling completion event. otherwise profiling task gets enabled but not triggered.
+        //profiling_done event in legion_task.cc is triggered by the legion_tasks.cc:process_mapper_profiling()
+        //which is the HLR_MAPPER_PROFILING_ID task. This task is spawned from profiling.cc:237 during
+        //tasks.cc->Operation::mark_finished ()->Operation::mark_completed()->ProfilingMeasurementCollection::send_responses()
+        //
+        //profiling can be disabled using default_mapper.cc:select_task_options():157 i.e task->profile_task=false
+        //
+        //TODO: Task class helps to schedule and execute the tasks on a processor. It profiles the beginning and
+        //end of task execution using the Operation Class APIs(e.g. mark_started(), mark_finished() and so on).
+        //Since we are using OCR to schedule and execute tasks, the Task class is not at all used by the Legion-OCR
+        //implementation. Therefore the Legion-OCR implementation should include the Operation class's profiling  API's
+        //in the ocr_realm_conversion_func() function inside ocr_proc_impl.cc
+#endif
       }
       Event task_launch_event = variant->dispatch_task(launch_processor, this,
                           start_condition, task_priority, profiling_requests);

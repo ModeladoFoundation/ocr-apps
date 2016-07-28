@@ -49,6 +49,9 @@ namespace Realm {
       static Event merge_events(Event ev1, Event ev2,
                                 Event ev3 = Event::NO_EVENT, Event ev4 = Event::NO_EVENT,
                                 Event ev5 = Event::NO_EVENT, Event ev6 = Event::NO_EVENT);
+
+      static void trigger(ocrGuid_t, Event wait_on = Event::NO_EVENT);
+
       //private:
       //  ocrGuid_t evt_guid;
     };

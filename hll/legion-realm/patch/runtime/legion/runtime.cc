@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16982,7 +16983,11 @@ namespace LegionRuntime {
                 it != local_procs.end(); it++)
           {
             Processor::Kind kind = it->kind();
+#if USE_OCR_LAYER
+            if (kind == Processor::OCR_PROC)
+#else
             if (kind == Processor::LOC_PROC)
+#endif
             {
               top_level_proc = *it;
               break;
@@ -17007,7 +17012,12 @@ namespace LegionRuntime {
       // need to launch one task on a CPU processor on every node
       Event runtime_startup_event = realm.collective_spawn_by_kind(
           (separate_runtime_instances ? Processor::NO_KIND :
-           Processor::LOC_PROC), INIT_TASK_ID, NULL, 0,
+#if USE_OCR_LAYER
+           Processor::OCR_PROC
+#else
+           Processor::LOC_PROC
+#endif
+           ), INIT_TASK_ID, NULL, 0,
           !separate_runtime_instances, tasks_registered);
       // See if we are supposed to start the top-level task
       if (top_level_proc.exists())
@@ -17458,9 +17468,15 @@ namespace LegionRuntime {
       Realm::ProfilingRequestSet no_requests;
       // We'll just register these on all the processor kinds
       std::set<Event> registered_events;
-      Processor::Kind kinds[4] = { Processor::TOC_PROC, Processor::LOC_PROC,
+#if USE_OCR_LAYER
+      const int proc_kind_count = 1;
+      Processor::Kind kinds[proc_kind_count] = {Processor::OCR_PROC};
+#else
+      const int proc_kind_count = 4;
+      Processor::Kind kinds[proc_kind_count] = { Processor::TOC_PROC, Processor::LOC_PROC,
                                    Processor::UTIL_PROC, Processor::IO_PROC };
-      for (unsigned idx = 0; idx < 4; idx++)
+#endif //USE_OCR_LAYER
+      for (unsigned idx = 0; idx < proc_kind_count; idx++)
       {
         registered_events.insert(
             Processor::register_task_by_kind(kinds[idx], false/*global*/,
