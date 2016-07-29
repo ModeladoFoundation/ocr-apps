@@ -56,11 +56,11 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 TARGET := stencil_2d
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
-CC := icc
+#CC := icc
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := reduction
+REQ_LIBS := reduction timer
 
 # Space separated list of source files
 SRCS := stencil_2d.c timers.c
@@ -71,8 +71,10 @@ CONFIG_FLAGS=--guid LABELED --binding seq
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
-CFLAGS := -g -std=c99 -DFULL_APP=1
+CFLAGS += -g -std=c99 -DFULL_APP=1
 CFLAGS += -DUSE_REDUCTIONLIBRARY -DENABLE_EXTENSION_AFFINITY -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT -DENABLE_EXTENSION_CHANNEL_EVT
+# Whether the channel events will be local to the receiver; Comment it to keep them local to the sender
+CFLAGS += -DCHANNEL_EVENTS_AT_RECEIVER
 
 ifeq ($(STATIC_SCHEDULER),1)
 CFLAGS += -DUSE_STATIC_SCHEDULER
@@ -87,7 +89,7 @@ endif
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm -lreduction
+LDFLAGS := -lpthread -lm -lreduction -ltimer
 
 # Targets:
 #   - all:     Build the application.

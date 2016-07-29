@@ -1,14 +1,31 @@
-Running:
+= Compiling the application =
 
-make -f Makefile.<OCR_TYPE> run
 
-where OCR_TYPE can be
-x86
-x86-mpi
-tg-x86
-tg
+STENCIL_WITH_EAGER_DB
+STENCIL_WITH_COUNTED_EVT
 
-#Edit the WORKLOAD_ARGS variable in the corresponding Makefile.OCR_TYPE to change the problem size/iterations
+= Running the application =
+
+Support for OCR_TYPE: x86, x86-mpi, tg-x86, tg
+
+Program Arguments:
+* points       : Total number of points 'P' on each axis of the domain
+* subdomains   : Numbers of subdomains to decompose the domain into.
+                 Contains P*P points
+* timesteps    : Number of iterations
+
+Invocation examples:
+
+# Default run:
+
+  make -f Makefile.${OCR_TYPE} run
+
+# Command-line overriden arguments:
+
+  WORKLOAD_ARGS="1024 6 100" make -f Makefile.${OCR_TYPE} run
+
+
+Build Arguments:
 
 Set FULL_APP preprocessor variable to 0 to run the app as an OCR-skeleton - doing so will disable all the
 computations and the app only sets up the OCR tasks and thus helps to measure OCR overhead
@@ -17,3 +34,44 @@ In Makefile.<OCR_TYPE>
 CFLAGS += -DFULL_APP=0 //To measure only the OCR overhead
 or
 CFLAGS += -DFULL_APP=1 //To measure the full app performance
+
+
+= Application Workflow =
+
+C   = creation
+S   = satisfy
+c   = channel event
+(F) = defines a finish scope
+
+initEdt
+  |
+  |
+  C
+channelSetupEdt (15DB, 10TPL, 1ERL, 8DEP)
+  |
+  C
+FNC_stencil
+  |       ---\
+  C           \
+FNC_initialize \
+          \     |    /----------
+           S    C    S  C----  |
+          timestepLoopEdt   |  | (17DEP, 2EDT, 2TPL, 2EVT, 8IRL)
+           |    |           |  |
+           |    -------------  |
+           C                   |
+          timestepEDT(F)       |
+           |     |  \          |
+           |     |   \         |
+           C*4   |   C*4       |
+       FNC_Lsend |  FNC_Lrecv  |
+           |     |        /    |
+           c     |       c     |
+           |     |      /      |
+           S     C     S       |
+             FNC_update        |
+                 |    \--------- (Finish scope)
+                 |
+                 |
+                 C(if end)
+             TS_summary.FNC
