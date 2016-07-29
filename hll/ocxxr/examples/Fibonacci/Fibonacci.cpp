@@ -23,9 +23,9 @@ void CheckResult(u32 n, ocxxr::Datablock<u64> result) {
     if (kFibVerbose) {
         PRINTF("Computation completed!\n");
     }
-    PRINTF("Fib(%" PRIu32 ") = %" PRIu64 "\n", n, result.data());
+    PRINTF("Fib(%" PRIu32 ") = %" PRIu64 "\n", n, *result);
     const u64 expected_answer = SequentialFib(n);
-    ASSERT(result.data() == expected_answer);
+    ASSERT(*result == expected_answer);
     ocxxr::Shutdown();
 }
 
@@ -39,7 +39,7 @@ void FibContinuation(FibContinuationParams &params, ocxxr::Datablock<u64> lhs,
     if (kFibVerbose) {
         PRINTF("Completing Fib(%" PRIu32 ")...\n", params.n);
     }
-    lhs.data() += rhs.data();
+    *lhs += *rhs;
     rhs.handle().Destroy();
     params.output.Satisfy(lhs);
 }
@@ -60,13 +60,13 @@ void Fib(FibParams &params) {
     }
     if (params.n < 2) {  // Base case
         auto result = ocxxr::Datablock<u64>::Create();
-        result.data() = params.n;
+        *result = params.n;
         params.output.Satisfy(result);
 
     } else {  // Recursive case (parallel)
         // Set up recursive tasks' output handles
-        auto lhs_output = ocxxr::OnceEvent<u64>();
-        auto rhs_output = ocxxr::OnceEvent<u64>();
+        auto lhs_output = ocxxr::OnceEvent<u64>::Create();
+        auto rhs_output = ocxxr::OnceEvent<u64>::Create();
 
         // Set up continuation
         FibContinuationParams continuation_params = {params.n, params.output};
@@ -91,11 +91,11 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs> args) {
     }
 
     u32 n;
-    if (args.data().argc() != 2) {
+    if (args->argc() != 2) {
         n = 10;
         PRINTF("Usage: fib <num>, defaulting to %" PRIu32 "\n", n);
     } else {
-        n = atoi(args.data().argv(1));
+        n = atoi(args->argv(1));
     }
 
     // Create recursive compute task templates
@@ -104,7 +104,7 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs> args) {
     auto continuation_template = OCXXR_TEMPLATE_FOR(FibContinuation);
 
     // Set up the root computation task's output handle
-    auto root_output = ocxxr::OnceEvent<u64>();
+    auto root_output = ocxxr::OnceEvent<u64>::Create();
 
     // Set up the finalization task
     auto result_template = OCXXR_TEMPLATE_FOR(CheckResult);

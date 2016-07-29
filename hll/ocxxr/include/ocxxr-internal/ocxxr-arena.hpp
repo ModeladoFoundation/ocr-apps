@@ -75,7 +75,8 @@ void AllocatorDbInit(void *dbPtr, size_t dbSize);
 }  // namespace internal
 
 // ArenaState management
-using ArenaState = internal::dballoc::DatablockAllocator;
+using ArenaState = internal::dballoc::DbArenaHeader;
+using AllocatorState = internal::dballoc::DatablockAllocator;
 
 namespace internal {
 namespace dballoc {
@@ -88,7 +89,7 @@ static inline void SetCurrentArena(void *dbPtr) {
     internal::dballoc::AllocatorSetDb(dbPtr);
 }
 
-static inline ArenaState &GetCurrentArena(void) {
+static inline DatablockAllocator &GetCurrentAllocator(void) {
     return internal::dballoc::AllocatorGet();
 }
 
@@ -105,14 +106,14 @@ template <typename T, typename... Ts>
 static inline T *NewIn(internal::dballoc::DatablockAllocator arena,
                        Ts &&... args) {
     auto mem = arena.allocate(sizeof(T));
-    return new (mem) T(std::forward<Ts>(args)...);
+    return ::new (mem) T(std::forward<Ts>(args)...);
 }
 
 // Constructor helper for NewArray
 
 template <typename T, typename NoInit = void>
 struct TypeInitializer {
-    static inline void init(T &target) { new (&target) T(); }
+    static inline void init(T &target) { ::new (::std::addressof(target)) T(); }
 };
 
 template <typename T>
@@ -153,10 +154,11 @@ class ArenaHandle : public DatablockHandle<ArenaState> {
  public:
     explicit ArenaHandle(u64 bytes) : ArenaHandle(nullptr, bytes, nullptr) {}
 
-    explicit ArenaHandle(u64 bytes, const Hint &hint)
+    explicit ArenaHandle(u64 bytes, const DatablockHint &hint)
             : ArenaHandle(nullptr, bytes, &hint) {}
 
-    explicit ArenaHandle(ArenaState **data_ptr, u64 bytes, const Hint *hint)
+    explicit ArenaHandle(ArenaState **data_ptr, u64 bytes,
+                         const DatablockHint *hint)
             : DatablockHandle<ArenaState>(data_ptr, bytes + sizeof(ArenaState),
                                           hint) {
         ASSERT(bytes >= sizeof(T) &&
@@ -171,11 +173,11 @@ class ArenaHandle : public DatablockHandle<ArenaState> {
 };
 
 template <typename T>
-class Arena {
+class Arena : public AcquiredData {
  public:
     explicit Arena(u64 bytes) : Arena(nullptr, bytes, nullptr) {}
 
-    explicit Arena(u64 bytes, const Hint &hint)
+    explicit Arena(u64 bytes, const DatablockHint &hint)
             : Arena(nullptr, bytes, &hint) {}
 
     // This version gets called from the task setup code
@@ -195,7 +197,13 @@ class Arena {
         return *data_ptr();
     }
 
+    void *base_ptr() const { return state_; }
+
+    s64 size() const { return state_->size; }
+
     T *data_ptr() const { return &internal::dballoc::GetArenaRoot<T>(state_); }
+
+    bool is_null() const { return state_ == nullptr; }
 
     ArenaHandle<T> handle() const { return handle_; }
 
@@ -218,7 +226,7 @@ class Arena {
     friend void SetImplicitArena(Arena<U> arena);
 
  private:
-    Arena(ArenaState *tmp, u64 bytes, const Hint *hint)
+    Arena(ArenaState *tmp, u64 bytes, const DatablockHint *hint)
             : handle_(&tmp, bytes, hint), state_(tmp) {
         internal::dballoc::AllocatorDbInit(state_, bytes);
     }

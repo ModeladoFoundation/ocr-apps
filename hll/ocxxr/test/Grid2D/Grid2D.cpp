@@ -57,10 +57,10 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     ASSERT(*data == 5.6);
     // Copy current grid
     auto copy = ocxxr::Arena<Grid2D>::Create(ARENA_SIZE);
-    memcpy(copy.data_ptr(), arenaPtr, ARENA_SIZE);
+    memcpy(copy.base_ptr(), arena.base_ptr(), arena.size());
     Grid2D &grid2 = copy.data();
     // Wipe old grid
-    memset(arenaPtr, 0, ARENA_SIZE);
+    memset(arena.base_ptr(), 0, arena.size());
     PRINTF("Wiped original: val = %.1f (@ %p)\n", *data, data);
     ASSERT(*data == 0.0);
     // Read new grid

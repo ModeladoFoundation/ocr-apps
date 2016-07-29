@@ -72,6 +72,7 @@ endif
 ifndef OCR_CONFIG
 OCR_CONFIG           := generated.cfg
 CONFIG_NUM_THREADS   ?= 4
+CONFIG_FLAGS         ?= --guid LABELED
 OCR_GENERATED_CONFIG := $(WORKLOAD_INSTALL)/$(OCR_CONFIG)
 endif #OCR_CONFIG
 

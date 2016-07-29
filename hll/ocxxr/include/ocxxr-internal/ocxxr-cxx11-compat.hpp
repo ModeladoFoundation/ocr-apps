@@ -5,7 +5,7 @@ namespace ocxxr {
 namespace internal {
 
 namespace fromboost {
-#include <ocxxr-boost-index-seq.inc>
+#include <ocxxr-internal/boost-code/ocxxr-boost-index-seq.inc>
 }  // namespace fromboost
 
 template <typename T>
