@@ -1,4 +1,5 @@
 #include <ocxxr-main.hpp>
+#include <cstring>
 
 class Grid2D {
  private:
@@ -30,7 +31,6 @@ class Grid2D {
             : rows(other.rows), cols(other.cols), grid(other.grid) {}
 
     inline double &at(size_t row, size_t col) const {
-        assert(row >= 0 && col >= 0 && "Negative index");
         assert(row < rows && col < cols && "Index out of bounds");
         return grid[row][col];
     }

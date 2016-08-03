@@ -159,3 +159,6 @@ endif
 # always color the output (even when piped)
 #CFLAGS += -fdiagnostics-color=always
 
+# Address sanitizer (clang)
+#CFLAGS += -fsanitize=address -fno-omit-frame-pointer
+#LDFLAGS += -fsanitize=address

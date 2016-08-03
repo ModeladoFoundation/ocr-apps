@@ -25,5 +25,5 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     auto template_b = OCXXR_TEMPLATE_FOR(TaskB);
     template_b().CreateTask(future.event());
     // release task A (future)
-    future.task().AddDependence<0>(task_arg);
+    future.task().DependOn<0>(task_arg);
 }

@@ -60,7 +60,7 @@ CXXFLAGS += -ferror-limit=$(ERROR_LIMIT) # clang
 else
 CXXFLAGS += -fmax-errors=$(ERROR_LIMIT) # gcc
 # GCC needs this, otherwise integer format macros are missing
-CFLAGS += -D__STDC_FORMAT_MACROS
+CXXFLAGS += -D__STDC_FORMAT_MACROS
 endif
 
 # always color the output (even when piped)
@@ -94,7 +94,7 @@ CXX_OPTS += -pthread
 LDFLAGS += -lm $(CXX_OPTS)
 IFLAGS  += -I$(WORKLOAD_SRC) -I$(OCXXR_LIB_ROOT)/include -I$(OCR_INSTALL_ROOT)/include
 
-SRCS := $(TARGET).cpp #$(OCXXR_LIB_ROOT)/src/ocr_db_alloc.cpp
+SRCS ?= $(TARGET).cpp
 
 CXXFLAGS += $(IFLAGS) $(OPT_FLAGS) -Wall -Wextra $(CXX_OPTS)
 OBJS += $(SRCS:%.cpp=$(WORKLOAD_BUILD)/%.o)
@@ -126,7 +126,7 @@ $(WORKLOAD_INSTALL)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET)
 	$(ensure_dir)
 	cp $< $@
 
-# build C source files
+# build C++ source files
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp | $(OCR_LIB)
 	$(ensure_dir)
 	$(CXX) $(CXXFLAGS) -c $< -o $@

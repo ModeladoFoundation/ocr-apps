@@ -16,5 +16,5 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     auto task = task_template().CreateTaskPartial();
     PRINTF("Adding dependence...\n");
-    task.AddDependence<0>(datablock);
+    task.DependOn<0>(datablock);
 }

@@ -14,5 +14,5 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     PRINTF("Creating child task\n");
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     auto future = task_template().CreateFuturePartial(kPayload);
-    future.task().AddDependence<0>(NullHandle());
+    future.task().DependOn<0>(NullHandle());
 }

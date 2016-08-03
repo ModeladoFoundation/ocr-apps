@@ -1,8 +1,9 @@
 #include <ocxxr-main.hpp>
 
-static constexpr u32 kPayload = 765;
+static constexpr int kPayload = 765;
 
-void ChildTask(ocxxr::Datablock<u32> arg) {
+void ChildTask(ocxxr::DatablockList<int> args) {
+    auto arg = args[0];
     PRINTF("Child task ran! (arg=%d)\n", arg.data());
     ASSERT(arg.data() == kPayload);
     PRINTF("Shutting down...\n");
@@ -10,11 +11,10 @@ void ChildTask(ocxxr::Datablock<u32> arg) {
 }
 
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
-    auto datablock = ocxxr::Datablock<u32>::Create();
+    PRINTF("Creating child task\n");
+    auto datablock = ocxxr::Datablock<long>::Create();
     datablock.data() = kPayload;
-    PRINTF("Creating child task...\n");
+    ocxxr::DatablockList<long> deps(1);
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
-    auto task = task_template().CreateTaskPartial();
-    PRINTF("Adding dependence...\n");
-    task.DependOn<0>(datablock);
+    task_template().CreateTask(deps.Add(datablock));
 }

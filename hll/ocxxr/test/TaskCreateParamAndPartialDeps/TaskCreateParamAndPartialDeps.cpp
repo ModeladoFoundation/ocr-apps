@@ -23,5 +23,5 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     dep2.data()[1] = '\0';
     auto task_template = OCXXR_TEMPLATE_FOR(ChildTask);
     auto task = task_template().CreateTaskPartial(kPayload0, dep1);
-    task.AddDependence<1>(dep2);
+    task.DependOn<1>(dep2);
 }

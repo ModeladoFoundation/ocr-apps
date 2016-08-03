@@ -1,3 +1,2 @@
-# No specific static assertion error right now...
-/error:/!d
-/CreateFuture/!d
+# Reported static assertion error
+/Expected an OCR data container type./!d
