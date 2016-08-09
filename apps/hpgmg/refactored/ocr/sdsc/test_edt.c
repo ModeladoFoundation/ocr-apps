@@ -20,7 +20,7 @@ ocrGuid_t test0_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, test_level_edt, 0, mg_ptr->max_levels);
-  ocrEdtCreate(&edt, tmp, 0, NULL, mg_ptr->max_levels, NULL, 0, NULL_GUID, NULL);
+  ocrEdtCreate(&edt, tmp, 0, NULL, mg_ptr->max_levels, NULL, 0, NULL_HINT, NULL);
   for (i=0;i<mg_ptr->max_levels;i++)
     ocrAddDependence( mg_ptr->levels[i], edt, i,  DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
@@ -38,7 +38,7 @@ ocrGuid_t test_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) 
     PRINTF("level%u: num boxes - %u, eigenvalue - %f\n", i, l->num_boxes, l->dominant_eigenvalue_of_DinvA);
     ocrGuid_t tmp,edt;
     ocrEdtTemplateCreate(&tmp, test_box_edt, 0, l->num_boxes+1);
-    ocrEdtCreate(&edt, tmp, 0, NULL, l->num_boxes+1, NULL, 0, NULL_GUID, NULL);
+    ocrEdtCreate(&edt, tmp, 0, NULL, l->num_boxes+1, NULL, 0, NULL_HINT, NULL);
     ocrAddDependence(depv[i].guid, edt, 0, DB_MODE_CONST);
     for (j=0;j<l->num_boxes;j++) {
       ocrGuid_t b = ((ocrGuid_t*)(((char*)l)+ l->boxes))[j];

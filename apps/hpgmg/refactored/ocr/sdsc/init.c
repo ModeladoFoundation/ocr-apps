@@ -67,7 +67,7 @@ level_type* create_level(mg_type* mg, int box_dim, int boxes_in_i, int boundary_
   // create level and populate mg and level related info
   ocrGuid_t levelGuid;
   level_type *levelPtr;
-  ocrDbCreate(&levelGuid, (void**)&levelPtr, levelSize, 0,NULL_GUID,NO_ALLOC);
+  ocrDbCreate(&levelGuid, (void**)&levelPtr, levelSize, 0,NULL_HINT,NO_ALLOC);
   mg->levels[level] = levelGuid;
 
 #if DEBUG
@@ -94,7 +94,7 @@ level_type* create_level(mg_type* mg, int box_dim, int boxes_in_i, int boundary_
   levelPtr->b_norms = levelPtr->boxes + sizeof(ocrGuid_t)*totalBoxes;
 
   // create a temporary structure to hold all the box pointers
-  ocrDbCreate(&levelPtr->tempGuid, (void**)&levelPtr->temp, sizeof(box_type *)*totalBoxes, 0,NULL_GUID,NO_ALLOC);
+  ocrDbCreate(&levelPtr->tempGuid, (void**)&levelPtr->temp, sizeof(box_type *)*totalBoxes, 0,NULL_HINT,NO_ALLOC);
 
   // create boxes
   int i,j,k;
@@ -177,19 +177,19 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
 
   boxVolume = (box_dim+2*num_ghosts)*kStride;
   totalMemSize = sizeof(box_type) + boxVolume*num_vecs*sizeof(double);
+
   ocrGuid_t currentAffinity = NULL_GUID;
+  ocrHint_t myDbAffinityHNT;
+  ocrHintInit( &myDbAffinityHNT, OCR_HINT_DB_T );
+
 #ifdef ENABLE_EXTENSION_AFFINITY
-  u64 affinityCount;
+  s64 affinityCount;
   ocrAffinityCount( AFFINITY_PD, &affinityCount );
-  ocrGuid_t DBK_affinityGuids;
-  ocrGuid_t* PTR_affinityGuids;
-  ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
-                                              DB_PROP_SINGLE_ASSIGNMENT, NULL_GUID, NO_ALLOC );
-  ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids );
-  ASSERT( affinityCount >= 1 );
-  currentAffinity = PTR_affinityGuids[box_num%affinityCount];
+
+  ocrAffinityGetAt( AFFINITY_PD, box_num%affinityCount, &currentAffinity );
 #endif
-  ocrDbCreate(&boxGuid, (void**)&boxPtr, totalMemSize, 0, currentAffinity, NO_ALLOC);
+  ocrSetHintValue( &myDbAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
+  ocrDbCreate(&boxGuid, (void**)&boxPtr, totalMemSize, 0, &myDbAffinityHNT, NO_ALLOC);
 
   bzero(boxPtr, totalMemSize);
 
@@ -211,7 +211,7 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
     lPtr->u = lPtr->f_Av + boxVolume*sizeof(double);
     lPtr->vec_temp = lPtr->u + boxVolume*sizeof(double);
     box_type *const_box;
-    ocrDbCreate(&lPtr->constant_box_guid, (void**)&const_box, totalMemSize, 0, currentAffinity, NO_ALLOC);
+    ocrDbCreate(&lPtr->constant_box_guid, (void**)&const_box, totalMemSize, 0, &myDbAffinityHNT, NO_ALLOC);
     const_box->global_box_id = -1;
 
     bzero((char*)boxPtr + lPtr->u, (lPtr->volume)*sizeof(double));
@@ -681,7 +681,7 @@ void mg_build(mg_type* all_grids, level_type* fine_grid, double a, double b, int
   double h = fine_grid->h;
   level_type **all_levels;
   ocrGuid_t all_levels_guid;
-  ocrDbCreate(&all_levels_guid, (void**)&all_levels, sizeof(level_type *)*all_grids->num_levels, 0,NULL_GUID,NO_ALLOC);
+  ocrDbCreate(&all_levels_guid, (void**)&all_levels, sizeof(level_type *)*all_grids->num_levels, 0,NULL_HINT,NO_ALLOC);
   all_levels[0] = fine_grid;
 
   for(level=1;level<all_grids->num_levels;level++){

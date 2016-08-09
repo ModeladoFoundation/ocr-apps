@@ -24,13 +24,17 @@ ocrGuid_t restrict_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
   // for all boxes create a restrict_edt
   int b;
   ocrGuid_t currentAffinity = NULL_GUID;
+  ocrHint_t myEdtAffinityHNT;
+  ocrHintInit( &myEdtAffinityHNT, OCR_HINT_EDT_T );
+
   for(b = 0; b < c->num_boxes; ++b) {
     get_fine_boxes(l,c,b,fine);
 #ifdef ENABLE_EXTENSION_AFFINITY
     u64 acount = 1;
     ocrAffinityQuery(boxes[b], &acount, &currentAffinity);
+    ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
 #endif
-    ocrEdtCreate(&r, r_t, paramc, paramv, 3+count, NULL, 0, currentAffinity, NULL);
+    ocrEdtCreate(&r, r_t, paramc, paramv, 3+count, NULL, 0, &myEdtAffinityHNT, NULL);
     ocrAddDependence(depv[1].guid, r, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], r, 1, DB_MODE_RW);
     ocrAddDependence(depv[0].guid, r, 2, DB_MODE_CONST);
@@ -47,12 +51,14 @@ ocrGuid_t restrict_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 // deps: level - coarse - level - fine_0..fine_count-1
 ocrGuid_t restrict_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
+
+  PRM_restrict_level_edt_t* PTR_PRM_restrict_level_edt = (PRM_restrict_level_edt_t*) paramv;
+  ocrGuid_t box = PTR_PRM_restrict_level_edt->box;
+  int flag = PTR_PRM_restrict_level_edt->flag;
+
   VERBOSEPA("restrict_edt %u\n", ((level_type*) depv[2].ptr)->level);
 
   int o;
-  int flag = 0;
-  if (paramc == 2)
-    flag = 1;
   if (depc <= 11) {
     for(o = 3; o < depc; ++o)
       restriction_f((level_type*)depv[0].ptr, (box_type*) depv[1].ptr,
@@ -65,8 +71,8 @@ ocrGuid_t restrict_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                     (level_type*)depv[2].ptr, (box_type*) depv[o].ptr, o-3,
                     ((level_type*)depv[0].ptr)->box_dim, flag);
   }
-  if(((ocrGuid_t)paramv[0]) != NULL_GUID)
-    ocrEventSatisfy((ocrGuid_t)paramv[0], depv[1].guid);
+  if(!IS_GUID_NULL(box))
+    ocrEventSatisfy(box, depv[1].guid);
 
   return NULL_GUID;
 }

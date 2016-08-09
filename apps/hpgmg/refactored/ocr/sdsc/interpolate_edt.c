@@ -30,13 +30,17 @@ ocrGuid_t interpolate_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
   // for all boxes create a restrict_edt
   int b;
   ocrGuid_t currentAffinity = NULL_GUID;
+  ocrHint_t myEdtAffinityHNT;
+  ocrHintInit( &myEdtAffinityHNT, OCR_HINT_EDT_T );
+
   for(b = 0; b < l->num_boxes; ++b) {
 #ifdef ENABLE_EXTENSION_AFFINITY
     u64 acount = 1;
     ocrAffinityQuery(boxes[b], &acount, &currentAffinity);
+    ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
 #endif
     get_fine_boxes(f,l,b,fine);
-    ocrEdtCreate(&i, i_t, 1, paramv, 3+count, NULL, 0, currentAffinity, NULL);
+    ocrEdtCreate(&i, i_t, 1, paramv, 3+count, NULL, 0, &myEdtAffinityHNT, NULL);
     ocrAddDependence(depv[1].guid, i, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], i, 1, DB_MODE_CONST);
     ocrAddDependence(depv[0].guid, i, 2, DB_MODE_CONST);

@@ -29,7 +29,7 @@ ocrGuid_t solve_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   int volume = level->volume;
   int temp_size = volume * 7*sizeof(double);
 
-  ocrDbCreate(&temp_guid, (void**)&temp, temp_size, 0,NULL_GUID,NO_ALLOC);
+  ocrDbCreate(&temp_guid, (void**)&temp, temp_size, 0, NULL_HINT, NO_ALLOC);
 
   bzero(temp,temp_size);
 

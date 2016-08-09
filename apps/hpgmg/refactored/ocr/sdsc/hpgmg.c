@@ -49,7 +49,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   }
 
   ocrGuid_t mg; mg_type* mg_ptr;
-  ocrDbCreate(&mg, (void**)&mg_ptr, sizeof(mg_type), 0,NULL_GUID,NO_ALLOC);
+  ocrDbCreate(&mg, (void**)&mg_ptr, sizeof(mg_type), 0, NULL_HINT, NO_ALLOC);
 
   // initialization
   init_all(mg_ptr, box_dim, boxes_in_i, BC_DIRICHLET, 0);
@@ -59,7 +59,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   // start loop
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, top_warm, 0, 1);
-  ocrEdtCreate(&edt, tmp, 0, NULL, 1, NULL, 0, NULL_GUID, NULL);
+  ocrEdtCreate(&edt, tmp, 0, NULL, 1, NULL, 0, NULL_HINT, NULL);
   ocrAddDependence(mg, edt, 0, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
 
@@ -75,7 +75,7 @@ ocrGuid_t top_warm(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t cont = do_solves(e, (mg_type*)depv[0].ptr, WARMUP,1);
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, top_loop, 0, 2);
-  ocrEdtCreate(&edt, tmp, 0, NULL, 2, NULL, 0, NULL_GUID, NULL);
+  ocrEdtCreate(&edt, tmp, 0, NULL, 2, NULL, 0, NULL_HINT, NULL);
   ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
   ocrAddDependence(cont, edt, 1, DB_MODE_CONST);
   ocrEdtTemplateDestroy(tmp);
@@ -93,7 +93,7 @@ ocrGuid_t top_loop(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t cont = do_solves(e, (mg_type*)depv[0].ptr, TIMED,0);
   ocrGuid_t tmp,edt;
   ocrEdtTemplateCreate(&tmp, finalize, 0, 3);
-  ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_GUID, NULL);
+  ocrEdtCreate(&edt, tmp, 0, NULL, 3, NULL, 0, NULL_HINT, NULL);
   ocrAddDependence(depv[0].guid, edt, 0, DB_MODE_CONST);
   ocrAddDependence(((mg_type *)(depv[0].ptr))->levels[0], edt, 1, DB_MODE_CONST); // only fine grid required to compute error
   ocrAddDependence(cont, edt, 2, DB_MODE_CONST);
@@ -111,7 +111,7 @@ ocrGuid_t finalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   ocrGuid_t tm, i_tm, fin;
   ocrEdtTemplateCreate(&i_tm, print_timing_edt, 1, ((mg_type*)(depv[0].ptr))->num_levels);
   u64 num_levels = ((mg_type*)(depv[0].ptr))->num_levels;
-  ocrEdtCreate(&tm, i_tm, 1, &num_levels, num_levels, NULL, 0, NULL_GUID, &fin);
+  ocrEdtCreate(&tm, i_tm, 1, &num_levels, num_levels, NULL, 0, NULL_HINT, &fin);
 
    // Set up finalize_edt (depends on print_timing_edt's output event)
   level_type *l = (level_type*)(depv[1].ptr);
@@ -119,7 +119,7 @@ ocrGuid_t finalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   int num_boxes = l->num_boxes;
   u64 pv[3] = {l->u, l->u_true, l->vec_temp};
   ocrEdtTemplateCreate(&tmp, finalize_edt, 3, num_boxes+3);
-  ocrEdtCreate(&edt, tmp, 3, pv, num_boxes+3, NULL, 0, NULL_GUID, NULL);
+  ocrEdtCreate(&edt, tmp, 3, pv, num_boxes+3, NULL, 0, NULL_HINT, NULL);
 
  ocrGuid_t* boxes = (ocrGuid_t*)(((char*)l)+l->boxes);
   for (b = 0; b < num_boxes; b++) {

@@ -20,12 +20,16 @@ ocrGuid_t residual_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
   // for all boxes create a restrict_edt
   int b;
   ocrGuid_t currentAffinity = NULL_GUID;
+  ocrHint_t myEdtAffinityHNT;
+  ocrHintInit( &myEdtAffinityHNT, OCR_HINT_EDT_T );
+
   for(b = 0; b < l->num_boxes; ++b) {
 #ifdef ENABLE_EXTENSION_AFFINITY
     u64 count = 1;
     ocrAffinityQuery(boxes[b], &count, &currentAffinity);
+    ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
 #endif
-    ocrEdtCreate(&r, r_t, paramc, paramv, 2, NULL, 0, currentAffinity, NULL);
+    ocrEdtCreate(&r, r_t, paramc, paramv, 2, NULL, 0, &myEdtAffinityHNT, NULL);
     ocrAddDependence(depv[0].guid, r, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], r, 1, DB_MODE_RW);
   }

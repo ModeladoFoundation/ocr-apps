@@ -23,7 +23,7 @@ ocrGuid_t init_ur_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
   int b;
   for(b = 0; b < l->num_boxes; ++b) {
-    ocrEdtCreate(&i, i_t, 4, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
+    ocrEdtCreate(&i, i_t, 4, pv, 2, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
     ocrAddDependence(depv[0].guid, i, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], i, 1, DB_MODE_RW);
   }
@@ -187,7 +187,7 @@ ocrGuid_t print_timing_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
   ocrGuid_t tmp;
   double *mat;
-  ocrDbCreate(&tmp, (void **)&mat, sizeof(double)*n*4,0,NULL_GUID,NO_ALLOC);
+  ocrDbCreate(&tmp, (void **)&mat, sizeof(double)*n*4,0, NULL_HINT, NO_ALLOC);
 
   for (i = 0; i < n; i++) {
     level_type *l  = (level_type *)depv[i].ptr;
@@ -239,7 +239,7 @@ ocrGuid_t mulv_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   int b;
   for(b = 0; b < l->num_boxes; ++b) {
-    ocrEdtCreate(&m, m_t, 3, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
+    ocrEdtCreate(&m, m_t, 3, pv, 2, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
     ocrAddDependence(depv[0].guid, m, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], m, 1, DB_MODE_RW);
   }
@@ -278,7 +278,7 @@ ocrGuid_t norm_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   int b;
   for(b = 0; b < l->num_boxes; ++b) {
-    ocrEdtCreate(&n, n_t, 3, pv, 2, NULL, EDT_PROP_NONE, NULL_GUID, NULL);
+    ocrEdtCreate(&n, n_t, 3, pv, 2, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
     ocrAddDependence(depv[0].guid, n, 0, DB_MODE_RW);
     ocrAddDependence(boxes[b], n, 1, DB_MODE_CONST);
   }
@@ -353,7 +353,7 @@ ocrGuid_t exchange_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
    for(b = 0; b < l->num_boxes; ++b) {
       get_neighbor_guids(b,l,neighbors);
-      ocrEdtCreate(&x, x_t, 1, &iter, 8, NULL, 0, NULL_GUID, NULL);
+      ocrEdtCreate(&x, x_t, 1, &iter, 8, NULL, 0, NULL_HINT, NULL);
       ocrAddDependence(depv[0].guid, x, 0, DB_MODE_CONST);
       ocrAddDependence(boxes[b], x, 1, DB_MODE_RW);
       ocrAddDependence(neighbors[0], x, 2, DB_MODE_CONST);
@@ -367,7 +367,7 @@ ocrGuid_t exchange_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
    ocrEdtTemplateCreate(&x_t, exchange_edt, paramc, 28);
     for(b = 0; b < l->num_boxes; ++b) {
       get_neighbor_guids_all(b,l,neighbors);
-      ocrEdtCreate(&x, x_t, paramc, paramv, 28, NULL, 0, NULL_GUID, NULL);
+      ocrEdtCreate(&x, x_t, paramc, paramv, 28, NULL, 0, NULL_HINT, NULL);
       ocrAddDependence(depv[0].guid, x, 0, DB_MODE_CONST);
       ocrAddDependence(boxes[b], x, 1, DB_MODE_RW);
       int ii;
@@ -447,7 +447,7 @@ ocrGuid_t zero_vector_level_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
   // for all boxes create a restrict_edt
   int b;
   for(b = 0; b < l->num_boxes; ++b) {
-    ocrEdtCreate(&r, r_t, paramc, paramv, 2, NULL, 0, NULL_GUID, NULL);
+    ocrEdtCreate(&r, r_t, paramc, paramv, 2, NULL, 0, NULL_HINT, NULL);
     ocrAddDependence(depv[0].guid, r, 0, DB_MODE_CONST);
     ocrAddDependence(boxes[b], r, 1, DB_MODE_RW);
   }

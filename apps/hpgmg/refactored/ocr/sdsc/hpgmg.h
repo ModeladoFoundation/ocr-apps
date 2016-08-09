@@ -93,6 +93,12 @@ typedef struct {
   ocrGuid_t levels[MG_MAXLEVELS];  // array of pointers to levels
 } mg_type;
 
+typedef struct
+{
+    ocrGuid_t box;
+    s64 flag;
+} PRM_restrict_level_edt_t;
+
 /*
  mg_type: levels[]--> level_type
  level_type: ((char*)&level_type)+level_type.boxes[]-->box_type
