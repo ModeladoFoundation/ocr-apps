@@ -60,6 +60,81 @@ June 2016: added "AFFINITY" definition to allow it to be turned off easily
 
 extern double wtime();
 
+void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 Ranks, s64* id)
+{
+    s64 N = ub_g - lb_g + 1;
+    s64 s, e;
+
+    s64 r;
+
+    for( r = 0; r < Ranks; r++ )
+    {
+        s = r*N/Ranks + lb_g;
+        e = (r+1)*N/Ranks + lb_g - 1;
+        if( s <= i && i <= e )
+            break;
+    }
+
+    *id = r;
+}
+
+void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_procsz)
+{
+    s64 nx, ny, nz;
+
+    nz = (int) pow(Num_procs+1,0.33);
+    for(; nz>0; nz--)
+    {
+        if (!(Num_procs%nz))
+        {
+            ny = Num_procs/nz;
+            break;
+        }
+    }
+    *Num_procsz = nz;
+
+    Num_procs = Num_procs/nz;
+
+    ny = (int) sqrt(Num_procs+1);
+    for(; ny>0; ny--)
+    {
+        if (!(Num_procs%nz))
+        {
+            nx = Num_procs/ny;
+            break;
+        }
+    }
+
+    *Num_procsy = ny;
+
+    *Num_procsx = Num_procs/(*Num_procsy);
+}
+
+static inline int globalRankFromCoords( int id_x, int id_y, int id_z, int NR_X, int NR_Y, int NR_Z )
+{
+    return NR_X*NR_Y*id_z + NR_X*id_y + id_x;
+}
+
+static inline int getPoliyDomainID( int b, u32* grid, int PD_X, int PD_Y, int PD_Z )
+{
+    int id_x = b%grid[0];
+    int id_y = (b/grid[0])%grid[1];
+    int id_z = (b/grid[0])/grid[1];
+
+    s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
+    s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
+    s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
+
+    //Each linkcell, with id=b, is mapped to a PD. The mapping is similar to how the link cells map to
+    //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
+    //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
+    //
+    int pd = globalRankFromCoords(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
+    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+
+    return pd;
+}
+
 typedef struct{
     u32 length[26];
     u32 start[26];
@@ -2193,17 +2268,19 @@ if(sbPTR->debug != 0) PRINTF("RM start nrank %d npx %d npy %d npz %d m %d t %d d
     ocrAffinityGetCurrent(&(myAffinity));
     u64 count, myPD, block, nx, ny, nz;
     ocrAffinityCount(AFFINITY_PD, &count);
-    block = (nrank + count - 1)/count;
-    u64 linear = (((npx&1)||(npy&1)||(npz&1)) || (8*count != nrank)); //not even numbers, use linear map
+    s64 PD_X, PD_Y, PD_Z;
+    splitDimension( count, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid
+
+    u32 edtGrid[3] = {npx, npy, npz};
+
+    //The EDTs are mapped to the policy domains (nodes) through EDT hints
+    //There are more subdomains than the # of policy domains.
+    //A 3-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
+    //to minimize data movement between the policy domains
 
     for(i=0;i<nrank;i++) {
-        if(linear) myPD = i/block;
-          else {
-            nx = (i%npx)/2;
-            ny = ((i/npx)%(npy))/2;
-            nz = (i/(npx*npy))/2;
-            myPD = nz*(npx*npy)/4 + ny*npx/2 + nx ;
-        }
+        myPD = getPoliyDomainID( i, edtGrid, PD_X, PD_Y, PD_Z );
+        //PRINTF("id %d PD %d\n", i, myPD);
         ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
         ocrHintInit(&myHNT,OCR_HINT_EDT_T);
         ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
