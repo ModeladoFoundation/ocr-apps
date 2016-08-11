@@ -27,9 +27,7 @@ June 2016: fixed a race condition and added a release to reductionLaunch
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 #include "extensions/ocr-affinity.h"
-#include "math.h"   //for min and max
 #include "string.h"   //for memcpy
-#include "stdio.h"   //for debug print
 #include "macros.h"
 
 #include "reduction.h"
@@ -62,8 +60,9 @@ u64 reductionsizeof(reductionOperator_t operator) {
     if(operator == REDUCTION_U4_BITAND) return(4);
     if(operator == REDUCTION_U4_BITOR) return(4);
     if(operator == REDUCTION_U4_BITXOR) return(4);
-PRINTF("UNSUPPORTED reductionOperator\n");
-ocrShutdown();
+    PRINTF("UNSUPPORTED reductionOperator\n");
+    ocrShutdown();
+    return (u64)-1; // Let's keep the compiler happy
 }
 
 void reductionOperation(u64 length, void * a, void * b, reductionOperator_t operator){
@@ -129,8 +128,8 @@ void reductionOperation(u64 length, void * a, void * b, reductionOperator_t oper
         return;
 
         case REDUCTION_S8_MAX:
-        as8p = (u64 *) a;
-        bs8p = (u64 *) b;
+        as8p = (s64 *) a;
+        bs8p = (s64 *) b;
         for(i=0;i<length;i++) if(*as8p++ < *bs8p++) *(as8p-1) = *(bs8p-1);
         return;
 
@@ -207,8 +206,8 @@ void reductionOperation(u64 length, void * a, void * b, reductionOperator_t oper
         return;
 
         case REDUCTION_S4_MAX:
-        as4p = (u32 *) a;
-        bs4p = (u32 *) b;
+        as4p = (s32 *) a;
+        bs4p = (s32 *) b;
         for(i=0;i<length;i++) if(*as4p++ < *bs4p++) *(as4p-1) = *(bs4p-1);
         return;
 
