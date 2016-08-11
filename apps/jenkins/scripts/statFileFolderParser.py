@@ -60,6 +60,9 @@ def main():
     if os.path.isfile(oFile):
         os.remove(oFile)
 
+    num_points = int(os.getenv("OCR_APPS_PLOT_POINTS") or 0)
+    if (num_points <= 0):
+        num_points = 99
     fd = open(oFile, 'w')
     for key in testdict:
         buildtimeTupleList = []
@@ -68,7 +71,7 @@ def main():
         for ele in testdict[key]:
             buildList.append(ele[0])
             execTimeList.append(str(ele[1]))
-        fd.write(key + " " + ",".join(buildList) + " " + ",".join(execTimeList)+'\n')
+        fd.write(key + " " + ",".join(buildList[-num_points:]) + " " + ",".join(execTimeList[-num_points:])+'\n')
     fd.close()
 
 
