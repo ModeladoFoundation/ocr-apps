@@ -22,8 +22,6 @@ June 2016: fixed a race condition and added a release to reductionLaunch
 
 */
 
-#define ENABLE_EXTENSION_LABELING
-#define ENABLE_EXTENSION_AFFINITY
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 #include "extensions/ocr-affinity.h"
@@ -567,8 +565,6 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateDBK, 
         ocrAffinityGetCurrent(&(myAffinity));
 //PRINTF("R%d affinity "GUIDF" \n", rpPTR->myrank, myAffinity);
         ocrSetHintValue(&rpPTR->myAffinity, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
-#else
-    rpPTR->myAffinity = NULL_HINT;
 #endif
     }
 

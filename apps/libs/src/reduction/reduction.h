@@ -17,7 +17,6 @@ See README for more details
 
 */
 
-#define ENABLE_EXTENSION_LABELING
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 

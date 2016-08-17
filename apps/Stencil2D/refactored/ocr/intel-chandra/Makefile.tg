@@ -54,7 +54,7 @@ TARGET := stencil_2d
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := libc
+REQ_LIBS := libc reduction
 
 # Space separated list of source files
 SRCS := stencil_2d.c timers.c
@@ -63,11 +63,12 @@ SRCS := stencil_2d.c timers.c
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 CFLAGS := -DPROBLEM_TYPE=2 -DFULL_APP=1
+CFLAGS += -DUSE_REDUCTIONLIBRARY -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT -DENABLE_EXTENSION_CHANNEL_EVT
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS :=
+LDFLAGS := -lreduction
 
 # Targets:
 #   - all:     Build the application.

@@ -177,7 +177,11 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     globalParamH_t* PTR_globalParamH = depv[1].ptr;
 
     u32 argc = getArgc(PTR_cmdLineArgs);
-
+    PRINTF("Got ARGC: %"PRIu32"\n", argc);
+    u32 i;
+    for(i=0; i<argc; ++i) {
+        PRINTF("ARG %"PRIu32": %s\n", i, getArgv(PTR_cmdLineArgs, i));
+    }
     s64 npoints, nranks, ntimesteps;
 
     //Default values
@@ -222,20 +226,20 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     PRINTF("\n");
     PRINTF("OCR stencil execution on 2D grid\n");
     #if PROBLEM_TYPE==2
-    PRINTF("Grid size                   = %dx%d\n", PTR_globalParamH->NP_X, PTR_globalParamH->NP_Y);
+    PRINTF("Grid size                   = %lldx%lld\n", PTR_globalParamH->NP_X, PTR_globalParamH->NP_Y);
     #elif PROBLEM_TYPE==1
-    PRINTF("Grid size                   = %d\n", PTR_globalParamH->NP_X);
+    PRINTF("Grid size                   = %lld\n", PTR_globalParamH->NP_X);
     #endif
-    PRINTF("Number of tiles             = %d\n", PTR_globalParamH->NR);
+    PRINTF("Number of tiles             = %lld\n", PTR_globalParamH->NR);
     #if PROBLEM_TYPE==2
-    PRINTF("Tiles in x & y-directions   = %dx%d\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
+    PRINTF("Tiles in x & y-directions   = %lldx%lld\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
     #elif PROBLEM_TYPE==1
-    PRINTF("Tiles in x                  = %d\n", PTR_globalParamH->NR_X);
+    PRINTF("Tiles in x                  = %lld\n", PTR_globalParamH->NR_X);
     #endif
     PRINTF("Radius of stencil           = %d\n", HALO_RADIUS);
     PRINTF("Type of stencil             = star\n");
     PRINTF("Data type                   = double precision\n");
-    PRINTF("Number of iterations        = %d\n", PTR_globalParamH->NT);
+    PRINTF("Number of iterations        = %lld\n", PTR_globalParamH->NT);
     PRINTF("\n");
 
     return NULL_GUID;
