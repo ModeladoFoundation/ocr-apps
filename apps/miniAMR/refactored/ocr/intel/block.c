@@ -61,7 +61,11 @@
 
 ocrGuid_t blockLaunch_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
-   blockLaunch_Deps_t   * myDeps   = (blockLaunch_Deps_t *)   depv;
+   //blockLaunch_Deps_t   * myDeps   = (blockLaunch_Deps_t *)   depv;
+   blockLaunch_Deps_t   * myDeps;
+   ocrGuid_t localDeps;
+   ocrDbCreate( &localDeps, (void **)&myDeps, sizeof( ocrEdtDep_t ) * depc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+   memcpy( myDeps, depv, sizeof( ocrEdtDep_t ) * depc );
    blockLaunch_Params_t * myParams = (blockLaunch_Params_t *) paramv;
    ocrGuid_t          initialControl_dblk    =                (myDeps->control_Dep.guid);
    Control_t  const * initialControl         = ((Control_t *) (myDeps->control_Dep.ptr));
@@ -138,7 +142,11 @@ ocrGuid_t blockLaunch_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 // This initializes control_dblk, allObjects_dblk, and meta_dblk, then creates all other datablocks that will be needed to process the block, then passes control to the blockClone EDT.
 ocrGuid_t blockInit_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 
-   blockInit_Deps_t   * myDeps   = (blockInit_Deps_t *)   depv;
+   //blockInit_Deps_t   * myDeps   = (blockInit_Deps_t *)   depv;
+   blockInit_Deps_t * myDeps;
+   ocrGuid_t localDeps;
+   ocrDbCreate( &localDeps, (void **)&myDeps, sizeof( ocrEdtDep_t ) * depc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+   memcpy( myDeps, depv, sizeof( ocrEdtDep_t ) * depc );
    blockInit_Params_t * myParams = (blockInit_Params_t *) paramv;
    ocrGuid_t            meta_dblk               =                   (myDeps->meta_Dep.guid);
    BlockMeta_t        * meta                    = ((BlockMeta_t *)  (myDeps->meta_Dep.ptr));
@@ -311,6 +319,11 @@ ocrGuid_t blockClone_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[
    int i, j, k;
 
    blockClone_Deps_t   * myDeps   = (blockClone_Deps_t *)   depv;
+   /*blockClone_Deps_t * myDeps;
+   ocrGuid_t localDeps;
+   ocrDbCreate( &localDeps, (void **)&myDeps, sizeof( ocrEdtDep_t ) * depc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+   memcpy( myDeps, depv, sizeof( ocrEdtDep_t ) * depc );*/
+
    blockClone_Params_t * myParams = (blockClone_Params_t *) paramv;
    BlockMeta_t * meta    = (BlockMeta_t *) myDeps->meta_Dep.ptr;
    Control_t   * control = (Control_t   *) myDeps->control_Dep.ptr;
@@ -456,7 +469,7 @@ ocrGuid_t blockClone_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[
 
    topOfStack[1].validate_callers_prep_for_suspension = 1;    // Set "canary trap" for first callee.
    meta->cloningState.returnCanary                    = 1;    // Init the "return canary trap" to "live", to detect a return from a suspendable function via a return stmt instead of the macro.
-   blockClone_SoupToNuts(myParams, depc, depv);               // Resume (or start, the first time) the algorithm.  When we get back, it is either done or needing to clone.
+   blockClone_SoupToNuts(myParams, depc, (ocrEdtDep_t *)myDeps);               // Resume (or start, the first time) the algorithm.  When we get back, it is either done or needing to clone.
    if (meta->cloningState.returnCanary == 1) {                // If the return canary is "live" the callee must have used a return statement.  We need it to use the macro!
       printf ("ERROR: %s at line %d: Canary trap on RETURN from the callee.  Change callee to return through the NORMAL_RETURN_SEQUENCE macro.\n", __FILE__, __LINE__); fflush(stdout);
       printf ("ERROR: Other possibility is that callee is not (yet) a SUSPENDABLE function, but it is being identified as such by the caller.\n"); fflush(stdout);

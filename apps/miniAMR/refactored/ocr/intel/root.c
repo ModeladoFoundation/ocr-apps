@@ -194,7 +194,11 @@ ocrGuid_t rootInit_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
    int i;
 
 //printf ("Function %36s, File %30s, line %4d\n", __func__, __FILE__, __LINE__); fflush(stdout);
-   rootInit_Deps_t  * myDeps = (rootInit_Deps_t  *) depv;
+   //rootInit_Deps_t  * myDeps = (rootInit_Deps_t  *) depv;
+    rootInit_Deps_t * myDeps;
+    ocrGuid_t localDeps;
+    ocrDbCreate( &localDeps, (void **)&myDeps, sizeof( ocrEdtDep_t ) * depc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+    memcpy( myDeps, depv, sizeof( ocrEdtDep_t ) * depc );
    char         ** argv                   = ((char **)        (myDeps->argv_Dep.ptr));
    ocrGuid_t       meta_dblk              =                   (myDeps->meta_Dep.guid);
    RootMeta_t    * meta                   = ((RootMeta_t *)   (myDeps->meta_Dep.ptr));
@@ -544,7 +548,11 @@ ocrGuid_t rootClone_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
 
    int i;
 
-   rootClone_Deps_t   * myDeps   = (rootClone_Deps_t   *) depv;
+   //rootClone_Deps_t   * myDeps   = (rootClone_Deps_t   *) depv;
+   rootClone_Deps_t * myDeps;
+   ocrGuid_t localDeps;
+   ocrDbCreate( &localDeps, (void **)&myDeps, sizeof( ocrEdtDep_t ) * depc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+   memcpy( myDeps, depv, sizeof( ocrEdtDep_t ) * depc );
    rootClone_Params_t * myParams = (rootClone_Params_t *) paramv;
 
    RootMeta_t * meta    = (RootMeta_t *) myDeps->meta_Dep.ptr;
@@ -593,7 +601,7 @@ ocrGuid_t rootClone_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
 
    topOfStack[1].validate_callers_prep_for_suspension = 1;     // Set "canary trap" for first callee.
    meta->cloningState.returnCanary                    = 1;     // Init the "return canary trap" to "live", to detect a return from a suspendable function via a return stmt instead of the macro.
-   rootClone_SoupToNuts(myParams, depc, depv, meta->dbSize);   // Resume (or start, the first time) the algorithm.  When we get back, it is either done or needing to clone.
+   rootClone_SoupToNuts(myParams, depc, (ocrEdtDep_t *)myDeps, meta->dbSize);   // Resume (or start, the first time) the algorithm.  When we get back, it is either done or needing to clone.
    if (meta->cloningState.returnCanary == 1) {                 // If the return canary is "live" the callee must have used a return statement.  We need it to use the macro!
       printf ("ERROR: %s at line %d: Canary trap on RETURN from the callee.  Change callee to return through the NORMAL_RETURN_SEQUENCE macro.\n", __FILE__, __LINE__); fflush(stdout); \
       printf ("ERROR: Other possibility is that callee is not (yet) a SUSPENDABLE function, but it is being identified as such by the caller.\n"); fflush(stdout); \
