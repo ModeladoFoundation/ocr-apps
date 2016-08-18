@@ -68,7 +68,7 @@ _OCR_TASK_FNC_( FNC_globalFinalize );
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
@@ -120,7 +120,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 // { DBK_cmdLineArgs <RO>, DBK_globalH <RW> }
 ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
@@ -177,7 +177,13 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     globalParamH_t* PTR_globalParamH = depv[1].ptr;
 
     u32 argc = getArgc(PTR_cmdLineArgs);
-
+    DEBUG_PRINTF(("Got ARGC: %"PRIu32"\n", argc));
+#ifdef DEBUG_APP
+    u32 i;
+    for(i=0; i<argc; ++i) {
+        PRINTF("ARG %"PRIu32": %s\n", i, getArgv(PTR_cmdLineArgs, i));
+    }
+#endif
     s64 npoints, nranks, ntimesteps;
 
     //Default values
@@ -213,7 +219,6 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
 
     PTR_globalParamH->NR_X = (s64) Num_procsx;
     PTR_globalParamH->NR_Y = (s64) Num_procsy;
-    //PRINTF("NR_X = %d NR_Y = %d\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
     #elif PROBLEM_TYPE==1
     PTR_globalParamH->NP_X = (s64) PTR_globalParamH->NP;
     PTR_globalParamH->NR_X = (s64) PTR_globalParamH->NR;
@@ -222,20 +227,20 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     PRINTF("\n");
     PRINTF("OCR stencil execution on 2D grid\n");
     #if PROBLEM_TYPE==2
-    PRINTF("Grid size                   = %dx%d\n", PTR_globalParamH->NP_X, PTR_globalParamH->NP_Y);
+    PRINTF("Grid size                   = %lldx%lld\n", PTR_globalParamH->NP_X, PTR_globalParamH->NP_Y);
     #elif PROBLEM_TYPE==1
-    PRINTF("Grid size                   = %d\n", PTR_globalParamH->NP_X);
+    PRINTF("Grid size                   = %lld\n", PTR_globalParamH->NP_X);
     #endif
-    PRINTF("Number of tiles             = %d\n", PTR_globalParamH->NR);
+    PRINTF("Number of tiles             = %lld\n", PTR_globalParamH->NR);
     #if PROBLEM_TYPE==2
-    PRINTF("Tiles in x & y-directions   = %dx%d\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
+    PRINTF("Tiles in x & y-directions   = %lldx%lld\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
     #elif PROBLEM_TYPE==1
-    PRINTF("Tiles in x                  = %d\n", PTR_globalParamH->NR_X);
+    PRINTF("Tiles in x                  = %lld\n", PTR_globalParamH->NR_X);
     #endif
     PRINTF("Radius of stencil           = %d\n", HALO_RADIUS);
     PRINTF("Type of stencil             = star\n");
     PRINTF("Data type                   = double precision\n");
-    PRINTF("Number of iterations        = %d\n", PTR_globalParamH->NT);
+    PRINTF("Number of iterations        = %lld\n", PTR_globalParamH->NT);
     PRINTF("\n");
 
     return NULL_GUID;
@@ -245,7 +250,7 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
 // { DBK_globalParamH <RO>, DBK_globalH <RW>, EVT_init_globalParamH <NULL> }
 ocrGuid_t FNC_init_globalH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalParamH = depv[0].guid;
@@ -292,7 +297,7 @@ ocrGuid_t FNC_init_globalH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 // { DBK_globalParamH <RO>, DBK_globalH <RW> }
 ocrGuid_t FNC_init_globalH_part1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalParamH = depv[0].guid;
@@ -318,7 +323,7 @@ ocrGuid_t FNC_init_globalH_part1(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 // { DBK_globalParamH <RO>, DBK_globalH <RW>, EVT_init_globalH_part1 <NULL> }
 ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalParamH = depv[0].guid;
@@ -334,8 +339,6 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
     #endif
 
     //spawn N intializer EDTs
-    //PRINTF("#Subdomains %d\n", NR);
-
     ocrGuid_t* PTR_rankHs;
     ocrDbCreate( &PTR_globalH->DBK_rankHs, (void **) &PTR_rankHs, sizeof(ocrGuid_t)*NR,
                  DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
@@ -380,7 +383,7 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 
         pd = globalRankFromCoords(pd_x, pd_y, PD_X, PD_Y);
         #endif
-        //PRINTF("rank %d, policy domain %d\n", i, pd);
+        DEBUG_PRINTF(("rank %d, policy domain %d\n", i, pd));
         ocrAffinityGetAt( AFFINITY_PD, pd, &(currentAffinity) );
         ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
         ocrSetHintValue( &HNT_db, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
@@ -408,7 +411,7 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 // { DBK_globalParamH <RO>, DBK_EVT_IN_reduction <COST>, DBK_rankH <RW> }
 ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     s32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalParamH = (ocrGuid_t) depv[0].guid;
@@ -495,7 +498,7 @@ ocrGuid_t FNC_rankInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //   EVT_init_globalParamH <NULL>}
 ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     s32 _paramc, _depc, _idep;
 
     s64 id = (s64) paramv[0];
@@ -712,7 +715,7 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //   DBK_xIn<RW>, DBK_xOut<RW>, DBK_weight<RW>, DBK_refNorm<RW> }
 ocrGuid_t FNC_init_rankDataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
 
     globalParamH_t *PTR_globalParamH = (globalParamH_t*) depv[0].ptr;
     rankParamH_t *PTR_rankParamH = (rankParamH_t*) depv[1].ptr;
@@ -785,7 +788,7 @@ ocrGuid_t FNC_init_rankDataH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 // { DBK_globalH<RW>, EVT_globalInit<NULL> }
 ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalH = depv[0].guid;
@@ -833,7 +836,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 //{ DBK_globalParamH<CONST>, DBK_globalH<RW>, DBK_rankHs<CONST>, EVT_globalCompute_setup }
 ocrGuid_t FNC_rankComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_globalParamH = depv[0].guid;
@@ -855,8 +858,6 @@ ocrGuid_t FNC_rankComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 
     u64 I, id_x, id_y;
 
-    //PRINTF("#Subdomains %d\n", NR);
-    //
     ocrGuid_t currentAffinity = NULL_GUID;
     ocrHint_t HNT_edt;
     ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
@@ -873,7 +874,7 @@ ocrGuid_t FNC_rankComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     TS_rankMultiTimestepper.FNC = FNC_rankMultiTimestepper;
     ocrEdtTemplateCreate( &TS_rankMultiTimestepper.TML, TS_rankMultiTimestepper.FNC, _paramc, _depc );
 
-    //PRINTF("Timestep# %d NR = %d\n", itimestep, NR);
+    DEBUG_PRINTF(("Timestep# %d NR = %d\n", itimestep, NR));
     for( I = 0; I < NR; I++ )
     {
         compute_paramv[0] = (u64) I;
@@ -917,7 +918,7 @@ ocrGuid_t FNC_rankComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 //  DBK_rankH_b<CONST>, DBK_rankH_t<CONST>, DBK_globalH<CONST>, EVT_control_dep<NULL> }
 ocrGuid_t FNC_rankMultiTimestepper(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     u32 _paramc, _depc, _idep;
 
     _idep = 0;
@@ -1083,13 +1084,12 @@ ocrGuid_t FNC_timestep(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     s64 phase = itimestep%2;
 
-    //PRINTF("%s id %d x %d y %d\n", __func__, id, id_x, id_y);
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
     if(itimestep==1) //Do not time iteration 0
     {
         profile_start( total_timer, PTR_timers );
-        //PRINTF("Starting profile\n");
+        DEBUG_PRINTF(("Starting profile\n"));
         ocrDbRelease( DBK_timers );
     }
 
@@ -1294,7 +1294,7 @@ ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 je = (s64) PTR_rankParamH->je;
     #endif
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1315,12 +1315,12 @@ ocrGuid_t FNC_Lsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( id_x != 0 )
     {
-        //PRINTF("ID=%d FNC_Lsend lsend guid is %lu\n", id, DBK_Lsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Lsend lsend guid is %lu\n", id, DBK_Lsend));
         return DBK_Lsend;
     }
     else
     {
-        //PRINTF("ID=%d FNC_Lsend lsend guid is NULL\n", id);
+        //DEBUG_PRINTF(("ID=%d FNC_Lsend lsend guid is NULL\n", id));
         return NULL_GUID;
     }
 
@@ -1354,7 +1354,7 @@ ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 je = (s64) PTR_rankParamH->je;
     #endif
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1375,12 +1375,12 @@ ocrGuid_t FNC_Rsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( id_x != NR_X - 1 )
     {
-        //PRINTF("ID=%d FNC_Rsend rsend guid is %lu\n", id, DBK_Rsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Rsend rsend guid is %lu\n", id, DBK_Rsend));
         return DBK_Rsend;
     }
     else
     {
-        //PRINTF("ID=%d FNC_Lsend lsend guid is NULL\n", id);
+        //DEBUG_PRINTF(("ID=%d FNC_Lsend lsend guid is NULL\n", id));
         return NULL_GUID;
     }
 }
@@ -1411,7 +1411,7 @@ ocrGuid_t FNC_Lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 je = (s64) PTR_rankParamH->je;
     #endif
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1431,7 +1431,7 @@ ocrGuid_t FNC_Lrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         }
         #endif
 
-        //PRINTF("ID=%d FNC_Lrecv lrecv guid is %lu\n", id, DBK_Rsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Lrecv lrecv guid is %lu\n", id, DBK_Rsend));
     }
 #endif
 
@@ -1466,7 +1466,7 @@ ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 je = (s64) PTR_rankParamH->je;
     #endif
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1486,7 +1486,7 @@ ocrGuid_t FNC_Rrecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         }
         #endif
 
-        //PRINTF("ID=%d FNC_Rrecv rrecv guid is %lu\n", id, DBK_Lsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Rrecv rrecv guid is %lu\n", id, DBK_Lsend));
     }
 #endif
 
@@ -1517,7 +1517,7 @@ ocrGuid_t FNC_Bsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1531,12 +1531,12 @@ ocrGuid_t FNC_Bsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( id_y != 0 )
     {
-        //PRINTF("ID=%d FNC_Bsend bsend guid is %lu\n", id, DBK_Bsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Bsend bsend guid is %lu\n", id, DBK_Bsend));
         return DBK_Bsend;
     }
     else
     {
-        //PRINTF("ID=%d FNC_Bsend bsend guid is NULL\n", id);
+        //DEBUG_PRINTF(("ID=%d FNC_Bsend bsend guid is NULL\n", id));
         return NULL_GUID;
     }
 
@@ -1567,7 +1567,7 @@ ocrGuid_t FNC_Tsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1581,12 +1581,12 @@ ocrGuid_t FNC_Tsend(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( id_y != NR_Y - 1 )
     {
-        //PRINTF("ID=%d FNC_Tsend tsend guid is %lu\n", id, DBK_Tsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Tsend tsend guid is %lu\n", id, DBK_Tsend));
         return DBK_Tsend;
     }
     else
     {
-        //PRINTF("ID=%d FNC_Bsend bsend guid is NULL\n", id);
+        //DEBUG_PRINTF(("ID=%d FNC_Bsend bsend guid is NULL\n", id));
         return NULL_GUID;
     }
 }
@@ -1614,7 +1614,7 @@ ocrGuid_t FNC_Brecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1627,7 +1627,7 @@ ocrGuid_t FNC_Brecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                 IN(i,j) = tsent[kk++];
             }
 
-        //PRINTF("ID=%d FNC_Brecv lrecv guid is %lu\n", id, DBK_Tsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Brecv lrecv guid is %lu\n", id, DBK_Tsend));
     }
 #endif
 
@@ -1659,7 +1659,7 @@ ocrGuid_t FNC_Trecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
 #if FULL_APP==1
     int i, j;
@@ -1672,7 +1672,7 @@ ocrGuid_t FNC_Trecv(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
                 IN(i,j) = bsent[kk++];
             }
 
-        //PRINTF("ID=%d FNC_Trecv rrecv guid is %lu\n", id, DBK_Bsend);
+        //DEBUG_PRINTF(("ID=%d FNC_Trecv rrecv guid is %lu\n", id, DBK_Bsend));
     }
 #endif
 
@@ -1722,8 +1722,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     s64 je = (s64) PTR_rankParamH->je;
     #endif
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
-    //PRINTF("ID: %d ib %d ie %d jb %d je %d\n", id, ib, ie, jb, je);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
 
     /* Apply the stencil operator */
 #if FULL_APP==1
@@ -1753,7 +1752,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     {
         for (ii=-HALO_RADIUS; ii<=HALO_RADIUS; ii++) {
             OUT(i) += WEIGHT(ii)*IN(i+ii);
-            //PRINTF("i %d WEIGHT %f IN %f\n", i, WEIGHT(ii), IN(i+ii) );
+            //DEBUG_PRINTF(("i %d WEIGHT %f IN %f\n", i, WEIGHT(ii), IN(i+ii) ));
         }
     }
 
@@ -1811,12 +1810,12 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrDbRelease(DBK_refNorm);
 
         profile_stop( total_timer, PTR_timers );
+        double stencil_time = get_elapsed_time( total_timer, PTR_timers );
+        //DEBUG_PRINTF(("time %f\n", stencil_time));
         ocrDbRelease(DBK_timers);
 
         reductionLaunch(PTR_reductionH, DBK_reductionH, refNorm);
 
-        double stencil_time = get_elapsed_time( total_timer, PTR_timers );
-        //PRINTF("time %f\n", stencil_time);
         reductionLaunch(PTR_timer_reductionH, DBK_timer_reductionH, &stencil_time);
     }
 
@@ -1827,7 +1826,7 @@ ocrGuid_t FNC_update(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //{ EVT_IN_reduction <RO>, EVT_IN_reduction <RO>, ....., EVT_IN_reduction <RO> } //NR input events
 ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
 
     double* PTR_norm;
     ocrGuid_t DBK_norm;
@@ -1843,7 +1842,7 @@ ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     for( I = 0; I < NR; I++ )
     {
-        //PRINTF("NR %d \n", I);
+        //DEBUG_PRINTF(("NR %d \n", I));
         double* norm = depv[I].ptr;
         refNorm += norm[0];
 
@@ -1858,7 +1857,7 @@ ocrGuid_t FNC_reduction(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //{ DBK_globalParamH<CONST>, DBK_timers<RW>, EVT_OUT_norm_reduction <RW>, EVT_control_dep<NULL> }
 ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
     //
     ocrGuid_t DBK_norm = depv[2].guid;
 
@@ -1892,7 +1891,7 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     }
     else
     {
-        //PRINTF( "SUCCESS: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm);
+        DEBUG_PRINTF(( "SUCCESS: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm));
         PRINTF( "Solution validates\n" );
     }
 #endif
@@ -1911,7 +1910,7 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    DEBUG_PRINTF(("%s\n", __func__));
 
     ocrGuid_t DBK_globalH = depv[0].guid;
 

@@ -3,6 +3,12 @@
 
 #define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
+#ifdef DEBUG_APP
+    #define DEBUG_PRINTF(X) PRINTF X
+#else
+    #define DEBUG_PRINTF(X) do {} while(0)
+#endif
+
 //default values
 #define NPOINTS 1000
 #define NRANKS 16
@@ -205,7 +211,7 @@ void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy)
             break;
         }
     }
-    *Num_procsx = nx; *Num_procsy = ny;
+    *Num_procsx = nx; *Num_procsy = Num_procs/(*Num_procsx);
 }
 
 int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y )
