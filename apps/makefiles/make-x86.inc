@@ -137,7 +137,7 @@ CC_LINK = $(CC)
 ifeq ($(CFLAGS_WARN_ERROR), no)
   CFLAGS_BASE_WARN_ERROR =
 else
-  CFLAGS_BASE_WARN_ERROR = -Werror
+  CFLAGS_BASE_WARN_ERROR = -Werror -Wno-error=deprecated-declarations
 endif
 
 CFLAGS_BASE := $(CFLAGS_BASE_WARN_ERROR) -I. -I$(APPS_LIBS_INSTALL)/include -I$(OCR_INSTALL)/include
