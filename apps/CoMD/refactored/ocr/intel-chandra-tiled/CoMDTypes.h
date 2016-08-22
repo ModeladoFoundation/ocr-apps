@@ -12,6 +12,8 @@
 #include "decomposition.h"
 #include "initAtoms.h"
 
+#include "reduction.h"
+
 struct SimFlatSt;
 
 /// The base struct from which all potentials derive.  Think of this as an
@@ -34,9 +36,10 @@ typedef struct BasePotentialSt
    char latticeType[8];    //!< lattice type, e.g. FCC, BCC, etc.
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
-   int  (*force)(struct SimFlatSt* s); //!< function pointer to force routine
-   void (*print)(FILE* file, struct BasePotentialSt* pot);
-   void (*destroy)(struct BasePotentialSt** pot); //!< destruction of the potential
+   //int  (*force)(struct SimFlatSt* s); //!< function pointer to force routine
+   ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+   void (*print)(struct BasePotentialSt* pot);
+   //void (*destroy)(struct BasePotentialSt** pot); //!< destruction of the potential
 } BasePotential;
 
 
@@ -56,37 +59,13 @@ typedef struct ValidateSt
    int nAtoms0;  //<! Initial global number of atoms
 } Validate;
 
-///
-/// The fundamental simulation data structure with MAXATOMS in every
-/// link cell.
-///
-typedef struct SimFlatSt
-{
-   int nSteps;            //<! number of time steps to run
-   int printRate;         //<! number of steps between output
-   double dt;             //<! time step
-
-   Domain* domain;        //<! domain decomposition data
-
-   LinkCell* boxes;       //<! link-cell data
-
-   Atoms* atoms;          //<! atom data (positions, momenta, ...)
-
-   SpeciesData* species;  //<! species data (per species, not per atom)
-
-   real_t ePotential;     //!< the total potential energy of the system
-   real_t eKinetic;       //!< the total kinetic energy of the system
-
-   BasePotential *pot;	  //!< the potential
-
-   HaloExchange* atomExchange;
-
-} SimFlat;
 
 typedef struct
 {
-    ocrGuid_t haloRangeGUID, normReductionRangeGUID, timerReductionRangeGUID;
+    ocrGuid_t haloRangeGUID;
+    ocrGuid_t KeReductionRangeGUID, VcmReductionRangeGUID, maxOccupancyReductionRangeGUID;
     ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
+    ocrEVT_t finalOnceEVT;
 } globalOcrParamH_t;
 
 typedef struct
@@ -110,10 +89,13 @@ typedef struct
 
 typedef struct
 {
+    s64 nRanks, myRank;
     globalParamH_t globalParamH;
     //rankParamH_t rankParamH;
     Command cmd;
     rankTemplateH_t rankTemplateH;
+
+    //ocrDBK_t DBK_sim;
 
     ocrGuid_t DBK_xIn, DBK_xOut, DBK_weight;
     ocrGuid_t DBK_LsendBufs[2], DBK_RsendBufs[2];
@@ -122,15 +104,53 @@ typedef struct
 
     ocrGuid_t DBK_timers;
 
-    ocrGuid_t DBK_norm_reductionH; //->reductionPrivate_t
-    ocrGuid_t DBK_timer_reductionH;
+    ocrDBK_t rpKeDBK, rpVcmDBK, rpmaxOccupancyDBK;
+    reductionPrivate_t *rpKePTR, *rpVcmPTR, *rpmaxOccupancyPTR;
+    ocrEVT_t rpKeEVT, rpVcmEVT, rpmaxOccupancyEVT;
 
     ocrHint_t myEdtAffinityHNT;
     ocrHint_t myDbkAffinityHNT;
     ocrGuid_t haloRangeGUID;
-    ocrGuid_t haloSendEVTs[4];
-    ocrGuid_t haloRecvEVTs[4];
+    ocrGuid_t haloSendEVTs[6];
+    ocrGuid_t haloRecvEVTs[6];
+    ocrGuid_t haloTagSendEVTs[6];
+    ocrGuid_t haloTagRecvEVTs[6];
 } rankH_t;
+
+///
+/// The fundamental simulation data structure with MAXATOMS in every
+/// link cell.
+///
+typedef struct SimFlatSt
+{
+   int nSteps;            //<! number of time steps to run
+   int printRate;         //<! number of steps between output
+   double dt;             //<! time step
+
+   Domain* domain;        //<! domain decomposition data
+   Domain domain_INST;
+
+   LinkCell* boxes;       //<! link-cell data
+   LinkCell boxes_INST;
+
+   Atoms* atoms;          //<! atom data (positions, momenta, ...)
+   Atoms atoms_INST;
+
+   SpeciesData* species;  //<! species data (per species, not per atom)
+   SpeciesData species_INST;
+
+   real_t ePotential;     //!< the total potential energy of the system
+   real_t eKinetic;       //!< the total kinetic energy of the system
+
+   BasePotential *pot;	  //!< the potential
+   ocrDBK_t DBK_pot;
+
+   HaloExchange* atomExchange;
+   HaloExchange atomExchange_INST;
+
+   rankH_t* PTR_rankH; //TODO
+
+} SimFlat;
 
 
 #endif

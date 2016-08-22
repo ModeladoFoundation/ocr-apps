@@ -207,7 +207,7 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s6
         PRM_initEdt.id = i;
 
         int pd = getPolicyDomainID_Cart3D( i, edtGridDims, pdGridDims );
-        PRINTF("id %d map PD %d\n", i, pd);
+        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 
