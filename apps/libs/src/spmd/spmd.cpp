@@ -337,7 +337,7 @@ ocrGuid_t spmdSender(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 		}
 	}
 #ifdef ENABLE_EXTENSION_DEBUG
-	sent->the_edt = currentEdtUserGet();
+	currentEdtUserGet(&(sent->the_edt));
 #endif
 	for (std::size_t block = 0; block < block_count; ++block)
 	{
@@ -417,7 +417,7 @@ ocrGuid_t spmdReceiver(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 		}
 	}
 #ifdef ENABLE_EXTENSION_DEBUG
-	recv->the_edt = currentEdtUserGet();
+        currentEdtUserGet(&(recv->the_edt));
 #endif
 	for (std::size_t block = 0; block < block_count; ++block)
 	{
@@ -671,7 +671,9 @@ ocrGuid_t spmdProxyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 	set_spmd_local(prefix);
 	set_spmd_comm(static_cast<spmd_communicator*>(depv[depc - 1].ptr));
 #ifdef ENABLE_EXTENSION_DEBUG
-	ocrAttachDebugLabel(currentEdtUserGet(), tml->name, 0, 0);
+        ocrGuid_t currentEdt;
+        currentEdtUserGet(&currentEdt);
+	ocrAttachDebugLabel(currentEdt, tml->name, 0, 0);
 #endif
 #ifdef ENABLE_EXTENSION_HETEROGENEOUS_FUNCTIONS
 	ocrEdt_t ptr = (ocrEdt_t)ocrDecodeFunctionPointer(tml->funcIdx);
