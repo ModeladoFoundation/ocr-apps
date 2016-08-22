@@ -248,7 +248,7 @@ install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or, manually (in bash):"
-	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$$(LD_LIBRARY_PATH) "\
+	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$${LD_LIBRARY_PATH} "\
 	"&& export OCR_CONFIG=${OCR_CONFIG} and run the executable $(TARGET) in $(WORKLOAD_INSTALL)"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
