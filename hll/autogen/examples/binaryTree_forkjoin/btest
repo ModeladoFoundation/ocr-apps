@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+
+#----- First make the reference output file
+rm -f ./z_ref_output
+echo "TESTIO> Concluding: TaskTYPE=3 TaskID=0x0 Work is ok." > z_ref_output
+echo "TESTIO> TaskTYPE=2 TaskID=0x0 ITERATE dex=0 lohi=1,3  setupBtForkJoin" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=0 lohi=1,3  btForkThen" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=0 lohi=1,3  btForkThen new iterate" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=0 lohi=1,3  CONDITION True" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=1 lohi=1,2  btForkThen" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=1 lohi=1,2  btForkThen new iterate" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=1 lohi=1,2  CONDITION True" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=2 lohi=3,3  btForkElse initial" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=2 lohi=3,3  btForkElse new iterate" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=2 lohi=3,3  CONDITION False" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=3 lohi=1,1  btForkElse initial" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=3 lohi=1,1  btForkElse new iterate" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=3 lohi=1,1  CONDITION False" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=4 lohi=2,2  btForkElse initial" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=4 lohi=2,2  btForkElse new iterate" >> z_ref_output
+echo "TESTIO> TaskTYPE=4 TaskID=0x0 ITERATE dex=4 lohi=2,2  CONDITION False" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=0 lohi=1,3  btForkFOR initial (i=0)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=0 lohi=1,3  btForkFOR initial (i=1)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=1 lohi=1,2  btForkFOR final (i=0)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=1 lohi=1,2  btForkFOR initial (i=0)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=1 lohi=1,2  btForkFOR initial (i=1)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=2 lohi=3,3  btForkFOR final (i=1)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=3 lohi=1,1  btForkFOR final (i=0)" >> z_ref_output
+echo "TESTIO> TaskTYPE=5 TaskID=0x0 ITERATE dex=4 lohi=2,2  btForkFOR final (i=1)" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 ITERATE dex=2 lohi=3,3  Transition" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 ITERATE dex=3 lohi=1,1  Transition" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 ITERATE dex=4 lohi=2,2  Transition" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 WORK dex=2 res=0 Transition2" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 WORK dex=2 res=3 Transition" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 WORK dex=3 res=0 Transition2" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 WORK dex=3 res=1 Transition" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 WORK dex=4 res=0 Transition2" >> z_ref_output
+echo "TESTIO> TaskTYPE=7 TaskID=0x0 WORK dex=4 res=2 Transition" >> z_ref_output
+echo "TESTIO> TaskTYPE=8 TaskID=0x0 WORK dex=0 res=3 JoinIFTHEN" >> z_ref_output
+echo "TESTIO> TaskTYPE=8 TaskID=0x0 WORK dex=0 res=3 JoinIFTHEN" >> z_ref_output
+echo "TESTIO> TaskTYPE=8 TaskID=0x0 WORK dex=18446744073709551615 res=6 JoinELSE" >> z_ref_output
+echo "TESTIO> TaskTYPE=8 TaskID=0x0 WORK dex=1 res=1 JoinIFTHEN" >> z_ref_output
+echo "TESTIO> TaskTYPE=8 TaskID=0x0 WORK dex=1 res=2 JoinIFTHEN" >> z_ref_output
+
+if [ ! -s "z_ref_output" ]
+then
+echo "ERROR: Unusable reference output file"
+exit 20
+fi
+
+#----- Create the OCR C file
+python ./bintree_forkjoin.py > /dev/null
+#python ./bintree_forkjoin.py
+if [ ! -s "z_bintree_forkjoin.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+##----- Compile and run
+rm -f z_output
+#OCR_TYPE=x86-mpi make run | grep "TESTIO>" > z_output
+CONFIG_FLAGS=--guid=COUNTED_MAP OCR_TYPE=x86-mpi make run | grep "TESTIO>" > z_output
+#CONFIG_FLAGS=--guid=COUNTED_MAP OCR_TYPE=x86-mpi make run > z_log
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+##----- Compare
+cat z_output | sort >z_s_output
+if [ "$(diff -w --brief z_ref_output z_s_output)" ]
+then
+echo "ERROR: Black box test failed."
+exit 50
+else
+echo "SUCCESS: Black box test passed."
+fi
+
+##----- Clean up
+rm -f z_*
+rm -rf ./build ./install ./tools
+rm -f ../../tools/*pyc
+

@@ -39,6 +39,7 @@ fi
 
 #----- Clean up
 rm -f z_*
-
+rm -rf ./build ./install ./tools
+rm ../../tools/*.pyc
 
 

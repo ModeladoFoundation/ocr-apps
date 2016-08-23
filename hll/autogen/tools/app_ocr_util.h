@@ -11,6 +11,7 @@
 #define EDT_ERROR(x)  EDT_PRINTERROREXIT("ERROR", x,__LINE__,__FILE__)
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc , ocrEdtDep_t depv[]
 //-----------------------------------------------------------------------------
+#define STRINGIZE(x) (#x)
 
 //-----------------------------------------------------------------------------
 //The input parameter x must be a sized array.

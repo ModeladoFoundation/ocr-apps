@@ -194,6 +194,19 @@ class Globals:
 
         self.use_verbose_way_to_eventsText = False
 
+        self.use_old_sizeName = False # Set to True: When creating a DBK, its byte size will be printed out
+                                      #              using self.text_for_sizeName() + '*sizeof(' + self.type + ')'
+                                      # Otherwise:  The value of ocrDataBlock.count has been overloaded as follows:
+                                      #                 if isinstance(self.count, int):
+                                      #                     bytesize = str(self.count) + '*sizeof(' + self.type + ')'
+                                      #                 elif isinstance(self.count, str):
+                                      #                     bytesize = self.count
+                                      #             When count is a string, the text for bytsize is to be provided
+                                      #             directly by the user.
+
+        self.insert_debug_code = 0  # IF set to a non-zero non-negative integer, debug code will be inserted in order
+                                    # to hopefully help with debugging.
+
 GBL = Globals()
 # ------------------------------------------------------------------------------
 def makeGuidTemplateName(in_name):
@@ -231,8 +244,8 @@ def makeNameTask(in_name):
 def makeEdgeName(in_G, in_edgeTuple):
     # in_edgeTuple = edge where edge is (nodeA,nodeB) and node(A|B) are node numbers.
     if GBL.use_long_edge_name:
-        n0 = getMyTask(in_G, in_edgeTuple[0])['aname']
-        n1 = getMyTask(in_G, in_edgeTuple[1])['aname']
+        n0 = getMyTask(in_G, in_edgeTuple[0]).aname
+        n1 = getMyTask(in_G, in_edgeTuple[1]).aname
         t = 'E'+ n0 +'_'+ n1
     else:
         t = 'E'+str(in_edgeTuple[0]) +'_'+ str(in_edgeTuple[1])
@@ -272,7 +285,7 @@ def makeOutDerefsName(in_G, in_edgeTuple):
 # ------------------------------------------------------------------------------
 class contextedGuid:
     def __init__(self, in_structName, in_guidName, in_ocrObjectEnumText):
-        self.structName = in_structName # Leave in_structName as an empty string is the guid is not part of a C struct.
+        self.structName = in_structName # Leave in_structName as an empty string if the guid is not part of a C struct.
         self.guidName = in_guidName
         self.ocrType = in_ocrObjectEnumText
         if ocrObjectEnum_is_bad(self.ocrType):
@@ -314,7 +327,12 @@ class ocrDataBlock:
                                 # NOTE: The name 'NULL_GUID' is reserved to indicate a pure virtual
                                 #      data block which can be used to satisfy an event,
                                 #      i.e. ocrEventSatisfy
-        self.count        = '0'  # Text of the number of elements of type T in the data block
+        self.count        = 0  # If it is an integer >=0,
+                               #    the number of bytes used in ocrDbCreate will be str(self.count) * sizeof(self.type)
+                               # If it is a text string, i.e. Python type str, then that provided string
+                               #    will be used as-is
+                               # If count is set to a negative integer, then data block creation will be omitted
+                               #    entirely and will be the responsibility of the user.
         self.type         = 'char' # text string of the Type T of the elements in the block
         self.flags        = 'DB_PROP_NONE'
         self.hint         = 'NULL_HINT'
@@ -329,6 +347,11 @@ class ocrDataBlock:
                              # code to be placed in close proximity to self.localname.  For example, it can
                              # further help with the unpacking of the DBK.
 
+        self.delayReleaseDestroy = False # This is a way to modulate the destruction/release sequence of a data
+                                         # block up until a certain pattern occured.
+                                         #2016aug16:  Used only with the FOR pattern, in order to delay
+                                         #            until after the FOR loop.
+
     def toDictio(self):
         longform = GBL.EDT_longform_print
         d = {}
@@ -340,6 +363,7 @@ class ocrDataBlock:
             d["allocator"] = self.allocator
             d["localname"] = self.localname
             d["localText"] = self.localText
+            d["delayReleaseDestroy"] = self.delayReleaseDestroy
         d["name"] = self.name
         d["flight"] = self.flight
         return d
@@ -350,10 +374,10 @@ class ocrDataBlock:
         return self.localText
 
     def text_for_sizeName(self):
-        t = 'ocrItemCount_' + self.name
+        t = 'OA_Count_' + self.name
         return t
 
-    def text_for_ocrDbCreate(self, in_tab, in_True_to_use_sizeName):
+    def text_for_ocrDbCreate(self, in_tab, in_True_to_use_old_sizeName):
         if self.name == 'NULL_GUID':
             t = in_tab + '//Skipping creation of a NULL_GUID data block.'
             return t
@@ -364,18 +388,47 @@ class ocrDataBlock:
         if len(self.localname) >0:
             db_name = self.localname
 
-        t  = in_tab+ 'ocrGuid_t '+ gd_name +'= NULL_GUID;\n'
-        t += in_tab+ self.type +' * '+ db_name +'=NULL;\n'
+        if isinstance(self.count, int) and self.count < 0:
+            t = in_tab + '//Creating for data block "" is the user\'s responsibility.'
+            t = in_tab + 'ocrGuid_t ' + gd_name + '= NULL_GUID;\n'
+            t += in_tab + self.type + ' * ' + db_name + '=NULL;\n'
+            return t
 
-        t += in_tab+ 'err = ocrDbCreate( &' + gd_name +', (void**)&'+ db_name
-        if in_True_to_use_sizeName:
-            t += ', ' + self.text_for_sizeName() + '*sizeof(' + self.type + ')'
+        t = in_tab + 'ocrGuid_t ' + gd_name + '= NULL_GUID;\n'
+        t += in_tab + self.type + ' * ' + db_name + '=NULL;\n'
+
+        t += in_tab + 'err = ocrDbCreate( &' + gd_name + ', (void**)&'+ db_name
+
+        bytesize = ""
+        if in_True_to_use_old_sizeName:
+            bytesize = self.text_for_sizeName() + '*sizeof(' + self.type + ')'
         else:
-            t += ', ' + str(self.count) + '*sizeof(' + self.type + ')'
-        t += ', '+ self.flags
-        t += ', '+ self.hint # This should be NULL_HINT as it is not in current use (2016May5)
-        t += ', '+ self.allocator +'); IFEB;\n'
+            if isinstance(self.count, int):
+                bytesize = str(self.count) + '*sizeof(' + self.type + ')'
+            elif isinstance(self.count, str):
+                bytesize = self.count
+            else:
+                bytesize = 'ERROR type unknown'
+
+        t += ', ' + bytesize
+        t += ', ' + self.flags
+        t += ', ' + self.hint # This should be NULL_HINT as it is not in current use (2016May5)
+        t += ', ' + self.allocator +'); IFEB;\n'
+
         return t
+
+    def dbg_text_for_ocrDbCreate(self, in_tab, io_file):
+        if not GBL.insert_debug_code:
+            return
+        gd_name = makeGuidDataBlockname(self.name)
+        if self.name == 'NULL_GUID':
+            gd_name = '0g'
+        t = in_tab + 'PRINTF("OA_DBG> TaskTYPE=%d TaskID="GUIDF" DBKCreate Dguid="GUIDF" Dname=%s'
+        t += '\\n'
+        t += '", OA_edtTypeNb, GUIDA(OA_DBG_thisEDT), GUIDA('
+        t += gd_name + '), STRINGIZE(' + self.name + '));'
+        io_file.write(t)
+
 # ------------------------------------------------------------------------------
 class ocrEdtTemplate:
     def __init__(self):
@@ -405,7 +458,6 @@ class ocrEdt:
         #     or by the user (a non-zero integer).
         #     These values will be used for the creation of this Edt's template
         #     and for slot accounting.
-        self.itsTemplateGuid = GBL.genAUTO
         self.paramc         = GBL.genAUTO   # The choices are: an non-negative integer or GBL.genAUTO
         self.paramv         = GBL.genAUTO
         self.depc           = GBL.genAUTO   # The choices are: an non-negative integer or GBL.genAUTO
@@ -418,8 +470,6 @@ class ocrEdt:
         longform = GBL.EDT_longform_print
         d={}
         d["aname"]           = self.aname
-        if longform:
-            d["itsTemplateGuid"] = self.itsTemplateGuid
         d["paramc"]          = self.paramc
         d["paramv"]          = self.paramv
         d["depc"]            = self.depc
@@ -445,6 +495,16 @@ class ocrEdt:
         t += ', '+ self.outputEvent
         t += '); IFEB;\n'
         return t
+
+    def dbg_text_for_ocrEdtCreate(self, in_tab, io_file):
+        if not GBL.insert_debug_code:
+            return
+        ga_name = makeGuidEdtname(self.aname)
+        t = in_tab + 'PRINTF("OA_DBG> TaskTYPE=%d TaskID="GUIDF" EDTCreate slots=%d  Tguid="GUIDF"  Tname=%s\\n"'
+        t += ', OA_edtTypeNb, GUIDA(OA_DBG_thisEDT), ' + str(self.depc) + ', GUIDA('
+        t += ga_name + '), STRINGIZE(' + self.aname + '));'
+        io_file.write(t)
+
 # ------------------------------------------------------------------------------
 class ocrEvent:
     def __init__(self):
@@ -457,6 +517,8 @@ class ocrEvent:
 
         #For ocrEventSatisfySlot & ocrAddDependence
         self.calculatedSlot = GBL.notaSlot
+
+        self.user_slotnb_text = ""  # This is the user provided text which would replace self.calculatedSlot
 
         #For ocrEventSatisfySlot
         self.satisfy ="" # If len(self.satisfy)==0 --> No need for an ocrEventSatisfy statement
@@ -484,6 +546,7 @@ class ocrEvent:
         d["eflag"] = self.eflag
         d["accessMode"] = self.accessMode
         d["calculatedSlot"] = self.calculatedSlot
+        d["user_slotnb_text"] = self.user_slotnb_text
         d["satisfy"] = self.satisfy
         d["fertile"] = self.fertile
         d["isTheLead"] = self.isTheLead
@@ -501,7 +564,10 @@ class ocrEvent:
     def text_for_ocrAddDependence(self, in_tab, in_sourceEventGuidName, in_targetEdtGuidName):
         t = in_tab + 'err = ocrAddDependence( ' + in_sourceEventGuidName
         t += ', ' + in_targetEdtGuidName
-        t += ', ' + str(self.calculatedSlot)
+        slottext = str(self.calculatedSlot)
+        if not self.user_slotnb_text == "":
+            slottext = self.user_slotnb_text
+        t += ', ' + slottext
         t += ', ' + self.accessMode + '); IFEB;\n'
         return t
 
@@ -521,8 +587,26 @@ class ocrEvent:
     def text_for_ocrHookUp(self, in_tab, in_targetEdtGuidName, in_dataGuid):
         t = in_tab
         t += 'err = ocrXHookup(' + self.etype + ', ' + self.eflag + ', ' + in_targetEdtGuidName + ', '
-        t += str(self.calculatedSlot) + ', ' + self.accessMode + ', ' + in_dataGuid + '); IFEB;'
+        slottext = str(self.calculatedSlot)
+        if not self.user_slotnb_text == "":
+            slottext = self.user_slotnb_text
+        t += slottext + ', ' + self.accessMode + ', ' + in_dataGuid + '); IFEB;\n'
         return t
+
+    def dbg_text_for_ocrHookUp(self, in_tab, in_targetEdtGuidName, in_targetEdtName, in_dataGuid, in_dataID, io_file):
+        if not GBL.insert_debug_code:
+            return
+        slottext = str(self.calculatedSlot)
+        if not self.user_slotnb_text == "":
+            slottext = self.user_slotnb_text
+
+        t = in_tab
+        t += 'PRINTF("OA_DBG> TaskTYPE=%d TaskID="GUIDF" HOOKUP Tguid="GUIDF" Tname=%s Dguid="GUIDF" Dname=%s  slot=%d\\n"'
+        t += ', OA_edtTypeNb, GUIDA(OA_DBG_thisEDT), GUIDA('
+        t += in_targetEdtGuidName + '), STRINGIZE(' + in_targetEdtName + ')'
+        t += ', GUIDA(' + in_dataGuid + '), STRINGIZE(' + in_dataID + '), ' + slottext
+        t += ');\n'
+        io_file.write(t)
 
 # ------------------------------------------------------------------------------
 def errmsg(in_erri, in_text=""):
@@ -563,6 +647,9 @@ def getNodebyitsName(in_G, in_name):
     else:
         return GBL.NOTA_NODE_ID
 # ------------------------------------------------------------------------------
+def getNodeNamebyitsNumber(in_G, in_nodeNumber):
+    return getMyTask(in_G, in_nodeNumber).aname
+# ------------------------------------------------------------------------------
 def getNodeparents(io_G,in_nodeNumber):
     return io_G.node[in_nodeNumber]["parents"]
 # ------------------------------------------------------------------------------
@@ -589,6 +676,12 @@ def addCustomText(io_G, in_nodeNumber, in_text):
 # ------------------------------------------------------------------------------
 def getCustomTexts(io_G, in_nodeNumber):
     return getNode(io_G, in_nodeNumber)["customerText"]
+# ------------------------------------------------------------------------------
+def addFORconditionText(io_G, in_nodeNumber, in_text):
+    getNode(io_G, in_nodeNumber)["FORconditionText"] = in_text
+# ------------------------------------------------------------------------------
+def getFORconditionText(io_G, in_nodeNumber):
+    return getNode(io_G, in_nodeNumber)["FORconditionText"]
 # ------------------------------------------------------------------------------
 def addIFconditionText(io_G, in_nodeNumber, in_text):
     getNode(io_G, in_nodeNumber)["IFconditionText"] = in_text
@@ -622,9 +715,17 @@ def graphAddNode(io_G,in_nodeNumber, in_nodename):
         getNode(io_G, in_nodeNumber)["customerText"] = []  # This is the text line given by the customer/programmer
                                                            # will be added.  They usually are for code.
 
+        getNode(io_G, in_nodeNumber)["FORconditionText"] = ""  # - If not empty, the EDT is a FOR pattern; otherwise not.
+                                                               # - It is mutually exclusive with a IF-THEN-ELSE pattern
+                                                               # - The test must follow the following format:
+                                                               #        for(<init>; <condition>; <increment>)
+                                                               #    = It is the same format as the C equivalent IF statement.
+                                                               #    = The parenthesis are required, as is the for.
+
         getNode(io_G, in_nodeNumber)["IFconditionText"] = ""  # - If not empty, this indicates that this nodes if the THEN
                                                               # part of the IF-THEN-ELSE pattern.
-                                                              # - For the ELSe part, see leads_to_ElseClause on the edges.
+                                                              # - It is mutually exclusive with a FOR pattern
+                                                              # - For the ELSE part, see leads_to_ElseClause on the edges.
                                                               # - This text will literally use as follows:
                                                               #         if( IFconditionText ){
                                                               #             MyTask  # From getMyTask
@@ -760,7 +861,7 @@ def printGraph(in_G):
             print(tab2),
             print(attributes)
 
-            mytask = getMyTask(in_G,n)
+            mytask = getMyTask(in_G, n)
             print(tab2 +"EDT:"+ str(hex(id(mytask))) ),
             print(mytask.toDictio())
 
@@ -807,6 +908,24 @@ def printGraph(in_G):
 def outputDot(in_G, in_filename):
     whereAmI()
 
+    edgeStyleList = []
+    edgeStyleList.append(' style=dashed,color=black')
+    edgeStyleList.append(' style=dotted,color=black')
+    edgeStyleList.append(' style=bold,color=black')
+    edgeStyleList.append(' style=dashed,color=red')
+    edgeStyleList.append(' style=dotted,color=red')
+    edgeStyleList.append(' style=bold,color=red')
+    edgeStyleList.append(' style=dashed,color=green')
+    edgeStyleList.append(' style=dotted,color=green')
+    edgeStyleList.append(' style=bold,color=green')
+    edgeStyleList.append(' style=dashed,color=blue')
+    edgeStyleList.append(' style=dotted,color=blue')
+    edgeStyleList.append(' style=bold,color=blue')
+    edgeStyleList.append(' style=dashed,color=orange')
+    edgeStyleList.append(' style=dotted,color=orange')
+    edgeStyleList.append(' style=bold,color=orange')
+    sz_edgeStyleList = len(edgeStyleList)
+
     tab = GBL.TABunit
     fo = -1
     erri = 0
@@ -822,22 +941,52 @@ def outputDot(in_G, in_filename):
             break
 
         for n in in_G.nodes():
-            fo.write(tab + '"' + getMyTask(in_G,n).aname + '"')
+            fo.write(tab + '"' + getMyTask(in_G, n).aname + '"')
             fo.write(' [idnb=' + str(n) + '];\n')
 
         if len(in_G.edges()) == 0:
             break
 
+        sharedEvt = {}
+        styleDex = -1
+        for e in in_G.edges():
+            if len(sharedConx(in_G, e)) == 0:
+                continue
+            n = e[1]
+            shared_conx = ()
+            for cx in sharedConx(in_G, e):
+                if n == cx[1]:
+                    shared_conx = cx  # So the current edge shares the connection cx
+                    break
+            if shared_conx == ():
+                continue
+            #print('DBG901..............> ' + str(e) + '  ' + str(shared_conx))
+            styleDex += 1
+            styleDex %= sz_edgeStyleList
+            sharedEvt[e] = edgeStyleList[styleDex]
+            sharedEvt[cx] = edgeStyleList[styleDex]
+
         for e in in_G.edges():
             events = getEvents(in_G,e)
             is_elseClause = getEdge(in_G,e)["leads_to_ElseClause"]
             for name, evt in events.iteritems():
-                From = getMyTask(in_G,e[0]).aname
-                To   = getMyTask(in_G,e[1]).aname
+                From = getMyTask(in_G, e[0]).aname
+                To   = getMyTask(in_G, e[1]).aname
                 nom = name
+                if nom == 'NULL_GUID':
+                    nom = '0G'
                 if is_elseClause:
                     nom = 'ELSEclause'
-                fo.write(tab + '"' + From + '" -> "' + To + '" [ label="'+ nom + '"];\n')
+
+                style = ""
+                if e in sharedEvt:
+                    style = sharedEvt[e]
+                if not style == "":
+                    style = ',' + style
+
+                etxt = tab + '"' + From + '" -> "' + To
+                etxt += '" [ label="' + nom + '"' + style + '];\n'
+                fo.write(etxt)
 
         break
     if not fo == -1:
@@ -923,6 +1072,24 @@ def check_for_cycles(io_G):
         break # while not erri:
     return erri
 # ------------------------------------------------------------------------------
+def check_for_FOR_and_IFTHEN_mutual_exclusion(io_G):
+    erri=0
+    while not erri:
+        if len(io_G.nodes()) == 0: break
+
+        for n in io_G.nodes():
+            forpart = getFORconditionText(io_G, n)
+            ifpart  = getIFconditionText(io_G, n)
+
+            if len(forpart) and len(ifpart):
+                erri = inspect.currentframe().f_lineno
+                errmsg(erri, 'EDT "' + getMyTask(io_G, n).aname + '" cannot host both a IF-THEN-ELSE pattern and a FOR pattern.\n')
+
+        if erri: break
+
+        break # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
 def check_flight_enum(in_G):
     whereAmI()
     erri=0
@@ -965,7 +1132,8 @@ def check_datablock_access_code(in_G):
                     edghex = hex(id(evt))
                     if not isa_DBK_access_code(evt.accessMode):
                         erri = inspect.currentframe().f_lineno
-                        t = 'Edge ' + edg + ' ' + edghex + ' has an invalid access code: ' + evt.accessMode +'\n'
+                        t = 'Edge ' + str(edg) + ' ' + str(edghex) + ' has an invalid access code: '
+                        t += str(evt.accessMode) +'\n'
                         errmsg(erri, t)
                         break
 
@@ -1007,7 +1175,7 @@ def check_datablock_integrity(in_G):
                     if not count == 1:
                         if count == 0:
                             erri = inspect.currentframe().f_lineno
-                            t = 'DBK "' + evtName + '" on Edge ' + edg + ' ' + edghex
+                            t = 'DBK "' + evtName + '" on Edge ' + str(edg) + ' ' + edghex
                             t += ' has no flight data in the receiving EDT.\n'
                             errmsg(erri, t)
                             break
@@ -1027,12 +1195,12 @@ def check_datablock_integrity(in_G):
                                 #                      the landing DBK will have its name-mangled
                                 #                      upon entry.  Thus the flTAKEOFF DBK can take
                                 #                      that name without worrying about name collision.
-                                t = 'DBK "' + evtName + '" in EDT called "' + getMyTask(in_G,n).aname + '"'
+                                t = 'DBK "' + evtName + '" in EDT called "' + getMyTask(in_G, n).aname + '"'
                                 t += ' both LANDs and TAKEOFFs. Exception made.\n'
                                 warnmsg(inspect.currentframe().f_lineno, t)
                             else:
                                 erri = inspect.currentframe().f_lineno
-                                t = 'DBK "' + evtName + '" in EDT called "' + getMyTask(in_G,n).aname + '"'
+                                t = 'DBK "' + evtName + '" in EDT called "' + getMyTask(in_G, n).aname + '"'
                                 t += ' must be unique with the EDT. So only one DBK can be called by that name.\n'
                                 errmsg(erri, t)
                                 break
@@ -1191,8 +1359,8 @@ def init_slotCounts_for_param(io_G):
         if len(io_G.nodes())==0: break;
 
         for n in io_G.nodes():
-            getMyTask(io_G,n).paramc = 0
-            getMyTask(io_G,n).paramv = 'NULL'
+            getMyTask(io_G, n).paramc = 0
+            getMyTask(io_G, n).paramv = 'NULL'
 
         break # while not erri:
     return erri
@@ -1419,7 +1587,11 @@ def validate_IFthenELSE(io_G):
     return erri
 # ------------------------------------------------------------------------------
 #NOTE: For ELSE edt, because they do not have explicit literals nor dereferentiables (they are handled by the IF edt),
-#      shared connections cannot be put on ELSE EDTs.
+#      shared connections cannot be put on ELSE EDTs.  <-- Not sure. See Note 2016Aug17
+#   2016Aug17: When implementing  binaryTree_forkjoin, I had an IF-THEN edt and a ELSE edt both emitting a DBK
+#              to the same other edt BtJoin.  Autogen saw that has two separate inputs; when in fact it was only one.
+#              So I used a shared connection to tell Autogen that both the IF-THEN and its ELSe are sharing the input
+#              into the BtJoin edt.
 def check_shared_connections(in_G):
     erri=0
     while not erri:
@@ -1449,10 +1621,29 @@ def check_shared_connections(in_G):
                     errmsg(erri,t)
 
                 if not sorted(derefs) == sorted(derefsCX):
-                    erri = inspect.currentframe().f_lineno
+                    # erri = inspect.currentframe().f_lineno
+                    warni = inspect.currentframe().f_lineno
                     t = 'Edge "' + str(edg) + '" must have the same dereferentiables as its shared connection "'
                     t += str(shared_conx) + '".\n'
-                    errmsg(erri,t)
+                    # errmsg(erri,t)
+                    #2016aug17: In a join operation over binary tree, a node will emit a DBK to one or the two inputs
+                    #           it is expected.
+                    #                                   Transition1         Transition2
+                    #                                       |   |
+                    #                                       \   /
+                    #                                         B3            B4              Compactly
+                    #                                           \           /
+                    #                                            \         /                Transition
+                    #                                             \       /                  |       |
+                    #                                              \     /          -->           B    <--
+                    #                                                 B1                           |     |
+                    #                                                  |                           v     |
+                    #                                                  |                            -->--
+                    #                                                   B0
+                    #           So it can happen that although an EDT starts with 2 inputs, only only slot
+                    #           will be shared.  In the above graph, one of Transition->B3 will have to shared
+                    #           with B3->B1.
+                    warnmsg(warni,t)
 
                 if erri: break
             if erri: break  # for p in getNodeparents(in_G,n):
@@ -1621,6 +1812,8 @@ def OCRanalysis(io_G):
         if erri: break
         erri = check_for_cycles(io_G)
         if erri: break
+        erri = check_for_FOR_and_IFTHEN_mutual_exclusion(io_G)
+        if erri: break
         erri = set_parents(io_G)
         if erri: break
         erri = set_the_ELSEclause_field(io_G)  # This must be before find_IN_literals_and_dereferenceds(io_G)
@@ -1658,8 +1851,12 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
                 break
         if nodeIF == GBL.NOTA_NODE_ID:
             erri = inspect.currentframe().f_lineno
-            errmsg(erri, 'The IF clause for node "' + str(in_nodeIndex) + '" could not be found.')
+            nameELSE = getNodeNamebyitsNumber(io_G, in_nodeIndex)
+            errmsg(erri, 'The IF clause node for node "' + nameELSE + '" could not be found.')
             break
+
+        #print('DBG1722> IF= ' + getNodeNamebyitsNumber(io_G, nodeIF) + '  ELSE= ' + getNodeNamebyitsNumber(io_G, in_nodeIndex))
+        #print('DBG1722> IF= ' + str(nodeIF) + '  ELSE= ' + str(in_nodeIndex))
 
         for dbk in getDataBlocks(io_G, in_nodeIndex):
 
@@ -1669,8 +1866,11 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
                 break
 
             if dbk.name =='NULL_GUID':
-                # 'NULL_GUID' do not need to be released, nor detroyed, and they are always outgoing.
+                # 'NULL_GUID' do not need to be released, nor destroyed, and they are always outgoing.
                 continue
+
+            #print('DBG1736> ELSE DBK = ' + dbk.name)
+            #print('DBG1736> node parent of IF = ' + str(getNodeparents(io_G, nodeIF)))
 
             parentIF = GBL.NOTA_NODE_ID
             for pi in getNodeparents(io_G, nodeIF):
@@ -1691,22 +1891,28 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
                         parentIF = pi
                         break
             if parentIF == GBL.NOTA_NODE_ID:
-                erri = inspect.currentframe().f_lineno
-                t = 'The DBK "' + dbk.name + '" of node "' + str(in_nodeIndex) + '"  could not be found among its IF '
-                t += 'clause EDT (node="' + str(nodeIF) + '")'
-                errmsg(erri, t)
+                name_fromIndex = getNodeNamebyitsNumber(io_G, in_nodeIndex)
+                nameIF = getNodeNamebyitsNumber(io_G, nodeIF)
+                t = 'The DBK "' + dbk.name + '" of node "' + name_fromIndex + '"  could not be found among its IF '
+                t += 'clause EDT (node="' + nameIF + '")'
+                warni = inspect.currentframe().f_lineno
+                warnmsg(warni, t)
                 break
 
             edgIF = (parentIF, nodeIF)
             edgName = makeInDerefsName(io_G, edgIF)
             drname = edgName + '_' + makeEdtDepName(dbk.name)
 
-            if dbk.flight in ['flPASSTRU', 'flTAGO', 'flTAKEOFF']:
+            if dbk.flight in ['flPASSTRU', 'flTAGO']:
                 addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                 addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname+'.guid'))
 
             if dbk.flight in ['flLANDING', 'flHOP']:
                 addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+
+            if dbk.flight in ['flTAKEOFF']:
+                # This will be handle directly in release_and_destroy_DBKs
+                pass
         if erri: break
 
         debug = False
@@ -1779,6 +1985,7 @@ def find_destroy_outgoing_release(io_G, in_nodeIndex):
                                 addToOutgoing(io_G, in_nodeIndex, (lit, litName))
 
             if len(derefs) > 0:
+                # NOTE: flTAKEOFF are taken care directly in release_and_destroy_DBKs
                 edgName = makeInDerefsName(io_G, edg)
                 for k, deref in enumerate(derefs):
                     drname = edgName + '_' + makeEdtDepName(deref)
@@ -1808,9 +2015,9 @@ def find_destroy_outgoing_release(io_G, in_nodeIndex):
 
     return erri
 # ------------------------------------------------------------------------------
-def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
+def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file, io_delayed_releaseDestroy):
     whereAmI()
-    #print('DBG1800> node=' + str(in_nodeIndex) )
+    #print('DBG1885> node=' + str(in_nodeIndex) )
     tab2 = in_tab + GBL.TABunit
     erri = 0
     while not erri:
@@ -1820,7 +2027,7 @@ def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
             edg = (p, in_nodeIndex)
             lits   = literals(io_G, edg)
             derefs = dereferenciables(io_G, edg)
-            # print('Ein  '+ str(edg) +'  '+ str(lits) +'  '+ str(derefs))
+            #print('DBG1895> Ein  '+ str(edg) +'  '+ str(lits) +'  '+ str(derefs))
 
             is_shared = False
             for cx in sharedConx(io_G, edg):
@@ -1853,6 +2060,8 @@ def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
                     for dbk in getDataBlocks(io_G, in_nodeIndex):
                         if not dbk.name == deref:
                             continue
+                        if dbk.delayReleaseDestroy:
+                            io_delayed_releaseDestroy.append(drname)
                         if dbk.flight == 'flLANDING':
                             if len(dbk.localname) > 0:
                                 text = in_tab + dbk.type + ' * ' + dbk.localname + ' = ' + drname + '.ptr;\n'
@@ -1874,6 +2083,9 @@ def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
 
         if erri: break  # for p in getNodeparents(in_G,n):
 
+        #print('DBG1951> '),
+        #print(io_delayed_releaseDestroy)
+
         io_file.write('\n')
 
         break  # while not erri:
@@ -1881,6 +2093,8 @@ def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file):
     return erri
 # ------------------------------------------------------------------------------
 def create_dataBlocks(in_G, in_nodeIndex, in_tab, io_file):
+    use_old_sizeName = GBL.use_old_sizeName
+
     erri = 0
     while not erri:
         if len(in_G.nodes()) == 0:
@@ -1889,21 +2103,24 @@ def create_dataBlocks(in_G, in_nodeIndex, in_tab, io_file):
         if len(getDataBlocks(in_G, in_nodeIndex)) == 0:
             break
         io_file.write(in_tab + '//----- Create_dataBlocks\n')
+        if True:  # use_old_sizeName:  # Change to True as some application will need explicit counts.
+            for dbk in getDataBlocks(in_G, in_nodeIndex):
+                if dbk.name == 'NULL_GUID':
+                    continue
+                if not dbk.flight in ['flTAKEOFF', 'flHOP']:
+                    continue
+                t = in_tab + 'const u64 ' + dbk.text_for_sizeName() + ' = ' + str(dbk.count) + ';\n'
+                io_file.write(t)
+            io_file.write('\n')
         for dbk in getDataBlocks(in_G, in_nodeIndex):
             if dbk.name == 'NULL_GUID':
                 continue
             if not dbk.flight in ['flTAKEOFF', 'flHOP']:
                 continue
-            t = in_tab + 'u64 ' + dbk.text_for_sizeName() + ' = ' + str(dbk.count) + ';\n'
+            t = dbk.text_for_ocrDbCreate(in_tab, use_old_sizeName)
             io_file.write(t)
-        io_file.write('\n')
-        for dbk in getDataBlocks(in_G, in_nodeIndex):
-            if dbk.name == 'NULL_GUID':
-                continue
-            if not dbk.flight in ['flTAKEOFF', 'flHOP']:
-                continue
-            t = dbk.text_for_ocrDbCreate(in_tab, True)
-            io_file.write(t)
+            dbk.dbg_text_for_ocrDbCreate(in_tab, io_file)
+
         io_file.write('\n')
 
         break  # while not erri
@@ -1940,14 +2157,16 @@ def write_children_EDT(in_G, in_nodeIndex, in_tab, io_file):
                     createThechild = True
                     break
             if createThechild:
-                t = getMyTask(in_G,b).text_for_ocrEdtCreate(in_tab)
+                t = getMyTask(in_G, b).text_for_ocrEdtCreate(in_tab)
                 io_file.write(t)
+                getMyTask(in_G, b).dbg_text_for_ocrEdtCreate(in_tab, io_file)
 
         edts = getEdts(in_G, in_nodeIndex)
         for edt in edts:
             if isinstance(edt, ocrEdt):
                 t = edt.text_for_ocrEdtCreate(in_tab)
                 io_file.write(t)
+                edt.dbg_text_for_ocrEdtCreate(in_tab, io_file)
             elif isinstance(edt,str):
                 nodn = getNodebyitsName(in_G, edt)
                 if nodn == GBL.NOTA_NODE_ID:
@@ -1956,6 +2175,7 @@ def write_children_EDT(in_G, in_nodeIndex, in_tab, io_file):
                 else:
                     childedt = getMyTask(in_G, nodn)
                     t = childedt.text_for_ocrEdtCreate(in_tab)
+                    childedt.text_for_ocrEdtCreate(in_tab, io_file)
                     io_file.write(t)
             else:
                 erri=inspect.currentframe().f_lineno
@@ -1966,7 +2186,10 @@ def write_children_EDT(in_G, in_nodeIndex, in_tab, io_file):
         break #while not erri
     return erri
 # ------------------------------------------------------------------------------
-def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
+def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file,
+                             in_delayed_releaseDestroy,  # This formed the delay set
+                             in_onlyInDelaySet):  # Set to True in order to process only the elements in the DelaySet
+                                                  # Set to False in order to process all elements NOt in the DelaySet
     whereAmI()
     debug = False
     erri = 0
@@ -2012,7 +2235,16 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
                 erri=inspect.currentframe().f_lineno
                 break
 
-            io_file.write(in_tab + 'err = '+fcn+'(' +cguid.toName()+ '); IFEB;\n')
+            if len(in_delayed_releaseDestroy):
+                x_name = cguid.toName()
+                if x_name in in_delayed_releaseDestroy:
+                    if not in_onlyInDelaySet:
+                        continue
+                else:
+                    if in_onlyInDelaySet:
+                        continue
+
+            io_file.write(in_tab + 'err = '+ fcn + '(' + cguid.toName() + '); IFEB;\n')
         if erri: break
 
         if debug:
@@ -2023,12 +2255,36 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file):
             print(getReleases(in_G, in_nodeIndex))
 
         # Destruction for blocks
-        for dtor in getDestroys(in_G, in_nodeIndex):
-            t = dtor.getDestroyText()
+        for roy in getDestroys(in_G, in_nodeIndex):
+            if len(in_delayed_releaseDestroy):
+                x_name = roy.toName()
+                y_name = x_name.split('.')[0]  #2016aug16: I found out that the name in 'x_name' is actually a compound name
+                                               #           of  the form abcdef.guid.  So I could not match names to this
+                                               #           because of the '.guid' part.
+                                               # TODO: When doing ocrDestroy, find a nice way to label the guid name
+                if y_name in in_delayed_releaseDestroy:
+                    if not in_onlyInDelaySet:
+                        continue
+                else:
+                    if in_onlyInDelaySet:
+                        continue
+            t = roy.getDestroyText()
             io_file.write(in_tab + t + '\n')
 
         # Release of dereferenced data blocks
         for rel in getReleases(in_G, in_nodeIndex):
+            if len(in_delayed_releaseDestroy):
+                x_name = rel.toName()
+                y_name = x_name.split('.')[0]   #2016aug16: I found out that the name in 'x_name' is actually a compound name
+                                                #           of  the form abcdef.guid.  So I could not match names to this
+                                                #           because of the '.guid' part.
+                                                # TODO: When doing ocrDestroy, find a nice way to label the guid name
+                if y_name in in_delayed_releaseDestroy:
+                    if not in_onlyInDelaySet:
+                        continue
+                else:
+                    if in_onlyInDelaySet:
+                        continue
             t = rel.getReleaseText()
             io_file.write(in_tab + t + '\n')
 
@@ -2157,6 +2413,7 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
                     else:
                         t = evt.text_for_ocrHookUp(in_tab, targetEdtGuid, guidName)
                         io_file.write(t)
+                        evt.dbg_text_for_ocrHookUp(in_tab, targetEdtGuid, targetEdtName, guidName, dbkID, io_file)
 
                     io_file.write('\n')
                 if erri: break
@@ -2181,6 +2438,9 @@ def write_the_header(in_G, io_file):
     io_file.write("#include <ocr.h>\n")
     io_file.write('#include "' + GBL.app_ocr_util_filename +'"\n' )
 
+    if GBL.insert_debug_code:
+        io_file.write('#include <extensions/ocr-runtime-itf.h>\n')
+
     customs = getHeader(in_G)
     for aline in customs:
         io_file.write(aline + '\n')
@@ -2198,10 +2458,47 @@ def outputOCR_writeSubclause(io_G, in_nodeIndex, in_tab, io_file):
 
         write_user_section(io_G, in_nodeIndex, in_tab, io_file)
 
-        release_and_destroy_DBKs(io_G, in_nodeIndex, in_tab, io_file)
+        empty_delay = []
+        release_and_destroy_DBKs(io_G, in_nodeIndex, in_tab, io_file, empty_delay, False)
 
         erri = write_events2children_EDT(io_G, in_nodeIndex, in_tab, io_file)
         if erri: break
+
+        if in_nodeIndex == GBL.FINALNODE:
+            write_finalEDT(io_G, in_tab, io_file)
+            if erri: break
+
+        break  # while not erri
+    return erri
+
+# ------------------------------------------------------------------------------
+def outputOCR_writeFOR_Subclause(io_G, in_nodeIndex, in_tab, io_file, in_delayed_releaseDestroy):
+    tab2 = in_tab + GBL.TABunit
+    erri = 0
+    while not erri:
+        #print('DBG2306--->'),
+        #print(in_delayed_releaseDestroy)
+        forclause = getFORconditionText(io_G, in_nodeIndex)
+
+        fortext = forclause + '{\n'
+        io_file.write(in_tab + fortext)
+
+        erri = create_dataBlocks(io_G, in_nodeIndex, tab2, io_file)
+        if erri: break
+
+        erri = write_children_EDT(io_G, in_nodeIndex, tab2, io_file)
+        if erri: break
+
+        write_user_section(io_G, in_nodeIndex, tab2, io_file)
+
+        release_and_destroy_DBKs(io_G, in_nodeIndex, tab2, io_file, in_delayed_releaseDestroy, False)
+
+        erri = write_events2children_EDT(io_G, in_nodeIndex, tab2, io_file)
+        if erri: break
+
+        io_file.write(in_tab + '}; IFEB;\n')
+
+        release_and_destroy_DBKs(io_G, in_nodeIndex, in_tab, io_file, in_delayed_releaseDestroy, True)
 
         if in_nodeIndex == GBL.FINALNODE:
             write_finalEDT(io_G, in_tab, io_file)
@@ -2218,11 +2515,19 @@ def outputOCR_writeEDT(io_G, in_nodeIndex, in_tab, io_file):
         if in_nodeIndex == GBL.MAINNODE:
             pass
 
-        erri = setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file)
+        delayed_releaseDestroy = []
+        erri = setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file, delayed_releaseDestroy)
         if erri: break
 
+        #print('DBG2363> '),
+        #print(delayed_releaseDestroy)
+
         if len(getIFconditionText(io_G, in_nodeIndex)) == 0:
-            erri = outputOCR_writeSubclause(io_G, in_nodeIndex, in_tab, io_file)
+            forclause = getFORconditionText(io_G, in_nodeIndex)
+            if len(forclause):
+                erri = outputOCR_writeFOR_Subclause(io_G, in_nodeIndex, in_tab, io_file, delayed_releaseDestroy)
+            else:
+                erri = outputOCR_writeSubclause(io_G, in_nodeIndex, in_tab, io_file)
             if erri: break
         else:
             io_file.write(in_tab + 'if( ')
@@ -2282,6 +2587,16 @@ def outputOCR(in_G, in_filename):
             fo.write("ocrGuid_t " + name + "(EDT_ARGS);\n")
         fo.write("\n")
 
+        if GBL.insert_debug_code:
+            t = 'void OA_DBG_task_type_name(){\n'
+            fo.write(t)
+            for n in in_G.nodes():
+                tname = getMyTask(in_G, n).aname
+                ttype = str(n)
+                t = tab + 'PRINTF("OA_DBG_PRECOND> Ttype=%d Tname=%s\\n",' + ttype + ', "' + tname + '");\n'
+                fo.write(t)
+            fo.write('}\n\n')
+
         # ----- Write the EDTs
         for n in in_G.nodes():
             #print('DBG2265> ====== node = ' + str(n))
@@ -2307,14 +2622,26 @@ def outputOCR(in_G, in_filename):
                                                      # corresponding IFconditionText & THEN node.
                 continue
             # ----- start of the task
-            name = getMyTask(in_G,n).aname
+            name = getMyTask(in_G, n).aname
             fo.write("ocrGuid_t " + name + "(EDT_ARGS)\n")
             fo.write("{\n")
 
             t = tab + 'typedef enum ocr_constants {\n'
-            t += tab2 + 'edtTypeNb = ' + str(n) + '\n'
+            t += tab2 + 'OA_edtTypeNb = ' + str(n) + '\n'
             t += tab + '} ocr_constants_t;\n'
             fo.write(t)
+
+            if n == 0 and GBL.insert_debug_code:
+                fo.write('\n' + tab + 'OA_DBG_task_type_name();\n\n')
+
+            t = tab + 'ocrGuid_t OA_DBG_thisEDT = NULL_GUID;\n'
+            fo.write(t)
+            if GBL.insert_debug_code:
+                t = tab + 'currentEdtUserGet(&OA_DBG_thisEDT);\n'
+                fo.write(t)
+                t = tab + 'PRINTF("OA_DBG> TaskTYPE=%d TaskID="GUIDF" TaskName=%s\\n", OA_edtTypeNb, GUIDA(OA_DBG_thisEDT), "'
+                t += getMyTask(in_G, n).aname + '");\n'
+                fo.write(t)
             fo.write("\n")
 
             fo.write(tab + "Err_t err=0;\n")
