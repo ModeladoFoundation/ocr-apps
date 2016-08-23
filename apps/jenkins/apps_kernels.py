@@ -169,38 +169,37 @@ job_ocr_verify_kernel_fft_tgemul = {
 
 # TG
 #
-# Disable because of time-out issues (Bug #883)
-#
-#job_ocr_build_kernel_fft_tg = {
-#    'name': 'ocr-build-kernel-fft-tg',
-#    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-#                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
-#    'jobtype': 'ocr-build-app-tg',
-#    'run-args': 'fft tg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'fft/ocr',
-#                  'WORKLOAD_ARGS': '9'}
-#}
 
-#job_ocr_run_kernel_fft_tg = {
-#    'name': 'ocr-run-kernel-fft-tg',
-#    'depends': ('ocr-build-kernel-fft-tg',),
-#    'jobtype': 'ocr-run-app-tg',
-#    'run-args': 'fft tg',
-#    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'fft/ocr',
-#              }
-#}
+job_ocr_build_kernel_fft_tg = {
+    'name': 'ocr-build-kernel-fft-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'fft tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'fft/ocr',
+                  'WORKLOAD_ARGS': '9'}
+}
 
-#job_ocr_verify_kernel_fft_tg = {
-#    'name': 'ocr-verify-kernel-fft-tg',
-#    'depends': ('ocr-run-kernel-fft-tg',),
-#    'jobtype': 'ocr-verify-app-remote',
-#    'run-args': '-w -c 1',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/fft/ocr/install/tg'}
-#}
+job_ocr_run_kernel_fft_tg = {
+    'name': 'ocr-run-kernel-fft-tg',
+    'depends': ('ocr-build-kernel-fft-tg',),
+    'jobtype': 'ocr-run-app-tg',
+    'run-args': 'fft tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'fft/ocr',
+              }
+}
+
+job_ocr_verify_kernel_fft_tg = {
+    'name': 'ocr-verify-kernel-fft-tg',
+    'depends': ('ocr-run-kernel-fft-tg',),
+    'jobtype': 'ocr-verify-app-remote',
+    'run-args': '-w -c 1',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/fft/ocr/install/tg'}
+}
 
 ## Cholesky
 job_ocr_build_kernel_cholesky_x86 = {
@@ -375,39 +374,37 @@ job_ocr_verify_kernel_cholesky_tgemul = {
 
 # TG
 #
-# Disable because of time-out issues (Bug #883)
-#
-#job_ocr_build_kernel_cholesky_tg = {
-#    'name': 'ocr-build-kernel-cholesky-tg',
-#    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-#                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
-#    'jobtype': 'ocr-build-app-tg',
-#    'run-args': 'cholesky tg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'cholesky/ocr',
-#                  'WORKLOAD_ARGS': '--ds 50 --ts 10 --fi ${APPS_ROOT}/cholesky/datasets/m_50.in',}
-#}
+job_ocr_build_kernel_cholesky_tg = {
+    'name': 'ocr-build-kernel-cholesky-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'cholesky tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'cholesky/ocr',
+                  'WORKLOAD_ARGS': '--ds 50 --ts 10 --fi ${APPS_ROOT}/cholesky/datasets/m_50.in',}
+}
 
-#job_ocr_run_kernel_cholesky_tg = {
-#    'name': 'ocr-run-kernel-cholesky-tg',
-#    'depends': ('ocr-build-kernel-cholesky-tg',),
-#    'jobtype': 'ocr-run-app-tg',
-#    'run-args': 'cholesky tg',
-#    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'cholesky/ocr',
-#                  'WORKLOAD_ARGS': '--ds 50 --ts 10 --fi ${APPS_ROOT}/cholesky/datasets/m_50.in',
-#              }
-#}
+job_ocr_run_kernel_cholesky_tg = {
+    'name': 'ocr-run-kernel-cholesky-tg',
+    'depends': ('ocr-build-kernel-cholesky-tg',),
+    'jobtype': 'ocr-run-app-tg',
+    'run-args': 'cholesky tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'cholesky/ocr',
+                  'WORKLOAD_ARGS': '--ds 50 --ts 10 --fi ${APPS_ROOT}/cholesky/datasets/m_50.in',
+              }
+}
 
-#job_ocr_verify_kernel_cholesky_tg = {
-#    'name': 'ocr-verify-kernel-cholesky-tg',
-#    'depends': ('ocr-run-kernel-cholesky-tg',),
-#     'jobtype': 'ocr-verify-diff',
-#     'run-args': '${WORKLOAD_EXEC}/cholesky.out.txt ${APPS_ROOT}/cholesky/datasets/cholesky_out_50.txt',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/cholesky/ocr/install/tg'}
-#}
+job_ocr_verify_kernel_cholesky_tg = {
+    'name': 'ocr-verify-kernel-cholesky-tg',
+    'depends': ('ocr-run-kernel-cholesky-tg',),
+    'jobtype': 'ocr-verify-diff',
+    'run-args': '${WORKLOAD_EXEC}/cholesky.out.txt ${APPS_ROOT}/cholesky/datasets/cholesky_out_50.txt',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/cholesky/ocr/install/tg'}
+}
 
 ## Fibonacci
 # x86
@@ -576,39 +573,37 @@ job_ocr_verify_kernel_fibonacci_tgemul = {
 }
 
 # TG
-#
-# Disable because of time-out issues (Bug #883)
-#
-#job_ocr_build_kernel_fibonacci_tg = {
-#    'name': 'ocr-build-kernel-fibonacci-tg',
-#    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-#                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
-#    'jobtype': 'ocr-build-app-tg',
-#    'run-args': 'fib tg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'WORKLOAD_ARGS': '9',
-#              }
-#}
+job_ocr_build_kernel_fibonacci_tg = {
+    'name': 'ocr-build-kernel-fibonacci-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'fib tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'fibonacci/ocr',
+                  'WORKLOAD_ARGS': '9',
+              }
+}
 
-#job_ocr_run_kernel_fibonacci_tg = {
-#    'name': 'ocr-run-kernel-fibonacci-tg',
-#    'depends': ('ocr-build-kernel-fibonacci-tg',),
-#    'jobtype': 'ocr-run-app-tg',
-#    'run-args': 'fib tg',
-#    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'fibonacci/ocr',
-#              }
-#}
+job_ocr_run_kernel_fibonacci_tg = {
+    'name': 'ocr-run-kernel-fibonacci-tg',
+    'depends': ('ocr-build-kernel-fibonacci-tg',),
+    'jobtype': 'ocr-run-app-tg',
+    'run-args': 'fib tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'fibonacci/ocr',
+              }
+}
 
-#job_ocr_verify_kernel_fibonacci_tg = {
-#    'name': 'ocr-verify-kernel-fibonacci-tg',
-#    'depends': ('ocr-run-kernel-fibonacci-tg',),
-#    'jobtype': 'ocr-verify-app-remote',
-#    'run-args': '-w -c 1',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/fibonacci/ocr/install/tg'}
-#}
+job_ocr_verify_kernel_fibonacci_tg = {
+    'name': 'ocr-verify-kernel-fibonacci-tg',
+    'depends': ('ocr-run-kernel-fibonacci-tg',),
+    'jobtype': 'ocr-verify-app-remote',
+    'run-args': '-w -c 1',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/fibonacci/ocr/install/tg'}
+}
 
 ## Smith-Waterman
 
@@ -783,40 +778,37 @@ job_ocr_verify_kernel_smithwaterman_tgemul = {
 }
 
 # TG
-#
-# Disable because of time-out issues (Bug #883)
-#
-#job_ocr_build_kernel_smithwaterman_tg = {
-#    'name': 'ocr-build-kernel-smithwaterman-tg',
-#    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-#                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
-#    'jobtype': 'ocr-build-app-tg',
-#    'run-args': 'smithwaterman tg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'smithwaterman/ocr',
-#                  'WORKLOAD_ARGS': '10 10 ${APPS_ROOT}/smithwaterman/datasets/string1-medium.txt ${APPS_ROOT}/smithwaterman/datasets/string2-medium.txt ${APPS_ROOT}/smithwaterman/datasets/score-medium.txt',
-#                }
-#}
+job_ocr_build_kernel_smithwaterman_tg = {
+    'name': 'ocr-build-kernel-smithwaterman-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'smithwaterman tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'smithwaterman/ocr',
+                  'WORKLOAD_ARGS': '10 10 ${APPS_ROOT}/smithwaterman/datasets/string1-medium.txt ${APPS_ROOT}/smithwaterman/datasets/string2-medium.txt ${APPS_ROOT}/smithwaterman/datasets/score-medium.txt',
+                }
+}
 
-#job_ocr_run_kernel_smithwaterman_tg = {
-#    'name': 'ocr-run-kernel-smithwaterman-tg',
-#    'depends': ('ocr-build-kernel-smithwaterman-tg',),
-#    'jobtype': 'ocr-run-app-tg',
-#    'run-args': 'smithwaterman tg',
-#    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'T_PATH': 'smithwaterman/ocr',
-#              }
-#}
+job_ocr_run_kernel_smithwaterman_tg = {
+    'name': 'ocr-run-kernel-smithwaterman-tg',
+    'depends': ('ocr-build-kernel-smithwaterman-tg',),
+    'jobtype': 'ocr-run-app-tg',
+    'run-args': 'smithwaterman tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'smithwaterman/ocr',
+              }
+}
 
-#job_ocr_verify_kernel_smithwaterman_tg = {
-#    'name': 'ocr-verify-kernel-smithwaterman-tg',
-#    'depends': ('ocr-run-kernel-smithwaterman-tg',),
-#    'jobtype': 'ocr-verify-app-remote',
-#    'run-args': '-w -c 1',
-#    'sandbox': ('inherit0',),
-#    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/smithwaterman/ocr/install/tg'}
-#}
+job_ocr_verify_kernel_smithwaterman_tg = {
+    'name': 'ocr-verify-kernel-smithwaterman-tg',
+    'depends': ('ocr-run-kernel-smithwaterman-tg',),
+    'jobtype': 'ocr-verify-app-remote',
+    'run-args': '-w -c 1',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/smithwaterman/ocr/install/tg'}
+}
 
 # Triangle (David Scott)
 job_ocr_build_kernel_triangle_x86 = {
