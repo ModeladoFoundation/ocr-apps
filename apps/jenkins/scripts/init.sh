@@ -4,11 +4,13 @@
 
 # Make sure the Jenkins system is fully accessible in the shared home
 # We also copy the CnC-OCR and Rose toolchains
+mkdir -p ${JJOB_SHARED_HOME}/apps/jenkins
 mkdir -p ${JJOB_SHARED_HOME}/apps/apps
 mkdir -p ${JJOB_SHARED_HOME}/apps/apps/jenkins
 mkdir -p ${JJOB_SHARED_HOME}/apps/hll/cnc
 mkdir -p ${JJOB_SHARED_HOME}/apps/hll/rose
 
+cp -r ${JJOB_PRIVATE_HOME}/apps/jenkins/* ${JJOB_SHARED_HOME}/apps/jenkins/
 cp -r ${JJOB_PRIVATE_HOME}/apps/apps/jenkins/* ${JJOB_SHARED_HOME}/apps/apps/jenkins/
 rsync -aq -r ${JJOB_PRIVATE_HOME}/apps/apps/ ${JJOB_SHARED_HOME}/apps/apps/ --exclude libs
 mkdir -p ${JJOB_SHARED_HOME}/apps/apps/libs

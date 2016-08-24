@@ -106,7 +106,7 @@ jobtype_ocr_run_app_nonregression = {
 jobtype_ocr_run_app_tg = {
     'name': 'ocr-run-app-tg',
     'isLocal': False,
-    'run-cmd': '${JJOB_SHARED_HOME}/apps/jenkins/scripts/run-non-regression.sh',
+    'run-cmd': '${JJOB_SHARED_HOME}/apps/apps/jenkins/scripts/run-non-regression.sh',
     'param-cmd': '${JJOB_INITDIR_TG}/tg/jenkins/scripts/fsim-param-cmd.sh',
     'epilogue-cmd': '${JJOB_ENVDIR}/bin/scripts/fsim-epilogue.sh',
     'keywords': ('apps', 'nonregression', 'nightly'),
