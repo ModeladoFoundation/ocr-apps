@@ -4,7 +4,7 @@
 # Possible tests:
 #  OCRcholesky OCRfib OCRprintf OCRsmith-waterman irqstress mb-printf
 #
-# Defaults to running all tests (except irqstress)
+# Defaults to running all tests (except OCRcholesky, OCRsmith-waterman, and irqstress)
 #
 # This script may optionally use env vars:
 #   TG_INSTALL - The install directory of the tg repo
@@ -17,9 +17,11 @@ source ./setup-test-env.sh
 export FSIM_EXE="fsim"
 
 # Tests to run
-TESTS="OCRcholesky OCRfib OCRprintf OCRsmith-waterman mb-printf"
+TESTS="OCRfib OCRprintf mb-printf"
 if [[ $1 == "-h" ]]; then
-  echo -e "You may specify one or more of:\n$TESTS irqstress\nDefaults to all tests"
+  echo "You may specify one or more of:"
+  echo "$TESTS OCRcholesky OCRsmith-waterman irqstress"
+  echo "Defaults to all tests except OCRcholesky OCRsmith-waterman irqstress"
   exit
 fi
 
@@ -57,6 +59,10 @@ for TEST in $TESTS; do
     mb-printf)
       export WORKLOAD_INSTALL="$TG_INSTALL/workloads/mb-printf";
       export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/mb-printf.cfg"
+      ;;
+    *)
+      echo "Invalid test name '$TEST'" 1>&2
+      continue
       ;;
   esac
 

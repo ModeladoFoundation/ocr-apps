@@ -47,6 +47,10 @@ for TEST in $TESTS; do
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/tests/rtl-asm8
       export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
       ;;
+    *)
+      echo "Invalid test name '$TEST'" 1>&2
+      continue
+      ;;
   esac
 
   # Execute the test, moving on if unsuccessful

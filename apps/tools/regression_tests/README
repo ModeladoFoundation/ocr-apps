@@ -20,7 +20,7 @@ Each test will run all of its subtests by default, but you may specify which tes
 them in as command line parameters. To see the tests available, run one of these test scripts with just
 the '-h' argument.
 
-If you want to see all of the output of fsim as it is being tested by the scripts, set the environmental
+If you want to see all of the output of fsim/gdb as it is being tested by the scripts, set the environmental
 variable VERBOSE to a non-empty string.
 
 You may also set the environmental variable TG_INSTALL to point to the location of tg/tg/install.
@@ -33,48 +33,7 @@ Building for the Tests
 The tests require a completely built tg tree (along with fsim-swtest, fsim-rtlsim, and the rtl-asm, PIE,
 and swtest tests) and requires that apps/libs, apps/legacy, and apps/examples all be built for ARCH=tg-xe.
 
---- To build the tg tools
-
-cd tg/tg
-make
-cd build/build.fsim
-make -f make-me.make install-fsim-rtlsim
-make -f make-me.make install-fsim-swtest
-
---- To build apps/libs
-
-cd apps/apps/libs/src
-make -f Makefile.core ARCH=tg-xe
-
---- To build the tg examples
-
-cd tg/tg/fsim/swtest
-make DEBUG=1 cdemo_nonewlib
-make DEBUG=1 cdemo
-make DEBUG=1 cxxdemo
-make DEBUG=1 throw
-cd ../tests/rtl-asm
-make
-cd ../rtl-asm2
-make
-cd ../rtl-asm8
-cd ../../../xe-llvm/test/PIE
-make fptr_simple
-make multi_seg
-
---- To build apps/legacy
-
-cd apps/apps/legacy/tg-xe
-make hello
-make cxxhello
-make iotest
-
---- To build apps/examples
-
-cd apps/apps/examples/printf
-make -f Makefile.tg install
-cd ../fib
-make -f Makefile.tg install
+The Makefile in this directory will automatically build all of these. Simply run the command `make'.
 
 NOTE: The cholesky and smith-waterman examples currently have faulty Makefiles. They will not
 install if you specify the install target like printf and fib. Instead you need to run them as
@@ -89,9 +48,16 @@ ${PWD}/../../../apps/smithwaterman/datasets/string1-medium.txt \
 ${PWD}/../../../apps/smithwaterman/datasets/string2-medium.txt \
 ${PWD}/../../../apps/smithwaterman/datasets/score-medium.txt
 
+The cholesky and smith-waterman tests will not be run automatically. If you have built them and want to
+run their tests, you may do so with the command:
+
+$ ./run-fsim-tests.sh OCRcholesky OCRsmith-waterman
+
 ------------------
 Creating new tests
 ------------------
+
+--- fsim
 
 To create a new fsim test, modify the appropriate run-fsim*-tests.sh file. In this file you will need
 to modify three things:
@@ -109,3 +75,61 @@ line can only be matched to one regex.
 
 If you need to inspect the output of fsim beyond what a regex can tell you, you may find it in the
 directory $LOGS_DIR under the name fsim_output.
+
+
+--- xe-gdb
+
+To create a new gdb test, you may either modify one of the existing test routines (gdb_tests/*.gdbtest) or
+you may create a new one. To create a new gdb test routine, create a gdb_tests/<test_name>.gdbtest file and
+add its name (without the extension) to the TESTS variable in run-gdb-tests.sh
+
+The gdbtest files define the input and expected output for a gdb test, and multiple tests may be added to
+the same file. The file is read line by line, expecting the following format:
+_____________________________________________________________________________
+
+"test: <test_name>"
+   This marks the start of a test. A fresh instance of gdb will be started for each test.
+
+"target: <arguments>"
+   This provides the arguments for the `target xstg' command. Environmental variables may be inserted
+   using {ENV_VAR} format (as in python str.format strings). To insert a literal `{' use `{{'.
+   Note: The referenced environmental variable must exist. It is an error otherwise.
+
+"file: <file_path>"
+   This provides the file to debug with gdb. Environmental variables may be used as in `target' above.
+
+"args: <arg1> [<arg2> ...]"
+   This provides the arguments to provide to the program gdb will be debugging. Environmental variables may
+   be used as in `target' above.
+
+"in: <gdb_command>"
+   This provides a command to gdb. If there is output from the `in' command, all of the output must be parsed
+   by the `out' commands (see below) or must be ignored by `ignore-output' (see below). If there is remaining
+   output by the time the next `in' command is reached or the test finishes, the test will fail.
+
+"out: <regex>"
+    This matches one line of output from the last `in' command to the provided regex. If the line doesn't exist
+    or doesn't match, then the test fails immediatly. The regexs used are python regexs (with no flags). Don't
+    forget to escape special characters such as *[().+ when needed.
+    Note: partial line matches are also possible. You may want to use ^ and $.
+
+"out?: <regex>"
+    The same as `out' above, except that it is not a failure if it doesn't match. If it doesn't match then it
+    simply gets skipped.
+
+"ignore-output"
+    Matches any number of output lines (even zero) regardless of content.
+    All remaining output (if any) from the previous `in' command is ignored.
+_____________________________________________________________________________
+
+Note: Lines that are blank or start with "#" are considered comments.
+
+IMPORTANT NOTE: the syntax must be exact. There must be no leading whitespace and exactly once space
+after the colon. Additional whitespace after the colon will be taken literally as part of the regex.
+The one exception to this is to provide a blank regex to match anything. (ie "out:" or "out?:")
+In this case, the space after the colon may be ommited.
+
+When writing tests, you may find that not all lines printed by GDB in interactive mode are seen by
+the test. In particular, lines having to do with resuming execution are not seen by the test, so
+attempting to match them in the output will result in a failed test. To see which lines are output
+by gdb to python, run in verbose mode.

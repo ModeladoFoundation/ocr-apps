@@ -1,0 +1,150 @@
+#=================================================================
+test: run twice
+#=================================================================
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
+
+in: run
+out: \[New thread
+#TODO what is the correct exit code?
+out: \[Inferior .* exited with code
+
+in: run
+out: \[New thread
+out: ^$
+#TODO what is the correct exit code?
+out: \[Inferior .* exited with code
+
+
+#=================================================================
+test: break, nexti, stepi and continue
+#=================================================================
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
+
+in: break __start
+out: Breakpoint 1 at 0x30000
+
+in: run
+out: \[New thread
+out: ^$
+out: Breakpoint 1, 0x0000000000030000 in __start \(\)
+
+in: stepi
+out: 0x0000000000030008 in __start \(\)
+
+in: nexti
+out: 0x0000000000030010 in __start \(\)
+
+in: break *0x30050
+out: Breakpoint 2 at 0x30050
+
+in: continue
+out: ^$
+out: Breakpoint 2, 0x0000000000030050 in __start \(\)
+
+in: continue
+#TODO what is the correct exit code?
+out: \[Inferior .* exited with code
+
+
+#=================================================================
+test: backtrace
+#=================================================================
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
+
+in: break __start
+ignore-output
+
+in: run
+ignore-output
+
+in: backtrace
+out: #0  0x0000000000030000 in __start \(\)
+
+
+#=================================================================
+test: disassemble
+#=================================================================
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
+
+in: break __start
+ignore-output
+
+in: run
+ignore-output
+
+in: disassemble
+out: Dump of assembler code for function __start:
+out: => 0x0000000000030000 <\+0>:\s+movimm\s+r10,16420,64
+out:    0x0000000000030008 <\+8>:\s+movimm\s+r11,16404,64
+out:    0x0000000000030010 <\+16>:\s+movimm\s+r12,16672,64
+# And so on and so forth. Ignore the rest...
+ignore-output
+
+
+#=================================================================
+test: info thread & info reg
+#=================================================================
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
+
+in: info thread
+out: No threads\.
+
+in: break __start
+ignore-output
+in: run
+ignore-output
+
+in: info thread
+out: Id\s+Target Id\s+Frame
+out: \* 1\s+thread 0/2\s+0x0000000000030000 in __start ()
+
+in: info reg
+out: r0\s*r1\s*r2\s*r3
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+out: r4\s*r5\s*r6\s*r7
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+ignore-output
+
+in: continue
+ignore-output
+
+in: info thread
+out: No threads\.
+
+
+#=================================================================
+test: print, x, and set
+#=================================================================
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
+
+in: break *0x30060
+ignore-output
+in: run
+ignore-output
+
+in: print $r12
+out: \$1 = 16672
+
+in: print/x $r12
+out: \$2 = 0x4120
+
+in: print/a $pc
+out: \$3 = 0x30060 <__start\+96>
+
+in: x/i 0x30000
+out: 0x30000 <__start>:\s+movimm\s+r10,16420,64
+
+in: x/i $pc
+out: => 0x30060 <__start\+96>:\s+store\s+r2,r4,r5,64
+
+in: set $r1=42
+#No output
+
+in: print $r1
+out: \$4 = 42

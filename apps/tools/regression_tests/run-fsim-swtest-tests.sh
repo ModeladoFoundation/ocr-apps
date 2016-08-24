@@ -102,6 +102,10 @@ for TEST in $TESTS; do
                "\*\*a is: 10, \*y\[0] is: 10"
                "PASSED" "terminate alarm")
     ;;
+    *)
+      echo "Invalid test name '$TEST'" 1>&2
+      continue
+      ;;
   esac
 
   REGEXS+=("Client shutdown has been approved")

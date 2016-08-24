@@ -1,0 +1,231 @@
+#=================================================================
+test: run twice
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: run
+out: \[New thread
+#TODO: what is the correct code.
+out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+
+in: run
+out: \[New thread
+#TODO: what is the correct code.
+out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+
+
+#=================================================================
+test: break and continue
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xe_conout
+out: Breakpoint 1 at 0x[0-9a-f]*: file mb-printf\.c, line 10\.
+
+in: run
+out: \[New thread
+out: ^$
+out: Breakpoint 1, xe_conout \(.*\) at mb-printf\.c:10
+out: 10\s+u64 A_ID = AGENT_FROM_ID
+
+in: continue
+#TODO: what is the correct code.
+out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+
+
+#=================================================================
+test: step and stepi
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xstg_main
+ignore-output
+
+in: run
+out: \[New thread
+out: ^$
+out: Breakpoint 1, xstg_main
+out: 27
+
+in: step
+out: xe_conout
+out: 10
+
+in: stepi
+out: 0x[a-f0-9]+\s+10
+
+in: stepi
+out: 0x[a-f0-9]+\s+10
+
+in: continue
+#TODO: what is the correct code.
+out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+
+
+#=================================================================
+test: next
+#=================================================================
+# This test logically would make sence to be combined with the above test for
+# step and stepi. However until we can do multiple runs in one GDB session it
+# will have to be its own test.
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xstg_main
+ignore-output
+
+in: run
+out: \[New thread
+out: ^$
+out: Breakpoint 1, xstg_main
+out: 27
+
+in: next
+out: 29\s+return 42;
+
+
+#=================================================================
+test: break and finish
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xe_conout
+ignore-output
+
+in: run
+ignore-output
+
+in: finish
+out: xstg_main.+at mb-printf\.c:
+out: 27\s+xe_conout\("Hello, XE world!\\n", 18\);
+
+in: finish
+#TODO: what is the correct code.
+out: 0x[0-9a-f]+ in _start \(\)
+out: Value returned is \$1 = 42
+
+
+#=================================================================
+test: backtrace
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xe_conout
+ignore-output
+
+in: run
+ignore-output
+
+in: backtrace
+out: #0  xe_conout
+out: #1  0x[0-9a-f]* in xstg_main
+out?: #2  0x[0-9a-f]* in ??
+
+
+#=================================================================
+test: disassemble
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xstg_main
+ignore-output
+
+in: run
+ignore-output
+
+in: disassemble
+out: Dump of assembler code for function xstg_main:
+out: 0x[0-9a-f]+ <\+0>:
+out: 0x[0-9a-f]+ <\+8>:
+out: 0x[0-9a-f]+ <\+16>:
+out: 0x[0-9a-f]+ <\+24>:
+ignore-output
+
+
+#=================================================================
+test: list, info thread & info reg
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: list 25,27
+out: 25\s+int xstg_main\(void\)
+out: 26\s+{
+out: 27\s+xe_conout\("Hello, XE world
+
+in: info thread
+out: No threads\.
+
+in: break xstg_main
+ignore-output
+in: run
+ignore-output
+
+# One of the threads should be at xstg_main. The rest will not be.
+in: info thread
+out: Id\s+Target Id\s+Frame
+out: \* \d\s+thread 0/\d\s+xstg_main.*
+
+in: info reg
+out: r0\s*r1\s*r2\s*r3
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+out: r4\s*r5\s*r6\s*r7
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+# There are more registers of course, but lets not be too pedantic.
+ignore-output
+
+
+#=================================================================
+test: print, x, and set
+#=================================================================
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
+
+in: break xe_conout
+ignore-output
+in: run
+ignore-output
+
+in: print len
+out: \$1 = 18
+
+in: print/x len
+out: \$2 = 0x12
+
+in: print/a $pc
+out: \$3 = 0x[0-9a-f]+ <xe_conout\+\d+>
+
+# Same as printing it
+in: x &len
+out: 0x[0-9a-f]+:\s+0x12
+
+# Ugly, but same as printing it
+in: x/1dw &len
+out: 0x[0-9a-f]+:\s+18
+
+# The below test doesn't make practical sence.
+# It is just to test the functionality
+in: x/2dh &len
+out: 0x[0-9a-f]+:\s+18\s+0
+
+in: x/1iw $pc
+out: => 0x[0-9a-f]+ <xe_conout\+\d*>:
+
+in: set var len=314159
+#No output
+
+in: print len
+out: \$4 = 314159
+
+#reset len and see if it runs to completion now:
+in: set var len=18
+in: continue
+#TODO what is the correct code
+out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]

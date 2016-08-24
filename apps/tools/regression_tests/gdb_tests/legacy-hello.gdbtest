@@ -1,0 +1,231 @@
+#=================================================================
+test: run twice
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: run
+out: \[New thread
+#TODO what is the correct exit code?
+out: \[Inferior .* exited with code
+
+in: run
+out: \[New thread
+out: ^$
+#TODO what is the correct exit code?
+out: \[Inferior .* exited with code
+
+
+#=================================================================
+test: break and continue
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break sub2
+out: Breakpoint 1 at 0x[0-9a-f]*: file hello\.c, line 13\.
+
+in: break 30
+out: Breakpoint 2 at 0x[0-9a-f]*: file hello\.c, line 30\.
+
+in: run
+out: \[New thread
+out: ^$
+out: Breakpoint 2, main \(.*\) at hello\.c:30
+out: 30\s+printf\("Hello World!\\n"\);
+
+in: continue
+out:
+out: Breakpoint 1, sub2 \(value=5\) at hello.c:13
+out: 13\s+return 2\*value;
+
+in: continue
+#TODO what is the correct exit code?
+out: \[Inferior .* exited with code
+
+
+#=================================================================
+test: step, next and stepi
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break main
+ignore-output
+
+in: run
+ignore-output
+
+in: next
+out: 27\s+time_t t = time\(NULL\);
+
+in: next 6
+out: 37\s+int ret = sub1\(5\);
+
+# Currently, step functions like next when on the line with the function call.
+# Even stepi doesn't go in.
+
+
+#=================================================================
+test: break and finish
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break ce_gettimeofday
+ignore-output
+
+in: run
+ignore-output
+
+in: break sub2
+ignore-output
+
+in: finish
+out: 0x[0-9a-f]+ in ocrGetTimeofDay
+
+in: finish
+out: in _gettimeofday_r
+
+in: finish
+out: in time
+
+in: finish
+out: main.+at hello\.c:27
+out: 27\s+time_t t = time\(NULL\);
+
+in: continue
+ignore-output
+
+in: finish
+out: sub1 \(value=5\) at hello.c:19
+out: 19
+out: Value returned is \$1 = 10
+
+in: finish
+out: main .* at hello.c:37
+out: 37
+out: Value returned is \$2 = 15
+
+
+#=================================================================
+test: backtrace
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break sub2
+ignore-output
+
+in: run
+ignore-output
+
+in: backtrace
+out: #0  sub2
+out: #1  0x[0-9a-f]* in sub1
+out: #2  0x[0-9a-f]* in main
+
+
+#=================================================================
+test: disassemble
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break main
+out: Breakpoint 1.*line 26
+
+in: run
+out: \[New thread
+out:
+out: Breakpoint 1.*
+out: 26
+
+in: disassemble
+out: Dump of assembler code for function main:
+out: 0x[0-9a-f]+ <\+0>:
+out: 0x[0-9a-f]+ <\+8>:
+out: 0x[0-9a-f]+ <\+16>:
+out: 0x[0-9a-f]+ <\+24>:
+ignore-output
+
+
+#=================================================================
+test: list, info thread & info reg
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: list 22,25
+out: 22\s+int
+out: 23\s+main\( int argc, char \*\*argv \)
+out: 24\s+{
+out: 25\s+void \* addr;
+
+in: info thread
+out: No threads\.
+
+in: break main
+ignore-output
+in: run
+ignore-output
+
+in: info thread
+out: Id\s+Target Id\s+Frame
+out: \* 1\s+thread 0/2\s+main.*at hello\.c:26
+
+in: info reg
+out: r0\s*r1\s*r2\s*r3
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+out: r4\s*r5\s*r6\s*r7
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+ignore-output
+
+in: continue
+ignore-output
+
+in: info thread
+out: No threads\.
+
+
+#=================================================================
+test: print, x, and set
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break 28
+ignore-output
+in: run
+ignore-output
+
+in: print len
+out: \$1 = 32768
+
+in: print/x len
+out: \$2 = 0x8000
+
+in: print/a $pc
+out: \$3 = 0x[0-9a-f]+ <main\+\d+>
+
+# Same as printing it
+in: x &len
+out: 0x[0-9a-f]+:\s+0x8000
+
+# Ugly, but same as printing it
+in: x/1dw &len
+out: 0x[0-9a-f]+:\s+32768
+
+# The below test doesn't make practical sence.
+# It is just to test the functionality
+in: x/2dh &len
+out: 0x[0-9a-f]+:\s+-32768\s+0
+
+in: x/1iw $pc
+out: => 0x[0-9a-f]+ <main\+\d*>:
+
+in: set var len=314159
+#No output
+
+in: print len
+out: \$4 = 314159
