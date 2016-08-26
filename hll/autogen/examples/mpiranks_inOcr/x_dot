@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+inFilename=$1
+dot -O -Tsvg "$inFilename"
+#dot -O -v -Tpng "$inFilename"

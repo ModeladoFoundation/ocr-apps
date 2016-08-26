@@ -609,7 +609,11 @@ def dataTriplet_to_label(in_triplet):
     dname = in_triplet[1]
     dslots = in_triplet[2]
 
-    t = '"' + dname + '_s' + str(dslots) + '_g' + str(dguid) + '"'
+    if dname == 'NULL_GUID':
+        t = '"' + '0G' + '_s' + str(dslots)+ '"'
+    else:
+        t = '"' + dname + '_s' + str(dslots) + '_g' + str(dguid) + '"'
+
     return t
 
 def print2DOT(Gglobals, Gnodes, Gedges, guidMap2index):

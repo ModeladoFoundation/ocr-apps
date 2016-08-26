@@ -1,0 +1,36 @@
+2016Aug25 - dvillen
+=This test combines the tree fork-join test case with the tail recursion test case.
+ The resulting OCR graph is one that imitates
+    1) the distribution of MPI ranks
+    2) An iteration done on each rank.
+
+ The global data is stored in global_data.h::GlobalData_t and its content is
+ initialized in globald_data.c::init_globalData(...) .
+
+ The global data is landed in "BtForkTransition_Stop" assuming that it will
+ not be required during the joining.
+
+ = The static flow of the app is presented in "y_mpiranks_inOcr.dot.svg".
+   Note that the initial tail recursion algorithm had to be corrected
+   by bracketing properly.  That is why one can see the gDone DBK going
+   from "setupTailRecursion" and "concludeTailRecursion".
+
+   The run-time operation flow is presented in "y_mpiranks_inOcr.runtime.dot.svg".
+   In this configuration, 3 mpi-equivalent ranks were used and 2 iterations
+   each for each tail recursion on each MPI "ranks".
+
+    N.B.> Chrome browser works fine to view SVG files.
+    N.B.> The utility script "x_dot" was used to convert the generated DOT file
+          to their SVG equivalent.
+
+= In order to see the run-time operations file, do the following:
+    1) comment out the "rm -f z_*" from the file ./btest
+    2a) Set "OA.GBL.insert_debug_code = 1" in "mpiranks_inOcr.py"
+    2b) Enable "OA.outputDot(G, "z_mpiranks_inOcr.dot")" in "mpiranks_inOcr.py"
+    3) run ./btest
+    4) In order to get the run-time SVG, do the following:
+            python ../../tools/ocr_autogen_dbg_postproc.py -i z_log -o z_out.dot; ./x_dot z_out.dot
+    5) In order to get the compile time SVG, do the following:
+            ./x_dot z_mpiranks_inOcr.dot
+
+
