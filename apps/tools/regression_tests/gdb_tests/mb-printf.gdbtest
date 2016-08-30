@@ -7,12 +7,14 @@ file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 in: run
 out: \[New thread
 #TODO: what is the correct code.
-out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code \d+\]
 
 in: run
 out: \[New thread
 #TODO: what is the correct code.
-out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code \d+\]
 
 
 #=================================================================
@@ -32,7 +34,8 @@ out: 10\s+u64 A_ID = AGENT_FROM_ID
 
 in: continue
 #TODO: what is the correct code.
-out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code \d+\]
 
 
 #=================================================================
@@ -62,7 +65,8 @@ out: 0x[a-f0-9]+\s+10
 
 in: continue
 #TODO: what is the correct code.
-out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code \d+\]
 
 
 #=================================================================
@@ -171,7 +175,7 @@ ignore-output
 # One of the threads should be at xstg_main. The rest will not be.
 in: info thread
 out: Id\s+Target Id\s+Frame
-out: \* \d\s+thread 0/\d\s+xstg_main.*
+out: \* \d\s+thread 1\s+xstg_main.*
 
 in: info reg
 out: r0\s*r1\s*r2\s*r3
@@ -228,4 +232,6 @@ out: \$4 = 314159
 in: set var len=18
 in: continue
 #TODO what is the correct code
-out: \[Inferior 1 \(thread 0\/0\) exited with code \d+\]
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code \d+\]
+

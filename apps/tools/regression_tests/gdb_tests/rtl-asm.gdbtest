@@ -7,13 +7,14 @@ file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
 in: run
 out: \[New thread
 #TODO what is the correct exit code?
-out: \[Inferior .* exited with code
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code 017
 
 in: run
 out: \[New thread
-out: ^$
 #TODO what is the correct exit code?
-out: \[Inferior .* exited with code
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code 017
 
 
 #=================================================================
@@ -45,7 +46,8 @@ out: Breakpoint 2, 0x0000000000030050 in __start \(\)
 
 in: continue
 #TODO what is the correct exit code?
-out: \[Inferior .* exited with code
+out: \[thread .* terminated
+out: \[Inferior .* \(process .*\) exited with code 017
 
 
 #=================================================================
@@ -101,7 +103,7 @@ ignore-output
 
 in: info thread
 out: Id\s+Target Id\s+Frame
-out: \* 1\s+thread 0/2\s+0x0000000000030000 in __start ()
+out: \* 1\s+thread 1\s+0x0000000000030000 in __start ()
 
 in: info reg
 out: r0\s*r1\s*r2\s*r3
