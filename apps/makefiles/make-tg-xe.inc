@@ -217,8 +217,9 @@ default: postbuild
 .PHONY: parallel-reqlibs
 parallel-reqlibs: $(FULL_REQ_LIBS)
 
+# Build libocrxe first as the libraries may need OCR to be properly installed
 .PHONY: $(FULL_REQ_LIBS)
-$(FULL_REQ_LIBS):
+$(FULL_REQ_LIBS): | libocrxe
 	$(AT)lockfile "/tmp/$(subst /,_,$@)_lock"; \
 	echo "Grabbed lock"; date; \
 	ARCH=$(ARCH) APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
@@ -235,13 +236,42 @@ $(FULL_REQ_LIBS):
 .PHONY: reqlibs
 reqlibs: parallel-reqlibs
 
+# This does a more complicate dependency computation so all the prereqs listed
+# will also become command-less, prereq-less targets. This causes make
+# to remake anything that depends on that file which is
+# exactly what we want. This is adapted from:
+# http://scottmcpeak.com/autodepend/autodepend.html
+# Other information on some of the other rules for dependences can be found
+# here: http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
+#   sed:    strip the target (everything before colon)
+#   sed:    remove any continuation backslashes
+#   fmt -1: list words one per line
+#   sed:    strip leading spaces
+#   sed:    add trailing colon
+#   touch:  sets the time to the same as the .o to avoid
+#           erroneous detection next time around
+
+# Delete default rules so it makes sure to use ours
+%.o: %.c
+
 # Require libocrxe as this means all include files are up-to-date
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c | libocrxe $(WORKLOAD_BUILD)
+	@echo "Compiling $<"
 	$(AT)$(MKDIR) -p $(@D)
-	$(AT)$(CC) $(CFLAGS) -fno-builtin -c -o $@ $<
+	$(AT)$(CC) $(CFLAGS) -fno-builtin -MMD -c -o $@ $<
+	$(AT)cp -f $(@:.o=.d) $(@:.o=.d.tmp)
+	$(AT)sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
+	sed -e 's/^ *//' -e 's/$$/: /' >> $(@:.o=.d)
+	$(AT)touch -r $@ $(@:.o=.d)
+	$(AT)rm -f $(@:.o=.d.tmp)
 #	$(AT)$(CC) $(CFLAGS) -fno-builtin -c -o $@.tmp $<
 #	$(AT)$(OBJCOPY) -R .data_local -R .rodata_local -R .bss_local -R .data_block -R .rodata_block -R .bss_block $@.tmp $@
 #	$(AT)$(RM) $@.tmp
+
+# Include auto-generated dependence files
+$(WORKLOAD_BUILD)/%.d: ;
+.PRECIOUS: $(WORKLOAD_BUILD)/%.d
+-include $(OBJS:.o=.d)
 
 # Two pre-requisites here that seem to be the same but serve different purposes:
 #  - libocr.a: Execute this rule if libocr.a changes due to being rebuilt (due to the libocrxe rule)

@@ -322,8 +322,9 @@ default: postbuild
 .PHONY: parallel-reqlibs
 parallel-reqlibs: $(FULL_REQ_LIBS)
 
+# Require libocr as the libraries may require OCR headers
 .PHONY: $(FULL_REQ_LIBS)
-$(FULL_REQ_LIBS):
+$(FULL_REQ_LIBS): | libocr
 	$(AT)lockfile "/tmp/$(subst /,_,$@)_lock"; \
 	echo "Grabbed lock"; date; \
 	V=$(V) ARCH=$(ARCH) APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
@@ -340,17 +341,47 @@ $(FULL_REQ_LIBS):
 .PHONY: reqlibs
 reqlibs: parallel-reqlibs
 
+# This does a more complicate dependency computation so all the prereqs listed
+# will also become command-less, prereq-less targets. This causes make
+# to remake anything that depends on that file which is
+# exactly what we want. This is adapted from:
+# http://scottmcpeak.com/autodepend/autodepend.html
+# Other information on some of the other rules for dependences can be found
+# here: http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
+#   sed:    strip the target (everything before colon)
+#   sed:    remove any continuation backslashes
+#   fmt -1: list words one per line
+#   sed:    strip leading spaces
+#   sed:    add trailing colon
+#   touch:  sets the time to the same as the .o to avoid
+#           erroneous detection next time around
+
+# Delete default rules so it makes sure to use ours
+%.o: %.c
+
 # Require libocr as this means all include files are up-to-date
 # Note that we include libocr in order only dependences because it is a
 # phony target and would infect things.
 # We add the library in the regular dependences as well to catch header changes
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
+	@echo "Compiling $<"
 	$(AT)$(MKDIR) -p $(@D)
-	$(AT)$(CC) $(CFLAGS) -c -o $@ $<
+	$(AT)$(CC) $(CFLAGS) -MMD -c -o $@ $<
+	$(AT)cp -f $(@:.o=.d) $(@:.o=.d.tmp)
+	$(AT)sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
+	sed -e 's/^ *//' -e 's/$$/: /' >> $(@:.o=.d)
+	$(AT)touch -r $@ $(@:.o=.d)
+	$(AT)rm -f $(@:.o=.d.tmp)
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
+	@echo "Compiling $<"
 	$(AT)$(MKDIR) -p $(@D)
-	$(AT)$(CC) $(CFLAGS) -c -o $@ $<
+	$(AT)$(CC) $(CFLAGS) -MMD -c -o $@ $<
+	$(AT)cp -f $(@:.o=.d) $(@:.o=.d.tmp)
+	$(AT)sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
+	sed -e 's/^ *//' -e 's/$$/: /' >> $(@:.o=.d)
+	$(AT)touch -r $@ $(@:.o=.d)
+	$(AT)rm -f $(@:.o=.d.tmp)
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
 	@echo "Building debug target $@"
@@ -360,6 +391,11 @@ $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	@echo "Building target $@"
 	$(AT)$(RM) -f $(WORKLOAD_BUILD)/$(TARGET)
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
+
+# Include auto-generated dependence files
+$(WORKLOAD_BUILD)/%.d: ;
+.PRECIOUS: $(WORKLOAD_BUILD)/%.d
+-include $(OBJS:.o=.d)
 
 # libocr
 .PHONY: libocr
