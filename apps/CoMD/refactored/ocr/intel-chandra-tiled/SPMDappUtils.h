@@ -239,7 +239,7 @@ _OCR_TASK_FNC_( PDinitEdt )
     s64 affinityCount;
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
     s64 PD_X, PD_Y, PD_Z;
-    splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 2-D grid
+    splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid
 
     s64 pdGridDims[3] = { PD_X, PD_Y, PD_Z };
 
@@ -256,7 +256,7 @@ _OCR_TASK_FNC_( PDinitEdt )
     globalParamH_t *PTR_globalParamH = (globalParamH_t *) depv[1].ptr;
 
     ocrGuid_t initTML, EDT_init;
-    ocrEdtTemplateCreate( &initTML, initEdt, 1, 2 );
+    ocrEdtTemplateCreate( &initTML, initEdt, sizeof(PRM_initEdt_t)/sizeof(u64), 2 );
 
     ocrHint_t myEdtAffinityHNT;
     ocrHintInit( &myEdtAffinityHNT, OCR_HINT_EDT_T );
@@ -267,9 +267,14 @@ _OCR_TASK_FNC_( PDinitEdt )
     s64 edtGridDims_lb_y, edtGridDims_ub_y;
     s64 edtGridDims_lb_z, edtGridDims_ub_z;
 
-    partition_bounds(PD_X, 0, edtGridDims[0]-1, pdGridDims[0], &edtGridDims_lb_x, &edtGridDims_ub_x);
-    partition_bounds(PD_Y, 0, edtGridDims[1]-1, pdGridDims[1], &edtGridDims_lb_y, &edtGridDims_ub_y);
-    partition_bounds(PD_Z, 0, edtGridDims[2]-1, pdGridDims[2], &edtGridDims_lb_z, &edtGridDims_ub_z);
+    int pd_x, pd_y, pd_z;
+
+    globalCoordsFromRank_Cart3D( PD_id, pdGridDims[0], pdGridDims[1], pdGridDims[2], &pd_x, &pd_y, &pd_z );
+    DEBUG_PRINTF(("PD_id %d pdGridDims[0] %d pdGridDims[1] %d pdGridDims[2] %d pd_x %d pd_y %d pd_z %d\n",PD_id, pdGridDims[0], pdGridDims[1], pdGridDims[2], pd_x, pd_y, pd_z ));
+
+    partition_bounds(pd_x, 0, edtGridDims[0]-1, pdGridDims[0], &edtGridDims_lb_x, &edtGridDims_ub_x);
+    partition_bounds(pd_y, 0, edtGridDims[1]-1, pdGridDims[1], &edtGridDims_lb_y, &edtGridDims_ub_y);
+    partition_bounds(pd_z, 0, edtGridDims[2]-1, pdGridDims[2], &edtGridDims_lb_z, &edtGridDims_ub_z);
 
     PRM_initEdt_t PRM_initEdt;
     PRM_initEdt.edtGridDims[0] = edtGridDims[0];
@@ -277,12 +282,12 @@ _OCR_TASK_FNC_( PDinitEdt )
     PRM_initEdt.edtGridDims[2] = edtGridDims[2];
 
     s64 i, j, k;
-    for( k = edtGridDims_lb_z; j <= edtGridDims_ub_z ; ++k )
+    for( k = edtGridDims_lb_z; k <= edtGridDims_ub_z ; ++k )
     for( j = edtGridDims_lb_y; j <= edtGridDims_ub_y ; ++j )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords_Cart3D( i, j, k, edtGridDims[0], edtGridDims[1], edtGridDims[2] );
-        //PRINTF("id %d map PD %d\n", myRank, PD_id);
+        DEBUG_PRINTF(("id %d map PD %d\n", myRank, PD_id));
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
 
         PRM_initEdt.id = myRank;
@@ -325,7 +330,7 @@ void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, o
     for( i = 0; i < nPDs; ++i )
     {
         int pd = i;
-        //PRINTF("id %d map PD %d\n", i, pd);
+        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 

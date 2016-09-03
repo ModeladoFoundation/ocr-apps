@@ -243,7 +243,6 @@ int ljForce(SimFlat* s)
 
 ocrGuid_t ljForce_edt( EDT_ARGS )
 {
-
     DEBUG_PRINTF(( "%s\n", __func__ ));
 
     s32 _idep;
@@ -289,7 +288,9 @@ ocrGuid_t ljForce_edt( EDT_ARGS )
 
     sim->boxes->nAtoms = nAtoms;
 
+    startTimer(sim->perfTimer, computeForceTimer);
     ljForce(sim);
+    stopTimer(sim->perfTimer, computeForceTimer);
 
     return NULL_GUID;
 }

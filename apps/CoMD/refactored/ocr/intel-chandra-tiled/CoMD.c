@@ -33,7 +33,7 @@ Copywrite Intel Corporation 2015
 #include "memUtils.h"
 #include "yamlOutput.h"
 #include "parallel.h"
-#include "performanceTimers.h"
+//#include "performanceTimers.h"
 #include "mycommand.h"
 #include "timestep.h"
 #include "constants.h"
@@ -221,6 +221,7 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     ocrDbCreate( &PTR_rankH->rpKeDBK, (void**) &PTR_rankH->rpKePTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
     ocrDbCreate( &PTR_rankH->rpVcmDBK, (void**) &PTR_rankH->rpVcmPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
     ocrDbCreate( &PTR_rankH->rpmaxOccupancyDBK, (void**) &PTR_rankH->rpmaxOccupancyPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
+    ocrDbCreate( &PTR_rankH->rpPerfTimerDBK, (void**) &PTR_rankH->rpPerfTimerPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 3;
@@ -269,12 +270,21 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
 
     //ocrDbRelease(PTR_rankH->rpmaxOccupancyDBK);
 
-    DEBUG_PRINTF(("nRanks %d id %d\n", nRanks, id));
-}
+    PTR_rankH->rpPerfTimerPTR->nrank = nRanks;
+    PTR_rankH->rpPerfTimerPTR->myrank = id;
+    PTR_rankH->rpPerfTimerPTR->ndata = numberOfTimers; //TODO
+    PTR_rankH->rpPerfTimerPTR->reductionOperator = REDUCTION_F8_ADD;
+    PTR_rankH->rpPerfTimerPTR->rangeGUID = PTR_globalOcrParamH->perfTimerReductionRangeGUID;
+    PTR_rankH->rpPerfTimerPTR->reductionTML = NULL_GUID;
+    PTR_rankH->rpPerfTimerPTR->new = 1;  //first time
+    PTR_rankH->rpPerfTimerPTR->all = 0;  //go up and down (ALL_REDUCE)
 
-void printSeparator(void)
-{
-    PRINTF("\n");
+    ocrEventCreateParams(&(PTR_rankH->rpPerfTimerEVT), OCR_EVENT_CHANNEL_T, true, &params);//TODO
+    PTR_rankH->rpPerfTimerPTR->returnEVT = PTR_rankH->rpPerfTimerEVT;
+
+    //ocrDbRelease(PTR_rankH->rpPerfTimerDBK);
+
+    DEBUG_PRINTF(("nRanks %d id %d\n", nRanks, id));
 }
 
 void printSimulationData(SimFlat* s, int maxOcc)
@@ -368,6 +378,8 @@ ocrGuid_t printSimulationData1Edt( EDT_ARGS )
     int maxOcc = maxOccPTR[0];
 
      printSimulationData(sim, maxOcc);
+
+    if(sim->PTR_rankH->myRank==0) timestamp("Initialization Finished\n");
 
     return NULL_GUID;
 }
@@ -464,6 +476,11 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     sim->PTR_rankH = PTR_rankH;
 
     u64 nRanks = (PTR_cmd->xproc)*(PTR_cmd->yproc)*(PTR_cmd->zproc);
+
+    initTimers(sim->perfTimer);
+    profileStart(sim->perfTimer, totalTimer);
+    if(id==0) timestamp("Starting Initialization\n");
+
     initOcrObjects( PTR_rankH, id, nRanks );
 
     initSimulation( sim, PTR_rankH, id );
@@ -471,6 +488,7 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrEVT_t rpVcmEVT = PTR_rankH->rpVcmEVT;
     ocrEVT_t rpKeEVT = PTR_rankH->rpKeEVT;
     ocrEVT_t rpmaxOccupancyEVT = PTR_rankH->rpmaxOccupancyEVT;
+    ocrEVT_t rpPerfTimerEVT = PTR_rankH->rpPerfTimerEVT;
 
     ocrDBK_t DBK_pot = sim->DBK_pot;
     ocrDBK_t DBK_nAtoms = sim->boxes->DBK_nAtoms;
@@ -487,6 +505,7 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrDBK_t rpKeDBK = PTR_rankH->rpKeDBK;
     ocrDBK_t rpVcmDBK = PTR_rankH->rpVcmDBK;
     ocrDBK_t rpmaxOccupancyDBK = PTR_rankH->rpmaxOccupancyDBK;
+    ocrDBK_t rpPerfTimerDBK = PTR_rankH->rpPerfTimerDBK;
 
     ocrDbRelease(DBK_sim);
     ocrDbRelease(DBK_rankH);
@@ -653,28 +672,26 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrAddDependence( kineticEnergyOEVTS, printSimulationDataEDT, _idep++, DB_MODE_NULL );
 
     ////Print things
-    if(id == 0)
-    {
-        ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
+    ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
 
-        ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 4 );
+    ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 5 );
 
-        ocrEdtCreate( &printThingsEDT, printThingsTML,
-                      EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &myEdtAffinityHNT, &printThingsOEVT );
+    ocrEdtCreate( &printThingsEDT, printThingsTML,
+                  EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinityHNT, &printThingsOEVT );
 
-        ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
-        ocrAddDependence( printThingsOEVT, printThingsOEVTS, 0, DB_MODE_NULL );
+    ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
+    ocrAddDependence( printThingsOEVT, printThingsOEVTS, 0, DB_MODE_NULL );
 
-        _idep = 0;
-        ocrAddDependence( DBK_sim, printThingsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( printSimulationDataOEVTS, printThingsEDT, _idep++, DB_MODE_NULL );
-        ocrAddDependence( kineticEnergyOEVTS, printThingsEDT, _idep++, DB_MODE_NULL );
-    }
+    _idep = 0;
+    ocrAddDependence( DBK_rankH, printThingsEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_sim, printThingsEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( rpPerfTimerDBK, printThingsEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( printSimulationDataOEVTS, printThingsEDT, _idep++, DB_MODE_NULL );
+    //ocrAddDependence( kineticEnergyOEVTS, printThingsEDT, _idep++, DB_MODE_NULL );
 
     //start timestep loop
-    #if 1
     if( PTR_cmd->nSteps > 0 )
     {
     ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
@@ -691,9 +708,8 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     _idep = 0;
     ocrAddDependence(DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW);
     ocrAddDependence(DBK_sim, timestepLoopEDT, _idep++, DB_MODE_RW);
-    ocrAddDependence(kineticEnergyOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL);
+    ocrAddDependence(printThingsOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL);
     }
-    #endif
 
     return NULL_GUID;
 }
@@ -1011,8 +1027,9 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuidRangeCreate(&(ocrParamH.KeReductionRangeGUID), nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.VcmReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.maxOccupancyReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
-    ocrEventCreate( &(ocrParamH.EVT_OUT_norm_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
-    ocrEventCreate( &(ocrParamH.EVT_OUT_timer_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
+    ocrGuidRangeCreate(&(ocrParamH.perfTimerReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
+    //ocrEventCreate( &(ocrParamH.EVT_OUT_norm_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
+    //ocrEventCreate( &(ocrParamH.EVT_OUT_timer_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
 
     ocrGuid_t wrapUpTML, wrapUpEDT;
     ocrEdtTemplateCreate( &wrapUpTML, wrapUpEdt, 0, 1 );

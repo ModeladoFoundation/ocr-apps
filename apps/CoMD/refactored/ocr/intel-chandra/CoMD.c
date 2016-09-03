@@ -777,7 +777,7 @@ ocrGuid_t redistributeAtomsEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
 
 ocrGuid_t printThingsEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 itimestep = paramv[0];
+    s64 itimestep = paramv[0];
 
     real_t* eGlobalPTR = depv[0].ptr;
 
@@ -859,7 +859,7 @@ ocrGuid_t advancePositionEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv
 
 ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 itimestep = paramv[0];
+    s64 itimestep = paramv[0];
 
 #if 1
     ocrGuid_t cmd_g = depv[0].guid;
@@ -1070,7 +1070,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t timestepLoopEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    s32 itimestep = paramv[0];
+    s64 itimestep = paramv[0];
 
     ocrGuid_t cmd_g = depv[0].guid;
     ocrGuid_t sbDBK = depv[1].guid;

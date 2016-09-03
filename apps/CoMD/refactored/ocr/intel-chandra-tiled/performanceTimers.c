@@ -26,8 +26,6 @@
 ///
 
 
-#include "performanceTimers.h"
-
 #include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
@@ -40,64 +38,26 @@
 #include "parallel.h"
 #include "yamlOutput.h"
 
+#include "CoMDTypes.h"
+
 static uint64_t getTime(void);
 static double getTick(void);
-static void timerStats(void);
+static void timerStats( Timers* perfTimer, double* recvBuf, int myRank, int nRanks );
 
-/// You must add timer name in same order as enum in .h file.
-/// Leading spaces can be specified to show a hierarchy of timers.
-char* timerName[numberOfTimers] = {
-   "total",
-   "loop",
-   "timestep",
-   "  position",
-   "  velocity",
-   "  redistribute",
-   "    atomHalo",
-   "  force",
-   "    eamHalo",
-   "commHalo",
-   "commReduce"
-};
+//static Timers perfTimer[numberOfTimers];
+//static TimerGlobal perfGlobal;
 
-/// Timer data collected.  Also facilitates computing averages and
-/// statistics.
-typedef struct TimersSt
-{
-   uint64_t start;     //!< call start time
-   uint64_t total;     //!< current total time
-   uint64_t count;     //!< current call count
-   uint64_t elapsed;   //!< lap time
-
-   int minRank;        //!< rank with min value
-   int maxRank;        //!< rank with max value
-
-   double minValue;    //!< min over ranks
-   double maxValue;    //!< max over ranks
-   double average;     //!< average over ranks
-   double stdev;       //!< stdev across ranks
-} Timers;
-
-/// Global timing data collected.
-typedef struct TimerGlobalSt
-{
-   double atomRate;       //!< average time (us) per atom per rank
-   double atomAllRate;    //!< average time (us) per atom
-   double atomsPerUSec;   //!< average atoms per time (us)
-} TimerGlobal;
-
-static Timers perfTimer[numberOfTimers];
-static TimerGlobal perfGlobal;
-
-void profileStart(const enum TimerHandle handle)
+void profileStart(Timers* perfTimer, const enum TimerHandle handle)
 {
    perfTimer[handle].start = getTime();
+   //PRINTF("%d start %f\n", handle, perfTimer[handle].start);
 }
 
-void profileStop(const enum TimerHandle handle)
+void profileStop(Timers* perfTimer, const enum TimerHandle handle)
 {
    perfTimer[handle].count += 1;
    uint64_t delta = getTime() - perfTimer[handle].start;
+   //PRINTF("%d delta %f\n", handle, getTick()*delta);
    perfTimer[handle].total += delta;
    perfTimer[handle].elapsed += delta;
 }
@@ -105,10 +65,11 @@ void profileStop(const enum TimerHandle handle)
 /// \details
 /// Return elapsed time (in seconds) since last call with this handle
 /// and clear for next lap.
-double getElapsedTime(const enum TimerHandle handle)
+double getElapsedTime(Timers* perfTimer, const enum TimerHandle handle)
 {
    double etime = getTick() * (double)perfTimer[handle].elapsed;
    perfTimer[handle].elapsed = 0;
+   //PRINTF("getElapsedTime %d elapsed %f total %f\n", handle, etime, getTick()*(double)perfTimer[handle].total);
 
    return etime;
 }
@@ -117,26 +78,41 @@ double getElapsedTime(const enum TimerHandle handle)
 /// The report contains two blocks.  The upper block is performance
 /// information for the printRank.  The lower block is statistical
 /// information over all ranks.
-void printPerformanceResults(int nGlobalAtoms, int printRate)
+void printPerformanceResults(Timers* perfTimer, double* recvBuf, TimerGlobal perfGlobal, int nGlobalAtoms, int printRate, int myRank, int nRanks)
 {
+/// You must add timer name in same order as enum in .h file.
+/// Leading spaces can be specified to show a hierarchy of timers.
+char* timerName[numberOfTimers] = {
+   "total               ",
+   "loop                ",
+   "timestep            ",
+   "  position          ",
+   "  velocity          ",
+   "  redistribute      ",
+   "    atomHalo        ",
+   "  force             ",
+   "    eamHalo         ",
+   "commHalo            ",
+   "commReduce          "
+};
    // Collect timer statistics overall and across ranks
-   timerStats();
+   timerStats( perfTimer, recvBuf, myRank, nRanks);
 
-   if (!printRank())
+   if (myRank != 0)
       return;
 
    // only print timers with non-zero values.
    double tick = getTick();
    double loopTime = perfTimer[loopTimer].total*tick;
 
-   fprintf(screenOut, "\n\nTimings for Rank %d\n", getMyRank());
-   fprintf(screenOut, "        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
-   fprintf(screenOut, "___________________________________________________________________\n");
+   PRINTF("\n\nTimings for Rank %d\n", myRank);
+   PRINTF("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
+   PRINTF("___________________________________________________________________\n");
    for (int ii=0; ii<numberOfTimers; ++ii)
    {
       double totalTime = perfTimer[ii].total*tick;
       if (perfTimer[ii].count > 0)
-         fprintf(screenOut, "%-16s%12"PRIu64"     %8.4f      %8.4f    %8.2f\n",
+         PRINTF("%16s   %16d     %8.4f      %8.4f    %8.2f\n",
                  timerName[ii],
                  perfTimer[ii].count,
                  totalTime/(double)perfTimer[ii].count,
@@ -144,39 +120,66 @@ void printPerformanceResults(int nGlobalAtoms, int printRate)
                  totalTime/loopTime*100.0);
    }
 
-   fprintf(screenOut, "\nTiming Statistics Across %d Ranks:\n", getNRanks());
-   fprintf(screenOut, "        Timer        Rank: Min(s)       Rank: Max(s)      Avg(s)    Stdev(s)\n");
-   fprintf(screenOut, "_____________________________________________________________________________\n");
+   PRINTF("\nTiming Statistics Across %d Ranks:\n", nRanks);
+   PRINTF("        Timer        Rank: Min(s)       Rank: Max(s)      Avg(s)    Stdev(s)\n");
+   PRINTF("_____________________________________________________________________________\n");
 
    for (int ii = 0; ii < numberOfTimers; ++ii)
    {
       if (perfTimer[ii].count > 0)
-         fprintf(screenOut, "%-16s%6d:%10.4f  %6d:%10.4f  %10.4f  %10.4f\n",
+         PRINTF("%16s    %6d:%10.4f  %6d:%10.4f  %10.4f  %10.4f\n",
             timerName[ii],
             perfTimer[ii].minRank, perfTimer[ii].minValue*tick,
             perfTimer[ii].maxRank, perfTimer[ii].maxValue*tick,
             perfTimer[ii].average*tick, perfTimer[ii].stdev*tick);
    }
-   double atomsPerTask = nGlobalAtoms/(real_t)getNRanks();
+   double atomsPerTask = nGlobalAtoms/(real_t)nRanks;
    perfGlobal.atomRate = perfTimer[timestepTimer].average * tick * 1e6 /
       (atomsPerTask * perfTimer[timestepTimer].count * printRate);
    perfGlobal.atomAllRate = perfTimer[timestepTimer].average * tick * 1e6 /
       (nGlobalAtoms * perfTimer[timestepTimer].count * printRate);
    perfGlobal.atomsPerUSec = 1.0 / perfGlobal.atomAllRate;
 
-   fprintf(screenOut, "\n---------------------------------------------------\n");
-   fprintf(screenOut, " Average atom update rate:     %6.2f us/atom/task\n", perfGlobal.atomRate);
-   fprintf(screenOut, "---------------------------------------------------\n\n");
+   PRINTF("\n---------------------------------------------------\n");
+   PRINTF(" Average atom update rate:     %6.2f us/atom/task\n", perfGlobal.atomRate);
+   PRINTF("---------------------------------------------------\n\n");
 
-   fprintf(screenOut, "\n---------------------------------------------------\n");
-   fprintf(screenOut, " Average all atom update rate: %6.2f us/atom\n", perfGlobal.atomAllRate);
-   fprintf(screenOut, "---------------------------------------------------\n\n");
+   PRINTF("\n---------------------------------------------------\n");
+   PRINTF(" Average all atom update rate: %6.2f us/atom\n", perfGlobal.atomAllRate);
+   PRINTF("---------------------------------------------------\n\n");
 
-   fprintf(screenOut, "\n---------------------------------------------------\n");
-   fprintf(screenOut, " Average atom rate:            %6.2f atoms/us\n", perfGlobal.atomsPerUSec);
-   fprintf(screenOut, "---------------------------------------------------\n\n");
+   PRINTF("\n---------------------------------------------------\n");
+   PRINTF(" Average atom rate:            %6.2f atoms/us\n", perfGlobal.atomsPerUSec);
+   PRINTF("---------------------------------------------------\n\n");
 }
 
+ocrGuid_t printPerformanceResultsEdt( EDT_ARGS )
+{
+    s64 iStep = paramv[0];
+    s32 _idep=0;
+
+    _idep = 0;
+    ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_sim = depv[_idep++].guid;
+    ocrDBK_t rpPerfTimerEVT = depv[_idep++].guid;
+
+    _idep = 0;
+    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    SimFlat* sim = depv[_idep++].ptr;
+    double* recvBuf = depv[_idep++].ptr;
+
+    sim->atoms = &sim->atoms_INST;
+    sim->validate = &sim->validate_INST;
+
+    sim->PTR_rankH = PTR_rankH;
+
+    //double sendBuf[numberOfTimers], recvBuf[numberOfTimers];
+    printPerformanceResults(sim->perfTimer, recvBuf, sim->perfGlobal, sim->atoms->nGlobal, sim->printRate, sim->PTR_rankH->myRank, sim->PTR_rankH->nRanks);
+
+    return NULL_GUID;
+}
+
+#if 0
 void printPerformanceResultsYaml(FILE* file)
 {
    if (! printRank())
@@ -230,6 +233,7 @@ void printPerformanceResultsYaml(FILE* file)
 
    fprintf(file, "\n");
 }
+#endif
 
 /// Returns current time as a 64-bit integer.  This portable version
 /// returns the number of microseconds since mindight, Jamuary 1, 1970.
@@ -261,33 +265,31 @@ static double getTick(void)
 }
 
 /// Collect timer statistics across ranks.
-void timerStats(void)
+void timerStats( Timers* perfTimer, double* recvBuf, int myRank, int nRanks )
 {
-   double sendBuf[numberOfTimers], recvBuf[numberOfTimers];
-
-   // Determine average of each timer across ranks
-   for (int ii = 0; ii < numberOfTimers; ii++)
-      sendBuf[ii] = (double)perfTimer[ii].total;
-   addDoubleParallel(sendBuf, recvBuf, numberOfTimers);
+   double sendBuf[numberOfTimers];
 
    for (int ii = 0; ii < numberOfTimers; ii++)
-      perfTimer[ii].average = recvBuf[ii] / (double)getNRanks();
+      perfTimer[ii].average = recvBuf[ii] / (double)nRanks;
 
 
    // Determine min and max across ranks and which rank
    RankReduceData reduceSendBuf[numberOfTimers], reduceRecvBuf[numberOfTimers];
    for (int ii = 0; ii < numberOfTimers; ii++)
    {
-      reduceSendBuf[ii].val = (double)perfTimer[ii].total;
-      reduceSendBuf[ii].rank = getMyRank();
+      //reduceSendBuf[ii].val = (double)perfTimer[ii].total;
+      //reduceSendBuf[ii].rank = myRank();
+      reduceRecvBuf[ii].val = -1.;
+      reduceRecvBuf[ii].rank = -1;
    }
-   minRankDoubleParallel(reduceSendBuf, reduceRecvBuf, numberOfTimers);
+   //minRankDoubleParallel(reduceSendBuf, reduceRecvBuf, numberOfTimers);
    for (int ii = 0; ii < numberOfTimers; ii++)
    {
       perfTimer[ii].minValue = reduceRecvBuf[ii].val;
       perfTimer[ii].minRank = reduceRecvBuf[ii].rank;
    }
-   maxRankDoubleParallel(reduceSendBuf, reduceRecvBuf, numberOfTimers);
+
+   //maxRankDoubleParallel(reduceSendBuf, reduceRecvBuf, numberOfTimers);
    for (int ii = 0; ii < numberOfTimers; ii++)
    {
       perfTimer[ii].maxValue = reduceRecvBuf[ii].val;
@@ -300,10 +302,31 @@ void timerStats(void)
       double temp = (double)perfTimer[ii].total - perfTimer[ii].average;
       sendBuf[ii] = temp * temp;
    }
-   addDoubleParallel(sendBuf, recvBuf, numberOfTimers);
+   //addDoubleParallel(sendBuf, recvBuf, numberOfTimers);
    for (int ii = 0; ii < numberOfTimers; ii++)
    {
-      perfTimer[ii].stdev = sqrt(recvBuf[ii] / (double) getNRanks());
+      perfTimer[ii].stdev = -1.; //sqrt(recvBuf[ii] / (double) getNRanks());
    }
+}
+
+void initTimers(Timers* perfTimer)
+{
+    int i;
+
+    for( i=0; i < numberOfTimers; i++ )
+    {
+        perfTimer[i].start = 0;
+        perfTimer[i].total = 0;
+        perfTimer[i].count = 0;
+        perfTimer[i].elapsed = 0;
+
+        perfTimer[i].minRank = 0;
+        perfTimer[i].maxRank = 0;
+
+        perfTimer[i].minValue = 0;
+        perfTimer[i].maxValue = 0;
+        perfTimer[i].average = 0;
+        perfTimer[i].stdev = 0;
+    }
 }
 

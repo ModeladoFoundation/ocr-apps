@@ -4,6 +4,10 @@
 #define __PERFORMANCE_TIMERS_H_
 
 #include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+#include "mytype.h"
 
 /// Timer handles
 enum TimerHandle{
@@ -20,6 +24,33 @@ enum TimerHandle{
    commReduceTimer,
    numberOfTimers};
 
+/// Timer data collected.  Also facilitates computing averages and
+/// statistics.
+typedef struct TimersSt
+{
+   uint64_t start;     //!< call start time
+   uint64_t total;     //!< current total time
+   uint64_t count;     //!< current call count
+   uint64_t elapsed;   //!< lap time
+
+   int minRank;        //!< rank with min value
+   int maxRank;        //!< rank with max value
+
+   double minValue;    //!< min over ranks
+   double maxValue;    //!< max over ranks
+   double average;     //!< average over ranks
+   double stdev;       //!< stdev across ranks
+} Timers;
+
+/// Global timing data collected.
+typedef struct TimerGlobalSt
+{
+   double atomRate;       //!< average time (us) per atom per rank
+   double atomAllRate;    //!< average time (us) per atom
+   double atomsPerUSec;   //!< average atoms per time (us)
+} TimerGlobal;
+
+
 /// Use the startTimer and stopTimer macros for timers in code regions
 /// that may be performance sensitive.  These can be compiled away by
 /// defining NTIMING.  If you are placing a timer anywere outside of a
@@ -35,33 +66,36 @@ enum TimerHandle{
 ///     ...
 ///
 #ifndef NTIMING
-#define startTimer(handle)    \
+#define startTimer(perfTimerh,handle)    \
    do                         \
 {                          \
-   profileStart(handle);   \
+   profileStart(perfTimerh,handle);   \
 } while(0)
-#define stopTimer(handle)     \
+#define stopTimer(perfTimerh,handle)     \
    do                         \
 {                          \
-   profileStop(handle);    \
+   profileStop(perfTimerh,handle);    \
 } while(0)
 #else
-#define startTimer(handle)
-#define stopTimer(handle)
+#define startTimer(perfTimerh,handle)
+#define stopTimer(perfTimerh,handle)
 #endif
+
+void initTimers(Timers* perfTimer);
 
 /// Use profileStart and profileStop only for timers that should *never*
 /// be turned off.  Typically this means they are outside the main
 /// simulation loop.  If the timer is inside the main loop use
 /// startTimer and stopTimer instead.
-void profileStart(const enum TimerHandle handle);
-void profileStop(const enum TimerHandle handle);
+void profileStart(Timers* perfTimer, const enum TimerHandle handle);
+void profileStop(Timers* perfTimer, const enum TimerHandle handle);
 
 /// Use to get elapsed time (lap timer).
-double getElapsedTime(const enum TimerHandle handle);
+double getElapsedTime(Timers* perfTimer, const enum TimerHandle handle);
 
 /// Print timing results.
-void printPerformanceResults(int nGlobalAtoms, int printRate);
+//void printPerformanceResults(Timers* perfTimer, TimerGlobal perfGlobal, int nGlobalAtoms, int printRate, int myRank, int nRanks);
+ocrGuid_t printPerformanceResultsEdt( EDT_ARGS );
 
 /// Print timing results to Yaml file
 void printPerformanceResultsYaml(FILE* file);

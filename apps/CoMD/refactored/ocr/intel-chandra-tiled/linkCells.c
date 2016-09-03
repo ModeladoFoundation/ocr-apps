@@ -299,6 +299,7 @@ ocrGuid_t updateLinkCellsEdt( EDT_ARGS )
 
     sim->boxes->nAtoms = nAtoms;
 
+    startTimer(sim->perfTimer, redistributeTimer);
     updateLinkCells(sim->boxes, sim->atoms);
 
     return NULL_GUID;

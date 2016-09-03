@@ -5,14 +5,31 @@
 #define __COMDTYPES_H_
 
 #include <stdio.h>
+
+#ifndef TG_ARCH
+#include <time.h>
+#endif
+
 #include "mytype.h"
 #include "mycommand.h" //TODO
 #include "haloExchange.h"
 #include "linkCells.h"
 #include "decomposition.h"
 #include "initAtoms.h"
+#include "performanceTimers.h"
 
 #include "reduction.h"
+
+static inline void timestamp( const char* msg )
+{
+#ifndef TG_ARCH
+  time_t t = time( NULL );
+  char* time_string = ctime( &t );
+  time_string[24] = '\0';
+  PRINTF( "%s: ", time_string );
+#endif
+  PRINTF( "%s\n", msg );
+}
 
 struct SimFlatSt;
 
@@ -64,7 +81,8 @@ typedef struct
 {
     ocrGuid_t haloRangeGUID;
     ocrGuid_t KeReductionRangeGUID, VcmReductionRangeGUID, maxOccupancyReductionRangeGUID;
-    ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
+    ocrGuid_t perfTimerReductionRangeGUID;
+    //ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
     ocrEVT_t finalOnceEVT;
 } globalOcrParamH_t;
 
@@ -104,9 +122,9 @@ typedef struct
 
     ocrGuid_t DBK_timers;
 
-    ocrDBK_t rpKeDBK, rpVcmDBK, rpmaxOccupancyDBK;
-    reductionPrivate_t *rpKePTR, *rpVcmPTR, *rpmaxOccupancyPTR;
-    ocrEVT_t rpKeEVT, rpVcmEVT, rpmaxOccupancyEVT;
+    ocrDBK_t rpKeDBK, rpVcmDBK, rpmaxOccupancyDBK, rpPerfTimerDBK;
+    reductionPrivate_t *rpKePTR, *rpVcmPTR, *rpmaxOccupancyPTR, *rpPerfTimerPTR;
+    ocrEVT_t rpKeEVT, rpVcmEVT, rpmaxOccupancyEVT, rpPerfTimerEVT;
 
     ocrHint_t myEdtAffinityHNT;
     ocrHint_t myDbkAffinityHNT;
@@ -142,11 +160,17 @@ typedef struct SimFlatSt
    real_t ePotential;     //!< the total potential energy of the system
    real_t eKinetic;       //!< the total kinetic energy of the system
 
+   Validate* validate;
+   Validate validate_INST;
+
    BasePotential *pot;	  //!< the potential
    ocrDBK_t DBK_pot;
 
    HaloExchange* atomExchange;
    HaloExchange atomExchange_INST;
+
+   Timers perfTimer[numberOfTimers];
+   TimerGlobal perfGlobal;
 
    rankH_t* PTR_rankH; //TODO
 

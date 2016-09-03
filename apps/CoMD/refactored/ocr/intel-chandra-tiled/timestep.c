@@ -3,6 +3,7 @@
 
 #include "timestep.h"
 
+#include "mytype.h"
 #include "CoMDTypes.h"
 #include "linkCells.h"
 #include "parallel.h"
@@ -29,39 +30,38 @@ static void advancePosition(SimFlat* s, int nBoxes, real_t dt);
 /// the next call.
 ///
 /// After nSteps the kinetic energy is computed for diagnostic output.
-double timestep(SimFlat* s, int nSteps, real_t dt)
-{
-   for (int ii=0; ii<nSteps; ++ii)
-   {
-      //startTimer(velocityTimer);
-      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt);
-      //stopTimer(velocityTimer);
-
-      //startTimer(positionTimer);
-      advancePosition(s, s->boxes->nLocalBoxes, dt);
-      //stopTimer(positionTimer);
-
-      //startTimer(redistributeTimer);
-      redistributeAtoms(s);
-      //stopTimer(redistributeTimer);
-
-      //startTimer(computeForceTimer);
-      computeForce(s);
-      //stopTimer(computeForceTimer);
-
-      //startTimer(velocityTimer);
-      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt);
-      //stopTimer(velocityTimer);
-   }
-
-   kineticEnergy(s);
-
-   return s->ePotential;
-}
+//double timestep(SimFlat* s, int nSteps, real_t dt)
+//{
+//   for (int ii=0; ii<nSteps; ++ii)
+//   {
+//      //startTimer(velocityTimer);
+//      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt);
+//      //stopTimer(velocityTimer);
+//
+//      //startTimer(positionTimer);
+//      advancePosition(s, s->boxes->nLocalBoxes, dt);
+//      //stopTimer(positionTimer);
+//
+//      //startTimer(redistributeTimer);
+//      redistributeAtoms(s);
+//      //stopTimer(redistributeTimer);
+//
+//      //startTimer(computeForceTimer);
+//      computeForce(s);
+//      //stopTimer(computeForceTimer);
+//
+//      //startTimer(velocityTimer);
+//      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt);
+//      //stopTimer(velocityTimer);
+//   }
+//
+//   kineticEnergy(s);
+//
+//   return s->ePotential;
+//}
 
 ocrGuid_t advanceVelocityEdt(EDT_ARGS)
 {
-
     real_t dt = ((real_t*) paramv)[0];
     DEBUG_PRINTF(( "%s dt %f\n", __func__, dt ));
 
@@ -76,7 +76,14 @@ ocrGuid_t advanceVelocityEdt(EDT_ARGS)
     real3* f = depv[3].ptr;
 
     sim->atoms = &sim->atoms_INST;
+
+    sim->atoms->gid = NULL;
     sim->atoms->iSpecies = NULL;
+    sim->atoms->r = NULL;
+    sim->atoms->p = NULL;
+    sim->atoms->f = NULL;
+    sim->atoms->U = NULL;
+
     sim->atoms->p = p;
     sim->atoms->f = f;
 
@@ -85,7 +92,9 @@ ocrGuid_t advanceVelocityEdt(EDT_ARGS)
 
     sim->species = &sim->species_INST;
 
+    startTimer(sim->perfTimer, velocityTimer);
     advanceVelocity(sim, sim->boxes->nLocalBoxes, dt);
+    stopTimer(sim->perfTimer, velocityTimer);
 
     return NULL_GUID;
 }
@@ -118,28 +127,30 @@ ocrGuid_t advancePositionEdt(EDT_ARGS)
 
     sim->species = &sim->species_INST;
 
+    startTimer(sim->perfTimer, positionTimer);
     advancePosition(sim, sim->boxes->nLocalBoxes, dt);
+    stopTimer(sim->perfTimer, positionTimer);
 
     return NULL_GUID;
 }
-
 
 ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 {
     s64 itimestep = paramv[0];
 
-#if 1
     s32 _idep;
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
     ocrDBK_t DBK_sim = depv[_idep++].guid;
     ocrDBK_t rpKeDBK = depv[_idep++].guid;
+    ocrDBK_t rpPerfTimerDBK = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
     SimFlat* sim = depv[_idep++].ptr;
     reductionPrivate_t* rpKePTR = depv[_idep++].ptr;
+    reductionPrivate_t* rpPerfTimerPTR = depv[_idep++].ptr;
 
     //rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
@@ -168,15 +179,19 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     u32 myRank = sim->PTR_rankH->myRank;
     //PRINTF("iBox %d t %d\n", iBox, itimestep);
 
-    rpKePTR->all = 0;
-
     ocrGuid_t rpKeEVT = rpKePTR->returnEVT;
+    ocrGuid_t rpPerfTimerEVT = rpPerfTimerPTR->returnEVT;
 
-    ocrDbRelease(rpKeDBK);
+    if(itimestep==0)
+        profileStart(sim->perfTimer, loopTimer);
+    if(itimestep%sim->printRate==0)
+        startTimer(sim->perfTimer, timestepTimer);
+
+    ocrDbRelease(DBK_sim);
 
     ocrGuid_t advanceVelocityTML, advanceVelocityEDT, advanceVelocityOEVT, advanceVelocityOEVTS;
 
-    real_t dt = 0.5*PTR_cmd->dt; //TODO
+    real_t dt = 0.5*PTR_cmd->dt;
 
     ocrEdtTemplateCreate( &advanceVelocityTML, advanceVelocityEdt, 1, 4 );
 
@@ -195,7 +210,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t advancePositionTML, advancePositionEDT, advancePositionOEVT, advancePositionOEVTS;
 
-    dt = 0.0;//1.0*PTR_cmd->dt; //TODO
+    dt = 1.0*PTR_cmd->dt;
 
     ocrEdtTemplateCreate( &advancePositionTML, advancePositionEdt, 1, 6 );
 
@@ -251,7 +266,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     ocrGuid_t advanceVelocityOEVT1, advanceVelocityOEVTS1;
 
-    dt = 0.0; //0.5*PTR_cmd->dt; //TODO
+    dt = 0.5*PTR_cmd->dt;
 
     ocrEdtTemplateCreate( &advanceVelocityTML, advanceVelocityEdt, 1, 5 );
 
@@ -274,7 +289,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     itimestep++;
 
-    if( itimestep%printRate == 0 )
+    if( itimestep%printRate == 0  || itimestep == nSteps )
     {
         ////Compute Kinetic energy of the system
         ocrGuid_t kineticEnergyTML, kineticEnergyEDT, kineticEnergyOEVT, kineticEnergyOEVTS;
@@ -295,66 +310,205 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence( DBK_iSpecies, kineticEnergyEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( DBK_p, kineticEnergyEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( rpKeDBK, kineticEnergyEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( computeForceOEVTS, kineticEnergyEDT, _idep++, DB_MODE_NULL );
+        ocrAddDependence( advanceVelocityOEVTS1, kineticEnergyEDT, _idep++, DB_MODE_NULL );
 
         ////Print things
-        if(myRank == 0)
+        ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
+
+        ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 5 );
+
+        ocrEdtCreate( &printThingsEDT, printThingsTML,
+                      EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_FINISH, &myEdtAffinityHNT, &printThingsOEVT );
+
+        ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
+        ocrAddDependence( printThingsOEVT, printThingsOEVTS, 0, DB_MODE_NULL );
+
+        _idep = 0;
+        ocrAddDependence( DBK_rankH, printThingsEDT, _idep++, DB_MODE_RO ); //TODO
+        ocrAddDependence( DBK_sim, printThingsEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( rpPerfTimerDBK, printThingsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( kineticEnergyOEVTS, printThingsEDT, _idep++, DB_MODE_NULL );
+
+        if(itimestep == nSteps)
         {
-            ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
+            ////Gather and print performance Results
+            ocrGuid_t printPerformanceResultsTML, printPerformanceResultsEDT, printPerformanceResultsOEVT, printPerformanceResultsOEVTS;
 
-            ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 3 );
+            ocrEdtTemplateCreate( &printPerformanceResultsTML, printPerformanceResultsEdt, 1, 4 );
 
-            ocrEdtCreate( &printThingsEDT, printThingsTML,
+            ocrEdtCreate( &printPerformanceResultsEDT, printPerformanceResultsTML,
                           EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, &myEdtAffinityHNT, &printThingsOEVT );
+                          EDT_PROP_FINISH, &myEdtAffinityHNT, &printPerformanceResultsOEVT );
 
-            ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
-            ocrAddDependence( printThingsOEVT, printThingsOEVTS, 0, DB_MODE_NULL );
+            ocrEventCreate( &printPerformanceResultsOEVTS, OCR_EVENT_STICKY_T, false );
+            ocrAddDependence( printPerformanceResultsOEVT, printPerformanceResultsOEVTS, 0, DB_MODE_NULL );
 
             _idep = 0;
-            ocrAddDependence( DBK_sim, printThingsEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( kineticEnergyOEVTS, printThingsEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( DBK_rankH, printPerformanceResultsEDT, _idep++, DB_MODE_RO ); //TODO
+            ocrAddDependence( DBK_sim, printPerformanceResultsEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( rpPerfTimerEVT, printPerformanceResultsEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( printThingsOEVTS, printPerformanceResultsEDT, _idep++, DB_MODE_NULL );
+
+            if(myRank == 0)
+                ocrAddDependence(printPerformanceResultsOEVTS, PTR_globalOcrParamH->finalOnceEVT, 0, DB_MODE_NULL);
         }
-
     }
-
-#endif
 
     return NULL_GUID;
 }
 
-ocrGuid_t printThingsEdt( EDT_ARGS )
+/// Prints current time, energy, performance etc to monitor the state of
+/// the running simulation.  Performance per atom is scaled by the
+/// number of local atoms per process this should give consistent timing
+/// assuming reasonable load balance
+void printThings(SimFlat* s, int iStep, double elapsedTime)
 {
-    s64 itimestep = paramv[0];
+    int nEval;
 
-    real_t* eGlobalPTR = depv[1].ptr;
-
-    int nGlobal = (int) eGlobalPTR[2];
-    real_t e_u = eGlobalPTR[0]/nGlobal;
-    real_t e_k = eGlobalPTR[1]/nGlobal;
-
-    real_t energy = (e_u + e_k);
-    real_t temp = e_k / (kB_eV * 1.5);
-
-    if( itimestep == 0 )
+    if(iStep==0)
     {
-        PRINTF( "\nInitial energy : %f, atom count : %u\n\n", energy, nGlobal );
-        //timestamp( "Starting simulation\n");
-        PRINTF( "Starting simulation\n");
-        PRINTF( "#                                                                                         Performance\n");
-        PRINTF( "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
+        nEval = 1; // gives nEval = 1 for zeroth step.
+        elapsedTime = 0.0;
+    }
+    else
+        nEval = (iStep%s->printRate==0)?(s->printRate):(iStep%s->printRate);
+
+    int myRank = s->PTR_rankH->myRank;
+    DEBUG_PRINTF(( "%s t %d r %d\n", __func__, iStep, myRank ));
+
+    if ( myRank != 0 )
+        return;
+
+    real_t time = iStep*s->dt;
+    real_t eTotal = (s->ePotential+s->eKinetic) / s->atoms->nGlobal;
+    real_t eK = s->eKinetic / s->atoms->nGlobal;
+    real_t eU = s->ePotential / s->atoms->nGlobal;
+    real_t Temp = (s->eKinetic / s->atoms->nGlobal) / (kB_eV * 1.5);
+
+    double timePerAtom = 1.0e6*elapsedTime/(double)(nEval*s->atoms->nLocal);
+
+    if(iStep==0)
+    {
+        timestamp( "Starting simulation\n");
+
+        PRINTF(
+         "#                                                                                         Performance\n"
+         "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
     }
 
-    PRINTF( "%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
-         itimestep, itimestep*1.0, energy, e_u, e_k, temp, -1.0, nGlobal );
+    PRINTF(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+            iStep, time, eTotal, eU, eK, Temp, timePerAtom, s->atoms->nGlobal);
+
+    if(iStep==s->nSteps)
+        timestamp("Ending simulation\n");
+}
+
+void initValidate(Validate* val, SimFlat* sim)
+{
+   val->eTot0 = (sim->ePotential + sim->eKinetic) / sim->atoms->nGlobal;
+   val->nAtoms0 = sim->atoms->nGlobal;
+
+   if (sim->PTR_rankH->myRank == 0)
+   {
+      PRINTF("\n");
+      printSeparator();
+      PRINTF("Initial energy : %14.12f, atom count : %d \n",
+            val->eTot0, val->nAtoms0);
+      PRINTF("\n");
+   }
+}
+
+void validateResult(const Validate* val, SimFlat* sim)
+{
+   if (sim->PTR_rankH->myRank == 0)
+   {
+      real_t eFinal = (sim->ePotential + sim->eKinetic) / sim->atoms->nGlobal;
+
+      int nAtomsDelta = (sim->atoms->nGlobal - val->nAtoms0);
+
+      PRINTF("\n");
+      PRINTF("\n");
+      PRINTF("Simulation Validation:\n");
+
+      PRINTF("  Initial energy  : %14.12f\n", val->eTot0);
+      PRINTF("  Final energy    : %14.12f\n", eFinal);
+      PRINTF("  eFinal/eInitial : %f\n", eFinal/val->eTot0);
+      if ( nAtomsDelta == 0)
+      {
+         PRINTF("  Final atom count : %d, no atoms lost\n",
+               sim->atoms->nGlobal);
+      }
+      else
+      {
+         PRINTF("#############################\n");
+         PRINTF("# WARNING: %6d atoms lost #\n", nAtomsDelta);
+         PRINTF("#############################\n");
+      }
+   }
+}
+
+ocrGuid_t printThingsEdt( EDT_ARGS )
+{
+    s64 iStep = paramv[0];
+    s32 _idep=0;
+
+    _idep = 0;
+    ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_sim = depv[_idep++].guid;
+    ocrDBK_t rpKeEVT = depv[_idep++].guid;
+
+    _idep = 0;
+    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    SimFlat* sim = depv[_idep++].ptr;
+    real_t* eGlobalPTR = depv[_idep++].ptr;
+
+    sim->atoms = &sim->atoms_INST;
+    sim->validate = &sim->validate_INST;
+
+    sim->PTR_rankH = PTR_rankH;
+
+    if(iStep!=0) stopTimer(sim->perfTimer, timestepTimer);
+
+    if(iStep==sim->nSteps)
+        profileStop(sim->perfTimer, loopTimer);
+
+    int nGlobal = (int) eGlobalPTR[2];
+    real_t e_u = eGlobalPTR[0];
+    real_t e_k = eGlobalPTR[1];
+
+    sim->ePotential = e_u;
+    sim->eKinetic = e_k;
+    sim->atoms->nGlobal = nGlobal;
+
+    if(iStep==0)
+        initValidate(sim->validate, sim); //atom counts, energy
+
+    printThings(sim, iStep, getElapsedTime(sim->perfTimer,timestepTimer));
+
+    if(iStep==sim->nSteps)
+    {
+        //Epilog
+        validateResult(sim->validate, sim);
+        profileStop(sim->perfTimer, totalTimer);
+
+        ocrDBK_t rpPerfTimerDBK = depv[_idep].guid;
+        reductionPrivate_t* rpPerfTimerPTR = depv[_idep].ptr;
+
+        double sendBuf[numberOfTimers];
+
+        for (int ii = 0; ii < numberOfTimers; ii++)
+           sendBuf[ii] = (double)sim->perfTimer[ii].total;
+
+        reductionLaunch(rpPerfTimerPTR, rpPerfTimerDBK, sendBuf);
+    }
 
     return NULL_GUID;
 }
 
 _OCR_TASK_FNC_( timestepLoopEdt )
 {
-    DEBUG_PRINTF(( "%s\n", __func__ ));
     s64 itimestep = paramv[0];
 
     s32 _idep, _paramc, _depc;
@@ -373,12 +527,15 @@ _OCR_TASK_FNC_( timestepLoopEdt )
 
     s64 id = PTR_rankH->myRank;
 
+    DEBUG_PRINTF(( "%s t %d r %d\n", __func__, itimestep, id ));
+
     ocrDBK_t rpKeDBK = PTR_rankH->rpKeDBK;
+    ocrDBK_t rpPerfTimerDBK = PTR_rankH->rpPerfTimerDBK;
 
     // Do one timestep
     ocrGuid_t timestepTML, timestepEDT, timestepOEVT, timestepOEVTS;
 
-    ocrEdtTemplateCreate( &timestepTML, timestepEdt, 1, 3 );
+    ocrEdtTemplateCreate( &timestepTML, timestepEdt, 1, 4 );
 
     ocrEdtCreate( &timestepEDT, timestepTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
@@ -390,7 +547,8 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     _idep = 0;
     ocrAddDependence( DBK_rankH, timestepEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_sim, timestepEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( rpKeDBK, timestepEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( rpKeDBK, timestepEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( rpPerfTimerDBK, timestepEDT, _idep++, DB_MODE_RO );
 
     itimestep += 1;
 
@@ -401,7 +559,7 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     //start next timestep
         ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
-        ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 1, 4 );
+        ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 1, 5 );
 
         ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
                       EDT_PARAM_DEF, (u64*)&itimestep, EDT_PARAM_DEF, NULL,
@@ -414,11 +572,9 @@ _OCR_TASK_FNC_( timestepLoopEdt )
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( DBK_sim, timestepLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( rpKeDBK, timestepLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( rpPerfTimerDBK, timestepLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( timestepOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL );
     }
-    else //Trigger wrapup EVT
-        //rpKePTR->returnEVT = PTR_globalOcrParamH->finalOnceEVT;
-        ocrAddDependence(timestepOEVTS, PTR_globalOcrParamH->finalOnceEVT, 0, DB_MODE_NULL);
 
     return NULL_GUID;
 }
@@ -483,7 +639,7 @@ ocrGuid_t computeForceEdt( EDT_ARGS )
     ocrAddDependence( DBK_gid, forceEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_iSpecies, forceEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_r, forceEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_p, forceEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_p, forceEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_f, forceEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_U, forceEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_pot, forceEDT, _idep++, DB_MODE_RO );
@@ -577,12 +733,20 @@ ocrGuid_t kineticEnergyEdt(EDT_ARGS)
     reductionPrivate_t* rpKePTR = depv[5].ptr;
 
     PTR_rankH->rpKePTR = rpKePTR;
+    PTR_rankH->rpKeDBK = rpKeDBK;
 
     sim->PTR_rankH = PTR_rankH;
 
     sim->atoms = &sim->atoms_INST;
     sim->boxes = &sim->boxes_INST;
     sim->species = &sim->species_INST;
+
+    sim->atoms->gid = NULL;
+    sim->atoms->iSpecies = NULL;
+    sim->atoms->r = NULL;
+    sim->atoms->p = NULL;
+    sim->atoms->f = NULL;
+    sim->atoms->U = NULL;
 
     sim->atoms->iSpecies = iSpecies;
     sim->atoms->p = p;

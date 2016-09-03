@@ -92,7 +92,7 @@ LDFLAGS := -lpthread -lreduction -lm
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O0
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 

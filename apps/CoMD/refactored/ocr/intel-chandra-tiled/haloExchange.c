@@ -95,7 +95,7 @@ typedef struct ForceMsgSt
 ForceMsg;
 
 static void initHaloExchange(HaloExchange* hh, Domain* domain);
-static void exchangeData(HaloExchange* haloExchange, void* data, int iAxis);
+//static void exchangeData(HaloExchange* haloExchange, void* data, int iAxis);
 ocrGuid_t exchangeDataEdt(EDT_ARGS);
 
 static ocrDBK_t mkAtomCellList(int** list_PTR, LinkCell* boxes, enum HaloFaceOrder iFace, const int nCells);
@@ -250,6 +250,7 @@ void initForceHaloExchange(HaloExchange* hh, Domain* domain, LinkCell* boxes)
    //return hh;
 }
 
+#if 0
 void destroyHaloExchange(HaloExchange** haloExchange)
 {
    (*haloExchange)->destroy((*haloExchange)->parms);
@@ -267,6 +268,7 @@ void haloExchange(HaloExchange* haloExchange, void* data)
     //ocrDBK_t DBK_sim = depv[_idep++].guid;
     //ocrDBK_t DBK_parms = depv[_idep++].guid;
 }
+#endif
 
 ocrGuid_t haloExchangeEdt(EDT_ARGS)
 {
@@ -447,15 +449,16 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     ocrAddDependence( DBK_parms, unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( parms->DBK_cellList[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( parms->DBK_cellList[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( loadAtomsBufferOEVTS, unloadAtomsBufferEDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;
 }
 
+#if 0
 void exchangeData(HaloExchange* haloExchange, void* data, int iAxis)
 {
    enum HaloFaceOrder faceM = 2*iAxis;
@@ -474,10 +477,10 @@ void exchangeData(HaloExchange* haloExchange, void* data, int iAxis)
 
    int nRecvM, nRecvP;
 
-   startTimer(commHaloTimer);
+   //startTimer(commHaloTimer);
    nRecvP = sendReceiveParallel(sendBufM, nSendM, nbrRankM, recvBufP, haloExchange->bufCapacity, nbrRankP);
    nRecvM = sendReceiveParallel(sendBufP, nSendP, nbrRankP, recvBufM, haloExchange->bufCapacity, nbrRankM);
-   stopTimer(commHaloTimer);
+   //stopTimer(commHaloTimer);
 
    haloExchange->unloadBuffer(haloExchange->parms, data, faceM, nRecvM, recvBufM);
    haloExchange->unloadBuffer(haloExchange->parms, data, faceP, nRecvP, recvBufP);
@@ -486,6 +489,7 @@ void exchangeData(HaloExchange* haloExchange, void* data, int iAxis)
    comdFree(sendBufP);
    comdFree(sendBufM);
 }
+#endif
 
 /// Make a list of link cells that need to be sent across the specified
 /// face.  For each face, the list must include all cells, local and
@@ -545,8 +549,6 @@ ocrDBK_t mkAtomCellList(int** list_PTR, LinkCell* boxes, enum HaloFaceOrder iFac
 /// parameters.
 ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
 {
-    DEBUG_PRINTF(( "%s\n", __func__ ));
-
     s32 _idep;
 
     u64 iAxis = paramv[0];
@@ -596,6 +598,10 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
 
     sim->boxes->nAtoms = nAtoms;
 
+    DEBUG_PRINTF(( "%s iAxis %d r %d\n", __func__, iAxis, sim->PTR_rankH->myRank ));
+
+    if( iAxis ==0 ) startTimer(sim->perfTimer, atomHaloTimer);
+
     ocrDBK_t DBK_sendBufM, DBK_sendBufP;
     char* sendBufM; // = comdMalloc(haloExchange->bufCapacity);
     char* sendBufP; // = comdMalloc(haloExchange->bufCapacity);
@@ -617,6 +623,7 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
 
     int nSendM = haloExchange->loadBuffer(haloExchange->parms, sim, faceM, sendBufM);
     int nSendP = haloExchange->loadBuffer(haloExchange->parms, sim, faceP, sendBufP);
+    //loadAtomsBuffer(void* vparms, void* data, int face, char* charBuf)
 
     tagsendBufM[0] = nSendM;
     tagsendBufP[0] = nSendP;
@@ -660,6 +667,8 @@ ocrGuid_t unloadAtomsBufferEdt( EDT_ARGS )
     ocrDBK_t DBK_cellList_faceP = depv[_idep++].guid;
     ocrDBK_t DBK_recvBufM = depv[_idep++].guid;
     ocrDBK_t DBK_recvBufP = depv[_idep++].guid;
+    ocrDBK_t DBK_tagRecvBufM = depv[_idep++].guid;
+    ocrDBK_t DBK_tagRecvBufP = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
@@ -700,6 +709,11 @@ ocrGuid_t unloadAtomsBufferEdt( EDT_ARGS )
 
     ocrDbDestroy(DBK_recvBufM);
     ocrDbDestroy(DBK_recvBufP);
+
+    ocrDbDestroy(DBK_tagRecvBufM);
+    ocrDbDestroy(DBK_tagRecvBufP);
+
+    if( iAxis == 2 ) stopTimer(sim->perfTimer, atomHaloTimer);
 
     return NULL_GUID;
 }
@@ -1030,8 +1044,10 @@ ocrGuid_t sortAtomsInCellsEdt( EDT_ARGS )
 
     sim->boxes->nAtoms = nAtoms;
 
-   for (int ii=0; ii<sim->boxes->nTotalBoxes; ++ii)
-      sortAtomsInCell(sim->atoms, sim->boxes, ii);
+    for (int ii=0; ii<sim->boxes->nTotalBoxes; ++ii)
+       sortAtomsInCell(sim->atoms, sim->boxes, ii);
+
+    stopTimer(sim->perfTimer, redistributeTimer);
 
     return NULL_GUID;
 }
