@@ -24,9 +24,9 @@ NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 CPP_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 NL_CRTEND = $(LIBS)/crtend.o
 
-# Other library - this uses the libocrscaffold.a, but it
+# Other library - this uses the libscaffold.a, but it
 # should actually be the real ocr library/runtime.
-OCR_LIB = $(LIBS)/libocrscaffold.a
+OCR_LIB = $(LIBS)/libscaffold.a
 
 CAPP = hello
 CAPP_SRCS = hello.c

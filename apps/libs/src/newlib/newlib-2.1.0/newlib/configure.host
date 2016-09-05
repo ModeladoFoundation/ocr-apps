@@ -20,6 +20,7 @@
 # It uses the following shell variables:
 #   host		The configuration host
 #   host_cpu		The configuration host CPU
+#   USE_TGR         If set to yes, then the tgr system will be built instead of ocr
 #   newlib_mb		--enable-newlib-mb ("yes", "no")
 #   target_optspace	--enable-target-optspace ("yes", "no", "")
 #   newlib_multithread	--enable-newlib-multithread ("yes", "no", "yes")
@@ -541,10 +542,18 @@ case "${host}" in
 	sys_dir=w65
 	;;
   x86_64*)
-	sys_dir=ocr
+    if [ "x$USE_TGR" = "xyes" ] ; then
+      sys_dir=tgr
+    else
+      sys_dir=ocr
+    fi
 	;;
   xstg*)
-	sys_dir=ocr
+    if [ "x$USE_TGR" = "xyes" ] ; then
+      sys_dir=tgr
+    else
+      sys_dir=ocr
+    fi
 	;;
   z8k-*-coff)
 	sys_dir=z8ksim

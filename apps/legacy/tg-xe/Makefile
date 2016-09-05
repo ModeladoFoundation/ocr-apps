@@ -2,6 +2,8 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
+# If newlib was compiled for tgr instead of ocr set USE_TGR=yes.
+#
 ARCH=tg-xe
 
 TG_INSTALL ?= $(realpath $(CURDIR)/../../../../tg/tg/install)
@@ -20,13 +22,18 @@ LD = $(TOOL_PREFIX)ld
 
 # Libraries to include from newlib
 NL_CRT = $(LIBS)/crt0t.o
-NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
+NL_LIBS = $(LIBS)/libpthread.a $(LIBS)/libc.a $(LIBS)/libm.a
 CPP_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 NL_CRTEND = $(LIBS)/crtend.o
 
-# Other library - this uses the libocrscaffold.a, but it
+ifeq ($(USE_TGR), yes)
+# Use this if newlib is compiled for tgr instead of ocr.
+OCR_LIB = $(LIBS)/libtgr-xe.a
+else
+# Other library - this uses the libscaffold.a, but it
 # should actually be the real ocr library/runtime.
-OCR_LIB = $(LIBS)/libocrscaffold.a $(LIBS)/libswtest.a
+OCR_LIB = $(LIBS)/libscaffold.a $(LIBS)/libswtest.a
+endif
 
 C_LIBS =
 CFLAGS = -g -O0 -isystem $(OCR_INC)
@@ -59,7 +66,7 @@ default: all
 	@echo Successfully built $@
 
 %.o: %.c
-	@$(CC) -c $(CFLAGS) $< -o $@
+	@$(CC) -c $(CFLAGS) $< -o $@ -mllvm -set-global-default=1
 
 %.o: %.cpp
 	@$(CXX) -c $(CXXFLAGS) $< -o $@

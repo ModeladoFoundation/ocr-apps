@@ -18,8 +18,10 @@
 
   .global SYM (setjmp)
   .global SYM (longjmp)
+  .global SYM (__libc_longjmp)
   SOTYPE_FUNCTION(setjmp)
   SOTYPE_FUNCTION(longjmp)
+  SOTYPE_FUNCTION(__libc_longjmp)
 
 SYM (setjmp):
   movq    rbx,  0 (rdi)
@@ -36,6 +38,8 @@ SYM (setjmp):
   ret
 
 SYM (longjmp):
+SYM (__libc_longjmp):
+  .weak   longjmp
   movq    rsi, rax        /* Return value */
 
   movq     8 (rdi), rbp

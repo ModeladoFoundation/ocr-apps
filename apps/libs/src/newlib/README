@@ -2,66 +2,72 @@ Building newlib for tg, x86, and x86_clang
 =====================
 
 This directory can build newlib for three different 'targets':
-1 - tg; this is for the xstg target and uses the new llvm/clang/binutils
+1 - tg-xe; this is for the xstg target and uses the new llvm/clang/binutils
        tool chain in the intel repository:isa/4.1.0 branch.
-2 - x86; this is for the x86 target and uses the new llvm/clang/binutils
-       tool chain in the intel repository:isa/4.1.0 branch.
-3 - x86_native; this is for the x86 target and uses the native x86 tool chain;
+3 - x86; this is for the x86 target and uses the native x86 tool chain;
        this has only been checked out using the gcc tool chain, revisions
        4.7, 4.8, and 4.9.
+2 - x86-test; this is for the x86 target and uses the new llvm/clang/binutils
+
 Note that the builds for each of these 'targets' is independent of the others.
 You don't need to do anything special if you want to build newlib for more
 than one of these.
+
+By default, all of these instructions will build newlib for the ocr runtime (via
+the USal interface). If one wishes to build for the TG bare metal runtime, the
+variable USE_TGR must be set to yes during the make commands. (e.g. to build
+the x86 architecture one could use the command 'make ARCH=x86 USE_TGR=yes')
+
 =====================
 
 To build for the xstg architecture, change into the apps/apps/libs/src/newlib
-directory.  Run 'make ARCH=tg'; this builds for the xstg target.  Then run
+directory.  Run 'make ARCH=tg-xe'; this builds for the xstg target.  Then run
 'make ARCH=tg install'; this deposits resulting libraries and includes into
-the install root at apps/apps/libs/tg.
+the install root at apps/apps/libs/install/tg.
 
 After the build completes, the following is in the
-apps/apps/libs/tg/lib/ directory:
+apps/apps/libs/install/tg-xe/lib/ directory:
 
    crt0.o  crt0t.o crtend.o libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The apps/apps/libs/tg/include directory is also populated with
+The apps/apps/libs/install/tg-xe/include directory is also populated with
 standard 'libc' headers.
 
-To clean, use 'make ARCH=tg clean'.  Note that this does NOT remove build
-results from the apps/apps/libs/tg area.
+To clean, use 'make ARCH=tg-xe clean'.  Note that this does NOT remove build
+results from the apps/apps/libs/install/tg-xe area.
 
 =====================
 
 To build for x86, change into the apps/apps/libs/src/newlib directory.
 Run 'make ARCH=x86'; this builds for the x86 target. Then run
 'make ARCH=x86 install'; this deposits resulting libraries and includes
-into apps/apps/libs/x86.
+into apps/apps/libs/install/x86.
 
 After the build completes, the following is in the
-apps/apps/libs/x86/lib/ directory:
+apps/apps/libs/install/x86/lib/ directory:
 
        crt0.o  crtend.o libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The apps/apps/libs/x86/include directory is also populated with
+The apps/apps/libs/install/x86/include directory is also populated with
 standard 'libc' headers.
 
 To clean use 'make ARCH=x86 clean'.  Note that this does NOT remove build
-results from the apps/apps/libs/x86 area.
+results from the apps/apps/libs/install/x86 area.
 
 =====================
 
-To build for x86_native, change into the apps/apps/libs/src/newlib directory.
-Run 'make ARCH=x86_native'; this builds for the x86 target. Then run
-'make ARCH=x86_native install'; this deposits resulting libraries and includes
-into apps/apps/libs/x86_native.
+To build for x86-test, change into the apps/apps/libs/src/newlib directory.
+Run 'make ARCH=x86-test'; this builds for the x86 target. Then run
+'make ARCH=x86-test install'; this deposits resulting libraries and includes
+into apps/apps/libs/install/x86-test.
 
 After the build completes, the following is in the
-apps/apps/libs/x86_native/lib/ directory:
+apps/apps/libs/install/x86-test/lib/ directory:
 
        crt0.o  libc.a  libg.a  libm.a  libnosys.a  nosys.specs
 
-The apps/apps/libs/x86_native/include directory is also populated with
+The apps/apps/libs/install/x86-test/include directory is also populated with
 standard 'libc' headers.
 
-To clean use 'make ARCH=x86_native clean'.  Note that this does NOT remove build
-results from the apps/apps/libs/x86_native area.
+To clean use 'make ARCH=x86-test clean'.  Note that this does NOT remove build
+results from the apps/apps/libs/install/x86-test area.

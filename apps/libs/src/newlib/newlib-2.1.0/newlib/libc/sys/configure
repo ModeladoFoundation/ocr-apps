@@ -831,6 +831,7 @@ sysvi386
 sysvnecv70
 tic80
 w65
+tgr
 z8ksim'
 
 # Initialize some variables set by options.
@@ -11868,6 +11869,8 @@ subdirs="$subdirs a29khif"
  ;;
 	sysvnecv70) subdirs="$subdirs sysvnecv70"
  ;;
+	tgr) subdirs="$subdirs tgr"
+ ;;
 	tic80) subdirs="$subdirs tic80"
  ;;
 	w65) subdirs="$subdirs w65"
@@ -11885,6 +11888,15 @@ fi
 
 CRT=
 if test "x${sys_dir}" = "xocr"; then
+    if test "x${machine_dir}" = "xxstg"; then
+        CRT="crt0.o crt0t.o crtend.o"
+    elif test "x${machine_dir}" = "xx86_64"; then
+        CRT="crt0.o crtend.o"
+    else
+        CRT="crt0.o"
+    fi
+    CRT0=
+elif test "x${sys_dir}" = "xtgr"; then
     if test "x${machine_dir}" = "xxstg"; then
         CRT="crt0.o crt0t.o crtend.o"
     elif test "x${machine_dir}" = "xx86_64"; then

@@ -12205,6 +12205,15 @@ if test "x${sys_dir}" = "xocr"; then
       CRT=crt0.o
     fi
   CRT_DIR=libc/
+elif test "x${sys_dir}" = "xtgr"; then
+    if test "x${machine_dir}" = "xxstg"; then
+      CRT="crt0.o crt0t.o crtend.o"
+    elif test "x${machine_dir}" = "xx86_64"; then
+      CRT="crt0.o crtend.o"
+    else
+      CRT=crt0.o
+    fi
+  CRT_DIR=libc/
 else
   if test "x${have_crt0}" = "xyes"; then
     CRT0=crt0.o

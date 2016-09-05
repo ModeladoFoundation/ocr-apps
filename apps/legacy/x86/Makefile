@@ -2,15 +2,15 @@
 # Makefile
 # vim:syntax=make noexpandtab:
 #
-# If run as `make OCRSCAFFOLD=yes' then the examples will be compiled
-# against ocrscaffold instead of libocr.
+# If run as `make LIBSCAFFOLD=yes' then the examples will be compiled
+# against libscaffold instead of libocr.
 #
-# If compiled without OCRSCAFFOLD=yes then run like this:
+# If compiled without LIBSCAFFOLD=yes then run like this:
 #
 # To run C example: ./chello -ocr:cfg ./test_config.cfg
 # To run C++ example: ./cxxhello -ocr:cfg ./test_config.cfg
 #
-# If compiled with OCRSCAFFOLD=yes then run directly without arguments.
+# If compiled with LIBSCAFFOLD=yes then run directly without arguments.
 #
 ARCH=x86
 OCR_TYPE=x86-newlib
@@ -37,8 +37,8 @@ GLIBC_A = $(LIBPTHREAD) $(LIBGCC_EH) $(LIBC)
 NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 LIBCXX_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 
-ifeq ($(OCRSCAFFOLD),yes)
-OCR_LIB = $(LIBS)/libocrscaffold.a
+ifeq ($(LIBSCAFFOLD),yes)
+OCR_LIB = $(LIBS)/libscaffold.a
 else
 OCR_LIB_PATH = $(APPS_ROOT)/../../ocr/ocr/install/lib/
 OCR_LIB = $(OCR_LIB_PATH)/libocr_$(OCR_TYPE).a $(GLIBC_A)

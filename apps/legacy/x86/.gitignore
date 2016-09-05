@@ -1,0 +1,6 @@
+chello
+cxxhello
+pthread
+*.o
+.*.sw*
+*~

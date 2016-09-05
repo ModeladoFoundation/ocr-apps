@@ -7,7 +7,7 @@
 #include <reent.h>
 #include <unistd.h>
 
-int
+pid_t
 _DEFUN_VOID (fork)
 {
   return _fork_r (_REENT);

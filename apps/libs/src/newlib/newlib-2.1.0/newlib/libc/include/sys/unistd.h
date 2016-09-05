@@ -220,8 +220,6 @@ void *  _EXFUN(_sbrk,  (ptrdiff_t __incr));
 int     _EXFUN(_unlink, (const char *__path ));
 _READ_WRITE_RETURN_TYPE _EXFUN(_write, (int __fd, const void *__buf, size_t __nbyte ));
 int     _EXFUN(_execve, (const char *__path, char * const __argv[], char * const __envp[] ));
-clock_t _EXFUN(_times, (struct tms *));
-int     _EXFUN(_gettimeofday, (struct timeval *, void *));
 int     _EXFUN(_kill, (int, int));
 int     _EXFUN(_mkdir, (const char *, mode_t));
 #endif

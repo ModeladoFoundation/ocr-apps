@@ -122,7 +122,8 @@
 /* For XSTG, use a small REENT structure since space is at a premium. */
 #if defined(__XSTG__)
 #ifndef _REENT_SMALL
-#define _REENT_SMALL
+// FIXME: Using _REENT_SMALL results in closing stdin|out|err once per thread, causing errors.
+// #define _REENT_SMALL
 #endif
 #endif
 

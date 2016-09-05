@@ -330,19 +330,6 @@ struct _rand48 {
 #define _REENT_SIGNAL_SIZE 24
 
 /*
- * Hold OCR Guid mappings, stack, and context info
- */
-struct _ocr_reent {
-    __int64_t stack_Guid;       /* used to store OCR Guid for stack */
-    __uint64_t stack_start;     /* user stack low addr */
-    __int64_t stack_size;       /* user stack size in bytes */
-    __int64_t legacyContext;    /* used to store OCR Guid for legacy context */
-    __int64_t * fileGuidMap;    /* used to store fd to OCR file Guid mapping */
-    __int64_t   fileGuidSize;   /* max number of entries in fileGuidMap */
-};
-#define OCR_FILE_MAP_MAX    32  /* limits the number of open files */
-
-/*
  * struct _reent
  *
  * This structure contains *all* globals needed by the library.
@@ -391,8 +378,6 @@ struct _reent
      These are pointers into member __sf defined below.  */
   __FILE *_stdin, *_stdout, *_stderr;	/* XXX */
 
-  struct _ocr_reent _ocr;
-
   int  _inc;			/* used by tmpnam */
 
   char *_emergency;
@@ -440,7 +425,6 @@ extern const struct __sFILE_fake __sf_fake_stderr;
     (__FILE *)&__sf_fake_stdin, \
     (__FILE *)&__sf_fake_stdout, \
     (__FILE *)&__sf_fake_stderr, \
-    { 0, 0, 0, 0, _NULL, OCR_FILE_MAP_MAX }, \
     0, \
     _NULL, \
     0, \
@@ -467,7 +451,6 @@ extern const struct __sFILE_fake __sf_fake_stderr;
     (var)->_stdin = (__FILE *)&__sf_fake_stdin; \
     (var)->_stdout = (__FILE *)&__sf_fake_stdout; \
     (var)->_stderr = (__FILE *)&__sf_fake_stderr; \
-    (var)->_ocr.fileGuidSize = OCR_FILE_MAP_MAX; \
     (var)->_current_locale = "C"; \
   }
 
@@ -592,8 +575,6 @@ struct _reent
      These are pointers into member __sf defined below.  */
   __FILE *_stdin, *_stdout, *_stderr;
 
-  struct _ocr_reent _ocr;
-
   int  _inc;			/* used by tmpnam */
   char _emergency[_REENT_EMERGENCY_SIZE];
 
@@ -670,7 +651,6 @@ struct _reent
     &(var).__sf[0], \
     &(var).__sf[1], \
     &(var).__sf[2], \
-    { 0, 0, 0, 0, _NULL, OCR_FILE_MAP_MAX }, \
     0, \
     "", \
     0, \
@@ -719,7 +699,6 @@ struct _reent
     (var)->_stdin = &(var)->__sf[0]; \
     (var)->_stdout = &(var)->__sf[1]; \
     (var)->_stderr = &(var)->__sf[2]; \
-    (var)->_ocr.fileGuidSize = OCR_FILE_MAP_MAX; \
     (var)->_current_locale = "C"; \
     (var)->_new._reent._rand_next = 1; \
     (var)->_new._reent._r48._seed[0] = _RAND48_SEED_0; \

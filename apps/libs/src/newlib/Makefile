@@ -18,6 +18,9 @@
 #					 Used to determine compiler/toolchain to use and
 #					 CPU arch to compile for. Also used to generate
 #				     build product directory name.
+#		USE_TGR    - Whether or not to build newlib to use the tg runtime as its
+#					 backend. Defaults to no (use OCR instead). Set to
+#					 yes to make it build for tg runtime
 #
 # Note that newlib is configured and built in BUILD_DIR (build_$(ARCH))
 # and it installs to an intermediate install root NEWLIB_INSTALL (tmproot).
@@ -40,6 +43,12 @@ ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
 endif
 
+ifeq ($(USE_TGR), yes)
+    SYS = tgr
+else
+    SYS = ocr
+endif
+
 ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported  ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
@@ -47,10 +56,10 @@ endif
 # per-target build and local install dirs
 #
 BUILD_PREF = build-
-BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
+BUILD_DIR = $(BUILD_PREF)$(SYS)-$(ARCH)$(BTYPE)
 
 TMP_PREF = tmproot-
-TMP_ROOT   = $(TMP_PREF)$(ARCH)$(BTYPE)
+TMP_ROOT   = $(TMP_PREF)$(SYS)-$(ARCH)$(BTYPE)
 
 NEWLIB_SRCDIR  = $(CURDIR)/newlib-2.1.0
 NEWLIB_BUILD   = $(CURDIR)
@@ -65,12 +74,13 @@ NEWLIB   = $(NEWLIB_INSTALL)/lib/libc.a
 CFLAGS = -Os -mstackrealign -fno-stack-protector -I$(NEWLIB_SRCDIR)/newlib/libc/include $(DEFINES)
 CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
 
-#
 # XE Clang/llvm build
 #
 ifeq ($(ARCH), tg-xe)
   CC = clang
   CXX = clang++
+  CFLAGS_FOR_TARGET = -mllvm -set-global-default=1
+  CONFIG_ARGS += --enable-libgloss=no
   TARGET = xstg-linux-elf
   TOOLBIN = $(TG_INSTALL)/bin
   TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
@@ -112,7 +122,7 @@ endif
 #
 # Environment variables for newlib configure
 #
-CFLAGS_FOR_TARGET = $(CFLAGS)
+CFLAGS_FOR_TARGET := $(CFLAGS) $(CFLAGS_FOR_TARGET)
 CC_FOR_TARGET  ?= $(TOOL_PREFIX)$(CC)
 LD_FOR_TARGET  ?= $(TOOL_PREFIX)ld
 CXX_FOR_TARGET ?= $(TOOL_PREFIX)$(CXX)

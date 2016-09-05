@@ -1,0 +1,51 @@
+Building the lib scaffold library for tg-xe, x86, and x86-test.
+
+The scaffold libraries are replacements (very simple) for a real runtime
+They may work as a replacement for either the ocr or tgr runtimes. It is
+a scaffold built upon syscalls (for x86 versions) or libswtest (for the
+tg-xe version).
+
+=====================
+
+To build for tg-xe, change into the apps/libs/src/libscaffold
+directory.  Run 'make ARCH=tg-xe'; this builds for the tg-xe target
+with ocr support and automatically installs it. If you want to build for
+tgr support, add USE_TGR=yes to the command line.
+
+After the build completes, the following is in the
+apps/apps/libs/install/tg-xe/lib directory:
+
+       libscaffold.a
+
+To clean use 'make ARCH=tg-xe clean'.  Note that this does NOT remove build
+results from the apps/apps/libs/install/tg-xe/lib area.
+
+=====================
+
+To build for x86, change into the apps/libs/src/libscaffold
+directory.  Run 'make ARCH=x86'; this builds for the x86 target
+with ocr support and automatically installs it. If you want to build for
+tgr support, add USE_TGR=yes to the command line.
+
+After the build completes, the following is in the
+apps/apps/libs/install/tg-xe/lib directory:
+
+       libscaffold.a
+
+To clean use 'make ARCH=x86 clean'.  Note that this does NOT remove build
+results from the apps/apps/libs/install/x86/lib area.
+
+=====================
+
+To build for x86-test, change into the apps/libs/src/libscaffold
+directory.  Run 'make ARCH=x86-test'; this builds for the x86-test target
+with ocr support and automatically installs it. If you want to build for
+tgr support, add USE_TGR=yes to the command line.
+
+After the build completes, the following is in the
+apps/apps/libs/install/tg-xe/lib directory:
+
+       libscaffold.a
+
+To clean use 'make ARCH=x86-test clean'.  Note that this does NOT remove build
+results from the apps/apps/libs/install/x86-test/lib area.

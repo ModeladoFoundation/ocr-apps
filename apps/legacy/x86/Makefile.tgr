@@ -1,0 +1,72 @@
+#
+# Makefile
+# vim:syntax=make noexpandtab:
+#
+ARCH=x86
+
+APPS_ROOT  ?= $(realpath $(CURDIR)/../..)
+export APPS_LIBS_INSTALL?=$(APPS_ROOT)/libs/install/$(ARCH)
+
+LIBS = $(APPS_LIBS_INSTALL)/lib
+
+NL_INC = $(APPS_LIBS_INSTALL)/include
+
+CFLAGS += -fno-stack-protector -O0 -g -std=c99 -U__STRICT_ANSI__ -isystem $(NL_INC)
+
+C_LIBS =
+
+CXXFLAGS += -Os -g
+CXXFLAGS += -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__ -isystem $(NL_INC)
+CXXFLAGS += -fno-stack-protector -fno-use-cxa-atexit
+CXXFLAGS += -I$(APPS_LIBS_INSTALL)/include/c++/v1
+CXXFLAGS += -I$(APPS_LIBS_INSTALL)/include
+
+CXX_LIBS =
+
+
+# Libraries to include from newlib
+NL_CRT = $(LIBS)/crt0.o
+NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
+CPP_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
+NL_CRTEND = $(LIBS)/crtend.o
+
+# This is the runtime library. Right now we just have a scaffold.
+RT_LIB = $(LIBS)/libscaffold.a
+
+SRCS = $(wildcard *.c) $(wildcard *.cpp)
+OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
+APPS = $(OBJS:.o=)
+
+all: $(APPS)
+
+default: all
+
+% : %.o %.c
+	@$(LD) -o $@ $(NL_CRT) $@.o $(NL_LIBS) $(RT_LIB) $(C_LIBS) $(NL_LIBS) $(NL_CRTEND) -nostdlib -T elf64_x86_64.t
+	@echo Successfully built $@
+
+% : %.o %.cpp
+	@$(LD) -o $@ $(NL_CRT) $@.o $(CPP_LIBS) $(NL_LIBS) $(RT_LIB) $(CXX_LIBS) $(NL_LIBS) $(NL_CRTEND) -T elf64_x86_64.t
+	@echo Successfully built $@
+
+%.o : %.c
+	@$(CC) -c $(CFLAGS) $< -o $@
+
+%.o : %.cpp
+	@$(CXX) -c $(CXXFLAGS) $< -o $@
+
+dump:
+	@echo TG_INSTALL = $(TG_INSTALL)
+	@echo APPS_ROOT = $(APPS_ROOT)
+	@echo LIBS = $(LIBS)
+
+clean:
+	@rm -f $(APPS) $(OBJS)
+
+# Disable implicit rules
+.SUFFIXES:
+
+# Don't remove the .o files when finished building
+.PRECIOUS: %.o
+
+.PHONY: all default dump clean

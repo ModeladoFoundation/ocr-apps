@@ -12,14 +12,14 @@ ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
 
-all: newlib libcxx libcxxabi libunwind ocrscaffold libswtest
+all: newlib libcxx libcxxabi libunwind libscaffold libswtest
 
 clean:
 	$(MAKE) -C newlib clean
 	$(MAKE) -C libcxx clean
 	$(MAKE) -C libcxxabi clean
 	$(MAKE) -C libunwind clean
-	$(MAKE) -C ocrscaffold clean
+	$(MAKE) -C libscaffold clean
 	$(MAKE) -C libswtest clean
 
 newlib:
@@ -42,8 +42,8 @@ libswtest: newlib
 	$(MAKE) -C libswtest
 	$(MAKE) -C libswtest install
 
-ocrscaffold: newlib libswtest
-	$(MAKE) -C ocrscaffold
-	$(MAKE) -C ocrscaffold install
+libscaffold: newlib libswtest
+	$(MAKE) -C libscaffold
+	$(MAKE) -C libscaffold install
 
-.PHONY: all clean newlib libcxx libcxxabi libunwind ocrscaffold libswtest
+.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest
