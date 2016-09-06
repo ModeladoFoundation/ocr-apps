@@ -5,6 +5,9 @@ APPS_ROOT               ?= ../../..
 _INTERNAL_NO_CHECK_WORKLOAD := yes
 include $(APPS_ROOT)/makefiles/make-varcheck.inc
 
+SRC_HEADERS     := $(shell find -L $(APPS_LIBS_ROOT)/libc/tg-includes -name '*.h' -print)
+INSTALL_HEADERS := $(addprefix $(APPS_LIBS_INSTALL)/include/, $(notdir $(SRC_HEADERS)))
+
 .PHONY: all
 all:
 
@@ -12,9 +15,11 @@ all:
 debug:
 
 .PHONY: install
-install: | ${APPS_LIBS_INSTALL}/include
-	@echo "Installing TG standard files"
-	$(AT)cp ${APPS_LIBS_ROOT}/libc/tg-includes/* ${APPS_LIBS_INSTALL}/include/
+install: $(INSTALL_HEADERS) | ${APPS_LIBS_INSTALL}/include
+	@echo "Installed TG standard files"
+
+$(APPS_LIBS_INSTALL)/include/%.h : $(APPS_LIBS_ROOT)/libc/tg-includes/%.h
+	$(AT)cp $< $@
 
 .PHONY: ${APPS_LIBS_INSTALL}/include
 ${APPS_LIBS_INSTALL}/include:
@@ -28,6 +33,6 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	$(AT)for i in `ls -1 ${APPS_LIBS_ROOT}/libc/tg-includes/`; do rm -f ${APPS_LIBS_INSTALL}/include/$$i ; done
+	$(AT)for i in $(INSTALL_HEADERS); do rm -f $$i ; done
 
 
