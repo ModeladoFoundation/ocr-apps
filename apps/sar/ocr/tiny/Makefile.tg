@@ -66,7 +66,7 @@ TARGET := sscp
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for OCR_TYPE
-REQ_LIBS := crlibm-1.0beta5
+REQ_LIBS := crlibm-1.0beta5 macros
 
 # Space separated list of source files
 SRCS :=	main.c \
