@@ -18,7 +18,7 @@ debug:
 install: $(INSTALL_HEADERS) | ${APPS_LIBS_INSTALL}/include
 	@echo "Installed TG macro files"
 
-$(APPS_LIBS_INSTALL)/include/%.h : $(APPS_LIBS_ROOT)/macros/macros/%.h
+$(APPS_LIBS_INSTALL)/include/%.h : $(APPS_LIBS_ROOT)/macros/macros/%.h | $(APPS_LIBS_INSTALL)/include
 	$(AT)cp $< $@
 
 .PHONY: ${APPS_LIBS_INSTALL}/include

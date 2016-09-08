@@ -18,7 +18,7 @@ debug:
 install: $(INSTALL_HEADERS) | ${APPS_LIBS_INSTALL}/include
 	@echo "Installed TG standard files"
 
-$(APPS_LIBS_INSTALL)/include/%.h : $(APPS_LIBS_ROOT)/libc/tg-includes/%.h
+$(APPS_LIBS_INSTALL)/include/%.h : $(APPS_LIBS_ROOT)/libc/tg-includes/%.h | $(APPS_LIBS_INSTALL)/include
 	$(AT)cp $< $@
 
 .PHONY: ${APPS_LIBS_INSTALL}/include
