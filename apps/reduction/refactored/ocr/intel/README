@@ -1,7 +1,19 @@
 This directory provides a test driver for the reduction library in
 apps/libs/src/reduction
 
-See the README in that directory for more details.
+= Usage =
+
+WORKLOAD_ARGS takes the following arguments:
+
+- The number of EDTs aka 'ranks' part of the reduction tree.
+- The number of element each rank contributes to the reduction
+- The number of iterations invoking the reduction library the driver does
+
+WORKLOAD_ARGS="8 10 100" OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 make uninstall clean run
+
+The EDTs are assigned to PD in a blocked fashion.
+
+= Notes =
 
 The driver implements double precision global sum.
 
@@ -9,8 +21,6 @@ It takes three input parameters:
 number of ranks
 number of elements to be reduce
 number of reductions
-
-
 
 Any driver code for the library must:
    create and initialize a reductionPrivate datablock (defined in reduction.h)
@@ -48,7 +58,6 @@ mydataPRT is a pointer to the data to be reduced (will be copied to a separate d
 
 reductionLaunch returns after launching the global sum algorithm.  The calling Edt should terminate soon after
 and wait for the clone to wake up.
-
 
 
 The library implements a reduction tree invoking the reduction operator at each stage.  This amounts to a global barrier since every node must

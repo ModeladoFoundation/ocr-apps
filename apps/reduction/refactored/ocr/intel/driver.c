@@ -43,29 +43,32 @@ However before calling reductionLaunch the user must
 There are 3 parameters with default values defined below:
 
 P is the number of tasks ("numranks")
-T is the number of iterations
 N is the length of the vectors
+T is the number of iterations
 
 These values can be entered as RUNTIME_ARGS
 
 */
 
-#include "reduction.h"
-#include "macros.h"
+// Externally defined SHOW_RESULTS
+
+#include <string.h>
+#include <stdio.h>
 
 #define ENABLE_EXTENSION_LABELING
 #define ENABLE_EXTENSION_AFFINITY
+
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 #include "extensions/ocr-affinity.h"
-#include "string.h"
-#include "stdio.h"
 
-#define DEFAULTnrank 25//number of tasks
-#define DEFAULTndata 2  //length of vector
+#include "reduction.h"
+#include "macros.h"
+#include "timer.h"
+
+#define DEFAULTnrank 25         //number of tasks
+#define DEFAULTndata 2          //length of vector
 #define DEFAULTmaxtimestep 300  //number of iterations
-
-extern double wtime();
 
 typedef struct {
     u64 nrank;
@@ -86,20 +89,25 @@ typedef struct {
     ocrGuid_t wrapupEDT; //needed only by rank 0
 } private_t;
 
-
 typedef struct {
-    double start;
+    timestamp_t start;
+    u64 nbInstances;
 } wrapupPRM_t;
 
 typedef struct {
     ocrEdtDep_t control;
+    ocrEdtDep_t initTimer;
 } wrapupDEPV_t;
 
 ocrGuid_t wrapupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+    DEPVDEF(wrapup);
     PRMDEF(wrapup);
-    double end = wtime();
-
-    PRINTF("elapsed time %f shutting down\n", end - PRM(wrapup,start));
+    timestamp_t stop;
+    get_time(&stop);
+    double elapsed = elapsed_sec(&PRM(wrapup,start), &stop);
+    double initElapsed = *((double *) DEPV(wrapup,initTimer,ptr));
+    PRINTF("startup time=%f (s) elapsed time=%f (s)\n", initElapsed, elapsed);
+    print_throughput("Reduction", PRM(wrapup,nbInstances), elapsed);
     ocrShutdown();
 }
 
@@ -143,9 +151,12 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
      }else{
 //copy
 
-        if(myrank == 0) {
-            for(i=0;i<ndata;i++) PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
+#ifdef SHOW_RESULTS
+        if(myrank == 0 && timestep >= maxtimestep) {
+            for(i=0;i<ndata;i++)
+                PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
         }
+#endif
         for(i=0;i<ndata;i++) {
             a[i] = i*myrank+timestep;
         }
@@ -357,24 +368,34 @@ launch parallel init with myrank as a parameter
 
     u64 nrank = PRM(realMain,nrank);
     u64 ndata = PRM(realMain,ndata);
+    u64 maxtimestep = PRM(realMain,maxtimestep);
 
     shared_t * sharedPTR = DEPV(realMain,shared,ptr);
     ocrGuid_t sharedDBK = DEPV(realMain,shared,guid);
 
-    sharedPTR->nrank = PRM(realMain,nrank);
-    sharedPTR->ndata = PRM(realMain,ndata);
-    sharedPTR->maxtimestep = PRM(realMain,maxtimestep);
+    sharedPTR->nrank = nrank;
+    sharedPTR->ndata = ndata;
+    sharedPTR->maxtimestep = maxtimestep;
 
     ocrGuidRangeCreate(&(sharedPTR->reductionRangeGUID), nrank, GUID_USER_EVENT_STICKY);
-    double time = wtime();
+    timestamp_t initStart;
+    get_time(&initStart);
     wrapupPRM_t wrapupPRM;
-    wrapupPRM.start = time;
+    wrapupPRM.start = initStart;
+    wrapupPRM.nbInstances = (ndata * nrank * maxtimestep);
+
+    ocrGuid_t affinity;
+    ocrAffinityGetCurrent(&affinity);
+    ocrHint_t myHNT;
+    ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+    ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(affinity));
 
     ocrGuid_t wrapupTML;
-
     ocrEdtTemplateCreate(&wrapupTML, wrapupEdt, PRMNUM(wrapup), DEPVNUM(wrapup));
-    ocrEdtCreate(&(sharedPTR->wrapupEDT), wrapupTML, EDT_PARAM_DEF, (u64 *) &wrapupPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-
+    ocrGuid_t wrapupEdt;
+    ocrEdtCreate(&wrapupEdt, wrapupTML, EDT_PARAM_DEF, (u64 *) &wrapupPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
+    sharedPTR->wrapupEDT = wrapupEdt;
+    ocrDbRelease(sharedDBK);
 //PRINTF("returnEVT %lx \n", sharedPTR->returnEVT);
     u64 i;
     ocrGuid_t initEDT, initTML;
@@ -383,9 +404,6 @@ launch parallel init with myrank as a parameter
 
     ocrEdtTemplateCreate(&(initTML), initEdt, PRMNUM(init), DEPVNUM(init));
 
-    ocrGuid_t myAffinity;
-    ocrHint_t myHNT;
-    ocrAffinityGetCurrent(&(myAffinity));
     u64 count, myPD, block;
     ocrAffinityCount(AFFINITY_PD, &count);
     block = (nrank + count - 1)/count;
@@ -394,33 +412,42 @@ launch parallel init with myrank as a parameter
     for(i=0;i<nrank;i++) {
         myPD = i/block;
 //printf("i %d count %d myPD %d slot %d \n", i, count, myPD, SLOT(init,shared));
-        ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
+        ocrAffinityGetAt(AFFINITY_PD, myPD, &(affinity));
         ocrHintInit(&myHNT,OCR_HINT_EDT_T);
-        ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+        ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(affinity));
 
         initPRM.myrank = i;
         ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, (u64 *) &initPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
         ocrAddDependence(DEPV(realMain,shared,guid), initEDT, SLOT(init,shared), DB_MODE_RO);
     }
+    timestamp_t initStop;
+    get_time(&initStop);
+
+    double initElapsed = elapsed_sec(&initStart, &initStop);
+    ocrGuid_t initElapsedDb;
+    double * initElapsedPtr;
+    ocrDbCreate(&initElapsedDb, (void **) &initElapsedPtr, sizeof(double), 0, NULL_HINT, NO_ALLOC);
+    *initElapsedPtr = initElapsed;
+    ocrDbRelease(initElapsedDb);
+    ocrAddDependence(initElapsedDb, wrapupEdt, SLOT(wrapup, initTimer), DB_MODE_RO);
     return NULL_GUID;
 }
 
 void bomb(char * s){
-    PRINTF("%s \n", s);
+    PRINTF("error: %s \n", s);
     ocrShutdown();
 }
 
-ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
-mainEdt is executed first
-creates shared block
-launches realmain
-*/
+ * mainEdt is executed first
+ * creates shared block
+ * launches realmain
+ */
+ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
      realMainPRM_t paramvout;
      realMainPRM_t * realMainPRM = &paramvout;
 
      u64 i;
-//printf("main\n");
      u32 _paramc, _depc, _idep;
 
      void * programArgv = depv[0].ptr;
@@ -430,8 +457,8 @@ launches realmain
      PRM(realMain,ndata) = DEFAULTndata;
      PRM(realMain,maxtimestep) = DEFAULTmaxtimestep;
 
-     printf("argc %d \n", argc);
-     if(argc != 1 && argc !=4) bomb("number of run time parameters must be 0 or number of workers, number of data elements, number of timesteps");
+     if(argc != 1 && argc !=4)
+            bomb("usage: [nbWorkers nbElements nbTimesteps]");
 
      if(argc == 4) {
          u32 k = 1;
@@ -441,23 +468,21 @@ launches realmain
          if(PRM(realMain,nrank) == 0) bomb("number of workers must be positive");
          if(PRM(realMain,ndata) == 0) bomb("number of entries must be positive");
          if(PRM(realMain,maxtimestep) == 0) bomb("number of timesteps must be positive");
-         }
+     }
 
-    ocrGuid_t realMainEDT, realMainTML,  wrapupEDT, wrapupTML, sharedDBK, reductionSharedDBK;
+    ocrGuid_t realMainEDT, realMainTML, wrapupEDT, wrapupTML, sharedDBK, reductionSharedDBK;
 
     PRINTF("reduction driver \n");
     PRINTF("Number of workers is %d \n", PRM(realMain,nrank));
     PRINTF("data per worker %d \n", PRM(realMain,ndata));
     PRINTF("Number of timesteps is %d \n", PRM(realMain,maxtimestep));
 
-
-
     ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
     ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
     u64 dummy;
-
     ocrDbCreate(&sharedDBK, (void**) &dummy, sizeof(shared_t), 0, NULL_HINT, NO_ALLOC);
+    ocrDbRelease(sharedDBK);
     ocrAddDependence(sharedDBK, realMainEDT, SLOT(realMain,shared), DB_MODE_RW);
 
     return NULL_GUID;

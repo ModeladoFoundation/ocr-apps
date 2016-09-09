@@ -29,7 +29,7 @@ INSTALL_LIBS    := $(APPS_LIBS_INSTALL)/lib/$(LIB)
 ### Compilation rules ####
 PREFIX := $(TG_INSTALL)/bin/xstg-linux-elf
 
-CC     := gcc
+CC     ?= gcc
 AR     := ar
 
 # add members AND generate index. Ranlib not needed.
