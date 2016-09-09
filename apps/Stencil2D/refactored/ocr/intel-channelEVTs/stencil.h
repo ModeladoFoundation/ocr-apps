@@ -73,12 +73,14 @@ typedef struct
     ocrGuid_t TML_FNC_Brecv;
     ocrGuid_t TML_FNC_Trecv;
     ocrGuid_t TML_FNC_update;
+    ocrGuid_t TML_timestep;
+    ocrGuid_t TML_timestepLoop;
 } rankTemplateH_t;
 
 typedef struct
 {
     ocrGuid_t haloRangeGUID, normReductionRangeGUID, timerReductionRangeGUID;
-    ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
+    //ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
 } globalOcrParamH_t;
 
 typedef struct
@@ -94,21 +96,23 @@ typedef struct
     rankParamH_t rankParamH;
     rankTemplateH_t rankTemplateH;
 
+    ocrGuid_t haloSendEVTs[4];
+    ocrGuid_t haloRecvEVTs[4];
+
     ocrGuid_t DBK_xIn, DBK_xOut, DBK_weight;
     ocrGuid_t DBK_LsendBufs[2], DBK_RsendBufs[2];
     ocrGuid_t DBK_TsendBufs[2], DBK_BsendBufs[2];
     ocrGuid_t DBK_refNorm;
 
     ocrGuid_t DBK_timers;
-
     ocrGuid_t DBK_norm_reductionH; //->reductionPrivate_t
     ocrGuid_t DBK_timer_reductionH;
+
+    ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
 
     ocrHint_t myEdtAffinityHNT;
     ocrHint_t myDbkAffinityHNT;
     ocrGuid_t haloRangeGUID;
-    ocrGuid_t haloSendEVTs[4];
-    ocrGuid_t haloRecvEVTs[4];
 } rankH_t;
 
 static void timestamp(const char* msg);
