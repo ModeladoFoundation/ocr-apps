@@ -86,6 +86,7 @@ typedef struct LjPotentialSt
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
    //int  (*force)(SimFlat* s); //!< function pointer to force routine
+   ocrGuid_t forceTML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(BasePotential* pot);
    //void (*destroy)(BasePotential** pot); //!< destruction of the potential
@@ -117,6 +118,7 @@ ocrDBK_t initLjPot(BasePotential** bpot)
    LjPotential *pot = (LjPotential*)(*bpot);
 
    pot->force_edt = ljForce_edt;
+    ocrEdtTemplateCreate( &pot->forceTML, pot->force_edt, 0, 10 );
    pot->print = ljPrint;
    //pot->destroy = ljDestroy;
    pot->sigma = 2.315;	                  // Angstrom

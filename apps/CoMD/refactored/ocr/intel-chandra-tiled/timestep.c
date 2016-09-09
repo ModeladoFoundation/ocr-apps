@@ -134,7 +134,91 @@ ocrGuid_t advancePositionEdt(EDT_ARGS)
     return NULL_GUID;
 }
 
-ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
+ocrGuid_t finalizeEdt( EDT_ARGS )
+{
+    s64 itimestep = paramv[0];
+
+    s32 _idep;
+
+    _idep = 0;
+    ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_sim = depv[_idep++].guid;
+    ocrDBK_t rpKeDBK = depv[_idep++].guid;
+    ocrDBK_t rpPerfTimerDBK = depv[_idep++].guid;
+
+    _idep = 0;
+    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    SimFlat* sim = depv[_idep++].ptr;
+    reductionPrivate_t* rpKePTR = depv[_idep++].ptr;
+    reductionPrivate_t* rpPerfTimerPTR = depv[_idep++].ptr;
+
+    //rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
+    Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
+    globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
+    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
+
+    sim->atoms = &sim->atoms_INST;
+    sim->boxes = &sim->boxes_INST;
+    sim->atomExchange = &sim->atomExchange_INST;
+
+    sim->PTR_rankH = PTR_rankH;
+
+    ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
+
+    ocrDBK_t DBK_pot = sim->DBK_pot;
+
+    ocrDBK_t DBK_nAtoms = sim->boxes->DBK_nAtoms;
+
+    ocrDBK_t DBK_gid = sim->atoms->DBK_gid;
+    ocrDBK_t DBK_iSpecies = sim->atoms->DBK_iSpecies;
+    ocrDBK_t DBK_r = sim->atoms->DBK_r;
+    ocrDBK_t DBK_p = sim->atoms->DBK_p;
+    ocrDBK_t DBK_f = sim->atoms->DBK_f;
+    ocrDBK_t DBK_U = sim->atoms->DBK_U;
+
+    u32 myRank = sim->PTR_rankH->myRank;
+
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->advanceVelocityTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->advancePositionTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->redistributeAtomsTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->computeForceTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->kineticEnergyTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->printThingsTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->timestepLoopTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->timestepTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->updateLinkCellsTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->haloExchangeTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->sortAtomsInCellsTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->exchangeDataTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->loadAtomsBufferTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->unloadAtomsBufferTML);
+
+    ocrDbDestroy( PTR_rankH->rpKeDBK );
+    ocrDbDestroy( PTR_rankH->rpVcmDBK );
+    ocrDbDestroy( PTR_rankH->rpmaxOccupancyDBK );
+    ocrDbDestroy( PTR_rankH->rpPerfTimerDBK );
+
+    ocrDbDestroy( DBK_pot );
+
+    ocrDbDestroy( DBK_nAtoms );
+
+    ocrDbDestroy( DBK_gid );
+    ocrDbDestroy( DBK_iSpecies );
+    ocrDbDestroy( DBK_r );
+    ocrDbDestroy( DBK_p );
+    ocrDbDestroy( DBK_f );
+    ocrDbDestroy( DBK_U );
+
+    if(myRank == 0)
+        ocrAddDependence(NULL_GUID, PTR_globalOcrParamH->finalOnceEVT, 0, DB_MODE_NULL);
+
+    ocrDbDestroy(DBK_rankH);
+    ocrDbDestroy(DBK_sim);
+
+    return NULL_GUID;
+}
+
+ocrGuid_t timestepEdt( EDT_ARGS )
 {
     s64 itimestep = paramv[0];
 
@@ -193,13 +277,11 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     real_t dt = 0.5*PTR_cmd->dt;
 
-    ocrEdtTemplateCreate( &advanceVelocityTML, advanceVelocityEdt, 1, 4 );
-
-    ocrEdtCreate( &advanceVelocityEDT, advanceVelocityTML,
+    ocrEdtCreate( &advanceVelocityEDT, PTR_rankTemplateH->advanceVelocityTML,
                   EDT_PARAM_DEF, (u64*) &dt, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &advanceVelocityOEVT );
 
-    ocrEventCreate( &advanceVelocityOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &advanceVelocityOEVTS, 1);
     ocrAddDependence( advanceVelocityOEVT, advanceVelocityOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -207,18 +289,17 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_nAtoms, advanceVelocityEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_p, advanceVelocityEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_f, advanceVelocityEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( NULL_GUID, advanceVelocityEDT, _idep++, DB_MODE_RO );
 
     ocrGuid_t advancePositionTML, advancePositionEDT, advancePositionOEVT, advancePositionOEVTS;
 
     dt = 1.0*PTR_cmd->dt;
 
-    ocrEdtTemplateCreate( &advancePositionTML, advancePositionEdt, 1, 6 );
-
-    ocrEdtCreate( &advancePositionEDT, advancePositionTML,
+    ocrEdtCreate( &advancePositionEDT, PTR_rankTemplateH->advancePositionTML,
                   EDT_PARAM_DEF, (u64*) &dt, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &advancePositionOEVT );
 
-    ocrEventCreate( &advancePositionOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &advancePositionOEVTS, 1);
     ocrAddDependence( advancePositionOEVT, advancePositionOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -232,13 +313,11 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     //redistribute atoms
     ocrGuid_t redistributeAtomsTML, redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
-    ocrEdtTemplateCreate( &redistributeAtomsTML, redistributeAtomsEdt, 0, 3 );
-
-    ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML,
+    ocrEdtCreate( &redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
 
-    ocrEventCreate( &redistributeAtomsOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &redistributeAtomsOEVTS, 1);
     ocrAddDependence( redistributeAtomsOEVT, redistributeAtomsOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -249,13 +328,11 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     //compute force
     ocrGuid_t computeForceTML, computeForceEDT, computeForceOEVT, computeForceOEVTS;
 
-    ocrEdtTemplateCreate( &computeForceTML, computeForceEdt, 0, 4 );
-
-    ocrEdtCreate( &computeForceEDT, computeForceTML,
+    ocrEdtCreate( &computeForceEDT, PTR_rankTemplateH->computeForceTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &computeForceOEVT );
 
-    ocrEventCreate( &computeForceOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &computeForceOEVTS, 1);
     ocrAddDependence( computeForceOEVT, computeForceOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -268,13 +345,11 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     dt = 0.5*PTR_cmd->dt;
 
-    ocrEdtTemplateCreate( &advanceVelocityTML, advanceVelocityEdt, 1, 5 );
-
-    ocrEdtCreate( &advanceVelocityEDT, advanceVelocityTML,
+    ocrEdtCreate( &advanceVelocityEDT, PTR_rankTemplateH->advanceVelocityTML,
                   EDT_PARAM_DEF, (u64*) &dt, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &advanceVelocityOEVT1 );
 
-    ocrEventCreate( &advanceVelocityOEVTS1, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &advanceVelocityOEVTS1, 1);
     ocrAddDependence( advanceVelocityOEVT1, advanceVelocityOEVTS1, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -294,13 +369,11 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         ////Compute Kinetic energy of the system
         ocrGuid_t kineticEnergyTML, kineticEnergyEDT, kineticEnergyOEVT, kineticEnergyOEVTS;
 
-        ocrEdtTemplateCreate( &kineticEnergyTML, kineticEnergyEdt, 0, 7 );
-
-        ocrEdtCreate( &kineticEnergyEDT, kineticEnergyTML,
+        ocrEdtCreate( &kineticEnergyEDT, PTR_rankTemplateH->kineticEnergyTML,
                       EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &myEdtAffinityHNT, &kineticEnergyOEVT );
 
-        ocrEventCreate( &kineticEnergyOEVTS, OCR_EVENT_STICKY_T, false );
+        createEventHelper( &kineticEnergyOEVTS, 1);
         ocrAddDependence( kineticEnergyOEVT, kineticEnergyOEVTS, 0, DB_MODE_NULL );
 
         _idep = 0;
@@ -315,13 +388,11 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         ////Print things
         ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
 
-        ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 5 );
-
-        ocrEdtCreate( &printThingsEDT, printThingsTML,
+        ocrEdtCreate( &printThingsEDT, PTR_rankTemplateH->printThingsTML,
                       EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                       EDT_PROP_FINISH, &myEdtAffinityHNT, &printThingsOEVT );
 
-        ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
+        createEventHelper( &printThingsOEVTS, 1);
         ocrAddDependence( printThingsOEVT, printThingsOEVTS, 0, DB_MODE_NULL );
 
         _idep = 0;
@@ -341,8 +412,9 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
             ocrEdtCreate( &printPerformanceResultsEDT, printPerformanceResultsTML,
                           EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                           EDT_PROP_FINISH, &myEdtAffinityHNT, &printPerformanceResultsOEVT );
+            ocrEdtTemplateDestroy( printPerformanceResultsTML );
 
-            ocrEventCreate( &printPerformanceResultsOEVTS, OCR_EVENT_STICKY_T, false );
+            createEventHelper( &printPerformanceResultsOEVTS, 1);
             ocrAddDependence( printPerformanceResultsOEVT, printPerformanceResultsOEVTS, 0, DB_MODE_NULL );
 
             _idep = 0;
@@ -351,8 +423,23 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
             ocrAddDependence( rpPerfTimerEVT, printPerformanceResultsEDT, _idep++, DB_MODE_RO );
             ocrAddDependence( printThingsOEVTS, printPerformanceResultsEDT, _idep++, DB_MODE_NULL );
 
-            if(myRank == 0)
-                ocrAddDependence(printPerformanceResultsOEVTS, PTR_globalOcrParamH->finalOnceEVT, 0, DB_MODE_NULL);
+            ocrGuid_t finalizeTML, finalizeEDT, finalizeOEVT, finalizeOEVTS;
+
+            ocrEdtTemplateCreate( &finalizeTML, finalizeEdt, 1, 3 );
+
+            ocrEdtCreate( &finalizeEDT, finalizeTML,
+                          EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                          EDT_PROP_FINISH, &myEdtAffinityHNT, &finalizeOEVT );
+            ocrEdtTemplateDestroy( finalizeTML );
+
+            createEventHelper( &finalizeOEVTS, 1);
+            ocrAddDependence( finalizeOEVT, finalizeOEVTS, 0, DB_MODE_NULL );
+
+            _idep = 0;
+            ocrAddDependence( DBK_rankH, finalizeEDT, _idep++, DB_MODE_RO ); //TODO
+            ocrAddDependence( DBK_sim, finalizeEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( printPerformanceResultsOEVTS, finalizeEDT, _idep++, DB_MODE_NULL );
+
         }
     }
 
@@ -535,13 +622,11 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     // Do one timestep
     ocrGuid_t timestepTML, timestepEDT, timestepOEVT, timestepOEVTS;
 
-    ocrEdtTemplateCreate( &timestepTML, timestepEdt, 1, 4 );
-
-    ocrEdtCreate( &timestepEDT, timestepTML,
+    ocrEdtCreate( &timestepEDT, PTR_rankTemplateH->timestepTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &timestepOEVT );
 
-    ocrEventCreate( &timestepOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &timestepOEVTS, 1);
     ocrAddDependence( timestepOEVT, timestepOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -559,14 +644,10 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     //start next timestep
         ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
-        ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 1, 5 );
-
-        ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
+        ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->timestepLoopTML,
                       EDT_PARAM_DEF, (u64*)&itimestep, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &timestepLoopOEVT );
 
-        ocrEventCreate( &timestepLoopOEVTS, OCR_EVENT_STICKY_T, false );
-        ocrAddDependence( timestepLoopOEVT, timestepLoopOEVTS, 0, DB_MODE_NULL );
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RO );
@@ -623,13 +704,11 @@ ocrGuid_t computeForceEdt( EDT_ARGS )
 
     ocrGuid_t forceTML, forceEDT, forceOEVT, forceOEVTS;
 
-    ocrEdtTemplateCreate( &forceTML, sim->pot->force_edt, 0, 10 );
-
-    ocrEdtCreate( &forceEDT, forceTML,
+    ocrEdtCreate( &forceEDT, sim->pot->forceTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &forceOEVT );
 
-    ocrEventCreate( &forceOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &forceOEVTS, 1);
     ocrAddDependence( forceOEVT, forceOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -801,6 +880,8 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
     rankH_t* PTR_rankH = depv[_idep++].ptr;
     SimFlat* sim = depv[_idep++].ptr;
 
+    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
+
     sim->atoms = &sim->atoms_INST;
     sim->boxes = &sim->boxes_INST;
     sim->atomExchange = &sim->atomExchange_INST;
@@ -824,13 +905,11 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     ocrGuid_t updateLinkCellsTML, updateLinkCellsEDT, updateLinkCellsOEVT, updateLinkCellsOEVTS;
 
-    ocrEdtTemplateCreate( &updateLinkCellsTML, updateLinkCellsEdt, 0, 9 );
-
-    ocrEdtCreate( &updateLinkCellsEDT, updateLinkCellsTML,
+    ocrEdtCreate( &updateLinkCellsEDT, PTR_rankTemplateH->updateLinkCellsTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &updateLinkCellsOEVT );
 
-    ocrEventCreate( &updateLinkCellsOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &updateLinkCellsOEVTS, 1);
     ocrAddDependence( updateLinkCellsOEVT, updateLinkCellsOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -846,13 +925,12 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     ocrGuid_t haloExchangeTML, haloExchangeEDT, haloExchangeOEVT, haloExchangeOEVTS;
 
-    ocrEdtTemplateCreate( &haloExchangeTML, haloExchangeEdt, 0, 4 );
-
-    ocrEdtCreate( &haloExchangeEDT, haloExchangeTML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    u64 iAxis = 0;
+    ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
+                  EDT_PARAM_DEF, &iAxis, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &haloExchangeOEVT );
 
-    ocrEventCreate( &haloExchangeOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &haloExchangeOEVTS, 1);
     ocrAddDependence( haloExchangeOEVT, haloExchangeOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -863,14 +941,10 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     ocrGuid_t sortAtomsInCellsTML, sortAtomsInCellsEDT, sortAtomsInCellsOEVT, sortAtomsInCellsOEVTS;
 
-    ocrEdtTemplateCreate( &sortAtomsInCellsTML, sortAtomsInCellsEdt, 0, 8 );
-
-    ocrEdtCreate( &sortAtomsInCellsEDT, sortAtomsInCellsTML,
+    ocrEdtCreate( &sortAtomsInCellsEDT, PTR_rankTemplateH->sortAtomsInCellsTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &sortAtomsInCellsOEVT );
 
-    ocrEventCreate( &sortAtomsInCellsOEVTS, OCR_EVENT_STICKY_T, false );
-    ocrAddDependence( sortAtomsInCellsOEVT, sortAtomsInCellsOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, sortAtomsInCellsEDT, _idep++, DB_MODE_RO );

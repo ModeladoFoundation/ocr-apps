@@ -272,12 +272,7 @@ void haloExchange(HaloExchange* haloExchange, void* data)
 
 ocrGuid_t haloExchangeEdt(EDT_ARGS)
 {
-    u64 iAxis;
-
-    if( paramc == 0 )
-        iAxis = 0;
-    else
-        iAxis = paramv[0];
+    u64 iAxis = paramv[0];
 
     s32 _idep, _paramc, _depc;
 
@@ -293,16 +288,16 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
     SimFlat* sim = depv[_idep++].ptr;
     AtomExchangeParms* parms = depv[_idep++].ptr;
 
+    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
+
     // Do one timestep
     ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
 
-    ocrEdtTemplateCreate( &exchangeDataTML, exchangeDataEdt, 1, 3 );
-
-    ocrEdtCreate( &exchangeDataEDT, exchangeDataTML,
+    ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML,
                   EDT_PARAM_DEF, (u64*) &iAxis, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
 
-    ocrEventCreate( &exchangeDataOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &exchangeDataOEVTS, 1);
     ocrAddDependence( exchangeDataOEVT, exchangeDataOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -310,23 +305,16 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
     ocrAddDependence( DBK_sim, exchangeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_parms, exchangeDataEDT, _idep++, DB_MODE_RW );
 
-    #if 1
-
     iAxis += 1;
 
     if( iAxis < 3 )
     {
     //start next timestep
-        ocrGuid_t haloExchangeTML, haloExchangeEDT, haloExchangeOEVT, haloExchangeOEVTS;
+        ocrGuid_t haloExchangeEDT;
 
-        ocrEdtTemplateCreate( &haloExchangeTML, haloExchangeEdt, 1, 4 );
-
-        ocrEdtCreate( &haloExchangeEDT, haloExchangeTML,
+        ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
                       EDT_PARAM_DEF, (u64*)&iAxis, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &haloExchangeOEVT );
-
-        ocrEventCreate( &haloExchangeOEVTS, OCR_EVENT_STICKY_T, false );
-        ocrAddDependence( haloExchangeOEVT, haloExchangeOEVTS, 0, DB_MODE_NULL );
+                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, haloExchangeEDT, _idep++, DB_MODE_RO );
@@ -334,7 +322,6 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
         ocrAddDependence( DBK_parms, haloExchangeEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( exchangeDataOEVTS, haloExchangeEDT, _idep++, DB_MODE_NULL );
     }
-    #endif
 
     return NULL_GUID;
 }
@@ -385,6 +372,8 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     SimFlat* sim = depv[_idep++].ptr;
     AtomExchangeParms* parms = depv[_idep++].ptr;
 
+    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
+
     sim->atoms = &sim->atoms_INST;
     sim->boxes = &sim->boxes_INST;
     sim->atomExchange = &sim->atomExchange_INST;
@@ -406,13 +395,11 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
 
     ocrGuid_t loadAtomsBufferTML, loadAtomsBufferEDT, loadAtomsBufferOEVT, loadAtomsBufferOEVTS;
 
-    ocrEdtTemplateCreate( &loadAtomsBufferTML, loadAtomsBufferEdt, 1, 10 );
-
-    ocrEdtCreate( &loadAtomsBufferEDT, loadAtomsBufferTML,
+    ocrEdtCreate( &loadAtomsBufferEDT, PTR_rankTemplateH->loadAtomsBufferTML,
                   EDT_PARAM_DEF, &iAxis, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &loadAtomsBufferOEVT );
 
-    ocrEventCreate( &loadAtomsBufferOEVTS, OCR_EVENT_STICKY_T, false );
+    createEventHelper( &loadAtomsBufferOEVTS, 1);
     ocrAddDependence( loadAtomsBufferOEVT, loadAtomsBufferOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -427,16 +414,11 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     ocrAddDependence( parms->DBK_cellList[faceM], loadAtomsBufferEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( parms->DBK_cellList[faceP], loadAtomsBufferEDT, _idep++, DB_MODE_RO );
 
-    ocrGuid_t unloadAtomsBufferTML, unloadAtomsBufferEDT, unloadAtomsBufferOEVT, unloadAtomsBufferOEVTS;
+    ocrGuid_t unloadAtomsBufferTML, unloadAtomsBufferEDT;
 
-    ocrEdtTemplateCreate( &unloadAtomsBufferTML, unloadAtomsBufferEdt, 1, 15 );
-
-    ocrEdtCreate( &unloadAtomsBufferEDT, unloadAtomsBufferTML,
+    ocrEdtCreate( &unloadAtomsBufferEDT, PTR_rankTemplateH->unloadAtomsBufferTML,
                   EDT_PARAM_DEF, &iAxis, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &unloadAtomsBufferOEVT );
-
-    ocrEventCreate( &unloadAtomsBufferOEVTS, OCR_EVENT_STICKY_T, false );
-    ocrAddDependence( unloadAtomsBufferOEVT, unloadAtomsBufferOEVTS, 0, DB_MODE_NULL );
+                  EDT_PROP_NONE, &myEdtAffinityHNT, NULL);
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, unloadAtomsBufferEDT, _idep++, DB_MODE_RO );

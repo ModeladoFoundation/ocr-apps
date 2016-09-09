@@ -43,6 +43,17 @@ static void zeroReal3(real3 a)
 typedef ocrGuid_t ocrDBK_t;
 typedef ocrGuid_t ocrEVT_t;
 typedef ocrGuid_t ocrEDT_t;
+typedef ocrGuid_t ocrTML_t;
+
+static void createEventHelper(ocrGuid_t * evtGuid, u32 nbDeps) {
+#ifdef WITH_COUNTED_EVT
+    ocrEventParams_t params;
+    params.EVENT_COUNTED.nbDeps = nbDeps;
+    ocrEventCreateParams(evtGuid, OCR_EVENT_COUNTED_T, false, &params);
+#else
+    ocrEventCreate(evtGuid, OCR_EVENT_STICKY_T, false);
+#endif
+}
 
 #define screenOut stdout
 

@@ -54,6 +54,7 @@ typedef struct BasePotentialSt
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
    //int  (*force)(struct SimFlatSt* s); //!< function pointer to force routine
+   ocrGuid_t forceTML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(struct BasePotentialSt* pot);
    //void (*destroy)(struct BasePotentialSt** pot); //!< destruction of the potential
@@ -94,15 +95,20 @@ typedef struct
 
 typedef struct
 {
-    ocrGuid_t TML_FNC_Lsend;
-    ocrGuid_t TML_FNC_Rsend;
-    ocrGuid_t TML_FNC_Lrecv;
-    ocrGuid_t TML_FNC_Rrecv;
-    ocrGuid_t TML_FNC_Bsend;
-    ocrGuid_t TML_FNC_Tsend;
-    ocrGuid_t TML_FNC_Brecv;
-    ocrGuid_t TML_FNC_Trecv;
-    ocrGuid_t TML_FNC_update;
+    ocrTML_t advanceVelocityTML;
+    ocrTML_t advancePositionTML;
+    ocrTML_t redistributeAtomsTML;
+    ocrTML_t computeForceTML;
+    ocrTML_t kineticEnergyTML;
+    ocrTML_t printThingsTML;
+    ocrTML_t timestepLoopTML;
+    ocrTML_t timestepTML;
+    ocrTML_t updateLinkCellsTML;
+    ocrTML_t haloExchangeTML;
+    ocrTML_t sortAtomsInCellsTML;
+    ocrTML_t exchangeDataTML;
+    ocrTML_t loadAtomsBufferTML;
+    ocrTML_t unloadAtomsBufferTML;
 } rankTemplateH_t;
 
 typedef struct
@@ -113,21 +119,12 @@ typedef struct
     Command cmd;
     rankTemplateH_t rankTemplateH;
 
-    //ocrDBK_t DBK_sim;
-
-    ocrGuid_t DBK_xIn, DBK_xOut, DBK_weight;
-    ocrGuid_t DBK_LsendBufs[2], DBK_RsendBufs[2];
-    ocrGuid_t DBK_TsendBufs[2], DBK_BsendBufs[2];
-    ocrGuid_t DBK_refNorm;
-
-    ocrGuid_t DBK_timers;
-
     ocrDBK_t rpKeDBK, rpVcmDBK, rpmaxOccupancyDBK, rpPerfTimerDBK;
     reductionPrivate_t *rpKePTR, *rpVcmPTR, *rpmaxOccupancyPTR, *rpPerfTimerPTR;
     ocrEVT_t rpKeEVT, rpVcmEVT, rpmaxOccupancyEVT, rpPerfTimerEVT;
-
     ocrHint_t myEdtAffinityHNT;
     ocrHint_t myDbkAffinityHNT;
+
     ocrGuid_t haloRangeGUID;
     ocrGuid_t haloSendEVTs[6];
     ocrGuid_t haloRecvEVTs[6];

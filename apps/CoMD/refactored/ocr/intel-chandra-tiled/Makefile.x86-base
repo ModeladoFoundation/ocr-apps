@@ -65,7 +65,8 @@ REQ_LIBS := reduction
 SRCS := CoMD.c mycommand.c cmdLineParser.c eam.c ljForce.c decomposition.c linkCells.c initAtoms.c \
 		random.c timestep.c performanceTimers.c parallel.c haloExchange.c
 OBJS := $(notdir $(SRCS:.c=.o))
-$(OBJS): mycommand.h  constants.h
+$(OBJS): CoMDTypes.h CoMD_info.h SPMDappUtils.h cmdLineParser.h constants.h decomposition.h eam.h haloExchange.h initAtoms.h \
+			linkCells.h ljForce.h memUtils.h mycommand.h mytype.h parallel.h performanceTimers.h random.h timestep.h yamlOutput.h
 
 
 # Additional CFLAGS. By default, it includes
@@ -75,6 +76,7 @@ $(OBJS): mycommand.h  constants.h
 CFLAGS := -g -std=c99
 CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT
 CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+CFLAGS += -DWITH_COUNTED_EVT
 #CFLAGS += -DDEBUG_APP
 
 ifeq ($(STATIC_SCHEDULER),1)
