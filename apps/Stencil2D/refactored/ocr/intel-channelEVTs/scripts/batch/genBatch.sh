@@ -14,7 +14,8 @@ LARG_QUEUE=regular
 #ws or ss
 LARG_SCALING_TYPE=$1
 
-ranks="1 4 16 64 256"
+ranks="1 4 16 32 64 256"
+c=${c-"16"}
 
 TPL_ROOT=./scripts/batch
 TPL_NAME=${TPL_NAME-"$TPL_ROOT/${LARG_NAME}.btpl"}
@@ -52,9 +53,9 @@ function generate() {
 
 for r in `echo "$ranks"`; do
     LARG_NODE_SCALING=$r
-    LARG_CORE_SCALING=24 # Use all cores available
+    LARG_CORE_SCALING=${c} # Use all cores available
     LARG_HOUR="00"
-    LARG_MIN="30"
+    LARG_MIN="10"
     generate
 done
 

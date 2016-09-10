@@ -1,8 +1,24 @@
+
+Stencil-2D implementation based on Channel-Events
+
 = Compiling the application =
 
+== Optimizations ==
 
-STENCIL_WITH_EAGER_DB
-STENCIL_WITH_COUNTED_EVT
+* STENCIL_WITH_EAGER_DB: Use eager datablock hint (need gerrit patch 3536)
+* STENCIL_WITH_DBUF_CHRECV: Use double buffering for both DBs and Channels. Allows satisfy on channel to be asynchronous when eager is on.
+* CHANNEL_EVENTS_AT_RECEIVER: Whether the channel used to do the halo exchange is sender or receiver-based
+
+== Debug mode ==
+
+Set FULL_APP preprocessor variable to 0 to run the app as an OCR-skeleton - doing so will disable all the
+computations and the app only sets up the OCR tasks and thus helps to measure OCR overhead
+
+In Makefile.<OCR_TYPE>
+CFLAGS += -DFULL_APP=0 //To measure only the OCR overhead
+or
+CFLAGS += -DFULL_APP=1 //To measure the full app performance
+
 
 = Running the application =
 
@@ -24,23 +40,11 @@ Invocation examples:
 
   WORKLOAD_ARGS="1024 6 100" make -f Makefile.${OCR_TYPE} run
 
-
-Build Arguments:
-
-Set FULL_APP preprocessor variable to 0 to run the app as an OCR-skeleton - doing so will disable all the
-computations and the app only sets up the OCR tasks and thus helps to measure OCR overhead
-
-In Makefile.<OCR_TYPE>
-CFLAGS += -DFULL_APP=0 //To measure only the OCR overhead
-or
-CFLAGS += -DFULL_APP=1 //To measure the full app performance
-
-
 = Application Workflow =
 
 C   = creation
 S   = satisfy
-c   = channel event
+c   = channel event (sender-sided i.e. satisfy operation is local)
 (F) = defines a finish scope
 
 initEdt
@@ -75,3 +79,4 @@ FNC_initialize \
                  |
                  C(if end)
              TS_summary.FNC
+

@@ -30,14 +30,17 @@ Copywrite Intel Corporation 2015
 #include "timer.h"
 #include "reduction.h"
 
+
+#ifdef STENCIL_WITH_DBUF_CHRECV
+#define GET_CHANNEL_IDX(face, phase) (face+(4*phase))
+#else
+#define GET_CHANNEL_IDX(face, phase) (face)
+#endif
+
 static void createEventHelper(ocrGuid_t * evtGuid, u32 nbDeps) {
-#ifdef STENCIL_WITH_COUNTED_EVT
     ocrEventParams_t params;
     params.EVENT_COUNTED.nbDeps = nbDeps;
     ocrEventCreateParams(evtGuid, OCR_EVENT_COUNTED_T, false, &params);
-#else
-    ocrEventCreate(evtGuid, OCR_EVENT_STICKY_T, false);
-#endif
 }
 
 static void destroyOcrObjects(rankH_t* PTR_rankH);
@@ -551,8 +554,7 @@ _OCR_TASK_FNC_( FNC_summary )
     double flops = (double) (2*stencil_size+1) * f_active_points;
     PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",
            1.0E-06 * flops/avgtime, avgtime);
-    print_throughput_custom("Stencil2D", stencil_size, avgtime, 1.0E-06*(flops/avgtime));
-
+    print_throughput_custom_name("Stencil2D", NULL, stencil_size, NULL, avgtime, "MFlops/s", 1.0E-06*(flops/avgtime));
     ocrShutdown();
 
     }
@@ -618,7 +620,6 @@ _OCR_TASK_FNC_( timestepEdt )
     //------ Begin left send
     MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Lsend_fin;
-    //TODO: All send/recv _fin events are leaking should use counted events in place
     createEventHelper(&EVT_Lsend_fin, 1);
 
     TS_Lsend.TML = PTR_rankTemplateH->TML_FNC_Lsend;
@@ -626,7 +627,7 @@ _OCR_TASK_FNC_( timestepEdt )
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Lsend.OET);
 
-    if( id_x!=0 ) ocrAddDependence( TS_Lsend.OET, PTR_rankH->haloSendEVTs[0], 0, DB_MODE_RO );
+    if( id_x!=0 ) ocrAddDependence( TS_Lsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(0, phase)], 0, DB_MODE_RO );
     ocrAddDependence( TS_Lsend.OET, EVT_Lsend_fin, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -640,14 +641,14 @@ _OCR_TASK_FNC_( timestepEdt )
 
     MyOcrTaskStruct_t TS_Rsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Rsend_fin;
-    ocrEventCreate( &EVT_Rsend_fin, OCR_EVENT_STICKY_T, false );
+    createEventHelper(&EVT_Rsend_fin, 1);
 
     TS_Rsend.TML = PTR_rankTemplateH->TML_FNC_Rsend;
     ocrEdtCreate( &TS_Rsend.EDT, TS_Rsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Rsend.OET);
 
-    if( id_x != NR_X - 1 ) ocrAddDependence( TS_Rsend.OET, PTR_rankH->haloSendEVTs[1], 0, DB_MODE_RO );
+    if( id_x != NR_X - 1 ) ocrAddDependence( TS_Rsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(1, phase)], 0, DB_MODE_RO );
     ocrAddDependence( TS_Rsend.OET, EVT_Rsend_fin, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -673,7 +674,7 @@ _OCR_TASK_FNC_( timestepEdt )
     // The buffer to write the frontier to
     ocrAddDependence( DBK_xIn, TS_Lrecv.EDT, _idep++, DB_MODE_RW );
     // The channel event the neighbor will be satisfying
-    ocrAddDependence( (id_x!=0)?PTR_rankH->haloRecvEVTs[0]:NULL_GUID, TS_Lrecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( (id_x!=0)?PTR_rankH->haloRecvEVTs[GET_CHANNEL_IDX(0, phase)]:NULL_GUID, TS_Lrecv.EDT, _idep++, DB_MODE_RO );
     //------ End left send
 
     MyOcrTaskStruct_t TS_Rrecv; _paramc = 0; _depc = 3;
@@ -690,7 +691,7 @@ _OCR_TASK_FNC_( timestepEdt )
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Rrecv.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Rrecv.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( (id_x!=NR_X-1)?PTR_rankH->haloRecvEVTs[1]:NULL_GUID, TS_Rrecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( (id_x!=NR_X-1)?PTR_rankH->haloRecvEVTs[GET_CHANNEL_IDX(1, phase)]:NULL_GUID, TS_Rrecv.EDT, _idep++, DB_MODE_RO );
 
     MyOcrTaskStruct_t TS_Bsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Bsend_fin;
@@ -701,7 +702,7 @@ _OCR_TASK_FNC_( timestepEdt )
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Bsend.OET);
 
-    if( id_y!=0 ) ocrAddDependence( TS_Bsend.OET, PTR_rankH->haloSendEVTs[2], 0, DB_MODE_RO );
+    if( id_y!=0 ) ocrAddDependence( TS_Bsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(2, phase)], 0, DB_MODE_RO );
     ocrAddDependence( TS_Bsend.OET, EVT_Bsend_fin, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -718,7 +719,7 @@ _OCR_TASK_FNC_( timestepEdt )
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Tsend.OET);
 
-    if( id_y != NR_Y - 1 ) ocrAddDependence( TS_Tsend.OET, PTR_rankH->haloSendEVTs[3], 0, DB_MODE_RO );
+    if( id_y != NR_Y - 1 ) ocrAddDependence( TS_Tsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(3, phase)], 0, DB_MODE_RO );
     ocrAddDependence( TS_Tsend.OET, EVT_Tsend_fin, 0, DB_MODE_NULL );
 
     _idep = 0;
@@ -740,7 +741,7 @@ _OCR_TASK_FNC_( timestepEdt )
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Brecv.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Brecv.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( (id_y!=0)?PTR_rankH->haloRecvEVTs[2]:NULL_GUID, TS_Brecv.EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( (id_y!=0)?PTR_rankH->haloRecvEVTs[GET_CHANNEL_IDX(2, phase)]:NULL_GUID, TS_Brecv.EDT, _idep++, DB_MODE_RO );
 
     MyOcrTaskStruct_t TS_Trecv; _paramc = 0; _depc = 3;
 
@@ -756,19 +757,25 @@ _OCR_TASK_FNC_( timestepEdt )
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Trecv.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Trecv.EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( (id_y!=NR_Y-1)?PTR_rankH->haloRecvEVTs[3]:NULL_GUID, TS_Trecv.EDT, _idep++, DB_MODE_RO );
-
-    ocrGuid_t TS_update_OET;
-    createEventHelper(&TS_update_OET, 1);
+    ocrAddDependence( (id_y!=NR_Y-1)?PTR_rankH->haloRecvEVTs[GET_CHANNEL_IDX(3, phase)]:NULL_GUID, TS_Trecv.EDT, _idep++, DB_MODE_RO );
 
     MyOcrTaskStruct_t TS_update; //FNC_update
+
+    s32 ntimesteps = PTR_globalParamH->NT;
+    bool trackUpdate = (itimestep == ntimesteps);
+
+    ocrGuid_t TS_update_OET;
 
     TS_update.TML = PTR_rankTemplateH->TML_FNC_update;
     ocrEdtCreate( &TS_update.EDT, TS_update.TML,
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_update.OET );
+                  EDT_PROP_NONE, &myEdtAffinityHNT, (trackUpdate ? (&TS_update.OET) : NULL));
 
-    ocrAddDependence( TS_update.OET, TS_update_OET, 0, DB_MODE_NULL );
+    if( trackUpdate )
+    {
+        createEventHelper(&TS_update_OET, 1);
+        ocrAddDependence( TS_update.OET, TS_update_OET, 0, DB_MODE_NULL );
+    }
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_update.EDT, _idep++, DB_MODE_CONST );
@@ -788,8 +795,7 @@ _OCR_TASK_FNC_( timestepEdt )
     ocrAddDependence( EVT_Brecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
     ocrAddDependence( EVT_Trecv_fin, TS_update.EDT, _idep++, DB_MODE_NULL );
 
-    s32 ntimesteps = PTR_globalParamH->NT;
-    if( itimestep == ntimesteps)
+    if( trackUpdate )
     {
         MyOcrTaskStruct_t TS_summary; _paramc = 0; _depc = 4;
 
@@ -842,7 +848,7 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     ocrAddDependence( timestepOEVT, timestepOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, timestepEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_rankH, timestepEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_rankH->DBK_xIn, timestepEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_xOut, timestepEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_weight, timestepEDT, _idep++, DB_MODE_CONST );
@@ -858,14 +864,10 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     if( itimestep <= ntimesteps )
     {
         //start next timestep
-        ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
-
+        ocrGuid_t timestepLoopEDT;
         ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->TML_timestepLoop,
                       EDT_PARAM_DEF, (u64*)&itimestep, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &timestepLoopOEVT );
-        createEventHelper(&timestepLoopOEVTS, 1);
-        ocrAddDependence( timestepLoopOEVT, timestepLoopOEVTS, 0, DB_MODE_NULL );
-
+                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( timestepOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL );
@@ -1012,7 +1014,7 @@ _OCR_TASK_FNC_( FNC_stencil )
     ocrAddDependence( initializeDataOEVT, initializeDataOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, initializeDataEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_rankH, initializeDataEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_rankH->DBK_xIn, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_xOut, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_weight, initializeDataEDT, _idep++, DB_MODE_CONST );
@@ -1022,13 +1024,11 @@ _OCR_TASK_FNC_( FNC_stencil )
     ocrAddDependence( PTR_rankH->DBK_timer_reductionH, initializeDataEDT, _idep++, DB_MODE_RW );
 
     u64 itimestep = 0;
-    ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
+    ocrGuid_t timestepLoopEDT;
 
     ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->TML_timestepLoop,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &timestepLoopOEVT );
-    createEventHelper(&timestepLoopOEVTS, 1);
-    ocrAddDependence( timestepLoopOEVT, timestepLoopOEVTS, 0, DB_MODE_NULL );
+                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RO );
@@ -1104,14 +1104,21 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     u64 i;
 
-    //Capture all the events needed for inter-rank depedencies
-    for(i=0;i<=3;i++)
+    //Capture all the events needed for inter-rank dependencies
+    int nbrUb = 4;
+    for(i=0;i<nbrUb;i++)
     {
         ocrGuid_t* eventsPTR = depv[1+i].ptr;
 #ifdef CHANNEL_EVENTS_AT_RECEIVER
         PTR_rankH->haloSendEVTs[i] = eventsPTR[0];
+#ifdef STENCIL_WITH_DBUF_CHRECV
+        PTR_rankH->haloSendEVTs[nbrUb+i] = eventsPTR[1];
+#endif
 #else
         PTR_rankH->haloRecvEVTs[i] = eventsPTR[0];
+#ifdef STENCIL_WITH_DBUF_CHRECV
+        PTR_rankH->haloRecvEVTs[nbrUb+i] = eventsPTR[1];
+#endif
 #endif
         //PRINTF("Recv rank %d %d "GUIDF" \n", id, i, PTR_rankH->haloRecvEVTs[i]);
     }
@@ -1191,11 +1198,13 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_Trecv), FNC_Trecv, _paramc,_depc );
 
     _paramc = 1; _depc = 16;
-
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_update), FNC_update, _paramc, _depc );
 
-    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_timestep), timestepEdt, 1, 8 );
-    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_timestepLoop), timestepLoopEdt, 1, 2 );
+    _paramc = 1; _depc = 8;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_timestep), timestepEdt, _paramc, _depc );
+
+    _paramc = 1; _depc = 2;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_timestepLoop), timestepLoopEdt, _paramc, _depc );
 
     ocrGuid_t DBK_xIn = PTR_rankH->DBK_xIn;
     ocrGuid_t DBK_xOut = PTR_rankH->DBK_xOut;
@@ -1283,7 +1292,11 @@ _OCR_TASK_FNC_( initEdt )
     params.EVENT_CHANNEL.nbSat = 1;
     params.EVENT_CHANNEL.nbDeps = 1;
 
-    ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, 0, 5 );
+    int nbrUb = 4;
+
+    u32 nbDepvChannelSetupEdt = nbrUb + 1;
+
+    ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, 0, nbDepvChannelSetupEdt);
     ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
                     &PTR_rankH->myEdtAffinityHNT, NULL );
     ocrEdtTemplateDestroy( channelSetupTML );
@@ -1291,8 +1304,14 @@ _OCR_TASK_FNC_( initEdt )
     int nbr, i, j;
     int nbrImage;
 
-    //4 neighbors: -x, +x, -y, +y
-    for( nbr = 0; nbr < 4; nbr++ )
+    int nChannels;
+#ifdef STENCIL_WITH_DBUF_CHRECV
+    nChannels = 2;
+#else
+    nChannels = 1;
+#endif
+    //4 neighbors: -x, +x, -y, +y // *2 with double buffering of channels
+    for( nbr = 0; nbr < nbrUb; nbr++ )
     {
         switch(nbr)
         {
@@ -1320,10 +1339,10 @@ _OCR_TASK_FNC_( initEdt )
 
         ocrGuid_t* eventsPTR;
         ocrGuid_t eventsDBK;
-        ocrDbCreate( &eventsDBK, (void**) &eventsPTR, 1*sizeof(ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+        ocrDbCreate( &eventsDBK, (void**) &eventsPTR, nChannels*sizeof(ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
         //Collective event create for sends
-        ocrGuidFromIndex(&(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, 4*id + nbr);//send
+        ocrGuidFromIndex(&(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nbrUb*id + nbr);//send
         ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
         //PRINTF("s %d r %d se %d re %d s(%d %d) r(%d %d)\n", id, nbrRank, nbr, nbrImage, ix0, iy0, ix, iy );
@@ -1331,10 +1350,18 @@ _OCR_TASK_FNC_( initEdt )
 #ifdef CHANNEL_EVENTS_AT_RECEIVER
         ocrEventCreateParams( &(PTR_rankH->haloRecvEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
         eventsPTR[0] = PTR_rankH->haloRecvEVTs[nbr]; //channel event of the recv operation to get data from nbrRank
+#ifdef STENCIL_WITH_DBUF_CHRECV
+        ocrEventCreateParams( &(PTR_rankH->haloRecvEVTs[nbrUb+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        eventsPTR[1] = PTR_rankH->haloRecvEVTs[nbrUb+nbr]; //channel event of the recv operation to get data from nbrRank
+#endif
         //PRINTF("Recv rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloRecvEVTs[nbr]);
 #else
         ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
         eventsPTR[0] = PTR_rankH->haloSendEVTs[nbr]; //channel event of the send operation from rank i to nbrRank
+#ifdef STENCIL_WITH_DBUF_CHRECV
+        ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nbrUb+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        eventsPTR[1] = PTR_rankH->haloSendEVTs[nbrUb+nbr]; //channel event of the recv operation to get data from nbrRank
+#endif
         //PRINTF("Send rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloSendEVTs[nbr]);
 #endif
 
@@ -1344,7 +1371,7 @@ _OCR_TASK_FNC_( initEdt )
 
         //Map the sends to receive events
         //receive: (id, nbr) will be the send event from the (nbrRank,nbrImage)
-        ocrGuidFromIndex( &(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, 4*nbrRank + nbrImage );
+        ocrGuidFromIndex( &(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nbrUb*nbrRank + nbrImage );
         ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
         ocrAddDependence( stickyEVT, channelSetupEDT, 1+nbr, DB_MODE_RW ); //TODO
@@ -1433,7 +1460,7 @@ void forkSpmdEdts( s64* edtGridDims, s64* pdGridDims, ocrGuid_t* spmdDepv )
 
     for( i = 0; i < nRanks; ++i )
     {
-        int pd = getPoliyDomainID( i, edtGridDims, pdGridDims );
+        int pd = getPolicyDomainID( i, edtGridDims, pdGridDims );
         //PRINTF("id %d map PD %d\n", i, pd);
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
@@ -1572,11 +1599,10 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     //Create OCR objects to pass down to the child EDTs
     //for collective operatations among the child EDTs
     globalOcrParamH_t ocrParamH;
-    ocrGuidRangeCreate(&(ocrParamH.haloRangeGUID), 4*nRanks, GUID_USER_EVENT_STICKY);
+    int nbrUb = 4;
+    ocrGuidRangeCreate(&(ocrParamH.haloRangeGUID), nbrUb*nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.normReductionRangeGUID), nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.timerReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
-    //ocrEventCreate( &(ocrParamH.EVT_OUT_norm_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
-    //ocrEventCreate( &(ocrParamH.EVT_OUT_timer_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
 
     //A datablock to store the commandline and the OCR objectes created above
     ocrGuid_t DBK_globalParamH;

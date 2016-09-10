@@ -3,6 +3,7 @@
 
 function submitBatchList() {
     local blist="$1"
+    local  __resultvar=$2
     # Default naming if
     if [[ -z ${EXP_OUTDIR} ]]; then
         EXP_NAME=${EXP_NAME-"exp"}

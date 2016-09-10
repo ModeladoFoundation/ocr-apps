@@ -90,14 +90,22 @@ typedef struct
 
 } globalParamH_t;
 
+#ifdef STENCIL_WITH_DBUF_CHRECV
+#define NB_SEND_CHANNELS 8
+#define NB_RECV_CHANNELS 8
+#else
+#define NB_SEND_CHANNELS 4
+#define NB_RECV_CHANNELS 4
+#endif
+
 typedef struct
 {
     globalParamH_t globalParamH;
     rankParamH_t rankParamH;
     rankTemplateH_t rankTemplateH;
 
-    ocrGuid_t haloSendEVTs[4];
-    ocrGuid_t haloRecvEVTs[4];
+    ocrGuid_t haloSendEVTs[NB_SEND_CHANNELS];
+    ocrGuid_t haloRecvEVTs[NB_RECV_CHANNELS];
 
     ocrGuid_t DBK_xIn, DBK_xOut, DBK_weight;
     ocrGuid_t DBK_LsendBufs[2], DBK_RsendBufs[2];
@@ -120,7 +128,7 @@ void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e);
 void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id);
 void splitDimension(s64 Num_procs, s64 *Num_procsx, s64 *Num_procsy);
 static inline int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y );
-static inline int getPoliyDomainID( int b, u64* edtGridDims, u64* pdGridDims );
+static inline int getPolicyDomainID( int b, u64* edtGridDims, u64* pdGridDims );
 
 static void timestamp(const char* msg)
 {
@@ -181,7 +189,7 @@ static inline int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y )
     return NR_X*id_y + id_x;
 }
 
-static inline int getPoliyDomainID( int b, u64* edtGridDims, u64* pdGridDims )
+static inline int getPolicyDomainID( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
     int id_y = b/edtGridDims[0];

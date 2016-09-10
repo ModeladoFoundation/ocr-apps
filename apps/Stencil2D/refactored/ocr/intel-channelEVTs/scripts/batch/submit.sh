@@ -17,10 +17,7 @@ P="${PWD}/scripts/batch"
 #They are currently duplicated across scripts
 ranks="1 4 16 64 256"
 
-BATCH_LIST=""
-for i in `echo ${ranks}`; do
-    BATCH_LIST="${P}/${SCALING_TYPE}_job${i}.sh $BATCH_LIST"
-done
+BATCH_LIST=`ls ${P}/${SCALING_TYPE}_job*.sh`
 
 # Go over the list of batch and submit
 submitBatchList "${BATCH_LIST}"
