@@ -294,8 +294,17 @@ void visitorTraversal::writeInitFunction(SgProject * project)
 
     // ocrGuid_t ffwd_db_guid;
     string dbName("ffwd_db_guid");
+    SgTypedefDeclaration * ffwdTypedefDecl0 = buildTypedefDeclaration(strFFWDT,_structType,
+                                                                    globalInitBB);
+    SgTypedefType * ffwdType0 = ffwdTypedefDecl0->get_type();
+    SgPointerType * ptrType0 = buildPointerType(ffwdType0);
+
+    SgExprListExp * arg_list0 = buildExprListExp();
+    appendExpression(arg_list0, buildVarRefExp(SgName("NULL_GUID"),globalInitBB));
+
+    SgInitializer* ptrInitializer0 = buildAssignInitializer(arg_list0,ptrType0);
     SgVariableDeclaration* ffwdDBGuid = buildVariableDeclaration(SgName(dbName), ocrGuidType,
-                                                                   NULL, globalInitBB);
+                                                                   ptrInitializer0, globalInitBB);
     appendStatement(ffwdDBGuid, globalInitBB);
 
     // __ffwd_t * ffwd_addr_ptr=NULL;
