@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#Date: 2016may18
+#Author: Donald H Villeneuve (dvillen)
+#Goal: Make a C-code analog to Nekbone's cubic procedure
+#Methodology:
+#   1) Run the Fortran code holding the functions under test.
+#      These functions will generate a single output file F.
+#   2) Run the C code holding the functions under test.
+#      These functions will generate a single output file C.
+#   3) Compare F & C.  They should be identical.
+#
+
+CC=icc
+FORT=ifort
+
+FEXEC="./fortran.x"
+CEXEC="./ccode.x"
+OUTFORTRAN="./fortran.out"
+OUTC="./ccode.out"
+
+OPT="-g -O0"
+
+#----- Clean-up before starting
+if [ ! -z "abc" ]; then
+    rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+fi
+
+#----- Make the executables
+rm -f "$FEXEC"
+$FORT -o "$FEXEC" nekbone_local_grad.f90
+if [ ! -x "$FEXEC" ]
+then
+echo "ERROR: Fortran build failure"
+exit 20
+fi
+
+rm -f "$CEXEC"
+$CC -o "$CEXEC" $OPT blas3.c local_grad.c nekbone_local_grad.c
+if [ ! -x "$CEXEC" ]
+then
+echo "ERROR: C code build failure"
+exit 30
+fi
+
+#----- Run the Fortran code
+$FEXEC
+if [ ! -s "$OUTFORTRAN" ]
+then
+echo "ERROR: Missing Fortran output file"
+exit 40
+fi
+
+#----- Run the C code
+$CEXEC
+if [ ! -s "$OUTC" ]
+then
+echo "ERROR: Missing C output file"
+exit 40
+fi
+
+#----- Compare
+if [ "$(diff -w --brief ${OUTFORTRAN} ${OUTC})" ]
+then
+echo "ERROR: Unit test local_grad failed."
+exit 50
+fi
+
+#----- Clean-up
+rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+
+echo "Successful run"
+exit 0

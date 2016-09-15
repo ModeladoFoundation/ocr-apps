@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#Date: 2016may18
+#Author: Donald H Villeneuve (dvillen)
+#Goal: Make a C-code analog to Nekbone's cubic procedure
+#Methodology:
+#   1) Setup an input file
+#   2) Run the Fortran code holding cubic which
+#      will generate an output file F
+#   3) Run the C code holding the C-version of cubic, which
+#      will generate the output file C
+#   4) Compare F & C.  They should be identical.
+#
+
+CC=icc
+FORT="ifort"
+
+FEXEC="./fortran.x"
+CEXEC="./ccode.x"
+OUTFORTRAN="./fortran.out"
+OUTC="./ccode.out"
+
+OPT="-g -O0"
+
+#----- Preliminary clean-up
+rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+
+#----- Make the executables
+rm -f "$FEXEC"
+$FORT -o "$FEXEC" nekbone_zwgjd.f90
+if [ ! -x "$FEXEC" ]
+then
+echo "ERROR: Fortran build failure"
+exit 20
+fi
+
+#rm -f "$CEXEC"
+#$CC -o "$CEXEC" $OPT blas1.c polybasis.c nekbone_zwgjd.c
+#if [ ! -x "$CEXEC" ]
+#then
+#echo "ERROR: C code build failure"
+#exit 30
+#fi
+
+#----- Run the Fortran code
+$FEXEC
+if [ ! -r "$OUTFORTRAN" ]
+then
+echo "ERROR: Missing Fortran output file"
+exit 40
+fi
+
+#----- Run the C code
+#$CEXEC
+#if [ ! -r "$OUTC" ]
+#then
+#echo "ERROR: Missing C output file"
+#exit 40
+#fi
+
+#----- Compare
+#theDiff="$(../util/bin/numdiff -a 1e-14 ./fortran.out ./ccode.out| grep -v 'are equal')"
+#if [ $theDiff ]
+#then
+#echo "ERROR: Unit test zwgjd failed."
+#exit 50
+#fi
+
+#----- Clean-up
+rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+
+#echo "Successful run"
+echo "ERROR: Unit test zwgjd failed: Its coding is incomplete."
+
+exit 0

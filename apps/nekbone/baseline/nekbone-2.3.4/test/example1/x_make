@@ -1,0 +1,7 @@
+#! /usr/bin/env bash
+rm -rf ./obj
+rm -f ./compiler.out
+rm -f ./z_opt-report.log
+rm -f ./nekbone
+source ./makenek ex1
+

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+mypath="$(pwd)"
+#echo $mypath
+
+testlog="$mypath/z_utest.log"
+rm -f "$testlog"
+
+allutest="$(du -a|cut -f2|grep utest|grep -v runall)"
+
+touch "$testlog"
+
+tcount=0
+
+for i in $allutest; do
+    ((tcount=tcount+1))
+    echo "#>$i" | tee -a "$testlog"
+    adir="$(echo $i|tr "/" "\t"|cut -f1,2|tr "\t" "/")";
+    atest="$(echo $i|tr "/" "\t"|cut -f3)";
+    cd "$adir";
+    "./$atest" >> "$testlog";
+    cd "$mypath";
+done
+
+Nsuccess="$(grep -c Successful $testlog)"
+Nfails="$(grep -ci ERROR $testlog)"
+Nunknown=$((tcount-Nsuccess-Nfails))
+
+echo "Total utest run: $tcount"
+echo "Total utest success: $Nsuccess"
+echo "Total utest unknowns: $Nunknown"
+echo "Total utest fails: $Nfails"
+

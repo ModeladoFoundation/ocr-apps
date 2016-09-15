@@ -1,0 +1,66 @@
+#ifndef SIZE_DATA_H
+#define SIZE_DATA_H
+
+//This is a compiled-time data file equivalent to NEKbone's
+//file called SIZE.
+
+namespace SD
+{
+    enum
+    {
+        //This specify the disribution of MPI ranks along the 3 main axis.
+        //For example, (Rx,Ry,Rz) puts down
+        //      Rx ranks along the X-axis
+        //      Ry ranks along the Y-axis
+        //      Rz ranks along the Z-axis
+        // The total number of ranks in use will be Rtotal= Rx*Ry*Rz
+         Rx   = 8
+        ,Ry   = 8
+        ,Rz   = 8
+        ,Rtotal = Rx*Ry*Rz  //Total number of MPI rank in all
+
+        //This specify the distribution of elements within each and all ranks.
+        //For example, (Ex,Ey,Ez) puts down
+        //      Ex ranks along the X-axis
+        //      Ey ranks along the Y-axis
+        //      Ez ranks along the Z-axis
+        // The total number of element in a single rank is Etotal= Ex*Ey*Ez
+        , Ex   = 7
+        , Ey   = 7
+        , Ez   = 7
+        , Etotal = Ex*Ey*Ez  //Total number of elements per rank
+
+        //This gives the overall total element count in use
+        , GlobalElementCount = Rtotal * Etotal
+
+        //This specify the polynomial sequence to use.
+        //For example, for (Pbegin, Pend, Pstep)=(9,13,3), then
+        //  the sequence generated will be the same as
+        //      for(int p=Pbegin; p!=Pend; p+=Pstep){...}
+        //  where p is the polynomial order in use
+        //  So p will 9,then 12.
+        //IMPORTANT Note:
+        // For a given polynomial order P, NEKbone assumes that a given
+        // element will be partitioned by putting P+1 degree-of-freedom (DOF)
+        // along each main axis of the element.
+        // So each and all elements end up with a total of (P+1)^3 DOFs each,
+        // uniformaly distributed in the element.
+        // For the workload specification, that ends up
+        // setting (Pbegin, Pend, Pstep) = (8, 12, 3) which corresponds
+        // to NEKbone::(nx0,nxN,nxD)=(9,12,3)
+        , Pbegin = 8
+        , Pend   = 9
+        , Pstep  = 3
+
+
+        //This specifies the maximum number of CG iteration to be done
+        ,  CGcount = 100
+
+        //Some global constants
+        , NeighborCount = 26 //In a cubic lattice, each cube can have at most 26 neighbors.
+        , ByteSizeOf1DOF = 8 // 8 bytes for 1 DOF --> sizeof(double)
+    };
+
+} //namespace SD
+
+#endif // SIZE_DATA_H

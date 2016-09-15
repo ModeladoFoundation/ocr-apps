@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#Date: 2016jun6
+#Author: Donald H Villeneuve (dvillen)
+#Goal: Make C-code analogs for Nekbone's blas3 procedures
+#Methodology:
+#   1) Performs a set of basic tests for each blas3 routine
+#
+CC=icc
+
+CEXEC="./ccode.x"
+
+OPT="-g -O0"
+
+#----- Make the executables
+rm -f "$CEXEC"
+$CC -o "$CEXEC" $OPT blas3.c nekbone_blas3.c
+if [ ! -x "$CEXEC" ]
+then
+echo "ERROR: C code build failure"
+exit 30
+fi
+
+#----- Run the C code
+$CEXEC
+if [ $? -eq 0 ]
+then
+  echo "Successful run"
+else
+  echo "ERROR: C exec outputted with code $?"
+  exit 40
+fi
+
+#----- Clean-up
+if [ ! -z "do it" ]
+then
+rm -f core* "$CEXEC"
+fi
+exit 0
