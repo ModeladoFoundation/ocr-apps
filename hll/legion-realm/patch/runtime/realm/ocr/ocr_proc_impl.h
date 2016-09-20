@@ -60,9 +60,10 @@ namespace Realm {
       };
 
       struct ArgsEDT{
-        TaskTableEntry task_entry;
-        size_t arglen;
         Processor p;
+        Processor::TaskFuncPtr fnptr;
+        size_t arglen;
+        char args[0];
       };
 
     protected:

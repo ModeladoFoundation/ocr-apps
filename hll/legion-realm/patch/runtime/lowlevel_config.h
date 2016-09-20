@@ -17,6 +17,12 @@
 #ifndef RUNTIME_LOWLEVEL_CONFIG_H
 #define RUNTIME_LOWLEVEL_CONFIG_H
 
+#if USE_OCR_LAYER
+
+#define U64_COUNT(size) ((size+(sizeof(u64)-1))/sizeof(u64))
+
+#endif // USE_OCR_LAYER
+
 // ******************** IMPORTANT **************************
 //
 // This file is PURE C, **NOT** C++. Keep any C++-isms in

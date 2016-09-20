@@ -33,7 +33,7 @@ extern "C" {
  * @brief Number of simultaneous acquires supported
  **/
 #ifndef RESERVATION_SIZE
-#define RESERVATION_SIZE 10
+#define RESERVATION_SIZE 100
 #endif
 
 /**
