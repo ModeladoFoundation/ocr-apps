@@ -48,6 +48,13 @@ ifeq ($(OCR_ASAN), yes)
   LDFLAGS += $(ASAN_FLAGS) $(LDFLAGS)
 endif
 
+ifeq ($(OCR_ASAN), leak)
+  ASAN_FLAGS := -g -fsanitize=leak -fno-omit-frame-pointer
+  CFLAGS += $(ASAN_FLAGS)
+  LDFLAGS += $(ASAN_FLAGS) $(LDFLAGS)
+endif
+
+
 # Number of threads in the auto-generated configuration file
 CONFIG_NUM_THREADS    ?= 4
 # Communication layer for the auto-gnerated configuration file
@@ -137,7 +144,7 @@ CC_LINK = $(CC)
 ifeq ($(CFLAGS_WARN_ERROR), no)
   CFLAGS_BASE_WARN_ERROR =
 else
-  CFLAGS_BASE_WARN_ERROR = -Werror -Wno-error=deprecated-declarations
+  CFLAGS_BASE_WARN_ERROR = -Werror
 endif
 
 CFLAGS_BASE := $(CFLAGS_BASE_WARN_ERROR) -I. -I$(APPS_LIBS_INSTALL)/include -I$(OCR_INSTALL)/include
@@ -248,7 +255,7 @@ install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or, manually (in bash):"
-	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$${LD_LIBRARY_PATH} "\
+	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$$(LD_LIBRARY_PATH) "\
 	"&& export OCR_CONFIG=${OCR_CONFIG} and run the executable $(TARGET) in $(WORKLOAD_INSTALL)"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
@@ -322,9 +329,8 @@ default: postbuild
 .PHONY: parallel-reqlibs
 parallel-reqlibs: $(FULL_REQ_LIBS)
 
-# Require libocr as the libraries may require OCR headers
 .PHONY: $(FULL_REQ_LIBS)
-$(FULL_REQ_LIBS): | libocr
+$(FULL_REQ_LIBS):
 	$(AT)lockfile "/tmp/$(subst /,_,$@)_lock"; \
 	echo "Grabbed lock"; date; \
 	V=$(V) ARCH=$(ARCH) APPS_ROOT=$(APPS_ROOT) APPS_LIBS_ROOT=$(APPS_LIBS_ROOT) \
@@ -341,47 +347,17 @@ $(FULL_REQ_LIBS): | libocr
 .PHONY: reqlibs
 reqlibs: parallel-reqlibs
 
-# This does a more complicate dependency computation so all the prereqs listed
-# will also become command-less, prereq-less targets. This causes make
-# to remake anything that depends on that file which is
-# exactly what we want. This is adapted from:
-# http://scottmcpeak.com/autodepend/autodepend.html
-# Other information on some of the other rules for dependences can be found
-# here: http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
-#   sed:    strip the target (everything before colon)
-#   sed:    remove any continuation backslashes
-#   fmt -1: list words one per line
-#   sed:    strip leading spaces
-#   sed:    add trailing colon
-#   touch:  sets the time to the same as the .o to avoid
-#           erroneous detection next time around
-
-# Delete default rules so it makes sure to use ours
-%.o: %.c
-
 # Require libocr as this means all include files are up-to-date
 # Note that we include libocr in order only dependences because it is a
 # phony target and would infect things.
 # We add the library in the regular dependences as well to catch header changes
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
-	@echo "Compiling $<"
 	$(AT)$(MKDIR) -p $(@D)
-	$(AT)$(CC) $(CFLAGS) -MMD -c -o $@ $<
-	$(AT)cp -f $(@:.o=.d) $(@:.o=.d.tmp)
-	$(AT)sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
-	sed -e 's/^ *//' -e 's/$$/: /' >> $(@:.o=.d)
-	$(AT)touch -r $@ $(@:.o=.d)
-	$(AT)rm -f $(@:.o=.d.tmp)
+	$(AT)$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
-	@echo "Compiling $<"
 	$(AT)$(MKDIR) -p $(@D)
-	$(AT)$(CC) $(CFLAGS) -MMD -c -o $@ $<
-	$(AT)cp -f $(@:.o=.d) $(@:.o=.d.tmp)
-	$(AT)sed -e 's/.*://' -e 's/\\$$//' < $(@:.o=.d.tmp) | fmt -1 | \
-	sed -e 's/^ *//' -e 's/$$/: /' >> $(@:.o=.d)
-	$(AT)touch -r $@ $(@:.o=.d)
-	$(AT)rm -f $(@:.o=.d.tmp)
+	$(AT)$(CC) $(CFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
 	@echo "Building debug target $@"
@@ -391,11 +367,6 @@ $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	@echo "Building target $@"
 	$(AT)$(RM) -f $(WORKLOAD_BUILD)/$(TARGET)
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET).dbg $(WORKLOAD_BUILD)/$(TARGET)
-
-# Include auto-generated dependence files
-$(WORKLOAD_BUILD)/%.d: ;
-.PRECIOUS: $(WORKLOAD_BUILD)/%.d
--include $(OBJS:.o=.d)
 
 # libocr
 .PHONY: libocr
