@@ -258,7 +258,7 @@ ifeq ($(strip $(USE_OCR)), 1)
     $(error APPS_LIBS_INSTALL variable is not defined, aborting build)
   endif
   INC_FLAGS    += -I${OCR_INSTALL}/include -I${APPS_LIBS_INSTALL}/include
-  CC_FLAGS      += -DUSE_OCR_LAYER=1 -DENABLE_EXTENSION_LEGACY
+  CC_FLAGS      += -DUSE_OCR_LAYER=1 -DENABLE_EXTENSION_LEGACY -DENABLE_EXTENSION_PARAMS_EVT
   LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr_${OCR_TYPE}
   LEGION_LD_FLAGS      += -L${APPS_LIBS_INSTALL}/lib -locr-reservations
 endif
