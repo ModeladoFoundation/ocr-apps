@@ -199,7 +199,11 @@ __asm__
   "    jlrel    r511, __start\n"
   "    movimm   r2, 0, 64\n"
   "    movimm   r3, 0, 64\n"
+  "    .global _stop\n"
+  "    .type _stop,@function\n"
+  "_stop:\n"
   "    alarm    193\n"        // XE_ASSERT_ERROR
+  "    nop\n"
   );
 
 //
