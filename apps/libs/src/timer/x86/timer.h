@@ -24,9 +24,14 @@ double usec_to_sec (long usec);
 
 /* Printing functions */
 
-void print_throughput(char * timer_name, unsigned long long nb_instances, double time_sec);
+void print_throughput_custom_name(char * timer_name,
+                            char * workloadUnit, unsigned long long workload,
+                            char * durationUnit, double duration,
+                            char * throughputUnit, double throughput);
 
-void print_throughput_custom(char * timer_name, unsigned long long nb_instances, double time_sec, double throughput);
+void print_throughput_custom(char * timer_name, unsigned long long nb_instances, double duration_sec, double throughput);
+
+void print_throughput(char * timer_name, unsigned long long nb_instances, double duration_sec);
 
 void summary_throughput_timer(timestamp_t * start_t, timestamp_t * stop_t, unsigned long long instances);
 

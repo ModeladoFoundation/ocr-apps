@@ -1,5 +1,10 @@
 #include "timer.h"
 
+
+#define UNIT_WORKLOAD_STR ("unit")
+#define UNIT_DURATION_STR ("s")
+#define UNIT_THROUGHPUT_STR ("op/s")
+
 double usec_to_sec (long usec) {
     double res = ((double)usec) / 1000000;
     return res;
@@ -21,26 +26,33 @@ double elapsed_sec(struct timeval * t_start, struct timeval * t_stop) {
     return (((double)elapsed)/1000000);
 }
 
-void print_throughput(char * timer_name, unsigned long long nb_instances, double time_sec) {
+void print_throughput_custom_name(char * timer_name,
+                             char * workloadUnit, unsigned long long workload,
+                             char * durationUnit, double duration,
+                             char * throughputUnit, double throughput) {
     printf("Timer Name        : %s\n", timer_name);
-    printf("Workload    (unit): %llu\n", nb_instances);
-    printf("Duration    (s)   : %f\n", time_sec);
-    printf("Throughput  (op/s): %f\n", nb_instances/time_sec);
+    printf("Workload    (%s): %llu\n", (workloadUnit ? workloadUnit : UNIT_WORKLOAD_STR), workload);
+    printf("Duration    (%s)   : %f\n", (durationUnit ? durationUnit : UNIT_DURATION_STR), duration);
+    printf("Throughput  (%s): %f\n", (throughputUnit ? throughputUnit : UNIT_THROUGHPUT_STR), throughput);
 }
 
-void print_throughput_custom(char * timer_name, unsigned long long nb_instances, double time_sec, double throughput) {
-    printf("Timer Name        : %s\n", timer_name);
-    printf("Workload    (unit): %llu\n", nb_instances);
-    printf("Duration    (s)   : %f\n", time_sec);
-    printf("Throughput  (op/s): %f\n", throughput);
+void print_throughput_custom(char * timer_name, unsigned long long nb_instances, double duration_sec, double throughput) {
+    print_throughput_custom_name(timer_name,
+                                 NULL, nb_instances,
+                                 NULL, duration_sec,
+                                 NULL, throughput);
 }
 
-void print_elapsed(double time_sec) {
-    printf("Elapsed        (s): %f\n", time_sec);
+void print_throughput(char * timer_name, unsigned long long nb_instances, double duration_sec) {
+    print_throughput_custom(timer_name, nb_instances, duration_sec, (nb_instances/duration_sec));
 }
 
-void print_elapsed_usec(long time_usec) {
-    printf("Elapsed       (us): %ld\n", time_usec);
+void print_elapsed(double duration_sec) {
+    printf("Elapsed        (s): %f\n", duration_sec);
+}
+
+void print_elapsed_usec(long duration_sec) {
+    printf("Elapsed       (us): %ld\n", duration_sec);
 }
 
 void summary_throughput_timer(timestamp_t * start_t, timestamp_t * stop_t, unsigned long long instances) {
