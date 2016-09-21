@@ -7,23 +7,22 @@
 //Range of numbers to be sorted.
 #define RANGE 1000000
 
-typedef struct{
+typedef struct {
     u64 low;
     u64 high;
     ocrGuid_t qsortTemplate;
 } qsortPRM_t;
 
-typedef struct{
+typedef struct {
     u64 arraySize;
 } finishPRM_t;
 
 //Pseudo-RNG.  Gets rid of C stdlib dependence
-int getRandNum(int seed){
+int getRandNum(int seed) {
     int MAX = 1000;
     int i;
     int r[MAX];
     int ret;
-
     r[0] = seed;
     for(i=1; i<31; i++){
         r[i] = (16807LL * r[i-1]) % 2147483647;
@@ -41,14 +40,12 @@ int getRandNum(int seed){
         r[i] = r[i-31] + r[i-3];
         ret = ((unsigned int)r[i]) >> 1;
     }
-
     return ret;
 }
 
 //Insertion sort for very small problem sizes that don't need parallelized
 //DSS: fixed error (tracking jmin to swap correct elements)
-void sortSerial(u64 *data, u64 low, u64 high)
-{
+void sortSerial(u64 *data, u64 low, u64 high) {
     u64 min, i, j, temp, jmin;
     for(i = low; i <= high-1; i++) {
         min = 0xFFFFFFFFFFFFFFFFUL;
@@ -57,35 +54,30 @@ void sortSerial(u64 *data, u64 low, u64 high)
                 min = data[j];
                 jmin = j;
             }
-
         temp = data[i];
         data[i] = min;
         data[jmin] = temp;
     }
 }
 
-// param 0: low index (inclusive)
-// param 1: high index (inclusive)
-// param 2: qsort edt template
-// dep 0: array
-ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
+// paramv 0: low index (inclusive)
+// paramv 1: high index (inclusive)
+// paramv 2: qsort edt template
+// depv   0: array
+ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 i;
-
     qsortPRM_t *qsortParamvIn = (qsortPRM_t *)paramv;
-
     u64 low = qsortParamvIn->low;
     u64 high = qsortParamvIn->high;
     ocrGuid_t qsortTemplate = qsortParamvIn->qsortTemplate;
     u64 size = high - low + 1;
-    u64 *data = depv[0].ptr;
+    ocrGuid_t dbGuid = depv[0].guid;
+    u64 * data = depv[0].ptr;
     if(size * sizeof(u64) <= CACHE_LINE_SIZE)
         sortSerial(data, low, high);
     else {
-
-//Set pivot point. The pivot is randomly selected.
-//Below: (size/2) is an arbitrary number, as getRandNum requires a seed.
-
+        //Set pivot point. The pivot is randomly selected.
+        //Below: (size/2) is an arbitrary number, as getRandNum requires a seed.
         u64 pivotIndex = low + (getRandNum(size/2))%(high-low);
         u64 pivot = data[pivotIndex];
 
@@ -95,27 +87,34 @@ ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         data[pivotIndex] = data[high];
         data[high] = pivot;
 
-//Find something smaller and larger than pivot to swap
-//DSS: modiefied to search from both ends.  Previous was correct but inefficient
-
+        //Find something smaller and larger than pivot to swap
+        //DSS: modified to search from both ends. Previous was correct but inefficient
         while(1) {
-//look for soemthing bigger
-            while((data[curIndex] <= pivot) && (curIndex < swapIndex)) curIndex++;
-            if(curIndex == swapIndex) break;
-//look for soemthing smaller
-            while((data[swapIndex] >= pivot) && (curIndex < swapIndex)) swapIndex--;
-            if(curIndex == swapIndex) break;
-//swap
+            //look for something bigger
+            while((data[curIndex] <= pivot) && (curIndex < swapIndex)) {
+                curIndex++;
+            }
+            if(curIndex == swapIndex) {
+                break;
+            }
+            //look for something smaller
+            while((data[swapIndex] >= pivot) && (curIndex < swapIndex)) {
+                swapIndex--;
+            }
+            if(curIndex == swapIndex) {
+                break;
+            }
+            //swap
             temp = data[swapIndex];
             data[swapIndex] = data[curIndex];
             data[curIndex] = temp;
             curIndex++;
         }
 
-
-//swap and reset pivot index
+        //swap and reset pivot index
         data[high] = data[swapIndex];
         data[swapIndex] = pivot;
+        ocrDbRelease(dbGuid);
         pivotIndex = swapIndex;
 
         // recursively create EDTs and quicksort the high/low partitioned subarrays.
@@ -138,32 +137,26 @@ ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         qsortHighParamv.qsortTemplate = qsortTemplate;
         ocrEdtCreate(&qsortHighEdt, qsortTemplate, EDT_PARAM_DEF, (u64 *)&qsortHighParamv,
                  EDT_PARAM_DEF, &qsortHighDataEvt, EDT_PROP_FINISH, NULL_HINT, NULL);
-
-        ocrEventSatisfy(qsortLowDataEvt, depv[0].guid);
-        ocrEventSatisfy(qsortHighDataEvt, depv[0].guid);
+        //TODO these are useless
+        ocrEventSatisfy(qsortLowDataEvt, dbGuid);
+        ocrEventSatisfy(qsortHighDataEvt, dbGuid);
     }
-
     return NULL_GUID;
 }
 
 //Print validation feedback and quit.
-ocrGuid_t finishTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
-    PRINTF("Showing first 30  elements: \n");
+ocrGuid_t finishTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    PRINTF("Showing first 30 elements: \n");
     u64 i;
     u64 *data = depv[0].ptr;
     for(i = 0; i < 30; i++)
         PRINTF("%lu \n", data[i]);
-
-    PRINTF("Sorting Finished.  Shutting Down OCR\n");
+    PRINTF("Sorting Finished. Shutting Down OCR\n");
     ocrShutdown();
-
     return NULL_GUID;
 }
 
-
-ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
-{
+ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t qsortTemplate;
     ocrGuid_t qsortEdt;
     ocrGuid_t dataDb;
@@ -181,20 +174,29 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     u64 i;
     for(i = 0; i < ARRAY_SIZE; i++)
         data[i] = getRandNum(i) % RANGE;
+    ocrDbRelease(dataDb);
 
     qsortParamv.low = 0;
     qsortParamv.high = ARRAY_SIZE-1;
     qsortParamv.qsortTemplate = qsortTemplate;
 
     ocrEdtCreate(&qsortEdt, qsortTemplate, EDT_PARAM_DEF, (u64 *)&qsortParamv,
-        EDT_PARAM_DEF, &dataDb, EDT_PROP_FINISH, NULL_HINT, &outEvt);
+        EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_HINT, &outEvt);
+
+    // Link up output event to a coordination event to be used by the finishEddt
+    ocrGuid_t coordEvt;
+    ocrEventCreate(&coordEvt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+    ocrAddDependence(outEvt, coordEvt, 0, DB_MODE_RO);
+
+    // Enables qsortEdt
+    ocrAddDependence(dataDb, qsortEdt, 0, DB_MODE_RW);
 
     ocrGuid_t finishTemplate;
     ocrGuid_t finishEdt;
 
     finishParamv.arraySize = ARRAY_SIZE;
 
-    ocrGuid_t finishDepv[2] = {dataDb, outEvt};
+    ocrGuid_t finishDepv[2] = {dataDb, coordEvt};
     ocrEdtTemplateCreate(&finishTemplate, finishTask, PRMNUM(finish), 2);
     ocrEdtCreate(&finishEdt, finishTemplate, EDT_PARAM_DEF, (u64 *)&finishParamv,
         EDT_PARAM_DEF, finishDepv, 0, NULL_HINT, NULL);
