@@ -4,6 +4,16 @@
 #ifndef __COMDTYPES_H_
 #define __COMDTYPES_H_
 
+#define ENABLE_EXTENSION_LABELING
+#define ENABLE_EXTENSION_AFFINITY
+
+#include "ocr.h"
+#include "extensions/ocr-labeling.h" //currently needed for labeled guids
+#include "extensions/ocr-affinity.h" //needed for affinity
+#ifdef USE_PROFILER
+#include "extensions/ocr-profiler.h"
+#endif
+
 #include <stdio.h>
 
 #ifndef TG_ARCH
@@ -111,6 +121,14 @@ typedef struct
     ocrTML_t unloadAtomsBufferTML;
 } rankTemplateH_t;
 
+#ifdef DOUBLE_BUFFERED_EVTS
+#define NB_SEND_CHANNELS 12
+#define NB_RECV_CHANNELS 12
+#else
+#define NB_SEND_CHANNELS 6
+#define NB_RECV_CHANNELS 6
+#endif
+
 typedef struct
 {
     s64 nRanks, myRank;
@@ -126,10 +144,10 @@ typedef struct
     ocrHint_t myDbkAffinityHNT;
 
     ocrGuid_t haloRangeGUID;
-    ocrGuid_t haloSendEVTs[6];
-    ocrGuid_t haloRecvEVTs[6];
-    ocrGuid_t haloTagSendEVTs[6];
-    ocrGuid_t haloTagRecvEVTs[6];
+    ocrGuid_t haloSendEVTs[NB_SEND_CHANNELS];
+    ocrGuid_t haloRecvEVTs[NB_RECV_CHANNELS];
+    ocrGuid_t haloTagSendEVTs[NB_SEND_CHANNELS];
+    ocrGuid_t haloTagRecvEVTs[NB_RECV_CHANNELS];
 } rankH_t;
 
 ///
@@ -172,6 +190,5 @@ typedef struct SimFlatSt
    rankH_t* PTR_rankH; //TODO
 
 } SimFlat;
-
 
 #endif

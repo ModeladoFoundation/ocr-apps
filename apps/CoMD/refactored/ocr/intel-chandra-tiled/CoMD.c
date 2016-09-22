@@ -7,16 +7,6 @@ Copywrite Intel Corporation 2015
 
 */
 
-#define ENABLE_EXTENSION_LABELING
-#define ENABLE_EXTENSION_AFFINITY
-
-#include "ocr.h"
-#include "extensions/ocr-labeling.h" //currently needed for labeled guids
-#include "extensions/ocr-affinity.h" //needed for affinity
-#ifdef USE_PROFILER
-#include "extensions/ocr-profiler.h"
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -210,17 +200,17 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
 
     ocrEdtTemplateCreate( &PTR_rankTemplateH->advanceVelocityTML, advanceVelocityEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->advancePositionTML, advancePositionEdt, 1, 6 );
-    ocrEdtTemplateCreate( &PTR_rankTemplateH->redistributeAtomsTML, redistributeAtomsEdt, 0, 3 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->redistributeAtomsTML, redistributeAtomsEdt, 1, 3 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->computeForceTML, computeForceEdt, 0, 4 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->kineticEnergyTML, kineticEnergyEdt, 0, 7 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->printThingsTML, printThingsEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->timestepLoopTML, timestepLoopEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->timestepTML, timestepEdt, 1, 4 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->updateLinkCellsTML, updateLinkCellsEdt, 0, 9 );
-    ocrEdtTemplateCreate( &PTR_rankTemplateH->haloExchangeTML, haloExchangeEdt, 1, 4 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->haloExchangeTML, haloExchangeEdt, 2, 4 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->sortAtomsInCellsTML, sortAtomsInCellsEdt, 0, 8 );
-    ocrEdtTemplateCreate( &PTR_rankTemplateH->exchangeDataTML, exchangeDataEdt, 1, 3 );
-    ocrEdtTemplateCreate( &PTR_rankTemplateH->loadAtomsBufferTML, loadAtomsBufferEdt, 1, 10 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->exchangeDataTML, exchangeDataEdt, 2, 3 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->loadAtomsBufferTML, loadAtomsBufferEdt, 2, 14 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->unloadAtomsBufferTML, unloadAtomsBufferEdt, 1, 15 );
 
     ocrEventParams_t params;
@@ -604,8 +594,9 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     //redistribute atoms
     ocrGuid_t redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
+    u64 itimestep = 0;
     ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
 
     createEventHelper( &redistributeAtomsOEVTS, 1);
@@ -655,7 +646,6 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrAddDependence( computeForceOEVTS, kineticEnergyEDT, _idep++, DB_MODE_NULL );
 
     ////Print things
-    s64 itimestep = 0;
     ocrGuid_t printSimulationDataTML, printSimulationDataEDT, printSimulationDataOEVT, printSimulationDataOEVTS;
 
     ocrEdtTemplateCreate( &printSimulationDataTML, printSimulationDataEdt, 1, 4 );
@@ -834,8 +824,21 @@ _OCR_TASK_FNC_( channelSetupEdt )
     for(i=0;i<nNbrs;i++)
     {
         ocrGuid_t* eventsPTR = depv[i].ptr;
+#ifdef CHANNEL_EVENTS_AT_RECEIVER
+        PTR_rankH->haloSendEVTs[i] = eventsPTR[0];
+        PTR_rankH->haloTagSendEVTs[i] = eventsPTR[1];
+#ifdef DOUBLE_BUFFERED_EVTS
+        PTR_rankH->haloSendEVTs[nNbrs+i] = eventsPTR[2];
+        PTR_rankH->haloTagSendEVTs[nNbrs+i] = eventsPTR[3];
+#endif
+#else
         PTR_rankH->haloRecvEVTs[i] = eventsPTR[0];
         PTR_rankH->haloTagRecvEVTs[i] = eventsPTR[1];
+#ifdef DOUBLE_BUFFERED_EVTS
+        PTR_rankH->haloRecvEVTs[nNbrs+i] = eventsPTR[2];
+        PTR_rankH->haloTagRecvEVTs[nNbrs+i] = eventsPTR[3];
+#endif
+#endif
         DEBUG_PRINTF(("Rank s %d d %d Send "GUIDF" Recv "GUIDF" \n", id, i, PTR_rankH->haloSendEVTs[i], PTR_rankH->haloRecvEVTs[i]));
     }
 
@@ -908,7 +911,6 @@ _OCR_TASK_FNC_( initEdt )
     PRM_channelSetupEdt.id = id;
     PRM_channelSetupEdt.nNbrs = nNbrs;
 
-
     ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, sizeof(PRM_channelSetupEdt_t)/sizeof(u64), nNbrs+1 );
     ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, (u64*)&PRM_channelSetupEdt, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
                     &myEdtAffinityHNT, NULL );
@@ -955,18 +957,43 @@ _OCR_TASK_FNC_( initEdt )
         u32 nbrRank = globalRankFromCoords_Cart3D(ix, iy, iz, gx, gy, gz);
 
         //Collective event create for sends
-        ocrGuidFromIndex(&(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, 6*id + nbr);//send
+        ocrGuidFromIndex(&(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nNbrs*id + nbr);//send
         ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
-
-        ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
-        ocrEventCreateParams( &(PTR_rankH->haloTagSendEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
 
         ocrGuid_t* eventsPTR;
         ocrGuid_t eventsDBK;
-        ocrDbCreate( &eventsDBK, (void**) &eventsPTR, 2*sizeof(ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+        int nEvents = 1;
+#ifdef DOUBLE_BUFFERED_EVTS
+        nEvents = 2;
+#endif
+        ocrDbCreate( &eventsDBK, (void**) &eventsPTR, nEvents*2*sizeof(ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+
+#ifdef CHANNEL_EVENTS_AT_RECEIVER
+        ocrEventCreateParams( &(PTR_rankH->haloRecvEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        ocrEventCreateParams( &(PTR_rankH->haloTagRecvEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+
+        eventsPTR[0] = PTR_rankH->haloRecvEVTs[nbr]; //channel event of the send operation from rank i to nbrRank
+        eventsPTR[1] = PTR_rankH->haloTagRecvEVTs[nbr];
+#ifdef DOUBLE_BUFFERED_EVTS
+        ocrEventCreateParams( &(PTR_rankH->haloRecvEVTs[nNbrs+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        ocrEventCreateParams( &(PTR_rankH->haloTagRecvEVTs[nNbrs+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        eventsPTR[2] = PTR_rankH->haloRecvEVTs[nNbrs+nbr]; //channel event of the send operation from rank i to nbrRank
+        eventsPTR[3] = PTR_rankH->haloTagRecvEVTs[nNbrs+nbr];
+#endif
+#else
+        ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        ocrEventCreateParams( &(PTR_rankH->haloTagSendEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
 
         eventsPTR[0] = PTR_rankH->haloSendEVTs[nbr]; //channel event of the send operation from rank i to nbrRank
         eventsPTR[1] = PTR_rankH->haloTagSendEVTs[nbr];
+#ifdef DOUBLE_BUFFERED_EVTS
+        ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nNbrs+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+        ocrEventCreateParams( &(PTR_rankH->haloTagSendEVTs[nNbrs+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
+
+        eventsPTR[2] = PTR_rankH->haloSendEVTs[nNbrs+nbr]; //channel event of the send operation from rank i to nbrRank
+        eventsPTR[3] = PTR_rankH->haloTagSendEVTs[nNbrs+nbr];
+#endif
+#endif
 
         ocrDbRelease( eventsDBK );
 
@@ -974,7 +1001,7 @@ _OCR_TASK_FNC_( initEdt )
 
         //Map the sends to receive events
         //receive: (id, nbr) will be the send event from the (nbrRank,nbrImage)
-        ocrGuidFromIndex( &(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, 6*nbrRank + nbrImage );
+        ocrGuidFromIndex( &(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nNbrs*nbrRank + nbrImage );
         ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
         //DEBUG_PRINTF(("s %d se %d r %d re %d s(%d %d %d) r(%d %d %d)\n", id, nbr, nbrRank, nbrImage, ix0, iy0, iz0, ix, iy, iz ));

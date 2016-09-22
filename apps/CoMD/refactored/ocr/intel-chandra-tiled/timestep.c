@@ -314,7 +314,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     ocrGuid_t redistributeAtomsTML, redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
     ocrEdtCreate( &redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
 
     createEventHelper( &redistributeAtomsOEVTS, 1);
@@ -870,6 +870,8 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
 
+    u64 itimestep = paramv[0];
+
     s32 _idep;
 
     _idep = 0;
@@ -926,8 +928,9 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
     ocrGuid_t haloExchangeTML, haloExchangeEDT, haloExchangeOEVT, haloExchangeOEVTS;
 
     u64 iAxis = 0;
+    u64 paramv_haloExchange[2] = {iAxis, itimestep};
     ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
-                  EDT_PARAM_DEF, &iAxis, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, paramv_haloExchange, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &haloExchangeOEVT );
 
     createEventHelper( &haloExchangeOEVTS, 1);

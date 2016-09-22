@@ -42,6 +42,12 @@
 
 #define MAX(A,B) ((A) > (B) ? (A) : (B))
 
+#ifdef DOUBLE_BUFFERED_EVTS
+#define GET_CHANNEL_IDX(face, phase) (face+(6*phase))
+#else
+#define GET_CHANNEL_IDX(face, phase) (face)
+#endif
+
 /// Don't change the order of the faces in this enum.
 enum HaloFaceOrder {HALO_X_MINUS, HALO_X_PLUS,
                     HALO_Y_MINUS, HALO_Y_PLUS,
@@ -58,6 +64,8 @@ typedef struct AtomExchangeParmsSt
    int nCells[6];        //!< Number of cells in cellList for each face.
    int* cellList[6];     //!< List of link cells from which to load data for each face.
    ocrDBK_t DBK_cellList[6];
+   ocrDBK_t DBK_sendBuf[6][2];
+   ocrDBK_t DBK_tagsendBuf[6][2];
    //real_t* pbcFactor[6]; //!< Whether this face is a periodic boundary.
    real_t pbcFactor[6][3];
 }
@@ -180,6 +188,31 @@ void initAtomHaloExchange(HaloExchange* hh, Domain* domain, LinkCell* boxes)
       ocrDbRelease(parms->DBK_cellList[ii]);
    }
 
+   ocrHint_t myDbkAffinityHNT;
+   ocrHintInit( &myDbkAffinityHNT, OCR_HINT_DB_T );
+#ifdef USE_EAGER_DB_HINT
+   ocrSetHintValue(&myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
+#else
+   ocrGuid_t currentAffinity = NULL_GUID;
+   ocrAffinityGetCurrent(&currentAffinity);
+   ocrSetHintValue( &myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
+#endif
+   char *sendBufM, *sendBufP;
+   int *tagsendBufM, *tagsendBufP;
+
+   for (int ii=0; ii<3; ++ii)
+   {
+      ocrDbCreate( &parms->DBK_sendBuf[2*ii][0], (void**) &sendBufM, hh->bufCapacity, 0, &myDbkAffinityHNT, NO_ALLOC );
+      ocrDbCreate( &parms->DBK_sendBuf[2*ii+1][0], (void**) &sendBufP, hh->bufCapacity, 0, &myDbkAffinityHNT, NO_ALLOC );
+      ocrDbCreate( &parms->DBK_sendBuf[2*ii][1], (void**) &sendBufM, hh->bufCapacity, 0, &myDbkAffinityHNT, NO_ALLOC );
+      ocrDbCreate( &parms->DBK_sendBuf[2*ii+1][1], (void**) &sendBufP, hh->bufCapacity, 0, &myDbkAffinityHNT, NO_ALLOC );
+
+      ocrDbCreate( &parms->DBK_tagsendBuf[2*ii][0], (void**) &tagsendBufM, sizeof(int), 0, &myDbkAffinityHNT, NO_ALLOC );
+      ocrDbCreate( &parms->DBK_tagsendBuf[2*ii+1][0], (void**) &tagsendBufP, sizeof(int), 0, &myDbkAffinityHNT, NO_ALLOC );
+      ocrDbCreate( &parms->DBK_tagsendBuf[2*ii][1], (void**) &tagsendBufM, sizeof(int), 0, &myDbkAffinityHNT, NO_ALLOC );
+      ocrDbCreate( &parms->DBK_tagsendBuf[2*ii+1][1], (void**) &tagsendBufP, sizeof(int), 0, &myDbkAffinityHNT, NO_ALLOC );
+   }
+
    for (int ii=0; ii<6; ++ii)
    {
       //parms->pbcFactor[ii] = comdMalloc(3*sizeof(real_t));
@@ -294,7 +327,7 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
     ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
 
     ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML,
-                  EDT_PARAM_DEF, (u64*) &iAxis, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
 
     createEventHelper( &exchangeDataOEVTS, 1);
@@ -306,6 +339,7 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
     ocrAddDependence( DBK_parms, exchangeDataEDT, _idep++, DB_MODE_RW );
 
     iAxis += 1;
+    paramv[0] = iAxis;
 
     if( iAxis < 3 )
     {
@@ -313,7 +347,7 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
         ocrGuid_t haloExchangeEDT;
 
         ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
-                      EDT_PARAM_DEF, (u64*)&iAxis, EDT_PARAM_DEF, NULL,
+                      EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
 
         _idep = 0;
@@ -356,6 +390,9 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     DEBUG_PRINTF(( "%s\n", __func__ ));
 
     u64 iAxis = paramv[0];
+    u64 itimestep = paramv[1];
+
+    s64 phase = itimestep%2;
 
     enum HaloFaceOrder faceM = 2*iAxis;
     enum HaloFaceOrder faceP = faceM+1;
@@ -396,7 +433,7 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     ocrGuid_t loadAtomsBufferTML, loadAtomsBufferEDT, loadAtomsBufferOEVT, loadAtomsBufferOEVTS;
 
     ocrEdtCreate( &loadAtomsBufferEDT, PTR_rankTemplateH->loadAtomsBufferTML,
-                  EDT_PARAM_DEF, &iAxis, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &loadAtomsBufferOEVT );
 
     createEventHelper( &loadAtomsBufferOEVTS, 1);
@@ -411,6 +448,10 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     ocrAddDependence( DBK_r, loadAtomsBufferEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_p, loadAtomsBufferEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_parms, loadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( parms->DBK_sendBuf[faceM][phase], loadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( parms->DBK_sendBuf[faceP][phase], loadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( parms->DBK_tagsendBuf[faceM][phase], loadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( parms->DBK_tagsendBuf[faceP][phase], loadAtomsBufferEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( parms->DBK_cellList[faceM], loadAtomsBufferEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( parms->DBK_cellList[faceP], loadAtomsBufferEDT, _idep++, DB_MODE_RO );
 
@@ -431,10 +472,10 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     ocrAddDependence( DBK_parms, unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( parms->DBK_cellList[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( parms->DBK_cellList[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[faceM], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[faceP], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[GET_CHANNEL_IDX(faceM,phase)], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloRecvEVTs[GET_CHANNEL_IDX(faceP,phase)], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[GET_CHANNEL_IDX(faceM,phase)], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( sim->PTR_rankH->haloTagRecvEVTs[GET_CHANNEL_IDX(faceP,phase)], unloadAtomsBufferEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( loadAtomsBufferOEVTS, unloadAtomsBufferEDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;
@@ -534,6 +575,8 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
     s32 _idep;
 
     u64 iAxis = paramv[0];
+    u64 itimestep = paramv[1];
+    s64 phase = itimestep%2;
 
     enum HaloFaceOrder faceM = 2*iAxis;
     enum HaloFaceOrder faceP = faceM+1;
@@ -547,6 +590,10 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
     ocrDBK_t DBK_r = depv[_idep++].guid;
     ocrDBK_t DBK_p = depv[_idep++].guid;
     ocrDBK_t DBK_parms = depv[_idep++].guid;
+    ocrDBK_t DBK_sendBufM = depv[_idep++].guid;
+    ocrDBK_t DBK_sendBufP = depv[_idep++].guid;
+    ocrDBK_t DBK_tagsendBufM = depv[_idep++].guid;
+    ocrDBK_t DBK_tagsendBufP = depv[_idep++].guid;
     ocrDBK_t DBK_cellList_faceM = depv[_idep++].guid;
     ocrDBK_t DBK_cellList_faceP = depv[_idep++].guid;
 
@@ -559,6 +606,10 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
     real3* r = depv[_idep++].ptr;
     real3* p = depv[_idep++].ptr;
     AtomExchangeParms* parms = depv[_idep++].ptr;
+    char* sendBufM = depv[_idep++].ptr;
+    char* sendBufP = depv[_idep++].ptr;
+    int* tagsendBufM = depv[_idep++].ptr;
+    int* tagsendBufP = depv[_idep++].ptr;
     parms->cellList[faceM] = depv[_idep++].ptr;
     parms->cellList[faceP] = depv[_idep++].ptr;
 
@@ -584,24 +635,7 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
 
     if( iAxis ==0 ) startTimer(sim->perfTimer, atomHaloTimer);
 
-    ocrDBK_t DBK_sendBufM, DBK_sendBufP;
-    char* sendBufM; // = comdMalloc(haloExchange->bufCapacity);
-    char* sendBufP; // = comdMalloc(haloExchange->bufCapacity);
-
-    ocrDbCreate( &(DBK_sendBufM), (void **) &sendBufM, haloExchange->bufCapacity,
-                 DB_PROP_NONE, NULL, NO_ALLOC );
-    ocrDbCreate( &(DBK_sendBufP), (void **) &sendBufP, haloExchange->bufCapacity,
-                 DB_PROP_NONE, NULL, NO_ALLOC );
-
     DEBUG_PRINTF(("sendBufM %p size %d\n", sendBufM, haloExchange->bufCapacity));
-
-    ocrDBK_t DBK_tagsendBufM, DBK_tagsendBufP;
-    int* tagsendBufM;
-    int* tagsendBufP;
-    ocrDbCreate( &(DBK_tagsendBufM), (void **) &tagsendBufM, sizeof(int),
-                 DB_PROP_NONE, NULL, NO_ALLOC );
-    ocrDbCreate( &(DBK_tagsendBufP), (void **) &tagsendBufP, sizeof(int),
-                 DB_PROP_NONE, NULL, NO_ALLOC );
 
     int nSendM = haloExchange->loadBuffer(haloExchange->parms, sim, faceM, sendBufM);
     int nSendP = haloExchange->loadBuffer(haloExchange->parms, sim, faceP, sendBufP);
@@ -616,11 +650,11 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
     ocrDbRelease( DBK_tagsendBufM );
     ocrDbRelease( DBK_tagsendBufP );
 
-    ocrEventSatisfy( sim->PTR_rankH->haloSendEVTs[faceM], DBK_sendBufM );
-    ocrEventSatisfy( sim->PTR_rankH->haloSendEVTs[faceP], DBK_sendBufP );
+    ocrEventSatisfy( sim->PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(faceM,phase)], DBK_sendBufM );
+    ocrEventSatisfy( sim->PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(faceP,phase)], DBK_sendBufP );
 
-    ocrEventSatisfy( sim->PTR_rankH->haloTagSendEVTs[faceM], DBK_tagsendBufM );
-    ocrEventSatisfy( sim->PTR_rankH->haloTagSendEVTs[faceP], DBK_tagsendBufP );
+    ocrEventSatisfy( sim->PTR_rankH->haloTagSendEVTs[GET_CHANNEL_IDX(faceM,phase)], DBK_tagsendBufM );
+    ocrEventSatisfy( sim->PTR_rankH->haloTagSendEVTs[GET_CHANNEL_IDX(faceP,phase)], DBK_tagsendBufP );
 
     return NULL_GUID;
 }
@@ -688,12 +722,6 @@ ocrGuid_t unloadAtomsBufferEdt( EDT_ARGS )
 
     haloExchange->unloadBuffer(haloExchange->parms, sim, faceM, *nRecvM, recvBufM);
     haloExchange->unloadBuffer(haloExchange->parms, sim, faceP, *nRecvP, recvBufP);
-
-    ocrDbDestroy(DBK_recvBufM);
-    ocrDbDestroy(DBK_recvBufP);
-
-    ocrDbDestroy(DBK_tagRecvBufM);
-    ocrDbDestroy(DBK_tagRecvBufP);
 
     if( iAxis == 2 ) stopTimer(sim->perfTimer, atomHaloTimer);
 
