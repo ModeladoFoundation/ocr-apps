@@ -16,7 +16,8 @@ LIBS=\
 SRC=\
  src/deps.c\
  src/main.c\
- src/task.c
+ src/task.c\
+ src/outline.c
 
 OBJ=$(SRC:.c=.o)
 

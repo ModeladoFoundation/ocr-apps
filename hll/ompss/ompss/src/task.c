@@ -1,10 +1,11 @@
 
 #include <nanos6_rt_interface.h>
 
-#include <assert.h>
 #include <ocr.h>
 
 #include "common.h"
+#include "outline.h"
+#include "task.h"
 
 /*! \brief Allocate space for a task and its parameters
  *
@@ -26,31 +27,10 @@ void nanos_create_task(
     /* OUT */ void **task_pointer
 )
 {
-    u8 err;
+    task_definition_t* taskdef = newTaskDefinition( task_info, args_block_size );
 
-    // allocate args block
-    ocrGuid_t args;
-    *args_block_pointer = NULL;
-    err = ocrDbCreate(&args, args_block_pointer, args_block_size,
-                     /*flags=*/0, /*loc=*/NULL_HINT, NO_ALLOC);
-    assert( err == 0 );
-    assert( *args_block_pointer != NULL );
-
-    // Task EDT parameters: function and arguments block
-    u64 edtParams[1];
-    edtParams[0] = (u64)task_info->run;
-
-    ocrGuid_t edt;
-    // Create EDT
-    // 2 EDT arguments
-    // 0 EDT dependencies (when supported, use EDT_PARAM_DEF)
-    err = ocrEdtCreate( &edt, taskOutlineTemplate,
-                  1, edtParams,
-                  1, &args,
-                  EDT_PROP_NONE, NULL_HINT, NULL );
-    assert( err == 0);
-
-    *((ocrGuid_t*)task_pointer) = edt;
+    *args_block_pointer = taskdef->args_block;
+    *((task_definition_t**)task_pointer) = taskdef;
 }
 
 
@@ -62,6 +42,20 @@ void nanos_create_task(
  */
 void nanos_submit_task(void *task)
 {
+    task_definition_t* taskdef = (task_definition_t*)task;
+
+    // Register dependencies
+    taskdef->dependencies_funct( task, taskdef->args_block );
+
+    ocrGuid_t edt;
+    // Create EDT
+    u64 paramv[1];
+    paramv[0] = (u64)task;
+    u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
+                  1, paramv,
+                  1, &((ocrGuid_t*)taskdef)[-1],//taskdef->dependencies.size, (ocrGuid_t*)taskdef->dependencies.data,
+                  EDT_PROP_NONE, NULL_HINT, NULL );
+    ASSERT( err == 0);
 }
 
 /*! \brief Block the control flow of the current task until all of its children have finished
