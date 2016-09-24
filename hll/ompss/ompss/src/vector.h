@@ -10,9 +10,9 @@
 #define ARRAY_RESIZE_ELEMENTS 16
 
 typedef struct {
-    u64 size;
+    u32 size;
+    u32 capacity;
     u64 elem_size;
-    u64 capacity;
     void*  data;
 } vector_t;
 
@@ -34,17 +34,17 @@ static inline void destructVector( vector_t* vector )
 }
 
 static inline void vectorResize( vector_t* vector,
-                 u64 new_capacity )
+                 u32 new_capacity )
 {
     if( new_capacity != vector->capacity ) {
-        vector->capacity = new_capacity;
-        void* newData = malloc( new_capacity * vector->elem_size );
+        void* new_data = malloc( new_capacity * vector->elem_size );
 
-        memcpy( newData, vector->data,
-                new_capacity * vector->elem_size );
+        memcpy( new_data, vector->data,
+                vector->capacity * vector->elem_size );
+        vector->capacity = new_capacity;
 
         free( vector->data );
-        vector->data = newData;
+        vector->data = new_data;
     }
 }
 
@@ -58,7 +58,7 @@ static inline u8 vectorIsEmpty( vector_t* vector ) {
 }
 
 static inline void vectorPushBack( vector_t* vector,
-                   void* element )
+                                   void* element )
 {
     if( vectorIsFull(vector) ) {
         vectorResize( vector, vector->capacity + ARRAY_RESIZE_ELEMENTS );

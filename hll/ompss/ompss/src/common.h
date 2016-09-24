@@ -4,6 +4,13 @@
 
 #include <ocr.h>
 
+// Workaround to convert an ELS ocrGuid_t
+// into a pointer
+union _els_to_ptr {
+  void*     ptr;
+  ocrGuid_t els;
+};
+
 typedef void (*run_funct_t)(void* args_block);
 typedef void (*register_dep_funct_t)(void* handler, void* args_block);
 
