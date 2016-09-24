@@ -51,6 +51,7 @@ typedef struct{
     block_comm_t comms;
     u64 timestep;
     u64 id;
+    s64 parent;
     u64 rootId;
     ocrGuid_t blockTML;
     ocrGuid_t refineTML;
