@@ -4,6 +4,7 @@
 #include <ocr.h>
 
 #include "common.h"
+#include "dependences.h"
 #include "outline.h"
 #include "task.h"
 
@@ -44,18 +45,26 @@ void nanos_submit_task(void *task)
 {
     task_definition_t* taskdef = (task_definition_t*)task;
 
-    // Register dependencies
-    taskdef->dependencies_funct( task, taskdef->args_block );
-
     ocrGuid_t edt;
     // Create EDT
-    u64 paramv[1];
+    // Generate parameter array
+    u32 paramc = 1;
+    u64 paramv[paramc];
     paramv[0] = (u64)task;
+
+    // Register dependences
+    taskdef->dependences_funct( task, taskdef->args_block );
+    u32 depc = getNumDependences( taskdef );
+
+    // Create EDT
     u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
-                  1, paramv,
-                  1, &((ocrGuid_t*)taskdef)[-1],//taskdef->dependencies.size, (ocrGuid_t*)taskdef->dependencies.data,
+                  paramc, paramv,
+                  depc, NULL,
                   EDT_PROP_NONE, NULL_HINT, NULL );
     ASSERT( err == 0);
+
+    // Add dependences
+    acquireDependences( edt, taskdef );
 }
 
 /*! \brief Block the control flow of the current task until all of its children have finished

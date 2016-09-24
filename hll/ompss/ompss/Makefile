@@ -5,7 +5,7 @@ OMPSS_LIB=$(OMPSS_ROOT)/lib
 
 CC ?= gcc
 
-CPPFLAGS=-I$(OMPSS_INC)/nanos6 -I$(OCR_INSTALL)/include
+CPPFLAGS=-I$(OMPSS_INC)/nanos6 -I$(OCR_INSTALL)/include -DENABLE_EXTENSION_RTITF
 LDFLAGS=-L$(OCR_INSTALL)/lib -locr_$(OCR_TYPE)
 CFLAGS=-std=gnu99 -fPIC
 
@@ -14,7 +14,7 @@ LIBS=\
  libnanos6.a
 
 SRC=\
- src/deps.c\
+ src/dependences.c\
  src/main.c\
  src/task.c\
  src/outline.c
