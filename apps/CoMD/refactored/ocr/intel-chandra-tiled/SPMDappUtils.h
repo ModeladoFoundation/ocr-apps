@@ -155,7 +155,7 @@ void splitDimension_Cart3D(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64*
     ny = (int) sqrt(Num_procs+1);
     for(; ny>0; ny--)
     {
-        if (!(Num_procs%nz))
+        if (!(Num_procs%ny))
         {
             nx = Num_procs/ny;
             break;
