@@ -26,7 +26,7 @@ all: $(BIN) run
 stream: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS) $(LIBS)
 
-run:
+run: $(BIN)
 ifeq ($(OCR_CONFIG),)
 	./$(BIN) -ocr:cfg malloc.cfg
 else
