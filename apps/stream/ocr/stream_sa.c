@@ -141,7 +141,7 @@ ocrGuid_t loop(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   static int i = 0;
   if (iter == 5 && paramv[1] == 0 && i == 0) {
-    printf("Iter: %d thread: %d\n", iter, paramv[1]);
+    //printf("Iter: %d thread: %d\n", iter, paramv[1]);
     //ocrInjectFault();
     i++;
   }
