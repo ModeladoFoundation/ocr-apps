@@ -12,26 +12,47 @@ error: ERROR:
 #=================================================================
 test: run twice
 #=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
 file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
 
 in: run
 out: Starting program: .*rtl-asm
-out: \[New thread
+out: \[New thread 1\]
+out: \[New thread 2\]
+out: \[New thread 3\]
+out: \[New thread 4\]
+out: \[New thread 5\]
+out: \[New thread 6\]
+out: \[New thread 7\]
+out: \[New thread 8\]
 out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited with code 017
+ignore-output
+
+in: continue
+until: \[Inferior .* \(process .*\) exited with code 017
 
 in: run
 out: Starting program: .*rtl-asm
-out: \[New thread
+out: \[New thread 1\]
+out: \[New thread 2\]
+out: \[New thread 3\]
+out: \[New thread 4\]
+out: \[New thread 5\]
+out: \[New thread 6\]
+out: \[New thread 7\]
+out: \[New thread 8\]
 out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited with code 017
+ignore-output
+
+in: continue
+until: \[Inferior .* \(process .*\) exited with code 017
+ignore-output
 
 
 #=================================================================
-test: break, nexti, stepi and continue
+test: break and backtrace
 #=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
 file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
 
 in: break __start
@@ -39,40 +60,22 @@ out: Breakpoint 1 at 0x30000
 
 in: run
 out: Starting program: .*rtl-asm
-out: \[New thread
+out: \[New thread 1\]
+out: \[New thread 2\]
+out: \[New thread 3\]
+out: \[New thread 4\]
+out: \[New thread 5\]
+out: \[New thread 6\]
+out: \[New thread 7\]
+out: \[New thread 8\]
+out?: \[Switching to thread \d\]
 out:
 out: Breakpoint 1, 0x0000000000030000 in __start \(\)
 
-in: stepi
-out: 0x0000000000030008 in __start \(\)
-
-in: nexti
-out: 0x0000000000030010 in __start \(\)
-
-in: break *0x30050
-out: Breakpoint 2 at 0x30050
+in: backtrace
+out: #0  0x0000000000030000 in __start \(\)
 
 in: continue
-out: Continuing.
-out:
-out: Breakpoint 2, 0x0000000000030050 in __start \(\)
-
-in: continue
-out: Continuing.
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited with code 017
-
-
-#=================================================================
-test: backtrace
-#=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
-file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
-
-in: break __start
-ignore-output
-
-in: run
 ignore-output
 
 in: backtrace
@@ -82,7 +85,7 @@ out: #0  0x0000000000030000 in __start \(\)
 #=================================================================
 test: disassemble
 #=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
 file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
 
 in: break __start
@@ -103,7 +106,7 @@ ignore-output
 #=================================================================
 test: info thread & info reg
 #=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
 file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
 
 in: info thread
@@ -116,7 +119,14 @@ ignore-output
 
 in: info thread
 out: Id\s+Target Id\s+Frame
-out: \* 1\s+thread 1\s+0x0000000000030000 in __start ()
+out: \*? 8\s+thread 8
+out: \*? 7\s+thread 7
+out: \*? 6\s+thread 6
+out: \*? 5\s+thread 5
+out: \*? 4\s+thread 4
+out: \*? 3\s+thread 3
+out: \*? 2\s+thread 2
+out: \*? 1\s+thread 1
 
 in: info reg
 out: r0\s*r1\s*r2\s*r3
@@ -126,7 +136,7 @@ out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
 ignore-output
 
 in: continue
-ignore-output
+until: \[Inferior .* \(process .*\) exited with code
 
 in: info thread
 out: No threads\.
@@ -135,7 +145,7 @@ out: No threads\.
 #=================================================================
 test: print, x, and set
 #=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
+target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
 file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
 
 in: break *0x30060
@@ -156,7 +166,7 @@ in: x/i 0x30000
 out: 0x30000 <__start>:\s+movimm\s+r10,16420,64
 
 in: x/i $pc
-out: => 0x30060 <__start\+96>:\s+store\s+r2,r4,r5,64
+out: => 0x30060 <__start\+96>:\s+bitop1\s+r7,r1,r6,OR,64
 
 in: set $r1=42
 #No output

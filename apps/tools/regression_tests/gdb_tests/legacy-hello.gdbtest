@@ -1,3 +1,14 @@
+# Ignore this debug message
+ignore-all: gdbxstg_wait: no pending events
+
+# This is always an error
+error: WARNING: Fsim has exited
+
+# Report errors such as:
+# ERROR: Fsim sock msg read error, cleaning up
+# ERROR: fsim_xe_stop: client/agent (0,8) - error dbg_error_no_such_agent (0x3), state stopped
+error: ERROR:
+
 #=================================================================
 test: run twice
 #=================================================================
@@ -5,20 +16,20 @@ target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w 
 file: {APPS_ROOT}/legacy/tg-xe/hello
 
 in: run
+out: Starting program:
 out: \[New thread
-#TODO what is the correct exit code?
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code 017
 
 in: run
+out: Starting program:
 out: \[New thread
-#TODO what is the correct exit code?
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code 017
 
 
 #=================================================================
-test: break and continue
+test: break, continue and finish
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
 file: {APPS_ROOT}/legacy/tg-xe/hello
@@ -30,20 +41,68 @@ in: break 30
 out: Breakpoint 2 at 0x[0-9a-f]*: file hello\.c, line 30\.
 
 in: run
+out: Starting program:
 out: \[New thread
-out: ^$
+out:
 out: Breakpoint 2, main \(.*\) at hello\.c:30
 out: 30\s+printf\("Hello World!\\n"\);
 
 in: continue
+out: Continuing\.
 out:
 out: Breakpoint 1, sub2 \(value=5\) at hello.c:13
 out: 13\s+return 2\*value;
 
 in: continue
-#TODO what is the correct exit code?
+out: Continuing\.
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code 017
+
+in: delete 1
+ignore-output
+in: delete 2
+ignore-output
+
+in: break ce_gettimeofday
+ignore-output
+
+in: break sub2
+ignore-output
+
+in: run
+ignore-output
+
+in: finish
+out: Run till exit from #0\s+0x[0-9a-f]+ in ce_gettimeofday \(\)
+out: 0x[0-9a-f]+ in ocrGetTimeofDay
+
+in: finish
+out: Run till exit from #0\s+0x[0-9a-f]+ in ocrGetTimeofDay \(\)
+out: in _gettimeofday_r
+
+in: finish
+out: Run till exit from #0\s+0x[0-9a-f]+ in _gettimeofday_r \(\)
+out: in time
+
+in: finish
+out: Run till exit from #0\s+0x[0-9a-f]+ in time \(\)
+out: main.+at hello\.c:27
+out: 27\s+time_t t = time\(NULL\);
+
+in: continue
+ignore-output
+
+in: finish
+out: Run till exit from #0\s+sub2
+out: sub1 \(value=5\) at hello.c:19
+out: 19
+out: Value returned is \$1 = 10
+
+in: finish
+out: Run till exit from #0\s+0x[0-9a-f]+ in sub1
+out: main .* at hello.c:37
+out: 37
+out: Value returned is \$2 = 15
 
 
 #=================================================================
@@ -64,50 +123,16 @@ out: 27\s+time_t t = time\(NULL\);
 in: next 6
 out: 37\s+int ret = sub1\(5\);
 
-# Currently, step functions like next when on the line with the function call.
-# Even stepi doesn't go in.
+in: step
+out: sub1 \(value=5\) at hello\.c:19
+out: 19\s+return value \+ sub2\(value\);
 
+in: next
+out: main \(argc=1, argv=0x[0-9a-f]+\) at hello\.c:38
+out: 38\s+printf\("ret = %d\\n", ret\);
 
-#=================================================================
-test: break and finish
-#=================================================================
-target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
-
-in: break ce_gettimeofday
-ignore-output
-
-in: run
-ignore-output
-
-in: break sub2
-ignore-output
-
-in: finish
-out: 0x[0-9a-f]+ in ocrGetTimeofDay
-
-in: finish
-out: in _gettimeofday_r
-
-in: finish
-out: in time
-
-in: finish
-out: main.+at hello\.c:27
-out: 27\s+time_t t = time\(NULL\);
-
-in: continue
-ignore-output
-
-in: finish
-out: sub1 \(value=5\) at hello.c:19
-out: 19
-out: Value returned is \$1 = 10
-
-in: finish
-out: main .* at hello.c:37
-out: 37
-out: Value returned is \$2 = 15
+in: stepi
+out: 0x[0-9a-f]+\s+38\s+printf\("ret = %d\\n", ret\);
 
 
 #=================================================================
@@ -135,13 +160,10 @@ target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w 
 file: {APPS_ROOT}/legacy/tg-xe/hello
 
 in: break main
-out: Breakpoint 1.*line 26
+ignore-output
 
 in: run
-out: \[New thread
-out:
-out: Breakpoint 1.*
-out: 26
+ignore-output
 
 in: disassemble
 out: Dump of assembler code for function main:

@@ -1,0 +1,245 @@
+# Ignore this debug message
+ignore-all: gdbxstg_wait: no pending events
+
+# This is always an error
+error: WARNING: Fsim has exited
+
+# Report errors such as:
+# ERROR: Fsim sock msg read error, cleaning up
+# ERROR: fsim_xe_stop: client/agent (0,8) - error dbg_error_no_such_agent (0x3), state stopped
+error: ERROR:
+
+#=================================================================
+test: run twice
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: run
+out: Starting program:
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[thread \d terminated\]
+ignore-output
+
+in: continue
+until: \[Inferior 1 \(process \d+\) exited with code \d+]
+
+in: run
+out: Starting program:
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[New thread \d\]
+out: \[thread \d terminated\]
+ignore-output
+
+in: continue
+until: \[Inferior 1 \(process \d+\) exited with code \d+]
+
+
+#=================================================================
+test: break, continue and finish
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break sub2
+out: Breakpoint 1 at 0x[0-9a-f]*: file hello\.c, line 13\.
+
+in: break 30
+out: Breakpoint 2 at 0x[0-9a-f]*: file hello\.c, line 30\.
+
+in: run
+out: Starting program:
+out: \[New thread 1\]
+out: \[New thread 2\]
+out: \[New thread 3\]
+out: \[New thread 4\]
+out: \[New thread 5\]
+out: \[New thread 6\]
+out: \[New thread 7\]
+out: \[New thread 8\]
+out?: \[Switching to thread \d\]
+out:
+out: Breakpoint 2, main \(.*\) at hello\.c:30
+out: 30\s+printf\("Hello World!\\n"\);
+
+# Continue until a thread hits breakpoint 1
+in: continue
+until: Breakpoint 1, sub2 \(value=5\) at hello.c:13
+
+# Continue until all threads exit
+in: continue
+until: \[Inferior .* \(process .*\) exited with code 017
+
+in: delete 1
+ignore-output
+in: delete 2
+ignore-output
+
+in: break sub2
+ignore-output
+
+in: run
+ignore-output
+
+# Ignore other thread's events
+ignore-all: thread
+ignore-all: ^$
+
+in: finish
+until: sub1 \(value=5\) at hello.c:19
+
+in: finish
+until: main .* at hello.c:37
+
+
+#=================================================================
+test: list, info thread & info reg
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: list 22,25
+out: 22\s+int
+out: 23\s+main\( int argc, char \*\*argv \)
+out: 24\s+{
+out: 25\s+void \* addr;
+
+in: info thread
+out: No threads\.
+
+in: break main
+ignore-output
+in: run
+ignore-output
+
+in: info thread
+out: Id\s+Target Id\s+Frame
+out: \*? 8\s+thread 8\s+(main|0x)
+out: \*? 7\s+thread 7\s+(main|0x)
+out: \*? 6\s+thread 6\s+(main|0x)
+out: \*? 5\s+thread 5\s+(main|0x)
+out: \*? 4\s+thread 4\s+(main|0x)
+out: \*? 3\s+thread 3\s+(main|0x)
+out: \*? 2\s+thread 2\s+(main|0x)
+out: \*? 1\s+thread 1\s+(main|0x)
+
+in: info reg
+out: r0\s*r1\s*r2\s*r3
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+out: r4\s*r5\s*r6\s*r7
+out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
+ignore-output
+
+in: continue
+until: \[Inferior 1 \(process \d+\) exited with code \d+]
+
+in: info thread
+out: No threads\.
+
+
+#=================================================================
+test: backtrace
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break main
+ignore-output
+
+in: break sub2
+ignore-output
+
+in: run
+ignore-output
+
+# Continue until we hit the breakpoint for sub2
+in: continue
+until: sub2
+
+in: backtrace
+out: #0  sub2
+out: #1  0x[0-9a-f]* in sub1
+out: #2  0x[0-9a-f]* in main
+
+
+#=================================================================
+test: disassemble
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break main
+ignore-output
+
+in: run
+ignore-output
+
+in: disassemble
+out: Dump of assembler code for function main:
+out: 0x[0-9a-f]+ <\+0>:
+out: 0x[0-9a-f]+ <\+8>:
+out: 0x[0-9a-f]+ <\+16>:
+out: 0x[0-9a-f]+ <\+24>:
+ignore-output
+
+
+#=================================================================
+test: print, x, and set
+#=================================================================
+target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
+file: {APPS_ROOT}/legacy/tg-xe/hello
+
+in: break main
+ignore-output
+in: break 28
+ignore-output
+in: run
+ignore-output
+
+# Continue until we hit breakpoint 2
+in: continue
+until: 28
+
+in: print len
+out: \$1 = 32768
+
+in: print/x len
+out: \$2 = 0x8000
+
+in: print/a $pc
+out: \$3 = 0x[0-9a-f]+ <main\+\d+>
+
+# Same as printing it
+in: x &len
+out: 0x[0-9a-f]+:\s+0x8000
+
+# Ugly, but same as printing it
+in: x/1dw &len
+out: 0x[0-9a-f]+:\s+32768
+
+# The below test doesn't make practical sence.
+# It is just to test the functionality
+in: x/2dh &len
+out: 0x[0-9a-f]+:\s+-32768\s+0
+
+in: x/1iw $pc
+out: => 0x[0-9a-f]+ <main\+\d*>:
+
+in: set var len=314159
+#No output
+
+in: print len
+out: \$4 = 314159

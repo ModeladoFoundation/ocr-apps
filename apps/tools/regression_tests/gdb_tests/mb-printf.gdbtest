@@ -1,18 +1,29 @@
+# Ignore this debug message
+ignore-all: gdbxstg_wait: no pending events
+
+# This is always an error
+error: WARNING: Fsim has exited
+
+# Report errors such as:
+# ERROR: Fsim sock msg read error, cleaning up
+# ERROR: fsim_xe_stop: client/agent (0,8) - error dbg_error_no_such_agent (0x3), state stopped
+error: ERROR:
+
 #=================================================================
 test: run twice
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: run
+out: Starting program:
 out: \[New thread
-#TODO: what is the correct code.
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code \d+\]
 
 in: run
+out: Starting program:
 out: \[New thread
-#TODO: what is the correct code.
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code \d+\]
 
@@ -20,20 +31,21 @@ out: \[Inferior .* \(process .*\) exited with code \d+\]
 #=================================================================
 test: break and continue
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xe_conout
 out: Breakpoint 1 at 0x[0-9a-f]*: file mb-printf\.c, line 10\.
 
 in: run
+out: Starting program:
 out: \[New thread
 out: ^$
 out: Breakpoint 1, xe_conout \(.*\) at mb-printf\.c:10
 out: 10\s+u64 A_ID = AGENT_FROM_ID
 
 in: continue
-#TODO: what is the correct code.
+out: Continuing.
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code \d+\]
 
@@ -41,13 +53,14 @@ out: \[Inferior .* \(process .*\) exited with code \d+\]
 #=================================================================
 test: step and stepi
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xstg_main
 ignore-output
 
 in: run
+out: Starting program:
 out: \[New thread
 out: ^$
 out: Breakpoint 1, xstg_main
@@ -64,7 +77,7 @@ in: stepi
 out: 0x[a-f0-9]+\s+10
 
 in: continue
-#TODO: what is the correct code.
+out: Continuing.
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code \d+\]
 
@@ -76,13 +89,14 @@ test: next
 # step and stepi. However until we can do multiple runs in one GDB session it
 # will have to be its own test.
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xstg_main
 ignore-output
 
 in: run
+out: Starting program:
 out: \[New thread
 out: ^$
 out: Breakpoint 1, xstg_main
@@ -95,7 +109,7 @@ out: 29\s+return 42;
 #=================================================================
 test: break and finish
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xe_conout
@@ -105,11 +119,12 @@ in: run
 ignore-output
 
 in: finish
+out: Run till exit from
 out: xstg_main.+at mb-printf\.c:
 out: 27\s+xe_conout\("Hello, XE world!\\n", 18\);
 
 in: finish
-#TODO: what is the correct code.
+out: Run till exit from
 out: 0x[0-9a-f]+ in _start \(\)
 out: Value returned is \$1 = 42
 
@@ -117,7 +132,7 @@ out: Value returned is \$1 = 42
 #=================================================================
 test: backtrace
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xe_conout
@@ -135,7 +150,7 @@ out?: #2  0x[0-9a-f]* in ??
 #=================================================================
 test: disassemble
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xstg_main
@@ -156,7 +171,7 @@ ignore-output
 #=================================================================
 test: list, info thread & info reg
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: list 25,27
@@ -189,7 +204,7 @@ ignore-output
 #=================================================================
 test: print, x, and set
 #=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
+target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
 file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
 
 in: break xe_conout
@@ -231,7 +246,7 @@ out: \$4 = 314159
 #reset len and see if it runs to completion now:
 in: set var len=18
 in: continue
-#TODO what is the correct code
+out: Continuing.
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code \d+\]
 
