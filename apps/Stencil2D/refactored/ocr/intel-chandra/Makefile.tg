@@ -32,7 +32,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 6 4 4 #points subdomains timesteps
+WORKLOAD_ARGS ?= 6 4 1 #points subdomains timesteps
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
