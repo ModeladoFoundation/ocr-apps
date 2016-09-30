@@ -48,6 +48,9 @@ RUN_MODE ?=
 #set to 1 if you would like to use the static scheduler for this app
 STATIC_SCHEDULER ?= 0
 
+# With "restrict" keyword, icc is 1.5x faster for than gcc
+#CC := icc
+
 ## END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
@@ -56,8 +59,6 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 TARGET := stencil_2d
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
-CC ?= icc
-
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := reduction timer
@@ -75,6 +76,8 @@ CONFIG_FLAGS+=--guid LABELED --binding seq
 FULL_APP ?= 1
 CFLAGS += -g -std=c99 -DFULL_APP=$(FULL_APP)
 CFLAGS += -DUSE_REDUCTIONLIBRARY -DENABLE_EXTENSION_AFFINITY -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT -DENABLE_EXTENSION_CHANNEL_EVT
+CFLAGS += -DSTENCIL_WITH_DBUF_CHRECV -DCHANNEL_EVENTS_AT_RECEIVER
+#CFLAGS += -DSTENCIL_WITH_EAGER_DB
 
 ifeq ($(STATIC_SCHEDULER),1)
 CFLAGS += -DUSE_STATIC_SCHEDULER

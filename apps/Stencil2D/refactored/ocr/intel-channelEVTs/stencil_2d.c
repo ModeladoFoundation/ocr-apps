@@ -570,23 +570,11 @@ _OCR_TASK_FNC_( timestepEdt )
 
     _idep = 0;
     ocrGuid_t DBK_rankH = depv[_idep++].guid;
-    ocrGuid_t DBK_xIn = depv[_idep++].guid;
-    ocrGuid_t DBK_xOut = depv[_idep++].guid;
-    ocrGuid_t DBK_weight = depv[_idep++].guid;
-    ocrGuid_t DBK_refNorm = depv[_idep++].guid;
     ocrGuid_t DBK_timers = depv[_idep++].guid;
-    ocrGuid_t DBK_norm_reductionH = depv[_idep++].guid;
-    ocrGuid_t DBK_timer_reductionH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
-    double *xIn = depv[_idep++].ptr;
-    double *xOut = depv[_idep++].ptr;
-    double *weight = depv[_idep++].ptr;
-    double *refNorm = depv[_idep++].ptr;
     timer* PTR_timers = depv[_idep++].ptr;
-    reductionPrivate_t* PTR_norm_reductionH = depv[_idep++].ptr;
-    reductionPrivate_t* PTR_timer_reductionH = depv[_idep++].ptr;
 
     rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
     globalCmdParamH_t* PTR_globalParamH = &(PTR_rankH->globalParamH.cmdParamH);
@@ -616,6 +604,13 @@ _OCR_TASK_FNC_( timestepEdt )
 
     ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
     ocrHint_t myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
+
+    ocrGuid_t DBK_xIn = PTR_rankH->DBK_xIn;
+    ocrGuid_t DBK_xOut = PTR_rankH->DBK_xOut;
+    ocrGuid_t DBK_weight =PTR_rankH->DBK_weight;
+    ocrGuid_t DBK_refNorm = PTR_rankH->DBK_refNorm;
+    ocrGuid_t DBK_norm_reductionH = PTR_rankH->DBK_norm_reductionH;
+    ocrGuid_t DBK_timer_reductionH = PTR_rankH->DBK_timer_reductionH;
 
     //------ Begin left send
     MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 3;
@@ -849,13 +844,8 @@ _OCR_TASK_FNC_( timestepLoopEdt )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, timestepEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( PTR_rankH->DBK_xIn, timestepEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_rankH->DBK_xOut, timestepEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_rankH->DBK_weight, timestepEDT, _idep++, DB_MODE_CONST );
-    ocrAddDependence( PTR_rankH->DBK_refNorm, timestepEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_timers, timestepEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_rankH->DBK_norm_reductionH, timestepEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_rankH->DBK_timer_reductionH, timestepEDT, _idep++, DB_MODE_RW );
+
 
     itimestep += 1;
 
@@ -1200,7 +1190,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     _paramc = 1; _depc = 16;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_FNC_update), FNC_update, _paramc, _depc );
 
-    _paramc = 1; _depc = 8;
+    _paramc = 1; _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_timestep), timestepEdt, _paramc, _depc );
 
     _paramc = 1; _depc = 2;
