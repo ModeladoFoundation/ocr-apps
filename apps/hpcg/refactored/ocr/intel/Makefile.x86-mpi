@@ -59,7 +59,7 @@ TARGET := hpcg
 REQ_LIBS := reduction macros
 
 # Space separated list of source files
-SRCS := hpcg.c wtime.c
+SRCS := hpcg.c timers.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and apps/libs/<target>/include

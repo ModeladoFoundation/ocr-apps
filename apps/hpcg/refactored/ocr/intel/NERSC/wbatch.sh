@@ -1,0 +1,12 @@
+rm NERSC/w*.out
+sbatch NERSC/wbatch1
+sbatch NERSC/wbatch2
+sbatch NERSC/wbatch4
+sbatch NERSC/wbatch8
+sbatch NERSC/wbatch16
+sbatch NERSC/wbatch32
+sbatch NERSC/wbatch64
+sbatch NERSC/wbatch128
+sbatch NERSC/wbatch256
+sbatch NERSC/wbatch512
+sbatch NERSC/wbatch1024

@@ -20,21 +20,49 @@ November 30 2015: added AFFINITY extensions
 December 8 2015: added macros "library" and structures for params and deps
 April 2016:	added channel events, brought up to release 1.1.0 including affinity HINTS
 June 2016: added "AFFINITY" definition to allow it to be turned off easily
-
+Sept 2016: eliminated realMainEdt and hpcgInitEdt and packEdt (modifying created datablocks)
+Sept 2016: changed timer function
+Sept 2016: fixed 3 bugs: f2c, wrong update coming up in multigrid, wrong vector in one call to Halo Exchange
+Sept 2016: added "NO_*" controls
+Sept 2016: added timing each phase separately on each node
 
 */
 
+#ifndef TG_ARCH
+#include "time.h"
+#else
+#define NO_AFFINITY
+#endif
+
+
+//#define TIMER//undefine to suppress timing of haloexchange and unpack
+
+
+#ifndef NO_COMPUTE
 #define COMPUTE  //undefine to suppress compute
-#define AFFINITY //undefine to suppress affinity
+#endif
+
+#ifndef NO_AFFINITY
+#define AFFINITY
+#endif
+
+#ifndef NO_PRECONDITIONER
 #define PRECONDITIONER  //undefine if you want to run without the precondition
+#endif
 //#define RECEIVER_OWNS_CHANNEL_EVENT //undefine to make the sender own it
 
 #define ENABLE_EXTENSION_LABELING
 #define ENABLE_EXTENSION_AFFINITY
 
 #include "ocr.h"
+#include "stdlib.h"
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
 #include "extensions/ocr-affinity.h" //needed for affinity
+
+
+#include "timers.h"
+#define TICK (1.0e-6)
+
 
 #include "string.h" //if memcpy is needed
 #include "stdio.h"  //needed for PRINTF debugging
@@ -44,10 +72,12 @@ June 2016: added "AFFINITY" definition to allow it to be turned off easily
 #include "macros.h"
 
 
+#define PHASES 54
 #define NPX 3  //number of workers is NPX x NPY x NPZ
 #define NPY 4
 #define NPZ 5
 #define M 16   // size of local block
+#define HPCGMAXITER 50
 #define T 50  //number of time steps
 #define DEBUG 0 //debug print level 0: none 1: some 2: LOTS
 //           sizes of the vectors
@@ -57,83 +87,6 @@ June 2016: added "AFFINITY" definition to allow it to be turned off easily
 #define X 3 //1*mt
 #define P 4 //1*ht
 #define B 5 //1*mt
-
-extern double wtime();
-
-void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 Ranks, s64* id)
-{
-    s64 N = ub_g - lb_g + 1;
-    s64 s, e;
-
-    s64 r;
-
-    for( r = 0; r < Ranks; r++ )
-    {
-        s = r*N/Ranks + lb_g;
-        e = (r+1)*N/Ranks + lb_g - 1;
-        if( s <= i && i <= e )
-            break;
-    }
-
-    *id = r;
-}
-
-void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_procsz)
-{
-    s64 nx, ny, nz;
-
-    nz = (int) pow(Num_procs+1,0.33);
-    for(; nz>0; nz--)
-    {
-        if (!(Num_procs%nz))
-        {
-            ny = Num_procs/nz;
-            break;
-        }
-    }
-    *Num_procsz = nz;
-
-    Num_procs = Num_procs/nz;
-
-    ny = (int) sqrt(Num_procs+1);
-    for(; ny>0; ny--)
-    {
-        if (!(Num_procs%ny))
-        {
-            nx = Num_procs/ny;
-            break;
-        }
-    }
-
-    *Num_procsy = ny;
-
-    *Num_procsx = Num_procs/(*Num_procsy);
-}
-
-static inline int globalRankFromCoords( int id_x, int id_y, int id_z, int NR_X, int NR_Y, int NR_Z )
-{
-    return NR_X*NR_Y*id_z + NR_X*id_y + id_x;
-}
-
-static inline int getPoliyDomainID( int b, u32* grid, int PD_X, int PD_Y, int PD_Z )
-{
-    int id_x = b%grid[0];
-    int id_y = (b/grid[0])%grid[1];
-    int id_z = (b/grid[0])/grid[1];
-
-    s64 pd_x; getPartitionID(id_x, 0, grid[0]-1, PD_X, &pd_x);
-    s64 pd_y; getPartitionID(id_y, 0, grid[1]-1, PD_Y, &pd_y);
-    s64 pd_z; getPartitionID(id_z, 0, grid[2]-1, PD_Z, &pd_z);
-
-    //Each linkcell, with id=b, is mapped to a PD. The mapping is similar to how the link cells map to
-    //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
-    //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
-    //
-    int pd = globalRankFromCoords(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
-    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
-
-    return pd;
-}
 
 typedef struct{
     u32 length[26];
@@ -194,6 +147,13 @@ typedef struct{
     ocrGuid_t haloSendEVT[26];
     ocrGuid_t haloRecvEVT[26];
     ocrGuid_t finalOnceEVT;
+//WARNING: time only works for <=30 iterations
+
+#ifdef TIMER
+    u64 start[HPCGMAXITER+1][PHASES];
+    u64 end[HPCGMAXITER+1][PHASES];
+    u64 timePhase;
+#endif
     } privateBlock_t;
 
 //indices of vectors (arbitrary order)
@@ -204,6 +164,62 @@ PRINTF("ERROR %s TERMINATING\n", s);
 ocrShutdown();
 return;
 }
+
+
+u64 getMyPDc(u64 PDstart, u64 PDend, u32 myx, u32 myy, u32 myz, u32 npx, u32 npy, u32 npz) {
+
+//printf("pdstart %d pdend %d myx %d myy %d myz %d npx %d npy %d npz %d \n", PDstart, PDend, myx, myy, myz, npx, npy, npz);
+
+if(PDstart == PDend || (npx == 1 && npy == 1 && npz == 1)) return(PDstart);
+
+if(npx >= npy && npx >= npz) {  // divide x dir
+
+    if(myx < npx/2) return(getMyPDc(PDstart, (PDstart+PDend-1)/2, myx, myy, myz, npx/2, npy, npz));
+     else return(getMyPDc((PDstart+PDend-1)/2 + 1, PDend, myx-npx/2, myy, myz, (npx+1)/2, npy, npz));
+
+}
+
+if(npy >= npz) { //divide in y dir
+
+    if(myy < npy/2) return(getMyPDc(PDstart, (PDstart+PDend-1)/2, myx, myy, myz, npx, npy/2, npz));
+     else return(getMyPDc((PDstart+PDend-1)/2 + 1, PDend, myx, myy-npy/2, myz, npx, (npy+1)/2, npz));
+
+}
+//divide in z dir
+
+    if(myz < npz/2) return(getMyPDc(PDstart, (PDstart+PDend-1)/2, myx, myy, myz, npx, npy, npz/2));
+     else return(getMyPDc((PDstart+PDend-1)/2 + 1, PDend, myx, myy, myz-npz/2, npx, npy, (npz+1)/2));
+
+}
+
+u64 getMyPD(u64 PDstart, u64 PDend, u64 myrank, u32 npx, u32 npy, u32 npz) {
+
+
+//compute the "best" PD for this myrank
+
+u32   myx = myrank%npx;
+u32   myy = (myrank/npx)%npy;
+u32   myz = myrank/(npx*npy);
+
+return(getMyPDc(PDstart, PDend, myx, myy, myz, npx, npy, npz));
+}
+
+
+
+
+u64 f2c(u64 index, u64 size){
+//converts index into a cube of linear dimension size into
+//the correct index for blocing up and embedding in a cube twice the size
+
+u64 z = index/(size*size);
+u64 y = (index/size)%size;
+u64 x = index%size;
+u64 result = ((z*4*size) + 2*y)*2*size + 2*x;
+
+
+return result;
+}
+
 
 void gatherfill(gather_t * g, u32 m1){
 u32 m2 = m1*m1;
@@ -504,7 +520,6 @@ if(DEBUG > 0) PRINTF("MF%d px %d py %d pz %d \n", myrank, px, py, pz);
             for(i=-1;i<2;i++) {
                 *(p++) = k*(m+2)*(m+2) + j*(m+2) + i;
     }
-fflush(stdout);
 
 if(DEBUG > 1) for(i=0;i<27;i++) PRINTF("MF%d offset %d value %d \n", myrank, i, offset[i]);
 
@@ -540,125 +555,9 @@ if(DEBUG > 1) for(i=0;i<27;i++) PRINTF("MF%d offset %d value %d \n", myrank, i, 
 
 if(DEBUG > 1) for(i=0;i<m*m*m;i++) PRINTF("MF i %d diag %d a %f\n", i, diagsave[i], asave[diagsave[i]]);
 if(DEBUG > 0) PRINTF("MF%d finish %d \n", myrank, m);
-fflush(stdout);
 }
 
 
-
-
-typedef struct{
-    u64 level;
-    u64 vectorIndex;
-    ocrGuid_t returnEVT;
-    } packPRM_t;
-
-typedef struct{
-    ocrEdtDep_t privateBlock;
-    ocrEdtDep_t block[26];
-    } packDEPV_t;
-
-ocrGuid_t packEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
-
-/*
-param
-0: level
-1: vector index
-2: return event
-
-depv
-0: private block
-1-26: datablocks to send (if on boundary will be NULL)
-
-pack extracts the boundary values from the the source vector
-copies them to the send buffers
-send buffers are in lexicographic order
-
-*/
-
-    PRMDEF(pack);
-    u64 level = PRM(pack,level);
-    u64 vectorIndex = PRM(pack,vectorIndex);
-    ocrGuid_t returnEVT = PRM(pack,returnEVT);
-
-
-    DEPVDEF(pack);
-    ocrGuid_t pbDBK = DEPV(pack,privateBlock,guid);
-    privateBlock_t * pbPTR = DEPV(pack,privateBlock,ptr);
-    void * ptr = (void *) pbPTR;
-
-
-    double * sendPTR[26];
-    ocrGuid_t sendDBK[26];
-
-    u32 j;
-
-    for(j=0;j<26;j++) {
-        sendDBK[j] = DEPVARRAY(pack,block,j,guid);
-        sendPTR[j] = DEPVARRAY(pack,block,j,ptr);
-    }
-
-    double * vector = (double *) (((u64)ptr) + pbPTR->vector_offset[level][vectorIndex]);
-
-    u32 myrank = pbPTR->myrank;
-    u32 debug = pbPTR->debug;
-    gather_t * gather = &(pbPTR->gather[level]);
-if(debug != 0) PRINTF("PK%d L%d \n", myrank, level);
-
-    u32 i, i1, i2;
-
-if(debug != 0) PRINTF("PK%d L%d start vi %d pbDBK "GUIDF" \n", myrank, level, vectorIndex, GUIDA(pbDBK));
-if(debug > 1) for(i=0;i<26;i++) PRINTF("PK%d sendDBK[%d] "GUIDF" \n", myrank, i, GUIDA(sendDBK[i]));
-
-    u32 errno;
-
-    u32 * start = gather->start;
-    u32 * l1 = gather->l1;
-    u32 * l2 = gather->l2;
-    u32 * p1 = gather->p1;
-    u32 * p2 = gather->p2;
-
-    double *src, * s, * d;
-
-    src = vector;
-
-
-    for(i=0;i<26;i++) {
-if(debug > 1) PRINTF("PK%d i %d start %d l1 %d l2 %d p1 %d p2 %d len %d block "GUIDF"\n", myrank, i, *start, *l1, *l2, *p1, *p2, *l1*(*l2), GUIDA(depv[i+1].guid));
-        if(!ocrGuidIsNull(depv[i+1].guid)) {
-#ifdef COMPUTE
-
-            d = sendPTR[i];
-
-            s = src + *start;
-            for(i2=0;i2<*l2;i2++) {
-                for(i1=0;i1<*l1;i1++) {
-                    *(d++) = *s;
-                    s += *p1;
-                }
-                s += *p2;
-            }
-#endif
-if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" errno %d\n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i]), GUIDA(sendDBK[i]),errno);
-fflush(stdout);
-            ocrDbRelease(sendDBK[i]);
-            ocrEventSatisfy(pbPTR->haloSendEVT[i], sendDBK[i]);
-         }
-
-         start++;
-         l1++;
-         l2++;
-         p1++;
-         p2++;
-
-    }
-if(debug != 0) PRINTF("PK%d finish\n", myrank);
-fflush(stdout);
-
-ocrEventSatisfy(returnEVT, NULL_GUID);
-
-return(NULL_GUID);
-
-}
 
 typedef struct{
     u64 level;
@@ -700,6 +599,11 @@ sends the private block (to either spmv or smooth)
     privateBlock_t * pbPTR = DEPV(unpack,privateBlock,ptr);
     void * ptr = (void *) pbPTR;
 
+#ifdef TIMER
+    u32 timePhase = pbPTR->timePhase;
+    pbPTR->start[pbPTR->timestep][pbPTR->timePhase++] = getTime();
+#endif
+
 
     double * recvPTR[26];
     ocrGuid_t recvDBK[26];
@@ -728,6 +632,7 @@ if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] "GUIDF" \n", myrank, i, GU
     if(debug > 0) PRINTF("UN%d L%d \n", myrank, level);
     double * b;
 if(debug >1 ) for(i=0;i<pbPTR->mt[level];i++) PRINTF("UN%d i %d v %f \n", myrank, i, *(dest+i));
+//for(i=0;i<pbPTR->mt[level];i++) PRINTF("UN%d i %d v %f \n", myrank, i, *(dest+i));
 
     dest += pbPTR->mt[level];  //skip over existing vector
 
@@ -749,6 +654,7 @@ if(debug > 1) PRINTF("UN%d start i %d\n", myrank, i);
 
             for(j=0;j<len;j++) {
 if(debug >1) PRINTF("UN%d i %d v %f\n", myrank, i, *b);
+//PRINTF("rank%d UN i %d v %f\n", myrank, j, *b);
                *dest++ = *b++;
             }
 
@@ -762,6 +668,10 @@ if(debug >1) PRINTF("UN%d i %d v %f\n", myrank, i, *b);
         }
     }
 
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+PRINTF("UN timePhase %d R%d timestep %d time %ld \n", timePhase, pbPTR->myrank, pbPTR->timestep, pbPTR->end[pbPTR->timestep][timePhase]-pbPTR->start[pbPTR->timestep][timePhase]);
+#endif
     ocrDbRelease(pbDBK);
     ocrEventSatisfy(returnEVT, pbDBK);
     return(NULL_GUID);
@@ -790,11 +700,10 @@ paramv
 depv
 0: private block
 
-launches pack
 launches unpack
+packs data and sends
 
 */
-
 
 
     PRMDEF(haloExchange);
@@ -807,59 +716,117 @@ launches unpack
     ocrGuid_t pbDBK = DEPV(haloExchange,privateBlock,guid);
     privateBlock_t * pbPTR = DEPV(haloExchange,privateBlock,ptr);
 
+    u64 time[5];
+#ifdef TIMER
+    u32 timePhase = pbPTR->timePhase;
+    pbPTR->start[pbPTR->timestep][pbPTR->timePhase++] = getTime();
+#endif
+
+    time[0] = getTime();
+
+    u32 debug = pbPTR->debug;
+
 
     u32 myrank = pbPTR->myrank;
 
     u32 i, errno;
-    ocrGuid_t packEDT, unpackEDT;
+    ocrGuid_t unpackEDT;
 
 
-if(DEBUG != 0) PRINTF("HE%d start\n", myrank);
-if(DEBUG != 0) PRINTF("HE%d start pbDBK "GUIDF" \n", myrank, GUIDA(pbDBK));
-if(DEBUG != 0) PRINTF("HE%d start level %d \n", myrank, level);
-if(DEBUG != 0) PRINTF("HE%d start vectorIndex %d \n", myrank, vectorIndex);
-if(DEBUG != 0) PRINTF("HE%d start unpackEVT "GUIDF" \n", myrank, GUIDA(unpackEVT));
-if(DEBUG != 0) PRINTF("HE%d start packEVT "GUIDF" \n", myrank, GUIDA(packEVT));
 
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendevent "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[i]));
-if(DEBUG > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d recvevent "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloRecvEVT[i]));
+if(debug != 0) PRINTF("HE%d start\n", myrank);
+if(debug != 0) PRINTF("HE%d start pbDBK "GUIDF" \n", myrank, GUIDA(pbDBK));
+if(debug != 0) PRINTF("HE%d start level %d \n", myrank, level);
+if(debug != 0) PRINTF("HE%d start vectorIndex %d \n", myrank, vectorIndex);
+if(debug != 0) PRINTF("HE%d start unpackEVT "GUIDF" \n", myrank, GUIDA(unpackEVT));
+if(debug != 0) PRINTF("HE%d start packEVT "GUIDF" \n", myrank, GUIDA(packEVT));
 
-fflush(stdout);
+if(debug > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d sendevent "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[i]));
+if(debug > 1) for(i=0;i<26;i++) PRINTF("HE%d i %d recvevent "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloRecvEVT[i]));
 
-    packPRM_t paramPack;
-    packPRM_t * packPRM = &paramPack;
-    PRM(pack,level) = level;
-    PRM(pack,vectorIndex) = vectorIndex;
-    PRM(pack,returnEVT) = packEVT;
-    ocrEdtCreate(&packEDT, pbPTR->packTML, EDT_PARAM_DEF, (u64 *) packPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+
     unpackPRM_t paramUnpack;
     unpackPRM_t * unpackPRM = &paramUnpack;
     PRM(unpack,level) = level;
     PRM(unpack,vectorIndex) = vectorIndex;
     PRM(unpack,returnEVT) = unpackEVT;
     ocrEdtCreate(&unpackEDT, pbPTR->unpackTML, EDT_PARAM_DEF, (u64 *) unpackPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
-
-if(DEBUG > 1) PRINTF("HE%d after create \n", myrank);
-
-if(DEBUG > 1) PRINTF("HE%d after 0-1\n", myrank);
-    ocrGuid_t haloDBK;
-    double dummy;
-    for(i=0;i<26;i++)
-        if(!ocrGuidIsNull(pbPTR->haloSendEVT[i])) {
-            ocrDbCreate(&haloDBK, (void**) &dummy, (pbPTR->gather[level]).length[i]*sizeof(double), 0, NULL_HINT, NO_ALLOC);
-            ocrAddDependence(haloDBK, packEDT, SLOTARRAY(pack,block,i), DB_MODE_RW);
-        }else ocrAddDependence(NULL_GUID, packEDT, SLOTARRAY(pack,block,i), DB_MODE_RW);
-if(DEBUG != 0) PRINTF("HE%d after sendblocks\n", myrank);
-
     for(i=0;i<26;i++) {
         ocrAddDependence(pbPTR->haloRecvEVT[i], unpackEDT, SLOTARRAY(unpack,block,i), DB_MODE_RO);
     }
-    ocrDbRelease(pbDBK);
-    ocrAddDependence(pbDBK, packEDT, SLOT(pack,privateBlock), DB_MODE_RO);
-    ocrAddDependence(pbDBK, unpackEDT, SLOT(unpack,privateBlock), DB_MODE_RW);
+//    ocrDbRelease(pbDBK);  don't need to release because nothing has changed
+        time[1] = getTime();
 
-if(DEBUG != 0) PRINTF("HE%d finish\n", myrank);
-fflush(stdout);
+if(debug > 1) PRINTF("HE%d after launch unpack\n", myrank);
+
+    double * vector = (double *) (((u64)pbPTR) + pbPTR->vector_offset[level][vectorIndex]);
+    ocrGuid_t haloDBK;
+    gather_t * gather = &(pbPTR->gather[level]);
+    double * sendPTR;
+    u32 i1, i2;
+    u32 * start = gather->start;
+    u32 * l1 = gather->l1;
+    u32 * l2 = gather->l2;
+    u32 * p1 = gather->p1;
+    u32 * p2 = gather->p2;
+    double *src, * s, * d;
+
+    time[2] = getTime();
+
+    for(i=0;i<26;i++) {
+        if(!ocrGuidIsNull(pbPTR->haloSendEVT[i])) {
+            ocrDbCreate(&haloDBK, (void **) &sendPTR, (pbPTR->gather[level]).length[i]*sizeof(double), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+if(debug != 0) PRINTF("PK%d L%d \n", myrank, level);
+
+
+if(debug != 0) PRINTF("PK%d L%d start vi %d pbDBK "GUIDF" \n", myrank, level, vectorIndex, GUIDA(pbDBK));
+if(debug > 1) for(i=0;i<26;i++) PRINTF("PK%d i%d haloDBK "GUIDF" \n", myrank, i, GUIDA(haloDBK));
+
+
+    src = vector;
+
+
+#ifdef COMPUTE
+
+        d = sendPTR;
+
+        s = src + *start;
+        for(i2=0;i2<*l2;i2++) {
+            for(i1=0;i1<*l1;i1++) {
+                *(d++) = *s;
+                s += *p1;
+            }
+            s += *p2;
+        }
+#endif
+if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" \n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i]), GUIDA(haloDBK));
+            ocrDbRelease(haloDBK);
+            ocrEventSatisfy(pbPTR->haloSendEVT[i], haloDBK);
+         }
+
+         start++;
+         l1++;
+         l2++;
+         p1++;
+         p2++;
+
+    }
+
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
+//PRINTF("HE timePhase %d R%d timestep %d time %ld \n", timePhase, pbPTR->myrank, pbPTR->timestep, pbPTR->end[pbPTR->timestep][timePhase]-pbPTR->start[pbPTR->timestep][timePhase]);
+
+    time[3] = getTime();
+    ocrDbRelease(pbDBK);
+    ocrAddDependence(pbDBK, unpackEDT, SLOT(unpack,privateBlock), DB_MODE_RW);
+    ocrEventSatisfy(packEVT, NULL_GUID);
+
+if(debug != 0) PRINTF("HE%d finish\n", myrank);
+    time[4] = getTime();
+#ifdef TIMER
+PRINTF("HE timePhase %d R%d timestep %d addD %ld create %ld satisfy %ld finish %ld\n", timePhase, pbPTR->myrank, pbPTR->timestep, time[1]-time[0], time[2]-time[1], time[3]-time[2], time[4]-time[3]);
+#endif
 
     return(NULL_GUID);
 
@@ -907,6 +874,12 @@ then sends the private block back
     privateBlock_t * pbPTR = DEPV(smooth,privateBlock,ptr);
     void * ptr = pbPTR;
 
+#ifdef TIMER
+    u32 timePhase = pbPTR->timePhase;
+    pbPTR->start[pbPTR->timestep][pbPTR->timePhase++] = getTime();
+#endif
+//if(pbPTR->myrank==0) PRINTF("start smooth level %d timetimePhase %d\n", level, pbPTR->timePhase);
+
 
     double * abase = (double *) (((u64) ptr) + pbPTR->matrix_offset[level]);
     u32 * indbase = (u32 *) (((u64) ptr) + pbPTR->column_index_offset[level]);
@@ -923,8 +896,10 @@ then sends the private block back
     double sum;
 
 
+//for(i=0;i<length;i++) PRINTF("sm before i%d v %f \n", i, vectorbase[i]);
 
 if(debug >= 1) PRINTF("SM%d L%d V%d rhs%d start \n", myrank, level, vectorIndex, rhsIndex);
+//for(i=0;i<pbPTR->ht[level];i++) PRINTF("rank%d SM before i%d v %f \n", myrank, i, vectorbase[i]);
 
     u32 * ind = indbase;
     u32 * diag = diagbase;
@@ -955,8 +930,9 @@ if(debug > 2){
        PRINTF("SM%d L%d i %d val %f \n", myrank, level, i, vector[i]);
 }
 
+//for(i=0;i<length;i++) PRINTF("rank%d SM middle i %d v %f \n", myrank, i, vectorbase[i]);
+
 if(debug >= 1) PRINTF("SM%d L%d finish forward\n", myrank, level);
-fflush(stdout);
 
 //backward sweep
     a = abase + 27*(length - 1);
@@ -968,19 +944,25 @@ fflush(stdout);
 
     for(i=length-1;i>=0;i--){
         sum = rhsbase[i];
-if(DEBUG > 1) PRINTF("SM%d i %d sum %f \n", myrank, i, sum);
-        for(j=26;j>=0;j--){
-if(DEBUG > 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", myrank, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
+if(debug > 1) PRINTF("SM%d i %d sum %f \n", myrank, i, sum);
+        for(j=26;j>=0;j--){  //backwards to help prefetching
+if(debug > 2) PRINTF("SM%d i %d j %d sum %f a %f ind %d z %f \n", myrank, i, j, sum, a[j], ind[j], vectorbase[ind[j]]);
            sum -= a[j]*vectorbase[ind[j]];
         }
         sum += abase[*diag]*vectorbase[indbase[*diag]];
         *(vector--) = sum/abase[*(diag--)];
         a -= 27;
         ind -= 27;
+if(debug > 1) PRINTF("SM%d after i%d v %f \n", myrank, i, vectorbase[i]);
     }
+
+//for(i=0;i<length;i++) PRINTF("rank%d SM after i %d v %f \n", myrank, i, vectorbase[i]);
 #endif
 
 
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
     ocrDbRelease(pbDBK);
     ocrEventSatisfy(returnEVT, pbDBK);
     return NULL_GUID;
@@ -1027,6 +1009,12 @@ sends the private block back
     privateBlock_t * pbPTR = DEPV(spmv,privateBlock,ptr);
     void * ptr = pbPTR;
 
+#ifdef TIMER
+    u32 timePhase = pbPTR->timePhase;
+    pbPTR->start[pbPTR->timestep][pbPTR->timePhase++] = getTime();
+#endif
+//if(pbPTR->myrank==0) PRINTF("start spmv level %d timetimePhase %d\n", level, pbPTR->timePhase);
+
 #ifdef COMPUTE
 
     double * srcbase = (double *) ((u64) (ptr + pbPTR->vector_offset[level][sourceIndex]));
@@ -1047,6 +1035,7 @@ sends the private block back
     double * a = abase;
     u32 * ind = indbase;
 
+
     for(i=0;i<length;i++){
         sum = 0;
         for(j=0;j<27;j++){
@@ -1060,7 +1049,12 @@ if(debug >= 2) PRINTF("SPMV%d i %d j %d dest %f a %f ind %d src %f \n", myrank, 
 #endif
 
 if(debug > 1) for(i=0;i<pbPTR->mt[level];i++)
-   PRINTF("SPMV%d i %d val %f \n", myrank, i, destbase[i]);
+for(i=0;i<length;i++) PRINTF("i %d dst %f \n", i, destbase[i]);
+
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+//if(pbPTR->myrank==0) PRINTF("end spmv level %d timephase %d\n", level, pbPTR->timePhase);
+#endif
 
     ocrDbRelease(pbDBK);
     ocrEventSatisfy(returnEVT, pbDBK);
@@ -1103,15 +1097,21 @@ this is the driver for the multigrid steps.
     void * ptr = (void *) pbPTR;
 
 
-    u32 m = pbPTR->m[level];
-    u32 phase = pbPTR->mgPhase[level];
-    u32 myrank = pbPTR->myrank;
-    u32 debug = pbPTR->debug;
+    u64 m = pbPTR->m[level];
+    u64 phase = pbPTR->mgPhase[level];
+    u64 myrank = pbPTR->myrank;
+    u64 debug = pbPTR->debug;
+
+#ifdef TIMER
+    u32 timePhase = pbPTR->timePhase;
+    pbPTR->start[pbPTR->timestep][pbPTR->timePhase++] = getTime();
+//if(pbPTR->myrank==0) PRINTF("start mgEdt level %d phase %d timephase %d\n", level, phase, pbPTR->timePhase);
+#endif
 
 
-    u32 i;
 
     double * z, *ap, *zold, *znew, *r, *rold, *rnew;
+    u64 i, size, time;
 
     ocrGuid_t haloExchangeEDT, packEVT, unpackEVT, smoothEDT, smoothEVT, spmvEDT, spmvEVT, mgEDT;
     haloExchangePRM_t haloExchangeParamv;
@@ -1162,11 +1162,13 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep,
         PRM(haloExchange,packEVT) = packEVT;
 
         ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
-fflush(stdout);
 
         return NULL_GUID;
 
@@ -1174,6 +1176,9 @@ fflush(stdout);
 
 //return if at the bottom
         if(paramv[0] == 3) {
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
             ocrDbRelease(pbDBK);
             ocrEventSatisfy(returnEVT, pbDBK);
             return NULL_GUID;
@@ -1203,9 +1208,11 @@ fflush(stdout);
         ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
-fflush(stdout);
 
 //launch halo
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
@@ -1232,10 +1239,12 @@ fflush(stdout);
         rold  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][R]);
         rnew  = (double *) (((u64) ptr) + pbPTR->vector_offset[level+1][R]);
 
+        size = pbPTR->m[level+1];
+        u64 oldindex;
         for(i=0;i<pbPTR->mt[level+1];i++) {
-            *(rnew++) = *rold - *ap;
-            ap += 2;
-            rold += 2;
+            oldindex = f2c(i,size);
+            rnew[i] = rold[oldindex] - ap[oldindex];
+//PRINTF("rest %d oldindex %d size %d res %f fine %f A %f \n", i, oldindex, size, rnew[i], rold[oldindex], ap[oldindex]);
         }
 #endif
 
@@ -1248,8 +1257,10 @@ fflush(stdout);
         pbPTR->mgPhase[level] = 0;
         ocrEdtCreate(&mgEDT, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", &pbPTR->myrank, mgStep, phase, level);
-fflush(stdout);
 
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
@@ -1264,11 +1275,13 @@ fflush(stdout);
 
            z  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][Z]);
            znew  = (double *) (((u64) ptr) + pbPTR->vector_offset[level+1][Z]);
+           u64 size = pbPTR->m[level+1];
 
            for(i=0;i<pbPTR->mt[level+1];i++) {
-if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d z %f update %f\n", &pbPTR->myrank, mgStep, phase, level, i, *z, *znew);
-               *z += *(znew++);
-               z += 2;
+if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
+//PRINTF("rank%d pro S%d P%d L%d i %d f2c %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, f2c(i,size), z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
+//PRINTF("MG%d S%d P%d L%d i %d f2c %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, f2c(i,size), z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
+               z[f2c(i,size)] += znew[i];
            }
 #endif
 
@@ -1291,7 +1304,7 @@ if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phas
 
 
         PRM(haloExchange,level) = level;
-        PRM(haloExchange,vectorIndex) = R;
+        PRM(haloExchange,vectorIndex) = Z;
         PRM(haloExchange,unpackEVT) = unpackEVT;
         PRM(haloExchange,packEVT) = packEVT;
         ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
@@ -1302,6 +1315,9 @@ if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phas
         ocrAddDependence(unpackEVT, smoothEDT, SLOT(smooth,privateBlock), DB_MODE_RW);
         ocrAddDependence(packEVT, smoothEDT, SLOT(smooth,packEVT), DB_MODE_RW);
 
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
@@ -1309,13 +1325,16 @@ if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phas
 
         case 4:  //return from final smooth
 
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrEventSatisfy(returnEVT, pbDBK);
 if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
-fflush(stdout);
         return NULL_GUID;
     }
 
+    return NULL_GUID;
 }
 
 
@@ -1355,6 +1374,16 @@ only work done is local linear algebra
     u32 timestep = pbPTR->timestep;
     u32 phase = pbPTR->hpcgPhase;
 
+#ifdef TIMER
+    if(phase==0) pbPTR->timePhase = 0;
+    u32 timePhase = pbPTR->timePhase;
+#endif
+
+#ifdef TIMER
+    pbPTR->start[pbPTR->timestep][pbPTR->timePhase++] = getTime();
+#endif
+//if(pbPTR->myrank==0) PRINTF("start hpcg phase %d timephase %d\n", phase, pbPTR->timePhase);
+
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private "GUIDF" reduceprivate "GUIDF" mydata "GUIDF" \n", myrank, timestep, phase, GUIDA(pbDBK), GUIDA(rpDBK), GUIDA(myDataDBK));
 
@@ -1363,6 +1392,7 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private "GUIDF" reduceprivate "G
     double *a, *p, *x, *ap, *r, *z, *b, sum, pap, rtz, alpha, beta;
     u32 i, j, ind, errno;
     ocrGuid_t mgEDT, haloExchangeEDT, spmvEDT, unpackEVT, packEVT, spmvEVT, hpcgEDT, hpcgEVT;
+    u64 time;
 
     haloExchangePRM_t haloExchangeParamv;
     haloExchangePRM_t * haloExchangePRM = &haloExchangeParamv;
@@ -1373,6 +1403,7 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d begin private "GUIDF" reduceprivate "G
 
     switch (phase) {
         case 0: //Initial call only
+
 
         x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
 
@@ -1408,9 +1439,11 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %e\n", myrank, timestep, phase, *m
 
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase);
-fflush(stdout);
 
         pbPTR->hpcgPhase = 1;
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
         ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
@@ -1436,7 +1469,11 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d global rtr %f \n", myrank, timestep, p
         if(timestep==0) pbPTR->rtr0 = *returnPTR;
            else if(*returnPTR/pbPTR->rtr0 < 1e-13 || timestep == pbPTR->maxIter) {
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase);
-fflush(stdout);
+
+for(i=0;i<pbPTR->maxIter;i++)
+    for(j=0;j<PHASES;j++)
+        //PRINTF("%d %d %d %ld %ld\n", myrank, i, j, pbPTR->start[i][j], pbPTR->end[i][j]);
+
             x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
             sum = 0;
             for(i=0;i<pbPTR->mt[0];i++) sum += (1-x[i])*(1-x[i]);
@@ -1477,11 +1514,13 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event "GUIDF" \n", myra
         ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
         ocrAddDependence(NULL_GUID, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RW);
 
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
 
-fflush(stdout);
         return NULL_GUID;
 
 #else
@@ -1520,6 +1559,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %e \n", myrank, timestep, ph
 
 //PRINTF("CG%d T%d P%d local "GUIDF" \n", myrank, timestep, phase, GUIDA(rpPTR->returnEVT));
         ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
         ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
@@ -1583,7 +1625,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %e \n", myrank, timestep, ph
 
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
-fflush(stdout);
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
@@ -1613,7 +1657,10 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d pap %f \n", myrank, timestep, phase, s
 //PRINTF("CG%d T%d P%d local "GUIDF" \n", myrank, timestep, phase, GUIDA(rpPTR->returnEVT));
         ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
-fflush(stdout);
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+        pbPTR->timePhase=0;
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
         ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
@@ -1665,7 +1712,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d rtr %f \n", myrank, timestep, phase, s
         ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
-fflush(stdout);
+#ifdef TIMER
+    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+#endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, hpcgEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
         ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
@@ -1675,8 +1724,10 @@ fflush(stdout);
 
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
+
         return NULL_GUID;
-        }
+    }
+    return NULL_GUID;
 }
 
 
@@ -1743,51 +1794,95 @@ return NULL_GUID;
 
 typedef struct{
     u64 myrank;
-    } hpcgInitPRM_t;
+    } initPRM_t;
 
 typedef struct{
     ocrEdtDep_t sharedBlock;
-    ocrEdtDep_t privateBlock;
-    ocrEdtDep_t reductionPrivateBlock;
-    ocrEdtDep_t blocks[26];
-    } hpcgInitDEPV_t;
+    } initDEPV_t;
 
-ocrGuid_t hpcgInitEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
+ocrGuid_t initEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 /*
-params
+params:
 0:  myrank
 
-depv
-0: hpcg shared block  //not used after this EDT
-1: hpcg private block
-2: reduction private block
+depv:
+0: hpcg shared block
 
-Initialize private blocks
-launch hpcgEDT
+create privateblock
+create reduction private block
+
+launches hpcgInitEDT with shared blocks, private blocks, myrank as param
+
 */
 
+    PRMDEF(init);
+    u64 myrank = PRM(init,myrank);
+    DEPVDEF(init);
+    ocrGuid_t sbDBK = DEPV(init,sharedBlock,guid);
+    sharedBlock_t * sbPTR = (sharedBlock_t *) DEPV(init,sharedBlock,ptr);
 
-    PRMDEF(hpcgInit);
-    u32 myrank = PRM(hpcgInit,myrank);
+if(sbPTR->debug > 0) PRINTF("I%d\n", myrank);
 
-    DEPVDEF(hpcgInit);
-    sharedBlock_t * sbPTR = DEPV(hpcgInit,sharedBlock,ptr);
-    ocrGuid_t pbDBK = DEPV(hpcgInit,privateBlock,guid);
-    privateBlock_t * pbPTR = DEPV(hpcgInit,privateBlock,ptr);
-    void * ptr = (void *) pbPTR;
-    reductionPrivate_t * rpPTR = DEPV(hpcgInit,reductionPrivateBlock,ptr);
-    ocrGuid_t rpDBK = DEPV(hpcgInit,reductionPrivateBlock,guid);
+
+
+    ocrGuid_t tempDBK;
+    u64 dummy;
+    u64 size;
+    u64 m0 = sbPTR->m;
+    u64 m1 = m0/2;
+    u64 m2 = m1/2;
+    u64 m3 = m2/2;
+
+    size = sizeof(privateBlock_t)
+      + 27*m0*m0*m0*sizeof(double)         //level 0 matrix
+      + 27*m1*m1*m1*sizeof(double)         //level 1 matrix
+      + 27*m2*m2*m2*sizeof(double)         //level 2 matrix
+      + 27*m3*m3*m3*sizeof(double)         //level 3 matrix
+      + 27*m0*m0*m0*sizeof(u32)            //level 0 column indices
+      + 27*m1*m1*m1*sizeof(u32)            //level 1 column indices
+      + 27*m2*m2*m2*sizeof(u32)            //level 2 column indices
+      + 27*m3*m3*m3*sizeof(u32)            //level 3 column indices
+      + m0*m0*m0*sizeof(u32)               //level 0 diag indices
+      + m1*m1*m1*sizeof(u32)               //level 1 diag indices
+      + m2*m2*m2*sizeof(u32)               //level 2 diag indices
+      + m3*m3*m3*sizeof(u32)               //level 3 diag indices
+      + (m0+2)*(m0+2)*(m0+2)*sizeof(double)//level 0 Z vector
+      + (m1+2)*(m1+2)*(m1+2)*sizeof(double)//level 1 Z vector
+      + (m2+2)*(m2+2)*(m2+2)*sizeof(double)//level 2 Z vector
+      + (m3+2)*(m3+2)*(m3+2)*sizeof(double)//level 3 Z vector
+      + m0*m0*m0*sizeof(double)            //level 0 R vector
+      + m1*m1*m1*sizeof(double)            //level 1 R vector
+      + m2*m2*m2*sizeof(double)            //level 2 R vector
+      + m3*m3*m3*sizeof(double)            //level 3 R vector
+      + m0*m0*m0*sizeof(double)            //level 0 AP vector (used at all levels
+      + m0*m0*m0*sizeof(double)            //level 0 X vector
+      + (m0+2)*(m0+2)*(m0+2)*sizeof(double)//level 0 P vector
+      + m0*m0*m0*sizeof(double);           //level 0 B vector
+
+    ocrGuid_t pbDBK, rpDBK;
+    privateBlock_t * pbPTR;
+    reductionPrivate_t * rpPTR;
+
+
+    ocrDbCreate(&pbDBK, (void**) &pbPTR, size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+
+//reduction block
+    ocrDbCreate(&rpDBK, (void**) &rpPTR, sizeof(reductionPrivate_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+
+    s64 i;
+
+
+
 
 
     rpPTR->nrank = sbPTR->npx * sbPTR->npy * sbPTR->npz;
-    rpPTR->myrank = paramv[0];
+    rpPTR->myrank = myrank;
     rpPTR->ndata = 1;
     rpPTR->reductionOperator = REDUCTION_F8_ADD;
     rpPTR->rangeGUID = sbPTR->reductionRangeGUID;
     rpPTR->reductionTML = NULL_GUID;
     rpPTR->new = 1;  //first time
     rpPTR->all = 1;  //go up and down (ALL_REDUCE)
-    u64 dummy;
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 2;
@@ -1809,14 +1904,11 @@ launch hpcgEDT
 
 
     pbPTR->finalOnceEVT = sbPTR->finalOnceEVT;
-    pbPTR->m[0] = sbPTR->m;
-    pbPTR->m[1] = (pbPTR->m[0]+1)/2;
-    pbPTR->m[2] = (pbPTR->m[1]+1)/2;
-    pbPTR->m[3] = (pbPTR->m[2]+1)/2;
-    u32 m0 = pbPTR->m[0];
-    u32 m1 = pbPTR->m[1];
-    u32 m2 = pbPTR->m[2];
-    u32 m3 = pbPTR->m[3];
+    pbPTR->m[0] = m0;
+    pbPTR->m[1] = m1;
+    pbPTR->m[2] = m2;
+    pbPTR->m[3] = m3;
+
     pbPTR->mt[0] = m0*m0*m0;
     pbPTR->mt[1] = m1*m1*m1;
     pbPTR->mt[2] = m2*m2*m2;
@@ -1874,7 +1966,6 @@ launch hpcgEDT
     ocrEdtTemplateCreate(&(pbPTR->hpcgTML), hpcgEdt, 0, DEPVNUM(hpcg));
     ocrEdtTemplateCreate(&(pbPTR->mgTML), mgEdt, PRMNUM(mg), DEPVNUM(mg));
     ocrEdtTemplateCreate(&(pbPTR->haloExchangeTML), haloExchangeEdt, PRMNUM(haloExchange), DEPVNUM(haloExchange));
-    ocrEdtTemplateCreate(&(pbPTR->packTML), packEdt, PRMNUM(pack), DEPVNUM(pack));
     ocrEdtTemplateCreate(&(pbPTR->unpackTML), unpackEdt, PRMNUM(unpack), DEPVNUM(unpack));
     ocrEdtTemplateCreate(&(pbPTR->spmvTML), spmvEdt, PRMNUM(spmv), DEPVNUM(spmv));
     ocrEdtTemplateCreate(&(pbPTR->smoothTML), smoothEdt, PRMNUM(smooth), DEPVNUM(smooth));
@@ -1887,7 +1978,7 @@ if(pbPTR->debug > 0) PRINTF("HI%d start\n", myrank);
     u32 pz = myrank/(pbPTR->npx*pbPTR->npy);
     u32 py = (myrank/pbPTR->npx)%pbPTR->npy;
     u32 px = myrank%(pbPTR->npx);
-    s32 i, j, k;
+    s32 j, k;
 
 //initialize sendBlock, sendEVT, and recvEVT
 
@@ -1980,20 +2071,27 @@ if(pbPTR->debug > 0) PRINTF("HI%d start\n", myrank);
     ocrGuid_t channelInitEDT;
     ocrGuid_t stickyEVT;
 
-    ocrGuid_t myAffinity;
+    ocrEdtTemplateCreate(&channelInitTML, channelInitEdt, 0, DEPVNUM(channelInit));
+
     ocrHintInit(&pbPTR->myAffinityHNT,OCR_HINT_EDT_T);
+
+#ifdef AFFINITY
+    ocrGuid_t myAffinity;
     ocrAffinityGetCurrent(&myAffinity);
     ocrSetHintValue(&pbPTR->myAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
-
-
-
-    ocrEdtTemplateCreate(&channelInitTML, channelInitEdt, 0, DEPVNUM(channelInit));
     ocrEdtCreate(&channelInitEDT, channelInitTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
+#else
+    ocrEdtCreate(&channelInitEDT, channelInitTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
+
+
+
     ocrGuid_t * blockPTR;
 
     u32 errno;
+    ocrGuid_t channelDBK, * channelPTR;
     u32 ind = 0;
-    u32 partner;
+    u32 index = 0;
     for(k=-1;k<2;k++)
         for(j=-1;j<2;j++)
             for(i=-1;i<2;i++) {
@@ -2001,22 +2099,24 @@ if(pbPTR->debug > 0) PRINTF("HI%d start\n", myrank);
 if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
                 if(ocrGuidIsNull(pbPTR->haloSendEVT[ind])) {
                     pbPTR->haloRecvEVT[ind] = NULL_GUID;
-                    ocrDbDestroy(DEPVARRAY(hpcgInit,blocks,ind,guid)); //destroy unneeded channel message block)
                     ocrAddDependence(NULL_GUID, channelInitEDT, SLOTARRAY(channelInit,channel,ind), DB_MODE_RW);
                     ind++;
                 } else {
 
 //send
+                    ocrDbCreate(&channelDBK, (void**) &channelPTR, sizeof(ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+//PRINTF("I%d i%d j%d k%d ind%d index out %d \n", myrank, i, j, k, ind, 26*myrank+ind);
                     ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, 26*myrank + ind);
                     ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     ocrEventCreateParams(&(pbPTR->haloSendEVT[ind]), OCR_EVENT_CHANNEL_T, false, &params);
-                    blockPTR = DEPVARRAY(hpcgInit,blocks,ind,ptr);
-                    *blockPTR = pbPTR->haloSendEVT[ind];
-                    ocrDbRelease(DEPVARRAY(hpcgInit,blocks,ind,guid));
-                    ocrEventSatisfy(stickyEVT, DEPVARRAY(hpcgInit,blocks,ind,guid));
+                    *channelPTR = pbPTR->haloSendEVT[ind];
+                    ocrDbRelease(channelDBK);
+                    ocrEventSatisfy(stickyEVT, channelDBK);
 
 //receive
-                    ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, 26*(myrank + k*pbPTR->npx*pbPTR->npy + j*pbPTR->npx + i) + 25-ind);
+                    index = 26*(myrank + k*pbPTR->npx*pbPTR->npy + j*pbPTR->npx + i) + 25-ind;
+//PRINTF("I%d i%d j%d k%d ind%d index in %d \n", myrank, i, j, k, ind, index);
+                    ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, index);
                     ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     ocrAddDependence(stickyEVT, channelInitEDT, SLOTARRAY(channelInit,channel,ind), DB_MODE_RW);
 
@@ -2033,11 +2133,12 @@ if(pbPTR->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT "GUIDF" recvEVT
 //
 
 
+   void * ptr = (void *) pbPTR;
 
-    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[0], myrank, (double *) (((u64) ptr) + (u64) pbPTR->matrix_offset[0]), (u32 *) (((u64) ptr) + (u64) pbPTR->diagonal_index_offset[0]), (u32 *)(((u64) ptr) + (u64) pbPTR->column_index_offset[0]), (u32 *) (((u64) ptr) + (u64) pbPTR->vector_offset[0][Z]));
-    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[1], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[1]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[1]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[1]), (u32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
-    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[2], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[2]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[2]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[2]), (u32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
-    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[3], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[3]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[3]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[3]), (u32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[0], myrank, (double *) (((u64) ptr) + (u64) pbPTR->matrix_offset[0]), (u32 *) (((u64) ptr) + (u64) pbPTR->diagonal_index_offset[0]), (u32 *)(((u64) ptr) + (u64) pbPTR->column_index_offset[0]), (s32 *) (((u64) ptr) + (u64) pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[1], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[1]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[1]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[1]), (s32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[2], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[2]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[2]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[2]), (s32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
+    matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[3], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[3]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[3]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[3]), (s32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
 
 //initialize b vector
 
@@ -2058,115 +2159,15 @@ if(pbPTR->debug > 0) for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT "GUIDF" recvEVT
     ocrDbRelease(rpDBK);
     ocrAddDependence(rpDBK, channelInitEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
 
-return NULL_GUID;
-}
 
 
 
-typedef struct{
-    u64 myrank;
-    } initPRM_t;
 
-typedef struct{
-    ocrEdtDep_t sharedBlock;
-    } initDEPV_t;
-
-ocrGuid_t initEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
-/*
-params:
-0:  myrank
-
-depv:
-0: hpcg shared block
-
-create privateblock
-create reduction private block
-
-launches hpcgInitEDT with shared blocks, private blocks, myrank as param
-
-*/
-
-    PRMDEF(init);
-    DEPVDEF(init);
-    ocrGuid_t sbDBK = DEPV(init,sharedBlock,guid);
-    sharedBlock_t * sbPTR = (sharedBlock_t *) DEPV(init,sharedBlock,ptr);
-
-    ocrGuid_t hpcgInitEDT, hpcgInitTML;
-    hpcgInitPRM_t hpcgInitParamv;
-    hpcgInitPRM_t * hpcgInitPRM = &hpcgInitParamv;
-
-if(sbPTR->debug > 0) PRINTF("I%d\n", paramv[0]);
-
-    ocrHint_t myHNT;
-    ocrHintInit(&myHNT,OCR_HINT_EDT_T);
-    ocrGuid_t myAffinity;
-    ocrAffinityGetCurrent(&myAffinity);
-    ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
-
-
-    ocrEdtTemplateCreate(&hpcgInitTML, hpcgInitEdt, PRMNUM(hpcgInit), DEPVNUM(hpcgInit));
-
-    PRM(hpcgInit,myrank) = PRM(init,myrank);
-    ocrEdtCreate(&hpcgInitEDT, hpcgInitTML, EDT_PARAM_DEF, (u64 *) hpcgInitPRM, EDT_PARAM_DEF, NULL,
-      EDT_PROP_NONE, &myHNT, NULL);
-    ocrEdtTemplateDestroy(hpcgInitTML);
-
-    ocrAddDependence(sbDBK, hpcgInitEDT, SLOT(hpcgInit,sharedBlock), DB_MODE_RO);
-
-    ocrGuid_t tempDBK;
-    u64 dummy;
-    u64 size;
-    u64 m0 = sbPTR->m;
-    u64 m1 = m0/2;
-    u64 m2 = m1/2;
-    u64 m3 = m2/2;
-
-    size = sizeof(privateBlock_t)
-      + 27*m0*m0*m0*sizeof(double)         //level 0 matrix
-      + 27*m1*m1*m1*sizeof(double)         //level 1 matrix
-      + 27*m2*m2*m2*sizeof(double)         //level 2 matrix
-      + 27*m3*m3*m3*sizeof(double)         //level 3 matrix
-      + 27*m0*m0*m0*sizeof(u32)            //level 0 column indices
-      + 27*m1*m1*m1*sizeof(u32)            //level 1 column indices
-      + 27*m2*m2*m2*sizeof(u32)            //level 2 column indices
-      + 27*m3*m3*m3*sizeof(u32)            //level 3 column indices
-      + m0*m0*m0*sizeof(u32)               //level 0 diag indices
-      + m1*m1*m1*sizeof(u32)               //level 1 diag indices
-      + m2*m2*m2*sizeof(u32)               //level 2 diag indices
-      + m3*m3*m3*sizeof(u32)               //level 3 diag indices
-      + (m0+2)*(m0+2)*(m0+2)*sizeof(double)//level 0 Z vector
-      + (m1+2)*(m1+2)*(m1+2)*sizeof(double)//level 1 Z vector
-      + (m2+2)*(m2+2)*(m2+2)*sizeof(double)//level 2 Z vector
-      + (m3+2)*(m3+2)*(m3+2)*sizeof(double)//level 3 Z vector
-      + m0*m0*m0*sizeof(double)            //level 0 R vector
-      + m1*m1*m1*sizeof(double)            //level 1 R vector
-      + m2*m2*m2*sizeof(double)            //level 2 R vector
-      + m3*m3*m3*sizeof(double)            //level 3 R vector
-      + m0*m0*m0*sizeof(double)            //level 0 AP vector (used at all levels
-      + m0*m0*m0*sizeof(double)            //level 0 X vector
-      + (m0+2)*(m0+2)*(m0+2)*sizeof(double)//level 0 P vector
-      + m0*m0*m0*sizeof(double);           //level 0 B vector
-
-
-    ocrDbCreate(&tempDBK, (void**) &dummy, size, 0, NULL_HINT, NO_ALLOC);
-    ocrAddDependence(tempDBK, hpcgInitEDT, SLOT(hpcgInit,privateBlock), DB_MODE_RW);
-
-//reduction block
-    ocrDbCreate(&tempDBK, (void**) &dummy, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC);
-    ocrAddDependence(tempDBK, hpcgInitEDT, SLOT(hpcgInit,reductionPrivateBlock), DB_MODE_RW);
-
-    u64 i;
-
-    for(i=0;i<26;i++) {
-
-        ocrDbCreate(&tempDBK, (void**) &dummy, sizeof(ocrGuid_t), 0, NULL_HINT, NO_ALLOC);
-        ocrAddDependence(tempDBK, hpcgInitEDT, SLOTARRAY(hpcgInit,blocks,i), DB_MODE_RW);
-    }
     return NULL_GUID;
 }
 
 typedef struct {
-    double startTime;
+    u64 startTime;
 } wrapUpPRM_t;
 
 typedef struct {
@@ -2180,121 +2181,13 @@ ocrGuid_t wrapUpEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     PRMDEF(wrapUp);
     double * returnPTR = (double *) DEPV(wrapUp,returnBlock,ptr);
     PRINTF("final deviation: %f \n", returnPTR[0]);
-    double stop =  wtime();
-    double elapsed = stop - PRM(wrapUp,startTime);
+    u64 stop = getTime();
+    double elapsed = TICK*(stop - PRM(wrapUp,startTime));
     PRINTF("elapsed time: %f \n", elapsed);
     ocrShutdown();
     return NULL_GUID;
 }
 
-typedef struct{
-    u64 npx;
-    u64 npy;
-    u64 npz;
-    u64 m;
-    u64 maxIter;
-    u64 debug;
-    double startTime;
-    } realMainPRM_t;
-
-typedef struct{
-    ocrEdtDep_t sharedBlock;
-    } realMainDEPV_t;
-
-
-ocrGuid_t realMainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
-/*
-paramv
-0:  npx
-1:  npy
-2:  npz
-3:  m
-4:  t
-5:  debug
-
-depv
-0: hpcg Shared Block
-
-Initializes reduction shared block
-Creates wrapUp
-Creates and launches NPZ*NPY*NPX initEDT with shared blocks and myrank as a param
-
-*/
-
-    PRMDEF(realMain);
-
-    DEPVDEF(realMain);
-    ocrGuid_t sbDBK = DEPV(realMain,sharedBlock,guid);
-    sharedBlock_t * sbPTR = DEPV(realMain,sharedBlock,ptr);
-
-
-
-    u64 npx        = PRM(realMain,npx);
-    sbPTR->npx     = npx;
-    u64 npy        = PRM(realMain,npy);
-    sbPTR->npy     = npy;
-    u64 npz        = PRM(realMain,npz);
-    sbPTR->npz     = npz;
-    sbPTR->m       = PRM(realMain,m);
-    sbPTR->maxIter = PRM(realMain,maxIter);
-    sbPTR->debug   = PRM(realMain,debug);
-    u64 nrank = npx * npy * npz;
-
-    u64 i;
-
-if(sbPTR->debug != 0) PRINTF("RM start nrank %d npx %d npy %d npz %d m %d t %d debug %d \n", nrank, sbPTR->npx, sbPTR->npy, sbPTR->npz, sbPTR->m, sbPTR->maxIter, sbPTR->debug);
-
-
-
-    ocrGuidRangeCreate(&(sbPTR->haloRangeGUID), 26*nrank, GUID_USER_EVENT_STICKY);
-    ocrGuidRangeCreate(&(sbPTR->reductionRangeGUID), nrank, GUID_USER_EVENT_STICKY);
-
-
-    ocrGuid_t wrapUpTML, wrapUpEDT;
-    ocrEdtTemplateCreate(&wrapUpTML, wrapUpEdt, PRMNUM(wrapUp), DEPVNUM(wrapUp));
-    ocrEdtCreate(&wrapUpEDT, wrapUpTML, EDT_PARAM_DEF, (u64 *) &(PRM(realMain,startTime)), EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-    ocrEventCreate(&(sbPTR->finalOnceEVT), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
-    ocrEdtTemplateDestroy(wrapUpTML);
-
-    ocrAddDependence(sbPTR->finalOnceEVT, wrapUpEDT, SLOT(wrapUp,returnBlock), DB_MODE_RO);
-
-    ocrDbRelease(sbDBK);
-
-    ocrGuid_t initTML, initEDT;
-    ocrEdtTemplateCreate(&initTML, initEdt, PRMNUM(init), DEPVNUM(init));
-
-    ocrGuid_t myAffinity;
-    ocrHint_t myHNT;
-    ocrAffinityGetCurrent(&(myAffinity));
-    u64 count, myPD, block, nx, ny, nz;
-    ocrAffinityCount(AFFINITY_PD, &count);
-    s64 PD_X, PD_Y, PD_Z;
-    splitDimension( count, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid
-
-    u32 edtGrid[3] = {npx, npy, npz};
-
-    //The EDTs are mapped to the policy domains (nodes) through EDT hints
-    //There are more subdomains than the # of policy domains.
-    //A 3-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
-    //to minimize data movement between the policy domains
-
-    for(i=0;i<nrank;i++) {
-        myPD = getPoliyDomainID( i, edtGrid, PD_X, PD_Y, PD_Z );
-        //PRINTF("id %d PD %d\n", i, myPD);
-        ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
-        ocrHintInit(&myHNT,OCR_HINT_EDT_T);
-        ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
-
-        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, &i, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
-        ocrAddDependence(sbDBK, initEDT, SLOT(init,sharedBlock), DB_MODE_RO);
-    }
-    ocrEdtTemplateDestroy(initTML);
-
-if(PRM(realMain,debug) != 0) PRINTF("RM finish\n");
-fflush(stdout);
-
-return NULL_GUID;
-}
 
 
 
@@ -2309,82 +2202,116 @@ Creates the reduction shared datablock
 Passes the shared blocks to realMain
 */
 
-u32 i;
-u64 npx, npy, npz, m, maxIter, debug;
+    u64 npx, npy, npz, m, maxIter, debug;
 
-u32 _paramc, _depc, _idep;
+    u32 _paramc, _depc, _idep;
 
-void * programArgv = depv[0].ptr;
-u32 argc = getArgc(programArgv);
+    void * programArgv = depv[0].ptr;
+    u32 argc = getArgc(programArgv);
 
-double startTime = wtime();
-npx = NPX;
-npy = NPY;
-npz = NPZ;
-m = M;
-maxIter = T;
-debug = DEBUG;
+    u64 startTime = getTime();
+    npx = NPX;
+    npy = NPY;
+    npz = NPZ;
+    m = M;
+    maxIter = T;
+    debug = DEBUG;
 
-if(argc ==2 || argc ==3) bomb("number of run time parameters cannot be 1 or 2");
+    if(argc ==2 || argc ==3) bomb("number of run time parameters cannot be 1 or 2");
 
-if(argc > 3) {
-    u32 k = 1;
-    npx = (s64) atoi(getArgv(programArgv, k++));
-    npy = (s64) atoi(getArgv(programArgv, k++));
-    npz = (s64) atoi(getArgv(programArgv, k++));
-    if(npx <= 0) bomb("npx must be positive");
-    if(npy <= 0) bomb("npy must be positive");
-    if(npz <= 0) bomb("npz must be positive");
+    if(argc > 3) {
+        u32 k = 1;
+        npx = (s64) atoi(getArgv(programArgv, k++));
+        npy = (s64) atoi(getArgv(programArgv, k++));
+        npz = (s64) atoi(getArgv(programArgv, k++));
+        if(npx <= 0) bomb("npx must be positive");
+        if(npy <= 0) bomb("npy must be positive");
+        if(npz <= 0) bomb("npz must be positive");
+        }
+
+    if(argc > 4) {
+        m = (u64) atoi(getArgv(programArgv, 4));
+        if(m == 0) bomb("m must be positive");
+        m = 16*((m-1)/16 +1);
+        }
+
+    if(argc > 5) {
+        maxIter = (u64) atoi(getArgv(programArgv, 5));
+        if(maxIter > HPCGMAXITER) bomb("maxIter must be <= HPCGMAXITER\n");
+        }
+
+    if(argc>6) {
+        debug = (u64) atoi(getArgv(programArgv, 6));
+        }
+
+
+    PRINTF("NPX = %d \n", npx);
+    PRINTF("NPY= %d \n", npy);
+    PRINTF("NPZ= %d \n", npz);
+    PRINTF("M = %d\n", m);
+    PRINTF("maxIter = %d\n", maxIter);
+    PRINTF("debug = %d\n", debug);
+    PRINTF("startTime %u \n", startTime);
+
+
+    ocrGuid_t sbDBK;
+    sharedBlock_t * sbPTR;
+    ocrDbCreate(&sbDBK, (void**) &sbPTR, sizeof(sharedBlock_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+
+
+    sbPTR->npx     = npx;
+    sbPTR->npy     = npy;
+    sbPTR->npz     = npz;
+    sbPTR->m       = m;
+    sbPTR->maxIter = maxIter;
+    sbPTR->debug   = debug;
+    u64 nrank = npx * npy * npz;
+
+    ocrGuidRangeCreate(&(sbPTR->haloRangeGUID), 26*nrank, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(sbPTR->reductionRangeGUID), nrank, GUID_USER_EVENT_STICKY);
+
+
+    ocrGuid_t wrapUpTML, wrapUpEDT;
+    ocrEdtTemplateCreate(&wrapUpTML, wrapUpEdt, PRMNUM(wrapUp), DEPVNUM(wrapUp));
+    ocrEdtCreate(&wrapUpEDT, wrapUpTML, EDT_PARAM_DEF, (u64 *) &(startTime), EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+    ocrEventCreate(&(sbPTR->finalOnceEVT), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
+    ocrEdtTemplateDestroy(wrapUpTML);
+
+    ocrAddDependence(sbPTR->finalOnceEVT, wrapUpEDT, SLOT(wrapUp,returnBlock), DB_MODE_RO);
+
+    ocrDbRelease(sbDBK);
+
+    ocrGuid_t initTML, initEDT;
+    ocrEdtTemplateCreate(&initTML, initEdt, PRMNUM(init), DEPVNUM(init));
+
+    u64 myrank;
+    ocrGuid_t myAffinity;
+#ifdef AFFINITY
+
+    u64 PDcount, myPD;
+    ocrAffinityCount(AFFINITY_PD, &PDcount);
+#endif
+
+    for(myrank=0;myrank<nrank;myrank++) {
+#ifdef AFFINITY
+        myPD = getMyPD(0L, PDcount-1, myrank, npx, npy, npz);
+        ocrAffinityGetAt(AFFINITY_PD, myPD, &(myAffinity));
+        ocrHint_t myHNT;
+        ocrHintInit(&myHNT,OCR_HINT_EDT_T);
+        ocrSetHintValue(&myHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(myAffinity));
+
+        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, &myrank, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
+#else
+        ocrEdtCreate(&initEDT, initTML, EDT_PARAM_DEF, &myrank, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+#endif
+        ocrAddDependence(sbDBK, initEDT, SLOT(init,sharedBlock), DB_MODE_RO);
     }
+    ocrEdtTemplateDestroy(initTML);
 
-if(argc > 4) {
-    m = (u64) atoi(getArgv(programArgv, 4));
-    if(m == 0) bomb("m must be positive");
-    m = 16*((m-1)/16 +1);
-    }
-
-if(argc > 5) {
-    maxIter = (u64) atoi(getArgv(programArgv, 5));
-    }
-
-if(argc>6) {
-    debug = (u64) atoi(getArgv(programArgv, 6));
-    }
+if(debug != 0) PRINTF("M finish\n");
 
 
-PRINTF("NPX = %d \n", npx);
-PRINTF("NPY= %d \n", npy);
-PRINTF("NPZ= %d \n", npz);
-PRINTF("M = %d\n", m);
-PRINTF("maxIter = %d\n", maxIter);
-PRINTF("debug = %d\n", debug);
-PRINTF("startTime %f \n", startTime);
 
-
-u64 *dummy;
-
-ocrGuid_t realMainEDT, realMainTML, sharedDBK, reductionSharedDBK;
-
-ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
-
-realMainPRM_t realMainParamv;
-realMainPRM_t * realMainPRM = &realMainParamv;
-
-PRM(realMain,npx) = npx;
-PRM(realMain,npy) = npy;
-PRM(realMain,npz) = npz;
-PRM(realMain,m) = m;
-PRM(realMain,maxIter) = maxIter;
-PRM(realMain,debug) = debug;
-PRM(realMain,startTime) = startTime;
-
-ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-
-ocrDbCreate(&sharedDBK, (void**) &dummy, sizeof(sharedBlock_t), 0, NULL_HINT, NO_ALLOC);
-ocrAddDependence(sharedDBK, realMainEDT, SLOT(realMain,sharedBlock), DB_MODE_RW);
-
-ocrEdtTemplateDestroy(realMainTML);
-//initializing reduction library
 
 return NULL_GUID;
 

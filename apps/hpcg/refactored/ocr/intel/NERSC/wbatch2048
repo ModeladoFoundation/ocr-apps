@@ -1,0 +1,21 @@
+#!/bin/bash -l
+#SBATCH -p regular
+#SBATCH -N 2048
+#SBATCH -t 00:010:00
+#SBATCH -J hpcg
+#SBATCH -o NERSC/w2048.out
+# Indicate ocrrun it is operating in a SLURM environment
+export OCRRUN_OPT_ENVKIND=SLURM
+# Setup for intel MPI
+module load impi/5.1.1.109
+export MPI_ROOT=/opt/intel/parallel_studio_xe_2016.0.047/compilers_and_libraries_2016/linux/mpi/intel64
+export PATH=${MPI_ROOT}/bin:$PATH
+export LD_LIBRARY_PATH=${MPI_ROOT}/lib:$LD_LIBRARY_PATH
+export OCR_TYPE=x86-mpi
+export CONFIG_NUM_THREADS=9
+export OCR_NUM_NODES=2048
+export CC=mpicc
+#export RUN_TOOL=/usr/bin/time
+export RUN_MODE=buildApp
+make -f Makefile.x86-mpi run WORKLOAD_ARGS="32 32 16 64 30 0"
+echo "cnt 9 nodes 2048"

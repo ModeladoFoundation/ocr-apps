@@ -1,0 +1,46 @@
+This directory contains batch files for doing weak or strong scaling studies at NERSC
+
+
+For weak scaling
+copy wbatch.sh to the parent directory (-/hpcg/refactored/ocr/intel)
+cd ..
+bash wbatch.sh
+
+This will launch SLURM jobs for sizes 1 to 1024 nodes in powers of 2
+The output files will be in the NERSC directory with names
+w[NUMBER OF NODES].out
+
+The individual SLURM batch files currently use M=64 and do 30 iterations.
+
+Note, there is a file wbatch2048 which invokes a job on 2048 nodes, but it is not
+included in the default scaling test.
+
+Note that the larger node counts can take days to start, so it is also possible to
+comment out the larger runs
+
+The script wrecap.sh (in the NERSC directory) will extract the run times
+into standard out which you can redirect to your favorite file.
+
+WARNING: wbatch.sh removes any w*.out files before launching the SLURM
+jobs, so if you want to keep the old output files, you will need to move
+them.
+
+
+Strong scaling is similar:
+
+copy sbatch.sh up
+cd ..
+bash sbatch.sh
+
+This will create output files (s*.out in the NERSC directory) with 1, 8, 64, and 512 nodes
+solving the same sized problem (128x128x128)
+
+The script srecap.sh (in the NERSC directory) will extract the run times
+into standard out which you can redirect to your favorite file.
+
+WARNING: sbatch.sh removes any s*.out files before launching the SLURM
+jobs, so if you want to keep the old output files, you will need to move
+them.
+
+
+

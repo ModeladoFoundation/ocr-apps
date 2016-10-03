@@ -57,7 +57,7 @@ TARGET := hpcg
 REQ_LIBS := macros reduction
 
 # Space separated list of source files
-SRCS := hpcg.c wtime.c
+SRCS := hpcg.c timers.c
 
 CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
 CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
