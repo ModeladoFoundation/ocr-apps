@@ -51,7 +51,8 @@ static inline u8 vectorIsFull( vector_t* vector )
     return vector->size == vector->capacity? TRUE : FALSE;
 }
 
-static inline u8 vectorIsEmpty( vector_t* vector ) {
+static inline u8 vectorIsEmpty( vector_t* vector )
+{
     return vector->size == 0? TRUE : FALSE;
 }
 
