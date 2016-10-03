@@ -43,26 +43,42 @@ void nanos_create_task(
 void nanos_submit_task(void *task)
 {
     task_definition_t* taskdef = (task_definition_t*)task;
+    ocrGuid_t taskdef_db = ((ocrGuid_t*)task)[-1];
 
-    ocrGuid_t edt;
-    // Create EDT
+    // Create task EDT and its cleanup EDT
+    ocrGuid_t edt, cleanup_edt;
+    // Cleanup EDT will depend on task EDT
+    // to be completed
+    ocrGuid_t edt_finished_evt;
+
     // Generate parameter array
-    u32 paramc = 1;
-    u64 paramv[paramc];
-    paramv[0] = (u64)task;
+    u32 paramc = 0;
+    u64* paramv = NULL;
 
     // Register dependences
     taskdef->dependences_funct( task, taskdef->args_block );
-    u32 depc = getNumDependences( taskdef );
+    u32 depc = 1 + getNumDependences( taskdef );
 
-    // Create EDT
+    // Create EDT of finish type (does not return until
+    // all its children EDTs are completed )
     u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
                   paramc, paramv,
                   depc, NULL,
+                  EDT_PROP_FINISH, NULL_HINT, &edt_finished_evt );
+    ASSERT( err == 0);
+
+    ocrGuid_t cleanupDeps[2] = { taskdef_db, edt_finished_evt };
+    err = ocrEdtCreate( &cleanup_edt, cleanupTemplate,
+                  0, NULL,
+                  2, cleanupDeps,
                   EDT_PROP_NONE, NULL_HINT, NULL );
     ASSERT( err == 0);
 
-    // Add dependences
+    // Add edt dependences
+    err = ocrAddDependence( taskdef_db, edt, 0,
+                      DB_DEFAULT_MODE );
+    ASSERT( err == 0 );
+
     acquireDependences( edt, taskdef );
 }
 

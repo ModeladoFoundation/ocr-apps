@@ -9,6 +9,7 @@
 #include "task-local.h"
 
 ocrGuid_t taskOutlineTemplate;
+ocrGuid_t cleanupTemplate;
 
 /*! \brief ocrEdt_t function wrapper
  * This function is used to encapsulate OmpSs compiler generated
@@ -25,7 +26,8 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     ASSERT( paramc == 1 );
 
     // Decode arguments and dependences
-    task_definition_t* taskdef = (task_definition_t*)paramv[0];
+    // First element of datablock is its own ocrGuid_t
+    task_definition_t* taskdef = (task_definition_t*)(depv[0].ptr + sizeof(ocrGuid_t));
 
     // Create necessary edt-local data-structures
     // Note: we can store local dependences hash map
@@ -39,10 +41,16 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     // Release dependences
     releaseDependences( taskdef );
 
-    // Free used data structures
-    destructHashTable( &localDependences );
-    destructTaskDefinition( taskdef );
+    return NULL_GUID;
+}
 
+ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    // Decode arguments and dependences
+    // First element of datablock is its own ocrGuid_t
+    task_definition_t* taskdef = (task_definition_t*)(depv[0].ptr + sizeof(ocrGuid_t));
+
+    destructTaskDefinition( taskdef );
     return NULL_GUID;
 }
 
