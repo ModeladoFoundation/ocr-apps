@@ -19,7 +19,9 @@ static inline void* malloc( u64 size )
 
 static inline void free( void* addr )
 {
-    ocrGuid_t datablock = ((ocrGuid_t*)addr)[-1];
+    ocrGuid_t* buffer = (ocrGuid_t*)addr;
+    ocrGuid_t datablock = buffer[-1];
+
     ocrDbDestroy( datablock );
 }
 
