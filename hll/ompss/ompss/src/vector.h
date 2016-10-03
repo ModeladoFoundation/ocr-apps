@@ -2,19 +2,14 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include "vector_decl.h"
+
 #include "common.h"
 
 #include <string.h>
 
 // FIXME look for an optimum value
 #define ARRAY_RESIZE_ELEMENTS 16
-
-typedef struct {
-    u32 size;
-    u32 capacity;
-    u64 elem_size;
-    void*  data;
-} vector_t;
 
 static inline void newVector( vector_t* vector, u64 elem_size )
 {

@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "dependences.h"
+#include "hashtable_decl.h"
 
 #include <string.h>
 
@@ -16,21 +17,6 @@
  *  Key values are plain memory addresses.
  *  Values are data_dependency_t structures.
  */
-typedef void*             key_t;
-typedef data_dependency_t value_t;
-
-struct _ht_bucket;
-
-typedef struct _ht_table {
-    struct _ht_bucket** data;
-    u32                size; // number of bins
-} hash_table_t;
-
-struct _ht_bucket {
-    struct _ht_bucket* next;
-    key_t              key;
-    value_t            value;
-};
 
 /*! \brief Computes an u32 hash from a key.
  *  Keys are plain memory addresses.

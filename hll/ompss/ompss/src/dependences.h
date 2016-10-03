@@ -2,8 +2,10 @@
 #ifndef DEPENDENCIES_H
 #define DEPENDENCIES_H
 
+#include "vector.h"
+
 #include "dependences_decl.h"
-#include "task.h"
+#include "task_decl.h"
 
 /*! Initializes data_dependency_t data type */
 static inline void initializeDataDependency( data_dependency_t* dep )
