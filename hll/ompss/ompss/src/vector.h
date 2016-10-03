@@ -36,9 +36,12 @@ static inline void vectorResize( vector_t* vector,
 
         memcpy( new_data, vector->data,
                 vector->capacity * vector->elem_size );
-        vector->capacity = new_capacity;
 
-        free( vector->data );
+        if( vector->capacity > 0 ) {
+            free( vector->data );
+        }
+
+        vector->capacity = new_capacity;
         vector->data = new_data;
     }
 }
