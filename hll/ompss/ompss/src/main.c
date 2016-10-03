@@ -6,6 +6,7 @@
 #include "common.h"
 #include "outline.h"
 #include "task.h"
+#include "task-local.h"
 
 extern int ompss_user_main( int argc, char* argv[] );
 
@@ -51,6 +52,10 @@ ocrGuid_t mainEdt(
     for( u64 arg = 0; arg < argc; ++arg ) {
         argv[arg] = getArgv(program_args, arg);
     }
+
+    // Create necessary edt-local data-structures
+    newHashTable( &main_data->local_dependences );
+    setLocalDepMap( &main_data->local_dependences );
 
     int ret = ompss_user_main( (int)argc, argv );
 

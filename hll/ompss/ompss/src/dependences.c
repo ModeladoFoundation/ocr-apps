@@ -1,12 +1,11 @@
 
 #include <ocr.h>
 #include <nanos6_rt_interface.h>
-#include <extensions/ocr-runtime-itf.h>
 
-#include "common.h"
 #include "dependences.h"
 #include "hashtable.h"
 #include "task.h"
+#include "task-local.h"
 
 /*! \brief Register a task read access on linear range of addresses
  *
@@ -28,10 +27,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 {
     task_definition_t* taskdef = (task_definition_t*)handler;
 
-    // Workaround to get a pointer from EDT local storage
-    union _els_to_ptr tmp;
-    tmp.els = ocrElsUserGet( 0U );
-    hash_table_t* dependences = (hash_table_t*)tmp.ptr;
+    hash_table_t* dependences = getLocalDepMap();
 
     data_dependency_t* dep_data = hashTableGet( dependences, start );
     // Add read-after-write dependency to previous writer EDTs
@@ -76,10 +72,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 {
     task_definition_t* taskdef = (task_definition_t*)handler;
 
-    // Workaround to get a pointer from EDT local storage
-    union _els_to_ptr tmp;
-    tmp.els = ocrElsUserGet( 0U );
-    hash_table_t* dependences = (hash_table_t*)tmp.ptr;
+    hash_table_t* dependences = getLocalDepMap();
 
     data_dependency_t* dep_data = hashTableGet( dependences, start );
     // Add write-after-write dependency to previous writer EDTs
