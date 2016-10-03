@@ -14,6 +14,15 @@ static inline void initializeDataDependency( data_dependency_t* dep )
     dep->wr_is_done_evt = NULL_GUID;
 }
 
+static inline void freeDataDependency( data_dependency_t* dep )
+{
+    if( !ocrGuidIsNull( dep->rd_is_done_evt ) )
+        ocrEventDestroy( dep->rd_is_done_evt );
+
+    if( !ocrGuidIsNull( dep->wr_is_done_evt ) )
+        ocrEventDestroy( dep->wr_is_done_evt );
+}
+
 static inline void createReadSection( data_dependency_t* events )
 {
     u8 err;
@@ -44,11 +53,15 @@ static inline void readSectionAddReader( task_definition_t* task, data_dependenc
     vectorPushBack( &task->release_deps, &rel_action );
 }
 
-static inline void createWriteSection( data_dependency_t* events )
+static inline void createWriteSection( task_definition_t* task, data_dependency_t* events )
 {
     // Replace previous write event regardless it existed or not
     u8 err = ocrEventCreate( &events->wr_is_done_evt, OCR_EVENT_STICKY_T, EVT_PROP_NONE );
     ASSERT( err != 0 );
+
+    struct _release_dep rel_action = { .event = events->wr_is_done_evt,
+                            .action  = SATISFY };
+    vectorPushBack( &task->release_deps, &rel_action );
 }
 
 static inline void addDependencyRAW( task_definition_t* task, data_dependency_t* events )
@@ -93,7 +106,8 @@ static inline void acquireDependences( ocrGuid_t edt, task_definition_t* task )
     u32 size = task->acquire_deps.size;
     struct _acquire_dep* actions = (struct _acquire_dep*)task->acquire_deps.data;
     for( u32 i = 0; i < size; ++i ) {
-        err = ocrAddDependence( actions[i].event, edt, 0, DB_MODE_RW/*default mode*/ );
+        u32 slot = i+1; // here slot refers to the position of the depv array
+        err = ocrAddDependence( actions[i].event, edt, slot, DB_MODE_RW/*default mode*/ );
         ASSERT( err == 0 );
 
         if( actions[i].action == DEPEND_AND_SATISFY ) {

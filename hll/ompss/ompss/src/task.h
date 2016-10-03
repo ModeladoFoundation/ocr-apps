@@ -12,7 +12,8 @@
 
 #include <nanos6_rt_interface.h>
 
-static inline task_definition_t* newTaskDefinition( nanos_task_info* info, u64 args_size ) {
+static inline task_definition_t* newTaskDefinition( nanos_task_info* info, u64 args_size )
+{
     task_definition_t* td = (task_definition_t*)malloc( sizeof(task_definition_t) + args_size );
 
     td->args_block = &td[1];
@@ -21,13 +22,17 @@ static inline task_definition_t* newTaskDefinition( nanos_task_info* info, u64 a
 
     newVector( &td->acquire_deps, sizeof(struct _acquire_dep) );
     newVector( &td->release_deps, sizeof(struct _release_dep) );
+
+    newHashTable( &td->local_dependences );
     return td;
 }
 
-static inline void destructTaskDefinition( task_definition_t* td ) {
+static inline void destructTaskDefinition( task_definition_t* td )
+{
     destructVector( &td->acquire_deps );
     destructVector( &td->release_deps );
-    free( td );
+    destructHashTable( &td->local_dependences );
+    free(td);
 }
 
 #endif // TASK_H
