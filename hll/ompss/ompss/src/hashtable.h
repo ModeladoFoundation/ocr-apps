@@ -45,6 +45,7 @@ static inline struct _ht_bucket* newHashBucket( key_t key )
     new_bucket->key = key;
 
     initializeDataDependency( &new_bucket->value );
+    return new_bucket;
 }
 
 static inline void destructHashBucket( struct _ht_bucket** bucket )
