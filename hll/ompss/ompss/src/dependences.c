@@ -78,7 +78,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
     // Add write-after-write dependency to previous writer EDTs
     addDependencyWAW( taskdef, dep_data );
     // Create write-section
-    createWriteSection( dep_data );
+    createWriteSection( taskdef, dep_data );
     // Add write-after-read dependency to previous reader EDTs
     addDependencyWAR( taskdef, dep_data );
 }

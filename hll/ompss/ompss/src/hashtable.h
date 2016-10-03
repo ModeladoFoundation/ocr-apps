@@ -53,6 +53,7 @@ static inline void destructHashBucket( struct _ht_bucket** bucket )
     struct _ht_bucket* this_bucket = *bucket;
     *bucket = this_bucket->next;
 
+    freeDataDependency( &this_bucket->value );
     free( this_bucket );
 }
 
