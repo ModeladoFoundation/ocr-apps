@@ -2,19 +2,15 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include <nanos6_rt_interface.h>
+#include "task_decl.h"
 
 #include "dependences_decl.h"
+
 #include "common.h"
+#include "hashtable.h"
 #include "vector.h"
 
-typedef struct {
-    void*                 args_block;
-    run_funct_t           run_funct;
-    register_dep_funct_t  dependences_funct;
-    vector_t              acquire_deps;
-    vector_t              release_deps;
-} task_definition_t;
+#include <nanos6_rt_interface.h>
 
 static inline task_definition_t* newTaskDefinition( nanos_task_info* info, u64 args_size ) {
     task_definition_t* td = (task_definition_t*)malloc( sizeof(task_definition_t) + args_size );

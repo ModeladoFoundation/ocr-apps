@@ -1,12 +1,11 @@
 
-#include <nanos6_rt_interface.h>
-
-#include <ocr.h>
-
 #include "common.h"
 #include "dependences.h"
 #include "outline.h"
 #include "task.h"
+
+#include <nanos6_rt_interface.h>
+#include <ocr.h>
 
 /*! \brief Allocate space for a task and its parameters
  *
