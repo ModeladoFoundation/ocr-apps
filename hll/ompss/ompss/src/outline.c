@@ -2,11 +2,11 @@
 #include <ocr.h>
 #include <extensions/ocr-runtime-itf.h>
 
-#include "common.h"
 #include "dependences.h"
 #include "hashtable.h"
 #include "outline.h"
 #include "task.h"
+#include "task-local.h"
 
 ocrGuid_t taskOutlineTemplate;
 
@@ -31,14 +31,7 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     // Note: we can store local dependences hash map
     // in the stack, since all the successor tasks will be
     // created during run_funct execution.
-    hash_table_t localDependences;
-    newHashTable( &localDependences );
-
-    // Store hash table pointer into EDT local storage
-    // Workaround to access ELS
-    union _els_to_ptr tmp;
-    tmp.ptr = (void*)&localDependences;
-    ocrElsUserSet( 0U, tmp.els );
+    setLocalDepMap( &taskdef->local_dependences );
 
     // Execute outline task
     taskdef->run_funct( taskdef->args_block );
