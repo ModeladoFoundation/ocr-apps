@@ -3,6 +3,12 @@
 
 #define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
+#ifdef DEBUG_APP
+    #define DEBUG_PRINTF(X) PRINTF X
+#else
+    #define DEBUG_PRINTF(X) do {} while(0)
+#endif
+
 //default values
 #define NPOINTS 1000
 #define NRANKS 16
@@ -128,7 +134,7 @@ void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e);
 void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id);
 void splitDimension(s64 Num_procs, s64 *Num_procsx, s64 *Num_procsy);
 static inline int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y );
-static inline int getPolicyDomainID( int b, u64* edtGridDims, u64* pdGridDims );
+static inline int getPolicyDomainID( int b, s64* edtGridDims, s64* pdGridDims );
 
 static void timestamp(const char* msg)
 {
@@ -189,7 +195,7 @@ static inline int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y )
     return NR_X*id_y + id_x;
 }
 
-static inline int getPolicyDomainID( int b, u64* edtGridDims, u64* pdGridDims )
+static inline int getPolicyDomainID( int b, s64* edtGridDims, s64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
     int id_y = b/edtGridDims[0];

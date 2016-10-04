@@ -36,6 +36,9 @@ Invocation examples:
 
   make -f Makefile.${OCR_TYPE} run
 
+  To run on TG/Fsim:
+  OCR_XE_CONFIG=`pwd`/xe.cfg OCR_CE_CONFIG=`pwd`/ce.cfg make -f Makefile.tg clean run
+
 # Command-line overriden arguments:
 
   WORKLOAD_ARGS="1024 6 100" make -f Makefile.${OCR_TYPE} run

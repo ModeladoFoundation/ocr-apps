@@ -461,7 +461,7 @@ _OCR_TASK_FNC_( FNC_update )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
     //PRINTF("ID: %d ib %d ie %d jb %d je %d\n", id, ib, ie, jb, je);
 
     /* Apply the stencil operator */
@@ -593,7 +593,7 @@ _OCR_TASK_FNC_( timestepEdt )
 
     s64 phase = itimestep%2;
 
-    //PRINTF("%s id %d x %d y %d\n", __func__, id, id_x, id_y);
+    DEBUG_PRINTF(("%s id %d x %d y %d\n", __func__, id, id_x, id_y));
 
     if(itimestep==1) //Do not time iteration 0
     {
@@ -1256,9 +1256,11 @@ _OCR_TASK_FNC_( initEdt )
     ocrHint_t myDbkAffinityHNT;
     ocrHintInit( &myDbkAffinityHNT, OCR_HINT_DB_T );
 
+#ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityGetCurrent(&currentAffinity);
     ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
     ocrSetHintValue( &myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
+#endif
 
     PTR_rankH->myEdtAffinityHNT = myEdtAffinityHNT;
     PTR_rankH->myDbkAffinityHNT = myDbkAffinityHNT;
@@ -1451,9 +1453,11 @@ void forkSpmdEdts( s64* edtGridDims, s64* pdGridDims, ocrGuid_t* spmdDepv )
     for( i = 0; i < nRanks; ++i )
     {
         int pd = getPolicyDomainID( i, edtGridDims, pdGridDims );
-        //PRINTF("id %d map PD %d\n", i, pd);
+        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+#ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
 
         ocrEdtCreate( &EDT_init, initTML, EDT_PARAM_DEF, (u64*)&i, EDT_PARAM_DEF, NULL,
                         EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //initEdt
@@ -1514,7 +1518,7 @@ _OCR_TASK_FNC_( PDinitEdt )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords( i, j, edtGridDims[0], edtGridDims[1] );
-        //PRINTF("id %d map PD %d\n", myRank, PD_id);
+        DEBUG_PRINTF(("id %d map PD %d\n", myRank, PD_id));
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
 
         ocrEdtCreate( &EDT_init, initTML, EDT_PARAM_DEF, (u64*)&myRank, EDT_PARAM_DEF, NULL,
@@ -1556,9 +1560,11 @@ void forkSpmdEdts_staticScheduler( s64* edtGridDims, s64* pdGridDims, ocrGuid_t*
     for( i = 0; i < nPDs; ++i )
     {
         int pd = i;
-        //PRINTF("id %d map PD %d\n", i, pd);
+        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+#ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
 
         PDinitEdt_paramv.PD_id = pd;
 
@@ -1607,8 +1613,13 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     //Query the number of policy domains (nodes) available for the run
     //Map the SPMD EDTs onto the policy domains
-    s64 affinityCount;
+    u64 affinityCount=1;
+#ifdef ENABLE_EXTENSION_AFFINITY
+    PRINTF("Using affinity API\n");
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
+#else
+    PRINTF("NOT Using affinity API\n");
+#endif
     s64 PD_X, PD_Y;
     splitDimension( affinityCount, &PD_X, &PD_Y ); //Split available PDs into a 2-D grid
 
