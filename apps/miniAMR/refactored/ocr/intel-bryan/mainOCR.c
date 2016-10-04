@@ -18,6 +18,9 @@
 ocrGuid_t stencilEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
 
+    block_t PRM_block;
+    memcpy( &PRM_block, paramv, sizeof(block_t) );
+
     //PRINTF("StencilEdt!\n");
     /*PRM_stencilEdt_t * PRM_stencilEdt = (PRM_stencilEdt_t *)paramv;
 
@@ -44,19 +47,24 @@ ocrGuid_t stencilEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         }
 
     */
+    /*ocrGuid_t blockGUID;
+    ocrEdtCreate( &blockGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 1, NULL,
+                        EDT_PROP_NONE, NULL_HINT, NULL );
+
+    ocrAddDependence( NULL_GUID, blockGUID, 0, DB_MODE_RW );*/
     return NULL_GUID;
 }
 
 
 ocrGuid_t haloRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-
     if( depc == 1 )
         return NULL_GUID;
 
     if( depc == 4 ) {
         //combine the 4 values.
         //return the composite
+        //PRINTF("all four evts from neighbors have been satisfied!\n");
     }
 
     return NULL_GUID;
@@ -67,16 +75,18 @@ ocrGuid_t haloSnd( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     //if 1:1 relationship
         //send data along.
 
-    ocrGuid_t *sendChannel = (ocrGuid_t *)paramv;
-
-    if( paramc == 1 )
-        ocrEventSatisfy( *sendChannel, NULL_GUID );
-
-
-    if( paramc == 4 ){
-        //create 4 new datablocks
-        //cut data into 4ths.
-        //send down each channel.
+    if( paramc == (sizeof(ocrGuid_t)/sizeof(u64))+1 )
+    {
+        ocrGuid_t sendChannel;
+        memcpy( &sendChannel, paramv, sizeof(ocrGuid_t) );
+        ocrEventSatisfy( sendChannel, NULL_GUID );
+    }
+    else
+    {
+        ocrGuid_t *sendChannels = (ocrGuid_t *)paramv;
+        u64 i;
+        for( i = 0; i < 4; i++ )
+            ocrEventSatisfy( sendChannels[i], NULL_GUID );
     }
 
     return NULL_GUID;
@@ -84,99 +94,83 @@ ocrGuid_t haloSnd( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
 ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    block_t * PRM_block =   (block_t *)paramv;
-
-    PRINTF("%ld in blockEdt\n", PRM_block->id);
-    //create clone of iself.
-    if( PRM_block->timestep < 10 ){
-        PRM_block->timestep++;
-
-
-        ocrGuid_t blockEdtGUID;
-
-        //if this is a refine step, call refine first, before blockEdt.
-        if( PRM_block->timestep == 2 ) {
-            //if a certain timestep
-
-            ocrEdtCreate( &blockEdtGUID, PRM_block->refineCtrlTML, EDT_PARAM_DEF, (u64 *)PRM_block,
-                                                    EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-        } else {
-            ocrEdtCreate( &blockEdtGUID, PRM_block->blockTML, EDT_PARAM_DEF, (u64 *)PRM_block,
-                                                    1, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-
-
-            //create stencil EDT.
-            ocrGuid_t stencilGUID;
-            ocrGuid_t stencilOutEVT;
-
-            ocrEdtCreate( &stencilGUID, PRM_block->stencilTML, EDT_PARAM_DEF, (u64 *)PRM_block, EDT_PARAM_DEF, NULL,
-            EDT_PROP_NONE, NULL_HINT, &stencilOutEVT );
-
-            //connect blockEdt to stencilEdt's output.
-
-            ocrAddDependence( stencilOutEVT, blockEdtGUID, 0, DB_MODE_RW );
-
-            //connect halos to stencil EDT.
-            //Set rcvs first, stencil depends on rcv outputs.
-            u64 i;
-            u32 pCount = (sizeof( ocrGuid_t ) / sizeof( u64 ));
-            for( i = 0; i < 6; i++ ) {
-                ocrGuid_t haloRcvGUID;
-                ocrGuid_t rcvEVT;
-                ocrEdtCreate( &haloRcvGUID, PRM_block->haloRcvTML, 0, NULL, 1, NULL,
-                    EDT_PROP_NONE, NULL_HINT, &rcvEVT );
-                ocrAddDependence( PRM_block->comms.rcv[i*5], haloRcvGUID, 0, DB_MODE_RW );
-                ocrAddDependence( rcvEVT, stencilGUID, i+1, DB_MODE_RW );
-            }
-            ocrAddDependence( NULL_GUID, stencilGUID, 0, DB_MODE_RW );
-            for( i = 0; i < 6; i++ ) {
-                ocrGuid_t haloSndGUID;
-                ocrEdtCreate( &haloSndGUID, PRM_block->haloSndTML, pCount /* * numNeighbors*/,
-                                (u64 *)&PRM_block->comms.snd[i*5], 1, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-                ocrAddDependence( NULL_GUID, haloSndGUID, 0, DB_MODE_RW );
-            }
-        }
-
-    } else {
-        if( PRM_block->id == 0 ) ocrShutdown();
-    }
-    return NULL_GUID;
-}
-
-ocrGuid_t synch( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
-{
-
-   // block_t * PRM_block = (block_t *)paramv;
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof(block_t) );
-    ocrGuid_t synchGUID, synchTML;
+    ocrGuid_t blockGUID, blockTML;
 
     if( PRM_block.timestep < 10 )
     {
-        PRM_block.timestep++;
 
-        /*block_t * tmpBlock;
-        ocrGuid_t tmpGUID;
-        ocrDbCreate( &tmpGUID, (void **)&tmpBlock, sizeof(block_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+        if( PRM_block.timestep == 4 )
+        {
 
-        memcpy( tmpBlock, PRM_block, sizeof(block_t) );*/
+            PRM_block.timestep++;
+            ocrEdtCreate( &blockGUID, PRM_block.refineCtrlTML, EDT_PARAM_DEF, (u64 *)&PRM_block,
+            EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+        } else {
 
-        u32 pCount = sizeof( block_t )/sizeof( u64 );
-        ocrEdtTemplateCreate( &synchTML, synch, pCount, 7 );
-        ocrEdtCreate( &synchGUID, synchTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
-                            EDT_PROP_NONE, NULL_HINT, NULL );
+            PRM_block.timestep++;
 
-        u64 i;
-        for( i = 0; i < 6; i++ ) ocrAddDependence( PRM_block.comms.rcv[i*5], synchGUID, i+1, DB_MODE_RW );
-        for( i = 0; i < 6; i++ ) ocrEventSatisfy( PRM_block.comms.snd[i*5], NULL_GUID );
+            ocrGuid_t stencilGUID, stencilOutEVT;
 
-        ocrAddDependence( NULL_GUID, synchGUID, 0, DB_MODE_RW );
+            ocrEdtCreate( &stencilGUID, PRM_block.stencilTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
+                                EDT_PROP_NONE, NULL_HINT, &stencilOutEVT );
+
+            u32 pCount = sizeof( block_t )/sizeof( u64 );
+            ocrEdtTemplateCreate( &blockTML, blockEdt, pCount, 1 );
+            ocrEdtCreate( &blockGUID, blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
+                                EDT_PROP_NONE, NULL_HINT, NULL );
+
+            u64 i;
+
+            for( i = 0; i < 6; i++ )
+            {
+                ocrGuid_t rcvGUID, rcvOUT;
+                if( PRM_block.comms.neighborRefineLvls[i] == PRM_block.refLvl ) // I expect only one value from this neighbor channel.
+                {
+                    ocrEdtCreate( &rcvGUID, PRM_block.haloRcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                    ocrAddDependence( rcvOUT, stencilGUID, i+1, DB_MODE_RW );
+                    ocrAddDependence( PRM_block.comms.rcv[i*5], rcvGUID, 0, DB_MODE_RW );
+                }
+                else
+                { //I expect 4 values from these neighbors.
+
+                    //PRINTF("%ld\n", PRM_block.id);
+                    ocrEdtCreate( &rcvGUID, PRM_block.haloRcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                    ocrAddDependence( rcvOUT, stencilGUID, i+1, DB_MODE_RW );
+                    u64 base = i*5, offs = 0;
+
+                    for( offs = 0; offs < 4; offs++ ) ocrAddDependence( PRM_block.comms.rcv[base + (offs + 1)], rcvGUID, offs, DB_MODE_RW );
+                }
+
+            }
+            ocrAddDependence( stencilOutEVT, blockGUID, 0, DB_MODE_RW );
+
+            for( i = 0; i < 6; i++ )
+            {
+                u32 pCount = (sizeof(ocrGuid_t)/sizeof(u64)) + 1;
+                ocrGuid_t sndGUID;
+                if( PRM_block.comms.neighborRefineLvls[i] == PRM_block.refLvl )
+                {
+                    ocrEdtCreate( &sndGUID, PRM_block.haloSndTML, pCount, (u64 *)&PRM_block.comms.snd[i*5], 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+                }
+                else
+                {
+                    u32 base = i*5;
+                    ocrEdtCreate( &sndGUID, PRM_block.haloSndTML, pCount * 4, (u64 *)&PRM_block.comms.snd[base+1], 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+                }
+            }
+
+            ocrAddDependence( NULL_GUID, stencilGUID, 0, DB_MODE_RW );
+            ocrEdtTemplateDestroy( blockTML );
+        }
         return NULL_GUID;
     }
 
-    PRINTF("SYNCH %ld finished.\n", PRM_block.id);
+    PRINTF("BLOCK %ld finished.\n", PRM_block.id);
 
     return NULL_GUID;
+
 }
 
 ocrGuid_t connect( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
@@ -211,7 +205,6 @@ ocrGuid_t connect( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrEdtTemplateCreate( &PRM_block.refineSndTML, haloRefineSend, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ocrEdtTemplateCreate( &PRM_block.refineRcvTML, haloRefineRcv, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ocrEdtTemplateCreate( &PRM_block.refineCtrlTML, refineControlEdt, pCount, 0);
-    ocrEdtTemplateCreate( &PRM_block.intentLoopTML, intentLoopEdt, pCount, 1 );
     ocrEdtTemplateCreate( &PRM_block.communicateIntentTML, communicateIntentEdt, pCount, 1 );
     ocrEdtTemplateCreate( &PRM_block.willRefineTML, willRefineEdt, pCount, 1 );
     ocrEdtTemplateCreate( &PRM_block.updateIntentTML, updateIntentEdt, pCount, EDT_PARAM_UNK );
@@ -219,21 +212,12 @@ ocrGuid_t connect( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrEdtTemplateCreate( &PRM_block.stencilTML, stencilEdt, pCount, 7 );
     ocrEdtTemplateCreate( &PRM_block.haloRcvTML, haloRcv, EDT_PARAM_UNK, EDT_PARAM_UNK );
 
-    ocrEdtCreate( &blockGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 7,
+    ocrEdtCreate( &blockGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 1,
                                 NULL, EDT_PROP_NONE, NULL_HINT, NULL );
 
-    ocrGuid_t synchGUID, synchTML;
-
-    ocrEdtTemplateCreate( &synchTML, synch, pCount, 7 );
-    ocrEdtCreate( &synchGUID, synchTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
-                        EDT_PROP_NONE, NULL_HINT, NULL );
-
-
-    for( i = 0; i < 6; i++ ) ocrAddDependence( PRM_block.comms.rcv[i*5], synchGUID, i+1, DB_MODE_RW );
-    for( i = 0; i < 6; i++ ) ocrEventSatisfy( PRM_block.comms.snd[i*5], NULL_GUID );
-
     ocrDbRelease( depv[0].guid );
-    ocrAddDependence( NULL_GUID, synchGUID, 0, DB_MODE_RW );
+    ocrAddDependence( NULL_GUID, blockGUID, 0, DB_MODE_RW );
+
     return NULL_GUID;
 }
 

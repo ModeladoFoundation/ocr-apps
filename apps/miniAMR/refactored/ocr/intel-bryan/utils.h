@@ -58,7 +58,6 @@ typedef struct{
     ocrGuid_t refineSndTML;
     ocrGuid_t refineRcvTML;
     ocrGuid_t refineCtrlTML;
-    ocrGuid_t intentLoopTML;
     ocrGuid_t communicateIntentTML;
     ocrGuid_t willRefineTML;
     ocrGuid_t updateIntentTML;
@@ -67,17 +66,3 @@ typedef struct{
     ocrGuid_t haloRcvTML; //we need to account for 1 or 4 neighbor values inbound.
 }block_t;
 
-
-void addDepsAndSatisfy( ocrGuid_t childGUID, ocrGuid_t * rcvs, ocrGuid_t * snds )
-{
-    u64 i;
-
-    for( i = 1; i < 7; i++ ){
-        ocrAddDependence( rcvs[i-1], childGUID, i, DB_MODE_RW );
-    }
-
-    for( i = 0; i < 6; i++ ){
-        ocrEventSatisfy( snds[i], NULL_GUID );
-    }
-
-}
