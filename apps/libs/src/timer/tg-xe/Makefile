@@ -2,8 +2,8 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-ARCH                 	?= x86
-OCR_TYPE                ?= x86
+ARCH                 	?= tg-xe
+OCR_TYPE                ?= tg
 APPS_ROOT               ?= ../../../..
 
 _INTERNAL_NO_CHECK_WORKLOAD := yes
@@ -28,18 +28,19 @@ INSTALL_LIBS    := $(APPS_LIBS_INSTALL)/lib/$(LIB)
 ### Compilation rules ####
 PREFIX := $(TG_INSTALL)/bin/xstg-linux-elf
 
-CC ?= gcc
-AR := ar
+CC     := $(PREFIX)-clang
+AR     := $(PREFIX)-ar
+
 # add members AND generate index. Ranlib not needed.
 ARFLAGS := rsv
 
 OPT_FLAGS := -O3
 
-INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include
+INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(TG_INSTALL)/include
 
-CFLAGS 	  := -std=c99 -g
+CFLAGS    := -fno-builtin -g
 
-DEFINES   := -DOCR_TYPE_H=$(OCR_TYPE).h
+DEFINES   := -DOCR_TYPE_H=$(ARCH).h
 
 CFLAGS    := $(CFLAGS) $(INC_FLAGS) $(DEFINES) $(OPT_FLAGS)
 

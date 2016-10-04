@@ -1,10 +1,9 @@
 #ifndef __TIMER_H_
 #define __TIMER_H_
 
-
 #define timestamp_t void *
 
-void get_time(timestamp_t t_time);
+void get_time(timestamp_t * t_time);
 
 double elapsed_sec(timestamp_t * start, timestamp_t * stop);
 
