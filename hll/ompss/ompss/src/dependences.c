@@ -25,16 +25,17 @@
  */
 void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 {
-    task_definition_t* taskdef = (task_definition_t*)handler;
+    task_t* task = (task_t*)handler;
 
-    hash_table_t* dependences = getLocalDepMap();
+    // Get running task access map (not "handler"'s)
+    hash_table_t* accesses = &getLocalScope()->accesses;
 
-    data_dependency_t* dep_data = hashTableGet( dependences, start );
+    data_dependency_t* dep_data = hashTableGet( accesses, start );
     // Add read-after-write dependency to previous writer EDTs
-    addDependencyRAW( taskdef, dep_data );
+    addDependencyRAW( task, dep_data );
     // Create read-only section and register read operation
     createReadSection( dep_data );
-    readSectionAddReader( taskdef, dep_data );
+    readSectionAddReader( task, dep_data );
 }
 
 /*! \brief Register a task write access on linear range of addresses
@@ -70,16 +71,17 @@ void nanos_register_write_depinfo(void *handler, void *start, size_t length)
  */
 void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 {
-    task_definition_t* taskdef = (task_definition_t*)handler;
+    task_t* task = (task_t*)handler;
 
-    hash_table_t* dependences = getLocalDepMap();
+    // Get running task access map (not "handler"'s)
+    hash_table_t* accesses = &getLocalScope()->accesses;
 
-    data_dependency_t* dep_data = hashTableGet( dependences, start );
+    data_dependency_t* dep_data = hashTableGet( accesses, start );
     // Add write-after-write dependency to previous writer EDTs
-    addDependencyWAW( taskdef, dep_data );
+    addDependencyWAW( task, dep_data );
     // Create write-section
-    createWriteSection( taskdef, dep_data );
+    createWriteSection( task, dep_data );
     // Add write-after-read dependency to previous reader EDTs
-    addDependencyWAR( taskdef, dep_data );
+    addDependencyWAR( task, dep_data );
 }
 
