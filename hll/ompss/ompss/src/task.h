@@ -12,27 +12,45 @@
 
 #include <nanos6_rt_interface.h>
 
-static inline task_definition_t* newTaskDefinition( nanos_task_info* info, u64 args_size )
+static inline task_t* newTask( nanos_task_info* info, u64 args_size )
 {
-    task_definition_t* td = (task_definition_t*)malloc( sizeof(task_definition_t) + args_size );
+    task_t* task = (task_t*)malloc( sizeof(task_t) + args_size );
 
-    td->args_block = &td[1];
-    td->run_funct = info->run;
-    td->dependences_funct = info->register_depinfo;
+    task->definition.arguments = ((char*)task) + sizeof(task_t); // take care with alignment constraints
+    task->definition.run       = info->run;
+    task->definition.register_dependences = info->register_depinfo;
 
-    newVector( &td->acquire_deps, sizeof(struct _acquire_dep) );
-    newVector( &td->release_deps, sizeof(struct _release_dep) );
+    // Dependence lists
+    newVector( &task->dependences.acquire, sizeof(struct _acquire_dep) );
+    newVector( &task->dependences.release, sizeof(struct _release_dep) );
 
-    newHashTable( &td->local_dependences );
-    return td;
+    // Create necessary edt-local data-structures
+    // Access map for dependence tracking
+    newHashTable( &task->local_scope.accesses );
+    // Create taskwait event and open taskwait region
+    u8 err;
+    err = ocrEventCreate( &task->local_scope.taskwait_evt,
+                          OCR_EVENT_LATCH_T, EVT_PROP_NONE );
+    ASSERT( err == 0 );
+    err = ocrEventSatisfySlot( task->local_scope.taskwait_evt,
+                               NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
+    ASSERT( err == 0 );
+
+    return task;
 }
 
-static inline void destructTaskDefinition( task_definition_t* td )
+static inline void destructTask( task_t* task )
 {
-    destructVector( &td->acquire_deps );
-    destructVector( &td->release_deps );
-    destructHashTable( &td->local_dependences );
-    free(td);
+    // Close taskwait region
+    u8 err;
+    err = ocrEventSatisfySlot( task->local_scope.taskwait_evt,
+                               NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
+    ASSERT( err == 0 );
+
+    destructVector( &task->dependences.acquire );
+    destructVector( &task->dependences.release );
+    destructHashTable( &task->local_scope.accesses );
+    free(task);
 }
 
 #endif // TASK_H

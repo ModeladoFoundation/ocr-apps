@@ -2,14 +2,10 @@
 #ifndef TASK_LOCAL_H
 #define TASK_LOCAL_H
 
-#include <extensions/ocr-runtime-itf.h>
-
 #include "task_decl.h"
 
-typedef struct {
-    hash_table_t local_dependences;
-    ocrGuid_t    taskwait_evt;
-} task_local_storage_t;
+#include <extensions/ocr-runtime-itf.h>
+#include <ocr.h>
 
 // Workaround to convert an ELS ocrGuid_t
 // into a pointer
@@ -31,7 +27,7 @@ static inline void* getTLS( u32 slot )
 {
     // Workaround to get a pointer from EDT local storage
     union _els_to_ptr tmp;
-    tmp.els = ocrElsUserGet( 0U );
+    tmp.els = ocrElsUserGet( slot );
     return (void*)tmp.ptr;
 }
 
@@ -41,14 +37,14 @@ static inline void unsetTLS( u32 slot )
     ocrElsUserSet( slot, NULL_GUID );
 }
 
-static inline void setTaskLocalStorage( task_local_storage_t* tls )
+static inline task_scope_info_t* getLocalScope()
 {
-    setTLS( 0, (void*)tls );
+    return (task_scope_info_t*) getTLS( 0U );
 }
 
-static inline hash_table_t* getLocalDepMap()
+static inline void setLocalScope( task_scope_info_t* scope )
 {
-    return (hash_table_t*)getTLS( 0 );
+    setTLS( 0U, (void*)scope );
 }
 
 #endif // TASK_LOCAL_H

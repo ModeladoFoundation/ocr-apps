@@ -13,10 +13,9 @@ ocrGuid_t ompssMainTemplate;
 
 extern int ompss_user_main( int argc, char* argv[] );
 
-struct main_local_storage
-{
-    hash_table_t local_dependences;
-    int return_value;
+struct main_local_storage {
+    task_scope_info_t local_scope;
+    int               exit_code;
 };
 
 ocrGuid_t edtUserMain(
@@ -25,7 +24,7 @@ ocrGuid_t edtUserMain(
             u32 depc,
             ocrEdtDep_t depv[] )
 {
-    struct main_local_storage* main_data = depv[0].ptr;
+    struct main_local_storage* main_data = depv[0].ptr + sizeof(ocrGuid_t);
 
     void* program_args = depv[1].ptr;
     u64 argc = getArgc( program_args );
@@ -35,10 +34,22 @@ ocrGuid_t edtUserMain(
     }
 
     // Create necessary edt-local data-structures
-    newHashTable( &main_data->local_dependences );
-    setLocalDepMap( &main_data->local_dependences );
+    // Access map for dependence tracking
+    newHashTable( &main_data->local_scope.accesses );
+    // Create taskwait event and open taskwait region
+    u8 err;
+    err = ocrEventCreate( &main_data->local_scope.taskwait_evt,
+                    OCR_EVENT_LATCH_T, EVT_PROP_NONE );
+    ASSERT( err == 0 );
+    err = ocrEventSatisfySlot( main_data->local_scope.taskwait_evt,
+                               NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
+    ASSERT( err == 0 );
 
-    int ret = ompss_user_main( (int)argc, argv );
+    // Store local scope in EDT local storage
+    setLocalScope( &main_data->local_scope );
+
+    // Call user's main function
+    main_data->exit_code = ompss_user_main( (int)argc, argv );
 
     nanos_wait_until_shutdown();
 
@@ -53,14 +64,20 @@ ocrGuid_t edtShutdown(
 {
     // Decode task dependencies
     struct main_local_storage* tls = (struct main_local_storage*)(depv[0].ptr + sizeof(ocrGuid_t));
-    int ret = tls->return_value;
+    int exit_code = tls->exit_code;
 
     // Free task local data storage
-    destructHashTable( &tls->local_dependences );
+    // Access map for dependence tracking
+    destructHashTable( &tls->local_scope.accesses );
+    // Taskwait event: close taskwait region
+    u8 err = ocrEventSatisfySlot( tls->local_scope.taskwait_evt,
+                         NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
+    ASSERT( err == 0 );
+
     ocrDbDestroy( depv[0].guid );
 
-    // If ret == 0, this is equivalent to ocrShutdown
-    ocrAbort(ret);
+    // If exit_code == 0, this is equivalent to ocrShutdown
+    ocrAbort( exit_code );
 
     return NULL_GUID;
 }

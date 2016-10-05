@@ -27,19 +27,19 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
     // Decode arguments and dependences
     // First element of datablock is its own ocrGuid_t
-    task_definition_t* taskdef = (task_definition_t*)(depv[0].ptr + sizeof(ocrGuid_t));
+    task_t* task = (task_t*)(depv[0].ptr + sizeof(ocrGuid_t));
 
     // Create necessary edt-local data-structures
     // Note: we can store local dependences hash map
     // in the stack, since all the successor tasks will be
     // created during run_funct execution.
-    setLocalDepMap( &taskdef->local_dependences );
+    setLocalScope( &task->local_scope );
 
     // Execute outline task
-    taskdef->run_funct( taskdef->args_block );
+    task->definition.run( task->definition.arguments );
 
     // Release dependences
-    releaseDependences( taskdef );
+    releaseDependences( task );
 
     return NULL_GUID;
 }
@@ -48,9 +48,9 @@ ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     // Decode arguments and dependences
     // First element of datablock is its own ocrGuid_t
-    task_definition_t* taskdef = (task_definition_t*)(depv[0].ptr + sizeof(ocrGuid_t));
+    task_t* task = (task_t*)(depv[0].ptr + sizeof(ocrGuid_t));
 
-    destructTaskDefinition( taskdef );
+    destructTask( task );
     return NULL_GUID;
 }
 
