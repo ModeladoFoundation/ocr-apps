@@ -94,10 +94,10 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     catalog_t *catalog = depv[0].ptr;
     ocrGuid_t blockDriverGUID;
 
-    /*ocrEventParams_t params;
+    ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen =   2;
     params.EVENT_CHANNEL.nbSat  =   1;
-    params.EVENT_CHANNEL.nbDeps =   1;*/
+    params.EVENT_CHANNEL.nbDeps =   1;
 
     //u32 dCnt = depc-1;
 
@@ -108,8 +108,8 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     //  - set up new channels in each direction. we will have a total of 4 * 6 non-local channels.
     //  -
     u64 i, j;
-    //bool newChannels = false;
-    //ocrGuid_t internalChannels[6][4];
+    bool newChannels = false;
+    ocrGuid_t internalChannels[6][4];
     //s64 difference = PRM_block.my
 
     //connect all new channels, if needed.
@@ -130,18 +130,22 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         }
     }
 
-    //PRINTF("no new connections to be made; falling back to driverEdt\n");
-    ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    /*
+     * At this point, the new channels are connected to the parent's PRM_block. This is exactly what we want, for a couple of reasons:
+     *  Reason 1:
+     *      we have a way to keep track of the channels once this block joins (coarsens) again, and just in case the neighbors have not coarsened.
+     *  Reason 2:
+     *      once those neighbors are also coarsened, we can destroy our send/rcvs (based on ownership).
+     */
 
-    /*switch( catalog->disposition ) {
+
+    switch( catalog->disposition ) {
 
         case WILL_REFINE:
 
-
-
             for( i = 0; i < 6; i++ )
             {
-              if( catalog->channelsNeeded[i] )
+              if( catalog->channelsNeeded[i] ) //this is for the internal channels.
               {
                 PRINTF("%ld needs new channels in %ld direction\n", PRM_block.id, i );
                 for( j = 0; j < 4; j++ )
@@ -149,9 +153,10 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                     ocrEventCreateParams( &internalChannels[i][j], OCR_EVENT_CHANNEL_T, false, &params );
                 }
               }
-            }*/
+            }
 
-            /*PRINTF("%ld is refining!\n", PRM_block.id);
+            PRINTF("%ld is refining!\n", PRM_block.id);
+
             for( i = 0; i < 8; i++ ) //create new child block.
             {
                 //ocrGuid_t childGUID;
@@ -166,57 +171,51 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                     case 0:
                         {
                         u64 idx = 0;
-                        u64 ddx = 1;
-                        bundle_t *tBundle;
                         //set left direction
                         //send
-                        if( catalog->channelsNeeded[idx] )
-                        {
-                            tBundle = depv[ddx++].ptr;
-                            memcpy( &childBlock.comms.snd[idx], &tBundle->channels[0], sizeof(ocrGuid_t) ); //the channels had to be created in this direction, use the channels sent by this bundle.
-
-
-                        }
-                        else memcpy( &childBlock.comms.snd[idx], &PRM_block.comms.snd[((idx) + 1)], sizeof(ocrGuid_t) );
-
+                        memcpy( &childBlock.comms.snd[idx], &PRM_block.comms.snd[(idx)+1], sizeof(ocrGuid_t) );
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx], &PRM_block.comms.rcv[(idx)+1], sizeof(ocrGuid_t) );
-                        idx = idx+1;*/
+                        idx = idx+1;
+
                         /*---------------------------------------------------------------------------------------*/
 
                         //set right direction
-                        /*if( catalog->channelsNeeded[idx] ) ddx++; //we still need to keep track of the correct dep count.
+                        //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof(ocrGuid_t) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         idx = idx+1;
 
                         //set up direction
-                        if( catalog->channelsNeeded[idx] )
-                        {
-                            tBundle = depv[ddx++].ptr;
-                            memcpy( &childBlock.comms.snd[idx*5], &tBundle->channels[0], sizeof( ocrGuid_t) ); //the channels had to be created in this direction, use the channels sent by this bundle.
-                        }
-                        else memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5) + 1], sizeof(ocrGuid_t ) );
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5) + 1], sizeof(ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5) + 1], sizeof( ocrGuid_t ) );
                         idx = idx+1;
 
                         //set down direction
-                        if( catalog->channelsNeeded[idx] ) ddx++;
+                        //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof(ocrGuid_t) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         idx = idx+1;
 
                         //set front direction
-                        if( catalog->channelsNeeded[idx] ) ddx++;
+                        //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof(ocrGuid_t) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][0], sizeof(ocrGuid_t) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         idx = idx+1;
 
                         //set back direction
-                        if( catalog->channelsNeeded[idx] )
-                        {
-                            tBundle = depv[ddx++].ptr;
-                            memcpy( &childBlock.comms.snd[(idx)*5], &tBundle->channels[0], sizeof( ocrGuid_t ) ); //the channels had to be created i nthis direction, use the channels sent by this bundle.
-                        }
-                        else memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof(ocrGuid_t) );
-
-
+                        //send
+                        memcpy( &childBlock.comms.snd[(idx)*5], &PRM_block.comms.snd[(idx*5)+1], sizeof( ocrGuid_t ) ); //the channels had to be created in this direction, use the channels sent by this bundle.
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[(idx)*5], &PRM_block.comms.rcv[(idx*5)+1], sizeof( ocrGuid_t ) );
                         }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
@@ -224,46 +223,359 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                     case 1:
                         {
                         u64 idx = 0;
-                        u64 ddx = 1;
-                        bundle_t *tBundle;
 
                         //set left direction
-                        if( catalog->channelsNeeded[idx] ) ddx++;
+                        //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof( ocrGuid_t ) );
-                        idx = idx + 1;
+                        //rcv
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx+1][0], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
 
                         //set right direction
-                        if( catalog->channelsNeeded[idx] )
-                        {
-                            tBundle = depv[ddx++].ptr;
-                            memcpy( &childBlock.comms.snd[idx], &tBundle->channels[0], sizeof(ocrGuid_t) );
-                        }
-                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+1], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][1], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][1], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
                         }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
 
                     case 2:
+                        {
+                        u64 idx = 0;
+
+                        //set left direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][1], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][2], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+1], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][0], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 3:
+                        {
+                        u64 idx = 0;
+
+                        //set left direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][1], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][3], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][1], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 4:
+                        {
+                        u64 idx = 0;
+
+                        //set left direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][2], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][0], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+1], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][2], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 5:
+                        {
+                        u64 idx = 0;
+
+                        //set left direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][2], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][1], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][3], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 6:
+                        {
+                        u64 idx = 0;
+
+                        //set left direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][3], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][2], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][2], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][2], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 7:
+                        {
+                        u64 idx = 0;
+
+                        //set left direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][3], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set right direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set up direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][3], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        idx++;
+
+                        //set down direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set front direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
+                        idx++;
+
+                        //set back direction
+                        //send
+                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][3], sizeof( ocrGuid_t ) );
+                        //rcv
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][3], sizeof( ocrGuid_t ) );
+                        childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
+                        }
                         PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                 }
-            }*/
-           /* break;
+
+            ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&childBlock, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+            }
+            break;
         case WONT_REFINE:
             for( i = 0; i < 6; i++ )
             {
@@ -284,7 +596,8 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
             break;
         default:
             break;
-    }*/
+    }
+
 
     return NULL_GUID;
 }
