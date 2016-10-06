@@ -1,6 +1,6 @@
-#define MAY_REFINE  0
-#define WILL_REFINE 1
-#define WONT_REFINE 2
+#define MAY_COARSEN  0
+#define WILL_COARSEN 1
+#define WONT_COARSEN 2
 
 #define MORE_REFINED -1
 #define SAME_REFINED  0
@@ -176,7 +176,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         memcpy( &childBlock.comms.snd[idx], &PRM_block.comms.snd[(idx)+1], sizeof(ocrGuid_t) );
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx], &PRM_block.comms.rcv[(idx)+1], sizeof(ocrGuid_t) );
-                        idx = idx+1;
+                        idx++;
 
                         /*---------------------------------------------------------------------------------------*/
 
@@ -186,14 +186,14 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
-                        idx = idx+1;
+                        idx++;
 
                         //set up direction
                         //send
                         memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5) + 1], sizeof(ocrGuid_t ) );
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5) + 1], sizeof( ocrGuid_t ) );
-                        idx = idx+1;
+                        idx++;
 
                         //set down direction
                         //send
@@ -201,7 +201,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
-                        idx = idx+1;
+                        idx++;
 
                         //set front direction
                         //send
@@ -209,7 +209,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][0], sizeof(ocrGuid_t) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
-                        idx = idx+1;
+                        idx++;
 
                         //set back direction
                         //send
@@ -582,10 +582,13 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                 if( catalog->channelsNeeded[i] == WILL_REFINE ) newChannels = true;
             }
             if( newChannels ) PRINTF("%ld is not refining, but has new channels incoming.\n", PRM_block.id);
+            else
+            {
                 //PRINTF("no new connections to be made; falling back to driverEdt\n");
-            ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 0,
-                NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-
+                ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 0,
+                    NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+                    return NULL_GUID;
+            }
             break;
         case MAY_REFINE:
             PRINTF("block fell to refine while still in the MAY_REFINE state.\n");
@@ -947,19 +950,19 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
     return NULL_GUID;
 }
 
-ocrGuid_t willRefineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t willCoarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof(block_t) );
     refineState_t *rState = (refineState_t *)depv[0].ptr;
     u64 i;
-    for( i = 0; i < 24; i++ ) rState->neighborDisps[i] = MAY_REFINE; //set all neighbor states to MAY_REFINE.
+    for( i = 0; i < 24; i++ ) rState->neighborDisps[i] = MAY_COARSEN; //set all neighbor states to MAY_REFINE.
     if( 0/*I will refine*/ ){
-        rState->disposition = WILL_REFINE;
+        rState->disposition = WILL_COARSEN;
     } else if( 1/*all neighbors are at a point where I won't need to refine, regardless*/ ){
-        rState->disposition = WONT_REFINE;
+        rState->disposition = WONT_COARSEN;
     } else { //we have neighbors at a lower refinement level than us.
-        rState->disposition = MAY_REFINE;
+        rState->disposition = MAY_COARSEN;
     }
 
     if( PRM_block.id == 13 ) rState->disposition = MAY_REFINE;
@@ -968,7 +971,7 @@ ocrGuid_t willRefineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] 
     return depv[0].guid;
 }
 
-ocrGuid_t refineControlEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t coarsenControlEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof(block_t) );

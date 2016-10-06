@@ -109,6 +109,8 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
             PRM_block.timestep++;
 
+            PRINTF("%ld\n", PRM_block.id);
+
             ocrGuid_t stencilGUID, stencilOutEVT;
 
             ocrEdtCreate( &stencilGUID, PRM_block.stencilTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
@@ -124,7 +126,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
             for( i = 0; i < 6; i++ )
             {
                 ocrGuid_t rcvGUID, rcvOUT;
-                if( PRM_block.comms.neighborRefineLvls[i] >= PRM_block.refLvl ) // I expect only one value from this neighbor channel.
+                if( PRM_block.comms.neighborRefineLvls[i] <= PRM_block.refLvl ) // I expect only one value from this neighbor channel.
                 {
                     ocrEdtCreate( &rcvGUID, PRM_block.haloRcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
                     ocrAddDependence( rcvOUT, stencilGUID, i+1, DB_MODE_RW );
@@ -132,8 +134,6 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                 }
                 else
                 { //I expect 4 values from these neighbors.
-
-                    //PRINTF("%ld\n", PRM_block.id);
                     ocrEdtCreate( &rcvGUID, PRM_block.haloRcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
                     ocrAddDependence( rcvOUT, stencilGUID, i+1, DB_MODE_RW );
                     u64 base = i*5, offs = 0;
@@ -148,7 +148,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
             {
                 u32 pCount = (sizeof(ocrGuid_t)/sizeof(u64)) + 1;
                 ocrGuid_t sndGUID;
-                if( PRM_block.comms.neighborRefineLvls[i] >= PRM_block.refLvl )
+                if( PRM_block.comms.neighborRefineLvls[i] <= PRM_block.refLvl )
                 {
                     ocrEdtCreate(&sndGUID, PRM_block.haloSndTML, pCount, (u64 *)&PRM_block.comms.snd[i*5], 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
                 }
