@@ -6,6 +6,11 @@ computes the number of solutions to the N-queens problem for a given N.
 
 Base version is implemented using OpenMP tasks (OpenMP 3.0 or greater required).
 
+Refactored versions include:
+ * OpenMP:
+Task creation is bounded (using final clause) to reduce runtime overhead
+overall impact.
+
 [1] Martin Richards, "Backtracking algorithms in MCPL using Bit
                       Patterns and Recursion"; online, available 10/07/2016
 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.51.7113&rep=rep1&type=pdf
