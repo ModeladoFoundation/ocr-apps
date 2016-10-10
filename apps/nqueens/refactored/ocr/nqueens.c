@@ -2,28 +2,16 @@
 // \author Jorge Bellon <jbellonc@intel.com>
 //
 
-// TODO substitute atoi by OCR's SAL version
-#include <stdlib.h>
+#include "nqueens.h"
+
 #include <ocr.h>
+#include <stdatomic.h>
+#include <stdlib.h>
+
+atomic_uint solutions = ATOMIC_VAR_INIT(0U);
 
 ocrGuid_t findTemplate;
 ocrGuid_t shutdownTemplate;
-
-// Computes Hamming-weight for an arbitrary integer
-static inline u32 NumberOfSetBits(u32 i)
-{
-    i = i - ((i >> 1) & 0x55555555);
-    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-    return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-}
-
-struct nqueens_args
-{
-    u32       all;
-    u32       ldiag;
-    u32       cols;
-    u32       rdiag;
-};
 
 static inline void create_task( struct nqueens_args* args, ocrGuid_t* output )
 {
