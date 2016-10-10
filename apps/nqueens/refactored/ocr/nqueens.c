@@ -1,0 +1,130 @@
+// \file nqueens.c
+// \author Jorge Bellon <jbellonc@intel.com>
+//
+
+// TODO substitute atoi by OCR's SAL version
+#include <stdlib.h>
+#include <ocr.h>
+
+ocrGuid_t findTemplate;
+ocrGuid_t shutdownTemplate;
+
+// Computes Hamming-weight for an arbitrary integer
+static inline u32 NumberOfSetBits(u32 i)
+{
+    i = i - ((i >> 1) & 0x55555555);
+    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+    return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+struct nqueens_args
+{
+    u32       all;
+    u32       ldiag;
+    u32       cols;
+    u32       rdiag;
+};
+
+static inline void create_task( struct nqueens_args* args, ocrGuid_t* output )
+{
+    u32 paramc = sizeof(struct nqueens_args)/sizeof(u64)+1;
+    u64* paramv = (u64*)args;
+
+    ocrGuid_t edt;
+    u8 err = ocrEdtCreate( &edt, findTemplate, paramc, paramv, 0, NULL,
+                  EDT_PROP_FINISH, NULL_HINT, output );
+    ASSERT( err == 0 );
+}
+
+static void find_solutions( const struct nqueens_args* args, u8 final )
+{
+    if( args->cols != args->all ) {
+        u32 available = ~( args->ldiag | args->cols | args->rdiag ) & args->all;
+        u32 spot = available & (-available);
+
+        struct nqueens_args arguments;
+        arguments.all = args->all;
+
+        while( spot != 0 ) {
+            arguments.ldiag = (args->ldiag|spot)<<1;
+            arguments.cols  = (args->cols|spot);
+            arguments.rdiag = (args->rdiag|spot)>>1;
+
+            if( final ) {
+                find_solutions( &arguments, final );
+            } else {
+                create_task( &arguments, NULL );
+            }
+
+            available = available - spot;
+            spot = available & (-available);
+        }
+    } else {
+        // A solution was found!
+        solution_found();
+    }
+}
+
+// Find solutions: recursive EDT
+ocrGuid_t findSolutionsEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    // Decode EDT paramv
+    const struct nqueens_args* args = (struct nqueens_args*)paramv;
+    const u8 final = NumberOfSetBits(args->cols) > 4;
+
+    find_solutions( args, final );
+
+    return NULL_GUID;
+}
+
+void solve_nqueens( u32 n )
+{
+    struct nqueens_args arguments = {
+        .all = (1 << n) - 1, .ldiag = 0, .cols = 0, .rdiag = 0 };
+
+    ocrGuid_t outEvent;
+    create_task( &arguments, &outEvent );
+
+    ocrGuid_t shutdownEdt;
+    u64 paramv = n;
+    u8 err = ocrEdtCreate( &shutdownEdt, shutdownTemplate,
+                  1, &paramv, 1, &outEvent,
+                  EDT_PROP_NONE, NULL_HINT, NULL );
+    ASSERT( err == 0 );
+}
+
+ocrGuid_t shutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    u32 found = get_solution_number();
+    PRINTF( "%d-queens; %dx%d; sols: %d\n",
+            paramv[0], paramv[0], paramv[0], found );
+
+    u8 err;
+    err = ocrEdtTemplateDestroy( findTemplate );
+    ASSERT( err == 0 );
+
+    err = ocrEdtTemplateDestroy( shutdownTemplate );
+    ASSERT( err == 0 );
+
+    ocrShutdown();
+}
+
+ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    ASSERT( getArgc(depv[0].ptr) == 2 );
+
+    u32 n = atoi( getArgv(depv[0].ptr,1) );
+    ASSERT( 0 < n && n < 31 );
+
+    u8 err;
+    err = ocrEdtTemplateCreate( &findTemplate, findSolutionsEdt,
+                          sizeof(struct nqueens_args)/sizeof(u64)+1, 0 );
+    ASSERT( err == 0 );
+
+    err = ocrEdtTemplateCreate( &shutdownTemplate, shutdown, 1, 1 );
+    ASSERT( err == 0 );
+
+    solve_nqueens( n );
+    return NULL_GUID;
+}
+
