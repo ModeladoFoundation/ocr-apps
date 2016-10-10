@@ -1,4 +1,7 @@
 
+10/10/2016:
+	- Ported OmpSs implementation to native OCR.
+
 10/07/2016:
 	- Base implementation using OpenMP tasks
 	- Refactored implementation with bounded task creation.
