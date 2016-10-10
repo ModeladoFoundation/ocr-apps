@@ -53,7 +53,7 @@ TARGET := nqueens
 REQ_LIBS := libc
 
 # Space separated list of source files
-SRCS := nqueens.c atomic.c
+SRCS := nqueens.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
