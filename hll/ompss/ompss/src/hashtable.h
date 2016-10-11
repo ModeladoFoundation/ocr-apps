@@ -68,6 +68,16 @@ static inline void destructHashBucket( struct _ht_bucket** bucket )
  */
 static inline value_t* hashTableGet( hash_table_t* table, key_t key )
 {
+    if( table->size == 0 ) {
+        // Lazy initialization
+        table->data = malloc( DEFAULT_TABLE_SIZE * sizeof( struct _ht_bucket* ) );
+        table->size = DEFAULT_TABLE_SIZE;
+
+        // Initialize table to NULL pointer values
+        for( u32 b = 0; b < table->size; ++b )
+            table->data[b] = NULL;
+    }
+
     u32 pos = hash_funct( key ) % table->size;
 
     struct _ht_bucket* last = NULL;
@@ -109,12 +119,8 @@ static inline void hashTableRemove( hash_table_t* table, key_t key )
 
 static inline void newHashTable( hash_table_t* table )
 {
-    table->data = (struct _ht_bucket**)malloc( DEFAULT_TABLE_SIZE * sizeof( struct _ht_bucket* ) );
-    table->size = DEFAULT_TABLE_SIZE;
-
-    // Initialize table to NULL pointer values
-    for( u32 b = 0; b < table->size; ++b )
-        table->data[b] = NULL;
+    table->data = NULL;
+    table->size = 0;
 }
 
 static inline void destructHashTable( hash_table_t* table )
