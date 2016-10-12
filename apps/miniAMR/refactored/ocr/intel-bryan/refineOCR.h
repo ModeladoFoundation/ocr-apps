@@ -176,7 +176,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         memcpy( &childBlock.comms.snd[idx], &PRM_block.comms.snd[(idx)+1], sizeof(ocrGuid_t) );
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx], &PRM_block.comms.rcv[(idx)+1], sizeof(ocrGuid_t) );
-                        idx = idx+1;
+                        idx++;
 
                         /*---------------------------------------------------------------------------------------*/
 
@@ -184,16 +184,16 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof(ocrGuid_t) );
                         //rcv
-                        memcpy( &childBlock.comms.rcv[idx], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
-                        idx = idx+1;
+                        idx++;
 
                         //set up direction
                         //send
                         memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5) + 1], sizeof(ocrGuid_t ) );
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5) + 1], sizeof( ocrGuid_t ) );
-                        idx = idx+1;
+                        idx++;
 
                         //set down direction
                         //send
@@ -201,7 +201,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][0], sizeof(ocrGuid_t) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
-                        idx = idx+1;
+                        idx++;
 
                         //set front direction
                         //send
@@ -228,7 +228,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][0], sizeof( ocrGuid_t ) );
                         //rcv
-                        memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx+1][0], sizeof( ocrGuid_t ) );
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][0], sizeof( ocrGuid_t ) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         idx++;
 
@@ -337,7 +337,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //send
                         memcpy( &childBlock.comms.snd[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
                         //rcv
-                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.snd[(idx*5)+2], sizeof( ocrGuid_t ) );
+                        memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
                         idx++;
 
                         //set up direction
