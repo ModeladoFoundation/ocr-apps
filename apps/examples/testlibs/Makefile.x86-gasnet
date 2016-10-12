@@ -1,0 +1,11 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+CONFIG_COMM_LAYER=gasnet
+EXTRALDFLAGS=-L${GASNET_ROOT}/lib -lgasnet-${GASNET_CONDUIT}-${GASNET_TYPE} ${GASNET_EXTRA_LIBS}
+
+OCR_TYPE := x86-gasnet
+
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(TOP)/Makefile.x86-base

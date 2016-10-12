@@ -283,7 +283,7 @@ $(WORKLOAD_BUILD)/%.d: ;
 # of the libocrxe dependence
 # Other rules for the blobs follow similar ideas
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a | libocrxe $(WORKLOAD_BUILD)
-	$(AT)$(LD) -o $@ $(OBJS) $(LDFLAGS) --whole-archive $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a
+	$(AT)$(LD) -o $@ $(OBJS) --whole-archive $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a --no-whole-archive $(LDFLAGS)
 
 $(WORKLOAD_BUILD)/$(TARGET): $(WORKLOAD_BUILD)/$(TARGET).dbg | $(WORKLOAD_BUILD)
 	$(AT)$(RM) -f $(WORKLOAD_BUILD)/$(TARGET)
