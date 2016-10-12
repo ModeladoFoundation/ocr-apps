@@ -947,7 +947,7 @@ _OCR_TASK_FNC_( FNC_initialize )
     PTR_norm_reductionH->rangeGUID = PTR_globalOcrParamH->normReductionRangeGUID;
     PTR_norm_reductionH->reductionTML = NULL_GUID;
     PTR_norm_reductionH->new = 1;  //first time
-    PTR_norm_reductionH->all = 1;  //go up and down (ALL_REDUCE)
+    PTR_norm_reductionH->type = ALLREDUCE;
     ocrEventCreate( &(PTR_rankH->EVT_OUT_norm_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
     PTR_norm_reductionH->returnEVT = PTR_rankH->EVT_OUT_norm_reduction;
 
@@ -958,7 +958,7 @@ _OCR_TASK_FNC_( FNC_initialize )
     PTR_timer_reductionH->rangeGUID = PTR_globalOcrParamH->timerReductionRangeGUID;
     PTR_timer_reductionH->reductionTML = NULL_GUID;
     PTR_timer_reductionH->new = 1;  //first time
-    PTR_timer_reductionH->all = 1;  //go up and down (ALL_REDUCE)
+    PTR_timer_reductionH->type = ALLREDUCE;
     ocrEventCreate( &(PTR_rankH->EVT_OUT_timer_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
     PTR_timer_reductionH->returnEVT = PTR_rankH->EVT_OUT_timer_reduction;
 

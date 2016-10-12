@@ -778,6 +778,10 @@ ocrGuid_t redistributeAtomsEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
 ocrGuid_t printThingsEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 {
     s64 itimestep = paramv[0];
+    u64 iBox = paramv[1];
+
+    if( iBox == 0 )
+    {
 
     real_t* eGlobalPTR = depv[0].ptr;
 
@@ -798,6 +802,7 @@ ocrGuid_t printThingsEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     PRINTF( "%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
          itimestep, itimestep*1.0, energy, e_u, e_k, temp, -1.0, nGlobal );
+    }
 
     return NULL_GUID;
 }
@@ -880,8 +885,6 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     u32 iBox = pbPTR->myrank;
     //PRINTF("iBox %d t %d\n", iBox, itimestep);
-
-    rpKePTR->all = 0;
 
     ocrGuid_t rpKeEVT = rpKePTR->returnEVT;
 
@@ -1036,14 +1039,15 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence( advanceVelocityOEVTS1, kineticEnergyEDT1, _idep++, DB_MODE_NULL );
 
         ////Print things
-        if(iBox == 0)
-        {
+        //if(iBox == 0)
+        //{
             ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
 
-            ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 2 );
+            ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 2, 2 );
+            u64 printThingsParamv[2] = {itimestep, iBox};
 
             ocrEdtCreate( &printThingsEDT, printThingsTML,
-                          EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                          EDT_PARAM_DEF, (u64*) &printThingsParamv, EDT_PARAM_DEF, NULL,
                           EDT_PROP_NONE, &pbPTR->myAffinityHNT, &printThingsOEVT );
 
             ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
@@ -1052,7 +1056,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
             _idep = 0;
             ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( kineticEnergyOEVTS1, printThingsEDT, _idep++, DB_MODE_RW );
-        }
+        //}
 
 
     }
@@ -1071,6 +1075,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 ocrGuid_t timestepLoopEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 {
     s64 itimestep = paramv[0];
+    s64 iBox = paramv[1];
 
     ocrGuid_t cmd_g = depv[0].guid;
     ocrGuid_t sbDBK = depv[1].guid;
@@ -1117,11 +1122,12 @@ ocrGuid_t timestepLoopEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     {
     //start next timestep
         ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
+        u64 Paramv[2] = {itimestep, iBox};
 
-        ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 1, 8 );
+        ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 2, 8 );
 
         ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
-                      EDT_PARAM_DEF, (u64*)&itimestep, EDT_PARAM_DEF, NULL,
+                      EDT_PARAM_DEF, (u64*)&Paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &pbPTR->myAffinityHNT, &timestepLoopOEVT );
 
         ocrEventCreate( &timestepLoopOEVTS, OCR_EVENT_STICKY_T, false );
@@ -1139,7 +1145,7 @@ ocrGuid_t timestepLoopEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     }
     else
     {
-        rpKePTR->returnEVT = pbPTR->finalOnceEVT;
+        if(iBox==0) rpKePTR->returnEVT = pbPTR->finalOnceEVT;
     }
 
     return NULL_GUID;
@@ -1398,14 +1404,15 @@ ocrGuid_t comdEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     ////Print things
     s64 itimestep = 0;
-    if(iBox == 0)
-    {
+    //if(iBox == 0)
+    //{
     ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
+    u64 Paramv[2] = {itimestep, iBox};
 
-    ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 1, 1 );
+    ocrEdtTemplateCreate( &printThingsTML, printThingsEdt, 2, 2 );
 
     ocrEdtCreate( &printThingsEDT, printThingsTML,
-                  EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, (u64*) &Paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &pbPTR->myAffinityHNT, &printThingsOEVT );
 
     ocrEventCreate( &printThingsOEVTS, OCR_EVENT_STICKY_T, false );
@@ -1416,7 +1423,8 @@ ocrGuid_t comdEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     //ocrAddDependence( DBK_atomData, printThingsEDT, _idep++, DB_MODE_RW );
     //ocrAddDependence( DBK_mass, printThingsEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RW );
-    }
+    ocrAddDependence( kineticEnergyOEVTS1, printThingsEDT, _idep++, DB_MODE_RW );
+    //}
 
     #endif
 
@@ -1426,10 +1434,10 @@ ocrGuid_t comdEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     {
     ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
-    ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 1, 8 );
+    ocrEdtTemplateCreate( &timestepLoopTML, timestepLoopEdt, 2, 8 );
 
     ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
-                  EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, (u64*) &Paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &pbPTR->myAffinityHNT, &timestepLoopOEVT );
 
     ocrEventCreate( &timestepLoopOEVTS, OCR_EVENT_STICKY_T, false );
@@ -1554,7 +1562,7 @@ ocrGuid_t comdInitEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
     rpVcmPTR->rangeGUID = sbPTR->vcmReductionRangeGUID;
     rpVcmPTR->reductionTML = NULL_GUID;
     rpVcmPTR->new = 1;  //first time
-    rpVcmPTR->all = 1;  //go up and down (ALL_REDUCE)
+    rpVcmPTR->type = ALLREDUCE;
 
     ocrEventCreateParams(&(rpVcmPTR->returnEVT), OCR_EVENT_CHANNEL_T, true, &params);//TODO
 
@@ -1565,7 +1573,7 @@ ocrGuid_t comdInitEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
     rpKePTR->rangeGUID = sbPTR->KeReductionRangeGUID;
     rpKePTR->reductionTML = NULL_GUID;
     rpKePTR->new = 1;  //first time
-    rpKePTR->all = 1;  //go up and down (ALL_REDUCE)
+    rpKePTR->type = ALLREDUCE;
 
     ocrEventCreateParams(&(rpKePTR->returnEVT), OCR_EVENT_CHANNEL_T, true, &params);
 

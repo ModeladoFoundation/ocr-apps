@@ -63,8 +63,6 @@ SRCS := CoMD.c wtime.c command.c lj.c eam.c timers.c
 OBJS := $(notdir $(SRCS:.c=.o))
 $(OBJS): command.h  constants.h	potentials.h timers.h
 
-ASAN_FLAGS := -fsanitize=address -fno-omit-frame-pointer -asan-stack=0
-
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim

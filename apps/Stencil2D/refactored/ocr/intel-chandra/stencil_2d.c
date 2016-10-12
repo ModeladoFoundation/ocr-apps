@@ -691,7 +691,7 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PTR_reductionH->rangeGUID = PTR_globalH->EVT_RANGE_reduction;
     PTR_reductionH->reductionTML = NULL_GUID;
     PTR_reductionH->new = 1;  //first time
-    PTR_reductionH->all = 0;  //go up and down (ALL_REDUCE)
+    PTR_reductionH->type = REDUCE;
     //ocrEventCreate(&(PTR_reductionH->returnEVT), OCR_EVENT_ONCE_T, true);
     if(id==0) PTR_reductionH->returnEVT = PTR_globalH->EVT_OUT_norm_reduction;
 
@@ -702,7 +702,7 @@ ocrGuid_t FNC_init_rankH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     PTR_timer_reductionH->rangeGUID = PTR_globalH->EVT_RANGE_timer_reduction;
     PTR_timer_reductionH->reductionTML = NULL_GUID;
     PTR_timer_reductionH->new = 1;  //first time
-    PTR_timer_reductionH->all = 0;  //go up and down (ALL_REDUCE)
+    PTR_timer_reductionH->type = REDUCE;
     //ocrEventCreate(&(PTR_timer_reductionH->returnEVT), OCR_EVENT_ONCE_T, true);
     if(id==0) PTR_timer_reductionH->returnEVT = PTR_globalH->EVT_OUT_timer_reduction;
 

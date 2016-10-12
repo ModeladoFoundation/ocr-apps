@@ -51,28 +51,33 @@ typedef enum {
     REDUCTION_U4_BITXOR
     } reductionOperator_t;
 
+typedef enum {
+    REDUCE,
+    ALLREDUCE,
+    BROADCAST}
+    reductionType;
+
 typedef struct {
+    u64 new; //should be set to true on first call or if any parameters change
     u64 nrank;
     u64 myrank;
     u64 ndata;      //number of elements to be reduced
-/*
-0 only used when new is true
-1 receiving from below
-2 sending up
-3 receiving from above
-4 sending down (and returning answer)
-*/
-    u64 new; //should be set to true on first call or if any parameters change
-    u64 all; //should be 1 for ALL-REDUCE and 0 for only rank 0 returns
-    u64 up;
+                    //for BROADCAST, number of BYTES being sent
+    reductionType type;
     reductionOperator_t reductionOperator; //which reduction to do (in reduction.h)
     ocrGuid_t rangeGUID; //nrank-1 labeled STICKY GUIDs (used only once to set up channels)
+    ocrGuid_t returnEVT; //event to return the result, different for each rank
+//used internally
+    u64 size; //number of bytes being sent/received
+    u64 phase;
+//    phase == 0, start
+//    phase == 1, i received up
+//    phase == 2, i received down
     ocrGuid_t sendUpEVT;
     ocrGuid_t recvUpEVT[ARITY];
     ocrGuid_t sendDownEVT[ARITY];
     ocrGuid_t recvDownEVT;
-    ocrGuid_t returnEVT; //ONCE event to return the result, different for each rank
-    ocrGuid_t reductionTML;    //initialized to NULL_GUID
+    ocrGuid_t reductionTML;
     ocrHint_t myAffinity;
 } reductionPrivate_t;
 

@@ -210,7 +210,7 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     PTR_rankH->rpKePTR->rangeGUID = PTR_globalOcrParamH->KeReductionRangeGUID;
     PTR_rankH->rpKePTR->reductionTML = NULL_GUID;
     PTR_rankH->rpKePTR->new = 1;  //first time
-    PTR_rankH->rpKePTR->all = 1;  //go up and down (ALL_REDUCE)
+    PTR_rankH->rpKePTR->type = ALLREDUCE;
 
     ocrEventCreateParams(&(PTR_rankH->rpKeEVT), OCR_EVENT_CHANNEL_T, true, &params);//TODO
     PTR_rankH->rpKePTR->returnEVT = PTR_rankH->rpKeEVT;
@@ -224,7 +224,7 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     PTR_rankH->rpVcmPTR->rangeGUID = PTR_globalOcrParamH->VcmReductionRangeGUID;
     PTR_rankH->rpVcmPTR->reductionTML = NULL_GUID;
     PTR_rankH->rpVcmPTR->new = 1;  //first time
-    PTR_rankH->rpVcmPTR->all = 1;  //go up and down (ALL_REDUCE)
+    PTR_rankH->rpVcmPTR->type = ALLREDUCE;
 
     ocrEventCreateParams(&(PTR_rankH->rpVcmEVT), OCR_EVENT_CHANNEL_T, true, &params);//TODO
     PTR_rankH->rpVcmPTR->returnEVT = PTR_rankH->rpVcmEVT;
@@ -238,7 +238,7 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     PTR_rankH->rpmaxOccupancyPTR->rangeGUID = PTR_globalOcrParamH->maxOccupancyReductionRangeGUID;
     PTR_rankH->rpmaxOccupancyPTR->reductionTML = NULL_GUID;
     PTR_rankH->rpmaxOccupancyPTR->new = 1;  //first time
-    PTR_rankH->rpmaxOccupancyPTR->all = 1;  //go up and down (ALL_REDUCE)
+    PTR_rankH->rpmaxOccupancyPTR->type = ALLREDUCE;
 
     ocrEventCreateParams(&(PTR_rankH->rpmaxOccupancyEVT), OCR_EVENT_CHANNEL_T, true, &params);//TODO
     PTR_rankH->rpmaxOccupancyPTR->returnEVT = PTR_rankH->rpmaxOccupancyEVT;
@@ -252,7 +252,7 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     PTR_rankH->rpPerfTimerPTR->rangeGUID = PTR_globalOcrParamH->perfTimerReductionRangeGUID;
     PTR_rankH->rpPerfTimerPTR->reductionTML = NULL_GUID;
     PTR_rankH->rpPerfTimerPTR->new = 1;  //first time
-    PTR_rankH->rpPerfTimerPTR->all = 0;  //go up and down (ALL_REDUCE)
+    PTR_rankH->rpPerfTimerPTR->type = REDUCE;
 
     ocrEventCreateParams(&(PTR_rankH->rpPerfTimerEVT), OCR_EVENT_CHANNEL_T, true, &params);//TODO
     PTR_rankH->rpPerfTimerPTR->returnEVT = PTR_rankH->rpPerfTimerEVT;

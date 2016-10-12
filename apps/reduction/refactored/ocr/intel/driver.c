@@ -1,4 +1,3 @@
-
 /*
 Author: David S Scott
  Copyright Intel Corporation 2015
@@ -48,9 +47,12 @@ T is the number of iterations
 
 These values can be entered as RUNTIME_ARGS
 
+As written this currently tests only the ALLREDUCE version of the reduction library
+
 */
 
 // Externally defined SHOW_RESULTS
+#define SHOW_RESULTS
 
 #include <string.h>
 #include <stdio.h>
@@ -146,13 +148,13 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
     if(timestep == 0) {
 //initialize
         for(i=0;i<ndata;i++) {
-            a[i] = i*myrank;
+            a[i] = i*(myrank+1);
         }
      }else{
 //copy
 
 #ifdef SHOW_RESULTS
-        if(myrank == 0 && timestep >= maxtimestep) {
+        if(myrank == 0 && timestep <= maxtimestep) {
             for(i=0;i<ndata;i++)
                 PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
         }
@@ -164,6 +166,7 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
 
     if(timestep >= maxtimestep) {
         if(myrank == 0) ocrAddDependence(NULL_GUID, privatePTR->wrapupEDT, SLOT(wrapup, control), DB_MODE_RO);
+
         return NULL_GUID;
     }
 
@@ -171,32 +174,25 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
 
     ocrGuid_t driverEDT;
 
-
-    if(privatePTR->timestep == privatePTR->maxtimestep) {
-        reductionPrivatePTR->all = 0;
-        if(myrank != 0) {
-            reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), DEPV(driver,myData,ptr));
-            return NULL_GUID;
-        }
-    }
-
 //create clone
     ocrEdtCreate(&driverEDT, privatePTR->driverTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &(privatePTR->myAffinityHNT), NULL);
 
     ocrDbRelease(DEPV(driver,private,guid));
     ocrAddDependence(DEPV(driver,private,guid),driverEDT, SLOT(driver,private), DB_MODE_RW);
     ocrAddDependence(DEPV(driver,reductionPrivate,guid),driverEDT, SLOT(driver,reductionPrivate), DB_MODE_RW);
-    ocrAddDependence(reductionPrivatePTR->returnEVT, driverEDT, SLOT(driver,returnData), DB_MODE_RO);
+    if((reductionPrivatePTR->type == REDUCE && myrank !=0) || (reductionPrivatePTR->type == BROADCAST && myrank == 0))
+       ocrAddDependence(DEPV(driver,myData,guid), driverEDT, SLOT(driver,returnData), DB_MODE_RO);
+    else
+       ocrAddDependence(reductionPrivatePTR->returnEVT, driverEDT, SLOT(driver,returnData), DB_MODE_RO);
 
-//create and launch reduceEdt
 
     reductionLaunch(DEPV(driver,reductionPrivate,ptr), DEPV(driver,reductionPrivate,guid), a);
 
+
 //finish clone
     ocrDbRelease(DEPV(driver,myData,guid));
-    ocrAddDependence(DEPV(driver,myData,guid),driverEDT, SLOT(driver,myData), DB_MODE_RW);
+if((reductionPrivatePTR->type == ALLREDUCE) || (myrank != 0 && reductionPrivatePTR->type == BROADCAST) || (myrank == 0 && reductionPrivatePTR->type == REDUCE))    ocrAddDependence(DEPV(driver,myData,guid),driverEDT, SLOT(driver,myData), DB_MODE_RW);
 
-//PRINTF("C%d T%d return NULL_GUID \n", myrank, timestep);
     return NULL_GUID;
 }
 
@@ -238,11 +234,12 @@ launch driverEDT
 
     reductionPrivatePTR->nrank = sharedPTR->nrank;
     reductionPrivatePTR->myrank = myrank;
-    reductionPrivatePTR->ndata = sharedPTR->ndata;
     reductionPrivatePTR->reductionOperator = REDUCTION_F8_ADD;
     reductionPrivatePTR->rangeGUID = sharedPTR->reductionRangeGUID;
     reductionPrivatePTR->new = 1;
-    reductionPrivatePTR->all = 1;
+    reductionPrivatePTR->type = ALLREDUCE;
+    reductionPrivatePTR->ndata = sharedPTR->ndata;
+    if(reductionPrivatePTR->type == BROADCAST) reductionPrivatePTR->ndata = 8*sharedPTR->ndata;
 //printf("IR%d ndata %d \n", myrank, reductionPrivatePTR->ndata);
 //fflush(stdout);
     //ocrDbCreate(&(reductionPrivatePTR->downDBK), (void**) &dummy, reductionPrivatePTR->ndata*sizeof(double), 0, NULL_HINT, NO_ALLOC);

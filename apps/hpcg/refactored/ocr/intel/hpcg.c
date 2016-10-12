@@ -25,6 +25,7 @@ Sept 2016: changed timer function
 Sept 2016: fixed 3 bugs: f2c, wrong update coming up in multigrid, wrong vector in one call to Halo Exchange
 Sept 2016: added "NO_*" controls
 Sept 2016: added timing each phase separately on each node
+Oct  2016: modified to support reduction library change (ALLREDUCE, REDUCE, BROADCAST)
 
 */
 
@@ -1478,7 +1479,7 @@ for(i=0;i<pbPTR->maxIter;i++)
             sum = 0;
             for(i=0;i<pbPTR->mt[0];i++) sum += (1-x[i])*(1-x[i]);
             *myDataPTR = sum;
-            rpPTR->all = 0;
+            rpPTR->type = REDUCE;
 	    rpPTR->returnEVT = pbPTR->finalOnceEVT;
             reductionLaunch(rpPTR, rpDBK, myDataPTR);
             ocrDbDestroy(returnDBK);
@@ -1882,7 +1883,7 @@ if(sbPTR->debug > 0) PRINTF("I%d\n", myrank);
     rpPTR->rangeGUID = sbPTR->reductionRangeGUID;
     rpPTR->reductionTML = NULL_GUID;
     rpPTR->new = 1;  //first time
-    rpPTR->all = 1;  //go up and down (ALL_REDUCE)
+    rpPTR->type = ALLREDUCE;  //go up and down (ALL_REDUCE)
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 2;
