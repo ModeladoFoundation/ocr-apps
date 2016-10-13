@@ -35,6 +35,8 @@ out: \[thread \d terminated\]
 out: \[thread \d terminated\]
 out: \[Inferior 1 \(process \d+\) exited with code \d+\]
 
+sleep: 5
+
 in: run
 out: Starting program:
 out: \[New thread 1\]

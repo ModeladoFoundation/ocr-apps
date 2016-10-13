@@ -21,6 +21,8 @@ out: \[New thread
 out: \[thread .* terminated
 out: \[Inferior .* \(process .*\) exited with code \d+\]
 
+sleep: 5
+
 in: run
 out: Starting program:
 out: \[New thread

@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 blank_line_string = "^(?#__blank_line__)$"
 python_string = "__PYTHON_OUTPUT__: "
@@ -103,6 +104,10 @@ def _run_test(testpath, testname):
                     args = line[8:].format(**os.environ)
                     voutput("(gdb) set args", args, "\n")
                     voutput(gdb.execute("set args " + args, from_tty=True, to_string=True))
+
+                elif line.startswith("sleep: "):
+                    arg = line[7:]
+                    time.sleep(int(arg))
 
                 # Execute command
                 elif line.startswith("in: "):
