@@ -2145,20 +2145,15 @@ ocr_alloc(size_t size)
   size_t page_mask = malloc_getpagesize - 1;
   ocr_db_info *info;
   ocrGuid_t db;
-  ocrGuid_t affinity;
   ocrInDbAllocator_t allocator = NO_ALLOC;
   uint8_t ret;
-
-  /* get the affinity of this EDT */
-  if (ocrAffinityGetCurrent(&affinity) != 0)
-    return NULL;
 
   /* All allocated regions start on an 8 byte boundary and we put an 8 byte
    * info header on it first.
    */
   size = (size + sizeof(ocr_db_info) + page_mask) & ~page_mask;
 
-  ret = ocrDbCreate( &db, (void *)&info, size, 0, affinity, allocator );
+  ret = ocrDbCreate( &db, (void *)&info, size, 0, NULL, allocator );
   if(ret != 0)
     return NULL;
 
