@@ -32,12 +32,9 @@ Copywrite Intel Corporation 2015
 
 void initSpecies(SpeciesData* species, BasePotential* pot)
 {
-   //SpeciesData* species = comdMalloc(sizeof(SpeciesData));
-
    strcpy(species->name, pot->name);
    species->atomicNo = pot->atomicNo;
    species->mass = pot->mass;
-
 }
 
 /// Check that the user input meets certain criteria.
@@ -116,7 +113,7 @@ void initSimulation(SimFlat* sim, rankH_t* PTR_rankH, u64 id)
    sim->dt = cmd.dt;
    sim->ePotential = 0.0;
    sim->eKinetic = 0.0;
-   //sim->atomExchange = NULL;
+   sim->atomExchange = NULL;
 
    sim->DBK_pot = initPotential(&sim->pot, cmd.doeam, cmd.potDir, cmd.potName, cmd.potType);
    real_t latticeConstant = cmd.lat;
@@ -147,23 +144,8 @@ void initSimulation(SimFlat* sim, rankH_t* PTR_rankH, u64 id)
 
    setMomentumAndComputeVcm(sim, cmd.temperature);
 
-   //randomDisplacements(sim, cmd.initialDelta);
-
    sim->atomExchange = &sim->atomExchange_INST;
    initAtomHaloExchange(sim->atomExchange, sim->domain, sim->boxes);
-
-   // Forces must be computed before we call the time stepper.
-   //startTimer(redistributeTimer);
-   //redistributeAtoms(sim);
-   //stopTimer(redistributeTimer);
-
-   //startTimer(computeForceTimer);
-   //computeForce(sim);
-   //stopTimer(computeForceTimer);
-
-   //kineticEnergy(sim);
-
-   //return sim;
 }
 
 void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT )
@@ -176,7 +158,6 @@ void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PT
 
     ocrSetHintValue( PTR_myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
     ocrSetHintValue( PTR_myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
-
 }
 
 void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
@@ -201,17 +182,21 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     ocrEdtTemplateCreate( &PTR_rankTemplateH->advanceVelocityTML, advanceVelocityEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->advancePositionTML, advancePositionEdt, 1, 6 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->redistributeAtomsTML, redistributeAtomsEdt, 1, 3 );
-    ocrEdtTemplateCreate( &PTR_rankTemplateH->computeForceTML, computeForceEdt, 0, 4 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->computeForceTML, computeForceEdt, 1, 4 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->kineticEnergyTML, kineticEnergyEdt, 0, 7 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->printThingsTML, printThingsEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->timestepLoopTML, timestepLoopEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->timestepTML, timestepEdt, 1, 4 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->updateLinkCellsTML, updateLinkCellsEdt, 0, 9 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->haloExchangeTML, haloExchangeEdt, 2, 4 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->forceHaloExchangeTML, forceHaloExchangeEdt, 2, 4 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->sortAtomsInCellsTML, sortAtomsInCellsEdt, 0, 8 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->exchangeDataTML, exchangeDataEdt, 2, 3 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->loadAtomsBufferTML, loadAtomsBufferEdt, 2, 14 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->unloadAtomsBufferTML, unloadAtomsBufferEdt, 1, 15 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->forceExchangeDataTML, forceExchangeDataEdt, 2, 4 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->loadForceBufferTML, loadForceBufferEdt, 2, 12 );
+    ocrEdtTemplateCreate( &PTR_rankTemplateH->unloadForceBufferTML, unloadForceBufferEdt, 1, 13 );
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 3;
@@ -607,12 +592,12 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrAddDependence( DBK_sim, redistributeAtomsEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( randomDisplacementsOEVTS, redistributeAtomsEDT, _idep++, DB_MODE_NULL );
 
-    //compute force
-    //
+    // Forces must be computed before we call the time stepper.
     ocrGuid_t computeForceEDT, computeForceOEVT, computeForceOEVTS;
 
+    //computeForceEdt
     ocrEdtCreate( &computeForceEDT, computeForceTML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &computeForceOEVT );
 
     createEventHelper( &computeForceOEVTS, 1);
@@ -624,7 +609,6 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrAddDependence( DBK_sim, computeForceEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_pot, computeForceEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( redistributeAtomsOEVTS, computeForceEDT, _idep++, DB_MODE_NULL );
-
 
     ////Compute Kinetic energy of the system
     ocrGuid_t kineticEnergyEDT, kineticEnergyOEVT, kineticEnergyOEVTS;

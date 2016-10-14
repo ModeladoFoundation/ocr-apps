@@ -86,27 +86,22 @@ typedef struct LjPotentialSt
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
    //int  (*force)(SimFlat* s); //!< function pointer to force routine
-   ocrGuid_t forceTML;
+   ocrGuid_t forceTML, force1TML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(BasePotential* pot);
-   //void (*destroy)(BasePotential** pot); //!< destruction of the potential
+   void (*destroy)(BasePotential** pot); //!< destruction of the potential
    real_t sigma;
    real_t epsilon;
 } LjPotential;
 
 static int ljForce(SimFlat* s);
 ocrGuid_t ljForce_edt( EDT_ARGS );
+ocrGuid_t ljForce1_edt( EDT_ARGS );
 
 static void ljPrint(BasePotential* pot);
 
 void ljDestroy(BasePotential** inppot)
 {
-   if ( ! inppot ) return;
-   LjPotential* pot = (LjPotential*)(*inppot);
-   if ( ! pot ) return;
-   comdFree(pot);
-   *inppot = NULL;
-
    return;
 }
 
@@ -118,9 +113,10 @@ ocrDBK_t initLjPot(BasePotential** bpot)
    LjPotential *pot = (LjPotential*)(*bpot);
 
    pot->force_edt = ljForce_edt;
-    ocrEdtTemplateCreate( &pot->forceTML, pot->force_edt, 0, 10 );
+    ocrEdtTemplateCreate( &pot->forceTML,   ljForce_edt, 1, 3 );
+    ocrEdtTemplateCreate( &pot->force1TML, ljForce1_edt, 1, 10 );
    pot->print = ljPrint;
-   //pot->destroy = ljDestroy;
+   pot->destroy = ljDestroy;
    pot->sigma = 2.315;	                  // Angstrom
    pot->epsilon = 0.167;                  // eV
    pot->mass = 63.55 * amuToInternalMass; // Atomic Mass Units (amu)
@@ -133,7 +129,6 @@ ocrDBK_t initLjPot(BasePotential** bpot)
    pot->atomicNo = 29;
 
    return DBK_pot;
-
 }
 
 void ljPrint(BasePotential* pot)
@@ -243,7 +238,7 @@ int ljForce(SimFlat* s)
    return 0;
 }
 
-ocrGuid_t ljForce_edt( EDT_ARGS )
+ocrGuid_t ljForce1_edt( EDT_ARGS )
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
 
@@ -293,6 +288,69 @@ ocrGuid_t ljForce_edt( EDT_ARGS )
     startTimer(sim->perfTimer, computeForceTimer);
     ljForce(sim);
     stopTimer(sim->perfTimer, computeForceTimer);
+
+    return NULL_GUID;
+}
+
+ocrGuid_t ljForce_edt( EDT_ARGS )
+{
+    DEBUG_PRINTF(( "%s\n", __func__ ));
+
+    u64 itimestep = paramv[0];
+
+    s32 _idep;
+
+    _idep = 0;
+    ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_sim = depv[_idep++].guid;
+    ocrDBK_t DBK_pot = depv[_idep++].guid;
+
+    _idep = 0;
+    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    SimFlat* sim = depv[_idep++].ptr;
+    BasePotential* pot = depv[_idep++].ptr;
+
+    sim->atoms = &sim->atoms_INST;
+    sim->boxes = &sim->boxes_INST;
+    sim->species = &sim->species_INST;
+    sim->atomExchange = &sim->atomExchange_INST;
+
+    sim->PTR_rankH = PTR_rankH;
+    sim->pot = pot;
+
+    ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
+
+    ocrDBK_t DBK_nAtoms = sim->boxes->DBK_nAtoms;
+
+    ocrDBK_t DBK_gid = sim->atoms->DBK_gid;
+    ocrDBK_t DBK_iSpecies = sim->atoms->DBK_iSpecies;
+    ocrDBK_t DBK_r = sim->atoms->DBK_r;
+    ocrDBK_t DBK_p = sim->atoms->DBK_p;
+    ocrDBK_t DBK_f = sim->atoms->DBK_f;
+    ocrDBK_t DBK_U = sim->atoms->DBK_U;
+
+    ocrDBK_t DBK_parms = sim->atomExchange->DBK_parms;
+
+    ocrGuid_t forceTML, forceEDT, forceOEVT, forceOEVTS;
+
+    ocrEdtCreate( &forceEDT, sim->pot->force1TML, //ljForce1_edt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinityHNT, &forceOEVT );
+
+    createEventHelper( &forceOEVTS, 1);
+    ocrAddDependence( forceOEVT, forceOEVTS, 0, DB_MODE_NULL );
+
+    _idep = 0;
+    ocrAddDependence( DBK_rankH, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_sim, forceEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_nAtoms, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_gid, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_iSpecies, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_r, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_p, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_f, forceEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_U, forceEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_pot, forceEDT, _idep++, DB_MODE_RO );
 
     return NULL_GUID;
 }

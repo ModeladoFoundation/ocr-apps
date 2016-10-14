@@ -64,10 +64,10 @@ typedef struct BasePotentialSt
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
    //int  (*force)(struct SimFlatSt* s); //!< function pointer to force routine
-   ocrGuid_t forceTML;
+   ocrGuid_t forceTML, force1TML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(struct BasePotentialSt* pot);
-   //void (*destroy)(struct BasePotentialSt** pot); //!< destruction of the potential
+   void (*destroy)(struct BasePotentialSt** pot); //!< destruction of the potential
 } BasePotential;
 
 
@@ -114,11 +114,14 @@ typedef struct
     ocrTML_t timestepLoopTML;
     ocrTML_t timestepTML;
     ocrTML_t updateLinkCellsTML;
-    ocrTML_t haloExchangeTML;
+    ocrTML_t haloExchangeTML, forceHaloExchangeTML;
     ocrTML_t sortAtomsInCellsTML;
     ocrTML_t exchangeDataTML;
     ocrTML_t loadAtomsBufferTML;
     ocrTML_t unloadAtomsBufferTML;
+    ocrTML_t forceExchangeDataTML;
+    ocrTML_t loadForceBufferTML;
+    ocrTML_t unloadForceBufferTML;
 } rankTemplateH_t;
 
 #ifdef DOUBLE_BUFFERED_EVTS

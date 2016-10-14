@@ -6,6 +6,14 @@
 
 #include "mytype.h"
 
+#include "constants.h"
+#include "memUtils.h"
+#include "parallel.h"
+#include "linkCells.h"
+#include "CoMDTypes.h"
+#include "performanceTimers.h"
+#include "haloExchange.h"
+
 struct BasePotentialSt;
 struct LinkCellSt;
 
@@ -18,6 +26,58 @@ typedef struct ForceExchangeDataSt
    real_t* dfEmbed; //<! derivative of embedding energy
    struct LinkCellSt* boxes;
 }ForceExchangeData;
+
+/// Handles interpolation of tabular data.
+///
+/// \see initInterpolationObject
+/// \see interpolate
+typedef struct InterpolationObjectSt
+{
+   int n;          //!< the number of values in the table
+   real_t x0;      //!< the starting ordinate range
+   real_t invDx;   //!< the inverse of the table spacing
+   real_t* values; //!< the abscissa values
+   ocrDBK_t DBK_values;
+} InterpolationObject;
+
+/// Derived struct for an EAM potential.
+/// Uses table lookups for function evaluation.
+/// Polymorphic with BasePotential.
+/// \see BasePotential
+typedef struct EamPotentialSt
+{
+   real_t cutoff;          //!< potential cutoff distance in Angstroms
+   real_t mass;            //!< mass of atoms in intenal units
+   real_t lat;             //!< lattice spacing (angs) of unit cell
+   char latticeType[8];    //!< lattice type, e.g. FCC, BCC, etc.
+   char  name[3];	   //!< element name
+   int	 atomicNo;	   //!< atomic number
+   //int  (*force)(SimFlat* s); //!< function pointer to force routine
+   ocrGuid_t forceTML, force1TML;
+   ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
+   void (*print)(BasePotential* pot);
+   void (*destroy)(BasePotential** pot); //!< destruction of the potential
+
+   ocrGuid_t force2TML;
+   InterpolationObject* phi;  //!< Pair energy
+   InterpolationObject* rho;  //!< Electron Density
+   InterpolationObject* f;    //!< Embedding Energy
+
+   InterpolationObject phi_INST;  //!< Pair energy
+   InterpolationObject rho_INST;  //!< Electron Density
+   InterpolationObject f_INST;    //!< Embedding Energy
+
+   real_t* rhobar;        //!< per atom storage for rhobar
+   real_t* dfEmbed;       //!< per atom storage for derivative of Embedding
+
+   ocrDBK_t DBK_rhobar, DBK_dfEmbed;
+
+   HaloExchange* forceExchange;
+   HaloExchange forceExchange_INST;
+
+   ForceExchangeData* forceExchangeData;
+   ForceExchangeData forceExchangeData_INST;
+} EamPotential;
 
 ocrDBK_t initEamPot(struct BasePotentialSt** pot, const char* dir, const char* file, const char* type);
 #endif

@@ -13,53 +13,6 @@
 static void advanceVelocity(SimFlat* s, int nBoxes, real_t dt);
 static void advancePosition(SimFlat* s, int nBoxes, real_t dt);
 
-
-/// Advance the simulation time to t+dt using a leap frog method
-/// (equivalent to velocity verlet).
-///
-/// Forces must be computed before calling the integrator the first time.
-///
-///  - Advance velocities half time step using forces
-///  - Advance positions full time step using velocities
-///  - Update link cells and exchange remote particles
-///  - Compute forces
-///  - Update velocities half time step using forces
-///
-/// This leaves positions, velocities, and forces at t+dt, with the
-/// forces ready to perform the half step velocity update at the top of
-/// the next call.
-///
-/// After nSteps the kinetic energy is computed for diagnostic output.
-//double timestep(SimFlat* s, int nSteps, real_t dt)
-//{
-//   for (int ii=0; ii<nSteps; ++ii)
-//   {
-//      //startTimer(velocityTimer);
-//      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt);
-//      //stopTimer(velocityTimer);
-//
-//      //startTimer(positionTimer);
-//      advancePosition(s, s->boxes->nLocalBoxes, dt);
-//      //stopTimer(positionTimer);
-//
-//      //startTimer(redistributeTimer);
-//      redistributeAtoms(s);
-//      //stopTimer(redistributeTimer);
-//
-//      //startTimer(computeForceTimer);
-//      computeForce(s);
-//      //stopTimer(computeForceTimer);
-//
-//      //startTimer(velocityTimer);
-//      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt);
-//      //stopTimer(velocityTimer);
-//   }
-//
-//   kineticEnergy(s);
-//
-//   return s->ePotential;
-//}
-
 ocrGuid_t advanceVelocityEdt(EDT_ARGS)
 {
     real_t dt = ((real_t*) paramv)[0];
@@ -143,16 +96,13 @@ ocrGuid_t finalizeEdt( EDT_ARGS )
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
     ocrDBK_t DBK_sim = depv[_idep++].guid;
-    ocrDBK_t rpKeDBK = depv[_idep++].guid;
-    ocrDBK_t rpPerfTimerDBK = depv[_idep++].guid;
+    ocrDBK_t DBK_pot = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
     SimFlat* sim = depv[_idep++].ptr;
-    reductionPrivate_t* rpKePTR = depv[_idep++].ptr;
-    reductionPrivate_t* rpPerfTimerPTR = depv[_idep++].ptr;
+    BasePotential* pot = depv[_idep++].ptr;
 
-    //rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
@@ -164,8 +114,6 @@ ocrGuid_t finalizeEdt( EDT_ARGS )
     sim->PTR_rankH = PTR_rankH;
 
     ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
-
-    ocrDBK_t DBK_pot = sim->DBK_pot;
 
     ocrDBK_t DBK_nAtoms = sim->boxes->DBK_nAtoms;
 
@@ -188,16 +136,21 @@ ocrGuid_t finalizeEdt( EDT_ARGS )
     ocrEdtTemplateDestroy(PTR_rankTemplateH->timestepTML);
     ocrEdtTemplateDestroy(PTR_rankTemplateH->updateLinkCellsTML);
     ocrEdtTemplateDestroy(PTR_rankTemplateH->haloExchangeTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->forceHaloExchangeTML);
     ocrEdtTemplateDestroy(PTR_rankTemplateH->sortAtomsInCellsTML);
     ocrEdtTemplateDestroy(PTR_rankTemplateH->exchangeDataTML);
     ocrEdtTemplateDestroy(PTR_rankTemplateH->loadAtomsBufferTML);
     ocrEdtTemplateDestroy(PTR_rankTemplateH->unloadAtomsBufferTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->forceExchangeDataTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->loadForceBufferTML);
+    ocrEdtTemplateDestroy(PTR_rankTemplateH->unloadForceBufferTML);
 
     ocrDbDestroy( PTR_rankH->rpKeDBK );
     ocrDbDestroy( PTR_rankH->rpVcmDBK );
     ocrDbDestroy( PTR_rankH->rpmaxOccupancyDBK );
     ocrDbDestroy( PTR_rankH->rpPerfTimerDBK );
 
+    pot->destroy( &pot );
     ocrDbDestroy( DBK_pot );
 
     ocrDbDestroy( DBK_nAtoms );
@@ -218,9 +171,26 @@ ocrGuid_t finalizeEdt( EDT_ARGS )
     return NULL_GUID;
 }
 
+
+/// Advance the simulation time to t+dt using a leap frog method
+/// (equivalent to velocity verlet).
+///
+/// Forces must be computed before calling the integrator the first time.
+///
+///  - Advance velocities half time step using forces
+///  - Advance positions full time step using velocities
+///  - Update link cells and exchange remote particles
+///  - Compute forces
+///  - Update velocities half time step using forces
+///
+/// This leaves positions, velocities, and forces at t+dt, with the
+/// forces ready to perform the half step velocity update at the top of
+/// the next call.
+///
+/// After nSteps the kinetic energy is computed for diagnostic output.
 ocrGuid_t timestepEdt( EDT_ARGS )
 {
-    s64 itimestep = paramv[0];
+    u64 itimestep = paramv[0];
 
     s32 _idep;
 
@@ -236,7 +206,6 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     reductionPrivate_t* rpKePTR = depv[_idep++].ptr;
     reductionPrivate_t* rpPerfTimerPTR = depv[_idep++].ptr;
 
-    //rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
@@ -328,8 +297,8 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     //compute force
     ocrGuid_t computeForceTML, computeForceEDT, computeForceOEVT, computeForceOEVTS;
 
-    ocrEdtCreate( &computeForceEDT, PTR_rankTemplateH->computeForceTML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+    ocrEdtCreate( &computeForceEDT, PTR_rankTemplateH->computeForceTML, //computeForceEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &computeForceOEVT );
 
     createEventHelper( &computeForceOEVTS, 1);
@@ -338,7 +307,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     _idep = 0;
     ocrAddDependence( DBK_rankH, computeForceEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_sim, computeForceEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( DBK_pot, computeForceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_pot, computeForceEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( redistributeAtomsOEVTS, computeForceEDT, _idep++, DB_MODE_NULL );
 
     ocrGuid_t advanceVelocityOEVT1, advanceVelocityOEVTS1;
@@ -369,7 +338,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
         ////Compute Kinetic energy of the system
         ocrGuid_t kineticEnergyTML, kineticEnergyEDT, kineticEnergyOEVT, kineticEnergyOEVTS;
 
-        ocrEdtCreate( &kineticEnergyEDT, PTR_rankTemplateH->kineticEnergyTML,
+        ocrEdtCreate( &kineticEnergyEDT, PTR_rankTemplateH->kineticEnergyTML, //kineticEnergyEdt
                       EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &myEdtAffinityHNT, &kineticEnergyOEVT );
 
@@ -388,7 +357,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
         ////Print things
         ocrGuid_t printThingsTML, printThingsEDT, printThingsOEVT, printThingsOEVTS;
 
-        ocrEdtCreate( &printThingsEDT, PTR_rankTemplateH->printThingsTML,
+        ocrEdtCreate( &printThingsEDT, PTR_rankTemplateH->printThingsTML, //printThingsEdt
                       EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                       EDT_PROP_FINISH, &myEdtAffinityHNT, &printThingsOEVT );
 
@@ -409,7 +378,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
 
             ocrEdtTemplateCreate( &printPerformanceResultsTML, printPerformanceResultsEdt, 1, 4 );
 
-            ocrEdtCreate( &printPerformanceResultsEDT, printPerformanceResultsTML,
+            ocrEdtCreate( &printPerformanceResultsEDT, printPerformanceResultsTML, //printPerformanceResultsEdt
                           EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                           EDT_PROP_FINISH, &myEdtAffinityHNT, &printPerformanceResultsOEVT );
             ocrEdtTemplateDestroy( printPerformanceResultsTML );
@@ -425,7 +394,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
 
             ocrGuid_t finalizeTML, finalizeEDT, finalizeOEVT, finalizeOEVTS;
 
-            ocrEdtTemplateCreate( &finalizeTML, finalizeEdt, 1, 3 );
+            ocrEdtTemplateCreate( &finalizeTML, finalizeEdt, 1, 4 );
 
             ocrEdtCreate( &finalizeEDT, finalizeTML,
                           EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
@@ -438,6 +407,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
             _idep = 0;
             ocrAddDependence( DBK_rankH, finalizeEDT, _idep++, DB_MODE_RO ); //TODO
             ocrAddDependence( DBK_sim, finalizeEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( DBK_pot, finalizeEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( printPerformanceResultsOEVTS, finalizeEDT, _idep++, DB_MODE_NULL );
 
         }
@@ -556,6 +526,7 @@ ocrGuid_t printThingsEdt( EDT_ARGS )
 
     sim->PTR_rankH = PTR_rankH;
 
+    stopTimer(sim->perfTimer, commReduceTimer);
     if(iStep!=0) stopTimer(sim->perfTimer, timestepTimer);
 
     if(iStep==sim->nSteps)
@@ -660,14 +631,11 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     return NULL_GUID;
 }
 
-void computeForce(SimFlat* s)
-{
-//   s->pot->force(s);
-}
-
 ocrGuid_t computeForceEdt( EDT_ARGS )
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
+
+    u64 itimestep = paramv[0];
 
     s32 _idep;
 
@@ -705,7 +673,7 @@ ocrGuid_t computeForceEdt( EDT_ARGS )
     ocrGuid_t forceTML, forceEDT, forceOEVT, forceOEVTS;
 
     ocrEdtCreate( &forceEDT, sim->pot->forceTML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &forceOEVT );
 
     createEventHelper( &forceOEVTS, 1);
@@ -714,14 +682,7 @@ ocrGuid_t computeForceEdt( EDT_ARGS )
     _idep = 0;
     ocrAddDependence( DBK_rankH, forceEDT, _idep++, DB_MODE_RO );
     ocrAddDependence( DBK_sim, forceEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( DBK_nAtoms, forceEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_gid, forceEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_iSpecies, forceEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_r, forceEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_p, forceEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( DBK_f, forceEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( DBK_U, forceEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( DBK_pot, forceEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_pot, forceEDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 }
@@ -736,9 +697,6 @@ void advanceVelocity(SimFlat* s, int nBoxes, real_t dt)
          s->atoms->p[iOff][0] += dt*s->atoms->f[iOff][0];
          s->atoms->p[iOff][1] += dt*s->atoms->f[iOff][1];
          s->atoms->p[iOff][2] += dt*s->atoms->f[iOff][2];
-
-         //if(dt !=0.0 )
-         //PRINTF("iBox %d iOff %d: %f %f %f\n", iBox, iOff, s->atoms->f[iOff][0],s->atoms->f[iOff][1], s->atoms->f[iOff][2]);
       }
    }
 }
@@ -762,7 +720,7 @@ void advancePosition(SimFlat* s, int nBoxes, real_t dt)
 /// local potential energy is a by-product of the force routine.
 void kineticEnergy(SimFlat* s)
 {
-    //DEBUG_PRINTF(( "%s\n", __func__ ));
+    DEBUG_PRINTF(( "%s\n", __func__ ));
 
    real_t eLocal[3];
    eLocal[0] = s->ePotential;
@@ -784,13 +742,9 @@ void kineticEnergy(SimFlat* s)
     DEBUG_PRINTF(("%f %f eLocal[2] %f\n", eLocal[0], eLocal[1], eLocal[2]));
 
    real_t eSum[2];
-   //startTimer(commReduceTimer);
-   //addRealParallel(eLocal, eSum, 2);
+   startTimer(s->perfTimer, commReduceTimer);
    reductionLaunch(s->PTR_rankH->rpKePTR, s->PTR_rankH->rpKeDBK, eLocal);
    //stopTimer(commReduceTimer);
-
-   //s->ePotential = eSum[0];
-   //s->eKinetic = eSum[1];
 }
 
 ocrGuid_t kineticEnergyEdt(EDT_ARGS)
@@ -853,19 +807,6 @@ ocrGuid_t kineticEnergyEdt(EDT_ARGS)
 /// \see updateLinkCells
 /// \see initAtomHaloExchange
 /// \see sortAtomsInCell
-void redistributeAtoms(SimFlat* sim)
-{
-   updateLinkCells(sim->boxes, sim->atoms);
-
-   //startTimer(atomHaloTimer);
-   //haloExchange(sim->atomExchange, sim);
-   //stopTimer(atomHaloTimer);
-
-   for (int ii=0; ii<sim->boxes->nTotalBoxes; ++ii)
-      ;
-      //sortAtomsInCell(sim->atoms, sim->boxes, ii);
-}
-
 ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));

@@ -86,6 +86,11 @@ ocrGuid_t sortAtomsInCellsEdt( EDT_ARGS );
 ocrGuid_t loadAtomsBufferEdt( EDT_ARGS );
 ocrGuid_t unloadAtomsBufferEdt( EDT_ARGS );
 
+ocrGuid_t forceHaloExchangeEdt(EDT_ARGS);
+ocrGuid_t forceExchangeDataEdt(EDT_ARGS);
+ocrGuid_t loadForceBufferEdt( EDT_ARGS );
+ocrGuid_t unloadForceBufferEdt( EDT_ARGS );
+
 /// Sort the atoms by gid in the specified link cell.
 void sortAtomsInCell(struct AtomsSt* atoms, struct LinkCellSt* boxes, int iBox);
 ocrGuid_t sortAtomsInCellsEdt( EDT_ARGS );
