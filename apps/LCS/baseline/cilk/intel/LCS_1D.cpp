@@ -27,6 +27,7 @@
 
 using namespace std;
 
+#define GAP_PENALTY 0 //for LCS 0, for edit distance 1 and use min, for Smith waterman depends on the blosum matrix
 
 int *lcs_score;            // Stores LCS score
 int *S, *T;               // Stores for string 1 and 2
@@ -47,6 +48,8 @@ void genRandInput(int *X, int *Y, int n)
         Y[i]=rand()%4+a;
     }
 }
+
+
 void inline serial_lcs_2D(int* X, long int xi, long int xj, long int n){
 
     // Finish computation
@@ -64,7 +67,7 @@ void inline serial_lcs_2D(int* X, long int xi, long int xj, long int n){
             //Optimize
             int del = X[idx+j];
             int ins = X[idx + Nplus1 + (j - 1)];
-            int del_ins = (del > ins) ? del + 1:ins + 1;
+            int del_ins = (del > ins) ? del + GAP_PENALTY:ins + GAP_PENALTY;
             int match = X[idx  + (j - 1)] + (S[i] != T[j]);
             X[idx + Nplus1 +j]= MAX(match, del_ins);
         }
@@ -93,7 +96,7 @@ void inline serial_lcs_1D(int* X, long int xi, long int xj, long int n){
             //Optimize
             int del = X[idx - 1];
             int ins = X[idx + 1];
-            int del_ins = (del > ins) ? (del + 1):(ins + 1);
+            int del_ins = (del > ins) ? (del + GAP_PENALTY):(ins + GAP_PENALTY);
             int match = X[idx] + (S[xi+i] != T[xj+j]);
             X[idx]= MAX(match, del_ins);
 
@@ -109,7 +112,7 @@ void inline serial_lcs_1D(int* X, long int xi, long int xj, long int n){
             //Optimize
             int del = X[idx - 1];
             int ins = X[idx + 1];
-            int del_ins = (del > ins) ? (del + 1):(ins + 1);
+            int del_ins = (del > ins) ? (del + GAP_PENALTY):(ins + GAP_PENALTY);
             int match = X[idx] + (S[xi+i] != T[xj+j]);
             X[idx]= MAX(match, del_ins);
         }

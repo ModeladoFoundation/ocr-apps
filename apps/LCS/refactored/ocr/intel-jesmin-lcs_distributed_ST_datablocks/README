@@ -1,0 +1,26 @@
+In this application, S and T strings are allocated in a distributed manner.
+
+= Compiling the application =
+
+
+STENCIL_WITH_EAGER_DB
+STENCIL_WITH_COUNTED_EVT
+
+= Running the application =
+
+Support for OCR_TYPE: x86
+
+Program Arguments:
+* n    : #characters in the strings
+* base : base case of recursion.
+
+
+Invocation examples:
+
+# Default run:
+
+  make -f Makefile.${OCR_TYPE} run
+
+# Command-line overriden arguments:
+
+  WORKLOAD_ARGS="1024 64" make -f Makefile.${OCR_TYPE} run
