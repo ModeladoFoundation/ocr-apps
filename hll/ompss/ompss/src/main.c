@@ -34,7 +34,10 @@ ocrGuid_t edtUserMain(
     }
 
     // Initialize local scope
-    localScopeInit( &main_data->local_scope );
+    newLocalScope( &main_data->local_scope );
+
+    // Store local scope in EDT local storage
+    setLocalScope( &main_data->local_scope );
 
     // Call user's main function
     main_data->exit_code = ompss_user_main( (int)argc, argv );
@@ -55,12 +58,7 @@ ocrGuid_t edtShutdown(
     int exit_code = tls->exit_code;
 
     // Free task local data storage
-    // Access map for dependence tracking
-    destructHashTable( &tls->local_scope.accesses );
-    // Taskwait event: close taskwait region
-    u8 err = ocrEventSatisfySlot( tls->local_scope.taskwait_evt,
-                         NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
-    ASSERT( err == 0 );
+    destructLocalScope( &tls->local_scope );
 
     ocrDbDestroy( depv[0].guid );
 

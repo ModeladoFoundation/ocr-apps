@@ -30,7 +30,10 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     task_t* task = (task_t*)(depv[0].ptr + sizeof(ocrGuid_t));
 
     // Create necessary edt-local data-structures
-    localScopeInit( &task->local_scope );
+    newLocalScope( &task->local_scope );
+
+    // Store local scope in EDT local storage
+    setLocalScope( &task->local_scope );
 
     // Execute outline task
     task->definition.run( task->definition.arguments );
