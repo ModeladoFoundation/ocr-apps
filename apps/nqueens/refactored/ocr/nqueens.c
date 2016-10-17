@@ -5,10 +5,9 @@
 #include "nqueens.h"
 
 #include <ocr.h>
-#include <stdatomic.h>
 #include <stdlib.h>
 
-atomic_uint solutions = ATOMIC_VAR_INIT(0U);
+u32 solutions = 0U;
 
 ocrGuid_t findTemplate;
 ocrGuid_t shutdownTemplate;

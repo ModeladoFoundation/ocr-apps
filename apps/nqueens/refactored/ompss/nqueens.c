@@ -7,8 +7,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void solution_found(void);
-int get_solution_number(void);
+unsigned solutions = 0U;
+
+static inline void solution_found(void) {
+    __atomic_fetch_add( &solutions, 1u, __ATOMIC_RELAXED );
+}
+
+static inline unsigned get_solution_number(void) {
+    unsigned value;
+    __atomic_load( &solutions, &value, __ATOMIC_SEQ_CST );
+    return value;
+}
 
 // Computes Hamming-weight for an arbitrary integer
 static inline uint32_t NumberOfSetBits(uint32_t i)
