@@ -46,17 +46,12 @@ void nanos_create_task(
 void nanos_submit_task( void *handle )
 {
     task_t* task = (task_t*)handle;
-    ocrGuid_t task_db = ((ocrGuid_t*)task)[-1];
 
     // Create task EDT and its cleanup EDT
     ocrGuid_t edt, cleanup_edt;
     // Cleanup EDT will depend on task EDT
     // to be completed
     ocrGuid_t edt_finished_evt;
-
-    // Generate parameter array
-    u32 paramc = 0;
-    u64* paramv = NULL;
 
     // Register dependences
     task->definition.register_dependences( task, task->definition.arguments );
@@ -65,16 +60,9 @@ void nanos_submit_task( void *handle )
     // Create EDT of finish type (does not return until
     // all its children EDTs are completed )
     u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
-                  paramc, paramv,
+                  0, NULL,
                   depc, NULL,
                   EDT_PROP_FINISH, NULL_HINT, &edt_finished_evt );
-    ASSERT( err == 0);
-
-    ocrGuid_t cleanupDeps[2] = { task_db, edt_finished_evt };
-    err = ocrEdtCreate( &cleanup_edt, cleanupTemplate,
-                  0, NULL,
-                  2, cleanupDeps,
-                  EDT_PROP_NONE, NULL_HINT, NULL );
     ASSERT( err == 0);
 
     // Feed EDT output event to taskwait latch event,
@@ -87,10 +75,6 @@ void nanos_submit_task( void *handle )
     ASSERT( err == 0 );
 
     // Add edt dependences
-    err = ocrAddDependence( task_db, edt,
-                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
-    ASSERT( err == 0 );
-
     acquireDependences( edt, task );
 }
 
@@ -109,7 +93,7 @@ void nanos_taskwait(char const *invocation_source)
     // Get taskwait latch event and feed into sticky event
     ocrGuid_t* event = &getLocalScope()->taskwait_evt;
     err = ocrAddDependence( *event, sticky_taskwait_evt,
-                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE )
+                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
     ASSERT( err == 0 );
 
     // Close taskwait region

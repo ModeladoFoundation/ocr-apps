@@ -17,9 +17,14 @@ struct _task_dependences {
     vector_t                  release;
 };
 
+struct _task_flags {
+    char postpone_cleanup:1;
+};
+
 typedef struct {
-    ocrGuid_t    taskwait_evt;
-    hash_table_t accesses;
+    ocrGuid_t          taskwait_evt;
+    hash_table_t       accesses;
+    struct _task_flags flags;
 } task_scope_info_t;
 
 typedef struct {

@@ -8,9 +8,31 @@
 
 #include "common.h"
 #include "hashtable.h"
+#include "task-local.h"
 #include "vector.h"
 
 #include <nanos6_rt_interface.h>
+
+static inline void localScopeInit( task_scope_info_t* scope )
+{
+    // Create taskwait event and open taskwait region
+    u8 err;
+    err = ocrEventCreate( &scope->taskwait_evt,
+                    OCR_EVENT_LATCH_T, EVT_PROP_NONE );
+    ASSERT( err == 0 );
+    err = ocrEventSatisfySlot( scope->taskwait_evt,
+                    NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
+    ASSERT( err == 0 );
+
+    // Access map for dependence tracking
+    newHashTable( &scope->accesses );
+
+    // Initialize flags
+    scope->flags.postpone_cleanup = 0;
+
+    // Store local scope in EDT local storage
+    setLocalScope( scope );
+}
 
 static inline task_t* newTask( nanos_task_info* info, u64 args_size )
 {

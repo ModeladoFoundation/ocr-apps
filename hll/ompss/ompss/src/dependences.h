@@ -2,10 +2,11 @@
 #ifndef DEPENDENCIES_H
 #define DEPENDENCIES_H
 
-#include "vector.h"
-
 #include "dependences_decl.h"
 #include "task_decl.h"
+
+#include "task-local.h"
+#include "vector.h"
 
 /*! Initializes data_dependency_t data type */
 static inline void initializeDataDependency( data_dependency_t* dep )
@@ -103,16 +104,28 @@ static inline void addDependencyWAR( task_t* task, data_dependency_t* events )
 static inline void acquireDependences( ocrGuid_t edt, task_t* task )
 {
     u8 err;
-    u32 size = task->dependences.acquire.size;
-    struct _acquire_dep* actions = (struct _acquire_dep*)task->dependences.acquire.data;
-    for( u32 i = 0; i < size; ++i ) {
-        u32 slot = i+1; // here slot refers to the position of the depv array
-        err = ocrAddDependence( actions[i].event, edt, slot, DB_MODE_RW/*default mode*/ );
-        ASSERT( err == 0 );
+    ocrGuid_t task_db = ((ocrGuid_t*)task)[-1];
+    err = ocrAddDependence( task_db, edt,
+                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
+    ASSERT( err == 0 );
 
-        if( actions[i].action == DEPEND_AND_SATISFY ) {
-            err = ocrEventSatisfy( actions[i].event, NULL_GUID );
+    u32 size = task->dependences.acquire.size;
+    if( size > 0 ) {
+        // Task is using dependences.
+        // Parent (running task) shall postpone its clean-up
+        getLocalScope()->flags.postpone_cleanup = 1;
+
+        // Register dependences
+        struct _acquire_dep* actions = (struct _acquire_dep*)task->dependences.acquire.data;
+        for( u32 i = 0; i < size; ++i ) {
+            u32 slot = i+1; // here slot refers to the position of the depv array
+            err = ocrAddDependence( actions[i].event, edt, slot, DB_MODE_RW/*default mode*/ );
             ASSERT( err == 0 );
+
+            if( actions[i].action == DEPEND_AND_SATISFY ) {
+                err = ocrEventSatisfy( actions[i].event, NULL_GUID );
+                ASSERT( err == 0 );
+            }
         }
     }
 }
