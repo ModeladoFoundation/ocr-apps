@@ -8,11 +8,8 @@ LDFLAGS=-L$(OCR_INSTALL)/lib -lnanos6 -locr_x86
 
 all: nqueens
 
-nqueens: nqueens.c atomic.o
+nqueens: nqueens.c
 	$(MCC) $(MCCFLAGS) $(LDFLAGS) $^ -o $@
 
-atomic.o: atomic.c
-	$(CC) $(CFLAGS) -c $^ -o $@
-
 clean:
-	rm -f nqueens atomic.o
+	rm -f nqueens

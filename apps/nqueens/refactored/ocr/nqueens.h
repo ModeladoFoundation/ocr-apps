@@ -2,7 +2,6 @@
 #ifndef NQUEENS_H
 #define NQUEENS_H
 
-#include <stdatomic.h>
 #include <ocr.h>
 
 struct nqueens_args
@@ -21,16 +20,16 @@ static inline u32 NumberOfSetBits( u32 i )
     return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-extern atomic_uint solutions;
+extern u32 solutions;
 
-static inline void solution_found()
-{
-    atomic_fetch_add( &solutions, 1 );
+static inline void solution_found(void) {
+    __atomic_fetch_add( &solutions, 1u, __ATOMIC_RELAXED );
 }
 
-static inline u32 get_solution_number()
-{
-    return atomic_load( &solutions );
+static inline unsigned get_solution_number(void) {
+    unsigned value;
+    __atomic_load( &solutions, &value, __ATOMIC_SEQ_CST );
+    return value;
 }
 
 #endif
