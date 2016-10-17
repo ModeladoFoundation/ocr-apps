@@ -33,20 +33,8 @@ ocrGuid_t edtUserMain(
         argv[arg] = getArgv(program_args, arg);
     }
 
-    // Create necessary edt-local data-structures
-    // Access map for dependence tracking
-    newHashTable( &main_data->local_scope.accesses );
-    // Create taskwait event and open taskwait region
-    u8 err;
-    err = ocrEventCreate( &main_data->local_scope.taskwait_evt,
-                    OCR_EVENT_LATCH_T, EVT_PROP_NONE );
-    ASSERT( err == 0 );
-    err = ocrEventSatisfySlot( main_data->local_scope.taskwait_evt,
-                               NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
-    ASSERT( err == 0 );
-
-    // Store local scope in EDT local storage
-    setLocalScope( &main_data->local_scope );
+    // Initialize local scope
+    localScopeInit( &main_data->local_scope );
 
     // Call user's main function
     main_data->exit_code = ompss_user_main( (int)argc, argv );

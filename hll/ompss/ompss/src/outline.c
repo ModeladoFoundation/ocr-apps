@@ -23,23 +23,20 @@ ocrGuid_t cleanupTemplate;
  */
 ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    ASSERT( paramc == 1 );
+    ASSERT( paramc == 0 );
 
     // Decode arguments and dependences
     // First element of datablock is its own ocrGuid_t
     task_t* task = (task_t*)(depv[0].ptr + sizeof(ocrGuid_t));
 
     // Create necessary edt-local data-structures
-    // Note: we can store local dependences hash map
-    // in the stack, since all the successor tasks will be
-    // created during run_funct execution.
-    setLocalScope( &task->local_scope );
+    localScopeInit( &task->local_scope );
 
     // Execute outline task
     task->definition.run( task->definition.arguments );
 
-    // Release dependences
-    releaseDependences( task );
+    // Clean-up
+    cleanUp( task );
 
     return NULL_GUID;
 }
