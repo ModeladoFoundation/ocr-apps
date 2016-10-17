@@ -14,7 +14,7 @@
 
 static inline task_t* newTask( nanos_task_info* info, u64 args_size )
 {
-    task_t* task = (task_t*)malloc( sizeof(task_t) + args_size );
+    task_t* task = (task_t*)ompss_malloc( sizeof(task_t) + args_size );
 
     task->definition.arguments = ((char*)task) + sizeof(task_t); // take care with alignment constraints
     task->definition.run       = info->run;
@@ -39,18 +39,18 @@ static inline task_t* newTask( nanos_task_info* info, u64 args_size )
     return task;
 }
 
-static inline void destructTask( task_t* task )
+static inline void destructTask( task_t* self )
 {
     // Close taskwait region
     u8 err;
-    err = ocrEventSatisfySlot( task->local_scope.taskwait_evt,
+    err = ocrEventSatisfySlot( self->local_scope.taskwait_evt,
                                NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
     ASSERT( err == 0 );
 
-    destructVector( &task->dependences.acquire );
-    destructVector( &task->dependences.release );
-    destructHashTable( &task->local_scope.accesses );
-    free(task);
+    destructVector( &self->dependences.acquire );
+    destructVector( &self->dependences.release );
+    destructHashTable( &self->local_scope.accesses );
+    ompss_free(self);
 }
 
 #endif // TASK_H

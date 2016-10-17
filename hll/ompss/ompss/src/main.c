@@ -92,7 +92,7 @@ ocrGuid_t mainEdt(
     nanos_init();
 
     struct main_local_storage* tls =
-        (struct main_local_storage*)malloc( sizeof(struct main_local_storage) );
+        (struct main_local_storage*)ompss_malloc( sizeof(struct main_local_storage) );
 
     u8 err;
     ocrGuid_t userMainEdt, shutdownEdt;

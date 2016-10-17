@@ -22,7 +22,7 @@ static inline void newVector( vector_t* vector, u64 elem_size )
 static inline void destructVector( vector_t* vector )
 {
     if( vector->capacity != 0 ) {
-        free( vector->data );
+        ompss_free( vector->data );
     }
     vector->capacity = 0;
     vector->size = 0;
@@ -32,13 +32,13 @@ static inline void vectorResize( vector_t* vector,
                  u32 new_capacity )
 {
     if( new_capacity != vector->capacity ) {
-        void* new_data = malloc( new_capacity * vector->elem_size );
+        void* new_data = ompss_malloc( new_capacity * vector->elem_size );
 
         memcpy( new_data, vector->data,
                 vector->capacity * vector->elem_size );
 
         if( vector->capacity > 0 ) {
-            free( vector->data );
+            ompss_free( vector->data );
         }
 
         vector->capacity = new_capacity;
