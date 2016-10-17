@@ -7,7 +7,7 @@
 typedef void (*run_funct_t)(void* args_block);
 typedef void (*register_dep_funct_t)(void* handler, void* args_block);
 
-static inline void* malloc( u64 size )
+static inline void* ompss_malloc( u64 size )
 {
     ocrGuid_t* buffer;
     ocrGuid_t datablock;
@@ -17,7 +17,7 @@ static inline void* malloc( u64 size )
     return &buffer[1];
 }
 
-static inline void free( void* addr )
+static inline void ompss_free( void* addr )
 {
     ocrGuid_t* buffer = (ocrGuid_t*)addr;
     ocrGuid_t datablock = buffer[-1];

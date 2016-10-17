@@ -39,7 +39,7 @@ static inline u8 compare_funct( key_t key1, key_t key2 )
 
 static inline struct _ht_bucket* newHashBucket( key_t key )
 {
-    struct _ht_bucket* new_bucket = (struct _ht_bucket*)malloc( sizeof(struct _ht_bucket) +
+    struct _ht_bucket* new_bucket = (struct _ht_bucket*)ompss_malloc( sizeof(struct _ht_bucket) +
                                                               + sizeof(value_t) );
     new_bucket->next = NULL;
     new_bucket->key = key;
@@ -54,7 +54,7 @@ static inline void destructHashBucket( struct _ht_bucket** bucket )
     *bucket = this_bucket->next;
 
     freeDataDependency( &this_bucket->value );
-    free( this_bucket );
+    ompss_free( this_bucket );
 }
 
 /* \brief Retrieves a value reference for a given key
@@ -70,7 +70,7 @@ static inline value_t* hashTableGet( hash_table_t* table, key_t key )
 {
     if( table->size == 0 ) {
         // Lazy initialization
-        table->data = malloc( DEFAULT_TABLE_SIZE * sizeof( struct _ht_bucket* ) );
+        table->data = ompss_malloc( DEFAULT_TABLE_SIZE * sizeof( struct _ht_bucket* ) );
         table->size = DEFAULT_TABLE_SIZE;
 
         // Initialize table to NULL pointer values
@@ -134,7 +134,7 @@ static inline void destructHashTable( hash_table_t* table )
 
     // Deallocate table
     if( table->size != 0 ) {
-        free( table->data );
+        ompss_free( table->data );
     }
     table->size = 0;
 }
