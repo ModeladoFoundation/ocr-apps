@@ -64,7 +64,7 @@ ocrGuid_t haloRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     if( depc == 4 ) {
         //combine the 4 values.
         //return the composite
-        PRINTF("all four evts from neighbors have been satisfied!\n");
+        //PRINTF("all four evts from neighbors have been satisfied!\n");
     }
 
     return NULL_GUID;
@@ -99,9 +99,11 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     memcpy( &PRM_block, paramv, sizeof(block_t) );
     ocrGuid_t blockGUID, blockTML;
 
+            //if( PRM_block.id == 31 )
+            //        PRINTF("%ld\n", PRM_block.id);
     if( PRM_block.timestep < 10 )
     {
-        if( PRM_block.timestep == 8 )
+        if( PRM_block.timestep == 4 )
         {
             PRM_block.timestep++;
             ocrEdtCreate( &blockGUID, PRM_block.refineCtrlTML, EDT_PARAM_DEF, (u64 *)&PRM_block,
@@ -124,8 +126,6 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
             u64 i;
 
-            if( PRM_block.refLvl > 0 )
-                    PRINTF("%ld\n", PRM_block.id);
 
 
             for( i = 0; i < 6; i++ )

@@ -36,6 +36,101 @@ ocrGuid_t haloNewChannelsSend( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t d
 return NULL_GUID;
 }
 
+ocrGuid_t haloRelaunchSnd( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    //PRINTF("relaunching driver send!\n");
+    if( paramc == (sizeof(ocrGuid_t)/sizeof(u64))+1)
+    {
+        ocrGuid_t sendChannel;
+        memcpy( &sendChannel, paramv, sizeof(ocrGuid_t) );
+        ocrEventSatisfy( sendChannel, NULL_GUID );
+    }
+    else
+    {
+        ocrGuid_t *sendChannels = (ocrGuid_t *)paramv;
+        u64 i;
+        for( i = 0; i < 4; i++ )
+            ocrEventSatisfy( sendChannels[i], NULL_GUID );
+    }
+
+    return NULL_GUID;
+}
+
+ocrGuid_t haloRelaunchRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    //u64 * info = paramv;
+
+    //if(info[0] == 31) PRINTF("%ld:%ld\n", info[0], info[1]);
+    //if(info[0] == 29) PRINTF("%ld:%ld\n", info[0], info[1]);
+    return NULL_GUID;
+}
+
+
+ocrGuid_t refineRelaunchEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    block_t PRM_block;
+    memcpy( &PRM_block, paramv, sizeof( block_t ) );
+
+    //PRINTF("%ld relaunching...\n", PRM_block.id);
+    u64 i;
+
+    ocrGuid_t relaunchRcvTML, relaunchSndTML;
+    ocrGuid_t blockDriverGUID;
+
+    u64 info[2];
+    info[0] = PRM_block.id;
+
+    ocrEdtTemplateCreate( &relaunchRcvTML, haloRelaunchRcv, 2, EDT_PARAM_UNK );
+    ocrEdtTemplateCreate( &relaunchSndTML, haloRelaunchSnd, EDT_PARAM_UNK, 0 );
+
+    ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 7, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+
+
+    /*----------------------------Set RCV synch halos--------------------------------*/
+    for( i = 0; i < 6; i++ )
+    {
+        ocrGuid_t rcvGUID, rcvOUT;
+        info[1] = i;
+        if( PRM_block.comms.neighborRefineLvls[i] <= PRM_block.refLvl ) //I expect only one value from this neighbor.
+        {
+            ocrEdtCreate( &rcvGUID, relaunchRcvTML, EDT_PARAM_DEF, info, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, blockDriverGUID, i, DB_MODE_RO );
+            ocrAddDependence( PRM_block.comms.rcv[i*5], rcvGUID, 0, DB_MODE_RW );
+        }
+        else
+        {   //I expect 4 values from these neighbors.
+            ocrEdtCreate( &rcvGUID, relaunchRcvTML, EDT_PARAM_DEF, info, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, blockDriverGUID, i, DB_MODE_RO );
+            u64 base = i*5, offs = 0;
+
+            for( offs = 0; offs < 4; offs++ ) ocrAddDependence( PRM_block.comms.rcv[base + (offs + 1)], rcvGUID, offs, DB_MODE_RW );
+        }
+    }
+    /*----------------------------End Set RCV synch halos--------------------------------*/
+
+
+    /*----------------------------Set SND synch halos--------------------------------*/
+    for( i = 0; i < 6; i++ )
+    {
+        u32 pCount = (sizeof(ocrGuid_t)/sizeof(u64))+1;
+        ocrGuid_t sndGUID;
+        if( PRM_block.comms.neighborRefineLvls[i] <= PRM_block.refLvl )
+        {
+            ocrEdtCreate(&sndGUID, relaunchSndTML, pCount, (u64 *)&PRM_block.comms.snd[i*5], EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+        }
+        else
+        {
+            u32 base = i*5;
+            ocrEdtCreate(&sndGUID, relaunchSndTML, pCount * 4, (u64 *)&PRM_block.comms.snd[base+1], EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+        }
+    }
+
+    ocrAddDependence( NULL_GUID, blockDriverGUID, 6, DB_MODE_RO );
+
+
+    return NULL_GUID;
+}
+
 ocrGuid_t haloNewChannelsRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
         ocrGuid_t newDBK;
@@ -90,14 +185,16 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     //block_t * PRM_block = (block_t *) paramv;
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof( block_t ) );
-   // PRINTF("REFINE %ld\n", PRM_block.id);
+    //PRINTF("REFINE %ld\n", PRM_block.id);
     catalog_t *catalog = depv[0].ptr;
-    ocrGuid_t blockDriverGUID;
+    //ocrGuid_t blockDriverGUID;
 
     ocrEventParams_t params;
-    params.EVENT_CHANNEL.maxGen =   2;
+    params.EVENT_CHANNEL.maxGen =   100;
     params.EVENT_CHANNEL.nbSat  =   1;
     params.EVENT_CHANNEL.nbDeps =   1;
+
+    ocrGuid_t relaunchGUID, relaunchTML;
 
     //u32 dCnt = depc-1;
 
@@ -108,7 +205,6 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     //  - set up new channels in each direction. we will have a total of 4 * 6 non-local channels.
     //  -
     u64 i, j;
-    bool newChannels = false;
     ocrGuid_t internalChannels[6][4];
     //s64 difference = PRM_block.my
 
@@ -147,7 +243,6 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
             {
               if( catalog->channelsNeeded[i] ) //this is for the internal channels.
               {
-                PRINTF("%ld needs new channels in %ld direction\n", PRM_block.id, i );
                 for( j = 0; j < 4; j++ )
                 {
                     ocrEventCreateParams( &internalChannels[i][j], OCR_EVENT_CHANNEL_T, false, &params );
@@ -155,7 +250,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
               }
             }
 
-            PRINTF("%ld is refining!\n", PRM_block.id);
+            //PRINTF("%ld is refining!\n", PRM_block.id);
 
             for( i = 0; i < 8; i++ ) //create new child block.
             {
@@ -217,7 +312,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[(idx)*5], &PRM_block.comms.rcv[(idx*5)+1], sizeof( ocrGuid_t ) );
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
 
                     case 1:
@@ -268,7 +363,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+2], sizeof( ocrGuid_t ) );
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
 
                     case 2:
@@ -319,7 +414,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][0], sizeof( ocrGuid_t ) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 3:
                         {
@@ -369,7 +464,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][1], sizeof( ocrGuid_t ) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 4:
                         {
@@ -419,7 +514,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+3], sizeof( ocrGuid_t ) );
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 5:
                         {
@@ -444,7 +539,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //send
                         memcpy( &childBlock.comms.snd[idx*5], &internalChannels[idx][1], sizeof( ocrGuid_t ) );
                         //rcv
-                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][1], sizeof( ocrGuid_t ) );
+                        memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx+1][1], sizeof( ocrGuid_t ) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         idx++;
 
@@ -469,7 +564,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         //rcv
                         memcpy( &childBlock.comms.rcv[idx*5], &PRM_block.comms.rcv[(idx*5)+4], sizeof( ocrGuid_t ) );
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 6:
                         {
@@ -519,7 +614,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][2], sizeof( ocrGuid_t ) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                     case 7:
                         {
@@ -569,23 +664,23 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                         memcpy( &childBlock.comms.rcv[idx*5], &internalChannels[idx-1][3], sizeof( ocrGuid_t ) );
                         childBlock.comms.neighborRefineLvls[idx] = childBlock.refLvl;
                         }
-                        PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
+                        //PRINTF("block for %ld.%ld.%ld\n", childBlock.rootId, childBlock.parent, childBlock.id );
                         break;
                 }
 
-            ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&childBlock, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+            u32 pCount = (sizeof( block_t ) / sizeof( u64 )) + 1;
+            ocrEdtTemplateCreate( &relaunchTML, refineRelaunchEdt, pCount, 0 );
+            ocrEdtCreate( &relaunchGUID, relaunchTML, EDT_PARAM_DEF, (u64 *)&childBlock, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+
             }
             break;
         case WONT_REFINE:
-            for( i = 0; i < 6; i++ )
             {
-                if( catalog->channelsNeeded[i] == WILL_REFINE ) newChannels = true;
+                u32 pCount = (sizeof( block_t ) / sizeof( u64 )) + 1;
+                ocrEdtTemplateCreate( &relaunchTML, refineRelaunchEdt, pCount, 0 );
+                ocrEdtCreate( &relaunchGUID, relaunchTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF,
+                                NULL, EDT_PROP_NONE, NULL_HINT, NULL );
             }
-            if( newChannels ) PRINTF("%ld is not refining, but has new channels incoming.\n", PRM_block.id);
-                //PRINTF("no new connections to be made; falling back to driverEdt\n");
-            ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 0,
-                NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-
             break;
         case MAY_REFINE:
             PRINTF("block fell to refine while still in the MAY_REFINE state.\n");
