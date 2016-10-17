@@ -13,7 +13,7 @@
 
 #include <nanos6_rt_interface.h>
 
-static inline void localScopeInit( task_scope_info_t* scope )
+static inline void newLocalScope( task_scope_info_t* scope )
 {
     // Create taskwait event and open taskwait region
     u8 err;
@@ -24,14 +24,23 @@ static inline void localScopeInit( task_scope_info_t* scope )
                     NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
     ASSERT( err == 0 );
 
-    // Access map for dependence tracking
-    newHashTable( &scope->accesses );
-
     // Initialize flags
     scope->flags.postpone_cleanup = 0;
 
-    // Store local scope in EDT local storage
-    setLocalScope( scope );
+    // Access map for dependence tracking
+    newHashTable( &scope->accesses );
+}
+
+static inline void destructLocalScope( task_scope_info_t* self )
+{
+    // Close taskwait region
+    u8 err;
+    err = ocrEventSatisfySlot( self->taskwait_evt,
+                               NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
+    ASSERT( err == 0 );
+
+    // Free access map
+    destructHashTable( &self->accesses );
 }
 
 static inline task_t* newTask( nanos_task_info* info, u64 args_size )
@@ -47,31 +56,16 @@ static inline task_t* newTask( nanos_task_info* info, u64 args_size )
     newVector( &task->dependences.release, sizeof(struct _release_dep) );
 
     // Create necessary edt-local data-structures
-    // Access map for dependence tracking
-    newHashTable( &task->local_scope.accesses );
-    // Create taskwait event and open taskwait region
-    u8 err;
-    err = ocrEventCreate( &task->local_scope.taskwait_evt,
-                          OCR_EVENT_LATCH_T, EVT_PROP_NONE );
-    ASSERT( err == 0 );
-    err = ocrEventSatisfySlot( task->local_scope.taskwait_evt,
-                               NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
-    ASSERT( err == 0 );
+    newLocalScope( &task->local_scope );
 
     return task;
 }
 
 static inline void destructTask( task_t* self )
 {
-    // Close taskwait region
-    u8 err;
-    err = ocrEventSatisfySlot( self->local_scope.taskwait_evt,
-                               NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
-    ASSERT( err == 0 );
-
+    destructLocalScope( &self->local_scope );
     destructVector( &self->dependences.acquire );
     destructVector( &self->dependences.release );
-    destructHashTable( &self->local_scope.accesses );
     ompss_free(self);
 }
 
