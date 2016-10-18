@@ -22,11 +22,17 @@ RUN_TOOL              ?=
 OCR_CE_CONFIG ?=
 OCR_XE_CONFIG ?=
 
-# Torque or no Torque
+# Use a job scheduler
+# Can be 'no', 'torque', or 'slurm'
 RUN_TORQUE  ?= no
 # If RUN_TORQUE is no, you can specify a configuration file
 # for the simulator
 MACHINE_CONFIG ?= $(TG_INSTALL)/fsim-configs/localhost.cfg
+
+# GDB support
+RUN_GDB         ?= no
+RUN_GDB_HALT_XE ?= no
+RUN_GDB_HALT_CE	?= no
 
 # OCR targets (you will almost *never* need to change these)
 XE_TARGET   ?= tg-xe
@@ -125,9 +131,11 @@ ifeq ($(USE_OLD_LIBC), yes)
   CFLAGS := -I $(APPS_LIBS_INSTALL)/include.old $(CFLAGS)
 endif
 
-ifeq ($(RUN_TORQUE), yes)
+ifneq ($(RUN_TORQUE), no)
   RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-wrapper.sh
   MACHINE_CONFIG :=
+# GDB is not supported for fsim-wrapper.sh for now
+  RUN_GDB := no
 else
   RUN_CMD := $(TG_INSTALL)/bin/fsim
   MACHINE_CONFIG := -c $(MACHINE_CONFIG)
@@ -136,6 +144,12 @@ endif
 ifeq ($(RUN_MODE), runApp)
   RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
   MACHINE_CONFIG :=
+endif
+
+ifeq ($(RUN_GDB), yes)
+  GDB_CFLAGS := -DTG_GDB_SUPPORT
+else
+  GDB_CFLAGS :=
 endif
 
 .PHONY: all
@@ -195,10 +209,73 @@ endif
 	$(AT)$(MKDIR) -p $(WORKLOAD_LOGS)
 	$(AT)$(RM) -rf $(WORKLOAD_LOGS)/*
 	$(AT)$(RM) -f $(WORKLOAD_EXEC)/console.out
+  ifeq ($(RUN_GDB), yes)
+	$(AT)rm -f $(WORKLOAD_INSTALL)/gdbscript-xe $(WORKLOAD_INSTALL)/gdbscript-ce $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+# Generate the XE GDB script
+	$(AT)echo "target xstg -c $(WORKLOAD_INSTALL)/config.cfg,$(TG_INSTALL)/fsim-configs/dvfs-default.cfg,$(ORIG_MACHINE_CONFIG) -f $(TG_INSTALL)/bin/fsim -w $(WORKLOAD_INSTALL) -l $(WORKLOAD_LOGS)" > $(WORKLOAD_INSTALL)/gdbscript-xe
+	$(AT)echo "break __xeDoAssert" >> $(WORKLOAD_INSTALL)/gdbscript-xe
+    ifeq ($(RUN_GDB_HALT_XE), yes)
+	$(AT)echo "break xePdSwitchRunlevel" >> $(WORKLOAD_INSTALL)/gdbscript-xe
+	$(AT)echo "run" >> $(WORKLOAD_INSTALL)/gdbscript-xe
+	$(AT)echo "disable 2" >> $(WORKLOAD_INSTALL)/gdbscript-xe
+    else
+	$(AT)echo "run" >> $(WORKLOAD_INSTALL)/gdbscript-xe
+    endif
+# Take care of the CE GDB script
+	$(AT)echo "break __ceWaitForGdb" > $(WORKLOAD_INSTALL)/gdbscript-ce
+	$(AT)echo "target remote :1234" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+#	$(AT)echo "interrupt" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+	$(AT)echo "break __ceDoAssert" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+#	$(AT)echo "next" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+#	$(AT)echo "continue" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+#	$(AT)echo "finish" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+#	$(AT)echo "disable 1" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+#	$(AT)echo "set __gdbConnected=1" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+    ifeq ($(RUN_GDB_HALT_CE), no)
+	$(AT)echo "continue" >> $(WORKLOAD_INSTALL)/gdbscript-ce
+    endif
+# Finally, generate the TMUX configuration to launch the two GDBs as well as a tail
+# on the output. Note that for now, we only deal with ONE block. This could be extended to deal with multiple
+# blocks though but we would have to parse some configuration file to figure it out
+	$(AT)echo "session_name: GDB $(TARGET)" > $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "environment:" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "  WORKLOAD_EXEC: $(WORKLOAD_EXEC)" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "  WORKLOAD_INSTALL: $(WORKLOAD_INSTALL)" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "  WORKLOAD_LOGS: $(WORKLOAD_LOGS)" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "  FSIM_EXE: fsim" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "windows:" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "  - window_name: Block 1" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "    layout: main-vertical" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "    panes:" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "    - shell_command:" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "      - sleep 5" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "      - while [ ! -f $(WORKLOAD_LOGS)/*.rck000.cub00.skt0.cls000.blk00.CE.00 ]; do sleep 1; done" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "      - tail -f $(WORKLOAD_LOGS)/*.rck000.cub00.skt0.cls000.blk00.CE.00" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+    ifeq ($(RUN_GDB_HALT_XE), no)
+      ifeq ($(RUN_GDB_HALT_CE), no)
+	$(AT)echo "      focus: true" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+      endif
+    endif
+	$(AT)echo "    - shell_command:" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "      - sleep 10" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+	$(AT)echo "      - gdb -se $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg -x $(WORKLOAD_INSTALL)/gdbscript-ce" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+    ifeq ($(RUN_GDB_HALT_XE), no)
+      ifeq ($(RUN_GDB_HALT_CE), yes)
+	$(AT)echo "      focus: true" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+      endif
+    endif
+	$(AT)echo "    - $(TG_INSTALL)/bin/xstg-linux-elf-gdb -se $(WORKLOAD_BUILD)/$(TARGET).dbg -x $(WORKLOAD_INSTALL)/gdbscript-xe" >> $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml
+# Finally, launch the thing
+	bash -ec 'cd $(WORKLOAD_LOGS) && tmuxp load $(WORKLOAD_INSTALL)/gdbscript-tmux.yaml'
+	$(AT)$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
+	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out
+  else
 	$(AT)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
+	RUN_TORQUE=$(RUN_TORQUE) \
 	bash -ec 'cd $(WORKLOAD_LOGS) && $(RUN_CMD) -s -L $(WORKLOAD_LOGS) $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
+  endif
 
 postrun: run_internal
 postrun: WORKLOAD_OUTS := `find -L $(WORKLOAD_LOGS)/* -name '*.app_output' -print`
@@ -386,7 +463,7 @@ else
 	@echo "Building XE libocr.a..."
 	$(AT)V=$(V) OCR_TYPE=$(XE_TARGET) OCR_INSTALL=$(OCR_INSTALL) OCR_ROOT=$(OCR_ROOT) OCR_BUILD=$(OCR_BUILD_XE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) \
-	$(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
+	CFLAGS_USER=$(GDB_CFLAGS) $(MAKE) -C $(OCR_BUILD_XE) $(TARGETS) install
   $(OCR_INSTALL)/lib/libocr_$(XE_TARGET).a: | libocrxe
 endif
 
@@ -430,7 +507,7 @@ else
 	@echo "Building tgkrnl..."
 	$(AT)V=$(V) OCR_ROOT=$(OCR_ROOT) OCR_TYPE=$(CE_TARGET) OCR_INSTALL=$(OCR_INSTALL) OCR_BUILD=$(OCR_BUILD_CE) \
 	TG_ROOT=$(TG_ROOT) TG_INSTALL=$(TG_INSTALL) OCRAPPS_RUN_MODE=$(RUN_MODE) \
-	WITH_LIBOCR=yes $(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
+	WITH_LIBOCR=yes CFLAGS_USER=$(GDB_CFLAGS) $(MAKE) -C $(WORKLOAD_BUILD)/build.tgkrnl -f make-me.make $(TARGETS)
 	strip -s -o $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg
 
   $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl: | tgkrnl
