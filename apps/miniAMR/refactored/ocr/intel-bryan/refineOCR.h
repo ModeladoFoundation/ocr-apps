@@ -83,7 +83,7 @@ ocrGuid_t refineRelaunchEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t dep
     ocrEdtTemplateCreate( &relaunchRcvTML, haloRelaunchRcv, 2, EDT_PARAM_UNK );
     ocrEdtTemplateCreate( &relaunchSndTML, haloRelaunchSnd, EDT_PARAM_UNK, 0 );
 
-    ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 7, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 6, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
 
 
     /*----------------------------Set RCV synch halos--------------------------------*/
@@ -125,7 +125,7 @@ ocrGuid_t refineRelaunchEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t dep
         }
     }
 
-    ocrAddDependence( NULL_GUID, blockDriverGUID, 6, DB_MODE_RO );
+    //ocrAddDependence( NULL_GUID, blockDriverGUID, 6, DB_MODE_RO );
 
 
     return NULL_GUID;
@@ -135,8 +135,14 @@ ocrGuid_t haloNewChannelsRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t de
 {
         ocrGuid_t newDBK;
         bundle_t *tmp;
+        u64 * prms = paramv;
         ocrDbCreate( &newDBK, (void **)&tmp, sizeof( bundle_t ), DB_PROP_SINGLE_ASSIGNMENT, NULL_HINT, NO_ALLOC );
         memcpy( tmp, depv[0].ptr, sizeof( bundle_t ) );
+
+        if( prms[0] == 13 )
+        {
+            PRINTF("%ld:%ld\n", prms[0], prms[1] );
+        }
 
         ASSERT( !ocrGuidIsNull( tmp->channels[0] ) );
         ASSERT( !ocrGuidIsNull( tmp->channels[1] ) );
@@ -167,9 +173,7 @@ ocrGuid_t haloRefineRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] 
         ocrGuid_t newDBK;
         intent_t *tmp;
         ocrDbCreate( &newDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
-        //ASSERT( !ocrGuidIsNull(depv[0].guid) );
         memcpy( tmp, depv[0].ptr, sizeof(intent_t) );
-        //ocrDbDestroy( depv[0].guid );
         return newDBK;
     }
     else if( depc == 4 ) {
@@ -188,6 +192,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     //PRINTF("REFINE %ld\n", PRM_block.id);
     catalog_t *catalog = depv[0].ptr;
     //ocrGuid_t blockDriverGUID;
+    PRINTF("refine %ld\n", PRM_block.id);
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen =   100;
@@ -734,6 +739,7 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                         break;
                 }
             }
+            break;
         case WONT_REFINE: //check to see which neighbors, if any, we must set up channels with.
 
             for( i = 0; i < 6; i++ )
@@ -768,12 +774,16 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
 
     ocrGuid_t refineGUID;
 
+        //if( PRM_block.id == 13 ) PRINTF("%ld, depc: %ld\n", 13, sets+1);
 
     u32 pCount = sizeof( ocrGuid_t )/sizeof( u64 );
 
     ocrGuid_t channelRcvTML, channelSndTML;
-    ocrEdtTemplateCreate( &channelRcvTML, haloNewChannelsRcv, 0, 1 );
+    ocrEdtTemplateCreate( &channelRcvTML, haloNewChannelsRcv, 2, 1 );
     ocrEdtTemplateCreate( &channelSndTML, haloNewChannelsSend, pCount, 1 );
+
+    u64 prms[2];
+    prms[0] = PRM_block.id;
 
     if( sets )
     {
@@ -815,9 +825,10 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
 
             if( catalog->channelsNeeded[i] == true )
             {
+                prms[1] = i;
                 ocrGuid_t rcvGUID, rcvOUT;
 
-                ocrEdtCreate( &rcvGUID, channelRcvTML, EDT_PARAM_DEF, NULL,  EDT_PARAM_DEF, NULL,
+                ocrEdtCreate( &rcvGUID, channelRcvTML, EDT_PARAM_DEF, prms,  EDT_PARAM_DEF, NULL,
                                     EDT_PROP_NONE, NULL_HINT, &rcvOUT );
 
                 ocrAddDependence( rcvOUT, refineGUID, idx++, DB_MODE_RO );
@@ -849,6 +860,7 @@ ocrGuid_t updateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[
     u32 i;
     u32 nDir = 0;
     u32 subIdx = 0;
+
 
     for( i = 1; i < depc; i++ )
     {
@@ -925,6 +937,7 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof( block_t ) );
     refineState_t *rState = (refineState_t *)depv[0].ptr;
+
 
     u64 i;
 
@@ -1060,6 +1073,7 @@ ocrGuid_t willRefineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] 
     if( PRM_block.id == 13 ) rState->disposition = MAY_REFINE;
     rState->prevDisposition = MAY_REFINE;
     rState->cCount = 0;
+
     return depv[0].guid;
 }
 
@@ -1084,4 +1098,3 @@ ocrGuid_t refineControlEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 
     return NULL_GUID;
 }
-

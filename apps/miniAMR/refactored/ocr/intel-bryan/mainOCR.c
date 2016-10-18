@@ -99,17 +99,14 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     memcpy( &PRM_block, paramv, sizeof(block_t) );
     ocrGuid_t blockGUID, blockTML;
 
-            //if( PRM_block.id == 31 )
-            //        PRINTF("%ld\n", PRM_block.id);
     if( PRM_block.timestep < 10 )
     {
-        if( PRM_block.timestep == 4 )
+        if( PRM_block.timestep == 1 )
         {
             PRM_block.timestep++;
             ocrEdtCreate( &blockGUID, PRM_block.refineCtrlTML, EDT_PARAM_DEF, (u64 *)&PRM_block,
             EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
         } else {
-
             PRM_block.timestep++;
 
             //PRINTF("%ld\n", PRM_block.id);
@@ -125,8 +122,6 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                                 EDT_PROP_NONE, NULL_HINT, NULL );
 
             u64 i;
-
-
 
             for( i = 0; i < 6; i++ )
             {
