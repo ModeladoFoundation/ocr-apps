@@ -7,6 +7,18 @@
 #ifndef CMDLINEPARSER_H_
 #define CMDLINEPARSER_H_
 
+typedef struct MyOptionSt
+{
+   char help[1024];
+   char longArg[1024];
+   unsigned char shortArg[2];
+   int argFlag;
+   char type;
+   int sz;
+   void* ptr;
+   void* next;
+} MyOption;
+
 /// Specifies a command line argument that should be accepted by the program.
 /// \param [in]  longOption  The long name of option i.e., --optionname
 /// \param [in]  shortOption The short name of option i.e., -o
@@ -25,16 +37,16 @@
 ///                       strings.
 /// \param [in]  help     A short help string, preferably a single line or
 ///                       less.
-int addArg(const char *longOption, const char shortOption,
+int addArg(MyOption* o, MyOption** myargs, const char *longOption, const char shortOption,
            int has_arg, const char type, void *dataPtr, int dataSize,
            const char *help);
 
 /// Call this to process your arguments.
-void processArgs(int argc, char **argv);
+void processArgs(MyOption* myargs, int argc, char **argv);
 
 /// Prints the arguments to the stdout stream.
-void printArgs(void);
+void printArgs(MyOption* myargs);
 
-void freeArgs(void);
+//void freeArgs(MyOption* myargs);
 
 #endif

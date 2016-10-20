@@ -4,7 +4,7 @@
 #ifndef MYCOMMAND_H
 #define MYCOMMAND_H
 
-#include <stdio.h>
+//#include <stdio.h>
 
 /// A structure to hold the value of every run-time parameter that can
 /// be read from the command line.
@@ -32,6 +32,6 @@ typedef struct CommandSt
 Command parseCommandLine(int argc, char** argv);
 
 /// Print run parameters in yaml format on the supplied output stream.
-void printCmdYaml(FILE* file, Command* cmd);
+void printCmd(Command* cmd);
 
 #endif

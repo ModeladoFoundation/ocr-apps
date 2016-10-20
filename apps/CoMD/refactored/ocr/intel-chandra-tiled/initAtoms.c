@@ -4,15 +4,12 @@
 #include "initAtoms.h"
 
 #include <math.h>
-#include <assert.h>
 
 #include "constants.h"
 #include "decomposition.h"
-#include "parallel.h"
 #include "random.h"
 #include "linkCells.h"
 #include "timestep.h"
-#include "memUtils.h"
 #include "performanceTimers.h"
 
 static void computeVcmOCR(SimFlat* s, real_t vcmLocal[4]);
@@ -23,16 +20,8 @@ static void computeVcmOCR(SimFlat* s, real_t vcmLocal[4]);
 void initAtoms(Atoms* atoms, LinkCell* boxes)
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
-   //Atoms* atoms = comdMalloc(sizeof(Atoms));
 
    int maxTotalAtoms = MAXATOMS*boxes->nTotalBoxes;
-
-   //atoms->gid =      (int*)   comdMalloc(maxTotalAtoms*sizeof(int));
-   //atoms->iSpecies = (int*)   comdMalloc(maxTotalAtoms*sizeof(int));
-   //atoms->r =        (real3*) comdMalloc(maxTotalAtoms*sizeof(real3));
-   //atoms->p =        (real3*) comdMalloc(maxTotalAtoms*sizeof(real3));
-   //atoms->f =        (real3*) comdMalloc(maxTotalAtoms*sizeof(real3));
-   //atoms->U =        (real_t*)comdMalloc(maxTotalAtoms*sizeof(real_t));
 
    ocrDbCreate( &(atoms->DBK_gid), (void **) &atoms->gid, maxTotalAtoms*sizeof(int),
                 DB_PROP_NONE, NULL_HINT, NO_ALLOC );
@@ -61,16 +50,9 @@ void initAtoms(Atoms* atoms, LinkCell* boxes)
    }
 }
 
-void destroyAtoms(Atoms *atoms)
-{
-   freeMe(atoms,gid);
-   freeMe(atoms,iSpecies);
-   freeMe(atoms,r);
-   freeMe(atoms,p);
-   freeMe(atoms,f);
-   freeMe(atoms,U);
-   comdFree(atoms);
-}
+//void destroyAtoms(Atoms *atoms)
+//{
+//}
 
 /// Creates atom positions on a face centered cubic (FCC) lattice with
 /// nx * ny * nz unit cells and lattice constant lat.
@@ -110,7 +92,6 @@ void createFccLattice(int nx, int ny, int nz, real_t lat, SimFlat* s)
                if (ry < localMin[1] || ry >= localMax[1]) continue;
                if (rz < localMin[2] || rz >= localMax[2]) continue;
                int id = ib+nb*(iz+nz*(iy+ny*(ix)));
-               //PRINTF("%d: %d %d %d\n", id, ix, iy, iz);
                putAtomInBox(s->boxes, s->atoms, id, 0, rx, ry, rz, px, py, pz);
             }
 
@@ -121,7 +102,7 @@ void createFccLattice(int nx, int ny, int nz, real_t lat, SimFlat* s)
    //stopTimer(commReduceTimer);
     s->atoms->nGlobal = nb*nx*ny*nz;
 
-   //assert(s->atoms->nGlobal == nb*nx*ny*nz);
+   ASSERT(s->atoms->nGlobal == nb*nx*ny*nz);
 }
 
 void adjustVcm(SimFlat* s, real_t *oldVcm, real_t *newVcm )
@@ -196,94 +177,6 @@ ocrGuid_t adjustVcmAndComputeKeEdt(EDT_ARGS)
     return NULL_GUID;
 }
 
-
-
-/// Sets the temperature of system.
-///
-/// Selects atom velocities randomly from a boltzmann (equilibrium)
-/// distribution that corresponds to the specified temperature.  This
-/// random process will typically result in a small, but non zero center
-/// of mass velocity and a small difference from the specified
-/// temperature.  For typical MD runs these small differences are
-/// unimportant, However, to avoid possible confusion, we set the center
-/// of mass velocity to zero and scale the velocities to exactly match
-/// the input temperature.
-#if 0
-void setTemperature(SimFlat* s, real_t temperature)
-{
-    DEBUG_PRINTF(( "%s\n", __func__ ));
-   // set initial velocities for the distribution
-   for (int iBox=0; iBox<s->boxes->nLocalBoxes; ++iBox)
-   {
-      for (int iOff=MAXATOMS*iBox, ii=0; ii<s->boxes->nAtoms[iBox]; ++ii, ++iOff)
-      {
-         int iType = s->atoms->iSpecies[iOff];
-         real_t mass = s->species[iType].mass;
-         real_t sigma = sqrt(kB_eV * temperature/mass);
-         uint64_t seed = mkSeed(s->atoms->gid[iOff], 123);
-         s->atoms->p[iOff][0] = mass * sigma * gasdev(&seed);
-         s->atoms->p[iOff][1] = mass * sigma * gasdev(&seed);
-         s->atoms->p[iOff][2] = mass * sigma * gasdev(&seed);
-      }
-   }
-   // compute the resulting temperature
-   // kinetic energy  = 3/2 kB * Temperature
-   if (temperature == 0.0) return;
-
-   real_t currentVcm[4];
-   computeVcm(s, currentVcm);
-
-   real_t vZero[3] = {0., 0., 0.};
-   setVcm(s, vZero);
-
-   kineticEnergy(s);
-
-   //real_t temp = (s->eKinetic/s->atoms->nGlobal)/kB_eV/1.5;
-   //// scale the velocities to achieve the target temperature
-   //real_t scaleFactor = sqrt(temperature/temp);
-   //for (int iBox=0; iBox<s->boxes->nLocalBoxes; ++iBox)
-   //{
-   //   for (int iOff=MAXATOMS*iBox, ii=0; ii<s->boxes->nAtoms[iBox]; ++ii, ++iOff)
-   //   {
-   //      s->atoms->p[iOff][0] *= scaleFactor;
-   //      s->atoms->p[iOff][1] *= scaleFactor;
-   //      s->atoms->p[iOff][2] *= scaleFactor;
-   //   }
-   //}
-
-   //kineticEnergy(s);
-
-   //temp = s->eKinetic/s->atoms->nGlobal/kB_eV/1.5;
-}
-
-/// Sets the center of mass velocity of the system.
-/// \param [in] newVcm The desired center of mass velocity.
-void setVcm(SimFlat* s, real_t newVcm[3])
-{
-   real_t oldVcm[3];
-   computeVcm(s, oldVcm);
-
-   real_t vShift[3];
-   vShift[0] = (newVcm[0] - oldVcm[0]);
-   vShift[1] = (newVcm[1] - oldVcm[1]);
-   vShift[2] = (newVcm[2] - oldVcm[2]);
-
-   for (int iBox=0; iBox<s->boxes->nLocalBoxes; ++iBox)
-   {
-      for (int iOff=MAXATOMS*iBox, ii=0; ii<s->boxes->nAtoms[iBox]; ++ii, ++iOff)
-      {
-         int iSpecies = s->atoms->iSpecies[iOff];
-         real_t mass = s->species[iSpecies].mass;
-
-         s->atoms->p[iOff][0] += mass * vShift[0];
-         s->atoms->p[iOff][1] += mass * vShift[1];
-         s->atoms->p[iOff][2] += mass * vShift[2];
-      }
-   }
-}
-
-#endif
-
 /// Computes the center of mass velocity of the system.
 void computeVcmOCR(SimFlat* s, real_t vcmLocal[4])
 {
@@ -350,6 +243,17 @@ void randomDisplacements(SimFlat* s, real_t delta)
    }
 }
 
+/// Sets the temperature of system.
+///
+/// Selects atom velocities randomly from a boltzmann (equilibrium)
+/// distribution that corresponds to the specified temperature.  This
+/// random process will typically result in a small, but non zero center
+/// of mass velocity and a small difference from the specified
+/// temperature.  For typical MD runs these small differences are
+/// unimportant, However, to avoid possible confusion, we set the center
+/// of mass velocity to zero and scale the velocities to exactly match
+/// the input temperature.
+
 void adjustTemperature(SimFlat* s, real_t temperature )
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
@@ -391,7 +295,7 @@ ocrGuid_t adjustTemperatureEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t de
     adjustTemperatureEdtParamv_t* adjustTemperatureEdtParamvPTR = (adjustTemperatureEdtParamv_t*) paramv;
     real_t temperature = adjustTemperatureEdtParamvPTR->temperature;
 
-    //PRINTF("ePot %f eKin %f atoms %d\n", eGlobalPTR[0], eGlobalPTR[1], (int)eGlobalPTR[2]);
+    DEBUG_PRINTF(("ePot %f eKin %f atoms %d\n", eGlobalPTR[0], eGlobalPTR[1], (int)eGlobalPTR[2]));
 
     sim->PTR_rankH = PTR_rankH;
 
@@ -417,12 +321,14 @@ ocrGuid_t randomDisplacementsEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t 
     ocrGuid_t DBK_rankH = depv[0].guid;
     ocrGuid_t DBK_sim = depv[1].guid;
     ocrGuid_t DBK_nAtoms = depv[2].guid;
-    ocrGuid_t DBK_r = depv[3].guid;
+    ocrDBK_t DBK_gid = depv[3].guid;
+    ocrGuid_t DBK_r = depv[4].guid;
 
     rankH_t* PTR_rankH = depv[0].ptr;
     SimFlat* sim = depv[1].ptr;
     int* nAtoms = depv[2].ptr;
-    real3* r = depv[3].ptr;
+    int* gid = depv[3].ptr;
+    real3* r = depv[4].ptr;
 
     randomDisplacementsEdtParamv_t* randomDisplacementsEdtParamvPTR = (randomDisplacementsEdtParamv_t*) paramv;
     real_t delta = randomDisplacementsEdtParamvPTR->delta;
@@ -430,6 +336,7 @@ ocrGuid_t randomDisplacementsEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t 
     sim->PTR_rankH = PTR_rankH;
 
     sim->atoms = &sim->atoms_INST;
+    sim->atoms->gid = gid;
     sim->atoms->r = r;
 
     sim->boxes = &sim->boxes_INST;

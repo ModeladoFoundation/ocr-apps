@@ -48,13 +48,10 @@ void destroyAtoms(struct AtomsSt* atoms);
 
 void createFccLattice(int nx, int ny, int nz, real_t lat, struct SimFlatSt* s);
 
-//void setVcm(struct SimFlatSt* s, real_t vcm[3]);
-//void setTemperature(struct SimFlatSt* s, real_t temperature);
 void setMomentumAndComputeVcm(struct SimFlatSt* s, real_t temperature);
-//void randomDisplacements(struct SimFlatSt* s, real_t delta);
 
 ocrGuid_t adjustTemperatureEdt( EDT_ARGS );
 ocrGuid_t randomDisplacementsEdt( EDT_ARGS );
 
-ocrGuid_t adjustVcmAndComputeKeEdt(EDT_ARGS);
+ocrGuid_t adjustVcmAndComputeKeEdt( EDT_ARGS );
 #endif

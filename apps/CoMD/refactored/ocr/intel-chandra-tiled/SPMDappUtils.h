@@ -21,23 +21,23 @@ typedef struct
     u64 edtGridDims[3];
 } PRM_initEdt_t;
 
-void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e);
-void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id);
+void partition_bounds(u64 id, u64 lb_g, u64 ub_g, u64 R, u64* s, u64* e);
+void getPartitionID(u64 i, u64 lb_g, u64 ub_g, u64 R, u64* id);
 
-void splitDimension_Cart3D(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_procsz);
+void splitDimension_Cart3D(u64 Num_procs, u64* Num_procsx, u64* Num_procsy, u64* Num_procsz);
 static inline int globalRankFromCoords_Cart3D( int id_x, int id_y, int id_z, int NR_X, int NR_Y, int NR_Z );
 void globalCoordsFromRank_Cart3D( int id, int NR_X, int NR_Y, int NR_Z, int* id_x, int* id_y, int* id_z );
 static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims );
 
-void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s64* edtGridDims, ocrGuid_t* spmdDepv );
-void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s64* edtGridDims, ocrGuid_t* spmdDepv );
+void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv );
+void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv );
 
-void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id)
+void getPartitionID(u64 i, u64 lb_g, u64 ub_g, u64 R, u64* id)
 {
-    s64 N = ub_g - lb_g + 1;
-    s64 s, e;
+    u64 N = ub_g - lb_g + 1;
+    u64 s, e;
 
-    s64 r;
+    u64 r;
 
     for( r = 0; r < R; r++ )
     {
@@ -50,9 +50,9 @@ void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id)
     *id = r;
 }
 
-void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e)
+void partition_bounds(u64 id, u64 lb_g, u64 ub_g, u64 R, u64* s, u64* e)
 {
-    s64 N = ub_g - lb_g + 1;
+    u64 N = ub_g - lb_g + 1;
 
     *s = id*N/R + lb_g;
     *e = (id+1)*N/R + lb_g - 1;
@@ -83,12 +83,12 @@ static inline int getPoliyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridD
     int PD_X = pdGridDims[0];
     int PD_Y = pdGridDims[1];
 
-    s64 pd_x; getPartitionID(id_x, 0, edtGridDims[0]-1, PD_X, &pd_x);
-    s64 pd_y; getPartitionID(id_y, 0, edtGridDims[1]-1, PD_Y, &pd_y);
+    u64 pd_x; getPartitionID(id_x, 0, edtGridDims[0]-1, PD_X, &pd_x);
+    u64 pd_y; getPartitionID(id_y, 0, edtGridDims[1]-1, PD_Y, &pd_y);
 
     //Each edt, with id=b, is mapped to a PD. The mapping is similar to how the link cells map to
     //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
-    //And, a 3-D subgrid of edts is mapped to a PD preserving "locality" within a PD.
+    //And, a 2-D subgrid of edts is mapped to a PD preserving "locality" within a PD.
     //
     int mapToPD = globalRankFromCoords_Cart2D(pd_x, pd_y, PD_X, PD_Y);
 
@@ -105,23 +105,22 @@ static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGrid
     int PD_Y = pdGridDims[1];
     int PD_Z = pdGridDims[2];
 
-    s64 pd_x; getPartitionID(id_x, 0, edtGridDims[0]-1, PD_X, &pd_x);
-    s64 pd_y; getPartitionID(id_y, 0, edtGridDims[1]-1, PD_Y, &pd_y);
-    s64 pd_z; getPartitionID(id_z, 0, edtGridDims[2]-1, PD_Z, &pd_z);
+    u64 pd_x; getPartitionID(id_x, 0, edtGridDims[0]-1, PD_X, &pd_x);
+    u64 pd_y; getPartitionID(id_y, 0, edtGridDims[1]-1, PD_Y, &pd_y);
+    u64 pd_z; getPartitionID(id_z, 0, edtGridDims[2]-1, PD_Z, &pd_z);
 
     //Each linkcell, with id=b, is mapped to a PD. The mapping is similar to how the link cells map to
     //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
     //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
     //
     int mapToPD = globalRankFromCoords_Cart3D(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
-    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
 
     return mapToPD;
 }
 
-void splitDimension_Cart2D(s64 Num_procs, s64* Num_procsx, s64* Num_procsy)
+void splitDimension_Cart2D(u64 Num_procs, u64* Num_procsx, u64* Num_procsy)
 {
-    s64 nx, ny;
+    u64 nx, ny;
 
     nx = (int) sqrt(Num_procs+1);
     for(; nx>0; nx--)
@@ -135,9 +134,9 @@ void splitDimension_Cart2D(s64 Num_procs, s64* Num_procsx, s64* Num_procsy)
     *Num_procsx = nx; *Num_procsy = (Num_procs)/(*Num_procsx);
 }
 
-void splitDimension_Cart3D(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64* Num_procsz)
+void splitDimension_Cart3D(u64 Num_procs, u64* Num_procsx, u64* Num_procsy, u64* Num_procsz)
 {
-    s64 nx, ny, nz;
+    u64 nx, ny, nz;
 
     nz = (int) pow(Num_procs+1,0.33);
     for(; nz>0; nz--)
@@ -167,7 +166,7 @@ void splitDimension_Cart3D(s64 Num_procs, s64* Num_procsx, s64* Num_procsy, s64*
     *Num_procsx = Num_procs/(*Num_procsy);
 }
 
-void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s64* edtGridDims, ocrGuid_t* spmdDepv )
+void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv )
 {
     u64 i;
     u64 nRanks = edtGridDims[0]*edtGridDims[1]*edtGridDims[2];
@@ -177,7 +176,7 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s6
 
     //The EDTs are mapped to the policy domains (nodes) through EDT hints
     //There are more subdomains than the # of policy domains.
-    //A 2-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
+    //A 3-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
     //to minimize data movement between the policy domains
 
     ocrGuid_t initTML, EDT_init;
@@ -195,12 +194,17 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s6
 
     //Query the number of policy domains (nodes) available for the run
     //Map the SPMD EDTs onto the policy domains
-    s64 affinityCount;
+    u64 affinityCount=1;
+#ifdef ENABLE_EXTENSION_AFFINITY
+    PRINTF("Using affinity API\n");
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    s64 PD_X, PD_Y, PD_Z;
+#else
+    PRINTF("NOT Using affinity API\n");
+#endif
+    u64 PD_X, PD_Y, PD_Z;
     splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 2-D grid
 
-    s64 pdGridDims[3] = { PD_X, PD_Y, PD_Z };
+    u64 pdGridDims[3] = { PD_X, PD_Y, PD_Z };
 
     for( i = 0; i < nRanks; ++i )
     {
@@ -208,9 +212,10 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s6
 
         int pd = getPolicyDomainID_Cart3D( i, edtGridDims, pdGridDims );
         DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+#ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
-
+#endif
         ocrEdtCreate( &EDT_init, initTML, EDT_PARAM_DEF, (u64*)&PRM_initEdt, EDT_PARAM_DEF, NULL,
                         EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //initEdt
         ocrAddDependence( spmdDepv[0], EDT_init, 0, DB_MODE_RO );
@@ -223,7 +228,7 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s6
 typedef struct
 {
     u64 PD_id;
-    s64 edtGridDims[3];
+    u64 edtGridDims[3];
     ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*);
 } PDinitEdt_paramv_t;
 
@@ -232,16 +237,18 @@ _OCR_TASK_FNC_( PDinitEdt )
     PDinitEdt_paramv_t* PTR_PDinitEdt_paramv = (PDinitEdt_paramv_t*) paramv;
 
     u64 PD_id;
-    s64 edtGridDims[3];
+    u64 edtGridDims[3];
     //
     //Query the number of policy domains (nodes) available for the run
     //Map the SPMD EDTs onto the policy domains
-    s64 affinityCount;
+    u64 affinityCount=1;
+#ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    s64 PD_X, PD_Y, PD_Z;
+#endif
+    u64 PD_X, PD_Y, PD_Z;
     splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid
 
-    s64 pdGridDims[3] = { PD_X, PD_Y, PD_Z };
+    u64 pdGridDims[3] = { PD_X, PD_Y, PD_Z };
 
     PD_id = PTR_PDinitEdt_paramv->PD_id;
     edtGridDims[0] = PTR_PDinitEdt_paramv->edtGridDims[0];
@@ -263,9 +270,9 @@ _OCR_TASK_FNC_( PDinitEdt )
 
     ocrGuid_t PDaffinityGuid;
 
-    s64 edtGridDims_lb_x, edtGridDims_ub_x;
-    s64 edtGridDims_lb_y, edtGridDims_ub_y;
-    s64 edtGridDims_lb_z, edtGridDims_ub_z;
+    u64 edtGridDims_lb_x, edtGridDims_ub_x;
+    u64 edtGridDims_lb_y, edtGridDims_ub_y;
+    u64 edtGridDims_lb_z, edtGridDims_ub_z;
 
     int pd_x, pd_y, pd_z;
 
@@ -281,15 +288,16 @@ _OCR_TASK_FNC_( PDinitEdt )
     PRM_initEdt.edtGridDims[1] = edtGridDims[1];
     PRM_initEdt.edtGridDims[2] = edtGridDims[2];
 
-    s64 i, j, k;
+    u64 i, j, k;
     for( k = edtGridDims_lb_z; k <= edtGridDims_ub_z ; ++k )
     for( j = edtGridDims_lb_y; j <= edtGridDims_ub_y ; ++j )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords_Cart3D( i, j, k, edtGridDims[0], edtGridDims[1], edtGridDims[2] );
         DEBUG_PRINTF(("id %d map PD %d\n", myRank, PD_id));
+#ifdef ENABLE_EXTENSION_AFFINITY
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
-
+#endif
         PRM_initEdt.id = myRank;
         ocrEdtCreate( &EDT_init, initTML, EDT_PARAM_DEF, (u64*)&PRM_initEdt, EDT_PARAM_DEF, NULL,
                         EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //initEdt
@@ -298,18 +306,20 @@ _OCR_TASK_FNC_( PDinitEdt )
     }
 }
 
-void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), s64* edtGridDims, ocrGuid_t* spmdDepv )
+void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv )
 {
     u64 i;
-    u64 nPDs;
+    u64 nPDs=1;
+#ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &nPDs );
+#endif
 
     ocrGuid_t DBK_cmdLineArgs = spmdDepv[0];
     ocrGuid_t DBK_globalParamH = spmdDepv[1];
 
     //The EDTs are mapped to the policy domains (nodes) through EDT hints
     //There are more subdomains than the # of policy domains.
-    //A 2-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
+    //A 3-d subgrid of "subdomains"/ranks/EDTs get mapped to a single policy domain
     //to minimize data movement between the policy domains
 
     ocrGuid_t PDinitTML, EDT_PDinit;
@@ -331,9 +341,10 @@ void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, o
     {
         int pd = i;
         DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+#ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
-
+#endif
         PDinitEdt_paramv.PD_id = pd;
 
         ocrEdtCreate( &EDT_PDinit, PDinitTML, EDT_PARAM_DEF, (u64*)&PDinitEdt_paramv, EDT_PARAM_DEF, NULL,

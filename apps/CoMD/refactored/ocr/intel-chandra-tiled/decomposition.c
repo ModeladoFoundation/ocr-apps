@@ -6,11 +6,6 @@
 
 #include "decomposition.h"
 
-#include <assert.h>
-
-#include "memUtils.h"
-#include "parallel.h"
-
 /// \param [in] xproc x-size of domain decomposition grid.
 /// \param [in] yproc y-size of domain decomposition grid.
 /// \param [in] zproc z-size of domain decomposition grid.
@@ -18,14 +13,12 @@
 void initDecomposition(u64 myRank, Domain* dd, int xproc, int yproc, int zproc, real3 globalExtent)
 {
    DEBUG_PRINTF(("%s\n", __func__));
-   //assert( xproc * yproc * zproc == getNRanks());
 
    //Domain* dd = comdMalloc(sizeof(Domain));
    dd->procGrid[0] = xproc;
    dd->procGrid[1] = yproc;
    dd->procGrid[2] = zproc;
    // calculate grid coordinates i,j,k for this processor
-   //int myRank = id;
    dd->procCoord[0] = myRank % dd->procGrid[0];
    myRank /= dd->procGrid[0];
    dd->procCoord[1] = myRank % dd->procGrid[1];

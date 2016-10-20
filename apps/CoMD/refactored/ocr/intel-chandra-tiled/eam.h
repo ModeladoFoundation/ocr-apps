@@ -7,8 +7,6 @@
 #include "mytype.h"
 
 #include "constants.h"
-#include "memUtils.h"
-#include "parallel.h"
 #include "linkCells.h"
 #include "CoMDTypes.h"
 #include "performanceTimers.h"
@@ -52,7 +50,6 @@ typedef struct EamPotentialSt
    char latticeType[8];    //!< lattice type, e.g. FCC, BCC, etc.
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
-   //int  (*force)(SimFlat* s); //!< function pointer to force routine
    ocrGuid_t forceTML, force1TML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(BasePotential* pot);

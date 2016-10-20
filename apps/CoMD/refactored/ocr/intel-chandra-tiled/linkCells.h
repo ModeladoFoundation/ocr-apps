@@ -48,5 +48,4 @@ ocrGuid_t updateLinkCellsEdt( EDT_ARGS );
 
 int maxOccupancy(LinkCell* boxes);
 
-
 #endif

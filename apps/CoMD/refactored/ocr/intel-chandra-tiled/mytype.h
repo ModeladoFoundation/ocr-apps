@@ -55,6 +55,4 @@ static void createEventHelper(ocrGuid_t * evtGuid, u32 nbDeps) {
 #endif
 }
 
-#define screenOut stdout
-
 #endif

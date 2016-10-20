@@ -5,7 +5,6 @@
 #define __COMDTYPES_H_
 
 #define ENABLE_EXTENSION_LABELING
-#define ENABLE_EXTENSION_AFFINITY
 
 #include "ocr.h"
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
@@ -14,14 +13,12 @@
 #include "extensions/ocr-profiler.h"
 #endif
 
-#include <stdio.h>
-
 #ifndef TG_ARCH
 #include <time.h>
 #endif
 
 #include "mytype.h"
-#include "mycommand.h" //TODO
+#include "mycommand.h"
 #include "haloExchange.h"
 #include "linkCells.h"
 #include "decomposition.h"
@@ -63,7 +60,6 @@ typedef struct BasePotentialSt
    char latticeType[8];    //!< lattice type, e.g. FCC, BCC, etc.
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
-   //int  (*force)(struct SimFlatSt* s); //!< function pointer to force routine
    ocrGuid_t forceTML, force1TML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(struct BasePotentialSt* pot);
@@ -93,7 +89,6 @@ typedef struct
     ocrGuid_t haloRangeGUID;
     ocrGuid_t KeReductionRangeGUID, VcmReductionRangeGUID, maxOccupancyReductionRangeGUID;
     ocrGuid_t perfTimerReductionRangeGUID;
-    //ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
     ocrEVT_t finalOnceEVT;
 } globalOcrParamH_t;
 
@@ -136,7 +131,6 @@ typedef struct
 {
     s64 nRanks, myRank;
     globalParamH_t globalParamH;
-    //rankParamH_t rankParamH;
     Command cmd;
     rankTemplateH_t rankTemplateH;
 
@@ -190,7 +184,7 @@ typedef struct SimFlatSt
    Timers perfTimer[numberOfTimers];
    TimerGlobal perfGlobal;
 
-   rankH_t* PTR_rankH; //TODO
+   rankH_t* PTR_rankH;
 
 } SimFlat;
 

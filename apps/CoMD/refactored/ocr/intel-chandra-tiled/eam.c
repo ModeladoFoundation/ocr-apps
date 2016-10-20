@@ -87,14 +87,11 @@
 
 #include "eam.h"
 
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <assert.h>
 
 #include "constants.h"
-#include "memUtils.h"
-#include "parallel.h"
 #include "linkCells.h"
 #include "CoMDTypes.h"
 #include "performanceTimers.h"
@@ -120,7 +117,6 @@ static void initInterpolationObject( InterpolationObject* table,
 static void destroyInterpolationObject(InterpolationObject** table);
 static void interpolate(InterpolationObject* table, real_t r, real_t* f, real_t* df);
 static void bcastInterpolationObject(InterpolationObject** table);
-static void printTableData(InterpolationObject* table, const char* fileName);
 
 
 // Read potential tables from files.
@@ -146,8 +142,7 @@ ocrDBK_t initEamPot(BasePotential** bpot, const char* dir, const char* file, con
    pot->force_edt = eamForce_edt;
    ocrEdtTemplateCreate( &pot->forceTML,   eamForce_edt, 1, 3 );
    ocrEdtTemplateCreate( &pot->force1TML, eamForce1_edt, 1, 14 );
-   ocrEdtTemplateCreate( &pot->force2TML, eamForce2_edt, 1, 10 );
-   //pot->force = eamForce;
+   ocrEdtTemplateCreate( &pot->force2TML, eamForce2_edt, 1, 11 );
    pot->print = eamPrint;
    pot->destroy = eamDestroy;
 
@@ -195,7 +190,7 @@ ocrDBK_t initEamPot(BasePotential** bpot, const char* dir, const char* file, con
 int eamForce1(SimFlat* s, u64 itimestep)
 {
    EamPotential* pot = (EamPotential*) s->pot;
-   assert(pot);
+   ASSERT(pot);
 
    real_t rCut2 = pot->cutoff*pot->cutoff;
 
@@ -263,8 +258,6 @@ int eamForce1(SimFlat* s, u64 itimestep)
                pot->rhobar[iOff] += rhoTmp;
                pot->rhobar[jOff] += rhoTmp;
 
-               //PRINTF("1 iBox %d iOff %d jbox %d jOff %d (%f %f %f) dPhi %f: %f %f %f %f\n", iBox, iOff, jBox, jOff, dr[0], dr[1], dr[2], dPhi, s->atoms->f[iOff][0], s->atoms->f[iOff][1], s->atoms->f[iOff][2], phiTmp);
-
             } // loop over atoms in jBox
          } // loop over atoms in iBox
       } // loop over neighbor boxes
@@ -285,15 +278,8 @@ int eamForce1(SimFlat* s, u64 itimestep)
          pot->dfEmbed[iOff] = dfEmbed; // save derivative for halo exchange
          etot += fEmbed;
          s->atoms->U[iOff] += fEmbed;
-
-         //PRINTF("2 iBox %d iOff %d %f %f %f %f\n", iBox, iOff, s->atoms->f[iOff][0], s->atoms->f[iOff][1], s->atoms->f[iOff][2], fEmbed);
       }
    }
-
-   //// exchange derivative of the embedding energy with repsect to rhobar
-   //startTimer(eamHaloTimer);
-   //haloExchange(pot->forceExchange, pot->forceExchangeData);
-   //stopTimer(eamHaloTimer);
 
    s->ePotential = (real_t) etot;
 
@@ -303,7 +289,7 @@ int eamForce1(SimFlat* s, u64 itimestep)
 int eamForce2(SimFlat* s)
 {
    EamPotential* pot = (EamPotential*) s->pot;
-   assert(pot);
+   ASSERT(pot);
 
    real_t rCut2 = pot->cutoff*pot->cutoff;
 
@@ -401,13 +387,10 @@ void eamDestroy(BasePotential** pPot)
 void initInterpolationObject( InterpolationObject* table,
    int n, real_t x0, real_t dx, real_t* data)
 {
-   //InterpolationObject* table =
-   //   (InterpolationObject *)comdMalloc(sizeof(InterpolationObject)) ;
-   assert(table);
+   ASSERT(table);
 
-   //table->values = (real_t*)comdCalloc(1, (n+3)*sizeof(real_t));
    ocrDbCreate( &table->DBK_values, (void**) &table->values, (n+3)*sizeof(real_t), 0, NULL_HINT, NO_ALLOC );
-   assert(table->values);
+   ASSERT(table->values);
 
    table->values++;
    table->n = n;
@@ -421,8 +404,6 @@ void initInterpolationObject( InterpolationObject* table,
    table->values[n+1] = table->values[n] = table->values[n-1];
 
    ocrDbRelease( table->DBK_values );
-
-   //return table;
 }
 
 void destroyInterpolationObject(InterpolationObject** a)
@@ -478,21 +459,6 @@ void interpolate(InterpolationObject* table, real_t r, real_t* f, real_t* df)
    *df = 0.5*(g1 + r*(g2-g1))*table->invDx;
 }
 
-void printTableData(InterpolationObject* table, const char* fileName)
-{
-   if (!printRank()) return;
-
-   FILE* potData;
-   potData = fopen(fileName,"w");
-   real_t dR = 1.0/table->invDx;
-   for (int i = 0; i<table->n; i++)
-   {
-      real_t r = table->x0+i*dR;
-      fprintf(potData, "%d %e %e\n", i, r, table->values[i]);
-   }
-   fclose(potData);
-}
-
 /// Reads potential data from a funcfl file and populates
 /// corresponding members and InterpolationObjects in an EamPotential.
 ///
@@ -541,13 +507,7 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
   //HARD-CODE THIS FUNCTION
    char tmp[4096];
 
-   //sprintf(tmp, "%s/%s", dir, potName);
-   //FILE* potFile = fopen(tmp, "r");
-   //if (potFile == NULL)
-   //   fileNotFound("eamReadFuncfl", tmp);
-
    // line 1
-   //fgets(tmp, sizeof(tmp), potFile);
    char name[3];
    sscanf("Cu functions (universal 4) - JB Adams et al J. Mater. Res., 4(1), 102 (1989)", "%s", name);
    strcpy(pot->name, name);
@@ -556,7 +516,6 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
    int nAtomic;
    double mass, lat;
    char latticeType[8];
-   //fgets(tmp,sizeof(tmp),potFile);
    sscanf("   29     63.550         3.6150    FCC", "%d %le %le %s", &nAtomic, &mass, &lat, latticeType);
    pot->atomicNo = nAtomic;
    pot->lat = lat;
@@ -566,7 +525,6 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
    // line 3
    int nRho, nR;
    double dRho, dR, cutoff;
-   //fgets(tmp,sizeof(tmp),potFile);
    sscanf("  500  5.0100200400801306e-04  500  1.0000000000000009e-02  4.9499999999999886e+00", "%d %le %d %le %le", &nRho, &dRho, &nR, &dR, &cutoff);
    pot->cutoff = cutoff;
    real_t x0 = 0.0; // tables start at zero.
@@ -575,14 +533,11 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
    int bufSize = MAX(nRho, nR);
 
    ocrDBK_t DBK_buf;
-   real_t* buf; // = comdMalloc(bufSize * sizeof(real_t));
+   real_t* buf;
    ocrDbCreate( &DBK_buf, (void**) &buf, bufSize * sizeof(real_t), 0, NULL_HINT, NO_ALLOC );
    real_t* bufOrig = buf;
 
    // read embedding energy
-   //for (int ii=0; ii<nRho/5; ++ii)
-   //{
-   //   //fscanf(potFile, FMT1, buf+ii);
                 sscanf("  0.                     -3.1589719908208558e-01 -5.2405175291223927e-01 -6.9885553834123115e-01 -8.5420409172727574e-01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4]);
         buf+=5; sscanf(" -9.9627285782417374e-01 -1.1284756487892835e+00 -1.2529454148045645e+00 -1.3711252149943363e+00 -1.4840478277127076e+00","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf(" -1.5924840805403662e+00 -1.6954285804552853e+00 -1.7942937845174001e+00 -1.8901318213864968e+00 -1.9832501645057476e+00","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
@@ -683,15 +638,11 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
         buf+=5; sscanf(" -2.6009396938703958e+01 -2.6069102516181829e+01 -2.6128853529326307e+01 -2.6188649834339685e+01 -2.6248491287389243e+01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf(" -2.6308377744605878e+01 -2.6368309062100934e+01 -2.6428285095962565e+01 -2.6488305702088610e+01 -2.6548370736885317e+01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf(" -2.6608480056235521e+01 -2.6668633516188947e+01 -2.6728830972768947e+01 -2.6789072282060033e+01 -2.6849357300140582e+01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
-    //}
 
    buf = bufOrig;
    initInterpolationObject(pot->f, nRho, x0, dRho, buf);
 
    // read Z(r) and convert to phi(r)
-   //for (int ii=0; ii<nR/5; ++ii)
-   //{
-   //   //fscanf(potFile, FMT1, buf+ii);
                 sscanf("  1.0000000000000000e+01  1.0801250630455797e+01  1.0617301586939504e+01  1.0436833263885262e+01  1.0259774441010791e+01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  1.0086055417347552e+01  9.9156079783837754e+00  9.7483653639170598e+00  9.5842622365983630e+00  9.4232346511569745e+00","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  9.2652200242883396e+00  9.1101571051919450e+00  8.9579859467472716e+00  8.8086478773091699e+00  8.6620854731154395e+00","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
@@ -792,7 +743,6 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
         buf+=5; sscanf("  1.6821026976564513e-03  1.5033788479984489e-03  1.3270747614446132e-03  1.1531584484569257e-03  9.8159833136179930e-04","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  8.1236323918953968e-04  6.4542240257081662e-04  4.8074544870146951e-04  3.1830239637042901e-04  1.5806365104042985e-04","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  0.                      0.                      0.                      0.                      0.", "%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
-    //}
 
    buf = bufOrig;
    for (int ii=1; ii<nR; ++ii)
@@ -805,9 +755,6 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
    initInterpolationObject(pot->phi, nR, x0, dR, buf);
 
    // read electron density rho
-   //for (int ii=0; ii<nR/5; ++ii)
-   //{
-      //fscanf(potFile, FMT1, buf+ii);
                 sscanf("  0.                      5.4383329664155645e-05  9.3944898415945083e-04  4.3251847212615047e-03  1.2334244035325348e-02","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  2.7137722173468548e-02  5.0697119791449641e-02  8.4607638668976470e-02  1.3001641279549414e-01  1.8759487452762702e-01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  2.5754900895683441e-01  3.3965493779430744e-01  4.3331024634064264e-01  5.3759384878832961e-01  6.5132908316254046e-01","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
@@ -908,25 +855,17 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
         buf+=5; sscanf("  3.5992828942305738e-06  3.1956709623667747e-06  2.8024197531120341e-06  2.4192741502208947e-06  2.0459849890155880e-06","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  1.6823089274468580e-06  1.3280083196495871e-06  9.8285109196557868e-07  6.4661062138351467e-07  3.1906561636122974e-07","%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
         buf+=5; sscanf("  0.                      0.                      0.                      0.                      0.", "%lf %lf %lf %lf %lf", &buf[0], &buf[1], &buf[2], &buf[3], &buf[4] );
-    //}
 
    buf = bufOrig;
    initInterpolationObject(pot->rho, nR, x0, dR, buf);
 
-   //comdFree(buf);
    ocrDbDestroy(DBK_buf);
-
-
-/*    printPot(pot->f,   "funcflDataF.txt"); */
-/*    printPot(pot->rho, "funcflDataRho.txt"); */
-/*    printPot(pot->phi, "funcflDataPhi.txt"); */
 }
 
 void typeNotSupported(const char* callSite, const char* type)
 {
-   fprintf(screenOut,
-          "%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
-   exit(-1);
+   PRINTF("%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
+   ocrShutdown();
 }
 
 ocrGuid_t eamForce1_edt( EDT_ARGS )
@@ -973,6 +912,7 @@ ocrGuid_t eamForce1_edt( EDT_ARGS )
 
     sim->atoms = &sim->atoms_INST;
     sim->boxes = &sim->boxes_INST;
+    sim->domain = &sim->domain_INST;
     sim->species = &sim->species_INST;
     sim->atomExchange = &sim->atomExchange_INST;
 
@@ -986,10 +926,8 @@ ocrGuid_t eamForce1_edt( EDT_ARGS )
 
     EamPotential* epot = (EamPotential*) sim->pot;
 
-    if( itimestep != 0 ) {
     epot->dfEmbed = dfEmbed;
     epot->rhobar = rhobar;
-    }
 
     epot->phi = &epot->phi_INST;
     epot->rho = &epot->rho_INST;
@@ -1026,6 +964,7 @@ ocrGuid_t eamForce2_edt( EDT_ARGS )
     ocrDBK_t DBK_f = depv[_idep++].guid;
     ocrDBK_t DBK_pot = depv[_idep++].guid;
     ocrDBK_t DBK_dfEmbed = depv[_idep++].guid;
+    ocrDBK_t DBK_values_rho = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
@@ -1037,12 +976,14 @@ ocrGuid_t eamForce2_edt( EDT_ARGS )
     real3* f = depv[_idep++].ptr;
     BasePotential* pot = depv[_idep++].ptr;
     real_t* dfEmbed = depv[_idep++].ptr;
+    real_t* values_rho = depv[_idep++].ptr;
 
     sim->PTR_rankH = PTR_rankH;
     sim->pot = (BasePotential*) pot;
 
     sim->atoms = &sim->atoms_INST;
     sim->boxes = &sim->boxes_INST;
+    sim->domain = &sim->domain_INST;
     sim->species = &sim->species_INST;
     sim->atomExchange = &sim->atomExchange_INST;
 
@@ -1055,6 +996,10 @@ ocrGuid_t eamForce2_edt( EDT_ARGS )
 
     EamPotential* epot = (EamPotential*) sim->pot;
     epot->dfEmbed = dfEmbed;
+
+    epot->rho = &epot->rho_INST;
+    epot->rho->values = values_rho;
+    epot->rho->values++;
 
     eamForce2(sim);
     stopTimer(sim->perfTimer, computeForceTimer);
@@ -1084,6 +1029,7 @@ ocrGuid_t eamForce_edt( EDT_ARGS )
 
     sim->atoms = &sim->atoms_INST;
     sim->boxes = &sim->boxes_INST;
+    sim->domain = &sim->domain_INST;
     sim->atomExchange = &sim->atomExchange_INST;
 
     sim->PTR_rankH = PTR_rankH;
@@ -1116,6 +1062,9 @@ ocrGuid_t eamForce_edt( EDT_ARGS )
     ocrDBK_t DBK_values_rho = epot->rho->DBK_values;
     ocrDBK_t DBK_values_f = epot->f->DBK_values;
 
+    ocrGuid_t force1TML = sim->pot->force1TML;
+    ocrGuid_t force2TML = epot->force2TML;
+
    // set up halo exchange and internal storage on first call to forces.
     if( itimestep == 0 )
     {
@@ -1135,7 +1084,7 @@ ocrGuid_t eamForce_edt( EDT_ARGS )
 
     ocrGuid_t eamForce1TML, eamForce1EDT, eamForce1OEVT, eamForce1OEVTS;
 
-    ocrEdtCreate( &eamForce1EDT, sim->pot->force1TML, //eamForce1_edt
+    ocrEdtCreate( &eamForce1EDT, force1TML, //eamForce1_edt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &eamForce1OEVT );
 
@@ -1177,7 +1126,7 @@ ocrGuid_t eamForce_edt( EDT_ARGS )
 
     ocrGuid_t eamForce2TML, eamForce2EDT, eamForce2OEVT, eamForce2OEVTS;
 
-    ocrEdtCreate( &eamForce2EDT, epot->force2TML, //eamForce2_edt
+    ocrEdtCreate( &eamForce2EDT, force2TML, //eamForce2_edt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &eamForce2OEVT );
 
@@ -1191,6 +1140,7 @@ ocrGuid_t eamForce_edt( EDT_ARGS )
     ocrAddDependence( DBK_f, eamForce2EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_pot, eamForce2EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_dfEmbed, eamForce2EDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_values_rho, eamForce2EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( haloExchangeOEVTS, eamForce2EDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;

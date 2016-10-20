@@ -14,42 +14,29 @@
 #include <string.h>
 
 #include "mytype.h"
-#include "memUtils.h"
 
 #define nextOption(o) ((MyOption*) o->next)
 
-typedef struct MyOptionSt
+static void dupString(char* d, const char* s)
 {
-   char* help;
-   char* longArg;
-   unsigned char shortArg[2];
-   int argFlag;
-   char type;
-   int sz;
-   void* ptr;
-   void* next;
-} MyOption;
-
-static int longest = 1;
-static MyOption* myargs=NULL;
-
-static char* dupString(const char* s)
-{
-   char* d;
    if ( ! s ) s = "";
-   d = (char*)comdCalloc((strlen(s)+1),sizeof(char));
    strcpy(d, s);
-   return d;
 }
 
-static MyOption* myOptionAlloc(
+static void myOptionAlloc( MyOption* o,
    const char* longOption, const char shortOption,
    int has_arg, const char type, void* dataPtr, int dataSize, const char* help)
 {
    static int iBase=129;
-   MyOption* o = (MyOption*)comdCalloc(1, sizeof(MyOption));
-   o->help = dupString(help);
-   o->longArg = dupString(longOption);
+   #ifndef TG_ARCH
+      memset(o, 0, sizeof(MyOption));
+   #else
+     u32 m;
+     for(m=0; m<sizeof(MyOption); ++m) ((char*)o)[m]='\0';
+   #endif
+
+   dupString(o->help,help);
+   dupString(o->longArg,longOption);
    if(shortOption) o->shortArg[0] = (unsigned char)shortOption;
    else
    {
@@ -60,19 +47,6 @@ static MyOption* myOptionAlloc(
    o->type = type;
    o->ptr = dataPtr;
    o->sz = dataSize;
-   if(longOption) longest = (longest>strlen(longOption)?longest:strlen(longOption));
-   return o;
-}
-
-static MyOption* myOptionFree(MyOption* o)
-{
-   MyOption* r;
-   if(!o) return NULL;
-   r = nextOption(o);
-   if(o->longArg)free(o->longArg);
-   if(o->help)free(o->help);
-   free(o);
-   return r;
 }
 
 static MyOption* lastOption(MyOption* o)
@@ -92,56 +66,43 @@ static MyOption* findOption(MyOption* o, unsigned char shortArg)
    return o;
 }
 
-
-int addArg(const char* longOption, const char shortOption,
+int addArg(MyOption* o, MyOption** myargs, const char* longOption, const char shortOption,
            int has_arg, const char type, void* dataPtr, int dataSize,
            const char* help)
 {
-   MyOption* o;
    MyOption* p;
-   o = myOptionAlloc(longOption,shortOption,has_arg,type,dataPtr,dataSize, help);
+   myOptionAlloc(o, longOption,shortOption,has_arg,type,dataPtr,dataSize, help);
    if ( ! o ) return 1;
-   if ( ! myargs) myargs = o;
+   if ( ! *myargs) *myargs = o;
    else
    {
-      p = lastOption(myargs);
+      p = lastOption(*myargs);
       p->next = (void *)o;
    }
    return 0;
 }
 
-
-void freeArgs()
-{
-   while(myargs)
-   {
-      myargs = myOptionFree(myargs);
-   }
-   return;
-}
-
-void printArgs()
+void printArgs(MyOption* myargs)
 {
    MyOption* o = myargs;
    char s[4096];
    unsigned char *shortArg;
-   fprintf(screenOut,"\n"
+   PRINTF("\n"
       "  Arguments are: \n");
-   sprintf(s,"   --%%-%ds",longest);
    while(o)
    {
       if(o->shortArg[0]<0xFF) shortArg = o->shortArg;
       else shortArg = (unsigned char *) "---";
-      fprintf(screenOut,s,o->longArg);
-      fprintf(screenOut," -%c  arg=%1d type=%c  %s\n",shortArg[0],o->argFlag,o->type,o->help);
+      PRINTF("  --\%\%-%20s",o->longArg);
+      PRINTF(" -%c  arg=%1d type=%c  %s\n",shortArg[0],o->argFlag,o->type,o->help);
       o = nextOption(o);
 
    }
-   fprintf(screenOut,"\n\n");
+   PRINTF("\n\n");
    return;
 }
 
-void processArgs(int argc, char** argv)
+void processArgs(MyOption* myargs, int argc, char** argv)
 {
    MyOption* o;
    int n=0;
@@ -156,8 +117,11 @@ void processArgs(int argc, char** argv)
    {n++,o=nextOption(o);}
 
    o = myargs;
-   sArgs= (char*)comdCalloc(2*(n+2),sizeof(char));
-   opts = (struct option*)comdCalloc(n,sizeof(struct option));
+
+   ocrDBK_t DBK_sArgs, DBK_opts;
+   ocrDbCreate( &DBK_sArgs, (void**) &sArgs, sizeof(char)*2*(n+2), 0, NULL_HINT, NO_ALLOC );
+   ocrDbCreate( &DBK_opts, (void**) &opts, sizeof(struct option)*(n+2), 0, NULL_HINT, NO_ALLOC );
+
    for (i=0; i<n; i++)
    {
       opts[i].name = o->longArg;
@@ -180,7 +144,7 @@ void processArgs(int argc, char** argv)
       o = findOption(myargs,c);
       if ( ! o )
       {
-         fprintf(screenOut,"\n\n"
+         PRINTF("\n\n"
             "    invalid switch : -%c in getopt()\n"
             "\n\n",
             c);
@@ -212,7 +176,7 @@ void processArgs(int argc, char** argv)
                sscanf(optarg,"%c",(char*)o->ptr);
                break;
             default:
-               fprintf(screenOut,"\n\n"
+               PRINTF("\n\n"
                   "    invalid type : %c in getopt()\n"
                   "    valid values are 'e', 'z'. 'i','d','f','s', and 'c'\n"
                   "\n\n",
@@ -221,8 +185,8 @@ void processArgs(int argc, char** argv)
       }
    }
 
-   free(opts);
-   free(sArgs);
+   ocrDbDestroy(DBK_sArgs);
+   ocrDbDestroy(DBK_opts);
 
    return;
 }

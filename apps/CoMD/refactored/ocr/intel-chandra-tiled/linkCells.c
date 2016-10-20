@@ -61,15 +61,11 @@
 
 #include "linkCells.h"
 
-#include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <math.h>
 
 #include "ocr.h"
 
-#include "parallel.h"
-#include "memUtils.h"
 #include "decomposition.h"
 #include "performanceTimers.h"
 #include "CoMDTypes.h"
@@ -85,7 +81,7 @@ static void getTuple(LinkCell* boxes, int iBox, int* ixp, int* iyp, int* izp);
 void initLinkCells(LinkCell* ll, const Domain* domain, real_t cutoff)
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
-   assert(domain);
+   ASSERT(domain);
 
    for (int i = 0; i < 3; i++)
    {
@@ -104,8 +100,6 @@ void initLinkCells(LinkCell* ll, const Domain* domain, real_t cutoff)
 
    ll->nTotalBoxes = ll->nLocalBoxes + ll->nHaloBoxes;
 
-   //ll->nAtoms = comdMalloc(ll->nTotalBoxes*sizeof(int));
-
    ocrDbCreate( &(ll->DBK_nAtoms), (void **) &(ll->nAtoms), ll->nTotalBoxes*sizeof(int), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
    for (int iBox=0; iBox<ll->nTotalBoxes; ++iBox)
@@ -113,20 +107,12 @@ void initLinkCells(LinkCell* ll, const Domain* domain, real_t cutoff)
 
     //ocrDbRelease( ll->DBK_nAtoms ); //TODO
 
-   assert ( (ll->gridSize[0] >= 2) && (ll->gridSize[1] >= 2) && (ll->gridSize[2] >= 2) );
+   ASSERT ( (ll->gridSize[0] >= 2) && (ll->gridSize[1] >= 2) && (ll->gridSize[2] >= 2) );
 }
 
-void destroyLinkCells(LinkCell** boxes)
-{
-   if (! boxes) return;
-   if (! *boxes) return;
-
-   comdFree((*boxes)->nAtoms);
-   comdFree(*boxes);
-   *boxes = NULL;
-
-   return;
-}
+//void destroyLinkCells(LinkCell** boxes)
+//{
+//}
 
 /// \details
 /// Populates the nbrBoxes array with the 27 boxes that are adjacent to
@@ -197,7 +183,7 @@ void moveAtom(LinkCell* boxes, Atoms* atoms, int iId, int iBox, int jBox)
    copyAtom(boxes, atoms, iId, iBox, nj, jBox);
    boxes->nAtoms[jBox]++;
 
-   assert(boxes->nAtoms[jBox] < MAXATOMS);
+   ASSERT(boxes->nAtoms[jBox] < MAXATOMS);
 
    boxes->nAtoms[iBox]--;
    int ni = boxes->nAtoms[iBox];
@@ -312,7 +298,7 @@ int maxOccupancy(LinkCell* boxes)
    for (int ii=0; ii<boxes->nLocalBoxes; ++ii)
       localMax = MAX(localMax, boxes->nAtoms[ii]);
 
-   //int globalMax;
+   //int globalMax; //TODO
 
    //startTimer(commReduceTimer);
    //maxIntParallel(&localMax, &globalMax, 1);
@@ -370,8 +356,8 @@ int getBoxFromTuple(LinkCell* boxes, int ix, int iy, int iz)
    {
       iBox = ix + gridSize[0]*iy + gridSize[0]*gridSize[1]*iz;
    }
-   assert(iBox >= 0);
-   assert(iBox < boxes->nTotalBoxes);
+   ASSERT(iBox >= 0);
+   ASSERT(iBox < boxes->nTotalBoxes);
 
    return iBox;
 }
@@ -508,5 +494,3 @@ void getTuple(LinkCell* boxes, int iBox, int* ixp, int* iyp, int* izp)
    *iyp = iy;
    *izp = iz;
 }
-
-

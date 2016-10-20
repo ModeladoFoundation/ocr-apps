@@ -61,15 +61,11 @@
 
 #include "ljForce.h"
 
-#include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 
 #include "constants.h"
 #include "mytype.h"
-#include "parallel.h"
 #include "linkCells.h"
-#include "memUtils.h"
 #include "CoMDTypes.h"
 
 #define POT_SHIFT 1.0
@@ -85,7 +81,6 @@ typedef struct LjPotentialSt
    char latticeType[8];    //!< lattice type, e.g. FCC, BCC, etc.
    char  name[3];	   //!< element name
    int	 atomicNo;	   //!< atomic number
-   //int  (*force)(SimFlat* s); //!< function pointer to force routine
    ocrGuid_t forceTML, force1TML;
    ocrGuid_t (*force_edt)(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
    void (*print)(BasePotential* pot);
@@ -180,7 +175,7 @@ int ljForce(SimFlat* s)
       {
          int jBox = nbrBoxes[jTmp];
 
-         assert(jBox>=0);
+         ASSERT(jBox>=0);
 
          int nJBox = s->boxes->nAtoms[jBox];
          if ( nJBox == 0 ) continue;

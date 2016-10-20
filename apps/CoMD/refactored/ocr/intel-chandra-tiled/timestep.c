@@ -6,7 +6,6 @@
 #include "mytype.h"
 #include "CoMDTypes.h"
 #include "linkCells.h"
-#include "parallel.h"
 #include "performanceTimers.h"
 #include "constants.h"
 
@@ -230,7 +229,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     ocrDBK_t DBK_U = sim->atoms->DBK_U;
 
     u32 myRank = sim->PTR_rankH->myRank;
-    //PRINTF("iBox %d t %d\n", iBox, itimestep);
+    DEBUG_PRINTF(("t %d\n", itimestep));
 
     ocrGuid_t rpKeEVT = rpKePTR->returnEVT;
     ocrGuid_t rpPerfTimerEVT = rpPerfTimerPTR->returnEVT;
@@ -282,7 +281,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     //redistribute atoms
     ocrGuid_t redistributeAtomsTML, redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
-    ocrEdtCreate( &redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML,
+    ocrEdtCreate( &redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML, //redistributeAtomsEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
 
@@ -350,7 +349,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
         ocrAddDependence( DBK_sim, kineticEnergyEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_nAtoms, kineticEnergyEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( DBK_iSpecies, kineticEnergyEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( DBK_p, kineticEnergyEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_p, kineticEnergyEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( rpKeDBK, kineticEnergyEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( advanceVelocityOEVTS1, kineticEnergyEDT, _idep++, DB_MODE_NULL );
 
@@ -368,7 +367,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
         ocrAddDependence( DBK_rankH, printThingsEDT, _idep++, DB_MODE_RO ); //TODO
         ocrAddDependence( DBK_sim, printThingsEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( rpKeEVT, printThingsEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( rpPerfTimerDBK, printThingsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( rpPerfTimerDBK, printThingsEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( kineticEnergyOEVTS, printThingsEDT, _idep++, DB_MODE_NULL );
 
         if(itimestep == nSteps)
@@ -612,7 +611,7 @@ _OCR_TASK_FNC_( timestepLoopEdt )
 
     if( itimestep < nSteps )
     {
-    //start next timestep
+        //start next timestep
         ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
         ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->timestepLoopTML,
@@ -624,7 +623,7 @@ _OCR_TASK_FNC_( timestepLoopEdt )
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( DBK_sim, timestepLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( rpKeDBK, timestepLoopEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( rpPerfTimerDBK, timestepLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( rpPerfTimerDBK, timestepLoopEDT, _idep++, DB_MODE_RO );
         ocrAddDependence( timestepOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL );
     }
 
@@ -848,7 +847,7 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     ocrGuid_t updateLinkCellsTML, updateLinkCellsEDT, updateLinkCellsOEVT, updateLinkCellsOEVTS;
 
-    ocrEdtCreate( &updateLinkCellsEDT, PTR_rankTemplateH->updateLinkCellsTML,
+    ocrEdtCreate( &updateLinkCellsEDT, PTR_rankTemplateH->updateLinkCellsTML, //updateLinkCellsEdt
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &updateLinkCellsOEVT );
 
@@ -870,7 +869,7 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     u64 iAxis = 0;
     u64 paramv_haloExchange[2] = {iAxis, itimestep};
-    ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
+    ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML, //haloExchangeEdt
                   EDT_PARAM_DEF, paramv_haloExchange, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &haloExchangeOEVT );
 
@@ -885,7 +884,7 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     ocrGuid_t sortAtomsInCellsTML, sortAtomsInCellsEDT, sortAtomsInCellsOEVT, sortAtomsInCellsOEVTS;
 
-    ocrEdtCreate( &sortAtomsInCellsEDT, PTR_rankTemplateH->sortAtomsInCellsTML,
+    ocrEdtCreate( &sortAtomsInCellsEDT, PTR_rankTemplateH->sortAtomsInCellsTML, //sortAtomsInCellsEdt
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &sortAtomsInCellsOEVT );
 

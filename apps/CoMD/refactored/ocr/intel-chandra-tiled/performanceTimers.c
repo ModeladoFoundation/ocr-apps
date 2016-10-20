@@ -26,7 +26,6 @@
 ///
 
 
-#include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
 #include <stdint.h>
@@ -35,8 +34,6 @@
 
 #include "performanceTimers.h"
 #include "mytype.h"
-#include "parallel.h"
-#include "yamlOutput.h"
 
 #include "CoMDTypes.h"
 
@@ -44,20 +41,15 @@ static uint64_t getTime(void);
 static double getTick(void);
 static void timerStats( Timers* perfTimer, double* recvBuf, int myRank, int nRanks );
 
-//static Timers perfTimer[numberOfTimers];
-//static TimerGlobal perfGlobal;
-
 void profileStart(Timers* perfTimer, const enum TimerHandle handle)
 {
    perfTimer[handle].start = getTime();
-   //PRINTF("%d start %f\n", handle, perfTimer[handle].start);
 }
 
 void profileStop(Timers* perfTimer, const enum TimerHandle handle)
 {
    perfTimer[handle].count += 1;
    uint64_t delta = getTime() - perfTimer[handle].start;
-   //PRINTF("%d delta %f\n", handle, getTick()*delta);
    perfTimer[handle].total += delta;
    perfTimer[handle].elapsed += delta;
 }
@@ -69,7 +61,6 @@ double getElapsedTime(Timers* perfTimer, const enum TimerHandle handle)
 {
    double etime = getTick() * (double)perfTimer[handle].elapsed;
    perfTimer[handle].elapsed = 0;
-   //PRINTF("getElapsedTime %d elapsed %f total %f\n", handle, etime, getTick()*(double)perfTimer[handle].total);
 
    return etime;
 }
@@ -179,62 +170,6 @@ ocrGuid_t printPerformanceResultsEdt( EDT_ARGS )
     return NULL_GUID;
 }
 
-#if 0
-void printPerformanceResultsYaml(FILE* file)
-{
-   if (! printRank())
-      return;
-
-   double tick = getTick();
-   double loopTime = perfTimer[loopTimer].total*tick;
-
-   fprintf(file,"\nPerformance Results:\n");
-   fprintf(file, "  TotalRanks: %d\n", getNRanks());
-   fprintf(file, "  ReportingTimeUnits: seconds\n");
-   fprintf(file, "Performance Results For Rank %d:\n", getMyRank());
-   for (int ii = 0; ii < numberOfTimers; ii++)
-   {
-      if (perfTimer[ii].count > 0)
-      {
-         double totalTime = perfTimer[ii].total*tick;
-         fprintf(file, "  Timer: %s\n", timerName[ii]);
-         fprintf(file, "    CallCount:  %"PRIu64"\n", perfTimer[ii].count);
-         fprintf(file, "    AvgPerCall: %8.4f\n", totalTime/(double)perfTimer[ii].count);
-         fprintf(file, "    Total:      %8.4f\n", totalTime);
-         fprintf(file, "    PercentLoop: %8.2f\n", totalTime/loopTime*100);
-      }
-   }
-
-   fprintf(file, "Performance Results Across Ranks:\n");
-   for (int ii = 0; ii < numberOfTimers; ii++)
-   {
-      if (perfTimer[ii].count > 0)
-      {
-         fprintf(file, "  Timer: %s\n", timerName[ii]);
-         fprintf(file, "    MinRank: %d\n", perfTimer[ii].minRank);
-         fprintf(file, "    MinTime: %8.4f\n", perfTimer[ii].minValue*tick);
-         fprintf(file, "    MaxRank: %d\n", perfTimer[ii].maxRank);
-         fprintf(file, "    MaxTime: %8.4f\n", perfTimer[ii].maxValue*tick);
-         fprintf(file, "    AvgTime: %8.4f\n", perfTimer[ii].average*tick);
-         fprintf(file, "    StdevTime: %8.4f\n", perfTimer[ii].stdev*tick);
-      }
-   }
-
-   fprintf(file,"Performance Global Update Rates:\n");
-   fprintf(file, "  AtomUpdateRate:\n");
-   fprintf(file, "    AverageRate: %6.2f\n", perfGlobal.atomRate);
-   fprintf(file, "    Units: us/atom/task\n");
-   fprintf(file, "  AllAtomUpdateRate:\n");
-   fprintf(file, "    AverageRate: %6.2f\n", perfGlobal.atomAllRate);
-   fprintf(file, "    Units: us/atom\n");
-   fprintf(file, "  AtomRate:\n");
-   fprintf(file, "    AverageRate: %6.2f\n", perfGlobal.atomsPerUSec);
-   fprintf(file, "    Units: atoms/us\n");
-
-   fprintf(file, "\n");
-}
-#endif
-
 /// Returns current time as a 64-bit integer.  This portable version
 /// returns the number of microseconds since mindight, Jamuary 1, 1970.
 /// Hence, timing data will have a resolution of 1 microsecond.
@@ -329,4 +264,3 @@ void initTimers(Timers* perfTimer)
         perfTimer[i].stdev = 0;
     }
 }
-

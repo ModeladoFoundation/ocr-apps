@@ -3,7 +3,6 @@
 #ifndef __PERFORMANCE_TIMERS_H_
 #define __PERFORMANCE_TIMERS_H_
 
-#include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -50,6 +49,12 @@ typedef struct TimerGlobalSt
    double atomsPerUSec;   //!< average atoms per time (us)
 } TimerGlobal;
 
+/// Structure for use with MINLOC and MAXLOC operations.
+typedef struct RankReduceDataSt
+{
+   double val;
+   int rank;
+} RankReduceData;
 
 /// Use the startTimer and stopTimer macros for timers in code regions
 /// that may be performance sensitive.  These can be compiled away by
@@ -93,10 +98,6 @@ void profileStop(Timers* perfTimer, const enum TimerHandle handle);
 /// Use to get elapsed time (lap timer).
 double getElapsedTime(Timers* perfTimer, const enum TimerHandle handle);
 
-/// Print timing results.
-//void printPerformanceResults(Timers* perfTimer, TimerGlobal perfGlobal, int nGlobalAtoms, int printRate, int myRank, int nRanks);
 ocrGuid_t printPerformanceResultsEdt( EDT_ARGS );
 
-/// Print timing results to Yaml file
-void printPerformanceResultsYaml(FILE* file);
 #endif
