@@ -94,7 +94,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 
     auto iterator = accesses.lower_bound( begin );
     while( iterator != accesses.end() && iterator->first < end ) {
-        AccessDependence& dep_data = iterator->second;//hashTableGet( accesses, start );
+        AccessDependence& dep_data = iterator->second;
 
         // Add write-after-write dependency to previous writer EDTs
         addDependencyWAW( *task, dep_data );
