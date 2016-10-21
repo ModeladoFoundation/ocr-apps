@@ -2,8 +2,8 @@
 #include <ocr.h>
 #include <nanos6_rt_interface.h>
 
+#include "debug.h"
 #include "dependences.h"
-#include "hashtable.h"
 #include "task.h"
 #include "task-local.h"
 
@@ -25,17 +25,27 @@
  */
 void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 {
-    task_t* task = (task_t*)handler;
+    using namespace ompss;
+    PROFILE_BLOCK;
+    Task* task = (Task*)handler;
+
+    uintptr_t begin = reinterpret_cast<uintptr_t>(start);
+    uintptr_t end   = begin + length;
 
     // Get running task access map (not "handler"'s)
-    hash_table_t* accesses = &getLocalScope()->accesses;
+    auto& accesses = getLocalScope().accesses;
 
-    data_dependency_t* dep_data = hashTableGet( accesses, start );
-    // Add read-after-write dependency to previous writer EDTs
-    addDependencyRAW( task, dep_data );
-    // Create read-only section and register read operation
-    createReadSection( dep_data );
-    readSectionAddReader( task, dep_data );
+    auto iterator = accesses.lower_bound( begin );
+    while( iterator != accesses.end() && iterator->first < end ) {
+        auto dep_data = &iterator->second;
+
+        // Add read-after-write dependency to previous writer EDTs
+        addDependencyRAW( *task, *dep_data );
+        // Create read-only section and register read operation
+        createReadSection( *dep_data );
+        readSectionAddReader( *task, *dep_data );
+
+    }
 }
 
 /*! \brief Register a task write access on linear range of addresses
@@ -54,6 +64,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
  */
 void nanos_register_write_depinfo(void *handler, void *start, size_t length)
 {
+    PROFILE_BLOCK;
     nanos_register_readwrite_depinfo( handler, start, length );
 }
 
@@ -71,17 +82,26 @@ void nanos_register_write_depinfo(void *handler, void *start, size_t length)
  */
 void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 {
-    task_t* task = (task_t*)handler;
+    using namespace ompss;
+    PROFILE_BLOCK;
+    Task* task = (Task*)handler;
+
+    uintptr_t begin = reinterpret_cast<uintptr_t>(start);
+    uintptr_t end   = begin + length;
 
     // Get running task access map (not "handler"'s)
-    hash_table_t* accesses = &getLocalScope()->accesses;
+    auto& accesses = getLocalScope().accesses;
 
-    data_dependency_t* dep_data = hashTableGet( accesses, start );
-    // Add write-after-write dependency to previous writer EDTs
-    addDependencyWAW( task, dep_data );
-    // Create write-section
-    createWriteSection( task, dep_data );
-    // Add write-after-read dependency to previous reader EDTs
-    addDependencyWAR( task, dep_data );
+    auto iterator = accesses.lower_bound( begin );
+    while( iterator != accesses.end() && iterator->first < end ) {
+        AccessDependence& dep_data = iterator->second;//hashTableGet( accesses, start );
+
+        // Add write-after-write dependency to previous writer EDTs
+        addDependencyWAW( *task, dep_data );
+        // Create write-section
+        createWriteSection( *task, dep_data );
+        // Add write-after-read dependency to previous reader EDTs
+        addDependencyWAR( *task, dep_data );
+    }
 }
 

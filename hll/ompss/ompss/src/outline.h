@@ -2,6 +2,7 @@
 #ifndef OUTLINE_H
 #define OUTLINE_H
 
+#include "dependences.h"
 #include "task.h"
 
 extern ocrGuid_t taskOutlineTemplate;
@@ -13,17 +14,17 @@ ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] );
 
 ocrGuid_t edtShutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] );
 
-static inline void cleanUp( task_t* task )
+static inline void cleanUp( ompss::Task* task )
 {
     // Release dependences
-    releaseDependences( task );
+    releaseDependences( *task );
 
     // Check wether immediate clean-up is possible
-    if( task->local_scope.flags.postpone_cleanup ) {
+    if( task->scope.flags.postponeCleanup ) {
         // Post-pone cleanup: other EDTs accesssing events
         ocrGuid_t cleanupDeps[2] = {
-            ((ocrGuid_t*)task)[-1],          // Datablock containing task_t
-            getLocalScope()->taskwait_evt }; // Taskwait event
+            getBufferDb(task), // Datablock containing Task
+            getLocalScope().taskwaitEvent }; // Taskwait event
 
         ocrGuid_t cleanup_edt;
         u8 err = ocrEdtCreate( &cleanup_edt, cleanupTemplate,
@@ -32,7 +33,7 @@ static inline void cleanUp( task_t* task )
                       EDT_PROP_NONE, NULL_HINT, NULL );
         ASSERT( err == 0);
     } else {
-        destructTask( task );
+        ompss::Task::factory::destroy( task );
     }
 }
 

@@ -1,26 +1,32 @@
 
-OMPSS_ROOT=$(PWD)
-OMPSS_INC=$(OMPSS_ROOT)/include
-OMPSS_LIB=$(OMPSS_ROOT)/lib
+OMPSS_INC=include
+OMPSS_LIB=lib
 
-CC ?= gcc
+CC = gcc
+CXX = g++
 
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 CPPFLAGS=-I$(OMPSS_INC)/nanos6 -I$(OCR_INSTALL)/include -DOCR_TYPE_H=$(OCR_TYPE).h $(OCR_EXTENSIONS)
 LDFLAGS=-L$(OCR_INSTALL)/lib -locr_$(OCR_TYPE)
-CFLAGS=-std=gnu99 -fPIC
+COMMON=-fPIC -O3 -march=native
+CFLAGS=-std=gnu99 $(COMMON)
+CXXFLAGS=-std=c++11 $(COMMON)
 
 LIBS=\
  libnanos6.so\
  libnanos6.a
 
 SRC=\
- src/dependences.c\
+ src/dependences.cc\
  src/main.c\
  src/task.c\
  src/outline.c
 
-OBJ=$(SRC:.c=.o)
+OBJ=\
+ src/dependences.o\
+ src/main.o\
+ src/task.o\
+ src/outline.o
 
 .PHONY: all clean
 

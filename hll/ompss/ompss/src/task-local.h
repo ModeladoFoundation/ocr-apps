@@ -37,14 +37,14 @@ static inline void unsetTLS( u32 slot )
     ocrElsUserSet( slot, NULL_GUID );
 }
 
-static inline task_scope_info_t* getLocalScope()
+static inline ompss::TaskScopeInfo& getLocalScope()
 {
-    return (task_scope_info_t*) getTLS( 0U );
+    return *reinterpret_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
 }
 
-static inline void setLocalScope( task_scope_info_t* scope )
+static inline void setLocalScope( ompss::TaskScopeInfo& scope )
 {
-    setTLS( 0U, (void*)scope );
+    setTLS( 0U, reinterpret_cast<void*>(&scope) );
 }
 
 #endif // TASK_LOCAL_H
