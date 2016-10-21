@@ -18,6 +18,7 @@ ocrGuid_t edtShutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] );
 
 static inline void cleanUp( Task* task, TaskScopeInfo& scope )
 {
+#if 0
     // Release dependences
     releaseDependences( *task );
 
@@ -37,6 +38,7 @@ static inline void cleanUp( Task* task, TaskScopeInfo& scope )
     } else {
         Task::factory::destroy( task );
     }
+#endif
 }
 
 } // namespace ompss

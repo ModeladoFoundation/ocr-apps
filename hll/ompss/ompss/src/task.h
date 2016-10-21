@@ -14,34 +14,72 @@
 
 namespace ompss {
 
+inline TaskArguments::TaskArguments( char* args, u32 args_size ) :
+    size(args_size),
+    buffer()
+{
+}
+
+inline TaskDependences::TaskDependences( nanos_task_info* info ) :
+    register_dependences(info->register_depinfo)
+{
+}
+
 inline TaskScopeInfo::TaskScopeInfo() :
     taskwaitEvent(),
     accesses(),
-    flags()
+    flags(),
+    argsMemory(),
+    taskMemory()
 {
 }
 
-inline TaskScopeInfo::~TaskScopeInfo()
+inline Task::Task( nanos_task_info* info, u32 args_size ) :
+    definition(nullptr),
+    dependences(info)
 {
+    size_t size = sizeof(TaskDefinition) + args_size;
+    void* def_buffer = static_cast<void*>(&getLocalScope().argsMemory);
+    //void* def_buffer = (char*)ompss_malloc( sizeof(TaskDefinition) + args_size );
+    char* args_buffer = static_cast<char*>(def_buffer)+sizeof(TaskDefinition);
+
+    definition = static_cast<TaskDefinition*>(def_buffer);
+    new(definition) TaskDefinition( info, args_buffer, args_size );
 }
 
-inline Task::Task( nanos_task_info* info, void* args ) :
-    definition(info,args),
-    dependences()
+inline Task::~Task()
 {
+    size_t size = sizeof(TaskDefinition) + definition->arguments.size;
+    definition->~TaskDefinition();
+    //ompss_free(definition);
 }
 
-inline Task* Task::factory::construct( nanos_task_info* info, u64 args_size )
+inline Task* Task::factory::construct( nanos_task_info* info, u32 args_size )
 {
-    char* buffer = (char*)ompss_malloc( sizeof(Task) + args_size );
-    Task* task = new (buffer) Task( info, buffer+sizeof(Task) );
+    //void* buffer = ompss_malloc(sizeof(Task));
+    Task* task = getLocalScope().taskMemory.get_chunk();
+    new (task) Task( info, args_size );
     return task;
 }
 
 inline void Task::factory::destroy( Task* task )
 {
     task->~Task();
-    ompss_free( task );
+    //ompss_free( task );
+    getLocalScope().taskMemory.return_chunk(task);
+}
+
+inline u32 Task::getParamc()
+{
+    u64 size = sizeof(TaskDefinition) + definition->arguments.size;
+    return size/sizeof(u64) + 1;
+}
+
+inline u64* Task::getParamv()
+{
+    return static_cast<u64*>(
+        static_cast<void*>(definition)
+    );
 }
 
 } // namespace ompss

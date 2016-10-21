@@ -16,11 +16,10 @@ ocrGuid_t shutdownTemplate;
 ocrGuid_t ompssMainTemplate;
 
 struct MainStorage {
-    TaskScopeInfo scope;
     int                  exit_code;
 
     MainStorage() :
-        scope(), exit_code(0)
+        exit_code(0)
     {
     }
 };
@@ -42,19 +41,20 @@ ocrGuid_t edtUserMain(
     }
 
     // Initialize local scope
+    TaskScopeInfo scope;
     MainStorage* main_data = new(getUserBuffer(depv[0].ptr)) MainStorage();
 
     // Open taskwait region
-    main_data->scope.taskwaitEvent++;
+    scope.taskwaitEvent++;
 
     // Store local scope in EDT local storage
-    setLocalScope( main_data->scope );
+    setLocalScope( scope );
 
     // Call user's main function
     main_data->exit_code = ompss_user_main( (int)argc, argv );
 
     // Close taskwait region
-    main_data->scope.taskwaitEvent--;
+    scope.taskwaitEvent--;
 
     nanos_wait_until_shutdown();
 
@@ -104,6 +104,8 @@ ocrGuid_t mainEdt(
     ocrGuid_t userMainDoneEvt;
     ocrGuid_t userMainDeps[2] = { NULL_GUID, depv[0].guid };
 
+    // Create datablock that will contain
+    // main function return value
     void* buffer;
     err = ocrDbCreate( &userMainDeps[0], &buffer, sizeof(MainStorage),
                   DB_PROP_NONE/*DB_PROP_NO_ACQUIRE*/, NULL_HINT, NO_ALLOC );
@@ -137,7 +139,7 @@ void nanos_init()
     using namespace ompss;
     PROFILE_BLOCK;
     // Create EDT templates
-    u8 err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, 0, EDT_PARAM_UNK );
+    u8 err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ASSERT( err == 0);
 
     err = ocrEdtTemplateCreate( &cleanupTemplate, edtCleanup, 0, 2 );

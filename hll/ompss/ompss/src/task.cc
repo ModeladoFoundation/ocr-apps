@@ -34,7 +34,7 @@ void nanos_create_task(
     PROFILE_BLOCK;
     Task* task = Task::factory::construct( task_info, args_block_size );
 
-    *args_block_pointer = task->definition.arguments;
+    *args_block_pointer = task->definition->arguments.buffer;
     *((Task**)task_pointer) = task;
 }
 
@@ -58,13 +58,13 @@ void nanos_submit_task( void *handle )
     ocrGuid_t edtFinished;
 
     // Register dependences
-    task->definition.register_dependences( task, task->definition.arguments );
-    u32 depc = 1 + task->dependences.events.size();
+    task->dependences.register_dependences( task, task->definition->arguments.buffer );
+    u32 depc = /*1 +*/ task->dependences.events.size();
 
     // Create EDT of finish type (does not return until
     // all its children EDTs are completed )
     u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
-                  0, NULL,
+                  task->getParamc(), task->getParamv(),
                   depc, NULL,
                   EDT_PROP_FINISH, NULL_HINT, &edtFinished );
     ASSERT( err == 0);
@@ -76,7 +76,9 @@ void nanos_submit_task( void *handle )
     taskwaitEvent.addDependence( edtFinished );
 
     // Add edt dependences
-    acquireDependences( edt, getBufferDb(task), *task );
+    acquireDependences( edt, *task );
+
+    Task::factory::destroy( task );
 }
 
 /*! \brief Block the control flow of the current task until all of its children have finished

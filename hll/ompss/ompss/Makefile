@@ -2,14 +2,12 @@
 OMPSS_INC=include
 OMPSS_LIB=lib
 
-CC = gcc
 CXX = g++
 
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 CPPFLAGS=-I$(OMPSS_INC)/nanos6 -I$(OCR_INSTALL)/include -DOCR_TYPE_H=$(OCR_TYPE).h $(OCR_EXTENSIONS)
 LDFLAGS=-L$(OCR_INSTALL)/lib -locr_$(OCR_TYPE)
 COMMON=-fPIC -O3 -march=native
-CFLAGS=-std=gnu99 $(COMMON)
 CXXFLAGS=-std=c++11 $(COMMON)
 
 LIBS=\
@@ -39,5 +37,5 @@ $(OMPSS_LIB)/%.a: $(OBJ)
 	$(AR) cru $@ $^
 
 $(OMPSS_LIB)/%.so: $(OBJ)
-	$(CC) -shared $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CXX) -shared $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 

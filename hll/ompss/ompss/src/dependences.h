@@ -74,12 +74,9 @@ static inline void addDependencyWAR( ompss::Task& task, ompss::AccessDependence&
     }
 }
 
-static inline void acquireDependences( const ocrGuid_t& edt, const ocrGuid_t& task_db, ompss::Task& task )
+static inline void acquireDependences( const ocrGuid_t& edt, ompss::Task& task )
 {
     u8 err;
-    err = ocrAddDependence( task_db, edt,
-                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
-    ASSERT( err == 0 );
 
     ompss::GuidVector& events     = task.dependences.events;
     ompss::TypeVector& eventTypes = task.dependences.eventTypes;
@@ -91,7 +88,7 @@ static inline void acquireDependences( const ocrGuid_t& edt, const ocrGuid_t& ta
         // Register dependences
         auto eventIterator = events.begin();
         auto typeIterator = eventTypes.begin();
-        u32 slot = 1;// position of the depv array
+        u32 slot = 0;// position of the depv array
         while( eventIterator != events.end() ) {
             err = ocrAddDependence( *eventIterator, edt, slot, DB_MODE_RW/*default mode*/ );
             ASSERT( err == 0 );
