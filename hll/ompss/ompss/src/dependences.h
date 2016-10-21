@@ -32,8 +32,13 @@ static inline void readSectionAddReader( ompss::Task& task, ompss::AccessDepende
 
 static inline void createWriteSection( ompss::Task& task, ompss::AccessDependence& dep )
 {
+    auto& event = dep.writeCompleted;
     // Replace previous write event regardless it existed or not
-    dep.writeCompleted = ompss::StickyEvent();
+    if( event.initialized() ) {
+        event.reset();
+    } else {
+        event.initialize();
+    }
 
     task.dependences.events.push_back(*dep.readCompleted);
     task.dependences.eventTypes.push_back(ompss::StickyEvent::type());
@@ -41,28 +46,31 @@ static inline void createWriteSection( ompss::Task& task, ompss::AccessDependenc
 
 static inline void addDependencyRAW( ompss::Task& task, ompss::AccessDependence& dep )
 {
-    if( dep.writeCompleted.initialized() ) {
-        task.dependences.events.push_back(*dep.writeCompleted);
+    auto& event = dep.writeCompleted;
+    if( event.initialized() ) {
+        task.dependences.events.push_back(event->handle());
         task.dependences.eventTypes.push_back(ompss::StickyEvent::type());
     }
 }
 
 static inline void addDependencyWAW( ompss::Task& task, ompss::AccessDependence& dep )
 {
-    if( dep.writeCompleted.initialized() ) {
-        task.dependences.events.push_back(*dep.writeCompleted);
+    auto& event = dep.writeCompleted;
+    if( event.initialized() ) {
+        task.dependences.events.push_back(event->handle());
         task.dependences.eventTypes.push_back(ompss::StickyEvent::type());
     }
 }
 
 static inline void addDependencyWAR( ompss::Task& task, ompss::AccessDependence& dep )
 {
-    if( dep.readCompleted.initialized() ) {
-        task.dependences.events.push_back(*dep.readCompleted);
+    auto& event = dep.readCompleted;
+    if( event.initialized() ) {
+        task.dependences.events.push_back(event->handle());
         task.dependences.eventTypes.push_back(ompss::LatchEvent::type());
 
         // Delete read section from dependency map
-        dep.readCompleted.reset();
+        event.reset();
     }
 }
 
@@ -95,6 +103,7 @@ static inline void acquireDependences( const ocrGuid_t& edt, const ocrGuid_t& ta
 
             ++eventIterator;
             ++typeIterator;
+            ++slot;
         }
     }
 }

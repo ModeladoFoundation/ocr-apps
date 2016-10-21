@@ -58,6 +58,10 @@ public:
         return _handle;
     }
 
+    const ocrGuid_t& handle() const {
+        return _handle;
+    }
+
 private:
     ocrGuid_t _handle;
 };
@@ -92,6 +96,16 @@ struct StickyEvent : public EventBase {
 
     virtual ~StickyEvent() {
         u8 err = ocrEventDestroy( handle() );
+        ASSERT( err == 0 );
+    }
+
+    void reset() {
+        u8 err = ocrEventDestroy( handle() );
+        ASSERT( err == 0 );
+
+        err = ocrEventCreate( &handle(),
+                    type(), EVT_PROP_NONE );
+        ASSERT( err == 0 );
     }
 
     static ocrEventTypes_t type()
