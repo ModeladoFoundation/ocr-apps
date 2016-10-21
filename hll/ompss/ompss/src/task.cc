@@ -103,8 +103,7 @@ void nanos_taskwait(char const *invocation_source)
     ASSERT( err == 0 );
 
     // Replace taskwait scope with a new one
-    // TODO: replace with reset() or similar
-    new(&taskwaitEvent) LatchEvent();
+    taskwaitEvent.reset();
     // Open next taskwait region
     taskwaitEvent++;
 }

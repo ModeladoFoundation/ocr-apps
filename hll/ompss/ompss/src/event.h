@@ -66,6 +66,10 @@ struct OnceEvent : public EventBase {
     OnceEvent() :
         EventBase()
     {
+        reset();
+    }
+
+    void reset() {
         u8 err = ocrEventCreate( &handle(),
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
@@ -100,12 +104,16 @@ struct LatchEvent : public EventBase {
     LatchEvent() :
         EventBase()
     {
-        u8 err = ocrEventCreate( &handle(),
-                    type(), EVT_PROP_NONE );
-        ASSERT( err == 0 );
+        reset();
     }
 
     virtual ~LatchEvent() {
+    }
+
+    void reset() {
+        u8 err = ocrEventCreate( &handle(),
+                    type(), EVT_PROP_NONE );
+        ASSERT( err == 0 );
     }
 
     LatchEvent& operator++(int) {
