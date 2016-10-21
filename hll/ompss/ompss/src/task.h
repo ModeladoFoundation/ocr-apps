@@ -27,8 +27,7 @@ inline TaskScopeInfo::~TaskScopeInfo()
 
 inline Task::Task( nanos_task_info* info, void* args ) :
     definition(info,args),
-    dependences(),
-    scope()
+    dependences()
 {
 }
 

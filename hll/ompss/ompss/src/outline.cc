@@ -31,20 +31,21 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     // Decode arguments and dependences
     Task* task = (Task*)getUserBuffer(depv[0].ptr);
 
-    // Open taskwait region
-    task->scope.taskwaitEvent++;
-
     // Store local scope in EDT local storage
-    setLocalScope( task->scope );
+    TaskScopeInfo scope;
+    setLocalScope( scope );
+
+    // Open taskwait region
+    scope.taskwaitEvent++;
 
     // Execute outline task
     task->definition.run( task->definition.arguments );
 
     // Close taskwait region
-    task->scope.taskwaitEvent--;
+    scope.taskwaitEvent--;
 
     // Clean-up
-    cleanUp( task );
+    cleanUp( task, scope );
 
     return NULL_GUID;
 }
