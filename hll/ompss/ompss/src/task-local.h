@@ -40,12 +40,12 @@ static inline void unsetTLS( u32 slot )
 
 static inline ompss::TaskScopeInfo& getLocalScope()
 {
-    return *reinterpret_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
+    return *static_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
 }
 
 static inline void setLocalScope( ompss::TaskScopeInfo& scope )
 {
-    setTLS( 0U, reinterpret_cast<void*>(&scope) );
+    setTLS( 0U, static_cast<void*>(&scope) );
 }
 
 } // namespace ompss

@@ -26,10 +26,12 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 {
     using namespace ompss;
     PROFILE_BLOCK;
-    ASSERT( paramc == 0 );
 
     // Decode arguments and dependences
-    Task* task = (Task*)getUserBuffer(depv[0].ptr);
+    //Task* task = (Task*)getUserBuffer(depv[0].ptr);
+    TaskDefinition* def = static_cast<TaskDefinition*>(
+                            static_cast<void*>(paramv)
+                          );
 
     // Store local scope in EDT local storage
     TaskScopeInfo scope;
@@ -39,13 +41,13 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     scope.taskwaitEvent++;
 
     // Execute outline task
-    task->definition.run( task->definition.arguments );
+    def->run( def->arguments.buffer );
 
     // Close taskwait region
     scope.taskwaitEvent--;
 
     // Clean-up
-    cleanUp( task, scope );
+    cleanUp( NULL, scope );
 
     return NULL_GUID;
 }
