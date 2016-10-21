@@ -5,6 +5,8 @@
 #include "dependences.h"
 #include "task.h"
 
+namespace ompss {
+
 extern ocrGuid_t taskOutlineTemplate;
 extern ocrGuid_t cleanupTemplate;
 
@@ -33,9 +35,11 @@ static inline void cleanUp( ompss::Task* task )
                       EDT_PROP_NONE, NULL_HINT, NULL );
         ASSERT( err == 0);
     } else {
-        ompss::Task::factory::destroy( task );
+        Task::factory::destroy( task );
     }
 }
+
+} // namespace ompss
 
 #endif // OUTLINE_H
 

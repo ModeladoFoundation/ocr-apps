@@ -8,6 +8,8 @@
 #include "event.h"
 #include "task-local.h"
 
+namespace ompss {
+
 static inline void createReadSection( ompss::AccessDependence& dep )
 {
     // If read section event was not previously created
@@ -120,6 +122,8 @@ static inline void releaseDependences( ompss::Task& task )
         }
     }
 }
+
+} // namespace ompss
 
 #endif // DEPENDENCIES_H
 

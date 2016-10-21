@@ -8,7 +8,6 @@
 
 #include "common.h"
 #include "event.h"
-#include "hashtable.h"
 #include "task-local.h"
 
 #include <nanos6_rt_interface.h>

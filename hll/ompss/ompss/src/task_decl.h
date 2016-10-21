@@ -44,9 +44,9 @@ struct TaskFlags {
 };
 
 struct TaskScopeInfo {
-    LatchEvent          taskwaitEvent;
-    ompss::hash_table_t accesses;
-    TaskFlags           flags;
+    LatchEvent    taskwaitEvent;
+    DependenceMap accesses;
+    TaskFlags     flags;
 
     TaskScopeInfo();
     ~TaskScopeInfo();

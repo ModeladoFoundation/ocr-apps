@@ -3,10 +3,11 @@
 #include <extensions/ocr-runtime-itf.h>
 
 #include "dependences.h"
-#include "hashtable.h"
 #include "outline.h"
 #include "task.h"
 #include "task-local.h"
+
+namespace ompss {
 
 ocrGuid_t taskOutlineTemplate;
 ocrGuid_t cleanupTemplate;
@@ -57,4 +58,6 @@ ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     Task::factory::destroy( task );
     return NULL_GUID;
 }
+
+} // namespace ompss
 

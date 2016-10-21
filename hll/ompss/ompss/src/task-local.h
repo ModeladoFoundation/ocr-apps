@@ -7,6 +7,8 @@
 #include <extensions/ocr-runtime-itf.h>
 #include <ocr.h>
 
+namespace ompss {
+
 // Workaround to convert an ELS ocrGuid_t
 // into a pointer
 union _els_to_ptr {
@@ -16,7 +18,6 @@ union _els_to_ptr {
 
 static inline void setTLS( u32 slot, void* data )
 {
-    // Store hash table pointer into EDT local storage
     // Workaround to access ELS
     union _els_to_ptr tmp;
     tmp.ptr = data;
@@ -46,6 +47,8 @@ static inline void setLocalScope( ompss::TaskScopeInfo& scope )
 {
     setTLS( 0U, reinterpret_cast<void*>(&scope) );
 }
+
+} // namespace ompss
 
 #endif // TASK_LOCAL_H
 
