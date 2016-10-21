@@ -10,17 +10,19 @@ namespace ompss {
 template < typename T >
 struct IsGuidBased : public std::false_type {};
 
+/*
 template<
     typename T,
     bool GuidBased = IsGuidBased<T>::value
 >
 class Lazy;
+*/
 
 // Generic lazy initialization
 // Relies on a boolean to record initialization status
 // so it is not very efficient
 template< typename T >
-class Lazy<T,false> {
+class Lazy {
     typedef typename std::aligned_storage<alignof(T),sizeof(T)>::type Buffer;
 public:
     Lazy() :
@@ -30,7 +32,7 @@ public:
 
     ~Lazy() {
         if( initialized() )
-            reinterpret_cast<T*>(&_buffer)->~T();
+            value()->~T();
     }
 
     T& operator=( const T& o ) {
@@ -62,32 +64,32 @@ public:
 
     void reset() {
         if( initialized() )
-            reinterpret_cast<T*>(&_buffer)->~T();
+            value()->~T();
         _initialized = false;
     }
 
     operator T&() {
-        return *reinterpret_cast<T*>(&_buffer);
+        return *value();
     }
 
     operator const T&() const {
-        return *reinterpret_cast<const T*>(&_buffer);
+        return *value();
     }
 
     T& operator*() {
-        return *reinterpret_cast<T*>(&_buffer);
+        return *value();
     }
 
     const T& operator*() const {
-        return *reinterpret_cast<const T*>(&_buffer);
+        return *value();
     }
 
-    T& operator->() {
-        return *reinterpret_cast<T*>(&_buffer);
+    T* operator->() {
+        return value();
     }
 
-    const T& operator->() const {
-        return *reinterpret_cast<T*>(&_buffer);
+    const T* operator->() const {
+        return value();
     }
 
     bool initialized() const {
@@ -95,10 +97,24 @@ public:
     }
 
 private:
+    T* value() {
+        return static_cast<T*>(
+            static_cast<void*>(&_buffer)
+        );
+    }
+
+    const T* value() const {
+        return static_cast<const T*>(
+            static_cast<void*>(&_buffer)
+        );
+    }
+
+
     Buffer _buffer;
     bool   _initialized;
 };
 
+#if 0
 // Lazy initialization for GUID based objects
 // It relies on NULL_GUID special value to identify initialized
 // objects, so it does not require use of booleans
@@ -114,7 +130,7 @@ public:
 
     ~Lazy() {
         if( initialized() )
-            reinterpret_cast<T*>(&_buffer)->~T();
+            value()->~T();
     }
 
     T& operator=( const T& o ) {
@@ -143,42 +159,50 @@ public:
 
     void reset() {
         if( initialized() )
-            reinterpret_cast<T*>(&_buffer)->~T();
+            value()->~T();
         static_cast<T&>(*this).handle() = NULL_GUID;
     }
 
     operator T&() {
-        return *reinterpret_cast<T*>(&_buffer);
+        return *value();
     }
 
     operator const T&() const {
-        return *reinterpret_cast<const T*>(&_buffer);
+        return *value();
     }
 
     T& operator*() {
-        return *reinterpret_cast<T*>(&_buffer);
+        return *value();
     }
 
     const T& operator*() const {
-        return *reinterpret_cast<const T*>(&_buffer);
+        return *value();
     }
 
-    T& operator->() {
-        return *reinterpret_cast<T*>(&_buffer);
+    T* operator->() {
+        return value();
     }
 
-    const T& operator->() const {
-        return *reinterpret_cast<T*>(&_buffer);
+    const T* operator->() const {
+        return value();
     }
 
     bool initialized() const {
-        return !ocrGuidIsNull( static_cast<T>(*this).handle() );
+        return !ocrGuidIsNull( value()->handle() );
     }
 
 private:
+    T* value() {
+        return static_cast<T*>(&_buffer);
+    }
+
+    const T* value() const {
+        return static_cast<const T*>(&_buffer);
+    }
+
     Buffer    _buffer;
 };
-
+#endif
 
 } // namespace ompss
 

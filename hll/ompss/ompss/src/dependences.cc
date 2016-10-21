@@ -36,6 +36,13 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
     auto& accesses = getLocalScope().accesses;
 
     auto iterator = accesses.lower_bound( begin );
+    if( iterator == accesses.end() || iterator->first != begin ) {
+        // Entry did not exist previously
+        AccessDependence& dep_data = accesses[begin];
+        // Create read-section
+        createReadSection( dep_data );
+    }
+
     while( iterator != accesses.end() && iterator->first < end ) {
         auto dep_data = &iterator->second;
 
@@ -64,7 +71,6 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
  */
 void nanos_register_write_depinfo(void *handler, void *start, size_t length)
 {
-    PROFILE_BLOCK;
     nanos_register_readwrite_depinfo( handler, start, length );
 }
 
@@ -93,6 +99,13 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
     auto& accesses = getLocalScope().accesses;
 
     auto iterator = accesses.lower_bound( begin );
+    if( iterator == accesses.end() || iterator->first != begin ) {
+        // Entry did not exist previously
+        AccessDependence& dep_data = accesses[begin];
+        // Create write-section
+        createWriteSection( *task, dep_data );
+    }
+
     while( iterator != accesses.end() && iterator->first < end ) {
         AccessDependence& dep_data = iterator->second;
 
