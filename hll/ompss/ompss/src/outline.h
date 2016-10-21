@@ -16,13 +16,13 @@ ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] );
 
 ocrGuid_t edtShutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] );
 
-static inline void cleanUp( ompss::Task* task )
+static inline void cleanUp( Task* task, TaskScopeInfo& scope )
 {
     // Release dependences
     releaseDependences( *task );
 
     // Check wether immediate clean-up is possible
-    if( task->scope.flags.postponeCleanup ) {
+    if( scope.flags.postponeCleanup ) {
         // Post-pone cleanup: other EDTs accesssing events
         ocrGuid_t cleanupDeps[2] = {
             getBufferDb(task), // Datablock containing Task

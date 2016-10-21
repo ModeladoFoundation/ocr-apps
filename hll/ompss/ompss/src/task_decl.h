@@ -55,7 +55,6 @@ struct TaskScopeInfo {
 struct Task {
     TaskDefinition  definition;
     TaskDependences dependences;
-    TaskScopeInfo   scope;
 
     Task( nanos_task_info* info, void* args );
 
