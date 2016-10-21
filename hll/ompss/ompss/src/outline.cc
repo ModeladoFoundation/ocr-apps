@@ -23,20 +23,24 @@ ocrGuid_t cleanupTemplate;
  */
 ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    using namespace ompss;
+    PROFILE_BLOCK;
     ASSERT( paramc == 0 );
 
     // Decode arguments and dependences
-    // First element of datablock is its own ocrGuid_t
-    task_t* task = (task_t*)(depv[0].ptr + sizeof(ocrGuid_t));
+    Task* task = (Task*)getUserBuffer(depv[0].ptr);
 
-    // Create necessary edt-local data-structures
-    newLocalScope( &task->local_scope );
+    // Open taskwait region
+    task->scope.taskwaitEvent++;
 
     // Store local scope in EDT local storage
-    setLocalScope( &task->local_scope );
+    setLocalScope( task->scope );
 
     // Execute outline task
     task->definition.run( task->definition.arguments );
+
+    // Close taskwait region
+    task->scope.taskwaitEvent--;
 
     // Clean-up
     cleanUp( task );
@@ -46,11 +50,11 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
 ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    using namespace ompss;
+    PROFILE_BLOCK;
     // Decode arguments and dependences
-    // First element of datablock is its own ocrGuid_t
-    task_t* task = (task_t*)(depv[0].ptr + sizeof(ocrGuid_t));
-
-    destructTask( task );
+    Task* task = (Task*)getUserBuffer(depv[0].ptr);
+    Task::factory::destroy( task );
     return NULL_GUID;
 }
 

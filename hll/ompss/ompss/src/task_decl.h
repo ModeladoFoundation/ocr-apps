@@ -3,35 +3,69 @@
 #define TASK_DECL_H
 
 #include "common.h"
-#include "hashtable_decl.h"
-#include "vector_decl.h"
+#include "dependences_decl.h"
+#include "event.h"
+#include "map.h"
 
-struct _task_definition {
-    void*                     arguments;
-    run_funct_t               run;
-    register_dep_funct_t      register_dependences;
+#include <nanos6_rt_interface.h>
+
+extern "C" {
+typedef void (*run_funct_t)(void* args_block);
+typedef void (*register_dep_funct_t)(void* handler, void* args_block);
+} // extern C
+
+namespace ompss {
+
+struct TaskDefinition {
+    void*                arguments;
+    run_funct_t          run;
+    register_dep_funct_t register_dependences;
+
+    TaskDefinition( nanos_task_info* info, void* args ) :
+        arguments(args),
+        run(info->run),
+        register_dependences(info->register_depinfo)
+    {
+    }
 };
 
-struct _task_dependences {
-    vector_t                  acquire;
-    vector_t                  release;
+struct TaskDependences {
+    GuidVector events;
+    TypeVector eventTypes;
 };
 
-struct _task_flags {
-    char postpone_cleanup:1;
+struct TaskFlags {
+    bool postponeCleanup;
+
+    TaskFlags() :
+        postponeCleanup(false)
+    {
+    }
 };
 
-typedef struct {
-    ocrGuid_t          taskwait_evt;
-    hash_table_t       accesses;
-    struct _task_flags flags;
-} task_scope_info_t;
+struct TaskScopeInfo {
+    LatchEvent          taskwaitEvent;
+    ompss::hash_table_t accesses;
+    TaskFlags           flags;
 
-typedef struct {
-    struct _task_definition   definition;
-    struct _task_dependences  dependences;
-    task_scope_info_t         local_scope;
-} task_t;
+    TaskScopeInfo();
+    ~TaskScopeInfo();
+};
+
+struct Task {
+    TaskDefinition  definition;
+    TaskDependences dependences;
+    TaskScopeInfo   scope;
+
+    Task( nanos_task_info* info, void* args );
+
+    struct factory {
+        static Task* construct( nanos_task_info* info, u64 args_size );
+        static void destroy( Task* task );
+    };
+};
+
+} // namespace ompss
 
 #endif // TASK_DECL_H
 

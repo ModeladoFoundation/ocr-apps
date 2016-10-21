@@ -30,10 +30,12 @@ void nanos_create_task(
     /* OUT */ void **task_pointer
 )
 {
-    task_t* task = newTask( task_info, args_block_size );
+    using namespace ompss;
+    PROFILE_BLOCK;
+    Task* task = Task::factory::construct( task_info, args_block_size );
 
     *args_block_pointer = task->definition.arguments;
-    *((task_t**)task_pointer) = task;
+    *((Task**)task_pointer) = task;
 }
 
 
@@ -45,37 +47,36 @@ void nanos_create_task(
  */
 void nanos_submit_task( void *handle )
 {
-    task_t* task = (task_t*)handle;
+    using namespace ompss;
+    PROFILE_BLOCK;
+    Task* task = (Task*)handle;
 
     // Create task EDT and its cleanup EDT
     ocrGuid_t edt, cleanup_edt;
     // Cleanup EDT will depend on task EDT
     // to be completed
-    ocrGuid_t edt_finished_evt;
+    ocrGuid_t edtFinished;
 
     // Register dependences
     task->definition.register_dependences( task, task->definition.arguments );
-    u32 depc = 1 + getNumDependences( task );
+    u32 depc = 1 + task->dependences.events.size();
 
     // Create EDT of finish type (does not return until
     // all its children EDTs are completed )
     u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
                   0, NULL,
                   depc, NULL,
-                  EDT_PROP_FINISH, NULL_HINT, &edt_finished_evt );
+                  EDT_PROP_FINISH, NULL_HINT, &edtFinished );
     ASSERT( err == 0);
 
     // Feed EDT output event to taskwait latch event,
     // and increment latch's second pre-slot
-    ocrGuid_t* taskwait_evt = &getLocalScope()->taskwait_evt;
-    err = ocrEventSatisfySlot( *taskwait_evt, NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
-    ASSERT( err == 0 );
-    err = ocrAddDependence( edt_finished_evt, *taskwait_evt,
-                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
-    ASSERT( err == 0 );
+    LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
+    taskwaitEvent++;
+    taskwaitEvent.addDependence( edtFinished );
 
     // Add edt dependences
-    acquireDependences( edt, task );
+    acquireDependences( edt, getBufferDb(task), *task );
 }
 
 /*! \brief Block the control flow of the current task until all of its children have finished
@@ -84,37 +85,27 @@ void nanos_submit_task( void *handle )
  */
 void nanos_taskwait(char const *invocation_source)
 {
-    u8 err;
+    using namespace ompss;
+    PROFILE_BLOCK;
     // Prepare sticky event
-    ocrGuid_t sticky_taskwait_evt;
-    err = ocrEventCreate( &sticky_taskwait_evt, OCR_EVENT_STICKY_T, DB_PROP_NONE );
-    ASSERT( err == 0 );
+    StickyEvent stickyTw;
 
     // Get taskwait latch event and feed into sticky event
-    ocrGuid_t* event = &getLocalScope()->taskwait_evt;
-    err = ocrAddDependence( *event, sticky_taskwait_evt,
-                            OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
-    ASSERT( err == 0 );
+    LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
+    stickyTw.addDependence( taskwaitEvent );
 
     // Close taskwait region
-    err = ocrEventSatisfySlot( *event, NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
-    ASSERT( err == 0 );
+    taskwaitEvent--;
 
     // Wait until all successors are completed
-    err = ocrLegacyBlockProgress( sticky_taskwait_evt, NULL, NULL, NULL,
+    u8 err = ocrLegacyBlockProgress( stickyTw, NULL, NULL, NULL,
                                   LEGACY_PROP_NONE );
     ASSERT( err == 0 );
 
-    // Destroy sticky event
-    err = ocrEventDestroy( sticky_taskwait_evt );
-    ASSERT( err == 0 );
-
     // Replace taskwait scope with a new one
-    *event = NULL_GUID;
-    err = ocrEventCreate( event, OCR_EVENT_LATCH_T, EVT_PROP_NONE );
-    ASSERT( err == 0 );
+    // TODO: replace with reset() or similar
+    new(&taskwaitEvent) LatchEvent();
     // Open next taskwait region
-    err = ocrEventSatisfySlot( *event, NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
-    ASSERT( err == 0 );
+    taskwaitEvent++;
 }
 
