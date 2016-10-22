@@ -52,7 +52,7 @@ void nanos_submit_task( void *handle )
     Task* task = (Task*)handle;
 
     // Create task EDT and its cleanup EDT
-    ocrGuid_t edt, cleanup_edt;
+    ocrGuid_t edt;
     // Cleanup EDT will depend on task EDT
     // to be completed
     ocrGuid_t edtFinished;
