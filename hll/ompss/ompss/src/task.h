@@ -14,7 +14,7 @@
 
 namespace ompss {
 
-inline TaskArguments::TaskArguments( char* args, u32 args_size ) :
+inline TaskArguments::TaskArguments( u32 args_size ) :
     size(args_size),
     buffer()
 {
@@ -29,8 +29,8 @@ inline TaskScopeInfo::TaskScopeInfo() :
     taskwaitEvent(),
     accesses(),
     flags(),
-    argsMemory(),
-    taskMemory()
+    taskMemory(),
+    argsMemory()
 {
 }
 
@@ -39,19 +39,17 @@ inline Task::Task( nanos_task_info* info, u32 args_size ) :
     dependences(info)
 {
     size_t size = sizeof(TaskDefinition) + args_size;
+    ASSERT( size < sizeof(getLocalScope().argsMemory) );
+
     void* def_buffer = static_cast<void*>(&getLocalScope().argsMemory);
-    //void* def_buffer = (char*)ompss_malloc( sizeof(TaskDefinition) + args_size );
-    char* args_buffer = static_cast<char*>(def_buffer)+sizeof(TaskDefinition);
 
     definition = static_cast<TaskDefinition*>(def_buffer);
-    new(definition) TaskDefinition( info, args_buffer, args_size );
+    new(definition) TaskDefinition( info, args_size );
 }
 
 inline Task::~Task()
 {
-    size_t size = sizeof(TaskDefinition) + definition->arguments.size;
     definition->~TaskDefinition();
-    //ompss_free(definition);
 }
 
 inline Task* Task::factory::construct( nanos_task_info* info, u32 args_size )

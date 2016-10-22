@@ -21,16 +21,16 @@ struct TaskArguments {
     u32   size;
     char  buffer[];
 
-    TaskArguments( char* buffer, u32 size );
+    TaskArguments( u32 size );
 };
 
 struct TaskDefinition {
     run_funct_t   run;
     TaskArguments arguments;
 
-    TaskDefinition( nanos_task_info* info, char* args, u32 args_size ) :
-        arguments(args,args_size),
-        run(info->run)
+    TaskDefinition( nanos_task_info* info, u32 args_size ) :
+        run(info->run),
+        arguments(args_size)
     {
     }
 };
@@ -71,11 +71,11 @@ struct Task {
 struct TaskScopeInfo {
     typedef std::aligned_storage<64U,64U>::type Scratchpad;
 
-    LatchEvent                taskwaitEvent;
-    DependenceMap             accesses;
-    TaskFlags                 flags;
-    Scratchpad                argsMemory;
-    mem::scratchpad<Task,10U> taskMemory;
+    LatchEvent              taskwaitEvent;
+    DependenceMap           accesses;
+    TaskFlags               flags;
+    mem::scratchpad<Task,1> taskMemory;
+    Scratchpad              argsMemory;
 
     TaskScopeInfo();
 };

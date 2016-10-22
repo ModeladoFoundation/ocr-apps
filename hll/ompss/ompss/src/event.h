@@ -27,11 +27,13 @@ public:
     void addDependenceIncrease( const ocrGuid_t& source ) {
         u8 err = ocrAddDependence( source, _handle,
                     OCR_EVENT_LATCH_INCR_SLOT, DB_DEFAULT_MODE );
+        ASSERT( err == 0 );
     }
 
     void addDependenceDecrease( const ocrGuid_t& source ) {
         u8 err = ocrAddDependence( source, _handle,
                     OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
+        ASSERT( err == 0 );
     }
 
     void satisfy() {
