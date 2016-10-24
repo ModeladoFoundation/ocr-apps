@@ -23,8 +23,15 @@ c-----------------------------------------------------------------------
       integer mx,my,mz         ! poly. order range
       integer numthreads, omp_get_max_threads
 
+#ifdef NBN_TIMING
+      real nbn_preptime_start, nbn_preptime_stop
+      real nbn_worktime_start, nbn_worktime_stop
+#endif
 
       call iniproc(mpi_comm_world)    ! has nekmpi common block
+#ifdef NBN_TIMING
+      nbn_preptime_start = dnekclock()
+#endif
       call read_param(ifbrick,iel0,ielN,ielD,nx0,nxN,nxD,
      +                npx,npy,npz,mx,my,mz)
 
@@ -58,16 +65,24 @@ c     SET UP and RUN NEKBONE
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
+#ifdef NBN_TIMING
+           nbn_preptime_stop = dnekclock() - nbn_preptime_start
+#endif
+#ifdef NBN_DO_WARMUP
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-
            call nekgsync()
-
+#endif
+#ifdef NBN_TIMING
+           nbn_worktime_start = dnekclock()
+#endif
            call set_timer_flop_cnt(0)
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
            call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
-
+#ifdef NBN_TIMING
+           nbn_worktime_stop = dnekclock() - nbn_worktime_start
+#endif
            icount = icount + 1
            mfloplist(icount)= mflops*np
          enddo
@@ -86,6 +101,13 @@ c     SET UP and RUN NEKBONE
         write(6,1) avmflop
       end if
     1 format('Av MFlops = ', 1pe12.4)
+
+#ifdef NBN_TIMING
+      if (nid .eq. 0) then
+        write(*,*) 'NBN_Prep_time= ', nbn_preptime_stop
+        write(*,*) 'NBN_Work_time= ', nbn_worktime_stop
+      end if
+#endif
 
 c     TEST BANDWIDTH BISECTION CAPACITY
 c     call xfer(np,cr_h)

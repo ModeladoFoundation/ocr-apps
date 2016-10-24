@@ -7,7 +7,14 @@ SOURCE_ROOT="../../src/"
 
 # Fortran compiler
 #original F77="mpixlf77_r -qsmp=omp -qnosave"
-F77="mpiifort"
+#  The use of -DNBN_DO_WARMUP leads to the normal way of running Nekbone
+#F77="mpiifort -DNBN_DO_WARMUP"
+#  With -DNBN_DO_WARMUP missing, no warm up CD iterations are done.
+
+#The use of -DNBN_TIMING causes simplified timings measurement to be made.
+#See driver.f for details.
+F77="mpiifort -DNBN_TIMING"
+
 #F77="mpiifort -openmp"
 #F77="mpifort -fopenmp"
 
