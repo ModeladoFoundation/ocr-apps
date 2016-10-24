@@ -17,8 +17,8 @@ int main(int argc, char * argv[])
         fout = fopen("./ccode.out", "w");
         if(!fout) {err=__LINE__; IFEB;}
 
-        const unsigned int N = 100;
-        double x[100], v;
+        const unsigned int N = 84; //Largest value allowed in Nekbone's speclib.f::ZWGJ
+        double x[N], v;
         double alpha, beta;
 
         unsigned int podegree, firstdegree, lastdegree, k;

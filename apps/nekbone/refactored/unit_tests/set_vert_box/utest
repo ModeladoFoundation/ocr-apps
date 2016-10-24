@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#Date: 2016may18
+#Author: Donald H Villeneuve (dvillen)
+#Goal: Make a C-code analog to Nekbone's init_mesh procedure
+#Methodology:
+#   1) Correctly setup the setup.h file
+#   2) Run the Fortran code holding cubic which
+#      will generate an output file F
+#   3) Run the C code holding the C-version of cubic, which
+#      will generate the output file C
+#   4) Compare F & C.  They should be identical.
+#
+
+# -fpp for the preprocessor to work
+FCOMP="ifort -fpp"
+CC="icc"
+
+FTEMP="./z_fortran_temp.f90"
+FEXEC="./z_fortran.x"
+CEXEC="./z_ccode.x"
+OUTFORTRAN="./z_fortran.out"
+OUTC="./z_ccode.out"
+
+OPT="-g -O0"
+
+#----- Make the executables
+rm -f "$FEXEC" "$FTEMP"
+cp nekbone_set_vert_box.f90 "$FTEMP"
+sed -i -e '/!setup.h/r setup.h' "$FTEMP"
+$FCOMP -o "$FEXEC" $OPT "$FTEMP"
+if [ ! -x "$FEXEC" ]
+then
+echo "ERROR: Fortran build failure"
+exit 20
+fi
+
+rm -f "$CEXEC"
+$CC -o "$CEXEC" $OPT cubic.c init_mesh.c set_vert_box.c nekbone_set_vert_box.c
+if [ ! -x "$CEXEC" ]
+then
+echo "ERROR: C code build failure"
+exit 30
+fi
+
+#----- Run the Fortran code
+$FEXEC
+if [ ! -r "$OUTFORTRAN" ]
+then
+echo "ERROR: Missing Fortran output file"
+exit 40
+fi
+
+#----- Run the C code
+$CEXEC
+if [ ! -r "$OUTC" ]
+then
+echo "ERROR: Missing C output file"
+exit 40
+fi
+
+#----- Compare
+if [ "$(diff -w --brief ${OUTFORTRAN} ${OUTC})" ]
+then
+echo "ERROR: Unit test cubic failed."
+exit 50
+fi
+
+#----- Clean-up
+rm -f core* "$FEXEC" "$FTEMP" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+rm -f z*
+
+#Test not completed yet
+echo "Successful run"
+
+exit 0

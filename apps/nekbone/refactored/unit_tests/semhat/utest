@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#Date: 2016Oct19
+#Author: Donald H Villeneuve (dvillen)
+#Goal: Make a C-code analog to Nekbone's ZWGLL procedure
+#Methodology:
+#   1) Setup an input file
+#   2) Run the Fortran code holding cubic which
+#      will generate an output file F
+#   3) Run the C code holding the C-version of cubic, which
+#      will generate the output file C
+#   4) Compare F & C.  They should be identical.
+#
+
+CC=icc
+FORT="ifort -r8"
+
+FEXEC="./z_fortran.x"
+CEXEC="./z_ccode.x"
+OUTFORTRAN="./z_fortran.out"
+OUTC="./z_ccode.out"
+
+OPT="-g -O0 -I../../nek_src"
+
+#----- Preliminary clean-up
+rm -f z_* core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+
+#----- Make the executables
+rm -f "$FEXEC"
+$FORT -o "$FEXEC" nekbone_semhat.f90
+if [ ! -x "$FEXEC" ]
+then
+echo "ERROR: Fortran build failure"
+exit 20
+fi
+
+rm -f "$CEXEC"
+$CC -o "$CEXEC" $OPT blas1.c blas3.c polybasis.c nekbone_semhat.c
+if [ ! -x "$CEXEC" ]
+then
+echo "ERROR: C code build failure"
+exit 30
+fi
+
+#----- Run the Fortran code
+$FEXEC &> $OUTFORTRAN
+if [ ! -r "$OUTFORTRAN" ]
+then
+echo "ERROR: Missing Fortran output file"
+exit 40
+fi
+
+#----- Run the C code
+$CEXEC
+if [ ! -r "$OUTC" ]
+then
+echo "ERROR: Missing C output file"
+exit 40
+fi
+
+#----- Compare
+#2016Oct20: After experimentations, these ranges [firstdegree, lastdegree] had
+# the following corroletion with the C code:
+#     [ 2,  5] -> tol = 1e-14
+#     [ 5, 15] -> tol = 1e-13
+#     [15, 25] -> tol = 5e-13
+x="$(grep NBN_REAL  ../../nek_src/nbn_setup.h | grep -v '//' | tr ' ' '\n'| grep -E '(float|double)')"
+if [ "$x" == "float" ]
+then
+tolerance=1e-5
+else
+tolerance=5e-13
+fi
+#dbg> echo "tolerance= $tolerance"
+    # grep -P '\S' ==> Remove spurious blank lines
+../util/bin/numdiff -a $tolerance $OUTFORTRAN $OUTC| grep -P '\S' &> z_diff
+    # grep -c guarantees a concise output.
+theDiff="$(grep -v -c 'are equal' z_diff)"
+if [ $theDiff != 0 ]
+then
+echo "ERROR: Unit test nekbone_semhat failed."
+exit 50
+fi
+
+#----- Clean-up
+rm -f z_* core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
+
+echo "Successful run"
+exit 0

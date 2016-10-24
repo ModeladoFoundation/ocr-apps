@@ -19,7 +19,7 @@ CEXEC="./ccode.x"
 OUTFORTRAN="./fortran.out"
 OUTC="./ccode.out"
 
-OPT="-g -O0"
+OPT="-g -O0 -I../../nek_src"
 
 #----- Preliminary clean-up
 rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
@@ -34,7 +34,7 @@ exit 20
 fi
 
 rm -f "$CEXEC"
-$CC -o "$CEXEC" $OPT blas1.c polybasis.c nekbone_jacobf.c
+$CC -o "$CEXEC" $OPT blas1.c blas3.c polybasis.c nekbone_jacobf.c
 if [ ! -x "$CEXEC" ]
 then
 echo "ERROR: C code build failure"

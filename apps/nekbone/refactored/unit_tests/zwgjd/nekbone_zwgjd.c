@@ -14,20 +14,21 @@ int main(int argc, char * argv[])
 
     Err_t err=0;
     while(!err){
-        fout = fopen("./ccode.out", "w");
+        fout = fopen("./z_ccode.out", "w");
         if(!fout) {err=__LINE__; IFEB;}
 
-        const unsigned int N = 100;
-        double x[100], v;
         double alpha, beta;
 
-        unsigned int podegree, firstdegree, lastdegree, k;
+        const unsigned int N = 84;  //Largest value allowed in Nekbone's speclib.f::ZWGJ
+        double z[N], w[N];
+
+        unsigned int pDOF, firstdegree, lastdegree, k;
 
         alpha = 0; // This is how it is use throughout NEKbone.
         beta  = 0; // This is how it is use throughout NEKbone.
 
         // If any of these values changes, make also the change in nekbone_jacg.f90
-        firstdegree = 2;
+        firstdegree = 1;
         lastdegree  = 25;
 
         if(lastdegree >= N){
@@ -35,28 +36,25 @@ int main(int argc, char * argv[])
             err=__LINE__; IFEB;
         }
 
-        nbb_rvector_t vx = {0};
-        vx.v = x;
-        vx.length = N;
+        const double one = 1;
 
-        for(podegree=firstdegree; podegree<=lastdegree; ++podegree){
-            {
-                vx.length = N;
-                for(k=0; k<N; ++k) *nbb_atrv(vx,k) = 0;
+        for(pDOF=firstdegree; pDOF<=lastdegree; ++pDOF){
+            for(k=0; k<N; ++k){
+                z[k]=0;
+                w[k]=0;
+            }
+            for(k=0; k < pDOF; ++k){
+                const double u = pDOF;
+                const double v = k;
+                z[k] = v /(v + one);
+                w[k] = v / (u + one);
             }
 
-            vx.length = podegree;  //To adjust for what we are going to use.
+            err = nbb_ZWGJD(z,w,pDOF,alpha,beta); IFEB;
 
-            for(k=0; k<podegree; ++k){
-                v = k;
-                *nbb_atrv(vx,k) = v /(v+1);
-            }
-
-            err = nbb_JACG(vx, podegree, alpha, beta); IFEB;
-
-            fprintf(fout,"%10u\n", podegree);
-            for(k=0; k<vx.length; ++k){
-                fprintf(fout,"%23.14E\n", nbb_getrv(vx,k));
+            fprintf(fout,"%10u\n", pDOF);
+            for(k=0; k < pDOF; ++k){
+                fprintf(fout,"%u  %23.14E  %23.14E\n", k +1, z[k], w[k]); //k+1 in order to make the same as the Fortran side.
             }
         }
         IFEB;

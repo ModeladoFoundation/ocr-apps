@@ -3,7 +3,7 @@
 #Author: Donald H Villeneuve (dvillen)
 #Goal: Make a C-code analog to Nekbone's init_mesh procedure
 #Methodology:
-#   1) Setup an input file
+#   1) Correctly setup the setup.h file
 #   2) Run the Fortran code holding cubic which
 #      will generate an output file F
 #   3) Run the C code holding the C-version of cubic, which
@@ -16,15 +16,12 @@ FCOMP="ifort -fpp"
 CC="icc"
 
 FTEMP="./z_fortran_temp.f90"
-FEXEC="./fortran.x"
-CEXEC="./ccode.x"
-OUTFORTRAN="./fortran.out"
-OUTC="./ccode.out"
+FEXEC="./z_fortran.x"
+CEXEC="./z_ccode.x"
+OUTFORTRAN="./z_fortran.out"
+OUTC="./z_ccode.out"
 
 OPT="-g -O0"
-
-infileName="inputparams.dat"
-maxValue=10
 
 #----- Make the executables
 rm -f "$FEXEC" "$FTEMP"
@@ -37,18 +34,13 @@ echo "ERROR: Fortran build failure"
 exit 20
 fi
 
-#rm -f "$CEXEC"
-#$CC -o "$CEXEC" $OPT cubic.c nekbone_cubic.c
-#if [ ! -x "$CEXEC" ]
-#then
-#echo "ERROR: C code build failure"
-#exit 30
-#fi
-
-#----- Generate the input file
-#  The input file name is hard coded in the other files.
-
-echo $maxValue > ${infileName}
+rm -f "$CEXEC"
+$CC -o "$CEXEC" $OPT cubic.c init_mesh.c nekbone_init_mesh.c
+if [ ! -x "$CEXEC" ]
+then
+echo "ERROR: C code build failure"
+exit 30
+fi
 
 #----- Run the Fortran code
 $FEXEC
@@ -59,26 +51,25 @@ exit 40
 fi
 
 #----- Run the C code
-#$CEXEC
-#if [ ! -r "$OUTC" ]
-#then
-#echo "ERROR: Missing C output file"
-#exit 40
-#fi
+$CEXEC
+if [ ! -r "$OUTC" ]
+then
+echo "ERROR: Missing C output file"
+exit 40
+fi
 
 #----- Compare
-#if [ "$(diff -w --brief ${OUTFORTRAN} ${OUTC})" ]
-#then
-#echo "ERROR: Unit test cubic failed."
-#exit 50
-#fi
+if [ "$(diff -w --brief ${OUTFORTRAN} ${OUTC})" ]
+then
+echo "ERROR: Unit test cubic failed."
+exit 50
+fi
 
 #----- Clean-up
-rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC" "$infileName" "$FTEMP"
+rm -f core* "$FEXEC" "$FTEMP" "$OUTFORTRAN" "$CEXEC" "$OUTC"
 rm -f z*
 
 #Test not completed yet
-#echo "Successful run"
-echo "ERROR: Unit test init_mesh failed: Its coding is incomplete."
+echo "Successful run"
 
 exit 0

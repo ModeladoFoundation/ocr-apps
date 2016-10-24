@@ -1,45 +1,49 @@
 !-----------------------------------------------------------------------
-! The code for the procedure "gammaf" was taken from
+! The code for the procedure "ZWGJD" was taken from
 !   nekbone-2.3.4/src/speclib.f
 !-----------------------------------------------------------------------
-      program test_jacg
+      program test_zwgjd
 
       implicit none
 
       REAL*8 alpha, beta
-      REAL*8 x(100), v
+      REAL*8 z(100), w(100), u,v
 
-      integer podegree, k, N
+      integer pDOF, N
       integer firstdegree, lastdegree
 
-      N = 100
+      integer k
 
       alpha = 0. ! This is how it is use throughout NEKbone
       beta  = 0. ! This is how it is use throughout NEKbone
 
-      ! If any of these values changes, make also the change in nekbone_jacg.c
-      firstdegree = 2
+      ! If any of these values changes, make also the change in nekbone_zwgjd.c
+      firstdegree = 1
       lastdegree  = 25
 
-      if( lastdegree >= N) then
-        write(*,*) "ERROR: test_jacg: lastdegree must be smaller than 100"
+      N = 84 ! Largest value allowed in Nekbone's speclib.f::ZWGJ
+      if( lastdegree > N) then
+        write(*,*) "ERROR: test_zwgjd: lastdegree must be smaller than 84"
         call exit(1)
       endif
 
-      open(unit=10,file='fortran.out')
+      open(unit=10,file='z_fortran.out')
 
-      do podegree=firstdegree,lastdegree
-        x=0
-        do k=1,podegree
+      do pDOF=firstdegree,lastdegree
+        z=0
+        w=0
+        do k=1,pDOF
+            u = REAL(pDOF)
             v = REAL(k)
-            x(k) = v /(v + 1.)
+            z(k) = v /(v + 1.)
+            w(k) = v / (u + 1.)
         enddo
 
-        call JACG(x, podegree, alpha,beta)
+        call ZWGJD (z,w,pDOF,alpha,beta)
 
-        write(10,'(1I10)') podegree
-        do k=1,podegree
-            write(10,'(1ES23.14)') x(k)
+        write(10,'(1I10)') pDOF
+        do k=1,pDOF
+            write(10,'(1I10,2ES23.14)') k, z(k), w(k)
         enddo
       enddo
 
@@ -145,3 +149,116 @@
  200  CONTINUE
       RETURN
       END
+
+!--------------------------------------------------------------------
+     REAL*8  FUNCTION GAMMAF (X)
+      IMPLICIT REAL*8  (A-H,O-Z)
+      REAL*8  X
+      ZERO = 0.0
+      HALF = 0.5
+      ONE  = 1.0
+      TWO  = 2.0
+      FOUR = 4.0
+      PI   = FOUR*ATAN(ONE)
+      GAMMAF = ONE
+      IF (X.EQ.-HALF) GAMMAF = -TWO*SQRT(PI)
+      IF (X.EQ. HALF) GAMMAF =  SQRT(PI)
+      IF (X.EQ. ONE ) GAMMAF =  ONE
+      IF (X.EQ. TWO ) GAMMAF =  ONE
+      IF (X.EQ. 1.5  ) GAMMAF =  SQRT(PI)/2.
+      IF (X.EQ. 2.5) GAMMAF =  1.5*SQRT(PI)/2.
+      IF (X.EQ. 3.5) GAMMAF =  0.5*(2.5*(1.5*SQRT(PI)))
+      IF (X.EQ. 3. ) GAMMAF =  2.
+      IF (X.EQ. 4. ) GAMMAF = 6.
+      IF (X.EQ. 5. ) GAMMAF = 24.
+      IF (X.EQ. 6. ) GAMMAF = 120.
+      RETURN
+      END
+
+!--------------------------------------------------------------------
+      REAL*8  FUNCTION PNORMJ (N,ALPHA,BETA)
+      IMPLICIT REAL*8  (A-H,O-Z)
+      REAL*8  ALPHA,BETA
+      ONE   = 1.
+      TWO   = 2.
+      DN    = ((N))
+      CONST = ALPHA+BETA+ONE
+      IF (N.LE.1) THEN
+         PROD   = GAMMAF(DN+ALPHA)*GAMMAF(DN+BETA)
+         PROD   = PROD/(GAMMAF(DN)*GAMMAF(DN+ALPHA+BETA))
+         PNORMJ = PROD * TWO**CONST/(TWO*DN+CONST)
+         RETURN
+      ENDIF
+      PROD  = GAMMAF(ALPHA+ONE)*GAMMAF(BETA+ONE)
+      PROD  = PROD/(TWO*(ONE+CONST)*GAMMAF(CONST+ONE))
+      PROD  = PROD*(ONE+ALPHA)*(TWO+ALPHA)
+      PROD  = PROD*(ONE+BETA)*(TWO+BETA)
+      DO 100 I=3,N
+         DINDX = ((I))
+         FRAC  = (DINDX+ALPHA)*(DINDX+BETA)/(DINDX*(DINDX+ALPHA+BETA))
+         PROD  = PROD*FRAC
+ 100  CONTINUE
+      PNORMJ = PROD * TWO**CONST/(TWO*DN+CONST)
+      RETURN
+      END
+!--------------------------------------------------------------------
+!
+!     Generate NP GAUSS JACOBI points (Z) and weights (W)
+!     associated with Jacobi polynomial P(N)(alpha>-1,beta>-1).
+!     The polynomial degree N=NP-1.
+!     Double precision version.
+!
+!--------------------------------------------------------------------
+      SUBROUTINE ZWGJD (Z,W,NP,ALPHA,BETA)
+      IMPLICIT REAL*8  (A-H,O-Z)
+
+      REAL*8  Z(1),W(1),ALPHA,BETA
+
+      integer k
+
+      N     = NP-1
+      DN    = ((N))
+      ONE   = 1.
+      TWO   = 2.
+      APB   = ALPHA+BETA
+
+      IF (NP.LE.0) THEN
+         WRITE (6,*) 'ZWGJD: Minimum number of Gauss points is 1',np
+         call exit(1)
+      ENDIF
+      IF ((ALPHA.LE.-ONE).OR.(BETA.LE.-ONE)) THEN
+         WRITE (6,*) 'ZWGJD: Alpha and Beta must be greater than -1'
+         call exit(2)
+      ENDIF
+
+      IF (NP.EQ.1) THEN
+         Z(1) = (BETA-ALPHA)/(APB+TWO)
+         W(1) = GAMMAF(ALPHA+ONE)*GAMMAF(BETA+ONE)/GAMMAF(APB+TWO) * TWO**(APB+ONE)
+         RETURN
+      ENDIF
+
+      CALL JACG (Z,NP,ALPHA,BETA)
+
+      !DBG> do k=1,NP
+      !DBG>   write(*,'(A,1I10,1ES23.14)') "DBG>F> JACG> ", k, Z(k)
+      !DBG> enddo
+
+      NP1   = N+1
+      NP2   = N+2
+      DNP1  = ((NP1))
+      DNP2  = ((NP2))
+      FAC1  = DNP1+ALPHA+BETA+ONE
+      FAC2  = FAC1+DNP1
+      FAC3  = FAC2+ONE
+      FNORM = PNORMJ(NP1,ALPHA,BETA)
+      RCOEF = (FNORM*FAC2*FAC3)/(TWO*FAC1*DNP2)
+
+      !DBG> write(*,'(A,2I10,5ES23.14)') "DBG>F> const> ", NP, NP1, FAC1, FAC2, FAC3, FNORM, RCOEF
+
+      DO 123 I=1,NP
+         CALL JACOBF (P,PD,PM1,PDM1,PM2,PDM2,NP2,ALPHA,BETA,Z(I))
+         W(I) = -RCOEF/(P*PDM1)
+ 123  CONTINUE
+      RETURN
+      END
+

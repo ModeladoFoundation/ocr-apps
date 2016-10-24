@@ -9,7 +9,7 @@
 
 //In NEKbone, a vector is simply a C array with a length to be kept separately.
 
-//In NEKbone, a 2D matrix is simply a C array with length = rows*cols, and a specify
-//access pattern.
+//In NEKbone, a 2D matrix is simply a C array with length = rows*cols,
+// and a specified access pattern.
 
 #endif // NEKBONE_BLAS_H

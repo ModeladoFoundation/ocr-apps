@@ -27,8 +27,7 @@
       integer lglel(G_IELN)
       integer i
 
-      open(unit=10,file='fortran.out')
-
+      open(unit=10,file=OUTPUT_FILE)
       ! Set mpx,npy,npz to bogu numbers
       npx=1
       npy=1
@@ -38,29 +37,35 @@
       my=1
       mz=1
 
-      write(*,*) "#nelt,nid,if_brick,  npx,npy,npz,mx,my,mz, nelx,nely,nelz"
+      write(10,*) "#if_brick,nelt,np,nid, npx,npy,npz, mx,my,mz, nelx,nely,nelz"
 
 !       nx1,ny1,nz1,ndim are all globals from SIZE
-      do nx1=G_NX0,G_NXN,G_NXD
-        ny1=nx1
-        nz1=nx1
-        ndim=G_LDIM
-
-        do nelt=G_IEL0,G_IELN,G_IELD
-            do nid=G_MPI_RANK_ID_MIN,G_MPI_RANK_ID_MAX,G_MPI_RANK_ID_D
+      do nx1 = G_NX0, G_NXN, G_NXD
+        ny1 = nx1
+        nz1 = nx1
+        do nelt = G_IEL0, G_IELN, G_IELD
+            do nid = G_MPI_RANK_ID_MIN, G_MPI_RANK_ID_MAX, G_MPI_RANK_ID_D
                 np = G_MPI_RANK_ID_MAX + 1
-                do if_brick=G_IFBRICK_MIN,G_IFBRICK_MAX
+                do if_brick=G_IFBRICK_MIN, G_IFBRICK_MAX, G_IFBRICK_D
                     if (if_brick.eq.0) then
                         ifbrick=.false.
                     else
                         ifbrick=.true.
                     end if
+                    ! Set mpx,npy,npz to invalid numbers
+                    npx=1
+                    npy=1
+                    npz=1
+                    ! Set mx,my,mz to invalid numbers
+                    mx=1
+                    my=1
+                    mz=1
 
-                    call init_mesh(if_brick,npx,npy,npz,mx,my,mz, nelt,np,nid, nelx,nely,nelz, lglel)
+                    call init_mesh(ifbrick, npx,npy,npz, mx,my,mz, nelt,np,nid, nelx,nely,nelz, lglel)
 
-                    write(*,'(12I4)') nelt,nid,if_brick,  npx,npy,npz,mx,my,mz, nelx,nely,nelz
+                    write(10,'(13I8)') if_brick,nelt,np,nid,  npx,npy,npz, mx,my,mz, nelx,nely,nelz
                     do i=0,G_IELN
-                        write(*,*) i, lglel(i)
+                        write(10,*) i, lglel(i)
                     enddo
 
                 enddo
@@ -129,10 +134,10 @@
       end
 
 !-----------------------------------------------------------------------
-      subroutine init_mesh(ifbrick,npx,npy,npz,mx,my,mz, in_nelt, in_np,in_nid, nelx,nely,nelz, lglel)
+      subroutine init_mesh(in_ifbrick, npx,npy,npz, mx,my,mz, in_nelt,in_np,in_nid, nelx,nely,nelz, lglel)
 
         implicit none
-        logical ifbrick
+        logical in_ifbrick
         integer npx,npy,npz
         integer mx,my,mz
 
@@ -141,9 +146,11 @@
 
         integer lglel(*)
 
+        integer i,j,k
+
 !       SIZE provides
 !           nelx,nely,nelz,nelt
-!           nelt is set to "do nelt=iel0,ielN,ielD" in driver.f::program nekbone
+!           nelt is set to "do nelt = iel0, ielN, ielD" in driver.f::program nekbone
 !           nid the MPI rank ID in SIZE & comm_mpi.f::iniproc
 !       TOTAL::PARALLEL provides np:
 !           np = Number of MPI ranks
@@ -152,41 +159,40 @@
 !      include 'SIZE'
 !      include 'TOTAL'
 
-      integer e,eg,offs
+      integer e, eg, offs
 
-      if(.not. ifbrick) then   ! A 1-D array of elements of length P*lelt
+      if(.not. in_ifbrick) then   ! A 1-D array of elements of length P*lelt
          nelx = in_nelt*in_np
          nely = 1
          nelz = 1
 
          do e=1,in_nelt
-            eg = e + in_nid*in_nelt
+            eg = e + in_nid * in_nelt
             lglel(e) = eg
          enddo
       else              ! A 3-D block of elements
-!        if (npx*npy*npz .ne. in_np) then
-!          call cubic(npx,npy,npz,in_np)  !xyz distribution of total proc
-!        end if
-!        if (mx*my*mz .ne. in_nelt) then
-!          call cubic(mx,my,mz,in_nelt)   !xyz distribution of elements per proc
-!        end if
-!
-!        nelx = mx*npx
-!        nely = my*npy
-!        nelz = mz*npz
-!
-!        e = 1
-!        offs = (mod(in_nid,npx)*mx) + npx*(my*mx)*(mod(in_nid/npx,npy))
-!     $      + (npx*npy)*(mx*my*mz)*(in_nid/(npx*npy))
-!        do k = 0,mz-1
-!        do j = 0,my-1
-!        do i = 0,mx-1
-!           eg = offs+i+(j*nelx)+(k*nelx*nely)+1
-!           lglel(e) = eg
-!           e        = e+1
-!        enddo
-!        enddo
-!        enddo
+        if (npx*npy*npz .ne. in_np) then
+          call cubic(npx,npy,npz,in_np)  !xyz distribution of total proc
+        end if
+        if (mx*my*mz .ne. in_nelt) then
+          call cubic(mx,my,mz,in_nelt)   !xyz distribution of elements per proc
+        end if
+
+        nelx = mx*npx
+        nely = my*npy
+        nelz = mz*npz
+
+        e = 1
+        offs = (mod(in_nid,npx)*mx) + npx*(my*mx)*(mod(in_nid/npx,npy)) + (npx*npy)*(mx*my*mz)*(in_nid/(npx*npy))
+        do k = 0,mz-1
+        do j = 0,my-1
+        do i = 0,mx-1
+           eg = offs+i+(j*nelx)+(k*nelx*nely)+1
+           lglel(e) = eg
+           e        = e+1
+        enddo
+        enddo
+        enddo
       endif
 
 !      if (in_nid.eq.0) then

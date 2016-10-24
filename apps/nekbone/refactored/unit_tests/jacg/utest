@@ -19,7 +19,7 @@ CEXEC="./ccode.x"
 OUTFORTRAN="./fortran.out"
 OUTC="./ccode.out"
 
-OPT="-g -O0"
+OPT="-g -O0 -I../../nek_src"
 
 #----- Preliminary clean-up
 rm -f core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
@@ -34,7 +34,7 @@ exit 20
 fi
 
 rm -f "$CEXEC"
-$CC -o "$CEXEC" $OPT blas1.c polybasis.c nekbone_jacg.c
+$CC -o "$CEXEC" $OPT blas1.c blas3.c polybasis.c nekbone_jacg.c
 if [ ! -x "$CEXEC" ]
 then
 echo "ERROR: C code build failure"
@@ -58,8 +58,12 @@ exit 40
 fi
 
 #----- Compare
-theDiff="$(../util/bin/numdiff -a 1e-14 ./fortran.out ./ccode.out| grep -v 'are equal')"
-if [ $theDiff ]
+tolerance=1e-14
+    # grep -P '\S' ==> Remove spurious blank lines
+../util/bin/numdiff -a $tolerance $OUTFORTRAN $OUTC| grep -P '\S' &> z_diff
+    # grep -c guarantees a concise output.
+theDiff="$(grep -v -c 'are equal' z_diff)"
+if [ $theDiff != 0 ]
 then
 echo "ERROR: Unit test jacg failed."
 exit 50

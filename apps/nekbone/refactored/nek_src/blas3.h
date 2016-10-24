@@ -3,6 +3,16 @@
 
 #include "blas.h"
 
+//===== Assorted index hashing ================================================
+unsigned long hash_columnMajor3(int if_onebased_array_use1,
+                               unsigned long Ni, unsigned long Nj, unsigned long Nk,
+                               unsigned long i, unsigned long j, unsigned long k);
+
+void dehash_columnMajor3(int if_onebased_array_use1,
+                        unsigned long Ni, unsigned long Nj, unsigned long Nk,
+                        unsigned long h, unsigned long * o_i,
+                        unsigned long * o_j, unsigned long * o_k);
+
 //===== 2D matrices ===========================================================
 typedef struct nbb_matrix2 {
     BLAS_UINT_TYPE sz_rows; //The number of rows

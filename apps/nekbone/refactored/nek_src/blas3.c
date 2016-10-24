@@ -2,6 +2,45 @@
 #include "blas3.h"
 #endif
 
+//===== Assorted index hashing ================================================
+unsigned long hash_columnMajor3(int if_onebased_array_use1,
+                               unsigned long Ni, unsigned long Nj, unsigned long Nk,
+                               unsigned long i, unsigned long j, unsigned long k)
+{
+    unsigned int offset = 0;
+    if(1 == if_onebased_array_use1){
+        //For 1-based array
+        --i;
+        --j;
+        --k;
+        offset = 1;
+    }
+
+    const unsigned long o_h = (i + Ni * (j + Nj*k) + offset);
+    return o_h;
+}
+
+void dehash_columnMajor3(int if_onebased_array_use1,
+                        unsigned long Ni, unsigned long Nj, unsigned long Nk,
+                        unsigned long h, unsigned long * o_i,
+                        unsigned long * o_j, unsigned long * o_k)
+{
+    if(1 == if_onebased_array_use1){
+        --h;
+    }
+
+    unsigned int u = h / Ni;
+    *o_k = u / Nj;
+    *o_j = u - Nj * (*o_k);
+    *o_i = h - Ni*( (*o_j) + Nj * (*o_k));
+
+    if(1 == if_onebased_array_use1){
+        ++(*o_k);
+        ++(*o_j);
+        ++(*o_i);
+    }
+}
+
 //===== 2D matrices ===========================================================
 unsigned long nbb_byte_sizeof2(nbb_matrix2_t in_m)
 {
@@ -85,7 +124,7 @@ int nbb_mxm2(nbb_matrix2_t in_a, nbb_matrix2_t in_b, nbb_matrix2_t * o_c) //Calc
     return 0;
 }
 
-//===== 2D matrices ===========================================================
+//===== 3D matrices ===========================================================
 unsigned long nbb_byte_sizeof3(nbb_matrix3_t in_m)
 {
     unsigned long sz = sizeof(nbb_matrix3_t);
