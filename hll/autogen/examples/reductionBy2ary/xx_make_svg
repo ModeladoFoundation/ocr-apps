@@ -1,0 +1,3 @@
+../../tools/x_dot z_reductionBy2ary.dot
+python ../../tools/ocr_autogen_dbg_postproc.py -s -i z_log -o z_reductionBy2ary.runtime.dot >z3
+../../tools/x_dot z_reductionBy2ary.runtime.dot

@@ -95,7 +95,7 @@ exit 20
 fi
 
 #----- Create the OCR C file
-python ./mpiranks_inOcr.py > /dev/null
+python ./mpiranks_inOcr.py > z_autogen.log
 #python ./mpiranks_inOcr.py
 if [ ! -s "z_mpiranks_inOcr.c" ]
 then
@@ -119,6 +119,8 @@ if [ "$(diff -w --brief z_ref_output z_s_output)" ]
 then
 echo "ERROR: Black box test failed."
 exit 50
+else
+echo "SUCCESS: Black box test passed."
 fi
 
 ##----- Clean up

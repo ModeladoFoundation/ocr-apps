@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+#----- Create the OCR C file
+python ./reductionBy2ary.py &> z_autogen.log
+if [ ! -s "z_reductionBy2ary.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+if [ "$(grep -ic ERROR z_autogen.log)" -ne 0 ]
+then
+echo "ERROR: Autogen generation failed."
+exit 35
+fi
+
+##----- Compile and run
+rm -f z_output
+CONFIG_FLAGS=--guid=LABELED OCR_TYPE=x86-mpi make run &> z_log; grep "TESTIO>" z_log > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+##----- Compare
+check1="$(grep "Concluding" z_output | grep -v 'Work is ok'| wc -l)"
+check2="$(grep -i err z_output| wc -l)"
+check=$((check1 + check2))
+if [ "$check" -eq "0" ]
+then
+echo "SUCCESS: Black box test passed."
+else
+echo "ERROR: Black box test failed."
+exit 50
+fi
+
+##----- Clean up
+rm -f z_*
+rm -rf ./build ./install ./tools
+rm -f ../../tools/*pyc
+rm -f core*
+

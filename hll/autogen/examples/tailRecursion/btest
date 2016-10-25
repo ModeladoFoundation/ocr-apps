@@ -23,7 +23,7 @@ exit 20
 fi
 
 #----- Create the OCR C file
-python ./TailRecursion.py > /dev/null
+python ./TailRecursion.py > z_autogen.log
 if [ ! -s "z_tailRecursion.c" ]
 then
 echo "ERROR: Missing OCR C code file"
@@ -44,6 +44,8 @@ if [ "$(diff -w --brief z_ref_output z_output)" ]
 then
 echo "ERROR: Black box test failed."
 exit 50
+else
+echo "SUCCESS: Black box test passed."
 fi
 
 #----- Clean up

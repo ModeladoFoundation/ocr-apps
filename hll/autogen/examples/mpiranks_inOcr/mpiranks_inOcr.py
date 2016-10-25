@@ -377,20 +377,20 @@ def theMain():
     # ----- WORK
     erri = 0
     while not erri:
-        if 1 == 2: OA.printGraph(G)   # Just to check if the inputs are ok.
+        if False: OA.printGraph(G)   # Just to check if the inputs are ok.
 
         erri = OA.OCRanalysis(G)
         if erri: break
 
-        if 1 == 2: OA.printGraph(G)
-        if 1 == 2:
+        if False: OA.printGraph(G)
+        if True:
             erri = OA.outputDot(G, "z_mpiranks_inOcr.dot")
             if erri: break
-        if 1 == 1:
+        if True:
             erri = OA.outputOCR(G, "z_mpiranks_inOcr.c")
             if erri: break
 
-        if 1 == 2: OA.printGraph(G)
+        if False: OA.printGraph(G)
 
         break  # while not erri
     OA.errmsg(erri)

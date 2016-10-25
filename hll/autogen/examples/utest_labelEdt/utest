@@ -2,10 +2,7 @@
 
 #----- First make the reference output file
 rm -f ./z_ref_output
-echo "TESTIO> Setup used the parabola (x^2,x,1) = (1, 2, 1)." > z_ref_output
-echo "TESTIO> The Solver for roots 1.00000000000000e+00 and 1.00000000000000e+00." >> z_ref_output
-echo "TESTIO> Checking for duplicate roots." >> z_ref_output
-echo "TESTIO> The double root is 1.00000000000000e+00" >> z_ref_output
+echo "TESTIO> sum = 55" > z_ref_output
 
 if [ ! -s "z_ref_output" ]
 then
@@ -14,16 +11,22 @@ exit 20
 fi
 
 #----- Create the OCR C file
-python ./helloWorld.py > z_autogen
-if [ ! -s "z_helloWorld.c" ]
+python ./utest_labelEdt.py > z_autogen.log
+if [ ! -s "z_utest_labeledt.c" ]
 then
 echo "ERROR: Missing OCR C code file"
 exit 30
 fi
 
+if [ "$(grep -ic ERROR z_autogen.log)" -ne 0 ]
+then
+echo "ERROR: Autogen generation failed."
+exit 35
+fi
+
 #----- Compile and run
 rm -f z_output
-OCR_TYPE=x86-mpi make run &> z_log; grep "TESTIO>" z_log > z_output
+CONFIG_FLAGS=--guid=LABELED OCR_TYPE=x86 make run > z_log; grep "TESTIO>" z_log > z_output
 if [ ! -s "z_output" ]
 then
 echo "ERROR: Missing OCR C code output"

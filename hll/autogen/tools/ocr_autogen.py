@@ -179,8 +179,10 @@ class Globals:
         self.DBK_structName_type = 'OCR_DBKs_t'
         self.DBK_structName      = 'OCR_DBKs'
 
-        self.EDT_longform_print = 1
-        self.DBK_longform_print = 1
+        self.EDT_longform_print = False   # Set to True in order to get everything
+                                          # outputted during ToDictio conversion, i.e. printout.
+        self.DBK_longform_print = False  # Set to True in order to get everything
+                                         # outputted during ToDictio conversion, i.e. printout.
 
         self.use_long_edge_name = 0
 
@@ -353,7 +355,7 @@ class ocrDataBlock:
                                          #            until after the FOR loop.
 
     def toDictio(self):
-        longform = GBL.EDT_longform_print
+        longform = GBL.DBK_longform_print
         d = {}
         if longform:
             d["count"] = self.count
@@ -361,11 +363,12 @@ class ocrDataBlock:
             d["flags"] = self.flags
             d["hint"] = self.hint
             d["allocator"] = self.allocator
-            d["localname"] = self.localname
             d["localText"] = self.localText
-            d["delayReleaseDestroy"] = self.delayReleaseDestroy
         d["name"] = self.name
         d["flight"] = self.flight
+        d["localname"] = self.localname
+        d["delayReleaseDestroy"] = self.delayReleaseDestroy
+
         return d
 
     def addLocalText(self, in_text):
@@ -426,7 +429,7 @@ class ocrDataBlock:
         t = in_tab + 'PRINTF("OA_DBG> TaskTYPE=%d TaskID="GUIDF" DBKCreate Dguid="GUIDF" Dname=%s'
         t += '\\n'
         t += '", OA_edtTypeNb, GUIDA(OA_DBG_thisEDT), GUIDA('
-        t += gd_name + '), STRINGIZE(' + self.name + '));'
+        t += gd_name + '), STRINGIZE(' + self.name + '));\n'
         io_file.write(t)
 
 # ------------------------------------------------------------------------------
@@ -470,11 +473,11 @@ class ocrEdt:
         longform = GBL.EDT_longform_print
         d={}
         d["aname"]           = self.aname
-        d["paramc"]          = self.paramc
-        d["paramv"]          = self.paramv
         d["depc"]            = self.depc
         d["depv"]            = self.depv
         if longform:
+            d["paramc"] = self.paramc
+            d["paramv"] = self.paramv
             d["flags"]       = self.aflags
             d["hint"]        = self.hint
             d["outputEvent"] = self.outputEvent
@@ -502,7 +505,7 @@ class ocrEdt:
         ga_name = makeGuidEdtname(self.aname)
         t = in_tab + 'PRINTF("OA_DBG> TaskTYPE=%d TaskID="GUIDF" EDTCreate slots=%d  Tguid="GUIDF"  Tname=%s\\n"'
         t += ', OA_edtTypeNb, GUIDA(OA_DBG_thisEDT), ' + str(self.depc) + ', GUIDA('
-        t += ga_name + '), STRINGIZE(' + self.aname + '));'
+        t += ga_name + '), STRINGIZE(' + self.aname + '));\n'
         io_file.write(t)
 
 # ------------------------------------------------------------------------------
@@ -513,7 +516,7 @@ class ocrEvent:
         self.eflag = 'EVT_PROP_TAKES_ARG' # Other options are "EVT_PROP_NONE" 'EVT_PROP_TAKES_ARG'
 
         #For ocrAddDependence
-        self.accessMode = 'DB_MODE_RW' #All options are: 'DB_MODE_RW', 'DB_MODE_EW', 'DB_MODE_RO', 'DB_MODE_CONST'
+        self.accessMode = 'DB_MODE_RW' #All options are: 'DB_MODE_RW', 'DB_MODE_EW', 'DB_MODE_RO', 'DB_MODE_CONST'. 'DB_MODE_NULL'
 
         #For ocrEventSatisfySlot & ocrAddDependence
         self.calculatedSlot = GBL.notaSlot
@@ -817,8 +820,8 @@ def graphAddEdge(io_G, in_from_nodeName, in_to_nodeName, in_label):
     if not "literals" in getEdge(io_G, e):
         getEdge(io_G, e)["literals"] = [] # A list by text name of the data blocks that needs to be received as literals
         getEdge(io_G, e)["derefs"] = [] # A list by text name of the data blocks that needs to be received and dereferenced.
-        getEdge(io_G, e)["slotCount"] = 0  # A non-zero positive integer counting how many slots an edge requires.
-                                           # The slot count of an EDt is the sum(slotCount, over all edges incident on that EDT).
+        getEdge(io_G, e)["slotCount"] = GBL.notaSlot  # A non-zero positive integer counting how many slots an edge requires.
+                                                      # The slot count of an EDT is the sum(slotCount, over all edges incident on that EDT).
 
         # -An edge can share a connection with another edge.  This means that both edges will be using
         # the same slot.  The current edge, the one with the valid "sharedConx" should be the one
@@ -829,6 +832,8 @@ def graphAddEdge(io_G, in_from_nodeName, in_to_nodeName, in_label):
         # -For example, a shared edge can occur during a recursion pattern.
         #==>"sharedConx" is used to break cycles in the Graph in order to have a simple DAG.
         #    The graph will be broken on the edge having the "sharedConx" set.
+        #2016Sept12: The restriction of a sharedConx to the entire set of events on an edge
+        #            is too restrictive.  --> See comments from 2016aug17 for example
         getEdge(io_G,e)["sharedConx"] = []  # A list of (node source, node target) 2-tuple
                                             # This list should have a length of at most one.
                                             # I had to use a list in order to get a nice accessor sharedConx()
@@ -1110,7 +1115,7 @@ def check_flight_enum(in_G):
     return erri
 # ------------------------------------------------------------------------------
 def isa_DBK_access_code(in_access_code):
-    if in_access_code in ['DB_MODE_CONST', 'DB_MODE_RW', 'DB_MODE_EW', 'DB_MODE_RO']:
+    if in_access_code in ['DB_MODE_CONST', 'DB_MODE_RW', 'DB_MODE_EW', 'DB_MODE_RO', 'DB_MODE_NULL']:
         return 1
     return 0
 # ------------------------------------------------------------------------------
@@ -1211,7 +1216,7 @@ def check_datablock_integrity(in_G):
         break # while not erri:
     return erri
 # ------------------------------------------------------------------------------
-# inputs: DB_MODE_CONST, DB_MODE_RW, DB_MODE_EW, DB_MODE_RO
+# inputs: DB_MODE_CONST, DB_MODE_RW, DB_MODE_EW, DB_MODE_RO, DB_MODE_NULL
 # Outputs:
 #   0 --> all is ok.
 #   positive number --> error
@@ -1226,10 +1231,11 @@ def compare_DBK_access(in_access_left, in_access_right):
 
     choice_table = {}
     # Use 0 for ok, 1 for error, -1 for warning
-    choice_table['DB_MODE_CONST'] = {'DB_MODE_CONST': 0, 'DB_MODE_RO':-1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 1}
-    choice_table['DB_MODE_RO']    = {'DB_MODE_CONST':-1, 'DB_MODE_RO': 0, 'DB_MODE_RW':-1, 'DB_MODE_EW':-1}
-    choice_table['DB_MODE_RW']    = {'DB_MODE_CONST': 1, 'DB_MODE_RO':-1, 'DB_MODE_RW': 0, 'DB_MODE_EW': 1}
-    choice_table['DB_MODE_EW']    = {'DB_MODE_CONST': 1, 'DB_MODE_RO':-1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 0}
+    choice_table['DB_MODE_CONST'] = {'DB_MODE_CONST': 0, 'DB_MODE_RO':-1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 1, 'DB_MODE_NULL': 1}
+    choice_table['DB_MODE_RO']    = {'DB_MODE_CONST':-1, 'DB_MODE_RO': 0, 'DB_MODE_RW':-1, 'DB_MODE_EW':-1, 'DB_MODE_NULL': 1}
+    choice_table['DB_MODE_RW']    = {'DB_MODE_CONST': 1, 'DB_MODE_RO':-1, 'DB_MODE_RW': 0, 'DB_MODE_EW': 1, 'DB_MODE_NULL': 1}
+    choice_table['DB_MODE_EW']    = {'DB_MODE_CONST': 1, 'DB_MODE_RO':-1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 0, 'DB_MODE_NULL': 1}
+    choice_table['DB_MODE_NULL']  = {'DB_MODE_CONST': 1, 'DB_MODE_RO': 1, 'DB_MODE_RW': 1, 'DB_MODE_EW': 1, 'DB_MODE_NULL': 0}
 
     return choice_table[in_access_left][in_access_right]
 # ------------------------------------------------------------------------------
@@ -1590,7 +1596,7 @@ def validate_IFthenELSE(io_G):
 #      shared connections cannot be put on ELSE EDTs.  <-- Not sure. See Note 2016Aug17
 #   2016Aug17: When implementing  binaryTree_forkjoin, I had an IF-THEN edt and a ELSE edt both emitting a DBK
 #              to the same other edt BtJoin.  Autogen saw that has two separate inputs; when in fact it was only one.
-#              So I used a shared connection to tell Autogen that both the IF-THEN and its ELSe are sharing the input
+#              So I used a shared connection to tell Autogen that both the IF-THEN and its ELSE are sharing the input
 #              into the BtJoin edt.
 def check_shared_connections(in_G):
     erri=0
@@ -1653,17 +1659,247 @@ def check_shared_connections(in_G):
         break  # while not erri:
     return erri
 # ------------------------------------------------------------------------------
+def assign_slots_for_literals_and_dereferenceds2(io_G):
+    erri=0
+    while not erri:
+        #2016Sept14: Faulty do  not use yet. Stillunder development.
+        erri = inspect.currentframe().f_lineno
+        break
+
+        for n in io_G.nodes():
+            local_slot_offset = 0
+
+            #Get the slot count per edg.
+            for dbk in getDataBlocks(io_G, n):
+                if dbk.flight in ['flUNDEF', 'flFLYOVER']:
+                    # No DBK should have these flight paths at this point.
+                    erri = inspect.currentframe().f_lineno
+                    break
+                if dbk.flight in ['flTAKEOFF', 'flHOP']:
+                    # These cannot be coming in.
+                    continue
+                if dbk.flight in 'flPASSTRU':
+                    erri = inspect.currentframe().f_lineno
+                    print('ERROR: DBK with flPASSTRU are not handled yet.\n')
+                    break
+
+                if not dbk.flight in ['flTAGO', 'flLANDING']:
+                    # Just in case a new type of flight is added.
+                    erri = inspect.currentframe().f_lineno
+                    break
+
+                if dbk.name == 'NULL_GUID' and dbk.flight == 'flLANDING':
+                    thisIs_theNullGuid_for_IFTHENELSE = False
+                    for p in getNodeparents(io_G, n):
+                        if len(getIFconditionText(io_G, n)):
+                            edgif = (p,n)
+                            if getEdge(io_G, edgif)["leads_to_ElseClause"]:
+                                thisIs_theNullGuid_for_IFTHENELSE = True
+                                if not len(getDataBlocks(io_G, n)) == 1:
+                                    erri = inspect.currentframe().f_lineno
+                                    t = 'NULL_GUID linking a IF-THEN edt and a ELSE edt is not along. Possible error.\n'
+                                    warnmsg(erri, t)
+                                    erri = 0
+                                break
+                    if thisIs_theNullGuid_for_IFTHENELSE:
+                        continue
+
+                #First check among the non-shared edges
+                parent = GBL.NOTA_NODE_ID
+                for pa in getNodeparents(io_G, n):
+                    edg = (pa, n)
+
+                    is_shared = False
+                    for cx in sharedConx(io_G, edg):
+                        if n == cx[1]:
+                            # This connection is shared with another
+                            is_shared = True
+                            break
+                    if is_shared:
+                        continue
+
+                    events = getEvents(io_G, edg)
+                    for evtName in events:
+                        if evtName == dbk.name:
+                            parent = pa
+                            break
+                    if not parent == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                        break
+
+                if parent == GBL.NOTA_NODE_ID:
+                    # Look in the shared edge to find it
+                    erri = inspect.currentframe().f_lineno
+                    t = 'Looking in the shared edges for DBK "' + dbk.name + '" on node ' + str(n) + '.\n'
+                    warnmsg(erri, t)
+                    erri = 0
+                    for pa in getNodeparents(io_G, n):
+                        edg = (pa, n)
+
+                        is_shared = False
+                        for cx in sharedConx(io_G, edg):
+                            if n == cx[1]:
+                                # This connection is shared with another
+                                is_shared = True
+                                break
+                        if not is_shared:
+                            continue
+
+                        events = getEvents(io_G, edg)
+                        for evtName in events:
+                            if evtName == dbk.name:
+                                parent = pa
+                                break
+                        if not parent == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                            break
+
+                if parent == GBL.NOTA_NODE_ID:
+                    #We really cannot find an incoming event for this DBK.
+                    erri = inspect.currentframe().f_lineno
+                    t = 'The DBK "' + dbk.name + '" in node ' + str(n) + ' has no incoming event for it.\n'
+                    errmsg(erri, t)
+                    break
+
+                edg = (parent, n)
+                if getEdge(io_G, edg)["slotCount"] == GBL.notaSlot:
+                    getEdge(io_G, edg)["slotCount"] = 0
+                getEdge(io_G, edg)["slotCount"] += 1
+
+            if erri: break  # for dbk in getDataBlocks(io_G, n)
+
+            #Now assign slot numbers to non-shared edges
+            for dbk in getDataBlocks(io_G, n):
+                if dbk.flight in ['flUNDEF', 'flFLYOVER']:
+                    # No DBK should have these flight paths at this point.
+                    erri = inspect.currentframe().f_lineno
+                    break
+                if dbk.flight in ['flTAKEOFF', 'flHOP']:
+                    # These cannot be coming in.
+                    continue
+                if dbk.flight in 'flPASSTRU':
+                    erri = inspect.currentframe().f_lineno
+                    print('ERROR: DBK with flPASSTRU are not handled yet.\n')
+                    break
+
+                if not dbk.flight in ['flTAGO', 'flLANDING']:
+                    # Just in case a new type of flight is added.
+                    erri = inspect.currentframe().f_lineno
+                    break
+
+                if dbk.name == 'NULL_GUID' and dbk.flight == 'flLANDING':
+                    thisIs_theNullGuid_for_IFTHENELSE = False
+                    for p in getNodeparents(io_G, n):
+                        if len(getIFconditionText(io_G, n)):
+                            edgif = (p, n)
+                            if getEdge(io_G, edgif)["leads_to_ElseClause"]:
+                                thisIs_theNullGuid_for_IFTHENELSE = True
+                                if not len(getDataBlocks(io_G, n)) == 1:
+                                    erri = inspect.currentframe().f_lineno
+                                    t = 'NULL_GUID linking a IF-THEN edt and a ELSE edt is not along. Possible error.\n'
+                                    warnmsg(erri, t)
+                                    erri = 0
+                                break
+                    if thisIs_theNullGuid_for_IFTHENELSE:
+                        continue
+
+                # Find the non-shared edge to which the DBK belong
+                parent = GBL.NOTA_NODE_ID
+                for pa in getNodeparents(io_G, n):
+                    edg = (pa, n)
+
+                    is_shared = False
+                    for cx in sharedConx(io_G, edg):
+                        if n == cx[1]:
+                            # This connection is shared with another
+                            is_shared = True
+                            break
+                    if is_shared:
+                        continue
+
+                    events = getEvents(io_G, edg)
+                    for evtName in events:
+                        if evtName == dbk.name:
+                            parent = pa
+                            break
+                    if not parent == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                        break
+
+                if parent == GBL.NOTA_NODE_ID:
+                    # We really connat find an incoming event for this DBK.
+                    erri = inspect.currentframe().f_lineno
+                    t = 'The DBK "' + dbk.name + '" in node ' + str(n) + ' has no incoming event for it.\n'
+                    errmsg(erri, t)
+                    break
+
+                edga = (parent, n)
+                eventsa = getEvents(io_G, edga)
+                eventsa[dbk.name].calculatedSlot = local_slot_offset
+                local_slot_offset += 1
+
+            if erri: break  # for dbk in getDataBlocks(io_G, n)
+
+            getMyTask(io_G, n).depc = local_slot_offset
+            getMyTask(io_G, n).depv = 'NULL'  # Using events to fill the slots
+
+        if erri: break  # for n in io_G.nodes():
+
+        #Now handle the shared connections
+        for n2 in io_G.nodes():
+            for p2 in getNodeparents(io_G,n2):
+                edg = (p2, n2)
+                lits   = literals(io_G, edg)
+                derefs = dereferenciables(io_G, edg)
+                # print("\nDBG1516> n = " + str(n2))
+                # print('DBG1516> edg='+ str(edg) + '  lits= '+ str(lits) + '  derefs=' + str(derefs))
+
+                shared_conx = ()
+                for cx in sharedConx(io_G,edg):
+                    if n2 == cx[1]:
+                        shared_conx = cx  # So the current edge shares the connection cx
+                        break
+                if shared_conx == ():
+                    continue
+
+                events = getEvents(io_G, edg)
+                sharedEV = getEvents(io_G, shared_conx)
+
+                if 1 == 1:
+                    print('DBG1745> events   = ' + str(events))
+                    print('DBG1745> sharedEV = ' + str(sharedEV))
+                    print('DBG1745> lits = ' + str(lits))
+                    print('DBG1745> derefs = ' + str(derefs))
+
+                if lits:
+                    for lit in lits:
+                        events[lit].calculatedSlot = sharedEV[lit].calculatedSlot
+                if derefs:
+                    for deref in derefs:
+                        if deref in sharedEV:  # 2016Sept12: This is a hack in order to allow the proper functioning of shared edges
+                                               #             without having the full labeled edge info.
+                            events[deref].calculatedSlot = sharedEV[deref].calculatedSlot
+                            print('DBG1758> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
+
+            if erri: break  # for p2 in getNodeparents(io_G,n):
+
+        if erri: break  # for n2 in io_G.nodes():
+
+        break  # while not erri:
+    return erri
+# ------------------------------------------------------------------------------
+# Version 2 exists and is above and it is faulty.
 def assign_slots_for_literals_and_dereferenceds(io_G):
     erri=0
     while not erri:
         for n in io_G.nodes():
+#            if n == 15:
+#                import pdb
+#                pdb.set_trace()
+#                print("DBG1891> At node 15\n")
+
             local_slot_offset = 0
             for p in getNodeparents(io_G,n):
                 edg = (p,n)
-                lits   = literals(io_G, edg)
+
                 derefs = dereferenciables(io_G, edg)
-                # print("\nDBG1452> n = " + str(n))
-                # print('DBG1452> edg='+ str(edg) +'  lits='+ str(lits) +'  derefs='+ str(derefs))
 
                 shared_conx = False
                 for cx in sharedConx(io_G,edg):
@@ -1673,6 +1909,7 @@ def assign_slots_for_literals_and_dereferenceds(io_G):
                 if shared_conx: continue
                 #Shared connection will be handle separately, below, after these n:p loops.
 
+                lits = literals(io_G, edg)
                 if len(lits) > 1:
                     # 2016jun29: lits are expected to be empty or contain a single 'NULL_GUID',
                     #            So I put the check in order to ascertain that.
@@ -1741,19 +1978,21 @@ def assign_slots_for_literals_and_dereferenceds(io_G):
                 events = getEvents(io_G, edg)
                 sharedEV = getEvents(io_G, shared_conx)
 
-                if 1 == 2:
-                    print('DBG1531> events   = ' + str(events))
-                    print('DBG1531> sharedEV = ' + str(sharedEV))
-                    print('DBG1531> lits = ' + str(lits))
-                    print('DBG1531> derefs = ' + str(derefs))
+                if 1 == 1:
+                    print('DBG1745> events   = ' + str(events))
+                    print('DBG1745> sharedEV = ' + str(sharedEV))
+                    print('DBG1745> lits = ' + str(lits))
+                    print('DBG1745> derefs = ' + str(derefs))
 
                 if lits:
                     for lit in lits:
                         events[lit].calculatedSlot = sharedEV[lit].calculatedSlot
                 if derefs:
                     for deref in derefs:
-                        events[deref].calculatedSlot = sharedEV[deref].calculatedSlot
-                        # print('DBG1369> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
+                        if deref in sharedEV:  # 2016Sept12: This is a hack in order to allow the proper functioning of shared edges
+                                               #             without having the full labeled edge info.
+                            events[deref].calculatedSlot = sharedEV[deref].calculatedSlot
+                            print('DBG1758> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
 
             if erri: break  # for p2 in getNodeparents(io_G,n):
 
@@ -1842,6 +2081,12 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
         if not getNode(io_G, in_nodeIndex)["istheELSEclause"]:
             break
 
+        print("DEV-DBG1849> hook for node 17\n")
+        if in_nodeIndex == 17:
+            #import pdb
+            #pdb.set_trace()
+            print("DBG1851> At node 17\n")
+
         #Since this is an ELSE edt, first find its IF-THEN edt
         nodeIF = GBL.NOTA_NODE_ID
         for p in getNodeparents(io_G,in_nodeIndex):
@@ -1884,12 +2129,39 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
                         break
                 if is_shared:
                     continue  # Only kept the true connection, not those that piggybacks.
+                              # 2016Sept13-2229: For now see below
 
                 events = getEvents(io_G, edg)
                 for evtName in events:
                     if evtName == dbk.name:
                         parentIF = pi
                         break
+                if not parentIF == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                    break
+            if parentIF == GBL.NOTA_NODE_ID:
+                # 2016Sept13-2229: I've addwed the search into the shared connection because the shared connection
+                #                  definition is too restrictive.
+                #TODO: Review the concept of shared connections and make it specific to a labeled edge, not an entiore edge.
+                for pi in getNodeparents(io_G, nodeIF):
+                    edg = (pi, nodeIF)
+
+                    is_shared = False
+                    for cx in sharedConx(io_G, edg):
+                        if nodeIF == cx[1]:
+                            # This connection is shared with another
+                            is_shared = True
+                            break
+                    if not is_shared:
+                        continue  # Only kept the shared connection since we arfe still missing a DBK
+
+                    events = getEvents(io_G, edg)
+                    for evtName in events:
+                        if evtName == dbk.name:
+                            parentIF = pi
+                            break
+                    if not parentIF == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                        break
+
             if parentIF == GBL.NOTA_NODE_ID:
                 name_fromIndex = getNodeNamebyitsNumber(io_G, in_nodeIndex)
                 nameIF = getNodeNamebyitsNumber(io_G, nodeIF)
@@ -1903,16 +2175,18 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
             edgName = makeInDerefsName(io_G, edgIF)
             drname = edgName + '_' + makeEdtDepName(dbk.name)
 
-            if dbk.flight in ['flPASSTRU', 'flTAGO']:
-                addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
-                addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname+'.guid'))
-
-            if dbk.flight in ['flLANDING', 'flHOP']:
-                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
-
-            if dbk.flight in ['flTAKEOFF']:
-                # This will be handle directly in release_and_destroy_DBKs
-                pass
+            if getEvent(io_G, (edgIF, dbk.name)).isTheLead:
+                if dbk.flight in ['flPASSTRU', 'flTAGO']:
+                    addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                    addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname+'.guid'))
+                elif dbk.flight in ['flLANDING', 'flHOP']:
+                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                elif dbk.flight in ['flTAKEOFF']:
+                    # This will be handle directly in release_and_destroy_DBKs
+                    pass
+                else:
+                    erri = inspect.currentframe().f_lineno
+                    break
         if erri: break
 
         debug = False
@@ -1928,6 +2202,149 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
         break  # while not erri:
     return erri
 # ------------------------------------------------------------------------------
+def find_destroy_outgoing_release2(io_G, in_nodeIndex):
+    whereAmI()
+    #print('DBG1714> nod=' + str(in_nodeIndex) )
+
+    erri = 0
+    while not erri:
+
+        isaELSEedt = getNode(io_G, in_nodeIndex)["istheELSEclause"]
+        if isaELSEedt:
+            erri = find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex)
+            break
+
+        for dbk in getDataBlocks(io_G, in_nodeIndex):
+            if dbk.flight in ['flUNDEF', 'flFLYOVER']:
+                erri = inspect.currentframe().f_lineno
+                errmsg(erri, 'Invalid DBK flight found: "' + dbk.flight + '"')
+                break
+            if dbk.name == 'NULL_GUID':
+                # 'NULL_GUID' do not need to be released, nor destroyed, and they are always outgoing.
+                continue
+
+            if not dbk.name in ['flTAGO', 'flLANDING']:
+                  continue
+
+            parent = GBL.NOTA_NODE_ID
+            for pi in getNodeparents(io_G, in_nodeIndex):
+                edg = (pi, in_nodeIndex)
+
+                is_shared = False
+                for cx in sharedConx(io_G, edg):
+                    if in_nodeIndex == cx[1]:
+                        # This connection is shared with another
+                        is_shared = True
+                        break
+                if is_shared:
+                    continue  # Only kept the true connection, not those that piggybacks.
+                    # 2016Sept13-2229: For now see below
+
+                events = getEvents(io_G, edg)
+                for evtName in events:
+                    if evtName == dbk.name:
+                        parent = pi
+                        break
+                if not parent == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                    break
+            if parent == GBL.NOTA_NODE_ID:
+                # 2016Sept13-2229: I've addwed the search into the shared connection because the shared connection
+                #                  definition is too restrictive.
+                # TODO: Review the concept of shared connections and make it specific to a labeled edge, not an entiore edge.
+                for pi in getNodeparents(io_G, in_nodeIndex):
+                    edg = (pi, in_nodeIndex)
+
+                    is_shared = False
+                    for cx in sharedConx(io_G, edg):
+                        if in_nodeIndex == cx[1]:
+                            # This connection is shared with another
+                            is_shared = True
+                            break
+                    if not is_shared:
+                        continue  # Only kept the shared connection since we arfe still missing a DBK
+
+                    events = getEvents(io_G, edg)
+                    for evtName in events:
+                        if evtName == dbk.name:
+                            parent = pi
+                            break
+                    if not parent == GBL.NOTA_NODE_ID:  # 2016Sept13-2229: Added this as a fix, i.e. stop at first found.
+                        break
+
+            if parent == GBL.NOTA_NODE_ID:
+                name_fromIndex = getNodeNamebyitsNumber(io_G, in_nodeIndex)
+                namee = getNodeNamebyitsNumber(io_G, in_nodeIndex)
+                t = 'The DBK "' + dbk.name + '" of node "' + name_fromIndex + '"  could not be found among its IF '
+                t += 'clause EDT (node="' + namee + '")'
+                warni = inspect.currentframe().f_lineno
+                errmsg(warni, t)
+                break
+
+            edgee = (parent, in_nodeIndex)
+            edgName = makeInDerefsName(io_G, edgee)
+            drname = edgName + '_' + makeEdtDepName(dbk.name)
+
+            if getEvent(io_G, (edgee, dbk.name)).isTheLead:
+                if dbk.flight in ['flPASSTRU', 'flTAGO']:
+                    addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                    addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname + '.guid'))
+                elif dbk.flight in ['flLANDING', 'flHOP']:
+                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                elif dbk.flight in ['flTAKEOFF']:
+                    # This will be handle directly in release_and_destroy_DBKs
+                    pass
+                else:
+                    erri = inspect.currentframe().f_lineno
+                    break
+
+        if erri: break  # for dbk in getDataBlocks(io_G, in_nodeIndex):
+
+        for p in getNodeparents(io_G, in_nodeIndex):
+            edg = (p, in_nodeIndex)
+
+            is_shared = False
+            for cx in sharedConx(io_G, edg):
+                if in_nodeIndex == cx[1]:
+                    # This connection is shared with another
+                    is_shared = True
+                    break
+            if is_shared:
+                continue
+
+            derefs = dereferenciables(io_G, edg)
+
+            if len(derefs) > 0:
+                # NOTE: flTAKEOFF are taken care directly in release_and_destroy_DBKs
+                edgName = makeInDerefsName(io_G, edg)
+                for k, deref in enumerate(derefs):
+                    drname = edgName + '_' + makeEdtDepName(deref)
+
+                    for dbk in getDataBlocks(io_G, in_nodeIndex):
+                        if not dbk.name == deref:
+                            continue
+                        if getEvent(io_G, (edg, dbk.name)).isTheLead:
+                            if dbk.flight in ['flLANDING', 'flHOP']:
+                                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                            if dbk.flight in ['flTAGO', 'flPASSTRU']:
+                                addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                                addToOutgoing(io_G, in_nodeIndex, (deref, drname+'.guid'))
+
+        if erri: break  # for p in getNodeparents(in_G,n):
+
+        debug = False
+        if debug:
+            print('DBG2041>\tDESTROY list:'),
+            print(getDestroys(io_G,in_nodeIndex))
+            print('DBG2041>\tRELEASE list:'),
+            print(getReleases(io_G, in_nodeIndex))
+            print('DBG2041>\tOUTGOING list:'),
+            print(getOutgoings(io_G, in_nodeIndex))
+
+        break  # while not erri:
+
+    return erri
+# ------------------------------------------------------------------------------
+# Version 2 exist and is above
 def find_destroy_outgoing_release(io_G, in_nodeIndex):
     whereAmI()
     #print('DBG1714> nod=' + str(in_nodeIndex) )
@@ -1961,16 +2378,13 @@ def find_destroy_outgoing_release(io_G, in_nodeIndex):
                     len_lits += -1
 
             if len_lits > 0:
-                warnmsg(inspect.currentframe().f_lineno, "DEV> Handling of literals not fully debugged yet.\n")
+                errmsg(inspect.currentframe().f_lineno, "DEV> Handling of literals not fully debugged yet.\n")
 
                 edgName = makeInLiteralsName(io_G, edg)
-
                 litsOffset = -1
-
                 for k, lit in enumerate(lits):
                     if lit == 'NULL_GUID':
                         continue
-
                     if litsOffset == -1:
                         events = getEvents(io_G, edg)
                         litsOffset = events[lit].calculatedSlot
@@ -2004,21 +2418,137 @@ def find_destroy_outgoing_release(io_G, in_nodeIndex):
 
         debug = False
         if debug:
-            print('DBG1714>\tDESTROY list:'),
+            print('DBG2041>\tDESTROY list:'),
             print(getDestroys(io_G,in_nodeIndex))
-            print('DBG1714>\tRELEASE list:'),
+            print('DBG2041>\tRELEASE list:'),
             print(getReleases(io_G, in_nodeIndex))
-            print('DBG1714>\tOUTGOING list:'),
+            print('DBG2041>\tOUTGOING list:'),
             print(getOutgoings(io_G, in_nodeIndex))
 
         break  # while not erri:
 
     return erri
 # ------------------------------------------------------------------------------
+def setup_inputs_structs2(io_G, in_nodeIndex, in_tab, io_file, io_delayed_releaseDestroy):
+    whereAmI()
+    tab2 = in_tab + GBL.TABunit
+
+    #TODO: Implement the handling of literals in setup_inputs_structs
+#    print("DEV-DBG2200> hook for node 15\n")
+#    if in_nodeIndex == 15:
+#        import pdb
+#        pdb.set_trace()
+#        print("DBG2200> At node 15\n")
+
+    erri = 0
+    while not erri:
+        io_file.write(in_tab + '//----- Setup input data structs\n')
+
+        for dbk in getDataBlocks(io_G, in_nodeIndex):
+            if dbk.name == 'NULL_GUID':
+                continue
+            if dbk.flight in ['flUNDEF', 'flFLYOVER']:
+                erri = inspect.currentframe().f_lineno
+                break
+            if dbk.flight in ['flTAKEOFF', 'flHOP']:
+                continue
+            if dbk.flight in 'flPASSTRU':
+                erri = inspect.currentframe().f_lineno
+                print('ERROR: DBK with flPASSTRU are not handled yet.\n')
+                break
+
+            if not dbk.flight in ['flTAGO', 'flLANDING']:
+                erri = inspect.currentframe().f_lineno
+                break
+
+            #First look for DBK in the incoming edges which are not shared
+            goodEdge = ()
+            for p in getNodeparents(io_G, in_nodeIndex):
+                edg = (p, in_nodeIndex)
+
+                is_shared = False
+                for cx in sharedConx(io_G, edg):
+                    if in_nodeIndex == cx[1]:
+                        # This connection is shared with another
+                        is_shared = True
+                        break
+                if is_shared:
+                    continue
+
+                events = getEvents(io_G, edg)
+                for evtName in events:
+                    if evtName == dbk.name:
+                        goodEdge = edg
+                        break  # Pick the first that works
+                if not goodEdge == ():
+                    break
+
+            if goodEdge == ():
+                # Now search among the shared edges
+                for p in getNodeparents(io_G, in_nodeIndex):
+                    edg = (p, in_nodeIndex)
+
+                    is_shared = False
+                    for cx in sharedConx(io_G, edg):
+                        if in_nodeIndex == cx[1]:
+                            # This connection is shared with another
+                            is_shared = True
+                            break
+                    if not is_shared:
+                        continue
+
+                    events = getEvents(io_G, edg)
+                    for evtName in events:
+                        if evtName == dbk.name:
+                            goodEdge = edg
+                            break  # Pick the first that works
+                    if not goodEdge == ():
+                        break
+
+            if goodEdge == ():
+                erri = inspect.currentframe().f_lineno
+                print("ERROR: On node " + str(in_nodeIndex) + ', no incoming event found for DBK = ' + dbk.name + '\n')
+                break
+
+            edgName = makeInDerefsName(io_G, goodEdge)
+
+            calcSlot = getEvents(io_G, goodEdge)[dbk.name].calculatedSlot
+            drname = edgName + '_' + makeEdtDepName(dbk.name)
+
+            if dbk.delayReleaseDestroy:
+                io_delayed_releaseDestroy.append(drname)
+
+            text = in_tab + 'ocrEdtDep_t ' + drname + ' = depv[' + str(calcSlot) + '];\n'
+            io_file.write(text)
+
+            if len(dbk.localname) > 0:
+                text = in_tab + dbk.type + ' * ' + dbk.localname + ' = ' + drname + '.ptr;\n'
+                io_file.write(text)
+
+            if len(dbk.getLocalTexts()) > 0:
+                for lt in dbk.getLocalTexts():
+                    text = in_tab + lt + '\n'
+                    io_file.write(text)
+
+        if erri: break  # for dbk in getDataBlocks(io_G, in_nodeIndex):
+
+        io_file.write('\n')
+
+        break  # while not erri:
+
+    return erri
+# ------------------------------------------------------------------------------
+# Version 2 exist and is above
 def setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file, io_delayed_releaseDestroy):
     whereAmI()
     #print('DBG1885> node=' + str(in_nodeIndex) )
     tab2 = in_tab + GBL.TABunit
+#    print("DEV-DBG2200> hook for node 15\n")
+#   if in_nodeIndex == 15:
+#        import pdb
+#        pdb.set_trace()
+#        print("DBG2200> At node 15\n")
+
     erri = 0
     while not erri:
         io_file.write(in_tab + '//----- Setup input data structs\n')
@@ -2294,7 +2824,7 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file,
 # ------------------------------------------------------------------------------
 def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
     tab2 = in_tab + GBL.TABunit
-    debug = False
+    debug = True
     erri = 0
     while not erri:
         if len(in_G.nodes()) == 0:
@@ -2304,8 +2834,12 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
         io_file.write(in_tab + '//----- Link to other EDTs using Events\n')
 
         bors = in_G.neighbors(in_nodeIndex)
+        print('DBG2310> in_nodeIndex =' + str(in_nodeIndex))
+        if debug and in_nodeIndex == 17:
+            print('DBG2313> At the check point')
+        print('DBG2310> bors =' + str(bors))
         for b in bors:
-            if debug: print('DBG2039> evt2child> n=' + str(in_nodeIndex) + '  b= ' + str(b) + '  isELSE=' + str(getNode(in_G, b)["istheELSEclause"]) )
+            if debug: print('DBG2314> evt2child> n=' + str(in_nodeIndex) + '  b= ' + str(b) + '  isELSE=' + str(getNode(in_G, b)["istheELSEclause"]) )
             if getNode(in_G, b)["istheELSEclause"]:
                 continue
             edg = (in_nodeIndex, b)
@@ -2365,8 +2899,9 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
 
             if erri: break
 
-            # print('DBG1757> len(derefs)=' + str(len(derefs)))
+            print('DBG2372> len(derefs)=' + str(len(derefs)))
             if len(derefs) > 0:
+                print('DBG2374> ' + str(derefs))
                 for deref in derefs:
                     calcSlot = getEvents(in_G, edg)[deref].calculatedSlot
                     drname = ''
@@ -2377,6 +2912,7 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
                             drname = makeGuidDataBlockname(deref)
                         elif dbk.flight in ['flTAGO', 'flPASSTRU'] :
                             outs = getOutgoings(in_G, in_nodeIndex)
+                            if debug: print('DBG2389> deref= ' + str(deref) + '  outs= ' + str(outs))
                             for dbkID,dbkGuid in outs:
                                 if deref == dbkID:
                                     drname = dbkGuid
@@ -2439,7 +2975,7 @@ def write_the_header(in_G, io_file):
     io_file.write('#include "' + GBL.app_ocr_util_filename +'"\n' )
 
     if GBL.insert_debug_code:
-        io_file.write('#include <extensions/ocr-runtime-itf.h>\n')
+        io_file.write('#include <extensions/ocr-runtime-itf.h>  //For currentEdtUserGet\n')
 
     customs = getHeader(in_G)
     for aline in customs:
@@ -2516,7 +3052,7 @@ def outputOCR_writeEDT(io_G, in_nodeIndex, in_tab, io_file):
             pass
 
         delayed_releaseDestroy = []
-        erri = setup_inputs_structs(io_G, in_nodeIndex, in_tab, io_file, delayed_releaseDestroy)
+        erri = setup_inputs_structs2(io_G, in_nodeIndex, in_tab, io_file, delayed_releaseDestroy)
         if erri: break
 
         #print('DBG2363> '),
@@ -2601,7 +3137,7 @@ def outputOCR(in_G, in_filename):
         for n in in_G.nodes():
             #print('DBG2265> ====== node = ' + str(n))
             if not getNode(in_G, n)["istheELSEclause"]:
-                erri = find_destroy_outgoing_release(in_G, n)
+                erri = find_destroy_outgoing_release2(in_G, n)
                 if erri: break
             if not len(getIFconditionText(in_G, n)) == 0:  # We are on the IF-THEN edt.
                 # We have to also process the ELSE edt here before it enters outputOCR_writeEDT(...)
@@ -2615,7 +3151,7 @@ def outputOCR(in_G, in_filename):
                 if elseEDT == GBL.NOTA_NODE_ID:
                     erri = inspect.currentframe().f_lineno
                     break
-                erri = find_destroy_outgoing_release(in_G, elseEDT)
+                erri = find_destroy_outgoing_release2(in_G, elseEDT)
                 if erri: break
 
             if getNode(in_G, n)["istheELSEclause"]:  # Skip any ELSEclause nodes as they will be handled by their

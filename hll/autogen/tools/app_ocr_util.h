@@ -12,6 +12,10 @@
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc , ocrEdtDep_t depv[]
 //-----------------------------------------------------------------------------
 #define STRINGIZE(x) (#x)
+typedef struct EDTid {
+    int type; //Each EDT type corresponds to a unique EDT function.
+    ocrGuid_t id; //The actual guid of this EDT.
+} EDTid_t;
 
 //-----------------------------------------------------------------------------
 //The input parameter x must be a sized array.
@@ -50,6 +54,17 @@ Err_t ocrEdtXCreate(ocrEdt_t in_funcPtr,
                     u16 in_flags, ocrHint_t * in_hint,
                     ocrGuid_t * o_guid, ocrGuid_t * io_outputEvent
                    );
+
+//=in_index is the index of the requested EDT guid, within in_EDTmap
+//=in_EDTmap is the guid of the range of EDT obtained using
+//      ocrGuidRangeCreate( &in_EDTmap, count, GUID_USER_EDT)
+//=NOTE: No depv
+Err_t ocrXIndexedEdtCreate(ocrEdt_t in_funcPtr,
+                           u32 in_paramc, u64 * in_paramv, u32 in_depc,
+                           u16 in_flags, ocrHint_t * in_hint,
+                           unsigned long in_index, ocrGuid_t * in_EDTmap,
+                           ocrGuid_t * o_guid, ocrGuid_t * io_outputEvent
+                          );
 
 Err_t ocrXHookup(ocrEventTypes_t in_eventType,
                  u16 in_eventFlags,

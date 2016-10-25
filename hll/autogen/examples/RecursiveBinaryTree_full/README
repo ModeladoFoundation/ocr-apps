@@ -1,4 +1,10 @@
 NOTES:
+2016Sept25:
+This test case was a very early prototype.  Although the ideas it served to explored were
+useful.  Please use the test case "reductionBy2ary" is order to get a fully functional
+reduction application.
+
+
 2016Jun2 - dvillen
 
 The script "recursiveBinaryTree_full.py" is an example on how OCT autogen can be used to produce

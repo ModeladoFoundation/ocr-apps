@@ -5,6 +5,9 @@ import copy
 
 # ------------------------------------------------------------------------------
 def theMain():
+
+    OA.GBL.insert_debug_code = 0
+
     G=OA.GraphTool.DiGraph()
 
     OA.setupGraph(G,"HelloWorld")
