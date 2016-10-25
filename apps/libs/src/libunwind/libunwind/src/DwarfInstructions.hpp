@@ -81,8 +81,6 @@ template <typename A, typename R>
 typename A::pint_t DwarfInstructions<A, R>::getSavedRegister(
     A &addressSpace, const R &registers, pint_t cfa,
     const RegisterLocation &savedReg) {
-  _LIBUNWIND_DEBUG_LOG("getSavedReg: loc = 0x%x, value = 0x%lx\n",
-                        savedReg.location, (pint_t) savedReg.value );
   switch (savedReg.location) {
   case CFI_Parser<A>::kRegisterInCFA:
     return addressSpace.getP(cfa + (pint_t)savedReg.value);
@@ -158,8 +156,6 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
                                            pint_t fdeStart, R &registers) {
   FDE_Info fdeInfo;
   CIE_Info cieInfo;
-  _LIBUNWIND_DEBUG_LOG("stepWithDwarf: pc = 0x%lx, fdeStart = 0x%lx\n",
-                        pc, fdeStart);
   if (CFI_Parser<A>::decodeFDE(addressSpace, fdeStart, &fdeInfo,
                                &cieInfo) == NULL) {
     PrologInfo prolog;
@@ -172,39 +168,30 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
       R newRegisters = registers;
       pint_t returnAddress = 0;
       const int lastReg = R::lastDwarfRegNum();
-
-      _LIBUNWIND_DEBUG_LOG("stepWithDwarf: cfa = 0x%lx\n", cfa );
-
       assert((int)CFI_Parser<A>::kMaxRegisterNumber > lastReg &&
              "register range too large");
-      assert(lastReg <= (int)cieInfo.returnAddressRegister &&
+      assert(lastReg >= (int)cieInfo.returnAddressRegister &&
              "register range does not contain return address register");
       for (int i = 0; i <= lastReg; ++i) {
-         if (prolog.savedRegisters[i].location !=
-             CFI_Parser<A>::kRegisterUnused) {
-           if (registers.validFloatRegister(i)) {
-            _LIBUNWIND_DEBUG_LOG("stepWithDwarf: float reg\n");
+        if (prolog.savedRegisters[i].location !=
+            CFI_Parser<A>::kRegisterUnused) {
+          if (registers.validFloatRegister(i))
             newRegisters.setFloatRegister(
                 i, getSavedFloatRegister(addressSpace, registers, cfa,
                                          prolog.savedRegisters[i]));
-          } else if (registers.validVectorRegister(i)) {
-            _LIBUNWIND_DEBUG_LOG("stepWithDwarf: vector reg\n");
+          else if (registers.validVectorRegister(i))
             newRegisters.setVectorRegister(
                 i, getSavedVectorRegister(addressSpace, registers, cfa,
                                           prolog.savedRegisters[i]));
-          } else if (i == (int)cieInfo.returnAddressRegister) {
+          else if (i == (int)cieInfo.returnAddressRegister)
             returnAddress = getSavedRegister(addressSpace, registers, cfa,
                                              prolog.savedRegisters[i]);
-            _LIBUNWIND_DEBUG_LOG("stepWithDwarf: ra = 0x%lx\n", returnAddress);
-          } else if (registers.validRegister(i)) {
-            pint_t reg = getSavedRegister(addressSpace, registers, cfa,
-                                    prolog.savedRegisters[i]);
-            _LIBUNWIND_DEBUG_LOG("stepWithDwarf: r%d = 0x%lx\n", i, reg);
-            newRegisters.setRegister( i, reg );
-          } else {
-           _LIBUNWIND_DEBUG_LOG("stepWithDwarf: badreg\n");
+          else if (registers.validRegister(i))
+            newRegisters.setRegister(
+                i, getSavedRegister(addressSpace, registers, cfa,
+                                    prolog.savedRegisters[i]));
+          else
             return UNW_EBADREG;
-          }
         }
       }
 
@@ -219,15 +206,9 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
       // Simulate the step by replacing the register set with the new ones.
       registers = newRegisters;
 
-      _LIBUNWIND_DEBUG_LOG("stepWithDwarf: success\n");
       return UNW_STEP_SUCCESS;
-    } else {
-        _LIBUNWIND_DEBUG_LOG("stepWithDwarf: parseFDEI returned false\n");
     }
-  } else {
-    _LIBUNWIND_DEBUG_LOG("stepWithDwarf: decodeFDE returned false\n");
   }
-  _LIBUNWIND_DEBUG_LOG("stepWithDwarf: badframe\n");
   return UNW_EBADFRAME;
 }
 

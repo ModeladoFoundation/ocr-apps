@@ -10,19 +10,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "config.h"
 #include <libunwind.h>
 
 #ifndef NDEBUG
 #include <cstdlib> // getenv
 #endif
 #include <new>
-#include <tuple>
-#include <memory>
-#include <vector>
 #include <algorithm>
 
 #include "libunwind_ext.h"
+#include "config.h"
 
 #include <stdlib.h>
 
@@ -30,29 +27,6 @@
 #include "UnwindCursor.hpp"
 
 using namespace libunwind;
-
-#if defined(__XSTG__)
-//
-// macros to generate all 512 XSTG register names
-//
-#define _RE(N) "r"#N
-#define _R(N) _RE(N),
-#define _R10(T) _R(T##0) _R(T##1) _R(T##2) _R(T##3) _R(T##4) _R(T##5) \
-_R(T##6) _R(T##7) _R(T##8) _R(T##9)
-#define _R100(H) _R10(H##0) _R10(H##1) _R10(H##2) _R10(H##3) _R10(H##4) \
-_R10(H##5) _R10(H##6) _R10(H##7) _R10(H##8) _R10(H##9)
-
-const char * const Registers_xstg::regNames[] = {
-    _R(0) _R(1) _R(2) _R(3) _R(4) _R(5) _R(6) _R(7) _R(8) _R(9)
-    _R10(1) _R10(2) _R10(3) _R10(4) _R10(5) _R10(6) _R10(7) _R10(8) _R10(9)
-    _R100(1) _R100(2) _R100(3) _R100(4) _R10(50) _R(510) _RE(511)
-};
-#undef _R
-#undef _RE
-#undef _R10
-#undef _R100
-
-#endif // __XSTG__
 
 /// internal object to represent this processes address space
 LocalAddressSpace LocalAddressSpace::sThisAddressSpace;
@@ -71,26 +45,27 @@ _LIBUNWIND_EXPORT int unw_init_local(unw_cursor_t *cursor,
   _LIBUNWIND_TRACE_API("unw_init_local(cursor=%p, context=%p)\n",
                        static_cast<void *>(cursor),
                        static_cast<void *>(context));
-  // Use "placement new" to allocate UnwindCursor in the cursor buffer.
 #if defined(__i386__)
-  new ((void *)cursor) UnwindCursor<LocalAddressSpace, Registers_x86>(
-                                 context, LocalAddressSpace::sThisAddressSpace);
+# define REGISTER_KIND Registers_x86
 #elif defined(__x86_64__)
-  new ((void *)cursor) UnwindCursor<LocalAddressSpace, Registers_x86_64>(
-                                 context, LocalAddressSpace::sThisAddressSpace);
+# define REGISTER_KIND Registers_x86_64
 #elif defined(__ppc__)
-  new ((void *)cursor) UnwindCursor<LocalAddressSpace, Registers_ppc>(
-                                 context, LocalAddressSpace::sThisAddressSpace);
-#elif defined(__arm64__)
-  new ((void *)cursor) UnwindCursor<LocalAddressSpace, Registers_arm64>(
-                                 context, LocalAddressSpace::sThisAddressSpace);
-#elif LIBCXXABI_ARM_EHABI
-  new ((void *)cursor) UnwindCursor<LocalAddressSpace, Registers_arm>(
-                                 context, LocalAddressSpace::sThisAddressSpace);
-#elif defined(__XSTG__)
-  new ((void *)cursor) UnwindCursor<LocalAddressSpace, Registers_xstg>(
-                                 context, LocalAddressSpace::sThisAddressSpace);
+# define REGISTER_KIND Registers_ppc
+#elif defined(__aarch64__)
+# define REGISTER_KIND Registers_arm64
+#elif _LIBUNWIND_ARM_EHABI
+# define REGISTER_KIND Registers_arm
+#elif defined(__or1k__)
+# define REGISTER_KIND Registers_or1k
+#elif defined(__mips__)
+# warning The MIPS architecture is not supported.
+#else
+# error Architecture not supported
 #endif
+  // Use "placement new" to allocate UnwindCursor in the cursor buffer.
+  new ((void *)cursor) UnwindCursor<LocalAddressSpace, REGISTER_KIND>(
+                                 context, LocalAddressSpace::sThisAddressSpace);
+#undef REGISTER_KIND
   AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;
   co->setInfoBasedOnIPRegister();
 
@@ -231,7 +206,7 @@ _LIBUNWIND_EXPORT int unw_get_fpreg(unw_cursor_t *cursor, unw_regnum_t regNum,
 /// Set value of specified float register at cursor position in stack frame.
 _LIBUNWIND_EXPORT int unw_set_fpreg(unw_cursor_t *cursor, unw_regnum_t regNum,
                                     unw_fpreg_t value) {
-#if LIBCXXABI_ARM_EHABI
+#if _LIBUNWIND_ARM_EHABI
   _LIBUNWIND_TRACE_API("unw_set_fpreg(cursor=%p, regNum=%d, value=%llX)\n",
                        static_cast<void *>(cursor), regNum, value);
 #else
@@ -330,7 +305,7 @@ _LIBUNWIND_EXPORT void unw_save_vfp_as_X(unw_cursor_t *cursor) {
 #endif
 
 
-#if _LIBUNWIND_SUPPORT_DWARF_CACHE
+#if _LIBUNWIND_SUPPORT_DWARF_UNWIND
 /// SPI: walks cached dwarf entries
 _LIBUNWIND_EXPORT void unw_iterate_dwarf_unwind_cache(void (*func)(
     unw_word_t ip_start, unw_word_t ip_end, unw_word_t fde, unw_word_t mh)) {
@@ -364,16 +339,7 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
   // fde is own mh_group
   DwarfFDECache<LocalAddressSpace>::removeAllIn((LocalAddressSpace::pint_t)fde);
 }
-#else  // ! _LIBUNWIND_SUPPORT_DWARF_CACHE
-void _unw_add_dynamic_fde(unw_word_t fde) {
-    _LIBUNWIND_DEBUG_LOG("_unw_add_dynamic_fde: %s", "not implemented");
-    (void) fde;
-}
-void _unw_remove_dynamic_fde(unw_word_t fde) {
-    _LIBUNWIND_DEBUG_LOG("_unw_remove_dynamic_fde: %s", "not implemented");
-    (void) fde;
-}
-#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
+#endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
 
 
 
@@ -381,15 +347,11 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
 #ifndef NDEBUG
 #include <stdlib.h>
 
-#ifndef LOG_DEFAULT
-#define LOG_DEFAULT false
-#endif
-
 _LIBUNWIND_HIDDEN
 bool logAPIs() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
-  static bool checked = LOG_DEFAULT;
-  static bool log = LOG_DEFAULT;
+  static bool checked = false;
+  static bool log = false;
   if (!checked) {
     log = (getenv("LIBUNWIND_PRINT_APIS") != NULL);
     checked = true;
@@ -400,8 +362,8 @@ bool logAPIs() {
 _LIBUNWIND_HIDDEN
 bool logUnwinding() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
-  static bool checked = LOG_DEFAULT;
-  static bool log = LOG_DEFAULT;
+  static bool checked = false;
+  static bool log = false;
   if (!checked) {
     log = (getenv("LIBUNWIND_PRINT_UNWINDING") != NULL);
     checked = true;

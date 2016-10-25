@@ -36,10 +36,8 @@
 
 namespace libunwind {
 
-#if _LIBUNWIND_SUPPORT_DWARF_CACHE
-
+#if _LIBUNWIND_SUPPORT_DWARF_UNWIND
 /// Cache of recently found FDEs.
-
 template <typename A>
 class _LIBUNWIND_HIDDEN DwarfFDECache {
   typedef typename A::pint_t pint_t;
@@ -116,6 +114,7 @@ typename A::pint_t DwarfFDECache<A>::findFDE(pint_t mh, pint_t pc) {
 template <typename A>
 void DwarfFDECache<A>::add(pint_t mh, pint_t ip_start, pint_t ip_end,
                            pint_t fde) {
+#if !defined(_LIBUNWIND_NO_HEAP)
   _LIBUNWIND_LOG_NON_ZERO(::pthread_rwlock_wrlock(&_lock));
   if (_bufferUsed >= _bufferEnd) {
     size_t oldSize = (size_t)(_bufferEnd - _buffer);
@@ -141,6 +140,7 @@ void DwarfFDECache<A>::add(pint_t mh, pint_t ip_start, pint_t ip_end,
   }
 #endif
   _LIBUNWIND_LOG_NON_ZERO(::pthread_rwlock_unlock(&_lock));
+#endif
 }
 
 template <typename A>
@@ -174,7 +174,7 @@ void DwarfFDECache<A>::iterateCacheEntries(void (*func)(
   }
   _LIBUNWIND_LOG_NON_ZERO(::pthread_rwlock_unlock(&_lock));
 }
-#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
+#endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
 
 
 #define arrayoffsetof(type, index, field) ((size_t)(&((type *)0)[index].field))
@@ -440,8 +440,22 @@ public:
 
 private:
 
-#if LIBCXXABI_ARM_EHABI
+#if _LIBUNWIND_ARM_EHABI
   bool getInfoFromEHABISection(pint_t pc, const UnwindInfoSections &sects);
+
+  int stepWithEHABI() {
+    size_t len = 0;
+    size_t off = 0;
+    // FIXME: Calling decode_eht_entry() here is violating the libunwind
+    // abstraction layer.
+    const uint32_t *ehtp =
+        decode_eht_entry(reinterpret_cast<const uint32_t *>(_info.unwind_info),
+                         &off, &len);
+    if (_Unwind_VRS_Interpret((_Unwind_Context *)this, ehtp, off, len) !=
+            _URC_CONTINUE_UNWIND)
+      return UNW_STEP_END;
+    return UNW_STEP_SUCCESS;
+  }
 #endif
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
@@ -467,30 +481,39 @@ private:
     return stepWithCompactEncoding(dummy);
   }
 
+#if defined(_LIBUNWIND_TARGET_X86_64)
   int stepWithCompactEncoding(Registers_x86_64 &) {
     return CompactUnwinder_x86_64<A>::stepWithCompactEncoding(
         _info.format, _info.start_ip, _addressSpace, _registers);
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_I386)
   int stepWithCompactEncoding(Registers_x86 &) {
     return CompactUnwinder_x86<A>::stepWithCompactEncoding(
         _info.format, (uint32_t)_info.start_ip, _addressSpace, _registers);
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_PPC)
   int stepWithCompactEncoding(Registers_ppc &) {
     return UNW_EINVAL;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_AARCH64)
   int stepWithCompactEncoding(Registers_arm64 &) {
     return CompactUnwinder_arm64<A>::stepWithCompactEncoding(
         _info.format, _info.start_ip, _addressSpace, _registers);
   }
+#endif
 
   bool compactSaysUseDwarf(uint32_t *offset=NULL) const {
     R dummy;
     return compactSaysUseDwarf(dummy, offset);
   }
 
+#if defined(_LIBUNWIND_TARGET_X86_64)
   bool compactSaysUseDwarf(Registers_x86_64 &, uint32_t *offset) const {
     if ((_info.format & UNWIND_X86_64_MODE_MASK) == UNWIND_X86_64_MODE_DWARF) {
       if (offset)
@@ -499,7 +522,9 @@ private:
     }
     return false;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_I386)
   bool compactSaysUseDwarf(Registers_x86 &, uint32_t *offset) const {
     if ((_info.format & UNWIND_X86_MODE_MASK) == UNWIND_X86_MODE_DWARF) {
       if (offset)
@@ -508,11 +533,15 @@ private:
     }
     return false;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_PPC)
   bool compactSaysUseDwarf(Registers_ppc &, uint32_t *) const {
     return true;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_AARCH64)
   bool compactSaysUseDwarf(Registers_arm64 &, uint32_t *offset) const {
     if ((_info.format & UNWIND_ARM64_MODE_MASK) == UNWIND_ARM64_MODE_DWARF) {
       if (offset)
@@ -521,6 +550,7 @@ private:
     }
     return false;
   }
+#endif
 #endif // _LIBUNWIND_SUPPORT_COMPACT_UNWIND
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
@@ -529,43 +559,37 @@ private:
     return dwarfEncoding(dummy);
   }
 
+#if defined(_LIBUNWIND_TARGET_X86_64)
   compact_unwind_encoding_t dwarfEncoding(Registers_x86_64 &) const {
     return UNWIND_X86_64_MODE_DWARF;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_I386)
   compact_unwind_encoding_t dwarfEncoding(Registers_x86 &) const {
     return UNWIND_X86_MODE_DWARF;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_PPC)
   compact_unwind_encoding_t dwarfEncoding(Registers_ppc &) const {
     return 0;
   }
+#endif
 
+#if defined(_LIBUNWIND_TARGET_AARCH64)
   compact_unwind_encoding_t dwarfEncoding(Registers_arm64 &) const {
     return UNWIND_ARM64_MODE_DWARF;
   }
+#endif
 
-  compact_unwind_encoding_t dwarfEncoding(Registers_xstg &) const {
+#if defined (_LIBUNWIND_TARGET_OR1K)
+  compact_unwind_encoding_t dwarfEncoding(Registers_or1k &) const {
     return 0;
   }
+#endif
 #endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
 
-  void dump_info(const char * msg ) const {
-#ifdef NDEBUG
-    (void) msg;
-#else
-      _LIBUNWIND_DEBUG_LOG("%s: cursor _info\n"
-                            "  start_ip 0x%lx, end_ip 0x%lx\n"
-                            "  lsda 0x%lx, handler 0x%lx, gp 0x%lx\n"
-                            "  unwind_info 0x%lx, unwind_info_size 0x%d, format %d\n",
-                            msg,
-                            _info.start_ip, _info.end_ip,
-                            _info.lsda, _info.handler, _info.gp,
-                            _info.unwind_info, _info.unwind_info_size,
-                            _info.format
-                            );
-#endif
-  }
 
   A               &_addressSpace;
   R                _registers;
@@ -579,7 +603,7 @@ template <typename A, typename R>
 UnwindCursor<A, R>::UnwindCursor(unw_context_t *context, A &as)
     : _addressSpace(as), _registers(context), _unwindInfoMissing(false),
       _isSignalFrame(false) {
-  static_assert(sizeof(UnwindCursor<A, R>) < sizeof(unw_cursor_t),
+  static_assert((check_fit<UnwindCursor<A, R>, unw_cursor_t>::does_fit),
                 "UnwindCursor<> does not fit in unw_cursor_t");
   memset(&_info, 0, sizeof(_info));
 }
@@ -642,7 +666,7 @@ template <typename A, typename R> bool UnwindCursor<A, R>::isSignalFrame() {
   return _isSignalFrame;
 }
 
-#if LIBCXXABI_ARM_EHABI
+#if _LIBUNWIND_ARM_EHABI
 struct EHABIIndexEntry {
   uint32_t functionOffset;
   uint32_t data;
@@ -753,7 +777,7 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
   //   isSingleWordEHT -- whether the entry is in the index.
   unw_word_t personalityRoutine = 0xbadf00d;
   bool scope32 = false;
-  uintptr_t lsda = 0xbadf00d;
+  uintptr_t lsda;
 
   // If the high bit in the exception handling table entry is set, the entry is
   // in compact form (section 6.3 EHABI).
@@ -766,16 +790,19 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
         personalityRoutine = (unw_word_t) &__aeabi_unwind_cpp_pr0;
         extraWords = 0;
         scope32 = false;
+        lsda = isSingleWordEHT ? 0 : (exceptionTableAddr + 4);
         break;
       case 1:
         personalityRoutine = (unw_word_t) &__aeabi_unwind_cpp_pr1;
         extraWords = (exceptionTableData & 0x00ff0000) >> 16;
         scope32 = false;
+        lsda = exceptionTableAddr + (extraWords + 1) * 4;
         break;
       case 2:
         personalityRoutine = (unw_word_t) &__aeabi_unwind_cpp_pr2;
         extraWords = (exceptionTableData & 0x00ff0000) >> 16;
         scope32 = true;
+        lsda = exceptionTableAddr + (extraWords + 1) * 4;
         break;
       default:
         _LIBUNWIND_ABORT("unknown personality routine");
@@ -832,7 +859,7 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
 
   return true;
 }
-#endif // LIBCXXABI_ARM_EHABI
+#endif
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
 template <typename A, typename R>
@@ -842,30 +869,21 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
   typename CFI_Parser<A>::FDE_Info fdeInfo;
   typename CFI_Parser<A>::CIE_Info cieInfo;
   bool foundFDE = false;
+  bool foundInCache = false;
   // If compact encoding table gave offset into dwarf section, go directly there
   if (fdeSectionOffsetHint != 0) {
     foundFDE = CFI_Parser<A>::findFDE(_addressSpace, pc, sects.dwarf_section,
                                     (uint32_t)sects.dwarf_section_length,
                                     sects.dwarf_section + fdeSectionOffsetHint,
                                     &fdeInfo, &cieInfo);
-    if( !foundFDE ) {
-      _LIBUNWIND_DEBUG_LOG("UnwindCursor::getInfoFDS CFI_Parser::findFDE failed: pc 0x%lx\n", pc );
-    }
   }
 #if _LIBUNWIND_SUPPORT_DWARF_INDEX
-  if (!foundFDE &&
-      sects.dwarf_index_section != 0 && sects.dwarf_index_section_length != 0) {
+  if (!foundFDE && (sects.dwarf_index_section != 0)) {
     foundFDE = EHHeaderParser<A>::findFDE(
         _addressSpace, pc, sects.dwarf_index_section,
         (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo);
-    if( !foundFDE ) {
-      _LIBUNWIND_DEBUG_LOG("UnwindCursor::getInfoFDS EHHeaderParser::findFDE failed: pc 0x%lx\n", pc );
-    }
   }
 #endif
-#if _LIBUNWIND_SUPPORT_DWARF_CACHE
-  bool foundInCache = false;
-
   if (!foundFDE) {
     // otherwise, search cache of previously found FDEs.
     pint_t cachedFDE = DwarfFDECache<A>::findFDE(sects.dso_base, pc);
@@ -877,7 +895,6 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
       foundInCache = foundFDE;
     }
   }
-#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
   if (!foundFDE) {
     // Still not found, do full scan of __eh_frame section.
     foundFDE = CFI_Parser<A>::findFDE(_addressSpace, pc, sects.dwarf_section,
@@ -900,9 +917,6 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
       _info.unwind_info_size  = (uint32_t)fdeInfo.fdeLength;
       _info.extra             = (unw_word_t) sects.dso_base;
 
-      this->dump_info("getInfoFromDwarfSection");
-
-  #if _LIBUNWIND_SUPPORT_DWARF_CACHE
       // Add to cache (to make next lookup faster) if we had no hint
       // and there was no index.
       if (!foundInCache && (fdeSectionOffsetHint == 0)) {
@@ -912,7 +926,6 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
         DwarfFDECache<A>::add(sects.dso_base, fdeInfo.pcStart, fdeInfo.pcEnd,
                               fdeInfo.fdeStart);
       }
-  #endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
       return true;
     }
   }
@@ -1182,8 +1195,7 @@ bool UnwindCursor<A, R>::getInfoFromCompactEncodingSection(pint_t pc,
 template <typename A, typename R>
 void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
   pint_t pc = (pint_t)this->getReg(UNW_REG_IP);
-  _LIBUNWIND_DEBUG_LOG("setInfoBOIR: pc = 0x%lx, isRet = %d\n", pc, isReturnAddress );
-#if LIBCXXABI_ARM_EHABI
+#if _LIBUNWIND_ARM_EHABI
   // Remove the thumb bit so the IP represents the actual instruction address.
   // This matches the behaviour of _Unwind_GetIP on arm.
   pc &= (pint_t)~0x1;
@@ -1233,7 +1245,7 @@ void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
     }
 #endif
 
-#if LIBCXXABI_ARM_EHABI
+#if _LIBUNWIND_ARM_EHABI
     // If there is ARM EHABI unwind info, look there next.
     if (sects.arm_section != 0 && this->getInfoFromEHABISection(pc, sects))
       return;
@@ -1241,8 +1253,6 @@ void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
   }
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
-
-#if _LIBUNWIND_SUPPORT_DWARF_CACHE
   // There is no static unwind info for this pc. Look to see if an FDE was
   // dynamically registered for it.
   pint_t cachedFDE = DwarfFDECache<A>::findFDE(0, pc);
@@ -1272,7 +1282,6 @@ void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
       }
     }
   }
-#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
 
   // Lastly, ask AddressSpace object about platform specific ways to locate
   // other FDEs.
@@ -1320,15 +1329,15 @@ int UnwindCursor<A, R>::step() {
   result = this->stepWithCompactEncoding();
 #elif _LIBUNWIND_SUPPORT_DWARF_UNWIND
   result = this->stepWithDwarfFDE();
-#elif LIBCXXABI_ARM_EHABI
-  result = UNW_STEP_SUCCESS;
+#elif _LIBUNWIND_ARM_EHABI
+  result = this->stepWithEHABI();
 #else
   #error Need _LIBUNWIND_SUPPORT_COMPACT_UNWIND or \
               _LIBUNWIND_SUPPORT_DWARF_UNWIND or \
-              LIBCXXABI_ARM_EHABI
+              _LIBUNWIND_ARM_EHABI
 #endif
 
-  // update _info based on new PC
+  // update info based on new PC
   if (result == UNW_STEP_SUCCESS) {
     this->setInfoBasedOnIPRegister(true);
     if (_unwindInfoMissing)

@@ -14,57 +14,22 @@
 #ifndef LIBUNWIND_CONFIG_H
 #define LIBUNWIND_CONFIG_H
 
-#ifndef __has_include_next
-  #define __has_include_next(__x) 0
-#endif
-
-#if defined(__x86_64__)
-  #ifndef __INTPTR_WIDTH__
-    #define __INTPTR_WIDTH__ 64
-  #endif
-  #ifndef __have_long64
-    #define __have_long64 1
-  #endif
-#endif
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // Define static_assert() unless already defined by compiler.
 #ifndef __has_feature
   #define __has_feature(__x) 0
 #endif
 #if !(__has_feature(cxx_static_assert)) && !defined(static_assert)
-/*
   #define static_assert(__b, __m) \
       extern int compile_time_assert_failed[ ( __b ) ? 1 : -1 ]  \
                                                   __attribute__( ( unused ) );
-*/
 #endif
-
-#include <assert.h>
-#include <stdio.h>
 
 // Platform specific configuration defines.
 #ifdef __APPLE__
-  #include <Availability.h>
-  #ifdef __cplusplus
-    extern "C" {
-  #endif
-    void __assert_rtn(const char *, const char *, int, const char *)
-                                                      __attribute__((noreturn));
-  #ifdef __cplusplus
-    }
-  #endif
-
-  #define _LIBUNWIND_BUILD_ZERO_COST_APIS (defined(__i386__) || \
-                                           defined(__x86_64__) || \
-                                           defined(__arm64__))
-  #define _LIBUNWIND_BUILD_SJLJ_APIS      defined(__arm__)
-  #define _LIBUNWIND_SUPPORT_FRAME_APIS   (defined(__i386__) || \
-                                           defined(__x86_64__))
-  #define _LIBUNWIND_EXPORT               __attribute__((visibility("default")))
-  #define _LIBUNWIND_HIDDEN               __attribute__((visibility("hidden")))
-  #define _LIBUNWIND_LOG(msg, ...) fprintf(stderr, "libuwind: " msg, __VA_ARGS__)
-  #define _LIBUNWIND_ABORT(msg) __assert_rtn(__func__, __FILE__, __LINE__, msg)
-
   #if defined(FOR_DYLD)
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 1
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   0
@@ -74,56 +39,55 @@
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX    0
   #endif
-
-#else   // NOT __APPLE__
-
-  #include <stdlib.h>
-  #include <stdbool.h>
-
-  static inline void assert_rtn(const char* func, const char* file, int line, const char* msg)  __attribute__ ((noreturn));
-  static inline void assert_rtn(const char* func, const char* file, int line, const char* msg) {
-    fprintf(stderr, "libunwind: %s %s:%d - %s\n",  func, file, line, msg);
-    assert(false);
-    abort();
-  }
-  #if defined(__XSTACK__)
+#else
+  #if defined(__ARM_DWARF_EH__) || !defined(__arm__)
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
-    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
-    #define _LIBUNWIND_SUPPORT_DWARF_INDEX    1
-    #define _LIBUNWIND_SUPPORT_DWARF_CACHE    0
-    #define _LIBUNWIND_BUILD_ZERO_COST_APIS   1
-    #define _LIBUNWIND_SUPPORT_FRAME_APIS     1
-    #define _LIBUNWIND_IS_BAREMETAL           1
-    #define _LIBUNWIND_HAS_PTHREAD            0
-  #else // ! __XSTACK__
-
-    #define _LIBUNWIND_BUILD_ZERO_COST_APIS (defined(__i386__) || \
-                                             defined(__x86_64__) || \
-                                             defined(__arm__))
-    #define _LIBUNWIND_SUPPORT_FRAME_APIS   (defined(__i386__) || \
-                                             defined(__x86_64__))
+    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND 1
+    #define _LIBUNWIND_SUPPORT_DWARF_INDEX 1
+  #else
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
-    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND !defined(__arm__) || \
-                                            defined(__ARM_DWARF_EH__)
-    #define _LIBUNWIND_SUPPORT_DWARF_INDEX _LIBUNWIND_SUPPORT_DWARF_UNWIND
-    #define _LIBUNWIND_SUPPORT_DWARF_CACHE _LIBUNWIND_SUPPORT_DWARF_UNWIND
-  #endif // __XSTACK__
-
-  #ifdef __clang__
-    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND 0
+    #define _LIBUNWIND_SUPPORT_DWARF_INDEX 0
   #endif
-
-  #define _LIBUNWIND_BUILD_SJLJ_APIS      0
-  #define _LIBUNWIND_EXPORT               __attribute__((visibility("default")))
-  #define _LIBUNWIND_HIDDEN               __attribute__((visibility("hidden")))
-  #define _LIBUNWIND_LOG(msg, ...) fprintf(stdout, "libuwind: " msg, ##__VA_ARGS__)
-  #define _LIBUNWIND_ABORT(msg) assert_rtn(__func__, __FILE__, __LINE__, msg)
 #endif
 
+// FIXME: these macros are not correct for COFF targets
+#define _LIBUNWIND_EXPORT __attribute__((visibility("default")))
+#define _LIBUNWIND_HIDDEN __attribute__((visibility("hidden")))
+
+#if (defined(__APPLE__) && defined(__arm__)) || defined(__USING_SJLJ_EXCEPTIONS__)
+#define _LIBUNWIND_BUILD_SJLJ_APIS 1
+#else
+#define _LIBUNWIND_BUILD_SJLJ_APIS 0
+#endif
+
+#if defined(__i386__) || defined(__x86_64__)
+#define _LIBUNWIND_SUPPORT_FRAME_APIS 1
+#else
+#define _LIBUNWIND_SUPPORT_FRAME_APIS 0
+#endif
+
+#if defined(__i386__) || defined(__x86_64__) ||                                \
+    (!defined(__APPLE__) && defined(__arm__)) ||                               \
+    (defined(__arm64__) || defined(__aarch64__)) ||                            \
+    (defined(__APPLE__) && defined(__mips__))
+#define _LIBUNWIND_BUILD_ZERO_COST_APIS 1
+#else
+#define _LIBUNWIND_BUILD_ZERO_COST_APIS 0
+#endif
+
+#define _LIBUNWIND_ABORT(msg)                                                  \
+  do {                                                                         \
+    fprintf(stderr, "libunwind: %s %s:%d - %s\n", __func__, __FILE__,          \
+            __LINE__, msg);                                                    \
+    fflush(stderr);                                                            \
+    abort();                                                                   \
+  } while (0)
+#define _LIBUNWIND_LOG(msg, ...) fprintf(stderr, "libuwind: " msg, __VA_ARGS__)
 
 // Macros that define away in non-Debug builds
 #ifdef NDEBUG
-  #define _LIBUNWIND_DEBUG_LOG(...)
+  #define _LIBUNWIND_DEBUG_LOG(msg, ...)
   #define _LIBUNWIND_TRACE_API(msg, ...)
   #define _LIBUNWIND_TRACING_UNWINDING 0
   #define _LIBUNWIND_TRACE_UNWINDING(msg, ...)
@@ -137,8 +101,7 @@
   #ifdef __cplusplus
     }
   #endif
-
-  #define _LIBUNWIND_DEBUG_LOG(msg, ...)  _LIBUNWIND_LOG(msg, ##__VA_ARGS__)
+  #define _LIBUNWIND_DEBUG_LOG(msg, ...)  _LIBUNWIND_LOG(msg, __VA_ARGS__)
   #define _LIBUNWIND_LOG_NON_ZERO(x) \
             do { \
               int _err = x; \
@@ -147,14 +110,34 @@
              } while (0)
   #define _LIBUNWIND_TRACE_API(msg, ...) \
             do { \
-              if ( logAPIs() ) _LIBUNWIND_LOG(msg, ##__VA_ARGS__); \
+              if ( logAPIs() ) _LIBUNWIND_LOG(msg, __VA_ARGS__); \
             } while(0)
   #define _LIBUNWIND_TRACE_UNWINDING(msg, ...) \
             do { \
-              if ( logUnwinding() ) _LIBUNWIND_LOG(msg, ##__VA_ARGS__); \
+              if ( logUnwinding() ) _LIBUNWIND_LOG(msg, __VA_ARGS__); \
             } while(0)
   #define _LIBUNWIND_TRACING_UNWINDING logUnwinding()
 #endif
 
+#ifdef __cplusplus
+// Used to fit UnwindCursor and Registers_xxx types against unw_context_t /
+// unw_cursor_t sized memory blocks.
+#if defined(_LIBUNWIND_IS_NATIVE_ONLY)
+# define COMP_OP ==
+#else
+# define COMP_OP <
+#endif
+template <typename _Type, typename _Mem>
+struct check_fit {
+  template <typename T>
+  struct blk_count {
+    static const size_t count =
+      (sizeof(T) + sizeof(uint64_t) - 1) / sizeof(uint64_t);
+  };
+  static const bool does_fit =
+    (blk_count<_Type>::count COMP_OP blk_count<_Mem>::count);
+};
+#undef COMP_OP
+#endif // __cplusplus
 
 #endif // LIBUNWIND_CONFIG_H

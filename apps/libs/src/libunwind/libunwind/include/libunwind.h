@@ -14,10 +14,10 @@
 #ifndef __LIBUNWIND__
 #define __LIBUNWIND__
 
+#include <__libunwind_config.h>
+
 #include <stdint.h>
 #include <stddef.h>
-
-//#include <__cxxabi_config.h>
 
 #ifdef __APPLE__
   #include <Availability.h>
@@ -44,26 +44,21 @@ enum {
   UNW_EBADVERSION   = -6548, /* unwind info has unsupported version */
   UNW_ENOINFO       = -6549  /* no unwind info found */
 };
-//
-// This is really a Registers_XXX object for the XXX arch
-//
+
 struct unw_context_t {
-  uint64_t data[600];
+  uint64_t data[_LIBUNWIND_CONTEXT_SIZE];
 };
 typedef struct unw_context_t unw_context_t;
-//
-// This is an UnwindCursor<LocalAddressSpace, Registers_XXX> object
-// and contains a Registers_XXX and unw_proc_info_t, plus a little more
-//
+
 struct unw_cursor_t {
-  uint64_t data[600];
+  uint64_t data[_LIBUNWIND_CURSOR_SIZE];
 };
 typedef struct unw_cursor_t unw_cursor_t;
 
 typedef struct unw_addr_space *unw_addr_space_t;
 
 typedef int unw_regnum_t;
-#if LIBCXXABI_ARM_EHABI
+#if _LIBUNWIND_ARM_EHABI
 typedef uint32_t unw_word_t;
 typedef uint64_t unw_fpreg_t;
 #else
@@ -502,28 +497,40 @@ enum {
   // 8192-16383 -- Unspecified vendor co-processor register.
 };
 
-//
-// macros to generate all 512 XSTG register names
-//
-#define _R(N) UNW_XSTG_R##N,
-#define _R10(T) _R(T##0) _R(T##1) _R(T##2) _R(T##3) _R(T##4) _R(T##5) \
-_R(T##6) _R(T##7) _R(T##8) _R(T##9)
-#define _R100(H) _R10(H##0) _R10(H##1) _R10(H##2) _R10(H##3) _R10(H##4) \
-_R10(H##5) _R10(H##6) _R10(H##7) _R10(H##8) _R10(H##9)
-
+// OpenRISC1000 register numbers
 enum {
-    _R(0) _R(1) _R(2) _R(3) _R(4) _R(5) _R(6) _R(7) _R(8) _R(9)
-    _R10(1) _R10(2) _R10(3) _R10(4) _R10(5) _R10(6) _R10(7) _R10(8) _R10(9)
-    _R100(1) _R100(2) _R100(3) _R100(4) _R10(50) _R(510) _R(511)
-    //
-    // Aliases
-    //
-    UNW_XSTG_SP = UNW_XSTG_R509,
-    UNW_XSTG_FP = UNW_XSTG_R510,
-    UNW_XSTG_RA = UNW_XSTG_R511
+  UNW_OR1K_R0  = 0,
+  UNW_OR1K_R1  = 1,
+  UNW_OR1K_R2  = 2,
+  UNW_OR1K_R3  = 3,
+  UNW_OR1K_R4  = 4,
+  UNW_OR1K_R5  = 5,
+  UNW_OR1K_R6  = 6,
+  UNW_OR1K_R7  = 7,
+  UNW_OR1K_R8  = 8,
+  UNW_OR1K_R9  = 9,
+  UNW_OR1K_R10 = 10,
+  UNW_OR1K_R11 = 11,
+  UNW_OR1K_R12 = 12,
+  UNW_OR1K_R13 = 13,
+  UNW_OR1K_R14 = 14,
+  UNW_OR1K_R15 = 15,
+  UNW_OR1K_R16 = 16,
+  UNW_OR1K_R17 = 17,
+  UNW_OR1K_R18 = 18,
+  UNW_OR1K_R19 = 19,
+  UNW_OR1K_R20 = 20,
+  UNW_OR1K_R21 = 21,
+  UNW_OR1K_R22 = 22,
+  UNW_OR1K_R23 = 23,
+  UNW_OR1K_R24 = 24,
+  UNW_OR1K_R25 = 25,
+  UNW_OR1K_R26 = 26,
+  UNW_OR1K_R27 = 27,
+  UNW_OR1K_R28 = 28,
+  UNW_OR1K_R29 = 29,
+  UNW_OR1K_R30 = 30,
+  UNW_OR1K_R31 = 31,
 };
-#undef _R
-#undef _R10
-#undef _R100
 
 #endif
