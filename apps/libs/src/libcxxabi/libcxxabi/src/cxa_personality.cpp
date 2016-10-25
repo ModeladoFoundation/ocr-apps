@@ -11,22 +11,18 @@
 //  http://www.intel.com/design/itanium/downloads/245358.htm
 //
 //===----------------------------------------------------------------------===//
-#include "__config"
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <typeinfo>
 
+#include "__cxxabi_config.h"
 #include "config.h"
 #include "cxa_exception.hpp"
 #include "cxa_handlers.hpp"
 #include "private_typeinfo.h"
 #include "unwind.h"
-
-#if LIBCXXABI_ARM_EHABI
-#include "libunwind_ext.h"
-#endif
 
 /*
     Exception Header Layout:
@@ -448,7 +444,7 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     }
     return true;
 }
-#else // !LIBCXXABI_ARM_EHABI
+#else
 static
 bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
@@ -482,7 +478,7 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     }
     return true;
 }
-#endif // !LIBCXXABI_ARM_EHABI
+#endif
 
 static
 void*
@@ -519,11 +515,14 @@ void
 set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
               const scan_results& results)
 {
-    _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
-                                 reinterpret_cast<uintptr_t>(unwind_exception));
-    _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
-                                    static_cast<uintptr_t>(results.ttypeIndex));
-    _Unwind_SetIP(context, results.landingPad);
+#if defined(__USING_SJLJ_EXCEPTIONS__)
+#define __builtin_eh_return_data_regno(regno) regno
+#endif
+  _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
+                reinterpret_cast<uintptr_t>(unwind_exception));
+  _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
+                static_cast<uintptr_t>(results.ttypeIndex));
+  _Unwind_SetIP(context, results.landingPad);
 }
 
 /*
@@ -930,7 +929,7 @@ _UA_CLEANUP_PHASE
 */
 
 #if !LIBCXXABI_ARM_EHABI
-_Unwind_Reason_Code
+_LIBCXXABI_FUNC_VIS _Unwind_Reason_Code
 #ifdef __USING_SJLJ_EXCEPTIONS__
 __gxx_personality_sj0
 #else
@@ -1020,9 +1019,8 @@ __gxx_personality_v0
 }
 #else
 
-#if !LIBCXXABI_USE_LLVM_UNWINDER
-extern "C" _Unwind_Reason_Code __gnu_unwind_frame(_Unwind_Exception*, _Unwind_Context*);
-#endif
+extern "C" _Unwind_Reason_Code __gnu_unwind_frame(_Unwind_Exception*,
+                                                  _Unwind_Context*);
 
 // Helper function to unwind one frame.
 // ARM EHABI 7.3 and 7.4: If the personality function returns _URC_CONTINUE_UNWIND, the
@@ -1031,37 +1029,8 @@ extern "C" _Unwind_Reason_Code __gnu_unwind_frame(_Unwind_Exception*, _Unwind_Co
 static _Unwind_Reason_Code continue_unwind(_Unwind_Exception* unwind_exception,
                                            _Unwind_Context* context)
 {
-#if LIBCXXABI_USE_LLVM_UNWINDER
-    // ARM EHABI # 6.2, # 9.2
-    //
-    //  +---- ehtp
-    //  v
-    // +--------------------------------------+
-    // | +--------+--------+--------+-------+ |
-    // | |0| prel31 to __gxx_personality_v0 | |
-    // | +--------+--------+--------+-------+ |
-    // | |      N |      unwind opcodes     | |  <-- unwind_opcodes
-    // | +--------+--------+--------+-------+ |
-    // | | Word 2        unwind opcodes     | |
-    // | +--------+--------+--------+-------+ |
-    // | ...                                  |
-    // | +--------+--------+--------+-------+ |
-    // | | Word N        unwind opcodes     | |
-    // | +--------+--------+--------+-------+ |
-    // | | LSDA                             | |  <-- lsda
-    // | | ...                              | |
-    // | +--------+--------+--------+-------+ |
-    // +--------------------------------------+
-
-    uint32_t *unwind_opcodes = unwind_exception->pr_cache.ehtp + 1;
-    size_t opcode_words = ((*unwind_opcodes >> 24) & 0xff) + 1;
-    if (_Unwind_VRS_Interpret(context, unwind_opcodes, 1, opcode_words * 4) !=
-        _URC_CONTINUE_UNWIND)
-        return _URC_FAILURE;
-#else
     if (__gnu_unwind_frame(unwind_exception, context) != _URC_OK)
         return _URC_FAILURE;
-#endif
     return _URC_CONTINUE_UNWIND;
 }
 
@@ -1091,7 +1060,7 @@ static void load_results_from_barrier_cache(scan_results& results,
     results.ttypeIndex = (int64_t)(int32_t)unwind_exception->barrier_cache.bitpattern[4];
 }
 
-extern "C" _Unwind_Reason_Code
+extern "C" _LIBCXXABI_FUNC_VIS _Unwind_Reason_Code
 __gxx_personality_v0(_Unwind_State state,
                      _Unwind_Exception* unwind_exception,
                      _Unwind_Context* context)
@@ -1197,7 +1166,7 @@ __gxx_personality_v0(_Unwind_State state,
 
 
 __attribute__((noreturn))
-void
+_LIBCXXABI_FUNC_VIS void
 __cxa_call_unexpected(void* arg)
 {
     _Unwind_Exception* unwind_exception = static_cast<_Unwind_Exception*>(arg);

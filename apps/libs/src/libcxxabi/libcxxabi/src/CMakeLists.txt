@@ -4,12 +4,10 @@ set(LIBCXXABI_SOURCES
   cxa_aux_runtime.cpp
   cxa_default_handlers.cpp
   cxa_demangle.cpp
-  cxa_exception.cpp
   cxa_exception_storage.cpp
   cxa_guard.cpp
   cxa_handlers.cpp
   cxa_new_delete.cpp
-  cxa_personality.cpp
   cxa_unexpected.cpp
   cxa_vector.cpp
   cxa_virtual.cpp
@@ -18,6 +16,13 @@ set(LIBCXXABI_SOURCES
   stdexcept.cpp
   typeinfo.cpp
 )
+
+if (LIBCXXABI_ENABLE_EXCEPTIONS)
+  list(APPEND LIBCXXABI_SOURCES cxa_exception.cpp)
+  list(APPEND LIBCXXABI_SOURCES cxa_personality.cpp)
+else()
+  list(APPEND LIBCXXABI_SOURCES cxa_noexception.cpp)
+endif()
 
 if (UNIX AND NOT (APPLE OR CYGWIN))
   list(APPEND LIBCXXABI_SOURCES cxa_thread_atexit.cpp)
@@ -40,17 +45,19 @@ if (LIBCXXABI_HAS_CXA_THREAD_ATEXIT_IMPL)
   add_definitions(-DHAVE___CXA_THREAD_ATEXIT_IMPL)
 endif()
 
-# Generate library list.
+# Generate library list
 set(libraries ${LIBCXXABI_CXX_ABI_LIBRARIES})
-append_if(libraries LIBCXXABI_HAS_C_LIB c)
+
 if (LIBCXXABI_ENABLE_THREADS)
   append_if(libraries LIBCXXABI_HAS_PTHREAD_LIB pthread)
 endif()
 
+append_if(libraries LIBCXXABI_HAS_C_LIB c)
+
 if (LIBCXXABI_USE_LLVM_UNWINDER)
   list(APPEND libraries unwind)
 else()
-  append_if(libraries LIBCXXABI_HAS_GCC_EH_LIB gcc_eh)
+  append_if(libraries LIBCXXABI_HAS_GCC_S_LIB gcc_s)
 endif()
 
 # Setup flags.
@@ -119,6 +126,14 @@ endif()
 add_custom_target(cxxabi DEPENDS ${LIBCXXABI_TARGETS})
 
 install(TARGETS ${LIBCXXABI_TARGETS}
-  LIBRARY DESTINATION lib${LIBCXXABI_LIBDIR_SUFFIX}
-  ARCHIVE DESTINATION lib${LIBCXXABI_LIBDIR_SUFFIX}
+  LIBRARY DESTINATION lib${LIBCXXABI_LIBDIR_SUFFIX} COMPONENT libcxxabi
+  ARCHIVE DESTINATION lib${LIBCXXABI_LIBDIR_SUFFIX} COMPONENT libcxxabi
   )
+
+if (NOT CMAKE_CONFIGURATION_TYPES)
+  add_custom_target(install-libcxxabi
+    DEPENDS cxxabi
+    COMMAND "${CMAKE_COMMAND}"
+            -DCMAKE_INSTALL_COMPONENT=libcxxabi
+            -P "${LIBCXXABI_BINARY_DIR}/cmake_install.cmake")
+endif()
