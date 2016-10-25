@@ -7,13 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: libcpp-no-exceptions
 // test constexpr bool test(size_t pos) const;
 
 #include <bitset>
 #include <cstdlib>
 #include <cassert>
-
-#pragma clang diagnostic ignored "-Wtautological-compare"
 
 template <std::size_t N>
 std::bitset<N>

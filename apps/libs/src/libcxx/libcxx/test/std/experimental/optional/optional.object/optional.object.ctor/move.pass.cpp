@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// UNSUPPORTED: c++98, c++03, c++11
+// XFAIL: libcpp-no-exceptions
 // <optional>
 
 // optional(optional<T>&& rhs) noexcept(is_nothrow_move_constructible<T>::value);
@@ -14,8 +16,6 @@
 #include <experimental/optional>
 #include <type_traits>
 #include <cassert>
-
-#if _LIBCPP_STD_VER > 11
 
 using std::experimental::optional;
 
@@ -74,12 +74,8 @@ public:
     friend constexpr bool operator==(const Z& x, const Z& y) {return x.i_ == y.i_;}
 };
 
-
-#endif  // _LIBCPP_STD_VER > 11
-
 int main()
 {
-#if _LIBCPP_STD_VER > 11
     {
         typedef int T;
         optional<T> rhs;
@@ -120,5 +116,4 @@ int main()
         optional<T> rhs(Z(3));
         test(rhs, true);
     }
-#endif  // _LIBCPP_STD_VER > 11
 }

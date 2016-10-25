@@ -21,9 +21,11 @@ macro(setup_abi_lib abidefines abilib abifiles abidirs)
     CACHE PATH
     "Paths to C++ ABI header directories separated by ';'." FORCE
     )
-
+  set(LIBCXX_CXX_ABI_LIBRARY_PATH "${LIBCXX_CXX_ABI_LIBRARY_PATH}"
+    CACHE PATH
+    "Paths to C++ ABI library directory"
+    )
   set(LIBCXX_CXX_ABI_LIBRARY ${abilib})
-
   set(LIBCXX_ABILIB_FILES ${abifiles})
 
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include")
@@ -41,10 +43,13 @@ macro(setup_abi_lib abidefines abilib abifiles abidirs)
         file(COPY "${incpath}/${fpath}"
           DESTINATION "${CMAKE_BINARY_DIR}/include/${dstdir}"
           )
-        install(FILES "${CMAKE_BINARY_DIR}/include/${fpath}"
-          DESTINATION include/c++/v1/${dstdir}
-          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-          )
+        if (LIBCXX_INSTALL_HEADERS)
+          install(FILES "${CMAKE_BINARY_DIR}/include/${fpath}"
+            DESTINATION include/c++/v1/${dstdir}
+            COMPONENT libcxx
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+            )
+        endif()
         list(APPEND abilib_headers "${CMAKE_BINARY_DIR}/include/${fpath}")
       endif()
     endforeach()
@@ -58,6 +63,8 @@ macro(setup_abi_lib abidefines abilib abifiles abidirs)
 
 endmacro()
 
+
+# Configure based on the selected ABI library.
 if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
     "${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libsupc++")
   set(_LIBSUPCXX_INCLUDE_FILES

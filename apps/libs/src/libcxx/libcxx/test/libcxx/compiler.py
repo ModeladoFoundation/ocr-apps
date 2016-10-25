@@ -1,3 +1,12 @@
+#===----------------------------------------------------------------------===##
+#
+#                     The LLVM Compiler Infrastructure
+#
+# This file is dual licensed under the MIT and the University of Illinois Open
+# Source Licenses. See LICENSE.TXT for details.
+#
+#===----------------------------------------------------------------------===##
+
 import os
 import lit.util
 import libcxx.util
@@ -38,9 +47,10 @@ class CXXCompiler(object):
         self.type = compiler_type
         self.version = (major_ver, minor_ver, patchlevel)
 
-    def _basicCmd(self, source_files, out, is_link=False, input_is_cxx=False):
+    def _basicCmd(self, source_files, out, is_link=False, input_is_cxx=False,
+                  disable_ccache=False):
         cmd = []
-        if self.use_ccache and not is_link:
+        if self.use_ccache and not disable_ccache and not is_link:
             cmd += ['ccache']
         cmd += [self.path]
         if out is not None:
@@ -56,12 +66,15 @@ class CXXCompiler(object):
         return cmd
 
     def preprocessCmd(self, source_files, out=None, flags=[]):
-        cmd = self._basicCmd(source_files, out, input_is_cxx=True) + ['-E']
+        cmd = self._basicCmd(source_files, out, input_is_cxx=True,
+                             disable_ccache=True) + ['-E']
         cmd += self.flags + self.compile_flags + flags
         return cmd
 
-    def compileCmd(self, source_files, out=None, flags=[]):
-        cmd = self._basicCmd(source_files, out, input_is_cxx=True) + ['-c']
+    def compileCmd(self, source_files, out=None, flags=[],
+                   disable_ccache=False):
+        cmd = self._basicCmd(source_files, out, input_is_cxx=True,
+                             disable_ccache=disable_ccache) + ['-c']
         cmd += self.flags + self.compile_flags + flags
         return cmd
 
@@ -80,8 +93,10 @@ class CXXCompiler(object):
         out, err, rc = lit.util.executeCommand(cmd, env=env, cwd=cwd)
         return cmd, out, err, rc
 
-    def compile(self, source_files, out=None, flags=[], env=None, cwd=None):
-        cmd = self.compileCmd(source_files, out, flags)
+    def compile(self, source_files, out=None, flags=[], env=None, cwd=None,
+                disable_ccache=False):
+        cmd = self.compileCmd(source_files, out, flags,
+                              disable_ccache=disable_ccache)
         out, err, rc = lit.util.executeCommand(cmd, env=env, cwd=cwd)
         return cmd, out, err, rc
 
@@ -97,7 +112,8 @@ class CXXCompiler(object):
         return cmd, out, err, rc
 
     def compileLinkTwoSteps(self, source_file, out=None, object_file=None,
-                            flags=[], env=None, cwd=None):
+                            flags=[], env=None, cwd=None,
+                            disable_ccache=False):
         if not isinstance(source_file, str):
             raise TypeError('This function only accepts a single input file')
         if object_file is None:
@@ -108,7 +124,8 @@ class CXXCompiler(object):
             with_fn = lambda: libcxx.util.nullContext(object_file)
         with with_fn() as object_file:
             cc_cmd, cc_stdout, cc_stderr, rc = self.compile(
-                    source_file, object_file, flags=flags, env=env, cwd=cwd)
+                    source_file, object_file, flags=flags, env=env, cwd=cwd,
+                    disable_ccache=disable_ccache)
             if rc != 0:
                 return cc_cmd, cc_stdout, cc_stderr, rc
 
@@ -139,7 +156,10 @@ class CXXCompiler(object):
         return lit.util.capture(cmd).strip()
 
     def hasCompileFlag(self, flag):
-        flags = [flag]
+        if isinstance(flag, list):
+            flags = list(flag)
+        else:
+            flags = [flag]
         # Add -Werror to ensure that an unrecognized flag causes a non-zero
         # exit code. -Werror is supported on all known compiler types.
         if self.type is not None:
@@ -147,3 +167,39 @@ class CXXCompiler(object):
         cmd, out, err, rc = self.compile(os.devnull, out=os.devnull,
                                          flags=flags)
         return rc == 0
+
+    def addCompileFlagIfSupported(self, flag):
+        if isinstance(flag, list):
+            flags = list(flag)
+        else:
+            flags = [flag]
+        if self.hasCompileFlag(flags):
+            self.compile_flags += flags
+            return True
+        else:
+            return False
+
+    def addWarningFlagIfSupported(self, flag):
+        """
+        addWarningFlagIfSupported - Add a warning flag if the compiler
+        supports it. Unlike addCompileFlagIfSupported, this function detects
+        when "-Wno-<warning>" flags are unsupported. If flag is a
+        "-Wno-<warning>" GCC will not emit an unknown option diagnostic unless
+        another error is triggered during compilation.
+        """
+        assert isinstance(flag, str)
+        if not flag.startswith('-Wno-'):
+            return self.addCompileFlagIfSupported(flag)
+        flags = ['-Werror', flag]
+        cmd = self.compileCmd('-', os.devnull, flags)
+        # Remove '-v' because it will cause the command line invocation
+        # to be printed as part of the error output.
+        # TODO(EricWF): Are there other flags we need to worry about?
+        if '-v' in cmd:
+            cmd.remove('-v')
+        out, err, rc = lit.util.executeCommand(cmd, input='#error\n')
+        assert rc != 0
+        if flag in err:
+            return False
+        self.compile_flags += [flag]
+        return True

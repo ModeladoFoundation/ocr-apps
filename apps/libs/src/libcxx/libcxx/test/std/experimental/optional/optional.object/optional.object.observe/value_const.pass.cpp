@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// UNSUPPORTED: c++98, c++03, c++11
+// XFAIL: libcpp-no-exceptions
 // <optional>
 
 // constexpr const T& optional<T>::value() const;
@@ -14,8 +16,6 @@
 #include <experimental/optional>
 #include <type_traits>
 #include <cassert>
-
-#if _LIBCPP_STD_VER > 11
 
 using std::experimental::optional;
 using std::experimental::in_place_t;
@@ -30,11 +30,8 @@ struct X
     int test() {return 4;}
 };
 
-#endif  // _LIBCPP_STD_VER > 11
-
 int main()
 {
-#if _LIBCPP_STD_VER > 11
     {
         constexpr optional<X> opt(in_place);
         static_assert(opt.value().test() == 3, "");
@@ -54,5 +51,4 @@ int main()
         {
         }
     }
-#endif  // _LIBCPP_STD_VER > 11
 }

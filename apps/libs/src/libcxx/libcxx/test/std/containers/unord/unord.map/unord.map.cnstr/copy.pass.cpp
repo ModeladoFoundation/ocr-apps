@@ -19,6 +19,7 @@
 #include <string>
 #include <cassert>
 #include <cfloat>
+#include <cmath>
 
 #include "../../../test_compare.h"
 #include "../../../test_hash.h"
@@ -63,7 +64,7 @@ int main()
         assert(!c.empty());
         assert(std::distance(c.begin(), c.end()) == c.size());
         assert(std::distance(c.cbegin(), c.cend()) == c.size());
-        assert(fabs(c.load_factor() - (float)c.size()/c.bucket_count()) < FLT_EPSILON);
+        assert(std::fabs(c.load_factor() - (float)c.size()/c.bucket_count()) < FLT_EPSILON);
         assert(c.max_load_factor() == 1);
     }
 #ifndef _LIBCPP_HAS_NO_ADVANCED_SFINAE
@@ -103,11 +104,11 @@ int main()
         assert(!c.empty());
         assert(std::distance(c.begin(), c.end()) == c.size());
         assert(std::distance(c.cbegin(), c.cend()) == c.size());
-        assert(fabs(c.load_factor() - (float)c.size()/c.bucket_count()) < FLT_EPSILON);
+        assert(std::fabs(c.load_factor() - (float)c.size()/c.bucket_count()) < FLT_EPSILON);
         assert(c.max_load_factor() == 1);
     }
 #endif  // _LIBCPP_HAS_NO_ADVANCED_SFINAE
-#if __cplusplus >= 201103L
+#if TEST_STD_VER >= 11
     {
         typedef std::unordered_map<int, std::string,
                                    test_hash<std::hash<int> >,
@@ -144,7 +145,7 @@ int main()
         assert(!c.empty());
         assert(std::distance(c.begin(), c.end()) == c.size());
         assert(std::distance(c.cbegin(), c.cend()) == c.size());
-        assert(fabs(c.load_factor() - (float)c.size()/c.bucket_count()) < FLT_EPSILON);
+        assert(std::fabs(c.load_factor() - (float)c.size()/c.bucket_count()) < FLT_EPSILON);
         assert(c.max_load_factor() == 1);
     }
 #endif

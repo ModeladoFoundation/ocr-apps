@@ -18,6 +18,7 @@
 
 #include "min_allocator.h"
 #include "private_constructor.hpp"
+#include "is_transparent.h"
 
 int main()
 {
@@ -58,7 +59,7 @@ int main()
         assert(r == 0);
     }
     }
-#if __cplusplus >= 201103L
+#if TEST_STD_VER >= 11
     {
     typedef std::pair<const int, double> V;
     typedef std::map<int, double, std::less<int>, min_allocator<V>> M;
@@ -132,6 +133,25 @@ int main()
     r = m.count(12);
     assert(r == 1);
     r = m.count(4);
+    assert(r == 0);
+
+    r = m.count(C2Int(5));
+    assert(r == 1);
+    r = m.count(C2Int(6));
+    assert(r == 1);
+    r = m.count(C2Int(7));
+    assert(r == 1);
+    r = m.count(C2Int(8));
+    assert(r == 1);
+    r = m.count(C2Int(9));
+    assert(r == 1);
+    r = m.count(C2Int(10));
+    assert(r == 1);
+    r = m.count(C2Int(11));
+    assert(r == 1);
+    r = m.count(C2Int(12));
+    assert(r == 1);
+    r = m.count(C2Int(4));
     assert(r == 0);
     }
 

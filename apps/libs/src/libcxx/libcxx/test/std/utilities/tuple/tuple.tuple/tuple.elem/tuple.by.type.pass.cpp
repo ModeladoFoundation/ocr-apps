@@ -10,14 +10,16 @@
 // UNSUPPORTED: c++98, c++03, c++11
 
 #include <tuple>
+#include <utility>
+#include <memory>
 #include <string>
 #include <complex>
+#include <type_traits>
 
 #include <cassert>
 
 int main()
 {
-#if _LIBCPP_STD_VER > 11
     typedef std::complex<float> cf;
     {
     auto t1 = std::tuple<int, std::string, cf> { 42, "Hi", { 1,2 }};
@@ -53,8 +55,40 @@ int main()
     std::tuple<upint> t(upint(new int(4)));
     upint p = std::get<upint>(std::move(t)); // get rvalue
     assert(*p == 4);
-    assert(std::get<0>(t) == nullptr); // has been moved from
+    assert(std::get<upint>(t) == nullptr); // has been moved from
     }
 
-#endif
+    {
+    typedef std::unique_ptr<int> upint;
+    const std::tuple<upint> t(upint(new int(4)));
+    const upint&& p = std::get<upint>(std::move(t)); // get const rvalue
+    assert(*p == 4);
+    assert(std::get<upint>(t) != nullptr);
+    }
+
+    {
+    int x = 42;
+    int y = 43;
+    std::tuple<int&, int const&> const t(x, y);
+    static_assert(std::is_same<int&, decltype(std::get<int&>(std::move(t)))>::value, "");
+    static_assert(noexcept(std::get<int&>(std::move(t))), "");
+    static_assert(std::is_same<int const&, decltype(std::get<int const&>(std::move(t)))>::value, "");
+    static_assert(noexcept(std::get<int const&>(std::move(t))), "");
+    }
+
+    {
+    int x = 42;
+    int y = 43;
+    std::tuple<int&&, int const&&> const t(std::move(x), std::move(y));
+    static_assert(std::is_same<int&&, decltype(std::get<int&&>(std::move(t)))>::value, "");
+    static_assert(noexcept(std::get<int&&>(std::move(t))), "");
+    static_assert(std::is_same<int const&&, decltype(std::get<int const&&>(std::move(t)))>::value, "");
+    static_assert(noexcept(std::get<int const&&>(std::move(t))), "");
+    }
+
+    {
+    constexpr const std::tuple<int, const int, double, double> t { 1, 2, 3.4, 5.6 };
+    static_assert(std::get<int>(std::move(t)) == 1, "");
+    static_assert(std::get<const int>(std::move(t)) == 2, "");
+    }
 }

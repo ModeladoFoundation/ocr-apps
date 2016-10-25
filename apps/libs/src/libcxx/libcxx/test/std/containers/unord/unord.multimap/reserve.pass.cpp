@@ -33,6 +33,21 @@ void test(const C& c)
     assert(c.find(4)->second == "four");
 }
 
+void reserve_invariant(size_t n) // LWG #2156
+{
+    for (size_t i = 0; i < n; ++i)
+    {
+        std::unordered_multimap<size_t, size_t> c;
+        c.reserve(n);
+        size_t buckets = c.bucket_count();
+        for (size_t j = 0; j < i; ++j)
+        {
+            c.insert(std::unordered_multimap<size_t, size_t>::value_type(i,i));
+            assert(buckets == c.bucket_count());
+        }
+    }
+}
+
 int main()
 {
     {
@@ -61,7 +76,7 @@ int main()
         assert(c.bucket_count() >= 16);
         test(c);
     }
-#if __cplusplus >= 201103L
+#if TEST_STD_VER >= 11
     {
         typedef std::unordered_multimap<int, std::string, std::hash<int>, std::equal_to<int>,
                             min_allocator<std::pair<const int, std::string>>> C;
@@ -90,4 +105,5 @@ int main()
         test(c);
     }
 #endif
+    reserve_invariant(20);
 }

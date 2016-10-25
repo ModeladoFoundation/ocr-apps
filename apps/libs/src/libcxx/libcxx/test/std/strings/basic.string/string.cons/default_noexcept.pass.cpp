@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// UNSUPPORTED: c++98, c++03
+
 // <string>
 
 // basic_string()
@@ -17,6 +19,7 @@
 #include <string>
 #include <cassert>
 
+#include "test_macros.h"
 #include "test_allocator.h"
 
 template <class T>
@@ -28,7 +31,6 @@ struct some_alloc
 
 int main()
 {
-#if __has_feature(cxx_noexcept)
     {
         typedef std::string C;
         static_assert(std::is_nothrow_default_constructible<C>::value, "");
@@ -41,5 +43,4 @@ int main()
         typedef std::basic_string<char, std::char_traits<char>, some_alloc<char>> C;
         static_assert(!std::is_nothrow_default_constructible<C>::value, "");
     }
-#endif
 }

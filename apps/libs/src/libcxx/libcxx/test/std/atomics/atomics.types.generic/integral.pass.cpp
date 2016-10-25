@@ -103,6 +103,7 @@ do_test()
     std::atomic_init(&obj, T(2));
     assert(obj == T(2));
     bool b0 = obj.is_lock_free();
+    ((void)b0); // mark as unused
     obj.store(T(0));
     assert(obj == T(0));
     obj.store(T(1), std::memory_order_release);
@@ -184,6 +185,15 @@ int main()
 #endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
     test<std::atomic_wchar_t, wchar_t>();
 
+	test<std::atomic_int8_t,    int8_t>();
+	test<std::atomic_uint8_t,  uint8_t>();
+	test<std::atomic_int16_t,   int16_t>();
+	test<std::atomic_uint16_t, uint16_t>();
+	test<std::atomic_int32_t,   int32_t>();
+	test<std::atomic_uint32_t, uint32_t>();
+	test<std::atomic_int64_t,   int64_t>();
+	test<std::atomic_uint64_t, uint64_t>();
+
     test<volatile std::atomic_char, char>();
     test<volatile std::atomic_schar, signed char>();
     test<volatile std::atomic_uchar, unsigned char>();
@@ -200,4 +210,13 @@ int main()
     test<volatile std::atomic_char32_t, char32_t>();
 #endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
     test<volatile std::atomic_wchar_t, wchar_t>();
+
+	test<volatile std::atomic_int8_t,    int8_t>();
+	test<volatile std::atomic_uint8_t,  uint8_t>();
+	test<volatile std::atomic_int16_t,   int16_t>();
+	test<volatile std::atomic_uint16_t, uint16_t>();
+	test<volatile std::atomic_int32_t,   int32_t>();
+	test<volatile std::atomic_uint32_t, uint32_t>();
+	test<volatile std::atomic_int64_t,   int64_t>();
+	test<volatile std::atomic_uint64_t, uint64_t>();
 }

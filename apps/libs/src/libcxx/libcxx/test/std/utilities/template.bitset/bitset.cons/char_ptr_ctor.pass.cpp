@@ -14,21 +14,22 @@
 
 #include <bitset>
 #include <cassert>
+#include <algorithm> // for 'min' and 'max'
+#include <stdexcept> // for 'invalid_argument'
 
-#pragma clang diagnostic ignored "-Wtautological-compare"
+#include "test_macros.h"
 
 template <std::size_t N>
 void test_char_pointer_ctor()
 {
     {
-    try
-    {
-        std::bitset<N> v("xxx1010101010xxxx");
-        assert(false);
-    }
-    catch (std::invalid_argument&)
-    {
-    }
+#ifndef TEST_HAS_NO_EXCEPTIONS
+        try {
+            std::bitset<N> v("xxx1010101010xxxx");
+            assert(false);
+        }
+        catch (std::invalid_argument&) {}
+#endif
     }
 
     {
