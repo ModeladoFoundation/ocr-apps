@@ -40,18 +40,19 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
         // Entry did not exist previously
         AccessDependence& dep_data = accesses[begin];
         // Create read-section
-        createReadSection( dep_data );
+        dep_data.createReadSection();
     }
 
     while( iterator != accesses.end() && iterator->first < end ) {
-        auto dep_data = &iterator->second;
+        AccessDependence& dep_data = iterator->second;
 
         // Add read-after-write dependency to previous writer EDTs
-        addDependencyRAW( *task, *dep_data );
+        dep_data.addRAWDependence( *task );
         // Create read-only section and register read operation
-        createReadSection( *dep_data );
-        readSectionAddReader( *task, *dep_data );
+        dep_data.createReadSection();
+        dep_data.readSectionAddReader( *task );
 
+        ++iterator;
     }
 }
 
@@ -103,18 +104,20 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
         // Entry did not exist previously
         AccessDependence& dep_data = accesses[begin];
         // Create write-section
-        createWriteSection( *task, dep_data );
+        dep_data.createWriteSection( *task );
     }
 
     while( iterator != accesses.end() && iterator->first < end ) {
         AccessDependence& dep_data = iterator->second;
 
         // Add write-after-write dependency to previous writer EDTs
-        addDependencyWAW( *task, dep_data );
+        dep_data.addWAWDependence( *task );
         // Create write-section
-        createWriteSection( *task, dep_data );
+        dep_data.createWriteSection( *task );
         // Add write-after-read dependency to previous reader EDTs
-        addDependencyWAR( *task, dep_data );
+        dep_data.addWARDependence( *task );
+
+        ++iterator;
     }
 }
 

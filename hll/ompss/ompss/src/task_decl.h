@@ -6,41 +6,27 @@
 #include "dependences_decl.h"
 #include "event.h"
 #include "map.h"
-#include "scratchpad.h"
+#include "memory/lazy.h"
 
 #include <nanos6_rt_interface.h>
 
-extern "C" {
-typedef void (*run_funct_t)(void* args_block);
-typedef void (*register_dep_funct_t)(void* handler, void* args_block);
-} // extern C
+extern "C" typedef void (*run_funct_t)(void* args_block);
 
 namespace ompss {
 
 struct TaskArguments {
-    u32   size;
-    char  buffer[];
+    uint32_t size;
+    uint8_t  buffer[];
 
-    TaskArguments( u32 size );
+    TaskArguments( uint32_t size );
+    TaskArguments( const TaskArguments& other );
 };
 
 struct TaskDefinition {
     run_funct_t   run;
     TaskArguments arguments;
 
-    TaskDefinition( nanos_task_info* info, u32 args_size ) :
-        run(info->run),
-        arguments(args_size)
-    {
-    }
-};
-
-struct TaskDependences {
-    register_dep_funct_t register_dependences;
-    GuidVector events;
-    TypeVector eventTypes;
-
-    TaskDependences( nanos_task_info* task );
+    TaskDefinition( nanos_task_info* info, uint32_t args_size );
 };
 
 struct TaskFlags {
@@ -56,26 +42,30 @@ struct Task {
     TaskDefinition*  definition;
     TaskDependences  dependences;
 
-    Task( nanos_task_info* info, u32 args_size );
+    Task( nanos_task_info* info, uint32_t args_size );
     ~Task();
 
-    u32  getParamc();
-    u64* getParamv();
+    uint32_t  getParamc();
+    uint64_t* getParamv();
+
+    std::pair<uint32_t,uint64_t*> packParams();
+    static std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> unpackParams( uint32_t paramc, uint64_t* paramv );
 
     struct factory {
-        static Task* construct( nanos_task_info* info, u32 args_size );
+        static Task* construct( nanos_task_info* info, uint32_t args_size );
         static void destroy( Task* task );
     };
 };
 
 struct TaskScopeInfo {
+    typedef std::aligned_storage<sizeof(Task),alignof(Task)>::type UninitializedTask;
     typedef std::aligned_storage<64U,64U>::type Scratchpad;
 
-    LatchEvent              taskwaitEvent;
-    DependenceMap           accesses;
-    TaskFlags               flags;
-    mem::scratchpad<Task,1> taskMemory;
-    Scratchpad              argsMemory;
+    ocr::LatchEvent    taskwaitEvent;
+    DependenceMap      accesses;
+    TaskFlags          flags;
+    UninitializedTask  taskMemory;
+    Scratchpad         argsMemory;
 
     TaskScopeInfo();
 };

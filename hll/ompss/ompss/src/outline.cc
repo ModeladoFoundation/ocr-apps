@@ -22,16 +22,16 @@ ocrGuid_t cleanupTemplate;
  *
  *  At this point, no dependences are supported yet.
  */
-ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
 {
     using namespace ompss;
     PROFILE_BLOCK;
 
     // Decode arguments and dependences
+    std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> args =
+        Task::unpackParams( paramc, paramv );
     //Task* task = (Task*)getUserBuffer(depv[0].ptr);
-    TaskDefinition* def = static_cast<TaskDefinition*>(
-                            static_cast<void*>(paramv)
-                          );
+    TaskDefinition* def = std::get<0>(args);
 
     // Store local scope in EDT local storage
     TaskScopeInfo scope;
@@ -47,12 +47,12 @@ ocrGuid_t edtOutlineWrapper( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     scope.taskwaitEvent--;
 
     // Clean-up
-    cleanUp( NULL, scope );
+    releaseDependences( std::get<1>(args), std::get<2>(args), std::get<3>(args) );
 
     return NULL_GUID;
 }
 
-ocrGuid_t edtCleanup( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t edtCleanup( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
 {
     using namespace ompss;
     PROFILE_BLOCK;

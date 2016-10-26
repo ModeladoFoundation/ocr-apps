@@ -3,9 +3,9 @@
 #define EVENT_H
 
 #include <ocr.h>
-#include "lazy.h"
+#include "memory/lazy.h"
 
-namespace ompss {
+namespace ocr {
 
 class EventBase {
 protected:
@@ -25,13 +25,13 @@ public:
     }
 
     void addDependenceIncrease( const ocrGuid_t& source ) {
-        u8 err = ocrAddDependence( source, _handle,
+        uint8_t err = ocrAddDependence( source, _handle,
                     OCR_EVENT_LATCH_INCR_SLOT, DB_DEFAULT_MODE );
         ASSERT( err == 0 );
     }
 
     void addDependenceDecrease( const ocrGuid_t& source ) {
-        u8 err = ocrAddDependence( source, _handle,
+        uint8_t err = ocrAddDependence( source, _handle,
                     OCR_EVENT_LATCH_DECR_SLOT, DB_DEFAULT_MODE );
         ASSERT( err == 0 );
     }
@@ -41,13 +41,13 @@ public:
     }
 
     void satisfyIncrease() {
-        u8 err = ocrEventSatisfySlot( _handle,
+        uint8_t err = ocrEventSatisfySlot( _handle,
                     NULL_GUID, OCR_EVENT_LATCH_INCR_SLOT );
         ASSERT( err == 0 );
     }
 
     void satisfyDecrease() {
-        u8 err = ocrEventSatisfySlot( _handle,
+        uint8_t err = ocrEventSatisfySlot( _handle,
                     NULL_GUID, OCR_EVENT_LATCH_DECR_SLOT );
         ASSERT( err == 0 );
     }
@@ -76,7 +76,7 @@ struct OnceEvent : public EventBase {
     }
 
     void reset() {
-        u8 err = ocrEventCreate( &handle(),
+        uint8_t err = ocrEventCreate( &handle(),
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
     }
@@ -91,18 +91,18 @@ struct StickyEvent : public EventBase {
     StickyEvent() :
         EventBase()
     {
-        u8 err = ocrEventCreate( &handle(),
+        uint8_t err = ocrEventCreate( &handle(),
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
     }
 
     virtual ~StickyEvent() {
-        u8 err = ocrEventDestroy( handle() );
+        uint8_t err = ocrEventDestroy( handle() );
         ASSERT( err == 0 );
     }
 
     void reset() {
-        u8 err = ocrEventDestroy( handle() );
+        uint8_t err = ocrEventDestroy( handle() );
         ASSERT( err == 0 );
 
         err = ocrEventCreate( &handle(),
@@ -127,7 +127,7 @@ struct LatchEvent : public EventBase {
     }
 
     void reset() {
-        u8 err = ocrEventCreate( &handle(),
+        uint8_t err = ocrEventCreate( &handle(),
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
     }

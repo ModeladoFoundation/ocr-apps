@@ -59,24 +59,29 @@ void nanos_submit_task( void *handle )
 
     // Register dependences
     task->dependences.register_dependences( task, task->definition->arguments.buffer );
-    u32 depc = /*1 +*/ task->dependences.events.size();
+
+    uint32_t depc = task->dependences.acquire.size();
+    ocrGuid_t* depv = task->dependences.acquire.data();
 
     // Create EDT of finish type (does not return until
     // all its children EDTs are completed )
-    u8 err = ocrEdtCreate( &edt, taskOutlineTemplate,
-                  task->getParamc(), task->getParamv(),
-                  depc, NULL,
+    std::pair<uint32_t,uint64_t*> param = task->packParams();
+    uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
+                  param.first, param.second,
+                  depc, depv,
                   EDT_PROP_FINISH, NULL_HINT, &edtFinished );
     ASSERT( err == 0);
 
+    delete[] param.second;
+
     // Feed EDT output event to taskwait latch event,
     // and increment latch's second pre-slot
-    LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
+    ocr::LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
     taskwaitEvent++;
     taskwaitEvent.addDependence( edtFinished );
 
     // Add edt dependences
-    acquireDependences( edt, *task );
+    acquireDependences( *task );
 
     Task::factory::destroy( task );
 }
@@ -90,17 +95,17 @@ void nanos_taskwait(char const *invocation_source)
     using namespace ompss;
     PROFILE_BLOCK;
     // Prepare sticky event
-    StickyEvent stickyTw;
+    ocr::StickyEvent stickyTw;
 
     // Get taskwait latch event and feed into sticky event
-    LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
+    ocr::LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
     stickyTw.addDependence( taskwaitEvent );
 
     // Close taskwait region
     taskwaitEvent--;
 
     // Wait until all successors are completed
-    u8 err = ocrLegacyBlockProgress( stickyTw, NULL, NULL, NULL,
+    uint8_t err = ocrLegacyBlockProgress( stickyTw, NULL, NULL, NULL,
                                   LEGACY_PROP_NONE );
     ASSERT( err == 0 );
 

@@ -25,18 +25,18 @@ struct MainStorage {
 };
 
 ocrGuid_t edtUserMain(
-            u32 paramc,
-            u64* paramv,
-            u32 depc,
+            uint32_t paramc,
+            uint64_t* paramv,
+            uint32_t depc,
             ocrEdtDep_t depv[] )
 {
     using namespace ompss;
     PROFILE_BLOCK;
 
     void* program_args = depv[1].ptr;
-    u64 argc = getArgc( program_args );
+    uint64_t argc = getArgc( program_args );
     char* argv[argc];
-    for( u64 arg = 0; arg < argc; ++arg ) {
+    for( uint64_t arg = 0; arg < argc; ++arg ) {
         argv[arg] = getArgv(program_args, arg);
     }
 
@@ -62,9 +62,9 @@ ocrGuid_t edtUserMain(
 }
 
 ocrGuid_t edtShutdown(
-            u32 paramc,
-            u64* paramv,
-            u32 depc,
+            uint32_t paramc,
+            uint64_t* paramv,
+            uint32_t depc,
             ocrEdtDep_t depv[] )
 {
     PROFILE_BLOCK;
@@ -88,9 +88,9 @@ ocrGuid_t edtShutdown(
 extern "C" {
 
 ocrGuid_t mainEdt(
-            u32 paramc,
-            u64* paramv,
-            u32 depc,
+            uint32_t paramc,
+            uint64_t* paramv,
+            uint32_t depc,
             ocrEdtDep_t depv[] )
 {
     using namespace ompss;
@@ -99,7 +99,7 @@ ocrGuid_t mainEdt(
     nanos_init();
 
 
-    u8 err;
+    uint8_t err;
     ocrGuid_t userMainEdt, shutdownEdt;
     ocrGuid_t userMainDoneEvt;
     ocrGuid_t userMainDeps[2] = { NULL_GUID, depv[0].guid };
@@ -139,7 +139,7 @@ void nanos_init()
     using namespace ompss;
     PROFILE_BLOCK;
     // Create EDT templates
-    u8 err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
+    uint8_t err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ASSERT( err == 0);
 
     err = ocrEdtTemplateCreate( &cleanupTemplate, edtCleanup, 0, 2 );
@@ -164,7 +164,7 @@ void nanos_notify_ready_for_shutdown()
     using namespace ompss;
     PROFILE_BLOCK;
     // Do the shutdown right here
-    u8 err = ocrEdtTemplateDestroy( taskOutlineTemplate );
+    uint8_t err = ocrEdtTemplateDestroy( taskOutlineTemplate );
     ASSERT( err == 0 );
 
     err = ocrEdtTemplateDestroy( cleanupTemplate );
