@@ -5,10 +5,14 @@
 #include <memory>
 #include <type_traits>
 
-namespace ompss {
+namespace ocr {
 
 template < typename T >
 struct IsGuidBased : public std::false_type {};
+
+} // namespace ocr
+
+namespace memory {
 
 /*
 template<
@@ -23,7 +27,7 @@ class Lazy;
 // so it is not very efficient
 template< typename T >
 class Lazy {
-    typedef typename std::aligned_storage<alignof(T),sizeof(T)>::type Buffer;
+    typedef typename std::aligned_storage<sizeof(T),alignof(T)>::type Buffer;
 public:
     Lazy() :
         _initialized(false)
@@ -62,11 +66,13 @@ public:
         _initialized = true;
     }
 
+/*
     void reset() {
         if( initialized() )
             value()->~T();
         _initialized = false;
     }
+*/
 
     operator T&() {
         return *value();
@@ -204,7 +210,7 @@ private:
 };
 #endif
 
-} // namespace ompss
+} // namespace memory
 
 #endif
 
