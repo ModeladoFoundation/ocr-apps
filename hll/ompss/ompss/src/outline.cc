@@ -38,13 +38,13 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
     setLocalScope( scope );
 
     // Open taskwait region
-    scope.taskwaitEvent++;
+    (*scope.taskwaitEvent)++;
 
     // Execute outline task
     def->run( def->arguments.buffer );
 
     // Close taskwait region
-    scope.taskwaitEvent--;
+    (*scope.taskwaitEvent)--;
 
     // Clean-up
     releaseDependences( std::get<1>(args), std::get<2>(args), std::get<3>(args) );

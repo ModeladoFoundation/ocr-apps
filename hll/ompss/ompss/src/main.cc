@@ -45,7 +45,8 @@ ocrGuid_t edtUserMain(
     MainStorage* main_data = new(getUserBuffer(depv[0].ptr)) MainStorage();
 
     // Open taskwait region
-    scope.taskwaitEvent++;
+    scope.taskwaitEvent.initialize();
+    (*scope.taskwaitEvent)++;
 
     // Store local scope in EDT local storage
     setLocalScope( scope );
@@ -54,7 +55,7 @@ ocrGuid_t edtUserMain(
     main_data->exit_code = ompss_user_main( (int)argc, argv );
 
     // Close taskwait region
-    scope.taskwaitEvent--;
+    (*scope.taskwaitEvent)--;
 
     nanos_wait_until_shutdown();
 

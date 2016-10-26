@@ -12,7 +12,7 @@ struct IsGuidBased : public std::false_type {};
 
 } // namespace ocr
 
-namespace memory {
+namespace mem {
 
 /*
 template<
@@ -66,13 +66,18 @@ public:
         _initialized = true;
     }
 
-/*
-    void reset() {
-        if( initialized() )
-            value()->~T();
-        _initialized = false;
+    template < typename... Args >
+    void reset( Args&&... args ) {
+        erase();
+        initialize( std::forward(args)... );
     }
-*/
+
+    void erase() {
+        if( initialized() ) {
+            value()->~T();
+            _initialized = false;
+        }
+    }
 
     operator T&() {
         return *value();
@@ -114,7 +119,6 @@ private:
             static_cast<void*>(&_buffer)
         );
     }
-
 
     Buffer _buffer;
     bool   _initialized;
@@ -210,7 +214,7 @@ private:
 };
 #endif
 
-} // namespace memory
+} // namespace mem
 
 #endif
 

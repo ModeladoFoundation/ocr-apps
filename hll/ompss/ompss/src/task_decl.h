@@ -61,11 +61,11 @@ struct TaskScopeInfo {
     typedef std::aligned_storage<sizeof(Task),alignof(Task)>::type UninitializedTask;
     typedef std::aligned_storage<64U,64U>::type Scratchpad;
 
-    ocr::LatchEvent    taskwaitEvent;
-    DependenceMap      accesses;
-    TaskFlags          flags;
-    UninitializedTask  taskMemory;
-    Scratchpad         argsMemory;
+    mem::Lazy<ocr::LatchEvent> taskwaitEvent;
+    DependenceMap              accesses;
+    TaskFlags                  flags;
+    UninitializedTask          taskMemory;
+    Scratchpad                 argsMemory;
 
     TaskScopeInfo();
 };

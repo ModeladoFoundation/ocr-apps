@@ -47,7 +47,7 @@ inline void AccessDependence::createWriteSection( ompss::Task& task )
         // Destroy old event after EDT execution
         task.dependences.release.push_back(event->handle());
         task.dependences.rel_destroy_not_satisfy.push_back(true);
-        event->reset();
+        event.reset();
     } else {
         event.initialize();
     }
@@ -82,7 +82,7 @@ inline void AccessDependence::addWARDependence( ompss::Task& task )
         task.dependences.acq_satisfy.push_back(true);
 
         // Delete read section from dependency map
-        event->reset();
+        event.erase();
     }
 }
 

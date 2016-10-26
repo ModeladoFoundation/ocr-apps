@@ -98,11 +98,11 @@ void nanos_taskwait(char const *invocation_source)
     ocr::StickyEvent stickyTw;
 
     // Get taskwait latch event and feed into sticky event
-    ocr::LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
-    stickyTw.addDependence( taskwaitEvent );
+    mem::Lazy<ocr::LatchEvent>& taskwaitEvent = getLocalScope().taskwaitEvent;
+    stickyTw.addDependence( *taskwaitEvent );
 
     // Close taskwait region
-    taskwaitEvent--;
+    (*taskwaitEvent)--;
 
     // Wait until all successors are completed
     uint8_t err = ocrLegacyBlockProgress( stickyTw, NULL, NULL, NULL,
@@ -112,6 +112,6 @@ void nanos_taskwait(char const *invocation_source)
     // Replace taskwait scope with a new one
     taskwaitEvent.reset();
     // Open next taskwait region
-    taskwaitEvent++;
+    (*taskwaitEvent)++;
 }
 
