@@ -39,17 +39,22 @@
     #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
     #define _LIBUNWIND_SUPPORT_DWARF_INDEX    0
   #endif
-#else
+#else // ! __APPLE__
   #if defined(__ARM_DWARF_EH__) || !defined(__arm__)
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
-    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND 1
-    #define _LIBUNWIND_SUPPORT_DWARF_INDEX 1
+    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   1
+    #define _LIBUNWIND_SUPPORT_DWARF_INDEX    1
+    #if defined(__XSTACK__)
+      #define _LIBUNWIND_SUPPORT_DWARF_CACHE  0
+      #define _LIBUNWIND_IS_BAREMETAL         1
+      #define _LIBUNWIND_HAS_PTHREAD          0
+    #endif
   #else
     #define _LIBUNWIND_SUPPORT_COMPACT_UNWIND 0
-    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND 0
-    #define _LIBUNWIND_SUPPORT_DWARF_INDEX 0
+    #define _LIBUNWIND_SUPPORT_DWARF_UNWIND   0
+    #define _LIBUNWIND_SUPPORT_DWARF_INDEX    0
   #endif
-#endif
+#endif // __APPLE__
 
 // FIXME: these macros are not correct for COFF targets
 #define _LIBUNWIND_EXPORT __attribute__((visibility("default")))
@@ -61,13 +66,13 @@
 #define _LIBUNWIND_BUILD_SJLJ_APIS 0
 #endif
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__XSTACK__)
 #define _LIBUNWIND_SUPPORT_FRAME_APIS 1
 #else
 #define _LIBUNWIND_SUPPORT_FRAME_APIS 0
 #endif
 
-#if defined(__i386__) || defined(__x86_64__) ||                                \
+#if defined(__i386__) || defined(__x86_64__) || defined(__XSTACK__) ||         \
     (!defined(__APPLE__) && defined(__arm__)) ||                               \
     (defined(__arm64__) || defined(__aarch64__)) ||                            \
     (defined(__APPLE__) && defined(__mips__))
@@ -83,11 +88,16 @@
     fflush(stderr);                                                            \
     abort();                                                                   \
   } while (0)
-#define _LIBUNWIND_LOG(msg, ...) fprintf(stderr, "libuwind: " msg, __VA_ARGS__)
+
+#ifdef __clang__
+  #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
+#define _LIBUNWIND_LOG(msg, ...) fprintf(stderr, "libuwind: " msg, ##__VA_ARGS__)
 
 // Macros that define away in non-Debug builds
 #ifdef NDEBUG
-  #define _LIBUNWIND_DEBUG_LOG(msg, ...)
+  #define _LIBUNWIND_DEBUG_LOG(...)
   #define _LIBUNWIND_TRACE_API(msg, ...)
   #define _LIBUNWIND_TRACING_UNWINDING 0
   #define _LIBUNWIND_TRACE_UNWINDING(msg, ...)
@@ -101,7 +111,8 @@
   #ifdef __cplusplus
     }
   #endif
-  #define _LIBUNWIND_DEBUG_LOG(msg, ...)  _LIBUNWIND_LOG(msg, __VA_ARGS__)
+
+  #define _LIBUNWIND_DEBUG_LOG(msg, ...)  _LIBUNWIND_LOG(msg, ##__VA_ARGS__)
   #define _LIBUNWIND_LOG_NON_ZERO(x) \
             do { \
               int _err = x; \
@@ -110,11 +121,11 @@
              } while (0)
   #define _LIBUNWIND_TRACE_API(msg, ...) \
             do { \
-              if ( logAPIs() ) _LIBUNWIND_LOG(msg, __VA_ARGS__); \
+              if ( logAPIs() ) _LIBUNWIND_LOG(msg, ##__VA_ARGS__); \
             } while(0)
   #define _LIBUNWIND_TRACE_UNWINDING(msg, ...) \
             do { \
-              if ( logUnwinding() ) _LIBUNWIND_LOG(msg, __VA_ARGS__); \
+              if ( logUnwinding() ) _LIBUNWIND_LOG(msg, ##__VA_ARGS__); \
             } while(0)
   #define _LIBUNWIND_TRACING_UNWINDING logUnwinding()
 #endif
@@ -123,7 +134,8 @@
 // Used to fit UnwindCursor and Registers_xxx types against unw_context_t /
 // unw_cursor_t sized memory blocks.
 #if defined(_LIBUNWIND_IS_NATIVE_ONLY)
-# define COMP_OP ==
+//# define COMP_OP ==
+# define COMP_OP <=
 #else
 # define COMP_OP <
 #endif

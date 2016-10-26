@@ -463,6 +463,36 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   l.sw     116(r3), r29
   l.sw     120(r3), r30
   l.sw     124(r3), r31
+
+#elif defined(__XSTG__)
+
+//
+// extern int unw_getcontext(unw_context_t* thread_state)
+//
+// On entry:
+//  thread_state pointer is in R0
+//
+  .align 8
+DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+  //
+  // An XE's register file is accessible via PRF memory address alias 0x2e000
+  // We generate a loop to copy all 512 registers. This can be
+  // unrolled some/all for greater speed.
+  // Start by explicitly storing r0 and r1, freeing up r1 for the loop var
+  // We use the 'burned' reg 504 for a load/store tmp and cmp result
+  //
+  store     r0, r0, 0, 64
+  store     r1, r0, 8, 64
+  movimm    r1, 16, 64
+.Lloop:
+  load      r504, r1, 0x2e000, 64
+  store     r504, r1, r0, 64
+  addI      r1, r1, 8, 64
+  cmpimm    r504, r1, 512 * 8, 0, 64, SLT
+  jct       .Lloop, r504, 0, N
+  store     r511, r0, r1, 64    # store return address as PC
+  load      r1, r0, 8, 64       # restore r1 ???
+  jabs r511
 #endif
 
 NO_EXEC_STACK_DIRECTIVE

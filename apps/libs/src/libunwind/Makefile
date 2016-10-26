@@ -19,13 +19,13 @@
 # Xstack install:
 #	Similarly, the location of the apps library install root
 #	(defaulting to apps/apps/libs/isntall/<arch>) can be overridden by
-#	use of the APPS_LIBS_INSTALL variable.
+#	use of the APPS_INSTALL variable.
 #
 TG_ROOT ?= $(realpath $(CURDIR)/../../../../../tg/tg)
 TG_INSTALL ?= $(TG_ROOT)/install
 APPS_ROOT ?= $(realpath $(CURDIR)/../../..)
-APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
-APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
+APPS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
+APPS_INSTALL ?= $(APPS_INSTALL_ROOT)/$(ARCH)
 
 #
 # Supported ARCH values
@@ -47,6 +47,9 @@ LIBUNWIND_SRC = $(realpath libunwind)
 LIBUNWIND_INC = $(LIBUNWIND_SRC)/include
 LIB = libunwind.a
 
+LIBCXX_SRC = $(realpath ../libcxx/libcxx)
+LIBCXX_INC = $(LIBCXX_SRC)/include
+
 BUILD_PREF = build-
 BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
@@ -54,6 +57,7 @@ BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 # Default build type - overridden by debug target below
 #
 BUILD_TYPE ?= RELEASE
+DBG_FLAGS ?= -DNDEBUG
 
 COMPILE_FLAGS = --target=$(TARGET) -nostdinc++ -D__ELF__ -U__STRICT_ANSI__
 COMPILE_FLAGS += $(DBG_FLAGS)
@@ -62,19 +66,18 @@ ifdef VERBOSE
   COMPILE_FLAGS += -v
 endif
 
-C_FLAGS = -std=gnu11 -I$(APPS_LIBS_INSTALL)/include/c++/v1
-C_FLAGS += $(CFLAGS) $(COMPILE_FLAGS)
+C_FLAGS = $(CFLAGS) -std=gnu11 $(COMPILE_FLAGS)
 CXX_FLAGS = -std=gnu++11 -nostdinc++ $(COMPILE_FLAGS)
 #
 # communicate the apps install root to clang
 #
 
-LINK_FLAGS = $(APPS_LIBS_INSTALL)/lib/libc++.a
+LINK_FLAGS = $(APPS_INSTALL)/lib/libc++.a
 
 CMAKE_ARGS =  -DLIBUNWIND_TARGET=$(UNWIND_TARGET) \
 			  -DLLVM_PATH=$(LLVM_SRC) \
 			  -DLLVM_MAIN_SRC_DIR=$(LLVM_SRC) \
-			  -DCMAKE_INSTALL_PREFIX=$(APPS_LIBS_INSTALL) \
+			  -DCMAKE_INSTALL_PREFIX=$(APPS_INSTALL) \
 			  -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 			  -DCMAKE_C_COMPILER=$(CC) \
 			  -DCMAKE_C_COMPILER_FORCED=TRUE \
@@ -96,7 +99,7 @@ ifeq ($(ARCH), tg-xe)
   UNWIND_TARGET = XSTG
   LLVM_SRC = $(TG_ROOT)/xe-llvm
   BTYPE = -static
-  export APPS_LIBS_INSTALL
+  export APPS_LIBS_INSTALL=$(APPS_INSTALL)
 endif
 
 ifdef PIE
@@ -131,9 +134,9 @@ ifeq ($(ARCH), x86)
   TARGET = x86_64-linux-gnu
   UNWIND_TARGET = x86_64
   COMPILE_FLAGS = -std=c++11 -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
-  COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include/c++/v1
+  COMPILE_FLAGS += -isystem $(APPS_INSTALL)/include/c++/v1
   COMPILE_FLAGS += -isystem $(APPS_ROOT)/libs/src/libunwind/libunwind/include
-  COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include
+  COMPILE_FLAGS += -isystem $(APPS_INSTALL)/include
 endif
 
 ##########################
@@ -166,7 +169,7 @@ $(X86_ARCHES): show_args
 
 install: build
 	@echo "Installing $(LIB)"
-	@cp -u $(BUILD_DIR)/lib/libunwind.a $(APPS_LIBS_INSTALL)/lib/$(LIB)
+	@cp -u $(BUILD_DIR)/lib/libunwind.a $(APPS_INSTALL)/lib/$(LIB)
 
 build: config
 	@echo "Building $(LIB)"
@@ -180,7 +183,7 @@ show_args :
 	@echo TG_ROOT= $(TG_ROOT)
 	@echo TG_INSTALL= $(TG_INSTALL)
 	@echo APPS_ROOT= $(APPS_ROOT)
-	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
+	@echo APPS_INSTALL $(APPS_INSTALL)
 	@echo BUILD_DIR $(BUILD_DIR)
 	@echo COMPILE_FLAGS $(COMPILE_FLAGS)
 #

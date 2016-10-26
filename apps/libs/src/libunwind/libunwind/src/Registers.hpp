@@ -19,6 +19,11 @@
 #include "libunwind.h"
 #include "config.h"
 
+//
+// Link script created symbol indicating the start of .text
+//
+extern uint64_t _ftext;
+
 namespace libunwind {
 
 // For emulating 128-bit registers
@@ -1964,6 +1969,203 @@ inline const char *Registers_or1k::getRegisterName(int regNum) {
 
 }
 #endif // _LIBUNWIND_TARGET_OR1K
+
+#if defined(_LIBUNWIND_TARGET_XSTG)
+//
+// XSTG Register support
+//
+#include "xstg-arch.h"
+
+#define IS_AGENT_REL(a) (((a) >> MAP_AGENT_SHIFT) == 1)
+#define IS_BLOCK_REL(a) (((a) >> MAP_BLOCK_SHIFT) == 1)
+#define IS_CLUSTER_REL(a) (((a) >> MAP_CLUSTER_SHIFT) == 1)
+#define IS_SOCKET_REL(a) (((a) >> MAP_SOCKET_SHIFT) == 1)
+#define IS_CUBE_REL(a) (((a) >> MAP_CUBE_SHIFT) == 1)
+#define IS_RACK_REL(a) (((a) >> MAP_RACK_SHIFT) == 1)
+#define IS_MACHINE_REL(a) (((a) >> MAP_MACHINE_SHIFT) == 1)
+/*
+ The eh_frame and eh_frame_hdr tables encode offsets into the text segment.
+ The text RAR contains the starting address of the segment and can be in
+ MR or any relative form.
+ The XE PC reads as MR, uses of this including storing into the RA are then
+ also MR.
+ To compare PC/RA to eh_frame addresses, we need to subtract compatible forms of
+ the PC/RA and text RAR to generate an offset from the segment start.
+ The relative form of the RAR can be used to determine a mask to apply to both
+ RAR and PC/RA before subtracting.
+
+ Finding the text RAR
+ If we assume the convention of the .text section ALWAYS being at the start
+ of the text segment, then we can use the _ftext symbol to derive the RAR.
+ */
+static uint64_t __attribute__((unused)) tg_addr_mask( uint64_t base )
+{
+    uint64_t mask = 0;
+
+    if( IS_MACHINE_REL(base) )
+        mask = (uint64_t)-1L;
+    else if( IS_RACK_REL(base) )
+        mask = (1UL << MAP_RACK_SHIFT) - 1;
+    else if( IS_CUBE_REL(base) )
+        mask = (1UL << MAP_CUBE_SHIFT) - 1;
+    else if( IS_SOCKET_REL(base) )
+        mask = (1UL << MAP_SOCKET_SHIFT) - 1;
+    else if( IS_CLUSTER_REL(base) )
+        mask = (1UL << MAP_CLUSTER_SHIFT) - 1;
+    else if( IS_BLOCK_REL(base) )
+        mask = (1UL << MAP_BLOCK_SHIFT) - 1;
+    else if( IS_AGENT_REL(base) )
+        mask = (1UL << MAP_AGENT_SHIFT) - 1;
+
+    return mask;
+}
+
+//
+/// Registers_xstg  holds the register state of an XE CPU
+//
+class _LIBUNWIND_HIDDEN Registers_xstg {
+public:
+  Registers_xstg();
+  Registers_xstg(const void *registers);
+
+  bool        validRegister(int num) const;
+  uint64_t    getRegister(int num) const;
+  void        setRegister(int num, uint64_t value);
+  bool        validFloatRegister(int num) const;
+  double      getFloatRegister(int num) const;
+  void        setFloatRegister(int num, double value);
+  bool        validVectorRegister(int num) const;
+  v128        getVectorRegister(int num) const;
+  void        setVectorRegister(int num, v128 value);
+  const char *getRegisterName(int num);
+  void        jumpto();
+  static int  lastDwarfRegNum() { return 511; }
+
+  uint64_t  getSP() const         { return _registers.__r[UNW_XSTG_SP]; }
+  void      setSP(uint64_t value) { _registers.__r[UNW_XSTG_SP] = value; }
+  uint64_t  getIP() const         { return getRegister(UNW_REG_IP); }
+  void      setIP(uint64_t value) { _registers.__pc = value; }
+  uint64_t  getFP() const         { return _registers.__r[UNW_XSTG_FP]; }
+  void      setFP(uint64_t value) { _registers.__r[UNW_XSTG_FP] = value; }
+
+private:
+  struct GPRs {
+    uint64_t __r[512]; // r0-r511
+    uint64_t __pc;     // Program counter
+  };
+
+  GPRs    _registers;
+  //
+  // Strings to return from getRegisterName()
+  //
+  static const char * const regNames[];
+};
+
+inline Registers_xstg::Registers_xstg(const void *registers) {
+  static_assert(sizeof(Registers_xstg) < sizeof(unw_context_t),
+                    "xstg registers do not fit into unw_context_t");
+  memcpy(&_registers, registers, sizeof(_registers));
+}
+
+inline Registers_xstg::Registers_xstg() {
+  memset(&_registers, 0, sizeof(_registers));
+}
+
+inline bool Registers_xstg::validRegister(int regNum) const {
+  if (regNum == UNW_REG_IP)
+    return true;
+
+  if (regNum == UNW_REG_SP)
+    return true;
+
+  return regNum >=0 && regNum < 512;
+}
+
+uint64_t Registers_xstg::getRegister(int regNum) const {
+  if (regNum == UNW_REG_IP) {
+#if __PIE__
+    //
+    // For PIE we can just return the PC since almost all the eh_frame
+    // record values are text relative encoded. Only the personality
+    // fn isn't and it is explicitly dealt with when referenced.
+    //
+    return _registers.__pc;
+#else   // not PIE
+    uint64_t text_base = (uint64_t) & _ftext;
+    uint64_t mask = tg_addr_mask( text_base );
+    //
+    // For just static linked executables the 'text_base' could be in any
+    // number of relative forms, but the PC is always MR. So we need to
+    // transfer the memory region offset in the PC to an address in the
+    // same form as the 'text_base'.
+    //
+    return (text_base & ~mask) | (_registers.__pc & mask);
+#endif // PIE
+  }
+
+  if (regNum == UNW_REG_SP)
+    regNum = UNW_XSTG_SP;
+
+  if ((regNum >= 0) && (regNum < 512))
+    return _registers.__r[regNum];
+
+  _LIBUNWIND_ABORT("unsupported xstg register");
+}
+
+inline void Registers_xstg::setRegister(int regNum, uint64_t value) {
+  if (regNum == UNW_REG_IP)
+    _registers.__pc = value;
+
+  else {
+    if (regNum == UNW_REG_SP)
+      regNum = UNW_XSTG_SP;
+
+    if ((regNum >= 0) && (regNum < 512))
+      _registers.__r[regNum] = value;
+    else
+      _LIBUNWIND_ABORT("unsupported xstg register");
+  }
+}
+
+inline const char *Registers_xstg::getRegisterName(int regNum) {
+  if( regNum == UNW_REG_IP )
+    return "pc";
+  if( regNum == UNW_REG_SP )
+    return "sp";
+  if( regNum >=0 && regNum < 512 )
+    return regNames[regNum];
+  else
+    return "unknown register";
+}
+
+//
+// No float or vector specific registers
+//
+inline bool Registers_xstg::validFloatRegister(int) const {
+  return false;
+}
+
+inline double Registers_xstg::getFloatRegister(int) const {
+  _LIBUNWIND_ABORT("no xstg float register support");
+}
+
+inline void Registers_xstg::setFloatRegister(int, double) {
+  _LIBUNWIND_ABORT("no xstg float register support");
+}
+
+inline bool Registers_xstg::validVectorRegister(int) const {
+  return false;
+}
+
+inline v128 Registers_xstg::getVectorRegister(int) const {
+  _LIBUNWIND_ABORT("no xstg vector register support");
+}
+
+inline void Registers_xstg::setVectorRegister(int, v128) {
+  _LIBUNWIND_ABORT("no xstg vector register support");
+}
+#endif //_LIBUNWIND_TARGET_XSTG
+
 } // namespace libunwind
 
 #endif // __REGISTERS_HPP__

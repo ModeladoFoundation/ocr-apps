@@ -28,6 +28,29 @@
 
 using namespace libunwind;
 
+#if defined(__XSTG__)
+//
+// macros to generate all 512 XSTG register names
+//
+#define _RE(N) "r"#N
+#define _R(N) _RE(N),
+#define _R10(T) _R(T##0) _R(T##1) _R(T##2) _R(T##3) _R(T##4) _R(T##5) \
+_R(T##6) _R(T##7) _R(T##8) _R(T##9)
+#define _R100(H) _R10(H##0) _R10(H##1) _R10(H##2) _R10(H##3) _R10(H##4) \
+_R10(H##5) _R10(H##6) _R10(H##7) _R10(H##8) _R10(H##9)
+
+const char * const Registers_xstg::regNames[] = {
+    _R(0) _R(1) _R(2) _R(3) _R(4) _R(5) _R(6) _R(7) _R(8) _R(9)
+    _R10(1) _R10(2) _R10(3) _R10(4) _R10(5) _R10(6) _R10(7) _R10(8) _R10(9)
+    _R100(1) _R100(2) _R100(3) _R100(4) _R10(50) _R(510) _RE(511)
+};
+#undef _R
+#undef _RE
+#undef _R10
+#undef _R100
+
+#endif // __XSTG__
+
 /// internal object to represent this processes address space
 LocalAddressSpace LocalAddressSpace::sThisAddressSpace;
 
@@ -57,6 +80,8 @@ _LIBUNWIND_EXPORT int unw_init_local(unw_cursor_t *cursor,
 # define REGISTER_KIND Registers_arm
 #elif defined(__or1k__)
 # define REGISTER_KIND Registers_or1k
+#elif defined(__XSTG__)
+# define REGISTER_KIND Registers_xstg
 #elif defined(__mips__)
 # warning The MIPS architecture is not supported.
 #else
@@ -305,7 +330,7 @@ _LIBUNWIND_EXPORT void unw_save_vfp_as_X(unw_cursor_t *cursor) {
 #endif
 
 
-#if _LIBUNWIND_SUPPORT_DWARF_UNWIND
+#if _LIBUNWIND_SUPPORT_DWARF_CACHE
 /// SPI: walks cached dwarf entries
 _LIBUNWIND_EXPORT void unw_iterate_dwarf_unwind_cache(void (*func)(
     unw_word_t ip_start, unw_word_t ip_end, unw_word_t fde, unw_word_t mh)) {
@@ -339,7 +364,16 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
   // fde is own mh_group
   DwarfFDECache<LocalAddressSpace>::removeAllIn((LocalAddressSpace::pint_t)fde);
 }
-#endif // _LIBUNWIND_SUPPORT_DWARF_UNWIND
+#else  // ! _LIBUNWIND_SUPPORT_DWARF_CACHE
+void _unw_add_dynamic_fde(unw_word_t fde) {
+    _LIBUNWIND_DEBUG_LOG("_unw_add_dynamic_fde: %s", "not implemented");
+    (void) fde;
+}
+void _unw_remove_dynamic_fde(unw_word_t fde) {
+    _LIBUNWIND_DEBUG_LOG("_unw_remove_dynamic_fde: %s", "not implemented");
+    (void) fde;
+}
+#endif // _LIBUNWIND_SUPPORT_DWARF_CACHE
 
 
 
@@ -347,11 +381,15 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
 #ifndef NDEBUG
 #include <stdlib.h>
 
+#ifndef LOG_DEFAULT
+#define LOG_DEFAULT false
+#endif
+
 _LIBUNWIND_HIDDEN
 bool logAPIs() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
-  static bool checked = false;
-  static bool log = false;
+  static bool checked = LOG_DEFAULT;
+  static bool log = LOG_DEFAULT;
   if (!checked) {
     log = (getenv("LIBUNWIND_PRINT_APIS") != NULL);
     checked = true;
@@ -362,8 +400,8 @@ bool logAPIs() {
 _LIBUNWIND_HIDDEN
 bool logUnwinding() {
   // do manual lock to avoid use of _cxa_guard_acquire or initializers
-  static bool checked = false;
-  static bool log = false;
+  static bool checked = LOG_DEFAULT;
+  static bool log = LOG_DEFAULT;
   if (!checked) {
     log = (getenv("LIBUNWIND_PRINT_UNWINDING") != NULL);
     checked = true;

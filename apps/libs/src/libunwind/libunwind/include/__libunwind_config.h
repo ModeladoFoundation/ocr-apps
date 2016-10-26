@@ -53,6 +53,11 @@
 #  define _LIBUNWIND_CONTEXT_SIZE 16
 #  define _LIBUNWIND_CURSOR_SIZE 28
 #  define _LIBUNWIND_HIGHEST_DWARF_REGISTER 32
+# elif defined(__XSTG__)
+#  define _LIBUNWIND_TARGET_XSTG 1
+#  define _LIBUNWIND_CONTEXT_SIZE 514
+#  define _LIBUNWIND_CURSOR_SIZE 525
+#  define _LIBUNWIND_HIGHEST_DWARF_REGISTER 512
 # else
 #  error "Unsupported architecture."
 # endif
