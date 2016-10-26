@@ -1,6 +1,6 @@
 /*
 Author Chandra S. Martha
-Copywrite Intel Corporation 2015
+Copyright Intel Corporation 2015
 
  This file is subject to the license agreement located in the file ../../../../LICENSE (apps/LICENSE)
  and cannot be distributed without it. This notice cannot be removed or modified.
@@ -500,7 +500,7 @@ _OCR_TASK_FNC_( FNC_update )
             for (i=MAX(ib,HALO_RADIUS); i<=MIN(NP_X-HALO_RADIUS-1,ie); i++)
                 refNorm[0] += (double) ABS(OUT(i,j));
 #endif
-        //PRINTF("time %f %f\n", stencil_time, refNorm[0]);
+        DEBUG_PRINTF(("id %d time %f %f\n", id, stencil_time, refNorm[0]));
         reductionLaunch(PTR_norm_reductionH, DBK_norm_reductionH, refNorm);
         reductionLaunch(PTR_timer_reductionH, DBK_timer_reductionH, &stencil_time);
         ocrDbRelease(DBK_refNorm);
@@ -948,7 +948,7 @@ _OCR_TASK_FNC_( FNC_initialize )
     PTR_norm_reductionH->reductionTML = NULL_GUID;
     PTR_norm_reductionH->new = 1;  //first time
     PTR_norm_reductionH->type = ALLREDUCE;
-    ocrEventCreate( &(PTR_rankH->EVT_OUT_norm_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
+    ocrEventCreate( &(PTR_rankH->EVT_OUT_norm_reduction), OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG );
     PTR_norm_reductionH->returnEVT = PTR_rankH->EVT_OUT_norm_reduction;
 
     PTR_timer_reductionH->nrank = PTR_globalParamH->NR;
@@ -959,7 +959,7 @@ _OCR_TASK_FNC_( FNC_initialize )
     PTR_timer_reductionH->reductionTML = NULL_GUID;
     PTR_timer_reductionH->new = 1;  //first time
     PTR_timer_reductionH->type = ALLREDUCE;
-    ocrEventCreate( &(PTR_rankH->EVT_OUT_timer_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
+    ocrEventCreate( &(PTR_rankH->EVT_OUT_timer_reduction), OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG );
     PTR_timer_reductionH->returnEVT = PTR_rankH->EVT_OUT_timer_reduction;
 
     return NULL_GUID;
@@ -1004,10 +1004,10 @@ _OCR_TASK_FNC_( FNC_stencil )
     ocrAddDependence( initializeDataOEVT, initializeDataOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, initializeDataEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_rankH, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_xIn, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_xOut, initializeDataEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( PTR_rankH->DBK_weight, initializeDataEDT, _idep++, DB_MODE_CONST );
+    ocrAddDependence( PTR_rankH->DBK_weight, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_refNorm, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_timers, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_norm_reductionH, initializeDataEDT, _idep++, DB_MODE_RW );
@@ -1041,6 +1041,9 @@ void destroyOcrObjects(rankH_t* PTR_rankH)
         ocrEventDestroy(PTR_rankH->haloRecvEVTs[i]);
 #endif
     }
+
+    ocrEventDestroy(PTR_rankH->EVT_OUT_timer_reduction);
+    ocrEventDestroy(PTR_rankH->EVT_OUT_norm_reduction);
 
     ocrDbDestroy(PTR_rankH->DBK_xIn);
     ocrDbDestroy(PTR_rankH->DBK_xOut);
@@ -1361,12 +1364,14 @@ _OCR_TASK_FNC_( initEdt )
 
         ocrEventSatisfy( stickyEVT, eventsDBK );
 
+        ocrGuid_t stickyEVT_new;
+
         //Map the sends to receive events
         //receive: (id, nbr) will be the send event from the (nbrRank,nbrImage)
-        ocrGuidFromIndex( &(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nbrUb*nbrRank + nbrImage );
-        ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
+        ocrGuidFromIndex( &(stickyEVT_new), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nbrUb*nbrRank + nbrImage );
+        ocrEventCreate( &stickyEVT_new, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
-        ocrAddDependence( stickyEVT, channelSetupEDT, 1+nbr, DB_MODE_RW ); //TODO
+        ocrAddDependence( stickyEVT_new, channelSetupEDT, 1+nbr, DB_MODE_RW ); //TODO
     }
 
     ocrDbRelease(DBK_rankH);
