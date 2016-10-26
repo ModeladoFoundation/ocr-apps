@@ -30,11 +30,11 @@ struct AccessDependence {
     /*! Latch event that triggers when all read-only accesses are completed
      *  AND the read-only section is over (a write access
      *  has been registered). */
-    memory::Lazy<ocr::LatchEvent>  readCompleted;
+    mem::Lazy<ocr::LatchEvent>  readCompleted;
 
     /*! Sticky event that triggers when a write-only or read-write access is
      *  completed. */
-    memory::Lazy<ocr::StickyEvent> writeCompleted;
+    mem::Lazy<ocr::StickyEvent> writeCompleted;
 
     void createReadSection();
     void readSectionAddReader( Task& task );

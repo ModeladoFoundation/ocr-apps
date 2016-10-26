@@ -72,10 +72,6 @@ struct OnceEvent : public EventBase {
     OnceEvent() :
         EventBase()
     {
-        reset();
-    }
-
-    void reset() {
         uint8_t err = ocrEventCreate( &handle(),
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
@@ -101,15 +97,6 @@ struct StickyEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
-    void reset() {
-        uint8_t err = ocrEventDestroy( handle() );
-        ASSERT( err == 0 );
-
-        err = ocrEventCreate( &handle(),
-                    type(), EVT_PROP_NONE );
-        ASSERT( err == 0 );
-    }
-
     static ocrEventTypes_t type()
     {
         return OCR_EVENT_STICKY_T;
@@ -120,16 +107,12 @@ struct LatchEvent : public EventBase {
     LatchEvent() :
         EventBase()
     {
-        reset();
-    }
-
-    virtual ~LatchEvent() {
-    }
-
-    void reset() {
         uint8_t err = ocrEventCreate( &handle(),
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
+    }
+
+    virtual ~LatchEvent() {
     }
 
     LatchEvent& operator++(int) {
