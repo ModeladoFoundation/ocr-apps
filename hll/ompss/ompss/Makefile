@@ -7,7 +7,10 @@ CXX = g++
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 CPPFLAGS=-I$(OMPSS_INC)/nanos6 -I$(OCR_INSTALL)/include -DOCR_TYPE_H=$(OCR_TYPE).h $(OCR_EXTENSIONS)
 LDFLAGS=-L$(OCR_INSTALL)/lib -locr_$(OCR_TYPE)
-COMMON=-fPIC -O3 -march=native
+
+DEBUG=-Wall -Wextra -Wno-unused-parameter -O0 -g3 #-fsanitize=address
+#RELEASE=-O3 -march=native
+COMMON=-fPIC $(DEBUG) $(RELEASE)
 CXXFLAGS=-std=c++11 $(COMMON)
 
 LIBS=\

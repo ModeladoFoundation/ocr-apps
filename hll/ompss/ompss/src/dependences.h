@@ -10,121 +10,115 @@
 
 namespace ompss {
 
-static inline void createReadSection( ompss::AccessDependence& dep )
+inline TaskDependences::TaskDependences( nanos_task_info* info ) :
+    register_dependences(info->register_depinfo),
+    acquire(),
+    release(),
+    acq_satisfy(),
+    rel_destroy_not_satisfy()
+{
+}
+
+inline void AccessDependence::createReadSection()
 {
     // If read section event was not previously created
-    if( !dep.readCompleted.initialized() ) {
+    if( !readCompleted.initialized() ) {
         // Create latch event
-        dep.readCompleted.initialize();
+        readCompleted.initialize();
         // Increment latch event pre-slot counter
         // to "open" read-only section
-        (*dep.readCompleted).satisfyIncrease();
+        (*readCompleted)++;
     }
 }
 
-static inline void readSectionAddReader( ompss::Task& task, ompss::AccessDependence& dep )
+inline void AccessDependence::readSectionAddReader( ompss::Task& task )
 {
-    (*dep.readCompleted)++;
+    (*readCompleted)++;
 
-    task.dependences.events.push_back(*dep.readCompleted);
-    task.dependences.eventTypes.push_back(ompss::LatchEvent::type());
+    task.dependences.release.push_back(*readCompleted);
+    task.dependences.rel_destroy_not_satisfy.push_back(false);
 }
 
-static inline void createWriteSection( ompss::Task& task, ompss::AccessDependence& dep )
+inline void AccessDependence::createWriteSection( ompss::Task& task )
 {
-    auto& event = dep.writeCompleted;
-    // Replace previous write event regardless it existed or not
+    auto& event = writeCompleted;
+    // Replace previous write event
     if( event.initialized() ) {
-        event.reset();
+        // Destroy old event after EDT execution
+        task.dependences.release.push_back(event->handle());
+        task.dependences.rel_destroy_not_satisfy.push_back(true);
+        event->reset();
     } else {
         event.initialize();
     }
-
-    task.dependences.events.push_back(*dep.readCompleted);
-    task.dependences.eventTypes.push_back(ompss::StickyEvent::type());
+    // Add this new event to release events list
+    task.dependences.release.push_back(event->handle());
+    task.dependences.rel_destroy_not_satisfy.push_back(false);
 }
 
-static inline void addDependencyRAW( ompss::Task& task, ompss::AccessDependence& dep )
+inline void AccessDependence::addRAWDependence( ompss::Task& task )
 {
-    auto& event = dep.writeCompleted;
+    auto& event = writeCompleted;
     if( event.initialized() ) {
-        task.dependences.events.push_back(event->handle());
-        task.dependences.eventTypes.push_back(ompss::StickyEvent::type());
+        task.dependences.acquire.push_back(event->handle());
+        task.dependences.acq_satisfy.push_back(false);
     }
 }
 
-static inline void addDependencyWAW( ompss::Task& task, ompss::AccessDependence& dep )
+inline void AccessDependence::addWAWDependence( ompss::Task& task )
 {
-    auto& event = dep.writeCompleted;
+    auto& event = writeCompleted;
     if( event.initialized() ) {
-        task.dependences.events.push_back(event->handle());
-        task.dependences.eventTypes.push_back(ompss::StickyEvent::type());
+        task.dependences.acquire.push_back(event->handle());
+        task.dependences.acq_satisfy.push_back(false);
     }
 }
 
-static inline void addDependencyWAR( ompss::Task& task, ompss::AccessDependence& dep )
+inline void AccessDependence::addWARDependence( ompss::Task& task )
 {
-    auto& event = dep.readCompleted;
+    auto& event = readCompleted;
     if( event.initialized() ) {
-        task.dependences.events.push_back(event->handle());
-        task.dependences.eventTypes.push_back(ompss::LatchEvent::type());
+        task.dependences.acquire.push_back(event->handle());
+        task.dependences.acq_satisfy.push_back(true);
 
         // Delete read section from dependency map
-        event.reset();
+        event->reset();
     }
 }
 
-static inline void acquireDependences( const ocrGuid_t& edt, ompss::Task& task )
+static inline void acquireDependences( ompss::Task& task )
 {
-    u8 err;
+    uint8_t err;
 
-    ompss::GuidVector& events     = task.dependences.events;
-    ompss::TypeVector& eventTypes = task.dependences.eventTypes;
+    std::vector<ocrGuid_t>& events = task.dependences.acquire;
+    std::vector<unsigned char>& satisfy = task.dependences.acq_satisfy;
     if( !events.empty() ) {
         // Task is using dependences.
         // Parent (running task) shall postpone its clean-up
         getLocalScope().flags.postponeCleanup = true;
 
-        // Register dependences
-        auto eventIterator = events.begin();
-        auto typeIterator = eventTypes.begin();
-        u32 slot = 0;// position of the depv array
-        while( eventIterator != events.end() ) {
-            err = ocrAddDependence( *eventIterator, edt, slot, DB_MODE_RW/*default mode*/ );
-            ASSERT( err == 0 );
+        // Dependences already registered in EDT creation
+        // Just satisfy flagged events
+        for( uint32_t slot = 0; slot < events.size(); ++slot ) {
 
-            if( *typeIterator == OCR_EVENT_LATCH_T ) {
-                err = ocrEventSatisfy( *eventIterator, NULL_GUID );
+            if( satisfy[slot] ) {
+                err = ocrEventSatisfy( events[slot], NULL_GUID );
                 ASSERT( err == 0 );
             }
-
-            ++eventIterator;
-            ++typeIterator;
-            ++slot;
         }
     }
 }
 
-static inline void releaseDependences( ompss::Task& task )
+static inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[], uint8_t destroy[] )
 {
-    u8 err;
-    ompss::GuidVector& events     = task.dependences.events;
-    ompss::TypeVector& eventTypes = task.dependences.eventTypes;
-
-    auto eventIterator = events.begin();
-    auto typeIterator = eventTypes.begin();
-    while( eventIterator != events.end() ) {
-        switch( *typeIterator ) {
-            case OCR_EVENT_LATCH_T:
-                err = ocrEventSatisfy( *eventIterator, NULL_GUID );
-                ASSERT( err == 0 );
-                break;
-            case OCR_EVENT_STICKY_T:
-                err = ocrEventDestroy( *eventIterator );
-                ASSERT( err == 0 );
-                break;
-            default:
-                ASSERT( FALSE );
+    uint8_t err;
+    for( uint32_t i = 0; i < num_deps; ++i ) {
+        if( destroy[i] ) {
+            err = ocrEventDestroy( dependences[i] );
+            ASSERT( err == 0 );
+        } else {
+            err = ocrEventSatisfy( dependences[i], NULL_GUID );
+            ASSERT( err == 0 );
         }
     }
 }

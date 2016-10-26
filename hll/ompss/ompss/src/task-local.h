@@ -16,7 +16,7 @@ union _els_to_ptr {
     ocrGuid_t els;
 };
 
-static inline void setTLS( u32 slot, void* data )
+static inline void setTLS( uint32_t slot, void* data )
 {
     // Workaround to access ELS
     union _els_to_ptr tmp;
@@ -24,7 +24,7 @@ static inline void setTLS( u32 slot, void* data )
     ocrElsUserSet( slot, tmp.els );
 }
 
-static inline void* getTLS( u32 slot )
+static inline void* getTLS( uint32_t slot )
 {
     // Workaround to get a pointer from EDT local storage
     union _els_to_ptr tmp;
@@ -32,7 +32,7 @@ static inline void* getTLS( u32 slot )
     return (void*)tmp.ptr;
 }
 
-static inline void unsetTLS( u32 slot )
+static inline void unsetTLS( uint32_t slot )
 {
     // Default initialize TLS value
     ocrElsUserSet( slot, NULL_GUID );
