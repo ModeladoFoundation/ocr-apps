@@ -4,11 +4,11 @@
 #include "outline.h"
 #include "task.h"
 #include "task-local.h"
+#include "taskwait.h"
 
 #include <nanos6_rt_interface.h>
 
 #include <ocr.h>
-#include <extensions/ocr-legacy.h>
 
 /*! \brief Allocate space for a task and its parameters
  *
@@ -76,9 +76,7 @@ void nanos_submit_task( void *handle )
 
     // Feed EDT output event to taskwait latch event,
     // and increment latch's second pre-slot
-    ocr::LatchEvent& taskwaitEvent = getLocalScope().taskwaitEvent;
-    taskwaitEvent++;
-    taskwaitEvent.addDependence( edtFinished );
+    getLocalScope().taskwait.registerEdt(edtFinished);
 
     // Add edt dependences
     acquireDependences( *task );
@@ -94,24 +92,8 @@ void nanos_taskwait(char const *invocation_source)
 {
     using namespace ompss;
     PROFILE_BLOCK;
-    // Prepare sticky event
-    ocr::StickyEvent stickyTw;
 
-    // Get taskwait latch event and feed into sticky event
-    mem::Lazy<ocr::LatchEvent>& taskwaitEvent = getLocalScope().taskwaitEvent;
-    stickyTw.addDependence( *taskwaitEvent );
-
-    // Close taskwait region
-    (*taskwaitEvent)--;
-
-    // Wait until all successors are completed
-    uint8_t err = ocrLegacyBlockProgress( stickyTw, NULL, NULL, NULL,
-                                  LEGACY_PROP_NONE );
-    ASSERT( err == 0 );
-
-    // Replace taskwait scope with a new one
-    taskwaitEvent.reset();
-    // Open next taskwait region
-    (*taskwaitEvent)++;
+    // Wait until successors complete
+    getLocalScope().taskwait.wait();
 }
 
