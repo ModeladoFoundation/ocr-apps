@@ -43,7 +43,7 @@ int ompss_user_main( int argc, char* argv[] )
    char* text = malloc( 50 * sizeof(char) );
    produce( text, 50 );
 
-   say_hello(text, strlen(text)+1 );
+   say_hello(text, 50 );
 
    #pragma omp taskwait
    free( text );
