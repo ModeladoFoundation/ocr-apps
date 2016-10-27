@@ -47,10 +47,10 @@ inline void AccessDependence::createWriteSection( ompss::Task& task )
         // Destroy old event after EDT execution
         task.dependences.release.push_back(event->handle());
         task.dependences.rel_destroy_not_satisfy.push_back(true);
-        event.reset();
-    } else {
-        event.initialize();
+        event.release();
     }
+    event.initialize();
+
     // Add this new event to release events list
     task.dependences.release.push_back(event->handle());
     task.dependences.rel_destroy_not_satisfy.push_back(false);
