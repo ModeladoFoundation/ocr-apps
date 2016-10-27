@@ -456,7 +456,7 @@ using ::nan;
 using ::nanf;
 #endif // _LIBCPP_MSVCRT
 
-#ifndef __sun__
+#if !defined(__sun__) && !defined(__XSTACK__)
 #ifndef _LIBCPP_MSVCRT
 using ::nearbyint;
 using ::nearbyintf;
@@ -482,6 +482,7 @@ using ::trunc;
 using ::truncf;
 #endif // !_LIBCPP_MSVCRT
 
+#if defined(_LIBCPP_HAS_LONG_DOUBLE)
 using ::acosl;
 using ::asinl;
 using ::atanl;
@@ -546,6 +547,7 @@ using ::scalbnl;
 using ::tgammal;
 using ::truncl;
 #endif // !_LIBCPP_MSVCRT
+#endif // _LIBCPP_HAS_LONG_DOUBLE
 
 #else
 using ::lgamma;

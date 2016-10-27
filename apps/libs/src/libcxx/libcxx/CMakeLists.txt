@@ -293,6 +293,48 @@ remove_flags(-DNDEBUG -UNDEBUG -D_DEBUG
 # so they don't get transformed into -Wno and -errors respectivly.
 remove_flags(-Wno-pedantic -pedantic-errors -pedantic)
 
+if(LIBCXX_TARGET STREQUAL "XSTG" )
+  #
+  # this is a distillation of the original below but without the runtime
+  # compiler checks. We know what's supported or not.
+  #
+  add_compile_flags(-std=c++11)
+  add_compile_flags(-nostdinc++)
+  add_definitions(-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+  add_compile_flags(
+    -Wall -W -Wwrite-strings
+    -Wno-unused-parameter -Wno-long-long -Wno-user-defined-literals
+    -Wno-covered-switch-default
+    -Werror=return-type)
+  if (LIBCXX_ENABLE_WERROR)
+    add_compile_flags(-Werror)
+    add_compile_flags(-WX)
+  endif()
+  if (LIBCXX_ENABLE_PEDANTIC)
+    add_compile_flags(-pedantic)
+  endif()
+  if (LIBCXX_DISABLE_MACRO_CONFLICT_WARNINGS)
+    add_definitions(-D_LIBCPP_DISABLE_MACRO_CONFLICT_WARNINGS)
+  endif()
+  if (LIBCXX_ENABLE_EXCEPTIONS)
+    # Catches C++ exceptions only and tells the compiler to assume that extern C
+    # functions never throw a C++ exception.
+    #add_compile_flags(-EHsc)
+  else()
+    add_definitions(-D_LIBCPP_NO_EXCEPTIONS)
+    add_compile_flags(-EHs- -EHa-)
+    add_compile_flags(-fno-exceptions)
+  endif()
+
+  # RTTI flags ==================================================================
+  if (NOT LIBCXX_ENABLE_RTTI)
+    add_definitions(-D_LIBCPP_NO_RTTI)
+    add_compile_flags(-GR-)
+    add_compile_flags(-fno-rtti)
+  endif()
+
+else()  # NOT XSTG
+
 # Required flags ==============================================================
 add_compile_flags_if_supported(-std=c++11)
 if (NOT MSVC AND NOT LIBCXX_SUPPORTS_STD_EQ_CXX11_FLAG)
@@ -304,7 +346,6 @@ endif()
 # Thus, we do nothing and hope we don't accidentally include any of the C++
 # headers
 add_compile_flags_if_supported(-nostdinc++)
-
 
 # Warning flags ===============================================================
 add_definitions(-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -345,6 +386,8 @@ if (NOT LIBCXX_ENABLE_RTTI)
   add_compile_flags_if_supported(-GR-)
   add_compile_flags_if_supported(-fno-rtti)
 endif()
+
+endif() # NOT XSTG
 
 # Assertion flags =============================================================
 define_if(LIBCXX_ENABLE_ASSERTIONS -UNDEBUG)

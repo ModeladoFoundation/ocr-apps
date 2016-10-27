@@ -395,7 +395,7 @@ public:
     // Same type as Newlib's _ctype_ array in newlib/libc/include/ctype.h.
     typedef char mask;
     static const mask space  = _S;
-    static const mask print  = _P | _U | _L | _N | _B;
+    static const mask print  = (const char)(_P | _U | _L | _N | _B);
     static const mask cntrl  = _C;
     static const mask upper  = _U;
     static const mask lower  = _L;

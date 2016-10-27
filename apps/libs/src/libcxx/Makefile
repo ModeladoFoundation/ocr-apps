@@ -18,15 +18,21 @@
 #	that same variable to your environment (properly exported).
 #
 # Xstack install:
-#	Similarly, the location of the apps library install root
-#	(defaulting to apps/apps/libs/install/<arch>) can be overridden by
-#	use of the APPS_LIBS_INSTALL variable.
+#	This build does not use the installed C++ headers, but references
+#	only its own files libcxx/include directly. However, it does require
+#	that the newlib include files have been installed under APPS_INSTALL.
+#	The location of the apps library install root (defaulting to
+#	apps/apps/libs/install/<arch>) can be overridden by
+#	use of the APPS_INSTALL variable.
 #
 TG_ROOT ?= $(realpath $(CURDIR)/../../../../../tg/tg)
 TG_INSTALL ?= $(TG_ROOT)/install
 APPS_ROOT ?= $(realpath $(CURDIR)/../../..)
-APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
-APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
+APPS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
+APPS_INSTALL ?= $(APPS_INSTALL_ROOT)/$(ARCH)
+APPS_INCLUDE ?= $(APPS_INSTALL)/include
+
+LLVM_CONFIG = $(TG_ROOT)/build/build.xe-llvm/build_llvm/bin/llvm-config
 
 #
 # Supported ARCH values
@@ -65,14 +71,16 @@ CMAKE_ARGS =  -DLIBCXX_TARGET=$(CXX_TARGET) \
 			  -DLIBCXX_CXX_ABI_INCLUDE_PATHS=$(LIBCXXABI_INC) \
 			  -DLIT_EXECUTABLE=$(TG_INSTALL)/llvm-lit \
 			  -DCMAKE_BINARY_DIR=$(TG_INSTALL) \
-			  -DCMAKE_INSTALL_PREFIX=$(APPS_LIBS_INSTALL) \
+			  -DCMAKE_INSTALL_PREFIX=$(APPS_INSTALL) \
 			  -DCMAKE_C_COMPILER=$(CC) \
 			  -DCMAKE_C_COMPILER_FORCED=TRUE \
 			  -DCMAKE_CXX_COMPILER=$(CXX) \
 			  -DCMAKE_CXX_COMPILER_FORCED=TRUE \
 			  -DLIBCXX_ENABLE_THREADS=FALSE \
 			  -DLIBCXX_ENABLE_SHARED=FALSE \
-			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)"
+			  -DLIBCXX_ENABLE_FILESYSTEM=FALSE \
+			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)" \
+			  -DLLVM_CONFIG="$(LLVM_CONFIG)"
 
 #
 # XE Clang/llvm build
@@ -84,7 +92,8 @@ ifeq ($(ARCH), tg-xe)
   CXX_TARGET = XSTG
   CFLAGS += -D_LIBCPP_HAS_LONG_DOUBLE
   BTYPE = -static
-  export APPS_LIBS_INSTALL
+  COMPILE_FLAGS += -I$(APPS_INCLUDE)
+  # export APPS_LIBS_INSTALL
 endif
 
 ifdef PIE
@@ -104,7 +113,8 @@ ifeq ($(ARCH), x86-test)
   TARGET = x86_64-linux-elf
   CXX_TARGET = x86_64
   COMPILE_FLAGS += -fno-use-cxa-atexit
-  export APPS_LIBS_INSTALL
+  COMPILE_FLAGS += -I$(APPS_INCLUDE)
+  #export APPS_LIBS_INSTALL
 endif
 
 #
@@ -120,7 +130,7 @@ ifeq ($(ARCH), x86)
   CXX_TARGET = x86_64
   COMPILE_FLAGS =  -std=c++11 -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
   COMPILE_FLAGS += -fno-stack-protector -fno-use-cxa-atexit
-  COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include
+  COMPILE_FLAGS += -isystem $(APPS_INSTALL)/include
 endif
 
 ##########################
@@ -149,8 +159,8 @@ $(X86_ARCHES): show_args
 
 install: build
 	@echo "Installing $(LIB) and C++ includes"
-	@cp -u $(BUILD_DIR)/lib/libc++.a $(APPS_LIBS_INSTALL)/lib/$(LIB)
-	@INCS="$(APPS_LIBS_INSTALL)/include" ; \
+	@cp -u $(BUILD_DIR)/lib/libc++.a $(APPS_INSTALL)/lib/$(LIB)
+	@INCS="$(APPS_INSTALL)/include" ; \
 	 if [ ! -d $$INCS/c++ ] ; then \
 	  cp -R -u $(BUILD_DIR)/include/c++ $$INCS ; \
 	  cp -u $(BUILD_DIR)/include/*.h $$INCS/c++/v1 ; \
@@ -160,7 +170,7 @@ build: config
 	@echo "Building $(LIB)"
 	@$(MAKE) -C $(BUILD_DIR)
 
-config:
+config: show_args
 	@mkdir -p $(BUILD_DIR)
 	@(cd $(BUILD_DIR) ; cmake $(CMAKE_ARGS) $(LIBCXX_SRC) )
 
@@ -168,8 +178,7 @@ show_args:
 	@echo TG_ROOT= $(TG_ROOT)
 	@echo TG_INSTALL= $(TG_INSTALL)
 	@echo APPS_ROOT= $(APPS_ROOT)
-	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
-	@echo APPS_LIBS_ROOT $(APPS_LIBS_ROOT)
+	@echo APPS_INSTALL $(APPS_INSTALL)
 
 #
 # Create a new build dir

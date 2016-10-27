@@ -284,6 +284,10 @@
 #define _LIBCPP_ALWAYS_INLINE  __attribute__ ((__visibility__("hidden"), __always_inline__))
 #endif
 
+#if defined(__XSTACK__)
+#define _LIBCPP_HAS_NO_THREADS
+#endif
+
 #if defined(__clang__)
 
 // _LIBCPP_ALTERNATE_STRING_LAYOUT is an old name for

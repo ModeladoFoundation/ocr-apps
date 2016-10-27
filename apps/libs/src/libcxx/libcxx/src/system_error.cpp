@@ -62,7 +62,7 @@ constexpr size_t strerror_buff_size = 1024;
 
 string do_strerror_r(int ev);
 
-#if defined(__linux__) && !defined(_LIBCPP_HAS_MUSL_LIBC)                      \
+#if defined(__XSTACK__) || defined(__linux__) && !defined(_LIBCPP_HAS_MUSL_LIBC)                      \
     && (!defined(__ANDROID__) || __ANDROID_API__ >= 23)
 // GNU Extended version
 string do_strerror_r(int ev) {
