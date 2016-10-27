@@ -16,6 +16,7 @@
 
 /* ---------------------- Operating system recognition ------------------- */
 
+#define KMP_OS_XSTG     0
 #define KMP_OS_LINUX    0
 #define KMP_OS_FREEBSD  0
 #define KMP_OS_NETBSD   0
@@ -60,7 +61,12 @@
 # define KMP_OS_CNK 1
 #endif
 
-#if (1 != KMP_OS_LINUX + KMP_OS_FREEBSD + KMP_OS_NETBSD + KMP_OS_DARWIN + KMP_OS_WINDOWS)
+#if ( defined __XSTG__ )
+# undef KMP_OS_XSTG
+# define KMP_OS_XSTG 1
+#endif
+
+#if (1 != KMP_OS_LINUX + KMP_OS_FREEBSD + KMP_OS_NETBSD + KMP_OS_DARWIN + KMP_OS_WINDOWS + KMP_OS_XSTG)
 # error Unknown OS
 #endif
 
@@ -71,6 +77,7 @@
 
 /* ---------------------- Architecture recognition ------------------- */
 
+#define KMP_ARCH_XSTG       0
 #define KMP_ARCH_X86        0
 #define KMP_ARCH_X86_64     0
 #define KMP_ARCH_AARCH64    0
@@ -160,11 +167,16 @@
 # define KMP_MIC2 0
 #endif
 
+#if defined(__XSTG__)
+# undef KMP_ARCH_XSTG
+# define KMP_ARCH_XSTG 1
+#endif
+
 /* Specify 32 bit architectures here */
 #define KMP_32_BIT_ARCH (KMP_ARCH_X86 || KMP_ARCH_ARM)
 
 // TODO: Fixme - This is clever, but really fugly
-#if (1 != KMP_ARCH_X86 + KMP_ARCH_X86_64 + KMP_ARCH_ARM + KMP_ARCH_PPC64 + KMP_ARCH_AARCH64)
+#if (1 != KMP_ARCH_X86 + KMP_ARCH_X86_64 + KMP_ARCH_ARM + KMP_ARCH_PPC64 + KMP_ARCH_AARCH64 + KMP_ARCH_XSTG)
 # error Unknown or unsupported architecture
 #endif
 

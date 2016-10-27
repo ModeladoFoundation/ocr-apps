@@ -81,7 +81,7 @@ else() # Part of LLVM build
   set(LIBOMP_ENABLE_ASSERTIONS ${LLVM_ENABLE_ASSERTIONS})
   set(LIBOMP_ENABLE_WERROR ${LLVM_ENABLE_WERROR})
 endif()
-libomp_check_variable(LIBOMP_ARCH 32e x86_64 32 i386 arm ppc64 ppc64le aarch64 mic)
+libomp_check_variable(LIBOMP_ARCH 32e x86_64 32 i386 arm ppc64 ppc64le aarch64 mic xstg)
 
 set(LIBOMP_LIB_TYPE normal CACHE STRING
   "Performance,Profiling,Stubs library (normal/profile/stubs)")
@@ -170,6 +170,7 @@ set(PPC64BE FALSE)
 set(PPC64LE FALSE)
 set(PPC64 FALSE)
 set(MIC FALSE)
+set(XSTG FALSE)
 if("${LIBOMP_ARCH}" STREQUAL "i386" OR "${LIBOMP_ARCH}" STREQUAL "32")    # IA-32 architecture
   set(IA32 TRUE)
 elseif("${LIBOMP_ARCH}" STREQUAL "x86_64" OR "${LIBOMP_ARCH}" STREQUAL "32e") # Intel(R) 64 architecture
@@ -186,6 +187,8 @@ elseif("${LIBOMP_ARCH}" STREQUAL "aarch64") # AARCH64 architecture
   set(AARCH64 TRUE)
 elseif("${LIBOMP_ARCH}" STREQUAL "mic") # Intel(R) Many Integrated Core Architecture
   set(MIC TRUE)
+elseif("${LIBOMP_ARCH}" STREQUAL "xstg") # Traleika Glacier
+  set(XSTG TRUE)
 endif()
 
 # Set some flags based on build_type

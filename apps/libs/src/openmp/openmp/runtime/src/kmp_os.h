@@ -147,9 +147,24 @@
 # define KMP_UINT64_SPEC     "llu"
 #endif /* KMP_OS_UNIX */
 
+#if KMP_OS_XSTG
+  typedef char               kmp_int8;
+  typedef unsigned char      kmp_uint8;
+  typedef short              kmp_int16;
+  typedef unsigned short     kmp_uint16;
+  typedef int                kmp_int32;
+  typedef unsigned int       kmp_uint32;
+  typedef long long          kmp_int64;
+  typedef unsigned long long kmp_uint64;
+# define KMP_INT32_SPEC      "d"
+# define KMP_UINT32_SPEC     "u"
+# define KMP_INT64_SPEC	     "lld"
+# define KMP_UINT64_SPEC     "llu"
+#endif
+
 #if KMP_ARCH_X86 || KMP_ARCH_ARM
 # define KMP_SIZE_T_SPEC KMP_UINT32_SPEC
-#elif KMP_ARCH_X86_64 || KMP_ARCH_PPC64 || KMP_ARCH_AARCH64
+#elif KMP_ARCH_X86_64 || KMP_ARCH_PPC64 || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG
 # define KMP_SIZE_T_SPEC KMP_UINT64_SPEC
 #else
 # error "Can't determine size_t printf format specifier."
