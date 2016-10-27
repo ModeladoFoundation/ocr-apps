@@ -18,15 +18,19 @@
 #	that same variable to your environment (properly exported).
 #
 # Xstack install:
+#	This build does not use the installed C++ headers, but references
+#	the files in ../libcxx directly. However, it does require that the
+#	newlib include files have been installed under APPS_INSTALL.
 #	Similarly, the location of the apps library install root
 #	(defaulting to apps/apps/libs/install/<arch>) can be overridden by
-#	use of the APPS_LIBS_INSTALL variable.
+#	use of the APPS_INSTALL variable.
 #
 TG_ROOT ?= $(realpath $(CURDIR)/../../../../../tg/tg)
 TG_INSTALL ?= $(TG_ROOT)/install
 APPS_ROOT ?= $(realpath $(CURDIR)/../../..)
-APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
-APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
+APPS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
+APPS_INSTALL ?= $(APPS_INSTALL_ROOT)/$(ARCH)
+APPS_INCLUDE ?= $(APPS_INSTALL)/include
 
 #
 # Supported ARCH values
@@ -54,9 +58,9 @@ LIBUNWIND_INC = $(LIBUNWIND_SRC)/include
 
 LIBCXX_SRC = $(realpath ../libcxx/libcxx)
 LIBCXX_INC = $(LIBCXX_SRC)/include
-LIBCXX_LIB = $(APPS_LIBS_INSTALL)/lib
+LIBCXX_LIB = $(APPS_INSTALL)/lib
 
-LLVM_SRC = $(TG_ROOT)/xe-llvm
+LLVM_CONFIG = $(TG_ROOT)/build/build.xe-llvm/build_llvm/bin/llvm-config
 
 BUILD_PREF = build-
 BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
@@ -70,16 +74,14 @@ endif
 # communicate the apps install root to clang
 #
 
-LINK_FLAGS = $(APPS_LIBS_INSTALL)/lib/libc++.a
+LINK_FLAGS = $(APPS_INSTALL)/lib/libc++.a
 
 CMAKE_ARGS =  -DLIBCXXABI_TARGET=$(CXXABI_TARGET) \
 			  -DLIBCXXABI_LIBCXX_INCLUDES=$(LIBCXX_INC) \
 			  -DLIBCXXABI_LIBCXX_PATH=$(LIBCXX_SRC) \
 			  -DLIBCXXABI_LIBUNWIND_SOURCES=$(LIBUNWIND_SRC) \
 			  -DLIBCXXABI_LIBUNWIND_INCLUDES_INTERNAL=$(LIBUNWIND_INC) \
-			  -DLLVM_PATH=$(LLVM_SRC) \
-			  -DLLVM_MAIN_SRC_DIR=$(LLVM_SRC) \
-			  -DCMAKE_INSTALL_PREFIX=$(APPS_LIBS_INSTALL) \
+			  -DCMAKE_INSTALL_PREFIX=$(APPS_INSTALL) \
 			  -DCMAKE_C_COMPILER=$(CC) \
 			  -DCMAKE_C_COMPILER_FORCED=TRUE \
 			  -DCMAKE_CXX_COMPILER=$(CXX) \
@@ -89,7 +91,8 @@ CMAKE_ARGS =  -DLIBCXXABI_TARGET=$(CXXABI_TARGET) \
 			  -DLIBCXXABI_LINK_FLAGS="$(LINK_FLAGS)" \
 			  -DLIBCXXABI_COMPILE_FLAGS="$(COMPILE_FLAGS)" \
 			  -DLIBCXXABI_USE_LLVM_UNWINDER=TRUE \
-			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)"
+			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)" \
+			  -DLLVM_CONFIG=$(LLVM_CONFIG)
 
 #
 # XE Clang/llvm build
@@ -100,7 +103,8 @@ ifeq ($(ARCH), tg-xe)
   TARGET = xstg-linux-elf
   CXXABI_TARGET = XSTG
   BTYPE = -static
-  export APPS_LIBS_INSTALL
+  COMPILE_FLAGS += -I$(APPS_INCLUDE)
+  # export APPS_LIBS_INSTALL
 endif
 
 ifdef PIE
@@ -119,7 +123,7 @@ ifeq ($(ARCH), x86-test)
   CXX = $(TG_INSTALL)/bin/clang++
   TARGET = x86_64-linux-elf
   CXXABI_TARGET = x86_64
-  export APPS_LIBS_INSTALL
+  #export APPS_LIBS_INSTALL
 endif
 #
 # This defines a native/platform GCC build
@@ -134,7 +138,7 @@ ifeq ($(ARCH), x86)
   CXXABI_TARGET = x86_64
   COMPILE_FLAGS = -std=c++11 -U__STRICT_ANSI__ -D__LITTLE_ENDIAN__
   COMPILE_FLAGS += -fno-stack-protector
-  COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include
+  COMPILE_FLAGS += -isystem $(APPS_INSTALL)/include
 endif
 
 ##########################
@@ -163,7 +167,7 @@ $(X86_ARCHES): show_args
 
 install: build
 	@echo "Installing $(LIB)"
-	@cp -u $(BUILD_DIR)/lib/libc++abi.a $(APPS_LIBS_INSTALL)/lib/$(LIB)
+	@cp -u $(BUILD_DIR)/lib/libc++abi.a $(APPS_INSTALL)/lib/$(LIB)
 
 build: config
 	@echo "Building $(LIB)"
@@ -177,7 +181,7 @@ show_args :
 	@echo TG_ROOT= $(TG_ROOT)
 	@echo TG_INSTALL= $(TG_INSTALL)
 	@echo APPS_ROOT= $(APPS_ROOT)
-	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
+	@echo APPS_INSTALL $(APPS_INSTALL)
 
 #
 # Create a new build dir

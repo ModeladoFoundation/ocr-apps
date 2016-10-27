@@ -444,7 +444,7 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     }
     return true;
 }
-#else
+#else // !LIBCXXABI_ARM_EHABI
 static
 bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
@@ -478,7 +478,7 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     }
     return true;
 }
-#endif
+#endif // !LIBCXXABI_ARM_EHABI
 
 static
 void*
@@ -1017,7 +1017,7 @@ __gxx_personality_v0
     // We were called improperly: neither a phase 1 or phase 2 search
     return _URC_FATAL_PHASE1_ERROR;
 }
-#else
+#else // LIBCXXABI_ARM_EHABI
 
 extern "C" _Unwind_Reason_Code __gnu_unwind_frame(_Unwind_Exception*,
                                                   _Unwind_Context*);
@@ -1162,7 +1162,7 @@ __gxx_personality_v0(_Unwind_State state,
     // We were called improperly: neither a phase 1 or phase 2 search
     return _URC_FATAL_PHASE1_ERROR;
 }
-#endif
+#endif // LIBCXXABI_ARM_EHABI
 
 
 __attribute__((noreturn))
