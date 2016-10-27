@@ -2,8 +2,9 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include <ocr.h>
 #include "memory/lazy.h"
+
+#include <ocr.h>
 
 namespace ocr {
 

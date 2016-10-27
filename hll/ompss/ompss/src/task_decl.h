@@ -7,6 +7,7 @@
 #include "event.h"
 #include "map.h"
 #include "memory/lazy.h"
+#include "taskwait.h"
 
 #include <nanos6_rt_interface.h>
 
@@ -61,7 +62,7 @@ struct TaskScopeInfo {
     typedef std::aligned_storage<sizeof(Task),alignof(Task)>::type UninitializedTask;
     typedef std::aligned_storage<64U,64U>::type Scratchpad;
 
-    mem::Lazy<ocr::LatchEvent> taskwaitEvent;
+    TaskwaitEvent              taskwait;
     DependenceMap              accesses;
     TaskFlags                  flags;
     UninitializedTask          taskMemory;
