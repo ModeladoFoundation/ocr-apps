@@ -72,6 +72,12 @@ public:
         initialize( std::forward(args)... );
     }
 
+    // Treat managed object as if it wasn't
+    // initialized
+    void release() {
+        _initialized = false;
+    }
+
     void erase() {
         if( initialized() ) {
             value()->~T();
