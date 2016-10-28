@@ -3,7 +3,10 @@ s
 hello
 iotest
 chello
+iotest
 cxxhello
 hello_world
-g2l
-g2l.o
+pthread_cancel
+pthread_detach
+pthread_mutex_recursive
+pthread_simple

@@ -17,7 +17,7 @@
 #		ARCH       - Architecture to build for. Required, no default.
 #					 Used to determine compiler/toolchain to use and
 #					 CPU arch to compile for. Also used to generate
-#				     build product directory name.
+#					 build product directory name.
 #		USE_TGR    - Whether or not to build newlib to use the tg runtime as its
 #					 backend. Defaults to no (use OCR instead). Set to
 #					 yes to make it build for tg runtime
@@ -74,12 +74,12 @@ NEWLIB   = $(NEWLIB_INSTALL)/lib/libc.a
 CFLAGS = -Os -mstackrealign -fno-stack-protector -I$(NEWLIB_SRCDIR)/newlib/libc/include $(DEFINES)
 CONFIG_ARGS = --target=$(TARGET) --prefix=$(NEWLIB_TMPROOT) --with-newlib
 
+#
 # XE Clang/llvm build
 #
 ifeq ($(ARCH), tg-xe)
   CC = clang
   CXX = clang++
-  CFLAGS_FOR_TARGET = -mllvm -set-global-default=1
   CONFIG_ARGS += --enable-libgloss=no
   TARGET = xstg-linux-elf
   TOOLBIN = $(TG_INSTALL)/bin
@@ -242,6 +242,6 @@ uninstall: # Doesn't actually do anything.
 
 clean:
 	@-if test -d $(NEWLIB_BUILD) ; then          \
-	    rm -rf $(BUILD_PREF)$(ARCH)*; \
-		rm -rf $(NEWLIB_BUILD)/$(TMP_PREF)$(ARCH)* ; \
+	    rm -rf $(BUILD_PREF)$(SYS)-$(ARCH)*; \
+	    rm -rf $(NEWLIB_BUILD)/$(TMP_PREF)$(SYS)-$(ARCH)* ; \
 	 fi

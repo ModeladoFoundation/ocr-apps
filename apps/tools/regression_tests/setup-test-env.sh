@@ -31,11 +31,18 @@ export APPS_ROOT=$(clean_path "$TG_INSTALL/../../../apps/apps")
 
 export LOGS_DIR=${LOGS_DIR:-$(pwd)/logs}
 
-#TODO: test this with a symlink
 if [[ -e $LOGS_DIR ]]; then
   if [[ ! -d $LOGS_DIR ]]; then
     echo "Logs directory '$LOGS_DIR' exists and is not a directory." 1>&2
     echo "Cowardly refusing to delete." 1>&2
+    exit 1
+  fi
+
+  # Check if the logs directory contains non-log files.
+  if find $LOGS_DIR -exec basename {} \; | grep -q -v "log\|out\|err\|cfg"; then
+    echo "Logs directory '$LOGS_DIR' exists and appears to contain non-log files." 1>&2
+    echo "Cowardly refusing to delete." 1>&2
+    echo "If you wish to use this directory, please remove the files it contains first." 1>&2
     exit 1
   fi
 else

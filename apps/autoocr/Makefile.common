@@ -17,7 +17,7 @@ export APPS_ROOT ?= $(realpath $(CURDIR)/../..)
 export OCR_ROOT ?= $(realpath $(CURDIR)/../../../../ocr/ocr)
 export TG_ROOT ?= $(realpath $(CURDIR)/../../../../tg/tg)
 
-CLANG_LIB_INC = $(LLVM_BUILD)/lib/clang/3.6.0/include
+CLANG_LIB_INC = $(LLVM_BUILD)/lib/clang/3.9.0/include
 LLVM_SRC = $(TG_ROOT)/xe-llvm
 LLVM_BUILD = $(TG_ROOT)/build/build.xe-llvm/build_llvm
 

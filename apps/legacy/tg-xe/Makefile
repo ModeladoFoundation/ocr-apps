@@ -22,12 +22,13 @@ LD = $(TOOL_PREFIX)ld
 
 # Libraries to include from newlib
 NL_CRT = $(LIBS)/crt0t.o
-NL_LIBS = $(LIBS)/libpthread.a $(LIBS)/libc.a $(LIBS)/libm.a
+NL_LIBS = $(LIBS)/libc.a $(LIBS)/libm.a
 CPP_LIBS = $(LIBS)/libc++.a $(LIBS)/libc++abi.a $(LIBS)/libunwind.a
 NL_CRTEND = $(LIBS)/crtend.o
 
 ifeq ($(USE_TGR), yes)
 # Use this if newlib is compiled for tgr instead of ocr.
+PTHREAD_LIB = $(LIBS)/libpthread.a
 OCR_LIB = $(LIBS)/libtgr-xe.a
 else
 # Other library - this uses the libscaffold.a, but it
@@ -58,15 +59,15 @@ all: $(APPS)
 default: all
 
 %: %.o %.c
-	@$(LD) -o $@ -T $(LIBS)/elf64_xstg.t $(NL_CRT) $@.o $(NL_LIBS) $(OCR_LIB) $(C_LIBS) $(NL_CRTEND)
+	@$(LD) -o $@ -T $(LIBS)/elf64_xstg.t $(NL_CRT) $@.o $(PTHREAD_LIB) $(NL_LIBS) $(OCR_LIB) $(C_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
 %: %.o %.cpp
-	@$(LD) -o $@ -T elf64_xstg.t $(NL_CRT) $@.o $(CPP_LIBS) $(NL_LIBS) $(OCR_LIB) $(CXX_LIBS) $(NL_CRTEND)
+	@$(LD) -o $@ -T elf64_xstg.t $(NL_CRT) $@.o $(CPP_LIBS) $(PTHREAD_LIB) $(NL_LIBS) $(OCR_LIB) $(CXX_LIBS) $(NL_CRTEND)
 	@echo Successfully built $@
 
 %.o: %.c
-	@$(CC) -c $(CFLAGS) $< -o $@ -mllvm -set-global-default=1
+	@$(CC) -c $(CFLAGS) $< -o $@
 
 %.o: %.cpp
 	@$(CXX) -c $(CXXFLAGS) $< -o $@
