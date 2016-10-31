@@ -285,7 +285,9 @@
 #endif
 
 #if defined(__XSTACK__)
-#define _LIBCPP_HAS_NO_THREADS
+#define _LIBCPP_HAS_THREAD_API_PTHREAD
+//#define _LIBCPP_HAS_NO_THREADS
+#define _UNIX98_THREAD_MUTEX_ATTRIBUTES
 #endif
 
 #if defined(__clang__)
