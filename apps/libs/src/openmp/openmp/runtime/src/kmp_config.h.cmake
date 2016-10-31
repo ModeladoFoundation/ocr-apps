@@ -1,21 +1,21 @@
 /*
  * kmp_config.h -- Feature macros
  */
-//===----------------------------------------------------------------------===//
-//
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.txt for details.
-//
-//===----------------------------------------------------------------------===//
+/*===----------------------------------------------------------------------===**
+**
+**                     The LLVM Compiler Infrastructure
+**
+** This file is dual licensed under the MIT and the University of Illinois Open
+** Source Licenses. See LICENSE.txt for details.
+**
+**===----------------------------------------------------------------------===*/
 #ifndef KMP_CONFIG_H
 #define KMP_CONFIG_H
 
 #include "kmp_platform.h"
 
-// cmakedefine01 MACRO will define MACRO as either 0 or 1
-// cmakedefine MACRO 1 will define MACRO as 1 or leave undefined
+/* cmakedefine01 MACRO will define MACRO as either 0 or 1 */
+/* cmakedefine MACRO 1 will define MACRO as 1 or leave undefined */
 #cmakedefine01 DEBUG_BUILD
 #cmakedefine01 RELWITHDEBINFO_BUILD
 #cmakedefine01 LIBOMP_USE_ITT_NOTIFY
@@ -69,7 +69,7 @@
 #define OMP_40_ENABLED (LIBOMP_OMP_VERSION >= 40)
 #define OMP_30_ENABLED (LIBOMP_OMP_VERSION >= 30)
 
-// Configured cache line based on architecture
+/* Configured cache line based on architecture */
 #if KMP_ARCH_PPC64
 # define CACHE_LINE 128
 #else
@@ -87,7 +87,7 @@
 #define KMP_ASM_INTRINS 1
 #define USE_ITT_BUILD LIBOMP_USE_ITT_NOTIFY
 #define INTEL_ITTNOTIFY_PREFIX __kmp_itt_
-#if ! KMP_MIC
+#if ! (KMP_MIC || KMP_OS_XSTG)
 # define USE_LOAD_BALANCE 1
 #endif
 #if ! (KMP_OS_WINDOWS || KMP_OS_DARWIN)
@@ -107,4 +107,4 @@
 # define KMP_GOMP_COMPAT
 #endif
 
-#endif // KMP_CONFIG_H
+#endif /* KMP_CONFIG_H */

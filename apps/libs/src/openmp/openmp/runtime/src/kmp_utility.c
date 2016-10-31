@@ -19,6 +19,9 @@
 #include <float.h>
 #include "kmp_i18n.h"
 
+// XXX until it gets added to newlib / scaffold /libswtest
+extern int gethostname(char *name, size_t namelen );
+
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
 

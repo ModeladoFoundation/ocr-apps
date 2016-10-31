@@ -31,7 +31,9 @@
 #include <sys/time.h>
 #include <sys/times.h>
 #include <sys/resource.h>
+#if !KMP_OS_XSTG
 #include <sys/syscall.h>
+#endif
 
 #if KMP_OS_LINUX && !KMP_OS_CNK
 # include <sys/sysinfo.h>
@@ -55,7 +57,23 @@
 # include <pthread_np.h>
 #endif
 
+//
+// XXX Defined until we get them into pthreads.h and sys/time.h
+//
+#if KMP_OS_XSTG
+extern int sched_yield(void);
+extern int pthread_kill(pthread_t t, int s);
+
+# define TIMEVAL_TO_TIMESPEC(tv, ts) {                                   \
+       (ts)->tv_sec = (tv)->tv_sec;                                    \
+       (ts)->tv_nsec = (tv)->tv_usec * 1000;                           \
+}
+#endif
+
+#if !KMP_OS_XSTG
 #include <dirent.h>
+#endif
+
 #include <ctype.h>
 #include <fcntl.h>
 
@@ -1938,6 +1956,9 @@ __kmp_read_system_info( struct kmp_sys_info *info )
     struct rusage r_usage;
 
     memset( info, 0, sizeof( *info ) );
+#if KMP_OS_XSTG
+    return 0;
+#else
 
     status = getrusage( RUSAGE_SELF, &r_usage);
     KMP_CHECK_SYSFAIL_ERRNO( "getrusage", status );
@@ -1952,6 +1973,7 @@ __kmp_read_system_info( struct kmp_sys_info *info )
     info->nivcsw  = r_usage.ru_nivcsw;  /* the number of times a context switch was forced           */
 
     return (status != 0);
+#endif
 }
 
 /* ------------------------------------------------------------------------ */
@@ -2018,7 +2040,10 @@ __kmp_get_xproc( void ) {
 
     int r = 0;
 
-    #if KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD
+    #if KMP_OS_XSTG
+        return 8;
+
+    #elif KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD
 
         r = sysconf( _SC_NPROCESSORS_ONLN );
 
@@ -2224,7 +2249,10 @@ __kmp_is_address_mapped( void * addr ) {
     int found = 0;
     int rc;
 
-    #if KMP_OS_LINUX || KMP_OS_FREEBSD
+    #if KMP_OS_XSTG
+        return 0;
+
+    #elif KMP_OS_LINUX || KMP_OS_FREEBSD
 
         /*
             On Linux* OS, read the /proc/<pid>/maps pseudo-file to get all the address ranges mapped

@@ -277,7 +277,7 @@ extern "C" {
 
 /* Temporary note: if performance testing of this passes, we can remove
    all references to KMP_DO_ALIGN and replace with KMP_ALIGN.  */
-#if KMP_OS_UNIX && defined(__GNUC__)
+#if (KMP_OS_UNIX || KMP_OS_XSTG) && defined(__GNUC__)
 # define KMP_DO_ALIGN(bytes)  __attribute__((aligned(bytes)))
 # define KMP_ALIGN_CACHE      __attribute__((aligned(CACHE_LINE)))
 # define KMP_ALIGN_CACHE_INTERNODE __attribute__((aligned(INTERNODE_CACHE_LINE)))
@@ -413,8 +413,9 @@ extern kmp_real64 __kmp_xchg_real64( volatile kmp_real64 *p, kmp_real64 v );
 //# define KMP_XCHG_REAL32(p, v)                  __kmp_xchg_real32( (p), (v) );
 # define KMP_XCHG_REAL64(p, v)                  __kmp_xchg_real64( (p), (v) );
 
+// Done with KMP_OS_WINDOWS
 
-#elif (KMP_ASM_INTRINS && KMP_OS_UNIX) || !(KMP_ARCH_X86 || KMP_ARCH_X86_64)
+#elif (KMP_ASM_INTRINS && KMP_OS_UNIX) || !(KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_XSTG)
 # define KMP_TEST_THEN_ADD8(p, v)               __sync_fetch_and_add( (kmp_int8 *)(p), (v) )
 
 /* cast p to correct type so that proper intrinsic will be used */
@@ -474,8 +475,69 @@ inline kmp_real64 KMP_XCHG_REAL64( volatile kmp_real64 *p, kmp_real64 v)
     kmp_int64 tmp = __sync_lock_test_and_set( (kmp_int64*)p, *(kmp_int64*)&v);
     return *(kmp_real64*)&tmp;
 }
+#elif KMP_OS_XSTG
+# define KMP_TEST_THEN_ADD8(p, v)               __sync_fetch_and_add( (kmp_int8 *)(p), (v) )
 
-#else
+/* cast p to correct type so that proper intrinsic will be used */
+# define KMP_TEST_THEN_INC32(p)                 __sync_fetch_and_add( (kmp_int32 *)(p), 1 )
+# define KMP_TEST_THEN_OR8(p, v)                __sync_fetch_and_or( (kmp_int8 *)(p), (v) )
+# define KMP_TEST_THEN_AND8(p, v)               __sync_fetch_and_and( (kmp_int8 *)(p), (v) )
+# define KMP_TEST_THEN_INC_ACQ32(p)             __sync_fetch_and_add( (kmp_int32 *)(p), 1 )
+# define KMP_TEST_THEN_INC64(p)                 __sync_fetch_and_add( (kmp_int64 *)(p), 1LL )
+# define KMP_TEST_THEN_INC_ACQ64(p)             __sync_fetch_and_add( (kmp_int64 *)(p), 1LL )
+# define KMP_TEST_THEN_ADD4_32(p)               __sync_fetch_and_add( (kmp_int32 *)(p), 4 )
+# define KMP_TEST_THEN_ADD4_ACQ32(p)            __sync_fetch_and_add( (kmp_int32 *)(p), 4 )
+# define KMP_TEST_THEN_ADD4_64(p)               __sync_fetch_and_add( (kmp_int64 *)(p), 4LL )
+# define KMP_TEST_THEN_ADD4_ACQ64(p)            __sync_fetch_and_add( (kmp_int64 *)(p), 4LL )
+# define KMP_TEST_THEN_DEC32(p)                 __sync_fetch_and_add( (kmp_int32 *)(p), -1 )
+# define KMP_TEST_THEN_DEC_ACQ32(p)             __sync_fetch_and_add( (kmp_int32 *)(p), -1 )
+# define KMP_TEST_THEN_DEC64(p)                 __sync_fetch_and_add( (kmp_int64 *)(p), -1LL )
+# define KMP_TEST_THEN_DEC_ACQ64(p)             __sync_fetch_and_add( (kmp_int64 *)(p), -1LL )
+# define KMP_TEST_THEN_ADD32(p, v)              __sync_fetch_and_add( (kmp_int32 *)(p), (v) )
+# define KMP_TEST_THEN_ADD64(p, v)              __sync_fetch_and_add( (kmp_int64 *)(p), (v) )
+
+# define KMP_TEST_THEN_OR32(p, v)               __sync_fetch_and_or( (kmp_int32 *)(p), (v) )
+# define KMP_TEST_THEN_AND32(p, v)              __sync_fetch_and_and( (kmp_int32 *)(p), (v) )
+# define KMP_TEST_THEN_OR64(p, v)               __sync_fetch_and_or( (kmp_int64 *)(p), (v) )
+# define KMP_TEST_THEN_AND64(p, v)              __sync_fetch_and_and( (kmp_int64 *)(p), (v) )
+
+# define KMP_COMPARE_AND_STORE_ACQ8(p, cv, sv)  __sync_bool_compare_and_swap( (volatile kmp_uint8 *)(p),(kmp_uint8)(cv),(kmp_uint8)(sv) )
+# define KMP_COMPARE_AND_STORE_REL8(p, cv, sv)  __sync_bool_compare_and_swap( (volatile kmp_uint8 *)(p),(kmp_uint8)(cv),(kmp_uint8)(sv) )
+# define KMP_COMPARE_AND_STORE_ACQ16(p, cv, sv) __sync_bool_compare_and_swap( (volatile kmp_uint16 *)(p),(kmp_uint16)(cv),(kmp_uint16)(sv) )
+# define KMP_COMPARE_AND_STORE_REL16(p, cv, sv) __sync_bool_compare_and_swap( (volatile kmp_uint16 *)(p),(kmp_uint16)(cv),(kmp_uint16)(sv) )
+# define KMP_COMPARE_AND_STORE_ACQ32(p, cv, sv) __sync_bool_compare_and_swap( (volatile kmp_uint32 *)(p),(kmp_uint32)(cv),(kmp_uint32)(sv) )
+# define KMP_COMPARE_AND_STORE_REL32(p, cv, sv) __sync_bool_compare_and_swap( (volatile kmp_uint32 *)(p),(kmp_uint32)(cv),(kmp_uint32)(sv) )
+# define KMP_COMPARE_AND_STORE_ACQ64(p, cv, sv) __sync_bool_compare_and_swap( (volatile kmp_uint64 *)(p),(kmp_uint64)(cv),(kmp_uint64)(sv) )
+# define KMP_COMPARE_AND_STORE_REL64(p, cv, sv) __sync_bool_compare_and_swap( (volatile kmp_uint64 *)(p),(kmp_uint64)(cv),(kmp_uint64)(sv) )
+# define KMP_COMPARE_AND_STORE_PTR(p, cv, sv)   __sync_bool_compare_and_swap( (volatile void **)(p),(void *)(cv),(void *)(sv) )
+
+# define KMP_COMPARE_AND_STORE_RET8(p, cv, sv)  __sync_val_compare_and_swap( (volatile kmp_uint8 *)(p),(kmp_uint8)(cv),(kmp_uint8)(sv) )
+# define KMP_COMPARE_AND_STORE_RET16(p, cv, sv) __sync_val_compare_and_swap( (volatile kmp_uint16 *)(p),(kmp_uint16)(cv),(kmp_uint16)(sv) )
+# define KMP_COMPARE_AND_STORE_RET32(p, cv, sv) __sync_val_compare_and_swap( (volatile kmp_uint32 *)(p),(kmp_uint32)(cv),(kmp_uint32)(sv) )
+# define KMP_COMPARE_AND_STORE_RET64(p, cv, sv) __sync_val_compare_and_swap( (volatile kmp_uint64 *)(p),(kmp_uint64)(cv),(kmp_uint64)(sv) )
+
+#define KMP_XCHG_FIXED8(p, v)                   __sync_lock_test_and_set( (volatile kmp_uint8 *)(p), (kmp_uint8)(v) )
+#define KMP_XCHG_FIXED16(p, v)                  __sync_lock_test_and_set( (volatile kmp_uint16 *)(p), (kmp_uint16)(v) )
+#define KMP_XCHG_FIXED32(p, v)                  __sync_lock_test_and_set( (volatile kmp_uint32 *)(p), (kmp_uint32)(v) )
+#define KMP_XCHG_FIXED64(p, v)                  __sync_lock_test_and_set( (volatile kmp_uint64 *)(p), (kmp_uint64)(v) )
+
+extern kmp_int8 __kmp_test_then_add8( volatile kmp_int8 *p, kmp_int8 v );
+extern kmp_int8 __kmp_test_then_or8( volatile kmp_int8 *p, kmp_int8 v );
+extern kmp_int8 __kmp_test_then_and8( volatile kmp_int8 *p, kmp_int8 v );
+
+inline kmp_real32 KMP_XCHG_REAL32( volatile kmp_real32 *p, kmp_real32 v)
+{
+    kmp_int32 tmp = __sync_lock_test_and_set( (kmp_int32*)p, *(kmp_int32*)&v);
+    return *(kmp_real32*)&tmp;
+}
+
+inline kmp_real64 KMP_XCHG_REAL64( volatile kmp_real64 *p, kmp_real64 v)
+{
+    kmp_int64 tmp = __sync_lock_test_and_set( (kmp_int64*)p, *(kmp_int64*)&v);
+    return *(kmp_real64*)&tmp;
+}
+
+#else   // Not using INTRINSICS
 
 extern kmp_int32 __kmp_test_then_add32( volatile kmp_int32 *p, kmp_int32 v );
 extern kmp_int32 __kmp_test_then_or32( volatile kmp_int32 *p, kmp_int32 v );

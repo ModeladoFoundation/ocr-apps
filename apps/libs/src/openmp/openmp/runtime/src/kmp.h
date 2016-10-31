@@ -97,8 +97,11 @@ class kmp_stats_list;
 
 #define KMP_HANDLE_SIGNALS (KMP_OS_UNIX || KMP_OS_WINDOWS)
 
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
+#error _LIBCPP_HAS_NO_LONG_LONG not defined
+#endif //_LIBCPP_HAS_NO_LONG_LONG
 #include "kmp_wrapper_malloc.h"
-#if KMP_OS_UNIX
+#if KMP_OS_UNIX || KMP_OS_XSTG
 # include <unistd.h>
 # if !defined NSIG && defined _NSIG
 #  define NSIG _NSIG
@@ -510,6 +513,10 @@ typedef int PACKED_REDUCTION_METHOD_T;
 #if KMP_OS_UNIX
 # include <pthread.h>
 # include <dlfcn.h>
+#endif
+
+#if KMP_OS_XSTG
+# include <pthread.h>
 #endif
 
 /* ------------------------------------------------------------------------ */
@@ -1122,7 +1129,7 @@ extern int __kmp_place_num_threads_per_core;
 #elif KMP_OS_CNK
 #  define KMP_INIT_WAIT    16U          /* initial number of spin-tests   */
 #  define KMP_NEXT_WAIT     8U          /* susequent number of spin-tests */
-#elif KMP_OS_LINUX
+#elif KMP_OS_LINUX || KMP_OS_XSTG
 #  define KMP_INIT_WAIT  1024U          /* initial number of spin-tests   */
 #  define KMP_NEXT_WAIT   512U          /* susequent number of spin-tests */
 #elif KMP_OS_DARWIN
@@ -1236,6 +1243,11 @@ struct kmp_region_info {
 #endif /* KMP_OS_WINDOWS */
 
 #if KMP_OS_UNIX
+    typedef pthread_t           kmp_thread_t;
+    typedef pthread_key_t       kmp_key_t;
+#endif
+
+#if KMP_OS_XSTG
     typedef pthread_t           kmp_thread_t;
     typedef pthread_key_t       kmp_key_t;
 #endif
@@ -1908,7 +1920,7 @@ typedef struct kmp_win32_cond
 } kmp_win32_cond_t;
 #endif
 
-#if KMP_OS_UNIX
+#if KMP_OS_UNIX || KMP_OS_XSTG
 
 union KMP_ALIGN_CACHE kmp_cond_union {
     double              c_align;
@@ -2460,7 +2472,7 @@ typedef struct KMP_ALIGN_CACHE kmp_base_info {
     kmp_win32_mutex_t th_suspend_mx;
     int               th_suspend_init;
 #endif
-#if KMP_OS_UNIX
+#if KMP_OS_UNIX || KMP_OS_XSTG
     kmp_cond_align_t  th_suspend_cv;
     kmp_mutex_align_t th_suspend_mx;
     int               th_suspend_init_count;
@@ -3215,7 +3227,7 @@ extern void __kmp_common_initialize( void );
 extern void __kmp_common_destroy( void );
 extern void __kmp_common_destroy_gtid( int gtid );
 
-#if KMP_OS_UNIX
+#if KMP_OS_UNIX || KMP_OS_XSTG
 extern void __kmp_register_atfork( void );
 #endif
 extern void __kmp_suspend_initialize( void );
@@ -3277,7 +3289,7 @@ extern int __kmp_fork_call( ident_t *loc, int gtid, enum fork_context_e fork_con
 #endif
   microtask_t microtask, launch_t invoker,
 /* TODO: revert workaround for Intel(R) 64 tracker #96 */
-#if (KMP_ARCH_ARM || KMP_ARCH_X86_64 || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+#if (KMP_ARCH_ARM || KMP_ARCH_X86_64 || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
                              va_list *ap
 #else
                              va_list ap

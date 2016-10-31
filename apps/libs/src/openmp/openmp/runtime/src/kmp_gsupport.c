@@ -351,7 +351,7 @@ __kmp_GOMP_fork_call(ident_t *loc, int gtid, void (*unwrapped_task)(void *), mic
       VOLATILE_CAST(void *) unwrapped_task,
 #endif
       wrapper, __kmp_invoke_task_func,
-#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
       &ap
 #else
       ap

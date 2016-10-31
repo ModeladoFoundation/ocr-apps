@@ -1,3 +1,5 @@
+.if KMP_OS_XSTG==0
+/* microtasking support for non-XSTG platform */
 //  z_Linux_asm.s:  - microtasking routines specifically
 //                    written for Intel platforms running Linux* OS
 
@@ -1805,3 +1807,4 @@ __kmp_unnamed_critical_addr:
 .section .note.GNU-stack,"",@progbits
 # endif
 #endif
+.endif /* code for non XSTG platform */

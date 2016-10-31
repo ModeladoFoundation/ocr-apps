@@ -61,7 +61,7 @@
 #include "kmp_str.h"   // __kmp_str_*().
 #include "kmp_i18n.h"
 
-#if KMP_OS_UNIX
+#if KMP_OS_UNIX || KMP_OS_XSTG
     #include <stdlib.h>    // getenv, setenv, unsetenv.
     #include <string.h>    // strlen, strcpy.
     #if KMP_OS_DARWIN
@@ -97,7 +97,7 @@ __kmp_env_get( char const * name ) {
 
     char * result = NULL;
 
-    #if KMP_OS_UNIX
+    #if KMP_OS_UNIX || KMP_OS_XSTG
         char const * value = getenv( name );
         if ( value != NULL ) {
             size_t len = KMP_STRLEN( value ) + 1;
@@ -178,7 +178,7 @@ __kmp_env_free( char const * * value ) {
 int
 __kmp_env_exists( char const * name ) {
 
-    #if KMP_OS_UNIX
+    #if KMP_OS_UNIX || KMP_OS_XSTG
         char const * value = getenv( name );
         return ( ( value == NULL ) ? ( 0 ) : ( 1 ) );
     #elif KMP_OS_WINDOWS
@@ -208,7 +208,7 @@ __kmp_env_exists( char const * name ) {
 void
 __kmp_env_set( char const * name, char const * value, int overwrite ) {
 
-    #if KMP_OS_UNIX
+    #if KMP_OS_UNIX || KMP_OS_XSTG
         int rc = setenv( name, value, overwrite );
         if ( rc != 0 ) {
             // Dead code. I tried to put too many variables into Linux* OS
@@ -262,7 +262,7 @@ __kmp_env_set( char const * name, char const * value, int overwrite ) {
 void
 __kmp_env_unset( char const * name ) {
 
-    #if KMP_OS_UNIX
+    #if KMP_OS_UNIX || KMP_OS_XSTG
         unsetenv( name );
     #elif KMP_OS_WINDOWS
         BOOL rc = SetEnvironmentVariable( name, NULL );
@@ -509,7 +509,7 @@ __kmp_env_blk_init(
     if ( bulk != NULL ) {
         ___kmp_env_blk_parse_string( block, bulk );
     } else {
-        #if KMP_OS_UNIX
+        #if KMP_OS_UNIX || KMP_OS_XSTG
             ___kmp_env_blk_parse_unix( block, environ );
         #elif KMP_OS_WINDOWS
             {

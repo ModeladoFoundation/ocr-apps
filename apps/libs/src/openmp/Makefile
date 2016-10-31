@@ -31,8 +31,7 @@ APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/$(ARCH)
 #
 # Supported ARCH values
 #
-X86_ARCHES = x86 x86-test
-ARCHES = tg-xe $(X86_ARCHES)
+ARCHES = tg-xe
 
 ifndef ARCH
 $(error Need to specify ARCH! use one of: $(ARCHES))
@@ -50,7 +49,11 @@ LIB = libomp.a
 BUILD_PREF = build-
 BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
-COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__
+#INC_FLAGS = -I$(APPS_LIBS_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include/sys
+INC_FLAGS = -I$(APPS_LIBS_INSTALL)/include
+#COMPILE_FLAGS = "-D__XSTG__ -std=c++11 --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)"
+#LibompHandleFlags already has defaults including -std=c++11
+COMPILE_FLAGS = "-D__XSTG__ --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)"
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
@@ -59,14 +62,24 @@ endif
 # communicate the apps install root to clang
 #
 
+#-DLIBCXX_ENABLE_THREADS=TRUE
 CMAKE_ARGS = \
 	-DCMAKE_C_COMPILER=$(CC) \
+	-DCMAKE_C_COMPILER_FORCED=TRUE \
 	-DCMAKE_CXX_COMPILER=$(CXX) \
+	-DCMAKE_CXX_COMPILER_FORCED=TRUE \
 	-DLIT_EXECUTABLE=$(TG_INSTALL)/llvm-lit \
 	-DCMAKE_BINARY_DIR=$(TG_INSTALL) \
 	-DCMAKE_INSTALL_PREFIX=$(APPS_LIBS_INSTALL) \
 	-DLIBOMP_ENABLE_SHARED=FALSE \
-	-DLIBOMP_COPY_EXPORTS=FALSE
+	-DLIBOMP_COPY_EXPORTS=FALSE \
+	-DLIBOMP_VERSION=30 \
+	-DLIBOMP_USE_ADAPTIVE_LOCKS=off \
+	-DLIBOMP_USE_HWLOC=off \
+	-DLIBOMP_USE_ITT_NOTIFY=off \
+	-DLIBOMP_OMPT_SUPPORT=off \
+	-DLIBOMP_STATS=off \
+	-D_POSIX_THREADS=TRUE
 
 #
 # XE Clang/llvm build
@@ -77,10 +90,14 @@ ifeq ($(ARCH), tg-xe)
   TARGET = xstg-linux-elf
   CXX_TARGET = XSTG
   BTYPE = -static
-  export APPS_LIBS_INSTALL
+  #COMPILE_FLAGS += -D_LIBCPP_HAS_NO_LONG_LONG
+  CFLAGS = $(COMPILE_FLAGS)
   CMAKE_ARGS += -DLIBOMP_ARCH=xstg \
-	-DCMAKE_C_COMPILER_FORCED=TRUE \
-	-DCMAKE_CXX_COMPILER_FORCED=TRUE
+	-DLIBCXX_HAS_PTHREAD_API=TRUE \
+	-DLIBCXX_ENABLE_THREADS=TRUE \
+	-DLIBOMP_USE_ITT_NOTIFY=0 \
+	-DCOMPILE_FLAGS=$(COMPILE_FLAGS)
+  export APPS_LIBS_INSTALL
 endif
 
 ifdef PIE
@@ -90,33 +107,6 @@ ifdef PIE
   BTYPE = -pie
   COMPILE_FLAGS += -fPIE
   LIB = libomp.p.a
-endif
-#
-# This defines an x86_64 build using the XE compiler
-#
-ifeq ($(ARCH), x86-test)
-  CC = $(TG_INSTALL)/bin/clang
-  CXX = $(TG_INSTALL)/bin/clang++
-  TARGET = x86_64-linux-elf
-  CXX_TARGET = x86_64
-  COMPILE_FLAGS += -fno-use-cxa-atexit
-  export APPS_LIBS_INSTALL
-endif
-
-#
-# This defines a native/platform GCC build
-# C99 is required to get the 'restrict' keyword
-# But C99 turns on strict ansi, which we disable
-# Make sure we get just the default platform build
-#
-ifeq ($(ARCH), x86)
-  CFLAGS += -std=c++11 -U__STRICT_ANSI__
-  CONFIG_ARGS += --enable-multilib=no
-  TARGET = x86_64-linux-gnu
-  CXX_TARGET = x86_64
-  COMPILE_FLAGS =  -std=c++11 -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
-  COMPILE_FLAGS += -fno-stack-protector -fno-use-cxa-atexit
-  COMPILE_FLAGS += -isystem $(APPS_LIBS_INSTALL)/include
 endif
 
 ##########################
@@ -140,9 +130,6 @@ tg-xe-static:
 
 tg-xe: show_args tg-xe-static tg-xe-pie
 
-$(X86_ARCHES): show_args
-	$(MAKE) install
-
 install: build
 	@echo "Installing libomp.a and includes"
 	@mkdir -p $(APPS_LIBS_INSTALL)/lib
@@ -158,6 +145,7 @@ build: config
 
 config:
 	@mkdir -p $(BUILD_DIR)
+	@echo "config: CMAKE_ARGS = " $(CMAKE_ARGS)
 	@(cd $(BUILD_DIR) ; cmake $(CMAKE_ARGS) $(OPENMP_SRC) )
 
 show_args:
@@ -166,16 +154,15 @@ show_args:
 	@echo APPS_ROOT= $(APPS_ROOT)
 	@echo APPS_LIBS_INSTALL $(APPS_LIBS_INSTALL)
 	@echo APPS_LIBS_ROOT $(APPS_LIBS_ROOT)
+	@echo APPS_LIBS_INSTALL_ROOT $(APPS_LIBS_INSTALL_ROOT)
+	@echo TARGET $(TARGET)
 	@echo COMPILE_FLAGS $(COMPILE_FLAGS)
+	@echo CMAKE_ARGS $(CMAKE_ARGS)
 
 #
 # Create a new build dir
 #
 clean: $(ARCH)-clean
-
-x86-test-clean x86-clean:
-	@rm -rf $(BUILD_DIR)
-
 
 tg-xe-clean:
 	@rm -rf $(BUILD_PREF)$(ARCH)*

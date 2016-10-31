@@ -1384,7 +1384,7 @@ __kmp_fork_call(
     microtask_t microtask,
     launch_t    invoker,
 /* TODO: revert workaround for Intel(R) 64 tracker #96 */
-#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
     va_list   * ap
 #else
     va_list     ap
@@ -1493,7 +1493,7 @@ __kmp_fork_call(
         argv = (void**)parent_team->t.t_argv;
         for( i=argc-1; i >= 0; --i )
 /* TODO: revert workaround for Intel(R) 64 tracker #96 */
-#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
             *argv++ = va_arg( *ap, void * );
 #else
             *argv++ = va_arg( ap, void * );
@@ -1686,11 +1686,11 @@ __kmp_fork_call(
     /* create a serialized parallel region? */
     if ( nthreads == 1 ) {
         /* josh todo: hypothetical question: what do we do for OS X*? */
-#if KMP_OS_LINUX && ( KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64)
+#if (KMP_OS_LINUX || KMP_OS_XSTG) && ( KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG)
         void *   args[ argc ];
 #else
         void * * args = (void**) KMP_ALLOCA( argc * sizeof( void * ) );
-#endif /* KMP_OS_LINUX && ( KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) */
+#endif /* (KMP_OS_LINUX || KMP_OS_XSTG) && ( KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) */
 
         KA_TRACE( 20, ("__kmp_fork_call: T#%d serializing parallel region\n", gtid ));
 
@@ -1778,7 +1778,7 @@ __kmp_fork_call(
                 if ( ap ) {
                     for( i=argc-1; i >= 0; --i )
 // TODO: revert workaround for Intel(R) 64 tracker #96
-# if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+# if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
                         *argv++ = va_arg( *ap, void * );
 # else
                         *argv++ = va_arg( ap, void * );
@@ -1802,7 +1802,7 @@ __kmp_fork_call(
                 argv = args;
                 for( i=argc-1; i >= 0; --i )
 // TODO: revert workaround for Intel(R) 64 tracker #96
-#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
                     *argv++ = va_arg( *ap, void * );
 #else
                     *argv++ = va_arg( ap, void * );
@@ -2098,7 +2098,7 @@ __kmp_fork_call(
 #endif /* OMP_40_ENABLED */
         for ( i=argc-1; i >= 0; --i ) {
 // TODO: revert workaround for Intel(R) 64 tracker #96
-#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64) && KMP_OS_LINUX
+#if (KMP_ARCH_X86_64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG) && (KMP_OS_LINUX || KMP_OS_XSTG)
             void *new_argv = va_arg(*ap, void *);
 #else
             void *new_argv = va_arg(ap, void *);
@@ -4402,7 +4402,7 @@ __kmp_initialize_team(
     KF_TRACE( 10, ( "__kmp_initialize_team: exit: team=%p\n", team ) );
 }
 
-#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED
+#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED // ?? KMP_OS_XSTG
 /* Sets full mask for thread and returns old mask, no changes to structures. */
 static void
 __kmp_set_thread_affinity_mask_full_tmp( kmp_affin_mask_t *old_mask )
@@ -4881,7 +4881,7 @@ __kmp_allocate_team( kmp_root_t *root, int new_nproc, int max_nproc,
 #endif
         }
         else { // team->t.t_nproc < new_nproc
-#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED
+#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED // ?? KMP_OS_XSTG
             kmp_affin_mask_t *old_mask;
             if ( KMP_AFFINITY_CAPABLE() ) {
                 KMP_CPU_ALLOC(old_mask);
@@ -4926,7 +4926,7 @@ __kmp_allocate_team( kmp_root_t *root, int new_nproc, int max_nproc,
                 __kmp_reinitialize_team( team, new_icvs, NULL );
             }
 
-#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED
+#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED // ?? KMP_OS_XSTG
             /* Temporarily set full mask for master thread before
                creation of workers. The reason is that workers inherit
                the affinity from master, so if a lot of workers are
@@ -4960,7 +4960,7 @@ __kmp_allocate_team( kmp_root_t *root, int new_nproc, int max_nproc,
                 }
             }
 
-#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED
+#if KMP_OS_LINUX && KMP_AFFINITY_SUPPORTED // ?? KMP_OS_XSTG
             if ( KMP_AFFINITY_CAPABLE() ) {
                 /* Restore initial master thread's affinity mask */
                 __kmp_set_system_affinity( old_mask, TRUE );
@@ -5569,6 +5569,7 @@ __kmp_internal_end_dest( void *specific_gtid )
     __kmp_internal_end_thread( gtid );
 }
 
+// we don't support DYNAMIC_LIB for KMP_OS_XSTG
 #if KMP_OS_UNIX && KMP_DYNAMIC_LIB
 
 // 2009-09-08 (lev): It looks the destructor does not work. In simple test cases destructors work
@@ -6235,7 +6236,7 @@ __kmp_unregister_library( void ) {
 // End of Library registration stuff.
 // -------------------------------------------------------------------------------------------------
 
-#if KMP_ARCH_X86_64 && (KMP_OS_LINUX || KMP_OS_WINDOWS)
+#if KMP_ARCH_X86_64 && (KMP_OS_LINUX || KMP_OS_WINDOWS) // ?? KMP_OS_XSTG
 
 static void __kmp_check_mic_type()
 {
@@ -6465,7 +6466,7 @@ __kmp_do_serial_initialize( void )
 
     __kmp_common_initialize();
 
-    #if KMP_OS_UNIX
+    #if KMP_OS_UNIX || KMP_OS_XSTG  // what to do for KMP_OS_XSTG?
         /* invoke the child fork handler */
         __kmp_register_atfork();
     #endif
@@ -6483,7 +6484,7 @@ __kmp_do_serial_initialize( void )
     #endif
 
     #if KMP_HANDLE_SIGNALS
-        #if KMP_OS_UNIX
+        #if KMP_OS_UNIX || KMP_OS_XSTG  // what to do for KMP_OS_XSTG?
             /* NOTE: make sure that this is called before the user installs
              *          their own signal handlers so that the user handlers
              *          are called first.  this way they can return false,
@@ -6701,7 +6702,7 @@ __kmp_parallel_initialize( void )
     __kmp_init_mxcsr &= KMP_X86_MXCSR_MASK;
 #endif /* KMP_ARCH_X86 || KMP_ARCH_X86_64 */
 
-#if KMP_OS_UNIX
+#if KMP_OS_UNIX || KMP_OS_XSTG  // what to do for KMP_OS_XSTG?
 # if KMP_HANDLE_SIGNALS
     /*  must be after __kmp_serial_initialize  */
     __kmp_install_signals( TRUE );
@@ -7507,9 +7508,10 @@ __kmp_determine_reduction_method( ident_t *loc, kmp_int32 global_tid,
         int atomic_available = FAST_REDUCTION_ATOMIC_METHOD_GENERATED;
         int tree_available   = FAST_REDUCTION_TREE_METHOD_GENERATED;
 
-        #if KMP_ARCH_X86_64 || KMP_ARCH_PPC64 || KMP_ARCH_AARCH64
+        #if KMP_ARCH_X86_64 || KMP_ARCH_PPC64 || KMP_ARCH_AARCH64 || KMP_ARCH_XSTG
 
-            #if KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD || KMP_OS_WINDOWS || KMP_OS_DARWIN
+            #if KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD || KMP_OS_WINDOWS \
+                || KMP_OS_DARWIN || KMP_OS_XSTG
 
 	    int teamsize_cutoff = 4;
 
@@ -7531,11 +7533,11 @@ __kmp_determine_reduction_method( ident_t *loc, kmp_int32 global_tid,
                 }
             #else
                 #error "Unknown or unsupported OS"
-            #endif // KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD || KMP_OS_WINDOWS || KMP_OS_DARWIN
+            #endif // KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD || KMP_OS_WINDOWS || KMP_OS_DARWIN || KMP_OS_XSTG
 
-        #elif KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_AARCH
+        #elif KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_AARCH || KMP_ARCH_XSTG
 
-            #if KMP_OS_LINUX || KMP_OS_WINDOWS
+            #if KMP_OS_LINUX || KMP_OS_WINDOWS || KMP_OS_XSTG
 
                 // basic tuning
 

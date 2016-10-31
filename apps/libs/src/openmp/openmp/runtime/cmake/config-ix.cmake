@@ -11,13 +11,13 @@
 
 if(XSTG)
 
- include(CheckCCompilerFlag)
+ #include(CheckCCompilerFlag)
  include(CheckCSourceCompiles)
- include(CheckCXXCompilerFlag)
+ #include(CheckCXXCompilerFlag)
  include(CheckIncludeFile)
  include(CheckLibraryExists)
  include(CheckIncludeFiles)
- include(LibompCheckLinkerFlag)
+ #include(LibompCheckLinkerFlag)
 
 # compiler flags
  set(LIBOMP_HAVE_STD_CPP11_FLAG TRUE)
@@ -64,7 +64,7 @@ if(XSTG)
  set(LIBOMP_PERL_SCRIPT_ARCH ${LIBOMP_ARCH})
  set(LIBOMP_HAVE_VERSION_SYMBOLS TRUE)
 
-else()
+else() # not XSTG
 
 include(CheckCCompilerFlag)
 include(CheckCSourceCompiles)
@@ -150,7 +150,7 @@ if(WIN32)
       )
     endforeach()
   endforeach()
-else()
+else() # not WIN32
   # It is difficult to create a dummy assembly file that compiles into an
   # exectuable for every architecture and then check the C compiler to
   # see if -x assembler-with-cpp exists and works, so we assume it does for non-Windows.
@@ -158,7 +158,7 @@ else()
 endif()
 if(${LIBOMP_FORTRAN_MODULES})
   libomp_check_fortran_flag(-m32 LIBOMP_HAVE_M32_FORTRAN_FLAG)
-endif()
+endif() # WIN32
 
 # Check linker flags
 if(WIN32)
@@ -171,7 +171,7 @@ elseif(NOT APPLE)
   libomp_check_linker_flag(-static-libgcc LIBOMP_HAVE_STATIC_LIBGCC_FLAG)
   libomp_check_linker_flag(-Wl,-z,noexecstack LIBOMP_HAVE_Z_NOEXECSTACK_FLAG)
   libomp_check_linker_flag(-Wl,-fini=__kmp_internal_end_fini LIBOMP_HAVE_FINI_FLAG)
-endif()
+endif() #WIN32
 
 # Check Intel(R) C Compiler specific flags
 if(CMAKE_C_COMPILER_ID STREQUAL "Intel")
@@ -196,7 +196,7 @@ else()
   if(NOT CMAKE_USE_PTHREADS_INIT)
     libomp_error_say("Need pthread interface on Unix-like systems.")
   endif()
-endif()
+endif() #WIN32
 
 # Find perl executable
 # Perl is used to create omp.h (and other headers) along with kmp_i18n_id.inc and kmp_i18n_default.inc
@@ -212,22 +212,22 @@ elseif(APPLE)
   set(LIBOMP_PERL_SCRIPT_OS mac)
 else()
   set(LIBOMP_PERL_SCRIPT_OS lin)
-endif()
+endif() #WIN32
 if(IA32)
   set(LIBOMP_PERL_SCRIPT_ARCH 32)
 elseif(MIC)
   set(LIBOMP_PERL_SCRIPT_ARCH mic)
 elseif(INTEL64)
   set(LIBOMP_PERL_SCRIPT_ARCH 32e)
-else()
+else() #not IA32
   set(LIBOMP_PERL_SCRIPT_ARCH ${LIBOMP_ARCH})
-endif()
+endif() #IA32
 
 # Checking features
 # Check if version symbol assembler directives are supported
 libomp_check_version_symbols(LIBOMP_HAVE_VERSION_SYMBOLS)
 
-endif()
+endif() #XSTG
 
 # Check if quad precision types are available
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -277,7 +277,7 @@ if(${LIBOMP_STATS})
   else()
     set(LIBOMP_HAVE_STATS FALSE)
   endif()
-endif()
+endif() #LIBOMP_STATS
 
 # Check if OMPT support is available
 # Currently, __builtin_frame_address() is required for OMPT
@@ -322,5 +322,5 @@ if(${LIBOMP_USE_HWLOC})
     set(LIBOMP_HAVE_HWLOC FALSE)
     libomp_say("Could not find hwloc")
   endif()
-endif()
+endif() #LIBOMP_USE_HWLOC
 

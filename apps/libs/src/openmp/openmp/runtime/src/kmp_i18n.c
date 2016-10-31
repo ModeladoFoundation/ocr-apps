@@ -14,9 +14,11 @@
 
 
 
+#ifdef KMP_I18N
 #include "kmp_i18n.h"
 
 #include "kmp_os.h"
+
 #include "kmp_debug.h"
 #include "kmp.h"
 #include "kmp_lock.h"
@@ -970,5 +972,5 @@ __kmp_msg(
 } // __kmp_msg
 
 // -------------------------------------------------------------------------------------------------
-
+#endif // !defined(KMP_I18N)
 // end of file //

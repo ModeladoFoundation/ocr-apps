@@ -105,8 +105,8 @@
     #define alloca _alloca     // Allow to use alloca() with no underscore.
 #elif KMP_OS_FREEBSD || KMP_OS_NETBSD
     // Declared in "stdlib.h".
-#elif KMP_OS_UNIX
-    #include <alloca.h>        // Linux* OS and OS X*: alloc() declared in "alloca".
+#elif KMP_OS_UNIX || KMP_OS_XSTG
+    #include <alloca.h>        // Linux* OS/OS_XSTG and OS X*: alloc() declared in "alloca".
 #else
     #error Unknown or unsupported OS.
 #endif

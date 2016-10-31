@@ -36,6 +36,8 @@
 # define KMP_OS_DARWIN 1
 #endif
 
+#if KMP_OS_DARWIN
+#endif
 // in some ppc64 linux installations, only the second condition is met
 #if ( defined __linux )
 # undef KMP_OS_LINUX
