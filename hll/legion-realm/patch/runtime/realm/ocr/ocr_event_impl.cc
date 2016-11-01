@@ -33,14 +33,29 @@ namespace Realm {
 
     extern Logger log_event; // in event_impl.cc
 
+    ocrGuid_t OCREventImpl::event_waiter_edt_t = NULL_GUID;
+
     const ID OCREventImpl::ocr_event_impl = ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
+
+    //EDT function that calls event_triggered
+    //argv is the object whose event_triggered() needs to be invoked
+    ocrGuid_t event_waiter_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+    {
+      assert(depc == 1);
+      ((EventWaiter *)argv)->event_triggered();
+      return NULL_GUID;
+    }
 
     /*static*/ void OCREventImpl::static_init(void)
     {
+      //create the function conversion edt template
+      ocrEdtTemplateCreate(&OCREventImpl::event_waiter_edt_t, event_waiter_func, EDT_PARAM_UNK, 1);
     }
 
     /*static*/ void OCREventImpl::static_destroy(void)
     {
+      //delete the function conversion edt template
+      ocrEdtTemplateDestroy(OCREventImpl::event_waiter_edt_t);
     }
 
     /*static*/ Event OCREventImpl::create_ocrevent(void)
@@ -64,6 +79,18 @@ namespace Realm {
     /*static*/ void OCREventImpl::external_wait(ocrGuid_t evt)
     {
       OCREventImpl::wait(evt);
+    }
+
+    /*static*/ bool OCREventImpl::add_waiter(Event needed, EventWaiter *waiter)
+    {
+      const size_t waiter_size = waiter->get_size();
+
+      //invoke the EDT that calls event_triggered
+      ocrGuid_t event_waiter_edt;
+      ocrEdtCreate(&event_waiter_edt, OCREventImpl::event_waiter_edt_t,
+        U64_COUNT(waiter_size), (u64*)waiter, 1, & needed.evt_guid,
+        EDT_PROP_NONE, NULL_HINT, NULL);
+      return true;
     }
 
     //create a latch event and add the set of events as its decr slot dependencies

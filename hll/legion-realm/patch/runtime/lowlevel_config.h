@@ -18,6 +18,7 @@
 #define RUNTIME_LOWLEVEL_CONFIG_H
 
 #if USE_OCR_LAYER
+#include "ocr.h"
 
 #define U64_COUNT(size) ((size+(sizeof(u64)-1))/sizeof(u64))
 

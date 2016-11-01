@@ -23,13 +23,15 @@
 #include "event.h"
 #include "id.h"
 
+#include "event_impl.h"
+
 namespace Realm {
     class OCREventImpl{
 
     public:
       static const ID::ID_Types ID_TYPE = ID::ID_EVENT;
-      //EDT template for the merge events function
-      static ocrGuid_t merge_events_edt_t;
+      //EDT template for the event waiter function
+      static ocrGuid_t event_waiter_edt_t;
       //an  object of type ID which is used to call the convert function
       static const ID ocr_event_impl; //= ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
 
@@ -44,6 +46,8 @@ namespace Realm {
       static void wait(ocrGuid_t);
 
       static void external_wait(ocrGuid_t);
+
+      static bool add_waiter(Event needed, EventWaiter *waiter);
 
       static Event merge_events(const std::set<Event>& wait_for);
       static Event merge_events(Event ev1, Event ev2,

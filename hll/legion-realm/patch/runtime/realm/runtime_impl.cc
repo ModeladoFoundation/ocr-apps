@@ -1,4 +1,5 @@
 /* Copyright 2016 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2016 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -529,6 +530,13 @@ namespace Realm {
       LegionRuntime::LowLevel::DmaRequest::static_init();
       //create the nodes which contains processors and memory
       nodes = new Node[gasnet_nodes()];
+
+      // create allocators index spaces
+      {
+          Node& n = nodes[gasnet_mynode()];
+          local_index_space_free_list = new IndexSpaceTableAllocator::FreeList(n.index_spaces, gasnet_mynode());
+      }
+
       Node *n = &nodes[gasnet_mynode()];
       create_processors();
       create_memories();

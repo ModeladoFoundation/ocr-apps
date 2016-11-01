@@ -25,10 +25,6 @@
 
 #include "lowlevel_config.h"
 
-#if USE_OCR_LAYER
-#include "ocr.h"
-#endif // USE_OCR_LAYER
-
 namespace Realm {
 
     class Runtime {

@@ -536,6 +536,11 @@ namespace LegionRuntime {
 
     bool CopyRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
+
+#if USE_OCR_LAYER
+      DmaRequest::ocr_check_readiness(just_check, DmaRequest::COPY, sizeof(*this));
+      return true;
+#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -646,6 +651,7 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
+#endif // USE_OCR_LAYER
     }
 
     namespace RangeExecutors {
@@ -1000,7 +1006,11 @@ namespace LegionRuntime {
 
 	  // if we don't have an event for our completion, we need one now
 	  if(!event.exists())
-	    event = GenEventImpl::create_genevent()->current_event();
+#if USE_OCR_LAYER
+            event = OCREventImpl::create_ocrevent();
+#else
+            event = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 
 	  DetailedTimer::ScopedPush sp(TIME_SYSTEM);
 	  do_remote_write(tgt_mem, tgt_offset + byte_offset,
@@ -3337,6 +3347,11 @@ namespace LegionRuntime {
 
     bool ReduceRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
+
+#if USE_OCR_LAYER
+      DmaRequest::ocr_check_readiness(just_check, DmaRequest::REDUCE, sizeof(*this));
+      return true;
+#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -3471,6 +3486,7 @@ namespace LegionRuntime {
 	return true;
 
       assert(0);
+#endif // USE_OCR_LAYER
     }
 
     template <unsigned DIM>
@@ -3919,7 +3935,7 @@ namespace LegionRuntime {
     {
 
 #if USE_OCR_LAYER
-      DmaRequest::ocr_check_readiness(sizeof(*this));
+      DmaRequest::ocr_check_readiness(just_check, DmaRequest::FILL, sizeof(*this));
       return true;
 #else // USE_OCR_LAYER
       if(state == STATE_INIT)
@@ -4460,7 +4476,11 @@ namespace Realm {
 	  if (oas.serdez_id != 0) {
 	    OASByInst* oas_by_inst = new OASByInst;
 	    (*oas_by_inst)[ip].push_back(oas);
-	    Event ev = GenEventImpl::create_genevent()->current_event();
+#if USE_OCR_LAYER
+            Event ev = OCREventImpl::create_ocrevent();
+#else
+            Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 	    int priority = 0; // always have priority zero
 	    CopyRequest *r = new CopyRequest(*this, oas_by_inst,
   					     wait_on, ev, priority, requests);
@@ -4531,7 +4551,11 @@ namespace Realm {
 	  Memory dst_mem = it->first.second;
 	  OASByInst *oas_by_inst = it->second;
 
-	  Event ev = GenEventImpl::create_genevent()->current_event();
+#if USE_OCR_LAYER
+          Event ev = OCREventImpl::create_ocrevent();
+#else
+          Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 #ifdef EVENT_GRAPH_TRACE
           Event enclosing = find_enclosing_termination_event();
           log_event_graph.info("Copy Request: (" IDFMT ",%d) (" IDFMT ",%d) "
@@ -4611,7 +4635,11 @@ namespace Realm {
 	MemoryImpl::MemoryKind dst_kind = get_runtime()->get_memory_impl(get_runtime()->get_instance_impl(dsts[0].inst)->memory)->kind;
 	bool inst_lock_needed = (dst_kind == MemoryImpl::MKIND_GLOBAL);
 
-	Event ev = GenEventImpl::create_genevent()->current_event();
+#if USE_OCR_LAYER
+        Event ev = OCREventImpl::create_ocrevent();
+#else
+        Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 
 	ReduceRequest *r = new ReduceRequest(*this,
 					     srcs, dsts[0],
@@ -4696,10 +4724,26 @@ namespace LegionRuntime {
   //ideally I like this to be passed using argv rather than depv
   ocrGuid_t ocr_realm_perform_dma_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
   {
-    assert(argc == 0 && depc == 1);
+    assert(argc == 1 && depc == 1);
 
     DmaRequest *r;
-    r = (FillRequest *)depv[0].ptr;
+    const DmaRequest::RequestType r_type = (DmaRequest::RequestType)(*argv);
+
+    switch(r_type)
+    {
+      case DmaRequest::COPY:
+        r = (CopyRequest *)depv[0].ptr;
+        break;
+      case DmaRequest::REDUCE:
+        r = (ReduceRequest *)depv[0].ptr;
+        break;
+      case DmaRequest::FILL:
+        r = (FillRequest *)depv[0].ptr;
+        break;
+      default:
+        fprintf(stderr, "ERROR: UNKNOWN DMA REQUEST %d\n", r_type);
+        assert(false);
+    }
 
     r->perform_dma();
     ocrDbDestroy(depv[0].guid);
@@ -4709,7 +4753,7 @@ namespace LegionRuntime {
   /*static*/ void DmaRequest::static_init(void)
   {
     //create the perform_dma conversion edt template
-    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, 0, 1);
+    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, 1, 1);
   }
 
   /*static*/ void DmaRequest::static_destroy(void)
@@ -4720,7 +4764,7 @@ namespace LegionRuntime {
 
   //function that invokes the OCR EDT that calls perform_dma
   //this_size is the size of the object that invokes ocr_check_readiness
-  void DmaRequest::ocr_check_readiness(size_t this_size)
+  void DmaRequest::ocr_check_readiness(bool just_check, RequestType req_type, size_t this_size)
   {
     //if size is zero then use size of current this object
     if(this_size == 0)
@@ -4735,8 +4779,8 @@ namespace LegionRuntime {
 
     //invoke the EDT that calls perform_dma
     ocrGuid_t ocr_realm_perform_dma_edt, out_ocr_realm_perform_dma_edt, persistent_evt_guid;
-    ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t, EDT_PARAM_DEF,
-      NULL, EDT_PARAM_DEF, NULL,
+    ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t,
+      EDT_PARAM_DEF, (u64*)&req_type, EDT_PARAM_DEF, NULL,
       EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_perform_dma_edt);
 
     //attach finish_event to the EDT

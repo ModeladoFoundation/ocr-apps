@@ -50,6 +50,9 @@ namespace Realm {
       virtual ~EventWaiter(void) {}
       virtual bool event_triggered(void) = 0;
       virtual void print_info(FILE *f) = 0;
+#if USE_OCR_LAYER
+      virtual size_t get_size() const { return sizeof(*this); }
+#endif
     };
 
     // parent class of GenEventImpl and BarrierImpl

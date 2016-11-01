@@ -20,10 +20,6 @@
 #include "lowlevel_impl.h"
 #include "activemsg.h"
 
-#if USE_OCR_LAYER
-#include "ocr.h"
-#endif
-
 namespace Realm {
   class CoreReservationSet;
 };
@@ -103,6 +99,14 @@ namespace LegionRuntime {
       virtual ~DmaRequest(void);
 
 #if USE_OCR_LAYER
+
+      enum RequestType{
+        COPY,
+        REDUCE,
+        FILL,
+        NUM_REQUEST_TYPES
+      };
+
       //EDT template for the perform_dma function
       static ocrGuid_t ocr_realm_perform_dma_edt_t;
       //initialize static variables
@@ -110,7 +114,7 @@ namespace LegionRuntime {
       //cleanup static variables
       static void static_destroy(void);
       //equivalent of check_readiness() function which uses OCR
-      virtual void ocr_check_readiness(size_t);
+      virtual void ocr_check_readiness(bool just_check, RequestType, size_t = 0);
 #endif //USE_OCR_LAYER
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq) = 0;
 

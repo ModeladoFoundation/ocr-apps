@@ -816,7 +816,11 @@ namespace Realm {
 
     /*static*/ bool EventImpl::add_waiter(Event needed, EventWaiter *waiter)
     {
+#if USE_OCR_LAYER
+      return OCREventImpl::add_waiter(needed, waiter);
+#else
       return get_runtime()->get_event_impl(needed)->add_waiter(needed.gen, waiter);
+#endif //USE_OCR_LAYER
     }
 
     bool GenEventImpl::has_triggered(Event::gen_t needed_gen)
