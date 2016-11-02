@@ -80,7 +80,7 @@ am__objects_1 = lib_a-environ.$(OBJEXT) lib_a-errno.$(OBJEXT) \
 	lib_a-malloc.$(OBJEXT) lib_a-mallocr.$(OBJEXT) \
 	lib_a-ocr_shim.$(OBJEXT) \
 	lib_a-process.$(OBJEXT) lib_a-times.$(OBJEXT) \
-	lib_a-wait.$(OBJEXT) lib_a-_exit.$(OBJEXT) \
+	lib_a-wait.$(OBJEXT) lib_a-weaks.$(OBJEXT) lib_a-_exit.$(OBJEXT) \
 	lib_a-init.$(OBJEXT) lib_a-fini.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
@@ -235,6 +235,7 @@ GENERAL_SOURCES = \
 	process.c \
 	times.c \
 	wait.c \
+	weaks.c \
 	_exit.c \
 	init.c \
 	fini.c
@@ -378,6 +379,12 @@ lib_a-wait.o: wait.c
 
 lib_a-wait.obj: wait.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-wait.obj `if test -f 'wait.c'; then $(CYGPATH_W) 'wait.c'; else $(CYGPATH_W) '$(srcdir)/wait.c'; fi`
+
+lib_a-weaks.o: weaks.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-weaks.o `test -f 'weaks.c' || echo '$(srcdir)/'`weaks.c
+
+lib_a-weaks.obj: weaks.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-weaks.obj `if test -f 'weaks.c'; then $(CYGPATH_W) 'weaks.c'; else $(CYGPATH_W) '$(srcdir)/weaks.c'; fi`
 
 lib_a-_exit.o: _exit.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-_exit.o `test -f '_exit.c' || echo '$(srcdir)/'`_exit.c

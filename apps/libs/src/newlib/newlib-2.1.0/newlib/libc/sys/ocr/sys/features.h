@@ -64,6 +64,7 @@ extern "C" {
  */
 #define _POSIX_MONOTONIC_CLOCK
 #define _POSIX_TIMERS
+#define _POSIX_THREADS
 
 #ifdef __cplusplus
 }

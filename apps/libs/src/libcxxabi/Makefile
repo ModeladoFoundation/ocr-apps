@@ -65,7 +65,7 @@ LLVM_CONFIG = $(TG_ROOT)/build/build.xe-llvm/build_llvm/bin/llvm-config
 BUILD_PREF = build-
 BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
-COMPILE_DEFINES = -D_POSIX_THREADS -U__STRICT_ANSI__
+COMPILE_DEFINES = -U__STRICT_ANSI__
 
 COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++ $(COMPILE_DEFINES)
 

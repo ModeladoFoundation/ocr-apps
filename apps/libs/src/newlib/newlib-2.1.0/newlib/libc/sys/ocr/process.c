@@ -79,3 +79,11 @@ _DEFUN (_kill, (pid, sig),
 {
     return _kill_r( _REENT, pid, sig );
 }
+
+/////////// sched_yield ///////////
+int
+_DEFUN (sched_yield, (),
+        _NOARGS)
+{
+    return 0;
+}

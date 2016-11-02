@@ -21,7 +21,8 @@ GENERAL_SOURCES = \
 	ocr_shim.c \
 	process.c \
 	times.c \
-	wait.c
+	wait.c \
+	weaks.c
 
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(GENERAL_SOURCES)
