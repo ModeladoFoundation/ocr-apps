@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-#Date: 2016may18
+#Date: 2016Nov1
 #Author: Donald H Villeneuve (dvillen)
-#Goal: Make a C-code analog to Nekbone's cubic procedure
+#Goal: Make a C-code analog to Nekbone's ax_e procedure
 #Methodology:
 #   1) Run the Fortran code holding the functions under test.
 #      These functions will generate a single output file F.
@@ -25,7 +25,7 @@ rm -f z_* core* "$FEXEC" "$OUTFORTRAN" "$CEXEC" "$OUTC"
 
 #----- Make the executables
 rm -f "$FEXEC"
-$FORT -o "$FEXEC" nekbone_local_grad.f90
+$FORT -o "$FEXEC" nekbone_ax_e.f90
 if [ ! -x "$FEXEC" ]
 then
 echo "ERROR: Fortran build failure"
@@ -33,7 +33,7 @@ exit 20
 fi
 
 rm -f "$CEXEC"
-$CC -o "$CEXEC" $OPT blas3.c local_grad.c nekbone_local_grad.c
+$CC -o "$CEXEC" $OPT ax.c blas3.c local_grad.c nekbone_ax_e.c
 if [ ! -x "$CEXEC" ]
 then
 echo "ERROR: C code build failure"
@@ -57,15 +57,9 @@ exit 40
 fi
 
 #----- Compare
-x="$(grep NBN_REAL  ../../nek_src/nbn_setup.h | grep -v '//' | tr ' ' '\n'| grep -E '(float|double)')"
-if [ "$x" == "float" ]
-then
-tolerance=1e-5
-else
-tolerance=1e-14
-fi
+rtolerance=1e-14
     # grep -P '\S' ==> Remove spurious blank lines
-../util/bin/numdiff -a $tolerance $OUTFORTRAN $OUTC| grep -P '\S' &> z_diff
+../util/bin/numdiff -r $rtolerance $OUTFORTRAN $OUTC| grep -P '\S' &> z_diff
     # grep -c guarantees a concise output.
 theDiff="$(grep -v -c 'are equal' z_diff)"
 if [ $theDiff != 0 ]

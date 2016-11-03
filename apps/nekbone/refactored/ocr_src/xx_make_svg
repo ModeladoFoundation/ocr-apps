@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+#The directory autogenTools is
+#   ln -sd autogenTools -> ../../../../hll/autogen/tools/
+
+target1='z_nekbone_inOcr.dot'
+
+if [ -s $target1 ]
+then
+    ./autogenTools/x_dot "$target1"
+fi
+
+source2='z_log'
+target2='z_nekbone_inOcr.runtime.dot'
+if [ -s $source2 ]
+then
+    python ./autogenTools/ocr_autogen_dbg_postproc.py -i "$source2" -o "$target2"
+    if [ -s $target2 ]
+    then
+        ./autogenTools/x_dot "$target2"
+    fi
+fi
+

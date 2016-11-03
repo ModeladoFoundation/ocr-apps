@@ -14,14 +14,6 @@ int nbb_init_mesh(int in_ifbrick, //Set to 1 for a brick; otherwise zero.
     int err = 0;
     while(!err){
         if(!o_lglel) {err=__LINE__; break;}
-        *o_npx = 1;
-        *o_npy = 1;
-        *o_npz = 1;
-
-        *o_mx = 1;
-        *o_my = 1;
-        *o_mz = 1;
-
         *o_nelx = 1;
         *o_nely = 1;
         *o_nelz = 1;

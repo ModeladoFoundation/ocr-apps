@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+##----- Clean up before starting
+rm -f z_*
+rm -rf ./build ./install ./tools
+rm -f ../../tools/*pyc
+rm -f core*
+
+#----- Create the OCR C file
+python ./nekbone_inOcr.py > z_autogen.log
+if [ ! -s "z_nekbone_inOcr.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+##----- Make correction for non local files
+    # This is an obvious hack.  But it works for now.
+    #TODO: Remove from app_ocr_util.h ../../tools/ dependency.
+autogenTools='../../../../hll/autogen/tools'
+cp -f "$autogenTools/app_ocr_util.h" .
+python ./findreplace.py app_ocr_util.h '../../tools/app_ocr_err_util.h' 'app_ocr_err_util.h'
+
+##----- Compile and run
+rm -f z_output
+CONFIG_FLAGS=--guid=COUNTED_MAP OCR_TYPE=x86-mpi make run > z_log; grep "TESTIO>" z_log > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+##----- Compare
+theCheck="$(grep 'Work is ok' z_output | wc -l)"
+if [ $theCheck -eq 0 ]
+then
+echo "ERROR: OCR Nekbone run failed."
+exit 50
+fi
+
+##----- Clean up
+rm -f z_*
+rm -rf ./build ./install ./tools
+rm -f core*
+rm ../../../../hll/autogen/tools/ocr_autogen.pyc
+
+echo "Successful run"
+exit 0
+
+
+

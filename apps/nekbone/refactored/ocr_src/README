@@ -1,0 +1,33 @@
+2016Aug25 - dvillen
+=This work is based on the Autogen test case called "mpiranks_inOCR"
+
+ The configuration of nekbone_inOCR is done in
+    init_NEKOstatics(...)
+    init_NEKOglobals(...)
+ All other variables will be derived the content of
+    NEKOstatics_t
+    NEKOglobals_t
+ and a few macro constants defined as
+    NEKbone_*
+
+= The global data is landed in "BtForkTransition_Stop" assuming that it will
+  not be required during the joining.
+
+= In order to see the run-time operations file, do the following:
+    1) comment out the "rm -f z_*" from the file ./btest
+    2a) Set "OA.GBL.insert_debug_code = 1" in "nekbone_inOcr.py"
+    2b) Enable "OA.outputDot(G, "z_nekbone_inOcr.dot")" in "nekbone_inOcr.py"
+    3) run ./btest
+    4) In order to get the run-time SVG, do the following:
+            python ../../tools/ocr_autogen_dbg_postproc.py -i z_log -o z_out.dot; ./x_dot z_out.dot
+    5) In order to get the compile time SVG, do the following:
+            ../../tools/x_dot z_nekbone_inOcr.dot
+
+= The file "y_nekbone_starting_point.dot.svg" shows the starting point for the
+  building of the OCR nekbone.  The file "y_nekbone_starting_point.runtime.dot.svg"
+  shows its run time counterpart.  Both came from the Autogen example "mpiranks_inOcr".
+
+  The file "y_nekbone_noReduction_noHalo.dot.svg" shows the implementation of
+  the OCR Nekbone at the stage where only the Reductions and the Halo are missing.
+
+=

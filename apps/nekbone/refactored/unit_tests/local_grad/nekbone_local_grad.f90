@@ -7,20 +7,17 @@
       program test_both_local_grad
 
       implicit none
-      integer first_polyOrder, last_polyOrder
-      integer first_elemCount, last_elemCount
-      integer po,ec
+      integer first_pDOF, last_pDOF
+      integer dof
 
-      first_polyOrder = 2
-      last_polyOrder = 10
+      first_pDOF = 2
+      last_pDOF = 10
 
-      open(unit=10,file='fortran.out')
+      open(unit=10,file='z_fortran.out')
 
-      do po=first_polyOrder,last_polyOrder
-        write(10,'(A,1I10)') "LG", po
-        call check_local_grad3(po)
-        write(10,'(A,1I10)') "LGt", po
-        call check_local_grad3t(po)
+      do dof=first_pDOF,last_pDOF
+        call check_local_grad3(dof)
+        call check_local_grad3t(dof)
       enddo
 
       close(10)
@@ -28,55 +25,65 @@
       call exit(0)
       end
 !-----------------------------------------------------------------------
-      subroutine check_local_grad3(polyOrder)
+      subroutine build_data(pDOF, ur,us,ut, u, D,Dt)
         implicit none
-        integer debug
-        integer polyOrder, modP
+        integer pDOF
 
-        real ur(polyOrder,polyOrder,polyOrder)
-        real us(polyOrder,polyOrder,polyOrder)
-        real ut(polyOrder,polyOrder,polyOrder)
+        real ur(pDOF,pDOF,pDOF)
+        real us(pDOF,pDOF,pDOF)
+        real ut(pDOF,pDOF,pDOF)
 
-        real u(polyOrder,polyOrder,polyOrder)
-        real D(polyOrder,polyOrder)
-        real Dt(polyOrder,polyOrder)
+        real u(pDOF,pDOF,pDOF)
+        real D(pDOF,pDOF)
+        real Dt(pDOF,pDOF)
 
         integer i,j,k
 
-        debug = 0
-
-        do i=1,polyOrder
-            do j=1,polyOrder
-                D(i,j) =1 +(i-1) + (polyOrder)*(j-1)
+        do i=1,pDOF
+            do j=1,pDOF
+                D(i,j) =1 +(i-1) + (pDOF)*(j-1)
                 Dt(j,i)=D(i,j)
             enddo
         enddo
 
-        if(debug > 0) then
-            write(*,*) "D"
-            call prettyPrint_matrix2D(polyOrder,polyOrder,D)
-        endif
-
-        do i=1,polyOrder
-            do j=1,polyOrder
-                do k=1,polyOrder
-                    u(i,j,k) = i+2*j+3*k
+        do i=1,pDOF
+            do j=1,pDOF
+                do k=1,pDOF
+                    u(i,j,k) = i+5*j+7*k
+                    ur(i,j,k) = 1+(i-1)
+                    us(i,j,k) = 2+(j-1)
+                    ut(i,j,k) = 3+(k-1)
                 enddo
             enddo
         enddo
 
-        if(debug > 0) then
-            write(*,*) "u"
-            call prettyPrint_matrix3D(polyOrder,polyOrder,polyOrder, u)
-        endif
+      end subroutine
+!-----------------------------------------------------------------------
+      subroutine check_local_grad3(pDOF)
+        implicit none
+        integer pDOF, pOrder
 
-        modP = polyOrder-1
-        call local_grad3(ur,us,ut, u, modP, D,Dt)
+        real ur(pDOF,pDOF,pDOF)
+        real us(pDOF,pDOF,pDOF)
+        real ut(pDOF,pDOF,pDOF)
 
-        do i=1,polyOrder
-            do j=1,polyOrder
-                do k=1,polyOrder
-                    write(10,'(3I10,3ES23.14)') i,j,k, ur(i,j,k), us(i,j,k), ut(i,j,k)
+        real u(pDOF,pDOF,pDOF)
+        real D(pDOF,pDOF)
+        real Dt(pDOF,pDOF)
+
+        integer i,j,k
+
+        pOrder = pDOF -1
+
+        call build_data(pDOF, ur,us,ut, u, D,Dt)
+
+        call local_grad3(ur,us,ut, u, pOrder, D,Dt)
+
+        write(10,'(A,1I10)') "LG_pDOF= ", pDOF
+        do i=1,pDOF
+            do j=1,pDOF
+                do k=1,pDOF
+                    write(10,'(3I10,4ES23.14)') i,j,k, ur(i,j,k), us(i,j,k), ut(i,j,k), u(i,j,k)
                 enddo
             enddo
         enddo
@@ -84,64 +91,31 @@
       return
       end
 !-----------------------------------------------------------------------
-      subroutine check_local_grad3t(polyOrder)
+      subroutine check_local_grad3t(pDOF)
         implicit none
-        integer debug
-        integer polyOrder
+        integer pDOF, pOrder
 
-        real ur(polyOrder,polyOrder,polyOrder)
-        real us(polyOrder,polyOrder,polyOrder)
-        real ut(polyOrder,polyOrder,polyOrder)
+        real ur(pDOF,pDOF,pDOF)
+        real us(pDOF,pDOF,pDOF)
+        real ut(pDOF,pDOF,pDOF)
 
-        real u(polyOrder,polyOrder,polyOrder)
-        real D(polyOrder,polyOrder)
-        real Dt(polyOrder,polyOrder)
+        real u(pDOF,pDOF,pDOF)
+        real D(pDOF,pDOF)
+        real Dt(pDOF,pDOF)
 
-        integer i,j,k, modP
+        integer i,j,k
 
-        debug = 0
+        pOrder = pDOF -1
 
-        do i=1,polyOrder
-            do j=1,polyOrder
-                D(i,j) =1 +(i-1) + (polyOrder)*(j-1)
-                Dt(j,i)=D(i,j)
-            enddo
-        enddo
+        call build_data(pDOF, ur,us,ut, u, D,Dt)
 
-        if(debug > 0) then
-            write(*,*) "D"
-            call prettyPrint_matrix2D(polyOrder,polyOrder,D)
-        endif
+        call local_grad3_t(u, ur,us,ut, pOrder, D,Dt)
 
-        do i=1,polyOrder
-            do j=1,polyOrder
-                do k=1,polyOrder
-                    u(i,j,k) = i+2*j+3*k
-                    ur(i,j,k) = 2*i+j+k
-                    us(i,j,k) = i+j+2*k
-                    ut(i,j,k) = i+2*j+k
-                enddo
-            enddo
-        enddo
-
-        if(debug > 0) then
-            write(*,*) "gradt-u"
-            call prettyPrint_matrix3D(polyOrder,polyOrder,polyOrder, u)
-            write(*,*) "gradt-ur"
-            call prettyPrint_matrix3D(polyOrder,polyOrder,polyOrder, ur)
-            write(*,*) "gradt-us"
-            call prettyPrint_matrix3D(polyOrder,polyOrder,polyOrder, us)
-            write(*,*) "gradt-ut"
-            call prettyPrint_matrix3D(polyOrder,polyOrder,polyOrder, ut)
-        endif
-
-        modP = polyOrder-1
-        call local_grad3_t(u, ur,us,ut, modP, D,Dt)
-
-        do i=1,polyOrder
-            do j=1,polyOrder
-                do k=1,polyOrder
-                    write(10,'(3I10,3ES23.14)') i,j,k, ur(i,j,k), us(i,j,k), ut(i,j,k)
+        write(10,'(A,1I10)') "LGt_pDOF= ", pDOF
+        do i=1,pDOF
+            do j=1,pDOF
+                do k=1,pDOF
+                    write(10,'(3I10,4ES23.14)') i,j,k, ur(i,j,k), us(i,j,k), ut(i,j,k), u(i,j,k)
                 enddo
             enddo
         enddo
@@ -187,42 +161,9 @@
 
       return
       end
-!-----------------------------------------------------------------------
-      subroutine prettyPrint_matrix2D(nbRows,nbCols,M)
-        implicit none
-        integer nbRows, nbCols
-        real M(nbRows, nbCols)
-        integer i,j
 
-        do i=1,nbRows
-            do j=1,nbCols
-                write(*,*) "  M2(", i,", ", j,")=",M(i,j)
-            enddo
-        enddo
-
-      return
-      end
-
-!-----------------------------------------------------------------------
-      subroutine prettyPrint_matrix3D(nbRows,nbCols,nbDepth, M)
-        implicit none
-        integer nbRows, nbCols, nbDepth
-        real M(nbRows, nbCols, nbDepth)
-        integer i,j,k
-
-        do i=1,nbRows
-            do j=1,nbCols
-                do k=1,nbDepth
-                    write(*,*) "  M3(", i,", ", j,", ", k,")=",M(i,j,k)
-                enddo
-            enddo
-        enddo
-
-      return
-      end
 !-----------------------------------------------------------------------
       subroutine local_grad3_t(u,ur,us,ut,N,D,Dt)
-
 !     Output: ur,us,ut         Input:u,N,D,Dt
       real u (0:N,0:N,0:N)
       real ur(0:N,0:N,0:N),us(0:N,0:N,0:N),ut(0:N,0:N,0:N)
@@ -254,5 +195,39 @@
       do i=1,n
          a(i)=a(i)+b(i)
       enddo
+      return
+      end
+
+!-----------------------------------------------------------------------
+      subroutine prettyPrint_matrix2D(nbRows,nbCols,M)
+        implicit none
+        integer nbRows, nbCols
+        real M(nbRows, nbCols)
+        integer i,j
+
+        do i=1,nbRows
+            do j=1,nbCols
+                write(*,*) "  M2(", i,", ", j,")=",M(i,j)
+            enddo
+        enddo
+
+      return
+      end
+
+!-----------------------------------------------------------------------
+      subroutine prettyPrint_matrix3D(nbRows,nbCols,nbDepth, M)
+        implicit none
+        integer nbRows, nbCols, nbDepth
+        real M(nbRows, nbCols, nbDepth)
+        integer i,j,k
+
+        do i=1,nbRows
+            do j=1,nbCols
+                do k=1,nbDepth
+                    write(*,*) "  M3(", i,", ", j,", ", k,")=",M(i,j,k)
+                enddo
+            enddo
+        enddo
+
       return
       end
