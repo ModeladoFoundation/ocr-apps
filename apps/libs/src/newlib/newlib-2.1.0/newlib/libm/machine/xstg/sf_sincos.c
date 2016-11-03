@@ -1,16 +1,14 @@
-
-/* @(#)z_sinf.c 1.0 98/08/13 */
 /******************************************************************
- * Sine
+ * sincos
  *
  * Input:
  *   x - floating point value
  *
  * Output:
- *   sine of x
+ *   sin of x (float) and cos of x (float)
  *
  * Description:
- *   This routine returns the sine of x.
+ *   This routine returns the sin and cos of x.
  *
  *****************************************************************/
 
@@ -18,7 +16,7 @@
 
 void sincosf(float x, float* sinx, float* cosx) {
     __asm__ (
-        "sincosF %1, %0, %2, 32\n\t"
+        "sincosF %0, %1, %2, 32\n\t"
         : "=r" (*sinx), "=r" (*cosx)
         : "r" (x)
         :

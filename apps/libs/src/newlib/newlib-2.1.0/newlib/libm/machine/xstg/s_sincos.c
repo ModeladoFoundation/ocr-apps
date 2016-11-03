@@ -1,24 +1,24 @@
-
-/* @(#)z_sin.c 1.0 98/08/13 */
 /******************************************************************
- * Sine
+ * sincos
  *
  * Input:
- *   x - floating point value
+ *   x - double value
  *
  * Output:
- *   sine of x
+ *   sin of x (double) and cos of x (double)
  *
  * Description:
- *   This routine returns the sine of x.
+ *   This routine returns the sin and cos of x.
  *
  *****************************************************************/
 
 #include <math.h>
 
 void sincos(double x, double* sinx, double* cosx) {
-  float sinxf, cosxf;
-  sincosf ((float) x, &sinxf, &cosxf);
-  *sinx = (double) sinxf;
-  *cosx = (double) cosxf;
+    __asm__ (
+        "sincosF %0, %1, %2, 64\n\t"
+        : "=r" (*sinx), "=r" (*cosx)
+        : "r" (x)
+        :
+    );
 }

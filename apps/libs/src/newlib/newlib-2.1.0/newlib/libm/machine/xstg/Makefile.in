@@ -54,7 +54,8 @@ ARFLAGS = cru
 lib_a_AR = $(AR) $(ARFLAGS)
 lib_a_LIBADD =
 am__objects_1 = lib_a-s_sincos.$(OBJEXT) \
-	lib_a-sf_sincos.$(OBJEXT)
+	lib_a-sf_sincos.$(OBJEXT) \
+	lib_a-s_mulh.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -175,7 +176,8 @@ INCLUDES = -I $(newlib_basedir)/../newlib/libm/common $(NEWLIB_CFLAGS) \
 	$(CROSS_CFLAGS) $(TARGET_CFLAGS)
 
 LIB_SOURCES = \
-	s_sincos.c sf_sincos.c
+	s_sincos.c sf_sincos.c \
+	s_mulh.c
 
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(LIB_SOURCES)
@@ -253,6 +255,12 @@ lib_a-sf_sincos.o: sf_sincos.c
 
 lib_a-sf_sincos.obj: sf_sincos.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-sf_sincos.obj `if test -f 'sf_sincos.c'; then $(CYGPATH_W) 'sf_sincos.c'; else $(CYGPATH_W) '$(srcdir)/sf_sincos.c'; fi`
+
+lib_a-s_mulh.o: s_mulh.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-s_mulh.o `test -f 's_mulh.c' || echo '$(srcdir)/'`s_mulh.c
+
+lib_a-s_mulh.obj: s_mulh.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-s_mulh.obj `if test -f 's_mulh.c'; then $(CYGPATH_W) 's_mulh.c'; else $(CYGPATH_W) '$(srcdir)/s_mulh.c'; fi`
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \

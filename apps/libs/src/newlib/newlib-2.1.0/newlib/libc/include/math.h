@@ -467,6 +467,8 @@ extern _LONG_LONG_TYPE llrintl _PARAMS((_LONG_DOUBLE));
 
 extern double drem _PARAMS((double, double));
 extern void sincos _PARAMS((double, double *, double *));
+extern void mulhu64 _PARAMS((double, double, double *, double *));
+extern void mulhs64 _PARAMS((double, double, double *, double *));
 extern double gamma_r _PARAMS((double, int *));
 extern double lgamma_r _PARAMS((double, int *));
 

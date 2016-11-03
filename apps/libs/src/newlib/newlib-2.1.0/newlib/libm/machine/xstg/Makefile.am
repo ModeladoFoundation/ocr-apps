@@ -6,7 +6,8 @@ INCLUDES = -I $(newlib_basedir)/../newlib/libm/common $(NEWLIB_CFLAGS) \
 	$(CROSS_CFLAGS) $(TARGET_CFLAGS)
 
 LIB_SOURCES = \
-	sf_sincos.c s_sincos.c
+	sf_sincos.c s_sincos.c \
+	s_mulh.c
 
 
 noinst_LIBRARIES = lib.a
