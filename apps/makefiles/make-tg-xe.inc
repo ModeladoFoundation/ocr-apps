@@ -104,8 +104,10 @@ RM	:= rm
 CP      := cp
 MKDIR   := mkdir
 
+LINKER_SCRIPT ?= ocr-default.ld
+
 CFLAGS_BASE  := -fxstg-extensions -I $(OCR_INSTALL)/include -DTG_ARCH -I $(APPS_LIBS_INSTALL)/include -I $(TG_INSTALL)/include
-LDFLAGS_BASE := -L $(APPS_LIBS_INSTALL)/lib -L $(TG_INSTALL)/ld-scripts -T ocr-default.ld -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
+LDFLAGS_BASE := -L $(APPS_LIBS_INSTALL)/lib -L $(TG_INSTALL)/ld-scripts -T $(LINKER_SCRIPT) -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
 
 
 CFLAGS  := $(CFLAGS_BASE) $(CFLAGS) -DOCR_TYPE_H=$(XE_TARGET).h
@@ -321,7 +323,7 @@ $(OCR_CE_CONFIG): $(OCR_CE_CONFIG_ORIG)
 # Build the XE blob
 $(WORKLOAD_BUILD)/$(TARGET).dbg: | debug_post_prerun
 $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
-$(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe | debug_post_prerun builderxe $(WORKLOAD_BUILD)
+$(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe | debug_post_prerun builderxe $(WORKLOAD_BUILD) sectionSizeCheck
 	@echo "#### BUILDING XE BLOB ####"
 	$(AT)$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | \
 	grep "^  1" | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
@@ -330,6 +332,16 @@ $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe 
 	$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
 # XE blob must be phony in order to rebuild the args blob on every run
 .PHONY: $(WORKLOAD_BUILD)/$(TARGET).blob.xe
+
+.PHONY: sectionSizeCheck
+sectionSizeCheck: $(WORKLOAD_BUILD)/$(TARGET).dbg
+	$(eval ROSIZE:=$(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep "^  0 .rodata_local "| cut -d\  -f5 | tr '[:lower:]' '[:upper:]'))
+	$(eval ROSIZE:=$(shell echo "ibase=16; $(ROSIZE)"|bc))
+	$(eval ROLIMIT:=$(shell echo "ibase=16; 80000"|bc))
+	$(eval CHECK:=$(shell test $(ROSIZE) -lt $(ROLIMIT); echo $$?))
+ifeq ($(CHECK), 0)
+	$(error "Section .rodata size $(ROSIZE) exceeds limit $(ROLIMIT) - please bump up IPM start address in CE's .cfg file")
+endif
 
 $(OCR_XE_CONFIG_DEFAULT): $(OCR_INSTALL)/share/ocr/config/$(XE_TARGET)/default.cfg
 	$(AT)$(CP) $< $@
