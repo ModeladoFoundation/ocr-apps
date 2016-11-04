@@ -29,7 +29,7 @@ out: \[thread \d terminated\]
 ignore-output
 
 in: continue
-until: \[Inferior 1 \(process \d+\) exited with code \d+]
+until: \[Inferior 1 \(process \d+\) exited normally]
 
 in: run
 out: Starting program:
@@ -45,7 +45,7 @@ out: \[thread \d terminated\]
 ignore-output
 
 in: continue
-until: \[Inferior 1 \(process \d+\) exited with code \d+]
+until: \[Inferior 1 \(process \d+\) exited normally]
 
 
 #=================================================================
@@ -81,7 +81,7 @@ until: Breakpoint 1, sub2 \(value=5\) at hello.c:13
 
 # Continue until all threads exit
 in: continue
-until: \[Inferior .* \(process .*\) exited with code 017
+until: \[Inferior .* \(process .*\) exited normally
 
 in: delete 1
 ignore-output
@@ -144,7 +144,7 @@ out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
 ignore-output
 
 in: continue
-until: \[Inferior 1 \(process \d+\) exited with code \d+]
+until: \[Inferior 1 \(process \d+\) exited normally]
 
 in: info thread
 out: No threads\.

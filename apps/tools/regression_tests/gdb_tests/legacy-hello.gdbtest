@@ -19,13 +19,13 @@ in: run
 out: Starting program:
 out: \[New thread
 out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited with code 017
+out: \[Inferior .* \(process .*\) exited normally
 
 in: run
 out: Starting program:
 out: \[New thread
 out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited with code 017
+out: \[Inferior .* \(process .*\) exited normally
 
 
 #=================================================================
@@ -56,7 +56,7 @@ out: 13\s+return 2\*value;
 in: continue
 out: Continuing\.
 out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited with code 017
+out: \[Inferior .* \(process .*\) exited normally
 
 in: delete 1
 ignore-output

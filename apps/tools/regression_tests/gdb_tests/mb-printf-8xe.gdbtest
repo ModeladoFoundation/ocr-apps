@@ -33,7 +33,7 @@ out: \[thread \d terminated\]
 out: \[thread \d terminated\]
 out: \[thread \d terminated\]
 out: \[thread \d terminated\]
-out: \[Inferior 1 \(process \d+\) exited with code \d+\]
+out: \[Inferior 1 \(process \d+\) exited normally\]
 
 sleep: 5
 
@@ -55,7 +55,7 @@ out: \[thread \d terminated\]
 out: \[thread \d terminated\]
 out: \[thread \d terminated\]
 out: \[thread \d terminated\]
-out: \[Inferior 1 \(process \d+\) exited with code \d+\]
+out: \[Inferior 1 \(process \d+\) exited normally\]
 
 
 #=================================================================
@@ -83,7 +83,7 @@ out: Breakpoint 1, xe_conout \(.*\) at mb-printf\.c:10
 out: 10\s+u64 A_ID = AGENT_FROM_ID
 
 in: continue
-until: \[Inferior .* \(process .*\) exited with code \d+\]
+until: \[Inferior .* \(process .*\) exited normally\]
 
 
 
@@ -116,7 +116,7 @@ until: \[Inferior .* \(process .*\) exited with code \d+\]
 ##in: continue
 ##out: Continuing.
 ##out: \[thread .* terminated
-##out: \[Inferior .* \(process .*\) exited with code \d+\]
+##out: \[Inferior .* \(process .*\) exited normally\]
 ##
 ##
 ###=================================================================
@@ -255,7 +255,7 @@ ignore-output
 in: delete 1
 
 in: continue
-until: \[Inferior 1 \(process \d+\) exited with code \d+]
+until: \[Inferior 1 \(process \d+\) exited normally]
 
 in: info thread
 out: No threads\.
@@ -306,5 +306,5 @@ out: \$4 = 314159
 in: set var len=18
 in: delete 1
 in: continue
-until: \[Inferior .* \(process .*\) exited with code \d+\]
+until: \[Inferior .* \(process .*\) exited normally\]
 

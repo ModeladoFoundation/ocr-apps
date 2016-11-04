@@ -29,7 +29,7 @@ out: \[thread .* terminated
 ignore-output
 
 in: continue
-until: \[Inferior .* \(process .*\) exited with code 017
+until: \[Inferior .* \(process .*\) exited normally
 
 in: run
 out: Starting program: .*rtl-asm
@@ -45,7 +45,7 @@ out: \[thread .* terminated
 ignore-output
 
 in: continue
-until: \[Inferior .* \(process .*\) exited with code 017
+until: \[Inferior .* \(process .*\) exited normally
 ignore-output
 
 
@@ -136,7 +136,7 @@ out: [0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+\s*[0-9a-f]+
 ignore-output
 
 in: continue
-until: \[Inferior .* \(process .*\) exited with code
+until: \[Inferior .* \(process .*\) exited normally
 
 in: info thread
 out: No threads\.
