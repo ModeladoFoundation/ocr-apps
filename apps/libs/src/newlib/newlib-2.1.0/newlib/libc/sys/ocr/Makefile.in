@@ -78,8 +78,8 @@ am__objects_1 = lib_a-environ.$(OBJEXT) lib_a-errno.$(OBJEXT) \
 	lib_a-gettod.$(OBJEXT) lib_a-inode.$(OBJEXT) \
 	lib_a-io.$(OBJEXT) lib_a-isatty.$(OBJEXT) \
 	lib_a-malloc.$(OBJEXT) lib_a-mallocr.$(OBJEXT) \
-	lib_a-ocr_shim.$(OBJEXT) \
-	lib_a-process.$(OBJEXT) lib_a-times.$(OBJEXT) \
+	lib_a-ocr_shim.$(OBJEXT) lib_a-process.$(OBJEXT) \
+	lib_a-sysconf.$(OBJEXT) lib_a-times.$(OBJEXT) \
 	lib_a-wait.$(OBJEXT) lib_a-weaks.$(OBJEXT) lib_a-_exit.$(OBJEXT) \
 	lib_a-init.$(OBJEXT) lib_a-fini.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
@@ -233,6 +233,7 @@ GENERAL_SOURCES = \
 	mallocr.c \
 	ocr_shim.c \
 	process.c \
+	sysconf.c \
 	times.c \
 	wait.c \
 	weaks.c \
@@ -367,6 +368,12 @@ lib_a-process.o: process.c
 
 lib_a-process.obj: process.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-process.obj `if test -f 'process.c'; then $(CYGPATH_W) 'process.c'; else $(CYGPATH_W) '$(srcdir)/process.c'; fi`
+
+lib_a-sysconf.o: sysconf.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-sysconf.o `test -f 'sysconf.c' || echo '$(srcdir)/'`sysconf.c
+
+lib_a-sysconf.obj: sysconf.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-sysconf.obj `if test -f 'sysconf.c'; then $(CYGPATH_W) 'sysconf.c'; else $(CYGPATH_W) '$(srcdir)/sysconf.c'; fi`
 
 lib_a-times.o: times.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-times.o `test -f 'times.c' || echo '$(srcdir)/'`times.c

@@ -20,6 +20,7 @@ GENERAL_SOURCES = \
 	mallocr.c \
 	ocr_shim.c \
 	process.c \
+	sysconf.c \
 	times.c \
 	wait.c \
 	weaks.c

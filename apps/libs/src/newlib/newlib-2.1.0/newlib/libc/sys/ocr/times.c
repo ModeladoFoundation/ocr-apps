@@ -4,23 +4,38 @@
 #include <reent.h>
 #include <errno.h>
 #include <sys/ocr.h>
+#include <time.h>
 
-clock_t
-_DEFUN (_times_r, (reent, buf),
+int
+_DEFUN (_nanosleep_r, (reent, req, rem),
         struct _reent *reent _AND
-        struct tms *buf)
+        const struct timespec *req _AND
+        struct timespec *rem)
 {
-  clock_t ticks;
-  u8 ret = ocrTimes (buf, &ticks);
-  if (ret == 0)
-    return ticks;
-  reent->_errno = (int)ret;
-  return (int)ret;
+    if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999 || req->tv_sec < 0) {
+        reent->_errno = EINVAL;
+        return -1;
+    }
+    // We never have any remaining time.
+    if (rem) {
+        rem->tv_sec = 0;
+        rem->tv_nsec = 0;
+    }
+
+    // Just busy loop for a while. The magic number below is just made up.
+    unsigned long i = req->tv_sec * 10000 + req->tv_nsec;
+    while (i--)
+        ;
+
+    return 0;
 }
 
-clock_t
-_DEFUN (_times, (buf),
-        struct tms *buf)
+int
+_DEFUN (_nanosleep, (req, rem),
+        const struct timespec *req _AND
+        struct timespec *rem)
 {
-    return _times_r( _REENT, buf );
+    return _nanosleep_r( _REENT, req, rem );
 }
+
+weak_alias(_nanosleep, nanosleep)
