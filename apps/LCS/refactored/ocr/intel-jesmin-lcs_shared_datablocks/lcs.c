@@ -136,12 +136,11 @@ void inline serial_lcs_1D(long* X, int *S, int *T, long N, long int xi, long int
 
 
 ocrGuid_t seqLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]){
+#ifdef USE_PROFILER
+   START_PROFILE(seqLCSEdt_profile);
+#endif
    //Take the passcoresed arg and convert it back to the original type
    LCS_base_params* p = (LCS_base_params *)paramv;
-
-   // if xi=1 || xj=1: offset = 1. in all other cases, its zero.
-
-   //PRINTF("Calling seq basecase N: %lu, xi: %lu, xj: %lu, n: %lu \n", p->N, p->xi, p->xj, p->n);
 
    int *S = depv[0].ptr;
    int *T = depv[1].ptr;
@@ -150,7 +149,9 @@ ocrGuid_t seqLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]){
    long *score = depv[2].ptr;
     // Call the base task
    serial_lcs_1D(score, S, T, p->N, p->xi, p->xj, p->n);
-
+#ifdef USE_PROFILER
+RETURN_PROFILE(NULL_GUID);
+#endif
    return NULL_GUID;
 }
 ocrGuid_t recLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]){
