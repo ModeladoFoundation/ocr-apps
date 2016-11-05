@@ -18,7 +18,7 @@ October 27 2015: fixed "RO" to "RW" for the private block
 November 15 2015: changed to the newer reduction library
 November 30 2015: added AFFINITY extensions
 December 8 2015: added macros "library" and structures for params and deps
-April 2016:	added channel events, brought up to release 1.1.0 including affinity HINTS
+April 2016: added channel events, brought up to release 1.1.0 including affinity HINTS
 June 2016: added "AFFINITY" definition to allow it to be turned off easily
 Sept 2016: eliminated realMainEdt and hpcgInitEdt and packEdt (modifying created datablocks)
 Sept 2016: changed timer function
@@ -60,6 +60,10 @@ Oct  2016: modified to support reduction library change (ALLREDUCE, REDUCE, BROA
 #include "extensions/ocr-labeling.h" //currently needed for labeled guids
 #include "extensions/ocr-affinity.h" //needed for affinity
 
+
+#ifdef USE_PROFILER
+#include "extensions/ocr-profiler.h"
+#endif
 
 #include "timers.h"
 #define TICK (1.0e-6)
@@ -588,7 +592,9 @@ depv
 copies the values from the received data blocks into the destination vector
 sends the private block (to either spmv or smooth)
 */
-
+#ifdef USE_PROFILER
+    START_PROFILE(app_unpack);
+#endif
     PRMDEF(unpack);
     u64 level = PRM(unpack,level);
     u64 vectorIndex = PRM(unpack,vectorIndex);
@@ -675,6 +681,10 @@ PRINTF("UN timePhase %d R%d timestep %d time %ld \n", timePhase, pbPTR->myrank, 
 #endif
     ocrDbRelease(pbDBK);
     ocrEventSatisfy(returnEVT, pbDBK);
+
+#ifdef USE_PROFILER
+    RETURN_PROFILE(NULL_GUID);
+#endif
     return(NULL_GUID);
 }
 
@@ -706,7 +716,9 @@ packs data and sends
 
 */
 
-
+#ifdef USE_PROFILER
+    START_PROFILE(app_haloExchange);
+#endif
     PRMDEF(haloExchange);
     u64 level = PRM(haloExchange,level);
     u64 vectorIndex = PRM(haloExchange,vectorIndex);
@@ -826,9 +838,11 @@ if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" \n", myrank, 
 if(debug != 0) PRINTF("HE%d finish\n", myrank);
     time[4] = getTime();
 #ifdef TIMER
-PRINTF("HE timePhase %d R%d timestep %d addD %ld create %ld satisfy %ld finish %ld\n", timePhase, pbPTR->myrank, pbPTR->timestep, time[1]-time[0], time[2]-time[1], time[3]-time[2], time[4]-time[3]);
+    PRINTF("HE timePhase %d R%d timestep %d addD %ld create %ld satisfy %ld finish %ld\n", timePhase, pbPTR->myrank, pbPTR->timestep, time[1]-time[0], time[2]-time[1], time[3]-time[2], time[4]-time[3]);
 #endif
-
+#ifdef USE_PROFILER
+    RETURN_PROFILE(NULL_GUID);
+#endif
     return(NULL_GUID);
 
 }
@@ -864,6 +878,10 @@ smooth does a forward and backward Gauss-Seidel sweep
 then sends the private block back
 
 */
+
+#ifdef USE_PROFILER
+    START_PROFILE(app_smooth);
+#endif
     PRMDEF(smooth);
     u64 level = PRM(smooth,level);
     u64 vectorIndex = PRM(smooth,vectorIndex);
@@ -966,6 +984,10 @@ if(debug > 1) PRINTF("SM%d after i%d v %f \n", myrank, i, vectorbase[i]);
 #endif
     ocrDbRelease(pbDBK);
     ocrEventSatisfy(returnEVT, pbDBK);
+
+#ifdef USE_PROFILER
+    RETURN_PROFILE(NULL_GUID);
+#endif
     return NULL_GUID;
 }
 
@@ -998,6 +1020,9 @@ computes the local sparse matrix-vector product
 sends the private block back
 */
 
+#ifdef USE_PROFILER
+    START_PROFILE(app_spmv);
+#endif
     PRMDEF(spmv);
     u64 level = PRM(spmv,level);
     u64 sourceIndex = PRM(spmv,sourceIndex);
@@ -1059,6 +1084,9 @@ for(i=0;i<length;i++) PRINTF("i %d dst %f \n", i, destbase[i]);
 
     ocrDbRelease(pbDBK);
     ocrEventSatisfy(returnEVT, pbDBK);
+#ifdef USE_PROFILER
+    RETURN_PROFILE(NULL_GUID);
+#endif
     return NULL_GUID;
 }
 
@@ -1085,7 +1113,9 @@ depv
 this is the driver for the multigrid steps.
 
 */
-
+#ifdef USE_PROFILER
+    START_PROFILE(app_mg);
+#endif
     PRMDEF(mg);
     u64 mgStep = PRM(mg,mgStep);;
     ocrGuid_t returnEVT = PRM(mg,returnEVT);
@@ -1122,7 +1152,7 @@ this is the driver for the multigrid steps.
     spmvPRM_t spmvParamv;
     spmvPRM_t * spmvPRM = &spmvParamv;
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event "GUIDF"\n", &pbPTR->myrank, mgStep, phase, level, GUIDA(returnEVT));
+    if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event "GUIDF"\n", &pbPTR->myrank, mgStep, phase, level, GUIDA(returnEVT));
 
     switch(phase) {
 
@@ -1133,7 +1163,7 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d start return event "GUIDF"\n", &pbPTR->my
         for(i=0;i<pbPTR->mt[level];i++) z[i] = 0.0;
 #endif
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep, phase, level);
+        if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep, phase, level);
 
 //create clone, smooth, and halo
 //TODO phase vs step??
@@ -1164,13 +1194,16 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d  create clone\n", &pbPTR->myrank, mgStep,
 
         ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 #ifdef TIMER
-    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+        pbPTR->end[pbPTR->timestep][timePhase] = getTime();
 #endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
+        if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
         case 1:  //return from smooth, start SPMV
@@ -1178,10 +1211,13 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase,
 //return if at the bottom
         if(paramv[0] == 3) {
 #ifdef TIMER
-    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+            pbPTR->end[pbPTR->timestep][timePhase] = getTime();
 #endif
             ocrDbRelease(pbDBK);
             ocrEventSatisfy(returnEVT, pbDBK);
+#ifdef USE_PROFILER
+            RETURN_PROFILE(NULL_GUID);
+#endif
             return NULL_GUID;
         }
 
@@ -1208,16 +1244,18 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase,
         PRM(haloExchange,unpackEVT) = unpackEVT;
         ocrEdtCreate(&haloExchangeEDT, pbPTR->haloExchangeTML, EDT_PARAM_DEF, (u64 *) haloExchangePRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
 
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
+        if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
 
-//launch halo
+        //launch halo
 #ifdef TIMER
-    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+        pbPTR->end[pbPTR->timestep][timePhase] = getTime();
 #endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
 
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
 
@@ -1235,7 +1273,7 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase,
         ocrAddDependence(returnEVT, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
 #ifdef COMPUTE
-//create restriction
+        //create restriction
         ap  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][AP]);
         rold  = (double *) (((u64) ptr) + pbPTR->vector_offset[level][R]);
         rnew  = (double *) (((u64) ptr) + pbPTR->vector_offset[level+1][R]);
@@ -1245,7 +1283,7 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase,
         for(i=0;i<pbPTR->mt[level+1];i++) {
             oldindex = f2c(i,size);
             rnew[i] = rold[oldindex] - ap[oldindex];
-//PRINTF("rest %d oldindex %d size %d res %f fine %f A %f \n", i, oldindex, size, rnew[i], rold[oldindex], ap[oldindex]);
+        //PRINTF("rest %d oldindex %d size %d res %f fine %f A %f \n", i, oldindex, size, rnew[i], rold[oldindex], ap[oldindex]);
         }
 #endif
 
@@ -1257,14 +1295,16 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase,
         level = 3 - abs(mgStep-3);
         pbPTR->mgPhase[level] = 0;
         ocrEdtCreate(&mgEDT, sbMgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", &pbPTR->myrank, mgStep, phase, level);
+        if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", &pbPTR->myrank, mgStep, phase, level);
 
 #ifdef TIMER
-    pbPTR->end[pbPTR->timestep][timePhase] = getTime();
+        pbPTR->end[pbPTR->timestep][timePhase] = getTime();
 #endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
         case 3:  //return from recursive call
@@ -1279,16 +1319,16 @@ if(debug > 0) PRINTF("MG%d S%d P%d L%d finishing\n", &pbPTR->myrank, mgStep, pha
            u64 size = pbPTR->m[level+1];
 
            for(i=0;i<pbPTR->mt[level+1];i++) {
-if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
-//PRINTF("rank%d pro S%d P%d L%d i %d f2c %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, f2c(i,size), z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
-//PRINTF("MG%d S%d P%d L%d i %d f2c %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, f2c(i,size), z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
-               z[f2c(i,size)] += znew[i];
+                if(debug > 1) PRINTF("MG%d S%d P%d L%d i %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
+                //PRINTF("rank%d pro S%d P%d L%d i %d f2c %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, f2c(i,size), z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
+                //PRINTF("MG%d S%d P%d L%d i %d f2c %d source %f update %f result %f \n", pbPTR->myrank, mgStep, phase, level, i, f2c(i,size), z[f2c(i,size)], znew[i], z[f2c(i,size)] + znew[i]);
+                    z[f2c(i,size)] += znew[i];
            }
 #endif
 
-//create clone, smooth, and halo
+        //create clone, smooth, and halo
 
-if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phase, level);
+        if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phase, level);
 
         pbPTR->mgPhase[level] = 4;
         ocrEdtCreate(&mgEDT, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myAffinityHNT, NULL);
@@ -1321,7 +1361,9 @@ if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phas
 #endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
         case 4:  //return from final smooth
@@ -1331,10 +1373,15 @@ if(debug > 0) PRINTF("MG%d S%d P%d  launch halo\n", &pbPTR->myrank, mgStep, phas
 #endif
         ocrDbRelease(pbDBK);
         ocrEventSatisfy(returnEVT, pbDBK);
-if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
+        if(debug > 0) PRINTF("MG%d S%d P%d L%d finish\n", &pbPTR->myrank, mgStep, phase, level);
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
     }
-
+#ifdef USE_PROFILER
+    RETURN_PROFILE(NULL_GUID);
+#endif
     return NULL_GUID;
 }
 
@@ -1359,7 +1406,9 @@ depv
 hpcg driver.
 only work done is local linear algebra
 */
-
+#ifdef USE_PROFILER
+    START_PROFILE(app_hpcg);
+#endif
     DEPVDEF(hpcg);
     ocrGuid_t pbDBK = DEPV(hpcg,privateBlock,guid);
     privateBlock_t * pbPTR = (privateBlock_t *) DEPV(hpcg,privateBlock,ptr);
@@ -1458,7 +1507,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
         ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
 
@@ -1480,11 +1531,13 @@ for(i=0;i<pbPTR->maxIter;i++)
             for(i=0;i<pbPTR->mt[0];i++) sum += (1-x[i])*(1-x[i]);
             *myDataPTR = sum;
             rpPTR->type = REDUCE;
-	    rpPTR->returnEVT = pbPTR->finalOnceEVT;
+        rpPTR->returnEVT = pbPTR->finalOnceEVT;
             reductionLaunch(rpPTR, rpDBK, myDataPTR);
             ocrDbDestroy(returnDBK);
-
-             return NULL_GUID;
+#ifdef USE_PROFILER
+            RETURN_PROFILE(NULL_GUID);
+#endif
+            return NULL_GUID;
         }
 
 #ifdef PRECONDITIONER
@@ -1521,7 +1574,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event "GUIDF" \n", myra
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
 
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
 #else
@@ -1571,7 +1626,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %e \n", myrank, timestep, ph
 //launch reduction
 
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
     case 3:
@@ -1631,7 +1688,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 #endif
         ocrDbRelease(pbDBK);
         ocrAddDependence(pbDBK, haloExchangeEDT, SLOT(haloExchange,privateBlock), DB_MODE_RW);
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
 
@@ -1670,7 +1729,9 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 //launch reduction
 
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
 
     case 5:
@@ -1725,9 +1786,14 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
 
-
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
         return NULL_GUID;
     }
+#ifdef USE_PROFILER
+        RETURN_PROFILE(NULL_GUID);
+#endif
     return NULL_GUID;
 }
 
@@ -2314,7 +2380,7 @@ if(debug != 0) PRINTF("M finish\n");
 
 
 
-return NULL_GUID;
+    return NULL_GUID;
 
 }
 

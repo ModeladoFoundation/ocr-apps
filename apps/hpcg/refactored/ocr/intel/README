@@ -88,3 +88,22 @@ which prints the sum and calls ocrShutdown().
 
 There is a go.sh script whose active line refers to a nodefile16.
 Both the file and and pointer to it in go.sh will have to be modified for the machine you are running on.
+
+In-house OCR profiler:
+Works on x86/x86-mpi
+1. (Re-)Build OCR runtime first: E.g., go to ocr/build/x86/
+    CFLAGS="-DOCR_RUNTIME_PROFILER -DPROFILER_W_APPS" make install -j8
+
+2. Change to the HPCG directory; Run on say a single node (x86)
+    n=8; V=0 ENABLE_PROFILER=yes PROFILER_FOCUS=userCode PROFILER_IGNORE_RT=yes PROFILER_COUNT_OTHER=yes CONFIG_NUM_THREADS=${n} make -f Makefile.x86 clean run
+
+    For detailed profiling:
+    n=8; V=0 ENABLE_PROFILER=yes PROFILER_FOCUS=wo_hc_workShift PROFILER_IGNORE_RT=yes PROFILER_COUNT_OTHER=yes PROFILER_CONSIDER_USER="wo_hc_getWork wo_hc_executeWork wo_hc_wrapupWork ta_hc_execute ta_hc_executeSetup ta_hc_executeCleanup userCode" PROFILER_PEEK=userCode CONFIG_NUM_THREADS=${n} make -f Makefile.x86 clean run
+
+    You can do the same for distributed nodes. Just change the Makefile.x86 to Makefile.x86-mpi
+
+3. Gather profiling data into a single file
+    Go to: install/x86/
+    ${OCR_REPO_PATH}/ocr/ocr/scripts/Profiler/analyzeProfile.py -t '*' > all.profile
+
+    For x86-mpi: Go to install/x86-mpi/
