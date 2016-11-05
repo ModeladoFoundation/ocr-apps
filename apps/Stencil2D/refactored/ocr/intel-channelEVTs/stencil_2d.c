@@ -45,6 +45,12 @@ static void createEventHelper(ocrGuid_t * evtGuid, u32 nbDeps) {
 
 static void destroyOcrObjects(rankH_t* PTR_rankH);
 
+ocrGuid_t shutdownEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
+{
+    ocrShutdown();
+    return NULL_GUID;
+}
+
 _OCR_TASK_FNC_( FNC_Lsend )
 {
     ocrGuid_t DBK_Lsend = depv[2].guid;
@@ -517,12 +523,15 @@ _OCR_TASK_FNC_( FNC_update )
 _OCR_TASK_FNC_( FNC_summary )
 {
     ocrGuid_t DBK_rank = depv[0].guid;
+    ocrGuid_t DBK_spmdJoin_reductionH = depv[3].guid;
 
     rankH_t *PTR_rankH = depv[0].ptr;
     double* stencil_time = depv[1].ptr;
     double* PTR_norm = depv[2].ptr;
+    reductionPrivate_t* PTR_spmdJoin_reductionH = depv[3].ptr;
 
     globalCmdParamH_t* PTR_globalParamH = &(PTR_rankH->globalParamH.cmdParamH);
+    globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
     rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
 
     s64 id = PTR_rankParamH->id;
@@ -555,9 +564,10 @@ _OCR_TASK_FNC_( FNC_summary )
     PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",
            1.0E-06 * flops/avgtime, avgtime);
     print_throughput_custom_name("Stencil2D", NULL, stencil_size, NULL, avgtime, "MFlops/s", 1.0E-06*(flops/avgtime));
-    ocrShutdown();
-
     }
+
+    double dummySync = 0.;
+    reductionLaunch(PTR_spmdJoin_reductionH, DBK_spmdJoin_reductionH, &dummySync);
 
     return NULL_GUID;
 }
@@ -792,7 +802,7 @@ _OCR_TASK_FNC_( timestepEdt )
 
     if( trackUpdate )
     {
-        MyOcrTaskStruct_t TS_summary; _paramc = 0; _depc = 4;
+        MyOcrTaskStruct_t TS_summary; _paramc = 0; _depc = 5;
 
         TS_summary.FNC = FNC_summary;
         ocrEdtTemplateCreate( &TS_summary.TML, TS_summary.FNC, _paramc, _depc );
@@ -807,6 +817,7 @@ _OCR_TASK_FNC_( timestepEdt )
         ocrAddDependence( DBK_rankH, TS_summary.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( PTR_rankH->EVT_OUT_timer_reduction, TS_summary.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( PTR_rankH->EVT_OUT_norm_reduction, TS_summary.EDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( PTR_rankH->DBK_spmdJoin_reductionH, TS_summary.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( TS_update_OET, TS_summary.EDT, _idep++, DB_MODE_NULL );
     }
 
@@ -879,6 +890,7 @@ _OCR_TASK_FNC_( FNC_initialize )
     ocrGuid_t DBK_timers = depv[_idep++].guid;
     ocrGuid_t DBK_norm_reductionH = depv[_idep++].guid;
     ocrGuid_t DBK_timer_reductionH = depv[_idep++].guid;
+    ocrGuid_t DBK_spmdJoin_reductionH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
@@ -889,6 +901,7 @@ _OCR_TASK_FNC_( FNC_initialize )
     timer* PTR_timers = depv[_idep++].ptr;
     reductionPrivate_t* PTR_norm_reductionH = depv[_idep++].ptr;
     reductionPrivate_t* PTR_timer_reductionH = depv[_idep++].ptr;
+    reductionPrivate_t* PTR_spmdJoin_reductionH = depv[_idep++].ptr;
 
     rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
     globalCmdParamH_t* PTR_globalParamH = &(PTR_rankH->globalParamH.cmdParamH);
@@ -962,6 +975,19 @@ _OCR_TASK_FNC_( FNC_initialize )
     ocrEventCreate( &(PTR_rankH->EVT_OUT_timer_reduction), OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG );
     PTR_timer_reductionH->returnEVT = PTR_rankH->EVT_OUT_timer_reduction;
 
+    PTR_spmdJoin_reductionH->nrank = PTR_globalParamH->NR;
+    PTR_spmdJoin_reductionH->myrank = id;
+    PTR_spmdJoin_reductionH->ndata = 1;
+    PTR_spmdJoin_reductionH->reductionOperator = REDUCTION_F8_ADD;
+    //The reduction library does NOT have pure synchronization yet. Ideally, the operator has to be NULL.
+    PTR_spmdJoin_reductionH->rangeGUID = PTR_globalOcrParamH->spmdJoinReductionRangeGUID;
+    PTR_spmdJoin_reductionH->reductionTML = NULL_GUID;
+    PTR_spmdJoin_reductionH->new = 1;  //first time
+    PTR_spmdJoin_reductionH->type = REDUCE;
+    PTR_spmdJoin_reductionH->returnEVT = NULL_GUID;
+    if( id == 0 )
+        PTR_spmdJoin_reductionH->returnEVT = PTR_globalOcrParamH->EVT_OUT_spmdJoin_reduction;
+
     return NULL_GUID;
 }
 
@@ -978,6 +1004,7 @@ _OCR_TASK_FNC_( FNC_stencil )
     ocrGuid_t DBK_timers = depv[_idep++].guid;
     ocrGuid_t DBK_norm_reductionH = depv[_idep++].guid;
     ocrGuid_t DBK_timer_reductionH = depv[_idep++].guid;
+    ocrGuid_t DBK_spmdJoin_reductionH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
@@ -988,12 +1015,13 @@ _OCR_TASK_FNC_( FNC_stencil )
     timer* PTR_timers = depv[_idep++].ptr;
     reductionPrivate_t* PTR_norm_reductionH = depv[_idep++].ptr;
     reductionPrivate_t* PTR_timer_reductionH = depv[_idep++].ptr;
+    reductionPrivate_t* PTR_spmdJoin_reductionH = depv[_idep++].ptr;
 
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
 
     ocrGuid_t initializeDataTML, initializeDataEDT, initializeDataOEVT, initializeDataOEVTS;
 
-    ocrEdtTemplateCreate( &initializeDataTML, FNC_initialize, 0, 8 );
+    ocrEdtTemplateCreate( &initializeDataTML, FNC_initialize, 0, 9 );
 
     ocrEdtCreate( &initializeDataEDT, initializeDataTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
@@ -1012,6 +1040,7 @@ _OCR_TASK_FNC_( FNC_stencil )
     ocrAddDependence( PTR_rankH->DBK_timers, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_norm_reductionH, initializeDataEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( PTR_rankH->DBK_timer_reductionH, initializeDataEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_rankH->DBK_spmdJoin_reductionH, initializeDataEDT, _idep++, DB_MODE_RW );
 
     u64 itimestep = 0;
     ocrGuid_t timestepLoopEDT;
@@ -1154,6 +1183,10 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     ocrDbCreate( &(PTR_rankH->DBK_timer_reductionH), (void **) &PTR_timer_reductionH, sizeof(reductionPrivate_t),
                  DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
 
+    reductionPrivate_t* PTR_spmdJoin_reductionH;
+    ocrDbCreate( &(PTR_rankH->DBK_spmdJoin_reductionH), (void **) &PTR_spmdJoin_reductionH, sizeof(reductionPrivate_t),
+                 DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
+
 #ifdef STENCIL_WITH_EAGER_DB
     ocrSetHintValue(&myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
 #endif
@@ -1206,16 +1239,17 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     ocrGuid_t DBK_timers = PTR_rankH->DBK_timers;
     ocrGuid_t DBK_norm_reductionH = PTR_rankH->DBK_norm_reductionH;
     ocrGuid_t DBK_timer_reductionH = PTR_rankH->DBK_timer_reductionH;
+    ocrGuid_t DBK_spmdJoin_reductionH = PTR_rankH->DBK_spmdJoin_reductionH;
 
     ocrDbRelease(DBK_rankH);
 
-    MyOcrTaskStruct_t TS_init_rankH; _paramc = 0; _depc = 8;
+    MyOcrTaskStruct_t TS_init_rankH; _paramc = 0; _depc = 9;
 
     TS_init_rankH.FNC = FNC_stencil;
     ocrEdtTemplateCreate( &TS_init_rankH.TML, TS_init_rankH.FNC, _paramc, _depc );
 
     ocrEdtCreate( &TS_init_rankH.EDT, TS_init_rankH.TML,
-                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
     ocrEdtTemplateDestroy( TS_init_rankH.TML );
@@ -1229,6 +1263,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     ocrAddDependence( DBK_timers, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_norm_reductionH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_timer_reductionH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_spmdJoin_reductionH, TS_init_rankH.EDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 }
@@ -1533,6 +1568,7 @@ _OCR_TASK_FNC_( PDinitEdt )
     }
 
     ocrEdtTemplateDestroy( initTML );
+    return NULL_GUID;
 }
 
 void forkSpmdEdts_staticScheduler( s64* edtGridDims, s64* pdGridDims, ocrGuid_t* spmdDepv )
@@ -1604,8 +1640,18 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuidRangeCreate(&(ocrParamH.haloRangeGUID), nbrUb*nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.normReductionRangeGUID), nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.timerReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(ocrParamH.spmdJoinReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
 
-    //A datablock to store the commandline and the OCR objectes created above
+    ocrEventCreate( &(ocrParamH.EVT_OUT_spmdJoin_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
+
+    ocrGuid_t shutdownTML;
+    ocrEdtTemplateCreate( &shutdownTML, shutdownEdt, 0, 1 );
+    ocrEdtCreate( NULL, shutdownTML,
+                  0, NULL, 1, &(ocrParamH.EVT_OUT_spmdJoin_reduction),
+                  EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrEdtTemplateDestroy( shutdownTML );
+
+    //A datablock to store the commandline and the OCR objects created above
     ocrGuid_t DBK_globalParamH;
     globalParamH_t* PTR_globalParamH;
     ocrDbCreate( &DBK_globalParamH, (void**) &PTR_globalParamH, sizeof(globalParamH_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );

@@ -405,7 +405,9 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t returnEVT = rpPTR->returnEVT;
 
     if(nrank == 1) { // nothing to do
-        if(!ocrGuidIsNull(rpPTR->returnEVT)) ocrEventSatisfy(rpPTR->returnEVT, DEPV(reduction,mydata,guid));
+        if(!ocrGuidIsNull(rpPTR->returnEVT)) {
+            ocrEventSatisfy(rpPTR->returnEVT, DEPV(reduction,mydata,guid));
+        }
         return NULL_GUID;
     }
 
@@ -461,12 +463,11 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
                     ocrGuidFromIndex(&recvEVT, rpPTR->rangeGUID, src-1);
                     errno = ocrEventCreate(&recvEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     ocrAddDependence(recvEVT, reductionRecvChannelEDT, SLOTARRAY(reductionRecvChannel,buffer,i), DB_MODE_RO);
-
-              } else {
+                } else {
                     ocrAddDependence(NULL_GUID, reductionRecvChannelEDT, SLOTARRAY(reductionRecvChannel,buffer,i), DB_MODE_RO);
+                }
             }
         }
-    }
 
 //launch all
     ocrDbRelease(DEPV(reduction,reductionPrivate,guid));
@@ -476,7 +477,9 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
         } else { //only Recv
             ocrAddDependence(RecvOutputEVT, reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
             ocrAddDependence(DEPV(reduction,reductionPrivate,guid), reductionRecvChannelEDT, SLOT(reductionRecvChannel,reductionPrivate), DB_MODE_RW);
-        } else if(ocrGuidIsNull(RecvOutputEVT)) {//only send
+        }
+    else
+        if(ocrGuidIsNull(RecvOutputEVT)) {//only send
             ocrAddDependence(SendOutputEVT, reductionEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
             ocrAddDependence(DEPV(reduction,reductionPrivate,guid), reductionSendChannelEDT, SLOT(reduction,reductionPrivate), DB_MODE_RW);
         } else { //all 3
@@ -546,18 +549,20 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
             if(rpPTR->type == ALLREDUCE) reductionSendDown(rpPTR, mydataPTR);
             rpPTR->phase = 0;
             ocrDbRelease(reductionPrivateDBK);
+            ocrDbRelease(DEPV(reduction,mydata,guid));
             ocrEventSatisfy(returnEVT, DEPV(reduction,mydata,guid));
             return NULL_GUID;
+        } // This seemed to be missing
 
     case 2: //I have received down
         if(!ocrGuidIsNull(rpPTR->sendDownEVT[0])) reductionSendDown(rpPTR,mydataPTR);
         rpPTR->phase = 0;
         ocrDbRelease(reductionPrivateDBK);
+        ocrDbRelease(DEPV(reduction,mydata,guid));
         ocrEventSatisfy(returnEVT, DEPV(reduction,mydata,guid));
         return NULL_GUID;
-
-        }
-    }
+        // } // This seemed to be extra
+    } // end outermost switch
 }
 
 

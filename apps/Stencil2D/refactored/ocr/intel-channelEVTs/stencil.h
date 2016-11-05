@@ -86,7 +86,9 @@ typedef struct
 typedef struct
 {
     ocrGuid_t haloRangeGUID, normReductionRangeGUID, timerReductionRangeGUID;
-    //ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
+    ocrGuid_t spmdJoinReductionRangeGUID;
+
+    ocrGuid_t EVT_OUT_spmdJoin_reduction;
 } globalOcrParamH_t;
 
 typedef struct
@@ -121,6 +123,7 @@ typedef struct
     ocrGuid_t DBK_timers;
     ocrGuid_t DBK_norm_reductionH; //->reductionPrivate_t
     ocrGuid_t DBK_timer_reductionH;
+    ocrGuid_t DBK_spmdJoin_reductionH;
 
     ocrGuid_t EVT_OUT_norm_reduction, EVT_OUT_timer_reduction;
 

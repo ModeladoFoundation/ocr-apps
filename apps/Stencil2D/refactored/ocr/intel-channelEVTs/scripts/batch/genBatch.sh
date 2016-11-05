@@ -14,7 +14,7 @@ LARG_QUEUE=regular
 #ws or ss
 LARG_SCALING_TYPE=$1
 
-ranks="1 4 16 32 64 256"
+ranks=${ranks-"1 4 16 32 64 256"}
 c=${c-"16"}
 
 TPL_ROOT=./scripts/batch

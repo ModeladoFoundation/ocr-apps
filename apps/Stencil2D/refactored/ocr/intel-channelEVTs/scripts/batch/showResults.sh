@@ -12,7 +12,7 @@ DIRE=${1}
 #TODO these should be read from a conf file or something
 #They are currently duplicated across scripts
 
-ranks="1 4 16 64 256"
+ranks=${ranks-"1 4 16 64 256"}
 
 #TODO This was just to get around sorting and figuring out the size
 for count in `echo $ranks`; do
