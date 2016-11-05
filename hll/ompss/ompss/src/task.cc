@@ -34,8 +34,8 @@ void nanos_create_task(
     PROFILE_BLOCK;
     Task* task = Task::factory::construct( task_info, args_block_size );
 
-    *args_block_pointer = task->definition->arguments.buffer;
-    *((Task**)task_pointer) = task;
+    *args_block_pointer = static_cast<void*>(task->definition.arguments.buffer);
+    *reinterpret_cast<Task**>(task_pointer) = task;
 }
 
 
@@ -45,11 +45,11 @@ void nanos_create_task(
  *
  * \param[in] task The task handler
  */
-void nanos_submit_task( void *handle )
+void nanos_submit_task( void *task )
 {
     using namespace ompss;
     PROFILE_BLOCK;
-    Task* task = (Task*)handle;
+    Task* new_task = static_cast<Task*>(task);
 
     // Create task EDT and its cleanup EDT
     ocrGuid_t edt;
@@ -58,30 +58,31 @@ void nanos_submit_task( void *handle )
     ocrGuid_t edtFinished;
 
     // Register dependences
-    task->dependences.register_dependences( task, task->definition->arguments.buffer );
+    new_task->dependences.register_dependences(
+        new_task,
+        static_cast<void*>(new_task->definition.arguments.buffer) );
 
-    uint32_t depc = task->dependences.acquire.size();
-    ocrGuid_t* depv = task->dependences.acquire.data();
+    uint32_t depc = new_task->dependences.acquire.size();
+    ocrGuid_t* depv = new_task->dependences.acquire.data();
 
     // Create EDT of finish type (does not return until
     // all its children EDTs are completed )
-    std::pair<uint32_t,uint64_t*> param = task->packParams();
+    std::pair<uint32_t,uint64_t*> param = new_task->packParams();
     uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
                   param.first, param.second,
                   depc, depv,
                   EDT_PROP_FINISH, NULL_HINT, &edtFinished );
     ASSERT( err == 0);
 
-    delete[] param.second;
 
     // Feed EDT output event to taskwait latch event,
     // and increment latch's second pre-slot
     getLocalScope().taskwait.registerEdt(edtFinished);
 
     // Add edt dependences
-    acquireDependences( *task );
+    acquireDependences( *new_task );
 
-    Task::factory::destroy( task );
+    Task::factory::destroy( new_task );
 }
 
 /*! \brief Block the control flow of the current task until all of its children have finished

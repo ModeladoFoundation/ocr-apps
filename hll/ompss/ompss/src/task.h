@@ -8,9 +8,9 @@
 
 #include "common.h"
 #include "event.h"
+#include "memory/serializer.h"
 #include "task-local.h"
 
-#include <cstring>
 #include <nanos6_rt_interface.h>
 
 namespace ompss {
@@ -35,114 +35,85 @@ inline TaskDefinition::TaskDefinition( nanos_task_info* info, uint32_t args_size
 }
 
 inline TaskScopeInfo::TaskScopeInfo() :
+    taskMemory(),
+    tmpMemory(),
     taskwait(),
     accesses(),
-    flags(),
-    taskMemory(),
-    argsMemory()
+    flags()
 {
 }
 
-inline Task::Task( nanos_task_info* info, uint32_t args_size ) :
-    definition(nullptr),
+inline Task::Task( nanos_task_info* info, TaskDefinition& def ) :
+    definition(def),
     dependences(info)
 {
-    size_t size = sizeof(TaskDefinition) + args_size;
-    ASSERT( size < sizeof(getLocalScope().argsMemory) );
-
-    void* def_buffer = static_cast<void*>(&getLocalScope().argsMemory);
-
-    definition = static_cast<TaskDefinition*>(def_buffer);
-    new(definition) TaskDefinition( info, args_size );
 }
 
 inline Task::~Task()
 {
-    definition->~TaskDefinition();
 }
 
 inline Task* Task::factory::construct( nanos_task_info* info, uint32_t args_size )
 {
-    void* ptr = static_cast<void*>(&getLocalScope().taskMemory);
-    return new (ptr) Task( info, args_size );
+    // We want to allocate TaskDefinition and args_size together, so it
+    // is not possible to use Allocator<TaskDefinition>. This is because
+    // requested size would be multiplied by sizeof(TaskDefinition), and
+    // args_size could not be a multiplier of this value.
+    // Default allocation type is uint8_t (unsigned char).
+    TaskScopeInfo::Allocator alloc( getLocalScope().tmpMemory );
+    // Allocate space for TaskDefinition and arguments buffer.
+    void* def_ptr  = alloc.allocate( sizeof(TaskDefinition) + args_size, alignof(TaskDefinition) );
+    void* task_ptr = static_cast<void*>(&getLocalScope().taskMemory);
+
+    // Construct in-place both Task definition and Task instances
+    TaskDefinition* def = new (def_ptr) TaskDefinition( info, args_size );
+    return new (task_ptr) Task( info, *def );
 }
 
 inline void Task::factory::destroy( Task* task )
 {
+    // Explicitly call destructors because
+    // inplace-new was used to construct.
+    TaskDefinition* def = &task->definition;
+    def->~TaskDefinition();
     task->~Task();
-}
 
-inline uint32_t Task::getParamc()
-{
-    uint64_t size = sizeof(TaskDefinition) + definition->arguments.size;
-    return size/sizeof(uint64_t) + 1;
-}
-
-inline uint64_t* Task::getParamv()
-{
-    return static_cast<uint64_t*>(
-        static_cast<void*>(definition)
-    );
+    // Free all temporary storage
+    // allocated for this task
+    getLocalScope().tmpMemory.clear();
 }
 
 inline std::pair<uint32_t,uint64_t*> Task::packParams()
 {
-    uint32_t taskdef_size = sizeof(TaskDefinition) + definition->arguments.size;
-    taskdef_size = taskdef_size/sizeof(uint64_t) + (taskdef_size%sizeof(64)?1 : 0);
+    uint64_t* base = reinterpret_cast<uint64_t*>(&definition);
+    mem::Serializer serializer( base );
+    serializer.advance( sizeof(TaskDefinition) + definition.arguments.size );
 
-    uint32_t deps_size = dependences.release.size() * sizeof(ocrGuid_t);
-    deps_size= 1 + deps_size/sizeof(uint64_t) + (deps_size%sizeof(64)?1 : 0);
+    serializer.write<size_t>( dependences.release.size() );
 
-    uint32_t flags_size = dependences.release.size() * sizeof(uint8_t);
-    flags_size= flags_size/sizeof(uint64_t) + (flags_size%sizeof(64)?1 : 0);
-    flags_size++;
+    serializer.write( dependences.release.begin(), dependences.release.end() );
 
-    uint32_t taskdef_idx = 0;
-    uint32_t deps_idx = taskdef_idx + taskdef_size;
-    uint32_t flags_idx = deps_idx + deps_size;
+    serializer.write( dependences.rel_destroy_not_satisfy.begin(), dependences.rel_destroy_not_satisfy.end() );
 
-    uint32_t paramc = taskdef_size + deps_size + flags_size;
-    uint64_t* paramv = new uint64_t[taskdef_size + deps_size + flags_size];
-
-    new(&paramv[taskdef_idx]) TaskDefinition( *definition );
-
-    paramv[deps_idx] = dependences.release.size();
-
-    ocrGuid_t* p_release = static_cast<ocrGuid_t*>( static_cast<void*>(&paramv[deps_idx+1]) );
-    std::uninitialized_copy( dependences.release.begin(), dependences.release.end(),
-                             (ocrGuid_t*)&paramv[deps_idx+1] );
-
-    uint8_t* p_rflags = static_cast<uint8_t*>( static_cast<void*>(&paramv[flags_idx]) );
-    std::uninitialized_copy( dependences.rel_destroy_not_satisfy.begin(), dependences.rel_destroy_not_satisfy.end(),
-                             (uint8_t*)&paramv[flags_idx] );
-
-    return std::make_pair( paramc, paramv );
+    uint32_t distance = mem::distance<uint64_t>( serializer.position(), base );
+    return { distance, base };
 }
 
 inline std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> Task::unpackParams( uint32_t paramc, uint64_t* paramv )
 {
-    uint32_t taskdef_idx = 0;
-    TaskDefinition* def = static_cast<TaskDefinition*>(
-                            static_cast<void*>(&paramv[taskdef_idx])
-                          );
+    mem::Deserializer deserializer( paramv );
+    TaskDefinition* definition = deserializer.read<TaskDefinition>();
+    deserializer.advance( definition->arguments.size );
 
-    uint32_t taskdef_size = sizeof(TaskDefinition) + def->arguments.size;
-    taskdef_size = taskdef_size/sizeof(uint64_t) + (taskdef_size%sizeof(64)?1 : 0);
+    size_t numReleaseDependences = *deserializer.read<size_t>();
 
-    uint32_t deps_idx = taskdef_idx + taskdef_size;
-    uint64_t num_deps = paramv[deps_idx];
-    ocrGuid_t* deps = (ocrGuid_t*)&paramv[deps_idx+1];
+    ocrGuid_t* releaseDependences = deserializer.read<ocrGuid_t>(numReleaseDependences);
 
-    uint32_t deps_size = num_deps * sizeof(ocrGuid_t);
-    deps_size = 1 + deps_size/sizeof(uint64_t) + (deps_size%sizeof(64)?1 : 0);
+    uint8_t* destroyFlags = deserializer.read<uint8_t>(numReleaseDependences);
 
-    uint32_t flags_size = num_deps * sizeof(uint8_t);
-    flags_size= flags_size/sizeof(uint64_t) + (flags_size%sizeof(64)?1 : 0);
-
-    uint32_t flags_idx = deps_idx + deps_size;
-    uint8_t* flags = (uint8_t*)&paramv[flags_idx];
-
-    return std::make_tuple(def,num_deps,deps,flags);
+    uint32_t distance = mem::distance<uint64_t>( deserializer.position(), paramv );
+    ASSERT( paramc == distance );
+    return { definition, numReleaseDependences, releaseDependences, destroyFlags };
 }
 
 } // namespace ompss

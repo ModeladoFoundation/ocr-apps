@@ -2,6 +2,7 @@
 #ifndef TASK_DECL_H
 #define TASK_DECL_H
 
+#include "allocator/lifo_allocator.h"
 #include "common.h"
 #include "dependences_decl.h"
 #include "event.h"
@@ -22,7 +23,7 @@ typedef std::map<
 > DependenceMap;
 
 struct TaskArguments {
-    uint32_t size;
+    uint64_t size;
     uint8_t  buffer[];
 
     TaskArguments( uint32_t size );
@@ -46,14 +47,11 @@ struct TaskFlags {
 };
 
 struct Task {
-    TaskDefinition*  definition;
+    TaskDefinition&  definition;
     TaskDependences  dependences;
 
-    Task( nanos_task_info* info, uint32_t args_size );
+    Task( nanos_task_info* info, TaskDefinition& def );
     ~Task();
-
-    uint32_t  getParamc();
-    uint64_t* getParamv();
 
     std::pair<uint32_t,uint64_t*> packParams();
     static std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> unpackParams( uint32_t paramc, uint64_t* paramv );
@@ -66,13 +64,13 @@ struct Task {
 
 struct TaskScopeInfo {
     typedef std::aligned_storage<sizeof(Task),alignof(Task)>::type UninitializedTask;
-    typedef std::aligned_storage<64U,64U>::type Scratchpad;
+    typedef buffered_alloc::lifo_allocator<uint8_t,32U,256U> Allocator;
 
+    UninitializedTask          taskMemory;
+    Allocator::arena_type      tmpMemory;
     TaskwaitEvent              taskwait;
     DependenceMap              accesses;
     TaskFlags                  flags;
-    UninitializedTask          taskMemory;
-    Scratchpad                 argsMemory;
 
     TaskScopeInfo();
 };
