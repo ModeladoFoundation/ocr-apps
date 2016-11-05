@@ -33,14 +33,24 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
     uintptr_t end   = begin + length;
 
     // Get running task access map (not "handler"'s)
-    auto& accesses = getLocalScope().accesses;
+    DependenceMap& accesses = getLocalScope().accesses;
 
-    auto iterator = accesses.lower_bound( begin );
-    if( iterator == accesses.end() || iterator->first != begin ) {
+    DependenceMap::iterator iterator = accesses.lower_bound(begin);
+    if( iterator == accesses.end() || begin < iterator->first ) {
         // Entry did not exist previously
-        AccessDependence& dep_data = accesses[begin];
+        // Note: std::piecewise_construct is a tag that indicates that
+        // the std::pair in map::value_type is using perfect forwarding.
+        // That is, arguments to construct each tuple are used instead
+        // of passing the values themselves.
+        iterator = accesses.emplace_hint( iterator,
+                                          std::piecewise_construct,
+                                          std::forward_as_tuple(begin),
+                                          std::forward_as_tuple<>() );
+        AccessDependence& dep_data = iterator->second;
+
         // Create read-section
         dep_data.createReadSection();
+        ++iterator;
     }
 
     while( iterator != accesses.end() && iterator->first < end ) {
@@ -50,6 +60,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
         dep_data.addRAWDependence( *task );
         // Create read-only section and register read operation
         dep_data.createReadSection();
+        // Add EDT to the read section readers
         dep_data.readSectionAddReader( *task );
 
         ++iterator;
@@ -99,12 +110,22 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
     // Get running task access map (not "handler"'s)
     auto& accesses = getLocalScope().accesses;
 
-    auto iterator = accesses.lower_bound( begin );
-    if( iterator == accesses.end() || iterator->first != begin ) {
+    DependenceMap::iterator iterator = accesses.lower_bound(begin);
+    if( iterator == accesses.end() || begin < iterator->first ) {
         // Entry did not exist previously
-        AccessDependence& dep_data = accesses[begin];
+        // Note: std::piecewise_construct is a tag that indicates that
+        // the std::pair in map::value_type is using perfect forwarding.
+        // That is, arguments to construct each tuple are used instead
+        // of passing the values themselves.
+        iterator = accesses.emplace_hint( iterator,
+                                          std::piecewise_construct,
+                                          std::forward_as_tuple(begin),
+                                          std::forward_as_tuple<>() );
+        AccessDependence& dep_data = iterator->second;
+
         // Create write-section
         dep_data.createWriteSection( *task );
+        ++iterator;
     }
 
     while( iterator != accesses.end() && iterator->first < end ) {
