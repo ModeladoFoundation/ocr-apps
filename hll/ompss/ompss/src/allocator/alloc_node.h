@@ -9,6 +9,8 @@
 
 #include <new>
 
+namespace buffered_alloc {
+
 struct free_node;
 
 struct free_node_base {
@@ -120,25 +122,27 @@ struct free_node : public free_node_base {
     uint8_t _data[];
 };
 
-void free_node_base::insert_after(free_node* n) {
+inline void free_node_base::insert_after(free_node* n) {
 	n->_next = _next;
 	_next = n;
 }
 
-void free_node_base::remove_after() {
+inline void free_node_base::remove_after() {
 	_next = _next->_next;
 }
 
-allocated_node* allocated_node::replace(free_node* node) {
+inline allocated_node* allocated_node::replace(free_node* node) {
 	uint32_t new_size = node->size() + sizeof(free_node) - sizeof(allocated_node);
 	node->~free_node();
 	return new(node) allocated_node(new_size);
 }
 
-free_node* free_node::replace(allocated_node* node) {
+inline free_node* free_node::replace(allocated_node* node) {
 	uint32_t new_size = node->size() + sizeof(allocated_node) - sizeof(free_node);
 	node->~allocated_node();
 	return new(node) free_node(new_size);
 }
+
+} // namespace buffered_alloc
 
 #endif // ALLOC_NODE_H
