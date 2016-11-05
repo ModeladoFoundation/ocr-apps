@@ -33,14 +33,14 @@ static inline ProfileBlock<N,F> profile_block( N&& name, F&& file, int line )
     return ProfileBlock<N,F>(std::forward<N>(name),std::forward<F>(file),line);
 }
 
+} // namespace ompss
+
 #if 0
 #define PROFILE_BLOCK \
     auto _b_##__LINE__ = ::ompss::profile_block(__func__,__FILE__,__LINE__);
 #else
 #define PROFILE_BLOCK
 #endif
-
-} // namespace ompss
 
 #else  // __cplusplus
 
