@@ -95,5 +95,8 @@ void nanos_taskwait(char const *invocation_source)
 
     // Wait until successors complete
     getLocalScope().taskwait.wait();
+
+    // Clear dependence map
+    getLocalScope().accesses.clear();
 }
 
