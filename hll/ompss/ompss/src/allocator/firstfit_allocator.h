@@ -7,7 +7,7 @@
 
 #include <cassert>
 
-namespace inplace {
+namespace buffered_alloc {
 
 template <typename Tp>
 struct firstfit_allocator {
@@ -24,6 +24,12 @@ struct firstfit_allocator {
         size = size - sizeof(free_node_base) - sizeof(free_node);
         _free->insert_after( new(_free+1) free_node(size) );
 	}
+
+    template < typename T >
+    firstfit_allocator( T& arena ) :
+        firstfit_allocator( &arena, sizeof(T) )
+    {
+    }
 
     template <typename T>
     firstfit_allocator( const firstfit_allocator<T>& other ) :
@@ -67,6 +73,7 @@ struct firstfit_allocator {
         Tp* ptr = allocate(n, std::nothrow);
         if( !ptr )
             throw std::bad_alloc();
+        return ptr;
     }
 
 	void deallocate( Tp* ptr, std::size_t n ) {
@@ -95,7 +102,7 @@ private:
     free_node_base* _free;
 };
 
-} // namespace inplace
+} // namespace buffered_alloc
 
 #endif // FIRSTFIT_ALLOCATOR_H
 
