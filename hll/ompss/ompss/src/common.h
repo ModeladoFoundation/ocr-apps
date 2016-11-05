@@ -20,7 +20,6 @@ static inline void* getUserBuffer( void* base )
 
 static inline void* ompss_malloc( u64 size )
 {
-    PROFILE_BLOCK;
     ocrGuid_t* db_buffer;
     ocrGuid_t datablock;
     u8 err = ocrDbCreate(&datablock, (void**)&db_buffer, sizeof(ocrGuid_t)+size,
@@ -32,8 +31,6 @@ static inline void* ompss_malloc( u64 size )
 
 static inline void ompss_free( void* addr )
 {
-    PROFILE_BLOCK;
-
     u8 err = ocrDbDestroy( getBufferDb(addr) );
     ASSERT( err == 0 );
 }
