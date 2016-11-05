@@ -90,8 +90,8 @@ static inline void acquireDependences( ompss::Task& task )
 {
     uint8_t err;
 
-    std::vector<ocrGuid_t>& events = task.dependences.acquire;
-    std::vector<unsigned char>& satisfy = task.dependences.acq_satisfy;
+    auto& events  = task.dependences.acquire;
+    auto& satisfy = task.dependences.acq_satisfy;
     if( !events.empty() ) {
         // Task is using dependences.
         // Parent (running task) shall postpone its clean-up

@@ -25,7 +25,6 @@ ocrGuid_t cleanupTemplate;
 ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
 {
     using namespace ompss;
-    PROFILE_BLOCK;
 
     // Decode arguments and dependences
     std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> args =
@@ -55,7 +54,7 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
 ocrGuid_t edtCleanup( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
 {
     using namespace ompss;
-    PROFILE_BLOCK;
+
     // Decode arguments and dependences
     Task* task = (Task*)getUserBuffer(depv[0].ptr);
     Task::factory::destroy( task );
