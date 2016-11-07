@@ -35,10 +35,10 @@ inline TaskDefinition::TaskDefinition( nanos_task_info* info, uint32_t args_size
 }
 
 inline TaskScopeInfo::TaskScopeInfo() :
-    taskMemory(),
     tmpMemory(),
-    taskwait(),
+    taskMemory(),
     accesses(),
+    taskwait(),
     flags()
 {
 }

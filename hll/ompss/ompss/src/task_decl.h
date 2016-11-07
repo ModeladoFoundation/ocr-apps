@@ -66,10 +66,10 @@ struct TaskScopeInfo {
     typedef std::aligned_storage<sizeof(Task),alignof(Task)>::type UninitializedTask;
     typedef buffered_alloc::lifo_allocator<uint8_t,32U,256U> Allocator;
 
-    UninitializedTask          taskMemory;
     Allocator::arena_type      tmpMemory;
-    TaskwaitEvent              taskwait;
+    UninitializedTask          taskMemory;
     DependenceMap              accesses;
+    TaskwaitEvent              taskwait;
     TaskFlags                  flags;
 
     TaskScopeInfo();
