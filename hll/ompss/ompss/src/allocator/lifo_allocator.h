@@ -61,7 +61,7 @@ struct lifo_allocator {
     {
     }
 
-	Tp* allocate( const std::nothrow_t& tag, std::size_t n, std::size_t align = alignof(Tp) ) noexcept {
+	Tp* allocate( std::size_t n, std::size_t align = alignof(Tp) ) noexcept {
         const ptrdiff_t align_req = std::max( align, alignof(ptrdiff_t) );
         const size_t    alloc_size = n * sizeof(Tp);
 
@@ -83,12 +83,14 @@ struct lifo_allocator {
         return result;
 	}
 
+#if 0 // Avoid usage of exceptions
     Tp* allocate( std::size_t n, std::size_t align = alignof(Tp) ) {
         Tp* result = allocate( std::nothrow, n, align );
         if( !result )
             throw std::bad_alloc();
         return result;
     }
+#endif
 
 	void deallocate( Tp* ptr, std::size_t n = 0u ) {
         ptrdiff_t offset = sizeof(ptrdiff_t) + reinterpret_cast<ptrdiff_t*>(ptr)[-1];
