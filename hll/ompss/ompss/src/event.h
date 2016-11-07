@@ -15,7 +15,7 @@ protected:
     {
     }
 
-    virtual ~EventBase()
+    ~EventBase()
     {
         _handle = NULL_GUID;
     }
@@ -93,7 +93,7 @@ struct StickyEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
-    virtual ~StickyEvent() {
+    ~StickyEvent() {
         uint8_t err = ocrEventDestroy( handle() );
         ASSERT( err == 0 );
     }
@@ -113,7 +113,7 @@ struct LatchEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
-    virtual ~LatchEvent() {
+    ~LatchEvent() {
     }
 
     LatchEvent& operator++(int) {
