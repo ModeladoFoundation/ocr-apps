@@ -7,6 +7,15 @@
 
 namespace ompss {
 
+struct MainStorage {
+    int exit_code;
+
+    MainStorage() :
+        exit_code(0)
+    {
+    }
+};
+
 extern ocrGuid_t taskOutlineTemplate;
 extern ocrGuid_t cleanupTemplate;
 
