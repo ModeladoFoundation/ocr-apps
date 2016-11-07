@@ -1,11 +1,11 @@
 
-#include <ocr.h>
-#include <extensions/ocr-runtime-itf.h>
-
 #include "dependences.h"
 #include "outline.h"
 #include "task.h"
 #include "task-local.h"
+
+#include <ocr.h>
+#include <extensions/ocr-runtime-itf.h>
 
 namespace ompss {
 

@@ -5,6 +5,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <ocr.h>
+
 namespace ocr {
 
 template < typename T >
