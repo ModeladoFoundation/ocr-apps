@@ -86,7 +86,7 @@ inline void AccessDependence::addWARDependence( ompss::Task& task )
     }
 }
 
-static inline void acquireDependences( ompss::Task& task )
+inline void acquireDependences( ompss::Task& task )
 {
     uint8_t err;
 
@@ -109,7 +109,7 @@ static inline void acquireDependences( ompss::Task& task )
     }
 }
 
-static inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[], uint8_t destroy[] )
+inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[], uint8_t destroy[] )
 {
     uint8_t err;
     for( uint32_t i = 0; i < num_deps; ++i ) {

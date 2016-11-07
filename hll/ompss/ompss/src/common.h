@@ -6,19 +6,19 @@
 
 #include <ocr.h>
 
-static inline ocrGuid_t getBufferDb( void* addr )
+inline ocrGuid_t getBufferDb( void* addr )
 {
     char* base = ((char*)addr)-sizeof(ocrGuid_t);
     return *((ocrGuid_t*)base);
 }
 
-static inline void* getUserBuffer( void* base )
+inline void* getUserBuffer( void* base )
 {
     char* user = ((char*)base)+sizeof(ocrGuid_t);
     return ((void*)user);
 }
 
-static inline void* ompss_malloc( u64 size )
+inline void* ompss_malloc( u64 size )
 {
     ocrGuid_t* db_buffer;
     ocrGuid_t datablock;
@@ -29,7 +29,7 @@ static inline void* ompss_malloc( u64 size )
     return getUserBuffer(db_buffer);
 }
 
-static inline void ompss_free( void* addr )
+inline void ompss_free( void* addr )
 {
     u8 err = ocrDbDestroy( getBufferDb(addr) );
     ASSERT( err == 0 );
