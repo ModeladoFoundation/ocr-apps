@@ -1,12 +1,11 @@
 
-#include <nanos6_rt_interface.h>
-
-#include <ocr.h>
-
 #include "common.h"
 #include "outline.h"
 #include "task.h"
 #include "task-local.h"
+
+#include <nanos6_rt_interface.h>
+#include <ocr.h>
 
 extern "C" int ompss_user_main( int argc, char* argv[] );
 

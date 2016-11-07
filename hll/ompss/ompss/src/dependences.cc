@@ -1,11 +1,11 @@
 
-#include <ocr.h>
-#include <nanos6_rt_interface.h>
-
 #include "debug.h"
 #include "dependences.h"
 #include "task.h"
 #include "task-local.h"
+
+#include <nanos6_rt_interface.h>
+#include <ocr.h>
 
 /*! \brief Register a task read access on linear range of addresses
  *
