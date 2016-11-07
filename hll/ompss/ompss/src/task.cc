@@ -31,7 +31,7 @@ void nanos_create_task(
 )
 {
     using namespace ompss;
-    PROFILE_BLOCK;
+
     Task* task = Task::factory::construct( task_info, args_block_size );
 
     *args_block_pointer = static_cast<void*>(task->definition.arguments.buffer);
@@ -48,7 +48,7 @@ void nanos_create_task(
 void nanos_submit_task( void *task )
 {
     using namespace ompss;
-    PROFILE_BLOCK;
+
     Task* new_task = static_cast<Task*>(task);
 
     // Create task EDT and its cleanup EDT
@@ -92,7 +92,6 @@ void nanos_submit_task( void *task )
 void nanos_taskwait(char const *invocation_source)
 {
     using namespace ompss;
-    PROFILE_BLOCK;
 
     // Wait until successors complete
     getLocalScope().taskwait.wait();
