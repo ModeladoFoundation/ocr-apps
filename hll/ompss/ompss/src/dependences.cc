@@ -26,7 +26,7 @@
 void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 {
     using namespace ompss;
-    PROFILE_BLOCK;
+
     Task* task = (Task*)handler;
 
     uintptr_t begin = reinterpret_cast<uintptr_t>(start);
@@ -101,7 +101,7 @@ void nanos_register_write_depinfo(void *handler, void *start, size_t length)
 void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 {
     using namespace ompss;
-    PROFILE_BLOCK;
+
     Task* task = (Task*)handler;
 
     uintptr_t begin = reinterpret_cast<uintptr_t>(start);
