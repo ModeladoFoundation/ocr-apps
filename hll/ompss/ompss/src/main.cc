@@ -31,7 +31,6 @@ ocrGuid_t edtUserMain(
             ocrEdtDep_t depv[] )
 {
     using namespace ompss;
-    PROFILE_BLOCK;
 
     void* program_args = depv[1].ptr;
     uint64_t argc = getArgc( program_args );
@@ -67,7 +66,6 @@ ocrGuid_t edtShutdown(
             uint32_t depc,
             ocrEdtDep_t depv[] )
 {
-    PROFILE_BLOCK;
     // Decode task dependencies
     MainStorage* main_data = (MainStorage*)getUserBuffer(depv[0].ptr);
     int exit_code = main_data->exit_code;
@@ -94,7 +92,6 @@ ocrGuid_t mainEdt(
             ocrEdtDep_t depv[] )
 {
     using namespace ompss;
-    PROFILE_BLOCK;
     nanos_preinit();
     nanos_init();
 
@@ -130,14 +127,13 @@ ocrGuid_t mainEdt(
 //! \brief Initialize the runtime at least to the point that it will accept tasks
 void nanos_preinit()
 {
-    PROFILE_BLOCK;
 }
 
 //! \brief Continue with the rest of the runtime initialization
 void nanos_init()
 {
     using namespace ompss;
-    PROFILE_BLOCK;
+
     // Create EDT templates
     uint8_t err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ASSERT( err == 0);
@@ -155,14 +151,12 @@ void nanos_init()
 //! \brief Wait until the the runtime has shut down
 void nanos_wait_until_shutdown()
 {
-    PROFILE_BLOCK;
 }
 
 //! \brief Notify the runtime that it can begin the shutdown process
 void nanos_notify_ready_for_shutdown()
 {
     using namespace ompss;
-    PROFILE_BLOCK;
     // Do the shutdown right here
     uint8_t err = ocrEdtTemplateDestroy( taskOutlineTemplate );
     ASSERT( err == 0 );

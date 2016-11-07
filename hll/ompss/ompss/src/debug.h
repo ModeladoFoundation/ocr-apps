@@ -28,7 +28,7 @@ struct ProfileBlock {
 };
 
 template < typename N, typename F >
-static inline ProfileBlock<N,F> profile_block( N&& name, F&& file, int line )
+inline ProfileBlock<N,F> profile_block( N&& name, F&& file, int line )
 {
     return ProfileBlock<N,F>(std::forward<N>(name),std::forward<F>(file),line);
 }

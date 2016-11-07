@@ -16,7 +16,7 @@ union _els_to_ptr {
     ocrGuid_t els;
 };
 
-static inline void setTLS( uint32_t slot, void* data )
+inline void setTLS( uint32_t slot, void* data )
 {
     // Workaround to access ELS
     union _els_to_ptr tmp;
@@ -24,7 +24,7 @@ static inline void setTLS( uint32_t slot, void* data )
     ocrElsUserSet( slot, tmp.els );
 }
 
-static inline void* getTLS( uint32_t slot )
+inline void* getTLS( uint32_t slot )
 {
     // Workaround to get a pointer from EDT local storage
     union _els_to_ptr tmp;
@@ -32,18 +32,18 @@ static inline void* getTLS( uint32_t slot )
     return (void*)tmp.ptr;
 }
 
-static inline void unsetTLS( uint32_t slot )
+inline void unsetTLS( uint32_t slot )
 {
     // Default initialize TLS value
     ocrElsUserSet( slot, NULL_GUID );
 }
 
-static inline ompss::TaskScopeInfo& getLocalScope()
+inline ompss::TaskScopeInfo& getLocalScope()
 {
     return *static_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
 }
 
-static inline void setLocalScope( ompss::TaskScopeInfo& scope )
+inline void setLocalScope( ompss::TaskScopeInfo& scope )
 {
     setTLS( 0U, static_cast<void*>(&scope) );
 }
