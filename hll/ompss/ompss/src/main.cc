@@ -14,15 +14,6 @@ namespace ompss {
 ocrGuid_t shutdownTemplate;
 ocrGuid_t ompssMainTemplate;
 
-struct MainStorage {
-    int                  exit_code;
-
-    MainStorage() :
-        exit_code(0)
-    {
-    }
-};
-
 ocrGuid_t edtUserMain(
             uint32_t paramc,
             uint64_t* paramv,
