@@ -79,7 +79,7 @@ am__objects_1 = lib_a-environ.$(OBJEXT) lib_a-errno.$(OBJEXT) \
 	lib_a-inode.$(OBJEXT) \
 	lib_a-io.$(OBJEXT) lib_a-isatty.$(OBJEXT) \
 	lib_a-malloc.$(OBJEXT) lib_a-mallocr.$(OBJEXT) \
-	lib_a-process.$(OBJEXT) lib_a-times.$(OBJEXT) \
+	lib_a-nanosleep.$(OBJEXT) lib_a-process.$(OBJEXT) \
 	lib_a-_exit.$(OBJEXT) \
 	lib_a-flockfile.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
@@ -232,8 +232,8 @@ GENERAL_SOURCES = \
 	isatty.c \
 	malloc.c \
 	mallocr.c \
+	nanosleep.c \
 	process.c \
-	times.c \
 	_exit.c \
 	flockfile.c
 
@@ -359,17 +359,17 @@ lib_a-mallocr.o: mallocr.c
 lib_a-mallocr.obj: mallocr.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-mallocr.obj `if test -f 'mallocr.c'; then $(CYGPATH_W) 'mallocr.c'; else $(CYGPATH_W) '$(srcdir)/mallocr.c'; fi`
 
+lib_a-nanosleep.o: nanosleep.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-nanosleep.o `test -f 'nanosleep.c' || echo '$(srcdir)/'`nanosleep.c
+
+lib_a-nanosleep.obj: nanosleep.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-nanosleep.obj `if test -f 'nanosleep.c'; then $(CYGPATH_W) 'nanosleep.c'; else $(CYGPATH_W) '$(srcdir)/nanosleep.c'; fi`
+
 lib_a-process.o: process.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-process.o `test -f 'process.c' || echo '$(srcdir)/'`process.c
 
 lib_a-process.obj: process.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-process.obj `if test -f 'process.c'; then $(CYGPATH_W) 'process.c'; else $(CYGPATH_W) '$(srcdir)/process.c'; fi`
-
-lib_a-times.o: times.c
-	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-times.o `test -f 'times.c' || echo '$(srcdir)/'`times.c
-
-lib_a-times.obj: times.c
-	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-times.obj `if test -f 'times.c'; then $(CYGPATH_W) 'times.c'; else $(CYGPATH_W) '$(srcdir)/times.c'; fi`
 
 lib_a-_exit.o: _exit.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-_exit.o `test -f '_exit.c' || echo '$(srcdir)/'`_exit.c

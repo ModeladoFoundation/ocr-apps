@@ -18,8 +18,8 @@ GENERAL_SOURCES = \
 	isatty.c \
 	malloc.c \
 	mallocr.c \
-	process.c \
-	times.c
+	nanosleep.c \
+	process.c
 
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(GENERAL_SOURCES)
