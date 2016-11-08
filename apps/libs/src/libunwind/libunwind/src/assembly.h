@@ -32,7 +32,12 @@
 
 #define GLUE2(a, b) a ## b
 #define GLUE(a, b) GLUE2(a, b)
+#define __TEST_USER_LABEL_PREFIX__  __USER_LABEL_PREFIX__0
+#if (__TEST_USER_LABEL_PREFIX__ == 0)
+#define SYMBOL_NAME(name) name
+#else
 #define SYMBOL_NAME(name) GLUE(__USER_LABEL_PREFIX__, name)
+#endif
 
 #if defined(__APPLE__)
 

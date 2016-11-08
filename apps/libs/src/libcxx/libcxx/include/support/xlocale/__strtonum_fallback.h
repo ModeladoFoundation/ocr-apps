@@ -32,7 +32,11 @@ inline _LIBCPP_ALWAYS_INLINE double strtod_l(const char *nptr,
 
 inline _LIBCPP_ALWAYS_INLINE long double strtold_l(const char *nptr,
                                                    char **endptr, locale_t) {
+#if defined (_LIBCPP_HAS_LONG_DOUBLE)
   return ::strtold(nptr, endptr);
+#else
+  return (long double) ::strtol(nptr, endptr, 0);
+#endif // _LIBCPP_HAS_LONG_DOUBLE
 }
 
 inline _LIBCPP_ALWAYS_INLINE long long
@@ -57,7 +61,11 @@ wcstoull_l(const wchar_t *nptr, wchar_t **endptr, int base, locale_t) {
 
 inline _LIBCPP_ALWAYS_INLINE long double wcstold_l(const wchar_t *nptr,
                                                    wchar_t **endptr, locale_t) {
+#if defined (_LIBCPP_HAS_LONG_DOUBLE)
   return ::wcstold(nptr, endptr);
+#else
+  return ::wcstol(nptr, endptr, 0);
+#endif // _LIBCPP_HAS_LONG_DOUBLE
 }
 
 #ifdef __cplusplus

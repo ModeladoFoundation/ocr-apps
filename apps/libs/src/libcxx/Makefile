@@ -33,6 +33,7 @@ APPS_INSTALL ?= $(APPS_INSTALL_ROOT)/$(ARCH)
 APPS_INCLUDE ?= $(APPS_INSTALL)/include
 
 LLVM_CONFIG = $(TG_ROOT)/build/build.xe-llvm/build_llvm/bin/llvm-config
+LLVM_PATH = $(TG_ROOT)/xe-llvm
 
 #
 # Supported ARCH values
@@ -59,7 +60,7 @@ BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
 COMPILE_DEFINES = -U__STRICT_ANSI__
 
-COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++ $(COMPILE_DEFINES)
+COMPILE_FLAGS = -std=c++11 --target=$(TARGET) $(COMPILE_DEFINES)
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
@@ -82,8 +83,7 @@ CMAKE_ARGS =  -DLIBCXX_TARGET=$(CXX_TARGET) \
 			  -DLIBCXX_ENABLE_THREADS=TRUE \
 			  -DLIBCXX_ENABLE_SHARED=FALSE \
 			  -DLIBCXX_ENABLE_FILESYSTEM=FALSE \
-			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)" \
-			  -DLLVM_CONFIG="$(LLVM_CONFIG)"
+			  -DCMAKE_CXX_FLAGS:STRING="$(COMPILE_FLAGS)"
 
 #
 # XE Clang/llvm build
@@ -96,7 +96,7 @@ ifeq ($(ARCH), tg-xe)
   CFLAGS += -D_LIBCPP_HAS_LONG_DOUBLE
   BTYPE = -static
   COMPILE_FLAGS += -I$(APPS_INCLUDE)
-  # export APPS_LIBS_INSTALL
+  CMAKE_ARGS += -DLLVM_CONFIG="$(LLVM_CONFIG)"
 endif
 
 ifdef PIE
@@ -117,7 +117,6 @@ ifeq ($(ARCH), x86-test)
   CXX_TARGET = x86_64
   COMPILE_FLAGS += -fno-use-cxa-atexit
   COMPILE_FLAGS += -I$(APPS_INCLUDE)
-  #export APPS_LIBS_INSTALL
 endif
 
 #
@@ -131,9 +130,10 @@ ifeq ($(ARCH), x86)
   CONFIG_ARGS += --enable-multilib=no
   TARGET = x86_64-linux-gnu
   CXX_TARGET = x86_64
-  COMPILE_FLAGS =  -std=c++11 -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
+  COMPILE_FLAGS =  -U__STRICT_ANSI__ -D__XSTACK__ -D__LITTLE_ENDIAN__
   COMPILE_FLAGS += -fno-stack-protector -fno-use-cxa-atexit
   COMPILE_FLAGS += -isystem $(APPS_INSTALL)/include
+  CMAKE_ARGS += -DLLVM_PATH="$(LLVM_PATH)"
 endif
 
 ##########################

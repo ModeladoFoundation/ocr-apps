@@ -91,6 +91,7 @@ CMAKE_ARGS =  -DLIBUNWIND_TARGET=$(UNWIND_TARGET) \
 			  -DCMAKE_C_FLAGS:STRING="$(C_FLAGS)" \
 			  -DCMAKE_CXX_FLAGS:STRING="$(CXX_FLAGS)"
 
+
 #
 # XE Clang/llvm build
 #
@@ -122,7 +123,7 @@ ifeq ($(ARCH), x86-test)
   TARGET = x86_64-linux-elf
   UNWIND_TARGET = x86_64
   LLVM_SRC = $(TG_ROOT)/xe-llvm
-  export APPS_LIBS_INSTALL
+  export APPS_LIBS_INSTALL=$(APPS_INSTALL)
 endif
 #
 # This defines a native/platform GCC build

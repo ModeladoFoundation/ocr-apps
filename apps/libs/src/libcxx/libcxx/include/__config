@@ -880,7 +880,9 @@ extern "C" void __sanitizer_annotate_contiguous_container(
 #if __has_feature(cxx_atomic) || __has_extension(c_atomic)
 #define _LIBCPP_HAS_C_ATOMIC_IMP
 #elif _GNUC_VER > 407
+#if !defined(__XSTACK__)
 #define _LIBCPP_HAS_GCC_ATOMIC_IMP
+#endif
 #endif
 
 #if (!defined(_LIBCPP_HAS_C_ATOMIC_IMP) && !defined(_LIBCPP_HAS_GCC_ATOMIC_IMP)) \

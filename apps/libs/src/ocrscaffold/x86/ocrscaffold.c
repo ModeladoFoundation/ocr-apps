@@ -387,6 +387,16 @@ u8 ocrLegacyContextRemoveMemory( ocrGuid_t legacyContext,
 ///////////////////////////////////////////////////////////////////////////////
 // OCR SAL methods
 //
+u8 ocrUSalGetcwd( ocrGuid_t legacyContext, char * buf, u64 bufSize )
+{
+    ocr_assert( isGuidType( legacyContext, GUID_CONTEXT ) );
+    ocr_assert( buf != NULL );
+
+    char * retval = sys_getcwd( buf, bufSize );
+
+    return retval == NULL;
+}
+
 u8 ocrUSalOpen( ocrGuid_t legacyContext, ocrGuid_t* handle,
                 const char * file, s32 flags, s32 mode )
 {

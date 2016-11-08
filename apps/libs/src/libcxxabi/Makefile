@@ -107,7 +107,6 @@ ifeq ($(ARCH), tg-xe)
   CXXABI_TARGET = XSTG
   BTYPE = -static
   COMPILE_FLAGS += -I$(APPS_INCLUDE)
-  # export APPS_LIBS_INSTALL
 endif
 
 ifdef PIE
@@ -126,7 +125,6 @@ ifeq ($(ARCH), x86-test)
   CXX = $(TG_INSTALL)/bin/clang++
   TARGET = x86_64-linux-elf
   CXXABI_TARGET = x86_64
-  #export APPS_LIBS_INSTALL
 endif
 #
 # This defines a native/platform GCC build

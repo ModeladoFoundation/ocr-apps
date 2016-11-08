@@ -293,6 +293,8 @@ remove_flags(-DNDEBUG -UNDEBUG -D_DEBUG
 # so they don't get transformed into -Wno and -errors respectivly.
 remove_flags(-Wno-pedantic -pedantic-errors -pedantic)
 
+add_definitions(-D_LIBCPP_BUILD_STATIC)
+
 if(LIBCXX_TARGET STREQUAL "XSTG" )
   #
   # this is a distillation of the original below but without the runtime
@@ -300,7 +302,6 @@ if(LIBCXX_TARGET STREQUAL "XSTG" )
   #
   add_compile_flags(-std=c++11)
   add_compile_flags(-nostdinc++)
-  add_definitions(-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
   add_compile_flags(
     -Wall -W -Wwrite-strings
     -Wno-unused-parameter -Wno-long-long -Wno-user-defined-literals
@@ -345,14 +346,11 @@ endif()
 # MSVC only has -X, which disables all default includes; including the crt.
 # Thus, we do nothing and hope we don't accidentally include any of the C++
 # headers
-add_compile_flags_if_supported(-nostdinc++)
 
 # Warning flags ===============================================================
-add_definitions(-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 add_compile_flags_if_supported(
     -Wall -W -Wwrite-strings
-    -Wno-unused-parameter -Wno-long-long -Wno-user-defined-literals
-    -Wno-covered-switch-default
+    -Wno-unused-parameter -Wno-long-long
     -Werror=return-type)
 if (LIBCXX_ENABLE_WERROR)
   add_compile_flags_if_supported(-Werror)
@@ -390,7 +388,9 @@ endif()
 endif() # NOT XSTG
 
 # Assertion flags =============================================================
-define_if(LIBCXX_ENABLE_ASSERTIONS -UNDEBUG)
+if (uppercase_CMAKE_BUILD_TYPE STREQUAL "RELEASE")
+  define_if(LIBCXX_ENABLE_ASSERTIONS -UNDEBUG)
+endif()
 define_if_not(LIBCXX_ENABLE_ASSERTIONS -DNDEBUG)
 if (LIBCXX_ENABLE_ASSERTIONS)
   # MSVC doesn't like _DEBUG on release builds. See PR 4379.

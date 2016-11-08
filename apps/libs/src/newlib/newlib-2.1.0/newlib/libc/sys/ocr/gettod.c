@@ -22,4 +22,5 @@ _DEFUN (_gettimeofday, (ptimeval, ptimezone),
         void *ptimezone)
 {
   u8 ret = _gettimeofday_r (_REENT, ptimeval, ptimezone);
+  return (int)ret;
 }

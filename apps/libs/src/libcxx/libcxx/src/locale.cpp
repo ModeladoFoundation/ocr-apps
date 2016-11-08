@@ -34,6 +34,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#if defined(__XSTACK__)
+#undef __GLIBC__
+#endif
+
 // On Linux, wint_t and wchar_t have different signed-ness, and this causes
 // lots of noise in the build log, but no bugs that I know of.
 #if defined(__clang__)

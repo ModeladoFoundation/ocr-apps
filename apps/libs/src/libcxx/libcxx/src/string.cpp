@@ -215,6 +215,7 @@ as_float(const string& func, const string& s, size_t* idx )
     return as_float_helper<double>( func, s, idx, strtod );
 }
 
+#if defined(_LIBCPP_HAS_LONG_DOUBLE)
 template<>
 inline
 long double
@@ -222,6 +223,7 @@ as_float( const string& func, const string& s, size_t* idx )
 {
     return as_float_helper<long double>( func, s, idx, strtold );
 }
+#endif
 
 template<>
 inline
@@ -239,6 +241,7 @@ as_float( const string& func, const wstring& s, size_t* idx )
     return as_float_helper<double>( func, s, idx, wcstod );
 }
 
+#if defined(_LIBCPP_HAS_LONG_DOUBLE)
 template<>
 inline
 long double
@@ -246,6 +249,7 @@ as_float( const string& func, const wstring& s, size_t* idx )
 {
     return as_float_helper<long double>( func, s, idx, wcstold );
 }
+#endif
 
 }  // unnamed namespace
 
@@ -333,6 +337,7 @@ stod(const wstring& str, size_t* idx)
     return as_float<double>( "stod", str, idx );
 }
 
+#if defined(_LIBCPP_HAS_LONG_DOUBLE)
 long double
 stold(const string& str, size_t* idx)
 {
@@ -344,6 +349,7 @@ stold(const wstring& str, size_t* idx)
 {
     return as_float<long double>( "stold", str, idx );
 }
+#endif //_LIBCPP_HAS_LONG_DOUBLE
 
 // to_string
 
