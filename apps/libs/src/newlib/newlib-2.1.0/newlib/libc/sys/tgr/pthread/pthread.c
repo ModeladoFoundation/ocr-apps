@@ -410,9 +410,9 @@ void __pthread_message(char * fmt, ...)
 /* We need a hook to force the file locking and getreent
    to be linked in when static libpthread is used.  */
 extern const int __pthread_provide_lockfile;
-static const int *const __pthread_require_lockfile =
+const int *const __pthread_require_lockfile =
   &__pthread_provide_lockfile;
 extern const int __pthread_provide_getreent;
-static const int *const __pthread_require_getreent =
+const int *const __pthread_require_getreent =
   &__pthread_provide_getreent;
 #endif

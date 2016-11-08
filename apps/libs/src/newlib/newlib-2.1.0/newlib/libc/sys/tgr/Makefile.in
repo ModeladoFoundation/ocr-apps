@@ -81,7 +81,7 @@ am__objects_1 = lib_a-environ.$(OBJEXT) lib_a-errno.$(OBJEXT) \
 	lib_a-malloc.$(OBJEXT) lib_a-mallocr.$(OBJEXT) \
 	lib_a-nanosleep.$(OBJEXT) lib_a-process.$(OBJEXT) \
 	lib_a-_exit.$(OBJEXT) \
-	lib_a-flockfile.$(OBJEXT)
+	lib_a-flockfile.$(OBJEXT) lib_a-weaks.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -235,7 +235,8 @@ GENERAL_SOURCES = \
 	nanosleep.c \
 	process.c \
 	_exit.c \
-	flockfile.c
+	flockfile.c \
+	weaks.c
 
 noinst_LIBRARIES = lib.a
 lib_a_SOURCES = $(GENERAL_SOURCES)
@@ -382,6 +383,12 @@ lib_a-flockfile.o: flockfile.c
 
 lib_a-flockfile.obj: flockfile.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-flockfile.obj `if test -f 'flockfile.c'; then $(CYGPATH_W) 'flockfile.c'; else $(CYGPATH_W) '$(srcdir)/flockfile.c'; fi`
+
+lib_a-weaks.o: weaks.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-weaks.o `test -f 'weaks.c' || echo '$(srcdir)/'`weaks.c
+
+lib_a-weaks.obj: weaks.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-weaks.obj `if test -f 'weaks.c'; then $(CYGPATH_W) 'weaks.c'; else $(CYGPATH_W) '$(srcdir)/weaks.c'; fi`
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.
