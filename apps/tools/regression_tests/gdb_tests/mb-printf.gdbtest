@@ -10,27 +10,6 @@ error: WARNING: Fsim has exited
 error: ERROR:
 
 #=================================================================
-test: run twice
-#=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
-file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
-
-in: run
-out: Starting program:
-out: \[New thread
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited normally\]
-
-sleep: 5
-
-in: run
-out: Starting program:
-out: \[New thread
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited normally\]
-
-
-#=================================================================
 test: break and continue
 #=================================================================
 target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf

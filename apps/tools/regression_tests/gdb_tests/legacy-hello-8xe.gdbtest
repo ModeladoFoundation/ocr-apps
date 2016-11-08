@@ -10,45 +10,6 @@ error: WARNING: Fsim has exited
 error: ERROR:
 
 #=================================================================
-test: run twice
-#=================================================================
-target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
-
-in: run
-out: Starting program:
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[thread \d terminated\]
-ignore-output
-
-in: continue
-until: \[Inferior 1 \(process \d+\) exited normally]
-
-in: run
-out: Starting program:
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[New thread \d\]
-out: \[thread \d terminated\]
-ignore-output
-
-in: continue
-until: \[Inferior 1 \(process \d+\) exited normally]
-
-
-#=================================================================
 test: break, continue and finish
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe

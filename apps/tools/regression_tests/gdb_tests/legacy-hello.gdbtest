@@ -10,25 +10,6 @@ error: WARNING: Fsim has exited
 error: ERROR:
 
 #=================================================================
-test: run twice
-#=================================================================
-target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
-
-in: run
-out: Starting program:
-out: \[New thread
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited normally
-
-in: run
-out: Starting program:
-out: \[New thread
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited normally
-
-
-#=================================================================
 test: break, continue and finish
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe

@@ -10,55 +10,6 @@ error: WARNING: Fsim has exited
 error: ERROR:
 
 #=================================================================
-test: run twice
-#=================================================================
-target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf
-file: {TG_INSTALL}/workloads/mb-printf/mb-printf.dbg
-
-in: run
-out: Starting program:
-out: \[New thread 1\]
-out: \[New thread 2\]
-out: \[New thread 3\]
-out: \[New thread 4\]
-out: \[New thread 5\]
-out: \[New thread 6\]
-out: \[New thread 7\]
-out: \[New thread 8\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[Inferior 1 \(process \d+\) exited normally\]
-
-sleep: 5
-
-in: run
-out: Starting program:
-out: \[New thread 1\]
-out: \[New thread 2\]
-out: \[New thread 3\]
-out: \[New thread 4\]
-out: \[New thread 5\]
-out: \[New thread 6\]
-out: \[New thread 7\]
-out: \[New thread 8\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[thread \d terminated\]
-out: \[Inferior 1 \(process \d+\) exited normally\]
-
-
-#=================================================================
 test: break and continue
 #=================================================================
 target: -c {TG_INSTALL}/workloads/mb-printf/mb-printf.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,{TG_INSTALL}/fsim-configs/dvfs-default.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/eight-xe.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim -w {TG_INSTALL}/workloads/mb-printf

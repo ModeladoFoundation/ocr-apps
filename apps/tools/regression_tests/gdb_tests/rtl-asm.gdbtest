@@ -10,25 +10,6 @@ error: WARNING: Fsim has exited
 error: ERROR:
 
 #=================================================================
-test: run twice
-#=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm
-file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
-
-in: run
-out: Starting program: .*rtl-asm
-out: \[New thread
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited normally
-
-in: run
-out: Starting program: .*rtl-asm
-out: \[New thread
-out: \[thread .* terminated
-out: \[Inferior .* \(process .*\) exited normally
-
-
-#=================================================================
 test: break, nexti, stepi and continue
 #=================================================================
 target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm

@@ -10,46 +10,6 @@ error: WARNING: Fsim has exited
 error: ERROR:
 
 #=================================================================
-test: run twice
-#=================================================================
-target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
-file: {TG_INSTALL}/../fsim/tests/rtl-asm/rtl-asm
-
-in: run
-out: Starting program: .*rtl-asm
-out: \[New thread 1\]
-out: \[New thread 2\]
-out: \[New thread 3\]
-out: \[New thread 4\]
-out: \[New thread 5\]
-out: \[New thread 6\]
-out: \[New thread 7\]
-out: \[New thread 8\]
-out: \[thread .* terminated
-ignore-output
-
-in: continue
-until: \[Inferior .* \(process .*\) exited normally
-
-in: run
-out: Starting program: .*rtl-asm
-out: \[New thread 1\]
-out: \[New thread 2\]
-out: \[New thread 3\]
-out: \[New thread 4\]
-out: \[New thread 5\]
-out: \[New thread 6\]
-out: \[New thread 7\]
-out: \[New thread 8\]
-out: \[thread .* terminated
-ignore-output
-
-in: continue
-until: \[Inferior .* \(process .*\) exited normally
-ignore-output
-
-
-#=================================================================
 test: break and backtrace
 #=================================================================
 target: -c {TG_INSTALL}/fsim-configs/dvfs-default.cfg,{TG_INSTALL}/fsim-configs/localhost.cfg,rtl-asm.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/small_dram.cfg -f {TG_INSTALL}/bin/fsim-rtlsim -w {TG_INSTALL}/../fsim/tests/rtl-asm8
