@@ -104,7 +104,15 @@ RM	:= rm
 CP      := cp
 MKDIR   := mkdir
 
-LINKER_SCRIPT ?= ocr-default.ld
+ifeq ($(PREFER_L1), yes)
+  # rodata_local is in L1
+  SECTION_STRING := "^  0"
+  LINKER_SCRIPT := ocr-const-L1.ld
+else
+  # rodata_local is in IPM, start with data_local
+  SECTION_STRING := "^  1"
+  LINKER_SCRIPT := ocr-default.ld
+endif
 
 CFLAGS_BASE  := -fxstg-extensions -I $(OCR_INSTALL)/include -DTG_ARCH -I $(APPS_LIBS_INSTALL)/include -I $(TG_INSTALL)/include
 LDFLAGS_BASE := -L $(APPS_LIBS_INSTALL)/lib -L $(TG_INSTALL)/ld-scripts -T $(LINKER_SCRIPT) -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
@@ -333,7 +341,7 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
 $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe | debug_post_prerun builderxe $(WORKLOAD_BUILD) sectionSizeCheck
 	@echo "#### BUILDING XE BLOB ####"
 	$(AT)$(FIX_MEM_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | \
-	grep "^  0" | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
+	grep $(SECTION_STRING) | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	$(AT)TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \
 	$(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe -ocr:cfg $(OCR_XE_CONFIG) $(WORKLOAD_ARGS)
