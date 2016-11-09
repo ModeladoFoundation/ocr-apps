@@ -1,0 +1,16 @@
+This OCR implementation of XSBENCH.
+
+This follows the reference MPI+OpenMP implementation as closely as possible.
+
+It exploits the "shared" memory for parallelism within a node by sharing datablocks in read-only access to compute the lookup operations.
+This is similar to the OpenMP implementaion wherein a large chunk of memory is created to store the data and the threads access it in
+read-only mode to do the lookups. The OCR implementation has both OpenMP-like "static" and "dynamic" (with configurable chunk size) loop schedulers
+implemented as a task graph.
+
+To build and run
+
+x86:
+make -f Makefile.x86 clean run
+
+x86-mpi:
+make -f Makefile.x86-mpi clean run
