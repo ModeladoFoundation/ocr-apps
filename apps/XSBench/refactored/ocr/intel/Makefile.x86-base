@@ -11,7 +11,7 @@ APPS_ROOT ?= ../../../../../apps
 endif
 
 # APPLICATION
-WORKLOAD_SRC          ?= .
+WORKLOAD_SRC          ?= ./src
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
