@@ -2,45 +2,12 @@
 #ifndef LIFO_ALLOCATOR_H
 #define LIFO_ALLOCATOR_H
 
-#include "alloc_node.h"
+#include "lifo_arena.h"
 #include "debug.h"
 
 #include <cassert>
 
 namespace buffered_alloc {
-
-
-template< size_t alignment, size_t size >
-struct lifo_allocator_arena {
-    typedef typename std::aligned_storage<alignment,size>::type buffer_type;
-
-    lifo_allocator_arena() :
-        _free( &_storage ),
-        _storage()
-    {
-    }
-
-    size_t used_capacity() const {
-        return reinterpret_cast<const uint8_t*>(_free)
-            - reinterpret_cast<const uint8_t*>(&_storage);
-    }
-
-    size_t available_capacity() const {
-        return sizeof(buffer_type) - used_capacity();
-    }
-
-    void* data() {
-        return static_cast<void*>(&_storage);
-    }
-
-    // Assumes all memory is available again
-    void clear() {
-        _free = &_storage;
-    }
-
-    void*       _free;
-    buffer_type _storage;
-};
 
 template <typename Tp, size_t alignment, size_t size>
 struct lifo_allocator {

@@ -1,4 +1,5 @@
 
+#include "allocator/proxy_allocator.h"
 #include "common.h"
 #include "dependences.h"
 #include "outline.h"
@@ -8,6 +9,8 @@
 
 #include <nanos6_rt_interface.h>
 #include <ocr.h>
+
+extern "C" {
 
 /*! \brief Allocate space for a task and its parameters
  *
@@ -73,7 +76,6 @@ void nanos_submit_task( void *task )
                   EDT_PROP_FINISH, NULL_HINT, &edtFinished );
     ASSERT( err == 0);
 
-
     // Feed EDT output event to taskwait latch event,
     // and increment latch's second pre-slot
     getLocalScope().taskwait.registerEdt(edtFinished);
@@ -98,4 +100,6 @@ void nanos_taskwait(char const *invocation_source)
     // Clear dependence map
     getLocalScope().accesses.clear();
 }
+
+} // extern "C"
 

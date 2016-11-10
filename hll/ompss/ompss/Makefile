@@ -5,11 +5,12 @@ OMPSS_LIB=lib
 CXX = g++
 
 #DEBUG=-Wall -Wextra -Wno-unused-parameter -O0 -g3 #-fsanitize=address
-RELEASE=-O3 -march=native
+RELEASE=-DNDEBUG -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden
 
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 
 CPPFLAGS=\
+ -Isrc\
  -I$(OMPSS_INC)/nanos6\
  -I$(OCR_INSTALL)/include\
  -DOCR_TYPE_H=$(OCR_TYPE).h\
@@ -17,9 +18,6 @@ CPPFLAGS=\
 
 CXXFLAGS=\
  -std=c++11\
- -fno-rtti\
- -fno-exceptions\
- -fvisibility-inlines-hidden\
  $(DEBUG)\
  $(RELEASE)
 

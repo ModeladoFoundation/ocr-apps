@@ -35,9 +35,14 @@ inline TaskDefinition::TaskDefinition( nanos_task_info* info, uint32_t args_size
 }
 
 inline TaskScopeInfo::TaskScopeInfo() :
-    tmpMemory(),
+    paramMemory(),
+    scratchMemory(),
     taskMemory(),
+#if defined(TREE_TMP_ALLOC)
+    accesses(tree_allocator(scratchMemory)),
+#else
     accesses(),
+#endif
     taskwait(),
     flags()
 {
@@ -60,7 +65,7 @@ inline Task* Task::factory::construct( nanos_task_info* info, uint32_t args_size
     // requested size would be multiplied by sizeof(TaskDefinition), and
     // args_size could not be a multiplier of this value.
     // Default allocation type is uint8_t (unsigned char).
-    TaskScopeInfo::Allocator alloc( getLocalScope().tmpMemory );
+    TaskScopeInfo::ParamAllocator alloc( getLocalScope().paramMemory );
     // Allocate space for TaskDefinition and arguments buffer.
     void* def_ptr  = alloc.allocate( sizeof(TaskDefinition) + args_size, alignof(TaskDefinition) );
     void* task_ptr = static_cast<void*>(&getLocalScope().taskMemory);
@@ -80,7 +85,7 @@ inline void Task::factory::destroy( Task* task )
 
     // Free all temporary storage
     // allocated for this task
-    getLocalScope().tmpMemory.clear();
+    getLocalScope().paramMemory.clear();
 }
 
 inline std::pair<uint32_t,uint64_t*> Task::packParams()
@@ -111,8 +116,8 @@ inline std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> Task::unpackPara
 
     uint8_t* destroyFlags = deserializer.read<uint8_t>(numReleaseDependences);
 
-    uint32_t distance = mem::distance<uint64_t>( deserializer.position(), paramv );
-    ASSERT( paramc == distance );
+    dbg_check( paramc == mem::distance<uint64_t>( deserializer.position(), paramv ) );
+
     return { definition, numReleaseDependences, releaseDependences, destroyFlags };
 }
 

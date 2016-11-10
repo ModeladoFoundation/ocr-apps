@@ -63,7 +63,7 @@ public:
 
     template < typename... Args >
     void initialize( Args&&... args ) {
-        ASSERT( !initialized() );
+        dbg_check( !initialized() );
         new(&_buffer) T( std::forward(args)... );
         _initialized = true;
     }
@@ -171,7 +171,7 @@ public:
 
     template < typename... Args >
     void initialize( Args&&... args ) {
-        ASSERT( !initialized() );
+        dbg_check( !initialized() );
         new(&_buffer) T( std::forward(args)... );
     }
 

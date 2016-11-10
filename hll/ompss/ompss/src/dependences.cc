@@ -1,11 +1,12 @@
 
-#include "debug.h"
 #include "dependences.h"
 #include "task.h"
 #include "task-local.h"
 
 #include <nanos6_rt_interface.h>
 #include <ocr.h>
+
+extern "C" {
 
 /*! \brief Register a task read access on linear range of addresses
  *
@@ -141,4 +142,6 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
         ++iterator;
     }
 }
+
+} // extern "C"
 

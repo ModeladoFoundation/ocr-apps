@@ -2,6 +2,7 @@
 #ifndef DEPENDENCIES_H
 #define DEPENDENCIES_H
 
+#include "debug/fatal.h"
 #include "dependences_decl.h"
 #include "task_decl.h"
 
@@ -12,10 +13,10 @@ namespace ompss {
 
 inline TaskDependences::TaskDependences( nanos_task_info* info ) :
     register_dependences(info->register_depinfo),
-    acquire(),
-    release(),
-    acq_satisfy(),
-    rel_destroy_not_satisfy()
+    acquire( vector_type<ocrGuid_t>::allocator_type( getLocalScope().scratchMemory ) ),
+    release( acquire.get_allocator() ),
+    acq_satisfy( acquire.get_allocator() ),
+    rel_destroy_not_satisfy( acquire.get_allocator() )
 {
 }
 
@@ -100,7 +101,6 @@ inline void acquireDependences( ompss::Task& task )
         // Dependences already registered in EDT creation
         // Just satisfy flagged events
         for( uint32_t slot = 0; slot < events.size(); ++slot ) {
-
             if( satisfy[slot] ) {
                 err = ocrEventSatisfy( events[slot], NULL_GUID );
                 ASSERT( err == 0 );

@@ -20,6 +20,12 @@ public:
     {
     }
 
+
+    template <typename T>
+    db_allocator( const db_allocator<T>& other )
+    {
+    }
+
 	Tp* allocate( std::size_t n ) noexcept {
         return static_cast<Tp*>(
             ompss_malloc(n * sizeof(Tp) )
