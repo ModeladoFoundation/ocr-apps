@@ -2,8 +2,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "debug.h"
-
 #include <ocr.h>
 
 inline ocrGuid_t getBufferDb( void* addr )
