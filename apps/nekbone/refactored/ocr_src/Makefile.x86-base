@@ -51,12 +51,13 @@ TARGET := z_nekbone_inOcr
 REQ_LIBS := macros
 
 # Space separated list of source files
-SRCS := nekbone_cg.c ax.c local_grad.c set_f.c blas1.c blas3.c polybasis.c set_vert_box.c cubic.c init_mesh.c nekbone_setup.c app_ocr_util.c integer_log2.c neko_globals.c nekos_triplet.c nekos_cubiclattice.c nekos_tools.c spmd_global_data.c tailrecursion.c treeForkJoin.c z_nekbone_inOcr.c
+SRCS := timing.c nekbone_cg.c ax.c local_grad.c set_f.c blas1.c blas3.c polybasis.c set_vert_box.c cubic.c init_mesh.c nekbone_setup.c app_ocr_util.c integer_log2.c neko_globals.c nekos_triplet.c nekos_cubiclattice.c nekos_tools.c spmd_global_data.c tailrecursion.c treeForkJoin.c z_nekbone_inOcr.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 CFLAGS += -g
+CFLAGS += -DENABLE_EXTENSION_AFFINITY
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib

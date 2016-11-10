@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+#-----Clean up first
+rm -f ./z_ref_output
+rm -rf ./build ./install ./tools
+
+#----- First make the reference output file
+echo "LEFT> sum = 21" > z_ref_output
+echo "RIGHT> sum = 21" >> z_ref_output
+
+if [ ! -s "z_ref_output" ]
+then
+echo "ERROR: Unusable reference output file"
+exit 20
+fi
+
+#----- Create the OCR C file
+python ./utest_DaveReduction.py > z_autogen.log
+if [ ! -s "z_utest_DaveReduction.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+if [ "$(grep -ic ERROR z_autogen.log)" -ne 0 ]
+then
+echo "ERROR: Autogen generation failed."
+exit 35
+fi
+
+#----- Compile and run
+rm -f z_output
+#CONFIG_FLAGS=--guid=LABELED OCR_TYPE=x86     make uninstall clean run &> z_log
+CONFIG_FLAGS=--guid=LABELED OCR_TYPE=x86-mpi make uninstall clean run &> z_log
+grep -E "(LEFT|RIGHT)" z_log| sort > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+#----- Compare
+if [ "$(diff -w --brief z_ref_output z_output)" ]
+then
+echo "ERROR: Unit test failed."
+exit 50
+else
+echo "SUCCESS: Unit test passed."
+fi
+
+#----- Clean up
+rm -f z_*
+rm -rf ./build ./install ./tools
+rm ../../tools/*.pyc
+
+

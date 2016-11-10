@@ -22,8 +22,10 @@ cp -f "$autogenTools/app_ocr_util.h" .
 python ./findreplace.py app_ocr_util.h '../../tools/app_ocr_err_util.h' 'app_ocr_err_util.h'
 
 ##----- Compile and run
+#               Rx Ry Rz Ex Ey Ez pDOF CGcount
+#WORKLOAD_ARGS=" 2  2  2  2  2  2    8      4"
 rm -f z_output
-CONFIG_FLAGS=--guid=COUNTED_MAP OCR_TYPE=x86-mpi make run > z_log; grep "TESTIO>" z_log > z_output
+WORKLOAD_ARGS="2 2 2 2 2 2 8 4" CONFIG_FLAGS=--guid=COUNTED_MAP OCR_TYPE=x86-mpi make run > z_log; grep "TESTIO>" z_log > z_output
 if [ ! -s "z_output" ]
 then
 echo "ERROR: Missing OCR C code output"
@@ -41,8 +43,8 @@ fi
 ##----- Clean up
 rm -f z_*
 rm -rf ./build ./install ./tools
+rm -f ../../tools/*pyc
 rm -f core*
-rm ../../../../hll/autogen/tools/ocr_autogen.pyc
 
 echo "Successful run"
 exit 0

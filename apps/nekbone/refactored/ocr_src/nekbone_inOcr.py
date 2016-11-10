@@ -138,6 +138,9 @@ def theMain():
     dbk = OA.ocrDataBlock(); dbk.name = 'AItemp'; dbk.count='(io_NEKOstatics->pDOFmax3D+1)*sizeof(NBN_REAL)'; dbk.type='NBN_REAL'
     dbk_AItemp = dbk
 
+    dbk = OA.ocrDataBlock(); dbk.name = 'CGtimes'; dbk.count=1; dbk.type='NEKO_CGtimings_t'
+    dbk_CGtimes = dbk
+
     # ----- NODES
     # NOTE: In as much as doable, the EDT are presented in a bracketing fashion.
     #       That is, assuming we have a sequence of EDTs as follows A->B->C->D->E
@@ -156,12 +159,14 @@ def theMain():
     OA.addCustomText(G, nc, toFinalt)
     init_globald = 'init_SPMDglobals(o_SPMDglobals);'; OA.addCustomText(G, nc, init_globald)
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAKEOFF'; dbk.localname='o_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    OA.addCustomText(G, nc, 'err = init_NEKOstatics(o_NEKOstatics); IFEB;')
+    OA.addCustomText(G, nc, 'err = init_NEKOstatics(o_NEKOstatics, depv[0].ptr); IFEB;')
     OA.addCustomText(G, nc, 'err = setup_SPMD_using_NEKOstatics(o_NEKOstatics, o_SPMDglobals); IFEB;')
 
     nc = OA.GBL.FINALNODE;   taskName="finalEDT"; OA.graphAddNode(G,nc,taskName)
     dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'flLANDING'; OA.addDataBlocks(G, nc, dbk)  # From ConcludeBtForkJoin
     dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'flLANDING'; OA.addDataBlocks(G, nc, dbk)  # From mainEdt
+    finalEDTt = 'err = nekbone_finalEDTt(); IFEB;'
+    OA.addCustomText(G, nc, finalEDTt)
 
     nc += 1;  taskName="SetupBtForkJoin"; OA.graphAddNode(G,nc,taskName)
     dbk = copy.deepcopy(dbk_gDone);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)  # Toward ConcludeBtForkJoin
@@ -185,17 +190,23 @@ def theMain():
 
     nc += 1;  taskName="BtForkIF"; OA.graphAddNode(G,nc,taskName)
     dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flLANDING'; dbk.localname = 'in_TFJiterate'; OA.addDataBlocks(G, nc, dbk) # From SetupBtForkJoin or BtForkFOR
-    dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_TFJiterate'; OA.addDataBlocks(G, nc, dbk) # To BtForkFOR or BtForkELSE
+    dbk.addLocalText('unsigned int rankID = in_TFJiterate->low - 1;')
+    dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_TFJiterate'; OA.addDataBlocks(G, nc, dbk) # To BtForkFOR or BtForkELSE
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flLANDING'; dbk.localname = 'in_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_gDone);   dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_gDone'; OA.addDataBlocks(G, nc, dbk)    # To BtJoinIFTHEN
+    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_gDone);   dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_gDone'; OA.addDataBlocks(G, nc, dbk)    # To BtJoinIFTHEN
     #dbk = copy.deepcopy(dbk_nullGuid); dbk.flight = 'flTAKEOFF';  <-- This is the NULL_GUID used to link to the ELSE clause
     OA.addIFconditionText(G, nc, 'conditionBtFork(OA_edtTypeNb, OA_DBG_thisEDT, in_TFJiterate)')
     iterText = 'err = btForkThen(OA_edtTypeNb, OA_DBG_thisEDT, in_TFJiterate, ' + OA.makeGuidEdtname("BtJoinIFTHEN") +', o_TFJiterate, o_gDone);'
     OA.addCustomText(G, nc, iterText)
     copy_SPMDglobals = 'copy_SPMDglobals(in_SPMDglobals, o_SPMDglobals);'; OA.addCustomText(G, nc, copy_SPMDglobals)
-    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOstatics';
+    dbk.addLocalText('unsigned long pdID = calcPDid_S(in_NEKOstatics->OCR_affinityCount, rankID);')
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0, hintDBK, *pHintDBK=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(pdID, &hintEDT, &pHintEDT); IFEB;')
+    dbk.addLocalText('err = ocrXgetDbkHint(pdID, &hintDBK, &pHintDBK); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
     copy_NEKOstatics = 'copy_NEKOstatics(in_NEKOstatics, o_NEKOstatics);'; OA.addCustomText(G, nc, copy_NEKOstatics)
 
     nc += 1;  taskName="BtForkFOR"; OA.graphAddNode(G,nc,taskName)
@@ -218,21 +229,26 @@ def theMain():
 
     nc += 1;  taskName="BtForkELSE"; OA.graphAddNode(G,nc,taskName)
     # DBK local names are taken care off by the IF-THEN edt called "btFork".
-    dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flLANDING'; dbk.localname = 'in_TFJiterate'; OA.addDataBlocks(G,nc,dbk)  # From self BtForkIF
-    dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_TFJiterate';  OA.addDataBlocks(G, nc, dbk)  # To BtForkTransition
+    dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flLANDING'; dbk.localname = 'in_TFJiterate';
+    dbk.addLocalText('unsigned int rankID = in_TFJiterate->low - 1;')  # This does nothing because BtForkIF takes over.  Here for completion.
+    OA.addDataBlocks(G,nc,dbk)  # From self BtForkIF
+    dbk = copy.deepcopy(dbk_TFJiterate); dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_TFJiterate';  OA.addDataBlocks(G, nc, dbk)  # To BtForkTransition
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flLANDING'; dbk.localname = 'in_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_gDone);   dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_gDone'; OA.addDataBlocks(G, nc, dbk)  # To BtJoinIFTHEN
+    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_gDone);   dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_gDone'; OA.addDataBlocks(G, nc, dbk)  # To BtJoinIFTHEN
     btForkElseText = 'err = btForkElse(OA_edtTypeNb, OA_DBG_thisEDT, in_TFJiterate, ' + OA.makeGuidEdtname("BtJoinIFTHEN") +', o_TFJiterate, o_gDone);'
     OA.addCustomText(G, nc, btForkElseText)
     copy_SPMDglobals = 'copy_SPMDglobals(in_SPMDglobals, o_SPMDglobals);'
     OA.addCustomText(G, nc, copy_SPMDglobals)
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAKEOFF'; dbk.hint='pHintDBK'; dbk.localname = 'o_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
     copy_NEKOstatics = 'copy_NEKOstatics(in_NEKOstatics, o_NEKOstatics);'; OA.addCustomText(G, nc, copy_NEKOstatics)
 
     nc += 1;  taskName="BtForkTransition_Start"; OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_TFJiterate);  dbk.flight = 'flTAGO'; dbk.localname = 'io_TFJiterate'; OA.addDataBlocks(G,nc,dbk)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_TFJiterate);  dbk.flight = 'flTAGO'; dbk.localname = 'io_TFJiterate'
+    dbk.addLocalText('unsigned int rankID = io_TFJiterate->low - 1;')
+    OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; dbk.localname = 'io_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone);   dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_gDone'; OA.addDataBlocks(G, nc, dbk)
     transitStart_text = '*o_gDone = ' + OA.makeGuidEdtname("BtForkTransition_Stop") + ';'
@@ -241,12 +257,14 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO';    dbk.localname = 'io_NEKOstatics';
     dbk.addLocalText('unsigned int sz_nekLGLEL = io_NEKOstatics->Etotal;')
     dbk.addLocalText('unsigned int sz_nekGLO_NUM = io_NEKOstatics->pDOF3DperRmax;')
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOglobals';  OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekLGLEL); dbk.flight = 'flHOP'; dbk.localname = 'o_lglel'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekGLO_NUM); dbk.flight = 'flHOP'; dbk.localname = 'o_glo_num'; OA.addDataBlocks(G, nc, dbk)
 
-    nekoGlobals_init = 'err = init_NEKOglobals(io_NEKOstatics, io_TFJiterate->low-1, o_NEKOglobals); IFEB;'
+    nekoGlobals_init = 'err = init_NEKOglobals(io_NEKOstatics, rankID, o_NEKOglobals); IFEB;'
     OA.addCustomText(G, nc, nekoGlobals_init)
     nekbone_setup_txt= 'err = nekbone_setup(io_NEKOstatics, o_NEKOglobals, o_lglel, o_glo_num); IFEB;'
     OA.addCustomText(G, nc, nekbone_setup_txt)
@@ -256,9 +274,13 @@ def theMain():
     OA.addCustomText(G, nc, toget2nekMulti_text)
 
     nc += 1;  taskName="nekMultiplicity_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics';
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_C'; OA.addDataBlocks(G, nc, dbk)
@@ -269,11 +291,15 @@ def theMain():
     OA.addCustomText(G, nc, nekbone_set_multiplicity_txt1)
 
     nc += 1;  taskName="nekMultiplicity_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics';
     dbk.addLocalText('unsigned int pdof = io_NEKOstatics->pDOF_max;')
     dbk.addLocalText('unsigned int pdof2D = io_NEKOstatics->pDOF_max * io_NEKOstatics->pDOF_max;')
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'io_gDone2'; OA.addDataBlocks(G,nc,dbk)
 
@@ -306,8 +332,12 @@ def theMain():
     OA.addCustomText(G, nc, nekMulti_stop_go2cg1_text)
 
     nc += 1;  taskName="nekSetF_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -316,8 +346,12 @@ def theMain():
     OA.addCustomText(G, nc, nekSetF_start_txt)
 
     nc += 1;  taskName="nekSetF_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; dbk.localname = 'io_C'; OA.addDataBlocks(G,nc,dbk)
@@ -327,8 +361,12 @@ def theMain():
     OA.addCustomText(G, nc, nekSetF_stop_txt)
 
     nc += 1;  taskName="nekCGstep0_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; dbk.localname = 'io_C'; OA.addDataBlocks(G,nc,dbk)
@@ -338,8 +376,12 @@ def theMain():
     OA.addCustomText(G, nc, nekCGstep0_start_txt)
 
     nc += 1;  taskName="nekCGstep0_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flLANDING'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     CGstep0_2go_text = 'ocrGuid_t ' + OA.makeGuidEdtname("setupTailRecursion") + ' = *in_gDone2;'
@@ -351,10 +393,12 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekP'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekZ'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars'; OA.addDataBlocks(G,nc,dbk)
-    CGstep0_stop_txt = 'err = nekbone_CGstep0_stop(io_NEKOstatics, io_NEKOglobals, o_nekX, o_nekW, o_nekP, o_nekZ, o_nekCGscalars); IFEB;'
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    CGstep0_stop_txt = 'err = nekbone_CGstep0_stop(io_NEKOstatics, io_NEKOglobals, o_nekX, o_nekW, o_nekP, o_nekZ, o_nekCGscalars, o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, CGstep0_stop_txt)
 
     nc += 1;  taskName="BtForkTransition_Stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_TFJiterate);  dbk.flight = 'flLANDING'; dbk.localname = 'in_TFJiterate'; OA.addDataBlocks(G,nc,dbk)  # From BtForkELSE
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flLANDING'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_work2); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_work2'; OA.addDataBlocks(G, nc, dbk)  # To BtJoinIFTHEN
@@ -367,6 +411,8 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOtools';   OA.addDataBlocks(G, nc, dbk)
+    BtForkTransit_Stopt = 'err = nekbone_BtForkTransition_Stop(in_NEKOglobals); IFEB;'
+    OA.addCustomText(G, nc, BtForkTransit_Stopt)
 
     nc += 1;  taskName="BtJoinIFTHEN"; OA.graphAddNode(G,nc,taskName)
     dbk = copy.deepcopy(dbk_gDone); dbk.flight = 'flLANDING'; dbk.localname = 'in_gDone'; OA.addDataBlocks(G, nc, dbk)
@@ -407,29 +453,38 @@ def theMain():
 
     # ----- NODES
     nc += 1;  taskName="setupTailRecursion"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_gDone); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; dbk.localname = 'io_SPMDglobals'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_tailRecurIterate);  dbk.flight = 'flTAKEOFF';  dbk.localname='o_tailRecurIterate'; OA.addDataBlocks(G,nc,dbk)
     tailRecurSetupt = 'err = tailRecurInitialize(o_tailRecurIterate, '
     tailRecurSetupt += OA.makeGuidEdtname("concludeTailRecursion") + ', io_SPMDglobals); IFEB;'
     OA.addCustomText(G, nc, tailRecurSetupt)
-    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; dbk.localname = 'io_G1'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; dbk.localname = 'io_G4'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; dbk.localname = 'io_G6'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_dxm1); dbk.flight = 'flTAGO'; dbk.localname = 'io_dxm1'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_dxTm1); dbk.flight = 'flTAGO'; dbk.localname = 'io_dxTm1'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_dxm1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_dxTm1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekP'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekR); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekR'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekW'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekX'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekZ'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekCGscalars); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekCGscalars'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekR); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars); dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    setupTailRecursion ='err = nekbone_setupTailRecusion(io_NEKOglobals, in_nekCGscalars, o_nekCGscalars);IFEB;'
+    OA.addCustomText(G, nc, setupTailRecursion)
 
     nc += 1;  taskName="tailRecursionIFThen"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; dbk.localname = 'io_tailRecurIterate'
     dbk.addLocalText('ocrGuid_t ' + OA.makeGuidEdtname("concludeTailRecursion") + ' = io_tailRecurIterate->whereToGoWhenDone;')
@@ -437,41 +492,12 @@ def theMain():
     tailRecurCondition_text = 'tailRecurCondition(io_tailRecurIterate)'; OA.addIFconditionText(G,nc,tailRecurCondition_text)
     tailRecurTHEN_text = 'err = tailRecurIfThenClause(io_tailRecurIterate); IFEB;'
     OA.addCustomText(G, nc, tailRecurTHEN_text)
-    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools';   OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; dbk.localname = 'o_G1'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; dbk.localname = 'o_G4'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; dbk.localname = 'o_G6'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_dxm1); dbk.flight = 'flTAGO'; dbk.localname = 'o_dxm1'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_dxTm1); dbk.flight = 'flTAGO'; dbk.localname = 'o_dxTm1'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; dbk.localname = 'o_nekC'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flTAGO'; dbk.localname = 'o_nekP'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekR); dbk.flight = 'flTAGO'; dbk.localname = 'o_nekR'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; dbk.localname = 'o_nekW'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; dbk.localname = 'o_nekX'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; dbk.localname = 'o_nekZ'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; dbk.localname = 'o_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
-
-    nc += 1;  taskName="tailRecursionELSE"; OA.graphAddNode(G,nc,taskName)
-    # DBK local names are taken care off by the IF-THEN edt called "tailRecursionIFThen".
-    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    tailRecurELSE_text = 'err = tailRecurElseClause(io_tailRecurIterate); IFEB;'
-    OA.addCustomText(G, nc, tailRecurELSE_text)
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-
-    nc += 1;  taskName="tailRecurTransitBEGIN"; OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; dbk.localname = 'io_tailRecurIterate'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_gDone3'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -483,17 +509,81 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAGO'; dbk.localname = 'io_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+
+    nc += 1;  taskName="tailRecursionELSE"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    # DBK local names are taken care off by the IF-THEN edt called "tailRecursionIFThen".
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    tailRecurELSE_text = 'err = tailRecurElseClause(io_tailRecurIterate); IFEB;'
+    OA.addCustomText(G, nc, tailRecurELSE_text)
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_dxm1); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_dxTm1); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekR); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes);dbk.flight = 'flLANDING'; OA.addDataBlocks(G, nc, dbk)
+    tailRecursionELSEt = 'err = nekbone_tailRecursionELSE(io_CGtimes); IFEB;'  # Check tailRecursionIFThen for io_CGtimes
+    OA.addCustomText(G, nc, tailRecursionELSEt)
+
+    nc += 1;  taskName="tailRecurTransitBEGIN"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; dbk.localname = 'io_tailRecurIterate'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_gDone3'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_dxm1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_dxTm1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekR); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     toget2tailTransitEnd_text = '*o_gDone3 = ' + OA.makeGuidEdtname("tailRecurTransitEND") + ';'
     OA.addCustomText(G, nc, toget2tailTransitEnd_text)
-    nekCG_tailTransitBegin_text = 'err = nekbone_tailTransitBegin(io_tailRecurIterate->current, in_nekCGscalars, o_nekCGscalars); IFEB;'
+    nekCG_tailTransitBegin_text = 'err = nekbone_tailTransitBegin(io_tailRecurIterate->current, in_nekCGscalars, o_nekCGscalars, in_CGtimes, o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_tailTransitBegin_text)
 
     nc += 1;  taskName="nekCG_solveMi"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone3'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; dbk.localname = 'io_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; dbk.localname = 'io_G1'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; dbk.localname = 'io_G4'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; dbk.localname = 'io_G6'; OA.addDataBlocks(G,nc,dbk)
@@ -506,16 +596,22 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekX'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flLANDING'; dbk.localname = 'in_nekZ'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekZ'; OA.addDataBlocks(G,nc,dbk)
-    nekCG_solveMi_text = 'err = nekbone_solveMi(io_NEKOstatics, io_NEKOglobals, io_nekR, o_nekZ); IFEB;'
+    nekCG_solveMi_text = 'err = nekbone_solveMi(io_NEKOstatics, io_NEKOglobals, io_nekR, o_nekZ, in_CGtimes, o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_solveMi_text)
 
     nc += 1;  taskName="nekCG_beta_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -529,16 +625,22 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekZ'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sum_rcz); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_sum_rcz'; OA.addDataBlocks(G,nc,dbk)
     nekCG_beta_start_text = 'err = nekbone_beta_start(io_NEKOstatics, io_NEKOglobals, in_nekCGscalars, o_nekCGscalars, '
-    nekCG_beta_start_text += 'io_nekR, io_nekC, io_nekZ, o_sum_rcz); IFEB;'
+    nekCG_beta_start_text += 'io_nekR, io_nekC, io_nekZ, o_sum_rcz, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_beta_start_text)
 
     nc += 1;  taskName="nekCG_beta_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone3'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -553,15 +655,21 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekZ'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sum_rcz); dbk.flight = 'flLANDING'; dbk.localname = 'in_sum_rcz'; OA.addDataBlocks(G,nc,dbk)
     nekCG_beta_stop_text = 'err = nekbone_beta_stop(io_NEKOstatics, io_NEKOglobals, in_nekCGscalars, o_nekCGscalars, '
-    nekCG_beta_stop_text += 'in_sum_rcz, in_nekP, io_nekZ, o_nekP); IFEB;'
+    nekCG_beta_stop_text += 'in_sum_rcz, in_nekP, io_nekZ, o_nekP, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_beta_stop_text)
 
     nc += 1;  taskName="nekCG_axi_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; dbk.localname = 'io_G1'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; dbk.localname = 'io_G4'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; dbk.localname = 'io_G6'; OA.addDataBlocks(G,nc,dbk)
@@ -578,15 +686,22 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekUT); dbk.flight = 'flHOP'; dbk.localname = 'nekUT'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_AItemp); dbk.flight = 'flHOP'; dbk.localname = 'AItemp'; OA.addDataBlocks(G,nc,dbk)
     nekCG_axi_start = 'err = nekbone_ai_start(io_NEKOstatics, io_NEKOglobals, io_nekW,io_nekP, '
-    nekCG_axi_start += 'nekUR,nekUS,nekUT, io_G1,io_G4,io_G6,io_dxm1,io_dxTm1, AItemp); IFEB;'
+    nekCG_axi_start += 'nekUR,nekUS,nekUT, io_G1,io_G4,io_G6,io_dxm1,io_dxTm1, AItemp, '
+    nekCG_axi_start += 'in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_axi_start)
 
     nc += 1;  taskName="nekCG_axi_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -599,15 +714,21 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekW'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
-    nekCG_axi_stop = 'err = nekbone_ai_stop(io_NEKOstatics, io_NEKOglobals, in_nekW, io_nekP, o_nekW); IFEB;'
+    nekCG_axi_stop = 'err = nekbone_ai_stop(io_NEKOstatics, io_NEKOglobals, in_nekW, io_nekP, o_nekW, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_axi_stop)
 
     nc += 1;  taskName="nekCG_alpha_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; dbk.localname = 'io_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -620,16 +741,23 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sum_pap); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_sum_pap'; OA.addDataBlocks(G,nc,dbk)
-    nekCG_alpha_start = 'err = nekbone_alpha_start(io_NEKOstatics, io_NEKOglobals, io_nekW, io_nekC, io_nekP, o_sum_pap); IFEB;'
+    nekCG_alpha_start = 'err = nekbone_alpha_start(io_NEKOstatics, io_NEKOglobals, io_nekW, '
+    nekCG_alpha_start += 'io_nekC, io_nekP, o_sum_pap, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_alpha_start )
 
     nc += 1;  taskName="nekCG_alpha_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -645,15 +773,21 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sum_pap); dbk.flight = 'flLANDING'; dbk.localname = 'in_sum_pap'; OA.addDataBlocks(G,nc,dbk)
     nekCG_alpha_stop = 'err = nekbone_alpha_stop(io_NEKOstatics, io_NEKOglobals, in_nekCGscalars, o_nekCGscalars, '
-    nekCG_alpha_stop += 'in_sum_pap, in_nekX,io_nekP,o_nekX, in_nekR,io_nekW,o_nekR); IFEB;'
+    nekCG_alpha_stop += 'in_sum_pap, in_nekX,io_nekP,o_nekX, in_nekR,io_nekW,o_nekR, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_alpha_stop)
 
     nc += 1;  taskName="nekCG_rtr_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO';OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -666,16 +800,23 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sum_rtr); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_sum_rtr'; OA.addDataBlocks(G,nc,dbk)
-    nekCG_rtr_start = 'err = nekbone_rtr_start(io_NEKOstatics, io_NEKOglobals, io_nekR, io_nekC, o_sum_rtr); IFEB;'
+    nekCG_rtr_start = 'err = nekbone_rtr_start(io_NEKOstatics, io_NEKOglobals, '
+    nekCG_rtr_start += 'io_nekR, io_nekC, o_sum_rtr, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_rtr_start )
 
     nc += 1;  taskName="nekCG_rtr_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flLANDING'; dbk.localname = 'in_gDone3'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars';   OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_CGtimes'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G6); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -688,16 +829,21 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sum_rtr); dbk.flight = 'flLANDING'; dbk.localname = 'in_sum_rtr'; OA.addDataBlocks(G,nc,dbk)
-    nekCG_rtr_stop = 'err = nekbone_rtr_stop(io_NEKOstatics, io_NEKOglobals, in_nekCGscalars, o_nekCGscalars, in_sum_rtr); IFEB;'
+    nekCG_rtr_stop = 'err = nekbone_rtr_stop(io_NEKOstatics, io_NEKOglobals, '
+    nekCG_rtr_stop += 'in_nekCGscalars, o_nekCGscalars, in_sum_rtr, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_rtr_stop)
     tailTransitEdn2go_text = 'ocrGuid_t ' + OA.makeGuidEdtname("tailRecurTransitEND") + ' = *in_gDone3;'
     OA.addCustomText(G, nc, tailTransitEdn2go_text)
 
     nc += 1;  taskName="tailRecurTransitEND"; OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; dbk.localname = 'io_tailRecurIter'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_G1); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_G4); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
@@ -710,15 +856,24 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flLANDING'; dbk.localname = 'in_nekCGscalars'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekCGscalars'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flTAGO'; dbk.localname = 'io_CGtimes'; OA.addDataBlocks(G,nc,dbk)
+    tailRecurTransitENDt = 'err = nekbone_tailRecurTransitEND(io_tailRecurIter->current, '
+    tailRecurTransitENDt += 'io_NEKOglobals->rankID, in_nekCGscalars, o_nekCGscalars); IFEB;'
+    OA.addCustomText(G, nc, tailRecurTransitENDt)
 
     nc += 1;  taskName="concludeTailRecursion"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_spmd_globals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone); dbk.flight = 'flLANDING'; dbk.localname = 'in_gDone'; OA.addDataBlocks(G, nc, dbk)
     OA.addCustomText(G, nc, 'err = tailRecurConclude(); IFEB;')
     dbk.addLocalText('ocrGuid_t ' + OA.makeGuidEdtname("BtForkTransition_Stop") + ' = *in_gDone;')
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO';
+    dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
 
     # ==============================================================================
@@ -911,6 +1066,9 @@ def theMain():
     ledg = OA.graphAddEdge(G, "nekCGstep0_stop", "setupTailRecursion", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
     OA.getEvent(G, ledg).fertile = False
+    ledg = OA.graphAddEdge(G, "nekCGstep0_stop", "setupTailRecursion", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
+    OA.getEvent(G, ledg).fertile = False
 
     ledg = OA.graphAddEdge(G, "BtForkTransition_Stop", "BtJoinIFTHEN", "TCsum2")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('TCsum2')
@@ -962,6 +1120,9 @@ def theMain():
     ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
     tailRecur_nekCGscalars_edge=ledg[0]  # This takes only the edge out of the labeled edge.
+    ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
+    tailRecur_CGtimes_edge=ledg[0]  # This takes only the edge out of the labeled edge.
     ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     tailRecur_nek_G1_edge=ledg[0]  # This takes only the edge out of the labeled edge.
@@ -1019,6 +1180,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('NEKOtools'), 'DBK')
     ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "tailRecurTransitBEGIN", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "tailRecurTransitBEGIN", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "tailRecurTransitBEGIN", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "tailRecurTransitBEGIN", "nek_G4")
@@ -1063,6 +1226,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "tailRecurTransitBEGIN", "nekCG_solveMi", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "tailRecurTransitBEGIN", "nekCG_solveMi", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "tailRecurTransitBEGIN", "nekCG_solveMi", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "tailRecurTransitBEGIN", "nekCG_solveMi", "nek_G4")
@@ -1100,6 +1265,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_solveMi", "nekCG_beta_start", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_solveMi", "nekCG_beta_start", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_solveMi", "nekCG_beta_start", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_solveMi", "nekCG_beta_start", "nek_G4")
@@ -1137,6 +1304,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_beta_start", "nekCG_beta_stop", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_beta_start", "nekCG_beta_stop", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G,"nekCG_beta_start", "nekCG_beta_stop", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G,"nekCG_beta_start", "nekCG_beta_stop", "nek_G4")
@@ -1176,6 +1345,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_beta_stop", "nekCG_axi_start", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_beta_stop", "nekCG_axi_start", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_beta_stop", "nekCG_axi_start", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_beta_stop", "nekCG_axi_start", "nek_G4")
@@ -1213,6 +1384,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nek_G4")
@@ -1250,6 +1423,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_axi_stop", "nekCG_alpha_start", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_axi_stop", "nekCG_alpha_start", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_axi_stop", "nekCG_alpha_start", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_axi_stop", "nekCG_alpha_start", "nek_G4")
@@ -1287,6 +1462,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_alpha_start", "nekCG_alpha_stop", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_alpha_start", "nekCG_alpha_stop", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_alpha_start", "nekCG_alpha_stop", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_alpha_start", "nekCG_alpha_stop", "nek_G4")
@@ -1326,6 +1503,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_alpha_stop", "nekCG_rtr_start", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_alpha_stop", "nekCG_rtr_start", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_alpha_stop", "nekCG_rtr_start", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_alpha_stop", "nekCG_rtr_start", "nek_G4")
@@ -1363,6 +1542,8 @@ def theMain():
     OA.getEvent(G, ledg).satisfy = OA.contextedGuid(OA.GBL.DBK_structName + '->', OA.makeGuidDataBlockname('gDone3'), 'DBK')
     ledg = OA.graphAddEdge(G, "nekCG_rtr_start", "nekCG_rtr_stop", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    ledg = OA.graphAddEdge(G, "nekCG_rtr_start", "nekCG_rtr_stop", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     ledg = OA.graphAddEdge(G, "nekCG_rtr_start", "nekCG_rtr_stop", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
     ledg = OA.graphAddEdge(G, "nekCG_rtr_start", "nekCG_rtr_stop", "nek_G4")
@@ -1402,6 +1583,9 @@ def theMain():
     OA.getEvent(G, ledg).fertile = False
     ledg = OA.graphAddEdge(G, "nekCG_rtr_stop", "tailRecurTransitEND", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
+    OA.getEvent(G, ledg).fertile = False
+    ledg = OA.graphAddEdge(G, "nekCG_rtr_stop", "tailRecurTransitEND", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
     OA.getEvent(G, ledg).fertile = False
     ledg = OA.graphAddEdge(G, "nekCG_rtr_stop", "tailRecurTransitEND", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')
@@ -1456,6 +1640,9 @@ def theMain():
     ledg = OA.graphAddEdge(G, "tailRecurTransitEND", "tailRecursionIFThen", "nekCGscalars")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekCGscalars')
     OA.sharedConx(G, ledg[0]).append(tailRecur_nekCGscalars_edge)
+    ledg = OA.graphAddEdge(G, "tailRecurTransitEND", "tailRecursionIFThen", "CGtimes")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('CGtimes')
+    OA.sharedConx(G, ledg[0]).append(tailRecur_CGtimes_edge)
 
     ledg = OA.graphAddEdge(G, "tailRecurTransitEND", "tailRecursionIFThen", "nek_G1")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nek_G1')

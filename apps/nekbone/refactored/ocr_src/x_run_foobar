@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+#OCR_TYPE=x86-mpi CONFIG_NUM_THREADS=9 OCR_NODEFILE="./nodefile16" make uninstall clean run
+
+##----- The z_nekbone_inOcr.c file is required before going anything
+if [ ! -s "z_nekbone_inOcr.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+check="$(grep 'tools/app_ocr_err_util' app_ocr_err_util.h| wc -l)"
+if [ ! $check -eq 0 ]
+then
+echo "ERROR: Invalid app_ocr_err_util.h"
+exit 30
+fi
+
+##----- Make correction for non local files
+    # This is an obvious hack.  But it works for now.
+    #TODO: Remove from app_ocr_util.h ../../tools/ dependency.
+#autogenTools='../../../../hll/autogen/tools'
+#cp -f "$autogenTools/app_ocr_util.h" .
+#python ./findreplace.py app_ocr_util.h '../../tools/app_ocr_err_util.h' 'app_ocr_err_util.h'
+
+##----- Compile and run
+#               Rx Ry Rz Ex Ey Ez pDOF CGcount
+#WORKLOAD_ARGS=" 2  2  2  2  2  2    8      4"
+
+rm -f z_output
+
+# 16 machines at 32 proc per machines = 2^4*2^5 = 2^9 = 512 = 8^3  <-- No space for +1
+# So given ranks dimension a,b,c --> on 1 machine --> Find 32 = a*b*c+1 which is the most compact
+#       a*b*c =31
+#       31 is prime so no luck
+#       30 = 2*3*5  compactness= 5/2 = 2.5
+#       29 is prime
+#       28 = 2*2*7   compactness=3.5
+#       27 = 3*3*3   compactness = 1  <--bingo for one machine
+#  Using 8 machines at 27 processes per machines = 2^3 * 3^3 = (2*3)^3 = 6^3
+#       So on each machines 28 threads will be used.
+#
+# 16 physical thread per machines
+#       a*b*c = 15 = 3*5
+#       a*b*c = 14 = 2*7
+#       a*b*c = 13
+#       a*b*c = 12 = 2*2*3 <--
+# On each machine, 12+1 threads   8 machines 2*2 * 2*2 * 2*3 = 4 * 4* 6
+
+ABSPATH="/lustre/home/dvillen/w/ocr/git2016-10nov2-checkin_nekbone1/apps/apps/nekbone/refactored/ocr_src"
+
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 100" CONFIG_FLAGS=--guid=COUNTED_MAP CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run > z_log
+WORKLOAD_ARGS="6 4 4 2 2 2 8 100" CONFIG_FLAGS=--guid=COUNTED_MAP CONFIG_NUM_THREADS=13 OCR_NODEFILE="$ABSPATH/y_OCRnodefile8" OCR_TYPE=x86-mpi make run > z_log
+
+grep "TESTIO>" z_log > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi

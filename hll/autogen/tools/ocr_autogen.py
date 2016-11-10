@@ -343,7 +343,11 @@ class ocrDataBlock:
         self.localname    = ""  # This is the name the customer would like to use upon LANDing
                                 # or flTAGOing.  So basically how to call the ocrEdtDep_t.ptr.
                                 # The pointer generated will be of type (void*).
-                                # If not specified, no cutomer friendly named pointer will be inserted.
+                                # If not specified, no customer friendly named pointer will be inserted.
+
+        self.localnameGuid  = ""  # This is the ocrGuid_t name the customer would like to use upon LANDing
+                                  # or flTAGOing.  So basically how to call the ocrEdtDep_t.guid.
+                                  # If not specified, no customer friendly guid name will be inserted.
 
         self.localText = []  # This is closely related to self.localname field. It is to store a list of cutomer OCR
                              # code to be placed in close proximity to self.localname.  For example, it can
@@ -353,6 +357,10 @@ class ocrDataBlock:
                                          # block up until a certain pattern occured.
                                          #2016aug16:  Used only with the FOR pattern, in order to delay
                                          #            until after the FOR loop.
+
+        self.user2destroyORrelease = False # If set to True, the user is now held
+                                           # responsible for the release or destruction
+                                           # of the data block.
 
     def toDictio(self):
         longform = GBL.DBK_longform_print
@@ -367,7 +375,9 @@ class ocrDataBlock:
         d["name"] = self.name
         d["flight"] = self.flight
         d["localname"] = self.localname
+        d["localnameGuid"] = self.localnameGuid
         d["delayReleaseDestroy"] = self.delayReleaseDestroy
+        d["user2destroyORrelease"] = self.user2destroyORrelease
 
         return d
 
@@ -1837,7 +1847,8 @@ def assign_slots_for_literals_and_dereferenceds2(io_G):
 
             if erri: break  # for dbk in getDataBlocks(io_G, n)
 
-            getMyTask(io_G, n).depc = local_slot_offset
+            if getMyTask(io_G, n).depc == GBL.genAUTO:
+                getMyTask(io_G, n).depc = local_slot_offset
             getMyTask(io_G, n).depv = 'NULL'  # Using events to fill the slots
 
         if erri: break  # for n in io_G.nodes():
@@ -1953,7 +1964,8 @@ def assign_slots_for_literals_and_dereferenceds(io_G):
                         local_slot_offset += 1
             if erri: break  # for p in getNodeparents(io_G,n):
 
-            getMyTask(io_G, n).depc = local_slot_offset
+            if getMyTask(io_G, n).depc == GBL.genAUTO:
+                getMyTask(io_G, n).depc = local_slot_offset
             getMyTask(io_G, n).depv = 'NULL'  # Using events to fill the slots
 
         if erri: break  # for n in io_G.nodes():
@@ -2177,10 +2189,12 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
 
             if getEvent(io_G, (edgIF, dbk.name)).isTheLead:
                 if dbk.flight in ['flPASSTRU', 'flTAGO']:
-                    addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                    if not dbk.user2destroyORrelease:
+                        addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                     addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname+'.guid'))
                 elif dbk.flight in ['flLANDING', 'flHOP']:
-                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                    if not dbk.user2destroyORrelease:
+                        addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                 elif dbk.flight in ['flTAKEOFF']:
                     # This will be handle directly in release_and_destroy_DBKs
                     pass
@@ -2286,10 +2300,12 @@ def find_destroy_outgoing_release2(io_G, in_nodeIndex):
 
             if getEvent(io_G, (edgee, dbk.name)).isTheLead:
                 if dbk.flight in ['flPASSTRU', 'flTAGO']:
-                    addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                    if not dbk.user2destroyORrelease:
+                        addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                     addToOutgoing(io_G, in_nodeIndex, (dbk.name, drname + '.guid'))
                 elif dbk.flight in ['flLANDING', 'flHOP']:
-                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                    if not dbk.user2destroyORrelease:
+                        addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                 elif dbk.flight in ['flTAKEOFF']:
                     # This will be handle directly in release_and_destroy_DBKs
                     pass
@@ -2324,9 +2340,11 @@ def find_destroy_outgoing_release2(io_G, in_nodeIndex):
                             continue
                         if getEvent(io_G, (edg, dbk.name)).isTheLead:
                             if dbk.flight in ['flLANDING', 'flHOP']:
-                                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                                if not dbk.user2destroyORrelease:
+                                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                             if dbk.flight in ['flTAGO', 'flPASSTRU']:
-                                addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                                if not dbk.user2destroyORrelease:
+                                    addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                                 addToOutgoing(io_G, in_nodeIndex, (deref, drname+'.guid'))
 
         if erri: break  # for p in getNodeparents(in_G,n):
@@ -2394,7 +2412,8 @@ def find_destroy_outgoing_release(io_G, in_nodeIndex):
                         if getEvent(io_G, (edg, dbk.name)).isTheLead:
                             litName = edgName + '.' + makeGuidDataBlockname(lit)
                             if dbk.flight in ['flLANDING', 'flHOP']:
-                                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', litName, 'DBK'))
+                                if not dbk.user2destroyORrelease:
+                                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', litName, 'DBK'))
                             if dbk.flight in ['flTAGO', 'flPASSTRU']:
                                 addToOutgoing(io_G, in_nodeIndex, (lit, litName))
 
@@ -2409,9 +2428,11 @@ def find_destroy_outgoing_release(io_G, in_nodeIndex):
                             continue
                         if getEvent(io_G, (edg, dbk.name)).isTheLead:
                             if dbk.flight in ['flLANDING', 'flHOP']:
-                                addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                                if not dbk.user2destroyORrelease:
+                                    addToBeDestroyed(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                             if dbk.flight in ['flTAGO', 'flPASSTRU']:
-                                addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
+                                if not dbk.user2destroyORrelease:
+                                    addToBeReleased(io_G, in_nodeIndex, contextedGuid('', drname + '.guid', 'DBK'))
                                 addToOutgoing(io_G, in_nodeIndex, (deref, drname+'.guid'))
 
         if erri: break  # for p in getNodeparents(in_G,n):
@@ -2523,6 +2544,10 @@ def setup_inputs_structs2(io_G, in_nodeIndex, in_tab, io_file, io_delayed_releas
 
             if len(dbk.localname) > 0:
                 text = in_tab + dbk.type + ' * ' + dbk.localname + ' = ' + drname + '.ptr;\n'
+                io_file.write(text)
+
+            if len(dbk.localnameGuid) > 0:
+                text = in_tab + 'ocrGuid_t ' + dbk.localnameGuid + ' = ' + drname + '.guid;\n'
                 io_file.write(text)
 
             if len(dbk.getLocalTexts()) > 0:
@@ -2774,7 +2799,8 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file,
                     if in_onlyInDelaySet:
                         continue
 
-            io_file.write(in_tab + 'err = '+ fcn + '(' + cguid.toName() + '); IFEB;\n')
+            if not dbk.user2destroyORrelease:
+                io_file.write(in_tab + 'err = '+ fcn + '(' + cguid.toName() + '); IFEB;\n')
         if erri: break
 
         if debug:

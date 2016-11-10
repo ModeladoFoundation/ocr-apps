@@ -11,6 +11,7 @@ void init_SPMDglobals(SPMD_GlobalData_t * io_gdata)
 {
     memset(io_gdata, 0, sizeof(SPMD_GlobalData_t));
 
+    //See setup_SPMD_using_NEKOstatics() to see how these values will be overwritten.
     io_gdata->overall_mpi_count = 3;
     io_gdata->iterationCountOnEachRank = 2;
 
@@ -32,7 +33,7 @@ void print_SPMDglobals(SPMD_GlobalData_t * in_gdata, const char * in_text)
         if(!t){
             t = defaultt;
         }
-        PRINTF("TESTIO> GLOBAL DATA overall_mpi_count=%u iterationCountOnEachRank=%u %s\n",
+        PRINTF("TESTIO> SPMD GLOBAL DATA overall_mpi_count=%u iterationCountOnEachRank=%u %s\n",
                 in_gdata->overall_mpi_count,
                 in_gdata->iterationCountOnEachRank,
                 t

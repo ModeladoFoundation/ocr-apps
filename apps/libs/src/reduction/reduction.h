@@ -57,7 +57,7 @@ typedef enum {
     BROADCAST}
     reductionType;
 
-typedef struct {
+typedef struct reductionPrivateBase {
     u64 new; //should be set to true on first call or if any parameters change
     u64 nrank;
     u64 myrank;

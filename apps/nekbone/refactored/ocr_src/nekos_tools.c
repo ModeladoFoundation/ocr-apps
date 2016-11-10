@@ -14,11 +14,11 @@ Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics,
     while(!err){
         err = destroy_NEKOtools(io); IFEB;
 
-        const bool output_debug = true;
+        const bool output_debug = false;
 
         if(output_debug){
             //print_NEKOstatics(&in_nstatics);
-            print_NEKOglobals(&in_nglobals);
+            //print_NEKOglobals(&in_nglobals);
         }
 
         io->mpiRank = in_nglobals.rankID;

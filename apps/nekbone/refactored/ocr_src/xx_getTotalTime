@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+a="$(grep NKTIME z_log|grep -E "(FinalEDT|init_NEKOstatics)"|tr -s '=' '\n'|grep -v NKTIME)"
+b=($a)
+c="$(( ${b[1]} - ${b[0]} ))"
+#echo $c
+echo "scale=6;$c/1000000" | bc

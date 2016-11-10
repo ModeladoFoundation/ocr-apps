@@ -46,21 +46,19 @@ RUN_MODE ?=
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := z_nekbone_inOcr
+TARGET := z_utest_DaveReduction
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS := libc macros
 
 # Space separated list of source files
-SRCS := app_ocr_util.c integer_log2.c neko_globals.c nekos_triplet.c nekos_cubiclattice.c nekos_tools.c spmd_global_data.c tailrecursion.c treeForkJoin.c z_nekbone_inOcr.c
+SRCS := ../../tools/app_ocr_util.c z_utest_DaveReduction.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
-CFLAGS += -g
-CFLAGS += -DENABLE_EXTENSION_AFFINITY
-
+CFLAGS :=
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in

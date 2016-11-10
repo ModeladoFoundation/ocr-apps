@@ -1,7 +1,10 @@
 #ifndef NEKO_GLOBALS_H
 #define NEKO_GLOBALS_H
 
+#include "extensions/ocr-affinity.h"
+
 #include "app_ocr_err_util.h"
+#include "timing.h"
 
 //Some values are set in Nekbone which cannot be changed without having
 //to re-architect most of the Nekbone baseline.
@@ -114,9 +117,13 @@ typedef struct NEKOstatics {
 
     unsigned int ByteSizeOf1DOF;
 
+    //When the entire program started
+    TimeMark_t startTimeMark;
+
+    long OCR_affinityCount;
 } NEKOstatics_t;
 
-Err_t init_NEKOstatics(NEKOstatics_t * io);
+Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv);
 Err_t clear_NEKOstatics(NEKOstatics_t * io);
 Err_t destroy_NEKOstatics(NEKOstatics_t * io);
 Err_t copy_NEKOstatics(NEKOstatics_t * in_from, NEKOstatics_t * o_target);
@@ -125,6 +132,8 @@ void  print_NEKOstatics(NEKOstatics_t * in);
 typedef struct SPMD_GlobalData SPMD_GlobalData_t; //Forward declaration
 Err_t setup_SPMD_using_NEKOstatics(NEKOstatics_t * in_NEKOstatics,
                                    SPMD_GlobalData_t * o_SPMDglobals);
+
+Err_t nekbone_finalEDTt(void);
 
 // In the original Nekbone code, these variables have the following correspondence:
 //      pDOF       --> nx1, ny1, nz1    Note that nx1 == ny1 == nz1 is always true.
@@ -141,11 +150,15 @@ typedef struct NEKOglobals {
 
     // The emulated rank ID of this EDT.
     unsigned int rankID;
+    unsigned int OCR_affinityCount;
 
     // The number of elements along a global Rank direction
     unsigned int ExRx;
     unsigned int EyRy;
     unsigned int EzRz;
+
+    //When an individual rank started
+    TimeMark_t startTimeMark;
 
 } NEKOglobals_t;
 
@@ -154,5 +167,22 @@ Err_t init_NEKOglobals(NEKOstatics_t * in_statics, unsigned int in_rankID,
 Err_t destroy_NEKOglobals(NEKOglobals_t * io);
 Err_t copy_NEKOglobals(NEKOglobals_t * in_from, NEKOglobals_t * o_target);
 void  print_NEKOglobals(NEKOglobals_t * in);
+
+#define NEK_OCR_ENABLE_AFFINITIES
+#ifndef ENABLE_EXTENSION_AFFINITY
+#undef NEK_OCR_ENABLE_AFFINITIES
+#endif
+
+#define NEK_OCR_USE_CURRENT_PD ((unsigned long)-2)
+
+//io_HNT can either be NULL or a pointer to a within scope concrete ocrHint_t;
+//o_pHNT is fed in as pointer to ocrHint_t.
+//o_pHNT will be returned either as NULL_HINT or a pointer to *io_HNT.
+//So (*o_HNT) is the hint value one will use in the code.
+//NOTE: The round abound way with o_HNT is because NULL_HINT is 0x0.
+unsigned long calcPDid_G(NEKOglobals_t * in);
+unsigned long calcPDid_S(unsigned int in_OCR_affinityCount, unsigned int in_rankID);
+Err_t ocrXgetEdtHint(unsigned long in_pdID, ocrHint_t * io_HNT, ocrHint_t ** o_pHNT);
+Err_t ocrXgetDbkHint(unsigned long in_pdID, ocrHint_t * io_HNT, ocrHint_t ** o_pHNT);
 
 #endif // NEKO_GLOBALS_H
