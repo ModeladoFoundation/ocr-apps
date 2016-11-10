@@ -81,7 +81,8 @@ am__objects_1 = lib_a-environ.$(OBJEXT) lib_a-errno.$(OBJEXT) \
 	lib_a-malloc.$(OBJEXT) lib_a-mallocr.$(OBJEXT) \
 	lib_a-nanosleep.$(OBJEXT) lib_a-process.$(OBJEXT) \
 	lib_a-_exit.$(OBJEXT) \
-	lib_a-flockfile.$(OBJEXT) lib_a-weaks.$(OBJEXT)
+	lib_a-flockfile.$(OBJEXT) lib_a-sysconfs.$(OBJEXT) \
+	lib_a-weaks.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -236,6 +237,7 @@ GENERAL_SOURCES = \
 	process.c \
 	_exit.c \
 	flockfile.c \
+	sysconf.c \
 	weaks.c
 
 noinst_LIBRARIES = lib.a
@@ -383,6 +385,12 @@ lib_a-flockfile.o: flockfile.c
 
 lib_a-flockfile.obj: flockfile.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-flockfile.obj `if test -f 'flockfile.c'; then $(CYGPATH_W) 'flockfile.c'; else $(CYGPATH_W) '$(srcdir)/flockfile.c'; fi`
+
+lib_a-sysconf.o: sysconf.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-sysconf.o `test -f 'sysconf.c' || echo '$(srcdir)/'`sysconf.c
+
+lib_a-sysconf.obj: sysconf.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-sysconf.obj `if test -f 'sysconf.c'; then $(CYGPATH_W) 'sysconf.c'; else $(CYGPATH_W) '$(srcdir)/sysconf.c'; fi`
 
 lib_a-weaks.o: weaks.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-weaks.o `test -f 'weaks.c' || echo '$(srcdir)/'`weaks.c

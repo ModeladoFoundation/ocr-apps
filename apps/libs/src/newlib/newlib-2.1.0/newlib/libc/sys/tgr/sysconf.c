@@ -1,4 +1,4 @@
-/* libc/sys/ocr/sysconf.c - The sysconf function */
+/* libc/sys/tgr/sysconf.c - The sysconf function */
 
 /* Copyright 2002, Red Hat Inc. */
 

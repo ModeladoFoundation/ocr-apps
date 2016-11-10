@@ -20,6 +20,7 @@ GENERAL_SOURCES = \
 	mallocr.c \
 	nanosleep.c \
 	process.c \
+	sysconf.c \
 	weaks.c
 
 noinst_LIBRARIES = lib.a
