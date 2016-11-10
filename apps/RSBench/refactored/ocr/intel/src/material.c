@@ -42,7 +42,7 @@ void load_mats( Inputs input, int * num_nucs, ocrGuid_t* PTR_nuclideIDs_DBguids_
     for( int i = 0; i < input.n_mats; i++ )
     {
         ocrDbCreate( &(PTR_nuclideIDs_DBguids_mat[i]), (void **) &(mats[i]), sizeof(int)*num_nucs[i],
-                     DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+                     DB_PROP_NONE, NULL_HINT, NO_ALLOC );
     }
 
     // Small H-M has 34 fuel nuclides
@@ -113,7 +113,7 @@ void load_concs( int * num_nucs, ocrGuid_t* PTR_nuclideConcs_DBguids_mat )
     for( int i = 0; i < 12; i++ )
     {
         ocrDbCreate( &(PTR_nuclideConcs_DBguids_mat[i]), (void **) &(concs[i]), sizeof(double)*num_nucs[i],
-                     DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
+                     DB_PROP_NONE, NULL_HINT, NO_ALLOC );
     }
 
     for( int i = 0; i < 12; i++ )
