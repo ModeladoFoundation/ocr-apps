@@ -10,25 +10,23 @@
 namespace ocr {
 
 template < typename T >
-struct IsGuidBased : public std::false_type {};
+struct IsGuidBased : public std::is_same<ocrGuid_t,typename T::handle_type> {};
 
 } // namespace ocr
 
 namespace mem {
 
-/*
 template<
     typename T,
-    bool GuidBased = IsGuidBased<T>::value
+    bool GuidBased = ocr::IsGuidBased<T>::value
 >
 class Lazy;
-*/
 
 // Generic lazy initialization
 // Relies on a boolean to record initialization status
 // so it is not very efficient
 template< typename T >
-class Lazy {
+class Lazy<T,false> {
     typedef typename std::aligned_storage<sizeof(T),alignof(T)>::type Buffer;
 public:
     Lazy() :
@@ -87,14 +85,6 @@ public:
         }
     }
 
-    operator T&() {
-        return *value();
-    }
-
-    operator const T&() const {
-        return *value();
-    }
-
     T& operator*() {
         return *value();
     }
@@ -132,7 +122,6 @@ private:
     bool   _initialized;
 };
 
-#if 0
 // Lazy initialization for GUID based objects
 // It relies on NULL_GUID special value to identify initialized
 // objects, so it does not require use of booleans
@@ -143,7 +132,7 @@ class Lazy<T,true> {
 public:
     Lazy()
     {
-        static_cast<T&>(*this).handle() = NULL_GUID;
+        release();
     }
 
     ~Lazy() {
@@ -175,18 +164,23 @@ public:
         new(&_buffer) T( std::forward(args)... );
     }
 
-    void reset() {
-        if( initialized() )
+    template < typename... Args >
+    void reset( Args&&... args ) {
+        erase();
+        initialize( std::forward(args)... );
+    }
+
+    // Treat managed object as if it wasn't
+    // initialized
+    void release() {
+        value()->handle() = NULL_GUID;
+    }
+
+    void erase() {
+        if( initialized() ) {
             value()->~T();
-        static_cast<T&>(*this).handle() = NULL_GUID;
-    }
-
-    operator T&() {
-        return *value();
-    }
-
-    operator const T&() const {
-        return *value();
+            release();
+        }
     }
 
     T& operator*() {
@@ -211,16 +205,15 @@ public:
 
 private:
     T* value() {
-        return static_cast<T*>(&_buffer);
+        return reinterpret_cast<T*>(&_buffer);
     }
 
     const T* value() const {
-        return static_cast<const T*>(&_buffer);
+        return reinterpret_cast<const T*>(&_buffer);
     }
 
     Buffer    _buffer;
 };
-#endif
 
 } // namespace mem
 
