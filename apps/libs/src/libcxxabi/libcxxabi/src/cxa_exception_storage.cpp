@@ -25,6 +25,20 @@ extern "C" {
     }
 }
 
+#elif defined(__XSTG__)
+//
+// Interim solution
+//
+#include <xstgintrin.h>
+
+namespace __cxxabiv1 {
+extern "C" {
+    static __cxa_eh_globals eh_globals;
+    __cxa_eh_globals *__cxa_get_globals() { return &eh_globals; }
+    __cxa_eh_globals *__cxa_get_globals_fast() { return &eh_globals; }
+    }
+}
+
 #elif defined(HAS_THREAD_LOCAL)
 
 namespace __cxxabiv1 {

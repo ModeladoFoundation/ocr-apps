@@ -72,6 +72,10 @@ COMPILE_FLAGS = -std=c++11 --target=$(TARGET) -nostdinc++ $(COMPILE_DEFINES)
 ifdef VERBOSE
   COMPILE_FLAGS += -v
 endif
+
+ifdef DEBUG
+  COMPILE_FLAGS += -g
+endif
 #
 # communicate the apps install root to clang
 #

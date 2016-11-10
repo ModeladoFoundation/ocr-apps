@@ -152,7 +152,7 @@ all: $(ARCH)
 	@echo Done making all
 
 debug: export BUILD_TYPE = DEBUG
-debug: export DBG_FLAGS = -UNDEBUG -DLOG_DEFAULT=true
+debug: export DBG_FLAGS = -UNDEBUG -DLOG_DEFAULT=true -g
 debug: $(ARCH)
 #
 # ARCH specific targets
