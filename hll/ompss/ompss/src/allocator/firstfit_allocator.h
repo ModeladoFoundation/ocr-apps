@@ -47,6 +47,29 @@ struct firstfit_allocator {
     {
     }
 
+    // Intended only for debugging purposes.
+    // Linear efficiency, so it is expensive...
+    size_t available() {
+        size_t amount = 0;
+        free_node* next = _arena.next();
+        while( next ) {
+            amount += next->size() - 1;
+            next = next->next();
+        }
+        return amount * sizeof(basic_block);
+    }
+
+    void dump_status() {
+        free_node* next = _arena.next();
+        while( next ) {
+            std::cout << "{ @:" << static_cast<void*>(next)
+                << " [" << next->data() << ", " << next->data(next->size())
+                << "](" << next->size() << ")} -> ";
+            next = next->next();
+        }
+        std::cout << " END " << std::endl;
+    }
+
 	Tp* allocate( std::size_t n ) noexcept {
 		allocated_node<Tp>* alloc_node = nullptr;
 		free_node_base* current_node = &_arena;
