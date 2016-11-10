@@ -117,6 +117,13 @@ OBJS := $(patsubst %.c,$(WORKLOAD_BUILD)/%.o,$(SRCS))
 
 FULL_REQ_LIBS := $(addprefix $(APPS_ROOT)/libs/src/,$(REQ_LIBS))
 
+# Special case to include old libc files
+USE_OLD_LIBC := $(strip $(foreach count, $(shell seq -s ' ' $(words $(REQ_LIBS))), $(if $(findstring libc,$(word $(count), $(REQ_LIBS))),yes)))
+
+ifeq ($(USE_OLD_LIBC), yes)
+  CFLAGS := -I $(APPS_LIBS_INSTALL)/include.old $(CFLAGS)
+endif
+
 ifeq ($(RUN_TORQUE), yes)
   RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-wrapper.sh
   MACHINE_CONFIG :=
@@ -187,7 +194,7 @@ endif
 	$(AT)$(MKDIR) -p $(WORKLOAD_LOGS)
 	$(AT)$(RM) -rf $(WORKLOAD_LOGS)/*
 	$(AT)$(RM) -f $(WORKLOAD_EXEC)/console.out
-	$(ATI)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
+	$(AT)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
 	bash -ec 'cd $(WORKLOAD_LOGS) && $(RUN_CMD) -s -L $(WORKLOAD_LOGS) $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
