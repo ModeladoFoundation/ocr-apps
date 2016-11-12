@@ -1,5 +1,6 @@
 
 #include "dependences.h"
+#include "profile/profile.h"
 #include "task.h"
 #include "task-local.h"
 
@@ -27,6 +28,7 @@ extern "C" {
 void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 {
     using namespace ompss;
+    PROFILE_BLOCK( nanos_register_read_depinfo );
 
     Task* task = (Task*)handler;
 
@@ -102,6 +104,7 @@ void nanos_register_write_depinfo(void *handler, void *start, size_t length)
 void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 {
     using namespace ompss;
+    PROFILE_BLOCK( nanos_register_readwrite_depinfo );
 
     Task* task = (Task*)handler;
 
