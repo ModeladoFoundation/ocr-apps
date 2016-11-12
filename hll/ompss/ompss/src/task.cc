@@ -3,6 +3,7 @@
 #include "common.h"
 #include "dependences.h"
 #include "outline.h"
+#include "profile/profile.h"
 #include "task.h"
 #include "task-local.h"
 #include "taskwait.h"
@@ -33,6 +34,7 @@ void nanos_create_task(
 )
 {
     using namespace ompss;
+    PROFILE_BLOCK( nanos_create_task );
 
     Task* task = Task::factory::construct( task_info, args_block_size );
 
@@ -50,6 +52,7 @@ void nanos_create_task(
 void nanos_submit_task( void *task )
 {
     using namespace ompss;
+    PROFILE_BLOCK( nanos_submit_task );
 
     Task* new_task = static_cast<Task*>(task);
 
@@ -93,6 +96,7 @@ void nanos_submit_task( void *task )
 void nanos_taskwait(char const *invocation_source)
 {
     using namespace ompss;
+    PROFILE_BLOCK( nanos_taskwait );
 
     // Wait until successors complete
     getLocalScope().taskwait.wait();
