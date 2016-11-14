@@ -81,6 +81,7 @@ __BEGIN_DECLS
  */
 #define _POSIX_MONOTONIC_CLOCK
 #define _POSIX_TIMERS
+#define _POSIX_THREADS
 
 __END_DECLS
 #endif /* _SYS_FEATURES_H */

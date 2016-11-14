@@ -81,7 +81,7 @@ am__objects_1 = lib_a-environ.$(OBJEXT) lib_a-errno.$(OBJEXT) \
 	lib_a-malloc.$(OBJEXT) lib_a-mallocr.$(OBJEXT) \
 	lib_a-nanosleep.$(OBJEXT) lib_a-process.$(OBJEXT) \
 	lib_a-_exit.$(OBJEXT) \
-	lib_a-flockfile.$(OBJEXT) lib_a-sysconfs.$(OBJEXT) \
+	lib_a-flockfile.$(OBJEXT) lib_a-sysconf.$(OBJEXT) \
 	lib_a-weaks.$(OBJEXT)
 am_lib_a_OBJECTS = $(am__objects_1)
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
