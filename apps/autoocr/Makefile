@@ -1,5 +1,14 @@
 # top level Makefile for autoocr tests
-all: ocr raw
+
+test:
+	ifeq (3.9.0,$(findstring 3.9.0, $(shell $(CLANG) --version | grep 3.9.0)))
+	    $(info >   The clang is NOT version 3.5 or 3.6.  The autoocr plugin requires one of these older versions.)
+	    $(info >   Please checkout commit #d4fe7d84154520328d59d864b433aaaef028721a in the tg repository.)
+	    $(info >   This commit is for llvm/clang 3.6.  You will need to rebuild xe-llvm.)
+	    $(error exiting)
+	endif
+
+all: test ocr raw
 
 ocr:
 	-cd fib && $(MAKE) ocr
