@@ -16,21 +16,9 @@
 #include "config.h"
 
 #if LIBCXXABI_HAS_NO_THREADS
-
-namespace __cxxabiv1 {
-extern "C" {
-    static __cxa_eh_globals eh_globals;
-    __cxa_eh_globals *__cxa_get_globals() { return &eh_globals; }
-    __cxa_eh_globals *__cxa_get_globals_fast() { return &eh_globals; }
-    }
-}
-
-#elif defined(__XSTG__)
 //
-// Interim solution
+// This should be defined for the X86 and X86-test archs
 //
-#include <xstgintrin.h>
-
 namespace __cxxabiv1 {
 extern "C" {
     static __cxa_eh_globals eh_globals;
@@ -56,7 +44,21 @@ extern "C" {
     }
 }
 
-#else
+#elif defined(__XSTG__)
+//
+// Interim solution
+// This works because XE's each have their own local memory which this should
+// land in.
+//
+namespace __cxxabiv1 {
+extern "C" {
+    static __cxa_eh_globals eh_globals;
+    __cxa_eh_globals *__cxa_get_globals() { return &eh_globals; }
+    __cxa_eh_globals *__cxa_get_globals_fast() { return &eh_globals; }
+    }
+}
+
+#else   // default to using pthreads thread storage API
 
 #include <pthread.h>
 #include <cstdlib>          // for calloc, free
