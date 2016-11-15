@@ -2,7 +2,10 @@
 #ifndef PROFILE_H
 #define PROFILE_H
 
-#include "extrae-instrumentation.h"
+#ifdef _ENABLE_EXTRAE
+#  include "extrae-instrumentation.h"
+#endif
+
 #include "profile-events.h"
 
 #define PROFILE_BLOCK( event ) \
@@ -11,7 +14,11 @@
 namespace profile {
 
 template< profile::Event event >
-struct InstrumentBlock : public extrae::InstrumentBlock<event> {
+struct InstrumentBlock
+#ifdef _ENABLE_EXTRAE
+         : public extrae::InstrumentBlock<event>
+#endif
+{
     InstrumentBlock()
     {
     }
