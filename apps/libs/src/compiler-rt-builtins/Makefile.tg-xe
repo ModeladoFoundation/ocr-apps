@@ -1,0 +1,83 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+ARCH                 	?= tg-xe
+OCR_TYPE                ?= tg
+APPS_ROOT               ?= ../../../..
+
+_INTERNAL_NO_CHECK_WORKLOAD := yes
+include $(APPS_ROOT)/makefiles/make-varcheck.inc
+
+SRC_DIR      := ./
+SRCS         := $(shell find -L $(SRC_DIR) -name '*.c' -print)
+
+SRCS         := $(addprefix $(SRC_DIR), $(SRCS))
+OBJS         := $(patsubst $(SRC_DIR)%.c, %.o, $(SRCS))
+
+LIB := libbuiltins.a
+
+# Installed files
+INSTALL_LIBS    := $(APPS_LIBS_INSTALL)/lib/$(LIB)
+
+### Compilation rules ####
+PREFIX := $(TG_INSTALL)/bin/xstg-linux-elf
+
+CC     := $(PREFIX)-clang
+AR     := $(PREFIX)-ar
+
+# add members AND generate index. Ranlib not needed.
+ARFLAGS := rsv
+
+OPT_FLAGS := -O3
+INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(TG_INSTALL)/include
+
+#CFLAGS    := $(CFLAGS) $(INC_FLAGS) $(DEFINES) $(OPT_FLAGS)
+
+.PHONY: all
+all: install
+
+.PHONY: debug
+debug: CFLAGS += -g -O0
+debug: install
+
+.PHONY: compile
+compile: $(OBJS)
+
+.PHONY: link
+link: $(LIB)
+
+
+%.o: $(SRC_DIR)%.c Makefile $(SRCS)
+	@echo "Compiling $<"
+	$(AT)$(CC) $(CFLAGS) -c $< -o $@
+
+$(LIB): $(OBJS)
+	@echo "Linking static library ${$LIB}"
+	$(AT)$(AR) $(ARFLAGS) $(LIB) $^
+
+$(APPS_LIBS_INSTALL)/lib/$(LIB): $(LIB) | $(APPS_LIBS_INSTALL)/lib
+	$(AT)cp $^ $@
+
+.PHONY: install
+install: $(INSTALL_LIBS)
+
+.PHONY: run
+run:
+
+.PHONY: clean
+clean:
+	$(AT)rm -f $(OBJS) $(LIB)
+
+.PHONY: uninstall
+uninstall:
+	$(AT)rm -f $(INSTALL_LIBS)
+
+.PHONY: squeaky
+squeaky: clean uninstall
+
+.PHONY: $(APPS_LIBS_INSTALL)/lib
+$(APPS_LIBS_INSTALL)/lib:
+	$(AT)mkdir -p $@
+
+include $(APPS_ROOT)/makefiles/make-libs.inc
