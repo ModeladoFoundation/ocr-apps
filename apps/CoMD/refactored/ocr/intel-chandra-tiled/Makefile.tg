@@ -54,7 +54,7 @@ TARGET := comd-ocrd
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := libc reduction
+REQ_LIBS := newlib reduction
 
 # Space separated list of source files
 

@@ -74,14 +74,14 @@ CFLAGS := -std=gnu99
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -ltimer -lm $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a
+LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a -ltimer -lreduction
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3
+all:	CFLAGS += -O2
 all:	TARGETS := all
 all:	default
 
