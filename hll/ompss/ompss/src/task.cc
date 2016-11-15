@@ -58,8 +58,7 @@ void nanos_submit_task( void *task )
 
     // Create task EDT and its cleanup EDT
     ocrGuid_t edt;
-    // Cleanup EDT will depend on task EDT
-    // to be completed
+    // Taskwait event will depend on EDT to be completed
     ocrGuid_t edtFinished;
 
     // Register dependences

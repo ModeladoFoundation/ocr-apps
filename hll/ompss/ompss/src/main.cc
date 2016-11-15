@@ -15,42 +15,6 @@ namespace ompss {
 ocrGuid_t shutdownTemplate;
 ocrGuid_t ompssMainTemplate;
 
-ocrGuid_t edtUserMain(
-            uint32_t paramc,
-            uint64_t* paramv,
-            uint32_t depc,
-            ocrEdtDep_t depv[] )
-{
-    using namespace ompss;
-
-    void* program_args = depv[1].ptr;
-    uint64_t argc = getArgc( program_args );
-    char* argv[argc];
-    for( uint64_t arg = 0; arg < argc; ++arg ) {
-        argv[arg] = getArgv(program_args, arg);
-    }
-
-    // Initialize local scope
-    TaskScopeInfo scope;
-    MainStorage* main_data = new(getUserBuffer(depv[0].ptr)) MainStorage();
-
-    // Open taskwait region
-    scope.taskwait.openRegion();
-
-    // Store local scope in EDT local storage
-    setLocalScope( scope );
-
-    // Call user's main function
-    main_data->exit_code = ompss_user_main( (int)argc, argv );
-
-    // Close taskwait region
-    scope.taskwait.closeRegion();
-
-    nanos_wait_until_shutdown();
-
-    return NULL_GUID;
-}
-
 ocrGuid_t edtShutdown(
             uint32_t paramc,
             uint64_t* paramv,
@@ -58,12 +22,13 @@ ocrGuid_t edtShutdown(
             ocrEdtDep_t depv[] )
 {
     // Decode task dependencies
-    MainStorage* main_data = (MainStorage*)getUserBuffer(depv[0].ptr);
+    MainStorage* main_data = reinterpret_cast<MainStorage*>(paramv);
     int exit_code = main_data->exit_code;
 
     // Free task local data storage
     main_data->~MainStorage();
-    ocrDbDestroy( depv[0].guid );
+
+    nanos_notify_ready_for_shutdown();
 
     // If exit_code == 0, this is equivalent to ocrShutdown
     ocrAbort( exit_code );
@@ -86,31 +51,38 @@ ocrGuid_t mainEdt(
     nanos_preinit();
     nanos_init();
 
+    void* program_args = depv[0].ptr;
+    uint64_t argc = getArgc( program_args );
+    char* argv[argc];
+    for( uint64_t arg = 0; arg < argc; ++arg ) {
+        argv[arg] = getArgv(program_args, arg);
+    }
 
-    uint8_t err;
-    ocrGuid_t userMainEdt, shutdownEdt;
-    ocrGuid_t userMainDoneEvt;
-    ocrGuid_t userMainDeps[2] = { NULL_GUID, depv[0].guid };
+    // Initialize local scope
+    TaskScopeInfo scope;
+    MainStorage main_data;
 
-    // Create datablock that will contain
-    // main function return value
-    void* buffer;
-    err = ocrDbCreate( &userMainDeps[0], &buffer, sizeof(MainStorage),
-                  DB_PROP_NONE/*DB_PROP_NO_ACQUIRE*/, NULL_HINT, NO_ALLOC );
+    // Open taskwait region
+    scope.taskwait.openRegion();
+
+    // Store local scope in EDT local storage
+    setLocalScope( scope );
+
+    // Call user's main function
+    main_data.exit_code = ompss_user_main( static_cast<int>(argc), argv );
+
+    // Create cleanup EDT
+    ocrGuid_t shutdownEdt;
+    uint8_t err = ocrEdtCreate( &shutdownEdt, shutdownTemplate,
+        mem::sizeofInItems<uint64_t,MainStorage>(), reinterpret_cast<uint64_t*>(&main_data),
+        1, const_cast<ocrGuid_t*>(&scope.taskwait.getEvent().handle()),
+        EDT_PROP_NONE, NULL_HINT, NULL );
     ASSERT( err == 0 );
 
-    err = ocrEdtCreate( &userMainEdt, ompssMainTemplate,
-                  0, NULL,
-                  2, userMainDeps,
-                  EDT_PROP_FINISH, NULL_HINT, &userMainDoneEvt );
-    ASSERT( err == 0 );
+    // Close taskwait region
+    scope.taskwait.closeRegion();
 
-    ocrGuid_t shutdownDeps[2] = { userMainDeps[0], userMainDoneEvt };
-    err = ocrEdtCreate( &shutdownEdt, shutdownTemplate,
-                  0, NULL,
-                  2, shutdownDeps,
-                  EDT_PROP_NONE, NULL_HINT, NULL );
-    ASSERT( err == 0 );
+    nanos_wait_until_shutdown();
 
     return NULL_GUID;
 }
@@ -129,13 +101,7 @@ void nanos_init()
     uint8_t err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ASSERT( err == 0);
 
-    err = ocrEdtTemplateCreate( &cleanupTemplate, edtCleanup, 0, 2 );
-    ASSERT( err == 0);
-
-    err = ocrEdtTemplateCreate( &ompssMainTemplate, edtUserMain, 0, 2 );
-    ASSERT( err == 0);
-
-    err = ocrEdtTemplateCreate( &shutdownTemplate, edtShutdown, 0, 2 );
+    err = ocrEdtTemplateCreate( &shutdownTemplate, edtShutdown, (mem::sizeofInItems<uint64_t,MainStorage>()), 1 );
     ASSERT( err == 0);
 }
 
@@ -150,12 +116,6 @@ void nanos_notify_ready_for_shutdown()
     using namespace ompss;
     // Do the shutdown right here
     uint8_t err = ocrEdtTemplateDestroy( taskOutlineTemplate );
-    ASSERT( err == 0 );
-
-    err = ocrEdtTemplateDestroy( cleanupTemplate );
-    ASSERT( err == 0 );
-
-    err = ocrEdtTemplateDestroy( ompssMainTemplate );
     ASSERT( err == 0 );
 
     err = ocrEdtTemplateDestroy( shutdownTemplate );

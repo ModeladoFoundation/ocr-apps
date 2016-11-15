@@ -56,10 +56,7 @@ struct TaskDefinition {
 };
 
 struct TaskFlags {
-    bool postponeCleanup;
-
-    TaskFlags() :
-        postponeCleanup(false)
+    TaskFlags()
     {
     }
 };

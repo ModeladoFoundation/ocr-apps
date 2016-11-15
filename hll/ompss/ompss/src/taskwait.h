@@ -16,6 +16,10 @@ public:
     {
     }
 
+    const ocr::LatchEvent& getEvent() const {
+        return *_event;
+    }
+
     void registerEdt( const ocrGuid_t& edt ) {
         (*_event)++;
         _event->addDependence(edt);

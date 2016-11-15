@@ -10,7 +10,6 @@
 namespace ompss {
 
 ocrGuid_t taskOutlineTemplate;
-ocrGuid_t cleanupTemplate;
 
 /*! \brief ocrEdt_t function wrapper
  * This function is used to encapsulate OmpSs compiler generated
@@ -29,7 +28,6 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
     // Decode arguments and dependences
     std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> args =
         Task::unpackParams( paramc, paramv );
-    //Task* task = (Task*)getUserBuffer(depv[0].ptr);
     TaskDefinition* def = std::get<0>(args);
 
     // Store local scope in EDT local storage
@@ -48,16 +46,6 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
     // Clean-up
     releaseDependences( std::get<1>(args), std::get<2>(args), std::get<3>(args) );
 
-    return NULL_GUID;
-}
-
-ocrGuid_t edtCleanup( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
-{
-    using namespace ompss;
-
-    // Decode arguments and dependences
-    Task* task = (Task*)getUserBuffer(depv[0].ptr);
-    Task::factory::destroy( task );
     return NULL_GUID;
 }
 

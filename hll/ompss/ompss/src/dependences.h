@@ -106,10 +106,6 @@ inline void acquireDependences( ompss::Task& task )
     auto& events  = task.dependences.acquire;
     auto& satisfy = task.dependences.acq_satisfy;
     if( !events.empty() ) {
-        // Task is using dependences.
-        // Parent (running task) shall postpone its clean-up
-        getLocalScope().flags.postponeCleanup = true;
-
         // Dependences already registered in EDT creation
         // Just satisfy flagged events
         for( uint32_t slot = 0; slot < events.size(); ++slot ) {
