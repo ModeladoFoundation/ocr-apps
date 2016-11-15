@@ -123,8 +123,6 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
     *hash = 0;
 	#endif
 
-    DEBUG_PRINTF(("seed %d\n", *seed_v));
-
 	NuclideGridPoint ** nuclide_grids = gpmatrix(&PTR_rankDataH->DBK_nuclide_grids, &PTR_rankDataH->DBK_nuclide_grid_ptrs,
                                                     in.n_isotopes,in.n_gridpoints);
 
@@ -133,8 +131,6 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
 	#else
 	generate_grids( nuclide_grids, in.n_isotopes, in.n_gridpoints );
 	#endif
-
-    DEBUG_PRINTF(("seed %d\n", *seed_v));
 
 	// Sort grids by energy
 	if( mype == 0) PRINTF("Sorting Nuclide Energy Grids...\n");
@@ -159,8 +155,6 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
 	#else
 	double **concs = load_concs(PTR_rankDataH, num_nucs);
 	#endif
-
-    DEBUG_PRINTF(("seed %d\n", *seed_v));
 
 	#ifdef VERIFICATION
     ocrDbRelease( PTR_rankDataH->DBK_seed_v );
@@ -194,8 +188,8 @@ ocrGuid_t iterationsPerThreadEdt( EDT_ARGS )
     PRM_iterationsPerThread_t* PTR_PRM_iterationsPerThread = (PRM_iterationsPerThread_t*) paramv;
 
     int tid = PTR_PRM_iterationsPerThread->tid;
-    u64 ibegin = PTR_PRM_iterationsPerThread->ibegin;
-    u64 iend = PTR_PRM_iterationsPerThread->iend;
+    s64 ibegin = PTR_PRM_iterationsPerThread->ibegin;
+    s64 iend = PTR_PRM_iterationsPerThread->iend;
 
     DEBUG_PRINTF(("begin %d end %d\n", ibegin, iend));
 
@@ -917,7 +911,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     //Release the changes so they are visible for any dependent EDTs below
     ocrDbRelease( DBK_globalParamH );
 
-    s64 edtGridDims[1] = { nprocs };
+    u64 edtGridDims[1] = { nprocs };
 
     //All SPMD EDTs depend on the following dependencies
     ocrGuid_t spmdDepv[2] = { DBK_cmdLineArgs, DBK_globalParamH };
