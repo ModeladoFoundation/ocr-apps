@@ -4,6 +4,7 @@
 
 #include "alloc_node.h"
 #include "debug/fatal.h"
+#include "debug/output.h"
 
 #include <type_traits>
 #include <cassert>
@@ -18,6 +19,9 @@ struct firstfit_allocator_arena : public free_node_base {
         free_node_base(),
         _storage()
     {
+        log::verbose<log::Module::memory>( "Created arena {",
+                  reinterpret_cast<void*>(&_storage), ", ",
+                  reinterpret_cast<void*>((&_storage)+1), "}" );
         insert_after( new(&_storage) free_node(size_in_blocks(size)) );
     }
 
@@ -62,12 +66,11 @@ struct firstfit_allocator {
     void dump_status() {
         free_node* next = _arena.next();
         while( next ) {
-            std::cout << "{ @:" << static_cast<void*>(next)
-                << " [" << next->data() << ", " << next->data(next->size())
-                << "](" << next->size() << ")} -> ";
+            log::verbose<log::Module::memory>( "   - { @:", static_cast<void*>(next),
+                " [", next->data(), ", ", next->data(next->size()),
+                "](", next->size(), ")}," );
             next = next->next();
         }
-        std::cout << " END " << std::endl;
     }
 
 	Tp* allocate( std::size_t n ) noexcept {
@@ -103,10 +106,19 @@ struct firstfit_allocator {
 
         dbg_check( alloc_node );
         Tp* result = alloc_node? alloc_node->data() : nullptr;
+
+        log::verbose<log::Module::memory>( "Allocated node of size ", alloc_node->size(), " in address ", alloc_node );
+        log::verbose<log::Module::memory>( "User data {",
+            static_cast<void*>(result), ", ",
+            static_cast<void*>(alloc_node->data(alloc_node->size())), " }" );
+        log::verbose<log::Module::memory>( "Remaining size ", available() );
+
 		return result;
 	}
 
 	void deallocate( Tp* ptr, std::size_t n ) {
+        log::verbose<log::Module::memory>( "Deallocate addr ", static_cast<void*>(ptr) );
+
 		free_node* returned = free_node::replace(allocated_node<Tp>::from_ptr(ptr));
 
 		free_node* current = _arena.next();
@@ -123,6 +135,8 @@ struct firstfit_allocator {
             current->insert_after(returned);
 			current->try_join();
 		}
+        log::verbose<log::Module::memory>( "Remaining size ", available() );
+        dump_status();
 	}
 
 private:

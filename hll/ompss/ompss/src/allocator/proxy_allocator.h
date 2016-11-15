@@ -2,6 +2,8 @@
 #ifndef PROXY_ALLOCATOR_H
 #define PROXY_ALLOCATOR_H
 
+#include "debug/output.h"
+
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -33,22 +35,21 @@ struct allocation_statistics {
         }
 
         void display() {
-            std::cout
-                << "Total: " << total
-                << "; Max: " << max
-                << "; Avg: " << total/static_cast<double>(count)
-                << std::endl;
+            log::message<log::Module::memory>(
+                "Total: ", total,
+                "; Max: ", max,
+                "; Avg: ", total/static_cast<double>(count) );
         }
     };
 
     ~allocation_statistics() {
-        std::cout << "[" << __PRETTY_FUNCTION__ << "]" << std::endl;
-        std::cout << "Element size: " << sizeof(value_type) << std::endl;
+        log::message<log::Module::memory>( "[", __PRETTY_FUNCTION__, "]" );
+        log::message<log::Module::memory>( "Element size: ", sizeof(value_type) );
         for( auto& allocation: _allocations ) {
-            std::cout << allocation.first << ": ";
+            log::message<log::Module::memory>( allocation.first, ":" );
             allocation.second.display();
         }
-        std::cout << "===================================================" << std::endl;
+        log::message<log::Module::memory>( "===================================================" );
     }
 
     void add( value_type* ptr, size_t n ) {

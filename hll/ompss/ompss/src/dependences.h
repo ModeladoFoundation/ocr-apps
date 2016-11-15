@@ -36,6 +36,7 @@ inline void AccessDependence::readSectionAddReader( ompss::Task& task )
 {
     (*readCompleted)++;
 
+    log::verbose<log::Module::dependences>( "Add read event to satisfy list ", std::hex, readCompleted->handle().guid );
     task.dependences.release.push_back(*readCompleted);
     task.dependences.rel_destroy_not_satisfy.push_back(false);
 }
@@ -46,6 +47,7 @@ inline void AccessDependence::createWriteSection( ompss::Task& task )
     // Replace previous write event
     if( event.initialized() ) {
         // Destroy old event after EDT execution
+        log::verbose<log::Module::dependences>( "Add write event to destroy list ", std::hex, event->handle().guid );
         task.dependences.release.push_back(event->handle());
         task.dependences.rel_destroy_not_satisfy.push_back(true);
         event.release();
@@ -53,6 +55,7 @@ inline void AccessDependence::createWriteSection( ompss::Task& task )
     event.initialize();
 
     // Add this new event to release events list
+    log::verbose<log::Module::dependences>( "Add write event to satisfy list ", std::hex, event->handle().guid );
     task.dependences.release.push_back(event->handle());
     task.dependences.rel_destroy_not_satisfy.push_back(false);
 }
@@ -61,6 +64,9 @@ inline void AccessDependence::addRAWDependence( ompss::Task& task )
 {
     auto& event = writeCompleted;
     if( event.initialized() ) {
+        log::verbose<log::Module::dependences>( " = Task ", &task, " depends on ", this,
+                 "; event GUID: ", event->handle().guid );
+
         task.dependences.acquire.push_back(event->handle());
         task.dependences.acq_satisfy.push_back(false);
     }
@@ -70,6 +76,9 @@ inline void AccessDependence::addWAWDependence( ompss::Task& task )
 {
     auto& event = writeCompleted;
     if( event.initialized() ) {
+        log::verbose<log::Module::dependences>( " = Task ", &task, " depends on ", this,
+                 "; event GUID: ", event->handle().guid );
+
         task.dependences.acquire.push_back(event->handle());
         task.dependences.acq_satisfy.push_back(false);
     }
@@ -79,6 +88,9 @@ inline void AccessDependence::addWARDependence( ompss::Task& task )
 {
     auto& event = readCompleted;
     if( event.initialized() ) {
+        log::verbose<log::Module::dependences>( " = Task ", &task, " depends on ", this,
+                 "; event GUID: ", event->handle().guid );
+
         task.dependences.acquire.push_back(event->handle());
         task.dependences.acq_satisfy.push_back(true);
 
@@ -111,12 +123,15 @@ inline void acquireDependences( ompss::Task& task )
 
 inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[], uint8_t destroy[] )
 {
+    log::verbose<log::Module::dependences>( "Releasing dependences" );
     uint8_t err;
     for( uint32_t i = 0; i < num_deps; ++i ) {
         if( destroy[i] ) {
+            log::verbose<log::Module::dependences>( "Release: destroy GUID ", std::hex, dependences[i].guid );
             err = ocrEventDestroy( dependences[i] );
             ASSERT( err == 0 );
         } else {
+            log::verbose<log::Module::dependences>( "Release: satisfy GUID ", std::hex, dependences[i].guid );
             err = ocrEventSatisfy( dependences[i], NULL_GUID );
             ASSERT( err == 0 );
         }

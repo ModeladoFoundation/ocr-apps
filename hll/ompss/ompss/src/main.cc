@@ -1,5 +1,6 @@
 
 #include "common.h"
+#include "memory/util.h"
 #include "outline.h"
 #include "task.h"
 #include "task-local.h"

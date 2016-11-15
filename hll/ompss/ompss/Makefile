@@ -4,14 +4,12 @@ OMPSS_LIB=lib
 
 CXX = g++
 
-#DEBUG=-Wall -Wextra -Wno-unused-parameter -O0 -g3 #-fsanitize=address
-RELEASE=-DNDEBUG -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden
+#DEBUG=-Wall -Wextra -Wno-unused-parameter -O0 -g3
+RELEASE=-DNDEBUG -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -flto
 
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
-
 CPPFLAGS=\
  -Isrc\
- -I$(EXTRAE_HOME)/include\
  -I$(OMPSS_INC)/nanos6\
  -I$(OCR_INSTALL)/include\
  -DOCR_TYPE_H=$(OCR_TYPE).h\
@@ -25,11 +23,17 @@ CXXFLAGS=\
 LDFLAGS=\
  -shared\
  -Wl,--discard-all\
- -L$(EXTRAE_HOME)/lib\
- -lpttrace\
  -Wl,-rpath,$(OCR_INSTALL)/lib\
  -L$(OCR_INSTALL)/lib\
  -locr_$(OCR_TYPE)
+
+ifeq ($(EXTRAE),yes)
+CPPFLAGS += -I$(EXTRAE_HOME)/include -D_ENABLE_EXTRAE\
+LDFLAGS :=\
+ -L$(EXTRAE_HOME)/lib\
+ -lpttrace\
+ $(LDFLAGS)
+endif
 
 LIBS=\
  libnanos6.so\

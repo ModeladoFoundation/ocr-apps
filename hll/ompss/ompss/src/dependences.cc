@@ -34,6 +34,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 
     uintptr_t begin = reinterpret_cast<uintptr_t>(start);
     uintptr_t end   = begin + length;
+    log::log<log::Module::dependences>( "Read access: 0x", std::hex, begin, " - 0x", end );
 
     // Get running task access map (not "handler"'s)
     DependenceMap& accesses = getLocalScope().accesses;
@@ -50,6 +51,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
                                           std::forward_as_tuple(begin),
                                           std::forward_as_tuple<>() );
         AccessDependence& dep_data = iterator->second;
+        log::log<log::Module::dependences>( " +- New access      @ ", &dep_data );
 
         // Create read-section
         dep_data.createReadSection();
@@ -58,6 +60,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
 
     while( iterator != accesses.end() && iterator->first < end ) {
         AccessDependence& dep_data = iterator->second;
+        log::log<log::Module::dependences>( " +- Existing access @ ", &dep_data );
 
         // Add read-after-write dependency to previous writer EDTs
         dep_data.addRAWDependence( *task );
@@ -110,6 +113,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 
     uintptr_t begin = reinterpret_cast<uintptr_t>(start);
     uintptr_t end   = begin + length;
+    log::log<log::Module::dependences>( "Write access: 0x", std::hex, begin, " - 0x", end );
 
     // Get running task access map (not "handler"'s)
     auto& accesses = getLocalScope().accesses;
@@ -126,6 +130,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
                                           std::forward_as_tuple(begin),
                                           std::forward_as_tuple<>() );
         AccessDependence& dep_data = iterator->second;
+        log::log<log::Module::dependences>( " +- New access      @ ", &dep_data );
 
         // Create write-section
         dep_data.createWriteSection( *task );
@@ -134,6 +139,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
 
     while( iterator != accesses.end() && iterator->first < end ) {
         AccessDependence& dep_data = iterator->second;
+        log::log<log::Module::dependences>( " +- Existing access @ ", &dep_data );
 
         // Add write-after-write dependency to previous writer EDTs
         dep_data.addWAWDependence( *task );

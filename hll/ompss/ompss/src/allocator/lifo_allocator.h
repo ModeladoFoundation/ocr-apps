@@ -3,7 +3,6 @@
 #define LIFO_ALLOCATOR_H
 
 #include "lifo_arena.h"
-#include "debug.h"
 
 #include <cassert>
 

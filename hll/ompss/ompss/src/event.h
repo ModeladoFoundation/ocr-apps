@@ -15,8 +15,7 @@ protected:
     {
     }
 
-    ~EventBase()
-    {
+    ~EventBase() {
         _handle = NULL_GUID;
     }
 
@@ -78,8 +77,7 @@ struct OnceEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
-    static ocrEventTypes_t type()
-    {
+    static ocrEventTypes_t type() {
         return OCR_EVENT_ONCE_T;
     }
 };
@@ -98,8 +96,7 @@ struct StickyEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
-    static ocrEventTypes_t type()
-    {
+    static ocrEventTypes_t type() {
         return OCR_EVENT_STICKY_T;
     }
 };
@@ -113,9 +110,6 @@ struct LatchEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
-    ~LatchEvent() {
-    }
-
     LatchEvent& operator++(int) {
         satisfyIncrease();
         return *this;
@@ -126,8 +120,7 @@ struct LatchEvent : public EventBase {
         return *this;
     }
 
-    static ocrEventTypes_t type()
-    {
+    static ocrEventTypes_t type() {
         return OCR_EVENT_LATCH_T;
     }
 };
