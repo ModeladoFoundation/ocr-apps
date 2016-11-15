@@ -54,7 +54,7 @@ TARGET := RSBench
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := newlib timer reduction
+REQ_LIBS := newlib timer reduction compiler-rt-builtins
 
 # Space separated list of source files
 SRCS := \
@@ -79,7 +79,7 @@ CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=1000
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a -ltimer -lreduction
+LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libbuiltins.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a -ltimer -lreduction
 
 # Targets:
 #   - all:     Build the application.
