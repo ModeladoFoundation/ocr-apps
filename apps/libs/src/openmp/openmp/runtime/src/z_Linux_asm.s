@@ -1,4 +1,4 @@
-.if KMP_OS_XSTG==0
+.if KMP_ARCH_XSTG==0
 /* microtasking support for non-XSTG platform */
 //  z_Linux_asm.s:  - microtasking routines specifically
 //                    written for Intel platforms running Linux* OS

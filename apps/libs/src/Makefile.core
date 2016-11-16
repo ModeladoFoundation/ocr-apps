@@ -12,16 +12,18 @@ ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
 
-all: newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr
+all: newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr openmp
 
 clean:
 	$(MAKE) -C newlib clean
 	$(MAKE) -C libcxx clean
 	$(MAKE) -C libcxxabi clean
 	$(MAKE) -C libunwind clean
-	$(MAKE) -C libtgr TGR_TYPE=tg-xe clean
 	$(MAKE) -C libscaffold clean
 	$(MAKE) -C libswtest clean
+ifeq ($(ARCH)$(USE_TGR),tg-xeyes)
+	$(MAKE) -C libtgr TGR_TYPE=tg-xe clean
+endif
 
 newlib:
 	$(MAKE) -C newlib
@@ -57,5 +59,11 @@ ifeq ($(ARCH)$(USE_TGR),tg-xeyes)
 	$(MAKE) -C libtgr TGR_TYPE=tg-ce install
 endif
 
+openmp: newlib libcxx libcxxabi libunwind
+ifeq ($(ARCH),tg-xe)
+	$(MAKE) -C openmp
+	$(MAKE) -C openmp install
+endif
 
-.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr
+
+.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr openmp

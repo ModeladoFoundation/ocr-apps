@@ -147,7 +147,7 @@
 # define KMP_UINT64_SPEC     "llu"
 #endif /* KMP_OS_UNIX */
 
-#if KMP_OS_XSTG
+#if KMP_OS_TGR
   typedef char               kmp_int8;
   typedef unsigned char      kmp_uint8;
   typedef short              kmp_int16;
@@ -277,7 +277,7 @@ extern "C" {
 
 /* Temporary note: if performance testing of this passes, we can remove
    all references to KMP_DO_ALIGN and replace with KMP_ALIGN.  */
-#if (KMP_OS_UNIX || KMP_OS_XSTG) && defined(__GNUC__)
+#if (KMP_OS_UNIX || KMP_OS_TGR) && defined(__GNUC__)
 # define KMP_DO_ALIGN(bytes)  __attribute__((aligned(bytes)))
 # define KMP_ALIGN_CACHE      __attribute__((aligned(CACHE_LINE)))
 # define KMP_ALIGN_CACHE_INTERNODE __attribute__((aligned(INTERNODE_CACHE_LINE)))
@@ -475,7 +475,7 @@ inline kmp_real64 KMP_XCHG_REAL64( volatile kmp_real64 *p, kmp_real64 v)
     kmp_int64 tmp = __sync_lock_test_and_set( (kmp_int64*)p, *(kmp_int64*)&v);
     return *(kmp_real64*)&tmp;
 }
-#elif KMP_OS_XSTG
+#elif KMP_OS_TGR
 # define KMP_TEST_THEN_ADD8(p, v)               __sync_fetch_and_add( (kmp_int8 *)(p), (v) )
 
 /* cast p to correct type so that proper intrinsic will be used */
