@@ -14,7 +14,6 @@
 
 
 
-#ifdef KMP_I18N
 #include "kmp_i18n.h"
 
 #include "kmp_os.h"
@@ -84,7 +83,33 @@ __kmp_i18n_catopen(
     ================================================================================================
 */
 
-#if KMP_OS_UNIX
+#ifdef KMP_OS_TGR
+#define KMP_I18N_OK
+
+void __kmp_i18n_do_catopen() {}
+void __kmp_i18n_catclose() {}
+
+char const *
+__kmp_i18n_catgets(
+    kmp_i18n_id_t  id
+) {
+
+    int section = get_section( id );
+    int number  = get_number( id );
+    char const * message = NULL;
+
+    if ( 1 <= section && section <= __kmp_i18n_default_table.size ) {
+        if ( 1 <= number && number <= __kmp_i18n_default_table.sect[ section ].size ) {
+            message = __kmp_i18n_default_table.sect[ section ].str[ number ];
+        }; // if
+    }; // if
+    if ( message == NULL ) {
+        message = no_message_available;
+    }; // if
+    return message;
+
+} // func __kmp_i18n_catgets
+#elif KMP_OS_UNIX
 #define KMP_I18N_OK
 
 #include <nl_types.h>
@@ -715,7 +740,7 @@ __kmp_msg_format(
     __kmp_str_buf_init( & buffer );
 
     va_start( args, id );
-    #if KMP_OS_UNIX
+    #if KMP_OS_UNIX || KMP_OS_TGR
         // On Linux* OS and OS X*, printf() family functions process parameter numbers, for example:
         // "%2$s %1$s".
         __kmp_str_buf_vprint( & buffer, __kmp_i18n_catgets( id ), args );
@@ -805,7 +830,7 @@ sys_error(
                 int    strerror_r( int, char *, size_t );  // XSI version
         */
 
-        #if KMP_OS_LINUX
+        #if KMP_OS_LINUX || KMP_OS_TGR
 
             // GNU version of strerror_r.
 
@@ -972,5 +997,4 @@ __kmp_msg(
 } // __kmp_msg
 
 // -------------------------------------------------------------------------------------------------
-#endif // !defined(KMP_I18N)
 // end of file //

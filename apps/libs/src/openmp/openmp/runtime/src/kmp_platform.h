@@ -16,7 +16,7 @@
 
 /* ---------------------- Operating system recognition ------------------- */
 
-#define KMP_OS_XSTG     0
+#define KMP_OS_TGR      0
 #define KMP_OS_LINUX    0
 #define KMP_OS_FREEBSD  0
 #define KMP_OS_NETBSD   0
@@ -64,11 +64,11 @@
 #endif
 
 #if ( defined __XSTG__ )
-# undef KMP_OS_XSTG
-# define KMP_OS_XSTG 1
+# undef KMP_OS_TGR
+# define KMP_OS_TGR 1
 #endif
 
-#if (1 != KMP_OS_LINUX + KMP_OS_FREEBSD + KMP_OS_NETBSD + KMP_OS_DARWIN + KMP_OS_WINDOWS + KMP_OS_XSTG)
+#if (1 != KMP_OS_LINUX + KMP_OS_FREEBSD + KMP_OS_NETBSD + KMP_OS_DARWIN + KMP_OS_WINDOWS + KMP_OS_TGR)
 # error Unknown OS
 #endif
 

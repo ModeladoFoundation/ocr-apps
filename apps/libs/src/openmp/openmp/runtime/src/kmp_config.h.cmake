@@ -87,7 +87,7 @@
 #define KMP_ASM_INTRINS 1
 #define USE_ITT_BUILD LIBOMP_USE_ITT_NOTIFY
 #define INTEL_ITTNOTIFY_PREFIX __kmp_itt_
-#if ! (KMP_MIC || KMP_OS_XSTG)
+#if ! (KMP_MIC || KMP_OS_TGR)
 # define USE_LOAD_BALANCE 1
 #endif
 #if ! (KMP_OS_WINDOWS || KMP_OS_DARWIN)

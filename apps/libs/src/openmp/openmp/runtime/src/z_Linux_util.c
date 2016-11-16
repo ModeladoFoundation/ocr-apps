@@ -31,7 +31,7 @@
 #include <sys/time.h>
 #include <sys/times.h>
 #include <sys/resource.h>
-#if !KMP_OS_XSTG
+#if !KMP_OS_TGR
 #include <sys/syscall.h>
 #endif
 
@@ -60,9 +60,8 @@
 //
 // XXX Defined until we get them into pthreads.h and sys/time.h
 //
-#if KMP_OS_XSTG
-extern int sched_yield(void);
-extern int pthread_kill(pthread_t t, int s);
+#if KMP_OS_TGR
+#include <sched.h>
 
 # define TIMEVAL_TO_TIMESPEC(tv, ts) {                                   \
        (ts)->tv_sec = (tv)->tv_sec;                                    \
@@ -70,7 +69,7 @@ extern int pthread_kill(pthread_t t, int s);
 }
 #endif
 
-#if !KMP_OS_XSTG
+#if !KMP_OS_TGR
 #include <dirent.h>
 #endif
 
@@ -1290,7 +1289,8 @@ __kmp_reap_monitor( kmp_info_t *th )
        to avoid performance problem when the monitor sleeps during blocktime-size
        interval */
 
-    status = pthread_kill( th->th.th_info.ds.ds_thread, 0 );
+    //status = pthread_kill( th->th.th_info.ds.ds_thread, 0 );
+    status = 0; // TGR TODO we don't have any way currently to check if it is running or not.
     if (status != ESRCH) {
         __kmp_resume_monitor();   // Wake up the monitor thread
     }
@@ -1515,6 +1515,7 @@ __kmp_disable( int * old_state )
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
 
+#ifndef KMP_OS_TGR
 static void
 __kmp_atfork_prepare (void)
 {
@@ -1603,6 +1604,7 @@ __kmp_register_atfork(void) {
         __kmp_need_register_atfork = FALSE;
     }
 }
+#endif
 
 void
 __kmp_suspend_initialize( void )
@@ -1941,12 +1943,17 @@ __kmp_gtid_get_specific()
 double
 __kmp_read_cpu_time( void )
 {
+#ifdef KMP_OS_TGR
+    // This is not currently a priority since this function is never used.
+    return 0; //TGR TODO
+#else
     /*clock_t   t;*/
     struct tms  buffer;
 
     /*t =*/  times( & buffer );
 
     return (buffer.tms_utime + buffer.tms_cutime) / (double) CLOCKS_PER_SEC;
+#endif
 }
 
 int
@@ -1956,7 +1963,7 @@ __kmp_read_system_info( struct kmp_sys_info *info )
     struct rusage r_usage;
 
     memset( info, 0, sizeof( *info ) );
-#if KMP_OS_XSTG
+#if KMP_OS_TGR
     return 0;
 #else
 
@@ -2040,10 +2047,7 @@ __kmp_get_xproc( void ) {
 
     int r = 0;
 
-    #if KMP_OS_XSTG
-        return 8;
-
-    #elif KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD
+    #if KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_NETBSD || KMP_OS_TGR
 
         r = sysconf( _SC_NPROCESSORS_ONLN );
 
@@ -2198,7 +2202,12 @@ __kmp_runtime_destroy( void )
 void
 __kmp_thread_sleep( int millis )
 {
+#ifdef KMP_OS_TGR
+    struct timespec req = {(millis+500)/1000, (millis%1000)*1000000};
+    nanosleep(&req, NULL);
+#else
     sleep(  ( millis + 500 ) / 1000 );
+#endif
 }
 
 /* Calculate the elapsed wall clock time for the user */
@@ -2249,7 +2258,7 @@ __kmp_is_address_mapped( void * addr ) {
     int found = 0;
     int rc;
 
-    #if KMP_OS_XSTG
+    #if KMP_OS_TGR
         return 0;
 
     #elif KMP_OS_LINUX || KMP_OS_FREEBSD
