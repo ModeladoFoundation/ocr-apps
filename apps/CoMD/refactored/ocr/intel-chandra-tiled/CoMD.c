@@ -163,6 +163,7 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
     ocrDbCreate( &PTR_rankH->rpVcmDBK, (void**) &PTR_rankH->rpVcmPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
     ocrDbCreate( &PTR_rankH->rpmaxOccupancyDBK, (void**) &PTR_rankH->rpmaxOccupancyPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
     ocrDbCreate( &PTR_rankH->rpPerfTimerDBK, (void**) &PTR_rankH->rpPerfTimerPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
+    ocrDbCreate( &PTR_rankH->rpSpmdJoinDBK, (void**) &PTR_rankH->rpSpmdJoinPTR, sizeof(reductionPrivate_t), 0, NULL_HINT, NO_ALLOC );
 
     ocrEdtTemplateCreate( &PTR_rankTemplateH->advanceVelocityTML, advanceVelocityEdt, 1, 5 );
     ocrEdtTemplateCreate( &PTR_rankTemplateH->advancePositionTML, advancePositionEdt, 1, 6 );
@@ -235,6 +236,18 @@ void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
 
     ocrEventCreateParams(&(PTR_rankH->rpPerfTimerEVT), OCR_EVENT_CHANNEL_T, true, &params);
     PTR_rankH->rpPerfTimerPTR->returnEVT = PTR_rankH->rpPerfTimerEVT;
+
+    PTR_rankH->rpSpmdJoinPTR->nrank = nRanks;
+    PTR_rankH->rpSpmdJoinPTR->myrank = id;
+    PTR_rankH->rpSpmdJoinPTR->ndata = 1;
+    PTR_rankH->rpSpmdJoinPTR->reductionOperator = REDUCTION_F8_ADD;
+    PTR_rankH->rpSpmdJoinPTR->rangeGUID = PTR_globalOcrParamH->spmdJoinReductionRangeGUID;
+    PTR_rankH->rpSpmdJoinPTR->reductionTML = NULL_GUID;
+    PTR_rankH->rpSpmdJoinPTR->new = 1;  //first time
+    PTR_rankH->rpSpmdJoinPTR->type = REDUCE;
+
+    PTR_rankH->rpSpmdJoinPTR->returnEVT = NULL_GUID;
+    if( id == 0 ) PTR_rankH->rpSpmdJoinPTR->returnEVT = PTR_globalOcrParamH->EVT_OUT_spmdJoin_reduction;
 
     DEBUG_PRINTF(("nRanks %d id %d\n", nRanks, id));
 }
@@ -454,6 +467,7 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrDBK_t rpVcmDBK = PTR_rankH->rpVcmDBK;
     ocrDBK_t rpmaxOccupancyDBK = PTR_rankH->rpmaxOccupancyDBK;
     ocrDBK_t rpPerfTimerDBK = PTR_rankH->rpPerfTimerDBK;
+    ocrDBK_t rpSpmdJoinDBK = PTR_rankH->rpSpmdJoinDBK;
 
     ocrTML_t redistributeAtomsTML = PTR_rankTemplateH->redistributeAtomsTML;
     ocrTML_t computeForceTML = PTR_rankTemplateH->computeForceTML;
@@ -481,6 +495,9 @@ _OCR_TASK_FNC_( FNC_initSimulation )
 
     ocrDbRelease(rpKeDBK);
     ocrDbRelease(rpmaxOccupancyDBK);
+    //ocrDbRelease(rpVcmDBK); reductionLaunch call already does this.
+    ocrDbRelease(rpPerfTimerDBK);
+    ocrDbRelease(rpSpmdJoinDBK);
 
     //Vcm reduction tree has been set up.
     ocrGuid_t adjustVcmAndComputeKeTML, adjustVcmAndComputeKeEDT, adjustVcmAndComputeKeOEVT, adjustVcmAndComputeKeOEVTS;
@@ -971,14 +988,16 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuidRangeCreate(&(ocrParamH.VcmReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.maxOccupancyReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(ocrParamH.perfTimerReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(ocrParamH.spmdJoinReductionRangeGUID),nRanks, GUID_USER_EVENT_STICKY);
+
+    ocrEventCreate( &(ocrParamH.EVT_OUT_spmdJoin_reduction), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
 
     ocrGuid_t wrapUpTML, wrapUpEDT;
     ocrEdtTemplateCreate( &wrapUpTML, wrapUpEdt, 0, 1 );
     ocrEdtCreate( &wrapUpEDT, wrapUpTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-    ocrEventCreate( &(ocrParamH.finalOnceEVT), OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG );
     ocrEdtTemplateDestroy( wrapUpTML );
 
-    ocrAddDependence(ocrParamH.finalOnceEVT, wrapUpEDT, 0, DB_MODE_RO);
+    ocrAddDependence(ocrParamH.EVT_OUT_spmdJoin_reduction, wrapUpEDT, 0, DB_MODE_RO);
 
     //A datablock to store the commandline and the OCR objectes created above
     ocrGuid_t DBK_globalParamH;

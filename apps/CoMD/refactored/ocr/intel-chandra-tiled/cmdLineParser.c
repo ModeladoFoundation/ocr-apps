@@ -93,7 +93,7 @@ void printArgs(MyOption* myargs)
    {
       if(o->shortArg[0]<0xFF) shortArg = o->shortArg;
       else shortArg = (unsigned char *) "---";
-      PRINTF("  --\%\%-%20s",o->longArg);
+      PRINTF("  --%%-%20s",o->longArg);
       PRINTF(" -%c  arg=%1d type=%c  %s\n",shortArg[0],o->argFlag,o->type,o->help);
       o = nextOption(o);
 

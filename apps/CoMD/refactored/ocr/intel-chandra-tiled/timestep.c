@@ -96,11 +96,13 @@ ocrGuid_t finalizeEdt( EDT_ARGS )
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
     ocrDBK_t DBK_sim = depv[_idep++].guid;
     ocrDBK_t DBK_pot = depv[_idep++].guid;
+    ocrDBK_t rpSpmdJoinDBK = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
     SimFlat* sim = depv[_idep++].ptr;
     BasePotential* pot = depv[_idep++].ptr;
+    reductionPrivate_t* rpSpmdJoinPTR = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
@@ -161,8 +163,8 @@ ocrGuid_t finalizeEdt( EDT_ARGS )
     ocrDbDestroy( DBK_f );
     ocrDbDestroy( DBK_U );
 
-    if(myRank == 0)
-        ocrAddDependence(NULL_GUID, PTR_globalOcrParamH->finalOnceEVT, 0, DB_MODE_NULL);
+    double dummySync = 0.;
+    reductionLaunch(rpSpmdJoinPTR, rpSpmdJoinDBK, &dummySync);
 
     ocrDbDestroy(DBK_rankH);
     ocrDbDestroy(DBK_sim);
@@ -233,6 +235,8 @@ ocrGuid_t timestepEdt( EDT_ARGS )
 
     ocrGuid_t rpKeEVT = rpKePTR->returnEVT;
     ocrGuid_t rpPerfTimerEVT = rpPerfTimerPTR->returnEVT;
+
+    ocrDBK_t rpSpmdJoinDBK = sim->PTR_rankH->rpSpmdJoinDBK;
 
     if(itimestep==0)
         profileStart(sim->perfTimer, loopTimer);
@@ -373,7 +377,12 @@ ocrGuid_t timestepEdt( EDT_ARGS )
         if(itimestep == nSteps)
         {
             ////Gather and print performance Results
-            ocrGuid_t printPerformanceResultsTML, printPerformanceResultsEDT, printPerformanceResultsOEVT, printPerformanceResultsOEVTS;
+            ocrGuid_t printPerformanceResultsOEVTS;
+            createEventHelper( &printPerformanceResultsOEVTS, 1);
+
+            if( myRank == 0 )
+            {
+            ocrGuid_t printPerformanceResultsTML, printPerformanceResultsEDT, printPerformanceResultsOEVT;
 
             ocrEdtTemplateCreate( &printPerformanceResultsTML, printPerformanceResultsEdt, 1, 4 );
 
@@ -382,7 +391,6 @@ ocrGuid_t timestepEdt( EDT_ARGS )
                           EDT_PROP_FINISH, &myEdtAffinityHNT, &printPerformanceResultsOEVT );
             ocrEdtTemplateDestroy( printPerformanceResultsTML );
 
-            createEventHelper( &printPerformanceResultsOEVTS, 1);
             ocrAddDependence( printPerformanceResultsOEVT, printPerformanceResultsOEVTS, 0, DB_MODE_NULL );
 
             _idep = 0;
@@ -390,10 +398,13 @@ ocrGuid_t timestepEdt( EDT_ARGS )
             ocrAddDependence( DBK_sim, printPerformanceResultsEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( rpPerfTimerEVT, printPerformanceResultsEDT, _idep++, DB_MODE_RO );
             ocrAddDependence( printThingsOEVTS, printPerformanceResultsEDT, _idep++, DB_MODE_NULL );
+            }
+            else
+                ocrAddDependence( printThingsOEVTS, printPerformanceResultsOEVTS, 0, DB_MODE_RO );
 
             ocrGuid_t finalizeTML, finalizeEDT, finalizeOEVT, finalizeOEVTS;
 
-            ocrEdtTemplateCreate( &finalizeTML, finalizeEdt, 1, 4 );
+            ocrEdtTemplateCreate( &finalizeTML, finalizeEdt, 1, 5 );
 
             ocrEdtCreate( &finalizeEDT, finalizeTML,
                           EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
@@ -407,6 +418,7 @@ ocrGuid_t timestepEdt( EDT_ARGS )
             ocrAddDependence( DBK_rankH, finalizeEDT, _idep++, DB_MODE_RO ); //TODO
             ocrAddDependence( DBK_sim, finalizeEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( DBK_pot, finalizeEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( rpSpmdJoinDBK, finalizeEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( printPerformanceResultsOEVTS, finalizeEDT, _idep++, DB_MODE_NULL );
 
         }

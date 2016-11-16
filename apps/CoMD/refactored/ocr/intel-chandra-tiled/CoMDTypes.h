@@ -89,7 +89,8 @@ typedef struct
     ocrGuid_t haloRangeGUID;
     ocrGuid_t KeReductionRangeGUID, VcmReductionRangeGUID, maxOccupancyReductionRangeGUID;
     ocrGuid_t perfTimerReductionRangeGUID;
-    ocrEVT_t finalOnceEVT;
+    ocrGuid_t spmdJoinReductionRangeGUID;
+    ocrEVT_t EVT_OUT_spmdJoin_reduction;
 } globalOcrParamH_t;
 
 typedef struct
@@ -134,8 +135,8 @@ typedef struct
     Command cmd;
     rankTemplateH_t rankTemplateH;
 
-    ocrDBK_t rpKeDBK, rpVcmDBK, rpmaxOccupancyDBK, rpPerfTimerDBK;
-    reductionPrivate_t *rpKePTR, *rpVcmPTR, *rpmaxOccupancyPTR, *rpPerfTimerPTR;
+    ocrDBK_t rpKeDBK, rpVcmDBK, rpmaxOccupancyDBK, rpPerfTimerDBK, rpSpmdJoinDBK;
+    reductionPrivate_t *rpKePTR, *rpVcmPTR, *rpmaxOccupancyPTR, *rpPerfTimerPTR, *rpSpmdJoinPTR;
     ocrEVT_t rpKeEVT, rpVcmEVT, rpmaxOccupancyEVT, rpPerfTimerEVT;
     ocrHint_t myEdtAffinityHNT;
     ocrHint_t myDbkAffinityHNT;
