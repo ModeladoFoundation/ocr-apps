@@ -148,8 +148,6 @@ int ompss_user_main(int argc, char ** argv) {
 
   in  = (DTYPE *) malloc(total_length);
   out = (DTYPE *) malloc(total_length);
-  printf("In:  %p - %p\n", in, in+(n*n) );
-  printf("Out: %p - %p\n", out, out+(n*n) );
   if (!in || !out) {
     printf("ERROR: could not allocate space for input or output array\n");
     return(EXIT_FAILURE);
@@ -212,7 +210,9 @@ int ompss_user_main(int argc, char ** argv) {
     const unsigned end       = bot_halo + radius_val * n;
 
     /* Apply the stencil operator                                              */
-    #pragma omp taskloop grainsize(gsize) shared(weight) private(i,ii,jj)
+    #pragma omp taskloop nogroup grainsize(gsize) shared(weight) private(i,ii,jj) \
+      in(in[(j-radius_val)*n:min(n,j+gsize+radius_val)*n-1]) \
+      inout(out[j*n:min(n-radius_val,j+gsize)*n-1])
     for (j=RADIUS; j<n-RADIUS; j++) {
       for (i=RADIUS; i<n-RADIUS; i++) {
 #ifdef STAR
@@ -229,12 +229,14 @@ int ompss_user_main(int argc, char ** argv) {
     }
 
     /* add constant to solution to force refresh of neighbor data, if any       */
-    #pragma omp taskloop grainsize(radius_val) private(i)
+    #pragma omp taskloop nogroup grainsize(radius_val) private(i) \
+      inout( in[j*n:min(n,j+radius_val)*n-1] )
     for (j=0; j<n; j++)
       for (i=0; i<n; i++)
         IN(i,j)+= 1.0;
 
   } /* end of iterations                                                        */
+  #pragma omp taskwait
   stencil_time = wtime() - stencil_time;
 
   /* compute L1 norm in parallel                                                */
