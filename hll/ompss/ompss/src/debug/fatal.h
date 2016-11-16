@@ -43,7 +43,7 @@ inline void check_condition( bool passed, const char* condition,
     }
 }
 
-#ifndef NDEBUG
+#ifndef RELEASE
 
 #   define dbg_check(cond) \
        debug::check_condition( cond, #cond " failed ", __func__, __FILE__, __LINE__ )

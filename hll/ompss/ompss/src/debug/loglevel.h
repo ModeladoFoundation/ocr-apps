@@ -29,7 +29,7 @@ struct log_enabled : public std::integral_constant<bool, (module_verbosity<mod>:
 {
 };
 
-#ifndef NDEBUG
+#ifndef RELEASE
 
 #define ENABLE_LOG( module, level )             \
     template<>                                  \
@@ -40,7 +40,7 @@ struct log_enabled : public std::integral_constant<bool, (module_verbosity<mod>:
 // Here follows enabled modules and their verbosity level
 ENABLE_LOG( Module::dependences, Verbosity::log );
 
-#endif // NDEBUG
+#endif // RELEASE
 
 } // namespace log
 
