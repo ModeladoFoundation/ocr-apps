@@ -83,7 +83,7 @@ struct TaskScopeInfo {
     typedef buffered_alloc::firstfit_allocator<uint8_t>      ScratchAllocator;
 
     ParamAllocator::arena_type             paramMemory;
-    ScratchAllocator::arena_type<64U,512U> scratchMemory;
+    ScratchAllocator::arena_type<64U,1024U> scratchMemory;
     UninitializedTask                      taskMemory;
     DependenceMap                          accesses;
     TaskwaitEvent                          taskwait;

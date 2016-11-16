@@ -5,7 +5,7 @@ OMPSS_LIB=lib
 CXX = g++
 
 #DEBUG=-Wall -Wextra -Wno-unused-parameter -O0 -g3
-RELEASE=-DNDEBUG -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -flto
+RELEASE=-DRELEASE -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -flto
 
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 CPPFLAGS=\
