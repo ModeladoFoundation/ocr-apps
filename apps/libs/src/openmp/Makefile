@@ -49,11 +49,8 @@ LIB = libomp.a
 BUILD_PREF = build-
 BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
-#INC_FLAGS = -I$(APPS_LIBS_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include/sys
 INC_FLAGS = -I$(APPS_LIBS_INSTALL)/include
-#COMPILE_FLAGS = "-D__XSTG__ -std=c++11 --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)"
-#LibompHandleFlags already has defaults including -std=c++11
-COMPILE_FLAGS = "-D__XSTG__ --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)"
+COMPILE_FLAGS = "-D__XSTG__ --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)  -mllvm -set-global-default=1"
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
@@ -80,6 +77,11 @@ CMAKE_ARGS = \
 	-DLIBOMP_OMPT_SUPPORT=off \
 	-DLIBOMP_STATS=off \
 	-D_POSIX_THREADS=TRUE
+
+ifdef DEBUG
+  COMPILE_FLAGS += -O0
+  CMAKE_ARGS += -DCMAKE_BUILD_TYPE=Debug
+endif
 
 #
 # XE Clang/llvm build

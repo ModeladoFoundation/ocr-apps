@@ -16,7 +16,7 @@
 #ifndef KMP_WRAPPER_GETPID_H
 #define KMP_WRAPPER_GETPID_H
 
-#if KMP_OS_UNIX || KMP_OS_XSTG
+#if KMP_OS_UNIX || KMP_OS_TGR
 
     // On Unix-like systems (Linux* OS and OS X*) getpid() is declared in standard headers.
     #include <sys/types.h>
