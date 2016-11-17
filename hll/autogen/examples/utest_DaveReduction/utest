@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 
 #-----Clean up first
-rm -f ./z_ref_output
 rm -rf ./build ./install ./tools
 
 #----- First make the reference output file
-echo "LEFT> sum = 21" > z_ref_output
+rm -f ./z_ref_output
+echo "LEFT> sum = 21" >> z_ref_output
+echo "LEFT> sum = 42" >> z_ref_output
 echo "RIGHT> sum = 21" >> z_ref_output
+echo "RIGHT> sum = 42" >> z_ref_output
 
 if [ ! -s "z_ref_output" ]
 then

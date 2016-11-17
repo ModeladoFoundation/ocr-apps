@@ -27,8 +27,6 @@ fi
 #               Rx Ry Rz Ex Ey Ez pDOF CGcount
 #WORKLOAD_ARGS=" 2  2  2  2  2  2    8      4"
 
-rm -f z_output
-
 # 16 machines at 32 proc per machines = 2^4*2^5 = 2^9 = 512 = 8^3  <-- No space for +1
 # So given ranks dimension a,b,c --> on 1 machine --> Find 32 = a*b*c+1 which is the most compact
 #       a*b*c =31
@@ -47,14 +45,16 @@ rm -f z_output
 #       a*b*c = 12 = 2*2*3 <--
 # On each machine, 12+1 threads   8 machines 2*2 * 2*2 * 2*3 = 4 * 4* 6
 
-ABSPATH="/lustre/home/dvillen/w/ocr/git2016-10nov2-checkin_nekbone1/apps/apps/nekbone/refactored/ocr_src"
+ABSPATH="/home/dvillen/w/ocr/git2016-10novi17-nek_reduction_commit/apps/apps/nekbone/refactored/ocr_src"
+echo "ABSPATH=$ABSPATH"
 
-#WORKLOAD_ARGS="2 2 2 2 2 2 8 100" CONFIG_FLAGS=--guid=COUNTED_MAP CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run > z_log
-WORKLOAD_ARGS="6 4 4 2 2 2 8 100" CONFIG_FLAGS=--guid=COUNTED_MAP CONFIG_NUM_THREADS=13 OCR_NODEFILE="$ABSPATH/y_OCRnodefile8" OCR_TYPE=x86-mpi make run > z_log
+#    WORKLOAD_ARGS="2 2 2 2 2 2 8 100" CONFIG_FLAGS=--guid=COUNTED_MAP CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run > z_log
+#WORKLOAD_ARGS="6 4 4 2 2 2 8 100" CONFIG_NUM_THREADS=13 OCR_NODEFILE="$ABSPATH/y_OCRnodefile8" OCR_TYPE=x86-mpi make run > z_log
+WORKLOAD_ARGS="4 4 4 2 2 2 8 100" CONFIG_NUM_THREADS=9 OCR_NODEFILE="$ABSPATH/y_OCRnodefile8" OCR_TYPE=x86-mpi make run > z_log
 
+rm -f z_output
 grep "TESTIO>" z_log > z_output
 if [ ! -s "z_output" ]
 then
 echo "ERROR: Missing OCR C code output"
-exit 40
 fi

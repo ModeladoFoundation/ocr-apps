@@ -5,6 +5,7 @@
 
 #include "app_ocr_err_util.h"
 #include "timing.h"
+#include "spmd_global_data.h"
 
 //Some values are set in Nekbone which cannot be changed without having
 //to re-architect most of the Nekbone baseline.
@@ -129,7 +130,6 @@ Err_t destroy_NEKOstatics(NEKOstatics_t * io);
 Err_t copy_NEKOstatics(NEKOstatics_t * in_from, NEKOstatics_t * o_target);
 void  print_NEKOstatics(NEKOstatics_t * in);
 
-typedef struct SPMD_GlobalData SPMD_GlobalData_t; //Forward declaration
 Err_t setup_SPMD_using_NEKOstatics(NEKOstatics_t * in_NEKOstatics,
                                    SPMD_GlobalData_t * o_SPMDglobals);
 

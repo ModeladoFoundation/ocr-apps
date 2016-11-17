@@ -42,7 +42,8 @@ int utest_mainedt(unsigned long in_nrank,unsigned long in_ndata,
 
 int reduction_init(unsigned int in_rank, DReduct_shared_t * in_shared, reductionPrivate_t * io_reducPrivate);
 
-int compute_start(ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+int compute_start(unsigned int in_multiplier,
+                  ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
                   unsigned int in_size, ReducValue_t * in_work,
                   unsigned int in_destSlot, ocrGuid_t in_destinationGuid);
 

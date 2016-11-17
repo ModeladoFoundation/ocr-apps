@@ -10,6 +10,10 @@
 //Define the following in order to capture timings within the CG iterations.
 #define NEKO_CG_TIMING
 
+//Define the following in order to get the timing for a single CG iterations
+//2016nov13: This measure has proven itself to be very flaky for some reason.  So left unused.
+//#define NEKO_get_CGLOOP
+
 #ifdef TG_ARCH
 #   undef NEKO_USE_TIMING
 #   undef NEKO_PRINT_TIMING

@@ -24,12 +24,19 @@ python ./findreplace.py app_ocr_util.h '../../tools/app_ocr_err_util.h' 'app_ocr
 ##----- Compile and run
 #               Rx Ry Rz Ex Ey Ez pDOF CGcount
 #WORKLOAD_ARGS=" 2  2  2  2  2  2    8      4"
+
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 4" CONFIG_NUM_THREADS=9 OCR_TYPE=x86 make run > z_log
+#WORKLOAD_ARGS="2 1 1 2 2 2 8 4" CONFIG_NUM_THREADS=3 OCR_TYPE=x86 make run &> z_log
+#WORKLOAD_ARGS="2 1 1 2 2 2 8 4" CONFIG_NUM_THREADS=3 OCR_TYPE=x86-mpi make run > z_log
+
+WORKLOAD_ARGS="2 2 2 2 2 2 8 4" CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run > z_log
+
+
 rm -f z_output
-WORKLOAD_ARGS="2 2 2 2 2 2 8 4" CONFIG_FLAGS=--guid=COUNTED_MAP OCR_TYPE=x86-mpi make run > z_log; grep "TESTIO>" z_log > z_output
+grep "TESTIO>" z_log > z_output
 if [ ! -s "z_output" ]
 then
 echo "ERROR: Missing OCR C code output"
-exit 40
 fi
 
 ##----- Compare
@@ -37,17 +44,17 @@ theCheck="$(grep 'Work is ok' z_output | wc -l)"
 if [ $theCheck -eq 0 ]
 then
 echo "ERROR: OCR Nekbone run failed."
-exit 50
+else
+echo "Successful run"
 fi
 
 ##----- Clean up
 rm -f z_*
 rm -rf ./build ./install ./tools
-rm -f ../../tools/*pyc
 rm -f core*
+rm ../../../../hll/autogen/tools/ocr_autogen.pyc
 
-echo "Successful run"
-exit 0
+
 
 
 

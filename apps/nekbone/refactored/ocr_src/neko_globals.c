@@ -209,7 +209,7 @@ Err_t init_NEKOglobals(NEKOstatics_t * in_statics, unsigned int in_rankID, NEKOg
         XMEMSET(io, 0, sizeof(NEKOglobals_t));
 
         io->startTimeMark = nekbone_getTime();
-        TIMEPRINT2("NKTIME> rank=%u SPDM_fork="TIMEF"\n",
+        TIMEPRINT2("NKTIME> rank=%u SPMD_fork="TIMEF"\n",
                    in_rankID, io->startTimeMark - in_statics->startTimeMark);
 
         // The current number of degree of freedom for one polynomial Basis
@@ -338,7 +338,6 @@ Err_t ocrXgetDbkHint(unsigned long in_pdID, ocrHint_t * io_HNT, ocrHint_t ** o_p
     Err_t err = 0;
     while(!err){
         *o_pHNT = NULL_HINT;
-//#undef NEK_OCR_ENABLE_AFFINITIES
 #       ifdef NEK_OCR_ENABLE_AFFINITIES
             err = ocrHintInit( io_HNT, OCR_HINT_DB_T ); IFEB;
 

@@ -101,7 +101,8 @@ int reduction_init(unsigned int in_rank, DReduct_shared_t * io_shared, reduction
     return err;
 }
 
-int compute_start(ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+int compute_start(unsigned int in_multiplier,
+                  ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
                   unsigned int in_size, ReducValue_t * in_work,
                   unsigned int in_destSlot, ocrGuid_t in_destinationGuid)
 {
@@ -114,10 +115,9 @@ int compute_start(ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPr
         *o_sum = 0;
         unsigned int i;
         for(i=0; i<in_size; ++i){
-            *o_sum += in_work[i];
+            *o_sum += in_work[i] * in_multiplier;
         }
 
-        //This part is still fuzzy.
         err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
 
         reductionLaunch(io_reducPrivate, io_reducPrivateGuid, o_sum);
@@ -147,8 +147,6 @@ int leftEDT_stop(reductionPrivate_t * io_reducPrivate, ReducSum_t * in_sum, ocrG
 
         err = ocrDbDestroy( in_sum_guid ); IFEB;
 
-        //Somehow release channel event io_reducPrivate->returnEVT if this is the last stop.
-
         break;
     }
     return err;
@@ -171,8 +169,6 @@ int rightEDT_stop(reductionPrivate_t * io_reducPrivate, ReducSum_t * in_sum, ocr
         }
 
         err = ocrDbDestroy( in_sum_guid ); IFEB;
-
-        //Somehow release channel event io_reducPrivate->returnEVT if this is the last stop.
 
         break;
     }

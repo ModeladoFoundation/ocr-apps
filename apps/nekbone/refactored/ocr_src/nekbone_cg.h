@@ -4,6 +4,10 @@
 #include "app_ocr_err_util.h"
 #include "neko_globals.h"
 #include "nbn_setup.h"
+#include "ocr.h"
+
+#include "neko_reduction.h"
+typedef struct reductionPrivateBase reductionPrivate_t; //Forward declaration
 
 //This struct contains all the scalar values thatvare used in the NEkbone
 //CG parts.
@@ -65,11 +69,15 @@ Err_t nekbone_setupTailRecusion(NEKOglobals_t * in_NEKOglobals,
                                 NEKO_CGscalars_t * io_CGstats);
 
 Err_t nekbone_CGstep0_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
-                            NBN_REAL * in_F, NBN_REAL * in_C, NBN_REAL * io_R );
+                            NBN_REAL * in_F, NBN_REAL * in_C, NBN_REAL * io_R,
+                            ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                            unsigned int in_destSlot, ocrGuid_t in_destinationGuid
+                           );
 
 Err_t nekbone_CGstep0_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                           NBN_REAL *io_X, NBN_REAL *io_W, NBN_REAL *io_P,NBN_REAL *io_Z,
-                          NEKO_CGscalars_t * io_CGscalars, NEKO_CGtimings_t * io_CGtimes);
+                          NEKO_CGscalars_t * io_CGscalars, NEKO_CGtimings_t * io_CGtimes,
+                          ocrGuid_t in_sum_guid, ReducSum_t * in_sum);
 
 Err_t nekbone_tailRecursionELSE(NEKO_CGtimings_t * io_CGtimes);
 
@@ -84,40 +92,44 @@ Err_t nekbone_solveMi(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglo
 Err_t nekbone_beta_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                          NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
                          NBN_REAL *io_R, NBN_REAL *io_C, NBN_REAL *io_Z,
-                         NBN_REAL * o_partial_sum_rcz,
-                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                         ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                         unsigned int in_destSlot, ocrGuid_t in_destinationGuid
                          );
 
 Err_t nekbone_beta_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                         NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
-                        NBN_REAL * in_sum_rcz,
                         NBN_REAL *in_P, NBN_REAL *io_Z, NBN_REAL *io_P,
-                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                        ocrGuid_t in_sum_guid, ReducSum_t * in_sum
                         );
 
 Err_t nekbone_alpha_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                           NBN_REAL *io_W, NBN_REAL *io_C, NBN_REAL *io_P,
-                          NBN_REAL * o_partial_sum_pap,
-                          NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                          NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                          ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                          unsigned int in_destSlot, ocrGuid_t in_destinationGuid
                          );
 
 Err_t nekbone_alpha_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                          NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
-                         NBN_REAL * in_sum_pap,
                          NBN_REAL *in_X, NBN_REAL *in_P, NBN_REAL *io_X,
                          NBN_REAL *in_R, NBN_REAL *in_W, NBN_REAL *io_R,
-                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                         ocrGuid_t in_sum_guid, ReducSum_t * in_sum
                          );
 
 Err_t nekbone_rtr_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
-                        NBN_REAL *io_R, NBN_REAL *io_C, NBN_REAL * o_partial_sum_rtr,
-                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                        NBN_REAL *io_R, NBN_REAL *io_C,
+                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                        ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                        unsigned int in_destSlot, ocrGuid_t in_destinationGuid
                         );
 
 Err_t nekbone_rtr_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                        NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
-                       NBN_REAL * in_sum_rtr,
-                       NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes);
+                       NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                       ocrGuid_t in_sum_guid, ReducSum_t * in_sum);
 
 Err_t nekbone_ai_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                        NBN_REAL *io_W, NBN_REAL *io_P,

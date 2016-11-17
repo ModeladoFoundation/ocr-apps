@@ -69,18 +69,24 @@ def calc_stats(in_filename):
     with open(in_filename) as f:
         content = f.readlines()
 
+    sz = len(content)
+    #print('sz=' + str(sz))
+    if 1 >= sz:
+        return (sz, -1,-1,-1,-1,-1)
+
     for i,x in enumerate(content):
         x = x.strip()
         content[i] = float(x)
 
     # print(content)
+    count   = sz
     moyenne = mean(content)
     mediane = median(content)
     biggest = maxi(content)
     smallest= mini(content)
     stdev   = std(content)
 
-    return (mediane,moyenne, stdev, smallest,biggest)
+    return (count, mediane,moyenne, stdev, smallest,biggest)
 
 if __name__ == "__main__":
     erri=0
@@ -97,7 +103,7 @@ if __name__ == "__main__":
             break
 
         fname = sys.argv[1]
-        mediane,moyenne, stdev, smallest,biggest = calc_stats(fname)
+        count, mediane,moyenne, stdev, smallest,biggest = calc_stats(fname)
 
         mediane = int(round(mediane))
         moyenne = int(round(moyenne))
@@ -105,8 +111,8 @@ if __name__ == "__main__":
         smallest= int(round(smallest))
         biggest = int(round(biggest))
 
-        # print ('[median,mean,std,min,max]= ' + str(mediane) +' '+ str(moyenne) +' '+ str(stdev) +' '+ str(smallest) +' '+ str(biggest) )
-        print '[median,mean,std,min,max]= %16d %16d %16d %16d %16d' % (mediane, moyenne, stdev, smallest, biggest)
+        # print ('[count, median,mean,std,min,max]= ' + str(count) + str(mediane) +' '+ str(moyenne) +' '+ str(stdev) +' '+ str(smallest) +' '+ str(biggest) )
+        print '[count,median,mean,std,min,max]= %10d %10d %10d %10d %10d %10d' % (count, mediane, moyenne, stdev, smallest, biggest)
 
         break  # while not erri:
 

@@ -11,7 +11,7 @@ fi
 OUTF='z_zz_temp'
 FNAME=$1
 
-a="$(grep NKTIME z_log|grep -E "(FinalEDT|init_NEKOstatics)"|tr -s '=' '\n'|grep -v NKTIME)"
+a="$(grep NKTIME $FNAME|grep -E "(FinalEDT|init_NEKOstatics)"|tr -s '=' '\n'|grep -v NKTIME)"
 b=($a)
 c="$(( ${b[1]} - ${b[0]} ))"
 #echo $c
@@ -33,7 +33,14 @@ printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
-LABEL='SPDM_fork'
+LABEL='SPMD_fork'
+A="$(grep NKTIME $FNAME | grep $LABEL | tr ' ' '\n'| grep $LABEL | tr '=' '\n'|grep -v $LABEL)"
+#dbg> echo $A
+printf "%s\n" "${A[@]}" > $OUTF
+STATS="$(python y_calc_stats.py $OUTF)"
+printf '%32s  %s\n' "$LABEL" "$STATS"
+
+LABEL='CGloop'
 A="$(grep NKTIME $FNAME | grep $LABEL | tr ' ' '\n'| grep $LABEL | tr '=' '\n'|grep -v $LABEL)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
@@ -41,86 +48,110 @@ STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_tailRecurTransitBEGIN'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_solveMi'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_beta_start'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_beta_stop'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_axi_start'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_axi_stop'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_alpha_start'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_alpha_stop'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_rtr_start'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_rtr_stop'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 
 LABEL='cumu_nekCG_rtr_transit'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_alpha_transit'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_beta_transit'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
 
 LABEL='cumu_nekCG_axi_transit'
-A="$(grep $LABEL z_log | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%32s  %s\n' "$LABEL" "$STATS"
+
+#####================================================================================
+#Because there is a lot of variation about the means of the transit time, let try
+#to stat them all together
+LABEL='cumu_nekCG_rtr_transit'
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+printf "%s\n" "${A[@]}" > $OUTF
+
+LABEL='cumu_nekCG_alpha_transit'
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+printf "%s\n" "${A[@]}" >> $OUTF
+
+LABEL='cumu_nekCG_beta_transit'
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+printf "%s\n" "${A[@]}" >> $OUTF
+
+LABEL='cumu_nekCG_axi_transit'
+A="$(grep $LABEL $FNAME | tr ' ' '\n' | grep $LABEL | tr '=' '\n' | grep -v $LABEL)"
+printf "%s\n" "${A[@]}" >> $OUTF
+
+STATS="$(python y_calc_stats.py $OUTF)"
+printf '%32s  %s\n' "All_Transit_together" "$STATS"
+
+

@@ -2,7 +2,8 @@
 #include "nekbone_cg.h"
 #endif
 
-#include "ocr.h" //PRINTF
+#include "reduction.h"
+#include "app_ocr_util.h" //For debugging reduction
 
 #include "blas3.h"
 #include "ax.h"
@@ -81,10 +82,12 @@ Err_t nekbone_setupTailRecusion(NEKOglobals_t * in_NEKOglobals,
     Err_t err=0;
     err = copy_NEKO_CGscalars(in_CGstats, io_CGstats);
     const TimeMark_t t = nekbone_getTime();
-    io_CGstats->at_TailRecusionStart = t;
+#   ifdef NEKO_get_CGLOOP
+        io_CGstats->at_TailRecusionStart = t;
+#   endif
     TIMEPRINT2("NKTIME> rank=%u RankSetup="TIMEF"\n",
                in_NEKOglobals->rankID,
-               io_CGstats->at_TailRecusionStart - in_NEKOglobals->startTimeMark);
+               t - in_NEKOglobals->startTimeMark);
     return err;
 }
 
@@ -96,12 +99,17 @@ void nekbone_mask(unsigned int in_rankID, NBN_REAL * io)
 }
 
 Err_t nekbone_CGstep0_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
-                            NBN_REAL * in_F, NBN_REAL * in_C, NBN_REAL * io_R )
+                            NBN_REAL * in_F, NBN_REAL * in_C, NBN_REAL * io_R,
+                            ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                            unsigned int in_destSlot, ocrGuid_t in_destinationGuid
+                           )
 {
     Err_t err=0;
     while(!err){
+        const unsigned int length = in_NEKOglobals->pDOF3DperR;
+
         unsigned int i;
-        for(i=0; i< in_NEKOglobals->pDOF3DperR; ++i){
+        for(i=0; i< length; ++i){
             io_R[i] = in_F[i];
         }
 
@@ -109,10 +117,29 @@ Err_t nekbone_CGstep0_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_N
             nekbone_mask(in_NEKOglobals->rankID, io_R);
         }
 
-        //TODO: nekbone_CGstep0_start: Calculate administrative function glsc3i(rnorminit,r,c,r,n,find,lind) -> rnorminit = r' * (c.*r)
+        ReducSum_t sum = 0;
+        for(i=0; i<length; ++i){
+            sum += io_R[i] * in_C[i] * io_R[i];
+        }
+        //PRINTF("DBG> rank=%u> CGstep0_start> rnorminit = %24.14E\n", in_NEKOglobals->rankID, sum);
+
+        //Calculate glsc3i(rnorminit,r,c,r,n,find,lind)
+#   ifdef REDUCTION_CGSTEP0
+        err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+        reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
+#   else
+        ocrGuid_t gd_sum= NULL_GUID;
+        ReducSum_t * o_sum=NULL;
+        err = ocrDbCreate( &gd_sum, (void**)&o_sum, 1*sizeof(ReducSum_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC); IFEB;
+        *o_sum = sum;
+        err = ocrDbRelease(gd_sum); IFEB;
+        err = ocrXHookup(OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG, in_destinationGuid, in_destSlot, DB_MODE_RO, gd_sum); IFEB;
+        err = ocrDbRelease(io_reducPrivateGuid); IFEB; //This is to imitate the release done by reductionLaunch().
+#   endif
 
         break;
     }
+
     return err;
 }
 
@@ -132,13 +159,31 @@ void nekbone_zero_variables(unsigned int in_N, NBN_REAL * io_X, NBN_REAL *io_W,
 
 Err_t nekbone_CGstep0_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                            NBN_REAL *io_X, NBN_REAL *io_W, NBN_REAL *io_P, NBN_REAL *io_Z,
-                           NEKO_CGscalars_t * io_CGscalars, NEKO_CGtimings_t * io_CGtimes)
+                           NEKO_CGscalars_t * io_CGscalars, NEKO_CGtimings_t * io_CGtimes,
+                           ocrGuid_t in_sum_guid, ReducSum_t * in_sum)
 {
     Err_t err=0;
     while(!err){
         nekbone_zero_variables(in_NEKOglobals->pDOF3DperR, io_X, io_W, io_P, io_Z);
         err = init_NEKO_CGscalars(io_CGscalars); IFEB;
         err = init_NEKO_CGtimings(io_CGtimes); IFEB;
+
+        //Taking care of completing glsc3i(rnorminit,r,c,r,n,find,lind)
+        double rnorminit = *in_sum;
+        //PRINTF("DBG> rank=%u> CGstep0_stop> rnorminit = %24.14E\n", in_NEKOglobals->rankID, rnorminit);
+
+        if( rnorminit < 0) {
+            //This should be an error.  But rnorminit is used by no one.
+            //So keep this as a warning for now.
+            PRINTF("CGstep0> rank=%u> rnorminit is negative\n", in_NEKOglobals->rankID);
+            rnorminit = -rnorminit;
+        }
+        rnorminit = sqrt(rnorminit);
+        if(in_NEKOglobals->rankID == 0){
+            PRINTF("INFO> CGstep0_stop> rnorminit = %24.14E\n", rnorminit);
+        }
+        err = ocrDbDestroy( in_sum_guid ); IFEB;
+
         break;
     }
     return err;
@@ -217,8 +262,9 @@ NBN_REAL nekbone_localpart_glsc3i(unsigned int in_length, NBN_REAL *in_A, NBN_RE
 Err_t nekbone_beta_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                          NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
                          NBN_REAL *io_R, NBN_REAL *io_C, NBN_REAL *io_Z,
-                         NBN_REAL * o_partial_sum_rcz,
-                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                         ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                         unsigned int in_destSlot, ocrGuid_t in_destinationGuid
                          )
 {
     NEKO_CGscalars_t * S = io_CGstats; //Just for convenience.
@@ -230,13 +276,25 @@ Err_t nekbone_beta_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKO
         err = copy_NEKO_CGscalars(in_CGstats, S); IFEB;
         S->rtz2 = S->rtz1;
 
-        *o_partial_sum_rcz = 0;
-        *o_partial_sum_rcz = nekbone_localpart_glsc3i(in_NEKOglobals->pDOF3DperR, io_R, io_C, io_Z);
+        double sum=0;
+        sum = nekbone_localpart_glsc3i(in_NEKOglobals->pDOF3DperR, io_R, io_C, io_Z);
 
         NEKO_CG_TIMFCN( err = copy_NEKO_CGtimings(in_CGtimes, io_CGtimes); IFEB; )
 
         NEKO_CG_TIMFCN( io_CGtimes->at_nekCG_beta_start = nekbone_getTime(); )
-        //TODO: nekbone_beta_start: DO the ALL_Reduce: call gop(*o_partial_sum_rcz, work,'+  ',1)
+        //nekbone_beta_start: DO the ALL_Reduce: call gop(sum, work,'+  ',1)
+#   ifdef REDUCTION_BETA
+        err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+        reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
+#   else
+        ocrGuid_t gd_sum= NULL_GUID;
+        ReducSum_t * o_sum=NULL;
+        err = ocrDbCreate( &gd_sum, (void**)&o_sum, 1*sizeof(ReducSum_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC); IFEB;
+        *o_sum = sum;
+        err = ocrDbRelease(gd_sum); IFEB;
+        err = ocrXHookup(OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG, in_destinationGuid, in_destSlot, DB_MODE_RO, gd_sum); IFEB;
+        err = ocrDbRelease(io_reducPrivateGuid); IFEB; //This is to imitate the release done by reductionLaunch().
+#   endif
 
         NEKO_CG_TIMFCN( TimeMark_t t1 = nekbone_getTime(); )
         NEKO_CG_TIMFCN( io_CGtimes->cumu_nekCG_beta_start += ((t1-t0<0)?(0):(t1-t0)); )
@@ -261,9 +319,9 @@ void nekbone_add2s1i(unsigned int in_length, NBN_REAL *in_A, NBN_REAL *in_B,
 
 Err_t nekbone_beta_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                         NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
-                        NBN_REAL * in_sum_rcz,
                         NBN_REAL *in_P, NBN_REAL *io_Z, NBN_REAL *io_P,
-                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                        ocrGuid_t in_sum_guid, ReducSum_t * in_sum
                         )
 {
     //OA.addCustomText(G, nc, '//SKE-NOTE:  This involves add2s1i(p,z,beta,...')
@@ -273,12 +331,17 @@ Err_t nekbone_beta_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOg
     Err_t err=0;
     while(!err){
         NEKO_CG_TIMFCN(TimeMark_t t0 = nekbone_getTime();)
-        //TODO: nekbone_beta_stop: Complete the ALL_Reduce: call gop(*o_partial_sum_rcz, work,'+  ',1)
+        //Complete the ALL_Reduce: call gop(sum, work,'+  ',1)
+        NBN_REAL sum = *in_sum;
+        if(in_NEKOglobals->rankID == 0){
+            //DBG> PRINTF("INFO> beta_stop> sum = %24.14E\n", sum);
+        }
+        err = ocrDbDestroy( in_sum_guid ); IFEB;
 
         err = copy_NEKO_CGscalars(in_CGstats, S); IFEB;
 
-        //At this point, in_sum_rcz is supposed to be rtz1, as per baseline code.
-        S->rtz1 = *in_sum_rcz;
+        //At this point, sum is supposed to be rtz1, as per baseline code.
+        S->rtz1 = sum;
         S->beta = S->rtz1 / S->rtz2;
 
         if( 0 == S->currentCGiteration) S->beta=0.0;
@@ -302,8 +365,9 @@ Err_t nekbone_beta_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOg
 
 Err_t nekbone_alpha_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                           NBN_REAL *io_W, NBN_REAL *io_C, NBN_REAL *io_P,
-                          NBN_REAL * o_partial_sum_pap,
-                          NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                          NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                          ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                          unsigned int in_destSlot, ocrGuid_t in_destinationGuid
                          )
 {
     Err_t err=0;
@@ -311,12 +375,26 @@ Err_t nekbone_alpha_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEK
         NEKO_CG_TIMFCN(TimeMark_t t0 = nekbone_getTime();)
 
         //call glsc3i(pap, w,c,p,n,find,lind)
-        *o_partial_sum_pap = nekbone_localpart_glsc3i(in_NEKOglobals->pDOF3DperR, io_W, io_C, io_P);
+        NBN_REAL lsum = nekbone_localpart_glsc3i(in_NEKOglobals->pDOF3DperR, io_W, io_C, io_P);
+        ReducSum_t sum = lsum;
 
         NEKO_CG_TIMFCN( err = copy_NEKO_CGtimings(in_CGtimes, io_CGtimes); IFEB; )
 
         NEKO_CG_TIMFCN( io_CGtimes->at_nekCG_alpha_start = nekbone_getTime(); )
-        //TODO: nekbone_alpha_start: DO the ALL_Reduce: call gop(*o_partial_sum_pap, work,'+  ',1)
+
+        //nekbone_alpha_start: DO the ALL_Reduce: call gop(sum, work,'+  ',1)
+#   ifdef REDUCTION_ALPHA
+        err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+        reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
+#   else
+        ocrGuid_t gd_sum= NULL_GUID;
+        ReducSum_t * o_sum=NULL;
+        err = ocrDbCreate( &gd_sum, (void**)&o_sum, 1*sizeof(ReducSum_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC); IFEB;
+        *o_sum = sum;
+        err = ocrDbRelease(gd_sum); IFEB;
+        err = ocrXHookup(OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG, in_destinationGuid, in_destSlot, DB_MODE_RO, gd_sum); IFEB;
+        err = ocrDbRelease(io_reducPrivateGuid); IFEB; //This is to imitate the release done by reductionLaunch().
+#   endif
 
         NEKO_CG_TIMFCN( TimeMark_t t1 = nekbone_getTime(); )
         NEKO_CG_TIMFCN( io_CGtimes->cumu_nekCG_alpha_start += ((t1-t0<0)?(0):(t1-t0)); )
@@ -338,22 +416,28 @@ void nekbone_add2s2i(unsigned int in_length, NBN_REAL *in_A, NBN_REAL *in_B,
 
 Err_t nekbone_alpha_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                          NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
-                         NBN_REAL * in_sum_pap,
                          NBN_REAL *in_X, NBN_REAL *in_P, NBN_REAL *io_X,
                          NBN_REAL *in_R, NBN_REAL *in_W, NBN_REAL *io_R,
-                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes
+                         NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                         ocrGuid_t in_sum_guid, ReducSum_t * in_sum
                          )
 {
     NEKO_CGscalars_t * S = io_CGstats; //Just for convenience.
     Err_t err=0;
     while(!err){
         NEKO_CG_TIMFCN(TimeMark_t t0 = nekbone_getTime();)
-        //TODO: nekbone_alpha_stop: Post-process the ALL_Reduce: call gop(*o_partial_sum_pap, work,'+  ',1)
 
         err = copy_NEKO_CGscalars(in_CGstats, S); IFEB;
 
-        //At this point, in_sum_pap is supposed to be pap, as per baseline code.
-        S->pap = *in_sum_pap;
+        //nekbone_alpha_stop: Post-process the ALL_Reduce: call gop(*o_partial_sum_pap, work,'+  ',1)
+        NBN_REAL sum = *in_sum;
+        if(in_NEKOglobals->rankID == 0){
+            //DBG> PRINTF("INFO> alpha_stop> sum = %24.14E\n", sum);
+        }
+        err = ocrDbDestroy( in_sum_guid ); IFEB;
+
+        //At this point, sum is supposed to be pap, as per baseline code.
+        S->pap = sum;
 
         //alpha=rtz1/pap  alphm=-alpha
         S->alpha = S->rtz1 / S->pap;
@@ -378,20 +462,35 @@ Err_t nekbone_alpha_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKO
 }
 
 Err_t nekbone_rtr_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
-                        NBN_REAL *io_R, NBN_REAL *io_C, NBN_REAL * o_partial_sum_rtr,
-                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes )
+                        NBN_REAL *io_R, NBN_REAL *io_C,
+                        NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                        ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
+                        unsigned int in_destSlot, ocrGuid_t in_destinationGuid)
 {
     Err_t err=0;
     while(!err){
         NEKO_CG_TIMFCN(TimeMark_t t0 = nekbone_getTime();)
 
         //call  glsc3i(rtr, r,c,r,n,find,lind)
-        *o_partial_sum_rtr = nekbone_localpart_glsc3i(in_NEKOglobals->pDOF3DperR, io_R, io_C, io_R);
+        NBN_REAL lsum = nekbone_localpart_glsc3i(in_NEKOglobals->pDOF3DperR, io_R, io_C, io_R);
+        ReducSum_t sum = lsum;
 
         NEKO_CG_TIMFCN( err = copy_NEKO_CGtimings(in_CGtimes, io_CGtimes); IFEB; )
 
         NEKO_CG_TIMFCN( io_CGtimes->at_nekCG_rtr_start = nekbone_getTime(); )
-        //TODO: nekbone_rtr_start: DO the ALL_Reduce: call gop(*o_partial_sum_rtr, work,'+  ',1)
+        //nekbone_rtr_start: DO the ALL_Reduce: call gop(sum, work,'+  ',1)
+#   ifdef REDUCTION_RTR
+        err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+        reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
+#   else
+        ocrGuid_t gd_sum= NULL_GUID;
+        ReducSum_t * o_sum=NULL;
+        err = ocrDbCreate( &gd_sum, (void**)&o_sum, 1*sizeof(ReducSum_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC); IFEB;
+        *o_sum = sum;
+        err = ocrDbRelease(gd_sum); IFEB;
+        err = ocrXHookup(OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG, in_destinationGuid, in_destSlot, DB_MODE_RO, gd_sum); IFEB;
+        err = ocrDbRelease(io_reducPrivateGuid); IFEB; //This is to imitate the release done by reductionLaunch().
+#   endif
 
         NEKO_CG_TIMFCN( TimeMark_t t1 = nekbone_getTime(); )
         NEKO_CG_TIMFCN( io_CGtimes->cumu_nekCG_rtr_start += ((t1-t0<0)?(0):(t1-t0)); )
@@ -403,19 +502,24 @@ Err_t nekbone_rtr_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOg
 
 Err_t nekbone_rtr_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                        NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
-                       NBN_REAL * in_sum_rtr,
-                       NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes)
+                       NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes,
+                       ocrGuid_t in_sum_guid, ReducSum_t * in_sum)
 {
     Err_t err=0;
     while(!err){
         NEKO_CG_TIMFCN(TimeMark_t t0 = nekbone_getTime();)
 
-        //TODO: nekbone_rtr_stop: Process the ALL_Reduce: call gop(*o_partial_sum_rtr, work,'+  ',1)
         err = copy_NEKO_CGscalars(in_CGstats, io_CGstats); IFEB;
 
-        io_CGstats->rtr = *in_sum_rtr;
+        //nekbone_rtr_stop: Process the ALL_Reduce: call gop(sum, work,'+  ',1)
+        NBN_REAL sum = *in_sum;
+        if(in_NEKOglobals->rankID == 0){
+            //DBG> PRINTF("INFO> rtr_stop> sum = %24.14E\n", sum);
+        }
+        err = ocrDbDestroy( in_sum_guid ); IFEB;
 
-        io_CGstats->rnorm = sqrt(*in_sum_rtr);
+        io_CGstats->rtr = sum;
+        io_CGstats->rnorm = sqrt(sum);
 
         NEKO_CG_TIMFCN( err = copy_NEKO_CGtimings(in_CGtimes, io_CGtimes); IFEB; )
         NEKO_CG_TIMFCN( TimeMark_t t1 = nekbone_getTime(); )
@@ -511,12 +615,13 @@ Err_t nekbone_tailRecurTransitEND(long in_current_iteration,
 
         TimeMark_t t = nekbone_getTime();
 
-        TIMEPRINT3("NKTIME> rank=%u iter=%ld SPDM_fork="TIMEF"\n",
-                   in_rankID,
-                   in_current_iteration,
-                   t - in_CGstats->at_TailRecusionStart);
-
-        io_CGstats->at_TailRecusionStart = t;
+#       ifdef NEKO_get_CGLOOP
+            TIMEPRINT3("NKTIME> rank=%u iter=%ld CGloop="TIMEF"\n",
+                       in_rankID,
+                       in_current_iteration,
+                       t - in_CGstats->at_TailRecusionStart);
+            io_CGstats->at_TailRecusionStart = t;
+#       endif
 
         break;
     }

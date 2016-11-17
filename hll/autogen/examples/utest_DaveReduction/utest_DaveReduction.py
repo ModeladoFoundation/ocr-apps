@@ -89,7 +89,7 @@ def theMain():
     dbk.addLocalText('//-->????Should the ReducPrivate data block be sent to the ...stop EDT? What if we want to use it again?')
     OA.addDataBlocks(G,nc,dbk)
     guid_LeftEDT_stop = OA.makeGuidEdtname('LeftEDT_stop')
-    doLStart = 'err = compute_start(guid_ReducPrivate_left, io_ReducPrivate, SzVEC, io_workLeft, SLOT4REDUCTION-1,' + guid_LeftEDT_stop + '); IFEB;'
+    doLStart = 'err = compute_start(1, guid_ReducPrivate_left, io_ReducPrivate, SzVEC, io_workLeft, SLOT4REDUCTION-1,' + guid_LeftEDT_stop + '); IFEB;'
     OA.addCustomText(G, nc, doLStart)
 
     nc += 1;  taskName="RightEDT_start"; OA.graphAddNode(G,nc,taskName)
@@ -101,10 +101,52 @@ def theMain():
     dbk.addLocalText('//-->????Should the ReducPrivate data block be sent to the ...stop EDT? What if we want to use it again?')
     OA.addDataBlocks(G,nc,dbk)
     guid_RightEDT_stop = OA.makeGuidEdtname('RightEDT_stop')
-    doRStart = 'err = compute_start(guid_ReducPrivate_right, io_ReducPrivate, SzVEC, io_workRight, SLOT4REDUCTION-1, ' + guid_RightEDT_stop + '); IFEB;'
+    doRStart = 'err = compute_start(1, guid_ReducPrivate_right, io_ReducPrivate, SzVEC, io_workRight, SLOT4REDUCTION-1, ' + guid_RightEDT_stop + '); IFEB;'
     OA.addCustomText(G, nc, doRStart)
 
     nc += 1;  taskName="LeftEDT_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).depc = SLOT4REDUCTION
+    dbk = copy.deepcopy(dbk_workLeft); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_doneLeft); dbk.flight = 'flTAGO'; dbk.localname='in_doneLeft'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_ReducPrivate); dbk.flight = 'flTAGO'; dbk.localname='in_ReducPrivate';
+    dbk.addLocalText('ocrEdtDep_t IN_BY_USER_depv_sum = depv[SLOT4REDUCTION-1];  //This will be LANDING here.')
+    dbk.addLocalText('ocrGuid_t in_sum_guid = IN_BY_USER_depv_sum.guid;')
+    dbk.addLocalText('ReducSum_t * in_sum = IN_BY_USER_depv_sum.ptr;')
+    OA.addDataBlocks(G,nc,dbk)
+    resultTxt = 'err = leftEDT_stop(in_ReducPrivate, in_sum, in_sum_guid); IFEB;';
+    OA.addCustomText(G, nc, resultTxt)
+
+    nc += 1;  taskName="RightEDT_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).depc = SLOT4REDUCTION
+    dbk = copy.deepcopy(dbk_workRight); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_doneRight); dbk.flight = 'flTAGO'; dbk.localname='in_doneRight'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_ReducPrivate); dbk.flight = 'flTAGO'; dbk.localname='in_ReducPrivate';
+    dbk.addLocalText('ocrEdtDep_t IN_BY_USER_depv_sum = depv[SLOT4REDUCTION-1];  //This will be LANDING here.')
+    dbk.addLocalText('ocrGuid_t in_sum_guid = IN_BY_USER_depv_sum.guid;')
+    dbk.addLocalText('ReducSum_t * in_sum = IN_BY_USER_depv_sum.ptr;')
+    OA.addDataBlocks(G,nc,dbk)
+    resultTxt = 'err = rightEDT_stop(in_ReducPrivate, in_sum, in_sum_guid); IFEB;';
+    OA.addCustomText(G, nc, resultTxt)
+
+    nc += 1;  taskName="LeftEDT_start2"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_workLeft); dbk.flight = 'flTAGO'; dbk.localname='io_workLeft'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_doneLeft); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_ReducPrivate); dbk.flight = 'flTAGO'; dbk.user2destroyORrelease = True
+    dbk.localname='io_ReducPrivate'; dbk.localnameGuid='guid_ReducPrivate_left'; OA.addDataBlocks(G,nc,dbk)
+    guid_LeftEDT_stop = OA.makeGuidEdtname('LeftEDT_stop2')
+    doLStart2 = 'err = compute_start(2, guid_ReducPrivate_left, io_ReducPrivate, SzVEC, io_workLeft, SLOT4REDUCTION-1,' + guid_LeftEDT_stop + '); IFEB;'
+    OA.addCustomText(G, nc, doLStart2)
+
+    nc += 1;  taskName="RightEDT_start2"; OA.graphAddNode(G,nc,taskName)
+    dbk = copy.deepcopy(dbk_workRight); dbk.flight = 'flTAGO'; dbk.localname='io_workRight'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_doneRight); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_ReducPrivate); dbk.flight = 'flTAGO'; dbk.user2destroyORrelease = True
+    dbk.localname='io_ReducPrivate'; dbk.localnameGuid='guid_ReducPrivate_right'; OA.addDataBlocks(G,nc,dbk)
+    guid_RightEDT_stop = OA.makeGuidEdtname('RightEDT_stop2')
+    doRStart = 'err = compute_start(2, guid_ReducPrivate_right, io_ReducPrivate, SzVEC, io_workRight, SLOT4REDUCTION-1, ' + guid_RightEDT_stop + '); IFEB;'
+    OA.addCustomText(G, nc, doRStart)
+
+    nc += 1;  taskName="LeftEDT_stop2"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).depc = SLOT4REDUCTION
     dbk = copy.deepcopy(dbk_workLeft); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_doneLeft); dbk.flight = 'flLANDING'; dbk.localname='in_doneLeft'; OA.addDataBlocks(G,nc,dbk)
@@ -118,8 +160,10 @@ def theMain():
     OA.addCustomText(G, nc, doneText)
     resultTxt = 'err = leftEDT_stop(in_ReducPrivate, in_sum, in_sum_guid); IFEB;';
     OA.addCustomText(G, nc, resultTxt)
+    releaseText ='//Somehow release channel event in_reducPrivate->returnEVT'
+    OA.addCustomText(G, nc, releaseText)
 
-    nc += 1;  taskName="RightEDT_stop"; OA.graphAddNode(G,nc,taskName)
+    nc += 1;  taskName="RightEDT_stop2"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).depc = SLOT4REDUCTION
     dbk = copy.deepcopy(dbk_workRight); dbk.flight = 'flLANDING'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_doneRight); dbk.flight = 'flLANDING'; dbk.localname='in_doneRight'; OA.addDataBlocks(G,nc,dbk)
@@ -133,6 +177,8 @@ def theMain():
     OA.addCustomText(G, nc, doneText)
     resultTxt = 'err = rightEDT_stop(in_ReducPrivate, in_sum, in_sum_guid); IFEB;';
     OA.addCustomText(G, nc, resultTxt)
+    releaseText ='//Somehow release channel event in_reducPrivate->returnEVT'
+    OA.addCustomText(G, nc, releaseText)
 
     # ----- EDGES
     ledg = OA.graphAddEdge(G, "mainEdt", "finalEDT", "sharedG")
@@ -180,10 +226,38 @@ def theMain():
     ledg = OA.graphAddEdge(G, "RightEDT_start", "RightEDT_stop", "ReducPrivate")
     OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ReducPrivate')
 
-    ledg=OA.graphAddEdge(G,  "LeftEDT_stop", "finalEDT", "NULL_GUID")
+    ledg = OA.graphAddEdge(G, "LeftEDT_stop", "LeftEDT_start2", "workLeft")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('workLeft')
+    ledg = OA.graphAddEdge(G, "LeftEDT_stop", "LeftEDT_start2", "doneLeft")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('doneLeft')
+    ledg = OA.graphAddEdge(G, "LeftEDT_stop", "LeftEDT_start2", "ReducPrivate")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ReducPrivate')
+
+    ledg = OA.graphAddEdge(G, "RightEDT_stop", "RightEDT_start2", "workRight")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('workRight')
+    ledg = OA.graphAddEdge(G, "RightEDT_stop", "RightEDT_start2", "doneRight")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('doneRight')
+    ledg = OA.graphAddEdge(G, "RightEDT_stop", "RightEDT_start2", "ReducPrivate")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ReducPrivate')
+
+    ledg = OA.graphAddEdge(G, "LeftEDT_start2", "LeftEDT_stop2", "workLeft")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('workLeft')
+    ledg = OA.graphAddEdge(G, "LeftEDT_start2", "LeftEDT_stop2", "doneLeft")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('doneLeft')
+    ledg = OA.graphAddEdge(G, "LeftEDT_start2", "LeftEDT_stop2", "ReducPrivate")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ReducPrivate')
+
+    ledg = OA.graphAddEdge(G, "RightEDT_start2", "RightEDT_stop2", "workRight")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('workRight')
+    ledg = OA.graphAddEdge(G, "RightEDT_start2", "RightEDT_stop2", "doneRight")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('doneRight')
+    ledg = OA.graphAddEdge(G, "RightEDT_start2", "RightEDT_stop2", "ReducPrivate")
+    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ReducPrivate')
+
+    ledg=OA.graphAddEdge(G,  "LeftEDT_stop2", "finalEDT", "NULL_GUID")
     OA.getEvent(G, ledg).eflag = 'EVT_PROP_NONE'; OA.getEvent(G, ledg).satisfy = 'NULL_GUID'
     OA.getEvent(G, ledg).fertile = False
-    ledg=OA.graphAddEdge(G,  "RightEDT_stop","finalEDT", "NULL_GUID")
+    ledg=OA.graphAddEdge(G,  "RightEDT_stop2","finalEDT", "NULL_GUID")
     OA.getEvent(G, ledg).eflag = 'EVT_PROP_NONE'; OA.getEvent(G, ledg).satisfy = 'NULL_GUID'
     OA.getEvent(G, ledg).fertile = False
 
