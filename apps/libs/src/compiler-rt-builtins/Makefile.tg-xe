@@ -30,9 +30,7 @@ AR     := $(PREFIX)-ar
 ARFLAGS := rsv
 
 OPT_FLAGS := -O3
-INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(TG_INSTALL)/include
-
-#CFLAGS    := $(CFLAGS) $(INC_FLAGS) $(DEFINES) $(OPT_FLAGS)
+CFLAGS    := -U__STDC_HOSTED__ -I$(TG_INSTALL)/lib/clang/3.9.0/include
 
 .PHONY: all
 all: install
