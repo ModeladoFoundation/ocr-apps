@@ -241,7 +241,9 @@ int glmax_i ( int *value, MPI_Comm comm )
 
 /*******************************************************************************/
 
-    if ( comm == MPI_COMM_NULL) return ierr;
+#ifndef MPILITE
+    if ( comm == MPI_COMM_NULL ) return ierr;
+#endif
 
     ierr = MPI_Allreduce( value, &x, 1, MPI_INT, MPI_MAX, comm );
     *value = x;
@@ -263,7 +265,9 @@ int glmax_d ( double *value, MPI_Comm comm )
 
 /*******************************************************************************/
 
+#ifndef MPILITE
     if ( comm == MPI_COMM_NULL ) return ierr;
+#endif
 
     ierr = MPI_Allreduce( value, &x, 1, MPI_DOUBLE, MPI_MAX, comm );
     *value = x;
@@ -286,7 +290,9 @@ int glmax_d_1d ( double *value, int dlen, MPI_Comm comm )
 
 /*******************************************************************************/
 
+#ifndef MPILITE
     if ( comm == MPI_COMM_NULL ) return ierr;
+#endif
 
     ierr = MPI_Allreduce ( value, x, dlen, MPI_DOUBLE, MPI_MAX, comm );
 
@@ -310,7 +316,9 @@ int glmin_i ( int *value, MPI_Comm comm )
 
 /*******************************************************************************/
 
+#ifndef MPILITE
     if ( comm == MPI_COMM_NULL ) return ierr;
+#endif
 
     ierr = MPI_Allreduce( value, &x, 1, MPI_INT, MPI_MIN, comm );
     *value = x;
@@ -333,7 +341,9 @@ int glmin_d( double *value, MPI_Comm comm )
 
 /*******************************************************************************/
 
+#ifndef MPILITE
     if ( comm == MPI_COMM_NULL ) return ierr;
+#endif
 
     ierr = MPI_Allreduce ( value, &x, 1, MPI_DOUBLE, MPI_MIN, comm );
     *value = x;
@@ -449,7 +459,11 @@ int psend_d_2d ( double *value, int d1, int d2, MPI_Comm comm,
 
 /*******************************************************************************/
 
+#ifdef MPILITE
+    if ( proc == myproc ) return ierr;
+#else
     if ( proc == myproc || comm == MPI_COMM_NULL ) return ierr;
+#endif
 
     dlen = d1*d2;
 
@@ -535,9 +549,11 @@ int precv_d_2d ( double *value, int d1, int d2, MPI_Comm comm,
     MPI_Status istat;
 
 /*******************************************************************************/
-    if ( proc == myproc || comm == MPI_COMM_NULL ) {
-        return ierr;
-    }
+#ifdef MPILITE
+    if ( proc == myproc ) return ierr;
+#else
+    if ( proc == myproc || comm == MPI_COMM_NULL ) return ierr;
+#endif
     dlen = d1*d2;
 
 #ifdef MPILITE

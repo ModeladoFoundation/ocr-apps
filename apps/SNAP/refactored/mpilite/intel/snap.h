@@ -493,10 +493,10 @@ int psend_d_3d ( double *value, int d1, int d2, int d3, MPI_Comm comm,
 
 // Receive a rank-2 double presicision array
 #ifdef MPILITE
-int precv_d_2d ( double *value, int d1, int d2, MPI_Comm comm,
+int precv_d_2d ( double *value, int d1, int d2, int comm,
                  int proc, int myproc, int mtag);
 #else
-int precv_d_2d ( double *value, int d1, int d2, int comm,
+int precv_d_2d ( double *value, int d1, int d2, MPI_Comm comm,
                  int proc, int myproc, int mtag);
 #endif
 
@@ -825,11 +825,21 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
 //                   control_data *control_vars, sweep_data *sweep_vars,
 //                   double *fprnt, int *ierr );
 
+#ifdef MPILITE
+void output_send ( int dim1, int dim2, int comm, int root, int sproc,
+                   int mtag, double *fprnt, int *ierr );
+#else
 void output_send ( int dim1, int dim2, MPI_Comm comm, int root, int sproc,
                    int mtag, double *fprnt, int *ierr );
+#endif
 
+#ifdef MPILITE
+void output_recv ( int dim1, int dim2, int comm, int proc, int sproc,
+                   int mtag, double *fprnt, int *ierr );
+#else
 void output_recv ( int dim1, int dim2, MPI_Comm comm, int proc, int sproc,
                    int mtag, double *fprnt, int *ierr );
+#endif
 
 
 void output_flux_file ( input_data *input_vars, para_data *para_vars,

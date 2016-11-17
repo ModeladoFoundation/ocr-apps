@@ -12,12 +12,12 @@ SNAP also uses very high message tag numbers. mpilite supports only tags up to 3
 Three test input data sets with reference output are provided. fout4 is the default in the Makefile.x86.
 
 To build and execute use:
-make -f Makefile.x86 all install
-make -f Makefile.x86 run
+CFLAGS_WARN_ERROR=no make -f Makefile.x86 all install
+CFLAGS_WARN_ERROR=no make -f Makefile.x86 run
 
 or using distributed OCR
-make OCR_TYPE=x86-mpi all install
-make OCR_TYPE=x86-mpi run
+CFLAGS_WARN_ERROR=no make OCR_TYPE=x86-mpi all install
+CFLAGS_WARN_ERROR=no make OCR_TYPE=x86-mpi run
 
 to obtain a number of policy domains different from the default 2:
 OCR_NUM_NODES=5 make OCR_TYPE=x86-mpi run

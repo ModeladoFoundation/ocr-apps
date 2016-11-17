@@ -233,8 +233,13 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
 /***********************************************************************
  * Send root chunk of flux data for printing
  ***********************************************************************/
+#ifdef MPILITE
+void output_send ( int dim1, int dim2, int comm, int root, int sproc,
+                   int mtag, double *fprnt, int *ierr )
+#else
 void output_send ( int dim1, int dim2, MPI_Comm comm, int root, int sproc,
                    int mtag, double *fprnt, int *ierr )
+#endif
 {
     *ierr = psend_d_2d ( fprnt, dim1, dim2, comm, root, sproc, mtag );
 }
@@ -242,8 +247,13 @@ void output_send ( int dim1, int dim2, MPI_Comm comm, int root, int sproc,
 /***********************************************************************
  * Receive flux message for output
  ***********************************************************************/
+#ifdef MPILITE
+void output_recv ( int dim1, int dim2, int comm, int proc, int sproc,
+                   int mtag, double *fprnt, int *ierr )
+#else
 void output_recv ( int dim1, int dim2, MPI_Comm comm, int proc, int sproc,
                    int mtag, double *fprnt, int *ierr )
+#endif
 {
     *ierr = precv_d_2d ( fprnt, dim1, dim2, comm, proc, sproc, mtag );
 }
