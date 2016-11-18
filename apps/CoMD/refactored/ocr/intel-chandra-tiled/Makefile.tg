@@ -54,7 +54,7 @@ TARGET := comd-ocrd
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := newlib reduction
+REQ_LIBS := newlib reduction ocrAppUtils
 
 # Space separated list of source files
 
@@ -76,7 +76,7 @@ CFLAGS += -DDOUBLE_BUFFERED_EVTS
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libreduction.a
+LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libreduction.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libocrAppUtils.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a
 
 # Targets:
 #   - all:     Build the application.

@@ -20,7 +20,7 @@ Copywrite Intel Corporation 2015
 #include "timestep.h"
 #include "constants.h"
 
-#include "SPMDappUtils.h"
+#include "ocrAppUtils.h"
 
 void initSpecies(SpeciesData* species, BasePotential* pot)
 {
@@ -129,20 +129,6 @@ void initSimulation(SimFlat* sim, rankH_t* PTR_rankH, u64 id)
 
    sim->atomExchange = &sim->atomExchange_INST;
    initAtomHaloExchange(sim->atomExchange, sim->domain, sim->boxes);
-}
-
-void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT )
-{
-    ocrGuid_t currentAffinity = NULL_GUID;
-
-    ocrHintInit( PTR_myEdtAffinityHNT, OCR_HINT_EDT_T );
-    ocrHintInit( PTR_myDbkAffinityHNT, OCR_HINT_DB_T );
-
-#ifdef ENABLE_EXTENSION_AFFINITY
-    ocrAffinityGetCurrent(&currentAffinity);
-    ocrSetHintValue( PTR_myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
-    ocrSetHintValue( PTR_myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
-#endif
 }
 
 void initOcrObjects( rankH_t* PTR_rankH, u64 id, u64 nRanks )
@@ -797,7 +783,7 @@ _OCR_TASK_FNC_( channelSetupEdt )
 
 _OCR_TASK_FNC_( initEdt )
 {
-    PRM_initEdt_t* PTR_PRM_initEdt = (PRM_initEdt_t*) paramv;
+    PRM_init3dEdt_t* PTR_PRM_initEdt = (PRM_init3dEdt_t*) paramv;
 
     u64 id = PTR_PRM_initEdt->id;
 
@@ -1017,10 +1003,10 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     //2-D Cartesian grid of SPMD EDTs get mapped to a 2-D Cartesian grid of PDs
 #ifdef USE_STATIC_SCHEDULER
-    DEBUG_PRINTF(("Using STATIC scheduler\n"));
+    PRINTF("Using STATIC scheduler\n");
     forkSpmdEdts_staticScheduler_Cart3D( initEdt, edtGridDims, spmdDepv );
 #else
-    DEBUG_PRINTF(("NOT Using STATIC scheduler\n"));
+    PRINTF("NOT Using STATIC scheduler\n");
     forkSpmdEdts_Cart3D( initEdt, edtGridDims, spmdDepv );
 #endif
 

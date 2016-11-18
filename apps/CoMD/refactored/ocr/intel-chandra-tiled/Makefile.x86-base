@@ -59,13 +59,13 @@ TARGET := comd
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := reduction
+REQ_LIBS := reduction ocrAppUtils
 
 # Space separated list of source files
 SRCS := CoMD.c mycommand.c cmdLineParser.c eam.c ljForce.c decomposition.c linkCells.c initAtoms.c \
 		random.c timestep.c performanceTimers.c haloExchange.c
 OBJS := $(notdir $(SRCS:.c=.o))
-$(OBJS): CoMDTypes.h CoMD_info.h SPMDappUtils.h cmdLineParser.h constants.h decomposition.h eam.h haloExchange.h initAtoms.h \
+$(OBJS): CoMDTypes.h CoMD_info.h cmdLineParser.h constants.h decomposition.h eam.h haloExchange.h initAtoms.h \
 			linkCells.h ljForce.h mycommand.h mytype.h performanceTimers.h random.h timestep.h
 
 
@@ -91,7 +91,7 @@ endif
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lreduction -lm
+LDFLAGS := -lpthread -lreduction -locrAppUtils -lm
 
 # Targets:
 #   - all:     Build the application.

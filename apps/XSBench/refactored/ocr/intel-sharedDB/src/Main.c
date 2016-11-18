@@ -14,12 +14,11 @@
  */
 
 #include "ocr.h"
-#include "ocrAppUtils.h"
-#include "SPMDappUtils.h"
 
 #include "XSbench_header.h"
 #include "timers.h"
 
+#include "ocrAppUtils.h"
 #include "reduction.h"
 
 ocrGuid_t iterationsPerThreadEdt( EDT_ARGS );

@@ -1,13 +1,7 @@
 #include "ocr.h"
 #include "ocr-std.h"
 
-#define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
-
-#ifdef DEBUG_APP
-    #define DEBUG_PRINTF(X) PRINTF X
-#else
-    #define DEBUG_PRINTF(X) do {} while(0)
-#endif
+#include "ocrAppUtils.h"
 
 //default values
 #define NPOINTS 1000
@@ -41,14 +35,6 @@
 #define INDEXOUT(i,j) ( (i)+(j)*(np_x) )
 #define IN(i,j) xIn[ INDEXIN(i-ib,j-jb) ]
 #define OUT(i,j) xOut[ INDEXOUT(i-ib,j-jb) ]
-
-typedef struct
-{
-    ocrEdt_t FNC;
-    ocrGuid_t TML;
-    ocrGuid_t EDT;
-    ocrGuid_t OET;
-} MyOcrTaskStruct_t;
 
 typedef struct
 {
@@ -133,87 +119,3 @@ typedef struct
 } rankH_t;
 
 static void timestamp(const char* msg);
-void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e);
-void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id);
-void splitDimension(s64 Num_procs, s64 *Num_procsx, s64 *Num_procsy);
-static inline int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y );
-static inline int getPolicyDomainID( int b, s64* edtGridDims, s64* pdGridDims );
-
-static void timestamp(const char* msg)
-{
-#ifdef TG_ARCH
-  PRINTF(msg);
-#else
-  time_t t= time(NULL);
-  char* timeString = ctime(&t);
-  timeString[24] = '\0';
-  PRINTF("%s: %s\n", timeString, msg);
-#endif
-}
-
-void partition_bounds(s64 id, s64 lb_g, s64 ub_g, s64 R, s64* s, s64* e)
-{
-    s64 N = ub_g - lb_g + 1;
-
-    *s = id*N/R + lb_g;
-    *e = (id+1)*N/R + lb_g - 1;
-}
-
-void getPartitionID(s64 i, s64 lb_g, s64 ub_g, s64 R, s64* id)
-{
-    s64 N = ub_g - lb_g + 1;
-    s64 s, e;
-
-    s64 r;
-
-    for( r = 0; r < R; r++ )
-    {
-        s = r*N/R + lb_g;
-        e = (r+1)*N/R + lb_g - 1;
-        if( s <= i && i <= e )
-            break;
-    }
-
-    *id = r;
-}
-
-void splitDimension(s64 Num_procs, s64* Num_procsx, s64* Num_procsy)
-{
-    s64 nx, ny;
-
-    nx = (int) sqrt(Num_procs+1);
-    for(; nx>0; nx--)
-    {
-        if (!(Num_procs%nx))
-        {
-            ny = Num_procs/nx;
-            break;
-        }
-    }
-    *Num_procsx = nx; *Num_procsy = ny;
-}
-
-static inline int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y )
-{
-    return NR_X*id_y + id_x;
-}
-
-static inline int getPolicyDomainID( int b, s64* edtGridDims, s64* pdGridDims )
-{
-    int id_x = b%edtGridDims[0];
-    int id_y = b/edtGridDims[0];
-
-    int PD_X = pdGridDims[0];
-    int PD_Y = pdGridDims[1];
-
-    s64 pd_x; getPartitionID(id_x, 0, edtGridDims[0]-1, PD_X, &pd_x);
-    s64 pd_y; getPartitionID(id_y, 0, edtGridDims[1]-1, PD_Y, &pd_y);
-
-    //Each edt, with id=b, is mapped to a PD. The mapping is similar to how the link cells map to
-    //MPI ranks. In other words, all the PDs are arranged as a 3-D grid.
-    //And, a 3-D subgrid of edts is mapped to a PD preserving "locality" within a PD.
-    //
-    int mapToPD = globalRankFromCoords(pd_x, pd_y, PD_X, PD_Y);
-
-    return mapToPD;
-}

@@ -15,12 +15,12 @@
 
 #include "ocr.h"
 #include "ocrAppUtils.h"
-#include "SPMDappUtils.h"
 
 #include "rsbench.h"
 #include "timers.h"
 
 #include "reduction.h"
+#include "ocrAppUtils.h"
 
 ocrGuid_t iterationsPerThreadEdt( EDT_ARGS );
 ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS );

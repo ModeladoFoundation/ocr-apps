@@ -54,7 +54,7 @@ TARGET := XSBench
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := newlib timer reduction
+REQ_LIBS := newlib timer reduction ocrAppUtils
 
 # Space separated list of source files
 SRCS := \
@@ -64,8 +64,7 @@ GridInit.c \
 CalculateXS.c \
 XSutils.c \
 Materials.c \
-timers.c \
-ocrAppUtils.c
+timers.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
@@ -79,7 +78,8 @@ CFLAGS += -DDEBUG_APP
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a -ltimer -lreduction
+LDFLAGS := -ltimer -lreduction -locrAppUtils
+LDFLAGS += $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a
 
 # Targets:
 #   - all:     Build the application.
