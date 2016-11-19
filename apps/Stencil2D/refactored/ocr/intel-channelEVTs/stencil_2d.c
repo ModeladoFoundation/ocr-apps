@@ -37,6 +37,7 @@ Copyright Intel Corporation 2015
 #define GET_CHANNEL_IDX(face, phase) (face)
 #endif
 
+
 static void timestamp(const char* msg)
 {
 #ifdef TG_ARCH
@@ -49,6 +50,12 @@ static void timestamp(const char* msg)
 #endif
 }
 
+#ifdef USE_PROFILER
+#define RETURN(g) RETURN_PROFILE(g)
+#else
+#define RETURN(g) return g
+#endif
+
 static void destroyOcrObjects(rankH_t* PTR_rankH);
 
 ocrGuid_t shutdownEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
@@ -59,6 +66,9 @@ ocrGuid_t shutdownEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 _OCR_TASK_FNC_( FNC_Lsend )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Lsend );
+#endif
     ocrGuid_t DBK_Lsend = depv[2].guid;
 
     rankH_t* PTR_rankH = depv[0].ptr;
@@ -89,22 +99,17 @@ _OCR_TASK_FNC_( FNC_Lsend )
             lsend[kk++] = IN(i,j);
         }
 #endif
+    ocrGuid_t retGuid = (id_x != 0) ? DBK_Lsend : NULL_GUID;
+    //PRINTF("ID=%d FNC_Lsend lsend guid is %lu\n", id, retGuid);
 
-    if( id_x != 0 )
-    {
-        //PRINTF("ID=%d FNC_Lsend lsend guid is %lu\n", id, DBK_Lsend);
-        return DBK_Lsend;
-    }
-    else
-    {
-        //PRINTF("ID=%d FNC_Lsend lsend guid is NULL\n", id);
-        return NULL_GUID;
-    }
-
+    RETURN(retGuid);
 }
 
 _OCR_TASK_FNC_( FNC_Rsend )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Rsend );
+#endif
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[1].guid;
     ocrGuid_t DBK_Rsend = depv[2].guid;
 
@@ -140,20 +145,17 @@ _OCR_TASK_FNC_( FNC_Rsend )
         }
 #endif
 
-    if( id_x != NR_X - 1 )
-    {
-        //PRINTF("ID=%d FNC_Rsend rsend guid is %lu\n", id, DBK_Rsend);
-        return DBK_Rsend;
-    }
-    else
-    {
-        //PRINTF("ID=%d FNC_Lsend lsend guid is NULL\n", id);
-        return NULL_GUID;
-    }
+    ocrGuid_t retGuid = (id_x != NR_X - 1) ? DBK_Rsend : NULL_GUID;
+    //PRINTF("ID=%d FNC_Rsend rsend guid is %lu\n", id, retGuid);
+
+    RETURN(retGuid);
 }
 
 _OCR_TASK_FNC_( FNC_Lrecv )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Lrecv );
+#endif
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[1].guid;
     ocrGuid_t DBK_Rsend = (ocrGuid_t) depv[2].guid;
 
@@ -193,11 +195,14 @@ _OCR_TASK_FNC_( FNC_Lrecv )
     }
 #endif
 
-    return NULL_GUID;
+    RETURN(NULL_GUID);
 }
 
 _OCR_TASK_FNC_( FNC_Rrecv )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Rrecv );
+#endif
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[1].guid;
     ocrGuid_t DBK_Lsend = (ocrGuid_t) depv[2].guid;
 
@@ -238,12 +243,15 @@ _OCR_TASK_FNC_( FNC_Rrecv )
     }
 #endif
 
-    return NULL_GUID;
+    RETURN(NULL_GUID);
 }
 
 //y-direction
 _OCR_TASK_FNC_( FNC_Bsend )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Bsend );
+#endif
     ocrGuid_t DBK_Bsend = (ocrGuid_t) depv[2].guid;
 
     rankH_t* PTR_rankH = depv[0].ptr;
@@ -277,21 +285,17 @@ _OCR_TASK_FNC_( FNC_Bsend )
         }
 #endif
 
-    if( id_y != 0 )
-    {
-        //PRINTF("ID=%d FNC_Bsend bsend guid is %lu\n", id, DBK_Bsend);
-        return DBK_Bsend;
-    }
-    else
-    {
-        //PRINTF("ID=%d FNC_Bsend bsend guid is NULL\n", id);
-        return NULL_GUID;
-    }
+    ocrGuid_t retGuid = (id_y != 0) ? DBK_Bsend : NULL_GUID;
+    //PRINTF("ID=%d FNC_Bsend bsend guid is %lu\n", id, retGuid);
 
+    RETURN(retGuid);
 }
 
 _OCR_TASK_FNC_( FNC_Tsend )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Tsend );
+#endif
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[1].guid;
     ocrGuid_t DBK_Tsend = (ocrGuid_t) depv[2].guid;
 
@@ -326,21 +330,17 @@ _OCR_TASK_FNC_( FNC_Tsend )
         }
 #endif
 
-    if( id_y != NR_Y - 1 )
-    {
-        //PRINTF("ID=%d FNC_Tsend tsend guid is %lu\n", id, DBK_Tsend);
-        return DBK_Tsend;
-    }
-    else
-    {
-        //PRINTF("ID=%d FNC_Bsend bsend guid is NULL\n", id);
-        return NULL_GUID;
-    }
+    ocrGuid_t retGuid = (id_y != NR_Y - 1) ? DBK_Tsend : NULL_GUID;
+    //PRINTF("ID=%d FNC_Tsend tsend guid is %lu\n", id, retGuid);
 
+    RETURN(retGuid);
 }
 
 _OCR_TASK_FNC_( FNC_Brecv )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Brecv );
+#endif
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[1].guid;
     ocrGuid_t DBK_Tsend = (ocrGuid_t) depv[2].guid;
 
@@ -380,11 +380,14 @@ _OCR_TASK_FNC_( FNC_Brecv )
     }
 #endif
 
-    return NULL_GUID;
+    RETURN(NULL_GUID);
 }
 
 _OCR_TASK_FNC_( FNC_Trecv )
 {
+#ifdef USE_PROFILER
+    START_PROFILE( app_FNC_Trecv );
+#endif
     ocrGuid_t DBK_xIn = (ocrGuid_t) depv[1].guid;
     ocrGuid_t DBK_Bsend = (ocrGuid_t) depv[2].guid;
 
@@ -424,7 +427,7 @@ _OCR_TASK_FNC_( FNC_Trecv )
     }
 #endif
 
-    return NULL_GUID;
+    RETURN(NULL_GUID);
 }
 
 _OCR_TASK_FNC_( FNC_update )
@@ -519,11 +522,7 @@ _OCR_TASK_FNC_( FNC_update )
         ocrDbRelease(DBK_timers);
     }
 
-#ifdef USE_PROFILER
-    RETURN_PROFILE(NULL_GUID);
-#endif
-
-    return NULL_GUID;
+    RETURN(NULL_GUID);
 }
 
 _OCR_TASK_FNC_( FNC_summary )
@@ -541,7 +540,6 @@ _OCR_TASK_FNC_( FNC_summary )
     rankParamH_t* PTR_rankParamH = &(PTR_rankH->rankParamH);
 
     s64 id = PTR_rankParamH->id;
-
     destroyOcrObjects(PTR_rankH);
 
     if( id == 0 )
