@@ -63,7 +63,7 @@ void fancy_int( int a )
     else
         PRINTF("%d\n",a);
 #endif
-    PRINTF("%ld\n", a);
+    PRINTF("%d\n", a);
 }
 
 Inputs read_CLI( int argc, char * argv[] )

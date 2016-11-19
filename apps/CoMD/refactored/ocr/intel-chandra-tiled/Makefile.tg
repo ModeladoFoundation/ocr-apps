@@ -72,6 +72,7 @@ CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
 CFLAGS += -DWITH_COUNTED_EVT
 CFLAGS += -DCHANNEL_EVENTS_AT_RECEIVER
 CFLAGS += -DDOUBLE_BUFFERED_EVTS
+#CFLAGS += -DDEBUG_APP
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
