@@ -11,18 +11,20 @@
 
 TG_ROOT ?= $(realpath $(CURDIR)/../../../../tg/tg)
 APPS_ROOT ?= $(realpath $(CURDIR)/../..)
+OCR_ROOT ?= $(realpath $(CURDIR)/../../../../ocr/ocr)
 
 all: tg-examples apps-legacy apps-examples
 
-tg-tree:
+tools:
 	$(MAKE) -C $(TG_ROOT)
 	$(MAKE) -C $(TG_ROOT)/build/build.fsim -f make-me.make install-fsim-rtlsim
 	$(MAKE) -C $(TG_ROOT)/build/build.fsim -f make-me.make install-fsim-swtest
 
-apps-libs: tg-tree
+libs:
 	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=tg-xe
+	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=x86
 
-tg-examples: apps-libs
+tg-examples:
 	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 cdemo_nonewlib
 	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 cdemo
 	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 cxxdemo
@@ -33,11 +35,33 @@ tg-examples: apps-libs
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE fptr_simple
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE multi_seg
 
-apps-legacy: apps-libs
+apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe hello
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe cxxhello
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe iotest
 
-apps-examples: apps-libs
+apps-examples:
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg install
 	$(MAKE) -C $(APPS_ROOT)/examples/fib -f Makefile.tg install
+
+apps-clean:
+	$(MAKE) -C $(TG_ROOT)/fsim/swtest clean
+	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm clean
+	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2 clean
+	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8 clean
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE clean
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe clean
+	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=tg-ce clean uninstall
+	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=tg-xe clean uninstall
+	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg clean uninstall
+	$(MAKE) -C $(APPS_ROOT)/examples/fib -f Makefile.tg clean uninstall
+
+libs-clean:
+	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=tg-xe clean
+	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=x86 clean
+	@rm -rf $(APPS_ROOT)/libs/install/*
+
+tools-clean:
+	$(MAKE) -C $(TG_ROOT) clean uninstall
+
+.PHONY: all apps-clean libs-clean tools-clean tools libs tg-examples apps-legacy apps-examples

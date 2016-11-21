@@ -1,5 +1,7 @@
+s
 *.o
 hello
+iotest
 chello
 cxxhello
 hello_world
