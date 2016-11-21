@@ -2,6 +2,9 @@
 #ifndef ALLOC_NODE_H
 #define ALLOC_NODE_H
 
+#include "debug/fatal.h"
+#include "memory/util.h"
+
 #include <cstdint>
 #include <cstddef>
 

@@ -5,6 +5,7 @@
 #include "lifo_arena.h"
 
 #include <cassert>
+#include <memory>
 
 namespace buffered_alloc {
 
