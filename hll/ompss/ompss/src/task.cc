@@ -1,8 +1,11 @@
 
 #include "allocator/proxy_allocator.h"
+
 #include "common.h"
 #include "dependences.h"
 #include "outline.h"
+
+#include "debug/traceblock.h"
 #include "profile/profile.h"
 #include "task.h"
 #include "task-local.h"

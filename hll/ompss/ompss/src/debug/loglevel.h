@@ -39,6 +39,7 @@ struct log_enabled : public std::integral_constant<bool, (module_verbosity<mod>:
 
 // Here follows enabled modules and their verbosity level
 ENABLE_LOG( Module::dependences, Verbosity::log );
+ENABLE_LOG( Module::any, Verbosity::verbose );
 
 #endif // RELEASE
 

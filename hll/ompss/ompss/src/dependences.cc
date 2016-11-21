@@ -1,5 +1,7 @@
 
 #include "dependences.h"
+
+#include "debug/traceblock.h"
 #include "profile/profile.h"
 #include "task.h"
 #include "task-local.h"

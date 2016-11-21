@@ -4,8 +4,9 @@ OMPSS_LIB=lib
 
 CXX = g++
 
-#DEBUG=-Wall -Wextra -Wno-unused-parameter -O0 -g3
-RELEASE=-DRELEASE -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -flto
+DEBUG=-DRELEASE -Wall -Wextra -Wno-unused-parameter -O0 -g3 #-fsanitize=address
+#RELEASE=-DRELEASE -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -flto
+#RELEASE=-DRELEASE -O0 -g3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -flto
 
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 CPPFLAGS=\
@@ -50,7 +51,7 @@ OBJ=\
 all: $(addprefix $(OMPSS_LIB)/, $(LIBS))
 
 clean:
-	rm -f $(OMPSS_LIB)/* $(OBJ)
+	rm -f $(OMPSS_LIB)/* src/*.o
 
 %.so.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC -c $^ -o $@
