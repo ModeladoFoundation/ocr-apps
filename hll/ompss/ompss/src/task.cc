@@ -2,14 +2,13 @@
 #include "allocator/proxy_allocator.h"
 
 #include "common.h"
-#include "dependences.h"
 #include "outline.h"
 
 #include "debug/traceblock.h"
 #include "profile/profile.h"
-#include "task.h"
-#include "task-local.h"
-#include "taskwait.h"
+
+#include "task/task.h"
+#include "task/taskwait.h"
 
 #include <nanos6_rt_interface.h>
 #include <ocr.h>
@@ -69,6 +68,11 @@ void nanos_submit_task( void *task )
         new_task,
         static_cast<void*>(new_task->definition.arguments.buffer) );
 
+    // Add dummy event to avoid premature EDT execution
+    // We must add taskwait dependence from EDT's output event
+    new_task->dependences.acquire.push_back( UNINITIALIZED_GUID );
+    new_task->dependences.acq_satisfy.push_back( false );
+
     uint32_t depc = new_task->dependences.acquire.size();
     ocrGuid_t* depv = new_task->dependences.acquire.data();
 
@@ -84,6 +88,9 @@ void nanos_submit_task( void *task )
     // Feed EDT output event to taskwait latch event,
     // and increment latch's second pre-slot
     getLocalScope().taskwait.registerEdt(edtFinished);
+
+    // Satisfy barrier (to avoid datarace with taskwait dependence)
+    ocrAddDependence( NULL_GUID, edt, depc-1, DB_DEFAULT_MODE );
 
     // Add edt dependences
     acquireDependences( *new_task );

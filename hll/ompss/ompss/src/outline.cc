@@ -1,8 +1,6 @@
 
-#include "dependences.h"
 #include "outline.h"
-#include "task.h"
-#include "task-local.h"
+#include "task/task.h"
 
 #include <ocr.h>
 #include <extensions/ocr-runtime-itf.h>
@@ -23,8 +21,6 @@ ocrGuid_t taskOutlineTemplate;
  */
 ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
 {
-    using namespace ompss;
-
     // Decode arguments and dependences
     std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> args =
         Task::unpackParams( paramc, paramv );

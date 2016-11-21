@@ -2,8 +2,6 @@
 #ifndef TASK_LOCAL_H
 #define TASK_LOCAL_H
 
-#include "task_decl.h"
-
 #include <extensions/ocr-runtime-itf.h>
 #include <ocr.h>
 
@@ -36,16 +34,6 @@ inline void unsetTLS( uint32_t slot )
 {
     // Default initialize TLS value
     ocrElsUserSet( slot, NULL_GUID );
-}
-
-inline ompss::TaskScopeInfo& getLocalScope()
-{
-    return *static_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
-}
-
-inline void setLocalScope( ompss::TaskScopeInfo& scope )
-{
-    setTLS( 0U, static_cast<void*>(&scope) );
 }
 
 } // namespace ompss

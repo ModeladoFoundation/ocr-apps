@@ -2,8 +2,7 @@
 #include "common.h"
 #include "memory/util.h"
 #include "outline.h"
-#include "task.h"
-#include "task-local.h"
+#include "task/task.h"
 
 #include <nanos6_rt_interface.h>
 #include <ocr.h>

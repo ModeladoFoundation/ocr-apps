@@ -2,8 +2,7 @@
 #ifndef OUTLINE_H
 #define OUTLINE_H
 
-#include "dependences.h"
-#include "task.h"
+#include "task/task.h"
 
 #include <type_traits>
 
