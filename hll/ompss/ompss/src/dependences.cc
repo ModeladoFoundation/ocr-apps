@@ -1,10 +1,10 @@
 
-#include "dependences.h"
+#include "dependences/access.h"
+#include "dependences/dependence_map.h"
 
 #include "debug/traceblock.h"
 #include "profile/profile.h"
-#include "task.h"
-#include "task-local.h"
+#include "task/task.h"
 
 #include <nanos6_rt_interface.h>
 #include <ocr.h>
@@ -32,47 +32,15 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
     using namespace ompss;
     PROFILE_BLOCK( nanos_register_read_depinfo );
 
-    Task* task = (Task*)handler;
+    Task* task = static_cast<Task*>(handler);
 
-    uintptr_t begin = reinterpret_cast<uintptr_t>(start);
-    uintptr_t end   = begin + length;
-    log::log<log::Module::dependences>( "Read access: 0x", std::hex, begin, " - 0x", end );
+    ReadAccess access( start, length );
+    // TODO Move log to access constructor
+    log::log<log::Module::dependences>( "Read access: 0x", std::hex, access.begin(), " - 0x", access.end() );
 
-    // Get running task access map (not "handler"'s)
-    DependenceMap& accesses = getLocalScope().accesses;
-
-    DependenceMap::iterator iterator = accesses.lower_bound(begin);
-    if( iterator == accesses.end() || begin < iterator->first ) {
-        // Entry did not exist previously
-        // Note: std::piecewise_construct is a tag that indicates that
-        // the std::pair in map::value_type is using perfect forwarding.
-        // That is, arguments to construct each tuple are used instead
-        // of passing the values themselves.
-        iterator = accesses.emplace_hint( iterator,
-                                          std::piecewise_construct,
-                                          std::forward_as_tuple(begin),
-                                          std::forward_as_tuple<>() );
-        AccessDependence& dep_data = iterator->second;
-        log::log<log::Module::dependences>( " +- New access      @ ", &dep_data );
-
-        // Create read-section
-        dep_data.createReadSection();
-        ++iterator;
-    }
-
-    while( iterator != accesses.end() && iterator->first < end ) {
-        AccessDependence& dep_data = iterator->second;
-        log::log<log::Module::dependences>( " +- Existing access @ ", &dep_data );
-
-        // Add read-after-write dependency to previous writer EDTs
-        dep_data.addRAWDependence( *task );
-        // Create read-only section and register read operation
-        dep_data.createReadSection();
-        // Add EDT to the read section readers
-        dep_data.readSectionAddReader( *task );
-
-        ++iterator;
-    }
+    // Get running task access map (not handler's)
+    AccessTracker& accesses = getLocalScope().accesses;
+    accesses.registerAccess( access, task->dependences );
 }
 
 /*! \brief Register a task write access on linear range of addresses
@@ -111,47 +79,15 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
     using namespace ompss;
     PROFILE_BLOCK( nanos_register_readwrite_depinfo );
 
-    Task* task = (Task*)handler;
+    Task* task = static_cast<Task*>(handler);
 
-    uintptr_t begin = reinterpret_cast<uintptr_t>(start);
-    uintptr_t end   = begin + length;
-    log::log<log::Module::dependences>( "Write access: 0x", std::hex, begin, " - 0x", end );
+    WriteAccess access( start, length );
+    // TODO Move log to access constructor
+    log::log<log::Module::dependences>( "Write access: 0x", std::hex, access.begin(), " - 0x", access.end() );
 
-    // Get running task access map (not "handler"'s)
-    auto& accesses = getLocalScope().accesses;
-
-    DependenceMap::iterator iterator = accesses.lower_bound(begin);
-    if( iterator == accesses.end() || begin < iterator->first ) {
-        // Entry did not exist previously
-        // Note: std::piecewise_construct is a tag that indicates that
-        // the std::pair in map::value_type is using perfect forwarding.
-        // That is, arguments to construct each tuple are used instead
-        // of passing the values themselves.
-        iterator = accesses.emplace_hint( iterator,
-                                          std::piecewise_construct,
-                                          std::forward_as_tuple(begin),
-                                          std::forward_as_tuple<>() );
-        AccessDependence& dep_data = iterator->second;
-        log::log<log::Module::dependences>( " +- New access      @ ", &dep_data );
-
-        // Create write-section
-        dep_data.createWriteSection( *task );
-        ++iterator;
-    }
-
-    while( iterator != accesses.end() && iterator->first < end ) {
-        AccessDependence& dep_data = iterator->second;
-        log::log<log::Module::dependences>( " +- Existing access @ ", &dep_data );
-
-        // Add write-after-write dependency to previous writer EDTs
-        dep_data.addWAWDependence( *task );
-        // Create write-section
-        dep_data.createWriteSection( *task );
-        // Add write-after-read dependency to previous reader EDTs
-        dep_data.addWARDependence( *task );
-
-        ++iterator;
-    }
+    // Get running task access map (not handler's)
+    AccessTracker& accesses = getLocalScope().accesses;
+    accesses.registerAccess( access, task->dependences );
 }
 
 } // extern "C"

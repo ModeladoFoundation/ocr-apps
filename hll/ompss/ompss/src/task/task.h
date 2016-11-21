@@ -4,12 +4,14 @@
 
 #include "task_decl.h"
 
-#include "dependences_decl.h"
+#include "dependences/task_dependences.h"
+#include "dependences/dependence_map.h"
 
 #include "common.h"
 #include "event.h"
 #include "memory/serializer.h"
-#include "task-local.h"
+
+#include "task/task_scope.h"
 
 #include <nanos6_rt_interface.h>
 
@@ -34,27 +36,9 @@ inline TaskDefinition::TaskDefinition( nanos_task_info* info, uint32_t args_size
 {
 }
 
-inline TaskScopeInfo::TaskScopeInfo() :
-    paramMemory(),
-    scratchMemory(),
-    taskMemory(),
-#if defined(TREE_TMP_ALLOC)
-    accesses(tree_allocator(scratchMemory)),
-#else
-    accesses(),
-#endif
-    taskwait(),
-    flags()
-{
-}
-
 inline Task::Task( nanos_task_info* info, TaskDefinition& def ) :
     definition(def),
     dependences(info)
-{
-}
-
-inline Task::~Task()
 {
 }
 
@@ -120,6 +104,42 @@ inline std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> Task::unpackPara
 
     return { definition, numReleaseDependences, releaseDependences, destroyFlags };
 }
+
+inline void acquireDependences( ompss::Task& task )
+{
+    uint8_t err;
+
+    auto& events  = task.dependences.acquire;
+    auto& satisfy = task.dependences.acq_satisfy;
+    if( !events.empty() ) {
+        // Dependences already registered in EDT creation
+        // Just satisfy flagged events
+        for( uint32_t slot = 0; slot < events.size(); ++slot ) {
+            if( satisfy[slot] ) {
+                err = ocrEventSatisfy( events[slot], NULL_GUID );
+                ASSERT( err == 0 );
+            }
+        }
+    }
+}
+
+inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[], uint8_t destroy[] )
+{
+    log::verbose<log::Module::dependences>( "Releasing dependences" );
+    uint8_t err;
+    for( uint32_t i = 0; i < num_deps; ++i ) {
+        if( destroy[i] ) {
+            log::verbose<log::Module::dependences>( "Release: destroy GUID ", std::hex, dependences[i].guid );
+            err = ocrEventDestroy( dependences[i] );
+            ASSERT( err == 0 );
+        } else {
+            log::verbose<log::Module::dependences>( "Release: satisfy GUID ", std::hex, dependences[i].guid );
+            err = ocrEventSatisfy( dependences[i], NULL_GUID );
+            ASSERT( err == 0 );
+        }
+    }
+}
+
 
 } // namespace ompss
 

@@ -19,15 +19,43 @@ protected:
         _handle = NULL_GUID;
     }
 
+    // Moving is just copying the GUID
+    // and reset the origin GUID to NULL_GUID
+    EventBase( EventBase&& other ) :
+        _handle( other._handle )
+    {
+        other._handle = NULL_GUID;
+    }
+
+    // Moving is just copying the GUID
+    // and reset the origin GUID to NULL_GUID
+    EventBase& operator=( EventBase&& other ) {
+        _handle = other._handle;
+        other._handle = NULL_GUID;
+        return *this;
+    }
+
 public:
+    void addDependence( const EventBase& source ) {
+        addDependence( source._handle );
+    }
+
     void addDependence( const ocrGuid_t& source ) {
         addDependenceDecrease( source );
+    }
+
+    void addDependenceIncrease( const EventBase& source ) {
+        addDependenceIncrease( source._handle );
     }
 
     void addDependenceIncrease( const ocrGuid_t& source ) {
         uint8_t err = ocrAddDependence( source, _handle,
                     OCR_EVENT_LATCH_INCR_SLOT, DB_DEFAULT_MODE );
         ASSERT( err == 0 );
+    }
+
+    void addDependenceDecrease( const EventBase& source ) {
+        addDependenceDecrease( source._handle );
     }
 
     void addDependenceDecrease( const ocrGuid_t& source ) {
@@ -109,6 +137,12 @@ struct LatchEvent : public EventBase {
                     type(), EVT_PROP_NONE );
         ASSERT( err == 0 );
     }
+
+    // Latch events cant be copied
+    LatchEvent( const EventBase& event ) = delete;
+
+    // Latch event cant be copy asigned
+    LatchEvent& operator=( const EventBase& ) = delete;
 
     LatchEvent& operator++(int) {
         satisfyIncrease();
