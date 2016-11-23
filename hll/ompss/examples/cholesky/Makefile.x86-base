@@ -1,0 +1,146 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+# ARCH
+ARCH        := x86
+# APPS
+APPS_ROOT   ?= ../../../../apps
+
+# APPLICATION
+# Take care with `pwd` and soft links (e.g. /lustre/home instead of /home)
+WORKLOAD_SRC          ?= $(shell pwd -P)
+WORKLOAD_BUILD_ROOT   ?= $(WORKLOAD_SRC)/build
+WORKLOAD_INSTALL_ROOT ?= $(WORKLOAD_SRC)/install
+
+# If 0, the workload has no input file
+# If 1+, this is the index in the argument
+# list after which everything is considered an
+# input file. Note that the index STARTS AT 1
+WORKLOAD_INPUT_FILE_IDX := 2
+
+# You can specify default arguments here. These
+# will be overridden by (in order):
+#   - the WORKLOAD_ARGS environment variable
+#   - the arguments passed to 'make run'
+# To restate, the arguments passed to make run have
+# the highest priority and will override both the
+# default arguments here and the ones passed through
+# an environment variable
+WORKLOAD_ARGS ?= 64 $(WORKLOAD_SRC)/data/1024.in
+
+# Run mode (not fully supported)
+# Set to "yes" if running with torque
+RUN_TORQUE ?= no
+# By default, the make system will make sure OCR is properly
+# built. You can override this here:
+#  - Set to buildApp if you just want to build the app (OCR must be built)
+#  - Set to runApp if you just want to run the app (the app and OCR must be built)
+# This is mostly used by Jenkins as it splits out the build and run phases for
+# a test
+RUN_MODE ?=
+
+## END of variables coming from user/environment
+
+include ${APPS_ROOT}/makefiles/make-pre.inc
+
+CC := mcc --ompss
+
+# Name of the application to build
+TARGET := cholesky
+
+# Disable Warnings are errors
+CFLAGS_WARN_ERROR=no
+
+# Space separated list of directory names in apps/libs/src
+# that need to be built. These will be built for ARCH
+REQ_LIBS := ${APPS_ROOT}/hll/ompss/ompss
+
+# Space separated list of source files
+SRCS := matrix.c file.c util.c cholesky.c
+
+# Additional CFLAGS. By default, it includes
+# all OCR required includes and $(APPS_LIBS_INSTALL)/include
+# TG_ARCH is also defined for Fsim
+CFLAGS := -DMKL_ILP64 -I/opt/intel/tools/mkl/include
+# Additional LDFLAGS. By default, it includes
+# the required OCR library path and $(APPS_LIBS_INSTALL)/lib
+# Note that none of the specific libraries specified in
+# REQ_LIBS are included.
+LDFLAGS_OMPSS := -L$(NANOS_HOME)/lib -lnanos6
+LDFLAGS := $(EXTRALDFLAGS) -L/opt/intel/tools/mkl/lib/intel64 -Wl,-rpath,/opt/intel/tools/mkl/lib/intel64 -lmkl_intel_ilp64 -lmkl_core -lmkl_sequential -lm -ldl
+
+# Targets:
+#   - all:     Build the application.
+#   - debug:   Build the debug version of the application
+#   - install: Build and install
+#   - run:     Run the application
+all:	CFLAGS += -O2
+all:	TARGETS := all
+all:	default
+
+debug:	CFLAGS += -O0
+debug:	TARGETS := debug
+debug:	default
+
+install: all
+
+# This rule will be executed prior to execution:
+#  - For the TG target, this happens when the binary is built
+#  - For all other targets this happens prior to running the
+#    executable
+# WORKLOAD_ARGS and WORKLOAD_INPUTS are available
+# to you and contain, respectively, the non file
+# arguments and the file arguments. They will be
+# passed directly to the application unless you
+# modify them. You can use the following
+# syntax to do so:
+# $(eval WORKLOAD_INPUTS := something) or
+# $(eval WORKLOAD_INPUTS := $(shell <script>))
+# The second syntax will execute <script> and assign
+# its output to WORKLOAD_INPUTS
+#
+# You may also want to assign a value to WORKLOAD_OUTS
+# which should contain the list of output files produced
+# by the application (to be passed to postrun). This is
+# taken-care of for you on TG but not on any of the
+# other platforms.
+# 'prerun: ;' is an empty rule (the rule is required)
+.PHONY: prerun
+prerun: $(WORKLOAD_INPUTS)
+
+# This rule will be executed after execution
+# The variable ${WORKLOAD_OUTS} contains a space separated
+# list of output files
+# 'postrun: ;' is an empty rule (the rule is required)
+
+WORKLOAD_OUTS = $(WORKLOAD_INPUTS:%.in=%.out)
+
+.PHONY: postrun
+postrun: $(WORKLOAD_BUILD_ROOT)/$(ARCH)/check
+	@$(foreach out,$(WORKLOAD_OUTS),$< $(out))
+
+# Any additional rules required can go here
+$(WORKLOAD_SRC)/data/%.in: $(WORKLOAD_BUILD_ROOT)/$(ARCH)/generate
+	@mkdir -p $(WORKLOAD_SRC)/data
+	$^ $*
+
+# Include common part
+include ${APPS_ROOT}/makefiles/make-inc.inc
+
+# Overridden rules.
+# Necessary to enforce OmpSs runtime library precedence over OCR
+$(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
+	@echo "Building debug target $@"
+	@echo Workload build is $(WORKLOAD_BUILD)
+	@echo "Objs: $(OBJS) Srcs: $(SRCS)"
+	$(AT)$(CC_LINK) -o $@ $(OBJS) $(LDFLAGS_OMPSS) $(LDFLAGS)
+
+$(WORKLOAD_BUILD)/generate: CC=gcc
+$(WORKLOAD_BUILD)/generate: CFLAGS := $(CFLAGS) -std=c99
+$(WORKLOAD_BUILD)/generate: $(addprefix $(WORKLOAD_BUILD)/,generate.o matrix.o file.o util.o)
+
+$(WORKLOAD_BUILD)/check: CC=gcc
+$(WORKLOAD_BUILD)/check: CFLAGS := $(CFLAGS) -std=c99
+$(WORKLOAD_BUILD)/check: $(addprefix $(WORKLOAD_BUILD)/,check.o matrix.o file.o util.o)
+
