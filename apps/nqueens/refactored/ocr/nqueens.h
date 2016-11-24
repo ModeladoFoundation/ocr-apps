@@ -6,6 +6,7 @@
 
 struct nqueens_args
 {
+    u32       max_set;
     u32       all;
     u32       ldiag;
     u32       cols;
