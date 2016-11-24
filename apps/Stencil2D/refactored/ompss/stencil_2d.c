@@ -79,7 +79,7 @@ HISTORY: - Written by Rob Van der Wijngaart, February 2009.
   #define FSTR    "%f"
 #endif
 
-inline int min( int a, int b ) {
+static inline int min( int a, int b ) {
     return a < b? a : b;
 }
 
@@ -97,6 +97,8 @@ int ompss_user_main(int argc, char ** argv) {
   DTYPE  f_active_points; /* interior of grid with respect to stencil            */
   DTYPE  flops;           /* floating point ops per iteration                    */
   int    iterations;      /* number of times to run the algorithm                */
+  int    radius_val;      /* RADIUS value (necessary for OmpSs pragmas)          */
+  int    gsize;           /* Granularity of OmpSs tasks                          */
   double stencil_time,    /* timing parameters                                   */
          avgtime;
   int    stencil_size;    /* number of points in stencil                         */
@@ -110,8 +112,8 @@ int ompss_user_main(int argc, char ** argv) {
   ** process and test input parameters
   ********************************************************************************/
 
-  if (argc != 3){
-    printf("Usage: %s <# iterations> <array dimension>\n",
+  if (argc < 3){
+    printf("Usage: %s <# iterations> <array dimension> [<grainsize>]\n",
            *argv);
     return(EXIT_FAILURE);
   }
@@ -129,10 +131,17 @@ int ompss_user_main(int argc, char ** argv) {
     return(EXIT_FAILURE);
   }
 
+  if( argc > 3 ) {
+    gsize = atoi(*++argv);
+  } else {
+    gsize = 8;
+  }
+
   if (RADIUS < 1) {
     printf("ERROR: Stencil radius %d should be positive\n", RADIUS);
     return(EXIT_FAILURE);
   }
+  radius_val = RADIUS;
 
   if (2*RADIUS +1 > n) {
     printf("ERROR: Stencil radius %d exceeds grid size %d\n", RADIUS, n);
@@ -201,16 +210,9 @@ int ompss_user_main(int argc, char ** argv) {
     OUT(i,j) = (DTYPE)0.0;
 
   stencil_time = wtime();
-  const unsigned radius_val = RADIUS;
-  const unsigned gsize = 4u;
   for (iter = 0; iter<=iterations; iter++){
-    const unsigned top_halo  = (j-radius_val) * n;
-    const unsigned in_center = j * n;
-    const unsigned bot_halo  = min(n-radius_val, in_center + gsize) * n;
-    const unsigned end       = bot_halo + radius_val * n;
-
     /* Apply the stencil operator                                              */
-    #pragma omp taskloop nogroup grainsize(gsize) shared(weight) private(i,ii,jj) \
+    #pragma omp taskloop nogroup grainsize(gsize) shared(weight,n) private(i,ii,jj) \
       in(in[(j-radius_val)*n:min(n,j+gsize+radius_val)*n-1]) \
       inout(out[j*n:min(n-radius_val,j+gsize)*n-1])
     for (j=RADIUS; j<n-RADIUS; j++) {
@@ -229,7 +231,7 @@ int ompss_user_main(int argc, char ** argv) {
     }
 
     /* add constant to solution to force refresh of neighbor data, if any       */
-    #pragma omp taskloop nogroup grainsize(radius_val) private(i) \
+    #pragma omp taskloop nogroup grainsize(gsize) shared(n) private(i) \
       inout( in[j*n:min(n,j+radius_val)*n-1] )
     for (j=0; j<n; j++)
       for (i=0; i<n; i++)
