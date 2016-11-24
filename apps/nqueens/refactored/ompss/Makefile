@@ -1,15 +1,11 @@
-CC = gcc
-MCC = mcc
-CFLAGS=-O3 -std=c11
-MCCFLAGS=--ompss --no-copy-deps $(CFLAGS)
-LDFLAGS=-L$(OCR_INSTALL)/lib -lnanos6 -locr_x86
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
 
-.PHONY: all clean
+MAKE := make
 
-all: nqueens
+ifndef OCR_TYPE
+  $(error Need to specify OCR_TYPE!)
+endif
 
-nqueens: nqueens.c
-	$(MCC) $(MCCFLAGS) $(LDFLAGS) $^ -o $@
-
-clean:
-	rm -f nqueens
+include Makefile.$(OCR_TYPE)

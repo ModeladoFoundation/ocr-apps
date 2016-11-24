@@ -1,5 +1,5 @@
 // \file nqueens.c
-// \author Jorge Bellon <jbellonc@intel.com>
+// \author Jorge Bellon <jorge.bellon.castro@intel.com>
 //
 
 #include "nqueens.h"
@@ -23,7 +23,7 @@ static inline void create_task( struct nqueens_args* args, ocrGuid_t* output )
     ASSERT( err == 0 );
 }
 
-static void find_solutions( const struct nqueens_args* args, u8 final )
+static inline void find_solutions( const struct nqueens_args* args, u8 final )
 {
     if( args->cols != args->all ) {
         u32 available = ~( args->ldiag | args->cols | args->rdiag ) & args->all;
@@ -31,11 +31,12 @@ static void find_solutions( const struct nqueens_args* args, u8 final )
 
         struct nqueens_args arguments;
         arguments.all = args->all;
+        arguments.max_set = args->max_set;
 
         while( spot != 0 ) {
-            arguments.ldiag = (args->ldiag|spot)<<1;
-            arguments.cols  = (args->cols|spot);
-            arguments.rdiag = (args->rdiag|spot)>>1;
+            arguments.ldiag   = (args->ldiag|spot)<<1;
+            arguments.cols    = (args->cols |spot);
+            arguments.rdiag   = (args->rdiag|spot)>>1;
 
             if( final ) {
                 find_solutions( &arguments, final );
@@ -57,17 +58,18 @@ ocrGuid_t findSolutionsEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 {
     // Decode EDT paramv
     const struct nqueens_args* args = (struct nqueens_args*)paramv;
-    const u8 final = NumberOfSetBits(args->cols) > 4;
+    const u8 final = NumberOfSetBits(args->cols) > args->max_set;
 
     find_solutions( args, final );
 
     return NULL_GUID;
 }
 
-void solve_nqueens( u32 n )
+void solve_nqueens( u32 n, u32 cutoff )
 {
     struct nqueens_args arguments = {
-        .all = (1 << n) - 1, .ldiag = 0, .cols = 0, .rdiag = 0 };
+        .max_set = n-cutoff, .all = (1 << n) - 1,
+        .ldiag = 0, .cols = 0, .rdiag = 0 };
 
     ocrGuid_t outEvent;
     create_task( &arguments, &outEvent );
@@ -98,10 +100,15 @@ ocrGuid_t shutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    ASSERT( getArgc(depv[0].ptr) == 2 );
+    if( getArgc(depv[0].ptr) != 3 ) {
+        PRINTF("Usage %s size cutoff", getArgv(depv[0].ptr,0) );
+        ocrAbort(EXIT_FAILURE);
+    }
 
     u32 n = atoi( getArgv(depv[0].ptr,1) );
+    u32 cutoff = atoi( getArgv(depv[0].ptr,2) );
     ASSERT( 0 < n && n < 31 );
+    ASSERT( cutoff < n );
 
     u8 err;
     err = ocrEdtTemplateCreate( &findTemplate, findSolutionsEdt,
@@ -111,7 +118,7 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     err = ocrEdtTemplateCreate( &shutdownTemplate, shutdown, 1, 1 );
     ASSERT( err == 0 );
 
-    solve_nqueens( n );
+    solve_nqueens( n, cutoff );
     return NULL_GUID;
 }
 

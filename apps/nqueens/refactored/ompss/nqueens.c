@@ -27,7 +27,7 @@ static inline uint32_t NumberOfSetBits(uint32_t i)
     return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-static void find_solutions( uint32_t all, uint32_t ldiag, uint32_t cols, uint32_t rdiag, char final )
+void find_solutions( uint32_t maxBitsSet, uint32_t all, uint32_t ldiag, uint32_t cols, uint32_t rdiag, char final )
 {
     if( cols != all ) {
         uint32_t available = ~( ldiag | cols | rdiag ) & all;
@@ -36,11 +36,13 @@ static void find_solutions( uint32_t all, uint32_t ldiag, uint32_t cols, uint32_
         while( spot != 0 ) {
             // Final clause is implemented manually
             // (still no compiler support for nanos6 API)
+            final = NumberOfSetBits(cols) > maxBitsSet;
+
             if( final ) {
-                find_solutions( all, (ldiag|spot)<<1, cols|spot, (rdiag|spot)>>1, final );
+                find_solutions( maxBitsSet, all, (ldiag|spot)<<1, cols|spot, (rdiag|spot)>>1, final );
             } else {
                 #pragma omp task
-                find_solutions( all, (ldiag|spot)<<1, cols|spot, (rdiag|spot)>>1, /* final condition: */ NumberOfSetBits(cols) > 4 );
+                find_solutions( maxBitsSet, all, (ldiag|spot)<<1, cols|spot, (rdiag|spot)>>1, final );
             }
 
             available = available - spot;
@@ -52,10 +54,10 @@ static void find_solutions( uint32_t all, uint32_t ldiag, uint32_t cols, uint32_
     }
 }
 
-void solve_nqueens( uint32_t n )
+void solve_nqueens( uint32_t n, uint32_t cutoff )
 {
     uint32_t all = (1 << n) - 1;
-    find_solutions( all, 0, 0, 0, 0 );
+    find_solutions( n-cutoff, all, 0, 0, 0, 0 );
     #pragma omp taskwait
 
     printf( "%d-queens; %dx%d; sols: %d\n", n, n, n, get_solution_number() );
@@ -63,11 +65,16 @@ void solve_nqueens( uint32_t n )
 
 int ompss_user_main ( int argc, char* argv[] )
 {
-    assert( argc == 2 );
+    if( argc != 3 ) {
+        printf("Usage %s size cutoff", argv[0] );
+        return EXIT_FAILURE;
+    }
 
     uint32_t n = atoi( argv[1] );
+    uint32_t cutoff = atoi( argv[2] );
     assert( 0 < n && n < 31 );
+    assert( cutoff < n );
 
-    solve_nqueens( n );
+    solve_nqueens( n, cutoff );
     return 0;
 }
