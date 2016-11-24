@@ -104,15 +104,8 @@ RM	:= rm
 CP      := cp
 MKDIR   := mkdir
 
-ifeq ($(PREFER_L1), yes)
-  # rodata_local is in L1
-  SECTION_STRING := "^  0"
-  LINKER_SCRIPT := ocr-const-L1.ld
-else
-  # rodata_local is in IPM, start with data_local
-  SECTION_STRING := "^  1"
-  LINKER_SCRIPT := ocr-default.ld
-endif
+SECTION_STRING := "^  0"
+LINKER_SCRIPT := ocr-default.ld
 
 CFLAGS_BASE  := -fxstg-extensions -I $(OCR_INSTALL)/include -DTG_ARCH -I $(APPS_LIBS_INSTALL)/include -I $(TG_INSTALL)/include
 LDFLAGS_BASE := -L $(APPS_LIBS_INSTALL)/lib -L $(TG_INSTALL)/ld-scripts -T $(LINKER_SCRIPT) -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
