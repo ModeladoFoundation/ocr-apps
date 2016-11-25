@@ -23,7 +23,7 @@ CFLAGS += -fxstg-swtest
 
 ifeq ($(USE_TGR), yes)
 # Use this if newlib is compiled for tgr instead of ocr.
-CFLAGS += -pthread
+CFLAGS += -fopenmp
 endif
 
 CFLAGS += -g -O0

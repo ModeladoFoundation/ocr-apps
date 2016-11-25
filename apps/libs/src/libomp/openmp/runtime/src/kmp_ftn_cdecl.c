@@ -19,7 +19,7 @@
 #   if defined  KMP_WIN_CDECL ||  !defined KMP_DYNAMIC_LIB
 #       define KMP_FTN_ENTRIES      KMP_FTN_UPPER
 #   endif
-#elif KMP_OS_UNIX
+#elif KMP_OS_UNIX || KMP_OS_TGR
 #   define KMP_FTN_ENTRIES  KMP_FTN_PLAIN
 #endif
 
