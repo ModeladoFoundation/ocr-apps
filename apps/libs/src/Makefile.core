@@ -12,7 +12,8 @@ ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
 
-all: newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr libomp
+all: newlib libcxx libcxxabi libunwind libscaffold libswtest
+all: libtgr libomp libbuiltins
 
 clean:
 	$(MAKE) -C newlib clean
@@ -24,6 +25,7 @@ clean:
 ifeq ($(ARCH),tg-xe)
 	$(MAKE) -C libtgr TGR_TYPE=tg-xe clean
 	$(MAKE) -C libomp clean
+	$(MAKE) -C compiler-rt-builtins -f Makefile.tg-xe clean
 endif
 
 newlib:
@@ -66,5 +68,11 @@ ifeq ($(ARCH),tg-xe)
 	$(MAKE) -C libomp install
 endif
 
+libbuiltins:
+ifeq ($(ARCH),tg-xe)
+	$(MAKE) -C compiler-rt-builtins -f Makefile.tg-xe install
+endif
 
-.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr libomp
+
+.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest
+.PHONY: libtgr libomp libbuiltins
