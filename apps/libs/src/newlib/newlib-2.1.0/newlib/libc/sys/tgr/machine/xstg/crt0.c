@@ -10,7 +10,7 @@
 char ** environ;
 
 extern int main( int argc, char** argv, char **envp );
-static void app_start( int argc, char ** argv ) __attribute__((used));
+static void app_start( int argc, char ** argv, char ** envp ) __attribute__((used));
 
 //
 // SW alarm code to indicate successful crt startup
@@ -198,8 +198,6 @@ start ( int *sp )
         ;
      envp++;
 
-    environ = envp;
-
     __rtreloc();
 
     //
@@ -219,15 +217,17 @@ start ( int *sp )
         : /* no outputs */ : "{r2}" (0), "{r3}" (0), "L" (XE_READY)
         );
 
-    app_start( argc, argv );
+    app_start( argc, argv, envp );
 }
 
-static void app_start( int argc, char ** argv )
+static void app_start( int argc, char ** argv, char ** envp )
 {
     //
     // zero bss
     //
     __init_bss();
+
+    environ = envp;
     //
     // Do C++ startup
     //

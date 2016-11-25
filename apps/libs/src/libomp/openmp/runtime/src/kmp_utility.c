@@ -398,7 +398,7 @@ __kmp_expand_file_name( char *result, size_t rlen, char *pattern )
 		case 'i':
 		    {
 			pid_t id = getpid();
-			snp_result = KMP_SNPRINTF( pos, end - pos + 1, "%0*d", width, id );
+			snp_result = KMP_SNPRINTF( pos, end - pos + 1, "%0*ld", width, id );
 			if(snp_result >= 0 && snp_result <= end - pos) {
 			    while ( *pos )
 				++pos;
