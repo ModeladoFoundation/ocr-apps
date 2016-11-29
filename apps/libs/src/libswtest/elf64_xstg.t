@@ -161,6 +161,18 @@ SECTIONS
   	*(.gcc_except_table .gcc_except_table.*)
   } > REGION_GLOBAL_RO
 
+  .tdata :
+  {
+  	PROVIDE_HIDDEN( __tls_start = . );
+    KEEP (*(.tdata))
+  } > REGION_GLOBAL_RO
+
+  .tbss :
+  {
+    KEEP (*(.tbss))
+  } > REGION_GLOBAL_RO
+  PROVIDE_HIDDEN( __tls_size = SIZEOF(.tdata) + SIZEOF(.tbss) );
+
   /* Global Read/Write sections */
   .data : {
     . = ALIGN(8);
