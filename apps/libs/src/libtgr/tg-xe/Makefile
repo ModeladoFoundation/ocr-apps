@@ -29,7 +29,8 @@ SRCS = tgr-xe.c \
        memory.c \
        io.c \
        process.c \
-       time.c
+       time.c \
+       nonewlib.c
 
 OBJS = $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRCS))
 OBJS_P = $(patsubst %.c, $(BUILD_DIR_P)/%.o, $(SRCS))
