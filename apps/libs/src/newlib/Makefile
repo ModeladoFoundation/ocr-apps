@@ -221,14 +221,15 @@ newlib_install: $(NEWLIB)
 #
 root_install: newlib_install
 	@echo Installing Newlib to $(APPS_LIBS_INSTALL) ...
-	@mkdir -p $(APPS_LIBS_INSTALL)/lib
-	@cp -n -u -R $(NEWLIB_INSTALL)/include $(APPS_LIBS_INSTALL)/
+	@cd $(NEWLIB_INSTALL)/include && \
+	  find . -type f -exec install -C -D -m 644 "{}" "$(APPS_LIBS_INSTALL)/include/{}" \;
 	@if [ -z $(PIE) ] ; then \
-	   cp -n -u -R $(NEWLIB_INSTALL)/lib $(APPS_LIBS_INSTALL)/ ; \
+	   cd $(NEWLIB_INSTALL)/lib && \
+	     find . -type f -exec install -C -D -m 644 "{}" "$(APPS_LIBS_INSTALL)/lib/{}" \; ; \
 	 else \
 	   for f in $(NEWLIB_INSTALL)/lib/*.[oa] ; do \
 	     fp=`basename $$f | sed -e 's/\(..\)$$/.p\1/'` ;        \
-	     cp -u $$f $(APPS_LIBS_INSTALL)/lib/$$fp ; \
+	     install -C -D -m 644 "$$f" "$(APPS_LIBS_INSTALL)/lib/$$fp" ; \
 	   done ; \
 	 fi
 	@echo Installation complete
