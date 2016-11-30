@@ -1,7 +1,7 @@
 MAKE := make
 
 ifndef ARCH
-	$(error Need to specify ARCH!)
+$(error Need to specify ARCH!)
 endif
 
 all:
