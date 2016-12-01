@@ -2051,6 +2051,11 @@ __kmp_get_xproc( void ) {
 
         r = sysconf( _SC_NPROCESSORS_ONLN );
 
+    #if KMP_OS_TGR
+        if (r)
+            r--; // Reserve one XE for the monitor thread for now.
+    #endif
+
     #elif KMP_OS_DARWIN
 
         // Bug C77011 High "OpenMP Threads and number of active cores".
@@ -2620,66 +2625,89 @@ __kmp_invoke_microtask( microtask_t pkfn,
     fflush(stderr);
     exit(-1);
   case 0:
-    (*pkfn)(&gtid, &tid);
+    ((void(*)(int*,int*))pkfn)
+        (&gtid, &tid);
     break;
   case 1:
-    (*pkfn)(&gtid, &tid, p_argv[0]);
+    ((void(*)(int*,int*,void*))pkfn)
+        (&gtid, &tid, p_argv[0]);
     break;
   case 2:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1]);
+    ((void(*)(int*,int*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1]);
     break;
   case 3:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2]);
+    ((void(*)(int*,int*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2]);
     break;
   case 4:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3]);
+    ((void(*)(int*,int*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3]);
     break;
   case 5:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4]);
     break;
   case 6:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5]);
     break;
   case 7:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6]);
     break;
   case 8:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7]);
     break;
   case 9:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8]);
     break;
   case 10:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9]);
     break;
   case 11:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10]);
     break;
   case 12:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
-            p_argv[11]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
+         p_argv[11]);
     break;
   case 13:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
-            p_argv[11], p_argv[12]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
+         p_argv[11], p_argv[12]);
     break;
   case 14:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
-            p_argv[11], p_argv[12], p_argv[13]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*,void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
+         p_argv[11], p_argv[12], p_argv[13]);
     break;
   case 15:
-    (*pkfn)(&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
-            p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
-            p_argv[11], p_argv[12], p_argv[13], p_argv[14]);
+    ((void(*)(int*,int*,void*,void*,void*,void*,void*,void*,void*,void*,
+              void*,void*,void*,void*,void*,void*,void*))pkfn)
+        (&gtid, &tid, p_argv[0], p_argv[1], p_argv[2], p_argv[3], p_argv[4],
+         p_argv[5], p_argv[6], p_argv[7], p_argv[8], p_argv[9], p_argv[10],
+         p_argv[11], p_argv[12], p_argv[13], p_argv[14]);
     break;
   }
 

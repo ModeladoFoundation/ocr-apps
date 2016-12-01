@@ -170,10 +170,10 @@ struct _pthread_descr_struct {
   pthread_readlock_info *p_readlock_list;  /* List of readlock info structs */
   pthread_readlock_info *p_readlock_free;  /* Free list of structs */
   int p_untracked_readlock_count;	/* Readlocks not tracked by list */
+  uint64_t * p_tlsp; /* pointer to threads tls */
 #if HP_TIMING_AVAIL
   hp_timing_t p_cpuclock_offset; /* Initial CPU clock for thread.  */
 #endif
-  /* New elements must be added at the end.  */
 } __attribute__ ((aligned(32))); /* We need to align the structure so that
 				    doubles are aligned properly.  This is 8
 				    bytes on MIPS and 16 bytes on MIPS64.
@@ -215,6 +215,9 @@ void __pthread_do_cancel(void);
 void __pthread_exited();
 /* Lock for critical sections of manager code */
 extern struct _pthread_fastlock __manager_crit_lock;
+
+/* Allocated and initialize tls */
+int __pthread_init_tls(pthread_descr self);
 
 /* Signal used for interfacing with gdb */
 
