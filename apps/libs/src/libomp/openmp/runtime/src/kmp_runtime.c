@@ -145,6 +145,7 @@ __kmp_get_global_thread_id( )
         --ln
     */
 
+#ifndef KMP_OS_TGR
     for( i = 0 ; i < __kmp_threads_capacity ; i++ ) {
 
         kmp_info_t *thr = (kmp_info_t *)TCR_SYNC_PTR(other_threads[i]);
@@ -166,6 +167,7 @@ __kmp_get_global_thread_id( )
             }
         }
     }
+#endif
 
     /* get specific to try and determine our gtid */
     KA_TRACE( 1000, ( "*** __kmp_get_global_thread_id: internal alg. failed to find "

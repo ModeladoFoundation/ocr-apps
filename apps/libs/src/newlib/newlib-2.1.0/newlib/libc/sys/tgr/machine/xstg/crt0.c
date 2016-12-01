@@ -12,6 +12,11 @@ char ** environ;
 extern int main( int argc, char** argv, char **envp );
 static void app_start( int argc, char ** argv, char ** envp ) __attribute__((used));
 
+// In case we are not linked against pthreads.
+__attribute__((weak))
+void __pthread_initialize (void) {}
+
+
 //
 // SW alarm code to indicate successful crt startup
 //
@@ -228,6 +233,9 @@ static void app_start( int argc, char ** argv, char ** envp )
     __init_bss();
 
     environ = envp;
+
+    __pthread_initialize();
+
     //
     // Do C++ startup
     //
