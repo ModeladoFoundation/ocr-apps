@@ -47,14 +47,8 @@ public:
         _event->addDependence( other.getEvent() );
     }
 
-    void registerEdt( const ocrGuid_t& edt ) {
-        //if( _tasks > 1024  ) {
-        //    // Too many dependences added so far
-        //    replace();
-        //}
-        //++_tasks;
+    void registerEdt() {
         getEvent()++;
-        _event->addDependence(edt);
     }
 
     void openRegion() {

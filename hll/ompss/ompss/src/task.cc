@@ -68,13 +68,11 @@ void nanos_submit_task( void *task )
         new_task,
         static_cast<void*>(new_task->definition.arguments.buffer) );
 
-    // Add dummy event to avoid premature EDT execution
-    // We must add taskwait dependence from EDT's output event
-    new_task->dependences.acquire.push_back( UNINITIALIZED_GUID );
-    new_task->dependences.acq_satisfy.push_back( false );
-
     uint32_t depc = new_task->dependences.acquire.size();
     ocrGuid_t* depv = new_task->dependences.acquire.data();
+
+    // Increase number of EDTs pending for taskwait
+    getLocalScope().taskwait.registerEdt();
 
     // Create EDT of finish type (does not return until
     // all its children EDTs are completed )
@@ -82,15 +80,9 @@ void nanos_submit_task( void *task )
     uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
                   param.first, param.second,
                   depc, depv,
-                  EDT_PROP_FINISH, NULL_HINT, &edtFinished );
-    ASSERT( err == 0);
-
-    // Feed EDT output event to taskwait latch event,
-    // and increment latch's second pre-slot
-    getLocalScope().taskwait.registerEdt(edtFinished);
-
-    // Satisfy barrier (to avoid datarace with taskwait dependence)
-    ocrAddDependence( NULL_GUID, edt, depc-1, DB_DEFAULT_MODE );
+                  EDT_PROP_FINISH|EDT_PROP_EV_INITIALIZED,
+                  NULL_HINT, &getLocalScope().taskwait.getEvent().handle() );
+    ASSERT( err == 0 );
 
     // Add edt dependences
     acquireDependences( *new_task );
