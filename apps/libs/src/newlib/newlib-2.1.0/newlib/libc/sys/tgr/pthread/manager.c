@@ -140,6 +140,9 @@ pthread_start_thread(void *arg)
   /* Set the atexit to clean up this thread */
   atexit(__pthread_exited);
 
+  /* Set up the TLS */
+  __pthread_init_tls(&self);
+
   /* Set this to NULL to inform creating thread that we have finished copying */
   p_self_img->p_header.data.self = NULL;
   tgr_resume(self.p_ppid);
@@ -191,8 +194,10 @@ __MANAGER_CRIT_START();
   /* Find a free segment for the thread, and allocate a stack if needed */
   for (sseg = 1; ; sseg++)
     {
-      if (sseg >= PTHREAD_THREADS_MAX)
-	return EAGAIN;
+      if (sseg >= PTHREAD_THREADS_MAX) {
+        __MANAGER_CRIT_END();
+	    return EAGAIN;
+      }
       if (__pthread_handles[sseg].h_descr == NULL)
 	break;
     }

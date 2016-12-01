@@ -29,6 +29,7 @@
 #include "internals.h"
 #include "spinlock.h"
 #include "restart.h"
+#include "machine/tls.h"
 
 /* These variables are used by the setup code.  */
 
@@ -108,6 +109,11 @@ const int __pthread_offsetof_pid = offsetof(struct _pthread_descr_struct,
 const int __linuxthreads_pthread_sizeof_descr
   = sizeof(struct _pthread_descr_struct);
 
+/* TLS linker symbols */
+extern uint64_t __tls_start; /* Address is pointer to the start of the virgin tls data */
+extern uint64_t __tls_size; /* Address is the size of the tls block */
+extern uint64_t _ftbss, _etbss; /* Addresses are boundaries of tls bss*/
+
 /* Forward declarations */
 
 static void pthread_onexit_process(int retcode, void *arg);
@@ -181,12 +187,27 @@ __pthread_init_max_stacksize(void)
   __pthread_max_stacksize = max_stack;
 }
 
+/* Allocated and initialize tls */
+int __pthread_init_tls(pthread_descr self)
+{
+  /* zero the tbss section once */
+  if (__pthread_initial_thread.p_pid == getpid()) {
+      unsigned long int * p;
+      for (p = &_ftbss; p < &_etbss; p++) {
+          *p = 0L;
+      }
+  }
+  self->p_tlsp = malloc((size_t)&__tls_size);
+  if (self->p_tlsp == NULL) {
+      return -1;
+  }
+  memcpy(self->p_tlsp, &__tls_start, (size_t)&__tls_size);
+  __SET_TLS_REG(self->p_tlsp);
+  return 0;
+}
 
 static void pthread_initialize(void)
 {
-  struct sigaction sa;
-  sigset_t mask;
-
   /* If already done (e.g. by a constructor called earlier!), bail out */
   if (__pthread_initial_thread.p_pid == getpid()) return;
 #ifdef TEST_FOR_COMPARE_AND_SWAP
@@ -197,6 +218,8 @@ static void pthread_initialize(void)
   __pthread_init_max_stacksize ();
   /* Update the descriptor for the initial thread. */
   __pthread_initial_thread.p_pid = getpid();
+  /* Initialize tls */
+  __pthread_init_tls(__pthread_main_thread);
 
   /* Initialize the lock for the critical sections of "manager" code */
   __pthread_init_lock(&__manager_crit_lock);

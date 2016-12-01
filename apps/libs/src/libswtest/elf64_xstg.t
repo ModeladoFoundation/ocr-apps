@@ -169,7 +169,10 @@ SECTIONS
 
   .tbss :
   {
+    . = ALIGN(8);
+    PROVIDE_HIDDEN( _ftbss = . );
     KEEP (*(.tbss))
+    PROVIDE_HIDDEN( _etbss = . );
   } > REGION_GLOBAL_RO
   PROVIDE_HIDDEN( __tls_size = SIZEOF(.tdata) + SIZEOF(.tbss) );
 
