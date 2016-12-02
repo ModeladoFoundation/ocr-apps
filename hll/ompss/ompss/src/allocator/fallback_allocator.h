@@ -40,6 +40,7 @@ public:
         return result;
 	}
 
+#ifndef RELEASE
     Tp* allocate( std::size_t n ) {
         Tp* result = _main.allocate(n, std::nothrow);
         if( !result ) {
@@ -51,6 +52,7 @@ public:
         }
         return result;
     }
+#endif
 
 	void deallocate( Tp* ptr, std::size_t n ) {
         if( fallback_allocated(ptr) ) {
