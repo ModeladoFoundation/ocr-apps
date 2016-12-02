@@ -19,7 +19,8 @@ OBJS         := $(patsubst $(SRC_DIR)%.c, %.o, $(SRCS))
 
 LIB := libocrAppUtils.a
 # Other libraries required
-REQ_LIBS :=
+REQ_LIBS := libc
+
 
 # Installed files
 INSTALL_HEADERS := $(patsubst $(SRC_DIR)%.h,$(APPS_LIBS_INSTALL)/include/%.h, $(SRC_INCLUDES))
@@ -36,7 +37,7 @@ ARFLAGS := rsv
 
 OPT_FLAGS := -O3
 
-INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(TG_INSTALL)/include
+INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include.old -I$(TG_INSTALL)/include
 
 CFLAGS    := -fno-builtin -g
 
