@@ -5,7 +5,8 @@
 #include "task/task_decl.h"
 #include "task/tls.h"
 
-#include "dependences/dependence_map.h"
+//#include "dependences/exact_match_map.h"
+#include "dependences/overlap_match_map.h"
 
 namespace ompss {
 

@@ -10,6 +10,8 @@
 #include "allocator/firstfit_allocator.h"
 #include "allocator/proxy_allocator.h"
 
+#include <unordered_map>
+
 namespace ompss {
 // Dependence map
 //#define TREE_TMP_ALLOC
@@ -24,11 +26,20 @@ typedef db_allocator<dependence_pair> tree_allocator;
 typedef std::allocator<dependence_pair> tree_allocator;
 #endif
 
-// map implementation may change
-typedef std::map<
+struct ExactMatchHash {
+    // Discard least significant bits that don't conform a word
+    size_t operator()( const AccessBase::Address& key ) const {
+        return key>>4;
+    }
+};
+
+typedef std::equal_to<AccessBase::Address> ExactMatchEqual;
+
+typedef std::unordered_map<
     AccessBase::Address,
     DependenceEntry,
-    std::less<AccessBase::Address>,
+    ExactMatchHash,
+    ExactMatchEqual,
     tree_allocator
 > AccessMap;
 
@@ -46,16 +57,13 @@ struct AccessTracker {
 
 private:
     bool isConflict( const AccessBase& access, AccessMap::iterator& position ) {
-        return position != _accesses.end() && access.contains( position->first );
-    }
-
-    bool previouslyRegistered( const AccessBase& access, AccessMap::iterator& position ) {
-        return position != _accesses.end() && position->first == access.end();
+        // If a {key,value} pair is found, there is a conflict
+        return position != _accesses.end();
     }
 
     AccessMap::iterator findConflicts( const AccessBase& new_access ) {
         // Find conflicts using new_access begin address
-        return _accesses.lower_bound( new_access.begin() );
+        return _accesses.find( new_access.begin() );
     }
 
     DependenceEntry& getDependenceEntry( AccessMap::iterator position ) {
@@ -64,9 +72,9 @@ private:
 
     template<AccessTypes type>
     AccessMap::iterator addEntry( AccessMap::iterator& position, const Access<type>& new_access ) {
-        // Store entries using new_access' end address as key
+        // Store entries using new_access' base address as key
         return _accesses.emplace_hint( position, std::piecewise_construct,
-                            std::forward_as_tuple(new_access.end()-1u), std::forward_as_tuple<>() );
+                            std::forward_as_tuple(new_access.begin()), std::forward_as_tuple<>() );
     }
 
     AccessMap _accesses;
@@ -76,14 +84,13 @@ template<AccessTypes type>
 inline void AccessTracker::registerAccess( const Access<type>& new_access, TaskDependences& dependences ) {
     AccessMap::iterator conflict_iter = findConflicts(new_access);
 
-    while( isConflict(new_access, conflict_iter) ) {
+    if( isConflict(new_access, conflict_iter) ) {
         DependenceEntry& entry = getDependenceEntry(conflict_iter);
         log::log<log::Module::dependences>( " +- Existing access @ ", &entry );
 
         entry.addDependence<type>( dependences );
         ++conflict_iter;
-    }
-    if( !previouslyRegistered( new_access, conflict_iter ) ) {
+    } else {
         // Maybe open the section in DependenceEntry constructor?
         AccessMap::iterator position = addEntry( conflict_iter, new_access );
         DependenceEntry& entry = getDependenceEntry(position);
