@@ -609,7 +609,7 @@ _OCR_TASK_FNC_( timestepEdt )
 
     s64 phase = itimestep%2;
 
-    DEBUG_PRINTF(("%s id %d x %d y %d\n", __func__, id, id_x, id_y));
+    DEBUG_PRINTF(("%s id %ld x %ld y %ld\n", __func__, id, id_x, id_y));
 
     if(itimestep==1) //Do not time iteration 0
     {
@@ -991,8 +991,10 @@ _OCR_TASK_FNC_( FNC_initialize )
     PTR_spmdJoin_reductionH->new = 1;  //first time
     PTR_spmdJoin_reductionH->type = REDUCE;
     PTR_spmdJoin_reductionH->returnEVT = NULL_GUID;
-    if( id == 0 )
+    if( id == 0 ) {
         PTR_spmdJoin_reductionH->returnEVT = PTR_globalOcrParamH->EVT_OUT_spmdJoin_reduction;
+    }
+
 
     return NULL_GUID;
 }
@@ -1465,13 +1467,13 @@ void init_settings( void* PTR_cmdLineArgs, globalCmdParamH_t* PTR_cmdParamH )
 
     PRINTF("\n");
     PRINTF("OCR stencil execution on 2D grid\n");
-    PRINTF("Grid size                   = %dx%d\n", PTR_cmdParamH->NP_X, PTR_cmdParamH->NP_Y);
-    PRINTF("Number of tiles             = %d\n", PTR_cmdParamH->NR);
-    PRINTF("Tiles in x & y-directions   = %dx%d\n", PTR_cmdParamH->NR_X, PTR_cmdParamH->NR_Y);
+    PRINTF("Grid size                   = %ldx%ld\n", PTR_cmdParamH->NP_X, PTR_cmdParamH->NP_Y);
+    PRINTF("Number of tiles             = %ld\n", PTR_cmdParamH->NR);
+    PRINTF("Tiles in x & y-directions   = %ldx%ld\n", PTR_cmdParamH->NR_X, PTR_cmdParamH->NR_Y);
     PRINTF("Radius of stencil           = %d\n", HALO_RADIUS);
     PRINTF("Type of stencil             = star\n");
     PRINTF("Data type                   = double precision\n");
-    PRINTF("Number of iterations        = %d\n", PTR_cmdParamH->NT);
+    PRINTF("Number of iterations        = %ld\n", PTR_cmdParamH->NT);
     PRINTF("\n");
 
 }
@@ -1534,3 +1536,5 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     return NULL_GUID;
 }
+
+
