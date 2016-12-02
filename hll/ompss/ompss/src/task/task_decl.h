@@ -7,7 +7,6 @@
 #include "allocator/proxy_allocator.h"
 
 #include "dependences/task_dependences_decl.h"
-#include "dependences/dependence_map.h"
 
 #include "common.h"
 #include "event.h"
@@ -15,7 +14,6 @@
 
 #include "task/taskwait.h"
 
-#include <map>
 #include <nanos6_rt_interface.h>
 
 extern "C" typedef void (*run_funct_t)(void* args_block);

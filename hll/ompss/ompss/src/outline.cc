@@ -30,6 +30,7 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
     TaskScopeInfo scope;
     setLocalScope( scope );
 
+#ifdef BENCHMARK_DEPENDENCES
     // Open taskwait region
     scope.taskwait.openRegion();
 
@@ -38,6 +39,7 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
 
     // Close taskwait region
     scope.taskwait.closeRegion();
+#endif // BENCHMARK_DEPENDENCES
 
     // Clean-up
     releaseDependences( std::get<1>(args), std::get<2>(args), std::get<3>(args) );

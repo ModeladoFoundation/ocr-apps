@@ -5,7 +5,6 @@
 #include "task_decl.h"
 
 #include "dependences/task_dependences.h"
-#include "dependences/dependence_map.h"
 
 #include "common.h"
 #include "event.h"

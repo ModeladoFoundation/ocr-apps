@@ -71,6 +71,7 @@ void nanos_submit_task( void *task )
     uint32_t depc = new_task->dependences.acquire.size();
     ocrGuid_t* depv = new_task->dependences.acquire.data();
 
+#ifdef BENCHMARK_DEPENDENCES
     // Increase number of EDTs pending for taskwait
     getLocalScope().taskwait.registerEdt();
 
@@ -86,6 +87,7 @@ void nanos_submit_task( void *task )
 
     // Add edt dependences
     acquireDependences( *new_task );
+#endif // BENCHMARK_DEPENDENCES
 
     Task::factory::destroy( new_task );
 }
