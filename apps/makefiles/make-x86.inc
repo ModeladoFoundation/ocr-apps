@@ -107,7 +107,11 @@ endif
 GEN_CONFIG_FILE       := ${WORKLOAD_INSTALL}/generated.cfg
 
 ifeq ($(strip $(OCR_CONFIG)),)
-  OCR_CONFIG := $(GEN_CONFIG_FILE)
+  ifeq ($(OCR_TYPE), tg-x86)
+    OCR_CONFIG := $(OCR_INSTALL)/share/ocr/config/tg-x86/default.cfg
+  else
+    OCR_CONFIG := $(GEN_CONFIG_FILE)
+  endif
 endif
 
 REQ_LIBS ?=
