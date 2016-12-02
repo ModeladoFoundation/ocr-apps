@@ -38,7 +38,7 @@ ARFLAGS := rsv
 # 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
 OPT_FLAGS := -O3
 
-INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(TG_INSTALL)/include
+INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include.old -I$(TG_INSTALL)/include
 
 CFLAGS    := -fno-builtin -g
 CFLAGS    += -DENABLE_EXTENSION_PARAMS_EVT
