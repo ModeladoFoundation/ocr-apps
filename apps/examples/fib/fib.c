@@ -75,7 +75,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         completeParamv.depGuid = inDep;
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, complete, PRMNUM(complete), 3);
-        ocrEdtCreate(&comp, templateGuid, EDT_PARAM_DEF, (u64 *)&completeParamv, 3, NULL, EDT_PROP_NONE,
+        ocrEdtCreate(&comp, templateGuid, PRMNUM(complete), (u64 *)&completeParamv, 3, NULL, EDT_PROP_NONE,
                      NULL_HINT, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }
@@ -100,7 +100,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, fibEdt, PRMNUM(fib), 1);
-        ocrEdtCreate(&fib0, templateGuid, EDT_PARAM_DEF, (u64 *)&fibParamv0, 1, &depv, EDT_PROP_NONE,
+        ocrEdtCreate(&fib0, templateGuid, PRMNUM(fib), (u64 *)&fibParamv0, 1, &depv, EDT_PROP_NONE,
                      NULL_HINT, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }
@@ -118,7 +118,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, fibEdt, PRMNUM(fib), 1);
-        ocrEdtCreate(&fib1, templateGuid, EDT_PARAM_DEF, (u64 *)&fibParamv1, 1, &depv, EDT_PROP_NONE,
+        ocrEdtCreate(&fib1, templateGuid, PRMNUM(fib), (u64 *)&fibParamv1, 1, &depv, EDT_PROP_NONE,
                      NULL_HINT, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }
@@ -169,7 +169,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, absFinal, PRMNUM(absFinal), 1);
         PRINTF("Created template and got GUID "GUIDF"\n", GUIDA(templateGuid));
-        ocrEdtCreate(&absFinalEdt, templateGuid, EDT_PARAM_DEF, (u64 *)&absFinalParamv, 1, NULL, EDT_PROP_NONE,
+        ocrEdtCreate(&absFinalEdt, templateGuid, PRMNUM(absFinal), (u64 *)&absFinalParamv, 1, NULL, EDT_PROP_NONE,
                      NULL_HINT, NULL);
         PRINTF("Created ABS EDT and got  GUID "GUIDF"\n", GUIDA(absFinalEdt));
         ocrEdtTemplateDestroy(templateGuid);
@@ -198,7 +198,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, fibEdt, PRMNUM(fib), 1);
-        ocrEdtCreate(&fibC, templateGuid, EDT_PARAM_DEF, (u64 *)&fibParamv, 1, &depv, EDT_PROP_NONE,
+        ocrEdtCreate(&fibC, templateGuid, PRMNUM(fib), (u64 *)&fibParamv, 1, &depv, EDT_PROP_NONE,
                      NULL_HINT, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }

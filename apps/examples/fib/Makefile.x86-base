@@ -63,6 +63,7 @@ CFLAGS :=
 # REQ_LIBS are included.
 LDFLAGS := -lpthread $(EXTRALDFLAGS)
 
+CONFIG_FLAGS := --guid COUNTED_MAP
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
