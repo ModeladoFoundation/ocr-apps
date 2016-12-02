@@ -4,13 +4,33 @@
 
 #include "debug/loglevel.h"
 
+#ifndef RELEASE
 #include <atomic>
 #include <fstream>
 #include <iostream>
-
 #include <cstdio>
+#endif
+
+#include <type_traits>
+#include <utility>
 
 namespace log {
+
+#ifdef RELEASE
+
+// In release, log is disabled
+template< typename... Args >
+inline void join( Args... args ) {
+}
+
+#else
+
+template< bool B, typename... Args >
+void join( const std::integral_constant<bool,B>&, Args... args );
+
+template< typename... Args >
+inline void join( const std::false_type&, Args... args ) {
+}
 
 inline unsigned tid() {
     static std::atomic<unsigned> tid = ATOMIC_VAR_INIT(0);
@@ -42,13 +62,6 @@ private:
     }
 };
 
-template< bool B, typename... Args >
-void join( const std::integral_constant<bool,B>&, Args... args );
-
-template< typename... Args >
-inline void join( const std::false_type&, Args... args ) {
-}
-
 template< typename First, typename... Args >
 inline void join( const std::true_type& enabled, First first, Args... args ) {
     if( tid() == 0 ) {
@@ -67,6 +80,8 @@ inline void join( const std::true_type& ) {
         os << std::endl;
     }
 }
+
+#endif // RELEASE
 
 // Desagregation by log level
 template< Module module, typename... Args >
@@ -95,5 +110,5 @@ inline void verbose( Args... args ) {
 
 } // namespace log
 
-#endif
+#endif // OUTPUT_H
 

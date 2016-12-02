@@ -4,6 +4,7 @@
 
 #include "backtrace.h"
 
+#ifndef RELEASE
 #include <exception>
 #include <iostream>
 
@@ -43,18 +44,16 @@ inline void check_condition( bool passed, const char* condition,
     }
 }
 
-#ifndef RELEASE
-
 #   define dbg_check(cond) \
        debug::check_condition( cond, #cond " failed ", __func__, __FILE__, __LINE__ )
+
+} // namespace debug
 
 #else
 
 #  define dbg_check(cond)
 
 #endif
-
-} // namespace debug
 
 #endif // FATAL_H
 

@@ -50,7 +50,7 @@ struct lifo_allocator {
         return result;
 	}
 
-#if 0 // Avoid usage of exceptions
+#ifndef RELEASE
     Tp* allocate( std::size_t n, std::size_t align = alignof(Tp) ) {
         Tp* result = allocate( std::nothrow, n, align );
         if( !result )
