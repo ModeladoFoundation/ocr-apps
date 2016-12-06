@@ -84,7 +84,7 @@ typedef pthread_key_t __libc_key_t;
 /* Initialize the named lock variable, leaving it in a consistent, unlocked
    state.  */
 #define __libc_lock_init(NAME) \
-  (__pthread_mutex_init != NULL ? __pthread_mutex_init (&(NAME), NULL) : 0);
+  (__pthread_mutex_init != NULL ? __pthread_mutex_init ((pthread_mutex_t*)&(NAME), NULL) : 0);
 #define __libc_rwlock_init(NAME) \
   (__pthread_rwlock_init != NULL ? __pthread_rwlock_init (&(NAME), NULL) : 0);
 
@@ -96,7 +96,7 @@ typedef pthread_key_t __libc_key_t;
 	pthread_mutexattr_t __attr;					      \
 	__pthread_mutexattr_init (&__attr);				      \
 	__pthread_mutexattr_settype (&__attr, PTHREAD_MUTEX_RECURSIVE_NP); \
-	__pthread_mutex_init (&(NAME).mutex, &__attr);			      \
+	__pthread_mutex_init ((pthread_mutex_t*)&(NAME).mutex, &__attr);			      \
 	__pthread_mutexattr_destroy (&__attr);				      \
       }									      \
   } while (0);
@@ -105,7 +105,7 @@ typedef pthread_key_t __libc_key_t;
    used again until __libc_lock_init is called again on it.  This must be
    called on a lock variable before the containing storage is reused.  */
 #define __libc_lock_fini(NAME) \
-  (__pthread_mutex_destroy != NULL ? __pthread_mutex_destroy (&(NAME)) : 0);
+  (__pthread_mutex_destroy != NULL ? __pthread_mutex_destroy ((pthread_mutex_t*)&(NAME)) : 0);
 #define __libc_rwlock_fini(NAME) \
   (__pthread_rwlock_destroy != NULL ? __pthread_rwlock_destroy (&(NAME)) : 0);
 
@@ -114,7 +114,7 @@ typedef pthread_key_t __libc_key_t;
 
 /* Lock the named lock variable.  */
 #define __libc_lock_lock(NAME) \
-  (__pthread_mutex_lock != NULL ? __pthread_mutex_lock (&(NAME)) : 0);
+  (__pthread_mutex_lock != NULL ? __pthread_mutex_lock ((pthread_mutex_t*)&(NAME)) : 0);
 #define __libc_rwlock_rdlock(NAME) \
   (__pthread_rwlock_rdlock != NULL ? __pthread_rwlock_rdlock (&(NAME)) : 0);
 #define __libc_rwlock_wrlock(NAME) \
@@ -125,7 +125,7 @@ typedef pthread_key_t __libc_key_t;
 
 /* Try to lock the named lock variable.  */
 #define __libc_lock_trylock(NAME) \
-  (__pthread_mutex_trylock != NULL ? __pthread_mutex_trylock (&(NAME)) : 0)
+  (__pthread_mutex_trylock != NULL ? __pthread_mutex_trylock ((pthread_mutex_t*)&(NAME)) : 0)
 #define __libc_rwlock_tryrdlock(NAME) \
   (__pthread_rwlock_tryrdlock != NULL \
    ? __pthread_rwlock_tryrdlock (&(NAME)) : 0)
@@ -138,7 +138,7 @@ typedef pthread_key_t __libc_key_t;
 
 /* Unlock the named lock variable.  */
 #define __libc_lock_unlock(NAME) \
-  (__pthread_mutex_unlock != NULL ? __pthread_mutex_unlock (&(NAME)) : 0);
+  (__pthread_mutex_unlock != NULL ? __pthread_mutex_unlock ((pthread_mutex_t*)&(NAME)) : 0);
 #define __libc_rwlock_unlock(NAME) \
   (__pthread_rwlock_unlock != NULL ? __pthread_rwlock_unlock (&(NAME)) : 0);
 
