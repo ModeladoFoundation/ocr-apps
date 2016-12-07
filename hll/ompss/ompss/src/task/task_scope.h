@@ -22,6 +22,19 @@ struct TaskScopeInfo {
     TaskwaitEvent                           taskwait;
 
     TaskScopeInfo();
+    ~TaskScopeInfo();
+
+    static void setLocalScope( ompss::TaskScopeInfo& scope ) {
+        setTLS( 0U, static_cast<void*>(&scope) );
+    }
+
+    static void unsetLocalScope() {
+        setTLS( 0U, nullptr );
+    }
+
+    static ompss::TaskScopeInfo& getLocalScope() {
+        return *static_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
+    }
 };
 
 inline TaskScopeInfo::TaskScopeInfo() :
@@ -35,16 +48,18 @@ inline TaskScopeInfo::TaskScopeInfo() :
 #endif
     taskwait()
 {
+    // Open taskwait region
+    taskwait.openRegion();
+
+    // Store local scope in EDT local storage
+    setLocalScope( *this );
 }
 
-inline ompss::TaskScopeInfo& getLocalScope()
-{
-    return *static_cast<ompss::TaskScopeInfo*>( getTLS( 0U ) );
-}
+inline TaskScopeInfo::~TaskScopeInfo() {
+    // Close taskwait region
+    taskwait.closeRegion();
 
-inline void setLocalScope( ompss::TaskScopeInfo& scope )
-{
-    setTLS( 0U, static_cast<void*>(&scope) );
+    unsetLocalScope();
 }
 
 } // namespace ompss

@@ -48,10 +48,10 @@ inline Task* Task::factory::construct( nanos_task_info* info, uint32_t args_size
     // requested size would be multiplied by sizeof(TaskDefinition), and
     // args_size could not be a multiplier of this value.
     // Default allocation type is uint8_t (unsigned char).
-    TaskScopeInfo::ParamAllocator alloc( getLocalScope().paramMemory );
+    TaskScopeInfo::ParamAllocator alloc(TaskScopeInfo::getLocalScope().paramMemory);
     // Allocate space for TaskDefinition and arguments buffer.
     void* def_ptr  = alloc.allocate( sizeof(TaskDefinition) + args_size, alignof(TaskDefinition) );
-    void* task_ptr = static_cast<void*>(&getLocalScope().taskMemory);
+    void* task_ptr = static_cast<void*>(&TaskScopeInfo::getLocalScope().taskMemory);
 
     // Construct in-place both Task definition and Task instances
     TaskDefinition* def = new (def_ptr) TaskDefinition( info, args_size );
@@ -68,7 +68,7 @@ inline void Task::factory::destroy( Task* task )
 
     // Free all temporary storage
     // allocated for this task
-    getLocalScope().paramMemory.clear();
+    TaskScopeInfo::getLocalScope().paramMemory.clear();
 }
 
 inline std::pair<uint32_t,uint64_t*> Task::packParams()
