@@ -38,7 +38,17 @@ ARFLAGS := rsv
 # 4/15/15 Mark: doesn't hurt to use -O0 all the time during development
 OPT_FLAGS := -O3
 
-INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include.old -I$(TG_INSTALL)/include
+INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include
+
+# Special case to include old libc files
+USE_OLD_LIBC := $(strip $(foreach count, $(shell seq -s ' ' $(words $(REQ_LIBS))), $(if $(findstring libc,$(word $(count), $(REQ_LIBS))),yes)))
+
+ifeq ($(USE_OLD_LIBC), yes)
+  INC_FLAGS := $(INC_FLAGS) -I $(APPS_LIBS_INSTALL)/include.old
+else
+  INC_FLAGS := $(INC_FLAGS) -I $(APPS_LIBS_INSTALL)/include
+endif
+INC_FLAGS := $(INC_FLAGS) -I$(TG_INSTALL)/include
 
 CFLAGS    := -fno-builtin -g
 CFLAGS    += -DENABLE_EXTENSION_AFFINITY
