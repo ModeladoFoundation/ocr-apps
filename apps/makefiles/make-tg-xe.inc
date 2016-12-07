@@ -110,8 +110,13 @@ RM	:= rm
 CP      := cp
 MKDIR   := mkdir
 
-SECTION_STRING := "^  0"
-LINKER_SCRIPT := ocr-default.ld
+ifeq ($(PREFER_L1), yes)
+  SECTION_STRING := "^  0"
+  LINKER_SCRIPT := ocr-default-L1.ld
+else
+  SECTION_STRING := "^  0"
+  LINKER_SCRIPT := ocr-default.ld
+endif
 
 CFLAGS_BASE  := -fxstg-extensions -I $(OCR_INSTALL)/include -DTG_ARCH -I $(APPS_LIBS_INSTALL)/include -I $(TG_INSTALL)/include
 LDFLAGS_BASE := -L $(APPS_LIBS_INSTALL)/lib -L $(TG_INSTALL)/ld-scripts -T $(LINKER_SCRIPT) -static -emainEdt -Map=$(WORKLOAD_BUILD)/out.map
