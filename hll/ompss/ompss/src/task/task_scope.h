@@ -23,6 +23,7 @@ struct TaskScopeInfo {
     ScratchAllocator::arena_type<64U,2048U> scratchMemory;
     UninitializedTask                       taskMemory;
     AccessTracker                           accesses;
+    ocrGuid_t                               taskOutlineTemplate;
     TaskwaitEvent                           taskwait;
 
     TaskScopeInfo();
@@ -50,8 +51,12 @@ inline TaskScopeInfo::TaskScopeInfo() :
 #else
     accesses(),
 #endif
+    taskOutlineTemplate(),
     taskwait()
 {
+    uint8_t err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
+    ASSERT( err == 0);
+
     // Open taskwait region
     taskwait.openRegion();
 
@@ -60,6 +65,9 @@ inline TaskScopeInfo::TaskScopeInfo() :
 }
 
 inline TaskScopeInfo::~TaskScopeInfo() {
+    uint8_t err = ocrEdtTemplateDestroy( taskOutlineTemplate );
+    ASSERT( err == 0 );
+
     // Close taskwait region
     taskwait.closeRegion();
 

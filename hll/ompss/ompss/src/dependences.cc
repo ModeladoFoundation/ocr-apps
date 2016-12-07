@@ -5,7 +5,7 @@
 #include "profile/profile.h"
 #include "task/task.h"
 
-#include <nanos6_rt_interface.h>
+#include <nanos6/nanos6_rt_interface.h>
 #include <ocr.h>
 
 extern "C" {

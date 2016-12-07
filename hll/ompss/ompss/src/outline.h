@@ -21,7 +21,6 @@ struct MainStorage {
 static_assert( std::is_trivially_copyable<MainStorage>::value == true,
     "This class must fulfill all requirements to support plain copies (memcpy)" );
 
-extern ocrGuid_t taskOutlineTemplate;
 
 ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] );
 

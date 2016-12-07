@@ -14,7 +14,7 @@
 
 #include "task/taskwait.h"
 
-#include <nanos6_rt_interface.h>
+#include <nanos6/nanos6_rt_interface.h>
 
 extern "C" typedef void (*run_funct_t)(void* args_block);
 

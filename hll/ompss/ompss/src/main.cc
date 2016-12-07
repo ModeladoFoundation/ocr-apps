@@ -4,7 +4,7 @@
 #include "outline.h"
 #include "task/task.h"
 
-#include <nanos6_rt_interface.h>
+#include <nanos6/nanos6_rt_interface.h>
 #include <ocr.h>
 
 extern "C" int ompss_user_main( int argc, char* argv[] );
@@ -106,8 +106,6 @@ void nanos_init()
     using namespace ompss;
 
     // Create EDT templates
-    uint8_t err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
-    ASSERT( err == 0);
 }
 
 //! \brief Wait until the the runtime has shut down
@@ -120,8 +118,6 @@ void nanos_notify_ready_for_shutdown()
 {
     using namespace ompss;
     // Do the shutdown right here
-    uint8_t err = ocrEdtTemplateDestroy( taskOutlineTemplate );
-    ASSERT( err == 0 );
 }
 
 } // extern "C"

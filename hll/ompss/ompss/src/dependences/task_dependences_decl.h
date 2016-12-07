@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <ocr.h>
-#include <nanos6_rt_interface.h>
+#include <nanos6/nanos6_rt_interface.h>
 
 namespace ompss {
 

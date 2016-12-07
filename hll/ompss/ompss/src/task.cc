@@ -10,7 +10,7 @@
 #include "task/task.h"
 #include "task/taskwait.h"
 
-#include <nanos6_rt_interface.h>
+#include <nanos6/nanos6_rt_interface.h>
 #include <ocr.h>
 
 extern "C" {
@@ -77,7 +77,7 @@ void nanos_submit_task( void *task )
         // all its children EDTs are completed )
         ocrGuid_t edt;
 
-        uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
+        uint8_t err = ocrEdtCreate( &edt, scope.taskOutlineTemplate,
                       param.first, param.second,
                       depc, depv,
                       EDT_PROP_FINISH|EDT_PROP_OEVT_VALID,

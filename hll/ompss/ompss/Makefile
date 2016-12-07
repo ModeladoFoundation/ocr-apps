@@ -10,7 +10,7 @@ RELEASE=-DRELEASE -O3 -march=native -fno-exceptions -fno-rtti -fvisibility-inlin
 OCR_EXTENSIONS=-DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_LEGACY
 CPPFLAGS=\
  -Isrc\
- -Iinclude/nanos6\
+ -Iinclude\
  -I$(OCR_INSTALL)/include\
  -DOCR_TYPE_H=$(OCR_TYPE).h\
  $(OCR_EXTENSIONS)
@@ -22,11 +22,11 @@ CXXFLAGS=\
 
 LDFLAGS=\
  -fuse-linker-plugin\
- -shared\
  -Wl,--discard-all\
  -Wl,-rpath,$(OCR_INSTALL)/lib\
  -L$(OCR_INSTALL)/lib\
- -locr_$(OCR_TYPE)
+ -locr_$(OCR_TYPE)\
+ -Wl,-rpath,$(abspath lib)
 
 ifeq ($(EXTRAE),yes)
 CPPFLAGS += -I$(EXTRAE_HOME)/include -D_ENABLE_EXTRAE\
@@ -39,13 +39,18 @@ endif
 LIBS=$(addprefix lib/,\
  libnanos6.so\
  libnanos6.a\
+ libompss-ocr.so\
 )
 
-OBJ=\
- src/dependences\
- src/main\
- src/task\
- src/outline
+COMMON_OBJ=\
+ obj/dependences\
+ obj/task\
+ obj/outline\
+ obj/ocr_interface
+
+
+INIT_OBJ=\
+ obj/main
 
 .PHONY: all install clean
 
@@ -58,17 +63,27 @@ install: $(LIBS)
 	@install -C -m 644 lib/*.a  -t $(DESTDIR)/lib
 
 clean:
-	rm -f lib/* src/*.o
+	rm -f lib/* obj/*.o include/ompss_ocr_interface.h
 
-%.so.o: %.cc
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC -c $^ -o $@
+include/ompss_ocr_interface.h: include/ompss_ocr_interface.h.template obj/gen_interface
+	@obj/gen_interface > sedscript
+	@sed include/ompss_ocr_interface.h.template -f sedscript > $@
+	@rm sedscript
 
-%.a.o: %.cc
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $^ -o $@
+obj/%.so.o: src/%.cc include/ompss_ocr_interface.h
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC -c $< -o $@
 
-lib/%.a: $(addsuffix .a.o,$(OBJ))
+obj/%.a.o: src/%.cc include/ompss_ocr_interface.h
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
+lib/libompss-ocr.so: $(addsuffix .so.o,$(COMMON_OBJ))
+	$(CXX) $(CXXFLAGS) $^ -shared $(LDFLAGS) -o $@
+
+lib/libnanos6.so: $(addsuffix .so.o,$(COMMON_OBJ) $(INIT_OBJ))
+	$(CXX) $(CXXFLAGS) $^ -shared $(LDFLAGS) -o $@
+
+lib/libnanos6.a: $(addsuffix .a.o,$(COMMON_OBJ) $(INIT_OBJ))
 	$(AR) cru $@ $^
 
-lib/%.so: $(addsuffix .so.o,$(OBJ))
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
+obj/gen_interface: src/gen_interface.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -fPIC -o $@

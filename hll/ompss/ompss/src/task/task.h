@@ -12,7 +12,7 @@
 
 #include "task/task_scope.h"
 
-#include <nanos6_rt_interface.h>
+#include <nanos6/nanos6_rt_interface.h>
 
 namespace ompss {
 

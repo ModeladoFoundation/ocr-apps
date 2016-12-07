@@ -7,7 +7,6 @@
 
 namespace ompss {
 
-ocrGuid_t taskOutlineTemplate;
 
 /*! \brief ocrEdt_t function wrapper
  * This function is used to encapsulate OmpSs compiler generated

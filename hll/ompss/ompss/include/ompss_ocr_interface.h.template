@@ -1,0 +1,21 @@
+#ifndef OMPSS_OCR_INTERFACE_H
+#define OMPSS_OCR_INTERFACE_H
+
+#ifdef __cplusplus
+#define _Alignas alignas
+
+extern "C" {
+#endif
+
+@OMPSS_LOCAL_STRUCT_PLACEHOLDER@
+
+void ompss_local_setup( ompss_local_t* );
+
+void ompss_local_teardown( ompss_local_t* );
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // OMPSS_OCR_INTERFACE_H
+
