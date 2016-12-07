@@ -3,6 +3,7 @@
 #define NQUEENS_H
 
 #include <ocr.h>
+#include <timer.h>
 
 struct nqueens_args
 {
@@ -11,6 +12,12 @@ struct nqueens_args
     u32       ldiag;
     u32       cols;
     u32       rdiag;
+};
+
+struct shutdown_args
+{
+    u32 n;
+    timestamp_t start;
 };
 
 // Computes Hamming-weight for an arbitrary integer
