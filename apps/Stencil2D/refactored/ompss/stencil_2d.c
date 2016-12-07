@@ -60,6 +60,7 @@ HISTORY: - Written by Rob Van der Wijngaart, February 2009.
 **********************************************************************************/
 
 #include <par-res-kern_general.h>
+#include <timer.h>
 
 #ifndef RADIUS
   #define RADIUS 2
@@ -99,8 +100,7 @@ int ompss_user_main(int argc, char ** argv) {
   int    iterations;      /* number of times to run the algorithm                */
   int    radius_val;      /* RADIUS value (necessary for OmpSs pragmas)          */
   int    gsize;           /* Granularity of OmpSs tasks                          */
-  double stencil_time,    /* timing parameters                                   */
-         avgtime;
+  timestamp_t start, stop;  /* timing parameters                                 */
   int    stencil_size;    /* number of points in stencil                         */
   DTYPE  * RESTRICT in;   /* input grid values                                   */
   DTYPE  * RESTRICT out;  /* output grid values                                  */
@@ -209,7 +209,7 @@ int ompss_user_main(int argc, char ** argv) {
   for (j=RADIUS; j<n-RADIUS; j++) for (i=RADIUS; i<n-RADIUS; i++)
     OUT(i,j) = (DTYPE)0.0;
 
-  stencil_time = wtime();
+  get_time(&start);
   for (iter = 0; iter<=iterations; iter++){
     /* Apply the stencil operator                                              */
     #pragma omp taskloop nogroup grainsize(gsize) shared(weight,n) private(i,ii,jj) \
@@ -239,7 +239,7 @@ int ompss_user_main(int argc, char ** argv) {
 
   } /* end of iterations                                                        */
   #pragma omp taskwait
-  stencil_time = wtime() - stencil_time;
+  get_time(&stop);
 
   /* compute L1 norm in parallel                                                */
   for (j=RADIUS; j<n-RADIUS; j++) {
@@ -270,10 +270,7 @@ int ompss_user_main(int argc, char ** argv) {
     error = EXIT_SUCCESS;
   }
 
-  flops = (DTYPE) (2*stencil_size+1) * f_active_points;
-  avgtime = stencil_time/iterations;
-  printf("Rate (MFlops/s): "FSTR"  Avg time (s): %lf\n",
-         1.0E-06 * flops/avgtime, avgtime);
+  summary_throughput_timer(&start,&stop,iterations);
 
   free(in);
   free(out);
