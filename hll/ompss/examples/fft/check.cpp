@@ -1,6 +1,6 @@
 
-#include "complex.h"
-#include "fft.h"
+#include "complex.hpp"
+#include "fft.hpp"
 
 #include <fstream>
 #include <cassert>
