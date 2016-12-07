@@ -54,7 +54,7 @@ CFLAGS_WARN_ERROR=no
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := ${APPS_ROOT}/hll/ompss/ompss
+REQ_LIBS := timer ${APPS_ROOT}/hll/ompss/ompss
 
 # Space separated list of source files
 SRCS := nqueens.c
@@ -68,7 +68,7 @@ CFLAGS :=
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS_OMPSS := -L$(NANOS_HOME)/lib -lnanos6
-LDFLAGS := $(EXTRALDFLAGS) -lm
+LDFLAGS := $(EXTRALDFLAGS) -lm -ltimer
 
 # Targets:
 #   - all:     Build the application.

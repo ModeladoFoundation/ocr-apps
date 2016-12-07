@@ -1,11 +1,11 @@
 // \file nqueens.c
 // \author Jorge Bellon <jbellonc@intel.com>
-//
 
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <timer.h>
 
 unsigned solutions = 0U;
 
@@ -56,11 +56,16 @@ void find_solutions( uint32_t maxBitsSet, uint32_t all, uint32_t ldiag, uint32_t
 
 void solve_nqueens( uint32_t n, uint32_t cutoff )
 {
+    timestamp_t start, stop;
     uint32_t all = (1 << n) - 1;
+
+    get_time(&start);
     find_solutions( n-cutoff, all, 0, 0, 0, 0 );
     #pragma omp taskwait
+    get_time(&stop);
 
     printf( "%d-queens; %dx%d; sols: %d\n", n, n, n, get_solution_number() );
+    summary_throughput_timer(&start,&stop,1);
 }
 
 int ompss_user_main ( int argc, char* argv[] )
