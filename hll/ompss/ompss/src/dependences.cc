@@ -38,7 +38,7 @@ void nanos_register_read_depinfo(void *handler, void *start, size_t length)
     log::log<log::Module::dependences>( "Read access: 0x", std::hex, access.begin(), " - 0x", access.end() );
 
     // Get running task access map (not handler's)
-    AccessTracker& accesses = getLocalScope().accesses;
+    AccessTracker& accesses = TaskScopeInfo::getLocalScope().accesses;
     accesses.registerAccess( access, task->dependences );
 }
 
@@ -85,7 +85,7 @@ void nanos_register_readwrite_depinfo(void *handler, void *start, size_t length)
     log::log<log::Module::dependences>( "Write access: 0x", std::hex, access.begin(), " - 0x", access.end() );
 
     // Get running task access map (not handler's)
-    AccessTracker& accesses = getLocalScope().accesses;
+    AccessTracker& accesses = TaskScopeInfo::getLocalScope().accesses;
     accesses.registerAccess( access, task->dependences );
 }
 

@@ -24,22 +24,15 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
     // Decode arguments and dependences
     std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> args =
         Task::unpackParams( paramc, paramv );
-    TaskDefinition* def = std::get<0>(args);
 
-    // Store local scope in EDT local storage
-    TaskScopeInfo scope;
-    setLocalScope( scope );
+    {
+        // Store local scope in EDT local storage
+        TaskScopeInfo scope;
 
-#ifdef BENCHMARK_DEPENDENCES
-    // Open taskwait region
-    scope.taskwait.openRegion();
-
-    // Execute outline task
-    def->run( def->arguments.buffer );
-
-    // Close taskwait region
-    scope.taskwait.closeRegion();
-#endif // BENCHMARK_DEPENDENCES
+        // Execute outline task
+        TaskDefinition* def = std::get<0>(args);
+        def->run( def->arguments.buffer );
+    }
 
     // Clean-up
     releaseDependences( std::get<1>(args), std::get<2>(args), std::get<3>(args) );

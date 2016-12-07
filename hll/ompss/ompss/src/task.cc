@@ -57,37 +57,37 @@ void nanos_submit_task( void *task )
     PROFILE_BLOCK( nanos_submit_task );
 
     Task* new_task = static_cast<Task*>(task);
-
-    // Create task EDT and its cleanup EDT
-    ocrGuid_t edt;
-    // Taskwait event will depend on EDT to be completed
-    ocrGuid_t edtFinished;
+    TaskScopeInfo& scope = TaskScopeInfo::getLocalScope();
 
     // Register dependences
     new_task->dependences.register_dependences(
         new_task,
         static_cast<void*>(new_task->definition.arguments.buffer) );
 
-    uint32_t depc = new_task->dependences.acquire.size();
-    ocrGuid_t* depv = new_task->dependences.acquire.data();
+    // Create new EDT
+    {
+        std::pair<uint32_t,uint64_t*> param = new_task->packParams();
+        uint32_t depc = new_task->dependences.acquire.size();
+        ocrGuid_t* depv = new_task->dependences.acquire.data();
 
-#ifdef BENCHMARK_DEPENDENCES
-    // Increase number of EDTs pending for taskwait
-    getLocalScope().taskwait.registerEdt();
+        // Increase number of EDTs pending for taskwait
+        scope.taskwait.registerEdt();
 
-    // Create EDT of finish type (does not return until
-    // all its children EDTs are completed )
-    std::pair<uint32_t,uint64_t*> param = new_task->packParams();
-    uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
-                  param.first, param.second,
-                  depc, depv,
-                  EDT_PROP_FINISH|EDT_PROP_EV_INITIALIZED,
-                  NULL_HINT, &getLocalScope().taskwait.getEvent().handle() );
-    ASSERT( err == 0 );
+        // Create EDT of finish type (does not return until
+        // all its children EDTs are completed )
+        ocrGuid_t edt;
+
+        uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
+                      param.first, param.second,
+                      depc, depv,
+                      EDT_PROP_FINISH|EDT_PROP_OEVT_VALID,
+                      NULL_HINT, &scope.taskwait.getEvent().handle() );
+
+        ASSERT( err == 0 );
+    }
 
     // Add edt dependences
     acquireDependences( *new_task );
-#endif // BENCHMARK_DEPENDENCES
 
     Task::factory::destroy( new_task );
 }
@@ -100,12 +100,13 @@ void nanos_taskwait(char const *invocation_source)
 {
     using namespace ompss;
     PROFILE_BLOCK( nanos_taskwait );
+    TaskScopeInfo& scope = TaskScopeInfo::getLocalScope();
 
     // Wait until successors complete
-    getLocalScope().taskwait.wait();
+    scope.taskwait.wait();
 
     // Clear dependence map
-    getLocalScope().accesses.clear();
+    scope.accesses.clear();
 }
 
 } // extern "C"
