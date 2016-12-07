@@ -242,8 +242,8 @@ void forkSpmdEdts_Cart1D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     //Map the SPMD EDTs onto the policy domains
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
-    PRINTF("Using affinity API\n");
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
 #else
     PRINTF("NOT Using affinity API\n");
 #endif
@@ -256,7 +256,7 @@ void forkSpmdEdts_Cart1D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
         PRM_init1dEdt.id = i;
 
         int pd = getPolicyDomainID_Cart1D( i, edtGridDims, pdGridDims );
-        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
@@ -297,8 +297,8 @@ void forkSpmdEdts_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     //Map the SPMD EDTs onto the policy domains
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
-    PRINTF("Using affinity API\n");
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
 #else
     PRINTF("NOT Using affinity API\n");
 #endif
@@ -312,7 +312,7 @@ void forkSpmdEdts_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
         PRM_init2dEdt.id = i;
 
         int pd = getPolicyDomainID_Cart2D( i, edtGridDims, pdGridDims );
-        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
@@ -354,8 +354,8 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     //Map the SPMD EDTs onto the policy domains
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
-    PRINTF("Using affinity API\n");
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
 #else
     PRINTF("NOT Using affinity API\n");
 #endif
@@ -369,7 +369,7 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
         PRM_init3dEdt.id = i;
 
         int pd = getPolicyDomainID_Cart3D( i, edtGridDims, pdGridDims );
-        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
@@ -430,7 +430,7 @@ _OCR_TASK_FNC_( PDinit1dEdt )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords_Cart1D( i, edtGridDims[0] );
-        DEBUG_PRINTF(("id %d map PD %d\n", myRank, PD_id));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", myRank, PD_id));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
 #endif
@@ -498,7 +498,7 @@ _OCR_TASK_FNC_( PDinit2dEdt )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords_Cart2D( i, j, edtGridDims[0], edtGridDims[1] );
-        DEBUG_PRINTF(("id %d map PD %d\n", myRank, PD_id));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", myRank, PD_id));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
 #endif
@@ -571,7 +571,7 @@ _OCR_TASK_FNC_( PDinit3dEdt )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords_Cart3D( i, j, k, edtGridDims[0], edtGridDims[1], edtGridDims[2] );
-        DEBUG_PRINTF(("id %d map PD %d\n", myRank, PD_id));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", myRank, PD_id));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
 #endif
@@ -617,7 +617,7 @@ void forkSpmdEdts_staticScheduler_Cart1D( ocrGuid_t (*initEdt)(u32, u64*, u32, o
     for( i = 0; i < nPDs; ++i )
     {
         int pd = i;
-        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
@@ -664,7 +664,7 @@ void forkSpmdEdts_staticScheduler_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, o
     for( i = 0; i < nPDs; ++i )
     {
         int pd = i;
-        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
@@ -712,7 +712,7 @@ void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, o
     for( i = 0; i < nPDs; ++i )
     {
         int pd = i;
-        DEBUG_PRINTF(("id %d map PD %d\n", i, pd));
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
