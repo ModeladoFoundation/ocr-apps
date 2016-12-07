@@ -48,7 +48,7 @@ TARGET := nqueens
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS :=
+REQ_LIBS := timer
 
 # Space separated list of source files
 SRCS := nqueens.c
@@ -61,7 +61,7 @@ CFLAGS :=
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread $(EXTRALDFLAGS)
+LDFLAGS := -lpthread $(EXTRALDFLAGS) -ltimer
 
 # Targets:
 #   - all:     Build the application.

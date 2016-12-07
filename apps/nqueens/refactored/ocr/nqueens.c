@@ -17,10 +17,17 @@ static inline void create_task( struct nqueens_args* args, ocrGuid_t* output )
     u32 paramc = sizeof(struct nqueens_args)/sizeof(u64)+1;
     u64* paramv = (u64*)args;
 
+    u8 err;
     ocrGuid_t edt;
-    u8 err = ocrEdtCreate( &edt, findTemplate, paramc, paramv, 0, NULL,
+    if( output ) {
+        err  = ocrEdtCreate( &edt, findTemplate, paramc, paramv, 0, NULL,
+                  EDT_PROP_FINISH|EDT_PROP_OEVT_VALID, NULL_HINT, output );
+        ASSERT( err == 0 );
+    } else {
+        err  = ocrEdtCreate( &edt, findTemplate, paramc, paramv, 0, NULL,
                   EDT_PROP_FINISH, NULL_HINT, output );
-    ASSERT( err == 0 );
+        ASSERT( err == 0 );
+    }
 }
 
 static inline void find_solutions( const struct nqueens_args* args, u8 final )
@@ -67,26 +74,38 @@ ocrGuid_t findSolutionsEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
 void solve_nqueens( u32 n, u32 cutoff )
 {
-    struct nqueens_args arguments = {
+    u8 err;
+    ocrGuid_t outEvent;
+    ocrGuid_t shutdownEdt;
+    struct nqueens_args app_args = {
         .max_set = n-cutoff, .all = (1 << n) - 1,
         .ldiag = 0, .cols = 0, .rdiag = 0 };
+    struct shutdown_args shutdown_args = { .n = n };
 
-    ocrGuid_t outEvent;
-    create_task( &arguments, &outEvent );
+    get_time(&shutdown_args.start);
 
-    ocrGuid_t shutdownEdt;
-    u64 paramv = n;
-    u8 err = ocrEdtCreate( &shutdownEdt, shutdownTemplate,
-                  1, &paramv, 1, &outEvent,
+    err = ocrEventCreate( &outEvent, OCR_EVENT_ONCE_T, EVT_PROP_NONE );
+    ASSERT( err == 0 );
+
+    err = ocrEdtCreate( &shutdownEdt, shutdownTemplate,
+                  sizeof(shutdown_args)/sizeof(u64)+1, (u64*)&shutdown_args,
+                  1, &outEvent,
                   EDT_PROP_NONE, NULL_HINT, NULL );
     ASSERT( err == 0 );
+
+    create_task( &app_args, &outEvent );
 }
 
 ocrGuid_t shutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
+    timestamp_t stop;
+    get_time(&stop);
     u32 found = get_solution_number();
+
+    struct shutdown_args* args = (struct shutdown_args*)paramv;
     PRINTF( "%d-queens; %dx%d; sols: %d\n",
-            paramv[0], paramv[0], paramv[0], found );
+            args->n, args->n, args->n, found );
+    summary_throughput_timer(&args->start,&stop,1);
 
     u8 err;
     err = ocrEdtTemplateDestroy( findTemplate );
