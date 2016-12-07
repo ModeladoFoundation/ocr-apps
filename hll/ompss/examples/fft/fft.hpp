@@ -9,18 +9,7 @@
 #include <memory>
 #include <iostream>
 
-#include <sys/time.h>
-
 const float PI = 3.141592653589793238460f;
-
-inline double take_time() {
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-
-    gettimeofday( &tv, NULL );
-    return tv.tv_sec*1000.0 + tv.tv_usec/1000.0;
-}
 
 // Computes twiddle factor W[k,N]
 inline Complex twiddle( unsigned k, unsigned N )
