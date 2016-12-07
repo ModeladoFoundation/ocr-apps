@@ -2,11 +2,15 @@
 #ifndef TASK_SCOPE_H
 #define TASK_SCOPE_H
 
+#ifdef EXACT_MATCH_DEPENDENCES
+#  include "dependences/exact_match_map.h"
+#else
+#  include "dependences/overlap_match_map.h"
+#endif
+
+#include "outline.h"
 #include "task/task_decl.h"
 #include "task/tls.h"
-
-//#include "dependences/exact_match_map.h"
-#include "dependences/overlap_match_map.h"
 
 namespace ompss {
 
