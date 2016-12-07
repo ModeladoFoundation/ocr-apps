@@ -4,11 +4,8 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 #include <unistd.h>
-
-#include <mkl.h>
-#define malloc(x) mkl_malloc(x, 128)
-#define free(x)   mkl_free(x)
 
 // ------------------------------------------------------------------------
 // Robust Check the factorization of the result matrix

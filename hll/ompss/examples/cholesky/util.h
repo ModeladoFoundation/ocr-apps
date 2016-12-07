@@ -20,17 +20,11 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <assert.h>
-
-#include <stdio.h>
 #include <stdlib.h>
 
-#include <sys/time.h>
-#include <sys/times.h>
-
-#   include <mkl.h>
-#   define malloc(x) mkl_malloc(x, 128)
-#   define free(x)   mkl_free(x)
+#include <mkl.h>
+#define malloc(x) mkl_malloc(x, 128)
+#define free(x)   mkl_free(x)
 
 enum blas_cmach_type {
 	blas_base      = 151,
@@ -46,28 +40,6 @@ enum blas_cmach_type {
 	blas_sfmin     = 161};
 
 double BLAS_dfpinfo( enum blas_cmach_type cmach );
-
-static float get_time()
-{
-	static double gtod_ref_time_sec = 0.0;
-
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-
-	// If this is the first invocation of through dclock(), then initialize the
-	// "reference time" global variable to the seconds field of the tv struct.
-	if (gtod_ref_time_sec == 0.0)
-		gtod_ref_time_sec = (double) tv.tv_sec;
-
-	// Normalize the seconds field of the tv struct so that it is relative to the
-	// "reference time" that was recorded during the first invocation of dclock().
-	const double norm_sec = (double) tv.tv_sec - gtod_ref_time_sec;
-
-	// Compute the number of seconds since the reference time.
-	const double t = norm_sec + tv.tv_usec * 1.0e-6;
-
-	return (float) t;
-}
 
 #endif // UTIL_H
 

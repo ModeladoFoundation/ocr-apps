@@ -22,6 +22,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <timer.h>
 #include <unistd.h>
 
 #pragma omp task inout( A->m[i*A->n/A->ts + j] ) label(potrf)
@@ -115,32 +116,33 @@ void cholesky_linear( matrix_t* matrix )
 //--------------------------- MAIN --------------------
 int ompss_user_main(int argc, char* argv[])
 {
-	if ( argc != 3) {
-		printf( "%s block_size input_file\n", argv[0] );
+	if ( argc < 3) {
+		printf( "%s block_size input_file [output_file]\n", argv[0] );
 		exit( -1 );
 	}
 	const unsigned ts = atoi(argv[1]); // tile size
 	const char* input = argv[2]; // input file name
+	const char* output; // output file name
+    if( argc > 3 )
+        output = argv[3];
+    else
+        output = NULL;
 
 	// Init matrix
 	matrix_t* matrix = initialize_matrix( input, ts );
 
-	const float t1 = get_time();
+    timestamp_t start, stop;
+	get_time(&start);
+
 	cholesky_linear(matrix);
-	const float t2 = get_time();
 
-	const float time = t2 - t1;
-    const unsigned n = matrix->n;
-	const float gflops = (((1.0 / 3.0) * n * n * n) / ((time) * 1.0e+9));
+	get_time(&stop);
+    summary_throughput_timer(&start,&stop,1);
 
-	printf( "============ CHOLESKY RESULTS ============\n" );
-	printf( "  matrix size:          %dx%d\n", n, n);
-	printf( "  block size:           %dx%d\n", ts, ts);
-	printf( "  time (s):             %f\n", time);
-	printf( "  performance (gflops): %f\n", gflops);
-	printf( "==========================================\n" );
+    if( output ) {
+        store_matrix( output, matrix );
+    }
 
-    store_matrix( input, matrix );
 	delete_matrix( matrix );
 	return 0;
 }

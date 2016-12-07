@@ -2,6 +2,8 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+#include <assert.h>
+
 typedef struct {
     unsigned n;
     unsigned ts;
