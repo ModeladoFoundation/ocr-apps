@@ -8,6 +8,10 @@
 
 #define timestamp_t struct timeval
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void get_time(timestamp_t * t_time);
 
 double elapsed_sec(timestamp_t * start, timestamp_t * stop);
@@ -36,5 +40,9 @@ void print_throughput(char * timer_name, unsigned long long nb_instances, double
 void summary_throughput_timer(timestamp_t * start_t, timestamp_t * stop_t, unsigned long long instances);
 
 void summary_throughput_dbl(double secs, unsigned long long instances);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif /* __TIMER_H_ */
