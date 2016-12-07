@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
+#include <timer.h>
 
 // Computes reverse addressing of k
 // Must specify most significant bit possition
@@ -65,17 +66,17 @@ inline void fft_stage( unsigned stage, unsigned N, Complex* X, const Complex* W 
 
 inline void fft( unsigned N, Complex* X )
 {
+    timestamp_t start, stop;
     const Complex* W = compute_twiddle_table(N);
 
-    double start = take_time();
-
+    get_time(&start);
     fft_stage( 1, N, X, W );
     #pragma omp taskwait
-
-    double stop = take_time();
-    std::cout << "Time: " << stop - start << " ms" << std::endl;
+    get_time(&stop);
 
     fft_shuffle( N, X );
+
+    summary_throughput_timer(&start,&stop,1);
 }
 
 extern "C" int ompss_user_main(int argc, char* argv[])
@@ -99,7 +100,7 @@ extern "C" int ompss_user_main(int argc, char* argv[])
     if( filename )
         write( N, X, filename );
 
-    //delete[] X;
+    delete[] X;
 
     return 0;
 }
