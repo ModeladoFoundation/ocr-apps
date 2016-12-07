@@ -200,6 +200,10 @@ public:
 	///	</summary>
 	virtual void Go();
 
+#ifdef USE_OCR
+    virtual void ocrBegin();
+#endif
+
 public:
 	///	<summary>
 	///		Compute error norms.

@@ -63,6 +63,7 @@ Model::Model(
 ///////////////////////////////////////////////////////////////////////////////
 
 Model::~Model() {
+    #ifndef USE_OCR
 	if (m_pGrid != NULL) {
 		delete m_pGrid;
 	}
@@ -83,6 +84,7 @@ Model::~Model() {
 	if (m_pTestCase != NULL) {
 		delete m_pTestCase;
 	}
+    #endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -277,6 +279,27 @@ void Model::SubStep(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_OCR
+
+void Model::ocrBegin() {
+
+    Announce("Splitting the domain and starting the OCR steady state loops.");
+
+    m_pGrid->EvaluateGeometricTerms();
+
+    EvaluateStateFromRestartFile();
+
+    m_pGrid->ApplyBoundaryConditions();
+
+    m_pTimestepScheme->Initialize();
+    m_pHorizontalDynamics->Initialize();
+    m_pVerticalDynamics->Initialize();
+
+
+}
+
+#endif
 
 void Model::Go() {
 

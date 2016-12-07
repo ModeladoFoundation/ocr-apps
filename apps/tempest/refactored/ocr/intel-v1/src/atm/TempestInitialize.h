@@ -47,6 +47,12 @@
 #include <petscsnes.h>
 #endif
 
+#ifdef USE_OCR
+#include <ocxxr-main.hpp>
+#endif
+
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 
 struct _TempestCommandLineVariables {
@@ -121,8 +127,13 @@ struct _TempestCommandLineVariables {
 	BeginCommandLine() \
 	_TempestDefineCommandLineDefault(TestCaseName)
 
+#ifdef USE_OCR
+#define EndTempestCommandLine(args) \
+    EndCommandLine(args)
+#else
 #define EndTempestCommandLine(argv) \
 	EndCommandLine(argv)
+#endif
 
 #define SetDefaultResolution(default_resolution) \
 	CommandLineInt(_tempestvars.nResolutionX, "resolution", default_resolution);
@@ -277,15 +288,35 @@ void _TempestSetupMethodOfLines(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-
+#ifdef USE_OCR
+void _TempestSetupOutputManagers(
+    Model & model,
+    _TempestCommandLineVariables & vars,
+    ocxxr::Arena<void> & arena
+) {
+#else
 void _TempestSetupOutputManagers(
 	Model & model,
 	_TempestCommandLineVariables & vars
 ) {
+#endif
 	// Set the reference output manager for the model
 	if (!vars.fNoOutput) {
 		AnnounceStartBlock("Creating reference output manager");
 		OutputManagerReference * pOutmanRef =
+
+        #ifdef USE_OCR
+			arena.New<OutputManagerReference>(
+				*(model.GetGrid()),
+				vars.timeOutputDeltaT,
+				vars.strOutputDir,
+				vars.strOutputPrefix,
+				vars.nOutputsPerFile,
+				vars.nOutputResX,
+				vars.nOutputResY,
+				false,
+				true);
+        #else
 			new OutputManagerReference(
 				*(model.GetGrid()),
 				vars.timeOutputDeltaT,
@@ -296,6 +327,7 @@ void _TempestSetupOutputManagers(
 				vars.nOutputResY,
 				false,
 				true);
+        #endif
 
 		if (vars.fOutputVorticity) {
 			pOutmanRef->OutputVorticity();
@@ -316,30 +348,53 @@ void _TempestSetupOutputManagers(
 		(vars.param.m_strRestartFile != "")
 	) {
 		AnnounceStartBlock("Creating composite output manager");
+        #ifdef USE_OCR
+		model.AttachOutputManager(
+			arena.New<OutputManagerComposite>(
+				*(model.GetGrid()),
+				vars.timeOutputRestartDeltaT,
+				vars.strOutputDir,
+				vars.strOutputPrefix));
+        #else
 		model.AttachOutputManager(
 			new OutputManagerComposite(
 				*(model.GetGrid()),
 				vars.timeOutputRestartDeltaT,
 				vars.strOutputDir,
 				vars.strOutputPrefix));
+        #endif
 		AnnounceEndBlock("Done");
 	}
 
 	// Set the checksum output manager for the model
 	AnnounceStartBlock("Creating checksum output manager");
+    #ifdef USE_OCR
+	model.AttachOutputManager(
+		arena.New<OutputManagerChecksum>(
+			*(model.GetGrid()),
+			vars.timeOutputDeltaT));
+    #else
 	model.AttachOutputManager(
 		new OutputManagerChecksum(
 			*(model.GetGrid()),
 			vars.timeOutputDeltaT));
+    #endif
 	AnnounceEndBlock("Done");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-
+#ifdef USE_OCR
+void _TempestSetupCubedSphereModel(
+    Model & model,
+    _TempestCommandLineVariables & vars,
+    ocxxr::Arena<void> & arena
+) {
+#else
 void _TempestSetupCubedSphereModel(
 	Model & model,
 	_TempestCommandLineVariables & vars
 ) {
+#endif
 	// Set the parameters
 	model.SetParameters(vars.param);
 
@@ -378,6 +433,18 @@ void _TempestSetupCubedSphereModel(
 		nCommSize = 6;
 	}
 
+#ifdef USE_OCR
+	Grid * pGrid =
+		arena.New<GridCSGLL>(
+			model,
+			nCommSize,
+			vars.nResolutionX,
+			4,
+			vars.nHorizontalOrder,
+			vars.nVerticalOrder,
+			vars.nLevels,
+			eVerticalStaggering);
+#else
 	Grid * pGrid =
 		new GridCSGLL(
 			model,
@@ -388,18 +455,28 @@ void _TempestSetupCubedSphereModel(
 			vars.nVerticalOrder,
 			vars.nLevels,
 			eVerticalStaggering);
-
+#endif
 	// Set the vertical stretching function
 	STLStringHelper::ToLower(vars.strVerticalStretch);
 	if (vars.strVerticalStretch == "uniform") {
 
 	} else if (vars.strVerticalStretch == "cubic") {
+#ifdef USE_OCR
+		pGrid->SetVerticalStretchFunction(
+			arena.New<VerticalStretchCubic>());
+#else
 		pGrid->SetVerticalStretchFunction(
 			new VerticalStretchCubic);
+#endif
 
 	} else if (vars.strVerticalStretch == "pwlinear") {
+#ifdef USE_OCR
+		pGrid->SetVerticalStretchFunction(
+			arena.New<VerticalStretchPiecewiseLinear>());
+#else
 		pGrid->SetVerticalStretchFunction(
 			new VerticalStretchPiecewiseLinear);
+#endif
 
 	} else {
 		_EXCEPTIONT("Invalid value for --vstretch");
@@ -411,7 +488,11 @@ void _TempestSetupCubedSphereModel(
 	AnnounceEndBlock("Done");
 
 	// Setup OutputManagers
+#ifdef USE_OCR
+	_TempestSetupOutputManagers(model, vars, arena);
+#else
 	_TempestSetupOutputManagers(model, vars);
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -421,6 +502,9 @@ void _TempestSetupCartesianModel(
 	double dGDim[],
 	double dRefLat,
 	_TempestCommandLineVariables & vars
+    #ifdef USE_OCR
+    , ocxxr::Arena<void> & arena
+    #endif
 ) {
 	// Set the parameters
 	model.SetParameters(vars.param);
@@ -493,21 +577,35 @@ void _TempestSetupCartesianModel(
 	AnnounceEndBlock("Done");
 
 	// Setup OutputManagers
+    #ifdef USE_OCR
+    _TempestSetupOutputManagers(model, vars, arena);
+    #else
 	_TempestSetupOutputManagers(model, vars);
+    #endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+#ifdef USE_OCR
+#define TempestSetupCubedSphereModel(model, arena) \
+    _TempestSetupCubedSphereModel(model, _tempestvars, arena);
 
+#define TempestSetupCartesianModel(model, dimensions, latitude, arena) \
+    _TempestSetupCartesianModel(model, dimensions, latitude, _tempestvars, arena);
+#else
 #define TempestSetupCubedSphereModel(model) \
 	_TempestSetupCubedSphereModel(model, _tempestvars);
 
 #define TempestSetupCartesianModel(model, dimensions, latitude) \
 	_TempestSetupCartesianModel(model, dimensions, latitude, _tempestvars);
+#endif
+
 
 ///////////////////////////////////////////////////////////////////////////////
-
+#ifdef USE_OCR
+void TempestInitialize( ) {
+#else
 void TempestInitialize(int * argc, char*** argv) {
-
+#endif
 #ifdef USE_PETSC
 	// Initialize PetSc
 	PetscInitialize(argc, argv, NULL, NULL);
@@ -515,6 +613,10 @@ void TempestInitialize(int * argc, char*** argv) {
 	// Initialize MPI
 #ifdef USE_MPI
 	MPI_Init(argc, argv);
+#else
+#ifdef USE_OCR
+    std::cout << "Tempest running with OCR" << std::endl;
+#endif
 #endif
 #endif
 
@@ -531,6 +633,9 @@ void TempestDeinitialize() {
 	// Finalize MPI
 #ifdef USE_MPI
 	MPI_Finalize();
+#else
+#ifdef USE_OCR
+    std::cout << "Tempest OCR run complete!\n" << std::endl;
 #endif
 #endif
 
