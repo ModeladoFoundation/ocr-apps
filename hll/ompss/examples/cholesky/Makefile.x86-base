@@ -17,7 +17,7 @@ WORKLOAD_INSTALL_ROOT ?= $(WORKLOAD_SRC)/install
 # If 1+, this is the index in the argument
 # list after which everything is considered an
 # input file. Note that the index STARTS AT 1
-WORKLOAD_INPUT_FILE_IDX := 2
+WORKLOAD_INPUT_FILE_IDX := 0
 
 # You can specify default arguments here. These
 # will be overridden by (in order):
@@ -27,7 +27,11 @@ WORKLOAD_INPUT_FILE_IDX := 2
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 64 $(WORKLOAD_SRC)/data/1024.in
+
+WORKLOAD_INPUTS = $(WORKLOAD_SRC)/data/1024.in
+WORKLOAD_OUTS = $(WORKLOAD_INPUTS:%.in=%.out)
+
+WORKLOAD_ARGS ?= 64 $(WORKLOAD_INPUTS) $(WORKLOAD_OUTS)
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -54,7 +58,7 @@ CFLAGS_WARN_ERROR=no
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := ${APPS_ROOT}/hll/ompss/ompss
+REQ_LIBS := timer ${APPS_ROOT}/hll/ompss/ompss
 
 # Space separated list of source files
 SRCS := matrix.c file.c util.c cholesky.c
@@ -68,7 +72,7 @@ CFLAGS := -DMKL_ILP64 -I/opt/intel/tools/mkl/include
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS_OMPSS := -L$(NANOS_HOME)/lib -lnanos6
-LDFLAGS := $(EXTRALDFLAGS) -L/opt/intel/tools/mkl/lib/intel64 -Wl,-rpath,/opt/intel/tools/mkl/lib/intel64 -lmkl_intel_ilp64 -lmkl_core -lmkl_sequential -lm -ldl
+LDFLAGS := -ltimer $(EXTRALDFLAGS) -L/opt/intel/tools/mkl/lib/intel64 -Wl,-rpath,/opt/intel/tools/mkl/lib/intel64 -lmkl_intel_ilp64 -lmkl_core -lmkl_sequential -lm -ldl
 
 # Targets:
 #   - all:     Build the application.
@@ -110,11 +114,7 @@ install: all
 prerun: $(WORKLOAD_INPUTS)
 
 # This rule will be executed after execution
-# The variable ${WORKLOAD_OUTS} contains a space separated
-# list of output files
 # 'postrun: ;' is an empty rule (the rule is required)
-
-WORKLOAD_OUTS = $(WORKLOAD_INPUTS:%.in=%.out)
 
 .PHONY: postrun
 postrun: $(WORKLOAD_BUILD_ROOT)/$(ARCH)/check

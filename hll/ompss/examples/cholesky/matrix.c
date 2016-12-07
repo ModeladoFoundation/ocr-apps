@@ -94,16 +94,11 @@ matrix_t* load_matrix( const char* filename, unsigned ts )
     return result;
 }
 
-void store_matrix( const char* input, matrix_t* matrix )
+void store_matrix( const char* filename, matrix_t* matrix )
 {
     size_t len = matrix->n * matrix->n * sizeof(double);
     double* tmp = malloc( len );
     copy_all_from_matrix( matrix, tmp );
-
-	char filename[1024];
-    strncpy( filename, input, 1024 );
-    unsigned extension_pos = strlen( input) - 2;
-	sprintf( filename+extension_pos, "out" );
 
     store_values( filename, tmp, matrix->n );
     free( tmp );

@@ -2,13 +2,14 @@
 #include "util.h"
 #include "file.h"
 
+#include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
-#include <errno.h>
 
 void load_values( const char* filename, double** matrix, unsigned* n )
 {
