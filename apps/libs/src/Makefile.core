@@ -41,8 +41,8 @@ libunwind: newlib libcxx libcxxabi
 
 libswtest: newlib
 ifeq ($(ARCH),tg-xe)
-	$(MAKE) -C libswtest; fi
-	$(MAKE) -C libswtest install; fi
+	$(MAKE) -C libswtest
+	$(MAKE) -C libswtest install
 endif
 
 libscaffold: newlib libswtest
