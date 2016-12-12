@@ -1,0 +1,16 @@
+R-STREAM generated SW4
+
+Based on https://github.com/geodynamics/sw4
+
+The files rhs4sg.c and rhs4sg.gen.c are licensed under GPLv2 (see LICENSE.txt for details).
+
+This directory contains the following files:
+ - rhs4sh.c: contains the original code of a core kernel in SW4. The kernel has been augmented with R-Stream pragmas instructing the compiler to automatically optimize and parallelize the core functions.
+ - rhs4sg.gen.c: the result of the automatic optimization and parallelization performed by R-Stream. The parallelization is achieved using OpenMP.
+ - micro_kernels.c: a set of utility functions in charge of setting up and starting the program.
+
+To build the program, simply run make. Two programs will be generated:
+ - serial_reference: the original program, sequential.
+ - rstream_optimized: the R-Stream parallelized version
+
+The resulting OpenMP binary program can be directly run on a multicore processor. You can pass the -T option followed by a number of repetitions and the -c option to check the result.
