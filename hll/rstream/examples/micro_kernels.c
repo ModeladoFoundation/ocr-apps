@@ -19,6 +19,26 @@
 #include <string.h>
 #include "micro_kernels.h"
 
+// Options
+int check_results        = 0;
+int full_check_results   = 0;
+int max_trials           = 1;
+int verbose              = 0;
+int show_results         = 0;
+char * nb_procs          = "0";
+int max_errors           = 10;
+double epsilon           = 1e-5;
+int count_full_tiles     = 0;
+int count_non_full_tiles = 0;
+char * results_filename  = (char *) NULL;
+
+// keep it global: some benchmarks refer to it as an extern global variable
+int PARAMS[16];
+
+static void * coldify_caches();
+static double get_time_in_seconds();
+static void process_arguments(int argc, char* const argv[]);
+
 #define JUNK_SIZE_X86 (1<<22)
 long long int *junk;
 
@@ -57,65 +77,151 @@ extern swarm_Runtime_t * rswSwarmRuntime;
 swarm_Runtime_t * rswSwarmRuntime;
 #endif // SWARM
 
+// -------- OCR specific entry point and functions ----------
 #ifdef OCR_TARGET
 #warning Using OCR backend.
+
 #include <ocr.h>
-#define ENABLE_EXTENSION_LEGACY
-#include <ocr-legacy.h>
 
-static char * concat(char const * c1, char const * c2) {
-    size_t plen;
-    char * buf;
-    plen = strlen(c1);
-    buf = (char *) malloc(sizeof(char)*(plen+strlen(c2)+1));
-    strcpy(buf, c1);
-    strcpy(buf+plen, c2);
-    return buf;
+// the main design of the EDTs is intended to support asynchronous kernels
+// even though kernels are synchronous by default (they were aysnch in HTA)
+
+// begin EDT, realizing all the initialization of a kernel and launches it
+ocrGuid_t beginEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    initialize();
+    coldify_caches();
+
+    *((double *) depv[0].ptr) -= get_time_in_seconds();
+
+    kernel();
+
+    return depv[0].guid;
 }
 
-/** @brief Initializes OCR's machine configuration */
-ocrConfig_t ocrConfig() {
-    char* pPathPtr;
-    ocrConfig_t ocrConfig;
-    char * buf = NULL;
+// end EDT, realizing all the finalization of a kernel once it is done
+ocrGuid_t endEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    *((double *) depv[0].ptr) += get_time_in_seconds();
+    return depv[0].guid;
+}
 
-    pPathPtr = getenv ("OCR_CONFIG");
-    // if config file not found, default to "default" mem configuration
-    if (pPathPtr==NULL) {
-        char * ocrVersion = getenv("OCR_VERSION");
-        int ver08 = 0;
-        if (ocrVersion == NULL || (strcmp(ocrVersion, "0.8") == 0)) {
-            ver08 = 1;
-        }
-        char * ocrHomePath = getenv("OCR_HOME");
-        if (ver08 == 0 && ocrHomePath==NULL) {
-            printf("Please define $OCR_CONFIG (machine description file) or $OCR_HOME\n");
-            exit(1);
-        }
-        const char * dftMach = ((ver08 == 1) ? "/machine-configs/default.cfg" : "/install/x86-pthread-x86/config/default.cfg");
-        size_t plen;
-        char * buf;
+// shutdown EDT run once all the kernel trials have run
+ocrGuid_t shutdownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    double time = *((double *) depv[0].ptr);
+    int rc;
 
-        if (ocrHomePath==NULL) {
-            ocrHomePath = getenv("RSTREAM_HOME");
-            const char * rstDftMach = "/runtime/codelet/ocr/ocr-hc/machine-configs/default.cfg";
-            if (ocrHomePath==NULL) {
-                printf("Please define $OCR_CONFIG (machine description file) or $OCR_HOME\n");
-                exit(1);
-            } else {
-                pPathPtr = concat(ocrHomePath, rstDftMach);
-            }
-        } else {
-            pPathPtr = concat(ocrHomePath, dftMach);
-        }
+    if (check_results) {
+	if (verbose) {
+	    printf("[ checking results ]\n");
+	}
+	rc = check();
+    } else {
+	rc = 0;
     }
-    printf("Using machine file  %s \n", pPathPtr);
-    ocrConfig.iniFile = pPathPtr;
-    ocrConfig.userArgc = 0;
-    ocrConfig.userArgv = NULL;
-    return ocrConfig;
+
+    if (show_results) {
+	show();
+    }
+
+    double flops_per_second = flops_per_trial() * max_trials / time;
+    double flops_per_measure = flops_per_second / 1e9;
+
+    printf("trials=%d time=%gs %s=%g %s\n",
+	   max_trials,
+	   time,
+	   "gflop/s",
+	   flops_per_measure,
+	   (check_results ? (rc ? "(FAILED)" : "(PASSED)") : ""));
+    fprintf(stderr, "%s , %s , %d, %g , %g, %d\n", function_name, nb_procs,
+	    nb_samples, time / max_trials, flops_per_trial(), rc);
+
+    if (results_filename!=NULL) {
+	FILE * results_file = fopen(results_filename, "a");
+	fprintf(results_file, "%s , %s , %d, %g , %g, %d\n", function_name,
+		nb_procs, nb_samples, time / max_trials, flops_per_trial(), rc);
+	fclose(results_file);
+    }
+
+    if (rc) {
+        ocrAbort(rc);
+        return NULL_GUID;
+    }
+
+    ocrShutdown();
+    return NULL_GUID;
 }
+
+// main EDT (actual entry point of the program)
+ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    int i;
+    void *argsPtr = depv[0].ptr;
+
+    u64 argc = getArgc(argsPtr);
+    char **argv = malloc(argc * sizeof(*argv));
+    for (i = 0; i < argc; ++i) {
+        argv[i] = getArgv(argsPtr, i);
+    }
+    process_arguments(argc, argv);
+    free(argv);
+
+    initialize_once();
+
+    // create two EDTs per trial
+    ocrGuid_t *edtG = malloc(2 * max_trials * sizeof(*edtG));
+    ocrGuid_t *edtOutEvG = malloc(2 * max_trials * sizeof(*edtOutEvG));
+    for (i = 0; i < max_trials; i++) {
+        ocrGuid_t tmplBG, tmplEG;
+        ocrEdtTemplateCreate(&tmplBG, beginEdt, 0, 1);
+        ocrEdtCreate(edtG + 2 * i, tmplBG, 0, NULL, EDT_PARAM_DEF, NULL,
+            EDT_PROP_FINISH, NULL_HINT, edtOutEvG + 2 * i);
+        ocrEdtTemplateDestroy(tmplBG);
+
+        // the begin EDTs are finish EDTs so the DB they return will not be
+        // transmitted...
+        ocrEdtTemplateCreate(&tmplEG, endEdt, 0, 2);
+        ocrEdtCreate(edtG + 2 * i + 1, tmplEG, 0, NULL, EDT_PARAM_DEF, NULL,
+            EDT_PROP_NONE, NULL_HINT, edtOutEvG + 2 * i + 1);
+        ocrEdtTemplateDestroy(tmplEG);
+
+        // create the chain of EDTs
+        if (i > 0) {
+            ocrAddDependence(edtOutEvG[2 * i - 1], edtG[2 * i], 0, DB_MODE_RW);
+        }
+        // slot 1 of end EDTs is used by the DB to remain consistent
+        ocrAddDependence(edtOutEvG[2 * i], edtG[2 * i + 1], 1, DB_MODE_RW);
+    }
+
+    // create the shutdown EDT and link it to the last endEdt
+    ocrGuid_t tmplG, shutEdtG;
+    ocrEdtTemplateCreate(&tmplG, shutdownEdt, 0, 1);
+    ocrEdtCreate(&shutEdtG, tmplG, 0, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
+        NULL_HINT, NULL);
+    ocrEdtTemplateDestroy(tmplG);
+    ocrAddDependence(edtOutEvG[2 * max_trials - 1], shutEdtG, 0, DB_MODE_RW);
+    free(edtOutEvG);
+
+    // use the first slot of all the EDTs to transmit an execution time counter
+    double *time;
+    ocrGuid_t timeG;
+    ocrDbCreate(&timeG, (void **) &time, sizeof(*time), DB_PROP_NONE, NULL_HINT,
+        NO_ALLOC);
+    *time = 0;
+    ocrDbRelease(timeG);
+
+    // start the execution
+    ocrAddDependence(timeG, edtG[0], 0, DB_MODE_RW);
+
+    // in the mean time, transmit the time DB to all the end EDTs
+    for (i = 0; i < max_trials; ++i) {
+        ocrAddDependence(timeG, edtG[2 * i + 1], 0, DB_MODE_RW);
+    }
+
+    free(edtG);
+    return NULL_GUID;
+}
+
 #endif // OCR_TARGET
+
+// -------- End of OCR specific functions ----------
 
 #ifdef CLUSTER_GA_TARGET
 #include <rstream_ga.h>
@@ -272,23 +378,6 @@ void papi_init() {
 }
 #endif
 
-
-
-// Options
-int check_results        = 0;
-int full_check_results   = 0;
-int max_trials           = 1;
-int verbose              = 0;
-int show_results         = 0;
-char * nb_procs          = "0";
-int max_errors           = 10;
-double epsilon           = 1e-5;
-int count_full_tiles     = 0;
-int count_non_full_tiles = 0;
-char * results_filename  = (char *) NULL;
-
-int PARAMS[16];
-
 static void setParams(int opt) {
     int i;
     char c;
@@ -331,7 +420,7 @@ static void setParams(int opt) {
 }
 
 // Parses command line arguments.
-static void process_arguments(int argc, char** argv) {
+static void process_arguments(int argc, char* const argv[]) {
     int opt;
     int error = 0;
     const char * prog = argv[0];
@@ -355,6 +444,10 @@ static void process_arguments(int argc, char** argv) {
 	}
     }
 
+    if (max_trials <= 0) {
+        error = 1;
+    }
+
     if (error) {
 	printf(
 	       "Usage: %s [-c][-T <trials>][-v]\n"
@@ -373,7 +466,7 @@ static void process_arguments(int argc, char** argv) {
     }
 }
 
-void * coldify_caches() {
+static void * coldify_caches() {
     int i, j;
 #if defined (__TILECC__)
     // The TILE64 and Maestro architecture only has 64K of cache.
@@ -417,8 +510,9 @@ static double get_time_in_seconds(void) {
 #endif
 }
 
+#ifndef OCR_TARGET
 // The main function
-int main(int argc, char **argv) {
+int main(int argc, char * const argv[]) {
     double t0, t1,
 	total_time, total_SPU_time, total_GPU_time,
 	flops_per_second, flops_SPU_per_second, flops_GPU_per_second;
@@ -451,12 +545,6 @@ int main(int argc, char **argv) {
     // start the Swarm runtime without giving it an initial codelet.
     rswSwarmRuntime = swarm_posix_startRuntime(NULL, NULL, NULL, NULL);
 #endif // SWARM
-
-#ifdef OCR_TARGET
-    ocrGuid_t ocrCtx;
-    ocrConfig_t ocrConf = ocrConfig();
-    ocrLegacyInit(&ocrCtx, &ocrConf);
-#endif // OCR
 
 #ifdef CLUSTER_GA_TARGET
     rga_init();
@@ -492,7 +580,9 @@ int main(int argc, char **argv) {
 	    coldify_caches();
 #endif
 	    t0 = get_time_in_seconds();
+
 	    kernel();
+
 #ifdef GPU_TARGET
 	    cudaThreadSynchronize();
 #endif
@@ -565,10 +655,6 @@ int main(int argc, char **argv) {
 
     // Print internal monitoring stats if needed
     PRINT_MONITORING_STATS() ;
-
-#ifdef OCR_TARGET
-    ocrLegacyFinalize(ocrCtx, false);
-#endif // OCR
 
 #ifdef CLUSTER_GA_TARGET
     rga_exit();
@@ -669,6 +755,7 @@ int main(int argc, char **argv) {
     if (nb_procs[0]!='0') free(nb_procs);
     return rc;
 }
+#endif  // OCR_TARGET
 
 // _________________________ Matrix routines __________________________________
 //

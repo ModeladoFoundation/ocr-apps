@@ -35,6 +35,8 @@ typedef double real_t;
 #define COS(x)  cos(x)
 #define SIN(x)  sin(x)
 #define CST(x)  x
+#define POW(x)  pow(x)
+#define FMT     "%lf"
 #else
 typedef double real_d;
 typedef float real_t;
@@ -57,6 +59,8 @@ typedef float real_t;
 #define COS(x)  cosf(x)
 #define SIN(x)  sinf(x)
 #define CST(x)  x ## f
+#define POW(x)  powf
+#define FMT     "%f"
 #endif
 
 extern int check_results; // check the answers (default 0)
