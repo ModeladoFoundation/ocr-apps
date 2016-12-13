@@ -32,7 +32,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= -x 4 -y 4 -z 4 -N 2 -n 1
+WORKLOAD_ARGS ?= -x 8 -y 4 -z 4 -i 2 -j 1 -k 1 -N 2 -n 1
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -66,7 +66,7 @@ OBJS := $(notdir $(SRCS:.c=.o))
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 CFLAGS := -g
-#CFLAGS += -DENABLE_EXTENSION_AFFINITY
+CFLAGS += -DENABLE_EXTENSION_AFFINITY
 CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT
 CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
 CFLAGS += -DWITH_COUNTED_EVT
@@ -84,7 +84,7 @@ LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libreduction.a $(APPS_ROOT)/lib
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 

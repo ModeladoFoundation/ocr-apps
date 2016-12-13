@@ -70,7 +70,7 @@ timers.c
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 CFLAGS := -g -std=c99
-CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=1000
+CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=100
 #CFLAGS += -DENABLE_EXTENSION_AFFINITY
 #CFLAGS += -DVERIFICATION
 CFLAGS += -DDEBUG_APP
@@ -86,7 +86,7 @@ LDFLAGS += $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/instal
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 
