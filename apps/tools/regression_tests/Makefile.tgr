@@ -43,6 +43,7 @@ apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_mutex_recursive
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_cancel
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_detach
+	$(MAKE) -C $(APPS_ROOT)/libs/src/libomp ARCH=tg-xe check
 
 apps-examples:
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg install

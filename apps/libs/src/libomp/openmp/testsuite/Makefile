@@ -35,11 +35,39 @@
 #########################################################
 
 # CLANG Compiler
+ifeq ($(ARCH), tg-xe)
+TG_INSTALL ?= $(realpath $(CURDIR)/../../../../../../../tg/tg/install)
+APPS_ROOT  ?= $(realpath $(CURDIR)/../../../../..)
+
+export APPS_LIBS_INSTALL=$(APPS_ROOT)/libs/install/$(ARCH)
+
+TARGET = xstg-linux-elf
+TOOLBIN = $(TG_INSTALL)/bin
+TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
+CC = $(TOOL_PREFIX)clang
+CXX = $(TOOL_PREFIX)clang++
+
+CFLAGS = -fxstg-swtest -fopenmp -g -O0 -DKMP_OS_TGR
+CXXFLAGS = $(CFLAGS) -fexceptions -Xlinker --eh-frame-hdr
+
+ifdef PIE
+BUILD_DIR = $(realpath $(CURDIR)/../../build-tg-xe-pie)
+CFLAGS += -fPIE
+else
+BUILD_DIR = $(realpath $(CURDIR)/../../build-tg-xe-static)
+endif
+
+TEST_BUILD_DIR = $(BUILD_DIR)/testsuite
+
+export ARCH=$(ARCH)
+
+else
 CC     = clang
 CFLAGS = -fopenmp -S -emit-llvm
 FC     = gfortran
 FFLAGS = -fopenmp -lm
 FFLAGS = -fopenmp -lm -O3
+endif
 
 # GNU Compiler
 # CC     = gcc
@@ -166,8 +194,10 @@ help:
 	@echo "Do make [rule], where rule may be one of:"
 	@echo "  ctest"
 	@echo "    Build and run the OpenMP/C validation tests."
+ifneq ($(ARCH), tg-xe)
 	@echo "  ftest"
 	@echo "    Build and run the OpenMP/Fortran validation tests."
+endif
 	@echo "  print_compile_options"
 	@echo "    Display the default compiler and compiler options being tested"
 	@echo "  cleansrcs"
@@ -186,25 +216,31 @@ help:
 	@echo "    Remove the entire bin/c directory with distclean"
 
 omp_my_sleep:
-	mkdir -p bin/c
-	cp omp_my_sleep.h bin/c/
-omp_testsuite: omp_testsuite.h
-	mkdir -p bin/c
-	cp omp_testsuite.h bin/c/
-omp_testsuite.h: ompts-c.conf c/*
-	./ompts_makeHeader.pl -f=ompts-c.conf -t=c
+	mkdir -p $(TEST_BUILD_DIR)/bin/c
+	cp omp_my_sleep.h $(TEST_BUILD_DIR)/bin/c/
+omp_testsuite: ompts-c.conf c/*
+	mkdir -p $(TEST_BUILD_DIR)/bin/c
+	./ompts_makeHeader.pl -f=ompts-c.conf -t=c -o="$(TEST_BUILD_DIR)/bin/c/omp_testsuite.h"
 .c.o: omp_testsuite omp_my_sleep
 	$(CC) $(CFLAGS) -c $<
 
 ctest: omp_my_sleep omp_testsuite
+ifeq ($(ARCH), tg-xe)
+	./runtest.pl --norun --outdir="$(TEST_BUILD_DIR)" --lang=c testlist-c.txt --
+else
 	./runtest.pl --lang=c testlist-c.txt
 	cd bin/; make -j
+endif
 
 ftest:
+ifeq ($(ARCH), tg-xe)
+	@echo "Fortran not supported for $(ARCH)"
+else
 	mkdir -p bin/fortran
 	cp omp_testsuite.f bin/fortran
 	cp omp_my_sleep.f bin/fortran
 	./runtest.pl --lang=fortran testlist-f.txt
+endif
 
 print_compile_options:
 	@echo "-------------------"
@@ -223,32 +259,33 @@ print_compile_options:
 path_to_arch=$(shell ../runtime/tools/check-openmp-test.pl)
 
 cleansrcs:
-	find bin/ -iname "*.[cf]" -exec rm -rf {} \;
+	find $(TEST_BUILD_DIR)/bin/ -iname "*.[cf]" -exec rm -rf {} \;
 cleanbins:
-	find bin/c -perm /a+x -type f -exec rm -rf {} \;
-	find ./bin/c -not -name "*.c" -a -not -name "*.ll" -type f -exec rm -rf {} \;
+	find $(TEST_BUILD_DIR)/bin/c -perm /a+x -type f -exec rm -rf {} \;
+	find $(TEST_BUILD_DIR)/bin/c -not -name "*.c" -a -not -name "*.ll" -type f -exec rm -rf {} \;
 cleanouts:
-	find bin/ -iname "*.out" -exec rm -rf {} \;
+	find $(TEST_BUILD_DIR)/bin/ -iname "*.out" -exec rm -rf {} \;
 cleanlogs:
-	find bin/ -iname "*.log" -exec rm -rf {} \;
-	rm -rf ./$(path_to_arch)
+	find $(TEST_BUILD_DIR)/bin/ -iname "*.log" -exec rm -rf {} \;
 
 clean: cleanouts cleanlogs cleanbins cleansrcs
 
 distclean: clean
-	rm -rf bin/c/*
+	rm -rf $(TEST_BUILD_DIR)/bin/c/*
 	rm -rf LLVM-IR/$(CHECK_PATH)
 
 veryclean: distclean
-	rm -rf bin/c/
-	rm -rf bin/fortran/
+	rm -rf $(TEST_BUILD_DIR)/bin/c/
+ifneq ($(ARCH), tg-xe)
+	rm -rf $(TEST_BUILD_DIR)/bin/fortran/
+endif
 
 
 cleanall:
-	rm -rf ./bin/c/
-	rm -rf ./bin/fortran/
-	rm -rf ./LLVM-IR/$(path_to_arch)
-	rm -rf ./$(path_to_arch)
+	rm -rf $(TEST_BUILD_DIR)/bin/c/
+ifneq ($(ARCH), tg-xe)
+	rm -rf $(TEST_BUILD_DIR)/bin/fortran/
+endif
 	rm -rf ./*.log
 
 
