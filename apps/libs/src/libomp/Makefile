@@ -134,12 +134,17 @@ tg-xe-static:
 tg-xe: show_args tg-xe-static tg-xe-pie
 
 install: build
-	@echo "Installing libomp.a and includes"
+	@echo "Installing $(LIB) and includes"
 	@mkdir -p $(APPS_LIBS_INSTALL)/lib
 	@mkdir -p $(APPS_LIBS_INSTALL)/include
-	@cp -u $(BUILD_DIR)/runtime/src/libomp.a $(APPS_LIBS_INSTALL)/lib/
-	@ln -sf libomp.a $(APPS_LIBS_INSTALL)/lib/libgomp.a
-	@ln -sf libomp.a $(APPS_LIBS_INSTALL)/lib/libiomp5.a
+	@cp -u $(BUILD_DIR)/runtime/src/libomp.a $(APPS_LIBS_INSTALL)/lib/$(LIB)
+ifdef PIE
+	@ln -sf $(LIB) $(APPS_LIBS_INSTALL)/lib/libgomp.p.a
+	@ln -sf $(LIB) $(APPS_LIBS_INSTALL)/lib/libiomp5.p.a
+else
+	@ln -sf $(LIB) $(APPS_LIBS_INSTALL)/lib/libgomp.p.a
+	@ln -sf $(LIB) $(APPS_LIBS_INSTALL)/lib/libiomp5.p.a
+endif
 	@cp -u $(BUILD_DIR)/runtime/src/*.h $(APPS_LIBS_INSTALL)/include
 
 build: config
@@ -161,6 +166,10 @@ show_args:
 	@echo TARGET $(TARGET)
 	@echo COMPILE_FLAGS $(COMPILE_FLAGS)
 	@echo CMAKE_ARGS $(CMAKE_ARGS)
+
+check: all
+	@echo "Building testsuite"
+	$(MAKE) -C openmp/testsuite ctest
 
 #
 # Create a new build dir
