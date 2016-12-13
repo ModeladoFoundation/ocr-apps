@@ -119,6 +119,17 @@ struct StickyEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
+    StickyEvent( const EventBase& ) = delete;
+
+    StickyEvent( StickyEvent&& event ) :
+        EventBase( std::move(event) )
+    {
+    }
+
+    StickyEvent& operator=( const EventBase& ) = delete;
+
+    StickyEvent& operator=( StickyEvent&& ) = default;
+
     ~StickyEvent() {
         uint8_t err = ocrEventDestroy( handle() );
         ASSERT( err == 0 );
@@ -138,8 +149,15 @@ struct LatchEvent : public EventBase {
         ASSERT( err == 0 );
     }
 
+    LatchEvent( LatchEvent&& event ) :
+        EventBase( std::move(event) )
+    {
+    }
+
     // Latch events cant be copied
     LatchEvent( const EventBase& event ) = delete;
+
+    LatchEvent& operator=( LatchEvent&& ) = default;
 
     // Latch event cant be copy asigned
     LatchEvent& operator=( const EventBase& ) = delete;

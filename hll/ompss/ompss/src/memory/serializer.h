@@ -24,7 +24,28 @@ struct Serializer {
         // This is true even using -fpack-struct compiler flag.
         _position = destination + 1;
 
-        std::uninitialized_copy( &value, (&value)+1, destination );
+        auto begin = &value;
+        auto end   = begin + 1;
+
+        std::uninitialized_copy( begin, end, destination );
+    }
+
+    template<typename T>
+    void write( T&& value ) {
+        typedef T* pointer;
+        typedef T  value_type;
+
+        pointer destination = align<value_type>(_position);
+        // Assign position to destination (alignment may introduce
+        // some padding). Advance it one position.
+        // Note that the size of any type is multiple of its alignment.
+        // This is true even using -fpack-struct compiler flag.
+        _position = destination + 1;
+
+        auto begin = std::make_move_iterator(&value);
+        auto end   = begin + 1;
+
+        std::uninitialized_copy( begin, end, destination );
     }
 
     template<typename InputIterator>

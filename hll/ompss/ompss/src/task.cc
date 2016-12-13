@@ -65,21 +65,19 @@ void nanos_submit_task( void *task )
         static_cast<void*>(new_task->definition.arguments.buffer) );
 
     // Create new EDT
+    ocrGuid_t edt;
     {
         std::pair<uint32_t,uint64_t*> param = new_task->packParams();
-        uint32_t depc = new_task->dependences.acquire.size();
-        ocrGuid_t* depv = new_task->dependences.acquire.data();
+        uint32_t depc = new_task->dependences.acquire.size() + new_task->dependences.acquire_satisfy.size();
 
         // Increase number of EDTs pending for taskwait
         scope.taskwait.registerEdt();
 
         // Create EDT of finish type (does not return until
         // all its children EDTs are completed )
-        ocrGuid_t edt;
-
         uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
                       param.first, param.second,
-                      depc, depv,
+                      depc, NULL,
                       EDT_PROP_FINISH|EDT_PROP_OEVT_VALID,
                       NULL_HINT, &scope.taskwait.getEvent().handle() );
 
@@ -87,7 +85,7 @@ void nanos_submit_task( void *task )
     }
 
     // Add edt dependences
-    acquireDependences( *new_task );
+    acquireDependences( edt, *new_task );
 
     Task::factory::destroy( new_task );
 }

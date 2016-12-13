@@ -134,7 +134,8 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
                           sizeof(struct nqueens_args)/sizeof(u64)+1, 0 );
     ASSERT( err == 0 );
 
-    err = ocrEdtTemplateCreate( &shutdownTemplate, shutdown, 1, 1 );
+    err = ocrEdtTemplateCreate( &shutdownTemplate, shutdown,
+                          sizeof(struct shutdown_args)/sizeof(u64)+1, 1 );
     ASSERT( err == 0 );
 
     solve_nqueens( n, cutoff );

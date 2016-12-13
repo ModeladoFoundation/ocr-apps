@@ -11,65 +11,41 @@ namespace ompss {
 
 class TaskwaitEvent {
 public:
-    TaskwaitEvent() :
-        _tasks(0),
-        _event()
-    {
-    }
-
-    TaskwaitEvent( TaskwaitEvent&& other ) :
-        _tasks(0),
-        _event()
-    {
-        openRegion();
-        addDependence( other );
-        other.closeRegion();
-    }
-
-    TaskwaitEvent& operator=( const TaskwaitEvent& ) = delete;
-
-    TaskwaitEvent& operator=( TaskwaitEvent&& other ) {
-        _tasks = other._tasks;
-        *_event = std::move( other.getEvent() );
-        return *this;
-    }
-
     ocr::LatchEvent& getEvent() {
-        return *_event;
+        return _event;
     }
 
     const ocr::LatchEvent& getEvent() const {
-        return *_event;
-    }
-
-    void addDependence( const TaskwaitEvent& other ) {
-        getEvent()++;
-        _event->addDependence( other.getEvent() );
+        return _event;
     }
 
     void registerEdt() {
-        getEvent()++;
+        _event++;
     }
 
     void openRegion() {
-        _event.reset();
-        getEvent()++;
+        _event++;
     }
 
     void closeRegion() {
-        getEvent()--;
+        _event--;
+    }
+
+    void reset() {
+        new (&_event) ocr::LatchEvent();
     }
 
     void wait() {
         // Prepare sticky event for legazy block progress
         ocr::StickyEvent blockProgressEvent;
-        blockProgressEvent.addDependence( *_event );
+        blockProgressEvent.addDependence( _event );
 
         // Close taskwait region. May
         // satisfy sticky event
         closeRegion();
 
         // Open next taskwait region
+        reset();
         openRegion();
 
         // Wait for sticky event to be satisfied
@@ -79,21 +55,8 @@ public:
         ASSERT( err == 0 );
     }
 
-    void replace() {
-        // Create a replacement instance
-        TaskwaitEvent replacement;
-        // Add old -> new dependence
-        replacement.openRegion();
-        replacement.addDependence(*this);
-        // Close old region
-        closeRegion();
-        // and replace old event with new one
-        *this = std::move(replacement);
-    }
-
 private:
-    unsigned long              _tasks;
-    mem::Lazy<ocr::LatchEvent> _event;
+    ocr::LatchEvent _event;
 };
 
 } // namespace ompss

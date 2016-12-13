@@ -22,12 +22,12 @@ ocrGuid_t taskOutlineTemplate;
 ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, ocrEdtDep_t depv[] )
 {
     // Decode arguments and dependences
-    std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> args =
+    std::tuple<TaskDefinition*,TaskwaitEvent*,uint64_t,ocrGuid_t*> args =
         Task::unpackParams( paramc, paramv );
 
     {
         // Store local scope in EDT local storage
-        TaskScopeInfo scope;
+        TaskScopeInfo scope( std::move(*std::get<1>(args)) );
 
         // Execute outline task
         TaskDefinition* def = std::get<0>(args);
@@ -35,7 +35,7 @@ ocrGuid_t edtOutlineWrapper( uint32_t paramc, uint64_t* paramv, uint32_t depc, o
     }
 
     // Clean-up
-    releaseDependences( std::get<1>(args), std::get<2>(args), std::get<3>(args) );
+    releaseDependences( std::get<2>(args), std::get<3>(args) );
 
     return NULL_GUID;
 }

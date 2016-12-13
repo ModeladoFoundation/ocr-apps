@@ -4,7 +4,7 @@
 
 #include "access.h"
 
-#include "dependence_entry.h"
+#include "dependence_entry_decl.h"
 
 #include "allocator/db_allocator.h"
 #include "allocator/firstfit_allocator.h"
