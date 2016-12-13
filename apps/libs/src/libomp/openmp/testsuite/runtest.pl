@@ -38,7 +38,8 @@ GetOptions("help",
       "compile!",
       "run!",
       "orphan!",
-      "resultfile=s"
+      "resultfile=s",
+      "outdir=s"
       );
 
 # Get global configuratino options from config file:
@@ -204,11 +205,11 @@ sub run_test
 
 # path to test and crosstest either in normal or in orphaned version
     if ($orphan) {
-        $bin_name  = "bin/$opt_lang/orph_test_$testname";
-        $cbin_name = "bin/$opt_lang/orph_ctest_$testname";
+        $bin_name  = "$opt_outdir/bin/$opt_lang/orph_test_$testname";
+        $cbin_name = "$opt_outdir/bin/$opt_lang/orph_ctest_$testname";
     } else {
-        $bin_name  = "bin/$opt_lang/test_$testname";
-        $cbin_name = "bin/$opt_lang/ctest_$testname";
+        $bin_name  = "$opt_outdir/bin/$opt_lang/test_$testname";
+        $cbin_name = "$opt_outdir/bin/$opt_lang/ctest_$testname";
     }
 # Check if executables exist
     if (! -e $bin_name) {
@@ -274,14 +275,14 @@ sub compile_src
     print "Compiling soures ............";
     if ($orphan) {
 # Make orphaned tests
-        $exec_name     = "bin/$opt_lang/orph_test_$testname";
-        $crossexe_name = "bin/$opt_lang/orph_ctest_$testname";
+        $exec_name     = "$opt_outdir/bin/$opt_lang/orph_test_$testname";
+        $crossexe_name = "$opt_outdir/bin/$opt_lang/orph_ctest_$testname";
         $resulttest  = system ("make $exec_name > $exec_name\_compile.log" );
         $resultctest = system ("make $crossexe_name > $crossexe_name\_compile.log" );
     } else {
 # Make test
-        $exec_name     = "bin/$opt_lang/test_$testname";
-        $crossexe_name = "bin/$opt_lang/ctest_$testname";
+        $exec_name     = "$opt_outdir/bin/$opt_lang/test_$testname";
+        $crossexe_name = "$opt_outdir/bin/$opt_lang/ctest_$testname";
         $resulttest  = system ("make $exec_name > $exec_name\_compile.log" );
         $resultctest = system ("make $crossexe_name > $crossexe_name\_compile.log" );
     }
@@ -301,11 +302,11 @@ sub compile_src
 sub init_directory_structure
 {
     my ($language) = @_;
-    if (-e "bin" && -d "bin") { warning ("Old binary directory detected!");}
-    else { system ("mkdir bin"); }
-    if (-e "bin/$language" && -d "bin/$language") {
+    if (-e "$opt_outdir/bin" && -d "$opt_outdir/bin") { warning ("Old binary directory detected!");}
+    else { system ("mkdir $opt_outdir/bin"); }
+    if (-e "$opt_outdir/bin/$language" && -d "$opt_outdir/bin/$language") {
         warning ("Old binary directory for language $language found.");}
-    else { system ("mkdir bin/$language"); }
+    else { system ("mkdir $opt_outdir/bin/$language"); }
 }
 
 # Function that generates the sourcecode for the given test
@@ -321,15 +322,15 @@ sub make_src
     print "Generating sources ..........";
     if ($orphan) {
 # Make orphaned tests
-        $src_name = "bin/$opt_lang/orph_test_$testname.$extension";
+        $src_name = "$opt_outdir/bin/$opt_lang/orph_test_$testname.$extension";
         $resulttest = system ("./$templateparsername --test --orphan $template_file $src_name");
-        $src_name = "bin/$opt_lang/orph_ctest_$testname.$extension";
+        $src_name = "$opt_outdir/bin/$opt_lang/orph_ctest_$testname.$extension";
         $resultctest = system ("./$templateparsername --crosstest --orphan $template_file $src_name");
     } else {
 # Make test
-        $src_name = "bin/$opt_lang/test_$testname.$extension";
+        $src_name = "$opt_outdir/bin/$opt_lang/test_$testname.$extension";
         $resulttest = system ("./$templateparsername --test --noorphan $template_file $src_name");
-        $src_name = "bin/$opt_lang/ctest_$testname.$extension";
+        $src_name = "$opt_outdir/bin/$opt_lang/ctest_$testname.$extension";
         $resultctest = system ("./$templateparsername --crosstest --noorphan $template_file $src_name");
     }
     if ($resulttest) { test_error ("Generation of sourcecode for the test failed."); }
