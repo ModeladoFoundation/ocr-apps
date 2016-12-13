@@ -226,9 +226,9 @@ omp_testsuite: ompts-c.conf c/*
 
 ctest: omp_my_sleep omp_testsuite
 ifeq ($(ARCH), tg-xe)
-	./runtest.pl --norun --outdir="$(TEST_BUILD_DIR)" --lang=c testlist-c.txt --
+	+./runtest.pl --norun --outdir="$(TEST_BUILD_DIR)" --lang=c testlist-c.txt --
 else
-	./runtest.pl --lang=c testlist-c.txt
+	+./runtest.pl --lang=c testlist-c.txt
 	cd bin/; make -j
 endif
 
