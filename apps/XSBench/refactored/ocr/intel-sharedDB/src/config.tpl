@@ -45,8 +45,8 @@
 
    fw_img_fname  = $(TG_INSTALL)/lib/fw.img          # file to load
    ce_img_fname  = $(WORKLOAD_INSTALL)/tgkrnl        # file to load
-   xe_img_fname  = $(WORKLOAD_INSTALL)/stencil_2d        # file to load
-   bin_img_fname = $(WORKLOAD_INSTALL)/stencil_2d.blob  # file to load
+   xe_img_fname  = $(WORKLOAD_INSTALL)/XSBench        # file to load
+   bin_img_fname = $(WORKLOAD_INSTALL)/XSBench.blob  # file to load
 
 [ipmGlobal]
    verbose       = false
@@ -62,7 +62,7 @@
    sL3_count     = 1                            # how many logical sL3 units exist per cluster
    sL3_size      = 8                            # size in KB for each sL3 unit per cluster
    verbose       = false
-   block_count   = 2
+   block_count = BLOCKCOUNT
 
 [sl3Global]
    verbose       = false
@@ -89,7 +89,7 @@
    cache_lineSZ  = 64                          # line size in bytes for cache module
    cache_policy  = 0x5                         # policy for the cache; at this time, only mode "0x5" (wite-back, write-allocate) is supported!
 
-   logfilebase   = stencil_2d.log                  # what is the BASE path+filename to write log files to, default is STDERR
+   logfilebase   = XSBench.log                  # what is the BASE path+filename to write log files to, default is STDERR
 
 [sl2Global]
    verbose       = false
