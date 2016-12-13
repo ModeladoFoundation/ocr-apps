@@ -87,7 +87,9 @@ int send_req( uint64_t type, void * buf, uint64_t len )
     uint64_t r2 = CE_REQ_MAKE( type, len );
     uint64_t status;
 
-    cache_range( CACHE_WBINVAL, buf, buf + len );
+    if (buf && len) {
+        cache_range( CACHE_WBINVAL, buf, buf + len );
+    }
 
     __asm__ __volatile__(
         "flush B, N\n\t"
