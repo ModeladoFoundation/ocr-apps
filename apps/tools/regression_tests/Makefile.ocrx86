@@ -1,0 +1,42 @@
+#
+# Master Makefile for "other" regression tests
+#
+# This will build the tg tree with all of the fsim variants, the
+# apps tg-xe libs, and all the examples in the tg and apps trees.
+#
+# This should be run before attempting to execute any of the
+# regression tests. It should be run with no target (or you may use
+# "make all") to build everything.
+#
+
+APPS_ROOT ?= $(realpath $(CURDIR)/../..)
+OCR_ROOT ?= $(realpath $(CURDIR)/../../../../ocr/ocr)
+
+all: apps-legacy-ocr apps-legacy-scaffold
+apps: all
+
+libs:
+	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=x86
+	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=x86-newlib all
+	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=x86-newlib install
+
+apps-legacy-ocr:
+	$(MAKE) -C $(APPS_ROOT)/legacy/x86 clean
+	$(MAKE) -C $(APPS_ROOT)/legacy/x86
+	$(APPS_ROOT)/tools/regression_tests/run-x86-test.sh
+
+apps-legacy-scaffold:
+	$(MAKE) -C $(APPS_ROOT)/legacy/x86 clean
+	$(MAKE) -C $(APPS_ROOT)/legacy/x86 LIBSCAFFOLD=yes
+	SCAFFOLD=1 $(APPS_ROOT)/tools/regression_tests/run-x86-test.sh
+
+apps-clean:
+	$(MAKE) -C $(APPS_ROOT)/legacy/x86 clean
+
+libs-clean:
+	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=x86 clean
+	@rm -rf $(APPS_ROOT)/libs/install/x86
+	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=x86-newlib clean
+	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=x86-newlib uninstall
+
+.PHONY: all apps apps-clean libs-clean libs apps-legacy-ocr apps-legacy-scaffold
