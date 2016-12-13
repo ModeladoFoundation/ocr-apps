@@ -24,6 +24,12 @@
 #include "queue.h"
 #include "restart.h"
 
+#ifndef SHARED
+/* We need a hook to force this file to be linked in when static
+   libpthread is used.  */
+const int __pthread_provide_mutex = 0;
+#endif
+
 int __pthread_mutex_init(pthread_mutex_t * mutex,
                        const pthread_mutexattr_t * mutex_attr)
 {

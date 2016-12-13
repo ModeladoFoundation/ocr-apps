@@ -1029,7 +1029,7 @@ extern int __kmp_place_num_threads_per_core;
 
 #define KMP_DEFAULT_MONITOR_STKSIZE     ((size_t)(64 * 1024))
 
-#define KMP_DEFAULT_MALLOC_POOL_INCR    ((size_t) (1024 * 1024))
+#define KMP_DEFAULT_MALLOC_POOL_INCR    ((size_t) (8 * 1024))
 #define KMP_MIN_MALLOC_POOL_INCR        ((size_t) (4 * 1024))
 #define KMP_MAX_MALLOC_POOL_INCR        (~((size_t)1<<((sizeof(size_t)*(1<<3))-1)))
 

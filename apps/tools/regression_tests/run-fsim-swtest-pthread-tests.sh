@@ -2,10 +2,7 @@
 
 # This script may accept command line parameters of which test(s) to run.
 # Possible tests:
-#  tg_cdemo_nonewlib tg_cdemo tg_cxxdemo tg_throw
-#  legacy_cxxhello legacy_hello legacy_iotest
-#  pthread_simple pthread_detach pthread_mutex_recursive pthread_cancel
-#  PIE_fptr_simple PIE_multi_seg
+#  pthread_simple pthread_detach pthread_malloc pthread_mutex_recursive pthread_cancel
 #
 # Defaults to running all tests
 #
@@ -20,7 +17,7 @@ source ./setup-test-env.sh
 export FSIM_EXE="fsim-swtest"
 
 # Tests to run
-TESTS="pthread_simple pthread_detach pthread_mutex_recursive pthread_cancel"
+TESTS="pthread_simple pthread_detach pthread_malloc pthread_mutex_recursive pthread_cancel"
 
 if [[ $1 == "-h" ]]; then
   echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests"
@@ -47,6 +44,11 @@ for TEST in $TESTS; do
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
       export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_detach"
       REGEXS+=("making thread 1 (detached)" "making thread 2" "detaching thread 2" "parent done")
+    ;;
+    pthread_malloc)
+      export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_malloc"
+      REGEXS+=("Child1 done" "Child2 done" "Parent done")
     ;;
     pthread_mutex_recursive)
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
