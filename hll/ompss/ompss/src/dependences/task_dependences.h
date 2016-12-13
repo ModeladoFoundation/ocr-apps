@@ -13,11 +13,13 @@ namespace ompss {
 
 inline TaskDependences::TaskDependences( nanos_task_info* info ) :
     register_dependences(info->register_depinfo),
+    newTaskCompleted(),
     acquire( vector_type<ocrGuid_t>::allocator_type( TaskScopeInfo::getLocalScope().scratchMemory ) ),
-    release( acquire.get_allocator() ),
-    acq_satisfy( acquire.get_allocator() ),
-    rel_destroy_not_satisfy( acquire.get_allocator() )
+    acquire_satisfy( acquire.get_allocator() ),
+    release( acquire.get_allocator() )
 {
+    // Open Region to prevent premature triggering
+    newTaskCompleted.openRegion();
 }
 
 } // namespace ompss

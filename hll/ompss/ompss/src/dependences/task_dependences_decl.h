@@ -3,6 +3,7 @@
 #define TASK_DEPENDENCES_DECL_H
 
 #include "allocator/firstfit_allocator.h"
+#include "task/taskwait.h"
 
 #include <vector>
 #include <ocr.h>
@@ -26,10 +27,10 @@ struct TaskDependences {
     using vector_type = std::vector<T, vector_allocator<T>>;
 
     register_dep_funct_t   register_dependences;
+    TaskwaitEvent          newTaskCompleted;
     vector_type<ocrGuid_t> acquire;
+    vector_type<ocrGuid_t> acquire_satisfy;
     vector_type<ocrGuid_t> release;
-    vector_type<uint8_t>   acq_satisfy;            // using a char avoids the vector overload for bool
-    vector_type<uint8_t>   rel_destroy_not_satisfy;
 
     TaskDependences( nanos_task_info* task );
 };

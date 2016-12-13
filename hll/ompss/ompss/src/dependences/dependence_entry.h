@@ -2,31 +2,16 @@
 #ifndef DEPENDENCE_ENTRY_H
 #define DEPENDENCE_ENTRY_H
 
+#include "dependence_entry_decl.h"
+
 #include "task/task_fwd.h"
+#include "task/task_scope.h"
 
 #include "dependences/task_dependences_decl.h"
 #include "event.h"
 #include "memory/lazy.h"
 
 namespace ompss {
-
-// Value of the Map
-struct DependenceEntry {
-    /*! Latch event that triggers when all read-only accesses are completed
-     *  AND the read-only section is over (a write access
-     *  has been registered). */
-    mem::Lazy<ocr::LatchEvent>  readCompleted;
-
-    /*! Sticky event that triggers when a write-only or read-write access is
-     *  completed. */
-    mem::Lazy<ocr::StickyEvent> writeCompleted;
-
-    template <AccessTypes type>
-    void openSection( TaskDependences& dependences );
-
-    template <AccessTypes type>
-    void addDependence( TaskDependences& dependences );
-};
 
 template <>
 inline void DependenceEntry::openSection<AccessTypes::read_only>( TaskDependences& dependences ) {
@@ -47,15 +32,13 @@ inline void DependenceEntry::openSection<AccessTypes::read_write>( TaskDependenc
         // Destroy old event after EDT execution
         log::verbose<log::Module::dependences>( "Add write event to destroy list ", std::hex, writeCompleted->handle().guid );
         dependences.release.push_back(writeCompleted->handle());
-        dependences.rel_destroy_not_satisfy.push_back(true);
         writeCompleted.release();
     }
     writeCompleted.initialize();
 
     // Add this new event to release events list
     log::verbose<log::Module::dependences>( "Add write event to satisfy list ", std::hex, writeCompleted->handle().guid );
-    dependences.release.push_back(writeCompleted->handle());
-    dependences.rel_destroy_not_satisfy.push_back(false);
+    writeCompleted->addDependence( dependences.newTaskCompleted.getEvent() );
 }
 
 template <>
@@ -66,7 +49,6 @@ inline void DependenceEntry::addDependence<AccessTypes::read_only>( TaskDependen
                  "; event GUID: ", writeCompleted->handle().guid );
 
         dependences.acquire.push_back(writeCompleted->handle());
-        dependences.acq_satisfy.push_back(false);
     }
 
     // Increase the reader section count
@@ -76,8 +58,7 @@ inline void DependenceEntry::addDependence<AccessTypes::read_only>( TaskDependen
     (*readCompleted)++;
 
     log::verbose<log::Module::dependences>( "Add read event to satisfy list ", std::hex, readCompleted->handle().guid );
-    dependences.release.push_back(*readCompleted);
-    dependences.rel_destroy_not_satisfy.push_back(false);
+    readCompleted->addDependence( dependences.newTaskCompleted.getEvent() );
 }
 
 template <>
@@ -88,7 +69,6 @@ inline void DependenceEntry::addDependence<AccessTypes::read_write>( TaskDepende
                  "; event GUID: ", writeCompleted->handle().guid );
 
         dependences.acquire.push_back(writeCompleted->handle());
-        dependences.acq_satisfy.push_back(false);
     }
 
     // Open a new write section (replaces precedent if exists)
@@ -99,8 +79,7 @@ inline void DependenceEntry::addDependence<AccessTypes::read_write>( TaskDepende
         log::verbose<log::Module::dependences>( " = Task depends on ", this,
                  "; event GUID: ", readCompleted->handle().guid );
 
-        dependences.acquire.push_back(readCompleted->handle());
-        dependences.acq_satisfy.push_back(true);
+        dependences.acquire_satisfy.push_back(readCompleted->handle());
 
         // Delete read section from dependency map
         readCompleted.erase();

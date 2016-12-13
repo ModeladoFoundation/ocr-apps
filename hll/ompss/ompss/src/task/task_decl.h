@@ -42,7 +42,7 @@ struct Task {
     Task( nanos_task_info* info, TaskDefinition& def );
 
     std::pair<uint32_t,uint64_t*> packParams();
-    static std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> unpackParams( uint32_t paramc, uint64_t* paramv );
+    static std::tuple<TaskDefinition*,TaskwaitEvent*,uint64_t,ocrGuid_t*> unpackParams( uint32_t paramc, uint64_t* paramv );
 
     void acquireDependences();
     void releaseDependences();

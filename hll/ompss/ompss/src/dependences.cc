@@ -1,5 +1,6 @@
 
 #include "dependences/access.h"
+#include "dependences/dependence_entry.h"
 
 #include "debug/traceblock.h"
 #include "profile/profile.h"
@@ -7,6 +8,14 @@
 
 #include <nanos6_rt_interface.h>
 #include <ocr.h>
+
+
+ompss::DependenceEntry::~DependenceEntry() {
+    // This is a memory leak, but the event must not be
+    // destroyed, if the last task is a reader (depends
+    // on the event but does not destroy it)
+    writeCompleted.release();
+}
 
 extern "C" {
 

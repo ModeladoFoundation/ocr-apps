@@ -77,65 +77,62 @@ inline std::pair<uint32_t,uint64_t*> Task::packParams()
     mem::Serializer serializer( base );
     serializer.advance( sizeof(TaskDefinition) + definition.arguments.size );
 
+    serializer.write<TaskwaitEvent>( std::move(dependences.newTaskCompleted) );
+
     serializer.write<size_t>( dependences.release.size() );
 
     serializer.write( dependences.release.begin(), dependences.release.end() );
-
-    serializer.write( dependences.rel_destroy_not_satisfy.begin(), dependences.rel_destroy_not_satisfy.end() );
 
     uint32_t distance = mem::distance<uint64_t>( serializer.position(), base );
     return { distance, base };
 }
 
-inline std::tuple<TaskDefinition*,uint64_t,ocrGuid_t*,uint8_t*> Task::unpackParams( uint32_t paramc, uint64_t* paramv )
+inline std::tuple<TaskDefinition*,TaskwaitEvent*,uint64_t,ocrGuid_t*> Task::unpackParams( uint32_t paramc, uint64_t* paramv )
 {
     mem::Deserializer deserializer( paramv );
     TaskDefinition* definition = deserializer.read<TaskDefinition>();
     deserializer.advance( definition->arguments.size );
 
+    TaskwaitEvent* taskwait = deserializer.read<TaskwaitEvent>();
+
     size_t numReleaseDependences = *deserializer.read<size_t>();
 
     ocrGuid_t* releaseDependences = deserializer.read<ocrGuid_t>(numReleaseDependences);
 
-    uint8_t* destroyFlags = deserializer.read<uint8_t>(numReleaseDependences);
-
     dbg_check( paramc == mem::distance<uint64_t>( deserializer.position(), paramv ) );
 
-    return { definition, numReleaseDependences, releaseDependences, destroyFlags };
+    return { definition, taskwait, numReleaseDependences, releaseDependences };
 }
 
-inline void acquireDependences( ompss::Task& task )
+inline void acquireDependences( ocrGuid_t& edt, ompss::Task& task )
 {
     uint8_t err;
 
-    auto& events  = task.dependences.acquire;
-    auto& satisfy = task.dependences.acq_satisfy;
-    if( !events.empty() ) {
-        // Dependences already registered in EDT creation
-        // Just satisfy flagged events
-        for( uint32_t slot = 0; slot < events.size(); ++slot ) {
-            if( satisfy[slot] ) {
-                err = ocrEventSatisfy( events[slot], NULL_GUID );
-                ASSERT( err == 0 );
-            }
-        }
+    auto& acquireOnly  = task.dependences.acquire;
+    auto& acquireAndSatisfy = task.dependences.acquire_satisfy;
+    uint32_t slot = 0;
+    for( ocrGuid_t& event: acquireOnly ) {
+        err = ocrAddDependence( event, edt, slot, DB_DEFAULT_MODE );
+        ASSERT( err == 0 );
+        slot++;
+    }
+    for( ocrGuid_t& event: acquireAndSatisfy ) {
+        err = ocrAddDependence( event, edt, slot, DB_DEFAULT_MODE );
+        ASSERT( err == 0 );
+        err = ocrEventSatisfy( event, NULL_GUID );
+        ASSERT( err == 0 );
+        slot++;
     }
 }
 
-inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[], uint8_t destroy[] )
+inline void releaseDependences( uint32_t num_deps, ocrGuid_t dependences[] )
 {
     log::verbose<log::Module::dependences>( "Releasing dependences" );
     uint8_t err;
     for( uint32_t i = 0; i < num_deps; ++i ) {
-        if( destroy[i] ) {
-            log::verbose<log::Module::dependences>( "Release: destroy GUID ", std::hex, dependences[i].guid );
-            err = ocrEventDestroy( dependences[i] );
-            ASSERT( err == 0 );
-        } else {
-            log::verbose<log::Module::dependences>( "Release: satisfy GUID ", std::hex, dependences[i].guid );
-            err = ocrEventSatisfy( dependences[i], NULL_GUID );
-            ASSERT( err == 0 );
-        }
+        log::verbose<log::Module::dependences>( "Release: destroy GUID ", std::hex, dependences[i].guid );
+        err = ocrEventDestroy( dependences[i] );
+        ASSERT( err == 0 );
     }
 }
 

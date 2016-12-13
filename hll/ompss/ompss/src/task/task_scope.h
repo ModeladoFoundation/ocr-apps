@@ -26,6 +26,7 @@ struct TaskScopeInfo {
     TaskwaitEvent                           taskwait;
 
     TaskScopeInfo();
+    TaskScopeInfo( TaskwaitEvent&& );
     ~TaskScopeInfo();
 
     static void setLocalScope( ompss::TaskScopeInfo& scope ) {
@@ -54,6 +55,23 @@ inline TaskScopeInfo::TaskScopeInfo() :
 {
     // Open taskwait region
     taskwait.openRegion();
+
+    // Store local scope in EDT local storage
+    setLocalScope( *this );
+}
+
+inline TaskScopeInfo::TaskScopeInfo( TaskwaitEvent&& preCreated ) :
+    paramMemory(),
+    scratchMemory(),
+    taskMemory(),
+#if defined(TREE_TMP_ALLOC)
+    accesses(tree_allocator(scratchMemory)),
+#else
+    accesses(),
+#endif
+    taskwait( std::move(preCreated) )
+{
+    // Taskwait region already open
 
     // Store local scope in EDT local storage
     setLocalScope( *this );
