@@ -19,6 +19,8 @@
 #   define KMP_FTN_ENTRIES KMP_FTN_PLAIN
 #elif KMP_OS_UNIX
 #   define KMP_FTN_ENTRIES KMP_FTN_APPEND
+#elif KMP_OS_TGR
+#   define KMP_FTN_ENTRIES KMP_FTN_PLAIN
 #endif
 
 // Note: This string is not printed when KMP_VERSION=1.

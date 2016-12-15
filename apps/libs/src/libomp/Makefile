@@ -50,7 +50,7 @@ BUILD_PREF = build-
 BUILD_DIR = $(BUILD_PREF)$(ARCH)$(BTYPE)
 
 INC_FLAGS = -I$(APPS_LIBS_INSTALL)/include
-COMPILE_FLAGS = "-D__XSTG__ --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)  -mllvm -set-global-default=1"
+COMPILE_FLAGS = "-D__XSTG__ --target=$(TARGET) -nostdinc++ -U__STRICT_ANSI__ $(INC_FLAGS)"
 
 ifdef VERBOSE
   COMPILE_FLAGS += -v
@@ -76,6 +76,7 @@ CMAKE_ARGS = \
 	-DLIBOMP_USE_ITT_NOTIFY=off \
 	-DLIBOMP_OMPT_SUPPORT=off \
 	-DLIBOMP_STATS=off \
+	-DLIBOMP_USE_VERSION_SYMBOLS=off \
 	-D_POSIX_THREADS=TRUE
 
 ifdef DEBUG
