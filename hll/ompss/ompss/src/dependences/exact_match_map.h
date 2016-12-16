@@ -89,7 +89,6 @@ inline void AccessTracker::registerAccess( const Access<type>& new_access, TaskD
         log::log<log::Module::dependences>( " +- Existing access @ ", &entry );
 
         entry.addDependence<type>( dependences );
-        ++conflict_iter;
     } else {
         // Maybe open the section in DependenceEntry constructor?
         AccessMap::iterator position = addEntry( conflict_iter, new_access );
