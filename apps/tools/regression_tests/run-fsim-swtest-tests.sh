@@ -80,7 +80,7 @@ for TEST in $TESTS; do
       # fail as the day will change as it is running.
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
       export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/hello"
-      REGEXS+=("CE: XE0 stdout: 13" "Hello World!" "CE: XE0 stdout: end" "time = $(date +'%a %b %-d')")
+      REGEXS+=("CE: XE0 stdout: 13" "Hello World!" "CE: XE0 stdout: end" "time = $(date -u +'%a %b %-d %H:%M:.. %Y')")
       REGEXS+=("float = 1\.000000" "ret = 15" "terminate alarm")
     ;;
     legacy_iotest)
