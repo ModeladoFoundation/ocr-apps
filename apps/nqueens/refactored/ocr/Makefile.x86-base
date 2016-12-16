@@ -61,14 +61,14 @@ CFLAGS :=
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread $(EXTRALDFLAGS) -ltimer
+LDFLAGS := $(EXTRALDFLAGS) -ltimer
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O2
+all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 
