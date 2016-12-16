@@ -2,7 +2,7 @@
 #ifndef PROFILE_H
 #define PROFILE_H
 
-#if ENABLE_PROFILE
+#ifdef _ENABLE_PROFILE
 
 #ifdef _ENABLE_EXTRAE
 #  include "extrae-instrumentation.h"
@@ -31,6 +31,12 @@ struct InstrumentBlock
 };
 
 } // namespace profile
+
+#else // ENABLE_PROFILE
+
+#ifndef PROFILE_BLOCK
+    #define PROFILE_BLOCK( event )
+#endif
 
 #endif // ENABLE_PROFILE
 

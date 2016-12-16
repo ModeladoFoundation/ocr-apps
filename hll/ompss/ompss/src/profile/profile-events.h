@@ -5,12 +5,14 @@
 namespace profile {
 
 enum class EventType : unsigned {
-    api = 0xa500,
-    invalid
+    api       = 0xa500,
+    user_code = 0xa500 + (1U<<4),
+    /* new event = 0xa500 + (2U<<4), etc. */
+    invalid   = ~0U
 };
 
 constexpr unsigned startingValue( EventType type ) {
-    return static_cast<unsigned>(type) << 16;
+    return static_cast<unsigned>(type);
 }
 
 enum class Event : unsigned {
@@ -19,8 +21,14 @@ enum class Event : unsigned {
     nanos_create_task,
     nanos_submit_task,
     nanos_taskwait,
+    mainEdt,
+    outlineEdt,
+    shutdownEdt,
+    ompss_user_code                   = startingValue( EventType::user_code ),
     undefined                         = startingValue( EventType::invalid )
 };
+
+
 
 } // namespace profile
 

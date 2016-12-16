@@ -75,7 +75,9 @@ void nanos_submit_task( void *task )
 
         // Create EDT of finish type (does not return until
         // all its children EDTs are completed )
-        uint8_t err = ocrEdtCreate( &edt, taskOutlineTemplate,
+        ocrGuid_t edt;
+
+        uint8_t err = ocrEdtCreate( &edt, outlineTemplate,
                       param.first, param.second,
                       depc, NULL,
                       EDT_PROP_FINISH|EDT_PROP_OEVT_VALID,
@@ -97,14 +99,16 @@ void nanos_submit_task( void *task )
 void nanos_taskwait(char const *invocation_source)
 {
     using namespace ompss;
-    PROFILE_BLOCK( nanos_taskwait );
     TaskScopeInfo& scope = TaskScopeInfo::getLocalScope();
+    {
+    PROFILE_BLOCK( nanos_taskwait );
 
     // Wait until successors complete
     scope.taskwait.wait();
 
     // Clear dependence map
     scope.accesses.clear();
+    }
 }
 
 } // extern "C"

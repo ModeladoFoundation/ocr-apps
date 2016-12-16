@@ -1,7 +1,9 @@
 
 #include "common.h"
+#include "debug/traceblock.h"
 #include "memory/util.h"
 #include "outline.h"
+#include "profile/profile.h"
 #include "task/task.h"
 
 #include <nanos6_rt_interface.h>
@@ -11,12 +13,14 @@ extern "C" int ompss_user_main( int argc, char* argv[] );
 
 namespace ompss {
 
-ocrGuid_t edtShutdown(
+ocrGuid_t shutdownEdt(
             uint32_t paramc,
             uint64_t* paramv,
             uint32_t depc,
             ocrEdtDep_t depv[] )
 {
+    PROFILE_BLOCK( shutdownEdt );
+
     // Decode task dependencies
     MainStorage* main_data = reinterpret_cast<MainStorage*>(paramv);
     int exit_code = main_data->exit_code;
@@ -43,14 +47,16 @@ ocrGuid_t mainEdt(
             uint32_t depc,
             ocrEdtDep_t depv[] )
 {
+    PROFILE_BLOCK( mainEdt );
     using namespace ompss;
+
     // Initialization
     ocrGuid_t shutdownTemplate;
     {
         nanos_preinit();
         nanos_init();
 
-        uint8_t err = ocrEdtTemplateCreate( &shutdownTemplate, edtShutdown, (mem::sizeofInItems<uint64_t,MainStorage>()), 1 );
+        uint8_t err = ocrEdtTemplateCreate( &shutdownTemplate, shutdownEdt, (mem::sizeofInItems<uint64_t,MainStorage>()), 1 );
         ASSERT( err == 0);
     }
 
@@ -105,8 +111,13 @@ void nanos_init()
 {
     using namespace ompss;
 
+#ifdef _ENABLE_EXTRAE
+    // Declare extrae types
+    profile::extrae::register_events();
+#endif
+
     // Create EDT templates
-    uint8_t err = ocrEdtTemplateCreate( &taskOutlineTemplate, edtOutlineWrapper, EDT_PARAM_UNK, EDT_PARAM_UNK );
+    uint8_t err = ocrEdtTemplateCreate( &outlineTemplate, outlineEdt, EDT_PARAM_UNK, EDT_PARAM_UNK );
     ASSERT( err == 0);
 }
 
@@ -120,7 +131,7 @@ void nanos_notify_ready_for_shutdown()
 {
     using namespace ompss;
     // Do the shutdown right here
-    uint8_t err = ocrEdtTemplateDestroy( taskOutlineTemplate );
+    uint8_t err = ocrEdtTemplateDestroy( outlineTemplate );
     ASSERT( err == 0 );
 }
 
