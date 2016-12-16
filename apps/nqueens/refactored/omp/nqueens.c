@@ -2,6 +2,8 @@
 // \author Jorge Bellon <jbellonc@intel.com>
 //
 
+#include "timer.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,17 +41,25 @@ static void find_solutions( uint32_t* found, uint32_t all, uint32_t ldiag, uint3
 
 void solve_nqueens( uint32_t n )
 {
+    timestamp_t start, stop;
+    uint32_t result;
     uint32_t found = 0;
-
     uint32_t all = (1 << n) - 1;
+
+    get_time(&start);
     #pragma omp parallel default(shared)
     #pragma omp single
     {
         find_solutions( &found, all, 0, 0, 0 );
         #pragma omp taskwait
     }
+    get_time(&stop);
 
-    printf( "%d-queens; %dx%d; sols: %d\n", n, n, n, found );
+    #pragma omp atomic read
+    result = found;
+
+    printf( "%d-queens; %dx%d; sols: %d\n", n, n, n, result );
+    summary_throughput_timer(&start,&stop,1);
 }
 
 int main ( int argc, char* argv[] )
@@ -57,7 +67,7 @@ int main ( int argc, char* argv[] )
     assert( argc == 2 );
 
     uint32_t n = atoi( argv[1] );
-    assert( 0 < n && n < 31 );
+    assert( n < 31 );
 
     solve_nqueens( n );
     return 0;
