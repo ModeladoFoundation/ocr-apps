@@ -37,8 +37,6 @@ inline TraceBlock<N,F> trace_block( N&& name, F&& file, int line )
 #ifndef RELEASE
 #define PROFILE_BLOCK( block_name ) \
     auto _b_##__LINE__ = ::debug::trace_block(__func__,__FILE__,__LINE__);
-#else
-#define PROFILE_BLOCK( block_name )
 #endif
 
 #endif // TRACEBLOCK_H

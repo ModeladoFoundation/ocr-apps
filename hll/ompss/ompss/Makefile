@@ -28,24 +28,32 @@ LDFLAGS=\
  -L$(OCR_INSTALL)/lib\
  -locr_$(OCR_TYPE)
 
-ifeq ($(EXTRAE),yes)
-CPPFLAGS += -I$(EXTRAE_HOME)/include -D_ENABLE_EXTRAE\
-LDFLAGS :=\
- -L$(EXTRAE_HOME)/lib\
- -lpttrace\
- $(LDFLAGS)
-endif
+OBJ=\
+ src/dependences\
+ src/main\
+ src/task\
+ src/outline
 
 LIBS=$(addprefix lib/,\
  libnanos6.so\
  libnanos6.a\
 )
 
-OBJ=\
- src/dependences\
- src/main\
- src/task\
- src/outline
+EXTRAE=no
+ifeq ($(EXTRAE),yes)
+CPPFLAGS +=\
+ -I$(EXTRAE_HOME)/include\
+ -D_ENABLE_EXTRAE\
+ -D_ENABLE_PROFILE
+
+LDFLAGS :=\
+ -L$(EXTRAE_HOME)/lib\
+ -lpttrace\
+ $(LDFLAGS)
+
+OBJ +=\
+ src/profile/extrae-instrumentation
+endif
 
 .PHONY: all install clean
 
