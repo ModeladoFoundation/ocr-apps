@@ -1,0 +1,10 @@
+NODE_LIST0=(1)
+THREAD_LIST=(1 2 4 8 16 24)     #Compute workers per node
+PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
+SCALINGTYPE_LIST=("strongscaling")
+SIZE_LIST_STENCIL2D=("small" "large")
+TASKFACTOR_LIST=(1 2 4)
+ARCH_LIST=("x86")
+SCHEDULER_LIST=("workstealing" "static")
+APPOPTS_LIST=("noEagerDB")
+JOBHEADER="JEDB"

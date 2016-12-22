@@ -20,8 +20,6 @@ Copywrite Intel Corporation 2015
 #include "timestep.h"
 #include "constants.h"
 
-#include "ocrAppUtils.h"
-
 void initSpecies(SpeciesData* species, BasePotential* pot)
 {
    strcpy(species->name, pot->name);

@@ -1,0 +1,10 @@
+NODE_LIST0=(1 4 8 64 216 512 1024)
+THREAD_LIST=(8 16)     #Compute workers per node
+PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
+SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
+SIZE_LIST_COMD=("smallLJ" "smallEAM" "mediumLJ" "mediumEAM") # "largeLJ" "largeEAM") #largeEAM has a problem with MPI
+TASKFACTOR_LIST=(1)  #4 seems to be hanging with OCR
+ARCH_LIST=("x86" "x86-mpiprobe" "x86-mpi")
+SCHEDULER_LIST=("workstealing") # "static")
+APPOPTS_LIST=("noEagerDB" "wEagerDB")
+JOBHEADER="JOB"

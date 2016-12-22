@@ -61,7 +61,7 @@ History:   Written by Tim Mattson, Dec 1, 1988
 #include <stdlib.h>
 #if defined(_OPENMP)
   #include <omp.h>
-#elif defined(MPI)
+#elif defined(MPI_USER)
   #include "mpi.h"
 #else
   #include <sys/time.h>
@@ -75,7 +75,7 @@ double wtime() {
 #if defined(_OPENMP)
   time_seconds = omp_get_wtime();
 
-#elif defined(MPI)
+#elif defined(MPI_USER)
   time_seconds = MPI_Wtime();
 
 #else

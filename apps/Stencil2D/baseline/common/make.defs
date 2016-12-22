@@ -1,8 +1,8 @@
 #name of MPI C compiler, e.g. mpiicc, mpicc
-MPICC=mpiicc
+MPICC=CC
 
 #name of C compiler, e.g. icc, xlc, gcc
-CC=icc
+CC=CC
 
 #name of compile line flag enabling OpenMP, e.g. -qopenmp, -openmp, -fopenmp
 OPENMPFLAG=

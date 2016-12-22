@@ -1,5 +1,7 @@
 include ../../common/MPI.defs
 include ../../common/make.defs
+MPICC=mpiicc
+CC=cc
 ##### User configurable options #####
 
 OPTFLAGS    = $(DEFAULT_OPT_FLAGS)
@@ -14,7 +16,7 @@ OPTFLAGS    = $(DEFAULT_OPT_FLAGS)
 #RADIUSFLAG  = -DRADIUS=R
 #description: default radius of filter to be applied is 2
 
-DOUBLEFLAG = -DDOUBLE
+DOUBLEFLAG = -DDOUBLE_USER
 #description: default data type is single precision
 
 STARFLAG   = -DSTAR
@@ -23,7 +25,7 @@ STARFLAG   = -DSTAR
 #DEBUGFLAG   = -DVERBOSE
 #description: default diagnostic style is silent
 
-USERFLAGS    = -std=c99
+USERFLAGS    =
 #description: parameter to specify optional flags
 
 #set the following variables for custom libraries and/or other objects

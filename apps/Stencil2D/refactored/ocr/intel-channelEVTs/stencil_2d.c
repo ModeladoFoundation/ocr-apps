@@ -1193,7 +1193,8 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     ocrDbCreate( &(PTR_rankH->DBK_spmdJoin_reductionH), (void **) &PTR_spmdJoin_reductionH, sizeof(reductionPrivate_t),
                  DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
 
-#ifdef STENCIL_WITH_EAGER_DB
+#ifdef USE_EAGER_DB_HINT
+    if(id==0) PRINTF("Using Eager DB hint\n");
     ocrSetHintValue(&myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
 #endif
 

@@ -46,6 +46,7 @@ RUN_TORQUE ?= no
 RUN_MODE ?=
 
 ## END of variables coming from user/environment
+CC := icc
 
 CONFIG_FLAGS=--guid LABELED --binding seq
 
@@ -72,8 +73,8 @@ timers.c
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
-CFLAGS := -g -std=c99
-CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=1000
+CFLAGS += -g -std=c99
+#CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=1000
 CFLAGS += -DENABLE_EXTENSION_AFFINITY
 #CFLAGS += -DVERIFICATION
 #CFLAGS += -DDEBUG_APP

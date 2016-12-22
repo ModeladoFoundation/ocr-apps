@@ -1,0 +1,5 @@
+NODE_LIST0=(1 4 16 64 256 484 1024)
+THREAD_LIST=(1 4 16 24)     #Compute workers per node
+SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
+SIZE_LIST_STENCIL2D=("small" "medium")
+JOBHEADER="JN"

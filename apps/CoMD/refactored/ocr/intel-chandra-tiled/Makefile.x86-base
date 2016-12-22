@@ -49,8 +49,7 @@ RUN_MODE ?=
 STATIC_SCHEDULER ?= 0
 
 ## END of variables coming from user/environment
-
-CONFIG_FLAGS=--guid LABELED --binding seq
+CC := icc
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -64,16 +63,17 @@ REQ_LIBS := reduction ocrAppUtils
 # Space separated list of source files
 SRCS := CoMD.c mycommand.c cmdLineParser.c eam.c ljForce.c decomposition.c linkCells.c initAtoms.c \
 		random.c timestep.c performanceTimers.c haloExchange.c
-OBJS := $(notdir $(SRCS:.c=.o))
-$(OBJS): CoMDTypes.h CoMD_info.h cmdLineParser.h constants.h decomposition.h eam.h haloExchange.h initAtoms.h \
-			linkCells.h ljForce.h mycommand.h mytype.h performanceTimers.h random.h timestep.h
+#OBJS := $(notdir $(SRCS:.c=.o))
+#$(OBJS): CoMDTypes.h CoMD_info.h cmdLineParser.h constants.h decomposition.h eam.h haloExchange.h initAtoms.h \
+#			linkCells.h ljForce.h mycommand.h mytype.h performanceTimers.h random.h timestep.h
 
+CONFIG_FLAGS+=--guid LABELED --binding seq
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
-CFLAGS := -g -std=c99
+CFLAGS += -g -std=c99
 CFLAGS += -DENABLE_EXTENSION_AFFINITY
 CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT
 CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT

@@ -75,7 +75,7 @@ HISTORY: - Written by Rob Van der Wijngaart, November 2006.
   #define RADIUS 2
 #endif
 
-#ifdef DOUBLE
+#ifdef DOUBLE_USER
   #define DTYPE     double
   #define MPI_DTYPE MPI_DOUBLE
   #define EPSILON   1.e-8
@@ -175,7 +175,7 @@ int main(int argc, char ** argv) {
     }
 
     n       = atoi(*++argv);
-    nsquare = n * n;
+    nsquare = (long) n * n;
     if (nsquare < Num_procs){
       printf("ERROR: grid size %d must be at least # ranks: %ld\n",
 	     nsquare, Num_procs);
@@ -223,7 +223,7 @@ int main(int argc, char ** argv) {
     printf("Radius of stencil      = %d\n", RADIUS);
     printf("Tiles in x/y-direction = %d/%d\n", Num_procsx, Num_procsy);
     printf("Type of stencil        = star\n");
-#ifdef DOUBLE
+#ifdef DOUBLE_USER
     printf("Data type              = double precision\n");
 #else
     printf("Data type              = single precision\n");

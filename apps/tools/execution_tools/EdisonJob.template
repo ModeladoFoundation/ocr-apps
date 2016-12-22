@@ -1,0 +1,26 @@
+#!/bin/bash -l
+#SBATCH -p ARG_QUEUE
+#SBATCH -N ARG_NODES
+#SBATCH -t ARG_HOUR:ARG_MIN:00
+#SBATCH -J ARG_NAME
+#SBATCH -o ARG_NAME
+#SBATCH -L SCRATCH
+
+##SBATCH --qos=premium
+
+export RUN_MODE=runApp
+export OCRRUN_OPT_ENVKIND=SLURM
+
+#For slurm run with Intel MPI the following is needed
+module load PrgEnv-intel
+module load impi
+
+if [[ `hostname` == edison* ]]; then
+    export I_MPI_PMI_LIBRARY=/opt/slurm/default/lib/pmi/libpmi.so
+elif [[ `hostname` == cori* ]]; then
+    export I_MPI_PMI_LIBRARY=/usr/lib64/slurmpmi/libmpi.so
+fi
+
+cd $SLURM_SUBMIT_DIR
+
+
