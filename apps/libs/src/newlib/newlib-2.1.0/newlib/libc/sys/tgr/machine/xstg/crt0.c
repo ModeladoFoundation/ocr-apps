@@ -12,9 +12,7 @@ char ** environ;
 extern int main( int argc, char** argv, char **envp );
 static void app_start( int argc, char ** argv, char ** envp ) __attribute__((used));
 
-// In case we are not linked against pthreads.
-__attribute__((weak))
-void __pthread_initialize (void) {}
+__attribute__((weak)) void ptmalloc_init(void);
 
 
 //
@@ -234,7 +232,8 @@ static void app_start( int argc, char ** argv, char ** envp )
 
     environ = envp;
 
-    __pthread_initialize();
+    if (ptmalloc_init != NULL)
+        ptmalloc_init();
 
     //
     // Do C++ startup
