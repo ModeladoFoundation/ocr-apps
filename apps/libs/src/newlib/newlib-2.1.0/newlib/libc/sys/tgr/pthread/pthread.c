@@ -78,7 +78,8 @@ struct _pthread_descr_struct __pthread_initial_thread = {
   NULL,                       /* struct pthread_extricate_if *p_extricate */
   NULL,	                      /* pthread_readlock_info *p_readlock_list; */
   NULL,                       /* pthread_readlock_info *p_readlock_free; */
-  0                           /* int p_untracked_readlock_count; */
+  0,                          /* int p_untracked_readlock_count; */
+  NULL                        /* struct _arena * p_malloc_arena; */
 };
 
 
@@ -311,6 +312,10 @@ pthread_descr __pthread_find_self(void)
   while (h->h_descr == NULL || h->h_descr->p_pid != pid)
       h++;
   return h->h_descr;
+}
+
+struct _arena ** __pthread_get_arena_pp(void) {
+    return &thread_self()->p_malloc_arena;
 }
 
 int __pthread_yield (void)
