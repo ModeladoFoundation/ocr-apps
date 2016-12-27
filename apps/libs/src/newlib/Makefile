@@ -168,6 +168,7 @@ show_args:
 	@echo APPS_ROOT = $(APPS_ROOT)
 	@echo ARCH = $(ARCH)
 	@echo TARGET = $(TARGET)
+	@echo SYS = $(SYS)
 	@echo CFLAGS = $(CFLAGS)
 	@echo CFLAGS_FOR_TARGET = $(CFLAGS)
 	@echo CC_FOR_TARGET =  $(CC_FOR_TARGET)
@@ -197,12 +198,12 @@ $(NEWLIB_BUILD):
 newlib: show_args newlib_install
 
 newlib-config $(BUILD_DIR)/config.log:
-	@echo Configuring Newlib ...
+	@echo Configuring Newlib for SYS $(SYS) ...
 	@rm -rf $(BUILD_DIR); mkdir $(BUILD_DIR);
 	cd $(BUILD_DIR); $(NEWLIB_SRCDIR)/configure $(CONFIG_ARGS)
 
 $(NEWLIB): $(BUILD_DIR)/config.log
-	@echo Building Newlib ...
+	@echo Building Newlib for SYS $(SYS) ...
 	@$(MAKE) -C $(BUILD_DIR) all
 	@echo Successfully built newlib!
 #
