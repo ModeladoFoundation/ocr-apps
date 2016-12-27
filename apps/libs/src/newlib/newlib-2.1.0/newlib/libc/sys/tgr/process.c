@@ -4,13 +4,13 @@
 #include <sys/tgr.h>
 
 /////////// getpid ///////////
-int
+pid_t
 _DEFUN (_getpid_r, (),
         struct _reent *reent)
 {
     return tgr_getpid ();
 }
-int
+pid_t
 _DEFUN (_getpid, (),
         _NOARGS)
 {
@@ -23,15 +23,15 @@ weak_alias(_getpid, getpid);
 int
 _DEFUN (_kill_r, (reent, pid, sig),
         struct _reent *reent _AND
-        int pid  _AND
+        pid_t pid  _AND
         int sig)
 {
-  return tgr_kill ((s64)pid, (s32)sig);
+  return tgr_kill (pid, (s32)sig);
 }
 
 int
 _DEFUN (_kill, (pid, sig),
-        int pid  _AND
+        pid_t pid  _AND
         int sig)
 {
     return _kill_r( _REENT, pid, sig );

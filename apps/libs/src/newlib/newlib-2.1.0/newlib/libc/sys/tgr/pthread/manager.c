@@ -382,7 +382,7 @@ void __pthread_handle_free(pthread_t th_id)
   if (th->p_exited) {
     if (!th->p_detached && th != __pthread_main_thread) {
       /* wait for thread to fully exit and be cleaned */
-      tgr_cleanpid(th->p_pid, NULL, 1);
+      tgr_waitpid(th->p_pid, NULL, 1);
     }
     __pthread_unlock(&handle->h_lock);
     pthread_free(th);
@@ -442,7 +442,7 @@ void __pthread_handle_exit(pthread_descr issuing_thread, int exitcode)
   for (th = issuing_thread->p_nextlive;
        th != issuing_thread;
        th = th->p_nextlive) {
-    tgr_cleanpid(th->p_pid, NULL, 1);
+    tgr_waitpid(th->p_pid, NULL, 1);
   }
   __fresetlockfiles();
   __MANAGER_CRIT_END();

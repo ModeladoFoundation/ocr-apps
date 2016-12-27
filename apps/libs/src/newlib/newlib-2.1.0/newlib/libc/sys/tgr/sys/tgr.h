@@ -42,7 +42,7 @@ void tgr_fini(void);
  * @return 0 on success or -1 on failure. 'descriptor' will not
  * be usable if this call fails.
  */
-s8 tgr_open(u64* fd, const char* file, s32 flags, s32 mode);
+s8 tgr_open(int* fd, const char* file, int flags, mode_t mode);
 
 /**
  * @brief Opens a pipe
@@ -79,7 +79,7 @@ s8 tgr_poll(struct pollfd * fds , s32 nfds, s32 timeout);
  * @return 0 on success or -1 on failure. 'readCount' will not
  * be accurate if this call fails.
  */
-s8 tgr_read(u64 fd, s32 *readCount, char* ptr, u32 len);
+s8 tgr_read(int fd, ssize_t* readCount, void* ptr, size_t len);
 
 /**
  * @brief Writes to a file
@@ -93,7 +93,7 @@ s8 tgr_read(u64 fd, s32 *readCount, char* ptr, u32 len);
  * @return 0 on success or -1 on failure. 'wroteCount' will not
  * be accurate if this call fails.
  */
-s8 tgr_write(u64 fd, s32 *wroteCount, const char* ptr, s32 len);
+s8 tgr_write(int fd, ssize_t* wroteCount, const void* ptr, size_t len);
 
 /**
  * @brief Closes an open file
@@ -106,7 +106,7 @@ s8 tgr_write(u64 fd, s32 *wroteCount, const char* ptr, s32 len);
  * @param[in]  fd         Descriptor for the file to close
  * @return 0 on success or -1 on failure.
  */
-s8 tgr_close(u64 fd);
+s8 tgr_close(int fd);
 
 /**
  * @brief Obtains information on an open file
@@ -118,7 +118,7 @@ s8 tgr_close(u64 fd);
  * @return 0 on success or -1 on failure. 'st' will not have
  * reliable data if this call fails.
  */
-s8 tgr_fstat(u64 fd, struct stat* st);
+s8 tgr_fstat(int fd, struct stat* st);
 
 /**
  * @brief Obtains information on a closed file
@@ -143,7 +143,7 @@ s8 tgr_stat(const char* file, struct stat* st);
  * @return resulting pointer offset from begining of file on success or
  * -1 on failure.
  */
-s8 tgr_lseek(u64 fd, s64* offset, s32 whence);
+s8 tgr_lseek(int fd, off_t* offset, int whence);
 
 /**
  * @brief Links 'link' with the file pointed to by 'existing'
@@ -210,7 +210,7 @@ s8 tgr_chdir(const char* path);
  * @return 0 on success or -1 on falure. If return value is -1
  * then the data in buf is undefined.
  */
-s8 tgr_getcwd(char* buf, u64 bufSize);
+s8 tgr_getcwd(char* buf, size_t bufSize);
 
 /**
  * @brief Request the creation of a data-block
@@ -229,7 +229,7 @@ s8 tgr_getcwd(char* buf, u64 bufSize);
  *     + EBUSY : the agent that is needed to process this request is busy. Retry is possible.
  *     + EPERM : trying to allocate in an area of memory that is not allowed (such as another core's SPAD)
  */
-s8 tgr_mmap(u64* addr, u64 len);
+s8 tgr_mmap(void** addr, size_t len);
 
 /**
  * Request for the freeing of a data-block
@@ -244,33 +244,35 @@ s8 tgr_mmap(u64* addr, u64 len);
  *      - EPERM: data-block cannot be freed because it was already freed.
  *      - EINVAL: addr does not refer to a valid data-block or len is invalid.
  */
-s8 tgr_munmap(u64* addr, u64 len);
+s8 tgr_munmap(void* addr, size_t len);
 
 s64 tgr_getpagesize(_NOARGS);
 
-s8 tgr_isatty (u64 file);
+s8 tgr_isatty (int fd);
 s8 tgr_readlink (const char *path, char *buf, size_t bufsize);
-s8 tgr_mkdir(const char *path, s32 mode);
-
-s8 tgr_clone (s64 (*fn)(void *), void *arg, s64* pid);
+s8 tgr_mkdir(const char *path, mode_t mode);
+s8 tgr_rmdir(const char *path);
+s8 tgr_gettimeofday (struct timeval* ptimeval, void* ptimezone);
+s8 tgr_gethostname (char* hostname, size_t maxlen);
 
 void tgr_exit (s64 retval) __attribute__((noreturn));
-s8 tgr_kill (s64 pid, s32 sig);
+s8 tgr_times (struct tms* buf, clock_t* ticks);
+
+s8 tgr_clone (s64 (*fn)(void *), void *arg, pid_t* pid);
+s8 tgr_kill (pid_t pid, s32 sig);
 s8 tgr_killall ();
-s8 tgr_cancel_pid(s64 pid, void (*cancel_fn)(void));
-s8 tgr_cleanpid (s64 pid, s64 *status, s8 block);
-s8 tgr_detach (s64 pid);
+s8 tgr_cancel_pid(pid_t pid, void (*cancel_fn)(void));
+s8 tgr_waitpid (pid_t pid, s64 *status, s8 block);
+s8 tgr_detach (pid_t pid);
 s8 tgr_waitall (_NOARGS);
 
-s64 tgr_getpid (_NOARGS);
-s64 tgr_getppid (_NOARGS);
-
-s8 tgr_resume (s64 pid);
+s8 tgr_resume (pid_t pid);
 s8 tgr_queue_resumes (s8 enable);
 s8 tgr_suspend (const struct timespec* abstime);
 
-s8 tgr_gettimeofday (struct timeval  *ptimeval, void *ptimezone);
-s8 tgr_times (struct tms *buf, clock_t *ticks);
+pid_t tgr_getpid (_NOARGS);
+pid_t tgr_getppid (_NOARGS);
+
 
 _END_STD_C
 

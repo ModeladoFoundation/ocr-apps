@@ -142,9 +142,9 @@ extern int _execve_r _PARAMS ((struct _reent *, const char *, char *const *, cha
 extern int _fcntl_r _PARAMS ((struct _reent *, int, int, int));
 extern int _fork_r _PARAMS ((struct _reent *));
 extern int _fstat_r _PARAMS ((struct _reent *, int, struct stat *));
-extern int _getpid_r _PARAMS ((struct _reent *));
+extern pid_t _getpid_r _PARAMS ((struct _reent *));
 extern int _isatty_r _PARAMS ((struct _reent *, int));
-extern int _kill_r _PARAMS ((struct _reent *, int, int));
+extern int _kill_r _PARAMS ((struct _reent *, pid_t, int));
 extern int _link_r _PARAMS ((struct _reent *, const char *, const char *));
 extern _off_t _lseek_r _PARAMS ((struct _reent *, int, _off_t, int));
 extern int _mkdir_r _PARAMS ((struct _reent *, const char *, int));
@@ -155,7 +155,7 @@ extern void *_sbrk_r _PARAMS ((struct _reent *, ptrdiff_t));
 extern int _stat_r _PARAMS ((struct _reent *, const char *, struct stat *));
 extern clock_t _times_r _PARAMS ((struct _reent *, struct tms *));
 extern int _unlink_r _PARAMS ((struct _reent *, const char *));
-extern int _wait_r _PARAMS ((struct _reent *, int *));
+extern pid_t _wait_r _PARAMS ((struct _reent *, int *));
 extern _ssize_t _write_r _PARAMS ((struct _reent *, int, const void *, size_t));
 
 /* This one is not guaranteed to be available on all targets.  */
