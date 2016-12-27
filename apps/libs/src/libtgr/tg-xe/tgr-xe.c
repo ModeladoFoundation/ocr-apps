@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "tgr.h"
 
 // No reent is needed for this tgr implementation.

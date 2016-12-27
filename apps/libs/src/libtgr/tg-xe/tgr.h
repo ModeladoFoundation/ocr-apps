@@ -1,7 +1,10 @@
 #ifndef __TGR_H__
 #define __TGR_H__
 
+#include <stdint.h>
+#include <errno.h>
 #include <sys/tgr.h>
+#include "ce-xe-intf.h"
 
 // Not needed or used.
 struct tgr_reent;
@@ -34,64 +37,16 @@ int *__errno(void);
 // XE MSRs, defined in intel/tg/common/include/mmio-table.(def|h)
 // TODO: use mmio-table.h
 //
-
-#define MSR_6   6
-#define CURRENT_PC 11
 #define CORE_LOCATION_NUM   12
-#define POWER_GATE_RESET 31
-
-#define MSR_6_BIT_CLOCK_GATE        0x1000000000000000  // XE weak clock gate
-
 
 //
 // Covert pid's to/from xe_id's
 //
 // Right now, we are just having these be the same.
-// pid must be signed and xe_id must be an agent number
+// pid must be signed and xe_id is opaque
 //
 #define PID_TO_XE_ID(pid) pid
 #define XE_ID_TO_PID(id) id
-
-
-//
-// from fsim ce-handle-alarm.c
-//
-typedef enum {
-    CE_REQTYPE_FIRST    = 0,
-    CE_REQTYPE_MEMALLOC = CE_REQTYPE_FIRST,
-    CE_REQTYPE_MEMFREE,
-    CE_REQTYPE_GETCWD,
-    CE_REQTYPE_CHDIR,
-    CE_REQTYPE_CHMOD,
-    CE_REQTYPE_CHOWN,
-    CE_REQTYPE_LINK,
-    CE_REQTYPE_SYMLINK,
-    CE_REQTYPE_UNLINK,
-    CE_REQTYPE_FILEOPEN,
-    CE_REQTYPE_FILECLOSE,
-    CE_REQTYPE_FILEREAD,
-    CE_REQTYPE_FILEWRITE,
-    CE_REQTYPE_FILELSEEK,
-    CE_REQTYPE_FILESTAT,
-    CE_REQTYPE_FILEFSTAT,
-    CE_REQTYPE_GETTIMEOFDAY,
-    CE_REQTYPE_ISATTY,
-    CE_REQTYPE_MKDIR,
-    CE_REQTYPE_READLINK,
-    CE_REQTYPE_PIPE,
-    CE_REQTYPE_CLONE,
-    CE_REQTYPE_CLEANPID,
-    CE_REQTYPE_FINISH,
-    CE_REQTYPE_KILLALL,
-    CE_REQTYPE_CANCEL,
-    CE_REQTYPE_SUSPEND,
-    CE_REQTYPE_RESUME,
-    CE_REQTYPE_DETACH,
-    CE_REQTYPE_WAITALL,
-    CE_REQTYPE_LAST
-} ce_request_type;
-
-#define CE_REQ_MAKE( t, l )    (((t) << 32) | ((l) & ((1L << 32) - 1)))
 
 //
 // XE location in the system.

@@ -1,5 +1,6 @@
 TG_ROOT ?= $(realpath $(CURDIR)/../../../../../../tg/tg)
 TG_INSTALL ?= $(TG_ROOT)/install
+
 APPS_ROOT ?= $(realpath $(CURDIR)/../../../..)
 APPS_LIBS_INSTALL_ROOT ?= $(APPS_ROOT)/libs/install
 APPS_LIBS_INSTALL ?= $(APPS_LIBS_INSTALL_ROOT)/tg-xe
@@ -16,8 +17,12 @@ AR = $(TOOL_PREFIX)ar
 LD = $(TOOL_PREFIX)ld
 RANLIB = $(TOOL_PREFIX)ranlib
 
-NEWLIB_INC = $(APPS_LIBS_INSTALL)/include
-CFLAGS = -isystem $(NEWLIB_INC) -std=c99
+NEWLIB_INC = -isystem $(APPS_LIBS_INSTALL)/include
+TG_CE_INC  = -I../tg-ce/include
+
+INCLUDES = $(NEWLIB_INC) $(TG_CE_INC)
+
+CFLAGS = $(INCLUDES) -std=c99
 
 ifdef DEBUG
 CFLAGS += -O0 -g
@@ -48,29 +53,32 @@ $(TARGET): $(BUILD_DIR) $(OBJS)
 	@rm -rf $@
 	@$(AR) cru $@ $(OBJS)
 	@$(RANLIB) $@
-	@echo Successfully built $@
+	@echo " * $(notdir $@)"
 
 $(TARGET_P): $(OBJS_P)
 	@rm -rf $@
 	@$(AR) cru $@ $(OBJS_P)
 	@$(RANLIB) $@
-	@echo Successfully built $@
+	@echo " * $(notdir $@)"
 
 $(BUILD_DIR) $(BUILD_DIR_P):
 	@mkdir -p $@
 
 $(BUILD_DIR)/%.o : %.c | $(BUILD_DIR)
-	$(CC) -c $(CFLAGS) $< -o $@
+	@echo " - $(notdir $@)"
+	@$(CC) -c $(CFLAGS) $< -o $@
+
 $(BUILD_DIR_P)/%.o : %.c | $(BUILD_DIR_P)
-	$(CC) -c $(CFLAGS) -fPIE $< -o $@
+	@echo " - $(notdir $@) pie"
+	@$(CC) -c $(CFLAGS) -fPIE $< -o $@
 
 install_static: $(TARGET)
 	@cp $(TARGET) $(APPS_LIBS_INSTALL)/lib/$(TARGET_LIB)
-	@echo Successfully installed $(APPS_LIBS_INSTALL)/lib/$(TARGET_LIB)
+	@echo " ** $(TARGET_LIB) -> $(APPS_LIBS_INSTALL)/lib"
 
 install_pie: $(TARGET_P)
 	@cp $(TARGET_P) $(APPS_LIBS_INSTALL)/lib/$(TARGET_LIB_P)
-	@echo Successfully installed $(APPS_LIBS_INSTALL)/lib/$(TARGET_LIB_P)
+	@echo " ** $(TARGET_LIB_P) -> $(APPS_LIBS_INSTALL)/lib"
 
 install: install_static install_pie
 

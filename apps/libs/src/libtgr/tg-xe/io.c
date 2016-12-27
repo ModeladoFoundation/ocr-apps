@@ -1,16 +1,9 @@
-#include <errno.h>
-
 #include "tgr.h"
 
-s8 tgr_open(u64* fd, const char* file, s32 flags, s32 mode)
+s8 tgr_open(int* fd, const char* file, int flags, mode_t mode)
 {
-    struct {
-        uint64_t fname_ptr; // in
-        uint64_t fname_len; // in (len of fname not including terminal '\0')
-        uint64_t flags;     // in
-        uint64_t mode;      // in
-        uint64_t fd;        // out
-    } req;
+    fileopen_req req;
+
     req.flags = flags;
     req.mode = mode;
     req.fd = 0;
@@ -18,32 +11,25 @@ s8 tgr_open(u64* fd, const char* file, s32 flags, s32 mode)
     req.fname_ptr = (uint64_t) file;
 
     const char *p = file;
-    while( *p ) p++;
+    while( *p )
+		p++;
     req.fname_len = p - file;
 
     int status = send_req(CE_REQTYPE_FILEOPEN, & req, sizeof(req));
 
-    if (!status) *fd = req.fd;
+    if (!status)
+		*fd = req.fd;
 
     RETURN(status)
 }
 
-s8 tgr_pipe(u64 pipefd[2])
+s8 tgr_close(int fd)
 {
-    struct {
-        uint64_t pipefd_read;  // out
-        uint64_t pipefd_write; // out
-    } req;
+    fileclose_req req;
 
-    req.pipefd_read = pipefd[0];
-    req.pipefd_write = pipefd[1];
+    req.fd = fd;
 
-    int status = send_req(CE_REQTYPE_PIPE, & req, sizeof(req));
-
-    if (!status) {
-        pipefd[0] = req.pipefd_read;
-        pipefd[1] = req.pipefd_write;
-    }
+    int status = send_req(CE_REQTYPE_FILECLOSE, & req, sizeof(req));
 
     RETURN(status)
 }
@@ -55,74 +41,44 @@ s8 tgr_poll(struct pollfd * fds , s32 nfds, s32 timeout)
     return -1;
 }
 
-s8 tgr_read(u64 fd, s32 *readCount, char* ptr, u32 len)
+s8 tgr_read(int fd, ssize_t *readCount, void* ptr, size_t len)
 {
-    struct {
-        uint64_t fd;        // in
-        uint64_t buf;       // in
-        uint64_t len;       // in / out
-    } req;
+    fileread_req req;
+
     req.fd = fd;
     req.buf = (uint64_t) ptr;
     req.len = (u64) len;
 
     int status = send_req(CE_REQTYPE_FILEREAD, & req, sizeof(req));
 
-    if (status) *readCount = 0;
-    else *readCount = (s32)req.len;
+    if (status)
+		*readCount = 0;
+    else
+		*readCount = (s32)req.len;
 
     RETURN(status);
 }
 
-s8 tgr_write(u64 fd, s32 *wroteCount, const char* ptr, s32 len)
+s8 tgr_write(int fd, ssize_t *wroteCount, const void* ptr, size_t len)
 {
-    struct {
-        uint64_t fd;        // in
-        uint64_t buf;       // in
-        uint64_t len;       // in / out
-    } req;
+    filewrite_req req;
+
     req.fd = fd;
     req.buf = (uint64_t) ptr;
     req.len = len;
 
     int status = send_req(CE_REQTYPE_FILEWRITE, & req, sizeof(req));
 
-    if (!status) *wroteCount = len;
+    if (!status)
+		*wroteCount = len;
 
     RETURN(status)
 }
 
-s8 tgr_close(u64 fd)
+s8 tgr_fstat(int fd, struct stat* st)
 {
-    struct {
-        uint64_t fd; // in
-    } req;
-    req.fd = fd;
+    filefstat_req req;
 
-    int status = send_req(CE_REQTYPE_FILECLOSE, & req, sizeof(req));
-
-    RETURN(status)
-}
-
-s8 tgr_isatty(u64 file)
-{
-    struct {
-        uint64_t fd; // in
-    } req;
-    req.fd = file;
-
-    int status = send_req(CE_REQTYPE_ISATTY, & req, sizeof(req));
-
-    RETURN(status)
-}
-
-s8 tgr_fstat(u64 fd, struct stat* st)
-{
-    struct {
-        uint64_t fd;        // in
-        uint64_t stat_ptr;  // in
-        uint64_t stat_len;  // in (paranoia)
-    } req;
     req.fd = fd;
     req.stat_ptr = (uint64_t) st;
     req.stat_len = sizeof(*st);
@@ -134,16 +90,13 @@ s8 tgr_fstat(u64 fd, struct stat* st)
 
 s8 tgr_stat(const char* file, struct stat* st)
 {
-    struct {
-        uint64_t fname_ptr; // in
-        uint64_t fname_len; // in (len of fname not including terminal '\0')
-        uint64_t stat_ptr;  // in
-        uint64_t stat_len;  // in (paranoia)
-    } req;
+    filestat_req req;
+
     req.fname_ptr = (uint64_t) file;
 
     const char *p = file;
-    while( *p ) p++;
+    while( *p )
+		p++;
     req.fname_len = p - file;
 
     req.stat_ptr = (uint64_t) st;
@@ -154,42 +107,35 @@ s8 tgr_stat(const char* file, struct stat* st)
     RETURN(status)
 }
 
-s8 tgr_lseek(u64 fd, s64 * offset, s32 whence)
+s8 tgr_lseek(int fd, off_t * offset, int whence)
 {
-    struct {
-        uint64_t fd;     // in
-        uint64_t offset; // in/out
-        uint64_t whence; // in
-    } req;
+    filelseek_req req;
+
     req.fd = fd;
     req.offset = (uint64_t) *offset;
     req.whence = whence;
 
     int status = send_req(CE_REQTYPE_FILELSEEK, & req, sizeof(req));
 
-    if(!status) *offset = req.offset;
+    if(!status)
+		*offset = req.offset;
 
     RETURN(status)
 }
 
 s8 tgr_link(const char* existing, const char* link)
 {
-    struct {
-        uint64_t oldpath_ptr;        // in
-        uint64_t oldpath_len;        // in (len not including terminal '\0')
-        uint64_t newpath_ptr;        // in
-        uint64_t newpath_len;        // in (len not including terminal '\0')
-    } req;
+    link_req req;
 
     const char *p = existing;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.oldpath_ptr = (uint64_t)existing;
     req.oldpath_len = (uint64_t)(p - existing);
 
     p = link;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.newpath_ptr = (uint64_t)link;
     req.newpath_len = (uint64_t)(p - link);
 
@@ -200,22 +146,17 @@ s8 tgr_link(const char* existing, const char* link)
 
 s8 tgr_symlink(const char* path1, const char* path2)
 {
-    struct {
-        uint64_t oldpath_ptr;        // in
-        uint64_t oldpath_len;        // in (len not including terminal '\0')
-        uint64_t newpath_ptr;        // in
-        uint64_t newpath_len;        // in (len not including terminal '\0')
-    } req;
+    symlink_req req;
 
     const char *p = path1;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.oldpath_ptr = (uint64_t)path1;
     req.oldpath_len = (uint64_t)(p - path1);
 
     p = path2;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.newpath_ptr = (uint64_t)path2;
     req.newpath_len = (uint64_t)(p - path2);
 
@@ -226,16 +167,11 @@ s8 tgr_symlink(const char* path1, const char* path2)
 
 s8 tgr_readlink (const char *path, char *buf, size_t bufsize)
 {
-    struct {
-        uint64_t path_ptr;        // in
-        uint64_t path_len;        // in (len not including terminal '\0')
-        uint64_t buf_ptr;         // in
-        uint64_t size;            // in
-    } req;
+    readlink_req req;
 
     const char *p = path;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.path_ptr = (uint64_t)path;
     req.path_len = (uint64_t)(p - path);
 
@@ -249,14 +185,11 @@ s8 tgr_readlink (const char *path, char *buf, size_t bufsize)
 
 s8 tgr_unlink(const char* name)
 {
-    struct {
-        uint64_t path_ptr;        // in
-        uint64_t path_len;        // in (len not including terminal '\0')
-    } req;
+    unlink_req req;
 
     const char *p = name;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.path_ptr = (uint64_t)name;
     req.path_len = (uint64_t)(p - name);
 
@@ -267,16 +200,11 @@ s8 tgr_unlink(const char* name)
 
 s8 tgr_chown(const char* path, uid_t owner, gid_t group)
 {
-    struct {
-        uint64_t path_ptr;        // in
-        uint64_t path_len;        // in (len not including terminal '\0')
-        uint64_t owner;           // in
-        uint64_t group;           // in
-    } req;
+    chown_req req;
 
     const char *p = path;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.path_ptr = (uint64_t)path;
     req.path_len = (uint64_t)(p - path);
     req.owner = (uint64_t)owner;
@@ -289,15 +217,11 @@ s8 tgr_chown(const char* path, uid_t owner, gid_t group)
 
 s8 tgr_chmod(const char* path, mode_t mode)
 {
-    struct {
-        uint64_t path_ptr;        // in
-        uint64_t path_len;        // in (len not including terminal '\0')
-        uint64_t mode;            // in
-    } req;
+    chmod_req req;
 
     const char *p = path;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.path_ptr = (uint64_t)path;
     req.path_len = (uint64_t)(p - path);
     req.mode = (uint64_t)mode;
@@ -307,17 +231,13 @@ s8 tgr_chmod(const char* path, mode_t mode)
     RETURN(status)
 }
 
-s8 tgr_mkdir(const char *path, s32 mode)
+s8 tgr_mkdir(const char *path, mode_t mode)
 {
-    struct {
-        uint64_t path_ptr;        // in
-        uint64_t path_len;        // in (len not including terminal '\0')
-        uint64_t mode;            // in
-    } req;
+    mkdir_req req;
 
     const char *p = path;
-    while( *p ) p++;
-
+    while( *p )
+		p++;
     req.path_ptr = (uint64_t)path;
     req.path_len = (uint64_t)(p - path);
 
@@ -328,16 +248,28 @@ s8 tgr_mkdir(const char *path, s32 mode)
     RETURN(status)
 }
 
-s8 tgr_chdir(const char* path)
+s8 tgr_rmdir(const char *path)
 {
-    struct {
-        uint64_t path_ptr;        // in
-        uint64_t path_len;        // in (len not including terminal '\0')
-    } req;
+    rmdir_req req;
 
     const char *p = path;
-    while( *p ) p++;
+    while( *p )
+		p++;
+    req.path_ptr = (uint64_t)path;
+    req.path_len = (uint64_t)(p - path);
 
+    int status = send_req(CE_REQTYPE_RMDIR, & req, sizeof(req));
+
+    RETURN(status)
+}
+
+s8 tgr_chdir(const char* path)
+{
+    chdir_req req;
+
+    const char *p = path;
+    while( *p )
+		p++;
     req.path_ptr = (uint64_t)path;
     req.path_len = (uint64_t)(p - path);
 
@@ -346,12 +278,10 @@ s8 tgr_chdir(const char* path)
     RETURN(status)
 }
 
-s8 tgr_getcwd(char* buf, u64 bufSize)
+s8 tgr_getcwd(char* buf, size_t bufSize)
 {
-    struct {
-        uint64_t buf_ptr;     // in
-        uint64_t size;        // in
-    } req;
+    getcwd_req req;
+
     req.buf_ptr = (uint64_t)buf;
     req.size = bufSize;
 
@@ -359,3 +289,15 @@ s8 tgr_getcwd(char* buf, u64 bufSize)
 
     RETURN(status)
 }
+
+s8 tgr_isatty(int fd)
+{
+    isatty_req req;
+
+    req.fd = fd;
+
+    int status = send_req(CE_REQTYPE_ISATTY, & req, sizeof(req));
+
+    RETURN(status)
+}
+
