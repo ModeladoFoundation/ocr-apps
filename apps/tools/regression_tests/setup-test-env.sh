@@ -83,8 +83,23 @@ function print_help() {
   exit
 }
 
-# Attempt to determine locations of repos and install directories for tests.
+# This function handles ctrl-c interrupts. It cancels
+# the current test. It has a .4 sec sleep timeout
+# so if two ctrl-c presses happen in quick succession,
+# it aborts the script.
+function ctrl_c() {
+  echo "** Interrupt **"
+  killall -e -9 -u $(whoami) $TG_INSTALL/bin/xstg-linux-elf-gdb 2>/dev/null
+  killall -9 -u $(whoami) $TG_INSTALL/bin/fsim 2>/dev/null
+  echo "Test aborted"
+  echo
+  sleep .4 || exit 1
+}
 
+# The ctrl-c handler is only supported for fsim tests
+[[ "${BASH_SOURCE[1]}" =~ "fsim" ]] && trap ctrl_c INT
+
+# Attempt to determine locations of repos and install directories for tests.
 export TG_INSTALL=$(clean_path ${TG_INSTALL:-$(pwd)/../../../../tg/tg/install})
 [[ -z $TG_INSTALL ]] && exit 1;
 
