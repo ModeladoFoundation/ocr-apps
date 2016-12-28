@@ -1,0 +1,57 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+include ../Makefile.def
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+
+# Where the binaries will be installed
+BINDIR = $(TOP)bin
+
+OCR_TYPE := x86
+
+# AST Generator
+ASTGEN = astGenerate
+# Set this variable to yes to generate the AST for
+# the whole program
+WHOLE_PROG_AST =
+
+# Binary for ocr translator tool
+OCRTRANSLATE = ocrTranslate
+
+# All binaries
+TARGETS := $(OCRTRANSLATE) $(ASTGEN)
+
+.PHONY: all
+all: $(TARGETS)
+
+$(ASTGEN): $(ASTGEN).cpp
+ifeq ($(WHOLE_PROG_AST), yes)
+	$(CXX) -g -O2 -DWHOLE_PROG $(ROSE_INC) $< -o $@ $(ROSE_LNK)
+else
+	$(CXX) -g -O2 $(ROSE_INC) $< -o $@ $(ROSE_LNK)
+endif
+	cp $(ASTGEN) ../bin
+
+CC := g++
+CFLAGS := $(ROSE_INC)
+OCRTRANSLATE_HEADERS := ocrObjectInfo.h ocrPragmaParsing.h logger.h
+OCRTRANSLATE_SRCS := ocrObjectInfo.cpp ocrPragmaParsing.cpp logger.cpp ocrTranslate.cpp
+OCRTRANSLATE_OBJS := $(notdir $(OCRTRANSLATE_SRCS:.cpp=.o))
+
+%.o: %.cpp $(OCRTRANSLATE_HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OCRTRANSLATE): $(OCRTRANSLATE_OBJS)
+	$(CC) -o $@ $^ $(ROSE_LNK)
+
+.PHONY: install
+install: $(TARGETS)
+	mkdir -p $(BINDIR)
+	cp -t $(BINDIR) $^
+
+.PHONY: clean
+clean:
+	rm -f ../bin/$(ASTGEN) ../bin/$(OCRTRANSLATE)
+	rm -f $(ASTGEN) $(OCRTRANSLATE)
+	rm -f *.o
+	rm -f *~
