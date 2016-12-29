@@ -4,6 +4,7 @@
 #ifndef _OCRPRAGMAPARSING_H
 #define _OCRPRAGMAPARSING_H
 
+#include "ocrObjectInfo.h"
 #include <boost/xpressive/xpressive_static.hpp>
 #include <boost/xpressive/regex_actions.hpp>
 #include <exception>

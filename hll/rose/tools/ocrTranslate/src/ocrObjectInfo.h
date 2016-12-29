@@ -55,6 +55,7 @@ typedef boost::shared_ptr<OcrObjectContext> OcrObjectContextPtr;
 class OcrDbkContext : public OcrObjectContext {
   std::string m_name;
 public:
+  std::string get_name() const;
   OcrDbkContext(std::string name);
   std::string str() const;
   ~OcrDbkContext();
@@ -69,6 +70,7 @@ class OcrEvtContext : public OcrObjectContext {
   std::string m_name;
 public:
   OcrEvtContext(std::string name);
+  std::string get_name() const;
   std::string str() const;
   ~OcrEvtContext();
 };
@@ -91,6 +93,7 @@ class OcrEdtContext : public OcrObjectContext {
   std::list<SgStatement*> m_statements;
 public:
   OcrEdtContext(std::string name);
+  std::string get_name() const;
   std::string str() const;
   ~OcrEdtContext();
 };
