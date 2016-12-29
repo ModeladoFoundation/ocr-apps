@@ -20,6 +20,10 @@ OcrDbkContext::OcrDbkContext(std::string name)
   : OcrObjectContext(),
     m_name(name) { }
 
+string OcrDbkContext::get_name() const {
+  return m_name;
+}
+
 string OcrDbkContext::str() const {
   ostringstream oss;
   oss << "[DB: " << m_name << "]\n";
@@ -37,6 +41,10 @@ OcrEvtContext::OcrEvtContext(std::string name)
   : OcrObjectContext(),
     m_name(name) { }
 
+string OcrEvtContext::get_name() const {
+  return m_name;
+}
+
 string OcrEvtContext::str() const {
   ostringstream oss;
   oss << "[EVT: " << m_name << "]\n";
@@ -51,6 +59,10 @@ OcrEvtContext::~OcrEvtContext() {
  * OcrEdtContext *
  *****************/
 OcrEdtContext::OcrEdtContext(std::string name) : m_name(name) { }
+
+string OcrEdtContext::get_name() const {
+  return m_name;
+}
 
 string OcrEdtContext::str() const {
   ostringstream oss;
