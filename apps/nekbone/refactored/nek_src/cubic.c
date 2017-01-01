@@ -2,7 +2,11 @@
 #include "cubic.h"
 #endif // NEKBONE_CUBIC_H
 
+#include "blas.h" //NEK_USE_ADVANCED_FUNCTIONS
+
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
 #include <math.h>
+#endif
 
 int nek_cubic(unsigned long * o_x,
               unsigned long * o_y,
@@ -10,6 +14,12 @@ int nek_cubic(unsigned long * o_x,
               unsigned long in_value
               )
 {
+#ifndef NEK_USE_ADVANCED_FUNCTIONS
+    *o_x=0;
+    *o_y=0;
+    *o_z=0;
+    return __LINE__;
+#else
     int err=0;
     while(!err){
         *o_x = in_value;
@@ -63,5 +73,6 @@ int nek_cubic(unsigned long * o_x,
         break;
     }
     return err;
+#endif // NEK_USE_ADVANCED_FUNCTIONS
 }
 

@@ -29,7 +29,10 @@ python ./findreplace.py app_ocr_util.h '../../tools/app_ocr_err_util.h' 'app_ocr
 #WORKLOAD_ARGS="2 1 1 2 2 2 8 4" CONFIG_NUM_THREADS=3 OCR_TYPE=x86 make run &> z_log
 #WORKLOAD_ARGS="2 1 1 2 2 2 8 4" CONFIG_NUM_THREADS=3 OCR_TYPE=x86-mpi make run > z_log
 
-WORKLOAD_ARGS="2 2 2 2 2 2 8 4" CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run > z_log
+WORKLOAD_ARGS="2 2 2 2 2 2 8 4" CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run &> z_log
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 1" CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run &> z_log
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 10" CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run &> z_log
+#WORKLOAD_ARGS="2 2 2 2 2 2 11 1" CONFIG_NUM_THREADS=9 OCR_TYPE=x86-mpi make run &> z_log
 
 
 rm -f z_output
@@ -52,7 +55,7 @@ fi
 rm -f z_*
 rm -rf ./build ./install ./tools
 rm -f core*
-rm ../../../../hll/autogen/tools/ocr_autogen.pyc
+rm -f ../../../../hll/autogen/tools/ocr_autogen.pyc
 
 
 

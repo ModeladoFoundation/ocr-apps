@@ -20,6 +20,7 @@
 
 //In a cubic lattice, each cube can have at most 26 neighbors.
 #define NEKbone_neighborCount 26
+#define NEKbone_regionCount 27   //Exactly NEKbone_neighborCount+1
 
 #define NEKbone_ldim 3  //The number of dimension used, i.e. 3D, also = ndim
 
@@ -34,6 +35,25 @@
 #define NEKbone_tmt (NEKbone_thread +1)  //cg.f::tmt
 #define NEKbone_fel 1   //cg.f::fel
 #define NEKbone_find 1  //cg.f::find
+
+//----- HALO Exchanges enablers
+//Define one, or all, of the followings in order to use halo exchanges; otherwise comment out.
+#define NKEBONE_USE_CHANNEL_FOR_HALO_MULTIPLICITY
+#define NKEBONE_USE_CHANNEL_FOR_HALO_SETF
+//#define NKEBONE_USE_CHANNEL_FOR_HALO_AI
+
+#ifdef NKEBONE_USE_CHANNEL_FOR_HALO_MULTIPLICITY
+#   define NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+#else
+#   ifdef NKEBONE_USE_CHANNEL_FOR_HALO_SETF
+#       define NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+#   else
+#       ifdef NKEBONE_USE_CHANNEL_FOR_HALO_AI
+#           define NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+#       endif
+#   endif
+#endif
+//^^^^^HALO Exchanges enablers Done
 
 //There are two types of globals: NEKOstatics and NEKOglobals.
 //The NEKOstatics were compile-time constants and could not be changed at run-time.
@@ -122,6 +142,13 @@ typedef struct NEKOstatics {
     TimeMark_t startTimeMark;
 
     long OCR_affinityCount;
+
+    //= The following is used to do the initial exchange of the channels events
+    //  in order to facilitate halo exchanges between neighboring EDTs.
+    //= For the numbering scheme used, see nekos_tool.h::NEKOtools_t::nloads[].did.
+    //  It skips the number 13 because that is our self location.
+    ocrGuid_t haloLabeledGuids[NEKbone_regionCount];
+
 } NEKOstatics_t;
 
 Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv);
@@ -134,6 +161,19 @@ Err_t setup_SPMD_using_NEKOstatics(NEKOstatics_t * in_NEKOstatics,
                                    SPMD_GlobalData_t * o_SPMDglobals);
 
 Err_t nekbone_finalEDTt(void);
+
+//Because we cannot guarantee temporal separation of channels,
+//one channel per operation is required.
+typedef struct ChannelStruct
+{
+    ocrGuid_t c4multi; //This is to be used for nekMultiplicity.
+    ocrGuid_t c4setf;  //This is to be used for nekSetF.
+    ocrGuid_t c4axi;   //This is to be used for nekCG_axi. //It is hoped that temporal separation
+                                                           //between CG iterations will be enough,
+                                                           //even if reduction is not used.
+} ChannelStruct_t;
+
+Err_t copy_ChannelStruct(ChannelStruct_t * in_from, ChannelStruct_t * o_target);
 
 // In the original Nekbone code, these variables have the following correspondence:
 //      pDOF       --> nx1, ny1, nz1    Note that nx1 == ny1 == nz1 is always true.
@@ -160,6 +200,13 @@ typedef struct NEKOglobals {
     //When an individual rank started
     TimeMark_t startTimeMark;
 
+    //Channels
+    ChannelStruct_t myChannels[NEKbone_regionCount]; //These are my channel events to be shared with the other ranks,
+                                                     // and which the current rank will use ocrEventSatisfy with a DBK
+                                                     // in order to pass to the neighbors.
+    ChannelStruct_t neighborChannels[NEKbone_regionCount]; //These are the channel events, received from the neighbors,
+                                                           //and which I'll pass to my next EDT in order to get
+                                                           //their DBKs.
 } NEKOglobals_t;
 
 Err_t init_NEKOglobals(NEKOstatics_t * in_statics, unsigned int in_rankID,

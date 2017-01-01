@@ -2,8 +2,8 @@
 #include "treeForkJoin.h"
 #endif
 
-#include <stdio.h> //sprintf
-#include <string.h> //memcpy
+//No longer needed> #include <stdio.h> //sprintf
+//Removed for runs on TG> #include <string.h> //memcpy
 
 #include "integer_log2.h"
 
@@ -97,12 +97,18 @@ void print_TChecksum_work(int in_edtType, ocrGuid_t in_thisEDT, TChecksum_work_t
 
 void copy_TFJiterate(TFJiterate_t * in, TFJiterate_t * out)
 {
-    memcpy(out, in, sizeof(TFJiterate_t));
+    //Removed for runs on TG> memcpy(out, in, sizeof(TFJiterate_t));
+    out->btindex = in->btindex;
+    out->hi      = in->hi;
+    out->low     = in->low;
+    out->whereToGoWhenFalse = in->whereToGoWhenFalse;
 }
 
 void copy_TChecksum_work(TChecksum_work_t w, TChecksum_work_t * out)
 {
-    memcpy(out, &w, sizeof(TChecksum_work_t));
+    //Removed for runs on TG> memcpy(out, &w, sizeof(TChecksum_work_t));
+    out->btindex = w.btindex;
+    out->result  = w.result;
 }
 
 Err_t setupBtForkJoin(int in_edtType, ocrGuid_t in_thisEDT,
@@ -185,6 +191,69 @@ Err_t btForkThen(int in_edtType, ocrGuid_t in_thisEDT,
     return err;
 }
 
+char * myUtoA(unsigned int in, char *io)
+{
+    if(!io) return 0;
+    if(in == 0){
+        io[0] = '0';
+        io[1] = '\0';
+        return io;
+    }
+
+    int i = 0;
+    while(in != 0)
+    {
+        unsigned int rem = in % 10;
+        io[i++] = rem + '0';
+        in = in/10;
+    }
+
+    io[i] = '\0';
+
+    //Reverse the sring
+    int start = 0;
+    int end = i -1;
+    while (start < end)
+    {
+        char c = *(io+start);
+        *(io+start) = *(io+end);
+        *(io+end) = c;
+        start++;
+        end--;
+    }
+
+    return io;
+}
+
+void makeBtForkFOR_text(const char * in_header, unsigned int in_foliationNb, const char * in_footer, char * io_buf)
+{
+    char ntext[256];
+    myUtoA( in_foliationNb, ntext );
+    char * p = io_buf;
+
+    const char * q = in_header;
+    while( !q && *q !='\0'){
+        *p = *q;
+        ++p;
+        ++q;
+    }
+
+    q = ntext;
+    while( !q && *q !='\0'){
+        *p = *q;
+        ++p;
+        ++q;
+    }
+
+    q = in_footer;
+    while( !q && *q !='\0'){
+        *p = *q;
+        ++p;
+        ++q;
+    }
+
+}
+
 Err_t btForkFOR(int in_edtType, ocrGuid_t in_thisEDT, int in_foliationIndex,
                 TFJiterate_t * in_iterate, TFJiterate_t * o_iterate)
 {
@@ -196,9 +265,9 @@ Err_t btForkFOR(int in_edtType, ocrGuid_t in_thisEDT, int in_foliationIndex,
             err = __LINE__; IFEB;
         }
 
-        char text[256];
-        sprintf(text, "btForkFOR initial (i=%d)", in_foliationIndex);
-        print_iterate(in_edtType, in_thisEDT, in_iterate, text);
+        char foliationTxt[256];
+        makeBtForkFOR_text("btForkFOR initial (i=", in_foliationIndex, ")", foliationTxt);
+        print_iterate(in_edtType, in_thisEDT, in_iterate, foliationTxt);
 
         if(in_iterate->low == in_iterate->hi){
             //This cannot be split any further
@@ -228,8 +297,8 @@ Err_t btForkFOR(int in_edtType, ocrGuid_t in_thisEDT, int in_foliationIndex,
 
         GUID_ASSIGN_VALUE(o_iterate->whereToGoWhenFalse, in_iterate->whereToGoWhenFalse);
 
-        sprintf(text, "btForkFOR final (i=%d)", in_foliationIndex);
-        print_iterate(in_edtType, in_thisEDT, o_iterate, text);
+        makeBtForkFOR_text("btForkFOR final (i=", in_foliationIndex, ")", foliationTxt);
+        print_iterate(in_edtType, in_thisEDT, o_iterate, foliationTxt);
 
         break;  //  while not err
     }

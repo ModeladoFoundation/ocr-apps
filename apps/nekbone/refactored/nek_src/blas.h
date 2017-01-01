@@ -12,4 +12,10 @@
 //In NEKbone, a 2D matrix is simply a C array with length = rows*cols,
 // and a specified access pattern.
 
+#define NEK_USE_ADVANCED_FUNCTIONS
+
+#ifdef TG_ARCH
+#undef NEK_USE_ADVANCED_FUNCTIONS
+#endif
+
 #endif // NEKBONE_BLAS_H

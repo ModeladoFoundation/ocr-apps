@@ -5,6 +5,6 @@
 //  is considered of sufficient.
 
 //typedef float NBN_REAL;
-typedef double NBN_REAL;
+typedef double NBN_REAL; //2016Nov10: Using 8-bytes float to expedite matters.
 
 #endif // NBN_SETUP_H

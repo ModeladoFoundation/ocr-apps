@@ -35,6 +35,7 @@ def theMain():
     OA.addHeader(G, '#include "nekbone_cg.h" ')
     OA.addHeader(G, '#include "reduction.h" ')
     OA.addHeader(G, '#include "neko_reduction.h" ')
+    OA.addHeader(G, '#include "neko_halo.h" ')
     OA.addHeader(G, ' ')
     OA.addHeader(G, '#define Nfoliation 2')  # If set to two that makes it a binary tree.
 
@@ -150,6 +151,15 @@ def theMain():
     dbk_reducShare = dbk
     dbk = OA.ocrDataBlock(); dbk.name = 'reducPrivate'; dbk.count=1; dbk.type='reductionPrivate_t'
     dbk_reducPrivate = dbk
+
+    dbk = OA.ocrDataBlock(); dbk.name = 'riValues4multi'; dbk.count='length_riValues4multi * sizeof(rankIndexedValue_t)'; dbk.type='rankIndexedValue_t'
+    dbk_riValues4multi = dbk
+
+    dbk = OA.ocrDataBlock(); dbk.name = 'riValues4setF'; dbk.count='length_riValues4setF * sizeof(rankIndexedValue_t)'; dbk.type='rankIndexedValue_t'
+    dbk_riValues4setF = dbk
+
+    dbk = OA.ocrDataBlock(); dbk.name = 'riValues4axi'; dbk.count='length_riValues4axi * sizeof(rankIndexedValue_t)'; dbk.type='rankIndexedValue_t'
+    dbk_riValues4axi = dbk
 
     # ----- NODES
     # NOTE: In as much as doable, the EDT are presented in a bracketing fashion.
@@ -300,6 +310,45 @@ def theMain():
     forkTransit_reduc_Text = 'err = NEKO_ForkTransit_reduction(rankID, in_reducShare, o_reducPrivate); IFEB;'
     OA.addCustomText(G, nc, forkTransit_reduc_Text)
 
+    nc += 1;  taskName="channelExchange_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics';
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOglobals';
+    dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('    err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOglobals';
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    nekoTools_init = 'err = init_NEKOtools(o_NEKOtools, *io_NEKOstatics, in_NEKOglobals->rankID, in_NEKOglobals->pDOF); IFEB;'
+    OA.addCustomText(G, nc, nekoTools_init)
+    guid_channelExchange_stop = OA.makeGuidEdtname('channelExchange_stop')
+    haloex_start_text = 'err = start_channelExchange(OA_DEBUG_OUTVARS, o_NEKOtools, '
+    haloex_start_text += '&io_NEKOstatics->haloLabeledGuids[0], &' + guid_channelExchange_stop + ', '
+    haloex_start_text += 'in_NEKOglobals, o_NEKOglobals); IFEB;'
+    OA.addCustomText(G, nc, haloex_start_text)
+
+    nc += 1;  taskName="channelExchange_stop"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    OA.getMyTask(G,nc).depc = 'SLOTCNT_total_channelExchange'
+    dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics';
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flLANDING'; dbk.localname = 'in_NEKOglobals';
+    dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('    err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOglobals';
+    OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    haloex_stop_text = 'err = stop_channelExchange(OA_DEBUG_OUTVARS, io_NEKOtools, depv, '
+    haloex_stop_text +='in_NEKOglobals, o_NEKOglobals); IFEB;'
+    OA.addCustomText(G, nc, haloex_stop_text)
+
     nc += 1;  taskName="nekMultiplicity_start"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics';
@@ -307,19 +356,26 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
     dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    dbk.addLocalText('    Triplet Rlattice = {io_NEKOstatics->Rx, io_NEKOstatics->Ry, io_NEKOstatics->Rz};')
+    dbk.addLocalText('    Triplet Elattice = {io_NEKOstatics->Ex, io_NEKOstatics->Ey, io_NEKOstatics->Ez};')
+    dbk.addLocalText('    const Idz length_riValues4multi = calculate_length_rankIndexedValue(io_NEKOglobals->pDOF, Elattice);')
     OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_C'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; dbk.localname = 'io_reducPrivate'; OA.addDataBlocks(G,nc,dbk)
-    nekoTools_init = 'err = init_NEKOtools(o_NEKOtools, *io_NEKOstatics, *io_NEKOglobals); IFEB;'
-    OA.addCustomText(G, nc, nekoTools_init)
-    OA.addCustomText(G, nc, '//SKE-NOTE:  HALO exchange of c')
+    dbk = copy.deepcopy(dbk_riValues4multi); dbk.flight = 'flHOP'; dbk.localname = 'riValues4multi'; OA.addDataBlocks(G,nc,dbk)
     nekbone_set_multiplicity_txt1= 'err = nekbone_set_multiplicity_start(io_NEKOglobals, o_C); IFEB;'
     OA.addCustomText(G, nc, nekbone_set_multiplicity_txt1)
+    guid_nekMultiplicity_stop = OA.makeGuidEdtname('nekMultiplicity_stop')
+    halomulti_txt = 'err = start_halo_multiplicity(OA_DEBUG_OUTVARS, io_NEKOtools, '
+    halomulti_txt += 'Rlattice,Elattice, io_NEKOglobals, o_C, riValues4multi, &'
+    halomulti_txt += guid_nekMultiplicity_stop +'); IFEB;'
+    OA.addCustomText(G, nc, halomulti_txt);
 
     nc += 1;  taskName="nekMultiplicity_stop"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
+    OA.getMyTask(G,nc).depc = 'SLOTCNT_total_channels4multiplicity'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics';
     dbk.addLocalText('unsigned int pdof = io_NEKOstatics->pDOF_max;')
     dbk.addLocalText('unsigned int pdof2D = io_NEKOstatics->pDOF_max * io_NEKOstatics->pDOF_max;')
@@ -330,11 +386,11 @@ def theMain():
     OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'io_gDone2'; OA.addDataBlocks(G,nc,dbk)
-
-    dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flLANDING'; dbk.localname = 'in_C'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_C'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; dbk.localname = 'io_C'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; dbk.localname = 'io_reducPrivate'; OA.addDataBlocks(G,nc,dbk)
-    nekbone_set_multiplicity_txt2 = 'err = nekbone_set_multiplicity_stop(io_NEKOglobals, in_C, o_C); IFEB;'
+    halomulti_stop = 'err = stop_halo_multiplicity(OA_DEBUG_OUTVARS, io_NEKOtools, depv, io_C); IFEB;'
+    OA.addCustomText(G, nc, halomulti_stop)
+    nekbone_set_multiplicity_txt2 = 'err = nekbone_set_multiplicity_stop(io_NEKOglobals, io_C); IFEB;'
     OA.addCustomText(G, nc, nekbone_set_multiplicity_txt2)
 
     dbk = copy.deepcopy(dbk_wA); dbk.flight = 'flHOP'; dbk.localname = 'in_wA'; OA.addDataBlocks(G,nc,dbk)
@@ -366,30 +422,41 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    dbk.addLocalText('    Triplet Rlattice = {io_NEKOstatics->Rx, io_NEKOstatics->Ry, io_NEKOstatics->Rz};')
+    dbk.addLocalText('    Triplet Elattice = {io_NEKOstatics->Ex, io_NEKOstatics->Ey, io_NEKOstatics->Ez};')
+    dbk.addLocalText('    const Idz length_riValues4setF = calculate_length_rankIndexedValue(io_NEKOglobals->pDOF, Elattice);')
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekF); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekF'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; dbk.localname = 'io_reducPrivate'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_riValues4setF); dbk.flight = 'flHOP'; dbk.localname = 'riValues4setF'; OA.addDataBlocks(G,nc,dbk)
+    guid_nekSetF_stop = OA.makeGuidEdtname('nekSetF_stop')
     nekSetF_start_txt = 'err = nekbone_set_f_start(io_NEKOstatics, io_NEKOglobals, o_nekF);IFEB;'
     OA.addCustomText(G, nc, nekSetF_start_txt)
+    haloSetF_txt = 'err = start_halo_setf(OA_DEBUG_OUTVARS, io_NEKOtools, '
+    haloSetF_txt += 'Rlattice,Elattice, io_NEKOglobals, o_nekF, riValues4setF, &'
+    haloSetF_txt += guid_nekSetF_stop +'); IFEB;'
+    OA.addCustomText(G, nc, haloSetF_txt);
 
     nc += 1;  taskName="nekSetF_stop"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
+    OA.getMyTask(G,nc).depc = 'SLOTCNT_total_channels4setf'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
     dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; dbk.localname = 'io_reducPrivate'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; dbk.localname = 'io_C'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekF); dbk.flight = 'flLANDING'; dbk.localname = 'in_nekF'; OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekF); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekF'; OA.addDataBlocks(G, nc, dbk)
-    nekSetF_stop_txt = 'err = nekbone_set_f_stop(io_NEKOglobals, io_C, in_nekF, o_nekF); IFEB;'
-    OA.addCustomText(G, nc, nekSetF_stop_txt)
+    dbk = copy.deepcopy(dbk_nekF); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekF'; OA.addDataBlocks(G, nc, dbk)
+    haloSetF_stop = 'err = stop_halo_setf(OA_DEBUG_OUTVARS, io_NEKOtools, depv, io_nekF); IFEB;'
+    OA.addCustomText(G, nc, haloSetF_stop)
+    nekSetF_stop_txt2 = 'err = nekbone_set_f_stop(io_NEKOglobals, io_C, io_nekF); IFEB;'
+    OA.addCustomText(G, nc, nekSetF_stop_txt2)
 
     nc += 1;  taskName="nekCGstep0_start"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
@@ -398,7 +465,7 @@ def theMain():
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flTAGO'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; dbk.localname = 'io_C'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekF); dbk.flight = 'flLANDING'; dbk.localname = 'in_nekF'; OA.addDataBlocks(G, nc, dbk)
@@ -418,7 +485,7 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'o_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone2); dbk.flight = 'flLANDING'; dbk.localname = 'in_gDone2'; OA.addDataBlocks(G,nc,dbk)
     CGstep0_2go_text = 'ocrGuid_t ' + OA.makeGuidEdtname("setupTailRecursion") + ' = *in_gDone2;'
     OA.addCustomText(G, nc, CGstep0_2go_text)
@@ -724,8 +791,11 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
     dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    dbk.addLocalText('    Triplet Rlattice = {io_NEKOstatics->Rx, io_NEKOstatics->Ry, io_NEKOstatics->Rz};')
+    dbk.addLocalText('    Triplet Elattice = {io_NEKOstatics->Ex, io_NEKOstatics->Ey, io_NEKOstatics->Ez};')
+    dbk.addLocalText('    const Idz length_riValues4axi = calculate_length_rankIndexedValue(io_NEKOglobals->pDOF, Elattice);')
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
@@ -746,19 +816,26 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekUT); dbk.flight = 'flHOP'; dbk.localname = 'nekUT'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_AItemp); dbk.flight = 'flHOP'; dbk.localname = 'AItemp'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; dbk.localname = 'io_reducPrivate'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_riValues4axi); dbk.flight = 'flHOP'; dbk.localname = 'riValues4axi'; OA.addDataBlocks(G,nc,dbk)
     nekCG_axi_start = 'err = nekbone_ai_start(io_NEKOstatics, io_NEKOglobals, io_nekW,io_nekP, '
     nekCG_axi_start += 'nekUR,nekUS,nekUT, io_G1,io_G4,io_G6,io_dxm1,io_dxTm1, AItemp, '
     nekCG_axi_start += 'in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_axi_start)
+    guid_nekCG_axi_stop = OA.makeGuidEdtname('nekCG_axi_stop')
+    haloAxi_txt = 'err = start_halo_ai(OA_DEBUG_OUTVARS, io_NEKOtools, '
+    haloAxi_txt += 'Rlattice,Elattice, io_NEKOglobals, io_nekW, riValues4axi, &'
+    haloAxi_txt += guid_nekCG_axi_stop +'); IFEB;'
+    OA.addCustomText(G, nc, haloAxi_txt);
 
     nc += 1;  taskName="nekCG_axi_stop"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
+    OA.getMyTask(G,nc).depc = 'SLOTCNT_total_channels4ax'
     dbk = copy.deepcopy(dbk_nekoStatics); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOstatics'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_nekoGlobals); dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOglobals';
     dbk.addLocalText('ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('err = ocrXgetEdtHint(NEK_OCR_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G, nc, dbk)
-    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
+    dbk = copy.deepcopy(dbk_nekoTools);   dbk.flight = 'flTAGO'; dbk.localname = 'io_NEKOtools'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_gDone3); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekCGscalars);dbk.flight = 'flTAGO'; OA.addDataBlocks(G, nc, dbk)
     dbk = copy.deepcopy(dbk_CGtimes); dbk.flight = 'flLANDING'; dbk.localname = 'in_CGtimes'; OA.addDataBlocks(G,nc,dbk)
@@ -771,12 +848,13 @@ def theMain():
     dbk = copy.deepcopy(dbk_nekC); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekP); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekP'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekR); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flLANDING'; dbk.localname = 'in_nekW'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAKEOFF'; dbk.localname = 'o_nekW'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_nekW); dbk.flight = 'flTAGO'; dbk.localname = 'io_nekW'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekX); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_nekZ); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_reducPrivate); dbk.flight = 'flTAGO'; dbk.localname = 'io_reducPrivate'; OA.addDataBlocks(G,nc,dbk)
-    nekCG_axi_stop = 'err = nekbone_ai_stop(io_NEKOstatics, io_NEKOglobals, in_nekW, io_nekP, o_nekW, in_CGtimes,o_CGtimes); IFEB;'
+    haloAxi_stop = 'err = stop_halo_ai(OA_DEBUG_OUTVARS, io_NEKOtools, depv, io_nekW); IFEB;'
+    OA.addCustomText(G, nc, haloAxi_stop)
+    nekCG_axi_stop = 'err = nekbone_ai_stop(io_NEKOstatics, io_NEKOglobals, io_nekP, io_nekW, in_CGtimes,o_CGtimes); IFEB;'
     OA.addCustomText(G, nc, nekCG_axi_stop)
 
     nc += 1;  taskName="nekCG_alpha_start"; OA.graphAddNode(G,nc,taskName)
@@ -1048,14 +1126,36 @@ def theMain():
     ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "setupTailRecursion", "SPMDGlobals")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('SPMDGlobals')
 
-    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "nekMultiplicity_start", "gDone2")
+    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "channelExchange_start", "gDone2")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone2')
-    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "nekMultiplicity_start", "NEKOstatics")
+    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "channelExchange_start", "NEKOstatics")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOstatics')
-    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "nekMultiplicity_start", "NEKOglobals")
+    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "channelExchange_start", "NEKOglobals")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOglobals')
-    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "nekMultiplicity_start", "reducPrivate")
+    ledg = OA.graphAddEdge(G, "BtForkTransition_Start", "channelExchange_start", "reducPrivate")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('reducPrivate')
+
+    ledg = OA.graphAddEdge(G, "channelExchange_start", "channelExchange_stop", "gDone2")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone2')
+    ledg = OA.graphAddEdge(G, "channelExchange_start", "channelExchange_stop", "NEKOstatics")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOstatics')
+    ledg = OA.graphAddEdge(G, "channelExchange_start", "channelExchange_stop", "NEKOglobals")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOglobals')
+    ledg = OA.graphAddEdge(G, "channelExchange_start", "channelExchange_stop", "reducPrivate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('reducPrivate')
+    ledg = OA.graphAddEdge(G, "channelExchange_start", "channelExchange_stop", "NEKOtools")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOtools')
+
+    ledg = OA.graphAddEdge(G, "channelExchange_stop", "nekMultiplicity_start", "gDone2")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone2')
+    ledg = OA.graphAddEdge(G, "channelExchange_stop", "nekMultiplicity_start", "NEKOstatics")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOstatics')
+    ledg = OA.graphAddEdge(G, "channelExchange_stop", "nekMultiplicity_start", "NEKOglobals")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOglobals')
+    ledg = OA.graphAddEdge(G, "channelExchange_stop", "nekMultiplicity_start", "reducPrivate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('reducPrivate')
+    ledg = OA.graphAddEdge(G, "channelExchange_stop", "nekMultiplicity_start", "NEKOtools")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOtools')
 
     ledg = OA.graphAddEdge(G, "nekMultiplicity_start", "nekMultiplicity_stop", "NEKOstatics")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOstatics')
@@ -1068,7 +1168,7 @@ def theMain():
     ledg = OA.graphAddEdge(G, "nekMultiplicity_start", "nekMultiplicity_stop", "NEKOtools")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOtools')
     ledg = OA.graphAddEdge(G, "nekMultiplicity_start", "nekMultiplicity_stop", "nekC")
-    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekC')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekC')
 
     ledg = OA.graphAddEdge(G, "nekMultiplicity_stop", "nekSetF_start", "NEKOstatics")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOstatics')
@@ -1112,7 +1212,7 @@ def theMain():
     ledg = OA.graphAddEdge(G, "nekSetF_start", "nekSetF_stop", "nekC")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekC')
     ledg = OA.graphAddEdge(G, "nekSetF_start", "nekSetF_stop", "nekF")
-    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekF')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekF')
 
     ledg = OA.graphAddEdge(G, "nekSetF_stop", "nekCGstep0_start", "NEKOstatics")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('NEKOstatics')
@@ -1525,7 +1625,7 @@ def theMain():
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nekR")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekR')
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nekW")
-    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekW')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekW')
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nekX")
     OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('nekX')
     ledg = OA.graphAddEdge(G, "nekCG_axi_start", "nekCG_axi_stop", "nekZ")

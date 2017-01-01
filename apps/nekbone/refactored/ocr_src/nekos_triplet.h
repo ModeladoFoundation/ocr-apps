@@ -4,6 +4,8 @@
 typedef long Coord_t;
 typedef long Idz;  //An accumulation of Coord_t is an Idz.
 
+#define NOTA_IDZ -1L
+
 typedef struct Triplet_proto  //Keep it POD
 {
     Idz a,b,c;
@@ -25,5 +27,7 @@ void mulT(Triplet * io, Triplet in_src); //io *= in_src
 
 int is_equalT(Triplet lhs, Triplet rhs); //Returns 1 if true
 int lessthanT(Triplet lhs, Triplet rhs); //Returns 1 if lhs < rhs
+
+char * triplet2text(char * buf, Triplet in);
 
 #endif // NEKOS_TRIPLET_H

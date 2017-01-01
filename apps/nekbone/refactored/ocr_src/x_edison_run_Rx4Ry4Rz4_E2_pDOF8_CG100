@@ -1,0 +1,51 @@
+#!/bin/bash -l
+#SBATCH -p regular
+#SBATCH -N 8
+#SBATCH -t 00:010:00
+#SBATCH -J z_nekbone_inOcr
+#SBATCH -o zz_z_log%j
+#SBATCH -L SCRATCH
+
+#This is for the case
+    #Edison machines have 24 processes --> so probably 2*12 using Intel HyperThreads
+    #   a*b*c+1 = 12
+    #       a*b*c <= 11
+    #   choices for a*b*c   ratio
+    #   11  11 * 1 * 1      11
+    #   10  5 *2 * 1        5
+    #    9  3 * 3 * 1       3
+    #    8  2 * 2 * 2       1 <<-- Let's fly with this
+    #
+    #   So we need 8 processes per machines, i.e. 8 ranks.
+    #   Then let M^3 = number of machines
+    #       Total number of ranks = M * 8
+    #   M   M^3     M^3*8   a*b*c       SlurmN  OCR_NODES   SlurmProcesses
+    #                                   =M^3    =M^3        =M^3*(8+1)
+    #   2   8       64      4*4*4       8       8              72
+
+touch zz_z_start
+
+echo "M^3=N=8 (Rx,Ry,Rz)=(4,4,4) (Ex,Ey,Ez)=(2,2,2) pDOF=8 CGcount=100"
+
+# Setup for intel MPI
+module load impi/5.1.1.109
+export MPI_ROOT=/opt/intel/parallel_studio_xe_2016.0.047/compilers_and_libraries_2016/linux/mpi/intel64
+export PATH=${MPI_ROOT}/bin:$PATH
+export LD_LIBRARY_PATH=${MPI_ROOT}/lib:$LD_LIBRARY_PATH
+
+# Setup OCR
+export OCR_TYPE=x86-mpi
+export CONFIG_NUM_THREADS=9   # ThreadCount + 1 for OCR
+export OCR_NUM_NODES=${SLURM_JOB_NUM_NODES} # matches the -N parameter
+#   export CC=mpicc
+export CC=mpiicc
+export NO_DEBUG=yes
+export OCRRUN_OPT_ENVKIND=SLURM
+
+# Make & Run
+cd $SLURM_SUBMIT_DIR
+export RUN_TOOL=/usr/bin/time
+export RUN_MODE=buildApp
+make -f Makefile.x86-mpi run WORKLOAD_ARGS="4 4 4 2 2 2 8 100"
+
+touch zz_z_stop

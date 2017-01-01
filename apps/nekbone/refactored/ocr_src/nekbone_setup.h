@@ -11,7 +11,7 @@ Err_t nekbone_setup(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * io_NEKOgloba
                     unsigned int * io_lglel, unsigned long * io_glo_num);
 
 Err_t nekbone_set_multiplicity_start(NEKOglobals_t * in_NEKOglobals, NBN_REAL * io_C);
-Err_t nekbone_set_multiplicity_stop(NEKOglobals_t * in_NEKOglobals, NBN_REAL * in_C, NBN_REAL * io_C);
+Err_t nekbone_set_multiplicity_stop(NEKOglobals_t * in_NEKOglobals, NBN_REAL * io_C);
 
 //I'll prefix with a 'h' all variables used only for a hop, i.e. locally used.
 //I'll try to keep the same confusing variable naming as used in Nekbone.
@@ -27,7 +27,7 @@ Err_t nekbone_set_f_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEK
                           NBN_REAL * io_f);
 
 Err_t nekbone_set_f_stop(NEKOglobals_t * in_NEKOglobals,
-                         NBN_REAL * in_C, NBN_REAL * in_f, NBN_REAL * o_f);
+                         NBN_REAL * in_C, NBN_REAL * io_f);
 
 
 #endif // NEKBONE_SETUP_H

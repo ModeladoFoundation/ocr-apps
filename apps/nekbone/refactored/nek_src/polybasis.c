@@ -2,11 +2,15 @@
 #include "polybasis.h"
 #endif
 
-#include "blas.h"
+#include "blas.h" //NEK_USE_ADVANCED_FUNCTIONS
 
-#include <math.h> //atan, cos, pow
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
+#include <math.h> // cos, pow
+#else
+#include "fastfcn.h"
+#endif
 
-#include <stdio.h> //printf for debugging
+//DBG> #include <stdio.h> //printf for debugging
 
 #define IFEB if(err) break
 
@@ -143,10 +147,16 @@ int nbb_JACG(nbb_rvector_t o_xjac, unsigned int in_polyOrder,
     for(j=0; j<in_polyOrder; ++j){
         double x,x1,x2;
 
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
+        const double u = cos( (2*j+1)*dth  );
+#else
+        const double u = fastfcn_cos( (2*j+1)*dth  );
+#endif
+
         if(j==0){
-            x = cos( (2*j+1)*dth  );
+            x = u;
         }else{
-            x1 = cos( (2*j+1)*dth  );
+            x1 = u;
             x2 = xlast;
             x = (x1+x2)/2;
         }
@@ -205,13 +215,26 @@ double nbb_endw1(unsigned int in_n, double in_alpha, double in_beta)
 
     const double apb   = in_alpha + in_beta;
 
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
+    const double pow_two_apb2 = pow(two, apb+two);
+    const double pow_two_apb3 = pow(two, apb+three);
+#else
+    double pow_two_apb2 = 1; //This is the wrong value.
+    double pow_two_apb3 = 1; //This is the wrong value.
+    if( ((apb<0)?(-apb):(apb)) < 1e-14 ){
+        //So apb is zero
+        pow_two_apb2 = 4;
+        pow_two_apb3 = 8;
+    }
+#endif
+
     double endw1 = 0;
     if( in_n == 0 ){
         return endw1;
     }
 
     double f1 = nbb_GAMMAF(in_alpha+two) * nbb_GAMMAF(in_beta+one) / nbb_GAMMAF(apb+three);
-    f1 = f1 * (apb+two) * pow(two, apb+two) / two;
+    f1 = f1 * (apb+two) * pow_two_apb2 / two;
 
     if( in_n == 1 ){
         endw1 = f1;
@@ -219,10 +242,10 @@ double nbb_endw1(unsigned int in_n, double in_alpha, double in_beta)
     }
 
     double fint1 = nbb_GAMMAF(in_alpha+two) * nbb_GAMMAF(in_beta+one) / nbb_GAMMAF(apb+three);
-    fint1 = fint1 * pow(two, apb+two);
+    fint1 = fint1 * pow_two_apb2;
 
     double fint2 = nbb_GAMMAF(in_alpha+two) * nbb_GAMMAF(in_beta+two) / nbb_GAMMAF(apb+four);
-    fint2 = fint2 * pow(two, apb+three);
+    fint2 = fint2 * pow_two_apb3;
 
     double f2 = (-two*(in_beta+two)*fint1 + (apb+four)*fint2) * (apb+three) / four;
 
@@ -258,23 +281,36 @@ double nbb_endw2(unsigned int in_n, double in_alpha, double in_beta)
 
     const double apb   = in_alpha + in_beta;
 
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
+    const double pow_two_apb2 = pow(two, apb+two);
+    const double pow_two_apb3 = pow(two, apb+three);
+#else
+    double pow_two_apb2 = 1; //This is the wrong value
+    double pow_two_apb3 = 1; //This is the wrong value
+    if( ((apb<0)?(-apb):(apb)) < 1e-14 ){
+        //So apb is zero
+        pow_two_apb2 = 4;
+        pow_two_apb3 = 8;
+    }
+#endif
+
     double endw2 = 0;
     if( in_n == 0 ){
         return endw2;
     }
 
     double f1 = nbb_GAMMAF(in_alpha+one) * nbb_GAMMAF(in_beta+two) / nbb_GAMMAF(apb+three);
-    f1 = f1 * (apb+two) * pow(two, apb+two) / two;
+    f1 = f1 * (apb+two) * pow_two_apb2 / two;
 
     if( in_n == 1 ){
         endw2 = f1;
         return endw2;
     }
     double fint1 = nbb_GAMMAF(in_alpha+one) * nbb_GAMMAF(in_beta+two) / nbb_GAMMAF(apb+three);
-    fint1 = fint1 * pow(two, apb+two);
+    fint1 = fint1 * pow_two_apb2;
 
     double fint2 = nbb_GAMMAF(in_alpha+two) * nbb_GAMMAF(in_beta+two) / nbb_GAMMAF(apb+four);
-    fint2 = fint2 * pow(two, apb+three);
+    fint2 = fint2 * pow_two_apb3;
 
     double f2 = (two*(in_alpha+two)*fint1 - (apb+four)*fint2) * (apb+three) / four;
 
@@ -355,12 +391,24 @@ double nbb_pnormj(unsigned int in_P, double in_alpha, double in_beta)
     const double two = 2;
     const double dn = in_P;
 
-    const double consta = in_alpha + in_beta + one;
+    const double apb = in_alpha + in_beta;
+    const double consta = apb + one;
+
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
+    const double pow_two_apb1 = pow(two, apb+one);
+#else
+    double pow_two_apb1 = 1; //This is the wrong value.
+    if( ((apb<0)?(-apb):(apb)) < 1e-14 ){
+        //So apb is zero
+        pow_two_apb1 = 2;
+    }
+#endif
+
     double prod;
     if(in_P <= 1){
         prod = nbb_GAMMAF(dn + in_alpha) * nbb_GAMMAF(dn + in_beta);
         prod = prod /(nbb_GAMMAF(dn) * nbb_GAMMAF(dn+in_alpha+in_beta));
-        X = prod * pow(two, consta)/(two*dn + consta);
+        X = prod * pow_two_apb1/(two*dn + consta);
         return X;
     }
 
@@ -377,7 +425,7 @@ double nbb_pnormj(unsigned int in_P, double in_alpha, double in_beta)
         prod = prod * frac;
     }
 
-    X = prod * pow(two, consta) / (two*dn + consta);
+    X = prod * pow_two_apb1 / (two*dn + consta);
     return X;
 }
 
@@ -390,6 +438,15 @@ int nbb_ZWGJD(double * io_z, double * io_w, unsigned int in_pDOF, double in_alph
         const double two = 2;
         const double APB = in_alpha + in_beta;
 
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
+        const double pow_two_apb1 = pow(two, APB+one);
+#else
+        double pow_two_apb1 = 1; //This is the wrong value.
+        if( ((APB<0)?(-APB):(APB)) < 1e-14 ){
+            //So APB is zero
+            pow_two_apb1 = 2;
+        }
+#endif
         //DBG> unsigned int k;
 
         if(!io_z || !io_w) { err=__LINE__; break; }
@@ -399,7 +456,7 @@ int nbb_ZWGJD(double * io_z, double * io_w, unsigned int in_pDOF, double in_alph
 
         if(in_pDOF == 1){
             io_z[0] = (in_beta - in_alpha)/(APB + two);
-            io_w[0] = nbb_GAMMAF(in_alpha + one) * nbb_GAMMAF(in_beta + one)/nbb_GAMMAF(APB + two) * pow(two, APB+one);
+            io_w[0] = nbb_GAMMAF(in_alpha + one) * nbb_GAMMAF(in_beta + one)/nbb_GAMMAF(APB + two) * pow_two_apb1;
             return err;
         }
 

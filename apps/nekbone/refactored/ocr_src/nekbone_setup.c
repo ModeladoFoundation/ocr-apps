@@ -119,21 +119,16 @@ Err_t nekbone_set_multiplicity_start(NEKOglobals_t * in_NEKOglobals, NBN_REAL * 
             io_C[i] = one;
         }
 
-        if( ! "debug"){
-            double sum = sum_vector(N, io_C);
-            PRINTF("DBG> nekbone_set_multiplicity_start> sum(C)=%24.14E\n", sum);
-        }
-
-
-        //TODO: driver.f::set_multiplicity: call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //driver.f::set_multiplicity: call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //See neko_halo.h::start_halo_multiplicity and neko_halo.h::stop_halo_multiplicity
+        // for how that is handled.
 
         break;
     }
     return err;
 }
 
-Err_t nekbone_set_multiplicity_stop(NEKOglobals_t * in_NEKOglobals,
-                                    NBN_REAL * in_C, NBN_REAL * io_C)
+Err_t nekbone_set_multiplicity_stop(NEKOglobals_t * in_NEKOglobals, NBN_REAL * io_C)
 {
    Err_t err=0;
     while(!err){
@@ -141,15 +136,11 @@ Err_t nekbone_set_multiplicity_stop(NEKOglobals_t * in_NEKOglobals,
         const double one = 1;
         unsigned int i;
 
-        //TODO: driver.f::set_multiplicity: handle what came out of call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //driver.f::set_multiplicity: handle what came out of call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //See neko_halo.h::stop_halo_multiplicity for details
 
         for(i=0; i < N; ++i){
-            io_C[i] = one/in_C[i];
-        }
-
-        if( ! "debug"){
-            double sum = sum_vector(N, io_C);
-            PRINTF("DBG> nekbone_set_multiplicity_stop> sum(C)=%24.14E\n", sum);
+            io_C[i] = one/io_C[i];
         }
 
         break;
@@ -210,37 +201,30 @@ Err_t nekbone_set_f_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEK
    Err_t err=0;
     while(!err){
         const unsigned int N = in_NEKOglobals->pDOF3DperR;
+        //driver.f::set_f: call gs_op(gsh,f,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //See neko_halo.h::start_halo_setf and neko_halo.h::stop_halo_setf
+        // for how that is handled.
+
         err = nbb_set_f(N, io_f); IFEB;
-
-        if( ! "debug"){
-            double sum = sum_vector(N, io_f);
-            PRINTF("DBG> nekbone_set_f_start> sum(F)=%24.14E\n", sum);
-        }
-
-        //TODO: set_f_start: implement dssum : ! Gather-scatter operation  ! w   = QQ  w
         break;
     }
     return err;
 }
 
 Err_t nekbone_set_f_stop(NEKOglobals_t * in_NEKOglobals,
-                         NBN_REAL * in_C, NBN_REAL * in_f, NBN_REAL * o_f)
+                         NBN_REAL * in_C, NBN_REAL * io_f)
 {
    Err_t err=0;
     while(!err){
         const unsigned int N = in_NEKOglobals->pDOF3DperR;
 
-        //TODO: set_f_stop: process the result from dssum : ! Gather-scatter operation  ! w   = QQ  w
+        //driver.f::set_f: handle what came out of call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //See neko_halo.h::stop_halo_setf for details
 
         //Now to do the original Fortran code: call col2 (f,c,n)
         unsigned int i;
         for(i=0; i < N; ++i){
-            o_f[i] = in_f[i] * in_C[i];
-        }
-
-        if( ! "debug"){
-            double sum = sum_vector(N, o_f);
-            PRINTF("DBG> nekbone_set_f_stop> sum(F)=%24.14E\n", sum);
+            io_f[i] *= in_C[i];
         }
 
         break;

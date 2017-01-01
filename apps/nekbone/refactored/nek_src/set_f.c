@@ -2,13 +2,19 @@
 #include "set_f.h"
 #endif
 
+#include "blas.h" //NEK_USE_ADVANCED_FUNCTIONS
+
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
 #include <math.h>
+#endif
 //DBG> #include <stdio.h>
 
 int nbb_set_f(unsigned int in_length, NBN_REAL * io_f)
 {
     int err = 0;
     unsigned int k;
+
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
 
     if( 4 == sizeof(NBN_REAL)){
         for(k=0; k < in_length; ++k){
@@ -31,5 +37,11 @@ int nbb_set_f(unsigned int in_length, NBN_REAL * io_f)
             //DBG> printf("f= %24.14E\n", io_f[k]);
         }
     }
+#else
+    for(k=0; k < in_length; ++k){
+        io_f[k] = 1;
+    }
+#endif
+
     return err;
 }

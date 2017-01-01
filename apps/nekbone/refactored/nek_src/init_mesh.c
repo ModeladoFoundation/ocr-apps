@@ -2,6 +2,12 @@
 #include "init_mesh.h"
 #endif
 
+#ifndef NEKBONE_CUBIC_H
+#include "cubic.h"
+#endif
+
+//DBG> #include "ocr.h"
+
 int nbb_init_mesh(int in_ifbrick, //Set to 1 for a brick; otherwise zero.
               unsigned int * o_npx, unsigned int * o_npy, unsigned int * o_npz,
               unsigned int * o_mx, unsigned int * o_my, unsigned int * o_mz,
@@ -35,10 +41,20 @@ int nbb_init_mesh(int in_ifbrick, //Set to 1 for a brick; otherwise zero.
         } else {
             //! A 3-D block of elements
             if ((*o_npx) * (*o_npy) * (*o_npz) != in_np){
-                err = nek_cubic(o_npx, o_npy, o_npz, in_np); if(err) break; // xyz distribution of total proc
+                unsigned long nx, ny, nz;
+                nx=0; ny=0; nz=0;
+                err = nek_cubic(&nx, &ny, &nz, in_np); if(err) break; // xyz distribution of total proc
+                *o_npx = nx;
+                *o_npy = ny;
+                *o_npz = nz;
             }
             if ((*o_mx) * (*o_my) * (*o_mz) != in_nelt){
-                err = nek_cubic(o_mx,o_my,o_mz,in_nelt); if(err) break; //xyz distribution of elements per proc
+                unsigned long mx, my, mz;
+                mx=0; my=0; mz=0;
+                err = nek_cubic(&mx,&my,&mz,in_nelt); if(err) break; //xyz distribution of elements per proc
+                *o_mx = mx;
+                *o_my = my;
+                *o_mz = mz;
             }
 
             *o_nelx = (*o_mx) * (*o_npx);
@@ -63,6 +79,7 @@ int nbb_init_mesh(int in_ifbrick, //Set to 1 for a brick; otherwise zero.
                        unsigned int eg;
                        eg = offs + i + (j * (*o_nelx)) + (k*(*o_nelx)*(*o_nely)) + 1;
                        o_lglel[e] = eg;
+                       //DBG> PRINTF("DBG lglel> Rid i,j,k,e,offs o_lglel  Rid=%u %u,%u,%u e=%u offs=%u  lglel[e]=%u\n", in_nid, i,j,k,e, offs,  eg);
                        ++e;
                     }
                 }

@@ -44,34 +44,33 @@ RUN_MODE ?=
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := z_nekbone_inOcr
+TARGET := z_utest_channel
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-#REQ_LIBS := reduction macros libc
-REQ_LIBS := reduction macros
+REQ_LIBS := macros
 
 # Space separated list of source files
-SRCS := fastfcn.c neko_reduction.c timing.c nekbone_cg.c ax.c local_grad.c set_f.c blas1.c blas3.c polybasis.c set_vert_box.c cubic.c init_mesh.c nekbone_setup.c app_ocr_util.c integer_log2.c neko_globals.c nekos_triplet.c nekos_cubiclattice.c nekos_tools.c neko_halo.c spmd_global_data.c tailrecursion.c treeForkJoin.c z_nekbone_inOcr.c
+SRCS := ../../tools/app_ocr_util.c utest_channelG.c z_utest_channelG.c
 
-CONFIG_FLAGS=--guid LABELED --binding seq
-#CONFIG_FLAGS=--guid LABELED
-
+CONFIG_FLAGS := --guid LABELED
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
-CFLAGS += -g
-CFLAGS += -DENABLE_EXTENSION_AFFINITY
-CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
 CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
 CFLAGS += -DOCR_ASSERT
-CFLAGS += -DOCR_DEBUG_LVL=DEBUG_LVL_WARN
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -g
 
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lreduction -lpthread -lm $(EXTRALDFLAGS)
+LDFLAGS := -lpthread $(EXTRALDFLAGS)
+
+#ASAN_FLAGS := -g -fsanitize=address -fno-omit-frame-pointer
+#CFLAGS += $(ASAN_FLAGS)
+#LDFLAGS += $(ASAN_FLAGS)
 
 # Targets:
 #   - all:     Build the application.

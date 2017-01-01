@@ -7,23 +7,33 @@
 
 #include "ocr.h" //PRINTF
 
-Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics,
-                     NEKOglobals_t in_nglobals)
+Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics, unsigned int in_rankID,
+                     unsigned int in_pDOF)
 {
     Err_t err=0;
     while(!err){
         err = destroy_NEKOtools(io); IFEB;
 
-        const bool output_debug = false;
+        io->mpiRank = in_rankID;
 
-        if(output_debug){
-            //print_NEKOstatics(&in_nstatics);
-            //print_NEKOglobals(&in_nglobals);
+        Triplet R, E;
+        R.a = in_nstatics.Rx; R.b = in_nstatics.Ry; R.c = in_nstatics.Rz;
+        E.a = in_nstatics.Ex; E.b = in_nstatics.Ey; E.c = in_nstatics.Ez;
+
+        err = makeMesh(io, R, E, in_pDOF); IFEB;
+
+        unsigned int i;
+        for(i=0; i<NEKbone_regionCount; ++i){
+            io->dir_present[i]=0;
+        }
+        for(i=0; i<io->sz_nloads; ++i){
+            io->dir_present[ io->nloads[i].did ] = 1;
         }
 
-        io->mpiRank = in_nglobals.rankID;
-
-        err = makeMesh(io, in_nstatics, in_nglobals, output_debug); IFEB;
+        if(true){
+            bool output_neighborhoods = true;
+            print_NEKOtools(io, output_neighborhoods);
+        }
 
         break;
     }
@@ -55,9 +65,8 @@ void  print_NEKOtools(NEKOtools_t * in, int in_output_neighborhoods)
     PRINTF("NekTools>%d> mpiRank=%d\t", in->mpiRank, in->mpiRank);
     PRINTF("R(%d, %d, %d)", in->partR.a, in->partR.b, in->partR.c);
     PRINTF("E(%d, %d, %d)", in->partE.a, in->partE.b, in->partE.c);
-    PRINTF("P(%d, %d, %d)\n", in->partP.a, in->partP.b, in->partP.c);
+    PRINTF("P(%d, %d, %d)\t", in->partP.a, in->partP.b, in->partP.c);
 
-    PRINTF("NekTools>%d> \t", in->mpiRank);
     PRINTF("gR(%d, %d, %d)", in->globPartR.a, in->globPartR.b, in->globPartR.c);
     PRINTF("gE(%d, %d, %d)", in->globPartE.a, in->globPartE.b, in->globPartE.c);
     PRINTF("gP(%d, %d, %d)\n", in->globPartP.a, in->globPartP.b, in->globPartP.c);
@@ -65,25 +74,52 @@ void  print_NEKOtools(NEKOtools_t * in, int in_output_neighborhoods)
     PRINTF("NekTools>%d> sz_nloads=%d\ttotal_shared_nodes=%lu\tlargest_countDOFdisco=%u\n",
            in->mpiRank, in->sz_nloads, in->total_shared_nodes, in->largest_countDOFdisco);
 
+    PRINTF("NekTools>%d> dir_present=", in->mpiRank);
+    unsigned int j;
+    for(j=0; j<NEKbone_regionCount; ++j){
+        if( in->dir_present[j]){
+            PRINTF("1");
+        } else {
+            PRINTF("0");
+        }
+    }
+    PRINTF("\n");
+
+    const char self[]   = "  self";
+    const char zero[]   = "  zero";
+    const char corner[] = "corner";
+    const char edge[]   = "  edge";
+    const char face[]   = "  face";
+
     int i;
     if(in_output_neighborhoods)
     for(i=0; i<in->sz_nloads; ++i){
         NeighborLoad_t *b = in->nloads + i;
-        PRINTF("NekTools>%d> -->  R=%d\tDIRid=%ld  %d\tddof=%lu\tocDof=%lu\n",
+
+        const char * interact = 0;
+        switch(b->interaction){
+            case IAactFACE: interact = face; break;
+            case IAactEDGE: interact = edge; break;
+            case IAactCORNER: interact = corner; break;
+            case IAactSELF: interact = self; break;
+            default:
+            case IAactZERO: interact = zero; break;
+        }
+
+        PRINTF("NekTools>%d> -->  R=%d\tDIRid=%ld  interaction=%s\tddof=%lu\tocDof=%lu\n",
                in->mpiRank,
-               b->rid, b->did, (int)(b->interaction), b->disconnectedDOF, b->ownedConnectDOF
+               b->rid, b->did, interact, b->disconnectedDOF, b->ownedConnectDOF
                );
     }
 }
 
-Err_t makeMesh(NEKOtools_t * io, NEKOstatics_t in_nstatics,
-               NEKOglobals_t in_nglobals, int in_output_debug)
+Err_t makeMesh(NEKOtools_t * io, Triplet in_R, Triplet in_E, unsigned int in_pDOF)
 {
     Err_t err=0;
     while(!err){
-        io->partR.a = in_nstatics.Rx; io->partR.b = in_nstatics.Ry; io->partR.c = in_nstatics.Rz;
-        io->partE.a = in_nstatics.Ex; io->partE.b = in_nstatics.Ey; io->partE.c = in_nstatics.Ez;
-        io->partP.a = in_nglobals.pDOF; io->partP.b = in_nglobals.pDOF; io->partP.c = in_nglobals.pDOF;
+        io->partR.a = in_R.a; io->partR.b = in_R.b; io->partR.c = in_R.c;
+        io->partE.a = in_E.a; io->partE.b = in_E.b; io->partE.c = in_E.c;
+        io->partP.a = in_pDOF; io->partP.b = in_pDOF; io->partP.c = in_pDOF;
 
         //The formula for a regular grid on a line segment with T partition
         //and P dof per partition is
@@ -104,12 +140,7 @@ Err_t makeMesh(NEKOtools_t * io, NEKOstatics_t in_nstatics,
 
         //old stuff--> err = this->make_neighbors_loads(); IFEB;
         err = make_neighbors_loads2(io); IFEB;
-        err = make_connected_neighbors_loads(io, in_nglobals.pDOF); IFEB;
-
-        if(in_output_debug){
-            bool output_neighborhoods = true;
-            print_NEKOtools(io, output_neighborhoods);
-        }
+        err = make_connected_neighbors_loads(io, in_pDOF); IFEB;
 
         break;
     }

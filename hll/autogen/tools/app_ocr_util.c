@@ -22,6 +22,7 @@ Err_t ocrEdtXCreate(ocrEdt_t in_funcPtr,
     return err;
 }
 
+//DBG> #ifdef OMIT_FOR_RUN_OB_TG
 Err_t ocrXIndexedEdtCreate(ocrEdt_t in_funcPtr, u32 in_paramc, u64 * in_paramv, u32 in_depc,
                            u16 in_flags, ocrHint_t * in_hint, unsigned long in_index, ocrGuid_t * in_EDTmap,
                            ocrGuid_t * o_guid, ocrGuid_t * io_outputEvent
@@ -90,6 +91,7 @@ Err_t ocrXIndexedEdtCreate(ocrEdt_t in_funcPtr, u32 in_paramc, u64 * in_paramv, 
     }
     return err;
 }
+//DBG> #endif //OMIT_FOR_RUN_OB_TG
 
 Err_t ocrXHookup(ocrEventTypes_t in_eventType,
                  u16 in_eventFlags,
@@ -103,8 +105,8 @@ Err_t ocrXHookup(ocrEventTypes_t in_eventType,
     while(!err){
         ocrGuid_t eventGuid = NULL_GUID;
         err = ocrEventCreate( &eventGuid, in_eventType, in_eventFlags); IFEB;
-        ocrAddDependence( eventGuid, in_EDTguid, in_slotNumber, in_accessMode); IFEB;
-        ocrEventSatisfy( eventGuid, in_DBKguid); IFEB;
+        err = ocrAddDependence( eventGuid, in_EDTguid, in_slotNumber, in_accessMode); IFEB;
+        err = ocrEventSatisfy( eventGuid, in_DBKguid); IFEB;
 
         break;
     }

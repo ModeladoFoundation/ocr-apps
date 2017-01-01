@@ -10,6 +10,28 @@
  and a few macro constants defined as
     NEKbone_*
 
+ One must pass in the following command line arguments
+    Rx Ry Rz   --> The virtual MPI rank distribution along the main coodinate axis
+                   The total number of virtual MPI rank used will be Rx*Ry*Rz
+    Ex Ey Ez   --> Within a single virtual rank, this triplet specify the
+                   distribution of elements.  The total number of element, within
+                   each rank, is Ex*Ey*Ez
+    pDOF       --> The Degrees Of Freedom used by the chosen polynomial basis.
+                   The actual polynomial order is (pDOF - 1).
+    CGcount    --> The number of Conjugate Gradient iteration to do.  The usual
+                   count is 100.
+
+= Here is a usage example for running on foobar
+    WORKLOAD_ARGS="2 3 4 7 8 9 12 100" CONFIG_FLAGS=--guid=COUNTED_MAP CONFIG_NUM_THREADS=25 OCR_TYPE=x86-mpi make run > z_log
+    which specifies
+        (Rx,Ry,Rz) = (2,3,4)    for a total of 24 virtual MPI ranks
+        (Ex,Ey,Ez) = (7,8,9)    for a total of 504 elements per virtual MPI ranks
+         PDOF      = 12
+         CGCount   = 100
+
+    Note that CONFIG_NUM_THREADS is set to exactly (Rx*Ry*Rz+1),=25, as OCR requires
+    an extra thread for its internal management.
+
 = The global data is landed in "BtForkTransition_Stop" assuming that it will
   not be required during the joining.
 

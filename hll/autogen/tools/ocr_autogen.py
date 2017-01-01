@@ -352,6 +352,7 @@ class ocrDataBlock:
         self.localText = []  # This is closely related to self.localname field. It is to store a list of cutomer OCR
                              # code to be placed in close proximity to self.localname.  For example, it can
                              # further help with the unpacking of the DBK.
+                             # This only works for flLANDING and flTAGO DBKs.
 
         self.delayReleaseDestroy = False # This is a way to modulate the destruction/release sequence of a data
                                          # block up until a certain pattern occured.
@@ -2850,7 +2851,7 @@ def release_and_destroy_DBKs(in_G, in_nodeIndex, in_tab, io_file,
 # ------------------------------------------------------------------------------
 def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
     tab2 = in_tab + GBL.TABunit
-    debug = True
+    debug = False
     erri = 0
     while not erri:
         if len(in_G.nodes()) == 0:
@@ -2860,10 +2861,10 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
         io_file.write(in_tab + '//----- Link to other EDTs using Events\n')
 
         bors = in_G.neighbors(in_nodeIndex)
-        print('DBG2310> in_nodeIndex =' + str(in_nodeIndex))
+        #  print('DBG2310> in_nodeIndex =' + str(in_nodeIndex))
         if debug and in_nodeIndex == 17:
             print('DBG2313> At the check point')
-        print('DBG2310> bors =' + str(bors))
+        #  print('DBG2310> bors =' + str(bors))
         for b in bors:
             if debug: print('DBG2314> evt2child> n=' + str(in_nodeIndex) + '  b= ' + str(b) + '  isELSE=' + str(getNode(in_G, b)["istheELSEclause"]) )
             if getNode(in_G, b)["istheELSEclause"]:
@@ -2925,9 +2926,9 @@ def write_events2children_EDT(in_G, in_nodeIndex, in_tab, io_file):
 
             if erri: break
 
-            print('DBG2372> len(derefs)=' + str(len(derefs)))
+            #  print('DBG2372> len(derefs)=' + str(len(derefs)))
             if len(derefs) > 0:
-                print('DBG2374> ' + str(derefs))
+                #  print('DBG2374> ' + str(derefs))
                 for deref in derefs:
                     calcSlot = getEvents(in_G, edg)[deref].calculatedSlot
                     drname = ''

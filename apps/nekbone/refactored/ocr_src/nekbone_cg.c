@@ -8,7 +8,9 @@
 #include "blas3.h"
 #include "ax.h"
 
+#ifdef NEK_USE_ADVANCED_FUNCTIONS
 #include <math.h> //For sqrt
+#endif
 
 #define XMEMSET(SRC, CHARC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)SRC+xmIT)=CHARC;}
 #define XMEMCPY(DEST, SRC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)DEST+xmIT)=*((char*)SRC+xmIT);}
@@ -178,10 +180,16 @@ Err_t nekbone_CGstep0_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NE
             PRINTF("CGstep0> rank=%u> rnorminit is negative\n", in_NEKOglobals->rankID);
             rnorminit = -rnorminit;
         }
+#       ifdef NEK_USE_ADVANCED_FUNCTIONS
         rnorminit = sqrt(rnorminit);
         if(in_NEKOglobals->rankID == 0){
             PRINTF("INFO> CGstep0_stop> rnorminit = %24.14E\n", rnorminit);
         }
+#       else
+            if(in_NEKOglobals->rankID == 0){
+                PRINTF("INFO> CGstep0_stop> rnorminit^2 = %24.14E\n", rnorminit);
+            }
+#       endif
         err = ocrDbDestroy( in_sum_guid ); IFEB;
 
         break;
@@ -413,6 +421,16 @@ void nekbone_add2s2i(unsigned int in_length, NBN_REAL *in_A, NBN_REAL *in_B,
         io_A[i] = in_A[i] + in_C1 * in_B[i];
     }
 }
+void nekbone_add2s2i_forW(unsigned int in_length, NBN_REAL *in_B,
+                          NBN_REAL in_C1, NBN_REAL * io_A)
+{
+    unsigned int i;
+    for(i=0; i < in_length; ++i){
+        //Used to be--> io_A[i] = in_A[i] + in_C1 * in_B[i];
+        io_A[i] += in_C1 * in_B[i];
+    }
+}
+
 
 Err_t nekbone_alpha_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
                          NEKO_CGscalars_t * in_CGstats, NEKO_CGscalars_t * io_CGstats,
@@ -519,7 +537,11 @@ Err_t nekbone_rtr_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOgl
         err = ocrDbDestroy( in_sum_guid ); IFEB;
 
         io_CGstats->rtr = sum;
+#       ifdef NEK_USE_ADVANCED_FUNCTIONS
         io_CGstats->rnorm = sqrt(sum);
+#       else
+            io_CGstats->rnorm = sum;
+#       endif
 
         NEKO_CG_TIMFCN( err = copy_NEKO_CGtimings(in_CGtimes, io_CGtimes); IFEB; )
         NEKO_CG_TIMFCN( TimeMark_t t1 = nekbone_getTime(); )
@@ -567,6 +589,9 @@ Err_t nekbone_ai_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOgl
 
         NEKO_CG_TIMFCN( io_CGtimes->at_nekCG_axi_start = nekbone_getTime(); )
         //TODO: nekbone_ai_start: Process Halo Exchange: call gs_op(gsh,w,1,1,0)
+        //cg.f::axi: call gs_op(gsh,w,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //See neko_halo.h::start_halo_ai and neko_halo.h::stop_halo_ai
+        // for how that is handled.
 
         NEKO_CG_TIMFCN( TimeMark_t t1 = nekbone_getTime(); )
         NEKO_CG_TIMFCN( io_CGtimes->cumu_nekCG_axi_start += ((t1-t0<0)?(0):(t1-t0)); )
@@ -577,17 +602,18 @@ Err_t nekbone_ai_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOgl
 }
 
 Err_t nekbone_ai_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
-                      NBN_REAL *in_W, NBN_REAL *in_P, NBN_REAL *io_W,
+                      NBN_REAL *in_P, NBN_REAL *io_W,
                       NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes)
 {
    Err_t err=0;
     while(!err){
         NEKO_CG_TIMFCN(TimeMark_t t0 = nekbone_getTime();)
-        //TODO: nekbone_ai_stop: Process Halo Exchange: call gs_op(gsh,w,1,1,0)
+        //cg.f::axi: handle what came out of call gs_op(gsh,w,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
+        //See neko_halo.h::stop_halo_ai for details
 
         //call add2s2i(w,u,.1,n,find,lind)
         const NBN_REAL fudge = 0.1;  //Yes.  This fudge factor is in Nekbone's baseline code.
-        nekbone_add2s2i(in_NEKOglobals->pDOF3DperR, in_W, in_P, fudge, io_W);
+        nekbone_add2s2i_forW(in_NEKOglobals->pDOF3DperR, in_P, fudge, io_W);
 
         if(1 == NEKbone_find){
             nekbone_mask(in_NEKOglobals->rankID, io_W);

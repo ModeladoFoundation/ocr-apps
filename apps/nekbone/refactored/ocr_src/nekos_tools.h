@@ -9,6 +9,8 @@
 //  For the current rank ID,  it has to send "load" bytes
 //  to the neighboring rank indicated by "rid".
 //Each rank can have at most (27-1) neighbors.
+//Note that construction DIRid = 13 is not possible.
+
 typedef struct NeighborLoad
 {
     Idz rid; //ID of the neighboring rank
@@ -60,22 +62,25 @@ typedef struct NekosTools
 
     int sz_nloads;  //The number of entry in nloads.
     NeighborLoad_t nloads[NEKbone_neighborCount]; //In a cubic lattice each rank can have at most 26 neighbors.
+
+    char dir_present[NEKbone_regionCount]; //Set to 1 if this->nloads.did is present; otherwise zero.
+
     unsigned int largest_countDOFdisco; //The largest number of DOF in any given (send|receive) in this->nloads().
 
     unsigned long total_shared_nodes;
 } NEKOtools_t;
 
-Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics,
-                     NEKOglobals_t in_nglobals);
+Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics, unsigned int in_rankID,
+                     unsigned int in_pDOF);
+
 Err_t destroy_NEKOtools(NEKOtools_t * io);
 Err_t copy_NEKOtools(NEKOtools_t * in_from, NEKOtools_t * o_target);
 void  print_NEKOtools(NEKOtools_t * in, int in_output_neighborhoods); // In Nekbone skeleton, this is NekCGsim::debug_PrintNeighbor(...)
                                                                        //=Set in_output_neighborhoods to 1 to get debug output
                                                                        // Otherwise set it to zero.
 
-Err_t makeMesh(NEKOtools_t * io, NEKOstatics_t in_nstatics,
-               NEKOglobals_t in_nglobals, int in_output_debug); //=Set in_output_debug in order to get debug outputs.
-                                                                // Otherwise set it to zero.
+Err_t makeMesh(NEKOtools_t * io, Triplet in_R, Triplet in_E, unsigned int in_pDOF);
+
 Err_t make_neighbors_loads2(NEKOtools_t * io);
 Err_t make_connected_neighbors_loads(NEKOtools_t * io, int in_polyOrder);
 

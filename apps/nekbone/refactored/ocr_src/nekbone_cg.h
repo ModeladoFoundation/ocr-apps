@@ -141,7 +141,7 @@ Err_t nekbone_ai_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOgl
                        );
 
 Err_t nekbone_ai_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOglobals,
-                      NBN_REAL *in_W, NBN_REAL *in_P, NBN_REAL *io_W,
+                      NBN_REAL *in_P, NBN_REAL *io_W,
                       NEKO_CGtimings_t * in_CGtimes, NEKO_CGtimings_t * io_CGtimes);
 
 Err_t nekbone_tailRecurTransitEND(long in_current_iteration,

@@ -7,13 +7,52 @@
 #include "spmd_global_data.h" //SPMD_GlobalData_t
 #include "../nek_src/nbn_setup.h"
 
+#include "blas.h"
+
+#ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+#   define ENABLE_EXTENSION_LABELING
+#   include<extensions/ocr-labeling.h>
+#endif
+
 #define XMEMSET(SRC, CHARC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)SRC+xmIT)=CHARC;}
 #define XMEMCPY(DEST, SRC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)DEST+xmIT)=*((char*)SRC+xmIT);}
+
+unsigned int myAtoU(const char *in)
+{
+    const long max_length = 2048;
+    unsigned int res = 0;
+
+    const char * p = in;
+    while( *p != '\0' && (*p==' ' || *p=='\t') ) {
+            if(p-in > max_length) return res; //Error: text too long
+            ++p;
+    }
+    if(*p=='\0'){
+        return res;
+    }
+
+    int i;
+    for(i = 0; p[i] != '\0'; ++i){
+        if( p[i] == ' ' || p[i] == '\t') {
+            break;
+        }
+        res = res*10U + p[i] - '0';
+    }
+
+    return res;
+}
 
 Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
 {
     Err_t err=0;
     while(!err){
+
+#       ifdef NEK_USE_ADVANCED_FUNCTIONS
+            PRINTF("INFO: NEK_USE_ADVANCED_FUNCTIONS is active.\n");
+#       else
+            PRINTF("INFO: NEK_USE_ADVANCED_FUNCTIONS is off.\n");
+#       endif
+
         XMEMSET(io, 0, sizeof(NEKOstatics_t));
 
         unsigned int argRx=0,argRy=0,argRz=0;
@@ -31,14 +70,22 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
             }
 
             unsigned int k = 1;
-            argRx = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argRy = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argRz = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argEx = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argEy = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argEz = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argPDOF_begin = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argCGcount = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argRx = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argRy = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argRz = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argEx = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argEy = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argEz = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argPDOF_begin = (unsigned int) atoi(getArgv(in_programArgv, k++));
+//            argCGcount = (unsigned int) atoi(getArgv(in_programArgv, k++));
+            argRx = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argRy = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argRz = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argEx = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argEy = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argEz = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argPDOF_begin = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+            argCGcount = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
 
             //PRINTF("DBG> init_NEKOstatics> ARGV= %u %u %u  %u %u %u  %u %u \n",
             //       argRx, argRy, argRz,  argEx, argEy, argEz, argPDOF_begin, argCGcount);
@@ -112,25 +159,69 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
         if(io->pDOF_begin >= io->pDOF_end || io->pDOF_step==0) { err=__LINE__; IFEB; }
 
         if(NEKbone_neighborCount != 26) {err=__LINE__; IFEB;} //This should not change. This code only works with cubic lattices.
-        if(io->pDOF_begin !=8 || io->pDOF_end !=8+1) {
-            //2016OCt26: In the course of the initial development, it was felt
-            //           that a pDOF of 8 would be best since there was the possibility
-            //           to get hardware support on the TG/FSIM side for matrices
-            //           size 8.
-            err=__LINE__; IFEB;
-        }
+
+        //The hashing used to go from an ID to a triplet, e.g. rid <-> (rx,ry,rz),
+        // is not rotational invariant.  So the hashing ra=(2,1,1) will not yield
+        // the same numbering for rb=(1,2,1), nor rc=(1,1,2).
+        //In order to alleviate this state of affair, the ordering of triplets
+        // is forced to be ordered.
+        //TODO: Remove the forced ordering of R,E,P triplets.
+        if(io->Rx < io->Ry || io->Ry < io->Rz || io->Rx < io->Rz) { err=__LINE__; IFEB; }
+        if(io->Ex < io->Ey || io->Ey < io->Ez || io->Ex < io->Ez) { err=__LINE__; IFEB; }
 
         //===== Setup OCR affinities
         io->OCR_affinityCount = 0;
 
 #       ifdef NEK_OCR_ENABLE_AFFINITIES
-            err = ocrAffinityCount( AFFINITY_PD, &io->OCR_affinityCount ); IFEB;
+            u64 affinityCount;
+            err = ocrAffinityCount( AFFINITY_PD, &affinityCount ); IFEB;
+            io->OCR_affinityCount = affinityCount;
             if(io->OCR_affinityCount < 0) {err = __LINE__; IFEB;}
-            PRINTF("NOTE: Affinities are in use.\n");
+            PRINTF("INFO: Affinities are in use.\n");
 #       else
-            PRINTF("NOTE: Affinities are not used.\n");
+            PRINTF("INFO: Affinities are not used.\n");
 #       endif // NEK_OCR_ENABLE_AFFINITIES
 
+        //===== Setup for channel halo exchange
+        {
+            unsigned int i;
+            for(i=0; i < NEKbone_regionCount; ++i){
+                GUID_ASSIGN_VALUE(io->haloLabeledGuids[i], NULL_GUID);
+            }
+
+#           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_MULTIPLICITY
+                PRINTF("INFO: Channel Halo exchanges in Multiplicity are active.\n");
+#           else
+                PRINTF("INFO: Channel Halo exchanges in Multiplicity are off.\n");
+#           endif
+#           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_SETF
+                PRINTF("INFO: Channel Halo exchanges in SetF         are active.\n");
+#           else
+                PRINTF("INFO: Channel Halo exchanges in SetF         are off.\n");
+#           endif
+#           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_AI
+                PRINTF("INFO: Channel Halo exchanges in AI           are active.\n");
+#           else
+                PRINTF("INFO: Channel Halo exchanges in AI           are off.\n");
+#           endif
+
+#           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+                for(i=0; i < NEKbone_regionCount; ++i){
+                    err = ocrGuidRangeCreate( &io->haloLabeledGuids[i], io->Rtotal, GUID_USER_EVENT_STICKY); IFEB;
+                    if( ocrGuidIsNull(io->haloLabeledGuids[i]) ){
+                        PRINTF("ERROR: Ledger creation in init_NEKOstatics failed: labeledGuid %u is NULL.\n", i);
+                        err = __LINE__;
+                        IFEB;
+                    }
+                }IFEB;
+
+                PRINTF("INFO> Use of Channels for halo exchanges is active.\n");
+#           else
+                PRINTF("INFO> Use of Channels for halo exchanges is off.\n");
+#           endif
+        }
+
+        //===== Echo results obtained
         print_NEKOstatics(io);
 
         break;
@@ -152,7 +243,14 @@ Err_t destroy_NEKOstatics(NEKOstatics_t * io)
 {
     Err_t err=0;
     while(!err){
-        err = clear_NEKOstatics(io);
+        unsigned int i=0;
+        for(i=0; i<NEKbone_regionCount; ++i){
+            if( ! ocrGuidIsNull(io->haloLabeledGuids[i]) ){
+                err = ocrGuidMapDestroy(io->haloLabeledGuids[i]); IFEB;
+                GUID_ASSIGN_VALUE(io->haloLabeledGuids[i], NULL_GUID);
+            }
+        } IFEB;
+        err = clear_NEKOstatics(io);IFEB;
         break;
     }
     return err;
@@ -181,6 +279,11 @@ void  print_NEKOstatics(NEKOstatics_t * in)
     PRINTF("NEKOStatics: TimeMark= "TIMEF"\n", in->startTimeMark);
 
     PRINTF("NEKOStatics: Affinity counts= %ld\n", in->OCR_affinityCount);
+
+    unsigned int i;
+    for(i=0; i<NEKbone_regionCount; ++i){
+        PRINTF("NEKOStatics: labeledGuids_for_halo[%u]="GUIDF"\n", i, GUIDA(in->haloLabeledGuids[i]) );
+    }
 }
 
 Err_t setup_SPMD_using_NEKOstatics(NEKOstatics_t * in_NEKOstatics,
@@ -200,6 +303,18 @@ Err_t nekbone_finalEDTt(void)
     TimeMark_t t = nekbone_getTime();
     TIMEPRINT1("NKTIME> FinalEDT="TIMEF"\n", t);
     return 0;
+}
+
+Err_t copy_ChannelStruct(ChannelStruct_t * in_from, ChannelStruct_t * o_target)
+{
+    Err_t err=0;
+    while(!err){
+        GUID_ASSIGN_VALUE(o_target->c4multi , in_from->c4multi);
+        GUID_ASSIGN_VALUE(o_target->c4setf , in_from->c4setf);
+        GUID_ASSIGN_VALUE(o_target->c4axi , in_from->c4axi);
+        break;
+    }
+    return err;
 }
 
 Err_t init_NEKOglobals(NEKOstatics_t * in_statics, unsigned int in_rankID, NEKOglobals_t * io)
@@ -254,6 +369,18 @@ Err_t init_NEKOglobals(NEKOstatics_t * in_statics, unsigned int in_rankID, NEKOg
         io->EyRy = in_statics->Ey * in_statics->Ry;
         io->EzRz = in_statics->Ez * in_statics->Rz;
 
+        //===== Setup fro channel halo exchange
+        unsigned int i;
+        for(i=0; i < NEKbone_regionCount; ++i){
+            GUID_ASSIGN_VALUE(io->myChannels[i].c4multi, NULL_GUID);
+            GUID_ASSIGN_VALUE(io->myChannels[i].c4setf, NULL_GUID);
+            GUID_ASSIGN_VALUE(io->myChannels[i].c4axi, NULL_GUID);
+            GUID_ASSIGN_VALUE(io->neighborChannels[i].c4multi, NULL_GUID);
+            GUID_ASSIGN_VALUE(io->neighborChannels[i].c4setf, NULL_GUID);
+            GUID_ASSIGN_VALUE(io->neighborChannels[i].c4axi, NULL_GUID);
+        }
+
+        //===== Output what we got
         print_NEKOglobals(io);
 
         break;
@@ -275,6 +402,7 @@ Err_t destroy_NEKOglobals(NEKOglobals_t * io)
 {
     Err_t err=0;
     while(!err){
+
         XMEMSET(io, 0, sizeof(NEKOglobals_t));
         break;
     }

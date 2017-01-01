@@ -2,14 +2,14 @@
 #include "spmd_global_data.h"
 #endif
 
-#include <string.h> //memset. memcpy
+//Removed for runs on TG> #include <string.h> //memset. memcpy
 
 //#define GLOBAL_DATA_VERBOSE //Define this macro in order to get many PRINTF activated.
                             //Otherwise, to keep silent, undefine the macro.
 
 void init_SPMDglobals(SPMD_GlobalData_t * io_gdata)
 {
-    memset(io_gdata, 0, sizeof(SPMD_GlobalData_t));
+    //Removed for runs on TG> memset(io_gdata, 0, sizeof(SPMD_GlobalData_t));
 
     //See setup_SPMD_using_NEKOstatics() to see how these values will be overwritten.
     io_gdata->overall_mpi_count = 3;
@@ -21,7 +21,9 @@ void copy_SPMDglobals(SPMD_GlobalData_t * in_source, SPMD_GlobalData_t * io_targ
 {
     print_SPMDglobals(in_source, "COPY SOURCE");
     unsigned long sz = sizeof(SPMD_GlobalData_t);
-    memcpy(io_target, in_source, sz);
+    //Removed for runs on TG> memcpy(io_target, in_source, sz);
+    io_target->iterationCountOnEachRank = in_source->iterationCountOnEachRank;
+    io_target->overall_mpi_count        = in_source->overall_mpi_count;
     print_SPMDglobals(io_target, "COPY TARGET");
 }
 

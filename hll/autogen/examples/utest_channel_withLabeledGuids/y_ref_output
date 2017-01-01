@@ -1,0 +1,15 @@
+TESTIO> TaskTYPE=0 TaskID=0x0  In Main
+TESTIO> TaskTYPE=0 TaskID=0x0 UTEST CHANNEL LEDGER Rankid=999 LabeledEVTs=0x0 whenDone=0x0 myChannel=0x0 BorChannel=0x0 tempEvt=0x0 create_utcLedger
+TESTIO> TaskTYPE=3 TaskID=0x0 Userfcn_BeginInit[1] neighborID=0
+TESTIO> TaskTYPE=2 TaskID=0x0 Userfcn_BeginInit[0] neighborID=1
+TESTIO> TaskTYPE=5 TaskID=0x0 Userfcn_EndInit[1]
+TESTIO> TaskTYPE=4 TaskID=0x0 Userfcn_EndInit[0]
+TESTIO> TaskTYPE=7 TaskID=0x0 UTEST CHANNEL LEDGER Rankid=1 LabeledEVTs=0x0 whenDone=0x0 myChannel=0x0 BorChannel=0x0 tempEvt=0x0 Work_start_Right
+TESTIO> Work_start_Right has the value 456 to send.
+TESTIO> TaskTYPE=6 TaskID=0x0 UTEST CHANNEL LEDGER Rankid=0 LabeledEVTs=0x0 whenDone=0x0 myChannel=0x0 BorChannel=0x0 tempEvt=0x0 Work_start_Left
+TESTIO> Work_start_Left has the value 123 to send.
+TESTIO> TaskTYPE=9 TaskID=0x0 UTEST CHANNEL LEDGER Rankid=1 LabeledEVTs=0x0 whenDone=0x0 myChannel=0x0 BorChannel=0x0 tempEvt=0x0 Work_stop_Right
+TESTIO> Work_stop_Right got the value 123 from Work_stop_Left.
+TESTIO> TaskTYPE=8 TaskID=0x0 UTEST CHANNEL LEDGER Rankid=0 LabeledEVTs=0x0 whenDone=0x0 myChannel=0x0 BorChannel=0x0 tempEvt=0x0 Work_stop_Left
+TESTIO> Work_stop_Left got the value 456 from Work_stop_Right.
+TESTIO> In Final

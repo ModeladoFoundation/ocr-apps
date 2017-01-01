@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+#----- First make the reference output file
+#Note that it is has been sorted as two parallel execution flow will output to stdout.
+rm -f ./z_ref_output
+cp -f ./y_ref_output ./z_ref_output
+
+if [ ! -s "z_ref_output" ]
+then
+echo "ERROR: Unusable reference output file"
+exit 20
+fi
+
+#----- Create the OCR C file
+python ./utest_channelG.py &> z_autogen.log
+if [ ! -s "z_utest_channelG.c" ]
+then
+echo "ERROR: Missing OCR C code file"
+exit 30
+fi
+
+#----- Compile and run
+rm -f z_output
+OCR_TYPE=x86-mpi make run &> z_log; grep "TESTIO>" z_log > z_output
+#OCR_TYPE=x86 make run &> z_log; grep "TESTIO>" z_log > z_output
+if [ ! -s "z_output" ]
+then
+echo "ERROR: Missing OCR C code output"
+exit 40
+fi
+
+#----- Compare
+sort z_ref_output > z_ref_output_sorted
+sort z_output > z_output_sorted
+if [ "$(diff -w --brief z_ref_output_sorted z_output_sorted)" ]
+then
+echo "ERROR: Unit test for channel events failed."
+else
+echo "SUCCESS: Unit test for channel events successful."
+fi
+
+#----- Clean up
+rm -f z_*
+rm -rf ./build ./install ./tools
+rm -f ../../tools/*.pyc
+rm -f cores*
+
+
