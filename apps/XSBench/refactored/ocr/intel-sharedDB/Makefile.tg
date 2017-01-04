@@ -73,7 +73,7 @@ CFLAGS := -g -std=c99
 CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=100
 #CFLAGS += -DENABLE_EXTENSION_AFFINITY
 #CFLAGS += -DVERIFICATION
-CFLAGS += -DDEBUG_APP
+#CFLAGS += -DDEBUG_APP
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in

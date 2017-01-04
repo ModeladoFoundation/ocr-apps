@@ -259,35 +259,21 @@ Command parseCommandLine(int argc, char** argv)
 
 void printCmd(Command* cmd)
 {
-   PRINTF( "Command Line Parameters:\n"
-           "  doeam: %d\n"
-           "  potDir: %s\n"
-           "  potName: %s\n"
-           "  potType: %s\n"
-           "  nx: %d\n"
-           "  ny: %d\n"
-           "  nz: %d\n"
-           "  xproc: %d\n"
-           "  yproc: %d\n"
-           "  zproc: %d\n"
-           "  Lattice constant: %f Angstroms\n"
-           "  nSteps: %d\n"
-           "  printRate: %d\n"
-           "  Time step: %f fs\n"
-           "  Initial Temperature: %f K\n"
-           "  Initial Delta: %f Angstroms\n"
-           "\n",
-           cmd->doeam,
-           cmd->potDir,
-           cmd->potName,
-           cmd->potType,
-           cmd->nx, cmd->ny, cmd->nz,
-           cmd->xproc, cmd->yproc, cmd->zproc,
-           cmd->lat,
-           cmd->nSteps,
-           cmd->printRate,
-           cmd->dt,
-           cmd->temperature,
-           cmd->initialDelta
-   );
+   PRINTF( "Command Line Parameters:\n" );
+   PRINTF( "  doeam: %d\n", cmd->doeam );
+   PRINTF( "  potDir: %s\n", cmd->potDir );
+   PRINTF( "  potName: %s\n", cmd->potName );
+   PRINTF( "  potType: %s\n", cmd->potType );
+   PRINTF( "  nx: %d\n", cmd->nx );
+   PRINTF( "  ny: %d\n", cmd->ny );
+   PRINTF( "  nz: %d\n", cmd->nz );
+   PRINTF( "  xproc: %d\n", cmd->xproc );
+   PRINTF( "  yproc: %d\n", cmd->yproc );
+   PRINTF( "  zproc: %d\n", cmd->zproc );
+   PRINTF( "  Lattice constant: %f Angstroms\n", cmd->lat );
+   PRINTF( "  nSteps: %d\n", cmd->nSteps );
+   PRINTF( "  printRate: %d\n", cmd->printRate );
+   PRINTF( "  Time step: %f fs\n", cmd->dt );
+   PRINTF( "  Initial Temperature: %f K\n", cmd->temperature );
+   PRINTF( "  Initial Delta: %f Angstroms\n\n", cmd->initialDelta );
 }

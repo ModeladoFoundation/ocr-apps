@@ -2,14 +2,14 @@
 
 source $APPS_ROOT/tools/execution_tools/aux_bash_functions
 
-sizes=(24 96)
+sizes=(24 48)
 iters=(1 11)
 BLOCKCOUNTS=(1 2 4 8)
 
 server_nodes=(215 216 217 218)
 client_nodes=(232 233 234 235 236 237 238 239 240 241 242)
 
-fsimblockspernode=3
+fsimblockspernode=6
 beginNode=0
 snode=0
 
@@ -38,7 +38,7 @@ END_CAT
     for(( inode=0; inode<=$nodes-1; inode++ )); do
 
         client=${client_nodes[$(($beginNode+$inode))]}
-        name=`printf "thor-%03d.jf.intel.com" $client`
+        name=`printf "thor-%03d-ib" $client`
         echo "[machine${inode}]" >> $file
         echo "    name=\"$name\"" >> $file
         echo "    max_blocks=${fsimblockspernode}" >> $file
@@ -100,7 +100,7 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
     echo "#!/bin/bash" >> ${jfile}.sh
     echo >> ${jfile}.sh
 
-    servernode=`printf "thor-%03d.jf.intel.com" ${server_nodes[$snode]}`; snode=$(($snode+1))
+    servernode=`printf "thor-%03d-ib" ${server_nodes[$snode]}`; snode=$(($snode+1))
     rvalues=(`generateMachineConfig $BLOCKCOUNT $servernode`)
     nodes=${rvalues[0]}
     machineConfigFile=${rvalues[1]}

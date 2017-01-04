@@ -7,7 +7,7 @@ BLOCKCOUNTS=(1 2 4 8)
 server_nodes=(211 212 213 214)
 client_nodes=(221 222 223 224 225 226 227 228 229 230 231)
 
-fsimblockspernode=3
+fsimblockspernode=6
 beginNode=0
 snode=0
 
@@ -36,7 +36,7 @@ END_CAT
     for(( inode=0; inode<=$nodes-1; inode++ )); do
 
         client=${client_nodes[$(($beginNode+$inode))]}
-        name=`printf "thor-%03d.jf.intel.com" $client`
+        name=`printf "thor-%03d-ib" $client`
         echo "[machine${inode}]" >> $file
         echo "    name=\"$name\"" >> $file
         echo "    max_blocks=${fsimblockspernode}" >> $file
@@ -59,7 +59,7 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
     echo "#!/bin/bash" >> ${jfile}.sh
     echo >> ${jfile}.sh
 
-    servernode=`printf "thor-%03d.jf.intel.com" ${server_nodes[$snode]}`; snode=$(($snode+1))
+    servernode=`printf "thor-%03d-ib" ${server_nodes[$snode]}`; snode=$(($snode+1))
     rvalues=(`generateMachineConfig $BLOCKCOUNT $servernode`)
     nodes=${rvalues[0]}
     machineConfigFile=${rvalues[1]}

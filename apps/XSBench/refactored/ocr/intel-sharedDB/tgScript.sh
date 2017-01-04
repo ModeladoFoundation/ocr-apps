@@ -9,7 +9,7 @@ BLOCKCOUNTS=(1 2 4 8)
 server_nodes=(101 102 103 104)
 client_nodes=(243 244 245 246 247 248 249 250 251 252 253)
 
-fsimblockspernode=3
+fsimblockspernode=6
 beginNode=0
 snode=0
 
@@ -38,7 +38,7 @@ END_CAT
     for(( inode=0; inode<=$nodes-1; inode++ )); do
 
         client=${client_nodes[$(($beginNode+$inode))]}
-        name=`printf "thor-%03d.jf.intel.com" $client`
+        name=`printf "thor-%03d-ib" $client`
         echo "[machine${inode}]" >> $file
         echo "    name=\"$name\"" >> $file
         echo "    max_blocks=${fsimblockspernode}" >> $file
@@ -100,7 +100,7 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
     echo "#!/bin/bash" >> ${jfile}.sh
     echo >> ${jfile}.sh
 
-    servernode=`printf "thor-%03d.jf.intel.com" ${server_nodes[$snode]}`; snode=$(($snode+1))
+    servernode=`printf "thor-%03d-ib" ${server_nodes[$snode]}`; snode=$(($snode+1))
     rvalues=(`generateMachineConfig $BLOCKCOUNT $servernode`)
     nodes=${rvalues[0]}
     machineConfigFile=${rvalues[1]}
@@ -118,6 +118,7 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
 
         jobHeader="${BLOCKCOUNT}"
 
+        #BUILD_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg install WORKLOAD_ARGS='-s ${size} -g 500 -t $((8*$BLOCKCOUNT)) -l ${iter}'"
         BUILD_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg install WORKLOAD_ARGS='-s ${size} -t $((8*$BLOCKCOUNT)) -l ${iter}'"
         eval $BUILD_CMD
         mkdir -p ./${winstall}/tg/logs
