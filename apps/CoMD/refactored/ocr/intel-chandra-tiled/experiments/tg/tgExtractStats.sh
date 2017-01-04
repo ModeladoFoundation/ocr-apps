@@ -1,8 +1,8 @@
 #!/bin/bash
 
-sizes=("small")
-iters=(1 12801)
-BLOCKCOUNTS=(1)
+sizes=(24)
+iters=(1 11)
+BLOCKCOUNTS=(1 2)
 
 mkdir -p analyzed
 
@@ -18,6 +18,10 @@ for iter in ${iters[@]}; do
     cat analyzed/${jobHeader}/instruction_breakdown.csv
     echo "energy_breakdown.csv"
     cat analyzed/${jobHeader}/energy_breakdown.csv
+    echo "net_traffic.csv"
+    cat analyzed/${jobHeader}/net_traffic.csv
+    echo "blockwise_net_traffic.csv"
+    cat analyzed/${jobHeader}/blockwise_net_traffic.csv
 done
 done
 done
