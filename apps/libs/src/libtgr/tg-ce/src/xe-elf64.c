@@ -8,6 +8,7 @@
 #include "tgr-ce.h"
 #include "tgr-elf.h"
 #include "util.h"
+#include "mem-util.h"
 
 //
 // XXX Totally out of date text below
@@ -102,7 +103,7 @@ static int tg_parse_pie( u64 imgAddr, Elf64_Ehdr * eh, int * rars )
     // search for the .pie_note section - marked by section flags
     //
     for( int i = 0 ; i < eh->e_shnum ; i++ ) {
-        Elf64_Shdr * sh = (Elf64_Shdr *) (shoff + i * eh->e_shentsize);
+        sh = (Elf64_Shdr *) (shoff + i * eh->e_shentsize);
 
         if( (sh->sh_flags & SHF_MASKOS) == SHF_XSTG_RAR ) {
             rar_size = sh->sh_size;
@@ -110,14 +111,14 @@ static int tg_parse_pie( u64 imgAddr, Elf64_Ehdr * eh, int * rars )
         }
     }
     if( rar_size == 0 ) {
-        printf("ERROR: Mal-formed XE PIE executable - no .pie_note section\n" );
+        ce_error( "ELF","Mal-formed XE PIE executable - no .pie_note section\n" );
         return -1;
     }
     //
     // Retrieve and parse the RAR note data
     //
     uint8_t * rar_data = alloca( rar_size );
-    tg_memcpy( (uint64_t) rar_data, imgAddr + sh->sh_offset, rar_size );
+    memcpy( rar_data, (void *)(imgAddr + sh->sh_offset), rar_size );
     //
     // extract the table
     // Used to overlay the note header
@@ -134,12 +135,12 @@ static int tg_parse_pie( u64 imgAddr, Elf64_Ehdr * eh, int * rars )
     if( rar_size < sizeof(Rar_header) ||
         rar_size != RAR_HEADER_SIZE + rh->namesize + rh->descsize ) {
 
-        printf( "ERROR : ill formed RAR note section!\n");
+        ce_error( "ELF","ill formed RAR note section!\n");
         return 1;
     }
 
     if( rh->descsize / 8 != eh->e_phnum ) {
-        printf( "ERROR : PHDR and RAR count mismatch (%d != %d)!\n",
+        ce_error( "ELF","PHDR and RAR count mismatch (%d != %d)!\n",
                     eh->e_phnum, rh->descsize/8 );
         return 1;
     }
@@ -170,7 +171,7 @@ static int zero_bss( SegmentEntry * seg, uint64_t addr )
         uint64_t bss_len   = seg->mem_len - seg->src_len;
         uint64_t bss_start = addr + seg->src_len;
 
-        printf(" -   Zeroing %d bytes at %p\n", bss_len, bss_start );
+        ce_print("ELF", " -   Zeroing %d bytes at %p\n", bss_len, bss_start );
         tg_zero( bss_start, (int) bss_len );
     }
     return 0;
@@ -188,7 +189,8 @@ static void set_pie_rar( block_info *bi, SegmentEntry * seg )
     if( seg->isPIE && seg->type != SEG_LOCAL ) {
         for( xe_info *xei = NULL ; (xei = xe_get_next_info( bi, xei )) ; ) {
             xe_set_reg( xei, seg->reg, seg->dst_addr ); // set base addr
-            printf(" -   XE %d : R%d 0x%llx\n", xei->id.agent, seg->reg, seg->dst_addr );
+            ce_vprint("ELF", " -   XE %d : R%d 0x%llx\n",
+                    xei->id.agent, seg->reg, seg->dst_addr );
         }
     }
 }
@@ -202,7 +204,7 @@ static int load_local_seg( block_info * bi, SegmentEntry * seg )
 {
     uint64_t addr;
 
-    printf("   - Copying local segment into XE L1 memory\n", seg->index );
+    ce_print("ELF", "   - Copying local segment into XE L1 memory\n", seg->index );
     //
     // Copy in the L1 segments
     //
@@ -220,12 +222,13 @@ static int load_local_seg( block_info * bi, SegmentEntry * seg )
             if( mseg == NULL ) {
                 mseg = block_alloc_mem( bi, Mem_L2, seg->mem_len, 0, xei->id.agent );
                 if( mseg == NULL ) {
-                    printf("PIE alloc: can't get %d bytes of local mem for XE %d\n",
+                    ce_error("ELF","PIE alloc: can't get %d bytes of local mem for XE %d\n",
                             seg->mem_len, XE_NUM(xei));
                     return 1;
                 }
             }
-            printf("   - PIE allocated XE %d segment at %p\n", XE_NUM(xei), mseg->va );
+            ce_print("ELF", "   - PIE allocated XE %d segment at %p\n",
+                    XE_NUM(xei), mseg->va );
             addr = seg->dst_addr = mseg->va;
             //
             // Could we have an entry point in local? XXX
@@ -236,7 +239,7 @@ static int load_local_seg( block_info * bi, SegmentEntry * seg )
             // address if we promoted to L2
             //
             xe_set_reg( xei, seg->reg, addr ); // set base addr
-            printf("   - RAR R%d set to 0x%llx\n", seg->reg, addr );
+            ce_print("ELF", "   - RAR R%d set to 0x%llx\n", seg->reg, addr );
         //
         // Static linked ELF - Reserve this address range
         //
@@ -249,13 +252,10 @@ static int load_local_seg( block_info * bi, SegmentEntry * seg )
             addr = validate_xe_addr( xei, seg->dst_addr, seg->src_len );
 
             if( xe_alloc_mem_at( xei, mem_type_of(addr), addr, seg->src_len ) == NULL ) {
-                printf("xe-elf64: memory reservation error!\n");
+                ce_error("ELF","xe-elf64: memory reservation error!\n");
                 return 1;
             }
         }
-       // printf("   - direct copy, 0x%x bytes %p => %p\n",
-       //         seg->src_len, seg->src_tgaddr, addr );
-
         (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
 #ifdef CLEAR_BSS
         zero_bss( seg, addr );
@@ -271,7 +271,7 @@ static int load_block_seg( block_info * bi, SegmentEntry * seg )
 {
     uint64_t addr;
 
-    printf("   - Copying block segment into XE L2 memory\n", seg->index );
+    ce_print("ELF", "   - Copying block segment into XE L2 memory\n", seg->index );
 
     //
     // Allocate space for PIE if necessary
@@ -280,10 +280,11 @@ static int load_block_seg( block_info * bi, SegmentEntry * seg )
         mem_seg * mseg = block_alloc_mem( bi, Mem_L2, seg->mem_len, 0, CE );
 
         if( mseg == NULL ) {
-            printf("Can't allocate %d bytes of block mem for PIE\n", seg->mem_len);
+            ce_error("ELF","Can't allocate %d bytes of block mem for PIE\n",
+                    seg->mem_len);
             return 1;
         }
-        printf("   - PIE allocated segment at %p\n", mseg->va );
+        ce_print("ELF", "   - PIE allocated segment at %p\n", mseg->va );
         addr = seg->dst_addr = mseg->va;
     //
     // Reserve this address range
@@ -292,15 +293,13 @@ static int load_block_seg( block_info * bi, SegmentEntry * seg )
         addr = validate_addr( bi, seg->dst_addr, seg->src_len );
 
         if( block_alloc_mem_at( bi, mem_type_of(addr), addr, seg->src_len ) == NULL ) {
-            printf("xe-elf64: memory reservation conflict!\n");
+            ce_error("ELF","xe-elf64: memory reservation conflict!\n");
             return 1;
         }
     }
     //
     // Copy it to memory
     //
-    //printf("   - direct copy, 0x%x bytes at %p\n", seg->src_len, addr );
-
     (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
 
 #ifdef CLEAR_BSS
@@ -315,11 +314,14 @@ static int load_block_seg( block_info * bi, SegmentEntry * seg )
 static int load_global_seg( block_info * bi, SegmentEntry * seg )
 {
     uint64_t addr;
-    printf("   - Copying global segment (type %s) into XE IPM memory\n",
+    ce_print("ELF", "   - Copying global segment (type %s) into XE IPM memory\n",
             MEM_STR(seg->type) );
     //
     // in the case that the policy is to have only 1 block load text,
     // we check the block policy
+    //
+    // XXX we assume that there are no global RO data segments, and that RO data
+    // is merged into the text segment.
     //
     if( seg->type == SEG_TEXT && bi->load_text == 0 )
         return 0;
@@ -329,10 +331,10 @@ static int load_global_seg( block_info * bi, SegmentEntry * seg )
     if( seg->isPIE ) {
         mem_seg * mseg = global_alloc_mem( bi->ce, seg->mem_len, 0, CE );
         if( mseg == NULL ) {
-            printf("Can't allocate %d bytes of IPM mem for PIE\n", seg->mem_len);
+            ce_error("ELF","Can't allocate %d bytes of IPM mem for PIE\n", seg->mem_len);
             return 1;
         }
-        printf("   - PIE allocated segment at %p\n", mseg->va );
+        ce_print("ELF", "   - PIE allocated segment at %p\n", mseg->va );
         addr = seg->dst_addr = mseg->va;
 
         if( seg->type == SEG_TEXT )
@@ -342,16 +344,14 @@ static int load_global_seg( block_info * bi, SegmentEntry * seg )
     //
     } else {
         addr = validate_addr( bi, seg->dst_addr, seg->src_len );
-        printf("    - allocating %p -> %p, 0x%lx bytes\n",
+        ce_print("ELF", "    - allocating %p -> %p, 0x%lx bytes\n",
                 seg->dst_addr, addr, seg->src_len);
 
         if( block_alloc_mem_at( bi, mem_type_of(addr), addr, seg->src_len ) == NULL ) {
-            printf("xe-elf64: memory reservation conflict!\n");
+            ce_error("ELF","xe-elf64: memory reservation conflict!\n");
             return 1;
         }
     }
-    //printf("   - direct copy, 0x%x bytes at %p\n", seg->src_len, addr );
-
     (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
 #ifdef CLEAR_BSS
     zero_bss( seg, addr );
@@ -361,8 +361,6 @@ static int load_global_seg( block_info * bi, SegmentEntry * seg )
 }
 
 //
-//
-// These will be used by all CEs during the image copy phase
 // imgAddr is the address of the first byte of the XE ELF image
 //
 // This is largely copied from tgkrnl, but with PIE support added and
@@ -380,37 +378,37 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
        eh->e_ident[EI_MAG1] != ELFMAG1 ||
        eh->e_ident[EI_MAG2] != ELFMAG2 ||
        eh->e_ident[EI_MAG3] != ELFMAG3) {
-        printf("ERROR: Not an ELF image!\n");
+        ce_error( "ELF","Not an ELF image!\n");
         return -1;
     }
 
     // Elf64?
     if(eh->e_ident[EI_CLASS] != ELFCLASS64) {
-        printf("ERROR: ELF, but not an ELF64 image!\n");
+        ce_error( "ELF","ELF, but not an ELF64 image!\n");
         return -1;
     }
 
     // Elf64 LSB?
     if(eh->e_ident[EI_DATA] != ELFDATA2LSB) {
-        printf("ERROR: ELF64, but not LSB image!\n");
+        ce_error( "ELF","ELF64, but not LSB image!\n");
         return -1;
     }
 
     // Elf64 LSB Current Version?
     if(eh->e_ident[EI_VERSION] != EV_CURRENT) {
-        printf("ERROR: ELF64 LSB, but not current version image!\n");
+        ce_error( "ELF","ELF64 LSB, but not current version image!\n");
         return -1;
     }
 
     // EXEC?
     if(eh->e_type != ET_EXEC) {
-        printf("ERROR: Not an executable image!\n");
+        ce_error( "ELF","Not an executable image!\n");
         return -1;
     }
 
     // Traleika Glacier?
     if(eh->e_machine != EM_XSTG) {
-        printf("ERROR: Not a XSTG image!\n");
+        ce_error( "ELF","Not an XSTG image!\n");
         return -1;
     }
     //
@@ -420,17 +418,17 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
 
     // Well-structured program header(s) exist?
     if(!eh->e_phnum || eh->e_phentsize != sizeof(Elf64_Phdr)) {
-        printf("ERROR: No program headers?\n");
+        ce_error( "ELF","No program headers?\n");
         return -1;
     }
 
     // Well-structured section header(s) exist?
     if(!eh->e_shnum || eh->e_shentsize != sizeof(Elf64_Shdr)) {
-        printf("ERROR: No section headers?\n");
+        ce_error( "ELF","No section headers?\n");
         return -1;
     }
 
-    printf(" - Valid XE ELF64 header%s found\n", isPIE ? " (PIE format)":"");
+    ce_print("ELF", " - Valid XE ELF64 header%s found\n", isPIE ? " (PIE format)":"");
 
     int * rars = alloca( sizeof(int) *  eh->e_phnum );
 
@@ -459,12 +457,12 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
         // Skip uninteresting header entries
         //
         if(ph->p_type != PT_LOAD || ph->p_memsz == 0) {
-            printf(" - Segment %d : type 0x%x (0x%x bytes) not loaded\n",
+            ce_print("ELF", " - Segment %d : type 0x%x (0x%x bytes) not loaded\n",
                     i, ph->p_type, ph->p_memsz );
             continue;
         }
         if(ph->p_filesz & 0x7 || ph->p_memsz & 0x7) {
-            printf("ERROR: XE ELF Segment not 64bit aligned! Aborting...\n");
+            ce_error( "ELF","XE ELF Segment not 64bit aligned! Aborting...\n");
             return -1;
         }
         //
@@ -485,7 +483,7 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
             // Validate alignment
             if(ph->p_align > 1 &&
                ((seg.dst_addr % ph->p_align ) != (ph->p_offset % ph->p_align))) {
-                printf(" - ERROR: Badly aligned ELF64 image! Aborting...\n");
+                ce_error("ELF","Badly aligned ELF64 image! Aborting...\n");
                 return -1;
             }
             //
@@ -498,12 +496,12 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
                 seg.type = ( ph->p_flags & PF_X ) ? SEG_TEXT : SEG_GLOBAL;
                 break;
               default:
-                printf(" - ERROR: segment %d bad memory type %d\n",
+                ce_error("ELF","segment %d bad memory type %d\n",
                         i, mem_type_of( seg.dst_addr ) );
                 return -1;
             }
         }
-        printf(" - Segment %d : type %s, 0x%x bytes at %p\n",
+        ce_print("ELF", " - Segment %d : type %s, 0x%x bytes at %p\n",
                 i, MEM_STR(seg.type), ph->p_memsz, ph->p_vaddr );
         //
         // load the seg into memory
@@ -526,7 +524,7 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
             break;
 
           default:
-            printf("Unknown segment type !!!\n");
+            ce_error("ELF","Unknown segment type !!!\n");
             return 1;
         }
         set_pie_rar( bi, & seg );

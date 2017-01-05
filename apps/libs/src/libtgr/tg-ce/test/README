@@ -1,0 +1,38 @@
+This directory contains some XE applications that test tgr-xe and tgr-ce features.
+The Makefile will compile and simulate the tests under fsim. The applications use and
+are linked against libtgr-xe, but not newlib libc. Both static and PIE executables are
+generated. Static linked executables are linked using the local elf64_xstg.t ldscript
+which puts text and global data into IPM.
+
+A test can be compiled by using the test name as the make cmd target:
+    $ make c_test_1
+will compile c_test_1.c into c_test_1 and c_test_1.p
+
+A test can be run in a single block configuration by concatenating '-run'
+on the end of the test name.
+    $ make c_test_1-run
+will compile c_test_1 (if it's out of date) and then run it under fsim  using
+the local fsim.cfg file and log directory 'rd'. Test results are effectively
+the output of the tgr-ce tgkrnl (tgkrnl-tgr) in file rd/<testname>...blk00.CE.00
+
+The PIE version of a test can be run by setting PIE on the make command line:
+    $ make PIE=1 c_test_1-run
+In this case the logfile of interest would be rd/c_test_1.p...blk00.CE.00
+
+You can run a test under xe-gdb by using the -rungdb suffix instead of -run.
+xe-gdb is started with the correct xstg target specification for these tests.
+
+The current tests are:
+
+c_test_1 - A simple test allocating memory, copying a string into it, modifying
+           the string, then writing it out to stdout, finally freeing the memory.
+
+c_test_2 - CE OS services exerciser (also tests libtgr-xe calls). This creates
+           a directory, chdirs to it, creates a file, closes it, stats it,
+           re-opens and reads it, comparing the contents to what was written.
+           At the end if removes the file, chdirs back up, and rmdirs the directory.
+
+c_test_3 - Thread/process services exerciser. This test creates clones, waits for
+           them, creates and detaches a clone, testing that waitpid returns the
+           appropriate error status. The runtime exit() path calls killall testing
+           another thread API.

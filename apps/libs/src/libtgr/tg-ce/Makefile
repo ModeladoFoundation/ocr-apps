@@ -1,8 +1,20 @@
 #
 # Makefile to build the tgr-ce library and a tgkrnl that links it in
+# producing tgkrnl-tgr.
+# The following make cmdline vars are supported:
+#   VERBOSE    - define to enable makefile compilation cmdline printing
+#   CE_VERBOSE - define to enable tgr-ce verbose logging
+#   MULTICORE  - define to use the multi-core CE configuration (not yet supported)
 #
-TG_ROOT   ?= ../../../../../../tg/tg
+TG_DEF    ?= ../../../../../../tg
+
+TG_REPO   ?= $(shell [ -d  $(TG_DEF) ] && (cd $(TG_DEF); pwd) )
+TG_ROOT   ?= $(TG_REPO)/tg
 TG_INSTALL = $(TG_ROOT)/install
+
+ifeq ($(TG_REPO),)
+  $(error Error finding the TG_REPO)
+endif
 
 APPS_REPO ?= ../../../../..
 APPS_INSTALL = $(APPS_REPO)/apps/libs/install/tg-xe
@@ -15,22 +27,24 @@ TGKRNL_ROOT = $(TG_ROOT)/tgkrnl
 TGKRNL_INC  = $(TGKRNL_ROOT)/inc
 TGKRNL_BUILD = $(TG_ROOT)/build/build.tgkrnl
 
-TGR_CE_BUILD = $(addsuffix /../build-tg-ce,$(shell pwd))
+TGR_CE_BUILD = $(shell pwd)/../build-tg-ce
 
 FSIM = $(TG_INSTALL)/bin/fsim
 
-TGR_CE_SRCS =   ce-os-svc.c \
+TGR_CE_SRCS =   ce-os-svc.c  \
                 ce-xe-intf.c \
                 cfg_parse.c  \
                 memory.c     \
-                mem_util.c   \
+                mem-util.c   \
                 tgr-alarms.c \
+                tgr-config.c \
                 tgr-main.c   \
                 tgr-run.c    \
                 util.c       \
                 xe-elf64.c
 
 TGR_CE_OBJS = $(addprefix $(TGR_CE_BUILD)/,$(TGR_CE_SRCS:.c=.o))
+TGR_CE_DEPS = $(addprefix $(TGR_CE_BUILD)/,$(TGR_CE_SRCS:.c=.d))
 
 TGR_CE_LIB = $(TGR_CE_BUILD)/tgr-ce-lib.a
 
@@ -41,6 +55,27 @@ INCLUDES = -I$(APPS_INCLUDE) \
            -I$(TG_ROOT)/fsim/include
 
 OPT = -g -ggdb -g3
+DEFINES =
+#
+# Use the multi-core CE configuration (not yet supported)
+#
+ifdef MULTICORE
+  DEFINES += -DTGR_MULTI_CORE
+else
+  DEFINES += -DTGR_FSIM
+endif
+#
+# Turn on tgr-ce verbose prints
+#
+ifdef CE_VERBOSE
+  DEFINES += -DCE_VERBOSE=1
+else
+  DEFINES += -DCE_VERBOSE=0
+endif
+#
+# Dependency generation
+#
+DGFLAGS  = -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 #
 # These are the flags used to build tgkrnl
 #
@@ -51,7 +86,8 @@ CFLAGS_TGKRNL =  -std=c99 -m64 -mcmodel=large \
 #
 # We set -nostdinc to ensure we get the system includes from newlib
 #
-CFLAGS = $(OPT) -nostdinc $(INCLUDES) $(WARNINGS) $(CFLAGS_TGKRNL)
+CFLAGS = -nostdinc $(INCLUDES)
+CFLAGS += $(OPT) $(DEFINES) $(WARNINGS) $(CFLAGS_TGKRNL) $(DGFLAGS)
 #
 # verbose enables compiler cmdline printing
 #
@@ -99,3 +135,7 @@ ctags:
 
 clean :
 	rm -rf $(TGR_CE_BUILD)
+#
+# Include automatically generated dependency files
+#
+-include $(TGR_CE_DEPS)

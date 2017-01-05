@@ -6,6 +6,7 @@
 #include <tg-types.h>
 #include <tg-cmdline.h>
 #include <tg-console.h>
+#include <tg-remap.h>
 #include <xstg-map.h>
 #include <mmio-table.h>
 
@@ -27,10 +28,65 @@
 
 #define MAX_BLOCKS_PER_CLUSTER  (4) // anticipating HW
 
-#define FSIM_CE_CONFIG  // compiled to run on fsim
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+// Main entry from tgkrnl
+//  At the point we enter tgr_main(), tgkrnl has parsed the cmd line info and
+//  the XE args created (including the XE ELF file name).
+//
+// We initialize our data structures from tgkrnl parsed values.
+// Includes ce_info, block_info(s) and their xe_info array.
+// Memory init creates region objects.
+// Wire ourselves into the XE alarm handling
+//  Register our IRQ handler to get called on all SW alarms
+//  If a handled alarm, this will save the XE/alarm info and return keeping
+//  the XEs stopped. We may want to create our own set of alarm values to avoid
+//  interfering with the already defined ones.
+// Load the XE ELF exe (read in from the exe file)
+// We start all the cores running their 'main loop' and when the core 0 loop
+// returns it waits for the rest of the cores to finish.
+//
+// Main loop
+//  This is implemented in tgr-run.c:tgr_block_run()
+//  - Before entering the run loop it starts the indicated XEs (1 or all)
+//  The loop waits (halted) for XE message arrival or clock ticks (for XE
+//  suspend timer use).
+//  - Check for MSG alarms and processes them
+//  - Check for expired XE suspend timers and resumes those that are.
+//  - Loop terminates when no XEs in the block are running
+//
+// Multi-block boot
+//  Currently we only support loading that same XE binary on all blocks in the
+//  cluster/tile as we don't have a mechanism to get per-block XE exe filenames.
+//  There's an ini file parser implemented for tgr-ce, but no define config file
+//  format.
+//
+// We currently support only 2 configuration scenarios:
+//  Mode BLOCK
+//      1 CE core managing 1 block, 1 ce_info has own IPM memory slice (FSIM)
+//
+//  Mode CLUSTER, 4 blocks, 1 slice
+//      4 cores (quad-core CE), 1 ce_info referencing all cluster blocks,
+//      each core manages a single block. The core's managed block's interrupts
+//      mapped to the core's local APIC.
+//
+// Questions:
+// - How do we get per-cluster/block config info?
+//      Place cmdline/config data at start of cluster block 0 L2 ?
+//      Provide cfg file name on via cmdline arg?
+//
+// Possible cfg file contents:
+//  - per block exe filename to load
+//  - per block XE arguments
+//  - per block XE stack size
+//  - start mode
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test scaffolding support
+// XXX The scaffolded and FSIM tests haven't been brought over so the following
+// test support could probably be removed
 //
 #ifndef SCAFFOLD_TEST
 extern u64 _end;    // linker added symbol marking the last byte of the tgkrnl image.
@@ -80,109 +136,7 @@ extern int tgr_test_main();
 
 #endif // FSIM_TEST
 
-#define CE_STACK_SIZE   16  // in KB
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Main entry from tgkrnl
-//  At this point the cmd line info has been parsed and the
-//  XE args created (including the XE ELF file name).
-//
-// We initialize our data structures from tgkrnl parsed values.
-// Includes ce_info, block_info(s) and their xe_info array.
-// Memory init creates region objects.
-// Wire ourselves into the XE alarm handling
-//  Register our IRQ handler to get called on all 'unknown' SW alarms
-//  This will save the XE/alarm info and return keeping the XEs stopped.
-//  We will need to create our own set of alarm values to avoid interfering
-//  with the already defined ones.
-//
-// Run all XEs until passed the xe loader.
-//  Wait for all to do an XE_READY alarm (crt0 startup does an XE_READY alarm)
-//  After all have checked in (and not been restarted), restart/continue XE0 after
-//  initializing all other XEs to UNUSED.
-//
-// Main loop
-//  Check for MSG alarms and process
-//  If XE0 has finished
-//      exit (whatever that means)
-//  HALT (an interrupt such as an alarm will wake us up)
-//
-// Features TBD:
-//  Suspend timer
-//      tgkrnl is set up to field a timer interrupt, but I don't know what
-//      the clock rate is to know what the interrupt rate is. Anyway, the
-//      timer firing should wake up the main loop which could count-down the
-//      suspend timers
-//
-// Multi-block boot
-//  Currently loads XE binary on all blocks but we have to mechanism for CEs
-//  to do other than run the same program. No inter-CE comm mechanism.
-//
-//
-// Main config for CE to cluster mapping
-//
-// Scenarios:
-//  Mode BLOCK
-//      1 CE core managing 1 block, 1 ce_info has own IPM memory slice (FSIM)
-//
-//  Mode CLUSTER, 4 blocks, 1 slice
-//      4 cores (quad-core CE), 1 ce_info referencing all cluster blocks,
-//      each core manages a single block. Block interrupts mapped to managing
-//      core local APIC.
-//      Does each core queue for work? Run a main loop servicing a block?
-//      Requires locks on CE, IPM memory allocation, OS svc intf
-//
-//  Mode CLUSTER, 4 blocks, 4 slices
-//      4 cores (quad-core CE) each managing a block (FSIM model), per CE slice
-//      tgkrnl image replicated across each slice, each core goes through full init
-//      no shared data between cores - how do we know when it's all done?
-//      do cmdline args need munging? copy cmdline into each slice?
-//      Requires locks on IPM memory allocation
-//      XXX Does this model really make sense?
-//
-// Questions:
-// - How do we best determine slice memory addr in IPM? remap vars?
-//      How do we tell firmware about it (w/o baking it in) ?
-// - How do we tell when we're done ? Who checks? Who do we tell?
-// - How do we get per-cluster/block config info?
-//      Place cmdline data at start of cluster block 0 L2 ?
-//      Provide cfg filename cmdline arg
-//
-// Possible cfg file contents:
-//  - block exe filename to load
-//  - block XE arguments
-//  - block XE stack size
-//  - start mode
-
-//
-// Hard code this until we can get the info via cmdline or the like
-//
-#ifdef FSIM_CE_CONFIG
-
-ce_info     CEs[1];
-//
-// We statically define block_info structures and then parcel them out
-// to the CEs as they're initialized
-//
-block_info Blocks[ MAX_BLOCKS_PER_CLUSTER ];
-
-ce_config FSIM_config =
-{
-    .mode = CE_MODE_BLOCK,
-    .core_count = 1,
-    .slice_count = 1,          // we only support this for now
-    .ce_count = 1,
-    .ces = CEs,
-    .blocks = Blocks,
-    .block_start_mode = 1,     // only start 1
-    .block_load_mode = 1,      // only load global (text) once
-    .xe_stack_size = 4096      // CE allocated XE stack size
-};
-ce_config * Tgr_config = & FSIM_config;
-
-#endif // FSIM_CE_CONFIG
-
+/////////////////////////////// XE utility methods /////////////////////////////
 //
 // We map ids to XE index, validate it's this block and a valid XE
 //
@@ -220,7 +174,6 @@ xe_info * xe_get_next_info( block_info * bi, xe_info * xei )
         return NULL;
 }
 
-
 //
 // xe_info iterator by state
 // provide either NULL (starting state) or the previously returned xe_info
@@ -233,13 +186,15 @@ xe_info * xe_get_info_by_state( block_info * bi, xe_info * xei, xe_state state )
     //
     xei = xei ? xei + 1 : bi->xes;
 
-    for( ; xei < bi->xes + bi->xe_count ; xei++ )
+    for( ; xei < bi->xes + bi->xe_count ; xei++ ) {
         if( xei->use_state == state ) {
             return xei;
         }
+    }
     return NULL;
 }
 
+/////////////////////////////// XE state mgmt methods //////////////////////////
 //
 // Restart a suspended XE
 //
@@ -263,7 +218,7 @@ void xe_terminated( xe_info * xei )
 
         xei->use_state = XE_TERMINATED;
 
-        printf("TGR-MAIN: terminated xe 0x%lx, running = %d\n",
+        ce_vprint("MAIN", "terminated xe 0x%lx, running = %d\n",
                 xei->id.all, xei->block->running);
 
         xe_terminate( xei );
@@ -286,8 +241,8 @@ void xe_terminate_all( ce_info * cei )
 // Power gate an XE which will terminate it's operation
 // In Fsim this will set core done
 //
-// XXX Since we may be in a scenario where we have a single CE controlling
-// multiple blocks, the addressing here probably needs to be promoted to CR
+// Since we may be in a scenario where we have a single CE controlling
+// multiple blocks, the addressing here probably needs to be CR
 //
 void xe_terminate( xe_info * xei )
 {
@@ -336,6 +291,8 @@ void xe_set_msr( xe_info * xei, int reg, uint64_t value )
     uint64_t * regp = (uint64_t *) CR_MSR_BASE(xei->block->id.block, xei->id.agent) + reg;
     *regp = value;
 }
+
+/////////////////////////// tgr-ce initialization methods //////////////////////
 //
 // block_info init
 //
@@ -351,14 +308,15 @@ int block_info_init( block_info * bi, int block, ce_config *config )
     //
     // Create a region to manage the block's L2
     // We have no statically allocated L2 memory
+    // Track allocations and don't bother with locking
     //
-    bi->L2 = mem_region_create( Mem_L2, 1, "L2" );
+    bi->L2 = mem_region_create( Mem_L2, true, false, "L2" );
 
     if( bi->L2 == NULL ||
         mem_region_add( bi->L2,
                         CR_L2_BASE(bi->id.block),
                         config->L2_size * 1024 ) ) {
-        printf("ERROR: can't initialize this block's L2 memory region\n");
+        ce_error("MAIN", "Can't initialize block %d's L2 memory region\n", block);
         return 1;
     }
     //
@@ -368,7 +326,7 @@ int block_info_init( block_info * bi, int block, ce_config *config )
 
     mem_seg * seg = mem_alloc( bi->ce->CE, sizeof(xe_info) * bi->xe_count );
     if( seg == NULL ) {
-        printf("ERROR: can't allocate this block's XE objects\n");
+        ce_error("MAIN", "Can't allocate block %d's XE objects\n", block);
         return 1;
     }
     bi->xes = (xe_info *) seg->va;
@@ -381,14 +339,17 @@ int block_info_init( block_info * bi, int block, ce_config *config )
         xei->block = bi;
         xei->id = bi->id;
         xei->id.agent = xe + 1; // CE is agent 0, XE0 is agent 1
-
-        xei->L1 = mem_region_create( Mem_L1, 1, "L1" );
+        //
+        // Create a region to manage this XE's L1
+        // Track allocations and don't bother with locking
+        //
+        xei->L1 = mem_region_create( Mem_L1, true, false, "L1" );
 
         if( xei->L1 == NULL ||
             mem_region_add( xei->L1,
                             CR_L1_BASE(bi->id.block, xei->id.agent),
                             config->L1_size * 1024 ) ) {
-            printf("ERROR: can't initialize this XE's L1 memory region\n");
+            ce_error("MAIN", "Can't initialize XE %x's L1 memory region\n", xei->id.all);
             return 1;
         }
     }
@@ -397,57 +358,57 @@ int block_info_init( block_info * bi, int block, ce_config *config )
 
 //
 // ce_info init
-//  ce          - main data structure for managing a block or cluster, as configured
-//  block_ids   - array holding the block ids in a cluster to manage
-//  block_count - number of blocks (w/above ids) to manage, size of block_ids
-//  xe_count    - number of XEs to manage per-block
+// This method initializes the ce_info structure in the provided config object.
+// It calls block init for each block managed by the CE
+//
 // Returns 0 for success, 1 for failure.
 //
-// Note: This init creates a CE slice memory region for each CE object. If the HW
-//       model turns out to be 1 slice shared across all cores, but with
-//       each core dedicated to a separate block, then this won't work. A single
-//       region needs to be created with each CE object referencing it.
+// Note: This init creates a single contiguous CE memory region (slice) for the
+//       CE object independent of how many cores the CE has.
 //
 int ce_info_init( ce_config * config )
 {
     //
-    // Create a region for the CE's slice memory and static allocate the text/data
-    // and stack segments.
+    // Create a region for the CE's private memory and static allocate the text/data
+    // and stack segments. We track allocations and lock it during changes.
     //
-    ce_info * cei = config->ces;
+    // XXX We might want to move the mem region init to a config init method in case
+    // CE memory assignments become complicated in the real HW, and to more easily
+    // reserve the CE's memory in the overall IPM memory region
+    //
+    ce_info * cei = & config->ce;
 
     cei->config = config;
 
     cei->id = config->cluster_id;
     cei->id.block = 0;
 
-    cei->CE = mem_region_create( Mem_CE, 1, "CE Slice" );
+    cei->CE = mem_region_create( Mem_CE, true, true, "CE Memory" );
 
     if( cei->CE == NULL ||
-        mem_region_add( cei->CE, CE_PROG_BASE, CE_SLICE_SIZE ) ) {
-        printf("ERROR: can't initialize this CE's private memory region\n");
+        mem_region_add( cei->CE, config->ce_mem_base, config->ce_mem_size ) ) {
+        ce_error("MAIN", "Can't initialize CE's private memory region\n");
         return 1;
     }
     //
     // Pre-allocate our (tgkrnl) program image and stack
     //
     mem_seg * seg = mem_alloc_at( cei->CE,
-                                  CE_PROG_BASE,
-                                  (uint64_t) (CE_PROG_END - CE_PROG_BASE) );
+                                  config->ce_mem_base,
+                                  (uint64_t) (CE_PROG_END - config->ce_mem_base) );
     mem_return( seg );
 
-    int ce_stack_size = CE_STACK_SIZE * 1024;
-    uint64_t ce_stack_start = CE_PROG_BASE + CE_SLICE_SIZE - ce_stack_size;
-
-    seg = mem_alloc_at( cei->CE, ce_stack_start, ce_stack_size );
-    mem_return( seg );
+    if( tgr_reserve_ce_memory( cei ) ) {
+        ce_error("MAIN", "Can't reserve CE memory\n");
+        return 1;
+    }
     //
     // populate our block infos
     //
 #if 0
     seg = mem_alloc( cei->CE, sizeof(block_info) * block_count );
     if( seg == NULL ) {
-        printf("ERROR: can't allocate this CE's block_info memory region\n");
+        ce_error("MAIN", "Can't allocate this CE's block_info memory region\n");
         return 1;
     }
     cei->blocks = (block_info *) seg->va;
@@ -462,7 +423,7 @@ int ce_info_init( ce_config * config )
         bi->ce = cei;
 
         if( block_info_init( bi, block, config ) ) {
-            printf("ERROR: can't initialize the CE block object\n");
+            ce_error("MAIN", "Can't initialize the CE block %d object\n", block);
             return 1;
         }
     }
@@ -499,31 +460,29 @@ int tgr_init( ce_config * config )
     // Some validation
     //
     if( BlockCount > MAX_BLOCKS_PER_CLUSTER ) {
-        printf("TGR ERROR: Unsupported block count - %d\n", BlockCount);
-        return 1;
-    }
-    if( config->slice_count != 1 ) {
-        printf("TGR ERROR: Unsupported slice count - %d\n", BlockCount);
+        ce_error("MAIN", "Unsupported block count - %d\n", BlockCount);
         return 1;
     }
     //
-    // global_info init XXX single block for now
+    // global_info init
+    // Track allocations and lock
+    // XXX We may need to have configuration specific 'global memory' init
     //
-    config->global.IPM = mem_region_create( Mem_IPM, 1, "IPM" );
+    config->global.IPM = mem_region_create( Mem_IPM, true, true, "IPM" );
 
     if( config->global.IPM == NULL ||
-        mem_region_add( config->global.IPM, SR_IPM_BASE, config->IPM_size ) ) {
+        mem_region_add( config->global.IPM, config->IPM_base, config->IPM_size ) ) {
 
-        printf("TGR ERROR: can't initialize this block's global memory region\n");
+        ce_error("MAIN", "Can't initialize this CE's global memory region\n");
         return 1;
     }
     //
-    // allocate static dedicated IPM areas - TBD
+    // XXX allocate static dedicated IPM areas - TBD
     //
     // Init our CE
     //
     if( ce_info_init( config ) ) {
-        printf("TGR ERROR: can't initialize the tgr CE object\n");
+        ce_error("MAIN", "Can't initialize the tgr CE object\n");
         return 1;
     }
     return 0;
@@ -531,6 +490,9 @@ int tgr_init( ce_config * config )
 
 //
 // Load all the blocks associated with the CE
+// This method reads the XE ELF exe image into a region allocated in CE private
+// memory and then passes a pointer to the image to the XE loader.
+//
 // XXX Will need to change if we allow different XE exes per block.
 //
 static int tgr_load_blocks( ce_info * cei, const char * elf_file )
@@ -542,7 +504,7 @@ static int tgr_load_blocks( ce_info * cei, const char * elf_file )
     struct stat st;
 
     if( ce_os_filestat( elf_file, &st ) < 0 ) {
-        printf("Can't stat XE ELF file '%s'\n", elf_file);
+        ce_error("MAIN", "Can't stat XE ELF file '%s'\n", elf_file);
         return 1;
     }
     //
@@ -551,25 +513,26 @@ static int tgr_load_blocks( ce_info * cei, const char * elf_file )
     mem_seg * elf = mem_alloc( cei->CE, st.st_size );
 
     if( elf == NULL ) {
-        printf("Can't allocate %d bytes of CE mem for XE ELF\n", st.st_size );
+        ce_error("MAIN", "Can't allocate %d bytes of CE mem for XE ELF\n", st.st_size );
         return 1;
     }
 
     int fd = ce_os_fileopen( elf_file, O_RDONLY, 0 );
 
     if( fd < 0 ) {
-        printf("Can't open XE Elf for reading\n");
+        ce_error("MAIN", "Can't open XE Elf '%s' for reading\n", elf_file);
         mem_free( elf );
         return 1;
     }
     ssize_t got = ce_os_fileread( fd, (void *) elf->va, st.st_size );
     if( got != st.st_size ) {
-        printf("Read of XE Elf failed, got %d\n", got );
+        ce_error("MAIN", "Read of XE Elf failed, got %d\n", got );
         return 1;
     }
     (void) ce_os_fileclose( fd );
 
-    printf("TGR: XE Elf image '%s' 0x%x bytes at %p\n", elf_file, st.st_size, elf->va );
+    ce_print("MAIN", "XE Elf image '%s' 0x%x bytes at %p\n",
+                elf_file, st.st_size, elf->va );
     //
     // load it, allocating memory for the various segments
     //
@@ -587,45 +550,37 @@ static int tgr_load_blocks( ce_info * cei, const char * elf_file )
 //
 void tg_thread_start( int core, int (*entry)( void *), void * arg )
 {
-    printf("TGR: multi-core thread start called, core %d\n", core);
+    block_info * bi = arg;
+    ce_print("MAIN", "multi-core thread start called, core %d, block 0x%lx\n", core, bi);
     return;
 }
 
+/////////////////////////////// tgr-ce entry point /////////////////////////////
 //
 // We currently only support 1 core (FSIM) or 4 core with single slice
 //
 int tgr_main( void )
 {
-    printf("TGR: starting\n");
+    ce_print("MAIN", "starting\n");
     //
     // subsystem inits
     //
     mem_init();
     ce_os_svc_init();
-    printf("TGR: initialized subsystems\n");
+    ce_print("MAIN", "initialized subsystems\n");
     //
     // Initialize our object tree
     //
-    if( tgr_init( Tgr_config ) )
+    ce_config * config = tgr_config_init();
+
+    if( config == NULL || tgr_init( config ) )
         return 1;
 
-    printf("TGR: initialized datastructures\n");
+    ce_print("MAIN", "initialized datastructures\n");
 
-    ce_info * cei = Tgr_config->ces;
-    //
-    // We get the XE file name from the args passed to tgkrnl (FSIM)
-    //
-    if( XeArgc == 0 ) {
-        printf("TGR-ERROR: no XE ELF filename available to load\n");
-        xe_terminate_all( cei );
-        return 1;
-    }
-    //
-    // XXX Reference the tgkrnl generated XE argv in the CfgArea
-    //
-    Tgr_config->xe_elffile = (char *) XeArgv[0];
+    ce_info * cei = & config->ce;
 
-    printf("TGR: XE ELF = %p - '%s'\n", XeArgv[0], Tgr_config->xe_elffile );
+    ce_vprint("MAIN", "XE ELF = %p - '%s'\n", config->xe_elffile, config->xe_elffile );
     //
     // test hook
     //
@@ -633,8 +588,8 @@ int tgr_main( void )
     //
     // Load our blocks XE image
     //
-    if( tgr_load_blocks( cei, Tgr_config->xe_elffile ) ) {
-        printf("TGR-ERROR: loading the XE ELF failed\n");
+    if( tgr_load_blocks( cei, config->xe_elffile ) ) {
+        ce_error("MAIN", "loading the XE ELF failed\n");
         xe_terminate_all( cei );
         return 1;
     }
@@ -664,7 +619,7 @@ int tgr_main( void )
     //
     // All blocks stopped, one way or another
     //
-    printf("TGR: all blocks done\n");
+    ce_print("MAIN", "all blocks done\n");
 
     return 0;
 }

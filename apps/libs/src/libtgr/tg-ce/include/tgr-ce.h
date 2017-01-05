@@ -173,23 +173,34 @@ typedef enum {
 struct ce_config {
     ce_mode  mode;        // How we map onto the HW
     int      core_count;  // how many cores the CE has
-    int      slice_count; // CE private memory allocation (1 or core_count)
     id_tuple cluster_id;
+    uint64_t IPM_base;    // Start of managed IPM
     uint64_t IPM_size;    // size in bytes
     uint64_t L2_size;     // size in bytes
     uint64_t L1_size;     // XE only, CE has no L1, in bytes
     int xes_per_block;
-    int block_start_mode; // 0 start all, 1 start master (XE0) only
+    int block_start_mode; // 0 start all XEs in a block, 1 start master (XE0) only
     int block_load_mode;  // 0 load each block independently, 1 load global once
     int xe_stack_size;    // size for CE allocated XE stacks
-    int ce_count;         // not used since only single ce slice supported
-    ce_info *   ces;      // allocated based on mode, slice, and core counts
+    uint64_t ce_mem_base; // start x86 address of CE memory
+    uint64_t ce_mem_size; // size of CE memory
+    ce_info     ce;       // allocated based on mode, slice, and core counts
     block_info *blocks;   // allocated based on mode
     global_info global;   // manages IPM region
     char * xe_elffile;    // Pointer to the XE ELF filename in the configarea
 };
 
-extern ce_config * Tgr_config;
+//
+// Method provided by tgr-config to return a configuration specific
+// initialized ce_config object
+//
+ce_config * tgr_config_init( void );
+//
+// Method provided by tgr-config to reserve the CE core stack space
+// and other memory.
+//
+int tgr_reserve_ce_memory( ce_info * cei );
+
 //
 // Allocate/free memory from block memory - CE private or L2
 //
@@ -242,7 +253,7 @@ void xe_resume( xe_info * xei, int status );
 //
 void xe_terminated( xe_info * xei );
 
-// int tgr_init( ce_config * config, ce_info *ces );
+// int tgr_init( ce_config * config, ce_info *cei );
 //
 // In tgr-run.c
 //

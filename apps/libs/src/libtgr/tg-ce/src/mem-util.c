@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "tgr-ce.h"
 #include "util.h"
+#include "mem-util.h"
 
 #include "xstg-map.h"
 
@@ -68,7 +69,7 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
         ( RACK_FROM_ID(addr) >= bi->id.rack ||
           CUBE_FROM_ID(addr) >= bi->id.cube ||
           SOCKET_FROM_ID(addr) >= bi->id.socket ) ) {
-            printf("TGR-VA: bad MR addr\n");
+            ce_error("VA", "bad MR addr %p\n", addr);
             return NO_ADDR;
     }
     //
@@ -78,7 +79,7 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
         if( IS_IPM(addr) ) {
             offset = IPM_OFFSET(addr);
             if( offset > config->IPM_size || offset + len > config->IPM_size ){
-                printf("TGR-VA: bad IPM addr or len\n");
+                ce_error("VA", "bad IPM addr or len\n");
                 return NO_ADDR;
             }
             //
@@ -90,14 +91,14 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
         // XXX Should we force our cluster only ??
         //
         } else if( IS_OPM(addr) ) {
-            printf("TGR-VA: illegal OPM addr\n");
+            ce_error("VA", "illegal OPM addr %p\n", addr);
             return NO_ADDR;
         //
         // Handled all socket resources above, must be cluster resource
         //
         }
         if( CLUSTER_FROM_ID(addr) != bi->id.cluster ) {
-            printf("TGR-VA: illegal cluster number\n");
+            ce_error("VA", "illegal cluster number\n");
             return NO_ADDR;
         }
         addr = SR_TO_CR(addr);
@@ -115,7 +116,7 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
         if( IS_L1(addr) ) {
             offset = L1_OFFSET(addr);
             if( offset > config->L1_size || offset + len > config->L1_size ) {
-                printf("TGR-VA: bad L1 addr or len\n");
+                ce_error("VA", "bad L1 addr or len\n");
                 return NO_ADDR;
             }
             return addr;
@@ -125,13 +126,13 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
     // We now only have CR addresses
     //
     if( IS_L3(addr) || BLOCK_FROM_ID(addr) >= BlockCount ) {
-        printf("TGR-VA: bad cluster/block/L3\n");
+        ce_error("VA", "bad cluster/block/L3\n");
         return NO_ADDR;
 
     } else if( IS_L2(addr) ) {
         offset = L2_OFFSET(addr);
         if( offset > config->L2_size || offset + len > config->L2_size ) {
-            printf("TGR-VA: bad L2 addr or len\n");
+            ce_error("VA", "bad L2 addr or len\n");
             return NO_ADDR;
         }
 
@@ -139,15 +140,15 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
     // No CE L1 access, so only agents >= 1
     //
     } else if( AGENT_FROM_ID(addr) < 1 || AGENT_FROM_ID(addr) - 1 >= XeCount ) {
-        printf("TGR-VA: bad CR XE agent number\n");
+        ce_error("VA", "bad CR XE agent number\n");
         return NO_ADDR;
     //
     // Only allow L1 (no regs)
     //
     } else if( IS_L1(addr) ) {
         offset = L1_OFFSET(addr);
-        if( offset > Tgr_config->L1_size || offset + len > Tgr_config->L1_size ) {
-            printf("TGR-VA: bad CR L1 addr or len\n");
+        if( offset > config->L1_size || offset + len > config->L1_size ) {
+            ce_error("VA", "bad CR L1 addr or len\n");
             return NO_ADDR;
         }
     }
@@ -309,7 +310,7 @@ mem_seg * block_alloc_mem( block_info * bi, mem_type type, size_t len, bool priv
           return global_alloc_mem( bi->ce, len, private, agent );
           break;
       default:
-          printf("block_alloc: unsupported memory type %d\n", type );
+          ce_error("MEM", "block_alloc: unsupported memory type %d\n", type );
           break;
     }
     if( mr ) {

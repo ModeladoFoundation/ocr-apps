@@ -290,7 +290,7 @@ typedef struct {
 //
 typedef struct {
     uint64_t entry_fn_ptr;  // in - initial PC
-    uint64_t arg1;          // in - first arg (R0), trampoline fn for pthreads
+    uint64_t arg1;          // in - first arg (R0), thread entry fn for pthreads
     uint64_t arg2;          // in - second arg (R1)
     uint64_t stack_top;     // in - use this stack, 0 means CE allocate
     uint64_t pid;           // out - which XE is the victim

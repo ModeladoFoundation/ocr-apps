@@ -8,6 +8,7 @@
 #include "tgr-alarms.h"
 #include "ce-xe-intf.h"
 #include "util.h"
+#include "mem-util.h"
 
 //
 // X86 HW synch primitives
@@ -24,8 +25,14 @@ static int route_xe_alarm( xe_info * xei )
     uint64_t arg0 = xe_get_reg( xei, XE_ARG0_REG );
     uint64_t arg1 = xe_get_reg( xei, XE_ARG1_REG );
     uint64_t status = 0;
+    //
+    // This XE may have been terminated by a previous req this cycle
+    // if so, then this req is spurious, ignore
+    //
+    if( xei->use_state != XE_RUNNING )
+        return 0;
 
-    // printf("TGR-RUN: XE 0x%lx - arg0 0x%lx, arg1 0x%lx\n", xei->id.all, arg0, arg1 );
+    // ce_print("RUN", "XE 0x%lx - arg0 0x%lx, arg1 0x%lx\n", xei->id.all, arg0, arg1 );
 
     (void) ce_xe_msg_handler( xei, arg0, arg1, & status );
 
@@ -53,7 +60,7 @@ static int xe_start( xe_info * xei )
     mem_seg * seg = xe_alloc_mem( xei, Mem_ANY, stack_size );
 
     if( seg == NULL ) {
-        printf("TGR-ERROR: can't get a stack for XE 0x%lx\n", xei->id.all );
+        ce_error("RUN", "can't get a stack for XE 0x%lx\n", xei->id.all );
         return 1;
     }
     xei->stack = seg;
@@ -69,8 +76,8 @@ static int xe_start( xe_info * xei )
     *--stack = exe;  // argv[0]
     *--stack = 1;    // argc
 
-    printf("Starting XE 0x%lx with a 0x%lx byte stack at %p (top %p)\n",
-            xei->id.all, xei->stack->len, xei->stack->va, stack );
+    ce_print("RUN", "Starting XE 0x%lx at %p with a 0x%lx byte stack at %p (top %p)\n",
+            xei->id.all, xei->block->entry, xei->stack->len, xei->stack->va, stack );
 
     xe_set_sp( xei, (uint64_t) stack );
     xe_set_ra( xei, 0UL );
@@ -121,7 +128,7 @@ int tgr_block_run( void * arg )
     // start our XEs for this block
     //
     if( xe_start( xe_of_block(bi, 0) ) ) {
-        printf("TGR-ERROR: Start of block %d XE0 failed\n", bi->id.block );
+        ce_error("RUN", "Start of block %d XE0 failed\n", bi->id.block );
         return 1;
     }
     //
@@ -130,7 +137,7 @@ int tgr_block_run( void * arg )
     if( bi->ce->config->block_start_mode == 0 ) {
         for( int xe = 1 ; xe < bi->xe_count ; xe++ ) {
             if( xe_start( xe_of_block(bi, xe) ) ) {
-                printf("TGR-ERROR: Start of block %d XE%d failed\n",
+                ce_error("RUN", "Start of block %d XE%d failed\n",
                         bi->id.block, xe );
                 return 1;
             }
@@ -151,7 +158,7 @@ int tgr_block_run( void * arg )
     while( bi->running > 0 ) {
         volatile uint64_t alarms;
 
-        // printf("TGR_RUN: woke %d\n", ++wake_count );
+        // ce_print("RUN", "woke %d\n", ++wake_count );
 
         intr_block();
 

@@ -1,0 +1,74 @@
+This directory contains the sources to the TGR CE library that is linked into tgkrnl
+to produce the tgkrnl-tgr variant runtime. TGR CE relies on tgkrnl for interrupt,
+paging, and command line parsing/configuration support.
+
+The runtime implements the following features:
+* XE executable (both static and PIE) loading (from file) and execution
+* an XE messaging interface (XE to CE - via libtgr-xe)
+* an OS services interface allowing filesystem and file operations.
+* a simple thread-like abstraction and interface providing XE allocation,
+  freeing, waiting for, and killing.
+* memory allocation and freeing for XE, block, and IPM memories
+
+The runtime only supports IPM as a global memory resource, no DRAM support
+although there's no issue with the current fsim allocating of CE private memory
+in DRAM.
+
+Anticipating the HW implementation, the structure and base implementation of the
+runtime supports a multi-core environment where each multi-core CE core manages
+a specific cluster/tile block and shares XE loading and global resource management.
+
+Each block runs as an effective single application with its own application
+local, block, and global data resources. The read-only XE text and data may be
+shared by all the blocks in a cluster. Currently each block in a cluster is
+restricted to running the same XE executable. This is an implementation decision
+not a design issue.
+
+Building
+
+The default tgr-ce build is for a configuration that supports a single block
+running under fsim.
+
+The Makefile in this directory will build and install tgkrnl-tgr executable.
+It assumes that the apps and tg repos are in the same directory (and called 'apps'
+and 'tg'). If a different tg repo is wanted, the pathname can be provided via
+the TG_REPO variable (either on the make cmdline or via environment variable).
+
+Running make with no target or the 'all' target will build a tgkrnl-tgr suitable
+for running on fsim.
+Running make with the 'install' target will build (if out of date) and then
+install tgkrnl-tgr in the tg repos tg/install/lib directory.
+
+Note that this build will do a make clean and tgr specific build of the tg
+repo's tgkrnl in its build directory (.../tg/build/build.tgkrnl). The resulting
+tgkrnl executable is copied to the tgr-ce's build directory.
+
+Although the tgr-ce implementation has a multi-core configuration, it is a
+place-holder until the actual HW and firmware parameters have been defined.
+
+Configuring
+
+The tgr-ce runtime does not support linking XE executables to run out of DRAM.
+Static linked executables must be linked to use IPM instead. PIE linked
+executables have no special requirements. The tgr-ce test directory contains
+an ldscript (elf64-xstg.t) that supports IPM for global sections/segments.
+
+* Fsim specific
+Instead of relying on fsim to load the XE executable into memory, tgr-ce loads
+the executable directly from the XE ELF file. The name of this file must be
+specified in the fsim cfg file by adding '-xe-args <XE ELF filename>' to the
+CEglobal->krnl_args variable. See the 'fsim.cfg' file in the test directory.
+
+The fsim CE OS services implementation uses part of the block sL2 memory as
+a buffer when doing file I/O and so the fsim BlockGlobal->sl2_size variable
+should be set to 4096 (the architectural maximum).
+
+* Multi-core CE
+TBD
+
+Testing
+
+The tgr-ce test directory contains some simple XE applications that exercise
+the tgr-ce interfaces and features such as file creation/deletion and I/O.
+See the README and Makefile in that directory for more information.
+

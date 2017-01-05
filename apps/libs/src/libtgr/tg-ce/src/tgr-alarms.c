@@ -7,6 +7,7 @@
 #include "tgr-alarms.h"
 #include "ce-xe-intf.h"
 #include "util.h"
+#include "mem-util.h"
 
 #include "xe-abi.h"
 //
@@ -23,7 +24,7 @@ static bool tgr_alarm_cb( int xe, u64 sw, void * closure )
     xe = xe % MAX_XE_COUNT;
 
     if( xe >= cei->config->xes_per_block ) {
-        printf("TGR-ERROR: invalid xe (%d) for alarm\n", xe);
+        ce_error("ALARMS","invalid xe (%d) for alarm\n", xe);
         return false;
     }
     block_info * bi = block_of_ce( cei, block );
@@ -40,7 +41,7 @@ static bool tgr_alarm_cb( int xe, u64 sw, void * closure )
         //uint64_t arg0 = xe_get_reg( xei, XE_ARG0_REG );
         //uint64_t arg1 = xe_get_reg( xei, XE_ARG1_REG );
 
-        // printf("TGR-ALARMS: XE 0x%lx - arg0 0x%lx, arg1 0x%lx\n",
+        // ce_print("ALARMS", "XE 0x%lx - arg0 0x%lx, arg1 0x%lx\n",
         //    xei->id.all, arg0, arg1 );
         bi->alarmed |= xe_alarmed_bit(xe);
         break;
@@ -56,43 +57,43 @@ static bool tgr_alarm_cb( int xe, u64 sw, void * closure )
         uint64_t msg_len = xe_get_reg( xei, XE_ARG1_REG );
 
         if( msg_len > 128 ) {
-            printf( "TGR-ERROR: XE%lx msg len truncated\n", xei->id.all );
+            ce_error( "ALARMS","XE%lx msg len truncated\n", xei->id.all );
             msg_len = 128;
         }
         char * msg = (char *) validate_xe_addr( xei, msg_ptr, msg_len );
 
         if( msg == NULL ) {
-            printf( "TGR-ERROR: XE%lx msg address invalid\n", xei->id.all );
+            ce_error( "ALARMS","XE%lx msg address invalid\n", xei->id.all );
         } else {
             msg[msg_len-1] = '\0';   // paranoid
-            printf( "TGR-CONSOLE (XE%lx): %s\n", xei->id.all, msg );
+            ce_print( "CONSOLE", "(XE%lx): %s\n", xei->id.all, msg );
         }
         restart = true;
         break;
       }
 
       case XE_READY:
-        printf("TGR-ALARMS: XE%lx ready alarm\n", xei->id.all );
+        ce_print("ALARMS", "XE%lx ready alarm\n", xei->id.all );
         restart = true;
         break;
 
       case XE_TERMINATE_ALARM:
         // XXX what to do for terminations ?
-        printf( "TGR-ALARMS: XE 0x%lx terminate alarm, terminating xe\n", xei->id.all );
+        ce_print( "ALARMS", "XE 0x%lx terminate alarm, terminating xe\n", xei->id.all );
         xei->blocked = true;
         xe_terminated( xei );    // power gate it
         break;
 
       case XE_ASSERT_ERROR:
         // XXX what to do for asserts ?
-        printf( "TGR-ALARMS: XE 0x%lx assert alarm, terminating xe\n", xei->id.all );
+        ce_print( "ALARMS", "XE 0x%lx assert alarm, terminating xe\n", xei->id.all );
         xei->blocked = true;
         xe_terminated( xei );    // power gate it
         break;
 
       default:
         handled = false;
-        printf( "TGR-ALARMS: XE%lx unknown alarm %d\n", xei->id.all, sw );
+        ce_print( "ALARMS", "XE%lx unknown alarm %d\n", xei->id.all, sw );
         break;
     }
     if( restart )

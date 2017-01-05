@@ -1,8 +1,10 @@
-//#include <tg-console.h>
+#include <stdint.h>
+#include <sys/time.h>
 
 #include <tg-console.h>
 
 #include "memory.h"
+#include "util.h"
 
 ///////////////////////////// Memory Use Tracking /////////////////////////////
 //
@@ -17,6 +19,45 @@
 //  remember the mem_seg structure passed back to use when/if freeing the memory.
 //  Once a memory segment is done with, it can be freed with mem_free()
 //
+// memory data structures spin-lock - needed in a multi-core configuration
+//
+// To avoid deadlocks, we ALWAYS lock in this order (and release in the opposite):
+//  Region
+//  Region Pool
+//  Segment Pool
+//
+typedef uint32_t mem_lock;
+
+#ifdef TGR_MULTI_CORE
+//
+// Implement a simple spin-lock for a multi-core CE
+//
+static inline void mem_init_lock( mem_lock * lock )
+{
+    *lock = 0;
+}
+
+static inline void mem_get_lock( mem_lock * lock )
+{
+    while( __sync_lock_test_and_set( lock, 1 ) != 0 )
+        ;
+}
+
+static inline void mem_put_lock( mem_lock * lock )
+{
+    __sync_lock_release( lock );
+}
+#else // ! TGR_MULTI_CORE
+//
+// Single threaded CE don't need no steenking locks
+//
+#define mem_init_lock( lock )
+#define mem_get_lock( lock )
+#define mem_put_lock( lock )
+
+#endif  // ! TGR_MULTI_CORE
+
+//
 // Linked list of free blocks
 // Core methods are region (L1,L2,...) agnostic.
 // Per region alloc/free methods provided.
@@ -29,6 +70,7 @@
 static struct {
     mem_seg * free;
     mem_seg   pool[NUM_FREE_SEGS];
+    mem_lock  lock;
 } Mem_segs_pool = {
     .free = NULL
 };
@@ -38,11 +80,13 @@ static struct {
 //
 struct mem_region {
     const char * name;         // for debugging
-    u64          type: 8,      // mem_type for this region
+    uint32_t     type: 8,      // mem_type for this region
                  track: 1,     // keep the tracking list
-                 unused: 23;   // unused flag space
-    u32          allocations;  // stats - count of allocations made
-    u32          frees;        // stats - count of frees
+                 do_lock: 1,   // needs locking
+                 unused: 22;   // unused flag space
+    mem_lock     lock;         // region lock
+    uint32_t     allocations;  // stats - count of allocations made
+    uint32_t     frees;        // stats - count of frees
     u64          base_addr;    // lowest address in the range (not really used)
     mem_seg *    free;         // available memory area
     mem_seg *    alloc;        // allocation tracking list
@@ -54,14 +98,32 @@ struct mem_region {
 static struct {
     mem_region * free;
     mem_region   pool[NUM_FREE_REGIONS];
+    mem_lock     lock;
 } Mem_regions_pool = {
     .free = NULL
 };
+//
+// Region lock support
+//
+static inline void mem_lock_region( mem_region * mr )
+{
+    if( mr->do_lock )
+        mem_get_lock( & mr->lock );
+}
+
+static inline void mem_unlock_region( mem_region * mr )
+{
+    if( mr->do_lock )
+        mem_put_lock( & mr->lock );
+}
+
 //
 // Utility functions
 //
 static mem_seg * get_mem_seg( mem_region * mr, u64 va, u64 len )
 {
+    mem_get_lock( & Mem_segs_pool.lock );
+
     mem_seg * ms = Mem_segs_pool.free;
 
     if( ms ) {
@@ -73,14 +135,20 @@ static mem_seg * get_mem_seg( mem_region * mr, u64 va, u64 len )
         ms->agent = 0xF;
         ms->next = NULL;
     }
+    mem_put_lock( & Mem_segs_pool.lock );
+
     return ms;
 }
 
 static void put_mem_seg( mem_seg * ms )
 {
     if( ms ) {
+        mem_get_lock( & Mem_segs_pool.lock );
+
         ms->next = Mem_segs_pool.free;
         Mem_segs_pool.free = ms;
+
+        mem_put_lock( & Mem_segs_pool.lock );
     }
 }
 
@@ -95,6 +163,7 @@ void mem_init( void )
     mem_seg * ms = Mem_segs_pool.pool;
 
     Mem_segs_pool.free = ms;
+    mem_init_lock( & Mem_segs_pool.lock );
 
     for( ; ms < Mem_segs_pool.pool + (NUM_FREE_SEGS - 1)  ; ms++ ) {
         ms->next = ms + 1;
@@ -106,6 +175,7 @@ void mem_init( void )
     mem_region * mr = Mem_regions_pool.pool;
 
     Mem_regions_pool.free = mr;
+    mem_init_lock( & Mem_regions_pool.lock );
 
     for( ; mr < Mem_regions_pool.pool + (NUM_FREE_REGIONS - 1)  ; mr++ ) {
         mr->next = mr + 1;
@@ -113,8 +183,10 @@ void mem_init( void )
     mr->next = NULL;
 }
 
-mem_region * mem_region_create( mem_type type, bool track, const char * name )
+mem_region * mem_region_create( mem_type type, bool track, bool lock, const char * name )
 {
+    mem_get_lock( & Mem_regions_pool.lock );
+
     mem_region * mr = Mem_regions_pool.free;
 
     if( mr ) {
@@ -122,16 +194,24 @@ mem_region * mem_region_create( mem_type type, bool track, const char * name )
         mr->name = name;
         mr->type = type;
         mr->track = track;
+        mr->do_lock = lock;
         mr->free  = NULL;
         mr->alloc = NULL;
         mr->next  = NULL;
         mr->base_addr = 0UL;
+
+        mem_init_lock( & mr->lock );
     }
+    mem_put_lock( & Mem_regions_pool.lock );
+
     return mr;
 }
 
 void mem_region_destroy( mem_region *mr )
 {
+    mem_lock_region( mr );
+    mem_get_lock( & Mem_regions_pool.lock );
+
     while( mr->free ) {
         mem_seg * ms = mr->free;
         mr->free = ms->next;
@@ -144,6 +224,9 @@ void mem_region_destroy( mem_region *mr )
     }
     mr->next = Mem_regions_pool.free;
     Mem_regions_pool.free = mr;
+
+    mem_put_lock( & Mem_regions_pool.lock );
+    mem_unlock_region( mr );
 }
 
 const char * mem_region_name( mem_region * mr )
@@ -162,6 +245,8 @@ mem_type mem_region_type( mem_region * mr )
 //
 int mem_region_add( mem_region * mr, u64 va, u64 len )
 {
+    mem_lock_region( mr );
+
     bool track = mr->track;
     mr->track = 0;
     //
@@ -170,6 +255,8 @@ int mem_region_add( mem_region * mr, u64 va, u64 len )
     int ret = mem_free( get_mem_seg( mr, va, len ) );
 
     mr->track = track;
+    mem_unlock_region( mr );
+
     return ret;
 }
 
@@ -195,21 +282,24 @@ int mem_remove( mem_seg ** head, mem_seg * seg )
 //
 int mem_free( mem_seg * ms )
 {
+    int status = 0;
+
     if( ms == NULL )
         return 1;
 
     mem_region * mr = ms->region;
+    mem_lock_region( mr );
     //
     // if enabled, remove the seg from our tracking list
     //
     if( mr->track && mem_remove( & mr->alloc, ms ) != 1 )
-        printf("mem_free: segment not found in %s alloc list\n", mr->name );
+        ce_error("MEM", "mem_free: segment not found in %s alloc list\n", mr->name );
     //
     // We iterate through the va sorted free region, looking for either
     // a mem_seg to merge with (if adjacent) or a 'slot' to insert into.
     // Using 'blind man's cane' list traversal.
     //
-    mem_seg ** pp = & ms->region->free;
+    mem_seg ** pp = & mr->free;
 
     u64 va = ms->va;
     u64 len = ms->len;
@@ -222,8 +312,9 @@ int mem_free( mem_seg * ms )
         if( (va >= p->va && va < p->va + p->len) ||            // starts in middle?
             (va + len > p->va && va + len < p->va + p->len) || // ends in middle?
             (va < p->va && va + len >= p->va + p->len) ) {     // covers?
-            printf("mem_free: range violation\n");
-            return 1;
+            ce_error("MEM", "mem_free: range violation\n");
+            status = 1;
+            goto unlock;
         }
         //
         // determine relationship
@@ -233,7 +324,8 @@ int mem_free( mem_seg * ms )
             p->len += len;
             put_mem_seg(ms);                 // free the incoming
             ms->region->frees++;
-            return 0;
+            status = 0;
+            goto unlock;
 
         } else if( va + len < p->va ) {      // comes before, insert new
             break;
@@ -242,7 +334,8 @@ int mem_free( mem_seg * ms )
             p->len += len;                   // grow the existing
             put_mem_seg(ms);                 // free the incoming
             ms->region->frees++;
-            return 0;
+            status = 0;
+            goto unlock;
         }
         // comes after, move to next
     }
@@ -254,7 +347,9 @@ int mem_free( mem_seg * ms )
     *pp = ms;
     ms->region->frees++;
 
-    return 0;
+unlock:
+    mem_unlock_region( mr );
+    return status;
 }
 
 //
@@ -266,11 +361,15 @@ void mem_return( mem_seg * ms )
     if( ms == NULL )
         return;
     mem_region * mr = ms->region;
+
+    mem_lock_region( mr );
     //
     // if enabled, remove the seg from our tracking list
     //
     if( mr->track && mem_remove( & mr->alloc, ms ) != 1 )
-        printf("mem_free: segment not found in %s alloc list\n", mr->name );
+        ce_error("MEM", "mem_free: segment not found in %s alloc list\n", mr->name );
+
+    mem_unlock_region( mr );
 
     put_mem_seg(ms);
 }
@@ -281,6 +380,8 @@ void mem_return( mem_seg * ms )
 //
 mem_seg * mem_alloc_at( mem_region * mr, u64 va, u64 len )
 {
+    mem_lock_region( mr );
+
     mem_seg ** pp = & mr->free;
     mem_seg *  ms = NULL;
     //
@@ -338,6 +439,7 @@ mem_seg * mem_alloc_at( mem_region * mr, u64 va, u64 len )
         ms->next = mr->alloc;
         mr->alloc = ms;
     }
+    mem_unlock_region( mr );
     //
     // if NULL - can't find the space (or out of mem_segs)
     //
@@ -350,6 +452,8 @@ mem_seg * mem_alloc_at( mem_region * mr, u64 va, u64 len )
 //
 mem_seg * mem_alloc( mem_region * mr, u64 len )
 {
+    mem_lock_region( mr );
+
     mem_seg ** pp = & mr->free;
     mem_seg *  ms = NULL;
     //
@@ -386,6 +490,7 @@ mem_seg * mem_alloc( mem_region * mr, u64 len )
         ms->next = mr->alloc;
         mr->alloc = ms;
     }
+    mem_unlock_region( mr );
     //
     // if NULL - can't find the space (or out of mem_segs)
     //
@@ -395,19 +500,22 @@ mem_seg * mem_alloc( mem_region * mr, u64 len )
 void mem_seg_list_dump( mem_seg * s )
 {
     for( ; s ; s = s->next ) {
-        printf("  0x%016llx, len 0x%lx, %sagent %d\n",
+        ce_print( "MEM", "  0x%016llx, len 0x%lx, %sagent %d\n",
                 s->va, s->len, s->private ? "(private) ":"", s->agent );
     }
 }
 
 void mem_region_dump( mem_region * mr )
 {
-    printf("Memory region %s at %p\n", mr->name, mr );
-    printf("  %d allocations, %d frees\n", mr->allocations, mr->frees );
-    printf(" Free list:\n" );
+    mem_lock_region( mr );
+
+    ce_print("MEM", "Memory region %s at %p\n", mr->name, mr );
+    ce_print("MEM", "  %d allocations, %d frees\n", mr->allocations, mr->frees );
+    ce_print("MEM", " Free list:\n" );
     mem_seg_list_dump( mr->free );
     if( mr->track ) {
-        printf(" Allocated list:\n" );
+        ce_print("MEM", " Allocated list:\n" );
         mem_seg_list_dump( mr->alloc );
     }
+    mem_unlock_region( mr );
 }

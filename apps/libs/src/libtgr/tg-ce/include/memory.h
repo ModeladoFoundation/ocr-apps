@@ -49,8 +49,10 @@ struct mem_seg {
 void mem_init( void );
 //
 // Create a new memory region
+//  track - keep track of allocated segments (to support mem_free)
+//  lock  - needs thread-safe locking (for multi-core access)
 //
-mem_region * mem_region_create( mem_type type, bool track, const char *name );
+mem_region * mem_region_create( mem_type type, bool track, bool lock, const char *name );
 //
 // Reap resources from memory region
 //

@@ -76,7 +76,7 @@ int ce_os_getcwd( char * fname, size_t max_size )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("getcwd status = 0x%llx\n", value);
+    // ce_print("OS", "getcwd status = 0x%llx\n", value);
 
     if (value == 0)
         memcpy( fname, req->buffer, max_size );
@@ -101,7 +101,7 @@ int ce_os_chdir( const char * fname )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("chdir status = 0x%llx\n", value);
+    // ce_print("OS", "chdir status = 0x%llx\n", value);
 
     return value;
 }
@@ -124,7 +124,7 @@ int ce_os_chmod( const char * fname, u64 mode )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("chmod status = 0x%llx\n", value);
+    // ce_print("OS", "chmod status = 0x%llx\n", value);
 
     return value;
 }
@@ -149,7 +149,7 @@ int ce_os_chown( const char * fname, u64 owner, u64 group )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("chown status = 0x%llx\n", value);
+    // ce_print("OS", "chown status = 0x%llx\n", value);
 
     return value;
 }
@@ -173,7 +173,7 @@ int ce_os_link( const char * oldpath, const char * newpath )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("link status = 0x%llx\n", value);
+    // ce_print("OS", "link status = 0x%llx\n", value);
 
     return value;
 }
@@ -197,7 +197,7 @@ int ce_os_symlink( const char * oldpath, const char * newpath )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("symlink status = 0x%llx\n", value);
+    // ce_print("OS", "symlink status = 0x%llx\n", value);
 
     return value;
 }
@@ -219,7 +219,7 @@ int ce_os_unlink( const char * fname )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("unlink status = 0x%llx\n", value);
+    // ce_print("OS", "unlink status = 0x%llx\n", value);
 
     return value;
 }
@@ -247,7 +247,7 @@ int ce_os_fileopen( const char * fname, u64 flags, u64 mode )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("fileopen status = 0x%llx\n", value);
+    // ce_print("OS", "fileopen status = 0x%llx\n", value);
 
     return (value == 0) ? req->fd : value;
 }
@@ -268,7 +268,7 @@ int ce_os_fileclose( int fd )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("fileclose status = 0x%llx\n", value);
+    // ce_print("OS", "fileclose status = 0x%llx\n", value);
 
     return value;
 }
@@ -297,7 +297,7 @@ ssize_t ce_os_fileread( int fd, void * buf, size_t count )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("fileread status = 0x%llx\n", value);
+    // ce_print("OS", "fileread status = 0x%llx\n", value);
 
     if( value == 0 )
         value = req->len;
@@ -322,7 +322,7 @@ ssize_t ce_os_filewrite( int fd, void * buf, size_t count )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("filewrite status = 0x%llx\n", value);
+    // ce_print("OS", "filewrite status = 0x%llx\n", value);
 
     if( value == 0 )
         value = req->len;
@@ -351,7 +351,7 @@ int ce_os_filelseek( int fd, off_t * offset, int whence )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("filelseek status = 0x%llx\n", value);
+    // ce_print("OS", "filelseek status = 0x%llx\n", value);
 
     *offset = req->offset;
 
@@ -375,7 +375,7 @@ int ce_os_filestat( const char * fname, struct stat * stat )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("filestat status = 0x%llx\n", value);
+    // ce_print("OS", "filestat status = 0x%llx\n", value);
 
     if ( value == 0 )
         memcpy( stat, & req->stat, sizeof(*stat) );
@@ -399,7 +399,7 @@ int ce_os_filefstat( int fd, struct stat * stat )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("filefstat status = 0x%llx\n", value);
+    // ce_print("OS", "filefstat status = 0x%llx\n", value);
 
     if ( value == 0 )
         memcpy( stat, & req->stat, sizeof(*stat) );
@@ -422,7 +422,7 @@ int ce_os_gettimeofday( struct timeval * tv )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("gettimeofday status = 0x%llx\n", value);
+    // ce_print("OS", "gettimeofday status = 0x%llx\n", value);
 
     if ( value == 0 )
         memcpy( tv, & req->timeval, sizeof(*tv) );
@@ -449,7 +449,7 @@ int ce_os_gethostname( char * buf, size_t max_size )
 
     if (value == 0)
         memcpy( buf, req->buffer, max_size );
-    // printf("gethostname status = 0x%llx\n", value);
+    // ce_print("OS", "gethostname status = 0x%llx\n", value);
 
     return value;
 }
@@ -472,7 +472,7 @@ int ce_os_mkdir( const char * dirname, u64 mode )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("mkdir status = 0x%llx\n", value);
+    // ce_print("OS", "mkdir status = 0x%llx\n", value);
 
     return value;
 }
@@ -494,7 +494,7 @@ int ce_os_rmdir( const char * dirname )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("rmdir status = 0x%llx\n", value);
+    // ce_print("OS", "rmdir status = 0x%llx\n", value);
 
     return value;
 }
@@ -515,7 +515,7 @@ int ce_os_isatty( int fd )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf( "isatty status = 0x%llx\n", value);
+    // ce_print("OS",  "isatty status = 0x%llx\n", value);
 
     return value;
 }
@@ -538,7 +538,7 @@ int ce_os_readlink( const char * linkpath, char * linkvalue, size_t max_size )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    // printf("readlink status = 0x%llx\n", value);
+    // ce_print("OS", "readlink status = 0x%llx\n", value);
 
     if( value == 0 )
         memcpy( linkvalue, req->buffer, max_size );

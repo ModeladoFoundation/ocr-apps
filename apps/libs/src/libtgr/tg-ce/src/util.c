@@ -6,6 +6,7 @@
 #include "tgr-ce.h"
 #include "util.h"
 
+int ce_verbose = CE_VERBOSE;
 
 ///////////////////////////// CE Time functions ////////////////////////////////
 //

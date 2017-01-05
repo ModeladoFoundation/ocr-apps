@@ -14,6 +14,7 @@
 #include "ce-xe-intf.h"
 #include "ce-os-svc.h"
 #include "util.h"
+#include "mem-util.h"
 
 #include "xe-abi.h"
 
@@ -49,8 +50,11 @@ static int do_memalloc_req( xe_info * xei, void * params )
     //
     // validate
     //
-    if( req->region < 0 || req->region > MREQ_LAST )
+    if( req->region < 0 || req->region > MREQ_LAST ) {
+        ce_error( "MSG", "XE 0x%lx memalloc err: invalid region %d\n",
+                    xei->id.all, req->region);
         return EINVAL;
+    }
     //
     // Get some memory
     //
@@ -64,7 +68,8 @@ static int do_memalloc_req( xe_info * xei, void * params )
         mem_seg * mem = xe_alloc_mem( xei, mem_type_map[ region ], len );
 
         if( mem != NULL ) {
-            printf( "TGR-MSG: memalloc va 0x%lx, len 0x%lx\n", mem->va, mem->len );
+            ce_vprint( "MSG", "XE%x memalloc va 0x%lx, len 0x%lx\n",
+                    xei->id.all, mem->va, mem->len );
             mem->private = req->private;
             //
             // set our 'outs' for write-back to the XE
@@ -78,7 +83,8 @@ static int do_memalloc_req( xe_info * xei, void * params )
     //
     // didn't succeed, give the client the bad news
     //
-    printf( "TGR-MSG: XE 0x%lx err: can't alloc %d bytes of mem\n", xei->id.all, req->len);
+    ce_error( "MSG", "XE 0x%lx memalloc err: can't alloc %d bytes of mem\n",
+                xei->id.all, req->len);
 
     return ENOMEM;
 }
@@ -91,7 +97,7 @@ static int do_memfree_req( xe_info * xei, void * params )
     memfree_req * req = params;
 
     if( return_mem( xei, req->va ) ) {
-        printf( "TGR-INTF XE 0x%lx err: trying to free unallocated mem 0x%lx\n",
+        ce_error( "MSG", "XE 0x%lx memfree err: trying to free unallocated mem 0x%lx\n",
                  xei->id.all, req->va);
         return EINVAL;
     }
@@ -108,14 +114,13 @@ static int do_getcwd_req( xe_info * xei, void * params )
     char * path = (char *) validate_xe_addr( xei, req->buf_ptr, req->size );
 
     if( path == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx getcwd err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     int status = ce_os_getcwd( path, (size_t) req->size );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to getcwd to `%s' (%d)\n", xei->id.all,
-                path, status );
+        ce_error( "MSG", "XE 0x%lx getcwd err: failed (%d)\n", xei->id.all, status );
     }
     return status;
 }
@@ -130,7 +135,7 @@ static int do_chdir_req( xe_info * xei, void * params )
     char * path = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( path == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx chdir err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     path[req->path_len] = '\0';
@@ -138,8 +143,8 @@ static int do_chdir_req( xe_info * xei, void * params )
     int status = ce_os_chdir( path );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to chdir to `%s' (%d)\n", xei->id.all,
-                path, status );
+        ce_error( "MSG", "XE 0x%lx chdir err: failed to chdir to `%s' (%d)\n",
+                    xei->id.all, path, status );
     }
     return status;
 }
@@ -154,7 +159,7 @@ static int do_chmod_req( xe_info * xei, void * params )
     char * path = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( path == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx chmod err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     path[req->path_len] = '\0';
@@ -162,8 +167,8 @@ static int do_chmod_req( xe_info * xei, void * params )
     int status = ce_os_chmod( path, (mode_t) req->mode );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to chmod `%s' to %u (%d)\n", xei->id.all,
-                 path, req->mode, status);
+        ce_error( "MSG", "XE 0x%lx chmod err: failed to chmod `%s' to %u (%d)\n",
+                    xei->id.all, path, req->mode, status);
     }
     return status;
 }
@@ -178,7 +183,7 @@ static int do_chown_req( xe_info * xei, void * params )
     char * path = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( path == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx chown err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     path[req->path_len] = '\0';
@@ -186,7 +191,7 @@ static int do_chown_req( xe_info * xei, void * params )
     int status = ce_os_chown( path, (uid_t) req->owner, (gid_t) req->group );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to chown `%s' to %u:%u (%d)\n", xei->id.all,
+        ce_error( "MSG", "XE 0x%lx chown err: failed to chown `%s' to %u:%u (%d)\n", xei->id.all,
                  path, req->owner, req->group, status);
     }
     return status;
@@ -202,7 +207,7 @@ static int do_link_req( xe_info * xei, void * params )
     char * opath = (char *) validate_xe_addr( xei, req->oldpath_ptr, req->oldpath_len + 1 );
 
     if( opath == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid oldpath addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx link err: invalid oldpath addr\n", xei->id.all );
         return EINVAL;
     }
     opath[req->oldpath_len] = '\0';
@@ -210,7 +215,7 @@ static int do_link_req( xe_info * xei, void * params )
     char * npath = (char *) validate_xe_addr( xei, req->newpath_ptr, req->newpath_len + 1 );
 
     if( npath == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid newpath addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx link err: invalid newpath addr\n", xei->id.all );
         return EINVAL;
     }
     npath[req->newpath_len] = '\0';
@@ -218,8 +223,8 @@ static int do_link_req( xe_info * xei, void * params )
     int status = ce_os_link( opath, npath );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to link `%s' to `%s' (%d)\n", xei->id.all,
-                 opath, npath, status );
+        ce_error( "MSG", "XE 0x%lx link err: failed to link `%s' to `%s' (%d)\n",
+                    xei->id.all, opath, npath, status );
     }
     return status;
 
@@ -235,7 +240,7 @@ static int do_symlink_req( xe_info * xei, void * params )
     char * opath = (char *) validate_xe_addr( xei, req->oldpath_ptr, req->oldpath_len + 1 );
 
     if( opath == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid oldpath addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx symlink err: invalid oldpath addr\n", xei->id.all );
         return EINVAL;
     }
     opath[req->oldpath_len] = '\0';
@@ -243,7 +248,7 @@ static int do_symlink_req( xe_info * xei, void * params )
     char * npath = (char *) validate_xe_addr( xei, req->newpath_ptr, req->newpath_len + 1 );
 
     if( npath == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid newpath addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx symlink err: invalid newpath addr\n", xei->id.all );
         return EINVAL;
     }
     npath[req->newpath_len] = '\0';
@@ -251,8 +256,8 @@ static int do_symlink_req( xe_info * xei, void * params )
     int status = ce_os_symlink( opath, npath );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to symlink `%s' to `%s' (%d)\n", xei->id.all,
-                 opath, npath, status );
+        ce_error( "MSG", "XE 0x%lx symlink err: failed to symlink `%s' to `%s' (%d)\n",
+                    xei->id.all, opath, npath, status );
     }
     return status;
 }
@@ -267,7 +272,8 @@ static int do_unlink_req( xe_info * xei, void * params )
     char * path = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( path == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx unlink err: invalid path addr %p\n",
+                    xei->id.all, req->path_ptr );
         return EINVAL;
     }
     path[req->path_len] = '\0';
@@ -275,7 +281,7 @@ static int do_unlink_req( xe_info * xei, void * params )
     int status = ce_os_unlink(path);
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to unlink `%s' (%d)\n", xei->id.all,
+        ce_error( "MSG", "XE 0x%lx unlink err: failed to unlink `%s' (%d)\n", xei->id.all,
                  path, status );
     }
     return status;
@@ -291,7 +297,7 @@ static int do_fileopen_req( xe_info * xei, void * params )
     char * fname = (char *) validate_xe_addr( xei, req->fname_ptr, req->fname_len + 1 );
 
     if( fname == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx open err: invalid path addr %p\n", xei->id.all, req->fname_ptr );
         return EINVAL;
     }
     fname[req->fname_len] = '\0';
@@ -299,7 +305,7 @@ static int do_fileopen_req( xe_info * xei, void * params )
     int fd = ce_os_fileopen( fname, req->flags, req->mode );
 
     if( fd < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: open - error %d\n", xei->id.all, fd );
+        ce_error( "MSG", "XE 0x%lx fileopen err: failed (%d)\n", xei->id.all, fd );
         return fd;
     } else
         req->fd = fd;
@@ -314,7 +320,7 @@ static int do_fileclose_req( xe_info * xei, void * params )
 {
     fileclose_req * req = params;
 
-    printf( "TGR-INTF XE 0x%lx info: closing fd %d\n", xei->id.all, req->fd);
+    ce_vprint( "MSG", "XE 0x%lx closing fd %d\n", xei->id.all, req->fd);
 
     int status = ce_os_fileclose( req->fd );
 
@@ -332,11 +338,14 @@ static int do_fileread_req( xe_info * xei, void * params )
     void * va = (void *) validate_xe_addr( xei, req->buf, req->len );
 
     if( va == NULL ) {
+        ce_error( "MSG", "XE 0x%lx fileread err: invalid buf addr\n", xei->id.all );
         return EINVAL;
     }
     ssize_t didread = ce_os_fileread( req->fd, va, req->len );
 
     if( didread < 0 ) {
+        ce_error( "MSG", "XE 0x%lx fileread err: read from fd %d failed (%d)\n",
+                xei->id.all, req->fd, didread );
         return didread;
     } else {
         req->len = didread;
@@ -355,11 +364,14 @@ static int do_filewrite_req( xe_info * xei, void * params )
     void * va = (void *) validate_xe_addr( xei, req->buf, req->len );
 
     if( va == NULL ) {
+        ce_error( "MSG", "XE 0x%lx filewrite err: invalid buf addr\n", xei->id.all );
         return EINVAL;
     }
     ssize_t didwrite = ce_os_filewrite( req->fd, va, req->len );
 
     if( didwrite < 0 ) {
+        ce_error( "MSG", "XE 0x%lx filewrite err: write to fd %d failed (%d)\n",
+                xei->id.all, req->fd, didwrite );
         return didwrite;
     } else {
         req->len = didwrite;
@@ -379,7 +391,8 @@ static int do_filelseek_req( xe_info * xei, void * params )
     int status = ce_os_filelseek( req->fd, & offset, req->whence );
 
     if( status ) {
-        printf( "TGR-INTF XE 0x%lx err: lseek of fd %d failed\n", xei->id.all, req->fd );
+        ce_error( "MSG", "XE 0x%lx filelseek err: seek fd %d failed (%d)\n",
+                xei->id.all, req->fd, status );
         return status;
     }
     req->offset = offset;
@@ -397,13 +410,14 @@ static int do_filestat_req( xe_info * xei, void * params )
     char * fname = (char *) validate_xe_addr( xei, req->fname_ptr, req->fname_len + 1 );
 
     if( fname == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid filename addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx filestat err: invalid filename addr\n", xei->id.all );
         return EINVAL;
     }
     fname[req->fname_len] = '\0';
 
     if( req->stat_len != sizeof(struct stat) ) {
-        printf( "TGR-INTF XE 0x%lx err: stat struct wrong size - %d\n", xei->id.all, req->stat_len);
+        ce_error( "MSG", "XE 0x%lx filestat err: stat struct wrong size - %d\n",
+                        xei->id.all, req->stat_len);
         return EINVAL;
     }
     struct stat * statb;
@@ -411,13 +425,14 @@ static int do_filestat_req( xe_info * xei, void * params )
     statb = (void *) validate_xe_addr( xei, req->stat_ptr, req->stat_len );
 
     if( statb == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid stat addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx filestat err: invalid stat addr\n", xei->id.all );
         return EINVAL;
     }
     int status = ce_os_filestat( (const char *) fname, statb );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: stat of file '%s' failed\n", xei->id.all, fname );
+        ce_error( "MSG", "XE 0x%lx filestat err: stat of file '%s' failed\n",
+                    xei->id.all, fname );
     }
     return status;
 }
@@ -433,18 +448,18 @@ static int do_filefstat_req( xe_info * xei, void * params )
     statb = (void *) validate_xe_addr( xei, req->stat_ptr, req->stat_len );
 
     if( statb == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid stat addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx filefstat err: invalid stat addr\n", xei->id.all );
         return EINVAL;
     }
     if( req->stat_len != sizeof(struct stat) ) {
-        printf( "TGR-INTF XE 0x%lx err: fstat struct wrong size - %d\n",
+        ce_error( "MSG", "XE 0x%lx filefstat err: fstat struct wrong size - %d\n",
                 xei->id.all, req->stat_len);
         return EINVAL;
     }
     int status = ce_os_filefstat( req->fd, statb );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: fstat of fd %d failed\n", xei->id.all, req->fd );
+        ce_error( "MSG", "XE 0x%lx filefstat err: fstat of fd %d failed\n", xei->id.all, req->fd );
         return status;
     }
     return status;
@@ -462,14 +477,14 @@ static int do_gettimeofday_req( xe_info * xei, void * params )
     tv = (void *) validate_xe_addr( xei, req->timeval_ptr, sizeof(struct timeval) );
 
     if( tv == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid timeval addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx gettimeofday err: invalid timeval addr\n", xei->id.all );
         return EINVAL;
     }
 
     int status = ce_os_gettimeofday( tv );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: gettimeofday failed\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx gettimeofday err: failed (%d)\n", xei->id.all, status );
     }
     return status;
 }
@@ -484,14 +499,14 @@ static int do_gethostname_req( xe_info * xei, void * params )
     char * buf = (char *) validate_xe_addr( xei, req->hname_ptr, req->size );
 
     if( buf == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid gethostname buf addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx gethostname err: invalid buf addr %p\n",
+                xei->id.all, req->hname_ptr );
         return EINVAL;
     }
     int status = ce_os_gethostname( buf, (size_t) req->size );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to gethostname to `%s' (%d)\n", xei->id.all,
-                buf, status );
+        ce_error( "MSG", "XE 0x%lx gethostname err: failed (%d)\n", xei->id.all, status );
     }
     return status;
 }
@@ -516,7 +531,7 @@ static int do_mkdir_req( xe_info * xei, void * params )
     char * str = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( str == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx mkdir err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     str[req->path_len] = '\0';
@@ -524,7 +539,7 @@ static int do_mkdir_req( xe_info * xei, void * params )
     int status = ce_os_mkdir( str, req->mode );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to mkdir `%s' (%d)\n", xei->id.all,
+        ce_error( "MSG", "XE 0x%lx mkdir err: failed to create `%s' (%d)\n", xei->id.all,
                  req->path_ptr, status );
     }
     return status;
@@ -540,7 +555,7 @@ static int do_rmdir_req( xe_info * xei, void * params )
     char * str = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( str == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx rmdir err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     str[req->path_len] = '\0';
@@ -548,7 +563,7 @@ static int do_rmdir_req( xe_info * xei, void * params )
     int status = ce_os_rmdir( str );
 
     if( status < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: failed to rmdir `%s' (%d)\n", xei->id.all,
+        ce_error( "MSG", "XE 0x%lx rmdir err: failed to remove `%s' (%d)\n", xei->id.all,
                  req->path_ptr, status );
     }
     return status;
@@ -565,14 +580,14 @@ static int do_readlink_req( xe_info * xei, void * params )
     char * buffer = (char *) validate_xe_addr( xei, req->buf_ptr, req->size );
 
     if( buffer == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid buffer addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx readlink err: invalid buffer addr\n", xei->id.all );
         return EINVAL;
     }
 
     char * str = (char *) validate_xe_addr( xei, req->path_ptr, req->path_len + 1 );
 
     if( str == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: invalid path addr\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx readlink err: invalid path addr\n", xei->id.all );
         return EINVAL;
     }
     str[req->path_len] = '\0';
@@ -580,7 +595,7 @@ static int do_readlink_req( xe_info * xei, void * params )
     ssize_t read_count = ce_os_readlink( str, buffer, size );
 
     if( read_count < 0 ) {
-        printf( "TGR-INTF XE 0x%lx err: readlink failed\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx readlink err: readlink failed\n", xei->id.all );
     }
     return read_count;
 }
@@ -606,13 +621,15 @@ static int do_getpid_req( xe_info * xei, void * params )
 static int do_clone_req( xe_info * xei, void * params )
 {
     clone_req * req = params;
+
+    ce_print("MSG", "clone entry\n");
     //
     // Select a victim
     //
     xe_info * new_xei = xe_get_info_by_state( xei->block, NULL, XE_UNUSED );
 
     if( new_xei == NULL ) {
-        printf( "TGR-INTF XE 0x%lx err: cannot clone. Out of free XEs\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx clone err: Out of free XEs\n", xei->id.all );
         return EAGAIN;
     }
     //
@@ -635,8 +652,7 @@ static int do_clone_req( xe_info * xei, void * params )
 
             new_xei->stack = xe_alloc_mem( new_xei, Mem_ANY, stack_size );
             if( new_xei->stack == NULL ) {
-                printf( "TGR-INTF XE 0x%lx err: cannot clone. Can't get stack\n",
-                            xei->id.all );
+                ce_error( "MSG", "XE 0x%lx clone err: Can't get stack\n", xei->id.all );
                 new_xei->use_state = XE_UNUSED;
                 return ENOMEM;
             }
@@ -644,6 +660,8 @@ static int do_clone_req( xe_info * xei, void * params )
         }
         stack_top = new_xei->stack_top;
     }
+    ce_print( "MSG", "XE 0x%lx: Cloned XE 0x%lx, entry %p, stack top %p\n",
+                xei->id.all, new_xei->id.all, req->entry_fn_ptr, stack_top);
     xe_set_sp( new_xei, stack_top );
     xe_set_ra( new_xei, 0UL );
     //
@@ -663,10 +681,8 @@ static int do_clone_req( xe_info * xei, void * params )
 
     req->pid = new_xei->id.all;
 
-    printf( "TGR-INTF XE 0x%lx: Cloned XE 0x%lx, entry %p\n",
+    ce_vprint( "MSG", "XE 0x%lx: Cloned XE 0x%lx, entry %p\n",
                 xei->id.all, new_xei->id.all, req->entry_fn_ptr);
-    printf( "TGR-INTF clone running = %d\n", xei->block->running );
-
     return 0;
 }
 
@@ -688,7 +704,7 @@ static int do_waitpid_req( xe_info * xei, void * params )
         //
         if( wait_xei->use_state != XE_RUNNING &&
             wait_xei->use_state != XE_FINISHED ) {
-            printf( "TGR-INTF XE 0x%lx err: XE 0x%lx is unused.\n",
+            ce_error( "MSG", "XE 0x%lx waitpid err: XE 0x%lx is unused.\n",
                         xei->id.all, req->pid );
             return ESRCH;
         }
@@ -696,7 +712,7 @@ static int do_waitpid_req( xe_info * xei, void * params )
         // Check if XE is detached
         //
         if( wait_xei->detached ) {
-            printf( "TGR-INTF XE 0x%lx err: XE 0x%lx is detached.\n",
+            ce_error( "MSG", "XE 0x%lx waitpid err: XE 0x%lx is detached.\n",
                         xei->id.all, req->pid );
             return EPERM;
         }
@@ -706,7 +722,7 @@ static int do_waitpid_req( xe_info * xei, void * params )
         if( wait_xei->use_state == XE_FINISHED ) {
             wait_xei->use_state = XE_UNUSED;
             req->ret = wait_xei->exit_code;
-            printf( "TGR-INTF XE 0x%lx: reaped XE %lx.\n", xei->id.all, req->pid );
+            ce_vprint( "MSG", "XE 0x%lx: reaped XE %lx.\n", xei->id.all, req->pid );
         //
         // still running, block for it?
         //
@@ -715,7 +731,7 @@ static int do_waitpid_req( xe_info * xei, void * params )
             xei->waiting_for = wait_xei;
             xei->wait_req_addr = params;
             xei->blocked = true;
-            printf( "TGR-INTF XE 0x%lx: waiting for XE 0x%lx.\n",
+            ce_vprint( "MSG", "XE 0x%lx: waiting for XE 0x%lx.\n",
                         xei->id.all, req->pid );
         //
         // The victim is not ready to be reaped and we are not going to wait for it.
@@ -724,7 +740,7 @@ static int do_waitpid_req( xe_info * xei, void * params )
             return EAGAIN;
         }
     } else {
-        printf( "TGR-INTF XE 0x%lx err: Could not find XE 0x%lx\n",
+        ce_error( "MSG", "XE 0x%lx waitpid err: Could not find XE 0x%lx\n",
                     xei->id.all, req->pid);
         return ESRCH;
     }
@@ -745,14 +761,15 @@ static int do_detach_req( xe_info * xei , void * params )
         //
         if( detach_xei->use_state != XE_RUNNING &&
             detach_xei->use_state != XE_FINISHED) {
-            printf( "TGR-INTF XE 0x%lx err: XE %lx is unused.\n", xei->id.all, req->pid );
+            ce_error( "MSG", "XE 0x%lx detach err: XE %lx is unused.\n",
+                        xei->id.all, req->pid );
             return ESRCH;
         }
         //
         // Check if this XE is already being waited for
         //
         if( detach_xei->waiting_xei != NULL ) {
-            printf( "TGR-INTF XE 0x%lx err: XE %d being waited for.\n",
+            ce_error( "MSG", "XE 0x%lx detach err: XE %d being waited for.\n",
                      xei->id.all, detach_xei->id.all );
             return EPERM;
         }
@@ -762,15 +779,16 @@ static int do_detach_req( xe_info * xei , void * params )
         //
         if (detach_xei->use_state == XE_FINISHED) {
             detach_xei->use_state = XE_UNUSED;
-            printf( "TGR-INTF XE 0x%lx: reaped XE %d.\n", xei->id.all, detach_xei->id.all );
+            ce_vprint( "MSG", "XE 0x%lx: reaped XE %d.\n", xei->id.all, detach_xei->id.all );
         //
         // a simple detach
         //
         } else {
-            printf( "TGR-INTF XE 0x%lx: detached XE %d.\n", xei->id.all, detach_xei->id.all );
+            ce_vprint( "MSG", "XE 0x%lx: detached XE %d.\n", xei->id.all, detach_xei->id.all );
         }
     } else {
-        printf( "TGR-INTF XE 0x%lx err: Could not find XE %ld \n", xei->id.all, req->pid );
+        ce_error( "MSG", "XE 0x%lx detach err: Could not find XE %ld \n",
+                    xei->id.all, req->pid );
         return ESRCH;
     }
     return 0;
@@ -802,7 +820,7 @@ static int do_finish_req( xe_info * xei , void * params )
 
         xei->waiting_xei = NULL;
         waiting_xei->blocked = false;
-        printf( "TGR-INTF XE 0x%lx finishing, waking XE 0x%lx, wait_req 0x%lx.\n",
+        ce_vprint( "MSG", "XE 0x%lx finishing, waking XE 0x%lx, wait_req 0x%lx.\n",
                 xei->id.all, waiting_xei->id.all, waiting_xei->wait_req_addr );
         //
         // Since we are being waited for, we may set our state to be unused.
@@ -820,25 +838,36 @@ static int do_finish_req( xe_info * xei , void * params )
     //
     } else if( xei->detached ) {
         xei->use_state = XE_UNUSED;
-        printf( "TGR-INTF XE 0x%lx: reaped because it was detached.\n", xei->id.all );
+        xei->detached = false;
+        ce_vprint( "MSG", "XE 0x%lx: reaped because it was detached.\n", xei->id.all );
     //
     // transition to FINISHED so someone can reap us
     //
     } else {
         xei->use_state = XE_FINISHED;
-        printf( "TGR-INTF XE 0x%lx has finished.\n", xei->id.all );
+        ce_vprint( "MSG", "XE 0x%lx has finished.\n", xei->id.all );
     }
     //
     // if only the initial XE running, complete an outstanding waitall
     //
     if( --xei->block->running == 1 && xei->block->doing_waitall ) {
         xe_info * xei0 = xei->block->xes;
-
-        printf( "TGR-INTF waitall satisfied, resuming XE 0x%lx.\n", xei0->id.all );
+        //
+        // First reap all finished XEs
+        //
+        for( xei = xei0 ; (xei = xe_get_next_info( xei->block, xei )) != NULL ; ) {
+            if( xei->use_state == XE_FINISHED ) {
+                xei->blocked = false;
+                xei->detached = false;
+                xei->use_state = XE_UNUSED;
+            }
+        }
+        ce_vprint( "MSG", "waitall satisfied, resuming XE 0x%lx.\n", xei0->id.all );
         xei0->blocked = false;
+        xei0->block->doing_waitall = false;
         xe_resume( xei0, 0 );
-    }
-    printf( "TGR-INTF finish running = %d\n", xei->block->running );
+    } else
+        ce_vprint( "MSG", "finish - %d still running\n", xei->block->running );
 
     return 0;
 }
@@ -851,7 +880,7 @@ static int do_killall_req( xe_info * xei , void * params )
     block_info * bi = xei->block;
     xe_info *    kill_xei = bi->xes;
 
-    printf( "TGR-INTF XE 0x%lx: killall\n", xei->id.all );
+    ce_vprint( "MSG", "XE 0x%lx: killall\n", xei->id.all );
 
     for( ; kill_xei < bi->xes + bi->xe_count ; kill_xei++ ) {
         if( kill_xei != xei )
@@ -866,7 +895,7 @@ static int do_killall_req( xe_info * xei , void * params )
 static int do_waitall_req( xe_info * xei , void * params )
 {
     if( xei->id.agent != 1) {
-        printf( "TGR-INTF XE 0x%lx: Attempted waitall with non-main XE.\n", xei->id.all );
+        ce_error( "MSG", "XE 0x%lx: Attempted waitall with non-main XE.\n", xei->id.all );
         return EPERM;
     }
 
@@ -891,7 +920,7 @@ static int do_cancel_req( xe_info * xei , void * params )
         //
         if( cancel_xei->use_state != XE_RUNNING &&
             cancel_xei->use_state != XE_FINISHED ) {
-            printf( "TGR-INTF XE 0x%lx err: XE %ld is not cancelable.\n",
+            ce_error( "MSG", "XE 0x%lx err: XE %ld is not cancelable.\n",
                         xei->id.all, req->pid );
             return ESRCH;
         }
@@ -911,7 +940,8 @@ static int do_cancel_req( xe_info * xei , void * params )
         }
         xe_continue( cancel_xei );
     } else {
-        printf( "TGR-INTF XE 0x%lx err: Could not find XE %ld \n", cancel_xei->id.all, req->pid );
+        ce_error( "MSG", "XE 0x%lx err: Could not find cancel XE %ld \n",
+                    cancel_xei->id.all, req->pid );
         return ESRCH;
     }
     return 0;
@@ -962,7 +992,7 @@ static int do_resume_req( xe_info * xei , void * params )
         // Check if XE is in_use.
         //
         if (resume_xei->use_state != XE_RUNNING ) {
-            printf( "TGR-INTF XE 0x%lx err: XE 0x%lx is not running.\n",
+            ce_error( "MSG", "XE 0x%lx resume err: XE 0x%lx is not running.\n",
                          xei->id.all, req->pid );
             return ESRCH;
         }
@@ -973,7 +1003,7 @@ static int do_resume_req( xe_info * xei , void * params )
             xe_resume( resume_xei, 0 );
         }
     } else {
-        printf( "TGR-INTF XE 0x%lx err: Could not find XE with id 0x%lx \n",
+        ce_error( "MSG", "XE 0x%lx err: Could not find resume XE with id 0x%lx \n",
                     xei->id.all, req->pid );
         return ESRCH;
     }
@@ -1044,15 +1074,15 @@ int ce_xe_msg_handler( xe_info * xei, uint64_t arg0, uint64_t arg1, uint64_t *st
     // first do a bit of validation
     //
     if( type < CE_REQTYPE_FIRST && type >= CE_REQTYPE_LAST ) {
-        printf( "TGR-MSG: XE 0x%lx err: unknown req type %d\n", xei->id.all, type );
+        ce_error( "MSG", "XE 0x%lx err: unknown req type %d\n", xei->id.all, type );
         *status = ENOSYS;
         return 1;
     }
-    //printf("TGR-MSG: XE 0x%lx - arg0 0x%lx, arg1 %p, type %s (%d), len 0x%lx\n",
-    //        xei->id.all, arg0, (void *) arg1, ReqMethods[type].name, type, len );
+    ce_vprint("MSG", "XE 0x%lx - arg0 0x%lx, arg1 %p, type %s (%d), len 0x%lx\n",
+            xei->id.all, arg0, (void *) arg1, ReqMethods[type].name, type, len );
 
     if( len != ReqMethods[type].len  ) {
-        printf( "TGR-MSG: XE 0x%lx err: req %d (%s) length mismatch - %d != %d\n",
+        ce_error( "MSG", "XE 0x%lx err: req %d (%s) length mismatch - %d != %d\n",
                  xei->id.all, type, ReqMethods[type].name, len, ReqMethods[type].len );
         *status = EINVAL;
         return 1;
@@ -1060,7 +1090,7 @@ int ce_xe_msg_handler( xe_info * xei, uint64_t arg0, uint64_t arg1, uint64_t *st
     if( len ) {
         params = (void *) validate_xe_addr( xei, arg1, len );
         if( params == NULL ) {
-            printf( "TGR-MSG: XE 0x%lx err: req address %p invalid\n",
+            ce_error( "MSG", "XE 0x%lx err: req address %p invalid\n",
                     xei->id.all, (void *) arg1 );
             *status = EINVAL;
             return 1;
