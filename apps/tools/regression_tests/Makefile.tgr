@@ -48,6 +48,11 @@ apps-examples:
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg install
 	$(MAKE) -C $(APPS_ROOT)/examples/fib -f Makefile.tg install
 
+apps-tgr-ce:
+	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test c_test_1
+	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test c_test_2
+	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test c_test_3
+
 apps-clean:
 	$(MAKE) -C $(TG_ROOT)/fsim/swtest clean
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm clean
@@ -55,6 +60,7 @@ apps-clean:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8 clean
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE clean
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe clean
+	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test clean
 	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=tg-ce clean uninstall
 	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=tg-xe clean uninstall
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg clean uninstall

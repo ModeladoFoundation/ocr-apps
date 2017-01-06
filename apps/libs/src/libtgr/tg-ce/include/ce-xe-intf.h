@@ -85,11 +85,11 @@ typedef enum {
 // the allocation is private (freed on finish) or shared?
 //
 typedef struct {
-    uint64_t  region;       // in - region preference (global, block, local)
+    uint64_t  region;       // in - region preference (global, block, local) (Not implemented)
     uint64_t  va;           // out
     uint64_t  len : 56,     // in/out - size requested and actually provided
-              private : 1,  // in - private use (reapable on finish)
-              promote : 1,  // in - promote region if alloc fails
+              private : 1,  // in - private use (reapable on finish) (Not implemented)
+              promote : 1,  // in - promote region if alloc fails (Not implemented)
               unused : 6;
 } memalloc_req;
 

@@ -53,6 +53,8 @@ libtgr: newlib
 ifeq ($(ARCH)$(USE_TGR),tg-xeyes)
 	$(MAKE) -C libtgr TGR_TYPE=tg-xe
 	$(MAKE) -C libtgr TGR_TYPE=tg-xe install
+	$(MAKE) -C libtgr TGR_TYPE=tg-ce
+	$(MAKE) -C libtgr TGR_TYPE=tg-ce install
 endif
 
 

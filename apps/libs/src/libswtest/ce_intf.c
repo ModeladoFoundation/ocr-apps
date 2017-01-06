@@ -127,8 +127,12 @@ static int send_req( uint64_t type, void * buf, uint64_t len )
 void * ce_memalloc( uint64_t len )
 {
     struct {
-        uint64_t   va;      // out
-        uint64_t   len;     // in
+        uint64_t  region;       // in - region preference (global, block, local) (Not implemented)
+        uint64_t  va;           // out
+        uint64_t  len : 56,     // in/out - size requested and actually provided
+                  private : 1,  // in - private use (reapable on finish) (Not implemented)
+                  promote : 1,  // in - promote region if alloc fails (Not implemented)
+                  unused : 6;
     } req;
     req.va = 0;
     req.len = len;

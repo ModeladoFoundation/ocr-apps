@@ -2,8 +2,8 @@
 # Makefile for running TGR-CE tests under fsim
 # See the README for more details
 #
-TG_REPO   ?= ../../../../../../..
-APPS_REPO ?= ../../../../../..
+TG_REPO ?= $(realpath $(CURDIR)/../../../../../../../tg)
+APPS_REPO ?= $(realpath $(CURDIR)/../../../../../..)
 #
 # TOOLS_REPO allows you to specify a different repo for the XE clang
 # compiler
@@ -11,7 +11,7 @@ APPS_REPO ?= ../../../../../..
 TOOLS_REPO ?= $(TG_REPO)
 
 TG_ROOT   ?= $(TG_REPO)/tg
-TG_INSTALL = $(TG_ROOT)/install
+TG_INSTALL ?= $(TG_ROOT)/install
 
 APPS_INSTALL = $(APPS_REPO)/apps/libs/install/tg-xe
 APPS_INCLUDE = $(APPS_INSTALL)/include
@@ -73,11 +73,13 @@ c_test_% : c_test_%.c
 	@echo "Running $^ with args '$$TEST_ARGS'"
 	@echo "TGKRNL = $$TGKRNL"
 	@echo "TEST = $$TEST"
+	@mkdir -p rd
 	$(FSIM_GDB) $(FSIM) $(FSIM_ARGS)
 #
 # Run a test under xe-gdb (running fsim)
 #
 %-rungdb : %
+	@mkdir -p rd
 	$(XE_GDB) $(TEST) -ex "target xstg -f fsim -c fsim.cfg -l rd"
 
 TESTS = c_test_? c_test_?.p

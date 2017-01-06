@@ -67,9 +67,9 @@ s64 tgr_getpagesize(_NOARGS)
 {
     return PAGE_SIZE;
 }
-s8 tgr_mmap(u64* addr, u64 len)
+s8 tgr_mmap(void** addr, size_t len)
 {
-    *addr = (u64)ce_memalloc( len );
+    *addr = ce_memalloc( len );
 
     if (addr == NULL) {
         *__errno() = ENOMEM;
@@ -78,20 +78,20 @@ s8 tgr_mmap(u64* addr, u64 len)
 
     return 0;
 }
-s8 tgr_munmap(u64* addr, u64 len)
+s8 tgr_munmap(void* addr, size_t len)
 {
     if (addr == NULL) {
         *__errno() = EINVAL;
         return -1;
     }
-    ce_memfree( (void *) addr );
+    ce_memfree( addr );
     return 0; // We are rather optimistic about freeing memory...
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // TGR API methods
 //
-s8 tgr_getcwd(char* buf, u64 bufSize)
+s8 tgr_getcwd(char* buf, size_t bufSize)
 {
     char * ret = ce_getcwd( (void *) buf, bufSize );
     if (ret) {
@@ -101,7 +101,7 @@ s8 tgr_getcwd(char* buf, u64 bufSize)
     }
 }
 
-s8 tgr_open(u64* fd, const char* file, s32 flags, s32 mode)
+s8 tgr_open(int* fd, const char* file, int flags, mode_t mode)
 {
     s64 retval = ce_open( file, flags, mode );
     if (retval >= 0) {
@@ -111,12 +111,12 @@ s8 tgr_open(u64* fd, const char* file, s32 flags, s32 mode)
     return -1;
 }
 
-s8 tgr_close(u64 fd)
+s8 tgr_close(int fd)
 {
     return ce_close( fd );
 }
 
-s8 tgr_read(u64 fd, s32 *readCount, char* ptr, u32 len)
+s8 tgr_read(int fd, ssize_t* readCount, void* ptr, size_t len)
 {
     int nread = ce_read( fd, (void *) ptr, (size_t) len );
 
@@ -127,7 +127,7 @@ s8 tgr_read(u64 fd, s32 *readCount, char* ptr, u32 len)
     return -1;
 }
 
-s8 tgr_write(u64 fd, s32 *wroteCount, const char* ptr, s32 len)
+s8 tgr_write(int fd, ssize_t* wroteCount, const void* ptr, size_t len)
 {
     int nwritten = ce_write( fd, (const void *) ptr, (size_t) len );
 
@@ -162,12 +162,12 @@ s8 tgr_chdir(const char* path)
 {
     return ce_chdir( path );
 }
-s8 tgr_mkdir(const char* path, s32 mode)
+s8 tgr_mkdir(const char* path, mode_t mode)
 {
     *__errno() = ENOSYS;
     return -1;
 }
-s8 tgr_isatty (u64 file)
+s8 tgr_isatty (int file)
 {
     do_catch(); return 0;
 }
@@ -188,7 +188,7 @@ s8 tgr_unlink(const char* name)
 {
     return ce_unlink(name);
 }
-s8 tgr_fstat(u64 fd, struct stat* st)
+s8 tgr_fstat(int fd, struct stat* st)
 {
     return ce_fstat( fd, st );
 }
@@ -196,7 +196,7 @@ s8 tgr_stat(const char* file, struct stat* st)
 {
     return ce_stat(file, st);
 }
-s8 tgr_lseek(u64 fd, s64 * offset, s32 whence)
+s8 tgr_lseek(int fd, off_t* offset, int whence)
 {
     off_t ret = ce_lseek(fd, (off_t) *offset, (int) whence);
     if (ret == -1) {
@@ -206,17 +206,17 @@ s8 tgr_lseek(u64 fd, s64 * offset, s32 whence)
     return 0;
 }
 
-s8 tgr_clone (s64 (*fn)(void *), void *arg, s64 * pid) {
+s8 tgr_clone (s64 (*fn)(void *), void *arg, pid_t * pid) {
     *__errno() = ENOSYS;
     return -1;
 }
 
-s8 tgr_cleanpid (s64 pid, s64 *status, s8 block)
+s8 tgr_cleanpid (pid_t pid, s64 *status, s8 block)
 {
     *__errno() = ENOSYS;
     return -1;
 }
-s8 tgr_detach(s64 pid)
+s8 tgr_detach(pid_t pid)
 {
     *__errno() = ENOSYS;
     return -1;
@@ -231,7 +231,7 @@ s64 tgr_getpid (_NOARGS)
     *__errno() = ENOSYS;
     return -1;
 }
-s8 tgr_kill (s64 pid, s32 sig)
+s8 tgr_kill (pid_t pid, s32 sig)
 {
     *__errno() = ENOSYS;
     return -1;
@@ -241,12 +241,12 @@ s8 tgr_killall (_NOARGS)
     *__errno() = ENOSYS;
     return -1;
 }
-s8 tgr_cancel_pid (s64 pid, void(* cancel_fn)(void))
+s8 tgr_cancel_pid (pid_t pid, void(* cancel_fn)(void))
 {
     *__errno() = ENOSYS;
     return -1;
 }
-s8 tgr_resume(s64 pid)
+s8 tgr_resume(pid_t pid)
 {
     *__errno() = ENOSYS;
     return -1;
@@ -256,7 +256,7 @@ s8 tgr_suspend(const struct timespec *abstime)
     *__errno() = ENOSYS;
     return -1;
 }
-s8 tgr_gettimeofday (struct timeval  *ptimeval, void *ptimezone)
+s8 tgr_gettimeofday (struct timeval *ptimeval, void *ptimezone)
 {
     return ce_gettimeofday( ptimeval, ptimezone );
 }

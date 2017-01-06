@@ -41,13 +41,13 @@ _DEFUN (_read_r, (reent, file, ptr, len),
         void *ptr   _AND
         size_t   len)
 {
-  s32 readCount = 0;
+  ssize_t readCount = 0;
 
   s8 ret = tgr_read(file, &readCount, ptr, (s32)len);
   if (ret == 0)
-	return (int)readCount;
+	return (ssize_t)readCount;
 
-  return (int)-1;
+  return (ssize_t)-1;
 }
 
 ssize_t
@@ -68,12 +68,12 @@ _DEFUN (_write_r, (reent, file, ptr, len),
         const void *ptr   _AND
         size_t   len)
 {
-  s32 wroteCount = 0;
+  ssize_t wroteCount = 0;
 
   s8 ret = tgr_write(file, &wroteCount, ptr, (s32)len);
   if (ret == 0)
-	return (int)wroteCount;
-  return (int)-1;
+	return (ssize_t)wroteCount;
+  return (ssize_t)-1;
 }
 
 ssize_t
