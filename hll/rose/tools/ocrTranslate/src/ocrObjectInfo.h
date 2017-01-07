@@ -54,9 +54,15 @@ typedef boost::shared_ptr<OcrObjectContext> OcrObjectContextPtr;
  *****************/
 class OcrDbkContext : public OcrObjectContext {
   std::string m_name;
+  SgDeclarationStatement* m_decl;
+  std::list<SgNode*> m_allocStmts;
 public:
-  std::string get_name() const;
   OcrDbkContext(std::string name);
+  OcrDbkContext(std::string name, SgDeclarationStatement* decl);
+  OcrDbkContext(std::string name, SgDeclarationStatement* decl,
+		std::list<SgNode*> allocStmt);
+  void set_allocStmt(SgNode* allocStmt);
+  std::string get_name() const;
   std::string str() const;
   ~OcrDbkContext();
 };
@@ -88,11 +94,14 @@ typedef boost::shared_ptr<OcrEvtContext> OcrEvtContextPtr;
 class OcrEdtContext : public OcrObjectContext {
   std::string m_name;
   std::list<OcrEvtContextPtr> m_depEvts;
-  std::list<OcrDbkContextPtr> m_depDBs;
+  std::list<OcrDbkContextPtr> m_depDbks;
   std::list<OcrEvtContextPtr> m_evtsToSatisfy;
-  std::list<SgStatement*> m_statements;
+  std::list<SgNode*> m_depElems;
+  std::list<SgNode*> m_statements;
 public:
-  OcrEdtContext(std::string name);
+  OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
+		std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> evtsToSatisfy,
+		std::list<SgNode*> depElems, std::list<SgNode*> taskStatements);
   std::string get_name() const;
   std::string str() const;
   ~OcrEdtContext();
@@ -114,10 +123,33 @@ typedef boost::shared_ptr<OcrEdtContext> OcrEdtContextPtr;
 //! annotations. The traversal builds the context for each
 //! OCR object and uses the OcrObjectManager for managing
 //! the contexts for each OCR object.
+typedef std::map<std::string, OcrObjectContextPtr> OcrObjectMapType;
+typedef std::pair<std::string, OcrObjectContextPtr> OcrObjectMapElemType;
+typedef std::map<SgSymbol*, std::string> SgSymbolToOcrDbkMap;
 class OcrObjectManager {
-  std::map<std::string, OcrObjectContextPtr> m_ocrObjectMap;
+  //! Associates an OcrContext for each OcrObject
+  //! Key: OcrObject name (string)
+  //! Value: OcrContext
+  OcrObjectMapType m_ocrObjectMap;
+  //! Associate variable symbols to their OcrDbk names
+  //! Key: SgSymbol*
+  //! Value: OcrDbk name (string)
+  SgSymbolToOcrDbkMap m_symbolToOcrDbkMap;
  public:
   OcrObjectManager();
+  // Lookup functions for OcrContext using their names
+  std::list<OcrEvtContextPtr> getOcrEvtContextList(std::list<std::string> evtList);
+  std::list<OcrDbkContextPtr> getOcrDbkContextList(std::list<std::string> dbksList);
+  // Functions to create shared_ptr for OcrContext
+  OcrEvtContextPtr registerOcrEvt(std::string evtName);
+  std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
+
+  OcrDbkContextPtr registerOcrDbk(std::string dbkName);
+  OcrEdtContextPtr registerOcrEdt(std::string edtName, std::list<OcrEvtContextPtr> depEvts,
+				  std::list<OcrDbkContextPtr> depDbks,
+				  std::list<OcrEvtContextPtr> evtsToSatisfy,
+				  std::list<SgNode*> depElems,
+				  std::list<SgNode*> taskStatements);
 };
 
 #endif
