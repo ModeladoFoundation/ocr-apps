@@ -33,8 +33,9 @@ int main(int argc, char* argv[]) {
 
 #pragma ocr datablock begin DATABLOCK(DBK_in)
   double* in;
-  in = (double*) malloc(size * sizeof(double));
 #pragma ocr datablock end
+
+  in = malloc(size * sizeof(double));
 
 #pragma ocr task begin TASK(TASK_init) \
   DEP_EVTs(NONE) DEP_DBKs(DBK_in) DEP_ELEMs(in:size)
