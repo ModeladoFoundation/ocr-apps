@@ -25,11 +25,13 @@ class MatchException : public std::exception {
  ***********************/
 class OcrTaskPragmaParser {
   std::string m_pragmaStr;
+  OcrObjectManager& m_ocrObjectManager;
+  SgPragmaDeclaration* m_sgpdecl;
   boost::xpressive::sregex identifier, attr, param, paramlist;
   boost::xpressive::sregex taskName, depEvts, depDbks, depElems, outEvts;
-  boost::xpressive::sregex taskBeginPragma, taskEndPragma;
+  boost::xpressive::sregex taskBeginPragma;
  public:
-  OcrTaskPragmaParser(const char* pragmaStr);
+  OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& objectManager, SgPragmaDeclaration* sgpdecl);
  private:
   // All these internal functions throw MatchException which will be
   // caught in the match() function
@@ -40,9 +42,29 @@ class OcrTaskPragmaParser {
   bool matchParamList(std::string input_s, std::list<std::string>& paramList);
   bool matchParam(std::string input_s, std::list<std::string>& paramList);
   bool matchIdentifier(std::string input_s, std::string& identifier_s);
+  bool matchEvtsToSatisfy(std::string input, std::list<std::string>& evtsNameToSatisfyList);
+  SgNode* identifier2sgn(std::string identifier_);
+  std::list<SgNode*> identifiers2sgnlist(std::list<std::string> identifierList);
  public:
   bool match();
+  bool isMatchingPragma(SgNode* sgn);
+  std::list<SgNode*> collectTaskStatements();
   std::string strlist2str(std::list<std::string>& identifiersList) const;
+};
+
+/**********************
+ * OcrDbkPragmaParser *
+ **********************/
+class OcrDbkPragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  OcrObjectManager& m_ocrObjectManager;
+  // sregex needed for parsing datablock annotations
+  boost::xpressive::sregex identifier, param, paramlist;
+  boost::xpressive::sregex dbkNames;
+  boost::xpressive::sregex dbkBegin;
+ public:
+  OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& objectManager);
+  bool match();
 };
 
 /*******************

@@ -26,7 +26,11 @@ MatchException::~MatchException() throw() {
 /***********************
  * OcrTaskPragmaParser *
  ***********************/
-OcrTaskPragmaParser::OcrTaskPragmaParser(const char* pragmaStr) : m_pragmaStr(pragmaStr) {
+OcrTaskPragmaParser::OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& ocrObjectManager,
+					 SgPragmaDeclaration* sgpdecl)
+  : m_pragmaStr(pragmaStr),
+    m_ocrObjectManager(ocrObjectManager),
+    m_sgpdecl(sgpdecl) {
   //! Here we specify the grammar for our task pragma
   //! identifier is the basic building block similiar to a C++ identifier
   //! attr is the attribute attached to variable either in or out
@@ -49,7 +53,6 @@ OcrTaskPragmaParser::OcrTaskPragmaParser(const char* pragmaStr) : m_pragmaStr(pr
   depElems = *_s >> icase("DEP_ELEMs") >> *_s >> by_ref(paramlist);
   outEvts = *_s >> icase("OEVENT") >> *_s >> by_ref(paramlist);
   taskBeginPragma = taskName >> *_s >> depEvts >> *_s >> depDbks >> *_s >> depElems >> *_s;
-  taskEndPragma = *_s >> outEvts >> *_s;
 }
 
 //! A parameter is an identifier with attribute
@@ -139,9 +142,77 @@ bool OcrTaskPragmaParser::matchDepElems(string input_s, list<string>& depElemsLi
   else throw MatchException("matchDepElems Exception\n");
 }
 
+bool OcrTaskPragmaParser::matchEvtsToSatisfy(string input, list<string>& evtsNameToSatisfy) {
+  smatch matchResults;
+  if(regex_search(input, matchResults, outEvts)) {
+    string outEvtsMatch = matchResults[0];
+    matchParamList(outEvtsMatch, evtsNameToSatisfy);
+  }
+  else throw MatchException("matchEvtsToSatisfy Exception\n");
+}
+
+bool OcrTaskPragmaParser::isMatchingPragma(SgNode* sgn) {
+  if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {
+    string pstr = sgpdecl->get_pragma()->get_pragma();
+    AstFromString::c_char = pstr.c_str();
+    if(AstFromString::afs_match_substr("ocr task end")) return true;
+  }
+  return false;
+}
+
+// Beginning at root node m_sgpdecl which must be task begin
+// Iterate over the parent's basic block until a matching task end is found
+// We are assuming that task begin and task end pragma nodes are siblings
+// Assumption is safe as every task begin must have a task end
+// It is unlikely that the matching task end is a children of a sibling of task begin node
+list<SgNode*> OcrTaskPragmaParser::collectTaskStatements() {
+  Logger::Logger lg("OcrTaskPragmaParser::collectTaskStatements");
+  list<SgNode*> taskStatementList;
+  // Find the parent of SgPragmaDeclration
+  // Get my index and the total number of children
+  // Iterate from my index + 1 until the end to find a matching task end
+  SgNode* parent = m_sgpdecl->get_parent();
+  unsigned int cindex = parent->get_childIndex(m_sgpdecl);
+  unsigned int nchild = parent->get_numberOfTraversalSuccessors();
+  for(int it = cindex+1; it < nchild; ++it) {
+    SgNode* sgchild_ = parent->get_traversalSuccessorByIndex(it);
+    taskStatementList.push_back(sgchild_);
+    Logger::debug(lg) << AstDebug::astToString(sgchild_) << endl;
+    if(isMatchingPragma(sgchild_)) break;
+  }
+  return taskStatementList;
+}
+
+SgNode* OcrTaskPragmaParser::identifier2sgn(std::string identifier_) {
+  Logger::Logger lg("OcrTaskPragmaParser::identifier2sgn");
+  SgNode* idsgn;
+  AstFromString::c_char = identifier_.c_str();
+  AstFromString::c_sgnode = m_sgpdecl->get_parent();
+  if(AstFromString::afs_match_identifier()) {
+    idsgn = AstFromString::c_parsed_node;
+  }
+  else {
+    Logger::error(lg) << "Cannot create SgNode from identifer_=" << identifier_ << endl;
+    assert(false);
+  }
+  return idsgn;
+}
+
+list<SgNode*> OcrTaskPragmaParser::identifiers2sgnlist(list<string> identifiersList) {
+  Logger::Logger lg("OcrTaskPragmaParser::identifiers2sgnlist");
+  list<SgNode*> idsgnList;
+  list<string>::iterator i = identifiersList.begin();
+  for( ; i != identifiersList.end(); ++i) {
+    SgNode* idsgn = identifier2sgn(*i);
+    Logger::debug(lg) << "idsgn=" << AstDebug::astToString(idsgn) << endl;
+    assert(idsgn);
+    idsgnList.push_back(idsgn);
+  }
+  return idsgnList;
+}
+
 bool OcrTaskPragmaParser::match() {
-  Logger::Logger lg("OcrTaskPragmaParser::match()", Logger::INFO) ;
-  Logger::info(lg) << "OcrTaskPragmaParser::match(" << m_pragmaStr << ")\n";
+  Logger::Logger lg("OcrTaskPragmaParser::match()", Logger::DEBUG) ;
   try {
     smatch matchResults;
     // Check if the pragma matches the task annotation format
@@ -150,21 +221,38 @@ bool OcrTaskPragmaParser::match() {
       // Search on the matched result
       string taskbegin_s = matchResults[0];
       string taskName_s;
-      // Extract the task's name
+      // Extract the task's name in to taskName_s
       matchTaskName(taskbegin_s, taskName_s);
-      list<string> depEvtsList, depDbksList, depElemsList;
+      list<string> depEvtsNameList, depDbksNameList, depElemsNameList;
       // Extract the task's dependent Events
-      matchDepEvts(taskbegin_s, depEvtsList);
+      matchDepEvts(taskbegin_s, depEvtsNameList);
+      list<OcrEvtContextPtr> depEvtsContextPtrList = m_ocrObjectManager.getOcrEvtContextList(depEvtsNameList);
       // Extract the task's dependent Datablocks
-      matchDepDbks(taskbegin_s, depDbksList);
+      matchDepDbks(taskbegin_s, depDbksNameList);
+      list<OcrDbkContextPtr> depDbksContextPtrList = m_ocrObjectManager.getOcrDbkContextList(depDbksNameList);
       // Extract the task's dependent elements (paramenters)
-      matchDepElems(taskbegin_s, depElemsList);
-      Logger::info(lg) << "taskName: " << taskName_s << endl;
-      Logger::info(lg) << strlist2str(depEvtsList) << endl;
-      Logger::info(lg) << strlist2str(depDbksList) << endl;
-      Logger::info(lg) << strlist2str(depElemsList) << endl;
-    }
-    else if(regex_match(m_pragmaStr, matchResults, taskEndPragma)) {
+      matchDepElems(taskbegin_s, depElemsNameList);
+      list<SgNode*> depElemsSgnList = identifiers2sgnlist(depElemsNameList);
+      // Find all statements between task begin and task end
+      list<SgNode*> taskStatementList = collectTaskStatements();
+      // Last element of the list must be a SgPragmaDeclaration
+      SgPragmaDeclaration* sgpdTaskEnd = isSgPragmaDeclaration(taskStatementList.back());
+      taskStatementList.pop_back();
+      // Safety checks
+      if(!sgpdTaskEnd) {
+	throw MatchException("Matching Task end annotation not found under same basic block\n");
+      }
+      // Collect all events that need to be satisfied by this task
+      // Register the events with OcrObjectManager
+      list<string> evtsNameToSatisfy;
+      matchEvtsToSatisfy(sgpdTaskEnd->get_pragma()->get_pragma(),
+			 evtsNameToSatisfy);
+      list<OcrEvtContextPtr> outEvtsContextPtrList = m_ocrObjectManager.registerOcrEvts(evtsNameToSatisfy);
+      // We have all the information we need for creating OcrEdtContext
+      OcrEdtContextPtr edtcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, depEvtsContextPtrList,
+									 depDbksContextPtrList, outEvtsContextPtrList,
+									 depElemsSgnList, taskStatementList);
+      Logger::debug(lg) << edtcontext_sp->str() << endl;
     }
     else {
       ostringstream oss;
@@ -191,6 +279,41 @@ string OcrTaskPragmaParser::strlist2str(list<string>& strList) const {
   return oss.str();
 }
 
+/**********************
+ * OcrDbkPragmaParser *
+ **********************/
+OcrDbkPragmaParser::OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl),
+    m_ocrObjectManager(ocrObjectManager) {
+  identifier = +(alpha|as_xpr('_')) >> *_w;
+  param = *_s >> identifier;
+  // paramseq is the tail seq of a parameter list
+  sregex paramseq = *_s >> as_xpr(',') >> *_s >> param;
+  paramlist = as_xpr('(') >> *_s >> param >> *by_ref(paramseq) >> *_s >> as_xpr(')');
+  dbkNames = *_s >> icase("DATABLOCK") >> *_s >> by_ref(paramlist);
+  dbkBegin = *_s >> as_xpr("ocr datablock begin") >> *dbkNames >> *_s;
+}
+
+bool OcrDbkPragmaParser::match() {
+  Logger::Logger lg("OcrDbkPragmaParser::match()", Logger::DEBUG);
+  string pstr = m_sgpdecl->get_pragma()->get_pragma();
+  try {
+    smatch matchResults;
+    if(regex_match(pstr, matchResults, dbkBegin)) {
+      string mresults = matchResults[0];
+      // Now search in this string for extracting the datablock names
+
+    }
+    else {
+      throw MatchException("Failed to match datablock pragma\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
+
 /*******************
  * OcrPragmaParser *
  *******************/
@@ -206,12 +329,13 @@ void OcrPragmaParser::visit(SgNode* sgn) {
 
     if(ptype == e_TaskBegin) {
       AstFromString::afs_skip_whitespace();
-      OcrTaskPragmaParser taskPragmaParser(AstFromString::c_char);
+      OcrTaskPragmaParser taskPragmaParser(AstFromString::c_char, m_ocrObjectManager, sgpdecl);
       taskPragmaParser.match();
-      astIterate(sgpdecl);
     }
     else if(ptype == e_DbkBegin) {
-      astIterate(sgpdecl);
+      AstFromString::afs_skip_whitespace();
+      OcrDbkPragmaParser dbkPragmaParser(sgpdecl, m_ocrObjectManager);
+      dbkPragmaParser.match();
     }
     else { } // do nothing
   }
@@ -228,21 +352,18 @@ OcrPragmaParser::identifyPragmaType(std::string pragmaStr) {
 }
 
 void OcrPragmaParser::astIterate(SgPragmaDeclaration* sgdecl) {
-  Logger::Logger lg(Logger::DEBUG);
+  Logger::Logger lg("OcrPragmaParser::astIterate", Logger::DEBUG);
   // Find the parent of SgPragmaDeclration
   // Get my index and the total number of children
   // Iterate from my index + 1 until the end to find a matching task end
   SgNode* parent = sgdecl->get_parent();
   unsigned int cindex = parent->get_childIndex(sgdecl);
   unsigned int nchild = parent->get_numberOfTraversalSuccessors();
-  Logger::debug(lg) << "-----------begin---------\n";
   for(int it = cindex+1; it < nchild; ++it) {
     SgNode* sgchild_ = parent->get_traversalSuccessorByIndex(it);
     if(isMatchingPragma(sgchild_)) break;
-    Logger::debug(lg) << "child=" << it << endl;
     Logger::debug(lg) << AstDebug::astToString(sgchild_) << endl;
   }
-  Logger::debug(lg) << "-------------end---------\n";
 }
 
 bool OcrPragmaParser::isMatchingPragma(SgNode* sgn) {
