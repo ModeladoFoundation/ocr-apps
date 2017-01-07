@@ -32,8 +32,7 @@ int main(int argc, char* argv[]) {
   int switch_flag = atoi(argv[2]);
 
 #pragma ocr datablock begin DATABLOCK(DBK_in)
-  double* in;
-  in = (double*) malloc(size * sizeof(double));
+  double* in = malloc(size * sizeof(double));
 #pragma ocr datablock end
 
 #pragma ocr task begin TASK(TASK_init)  \
