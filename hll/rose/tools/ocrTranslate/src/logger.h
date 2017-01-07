@@ -38,6 +38,7 @@ namespace Logger {
     Logger();
     Logger(SeverityLevel level);
     Logger(std::string scope, SeverityLevel level);
+    Logger(std::string scope);
     SeverityLevel getSeverityLevel() const;
     std::ostream& getOSS();
     std::ostream& getNullStream();
@@ -61,4 +62,26 @@ namespace AstDebug {
   std::string astTypeName(SgNode* sgn);
 
   std::string format(std::string in);
+};
+
+namespace StrUtil {
+  // Assumption: Object of type AnyType implements str() method
+  template <typename AnyType>
+    std::string list2str(const std::list<boost::shared_ptr<AnyType> >& listContainer) {
+    std::ostringstream oss;
+    oss << "[";
+    typename std::list<boost::shared_ptr<AnyType> >::const_iterator lbegin = listContainer.begin();
+    typename std::list<boost::shared_ptr<AnyType> >::const_iterator lend = listContainer.end();
+    while(lbegin != lend) {
+      boost::shared_ptr<AnyType> item = *lbegin;
+      oss << item->str();
+      ++lbegin;
+      if(lbegin != lend) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+  }
+
+  std::string stmtlist2str(std::list<SgNode*> stmtlist, std::string indent="");
+  std::string sgnlist2str(std::list<SgNode*> sgnlist);
 };
