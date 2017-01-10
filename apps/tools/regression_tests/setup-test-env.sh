@@ -23,6 +23,8 @@ function clean_path() {
   fi
 }
 
+export -f clean_path
+
 export TG_INSTALL=$(clean_path ${TG_INSTALL:-$(pwd)/../../../../tg/tg/install})
 [[ -z $TG_INSTALL ]] && exit 1;
 
@@ -39,7 +41,8 @@ if [[ -e $LOGS_DIR ]]; then
   fi
 
   # Check if the logs directory contains non-log files.
-  if find $LOGS_DIR -exec basename {} \; | grep -q -v "log\|out\|err\|cfg"; then
+  LOG_FILES_RE="log\|out\|err\|cfg\|rck\|top\.network\|core"
+  if find $LOGS_DIR -exec basename {} \; | grep -q -v "$LOG_FILES_RE"; then
     echo "Logs directory '$LOGS_DIR' exists and appears to contain non-log files." 1>&2
     echo "Cowardly refusing to delete." 1>&2
     echo "If you wish to use this directory, please remove the files it contains first." 1>&2
