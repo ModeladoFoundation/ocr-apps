@@ -102,7 +102,7 @@ ignore-output
 in: finish
 out: Run till exit from
 out: xstg_main.+at mb-printf\.c:
-out: 27\s+xe_conout\("Hello, XE world!\\n", 18\);
+out: 29\s+return 42;
 
 in: finish
 out: Run till exit from

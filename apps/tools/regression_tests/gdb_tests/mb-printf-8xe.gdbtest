@@ -111,8 +111,14 @@ in: delete 1
 ignore-output
 
 in: finish
-until: 27\s+xe_conout\("Hello, XE world!\\n", 18\);
+out: Run till exit from #0\s+xe_conout
+out: xstg_main
+out: 29\s+return 42;
 
+in: finish
+out: Run till exit from #0\s+xstg_main
+out: 0x[0-9a-f]+ in _start
+out: Value returned is \$1 = 42
 
 
 #=================================================================

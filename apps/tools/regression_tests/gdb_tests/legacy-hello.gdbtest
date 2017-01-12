@@ -44,7 +44,7 @@ ignore-output
 in: delete 2
 ignore-output
 
-in: break ce_gettimeofday
+in: rbreak ^\(ocrGetTimeofDay\|tgr_gettimeofday\)$
 ignore-output
 
 in: break sub2
@@ -54,11 +54,7 @@ in: run
 ignore-output
 
 in: finish
-out: Run till exit from #0\s+0x[0-9a-f]+ in ce_gettimeofday \(\)
-out: 0x[0-9a-f]+ in ocrGetTimeofDay
-
-in: finish
-out: Run till exit from #0\s+0x[0-9a-f]+ in ocrGetTimeofDay \(\)
+out: Run till exit from #0\s+0x[0-9a-f]+ in (ocrGetTimeofDay|tgr_gettimeofday) \(\)
 out: in _gettimeofday_r
 
 in: finish
