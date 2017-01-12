@@ -36,7 +36,6 @@ apps-clean:
 libs-clean:
 	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=x86 clean
 	@rm -rf $(APPS_ROOT)/libs/install/x86
-	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=x86-newlib clean
-	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=x86-newlib uninstall
+	$(MAKE) -C $(OCR_ROOT)/build squeaky
 
 .PHONY: all apps apps-clean libs-clean libs apps-legacy-ocr apps-legacy-scaffold

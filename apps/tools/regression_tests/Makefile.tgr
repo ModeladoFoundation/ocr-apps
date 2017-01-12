@@ -61,8 +61,7 @@ apps-clean:
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE clean
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe clean
 	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test clean
-	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=tg-ce clean uninstall
-	$(MAKE) -C $(OCR_ROOT)/build OCR_TYPE=tg-xe clean uninstall
+	$(MAKE) -C $(OCR_ROOT)/build squeaky
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg clean uninstall
 	$(MAKE) -C $(APPS_ROOT)/examples/fib -f Makefile.tg clean uninstall
 
