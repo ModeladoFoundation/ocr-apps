@@ -13,7 +13,7 @@ TG_ROOT ?= $(realpath $(CURDIR)/../../../../tg/tg)
 APPS_ROOT ?= $(realpath $(CURDIR)/../..)
 OCR_ROOT ?= $(realpath $(CURDIR)/../../../../ocr/ocr)
 
-all: tg-examples apps-legacy apps-examples
+all: tg-examples apps-legacy apps-examples apps-tgr-ce
 apps: all
 
 tools:
@@ -74,4 +74,4 @@ libs-clean:
 tools-clean:
 	$(MAKE) -C $(TG_ROOT) clean uninstall
 
-.PHONY: all apps apps-clean libs-clean tools-clean tools libs tg-examples apps-legacy apps-examples
+.PHONY: all apps apps-clean libs-clean tools-clean tools libs tg-examples apps-legacy apps-examples apps-tgr-ce
