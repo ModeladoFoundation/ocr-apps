@@ -1,1 +1,3 @@
 build-*
+openmp/testsuite/ompts.log
+openmp/testsuite/results.txt
