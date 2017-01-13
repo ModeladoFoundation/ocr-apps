@@ -120,7 +120,9 @@ $(TGR_CE_LIB) : $(TGR_CE_OBJS)
 $(TGR_CE_BUILD)/tgkrnl-tgr : $(TGR_CE_LIB)
 	@echo " ** building tgkrnl"
 	$(AT)cd $(TGKRNL_BUILD) ;\
-		$(MAKE) -f make-me.make TGR_LIB=$^ clean default
+		$(MAKE) -f make-me.make TGR_LIB=$^ clean
+	$(AT)cd $(TGKRNL_BUILD) ;\
+		$(MAKE) -f make-me.make TGR_LIB=$^ default
 	@echo " * tgkrnl.dbg -> $@"
 	$(AT)cp $(TGKRNL_BUILD)/tgkrnl.dbg $@
 

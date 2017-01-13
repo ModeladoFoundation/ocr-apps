@@ -12,7 +12,11 @@ char ** environ;
 extern int main( int argc, char** argv, char **envp );
 static void app_start( int argc, char ** argv, char ** envp ) __attribute__((used));
 
-__attribute__((weak)) void ptmalloc_init(void);
+// In case ptmalloc_init is not linked in
+__attribute__((weak)) void ptmalloc_init(void)
+{
+    return;
+}
 
 
 //
@@ -232,8 +236,7 @@ static void app_start( int argc, char ** argv, char ** envp )
 
     environ = envp;
 
-    if (ptmalloc_init != NULL)
-        ptmalloc_init();
+    ptmalloc_init();
 
     //
     // Do C++ startup
