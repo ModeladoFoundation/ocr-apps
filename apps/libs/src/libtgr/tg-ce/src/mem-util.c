@@ -12,31 +12,6 @@
 #include "util.h"
 #include "mem-util.h"
 
-#include "xstg-map.h"
-
-#define IS_MR(a)     (((a) >> MAP_MACHINE_SHIFT) == 0b0001)
-#define IS_SR(a)     (((a) >> MAP_SOCKET_SHIFT) == 1)
-#define IS_CR(a)     (((a) >> MAP_CLUSTER_SHIFT) == 1)
-#define BR_TO_CR(b,a) (_CR_LEAD_ONE | \
-                        (TO_ULL(b) << MAP_BLOCK_SHIFT) | \
-                        ((a) & (_BR_LEAD_ONE-1)))
-#define SR_TO_CR(a)  (_CR_LEAD_ONE | ((a) & (_CR_LEAD_ONE-1)))
-#define IS_BR(a)     (((a) >> MAP_BLOCK_SHIFT) == 1)
-#define IS_AR(a)     (((a) >> MAP_AGENT_SHIFT) == 1)
-#define AR_TO_CR(b,a,v) (_CR_LEAD_ONE | \
-                        (TO_ULL(b) << MAP_BLOCK_SHIFT) | \
-                        (TO_ULL(a) << MAP_AGENT_SHIFT) | \
-                        ((v) & (_AR_LEAD_ONE-1)))
-
-#define IS_IPM(a)    ((((a) >> MAP_IN_SOCKET_IPM_SHIFT) & 0b111) == MAP_IN_SOCKET_IPM_MAGIC)
-#define IS_OPM(a)    ((((a) >> MAP_IN_SOCKET_DRAM_SHIFT) & 0b11))
-#define IPM_OFFSET(a) ((a) & ((1UL << MAP_IN_SOCKET_IPM_SHIFT) - 1))
-#define IS_L3(a)     ((((a) >> MAP_IN_CLUSTER_L3_SHIFT) & 1) == MAP_IN_CLUSTER_L3_MAGIC)
-#define IS_L2(a)     ((((a) >> MAP_IN_BLOCK_L2_SHIFT) & 1) == MAP_IN_BLOCK_L2_MAGIC)
-#define L2_OFFSET(a) ((a) & ((1UL << MAP_IN_BLOCK_L2_SHIFT) - 1))
-#define IS_L1(a)     ((((a) >> MAP_IN_AGENT_L1_SHIFT) & 1) == MAP_IN_AGENT_L1_MAGIC)
-#define L1_OFFSET(a) ((a) & ((1UL << MAP_IN_AGENT_L1_SHIFT) - 1))
-
 #define NO_ADDR (0UL)
 //
 // This is used to validate addresses from XEs since they may be using
@@ -66,9 +41,9 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
     // Our direct address map is only this socket, but, be pedantic ...
     //
     if( IS_MR(addr) &&
-        ( RACK_FROM_ID(addr) >= bi->id.rack ||
-          CUBE_FROM_ID(addr) >= bi->id.cube ||
-          SOCKET_FROM_ID(addr) >= bi->id.socket ) ) {
+        ( RACK_FROM_ID(addr) != bi->id.rack ||
+          CUBE_FROM_ID(addr) != bi->id.cube ||
+          SOCKET_FROM_ID(addr) != bi->id.socket ) ) {
             ce_error("VA", "bad MR addr %p\n", addr);
             return NO_ADDR;
     }
