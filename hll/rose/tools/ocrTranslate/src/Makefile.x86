@@ -19,7 +19,7 @@ WHOLE_PROG_AST =
 OCRTRANSLATE = ocrTranslate
 
 # All binaries
-TARGETS := $(OCRTRANSLATE) $(ASTGEN)
+TARGETS := $(OCRTRANSLATE)
 
 .PHONY: all
 all: $(TARGETS)
@@ -51,7 +51,7 @@ install: $(TARGETS)
 
 .PHONY: clean
 clean:
-	rm -f ../bin/$(ASTGEN) ../bin/$(OCRTRANSLATE)
-	rm -f $(ASTGEN) $(OCRTRANSLATE)
+	rm -f ../bin/$(OCRTRANSLATE)
+	rm -f $(OCRTRANSLATE)
 	rm -f *.o
 	rm -f *~
