@@ -52,9 +52,25 @@ class OcrTaskPragmaParser {
   std::string strlist2str(std::list<std::string>& identifiersList) const;
 };
 
+/********************
+ * CollectAllocStmt *
+ ********************/
+class CollectAllocStmt : public AstSimpleProcessing {
+  SgNode* m_root;
+  std::list<SgNode*> m_allocStmtList;
+ public:
+  CollectAllocStmt(SgNode* root);
+  void visit(SgNode* sgn);
+  void atTraversalEnd();
+  std::list<SgNode*> getAllocStmt() const;
+};
+
+
 /**********************
  * OcrDbkPragmaParser *
  **********************/
+typedef std::map<SgNode*, std::list<SgNode*> > AllocStmtMap;
+typedef std::pair<SgNode*, std::list<SgNode*> > AllocStmtMapElem;
 class OcrDbkPragmaParser {
   SgPragmaDeclaration* m_sgpdecl;
   OcrObjectManager& m_ocrObjectManager;
@@ -62,8 +78,20 @@ class OcrDbkPragmaParser {
   boost::xpressive::sregex identifier, param, paramlist;
   boost::xpressive::sregex dbkNames;
   boost::xpressive::sregex dbkBegin;
+  AllocStmtMap allocStmtMapCache;
+ private:
+  bool matchDbkNames(std::string, std::list<std::string>& dbkNamesList);
+  bool matchParamList(std::string, std::list<std::string>& dbkNamesList);
+  bool matchParams(std::string, std::list<std::string>& dbkNamesList);
+  bool isMatchingPragma(SgNode* sgn);
+  SgSymbol* find_symbol(SgNode* sgn);
  public:
   OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& objectManager);
+  std::list<SgNode*> collectDbkStatements();
+  std::list<SgInitializedName*> collectDbkVars();
+  std::list<SgNode*> varFilterAllocStmt(std::list<SgNode*>& allocStmtList, SgInitializedName* sgn);
+  std::list<SgNode*> collectAllocStmt(SgNode* root);
+  std::list<SgNode*> getAllocStmt(SgInitializedName* sgn);
   bool match();
 };
 
