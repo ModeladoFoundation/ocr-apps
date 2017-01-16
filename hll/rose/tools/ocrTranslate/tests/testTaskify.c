@@ -13,8 +13,8 @@ int main(int argc, char* argv[]) {
 
   int size  = atoi(argv[1]);
 
-#pragma ocr datablock begin DATABLOCK(DBK_in)
-  double* in;
+#pragma ocr datablock begin DATABLOCK(DBK_in, DBK_out)
+  double* in, *out;
 #pragma ocr datablock end
   in = (double*) malloc(size * sizeof(double));
   int iter;
@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
     in[iter] = (double)(rand() % 100)/7;
   }
 #pragma ocr task end OEVENT(OEVT_init)
+
+  out = malloc(sizeof(double) * size+1);
 
 #pragma ocr task begin TASK(TASK_increment) \
   DEP_EVTs(OEVT_init) DEP_DBKs(DBK_in) DEP_ELEMs(in:size, in:iter)
