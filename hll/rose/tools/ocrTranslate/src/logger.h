@@ -60,7 +60,6 @@ namespace AstDebug {
   std::string astToString(SgNode* sgn, std::string indent="");
   //! Return the typename as string
   std::string astTypeName(SgNode* sgn);
-
   std::string format(std::string in);
 };
 
@@ -82,6 +81,9 @@ namespace StrUtil {
     return oss.str();
   }
 
+  std::string SgInitializedName2Str(SgInitializedName* sgn);
+  std::string SgInitializedNamePtrList2Str(std::list<SgInitializedName*>& sginitnamelist);
+  std::string strlist2str(std::list<std::string>& strList);
   std::string stmtlist2str(std::list<SgNode*> stmtlist, std::string indent="");
   std::string sgnlist2str(std::list<SgNode*> sgnlist);
 };
