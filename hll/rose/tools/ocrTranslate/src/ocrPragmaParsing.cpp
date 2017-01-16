@@ -4,6 +4,7 @@
 #include "sage3basic.h"
 #include "ocrPragmaParsing.h"
 #include "AstFromString.h"
+#include "AstMatching.h"
 #include "RoseAst.h"
 #include <string>
 #include "logger.h"
@@ -267,16 +268,33 @@ bool OcrTaskPragmaParser::match() {
   }
 }
 
-string OcrTaskPragmaParser::strlist2str(list<string>& strList) const {
-  ostringstream oss;
-  oss << "[";
-  list<string>::iterator l;
-  for(l = strList.begin(); l != strList.end(); ) {
-    oss << *l++;
-    if(l != strList.end()) oss << ", ";
+/********************
+ * CollectAllocStmt *
+ ********************/
+CollectAllocStmt::CollectAllocStmt(SgNode* root) : m_root(root) { }
+
+void CollectAllocStmt::visit(SgNode* sgn) {
+  if(SgFunctionCallExp* fn = isSgFunctionCallExp(sgn)) {
+    SgExpression* callexp = fn->get_function();
+    // Note we can only detect mallocs if it is used directly
+    // and not through any function pointers
+    // Function pointer would require more analysis
+    if(SgFunctionRefExp* fref = isSgFunctionRefExp(callexp)) {
+      SgFunctionSymbol* fsymbol = fref->get_symbol();
+      string fname = fsymbol->get_name().getString();
+      if(fname.compare("malloc") == 0 ||
+	 fname.compare("calloc") == 0) {
+	SgNode* allocStmt = SageInterface::getEnclosingStatement(fn);
+	m_allocStmtList.push_back(allocStmt);
+      }
+    }
   }
-  oss << "]";
-  return oss.str();
+}
+
+void CollectAllocStmt::atTraversalEnd() { }
+
+list<SgNode*> CollectAllocStmt::getAllocStmt() const {
+  return m_allocStmtList;
 }
 
 /**********************
@@ -294,6 +312,131 @@ OcrDbkPragmaParser::OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectMa
   dbkBegin = *_s >> as_xpr("ocr datablock begin") >> *dbkNames >> *_s;
 }
 
+bool OcrDbkPragmaParser::matchParams(string input, list<string>& paramList) {
+  ostringstream oss;
+  Logger::Logger lg("OcrDbkPragmaParser::matchParams");
+  smatch matchResults;
+  // Make sure we are working on a string that is paramlist
+  if(!regex_match(input, matchResults, paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier_s = *cur;
+    paramList.push_back(identifier_s);
+  }
+  return true;
+}
+
+bool OcrDbkPragmaParser::matchParamList(string input, list<string>& paramList) {
+  Logger::Logger lg("OcrDbkPragmaParser::matchParamList()");
+  smatch matchresults;
+  if(regex_search(input, matchresults, paramlist)) {
+    string match  = matchresults[0];
+    Logger::debug(lg) << "match=" << match << endl;
+    matchParams(match, paramList);
+  }
+  else {
+    throw MatchException("Failed to match paramlist in OcrDbkPragmaParser::matchParamList()");
+  }
+  return true;
+}
+
+bool OcrDbkPragmaParser::matchDbkNames(string input, list<string>& dbkNamesList) {
+  Logger::Logger lg("OcrDbkPragmaParser::matchDbkNames");
+  smatch matchresults;
+  if(regex_search(input, matchresults, dbkNames)) {
+    // On a successful match matchresults will be "DATABLOCK(...)"
+    string match  = matchresults[0];
+    matchParamList(match, dbkNamesList);
+  }
+  else {
+    throw MatchException("OcrDbkPragmaParser::matchDbkNames()");
+  }
+  return true;
+}
+
+bool OcrDbkPragmaParser::isMatchingPragma(SgNode* sgn) {
+  if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {
+    string pstr = sgpdecl->get_pragma()->get_pragma();
+    AstFromString::c_char = pstr.c_str();
+    if(AstFromString::afs_match_substr("ocr datablock end")) return true;
+  }
+  return false;
+}
+
+list<SgInitializedName*> OcrDbkPragmaParser::collectDbkVars() {
+  list<SgInitializedName*> dbkVarList;
+  SgNode* parent = m_sgpdecl->get_parent();
+  unsigned int c_index = parent->get_childIndex(m_sgpdecl);
+  unsigned int n_child = parent->get_numberOfTraversalSuccessors();
+  for(int it = c_index+1; it < n_child; ++it) {
+    // Collect all variable declarations between datablock begin and datablock end
+    SgNode* sgchild_ = parent->get_traversalSuccessorByIndex(it);
+    if(isMatchingPragma(sgchild_)) break;
+    if(SgVariableDeclaration* vdecl = isSgVariableDeclaration(sgchild_)) {
+      SgInitializedNamePtrList vlist = vdecl->get_variables();
+      dbkVarList.insert(dbkVarList.end(), vlist.begin(), vlist.end());
+    }
+  }
+  return dbkVarList;
+}
+
+list<SgNode*> OcrDbkPragmaParser::collectAllocStmt(SgNode* root) {
+  Logger::Logger lg("OcrDbkPragmaParser::collectAllocStmt");
+  AllocStmtMap::iterator f = allocStmtMapCache.find(root);
+  if(f != allocStmtMapCache.end()) {
+    Logger::debug(lg) << "AllocStmtList: " << StrUtil::stmtlist2str(f->second) << endl;
+    return f->second;
+  }
+  else {
+    CollectAllocStmt cas(root);
+    cas.traverse(root, preorder);
+    list<SgNode*> allocStmtList = cas.getAllocStmt();
+    AllocStmtMapElem elem = std::make_pair(root, allocStmtList);
+    allocStmtMapCache.insert(elem);
+    Logger::debug(lg) << "AllocStmtList: " << StrUtil::stmtlist2str(allocStmtList) << endl;
+    return allocStmtList;
+  }
+}
+
+SgSymbol* OcrDbkPragmaParser::find_symbol(SgNode* sgn) {
+  if(SgVarRefExp* vref = isSgVarRefExp(sgn)) {
+    return vref->get_symbol();
+  }
+  else if(SgInitializedName* sgvdef = isSgInitializedName(sgn)) {
+    return sgvdef->get_symbol_from_symbol_table();
+  }
+  else assert(false);
+}
+
+list<SgNode*> OcrDbkPragmaParser::varFilterAllocStmt(list<SgNode*>& allocStmtList, SgInitializedName* sgn) {
+  list<SgNode*> varAllocStmts;
+  SgSymbol* vsymbol = sgn->get_symbol_from_symbol_table();
+  // malloc can be in an SgAssignOp
+  string query = "SgAssignOp($VAR=SgVarRefExp,_)";
+  // malloc can be in an SgInitializer
+  query += "|($VAR=SgInitializedName(SgAssignInitializer(_)))";
+  list<SgNode*>::iterator s = allocStmtList.begin();
+  AstMatching matcher;
+  for( ; s != allocStmtList.end(); ++s) {
+    MatchResult match_results = matcher.performMatching(query, *s);
+    MatchResult::iterator m = match_results.begin();
+    for( ; m != match_results.end(); ++m) {
+      SgSymbol* msymbol = find_symbol((*m)["$VAR"]);
+      if(msymbol == vsymbol)
+	varAllocStmts.push_back(*s);
+    }
+  }
+  return varAllocStmts;
+}
+
+list<SgNode*> OcrDbkPragmaParser::getAllocStmt(SgInitializedName* sgn) {
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(sgn);
+  list<SgNode*> allocStmtList = collectAllocStmt(scope);
+  return varFilterAllocStmt(allocStmtList, sgn);
+}
+
 bool OcrDbkPragmaParser::match() {
   Logger::Logger lg("OcrDbkPragmaParser::match()", Logger::DEBUG);
   string pstr = m_sgpdecl->get_pragma()->get_pragma();
@@ -302,10 +445,46 @@ bool OcrDbkPragmaParser::match() {
     if(regex_match(pstr, matchResults, dbkBegin)) {
       string mresults = matchResults[0];
       // Now search in this string for extracting the datablock names
-
+      // Get the OCR names for the datablocks by parsing the DATABLOCK(...)
+      list<string> dbkNameList;
+      list<SgInitializedName*> dbkVarList;
+      if(matchDbkNames(mresults, dbkNameList)) {
+	dbkVarList = collectDbkVars();
+	assert(dbkNameList.size() == dbkVarList.size());
+	list<SgInitializedName*>::iterator vIt = dbkVarList.begin();
+	list<string>::iterator nIt = dbkNameList.begin();
+	for( ; vIt != dbkVarList.end() && nIt != dbkNameList.end();
+	     ++vIt, ++nIt) {
+	  SgType* vtype = (*vIt)->get_type();
+	  switch(vtype->variantT()) {
+	  case V_SgPointerType: {
+	    list<SgNode*> varAllocStmts = getAllocStmt(*vIt);
+	    OcrDbkContextPtr dbkcontext_sp = m_ocrObjectManager.registerOcrDbk(*nIt, *vIt, varAllocStmts);
+	    Logger::debug(lg) << dbkcontext_sp->str() << endl;
+	    break;
+	  }
+	  case V_SgArrayType: {
+	    throw MatchException("Unhandled Array Type in OcrDbkPragmaParser::match()\n");
+	    break;
+	  }
+	  case V_SgNamedType: {
+	    throw MatchException("Unhadled Named Type  in OcrDbkPragmaParser::match()\n");
+	    break;
+	  }
+	  default:
+	    throw MatchException("Unhandled Type in OcrDbkPragmaParser::match()\n");
+	  }
+	}
+      }
+      else {
+	// What should we do when we have no names specified for datablocks
+	// We could use the variable names
+	// Using variable names could introduce ambiguity in the grammar
+	throw MatchException("Dbk Match Failed: No names specified for datablocks");
+      }
     }
     else {
-      throw MatchException("Failed to match datablock pragma\n");
+      throw MatchException("Dbk Match Failed");
     }
   }
   catch(std::exception& e) {
@@ -345,9 +524,7 @@ OcrPragmaParser::OcrPragmaType
 OcrPragmaParser::identifyPragmaType(std::string pragmaStr) {
   AstFromString::c_char = pragmaStr.c_str();
   if(AstFromString::afs_match_substr("ocr task begin")) return e_TaskBegin;
-  else if(AstFromString::afs_match_substr("ocr task end")) return e_TaskEnd;
   else if(AstFromString::afs_match_substr("ocr datablock begin")) return e_DbkBegin;
-  else if(AstFromString::afs_match_substr("ocr datablock end")) return e_DbkEnd;
   else return e_NotOcr;
 }
 

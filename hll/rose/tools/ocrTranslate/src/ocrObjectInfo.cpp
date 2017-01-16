@@ -22,13 +22,23 @@ OcrDbkContext::OcrDbkContext(std::string name)
   : OcrObjectContext(),
     m_name(name) { }
 
+OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<SgNode*> allocStmts)
+  : OcrObjectContext(),
+    m_name(name),
+    m_vdefn(vdefn),
+    m_allocStmts(allocStmts) { }
+
 string OcrDbkContext::get_name() const {
   return m_name;
 }
 
 string OcrDbkContext::str() const {
   ostringstream oss;
-  oss << "[DB: " << m_name << "]";
+  string indent = " ";
+  oss << "[DBK: " << m_name << "\n";
+  oss << indent << "vdefn:" << StrUtil::SgInitializedName2Str(m_vdefn) << endl;
+  oss << indent << "allocStmts:[\n" << StrUtil::stmtlist2str(m_allocStmts, indent) << "]";
+  oss << "]";
   return oss.str();
 }
 
@@ -79,7 +89,14 @@ string OcrEdtContext::str() const {
   string indent = " ";
   oss << "[EDT: " << m_name << "\n";
   oss << indent << "depEvts:" << StrUtil::list2str<OcrEvtContext>(m_depEvts) << endl;
-  oss << indent << "depDbks: " << StrUtil::list2str<OcrDbkContext>(m_depDbks) << endl;
+  oss << indent << "depDbks: [";
+  list<OcrDbkContextPtr>::const_iterator d = m_depDbks.begin();
+  while(d != m_depDbks.end()) {
+    oss << (*d)->get_name();
+    ++d;
+    if(d != m_depDbks.end()) oss << ", ";
+  }
+  oss << "]\n";
   oss << indent << "outEvts: " << StrUtil::list2str<OcrEvtContext>(m_evtsToSatisfy) << endl;
   oss << indent << "depElems: " << StrUtil::sgnlist2str(m_depElems) << endl;
   oss << indent << "taskStmts:[\n" << StrUtil::stmtlist2str(m_statements, indent) << "]";
@@ -143,8 +160,10 @@ list<OcrDbkContextPtr> OcrObjectManager::getOcrDbkContextList(list<string> dbkNa
     // I will use the else block to register the OcrObjects using their name
     // When all OcrObject creation is in place replace the else to throw error
     else {
-      OcrDbkContextPtr dbkcontext_sp = registerOcrDbk(dbkName);
-      ocrDbkContextList.push_back(dbkcontext_sp);
+      Logger::error(lg) << "dbkName: " << dbkName << " not found in m_ocrObjectMap\n";
+      assert(false);
+      // OcrDbkContextPtr dbkcontext_sp = registerOcrDbk(dbkName);
+      // ocrDbkContextList.push_back(dbkcontext_sp);
     }
   }
   return ocrDbkContextList;
@@ -178,8 +197,23 @@ list<OcrEvtContextPtr> OcrObjectManager::registerOcrEvts(list<string> evtsNameLi
   return evtContextsList;
 }
 
-OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName) {
-  OcrDbkContextPtr dbkcontext_sp = boost::make_shared<OcrDbkContext>(dbkName);
+OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
+						  SgInitializedName* vdefn,
+						  list<SgNode*> allocStmts) {
+  Logger::Logger lg("OcrObjectManager::registerOcrDbk");
+  OcrObjectMapType::iterator f = m_ocrObjectMap.find(dbkName);
+  OcrDbkContextPtr dbkcontext_sp;
+  if(f != m_ocrObjectMap.end()) {
+    Logger::debug(lg) << "f=true\n";
+    dbkcontext_sp = boost::dynamic_pointer_cast<OcrDbkContext>(f->second);
+    assert(dbkcontext_sp);
+  }
+  else {
+    Logger::debug(lg) << "f=false\n";
+    dbkcontext_sp = boost::make_shared<OcrDbkContext>(dbkName, vdefn, allocStmts);
+    OcrObjectMapElemType elem(dbkName, dbkcontext_sp);
+    m_ocrObjectMap.insert(elem);
+  }
   return dbkcontext_sp;
 }
 
