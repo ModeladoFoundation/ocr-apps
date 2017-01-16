@@ -56,7 +56,7 @@ namespace Logger {
 
 namespace AstDebug {
   string astToString(SgNode* sgn, string tabspace) {
-    if(!sgn) return "(null)";
+    if(!sgn) return tabspace + "(null)";
     ostringstream ss;
     string indent;
     ss << tabspace << "(" << astTypeName(sgn);
@@ -91,6 +91,35 @@ namespace AstDebug {
 };
 
 namespace StrUtil {
+  string SgInitializedName2Str(SgInitializedName* sgn) {
+    return sgn->get_name().getString();
+  }
+
+  string SgInitializedNamePtrList2Str(list<SgInitializedName*>& sginitnamelist) {
+    ostringstream oss;
+    oss << "[";
+    list<SgInitializedName*>::iterator i = sginitnamelist.begin();
+    while(i != sginitnamelist.end()) {
+      oss << (*i)->get_name().getString();
+      ++i;
+      if(i != sginitnamelist.end()) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+  }
+
+  string strlist2str(list<string>& strList) {
+    ostringstream oss;
+    oss << "[";
+    list<string>::iterator l;
+    for(l = strList.begin(); l != strList.end(); ) {
+      oss << *l++;
+      if(l != strList.end()) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+  }
+
   string stmtlist2str(list<SgNode*> stmtlist, string indent) {
     ostringstream oss;
     list<SgNode*>::iterator s = stmtlist.begin();
