@@ -121,27 +121,28 @@ typedef boost::shared_ptr<OcrEdtContext> OcrEdtContextPtr;
 //! annotations. The traversal builds the context for each
 //! OCR object and uses the OcrObjectManager for managing
 //! the contexts for each OCR object.
-typedef std::map<std::string, OcrObjectContextPtr> OcrObjectMapType;
-typedef std::pair<std::string, OcrObjectContextPtr> OcrObjectMapElemType;
-typedef std::map<SgSymbol*, std::string> SgSymbolToOcrDbkMap;
+typedef std::map<std::string, OcrEdtContextPtr> OcrEdtObjectMap;
+typedef std::pair<std::string, OcrEdtContextPtr> OcrEdtObjectMapElem;
+typedef std::map<std::string, OcrDbkContextPtr> OcrDbkObjectMap;
+typedef std::pair<std::string, OcrDbkContextPtr> OcrDbkObjectMapElem;
+typedef std::map<std::string, OcrEvtContextPtr> OcrEvtObjectMap;
+typedef std::pair<std::string, OcrEvtContextPtr> OcrEvtObjectMapElem;
 class OcrObjectManager {
   //! Associates an OcrContext for each OcrObject
   //! Key: OcrObject name (string)
   //! Value: OcrContext
-  OcrObjectMapType m_ocrObjectMap;
-  //! Associate variable symbols to their OcrDbk names
-  //! Key: SgSymbol*
-  //! Value: OcrDbk name (string)
-  SgSymbolToOcrDbkMap m_symbolToOcrDbkMap;
+  OcrEdtObjectMap m_ocrEdtObjectMap;
+  OcrDbkObjectMap m_ocrDbkObjectMap;
+  OcrEvtObjectMap m_ocrEvtObjectMap;
  public:
   OcrObjectManager();
   // Lookup functions for OcrContext using their names
   std::list<OcrEvtContextPtr> getOcrEvtContextList(std::list<std::string> evtList);
   std::list<OcrDbkContextPtr> getOcrDbkContextList(std::list<std::string> dbksList);
-  // Functions to create shared_ptr for OcrContext
-  OcrEvtContextPtr registerOcrEvt(std::string evtName);
-  std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
 
+  // Functions to create shared_ptr for OcrContext
+  std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
+  OcrEvtContextPtr registerOcrEvt(std::string evtName);
   OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgNode*> allocStmts);
   OcrEdtContextPtr registerOcrEdt(std::string edtName, std::list<OcrEvtContextPtr> depEvts,
 				  std::list<OcrDbkContextPtr> depDbks,
