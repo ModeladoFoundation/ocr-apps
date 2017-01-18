@@ -120,8 +120,8 @@ list<OcrEvtContextPtr> OcrObjectManager::getOcrEvtContextList(list<string> evtNa
   for( ; l != evtNamesList.end(); ++l) {
     string evtName = *l;
     Logger::debug(lg) << "evtName: " << evtName << endl;
-    OcrObjectMapType::iterator found = m_ocrObjectMap.find(evtName);
-    if(found != m_ocrObjectMap.end()) {
+    OcrEvtObjectMap::iterator found = m_ocrEvtObjectMap.find(evtName);
+    if(found != m_ocrEvtObjectMap.end()) {
       OcrEvtContextPtr evtcontext_sp = boost::dynamic_pointer_cast<OcrEvtContext>(found->second);
       ocrEvtContextList.push_back(evtcontext_sp);
     }
@@ -133,7 +133,7 @@ list<OcrEvtContextPtr> OcrObjectManager::getOcrEvtContextList(list<string> evtNa
     // For now, I'm assuming all OcrEvts listed under DEP_EVTs are registered by
     // a prior OEVT annotation
     else {
-      Logger::error(lg) << "evtName: " << evtName << " not found in m_ocrObjectMap\n";
+      Logger::error(lg) << "evtName: " << evtName << " not found in m_ocrEvtObjectMap\n";
       assert(false);
     }
   }
@@ -147,8 +147,8 @@ list<OcrDbkContextPtr> OcrObjectManager::getOcrDbkContextList(list<string> dbkNa
   for( ; l != dbkNamesList.end(); ++l) {
     string dbkName = *l;
     Logger::debug(lg) << "dbkName=" << dbkName << endl;
-    OcrObjectMapType::iterator found = m_ocrObjectMap.find(dbkName);
-    if(found != m_ocrObjectMap.end()) {
+    OcrDbkObjectMap::iterator found = m_ocrDbkObjectMap.find(dbkName);
+    if(found != m_ocrDbkObjectMap.end()) {
       OcrDbkContextPtr dbkcontext_sp = boost::dynamic_pointer_cast<OcrDbkContext>(found->second);
       ocrDbkContextList.push_back(dbkcontext_sp);
     }
@@ -160,31 +160,13 @@ list<OcrDbkContextPtr> OcrObjectManager::getOcrDbkContextList(list<string> dbkNa
     // I will use the else block to register the OcrObjects using their name
     // When all OcrObject creation is in place replace the else to throw error
     else {
-      Logger::error(lg) << "dbkName: " << dbkName << " not found in m_ocrObjectMap\n";
+      Logger::error(lg) << "dbkName: " << dbkName << " not found in m_ocrDbkObjectMap\n";
       assert(false);
       // OcrDbkContextPtr dbkcontext_sp = registerOcrDbk(dbkName);
       // ocrDbkContextList.push_back(dbkcontext_sp);
     }
   }
   return ocrDbkContextList;
-}
-
-//! Check to see if the OcrObject is already registered
-//! If already registered return its context
-//! If not registered create a new context and insert in m_ocrObjectMap
-OcrEvtContextPtr OcrObjectManager::registerOcrEvt(string evtName) {
-  OcrObjectMapType::iterator f = m_ocrObjectMap.find(evtName);
-  OcrEvtContextPtr evtcontext_sp;
-  if(f != m_ocrObjectMap.end()) {
-    evtcontext_sp = boost::dynamic_pointer_cast<OcrEvtContext>(f->second);
-  }
-  else {
-    evtcontext_sp = boost::make_shared<OcrEvtContext>(evtName);
-    OcrObjectMapElemType elem(evtName, evtcontext_sp);
-    m_ocrObjectMap.insert(elem);
-  }
-  assert(evtcontext_sp);
-  return evtcontext_sp;
 }
 
 list<OcrEvtContextPtr> OcrObjectManager::registerOcrEvts(list<string> evtsNameList) {
@@ -197,13 +179,31 @@ list<OcrEvtContextPtr> OcrObjectManager::registerOcrEvts(list<string> evtsNameLi
   return evtContextsList;
 }
 
+//! Check to see if the OcrObject is already registered
+//! If already registered return its context
+//! If not registered create a new context and insert in m_ocrObjectMap
+OcrEvtContextPtr OcrObjectManager::registerOcrEvt(string evtName) {
+  OcrEvtObjectMap::iterator f = m_ocrEvtObjectMap.find(evtName);
+  OcrEvtContextPtr evtcontext_sp;
+  if(f != m_ocrEvtObjectMap.end()) {
+    evtcontext_sp = boost::dynamic_pointer_cast<OcrEvtContext>(f->second);
+  }
+  else {
+    evtcontext_sp = boost::make_shared<OcrEvtContext>(evtName);
+    OcrEvtObjectMapElem elem(evtName, evtcontext_sp);
+    m_ocrEvtObjectMap.insert(elem);
+  }
+  assert(evtcontext_sp);
+  return evtcontext_sp;
+}
+
 OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
 						  SgInitializedName* vdefn,
 						  list<SgNode*> allocStmts) {
   Logger::Logger lg("OcrObjectManager::registerOcrDbk");
-  OcrObjectMapType::iterator f = m_ocrObjectMap.find(dbkName);
+  OcrDbkObjectMap::iterator f = m_ocrDbkObjectMap.find(dbkName);
   OcrDbkContextPtr dbkcontext_sp;
-  if(f != m_ocrObjectMap.end()) {
+  if(f != m_ocrDbkObjectMap.end()) {
     Logger::debug(lg) << "f=true\n";
     dbkcontext_sp = boost::dynamic_pointer_cast<OcrDbkContext>(f->second);
     assert(dbkcontext_sp);
@@ -211,8 +211,8 @@ OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
   else {
     Logger::debug(lg) << "f=false\n";
     dbkcontext_sp = boost::make_shared<OcrDbkContext>(dbkName, vdefn, allocStmts);
-    OcrObjectMapElemType elem(dbkName, dbkcontext_sp);
-    m_ocrObjectMap.insert(elem);
+    OcrDbkObjectMapElem elem(dbkName, dbkcontext_sp);
+    m_ocrDbkObjectMap.insert(elem);
   }
   return dbkcontext_sp;
 }
@@ -225,9 +225,9 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
 						  list<OcrEvtContextPtr> evtsToSatisfy,
 						  list<SgNode*> depElems,
 						  list<SgNode*> taskStatements) {
-  OcrObjectMapType::iterator f = m_ocrObjectMap.find(edtName);
+  OcrEdtObjectMap::iterator f = m_ocrEdtObjectMap.find(edtName);
   OcrEdtContextPtr edtcontext_sp;
-  if(f != m_ocrObjectMap.end()) {
+  if(f != m_ocrEdtObjectMap.end()) {
     edtcontext_sp = boost::dynamic_pointer_cast<OcrEdtContext>(f->second);
   }
   else {
@@ -235,8 +235,8 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
 						      depDbks, evtsToSatisfy,
 						      depElems, taskStatements);
 
-    OcrObjectMapElemType elem(edtName, edtcontext_sp);
-    m_ocrObjectMap.insert(elem);
+    OcrEdtObjectMapElem elem(edtName, edtcontext_sp);
+    m_ocrEdtObjectMap.insert(elem);
   }
   assert(edtcontext_sp);
   return edtcontext_sp;
