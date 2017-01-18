@@ -213,7 +213,7 @@ list<SgNode*> OcrTaskPragmaParser::identifiers2sgnlist(list<string> identifiersL
 }
 
 bool OcrTaskPragmaParser::match() {
-  Logger::Logger lg("OcrTaskPragmaParser::match()", Logger::DEBUG) ;
+  Logger::Logger lg("OcrTaskPragmaParser::match()") ;
   try {
     smatch matchResults;
     // Check if the pragma matches the task annotation format
@@ -438,7 +438,7 @@ list<SgNode*> OcrDbkPragmaParser::getAllocStmt(SgInitializedName* sgn) {
 }
 
 bool OcrDbkPragmaParser::match() {
-  Logger::Logger lg("OcrDbkPragmaParser::match()", Logger::DEBUG);
+  Logger::Logger lg("OcrDbkPragmaParser::match()");
   string pstr = m_sgpdecl->get_pragma()->get_pragma();
   try {
     smatch matchResults;
@@ -497,6 +497,10 @@ bool OcrDbkPragmaParser::match() {
  * OcrPragmaParser *
  *******************/
 OcrPragmaParser::OcrPragmaParser() { }
+
+const OcrObjectManager& OcrPragmaParser::getOcrObjectManager() const {
+  return m_ocrObjectManager;
+}
 
 void OcrPragmaParser::visit(SgNode* sgn) {
   if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {

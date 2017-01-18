@@ -112,6 +112,7 @@ class OcrPragmaParser : public AstSimpleProcessing {
  public:
   OcrPragmaParser();
   void visit(SgNode* sgn);
+  const OcrObjectManager& getOcrObjectManager() const;
   OcrPragmaType identifyPragmaType(std::string pragmaString);
   void astIterate(SgPragmaDeclaration* sgn);
   bool isMatchingPragma(SgNode* sgn);
