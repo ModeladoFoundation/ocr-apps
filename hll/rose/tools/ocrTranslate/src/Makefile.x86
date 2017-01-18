@@ -35,7 +35,7 @@ endif
 CC := g++
 CFLAGS := $(ROSE_INC)
 OCRTRANSLATE_HEADERS := ocrObjectInfo.h ocrPragmaParsing.h logger.h
-OCRTRANSLATE_SRCS := ocrObjectInfo.cpp ocrPragmaParsing.cpp logger.cpp ocrTranslate.cpp
+OCRTRANSLATE_SRCS := ocrObjectInfo.cpp ocrPragmaParsing.cpp ocrTranslateEngine.cpp logger.cpp ocrTranslate.cpp
 OCRTRANSLATE_OBJS := $(notdir $(OCRTRANSLATE_SRCS:.cpp=.o))
 
 %.o: %.cpp $(OCRTRANSLATE_HEADERS)
