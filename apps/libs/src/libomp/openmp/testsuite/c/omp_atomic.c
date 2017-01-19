@@ -74,13 +74,8 @@ int <ompts:testcode:functionname>omp_atomic</ompts:testcode:functionname> (FILE 
 #pragma omp for
             for (i = 0; i < LOOPCOUNT; i++)
             {
-                #ifndef KMP_OS_TGR
                  <ompts:check>#pragma omp atomic</ompts:check>
                  diff -= i;
-				 #else
-				 /* xstg-clang emits the unsupported __sync_fetch_and_sub_4 */
-                 __sync_fetch_and_add(&diff, -i); /* diff -= i; */
-				 #endif
             }
         </ompts:orphan>
     }
@@ -137,13 +132,8 @@ int <ompts:testcode:functionname>omp_atomic</ompts:testcode:functionname> (FILE 
 #pragma omp for
             for (i = 0; i < DOUBLE_DIGITS; ++i)
             {
-                #ifndef KMP_OS_TGR
                 <ompts:check>#pragma omp atomic</ompts:check>
                 ddiff -= pow (dt, i);
-				#else
-				 /* xstg-clang emits the unsupported __sync_fetch_and_sub_4 */
-                __sync_fetch_and_add(&diff, -pow(dt, i));
-				#endif
             }
          </ompts:orphan>
     }
@@ -246,13 +236,8 @@ int <ompts:testcode:functionname>omp_atomic</ompts:testcode:functionname> (FILE 
 #pragma omp for
             for (i = 0; i < LOOPCOUNT; ++i)
             {
-				#ifndef KMP_OS_TGR
                 <ompts:check>#pragma omp atomic</ompts:check>
                 x--;
-				#else
-				 /* xstg-clang emits the unsupported __sync_fetch_and_sub_4 */
-                __sync_fetch_and_add(&x, -1);
-				#endif
             }
         </ompts:orphan>
     }
