@@ -33,7 +33,7 @@ endif
 	cp $(ASTGEN) ../bin
 
 CC := g++
-CFLAGS := $(ROSE_INC)
+CFLAGS := $(ROSE_INC) -g
 OCRTRANSLATE_HEADERS := ocrObjectInfo.h ocrPragmaParsing.h logger.h
 OCRTRANSLATE_SRCS := ocrObjectInfo.cpp ocrPragmaParsing.cpp ocrTranslateEngine.cpp logger.cpp ocrTranslate.cpp
 OCRTRANSLATE_OBJS := $(notdir $(OCRTRANSLATE_SRCS:.cpp=.o))
@@ -52,6 +52,6 @@ install: $(TARGETS)
 .PHONY: clean
 clean:
 	rm -f ../bin/$(OCRTRANSLATE)
-	rm -f $(OCRTRANSLATE)
+	rm -f $(OCRTRANSLATE) ../tests/rose_*
 	rm -f *.o
 	rm -f *~
