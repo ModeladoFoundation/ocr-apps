@@ -84,6 +84,12 @@ string OcrEdtContext::get_name() const {
   return m_name;
 }
 
+SgSourceFile* OcrEdtContext::getSourceFile() {
+  assert(m_statements.size() > 0);
+  SgNode* sgn = *m_statements.begin();
+  return SageInterface::getEnclosingSourceFile(sgn);
+}
+
 string OcrEdtContext::str() const {
   ostringstream oss;
   string indent = " ";
@@ -240,4 +246,8 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
   }
   assert(edtcontext_sp);
   return edtcontext_sp;
+}
+
+const OcrEdtObjectMap& OcrObjectManager::getOcrEdtObjectMap() const {
+  return m_ocrEdtObjectMap;
 }

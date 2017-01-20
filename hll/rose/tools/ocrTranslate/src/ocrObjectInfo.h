@@ -102,6 +102,7 @@ public:
 		std::list<SgNode*> depElems, std::list<SgNode*> taskStatements);
   std::string get_name() const;
   std::string str() const;
+  SgSourceFile* getSourceFile();
   ~OcrEdtContext();
 };
 
@@ -149,6 +150,9 @@ class OcrObjectManager {
 				  std::list<OcrEvtContextPtr> evtsToSatisfy,
 				  std::list<SgNode*> depElems,
 				  std::list<SgNode*> taskStatements);
+
+  // Access functions
+  const OcrEdtObjectMap& getOcrEdtObjectMap() const;
 };
 
 #endif
