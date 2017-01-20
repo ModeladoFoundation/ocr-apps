@@ -24,6 +24,7 @@ clean:
 	$(MAKE) -C libswtest clean
 ifeq ($(ARCH),tg-xe)
 	$(MAKE) -C libtgr TGR_TYPE=tg-xe clean
+	$(MAKE) -C libtgr TGR_TYPE=tg-ce clean
 	$(MAKE) -C libomp clean
 	$(MAKE) -C compiler-rt-builtins -f Makefile.tg-xe clean
 endif

@@ -104,6 +104,10 @@ all default : tgr-ce
 install : tgr-ce
 	@echo " * tgkrnl-tgr -> $(APPS_INSTALL)/lib"
 	@cp $(TGR_TGKRNL_BUILD)/tgkrnl.dbg $(APPS_INSTALL)/lib/tgkrnl-tgr
+	@echo " * elf64_xstg_swtest.t -> $(APPS_INSTALL)/lib"
+	@cp elf64_xstg_swtest.t $(APPS_INSTALL)/lib/elf64_xstg_swtest.t
+	@echo " * elf64_xstg_tgr.t -> $(APPS_INSTALL)/lib"
+	@cp elf64_xstg_tgr.t $(APPS_INSTALL)/lib/elf64_xstg_tgr.t
 
 tgr-ce : $(TGR_CE_BUILD) $(TGR_TGKRNL_BUILD)/tgkrnl
 
@@ -125,9 +129,9 @@ $(TGR_TGKRNL_BUILD) :
 $(TGR_TGKRNL_BUILD)/tgkrnl : $(TGR_CE_LIB) $(TGR_TGKRNL_BUILD)
 	@echo " ** building tgkrnl"
 	$(AT)cd $(TGR_TGKRNL_BUILD) ;\
-		TG_ROOT=$(TG_ROOT) $(MAKE) -f make-me.make TGR_LIB=$^ clean
+		TG_ROOT=$(TG_ROOT) $(MAKE) -f make-me.make TGR_LIB=$(TGR_CE_LIB) clean
 	$(AT)cd $(TGR_TGKRNL_BUILD) ;\
-		TG_ROOT=$(TG_ROOT) $(MAKE) -f make-me.make TGR_LIB=$^ default
+		TG_ROOT=$(TG_ROOT) $(MAKE) -f make-me.make TGR_LIB=$(TGR_CE_LIB) default
 
 $(TGR_CE_BUILD) :
 	@echo "making '$@'"
