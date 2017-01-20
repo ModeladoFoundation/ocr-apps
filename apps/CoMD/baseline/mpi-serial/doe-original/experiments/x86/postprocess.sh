@@ -1,11 +1,13 @@
 #!/bin/bash
 
-root="JOB_MPI_CoMD"
+source experiments/x86/parameters.job
+
+root="${JOBHEADER}_MPI_CoMD"
 
 rm ${root}.post
 rm ${root}1.post
 
-for nodes in 1 4 8 64 216 512 1024; do
+for nodes in ${NODE_LIST0[@]}; do
 
     pfile=${root}_$nodes.out
 
@@ -45,3 +47,6 @@ for nodes in 1 4 8 64 216 512 1024; do
     done
 
 done
+
+
+awk 'NR==FNR{a[NR]=$0;next}{print a[FNR],$0}' ${root}1.post ${root}.post > ${root}_results.post

@@ -1,11 +1,13 @@
 #!/bin/bash
 
-root="JOB_XSBench"
+source experiments/x86/parameters.job
+
+root="${JOBHEADER}_MPI_XSBench"
 
 rm ${root}.post
 rm ${root}1.post
 
-for nodes in 1; do
+for nodes in ${NODE_LIST0[@]}; do
 
     pfile=${root}_$nodes.out
 
@@ -31,3 +33,6 @@ for nodes in 1; do
     done
 
 done
+
+
+awk 'NR==FNR{a[NR]=$0;next}{print a[FNR],$0}' ${root}1.post ${root}.post > ${root}_results.post

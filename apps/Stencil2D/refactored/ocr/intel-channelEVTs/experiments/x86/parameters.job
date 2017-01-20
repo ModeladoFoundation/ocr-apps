@@ -1,12 +1,22 @@
-#NODE_LIST0=(1 4 8 64 216 512 1024)   #OLD
-#THREAD_LIST=(1 4 8 16 24)     #Compute workers per node  #OLD
-NODE_LIST0=(1 4 16 64 256 484 1024)
+HOST_ID=`hostname -s`
+
+case $HOST_ID in
+edison*)
+NODE_LIST0=(1 4 16 64 216 484 1024)
 THREAD_LIST=(1 4 16 24)     #Compute workers per node
-PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
+    ;;
+
+thor*)
+NODE_LIST0=(1 4 8 64 128)
+THREAD_LIST=(1 4 8 16 36)     #Compute workers per node
+    ;;
+esac
+
+PROFILER_LIST=("noProf") # "minimalProf" "detailedProf")
 SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
 SIZE_LIST_STENCIL2D=("small" "medium")
 TASKFACTOR_LIST=(1 2)  #4 seems to be hanging with OCR
-ARCH_LIST=("x86" "x86-mpiprobe" "x86-mpi")
-SCHEDULER_LIST=("workstealing" "static")
+ARCH_LIST=("x86" "x86-mpi")
+SCHEDULER_LIST=("workstealing") #  "static")
 APPOPTS_LIST=("noEagerDB" "wEagerDB")
-JOBHEADER="JOB"
+JOBHEADER="J"

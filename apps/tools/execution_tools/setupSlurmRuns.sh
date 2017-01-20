@@ -8,9 +8,21 @@ fi
 source $APPS_ROOT/tools/execution_tools/aux_bash_functions
 source ./experiments/x86/parameters.job
 
+HOST_ID=`hostname -s`
+
 JOBHEADER=${JOBHEADER-JOBPrb}
 
-PHYSICAL_CORES_PER_NODE=24  #Available cores per node
+PHYSICAL_CORES_PER_NODE=16  #Available cores per node
+
+case $HOST_ID in
+edison*)
+    PHYSICAL_CORES_PER_NODE=24
+    ;;
+
+thor*)
+    PHYSICAL_CORES_PER_NODE=36
+    ;;
+esac
 
 CONFIG_GENERATE=${OCR_TOP}/ocr/install/share/ocr/scripts/Configs/config-generator.py
 
@@ -223,7 +235,7 @@ function getProfilerArgs()
         ;;
 
     minimalProf)
-        MAKE_PROFILER_ARGS="ENABLE_PROFILER=yes PROFILER_FOCUS=userCode PROFILER_IGNORE_RT=yes PROFILER_COUNT_OTHER=yes"
+        MAKE_PROFILER_ARGS='ENABLE_PROFILER=yes PROFILER_FOCUS=userCode PROFILER_IGNORE_RT=yes PROFILER_COUNT_OTHER=yes'
         ;;
 
     detailedProf)
@@ -524,7 +536,24 @@ function generateJobScript()
     local hours="4"
     local minutes="00"
 
-    local TPL_NAME="${APPS_ROOT}/tools/execution_tools/EdisonJob.template"
+    local tplName=""
+    local queue=""
+
+    case $HOST_ID in
+
+    edison*)
+        tplName="EdisonJob.template"
+        queue="regular"
+        ;;
+
+    thor*)
+        tplName="ThorJob.template"
+        queue="XAS"
+        ;;
+
+    esac
+
+    local TPL_NAME="${APPS_ROOT}/tools/execution_tools/${tplName}"
     JOBNAME=${JOBHEADER}_${type}_${app_name}_${nodes}
     OUTNAME=${JOBNAME}.sh
 
@@ -608,6 +637,7 @@ for profiler in ${PROFILER_LIST[@]}; do
 
                             #rm -rf build install
                             #MAKE_COMMAND=`echo ${STATIC_SCHEDULER_MAKE_OPTS} CFLAGS=\"${CFLAGS}\" OCR_INSTALL=${OCR_INSTALL} V=1 make -f Makefile.$arch clean install`
+                            #MAKE_COMMAND=`echo ${STATIC_SCHEDULER_MAKE_OPTS} CFLAGS=\"${CFLAGS}\" OCR_ROOT=${OCR_INSTALL}/.. ${MAKE_PROFILER_ARGS} V=1 make -f Makefile.$arch clean install`
                             MAKE_COMMAND=`echo ${STATIC_SCHEDULER_MAKE_OPTS} CFLAGS=\"${CFLAGS}\" OCR_ROOT=${OCR_INSTALL}/.. V=1 make -f Makefile.$arch clean install`
                             eval $MAKE_COMMAND | tee make.log
                             CONFIG_FLAGS=`getConfigFlags $app_name`
@@ -644,7 +674,7 @@ for profiler in ${PROFILER_LIST[@]}; do
 
                                     WORKLOAD_ARGS=`getworkloadargs $scalingtype $nodes $computeThreads $taskfactor $size $app_name ocr`
 
-                                    RUN_COMMAND=`echo RUN_MODE=runApp OCR_TYPE=$arch OCR_INSTALL=${OCR_INSTALL} WORKLOAD_INSTALL_ROOT=./${install_root} OCR_CONFIG=$PWD/${ndir}/generated.cfg OCR_NUM_NODES=${nodes} CONFIG_NUM_THREADS=${runtimeThreads} WORKLOAD_ARGS=\"${WORKLOAD_ARGS}\" ${MAKE_PROFILER_ARGS} make run`
+                                    RUN_COMMAND=`echo RUN_MODE=runApp OCR_TYPE=$arch OCR_INSTALL=${OCR_INSTALL} WORKLOAD_INSTALL_ROOT=./${install_root} OCR_CONFIG=$PWD/${ndir}/generated.cfg OCR_NUM_NODES=${nodes} CONFIG_NUM_THREADS=${runtimeThreads} WORKLOAD_ARGS=\"${WORKLOAD_ARGS}\" make run`
 
                                     echo $RUN_COMMAND | tee run_command
                                     mv run_command $ndir/
@@ -652,7 +682,9 @@ for profiler in ${PROFILER_LIST[@]}; do
                                     echo "echo ${profiler} ${scalingtype} ${size} ${taskfactor} ${appopts} ${schedulername} ${nodes} ${computeThreads} ${arch0}"  >> ${OUTNAME}
                                     #echo "echo $RUN_COMMAND" >> ${OUTNAME}
                                     echo $RUN_COMMAND >> ${OUTNAME}
-                                    echo $RUN_COMMAND >> ${OUTNAME}
+                                    if [[ ${profiler} == "noProf" ]]; then
+                                        echo $RUN_COMMAND >> ${OUTNAME}
+                                    fi
                                     echo "" >> ${OUTNAME}
 
                                 done #computeThreads

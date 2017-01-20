@@ -1,21 +1,23 @@
 #!/bin/bash
 
-root="JEDB_ocr_Stencil2D"
+source experiments/x86/parameters.job
+
+root="${JOBHEADER}_ocr_Stencil2D"
 
 rm ${root}.post
 rm ${root}1.post
 
-for nodes in 1 4 16 64 256 484 1024; do
+for nodes in ${NODE_LIST0[@]}; do
 
     pfile=${root}_$nodes.out
 
-    grep "noProf " $pfile >> ${root}1.post
+    grep "Prof " $pfile >> ${root}1.post
 
-    numRuns=`grep 'noProf ' $pfile | wc -l`
+    numRuns=`grep 'Prof ' $pfile | wc -l`
 
     for ((k=1;k<=numRuns;k++)); do
         tfile="temp.file"
-        awk -v n="$k" '/noProf / {f=0}; f && c==n; /noProf / {f=1; c++}' $pfile > temp.file
+        awk -v n="$k" '/Prof / {f=0}; f && c==n; /Prof / {f=1; c++}' $pfile > temp.file
 
         matchFound=`grep 'Rate (MFlops/s)' $tfile | wc -l`
         if [[ $matchFound != 0 ]]; then
@@ -31,3 +33,5 @@ for nodes in 1 4 16 64 256 484 1024; do
     done
 
 done
+
+awk 'NR==FNR{a[NR]=$0;next}{print a[FNR],$0}' ${root}1.post ${root}.post > ${root}_results.post

@@ -1,5 +1,17 @@
+HOST_ID=`hostname -s`
+
+case $HOST_ID in
+edison*)
 NODE_LIST0=(1)
 THREAD_LIST=(1 2 4 8 16 24)     #Compute workers per node
+    ;;
+
+thor*)
+NODE_LIST0=(1)
+THREAD_LIST=(1 2 4 8 16 24 36)     #Compute workers per node
+    ;;
+esac
+
 SCALINGTYPE_LIST=("strongscaling")
-SIZE_LIST_STENCIL2D=("small" "large")
-JOBHEADER="JOB"
+SIZE_LIST_BENCH=("small" "large")
+JOBHEADER="J"

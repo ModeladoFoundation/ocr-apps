@@ -1,10 +1,22 @@
+HOST_ID=`hostname -s`
+
+case $HOST_ID in
+edison*)
 NODE_LIST0=(1)
 THREAD_LIST=(1 2 4 8 16 24)     #Compute workers per node
+    ;;
+
+thor*)
+NODE_LIST0=(1)
+THREAD_LIST=(1 2 4 8 16 24 36)     #Compute workers per node
+    ;;
+esac
 PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
 SCALINGTYPE_LIST=("strongscaling")
-SIZE_LIST_STENCIL2D=("small" "large")
+SIZE_LIST_BENCH=("small" "large")
 TASKFACTOR_LIST=(1 2 4)
 ARCH_LIST=("x86")
 SCHEDULER_LIST=("workstealing" "static")
 APPOPTS_LIST=("noEagerDB")
-JOBHEADER="JEDB"
+JOBHEADER="J"
+benchBaseTaskSize=1000

@@ -123,9 +123,10 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
         mkdir -p ./${winstall}/tg/logs
         #RUN_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg run WORKLOAD_ARGS='-x ${size} -y ${size} -z ${size} -i $((2*${rx})) -j $((2*${ry})) -k $((2*${rz})) -N ${iter} -n ${iter}'"
         WDIR=`pwd`
-        RUN_CMD="TG_INSTALL=$TG_TOP/tg/install WORKLOAD_INSTALL=$WDIR/${winstall}/tg $TG_TOP/tg/install/bin/fsim -s -L $WDIR/${winstall}/tg/logs -c $WDIR/${machineConfigFile} -c $WDIR/${winstall}/tg/config.cfg -c $TG_TOP/tg/install/fsim-configs/Energy.cfg -c $TG_TOP/tg/install/fsim-configs/dvfs-default.cfg"
+        RUN_CMD="ENERGY=yes TG_INSTALL=$TG_TOP/tg/install WORKLOAD_INSTALL=$WDIR/${winstall}/tg $TG_TOP/tg/install/bin/fsim -s -L $WDIR/${winstall}/tg/logs -c $WDIR/${machineConfigFile} -c $WDIR/${winstall}/tg/config.cfg -c $TG_TOP/tg/install/fsim-configs/Energy.cfg -c $TG_TOP/tg/install/fsim-configs/dvfs-default.cfg"
         echo date >> ${jfile}.sh
         echo $RUN_CMD >> ${jfile}.sh
+        echo date >> ${jfile}.sh
 
     done
     done

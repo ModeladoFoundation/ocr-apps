@@ -123,9 +123,10 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
         mkdir -p ./${winstall}/tg/logs
         #RUN_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg run WORKLOAD_ARGS='-s ${size} -t $((8*$BLOCKCOUNT)) -l ${iter}'"
         WDIR=`pwd`
-        RUN_CMD="TG_INSTALL=$TG_TOP/tg/install WORKLOAD_INSTALL=$WDIR/${winstall}/tg $TG_TOP/tg/install/bin/fsim -s -L $WDIR/${winstall}/tg/logs -c $WDIR/${machineConfigFile} -c $WDIR/${winstall}/tg/config.cfg -c $TG_TOP/tg/install/fsim-configs/Energy.cfg -c $TG_TOP/tg/install/fsim-configs/dvfs-default.cfg"
+        RUN_CMD="ENERGY=yes TG_INSTALL=$TG_TOP/tg/install WORKLOAD_INSTALL=$WDIR/${winstall}/tg $TG_TOP/tg/install/bin/fsim -s -L $WDIR/${winstall}/tg/logs -c $WDIR/${machineConfigFile} -c $WDIR/${winstall}/tg/config.cfg -c $TG_TOP/tg/install/fsim-configs/Energy.cfg -c $TG_TOP/tg/install/fsim-configs/dvfs-default.cfg"
         echo date >> ${jfile}.sh
         echo $RUN_CMD >> ${jfile}.sh
+        echo date >> ${jfile}.sh
 
     done
     done
