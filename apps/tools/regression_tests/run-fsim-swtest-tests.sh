@@ -19,9 +19,13 @@ source ./setup-test-env.sh
 
 export FSIM_EXE="fsim-swtest"
 
+
 # Tests to run
-TESTS="tg_cdemo_nonewlib tg_cdemo tg_cxxdemo tg_throw
-legacy_cxxhello legacy_hello legacy_iotest
+TESTS="\
+tg_cdemo tg_cdemo.p tg_cdemo_nonewlib tg_cdemo_nonewlib.p
+tg_cxxdemo tg_cxxdemo.p tg_throw tg_throw.p
+legacy_cxxhello legacy_cxxhello.p
+legacy_hello legacy_hello.p legacy_iotest legacy_iotest.p
 PIE_fptr_simple PIE_multi_seg"
 
 if [[ $1 == "-h" ]]; then
@@ -38,30 +42,33 @@ for TEST in $TESTS; do
 
   declare -a REGEXS=("ready alarm")
 
+  # Remove the location prefix to get the test filename.
+  TEST_FILE=$(echo $TEST | sed 's/\(tg\|legacy\|PIE\)_//')
+
   # Set up the env for the test
   case $TEST in
-    tg_cdemo_nonewlib)
+    tg_cdemo_nonewlib|tg_cdemo_nonewlib.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/swtest
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1.cfg -- $WORKLOAD_INSTALL/cdemo_nonewlib"
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("XE0 stdout: 13" "ce_write to f" "XE0 stdout: end")
       REGEXS+=("XE0 stderr: 13" "ce_write to f" "XE0 stderr: end")
       REGEXS+=("XE0 info: terminate alarm")
     ;;
-    tg_cdemo)
+    tg_cdemo|tg_cdemo.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/swtest
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1.cfg -- $WORKLOAD_INSTALL/cdemo"
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("XE0 stdout: 13" "Write to fd 1" "XE0 stdout: end")
       REGEXS+=("XE0 stderr: 13" "Write to fd 2" "XE0 stderr: end")
       REGEXS+=("XE0 info: terminate alarm")
     ;;
-    tg_cxxdemo)
+    tg_cxxdemo|tg_cxxdemo.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/swtest
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1l2.cfg -- $WORKLOAD_INSTALL/cxxdemo foo bar"
-      REGEXS+=("App $WORKLOAD_INSTALL/cxxdemo: 3 args")
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1l2.cfg -- $WORKLOAD_INSTALL/$TEST_FILE foo bar"
+      REGEXS+=("App $WORKLOAD_INSTALL/$TEST_FILE: 3 args")
     ;;
-    tg_throw)
+    tg_throw|tg_throw.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/swtest
-      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1l2.cfg -- $WORKLOAD_INSTALL/throw"
+      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1l2.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("29" "do_try: Calling middle(4)" "16" "middle e(10)")
       REGEXS+=("52" "struct error(.*) = 10 destructor" "28" "do_try: middle returns 5")
       REGEXS+=("29" "do_try: Calling middle(7)" "16" "middle e(10)")
@@ -70,35 +77,44 @@ for TEST in $TESTS; do
       REGEXS+=("51" "struct error(.*) = 7 destructor")
     ;;
     legacy_cxxhello)
+      TEST_FILE=cxxhello.swtest
+    ;;&
+    legacy_cxxhello|legacy_cxxhello.p)
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/c++cfg.cfg -- $WORKLOAD_INSTALL/cxxhello"
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/c++cfg.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("CE: XE0 stdout: 13" "Hello World!" "CE: XE0 stdout: end")
       REGEXS+=("CE: XE0 stdout: 17" "cplus output: 20" "CE: XE0 stdout: end")
     ;;
     legacy_hello)
+      TEST_FILE=hello.swtest
+    ;;&
+    legacy_hello|legacy_hello.p)
       # NOTE: It is very unlikly, but if this test is run just as the UTS time is turning midnight, it may
       # fail as the day will change as it is running.
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/hello"
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("CE: XE0 stdout: 13" "Hello World!" "CE: XE0 stdout: end" "time = $(date -u +'%a %b %-d %H:%M:.. %Y')")
       REGEXS+=("float = 1\.000000" "ret = 15" "terminate alarm")
     ;;
     legacy_iotest)
+      TEST_FILE=iotest.swtest
+    ;;&
+    legacy_iotest|legacy_iotest.p)
       TEST_DIR=/tmp/${USER}_iotest
       rm -rf $TEST_DIR
       mkdir $TEST_DIR
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/iotest $TEST_DIR"
+      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/$TEST_FILE $TEST_DIR"
       REGEXS+=("all good." "terminate alarm")
     ;;
     PIE_fptr_simple)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
-      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/fptr_simple"
+      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("v2 is: 6" "PASSED: v2 == 6" "terminate alarm")
     ;;
     PIE_multi_seg)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
-      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/multi_seg"
+      export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("\*b is: 42, \*y\[0] is: 42, xint is: 42"
                "\*b is: 42, \*y\[0] is: 7, xint is: 42"
                "\*b is: 7, \*y\[0] is: 7, xint is: 42"
