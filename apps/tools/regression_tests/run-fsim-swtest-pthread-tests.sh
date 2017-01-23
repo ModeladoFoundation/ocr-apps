@@ -17,7 +17,12 @@ source ./setup-test-env.sh
 export FSIM_EXE="fsim-swtest"
 
 # Tests to run
-TESTS="pthread_simple pthread_detach pthread_malloc pthread_mutex_recursive pthread_cancel"
+TESTS="\
+pthread_simple pthread_simple.p
+pthread_detach pthread_detach.p
+pthread_malloc pthread_malloc.p
+pthread_mutex_recursive pthread_mutex_recursive.p
+pthread_cancel pthread_cancel.p"
 
 if [[ $1 == "-h" ]]; then
   echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests"
@@ -33,35 +38,31 @@ for TEST in $TESTS; do
 
   declare -a REGEXS=("ready alarm")
 
+  # Add a .swtest if the test doesn't end in .p
+  TEST_FILE=$(echo $TEST | grep ".*\.p$" || echo $TEST".swtest")
+
+  export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
+  export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
+
   # Set up the env for the test
   case $TEST in
-    pthread_simple)
-      export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_simple"
+    pthread_simple|pthread_simple.p)
       REGEXS+=("Child done" "Child knew who it was" "Child returned 1234" "Global val was 42")
     ;;
-    pthread_detach)
-      export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_detach"
+    pthread_detach|pthread_detach.p)
       REGEXS+=("making thread 1 (detached)" "making thread 2" "detaching thread 2" "parent done")
     ;;
-    pthread_malloc)
-      export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_malloc"
+    pthread_malloc|pthread_malloc.p)
       REGEXS+=("Child1 done" "Child2 done" "Parent done")
     ;;
-    pthread_mutex_recursive)
-      export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_mutex_recursive"
+    pthread_mutex_recursive|pthread_mutex_recursive.p)
       REGEXS+=("TEST: recursive" "main: creating child" "child: recursing" "child: done"
                "main: joined child" "main: locking mutex" "SUCCESS! Value was 42"
                "TEST: error check" "main: creating child" "child: recursing"
                "child: mutex already locked" "child: done" "main: joined child"
                "main: locking mutex" "SUCCESS! Value was 1")
     ;;
-    pthread_cancel)
-      export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
-      export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/pthread_cancel"
+    pthread_cancel|pthread_cancel.p)
       REGEXS+=("testing Enable Deferred" "joined thread"
                "testing Disable Deferred" "testing cancel" "enabling cancel" "joined thread"
                "testing Enable Async" "joined thread"
