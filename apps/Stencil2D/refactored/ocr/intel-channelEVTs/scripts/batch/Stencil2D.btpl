@@ -6,13 +6,28 @@
 #SBATCH -o ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGN
 #SBATCH -L SCRATCH
 
+export OCR_INSTALL=ARG_OCR_INSTALL
 export RUN_MODE=runApp
 
 export REPO_TOP=ARG_REPO_TOP
 export XST_BATCH="yes"
-. ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
+.  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
+
+export tile=${tile-ARG_TILE}
+export iter=${iter-ARG_ITER}
+
+if [[ ${XST_BATCH} == "yes" ]]; then
+    if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
+        # arrange for logs to be under the submit folder
+        submitdirName=${SLURM_SUBMIT_DIR##*/}
+        rundirName="rundir.ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGN"
+        mkdir -p ${submitdirName}/${rundirName}
+        export LOGDIR="${submitdirName}/${rundirName}"
+    fi
+fi
 
 cd ${REPO_TOP}/apps/apps/Stencil2D/refactored/ocr/intel-channelEVTs
+
 export OCR_NUM_NODES=ARG_NODE_SCALING
 
 function myroot()
@@ -22,19 +37,30 @@ function myroot()
 }
 
 function runnerWorkloadArguments {
-    scale_factor=`myroot ${nodes} 2`
-    export WORKLOAD_ARGS="$((${scale_factor}*8640)) ${pes_comp} 200"
+    # To hack the first worker to be a computation worker in single-node distributed
+    # Add 1 to pes_comp because the scaling driver substract one by default for distributed
+    if [[ $HACK_SPECIAL_WORKER == "HC" ]]; then
+        pes_comp=$(( $pes_comp + 1 ))
+    fi
+
+    # Adjust number of domains when reaching the maximum number of cores per nodes
+    # On edison, that's the core upper bound
+    #Hmm, this is really bad for OCR + static scheduler
+    if [[ "${pes_per_node}" == "24" ]]; then
+        domainCount=${pes_all}
+    else
+        domainCount=${pes_comp}
+    fi
+    scale_factor=`myroot ${domainCount} 2`
+    export WORKLOAD_ARGS="$((${scale_factor}*${tile})) ${domainCount} ${iter}"
 }
 
-export SCALING_TYPE="ARG_SCALING_TYPE"
+lscpu
 
-echo "SLURM_JOB_NUM_NODES=${SLURM_JOB_NUM_NODES}"
-if [[ "${SCALING_TYPE}" == "ws" ]]; then
-    scale_factor=`myroot ${SLURM_JOB_NUM_NODES} 2`
-else
-    scale_factor=1
-fi
+export CFGARG_SCHEDULER="STATIC"
+#export CFGARG_TARGET="mpi_probe"
 
 export NODE_SCALING="ARG_NODE_SCALING"
 export CORE_SCALING="ARG_CORE_SCALING"
+export WORKLOAD_INSTALL_ROOT="ARG_APP_INSTALL"
 . ./scripts/scaling.sh

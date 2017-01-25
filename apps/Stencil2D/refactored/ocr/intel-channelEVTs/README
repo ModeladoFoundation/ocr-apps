@@ -5,7 +5,7 @@ Stencil-2D implementation based on Channel-Events
 
 == Optimizations ==
 
-* STENCIL_WITH_EAGER_DB: Use eager datablock hint (need gerrit patch 3536)
+* USE_EAGER_DB_HINT: Use eager datablock hint (need gerrit patch 3536)
 * STENCIL_WITH_DBUF_CHRECV: Use double buffering for both DBs and Channels. Allows satisfy on channel to be asynchronous when eager is on.
 * CHANNEL_EVENTS_AT_RECEIVER: Whether the channel used to do the halo exchange is sender or receiver-based
 

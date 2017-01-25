@@ -16,7 +16,7 @@ ranks=${ranks-"1 4 16 64 256"}
 
 #TODO This was just to get around sorting and figuring out the size
 for count in `echo $ranks`; do
-    input=${DIRE}/*_Stencil2D.${count}N
+    input=${DIRE}/*_Stencil2D*.${count}N
     nexp=`grep "MFlop" $input | wc -l`
     RES=`grep "MFlop" $input | awk '{print $3 " " $7}' | awk -v nexp="${nexp}" '{sum1+=$1; sum2+=$2} (NR%nexp)==0{print
 sum1/nexp " " sum2/nexp; sum1=0; sum2=0}'`
