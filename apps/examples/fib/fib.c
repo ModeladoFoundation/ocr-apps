@@ -43,7 +43,7 @@ ocrGuid_t complete(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     /* The app is done with the answers from fib(n-1) and fib(n-2) */
     ocrDbDestroy(depv[0].guid);
     ocrDbDestroy(depv[1].guid);
-
+    ocrDbRelease(depv[2].guid);
     /* and let our parent's completion know we're done with fib(n) */
     ocrEventSatisfy(inDep, depv[2].guid);
     return NULL_GUID;
@@ -92,6 +92,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbCreate(&fibArg[0], (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     PRINTF("In fibEdt(%u) -- created arg DB GUID "GUIDF"\n", n, GUIDA(fibArg[0]));
     *((u32*)ptr) = n-1;
+    ocrDbRelease(fibArg[0]);
     /* sched the EDT, passing the fibDone event as it's argument */
     fibPRM_t fibParamv0;
     {
@@ -110,7 +111,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbCreate(&fibArg[1], (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     PRINTF("In fibEdt(%u) -- created arg DB GUID "GUIDF"\n", n, GUIDA(fibArg[1]));
     *((u32*)ptr) = n-2;
-
+    ocrDbRelease(fibArg[1]);
     fibPRM_t fibParamv1;
     {
         fibParamv1.completeGuid = fibDone[1];
@@ -185,6 +186,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     /* DB is in/out */
     *res = input;
+    ocrDbRelease(fibArg);
     /* and an event for when the results are finished */
     ocrEventCreate(&totallyDoneEvent, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
     ocrAddDependence(totallyDoneEvent, absFinalEdt, 0, DB_DEFAULT_MODE);
