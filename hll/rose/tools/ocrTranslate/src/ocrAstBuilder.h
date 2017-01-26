@@ -18,9 +18,12 @@ namespace AstBuilder {
   SgFunctionDeclaration* buildOcrEdtFuncDecl(std::string name, SgScopeStatement* scope);
   SgVariableDeclaration* buildOcrEdtDepElem(SgVarRefExp* vref, SgScopeStatement* scope, SgFunctionDeclaration* decl);
   SgClassDeclaration* buildOcrEdtDepElems(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
+  void insertOcrEdtDepElemDecl(SgClassDeclaration* sdecl, SgScopeStatement* scope);
   void buildOcrEdtParams(SgFunctionDeclaration* edtdecl, SgScopeStatement* scope);
-  void buildOcrEdtStmts(std::list<SgStatement*>& stmtList, SgFunctionDeclaration* edtDecl);
+  void buildOcrEdtStmts(OcrEdtContextPtr edtContext, SgScopeStatement* scopes);
   SgFunctionDeclaration* buildOcrEdt(std::string name, OcrEdtContextPtr edtContext);
+
+  typedef std::map<std::string, SgClassDeclaration*> EdtDepElemSgTypeMap;
 };
 
 #endif
