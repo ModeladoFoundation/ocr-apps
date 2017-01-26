@@ -742,8 +742,8 @@ ocrGuid_t loadAtomsBufferEdt( EDT_ARGS )
     AtomExchangeParms* parms = depv[_idep++].ptr;
     char* sendBufM = depv[_idep++].ptr;
     char* sendBufP = depv[_idep++].ptr;
-    int* tagsendBufM = depv[_idep++].ptr;
-    int* tagsendBufP = depv[_idep++].ptr;
+    double* tagsendBufM = depv[_idep++].ptr;
+    double* tagsendBufP = depv[_idep++].ptr;
     parms->cellList[faceM] = depv[_idep++].ptr;
     parms->cellList[faceP] = depv[_idep++].ptr;
 
@@ -1083,8 +1083,8 @@ ocrGuid_t loadForceBufferEdt( EDT_ARGS )
     real_t* dfEmbed = depv[_idep++].ptr;
     char* sendBufM = depv[_idep++].ptr;
     char* sendBufP = depv[_idep++].ptr;
-    int* tagsendBufM = depv[_idep++].ptr;
-    int* tagsendBufP = depv[_idep++].ptr;
+    double* tagsendBufM = depv[_idep++].ptr;
+    double* tagsendBufP = depv[_idep++].ptr;
     parms->sendCells[faceM] = depv[_idep++].ptr;
     parms->sendCells[faceP] = depv[_idep++].ptr;
 
