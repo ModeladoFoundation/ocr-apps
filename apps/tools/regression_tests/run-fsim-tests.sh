@@ -52,7 +52,6 @@ for TEST in $TESTS; do
       export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
       ;;
     irqstress)
-      export FSIM_TIMEOUT=5
       export WORKLOAD_INSTALL="$TG_INSTALL/workloads/irqstress";
       export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/irqstress.cfg"
       ;;

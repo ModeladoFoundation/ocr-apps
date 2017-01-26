@@ -13,6 +13,8 @@
 #
 # This script optionally accepts:
 #   OUTPUT_FILE      - Log file (no path) to use as output instead of stdout
+#   TIMEOUT_SECONDS  - Number of seconds to allow the test to execute before
+#                      aborting. If empty, 0 or unset then no timeout.
 #
 # This script accepts command line parameters which are all regular
 # expressions. The output of the fsim simulation must contain a line
@@ -30,6 +32,7 @@ if [[ -z $TEST_NAME ]]; then
 fi
 
 REGEXS=("$@")
+unset TIMEOUT_PID
 
 function kill_fsim() {
   killall -e -9 -u $(whoami) $TG_INSTALL/bin/$FSIM_EXE 2>/dev/null
@@ -65,6 +68,17 @@ function fsim_success_test() {
   fi
 }
 
+function run_timeout() {
+  sleep ${TIMEOUT_SECONDS}
+  echo "Test timed out." 1>&2
+  kill_fsim
+}
+
+function activate_timeout() {
+  run_timeout &
+  TIMEOUT_PID=$!
+}
+
 echo "Running test $TEST_NAME"
 
 # Checking that $LOGS_DIR is not empty just for sanity. We do not want to try to remove /
@@ -74,6 +88,14 @@ kill_fsim
 
 OLD_DIR=$(pwd)
 cd $WORKLOAD_INSTALL
+
+# Make sure that the timeout timer will get killed when the test finishes.
+trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
+
+# Start the timeout timer if there is one specified
+[[ ${TIMEOUT_SECONDS:-0} != 0 ]] && activate_timeout
+SECONDS=0
+
 # Actually run fsim
 FSIM_CMD="$TG_INSTALL/bin/$FSIM_EXE -L $LOGS_DIR $FSIM_ARGS"
 [[ -n $VERBOSE ]] && echo "Running command '$FSIM_CMD'"
@@ -96,6 +118,10 @@ else
     RET=1
   fi
 fi
+
+# Kill the timeout timer
+[[ -n $TIMEOUT_PID ]] && kill ${TIMEOUT_PID} 2>/dev/null && wait $TIMEOUT_PID 2>/dev/null
+
 cd $OLD_DIR
 
 if [[ $RET -ne 0 ]]; then
