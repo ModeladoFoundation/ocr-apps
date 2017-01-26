@@ -83,7 +83,10 @@ namespace StrUtil {
 
   std::string SgInitializedName2Str(SgInitializedName* sgn);
   std::string SgInitializedNamePtrList2Str(std::list<SgInitializedName*>& sginitnamelist);
+  std::string SgVarRefExp2Str(SgVarRefExp* sgvref);
+  std::string SgVarRefExpList2Str(const std::list<SgVarRefExp*>& varRefExpList);
   std::string strlist2str(std::list<std::string>& strList);
-  std::string stmtlist2str(std::list<SgNode*> stmtlist, std::string indent="");
+  std::string stmtlist2str(const std::list<SgStatement*>& stmtlist, std::string indent="");
+  std::string stmtlist2str(const std::list<SgNode*>& stmtlist, std::string indent="");
   std::string sgnlist2str(std::list<SgNode*> sgnlist);
 };

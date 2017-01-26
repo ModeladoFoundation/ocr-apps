@@ -91,6 +91,23 @@ namespace AstDebug {
 };
 
 namespace StrUtil {
+  string SgVarRefExp2Str(SgVarRefExp* sgvref) {
+    return sgvref->get_symbol()->get_name().getString();
+  }
+
+  string SgVarRefExpList2Str(const list<SgVarRefExp*>& varRefExpList) {
+    ostringstream oss;
+    oss << "[";
+    list<SgVarRefExp*>::const_iterator i = varRefExpList.begin();
+    while(i != varRefExpList.end()) {
+      oss << SgVarRefExp2Str(*i);
+      ++i;
+      if(i != varRefExpList.end()) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+  }
+
   string SgInitializedName2Str(SgInitializedName* sgn) {
     return sgn->get_name().getString();
   }
@@ -120,9 +137,19 @@ namespace StrUtil {
     return oss.str();
   }
 
-  string stmtlist2str(list<SgNode*> stmtlist, string indent) {
+  string stmtlist2str(const list<SgNode*>& stmtlist, string indent) {
     ostringstream oss;
-    list<SgNode*>::iterator s = stmtlist.begin();
+    list<SgNode*>::const_iterator s = stmtlist.begin();
+    for( ; s != stmtlist.end(); ++s) {
+      oss << AstDebug::astToString(*s, indent) << endl;
+    }
+    return oss.str();
+  }
+
+
+  string stmtlist2str(const list<SgStatement*>& stmtlist, string indent) {
+    ostringstream oss;
+    list<SgStatement*>::const_iterator s = stmtlist.begin();
     for( ; s != stmtlist.end(); ++s) {
       oss << AstDebug::astToString(*s, indent) << endl;
     }
