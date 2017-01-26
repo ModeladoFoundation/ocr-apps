@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 #pragma ocr task end OEVENT(OEVT_fin)
   }
   else {
-#pragma ocr task begin TASK(TASK_do_add) \
+#pragma ocr task begin TASK(TASK_do_diff) \
   DEP_EVTs(OEVT_init) DEP_DBKs(DBK_in) DEP_ELEMs(size)
     do_diff(in, size);
 #pragma ocr task end OEVENT(OEVT_fin)
