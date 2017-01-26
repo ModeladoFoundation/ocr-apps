@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
   translator.translate();
 
   // Run internal consistency tests on AST
-  // AstTests::runAllTests(project);
+  AstTests::runAllTests(project);
 
   unparseProject(project);
   return 0;
