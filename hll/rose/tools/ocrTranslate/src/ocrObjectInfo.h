@@ -94,15 +94,17 @@ class OcrEdtContext : public OcrObjectContext {
   std::list<OcrEvtContextPtr> m_depEvts;
   std::list<OcrDbkContextPtr> m_depDbks;
   std::list<OcrEvtContextPtr> m_evtsToSatisfy;
-  std::list<SgNode*> m_depElems;
-  std::list<SgNode*> m_statements;
+  std::list<SgVarRefExp*> m_depElems;
+  std::list<SgStatement*> m_statements;
 public:
   OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
 		std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> evtsToSatisfy,
-		std::list<SgNode*> depElems, std::list<SgNode*> taskStatements);
+		std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements);
   std::string get_name() const;
   std::string str() const;
   SgSourceFile* getSourceFile();
+  std::list<SgStatement*> getStmtList() const;
+  std::list<SgVarRefExp*> getDepElems() const;
   ~OcrEdtContext();
 };
 
@@ -148,8 +150,8 @@ class OcrObjectManager {
   OcrEdtContextPtr registerOcrEdt(std::string edtName, std::list<OcrEvtContextPtr> depEvts,
 				  std::list<OcrDbkContextPtr> depDbks,
 				  std::list<OcrEvtContextPtr> evtsToSatisfy,
-				  std::list<SgNode*> depElems,
-				  std::list<SgNode*> taskStatements);
+				  std::list<SgVarRefExp*> depElems,
+				  std::list<SgStatement*> taskStatements);
 
   // Access functions
   const OcrEdtObjectMap& getOcrEdtObjectMap() const;

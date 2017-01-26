@@ -166,9 +166,9 @@ bool OcrTaskPragmaParser::isMatchingPragma(SgNode* sgn) {
 // We are assuming that task begin and task end pragma nodes are siblings
 // Assumption is safe as every task begin must have a task end
 // It is unlikely that the matching task end is a children of a sibling of task begin node
-list<SgNode*> OcrTaskPragmaParser::collectTaskStatements() {
+list<SgStatement*> OcrTaskPragmaParser::collectTaskStatements() {
   Logger::Logger lg("OcrTaskPragmaParser::collectTaskStatements");
-  list<SgNode*> taskStatementList;
+  list<SgStatement*> taskStatementList;
   // Find the parent of SgPragmaDeclration
   // Get my index and the total number of children
   // Iterate from my index + 1 until the end to find a matching task end
@@ -176,7 +176,8 @@ list<SgNode*> OcrTaskPragmaParser::collectTaskStatements() {
   unsigned int cindex = parent->get_childIndex(m_sgpdecl);
   unsigned int nchild = parent->get_numberOfTraversalSuccessors();
   for(int it = cindex+1; it < nchild; ++it) {
-    SgNode* sgchild_ = parent->get_traversalSuccessorByIndex(it);
+    SgStatement* sgchild_ = isSgStatement(parent->get_traversalSuccessorByIndex(it));
+    assert(sgchild_);
     taskStatementList.push_back(sgchild_);
     Logger::debug(lg) << AstDebug::astToString(sgchild_) << endl;
     if(isMatchingPragma(sgchild_)) break;
@@ -184,27 +185,28 @@ list<SgNode*> OcrTaskPragmaParser::collectTaskStatements() {
   return taskStatementList;
 }
 
-SgNode* OcrTaskPragmaParser::identifier2sgn(std::string identifier_) {
+SgVarRefExp* OcrTaskPragmaParser::identifier2sgn(std::string identifier_) {
   Logger::Logger lg("OcrTaskPragmaParser::identifier2sgn");
-  SgNode* idsgn;
+  SgVarRefExp* idsgn;
   AstFromString::c_char = identifier_.c_str();
   AstFromString::c_sgnode = m_sgpdecl->get_parent();
   if(AstFromString::afs_match_identifier()) {
-    idsgn = AstFromString::c_parsed_node;
+    idsgn = isSgVarRefExp(AstFromString::c_parsed_node);
   }
   else {
     Logger::error(lg) << "Cannot create SgNode from identifer_=" << identifier_ << endl;
     assert(false);
   }
+  assert(idsgn);
   return idsgn;
 }
 
-list<SgNode*> OcrTaskPragmaParser::identifiers2sgnlist(list<string> identifiersList) {
+list<SgVarRefExp*> OcrTaskPragmaParser::identifiers2sgnlist(list<string> identifiersList) {
   Logger::Logger lg("OcrTaskPragmaParser::identifiers2sgnlist");
-  list<SgNode*> idsgnList;
+  list<SgVarRefExp*> idsgnList;
   list<string>::iterator i = identifiersList.begin();
   for( ; i != identifiersList.end(); ++i) {
-    SgNode* idsgn = identifier2sgn(*i);
+    SgVarRefExp* idsgn = identifier2sgn(*i);
     Logger::debug(lg) << "idsgn=" << AstDebug::astToString(idsgn) << endl;
     assert(idsgn);
     idsgnList.push_back(idsgn);
@@ -233,9 +235,9 @@ bool OcrTaskPragmaParser::match() {
       list<OcrDbkContextPtr> depDbksContextPtrList = m_ocrObjectManager.getOcrDbkContextList(depDbksNameList);
       // Extract the task's dependent elements (paramenters)
       matchDepElems(taskbegin_s, depElemsNameList);
-      list<SgNode*> depElemsSgnList = identifiers2sgnlist(depElemsNameList);
+      list<SgVarRefExp*> depElemsSgnList = identifiers2sgnlist(depElemsNameList);
       // Find all statements between task begin and task end
-      list<SgNode*> taskStatementList = collectTaskStatements();
+      list<SgStatement*> taskStatementList = collectTaskStatements();
       // Last element of the list must be a SgPragmaDeclaration
       SgPragmaDeclaration* sgpdTaskEnd = isSgPragmaDeclaration(taskStatementList.back());
       taskStatementList.pop_back();

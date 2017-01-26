@@ -43,12 +43,12 @@ class OcrTaskPragmaParser {
   bool matchParam(std::string input_s, std::list<std::string>& paramList);
   bool matchIdentifier(std::string input_s, std::string& identifier_s);
   bool matchEvtsToSatisfy(std::string input, std::list<std::string>& evtsNameToSatisfyList);
-  SgNode* identifier2sgn(std::string identifier_);
-  std::list<SgNode*> identifiers2sgnlist(std::list<std::string> identifierList);
+  SgVarRefExp* identifier2sgn(std::string identifier_);
+  std::list<SgVarRefExp*> identifiers2sgnlist(std::list<std::string> identifierList);
  public:
   bool match();
   bool isMatchingPragma(SgNode* sgn);
-  std::list<SgNode*> collectTaskStatements();
+  std::list<SgStatement*> collectTaskStatements();
   std::string strlist2str(std::list<std::string>& identifiersList) const;
 };
 
