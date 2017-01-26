@@ -72,7 +72,7 @@ OcrEvtContext::~OcrEvtContext() {
  *****************/
 OcrEdtContext::OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
 			     std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> evtsToSatisfy,
-			     std::list<SgNode*> depElems, std::list<SgNode*> taskStatements)
+			     std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements)
   : m_name(name),
     m_depEvts(depEvts),
     m_depDbks(depDbks),
@@ -82,6 +82,14 @@ OcrEdtContext::OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEv
 
 string OcrEdtContext::get_name() const {
   return m_name;
+}
+
+list<SgStatement*> OcrEdtContext::getStmtList() const {
+  return m_statements;
+}
+
+list<SgVarRefExp*> OcrEdtContext::getDepElems() const {
+  return m_depElems;
 }
 
 SgSourceFile* OcrEdtContext::getSourceFile() {
@@ -104,7 +112,7 @@ string OcrEdtContext::str() const {
   }
   oss << "]\n";
   oss << indent << "outEvts: " << StrUtil::list2str<OcrEvtContext>(m_evtsToSatisfy) << endl;
-  oss << indent << "depElems: " << StrUtil::sgnlist2str(m_depElems) << endl;
+  oss << indent << "depElems: " << StrUtil::SgVarRefExpList2Str(m_depElems) << endl;
   oss << indent << "taskStmts:[\n" << StrUtil::stmtlist2str(m_statements, indent) << "]";
   oss << "]";
   return oss.str();
@@ -229,8 +237,8 @@ OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
 OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtContextPtr> depEvts,
 						  list<OcrDbkContextPtr> depDbks,
 						  list<OcrEvtContextPtr> evtsToSatisfy,
-						  list<SgNode*> depElems,
-						  list<SgNode*> taskStatements) {
+						  list<SgVarRefExp*> depElems,
+						  list<SgStatement*> taskStatements) {
   OcrEdtObjectMap::iterator f = m_ocrEdtObjectMap.find(edtName);
   OcrEdtContextPtr edtcontext_sp;
   if(f != m_ocrEdtObjectMap.end()) {
