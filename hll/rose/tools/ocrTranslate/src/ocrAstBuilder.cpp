@@ -152,9 +152,21 @@ namespace AstBuilder {
     list<SgVarRefExp*>::iterator e = depElemList.begin();
     for( ; e != depElemList.end(); ++e) {
       SgVariableSymbol* dsymbol = (*e)->get_symbol();
-      SgVarRefExp* rexp = SageBuilder::buildVarRefExp(dsymbol->get_name(), scope);
+      SgName dname = dsymbol->get_name();
+      SgVarRefExp* rexp = SageBuilder::buildVarRefExp(dname, scope);
       SgVarRefExp* lexp = SageBuilder::buildVarRefExp(depElemSymbol->get_name(), scope);
       SgArrowExp* arrowExp = SageBuilder::buildArrowExp(lexp, rexp);
+      // rexp is rhs of arrow exp (e.g. depElem->var)
+      // When depElem is declared in basicblock, a symbol
+      // for depElem is inserted in to the basic block
+      // When building the arrow exp, we build the rhs using the name
+      // The variable may not have a symbol in the basic block
+      // This later shows up as a Warning in AST consistency checks
+      // To avoid this, the symbol for var is inserted into the symbol table.
+      // This seems to fix the AST consistency check
+      // However, I need to check if this is the way for building dot and arrow
+      // expressions
+      scope->get_symbol_table()->insert(dname, rexp->get_symbol());
       varRefExp2ArrowExp(*e, arrowExp, statements);
     }
   }
