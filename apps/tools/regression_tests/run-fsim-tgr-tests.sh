@@ -60,6 +60,8 @@ for TEST in $TESTS; do
       export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
       export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
       export TEST
+      # Make sure that the testing environment from last time was cleaned up
+      rm -rf $WORKLOAD_INSTALL/ce-os-subdir
       # NOTE: clean_path comes from setup-test-env.sh
       REGEXS+=("TGR-CONSOLE: (XE1): CE-OS-TEST: cwd = $(clean_path $WORKLOAD_INSTALL)"
                "TGR-CONSOLE: (XE1): CE-OS-TEST: cwd = $(clean_path $WORKLOAD_INSTALL)/ce-os-subdir"
