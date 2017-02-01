@@ -34,6 +34,14 @@
 #include "Registers.hpp"
 #include "Unwind-EHABI.h"
 
+#if defined(__PIE__) && defined(__XSTG__)
+        //
+        // In XSTG PIE we need to add in the run-time text start
+        //
+        extern uint64_t _ftext;
+
+#endif // PIE && XSTG
+
 namespace libunwind {
 
 #if _LIBUNWIND_SUPPORT_DWARF_CACHE
@@ -951,6 +959,17 @@ bool UnwindCursor<A, R>::getInfoFromDwarfSection(pint_t pc,
       _info.unwind_info       = fdeInfo.fdeStart;
       _info.unwind_info_size  = (uint32_t)fdeInfo.fdeLength;
       _info.extra             = (unw_word_t) sects.dso_base;
+#if defined(__PIE__) && defined(__XSTG__)
+        //
+        // In XSTG PIE the lsda and personality handler will be text segment
+        // based and from 0 so we need to add in the run-time text start
+        //
+      if (_info.lsda != 0)
+        _info.lsda += (pint_t) &_ftext;
+
+      if (_info.handler != 0)
+        _info.handler += (pint_t) &_ftext;
+#endif // PIE && XSTG
 
       this->dump_info("getInfoFromDwarfSection");
 
