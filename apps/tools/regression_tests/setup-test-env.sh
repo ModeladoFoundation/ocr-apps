@@ -15,7 +15,7 @@ cd "$( dirname "${BASH_SOURCE[0]}" )"
 function clean_path() {
   if [[ -d $1 ]]; then
     cd $1;
-    pwd
+    pwd -P
   else
     echo "Directory doesn't exist:" 1>&2
     echo $1 1>&2
