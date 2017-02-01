@@ -23,6 +23,7 @@
 
 #include "AddressSpace.hpp"
 
+#if 0
 #if defined(__PIE__) && defined(__XSTG__)
         //
         // In XSTG PIE we need to add in the run-time text start
@@ -30,6 +31,7 @@
         extern uint64_t _ftext;
 
 #endif // PIE && XSTG
+#endif // 0
 
 namespace libunwind {
 
@@ -327,6 +329,7 @@ const char *CFI_Parser<A>::parseCIE(A &addressSpace, pint_t cie,
         cieInfo->personalityOffsetInCIE = (uint8_t)(p - cie);
         cieInfo->personality = addressSpace
             .getEncodedP(p, cieContentEnd, cieInfo->personalityEncoding);
+#if 0
 #if defined(__PIE__) && defined(__XSTG__)
         //
         // In XSTG PIE this will be text segment based and from 0
@@ -334,6 +337,7 @@ const char *CFI_Parser<A>::parseCIE(A &addressSpace, pint_t cie,
         //
         cieInfo->personality += (pint_t) &_ftext;
 #endif // PIE && XSTG
+#endif // 0
         break;
       case 'L':
         cieInfo->lsdaEncoding = addressSpace.get8(p);
