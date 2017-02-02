@@ -44,6 +44,10 @@ apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_mutex_recursive
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_cancel
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_detach
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes float_tests
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes double_tests
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes float_complex_tests
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes double_complex_tests
 	$(MAKE) -C $(APPS_ROOT)/libs/src/libomp ARCH=tg-xe check
 
 apps-tgr-ce:
