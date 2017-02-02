@@ -40,6 +40,10 @@ apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe hello
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe cxxhello
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe iotest
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe float_tests
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe double_tests
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe float_complex_tests
+	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe double_complex_tests
 
 apps-examples:
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg install

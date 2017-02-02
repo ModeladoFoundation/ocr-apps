@@ -27,8 +27,8 @@ PIE_FLAGS := -fPIE
 SWTEST_FLAGS := -fxstg-swtest
 TGRKRNL_FLAGS := -fxstg-tgr
 
-LIBS =
-PIE_LIBS =
+LIBS = -lm -lbuiltins
+PIE_LIBS = -lm.p -lbuiltins.p
 
 SRCS = $(wildcard *.c) $(wildcard *.cpp)
 APPS = $(patsubst %.c,%,$(patsubst %.cpp,%,$(SRCS)))
