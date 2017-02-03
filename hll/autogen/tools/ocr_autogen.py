@@ -697,6 +697,12 @@ def addFORconditionText(io_G, in_nodeNumber, in_text):
 def getFORconditionText(io_G, in_nodeNumber):
     return getNode(io_G, in_nodeNumber)["FORconditionText"]
 # ------------------------------------------------------------------------------
+def addFORconditionText_startingclause(io_G, in_nodeNumber, in_text):
+    getNode(io_G, in_nodeNumber)["FORconditionText_startingclause"].append(in_text)
+# ------------------------------------------------------------------------------
+def getFORconditionText_startingclause(io_G, in_nodeNumber):
+    return getNode(io_G, in_nodeNumber)["FORconditionText_startingclause"]
+# ------------------------------------------------------------------------------
 def addIFconditionText(io_G, in_nodeNumber, in_text):
     getNode(io_G, in_nodeNumber)["IFconditionText"] = in_text
 # ------------------------------------------------------------------------------
@@ -731,10 +737,14 @@ def graphAddNode(io_G,in_nodeNumber, in_nodename):
 
         getNode(io_G, in_nodeNumber)["FORconditionText"] = ""  # - If not empty, the EDT is a FOR pattern; otherwise not.
                                                                # - It is mutually exclusive with a IF-THEN-ELSE pattern
-                                                               # - The test must follow the following format:
+                                                               # - The text must follow the following format:
                                                                #        for(<init>; <condition>; <increment>)
                                                                #    = It is the same format as the C equivalent IF statement.
                                                                #    = The parenthesis are required, as is the for.
+
+        getNode(io_G, in_nodeNumber)["FORconditionText_startingclause"] = []  # - If not empty, this is a list of text which will be
+                                                                              #   added after the opening '{' if, and only if
+                                                                              #   the "FORconditionText" content is not empty.
 
         getNode(io_G, in_nodeNumber)["IFconditionText"] = ""  # - If not empty, this indicates that this nodes if the THEN
                                                               # part of the IF-THEN-ELSE pattern.
@@ -3045,6 +3055,12 @@ def outputOCR_writeFOR_Subclause(io_G, in_nodeIndex, in_tab, io_file, in_delayed
 
         fortext = forclause + '{\n'
         io_file.write(in_tab + fortext)
+
+        startClause = getFORconditionText_startingclause(io_G, in_nodeIndex)
+        if not len(startClause) == 0:
+            for tl in startClause:
+                tl_text = tab2 + tl + '\n'
+                io_file.write(tl_text)
 
         erri = create_dataBlocks(io_G, in_nodeIndex, tab2, io_file)
         if erri: break
