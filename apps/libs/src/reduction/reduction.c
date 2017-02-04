@@ -22,8 +22,10 @@ June 2016: fixed a race condition and added a release to reductionLaunch
 
 */
 
+#ifndef TG_ARCH
 #include <string.h>   //for memcpy
-#include <stdio.h>   //for memcpy
+#include <stdio.h>   //for printf
+#endif
 
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
@@ -326,7 +328,13 @@ ocrGuid_t reductionRecvChannelEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
         ocrGuid_t localDBK;
         void * localPTR;
         ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->size, 0, NULL_HINT, NO_ALLOC);
+#ifdef TG_ARCH
+
+u32 i;
+    for(i=0;i<rpPTR->size;i++) ((char *) localPTR)[i] = ((char *) data)[i];
+#else
         memcpy(localPTR, data, rpPTR->size);
+#endif
         ocrDbRelease(localDBK);
         ocrEventSatisfy(rpPTR->sendUpEVT, localDBK);
         return;
@@ -367,7 +375,12 @@ ocrGuid_t reductionRecvChannelEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
         for(i=0;i<ARITY;i++) {
             if(!ocrGuidIsNull(rpPTR->sendDownEVT[i])){
                 ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->size, 0, NULL_HINT, NO_ALLOC);
-                memcpy(localPTR, data, rpPTR->size);
+#ifdef TG_ARCH
+u32 j;
+    for(j=0;j<rpPTR->size;j++) ((char *) localPTR)[j] = ((char *) data)[j];
+#else
+        memcpy(localPTR, data, rpPTR->size);
+#endif
                 ocrDbRelease(localDBK);
                 ocrEventSatisfy(rpPTR->sendDownEVT[i], localDBK);
             }
@@ -498,9 +511,6 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t reductionPrivateDBK = DEPV(reduction,reductionPrivate,guid);
 
 
-    rpPTR->size = rpPTR->ndata;
-    if(rpPTR->type != BROADCAST) rpPTR->size =  rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator);
-
     switch (rpPTR->phase) {
 
 
@@ -579,6 +589,13 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateDBK, 
     void * localPTR;
     if(rpPTR->new) {
         ocrEdtTemplateCreate(&(rpPTR->reductionTML), reductionEdt, 0, EDT_PARAM_UNK);
+        if(rpPTR->type != BROADCAST) {
+            rpPTR->size =  rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator);
+            }
+          else {
+              rpPTR->size = rpPTR->ndata;
+            }
+
         ocrHintInit(&rpPTR->myAffinity,OCR_HINT_EDT_T);
 #ifdef ENABLE_EXTENSION_AFFINITY
         ocrGuid_t myAffinity;
@@ -589,7 +606,12 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateDBK, 
 
     ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, &rpPTR->myAffinity, NULL);
     ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator), 0, NULL_HINT, NO_ALLOC);
-    memcpy(localPTR, mydataPTR, rpPTR->ndata*reductionsizeof(rpPTR->reductionOperator));
+#ifndef TG_ARCH
+        memcpy(localPTR, mydataPTR, rpPTR->size);
+#else
+u32 j;
+    for(j=0;j<rpPTR->size;j++) ((char *) localPTR)[j] = ((char *) mydataPTR)[j];
+#endif
     ocrDbRelease(localDBK);
     ocrAddDependence(localDBK, reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
     ocrDbRelease(reductionPrivateDBK);
