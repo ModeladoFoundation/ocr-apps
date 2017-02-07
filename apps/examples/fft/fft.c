@@ -24,6 +24,7 @@
 
 extern void ditfft2(float *X_real, float *X_imag, float *x_in, u32 N, u32 step);
 extern ocrGuid_t setUpVerify(ocrGuid_t inDB, ocrGuid_t XrealDB, ocrGuid_t XimagDB, u64 N, ocrGuid_t trigger);
+extern void salInjectFault(void);
 
 typedef struct {
     ocrGuid_t startTempGuid;
@@ -76,6 +77,15 @@ typedef struct {
 // Performs one entire iteration of FFT.
 // These are meant to be chained serially for timing and testing.
 ocrGuid_t fftIterationEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    PRINTF("Executing EDT : fftIterationEdt\n");
+#if 1
+    static int repeat = 0;
+    if (repeat == 0) {
+        repeat++;
+        PRINTF("FFT fault injection\n");
+        salInjectFault();
+    }
+#endif
 
     iterationPRM_t *iterationParamvIn = (iterationPRM_t *)paramv;
 
