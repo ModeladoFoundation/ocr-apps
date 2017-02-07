@@ -629,15 +629,14 @@ _OCR_TASK_FNC_( timestepEdt )
     //------ Begin left send
     MyOcrTaskStruct_t TS_Lsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Lsend_fin;
-    createEventHelper(&EVT_Lsend_fin, 1);
+    createEventHelper(&EVT_Lsend_fin, (id_x!=0) ? 2:1);
 
     TS_Lsend.TML = PTR_rankTemplateH->TML_FNC_Lsend;
     ocrEdtCreate( &TS_Lsend.EDT, TS_Lsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Lsend.OET);
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Lsend_fin);
 
-    if( id_x!=0 ) ocrAddDependence( TS_Lsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(0, phase)], 0, DB_MODE_RO );
-    ocrAddDependence( TS_Lsend.OET, EVT_Lsend_fin, 0, DB_MODE_NULL );
+    if( id_x!=0 ) ocrAddDependence( EVT_Lsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(0, phase)], 0, DB_MODE_RO );
     _idep = 0;
     // The rank info, containing channel and buffers guid etc...
     ocrAddDependence( DBK_rankH, TS_Lsend.EDT, _idep++, DB_MODE_CONST );
@@ -652,20 +651,18 @@ _OCR_TASK_FNC_( timestepEdt )
     //------ Begin right send
     MyOcrTaskStruct_t TS_Rsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Rsend_fin;
-    createEventHelper(&EVT_Rsend_fin, 1);
+    createEventHelper(&EVT_Rsend_fin, (id_x!=NR_X-1) ? 2:1);
 
     TS_Rsend.TML = PTR_rankTemplateH->TML_FNC_Rsend;
     ocrEdtCreate( &TS_Rsend.EDT, TS_Rsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Rsend.OET);
-
-    if( id_x != NR_X - 1 ) ocrAddDependence( TS_Rsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(1, phase)], 0, DB_MODE_RO );
-    ocrAddDependence( TS_Rsend.OET, EVT_Rsend_fin, 0, DB_MODE_NULL );
-
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Rsend_fin);
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Rsend.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Rsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_rankH->DBK_RsendBufs[phase], TS_Rsend.EDT, _idep++, DB_MODE_RW );
+    if( id_x != NR_X - 1 ) ocrAddDependence( EVT_Rsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(1, phase)], 0, DB_MODE_RO );
+
     // PRINTF("ID=%d id_x=%d id_y=%d, rsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_x != NR_X - 1) ? GUIDA(PTR_rankH->DBK_RsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(1, phase)]));
 
@@ -674,15 +671,12 @@ _OCR_TASK_FNC_( timestepEdt )
     //------ Begin left recv
     MyOcrTaskStruct_t TS_Lrecv; _paramc = 0; _depc = 3;
 
+    ocrGuid_t EVT_Lrecv_fin;
+    createEventHelper(&EVT_Lrecv_fin, 1);
     TS_Lrecv.TML = PTR_rankTemplateH->TML_FNC_Lrecv;
     ocrEdtCreate( &TS_Lrecv.EDT, TS_Lrecv.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Lrecv.OET);
-
-    ocrGuid_t EVT_Lrecv_fin;
-    createEventHelper(&EVT_Lrecv_fin, 1);
-    ocrAddDependence( TS_Lrecv.OET, EVT_Lrecv_fin, 0, DB_MODE_NULL );
-
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Lrecv_fin);
     _idep = 0;
     // The rank info, containing channel and buffers guid etc...
     ocrAddDependence( DBK_rankH, TS_Lrecv.EDT, _idep++, DB_MODE_CONST );
@@ -696,14 +690,11 @@ _OCR_TASK_FNC_( timestepEdt )
     MyOcrTaskStruct_t TS_Rrecv; _paramc = 0; _depc = 3;
 
     TS_Rrecv.TML = PTR_rankTemplateH->TML_FNC_Rrecv;
-    ocrEdtCreate( &TS_Rrecv.EDT, TS_Rrecv.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Rrecv.OET);
-
     ocrGuid_t EVT_Rrecv_fin;
     createEventHelper(&EVT_Rrecv_fin, 1);
-    ocrAddDependence( TS_Rrecv.OET, EVT_Rrecv_fin, 0, DB_MODE_NULL );
-
+    ocrEdtCreate( &TS_Rrecv.EDT, TS_Rrecv.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Rrecv_fin);
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Rrecv.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Rrecv.EDT, _idep++, DB_MODE_RW );
@@ -712,52 +703,44 @@ _OCR_TASK_FNC_( timestepEdt )
 
     MyOcrTaskStruct_t TS_Bsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Bsend_fin;
-    createEventHelper(&EVT_Bsend_fin, 1);
-
+    createEventHelper(&EVT_Bsend_fin, (id_y!=0) ? 2:1);
     TS_Bsend.TML = PTR_rankTemplateH->TML_FNC_Bsend;
     ocrEdtCreate( &TS_Bsend.EDT, TS_Bsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Bsend.OET);
-
-    if( id_y!=0 ) ocrAddDependence( TS_Bsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(2, phase)], 0, DB_MODE_RO );
-    ocrAddDependence( TS_Bsend.OET, EVT_Bsend_fin, 0, DB_MODE_NULL );
-
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Bsend_fin);
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Bsend.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Bsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_rankH->DBK_BsendBufs[phase], TS_Bsend.EDT, _idep++, DB_MODE_RW );
+    if( id_y!=0 ) ocrAddDependence( EVT_Bsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(2, phase)], 0, DB_MODE_RO );
+
     // PRINTF("ID=%d id_x=%d id_y=%d, bsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_y!=0) ? GUIDA(PTR_rankH->DBK_BsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(2, phase)]));
 
     MyOcrTaskStruct_t TS_Tsend; _paramc = 0; _depc = 3;
     ocrGuid_t EVT_Tsend_fin;
-    createEventHelper(&EVT_Tsend_fin, 1);
-
+    createEventHelper(&EVT_Tsend_fin, (id_y!=(NR_Y-1)) ? 2:1);
     TS_Tsend.TML = PTR_rankTemplateH->TML_FNC_Tsend;
     ocrEdtCreate( &TS_Tsend.EDT, TS_Tsend.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Tsend.OET);
-
-    if( id_y != NR_Y - 1 ) ocrAddDependence( TS_Tsend.OET, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(3, phase)], 0, DB_MODE_RO );
-    ocrAddDependence( TS_Tsend.OET, EVT_Tsend_fin, 0, DB_MODE_NULL );
-
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Tsend_fin);
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Tsend.EDT, _idep++, DB_MODE_CONST );
     ocrAddDependence( DBK_xIn, TS_Tsend.EDT, _idep++, DB_MODE_RO );
     ocrAddDependence( PTR_rankH->DBK_TsendBufs[phase], TS_Tsend.EDT, _idep++, DB_MODE_RW );
+    if( id_y != NR_Y - 1 ) ocrAddDependence( EVT_Tsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(3, phase)], 0, DB_MODE_RO );
+
     // PRINTF("ID=%d id_x=%d id_y=%d, tsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_y != NR_Y - 1) ? GUIDA(PTR_rankH->DBK_TsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(3, phase)]));
 
     MyOcrTaskStruct_t TS_Brecv; _paramc = 0; _depc = 3;
 
     TS_Brecv.TML = PTR_rankTemplateH->TML_FNC_Brecv;
-    ocrEdtCreate( &TS_Brecv.EDT, TS_Brecv.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Brecv.OET);
-
     ocrGuid_t EVT_Brecv_fin;
     createEventHelper(&EVT_Brecv_fin, 1);
-    ocrAddDependence( TS_Brecv.OET, EVT_Brecv_fin, 0, DB_MODE_NULL );
+    ocrEdtCreate( &TS_Brecv.EDT, TS_Brecv.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Brecv_fin);
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Brecv.EDT, _idep++, DB_MODE_CONST );
@@ -767,13 +750,11 @@ _OCR_TASK_FNC_( timestepEdt )
     MyOcrTaskStruct_t TS_Trecv; _paramc = 0; _depc = 3;
 
     TS_Trecv.TML = PTR_rankTemplateH->TML_FNC_Trecv;
-    ocrEdtCreate( &TS_Trecv.EDT, TS_Trecv.TML,
-                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &myEdtAffinityHNT, &TS_Trecv.OET);
-
     ocrGuid_t EVT_Trecv_fin;
     createEventHelper(&EVT_Trecv_fin, 1);
-    ocrAddDependence( TS_Trecv.OET, EVT_Trecv_fin, 0, DB_MODE_NULL );
+    ocrEdtCreate( &TS_Trecv.EDT, TS_Trecv.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_OEVT_VALID, &myEdtAffinityHNT, &EVT_Trecv_fin);
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_Trecv.EDT, _idep++, DB_MODE_CONST );
