@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # This script may accept command line parameters of which test(s) to run.
-# Possible tests:
-#  pthread_simple pthread_detach pthread_malloc pthread_mutex_recursive pthread_cancel
+# For a list of possible tests, run it with the -h argument
 #
 # Defaults to running all tests
 #
@@ -38,8 +37,10 @@ for TEST in $TESTS; do
 
   declare -a REGEXS=("ready alarm")
 
-  # Add a .swtest if the test doesn't end in .p
-  TEST_FILE=$(echo $TEST | grep ".*\.p$" || echo $TEST".swtest")
+  TEST_FILE=$TEST
+
+  # Since this is from legacy, we must add a .swtest if the test isn't PIE
+  [[ $TEST != *.p ]] && TEST_FILE+=.swtest
 
   export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
   export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"

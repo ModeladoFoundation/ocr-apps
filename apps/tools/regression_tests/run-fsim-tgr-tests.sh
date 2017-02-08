@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # This script may accept command line parameters of which test(s) to run.
-# Possible tests:
-#  c_test_1 c_test_1.p c_test_2 c_test_2.p c_test_3 c_test_3.p
+# For a list of possible tests, run it with the -h argument
 #
 # Defaults to running all tests (except OCRcholesky, OCRsmith-waterman, and irqstress)
 #
@@ -18,6 +17,7 @@ export FSIM_EXE="fsim"
 
 # Tests to run
 TESTS="c_test_1 c_test_1.p c_test_2 c_test_2.p c_test_3 c_test_3.p"
+
 if [[ $1 == "-h" ]]; then
   echo "You may specify one or more of:"
   echo "$TESTS"
@@ -31,6 +31,13 @@ fi
 for TEST in $TESTS; do
   export TEST_NAME=$TEST
 
+  # We examine output from the CE log file.
+  export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
+
+  # We need to export these for the fsim.cfg file.
+  export TEST
+  export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
+
   declare -a REGEXS=(
     "TGR-MAIN: starting"
     "TGR-MAIN: initialized subsystems"
@@ -41,12 +48,9 @@ for TEST in $TESTS; do
 
   # Set up the env for the test
   case $TEST in
-    c_test_1*)
+    c_test_1|c_test_1.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
-      export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
-      export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
-      export TEST
       REGEXS+=("TGR-CONSOLE: (XE1): c_test_1 starting"
                "TGR-CONSOLE: (XE1): tgr_mmap succeeded"
                "TGR-CONSOLE: (XE1): OK_1"
@@ -54,12 +58,9 @@ for TEST in $TESTS; do
                "CE-OS: argc = 1"
                "TGR-ALARMS: XE 0x1 terminate alarm, terminating xe")
       ;;
-    c_test_2*)
+    c_test_2|c_test_2.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
-      export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
-      export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
-      export TEST
       # Make sure that the testing environment from last time was cleaned up
       rm -rf $WORKLOAD_INSTALL/ce-os-subdir
       # NOTE: clean_path comes from setup-test-env.sh
@@ -76,12 +77,9 @@ for TEST in $TESTS; do
                "TGR-CONSOLE: (XE1): CE-OS-TEST: test successful"
                "TGR-ALARMS: XE 0x1 terminate alarm, terminating xe")
       ;;
-    c_test_3*)
+    c_test_3|c_test_3.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
-      export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
-      export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
-      export TEST
       REGEXS+=("TGR-MSG: clone entry"
                "TGR-MSG: XE 0x1: Cloned XE 0x2, entry 0x[0-9a-f]\+, stack top 0x[0-9a-f]\+"
                "TGR-CONSOLE: (XE2): Clone XE 0x2: 0x[0-9a-f]\+"
