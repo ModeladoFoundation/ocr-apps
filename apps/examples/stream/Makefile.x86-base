@@ -53,7 +53,8 @@ REQ_LIBS :=
 # Space separated list of source files
 SRCS := stream.c
 
-CONFIG_FLAGS+=--guid LABELED
+#CONFIG_FLAGS+=--guid LABELED
+CONFIG_FLAGS+=--guid COUNTED_MAP
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim

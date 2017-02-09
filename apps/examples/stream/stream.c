@@ -13,6 +13,7 @@
 # include <math.h>
 # include <float.h>
 
+//#define STREAM_ARRAY_SIZE (1024 * 1024 * 1024)
 #define STREAM_ARRAY_SIZE 1024
 #define NUM_THREADS  8
 
@@ -306,7 +307,9 @@ int printTimes(void)
         }
 
     PRINTF(HLINE);
-    PRINTF("BW: %f Bytes/s, Time(ns): %f (Avg) %f (Min) %f (Max)\n", (sizeof(STREAM_TYPE)*PER_THREAD_SIZE)/mintime, avgtime/((NTIMES-1)*NUM_THREADS), mintime, maxtime);
+    PRINTF("BW: %f MB/s, Time(ns|cycles): %f (Avg) %f (Min) %f (Max)\n",
+        (((sizeof(STREAM_TYPE)*PER_THREAD_SIZE)/mintime)*1000000000.0)/(1024*1024),
+        avgtime/((NTIMES-1)*NUM_THREADS), mintime, maxtime);
     PRINTF(HLINE);
 
     return 0;
