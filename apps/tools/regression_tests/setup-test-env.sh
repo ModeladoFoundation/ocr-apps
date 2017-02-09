@@ -31,7 +31,59 @@ function clean_path() {
   fi
 }
 
-export -f clean_path
+# This function prints out the help message for the
+# test script
+function print_help() {
+  echo "usage: $(basename $0) [test ...]  execute tests"
+  echo "   or: $(basename $0) -h          show this help"
+  echo
+  echo "For tests you may specify one or more of:"
+
+  if [[ "$0" =~ "ocr" ]]; then
+    echo -e "\n$TESTS OCRcholesky OCRsmith-waterman irqstress\n"
+    echo "Defaults to all tests except OCRcholesky, OCRsmith-waterman, and irqstress."
+  else
+    echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests."
+  fi
+
+  echo
+  echo "This test uses the following environmental variables."
+  echo "All are optional."
+  echo
+  echo "TG_INSTALL - The install directory of the tg repo"
+  echo "               Default: ../../../../tg/tg/install"
+  echo "LOGS_DIR   - The directory for fsim to place its logs"
+  echo "               Default: ./logs"
+  echo "VERBOSE    - If set, then write all test output to stdout"
+  echo "               Default: unset"
+
+  if [[ "$0" =~ "gdb" ]]; then
+    # run-gdb-tests.sh help
+    echo
+    echo "Note: all VERBOSE non-gdb output will be annotated with 'PYTHON OUTPUT:'"
+  else
+    # run-fsim-*.sh help
+    echo "TIME_TESTS - If set, then display test runtime on completion"
+    echo "               Redundant if VERBOSE is set"
+    echo "               Default: unset"
+    #echo "TIMEOUT_SECONDS - If set, then abort test after this many seconds"
+    echo "TIMEOUT_SECONDS"
+    echo "           - If set, then abort test after this many seconds"
+    echo "               If set to 0 or unset then there is no timeout"
+    echo "               Default: ${TIMEOUT_SECONDS-unset}"
+    if [[ "$0" =~ openmp ]]; then
+      echo "CTEST      - If set, then run the cross test version of the tests"
+      echo "               The cross test versions of the tests omit whatever"
+      echo "               feature of openmp is being tested. These tests typically"
+      echo "               fail. If they don't fail, then a success in the non-cross"
+      echo "               test may be a false positive."
+      echo "               Default: unset"
+    fi
+  fi
+  exit
+}
+
+# Attempt to determine locations of repos and install directories for tests.
 
 export TG_INSTALL=$(clean_path ${TG_INSTALL:-$(pwd)/../../../../tg/tg/install})
 [[ -z $TG_INSTALL ]] && exit 1;

@@ -1,14 +1,17 @@
 #!/bin/bash
 
-# This script may accept command line parameters of which test(s) to run.
-# For a list of possible tests, run it with the -h argument
+# run-fsim-swtest-tests.sh
 #
-# Defaults to running all tests
+# Run all the single thread fsim-swtest tests. Compatable with OCR and TGR.
 #
-# This script may optionally use env vars:
-#   TG_INSTALL - The install directory of the tg repo
-#   LOGS_DIR   - The directory for fsim to place its logs
-#   VERBOSE    - If set, then write all of fsim's output to stdout
+# The tests come from
+#
+#   tg/fsim/swtest      - prefixed with tg_
+#   tg/xe-llvm/test/PIE - prefixed with PIE_
+#   apps/legacy/tg-xe   - prefixed with legacy_
+#
+# For usage and environmental variables run with the -h argument.
+#
 
 source ./setup-test-env.sh
 [[ $? -ne 0 ]] && exit 1
@@ -26,8 +29,7 @@ PIE_fptr_simple PIE_fptr_simple.p PIE_multi_seg PIE_multi_seg.p
 TCO_tailcall1 TCO_tailcall1.p"
 
 if [[ $1 == "-h" ]]; then
-  echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests"
-  exit
+  print_help
 fi
 
 # If there are command line parameters, use those instead.
