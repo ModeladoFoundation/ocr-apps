@@ -1,15 +1,17 @@
 #!/bin/bash
 
-# This script may accept command line parameters of which test(s) to run.
-# Possible tests:
-#  OCRcholesky OCRfib OCRprintf OCRsmith-waterman irqstress mb-printf
+# run-fsim-ocr-tests.sh
 #
-# Defaults to running all tests (except OCRcholesky, OCRsmith-waterman, and irqstress)
+# Run the Intel tests for fsim: OCR examples, mb-printf and irqstress.
+# Only relevent when building with ./Makefile.ocr
 #
-# This script may optionally use env vars:
-#   TG_INSTALL - The install directory of the tg repo
-#   LOGS_DIR   - The directory for fsim to place its logs
-#   VERBOSE    - If set, then write all of fsim's output to stdout
+# Note that OCRcholesky, OCRsmith-waterman and irqstress are not run by
+# default. This is because OCRcholesky and OCRsmith-waterman have
+# broken makefiles which prevent them from being built by ./Makefile.ocr
+# and irqstress runs indefinitally.
+#
+# For usage and environmental variables run with the -h argument.
+#
 
 source ./setup-test-env.sh
 [[ $? -ne 0 ]] && exit 1
@@ -18,11 +20,9 @@ export FSIM_EXE="fsim"
 
 # Tests to run
 TESTS="OCRfib OCRprintf mb-printf"
+
 if [[ $1 == "-h" ]]; then
-  echo "You may specify one or more of:"
-  echo "$TESTS OCRcholesky OCRsmith-waterman irqstress"
-  echo "Defaults to all tests except OCRcholesky OCRsmith-waterman irqstress"
-  exit
+  print_help
 fi
 
 # If there are command line parameters, use those instead.

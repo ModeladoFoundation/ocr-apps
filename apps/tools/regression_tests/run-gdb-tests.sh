@@ -1,15 +1,11 @@
 #!/bin/bash
 
-# This script may accept command line parameters of which test set(s) to run.
-# Possible test sets:
-#   legacy-hello legacy-hello-8xe mb-printf rtl-asm
+# run-gdb-tests.sh
 #
-# Defaults to running all test sets.
+# Run all the gdb test suites. Compatable with OCR and TGR
 #
-# This script may optionally use env vars:
-#   TG_INSTALL - The install directory of the tg repo
-#   LOGS_DIR   - The directory for fsim to place its logs
-#   VERBOSE    - If set, then write all of gdb's output to stdout
+# For usage and environmental variables run with the -h argument.
+#
 
 source ./setup-test-env.sh
 [[ $? -ne 0 ]] && exit 1
@@ -17,8 +13,7 @@ source ./setup-test-env.sh
 # Tests to run
 TESTS="legacy-hello legacy-hello-8xe mb-printf mb-printf-8xe rtl-asm rtl-asm-8xe"
 if [[ $1 == "-h" ]]; then
-  echo -e "You may specify one or more of:\n$TESTS\nDefaults to all tests"
-  exit
+  print_help
 fi
 
 # If there are command line parameters, use those instead.

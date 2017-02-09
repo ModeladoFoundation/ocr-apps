@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# This script may accept command line parameters of which test(s) to run.
-# For a list of possible tests, run it with the -h argument
+# run-fsim-swtest-openmp-tests.sh
 #
-# Defaults to running all tests
+# Run the entire openmp test suite. Only compatable with TGR.
 #
-# This script may optionally use env vars:
-#   TG_INSTALL - The install directory of the tg repo
-#   LOGS_DIR   - The directory for fsim to place its logs
-#   VERBOSE    - If set, then write all of fsim's output to stdout
-#   CTEST      - If set, then run the cross test version of the tests
+# The tests are generated from apps/libs/src/libomp/openmp/testsuite/c/*.c
+#
+# By default non of the cross tests will be run.
+#
+# For usage and environmental variables run with the -h argument.
+#
 
 source ./setup-test-env.sh
 [[ $? -ne 0 ]] && exit 1
@@ -145,8 +145,7 @@ test_omp_task_private
 export TIMEOUT_SECONDS=${TIMEOUT_SECONDS-420} # Default timeout of 7 min
 
 if [[ $1 == "-h" ]]; then
-  echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests"
-  exit
+  print_help
 fi
 
 # If there are command line parameters, use those instead.

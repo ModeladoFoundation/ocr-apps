@@ -12,16 +12,32 @@ Before running a test, you must build all of the required files first. See the s
 This test suite consists of several sets of tests which test fsim, fsim-rtlsim, and fsim-swtest.
 The files which can be run are:
 
-    * run-fsim-tests.sh
+    * run-fsim-ocr-tests.sh
+    * run-fsim-tgr-tests.sh
     * run-fsim-rtlsim-tests.sh
     * run-fsim-swtest-tests.sh
+    * run-fsim-swtest-pthread-tests.sh
+    * run-fsim-swtest-openmp-tests.sh
+
+The test suite also contains tests for gdb. The gdb tests may be run by:
+
+    * run-gdb-tests.sh
+
+The test suite also contains tests for x86 libraries. The x86 tests may be run by:
+
+    * run-x86-test.sh
 
 Each test will run all of its subtests by default, but you may specify which test(s) to run by passing
 them in as command line parameters. To see the tests available, run one of these test scripts with just
 the '-h' argument.
 
-If you want to see all of the output of fsim/gdb as it is being tested by the scripts, set the environmental
-variable VERBOSE to a non-empty string.
+If you want to see all of the output of fsim/gdb as it is being tested by the scripts, set the
+environmental variable VERBOSE to a non-empty string.
+
+With fsim tests, if you want to see the time taken to execute the scripts, set the environmental
+variable TIME_TESTS to a non-empty string. If you want to set (or override) a time limit before a
+test timesout, you may set the environmental variable TIMEOUT_SECONDS to an integer. If you set it
+to 0, then there will be no timeout.
 
 You may also set the environmental variable TG_INSTALL to point to the location of tg/tg/install.
 Note: this program assumes that the apps repository is located in the same directory as the tg repository.
@@ -33,7 +49,7 @@ Building for the Tests
 The tests require a completely built tg tree (along with fsim-swtest, fsim-rtlsim, and the rtl-asm, PIE,
 and swtest tests) and requires that apps/libs, apps/legacy, and apps/examples all be built for ARCH=tg-xe.
 
-There are two Makefiles in this directory: Makefile.tgr and Makefile.ocr.  Use the Makefile.tgr if building
+There are two tg-xe Makefiles in this directory: Makefile.tgr and Makefile.ocr.  Use the Makefile.tgr if building
 the new baremetal (tgr) runtime.  Use Makefile.ocr for building the original ocr runtime.  Depending on what
 you want to build, you can run the following:
 
@@ -45,6 +61,9 @@ make -f Makefile.* libs            // this builds all the libraries (newlib, lib
 make -f Makefile.* libs-clean      // this cleans all the libraries
 make -f Makefile.* tools           // this builds the complete tg repo tools
 make -f Makefile.* tools-clean     // this cleans the tg repo
+
+There is also a Makefile.ocrx86 for building for the x86 tests. It is run similarly except there are no tools
+targets.
 
 NOTE: The cholesky and smith-waterman examples currently have faulty Makefiles. They will not
 install if you specify the install target like printf and fib. Instead you need to run them as
@@ -77,6 +96,8 @@ to modify three things:
 2) In the first switch statement, export the environmental variables WORKLOAD_INSTALL and FSIM_ARGS.
    Also export any other environmental variables that are needed, and perform the rest of setup.
    You may also optionally add tests to the REGEX array.
+   If making a test for fsim w/ tgkrnl-tgr you must also export the TEST variable with the filename to
+   test (which must be contained in the WORKLOAD_INSTALL).
 3) In the final switch statement, unset any extra environmental variables you exported, and perform
    any necessary cleanup and extra tests. If any test fails. Print the error message and set SUCCESS to 0;
 
