@@ -120,7 +120,16 @@ void processArgs(MyOption* myargs, int argc, char** argv)
 
    ocrDBK_t DBK_sArgs, DBK_opts;
    ocrDbCreate( &DBK_sArgs, (void**) &sArgs, sizeof(char)*2*(n+2), 0, NULL_HINT, NO_ALLOC );
-   ocrDbCreate( &DBK_opts, (void**) &opts, sizeof(struct option)*(n+2), 0, NULL_HINT, NO_ALLOC );
+   ocrDbCreate( &DBK_opts, (void**) &opts, sizeof(struct option)*n, 0, NULL_HINT, NO_ALLOC );
+
+   #ifndef TG_ARCH
+      memset(sArgs, 0, sizeof(char)*2*(n+2));
+      memset(opts, 0, sizeof(struct option)*n);
+   #else
+     u32 m;
+     for(m=0; m<sizeof(char)*2*(n+2); ++m) ((char*)sArgs)[m]='\0';
+     for(m=0; m<sizeof(struct option)*n; ++m) ((char*)opts)[m]='\0';
+   #endif
 
    for (i=0; i<n; i++)
    {
