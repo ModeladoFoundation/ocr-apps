@@ -31,8 +31,9 @@ tg-examples:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE fptr_simple
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE multi_seg
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE USE_TGR=yes fptr_simple
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE USE_TGR=yes multi_seg
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/CodeGen/XSTG USE_TGR=yes tailcall1
 
 apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes hello
@@ -56,6 +57,7 @@ apps-clean:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2 clean
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8 clean
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE clean
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/CodeGen/XSTG clean
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe clean
 	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test clean
 
