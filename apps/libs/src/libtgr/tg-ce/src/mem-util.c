@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <fcntl.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 #include "tg-types.h"
 #include "tg-cmdline.h"
@@ -11,6 +13,7 @@
 #include "tgr-ce.h"
 #include "util.h"
 #include "mem-util.h"
+#include "ce-os-svc.h"
 
 #define NO_ADDR (0UL)
 //
@@ -351,4 +354,51 @@ int return_mem( xe_info * xei, uint64_t va )
         break;
     }
     return 0;
+}
+
+//
+// Allocate CE space for and read a file into it.
+//
+mem_seg * tgr_load_file( ce_info * cei, const char * file )
+{
+    //int status = 0;
+    //
+    // stat the file to see how big it is and then allocate space for it
+    //
+    struct stat st;
+
+    if( ce_os_filestat( file, &st ) < 0 ) {
+        ce_error("FILE", "Can't stat file '%s'\n", file);
+        return NULL;
+    }
+    //
+    // allocate space for and copy the file in
+    //
+    mem_seg * seg = mem_alloc( cei->CE, st.st_size );
+
+    if( seg == NULL ) {
+        ce_error("FILE", "Can't allocate %d bytes of CE mem for file\n",
+                st.st_size, file );
+        return NULL;
+    }
+
+    int fd = ce_os_fileopen( file, O_RDONLY, 0 );
+
+    if( fd < 0 ) {
+        ce_error("FILE", "Can't open file '%s' for reading\n", file);
+        mem_free( seg );
+        return NULL;
+    }
+    ce_vprint("FILE", "load file '%s' 0x%lx bytes, from fd %d to %p, seg %p\n",
+                file, st.st_size, fd, (void *) seg->va, seg );
+
+    ssize_t got = ce_os_fileread( fd, (void *) seg->va, st.st_size );
+    if( got != st.st_size ) {
+        ce_error("FILE", "Read of file '%s' failed, got %d\n", file, got );
+        mem_free( seg );
+        return NULL;
+    }
+    (void) ce_os_fileclose( fd );
+
+    return seg;
 }
