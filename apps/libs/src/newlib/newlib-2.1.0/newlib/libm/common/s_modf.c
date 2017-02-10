@@ -110,6 +110,8 @@ static double one = 1.0;
 	} else if (j0>51) {		/* no fraction part */
 	    __uint32_t high;
 	    *iptr = x*one;
+	    if (isnan(x))
+	        return x;
 	    GET_HIGH_WORD(high,x);
 	    INSERT_WORDS(x,high&0x80000000,0);	/* return +-0 */
 	    return x;
