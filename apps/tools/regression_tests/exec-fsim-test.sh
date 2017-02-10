@@ -20,14 +20,14 @@
 #
 # This script accepts command line parameters which are all regular
 # expressions. The output of the fsim simulation must contain lines
-# which matche each of these regular expressions in order to succeed.
+# which matches each of these regular expressions in order to succeed.
 # Note: these regular expressions must be encountered in order, and each
 # ouput line can only provide a match for one regular expression.
 #
 # This script also makes a file called fsim_out in the LOGS_DIR directory
 # containing a copy of all of the output of fsim
 
-if [[ -z $TEST_NAME ]]; then
+if [ -z "$TEST_NAME" ]; then
   echo "Do not call this script directly."
   echo "Instead, call one of the run-fsim*-tests.sh files"
   exit 1
@@ -50,11 +50,11 @@ FALURE_REGEXS="\("\
 function fsim_success_test() {
   FOUND_REGEX=1
   while read LINE; do
-    [[ -n $VERBOSE ]] && echo $LINE
+    [ "$VERBOSE" ] && echo $LINE
 
-    [[ -z $OUTPUT_FILE ]] && echo $LINE >> $LOGS_DIR/fsim_out
+    [ -z "$OUTPUT_FILE" ] && echo $LINE >> $LOGS_DIR/fsim_out
 
-    if [[ $FOUND_REGEX -le ${#REGEXS[@]} ]]; then
+    if [ $FOUND_REGEX -le ${#REGEXS[@]} ]; then
       echo $LINE | grep -q "${REGEXS[$FOUND_REGEX]}" && ((FOUND_REGEX++))
     fi
 
@@ -64,7 +64,7 @@ function fsim_success_test() {
     fi
   done
 
-  if [[ $FOUND_REGEX -le ${#REGEXS[@]} ]]; then
+  if [ $FOUND_REGEX -le ${#REGEXS[@]} ]; then
     echo "Output never matched '${REGEXS[$FOUND_REGEX]}'" 1>&2
     return 1
   fi
@@ -83,36 +83,66 @@ function activate_timeout() {
 
 echo "Running test $TEST_NAME"
 
-# Checking that $LOGS_DIR is not empty just for sanity. We do not want to try to remove /
-[[ -n $LOGS_DIR ]] && rm -rf $LOGS_DIR/*
+#
+# Check that our required arguments are set
+#
+[ "$WORKLOAD_INSTALL" ] || { echo "WORKLOAD_INSTALL not set!" ; exit 1; }
+[ "$FSIM_ARGS" ]  || { echo "FSIM_ARGS not set!" ; exit 1; }
+[ "$FSIM_EXE" ]   || { echo "FSIM_EXE not set!" ; exit 1; }
+[ "$LOGS_DIR" ]   || { echo "LOGS_DIR not set!" ; exit 1; }
+[ "$TEST_NAME" ]  || { echo "TEST_NAME not set!" ; exit 1; }
+[ "$TG_INSTALL" ] || { echo "TG_INSTALL not set!" ; exit 1; }
 
+#
+# Create the logs dir if it doesn't exist, complain if it does but isn't a dir
+# Clear out any residual content
+#
+if [ ! -e "$LOGS_DIR" ]; then
+  mkdir -p $LOGS_DIR 2>/dev/null || { echo "Unable to create log dir '$LOGS_DIR'!"; exit 1; }
+fi
+[ -d "$LOGS_DIR" ] || { echo "log dir '$LOGS_DIR' is NOT a directory!" ; exit 1; }
+rm -rf $LOGS_DIR/*
+
+#
+# paranoia - guarantee clean start
+#
 kill_fsim
 
-OLD_DIR=$(pwd)
-cd $WORKLOAD_INSTALL
+# Make sure that the timeout timer will get killed when the test finishes.
+trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 
 # Make sure that the timeout timer will get killed when the test finishes.
 trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 
 # Start the timeout timer if there is one specified
 [[ ${TIMEOUT_SECONDS:-0} != 0 ]] && activate_timeout
-SECONDS=0
 
+#
 # Actually run fsim
+#
+SECONDS=0
 FSIM_CMD="$TG_INSTALL/bin/$FSIM_EXE -L $LOGS_DIR $FSIM_ARGS"
-[[ -n $VERBOSE ]] && echo "Running command '$FSIM_CMD'"
-if [[ -z $OUTPUT_FILE ]]; then
-  # Test fsim's output
+
+cd $WORKLOAD_INSTALL
+
+[ "$VERBOSE" ] && echo "Running fsim command '$FSIM_CMD'"
+
+if [ -z "$OUTPUT_FILE" ]; then
+  #
+  # Test fsim's stdout
+  #
   $FSIM_CMD 2>&1 | fsim_success_test
   RET=$?
 else
-  # Test log file instead of output
-  if [[ -z $VERBOSE ]]; then
+  #
+  # Test log file instead of stdout
+  #
+  if [ -z "$VERBOSE" ]; then
     $FSIM_CMD 1>$LOGS_DIR/fsim_out 2>&1
   else
     $FSIM_CMD 2>&1 | tee $LOGS_DIR/fsim_out
   fi
-  if [[ -f $LOGS_DIR/$OUTPUT_FILE ]]; then
+  if [ -f "$LOGS_DIR/$OUTPUT_FILE" ]; then
     cat $LOGS_DIR/$OUTPUT_FILE | fsim_success_test
     RET=$?
   else
@@ -120,26 +150,20 @@ else
     RET=1
   fi
 fi
-
+#
 # Kill the timeout timer
-[[ -n $TIMEOUT_PID ]] && kill ${TIMEOUT_PID} 2>/dev/null && wait $TIMEOUT_PID 2>/dev/null
+#
+[ "$TIMEOUT_PID" ] && kill ${TIMEOUT_PID} 2>/dev/null && wait $TIMEOUT_PID 2>/dev/null
 
-[[ -n $VERBOSE || -n $TIME_TESTS ]] && echo "Test took $SECONDS sec"
+[ "$VERBOSE" ] || [ "$TIME_TESTS" ] && echo "Test took $SECONDS sec"
 
-cd $OLD_DIR
-
-if [[ $RET -ne 0 ]]; then
+if [ $RET -ne 0 ]; then
   echo " !!! Test $TEST_NAME failed !!!" 1>&2
   echo
 fi
-
-#Unset the env variables for the test
-unset TEST_NAME
-unset WORKLOAD_INSTALL
-unset FSIM_ARGS
-unset FSIM_CMD
-unset FSIM_STDIN
-
+#
+# guarantee fsim is no longer running
+#
 kill_fsim
 
 exit $RET

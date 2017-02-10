@@ -1,7 +1,15 @@
 #!/bin/bash
 
 # DO NOT CALL THIS SCRIPT DIRECTLY
-
+#
+# This script initializes defaults for environment vars used by
+# the test scripts, primarially exec-fsim-test.sh
+#
+# The current vars and defaults are:
+#	TG_INSTALL	- up the dir tree to just outside the repo and then down to tg/tg/install
+#	APPS_ROOT   - up the tree to apps/apps
+#	LOGS_DIR    - logs/ in the current directory
+#
 # This script may optionally use env vars:
 #   TG_INSTALL - The install directory of the tg repo
 #   LOGS_DIR   - The directory for fsim to place its logs
