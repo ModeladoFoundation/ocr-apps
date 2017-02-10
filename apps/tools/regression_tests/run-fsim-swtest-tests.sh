@@ -26,7 +26,9 @@ tg_cdemo tg_cdemo.p tg_cdemo_nonewlib tg_cdemo_nonewlib.p
 tg_cxxdemo tg_cxxdemo.p tg_throw tg_throw.p
 legacy_cxxhello legacy_cxxhello.p
 legacy_hello legacy_hello.p legacy_iotest legacy_iotest.p
-PIE_fptr_simple PIE_multi_seg"
+PIE_fptr_simple PIE_fptr_simple.p PIE_multi_seg PIE_multi_seg.p
+TCO_tailcall1 TCO_tailcall1.p
+"
 
 if [[ $1 == "-h" ]]; then
   echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests"
@@ -43,7 +45,7 @@ for TEST in $TESTS; do
   declare -a REGEXS=("ready alarm")
 
   # Remove the location prefix to get the test filename.
-  TEST_FILE=$(echo $TEST | sed 's/\(tg\|legacy\|PIE\)_//')
+  TEST_FILE=$(echo $TEST | sed 's/\(tg\|legacy\|PIE\|TCO\)_//')
 
   # Set up the env for the test
   case $TEST in
@@ -108,11 +110,17 @@ for TEST in $TESTS; do
       REGEXS+=("all good." "terminate alarm")
     ;;
     PIE_fptr_simple)
+      TEST_FILE=fptr_simple.swtest
+    ;;&
+    PIE_fptr_simple|PIE_fptr_simple.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
       export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("v2 is: 6" "PASSED: v2 == 6" "terminate alarm")
     ;;
     PIE_multi_seg)
+      TEST_FILE=multi_seg.swtest
+    ;;&
+    PIE_multi_seg|PIE_multi_seg.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
       export FSIM_ARGS="-q -c $TG_INSTALL/../fsim/swtest/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
       REGEXS+=("\*b is: 42, \*y\[0] is: 42, xint is: 42"
@@ -123,6 +131,18 @@ for TEST in $TESTS; do
                "\*\*a = 43"
                "\*\*a is: 10, \*y\[0] is: 10"
                "PASSED" "terminate alarm")
+    ;;
+    TCO_tailcall1)
+      TEST_FILE=tailcall1.swtest
+    ;;&
+    TCO_tailcall1|TCO_tailcall1.p)
+       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/CodeGen/XSTG/tailcall
+       export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/../swtest.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
+       REGEXS+=("tc_func1 - SUCCESS")
+       REGEXS+=("tc_vfunc1 - SUCCESS")
+       REGEXS+=("tc_vfunc2 - SUCCESS")
+       REGEXS+=("tc_fn_tc - SUCCESS")
+       REGEXS+=("XE0 info: terminate alarm")
     ;;
     *)
       echo "Invalid test name '$TEST'" 1>&2
