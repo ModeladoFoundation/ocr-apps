@@ -16,6 +16,7 @@
 #include "ce-os-svc.h"
 #include "xe-elf64.h"
 #include "util.h"
+#include "mem-util.h"
 
 #define __ASM__
 #include <fsim-api.h>
@@ -313,9 +314,7 @@ int block_info_init( block_info * bi, int block, ce_config *config )
     bi->L2 = mem_region_create( Mem_L2, true, false, "L2" );
 
     if( bi->L2 == NULL ||
-        mem_region_add( bi->L2,
-                        CR_L2_BASE(bi->id.block),
-                        config->L2_size * 1024 ) ) {
+        mem_region_add( bi->L2, CR_L2_BASE(bi->id.block), config->L2_size ) ) {
         ce_error("MAIN", "Can't initialize block %d's L2 memory region\n", block);
         return 1;
     }
@@ -348,7 +347,7 @@ int block_info_init( block_info * bi, int block, ce_config *config )
         if( xei->L1 == NULL ||
             mem_region_add( xei->L1,
                             CR_L1_BASE(bi->id.block, xei->id.agent),
-                            config->L1_size * 1024 ) ) {
+                            config->L1_size ) ) {
             ce_error("MAIN", "Can't initialize XE %x's L1 memory region\n", xei->id.all);
             return 1;
         }
@@ -443,20 +442,6 @@ int ce_info_init( ce_config * config )
 int tgr_init( ce_config * config )
 {
     //
-    // init the cluster/tile id from tgkrnl vars
-    //
-    config->cluster_id.rack = RackNum;
-    config->cluster_id.cube = CubeNum;
-    config->cluster_id.socket  = SocketNum;
-    config->cluster_id.cluster = ClusterNum;
-    config->cluster_id.block   = BlockNum;  // keep for fsim config
-
-    config->xes_per_block      = XeCount;
-
-    config->IPM_size = IpmSize * 1024 * 1024;
-    config->L2_size  = L2Size * 1024;
-    config->L1_size  = XeL1Size * 1024;
-    //
     // Some validation
     //
     if( BlockCount > MAX_BLOCKS_PER_CLUSTER ) {
@@ -498,41 +483,16 @@ int tgr_init( ce_config * config )
 static int tgr_load_blocks( ce_info * cei, const char * elf_file )
 {
     int status = 0;
-    //
-    // stat the file to see how big it is and then allocate space for it
-    //
-    struct stat st;
 
-    if( ce_os_filestat( elf_file, &st ) < 0 ) {
-        ce_error("MAIN", "Can't stat XE ELF file '%s'\n", elf_file);
-        return 1;
-    }
-    //
-    // allocate space for and copy the file in
-    //
-    mem_seg * elf = mem_alloc( cei->CE, st.st_size );
+    mem_seg * elf = tgr_load_file( cei, elf_file );
 
     if( elf == NULL ) {
-        ce_error("MAIN", "Can't allocate %d bytes of CE mem for XE ELF\n", st.st_size );
+        ce_error("MAIN", "Can't get XE ELF file\n");
         return 1;
     }
 
-    int fd = ce_os_fileopen( elf_file, O_RDONLY, 0 );
-
-    if( fd < 0 ) {
-        ce_error("MAIN", "Can't open XE Elf '%s' for reading\n", elf_file);
-        mem_free( elf );
-        return 1;
-    }
-    ssize_t got = ce_os_fileread( fd, (void *) elf->va, st.st_size );
-    if( got != st.st_size ) {
-        ce_error("MAIN", "Read of XE Elf failed, got %d\n", got );
-        return 1;
-    }
-    (void) ce_os_fileclose( fd );
-
-    ce_print("MAIN", "XE Elf image '%s' 0x%x bytes at %p\n",
-                elf_file, st.st_size, elf->va );
+    ce_print("MAIN", "XE Elf image '%s' 0x%lx bytes at %p, seg %p\n",
+                elf_file, elf->len, elf->va, elf );
     //
     // load it, allocating memory for the various segments
     //

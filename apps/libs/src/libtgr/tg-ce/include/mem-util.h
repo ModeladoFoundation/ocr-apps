@@ -60,5 +60,9 @@ mem_seg * block_alloc_mem_at( block_info * bi, mem_type type, uint64_t addr, siz
 
 mem_seg * global_alloc_mem( ce_info * ci, size_t len, bool private, int agent );
 mem_seg * global_alloc_mem_at( ce_info * ci, uint64_t addr, size_t len );
+//
+// Read in a file to CE memory
+//
+mem_seg * tgr_load_file( ce_info * cei, const char * file );
 
 #endif // __MEM_UTIL_H__
