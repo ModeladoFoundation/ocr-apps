@@ -186,7 +186,7 @@ void splitDimension_Cart3D(u64 Num_procs, u64* Num_procsx, u64* Num_procsy, u64*
 {
     u64 nx, ny, nz;
 
-    nz = (int) pow(Num_procs+1,0.33);
+    nz = (int) pow(Num_procs+1,1.0/3.0);
     for(; nz>0; nz--)
     {
         if (!(Num_procs%nz))
@@ -361,6 +361,7 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
 #endif
     u64 PD_X, PD_Y, PD_Z;
     splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid
+    DEBUG_PRINTF(("PD_X PD_Y PD_Z %d %d %d\n", PD_X, PD_Y, PD_Z));
 
     u64 pdGridDims[3] = { PD_X, PD_Y, PD_Z };
 
