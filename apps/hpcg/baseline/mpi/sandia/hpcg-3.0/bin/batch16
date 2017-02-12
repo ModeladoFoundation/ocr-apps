@@ -1,0 +1,6 @@
+#!/bin/bash -l
+#SBATCH -p debug
+#SBATCH -N 16
+#SBATCH -t 00:010:00
+#SBATCH -J hpcg
+srun --mpi=pmi2 -n 128 ./xhpcg
