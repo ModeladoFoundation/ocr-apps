@@ -27,7 +27,10 @@ pthread_simple pthread_simple.p
 pthread_detach pthread_detach.p
 pthread_malloc pthread_malloc.p
 pthread_mutex_recursive pthread_mutex_recursive.p
-pthread_cancel pthread_cancel.p"
+pthread_cancel pthread_cancel.p
+PIE_fptr_simple PIE_fptr_simple.p
+PIE_multi_seg PIE_multi_seg.p
+TCO_tailcall1 TCO_tailcall1.p"
 
 # Note: the tests legacy_iotest legacy_iotest.p have been disabled for now since
 # they are not supported by tgkrnl-tgr yet. (They require fsim tgkrnl-tgr to
@@ -45,9 +48,11 @@ for TEST in $TESTS; do
 
   TEST_FILE=$TEST
 
-  # If a test is a legacy test, then its legacy_ prefix needs to be removed
+  # If a test is not a pthread_* or c_test_* then its prefix needs to be removed
   case "$TEST" in
-    legacy_*) TEST_FILE=${TEST#legacy_} ;;
+    pthread_*) ;;
+    c_test_*) ;;
+    *)TEST_FILE=${TEST#*_} ;;
   esac
 
   #If it is non-PIE and not a c_test_*, then it needs a .fsim extension
@@ -254,6 +259,31 @@ for TEST in $TESTS; do
                "testing Disable Deferred" "testing cancel" "enabling cancel" "joined thread"
                "testing Enable Async" "joined thread"
                "testing Disable Async" "testing cancel" "enabling cancel" "joined thread")
+    ;;
+    PIE_fptr_simple|PIE_fptr_simple.p)
+      export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      REGEXS+=("v2 is: 6" "PASSED: v2 == 6" "terminate alarm")
+    ;;
+    PIE_multi_seg|PIE_multi_seg.p)
+      export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      REGEXS+=("\*b is: 42, \*y\[0] is: 42, xint is: 42"
+               "\*b is: 42, \*y\[0] is: 7, xint is: 42"
+               "\*b is: 7, \*y\[0] is: 7, xint is: 42"
+               "\*b is: 42, \*y\[0] is: 7, xint is: 42"
+               "\*b is: 43, \*y\[0] is: 7, xint is: 43"
+               "\*\*a = 43"
+               "\*\*a is: 10, \*y\[0] is: 10"
+               "PASSED" "terminate alarm")
+    ;;
+    TCO_tailcall1|TCO_tailcall1.p)
+      export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/CodeGen/XSTG/tailcall
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      REGEXS+=("tc_func1 - SUCCESS")
+      REGEXS+=("tc_vfunc1 - SUCCESS")
+      REGEXS+=("tc_vfunc2 - SUCCESS")
+      REGEXS+=("tc_fn_tc - SUCCESS")
     ;;
     *)
       echo "Invalid test name '$TEST'" 1>&2
