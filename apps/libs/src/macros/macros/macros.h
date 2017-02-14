@@ -7,13 +7,8 @@
 */
 
 /*
-an OCR "library" for computing global reductions using labeled GUIDs.
 
-
-The library implements a reduction tree invoking the reduction operator at each stage.
-Node zero returns the result by satisfying the event with a separate datablock
-
-See README for more details
+Utility functions to determine EDT's sloc/depc sizes
 
 */
 
