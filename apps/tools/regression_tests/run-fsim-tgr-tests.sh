@@ -20,9 +20,14 @@ export FSIM_EXE="fsim"
 # Tests to run
 TESTS="\
 c_test_1 c_test_1.p c_test_2 c_test_2.p c_test_3 c_test_3.p
-legacy_hello legacy_hello.p legacy_cxxhello legacy_cxxhello.p
+legacy_hello legacy_hello.p
+legacy_cxxhello legacy_cxxhello.p
 legacy_float_tests legacy_float_tests.p
 legacy_double_tests legacy_double_tests.p
+tg_cdemo tg_cdemo.p
+tg_cdemo_nonewlib tg_cdemo_nonewlib.p
+tg_cxxdemo tg_cxxdemo.p
+tg_throw tg_throw.p
 pthread_simple pthread_simple.p
 pthread_detach pthread_detach.p
 pthread_malloc pthread_malloc.p
@@ -228,6 +233,34 @@ for TEST in $TESTS; do
       REGEXS+=("double complex conjf(3.1415926535897931 0.0000000000000000) = 3.1415927410125732 -0.0000000000000000")
       REGEXS+=("double complex conjf(nan nan) = nan nan")
     ;;
+    tg_cdemo_nonewlib|tg_cdemo_nonewlib.p)
+      export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      REGEXS+=("ce_write to fd 1")
+      REGEXS+=("ce_write to fd 2")
+    ;;
+    tg_cdemo|tg_cdemo.p)
+      export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      REGEXS+=("Write to fd 1")
+      REGEXS+=("Write to fd 2")
+    ;;
+    tg_cxxdemo|tg_cxxdemo.p)
+      export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export TEST_ARGS="foo bar"
+      REGEXS+=("App $WORKLOAD_INSTALL/$TEST_FILE: 3 args")
+    ;;
+    tg_throw|tg_throw.p)
+      export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
+      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      REGEXS+=("29" "do_try: Calling middle(4)" "16" "middle e(10)")
+      REGEXS+=("52" "struct error(.*) = 10 destructor" "28" "do_try: middle returns 5")
+      REGEXS+=("29" "do_try: Calling middle(7)" "16" "middle e(10)")
+      REGEXS+=("33" "may_throw: Throwing error = 7" "52" "struct error(.*) = 10 destructor")
+      REGEXS+=("36" "Caught throw (error = 7)" "51" "struct error(.*) = 7 destructor")
+      REGEXS+=("51" "struct error(.*) = 7 destructor")
+    ;;
     pthread_simple|pthread_simple.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
@@ -308,6 +341,10 @@ for TEST in $TESTS; do
         SUCCESS=0
       fi
       rm -rf $TEST_DIR
+      ;;
+
+    tg_cxxdemo|tg_cxxdemo.p)
+      unset TEST_ARGS
       ;;
 
     *) #If there is no extra test/cleanup, assume success

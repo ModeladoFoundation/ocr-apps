@@ -24,10 +24,10 @@ libs:
 	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=tg-xe USE_TGR=yes
 
 tg-examples:
-	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 cdemo_nonewlib
-	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 cdemo
-	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 cxxdemo
-	$(MAKE) -C $(TG_ROOT)/fsim/swtest DEBUG=1 throw
+	$(MAKE) -C $(TG_ROOT)/fsim/swtest USE_TGR=yes DEBUG=1 cdemo_nonewlib
+	$(MAKE) -C $(TG_ROOT)/fsim/swtest USE_TGR=yes DEBUG=1 cdemo
+	$(MAKE) -C $(TG_ROOT)/fsim/swtest USE_TGR=yes DEBUG=1 cxxdemo
+	$(MAKE) -C $(TG_ROOT)/fsim/swtest USE_TGR=yes DEBUG=1 throw
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8
