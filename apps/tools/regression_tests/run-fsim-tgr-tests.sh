@@ -6,8 +6,11 @@
 #
 # The tests come from
 #
-#   apps/libs/src/libtgr/tg-ce/test - prefixed with c_test_1
+#   apps/libs/src/libtgr/tg-ce/test - prefixed with c_test_
 #   apps/legacy/tg-xe               - prefixed with legacy_ or pthread_
+#   tg/tg/fsim/swtest               - prefixed with tg_
+#   tg/xe-llvm/test/PIE             - prefixed with PIE_
+#   tg/xe-llvm/test/CodeGen/XSTG    - prefixed with TCO_
 #
 # For usage and environmental variables run with the -h argument.
 #
@@ -60,10 +63,9 @@ for TEST in $TESTS; do
     *)TEST_FILE=${TEST#*_} ;;
   esac
 
-  #If it is non-PIE and not a c_test_*, then it needs a .fsim extension
+  #If it is non-PIE, then it needs a .fsim extension
   case "$TEST" in
     *.p) ;;
-    c_test_*) ;;
     *) TEST_FILE+=.fsim ;;
   esac
 
