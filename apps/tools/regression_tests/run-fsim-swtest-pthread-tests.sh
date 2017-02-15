@@ -10,7 +10,7 @@
 #
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 export FSIM_EXE="fsim-swtest"
 
@@ -22,12 +22,12 @@ pthread_malloc pthread_malloc.p
 pthread_mutex_recursive pthread_mutex_recursive.p
 pthread_cancel pthread_cancel.p"
 
-if [[ $1 == "-h" ]]; then
+if [ "$1" == "-h" ]; then
   print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
 
@@ -38,7 +38,10 @@ for TEST in $TESTS; do
   TEST_FILE=$TEST
 
   # Since this is from legacy, we must add a .swtest if the test isn't PIE
-  [[ $TEST != *.p ]] && TEST_FILE+=.swtest
+  case "$TEST" in
+    *.p) ;;
+    *) TEST_FILE+=.swtest ;;
+  esac
 
   export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
   export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/ccfg.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
@@ -85,7 +88,7 @@ for TEST in $TESTS; do
       ;;
   esac
 
-  if [[ $SUCCESS -eq 0 ]]; then
+  if [ "$SUCCESS" -eq 0 ]; then
     echo " !!! Test $TEST_NAME failed !!!" 1>&2
   else
     echo "Test $TEST_NAME succeeded"

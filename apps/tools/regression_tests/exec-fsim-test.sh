@@ -111,11 +111,8 @@ kill_fsim
 # Make sure that the timeout timer will get killed when the test finishes.
 trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 
-# Make sure that the timeout timer will get killed when the test finishes.
-trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
-
 # Start the timeout timer if there is one specified
-[[ ${TIMEOUT_SECONDS:-0} != 0 ]] && activate_timeout
+[ "${TIMEOUT_SECONDS:-0}" != 0 ] && activate_timeout
 
 #
 # Actually run fsim

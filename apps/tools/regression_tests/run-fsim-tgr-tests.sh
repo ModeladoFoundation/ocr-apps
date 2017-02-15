@@ -13,19 +13,19 @@
 #
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 export FSIM_EXE="fsim"
 
 # Tests to run
 TESTS="c_test_1 c_test_1.p c_test_2 c_test_2.p c_test_3 c_test_3.p"
 
-if [[ $1 == "-h" ]]; then
+if [ "$1" == "-h" ]; then
   print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
   export TEST_NAME=$TEST

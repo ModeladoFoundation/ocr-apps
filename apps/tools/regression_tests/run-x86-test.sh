@@ -3,16 +3,16 @@
 function success_test() {
   FOUND_REGEX=0
   while read LINE; do
-    [[ -n $VERBOSE ]] && echo $LINE
+    [ "$VERBOSE" ] && echo $LINE
 
     echo $LINE >> $LOGS_DIR/exec_out
 
-    if [[ $FOUND_REGEX -le ${#REGEXS[@]} ]]; then
+    if [ $FOUND_REGEX -le ${#REGEXS[@]} ]; then
       echo $LINE | grep -q "${REGEXS[$FOUND_REGEX]}" && ((FOUND_REGEX++))
     fi
   done
 
-  if [[ $FOUND_REGEX -lt ${#REGEXS[@]} ]]; then
+  if [ $FOUND_REGEX -lt ${#REGEXS[@]} ]; then
     echo "Output never matched '${REGEXS[$FOUND_REGEX]}'" 1>&2
   else
      echo "===>>>SUCCESS<<<==="
@@ -26,8 +26,8 @@ if [ ! -x $EXEC ]; then
 else
   echo "Running test $TEST"
   # Checking that $LOGS_DIR is not empty just for sanity. We do not want to try to remove /
-  [[ -n $LOGS_DIR ]] && rm -rf $LOGS_DIR/*
-  if [[ -n $SCAFFOLD ]]; then
+  [ "$LOGS_DIR" ] && rm -rf $LOGS_DIR/*
+  if [ "$SCAFFOLD" ]; then
     $EXEC 2>&1 | success_test
   else
     $EXEC -ocr:cfg ${APPS_ROOT}/legacy/x86/test_config.cfg 2>&1 | success_test
@@ -40,13 +40,13 @@ source ./setup-test-env.sh
 # Tests to run
 TESTS="legacy_chello legacy_cxxhello"
 
-if [[ $1 == "-h" ]]; then
+if [ "$1" == "-h" ]; then
   echo -e "You may specify one or more of:\n\n$TESTS\n\nDefaults to all tests"
   exit
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
 
