@@ -48,19 +48,10 @@ for TEST in $TESTS; do
   # Remove the location prefix (eg. tg_) to get the test filename.
   TEST_FILE=${TEST#*_}
 
-  # Non-pie legacy/TCO/PIE programs need a .swtest extension
+  # Non-pie programs need a .swtest extension
   case "$TEST" in
     *.p) ;;
-    *)
-      case "$TEST" in
-        legacy_*)
-          TEST_FILE+=.swtest ;;
-        PIE_*)
-          TEST_FILE+=.swtest ;;
-        TCO_*)
-          TEST_FILE+=.swtest ;;
-        *) ;;
-      esac
+    *) TEST_FILE+=.swtest ;;
   esac
 
   # Set up the env for the test
@@ -68,8 +59,8 @@ for TEST in $TESTS; do
     tg_cdemo_nonewlib|tg_cdemo_nonewlib.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/swtest
       export FSIM_ARGS="-q -c $WORKLOAD_INSTALL/sw1.cfg -- $WORKLOAD_INSTALL/$TEST_FILE"
-      REGEXS+=("XE0 stdout: 13" "ce_write to f" "XE0 stdout: end")
-      REGEXS+=("XE0 stderr: 13" "ce_write to f" "XE0 stderr: end")
+      REGEXS+=("XE0 stdout: 16" "ce_write to fd 1" "XE0 stdout: end")
+      REGEXS+=("XE0 stderr: 16" "ce_write to fd 2" "XE0 stderr: end")
       REGEXS+=("XE0 info: terminate alarm")
     ;;
     tg_cdemo|tg_cdemo.p)
