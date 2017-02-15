@@ -21,7 +21,7 @@ cd "$( dirname "${BASH_SOURCE[0]}" )"
 # This function tests if a directory exists. If it does
 # then it prints out an absolute path to the directory.
 function clean_path() {
-  if [[ -d $1 ]]; then
+  if [ -d "$1" ]; then
     cd $1;
     pwd -P
   else
@@ -39,7 +39,7 @@ function print_help() {
   echo
   echo "For tests you may specify one or more of:"
 
-  if [[ "$0" =~ "ocr" ]]; then
+  if echo "$0" | grep -q "ocr"; then
     echo -e "\n$TESTS OCRcholesky OCRsmith-waterman irqstress\n"
     echo "Defaults to all tests except OCRcholesky, OCRsmith-waterman, and irqstress."
   else
@@ -57,7 +57,7 @@ function print_help() {
   echo "VERBOSE    - If set, then write all test output to stdout"
   echo "               Default: unset"
 
-  if [[ "$0" =~ "gdb" ]]; then
+  if echo "$0" | grep -q "gdb"; then
     # run-gdb-tests.sh help
     echo
     echo "Note: all VERBOSE non-gdb output will be annotated with 'PYTHON OUTPUT:'"
@@ -71,7 +71,7 @@ function print_help() {
     echo "           - If set, then abort test after this many seconds"
     echo "               If set to 0 or unset then there is no timeout"
     echo "               Default: ${TIMEOUT_SECONDS-unset}"
-    if [[ "$0" =~ openmp ]]; then
+    if echo "$0" | grep -q "openmp"; then
       echo "CTEST      - If set, then run the cross test version of the tests"
       echo "               The cross test versions of the tests omit whatever"
       echo "               feature of openmp is being tested. These tests typically"
@@ -97,19 +97,19 @@ function ctrl_c() {
 }
 
 # The ctrl-c handler is only supported for fsim tests
-[[ "${BASH_SOURCE[1]}" =~ "fsim" ]] && trap ctrl_c INT
+echo "${BASH_SOURCE[1]}" | grep -q "fsim" && trap ctrl_c INT
 
 # Attempt to determine locations of repos and install directories for tests.
 export TG_INSTALL=$(clean_path ${TG_INSTALL:-$(pwd)/../../../../tg/tg/install})
-[[ -z $TG_INSTALL ]] && exit 1;
+[ -z "$TG_INSTALL" ] && exit 1;
 
 export APPS_ROOT=$(clean_path "$TG_INSTALL/../../../apps/apps")
-[[ -z $APPS_ROOT ]] && exit 1;
+[ -z "$APPS_ROOT" ] && exit 1;
 
 export LOGS_DIR=${LOGS_DIR:-$(pwd)/logs}
 
-if [[ -e $LOGS_DIR ]]; then
-  if [[ ! -d $LOGS_DIR ]]; then
+if [ -e "$LOGS_DIR" ]; then
+  if [ ! -d "$LOGS_DIR" ]; then
     echo "Logs directory '$LOGS_DIR' exists and is not a directory." 1>&2
     echo "Cowardly refusing to delete." 1>&2
     exit 1

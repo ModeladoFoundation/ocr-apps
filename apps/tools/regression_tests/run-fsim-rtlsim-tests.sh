@@ -11,18 +11,18 @@
 # For usage and environmental variables run with the -h argument.
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 export FSIM_EXE="fsim-rtlsim"
 
 # Tests to run
 TESTS="rtl-asm rtl-asm2 rtl-asm8"
-if [[ $1 == "-h" ]]; then
+if [ "$1" == "-h" ]; then
   print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
 
@@ -61,7 +61,7 @@ for TEST in $TESTS; do
       ;;
   esac
 
-  if [[ $SUCCESS -eq 0 ]]; then
+  if [ "$SUCCESS" -eq 0 ]; then
     echo " !!! Test $TEST_NAME failed !!!" 1>&2
   else
     echo "Test $TEST_NAME succeeded"

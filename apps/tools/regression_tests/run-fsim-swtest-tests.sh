@@ -14,7 +14,7 @@
 #
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 export FSIM_EXE="fsim-swtest"
 
@@ -28,12 +28,12 @@ legacy_hello legacy_hello.p legacy_iotest legacy_iotest.p
 PIE_fptr_simple PIE_fptr_simple.p PIE_multi_seg PIE_multi_seg.p
 TCO_tailcall1 TCO_tailcall1.p"
 
-if [[ $1 == "-h" ]]; then
+if [ "$1" == "-h" ]; then
   print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
 
@@ -45,9 +45,19 @@ for TEST in $TESTS; do
   TEST_FILE=${TEST#*_}
 
   # Non-pie legacy/TCO/PIE programs need a .swtest extension
-  if [[ $TEST == legacy_* || $TEST == PIE_* || $TEST == TCO_* ]]; then
-    [[ $TEST != *.p ]] && TEST_FILE+=.swtest
-  fi
+  case "$TEST" in
+    *.p) ;;
+    *)
+      case "$TEST" in
+        legacy_*)
+          TEST_FILE+=.swtest ;;
+        PIE_*)
+          TEST_FILE+=.swtest ;;
+        TCO_*)
+          TEST_FILE+=.swtest ;;
+        *) ;;
+      esac
+  esac
 
   # Set up the env for the test
   case $TEST in
@@ -156,7 +166,7 @@ for TEST in $TESTS; do
       ;;
   esac
 
-  if [[ $SUCCESS -eq 0 ]]; then
+  if [ "$SUCCESS" -eq 0 ]; then
     echo " !!! Test $TEST_NAME failed !!!" 1>&2
   else
     echo "Test $TEST_NAME succeeded"

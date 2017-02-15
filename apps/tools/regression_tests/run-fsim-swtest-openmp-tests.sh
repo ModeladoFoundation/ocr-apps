@@ -12,7 +12,7 @@
 #
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 export FSIM_EXE="fsim-swtest"
 
@@ -144,18 +144,18 @@ test_omp_task_private
 "
 export TIMEOUT_SECONDS=${TIMEOUT_SECONDS-420} # Default timeout of 7 min
 
-if [[ $1 == "-h" ]]; then
+if [ "$1" == "-h" ]; then
   print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
 
   # Add ctest_ to the name to use the crosstest version
   NORMAL_TEST=$TEST
-  [[ -n $CTEST ]] && TEST=${TEST/test/ctest}
+  [ "$CTEST" ] && TEST=${TEST/test/ctest}
 
   export TEST_NAME=$TEST
 
@@ -194,7 +194,7 @@ for TEST in $TESTS; do
       ;;
   esac
 
-  if [[ $SUCCESS -eq 0 ]]; then
+  if [ "$SUCCESS" -eq 0 ]; then
     echo " !!! Test $TEST_NAME failed !!!" 1>&2
   else
     echo "Test $TEST_NAME succeeded"
