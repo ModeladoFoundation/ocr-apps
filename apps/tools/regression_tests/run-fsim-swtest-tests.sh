@@ -6,9 +6,10 @@
 #
 # The tests come from
 #
-#   tg/fsim/swtest      - prefixed with tg_
-#   tg/xe-llvm/test/PIE - prefixed with PIE_
-#   apps/legacy/tg-xe   - prefixed with legacy_
+#   tg/fsim/swtest               - prefixed with tg_
+#   tg/xe-llvm/test/PIE          - prefixed with PIE_
+#   tg/xe-llvm/test/CodeGen/XSTG - prefixed with TCO_
+#   apps/legacy/tg-xe            - prefixed with legacy_
 #
 # For usage and environmental variables run with the -h argument.
 #
