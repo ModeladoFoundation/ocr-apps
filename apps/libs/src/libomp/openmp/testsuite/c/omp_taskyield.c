@@ -13,7 +13,7 @@ int <ompts:testcode:functionname>omp_taskyield</ompts:testcode:functionname>(FIL
 
   <ompts:orphan:vars>
   int i;
-  int count = 0;
+  int count;
   int start_tid[NUM_TASKS];
   int current_tid[NUM_TASKS];
   </ompts:orphan:vars>
@@ -46,6 +46,7 @@ int <ompts:testcode:functionname>omp_taskyield</ompts:testcode:functionname>(FIL
     } /* end of single */
   } /* end of parallel */
 
+  count = 0;
   for (i=0;i<NUM_TASKS; i++)
   {
     //printf("start_tid[%d]=%d, current_tid[%d]=%d\n",i, start_tid[i], i , current_tid[i]);
