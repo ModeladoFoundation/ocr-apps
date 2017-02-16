@@ -18,8 +18,8 @@ int <ompts:testcode:functionname>omp_parallel_for_lastprivate</ompts:testcode:fu
     i0 = -1;
     int known_sum;
 
-#pragma omp parallel for reduction(+:sum) schedule(static,7) private(i) <ompts:check>lastprivate(i0)</ompts:check><ompts:crosscheck>private(i0)</ompts:crosscheck>
     <ompts:orphan>
+#pragma omp parallel for reduction(+:sum) schedule(static,7) private(i) <ompts:check>lastprivate(i0)</ompts:check><ompts:crosscheck>private(i0)</ompts:crosscheck>
     for (i = 1; i <= LOOPCOUNT; i++)
     {
 	sum = sum + i;
