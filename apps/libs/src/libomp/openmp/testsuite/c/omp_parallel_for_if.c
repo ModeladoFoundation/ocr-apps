@@ -21,8 +21,8 @@ int <ompts:testcode:functionname>omp_parallel_for_if</ompts:testcode:functionnam
     sum = 0;
     sum2 = 0;
 
-#pragma omp parallel for private(i) <ompts:check>if (control==1)</ompts:check>
     <ompts:orphan>
+#pragma omp parallel for private(i) <ompts:check>if (control==1)</ompts:check>
     for (i=0; i <= LOOPCOUNT; i++)
     {
         num_threads = omp_get_num_threads();

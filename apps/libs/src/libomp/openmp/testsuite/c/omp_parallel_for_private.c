@@ -28,8 +28,8 @@ int <ompts:testcode:functionname>omp_parallel_for_private</ompts:testcode:functi
     i2=0;
     int known_sum;
 
-#pragma omp parallel for reduction(+:sum) schedule(static,1) private(i) <ompts:check>private(i2)</ompts:check>
     <ompts:orphan>
+#pragma omp parallel for reduction(+:sum) schedule(static,1) private(i) <ompts:check>private(i2)</ompts:check>
 
     for (i=1;i<=LOOPCOUNT;i++)
     {

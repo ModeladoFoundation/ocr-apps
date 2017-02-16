@@ -80,7 +80,7 @@ sub delete_tags
 # subroutines for generating "orpahned" tests
 ################################################################################
 
-# SCALAR create_orph_cfunctions( $prefix, $code )
+# SCALAR create_orph_cfunctions( $code )
 # returns a string containing the definitions of the functions for the
 # orphan regions.
 sub create_orph_cfunctions
@@ -140,7 +140,7 @@ sub create_orph_fortranfunctions
 	return $functionsrc;
 }
 
-# LIST orphan_regions2cfunctions( $prefix, @code )
+# SCALAR orphan_regions2cfunctions( $code )
 # replaces orphan regions by functioncalls in C/C++.
 sub orphan_regions2cfunctions
 {
@@ -148,8 +148,8 @@ sub orphan_regions2cfunctions
 	($code) = @_;
 	$i = 1;
 	($functionname) = get_tag_values('ompts:testcode:functionname',$code);
-        while( /\<ompts\:orphan\>(.*)\<\/ompts\:orphan\>/s) {
-            s#\<ompts\:orphan\>(.*?)\<\/ompts\:orphan\>#orph$i\_$functionname (logFile);#s;
+        while( $code =~ /\<ompts\:orphan\>(.*)\<\/ompts\:orphan\>/s) {
+            $code =~ s#\<ompts\:orphan\>(.*?)\<\/ompts\:orphan\>#orph$i\_$functionname (logFile);#s;
             $i++;
         }
 	return $code;
@@ -174,14 +174,13 @@ sub orphan_regions2fortranfunctions
 	return ($code);
 }
 
-# SCALAR orph_functions_declarations( $prefix, $code )
+# SCALAR orph_functions_declarations( $code )
 # returns a sring including the declaration of the functions used
-# in the orphan regions. The function names are generated using
-# the $prefix as prefix for the functionname.
+# in the orphan regions.
 sub orph_functions_declarations
 {
-	my ($prefix, $code);
-	($prefix, $code) = @_;
+	my ($code);
+	($code) = @_;
 	my ( @defs, $result );
 
 	# creating declarations for later used functions
@@ -191,7 +190,7 @@ sub orph_functions_declarations
 	($functionname) = get_tag_values('ompts:testcode:functionname',$code);
 	$i = 1;
 	foreach $_(@defs) {
-		$result .= "\nvoid orph$i\_$prefix\_$functionname ( FILE * logFile );";
+		$result .= "\nvoid orph$i\_$functionname ( FILE * logFile );";
 		$i++;
 	}
 	$result .= "\n\n/* End of declaration */\n\n";

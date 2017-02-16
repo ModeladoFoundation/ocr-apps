@@ -19,8 +19,8 @@ int <ompts:testcode:functionname>omp_parallel_for_firstprivate</ompts:testcode:f
     i2=3;
     int known_sum;
 
-    #pragma omp parallel for reduction(+:sum) private(i) <ompts:check>firstprivate(i2)</ompts:check><ompts:crosscheck>private(i2)</ompts:crosscheck>
     <ompts:orphan>
+    #pragma omp parallel for reduction(+:sum) private(i) <ompts:check>firstprivate(i2)</ompts:check><ompts:crosscheck>private(i2)</ompts:crosscheck>
     for (i = 1; i <= LOOPCOUNT; i++)
     {
 	  sum = sum + (i + i2);
