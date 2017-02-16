@@ -32,7 +32,7 @@ int <ompts:testcode:functionname>omp_sections_nowait</ompts:testcode:functionnam
 #pragma omp section
 			{
 				fprintf (logFile, "Thread nr %d enters first section and gets sleeping.\n", rank);
-				my_sleep(SLEEPTIME);
+				my_sleep(SLEEPTIME_LONG);
 				count = 1;
 				fprintf (logFile, "Thread nr %d woke up an set count to 1.\n", rank);
 #pragma omp flush(count)
