@@ -23,7 +23,7 @@ namespace AstBuilder {
   void buildOcrEdtStmts(OcrEdtContextPtr edtContext, SgScopeStatement* scopes);
   SgFunctionDeclaration* buildOcrEdt(std::string name, OcrEdtContextPtr edtContext);
 
-  typedef std::map<std::string, SgClassDeclaration*> EdtDepElemSgTypeMap;
+  void translateOcrDbk(std::string name, OcrDbkContextPtr dbkContext);
 };
 
 #endif
