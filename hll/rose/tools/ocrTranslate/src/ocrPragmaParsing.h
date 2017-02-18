@@ -57,20 +57,20 @@ class OcrTaskPragmaParser {
  ********************/
 class CollectAllocStmt : public AstSimpleProcessing {
   SgNode* m_root;
-  std::list<SgNode*> m_allocStmtList;
+  std::list<SgStatement*> m_allocStmtList;
  public:
   CollectAllocStmt(SgNode* root);
   void visit(SgNode* sgn);
   void atTraversalEnd();
-  std::list<SgNode*> getAllocStmt() const;
+  std::list<SgStatement*> getAllocStmt() const;
 };
 
 
 /**********************
  * OcrDbkPragmaParser *
  **********************/
-typedef std::map<SgNode*, std::list<SgNode*> > AllocStmtMap;
-typedef std::pair<SgNode*, std::list<SgNode*> > AllocStmtMapElem;
+typedef std::map<SgNode*, std::list<SgStatement*> > AllocStmtMap;
+typedef std::pair<SgNode*, std::list<SgStatement*> > AllocStmtMapElem;
 class OcrDbkPragmaParser {
   SgPragmaDeclaration* m_sgpdecl;
   OcrObjectManager& m_ocrObjectManager;
@@ -87,11 +87,10 @@ class OcrDbkPragmaParser {
   SgSymbol* find_symbol(SgNode* sgn);
  public:
   OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& objectManager);
-  std::list<SgNode*> collectDbkStatements();
   std::list<SgInitializedName*> collectDbkVars();
-  std::list<SgNode*> varFilterAllocStmt(std::list<SgNode*>& allocStmtList, SgInitializedName* sgn);
-  std::list<SgNode*> collectAllocStmt(SgNode* root);
-  std::list<SgNode*> getAllocStmt(SgInitializedName* sgn);
+  std::list<SgStatement*> varFilterAllocStmt(std::list<SgStatement*>& allocStmtList, SgInitializedName* sgn);
+  std::list<SgStatement*> collectAllocStmt(SgNode* root);
+  std::list<SgStatement*> getAllocStmt(SgInitializedName* sgn);
   bool match();
 };
 

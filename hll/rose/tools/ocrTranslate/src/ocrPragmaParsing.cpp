@@ -286,7 +286,7 @@ void CollectAllocStmt::visit(SgNode* sgn) {
       string fname = fsymbol->get_name().getString();
       if(fname.compare("malloc") == 0 ||
 	 fname.compare("calloc") == 0) {
-	SgNode* allocStmt = SageInterface::getEnclosingStatement(fn);
+	SgStatement* allocStmt = SageInterface::getEnclosingStatement(fn);
 	m_allocStmtList.push_back(allocStmt);
       }
     }
@@ -295,7 +295,7 @@ void CollectAllocStmt::visit(SgNode* sgn) {
 
 void CollectAllocStmt::atTraversalEnd() { }
 
-list<SgNode*> CollectAllocStmt::getAllocStmt() const {
+list<SgStatement*> CollectAllocStmt::getAllocStmt() const {
   return m_allocStmtList;
 }
 
@@ -384,7 +384,7 @@ list<SgInitializedName*> OcrDbkPragmaParser::collectDbkVars() {
   return dbkVarList;
 }
 
-list<SgNode*> OcrDbkPragmaParser::collectAllocStmt(SgNode* root) {
+list<SgStatement*> OcrDbkPragmaParser::collectAllocStmt(SgNode* root) {
   Logger::Logger lg("OcrDbkPragmaParser::collectAllocStmt");
   AllocStmtMap::iterator f = allocStmtMapCache.find(root);
   if(f != allocStmtMapCache.end()) {
@@ -394,7 +394,7 @@ list<SgNode*> OcrDbkPragmaParser::collectAllocStmt(SgNode* root) {
   else {
     CollectAllocStmt cas(root);
     cas.traverse(root, preorder);
-    list<SgNode*> allocStmtList = cas.getAllocStmt();
+    list<SgStatement*> allocStmtList = cas.getAllocStmt();
     AllocStmtMapElem elem = std::make_pair(root, allocStmtList);
     allocStmtMapCache.insert(elem);
     Logger::debug(lg) << "AllocStmtList: " << StrUtil::stmtlist2str(allocStmtList) << endl;
@@ -412,14 +412,14 @@ SgSymbol* OcrDbkPragmaParser::find_symbol(SgNode* sgn) {
   else assert(false);
 }
 
-list<SgNode*> OcrDbkPragmaParser::varFilterAllocStmt(list<SgNode*>& allocStmtList, SgInitializedName* sgn) {
-  list<SgNode*> varAllocStmts;
+list<SgStatement*> OcrDbkPragmaParser::varFilterAllocStmt(list<SgStatement*>& allocStmtList, SgInitializedName* sgn) {
+  list<SgStatement*> varAllocStmts;
   SgSymbol* vsymbol = sgn->get_symbol_from_symbol_table();
   // malloc can be in an SgAssignOp
   string query = "SgAssignOp($VAR=SgVarRefExp,_)";
   // malloc can be in an SgInitializer
   query += "|($VAR=SgInitializedName(SgAssignInitializer(_)))";
-  list<SgNode*>::iterator s = allocStmtList.begin();
+  list<SgStatement*>::iterator s = allocStmtList.begin();
   AstMatching matcher;
   for( ; s != allocStmtList.end(); ++s) {
     MatchResult match_results = matcher.performMatching(query, *s);
@@ -433,9 +433,9 @@ list<SgNode*> OcrDbkPragmaParser::varFilterAllocStmt(list<SgNode*>& allocStmtLis
   return varAllocStmts;
 }
 
-list<SgNode*> OcrDbkPragmaParser::getAllocStmt(SgInitializedName* sgn) {
+list<SgStatement*> OcrDbkPragmaParser::getAllocStmt(SgInitializedName* sgn) {
   SgScopeStatement* scope = SageInterface::getEnclosingScope(sgn);
-  list<SgNode*> allocStmtList = collectAllocStmt(scope);
+  list<SgStatement*> allocStmtList = collectAllocStmt(scope);
   return varFilterAllocStmt(allocStmtList, sgn);
 }
 
@@ -460,7 +460,7 @@ bool OcrDbkPragmaParser::match() {
 	  SgType* vtype = (*vIt)->get_type();
 	  switch(vtype->variantT()) {
 	  case V_SgPointerType: {
-	    list<SgNode*> varAllocStmts = getAllocStmt(*vIt);
+	    list<SgStatement*> varAllocStmts = getAllocStmt(*vIt);
 	    OcrDbkContextPtr dbkcontext_sp = m_ocrObjectManager.registerOcrDbk(*nIt, *vIt, varAllocStmts);
 	    Logger::debug(lg) << dbkcontext_sp->str() << endl;
 	    break;

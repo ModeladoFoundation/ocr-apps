@@ -22,11 +22,31 @@ OcrDbkContext::OcrDbkContext(std::string name)
   : OcrObjectContext(),
     m_name(name) { }
 
-OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<SgNode*> allocStmts)
+OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<SgStatement*> allocStmts)
   : OcrObjectContext(),
     m_name(name),
     m_vdefn(vdefn),
     m_allocStmts(allocStmts) { }
+
+SgSymbol* OcrDbkContext::getSgSymbol() {
+  SgSymbol* symbol = m_vdefn->search_for_symbol_from_symbol_table();
+  assert(symbol);
+  return symbol;
+}
+
+SgInitializedName* OcrDbkContext::getSgInitializedName() const {
+  return m_vdefn;
+}
+
+SgDeclarationStatement* OcrDbkContext::get_declaration() const {
+  SgDeclarationStatement* stmt = m_vdefn->get_definition();
+  assert(stmt);
+  return stmt;
+}
+
+list<SgStatement*> OcrDbkContext::get_allocStmts() const {
+  return m_allocStmts;
+}
 
 string OcrDbkContext::get_name() const {
   return m_name;
@@ -90,6 +110,10 @@ list<SgStatement*> OcrEdtContext::getStmtList() const {
 
 list<SgVarRefExp*> OcrEdtContext::getDepElems() const {
   return m_depElems;
+}
+
+list<OcrDbkContextPtr> OcrEdtContext::getDepDbks() const {
+  return m_depDbks;
 }
 
 SgSourceFile* OcrEdtContext::getSourceFile() {
@@ -213,7 +237,7 @@ OcrEvtContextPtr OcrObjectManager::registerOcrEvt(string evtName) {
 
 OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
 						  SgInitializedName* vdefn,
-						  list<SgNode*> allocStmts) {
+						  list<SgStatement*> allocStmts) {
   Logger::Logger lg("OcrObjectManager::registerOcrDbk");
   OcrDbkObjectMap::iterator f = m_ocrDbkObjectMap.find(dbkName);
   OcrDbkContextPtr dbkcontext_sp;
@@ -258,4 +282,8 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
 
 const OcrEdtObjectMap& OcrObjectManager::getOcrEdtObjectMap() const {
   return m_ocrEdtObjectMap;
+}
+
+const OcrDbkObjectMap& OcrObjectManager::getOcrDbkObjectMap() const {
+  return m_ocrDbkObjectMap;
 }
