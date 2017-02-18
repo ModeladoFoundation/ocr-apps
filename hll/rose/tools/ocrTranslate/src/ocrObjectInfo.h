@@ -55,11 +55,14 @@ typedef boost::shared_ptr<OcrObjectContext> OcrObjectContextPtr;
 class OcrDbkContext : public OcrObjectContext {
   std::string m_name;
   SgInitializedName* m_vdefn;
-  std::list<SgNode*> m_allocStmts;
+  std::list<SgStatement*> m_allocStmts;
 public:
   OcrDbkContext(std::string name);
-  OcrDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgNode*> allocStmt);
+  OcrDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgStatement*> allocStmt);
   SgSymbol* getSgSymbol();
+  SgDeclarationStatement* get_declaration() const;
+  SgInitializedName* getSgInitializedName() const;
+  std::list<SgStatement*> get_allocStmts() const;
   std::string get_name() const;
   std::string str() const;
   ~OcrDbkContext();
@@ -105,6 +108,7 @@ public:
   SgSourceFile* getSourceFile();
   std::list<SgStatement*> getStmtList() const;
   std::list<SgVarRefExp*> getDepElems() const;
+  std::list<OcrDbkContextPtr> getDepDbks() const;
   ~OcrEdtContext();
 };
 
@@ -146,7 +150,7 @@ class OcrObjectManager {
   // Functions to create shared_ptr for OcrContext
   std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
   OcrEvtContextPtr registerOcrEvt(std::string evtName);
-  OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgNode*> allocStmts);
+  OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgStatement*> allocStmts);
   OcrEdtContextPtr registerOcrEdt(std::string edtName, std::list<OcrEvtContextPtr> depEvts,
 				  std::list<OcrDbkContextPtr> depDbks,
 				  std::list<OcrEvtContextPtr> evtsToSatisfy,
@@ -155,6 +159,7 @@ class OcrObjectManager {
 
   // Access functions
   const OcrEdtObjectMap& getOcrEdtObjectMap() const;
+  const OcrDbkObjectMap& getOcrDbkObjectMap() const;
 };
 
 #endif
