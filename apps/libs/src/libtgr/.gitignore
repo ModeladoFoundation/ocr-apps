@@ -1,2 +1,4 @@
 build-*
-*.sw*
+*.swtest
+*.fsim
+*.p
