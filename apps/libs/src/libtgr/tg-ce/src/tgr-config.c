@@ -37,7 +37,7 @@ static ce_config FSIM_config =
     .blocks = Blocks,
     .block_start_mode = 1,     // only start 1 XE in a block (pthreads mode)
     .block_load_mode = 1,      // only load global (text) once
-    .xe_stack_size = 4096      // default CE allocated XE stack size
+    .xe_stack_size = 16384     // default CE allocated XE stack size
 };
 
 ce_config * tgr_config_init( void )
@@ -131,7 +131,7 @@ static ce_config FSIM_config =
     .blocks = Blocks,
     .block_start_mode = 1,     // only start 1 XE in a block (pthreads mode)
     .block_load_mode = 1,      // only load global (text) once
-    .xe_stack_size = 4096      // default CE allocated XE stack size
+    .xe_stack_size = 16384     // default CE allocated XE stack size
 };
 
 ce_config * tgr_config_init( void )
