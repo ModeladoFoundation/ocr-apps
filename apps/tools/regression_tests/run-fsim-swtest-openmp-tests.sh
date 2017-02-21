@@ -142,7 +142,6 @@ test_has_openmp
 orph_test_omp_parallel_sections_reduction
 test_omp_task_private
 "
-export TIMEOUT_SECONDS=${TIMEOUT_SECONDS-420} # Default timeout of 7 min
 
 if [ "$1" == "-h" ]; then
   print_help
