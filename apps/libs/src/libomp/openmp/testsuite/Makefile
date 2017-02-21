@@ -47,7 +47,7 @@ TOOL_PREFIX = $(TOOLBIN)/$(TARGET)-
 CC = $(TOOL_PREFIX)clang
 CXX = $(TOOL_PREFIX)clang++
 
-CFLAGS = -fxstg-swtest -fopenmp -g -O0 -DKMP_OS_TGR
+CFLAGS = -fopenmp -g -O0 -DKMP_OS_TGR
 CXXFLAGS = $(CFLAGS) -fexceptions -Xlinker --eh-frame-hdr
 
 ifdef PIE
@@ -288,4 +288,13 @@ ifneq ($(ARCH), tg-xe)
 endif
 	rm -rf ./*.log
 
+ifeq ($(ARCH), tg-xe)
 
+%: %.c
+ifdef PIE
+	$(CC) $(CFLAGS) -fPIE -o $@.p $<
+else
+	$(CC) $(CFLAGS) -fxstg-swtest -o $@.swtest $<
+	$(CC) $(CFLAGS) -fxstg-tgr -o $@.fsim $<
+endif
+endif

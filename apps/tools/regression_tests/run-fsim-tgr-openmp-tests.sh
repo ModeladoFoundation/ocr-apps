@@ -14,7 +14,7 @@
 source ./setup-test-env.sh
 [ $? -ne 0 ] && exit 1
 
-export FSIM_EXE="fsim-swtest"
+export FSIM_EXE="fsim"
 
 # Tests to run
 TESTS="
@@ -144,6 +144,8 @@ test_omp_task_private
 "
 TESTS_LIST=$TESTS
 
+#export TIMEOUT_SECONDS=${TIMEOUT_SECONDS-420} # Default timeout of 7 min
+
 if [ "$1" == "-h" ]; then
   print_help
 fi
@@ -165,14 +167,13 @@ for TEST in $TESTS; do
 
   TEST_FILE=$TEST
 
-
   case $TEST_FILE in
     *.p)
       EXECUTABLE_INSTALL="$APPS_ROOT/libs/src/libomp/build-tg-xe-pie/testsuite/bin/c"
       ;;
     *)
       EXECUTABLE_INSTALL="$APPS_ROOT/libs/src/libomp/build-tg-xe-static/testsuite/bin/c"
-      TEST_FILE+=.swtest
+      TEST_FILE+=.fsim
       ;;
   esac
 
@@ -180,14 +181,33 @@ for TEST in $TESTS; do
   # We want these to go in the LOGS_DIR directory
   export WORKLOAD_INSTALL=$LOGS_DIR
 
-  export FSIM_ARGS="-q -c $APPS_ROOT/legacy/tg-xe/ccfg.cfg -- $EXECUTABLE_INSTALL/$TEST_FILE"
+  # We need the executable to be in the $WORKLOAD_INSTALL, but the logs directory
+  # is going to be cleared. So we have the executable get copied into the
+  # directory just before running the test
+  export PRERUN_COMMAND="cp $EXECUTABLE_INSTALL/$TEST_FILE $WORKLOAD_INSTALL/$TEST_FILE"
 
-  declare -a REGEXS=("ready alarm")
-  REGEXS+=("Directive worked without errors\.")
-  REGEXS+=("Client shutdown has been approved")
+  # We examine output from the CE log file.
+  export OUTPUT_FILE="$TEST_FILE.rck000.cub00.skt0.cls000.blk00.CE.00"
+
+  # We need to export this for the fsim.cfg file.
+  export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
+
+  export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+
+  declare -a REGEXS=(
+    "TGR-MAIN: starting"
+    "TGR-MAIN: initialized subsystems"
+    "TGR-MAIN: initialized datastructures"
+    "TGR-ELF: - Valid XE ELF64 header \((PIE format) \)\?found"
+    "TGR-RUN: Starting XE 0x1 at"
+    "TGR-ALARMS: XE1 ready alarm"
+    "Directive worked without errors\."
+    "TGR-MAIN: all blocks done"
+    "TG Kernel Terminating\.\.\."
+  )
 
   # Execute the test, moving on if unsuccessful
-  ./exec-fsim-test.sh "${REGEXS[@]}" || continue
+  TEST="$TEST_FILE" ./exec-fsim-test.sh "${REGEXS[@]}" || continue
 
   # Check to see if the test was successful & cleanup
   SUCCESS=1
