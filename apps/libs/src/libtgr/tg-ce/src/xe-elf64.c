@@ -471,8 +471,7 @@ int tgr_load_xe_elf_image( block_info * bi, uint64_t imgAddr )
             continue;
         }
         if(ph->p_filesz & 0x7 || ph->p_memsz & 0x7) {
-            ce_error( "ELF","XE ELF Segment not 64bit aligned! Aborting...\n");
-            return -1;
+            ce_print( "ELF", "Note: XE ELF Segment size not 64bit aligned\n");
         }
         //
         // populate the segment structure
