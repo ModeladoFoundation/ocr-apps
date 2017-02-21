@@ -17,6 +17,8 @@
 #   OUTPUT_FILE      - Log file (no path) to use as output instead of stdout
 #   TIMEOUT_SECONDS  - Number of seconds to allow the test to execute before
 #                      aborting. If empty, 0 or unset then no timeout.
+#   PRERUN_COMMAND   - This command gets run just before starting fsim (and
+#                      before starting the timeout timer if there is one).
 #
 # This script accepts command line parameters which are all regular
 # expressions. The output of the fsim simulation must contain lines
@@ -111,6 +113,10 @@ kill_fsim
 # Make sure that the timeout timer will get killed when the test finishes.
 trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 
+cd $WORKLOAD_INSTALL
+
+[ "$PRERUN_COMMAND" ] && $PRERUN_COMMAND
+
 # Start the timeout timer if there is one specified
 [ "${TIMEOUT_SECONDS:-0}" != 0 ] && activate_timeout
 
@@ -119,8 +125,6 @@ trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 #
 SECONDS=0
 FSIM_CMD="$TG_INSTALL/bin/$FSIM_EXE -L $LOGS_DIR $FSIM_ARGS"
-
-cd $WORKLOAD_INSTALL
 
 [ "$VERBOSE" ] && echo "Running fsim command '$FSIM_CMD'"
 

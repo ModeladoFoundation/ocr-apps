@@ -170,6 +170,7 @@ show_args:
 check: all
 	@echo "Building testsuite"
 	$(MAKE) -C openmp/testsuite ctest
+	@#PIE=1 $(MAKE) -C openmp/testsuite ctest
 
 #
 # Create a new build dir
