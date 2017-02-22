@@ -81,26 +81,28 @@ namespace AstBuilder {
     return edtdecl;
   }
 
-  void buildOcrEdtSignature(SgFunctionParameterList* paramList, SgScopeStatement* scope) {
+  vector<SgInitializedName*> buildOcrEdtSignature(SgScopeStatement* scope) {
     assert(scope);
+    vector<SgInitializedName*> edt_params;
     // Build the parameters
     SgType* u32_t = buildu32Type(scope);
     SgInitializedName* paramc = SageBuilder::buildInitializedName("paramc", u32_t);
-    SageInterface::appendArg(paramList, paramc);
+    edt_params.push_back(paramc);
 
     SgType* u64p_t = buildu64PtrType(scope);
     SgInitializedName* paramv = SageBuilder::buildInitializedName("paramv", u64p_t);
-    SageInterface::appendArg(paramList, paramv);
+    edt_params.push_back(paramv);
 
     SgInitializedName* depc = SageBuilder::buildInitializedName("depc", u32_t);
-    SageInterface::appendArg(paramList, depc);
+    edt_params.push_back(depc);
 
     SgType* edtDep_t = buildOcrEdtDepArrType(scope);
     SgInitializedName* depv = SageBuilder::buildInitializedName("depv", edtDep_t);
-    SageInterface::appendArg(paramList, depv);
+    edt_params.push_back(depv);
+    return edt_params;
   }
 
-  SgVariableDeclaration* buildOcrEdtDepElem(SgVarRefExp* vref, SgScopeStatement* scope) {
+  SgVariableDeclaration* buildOcrEdtDepElemVarDecl(SgVarRefExp* vref, SgScopeStatement* scope) {
     SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(vref->get_symbol()->get_name(),
 									 vref->get_type(),
 									 NULL,
@@ -109,7 +111,7 @@ namespace AstBuilder {
     return vdecl;
   }
 
-  SgClassDeclaration* buildOcrEdtDepElems(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl) {
+  SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl) {
     // Build a struct for all the parameters
     string depElemStructName = edtContext->get_name() + "DepElems";
     SgClassDeclaration* depElemStructDecl = SageBuilder::buildStructDeclaration(depElemStructName, decl->get_scope());
@@ -118,59 +120,25 @@ namespace AstBuilder {
     SgClassDefinition* sdefn = depElemStructDecl->get_definition();
     assert(sdefn);
     for( ; v != depElems.end(); ++v) {
-      SgVariableDeclaration* vdecl = buildOcrEdtDepElem(*v, sdefn);
+      SgVariableDeclaration* vdecl = buildOcrEdtDepElemVarDecl(*v, sdefn);
       sdefn->append_member(vdecl);
     }
     return depElemStructDecl;
   }
 
-  void buildOcrEdtStmts(OcrEdtContextPtr edtContext, SgScopeStatement* scope) {
-    assert(scope);
-    // Outline the Task's statements to the EDT function
-    list<SgStatement*> stmtList = edtContext->getStmtList();
-    list<SgStatement*>::iterator s = stmtList.begin();
-    for( ; s != stmtList.end(); ++s) {
-      // Detach the statement from its original scope
-      SageInterface::removeStatement(*s);
-      // Add the statement into the current scope
-      SageInterface::appendStatement(*s, scope);
-    }
-  }
-
-  SgSymbol* insertOcrEdtDepElemDecl(SgType* type, SgScopeStatement* scope) {
+  SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope) {
     assert(scope);
     SgPointerType* ptype = SageBuilder::buildPointerType(type);
-    SgName vname("depElem");
-    SgVarRefExp* paramvVarRef = SageBuilder::buildVarRefExp("paramv", scope);
-    SgIntVal* zero = SageBuilder::buildIntVal(0);
-    SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(paramvVarRef, zero);
+    SgIntVal* index = SageBuilder::buildIntVal(0);
+    SgVarRefExp* paramv = SageBuilder::buildVarRefExp("paramv", scope);
+    SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(paramv, index);
     SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(arrRefExp, ptype);
-    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(vname, ptype, initializer, scope);
-    SageInterface::appendStatement(vdecl, scope);
-    return vdecl->get_decl_item(vname)->get_symbol_from_symbol_table();
-  }
-
-  void varRefExp2ArrowExpInStmt(SgVarRefExp* oexp, SgArrowExp* nexp, SgStatement* stmt) {
-    RoseAst ast(stmt);
-    RoseAst::iterator it = ast.begin();
-    for( ; it != ast.end(); ++it) {
-      if(SgVarRefExp* vref = isSgVarRefExp(*it)) {
-	if(vref->get_symbol() == oexp->get_symbol()) {
-	  SageInterface::replaceExpression(vref, nexp, false);
-	}
-      }
-    }
-  }
-
-  void varRefExp2ArrowExp(SgVarRefExp* oexp, SgArrowExp* nexp, SgStatementPtrList& statements) {
-    SgStatementPtrList::iterator s = statements.begin();
-    for( ; s != statements.end(); ++s) {
-      varRefExp2ArrowExpInStmt(oexp, nexp, *s);
-    }
+    SgVariableDeclaration* depElemStructDecl = SageBuilder::buildVariableDeclaration(name, ptype, initializer, scope);
+    return depElemStructDecl;
   }
 
   SgVariableDeclaration* buildOcrDbkDecl(OcrDbkContextPtr dbkContext, unsigned int index,
-		       SgInitializedName* depv,SgScopeStatement* scope) {
+					 SgInitializedName* depv,SgScopeStatement* scope) {
     SgType* u64PtrType = buildu64PtrType(scope);
     SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
     assert(vsymbol);
@@ -206,58 +174,91 @@ namespace AstBuilder {
     return depDbksDecl;
   }
 
-  void replaceDepElemVars(SgSymbol* depElemSymbol, SgScopeStatement* scope,
-			  SgStatementPtrList& statements, OcrEdtContextPtr edtContext) {
-    list<SgVarRefExp*> depElemList = edtContext->getDepElems();
-    list<SgVarRefExp*>::iterator e = depElemList.begin();
-    for( ; e != depElemList.end(); ++e) {
-      SgVariableSymbol* dsymbol = (*e)->get_symbol();
-      SgName dname = dsymbol->get_name();
-      SgVarRefExp* rexp = SageBuilder::buildVarRefExp(dname, scope);
-      SgVarRefExp* lexp = SageBuilder::buildVarRefExp(depElemSymbol->get_name(), scope);
-      SgArrowExp* arrowExp = SageBuilder::buildArrowExp(lexp, rexp);
-      // rexp is rhs of arrow exp (e.g. depElem->var)
-      // When depElem is declared in basicblock, a symbol
-      // for depElem is inserted in to the basic block
-      // When building the arrow exp, we build the rhs using the name
-      // The variable may not have a symbol in the basic block
-      // This later shows up as a Warning in AST consistency checks
-      // To avoid this, the symbol for var is inserted into the symbol table.
-      // This seems to fix the AST consistency check
-      // However, I need to check if this is the way for building dot and arrow
-      // expressions
-      scope->get_symbol_table()->insert(dname, rexp->get_symbol());
-      varRefExp2ArrowExp(*e, arrowExp, statements);
+  vector<SgStatement*> buildOcrEdtStmts(OcrEdtContextPtr edtContext) {
+    vector<SgStatement*> edt_stmts;
+    // Outline the Task's statements to the EDT function
+    list<SgStatement*> stmtList = edtContext->getStmtList();
+    list<SgStatement*>::iterator s = stmtList.begin();
+    for( ; s != stmtList.end(); ++s) {
+      // Detach the statement from its original scope
+      SageInterface::removeStatement(*s);
+      // Add the statement into the current scope
+      edt_stmts.push_back(*s);
     }
+    return edt_stmts;
   }
 
-  SgFunctionDeclaration* buildOcrEdt(string name, OcrEdtContextPtr edtContext) {
-    Logger::Logger lg("AstBuilder::buildOcrEdt");
-    SgSourceFile* sourcefile = edtContext->getSourceFile();
-    // scope where the edt function will be created
-    SgGlobal* global = sourcefile->get_globalScope();
-    // position in the AST where the EDT function will be inserted
-    SgStatement* first = SageInterface::getFirstStatement(global);
-    // Function created is a defining declaration which means
-    // the declaration has an empty body
-    SgFunctionDeclaration* edtdecl = buildOcrEdtFuncDecl(name, global);
-    SgClassDeclaration* depElemStruct = buildOcrEdtDepElems(edtContext, edtdecl);
-    SgTypedefDeclaration* depElemTypedefType = buildTypeDefDecl(name, depElemStruct->get_type(), global);
-    // Set up the parameters for the EDT
-    // Get the basic block for the EDT function for inserting parameters, statements etc.
-    SgBasicBlock* basicblock = edtdecl->get_definition()->get_body();
-    buildOcrEdtSignature(edtdecl->get_parameterList(), basicblock);
-    SgSymbol* depElemSymbol = insertOcrEdtDepElemDecl(depElemTypedefType->get_type(), basicblock);
-    SageInterface::insertStatement(first, edtdecl, true, true);
-    SageInterface::insertStatementBefore(edtdecl, depElemStruct, true);
-    SageInterface::insertStatementAfter(depElemStruct, depElemTypedefType, true);
-    vector<SgStatement*> depDbksDecl = buildOcrDbksDecl(edtContext, basicblock, edtdecl);
-    SageInterface::insertStatementAfterLastDeclaration(depDbksDecl, basicblock);
-    buildOcrEdtStmts(edtContext, basicblock);
-    replaceDepElemVars(depElemSymbol, basicblock, basicblock->get_statements(), edtContext);
-    Logger::debug(lg) << "edtdecl:" << AstDebug::astToString(edtdecl) << endl;
-    return edtdecl;
-  }
+  // void varRefExp2ArrowExpInStmt(SgVarRefExp* oexp, SgArrowExp* nexp, SgStatement* stmt) {
+  //   RoseAst ast(stmt);
+  //   RoseAst::iterator it = ast.begin();
+  //   for( ; it != ast.end(); ++it) {
+  //     if(SgVarRefExp* vref = isSgVarRefExp(*it)) {
+  // 	if(vref->get_symbol() == oexp->get_symbol()) {
+  // 	  SageInterface::replaceExpression(vref, nexp, false);
+  // 	}
+  //     }
+  //   }
+  // }
+
+  // void varRefExp2ArrowExp(SgVarRefExp* oexp, SgArrowExp* nexp, SgStatementPtrList& statements) {
+  //   SgStatementPtrList::iterator s = statements.begin();
+  //   for( ; s != statements.end(); ++s) {
+  //     varRefExp2ArrowExpInStmt(oexp, nexp, *s);
+  //   }
+  // }
+
+  // void replaceDepElemVars(SgSymbol* depElemSymbol, SgScopeStatement* scope,
+  // 			  SgStatementPtrList& statements, OcrEdtContextPtr edtContext) {
+  //   list<SgVarRefExp*> depElemList = edtContext->getDepElems();
+  //   list<SgVarRefExp*>::iterator e = depElemList.begin();
+  //   for( ; e != depElemList.end(); ++e) {
+  //     SgVariableSymbol* dsymbol = (*e)->get_symbol();
+  //     SgName dname = dsymbol->get_name();
+  //     SgVarRefExp* rexp = SageBuilder::buildVarRefExp(dname, scope);
+  //     SgVarRefExp* lexp = SageBuilder::buildVarRefExp(depElemSymbol->get_name(), scope);
+  //     SgArrowExp* arrowExp = SageBuilder::buildArrowExp(lexp, rexp);
+  //     // rexp is rhs of arrow exp (e.g. depElem->var)
+  //     // When depElem is declared in basicblock, a symbol
+  //     // for depElem is inserted in to the basic block
+  //     // When building the arrow exp, we build the rhs using the name
+  //     // The variable may not have a symbol in the basic block
+  //     // This later shows up as a Warning in AST consistency checks
+  //     // To avoid this, the symbol for var is inserted into the symbol table.
+  //     // This seems to fix the AST consistency check
+  //     // However, I need to check if this is the way for building dot and arrow
+  //     // expressions
+  //     scope->get_symbol_table()->insert(dname, rexp->get_symbol());
+  //     varRefExp2ArrowExp(*e, arrowExp, statements);
+  //   }
+  // }
+
+  // SgFunctionDeclaration* buildOcrEdt(string name, OcrEdtContextPtr edtContext) {
+  //   Logger::Logger lg("AstBuilder::buildOcrEdt");
+  //   SgSourceFile* sourcefile = edtContext->getSourceFile();
+  //   // scope where the edt function will be created
+  //   SgGlobal* global = sourcefile->get_globalScope();
+  //   // position in the AST where the EDT function will be inserted
+  //   SgStatement* first = SageInterface::getFirstStatement(global);
+  //   // Function created is a defining declaration which means
+  //   // the declaration has an empty body
+  //   SgFunctionDeclaration* edtdecl = buildOcrEdtFuncDecl(name, global);
+  //   SgClassDeclaration* depElemStruct = buildOcrEdtDepElems(edtContext, edtdecl);
+  //   SgTypedefDeclaration* depElemTypedefType = buildTypeDefDecl(name, depElemStruct->get_type(), global);
+  //   // Set up the parameters for the EDT
+  //   // Get the basic block for the EDT function for inserting parameters, statements etc.
+  //   SgBasicBlock* basicblock = edtdecl->get_definition()->get_body();
+  //   buildOcrEdtSignature(edtdecl->get_parameterList(), basicblock);
+  //   SgSymbol* depElemSymbol = insertOcrEdtDepElemDecl(depElemTypedefType->get_type(), basicblock);
+  //   SageInterface::insertStatement(first, edtdecl, true, true);
+  //   SageInterface::insertStatementBefore(edtdecl, depElemStruct, true);
+  //   SageInterface::insertStatementAfter(depElemStruct, depElemTypedefType, true);
+  //   vector<SgStatement*> depDbksDecl = buildOcrDbksDecl(edtContext, basicblock, edtdecl);
+  //   SageInterface::insertStatementAfterLastDeclaration(depDbksDecl, basicblock);
+  //   buildOcrEdtStmts(edtContext, basicblock);
+  //   replaceDepElemVars(depElemSymbol, basicblock, basicblock->get_statements(), edtContext);
+  //   Logger::debug(lg) << "edtdecl:" << AstDebug::astToString(edtdecl) << endl;
+  //   return edtdecl;
+  // }
 
   /**************************
    * Ocr Datablock Builders *
@@ -364,43 +365,5 @@ namespace AstBuilder {
     // Build the
     SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrDbCreate", voidType, exprList, scope);
     return stmt;
-  }
-
-  void translateOcrDbk(string dbkName, OcrDbkContextPtr dbkContext) {
-    Logger::Logger lg("AstBuilder::translateOcrDbk", Logger::DEBUG);
-    set<SgStatement*> stmtsToRemove;
-    SgInitializedName* varInitializedName = dbkContext->getSgInitializedName();
-    SgSymbol* varSymbol = dbkContext->getSgSymbol();
-    SgScopeStatement* scope = varSymbol->get_scope();
-    SgName varName = varSymbol->get_name();
-    SgName ocrGuidName(dbkName);
-    SgType* varType = varSymbol->get_type();
-    SgType* varDbkType = buildOcrDbkType(varType, scope);
-    SgVariableDeclaration* varDbkDecl = buildOcrDbkVarDecl(varName, varDbkType, scope);
-    SgVariableDeclaration* varDbkGuid = buildOcrDbkGuid(ocrGuidName.getString(), scope);
-    // AST Modifications
-    // stmt is the declaration of the datablock variable
-    // We don't need the declaration anymore
-    // Remove the stmt and insert datablock declaration instead
-    SgStatement* stmt = SageInterface::getEnclosingStatement(varInitializedName);
-    // First get the anchor point where the stmt will be inserted
-    SageInterface::insertStatementBefore(stmt, varDbkDecl, true);
-    SageInterface::insertStatementBefore(stmt, varDbkGuid, true);
-    stmtsToRemove.insert(stmt);
-    // Replace each alloc stmt with ocrDbCreate
-    list<SgStatement*> allocStmts = dbkContext->get_allocStmts();
-    list<SgStatement*>::iterator s = allocStmts.begin();
-    for( ; s != allocStmts.end(); ++s) {
-      SgExprStatement* dbCreateStmt = buildOcrDbCreateFuncCallExp(ocrGuidName, varName, scope, *s);
-      SgStatement* stmtAfterAllocStmt = SageInterface::getNextStatement(*s);
-      SageInterface::insertStatementBefore(stmtAfterAllocStmt, dbCreateStmt, true);
-      // Mark the statement for removal
-      stmtsToRemove.insert(*s);
-    }
-    // Now remove all the statements marked for removal
-    set<SgStatement*>::iterator st = stmtsToRemove.begin();
-    for( ; st != stmtsToRemove.end(); ++st) {
-      SageInterface::removeStatement(*st);
-    }
   }
 }
