@@ -68,6 +68,29 @@ class OcrAstInfoManager {
   OcrDbkAstInfoPtr getOcrDbkAstInfo(std::string dbkname);
 };
 
+/************************
+ * DepElemVarRefExpPass *
+ ************************/
+//! Top-down AST traversal which replaces the sub-tree (SgVarRefExp)
+//! of any depElem with the AST (SgArrowExp(SgVarRefExp, SgVarRefExp))
+//! example: x => depElem->x
+//! Traversal done in post-order to avoid visiting the transformed AST
+class DepElemVarRefExpPass : public AstSimpleProcessing {
+  SgScopeStatement* m_scope;
+  SgName m_depElemStructName;
+  // SgVariableSymbols picked from the task annotation
+  // The scope of these symbols is the same as the scope of task annotation
+  // Since we just cut-paste the AST from the task annotation to the EDT function
+  // these variable symbols are the same as gathered from the task annotation
+  // We can directly use the pointers for comparison when replacing the SgVarRefExp
+  // of the dependent elements
+  std::set<SgVariableSymbol*> m_varSymbolSet;
+ public:
+  DepElemVarRefExpPass(SgScopeStatement* root, SgName depElemStructName, std::list<SgVarRefExp*> depElems);
+  void visit(SgNode* sgn);
+  void atTraversalEnd();
+};
+
 /*****************
  * OcrTranslator *
  *****************/

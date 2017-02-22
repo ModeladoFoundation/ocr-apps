@@ -5,6 +5,9 @@
  * Author: Sriram Aananthakrishnan, 2017 *
  */
 
+#include <vector>
+#include <list>
+
 /**************
  * AstBuilder *
  **************/
@@ -15,15 +18,22 @@ namespace AstBuilder {
   SgType* buildu64PtrType(SgScopeStatement* scope);
   SgType* buildOcrEdtDepType(SgScopeStatement* scope);
   SgType* buildOcrEdtDepArrType(SgScopeStatement* scope);
-  SgFunctionDeclaration* buildOcrEdtFuncDecl(std::string name, SgScopeStatement* scope);
-  SgVariableDeclaration* buildOcrEdtDepElem(SgVarRefExp* vref, SgScopeStatement* scope, SgFunctionDeclaration* decl);
-  SgClassDeclaration* buildOcrEdtDepElems(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
-  void insertOcrEdtDepElemDecl(SgClassDeclaration* sdecl, SgScopeStatement* scope);
-  void buildOcrEdtParams(SgFunctionDeclaration* edtdecl, SgScopeStatement* scope);
-  void buildOcrEdtStmts(OcrEdtContextPtr edtContext, SgScopeStatement* scopes);
-  SgFunctionDeclaration* buildOcrEdt(std::string name, OcrEdtContextPtr edtContext);
 
+  // EDT Outlining AST builders
+  SgFunctionDeclaration* buildOcrEdtFuncDecl(std::string name, SgScopeStatement* scope);
+  std::vector<SgInitializedName*> buildOcrEdtSignature(SgScopeStatement* scope);
+  SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
+  SgTypedefDeclaration* buildTypeDefDecl(std::string edtName, SgType* baseType, SgScopeStatement* scope);
+  SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope);
+  std::vector<SgStatement*> buildOcrDbksDecl(OcrEdtContextPtr edtContext, SgScopeStatement* scope, SgFunctionDeclaration* edtDecl);
+  std::vector<SgStatement*> buildOcrEdtStmts(OcrEdtContextPtr edtContext);
+
+  // AST builders for OCR Datablock
   void translateOcrDbk(std::string name, OcrDbkContextPtr dbkContext);
+  SgType* buildOcrDbkType(SgType* varType, SgScopeStatement* scope);
+  SgVariableDeclaration* buildOcrDbkVarDecl(SgName name, SgType* varDbkType, SgScopeStatement* scope);
+  SgExprStatement* buildOcrDbCreateFuncCallExp(SgName dbkGuidName, SgName dbkPtrName, SgScopeStatement* scope, SgStatement* allocStmt);
+  SgVariableDeclaration* buildOcrDbkGuid(std::string dbkName, SgScopeStatement* scope);
 };
 
 #endif
