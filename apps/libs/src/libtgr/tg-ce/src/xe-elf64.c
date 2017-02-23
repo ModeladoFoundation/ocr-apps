@@ -258,14 +258,15 @@ static int load_local_seg( block_info * bi, SegmentEntry * seg )
             // and reserve. We DON'T modify sed->dst_addr as we need that on the
             // subsequent iterations.
             //
-            addr = validate_xe_addr( xei, seg->dst_addr, seg->src_len );
+            addr = validate_xe_addr( xei, seg->dst_addr, seg->mem_len );
 
-            if( xe_alloc_mem_at( xei, mem_type_of(addr), addr, seg->src_len ) == NULL ) {
+            if( xe_alloc_mem_at( xei, mem_type_of(addr), addr, seg->mem_len ) == NULL ) {
                 ce_error("ELF","xe-elf64: memory reservation error!\n");
                 return 1;
             }
         }
-        (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
+        if( seg->src_len )
+            (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
 #ifdef CLEAR_BSS
         zero_bss( seg, addr );
 #endif // CLEAR_BSS
@@ -299,9 +300,9 @@ static int load_block_seg( block_info * bi, SegmentEntry * seg )
     // Reserve this address range
     //
     } else {
-        addr = validate_addr( bi, seg->dst_addr, seg->src_len );
+        addr = validate_addr( bi, seg->dst_addr, seg->mem_len );
 
-        if( block_alloc_mem_at( bi, mem_type_of(addr), addr, seg->src_len ) == NULL ) {
+        if( block_alloc_mem_at( bi, mem_type_of(addr), addr, seg->mem_len ) == NULL ) {
             ce_error("ELF","xe-elf64: memory reservation conflict!\n");
             return 1;
         }
@@ -309,7 +310,8 @@ static int load_block_seg( block_info * bi, SegmentEntry * seg )
     //
     // Copy it to memory
     //
-    (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
+    if( seg->src_len )
+        (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
 
 #ifdef CLEAR_BSS
     zero_bss( seg, addr );
@@ -352,16 +354,17 @@ static int load_global_seg( block_info * bi, SegmentEntry * seg )
     // Reserve this address range
     //
     } else {
-        addr = validate_addr( bi, seg->dst_addr, seg->src_len );
+        addr = validate_addr( bi, seg->dst_addr, seg->mem_len );
         ce_print("ELF", "    - allocating %p -> %p, 0x%lx bytes\n",
-                seg->dst_addr, addr, seg->src_len);
+                seg->dst_addr, addr, seg->mem_len);
 
-        if( block_alloc_mem_at( bi, mem_type_of(addr), addr, seg->src_len ) == NULL ) {
+        if( block_alloc_mem_at( bi, mem_type_of(addr), addr, seg->mem_len ) == NULL ) {
             ce_error("ELF","xe-elf64: memory reservation conflict!\n");
             return 1;
         }
     }
-    (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
+    if( seg->src_len )
+        (void) tg_memcpy( addr, seg->src_tgaddr, seg->src_len);
 #ifdef CLEAR_BSS
     zero_bss( seg, addr );
 #endif // CLEAR_BSS
