@@ -232,12 +232,12 @@ static int load_local_seg( block_info * bi, SegmentEntry * seg )
                 mseg = block_alloc_mem( bi, Mem_L2, seg->mem_len, 0, xei->id.agent );
                 if( mseg == NULL ) {
                     ce_error("ELF","PIE alloc: can't get %d bytes of local mem for XE %d\n",
-                            seg->mem_len, XE_NUM(xei));
+                            seg->mem_len, XEI_NUM(xei));
                     return 1;
                 }
             }
             ce_print("ELF", "   - PIE allocated XE %d segment at %p\n",
-                    XE_NUM(xei), mseg->va );
+                    XEI_NUM(xei), mseg->va );
             addr = seg->dst_addr = mseg->va;
             //
             // Could we have an entry point in local? XXX

@@ -891,10 +891,11 @@ static int do_killall_req( xe_info * xei , void * params )
 
 //
 // Wait for all other XE's to finish
+// This assumes that XE 0 (agent 1) is always enabled and is the 'main' XE.
 //
 static int do_waitall_req( xe_info * xei , void * params )
 {
-    if( xei->id.agent != 1) {
+    if( XEI_NUM(xei) != 0) {
         ce_error( "MSG", "XE 0x%lx: Attempted waitall with non-main XE.\n", xei->id.all );
         return EPERM;
     }
