@@ -44,7 +44,7 @@ for TEST in $TESTS; do
     c_test_1*)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
-      export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
+      export TGKRNL="$TG_INSTALL/lib/tgkrnl-tgr"
       export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
       export TEST
       REGEXS+=("TGR-CONSOLE: (XE1): c_test_1 starting"
@@ -57,11 +57,9 @@ for TEST in $TESTS; do
     c_test_2*)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
-      export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
+      export TGKRNL="$TG_INSTALL/lib/tgkrnl-tgr"
       export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
       export TEST
-      # Make sure that the testing environment from last time was cleaned up
-      rm -rf $WORKLOAD_INSTALL/ce-os-subdir
       # NOTE: clean_path comes from setup-test-env.sh
       REGEXS+=("TGR-CONSOLE: (XE1): CE-OS-TEST: cwd = $(clean_path $WORKLOAD_INSTALL)"
                "TGR-CONSOLE: (XE1): CE-OS-TEST: cwd = $(clean_path $WORKLOAD_INSTALL)/ce-os-subdir"
@@ -79,7 +77,7 @@ for TEST in $TESTS; do
     c_test_3*)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
       export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
-      export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
+      export TGKRNL="$TG_INSTALL/lib/tgkrnl-tgr"
       export OUTPUT_FILE="$TEST.rck000.cub00.skt0.cls000.blk00.CE.00"
       export TEST
       REGEXS+=("TGR-MSG: clone entry"

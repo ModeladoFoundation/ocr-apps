@@ -30,11 +30,6 @@
 /* We need a hook to force this file to be linked in when static
    libpthread is used.  */
 const int __pthread_provide_lockfile = 0;
-
-/* We need mutexs */
-extern const int __pthread_provide_mutex;
-const int *const __pthread_require_mutex =
-  &__pthread_provide_mutex;
 #endif
 
 void

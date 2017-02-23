@@ -1101,8 +1101,6 @@ int ce_xe_msg_handler( xe_info * xei, uint64_t arg0, uint64_t arg1, uint64_t *st
     //
     *status = ReqMethods[type].req_method( xei, params );
 
-    ce_vprint( "MSG", "XE 0x%lx status: 0x%lx\n", xei->id.all, *status );
-
     return 0;
 }
 

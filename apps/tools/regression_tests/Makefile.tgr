@@ -11,8 +11,9 @@
 
 TG_ROOT ?= $(realpath $(CURDIR)/../../../../tg/tg)
 APPS_ROOT ?= $(realpath $(CURDIR)/../..)
+OCR_ROOT ?= $(realpath $(CURDIR)/../../../../ocr/ocr)
 
-all: tg-examples apps-legacy apps-tgr-ce
+all: tg-examples apps-legacy apps-examples
 apps: all
 
 tools:
@@ -31,20 +32,21 @@ tg-examples:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE USE_TGR=yes fptr_simple
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE USE_TGR=yes multi_seg
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/CodeGen/XSTG USE_TGR=yes tailcall1
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE fptr_simple
+	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE multi_seg
 
 apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes hello
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes cxxhello
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes iotest
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_simple
-	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_malloc
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_mutex_recursive
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_cancel
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe USE_TGR=yes pthread_detach
-	$(MAKE) -C $(APPS_ROOT)/libs/src/libomp ARCH=tg-xe check
+
+apps-examples:
+	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg install
+	$(MAKE) -C $(APPS_ROOT)/examples/fib -f Makefile.tg install
 
 apps-tgr-ce:
 	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test c_test_1
@@ -57,9 +59,11 @@ apps-clean:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2 clean
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8 clean
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE clean
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/CodeGen/XSTG clean
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe clean
 	$(MAKE) -C $(APPS_ROOT)/libs/src/libtgr/tg-ce/test clean
+	$(MAKE) -C $(OCR_ROOT)/build squeaky
+	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg clean uninstall
+	$(MAKE) -C $(APPS_ROOT)/examples/fib -f Makefile.tg clean uninstall
 
 libs-clean:
 	$(MAKE) -C $(APPS_ROOT)/libs/src -f Makefile.core ARCH=tg-xe USE_TGR=yes clean
@@ -68,4 +72,4 @@ libs-clean:
 tools-clean:
 	$(MAKE) -C $(TG_ROOT) clean uninstall
 
-.PHONY: all apps apps-clean libs-clean tools-clean tools libs tg-examples apps-legacy apps-examples apps-tgr-ce
+.PHONY: all apps apps-clean libs-clean tools-clean tools libs tg-examples apps-legacy apps-examples

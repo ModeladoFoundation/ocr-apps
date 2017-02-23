@@ -21,15 +21,12 @@
 //
 void ce_os_svc_init()
 {
-    *(uint64_t *) INTERCEPT_START = INTERCEPT_ENABLE;
+    remap_intercept();
 }
 
 //
 // XXX The low level interface should be factored out to call common setup
 // and execute fns to more easily virtualize the implementation
-// We'll need to implement an event driven version of this to avoid stalling
-// the whole CE on OS reqs. That means providing src entity (XE, CE) info
-// as well.
 //
 //
 // This is nominally opaque to the syscall fns below
@@ -287,8 +284,6 @@ ssize_t ce_os_fileread( int fd, void * buf, size_t count )
     //
     // setup our request
     //
-    ce_vprint("OS", "fileread fd %d - 0x%lx bytes to %p\n", fd, count, buf);
-
     volatile OSReqBuffer * osreq = (OSReqBuffer *) INTERCEPT_START;
     osreq->status = 0;
     osreq->req_type = CE_REQTYPE_FILEREAD;
@@ -302,7 +297,7 @@ ssize_t ce_os_fileread( int fd, void * buf, size_t count )
     // reading triggers execution
     //
     u64 value = osreq->status;
-    ce_vprint("OS", "fileread fd %d, status = 0x%llx\n", fd, value);
+    // ce_print("OS", "fileread status = 0x%llx\n", value);
 
     if( value == 0 )
         value = req->len;

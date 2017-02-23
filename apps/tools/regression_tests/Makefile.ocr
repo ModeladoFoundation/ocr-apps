@@ -34,7 +34,6 @@ tg-examples:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE fptr_simple
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE multi_seg
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/CodeGen/XSTG tailcall1
 
 apps-legacy:
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe hello
@@ -51,7 +50,6 @@ apps-clean:
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm2 clean
 	$(MAKE) -C $(TG_ROOT)/fsim/tests/rtl-asm8 clean
 	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/PIE clean
-	$(MAKE) -C $(TG_ROOT)/xe-llvm/test/CodeGen/XSTG clean
 	$(MAKE) -C $(APPS_ROOT)/legacy/tg-xe clean
 	$(MAKE) -C $(OCR_ROOT)/build squeaky
 	$(MAKE) -C $(APPS_ROOT)/examples/printf -f Makefile.tg clean uninstall

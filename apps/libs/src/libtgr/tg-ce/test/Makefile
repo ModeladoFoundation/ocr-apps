@@ -44,7 +44,7 @@ endif
 #
 XE_CFLAGS = -g -nodefaultlibs
 
-LDSCRIPT = ../elf64_xstg_tgr.t
+LDSCRIPT = elf64_xstg.t
 
 XE_LDFLAGS = -Wl,-T,$(LDSCRIPT)
 XE_STATIC_CFLAGS = -static $(XE_LDFLAGS) $(XE_CFLAGS)
@@ -64,7 +64,7 @@ c_test_% : c_test_%.c
 #
 # Run a test on FSIM using its tgkrnl
 #
-%-run %-rungdb : export TGKRNL = ../../build-tg-ce/build.tgkrnl/tgkrnl.dbg
+%-run %-rungdb : export TGKRNL = ../../build-tg-ce/tgkrnl-tgr
 %-run %-rungdb : export TEST_ARGS = $(ARGS)
 %-run : export TEST = $(subst -run,,$@)$(PIE_SUFFIX)
 %-rungdb : export TEST = $(subst -rungdb,,$@)

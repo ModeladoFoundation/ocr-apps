@@ -353,11 +353,10 @@ extern char* getenv();
 
 #define USE_ARENAS  1
 
-#define USE_PTHREADS 1
-
 #define HAVE_MMAP       0
 #define HAVE_MREMAP     0
 #define MORECORE_CLEARS 0
+#define NO_THREADS      1 //Wrong! Remove this line
 
 #define malloc_getpagesize (tgr_getpagesize())
 
@@ -375,8 +374,6 @@ extern int __getpagesize (void);
 #ifndef NO_THREADS
 extern void __pthread_initialize (void) __attribute__((weak));
 
-#define __MALLOC_P(args)        args
-
 #define __libc_enable_secure 1
 
 /* Macros for handling mutexes and thread-specific data.  This is
@@ -385,23 +382,12 @@ extern void __pthread_initialize (void) __attribute__((weak));
 #include <bits/libc-lock.h>
 #include "thread-m.h"
 
-#ifndef USE_TGR
 void *(*__malloc_internal_tsd_get) (enum __libc_tsd_key_t) = NULL;
 int (*__malloc_internal_tsd_set) (enum __libc_tsd_key_t,
                                        __const void *) = NULL;
 
 weak_alias(__malloc_internal_tsd_get, __libc_internal_tsd_get)
 weak_alias(__malloc_internal_tsd_set, __libc_internal_tsd_set)
-#else // ! USE_TGR
-// TGR cannot use the builting tsd because that relies on malloc, creating a circle of
-// infinite recursion. So TGR stores its tls directly in the pthread struct
-#undef tsd_key_create
-#define tsd_key_create(key, destr)	do ; while(0)
-#undef tsd_setspecific
-#define tsd_setspecific(key, data)	do { *ARENA_PP = (data); } while (0)
-#undef tsd_getspecific
-#define tsd_getspecific(key, vptr)	(*ARENA_PP ? (vptr) : *ARENA_PP)
-#endif // USE_TGR
 
 #endif // ! NO_THREADS
 
@@ -1143,7 +1129,7 @@ int     mALLOC_SET_STATe();
 } /* end of extern "C" */
 #endif
 
-#if !defined(NO_THREADS) && !(HAVE_MMAP || USE_TGR)
+#if !defined(NO_THREADS) && !HAVE_MMAP
 "Can't have threads support without mmap"
 #endif
 #if USE_ARENAS && !(HAVE_MMAP || USE_TGR)
@@ -1434,11 +1420,9 @@ static Void_t*   memalign_check(size_t alignment, size_t bytes,
 #ifndef NO_THREADS
 static Void_t*   malloc_starter(size_t sz, const Void_t *caller);
 static void      free_starter(Void_t* mem, const Void_t *caller);
-#ifndef USE_TGR
 static Void_t*   malloc_atfork(size_t sz, const Void_t *caller);
 static void      free_atfork(Void_t* mem, const Void_t *caller);
 #endif
-#endif /* !defined NO_THREADS */
 #endif /* defined _LIBC || defined MALLOC_HOOKS */
 
 #else /* ! __STD_C */
@@ -1459,11 +1443,9 @@ static Void_t*   memalign_check();
 #ifndef NO_THREADS
 static Void_t*   malloc_starter();
 static void      free_starter();
-#ifndef USE_TGR
 static Void_t*   malloc_atfork();
 static void      free_atfork();
 #endif
-#endif /* !defined NO_THREADS */
 #endif /* defined _LIBC || defined MALLOC_HOOKS */
 
 #endif /* ! __STD_C */
@@ -1737,11 +1719,6 @@ static int stat_n_heaps;
 /* Thread specific data */
 
 static tsd_key_t arena_key;
-#ifdef USE_TGR
-arena ** __pthread_get_arena_pp(void) __attribute__((weak));
-#define ARENA_PP (__pthread_get_arena_pp ? __pthread_get_arena_pp() : &arenas )
-#endif
-
 static mutex_t list_lock = MUTEX_INITIALIZER;
 
 #if THREAD_STATS
@@ -1825,7 +1802,6 @@ static void           (*save_free_hook) __MALLOC_P ((__malloc_ptr_t __ptr,
 static Void_t*        save_arena;
 #endif
 
-#ifndef USE_TGR
 static void
 ptmalloc_lock_all __MALLOC_P((void))
 {
@@ -1883,13 +1859,7 @@ ptmalloc_init_all __MALLOC_P((void))
   }
   (void)mutex_init(&list_lock);
 }
-#endif // TGR
 
-#ifdef USE_TGR
-static arena *
-internal_function
-arena_get2(arena *a_tsd, size_t size);
-#endif
 
 /* Initialization routine. */
 #if defined(_LIBC)
@@ -1970,22 +1940,11 @@ ptmalloc_init __MALLOC_P((void))
     __pthread_initialize();
 #endif
 #endif /* !defined NO_THREADS */
-#ifdef USE_TGR
-  arenas = arena_get2(arenas, MINSIZE);
-#endif
-#ifdef USE_TGR
-  mutex_init(&arenas->mutex);
-#else
   mutex_init(&main_arena.mutex);
-#endif
   mutex_init(&list_lock);
   tsd_key_create(&arena_key, NULL);
-#ifdef USE_TGR
-  tsd_setspecific(arena_key, (Void_t *)arenas); // Default to main arena
-#else
   tsd_setspecific(arena_key, (Void_t *)&main_arena);
   thread_atfork(ptmalloc_lock_all, ptmalloc_unlock_all, ptmalloc_init_all);
-#endif /* !defined USE_TGR */
 #if defined _LIBC || defined MALLOC_HOOKS
 #ifndef NO_THREADS
   __malloc_hook = save_malloc_hook;
@@ -2483,21 +2442,10 @@ static heap_info *
 internal_function
 heap_for_ptr_and_arena( mchunkptr ptr, arena *ar_ptr )
 {
-#ifndef USE_TGR
     for( heap_info *h = arena2heap(ar_ptr) ; h ; h = h->prev ) {
         if( ptr_in_heap(ptr, h) )
             return h;
     }
-#else
-    // TGR uses a circular list
-    heap_info *orig;
-    heap_info *h = orig = arena2heap(ar_ptr);
-    do {
-        if( ptr_in_heap(ptr, h) )
-            return h;
-        h = h->prev;
-    } while (orig != h && h);
-#endif
     return NULL;
 }
 //
@@ -5603,7 +5551,6 @@ free_starter(mem, caller) Void_t* mem; const Void_t *caller;
   chunk_free(&main_arena, p);
 }
 
-#ifndef USE_TGR
 /* The following hooks are used while the `atfork' handling mechanism
    is active. */
 
@@ -5675,7 +5622,6 @@ free_atfork(mem, caller) Void_t* mem; const Void_t *caller;
     (void)mutex_unlock(&ar_ptr->mutex);
 }
 
-#endif /* !defined USE_TGR */
 #endif /* !defined NO_THREADS */
 
 #endif /* defined _LIBC || defined MALLOC_HOOKS */

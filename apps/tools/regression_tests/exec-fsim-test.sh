@@ -6,21 +6,17 @@
 #   TG_INSTALL       - The install directory of the tg repo
 #   FSIM_EXE         - The fsim varient to use (no path)
 #   LOGS_DIR         - The directory for fsim to place its logs
+#   VERBOSE          - If set, then write all of fsim's output to stdout
 #   TEST_NAME        - The name of the test
 #   WORKLOAD_INSTALL - The path to the workload
 #   FSIM_ARGS        - The args (except for -L) to pass to fsim.
 #
 # This script optionally accepts:
-#   VERBOSE          - If set, then write all of fsim's output to stdout
-#   TIME_TESTS       - If this or VERBOSE is set, then the execution time in
-#                      seconds of the test is output.
 #   OUTPUT_FILE      - Log file (no path) to use as output instead of stdout
-#   TIMEOUT_SECONDS  - Number of seconds to allow the test to execute before
-#                      aborting. If empty, 0 or unset then no timeout.
 #
 # This script accepts command line parameters which are all regular
-# expressions. The output of the fsim simulation must contain lines
-# which matche each of these regular expressions in order to succeed.
+# expressions. The output of the fsim simulation must contain a line
+# which matches each of these regular expressions in order to succeed.
 # Note: these regular expressions must be encountered in order, and each
 # ouput line can only provide a match for one regular expression.
 #
@@ -34,7 +30,6 @@ if [[ -z $TEST_NAME ]]; then
 fi
 
 REGEXS=("$@")
-unset TIMEOUT_PID
 
 function kill_fsim() {
   killall -e -9 -u $(whoami) $TG_INSTALL/bin/$FSIM_EXE 2>/dev/null
@@ -52,7 +47,7 @@ function fsim_success_test() {
   while read LINE; do
     [[ -n $VERBOSE ]] && echo $LINE
 
-    [[ -z $OUTPUT_FILE ]] && echo $LINE >> $LOGS_DIR/fsim_out
+    echo $LINE >> $LOGS_DIR/fsim_out
 
     if [[ $FOUND_REGEX -le ${#REGEXS[@]} ]]; then
       echo $LINE | grep -q "${REGEXS[$FOUND_REGEX]}" && ((FOUND_REGEX++))
@@ -70,17 +65,6 @@ function fsim_success_test() {
   fi
 }
 
-function run_timeout() {
-  sleep ${TIMEOUT_SECONDS}
-  echo "Test timed out." 1>&2
-  kill_fsim
-}
-
-function activate_timeout() {
-  run_timeout &
-  TIMEOUT_PID=$!
-}
-
 echo "Running test $TEST_NAME"
 
 # Checking that $LOGS_DIR is not empty just for sanity. We do not want to try to remove /
@@ -90,14 +74,6 @@ kill_fsim
 
 OLD_DIR=$(pwd)
 cd $WORKLOAD_INSTALL
-
-# Make sure that the timeout timer will get killed when the test finishes.
-trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
-
-# Start the timeout timer if there is one specified
-[[ ${TIMEOUT_SECONDS:-0} != 0 ]] && activate_timeout
-SECONDS=0
-
 # Actually run fsim
 FSIM_CMD="$TG_INSTALL/bin/$FSIM_EXE -L $LOGS_DIR $FSIM_ARGS"
 [[ -n $VERBOSE ]] && echo "Running command '$FSIM_CMD'"
@@ -108,9 +84,9 @@ if [[ -z $OUTPUT_FILE ]]; then
 else
   # Test log file instead of output
   if [[ -z $VERBOSE ]]; then
-    $FSIM_CMD 1>$LOGS_DIR/fsim_out 2>&1
+    $FSIM_CMD 1>/dev/null 2>/dev/null
   else
-    $FSIM_CMD 2>&1 | tee $LOGS_DIR/fsim_out
+    $FSIM_CMD
   fi
   if [[ -f $LOGS_DIR/$OUTPUT_FILE ]]; then
     cat $LOGS_DIR/$OUTPUT_FILE | fsim_success_test
@@ -120,12 +96,6 @@ else
     RET=1
   fi
 fi
-
-# Kill the timeout timer
-[[ -n $TIMEOUT_PID ]] && kill ${TIMEOUT_PID} 2>/dev/null && wait $TIMEOUT_PID 2>/dev/null
-
-[[ -n $VERBOSE || -n $TIME_TESTS ]] && echo "Test took $SECONDS sec"
-
 cd $OLD_DIR
 
 if [[ $RET -ne 0 ]]; then

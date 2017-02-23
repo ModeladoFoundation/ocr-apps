@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
-#include <fcntl.h>
 #include <sys/time.h>
-#include <sys/stat.h>
 
 #include "tg-types.h"
 #include "tg-cmdline.h"
@@ -13,7 +11,31 @@
 #include "tgr-ce.h"
 #include "util.h"
 #include "mem-util.h"
-#include "ce-os-svc.h"
+
+#include "xstg-map.h"
+
+#define IS_MR(a)     (((a) >> MAP_MACHINE_SHIFT) == 0b0001)
+#define IS_SR(a)     (((a) >> MAP_SOCKET_SHIFT) == 1)
+#define IS_CR(a)     (((a) >> MAP_CLUSTER_SHIFT) == 1)
+#define BR_TO_CR(b,a) (_CR_LEAD_ONE | \
+                        (TO_ULL(b) << MAP_BLOCK_SHIFT) | \
+                        ((a) & (_BR_LEAD_ONE-1)))
+#define SR_TO_CR(a)  (_CR_LEAD_ONE | ((a) & (_CR_LEAD_ONE-1)))
+#define IS_BR(a)     (((a) >> MAP_BLOCK_SHIFT) == 1)
+#define IS_AR(a)     (((a) >> MAP_AGENT_SHIFT) == 1)
+#define AR_TO_CR(b,a,v) (_CR_LEAD_ONE | \
+                        (TO_ULL(b) << MAP_BLOCK_SHIFT) | \
+                        (TO_ULL(a) << MAP_AGENT_SHIFT) | \
+                        ((v) & (_AR_LEAD_ONE-1)))
+
+#define IS_IPM(a)    ((((a) >> MAP_IN_SOCKET_IPM_SHIFT) & 0b111) == MAP_IN_SOCKET_IPM_MAGIC)
+#define IS_OPM(a)    ((((a) >> MAP_IN_SOCKET_DRAM_SHIFT) & 0b11))
+#define IPM_OFFSET(a) ((a) & ((1UL << MAP_IN_SOCKET_IPM_SHIFT) - 1))
+#define IS_L3(a)     ((((a) >> MAP_IN_CLUSTER_L3_SHIFT) & 1) == MAP_IN_CLUSTER_L3_MAGIC)
+#define IS_L2(a)     ((((a) >> MAP_IN_BLOCK_L2_SHIFT) & 1) == MAP_IN_BLOCK_L2_MAGIC)
+#define L2_OFFSET(a) ((a) & ((1UL << MAP_IN_BLOCK_L2_SHIFT) - 1))
+#define IS_L1(a)     ((((a) >> MAP_IN_AGENT_L1_SHIFT) & 1) == MAP_IN_AGENT_L1_MAGIC)
+#define L1_OFFSET(a) ((a) & ((1UL << MAP_IN_AGENT_L1_SHIFT) - 1))
 
 #define NO_ADDR (0UL)
 //
@@ -44,9 +66,9 @@ uint64_t validate_addr( block_info * bi, uint64_t addr, size_t len )
     // Our direct address map is only this socket, but, be pedantic ...
     //
     if( IS_MR(addr) &&
-        ( RACK_FROM_ID(addr) != bi->id.rack ||
-          CUBE_FROM_ID(addr) != bi->id.cube ||
-          SOCKET_FROM_ID(addr) != bi->id.socket ) ) {
+        ( RACK_FROM_ID(addr) >= bi->id.rack ||
+          CUBE_FROM_ID(addr) >= bi->id.cube ||
+          SOCKET_FROM_ID(addr) >= bi->id.socket ) ) {
             ce_error("VA", "bad MR addr %p\n", addr);
             return NO_ADDR;
     }
@@ -354,51 +376,4 @@ int return_mem( xe_info * xei, uint64_t va )
         break;
     }
     return 0;
-}
-
-//
-// Allocate CE space for and read a file into it.
-//
-mem_seg * tgr_load_file( ce_info * cei, const char * file )
-{
-    //int status = 0;
-    //
-    // stat the file to see how big it is and then allocate space for it
-    //
-    struct stat st;
-
-    if( ce_os_filestat( file, &st ) < 0 ) {
-        ce_error("FILE", "Can't stat file '%s'\n", file);
-        return NULL;
-    }
-    //
-    // allocate space for and copy the file in
-    //
-    mem_seg * seg = mem_alloc( cei->CE, st.st_size );
-
-    if( seg == NULL ) {
-        ce_error("FILE", "Can't allocate %d bytes of CE mem for file\n",
-                st.st_size, file );
-        return NULL;
-    }
-
-    int fd = ce_os_fileopen( file, O_RDONLY, 0 );
-
-    if( fd < 0 ) {
-        ce_error("FILE", "Can't open file '%s' for reading\n", file);
-        mem_free( seg );
-        return NULL;
-    }
-    ce_vprint("FILE", "load file '%s' 0x%lx bytes, from fd %d to %p, seg %p\n",
-                file, st.st_size, fd, (void *) seg->va, seg );
-
-    ssize_t got = ce_os_fileread( fd, (void *) seg->va, st.st_size );
-    if( got != st.st_size ) {
-        ce_error("FILE", "Read of file '%s' failed, got %d\n", file, got );
-        mem_free( seg );
-        return NULL;
-    }
-    (void) ce_os_fileclose( fd );
-
-    return seg;
 }

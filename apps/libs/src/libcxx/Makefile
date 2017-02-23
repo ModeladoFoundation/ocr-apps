@@ -101,7 +101,6 @@ ifeq ($(ARCH), tg-xe)
   BTYPE = -static
   COMPILE_FLAGS += -I$(APPS_INCLUDE)
   CMAKE_ARGS += -DLLVM_CONFIG="$(LLVM_CONFIG)"
-  unexport APPS_LIBS_INSTALL
 endif
 
 ifdef PIE

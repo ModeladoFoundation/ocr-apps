@@ -24,7 +24,7 @@ extern int ce_verbose;
 // string.h fns
 //
 size_t strlen( const char *s );
-char * strncat( char *dest, const char *src, size_t n );
+char *strncat( char *dest, const char *src, size_t n );
 
 void * memcpy( void *d, const void *s, size_t n );
 void * memset( void *d, int v, size_t n );

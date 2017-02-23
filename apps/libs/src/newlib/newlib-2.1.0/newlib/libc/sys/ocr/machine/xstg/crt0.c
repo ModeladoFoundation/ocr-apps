@@ -129,13 +129,8 @@ static void __init_bss()
 
 /////////////////////// PIE runtime relocations //////////////////////
 // Do the runtime data relocations necessary due to pointers in
-// initialized data (values can't be known at link time).
-// We assume the RAR registers have been initialized before we started running.
-//
-// All pointers are 64-bit and the rtreloc entries contain what segment
-// and the offset in that segment of the pointer to be relocated. Entries also
-// contain the segment the pointer is pointing into so that that segment's RAR
-// can be added into it (the relocation process).
+// initialized data. We assume the RAR registers have been initialized
+// before we started running and that all locations are 8-byte aligned.
 //
 __attribute__((weak))
 extern unsigned long __rtreloc_start;
@@ -155,6 +150,7 @@ typedef struct {
 #define AR_PRF_ADDR ((ulongptr_t)0x2e000L)    // XE agent relative PRF address
 #define REG_ADDR(r) (AR_PRF_ADDR + (r))
 
+
 void __rtreloc( void )
 {
     rtreloc_entry * entries = (rtreloc_entry *) & __rtreloc_start;
@@ -165,26 +161,7 @@ void __rtreloc( void )
             ulongptr_t target =
                     (ulongptr_t) (*REG_ADDR(entries->target_rar) +
                                           entries->target_offset);
-            if( ((uint64_t) target & 7) == 0 )
-                *target += * REG_ADDR(entries->symbol_rar);
-            else {
-                //
-                // target not 8-byte aligned - do it the hard way
-                // don't bring in memcpy() as that breaks no-newlib builds
-                //
-                union {
-                    uint64_t val;
-                    uint8_t  bval[ sizeof(uint64_t) ];
-                } val;
-
-                for( int i = 0 ; i < sizeof(val) ; i++ )
-                    val.bval[i] = *((uint8_t *)target + i);
-
-                val.val += * REG_ADDR(entries->symbol_rar);
-
-                for( int i = 0 ; i < sizeof(val) ; i++ )
-                    *((uint8_t *)target + i) = val.bval[i];
-            }
+            *target += * REG_ADDR(entries->symbol_rar);
         }
     }
 }

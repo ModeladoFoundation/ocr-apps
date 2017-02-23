@@ -187,19 +187,10 @@ static void set_pie_rar( block_info *bi, SegmentEntry * seg )
     // setup the segment register for all XEs
     //
     if( seg->isPIE && seg->type != SEG_LOCAL ) {
-        //
-        // Since XEs use MR format addresses for the PC, we convert our TEXT
-        // segment RARs into MR from SR (assuming policy of all text in global)
-        //
-        uint64_t dst_addr = seg->dst_addr;
-
-        if( seg->type == SEG_TEXT ) {
-            dst_addr = SR_TO_MR(bi->id.rack, bi->id.cube, bi->id.socket, dst_addr);
-        }
         for( xe_info *xei = NULL ; (xei = xe_get_next_info( bi, xei )) ; ) {
-            xe_set_reg( xei, seg->reg, dst_addr ); // set base addr
+            xe_set_reg( xei, seg->reg, seg->dst_addr ); // set base addr
             ce_vprint("ELF", " -   XE %d : R%d 0x%llx\n",
-                    xei->id.agent, seg->reg, dst_addr );
+                    xei->id.agent, seg->reg, seg->dst_addr );
         }
     }
 }

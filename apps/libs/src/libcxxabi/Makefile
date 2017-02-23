@@ -112,7 +112,6 @@ ifeq ($(ARCH), tg-xe)
   BTYPE = -static
   HAS_PTHREADS = TRUE
   COMPILE_FLAGS += -I$(APPS_INCLUDE)
-  unexport APPS_LIBS_INSTALL
 endif
 
 ifdef PIE

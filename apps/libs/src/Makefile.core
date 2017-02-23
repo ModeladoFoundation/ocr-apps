@@ -12,22 +12,16 @@ ifeq (,$(findstring $(ARCH),$(ARCHES)))
 $(error Unknown/unsupported ARCH ($(ARCH))! use one of: $(ARCHES))
 endif
 
-all: newlib libcxx libcxxabi libunwind libscaffold libswtest
-all: libtgr libomp libbuiltins
+all: newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr
 
 clean:
 	$(MAKE) -C newlib clean
 	$(MAKE) -C libcxx clean
 	$(MAKE) -C libcxxabi clean
 	$(MAKE) -C libunwind clean
+	$(MAKE) -C libtgr TGR_TYPE=tg-xe clean
 	$(MAKE) -C libscaffold clean
 	$(MAKE) -C libswtest clean
-ifeq ($(ARCH),tg-xe)
-	$(MAKE) -C libtgr TGR_TYPE=tg-xe clean
-	$(MAKE) -C libtgr TGR_TYPE=tg-ce clean
-	$(MAKE) -C libomp clean
-	$(MAKE) -C compiler-rt-builtins -f Makefile.tg-xe clean
-endif
 
 newlib:
 	$(MAKE) -C newlib
@@ -63,17 +57,5 @@ ifeq ($(ARCH)$(USE_TGR),tg-xeyes)
 	$(MAKE) -C libtgr TGR_TYPE=tg-ce install
 endif
 
-libomp: newlib libcxx libcxxabi libunwind
-ifeq ($(ARCH),tg-xe)
-	$(MAKE) -C libomp
-	$(MAKE) -C libomp install
-endif
 
-libbuiltins:
-ifeq ($(ARCH),tg-xe)
-	$(MAKE) -C compiler-rt-builtins -f Makefile.tg-xe install
-endif
-
-
-.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest
-.PHONY: libtgr libomp libbuiltins
+.PHONY: all clean newlib libcxx libcxxabi libunwind libscaffold libswtest libtgr

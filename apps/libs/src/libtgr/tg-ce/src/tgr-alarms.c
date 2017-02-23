@@ -2,7 +2,6 @@
 #include <sys/time.h>
 
 #include <tg-console.h>
-#include <tg-irq.h>
 
 #include "tgr-ce.h"
 #include "tgr-alarms.h"
