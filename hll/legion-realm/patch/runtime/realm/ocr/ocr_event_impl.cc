@@ -61,7 +61,9 @@ namespace Realm {
     /*static*/ Event OCREventImpl::create_ocrevent(void)
     {
       Event e = OCREventImpl::ocr_event_impl.convert<Event>();
+      e.gen = 0;
       ocrEventCreate(&e.evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+      e.id = GUIDA(e.evt_guid);
       return e;
     }
 

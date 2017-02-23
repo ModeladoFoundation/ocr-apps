@@ -523,6 +523,18 @@ namespace Realm {
       LegionRuntime::Arrays::Mapping<3,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<3> >();
       LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::Translation<1> >();
 
+      // new command-line parsers will work from a vector<string> representation of the
+      //  command line
+      std::vector<std::string> cmdline;
+      if(*argc > 1) {
+        cmdline.resize(*argc - 1);
+        for(int i = 1; i < *argc; i++)
+          cmdline[i - 1] = (*argv)[i];
+      }
+
+      // very first thing - let the logger initialization happen
+      Logger::configure_from_cmdline(cmdline);
+
       DetailedTimer::init_timers();
 
       OCREventImpl::static_init();
