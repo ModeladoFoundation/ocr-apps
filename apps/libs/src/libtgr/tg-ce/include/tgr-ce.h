@@ -92,7 +92,12 @@ struct xe_info
     mem_region * L1;
 };
 
-#define XE_NUM(xei)  ((xei)->id.agent - 1)   // XE index from agent number
+//
+// XE TG agent ids range from 1:N and our XE indicies are 0:N-1 for N being
+// the configured XE count.
+//
+#define XE_NUM(id)    ((id).agent - 1)  // XE block index from XE agent index
+#define XEI_NUM(xei)  XE_NUM((xei)->id) // XEI index using XE id
 
 //
 // Each CE maintains a block_info structure describing the resources for its

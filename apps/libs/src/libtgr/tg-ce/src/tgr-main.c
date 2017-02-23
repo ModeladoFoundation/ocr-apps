@@ -143,11 +143,13 @@ extern int tgr_test_main();
 //
 xe_info * xe_get_info_by_id( block_info * bi, id_tuple id )
 {
+	int      xe_num = XE_NUM(id);
     id_tuple blkid = id;
-    blkid.agent = 0;
 
-    if( blkid.all == bi->id.all && id.agent >= 0 && id.agent < bi->xe_count )
-        return bi->xes + (id.agent - 1);  // cvt agent to XE index
+    blkid.agent = 0;	// so we just compare block ids
+
+    if( blkid.all == bi->id.all && xe_num >= 0 && xe_num < bi->xe_count )
+        return bi->xes + xe_num;  // cvt agent to XE index
     else
         return NULL;
 }
@@ -248,7 +250,7 @@ void xe_terminate_all( ce_info * cei )
 void xe_terminate( xe_info * xei )
 {
     volatile u8 * xe_control = (volatile u8 *) CR_XE_CONTROL(xei->block->id.block,
-                                                             xei->id.agent-1);
+                                                             XEI_NUM(xei));
 
     *xe_control = XE_CTL_PWR_GATE;
 }
@@ -256,7 +258,7 @@ void xe_terminate( xe_info * xei )
 void xe_stop( xe_info * xei )
 {
     volatile u8 * xe_control = (volatile u8 *) CR_XE_CONTROL(xei->block->id.block,
-                                                             xei->id.agent-1);
+                                                             XEI_NUM(xei));
 
     if( (*xe_control & XE_CTL_CLK_GATE) == 0 )
         *xe_control = XE_CTL_CLK_GATE;
@@ -265,7 +267,7 @@ void xe_stop( xe_info * xei )
 void xe_continue( xe_info * xei )
 {
     volatile u8 * xe_control = (volatile u8 *) CR_XE_CONTROL(xei->block->id.block,
-                                                             xei->id.agent-1);
+                                                             XEI_NUM(xei));
 
     *xe_control = 0x00;
 }
