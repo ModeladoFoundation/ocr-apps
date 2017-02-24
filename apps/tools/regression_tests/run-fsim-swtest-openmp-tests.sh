@@ -81,7 +81,6 @@ test_omp_lock
 test_omp_for_reduction
 test_omp_master
 test_omp_atomic
-test_omp_task_untied
 test_omp_for_lastprivate
 test_omp_sections_nowait
 orph_test_omp_section_lastprivate
@@ -102,7 +101,6 @@ orph_test_omp_master
 orph_test_omp_parallel_default
 orph_test_omp_barrier
 orph_test_omp_taskyield
-orph_test_omp_task_untied
 orph_test_omp_parallel_for_if
 test_omp_parallel_for_if
 orph_test_omp_for_nowait
