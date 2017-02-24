@@ -32,7 +32,7 @@ int <ompts:testcode:functionname>omp_get_wtime</ompts:testcode:functionname>(FIL
     </ompts:orphan>
 	measured_time = end-start;
     fprintf(logFile, "Work took %lf sec. time.\n", measured_time);
-    return ((measured_time > 0.99 * wait_time) && (measured_time < 1.01 * wait_time)) ;
+    return ((measured_time > 0.9 * wait_time) && (measured_time < 1.1 * wait_time)) ;
 }
 </ompts:testcode>
 </ompts:test>
