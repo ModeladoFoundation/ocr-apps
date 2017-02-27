@@ -133,7 +133,7 @@ void set_grid_ptrs( GridPoint * energy_grid, NuclideGridPoint ** nuclide_grids,
 	for( long i = 0; i < n_isotopes * n_gridpoints ; i++ )
 	{
 		double quarry = energy_grid[i].energy;
-		if( INFO && mype == 0 && i % 200 == 0 )
+		if( INFO && mype == 0 && i % 10000 == 0 )
 			PRINTF( "\rAligning Unionized Grid...(%.2f%% complete)",
 			       100.0 * (double) i / (n_isotopes*n_gridpoints) );
 		for( long j = 0; j < n_isotopes; j++ )
