@@ -11,9 +11,11 @@ for nodes in ${NODE_LIST0[@]}; do
 
     pfile=${root}_$nodes.out
 
-    grep "Prof " $pfile >> ${root}1.post
+    #grep "Prof " $pfile >> ${root}1.post
+    grep "Prof " ${root}_${nodes}.sh | sed 's/echo //g' >> ${root}1.post
 
     numRuns=`grep 'Prof ' $pfile | wc -l`
+    numRuns_jobFile=`grep 'Prof ' ${root}_${nodes}.sh | wc -l`
 
     for ((k=1;k<=numRuns;k++)); do
         tfile="temp.file"
@@ -29,6 +31,12 @@ for nodes in ${NODE_LIST0[@]}; do
         fi
 
         echo $a $b
+        echo $a $b >> ${root}.post
+    done
+
+    for ((k=$numRuns+1;k<=$numRuns_jobFile;k++)); do
+        a="-"
+        b="-"
         echo $a $b >> ${root}.post
     done
 
