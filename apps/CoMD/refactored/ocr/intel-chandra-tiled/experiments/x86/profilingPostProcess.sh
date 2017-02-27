@@ -2,7 +2,7 @@
 
 source experiments/x86/parameters.job
 
-root="${JOBHEADER}_ocr_Stencil2D"
+root="${JOBHEADER}_ocr_CoMD"
 
 AROOT=$PWD
 spath=(`pwd | tr "/" " "`) # ( . . . .  app baseOrRefactored runtime implVersion)
