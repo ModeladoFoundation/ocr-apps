@@ -191,18 +191,23 @@ __pthread_init_max_stacksize(void)
 /* Allocated and initialize tls */
 int __pthread_init_tls(pthread_descr self)
 {
-  /* zero the tbss section once */
-  if (__pthread_initial_thread.p_pid == getpid()) {
-      unsigned long int * p;
-      for (p = &_ftbss; p < &_etbss; p++) {
-          *p = 0L;
-      }
+  if ((size_t)&__tls_size == 0) {
+    /* There is no TLS. */
+    __SET_TLS_REG(NULL);
+    return 0;
   }
+
   self->p_tlsp = malloc((size_t)&__tls_size);
   if (self->p_tlsp == NULL) {
-      return -1;
+    return -1;
   }
-  memcpy(self->p_tlsp, &__tls_start, (size_t)&__tls_size);
+  /* copy in any initilized TLS data (ie .tdata) */
+  size_t tdata_size = (size_t)(&__tls_size - (&_etbss - &_ftbss));
+  memcpy(self->p_tlsp, &__tls_start, tdata_size);
+
+  /* zero any uninitialized TLS data (ie .tbss) */
+  memset(self->p_tlsp + tdata_size, 0, (size_t)&__tls_size - tdata_size);
+
   __SET_TLS_REG(self->p_tlsp);
   return 0;
 }
