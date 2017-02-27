@@ -4,10 +4,10 @@ source $APPS_ROOT/tools/execution_tools/aux_bash_functions
 
 sizes=("small")
 iters=(1 12801)
-BLOCKCOUNTS=(1 2 4 8)
+BLOCKCOUNTS=(1 2 4)
 
-server_nodes=(101 102 103 104)
-client_nodes=(243 244 245 246 247 248 249 250 251 252 253)
+server_nodes=(217 218 219)
+client_nodes=(229 230 231 232)
 
 fsimblockspernode=6
 beginNode=0
@@ -118,11 +118,10 @@ for BLOCKCOUNT in ${BLOCKCOUNTS[@]}; do
 
         jobHeader="${BLOCKCOUNT}"
 
-        #BUILD_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg install WORKLOAD_ARGS='-s ${size} -g 500 -t $((8*$BLOCKCOUNT)) -l ${iter}'"
-        BUILD_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg install WORKLOAD_ARGS='-s ${size} -t $((8*$BLOCKCOUNT)) -l ${iter}'"
+        BUILD_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} make -f Makefile.tg install WORKLOAD_ARGS='-s ${size} -t $((8*$BLOCKCOUNT)) -l ${iter}'"
         eval $BUILD_CMD
         mkdir -p ./${winstall}/tg/logs
-        #RUN_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} OCR_XE_CONFIG=\`pwd\`/xe.cfg OCR_CE_CONFIG=\`pwd\`/ce.cfg make -f Makefile.tg run WORKLOAD_ARGS='-s ${size} -t $((8*$BLOCKCOUNT)) -l ${iter}'"
+        #RUN_CMD="MACHINE_CONFIG=$PWD/${machineConfigFile} WORKLOAD_INSTALL_ROOT=./${winstall} make -f Makefile.tg run WORKLOAD_ARGS='-s ${size} -t $((8*$BLOCKCOUNT)) -l ${iter}'"
         WDIR=`pwd`
         RUN_CMD="ENERGY=yes TG_INSTALL=$TG_TOP/tg/install WORKLOAD_INSTALL=$WDIR/${winstall}/tg $TG_TOP/tg/install/bin/fsim -s -L $WDIR/${winstall}/tg/logs -c $WDIR/${machineConfigFile} -c $WDIR/${winstall}/tg/config.cfg -c $TG_TOP/tg/install/fsim-configs/Energy.cfg -c $TG_TOP/tg/install/fsim-configs/dvfs-default.cfg"
         echo date >> ${jfile}.sh
