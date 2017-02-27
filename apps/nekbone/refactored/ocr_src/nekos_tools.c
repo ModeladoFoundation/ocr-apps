@@ -30,7 +30,7 @@ Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics, unsigned int i
             io->dir_present[ io->nloads[i].did ] = 1;
         }
 
-        if(true){
+        if(false){
             bool output_neighborhoods = true;
             print_NEKOtools(io, output_neighborhoods);
         }
