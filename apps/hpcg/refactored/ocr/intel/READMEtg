@@ -1,0 +1,8 @@
+HPCG has been run on 1 and 2 blocks of TG on Fsim.
+
+To run:
+make -f Makefile.tg clean uninstall run
+
+config.cfg has the number of blocks to run
+the first three workload args should be adjusted so the product is 8 x blocks
+for one block 2 2 2, for two blocks 4 2 2 for four blocks 4 4 2, etc.
