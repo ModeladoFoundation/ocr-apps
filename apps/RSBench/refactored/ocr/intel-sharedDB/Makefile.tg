@@ -79,7 +79,7 @@ CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=100
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS := -ltimer -lreduction -locrAppUtils
-LDFLAGS += $(APPS_ROOT)/libs/install/$(ARCH)/lib/libbuiltins.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a
+LDFLAGS += $(APPS_ROOT)/libs/install/$(ARCH)/lib/libbuiltins.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a
 
 # Targets:
 #   - all:     Build the application.
