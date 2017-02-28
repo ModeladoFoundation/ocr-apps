@@ -9,13 +9,14 @@
 #include "omp_testsuite.h"
 #include "omp_my_sleep.h"
 
+#define FINAL_START 11
 
 int <ompts:testcode:functionname>omp_task_final</ompts:testcode:functionname>(FILE * logFile){
     <ompts:orphan:vars>
-    int tids[NUM_TASKS];
+    int tids[NUM_TASKS][2];
     int i;
     </ompts:orphan:vars>
-    int error;
+    int error = 0;
 #pragma omp parallel
 {
 #pragma omp single
@@ -29,22 +30,40 @@ int <ompts:testcode:functionname>omp_task_final</ompts:testcode:functionname>(FI
              */
             int myi;
             myi = i;
+            fprintf (logFile, "%02d: Single thread nr %d\n", myi, omp_get_thread_num());
 
-            #pragma omp task <ompts:check>final(i>=10)</ompts:check>
+            #pragma omp task <ompts:check>final(i>=FINAL_START)</ompts:check>
             {
-                my_sleep (SLEEPTIME);
 
-                tids[myi] = omp_get_thread_num();
+                int ti;
+                ti = myi;
+
+                tids[ti][0] = omp_get_thread_num();
+
+                fprintf (logFile, "%02d: Task thread nr %d\n", ti, tids[ti][0]);
+
+                #pragma omp task
+                {
+                    //if( !omp_in_final() )
+                        //my_sleep (SLEEPTIME_LONG);
+
+                    tids[ti][1] = omp_get_thread_num();
+                    fprintf (logFile, "%02d: Woke, thread nr %d\n", ti, tids[ti][1]);
+                }
             } /* end of omp task */
             </ompts:orphan>
         } /* end of for */
     } /* end of single */
 } /*end of parallel */
 
-/* Now we ckeck if more than one thread executed the tasks. */
-    for (i = 10; i < NUM_TASKS; i++) {
-        if (tids[10] != tids[i])
+/* Now we check if more than one thread executed the tasks. */
+    fprintf( logFile, "Final start = %d\n", FINAL_START );
+    for (i = FINAL_START; i < NUM_TASKS; i++) {
+        if (tids[i][0] != tids[i][1]) {
+            fprintf( logFile, "tids[%d][0] (%d) != tids[%d][1] (%d)\n",
+                    i, tids[i][0], i, tids[i][1] );
             error++;
+        }
     }
     return (error==0);
 } /* end of check_parallel_for_private */
