@@ -1,26 +1,26 @@
 #!/bin/bash -l
-#SBATCH -p ARG_QUEUE
-#SBATCH -N ARG_NODE_SCALING
-#SBATCH -t ARG_HOUR:ARG_MIN:00
-#SBATCH -J ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGN
-#SBATCH -o ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGN
+#SBATCH -p TPLARG_QUEUE
+#SBATCH -N TPLARG_NODE_SCALING
+#SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
+#SBATCH -J TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+#SBATCH -o TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
 #SBATCH -L SCRATCH
 
-export OCR_INSTALL=ARG_OCR_INSTALL
+export OCR_INSTALL=TPLARG_OCR_INSTALL
 export RUN_MODE=runApp
 
-export REPO_TOP=ARG_REPO_TOP
+export REPO_TOP=TPLARG_REPO_TOP
 export XST_BATCH="yes"
 .  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
 
-export tile=${tile-ARG_TILE}
-export iter=${iter-ARG_ITER}
+export tile=${tile-TPLARG_TILE}
+export iter=${iter-TPLARG_ITER}
 
 if [[ ${XST_BATCH} == "yes" ]]; then
     if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
         # arrange for logs to be under the submit folder
         submitdirName=${SLURM_SUBMIT_DIR##*/}
-        rundirName="rundir.ARG_SCALING_TYPE_ARG_NAME.ARG_NODE_SCALINGN"
+        rundirName="rundir.TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN"
         mkdir -p ${submitdirName}/${rundirName}
         export LOGDIR="${submitdirName}/${rundirName}"
     fi
@@ -28,7 +28,7 @@ fi
 
 cd ${REPO_TOP}/apps/apps/Stencil2D/refactored/ocr/intel-channelEVTs
 
-export OCR_NUM_NODES=ARG_NODE_SCALING
+export OCR_NUM_NODES=TPLARG_NODE_SCALING
 
 function myroot()
 {
@@ -60,7 +60,8 @@ lscpu
 export CFGARG_SCHEDULER="STATIC"
 #export CFGARG_TARGET="mpi_probe"
 
-export NODE_SCALING="ARG_NODE_SCALING"
-export CORE_SCALING="ARG_CORE_SCALING"
-export WORKLOAD_INSTALL_ROOT="ARG_APP_INSTALL"
+export NODE_SCALING="TPLARG_NODE_SCALING"
+export CORE_SCALING="TPLARG_CORE_SCALING"
+export NB_RUN="TPLARG_NB_RUN"
+export WORKLOAD_INSTALL_ROOT="TPLARG_APP_INSTALL"
 . ./scripts/scaling.sh

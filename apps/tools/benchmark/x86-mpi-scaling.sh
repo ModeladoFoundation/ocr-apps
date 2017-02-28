@@ -36,7 +36,11 @@ if [[ -n "${SWEEP_FILE}" ]]; then
     OPTS += "-sweepfile ${SWEEP_FILE}"
 fi
 
-. ${SCRIPT_ROOT}/perfDriver.sh ${OPTS} -target ${OCR_TYPE} ${APP_NAME}
+if [[ -n "${LOGDIR}" ]]; then
+    LOGDIR_ARG="-logdir ${LOGDIR}"
+fi
 
-# Do avoid side-effect when this script is sourced in current shell
+. ${SCRIPT_ROOT}/perfDriver.sh ${OPTS} -target ${OCR_TYPE} ${LOGDIR_ARG} ${APP_NAME}
+
+# To avoid side-effect when this script is sourced in current shell
 unset OCR_INSTALL
