@@ -47,26 +47,66 @@ typedef boost::shared_ptr<OcrDbkAstInfo> OcrDbkAstInfoPtr;
  * OcrEdtAstInfo *
  *****************/
 class OcrEdtAstInfo {
-  SgType* depElemType;
-  SgFunctionSymbol* edtFuncSymbol;
+  std::string m_edtname;
+  SgType* m_depElemType;
+  SgFunctionDeclaration* m_edtDecl;
+  SgVariableSymbol* m_edtTemplateGuid;
+  SgVariableSymbol* m_depElemStructSymbol;
+  SgVariableSymbol* m_edtGuid;
  public:
-  OcrEdtAstInfo();
+  OcrEdtAstInfo(std::string edtname, SgType* depElemType, SgFunctionDeclaration* edtDecl);
+  SgFunctionDeclaration* getEdtFunctionDeclaration() const;
+  SgType* getDepElemStructType() const;
+  SgVariableSymbol* getEdtTemplateGuid() const;
+  SgVariableSymbol* getDepElemStructSymbol() const;
+  SgVariableSymbol* getEdtGuid() const;
+  void setEdtTemplateGuid(SgVariableSymbol* edtTemplateGuid);
+  void setDepElemStructSymbol(SgVariableSymbol* depElemStructSymbol);
+  void setEdtGuid(SgVariableSymbol* edtGuid);
   std::string str() const;
 };
 typedef boost::shared_ptr<OcrEdtAstInfo> OcrEdtAstInfoPtr;
+
+/*****************
+ * OcrEvtAstInfo *
+ *****************/
+class OcrEvtAstInfo {
+  std::string m_evtname;
+  SgVariableSymbol* m_evtGuid;
+ public:
+  OcrEvtAstInfo(std::string evtname, SgVariableSymbol* evtGuid);
+  SgVariableSymbol* getEvtGuid() const;
+};
+typedef boost::shared_ptr<OcrEvtAstInfo> OcrEvtAstInfoPtr;
 
 /*********************
  * OcrAstInfoManager *
  *********************/
 typedef std::map<std::string, OcrDbkAstInfoPtr> OcrDbkAstInfoMap;
 typedef std::pair<std::string, OcrDbkAstInfoPtr> OcrDbkAstInfoMapElem;
+typedef std::map<std::string, OcrEdtAstInfoPtr> OcrEdtAstInfoMap;
+typedef std::pair<std::string, OcrEdtAstInfoPtr> OcrEdtAstInfoMapElem;
+typedef std::map<std::string, OcrEvtAstInfoPtr> OcrEvtAstInfoMap;
+typedef std::pair<std::string, OcrEvtAstInfoPtr> OcrEvtAstInfoMapElem;
 class OcrAstInfoManager {
   OcrDbkAstInfoMap m_ocrDbkAstInfoMap;
+  OcrEdtAstInfoMap m_ocrEdtAstInfoMap;
+  OcrEvtAstInfoMap m_ocrEvtAstInfoMap;
  public:
   OcrAstInfoManager();
   bool regOcrDbkAstInfo(std::string dbkname, SgVariableSymbol* ocrGuidSymbol, SgVariableSymbol* ptrSymbol);
+  bool regOcrEdtAstInfo(std::string edtName, SgType* depElemType, SgFunctionDeclaration* edtDecl);
+  bool regOcrEvtAstInfo(std::string edtName, SgVariableSymbol* evtGuid);
   OcrDbkAstInfoPtr getOcrDbkAstInfo(std::string dbkname);
+  OcrEdtAstInfoPtr getOcrEdtAstInfo(std::string edtname);
+  OcrEvtAstInfoPtr getOcrEvtAstInfo(std::string evtname);
+  std::string ocrEvtAstInfoMap2Str() const;
 };
+
+/*********************
+ * Utility Functions *
+ *********************/
+SgVariableSymbol* GetVariableSymbol(SgVariableDeclaration* vdecl, std::string vname);
 
 /************************
  * DepElemVarRefExpPass *
@@ -108,10 +148,17 @@ class OcrTranslator {
   //! 3. Replace malloc calls with ocrDbCreate API call
   //! 4. Bookkeeping SgSymbols associated with the datablock
   void translateDbk(std::string name, OcrDbkContextPtr dbkContext);
+  void setupEdtEvtCreate(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupEdtTemplate(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupEdtDepElems(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupEdtCreate(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupEdtDepDbks(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupEdtDepEvts(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupEdtEvtsSatisfy(std::string edtname, OcrEdtContextPtr edtContext);
  public:
   OcrTranslator(SgProject* project, const OcrObjectManager& ocrObjectManager);
   void outlineEdts();
-  //
+  void setupEdts();
   void translateDbks();
   // main driver function
   void translate();
