@@ -5,6 +5,7 @@
 #include "sage3basic.h"
 #include "ocrTranslateEngine.h"
 #include "RoseAst.h"
+#include "ocrAstBuilder.h"
 #include "logger.h"
 
 /**************
@@ -73,11 +74,9 @@ namespace AstBuilder {
    ************************/
   SgFunctionDeclaration* buildOcrEdtFuncDecl(string name, SgScopeStatement* scope) {
     // return type of the EDT
-    SgType* void_t = SageBuilder::buildVoidType();
-    SageBuilder::pushScopeStack(scope);
+    SgType* returnType = buildOcrGuidType(scope);
     SgFunctionParameterList* paramList = SageBuilder::buildFunctionParameterList();
-    SgFunctionDeclaration* edtdecl = SageBuilder::buildDefiningFunctionDeclaration(name, void_t, paramList, scope);
-    SageBuilder::popScopeStack();
+    SgFunctionDeclaration* edtdecl = SageBuilder::buildDefiningFunctionDeclaration(name, returnType, paramList, scope);
     return edtdecl;
   }
 
@@ -129,10 +128,9 @@ namespace AstBuilder {
   SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope) {
     assert(scope);
     SgPointerType* ptype = SageBuilder::buildPointerType(type);
-    SgIntVal* index = SageBuilder::buildIntVal(0);
     SgVarRefExp* paramv = SageBuilder::buildVarRefExp("paramv", scope);
-    SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(paramv, index);
-    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(arrRefExp, ptype);
+    SgCastExp* castExp = SageBuilder::buildCastExp(paramv, ptype);
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(castExp, ptype);
     SgVariableDeclaration* depElemStructDecl = SageBuilder::buildVariableDeclaration(name, ptype, initializer, scope);
     return depElemStructDecl;
   }
@@ -185,8 +183,189 @@ namespace AstBuilder {
       // Add the statement into the current scope
       edt_stmts.push_back(*s);
     }
+    // Add a return NULL_GUID statement to the EDT
+    SgIntVal* zero = SageBuilder::buildIntVal(0);
+    string returnExp = "NULL_GUID";
+    SageInterface::addTextForUnparser(zero, returnExp, AstUnparseAttribute::e_replace);
+    SgStatement* returnStmt = SageBuilder::buildReturnStmt(zero);
+    edt_stmts.push_back(returnStmt);
     return edt_stmts;
   }
+
+  /****************************************
+   * Builders for Setting up EDT Template *
+   ****************************************/
+  SgVariableDeclaration* buildOcrGuidEdtTemplateVarDecl(string name, SgScopeStatement* scope) {
+    assert(scope);
+    SgType* ocrGuidType = buildOcrGuidType(scope);
+    SgVariableDeclaration* decl = SageBuilder::buildVariableDeclaration(name, ocrGuidType, NULL, scope);
+    return decl;
+  }
+
+  SgExprStatement* buildOcrEdtTemplateCallExp(SgVariableDeclaration* edtTemplateGuid, SgFunctionDeclaration* edtFuncDecl,
+					      unsigned int ndelems, unsigned int ndbks, SgScopeStatement* scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEdtTemplateCreate
+    vector<SgExpression*> args;
+    SgVarRefExp* ocrGuidVarRefExp = SageBuilder::buildVarRefExp(edtTemplateGuid);
+    // Build the first argument
+    SgExpression* first = SageBuilder::buildAddressOfOp(ocrGuidVarRefExp);
+    args.push_back(first);
+    // Build the second argument
+    SgExpression* second = SageBuilder::buildFunctionRefExp(edtFuncDecl);
+    args.push_back(second);
+    SgUnsignedIntVal* third = SageBuilder::buildUnsignedIntVal(ndelems);
+    args.push_back(third);
+    SgUnsignedIntVal* fourth = SageBuilder::buildUnsignedIntVal(ndbks);
+    args.push_back(fourth);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the statement
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEdtTemplateCreate", voidType, exprList, scope);
+    return stmt;
+  }
+
+  SgExprStatement* buildEdtDepElemSetupStmt(SgVariableDeclaration* depElemStructVar, SgVarRefExp* depElemVarRef) {
+    SgVarRefExp* alhs = SageBuilder::buildVarRefExp(depElemStructVar);
+    SgVarRefExp* arhs = SageBuilder::buildVarRefExp(depElemVarRef->get_symbol());
+    SgDotExp* dotExp = SageBuilder::buildDotExp(alhs, arhs);
+    SgVarRefExp* rhs = SageBuilder::buildVarRefExp(depElemVarRef->get_symbol());
+    SgExprStatement* assign = SageBuilder::buildAssignStatement(dotExp, rhs);
+    return assign;
+  }
+
+  vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, OcrEdtContextPtr edtContext) {
+    vector<SgStatement*> depElemSetupStmts;
+    list<SgVarRefExp*> depElems = edtContext->getDepElems();
+    list<SgVarRefExp*>::iterator l = depElems.begin();
+    for( ; l != depElems.end(); ++l) {
+      SgExprStatement* assignStmt = buildEdtDepElemSetupStmt(depElemStructVar, *l);
+      depElemSetupStmts.push_back(assignStmt);
+    }
+    return depElemSetupStmts;
+  }
+
+  // u8 ocrEdtCreate( ocrGuid_t ∗ guid, ocrGuid_t templateGuid,
+  // 		   u32 paramc, u64 ∗ paramv,
+  // 		   u32 depc, ocrGuid_t ∗ depv,
+  // 		   u16 flags, ocrHint_t ∗ hint, ocrGuid_t ∗ outputEvent )
+  SgExprStatement* buildOcrEdtCreateCallExp(SgVariableSymbol* edtGuidSymbol, SgVariableSymbol* edtTemplateGuidSymbol,
+					    SgVariableSymbol* depElemStructSymbol,
+					    SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEdtTemplateCreate
+    vector<SgExpression*> args;
+    SgVarRefExp* ocrGuidVarRefExp = SageBuilder::buildVarRefExp(edtGuidSymbol);
+    // Build the first argument
+    SgExpression* first = SageBuilder::buildAddressOfOp(ocrGuidVarRefExp);
+    args.push_back(first);
+    // Second argument is edt template guid
+    SgExpression* second = SageBuilder::buildVarRefExp(edtTemplateGuidSymbol);
+    args.push_back(second);
+    // this is paramc argument
+    // We will generate EDT_PARAM_DEF instead
+    // First we need a dummy place holder expression
+    SgIntVal* third = SageBuilder::buildIntVal(1);
+    string paramc = "EDT_PARAM_DEF";
+    SageInterface::addTextForUnparser(third, paramc, AstUnparseAttribute::e_replace);
+    args.push_back(third);
+    // Fourth argument is address of depElem struct
+    SgVarRefExp* depElemVarRef = SageBuilder::buildVarRefExp(depElemStructSymbol);
+    SgType* u64_t = AstBuilder::buildu64PtrType(scope);
+    SgExpression* addressOfExp = SageBuilder::buildAddressOfOp(depElemVarRef);
+    SgExpression* fourth = SageBuilder::buildCastExp(addressOfExp, u64_t);
+    args.push_back(fourth);
+    // fifth which is depv
+    SgIntVal* fifth = SageBuilder::buildIntVal(0);
+    string depc = "EDT_PARAM_DEF";
+    SageInterface::addTextForUnparser(fifth, depc, AstUnparseAttribute::e_replace);
+    args.push_back(fifth);
+    // sixth is paramv
+    // we will setup this one as NULL
+    // datablock dependences will be explicitly added later
+    SgIntVal* sixth = SageBuilder::buildIntVal(0);
+    string depv = "NULL";
+    SageInterface::addTextForUnparser(sixth, depv, AstUnparseAttribute::e_replace);
+    args.push_back(sixth);
+    // seventh argument is flags
+    SgIntVal* seventh = SageBuilder::buildIntVal(0);
+    string flags = "EDT_PROP_NONE";
+    SageInterface::addTextForUnparser(seventh, flags, AstUnparseAttribute::e_replace);
+    args.push_back(seventh);
+    // eighth argument is hints
+    SgIntVal* eighth = SageBuilder::buildIntVal(0);
+    string hints = "NULL_HINT";
+    SageInterface::addTextForUnparser(eighth, hints, AstUnparseAttribute::e_replace);
+    args.push_back(eighth);
+    // ninth argument is output event
+    SgVarRefExp* outputEvtVarRef = SageBuilder::buildVarRefExp(outEvtGuidSymbol);
+    SgExpression* ninth = SageBuilder::buildAddressOfOp(outputEvtVarRef);
+    args.push_back(ninth);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEdtCreate", voidType, exprList, scope);
+    return stmt;
+  }
+
+  // u8 ocrAddDependence(ocrGuid_t source, ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode)
+  SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* dbkGuidSymbol, SgVariableSymbol* edtGuidSymbol, int slot, DbkMode dbkmode, SgScopeStatement*  scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEdtTemplateCreate
+    vector<SgExpression*> args;
+    SgVarRefExp* source = SageBuilder::buildVarRefExp(dbkGuidSymbol);
+    args.push_back(source);
+    SgVarRefExp* destination = SageBuilder::buildVarRefExp(edtGuidSymbol);
+    args.push_back(destination);
+    SgIntVal* slotn_ = SageBuilder::buildIntVal(slot);
+    args.push_back(slotn_);
+    SgIntVal* modeExp = SageBuilder::buildIntVal(0);
+    string modeText;
+    switch(dbkmode.getDbkMode()) {
+    case DbkMode::DB_DEFAULT_MODE:
+      modeText = "DB_DEFAULT_MODE";
+      break;
+    case DbkMode::DB_MODE_NULL:
+      modeText = "DB_MODE_NULL";
+      break;
+    default:
+      assert(false);
+    }
+    SageInterface::addTextForUnparser(modeExp, modeText, AstUnparseAttribute::e_replace);
+    args.push_back(modeExp);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrAddDependence", voidType, exprList, scope);
+    return stmt;
+  }
+
+  // u8 ocrEventCreate(ocrGuid_t ∗guid, ocrEventTypes_t eventType, u16 flags)
+  // We will assument OCR_EVENT_ONCE_T as a default for now
+  // flags is EVT_PROP_NONE which is the default behavior
+  SgExprStatement* buildEvtCreateCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEventCreate
+    vector<SgExpression*> args;
+    SgVarRefExp* evtGuidVarRefExp = SageBuilder::buildVarRefExp(evtGuidSymbol);
+    SgExpression* addressOfExp = SageBuilder::buildAddressOfOp(evtGuidVarRefExp);
+    args.push_back(addressOfExp);
+    // placeholder expression
+    SgIntVal* eventType = SageBuilder::buildIntVal();
+    string eventTypeStr = "OCR_EVENT_ONCE_T";
+    SageInterface::addTextForUnparser(eventType, eventTypeStr, AstUnparseAttribute::e_replace);
+    args.push_back(eventType);
+    SgIntVal* flags = SageBuilder::buildIntVal();
+    string flagsStr = "EVT_PROP_NONE";
+    SageInterface::addTextForUnparser(flags, flagsStr, AstUnparseAttribute::e_replace);
+    args.push_back(flags);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEventCreate", voidType, exprList, scope);
+    return stmt;
+  }
+
 
   // void varRefExp2ArrowExpInStmt(SgVarRefExp* oexp, SgArrowExp* nexp, SgStatement* stmt) {
   //   RoseAst ast(stmt);
