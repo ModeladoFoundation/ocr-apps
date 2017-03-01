@@ -96,19 +96,29 @@ class OcrEdtContext : public OcrObjectContext {
   std::string m_name;
   std::list<OcrEvtContextPtr> m_depEvts;
   std::list<OcrDbkContextPtr> m_depDbks;
-  std::list<OcrEvtContextPtr> m_evtsToSatisfy;
+  OcrEvtContextPtr m_outputEvt;
   std::list<SgVarRefExp*> m_depElems;
   std::list<SgStatement*> m_statements;
+  SgPragmaDeclaration* m_taskBegin;
+  SgPragmaDeclaration* m_taskEnd;
 public:
   OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
-		std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> evtsToSatisfy,
-		std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements);
+		std::list<OcrDbkContextPtr> depDbks, OcrEvtContextPtr outputEvt,
+		std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements,
+		SgPragmaDeclaration* taskBegin, SgPragmaDeclaration* taskEnd);
   std::string get_name() const;
   std::string str() const;
   SgSourceFile* getSourceFile();
   std::list<SgStatement*> getStmtList() const;
   std::list<SgVarRefExp*> getDepElems() const;
   std::list<OcrDbkContextPtr> getDepDbks() const;
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  OcrEvtContextPtr getOutputEvt() const;
+  SgPragmaDeclaration* getTaskBeginPragma() const;
+  SgPragmaDeclaration* getTaskEndPragma() const;
+  unsigned int getNumDepElems() const;
+  unsigned int getNumDepDbks() const;
+  unsigned int getNumDepEvts() const;
   ~OcrEdtContext();
 };
 
@@ -134,6 +144,8 @@ typedef std::map<std::string, OcrDbkContextPtr> OcrDbkObjectMap;
 typedef std::pair<std::string, OcrDbkContextPtr> OcrDbkObjectMapElem;
 typedef std::map<std::string, OcrEvtContextPtr> OcrEvtObjectMap;
 typedef std::pair<std::string, OcrEvtContextPtr> OcrEvtObjectMapElem;
+typedef std::map<int, std::string> EdtPragmaOrderMap;
+typedef std::pair<int, std::string> EdtPragmaOrderMapElem;
 class OcrObjectManager {
   //! Associates an OcrContext for each OcrObject
   //! Key: OcrObject name (string)
@@ -141,6 +153,7 @@ class OcrObjectManager {
   OcrEdtObjectMap m_ocrEdtObjectMap;
   OcrDbkObjectMap m_ocrDbkObjectMap;
   OcrEvtObjectMap m_ocrEvtObjectMap;
+  EdtPragmaOrderMap m_edtPragmaOrderMap;
  public:
   OcrObjectManager();
   // Lookup functions for OcrContext using their names
@@ -153,13 +166,21 @@ class OcrObjectManager {
   OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgStatement*> allocStmts);
   OcrEdtContextPtr registerOcrEdt(std::string edtName, std::list<OcrEvtContextPtr> depEvts,
 				  std::list<OcrDbkContextPtr> depDbks,
-				  std::list<OcrEvtContextPtr> evtsToSatisfy,
+				  OcrEvtContextPtr outputEvt,
 				  std::list<SgVarRefExp*> depElems,
-				  std::list<SgStatement*> taskStatements);
+				  std::list<SgStatement*> taskStatements,
+				  SgPragmaDeclaration* taskBegin,
+				  SgPragmaDeclaration* taskEnd);
+  bool registerOcrEdtOrder(int order, std::string edtname);
+  // return a list of edtnames in the same order they were encountered in the AST
+  std::list<std::string> getEdtTraversalOrder() const;
 
   // Access functions
   const OcrEdtObjectMap& getOcrEdtObjectMap() const;
   const OcrDbkObjectMap& getOcrDbkObjectMap() const;
+  OcrEdtContextPtr getOcrEdtContext(std::string edtname) const;
+  OcrDbkContextPtr getOcrDbkContext(std::string dbkname);
+  OcrEvtContextPtr getOcrEvtContext(std::string evtname);
 };
 
 #endif

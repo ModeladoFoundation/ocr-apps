@@ -91,14 +91,17 @@ OcrEvtContext::~OcrEvtContext() {
  * OcrEdtContext *
  *****************/
 OcrEdtContext::OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
-			     std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> evtsToSatisfy,
-			     std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements)
+			     std::list<OcrDbkContextPtr> depDbks, OcrEvtContextPtr outputEvt,
+			     std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements,
+			     SgPragmaDeclaration* taskBegin, SgPragmaDeclaration* taskEnd)
   : m_name(name),
     m_depEvts(depEvts),
     m_depDbks(depDbks),
-    m_evtsToSatisfy(evtsToSatisfy),
+    m_outputEvt(outputEvt),
     m_depElems(depElems),
-    m_statements(taskStatements) { }
+    m_statements(taskStatements),
+    m_taskBegin(taskBegin),
+    m_taskEnd(taskEnd) { }
 
 string OcrEdtContext::get_name() const {
   return m_name;
@@ -116,10 +119,38 @@ list<OcrDbkContextPtr> OcrEdtContext::getDepDbks() const {
   return m_depDbks;
 }
 
+list<OcrEvtContextPtr> OcrEdtContext::getDepEvts() const {
+  return m_depEvts;
+}
+
+OcrEvtContextPtr OcrEdtContext::getOutputEvt() const {
+  return m_outputEvt;
+}
+
 SgSourceFile* OcrEdtContext::getSourceFile() {
   assert(m_statements.size() > 0);
   SgNode* sgn = *m_statements.begin();
   return SageInterface::getEnclosingSourceFile(sgn);
+}
+
+SgPragmaDeclaration* OcrEdtContext::getTaskBeginPragma() const {
+  return m_taskBegin;
+}
+
+SgPragmaDeclaration* OcrEdtContext::getTaskEndPragma() const {
+  return m_taskEnd;
+}
+
+unsigned int OcrEdtContext::getNumDepElems() const {
+  return m_depElems.size();
+}
+
+unsigned int OcrEdtContext::getNumDepDbks() const {
+  return m_depDbks.size();
+}
+
+unsigned int OcrEdtContext::getNumDepEvts() const {
+  return m_depEvts.size();
 }
 
 string OcrEdtContext::str() const {
@@ -135,7 +166,7 @@ string OcrEdtContext::str() const {
     if(d != m_depDbks.end()) oss << ", ";
   }
   oss << "]\n";
-  oss << indent << "outEvts: " << StrUtil::list2str<OcrEvtContext>(m_evtsToSatisfy) << endl;
+  oss << indent << "outEvt: " << m_outputEvt->str() << endl;
   oss << indent << "depElems: " << StrUtil::SgVarRefExpList2Str(m_depElems) << endl;
   oss << indent << "taskStmts:[\n" << StrUtil::stmtlist2str(m_statements, indent) << "]";
   oss << "]";
@@ -255,14 +286,26 @@ OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
   return dbkcontext_sp;
 }
 
+bool OcrObjectManager::registerOcrEdtOrder(int taskOrder, string edtname) {
+  pair<EdtPragmaOrderMap::iterator, bool> ret;
+  EdtPragmaOrderMapElem elem(taskOrder, edtname);
+  ret = m_edtPragmaOrderMap.insert(elem);
+  // We can insert into the map only once
+  // We should not see any conflicts when we are inserting
+  assert(ret.second);
+  return ret.second;
+}
+
 //! Check to see if the OcrObject is already registered
 //! If already registered return its context
 //! If not registered create a new context and insert in m_ocrObjectMap
 OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtContextPtr> depEvts,
 						  list<OcrDbkContextPtr> depDbks,
-						  list<OcrEvtContextPtr> evtsToSatisfy,
+						  OcrEvtContextPtr outputEvt,
 						  list<SgVarRefExp*> depElems,
-						  list<SgStatement*> taskStatements) {
+						  list<SgStatement*> taskStatements,
+						  SgPragmaDeclaration* taskBegin,
+						  SgPragmaDeclaration* taskEnd) {
   OcrEdtObjectMap::iterator f = m_ocrEdtObjectMap.find(edtName);
   OcrEdtContextPtr edtcontext_sp;
   if(f != m_ocrEdtObjectMap.end()) {
@@ -270,14 +313,43 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
   }
   else {
     edtcontext_sp = boost::make_shared<OcrEdtContext>(edtName, depEvts,
-						      depDbks, evtsToSatisfy,
-						      depElems, taskStatements);
+						      depDbks, outputEvt,
+						      depElems, taskStatements,
+						      taskBegin, taskEnd);
 
     OcrEdtObjectMapElem elem(edtName, edtcontext_sp);
     m_ocrEdtObjectMap.insert(elem);
   }
   assert(edtcontext_sp);
   return edtcontext_sp;
+}
+
+list<string> OcrObjectManager::getEdtTraversalOrder() const {
+  list<string> edtTraversalOrder;
+  EdtPragmaOrderMap::const_iterator e = m_edtPragmaOrderMap.begin();
+  for( ; e != m_edtPragmaOrderMap.end(); ++e) {
+    string edtname = e->second;
+    edtTraversalOrder.push_back(edtname);
+  }
+  return edtTraversalOrder;
+}
+
+OcrEdtContextPtr OcrObjectManager::getOcrEdtContext(string edtname) const {
+  OcrEdtObjectMap::const_iterator f = m_ocrEdtObjectMap.find(edtname);
+  assert(f != m_ocrEdtObjectMap.end());
+  return f->second;
+}
+
+OcrDbkContextPtr OcrObjectManager::getOcrDbkContext(string dbkname) {
+  OcrDbkObjectMap::iterator f = m_ocrDbkObjectMap.find(dbkname);
+  assert(f != m_ocrDbkObjectMap.end());
+  return f->second;
+}
+
+OcrEvtContextPtr OcrObjectManager::getOcrEvtContext(string evtname) {
+  OcrEvtObjectMap::iterator f = m_ocrEvtObjectMap.find(evtname);
+  assert(f != m_ocrEvtObjectMap.end());
+  return f->second;
 }
 
 const OcrEdtObjectMap& OcrObjectManager::getOcrEdtObjectMap() const {

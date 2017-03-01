@@ -28,10 +28,11 @@ MatchException::~MatchException() throw() {
  * OcrTaskPragmaParser *
  ***********************/
 OcrTaskPragmaParser::OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& ocrObjectManager,
-					 SgPragmaDeclaration* sgpdecl)
+					 SgPragmaDeclaration* sgpdecl, unsigned int taskOrder)
   : m_pragmaStr(pragmaStr),
     m_ocrObjectManager(ocrObjectManager),
-    m_sgpdecl(sgpdecl) {
+    m_sgpdecl(sgpdecl),
+    m_taskOrder(taskOrder) {
   //! Here we specify the grammar for our task pragma
   //! identifier is the basic building block similiar to a C++ identifier
   //! attr is the attribute attached to variable either in or out
@@ -143,7 +144,17 @@ bool OcrTaskPragmaParser::matchDepElems(string input_s, list<string>& depElemsLi
   else throw MatchException("matchDepElems Exception\n");
 }
 
-bool OcrTaskPragmaParser::matchEvtsToSatisfy(string input, list<string>& evtsNameToSatisfy) {
+bool OcrTaskPragmaParser::matchOutputEvt(string input, string& outputEvt) {
+  sregex outEvtR;
+  smatch matchresult;
+  outEvtR = *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (s1=identifier) >> *_s >> ')';
+  if(regex_search(input, matchresult, outEvtR)) {
+    outputEvt = matchresult[1];
+  }
+  else throw MatchException("Matching Output Event\n");
+}
+
+bool OcrTaskPragmaParser::matchOutputEvtList(string input, list<string>& evtsNameToSatisfy) {
   smatch matchResults;
   if(regex_search(input, matchResults, outEvts)) {
     string outEvtsMatch = matchResults[0];
@@ -247,14 +258,20 @@ bool OcrTaskPragmaParser::match() {
       }
       // Collect all events that need to be satisfied by this task
       // Register the events with OcrObjectManager
-      list<string> evtsNameToSatisfy;
-      matchEvtsToSatisfy(sgpdTaskEnd->get_pragma()->get_pragma(),
-			 evtsNameToSatisfy);
-      list<OcrEvtContextPtr> outEvtsContextPtrList = m_ocrObjectManager.registerOcrEvts(evtsNameToSatisfy);
+      // list<string> evtsNameToSatisfy;
+      // matchEvtsToSatisfy(sgpdTaskEnd->get_pragma()->get_pragma(),
+      // 			 evtsNameToSatisfy);
+      // list<OcrEvtContextPtr> outEvtsContextPtrList = m_ocrObjectManager.registerOcrEvts(evtsNameToSatisfy);
+      string outputEvt;
+      matchOutputEvt(sgpdTaskEnd->get_pragma()->get_pragma(), outputEvt);
+      OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outputEvt);
       // We have all the information we need for creating OcrEdtContext
       OcrEdtContextPtr edtcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, depEvtsContextPtrList,
-									 depDbksContextPtrList, outEvtsContextPtrList,
-									 depElemsSgnList, taskStatementList);
+									 depDbksContextPtrList, outEvtContext,
+									 depElemsSgnList, taskStatementList,
+									 m_sgpdecl, sgpdTaskEnd);
+      // Register the in-order edt order for traversal
+      m_ocrObjectManager.registerOcrEdtOrder(m_taskOrder, edtcontext_sp->get_name());
       Logger::debug(lg) << edtcontext_sp->str() << endl;
     }
     else {
@@ -498,7 +515,7 @@ bool OcrDbkPragmaParser::match() {
 /*******************
  * OcrPragmaParser *
  *******************/
-OcrPragmaParser::OcrPragmaParser() { }
+OcrPragmaParser::OcrPragmaParser() : m_taskOrderCounter(0) { }
 
 const OcrObjectManager& OcrPragmaParser::getOcrObjectManager() const {
   return m_ocrObjectManager;
@@ -514,7 +531,9 @@ void OcrPragmaParser::visit(SgNode* sgn) {
 
     if(ptype == e_TaskBegin) {
       AstFromString::afs_skip_whitespace();
-      OcrTaskPragmaParser taskPragmaParser(AstFromString::c_char, m_ocrObjectManager, sgpdecl);
+      // Increase the in-order counter
+      m_taskOrderCounter = m_taskOrderCounter+1;
+      OcrTaskPragmaParser taskPragmaParser(AstFromString::c_char, m_ocrObjectManager, sgpdecl, m_taskOrderCounter);
       taskPragmaParser.match();
     }
     else if(ptype == e_DbkBegin) {
