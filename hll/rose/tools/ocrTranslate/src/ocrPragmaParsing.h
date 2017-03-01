@@ -27,11 +27,14 @@ class OcrTaskPragmaParser {
   std::string m_pragmaStr;
   OcrObjectManager& m_ocrObjectManager;
   SgPragmaDeclaration* m_sgpdecl;
+  //! in-order traversal order in the AST where the pragma was encountered
+  unsigned int m_taskOrder;
   boost::xpressive::sregex identifier, attr, param, paramlist;
   boost::xpressive::sregex taskName, depEvts, depDbks, depElems, outEvts;
   boost::xpressive::sregex taskBeginPragma;
  public:
-  OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& objectManager, SgPragmaDeclaration* sgpdecl);
+  OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& objectManager,
+		      SgPragmaDeclaration* sgpdecl, unsigned int taskOrder);
  private:
   // All these internal functions throw MatchException which will be
   // caught in the match() function
@@ -42,7 +45,8 @@ class OcrTaskPragmaParser {
   bool matchParamList(std::string input_s, std::list<std::string>& paramList);
   bool matchParam(std::string input_s, std::list<std::string>& paramList);
   bool matchIdentifier(std::string input_s, std::string& identifier_s);
-  bool matchEvtsToSatisfy(std::string input, std::list<std::string>& evtsNameToSatisfyList);
+  bool matchOutputEvtList(std::string input, std::list<std::string>& evtsNameToSatisfyList);
+  bool matchOutputEvt(std::string input, std::string& outputEvt_s);
   SgVarRefExp* identifier2sgn(std::string identifier_);
   std::list<SgVarRefExp*> identifiers2sgnlist(std::list<std::string> identifierList);
  public:
@@ -108,6 +112,7 @@ class OcrPragmaParser : public AstSimpleProcessing {
   };
  private:
     OcrObjectManager m_ocrObjectManager;
+    unsigned int m_taskOrderCounter;
  public:
   OcrPragmaParser();
   void visit(SgNode* sgn);
