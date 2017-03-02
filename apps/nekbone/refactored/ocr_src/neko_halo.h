@@ -3,6 +3,7 @@
 
 #include "app_ocr_err_util.h"
 #include "nekos_triplet.h"
+#include "neko_halo_util.h"
 #include "nbn_setup.h"
 #include "app_ocr_debug_util.h"
 #include "neko_globals.h"
@@ -49,27 +50,14 @@ Idz elementLocalTriplets2index(Triplet in_dofLattice, Triplet in_Elattice, Tripl
 void posOnNewRank2indices(Triplet in_dofLattice, Triplet in_Elattice, Triplet in_rankLattice,
                      Triplet in_dof, Triplet in_element, Triplet in_rank, Idz * o_dofEleIndex, Idz * o_rankID);
 
-typedef struct rankIndexedValue
-{
-    Idz rankID;     //From triplet2index and rankLattice
-    Idz eleDofID;   //From elementLocalTriplets2index()
-    NBN_REAL value;
-} rankIndexedValue_t;
-
-//Calculates the maximum entry count in the rankIndexedValue_t vector; NOT in bytes.
-Idz calculate_length_rankIndexedValue(unsigned int in_pDOF, Triplet in_Elattice);
 void set_rankIndexedValue(rankIndexedValue_t * io_riv, unsigned int in_offset,
                            Idz in_rankID, Idz in_eleDofID, NBN_REAL in_value);
-void sort_rankIndexedValue(Idz in_size, rankIndexedValue_t * io_vals);
 
 typedef struct IndexedValue
 {
     Idz eleDofID;   //From elementLocalTriplets2index()
     NBN_REAL value;
 } IndexedValue_t;
-
-//Calculates the maximum entry count in the IndexedValue_t vector; NOT in bytes.
-Idz calculate_length_IndexedValue(unsigned int in_pDOF, Triplet in_Elattice);
 
 //==================================
 // halo_exchanges
@@ -86,7 +74,7 @@ int halo_exchanges(Triplet in_Rlattice, Triplet in_Elattice, unsigned int in_pDO
 
 Err_t start_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
                               Triplet in_Rlattice, Triplet in_Elattice,
-                              NEKOglobals_t * in_globals, NBN_REAL * io_V,
+                              NEKOglobals_t * in_globals, Idz in_sz_V, NBN_REAL * io_V,
                               rankIndexedValue_t * io_riValues, ocrGuid_t * io_destEDT);
 
 Err_t stop_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t * in_depv,
@@ -94,7 +82,7 @@ Err_t stop_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrE
 
 Err_t start_halo_setf(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
                       Triplet in_Rlattice, Triplet in_Elattice,
-                      NEKOglobals_t * in_globals, NBN_REAL * io_V,
+                      NEKOglobals_t * in_globals, Idz in_sz_V, NBN_REAL * io_V,
                       rankIndexedValue_t * io_riValues, ocrGuid_t * io_destEDT);
 
 Err_t stop_halo_setf(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t * in_depv,
@@ -103,7 +91,7 @@ Err_t stop_halo_setf(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t 
 
 Err_t start_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
                     Triplet in_Rlattice, Triplet in_Elattice,
-                    NEKOglobals_t * in_globals, NBN_REAL * io_V,
+                    NEKOglobals_t * in_globals, Idz in_sz_V, NBN_REAL * io_V,
                     rankIndexedValue_t * io_riValues, ocrGuid_t * io_destEDT);
 
 Err_t stop_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t * in_depv,

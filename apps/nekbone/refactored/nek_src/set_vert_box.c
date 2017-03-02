@@ -2,7 +2,7 @@
 #include "set_vert_box.h"
 #endif
 
-int nbb_mod1(int i, int n, int * o_mod1)
+int nbb_mod1(unsigned int i, unsigned int n, unsigned int * o_mod1)
 {
     *o_mod1 = 0;
 

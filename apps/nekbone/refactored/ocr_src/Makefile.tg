@@ -28,7 +28,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 2 2 2 4 4 4 8 1
+WORKLOAD_ARGS ?= 2 2 2 2 2 2 8 4
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -54,7 +54,7 @@ TARGET := z_nekbone_inOcr
 REQ_LIBS := newlib reduction
 
 # Space separated list of source files
-SRCS := fastfcn.c neko_reduction.c timing.c nekbone_cg.c ax.c local_grad.c set_f.c blas1.c blas3.c polybasis.c set_vert_box.c cubic.c init_mesh.c nekbone_setup.c app_ocr_util.c integer_log2.c neko_globals.c nekos_triplet.c nekos_cubiclattice.c nekos_tools.c neko_halo.c spmd_global_data.c tailrecursion.c treeForkJoin.c z_nekbone_inOcr.c
+SRCS := fastfcn.c neko_reduction.c timing.c nekbone_cg.c ax.c local_grad.c set_f.c blas1.c blas3.c polybasis.c set_vert_box.c cubic.c init_mesh.c nekbone_setup.c app_ocr_util.c integer_log2.c neko_globals.c nekos_triplet.c nekos_cubiclattice.c nekos_tools.c neko_halo_util.c neko_halo.c spmd_global_data.c tailrecursion.c treeForkJoin.c z_nekbone_inOcr.c
 
 CONFIG_FLAGS+=--guid LABELED
 

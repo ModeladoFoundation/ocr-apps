@@ -2,7 +2,7 @@
 #define NEKBONE_SET_VERT_BOX_H
 
 //Returns zero upon success.
-int nbb_mod1(int i, int n, int * o_mod1);
+int nbb_mod1(unsigned int i, unsigned int n, unsigned int * o_mod1);
 
 //Returns zero upon success.
 int nbb_get_exyz(unsigned int in_nelx, unsigned int in_nely, unsigned int in_nelz,

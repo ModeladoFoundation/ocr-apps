@@ -1,0 +1,1 @@
+../../ocr_src/nekos_triplet.c
