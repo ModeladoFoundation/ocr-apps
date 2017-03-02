@@ -47,21 +47,37 @@ fi
 
 touch z_run_start
 
-ABSPATH="/home/dvillen/w/ocr/git2016-11dec6-TGruns/apps/apps/nekbone/refactored/ocr_src"
+#ABSPATH="/home/dvillen/w/ocr/git2016-11dec6-TGruns/apps/apps/nekbone/refactored/ocr_src"
+ABSPATH="/home/dvillen/w/ocr/git2017-1jan27-TGrun_4/apps/apps/nekbone/refactored/ocr_src"
 echo "ABSPATH=$ABSPATH"
 
-export OCR_XE_CONFIG=$ABSPATH/xe.cfg
-export OCR_CE_CONFIG=$ABSPATH/ce.cfg
+export NO_DEBUG=yes
+
+#No longer useful--> export OCR_XE_CONFIG=$ABSPATH/xe.cfg
+#No longer useful--> export OCR_CE_CONFIG=$ABSPATH/ce.cfg
 
 unset MACHINE_CONFIG
 #export MACHINE_CONFIG="$ABSPATH/y_tg_MachineConfig_2blocks.txt"
+export MACHINE_CONFIG="$ABSPATH/y_tg_MachineConfig_4blocks.txt"
+
+#2017Feb7
+#Settings                               Approximate time for 1 run
+#WORKLOAD_ARGS="2 2 2 1 1 1 3 1"        9 min
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 10"       2 hours
 
 #WORKLOAD_ARGS="2 2 2 1 1 1 3 1" OCR_NUM_NODES=1 CONFIG_NUM_THREADS=8 OCR_TYPE=tg make run > z_log
-WORKLOAD_ARGS="2 2 2 1 1 1 3 1" OCR_TYPE=tg make run 2>&1 > z_log
+#WORKLOAD_ARGS="2 2 2 1 1 1 3 1" OCR_TYPE=tg make run 2>&1 > z_log
 
-#WORKLOAD_ARGS="2 2 2 2 2 2 8 1" OCR_NUM_NODES=1 CONFIG_NUM_THREADS=8 OCR_TYPE=tg make run 2>&1|tee z_log
-#WORKLOAD_ARGS="2 2 2 2 2 2 8 10" OCR_NUM_NODES=1 CONFIG_NUM_THREADS=8 OCR_TYPE=tg make run 2>&1|tee z_log
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 0" OCR_TYPE=tg make run 2>&1|tee z_log
+#WORKLOAD_ARGS="2 2 2 2 2 2 8 10" OCR_TYPE=tg make run 2>&1|tee z_log
 
+#WORKLOAD_ARGS="4 2 2 2 2 2 8 0" OCR_TYPE=tg make run 2>&1|tee z_log
+#WORKLOAD_ARGS="4 2 2 2 2 2 8 10" OCR_TYPE=tg make run 2>&1|tee z_log
+
+#WORKLOAD_ARGS="4 4 2 2 2 2 8 0" OCR_TYPE=tg make run 2>&1|tee z_log
+WORKLOAD_ARGS="4 4 2 2 2 2 8 10" OCR_TYPE=tg make run 2>&1|tee z_log
+
+#WORKLOAD_ARGS="4 4 2 6 6 6 8 0" OCR_TYPE=tg make run 2>&1|tee z_log
 
 rm -f z_output
 grep "TESTIO>" z_log > z_output

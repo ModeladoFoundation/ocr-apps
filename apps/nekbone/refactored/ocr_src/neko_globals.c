@@ -10,8 +10,8 @@
 #include "blas.h"
 
 #ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
-#   define ENABLE_EXTENSION_LABELING
-#   include<extensions/ocr-labeling.h>
+#   define ENABLE_EXTENSION_LABELING // For labeled GUIDs
+#   include "extensions/ocr-labeling.h" // For labeled GUIDs
 #endif
 
 #define XMEMSET(SRC, CHARC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)SRC+xmIT)=CHARC;}
@@ -51,6 +51,22 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
             PRINTF("INFO: NEK_USE_ADVANCED_FUNCTIONS is active.\n");
 #       else
             PRINTF("INFO: NEK_USE_ADVANCED_FUNCTIONS is off.\n");
+#       endif
+
+#       ifdef NEKO_USE_TIMING
+            PRINTF("INFO: NEKO_USE_TIMING   is active.\n");
+#       else
+            PRINTF("INFO: NEKO_USE_TIMING   is off.\n");
+#       endif
+#       ifdef NEKO_PRINT_TIMING
+            PRINTF("INFO: NEKO_PRINT_TIMING is active.\n");
+#       else
+            PRINTF("INFO: NEKO_PRINT_TIMING is off.\n");
+#       endif
+#       ifdef NEKO_CG_TIMING
+            PRINTF("INFO: NEKO_CG_TIMING    is active.\n");
+#       else
+            PRINTF("INFO: NEKO_CG_TIMING    is off.\n");
 #       endif
 
         XMEMSET(io, 0, sizeof(NEKOstatics_t));
@@ -244,12 +260,14 @@ Err_t destroy_NEKOstatics(NEKOstatics_t * io)
     Err_t err=0;
     while(!err){
         unsigned int i=0;
-        for(i=0; i<NEKbone_regionCount; ++i){
-            if( ! ocrGuidIsNull(io->haloLabeledGuids[i]) ){
-                err = ocrGuidMapDestroy(io->haloLabeledGuids[i]); IFEB;
-                GUID_ASSIGN_VALUE(io->haloLabeledGuids[i], NULL_GUID);
-            }
-        } IFEB;
+#       ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+            for(i=0; i<NEKbone_regionCount; ++i){
+                if( ! ocrGuidIsNull(io->haloLabeledGuids[i]) ){
+                    err = ocrGuidMapDestroy(io->haloLabeledGuids[i]); IFEB;
+                    GUID_ASSIGN_VALUE(io->haloLabeledGuids[i], NULL_GUID);
+                }
+            } IFEB;
+#       endif
         err = clear_NEKOstatics(io);IFEB;
         break;
     }
@@ -309,9 +327,13 @@ Err_t copy_ChannelStruct(ChannelStruct_t * in_from, ChannelStruct_t * o_target)
 {
     Err_t err=0;
     while(!err){
+        if(!in_from || !o_target) {err =__LINE__; IFEB;}
         GUID_ASSIGN_VALUE(o_target->c4multi , in_from->c4multi);
         GUID_ASSIGN_VALUE(o_target->c4setf , in_from->c4setf);
         GUID_ASSIGN_VALUE(o_target->c4axi , in_from->c4axi);
+        if(ocrGuidIsNull(o_target->c4multi)||ocrGuidIsUninitialized(o_target->c4multi)||ocrGuidIsError(o_target->c4multi)) {err =__LINE__; IFEB;}
+        if(ocrGuidIsNull(o_target->c4setf)||ocrGuidIsUninitialized(o_target->c4setf)||ocrGuidIsError(o_target->c4setf)) {err =__LINE__; IFEB;}
+        if(ocrGuidIsNull(o_target->c4axi)||ocrGuidIsUninitialized(o_target->c4axi)||ocrGuidIsError(o_target->c4axi)) {err =__LINE__; IFEB;}
         break;
     }
     return err;

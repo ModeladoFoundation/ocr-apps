@@ -9,7 +9,7 @@
 #include "ax.h"
 
 #ifdef NEK_USE_ADVANCED_FUNCTIONS
-#include <math.h> //For sqrt
+#   include <math.h> //For sqrt
 #endif
 
 #define XMEMSET(SRC, CHARC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)SRC+xmIT)=CHARC;}
@@ -181,10 +181,10 @@ Err_t nekbone_CGstep0_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NE
             rnorminit = -rnorminit;
         }
 #       ifdef NEK_USE_ADVANCED_FUNCTIONS
-        rnorminit = sqrt(rnorminit);
-        if(in_NEKOglobals->rankID == 0){
-            PRINTF("INFO> CGstep0_stop> rnorminit = %24.14E\n", rnorminit);
-        }
+            rnorminit = sqrt(rnorminit);
+            if(in_NEKOglobals->rankID == 0){
+                PRINTF("INFO> CGstep0_stop> rnorminit = %24.14E\n", rnorminit);
+            }
 #       else
             if(in_NEKOglobals->rankID == 0){
                 PRINTF("INFO> CGstep0_stop> rnorminit^2 = %24.14E\n", rnorminit);
@@ -538,7 +538,7 @@ Err_t nekbone_rtr_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOgl
 
         io_CGstats->rtr = sum;
 #       ifdef NEK_USE_ADVANCED_FUNCTIONS
-        io_CGstats->rnorm = sqrt(sum);
+            io_CGstats->rnorm = sqrt(sum);
 #       else
             io_CGstats->rnorm = sum;
 #       endif
