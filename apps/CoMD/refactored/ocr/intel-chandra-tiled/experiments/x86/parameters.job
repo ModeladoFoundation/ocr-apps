@@ -1,7 +1,9 @@
+HOST_ID=`hostname -s`
+
 case $HOST_ID in
 edison*)
-NODE_LIST0=(1 4 8 64 216 512 1024)
-THREAD_LIST=(1 4 8 16 24)     #Compute workers per node
+NODE_LIST0=(1 8 64 216 512 1024)
+THREAD_LIST=(1 8 16)     #Compute workers per node
     ;;
 
 thor*)
@@ -9,10 +11,11 @@ NODE_LIST0=(1 4 8 64 128)
 THREAD_LIST=(1 4 8 16 36)     #Compute workers per node
     ;;
 esac
+
 PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
 SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
 SIZE_LIST_COMD=("smallLJ" "smallEAM" "mediumLJ" "mediumEAM") # "largeLJ" "largeEAM") #largeEAM has a problem with MPI
-TASKFACTOR_LIST=(1 2)  #4 seems to be hanging with OCR
+TASKFACTOR_LIST=(1)  #4 seems to be hanging with OCR
 ARCH_LIST=("x86" "x86-mpi")
 SCHEDULER_LIST=("workstealing") # "static")
 APPOPTS_LIST=("noEagerDB" "wEagerDB")

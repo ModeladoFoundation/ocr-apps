@@ -1,30 +1,28 @@
 #!/bin/bash
 
-# This script may accept command line parameters of which test(s) to run.
-# Possible tests:
-#  rtl-asm rtl-asm2 rtl-asm8
+# run-fsim-rtlsim-tests.sh
 #
-# Defaults to running all tests
+# Run the simple rtlsim tests. Compatable with OCR and TGR.
 #
-# This script may optionally use env vars:
-#   TG_INSTALL - The install directory of the tg repo
-#   LOGS_DIR   - The directory for fsim to place its logs
-#   VERBOSE    - If set, then write all of fsim's output to stdout
+# These test fsim-rtlsim with 1, 2 and 8 XE cores.
+#
+# The tests come from tg/fsim/tests/rtl-asm*
+#
+# For usage and environmental variables run with the -h argument.
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 export FSIM_EXE="fsim-rtlsim"
 
 # Tests to run
 TESTS="rtl-asm rtl-asm2 rtl-asm8"
-if [[ $1 == "-h" ]]; then
-  echo -e "You may specify one or more of:\n$TESTS\nDefaults to all tests"
-  exit
+if [ "$1" == "-h" ]; then
+  print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 for TEST in $TESTS; do
 
@@ -63,7 +61,7 @@ for TEST in $TESTS; do
       ;;
   esac
 
-  if [[ $SUCCESS -eq 0 ]]; then
+  if [ "$SUCCESS" -eq 0 ]; then
     echo " !!! Test $TEST_NAME failed !!!" 1>&2
   else
     echo "Test $TEST_NAME succeeded"

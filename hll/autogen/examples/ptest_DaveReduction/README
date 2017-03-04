@@ -1,0 +1,32 @@
+2017Feb1 - dvillen
+= The test script "ptest" assumes that the command " OCR_TYPE=x86-mpi make run"
+  can be successfully run. If so, the performance test "ptest" creates a reference file
+  "z_ref_output" which is what we expect the code to output.
+  It then proceed to autogen the OCR code, run it and compare its output to the reference file.
+  Upon success, zero is returned; otherwise whatever caused an error is returned.
+= As it is now, this performance test is a performance test for
+  the OCR reduction library made by Dave S. Scott.
+= As usual, comment out the "rm -f z_*" line from the file "ptest" in order
+  to be able to retain the generated OCR .c driver file "z_ptest_daveReduction.c"
+
+= The file "ptest_daveReduction.h" has the following features:
+    - The code uses 2 ALLREDUCEs, the first one called A, and the second one called B.
+        The first reduction can be disable by commenting out "DR_ENABLE_REDUCTION_A".
+        The second reduction can be disable by commenting out "DR_ENABLE_REDUCTION_B".
+      When commented out, the receiving EDT will still get a DBK, mimicking what
+      the usual ALLREDUCE does.
+
+    -  If the number of entries in either EDTs, called DR_reduxA_stop and DR_reduxB_stop,
+       is changed, the macro constant "SLOT4REDUCTION" will also have to be changed.
+
+    - All ALLREDUCE operations is done using type "double" scalar with the addition
+      operator.
+
+= The file "ptest_FORforkjoin.h" has the following features:
+    - If one comments out the macro constant "FFJ_ENABLE_AFFINITIES", no affinities
+      will be used, i.e. the NULL_HINT value will be used instead.
+    - The function "calculate_pid" is where the policy domain attribution
+      calculated.  Provide your own function for a different attribution.
+
+
+

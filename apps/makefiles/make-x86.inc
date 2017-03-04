@@ -361,7 +361,7 @@ $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.c $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE)
 
 $(WORKLOAD_BUILD)/%.o: $(WORKLOAD_SRC)/%.cpp $(OCR_INSTALL)/lib/libocr_$(OCR_TYPE).$(LIBOCREXT) | libocr $(WORKLOAD_BUILD)
 	$(AT)$(MKDIR) -p $(@D)
-	$(AT)$(CC) $(CFLAGS) -c -o $@ $<
+	$(AT)$(CXX) $(CFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 $(WORKLOAD_BUILD)/$(TARGET).dbg: $(OBJS) | libocr $(WORKLOAD_BUILD)
 	@echo "Building debug target $@"

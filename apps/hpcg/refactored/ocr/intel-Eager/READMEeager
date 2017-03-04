@@ -1,0 +1,14 @@
+This version of hpcg (and the reduction library) use EAGER datablocks.
+You must have the EAGER patch for OCR checked out.
+
+The recommended use for EAGER datablocks is:
+
+1. Only use with channel events
+2. The channel event should be owned by the receiver
+3. The datablocks should be created once and reused
+
+#3 required significant changes in the implementation
+
+In particular, the datablock GUIDs are kept in the private (and reductionPrivate) datablocks.  They are unpacked as needed which required a new EDT in the reduction library and significant changes in haloExchangeEdt.
+
+

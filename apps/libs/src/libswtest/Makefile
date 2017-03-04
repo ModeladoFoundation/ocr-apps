@@ -26,7 +26,7 @@ LIB_P = $(BUILDPDIR)/libswtest.p.a
 
 LIBS = $(LIB) $(LIB_P)
 
-LDSCRIPT = elf64_xstg.t
+LDSCRIPT = elf64_xstg_swtest.t
 
 BUILDDIR = build-tg-xe-static
 BUILDPDIR = build-tg-xe-pie

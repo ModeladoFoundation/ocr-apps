@@ -31,7 +31,10 @@ function getSizeList()
     echo ${sizeList[@]}
 }
 
+rm ${root}_results.prof
+
 if [[ ${spath[$len-2]} == "ocr" ]]; then
+for nodes in ${NODE_LIST0[@]}; do
 
 for profiler in ${PROFILER_LIST[@]}; do
 
@@ -52,13 +55,9 @@ for profiler in ${PROFILER_LIST[@]}; do
 
                         for schedulername in ${SCHEDULER_LIST[@]}; do
 
-                            if [[ $arch == "x86" ]]; then
-                                NODE_LIST=(1)
-                            elif [[ $arch == "x86-mpi" ]]; then
-                                NODE_LIST=(${NODE_LIST0[@]})
+                            if [[ $arch == "x86" && $nodes > 1 ]]; then
+                                break;
                             fi
-
-                            for nodes in ${NODE_LIST[@]}; do
 
                                 for computeThreads in ${THREAD_LIST[@]}; do
 
@@ -68,13 +67,24 @@ for profiler in ${PROFILER_LIST[@]}; do
                                     cd ${AROOT}/${ndir}
 
                                     echo ${ndir}
-                                    echo "$OCR_TOP/ocr/scripts/Profiler/analyzeProfile.py  -t '*' > all.prof"
-                                    $OCR_TOP/ocr/scripts/Profiler/analyzeProfile.py  -t '*' > all.prof
+                                    echo "$OCR_TOP/ocr/scripts/Profiler/analyzeProfile.py -e EVENT_OTHER -t '*' > all.prof"
+                                    $OCR_TOP/ocr/scripts/Profiler/analyzeProfile.py -e EVENT_OTHER -t '*' > all.prof
 
                                     cd ${AROOT}
 
+                                    python $OCR_TOP/ocr/scripts/ProfilerUtils/profExtract.py ${ndir}
+
+                                    if [ ! -e ${OUTNAME} ]; then
+                                    string=`head -n 1 ${ndir}/*_breakdown.csv`
+                                    echo ${string} >> ${root}_results.prof
+                                    fi
+
+                                    string=`tail -n 1 ${ndir}/*_breakdown.csv`
+                                    echo ${string} >> ${root}_results.prof
+                                    echo ${string}
+
+
                                 done #computeThreads
-                            done #nodes
                         done #schedulername
                     done #appopts
                 done #arch
@@ -82,5 +92,8 @@ for profiler in ${PROFILER_LIST[@]}; do
         done #size
     done #scalingtype
 done #profiler
+done #nodes
 
 fi
+
+awk 'NR==FNR{a[NR]=$0;next}{print a[FNR],$0}' ${root}_results.post ${root}_results.prof > ${root}_resultsAll.post

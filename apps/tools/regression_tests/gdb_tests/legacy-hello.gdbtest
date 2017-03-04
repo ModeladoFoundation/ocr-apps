@@ -13,7 +13,7 @@ error: ERROR:
 test: break, continue and finish
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
+file: {APPS_ROOT}/legacy/tg-xe/hello.swtest
 
 in: break sub2
 out: Breakpoint 1 at 0x[0-9a-f]*: file hello\.c, line 13\.
@@ -86,7 +86,7 @@ out: Value returned is \$2 = 15
 test: step, next and stepi
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg  -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
+file: {APPS_ROOT}/legacy/tg-xe/hello.swtest
 
 in: break main
 ignore-output
@@ -116,7 +116,7 @@ out: 0x[0-9a-f]+\s+38\s+printf\("ret = %d\\n", ret\);
 test: backtrace
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
+file: {APPS_ROOT}/legacy/tg-xe/hello.swtest
 
 in: break sub2
 ignore-output
@@ -134,7 +134,7 @@ out: #2  0x[0-9a-f]* in main
 test: disassemble
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
+file: {APPS_ROOT}/legacy/tg-xe/hello.swtest
 
 in: break main
 ignore-output
@@ -155,7 +155,7 @@ ignore-output
 test: list, info thread & info reg
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
+file: {APPS_ROOT}/legacy/tg-xe/hello.swtest
 
 in: list 22,25
 out: 22\s+int
@@ -193,7 +193,7 @@ out: No threads\.
 test: print, x, and set
 #=================================================================
 target: -c {APPS_ROOT}/legacy/tg-xe/ccfg.cfg,{APPS_ROOT}/tools/regression_tests/gdb_tests/single-xe.cfg -f {TG_INSTALL}/bin/fsim-swtest -w {APPS_ROOT}/legacy/tg-xe
-file: {APPS_ROOT}/legacy/tg-xe/hello
+file: {APPS_ROOT}/legacy/tg-xe/hello.swtest
 
 in: break 28
 ignore-output

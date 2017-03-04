@@ -198,7 +198,7 @@ function getworkloadargs()
         if [[ $runtime == ocr ]]; then
         WORKLOAD_ARGS="$Nx $((${threads}*${nodes}*${taskfactor}*${taskfactor})) ${iter}"
         elif [[ $runtime == mpi ]]; then
-        WORKLOAD_ARGS="${iter} $Nx"
+        WORKLOAD_ARGS="${iter} $Nx ${threads}"
         fi
         ;;
 
@@ -361,7 +361,7 @@ function getIterationsStencil()
     "weakscaling")
         case ${size} in
         "small")
-            S1=100
+            S1=1000
             ;;
         "medium")
             S1=100
@@ -400,7 +400,7 @@ function getIterationsComd()
     "weakscaling")
         case ${size} in
         small*)
-            S1=100
+            S1=200
             ;;
         medium*)
             S1=100
@@ -684,6 +684,7 @@ for profiler in ${PROFILER_LIST[@]}; do
                                     echo $RUN_COMMAND >> ${OUTNAME}
                                     if [[ ${profiler} == "noProf" ]]; then
                                         echo $RUN_COMMAND >> ${OUTNAME}
+                                        echo $RUN_COMMAND >> ${OUTNAME}
                                     fi
                                     echo "" >> ${OUTNAME}
 
@@ -780,10 +781,10 @@ for scalingtype in ${SCALINGTYPE_LIST[@]}; do
                 WORKLOAD_ARGS=`getworkloadargs $scalingtype $nodes $computeThreads $taskfactor $size $app_name mpi`
 
                 echo $scalingtype $size $nodes $computeThreads
-                RUN_COMMAND=`echo srun --mpi=pmi2 -n $(($nodes*$computeThreads)) $ndir/$executableName ${WORKLOAD_ARGS}`
+                RUN_COMMAND=`echo srun --mpi=pmi2 -n $(($nodes*$computeThreads)) ./$ndir/$executableName ${WORKLOAD_ARGS}`
 
                 if [[ $app_name == *SBench ]]; then
-                RUN_COMMAND=`echo "export OMP_NUM_THREADS=$(($nodes*$computeThreads)); $ndir/$executableName ${WORKLOAD_ARGS}"`
+                RUN_COMMAND=`echo "export OMP_NUM_THREADS=$(($nodes*$computeThreads)); ./$ndir/$executableName ${WORKLOAD_ARGS}"`
                 fi
 
                 echo $RUN_COMMAND | tee run_command

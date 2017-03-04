@@ -28,6 +28,7 @@ TGKRNL_INC  = $(TGKRNL_ROOT)/inc
 TGKRNL_BUILD = $(TG_ROOT)/build/build.tgkrnl
 
 TGR_CE_BUILD = $(shell pwd)/../build-tg-ce
+TGR_TGKRNL_BUILD = $(TGR_CE_BUILD)/build.tgkrnl
 
 FSIM = $(TG_INSTALL)/bin/fsim
 
@@ -101,10 +102,14 @@ endif
 all default : tgr-ce
 
 install : tgr-ce
-	@echo " * tgkrnl-tgr -> $(TG_INSTALL)/lib"
-	@cp $(TGR_CE_BUILD)/tgkrnl-tgr $(TG_INSTALL)/lib
+	@echo " * tgkrnl-tgr -> $(APPS_INSTALL)/lib"
+	@cp $(TGR_TGKRNL_BUILD)/tgkrnl.dbg $(APPS_INSTALL)/lib/tgkrnl-tgr
+	@echo " * elf64_xstg_swtest.t -> $(APPS_INSTALL)/lib"
+	@cp elf64_xstg_swtest.t $(APPS_INSTALL)/lib/elf64_xstg_swtest.t
+	@echo " * elf64_xstg_tgr.t -> $(APPS_INSTALL)/lib"
+	@cp elf64_xstg_tgr.t $(APPS_INSTALL)/lib/elf64_xstg_tgr.t
 
-tgr-ce : $(TGR_CE_BUILD) $(TGR_CE_BUILD)/tgkrnl-tgr
+tgr-ce : $(TGR_CE_BUILD) $(TGR_TGKRNL_BUILD)/tgkrnl
 
 $(TGR_CE_BUILD)/%.o : $(TGR_SRC)/%.c
 	@echo " - $(notdir $@)"
@@ -114,15 +119,19 @@ $(TGR_CE_LIB) : $(TGR_CE_OBJS)
 	@echo " - $(notdir $@)"
 	$(AT)ar cr $@ $^
 
+$(TGR_TGKRNL_BUILD) :
+	@echo " - build.tgrknl"
+	@mkdir $(TGR_TGKRNL_BUILD)
+	@cp $(TGKRNL_BUILD)/make-me.make $(TGR_TGKRNL_BUILD)
 #
 # Build a tgkrnl linked with our tgr library
 #
-$(TGR_CE_BUILD)/tgkrnl-tgr : $(TGR_CE_LIB)
+$(TGR_TGKRNL_BUILD)/tgkrnl : $(TGR_CE_LIB) $(TGR_TGKRNL_BUILD)
 	@echo " ** building tgkrnl"
-	$(AT)cd $(TGKRNL_BUILD) ;\
-		$(MAKE) -f make-me.make TGR_LIB=$^ clean default
-	@echo " * tgkrnl.dbg -> $@"
-	$(AT)cp $(TGKRNL_BUILD)/tgkrnl.dbg $@
+	$(AT)cd $(TGR_TGKRNL_BUILD) ;\
+		TG_ROOT=$(TG_ROOT) $(MAKE) -f make-me.make TGR_LIB=$(TGR_CE_LIB) clean
+	$(AT)cd $(TGR_TGKRNL_BUILD) ;\
+		TG_ROOT=$(TG_ROOT) $(MAKE) -f make-me.make TGR_LIB=$(TGR_CE_LIB) default
 
 $(TGR_CE_BUILD) :
 	@echo "making '$@'"

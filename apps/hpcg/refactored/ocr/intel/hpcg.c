@@ -31,8 +31,6 @@ Oct  2016: modified to support reduction library change (ALLREDUCE, REDUCE, BROA
 
 #ifndef TG_ARCH
 #include "time.h"
-#else
-#define NO_AFFINITY
 #endif
 
 
@@ -52,8 +50,12 @@ Oct  2016: modified to support reduction library change (ALLREDUCE, REDUCE, BROA
 #endif
 //#define RECEIVER_OWNS_CHANNEL_EVENT //undefine to make the sender own it
 
+#ifndef ENABLE_EXTENSION_LABELING
 #define ENABLE_EXTENSION_LABELING
+#endif
+#ifndef ENABLE_EXTENSION_AFFINITY
 #define ENABLE_EXTENSION_AFFINITY
+#endif
 
 #include "ocr.h"
 #include "stdlib.h"

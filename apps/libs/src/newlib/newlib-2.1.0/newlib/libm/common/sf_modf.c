@@ -52,6 +52,8 @@ static float one = 1.0;
 	} else {			/* no fraction part */
 	    __uint32_t ix;
 	    *iptr = x*one;
+	    if isnan(x)
+	        return x;
 	    GET_FLOAT_WORD(ix,x);
 	    SET_FLOAT_WORD(x,ix&0x80000000);	/* return +-0 */
 	    return x;

@@ -37,7 +37,7 @@ static ce_config FSIM_config =
     .blocks = Blocks,
     .block_start_mode = 1,     // only start 1 XE in a block (pthreads mode)
     .block_load_mode = 1,      // only load global (text) once
-    .xe_stack_size = 4096      // default CE allocated XE stack size
+    .xe_stack_size = 16384     // default CE allocated XE stack size
 };
 
 ce_config * tgr_config_init( void )
@@ -58,6 +58,10 @@ ce_config * tgr_config_init( void )
     config->IPM_size = IpmSize * 1024 * 1024;
     config->L2_size  = L2Size * 1024;
     config->L1_size  = XeL1Size * 1024;
+
+	ce_vprint("CFG", "L1_size = 0x%lx, L2_size = 0x%lx, IPM_size = 0x%lx\n",
+			config->L1_size, config->L2_size, config->IPM_size );
+
     //
     // We get the XE file name from the args passed to tgkrnl (FSIM)
     //
@@ -127,7 +131,7 @@ static ce_config FSIM_config =
     .blocks = Blocks,
     .block_start_mode = 1,     // only start 1 XE in a block (pthreads mode)
     .block_load_mode = 1,      // only load global (text) once
-    .xe_stack_size = 4096      // default CE allocated XE stack size
+    .xe_stack_size = 16384     // default CE allocated XE stack size
 };
 
 ce_config * tgr_config_init( void )
@@ -151,6 +155,9 @@ ce_config * tgr_config_init( void )
 
     config->L2_size  = L2Size * 1024;
     config->L1_size  = XeL1Size * 1024;
+
+	ce_vprint("CFG", "L1_size = 0x%lx, L2_size = 0x%lx, IPM_size = 0x%lx\n",
+			config->L1_size, config->L2_size, config->IPM_size );
 
 	return config;
 }

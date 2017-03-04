@@ -2,13 +2,13 @@ HOST_ID=`hostname -s`
 
 case $HOST_ID in
 edison*)
-NODE_LIST0=(1 4 16 64 216 484 1024)
-THREAD_LIST=(1 4 16 24)     #Compute workers per node
+NODE_LIST0=(1 4 16 64 256 484 1024)
+THREAD_LIST=(1 4 16)     #Compute workers per node
     ;;
 
 thor*)
-NODE_LIST0=(1 4 8 64 128)
-THREAD_LIST=(1 4 8 16 36)     #Compute workers per node
+NODE_LIST0=(1 4 16 64 128)
+THREAD_LIST=(1 4 16 36)     #Compute workers per node
     ;;
 esac
 

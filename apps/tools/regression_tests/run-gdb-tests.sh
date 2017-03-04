@@ -1,31 +1,26 @@
 #!/bin/bash
 
-# This script may accept command line parameters of which test set(s) to run.
-# Possible test sets:
-#   legacy-hello legacy-hello-8xe mb-printf rtl-asm
+# run-gdb-tests.sh
 #
-# Defaults to running all test sets.
+# Run all the gdb test suites. Compatable with OCR and TGR
 #
-# This script may optionally use env vars:
-#   TG_INSTALL - The install directory of the tg repo
-#   LOGS_DIR   - The directory for fsim to place its logs
-#   VERBOSE    - If set, then write all of gdb's output to stdout
+# For usage and environmental variables run with the -h argument.
+#
 
 source ./setup-test-env.sh
-[[ $? -ne 0 ]] && exit 1
+[ $? -ne 0 ] && exit 1
 
 # Tests to run
 TESTS="legacy-hello legacy-hello-8xe mb-printf mb-printf-8xe rtl-asm rtl-asm-8xe"
-if [[ $1 == "-h" ]]; then
-  echo -e "You may specify one or more of:\n$TESTS\nDefaults to all tests"
-  exit
+if [ "$1" == "-h" ]; then
+  print_help
 fi
 
 # If there are command line parameters, use those instead.
-[[ $# -ne 0 ]] && TESTS=$@
+[ $# -ne 0 ] && TESTS=$@
 
 function filter_output() {
-  if [[ -n $VERBOSE ]]; then
+  if [ "$VERBOSE" ]; then
     sed 's/__PYTHON_OUTPUT__: /PYTHON OUTPUT: /'
   else
     grep "__PYTHON_OUTPUT__: " | sed 's/.*__PYTHON_OUTPUT__: //'
@@ -45,15 +40,15 @@ for TEST in $TESTS; do
   grep "^test: " gdb_tests/$TEST.gdbtest | sed 's/^test: //' | while read -r SUBTEST; do
 
     # Checking that $LOGS_DIR is not empty just for sanity. We do not want to try to remove /
-    [[ -n $LOGS_DIR ]] && rm -rf $LOGS_DIR/*
+    [ "$LOGS_DIR" ] && rm -rf $LOGS_DIR/*
 
-    if [[ -n $VERBOSE ]]; then
+    if [ "$VERBOSE" ]; then
       echo "============================================================"
     fi
 
     echo -n "Executing $TEST -> $SUBTEST ... "
 
-    if [[ -n $VERBOSE ]]; then
+    if [ "$VERBOSE" ]; then
       echo
       echo
     fi
@@ -66,7 +61,7 @@ for TEST in $TESTS; do
 
     } < <(tail -f /dev/null --pid=$$) # Make sure gdb doesn't use our stdin.
 
-    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
       echo "GDB chrashed!!!"
       echo
     fi
@@ -74,7 +69,7 @@ for TEST in $TESTS; do
     kill_gdb_and_fsim
   done
 
-  if [[ -n $VERBOSE ]]; then
+  if [ "$VERBOSE" ]; then
     echo
     echo
   fi

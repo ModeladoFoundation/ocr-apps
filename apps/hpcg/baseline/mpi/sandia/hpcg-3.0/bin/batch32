@@ -1,0 +1,7 @@
+#!/bin/bash -l
+#SBATCH -p debug
+#SBATCH -N 32
+#SBATCH -t 00:02:00
+#SBATCH -J hpcg
+# Setup for intel MPI
+srun --mpi=pmi2 -n 256 ./xhpcg
