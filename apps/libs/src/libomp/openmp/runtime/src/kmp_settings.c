@@ -641,7 +641,11 @@ __kmp_stg_print_all_threads( kmp_str_buf_t * buffer, char const * name, void * d
 
 static void
 __kmp_stg_parse_blocktime( char const * name, char const * value, void * data ) {
+#ifndef KMP_OS_TGR
     __kmp_dflt_blocktime = __kmp_convert_to_milliseconds( value );
+#else
+    __kmp_dflt_blocktime = -1; // Custom blocktime is never needed because XEs are dedicated to one thread.
+#endif
     if ( __kmp_dflt_blocktime < 0 ) {
         __kmp_dflt_blocktime = KMP_DEFAULT_BLOCKTIME;
         __kmp_msg( kmp_ms_warning, KMP_MSG( InvalidValue, name, value ), __kmp_msg_null );

@@ -2051,11 +2051,6 @@ __kmp_get_xproc( void ) {
 
         r = sysconf( _SC_NPROCESSORS_ONLN );
 
-    #if KMP_OS_TGR
-        if (r)
-            r--; // Reserve one XE for the monitor thread for now.
-    #endif
-
     #elif KMP_OS_DARWIN
 
         // Bug C77011 High "OpenMP Threads and number of active cores".
