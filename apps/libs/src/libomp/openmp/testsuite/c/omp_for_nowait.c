@@ -31,9 +31,9 @@ int <ompts:testcode:functionname>omp_for_nowait</ompts:testcode:functionname> (F
 
 #pragma omp for <ompts:check>nowait</ompts:check>
 		for (i = 0; i < LOOPCOUNT; i++) {
-			if (i == 0) {
+			if (i == LOOPCOUNT - 1) {
 				fprintf (logFile, "Thread nr %d entering for loop and going to sleep.\n", rank);
-				my_sleep(SLEEPTIME);
+				my_sleep(SLEEPTIME_LONG);
 				count = 1;
 #pragma omp flush(count)
 				fprintf (logFile, "Thread nr %d woke up and set count = 1.\n", rank);
