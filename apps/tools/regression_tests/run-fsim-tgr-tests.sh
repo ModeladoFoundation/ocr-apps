@@ -257,12 +257,12 @@ for TEST in $TESTS; do
     tg_throw|tg_throw.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
       export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
-      REGEXS+=("29" "do_try: Calling middle(4)" "16" "middle e(10)")
-      REGEXS+=("52" "struct error(.*) = 10 destructor" "28" "do_try: middle returns 5")
-      REGEXS+=("29" "do_try: Calling middle(7)" "16" "middle e(10)")
-      REGEXS+=("33" "may_throw: Throwing error = 7" "52" "struct error(.*) = 10 destructor")
-      REGEXS+=("36" "Caught throw (error = 7)" "51" "struct error(.*) = 7 destructor")
-      REGEXS+=("51" "struct error(.*) = 7 destructor")
+      REGEXS+=("do_try: Calling middle(4)" "middle e(10)")
+      REGEXS+=("struct error(.*) = 10 destructor" "do_try: middle returns 5")
+      REGEXS+=("do_try: Calling middle(7)" "middle e(10)")
+      REGEXS+=("may_throw: Throwing error = 7" "struct error(.*) = 10 destructor")
+      REGEXS+=("Caught throw (error = 7)" "struct error(.*) = 7 destructor")
+      REGEXS+=("struct error(.*) = 7 destructor")
     ;;
     pthread_simple|pthread_simple.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
