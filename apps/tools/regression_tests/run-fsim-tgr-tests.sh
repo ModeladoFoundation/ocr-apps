@@ -250,8 +250,9 @@ for TEST in $TESTS; do
     tg_cxxdemo|tg_cxxdemo.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
       export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
-      export TEST_ARGS="foo bar"
-      REGEXS+=("App $WORKLOAD_INSTALL/$TEST_FILE: 3 args")
+      #Not passing in arguments for now because they are not implemented for fsim-tgr yet.
+      #export TEST_ARGS="foo bar"
+      REGEXS+=("App $TEST_FILE: 1 args")
     ;;
     tg_throw|tg_throw.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
