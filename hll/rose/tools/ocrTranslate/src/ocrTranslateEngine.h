@@ -107,6 +107,7 @@ class OcrAstInfoManager {
  * Utility Functions *
  *********************/
 SgVariableSymbol* GetVariableSymbol(SgVariableDeclaration* vdecl, std::string vname);
+SgVariableSymbol* GetVariableSymbol(SgInitializedName* vsgn);
 
 /************************
  * DepElemVarRefExpPass *
@@ -142,6 +143,7 @@ class OcrTranslator {
  private:
   void insertOcrHeaderFiles();
   void outlineEdt(std::string, OcrEdtContextPtr edt);
+  void outlineShutdownEdt(std::string shutdownEdtName, SgSourceFile* sourcefile);
   //! datablock translation involves building the following AST fragments
   //! 1. AST for variable declaration of ocrGuid for the datablock
   //! 2. AST for variable declaration of the pointer (u64*) for the datablock
@@ -155,11 +157,16 @@ class OcrTranslator {
   void setupEdtDepDbks(std::string edtname, OcrEdtContextPtr edtContext);
   void setupEdtDepEvts(std::string edtname, OcrEdtContextPtr edtContext);
   void setupEdtEvtsSatisfy(std::string edtname, OcrEdtContextPtr edtContext);
+  void setupShutdownEdt(std::string shutdownEdtNameSuffix, OcrShutdownEdtContextPtr shutdownEdtContext, int count);
+  // Miscellaneous utility functions
+  std::set<SgSourceFile*> getSourceFilesOfShutdownEdts(std::list<OcrShutdownEdtContextPtr>& shutdownEdts);
  public:
   OcrTranslator(SgProject* project, const OcrObjectManager& ocrObjectManager);
   void outlineEdts();
   void setupEdts();
   void translateDbks();
+  void setupShutdownEdts();
+  void outlineMainEdt();
   // main driver function
   void translate();
 };

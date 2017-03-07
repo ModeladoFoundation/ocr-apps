@@ -69,6 +69,18 @@ namespace AstBuilder {
     string typedefName = edtName + "DepElem_t";
     return SageBuilder::buildTypedefDeclaration(typedefName, baseType, scope, true);
   }
+
+  SgType* buildVoidPtrType() {
+    SgType* vtype = SageBuilder::buildVoidType();
+    return SageBuilder::buildPointerType(vtype);
+  }
+
+  SgType* buildArgvType() {
+    SgTypeChar* ctype = SageBuilder::buildCharType();
+    SgPointerType* ptype = SageBuilder::buildPointerType(ctype);
+    SgArrayType* arrType = SageBuilder::buildArrayType(ptype);
+    return arrType;
+  }
   /************************
    * Builders for OCR EDT *
    ************************/
@@ -135,7 +147,7 @@ namespace AstBuilder {
     return depElemStructDecl;
   }
 
-  SgVariableDeclaration* buildOcrDbkDecl(OcrDbkContextPtr dbkContext, unsigned int index,
+  SgVariableDeclaration* buildOcrDbkDecl(SgName name, unsigned int index,
 					 SgInitializedName* depv,SgScopeStatement* scope) {
     SgType* u64PtrType = buildu64PtrType(scope);
     SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
@@ -149,8 +161,7 @@ namespace AstBuilder {
     scope->get_symbol_table()->insert(ptrVarSymbol->get_name(), ptrVarSymbol);
     SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, ptrVarRefExp);
     SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, u64PtrType);
-    SgName vname = dbkContext->getSgSymbol()->get_name();
-    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(vname, u64PtrType, initializer, scope);
+    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(name, u64PtrType, initializer, scope);
     return vdecl;
   }
 
@@ -164,7 +175,8 @@ namespace AstBuilder {
     assert(depv);
     list<OcrDbkContextPtr>::iterator d = depDbks.begin();
     for(unsigned int index=0 ; d != depDbks.end(); ++d, ++index) {
-      SgVariableDeclaration* vdecl = buildOcrDbkDecl(*d, index, depv, scope);
+      SgName vname = (*d)->getSgSymbol()->get_name();
+      SgVariableDeclaration* vdecl = buildOcrDbkDecl(vname, index, depv, scope);
       SgStatement* declStmt = isSgStatement(vdecl);
       assert(declStmt);
       depDbksDecl.push_back(declStmt);
@@ -270,10 +282,19 @@ namespace AstBuilder {
     SageInterface::addTextForUnparser(third, paramc, AstUnparseAttribute::e_replace);
     args.push_back(third);
     // Fourth argument is address of depElem struct
-    SgVarRefExp* depElemVarRef = SageBuilder::buildVarRefExp(depElemStructSymbol);
-    SgType* u64_t = AstBuilder::buildu64PtrType(scope);
-    SgExpression* addressOfExp = SageBuilder::buildAddressOfOp(depElemVarRef);
-    SgExpression* fourth = SageBuilder::buildCastExp(addressOfExp, u64_t);
+    SgExpression* fourth;
+    // If the symbol is not NULL
+    if(depElemStructSymbol) {
+      SgVarRefExp* depElemVarRef = SageBuilder::buildVarRefExp(depElemStructSymbol);
+      SgType* u64_t = AstBuilder::buildu64PtrType(scope);
+      SgExpression* addressOfExp = SageBuilder::buildAddressOfOp(depElemVarRef);
+      fourth = SageBuilder::buildCastExp(addressOfExp, u64_t);
+    }
+    // When there are no depElems
+    else {
+      fourth = SageBuilder::buildIntVal(0);
+      SageInterface::addTextForUnparser(fourth, "NULL", AstUnparseAttribute::e_replace);
+    }
     args.push_back(fourth);
     // fifth which is depv
     SgIntVal* fifth = SageBuilder::buildIntVal(0);
@@ -289,7 +310,14 @@ namespace AstBuilder {
     args.push_back(sixth);
     // seventh argument is flags
     SgIntVal* seventh = SageBuilder::buildIntVal(0);
-    string flags = "EDT_PROP_NONE";
+    string flags;
+    // If we have a valid output event symbol
+    if(outEvtGuidSymbol) {
+      flags = "EDT_PROP_OEVT_VALID";
+    }
+    else {
+      flags = "EDT_PROP_NONE";
+    }
     SageInterface::addTextForUnparser(seventh, flags, AstUnparseAttribute::e_replace);
     args.push_back(seventh);
     // eighth argument is hints
@@ -298,8 +326,17 @@ namespace AstBuilder {
     SageInterface::addTextForUnparser(eighth, hints, AstUnparseAttribute::e_replace);
     args.push_back(eighth);
     // ninth argument is output event
-    SgVarRefExp* outputEvtVarRef = SageBuilder::buildVarRefExp(outEvtGuidSymbol);
-    SgExpression* ninth = SageBuilder::buildAddressOfOp(outputEvtVarRef);
+    SgExpression* ninth;
+    // If it is not NULL create the address of expression
+    if(outEvtGuidSymbol) {
+      SgVarRefExp* outputEvtVarRef = SageBuilder::buildVarRefExp(outEvtGuidSymbol);
+      ninth = SageBuilder::buildAddressOfOp(outputEvtVarRef);
+    }
+    // If it is NULL
+    else {
+      ninth = SageBuilder::buildIntVal(0);
+      SageInterface::addTextForUnparser(ninth, "NULL", AstUnparseAttribute::e_replace);
+    }
     args.push_back(ninth);
     // Build the argument list
     SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
@@ -352,7 +389,8 @@ namespace AstBuilder {
     args.push_back(addressOfExp);
     // placeholder expression
     SgIntVal* eventType = SageBuilder::buildIntVal();
-    string eventTypeStr = "OCR_EVENT_ONCE_T";
+    // For now we will create idempotent events
+    string eventTypeStr = "OCR_EVENT_IDEM_T";
     SageInterface::addTextForUnparser(eventType, eventTypeStr, AstUnparseAttribute::e_replace);
     args.push_back(eventType);
     SgIntVal* flags = SageBuilder::buildIntVal();
@@ -366,7 +404,184 @@ namespace AstBuilder {
     return stmt;
   }
 
+  // ocrShutdown();
+  SgExprStatement* buildOcrShutdownCallExp(SgScopeStatement* scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEdtTemplateCreate
+    vector<SgExpression*> args;
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrShutdown", voidType, exprList, scope);
+    return stmt;
+  }
 
+  SgExpression* buildGetArgcCallExp(SgVariableSymbol* mainEdtDbkSymbol, SgScopeStatement* scope) {
+    // Arguments for getArg
+    vector<SgExpression*> args;
+    SgVarRefExp* mainDbkVarRef = SageBuilder::buildVarRefExp(mainEdtDbkSymbol);
+    SgType* castType = buildVoidPtrType();
+    SgCastExp* first = SageBuilder::buildCastExp(mainDbkVarRef, castType);
+    args.push_back(first);
+    SgType* getArgcRetType = buildu64Type(scope);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExpression* callExp = SageBuilder::buildFunctionCallExp("getArgc", getArgcRetType, exprList, scope);
+    return callExp;
+  }
+
+  // getArgv(dbk, index)
+  SgExpression* buildGetArgvCallExp(SgVariableSymbol* dbkSymbol, SgVariableSymbol* indexSymbol, SgScopeStatement* scope) {
+    vector<SgExpression*> args;
+    SgVarRefExp* first = SageBuilder::buildVarRefExp(dbkSymbol);
+    args.push_back(first);
+    SgVarRefExp* second = SageBuilder::buildVarRefExp(indexSymbol);
+    args.push_back(second);
+
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    return SageBuilder::buildFunctionCallExp("getArgv", SageBuilder::buildVoidType(), exprList, scope);
+  }
+
+  SgStatement* buildEdtReturnStmt() {
+    SgIntVal* zero = SageBuilder::buildIntVal();
+    SageInterface::addTextForUnparser(zero, "NULL_GUID", AstUnparseAttribute::e_replace);
+    return SageBuilder::buildReturnStmt(zero);
+  }
+
+  SgVariableDeclaration* buildMainEdtArgvDecl(SgInitializedName* mainArgv, SgInitializedName* mainArgc, SgScopeStatement* scope) {
+    SgArrayType* arrayType = isSgArrayType(mainArgv->get_type());
+    assert(arrayType);
+    arrayType->set_index(SageBuilder::buildVarRefExp(mainArgc, scope));
+    SgName vname = mainArgv->get_name();
+    SgVariableDeclaration* decl = SageBuilder::buildVariableDeclaration(vname, arrayType, NULL, scope);
+    return decl;
+  }
+
+  SgVariableDeclaration* buildMainEdtArgcDecl(SgInitializedName* mainArgc, SgVariableSymbol* mainEdtDbkSymbol, SgScopeStatement* scope) {
+    SgType* vtype = mainArgc->get_type();
+    SgName vname = mainArgc->get_name();
+    SgExpression* getArgcCallExp = buildGetArgcCallExp(mainEdtDbkSymbol, scope);
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(getArgcCallExp, vtype);
+    SgVariableDeclaration* decl = SageBuilder::buildVariableDeclaration(vname, vtype, initializer, scope);
+    return decl;
+  }
+
+  SgExprStatement* buildMainEdtInitCallExp(SgName mainEdtInitName, SgVariableSymbol* mainEdtArgcSymbol,
+					   SgVariableSymbol* mainEdtArgvSymbol, SgVariableSymbol* mainEdtDbkSymbol, SgScopeStatement* scope) {
+    vector<SgExpression*> args;
+    SgExpression* first = SageBuilder::buildVarRefExp(mainEdtArgcSymbol);
+    args.push_back(first);
+
+    SgExpression* second = SageBuilder::buildVarRefExp(mainEdtArgvSymbol);
+    args.push_back(second);
+
+    SgExpression* third = SageBuilder::buildVarRefExp(mainEdtDbkSymbol);
+    args.push_back(third);
+
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp(mainEdtInitName, SageBuilder::buildVoidType(), exprList, scope);
+    return SageBuilder::buildExprStatement(callExp);
+  }
+
+  SgFunctionParameterList* buildMainEdtInitFuncParams(SgInitializedName* mainArgc, SgInitializedName* mainArgv, SgVariableSymbol* mainEdtDbkSymbol) {
+    SgFunctionParameterList* paramList = SageBuilder::buildFunctionParameterList();
+    // Now setup the parameters
+    SgInitializedName* argc  = SageBuilder::buildInitializedName(mainArgc->get_name(), mainArgc->get_type(), NULL);
+    SageInterface::appendArg(paramList, argc);
+
+    SgType* argvType = buildArgvType();
+    SgInitializedName* argv = SageBuilder::buildInitializedName(mainArgv->get_name(), argvType, NULL);
+    SageInterface::appendArg(paramList, argv);
+
+    SgType* dbkType = buildVoidPtrType();
+    SgInitializedName* dbk = SageBuilder::buildInitializedName(mainEdtDbkSymbol->get_name(), dbkType, NULL);
+    SageInterface::appendArg(paramList, dbk);
+    return paramList;
+  }
+
+  SgForStatement* buildMainEdtInitForStmt(SgVariableSymbol* indexSymbol, SgVariableSymbol* argcSymbol) {
+    SgVarRefExp* testExprLhs = SageBuilder::buildVarRefExp(indexSymbol);
+    SgVarRefExp* testExprRhs = SageBuilder::buildVarRefExp(argcSymbol);
+    SgExpression* lessThanOp = SageBuilder::buildLessThanOp(testExprLhs, testExprRhs);
+    SgExprStatement* testStmt = SageBuilder::buildExprStatement(lessThanOp);
+
+    SgVarRefExp* incVarRhs = SageBuilder::buildVarRefExp(indexSymbol);
+    SgIntVal* one = SageBuilder::buildIntVal(1);
+    SgAddOp* addop = SageBuilder::buildAddOp(incVarRhs, one);
+    SgVarRefExp* incVarLhs = SageBuilder::buildVarRefExp(indexSymbol);
+    SgAssignOp* incrementExp = SageBuilder::buildAssignOp(incVarLhs, addop);
+
+    SgBasicBlock* forBasicBlock = SageBuilder::buildBasicBlock();
+    SgForStatement* forStmt = SageBuilder::buildForStatement(NULL, testStmt, incrementExp, forBasicBlock, NULL);
+    return forStmt;
+  }
+
+  vector<SgStatement*> buildMainEdtInitForBody(SgVariableSymbol* indexSymbol,SgVariableSymbol* argvSymbol,
+					       SgVariableSymbol* dbkSymbol, SgBasicBlock* basicblock) {
+  vector<SgStatement*> forStmtBodyList;
+  // We are building the statement argv[i] = getArgv(dbk, i);
+  SgVarRefExp* lvar = SageBuilder::buildVarRefExp(argvSymbol);
+  SgVarRefExp* indexVarRef = SageBuilder::buildVarRefExp(indexSymbol);
+  SgPntrArrRefExp* lhsAssignOp = SageBuilder::buildPntrArrRefExp(lvar, indexVarRef);
+
+  // NOTE: basicblock must be that of a function's and not for loop's
+  SgExpression* rhsAssignOp = buildGetArgvCallExp(dbkSymbol, indexSymbol, basicblock);
+  SgAssignOp* assignOp = SageBuilder::buildAssignOp(lhsAssignOp, rhsAssignOp);
+  SgExprStatement* assignStmt = SageBuilder::buildExprStatement(assignOp);
+  forStmtBodyList.push_back(assignStmt);
+  return forStmtBodyList;
+}
+
+  // Function building the mainEdtInit declaration
+  SgFunctionDeclaration* buildMainEdtInitFuncDecl(SgName fname, SgInitializedName* mainArgc, SgInitializedName* mainArgv,
+						  SgVariableSymbol* mainEdtDbkSymbol, SgGlobal* global) {
+    SgType* returnType = SageBuilder::buildVoidType();
+    SgFunctionParameterList* paramList = buildMainEdtInitFuncParams(mainArgc, mainArgv, mainEdtDbkSymbol);
+    SgFunctionDeclaration* mainEdtInitFuncDecl = SageBuilder::buildDefiningFunctionDeclaration(fname, returnType, paramList, global);
+
+
+    SgBasicBlock* mainEdtInitBasicBlock = mainEdtInitFuncDecl->get_definition()->get_body();
+    vector<SgStatement*> mainEdtInitBody;
+
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(SageBuilder::buildIntVal(0));
+    SgName indexVarName("i");
+    SgVariableDeclaration* indexDecl = SageBuilder::buildVariableDeclaration(indexVarName, SageBuilder::buildIntType(), initializer, mainEdtInitBasicBlock);
+    mainEdtInitBody.push_back(indexDecl);
+
+    // Get all the variable symbols for which we will be creating SgVarRefExp
+    SgVariableSymbol* indexSymbol = GetVariableSymbol(indexDecl, indexVarName.getString());
+    SgInitializedNamePtrList& mainEdtInitArgs = paramList->get_args();
+    SgVariableSymbol* argcSymbol = GetVariableSymbol(mainEdtInitArgs[0]);
+    SgVariableSymbol* argvSymbol = GetVariableSymbol(mainEdtInitArgs[1]);
+    SgVariableSymbol* dbkSymbol = GetVariableSymbol(mainEdtInitArgs[2]);
+
+    SgForStatement* mainEdtInitForStmt = buildMainEdtInitForStmt(indexSymbol, argcSymbol);
+    SgBasicBlock* forBasicBlock = isSgBasicBlock(mainEdtInitForStmt->get_loop_body());
+    // NOTE: We are passing mainEdtInitBasicBlock for getArgv call expression
+    vector<SgStatement*> mainEdtForBody = buildMainEdtInitForBody(indexSymbol, argvSymbol, dbkSymbol, mainEdtInitBasicBlock);
+    SageInterface::appendStatementList(mainEdtForBody, forBasicBlock);
+
+    // Insert the for stmt into the body
+    mainEdtInitBody.push_back(mainEdtInitForStmt);
+
+    SageInterface::appendStatementList(mainEdtInitBody, mainEdtInitBasicBlock);
+    return mainEdtInitFuncDecl;
+  }
+
+  /*********************
+   * ReplaceReturnStmt *
+   *********************/
+  ReplaceReturnStmt::ReplaceReturnStmt() { }
+
+  void ReplaceReturnStmt::visit(SgNode* sgn) {
+    if(SgReturnStmt* returnStmt = isSgReturnStmt(sgn)) {
+      SgStatement* newStmt = buildEdtReturnStmt();
+      SageInterface::replaceStatement(returnStmt, newStmt, true);
+    }
+  }
   // void varRefExp2ArrowExpInStmt(SgVarRefExp* oexp, SgArrowExp* nexp, SgStatement* stmt) {
   //   RoseAst ast(stmt);
   //   RoseAst::iterator it = ast.begin();
@@ -512,7 +727,7 @@ namespace AstBuilder {
     // Build the second argument
     SgVarRefExp* varDbkVarRefExp = SageBuilder::buildVarRefExp(dbkPtrName, scope);
     SgType* castType = buildVoidPtrPtrType(scope);
-    SgCastExp* castExp = SageBuilder::buildCastExp(varDbkVarRefExp, castType);
+    SgCastExp* castExp = SageBuilder::buildCastExp(SageBuilder::buildAddressOfOp(varDbkVarRefExp), castType);
     args.push_back(castExp);
     // third argument is len
     // this information is either in a malloc call or in the declaration
