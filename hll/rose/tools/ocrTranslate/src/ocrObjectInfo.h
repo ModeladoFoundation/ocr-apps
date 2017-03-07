@@ -124,6 +124,27 @@ public:
 
 typedef boost::shared_ptr<OcrEdtContext> OcrEdtContextPtr;
 
+/*************************
+ * OcrShutdownEdtContext *
+ *************************/
+// ocrShutdown() is wrapped inside a shutdown EDT
+// Wrapping ocrShutdown inside an EDT allows us add dependent events
+// and control the runtime shutting down
+// OCR shutdown is specified using the following pragma:
+// #pragma ocr shutdown DEP_EVTs(...)
+// For each shutdown pragma we will associate a OcrShutdownEdtContext
+class OcrShutdownEdtContext : public OcrObjectContext {
+  SgPragmaDeclaration* m_shutdownPragma;
+  std::list<OcrEvtContextPtr> m_depEvts;
+ public:
+  OcrShutdownEdtContext(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts);
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  unsigned int getNumDepEvts();
+  std::string str() const;
+  SgPragmaDeclaration* getPragma() const;
+};
+
+typedef boost::shared_ptr<OcrShutdownEdtContext> OcrShutdownEdtContextPtr;
 /********************
  * OcrObjectManager *
  ********************/
@@ -146,6 +167,7 @@ typedef std::map<std::string, OcrEvtContextPtr> OcrEvtObjectMap;
 typedef std::pair<std::string, OcrEvtContextPtr> OcrEvtObjectMapElem;
 typedef std::map<int, std::string> EdtPragmaOrderMap;
 typedef std::pair<int, std::string> EdtPragmaOrderMapElem;
+typedef std::list<OcrShutdownEdtContextPtr> OcrShutdownEdtList;
 class OcrObjectManager {
   //! Associates an OcrContext for each OcrObject
   //! Key: OcrObject name (string)
@@ -154,6 +176,7 @@ class OcrObjectManager {
   OcrDbkObjectMap m_ocrDbkObjectMap;
   OcrEvtObjectMap m_ocrEvtObjectMap;
   EdtPragmaOrderMap m_edtPragmaOrderMap;
+  OcrShutdownEdtList m_ocrShutdownEdtList;
  public:
   OcrObjectManager();
   // Lookup functions for OcrContext using their names
@@ -172,6 +195,7 @@ class OcrObjectManager {
 				  SgPragmaDeclaration* taskBegin,
 				  SgPragmaDeclaration* taskEnd);
   bool registerOcrEdtOrder(int order, std::string edtname);
+  bool registerOcrShutdownEdt(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts);
   // return a list of edtnames in the same order they were encountered in the AST
   std::list<std::string> getEdtTraversalOrder() const;
 
@@ -181,6 +205,7 @@ class OcrObjectManager {
   OcrEdtContextPtr getOcrEdtContext(std::string edtname) const;
   OcrDbkContextPtr getOcrDbkContext(std::string dbkname);
   OcrEvtContextPtr getOcrEvtContext(std::string evtname);
+  const OcrShutdownEdtList& getOcrShutdownEdtList() const;
 };
 
 #endif
