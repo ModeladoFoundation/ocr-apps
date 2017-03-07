@@ -48,7 +48,7 @@ OcrTaskPragmaParser::OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager
   param = *_s >> *by_ref(attr) >> *_s >> identifier;
   // paramseq is the tail seq of a parameter list
   sregex paramseq = *_s >> as_xpr(',') >> *_s >> param;
-  paramlist = as_xpr('(') >> *_s >> param >> *by_ref(paramseq) >> *_s >> as_xpr(')');
+  paramlist = as_xpr('(') >> *_s >> *by_ref(param) >> *by_ref(paramseq) >> *_s >> as_xpr(')');
   taskName = *_s >> icase("TASK") >> *_s >> by_ref(paramlist);
   depEvts = *_s >> icase("DEP_EVTS") >> *_s >> by_ref(paramlist);
   depDbks = *_s >> icase("DEP_DBKs") >> *_s >> by_ref(paramlist);
@@ -512,6 +512,64 @@ bool OcrDbkPragmaParser::match() {
   }
 }
 
+/***************************
+ * OcrShutdownPragmaParser *
+ ***************************/
+OcrShutdownPragmaParser::OcrShutdownPragmaParser(SgPragmaDeclaration* sgpdecl, std::string input, OcrObjectManager& ocrObjectManager)
+  : m_spgdecl(sgpdecl), m_input(input), m_ocrObjectManager(ocrObjectManager) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+  sr_depevts = *_s >> icase("DEP_EVTS") >> *_s >> by_ref(sr_paramlist);
+}
+
+// Expected string input : (param1, param2,..,paramn)
+// For extracting the parameters we just iterate using the identifier sregex token
+bool OcrShutdownPragmaParser::matchParams(string input, list<string>& paramList) {
+  smatch match_results;
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string param = *cur;
+    if(param.compare("NONE") != 0 &&
+       param.compare("none") != 0) {
+      paramList.push_back(param);
+    }
+  }
+  return true;
+}
+
+bool OcrShutdownPragmaParser::match() {
+  Logger::Logger lg("OcrShutdownPragmaParser::match()");
+  string input = m_input;
+  list<string> depEvtNames;
+  try {
+    if(regex_match(input, sr_depevts)) {
+      smatch match_results;
+      if(regex_search(input, match_results, sr_paramlist)) {
+	string what = match_results[0];
+	matchParams(what, depEvtNames);
+      }
+      else throw MatchException("Expecting a parameter list of dependent events");
+    }
+    else throw MatchException("Shutdown pragma parsing failed:" + input);
+    // We have successfully matched the pragma and the list of events are in depEvtNames
+    // Get context for each OcrEvt
+    list<string>::iterator en = depEvtNames.begin();
+    list<OcrEvtContextPtr> depEvts;
+    for( ; en != depEvtNames.end(); ++en) {
+      OcrEvtContextPtr evt = m_ocrObjectManager.registerOcrEvt(*en);
+      depEvts.push_back(evt);
+    }
+    m_ocrObjectManager.registerOcrShutdownEdt(m_spgdecl, depEvts);
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
+
 /*******************
  * OcrPragmaParser *
  *******************/
@@ -531,7 +589,7 @@ void OcrPragmaParser::visit(SgNode* sgn) {
 
     if(ptype == e_TaskBegin) {
       AstFromString::afs_skip_whitespace();
-      // Increase the in-order counter
+      // Increase the traversal order counter
       m_taskOrderCounter = m_taskOrderCounter+1;
       OcrTaskPragmaParser taskPragmaParser(AstFromString::c_char, m_ocrObjectManager, sgpdecl, m_taskOrderCounter);
       taskPragmaParser.match();
@@ -540,6 +598,11 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       AstFromString::afs_skip_whitespace();
       OcrDbkPragmaParser dbkPragmaParser(sgpdecl, m_ocrObjectManager);
       dbkPragmaParser.match();
+    }
+    else if(ptype == e_shutdown) {
+      AstFromString::afs_skip_whitespace();
+      OcrShutdownPragmaParser shutdownPragmaParser(sgpdecl, AstFromString::c_char, m_ocrObjectManager);
+      shutdownPragmaParser.match();
     }
     else { } // do nothing
   }
@@ -550,6 +613,7 @@ OcrPragmaParser::identifyPragmaType(std::string pragmaStr) {
   AstFromString::c_char = pragmaStr.c_str();
   if(AstFromString::afs_match_substr("ocr task begin")) return e_TaskBegin;
   else if(AstFromString::afs_match_substr("ocr datablock begin")) return e_DbkBegin;
+  else if(AstFromString::afs_match_substr("ocr shutdown")) return e_shutdown;
   else return e_NotOcr;
 }
 

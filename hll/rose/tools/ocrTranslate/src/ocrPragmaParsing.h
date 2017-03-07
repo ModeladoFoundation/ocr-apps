@@ -98,6 +98,22 @@ class OcrDbkPragmaParser {
   bool match();
 };
 
+/***************************
+ * OcrShutdownPragmaParser *
+ ***************************/
+class OcrShutdownPragmaParser {
+  SgPragmaDeclaration* m_spgdecl;
+  std::string m_input;
+  OcrObjectManager& m_ocrObjectManager;
+  // sregex needed for matching the pragma
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist, sr_depevts;
+ private:
+  bool matchParams(std::string input, std::list<std::string>& paramList);
+ public:
+  OcrShutdownPragmaParser(SgPragmaDeclaration* spgdecl, std::string input, OcrObjectManager& ocrObjectManager);
+  bool match();
+};
+
 /*******************
  * OcrPragmaParser *
  *******************/
@@ -108,6 +124,7 @@ class OcrPragmaParser : public AstSimpleProcessing {
     e_TaskEnd,
     e_DbkBegin,
     e_DbkEnd,
+    e_shutdown,
     e_NotOcr
   };
  private:
