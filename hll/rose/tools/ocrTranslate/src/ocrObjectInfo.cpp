@@ -177,6 +177,35 @@ OcrEdtContext::~OcrEdtContext() {
   // no cleanup required
 }
 
+/*************************
+ * OcrShutdownEdtContext *
+ *************************/
+OcrShutdownEdtContext::OcrShutdownEdtContext(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts)
+  : m_shutdownPragma(shutdownPragma),
+    m_depEvts(depEvts) { }
+
+std::list<OcrEvtContextPtr> OcrShutdownEdtContext::getDepEvts() const {
+  return m_depEvts;
+}
+
+unsigned int OcrShutdownEdtContext::getNumDepEvts() {
+  return m_depEvts.size();
+}
+
+SgPragmaDeclaration* OcrShutdownEdtContext::getPragma() const {
+  return m_shutdownPragma;
+}
+
+string OcrShutdownEdtContext::str() const {
+  ostringstream oss;
+  string indent = " ";
+  oss << "[Shutdown EDT\n";
+  oss << indent << "depEvts:" << StrUtil::list2str<OcrEvtContext>(m_depEvts);
+  oss << "]";
+  return oss.str();
+}
+
+
 /********************
  * OcrObjectManager *
  ********************/
@@ -324,6 +353,11 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
   return edtcontext_sp;
 }
 
+bool OcrObjectManager::registerOcrShutdownEdt(SgPragmaDeclaration* shutdownPragma, list<OcrEvtContextPtr> depEvts) {
+  OcrShutdownEdtContextPtr shutdownEdt = boost::make_shared<OcrShutdownEdtContext>(shutdownPragma, depEvts);
+  m_ocrShutdownEdtList.push_back(shutdownEdt);
+}
+
 list<string> OcrObjectManager::getEdtTraversalOrder() const {
   list<string> edtTraversalOrder;
   EdtPragmaOrderMap::const_iterator e = m_edtPragmaOrderMap.begin();
@@ -358,4 +392,8 @@ const OcrEdtObjectMap& OcrObjectManager::getOcrEdtObjectMap() const {
 
 const OcrDbkObjectMap& OcrObjectManager::getOcrDbkObjectMap() const {
   return m_ocrDbkObjectMap;
+}
+
+const OcrShutdownEdtList& OcrObjectManager::getOcrShutdownEdtList() const {
+  return m_ocrShutdownEdtList;
 }
