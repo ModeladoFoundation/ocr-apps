@@ -8,19 +8,20 @@
 int main(int argc, char* argv[]) {
   if(argc != 2) {
     printf("Expecting one input argument\n");
-    return -1;
+#pragma ocr shutdown DEP_EVTs()
+    return 0;
   }
 
   int size  = atoi(argv[1]);
 
-#pragma ocr datablock begin DATABLOCK(DBK_in, DBK_out)
-  double* in, *out;
+#pragma ocr datablock begin DATABLOCK(DBK_in)
+  double* in;
 #pragma ocr datablock end
   in = (double*) malloc(size * sizeof(double));
   int iter;
 
 #pragma ocr task begin TASK(TASK_init)	\
-  DEP_EVTs(NONE) DEP_DBKs(DBK_in) DEP_ELEMs(in:size, in:iter)
+  DEP_EVTs() DEP_DBKs(DBK_in) DEP_ELEMs(in:size, in:iter)
   time_t t;
   iter = 0;
   srand((unsigned) time(&t));
@@ -28,8 +29,6 @@ int main(int argc, char* argv[]) {
     in[iter] = (double)(rand() % 100)/7;
   }
 #pragma ocr task end OEVENT(OEVT_init)
-
-  out = malloc(sizeof(double) * size+1);
 
 #pragma ocr task begin TASK(TASK_increment) \
   DEP_EVTs(OEVT_init) DEP_DBKs(DBK_in) DEP_ELEMs(in:size, in:iter)
@@ -40,11 +39,12 @@ int main(int argc, char* argv[]) {
   DEP_EVTs(OEVT_increment) DEP_DBKs(DBK_in) DEP_ELEMs(in:size, in:iter)
   printf("[");
   for(iter = 0; iter < size; ) {
-    printf("%f", in[iter++]);
+    printf("%d", in[iter++]);
     if(iter < size) printf(", ");
   }
   printf("]\n");
 #pragma ocr task end OEVENT(OEVT_print)
 
+#pragma ocr shutdown DEP_EVTs(OEVT_print)
   return 0;
 }
