@@ -232,6 +232,25 @@ SgVariableSymbol* GetVariableSymbol(SgVariableDeclaration* vdecl, string vname) 
   return v_sym;
 }
 
+SgVariableSymbol* GetVariableSymbol(SgInitializedName* vsgn) {
+  SgVariableSymbol* v_sym = NULL;
+  SgScopeStatement* scope = vsgn->get_scope();
+  SgName name = vsgn->get_name();
+  if(scope->symbol_exists(name)) {
+    v_sym = scope->lookup_variable_symbol(name);
+  }
+  else {
+    // Else look for the symbol in declarations scope
+    SgDeclarationStatement* vdecl = vsgn->get_declaration();
+    scope = vdecl->get_scope();
+    v_sym = scope->lookup_variable_symbol(name);
+  }
+  if(!v_sym) cerr << "SgVariableSymbol lookup failed\n";
+  assert(v_sym);
+  return v_sym;
+
+}
+
 /*****************
  * OcrTranslator *
  *****************/
@@ -251,7 +270,7 @@ void OcrTranslator::insertOcrHeaderFiles() {
 }
 
 void OcrTranslator::translateDbk(string dbkName, OcrDbkContextPtr dbkContext) {
-  Logger::Logger lg("OcrTranslator::translateDbk", Logger::DEBUG);
+  Logger::Logger lg("OcrTranslator::translateDbk");
   // Mark the statements to be removed at the end of this function
   set<SgStatement*> stmtsToRemove;
   SgInitializedName* varInitializedName = dbkContext->getSgInitializedName();
@@ -352,10 +371,12 @@ void OcrTranslator::outlineEdt(string edtName, OcrEdtContextPtr edtContext) {
 }
 
 void OcrTranslator::outlineEdts() {
-  const OcrEdtObjectMap& edtMap = m_ocrObjectManager.getOcrEdtObjectMap();
-  OcrEdtObjectMap::const_iterator e = edtMap.begin();
-  for( ; e != edtMap.end(); ++e) {
-    outlineEdt(e->first, e->second);
+  list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
+  list<string>::iterator edt = orderedEdts.begin();
+  for( ; edt != orderedEdts.end(); ++edt) {
+    string edtname = *edt;
+    OcrEdtContextPtr edtContext = m_ocrObjectManager.getOcrEdtContext(edtname);
+    outlineEdt(edtname, edtContext);
   }
 }
 
@@ -375,7 +396,6 @@ void OcrTranslator::setupEdtEvtCreate(std::string edtname, OcrEdtContextPtr edtC
   SgExprStatement* evtCreateCallExp = AstBuilder::buildEvtCreateCallExp(evtGuidSymbol, scope);
   evtCreateStmts.push_back(evtCreateCallExp);
   // Now some bookkeeping
-  cout << "outEvt->get_name(): " << outEvt->get_name() << endl;
   m_ocrAstInfoManager.regOcrEvtAstInfo(outEvt->get_name(), evtGuidSymbol);
   // Add the statements to the AST
   SageInterface::insertStatementListBefore(taskEndPragma, evtCreateStmts);
@@ -385,7 +405,7 @@ void OcrTranslator::setupEdtTemplate(string edtname, OcrEdtContextPtr edtContext
   SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
   SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
   // Build OcrGuid variable declaration for EDT template
-  string edtTemplateGuidName = edtname + "TemplateGuid";
+  string edtTemplateGuidName = edtname + "TemplGuid";
   SgVariableDeclaration* edtTemplateGuidDecl = AstBuilder::buildOcrGuidEdtTemplateVarDecl(edtTemplateGuidName, scope);
   // Setting up the edt template creation function call
   OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
@@ -485,6 +505,97 @@ void OcrTranslator::setupEdtDepEvts(string edtname, OcrEdtContextPtr edtContext)
   SageInterface::insertStatementListBefore(taskEndPragma, evtDepSetupStmts);
 }
 
+void OcrTranslator::outlineShutdownEdt(string shutdownEdtName, SgSourceFile* sourcefile) {
+  // scope where the edt function will be created
+  SgGlobal* global = sourcefile->get_globalScope();
+  // Build an empty defining declaration for the EDT
+  SgFunctionDeclaration* edt_decl = AstBuilder::buildOcrEdtFuncDecl(shutdownEdtName, global);
+  // Get the scope under which the statements of EDT will be outlined
+  SgBasicBlock* basicblock = edt_decl->get_definition()->get_body();
+  // parameters that make up the edt
+  vector<SgInitializedName*> edt_params = AstBuilder::buildOcrEdtSignature(basicblock);
+  // Insert the parameters to the function declaration
+  vector<SgInitializedName*>::iterator p = edt_params.begin();
+  SgFunctionParameterList* edt_paramlist = edt_decl->get_parameterList();
+  for( ; p != edt_params.end(); ++p) {
+    SageInterface::appendArg(edt_paramlist, *p);
+  }
+  SgExprStatement* shutdownCallExp = AstBuilder::buildOcrShutdownCallExp(basicblock);
+
+  // Add a return NULL_GUID statement to the EDT
+  SgIntVal* zero = SageBuilder::buildIntVal(0);
+  string returnExp = "NULL_GUID";
+  SageInterface::addTextForUnparser(zero, returnExp, AstUnparseAttribute::e_replace);
+  SgStatement* returnStmt = SageBuilder::buildReturnStmt(zero);
+  // Add both statements to the basic block
+  SageInterface::appendStatement(shutdownCallExp, basicblock);
+  SageInterface::appendStatement(returnStmt, basicblock);
+  // Insert the function just above the pragma
+  SgStatement* anchor = SageInterface::getFirstStatement(global);
+  SageInterface::insertStatementBefore(anchor, edt_decl, true);
+  // Now bookkeeping
+  // Build the EDT AST information
+  m_ocrAstInfoManager.regOcrEdtAstInfo(shutdownEdtName, NULL, edt_decl);
+}
+
+void OcrTranslator::setupShutdownEdt(string shutdownEdtSuffix, OcrShutdownEdtContextPtr shutdownEdtContext, int count) {
+  SgPragmaDeclaration* shutdownPragma = shutdownEdtContext->getPragma();
+  SgSourceFile* sourcefile = SageInterface::getEnclosingSourceFile(shutdownPragma);
+  string filename = StrUtil::GetFileNameString(sourcefile->get_file_info()->get_filenameString());
+  string shutdownEdtName = filename+shutdownEdtSuffix;
+  SgScopeStatement* scope = SageInterface::getScope(shutdownPragma);
+  // Build OcrGuid variable declaration for EDT template
+  // We may have multiple locations within same file
+  // Use count to distinguish the different locations
+  stringstream ss;
+  ss << shutdownEdtName << "TemplGuid" << count << "_";
+  string edtTemplateGuidName(ss.str());
+  SgVariableDeclaration* edtTemplateGuidDecl = AstBuilder::buildOcrGuidEdtTemplateVarDecl(edtTemplateGuidName, scope);
+  // Setting up the edt template creation function call
+  OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(shutdownEdtName);
+  SgFunctionDeclaration* edtDecl = edtAstInfoPtr->getEdtFunctionDeclaration();
+  unsigned int ndbks = shutdownEdtContext->getNumDepEvts();
+  SgExprStatement* edtTemplateCallExp = AstBuilder::buildOcrEdtTemplateCallExp(edtTemplateGuidDecl, edtDecl, 0, ndbks, scope);
+  SageInterface::insertStatementBefore(shutdownPragma, edtTemplateGuidDecl, true);
+  SageInterface::insertStatementBefore(shutdownPragma, edtTemplateCallExp, true);
+  // Now some bookkeeping
+  // Add the variable symbol of the template guid
+  SgVariableSymbol* edtTemplateGuidSymbol = GetVariableSymbol(edtTemplateGuidDecl, edtTemplateGuidName);
+  edtAstInfoPtr->setEdtTemplateGuid(edtTemplateGuidSymbol);
+
+  // Setup the EDT creation
+  // Build the variable name
+  ss.str("");
+  ss << shutdownEdtName << "EdtGuid" << count << "_";
+  string edtGuidName(ss.str());
+  SgType* ocrGuidType = AstBuilder::buildOcrGuidType(scope);
+  SgVariableDeclaration* edtGuidDecl = SageBuilder::buildVariableDeclaration(edtGuidName, ocrGuidType, NULL, scope);
+  SgVariableSymbol* edtGuidSymbol = GetVariableSymbol(edtGuidDecl, edtGuidName);
+  // We need the edtTemplateGuid
+  SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol, NULL, NULL, scope);
+  SageInterface::insertStatementBefore(shutdownPragma, edtGuidDecl, true);
+  SageInterface::insertStatementBefore(shutdownPragma, ocrEdtCreateCallExp, true);
+  // Now some bookkeeping
+  edtAstInfoPtr->setEdtGuid(edtGuidSymbol);
+
+  // Finally add the dependent events
+  list<OcrEvtContextPtr> evtList = shutdownEdtContext->getDepEvts();
+  list<OcrEvtContextPtr>::iterator e = evtList.begin();
+  // The starting slot dependent events is after the datablocks
+  unsigned int slotIndex = 0;
+  vector<SgStatement*> evtDepSetupStmts;
+  for( ; e != evtList.end(); ++e, ++slotIndex) {
+    OcrEvtContextPtr evt = *e;
+    string evtname = evt->get_name();
+    OcrEvtAstInfoPtr evtAstInfo = m_ocrAstInfoManager.getOcrEvtAstInfo(evtname);
+    SgVariableSymbol* evtGuid = evtAstInfo->getEvtGuid();
+    SgExprStatement* ocrAddDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(evtGuid, edtGuidSymbol, slotIndex,
+											AstBuilder::DbkMode::DB_MODE_NULL, scope);
+    evtDepSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
+  }
+  SageInterface::insertStatementListBefore(shutdownPragma, evtDepSetupStmts);
+}
+
 void OcrTranslator::setupEdts() {
   list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
   list<string>::iterator edt = orderedEdts.begin();
@@ -508,6 +619,89 @@ void OcrTranslator::translateDbks() {
   }
 }
 
+void OcrTranslator::setupShutdownEdts() {
+  string shutdownEdtSuffix = "Shutdown";
+  // We may need to allow the user to call shutdown from multiple points in the program
+  // The difficulty is we need to synthesize the shutdown EDT and place its definition
+  // before the pragma with the lowest depth from the root
+  // The simplest choice is to place them at the beginning of a source file
+  // We may however have multiple source files
+  // We can generate one copy of the function for each source file
+  // Alternatively,
+  list<OcrShutdownEdtContextPtr> shutdownEdts = m_ocrObjectManager.getOcrShutdownEdtList();
+  set<SgSourceFile*> shutdownEdtSourceFiles = getSourceFilesOfShutdownEdts(shutdownEdts);
+  set<SgSourceFile*>::iterator sf = shutdownEdtSourceFiles.begin();
+  // For each sourcefile generate a shutdownEdt
+  for( ; sf != shutdownEdtSourceFiles.end(); ++sf) {
+    string filename = StrUtil::GetFileNameString((*sf)->get_file_info()->get_filenameString());
+    outlineShutdownEdt(filename + shutdownEdtSuffix, *sf);
+  }
+  // Setup the shutdown edt for each shutdown annotation
+  list<OcrShutdownEdtContextPtr>::iterator sedt = shutdownEdts.begin();
+  for(int count = 0; sedt != shutdownEdts.end(); ++sedt, ++count) {
+    setupShutdownEdt(shutdownEdtSuffix, *sedt, count);
+  }
+}
+
+void OcrTranslator::outlineMainEdt() {
+  SgFunctionDeclaration* mainFunction = SageInterface::findMain(m_project);
+  // scope where the edt function will be created
+  SgSourceFile* sourcefile = SageInterface::getEnclosingSourceFile(mainFunction);
+  SgGlobal* global = sourcefile->get_globalScope();
+  // Build an empty defining declaration for the EDT
+  string mainEdtName = "mainEdt";
+  SgFunctionDeclaration* edt_decl = AstBuilder::buildOcrEdtFuncDecl(mainEdtName, global);
+  // Get the scope under which the statements of EDT will be outlined
+  SgBasicBlock* basicblock = edt_decl->get_definition()->get_body();
+  // parameters that make up the edt
+  vector<SgInitializedName*> edt_params = AstBuilder::buildOcrEdtSignature(basicblock);
+  // Insert the parameters to the function declaration
+  vector<SgInitializedName*>::iterator p = edt_params.begin();
+  SgFunctionParameterList* edt_paramlist = edt_decl->get_parameterList();
+  for( ; p != edt_params.end(); ++p) {
+    SageInterface::appendArg(edt_paramlist, *p);
+  }
+  // Synthesize arugments for argc and argv
+  // And then move the basicblock from main to mainEdt
+  vector<SgInitializedName*> main_args = mainFunction->get_args();
+  if(main_args.size() > 0) {
+    // main must have exactly two arguments
+    assert(main_args.size() == 2);
+    SgInitializedName* mainArgc = main_args[0];
+    SgInitializedName* mainArgv = main_args[1];
+    // First fetch the datablock from argument
+    SgName mainEdtDbkName("mainEdtDbk");
+    SgInitializedName* mainEdtArgv = edt_paramlist->get_args().back();
+    SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildOcrDbkDecl(mainEdtDbkName, 0, mainEdtArgv, basicblock);
+    SgVariableSymbol* mainEdtDbkSymbol = GetVariableSymbol(mainEdtDbkDecl, mainEdtDbkName);
+    SgVariableDeclaration* mainEdtArgcDecl = AstBuilder::buildMainEdtArgcDecl(mainArgc, mainEdtDbkSymbol, basicblock);
+    SgVariableDeclaration* mainEdtArgvDecl = AstBuilder::buildMainEdtArgvDecl(mainArgv, mainArgc, basicblock);
+    SageInterface::appendStatement(mainEdtDbkDecl, basicblock);
+    SageInterface::appendStatement(mainEdtArgcDecl, basicblock);
+    SageInterface::appendStatement(mainEdtArgvDecl, basicblock);
+
+    // Now setup the function to initialize the argv
+    SgName mainEdtInitName("mainEdtInit");
+    SgFunctionDeclaration* mainEdtInitFuncDecl = AstBuilder::buildMainEdtInitFuncDecl(mainEdtInitName, mainArgc, mainArgv, mainEdtDbkSymbol, global);
+    SgVariableSymbol* mainEdtArgcSymbol = GetVariableSymbol(mainEdtArgcDecl, mainArgc->get_name());
+    SgVariableSymbol* mainEdtArgvSymbol = GetVariableSymbol(mainEdtArgvDecl, mainArgv->get_name());
+    SgExprStatement* mainEdtInitCallExp = AstBuilder::buildMainEdtInitCallExp(mainEdtInitFuncDecl->get_name(), mainEdtArgcSymbol, mainEdtArgvSymbol, mainEdtDbkSymbol, basicblock);
+    SageInterface::appendStatement(mainEdtInitCallExp, basicblock);
+
+    // Insert the mainEdt_init function declaration before main
+    SageInterface::insertStatementBefore(mainFunction, mainEdtInitFuncDecl, true);
+  }
+  SgBasicBlock* mainBasicBlock = mainFunction->get_definition()->get_body();
+
+  // Replace all the return statements
+  AstBuilder::ReplaceReturnStmt replaceRetStmts;
+  replaceRetStmts.traverse(mainBasicBlock, preorder);
+  // Add the statements from main to mainEdt
+  SageInterface::appendStatementList(mainBasicBlock->get_statements(), basicblock);
+  // Finally replace the main with mainEdt
+  SageInterface::replaceStatement(mainFunction, edt_decl, true);
+}
+
 void OcrTranslator::translate() {
   Logger::Logger lg("OcrTranslator::translate");
   try {
@@ -516,8 +710,20 @@ void OcrTranslator::translate() {
     translateDbks();
     outlineEdts();
     setupEdts();
+    setupShutdownEdts();
+    outlineMainEdt();
   }
   catch(TranslateException& ewhat) {
     Logger::error(lg) << ewhat.what() << endl;
   }
+}
+
+set<SgSourceFile*> OcrTranslator::getSourceFilesOfShutdownEdts(list<OcrShutdownEdtContextPtr>& shutdownEdts) {
+  set<SgSourceFile*> shutdownEdtSourceFiles;
+  list<OcrShutdownEdtContextPtr>::iterator s = shutdownEdts.begin();
+  for( ; s != shutdownEdts.end(); ++s) {
+    SgSourceFile* sourcefile = SageInterface::getEnclosingSourceFile((*s)->getPragma());
+    shutdownEdtSourceFiles.insert(sourcefile);
+  }
+  return shutdownEdtSourceFiles;
 }

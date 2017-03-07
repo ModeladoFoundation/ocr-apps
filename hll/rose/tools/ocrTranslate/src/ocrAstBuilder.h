@@ -35,6 +35,8 @@ namespace AstBuilder {
   SgType* buildOcrEdtDepType(SgScopeStatement* scope);
   SgType* buildOcrEdtDepArrType(SgScopeStatement* scope);
   SgType* buildOcrGuidType(SgScopeStatement* scope);
+  SgType* buildVoidPtrType();
+  SgType* buildArgvType();
 
   // EDT Outlining AST builders
   SgFunctionDeclaration* buildOcrEdtFuncDecl(std::string name, SgScopeStatement* scope);
@@ -42,6 +44,7 @@ namespace AstBuilder {
   SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
   SgTypedefDeclaration* buildTypeDefDecl(std::string edtName, SgType* baseType, SgScopeStatement* scope);
   SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope);
+  SgVariableDeclaration* buildOcrDbkDecl(SgName name, unsigned int index, SgInitializedName* depv,SgScopeStatement* scope);
   std::vector<SgStatement*> buildOcrDbksDecl(OcrEdtContextPtr edtContext, SgScopeStatement* scope, SgFunctionDeclaration* edtDecl);
   std::vector<SgStatement*> buildOcrEdtStmts(OcrEdtContextPtr edtContext);
 
@@ -56,8 +59,35 @@ namespace AstBuilder {
   SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* dbkGuidSymbol, SgVariableSymbol* edtGuidSymbol,
 						int slot, DbkMode dbkmode, SgScopeStatement*  scope);
 
+  SgStatement* buildEdtReturnStmt();
+
   // AST builders for OCR Event management
   SgExprStatement* buildEvtCreateCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope);
+
+  // AST builder for shutdown EDT
+  SgExprStatement* buildOcrShutdownCallExp(SgScopeStatement* scope);
+
+  // AST builders for mainEdt
+  SgVariableDeclaration* buildMainEdtArgcDecl(SgInitializedName* mainArgc, SgVariableSymbol* mainEdtDbkSymbol, SgScopeStatement* basicblock);
+  SgVariableDeclaration* buildMainEdtArgvDecl(SgInitializedName* mainArgv, SgInitializedName* mainArgc, SgScopeStatement* scope);
+  SgExpression* buildGetArgcCallExp(SgVariableSymbol* mainDbkSymbol, SgScopeStatement* scope);
+  SgExpression* buildGetArgvCallExp(SgVariableSymbol* mainDbkSymbol, SgScopeStatement* scope);
+
+  // Build a function declaration for setting up mainEdtArgs
+  SgFunctionDeclaration* buildMainEdtInitFuncDecl(SgName fname, SgInitializedName* mainArgc, SgInitializedName* mainArgv,
+						  SgVariableSymbol* mainEdtDbkSymbol, SgGlobal* global);
+  SgExprStatement* buildMainEdtInitCallExp(SgName mainEdtInitName, SgVariableSymbol* mainEdtArgcSymbol,
+					   SgVariableSymbol* mainEdtArgvSymbol, SgVariableSymbol* mainEdtDbkSymbol, SgScopeStatement* scope);
+
+  /*********************
+   * ReplaceReturnStmt *
+   *********************/
+  class ReplaceReturnStmt : public AstSimpleProcessing {
+  public:
+    ReplaceReturnStmt();
+    void visit(SgNode* sgn);
+  };
+
 
   // AST builders for OCR Datablock
   void translateOcrDbk(std::string name, OcrDbkContextPtr dbkContext);
