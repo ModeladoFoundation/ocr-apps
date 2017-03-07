@@ -173,4 +173,10 @@ namespace StrUtil {
     oss << "]";
     return oss.str();
   }
+
+  // Given a raw filename with path and suffix return only the filename without path and suffix
+  string GetFileNameString(string rawfilename) {
+    string filenameNoPath = rose::StringUtility::stripPathFromFileName(rawfilename);
+    return rose::StringUtility::stripFileSuffixFromFileName(filenameNoPath);
+  }
 };

@@ -89,4 +89,7 @@ namespace StrUtil {
   std::string stmtlist2str(const std::list<SgStatement*>& stmtlist, std::string indent="");
   std::string stmtlist2str(const std::list<SgNode*>& stmtlist, std::string indent="");
   std::string sgnlist2str(std::list<SgNode*> sgnlist);
+
+  // Given a raw filename with path and suffix return only the filename without path and suffix
+  std::string GetFileNameString(std::string rawfilename);
 };
