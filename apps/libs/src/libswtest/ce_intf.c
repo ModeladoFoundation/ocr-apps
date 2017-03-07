@@ -103,6 +103,14 @@ typedef enum {
     CE_REQTYPE_LAST
 } ce_request_type;
 
+//
+// memory region preferred.
+// from libtgr/tg-ce/include/ce-xe-intf.h
+//
+typedef enum {
+    MREQ_LOCAL, MREQ_BLOCK, MREQ_GLOBAL, MREQ_ANY, MREQ_LAST = MREQ_ANY
+} mreq_region;
+
 #define CE_REQ_MAKE( t, l )    (((t) << 32) | ((l) & ((1L << 32) - 1)))
 //
 // common method to signal CE wrt a request
@@ -127,13 +135,14 @@ static int send_req( uint64_t type, void * buf, uint64_t len )
 void * ce_memalloc( uint64_t len )
 {
     struct {
-        uint64_t  region;       // in - region preference (global, block, local) (Not implemented)
+        uint64_t  region;       // in - region preference (global, block, local)
         uint64_t  va;           // out
         uint64_t  len : 56,     // in/out - size requested and actually provided
                   private : 1,  // in - private use (reapable on finish) (Not implemented)
                   promote : 1,  // in - promote region if alloc fails (Not implemented)
                   unused : 6;
     } req;
+    req.region = MREQ_ANY;
     req.va = 0;
     req.len = len;
 
