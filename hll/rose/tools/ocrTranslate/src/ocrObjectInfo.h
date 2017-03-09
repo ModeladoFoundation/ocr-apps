@@ -62,6 +62,7 @@ public:
   SgSymbol* getSgSymbol();
   SgDeclarationStatement* get_declaration() const;
   SgInitializedName* getSgInitializedName() const;
+  SgType* getDbkPtrType();
   std::list<SgStatement*> get_allocStmts() const;
   std::string get_name() const;
   std::string str() const;

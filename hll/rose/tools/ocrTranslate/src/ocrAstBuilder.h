@@ -44,7 +44,7 @@ namespace AstBuilder {
   SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
   SgTypedefDeclaration* buildTypeDefDecl(std::string edtName, SgType* baseType, SgScopeStatement* scope);
   SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope);
-  SgVariableDeclaration* buildOcrDbkDecl(SgName name, unsigned int index, SgInitializedName* depv,SgScopeStatement* scope);
+  SgVariableDeclaration* buildOcrDbkDecl(SgName name, SgType* dbkPtrType, unsigned int index, SgInitializedName* depv,SgScopeStatement* scope);
   std::vector<SgStatement*> buildOcrDbksDecl(OcrEdtContextPtr edtContext, SgScopeStatement* scope, SgFunctionDeclaration* edtDecl);
   std::vector<SgStatement*> buildOcrEdtStmts(OcrEdtContextPtr edtContext);
 

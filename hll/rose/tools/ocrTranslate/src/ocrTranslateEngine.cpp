@@ -672,7 +672,8 @@ void OcrTranslator::outlineMainEdt() {
     // First fetch the datablock from argument
     SgName mainEdtDbkName("mainEdtDbk");
     SgInitializedName* mainEdtArgv = edt_paramlist->get_args().back();
-    SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildOcrDbkDecl(mainEdtDbkName, 0, mainEdtArgv, basicblock);
+    SgType* u64PtrType = AstBuilder::buildu64PtrType(basicblock);
+    SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildOcrDbkDecl(mainEdtDbkName, u64PtrType, 0, mainEdtArgv, basicblock);
     SgVariableSymbol* mainEdtDbkSymbol = GetVariableSymbol(mainEdtDbkDecl, mainEdtDbkName);
     SgVariableDeclaration* mainEdtArgcDecl = AstBuilder::buildMainEdtArgcDecl(mainArgc, mainEdtDbkSymbol, basicblock);
     SgVariableDeclaration* mainEdtArgvDecl = AstBuilder::buildMainEdtArgvDecl(mainArgv, mainArgc, basicblock);
