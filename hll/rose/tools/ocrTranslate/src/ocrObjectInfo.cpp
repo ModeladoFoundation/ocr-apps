@@ -38,6 +38,49 @@ SgInitializedName* OcrDbkContext::getSgInitializedName() const {
   return m_vdefn;
 }
 
+// Function that computes the pointer type for the datablock pointer
+SgType* OcrDbkContext::getDbkPtrType() {
+  SgType* vtype = m_vdefn->get_type();
+  SgType* dbkPtrType = NULL;
+  SgType* btype = NULL;
+  switch(vtype->variantT()) {
+  // If the declared variable is a base type we simply build a pointer to the base type
+  case V_SgTypeBool:
+  case V_SgTypeChar:
+  case V_SgTypeDouble:
+  case V_SgTypeFloat:
+  case V_SgTypeInt:
+  case V_SgTypeLong:
+  case V_SgTypeLongDouble:
+  case V_SgTypeLongLong:
+  case V_SgTypeShort:
+  case V_SgTypeVoid:
+  case V_SgTypeUnsignedChar:
+  case V_SgTypeUnsignedInt:
+  case V_SgTypeUnsignedLong:
+  case V_SgTypeUnsignedLongLong:
+  case V_SgTypeUnsignedShort:
+    dbkPtrType = SageBuilder::buildPointerType(vtype);
+    return dbkPtrType;
+  case V_SgArrayType:
+  case V_SgPointerType:
+    btype = vtype->findBaseType();
+    assert(btype);
+    dbkPtrType = SageBuilder::buildPointerType(btype);
+    return dbkPtrType;
+  // If this is a struct type
+  case V_SgClassType:
+    dbkPtrType = SageBuilder::buildPointerType(vtype);
+    return dbkPtrType;
+  case V_SgTypedefType:
+    dbkPtrType = SageBuilder::buildPointerType(vtype);
+    return dbkPtrType;
+  default:
+    cerr << "Unhandled Type " << AstDebug::astToString(vtype) << endl;
+    assert(false);
+  };
+}
+
 SgDeclarationStatement* OcrDbkContext::get_declaration() const {
   SgDeclarationStatement* stmt = m_vdefn->get_definition();
   assert(stmt);

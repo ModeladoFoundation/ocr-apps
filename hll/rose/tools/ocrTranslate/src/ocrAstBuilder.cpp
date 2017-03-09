@@ -147,9 +147,8 @@ namespace AstBuilder {
     return depElemStructDecl;
   }
 
-  SgVariableDeclaration* buildOcrDbkDecl(SgName name, unsigned int index,
+  SgVariableDeclaration* buildOcrDbkDecl(SgName name, SgType* dbkPtrType, unsigned int index,
 					 SgInitializedName* depv,SgScopeStatement* scope) {
-    SgType* u64PtrType = buildu64PtrType(scope);
     SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
     assert(vsymbol);
     SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(vsymbol);
@@ -160,8 +159,8 @@ namespace AstBuilder {
     // Fix for avoiding ROSE Warnings
     scope->get_symbol_table()->insert(ptrVarSymbol->get_name(), ptrVarSymbol);
     SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, ptrVarRefExp);
-    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, u64PtrType);
-    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(name, u64PtrType, initializer, scope);
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, dbkPtrType);
+    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(name, dbkPtrType, initializer, scope);
     return vdecl;
   }
 
@@ -176,7 +175,8 @@ namespace AstBuilder {
     list<OcrDbkContextPtr>::iterator d = depDbks.begin();
     for(unsigned int index=0 ; d != depDbks.end(); ++d, ++index) {
       SgName vname = (*d)->getSgSymbol()->get_name();
-      SgVariableDeclaration* vdecl = buildOcrDbkDecl(vname, index, depv, scope);
+      SgType* dbkPtrType = (*d)->getDbkPtrType();
+      SgVariableDeclaration* vdecl = buildOcrDbkDecl(vname, dbkPtrType, index, depv, scope);
       SgStatement* declStmt = isSgStatement(vdecl);
       assert(declStmt);
       depDbksDecl.push_back(declStmt);
