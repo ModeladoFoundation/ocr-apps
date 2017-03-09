@@ -5,7 +5,11 @@
 #define ENABLE_EXTENSION_LABELING  // For labeled GUIDs
 #include "extensions/ocr-labeling.h"  // For labeled GUIDs
 
+#ifdef REDUCTION_EAGER
+#include "reductionEager.h"
+#else
 #include "reduction.h"
+#endif
 
 #include "ptest_FORforkjoin.h" //FFJ_Ledger_t
 
@@ -45,7 +49,14 @@ int DRmainEdt_fcn(DRshared_t * o_sharedRef, DRshared_t * o_shared, unsigned long
         err = init_DRshared(o_shared); IFEB;
 
         ocrGuid_t reductionRangeGUID = NULL_GUID;
-        err = ocrGuidRangeCreate(&reductionRangeGUID, in_nrank, GUID_USER_EVENT_STICKY); IFEB;
+        unsigned long rangeCount;
+#ifdef REDUCTION_EAGER
+        //Note: *2 is for eager reduction library double buffering I think
+        rangeCount = in_nrank*2;
+#else
+        rangeCount = in_nrank;
+#endif
+        err = ocrGuidRangeCreate(&reductionRangeGUID, rangeCount, GUID_USER_EVENT_STICKY); IFEB;
 
         GUID_ASSIGN_VALUE(o_sharedRef->reductionRangeGUID, reductionRangeGUID);
         GUID_ASSIGN_VALUE(o_shared->reductionRangeGUID, reductionRangeGUID);

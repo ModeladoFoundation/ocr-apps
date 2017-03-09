@@ -13,7 +13,11 @@ def theMain():
 
     OA.addHeader(G, '#define ENABLE_EXTENSION_LABELING')
     OA.addHeader(G, '#include "extensions/ocr-labeling.h"')
+    OA.addHeader(G, '#ifdef REDUCTION_EAGER')
+    OA.addHeader(G, '#include "reductionEager.h"')
+    OA.addHeader(G, '#else')
     OA.addHeader(G, '#include "reduction.h"')
+    OA.addHeader(G, '#endif')
     OA.addHeader(G, ' ')  # Just a blank line
 
     OA.addHeader(G, '#include "ptest_FORforkjoin.h"')
