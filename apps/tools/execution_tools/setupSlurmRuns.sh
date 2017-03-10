@@ -17,10 +17,17 @@ PHYSICAL_CORES_PER_NODE=16  #Available cores per node
 case $HOST_ID in
 edison*)
     PHYSICAL_CORES_PER_NODE=24
+    HT_CORES_PER_NODE=48
     ;;
 
-thor*)
+cori*)
+    PHYSICAL_CORES_PER_NODE=32
+    HT_CORES_PER_NODE=64
+    ;;
+
+thor*) # Not valid for all thor nodes
     PHYSICAL_CORES_PER_NODE=36
+    HT_CORES_PER_NODE=72
     ;;
 esac
 
@@ -780,11 +787,21 @@ for scalingtype in ${SCALINGTYPE_LIST[@]}; do
 
                 WORKLOAD_ARGS=`getworkloadargs $scalingtype $nodes $computeThreads $taskfactor $size $app_name mpi`
 
+                if [[ "${SRUN_AFFINITY}" = "yes" ]]; then
+                    REM=`echo "${HT_CORES_PER_NODE}%${computeThreads}" | bc`
+                    if [[ ${REM} != 0 ]]; then
+                    echo "WARNING: srun affinity binding failed"
+                    SRUN_OPTS=""
+                    else
+                    SRUN_OPTS="-c $((${HT_CORES_PER_NODE}/${computeThreads})) "
+                    fi
+                fi
+
                 echo $scalingtype $size $nodes $computeThreads
-                RUN_COMMAND=`echo srun --mpi=pmi2 -n $(($nodes*$computeThreads)) ./$ndir/$executableName ${WORKLOAD_ARGS}`
+                RUN_COMMAND=`echo srun --mpi=pmi2 -n $(($nodes*$computeThreads)) ${SRUN_OPTS} ./$ndir/$executableName ${WORKLOAD_ARGS}`
 
                 if [[ $app_name == *SBench ]]; then
-                RUN_COMMAND=`echo "export OMP_NUM_THREADS=$(($nodes*$computeThreads)); ./$ndir/$executableName ${WORKLOAD_ARGS}"`
+                RUN_COMMAND=`echo "export OMP_NUM_THREADS=$computeThreads; ./$ndir/$executableName ${WORKLOAD_ARGS}"`
                 fi
 
                 echo $RUN_COMMAND | tee run_command

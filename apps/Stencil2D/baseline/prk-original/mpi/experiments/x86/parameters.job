@@ -14,3 +14,4 @@ esac
 SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
 SIZE_LIST_STENCIL2D=("small" "medium")
 JOBHEADER="J"
+SRUN_AFFINITY="yes"

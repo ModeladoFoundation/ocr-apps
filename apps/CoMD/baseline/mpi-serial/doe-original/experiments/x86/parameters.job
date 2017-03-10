@@ -15,3 +15,4 @@ esac
 SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
 SIZE_LIST_COMD=("smallLJ" "smallEAM" "mediumLJ" "mediumEAM") # "largeLJ" "largeEAM") #largeEAM has a problem with MPI
 JOBHEADER="J"
+SRUN_AFFINITY="yes"
