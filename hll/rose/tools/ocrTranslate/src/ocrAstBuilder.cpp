@@ -195,13 +195,37 @@ namespace AstBuilder {
       // Add the statement into the current scope
       edt_stmts.push_back(*s);
     }
-    // Add a return NULL_GUID statement to the EDT
-    SgIntVal* zero = SageBuilder::buildIntVal(0);
-    string returnExp = "NULL_GUID";
-    SageInterface::addTextForUnparser(zero, returnExp, AstUnparseAttribute::e_replace);
-    SgStatement* returnStmt = SageBuilder::buildReturnStmt(zero);
-    edt_stmts.push_back(returnStmt);
     return edt_stmts;
+  }
+
+  SgStatement* buildOcrDbDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope) {
+    SgIntVal* slotExp = SageBuilder::buildIntVal(slot);
+    SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(depvSymbol);
+    SgPntrArrRefExp* depvArrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, slotExp);
+    SgVarRefExp* guidVarRefExp = SageBuilder::buildVarRefExp("guid", scope);
+    SgDotExp* argument = SageBuilder::buildDotExp(depvArrRefExp, guidVarRefExp);
+    vector<SgExpression*> args;
+    args.push_back(argument);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the statement
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrDbDestroy", SageBuilder::buildVoidType(), exprList, scope);
+    return stmt;
+  }
+
+  SgStatement* buildEvtDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope) {
+    SgIntVal* slotExp = SageBuilder::buildIntVal(slot);
+    SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(depvSymbol);
+    SgPntrArrRefExp* depvArrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, slotExp);
+    SgVarRefExp* guidVarRefExp = SageBuilder::buildVarRefExp("guid", scope);
+    SgDotExp* argument = SageBuilder::buildDotExp(depvArrRefExp, guidVarRefExp);
+    vector<SgExpression*> args;
+    args.push_back(argument);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the statement
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEventDestroy", SageBuilder::buildVoidType(), exprList, scope);
+    return stmt;
   }
 
   /****************************************

@@ -30,7 +30,7 @@ class OcrTaskPragmaParser {
   //! in-order traversal order in the AST where the pragma was encountered
   unsigned int m_taskOrder;
   boost::xpressive::sregex identifier, attr, param, paramlist;
-  boost::xpressive::sregex taskName, depEvts, depDbks, depElems, outEvts;
+  boost::xpressive::sregex taskName, depEvts, depDbks, depElems, outEvts, destroyDbks, destroyEvts;
   boost::xpressive::sregex taskBeginPragma;
  public:
   OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& objectManager,
@@ -47,6 +47,8 @@ class OcrTaskPragmaParser {
   bool matchIdentifier(std::string input_s, std::string& identifier_s);
   bool matchOutputEvtList(std::string input, std::list<std::string>& evtsNameToSatisfyList);
   bool matchOutputEvt(std::string input, std::string& outputEvt_s);
+  bool matchDestroyDbks(std::string input, std::list<std::string>& objectNamesToDestroy);
+  bool matchDestroyEvts(std::string input, std::list<std::string>& objectNamesToDestroy);
   SgVarRefExp* identifier2sgn(std::string identifier_);
   std::list<SgVarRefExp*> identifiers2sgnlist(std::list<std::string> identifierList);
  public:

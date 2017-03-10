@@ -136,6 +136,7 @@ OcrEvtContext::~OcrEvtContext() {
 OcrEdtContext::OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
 			     std::list<OcrDbkContextPtr> depDbks, OcrEvtContextPtr outputEvt,
 			     std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements,
+			     list<string> dbksToDestroy, list<string> evtsToDestroy,
 			     SgPragmaDeclaration* taskBegin, SgPragmaDeclaration* taskEnd)
   : m_name(name),
     m_depEvts(depEvts),
@@ -143,6 +144,8 @@ OcrEdtContext::OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEv
     m_outputEvt(outputEvt),
     m_depElems(depElems),
     m_statements(taskStatements),
+    m_dbksToDestroy(dbksToDestroy),
+    m_evtsToDestroy(evtsToDestroy),
     m_taskBegin(taskBegin),
     m_taskEnd(taskEnd) { }
 
@@ -184,6 +187,43 @@ SgPragmaDeclaration* OcrEdtContext::getTaskEndPragma() const {
   return m_taskEnd;
 }
 
+unsigned int OcrEdtContext::getDepDbkSlotNumber(string dbkname) const {
+  int slot = 0;
+  list<OcrDbkContextPtr>::const_iterator dbk = m_depDbks.begin();
+  for( ; dbk != m_depDbks.end(); ++dbk, ++slot) {
+    if(dbkname.compare((*dbk)->get_name()) == 0) {
+      return slot;
+    }
+  }
+  if(dbk == m_depDbks.end()) {
+    cerr << "ERROR: Cannot find " << dbkname << "in m_depDbks\n";
+    assert(false);
+  }
+}
+
+unsigned int OcrEdtContext::getDepEvtSlotNumber(string evtname) const {
+  // starting slot for evts is after datablocks
+  int slot = m_depDbks.size();
+  list<OcrEvtContextPtr>::const_iterator evt = m_depEvts.begin();
+  for( ; evt != m_depEvts.end(); ++evt, ++slot) {
+    if(evtname.compare((*evt)->get_name()) == 0) {
+      return slot;
+    }
+  }
+  if(evt == m_depEvts.end()) {
+    cerr << "ERROR: Cannot find " << evtname << "in m_depEvt\n";
+    assert(false);
+  }
+}
+
+list<string> OcrEdtContext::getDbksToDestroy() const {
+  return m_dbksToDestroy;
+}
+
+list<string> OcrEdtContext::getEvtsToDestroy() const {
+  return m_evtsToDestroy;
+}
+
 unsigned int OcrEdtContext::getNumDepElems() const {
   return m_depElems.size();
 }
@@ -211,6 +251,8 @@ string OcrEdtContext::str() const {
   oss << "]\n";
   oss << indent << "outEvt: " << m_outputEvt->str() << endl;
   oss << indent << "depElems: " << StrUtil::SgVarRefExpList2Str(m_depElems) << endl;
+  oss << indent << "dbksToDestroy: " << StrUtil::strlist2str(m_dbksToDestroy) << endl;
+  oss << indent << "evtsToDestroy: " << StrUtil::strlist2str(m_evtsToDestroy) << endl;
   oss << indent << "taskStmts:[\n" << StrUtil::stmtlist2str(m_statements, indent) << "]";
   oss << "]";
   return oss.str();
@@ -376,24 +418,28 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
 						  OcrEvtContextPtr outputEvt,
 						  list<SgVarRefExp*> depElems,
 						  list<SgStatement*> taskStatements,
+						  list<string> dbksToDestroy,
+						  list<string> evtsToDestroy,
 						  SgPragmaDeclaration* taskBegin,
 						  SgPragmaDeclaration* taskEnd) {
   OcrEdtObjectMap::iterator f = m_ocrEdtObjectMap.find(edtName);
   OcrEdtContextPtr edtcontext_sp;
   if(f != m_ocrEdtObjectMap.end()) {
     edtcontext_sp = boost::dynamic_pointer_cast<OcrEdtContext>(f->second);
+    assert(edtcontext_sp);
+    return edtcontext_sp;
   }
   else {
-    edtcontext_sp = boost::make_shared<OcrEdtContext>(edtName, depEvts,
-						      depDbks, outputEvt,
-						      depElems, taskStatements,
-						      taskBegin, taskEnd);
-
+    OcrEdtContextPtr edtcontext_sp(new OcrEdtContext(edtName, depEvts,
+						     depDbks, outputEvt,
+						     depElems, taskStatements,
+						     dbksToDestroy, evtsToDestroy,
+						     taskBegin, taskEnd));
     OcrEdtObjectMapElem elem(edtName, edtcontext_sp);
     m_ocrEdtObjectMap.insert(elem);
+    assert(edtcontext_sp);
+    return edtcontext_sp;
   }
-  assert(edtcontext_sp);
-  return edtcontext_sp;
 }
 
 bool OcrObjectManager::registerOcrShutdownEdt(SgPragmaDeclaration* shutdownPragma, list<OcrEvtContextPtr> depEvts) {

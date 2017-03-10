@@ -100,12 +100,15 @@ class OcrEdtContext : public OcrObjectContext {
   OcrEvtContextPtr m_outputEvt;
   std::list<SgVarRefExp*> m_depElems;
   std::list<SgStatement*> m_statements;
+  std::list<std::string> m_dbksToDestroy;
+  std::list<std::string> m_evtsToDestroy;
   SgPragmaDeclaration* m_taskBegin;
   SgPragmaDeclaration* m_taskEnd;
 public:
   OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
 		std::list<OcrDbkContextPtr> depDbks, OcrEvtContextPtr outputEvt,
 		std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements,
+		std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
 		SgPragmaDeclaration* taskBegin, SgPragmaDeclaration* taskEnd);
   std::string get_name() const;
   std::string str() const;
@@ -114,12 +117,16 @@ public:
   std::list<SgVarRefExp*> getDepElems() const;
   std::list<OcrDbkContextPtr> getDepDbks() const;
   std::list<OcrEvtContextPtr> getDepEvts() const;
+  std::list<std::string> getDbksToDestroy() const;
+  std::list<std::string> getEvtsToDestroy() const;
   OcrEvtContextPtr getOutputEvt() const;
   SgPragmaDeclaration* getTaskBeginPragma() const;
   SgPragmaDeclaration* getTaskEndPragma() const;
   unsigned int getNumDepElems() const;
   unsigned int getNumDepDbks() const;
   unsigned int getNumDepEvts() const;
+  unsigned int getDepDbkSlotNumber(std::string dbkname) const;
+  unsigned int getDepEvtSlotNumber(std::string evtname) const;
   ~OcrEdtContext();
 };
 
@@ -193,6 +200,8 @@ class OcrObjectManager {
 				  OcrEvtContextPtr outputEvt,
 				  std::list<SgVarRefExp*> depElems,
 				  std::list<SgStatement*> taskStatements,
+				  std::list<std::string> dbksToDestroy,
+				  std::list<std::string> evtsToDestroy,
 				  SgPragmaDeclaration* taskBegin,
 				  SgPragmaDeclaration* taskEnd);
   bool registerOcrEdtOrder(int order, std::string edtname);

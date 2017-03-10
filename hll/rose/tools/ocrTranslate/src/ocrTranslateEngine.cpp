@@ -355,9 +355,39 @@ void OcrTranslator::outlineEdt(string edtName, OcrEdtContextPtr edtContext) {
   SageInterface::appendStatement(depElemStructVar, basicblock);
   SageInterface::appendStatementList(depDbksDecl, basicblock);
   SageInterface::appendStatementList(edt_stmts, basicblock);
+  // 4. If we have any objects to destroy call their destroy methods
+  vector<SgStatement*> cleanupStmts;
+  list<string> dbksToDestroy = edtContext->getDbksToDestroy();
+  list<string>::iterator db = dbksToDestroy.begin();
+  SgVariableSymbol* depvSymbol = GetVariableSymbol(edt_params.back());
+  for( ; db != dbksToDestroy.end(); ++db) {
+    string dbkname = *db;
+    int slot = edtContext->getDepDbkSlotNumber(dbkname);
+    SgStatement* dbkDestroyCallExp = AstBuilder::buildOcrDbDestroyCallExp(slot, depvSymbol, basicblock);
+    cleanupStmts.push_back(dbkDestroyCallExp);
+  }
+  // cleanup any events
+  // list<string> evtsToDestroy = edtContext->getEvtsToDestroy();
+  // list<string>::iterator evt = evtsToDestroy.begin();
+  // for( ; evt != evtsToDestroy.end(); ++evt) {
+  //   string evtname = *evt;
+  //   int slot = edtContext->getDepEvtSlotNumber(evtname);
+  //   SgStatement* evtDestroyCallExp = AstBuilder::buildEvtDestroyCallExp(slot, depvSymbol, basicblock);
+  //   cleanupStmts.push_back(evtDestroyCallExp);
+  // }
+  SageInterface::appendStatementList(cleanupStmts, basicblock);
+
   // Replace depElem variable references
   DepElemVarRefExpPass replaceDepElemVarRefExp(basicblock, depElemStructName, edtContext->getDepElems());
   replaceDepElemVarRefExp.traverse(basicblock, postorder);
+
+  // Add a return NULL_GUID statement to the EDT
+  SgIntVal* zero = SageBuilder::buildIntVal(0);
+  string returnExp = "NULL_GUID";
+  SageInterface::addTextForUnparser(zero, returnExp, AstUnparseAttribute::e_replace);
+  SgStatement* returnStmt = SageBuilder::buildReturnStmt(zero);
+  SageInterface::appendStatement(returnStmt, basicblock);
+
   // EDT synthesis is complete
   // Insert them just before the main function
   // The correct thing to do however, is to insert the EDT function
