@@ -137,6 +137,18 @@ namespace StrUtil {
     return oss.str();
   }
 
+  string strlist2str(const list<string>& strList) {
+    ostringstream oss;
+    oss << "[";
+    list<string>::const_iterator l;
+    for(l = strList.begin(); l != strList.end(); ) {
+      oss << *l++;
+      if(l != strList.end()) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+  }
+
   string stmtlist2str(const list<SgNode*>& stmtlist, string indent) {
     ostringstream oss;
     list<SgNode*>::const_iterator s = stmtlist.begin();
