@@ -54,6 +54,8 @@ OcrTaskPragmaParser::OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager
   depDbks = *_s >> icase("DEP_DBKs") >> *_s >> by_ref(paramlist);
   depElems = *_s >> icase("DEP_ELEMs") >> *_s >> by_ref(paramlist);
   outEvts = *_s >> icase("OEVENT") >> *_s >> by_ref(paramlist);
+  destroyDbks = *_s >> icase("DESTROY_DBKs") >> *_s >> by_ref(paramlist);
+  destroyEvts = *_s >> icase("DESTROY_EVTs") >> *_s >> by_ref(paramlist);
   taskBeginPragma = taskName >> *_s >> depEvts >> *_s >> depDbks >> *_s >> depElems >> *_s;
 }
 
@@ -163,6 +165,24 @@ bool OcrTaskPragmaParser::matchOutputEvtList(string input, list<string>& evtsNam
   else throw MatchException("matchEvtsToSatisfy Exception\n");
 }
 
+bool OcrTaskPragmaParser::matchDestroyDbks(string input, list<string>& dbkNamesToDestroy) {
+  smatch match_results;
+  if(regex_search(input, match_results, destroyDbks)) {
+    string destroyMatch = match_results[0];
+    return matchParamList(destroyMatch, dbkNamesToDestroy);
+  }
+  return false;
+}
+
+bool OcrTaskPragmaParser::matchDestroyEvts(string input, list<string>& evtNamesToDestroy) {
+  smatch match_results;
+  if(regex_search(input, match_results, destroyEvts)) {
+    string destroyMatch = match_results[0];
+    return matchParamList(destroyMatch, evtNamesToDestroy);
+  }
+  return false;
+}
+
 bool OcrTaskPragmaParser::isMatchingPragma(SgNode* sgn) {
   if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {
     string pstr = sgpdecl->get_pragma()->get_pragma();
@@ -265,10 +285,18 @@ bool OcrTaskPragmaParser::match() {
       string outputEvt;
       matchOutputEvt(sgpdTaskEnd->get_pragma()->get_pragma(), outputEvt);
       OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outputEvt);
+
+      // Get List of OCR objects to destroy by this EDT
+      list<string> dbkNamesToDestroy;
+      matchDestroyDbks(sgpdTaskEnd->get_pragma()->get_pragma(), dbkNamesToDestroy);
+      list<string> evtNamesToDestroy;
+      matchDestroyEvts(sgpdTaskEnd->get_pragma()->get_pragma(), evtNamesToDestroy);
+
       // We have all the information we need for creating OcrEdtContext
       OcrEdtContextPtr edtcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, depEvtsContextPtrList,
 									 depDbksContextPtrList, outEvtContext,
 									 depElemsSgnList, taskStatementList,
+									 dbkNamesToDestroy, evtNamesToDestroy,
 									 m_sgpdecl, sgpdTaskEnd);
       // Register the in-order edt order for traversal
       m_ocrObjectManager.registerOcrEdtOrder(m_taskOrder, edtcontext_sp->get_name());
