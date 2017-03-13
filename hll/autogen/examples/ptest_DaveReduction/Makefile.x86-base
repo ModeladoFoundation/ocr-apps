@@ -58,7 +58,7 @@ endif
 REQ_LIBS := $(REDUCTION_TYPE) macros
 
 # Space separated list of source files
-SRCS := ptest_daveReduction.c timing.c app_ocr_util.c ptest_FORforkjoin.c z_ptest_daveReduction.c
+SRCS := tailrecursion.c ptest_daveReduction.c timing.c app_ocr_util.c ptest_FORforkjoin.c z_ptest_daveReduction.c
 
 CONFIG_FLAGS ?= --guid LABELED --binding seq
 

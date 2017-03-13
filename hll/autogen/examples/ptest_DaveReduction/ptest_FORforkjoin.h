@@ -16,6 +16,8 @@ typedef struct FFJ_Ledger {
     unsigned int nrank; //The number of simulated ranks
     unsigned long pdID;
 
+    long nb_iteration_for_recurB;
+
     TimeMark_t at_setup;
     TimeMark_t at_FORbegin;
     TimeMark_t at_FOR_transit_start;
@@ -26,6 +28,7 @@ typedef struct FFJ_Ledger {
     TimeMark_t at_DR_reduxA_stop_fcn;
     TimeMark_t at_DR_reduxB_start_fcn;
     TimeMark_t at_DR_reduxB_stop_fcn;
+    TimeMark_t cumulsum_DR_reduxB_stop_fcn;
 
     long OCR_affinityCount;
 
@@ -38,7 +41,10 @@ typedef struct FFJ_Ledger {
 #endif
 
 //In order to find out which strategies are available, see calculate_pid().
+
+#ifndef FFJ_AFFINITY_STRATEGY
 #define FFJ_AFFINITY_STRATEGY 1
+#endif
 
 #define FFJ_USE_CURRENT_PD ((unsigned long)-2)
 
@@ -54,7 +60,8 @@ int ffjMainEdt_fcn(ocrGuid_t * in_gDone, ocrGuid_t * o_gDone);
 int ffjFinalEdt_fcn(void);
 int ffjSetup_fcn(unsigned int in_nrank, FFJ_Ledger_t * o_ffjLedger,
                  ocrGuid_t * in_gDoneFOR, ocrGuid_t * o_gDoneFOR);
-int ffjFOR_fcn(int in_rank, FFJ_Ledger_t * in_ffjLedger, FFJ_Ledger_t * o_ffjLedger,
+int ffjFOR_fcn(int in_rank, unsigned long in_pdID,
+               FFJ_Ledger_t * in_ffjLedger, FFJ_Ledger_t * o_ffjLedger,
                ocrGuid_t * in_gDoneFOR, ocrGuid_t * o_gDoneFOR);
 int ffjFOR_Transist_start_fcn(FFJ_Ledger_t * io_ffjLedger);
 int ffjFOR_Transist_stop_fcn(FFJ_Ledger_t * io_ffjLedger);

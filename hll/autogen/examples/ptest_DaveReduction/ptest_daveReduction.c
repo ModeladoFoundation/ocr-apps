@@ -220,6 +220,9 @@ int DR_reduxB_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
 
         TimeMark_t t = getTime();
         in_ledger->at_DR_reduxB_stop_fcn = t;
+        TimeMark_t dt = t - in_ledger->at_DR_reduxB_start_fcn;
+        if(dt<0) dt=-dt; //Just to make sure we get something that is monotonously increasing.
+        in_ledger->cumulsum_DR_reduxB_stop_fcn += dt;
 
         ReducSum_t x = *in_sum;
         err = ocrDbDestroy( in_sum_guid ); IFEB;
@@ -253,7 +256,7 @@ void print_DR_Ledger_timings(FFJ_Ledger_t * in)
     TimeMark_t t_reduxA = in->at_DR_reduxA_stop_fcn - in->at_DR_reduxA_start_fcn;
     TimeMark_t t_reduxB = in->at_DR_reduxB_stop_fcn - in->at_DR_reduxB_start_fcn;
 
-    TIMEPRINT5("INFO: TIME: DR rank=%u/%u PD=%lu, reduxA,reduxB="TIMEF","TIMEF"\n",
-               in->rankid,in->nrank, in->pdID, t_reduxA, t_reduxB);
+    TIMEPRINT5("INFO: TIME: DR rank=%u/%u reduxA,reduxB,cumulReduxB="TIMEF","TIMEF","TIMEF"\n",
+               in->rankid,in->nrank, t_reduxA, t_reduxB, in->cumulsum_DR_reduxB_stop_fcn);
 }
 

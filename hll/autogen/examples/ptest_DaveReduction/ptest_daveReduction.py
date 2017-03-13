@@ -24,21 +24,26 @@ def theMain():
     OA.addHeader(G, '#include "ptest_daveReduction.h"')
     OA.addHeader(G, ' ')  # Just a blank line
 
+    OA.addHeader(G, '#include "tailrecursion.h"')
+
     # ----- Data Blocks
     dbk = OA.ocrDataBlock(); dbk.name = 'NULL_GUID'; dbk_nullGuid = dbk
     dbk = OA.ocrDataBlock(); dbk.name = 'gDone';     dbk.count = 1; dbk.type='ocrGuid_t';    dbk_gDone = dbk
     dbk = OA.ocrDataBlock(); dbk.name = 'gDoneROF';  dbk.count = 1; dbk.type='ocrGuid_t';    dbk_gDoneROF = dbk
+    dbk = OA.ocrDataBlock(); dbk.name = 'gDoneTR';   dbk.count = 1; dbk.type='ocrGuid_t';    dbk_gDoneTR = dbk
     dbk = OA.ocrDataBlock(); dbk.name = 'ffjLedger'; dbk.count = 1; dbk.type='FFJ_Ledger_t'; dbk_ffjLedger = dbk
 
     dbk=OA.ocrDataBlock(); dbk.name = 'DRprivate'; dbk.count=1; dbk.type='reductionPrivate_t'; dbk_DRprivate = dbk
     dbk=OA.ocrDataBlock(); dbk.name = 'SharedRef'; dbk.count=1; dbk.type='DRshared_t'; dbk_sharedRef = dbk
     dbk=OA.ocrDataBlock(); dbk.name = 'Shared';    dbk.count=1; dbk.type='DRshared_t'; dbk_shared = dbk
 
+    dbk = OA.ocrDataBlock(); dbk.name = 'TailRecurIterate'; dbk.count=1; dbk.type='TailRecurIterate_t'; dbk_tailRecurIterate = dbk
+
     # ----- NODES
     nc = OA.GBL.MAINNODE; taskName = "mainEdt"; OA.graphAddNode(G,nc,taskName)
-    dbk = copy.deepcopy(dbk_gDone);    dbk.flight = 'flTAKEOFF'; dbk.localname='o_ffjGDone'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDone);    dbk.flight = 'flTAKEOFF'; dbk.localname='o_ffjGDone';  OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_sharedRef);dbk.flight = 'flTAKEOFF'; dbk.localname='o_sharedRef'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_shared);dbk.flight = 'flTAKEOFF'; dbk.localname='o_shared'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_shared);   dbk.flight = 'flTAKEOFF'; dbk.localname='o_shared';    OA.addDataBlocks(G,nc,dbk)
     guid_finalEDT = OA.makeGuidEdtname('finalEDT')
     DR_mainedt_txt = 'err = DRmainEdt_fcn(o_sharedRef, o_shared, COUNT_FOR_FORKJOIN); IFEB;'
     OA.addCustomText(G, nc, DR_mainedt_txt)
@@ -56,7 +61,7 @@ def theMain():
     dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAKEOFF'; dbk.localname='o_ffjLedger';OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAKEOFF'; dbk.localname='o_gDoneROF'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_shared);    dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk);
-    dbk = copy.deepcopy(dbk_gDone);     dbk.flight = 'flTAGO';    OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDone);     dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
     guid_ffjROF = OA.makeGuidEdtname('ffjROF')
     ffjSetup_txt = 'err = ffjSetup_fcn(COUNT_FOR_FORKJOIN, o_ffjLedger, &'+ guid_ffjROF + ', o_gDoneROF); IFEB;'
     OA.addCustomText(G, nc, ffjSetup_txt)
@@ -68,19 +73,16 @@ def theMain():
     OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_shared); dbk.flight = 'flLANDING'; dbk.localname='in_DRshared'; dbk.delayReleaseDestroy = True
     OA.addDataBlocks(G,nc,dbk);
-    dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAKEOFF'; dbk.localname='o_ffjshared'; dbk.hint = 'pHintDBK'
-    OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAKEOFF'; dbk.localname='o_gDoneROF'; dbk.hint = 'pHintDBK'
-    OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_shared); dbk.flight = 'flTAKEOFF'; dbk.localname='o_DRshared'; dbk.hint = 'pHintDBK'
-    OA.addDataBlocks(G,nc,dbk);
+    dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAKEOFF'; dbk.localname='o_ffjshared';dbk.hint = 'pHintDBK'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAKEOFF'; dbk.localname='o_gDoneROF'; dbk.hint = 'pHintDBK'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_shared);    dbk.flight = 'flTAKEOFF'; dbk.localname='o_DRshared'; dbk.hint = 'pHintDBK'; OA.addDataBlocks(G,nc,dbk);
     fortext = 'int rank; for(rank=0; rank<in_ffjLedger->nrank; ++rank)'
     OA.addFORconditionText(G, nc, fortext)
     OA.addFORconditionText_startingclause(G,nc,'unsigned long pdID = calculate_pid(rank,in_ffjLedger->OCR_affinityCount,in_ffjLedger->nrank);')
     OA.addFORconditionText_startingclause(G,nc,'ocrHint_t hintEDT, *pHintEDT=0, hintDBK, *pHintDBK=0;')
     OA.addFORconditionText_startingclause(G,nc,'err = ocrXgetEdtHint(pdID, &hintEDT, &pHintEDT); IFEB;')
     OA.addFORconditionText_startingclause(G,nc,'err = ocrXgetDbkHint(pdID, &hintDBK, &pHintDBK); IFEB;')
-    ffjFOR_txt = 'err = ffjFOR_fcn(rank, in_ffjLedger, o_ffjshared, in_gDoneROF, o_gDoneROF); IFEB;'
+    ffjFOR_txt = 'err = ffjFOR_fcn(rank, pdID, in_ffjLedger, o_ffjshared, in_gDoneROF, o_gDoneROF); IFEB;'
     OA.addCustomText(G, nc, ffjFOR_txt)
     DR_FOR_txt = 'err = copy_DRshared(in_DRshared, o_DRshared); IFEB;'
     OA.addCustomText(G, nc, DR_FOR_txt)
@@ -92,7 +94,7 @@ def theMain():
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_shared); dbk.flight = 'flTAGO'; dbk.localname='in_DRshared'; OA.addDataBlocks(G,nc,dbk);
+    dbk = copy.deepcopy(dbk_shared);    dbk.flight = 'flTAGO'; dbk.localname='in_DRshared';  OA.addDataBlocks(G,nc,dbk);
     ffjFOR_Transist_start = 'err = ffjFOR_Transist_start_fcn(io_ffjLedger); IFEB;'
     OA.addCustomText(G, nc, ffjFOR_Transist_start)
 
@@ -103,7 +105,7 @@ def theMain():
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_shared); dbk.flight = 'flLANDING'; dbk.localname='in_DRshared'; OA.addDataBlocks(G,nc,dbk);
+    dbk = copy.deepcopy(dbk_shared);    dbk.flight = 'flLANDING'; dbk.localname='in_DRshared'; OA.addDataBlocks(G,nc,dbk);
     dbk = copy.deepcopy(dbk_DRprivate); dbk.flight = 'flTAKEOFF'; dbk.localname='o_DRprivate'; OA.addDataBlocks(G,nc,dbk)
     DR_init = 'err = DRinit_fcn(io_ffjLedger, in_DRshared, o_DRprivate); IFEB;'
     OA.addCustomText(G, nc, DR_init)
@@ -122,57 +124,110 @@ def theMain():
     guid_DR_reduxA_stop = OA.makeGuidEdtname('DR_reduxA_stop')
     multi_txtA = 'const unsigned int multiplier = DR_MULTIPLIER_A;'
     OA.addCustomText(G, nc, multi_txtA)
-    DR_reduxA_start = 'err = DR_reduxA_start_fcn(io_ffjLedger, multiplier, guid_DRprivate, io_DRprivate, SLOT4REDUCTION-1,' + guid_DR_reduxA_stop + '); IFEB;'
+    DR_reduxA_start = 'err = DR_reduxA_start_fcn(io_ffjLedger, multiplier, guid_DRprivate, io_DRprivate, SLOT4REDUCTION_A-1,' + guid_DR_reduxA_stop + '); IFEB;'
     OA.addCustomText(G, nc, DR_reduxA_start)
 
     nc += 1;  taskName="DR_reduxA_stop"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
-    OA.getMyTask(G,nc).depc = 'SLOT4REDUCTION'
+    OA.getMyTask(G,nc).depc = 'SLOT4REDUCTION_A'
     dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAGO'; dbk.localname='io_ffjLedger'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAGO';
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_DRprivate); dbk.flight = 'flTAGO'; dbk.localname='io_DRprivate';
-    dbk.addLocalText('    ocrEdtDep_t IN_BY_USER_depv_sum = depv[SLOT4REDUCTION-1];  //This will be LANDING here.')
+    dbk.addLocalText('    ocrEdtDep_t IN_BY_USER_depv_sum = depv[SLOT4REDUCTION_A-1];  //This will be LANDING here.')
     dbk.addLocalText('    ocrGuid_t in_sum_guid = IN_BY_USER_depv_sum.guid;')
     dbk.addLocalText('    ReducSum_t * in_sum = IN_BY_USER_depv_sum.ptr;')
     OA.addDataBlocks(G,nc,dbk)
     DR_reduxA_stop = 'err = DR_reduxA_stop_fcn(DR_MULTIPLIER_A, io_ffjLedger, in_sum, in_sum_guid); IFEB;'
     OA.addCustomText(G, nc, DR_reduxA_stop)
 
-    nc += 1;  taskName="DR_reduxB_start"; OA.graphAddNode(G,nc,taskName)
+    nc += 1;  taskName="setupTailRecursion"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
     dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAGO'; dbk.localname='io_ffjLedger'; OA.addDataBlocks(G,nc,dbk)
     dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAGO';
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_DRprivate); dbk.flight = 'flTAGO'; dbk.localname='io_DRprivate'; dbk.localnameGuid='guid_DRprivate';
+    dbk = copy.deepcopy(dbk_DRprivate);       dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDoneTR);         dbk.flight = 'flTAKEOFF'; dbk.localname='o_gDoneTR';          OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_tailRecurIterate);dbk.flight = 'flTAKEOFF'; dbk.localname='o_tailRecurIterate'; OA.addDataBlocks(G,nc,dbk)
+    guid_gDoneTR = OA.makeGuidEdtname('concludeTailRecursion')
+    setupTR_gdone_txt = '*o_gDoneTR = ' + guid_gDoneTR + ';'
+    OA.addCustomText(G, nc, setupTR_gdone_txt)
+    tailRecurSetupt = 'err = tailRecurInitialize(io_ffjLedger->nb_iteration_for_recurB, o_tailRecurIterate, '
+    tailRecurSetupt += OA.makeGuidEdtname("concludeTailRecursion") + '); IFEB;'
+    OA.addCustomText(G, nc, tailRecurSetupt)
+
+    nc += 1;  taskName="tailRecursionIFThen"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDoneTR);   dbk.flight = 'flTAGO';
+    dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_DRprivate); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; dbk.localname = 'io_tailRecurIterate';
+    dbk.addLocalText('    ocrGuid_t ' + OA.makeGuidEdtname("concludeTailRecursion") + ' = io_tailRecurIterate->whereToGoWhenDone;')
+    OA.addDataBlocks(G,nc,dbk)  # This DBK guid will be needed by the tailRecursionELSE part of this EDT.
+    tailRecurCondition_text = 'tailRecurCondition(io_tailRecurIterate)'
+    OA.addIFconditionText(G,nc,tailRecurCondition_text)
+    tailRecurTHEN_text = 'err = tailRecurIfThenClause(io_tailRecurIterate); IFEB;'
+    OA.addCustomText(G, nc, tailRecurTHEN_text)
+
+    nc += 1;  taskName="tailRecursionELSE"; OA.graphAddNode(G,nc,taskName)
+    # DBK local names are taken care off by the IF-THEN edt called "tailRecursionIFThen".
+    # Hint taken care by its If-THEN counterpart.
+    dbk = copy.deepcopy(dbk_ffjLedger);        dbk.flight = 'flTAGO';    dbk.localname='io_ffjLedger';      OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDoneTR);          dbk.flight = 'flLANDING';                                    OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_DRprivate);        dbk.flight = 'flLANDING';                                    OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flLANDING'; dbk.localname='io_tailRecurIterate'; OA.addDataBlocks(G,nc,dbk)
+    tailRecurELSE_text = 'err = tailRecurElseClause(io_tailRecurIterate); IFEB;'
+    OA.addCustomText(G, nc, tailRecurELSE_text)
+
+    nc += 1;  taskName="DR_reduxB_start"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_ffjLedger);        dbk.flight = 'flTAGO'; dbk.localname='io_ffjLedger'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDoneTR);          dbk.flight = 'flTAGO';
+    dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_DRprivate);        dbk.flight = 'flTAGO'; dbk.localname='io_DRprivate'; dbk.localnameGuid='guid_DRprivate';
     dbk.user2destroyORrelease = True;
     dbk.addLocalText('//It is expected that the user will release the ReducPrivate data block.')
     OA.addDataBlocks(G,nc,dbk)
     guid_DR_reduxB_stop = OA.makeGuidEdtname('DR_reduxB_stop')
     multi_txtB = 'const unsigned int multiplier = DR_MULTIPLIER_B;'
     OA.addCustomText(G, nc, multi_txtB)
-    DR_reduxB_start = 'err = DR_reduxB_start_fcn(io_ffjLedger, multiplier, guid_DRprivate, io_DRprivate, SLOT4REDUCTION-1,' + guid_DR_reduxB_stop + '); IFEB;'
+    DR_reduxB_start = 'err = DR_reduxB_start_fcn(io_ffjLedger, multiplier, guid_DRprivate, io_DRprivate, SLOT4REDUCTION_B-1,' + guid_DR_reduxB_stop + '); IFEB;'
     OA.addCustomText(G, nc, DR_reduxB_start)
 
     nc += 1;  taskName="DR_reduxB_stop"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
-    OA.getMyTask(G,nc).depc = 'SLOT4REDUCTION'
-    dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAGO'; dbk.localname='io_ffjLedger'; OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAGO';
+    OA.getMyTask(G,nc).depc = 'SLOT4REDUCTION_B'
+    dbk = copy.deepcopy(dbk_tailRecurIterate); dbk.flight = 'flTAGO'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAGO'; dbk.localname='io_ffjLedger';
     dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
     dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
     OA.addDataBlocks(G,nc,dbk)
-    dbk = copy.deepcopy(dbk_DRprivate); dbk.flight = 'flLANDING'; dbk.localname='in_DRprivate';
-    dbk.addLocalText('    ocrEdtDep_t IN_BY_USER_depv_sum = depv[SLOT4REDUCTION-1];  //This will be LANDING here.')
+    dbk = copy.deepcopy(dbk_gDoneTR);  dbk.flight = 'flTAGO';  dbk.localname='io_gDoneTR'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_DRprivate); dbk.flight = 'flTAGO';
+    dbk.addLocalText('    ocrEdtDep_t IN_BY_USER_depv_sum = depv[SLOT4REDUCTION_B-1];  //This will be LANDING here.')
     dbk.addLocalText('    ocrGuid_t in_sum_guid = IN_BY_USER_depv_sum.guid;')
     dbk.addLocalText('    ReducSum_t * in_sum = IN_BY_USER_depv_sum.ptr;')
     OA.addDataBlocks(G,nc,dbk)
     DR_reduxB_stop = 'err = DR_reduxB_stop_fcn(DR_MULTIPLIER_B, io_ffjLedger, in_sum, in_sum_guid); IFEB;'
     OA.addCustomText(G, nc, DR_reduxB_stop)
+
+    nc += 1;  taskName="concludeTailRecursion"; OA.graphAddNode(G,nc,taskName)
+    OA.getMyTask(G,nc).hint = 'pHintEDT'
+    dbk = copy.deepcopy(dbk_ffjLedger); dbk.flight = 'flTAGO'; dbk.localname='io_ffjLedger'; OA.addDataBlocks(G,nc,dbk)
+    dbk = copy.deepcopy(dbk_gDoneROF);  dbk.flight = 'flTAGO';
+    dbk.addLocalText('    ocrHint_t hintEDT, *pHintEDT=0;')
+    dbk.addLocalText('    err = ocrXgetEdtHint(FFJ_USE_CURRENT_PD, &hintEDT, &pHintEDT); IFEB;')
+    OA.addDataBlocks(G,nc,dbk)
 
     nc += 1;  taskName="ffjFOR_Transist_stop"; OA.graphAddNode(G,nc,taskName)
     OA.getMyTask(G,nc).hint = 'pHintEDT'
@@ -199,67 +254,113 @@ def theMain():
 
     # ----- EDGES
     ledg = OA.graphAddEdge(G, "mainEdt", "finalEDT", "SharedRef")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('SharedRef')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('SharedRef')
     ledg = OA.graphAddEdge(G, "mainEdt", "ffjSetup", "gDone")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone')
     ledg = OA.graphAddEdge(G, "mainEdt", "ffjSetup", "Shared")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('Shared')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('Shared')
 
     ledg = OA.graphAddEdge(G, "ffjSetup", "ffjROF", "gDone")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDone')
     ledg = OA.graphAddEdge(G, "ffjSetup", "ffjFOR", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
     ledg = OA.graphAddEdge(G, "ffjSetup", "ffjFOR", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
     ledg = OA.graphAddEdge(G, "ffjSetup", "ffjFOR", "Shared")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
 
     ledg = OA.graphAddEdge(G, "ffjFOR", "ffjFOR_Transist_start", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
     ledg = OA.graphAddEdge(G, "ffjFOR", "ffjFOR_Transist_start", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
     ledg = OA.graphAddEdge(G, "ffjFOR", "ffjFOR_Transist_start", "Shared")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('Shared')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('Shared')
 
     ledg = OA.graphAddEdge(G, "ffjFOR_Transist_start", "DR_init", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
     ledg = OA.graphAddEdge(G, "ffjFOR_Transist_start", "DR_init", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
     ledg = OA.graphAddEdge(G, "ffjFOR_Transist_start", "DR_init", "Shared")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('Shared')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('Shared')
 
     ledg = OA.graphAddEdge(G, "DR_init", "DR_reduxA_start", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
     ledg = OA.graphAddEdge(G, "DR_init", "DR_reduxA_start", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
     ledg = OA.graphAddEdge(G, "DR_init", "DR_reduxA_start", "DRprivate")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
 
     ledg = OA.graphAddEdge(G, "DR_reduxA_start", "DR_reduxA_stop", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
     ledg = OA.graphAddEdge(G, "DR_reduxA_start", "DR_reduxA_stop", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
     ledg = OA.graphAddEdge(G, "DR_reduxA_start", "DR_reduxA_stop", "DRprivate")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
 
-    ledg = OA.graphAddEdge(G, "DR_reduxA_stop", "DR_reduxB_start", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
-    ledg = OA.graphAddEdge(G, "DR_reduxA_stop", "DR_reduxB_start", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
-    ledg = OA.graphAddEdge(G, "DR_reduxA_stop", "DR_reduxB_start", "DRprivate")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    ledg = OA.graphAddEdge(G, "DR_reduxA_stop", "setupTailRecursion", "gDoneROF")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    ledg = OA.graphAddEdge(G, "DR_reduxA_stop", "setupTailRecursion", "ffjLedger")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    ledg = OA.graphAddEdge(G, "DR_reduxA_stop", "setupTailRecursion", "DRprivate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
 
-    ledg = OA.graphAddEdge(G, "DR_reduxB_start", "DR_reduxB_stop", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    ledg = OA.graphAddEdge(G, "setupTailRecursion", "concludeTailRecursion", "gDoneROF")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "gDoneTR")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneTR')
+    tailRecur_gDoneTR_edge=ledg[0]
+    ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "ffjLedger")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    tailRecur_ffjLedger_edge=ledg[0]
+    ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "DRprivate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    tailRecur_DRprivate_edge=ledg[0]
+    ledg = OA.graphAddEdge(G, "setupTailRecursion", "tailRecursionIFThen", "TailRecurIterate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('TailRecurIterate')
+    tailRecur_TRiterate_edge=ledg[0]
+
+    ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "DR_reduxB_start", "gDoneTR")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "DR_reduxB_start", "ffjLedger")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "DR_reduxB_start", "DRprivate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    ledg = OA.graphAddEdge(G, "tailRecursionIFThen", "DR_reduxB_start", "TailRecurIterate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('TailRecurIterate')
+
+    ledg = OA.graphAddEdge(G, "DR_reduxB_start", "DR_reduxB_stop", "gDoneTR")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
     ledg = OA.graphAddEdge(G, "DR_reduxB_start", "DR_reduxB_stop", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
     ledg = OA.graphAddEdge(G, "DR_reduxB_start", "DR_reduxB_stop", "DRprivate")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    ledg = OA.graphAddEdge(G, "DR_reduxB_start", "DR_reduxB_stop", "TailRecurIterate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('TailRecurIterate')
 
-    ledg = OA.graphAddEdge(G, "DR_reduxB_stop", "ffjFOR_Transist_stop", "gDoneROF")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
-    ledg = OA.graphAddEdge(G, "DR_reduxB_stop", "ffjFOR_Transist_stop", "ffjLedger")
-    OA.getEvent(G, ledg).accessmode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    ledg = OA.graphAddEdge(G, "DR_reduxB_stop", "tailRecursionIFThen", "gDoneTR")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneTR')
+    OA.sharedConx(G, ledg[0]).append(tailRecur_gDoneTR_edge)
+    ledg = OA.graphAddEdge(G, "DR_reduxB_stop", "tailRecursionIFThen", "ffjLedger")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.sharedConx(G, ledg[0]).append(tailRecur_ffjLedger_edge)
+    ledg = OA.graphAddEdge(G, "DR_reduxB_stop", "tailRecursionIFThen", "DRprivate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('DRprivate')
+    OA.sharedConx(G, ledg[0]).append(tailRecur_DRprivate_edge)
+    ledg = OA.graphAddEdge(G, "DR_reduxB_stop", "tailRecursionIFThen", "TailRecurIterate")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('TailRecurIterate')
+    OA.sharedConx(G, ledg[0]).append(tailRecur_TRiterate_edge)
+
+    ledg=OA.graphAddEdge(G, "tailRecursionIFThen", "tailRecursionELSE", "NULL_GUID")
+    OA.getEdge(G, ledg[0])["leads_to_ElseClause"] = True
+
+    ledg = OA.graphAddEdge(G, "tailRecursionELSE", "concludeTailRecursion", "ffjLedger")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
+    OA.getEvent(G, ledg).fertile = False
+
+    ledg = OA.graphAddEdge(G, "concludeTailRecursion", "ffjFOR_Transist_stop", "gDoneROF")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RO'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('gDoneROF')
+    ledg = OA.graphAddEdge(G, "concludeTailRecursion", "ffjFOR_Transist_stop", "ffjLedger")
+    OA.getEvent(G, ledg).accessMode = 'DB_MODE_RW'; OA.getEvent(G, ledg).satisfy = OA.makeGuidDataBlockname('ffjLedger')
 
     ledg = OA.graphAddEdge(G, "ffjFOR_Transist_stop", "ffjROF", "NULL_GUID")
     OA.getEvent(G, ledg).eflag = 'EVT_PROP_NONE'; OA.getEvent(G, ledg).satisfy = 'NULL_GUID'

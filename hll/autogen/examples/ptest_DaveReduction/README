@@ -16,9 +16,6 @@
       When commented out, the receiving EDT will still get a DBK, mimicking what
       the usual ALLREDUCE does.
 
-    -  If the number of entries in either EDTs, called DR_reduxA_stop and DR_reduxB_stop,
-       is changed, the macro constant "SLOT4REDUCTION" will also have to be changed.
-
     - All ALLREDUCE operations is done using type "double" scalar with the addition
       operator.
 
@@ -28,5 +25,33 @@
     - The function "calculate_pid" is where the policy domain attribution
       calculated.  Provide your own function for a different attribution.
 
+= The following is a list of the constants used:
+
+  - COUNT_FOR_FORKJOIN in the file "ptest_FORforkjoin.h"
+        This defines the number of MPI-equivalent "ranks" to used.
+
+  - RECURB_ITER_COUNT in the file "ptest_FORforkjoin.c" is the constant which
+    specifies the number of tail iterations to do, i.e. the number of
+    reduction B which will be done.  By default, it is set to 100 iterations.
+
+  - The following 2 constants from the file "ptest_Davereduction.h"
+        SLOT4REDUCTION_A
+        SLOT4REDUCTION_B
+    determines which the slot number and offset for each of the reductions.
+    -->IMPORTANT: If the data flows changes, and these constants are not properly
+                  set, the code will hang.
+
+  - The number of times the reduction A is called is one.
+    The number of times the reduction B is called depends on the value given to
+        io->nb_iteration_for_recurB
+    in ptest_FORforkjoin.c::init_FFJ_Ledger()
+
+  - Uncommenting the constant TAILRECURSION_VERBOSE in file "tailrecursion.c"
+    causes the tail recursion to output a lot of comments.
+
+  - The constant FFJ_AFFINITY_STRATEGY in "ptest_FORforkjoin.h" determines which
+    affinity strategy to use.  The strategies are selected in the function "ptest_FORforkjoin.h::calculate_pid()"
+    By default, it is set to strategy 1, a simple compact stacking of the
+    virtual MPI ranks in the different policy domains.
 
 

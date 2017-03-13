@@ -23,19 +23,34 @@ echo "FNAME= $FNAME"
 echo "TotalRunTime= $TOTAL_RUN_TIME in seconds"
 echo "All other measurements in micro-seconds."
 
+#Processing for number of iterations
+#   INFO: FFJ_Ledger: Number of iterationB requested= 100
+LABEL='iterationB'
+ITER_COUNT="$(grep iterationB z_log|tr '=' '\n'|grep -v iteration)"
+echo "$LABEL= $ITER_COUNT"
+
 #Processing lines for reduxA
-#   INFO: TIME: DR rank=2/8 reduxA,reduxB=288,83
+#   INFO: TIME: DR rank=1/8 reduxA,reduxB,cumulReduxB=1402,408,38570
 LABEL='reduxA'
-A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f6|tr '=' '\n'|grep -v $LABEL|cut -d',' -f1)"
+A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f1)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"
 printf '%16s  %s\n' "$LABEL" "$STATS"
 
 #Processing lines for reduxB
-#   INFO: TIME: DR rank=2/8 reduxA,reduxB=288,83
+#   INFO: TIME: DR rank=1/8 reduxA,reduxB,cumulReduxB=1402,408,38570
 LABEL='reduxB'
-A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f6|tr '=' '\n'|grep -v $LABEL|cut -d',' -f2)"
+A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f2)"
+#dbg> echo $A
+printf "%s\n" "${A[@]}" > $OUTF
+STATS="$(python y_calc_stats.py $OUTF)"
+printf '%16s  %s\n' "$LABEL" "$STATS"
+
+#Processing lines for cumulReduxB
+#   INFO: TIME: DR rank=1/8 reduxA,reduxB,cumulReduxB=1402,408,38570
+LABEL='cumulReduxB'
+A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f3)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
 STATS="$(python y_calc_stats.py $OUTF)"

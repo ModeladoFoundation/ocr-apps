@@ -53,7 +53,7 @@ TARGET := z_ptest_daveReduction
 REQ_LIBS := libc macros
 
 # Space separated list of source files
-SRCS := ptest_daveReduction.c timing.c app_ocr_util.c ptest_FORforkjoin.c z_ptest_daveReduction.c
+SRCS := tailrecursion.c ptest_daveReduction.c timing.c app_ocr_util.c ptest_FORforkjoin.c z_ptest_daveReduction.c
 
 CONFIG_FLAGS := --guid LABELED
 # Additional CFLAGS. By default, it includes

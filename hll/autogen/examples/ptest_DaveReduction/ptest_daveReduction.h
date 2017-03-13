@@ -9,7 +9,8 @@
 #define DR_ENABLE_REDUCTION_A //Comment this out in order to disable the allreduce operation in reduxA
 #define DR_ENABLE_REDUCTION_B //Comment this out in order to disable the allreduce operation in reduxB
 
-#define SLOT4REDUCTION 4
+#define SLOT4REDUCTION_A 4
+#define SLOT4REDUCTION_B 5  //This includes the slot for reduction.
 
 typedef double ReducSum_t;
 #define REDUC_OPERATION_TYPE REDUCTION_F8_ADD
