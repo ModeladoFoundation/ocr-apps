@@ -204,6 +204,10 @@ namespace AstBuilder {
     SgPntrArrRefExp* depvArrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, slotExp);
     SgVarRefExp* guidVarRefExp = SageBuilder::buildVarRefExp("guid", scope);
     SgDotExp* argument = SageBuilder::buildDotExp(depvArrRefExp, guidVarRefExp);
+    // Fix for ROSE Warnings
+    SgVariableSymbol* guidSymbol = guidVarRefExp->get_symbol();
+    assert(guidSymbol);
+    scope->insert_symbol(guidSymbol->get_name(), guidSymbol);
     vector<SgExpression*> args;
     args.push_back(argument);
     // Build the argument list
@@ -414,7 +418,7 @@ namespace AstBuilder {
     // placeholder expression
     SgIntVal* eventType = SageBuilder::buildIntVal();
     // For now we will create idempotent events
-    string eventTypeStr = "OCR_EVENT_IDEM_T";
+    string eventTypeStr = "OCR_EVENT_STICKY_T";
     SageInterface::addTextForUnparser(eventType, eventTypeStr, AstUnparseAttribute::e_replace);
     args.push_back(eventType);
     SgIntVal* flags = SageBuilder::buildIntVal();
