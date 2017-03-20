@@ -63,7 +63,7 @@ CFLAGS := -DENABLE_EXTENSION_CHANNEL_EVT -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lspmd $(EXTRALDFLAGS)
+LDFLAGS := -lpthread -lspmd
 
 # Targets:
 #   - all:     Build the application.

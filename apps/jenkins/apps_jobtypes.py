@@ -73,7 +73,7 @@ jobtype_ocr_build_app_tg = {
                   'APPS_ROOT_PRIV': '${JJOB_PRIVATE_HOME}/apps/apps',
                   'OCR_ROOT': '${JJOB_PRIVATE_HOME}/ocr/ocr',
                   'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
-                  'OCR_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/xstack/ocr/build',
+                  'OCR_BUILD_ROOT': '${JJOB_PRIVATE_HOME}/ocr/ocr/build',
                   'APPS_MAKEFILE': '${APPS_ROOT}/${T_PATH}/Makefile',
                   'S_PATH':'${T_PATH}',
                   'B_PATH': '${T_PATH}/build',

@@ -42,6 +42,10 @@ ifeq ($(OCRRUN_ITAC), yes)
   CFLAGS += -fno-omit-frame-pointer
 endif
 
+ifeq ($(OCR_TYPE), x86-gasnet)
+  LDFLAGS += -L${GASNET_ROOT}/lib -lgasnet-${GASNET_CONDUIT}-${GASNET_TYPE} ${GASNET_EXTRA_LIBS}
+endif
+
 ifeq ($(OCR_ASAN), yes)
   ASAN_FLAGS := -g -fsanitize=address -fno-omit-frame-pointer
   CFLAGS += $(ASAN_FLAGS)

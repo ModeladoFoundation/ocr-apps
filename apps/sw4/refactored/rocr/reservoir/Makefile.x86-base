@@ -64,7 +64,7 @@ CFLAGS_WARN_ERROR = no
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -Wl,-rpath="$(WORKLOAD_SRC)" -L $(WORKLOAD_SRC) -lrstream_ocr -lm -pthread $(EXTRALDFLAGS)
+LDFLAGS := -Wl,-rpath="$(WORKLOAD_SRC)" -L $(WORKLOAD_SRC) -lrstream_ocr -lm -pthread
 
 # Targets:
 #   - all:     Build the application.

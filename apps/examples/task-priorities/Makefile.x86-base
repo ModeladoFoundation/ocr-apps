@@ -61,7 +61,7 @@ CFLAGS :=
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread $(EXTRALDFLAGS)
+LDFLAGS := -lpthread
 
 # Flags for the OCR config file generator
 # These are necessary for this test to run correctly

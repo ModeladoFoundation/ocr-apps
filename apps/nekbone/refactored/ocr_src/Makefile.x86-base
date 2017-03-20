@@ -73,8 +73,8 @@ CFLAGS += -DOCR_DEBUG_LVL=DEBUG_LVL_WARN
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lreduction -lpthread -lm $(EXTRALDFLAGS)
-#LDFLAGS := -lreduction -lpthread -lm $(ASAN_FLAGS) $(EXTRALDFLAGS)
+LDFLAGS := -lreduction -lpthread -lm
+#LDFLAGS := -lreduction -lpthread -lm $(ASAN_FLAGS)
 
 # Targets:
 #   - all:     Build the application.

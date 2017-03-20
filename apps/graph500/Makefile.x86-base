@@ -63,7 +63,7 @@ CFLAGS := -DNO_MAP --std=c99
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm $(EXTRALDFLAGS)
+LDFLAGS := -lpthread -lm
 
 # Targets:
 #   - all:     Build the application.

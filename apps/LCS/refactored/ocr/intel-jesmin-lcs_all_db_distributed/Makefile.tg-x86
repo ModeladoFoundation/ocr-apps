@@ -2,9 +2,7 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
-CONFIG_COMM_LAYER=gasnet
-
-OCR_TYPE := x86-gasnet
+OCR_TYPE := tg-x86
 
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(TOP)/Makefile.x86-base

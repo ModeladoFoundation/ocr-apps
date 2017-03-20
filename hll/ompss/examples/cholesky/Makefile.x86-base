@@ -72,7 +72,7 @@ CFLAGS := -DMKL_ILP64 -I/opt/intel/tools/mkl/include
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS_OMPSS := -L$(NANOS_HOME)/lib -lnanos6
-LDFLAGS := -ltimer $(EXTRALDFLAGS) -L/opt/intel/tools/mkl/lib/intel64 -Wl,-rpath,/opt/intel/tools/mkl/lib/intel64 -lmkl_intel_ilp64 -lmkl_core -lmkl_sequential -lm -ldl
+LDFLAGS := -ltimer -L/opt/intel/tools/mkl/lib/intel64 -Wl,-rpath,/opt/intel/tools/mkl/lib/intel64 -lmkl_intel_ilp64 -lmkl_core -lmkl_sequential -lm -ldl
 
 # Targets:
 #   - all:     Build the application.

@@ -3,6 +3,7 @@
 # removed or modified.
 
 CONFIG_COMM_LAYER=gasnet
+EXTRALDFLAGS=-L${GASNET_ROOT}/lib -lgasnet-${GASNET_CONDUIT}-${GASNET_TYPE} ${GASNET_EXTRA_LIBS}
 
 OCR_TYPE := x86-gasnet
 
