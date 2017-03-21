@@ -49,7 +49,7 @@ RUN_MODE ?=
 STATIC_SCHEDULER ?= 0
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
-CC := icc
+#CC := icc
 
 ## END of variables coming from user/environment
 

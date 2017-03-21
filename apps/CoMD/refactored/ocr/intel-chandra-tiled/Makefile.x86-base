@@ -49,7 +49,7 @@ RUN_MODE ?=
 STATIC_SCHEDULER ?= 0
 
 ## END of variables coming from user/environment
-CC := icc
+#CC := icc
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 

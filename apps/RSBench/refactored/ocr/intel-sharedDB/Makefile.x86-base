@@ -46,7 +46,7 @@ RUN_TORQUE ?= no
 RUN_MODE ?=
 
 ## END of variables coming from user/environment
-CC := icc
+#CC := icc
 
 CONFIG_FLAGS=--guid LABELED --binding seq
 
