@@ -26,7 +26,6 @@ INSTALL_HEADERS := $(patsubst $(SRC_DIR)%.h,$(APPS_LIBS_INSTALL)/include/%.h, $(
 INSTALL_LIBS    := $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 ### Compilation rules ####
-PREFIX := $(TG_INSTALL)/bin/xstg-linux-elf
 
 CC ?= gcc
 AR := ar

@@ -6,5 +6,7 @@ CONFIG_COMM_LAYER=gasnet
 
 OCR_TYPE := x86-gasnet
 
+$(error NQueens OCR implementation not compliant with distributed-OCR (see bug #1005))
+
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(TOP)/Makefile.x86-base
