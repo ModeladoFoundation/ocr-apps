@@ -31,7 +31,7 @@ class OcrTaskPragmaParser {
   unsigned int m_taskOrder;
   boost::xpressive::sregex identifier, attr, param, paramlist;
   boost::xpressive::sregex taskName, depEvts, depDbks, depElems, outEvts, destroyDbks, destroyEvts;
-  boost::xpressive::sregex taskBeginPragma;
+  boost::xpressive::sregex taskRegEx;
  public:
   OcrTaskPragmaParser(const char* pragmaStr, OcrObjectManager& objectManager,
 		      SgPragmaDeclaration* sgpdecl, unsigned int taskOrder);
@@ -51,10 +51,10 @@ class OcrTaskPragmaParser {
   bool matchDestroyEvts(std::string input, std::list<std::string>& objectNamesToDestroy);
   SgVarRefExp* identifier2sgn(std::string identifier_);
   std::list<SgVarRefExp*> identifiers2sgnlist(std::list<std::string> identifierList);
+  SgBasicBlock* getTaskBasicBlock();
  public:
   bool match();
   bool isMatchingPragma(SgNode* sgn);
-  std::list<SgStatement*> collectTaskStatements();
   std::string strlist2str(std::list<std::string>& identifiersList) const;
 };
 
@@ -93,7 +93,7 @@ class OcrDbkPragmaParser {
   SgSymbol* find_symbol(SgNode* sgn);
  public:
   OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& objectManager);
-  std::list<SgInitializedName*> collectDbkVars();
+  std::list<SgInitializedName*> collectDbkVars(unsigned int ndbks);
   std::list<SgStatement*> varFilterAllocStmt(std::list<SgStatement*>& allocStmtList, SgInitializedName* sgn);
   std::list<SgStatement*> collectAllocStmt(SgNode* root);
   std::list<SgStatement*> getAllocStmt(SgInitializedName* sgn);

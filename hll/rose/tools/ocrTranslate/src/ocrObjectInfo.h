@@ -56,15 +56,17 @@ class OcrDbkContext : public OcrObjectContext {
   std::string m_name;
   SgInitializedName* m_vdefn;
   std::list<SgStatement*> m_allocStmts;
+  SgPragmaDeclaration* m_pragma;
 public:
   OcrDbkContext(std::string name);
-  OcrDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgStatement*> allocStmt);
+  OcrDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgStatement*> allocStmt, SgPragmaDeclaration* pragma);
   SgSymbol* getSgSymbol();
   SgDeclarationStatement* get_declaration() const;
   SgInitializedName* getSgInitializedName() const;
   SgType* getDbkPtrType();
   std::list<SgStatement*> get_allocStmts() const;
   std::string get_name() const;
+  SgPragmaDeclaration* get_pragma() const;
   std::string str() const;
   ~OcrDbkContext();
 };
@@ -97,31 +99,29 @@ class OcrEdtContext : public OcrObjectContext {
   std::string m_name;
   std::list<OcrEvtContextPtr> m_depEvts;
   std::list<OcrDbkContextPtr> m_depDbks;
-  OcrEvtContextPtr m_outputEvt;
   std::list<SgVarRefExp*> m_depElems;
-  std::list<SgStatement*> m_statements;
+  OcrEvtContextPtr m_outputEvt;
+  SgBasicBlock* m_basicblock;
   std::list<std::string> m_dbksToDestroy;
   std::list<std::string> m_evtsToDestroy;
-  SgPragmaDeclaration* m_taskBegin;
-  SgPragmaDeclaration* m_taskEnd;
+  SgPragmaDeclaration* m_sgpdecl;
 public:
-  OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
-		std::list<OcrDbkContextPtr> depDbks, OcrEvtContextPtr outputEvt,
-		std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements,
+  OcrEdtContext(std::string name, std::list<OcrDbkContextPtr> depDbks,
+		std::list<OcrEvtContextPtr> depEvts, std::list<SgVarRefExp*> depElems,
+		OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
 		std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
-		SgPragmaDeclaration* taskBegin, SgPragmaDeclaration* taskEnd);
+		SgPragmaDeclaration* spgdecl);
   std::string get_name() const;
   std::string str() const;
   SgSourceFile* getSourceFile();
-  std::list<SgStatement*> getStmtList() const;
+  SgBasicBlock* getTaskBasicBlock() const;
   std::list<SgVarRefExp*> getDepElems() const;
   std::list<OcrDbkContextPtr> getDepDbks() const;
   std::list<OcrEvtContextPtr> getDepEvts() const;
   std::list<std::string> getDbksToDestroy() const;
   std::list<std::string> getEvtsToDestroy() const;
   OcrEvtContextPtr getOutputEvt() const;
-  SgPragmaDeclaration* getTaskBeginPragma() const;
-  SgPragmaDeclaration* getTaskEndPragma() const;
+  SgPragmaDeclaration* getTaskPragma() const;
   unsigned int getNumDepElems() const;
   unsigned int getNumDepDbks() const;
   unsigned int getNumDepEvts() const;
@@ -194,16 +194,12 @@ class OcrObjectManager {
   // Functions to create shared_ptr for OcrContext
   std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
   OcrEvtContextPtr registerOcrEvt(std::string evtName);
-  OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgStatement*> allocStmts);
-  OcrEdtContextPtr registerOcrEdt(std::string edtName, std::list<OcrEvtContextPtr> depEvts,
-				  std::list<OcrDbkContextPtr> depDbks,
-				  OcrEvtContextPtr outputEvt,
-				  std::list<SgVarRefExp*> depElems,
-				  std::list<SgStatement*> taskStatements,
-				  std::list<std::string> dbksToDestroy,
-				  std::list<std::string> evtsToDestroy,
-				  SgPragmaDeclaration* taskBegin,
-				  SgPragmaDeclaration* taskEnd);
+  OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgStatement*> allocStmts, SgPragmaDeclaration* pragma);
+  OcrEdtContextPtr registerOcrEdt(std::string name, std::list<OcrDbkContextPtr> depDbks,
+				  std::list<OcrEvtContextPtr> depEvts, std::list<SgVarRefExp*> depElems,
+				  OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
+				  std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
+				  SgPragmaDeclaration* spgdecl);
   bool registerOcrEdtOrder(int order, std::string edtname);
   bool registerOcrShutdownEdt(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts);
   // return a list of edtnames in the same order they were encountered in the AST

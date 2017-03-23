@@ -22,11 +22,12 @@ OcrDbkContext::OcrDbkContext(std::string name)
   : OcrObjectContext(),
     m_name(name) { }
 
-OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<SgStatement*> allocStmts)
+OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<SgStatement*> allocStmts, SgPragmaDeclaration* pragma)
   : OcrObjectContext(),
     m_name(name),
     m_vdefn(vdefn),
-    m_allocStmts(allocStmts) { }
+    m_allocStmts(allocStmts),
+    m_pragma(pragma) { }
 
 SgSymbol* OcrDbkContext::getSgSymbol() {
   SgSymbol* symbol = m_vdefn->search_for_symbol_from_symbol_table();
@@ -36,6 +37,10 @@ SgSymbol* OcrDbkContext::getSgSymbol() {
 
 SgInitializedName* OcrDbkContext::getSgInitializedName() const {
   return m_vdefn;
+}
+
+SgPragmaDeclaration* OcrDbkContext::get_pragma() const {
+  return m_pragma;
 }
 
 // Function that computes the pointer type for the datablock pointer
@@ -133,28 +138,27 @@ OcrEvtContext::~OcrEvtContext() {
 /*****************
  * OcrEdtContext *
  *****************/
-OcrEdtContext::OcrEdtContext(std::string name, std::list<OcrEvtContextPtr> depEvts,
-			     std::list<OcrDbkContextPtr> depDbks, OcrEvtContextPtr outputEvt,
-			     std::list<SgVarRefExp*> depElems, std::list<SgStatement*> taskStatements,
-			     list<string> dbksToDestroy, list<string> evtsToDestroy,
-			     SgPragmaDeclaration* taskBegin, SgPragmaDeclaration* taskEnd)
+OcrEdtContext::OcrEdtContext(string name, list<OcrDbkContextPtr> depDbks,
+			     list<OcrEvtContextPtr> depEvts, list<SgVarRefExp*> depElems,
+			     OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
+			     list<string> dbksToDestroy, list<string> evtsToDestroy, SgPragmaDeclaration* sgpdecl)
   : m_name(name),
-    m_depEvts(depEvts),
     m_depDbks(depDbks),
-    m_outputEvt(outputEvt),
+    m_depEvts(depEvts),
     m_depElems(depElems),
-    m_statements(taskStatements),
+    m_outputEvt(outputEvt),
+    m_basicblock(basicblock),
     m_dbksToDestroy(dbksToDestroy),
     m_evtsToDestroy(evtsToDestroy),
-    m_taskBegin(taskBegin),
-    m_taskEnd(taskEnd) { }
+    m_sgpdecl(sgpdecl) {
+}
 
 string OcrEdtContext::get_name() const {
   return m_name;
 }
 
-list<SgStatement*> OcrEdtContext::getStmtList() const {
-  return m_statements;
+SgBasicBlock* OcrEdtContext::getTaskBasicBlock() const {
+  return m_basicblock;
 }
 
 list<SgVarRefExp*> OcrEdtContext::getDepElems() const {
@@ -174,17 +178,11 @@ OcrEvtContextPtr OcrEdtContext::getOutputEvt() const {
 }
 
 SgSourceFile* OcrEdtContext::getSourceFile() {
-  assert(m_statements.size() > 0);
-  SgNode* sgn = *m_statements.begin();
-  return SageInterface::getEnclosingSourceFile(sgn);
+  return SageInterface::getEnclosingSourceFile(m_basicblock);
 }
 
-SgPragmaDeclaration* OcrEdtContext::getTaskBeginPragma() const {
-  return m_taskBegin;
-}
-
-SgPragmaDeclaration* OcrEdtContext::getTaskEndPragma() const {
-  return m_taskEnd;
+SgPragmaDeclaration* OcrEdtContext::getTaskPragma() const {
+  return m_sgpdecl;
 }
 
 unsigned int OcrEdtContext::getDepDbkSlotNumber(string dbkname) const {
@@ -253,7 +251,7 @@ string OcrEdtContext::str() const {
   oss << indent << "depElems: " << StrUtil::SgVarRefExpList2Str(m_depElems) << endl;
   oss << indent << "dbksToDestroy: " << StrUtil::strlist2str(m_dbksToDestroy) << endl;
   oss << indent << "evtsToDestroy: " << StrUtil::strlist2str(m_evtsToDestroy) << endl;
-  oss << indent << "taskStmts:[\n" << StrUtil::stmtlist2str(m_statements, indent) << "]";
+  oss << indent << "taskStmts:[\n" << AstDebug::astToString(m_basicblock) << "]";
   oss << "]";
   return oss.str();
 }
@@ -382,7 +380,8 @@ OcrEvtContextPtr OcrObjectManager::registerOcrEvt(string evtName) {
 
 OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
 						  SgInitializedName* vdefn,
-						  list<SgStatement*> allocStmts) {
+						  list<SgStatement*> allocStmts,
+						  SgPragmaDeclaration* pragma) {
   Logger::Logger lg("OcrObjectManager::registerOcrDbk");
   OcrDbkObjectMap::iterator f = m_ocrDbkObjectMap.find(dbkName);
   OcrDbkContextPtr dbkcontext_sp;
@@ -393,7 +392,7 @@ OcrDbkContextPtr OcrObjectManager::registerOcrDbk(string dbkName,
   }
   else {
     Logger::debug(lg) << "f=false\n";
-    dbkcontext_sp = boost::make_shared<OcrDbkContext>(dbkName, vdefn, allocStmts);
+    dbkcontext_sp = boost::make_shared<OcrDbkContext>(dbkName, vdefn, allocStmts, pragma);
     OcrDbkObjectMapElem elem(dbkName, dbkcontext_sp);
     m_ocrDbkObjectMap.insert(elem);
   }
@@ -413,15 +412,11 @@ bool OcrObjectManager::registerOcrEdtOrder(int taskOrder, string edtname) {
 //! Check to see if the OcrObject is already registered
 //! If already registered return its context
 //! If not registered create a new context and insert in m_ocrObjectMap
-OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtContextPtr> depEvts,
-						  list<OcrDbkContextPtr> depDbks,
-						  OcrEvtContextPtr outputEvt,
-						  list<SgVarRefExp*> depElems,
-						  list<SgStatement*> taskStatements,
-						  list<string> dbksToDestroy,
-						  list<string> evtsToDestroy,
-						  SgPragmaDeclaration* taskBegin,
-						  SgPragmaDeclaration* taskEnd) {
+OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrDbkContextPtr> depDbks,
+						  list<OcrEvtContextPtr> depEvts, list<SgVarRefExp*> depElems,
+						  OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
+						  list<string> dbksToDestroy, list<string> evtsToDestroy,
+						  SgPragmaDeclaration* spgdecl) {
   OcrEdtObjectMap::iterator f = m_ocrEdtObjectMap.find(edtName);
   OcrEdtContextPtr edtcontext_sp;
   if(f != m_ocrEdtObjectMap.end()) {
@@ -430,11 +425,8 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrEvtCon
     return edtcontext_sp;
   }
   else {
-    OcrEdtContextPtr edtcontext_sp(new OcrEdtContext(edtName, depEvts,
-						     depDbks, outputEvt,
-						     depElems, taskStatements,
-						     dbksToDestroy, evtsToDestroy,
-						     taskBegin, taskEnd));
+    OcrEdtContextPtr edtcontext_sp(new OcrEdtContext(edtName, depDbks, depEvts, depElems, outputEvt,
+						     basicblock, dbksToDestroy, evtsToDestroy, spgdecl));
     OcrEdtObjectMapElem elem(edtName, edtcontext_sp);
     m_ocrEdtObjectMap.insert(elem);
     assert(edtcontext_sp);
