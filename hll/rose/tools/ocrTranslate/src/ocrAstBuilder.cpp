@@ -147,55 +147,66 @@ namespace AstBuilder {
     return depElemStructDecl;
   }
 
-  SgVariableDeclaration* buildOcrDbkDecl(SgName name, SgType* dbkPtrType, unsigned int index,
+  // Builds the datablock pointer from depv and slot number
+  SgVariableDeclaration* buildDbkPtrDecl(SgName name, SgType* dbkPtrType, unsigned int slot,
 					 SgInitializedName* depv,SgScopeStatement* scope) {
     SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
     assert(vsymbol);
     SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(vsymbol);
-    SgIntVal* sgIndex = SageBuilder::buildIntVal(index);
+    SgIntVal* sgIndex = SageBuilder::buildIntVal(slot);
     SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, sgIndex);
     SgVarRefExp* ptrVarRefExp = SageBuilder::buildVarRefExp("ptr", scope);
     SgVariableSymbol* ptrVarSymbol = ptrVarRefExp->get_symbol();
     // Fix for avoiding ROSE Warnings
-    scope->get_symbol_table()->insert(ptrVarSymbol->get_name(), ptrVarSymbol);
+    // scope->get_symbol_table()->insert(ptrVarSymbol->get_name(), ptrVarSymbol);
     SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, ptrVarRefExp);
     SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, dbkPtrType);
     SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(name, dbkPtrType, initializer, scope);
     return vdecl;
   }
 
-  vector<SgStatement*> buildOcrDbksDecl(OcrEdtContextPtr edtContext, SgScopeStatement* scope, SgFunctionDeclaration* edtDecl) {
-    list<OcrDbkContextPtr> depDbks = edtContext->getDepDbks();
-    vector<SgStatement*> depDbksDecl;
-    // for each datablock set up the declaration from depv
-    SgInitializedNamePtrList& args = edtDecl->get_args();
-    // depv is the last element in the EDT argument list
-    SgInitializedName* depv = args.back();
-    assert(depv);
-    list<OcrDbkContextPtr>::iterator d = depDbks.begin();
-    for(unsigned int index=0 ; d != depDbks.end(); ++d, ++index) {
-      SgName vname = (*d)->getSgSymbol()->get_name();
-      SgType* dbkPtrType = (*d)->getDbkPtrType();
-      SgVariableDeclaration* vdecl = buildOcrDbkDecl(vname, dbkPtrType, index, depv, scope);
-      SgStatement* declStmt = isSgStatement(vdecl);
-      assert(declStmt);
-      depDbksDecl.push_back(declStmt);
-    }
-    return depDbksDecl;
+  // Build the datablock guid declaration from depv and slot number
+  SgVariableDeclaration* buildDbkGuidDecl(string guidName, unsigned int slot, SgInitializedName* depv, SgScopeStatement* scope) {
+    SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
+    assert(vsymbol);
+    SgType* ocrGuidType = buildOcrGuidType(scope);
+    SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(vsymbol);
+    SgIntVal* slotN = SageBuilder::buildIntVal(slot);
+    SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, slotN);
+    SgVarRefExp* guidVarRefExp = SageBuilder::buildVarRefExp("guid", scope);
+    SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, guidVarRefExp);
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, ocrGuidType);
+    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(guidName, ocrGuidType, initializer, scope);
+    return vdecl;
   }
 
-  vector<SgStatement*> buildOcrEdtStmts(OcrEdtContextPtr edtContext) {
-    vector<SgStatement*> edt_stmts;
-    // Outline the Task's statements to the EDT function
-    list<SgStatement*> stmtList = edtContext->getStmtList();
-    list<SgStatement*>::iterator s = stmtList.begin();
-    for( ; s != stmtList.end(); ++s) {
-      // Detach the statement from its original scope
-      SageInterface::removeStatement(*s);
-      // Add the statement into the current scope
-      edt_stmts.push_back(*s);
+  void buildEdtStmts(SgBasicBlock* from, SgBasicBlock* to) {
+    vector<SgStatement*> edt_stmts = from->get_statements();
+    vector<SgStatement*>::iterator st = edt_stmts.begin();
+    for( ; st != edt_stmts.end(); ++st) {
+      SageInterface::removeStatement(*st, true);
+      SageInterface::appendStatement(*st, to);
     }
-    return edt_stmts;
+    // Move the symbol table
+    assert(from->get_symbol_table() != NULL);
+    to->set_symbol_table(from->get_symbol_table());
+
+    assert(from != NULL);
+    assert(to != NULL);
+    assert(to->get_symbol_table() != NULL);
+    assert(from->get_symbol_table() != NULL);
+    to->get_symbol_table()->set_parent(to);
+
+    assert(from->get_symbol_table() != NULL);
+    // from->set_symbol_table(NULL);
+
+    // DQ (9/23/2011): Reset with a valid symbol table.
+    // from->set_symbol_table(new SgSymbolTable());
+    // from->get_symbol_table()->set_parent(from);
+
+    // Using this method crashes the program
+    // reason : Cannot move SgPragmaDeclaration
+    // SageInterface::moveStatementsBetweenBlocks(from, to);
   }
 
   SgStatement* buildOcrDbDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope) {
@@ -265,25 +276,70 @@ namespace AstBuilder {
     return stmt;
   }
 
-  SgExprStatement* buildEdtDepElemSetupStmt(SgVariableDeclaration* depElemStructVar, SgVarRefExp* depElemVarRef) {
+  vector<SgInitializedName*> getDepElemStructMembers(SgClassDeclaration* depElemStructDecl) {
+    vector<SgInitializedName*> members;
+    SgClassDefinition* depElemStructDefn = depElemStructDecl->get_definition();
+    assert(depElemStructDefn);
+    vector<SgDeclarationStatement*> depElemStructMemDecl = depElemStructDefn->get_members();
+    vector<SgDeclarationStatement*>::iterator decl = depElemStructMemDecl.begin();
+    for( ; decl != depElemStructMemDecl.end(); ++decl) {
+      SgVariableDeclaration* vdecl = isSgVariableDeclaration(*decl);
+      if(vdecl) {
+	vector<SgInitializedName*> vars = vdecl->get_variables();
+	members.insert(members.end(), vars.begin(), vars.end());
+      }
+    }
+    return members;
+  }
+
+  SgInitializedName* getMatchingDepElemMemberVar(vector<SgInitializedName*> depElemMemberVars, SgVarRefExp* var) {
+    vector<SgInitializedName*>::iterator d = depElemMemberVars.begin();
+    for( ; d != depElemMemberVars.end(); ++d) {
+      string memberName = (*d)->get_name().getString();
+      string varName = var->get_symbol()->get_name().getString();
+      if(memberName.compare(varName) == 0) {
+	return *d;
+      }
+    }
+    assert(false);
+  }
+
+  SgExprStatement* buildEdtDepElemSetupStmt(SgVariableDeclaration* depElemStructVar, SgInitializedName* memberVar,
+					    SgVarRefExp* depElemVarRef) {
     SgVarRefExp* alhs = SageBuilder::buildVarRefExp(depElemStructVar);
-    SgVarRefExp* arhs = SageBuilder::buildVarRefExp(depElemVarRef->get_symbol());
+    SgVariableSymbol* memberVarSymbol = GetVariableSymbol(memberVar);
+    SgVarRefExp* arhs = SageBuilder::buildVarRefExp(memberVarSymbol);
     SgDotExp* dotExp = SageBuilder::buildDotExp(alhs, arhs);
     SgVarRefExp* rhs = SageBuilder::buildVarRefExp(depElemVarRef->get_symbol());
     SgExprStatement* assign = SageBuilder::buildAssignStatement(dotExp, rhs);
     return assign;
   }
 
-  vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, OcrEdtContextPtr edtContext) {
+
+  vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, SgClassDeclaration* depElemStructDecl,
+						 list<SgVarRefExp*> depElemVarList) {
+    Logger::Logger lg("buildEdtDepElemSetupStmts");
     vector<SgStatement*> depElemSetupStmts;
-    list<SgVarRefExp*> depElems = edtContext->getDepElems();
-    list<SgVarRefExp*>::iterator l = depElems.begin();
-    for( ; l != depElems.end(); ++l) {
-      SgExprStatement* assignStmt = buildEdtDepElemSetupStmt(depElemStructVar, *l);
-      depElemSetupStmts.push_back(assignStmt);
+    list<SgVarRefExp*>::iterator v = depElemVarList.begin();
+    vector<SgInitializedName*> depElemMemberVars = getDepElemStructMembers(depElemStructDecl);
+    for( ; v != depElemVarList.end(); ++v) {
+      SgInitializedName* depElemMemberVar = getMatchingDepElemMemberVar(depElemMemberVars, *v);
+      SgExprStatement* setupStmt = buildEdtDepElemSetupStmt(depElemStructVar, depElemMemberVar, *v);
+      depElemSetupStmts.push_back(setupStmt);
     }
     return depElemSetupStmts;
   }
+
+  // vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, OcrEdtContextPtr edtContext) {
+  //   vector<SgStatement*> depElemSetupStmts;
+  //   list<SgVarRefExp*> depElems = edtContext->getDepElems();
+  //   list<SgVarRefExp*>::iterator l = depElems.begin();
+  //   for( ; l != depElems.end(); ++l) {
+  //     SgExprStatement* assignStmt = buildEdtDepElemSetupStmt(depElemStructVar, *l);
+  //     depElemSetupStmts.push_back(assignStmt);
+  //   }
+  //   return depElemSetupStmts;
+  // }
 
   // u8 ocrEdtCreate( ocrGuid_t ∗ guid, ocrGuid_t templateGuid,
   // 		   u32 paramc, u64 ∗ paramv,

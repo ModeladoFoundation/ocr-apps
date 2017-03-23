@@ -44,11 +44,15 @@ namespace AstBuilder {
   SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
   SgTypedefDeclaration* buildTypeDefDecl(std::string edtName, SgType* baseType, SgScopeStatement* scope);
   SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope);
-  SgVariableDeclaration* buildOcrDbkDecl(SgName name, SgType* dbkPtrType, unsigned int index, SgInitializedName* depv,SgScopeStatement* scope);
-  std::vector<SgStatement*> buildOcrDbksDecl(OcrEdtContextPtr edtContext, SgScopeStatement* scope, SgFunctionDeclaration* edtDecl);
-  std::vector<SgStatement*> buildOcrEdtStmts(OcrEdtContextPtr edtContext);
+
+  SgVariableDeclaration* buildDbkPtrDecl(SgName name, SgType* dbkPtrType, unsigned int slot, SgInitializedName* depv,SgScopeStatement* scope);
+  SgVariableDeclaration* buildDbkGuidDecl(std::string guidName, unsigned int slot, SgInitializedName* depv, SgScopeStatement* scope);
+
+  void buildEdtStmts(SgBasicBlock* from, SgBasicBlock* to);
   SgStatement* buildOcrDbDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope);
   SgStatement* buildEvtDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope);
+  std::vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, SgClassDeclaration* depElemStructDecl,
+						 std::list<SgVarRefExp*> depElemVarList);
 
   // AST builders for OCR EDT template setup
   SgVariableDeclaration* buildOcrGuidEdtTemplateVarDecl(std::string edtname, SgScopeStatement* scope);
