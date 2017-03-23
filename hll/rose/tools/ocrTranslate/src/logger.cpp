@@ -9,8 +9,6 @@ using namespace boost::xpressive;
 
 namespace Logger {
 
-  Logger glg(DEBUG);
-
   Logger::Logger() : m_level(INFO), m_scope("") { }
 
   Logger::Logger(SeverityLevel level) : m_level(level), m_scope("") { }

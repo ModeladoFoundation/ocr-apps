@@ -22,36 +22,39 @@ int main(int argc, char* argv[]) {
   int size  = atoi(argv[1]);
   int switch_flag = atoi(argv[2]);
 
-#pragma ocr datablock begin DATABLOCK(DBK_in)
+#pragma ocr datablock DATABLOCK(DBK_in)
   double* in = malloc(size * sizeof(double));
-#pragma ocr datablock end
 
   int i;
 
-#pragma ocr task begin TASK(TASK_init)  \
-  DEP_EVTs(NONE) DEP_DBKs(DBK_in) DEP_ELEMs(i, size)
-  time_t t;
-  srand((unsigned) time(&t));
-  for(i = 0; i < size; ++i) {
-    in[i] = (double)(rand() % 100)/7;
+#pragma ocr task TASK(TASK_init)  \
+  DEP_DBKs(DBK_in) DEP_EVTs() \
+  DEP_ELEMs(i, size) OEVENT(OEVT_init)
+  {
+    time_t t;
+    srand((unsigned) time(&t));
+    for(i = 0; i < size; ++i) {
+      in[i] = (double)(rand() % 100)/7;
+    }
   }
-#pragma ocr task end OEVENT(OEVT_init)
 
   in = malloc(sizeof(double) * size);
 
-#pragma ocr task begin TASK(TASK_do_something) \
-  DEP_EVTs(OEVT_init) DEP_DBKs(DBK_in) DEP_ELEMs(in:i, in:size, in:switch_flag)
-  if(switch_flag) {
-    for(i = 1; i < size; ++i) {
-      in[i] += in[i-1];
+#pragma ocr task TASK(TASK_do_something) \
+  DEP_DBKs(DBK_in) DEP_EVTs(OEVT_init) \
+  DEP_ELEMs(in:i, in:size, in:switch_flag) OEVENT(OEVT_fin)
+  {
+    if(switch_flag) {
+      for(i = 1; i < size; ++i) {
+	in[i] += in[i-1];
+      }
+    }
+    else {
+      for(i = 1; i < size; ++i) {
+	in[i] -= in[i-1];
+      }
     }
   }
-  else {
-    for(i = 1; i < size; ++i) {
-      in[i] -= in[i-1];
-    }
-  }
-#pragma ocr task end OEVENT(OEVT_fin)
 
   return 0;
 }
