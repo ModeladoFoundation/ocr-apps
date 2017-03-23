@@ -55,6 +55,7 @@ As written this currently tests only the ALLREDUCE version of the reduction libr
 #define SHOW_RESULTS
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #define ENABLE_EXTENSION_LABELING
@@ -392,8 +393,8 @@ launch parallel init with myrank as a parameter
     ocrGuid_t wrapupEdt;
     ocrEdtCreate(&wrapupEdt, wrapupTML, EDT_PARAM_DEF, (u64 *) &wrapupPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
     sharedPTR->wrapupEDT = wrapupEdt;
-    ocrDbRelease(sharedDBK);
 //PRINTF("returnEVT %lx \n", sharedPTR->returnEVT);
+    ocrDbRelease(sharedDBK);
     u64 i;
     ocrGuid_t initEDT, initTML;
 
@@ -405,7 +406,6 @@ launch parallel init with myrank as a parameter
     ocrAffinityCount(AFFINITY_PD, &count);
     block = (nrank + count - 1)/count;
 
-    ocrDbRelease(DEPV(realMain,shared,guid));
     for(i=0;i<nrank;i++) {
         myPD = i/block;
 //printf("i %d count %d myPD %d slot %d \n", i, count, myPD, SLOT(init,shared));
