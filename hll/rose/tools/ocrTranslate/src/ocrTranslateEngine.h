@@ -48,20 +48,27 @@ typedef boost::shared_ptr<OcrDbkAstInfo> OcrDbkAstInfoPtr;
  *****************/
 class OcrEdtAstInfo {
   std::string m_edtname;
-  SgType* m_depElemType;
+  SgType* m_depElemTypedefType;
+  SgType* m_depElemBaseType;
   SgFunctionDeclaration* m_edtDecl;
+  SgClassDeclaration* m_depElemStructDecl;
   SgVariableSymbol* m_edtTemplateGuid;
   SgVariableSymbol* m_depElemStructSymbol;
   SgVariableSymbol* m_edtGuid;
  public:
-  OcrEdtAstInfo(std::string edtname, SgType* depElemType, SgFunctionDeclaration* edtDecl);
+  OcrEdtAstInfo(std::string edtname, SgFunctionDeclaration* edtDecl);
   SgFunctionDeclaration* getEdtFunctionDeclaration() const;
-  SgType* getDepElemStructType() const;
+  SgType* getDepElemBaseType() const;
+  SgType* getDepElemTypedefType() const;
   SgVariableSymbol* getEdtTemplateGuid() const;
   SgVariableSymbol* getDepElemStructSymbol() const;
+  SgClassDeclaration* getDepElemStructDecl() const;
   SgVariableSymbol* getEdtGuid() const;
+  void setDepElemTypedefType(SgType* depElemType);
+  void setDepElemBaseType(SgType* depElemBaseType);
   void setEdtTemplateGuid(SgVariableSymbol* edtTemplateGuid);
   void setDepElemStructSymbol(SgVariableSymbol* depElemStructSymbol);
+  void setDepElemStructDecl(SgClassDeclaration* depElemStructDecl);
   void setEdtGuid(SgVariableSymbol* edtGuid);
   std::string str() const;
 };
@@ -88,18 +95,36 @@ typedef std::map<std::string, OcrEdtAstInfoPtr> OcrEdtAstInfoMap;
 typedef std::pair<std::string, OcrEdtAstInfoPtr> OcrEdtAstInfoMapElem;
 typedef std::map<std::string, OcrEvtAstInfoPtr> OcrEvtAstInfoMap;
 typedef std::pair<std::string, OcrEvtAstInfoPtr> OcrEvtAstInfoMapElem;
+typedef std::map<std::string, SgVariableSymbol*> OcrGuidSymbolMap;
+typedef std::pair<std::string, SgVariableSymbol*> OcrGuidSymbolMapElem;
+//! Symbol table for maintaining the guid variable symbol for
+//! different OCR objects such as DBK, EDT and Events
+class OcrGuidSymbolTable {
+  OcrGuidSymbolMap m_ocrGuidSymbolMap;
+ public:
+  OcrGuidSymbolTable();
+  bool insert(std::string ocrObjectName, SgVariableSymbol* varSymbol);
+  SgVariableSymbol* getGuidSymbol(std::string ocrObjectName);
+  std::string str() const;
+};
+typedef boost::shared_ptr<OcrGuidSymbolTable> OcrGuidSymbolTablePtr;
+// Map from SgScopeStatement to OcrGuidSymbolTable
+typedef std::map<SgScopeStatement*, OcrGuidSymbolTablePtr> ScopeGuidSymbolMap;
+typedef std::pair<SgScopeStatement*, OcrGuidSymbolTablePtr> ScopeGuidSymbolMapElem;
 class OcrAstInfoManager {
   OcrDbkAstInfoMap m_ocrDbkAstInfoMap;
   OcrEdtAstInfoMap m_ocrEdtAstInfoMap;
   OcrEvtAstInfoMap m_ocrEvtAstInfoMap;
+  ScopeGuidSymbolMap m_scopeGuidSymbolMap;
  public:
   OcrAstInfoManager();
   bool regOcrDbkAstInfo(std::string dbkname, SgVariableSymbol* ocrGuidSymbol, SgVariableSymbol* ptrSymbol);
-  bool regOcrEdtAstInfo(std::string edtName, SgType* depElemType, SgFunctionDeclaration* edtDecl);
+  bool regOcrEdtAstInfo(std::string edtName, SgFunctionDeclaration* edtDecl);
   bool regOcrEvtAstInfo(std::string edtName, SgVariableSymbol* evtGuid);
   OcrDbkAstInfoPtr getOcrDbkAstInfo(std::string dbkname);
   OcrEdtAstInfoPtr getOcrEdtAstInfo(std::string edtname);
   OcrEvtAstInfoPtr getOcrEvtAstInfo(std::string evtname);
+  OcrGuidSymbolTablePtr getOcrGuidSymbolTable(SgScopeStatement* scope);
   std::string ocrEvtAstInfoMap2Str() const;
 };
 
@@ -143,7 +168,9 @@ class OcrTranslator {
  private:
   void insertOcrHeaderFiles();
   void outlineEdt(std::string, OcrEdtContextPtr edt);
+  void insertDepDbkDecl(std::string edtname, OcrEdtContextPtr edtContext);
   void outlineShutdownEdt(std::string shutdownEdtName, SgSourceFile* sourcefile);
+  void insertDepElemDecl(std::string edtname, OcrEdtContextPtr edtContext);
   //! datablock translation involves building the following AST fragments
   //! 1. AST for variable declaration of ocrGuid for the datablock
   //! 2. AST for variable declaration of the pointer (u64*) for the datablock
@@ -160,9 +187,11 @@ class OcrTranslator {
   void setupShutdownEdt(std::string shutdownEdtNameSuffix, OcrShutdownEdtContextPtr shutdownEdtContext, int count);
   // Miscellaneous utility functions
   std::set<SgSourceFile*> getSourceFilesOfShutdownEdts(std::list<OcrShutdownEdtContextPtr>& shutdownEdts);
+  void replaceDepElemVars(std::string edtname, OcrEdtContextPtr edtContext);
  public:
   OcrTranslator(SgProject* project, const OcrObjectManager& ocrObjectManager);
   void outlineEdts();
+  void replaceDepElemPass();
   void setupEdts();
   void translateDbks();
   void setupShutdownEdts();

@@ -49,15 +49,23 @@ string OcrDbkAstInfo::str() const {
 /*****************
  * OcrEdtAstInfo *
  *****************/
-OcrEdtAstInfo::OcrEdtAstInfo(string edtname, SgType* depElemType, SgFunctionDeclaration* edtDecl)
-  : m_edtname(edtname), m_depElemType(depElemType), m_edtDecl(edtDecl) { }
+OcrEdtAstInfo::OcrEdtAstInfo(string edtname, SgFunctionDeclaration* edtDecl)
+  : m_edtname(edtname), m_edtDecl(edtDecl) { }
 
 SgFunctionDeclaration* OcrEdtAstInfo::getEdtFunctionDeclaration() const {
   return m_edtDecl;
 }
 
-SgType* OcrEdtAstInfo::getDepElemStructType() const {
-  return m_depElemType;
+SgClassDeclaration* OcrEdtAstInfo::getDepElemStructDecl() const {
+  return m_depElemStructDecl;
+}
+
+SgType* OcrEdtAstInfo::getDepElemTypedefType() const {
+  return m_depElemTypedefType;
+}
+
+SgType* OcrEdtAstInfo::getDepElemBaseType() const {
+  return m_depElemBaseType;
 }
 
 SgVariableSymbol* OcrEdtAstInfo::getEdtTemplateGuid() const {
@@ -72,12 +80,24 @@ SgVariableSymbol* OcrEdtAstInfo::getEdtGuid() const {
   return m_edtGuid;
 }
 
+void OcrEdtAstInfo::setDepElemTypedefType(SgType* depElemType) {
+  m_depElemTypedefType = depElemType;
+}
+
+void OcrEdtAstInfo::setDepElemBaseType(SgType* depElemBaseType) {
+  m_depElemBaseType = depElemBaseType;
+}
+
 void OcrEdtAstInfo::setEdtTemplateGuid(SgVariableSymbol* edtTemplateGuid) {
   m_edtTemplateGuid = edtTemplateGuid;
 }
 
 void OcrEdtAstInfo::setDepElemStructSymbol(SgVariableSymbol* depElemStructSymbol) {
   m_depElemStructSymbol = depElemStructSymbol;
+}
+
+void OcrEdtAstInfo::setDepElemStructDecl(SgClassDeclaration* depElemStructDecl) {
+  m_depElemStructDecl = depElemStructDecl;
 }
 
 void OcrEdtAstInfo::setEdtGuid(SgVariableSymbol* edtGuid) {
@@ -100,6 +120,35 @@ SgVariableSymbol* OcrEvtAstInfo::getEvtGuid() const {
   return m_evtGuid;
 }
 
+/**********************
+ * OcrGuidSymbolTable *
+ **********************/
+OcrGuidSymbolTable::OcrGuidSymbolTable() { }
+
+bool OcrGuidSymbolTable::insert(string ocrObjectName, SgVariableSymbol* varSymbol) {
+  OcrGuidSymbolMap::iterator f = m_ocrGuidSymbolMap.find(ocrObjectName);
+  assert(f == m_ocrGuidSymbolMap.end());
+  OcrGuidSymbolMapElem elem(ocrObjectName, varSymbol);
+  m_ocrGuidSymbolMap.insert(elem);
+  return true;
+}
+
+SgVariableSymbol* OcrGuidSymbolTable::getGuidSymbol(string ocrObjectName) {
+  OcrGuidSymbolMap::iterator f = m_ocrGuidSymbolMap.find(ocrObjectName);
+  assert(f != m_ocrGuidSymbolMap.end());
+  return f->second;
+}
+
+string OcrGuidSymbolTable::str() const {
+  ostringstream oss;
+  OcrGuidSymbolMap::const_iterator melem = m_ocrGuidSymbolMap.begin();
+  string indent = " ";
+  for( ; melem != m_ocrGuidSymbolMap.end(); ++melem) {
+    oss << indent << "[" << melem->first << ", " << melem->second->get_name() << "]\n";
+  }
+  return oss.str();
+}
+
 /*********************
  * OcrAstInfoManager *
  *********************/
@@ -113,9 +162,9 @@ bool OcrAstInfoManager::regOcrDbkAstInfo(string dbkname, SgVariableSymbol* ocrGu
   return ret.second;
 }
 
-bool OcrAstInfoManager::regOcrEdtAstInfo(string edtName, SgType* depElemType, SgFunctionDeclaration* edtDecl) {
+bool OcrAstInfoManager::regOcrEdtAstInfo(string edtName, SgFunctionDeclaration* edtDecl) {
   pair<OcrEdtAstInfoMap::iterator, bool> ret;
-  OcrEdtAstInfoPtr edtAstInfoPtr = boost::make_shared<OcrEdtAstInfo>(edtName, depElemType, edtDecl);
+  OcrEdtAstInfoPtr edtAstInfoPtr = boost::make_shared<OcrEdtAstInfo>(edtName, edtDecl);
   OcrEdtAstInfoMapElem elem(edtName, edtAstInfoPtr);
   ret = m_ocrEdtAstInfoMap.insert(elem);
   return ret.second;
@@ -147,6 +196,20 @@ OcrEvtAstInfoPtr OcrAstInfoManager::getOcrEvtAstInfo(string evtname) {
     cerr << "Cannot find OCR Event " << evtname << endl;
     cerr << ocrEvtAstInfoMap2Str() << endl;
     assert(f != m_ocrEvtAstInfoMap.end());
+  }
+  return f->second;
+}
+
+// We do not know when or where the symbol table for a function will be created
+// We will register on-the-fly as and when needed
+// Look for the mapped value and if not found, create and return the entry
+OcrGuidSymbolTablePtr OcrAstInfoManager::getOcrGuidSymbolTable(SgScopeStatement* scope) {
+  ScopeGuidSymbolMap::iterator f = m_scopeGuidSymbolMap.find(scope);
+  if(f == m_scopeGuidSymbolMap.end()) {
+    OcrGuidSymbolTablePtr symbolTable = boost::make_shared<OcrGuidSymbolTable>();
+    ScopeGuidSymbolMapElem elem(scope, symbolTable);
+    m_scopeGuidSymbolMap.insert(elem);
+    return elem.second;
   }
   return f->second;
 }
@@ -274,11 +337,11 @@ void OcrTranslator::translateDbk(string dbkName, OcrDbkContextPtr dbkContext) {
   // Mark the statements to be removed at the end of this function
   set<SgStatement*> stmtsToRemove;
   SgInitializedName* varInitializedName = dbkContext->getSgInitializedName();
-  SgSymbol* varSymbol = dbkContext->getSgSymbol();
-  SgScopeStatement* scope = varSymbol->get_scope();
-  SgName varName = varSymbol->get_name();
+  // SgSymbol* varSymbol = dbkContext->getSgSymbol();
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(dbkContext->get_pragma());
+  SgName varName = varInitializedName->get_name();
   SgName ocrGuidName(dbkName);
-  SgType* varType = varSymbol->get_type();
+  SgType* varType = varInitializedName->get_type();
   SgType* varDbkType = AstBuilder::buildOcrDbkType(varType, scope);
   SgVariableDeclaration* varDbkDecl = AstBuilder::buildOcrDbkVarDecl(varName, varDbkType, scope);
   SgVariableDeclaration* varDbkGuid = AstBuilder::buildOcrDbkGuid(ocrGuidName.getString(), scope);
@@ -313,10 +376,13 @@ void OcrTranslator::translateDbk(string dbkName, OcrDbkContextPtr dbkContext) {
 						      search_for_symbol_from_symbol_table());
   assert(ocrGuidSymbol);
   assert(dbkPtrSymbol);
+  // Bookkeeping
   m_ocrAstInfoManager.regOcrDbkAstInfo(dbkName, ocrGuidSymbol, dbkPtrSymbol);
-  // Make sure it is registered
-  // OcrDbkAstInfoPtr regDbk = m_ocrAstInfoManager.getOcrDbkAstInfo(dbkName);
-  // Logger::debug(lg) << "DBKASTINFO : " << regDbk->str() << "\n";
+  OcrGuidSymbolTablePtr guidSymbolTable = m_ocrAstInfoManager.getOcrGuidSymbolTable(scope);
+  Logger::debug(lg) << "dbkname:" << dbkName << endl;
+  Logger::debug(lg) << "scope: " << scope << ", " << AstDebug::astToString(scope) << endl;
+  guidSymbolTable->insert(dbkName, ocrGuidSymbol);
+  Logger::debug(lg) << "SymbolTable:\n" << guidSymbolTable->str() << endl;
 }
 
 //! Outline the Edt to a function
@@ -338,23 +404,25 @@ void OcrTranslator::outlineEdt(string edtName, OcrEdtContextPtr edtContext) {
     SageInterface::appendArg(edt_paramlist, *p);
   }
   // struct declaration for the dependent elements
-  SgClassDeclaration* depElemStructType = AstBuilder::buildOcrEdtDepElemStruct(edtContext, edt_decl);
-  // corresponding typedef for the dependent elements
-  SgTypedefDeclaration* depElemTypedefType = AstBuilder::buildTypeDefDecl(edtName, depElemStructType->get_type(), global);
-  // Build a declaration for the depElem struct inside basicblock
-  SgName depElemStructName("depElem");
-  SgVariableDeclaration* depElemStructVar = AstBuilder::buildOcrEdtDepElemStructDecl(depElemTypedefType->get_type(), depElemStructName, basicblock);
-  // Build decleration for the datablock pointers
-  vector<SgStatement*> depDbksDecl = AstBuilder::buildOcrDbksDecl(edtContext, basicblock, edt_decl);
+  // SgClassDeclaration* depElemStructType = AstBuilder::buildOcrEdtDepElemStruct(edtContext, edt_decl);
+  // // corresponding typedef for the dependent elements
+  // SgTypedefDeclaration* depElemTypedefType = AstBuilder::buildTypeDefDecl(edtName, depElemStructType->get_type(), global);
+  // // Build a declaration for the depElem struct inside basicblock
+  // SgName depElemStructName("depElem");
+  // SgVariableDeclaration* depElemStructVar = AstBuilder::buildOcrEdtDepElemStructDecl(depElemTypedefType->get_type(), depElemStructName, basicblock);
+  // // Build decleration for the datablock pointers
+  // vector<SgStatement*> depDbksDecl = AstBuilder::buildOcrDbksDecl(edtContext, basicblock, edt_decl);
   // EDT statements retrieved from the annotation
-  vector<SgStatement*> edt_stmts = AstBuilder::buildOcrEdtStmts(edtContext);
   // Insert the statements that make up the EDT
   // 1. depElem decl
   // 2. datablock pointer declaration
   // 3. EDT statements
-  SageInterface::appendStatement(depElemStructVar, basicblock);
-  SageInterface::appendStatementList(depDbksDecl, basicblock);
-  SageInterface::appendStatementList(edt_stmts, basicblock);
+  // SageInterface::appendStatement(depElemStructVar, basicblock);
+  // SageInterface::appendStatementList(depDbksDecl, basicblock);
+  SgBasicBlock* taskBasicBlock = edtContext->getTaskBasicBlock();
+  AstBuilder::buildEdtStmts(taskBasicBlock, basicblock);
+
+  //  SageInterface::appendStatementList(edt_stmts, basicblock);
   // 4. If we have any objects to destroy call their destroy methods
   vector<SgStatement*> cleanupStmts;
   list<string> dbksToDestroy = edtContext->getDbksToDestroy();
@@ -378,8 +446,8 @@ void OcrTranslator::outlineEdt(string edtName, OcrEdtContextPtr edtContext) {
   SageInterface::appendStatementList(cleanupStmts, basicblock);
 
   // Replace depElem variable references
-  DepElemVarRefExpPass replaceDepElemVarRefExp(basicblock, depElemStructName, edtContext->getDepElems());
-  replaceDepElemVarRefExp.traverse(basicblock, postorder);
+  // DepElemVarRefExpPass replaceDepElemVarRefExp(basicblock, depElemStructName, edtContext->getDepElems());
+  // replaceDepElemVarRefExp.traverse(basicblock, postorder);
 
   // Add a return NULL_GUID statement to the EDT
   SgIntVal* zero = SageBuilder::buildIntVal(0);
@@ -394,25 +462,88 @@ void OcrTranslator::outlineEdt(string edtName, OcrEdtContextPtr edtContext) {
   // just before the enclosing function of the pragma
   SgFunctionDeclaration* anchor = SageInterface::findMain(global);
   SageInterface::insertStatementBefore(anchor, edt_decl, true);
-  SageInterface::insertStatementBefore(edt_decl, depElemTypedefType, true);
-  SageInterface::insertStatementBefore(depElemTypedefType, depElemStructType, true);
+  // SageInterface::insertStatementBefore(edt_decl, depElemTypedefType, true);
+  // SageInterface::insertStatementBefore(depElemTypedefType, depElemStructType, true);
   // Build the EDT AST information
-  m_ocrAstInfoManager.regOcrEdtAstInfo(edtName, depElemTypedefType->get_type(), edt_decl);
+  m_ocrAstInfoManager.regOcrEdtAstInfo(edtName, edt_decl);
+}
+
+void OcrTranslator::insertDepDbkDecl(string edtname, OcrEdtContextPtr edtContext) {
+  Logger::Logger lg(" OcrTranslator::insertDepDbkDecl");
+  OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
+  SgFunctionDeclaration* edtDecl = edtAstInfoPtr->getEdtFunctionDeclaration();
+  SgBasicBlock* basicblock = edtDecl->get_definition()->get_body();
+  OcrGuidSymbolTablePtr guidSymbolTable = m_ocrAstInfoManager.getOcrGuidSymbolTable(basicblock);
+  // Get the list of datablock dependences
+  // Build ASTs for the pointer declaration
+  // Build ASTs for the guid declaration
+  list<OcrDbkContextPtr> depDbks = edtContext->getDepDbks();
+  // For each dependences create the pointer and the guid
+  list<OcrDbkContextPtr>::iterator dbk = depDbks.begin();
+  // For each datablock set up the declaration from depv
+  SgInitializedNamePtrList& args = edtDecl->get_args();
+  // depv is the last element in the EDT argument list
+  SgInitializedName* depv = args.back(); assert(depv);
+  vector<SgStatement*> depDbksDeclStmts;
+  for(unsigned int slot=0 ; dbk != depDbks.end(); ++dbk, ++slot) {
+    // Build the pointer
+    SgName vname = (*dbk)->getSgSymbol()->get_name();
+    SgType* dbkPtrType = (*dbk)->getDbkPtrType();
+    SgVariableDeclaration* vdecl = AstBuilder::buildDbkPtrDecl(vname, dbkPtrType, slot, depv, basicblock);
+    depDbksDeclStmts.push_back(vdecl);
+    // Build the Guid
+    string guidName(vname+"Guid");
+    SgVariableDeclaration* guidDecl = AstBuilder::buildDbkGuidDecl(guidName, slot, depv, basicblock);
+    Logger::debug(lg) << AstDebug::astToString(guidDecl) << endl;
+    SgVariableSymbol* dbkGuidSymbol = GetVariableSymbol(guidDecl, guidName);
+    assert(dbkGuidSymbol);
+    guidSymbolTable->insert((*dbk)->get_name(), dbkGuidSymbol);
+    depDbksDeclStmts.push_back(guidDecl);
+  }
+
+  SageInterface::prependStatementList(depDbksDeclStmts, basicblock);
+}
+
+void OcrTranslator::insertDepElemDecl(string edtname, OcrEdtContextPtr edtContext) {
+  // struct declaration for the dependent elements
+  OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
+  SgFunctionDeclaration* edtDecl = edtAstInfoPtr->getEdtFunctionDeclaration();
+  SgBasicBlock* basicblock = edtDecl->get_definition()->get_body();
+
+  SgScopeStatement* edtDeclScope = SageInterface::getEnclosingScope(edtDecl);
+  SgClassDeclaration* depElemStructDecl = AstBuilder::buildOcrEdtDepElemStruct(edtContext, edtDecl);
+
+  // corresponding typedef for the dependent elements
+  SgTypedefDeclaration* depElemTypedefType = AstBuilder::buildTypeDefDecl(edtname, depElemStructDecl->get_type(), edtDeclScope);
+
+  // Build a declaration for the depElem struct inside basicblock
+  SgName depElemStructName("depElem");
+  SgVariableDeclaration* depElemStructVar = AstBuilder::buildOcrEdtDepElemStructDecl(depElemTypedefType->get_type(), depElemStructName, basicblock);
+  SageInterface::prependStatement(depElemStructVar, basicblock);
+  SageInterface::insertStatementBefore(edtDecl, depElemStructDecl, true);
+  SageInterface::insertStatementAfter(depElemStructDecl, depElemTypedefType, true);
+  // Bookkeeping
+  edtAstInfoPtr->setDepElemTypedefType(depElemTypedefType->get_type());
+  edtAstInfoPtr->setDepElemBaseType(depElemStructDecl->get_type());
+  edtAstInfoPtr->setDepElemStructDecl(depElemStructDecl);
+  // Store the guid symbols in their map
 }
 
 void OcrTranslator::outlineEdts() {
   list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
-  list<string>::iterator edt = orderedEdts.begin();
-  for( ; edt != orderedEdts.end(); ++edt) {
+  list<string>::reverse_iterator edt = orderedEdts.rbegin();
+  for( ; edt != orderedEdts.rend(); ++edt) {
     string edtname = *edt;
     OcrEdtContextPtr edtContext = m_ocrObjectManager.getOcrEdtContext(edtname);
     outlineEdt(edtname, edtContext);
+    insertDepDbkDecl(edtname, edtContext);
+    insertDepElemDecl(edtname, edtContext);
   }
 }
 
 void OcrTranslator::setupEdtEvtCreate(std::string edtname, OcrEdtContextPtr edtContext) {
-  SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
-  SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   vector<SgStatement*> evtCreateStmts;
   // Create guid and events that this EDT has to satisfy
   OcrEvtContextPtr outEvt = edtContext->getOutputEvt();
@@ -428,12 +559,12 @@ void OcrTranslator::setupEdtEvtCreate(std::string edtname, OcrEdtContextPtr edtC
   // Now some bookkeeping
   m_ocrAstInfoManager.regOcrEvtAstInfo(outEvt->get_name(), evtGuidSymbol);
   // Add the statements to the AST
-  SageInterface::insertStatementListBefore(taskEndPragma, evtCreateStmts);
+  SageInterface::insertStatementListBefore(taskPragma, evtCreateStmts);
 }
 
 void OcrTranslator::setupEdtTemplate(string edtname, OcrEdtContextPtr edtContext) {
-  SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
-  SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   // Build OcrGuid variable declaration for EDT template
   string edtTemplateGuidName = edtname + "TemplGuid";
   SgVariableDeclaration* edtTemplateGuidDecl = AstBuilder::buildOcrGuidEdtTemplateVarDecl(edtTemplateGuidName, scope);
@@ -443,8 +574,8 @@ void OcrTranslator::setupEdtTemplate(string edtname, OcrEdtContextPtr edtContext
   unsigned int ndelems = 1; // all parameters are wrapped as a struct
   unsigned int ndbks = edtContext->getNumDepDbks() + edtContext->getNumDepEvts();
   SgExprStatement* edtTemplateCallExp = AstBuilder::buildOcrEdtTemplateCallExp(edtTemplateGuidDecl, edtDecl, ndelems, ndbks, scope);
-  SageInterface::insertStatementBefore(taskEndPragma, edtTemplateGuidDecl, true);
-  SageInterface::insertStatementBefore(taskEndPragma, edtTemplateCallExp, true);
+  SageInterface::insertStatementBefore(taskPragma, edtTemplateGuidDecl, true);
+  SageInterface::insertStatementBefore(taskPragma, edtTemplateCallExp, true);
   // Now some bookkeeping
   // Add the variable symbol of the template guid
   SgVariableSymbol* edtTemplateGuid = GetVariableSymbol(edtTemplateGuidDecl, edtTemplateGuidName);
@@ -452,16 +583,19 @@ void OcrTranslator::setupEdtTemplate(string edtname, OcrEdtContextPtr edtContext
 }
 
 void OcrTranslator::setupEdtDepElems(string edtname, OcrEdtContextPtr edtContext) {
-  SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
-  SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
+  Logger::Logger lg("OcrTranslator::setupEdtDepElems");
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
   // Next set up the depenedent elements
-  SgType* depElemStructType = edtAstInfoPtr->getDepElemStructType();
+  SgType* depElemStructType = edtAstInfoPtr->getDepElemTypedefType();
   string depElemVarName = edtname+"DepElem";
   SgVariableDeclaration* depElemStructVar = SageBuilder::buildVariableDeclaration(depElemVarName, depElemStructType, NULL, scope);
-  vector<SgStatement*> depElemSetupStmts = AstBuilder::buildEdtDepElemSetupStmts(depElemStructVar, edtContext);
-  SageInterface::insertStatementBefore(taskEndPragma, depElemStructVar, true);
-  SageInterface::insertStatementListBefore(taskEndPragma, depElemSetupStmts);
+  list<SgVarRefExp*> depElemVarList = edtContext->getDepElems();
+  SgClassDeclaration* depElemStructDecl = edtAstInfoPtr->getDepElemStructDecl();
+  vector<SgStatement*> depElemSetupStmts = AstBuilder::buildEdtDepElemSetupStmts(depElemStructVar, depElemStructDecl, depElemVarList);
+  SageInterface::insertStatementBefore(taskPragma, depElemStructVar, true);
+  SageInterface::insertStatementListBefore(taskPragma, depElemSetupStmts);
   // Now some bookkeeping
   SgVariableSymbol* depElemStructSymbol = GetVariableSymbol(depElemStructVar, depElemVarName);
   edtAstInfoPtr->setDepElemStructSymbol(depElemStructSymbol);
@@ -469,8 +603,8 @@ void OcrTranslator::setupEdtDepElems(string edtname, OcrEdtContextPtr edtContext
 
 //! Method to setup the ocrEdtCreate function call expression
 void OcrTranslator::setupEdtCreate(string edtname, OcrEdtContextPtr edtContext) {
-  SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
-  SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
   string edtGuidName = edtname+"EdtGuid";
   SgType* ocrGuidType = AstBuilder::buildOcrGuidType(scope);
@@ -485,15 +619,16 @@ void OcrTranslator::setupEdtCreate(string edtname, OcrEdtContextPtr edtContext) 
   SgVariableSymbol* outEvtGuidSymbol = outEvtAstInfo->getEvtGuid();
   SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol,
 									      depElemStructSymbol, outEvtGuidSymbol, scope);
-  SageInterface::insertStatementBefore(taskEndPragma, edtGuidDecl, true);
-  SageInterface::insertStatementBefore(taskEndPragma, ocrEdtCreateCallExp, true);
+  SageInterface::insertStatementBefore(taskPragma, edtGuidDecl, true);
+  SageInterface::insertStatementBefore(taskPragma, ocrEdtCreateCallExp, true);
   // Now some bookkeeping
   edtAstInfoPtr->setEdtGuid(edtGuidSymbol);
 }
 
 void OcrTranslator::setupEdtDepDbks(string edtname, OcrEdtContextPtr edtContext) {
-  SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
-  SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
+  Logger::Logger lg("OcrTranslator::setupEdtDepDbks", Logger::DEBUG);
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
   SgVariableSymbol* edtGuidSymbol = edtAstInfoPtr->getEdtGuid();
   // for each datablock add ocrAddDependence
@@ -504,17 +639,19 @@ void OcrTranslator::setupEdtDepDbks(string edtname, OcrEdtContextPtr edtContext)
     OcrDbkContextPtr dbkContext = *l;
     string dbkname = dbkContext->get_name();
     OcrDbkAstInfoPtr dbkAstInfoPtr = m_ocrAstInfoManager.getOcrDbkAstInfo(dbkname);
-    SgVariableSymbol* dbkGuidSymbol = dbkAstInfoPtr->getOcrGuidSymbol();
+    // Get the GuidSymbolTable for the current scope
+    OcrGuidSymbolTablePtr guidSymbolTable = m_ocrAstInfoManager.getOcrGuidSymbolTable(scope);
+    SgVariableSymbol* dbkGuidSymbol = guidSymbolTable->getGuidSymbol(dbkname);
     SgExprStatement* ocrAddDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(dbkGuidSymbol, edtGuidSymbol, slot,
 											AstBuilder::DbkMode::DB_DEFAULT_MODE, scope);
     dbkSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
   }
-  SageInterface::insertStatementListBefore(taskEndPragma, dbkSetupStmts);
+  SageInterface::insertStatementListBefore(taskPragma, dbkSetupStmts);
 }
 
 void OcrTranslator::setupEdtDepEvts(string edtname, OcrEdtContextPtr edtContext) {
-  SgPragmaDeclaration* taskEndPragma = edtContext->getTaskEndPragma();
-  SgScopeStatement* scope = SageInterface::getScope(taskEndPragma);
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
   SgVariableSymbol* edtGuidSymbol = edtAstInfoPtr->getEdtGuid();
   // For each event add ocrAddDependence
@@ -532,7 +669,7 @@ void OcrTranslator::setupEdtDepEvts(string edtname, OcrEdtContextPtr edtContext)
 											AstBuilder::DbkMode::DB_MODE_NULL, scope);
     evtDepSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
   }
-  SageInterface::insertStatementListBefore(taskEndPragma, evtDepSetupStmts);
+  SageInterface::insertStatementListBefore(taskPragma, evtDepSetupStmts);
 }
 
 void OcrTranslator::outlineShutdownEdt(string shutdownEdtName, SgSourceFile* sourcefile) {
@@ -565,7 +702,7 @@ void OcrTranslator::outlineShutdownEdt(string shutdownEdtName, SgSourceFile* sou
   SageInterface::insertStatementBefore(anchor, edt_decl, true);
   // Now bookkeeping
   // Build the EDT AST information
-  m_ocrAstInfoManager.regOcrEdtAstInfo(shutdownEdtName, NULL, edt_decl);
+  m_ocrAstInfoManager.regOcrEdtAstInfo(shutdownEdtName, edt_decl);
 }
 
 void OcrTranslator::setupShutdownEdt(string shutdownEdtSuffix, OcrShutdownEdtContextPtr shutdownEdtContext, int count) {
@@ -626,8 +763,18 @@ void OcrTranslator::setupShutdownEdt(string shutdownEdtSuffix, OcrShutdownEdtCon
   SageInterface::insertStatementListBefore(shutdownPragma, evtDepSetupStmts);
 }
 
+void OcrTranslator::replaceDepElemVars(string edtname, OcrEdtContextPtr edtContext) {
+  OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
+  SgFunctionDeclaration* edtDecl = edtAstInfoPtr->getEdtFunctionDeclaration();
+  SgBasicBlock* basicblock = edtDecl->get_definition()->get_body();
+  SgName depElemStructName("depElem");
+  DepElemVarRefExpPass replaceDepElemVarRefExp(basicblock, depElemStructName, edtContext->getDepElems());
+  replaceDepElemVarRefExp.traverse(basicblock, postorder);
+}
+
 void OcrTranslator::setupEdts() {
   list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
+  // Traverse them in the reverse order
   list<string>::iterator edt = orderedEdts.begin();
   for( ; edt != orderedEdts.end(); ++edt) {
     string edtname = *edt;
@@ -638,6 +785,18 @@ void OcrTranslator::setupEdts() {
     setupEdtCreate(edtname, edtContext);
     setupEdtDepDbks(edtname, edtContext);
     setupEdtDepEvts(edtname, edtContext);
+  }
+}
+
+void OcrTranslator::replaceDepElemPass() {
+  list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
+  // Traverse them in the reverse order
+  list<string>::iterator edt = orderedEdts.begin();
+  for( ; edt != orderedEdts.end(); ++edt) {
+    string edtname = *edt;
+    OcrEdtContextPtr edtContext = m_ocrObjectManager.getOcrEdtContext(edtname);
+    // Finally do the pass to replace depElem
+    replaceDepElemVars(edtname, edtContext);
   }
 }
 
@@ -703,7 +862,7 @@ void OcrTranslator::outlineMainEdt() {
     SgName mainEdtDbkName("mainEdtDbk");
     SgInitializedName* mainEdtArgv = edt_paramlist->get_args().back();
     SgType* u64PtrType = AstBuilder::buildu64PtrType(basicblock);
-    SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildOcrDbkDecl(mainEdtDbkName, u64PtrType, 0, mainEdtArgv, basicblock);
+    SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildDbkPtrDecl(mainEdtDbkName, u64PtrType, 0, mainEdtArgv, basicblock);
     SgVariableSymbol* mainEdtDbkSymbol = GetVariableSymbol(mainEdtDbkDecl, mainEdtDbkName);
     SgVariableDeclaration* mainEdtArgcDecl = AstBuilder::buildMainEdtArgcDecl(mainArgc, mainEdtDbkSymbol, basicblock);
     SgVariableDeclaration* mainEdtArgvDecl = AstBuilder::buildMainEdtArgvDecl(mainArgv, mainArgc, basicblock);
@@ -738,9 +897,10 @@ void OcrTranslator::translate() {
   try {
     // insert the header files
     insertOcrHeaderFiles();
-    translateDbks();
     outlineEdts();
+    translateDbks();
     setupEdts();
+    replaceDepElemPass();
     setupShutdownEdts();
     outlineMainEdt();
   }
