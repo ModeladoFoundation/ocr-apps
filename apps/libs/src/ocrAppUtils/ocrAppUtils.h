@@ -2,11 +2,6 @@
 #define __OCRAPPUTILS_HEADER_H__
 
 #include "ocr.h"
-#include "ocr-std.h"
-
-#include "extensions/ocr-affinity.h" //needed for affinity
-
-#include <math.h>
 
 #define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]

@@ -1,4 +1,7 @@
+#include <math.h>
+
 #include "ocrAppUtils.h"
+#include "extensions/ocr-affinity.h" //needed for affinity
 
 static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims );
 static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims );
