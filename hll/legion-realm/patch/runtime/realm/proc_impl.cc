@@ -1,6 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
- *
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +60,7 @@ namespace Realm {
     /*static*/ Processor Processor::create_group(const std::vector<Processor>& members)
     {
       // are we creating a local group?
-      if((members.size() == 0) || (ID(members[0]).node() == gasnet_mynode())) {
+      if((members.size() == 0) || (ID(members[0]).proc.owner_node == gasnet_mynode())) {
 	ProcessorGroup *grp = get_runtime()->local_proc_group_free_list->alloc_entry();
 	grp->set_group_members(members);
 #ifdef EVENT_GRAPH_TRACE
@@ -95,20 +93,26 @@ namespace Realm {
       }
 
       assert(0);
+      return Processor::NO_PROC;
     }
 
     void Processor::get_group_members(std::vector<Processor>& members)
     {
       // if we're a plain old processor, the only member of our "group" is ourself
-      if(ID(*this).type() == ID::ID_PROCESSOR) {
+      if(ID(*this).is_processor()) {
 	members.push_back(*this);
 	return;
       }
 
-      assert(ID(*this).type() == ID::ID_PROCGROUP);
+      assert(ID(*this).is_procgroup());
 
       ProcessorGroup *grp = get_runtime()->get_procgroup_impl(*this);
       grp->get_group_members(members);
+    }
+
+    int Processor::get_num_cores(void) const
+    {
+      return get_runtime()->get_processor_impl(*this)->num_cores;
     }
 
     Event Processor::spawn(TaskFuncID func_id, const void *args, size_t arglen,
@@ -118,13 +122,8 @@ namespace Realm {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
-#if USE_OCR_LAYER
-      Event e = OCREventImpl::create_ocrevent();
-#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
-#endif // USE_OCR_LAYER
-
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
       log_event_graph.info("Task Request: %d " IDFMT
@@ -148,13 +147,8 @@ namespace Realm {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
-#if USE_OCR_LAYER
-      Event e = OCREventImpl::create_ocrevent();
-#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
-#endif // USE_OCR_LAYER
-
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
       log_event_graph.info("Task Request: %d " IDFMT
@@ -173,12 +167,10 @@ namespace Realm {
 
     AddressSpace Processor::address_space(void) const
     {
-      return ID(id).node();
-    }
-
-    ID::IDType Processor::local_id(void) const
-    {
-      return ID(id).index();
+      // this is a hack for the Legion runtime, which only calls it on processor, not proc groups
+      ID id(*this);
+      assert(id.is_processor());
+      return id.proc.owner_node;
     }
 
     Event Processor::register_task(TaskFuncID func_id,
@@ -193,11 +185,6 @@ namespace Realm {
 	assert(0);
       }
 
-#if USE_OCR_LAYER //ignores prs parameter
-      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
-      p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
-      return Event::NO_EVENT;
-#else
       // TODO: special case - registration on a local processor with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
@@ -206,20 +193,28 @@ namespace Realm {
       TaskRegistration *tro = new TaskRegistration(codedesc,
 						   ByteArrayRef(user_data, user_data_len),
 						   finish_event, prs);
-      tro->mark_ready();
-      tro->mark_started();
+      get_runtime()->optable.add_local_operation(finish_event, tro);
+      // we haven't told anybody about this operation yet, so cancellation really shouldn't
+      //  be possible
+#ifndef NDEBUG
+      bool ok_to_run =
+#endif
+	(tro->mark_ready() && tro->mark_started());
+      assert(ok_to_run);
 
       std::vector<Processor> local_procs;
       std::map<gasnet_node_t, std::vector<Processor> > remote_procs;
       // is the target a single processor or a group?
-      if(ID(*this).type() == ID::ID_PROCESSOR) {
-	gasnet_node_t n = ID(*this).node();
+      ID id(*this);
+      if(id.is_processor()) {
+	gasnet_node_t n = id.proc.owner_node;
 	if(n == gasnet_mynode())
 	  local_procs.push_back(*this);
 	else
 	  remote_procs[n].push_back(*this);
       } else {
 	// assume we're a group
+	assert(id.is_procgroup());
 	ProcessorGroup *grp = get_runtime()->get_procgroup_impl(*this);
 	std::vector<Processor> members;
 	grp->get_group_members(members);
@@ -227,7 +222,7 @@ namespace Realm {
 	    it != members.end();
 	    it++) {
 	  Processor p = *it;
-	  gasnet_node_t n = ID(p).node();
+	  gasnet_node_t n = ID(p).proc.owner_node;
 	  if(n == gasnet_mynode())
 	    local_procs.push_back(p);
 	  else
@@ -265,9 +260,8 @@ namespace Realm {
 					  reg_op);
       }
 
-      tro->mark_finished();
+      tro->mark_finished(true /*successful*/);
       return finish_event;
-#endif // USE_OCR_LAYER
     }
 
     /*static*/ Event Processor::register_task_by_kind(Kind target_kind, bool global,
@@ -283,18 +277,6 @@ namespace Realm {
 	assert(0);
       }
 
-#if USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
-      assert(target_kind == Processor::OCR_PROC);
-      std::set<Processor> local_procs;
-      get_runtime()->machine->get_local_processors_by_kind(local_procs, target_kind);
-      for(std::set<Processor>::const_iterator it = local_procs.begin();
-          it != local_procs.end();
-          it++) {
-        ProcessorImpl *p = get_runtime()->get_processor_impl(*it);
-        p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
-      }
-      return Event::NO_EVENT;
-#else
       // TODO: special case - registration on local processord with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
@@ -303,8 +285,14 @@ namespace Realm {
       TaskRegistration *tro = new TaskRegistration(codedesc,
 						   ByteArrayRef(user_data, user_data_len),
 						   finish_event, prs);
-      tro->mark_ready();
-      tro->mark_started();
+      get_runtime()->optable.add_local_operation(finish_event, tro);
+      // we haven't told anybody about this operation yet, so cancellation really shouldn't
+      //  be possible
+#ifndef NDEBUG
+      bool ok_to_run =
+#endif
+	(tro->mark_ready() && tro->mark_started());
+      assert(ok_to_run);
 
       // do local processors first
       std::set<Processor> local_procs;
@@ -339,9 +327,59 @@ namespace Realm {
 	}
       }
 
-      tro->mark_finished();
+      tro->mark_finished(true /*successful*/);
       return finish_event;
-#endif // USE_OCR_LAYER
+    }
+
+    // reports an execution fault in the currently running task
+    /*static*/ void Processor::report_execution_fault(int reason,
+						      const void *reason_data,
+						      size_t reason_size)
+    {
+#ifdef REALM_USE_EXCEPTIONS
+      if(Thread::self()->exceptions_permitted()) {
+	throw ApplicationException(reason, reason_data, reason_size);
+      } else
+#endif
+      {
+	Processor p = get_executing_processor();
+	assert(p.exists());
+	log_poison.fatal() << "FATAL: no handler for reported processor fault: proc=" << p
+			   << " reason=" << reason;
+	assert(0);
+      }
+    }
+
+    // reports a problem with a processor in general (this is primarily for fault injection)
+    void Processor::report_processor_fault(int reason,
+					   const void *reason_data,
+					   size_t reason_size) const
+    {
+      assert(0);
+    }
+
+    /*static*/ const char* Processor::get_kind_name(Kind kind)
+    {
+      switch (kind)
+      {
+        case NO_KIND:
+          return "NO_KIND";
+        case TOC_PROC:
+          return "TOC_PROC";
+        case LOC_PROC:
+          return "LOC_PROC";
+        case UTIL_PROC:
+          return "UTIL_PROC";
+        case IO_PROC:
+          return "IO_PROC";
+        case PROC_GROUP:
+          return "PROC_GROUP";
+        case PROC_SET:
+          return "PROC_SET";
+        default:
+          assert(0);
+      }
+      return NULL;
     }
 
 
@@ -350,8 +388,9 @@ namespace Realm {
   // class ProcessorImpl
   //
 
-    ProcessorImpl::ProcessorImpl(Processor _me, Processor::Kind _kind)
-      : me(_me), kind(_kind)
+    ProcessorImpl::ProcessorImpl(Processor _me, Processor::Kind _kind,
+                                 int _num_cores)
+      : me(_me), kind(_kind), num_cores(_num_cores)
     {
     }
 
@@ -387,25 +426,27 @@ namespace Realm {
     ProcessorGroup::ProcessorGroup(void)
       : ProcessorImpl(Processor::NO_PROC, Processor::PROC_GROUP),
 	members_valid(false), members_requested(false), next_free(0)
+      , ready_task_count(0)
     {
     }
 
     ProcessorGroup::~ProcessorGroup(void)
     {
+      delete ready_task_count;
     }
 
     void ProcessorGroup::init(Processor _me, int _owner)
     {
-      assert(ID(_me).node() == (unsigned)_owner);
+      assert(ID(_me).pgroup.owner_node == (unsigned)_owner);
 
       me = _me;
-      lock.init(ID(me).convert<Reservation>(), ID(me).node());
+      lock.init(ID(me).convert<Reservation>(), ID(me).pgroup.owner_node);
     }
 
     void ProcessorGroup::set_group_members(const std::vector<Processor>& member_list)
     {
-      // can only be perform on owner node
-      assert(ID(me).node() == gasnet_mynode());
+      // can only be performed on owner node
+      assert(ID(me).pgroup.owner_node == gasnet_mynode());
 
       // can only be done once
       assert(!members_valid);
@@ -420,6 +461,11 @@ namespace Realm {
 
       members_requested = true;
       members_valid = true;
+
+      // now that we exist, profile our queue depth
+      std::string gname = stringbuilder() << "realm/proc " << me << "/ready tasks";
+      ready_task_count = new ProfilingGauges::AbsoluteRangeGauge<int>(gname);
+      task_queue.set_gauge(ready_task_count);
     }
 
     void ProcessorGroup::get_group_members(std::vector<Processor>& member_list)
@@ -435,8 +481,10 @@ namespace Realm {
     void ProcessorGroup::enqueue_task(Task *task)
     {
       // put it into the task queue - one of the member procs will eventually grab it
-      task->mark_ready();
-      task_queue.put(task, task->priority);
+      if(task->mark_ready())
+	task_queue.put(task, task->priority);
+      else
+	task->mark_finished(false /*!successful*/);
     }
 
     void ProcessorGroup::add_to_group(ProcessorGroup *group)
@@ -459,10 +507,16 @@ namespace Realm {
       // create a task object and insert it into the queue
       Task *task = new Task(me, func_id, args, arglen, reqs,
                             start_event, finish_event, priority);
+      get_runtime()->optable.add_local_operation(finish_event, task);
 
-      if (start_event.has_triggered())
-        enqueue_task(task);
-      else
+      bool poisoned = false;
+      if (start_event.has_triggered_faultaware(poisoned)) {
+	if(poisoned) {
+	  log_poison.info() << "cancelling poisoned task - task=" << task << " after=" << task->get_finish_event();
+	  task->handle_poisoned_precondition(start_event);
+	} else
+	  enqueue_task(task);
+      } else
 	EventImpl::add_waiter(start_event, new DeferredTaskSpawn(this, task));
     }
 
@@ -472,16 +526,27 @@ namespace Realm {
   // class DeferredTaskSpawn
   //
 
-    bool DeferredTaskSpawn::event_triggered(void)
+    bool DeferredTaskSpawn::event_triggered(Event e, bool poisoned)
     {
+      if(poisoned) {
+	// cancel the task - this has to work
+	log_poison.info() << "cancelling poisoned task - task=" << task << " after=" << task->get_finish_event();
+	task->handle_poisoned_precondition(e);
+	return true;
+      }
+
       proc->enqueue_task(task);
       return true;
     }
 
-    void DeferredTaskSpawn::print_info(FILE *f)
+    void DeferredTaskSpawn::print(std::ostream& os) const
     {
-      fprintf(f,"deferred task: func=%d proc=" IDFMT " finish=" IDFMT "/%d\n",
-             task->func_id, task->proc.id, task->get_finish_event().id, task->get_finish_event().gen);
+      os << "deferred task: func=" << task->func_id << " proc=" << task->proc << " finish=" << task->get_finish_event();
+    }
+
+    Event DeferredTaskSpawn::get_finish_event(void) const
+    {
+      return task->get_finish_event();
     }
 
 
@@ -497,16 +562,10 @@ namespace Realm {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     ProcessorImpl *p = get_runtime()->get_processor_impl(args.proc);
 
-    Event start_event, finish_event;
-    start_event.id = args.start_id;
-    start_event.gen = args.start_gen;
-    finish_event.id = args.finish_id;
-    finish_event.gen = args.finish_gen;
-
     log_task.debug() << "received remote spawn request:"
 		     << " func=" << args.func_id
 		     << " proc=" << args.proc
-		     << " finish=" << finish_event;
+		     << " finish=" << args.finish_event;
 
     Serialization::FixedBufferDeserializer fbd(data, datalen);
     fbd.extract_bytes(0, args.user_arglen);  // skip over task args - we'll access those directly
@@ -517,7 +576,7 @@ namespace Realm {
       fbd >> prs;
 
     p->spawn_task(args.func_id, data, args.user_arglen, prs,
-		  start_event, finish_event, args.priority);
+		  args.start_event, args.finish_event, args.priority);
   }
 
   /*static*/ void SpawnTaskMessage::send_request(gasnet_node_t target, Processor proc,
@@ -531,20 +590,22 @@ namespace Realm {
 
     r_args.proc = proc;
     r_args.func_id = func_id;
-    r_args.start_id = start_event.id;
-    r_args.start_gen = start_event.gen;
-    r_args.finish_id = finish_event.id;
-    r_args.finish_gen = finish_event.gen;
+    r_args.start_event = start_event;
+    r_args.finish_event = finish_event;
     r_args.priority = priority;
     r_args.user_arglen = arglen;
 
-    if(!prs) {
+    if(!prs || prs->empty()) {
       // no profiling, so task args are the only payload
       Message::request(target, r_args, args, arglen, PAYLOAD_COPY);
     } else {
       // need to serialize both the task args and the profiling request
       //  into a single payload
-      Serialization::DynamicBufferSerializer dbs(arglen + 4096);  // assume profiling requests are < 4K
+      // allocate a little extra initial space for the profiling requests, but not too
+      //  much in case the copy sits around outside the srcdatapool for a long time
+      // (if we need more than this, we'll pay for a realloc during serialization, but it
+      //  will still work correctly)
+      Serialization::DynamicBufferSerializer dbs(arglen + 512);
 
       dbs.append_bytes(args, arglen);
       dbs << *prs;
@@ -568,9 +629,10 @@ namespace Realm {
     ByteArray userdata;
 
     Serialization::FixedBufferDeserializer fbd(data, datalen);
-    bool ok = ((fbd >> procs) &&
-	       (fbd >> codedesc) &&
-	       (fbd >> userdata));
+#ifndef NDEBUG
+    bool ok =
+#endif
+      ((fbd >> procs) && (fbd >> codedesc) && (fbd >> userdata));
     assert(ok && (fbd.bytes_left() == 0));
 
     if(procs.empty()) {
@@ -594,7 +656,8 @@ namespace Realm {
     }
 
     // TODO: include status/profiling eventually
-    RegisterTaskCompleteMessage::send_request(args.sender, args.reg_op);
+    RegisterTaskCompleteMessage::send_request(args.sender, args.reg_op,
+					      true /*successful*/);
   }
 
   /*static*/ void RegisterTaskMessage::send_request(gasnet_node_t target,
@@ -630,16 +693,18 @@ namespace Realm {
 
   /*static*/ void RegisterTaskCompleteMessage::handle_request(RequestArgs args)
   {
-    args.reg_op->mark_finished();
+    args.reg_op->mark_finished(args.successful);
   }
 
   /*static*/ void RegisterTaskCompleteMessage::send_request(gasnet_node_t target,
-							    RemoteTaskRegistration *reg_op)
+							    RemoteTaskRegistration *reg_op,
+							    bool successful)
   {
     RequestArgs args;
 
     args.sender = gasnet_mynode();
     args.reg_op = reg_op;
+    args.successful = successful;
 
     Message::request(target, args);
   }
@@ -650,8 +715,9 @@ namespace Realm {
   // class RemoteProcessor
   //
 
-    RemoteProcessor::RemoteProcessor(Processor _me, Processor::Kind _kind)
-      : ProcessorImpl(_me, _kind)
+    RemoteProcessor::RemoteProcessor(Processor _me, Processor::Kind _kind,
+                                     int _num_cores)
+      : ProcessorImpl(_me, _kind, _num_cores)
     {
     }
 
@@ -682,7 +748,19 @@ namespace Realm {
 		       << " proc=" << me
 		       << " finish=" << finish_event;
 
-      SpawnTaskMessage::send_request(ID(me).node(), me, func_id,
+      ID id(me);
+      gasnet_node_t target = 0;
+      if(id.is_processor())
+	target = id.proc.owner_node;
+      else if(id.is_procgroup())
+	target = id.pgroup.owner_node;
+      else {
+	assert(0);
+      }
+
+      get_runtime()->optable.add_remote_operation(finish_event, target);
+
+      SpawnTaskMessage::send_request(target, me, func_id,
 				     args, arglen, &reqs,
 				     start_event, finish_event, priority);
     }
@@ -693,10 +771,13 @@ namespace Realm {
   // class LocalTaskProcessor
   //
 
-  LocalTaskProcessor::LocalTaskProcessor(Processor _me, Processor::Kind _kind)
-    : ProcessorImpl(_me, _kind), sched(0)
+  LocalTaskProcessor::LocalTaskProcessor(Processor _me, Processor::Kind _kind,
+                                         int _num_cores)
+    : ProcessorImpl(_me, _kind, _num_cores)
+    , sched(0)
+    , ready_task_count(stringbuilder() << "realm/proc " << me << "/ready tasks")
   {
-    // nothing really happens until we get a scheduler
+    task_queue.set_gauge(&ready_task_count);
   }
 
   LocalTaskProcessor::~LocalTaskProcessor(void)
@@ -739,8 +820,10 @@ namespace Realm {
   void LocalTaskProcessor::enqueue_task(Task *task)
   {
     // just jam it into the task queue
-    task->mark_ready();
-    task_queue.put(task, task->priority);
+    if(task->mark_ready())
+      task_queue.put(task, task->priority);
+    else
+      task->mark_finished(false /*!successful*/);
   }
 
   void LocalTaskProcessor::spawn_task(Processor::TaskFuncID func_id,
@@ -753,10 +836,16 @@ namespace Realm {
     // create a task object for this
     Task *task = new Task(me, func_id, args, arglen, reqs,
 			  start_event, finish_event, priority);
+    get_runtime()->optable.add_local_operation(finish_event, task);
 
     // if the start event has already triggered, we can enqueue right away
-    if(start_event.has_triggered()) {
-      enqueue_task(task);
+    bool poisoned = false;
+    if (start_event.has_triggered_faultaware(poisoned)) {
+      if(poisoned) {
+	log_poison.info() << "cancelling poisoned task - task=" << task << " after=" << task->get_finish_event();
+	task->handle_poisoned_precondition(start_event);
+      } else
+	enqueue_task(task);
     } else {
       EventImpl::add_waiter(start_event, new DeferredTaskSpawn(this, task));
     }
@@ -776,23 +865,24 @@ namespace Realm {
     Processor::TaskFuncPtr fnptr;
     const FunctionPointerImplementation *fpi = codedesc.find_impl<FunctionPointerImplementation>();
 
-    while(!fpi) {
-#ifdef REALM_USE_DLFCN
-      // can we make it from a DSO reference?
-      const DSOReferenceImplementation *dsoref = codedesc.find_impl<DSOReferenceImplementation>();
-      if(dsoref) {
-        FunctionPointerImplementation *newfpi = cvt_dsoref_to_fnptr(dsoref);
-	if(newfpi) {
-	  codedesc.add_implementation(newfpi);
-	  fpi = newfpi;
-	  continue;
-        }
-      }
-#endif
-
-      // no other options?  give up
-      assert(0);
+    // if we don't have a function pointer implementation, see if we can make one
+    if(!fpi) {
+      const std::vector<CodeTranslator *>& translators = get_runtime()->get_code_translators();
+      for(std::vector<CodeTranslator *>::const_iterator it = translators.begin();
+	  it != translators.end();
+	  it++)
+	if((*it)->can_translate<FunctionPointerImplementation>(codedesc)) {
+	  FunctionPointerImplementation *newfpi = (*it)->translate<FunctionPointerImplementation>(codedesc);
+	  if(newfpi) {
+	    log_taskreg.info() << "function pointer created: trans=" << (*it)->name << " fnptr=" << (void *)(newfpi->fnptr);
+	    codedesc.add_implementation(newfpi);
+	    fpi = newfpi;
+	    break;
+	  }
+	}
     }
+
+    assert(fpi != 0);
 
     fnptr = (Processor::TaskFuncPtr)(fpi->fnptr);
 
@@ -819,7 +909,7 @@ namespace Realm {
 
     const TaskTableEntry& tte = it->second;
 
-    log_taskreg.debug() << "task " << func_id << " executing on " << me << ": " << tte.fnptr;
+    log_taskreg.debug() << "task " << func_id << " executing on " << me << ": " << ((void *)(tte.fnptr));
 
     (tte.fnptr)(task_args.base(), task_args.size(),
 		tte.user_data.base(), tte.user_data.size(),
@@ -964,7 +1054,19 @@ namespace Realm {
 				     Event _finish_event, const ProfilingRequestSet &_requests)
     : Operation(_finish_event, _requests)
     , codedesc(_codedesc), userdata(_userdata)
-  {}
+  {
+    log_taskreg.debug() << "task registration created: op=" << (void *)this << " finish=" << _finish_event;
+  }
+
+  TaskRegistration::~TaskRegistration(void)
+  {
+    log_taskreg.debug() << "task registration destroyed: op=" << (void *)this;
+  }
+
+  void TaskRegistration::print(std::ostream& os) const
+  {
+    os << "TaskRegistration";
+  }
 
 
   ////////////////////////////////////////////////////////////////////////
@@ -980,6 +1082,11 @@ namespace Realm {
   void RemoteTaskRegistration::request_cancellation(void)
   {
     // ignored
+  }
+
+  void RemoteTaskRegistration::print(std::ostream& os) const
+  {
+    os << "RemoteTaskRegistration(node=" << target_node << ")";
   }
 
 

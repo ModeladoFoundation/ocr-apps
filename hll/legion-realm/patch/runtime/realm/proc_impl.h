@@ -1,5 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +24,7 @@
 #include "activemsg.h"
 #include "operation.h"
 #include "profiling.h"
+#include "sampling.h"
 
 #include "event_impl.h"
 #include "rsrv_impl.h"
@@ -39,7 +39,7 @@ namespace Realm {
 
     class ProcessorImpl {
     public:
-      ProcessorImpl(Processor _me, Processor::Kind _kind);
+      ProcessorImpl(Processor _me, Processor::Kind _kind, int _num_cores=1);
 
       virtual ~ProcessorImpl(void);
 
@@ -69,13 +69,14 @@ namespace Realm {
     public:
       Processor me;
       Processor::Kind kind;
+      int num_cores;
     };
 
     // generic local task processor - subclasses must create and configure a task
     // scheduler and pass in with the set_scheduler() method
     class LocalTaskProcessor : public ProcessorImpl {
     public:
-      LocalTaskProcessor(Processor _me, Processor::Kind _kind);
+      LocalTaskProcessor(Processor _me, Processor::Kind _kind, int num_cores=1);
       virtual ~LocalTaskProcessor(void);
 
       virtual void enqueue_task(Task *task);
@@ -100,6 +101,7 @@ namespace Realm {
 
       ThreadedTaskScheduler *sched;
       PriorityQueue<Task *, GASNetHSL> task_queue;
+      ProfilingGauges::AbsoluteRangeGauge<int> ready_task_count;
 
       struct TaskTableEntry {
 	Processor::TaskFuncPtr fnptr;
@@ -150,7 +152,7 @@ namespace Realm {
 
     class RemoteProcessor : public ProcessorImpl {
     public:
-      RemoteProcessor(Processor _me, Processor::Kind _kind);
+      RemoteProcessor(Processor _me, Processor::Kind _kind, int _num_cores=1);
       virtual ~RemoteProcessor(void);
 
       virtual void enqueue_task(Task *task);
@@ -198,6 +200,7 @@ namespace Realm {
       void request_group_members(void);
 
       PriorityQueue<Task *, GASNetHSL> task_queue;
+      ProfilingGauges::AbsoluteRangeGauge<int> *ready_task_count;
     };
 
     // this is generally useful to all processor implementations, so put it here
@@ -211,8 +214,9 @@ namespace Realm {
         // we do _NOT_ own the task - do not free it
       }
 
-      virtual bool event_triggered(void);
-      virtual void print_info(FILE *f);
+      virtual bool event_triggered(Event e, bool poisoned);
+      virtual void print(std::ostream& os) const;
+      virtual Event get_finish_event(void) const;
 
     protected:
       ProcessorImpl *proc;
@@ -227,6 +231,13 @@ namespace Realm {
 		       const ByteArrayRef& _userdata,
 		       Event _finish_event, const ProfilingRequestSet &_requests);
 
+    protected:
+      // deletion performed when reference count goes to zero
+      virtual ~TaskRegistration(void);
+
+    public:
+      virtual void print(std::ostream& os) const;
+
       CodeDescriptor codedesc;
       ByteArray userdata;
     };
@@ -236,6 +247,8 @@ namespace Realm {
       RemoteTaskRegistration(TaskRegistration *reg_op, int _target_node);
 
       virtual void request_cancellation(void);
+
+      virtual void print(std::ostream& os) const;
 
     protected:
       int target_node;
@@ -247,13 +260,11 @@ namespace Realm {
       // Employ some fancy struct packing here to fit in 64 bytes
       struct RequestArgs : public BaseMedium {
 	Processor proc;
-	Event::id_t start_id;
-	Event::id_t finish_id;
+	Event start_event;
+	Event finish_event;
 	size_t user_arglen;
 	int priority;
 	Processor::TaskFuncID func_id;
-	Event::gen_t start_gen;
-	Event::gen_t finish_gen;
       };
 
       static void handle_request(RequestArgs args, const void *data, size_t datalen);
@@ -297,6 +308,7 @@ namespace Realm {
       struct RequestArgs {
 	gasnet_node_t sender;
 	RemoteTaskRegistration *reg_op;
+	bool successful;
       };
 
       static void handle_request(RequestArgs args);
@@ -306,11 +318,10 @@ namespace Realm {
 					handle_request> Message;
 
       static void send_request(gasnet_node_t target,
-			       RemoteTaskRegistration *reg_op);
+			       RemoteTaskRegistration *reg_op,
+			       bool successful);
     };
 
 }; // namespace Realm
-
-#include "ocr/ocr_proc_impl.h"
 
 #endif // ifndef REALM_PROC_IMPL_H

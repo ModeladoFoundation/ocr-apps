@@ -35,7 +35,7 @@ deploy:legion
 
 legion:
 	git clone -b stable https://github.com/StanfordLegion/legion.git $@
-	cd $@ && git checkout 4fc956c72698b7fe8337827c10a8471aa26ed8fc
+	cd $@ && git checkout 6c6ad799adc1d2bb4f0fc26a60a6f7ebe8b5a582
 
 .PHONY: clean
 clean:

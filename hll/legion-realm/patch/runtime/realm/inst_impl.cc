@@ -1,5 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,22 +34,30 @@ namespace Realm {
       DeferredInstDestroy(RegionInstanceImpl *i) : impl(i) { }
       virtual ~DeferredInstDestroy(void) { }
     public:
-      virtual bool event_triggered(void)
+      virtual bool event_triggered(Event e, bool poisoned)
       {
-        log_inst.info("instance destroyed: space=" IDFMT " id=" IDFMT "",
-                 impl->metadata.is.id, impl->me.id);
-        get_runtime()->get_memory_impl(impl->memory)->destroy_instance(impl->me, true);
+	// if input event is poisoned, do not attempt to destroy the lock
+	// we don't have an output event here, so this may result in a leak if nobody is
+	//  paying attention
+	if(poisoned) {
+	  log_poison.info() << "poisoned deferred instance destruction skipped - POSSIBLE LEAK - inst=" << impl->me;
+	} else {
+	  log_inst.info("instance destroyed: space=" IDFMT " id=" IDFMT "",
+			impl->metadata.is.id, impl->me.id);
+	  get_runtime()->get_memory_impl(impl->memory)->destroy_instance(impl->me, true);
+	}
         return true;
       }
 
-      virtual void print_info(FILE *f)
+      virtual void print(std::ostream& os) const
       {
-        fprintf(f,"deferred instance destruction\n");
+        os << "deferred instance destruction";
       }
 
-#if USE_OCR_LAYER
-      virtual size_t get_size() const { return sizeof(*this); }
-#endif
+      virtual Event get_finish_event(void) const
+      {
+	return Event::NO_EVENT;
+      }
 
     protected:
       RegionInstanceImpl *impl;
@@ -64,12 +71,7 @@ namespace Realm {
 
     AddressSpace RegionInstance::address_space(void) const
     {
-      return ID(id).node();
-    }
-
-    ID::IDType RegionInstance::local_id(void) const
-    {
-      return ID(id).index();
+      return ID(id).instance.owner_node;
     }
 
     Memory RegionInstance::get_location(void) const
@@ -109,11 +111,18 @@ namespace Realm {
     {
       // request metadata (if needed), but don't block on it yet
       RegionInstanceImpl *i_impl = get_runtime()->get_instance_impl(*this);
-      Event e = i_impl->metadata.request_data(ID(id).node(), id);
+      Event e = i_impl->metadata.request_data(ID(id).instance.owner_node, id);
       if(!e.has_triggered())
 	log_inst.info("requested metadata in accessor creation: " IDFMT, id);
 
       return LegionRuntime::Accessor::RegionAccessor<LegionRuntime::Accessor::AccessorType::Generic>(LegionRuntime::Accessor::AccessorType::Generic::Untyped((void *)i_impl));
+    }
+
+    void RegionInstance::report_instance_fault(int reason,
+					       const void *reason_data,
+					       size_t reason_size) const
+    {
+      assert(0);
     }
 
 
@@ -154,7 +163,7 @@ namespace Realm {
 
       metadata.mark_valid();
 
-      lock.init(ID(me).convert<Reservation>(), ID(me).node());
+      lock.init(ID(me).convert<Reservation>(), ID(me).instance.owner_node);
       lock.in_use = true;
 
       if (!reqs.empty()) {
@@ -162,7 +171,6 @@ namespace Realm {
         measurements.import_requests(requests);
         if (measurements.wants_measurement<
                           ProfilingMeasurements::InstanceTimeline>()) {
-          timeline.instance = me;
           timeline.record_create_time();
         }
       }
@@ -172,7 +180,7 @@ namespace Realm {
     RegionInstanceImpl::RegionInstanceImpl(RegionInstance _me, Memory _memory)
       : me(_me), memory(_memory)
     {
-      lock.init(ID(me).convert<Reservation>(), ID(me).node());
+      lock.init(ID(me).convert<Reservation>(), ID(me).instance.owner_node);
       lock.in_use = true;
     }
 
@@ -188,7 +196,10 @@ namespace Realm {
 	  it++) {
 	assert((*it) > 0);
 	if(byte_offset < (off_t)(*it)) {
-	  assert((off_t)(byte_offset + size) <= (off_t)(*it));
+	  if ((off_t)(byte_offset + size) > (off_t)(*it)) {
+            log_inst.error("Requested field does not match the expected field size");
+            assert(false);
+          }
 	  field_start = start;
 	  field_size = (*it);
 	  return;
@@ -197,6 +208,18 @@ namespace Realm {
 	byte_offset -= (*it);
       }
       assert(0);
+    }
+
+    void RegionInstanceImpl::record_instance_usage(void)
+    {
+      // can't do this in the constructor because our ID isn't right yet...
+      if(measurements.wants_measurement<ProfilingMeasurements::InstanceMemoryUsage>()) {
+	ProfilingMeasurements::InstanceMemoryUsage usage;
+	usage.instance = me;
+	usage.memory = memory;
+	usage.bytes = metadata.size;
+	measurements.add_measurement(usage);
+      }
     }
 
     bool RegionInstanceImpl::get_strided_parameters(void *&base, size_t &stride,
@@ -242,12 +265,12 @@ namespace Realm {
 	assert(dl.get_dim() == 1);
 
 	LegionRuntime::Arrays::Mapping<1, 1> *mapping = dl.get_mapping<1>();
-	Rect<1> preimage = mapping->preimage(0);
+	LegionRuntime::Arrays::Rect<1> preimage = mapping->preimage((coord_t)0);
 	assert(preimage.lo == preimage.hi);
 	// double-check that whole range maps densely
 	preimage.hi.x[0] += 1; // not perfect, but at least detects non-unit-stride case
 	assert(mapping->image_is_dense(preimage));
-	int inst_first_elmt = preimage.lo[0];
+	coord_t inst_first_elmt = preimage.lo[0];
 	//printf("adjusting base by %d * %zd\n", inst_first_elmt, stride);
 	base = ((char *)base) - inst_first_elmt * stride;
       }
@@ -260,18 +283,10 @@ namespace Realm {
       if (!requests.empty()) {
         if (measurements.wants_measurement<
                           ProfilingMeasurements::InstanceTimeline>()) {
+	  // set the instance ID correctly now - it wasn't available at construction time
+          timeline.instance = me;
           timeline.record_delete_time();
           measurements.add_measurement(timeline);
-        }
-        if (measurements.wants_measurement<
-                          ProfilingMeasurements::InstanceMemoryUsage>()) {
-          ProfilingMeasurements::InstanceMemoryUsage usage;
-          usage.instance = me;
-          usage.memory = memory;
-          // Safe to read from meta-data here because we know we are
-          // on the owner node so it has up to date copy
-          usage.bytes = metadata.size;
-          measurements.add_measurement(usage);
         }
         measurements.send_responses(requests);
         requests.clear();

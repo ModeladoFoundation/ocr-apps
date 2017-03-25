@@ -1,5 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +36,7 @@
 #include "machine_impl.h"
 
 #include "threads.h"
+#include "sampling.h"
 
 #include "module.h"
 
@@ -75,13 +75,21 @@ namespace Realm {
       typedef DynamicTableNode<ET, 1 << LEAF_BITS, LT, IT> LEAF_TYPE;
       typedef DynamicTableFreeList<DynamicTableAllocator<ET, _INNER_BITS, _LEAF_BITS> > FreeList;
 
+      // hack for now - these should be factored out
+      static ID make_id(const GenEventImpl& dummy, int owner, int index) { return ID::make_event(owner, index, 0); }
+      static ID make_id(const BarrierImpl& dummy, int owner, int index) { return ID::make_barrier(owner, index, 0); }
+      static Reservation make_id(const ReservationImpl& dummy, int owner, int index) { return ID::make_reservation(owner, index).convert<Reservation>(); }
+      static Processor make_id(const ProcessorGroup& dummy, int owner, int index) { return ID::make_procgroup(owner, 0, index).convert<Processor>(); }
+      static IndexSpace make_id(const IndexSpaceImpl& dummy, int owner, int index) { return ID::make_idxspace(owner, 0, index).convert<IndexSpace>(); }
+
       static LEAF_TYPE *new_leaf_node(IT first_index, IT last_index,
 				      int owner, FreeList *free_list)
       {
 	LEAF_TYPE *leaf = new LEAF_TYPE(0, first_index, last_index);
 	IT last_ofs = (((IT)1) << LEAF_BITS) - 1;
 	for(IT i = 0; i <= last_ofs; i++)
-	  leaf->elems[i].init(ID(ET::ID_TYPE, owner, first_index + i).convert<typeof(leaf->elems[0].me)>(), owner);
+	  leaf->elems[i].init(make_id(leaf->elems[0], owner, first_index + i), owner);
+	  //leaf->elems[i].init(ID(ET::ID_TYPE, owner, first_index + i).convert<typeof(leaf->elems[0].me)>(), owner);
 
 	if(free_list) {
 	  // stitch all the new elements into the free list
@@ -185,10 +193,6 @@ namespace Realm {
       // requests a shutdown of the runtime
       void shutdown(bool local_request);
 
-#if USE_OCR_LAYER
-      void shutdown(Event wait_on);
-#endif // USE_OCR_LAYER
-
       void wait_for_shutdown(void);
 
       // three event-related impl calls - get_event_impl() will give you either
@@ -215,12 +219,6 @@ namespace Realm {
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
 
-#if USE_OCR_LAYER
-     //guid of the event on which wait_for_shutdown() blocks since
-     //shutdown() needs to wait on that event
-     ocrGuid_t ocr_shutdown_guid;
-#endif // USE_OCR_LAYER
-
 #ifdef NODE_LOGGING
       std::string prefix;
 #endif
@@ -245,13 +243,19 @@ namespace Realm {
       GASNetHSL shutdown_mutex;
       GASNetCondVar shutdown_condvar;
 
-      CoreReservationSet core_reservations;
+      CoreMap *core_map;
+      CoreReservationSet *core_reservations;
+
+      OperationTable optable;
+
+      SamplingProfiler sampling_profiler;
 
     public:
       // used by modules to add processors, memories, etc.
       void add_memory(MemoryImpl *m);
       void add_processor(ProcessorImpl *p);
       void add_dma_channel(DMAChannel *c);
+      void add_code_translator(CodeTranslator *t);
 
       void add_proc_mem_affinity(const Machine::ProcessorMemoryAffinity& pma);
       void add_mem_mem_affinity(const Machine::MemoryMemoryAffinity& mma);
@@ -262,22 +266,25 @@ namespace Realm {
 
       const std::vector<DMAChannel *>& get_dma_channels(void) const;
 
+      const std::vector<CodeTranslator *>& get_code_translators(void) const;
+
     protected:
-#if USE_OCR_LAYER
-      //create a processor and add to the list of processors
-      void create_processors();
-      //create a memory and add to the list of memories
-      void create_memories();
-#endif // USE_OCR_LAYER
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;
       std::vector<Module *> modules;
       std::vector<DMAChannel *> dma_channels;
+      std::vector<CodeTranslator *> code_translators;
     };
 
     extern RuntimeImpl *runtime_singleton;
     inline RuntimeImpl *get_runtime(void) { return runtime_singleton; }
+
+    // due to circular dependencies in include files, we need versions of these that
+    //  hide the RuntimeImpl intermediate
+    inline EventImpl *get_event_impl(Event e) { return get_runtime()->get_event_impl(e); }
+    inline GenEventImpl *get_genevent_impl(Event e) { return get_runtime()->get_genevent_impl(e); }
+    inline BarrierImpl *get_barrier_impl(Event e) { return get_runtime()->get_barrier_impl(e); }
 
     // active messages
 

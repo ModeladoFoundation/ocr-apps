@@ -1,5 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,14 +28,9 @@ namespace Realm {
     public:
       typedef ::legion_lowlevel_id_t id_t;
       id_t id;
-
-#if USE_OCR_LAYER
-      ocrGuid_t res_guid;
-#endif // USE_OCR_LAYER
-
-      bool operator<(const Reservation& rhs) const;
-      bool operator==(const Reservation& rhs) const;
-      bool operator!=(const Reservation& rhs) const;
+      bool operator<(const Reservation& rhs) const { return id < rhs.id; }
+      bool operator==(const Reservation& rhs) const { return id == rhs.id; }
+      bool operator!=(const Reservation& rhs) const { return id != rhs.id; }
 
       static const Reservation NO_RESERVATION;
 
@@ -46,6 +40,15 @@ namespace Realm {
       //   specified mode - returns an event that will trigger when the reservation
       //   is granted
       Event acquire(unsigned mode = 0, bool exclusive = true, Event wait_on = Event::NO_EVENT) const;
+
+      // tries to acquire ownership of the reservation with the given 'mode' and 'exclusive'ity
+      // if immediately successful, returns Event::NO_EVENT - check with exists(), not has_triggered()!
+      // if not, the reservation is NOT acquired (ever), and it returns an Event that should be
+      //  allowed to trigger before the caller tries again - also, the caller MUST retry until successful,
+      //  setting 'retry' to true on subsequent attempts
+      Event try_acquire(bool retry, unsigned mode = 0, bool exclusive = true,
+			Event wait_on = Event::NO_EVENT) const;
+
       // releases a held reservation - release can be deferred until an event triggers
       void release(Event wait_on = Event::NO_EVENT) const;
 

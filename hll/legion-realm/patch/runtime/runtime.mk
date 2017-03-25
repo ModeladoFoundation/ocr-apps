@@ -1,5 +1,4 @@
-# Copyright 2015 Stanford University, NVIDIA Corporation
-# Portions Copyright 2016 Rice University, Intel Corporation
+# Copyright 2017 Stanford University, NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +19,7 @@
 GPU_ARCH ?= fermi
 #GPU_ARCH ?= kepler
 #GPU_ARCH ?= k20
+#GPU_ARCH ?= pascal
 
 # if CUDA is not set, but CUDATOOLKIT_HOME is, use that
 ifdef CUDATOOLKIT_HOME
@@ -36,12 +36,15 @@ ifdef GASNET_ROOT
 GASNET ?= $(GASNET_ROOT)
 endif
 
+# For backwards compatibility
+SHARED_LOWLEVEL ?= 0
 # generate libraries for Legion and Realm
 SLIB_LEGION     := liblegion.a
 ifeq ($(strip $(SHARED_LOWLEVEL)),0)
 SLIB_REALM      := librealm.a
 LEGION_LIBS     := -L. -llegion -lrealm
 else
+$(error Error: SHARED_LOWLEVEL=1 is no longer supported)
 SLIB_SHAREDLLR  := libsharedllr.a
 LEGION_LIBS     := -L. -llegion -lsharedllr
 endif
@@ -104,6 +107,16 @@ GPU_ARCH=k20
 LEGION_LD_FLAGS += ${CRAY_UGNI_POST_LINK_OPTS}
 LEGION_LD_FLAGS += ${CRAY_PMI_POST_LINK_OPTS}
 endif
+ifeq ($(findstring excalibur,$(shell uname -n)),excalibur)
+CXX=CC
+F90=ftn
+# Cray's magic wrappers automatically provide LAPACK goodness?
+LAPACK_LIBS=
+CC_FLAGS += -DGASNETI_BUG1389_WORKAROUND=1
+CONDUIT=aries
+LEGION_LD_FLAGS += ${CRAY_UGNI_POST_LINK_OPTS}
+LEGION_LD_FLAGS += ${CRAY_PMI_POST_LINK_OPTS}
+endif
 
 ifneq (${MARCH},)
   CC_FLAGS += -march=${MARCH}
@@ -125,6 +138,19 @@ ifeq ($(strip $(USE_HWLOC)),1)
   LEGION_LD_FLAGS += -L$(HWLOC)/lib -lhwloc
 endif
 
+ifeq ($(strip $(USE_PAPI)),1)
+  ifndef PAPI_ROOT
+    ifdef PAPI
+      PAPI_ROOT = $(PAPI)
+    else
+      $(error USE_PAPI set, but neither PAPI nor PAPI_ROOT is defined, aborting build)
+    endif
+  endif
+  CC_FLAGS        += -DREALM_USE_PAPI
+  INC_FLAGS   += -I$(PAPI_ROOT)/include
+  LEGION_LD_FLAGS += -L$(PAPI_ROOT)/lib -lpapi
+endif
+
 USE_LIBDL ?= 1
 ifeq ($(strip $(USE_LIBDL)),1)
 ifneq ($(shell uname -s),Darwin)
@@ -133,6 +159,24 @@ LEGION_LD_FLAGS += -ldl -rdynamic
 else
 LEGION_LD_FLAGS += -ldl -Wl,-export_dynamic
 endif
+endif
+
+USE_LLVM ?= 0
+ifeq ($(strip $(USE_LLVM)),1)
+  # prefer 3.5 (actually, require it right now)
+  LLVM_CONFIG ?= $(shell which llvm-config-3.5 llvm-config | head -1)
+  ifeq ($(LLVM_CONFIG),)
+    $(error cannot find llvm-config-* - set with LLVM_CONFIG if not in path)
+  endif
+  CC_FLAGS += -DREALM_USE_LLVM
+  # NOTE: do not use these for all source files - just the ones that include llvm include files
+  LLVM_CXXFLAGS ?= -std=c++11 -I$(shell $(LLVM_CONFIG) --includedir)
+  LEGION_LD_FLAGS += $(shell $(LLVM_CONFIG) --ldflags --libs irreader jit mcjit x86)
+  # llvm-config --system-libs gives you all the libraries you might need for anything,
+  #  which includes things we don't need, and might not be installed
+  # by default, filter out libedit
+  LLVM_SYSTEM_LIBS ?= $(filter-out -ledit,$(shell $(LLVM_CONFIG) --system-libs))
+  LEGION_LD_FLAGS += $(LLVM_SYSTEM_LIBS)
 endif
 
 # Flags for running in the general low-level runtime
@@ -154,7 +198,7 @@ CC_FLAGS        += -DUSE_CUDA
 NVCC_FLAGS      += -DUSE_CUDA
 INC_FLAGS	+= -I$(CUDA)/include
 ifeq ($(strip $(DEBUG)),1)
-NVCC_FLAGS	+= -DDEBUG_LOW_LEVEL -DDEBUG_HIGH_LEVEL -g
+NVCC_FLAGS	+= -DDEBUG_REALM -DDEBUG_LEGION -g -O0
 #NVCC_FLAGS	+= -G
 else
 NVCC_FLAGS	+= -O2
@@ -176,6 +220,10 @@ endif
 ifeq ($(strip $(GPU_ARCH)),k20)
 NVCC_FLAGS	+= -arch=compute_35 -code=sm_35
 NVCC_FLAGS	+= -DK20_ARCH
+endif
+ifeq ($(strip $(GPU_ARCH)),pascal)
+NVCC_FLAGS	+= -arch=compute_60 -code=sm_60
+NVCC_FLAGS	+= -DPASCAL_ARCH
 endif
 NVCC_FLAGS	+= -Xptxas "-v" #-abi=no"
 endif
@@ -240,30 +288,13 @@ endif
 
 # general low-level doesn't use HDF by default
 USE_HDF ?= 0
+HDF_LIBNAME ?= hdf5
 ifeq ($(strip $(USE_HDF)), 1)
-  CC_FLAGS      += -DUSE_HDF
-  LEGION_LD_FLAGS      += -lhdf5
+  CC_FLAGS      += -DUSE_HDF -I/usr/include/hdf5/serial
+  LEGION_LD_FLAGS      += -l$(HDF_LIBNAME)
 endif
 
-# general low-level doesn't use OCR by default
-USE_OCR ?= 0
-ifeq ($(strip $(USE_OCR)), 1)
-  ifndef OCR_INSTALL
-    $(error OCR_INSTALL variable is not defined, aborting build)
-  endif
-  ifndef OCR_TYPE
-    $(error OCR_TYPE variable is not defined, aborting build)
-  endif
-  ifndef APPS_LIBS_INSTALL
-    $(error APPS_LIBS_INSTALL variable is not defined, aborting build)
-  endif
-  INC_FLAGS    += -I${OCR_INSTALL}/include -I${APPS_LIBS_INSTALL}/include
-  CC_FLAGS      += -DUSE_OCR_LAYER=1 -DENABLE_EXTENSION_LEGACY -DENABLE_EXTENSION_PARAMS_EVT
-  LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr_${OCR_TYPE}
-  LEGION_LD_FLAGS      += -L${APPS_LIBS_INSTALL}/lib -locr-reservations
-endif
-
-SKIP_MACHINES= titan% daint%
+SKIP_MACHINES= titan% daint% excalibur%
 #Extra options for MPI support in GASNet
 ifeq ($(strip $(USE_MPI)),1)
   # Skip any machines on this list list
@@ -280,7 +311,7 @@ endif # ifeq SHARED_LOWLEVEL
 
 
 ifeq ($(strip $(DEBUG)),1)
-CC_FLAGS	+= -DDEBUG_LOW_LEVEL -DDEBUG_HIGH_LEVEL -ggdb #-ggdb -Wall
+CC_FLAGS	+= -DDEBUG_REALM -DDEBUG_LEGION -ggdb #-ggdb -Wall
 else
 CC_FLAGS	+= -O2 -fno-strict-aliasing #-ggdb
 endif
@@ -290,8 +321,8 @@ endif
 CC_FLAGS	+= -DCOMPILE_TIME_MIN_LEVEL=$(OUTPUT_LEVEL)
 
 # demand warning-free compilation
-CC_FLAGS        += -Wall -Wno-strict-overflow -Wno-unused-function -Wno-unused-variable
-ifeq ($(strip $(WARNINGS_ARE_ERRORS)),1)
+CC_FLAGS        += -Wall -Wno-strict-overflow
+ifeq ($(strip $(WARN_AS_ERROR)),1)
 CC_FLAGS        += -Werror
 endif
 
@@ -309,6 +340,7 @@ LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/runtime_impl.cc \
 	           $(LG_RT_DIR)/lowlevel_dma.cc \
 	           $(LG_RT_DIR)/realm/module.cc \
 	           $(LG_RT_DIR)/realm/threads.cc \
+	           $(LG_RT_DIR)/realm/faults.cc \
 		   $(LG_RT_DIR)/realm/operation.cc \
 	           $(LG_RT_DIR)/realm/tasks.cc \
 	           $(LG_RT_DIR)/realm/metadata.cc \
@@ -319,17 +351,23 @@ LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/runtime_impl.cc \
 		   $(LG_RT_DIR)/realm/inst_impl.cc \
 		   $(LG_RT_DIR)/realm/idx_impl.cc \
 		   $(LG_RT_DIR)/realm/machine_impl.cc \
+		   $(LG_RT_DIR)/realm/sampling_impl.cc \
                    $(LG_RT_DIR)/lowlevel.cc \
                    $(LG_RT_DIR)/lowlevel_disk.cc
+LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/numa/numa_module.cc \
+		   $(LG_RT_DIR)/realm/numa/numasysif.cc
+LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/procset/procset_module.cc
 ifeq ($(strip $(USE_CUDA)),1)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/cuda/cuda_module.cc \
 		   $(LG_RT_DIR)/realm/cuda/cudart_hijack.cc
 endif
-ifeq ($(strip $(USE_OCR)),1)
-LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/ocr/ocr_event_impl.cc \
-                   $(LG_RT_DIR)/realm/ocr/ocr_mem_impl.cc \
-                   $(LG_RT_DIR)/realm/ocr/ocr_proc_impl.cc\
-                   $(LG_RT_DIR)/realm/ocr/ocr_rsrv_impl.cc
+ifeq ($(strip $(USE_LLVM)),1)
+LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/llvmjit/llvmjit_module.cc \
+                   $(LG_RT_DIR)/realm/llvmjit/llvmjit_internal.cc
+endif
+ifeq ($(strip $(USE_HDF)),1)
+LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/hdf5/hdf5_module.cc \
+		   $(LG_RT_DIR)/realm/hdf5/hdf5_internal.cc
 endif
 ifeq ($(strip $(USE_GASNET)),1)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/activemsg.cc
@@ -345,12 +383,14 @@ LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/logging.cc \
 	           $(LG_RT_DIR)/realm/codedesc.cc \
 		   $(LG_RT_DIR)/realm/timers.cc
 
-# If you want to go back to using the shared mapper, comment out the next line
-# and uncomment the one after that
 MAPPER_SRC	+= $(LG_RT_DIR)/mappers/default_mapper.cc \
+		   $(LG_RT_DIR)/mappers/mapping_utilities.cc \
 		   $(LG_RT_DIR)/mappers/shim_mapper.cc \
-		   $(LG_RT_DIR)/mappers/mapping_utilities.cc
-#MAPPER_SRC	+= $(LG_RT_DIR)/shared_mapper.cc
+		   $(LG_RT_DIR)/mappers/test_mapper.cc \
+		   $(LG_RT_DIR)/mappers/replay_mapper.cc \
+		   $(LG_RT_DIR)/mappers/debug_mapper.cc \
+		   $(LG_RT_DIR)/mappers/wrapper_mapper.cc
+
 ifeq ($(strip $(ALT_MAPPERS)),1)
 MAPPER_SRC	+= $(LG_RT_DIR)/mappers/alt_mappers.cc
 endif
@@ -359,6 +399,7 @@ HIGH_RUNTIME_SRC += $(LG_RT_DIR)/legion/legion.cc \
 		    $(LG_RT_DIR)/legion/legion_c.cc \
 		    $(LG_RT_DIR)/legion/legion_ops.cc \
 		    $(LG_RT_DIR)/legion/legion_tasks.cc \
+		    $(LG_RT_DIR)/legion/legion_context.cc \
 		    $(LG_RT_DIR)/legion/legion_trace.cc \
 		    $(LG_RT_DIR)/legion/legion_spy.cc \
 		    $(LG_RT_DIR)/legion/legion_profiling.cc \
@@ -366,9 +407,11 @@ HIGH_RUNTIME_SRC += $(LG_RT_DIR)/legion/legion.cc \
 		    $(LG_RT_DIR)/legion/legion_views.cc \
 		    $(LG_RT_DIR)/legion/legion_analysis.cc \
 		    $(LG_RT_DIR)/legion/legion_constraint.cc \
+		    $(LG_RT_DIR)/legion/legion_mapping.cc \
 		    $(LG_RT_DIR)/legion/region_tree.cc \
 		    $(LG_RT_DIR)/legion/runtime.cc \
-		    $(LG_RT_DIR)/legion/garbage_collection.cc
+		    $(LG_RT_DIR)/legion/garbage_collection.cc \
+		    $(LG_RT_DIR)/legion/mapper_manager.cc
 
 # General shell commands
 SHELL	:= /bin/sh
@@ -394,7 +437,7 @@ HIGH_RUNTIME_OBJS:=$(HIGH_RUNTIME_SRC:.cc=.o)
 MAPPER_OBJS	:= $(MAPPER_SRC:.cc=.o)
 ASM_OBJS	:= $(ASM_SRC:.S=.o)
 # Only compile the gpu objects if we need to
-ifeq ($(strip $(SHARED_LOWLEVEL)),0)
+ifeq ($(strip $(USE_CUDA)),1)
 GEN_GPU_OBJS	:= $(GEN_GPU_SRC:.cu=.o)
 GPU_RUNTIME_OBJS:= $(GPU_RUNTIME_SRC:.cu=.o)
 else
@@ -451,3 +494,7 @@ clean::
 
 endif
 
+ifeq ($(strip $(USE_LLVM)),1)
+llvmjit_internal.o : CC_FLAGS += $(LLVM_CXXFLAGS)
+%/llvmjit_internal.o : CC_FLAGS += $(LLVM_CXXFLAGS)
+endif

@@ -1,5 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +16,8 @@
 #ifndef RUNTIME_LOWLEVEL_CONFIG_H
 #define RUNTIME_LOWLEVEL_CONFIG_H
 
-#if USE_OCR_LAYER
-#include "ocr.h"
-
-#define U64_COUNT(size) ((size+(sizeof(u64)-1))/sizeof(u64))
-
-#endif // USE_OCR_LAYER
+// for size_t
+#include <stddef.h>
 
 // ******************** IMPORTANT **************************
 //
@@ -35,9 +30,10 @@
 // LegionRuntime::LowLevel. These versions are here to facilitate the
 // C API. If you are writing C++ code, use the namespaced versions.
 
-#define REALM_IDS_ARE_64BIT
 typedef unsigned long long legion_lowlevel_id_t;
 #define IDFMT "%llx"
+
+typedef long long legion_lowlevel_coord_t;
 
 typedef unsigned int legion_lowlevel_address_space_t;
 typedef unsigned legion_lowlevel_task_func_id_t;
@@ -55,9 +51,7 @@ typedef enum legion_lowlevel_processor_kind_t {
   UTIL_PROC, // Utility core
   IO_PROC, // I/O core
   PROC_GROUP, // Processor group
-#if USE_OCR_LAYER
-  OCR_PROC, //OCR processor
-#endif // USE_OCR_LAYER
+  PROC_SET, // Set of Processors for OpenMP/Kokkos etc.
 } legion_lowlevel_processor_kind_t;
 
 // Different Memory types
@@ -75,9 +69,6 @@ typedef enum legion_lowlevel_memory_kind_t {
   LEVEL3_CACHE, // CPU L3 Visible to all processors on the node, better performance to processors on same socket
   LEVEL2_CACHE, // CPU L2 Visible to all processors on the node, better performance to one processor
   LEVEL1_CACHE, // CPU L1 Visible to all processors on the node, better performance to one processor
-#if USE_OCR_LAYER
-  OCR_MEM, //for now the single big datablock exposed by OCR
-#endif // USE_OCR_LAYER
 } legion_lowlevel_memory_kind_t;
 
 typedef enum legion_lowlevel_file_mode_t {
@@ -91,5 +82,14 @@ typedef enum legion_lowlevel_domain_max_rect_dim_t {
   MAX_POINT_DIM = 3,
   MAX_RECT_DIM = 3,
 } legion_lowlevel_domain_max_rect_dim_t;
+
+// Prototype for a Realm task
+typedef
+  void (*legion_lowlevel_task_pointer_t)(
+    const void * /*data*/,
+    size_t /*datalen*/,
+    const void * /*userdata*/,
+    size_t /*userlen*/,
+    legion_lowlevel_id_t /*proc_id*/);
 
 #endif

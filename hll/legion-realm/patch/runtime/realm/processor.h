@@ -1,5 +1,4 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +27,7 @@
 
 namespace Realm {
 
-    typedef unsigned int AddressSpace;
+    typedef ::legion_lowlevel_address_space_t AddressSpace;
 
     class ProfilingRequestSet;
     class CodeDescriptor;
@@ -60,20 +59,18 @@ namespace Realm {
         UTIL_PROC = ::UTIL_PROC, // Utility core
         IO_PROC = ::IO_PROC, // I/O core
         PROC_GROUP = ::PROC_GROUP, // Processor group
-#if USE_OCR_LAYER
-        OCR_PROC = ::OCR_PROC, //OCR processor
-#endif // USE_OCR_LAYER
+        PROC_SET = ::PROC_SET, // Set of Processors for OpenMP/Kokkos etc.
       };
 
       // Return what kind of processor this is
       Kind kind(void) const;
       // Return the address space for this processor
       AddressSpace address_space(void) const;
-      // Return the local ID within the address space
-      id_t local_id(void) const;
 
       static Processor create_group(const std::vector<Processor>& members);
       void get_group_members(std::vector<Processor>& members);
+
+      int get_num_cores(void) const;
 
       // special task IDs
       enum {
@@ -113,6 +110,15 @@ namespace Realm {
 					 const ProfilingRequestSet& prs,
 					 const void *user_data = 0, size_t user_data_len = 0);
 
+      // reports an execution fault in the currently running task
+      static void report_execution_fault(int reason,
+					 const void *reason_data, size_t reason_size);
+
+      // reports a problem with a processor in general (this is primarily for fault injection)
+      void report_processor_fault(int reason,
+				  const void *reason_data, size_t reason_size) const;
+
+      static const char* get_kind_name(Kind kind);
     };
 
     inline std::ostream& operator<<(std::ostream& os, Processor p) { return os << std::hex << p.id << std::dec; }
