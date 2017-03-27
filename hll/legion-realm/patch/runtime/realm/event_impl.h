@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +54,9 @@ namespace Realm {
       virtual bool event_triggered(Event e, bool poisoned) = 0;
       virtual void print(std::ostream& os) const = 0;
       virtual Event get_finish_event(void) const = 0;
+#if USE_OCR_LAYER
+      virtual size_t get_size() const { return sizeof(*this); }
+#endif // USE_OCR_LAYER
     };
 
     // parent class of GenEventImpl and BarrierImpl
@@ -382,6 +386,10 @@ namespace Realm {
     };
 
 }; // namespace Realm
+
+#if USE_OCR_LAYER
+#include "ocr/ocr_event_impl.h"
+#endif // USE_OCR_LAYER
 
 #include "event_impl.inl"
 

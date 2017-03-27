@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -193,6 +194,10 @@ namespace Realm {
       // requests a shutdown of the runtime
       void shutdown(bool local_request);
 
+#if USE_OCR_LAYER
+      void shutdown(Event wait_on);
+#endif // USE_OCR_LAYER
+
       void wait_for_shutdown(void);
 
       // three event-related impl calls - get_event_impl() will give you either
@@ -218,6 +223,12 @@ namespace Realm {
 
       std::map<ReductionOpID, const ReductionOpUntyped *> reduce_op_table;
       std::map<CustomSerdezID, const CustomSerdezUntyped *> custom_serdez_table;
+
+#if USE_OCR_LAYER
+     //guid of the event on which wait_for_shutdown() blocks since
+     //shutdown() needs to wait on that event
+     ocrGuid_t ocr_shutdown_guid;
+#endif // USE_OCR_LAYER
 
 #ifdef NODE_LOGGING
       std::string prefix;
@@ -269,6 +280,12 @@ namespace Realm {
       const std::vector<CodeTranslator *>& get_code_translators(void) const;
 
     protected:
+#if USE_OCR_LAYER
+      //create a processor and add to the list of processors
+      void create_processors();
+      //create a memory and add to the list of memories
+      void create_memories();
+#endif // USE_OCR_LAYER
       ID::IDType num_local_memories, num_local_processors;
 
       ModuleRegistrar module_registrar;

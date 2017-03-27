@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -251,10 +252,14 @@ namespace Realm {
     void Runtime::shutdown(Event wait_on /*= Event::NO_EVENT*/)
     {
       log_runtime.info() << "shutdown requested - wait_on=" << wait_on;
+#if USE_OCR_LAYER
+      ((RuntimeImpl *)impl)->shutdown(wait_on);
+#else
       if(wait_on.has_triggered())
 	((RuntimeImpl *)impl)->shutdown(true); // local request
       else
 	EventImpl::add_waiter(wait_on, new DeferredShutdown((RuntimeImpl *)impl));
+#endif // USE_OCR_LAYER
     }
 
     void Runtime::wait_for_shutdown(void)
@@ -384,6 +389,9 @@ namespace Realm {
 
     RuntimeImpl::RuntimeImpl(void)
       : machine(0),
+#if USE_OCR_LAYER
+        ocr_shutdown_guid(NULL_GUID),
+#endif // USE_OCR_LAYER
 #ifdef NODE_LOGGING
 	prefix("."),
 #endif
@@ -402,6 +410,9 @@ namespace Realm {
 
     RuntimeImpl::~RuntimeImpl(void)
     {
+#if USE_OCR_LAYER
+      ocrEventDestroy(ocr_shutdown_guid);
+#endif // USE_OCR_LAYER
       delete machine;
       delete core_reservations;
       delete core_map;
@@ -519,8 +530,116 @@ namespace Realm {
 	}
     }
 
+#if USE_OCR_LAYER
+    void RuntimeImpl::create_processors()
+    {
+      //only one processor
+      Processor p = next_local_processor_id();
+      ProcessorImpl *pi = new OCRProcessor(p);
+      add_processor(pi);
+    }
+
+    void RuntimeImpl::create_memories()
+    {
+      //only one memory
+      size_t sysmem_size_in_mb = 512;
+      Memory m = next_local_memory_id();
+      MemoryImpl *mi = new OCRMemory(m, sysmem_size_in_mb << 20);
+      add_memory(mi);
+    }
+#endif // USE_OCR_LAYER
+
     bool RuntimeImpl::init(int *argc, char ***argv)
     {
+#if USE_OCR_LAYER
+
+      // have to register domain mappings too
+      LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<1> >();
+      LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<2> >();
+      LegionRuntime::Arrays::Mapping<3,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<3> >();
+      LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<1> >();
+      LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<2> >();
+      LegionRuntime::Arrays::Mapping<3,1>::register_mapping<LegionRuntime::Arrays::FortranArrayLinearization<3> >();
+      LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::Translation<1> >();
+
+      // new command-line parsers will work from a vector<string> representation of the
+      //  command line
+      std::vector<std::string> cmdline;
+      if(*argc > 1) {
+        cmdline.resize(*argc - 1);
+        for(int i = 1; i < *argc; i++)
+          cmdline[i - 1] = (*argv)[i];
+      }
+
+      // very first thing - let the logger initialization happen
+      Logger::configure_from_cmdline(cmdline);
+
+      DetailedTimer::init_timers();
+
+      OCREventImpl::static_init();
+      OCRProcessor::static_init();
+      LegionRuntime::LowLevel::DmaRequest::static_init();
+      //create the nodes which contains processors and memory
+      nodes = new Node[gasnet_nodes()];
+
+      // create allocators index spaces
+      {
+          Node& n = nodes[gasnet_mynode()];
+          local_index_space_free_list = new IndexSpaceTableAllocator::FreeList(n.index_spaces, gasnet_mynode());
+      }
+
+      Node *n = &nodes[gasnet_mynode()];
+      create_processors();
+      create_memories();
+
+      //create a persistent event for use in wait_for_shutdown and
+      ocrEventCreate(&ocr_shutdown_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+
+      // iterate over all local processors and add affinities for them
+      // all of this should eventually be moved into appropriate modules
+      std::map<Processor::Kind, std::set<Processor> > procs_by_kind;
+
+      for(std::vector<ProcessorImpl *>::const_iterator it = n->processors.begin();
+          it != n->processors.end();
+          it++)
+        if(*it) {
+          Processor p = (*it)->me;
+          Processor::Kind k = (*it)->me.kind();
+
+          procs_by_kind[k].insert(p);
+        }
+
+      // now iterate over memories too
+       std::map<Memory::Kind, std::set<Memory> > mems_by_kind;
+       for(std::vector<MemoryImpl *>::const_iterator it = n->memories.begin();
+           it != n->memories.end();
+           it++)
+         if(*it) {
+           Memory m = (*it)->me;
+           Memory::Kind k = (*it)->me.kind();
+
+           mems_by_kind[k].insert(m);
+         }
+
+      std::set<Processor::Kind> local_cpu_kinds;
+      local_cpu_kinds.insert(Processor::OCR_PROC);
+
+      for(std::set<Processor::Kind>::const_iterator it = local_cpu_kinds.begin();
+          it != local_cpu_kinds.end();
+          it++) {
+        Processor::Kind k = *it;
+
+        add_proc_mem_affinities(machine,
+                         procs_by_kind[k],
+                         mems_by_kind[Memory::OCR_MEM],
+                         100, // "large" bandwidth
+                         1   // "small" latency
+                         );
+     }
+
+      return true;
+#else // USE_OCR_LAYER
+
       // have to register domain mappings too
       LegionRuntime::Arrays::Mapping<1,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<1> >();
       LegionRuntime::Arrays::Mapping<2,1>::register_mapping<LegionRuntime::Arrays::CArrayLinearization<2> >();
@@ -1192,6 +1311,7 @@ namespace Realm {
       }
 
       return true;
+#endif // USE_OCR_LAYER
     }
 
   template <typename T>
@@ -1236,6 +1356,15 @@ namespace Realm {
 					Event wait_on /*= Event::NO_EVENT*/, int priority /*= 0*/)
     {
       log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " before=" << wait_on;
+
+#if USE_OCR_LAYER
+      //same as the non gasnet case
+      Event finish_event = target_proc.spawn(task_id, args, arglen, wait_on, priority);
+
+      log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
+
+      return finish_event;
+#else // USE_OCR_LAYER
 
 #ifdef USE_GASNET
 #ifdef DEBUG_COLLECTIVES
@@ -1300,6 +1429,7 @@ namespace Realm {
 
       return finish_event;
 #endif
+#endif // USE_OCR_LAYER
     }
 
     Event RuntimeImpl::collective_spawn_by_kind(Processor::Kind target_kind, Processor::TaskFuncID task_id,
@@ -1308,6 +1438,16 @@ namespace Realm {
 						Event wait_on /*= Event::NO_EVENT*/, int priority /*= 0*/)
     {
       log_collective.info() << "collective spawn: kind=" << target_kind << " func=" << task_id << " priority=" << priority << " before=" << wait_on;
+
+#if USE_OCR_LAYER
+      const std::vector<ProcessorImpl *>& local_procs = nodes[gasnet_mynode()].processors;
+      assert(local_procs.size() == 1 && local_procs[0]->me.kind() == Processor::OCR_PROC && target_kind == Processor::OCR_PROC);
+      Event finish_event = local_procs[0]->me.spawn(task_id, args, arglen, wait_on, priority);
+
+      log_collective.info() << "collective spawn: kind=" << target_kind << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
+
+      return finish_event;
+#else // USE_OCR_LAYER
 
 #ifdef USE_GASNET
 #ifdef DEBUG_COLLECTIVES
@@ -1428,6 +1568,7 @@ namespace Realm {
 
       return my_finish;
 #endif
+#endif // USE_OCR_LAYER
     }
 
 #if 0
@@ -1524,6 +1665,30 @@ namespace Realm {
     // this is not member data of RuntimeImpl because we don't want use-after-free problems
     static int shutdown_count = 0;
 
+#if USE_OCR_LAYER
+    //EDT for the shutdown
+    ocrGuid_t shutdown_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+    {
+        assert(argc == 0 && depc == 1);
+        ocrShutdown();
+        return NULL_GUID;
+    }
+
+    void RuntimeImpl::shutdown(Event wait_on)
+    {
+        //invoke the showtdown EDT
+        ocrGuid_t sd_edt_t, sd_edt, out_sd_edt, persistent_evt_guid;
+        ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
+        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, &out_sd_edt);
+
+        //attach shutdown EDT to ocr_shutdown_guid sticky event since legacy_block_progress needs persistent event
+        ocrAddDependence(out_sd_edt, ocr_shutdown_guid, 0, DB_MODE_RO);
+
+        //start the EDT by statisfying dependency only after linking to the return event
+        ocrAddDependence(wait_on.evt_guid, sd_edt, 0, DB_MODE_RO);
+    }
+#endif // USE_OCR_LAYER
+
     void RuntimeImpl::shutdown(bool local_request /*= true*/)
     {
       // filter out duplicate requests
@@ -1560,6 +1725,22 @@ namespace Realm {
 
     void RuntimeImpl::wait_for_shutdown(void)
     {
+#if USE_OCR_LAYER
+    OCREventImpl::wait(ocr_shutdown_guid);
+    OCREventImpl::static_destroy();
+    OCRProcessor::static_destroy();
+    LegionRuntime::LowLevel::DmaRequest::static_destroy();
+
+    // delete processors, memories, nodes, etc.
+    {
+      for(gasnet_node_t i = 0; i < gasnet_nodes(); i++) {
+        Node& n = nodes[i];
+
+        delete_container_contents(n.memories);
+        delete_container_contents(n.processors);
+      }
+    }
+#else // USE_OCR_LAYER
 #if 0
       bool exit_process = true;
       if (background_pthread != 0)
@@ -1679,6 +1860,7 @@ namespace Realm {
       // would be nice to fix this...
       //if (exit_process)
       //  gasnet_exit(0);
+#endif // USE_OCR_LAYER
     }
 
     EventImpl *RuntimeImpl::get_event_impl(Event e)
@@ -1952,3 +2134,34 @@ namespace Realm {
 
 
 }; // namespace Realm
+
+#if USE_OCR_LAYER
+
+int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
+{
+    printf("error: no legion_ocr_main defined.\n");
+    ocrShutdown();
+    ASSERT(false);
+    return 0;
+}
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
+{
+  int argc = getArgc(depv[0].ptr), i;
+  char *argv[argc];
+  for(i=0;i<argc;i++)
+    argv[i] = getArgv(depv[0].ptr, i);
+
+  ocrGuid_t ret;
+  GUIDA(ret) = legion_ocr_main(argc, argv);
+  return ret;
+}
+#ifdef __cplusplus
+}
+#endif
+
+#endif //USE_OCR_LAYER
+

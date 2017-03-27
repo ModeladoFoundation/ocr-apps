@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -570,6 +571,10 @@ namespace LegionRuntime {
 
     bool CopyRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
+#if USE_OCR_LAYER
+      DmaRequest::ocr_check_readiness(just_check, DmaRequest::COPY, sizeof(*this));
+      return true;
+#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -688,6 +693,7 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
+#endif // USE_OCR_LAYER
     }
 
     namespace RangeExecutors {
@@ -1042,7 +1048,11 @@ namespace LegionRuntime {
 
 	  // if we don't have an event for our completion, we need one now
 	  if(!event.exists())
+#if USE_OCR_LAYER
+            event = OCREventImpl::create_ocrevent();
+#else
 	    event = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 
 	  DetailedTimer::ScopedPush sp(TIME_SYSTEM);
 	  do_remote_write(tgt_mem, tgt_offset + byte_offset,
@@ -3395,6 +3405,10 @@ namespace LegionRuntime {
 
     bool ReduceRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
+#if USE_OCR_LAYER
+      DmaRequest::ocr_check_readiness(just_check, DmaRequest::REDUCE, sizeof(*this));
+      return true;
+#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -3537,6 +3551,7 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
+#endif // USE_OCR_LAYER
     }
 
     template <unsigned DIM>
@@ -4019,6 +4034,10 @@ namespace LegionRuntime {
 
     bool FillRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
+#if USE_OCR_LAYER
+      DmaRequest::ocr_check_readiness(just_check, DmaRequest::FILL, sizeof(*this));
+      return true;
+#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -4103,6 +4122,7 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
+#endif // USE_OCR_LAYER
     }
 
     void FillRequest::perform_dma(void)
@@ -4116,6 +4136,9 @@ namespace LegionRuntime {
           (mem_kind == MemoryImpl::MKIND_ZEROCOPY) ||
           (mem_kind == MemoryImpl::MKIND_RDMA) ||
           (mem_kind == MemoryImpl::MKIND_GPUFB) ||
+#if USE_OCR_LAYER
+          (mem_kind == MemoryImpl::MKIND_OCR) ||
+#endif // USE_OCR_LAYER
           (mem_kind == MemoryImpl::MKIND_ZEROCOPY))
       {
         switch (domain.get_dim()) {
@@ -4392,7 +4415,11 @@ namespace Realm {
       for (std::vector<CopySrcDstField>::const_iterator it = dsts.begin();
             it != dsts.end(); it++)
       {
+#if USE_OCR_LAYER
+        Event ev = OCREventImpl::create_ocrevent();
+#else
         Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 	if((fill_ofs + it->size) > fill_value_size) {
 	  log_dma.fatal() << "insufficient data for fill - need at least "
 			  << (fill_ofs + it->size) << " bytes, but have only " << fill_value_size;
@@ -4414,9 +4441,15 @@ namespace Realm {
 	  return Event::NO_EVENT;
 	}
         if (node == (unsigned)gasnet_mynode()) {
+#if ! USE_OCR_LAYER
 	  get_runtime()->optable.add_local_operation(ev, r);
+#endif // USE_OCR_LAYER
           r->check_readiness(false, dma_queue);
         } else {
+#if USE_OCR_LAYER
+          assert(false); //only dealing with one node now
+#endif // USE_OCR_LAYER
+
           RemoteFillArgs args;
           args.inst = it->inst;
           args.offset = it->offset;
@@ -4439,7 +4472,11 @@ namespace Realm {
         }
         finish_events.insert(ev);
       }
+#if USE_OCR_LAYER
+      return OCREventImpl::merge_events(finish_events);
+#else
       return GenEventImpl::merge_events(finish_events, false /*!ignore faults*/);
+#endif // USE_OCR_LAYER
     }
 
     Event Domain::copy(RegionInstance src_inst, RegionInstance dst_inst,
@@ -4584,7 +4621,11 @@ namespace Realm {
 	  if (oas.serdez_id != 0) {
 	    OASByInst* oas_by_inst = new OASByInst;
 	    (*oas_by_inst)[ip].push_back(oas);
+#if USE_OCR_LAYER
+            Event ev = OCREventImpl::create_ocrevent();
+#else
 	    Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 	    int priority = 0; // always have priority zero
 	    CopyRequest *r = new CopyRequest(*this, oas_by_inst,
   					     wait_on, ev, priority, requests);
@@ -4594,10 +4635,15 @@ namespace Realm {
 
             if(((unsigned)dma_node) == gasnet_mynode()) {
               log_dma.debug("performing serdez on local node");
+#if ! USE_OCR_LAYER
 	      Realm::get_runtime()->optable.add_local_operation(ev, r);
+#endif // USE_OCR_LAYER
               r->check_readiness(false, dma_queue);
               finish_events.insert(ev);
             } else {
+#if USE_OCR_LAYER
+              assert(false); //only dealing with one node now
+#endif
               RemoteCopyArgs args;
               args.redop_id = 0;
               args.red_fold = false;
@@ -4657,7 +4703,11 @@ namespace Realm {
 	  Memory dst_mem = it->first.second;
 	  OASByInst *oas_by_inst = it->second;
 
+#if USE_OCR_LAYER
+          Event ev = OCREventImpl::create_ocrevent();
+#else
 	  Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 #ifdef EVENT_GRAPH_TRACE
           Event enclosing = find_enclosing_termination_event();
           log_event_graph.info("Copy Request: (" IDFMT ",%d) (" IDFMT ",%d) "
@@ -4682,13 +4732,16 @@ namespace Realm {
 
 	  if(((unsigned)dma_node) == gasnet_mynode()) {
 	    log_dma.debug("performing copy on local node");
-
+#if ! USE_OCR_LAYER
 	    get_runtime()->optable.add_local_operation(ev, r);
-
+#endif // USE_OCR_LAYER
 	    r->check_readiness(false, dma_queue);
 
 	    finish_events.insert(ev);
 	  } else {
+#if USE_OCR_LAYER
+            assert(false); //only dealing with one node now
+#endif
 	    RemoteCopyArgs args;
 	    args.redop_id = 0;
 	    args.red_fold = false;
@@ -4713,7 +4766,11 @@ namespace Realm {
 	}
 
 	// final event is merge of all individual copies' events
+#if USE_OCR_LAYER
+        return OCREventImpl::merge_events(finish_events);
+#else
 	return GenEventImpl::merge_events(finish_events, false /*!ignore faults*/);
+#endif // USE_OCR_LAYER
       } else {
 	// we're doing a reduction - the semantics require that all source fields be pulled
 	//  together and applied as a "structure" to the reduction op
@@ -4740,7 +4797,11 @@ namespace Realm {
 	MemoryImpl::MemoryKind dst_kind = get_runtime()->get_memory_impl(get_runtime()->get_instance_impl(dsts[0].inst)->memory)->kind;
 	bool inst_lock_needed = (dst_kind == MemoryImpl::MKIND_GLOBAL);
 
+#if USE_OCR_LAYER
+        Event ev = OCREventImpl::create_ocrevent();
+#else
 	Event ev = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
 
 	ReduceRequest *r = new ReduceRequest(*this,
 					     srcs, dsts[0],
@@ -4751,11 +4812,14 @@ namespace Realm {
 
 	if(((unsigned)src_node) == gasnet_mynode()) {
 	  log_dma.debug("performing reduction on local node");
-
+#if ! USE_OCR_LAYER
 	  get_runtime()->optable.add_local_operation(ev, r);
-
+#endif // USE_OCR_LAYER
 	  r->check_readiness(false, dma_queue);
 	} else {
+#if USE_OCR_LAYER
+          assert(false); //only dealing with one node now
+#endif
 	  RemoteCopyArgs args;
 	  args.redop_id = redop_id;
 	  args.red_fold = red_fold;
@@ -4820,3 +4884,86 @@ namespace Realm {
     }
 
 };
+
+#if USE_OCR_LAYER
+namespace LegionRuntime {
+  namespace LowLevel {
+
+  ocrGuid_t DmaRequest::ocr_realm_perform_dma_edt_t = NULL_GUID;
+
+  //EDT function that calls perform_dma
+  //depv[0] is the object whose perform_dma needs to be called
+  //ideally I like this to be passed using argv rather than depv
+  ocrGuid_t ocr_realm_perform_dma_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
+  {
+    assert(argc == 1 && depc == 1);
+
+    DmaRequest *r;
+    const DmaRequest::RequestType r_type = (DmaRequest::RequestType)(*argv);
+
+    switch(r_type)
+    {
+      case DmaRequest::COPY:
+        r = (CopyRequest *)depv[0].ptr;
+        break;
+      case DmaRequest::REDUCE:
+        r = (ReduceRequest *)depv[0].ptr;
+        break;
+      case DmaRequest::FILL:
+        r = (FillRequest *)depv[0].ptr;
+        break;
+      default:
+        fprintf(stderr, "ERROR: UNKNOWN DMA REQUEST %d\n", r_type);
+        assert(false);
+    }
+
+    r->perform_dma();
+    ocrDbDestroy(depv[0].guid);
+    return NULL_GUID;
+  }
+
+  /*static*/ void DmaRequest::static_init(void)
+  {
+    //create the perform_dma conversion edt template
+    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, 1, 1);
+  }
+
+  /*static*/ void DmaRequest::static_destroy(void)
+  {
+    //delete the perform_dma conversion edt template
+    ocrEdtTemplateDestroy(DmaRequest::ocr_realm_perform_dma_edt_t);
+  }
+
+  //function that invokes the OCR EDT that calls perform_dma
+  //this_size is the size of the object that invokes ocr_check_readiness
+  void DmaRequest::ocr_check_readiness(bool just_check, RequestType req_type, size_t this_size)
+  {
+    //if size is zero then use size of current this object
+    if(this_size == 0)
+      this_size = sizeof(*this);
+
+    //pass this object using data block to the EDT
+    ocrGuid_t db_guid;
+    void *this_copy;
+    ocrDbCreate(&db_guid, (void **)(&this_copy), this_size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+    //'this' pointer is the dma descriptor with information such as size etc
+    memcpy(this_copy, this, this_size);
+
+    //invoke the EDT that calls perform_dma
+    ocrGuid_t ocr_realm_perform_dma_edt, out_ocr_realm_perform_dma_edt, persistent_evt_guid;
+    ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t,
+      EDT_PARAM_DEF, (u64*)&req_type, EDT_PARAM_DEF, NULL,
+      EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_perform_dma_edt);
+
+    //attach finish_event to the EDT
+    Event finish_event = get_finish_event();
+    ocrAddDependence(out_ocr_realm_perform_dma_edt, finish_event.evt_guid, 0, DB_MODE_RO);
+
+    //start the EDT by statisfying dependency only after linking to the finish event
+    ocrAddDependence(db_guid, ocr_realm_perform_dma_edt, 0, DB_MODE_RO);
+  }
+ };
+};
+
+#endif // USE_OCR_LAYER
+

@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +19,13 @@
 
 // for size_t
 #include <stddef.h>
+
+#if USE_OCR_LAYER
+#include "ocr.h"
+
+#define U64_COUNT(size) ((size+(sizeof(u64)-1))/sizeof(u64))
+
+#endif // USE_OCR_LAYER
 
 // ******************** IMPORTANT **************************
 //
@@ -52,6 +60,9 @@ typedef enum legion_lowlevel_processor_kind_t {
   IO_PROC, // I/O core
   PROC_GROUP, // Processor group
   PROC_SET, // Set of Processors for OpenMP/Kokkos etc.
+#if USE_OCR_LAYER
+  OCR_PROC, //OCR processor
+#endif // USE_OCR_LAYER
 } legion_lowlevel_processor_kind_t;
 
 // Different Memory types
@@ -69,6 +80,9 @@ typedef enum legion_lowlevel_memory_kind_t {
   LEVEL3_CACHE, // CPU L3 Visible to all processors on the node, better performance to processors on same socket
   LEVEL2_CACHE, // CPU L2 Visible to all processors on the node, better performance to one processor
   LEVEL1_CACHE, // CPU L1 Visible to all processors on the node, better performance to one processor
+#if USE_OCR_LAYER
+  OCR_MEM, //for now the single big datablock exposed by OCR
+#endif // USE_OCR_LAYER
 } legion_lowlevel_memory_kind_t;
 
 typedef enum legion_lowlevel_file_mode_t {

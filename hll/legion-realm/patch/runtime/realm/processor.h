@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +61,9 @@ namespace Realm {
         IO_PROC = ::IO_PROC, // I/O core
         PROC_GROUP = ::PROC_GROUP, // Processor group
         PROC_SET = ::PROC_SET, // Set of Processors for OpenMP/Kokkos etc.
+#if USE_OCR_LAYER
+        OCR_PROC = ::OCR_PROC, //OCR processor
+#endif // USE_OCR_LAYER
       };
 
       // Return what kind of processor this is

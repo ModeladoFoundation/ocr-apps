@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,8 +123,13 @@ namespace Realm {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
+#if USE_OCR_LAYER
+      Event e = OCREventImpl::create_ocrevent();
+#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
+#endif // USE_OCR_LAYER
+
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
       log_event_graph.info("Task Request: %d " IDFMT
@@ -147,8 +153,13 @@ namespace Realm {
       DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
       ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
 
+#if USE_OCR_LAYER
+      Event e = OCREventImpl::create_ocrevent();
+#else
       GenEventImpl *finish_event = GenEventImpl::create_genevent();
       Event e = finish_event->current_event();
+#endif // USE_OCR_LAYER
+
 #ifdef EVENT_GRAPH_TRACE
       Event enclosing = find_enclosing_termination_event();
       log_event_graph.info("Task Request: %d " IDFMT
@@ -185,6 +196,11 @@ namespace Realm {
 	assert(0);
       }
 
+#if USE_OCR_LAYER //ignores prs parameter
+      ProcessorImpl *p = get_runtime()->get_processor_impl(*this);
+      p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
+      return Event::NO_EVENT;
+#else
       // TODO: special case - registration on a local processor with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
@@ -262,6 +278,7 @@ namespace Realm {
 
       tro->mark_finished(true /*successful*/);
       return finish_event;
+#endif // USE_OCR_LAYER
     }
 
     /*static*/ Event Processor::register_task_by_kind(Kind target_kind, bool global,
@@ -277,6 +294,18 @@ namespace Realm {
 	assert(0);
       }
 
+#if USE_OCR_LAYER  //ignores the target_kind, global and prs parameters
+      assert(target_kind == Processor::OCR_PROC);
+      std::set<Processor> local_procs;
+      get_runtime()->machine->get_local_processors_by_kind(local_procs, target_kind);
+      for(std::set<Processor>::const_iterator it = local_procs.begin();
+          it != local_procs.end();
+          it++) {
+        ProcessorImpl *p = get_runtime()->get_processor_impl(*it);
+        p->register_task(func_id, const_cast<CodeDescriptor&>(codedesc), ByteArrayRef(user_data, user_data_len));
+      }
+      return Event::NO_EVENT;
+#else
       // TODO: special case - registration on local processord with a raw function pointer and no
       //  profiling requests - can be done immediately and return NO_EVENT
 
@@ -329,6 +358,7 @@ namespace Realm {
 
       tro->mark_finished(true /*successful*/);
       return finish_event;
+#endif // USE_OCR_LAYER
     }
 
     // reports an execution fault in the currently running task

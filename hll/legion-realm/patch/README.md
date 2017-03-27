@@ -126,6 +126,18 @@ To get started with Legion, you'll need:
      [installation instructions](http://legion.stanford.edu/gasnet/))
   * *Optional*: LLVM 3.5 (for dynamic code generation)
   * *Optional*: HDF5 (for file I/O)
+  * *Optional*: OCR (for using OCR as the event based task runtime)
+    - Compile OCR, set OCR_TYPE to the target and OCR_INSTALL to the installation point of OCR
+    - Set and export LD_LIBRARY_PATH to ${OCR_INSTALL}/lib:LD_LIBRARY_PATH
+    - Set and export OCR_CONFIG to the configuration you want to use for OCR
+      (usually ${OCR_INSTALL}/share/ocr/config/${OCR_TYPE}/default.cfg)
+    - Set and export ${APPS_ROOT} to the root apps directory
+      (usually "export APPS_ROOT=../../../apps")
+    - export APPS_LIBS_INSTALL_ROOT=${APPS_ROOT}/libs/install
+    - export APPS_LIBS_INSTALL=${APPS_LIBS_INSTALL_ROOT}/${OCR_TYPE}
+    - Compile and install 'reservation' library in ${APPS_ROOT}/libs/src/reservation
+      (just change to reservation source directory and use: make install)
+    - For more details refer https://xstack.exascale-tech.com
 
 ## Installing
 

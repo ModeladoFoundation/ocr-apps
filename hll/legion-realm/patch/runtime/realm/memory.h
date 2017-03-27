@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +57,9 @@ namespace Realm {
         LEVEL3_CACHE, // CPU L3 Visible to all processors on the node, better performance to processors on same socket
         LEVEL2_CACHE, // CPU L2 Visible to all processors on the node, better performance to one processor
         LEVEL1_CACHE, // CPU L1 Visible to all processors on the node, better performance to one processor
+#if USE_OCR_LAYER
+        OCR_MEM, //for now the single big datablock exposed by OCR
+#endif // USE_OCR_LAYER
       };
 
       // Return what kind of memory this is

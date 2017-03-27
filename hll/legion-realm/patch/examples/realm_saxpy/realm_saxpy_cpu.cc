@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +42,15 @@ void find_processors(Processor &first_cpu, Processor &first_gpu)
     Processor::Kind kind = it->kind();
     switch (kind)
     {
+#if USE_OCR_LAYER
+       case OCR_PROC:
+        {
+          if (!first_cpu.exists())
+            first_cpu = *it;
+          printf("OCR Processor " IDFMT "\n", it->id);
+          break;
+        }
+#endif // USE_OCR_LAYER
       case LOC_PROC:
         {
           if (!first_cpu.exists())
@@ -89,6 +99,16 @@ void find_memories(Processor cpu, Processor gpu,
     Memory::Kind kind = it->kind();
     switch (kind)
     {
+#if USE_OCR_LAYER
+      case Memory::OCR_MEM:
+        {
+          system = *it;
+          printf("OCR Memory " IDFMT " for CPU Processor " IDFMT
+                 " has capacity %ld MB\n", it->id, cpu.id,
+                 (it->capacity() >> 20));
+          break;
+        }
+#endif // USE_OCR_LAYER
       case Memory::SYSTEM_MEM:
         {
           system = *it;
@@ -319,7 +339,11 @@ extern void gpu_saxpy_task(const void *args, size_t arglen,
                            const void *userdata, size_t userlen, Processor p);
 #endif
 
+#if USE_OCR_LAYER
+int legion_ocr_main(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif // USE_OCR_LAYER
 {
   Runtime rt;
 
@@ -340,7 +364,11 @@ int main(int argc, char **argv)
     for(std::set<Processor>::const_iterator it = all_procs.begin();
 	it != all_procs.end();
 	it++)
+#if USE_OCR_LAYER
+      if(it->kind() == Processor::OCR_PROC) {
+#else
       if(it->kind() == Processor::LOC_PROC) {
+#endif // USE_OCR_LAYER
 	p = *it;
 	break;
       }

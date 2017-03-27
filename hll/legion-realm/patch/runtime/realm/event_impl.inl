@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +33,13 @@ namespace Realm {
   //
   // class EventImpl
 
+#if ! USE_OCR_LAYER
+// if USE_OCR_LAYER case is at the end of event_impl.cc
   inline /*static*/ bool EventImpl::add_waiter(Event needed, EventWaiter *waiter)
   {
     return get_event_impl(needed)->add_waiter(ID(needed).event.generation, waiter);
   }
-
+#endif //USE_OCR_LAYER
 
   ////////////////////////////////////////////////////////////////////////
   //

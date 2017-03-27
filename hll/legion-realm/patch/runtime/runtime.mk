@@ -1,4 +1,5 @@
 # Copyright 2017 Stanford University, NVIDIA Corporation
+# Portions Copyright 2017 Rice University, Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -294,6 +295,24 @@ ifeq ($(strip $(USE_HDF)), 1)
   LEGION_LD_FLAGS      += -l$(HDF_LIBNAME)
 endif
 
+# general low-level doesn't use OCR by default
+USE_OCR ?= 0
+ifeq ($(strip $(USE_OCR)), 1)
+  ifndef OCR_INSTALL
+    $(error OCR_INSTALL variable is not defined, aborting build)
+  endif
+  ifndef OCR_TYPE
+    $(error OCR_TYPE variable is not defined, aborting build)
+  endif
+  ifndef APPS_LIBS_INSTALL
+    $(error APPS_LIBS_INSTALL variable is not defined, aborting build)
+  endif
+  INC_FLAGS    += -I${OCR_INSTALL}/include -I${APPS_LIBS_INSTALL}/include
+  CC_FLAGS      += -DUSE_OCR_LAYER=1 -DENABLE_EXTENSION_LEGACY -DENABLE_EXTENSION_PARAMS_EVT
+  LEGION_LD_FLAGS      += -L${OCR_INSTALL}/lib -locr_${OCR_TYPE}
+  LEGION_LD_FLAGS      += -L${APPS_LIBS_INSTALL}/lib -locr-reservations
+endif
+
 SKIP_MACHINES= titan% daint% excalibur%
 #Extra options for MPI support in GASNet
 ifeq ($(strip $(USE_MPI)),1)
@@ -368,6 +387,12 @@ endif
 ifeq ($(strip $(USE_HDF)),1)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/hdf5/hdf5_module.cc \
 		   $(LG_RT_DIR)/realm/hdf5/hdf5_internal.cc
+endif
+ifeq ($(strip $(USE_OCR)),1)
+LOW_RUNTIME_SRC += $(LG_RT_DIR)/realm/ocr/ocr_event_impl.cc \
+                   $(LG_RT_DIR)/realm/ocr/ocr_mem_impl.cc \
+                   $(LG_RT_DIR)/realm/ocr/ocr_proc_impl.cc\
+                   $(LG_RT_DIR)/realm/ocr/ocr_rsrv_impl.cc
 endif
 ifeq ($(strip $(USE_GASNET)),1)
 LOW_RUNTIME_SRC += $(LG_RT_DIR)/activemsg.cc

@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18408,7 +18409,11 @@ namespace Legion {
         // If we are node 0 then we have to launch the top-level task
         if (local_space == 0)
         {
+#if USE_OCR_LAYER
+          local_procs.only_kind(Processor::OCR_PROC);
+#else
           local_procs.only_kind(Processor::LOC_PROC);
+#endif // USE_OCR_LAYER
           // If we don't have one that is very bad
           if (local_procs.count() == 0)
           {
@@ -18429,7 +18434,12 @@ namespace Legion {
       // need to launch one task on a CPU processor on every node
       RtEvent runtime_startup_event(realm.collective_spawn_by_kind(
           (separate_runtime_instances ? Processor::NO_KIND :
-           Processor::LOC_PROC), INIT_TASK_ID, NULL, 0,
+#if USE_OCR_LAYER
+           Processor::OCR_PROC
+#else
+           Processor::LOC_PROC
+#endif // USE_OCR_LAYER
+           ), INIT_TASK_ID, NULL, 0,
           !separate_runtime_instances, tasks_registered));
       // See if we need to do any initialization for MPI interoperability
       if (mpi_rank >= 0)
@@ -18824,10 +18834,16 @@ namespace Legion {
       Realm::ProfilingRequestSet no_requests;
       // We'll just register these on all the processor kinds
       std::set<RtEvent> registered_events;
-      Processor::Kind kinds[5] = { Processor::TOC_PROC, Processor::LOC_PROC,
+#if USE_OCR_LAYER
+      const int proc_kind_count = 1;
+      Processor::Kind kinds[proc_kind_count] = {Processor::OCR_PROC};
+#else
+      const int proc_kind_count = 5;
+      Processor::Kind kinds[proc_kind_count] = { Processor::TOC_PROC, Processor::LOC_PROC,
                                    Processor::UTIL_PROC, Processor::IO_PROC,
                                    Processor::PROC_SET };
-      for (unsigned idx = 0; idx < 5; idx++)
+#endif //USE_OCR_LAYER
+      for (unsigned idx = 0; idx < proc_kind_count; idx++)
       {
         registered_events.insert(RtEvent(
             Processor::register_task_by_kind(kinds[idx], false/*global*/,
@@ -18922,6 +18938,13 @@ namespace Legion {
                 LegionSpy::log_processor_kind(kind, "IO");
                 break;
               }
+#if USE_OCR_LAYER
+            case Processor::OCR_PROC:
+              {
+                LegionSpy::log_processor_kind(kind, "OCR");
+                break;
+              }
+#endif // USE_OCR_LAYER
             default:
               assert(false); // unknown processor kind
           }
@@ -19000,6 +19023,13 @@ namespace Legion {
                 LegionSpy::log_memory_kind(kind, "L1");
                 break;
               }
+#if USE_OCR_LAYER
+            case OCR_MEM:
+              {
+                LegionSpy::log_memory_kind(kind, "OCR");
+                break;
+              }
+#endif // USE_OCR_LAYER
             default:
               assert(false); // unknown memory kind
           }

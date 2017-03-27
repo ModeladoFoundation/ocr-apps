@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3835,6 +3836,9 @@ namespace Legion {
             __sync_fetch_and_add(&outstanding_profiling_requests, 1);
           if ((previous == 1) && !profiling_reported.exists())
             profiling_reported = Runtime::create_rt_user_event();
+#if USE_OCR_LAYER
+            //profiling_reported.trigger();
+#endif // USE_OCR_LAYER
         }
       }
 #ifdef LEGION_SPY

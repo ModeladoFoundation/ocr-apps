@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,7 +87,12 @@ namespace Realm {
   // class Event
   //
 
-  /*static*/ const Event Event::NO_EVENT = { 0 };
+  /*static*/ const Event Event::NO_EVENT = { 0
+#if USE_OCR_LAYER
+    , NULL_GUID
+#endif // USE_OCR_LAYER
+};
+
   // Take this you POS c++ type system
   /* static */ const UserEvent UserEvent::NO_USER_EVENT =
     *(static_cast<UserEvent*>(const_cast<Event*>(&Event::NO_EVENT)));
@@ -95,6 +101,9 @@ namespace Realm {
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return true; // special case: NO_EVENT has always triggered
+#if USE_OCR_LAYER
+    return OCREventImpl::has_triggered(evt_guid);
+#else // USE_OCR_LAYER
     EventImpl *e = get_runtime()->get_event_impl(*this);
     bool poisoned = false;
     if(e->has_triggered(ID(id).event.generation, poisoned)) {
@@ -113,6 +122,7 @@ namespace Realm {
       return true;
     } else
       return false;
+#endif // USE_OCR_LAYER
   }
 
   bool Event::has_triggered_faultaware(bool& poisoned) const
@@ -127,7 +137,11 @@ namespace Realm {
   /*static*/ Event Event::merge_events(const std::set<Event>& wait_for)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    return OCREventImpl::merge_events(wait_for);
+#else
     return GenEventImpl::merge_events(wait_for, false /*!ignore faults*/);
+#endif // USE_OCR_LAYER
   }
 
   /*static*/ Event Event::merge_events(Event ev1, Event ev2,
@@ -135,7 +149,11 @@ namespace Realm {
 				       Event ev5 /*= NO_EVENT*/, Event ev6 /*= NO_EVENT*/)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    return OCREventImpl::merge_events(ev1, ev2, ev3, ev4, ev5, ev6);
+#else
     return GenEventImpl::merge_events(ev1, ev2, ev3, ev4, ev5, ev6);
+#endif // USE_OCR_LAYER
   }
 
   /*static*/ Event Event::merge_events_ignorefaults(const std::set<Event>& wait_for)
@@ -236,6 +254,20 @@ namespace Realm {
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return;  // special case: never wait for NO_EVENT
+#if USE_OCR_LAYER
+    assert(!poisoned);
+    // early out case too
+    if(OCREventImpl::has_triggered(evt_guid)) return;
+
+    // waiting on an event does not count against the low level's time
+    DetailedTimer::ScopedPush sp2(TIME_NONE);
+
+    log_event.info() << "thread blocked: event=" << *this;
+    OCREventImpl::wait(evt_guid);
+    log_event.info() << "thread resumed: event=" << *this;
+
+    return;
+#else // USE_OCR_LAYER
     EventImpl *e = get_runtime()->get_event_impl(*this);
     EventImpl::gen_t gen = ID(id).event.generation;
 
@@ -266,6 +298,7 @@ namespace Realm {
     assert(0); // if we're not a Thread, we have a problem
     return;
     //assert(ptr != 0);
+#endif // USE_OCR_LAYER
   }
 
   void Event::external_wait(void) const
@@ -290,6 +323,17 @@ namespace Realm {
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return;  // special case: never wait for NO_EVENT
+#if USE_OCR_LAYER
+    // early out case too
+    if(OCREventImpl::has_triggered(evt_guid)) return;
+
+    // waiting on an event does not count against the low level's time
+    DetailedTimer::ScopedPush sp2(TIME_NONE);
+
+    log_event.info() << "external thread blocked: event=" << *this;
+    OCREventImpl::external_wait(evt_guid);
+    log_event.info() << "external thread resumed: event=" << *this;
+#else // USE_OCR_LAYER
     EventImpl *e = get_runtime()->get_event_impl(*this);
     EventImpl::gen_t gen = ID(id).event.generation;
 
@@ -302,10 +346,14 @@ namespace Realm {
     log_event.info() << "external thread blocked: event=" << *this;
     e->external_wait(gen, poisoned);
     log_event.info() << "external thread resumed: event=" << *this;
+#endif // USE_OCR_LAYER
   }
 
   void Event::cancel_operation(const void *reason_data, size_t reason_len) const
   {
+#if USE_OCR_LAYER
+    assert(false);
+#endif // USE_OCR_LAYER
     get_runtime()->optable.request_cancellation(*this, reason_data, reason_len);
   }
 
@@ -318,10 +366,17 @@ namespace Realm {
   /*static*/ UserEvent UserEvent::create_user_event(void)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    Event e = OCREventImpl::create_ocrevent();
+#else //USE_OCR_LAYER
     Event e = GenEventImpl::create_genevent()->current_event();
+#endif //USE_OCR_LAYER
     assert(e.id != 0);
     UserEvent u;
     u.id = e.id;
+#if USE_OCR_LAYER
+    u.evt_guid = e.evt_guid;
+#endif //USE_OCR_LAYER
     log_event.info() << "user event created: event=" << e;
     return u;
   }
@@ -344,6 +399,10 @@ namespace Realm {
 			 enclosing.id, enclosing.gen);
 #endif
 
+#if USE_OCR_LAYER
+    OCREventImpl::trigger(evt_guid, wait_on);
+#else //USE_OCR_LAYER
+
     bool poisoned = false;
     if(!wait_on.has_triggered_faultaware(poisoned)) {
       // deferred trigger
@@ -364,6 +423,7 @@ namespace Realm {
     log_event.info() << "user event trigger: event=" << *this << " wait_on=" << wait_on
 		     << (poisoned ? " (poisoned)" : "");
     GenEventImpl::trigger(*this, poisoned);
+#endif //USE_OCR_LAYER
   }
 
   void UserEvent::cancel(void) const
@@ -2398,5 +2458,12 @@ static void *bytedup(const void *data, size_t datalen)
 
       Message::request(target, args);
     }
+
+#if USE_OCR_LAYER
+  inline /*static*/ bool EventImpl::add_waiter(Event needed, EventWaiter *waiter)
+  {
+    return OCREventImpl::add_waiter(needed, waiter);
+  }
+#endif // USE_OCR_LAYER
 
 }; // namespace Realm

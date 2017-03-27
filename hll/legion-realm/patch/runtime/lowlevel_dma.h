@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,6 +101,25 @@ namespace LegionRuntime {
       virtual ~DmaRequest(void);
 
     public:
+#if USE_OCR_LAYER
+
+      enum RequestType{
+        COPY,
+        REDUCE,
+        FILL,
+        NUM_REQUEST_TYPES
+      };
+
+      //EDT template for the perform_dma function
+      static ocrGuid_t ocr_realm_perform_dma_edt_t;
+      //initialize static variables
+      static void static_init(void);
+      //cleanup static variables
+      static void static_destroy(void);
+      //equivalent of check_readiness() function which uses OCR
+      virtual void ocr_check_readiness(bool just_check, RequestType, size_t = 0);
+#endif // USE_OCR_LAYER
+
       virtual void print(std::ostream& os) const;
 
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq) = 0;

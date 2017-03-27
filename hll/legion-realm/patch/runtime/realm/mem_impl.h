@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,8 +54,11 @@ namespace Realm {
 	MKIND_DISK,    // disk memory accessible by owner node
 	MKIND_FILE,    // file memory accessible by owner node
 #ifdef USE_HDF
-	MKIND_HDF      // HDF memory accessible by owner node
+	MKIND_HDF,     // HDF memory accessible by owner node
 #endif
+#if USE_OCR_LAYER
+        MKIND_OCR,      //OCR Data block
+#endif // USE_OCR_LAYER
       };
 
       MemoryImpl(Memory _me, size_t _size, MemoryKind _kind, size_t _alignment, Memory::Kind _lowlevel_kind);
@@ -614,6 +618,10 @@ namespace Realm {
                                 unsigned count, RemoteWriteFence *fence);
 
 }; // namespace Realm
+
+#if USE_OCR_LAYER
+#include "ocr/ocr_mem_impl.h"
+#endif // USE_OCR_LAYER
 
 #endif // ifndef REALM_MEM_IMPL_H
 

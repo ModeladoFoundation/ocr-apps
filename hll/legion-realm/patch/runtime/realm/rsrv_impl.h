@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -258,6 +259,10 @@ namespace Realm {
 }; // namespace Realm
 
 #include "rsrv_impl.inl"
+
+#if USE_OCR_LAYER
+#include "ocr/ocr_rsrv_impl.h"
+#endif // USE_OCR_LAYER
 
 #endif // ifndef REALM_RSRV_IMPL_H
 

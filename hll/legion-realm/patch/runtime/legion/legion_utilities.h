@@ -199,7 +199,9 @@ namespace Legion {
                RtEvent wait_on = RtEvent::NO_RT_EVENT)
         : low_lock(r)
       {
+#if ! USE_OCR_LAYER
 #define AUTOLOCK_USE_TRY_ACQUIRE
+#endif // USE_OCR_LAYER
 #ifdef AUTOLOCK_USE_TRY_ACQUIRE
 	RtEvent retry_event(r.try_acquire(false /*!retry*/,
 	                                  mode, exclusive, wait_on));
