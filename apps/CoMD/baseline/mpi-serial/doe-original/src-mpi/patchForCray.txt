@@ -1,0 +1,315 @@
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/CoMD.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/CoMD.c
+index 5b3921d..fc2d8ee 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/CoMD.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/CoMD.c
+@@ -135,7 +135,7 @@ int main(int argc, char** argv)
+    profileStop(totalTimer);
+
+    printPerformanceResults(sim->atoms->nGlobal, sim->printRate);
+-   printPerformanceResultsYaml(yamlFile);
++   //printPerformanceResultsYaml(yamlFile);
+
+    destroySimulation(&sim);
+    comdFree(validate);
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/Makefile b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/Makefile
+index 0000ea7..b8041de 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/Makefile
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/Makefile
+@@ -15,9 +15,9 @@ DO_MPI = ON
+ ### specify paths to include files that the compiler can't find on its
+ ### own.  If you need any -L or -l switches to get C standard libraries
+ ### (such as -lm for the math library) put them in C_LIB.
+-CC = mpiicc
+-CFLAGS = -std=c99
+-OPTFLAGS = -g -O3
++CC = CC
++CFLAGS =
++OPTFLAGS = -O3
+ INCLUDES =
+ C_LIB = -lm
+
+@@ -51,7 +51,7 @@ BIN_DIR=../bin
+
+ # Check for double precision
+ ifeq ($(DOUBLE_PRECISION), ON)
+-CFLAGS += -DDOUBLE
++CFLAGS += -DDDOUBLE
+ else
+ CFLAGS += -DSINGLE
+ endif
+@@ -59,7 +59,7 @@ endif
+ # Set executable name and add includes & libraries for MPI if needed.
+ CoMD_VARIANT = CoMD-serial
+ ifeq ($(DO_MPI), ON)
+-CoMD_VARIANT = CoMD-mpi
++CoMD_VARIANT = CoMD-mpi-cray
+ INCLUDES += ${MPI_INCLUDE}
+ CFLAGS += -DDO_MPI
+ LDFLAGS += ${MPI_LIB}
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/decomposition.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/decomposition.c
+index fa4e4dc..555971a 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/decomposition.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/decomposition.c
+@@ -19,7 +19,7 @@ Domain* initDecomposition(int xproc, int yproc, int zproc, real3 globalExtent)
+ {
+    assert( xproc * yproc * zproc == getNRanks());
+
+-   Domain* dd = comdMalloc(sizeof(Domain));
++   Domain* dd = (Domain*) comdMalloc(sizeof(Domain));
+    dd->procGrid[0] = xproc;
+    dd->procGrid[1] = yproc;
+    dd->procGrid[2] = zproc;
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/eam.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/eam.c
+index 2ab8b8e..81b5995 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/eam.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/eam.c
+@@ -170,7 +170,7 @@ static void typeNotSupported(const char* callSite, const char* type);
+ /// \param [in] type  The file format of the potential file (setfl or funcfl).
+ BasePotential* initEamPot(const char* dir, const char* file, const char* type)
+ {
+-   EamPotential* pot = comdMalloc(sizeof(EamPotential));
++   EamPotential* pot = (EamPotential*) comdMalloc(sizeof(EamPotential));
+    assert(pot);
+    pot->force = eamForce;
+    pot->print = eamPrint;
+@@ -221,10 +221,10 @@ int eamForce(SimFlat* s)
+    if (pot->forceExchange == NULL)
+    {
+       int maxTotalAtoms = MAXATOMS*s->boxes->nTotalBoxes;
+-      pot->dfEmbed = comdMalloc(maxTotalAtoms*sizeof(real_t));
+-      pot->rhobar  = comdMalloc(maxTotalAtoms*sizeof(real_t));
++      pot->dfEmbed = (real_t*) comdMalloc(maxTotalAtoms*sizeof(real_t));
++      pot->rhobar  = (real_t*) comdMalloc(maxTotalAtoms*sizeof(real_t));
+       pot->forceExchange = initForceHaloExchange(s->domain, s->boxes);
+-      pot->forceExchangeData = comdMalloc(sizeof(ForceExchangeData));
++      pot->forceExchangeData = (ForceExchangeData*) comdMalloc(sizeof(ForceExchangeData));
+       pot->forceExchangeData->dfEmbed = pot->dfEmbed;
+       pot->forceExchangeData->boxes = s->boxes;
+    }
+@@ -560,11 +560,11 @@ void bcastInterpolationObject(InterpolationObject** table)
+    if (getMyRank() != 0)
+    {
+       assert(*table == NULL);
+-      *table = comdMalloc(sizeof(InterpolationObject));
++      *table = (InterpolationObject*) comdMalloc(sizeof(InterpolationObject));
+       (*table)->n      = buf.n;
+       (*table)->x0     = buf.x0;
+       (*table)->invDx  = buf.invDx;
+-      (*table)->values = comdMalloc(sizeof(real_t) * (buf.n+3) );
++      (*table)->values = (real_t*) comdMalloc(sizeof(real_t) * (buf.n+3) );
+       (*table)->values++;
+    }
+
+@@ -674,7 +674,7 @@ void eamReadSetfl(EamPotential* pot, const char* dir, const char* potName)
+
+    // allocate read buffer
+    int bufSize = MAX(nRho, nR);
+-   real_t* buf = comdMalloc(bufSize * sizeof(real_t));
++   real_t* buf = (real_t*) comdMalloc(bufSize * sizeof(real_t));
+    real_t x0 = 0.0;
+
+    // Read embedding energy F(rhobar)
+@@ -785,7 +785,7 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
+
+    // allocate read buffer
+    int bufSize = MAX(nRho, nR);
+-   real_t* buf = comdMalloc(bufSize * sizeof(real_t));
++   real_t* buf = (real_t*) comdMalloc(bufSize * sizeof(real_t));
+
+    // read embedding energy
+    for (int ii=0; ii<nRho; ++ii)
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/haloExchange.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/haloExchange.c
+index 2d53282..942ddb9 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/haloExchange.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/haloExchange.c
+@@ -93,7 +93,7 @@ ForceMsg;
+ static HaloExchange* initHaloExchange(Domain* domain);
+ static void exchangeData(HaloExchange* haloExchange, void* data, int iAxis);
+
+-static int* mkAtomCellList(LinkCell* boxes, enum HaloFaceOrder iFace, const int nCells);
++static int* mkAtomCellList(LinkCell* boxes, int iFace, const int nCells);
+ static int loadAtomsBuffer(void* vparms, void* data, int face, char* charBuf);
+ static void unloadAtomsBuffer(void* vparms, void* data, int face, int bufSize, char* charBuf);
+ static void destroyAtomsExchange(void* vparms);
+@@ -156,7 +156,7 @@ HaloExchange* initAtomHaloExchange(Domain* domain, LinkCell* boxes)
+    hh->unloadBuffer = unloadAtomsBuffer;
+    hh->destroy = destroyAtomsExchange;
+
+-   AtomExchangeParms* parms = comdMalloc(sizeof(AtomExchangeParms));
++   AtomExchangeParms* parms = (AtomExchangeParms*) comdMalloc(sizeof(AtomExchangeParms));
+
+    parms->nCells[HALO_X_MINUS] = 2*(boxes->gridSize[1]+2)*(boxes->gridSize[2]+2);
+    parms->nCells[HALO_Y_MINUS] = 2*(boxes->gridSize[0]+2)*(boxes->gridSize[2]+2);
+@@ -170,7 +170,7 @@ HaloExchange* initAtomHaloExchange(Domain* domain, LinkCell* boxes)
+
+    for (int ii=0; ii<6; ++ii)
+    {
+-      parms->pbcFactor[ii] = comdMalloc(3*sizeof(real_t));
++      parms->pbcFactor[ii] = (real_t*) comdMalloc(3*sizeof(real_t));
+       for (int jj=0; jj<3; ++jj)
+          parms->pbcFactor[ii][jj] = 0.0;
+    }
+@@ -217,7 +217,7 @@ HaloExchange* initForceHaloExchange(Domain* domain, LinkCell* boxes)
+    maxSize = MAX(size1, size2);
+    hh->bufCapacity = (maxSize)*MAXATOMS*sizeof(ForceMsg);
+
+-   ForceExchangeParms* parms = comdMalloc(sizeof(ForceExchangeParms));
++   ForceExchangeParms* parms = (ForceExchangeParms*) comdMalloc(sizeof(ForceExchangeParms));
+
+    parms->nCells[HALO_X_MINUS] = (boxes->gridSize[1]  )*(boxes->gridSize[2]  );
+    parms->nCells[HALO_Y_MINUS] = (boxes->gridSize[0]+2)*(boxes->gridSize[2]  );
+@@ -253,7 +253,7 @@ void haloExchange(HaloExchange* haloExchange, void* data)
+ /// Base class constructor.
+ HaloExchange* initHaloExchange(Domain* domain)
+ {
+-   HaloExchange* hh = comdMalloc(sizeof(HaloExchange));
++   HaloExchange* hh = (HaloExchange*) comdMalloc(sizeof(HaloExchange));
+
+    // Rank of neighbor task for each face.
+    hh->nbrRank[HALO_X_MINUS] = processorNum(domain, -1,  0,  0);
+@@ -277,13 +277,13 @@ HaloExchange* initHaloExchange(Domain* domain)
+ ///                       unload functions
+ void exchangeData(HaloExchange* haloExchange, void* data, int iAxis)
+ {
+-   enum HaloFaceOrder faceM = 2*iAxis;
+-   enum HaloFaceOrder faceP = faceM+1;
++   int faceM = 2*iAxis;
++   int faceP = faceM+1;
+
+-   char* sendBufM = comdMalloc(haloExchange->bufCapacity);
+-   char* sendBufP = comdMalloc(haloExchange->bufCapacity);
+-   char* recvBufM = comdMalloc(haloExchange->bufCapacity);
+-   char* recvBufP = comdMalloc(haloExchange->bufCapacity);
++   char* sendBufM = (char*) comdMalloc(haloExchange->bufCapacity);
++   char* sendBufP = (char*) comdMalloc(haloExchange->bufCapacity);
++   char* recvBufM = (char*) comdMalloc(haloExchange->bufCapacity);
++   char* recvBufP = (char*) comdMalloc(haloExchange->bufCapacity);
+
+    int nSendM = haloExchange->loadBuffer(haloExchange->parms, data, faceM, sendBufM);
+    int nSendP = haloExchange->loadBuffer(haloExchange->parms, data, faceP, sendBufP);
+@@ -325,9 +325,9 @@ void exchangeData(HaloExchange* haloExchange, void* data, int iAxis)
+ ///                    consistency check.
+ /// \return The list of cells to send.  Caller is responsible to free
+ /// the list.
+-int* mkAtomCellList(LinkCell* boxes, enum HaloFaceOrder iFace, const int nCells)
++int* mkAtomCellList(LinkCell* boxes, int iFace, const int nCells)
+ {
+-   int* list = comdMalloc(nCells*sizeof(int));
++   int* list = (int*) comdMalloc(nCells*sizeof(int));
+    int xBegin = -1;
+    int xEnd   = boxes->gridSize[0]+1;
+    int yBegin = -1;
+@@ -445,7 +445,7 @@ void destroyAtomsExchange(void* vparms)
+ /// coordinates of link cells.
+ int* mkForceSendCellList(LinkCell* boxes, int face, int nCells)
+ {
+-   int* list = comdMalloc(nCells*sizeof(int));
++   int* list = (int*) comdMalloc(nCells*sizeof(int));
+    int xBegin, xEnd, yBegin, yEnd, zBegin, zEnd;
+
+    int nx = boxes->gridSize[0];
+@@ -494,7 +494,7 @@ int* mkForceSendCellList(LinkCell* boxes, int face, int nCells)
+ /// coordinates of link cells.
+ int* mkForceRecvCellList(LinkCell* boxes, int face, int nCells)
+ {
+-   int* list = comdMalloc(nCells*sizeof(int));
++   int* list = (int*) comdMalloc(nCells*sizeof(int));
+    int xBegin, xEnd, yBegin, yEnd, zBegin, zEnd;
+
+    int nx = boxes->gridSize[0];
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/initAtoms.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/initAtoms.c
+index 7f31837..c758897 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/initAtoms.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/initAtoms.c
+@@ -22,7 +22,7 @@ static void computeVcm(SimFlat* s, real_t vcm[3]);
+ /// initial atom positions and momenta.
+ Atoms* initAtoms(LinkCell* boxes)
+ {
+-   Atoms* atoms = comdMalloc(sizeof(Atoms));
++   Atoms* atoms = (Atoms*) comdMalloc(sizeof(Atoms));
+
+    int maxTotalAtoms = MAXATOMS*boxes->nTotalBoxes;
+
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/linkCells.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/linkCells.c
+index ff9ac27..59901db 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/linkCells.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/linkCells.c
+@@ -83,7 +83,7 @@ static void getTuple(LinkCell* boxes, int iBox, int* ixp, int* iyp, int* izp);
+ LinkCell* initLinkCells(const Domain* domain, real_t cutoff)
+ {
+    assert(domain);
+-   LinkCell* ll = comdMalloc(sizeof(LinkCell));
++   LinkCell* ll = (LinkCell*) comdMalloc(sizeof(LinkCell));
+
+    for (int i = 0; i < 3; i++)
+    {
+@@ -102,7 +102,7 @@ LinkCell* initLinkCells(const Domain* domain, real_t cutoff)
+
+    ll->nTotalBoxes = ll->nLocalBoxes + ll->nHaloBoxes;
+
+-   ll->nAtoms = comdMalloc(ll->nTotalBoxes*sizeof(int));
++   ll->nAtoms = (int*) comdMalloc(ll->nTotalBoxes*sizeof(int));
+    for (int iBox=0; iBox<ll->nTotalBoxes; ++iBox)
+       ll->nAtoms[iBox] = 0;
+
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/performanceTimers.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/performanceTimers.c
+index d590124..efb3a4d 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/performanceTimers.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/performanceTimers.c
+@@ -136,7 +136,7 @@ void printPerformanceResults(int nGlobalAtoms, int printRate)
+    {
+       double totalTime = perfTimer[ii].total*tick;
+       if (perfTimer[ii].count > 0)
+-         fprintf(screenOut, "%-16s%12"PRIu64"     %8.4f      %8.4f    %8.2f\n",
++         fprintf(screenOut, "%-16s%12ld     %8.4f      %8.4f    %8.2f\n",
+                  timerName[ii],
+                  perfTimer[ii].count,
+                  totalTime/(double)perfTimer[ii].count,
+@@ -179,6 +179,7 @@ void printPerformanceResults(int nGlobalAtoms, int printRate)
+
+ void printPerformanceResultsYaml(FILE* file)
+ {
++   #if 0
+    if (! printRank())
+       return;
+
+@@ -229,6 +230,7 @@ void printPerformanceResultsYaml(FILE* file)
+    fprintf(file, "    Units: atoms/us\n");
+
+    fprintf(file, "\n");
++#endif
+ }
+
+ /// Returns current time as a 64-bit integer.  This portable version
+diff --git a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/random.c b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/random.c
+index d349de4..bb019ea 100644
+--- a/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/random.c
++++ b/apps/CoMD/baseline/mpi-serial/doe-original/src-mpi/random.c
+@@ -40,10 +40,10 @@ real_t gasdev(uint64_t* seed)
+ ///  \return A pseudo-random number in the interval [0, 1].
+ double lcg61(uint64_t* seed)
+ {
+-   static const double convertToDouble = 1.0/UINT64_C(2305843009213693951);
++   static const double convertToDouble = 1.0/((double) 2305843009213693951.0);
+
+-   *seed *= UINT64_C(437799614237992725);
+-   *seed %= UINT64_C(2305843009213693951);
++   *seed *= (437799614237992725ULL);
++   *seed %= (2305843009213693951ULL);
+
+    return *seed*convertToDouble;
+ }
+@@ -64,10 +64,10 @@ double lcg61(uint64_t* seed)
+ ///  \return A 64-bit seed that is unique to the id and call site.
+ uint64_t mkSeed(uint32_t id, uint32_t callSite)
+ {
+-   uint32_t s1 = id * UINT32_C(2654435761);
+-   uint32_t s2 = (id+callSite) * UINT32_C(2654435761);
++   uint32_t s1 = id * ((unsigned int) 2654435761);
++   uint32_t s2 = (id+callSite) * ((unsigned int) 2654435761);
+
+-   uint64_t iSeed = (UINT64_C(0x100000000) * s1) + s2;
++   uint64_t iSeed = ((0x100000000ULL) * s1) + s2;
+    for (unsigned jj=0; jj<10; ++jj)
+       lcg61(&iSeed);
+

@@ -2,7 +2,7 @@ HOST_ID=`hostname -s`
 
 case $HOST_ID in
 edison*)
-NODE_LIST0=(1 4 16 64 216 484 1024)
+NODE_LIST0=(1 4 16 64 256 484 1024)
 THREAD_LIST=(1 4 16 24)     #Compute workers per node
     ;;
 
