@@ -4,6 +4,7 @@ if [[ -z "${APPS_ROOT}" ]]; then
     echo "\$APPS_ROOT is not set."
     exit 1
 fi
+OCR_TOP="${APPS_ROOT}/../../ocr"
 
 source $APPS_ROOT/tools/execution_tools/aux_bash_functions
 source ./experiments/x86/parameters.job
@@ -28,6 +29,17 @@ cori*)
 thor*) # Not valid for all thor nodes
     PHYSICAL_CORES_PER_NODE=36
     HT_CORES_PER_NODE=72
+    ;;
+
+bar*) # Not valid for all thor nodes
+    PHYSICAL_CORES_PER_NODE=16
+    HT_CORES_PER_NODE=32
+    ;;
+
+eln6) # Valid for only XeonPhi
+    PHYSICAL_CORES_PER_NODE=48
+    HT_CORES_PER_NODE=192
+    export CC=icc
     ;;
 esac
 
@@ -558,6 +570,16 @@ function generateJobScript()
         queue="XAS"
         ;;
 
+    bar*)
+        tplName="BarJob.template"
+        queue="XAS"
+        ;;
+
+    eln6)
+        tplName="Eln6Job.template"
+        queue="XAS"
+        ;;
+
     esac
 
     local TPL_NAME="${APPS_ROOT}/tools/execution_tools/${tplName}"
@@ -601,6 +623,9 @@ for profiler in ${PROFILER_LIST[@]}; do
                     if [[ $arch0 == "x86" ]]; then
                         CONFIG_COMM_LAYER=x86
                         CONFIG_FLAGS_BASE=""
+                    elif [[ $arch0 == "x86-phi" ]]; then
+                        CONFIG_COMM_LAYER=x86
+                        CONFIG_FLAGS_BASE="--guid COUNTED_MAP"
                     elif [[ $arch0 == "x86-mpi" ]]; then
                         CONFIG_COMM_LAYER="mpi"
                         CONFIG_FLAGS_BASE="--guid COUNTED_MAP"
@@ -653,6 +678,8 @@ for profiler in ${PROFILER_LIST[@]}; do
                             mv make.log install/$arch
 
                             if [[ $arch == "x86" ]]; then
+                                NODE_LIST=(1)
+                            elif [[ $arch == "x86-phi" ]]; then
                                 NODE_LIST=(1)
                             elif [[ $arch == "x86-mpi" ]]; then
                                 NODE_LIST=(${NODE_LIST0[@]})

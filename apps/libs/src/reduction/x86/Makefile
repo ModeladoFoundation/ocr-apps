@@ -57,6 +57,10 @@ all: install
 debug: CFLAGS += -g -O0
 debug: install
 
+ifeq ($(ENABLE_VISUALIZER), yes)
+  CFLAGS += -DOCR_ENABLE_EDT_NAMING -DOCR_ENABLE_VISUALIZER
+endif
+
 .PHONY: compile
 compile: $(OBJS)
 
