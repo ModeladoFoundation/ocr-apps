@@ -4,6 +4,7 @@
 int main(int argc, char* argv[]) {
   if(argc != 2) {
     printf("Expecting one argument\n");
+#pragma ocr shutdown DEP_EVTs(NONE)
     return -1;
   }
   int size = atoi(argv[1]);
