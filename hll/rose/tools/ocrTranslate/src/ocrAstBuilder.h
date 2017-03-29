@@ -61,7 +61,9 @@ namespace AstBuilder {
   std::vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, OcrEdtContextPtr edtContext);
   SgExprStatement* buildOcrEdtCreateCallExp(SgVariableSymbol* edtGuidSymbol, SgVariableSymbol* edtTemplateGuidSymbol,
 					    SgVariableSymbol* depElemStructSymbol,
-					    SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope);
+					    SgVariableSymbol* outEvtGuidSymbol,
+					    bool finishEdt,
+					    SgScopeStatement* scope);
   SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* dbkGuidSymbol, SgVariableSymbol* edtGuidSymbol,
 						int slot, DbkMode dbkmode, SgScopeStatement*  scope);
 
