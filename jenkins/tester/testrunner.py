@@ -236,7 +236,7 @@ def mainLoop():
     waitForJobDrain = None # Environment producing job to run
     envJobRunning = False
     envLockFile = filelock.FileLock(os.path.join(envDirectory, ".jenkinstestrunner.lock"),
-                           timeout=300, delay=sleepInterval)
+                           timeout=363, delay=sleepInterval)
     myLog = logging.getLogger()
     myLog.debug("Using lock file '%s'" % (os.path.join(envDirectory, ".jenkinstestrunner.lock")))
     while len(allRemainingJobs) > 0 or len(allReadyJobs) or len(allRunningJobs) or (waitForJobDrain is not None):
@@ -496,7 +496,7 @@ def main(argv=None):
     alternateJobs['__count'] = 0
     jobTypeToName =  dict() # Contains list of all job types and jobs belonging to each category
     resultFileName = None
-    defaultTimeout = 300 # 5 min for all jobs if no other timeout specified
+    defaultTimeout = 333 # 5 min for all jobs if no other timeout specified
     try:
         try:
             opts, args = getopt.getopt(argv[1:], "hc:i:e:s:p:t:k:o:dr:", [
@@ -557,7 +557,7 @@ def main(argv=None):
     --no-clean:     Can be either 'all' or 'failure'. If 'all', all build directories
                     will be maintained after completion of the test. If 'failure', all
                     directories with at least one failure in them will be maintained.
-    --deftimeout    Default timeout for jobs without timeouts. Defaults to 300 seconds
+    --deftimeout    Default timeout for jobs without timeouts. Defaults to 333 seconds
 """)
             elif o in ('--full-help',):
                 raise Usage(\

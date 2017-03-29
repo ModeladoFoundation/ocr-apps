@@ -8,7 +8,45 @@ jobtype_apps_init = {
     'isLocal': True,
     'run-cmd': '${JJOB_INITDIR_APPS}/apps/jenkins/scripts/init.sh',
     'param-cmd': '${JJOB_INITDIR_APPS}/jenkins/scripts/empty-cmd.sh',
-    'depends': ('__alternate ocr-init', ),
+    'depends': ('__alternate ocr-init',),
+    'keywords': ('apps',),
+    'timeout': 300,
+    'sandbox': ('local', 'shared', 'shareOK'),
+    'req-repos': ('apps', 'ocr')
+}
+
+jobtype_newlib_build = {
+    'name': 'newlib-build',
+    'isLocal': True,
+    'run-cmd': '${JJOB_INITDIR_APPS}/apps/jenkins/scripts/newlib-build.sh',
+    'param-cmd': '${JJOB_INITDIR_APPS}/jenkins/scripts/empty-cmd.sh',
+    'depends': ('apps-init-job',),
+    'keywords': ('apps',),
+    'timeout': 900,
+    'sandbox': ('local', 'shared', 'shareOK'),
+    'req-repos': ('apps',),
+    'env-vars': { 'ARCH': '${T_ARCH}',
+                  'TG_INSTALL': '${JJOB_ENVDIR}',
+                  'TG_ROOT': '${JJOB_INITDIR_TG}/tg',
+                  'APPS_ROOT_PRIV': '${JJOB_PRIVATE_HOME}/apps/apps',
+                  # Forces to build newlib in private
+                  'APPS_ROOT': '${APPS_ROOT_PRIV}',
+                  # but install in shared
+                  'APPS_LIBS_INSTALL_ROOT': '${JJOB_SHARED_HOME}/apps/apps/libs/install',
+                  'T_PATH': 'libs/src/newlib',
+                  'APPS_MAKEFILE': '${APPS_ROOT}/${T_PATH}/Makefile',
+                  'S_PATH': '${T_PATH}',
+                  'B_PATH': '${T_PATH}/build',
+                  'I_PATH': '${T_PATH}/install',
+              }
+}
+
+jobtype_apps_tg_init = {
+    'name': 'apps-tg-init',
+    'isLocal': True,
+    'run-cmd': '${JJOB_INITDIR_APPS}/jenkins/scripts/empty-cmd.sh',
+    'param-cmd': '${JJOB_INITDIR_APPS}/jenkins/scripts/empty-cmd.sh',
+    'depends': ('newlib-build-job',),
     'keywords': ('apps',),
     'timeout': 300,
     'sandbox': ('local', 'shared', 'shareOK'),
@@ -60,7 +98,7 @@ jobtype_ocr_build_app_tg = {
     'isLocal': True,
     'run-cmd': '${JJOB_INITDIR_APPS}/apps/jenkins/scripts/kernel-build.sh',
     'param-cmd': '${JJOB_INITDIR_APPS}/jenkins/scripts/empty-cmd.sh',
-    'depends': ('apps-init-job', ),
+    'depends': ('apps-tg-init-job', ),
     'keywords': ('apps', ),
     'timeout': 300,
     'sandbox': ('local', 'shared', 'shareOK'),
@@ -78,6 +116,7 @@ jobtype_ocr_build_app_tg = {
                   'S_PATH':'${T_PATH}',
                   'B_PATH': '${T_PATH}/build',
                   'I_PATH': '${T_PATH}/install',
+                  'APPS_LIBS_INSTALL_ROOT': '${APPS_ROOT}/libs/install/',
                   'WORKLOAD_SRC': '${APPS_ROOT}/${S_PATH}',
                   'WORKLOAD_BUILD_ROOT': '${APPS_ROOT_PRIV}/${B_PATH}',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${I_PATH}'
@@ -89,7 +128,7 @@ jobtype_ocr_run_app_nonregression = {
     'isLocal': True,
     'run-cmd': '${JJOB_INITDIR_APPS}/apps/jenkins/scripts/run-non-regression.sh',
     'param-cmd': '${JJOB_INITDIR_APPS}/jenkins/scripts/empty-cmd.sh',
-    'keywords': ('apps', 'nonregression', 'nightly'),
+    'keywords': ('apps', 'nonregression', 'nightly',),
     'timeout': 300,
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('apps', 'ocr'),
@@ -103,14 +142,35 @@ jobtype_ocr_run_app_nonregression = {
               }
 }
 
+# Essentially a clone of 'ocr-run-app-tg' with the extra 'newlib' keyword to
+# disambiguate between applications that must use newlib and those that may
+jobtype_ocr_run_app_tg_newlib = {
+    'name': 'ocr-run-app-tg-newlib',
+    'isLocal': False,
+    'run-cmd': '${JJOB_SHARED_HOME}/apps/apps/jenkins/scripts/run-non-regression.sh',
+    'param-cmd': '${JJOB_INITDIR_TG}/tg/jenkins/scripts/fsim-param-cmd.sh',
+    'epilogue-cmd': '${JJOB_ENVDIR}/bin/scripts/fsim-epilogue.sh',
+    'keywords': ('apps', 'nonregression', 'nightly', 'tg', 'newlib'),
+    'timeout': 900,
+    'sandbox': ('shared', 'shareOK'),
+    'req-repos': ('apps', 'ocr', 'tg'),
+    'env-vars': { 'TG_INSTALL': '${JJOB_ENVDIR}',
+                  'APPS_ROOT': '${JJOB_SHARED_HOME}/apps/apps', # Use this for the makefiles
+                  'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/src',
+                  'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
+                  'I_PATH': '${T_PATH}/install',
+                  'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${I_PATH}'
+              }
+}
+
 jobtype_ocr_run_app_tg = {
     'name': 'ocr-run-app-tg',
     'isLocal': False,
     'run-cmd': '${JJOB_SHARED_HOME}/apps/apps/jenkins/scripts/run-non-regression.sh',
     'param-cmd': '${JJOB_INITDIR_TG}/tg/jenkins/scripts/fsim-param-cmd.sh',
     'epilogue-cmd': '${JJOB_ENVDIR}/bin/scripts/fsim-epilogue.sh',
-    'keywords': ('apps', 'nonregression', 'nightly'),
-    'timeout': 300,
+    'keywords': ('apps', 'nonregression', 'nightly','tg',),
+    'timeout': 900,
     'sandbox': ('shared', 'shareOK'),
     'req-repos': ('apps', 'ocr', 'tg'),
     'env-vars': { 'TG_INSTALL': '${JJOB_ENVDIR}',

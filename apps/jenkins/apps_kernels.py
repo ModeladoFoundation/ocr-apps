@@ -171,7 +171,7 @@ job_ocr_verify_kernel_fft_tgemul = {
 job_ocr_build_kernel_fft_tg = {
     'name': 'ocr-build-kernel-fft-tg',
     'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
     'jobtype': 'ocr-build-app-tg',
     'run-args': 'fft tg',
     'sandbox': ('inherit0',),
@@ -374,7 +374,7 @@ job_ocr_verify_kernel_cholesky_tgemul = {
 job_ocr_build_kernel_cholesky_tg = {
     'name': 'ocr-build-kernel-cholesky-tg',
     'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
     'jobtype': 'ocr-build-app-tg',
     'run-args': 'cholesky tg',
     'sandbox': ('inherit0',),
@@ -573,7 +573,7 @@ job_ocr_verify_kernel_fibonacci_tgemul = {
 job_ocr_build_kernel_fibonacci_tg = {
     'name': 'ocr-build-kernel-fibonacci-tg',
     'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
     'jobtype': 'ocr-build-app-tg',
     'run-args': 'fib tg',
     'sandbox': ('inherit0',),
@@ -770,7 +770,7 @@ job_ocr_verify_kernel_printf_tgemul = {
 job_ocr_build_kernel_printf_tg = {
     'name': 'ocr-build-kernel-printf-tg',
     'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
     'jobtype': 'ocr-build-app-tg',
     'run-args': 'printf tg',
     'sandbox': ('inherit0',),
@@ -966,7 +966,7 @@ job_ocr_verify_kernel_quicksort_tgemul = {
 job_ocr_build_kernel_quicksort_tg = {
     'name': 'ocr-build-kernel-quicksort-tg',
     'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
     'jobtype': 'ocr-build-app-tg',
     'run-args': 'quicksort tg',
     'sandbox': ('inherit0',),
@@ -1170,7 +1170,7 @@ job_ocr_verify_kernel_smithwaterman_tgemul = {
 job_ocr_build_kernel_smithwaterman_tg = {
     'name': 'ocr-build-kernel-smithwaterman-tg',
     'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
-                'ocr-build-tg-ce', 'ocr-build-tg-xe'),
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
     'jobtype': 'ocr-build-app-tg',
     'run-args': 'smithwaterman tg',
     'sandbox': ('inherit0',),
@@ -1198,6 +1198,11 @@ job_ocr_verify_kernel_smithwaterman_tg = {
     'sandbox': ('inherit0',),
     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/smithwaterman/ocr/install/tg'}
 }
+
+#
+# TO DEPRECATE
+#
+
 
 # 2D Stencil (Chandra Martha)
 job_ocr_build_kernel_Stencil2DChandra_x86_regression = {
@@ -1234,11 +1239,6 @@ job_ocr_run_kernel_Stencil2DChandra_x86_remote_scaling = {
                   'WORKLOAD_ARGS': '2048 32 1000'
               }
 }
-
-
-#
-# TO DEPRECATE
-#
 
 # Triangle (David Scott)
 job_ocr_build_kernel_triangle_x86 = {

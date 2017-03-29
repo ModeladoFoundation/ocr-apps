@@ -482,7 +482,6 @@ inline static void satisfyInitialTiles(u32 numTiles, u32 tileSize,
             ocrDbRelease(db_guid);
         }
     }
-    hal_fence();
     fclose(fin);
 
 }

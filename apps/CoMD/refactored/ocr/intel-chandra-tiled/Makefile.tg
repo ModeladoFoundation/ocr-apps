@@ -32,7 +32,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= -x 8 -y 8 -z 8 -i 2 -j 2 -k 2 -N 2 -n 1
+WORKLOAD_ARGS ?= -x 4 -y 4 -z 4 -N 2 -n 1
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -54,7 +54,13 @@ TARGET := comd-ocrd
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := newlib reduction ocrAppUtils
+REQ_LIBS := reduction ocrAppUtils compiler-rt-builtins
+
+WITH_NEWLIB := yes
+
+ifeq ($(WITH_NEWLIB), yes)
+  REQ_LIBS += newlib
+endif
 
 # Space separated list of source files
 
@@ -77,7 +83,11 @@ CFLAGS += -DDOUBLE_BUFFERED_EVTS
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := $(APPS_ROOT)/libs/install/$(ARCH)/lib/libreduction.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libocrAppUtils.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a
+LDFLAGS := -lreduction -lm -locrAppUtils -lbuiltins
+
+ifeq ($(WITH_NEWLIB), yes)
+  LDFLAGS += -lc
+endif
 
 # Targets:
 #   - all:     Build the application.

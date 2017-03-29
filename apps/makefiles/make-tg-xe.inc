@@ -147,14 +147,13 @@ ifneq ($(RUN_TORQUE), no)
   MACHINE_CONFIG :=
 # GDB is not supported for fsim-wrapper.sh for now
   RUN_GDB := no
+  ifeq ($(RUN_MODE), runApp)
+     RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
+     MACHINE_CONFIG :=
+  endif
 else
   RUN_CMD := $(TG_INSTALL)/bin/fsim
   MACHINE_CONFIG := -c $(MACHINE_CONFIG)
-endif
-
-ifeq ($(RUN_MODE), runApp)
-  RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
-  MACHINE_CONFIG :=
 endif
 
 ifeq ($(RUN_GDB), yes)
@@ -301,7 +300,11 @@ $(WORKLOAD_BUILD)/$(TARGET).blob: | prebuild
 $(WORKLOAD_BUILD)/$(TARGET): | prebuild
 prebuild: reqlibs
 
-TG_CONFIG_TEMPLATE_CFG ?= $(APPS_ROOT)/tg-configs/config-template.cfg
+ifeq ($(WITH_NEWLIB), yes)
+  TG_CONFIG_TEMPLATE_CFG ?= $(APPS_ROOT)/tg-configs/config-newlib-template.cfg
+else
+  TG_CONFIG_TEMPLATE_CFG ?= $(APPS_ROOT)/tg-configs/config-template.cfg
+endif
 
 .PHONY: $(TG_CONFIG)
 $(TG_CONFIG):

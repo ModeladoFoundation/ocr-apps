@@ -77,6 +77,1002 @@ job_ocr_run_kernel_xsbench_x86_remote_scaling = {
 }
 
 
+
+## XSBench-intel-sharedDB
+
+job_ocr_build_kernel_XSBench_intel_sharedDB_x86 = {
+    'name': 'ocr-build-kernel-XSBench-intel-sharedDB-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'XSBench-intel-sharedDB x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+              }
+}
+
+job_ocr_run_kernel_XSBench_intel_sharedDB_x86 = {
+    'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86',
+    'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'XSBench-intel-sharedDB x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+              }
+}
+
+# job_ocr_verify_kernel_XSBench_intel_sharedDB_x86 = {
+#     'name': 'ocr-verify-kernel-XSBench-intel-sharedDB-x86',
+#     'depends': ('ocr-run-kernel-XSBench-intel-sharedDB-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/XSBench-intel-sharedDB/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_XSBench_intel_sharedDB_x86_remote_regression = {
+    'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression',
+    'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'XSBench-intel-sharedDB x86 ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+              }
+}
+
+job_ocr_run_kernel_XSBench_intel_sharedDB_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'XSBench-intel-sharedDB x86 ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_XSBench_intel_sharedDB_mpi = {
+    'name': 'ocr-build-kernel-XSBench-intel-sharedDB-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'XSBench-intel-sharedDB x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+              }
+}
+
+job_ocr_run_kernel_XSBench_intel_sharedDB_mpi = {
+    'name': 'ocr-run-kernel-XSBench-intel-sharedDB-mpi',
+    'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'XSBench-intel-sharedDB x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+              }
+}
+
+# TG
+job_ocr_build_kernel_RSBench_intel_sharedDB_tg = {
+    'name': 'ocr-build-kernel-RSBench-intel-sharedDB-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'RSBench-intel-sharedDB tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'RSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_RSBench_intel_sharedDB_tg = {
+    'name': 'ocr-run-kernel-RSBench-intel-sharedDB-tg',
+    'depends': ('ocr-build-kernel-RSBench-intel-sharedDB-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'RSBench-intel-sharedDB tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'RSBench/refactored/ocr/intel-sharedDB',
+                  'S_PATH': '${T_PATH}/src',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_RSBench_intel_sharedDB_tg = {
+#     'name': 'ocr-verify-kernel-RSBench-intel-sharedDB-tg',
+#     'depends': ('ocr-run-kernel-RSBench-intel-sharedDB-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/RSBench-intel-sharedDB/ocr/install/tg'}
+# }
+
+## miniAMR-intel-bryan
+
+job_ocr_build_kernel_miniAMR_intel_bryan_x86 = {
+    'name': 'ocr-build-kernel-miniAMR-intel-bryan-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'miniAMR-intel-bryan x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_miniAMR_intel_bryan_x86 = {
+    'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86',
+    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'miniAMR-intel-bryan x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_miniAMR_intel_bryan_x86 = {
+#     'name': 'ocr-verify-kernel-miniAMR-intel-bryan-x86',
+#     'depends': ('ocr-run-kernel-miniAMR-intel-bryan-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/miniAMR-intel-bryan/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_miniAMR_intel_bryan_x86_remote_regression = {
+    'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression',
+    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'miniAMR-intel-bryan x86 ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_miniAMR_intel_bryan_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'miniAMR-intel-bryan x86 ocr-run-kernel-miniAMR-intel-bryan-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_miniAMR_intel_bryan_mpi = {
+    'name': 'ocr-build-kernel-miniAMR-intel-bryan-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'miniAMR-intel-bryan x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_miniAMR_intel_bryan_mpi = {
+    'name': 'ocr-run-kernel-miniAMR-intel-bryan-mpi',
+    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'miniAMR-intel-bryan x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_miniAMR_intel_bryan_mpi = {
+#     'name': 'ocr-verify-kernel-miniAMR-intel-bryan-mpi',
+#     'depends': ('ocr-run-kernel-miniAMR-intel-bryan-mpi',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/miniAMR-intel-bryan/ocr/install/x86-mpi'}
+# }
+
+# TG
+job_ocr_build_kernel_miniAMR_intel_bryan_tg = {
+    'name': 'ocr-build-kernel-miniAMR-intel-bryan-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'miniAMR-intel-bryan tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_miniAMR_intel_bryan_tg = {
+    'name': 'ocr-run-kernel-miniAMR-intel-bryan-tg',
+    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'miniAMR-intel-bryan tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_miniAMR_intel_bryan_tg = {
+#     'name': 'ocr-verify-kernel-miniAMR-intel-bryan-tg',
+#     'depends': ('ocr-run-kernel-miniAMR-intel-bryan-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/miniAMR-intel-bryan/ocr/install/tg'}
+# }
+
+## hpcg-intel-Eager
+
+job_ocr_build_kernel_hpcg_intel_Eager_x86 = {
+    'name': 'ocr-build-kernel-hpcg-intel-Eager-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'hpcg-intel-Eager x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_Eager_x86 = {
+    'name': 'ocr-run-kernel-hpcg-intel-Eager-x86',
+    'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'hpcg-intel-Eager x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_hpcg_intel_Eager_x86 = {
+#     'name': 'ocr-verify-kernel-hpcg-intel-Eager-x86',
+#     'depends': ('ocr-run-kernel-hpcg-intel-Eager-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel-Eager/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_hpcg_intel_Eager_x86_remote_regression = {
+    'name': 'ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression',
+    'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'hpcg-intel-Eager x86 ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_Eager_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-hpcg-intel-Eager-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'hpcg-intel-Eager x86 ocr-run-kernel-hpcg-intel-Eager-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_hpcg_intel_Eager_mpi = {
+    'name': 'ocr-build-kernel-hpcg-intel-Eager-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'hpcg-intel-Eager x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_Eager_mpi = {
+    'name': 'ocr-run-kernel-hpcg-intel-Eager-mpi',
+    'depends': ('ocr-build-kernel-hpcg-intel-Eager-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'hpcg-intel-Eager x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_hpcg_intel_Eager_mpi = {
+#     'name': 'ocr-verify-kernel-hpcg-intel-Eager-mpi',
+#     'depends': ('ocr-run-kernel-hpcg-intel-Eager-mpi',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel-Eager/ocr/install/x86-mpi'}
+# }
+
+# TG
+job_ocr_build_kernel_hpcg_intel_Eager_tg = {
+    'name': 'ocr-build-kernel-hpcg-intel-Eager-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'hpcg-intel-Eager tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_Eager_tg = {
+    'name': 'ocr-run-kernel-hpcg-intel-Eager-tg',
+    'depends': ('ocr-build-kernel-hpcg-intel-Eager-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'hpcg-intel-Eager tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'timeout': 1800,
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+                  'S_PATH': '${T_PATH}',
+                  'WORKLOAD_ARGS': '1 1 1 16 2 0',
+              }
+}
+
+# job_ocr_verify_kernel_hpcg_intel_Eager_tg = {
+#     'name': 'ocr-verify-kernel-hpcg-intel-Eager-tg',
+#     'depends': ('ocr-run-kernel-hpcg-intel-Eager-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel-Eager/ocr/install/tg'}
+# }
+
+## hpcg-intel
+
+job_ocr_build_kernel_hpcg_intel_x86 = {
+    'name': 'ocr-build-kernel-hpcg-intel-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'hpcg-intel x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_x86 = {
+    'name': 'ocr-run-kernel-hpcg-intel-x86',
+    'depends': ('ocr-build-kernel-hpcg-intel-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'hpcg-intel x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_hpcg_intel_x86 = {
+#     'name': 'ocr-verify-kernel-hpcg-intel-x86',
+#     'depends': ('ocr-run-kernel-hpcg-intel-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_hpcg_intel_x86_remote_regression = {
+    'name': 'ocr-run-kernel-hpcg-intel-x86-remote-regression',
+    'depends': ('ocr-build-kernel-hpcg-intel-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'hpcg-intel x86 ocr-run-kernel-hpcg-intel-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-hpcg-intel-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-hpcg-intel-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'hpcg-intel x86 ocr-run-kernel-hpcg-intel-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_hpcg_intel_mpi = {
+    'name': 'ocr-build-kernel-hpcg-intel-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'hpcg-intel x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_mpi = {
+    'name': 'ocr-run-kernel-hpcg-intel-mpi',
+    'depends': ('ocr-build-kernel-hpcg-intel-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'hpcg-intel x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_hpcg_intel_mpi = {
+#     'name': 'ocr-verify-kernel-hpcg-intel-mpi',
+#     'depends': ('ocr-run-kernel-hpcg-intel-mpi',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel/ocr/install/x86-mpi'}
+# }
+
+# TG
+job_ocr_build_kernel_hpcg_intel_tg = {
+    'name': 'ocr-build-kernel-hpcg-intel-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'hpcg-intel tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_hpcg_intel_tg = {
+    'name': 'ocr-run-kernel-hpcg-intel-tg',
+    'depends': ('ocr-build-kernel-hpcg-intel-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'hpcg-intel tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'timeout': 1800,
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'hpcg/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  'WORKLOAD_ARGS': '1 1 1 16 2 0',
+              }
+}
+
+# job_ocr_verify_kernel_hpcg_intel_tg = {
+#     'name': 'ocr-verify-kernel-hpcg-intel-tg',
+#     'depends': ('ocr-run-kernel-hpcg-intel-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel/ocr/install/tg'}
+# }
+
+## CoMD-intel-chandra-tiled
+
+job_ocr_build_kernel_CoMD_intel_chandra_tiled_x86 = {
+    'name': 'ocr-build-kernel-CoMD-intel-chandra-tiled-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'CoMD-intel-chandra-tiled x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86 = {
+    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86',
+    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'CoMD-intel-chandra-tiled x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_CoMD_intel_chandra_tiled_x86 = {
+#     'name': 'ocr-verify-kernel-CoMD-intel-chandra-tiled-x86',
+#     'depends': ('ocr-run-kernel-CoMD-intel-chandra-tiled-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/CoMD-intel-chandra-tiled/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86_remote_regression = {
+    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression',
+    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'CoMD-intel-chandra-tiled x86 ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'CoMD-intel-chandra-tiled x86 ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_CoMD_intel_chandra_tiled_mpi = {
+    'name': 'ocr-build-kernel-CoMD-intel-chandra-tiled-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'CoMD-intel-chandra-tiled x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_CoMD_intel_chandra_tiled_mpi = {
+    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-mpi',
+    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'CoMD-intel-chandra-tiled x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_CoMD_intel_chandra_tiled_mpi = {
+#     'name': 'ocr-verify-kernel-CoMD-intel-chandra-tiled-mpi',
+#     'depends': ('ocr-run-kernel-CoMD-intel-chandra-tiled-mpi',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/CoMD-intel-chandra-tiled/ocr/install/x86-mpi'}
+# }
+
+# TG
+job_ocr_build_kernel_CoMD_intel_chandra_tiled_tg = {
+    'name': 'ocr-build-kernel-CoMD-intel-chandra-tiled-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'CoMD-intel-chandra-tiled tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_CoMD_intel_chandra_tiled_tg = {
+    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-tg',
+    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'CoMD-intel-chandra-tiled tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_CoMD_intel_chandra_tiled_tg = {
+#     'name': 'ocr-verify-kernel-CoMD-intel-chandra-tiled-tg',
+#     'depends': ('ocr-run-kernel-CoMD-intel-chandra-tiled-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/CoMD-intel-chandra-tiled/ocr/install/tg'}
+# }
+
+## nqueens-ocr
+
+job_ocr_build_kernel_nqueens_ocr_x86 = {
+    'name': 'ocr-build-kernel-nqueens-ocr-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'nqueens-ocr x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'nqueens/refactored/ocr',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_nqueens_ocr_x86 = {
+    'name': 'ocr-run-kernel-nqueens-ocr-x86',
+    'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'nqueens-ocr x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'nqueens/refactored/ocr',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_nqueens_ocr_x86 = {
+#     'name': 'ocr-verify-kernel-nqueens-ocr-x86',
+#     'depends': ('ocr-run-kernel-nqueens-ocr-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/nqueens-ocr/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_nqueens_ocr_x86_remote_regression = {
+    'name': 'ocr-run-kernel-nqueens-ocr-x86-remote-regression',
+    'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'nqueens-ocr x86 ocr-run-kernel-nqueens-ocr-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'nqueens/refactored/ocr',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_nqueens_ocr_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-nqueens-ocr-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'nqueens-ocr x86 ocr-run-kernel-nqueens-ocr-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'nqueens/refactored/ocr',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+## Stencil2D-intel-channelEVTs
+
+job_ocr_build_kernel_Stencil2D_intel_channelEVTs_x86 = {
+    'name': 'ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'Stencil2D-intel-channelEVTs x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86 = {
+    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86',
+    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'Stencil2D-intel-channelEVTs x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_Stencil2D_intel_channelEVTs_x86 = {
+#     'name': 'ocr-verify-kernel-Stencil2D-intel-channelEVTs-x86',
+#     'depends': ('ocr-run-kernel-Stencil2D-intel-channelEVTs-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/Stencil2D-intel-channelEVTs/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86_remote_regression = {
+    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression',
+    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'Stencil2D-intel-channelEVTs x86 ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+                  'WORKLOAD_ARGS': '2048 32 1000',
+              }
+}
+
+job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'Stencil2D-intel-channelEVTs x86 ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+                  'WORKLOAD_ARGS': '2048 32 1000',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_Stencil2D_intel_channelEVTs_mpi = {
+    'name': 'ocr-build-kernel-Stencil2D-intel-channelEVTs-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'Stencil2D-intel-channelEVTs x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_Stencil2D_intel_channelEVTs_mpi = {
+    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-mpi',
+    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'Stencil2D-intel-channelEVTs x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+                  'WORKLOAD_ARGS': '2048 32 1000',
+              }
+}
+
+# job_ocr_verify_kernel_Stencil2D_intel_channelEVTs_mpi = {
+#     'name': 'ocr-verify-kernel-Stencil2D-intel-channelEVTs-mpi',
+#     'depends': ('ocr-run-kernel-Stencil2D-intel-channelEVTs-mpi',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/Stencil2D-intel-channelEVTs/ocr/install/x86-mpi'}
+# }
+
+# TG
+job_ocr_build_kernel_Stencil2D_intel_channelEVTs_tg = {
+    'name': 'ocr-build-kernel-Stencil2D-intel-channelEVTs-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'Stencil2D-intel-channelEVTs tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_Stencil2D_intel_channelEVTs_tg = {
+    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-tg',
+    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'Stencil2D-intel-channelEVTs tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_Stencil2D_intel_channelEVTs_tg = {
+#     'name': 'ocr-verify-kernel-Stencil2D-intel-channelEVTs-tg',
+#     'depends': ('ocr-run-kernel-Stencil2D-intel-channelEVTs-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/Stencil2D-intel-channelEVTs/ocr/install/tg'}
+# }
+
+## reduction-intel
+
+job_ocr_build_kernel_reduction_intel_x86 = {
+    'name': 'ocr-build-kernel-reduction-intel-x86',
+    'depends': ('ocr-build-x86',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'reduction-intel x86',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_reduction_intel_x86 = {
+    'name': 'ocr-run-kernel-reduction-intel-x86',
+    'depends': ('ocr-build-kernel-reduction-intel-x86',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'reduction-intel x86',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_reduction_intel_x86 = {
+#     'name': 'ocr-verify-kernel-reduction-intel-x86',
+#     'depends': ('ocr-run-kernel-reduction-intel-x86',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/reduction-intel/ocr/install/x86'}
+# }
+
+job_ocr_run_kernel_reduction_intel_x86_remote_regression = {
+    'name': 'ocr-run-kernel-reduction-intel-x86-remote-regression',
+    'depends': ('ocr-build-kernel-reduction-intel-x86',),
+    'jobtype': 'ocr-run-app-regression',
+    'run-args': 'reduction-intel x86 ocr-run-kernel-reduction-intel-x86-remote-regression 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_reduction_intel_x86_remote_scaling = {
+    'name': 'ocr-run-kernel-reduction-intel-x86-remote-scaling',
+    'depends': ('ocr-build-kernel-reduction-intel-x86',),
+    'jobtype': 'ocr-run-app-scaling',
+    'run-args': 'reduction-intel x86 ocr-run-kernel-reduction-intel-x86-remote-scaling 10',
+    'sandbox': ('shared','inherit0'),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# MPI version
+job_ocr_build_kernel_reduction_intel_mpi = {
+    'name': 'ocr-build-kernel-reduction-intel-mpi',
+    'depends': ('ocr-build-x86-mpi',),
+    'jobtype': 'ocr-build-app',
+    'run-args': 'reduction-intel x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_ARCH': 'x86',
+                  'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+              }
+}
+
+job_ocr_run_kernel_reduction_intel_mpi = {
+    'name': 'ocr-run-kernel-reduction-intel-mpi',
+    'depends': ('ocr-build-kernel-reduction-intel-mpi',),
+    'jobtype': 'ocr-run-app-nonregression',
+    'run-args': 'reduction-intel x86-mpi',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'PATH': '/opt/intel/tools/impi/5.1.1.109/intel64/bin:${PATH}',
+                  'T_ARCH': 'x86',
+                  'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_reduction_intel_mpi = {
+#     'name': 'ocr-verify-kernel-reduction-intel-mpi',
+#     'depends': ('ocr-run-kernel-reduction-intel-mpi',),
+#     'jobtype': 'ocr-verify-app-local',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/reduction-intel/ocr/install/x86-mpi'}
+# }
+
+# TG
+job_ocr_build_kernel_reduction_intel_tg = {
+    'name': 'ocr-build-kernel-reduction-intel-tg',
+    'depends': ('ocr-build-builder-ce', 'ocr-build-builder-xe',
+                'ocr-build-tg-ce', 'ocr-build-tg-xe', ),
+    'jobtype': 'ocr-build-app-tg',
+    'run-args': 'reduction-intel tg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+job_ocr_run_kernel_reduction_intel_tg = {
+    'name': 'ocr-run-kernel-reduction-intel-tg',
+    'depends': ('ocr-build-kernel-reduction-intel-tg',),
+    'jobtype': 'ocr-run-app-tg-newlib',
+    'run-args': 'reduction-intel tg',
+    'param-args': '-c ${WORKLOAD_INSTALL_ROOT}/tg/config.cfg',
+    'sandbox': ('inherit0',),
+    'env-vars': { 'T_PATH': 'reduction/refactored/ocr/intel',
+                  'S_PATH': '${T_PATH}',
+                  #'WORKLOAD_ARGS': '',
+              }
+}
+
+# job_ocr_verify_kernel_reduction_intel_tg = {
+#     'name': 'ocr-verify-kernel-reduction-intel-tg',
+#     'depends': ('ocr-run-kernel-reduction-intel-tg',),
+#     'jobtype': 'ocr-verify-app-remote',
+#     'run-args': '-w -c 1',
+#     'sandbox': ('inherit0',),
+#     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/reduction-intel/ocr/install/tg'}
+# }
+
+
 #
 # MPI LITE
 #

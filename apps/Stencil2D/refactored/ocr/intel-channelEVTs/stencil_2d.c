@@ -20,7 +20,7 @@ Copyright Intel Corporation 2015
 #include "time.h"
 #endif
 #include "timers.h"
-#include "string.h"
+#include <string.h>
 #include <stdlib.h>
 #include <math.h>
 

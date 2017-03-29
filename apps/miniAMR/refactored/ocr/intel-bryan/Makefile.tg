@@ -24,9 +24,9 @@ WORKLOAD_INSTALL_ROOT ?= ./install
 # input file. Note that the index STARTS AT 1
 WORKLOAD_INPUT_FILE_IDX := 0
 
-arg1 ?= 2
-arg2 ?= 2
-arg3 ?= 4
+arg1 ?= 1
+arg2 ?= 1
+arg3 ?= 2
 arg4 ?= 2
 arg5 ?= YES_COARSEN
 
@@ -38,7 +38,7 @@ arg5 ?= YES_COARSEN
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= --num_refine 1 --npx ${arg1} --npy ${arg1} --npz ${arg1} --nx 1 --ny 1 --nz 1 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq ${arg4} --block_change 2
+WORKLOAD_ARGS ?= --num_refine 1 --npx ${arg1} --npy ${arg1} --npz ${arg1} --nx 1 --ny 1 --nz 1 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps ${arg3} --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq ${arg4} --block_change 2
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -61,7 +61,13 @@ TARGET := miniAMR.x
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := newlib ocrAppUtils
+REQ_LIBS := ocrAppUtils
+
+WITH_NEWLIB := yes
+
+ifeq ($(WITH_NEWLIB), yes)
+  REQ_LIBS += newlib
+endif
 
 # Space separated list of source files
 #SRCS := block.c  chksum.c  comm.c  clone.c  init.c  move.c  parent.c  plot.c  stencil.c  refine.c  root.c  util.c  wtime.c
@@ -88,7 +94,10 @@ CFLAGS += -D${arg5}
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS := -locrAppUtils
-LDFLAGS += $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a $(APPS_ROOT)/libs/install/$(ARCH)/lib/libm.a
+
+ifeq ($(WITH_NEWLIB), yes)
+  LDFLAGS += -lc
+endif
 
 # Targets:
 #   - all:     Build the application.
