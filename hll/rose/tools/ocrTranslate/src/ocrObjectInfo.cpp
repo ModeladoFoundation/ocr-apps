@@ -29,12 +29,6 @@ OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<Sg
     m_allocStmts(allocStmts),
     m_pragma(pragma) { }
 
-SgSymbol* OcrDbkContext::getSgSymbol() {
-  SgSymbol* symbol = m_vdefn->search_for_symbol_from_symbol_table();
-  assert(symbol);
-  return symbol;
-}
-
 SgInitializedName* OcrDbkContext::getSgInitializedName() const {
   return m_vdefn;
 }
@@ -141,7 +135,8 @@ OcrEvtContext::~OcrEvtContext() {
 OcrEdtContext::OcrEdtContext(string name, list<OcrDbkContextPtr> depDbks,
 			     list<OcrEvtContextPtr> depEvts, list<SgVarRefExp*> depElems,
 			     OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
-			     list<string> dbksToDestroy, list<string> evtsToDestroy, SgPragmaDeclaration* sgpdecl)
+			     list<string> dbksToDestroy, list<string> evtsToDestroy,
+			     SgPragmaDeclaration* sgpdecl, bool finishEdt)
   : m_name(name),
     m_depDbks(depDbks),
     m_depEvts(depEvts),
@@ -150,7 +145,8 @@ OcrEdtContext::OcrEdtContext(string name, list<OcrDbkContextPtr> depDbks,
     m_basicblock(basicblock),
     m_dbksToDestroy(dbksToDestroy),
     m_evtsToDestroy(evtsToDestroy),
-    m_sgpdecl(sgpdecl) {
+    m_sgpdecl(sgpdecl),
+    m_finishEdt(finishEdt) {
 }
 
 string OcrEdtContext::get_name() const {
@@ -232,6 +228,10 @@ unsigned int OcrEdtContext::getNumDepDbks() const {
 
 unsigned int OcrEdtContext::getNumDepEvts() const {
   return m_depEvts.size();
+}
+
+bool OcrEdtContext::isFinishEdt() const {
+  return m_finishEdt;
 }
 
 string OcrEdtContext::str() const {
@@ -416,7 +416,7 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrDbkCon
 						  list<OcrEvtContextPtr> depEvts, list<SgVarRefExp*> depElems,
 						  OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
 						  list<string> dbksToDestroy, list<string> evtsToDestroy,
-						  SgPragmaDeclaration* spgdecl) {
+						  SgPragmaDeclaration* spgdecl, bool finishEdt) {
   OcrEdtObjectMap::iterator f = m_ocrEdtObjectMap.find(edtName);
   OcrEdtContextPtr edtcontext_sp;
   if(f != m_ocrEdtObjectMap.end()) {
@@ -426,7 +426,7 @@ OcrEdtContextPtr OcrObjectManager::registerOcrEdt(string edtName, list<OcrDbkCon
   }
   else {
     OcrEdtContextPtr edtcontext_sp(new OcrEdtContext(edtName, depDbks, depEvts, depElems, outputEvt,
-						     basicblock, dbksToDestroy, evtsToDestroy, spgdecl));
+						     basicblock, dbksToDestroy, evtsToDestroy, spgdecl, finishEdt));
     OcrEdtObjectMapElem elem(edtName, edtcontext_sp);
     m_ocrEdtObjectMap.insert(elem);
     assert(edtcontext_sp);

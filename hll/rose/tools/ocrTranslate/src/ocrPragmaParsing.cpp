@@ -7,6 +7,7 @@
 #include "AstMatching.h"
 #include "RoseAst.h"
 #include <string>
+#include <numeric>
 #include "logger.h"
 
 using namespace std;
@@ -22,6 +23,30 @@ const char* MatchException::what() const throw() {
 }
 
 MatchException::~MatchException() throw() {
+}
+
+/******************************
+ * OcrTaskBasicBlockTraversal *
+ ******************************/
+OcrTaskBasicBlockTraversal::OcrTaskBasicBlockTraversal(SgNode* root)
+  : m_root(root) { }
+
+SynthesizedAttribute OcrTaskBasicBlockTraversal::defaultSynthesizedAttribute() {
+  return false;
+}
+
+bool OcrTaskBasicBlockTraversal::isTaskPragmaType(std::string pragmaStr) {
+  AstFromString::c_char = pragmaStr.c_str();
+  if(AstFromString::afs_match_substr("ocr task")) return true;
+  return false;
+}
+
+// Propagates information up the AST
+SynthesizedAttribute OcrTaskBasicBlockTraversal::evaluateSynthesizedAttribute(SgNode* sgn, SynthesizedAttributesList attrList) {
+  if(SgPragmaDeclaration* spgdecl = isSgPragmaDeclaration(sgn)) {
+    return isTaskPragmaType(spgdecl->get_pragma()->get_pragma());
+  }
+  else return std::accumulate(attrList.begin(), attrList.end(), false, std::logical_or<bool>());
 }
 
 /***********************
@@ -287,6 +312,8 @@ bool OcrTaskPragmaParser::match() {
 
       // Collect the statements of the task annotation
       SgBasicBlock* basicblock = getTaskBasicBlock();
+      OcrTaskBasicBlockTraversal taskBasicBlockTraversal(basicblock);
+      bool finishEdt = taskBasicBlockTraversal.traverse(basicblock);
       // Get List of OCR objects to destroy by this EDT
       list<string> dbkNamesToDestroy;
       // matchDestroyDbks(sgpdTaskEnd->get_pragma()->get_pragma(), dbkNamesToDestroy);
@@ -297,7 +324,7 @@ bool OcrTaskPragmaParser::match() {
       OcrEdtContextPtr edtcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, depDbksContextPtrList,
 									 depEvtsContextPtrList, depElemsSgnList,
 									 outEvtContext, basicblock, dbkNamesToDestroy,
-									 evtNamesToDestroy, m_sgpdecl);
+									 evtNamesToDestroy, m_sgpdecl, finishEdt);
       // Register the in-order edt order for traversal
       m_ocrObjectManager.registerOcrEdtOrder(m_taskOrder, edtcontext_sp->get_name());
       Logger::debug(lg) << edtcontext_sp->str() << endl;

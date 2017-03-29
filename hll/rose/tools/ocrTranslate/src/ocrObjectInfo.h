@@ -60,7 +60,6 @@ class OcrDbkContext : public OcrObjectContext {
 public:
   OcrDbkContext(std::string name);
   OcrDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgStatement*> allocStmt, SgPragmaDeclaration* pragma);
-  SgSymbol* getSgSymbol();
   SgDeclarationStatement* get_declaration() const;
   SgInitializedName* getSgInitializedName() const;
   SgType* getDbkPtrType();
@@ -105,12 +104,13 @@ class OcrEdtContext : public OcrObjectContext {
   std::list<std::string> m_dbksToDestroy;
   std::list<std::string> m_evtsToDestroy;
   SgPragmaDeclaration* m_sgpdecl;
+  bool m_finishEdt;
 public:
   OcrEdtContext(std::string name, std::list<OcrDbkContextPtr> depDbks,
 		std::list<OcrEvtContextPtr> depEvts, std::list<SgVarRefExp*> depElems,
 		OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
 		std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
-		SgPragmaDeclaration* spgdecl);
+		SgPragmaDeclaration* spgdecl, bool finishEdt);
   std::string get_name() const;
   std::string str() const;
   SgSourceFile* getSourceFile();
@@ -127,6 +127,7 @@ public:
   unsigned int getNumDepEvts() const;
   unsigned int getDepDbkSlotNumber(std::string dbkname) const;
   unsigned int getDepEvtSlotNumber(std::string evtname) const;
+  bool isFinishEdt() const;
   ~OcrEdtContext();
 };
 
@@ -199,7 +200,7 @@ class OcrObjectManager {
 				  std::list<OcrEvtContextPtr> depEvts, std::list<SgVarRefExp*> depElems,
 				  OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
 				  std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
-				  SgPragmaDeclaration* spgdecl);
+				  SgPragmaDeclaration* spgdecl, bool finishEdt);
   bool registerOcrEdtOrder(int order, std::string edtname);
   bool registerOcrShutdownEdt(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts);
   // return a list of edtnames in the same order they were encountered in the AST

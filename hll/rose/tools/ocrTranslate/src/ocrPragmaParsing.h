@@ -20,6 +20,20 @@ class MatchException : public std::exception {
   ~MatchException() throw();
 };
 
+/******************************
+ * OcrTaskBasicBlockTraversal *
+ ******************************/
+typedef bool SynthesizedAttribute;
+class OcrTaskBasicBlockTraversal : public AstBottomUpProcessing<SynthesizedAttribute> {
+  SgNode* m_root;
+ public:
+  OcrTaskBasicBlockTraversal(SgNode* root);
+  bool isTaskPragmaType(std::string pragmaStr);
+  SynthesizedAttribute defaultSynthesizedAttribute();
+  // Propagates information up the AST
+  SynthesizedAttribute evaluateSynthesizedAttribute(SgNode* sgn, SynthesizedAttributesList attrList);
+};
+
 /***********************
  * OcrTaskPragmaParser *
  ***********************/
