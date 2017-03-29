@@ -15,6 +15,9 @@ ASTGEN = astGenerate
 # the whole program
 WHOLE_PROG_AST =
 
+# attributeTraversals
+SYNTHESIZED_ATTR_TEST = synthesizedAttrTest
+
 # Binary for ocr translator tool
 OCRTRANSLATE = ocrTranslate
 
@@ -23,6 +26,10 @@ TARGETS := $(OCRTRANSLATE)
 
 .PHONY: all
 all: $(TARGETS)
+
+$(SYNTHESIZED_ATTR_TEST): $(SYNTHESIZED_ATTR_TEST).cpp
+	$(CXX) -g $(ROSE_INC) $< -o $@ $(ROSE_LNK)
+	cp $(SYNTHESIZED_ATTR_TEST) ../bin
 
 $(ASTGEN): $(ASTGEN).cpp
 ifeq ($(WHOLE_PROG_AST), yes)
