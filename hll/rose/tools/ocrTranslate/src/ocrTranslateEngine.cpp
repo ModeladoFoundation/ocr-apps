@@ -337,7 +337,6 @@ void OcrTranslator::translateDbk(string dbkName, OcrDbkContextPtr dbkContext) {
   // Mark the statements to be removed at the end of this function
   set<SgStatement*> stmtsToRemove;
   SgInitializedName* varInitializedName = dbkContext->getSgInitializedName();
-  // SgSymbol* varSymbol = dbkContext->getSgSymbol();
   SgScopeStatement* scope = SageInterface::getEnclosingScope(dbkContext->get_pragma());
   SgName varName = varInitializedName->get_name();
   SgName ocrGuidName(dbkName);
@@ -370,10 +369,8 @@ void OcrTranslator::translateDbk(string dbkName, OcrDbkContextPtr dbkContext) {
     SageInterface::removeStatement(*st);
   }
   // Register the symbols with the Translation manager
-  SgVariableSymbol* ocrGuidSymbol = isSgVariableSymbol(varDbkGuid->get_decl_item(ocrGuidName)->
-						       search_for_symbol_from_symbol_table());
-  SgVariableSymbol* dbkPtrSymbol = isSgVariableSymbol(varDbkDecl->get_decl_item(varName)->
-						      search_for_symbol_from_symbol_table());
+  SgVariableSymbol* ocrGuidSymbol = GetVariableSymbol(varDbkGuid, ocrGuidName);
+  SgVariableSymbol* dbkPtrSymbol = GetVariableSymbol(varDbkDecl, varName);
   assert(ocrGuidSymbol);
   assert(dbkPtrSymbol);
   // Bookkeeping
@@ -487,7 +484,7 @@ void OcrTranslator::insertDepDbkDecl(string edtname, OcrEdtContextPtr edtContext
   vector<SgStatement*> depDbksDeclStmts;
   for(unsigned int slot=0 ; dbk != depDbks.end(); ++dbk, ++slot) {
     // Build the pointer
-    SgName vname = (*dbk)->getSgSymbol()->get_name();
+    SgName vname = (*dbk)->getSgInitializedName()->get_name();
     SgType* dbkPtrType = (*dbk)->getDbkPtrType();
     SgVariableDeclaration* vdecl = AstBuilder::buildDbkPtrDecl(vname, dbkPtrType, slot, depv, basicblock);
     depDbksDeclStmts.push_back(vdecl);
@@ -617,8 +614,9 @@ void OcrTranslator::setupEdtCreate(string edtname, OcrEdtContextPtr edtContext) 
   OcrEvtContextPtr outEvtContext = edtContext->getOutputEvt();
   OcrEvtAstInfoPtr outEvtAstInfo = m_ocrAstInfoManager.getOcrEvtAstInfo(outEvtContext->get_name());
   SgVariableSymbol* outEvtGuidSymbol = outEvtAstInfo->getEvtGuid();
+  bool finishEdt = edtContext->isFinishEdt();
   SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol,
-									      depElemStructSymbol, outEvtGuidSymbol, scope);
+									      depElemStructSymbol, outEvtGuidSymbol, finishEdt, scope);
   SageInterface::insertStatementBefore(taskPragma, edtGuidDecl, true);
   SageInterface::insertStatementBefore(taskPragma, ocrEdtCreateCallExp, true);
   // Now some bookkeeping
@@ -626,7 +624,7 @@ void OcrTranslator::setupEdtCreate(string edtname, OcrEdtContextPtr edtContext) 
 }
 
 void OcrTranslator::setupEdtDepDbks(string edtname, OcrEdtContextPtr edtContext) {
-  Logger::Logger lg("OcrTranslator::setupEdtDepDbks", Logger::DEBUG);
+  Logger::Logger lg("OcrTranslator::setupEdtDepDbks");
   SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
   SgScopeStatement* scope = SageInterface::getScope(taskPragma);
   OcrEdtAstInfoPtr edtAstInfoPtr = m_ocrAstInfoManager.getOcrEdtAstInfo(edtname);
@@ -670,6 +668,17 @@ void OcrTranslator::setupEdtDepEvts(string edtname, OcrEdtContextPtr edtContext)
     evtDepSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
   }
   SageInterface::insertStatementListBefore(taskPragma, evtDepSetupStmts);
+}
+
+void OcrTranslator::removeOcrTaskPragma(string edtname, OcrEdtContextPtr edtContext) {
+  SgPragmaDeclaration* taskPragma = edtContext->getTaskPragma();
+  SgBasicBlock* basicblock = edtContext->getTaskBasicBlock();
+  // Assert the basic block is empty
+  SgStatementPtrList& statements = basicblock->get_statements();
+  assert(statements.size() == 0);
+
+  SageInterface::removeStatement(taskPragma);
+  SageInterface::removeStatement(basicblock);
 }
 
 void OcrTranslator::outlineShutdownEdt(string shutdownEdtName, SgSourceFile* sourcefile) {
@@ -739,7 +748,7 @@ void OcrTranslator::setupShutdownEdt(string shutdownEdtSuffix, OcrShutdownEdtCon
   SgVariableDeclaration* edtGuidDecl = SageBuilder::buildVariableDeclaration(edtGuidName, ocrGuidType, NULL, scope);
   SgVariableSymbol* edtGuidSymbol = GetVariableSymbol(edtGuidDecl, edtGuidName);
   // We need the edtTemplateGuid
-  SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol, NULL, NULL, scope);
+  SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol, NULL, NULL, false, scope);
   SageInterface::insertStatementBefore(shutdownPragma, edtGuidDecl, true);
   SageInterface::insertStatementBefore(shutdownPragma, ocrEdtCreateCallExp, true);
   // Now some bookkeeping
@@ -761,6 +770,9 @@ void OcrTranslator::setupShutdownEdt(string shutdownEdtSuffix, OcrShutdownEdtCon
     evtDepSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
   }
   SageInterface::insertStatementListBefore(shutdownPragma, evtDepSetupStmts);
+
+  // Finally remove the pragma from the AST
+  SageInterface::removeStatement(shutdownPragma);
 }
 
 void OcrTranslator::replaceDepElemVars(string edtname, OcrEdtContextPtr edtContext) {
@@ -785,6 +797,8 @@ void OcrTranslator::setupEdts() {
     setupEdtCreate(edtname, edtContext);
     setupEdtDepDbks(edtname, edtContext);
     setupEdtDepEvts(edtname, edtContext);
+    // Finally remove the pragma for each edt
+    removeOcrTaskPragma(edtname, edtContext);
   }
 }
 
@@ -801,10 +815,22 @@ void OcrTranslator::replaceDepElemPass() {
 }
 
 void OcrTranslator::translateDbks() {
+  set<SgPragmaDeclaration*> dbkPragmaSet;
   const OcrDbkObjectMap& dbkMap = m_ocrObjectManager.getOcrDbkObjectMap();
   OcrDbkObjectMap::const_iterator d = dbkMap.begin();
   for( ; d != dbkMap.end(); ++d) {
     translateDbk(d->first, d->second);
+    // After translating the datablock
+    // Collect its pragma and mark the annotation for deletion
+    SgPragmaDeclaration* dbkPragma = d->second->get_pragma();
+    dbkPragmaSet.insert(dbkPragma);
+  }
+
+  // We can have multiple datablocks annotated by the same pragma
+  // We collect all the pragmas into a set delete them later
+  set<SgPragmaDeclaration*>::iterator p = dbkPragmaSet.begin();
+  for( ; p != dbkPragmaSet.end(); ++p) {
+    SageInterface::removeStatement(*p);
   }
 }
 
