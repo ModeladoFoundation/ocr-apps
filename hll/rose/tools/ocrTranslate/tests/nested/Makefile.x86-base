@@ -44,14 +44,14 @@ RUN_MODE ?=
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := parallel_task
+TARGET := nested_pragma
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS :=
 
 # Space separated list of source files
-SRCS := rose_parallel_task.c
+SRCS := rose_nested_pragma.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
