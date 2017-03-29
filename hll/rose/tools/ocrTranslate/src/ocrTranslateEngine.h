@@ -177,6 +177,8 @@ class OcrTranslator {
   //! 3. Replace malloc calls with ocrDbCreate API call
   //! 4. Bookkeeping SgSymbols associated with the datablock
   void translateDbk(std::string name, OcrDbkContextPtr dbkContext);
+
+  // EDT Translation
   void setupEdtEvtCreate(std::string edtname, OcrEdtContextPtr edtContext);
   void setupEdtTemplate(std::string edtname, OcrEdtContextPtr edtContext);
   void setupEdtDepElems(std::string edtname, OcrEdtContextPtr edtContext);
@@ -184,6 +186,9 @@ class OcrTranslator {
   void setupEdtDepDbks(std::string edtname, OcrEdtContextPtr edtContext);
   void setupEdtDepEvts(std::string edtname, OcrEdtContextPtr edtContext);
   void setupEdtEvtsSatisfy(std::string edtname, OcrEdtContextPtr edtContext);
+  void removeOcrTaskPragma(std::string edtname, OcrEdtContextPtr edtContext);
+
+  // Shutdown EDTs
   void setupShutdownEdt(std::string shutdownEdtNameSuffix, OcrShutdownEdtContextPtr shutdownEdtContext, int count);
   // Miscellaneous utility functions
   std::set<SgSourceFile*> getSourceFilesOfShutdownEdts(std::list<OcrShutdownEdtContextPtr>& shutdownEdts);
