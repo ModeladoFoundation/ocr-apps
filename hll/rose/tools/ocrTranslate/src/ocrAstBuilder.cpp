@@ -155,13 +155,19 @@ namespace AstBuilder {
     SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(vsymbol);
     SgIntVal* sgIndex = SageBuilder::buildIntVal(slot);
     SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, sgIndex);
-    SgVarRefExp* ptrVarRefExp = SageBuilder::buildVarRefExp("ptr", scope);
+    SgName ptrMemName("ptr");
+    SgVarRefExp* ptrVarRefExp = SageBuilder::buildVarRefExp(ptrMemName, scope);
     SgVariableSymbol* ptrVarSymbol = ptrVarRefExp->get_symbol();
-    // Fix for avoiding ROSE Warnings
-    // scope->get_symbol_table()->insert(ptrVarSymbol->get_name(), ptrVarSymbol);
     SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, ptrVarRefExp);
     SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, dbkPtrType);
     SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(name, dbkPtrType, initializer, scope);
+
+    // Fix for avoiding ROSE Warnings
+    // Forcefully inserting the symbol into the symbol table
+    if(!scope->symbol_exists(ptrVarRefExp->get_symbol())) {
+      scope->insert_symbol(ptrMemName, ptrVarRefExp->get_symbol());
+    }
+    // return the declaration
     return vdecl;
   }
 
@@ -173,40 +179,79 @@ namespace AstBuilder {
     SgVarRefExp* depvVarRefExp = SageBuilder::buildVarRefExp(vsymbol);
     SgIntVal* slotN = SageBuilder::buildIntVal(slot);
     SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(depvVarRefExp, slotN);
+    SgName guidMemName("guid");
     SgVarRefExp* guidVarRefExp = SageBuilder::buildVarRefExp("guid", scope);
     SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, guidVarRefExp);
     SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, ocrGuidType);
     SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(guidName, ocrGuidType, initializer, scope);
+
+    // Fix for avoiding ROSE Warnings
+    // Forcefully inserting the symbol into the symbol table
+    if(!scope->symbol_exists(guidVarRefExp->get_symbol())) {
+      scope->insert_symbol(guidMemName, guidVarRefExp->get_symbol());
+    }
+    // return the variable declaration
     return vdecl;
   }
 
-  void buildEdtStmts(SgBasicBlock* from, SgBasicBlock* to) {
-    vector<SgStatement*> edt_stmts = from->get_statements();
+  // Easiest thing to do is to call SageInteface::moveStatementsBetweenBlocks
+  // It however fails when trying to move a pragma declaration
+  // First, each statement must be added to the target basic block
+  // If there is any statement which is a variable declaration,
+  // adjust the scope accordingly
+  // For reference - See SageInterface.C:18011-18100
+  // TODO: Add the fix in SageInterfac::moveStatementsBetweenBlocks
+  void buildEdtStmts(SgBasicBlock* sourceBlock, SgBasicBlock* targetBlock) {
+    vector<SgStatement*> edt_stmts = sourceBlock->get_statements();
     vector<SgStatement*>::iterator st = edt_stmts.begin();
     for( ; st != edt_stmts.end(); ++st) {
       SageInterface::removeStatement(*st, true);
-      SageInterface::appendStatement(*st, to);
+      SageInterface::appendStatement(*st, targetBlock);
+      // Set the scope appropriately for declaration statements
+      if(SgDeclarationStatement* declStmt = isSgDeclarationStatement(*st)) {
+	switch(declStmt->variantT()) {
+	case V_SgVariableDeclaration: {
+	  SgVariableDeclaration* varDecl = isSgVariableDeclaration(declStmt);
+	  SgInitializedNamePtrList & l = varDecl->get_variables();
+	  for (SgInitializedNamePtrList::iterator i = l.begin(); i != l.end(); i++) {
+	    // reset the scope, but make sure it was set targetBlock sourceBlock targetBlock make sure.
+	    // This might be an issue for extern variable declaration that have a scope
+	    // in a separate namespace of a static class member defined external targetBlock
+	    // its class, etc. I don't want targetBlock worry about those cases right now.
+	    assert((*i)->get_scope() == sourceBlock);
+	    (*i)->set_scope(targetBlock);
+	  }
+	  break;
+	}
+	  // Nothing targetBlock do for these declaration
+	case V_SgPragmaDeclaration:
+	case V_SgTypedefDeclaration:
+	case V_SgFunctionDeclaration: {
+	  break;
+	}
+	default:
+	  cerr << "Moving " << declStmt->class_name() << " not supported in AstBuilder::buildEdtStmts\n";
+	  assert(false);
+	}
+      }
     }
+
     // Move the symbol table
-    assert(from->get_symbol_table() != NULL);
-    to->set_symbol_table(from->get_symbol_table());
+    assert(sourceBlock->get_symbol_table() != NULL);
+    targetBlock->set_symbol_table(sourceBlock->get_symbol_table());
 
-    assert(from != NULL);
-    assert(to != NULL);
-    assert(to->get_symbol_table() != NULL);
-    assert(from->get_symbol_table() != NULL);
-    to->get_symbol_table()->set_parent(to);
+    assert(sourceBlock != NULL);
+    assert(targetBlock != NULL);
+    assert(targetBlock->get_symbol_table() != NULL);
+    assert(sourceBlock->get_symbol_table() != NULL);
+    targetBlock->get_symbol_table()->set_parent(targetBlock);
 
-    assert(from->get_symbol_table() != NULL);
-    // from->set_symbol_table(NULL);
+    assert(sourceBlock->get_symbol_table() != NULL);
+    sourceBlock->set_symbol_table(NULL);
 
     // DQ (9/23/2011): Reset with a valid symbol table.
-    // from->set_symbol_table(new SgSymbolTable());
-    // from->get_symbol_table()->set_parent(from);
-
-    // Using this method crashes the program
-    // reason : Cannot move SgPragmaDeclaration
-    // SageInterface::moveStatementsBetweenBlocks(from, to);
+    sourceBlock->set_symbol_table(new SgSymbolTable());
+    sourceBlock->get_symbol_table()->set_parent(sourceBlock);
   }
 
   SgStatement* buildOcrDbDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope) {
@@ -218,7 +263,9 @@ namespace AstBuilder {
     // Fix for ROSE Warnings
     SgVariableSymbol* guidSymbol = guidVarRefExp->get_symbol();
     assert(guidSymbol);
-    scope->insert_symbol(guidSymbol->get_name(), guidSymbol);
+    if(!scope->symbol_exists(guidSymbol->get_name())) {
+      scope->insert_symbol(guidSymbol->get_name(), guidSymbol);
+    }
     vector<SgExpression*> args;
     args.push_back(argument);
     // Build the argument list
@@ -347,7 +394,9 @@ namespace AstBuilder {
   // 		   u16 flags, ocrHint_t ∗ hint, ocrGuid_t ∗ outputEvent )
   SgExprStatement* buildOcrEdtCreateCallExp(SgVariableSymbol* edtGuidSymbol, SgVariableSymbol* edtTemplateGuidSymbol,
 					    SgVariableSymbol* depElemStructSymbol,
-					    SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope) {
+					    SgVariableSymbol* outEvtGuidSymbol,
+					    bool finishEdt,
+					    SgScopeStatement* scope) {
     SgType* voidType = SageBuilder::buildVoidType();
     // Arguments for ocrEdtTemplateCreate
     vector<SgExpression*> args;
@@ -395,9 +444,16 @@ namespace AstBuilder {
     // seventh argument is flags
     SgIntVal* seventh = SageBuilder::buildIntVal(0);
     string flags;
+    // If we have both finish and valid output event
+    if(finishEdt && outEvtGuidSymbol) {
+      flags = "EDT_PROP_FINISH | EDT_PROP_OEVT_VALID";
+    }
     // If we have a valid output event symbol
-    if(outEvtGuidSymbol) {
+    else if(outEvtGuidSymbol) {
       flags = "EDT_PROP_OEVT_VALID";
+    }
+    else if(finishEdt) {
+      flags = "EDT_PROP_FINISH";
     }
     else {
       flags = "EDT_PROP_NONE";
