@@ -5,7 +5,14 @@
 # ARCH
 ARCH        := x86
 # APPS
-APPS_ROOT   ?= ../../../../../apps
+APPS_ROOT   ?= ../../../../../../apps
+# OCR TRANSLATOR ROOT
+OCR_TRANSLATOR_ROOT ?= ../../../ocrTranslate
+OCR_TRANSLATOR_BIN ?= ${OCR_TRANSLATOR_ROOT}/bin/ocrTranslate
+
+# TRANSLATOR INPUT SOURCE
+# Set the target file for translation
+OCR_TRANSLATOR_TARGET := nested_pragma.c
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -44,14 +51,20 @@ RUN_MODE ?=
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := nested_pragma
+TARGET := $(basename ${OCR_TRANSLATOR_TARGET})
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
 REQ_LIBS :=
 
+# Rule to generate the OCR translated version
+# The translated file is generated with the prefix 'rose_'
+$(addprefix rose_,$(OCR_TRANSLATOR_TARGET)): $(OCR_TRANSLATOR_TARGET) $(OCR_TRANSLATOR_BIN)
+	$(OCR_TRANSLATOR_BIN) -c $<
+
 # Space separated list of source files
-SRCS := rose_nested_pragma.c
+# source file for OCR compilation is the translated file with the prefix 'rose_'
+SRCS := $(addprefix rose_,$(OCR_TRANSLATOR_TARGET))
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
