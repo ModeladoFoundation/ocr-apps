@@ -214,7 +214,7 @@ Command parseCommandLine(int argc, char** argv)
    cmd.initialDelta = 0.0;
 
    MyOption o[17];
-   MyOption* myargs;
+   MyOption* myargs = NULL;
 
    int help=0;
    // add arguments for processing.  Please update the html documentation too!
