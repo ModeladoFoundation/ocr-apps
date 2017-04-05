@@ -26,7 +26,7 @@ echo "All other measurements in micro-seconds."
 #Processing for number of iterations
 #   INFO: FFJ_Ledger: Number of iterationB requested= 100
 LABEL='iterationB'
-ITER_COUNT="$(grep iterationB z_log|tr '=' '\n'|grep -v iteration)"
+ITER_COUNT="$(grep iterationB $FNAME|tr '=' '\n'|grep -v iteration)"
 echo "$LABEL= $ITER_COUNT"
 
 #Processing lines for reduxA
