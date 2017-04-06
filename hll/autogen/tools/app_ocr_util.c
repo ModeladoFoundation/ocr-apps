@@ -107,11 +107,7 @@ Err_t ocrXHookup(ocrEventTypes_t in_eventType,
 {
     Err_t err=0;
     while(!err){
-        ocrGuid_t eventGuid = NULL_GUID;
-        err = ocrEventCreate( &eventGuid, in_eventType, in_eventFlags); IFEB;
-        err = ocrAddDependence( eventGuid, in_EDTguid, in_slotNumber, in_accessMode); IFEB;
-        err = ocrEventSatisfy( eventGuid, in_DBKguid); IFEB;
-
+        err = ocrAddDependence( in_DBKguid, in_EDTguid, in_slotNumber, in_accessMode); IFEB;
         break;
     }
     return err;
