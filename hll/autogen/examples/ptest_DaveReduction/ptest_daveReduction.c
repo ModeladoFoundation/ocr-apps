@@ -93,10 +93,10 @@ int DRinit_fcn(FFJ_Ledger_t * in_ledger, DRshared_t * in_shared, reductionPrivat
         io_reducPrivate->nrank  = in_ledger->nrank;
         io_reducPrivate->myrank = in_ledger->rankid;
         io_reducPrivate->ndata  = 1; // 1 means that the object we are going to allReduce will be a scalar.
-        io_reducPrivate->reductionOperator = REDUC_OPERATION_TYPE;
+        io_reducPrivate->reductionOperator = REDUC_OPERATOR;
         io_reducPrivate->rangeGUID = in_shared->reductionRangeGUID;
         io_reducPrivate->new = 1;
-        io_reducPrivate->type = ALLREDUCE;
+        io_reducPrivate->type = REDUC_OPERATION_TYPE;
 
         ocrEventParams_t params;
         params.EVENT_CHANNEL.maxGen = 2; //2 for channel exchange

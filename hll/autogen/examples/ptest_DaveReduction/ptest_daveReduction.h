@@ -13,7 +13,12 @@
 #define SLOT4REDUCTION_B 5  //This includes the slot for reduction.
 
 typedef double ReducSum_t;
-#define REDUC_OPERATION_TYPE REDUCTION_F8_ADD
+#ifndef REDUC_OPERATOR
+#define REDUC_OPERATOR REDUCTION_F8_ADD
+#endif
+#ifndef REDUC_OPERATION_TYPE
+#define REDUC_OPERATION_TYPE ALLREDUCE
+#endif
 
 #define DR_MULTIPLIER_A 1
 #define DR_MULTIPLIER_B 2
