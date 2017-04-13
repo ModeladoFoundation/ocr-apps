@@ -63,6 +63,11 @@ namespace AstDebug {
   std::string format(std::string in);
 };
 
+namespace SgNodeUtil {
+  SgVarRefExp* identifier2sgn(std::string identifier_, SgNode* anchor);
+  std::list<SgVarRefExp*> identifiers2sgnlist(std::list<std::string> identifiersList, SgNode* anchor);
+}
+
 namespace StrUtil {
   // Assumption: Object of type AnyType implements str() method
   template <typename AnyType>
