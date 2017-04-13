@@ -9,11 +9,11 @@ using namespace boost::xpressive;
 
 namespace Logger {
 
-  Logger::Logger() : m_level(INFO), m_scope("") { }
+  Logger::Logger() : m_level(IGNORE), m_scope("") { }
 
   Logger::Logger(SeverityLevel level) : m_level(level), m_scope("") { }
 
-  Logger::Logger(string scope) : m_level(INFO), m_scope(scope) { }
+  Logger::Logger(string scope) : m_level(IGNORE), m_scope(scope) { }
 
   Logger::Logger(string scope, SeverityLevel level) : m_level(level), m_scope(scope) {
     if(m_level <= DEBUG && m_scope.length() > 0) m_oss << "--- " << m_scope << " ---\n";
@@ -85,6 +85,37 @@ namespace AstDebug {
     sregex rx = *_d >> (char_=*_w);
     string out_s = regex_replace(in_s, rx, "" + char_);
     return out_s;
+  }
+};
+
+namespace SgNodeUtil {
+  SgVarRefExp* identifier2sgn(std::string identifier_, SgNode* anchor) {
+    Logger::Logger lg("OcrTaskPragmaParser::identifier2sgn");
+    SgVarRefExp* idsgn;
+    AstFromString::c_char = identifier_.c_str();
+    AstFromString::c_sgnode = anchor->get_parent();
+    if(AstFromString::afs_match_identifier()) {
+      idsgn = isSgVarRefExp(AstFromString::c_parsed_node);
+    }
+    else {
+      Logger::error(lg) << "Cannot create SgNode from identifer_=" << identifier_ << endl;
+      assert(false);
+    }
+    assert(idsgn);
+    return idsgn;
+  }
+
+  list<SgVarRefExp*> identifiers2sgnlist(list<string> identifiersList, SgNode* anchor) {
+    Logger::Logger lg("OcrTaskPragmaParser::identifiers2sgnlist");
+    list<SgVarRefExp*> idsgnList;
+    list<string>::iterator i = identifiersList.begin();
+    for( ; i != identifiersList.end(); ++i) {
+      SgVarRefExp* idsgn = identifier2sgn(*i, anchor);
+      Logger::debug(lg) << "idsgn=" << AstDebug::astToString(idsgn) << endl;
+      assert(idsgn);
+      idsgnList.push_back(idsgn);
+    }
+    return idsgnList;
   }
 };
 
