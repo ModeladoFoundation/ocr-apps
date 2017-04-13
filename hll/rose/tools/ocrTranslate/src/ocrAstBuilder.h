@@ -38,12 +38,16 @@ namespace AstBuilder {
   SgType* buildVoidPtrType();
   SgType* buildArgvType();
 
+  // Utility Functions
+  std::vector<SgInitializedName*> getDepElemStructMembers(SgClassDeclaration* depElemStructDecl);
+
   // EDT Outlining AST builders
   SgFunctionDeclaration* buildOcrEdtFuncDecl(std::string name, SgScopeStatement* scope);
   std::vector<SgInitializedName*> buildOcrEdtSignature(SgScopeStatement* scope);
   SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl);
   SgTypedefDeclaration* buildTypeDefDecl(std::string edtName, SgType* baseType, SgScopeStatement* scope);
   SgVariableDeclaration* buildOcrEdtDepElemStructDecl(SgType* type, SgName name, SgScopeStatement* scope);
+  std::vector<SgStatement*> buildEdtDepElemVarsDecl(SgClassDeclaration* depElemStructDecl, SgVariableSymbol* depElemStructSymbol, SgScopeStatement* scope);
 
   SgVariableDeclaration* buildDbkPtrDecl(SgName name, SgType* dbkPtrType, unsigned int slot, SgInitializedName* depv,SgScopeStatement* scope);
   SgVariableDeclaration* buildDbkGuidDecl(std::string guidName, unsigned int slot, SgInitializedName* depv, SgScopeStatement* scope);

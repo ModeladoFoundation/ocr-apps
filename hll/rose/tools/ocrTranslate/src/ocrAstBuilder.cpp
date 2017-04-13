@@ -194,6 +194,24 @@ namespace AstBuilder {
     return vdecl;
   }
 
+  vector<SgStatement*> buildEdtDepElemVarsDecl(SgClassDeclaration* depElemStructDecl, SgVariableSymbol* depElemStructSymbol, SgScopeStatement* scope) {
+    vector<SgStatement*> depElemVarsDeclStmts;
+    vector<SgInitializedName*> structMembers = getDepElemStructMembers(depElemStructDecl);
+    vector<SgInitializedName*>::iterator in = structMembers.begin();
+    for( ; in != structMembers.end(); ++in) {
+      SgVariableSymbol* vsymbol = GetVariableSymbol(*in);
+      SgType* vtype = vsymbol->get_type();
+      assert(vtype);
+      SgVarRefExp* depElemStructVarRefExp = SageBuilder::buildVarRefExp(depElemStructSymbol);
+      SgVarRefExp* member = SageBuilder::buildVarRefExp(vsymbol);
+      SgArrowExp* memberRefExp = SageBuilder::buildArrowExp(depElemStructVarRefExp, member);
+      SgAssignInitializer* assignInitializer = SageBuilder::buildAssignInitializer(memberRefExp, vtype);
+      SgVariableDeclaration* depElemVarDecl = SageBuilder::buildVariableDeclaration(vsymbol->get_name(), vtype, assignInitializer, scope);
+      depElemVarsDeclStmts.push_back(depElemVarDecl);
+    }
+    return depElemVarsDeclStmts;
+  }
+
   // Easiest thing to do is to call SageInteface::moveStatementsBetweenBlocks
   // It however fails when trying to move a pragma declaration
   // First, each statement must be added to the target basic block
