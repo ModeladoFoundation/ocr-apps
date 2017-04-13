@@ -519,6 +519,10 @@ void OcrTranslator::insertDepElemDecl(string edtname, OcrEdtContextPtr edtContex
   SageInterface::prependStatement(depElemStructVar, basicblock);
   SageInterface::insertStatementBefore(edtDecl, depElemStructDecl, true);
   SageInterface::insertStatementAfter(depElemStructDecl, depElemTypedefType, true);
+  SgVariableSymbol* depElemStructSymbol = GetVariableSymbol(depElemStructVar, depElemStructName);
+  // Build the stack of local variables for the EDT from the struct
+  vector<SgStatement*> depElemVarDeclStmts = AstBuilder::buildEdtDepElemVarsDecl(depElemStructDecl, depElemStructSymbol, basicblock);
+  SageInterface::insertStatementListAfter(depElemStructVar, depElemVarDeclStmts);
   // Bookkeeping
   edtAstInfoPtr->setDepElemTypedefType(depElemTypedefType->get_type());
   edtAstInfoPtr->setDepElemBaseType(depElemStructDecl->get_type());
@@ -918,6 +922,7 @@ void OcrTranslator::outlineMainEdt() {
   SageInterface::replaceStatement(mainFunction, edt_decl, true);
 }
 
+// Main driver for translation
 void OcrTranslator::translate() {
   Logger::Logger lg("OcrTranslator::translate");
   try {
@@ -926,7 +931,7 @@ void OcrTranslator::translate() {
     outlineEdts();
     translateDbks();
     setupEdts();
-    replaceDepElemPass();
+    // replaceDepElemPass();
     setupShutdownEdts();
     outlineMainEdt();
   }
