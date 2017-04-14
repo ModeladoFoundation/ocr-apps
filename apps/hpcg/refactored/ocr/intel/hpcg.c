@@ -29,13 +29,10 @@ Oct  2016: modified to support reduction library change (ALLREDUCE, REDUCE, BROA
 
 */
 
-#ifndef TG_ARCH
-#include "time.h"
-#endif
-
-
 //#define TIMER//undefine to suppress timing of haloexchange and unpack
 
+#include "timers.h"
+#define TICK (1.0e-6)
 
 #ifndef NO_COMPUTE
 #define COMPUTE  //undefine to suppress compute
@@ -66,10 +63,6 @@ Oct  2016: modified to support reduction library change (ALLREDUCE, REDUCE, BROA
 #ifdef USE_PROFILER
 #include "extensions/ocr-profiler.h"
 #endif
-
-#include "timers.h"
-#define TICK (1.0e-6)
-
 
 #include "string.h" //if memcpy is needed
 #include "stdio.h"  //needed for PRINTF debugging

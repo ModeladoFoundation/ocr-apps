@@ -31,8 +31,9 @@ January 2017: modified to support EAGER data blocks
 
 */
 
-#ifndef TG_ARCH
 #include "time.h"
+
+#ifndef TG_ARCH
 #else
 #define NO_AFFINITY
 #endif

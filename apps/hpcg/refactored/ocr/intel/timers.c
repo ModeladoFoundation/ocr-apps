@@ -1,7 +1,5 @@
-#ifndef TG_ARCH
 #include <sys/time.h>
 #include <inttypes.h>
-#endif
 #include <ocr.h>
 
 #include "timers.h"
@@ -10,13 +8,9 @@
 
 u64 getTime(void)
 {
-#ifndef TG_ARCH
    struct timeval ptime;
    gettimeofday(&ptime, (struct timezone *)NULL);
    return ((u64)1000000)*(u64)ptime.tv_sec + (u64)ptime.tv_usec;
-#else
-   return 0;
-#endif
 }
 
 void profile_start(const enum timer_name handle, void* t)

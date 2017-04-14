@@ -659,8 +659,8 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
             ocrEventSatisfy(returnEVT, DEPV(reduction,mydata,guid));
             }
         return NULL_GUID;
-
         }
+
 }
 
 
@@ -702,7 +702,6 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateDBK, 
     ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, &rpPTR->myEdtAffinityHNT, NULL);
     ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->size, 0, NULL_HINT, NO_ALLOC);
     memcpy(localPTR, mydataPTR, rpPTR->size);
-//PRINTF("RL%d localDBK "GUIDF" \n",rpPTR->myrank,GUIDA(localDBK));
     ocrDbRelease(localDBK);
     ocrAddDependence(localDBK, reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
     rpPTR->phase = 0;
