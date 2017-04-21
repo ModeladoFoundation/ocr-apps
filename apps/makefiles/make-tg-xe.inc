@@ -305,10 +305,12 @@ TG_CONFIG_TEMPLATE_CFG ?= $(APPS_ROOT)/tg-configs/config-template.cfg
 
 .PHONY: $(TG_CONFIG)
 $(TG_CONFIG):
+ifeq ($(TG_CONFIG_DEFAULT), $(TG_CONFIG))
 	@echo "Generating TG config file for $(TARGET)"
 	@echo "[environment]" > $(TG_CONFIG)
 	@echo "   TARGET = $(TARGET)" >> $(TG_CONFIG)
 	@cat  $(TG_CONFIG_TEMPLATE_CFG) >> $(TG_CONFIG)
+endif
 
 # The next three rules force postbuild to run after build_internal
 # and default to run postbuild
