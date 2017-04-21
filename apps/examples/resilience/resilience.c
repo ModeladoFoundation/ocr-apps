@@ -3,8 +3,9 @@
  *  and cannot be distributed without it. This notice cannot be
  *  removed or modified.
  */
+#include "ocr.h"
 
-/* Example of a "fork-join" pattern in OCR
+/* Example of an iterative 2D "fork-join" pattern in OCR
  *
  * Implements the following dependence graph:
  *
@@ -12,14 +13,22 @@
  *          /           \
  *         /             \
  *        /               \
- *    resEdt00           resEdt01
- *       /|\                /|\
- *locEdt1 | locEdt2  locEdt3 | locEdt4
- *       \|/                \|/
- *    resEdt10           resEdt11
- *       /|\                /|\
- *locEdt5 | locEdt6  locEdt7 | locEdt8
- *       \|/                \|/
+ *    resEdt[0][0]        resEdt[0][1]      ...    resEdt[0][ranks-1]
+ *       / | \              / | \
+ * locEdt ... locEdt  locEdt ... locEdt
+ *       \ | /              \ | /
+ *    resEdt[1][0]        resEdt[1][1]      ...    resEdt[1][ranks-1]
+ *       / | \              / | \
+ * locEdt ... locEdt  locEdt ... locEdt
+ *       \ | /              \ | /
+ *                 ...
+ *                 ...
+ *                 ...
+ *
+ * resEdt[iters-1][0] resEdt[iters-1][1]    ...    resEdt[iters-1][ranks-1]
+ *       / | \              / | \
+ * locEdt ... locEdt  locEdt ... locEdt
+ *       \ | /              \ | /
  *        \                 /
  *         \               /
  *          \             /
@@ -27,7 +36,10 @@
  *
  */
 
-#include "ocr.h"
+#define NUM_RANKS 4
+#define NUM_ITERS 2
+#define NUM_LOCAL_EDTS 10
+#define INJECT_FAULT 0
 
 ocrGuid_t localFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     PRINTF("Hello from local EDT (%d, %d, %d)\n",paramv[0], paramv[1], paramv[2]);
@@ -35,17 +47,52 @@ ocrGuid_t localFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 }
 
 ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    u64 i;
     PRINTF("Hello from resilient EDT (%d, %d)\n",paramv[0], paramv[1]);
+
+#if INJECT_FAULT
+    //Fault injection
+    if (paramv[0] == NUM_ITERS/2 && paramv[1] == 0) {
+        PRINTF("Injecting fault from resilient EDT (%d, %d)\n",paramv[0], paramv[1]);
+        ocrNodeFailure();
+    }
+#endif
+
+    //Create the local EDTs
     ocrGuid_t localEdt_template;
-    ocrGuid_t localEdt1, localEdt2;
     ocrEdtTemplateCreate(&localEdt_template, localFunc, 3, 0);
-    u64 params[3];
-    params[0] = paramv[0];
-    params[1] = paramv[1];
-    params[2] = 0;
-    ocrEdtCreate(&localEdt1, localEdt_template, 3, params, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-    params[2] = 1;
-    ocrEdtCreate(&localEdt2, localEdt_template, 3, params, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+    u64 paramsLocal[3];
+    paramsLocal[0] = paramv[0];
+    paramsLocal[1] = paramv[1];
+    for (i = 0; i < NUM_LOCAL_EDTS; i++) {
+        ocrGuid_t localEdt;
+        paramsLocal[2] = i;
+        ocrEdtCreate(&localEdt, localEdt_template, 3, paramsLocal, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+    }
+
+    u64 nextIter = paramv[0] + 1;
+    if (nextIter == NUM_ITERS) {
+        //Termination condition
+        ocrGuid_t shutdownEdt = *((ocrGuid_t*)(&(paramv[2])));
+        ocrGuid_t curOutputEvent;
+        ocrGetOutputEvent(&curOutputEvent);
+        ocrAddDependence(curOutputEvent, shutdownEdt, paramv[1], DB_MODE_CONST);
+    } else {
+        //Schedule EDT for next iteration
+        ocrGuid_t rankEdt_template;
+        u64 numParams = 2 + sizeof(ocrGuid_t)/sizeof(u64);
+        ocrEdtTemplateCreate(&rankEdt_template, resilientFunc, numParams, 1);
+
+        u64 paramsIter[numParams];
+        for (i = 0; i < numParams; i++) paramsIter[i] = paramv[i];
+        paramsIter[0] += 1;
+        ocrGuid_t rankEdt, outputResEvent;
+        ocrEdtCreate(&rankEdt, rankEdt_template, numParams, paramsIter, 1, NULL, EDT_PROP_RESILIENT, NULL_HINT, &outputResEvent);
+
+        ocrGuid_t curOutputEvent;
+        ocrGetOutputEvent(&curOutputEvent);
+        ocrAddDependence(curOutputEvent, rankEdt, 0, DB_MODE_CONST);
+    }
     return NULL_GUID;
 }
 
@@ -56,42 +103,34 @@ ocrGuid_t shutdownFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 }
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
+    u64 i;
     PRINTF("Starting mainEdt\n");
-    ocrGuid_t resEdt_template, shutdown_template;
-    ocrGuid_t predEdt1, predEdt2, succEdt1, succEdt2, shutdownEdt;
-    ocrGuid_t outputResEvent1, outputResEvent2, outputSuccEvent1, outputSuccEvent2;
 
-    //Create templates for the EDTs
-    ocrEdtTemplateCreate(&resEdt_template, resilientFunc, 2, 1);
-    ocrEdtTemplateCreate(&shutdown_template, shutdownFunc, 0, 2);
+    //Create the shutdown EDT
+    ocrGuid_t shutdown_template, shutdownEdt;
+    ocrEdtTemplateCreate(&shutdown_template, shutdownFunc, 0, NUM_RANKS);
+    ocrEdtCreate(&shutdownEdt, shutdown_template, 0, NULL, NUM_RANKS, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
+    //Create the rank EDT template
+    ocrGuid_t rankEdt_template;
+    u64 numParams = 2 + sizeof(ocrGuid_t)/sizeof(u64);
+    ocrEdtTemplateCreate(&rankEdt_template, resilientFunc, numParams, 1);
 
-    //Create the EDTs
-    u64 params[2];
-    params[0] = 0; params[1] = 0;
-    ocrEdtCreate(&predEdt1, resEdt_template, 2, params, EDT_PARAM_DEF, NULL, EDT_PROP_RESILIENT, NULL_HINT, &outputResEvent1);
+    //Create the paramv
+    u64 params[numParams];
+    params[0] = 0; //row
+    params[1] = 0; //col
+    *((ocrGuid_t*)(&(params[2]))) = shutdownEdt;
 
-    params[0] = 0; params[1] = 1;
-    ocrEdtCreate(&predEdt2, resEdt_template, 2, params, EDT_PARAM_DEF, NULL, EDT_PROP_RESILIENT, NULL_HINT, &outputResEvent2);
+    //Create the initial depv
+    ocrGuid_t depNull = NULL_GUID;
 
-    params[0] = 1; params[1] = 0;
-    ocrEdtCreate(&succEdt1, resEdt_template, 2, params, EDT_PARAM_DEF, NULL, EDT_PROP_RESILIENT, NULL_HINT, &outputSuccEvent1);
+    //Create the initial rank EDTs
+    for (i = 0; i < NUM_RANKS; i++) {
+        ocrGuid_t rankEdt, outputResEvent;
+        params[1] = i; //col
+        ocrEdtCreate(&rankEdt, rankEdt_template, numParams, params, 1, &depNull, EDT_PROP_RESILIENT, NULL_HINT, &outputResEvent);
+    }
 
-    params[0] = 1; params[1] = 1;
-    ocrEdtCreate(&succEdt2, resEdt_template, 2, params, EDT_PARAM_DEF, NULL, EDT_PROP_RESILIENT, NULL_HINT, &outputSuccEvent2);
-
-    ocrEdtCreate(&shutdownEdt, shutdown_template, 0, NULL, 2, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-
-    //Setup dependences for the shutdown EDT
-    ocrAddDependence(outputSuccEvent1, shutdownEdt, 0, DB_MODE_CONST);
-    ocrAddDependence(outputSuccEvent2, shutdownEdt, 1, DB_MODE_CONST);
-
-    //Setup dependences for the successor EDTs
-    ocrAddDependence(outputResEvent1, succEdt1, 0, DB_MODE_CONST);
-    ocrAddDependence(outputResEvent2, succEdt2, 0, DB_MODE_CONST);
-
-    //Start execution of the parallel resilient EDTs
-    ocrAddDependence(NULL_GUID, predEdt1, 0, DB_DEFAULT_MODE);
-    ocrAddDependence(NULL_GUID, predEdt2, 0, DB_DEFAULT_MODE);
     return NULL_GUID;
 }
