@@ -37,23 +37,23 @@
  */
 
 #define NUM_RANKS 4
-#define NUM_ITERS 2
+#define NUM_ITERS 20
 #define NUM_LOCAL_EDTS 10
 #define INJECT_FAULT 0
 
 ocrGuid_t localFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Hello from local EDT (%d, %d, %d)\n",paramv[0], paramv[1], paramv[2]);
+    PRINTF("[Rank: %lu] Hello from local EDT (%d, %d, %d)\n", ocrGetLocation(), paramv[0], paramv[1], paramv[2]);
     return NULL_GUID;
 }
 
 ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 i;
-    PRINTF("Hello from resilient EDT (%d, %d)\n",paramv[0], paramv[1]);
+    PRINTF("[Rank: %lu] Hello from resilient EDT (%d, %d)\n", ocrGetLocation(), paramv[0], paramv[1]);
 
 #if INJECT_FAULT
     //Fault injection
     if (paramv[0] == NUM_ITERS/2 && paramv[1] == 0) {
-        PRINTF("Injecting fault from resilient EDT (%d, %d)\n",paramv[0], paramv[1]);
+        PRINTF("[Rank: %lu] Injecting fault from resilient EDT (%d, %d)\n", ocrGetLocation(), paramv[0], paramv[1]);
         ocrNodeFailure();
     }
 #endif
@@ -97,14 +97,14 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 }
 
 ocrGuid_t shutdownFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Hello from shutdownEdt\n");
+    PRINTF("[Rank: %lu] Hello from shutdownEdt\n", ocrGetLocation());
     ocrShutdown();
     return NULL_GUID;
 }
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 i;
-    PRINTF("Starting mainEdt\n");
+    PRINTF("[Rank: %lu] Starting mainEdt\n", ocrGetLocation());
 
     //Create the shutdown EDT
     ocrGuid_t shutdown_template, shutdownEdt;
