@@ -83,7 +83,7 @@ DGFLAGS  = -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 WARNINGS = -Wall -Wstrict-aliasing=0
 
 CFLAGS_TGKRNL =  -std=c99 -m64 -mcmodel=large \
-                 -fno-builtin -fno-stack-protector -fPIC
+                 -fno-builtin -fno-stack-protector -fPIC -mno-red-zone
 #
 # We set -nostdinc to ensure we get the system includes from newlib
 #
