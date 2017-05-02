@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1631,17 +1632,30 @@ namespace Legion {
 #undef PROC_MASK
   }; // namespace Internal
 
+//http://stackoverflow.com/questions/154136
+#if USE_OCR_LAYER
+  #define COPY_OCR_EVT_FROM(e) do { this->evt_guid = e.evt_guid;} while(0)
+  #define COPY_OCR_EVT_TO(e)   do { e.evt_guid = this->evt_guid;} while(0)
+#else // USE_OCR_LAYER
+  #define COPY_OCR_EVT_FROM(e) do {} while(0)
+  #define COPY_OCR_EVT_TO(e)   do {} while(0)
+#endif // USE_OCR_LAYER
+
   // Legion derived event types
   class LgEvent : public Realm::Event {
   public:
     static const LgEvent NO_LG_EVENT;
   public:
-    LgEvent(void) { id = 0; }
-    LgEvent(const LgEvent &rhs) { id = rhs.id; }
-    explicit LgEvent(const Realm::Event e) { id = e.id; }
+    LgEvent(void) { id = 0;
+#if USE_OCR_LAYER
+    evt_guid = NULL_GUID;
+#endif // USE_OCR_LAYER
+ }
+    LgEvent(const LgEvent &rhs) { id = rhs.id; COPY_OCR_EVT_FROM(rhs);}
+    explicit LgEvent(const Realm::Event e) { id = e.id; COPY_OCR_EVT_FROM(e);}
   public:
     inline LgEvent& operator=(const LgEvent &rhs)
-      { id = rhs.id; return *this; }
+      { id = rhs.id; COPY_OCR_EVT_FROM(rhs);  return *this; }
   };
 
   class PredEvent : public LgEvent {
@@ -1649,13 +1663,13 @@ namespace Legion {
     static const PredEvent NO_PRED_EVENT;
   public:
     PredEvent(void) : LgEvent() { }
-    PredEvent(const PredEvent &rhs) { id = rhs.id; }
+    PredEvent(const PredEvent &rhs) { id = rhs.id; COPY_OCR_EVT_FROM(rhs);}
     explicit PredEvent(const Realm::UserEvent &e) : LgEvent(e) { }
   public:
     inline PredEvent& operator=(const PredEvent &rhs)
-      { id = rhs.id; return *this; }
+      { id = rhs.id; COPY_OCR_EVT_FROM(rhs); return *this; }
     inline operator Realm::UserEvent() const
-      { Realm::UserEvent e; e.id = id; return e; }
+      { Realm::UserEvent e; e.id = id; COPY_OCR_EVT_TO(e); return e; }
   };
 
   class ApEvent : public LgEvent {
@@ -1663,12 +1677,12 @@ namespace Legion {
     static const ApEvent NO_AP_EVENT;
   public:
     ApEvent(void) : LgEvent() { }
-    ApEvent(const ApEvent &rhs) { id = rhs.id; }
+    ApEvent(const ApEvent &rhs) { id = rhs.id; COPY_OCR_EVT_FROM(rhs);}
     explicit ApEvent(const Realm::Event &e) : LgEvent(e) { }
-    explicit ApEvent(const PredEvent &e) { id = e.id; }
+    explicit ApEvent(const PredEvent &e) { id = e.id; COPY_OCR_EVT_FROM(e);}
   public:
     inline ApEvent& operator=(const ApEvent &rhs)
-      { id = rhs.id; return *this; }
+      { id = rhs.id; COPY_OCR_EVT_FROM(rhs); return *this; }
     inline bool has_triggered_faultignorant(void) const
       { bool poisoned; return has_triggered_faultaware(poisoned); }
   };
@@ -1682,9 +1696,9 @@ namespace Legion {
     explicit ApUserEvent(const Realm::UserEvent &e) : ApEvent(e) { }
   public:
     inline ApUserEvent& operator=(const ApUserEvent &rhs)
-      { id = rhs.id; return *this; }
+      { id = rhs.id; COPY_OCR_EVT_FROM(rhs); return *this; }
     inline operator Realm::UserEvent() const
-      { Realm::UserEvent e; e.id = id; return e; }
+      { Realm::UserEvent e; e.id = id; COPY_OCR_EVT_TO(e); return e; }
   };
 
   class ApBarrier : public ApEvent {
@@ -1711,12 +1725,12 @@ namespace Legion {
     static const RtEvent NO_RT_EVENT;
   public:
     RtEvent(void) : LgEvent() { }
-    RtEvent(const RtEvent &rhs) { id = rhs.id; }
+    RtEvent(const RtEvent &rhs) { id = rhs.id; COPY_OCR_EVT_FROM(rhs);}
     explicit RtEvent(const Realm::Event &e) : LgEvent(e) { }
-    explicit RtEvent(const PredEvent &e) { id = e.id; }
+    explicit RtEvent(const PredEvent &e) { id = e.id; COPY_OCR_EVT_FROM(e);}
   public:
     inline RtEvent& operator=(const RtEvent &rhs)
-      { id = rhs.id; return *this; }
+      { id = rhs.id; COPY_OCR_EVT_FROM(rhs); return *this; }
   };
 
   class RtUserEvent : public RtEvent {
@@ -1728,9 +1742,9 @@ namespace Legion {
     explicit RtUserEvent(const Realm::UserEvent &e) : RtEvent(e) { }
   public:
     inline RtUserEvent& operator=(const RtUserEvent &rhs)
-      { id = rhs.id; return *this; }
+      { id = rhs.id; COPY_OCR_EVT_FROM(rhs); return *this; }
     inline operator Realm::UserEvent() const
-      { Realm::UserEvent e; e.id = id; return e; }
+      { Realm::UserEvent e; e.id = id; COPY_OCR_EVT_TO(e); return e; }
   };
 
   class RtBarrier : public RtEvent {

@@ -129,8 +129,13 @@ namespace Realm {
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
     if(!id) return true; // special case: NO_EVENT has always triggered
+#if USE_OCR_LAYER
+    assert(!poisoned);
+    return OCREventImpl::has_triggered(evt_guid);
+#else // USE_OCR_LAYER
     EventImpl *e = get_runtime()->get_event_impl(*this);
     return e->has_triggered(ID(id).event.generation, poisoned);
+#endif // USE_OCR_LAYER
   }
 
   // creates an event that won't trigger until all input events have
@@ -165,7 +170,11 @@ namespace Realm {
   /*static*/ Event Event::ignorefaults(Event wait_for)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    return wait_for;
+#else
     return GenEventImpl::ignorefaults(wait_for);
+#endif // USE_OCR_LAYER
   }
 
   class EventTriggeredCondition {

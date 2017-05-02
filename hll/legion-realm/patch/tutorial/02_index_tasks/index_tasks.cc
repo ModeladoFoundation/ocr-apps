@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,13 +147,25 @@ int index_space_task(const Task *task,
   return (2*input);
 }
 
+#if USE_OCR_LAYER
+int legion_ocr_main(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif // USE_OCR_LAYER
 {
   Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
   Runtime::register_legion_task<top_level_task>(TOP_LEVEL_TASK_ID,
+#if USE_OCR_LAYER
+      Processor::OCR_PROC, true/*single*/, false/*index*/);
+#else
       Processor::LOC_PROC, true/*single*/, false/*index*/);
+#endif // USE_OCR_LAYER
   Runtime::register_legion_task<int, index_space_task>(HELLO_WORLD_INDEX_ID,
+#if USE_OCR_LAYER
+      Processor::OCR_PROC, false/*single*/, true/*index*/);
+#else
       Processor::LOC_PROC, false/*single*/, true/*index*/);
+#endif // USE_OCR_LAYER
 
   return Runtime::start(argc, argv);
 }

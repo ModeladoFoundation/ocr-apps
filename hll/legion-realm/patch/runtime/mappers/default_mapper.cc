@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,6 +115,15 @@ namespace Legion {
         {
           switch (it->kind())
           {
+#if USE_OCR_LAYER
+            case Processor::OCR_PROC:
+              {
+                local_cpus.push_back(*it);
+                break;
+              }
+            default:
+              assert(false);;
+#else // USE_OCR_LAYER
             case Processor::TOC_PROC:
               {
                 local_gpus.push_back(*it);
@@ -136,10 +146,14 @@ namespace Legion {
               }
             default: // ignore anything else
               break;
+#endif // USE_OCR_LAYER
           }
         }
         switch (it->kind())
         {
+#if USE_OCR_LAYER
+          assert(false); //currently only single node
+#else // USE_OCR_LAYER
           case Processor::TOC_PROC:
             {
               // See if we already have a target GPU processor for this node
@@ -178,6 +192,7 @@ namespace Legion {
             }
           default: // ignore anything else
             break;
+#endif // USE_OCR_LAYER
         }
       }
       assert(!local_cpus.empty()); // better have some cpus
@@ -319,12 +334,17 @@ namespace Legion {
         // Otherwise round robin onto our local queue of the right kind
         switch (info.proc_kind)
         {
+#if USE_OCR_LAYER
+          case Processor::OCR_PROC:
+            return default_get_next_local_cpu();
+#else // USE_OCR_LAYER
           case Processor::LOC_PROC:
             return default_get_next_local_cpu();
           case Processor::TOC_PROC:
             return default_get_next_local_gpu();
           case Processor::IO_PROC:
             return default_get_next_local_io();
+#endif // USE_OCR_LAYER
           default: // make warnings go away
             break;
         }
@@ -350,12 +370,17 @@ namespace Legion {
             // to instead encourage locality
             switch (info.proc_kind)
             {
+#if USE_OCR_LAYER
+              case Processor::OCR_PROC:
+                return default_get_next_global_cpu();
+#else // USE_OCR_LAYER
               case Processor::LOC_PROC:
                 return default_get_next_global_cpu();
               case Processor::TOC_PROC:
                 return default_get_next_global_gpu();
               case Processor::IO_PROC: // Don't distribute I/O
                 return default_get_next_local_io();
+#endif // USE_OCR_LAYER
               default: // make warnings go away
                 break;
             }
@@ -366,12 +391,17 @@ namespace Legion {
             // current node as the distribution was done at level 1
             switch (info.proc_kind)
             {
+#if USE_OCR_LAYER
+              case Processor::OCR_PROC:
+                return default_get_next_local_cpu();
+#else // USE_OCR_LAYER
               case Processor::LOC_PROC:
                 return default_get_next_local_cpu();
               case Processor::TOC_PROC:
                 return default_get_next_local_gpu();
               case Processor::IO_PROC:
                 return default_get_next_local_io();
+#endif // USE_OCR_LAYER
               default: // make warnings go away
                 break;
             }
@@ -411,7 +441,11 @@ namespace Legion {
       if (!next_global_cpu.exists())
       {
         global_cpu_query = new Machine::ProcessorQuery(machine);
+#if USE_OCR_LAYER
+        global_cpu_query->only_kind(Processor::OCR_PROC);
+#else
         global_cpu_query->only_kind(Processor::LOC_PROC);
+#endif // USE_OCR_LAYER
         next_global_cpu = global_cpu_query->first();
       }
       Processor result = next_global_cpu;
@@ -579,6 +613,14 @@ namespace Legion {
             // See if we have any local processor of this kind
             switch (ranking[idx])
             {
+#if USE_OCR_LAYER
+              case Processor::OCR_PROC:
+                {
+                  if (local_cpus.empty())
+                    continue;
+                  break;
+                }
+#else // USE_OCR_LAYER
               case Processor::TOC_PROC:
                 {
                   if (local_gpus.empty())
@@ -603,6 +645,7 @@ namespace Legion {
                     continue;
                   break;
                 }
+#endif // USE_OCR_LAYER
               default:
                 assert(false); // unknown processor type
             }
@@ -735,6 +778,10 @@ namespace Legion {
     //--------------------------------------------------------------------------
     {
       // Default mapper is ignorant about task IDs so just do whatever
+#if USE_OCR_LAYER
+      ranking.resize(1);
+      ranking[0] = Processor::OCR_PROC;
+#else // USE_OCR_LAYER
       ranking.resize(4);
       // GPU > procset > IO > cpu
       // It is up to the caller to filter out processor kinds that aren't
@@ -743,6 +790,7 @@ namespace Legion {
       ranking[1] = Processor::PROC_SET;
       ranking[2] = Processor::IO_PROC;
       ranking[3] = Processor::LOC_PROC;
+#endif // USE_OCR_LAYER
     }
 
     //--------------------------------------------------------------------------
@@ -805,6 +853,25 @@ namespace Legion {
             global_memory = visible_memories.first();
           switch (task.target_proc.kind())
           {
+#if USE_OCR_LAYER
+            case Processor::OCR_PROC:
+              {
+                if (task.index_domain.get_volume() > local_cpus.size())
+                {
+                  if (!global_memory.exists())
+                  {
+                    log_mapper.error("Default mapper failure. No memory found "
+                        "for CPU task %s (ID %lld) which is visible "
+                        "for all point in the index space.",
+                        task.get_task_name(), task.get_unique_id());
+                    assert(false);
+                  }
+                  else
+                    target_memory = global_memory;
+                }
+                break;
+              }
+#else // USE_OCR_LAYER
             case Processor::IO_PROC:
               {
                 if (task.index_domain.get_volume() > local_ios.size())
@@ -868,6 +935,7 @@ namespace Legion {
                 }
                 break;
               }
+#endif // USE_OCR_LAYER
             default:
               assert(false); // unrecognized processor kind
           }
@@ -1018,6 +1086,14 @@ namespace Legion {
         task.must_epoch_task ? local_proc.kind() : task.target_proc.kind();
       switch (target_kind)
       {
+#if USE_OCR_LAYER
+        case Processor::OCR_PROC:
+          {
+            default_slice_task(task, local_cpus, remote_cpus,
+                               input, output, cpu_slices_cache);
+            break;
+          }
+#else // USE_OCR_LAYER
         case Processor::LOC_PROC:
           {
             default_slice_task(task, local_cpus, remote_cpus,
@@ -1042,6 +1118,7 @@ namespace Legion {
                                input, output, procset_slices_cache);
             break;
           }
+#endif // USE_OCR_LAYER
         default:
           assert(false); // unimplemented processor kind
       }
@@ -1562,6 +1639,17 @@ namespace Legion {
       {
         switch (task.target_proc.kind())
         {
+#if USE_OCR_LAYER
+          case Processor::OCR_PROC:
+            {
+              if (!task.must_epoch_task)
+                target_procs.insert(target_procs.end(),
+                    local_cpus.begin(), local_cpus.end());
+              else
+                target_procs.push_back(task.target_proc);
+              break;
+            }
+#else // USE_OCR_LAYER
           case Processor::TOC_PROC:
             {
               // GPUs have their own memories so they only get one
@@ -1598,6 +1686,7 @@ namespace Legion {
               target_procs.push_back(task.target_proc);
               break;
             }
+#endif // USE_OCR_LAYER
           default:
             assert(false); // unrecognized processor kind
         }
