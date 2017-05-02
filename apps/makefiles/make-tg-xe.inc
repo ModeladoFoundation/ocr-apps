@@ -33,7 +33,6 @@ TG_CONFIG ?=
 RUN_TORQUE  ?= no
 # If RUN_TORQUE is no, you can specify a configuration file
 # for the simulator
-MACHINE_CONFIG ?= $(TG_INSTALL)/fsim-configs/localhost.cfg
 
 # GDB support
 RUN_GDB         ?= no
@@ -147,13 +146,22 @@ ifneq ($(RUN_TORQUE), no)
   MACHINE_CONFIG :=
 # GDB is not supported for fsim-wrapper.sh for now
   RUN_GDB := no
-  ifeq ($(RUN_MODE), runApp)
-     RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
-     MACHINE_CONFIG :=
-  endif
 else
-  RUN_CMD := $(TG_INSTALL)/bin/fsim
-  MACHINE_CONFIG := -c $(MACHINE_CONFIG)
+  ifdef MACHINE_CONFIG
+    MACHINE_CONFIG := -f $(MACHINE_CONFIG)
+  endif
+  ifdef PROCESS_PER_NODE
+    PROCESS_PER_NODE := -p $(PROCESS_PER_NODE)
+  endif
+  RUN_CMD := $(TG_INSTALL)/bin/scripts/mpi_launch.sh
+endif
+
+# This sounds to make the assumption that whether or not
+# RUN_TORQUE is set if RUN_MODE is runApp we are already
+
+ifeq ($(RUN_MODE), runApp)
+  RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
+  MACHINE_CONFIG :=
 endif
 
 ifeq ($(RUN_GDB), yes)
@@ -177,7 +185,7 @@ endif
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or run manually:"
-	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} -s -L $(WORKLOAD_LOGS) ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg"
+	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} ${MACHINE_CONFIG} ${PROCESS_PER_NODE} -D $(WORKLOAD_LOGS) -L $(WORKLOAD_LOGS) -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET) $(WORKLOAD_INSTALL)/$(TARGET).blob
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/config.cfg
@@ -282,7 +290,7 @@ endif
   else
 	$(AT)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
 	RUN_TORQUE=$(RUN_TORQUE) \
-	bash -ec 'cd $(WORKLOAD_LOGS) && $(RUN_CMD) -s -L $(WORKLOAD_LOGS) $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
+	bash -ec 'cd $(WORKLOAD_LOGS) && ${RUN_CMD} ${MACHINE_CONFIG} ${PROCESS_PER_NODE} -D $(WORKLOAD_LOGS) -L $(WORKLOAD_LOGS) -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
   endif
