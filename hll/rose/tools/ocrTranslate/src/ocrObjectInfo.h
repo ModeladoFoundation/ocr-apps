@@ -8,51 +8,13 @@
 #include <string>
 #include <list>
 #include <boost/shared_ptr.hpp>
+#include "ocrSymbolTable.h"
 
-/***************
- * OcrObjectId *
- ***************/
-/*! \brief Generate id for OcrObjects
- *
- * Not a thread-safe implementation of id generation
- * Using a static variable instead of a singleton pattern
- */
-class GenOcrObjectId {
-  static unsigned int m_id;
- public:
-  GenOcrObjectId();
-  //! returns a new id
-  unsigned int get_new_id();
-};
-
-/*************
- * OcrObject *
- *************/
-class OcrObject {
-  unsigned int m_id;
- public:
-  OcrObject(unsigned int id_);
-  virtual std::string str() const;
-  unsigned int get_id() const;
-  bool operator<(const OcrObject& that) const;
-};
-
-/********************
- * OcrObjectContext *
- ********************/
-class OcrObjectContext {
- public:
-  OcrObjectContext();
-  virtual std::string str() const=0;
-  virtual ~OcrObjectContext();
-};
-
-typedef boost::shared_ptr<OcrObjectContext> OcrObjectContextPtr;
 
 /*****************
  * OcrDbkContext *
  *****************/
-class OcrDbkContext : public OcrObjectContext {
+class OcrDbkContext {
   std::string m_name;
   SgInitializedName* m_vdefn;
   std::list<SgStatement*> m_allocStmts;
@@ -75,7 +37,7 @@ typedef boost::shared_ptr<OcrDbkContext> OcrDbkContextPtr;
 /*****************
  * OcrEvtContext *
  *****************/
-class OcrEvtContext : public OcrObjectContext {
+class OcrEvtContext {
   std::string m_name;
 public:
   OcrEvtContext(std::string name);
@@ -86,6 +48,40 @@ public:
 
 typedef boost::shared_ptr<OcrEvtContext> OcrEvtContextPtr;
 
+/******************
+ * OcrTaskContext *
+ ******************/
+/*! \class OcrTaskContext
+ *  \brief Base class for the OCR task context.
+ * A context carries all the necessary information to synthesize OCR code.
+ * OcrTaskContext is the base class for different tasks - EDT, LoopIterEdt, ShutdownEdt etc.,
+ * The context class is used by the translator class to generate the corresponding OCR code.
+ * We will use the base class shared_ptr for storing all task contexts in a map
+ */
+class OcrTaskContext {
+ public:
+  typedef enum {
+    e_TaskEdt,
+    e_TaskLoopIter,
+    e_TaskShutDown,
+    e_TaskMain
+  } OcrTaskType;
+ protected:
+  OcrTaskType m_type;
+  std::string m_taskName;
+  unsigned int m_traversalOrder; //!< In-Order Traversal Order of the Pragma Nodes
+  SgPragmaDeclaration* m_sgpdecl;
+ public:
+  OcrTaskContext(OcrTaskType type, std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl);
+  OcrTaskType getTaskType() const;
+  SgPragmaDeclaration* getPragma() const;
+  unsigned int getTraversalOrder() const;
+  std::string getTaskName() const;
+  virtual std::string str() const = 0;
+  virtual ~OcrTaskContext();
+};
+typedef boost::shared_ptr<OcrTaskContext> OcrTaskContextPtr;
+
 /*****************
  * OcrEdtContext *
  *****************/
@@ -94,32 +90,36 @@ typedef boost::shared_ptr<OcrEvtContext> OcrEvtContextPtr;
 //! List of dependent events
 //! List of parameters that should be passed as an input
 //! List of statements collected by an AST traversal
-class OcrEdtContext : public OcrObjectContext {
-  std::string m_name;
-  std::list<OcrEvtContextPtr> m_depEvts;
+class OcrEdtContext : public OcrTaskContext {
+  SgBasicBlock* m_basicblock;
   std::list<OcrDbkContextPtr> m_depDbks;
+  std::list<OcrEvtContextPtr> m_depEvts;
+  std::list<OcrDbkContextPtr> m_dbksToCreate;
   std::list<SgVarRefExp*> m_depElems;
   OcrEvtContextPtr m_outputEvt;
-  SgBasicBlock* m_basicblock;
   std::list<std::string> m_dbksToDestroy;
   std::list<std::string> m_evtsToDestroy;
-  SgPragmaDeclaration* m_sgpdecl;
   bool m_finishEdt;
 public:
-  OcrEdtContext(std::string name, std::list<OcrDbkContextPtr> depDbks,
-		std::list<OcrEvtContextPtr> depEvts, std::list<SgVarRefExp*> depElems,
-		OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
-		std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
-		SgPragmaDeclaration* spgdecl, bool finishEdt);
+  OcrEdtContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+		std::list<OcrDbkContextPtr> depDbks,
+		std::list<OcrEvtContextPtr> depEvts,
+		std::list<SgVarRefExp*> depElems,
+		OcrEvtContextPtr outputEvt,
+		SgBasicBlock* basicblock,
+		bool finishEdt);
+  // Set Functions
+  void setDbksToDestroy(std::list<std::string> dbksToDestroy);
+  void setEvtsToDestroy(std::list<std::string> evtsToDestroy);
+  void setDbksToCreate(std::list<OcrDbkContextPtr> dbksToCreate);
+
+  // Get Functions
   std::string get_name() const;
-  std::string str() const;
   SgSourceFile* getSourceFile();
-  SgBasicBlock* getTaskBasicBlock() const;
   std::list<SgVarRefExp*> getDepElems() const;
   std::list<OcrDbkContextPtr> getDepDbks() const;
   std::list<OcrEvtContextPtr> getDepEvts() const;
-  std::list<std::string> getDbksToDestroy() const;
-  std::list<std::string> getEvtsToDestroy() const;
+  std::list<OcrDbkContextPtr> getDbksToCreate() const;
   OcrEvtContextPtr getOutputEvt() const;
   SgPragmaDeclaration* getTaskPragma() const;
   unsigned int getNumDepElems() const;
@@ -128,10 +128,54 @@ public:
   unsigned int getDepDbkSlotNumber(std::string dbkname) const;
   unsigned int getDepEvtSlotNumber(std::string evtname) const;
   bool isFinishEdt() const;
+  virtual SgBasicBlock* getTaskBasicBlock() const;
+  std::list<std::string> getDbksToDestroy() const;
+  std::list<std::string> getEvtsToDestroy() const;
+  virtual std::string str() const;
   ~OcrEdtContext();
 };
 
 typedef boost::shared_ptr<OcrEdtContext> OcrEdtContextPtr;
+
+/*************************
+ * OcrLoopIterEdtContext *
+ *************************/
+class OcrLoopIterEdtContext : public OcrTaskContext {
+  std::list<OcrDbkContextPtr> m_depDbks;
+  std::list<OcrEvtContextPtr> m_depEvts;
+  std::list<SgVarRefExp*> m_depElems;
+  OcrEvtContextPtr m_outputEvt;
+  // While/do-while/for
+  SgStatement* m_loopStmt;
+ public:
+  OcrLoopIterEdtContext(std::string name,  unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+			std::list<OcrDbkContextPtr> depDbks,
+			std::list<OcrEvtContextPtr> depEvts,
+			std::list<SgVarRefExp*> depElems,
+			OcrEvtContextPtr outputEvt,
+			SgStatement* loopStmt);
+  std::list<OcrDbkContextPtr> getDepDbks() const;
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  std::list<SgVarRefExp*> getDepElems() const;
+  std::string getLoopBodyEdtName() const;
+  std::string getLoopControlEdtName() const;
+  SgSourceFile* getSourceFile() const;
+  SgStatement* getLoopStmt() const;
+  std::string str() const;
+  ~OcrLoopIterEdtContext();
+};
+typedef boost::shared_ptr<OcrLoopIterEdtContext> OcrLoopIterEdtContextPtr;
+
+/*********************
+ * OcrMainEdtContext *
+ *********************/
+class OcrMainEdtContext : public OcrTaskContext {
+  SgBasicBlock* m_basicblock;
+ public:
+  OcrMainEdtContext(std::string name, unsigned int traversalOrder, SgBasicBlock* basicblock);
+  std::string getMainEdtFuncName() const;
+  std::string str() const;
+};
 
 /*************************
  * OcrShutdownEdtContext *
@@ -142,18 +186,20 @@ typedef boost::shared_ptr<OcrEdtContext> OcrEdtContextPtr;
 // OCR shutdown is specified using the following pragma:
 // #pragma ocr shutdown DEP_EVTs(...)
 // For each shutdown pragma we will associate a OcrShutdownEdtContext
-class OcrShutdownEdtContext : public OcrObjectContext {
-  SgPragmaDeclaration* m_shutdownPragma;
+class OcrShutdownEdtContext : public OcrTaskContext {
   std::list<OcrEvtContextPtr> m_depEvts;
  public:
-  OcrShutdownEdtContext(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts);
+  OcrShutdownEdtContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* shutdownPragma,
+			std::list<OcrEvtContextPtr> depEvts);
   std::list<OcrEvtContextPtr> getDepEvts() const;
+  SgSourceFile* getSourceFile() const;
   unsigned int getNumDepEvts();
+  std::string getShutdownEdtFuncName() const;
   std::string str() const;
-  SgPragmaDeclaration* getPragma() const;
 };
 
 typedef boost::shared_ptr<OcrShutdownEdtContext> OcrShutdownEdtContextPtr;
+
 /********************
  * OcrObjectManager *
  ********************/
@@ -168,51 +214,56 @@ typedef boost::shared_ptr<OcrShutdownEdtContext> OcrShutdownEdtContextPtr;
 //! annotations. The traversal builds the context for each
 //! OCR object and uses the OcrObjectManager for managing
 //! the contexts for each OCR object.
-typedef std::map<std::string, OcrEdtContextPtr> OcrEdtObjectMap;
-typedef std::pair<std::string, OcrEdtContextPtr> OcrEdtObjectMapElem;
+typedef std::map<std::string, OcrTaskContextPtr> OcrTaskContextMap;
+typedef std::pair<std::string, OcrTaskContextPtr> OcrTaskContextMapElem;
 typedef std::map<std::string, OcrDbkContextPtr> OcrDbkObjectMap;
-typedef std::pair<std::string, OcrDbkContextPtr> OcrDbkObjectMapElem;
 typedef std::map<std::string, OcrEvtContextPtr> OcrEvtObjectMap;
 typedef std::pair<std::string, OcrEvtContextPtr> OcrEvtObjectMapElem;
 typedef std::map<int, std::string> EdtPragmaOrderMap;
 typedef std::pair<int, std::string> EdtPragmaOrderMapElem;
-typedef std::list<OcrShutdownEdtContextPtr> OcrShutdownEdtList;
+
 class OcrObjectManager {
   //! Associates an OcrContext for each OcrObject
   //! Key: OcrObject name (string)
   //! Value: OcrContext
-  OcrEdtObjectMap m_ocrEdtObjectMap;
-  OcrDbkObjectMap m_ocrDbkObjectMap;
+  OcrTaskContextMap m_ocrTaskContextMap;
   OcrEvtObjectMap m_ocrEvtObjectMap;
   EdtPragmaOrderMap m_edtPragmaOrderMap;
-  OcrShutdownEdtList m_ocrShutdownEdtList;
+  OcrObjectSymbolTable<OcrDbkContext> m_dbkSymbolTable;
  public:
   OcrObjectManager();
   // Lookup functions for OcrContext using their names
   std::list<OcrEvtContextPtr> getOcrEvtContextList(std::list<std::string> evtList);
-  std::list<OcrDbkContextPtr> getOcrDbkContextList(std::list<std::string> dbksList);
+  std::list<OcrDbkContextPtr> getOcrDbkContextList(std::list<std::string> dbksList, SgScopeStatement* scope);
 
   // Functions to create shared_ptr for OcrContext
   std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
   OcrEvtContextPtr registerOcrEvt(std::string evtName);
-  OcrDbkContextPtr registerOcrDbk(std::string dbkName, SgInitializedName* vdefn, std::list<SgStatement*> allocStmts, SgPragmaDeclaration* pragma);
-  OcrEdtContextPtr registerOcrEdt(std::string name, std::list<OcrDbkContextPtr> depDbks,
-				  std::list<OcrEvtContextPtr> depEvts, std::list<SgVarRefExp*> depElems,
-				  OcrEvtContextPtr outputEvt, SgBasicBlock* basicblock,
-				  std::list<std::string> dbksToDestroy, std::list<std::string> evtsToDestroy,
-				  SgPragmaDeclaration* spgdecl, bool finishEdt);
-  bool registerOcrEdtOrder(int order, std::string edtname);
-  bool registerOcrShutdownEdt(SgPragmaDeclaration* shutdownPragma, std::list<OcrEvtContextPtr> depEvts);
+  void registerOcrDbk(std::string dbkName, OcrDbkContextPtr dbkContext, SgScopeStatement* scope);
+  OcrTaskContextPtr registerOcrEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+				   std::list<OcrDbkContextPtr> depDbks,
+				   std::list<OcrEvtContextPtr> depEvts,
+				   std::list<SgVarRefExp*> depElems,
+				   OcrEvtContextPtr outputEvt,
+				   SgBasicBlock* basicblock,
+				   bool finishEdt);
+  OcrTaskContextPtr registerOcrMainEdt(std::string name, unsigned int traversalOrder, SgBasicBlock* basicblock);
+  OcrTaskContextPtr registerOcrLoopIterEdt(std::string name,  unsigned int traversalOrder,
+					   SgPragmaDeclaration* sgpdecl,
+					   std::list<OcrDbkContextPtr> depDbks,
+					   std::list<OcrEvtContextPtr> depEvts,
+					   std::list<SgVarRefExp*> depElems,
+					   OcrEvtContextPtr outputEvt,
+					   SgStatement* loopStmt);
+  OcrTaskContextPtr registerOcrShutdownEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* shutdownPragma,
+					   std::list<OcrEvtContextPtr> depEvts);
   // return a list of edtnames in the same order they were encountered in the AST
   std::list<std::string> getEdtTraversalOrder() const;
 
   // Access functions
-  const OcrEdtObjectMap& getOcrEdtObjectMap() const;
-  const OcrDbkObjectMap& getOcrDbkObjectMap() const;
-  OcrEdtContextPtr getOcrEdtContext(std::string edtname) const;
-  OcrDbkContextPtr getOcrDbkContext(std::string dbkname);
+  const OcrTaskContextMap& getOcrTaskContextMap() const;
+  OcrTaskContextPtr getOcrTaskContext(std::string edtname) const;
   OcrEvtContextPtr getOcrEvtContext(std::string evtname);
-  const OcrShutdownEdtList& getOcrShutdownEdtList() const;
 };
 
 #endif

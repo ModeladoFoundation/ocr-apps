@@ -9,6 +9,8 @@
 #include <string>
 #include <numeric>
 #include "logger.h"
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 using namespace std;
 using namespace boost::xpressive;
@@ -25,28 +27,118 @@ const char* MatchException::what() const throw() {
 MatchException::~MatchException() throw() {
 }
 
+/*****************
+ * OcrPragmaType *
+ *****************/
+OcrPragmaType::OcrPragmaType_t OcrPragmaType::identifyPragmaType(SgPragmaDeclaration* sgpdecl) {
+  string pragmaStr = sgpdecl->get_pragma()->get_pragma();
+  AstFromString::c_char = pragmaStr.c_str();
+  if(AstFromString::afs_match_substr("ocr task")) return e_TaskEdt;
+  else if(AstFromString::afs_match_substr("ocr datablock")) return e_Dbk;
+  else if(AstFromString::afs_match_substr("ocr shutdown")) return e_ShutdownEdt;
+  else if(AstFromString::afs_match_substr("ocr loop")) return e_LoopIterEdt;
+  else return e_NotOcr;
+}
+
+
+
 /******************************
  * OcrTaskBasicBlockTraversal *
  ******************************/
-OcrTaskBasicBlockTraversal::OcrTaskBasicBlockTraversal(SgNode* root)
-  : m_root(root) { }
+OcrTaskBasicBlockTraversal::OcrTaskBasicBlockTraversal(SgBasicBlock* basicblock)
+  : m_basicblock(basicblock),
+    m_finishEdt(false) { }
 
-SynthesizedAttribute OcrTaskBasicBlockTraversal::defaultSynthesizedAttribute() {
-  return false;
-}
-
-bool OcrTaskBasicBlockTraversal::isTaskPragmaType(std::string pragmaStr) {
-  AstFromString::c_char = pragmaStr.c_str();
-  if(AstFromString::afs_match_substr("ocr task")) return true;
-  return false;
-}
-
-// Propagates information up the AST
-SynthesizedAttribute OcrTaskBasicBlockTraversal::evaluateSynthesizedAttribute(SgNode* sgn, SynthesizedAttributesList attrList) {
-  if(SgPragmaDeclaration* spgdecl = isSgPragmaDeclaration(sgn)) {
-    return isTaskPragmaType(spgdecl->get_pragma()->get_pragma());
+void OcrTaskBasicBlockTraversal::insertChildren(SgNode* sgn) {
+  vector<SgNode*> successors = sgn->get_traversalSuccessorContainer();
+  vector<SgNode*>::iterator n = successors.begin();
+  for( ; n != successors.end(); ++n) {
+    // If the SgNode is not null push it to the queue
+    // Some AST can have null children - Example : SgAssignInitializer
+    if(*n) {
+      m_queue.push(*n);
+    }
   }
-  else return std::accumulate(attrList.begin(), attrList.end(), false, std::logical_or<bool>());
+}
+
+void OcrTaskBasicBlockTraversal::bfs_search() {
+  while(!m_queue.empty()) {
+    SgNode* sgn = m_queue.front();
+    // Remove this element from the queue
+    m_queue.pop();
+    // First time visit
+    if(m_visited.find(sgn) == m_visited.end()) {
+      // Mark the node as visited
+      m_visited.insert(sgn);
+      if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {
+	OcrPragmaType pragmaType;
+	OcrPragmaType::OcrPragmaType_t ptype = pragmaType.identifyPragmaType(sgpdecl);
+	if(ptype == OcrPragmaType::e_TaskEdt) {
+	  // Get the next sibling
+	  SgStatement* nextStmt = SageInterface::getNextStatement(sgpdecl);
+	  assert(isSgBasicBlock(nextStmt) &&
+		 m_queue.front() == nextStmt);
+	  // Remove the basic block of the task annotation from traversal
+	  m_queue.pop();
+	  m_finishEdt = true;
+	}
+	// This is the for loop annotation
+	else if(ptype == OcrPragmaType::e_LoopIterEdt) {
+	  // Don't need to visit the children of this node
+	  SgStatement* nextStmt = SageInterface::getNextStatement(sgpdecl);
+	  assert(isSgForStatement(nextStmt) &&
+		 nextStmt == m_queue.front());
+	  // Don't traverse the SgForStatement
+	  m_queue.pop();
+	  m_finishEdt = true;
+	}
+	else if(ptype == OcrPragmaType::e_ShutdownEdt) {
+	  // Don't need to visit the children of this node
+	}
+	else if(ptype == OcrPragmaType::e_Dbk) {
+	  // Don't need to visit the child node of this pragma declaration
+	}
+	else {
+	  // If this is a pragma that is not of ocr type
+	  // continue the search
+	  insertChildren(sgpdecl);
+	}
+      }
+      else if(SgFunctionCallExp* sgfcallexp = isSgFunctionCallExp(sgn)) {
+	// Currently nothing to do here
+	// We need to detect if the call is going to create any EDTs
+	// For now we will assume it is going to and mark the outerEdt as finish EDt
+	m_finishEdt = true;
+	// No need to visit the children
+      }
+      // If this is any other SgNode continue the search
+      else {
+	insertChildren(sgn);
+      }
+    }
+    else {
+      // No cycle in the AST
+      // We should not be revisiting a node
+      assert(false);
+    }
+  }
+}
+
+void OcrTaskBasicBlockTraversal::traverse() {
+  // The search can be performed only on the basic block
+  // bfs on anything that is not a basic block will result in incorrect results
+  assert(m_basicblock);
+  m_queue.push(m_basicblock);
+  // Carry out the search on the basic block
+  bfs_search();
+}
+
+list<OcrDbkContextPtr> OcrTaskBasicBlockTraversal::getDbksToCreate() const {
+  return m_dbksToCreate;
+}
+
+bool OcrTaskBasicBlockTraversal::isFinishEdt() const {
+  return m_finishEdt;
 }
 
 /***********************
@@ -217,30 +309,6 @@ bool OcrTaskPragmaParser::isMatchingPragma(SgNode* sgn) {
   return false;
 }
 
-// Beginning at root node m_sgpdecl which must be task begin
-// Iterate over the parent's basic block until a matching task end is found
-// We are assuming that task begin and task end pragma nodes are siblings
-// Assumption is safe as every task begin must have a task end
-// It is unlikely that the matching task end is a children of a sibling of task begin node
-// list<SgStatement*> OcrTaskPragmaParser::collectTaskStatements() {
-//   Logger::Logger lg("OcrTaskPragmaParser::collectTaskStatements");
-//   list<SgStatement*> taskStatementList;
-//   // Find the parent of SgPragmaDeclration
-//   // Get my index and the total number of children
-//   // Iterate from my index + 1 until the end to find a matching task end
-//   SgNode* parent = m_sgpdecl->get_parent();
-//   unsigned int cindex = parent->get_childIndex(m_sgpdecl);
-//   unsigned int nchild = parent->get_numberOfTraversalSuccessors();
-//   for(int it = cindex+1; it < nchild; ++it) {
-//     SgStatement* sgchild_ = isSgStatement(parent->get_traversalSuccessorByIndex(it));
-//     assert(sgchild_);
-//     taskStatementList.push_back(sgchild_);
-//     Logger::debug(lg) << AstDebug::astToString(sgchild_) << endl;
-//     if(isMatchingPragma(sgchild_)) break;
-//   }
-//   return taskStatementList;
-// }
-
 // The pragma language requires that the task annotation be
 // enclosed within a scope { }
 // The statements of a task are wrapped into a basic block
@@ -254,37 +322,8 @@ SgBasicBlock* OcrTaskPragmaParser::getTaskBasicBlock() {
   return basicblock;
 }
 
-SgVarRefExp* OcrTaskPragmaParser::identifier2sgn(std::string identifier_) {
-  Logger::Logger lg("OcrTaskPragmaParser::identifier2sgn");
-  SgVarRefExp* idsgn;
-  AstFromString::c_char = identifier_.c_str();
-  AstFromString::c_sgnode = m_sgpdecl->get_parent();
-  if(AstFromString::afs_match_identifier()) {
-    idsgn = isSgVarRefExp(AstFromString::c_parsed_node);
-  }
-  else {
-    Logger::error(lg) << "Cannot create SgNode from identifer_=" << identifier_ << endl;
-    assert(false);
-  }
-  assert(idsgn);
-  return idsgn;
-}
-
-list<SgVarRefExp*> OcrTaskPragmaParser::identifiers2sgnlist(list<string> identifiersList) {
-  Logger::Logger lg("OcrTaskPragmaParser::identifiers2sgnlist");
-  list<SgVarRefExp*> idsgnList;
-  list<string>::iterator i = identifiersList.begin();
-  for( ; i != identifiersList.end(); ++i) {
-    SgVarRefExp* idsgn = identifier2sgn(*i);
-    Logger::debug(lg) << "idsgn=" << AstDebug::astToString(idsgn) << endl;
-    assert(idsgn);
-    idsgnList.push_back(idsgn);
-  }
-  return idsgnList;
-}
-
 bool OcrTaskPragmaParser::match() {
-  Logger::Logger lg("OcrTaskPragmaParser::match()") ;
+  Logger::Logger lg("OcrTaskPragmaParser::match()", Logger::DEBUG) ;
   try {
     smatch matchResults;
     // Check if the pragma matches the task annotation format
@@ -301,10 +340,11 @@ bool OcrTaskPragmaParser::match() {
       list<OcrEvtContextPtr> depEvtsContextPtrList = m_ocrObjectManager.getOcrEvtContextList(depEvtsNameList);
       // Extract the task's dependent Datablocks
       matchDepDbks(taskbegin_s, depDbksNameList);
-      list<OcrDbkContextPtr> depDbksContextPtrList = m_ocrObjectManager.getOcrDbkContextList(depDbksNameList);
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      list<OcrDbkContextPtr> depDbksContextPtrList = m_ocrObjectManager.getOcrDbkContextList(depDbksNameList, scope);
       // Extract the task's dependent elements (paramenters)
       matchDepElems(taskbegin_s, depElemsNameList);
-      list<SgVarRefExp*> depElemsSgnList = identifiers2sgnlist(depElemsNameList);
+      list<SgVarRefExp*> depElemsSgnList = SgNodeUtil::identifiers2sgnlist(depElemsNameList, m_sgpdecl);
       string outputEvt;
       matchOutputEvt(taskbegin_s, outputEvt);
       OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outputEvt);
@@ -313,21 +353,16 @@ bool OcrTaskPragmaParser::match() {
       // Collect the statements of the task annotation
       SgBasicBlock* basicblock = getTaskBasicBlock();
       OcrTaskBasicBlockTraversal taskBasicBlockTraversal(basicblock);
-      bool finishEdt = taskBasicBlockTraversal.traverse(basicblock);
-      // Get List of OCR objects to destroy by this EDT
-      list<string> dbkNamesToDestroy;
-      // matchDestroyDbks(sgpdTaskEnd->get_pragma()->get_pragma(), dbkNamesToDestroy);
-      list<string> evtNamesToDestroy;
-      // matchDestroyEvts(sgpdTaskEnd->get_pragma()->get_pragma(), evtNamesToDestroy);
+      taskBasicBlockTraversal.traverse();
 
+      bool finishEdt = taskBasicBlockTraversal.isFinishEdt();
       // We have all the information we need for creating OcrEdtContext
-      OcrEdtContextPtr edtcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, depDbksContextPtrList,
+      SgSourceFile* sourceFile = SageInterface::getEnclosingSourceFile(m_sgpdecl);
+      OcrTaskContextPtr taskcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, m_taskOrder, m_sgpdecl, depDbksContextPtrList,
 									 depEvtsContextPtrList, depElemsSgnList,
-									 outEvtContext, basicblock, dbkNamesToDestroy,
-									 evtNamesToDestroy, m_sgpdecl, finishEdt);
-      // Register the in-order edt order for traversal
-      m_ocrObjectManager.registerOcrEdtOrder(m_taskOrder, edtcontext_sp->get_name());
-      Logger::debug(lg) << edtcontext_sp->str() << endl;
+									 outEvtContext, basicblock, finishEdt);
+      OcrEdtContextPtr edtcontext = boost::dynamic_pointer_cast<OcrEdtContext>(taskcontext_sp);
+      Logger::debug(lg) << taskcontext_sp->str() << endl;
     }
     else {
       ostringstream oss;
@@ -341,6 +376,7 @@ bool OcrTaskPragmaParser::match() {
     assert(false);
     return false;
   }
+  return true;
 }
 
 /********************
@@ -375,9 +411,9 @@ list<SgStatement*> CollectAllocStmt::getAllocStmt() const {
 /**********************
  * OcrDbkPragmaParser *
  **********************/
-OcrDbkPragmaParser::OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& ocrObjectManager)
+OcrDbkPragmaParser::OcrDbkPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& objectManager)
   : m_sgpdecl(sgpdecl),
-    m_ocrObjectManager(ocrObjectManager) {
+    m_ocrObjectManager(objectManager) {
   identifier = +(alpha|as_xpr('_')) >> *_w;
   param = *_s >> identifier;
   // paramseq is the tail seq of a parameter list
@@ -534,8 +570,9 @@ bool OcrDbkPragmaParser::match() {
 	  switch(vtype->variantT()) {
 	  case V_SgPointerType: {
 	    list<SgStatement*> varAllocStmts = getAllocStmt(*vIt);
-	    OcrDbkContextPtr dbkcontext_sp = m_ocrObjectManager.registerOcrDbk(*nIt, *vIt, varAllocStmts, m_sgpdecl);
+	    OcrDbkContextPtr dbkcontext_sp = boost::make_shared<OcrDbkContext>(*nIt, *vIt, varAllocStmts, m_sgpdecl);
 	    Logger::debug(lg) << dbkcontext_sp->str() << endl;
+	    m_dbkContextList.push_back(dbkcontext_sp);
 	    break;
 	  }
 	  case V_SgArrayType: {
@@ -566,13 +603,19 @@ bool OcrDbkPragmaParser::match() {
     Logger::error(lg) << e.what();
     return false;
   }
+  return true;
+}
+
+list<OcrDbkContextPtr> OcrDbkPragmaParser::getDbkContextList() const {
+  return m_dbkContextList;
 }
 
 /***************************
  * OcrShutdownPragmaParser *
  ***************************/
-OcrShutdownPragmaParser::OcrShutdownPragmaParser(SgPragmaDeclaration* sgpdecl, std::string input, OcrObjectManager& ocrObjectManager)
-  : m_spgdecl(sgpdecl), m_input(input), m_ocrObjectManager(ocrObjectManager) {
+OcrShutdownPragmaParser::OcrShutdownPragmaParser(SgPragmaDeclaration* sgpdecl, std::string input,
+						 unsigned int traversalOrder, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl), m_input(input), m_traversalOrder(traversalOrder), m_ocrObjectManager(ocrObjectManager) {
   sr_identifier = +(alpha|as_xpr('_')) >> *_w;
   sr_param = *_s >> *by_ref(sr_identifier);
   // paramseq is the tail seq of a parameter list
@@ -618,12 +661,173 @@ bool OcrShutdownPragmaParser::match() {
       OcrEvtContextPtr evt = m_ocrObjectManager.registerOcrEvt(*en);
       depEvts.push_back(evt);
     }
-    m_ocrObjectManager.registerOcrShutdownEdt(m_spgdecl, depEvts);
+    ostringstream oss;
+    // A unique name to this annotation
+    oss << "_" << m_traversalOrder << "ShutdownEdt";
+    string shutdownEdtName = oss.str();
+    m_ocrObjectManager.registerOcrShutdownEdt(shutdownEdtName, m_traversalOrder, m_sgpdecl, depEvts);
   }
   catch(std::exception& e) {
     Logger::error(lg) << e.what();
     return false;
   }
+  return true;
+}
+
+/***************************
+ * OcrLoopIterPragmaParser *
+ ***************************/
+OcrLoopIterPragmaParser::OcrLoopIterPragmaParser(SgPragmaDeclaration* sgpdecl, OcrObjectManager& objectManager,
+						 unsigned int taskOrder)
+  : m_sgpdecl(sgpdecl),
+    m_ocrObjectManager(objectManager),
+    m_taskOrder(taskOrder) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+  sr_taskname = *_s >> icase("TASK") >> *_s >> as_xpr('(') >> *_s >> by_ref(sr_identifier) >> *_s >> as_xpr(')') >> *_s;
+  sr_depdbks = *_s >> icase("DEP_DBKS") >> *_s >> by_ref(sr_paramlist);
+  sr_depevts = *_s >> icase("DEP_EVTS") >> *_s >> by_ref(sr_paramlist);
+  sr_depelems = *_s >> icase("DEP_ELEMS") >> *_s >> by_ref(sr_paramlist);
+  sr_oevent = *_s >> icase("OEVENT") >> *_s >> as_xpr('(') >> *_s >> by_ref(sr_param) >> *_s >> as_xpr(')') >> *_s;
+  sr_loop = *_s >> as_xpr("ocr loop") >> *_s >> sr_taskname >> sr_depdbks >> sr_depevts >> sr_depelems >> sr_oevent;
+}
+
+list<string> OcrLoopIterPragmaParser::matchParamNames(string input) {
+  list<string> paramList;
+  if(!regex_match(input, sr_paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier = *cur;
+    if(identifier.compare("NONE") == 0 || identifier.compare("none") == 0) {
+      continue;
+    }
+    paramList.push_back(identifier);
+  }
+  return paramList;
+}
+
+string OcrLoopIterPragmaParser::matchTaskName(string input) {
+  sregex taskNameOnly = *_s >> icase("TASK") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, taskNameOnly)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("matchTaskName");
+    return "";
+  }
+}
+
+list<string> OcrLoopIterPragmaParser::matchDepDbks(string input) {
+  sregex sr_dbknames = icase("DEP_DBKS") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in DEP_DBKs\n");
+  }
+  return dbkNames;
+}
+
+list<string> OcrLoopIterPragmaParser::matchDepEvts(string input) {
+  sregex sr_dbknames = icase("DEP_EVTs") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in DEP_EVTs\n");
+  }
+  return dbkNames;
+}
+
+list<string> OcrLoopIterPragmaParser::matchDepElems(string input) {
+  sregex sr_delems = icase("DEP_ELEMS") >> *_s >> (s1=sr_paramlist);
+  list<string> depElemNames;
+  smatch matchResults;
+  if(regex_search(input, matchResults, sr_delems)) {
+    string paramlist = matchResults[1];
+    depElemNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in DEP_ELEMs\n");
+  }
+  return depElemNames;
+}
+
+string OcrLoopIterPragmaParser::matchOutEvt(string input) {
+  sregex outEvtNameOnly = *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, outEvtNameOnly)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OEVENT\n");
+    return "";
+  }
+}
+
+SgStatement* OcrLoopIterPragmaParser::getLoopStmt(SgPragmaDeclaration* sgpdecl) {
+  // Next statement following the annotation must be a loop statement
+  SgStatement* nextStmt = SageInterface::getNextStatement(sgpdecl);
+  if(isSgForStatement(nextStmt)) {
+    return nextStmt;
+  }
+  else if(isSgWhileStmt(nextStmt)) {
+    throw MatchException("Unhandled Loop Stmt in OcrLoopIterPragmaParser\n");
+  }
+  else if(isSgDoWhileStmt(nextStmt)) {
+    throw MatchException("Unhandled Loop Stmt in OcrLoopIterPragmaParser\n");
+  }
+  else {
+    throw MatchException("Unhandled Stmt in OcrLoopIterPragmaParser\n");
+  }
+}
+
+bool OcrLoopIterPragmaParser::match() {
+  Logger::Logger lg("OcrLoopIterPragmaParser::match()", Logger::DEBUG);
+  string input = m_sgpdecl->get_pragma()->get_pragma();
+  Logger::debug(lg) << "input: " << input << endl;
+  try {
+    if(regex_match(input, sr_loop)) {
+      string taskname = matchTaskName(input);
+      list<string> depDbkNames = matchDepDbks(input);
+      list<string> depEvtNames = matchDepEvts(input);
+      list<string> depElemNames = matchDepElems(input);
+      string outEvtName = matchOutEvt(input);
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      list<OcrDbkContextPtr> depDbks = m_ocrObjectManager.getOcrDbkContextList(depDbkNames, scope);
+      list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
+      list<SgVarRefExp*> depElems = SgNodeUtil::identifiers2sgnlist(depElemNames, m_sgpdecl);
+      // register the output event
+      OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outEvtName);
+      SgStatement* loopStmt = getLoopStmt(m_sgpdecl);
+      // Empty list until we populate this with annotations
+      list<string> dbksToDestroy, evtsToDestroy;
+      // We have all the information we need for creating OcrLoopIterEdtContext
+      OcrTaskContextPtr taskcontext_sp = m_ocrObjectManager.registerOcrLoopIterEdt(taskname, m_taskOrder, m_sgpdecl, depDbks,
+										   depEvts, depElems,
+										   outEvtContext, loopStmt);
+    }
+    else {
+      throw MatchException("Error Matching LoopIterPragmaParser\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+  return true;
 }
 
 /*******************
@@ -636,66 +840,77 @@ const OcrObjectManager& OcrPragmaParser::getOcrObjectManager() const {
 }
 
 void OcrPragmaParser::visit(SgNode* sgn) {
+  Logger::Logger lg("OcrPragmaParser::visit()");
   if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {
-    SgPragma* sgp = sgpdecl->get_pragma();
-    string pragmaStr = sgp->get_pragma();
     // Identify type of the pragma
-    // Parse the pragma based on the type
-    OcrPragmaType ptype = identifyPragmaType(pragmaStr);
+    OcrPragmaType::OcrPragmaType_t ptype = m_ocrPragmaType.identifyPragmaType(sgpdecl);
 
-    if(ptype == e_TaskBegin) {
+    if(ptype == OcrPragmaType::e_TaskEdt) {
       AstFromString::afs_skip_whitespace();
       // Increase the traversal order counter
       m_taskOrderCounter = m_taskOrderCounter+1;
       OcrTaskPragmaParser taskPragmaParser(AstFromString::c_char, m_ocrObjectManager, sgpdecl, m_taskOrderCounter);
-      taskPragmaParser.match();
+      if(taskPragmaParser.match()) {
+	Logger::info(lg) << "Task Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "Task Pragma Parsing Failed\n";
+	std::terminate();
+      }
     }
-    else if(ptype == e_DbkBegin) {
+    else if(ptype == OcrPragmaType::e_LoopIterEdt) {
+      AstFromString::afs_skip_whitespace();
+      // Increase the traversal order counter
+      m_taskOrderCounter = m_taskOrderCounter+1;
+      OcrLoopIterPragmaParser loopIterPragmaParser(sgpdecl, m_ocrObjectManager, m_taskOrderCounter);
+      if(loopIterPragmaParser.match()) {
+	Logger::info(lg) << "Loop Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "Loop Pragma Parsing Failed\n";
+	std::terminate();
+      }
+    }
+    else if(ptype == OcrPragmaType::e_ShutdownEdt) {
+      // Increase the traversal order counter
+      m_taskOrderCounter = m_taskOrderCounter+1;
+      AstFromString::afs_skip_whitespace();
+      OcrShutdownPragmaParser shutdownPragmaParser(sgpdecl, AstFromString::c_char, m_taskOrderCounter, m_ocrObjectManager);
+      if(shutdownPragmaParser.match()) {
+	Logger::info(lg) << "Shutdown Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "Shutdown Pragma Parsing Failed\n";
+	std::terminate();
+      }
+    }
+    else if(ptype == OcrPragmaType::e_Dbk) {
       AstFromString::afs_skip_whitespace();
       OcrDbkPragmaParser dbkPragmaParser(sgpdecl, m_ocrObjectManager);
-      dbkPragmaParser.match();
+      if(dbkPragmaParser.match()) {
+	SgScopeStatement* scope = SageInterface::getEnclosingScope(sgpdecl);
+	list<OcrDbkContextPtr> dbkContextList = dbkPragmaParser.getDbkContextList();
+	list<OcrDbkContextPtr>::iterator d = dbkContextList.begin();
+	for( ; d != dbkContextList.end(); ++d) {
+	  m_ocrObjectManager.registerOcrDbk((*d)->get_name(), *d, scope);
+	}
+	Logger::info(lg) << "Datablock Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "Datablock Pragma Parsing Failed\n";
+	std::terminate();
+      }
     }
-    else if(ptype == e_shutdown) {
-      AstFromString::afs_skip_whitespace();
-      OcrShutdownPragmaParser shutdownPragmaParser(sgpdecl, AstFromString::c_char, m_ocrObjectManager);
-      shutdownPragmaParser.match();
+    else if(SageInterface::isMain(sgn)) {
+      m_taskOrderCounter = m_taskOrderCounter+1;
+      SgFunctionDeclaration* mdecl = isSgFunctionDeclaration(sgn);
+      SgFunctionDefinition* mdefn = mdecl->get_definition();
+      SgBasicBlock* mbasicblock = mdefn->get_body();
+      OcrTaskContextPtr mainEdtContext = m_ocrObjectManager.registerOcrMainEdt("mainEdt", m_taskOrderCounter, mbasicblock);
+      Logger::debug(lg) << mainEdtContext->str() << endl;
     }
-    else { } // do nothing
+    else{ } // do nothing
   }
-}
-
-OcrPragmaParser::OcrPragmaType
-OcrPragmaParser::identifyPragmaType(std::string pragmaStr) {
-  AstFromString::c_char = pragmaStr.c_str();
-  if(AstFromString::afs_match_substr("ocr task")) return e_TaskBegin;
-  else if(AstFromString::afs_match_substr("ocr datablock")) return e_DbkBegin;
-  else if(AstFromString::afs_match_substr("ocr shutdown")) return e_shutdown;
-  else return e_NotOcr;
-}
-
-void OcrPragmaParser::astIterate(SgPragmaDeclaration* sgdecl) {
-  Logger::Logger lg("OcrPragmaParser::astIterate", Logger::DEBUG);
-  // Find the parent of SgPragmaDeclration
-  // Get my index and the total number of children
-  // Iterate from my index + 1 until the end to find a matching task end
-  SgNode* parent = sgdecl->get_parent();
-  unsigned int cindex = parent->get_childIndex(sgdecl);
-  unsigned int nchild = parent->get_numberOfTraversalSuccessors();
-  for(int it = cindex+1; it < nchild; ++it) {
-    SgNode* sgchild_ = parent->get_traversalSuccessorByIndex(it);
-    if(isMatchingPragma(sgchild_)) break;
-    Logger::debug(lg) << AstDebug::astToString(sgchild_) << endl;
-  }
-}
-
-bool OcrPragmaParser::isMatchingPragma(SgNode* sgn) {
-  if(SgPragmaDeclaration* sgpdecl = isSgPragmaDeclaration(sgn)) {
-    string pstr = sgpdecl->get_pragma()->get_pragma();
-    AstFromString::c_char = pstr.c_str();
-    if(AstFromString::afs_match_substr("ocr task end") ||
-       AstFromString::afs_match_substr("ocr datablock end")) return true;
-  }
-  return false;
 }
 
 void OcrPragmaParser::atTraversalEnd() {
