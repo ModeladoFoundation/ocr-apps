@@ -8,6 +8,7 @@
 #include <boost/xpressive/xpressive_static.hpp>
 #include <boost/xpressive/regex_actions.hpp>
 #include <exception>
+#include <queue>
 
 /******************
  * MatchException *
@@ -20,18 +21,46 @@ class MatchException : public std::exception {
   ~MatchException() throw();
 };
 
+/*****************
+ * OcrPragmaType *
+ *****************/
+struct OcrPragmaType {
+  typedef enum {
+    e_TaskEdt,
+    e_LoopIterEdt,
+    e_Dbk,
+    e_ShutdownEdt,
+    e_NotOcr
+  } OcrPragmaType_t;
+  OcrPragmaType_t identifyPragmaType(SgPragmaDeclaration* sgpdecl);
+};
+
 /******************************
  * OcrTaskBasicBlockTraversal *
  ******************************/
-typedef bool SynthesizedAttribute;
-class OcrTaskBasicBlockTraversal : public AstBottomUpProcessing<SynthesizedAttribute> {
-  SgNode* m_root;
+/*!
+ * \brief OcrTaskBasicBlockTraversal is a simple DFS on the basic block of a task annotation.
+ *
+ * We are interested in the following information of a task basic block.
+ * 1. Is the task creating other tasks in its basic block?
+ * 2. What are the datablocks created by this task?
+ * 3. Are there any function calls that create tasks?
+ * We will use the RoseAst::iterator for the search
+ */
+class OcrTaskBasicBlockTraversal {
+  SgBasicBlock* m_basicblock;
+  bool m_finishEdt;
+  std::list<OcrDbkContextPtr> m_dbksToCreate;
+  std::queue<SgNode*> m_queue;
+  std::set<SgNode*> m_visited;
+ private:
+  void insertChildren(SgNode*);
+  void bfs_search();
  public:
-  OcrTaskBasicBlockTraversal(SgNode* root);
-  bool isTaskPragmaType(std::string pragmaStr);
-  SynthesizedAttribute defaultSynthesizedAttribute();
-  // Propagates information up the AST
-  SynthesizedAttribute evaluateSynthesizedAttribute(SgNode* sgn, SynthesizedAttributesList attrList);
+  OcrTaskBasicBlockTraversal(SgBasicBlock* taskBasicBlock);
+  std::list<OcrDbkContextPtr> getDbksToCreate() const;
+  bool isFinishEdt() const;
+  void traverse();
 };
 
 /***********************
@@ -93,12 +122,13 @@ typedef std::map<SgNode*, std::list<SgStatement*> > AllocStmtMap;
 typedef std::pair<SgNode*, std::list<SgStatement*> > AllocStmtMapElem;
 class OcrDbkPragmaParser {
   SgPragmaDeclaration* m_sgpdecl;
-  OcrObjectManager& m_ocrObjectManager;
+  std::list<OcrDbkContextPtr> m_dbkContextList;
   // sregex needed for parsing datablock annotations
   boost::xpressive::sregex identifier, param, paramlist;
   boost::xpressive::sregex dbkNames;
   boost::xpressive::sregex dbkBegin;
   AllocStmtMap allocStmtMapCache;
+  OcrObjectManager& m_ocrObjectManager;
  private:
   bool matchDbkNames(std::string, std::list<std::string>& dbkNamesList);
   bool matchParamList(std::string, std::list<std::string>& dbkNamesList);
@@ -112,21 +142,46 @@ class OcrDbkPragmaParser {
   std::list<SgStatement*> collectAllocStmt(SgNode* root);
   std::list<SgStatement*> getAllocStmt(SgInitializedName* sgn);
   bool match();
+  std::list<OcrDbkContextPtr> getDbkContextList() const;
+};
+
+/***************************
+ * OcrLoopIterPragmaParser *
+ ***************************/
+class OcrLoopIterPragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  OcrObjectManager& m_ocrObjectManager;
+  unsigned int m_taskOrder;
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
+  boost::xpressive::sregex sr_taskname, sr_depdbks, sr_depevts, sr_depelems, sr_oevent;
+  boost::xpressive::sregex sr_loop;
+ private:
+  std::string matchTaskName(std::string input);
+  std::list<std::string> matchParamNames(std::string input);
+  std::list<std::string> matchDepDbks(std::string input);
+  std::list<std::string> matchDepEvts(std::string input);
+  std::list<std::string> matchDepElems(std::string input);
+  std::string matchOutEvt(std::string input);
+  SgStatement* getLoopStmt(SgPragmaDeclaration* sgpdecl);
+ public:
+  OcrLoopIterPragmaParser(SgPragmaDeclaration* spgdecl, OcrObjectManager& objectManager, unsigned int taskOrder);
+  bool match();
 };
 
 /***************************
  * OcrShutdownPragmaParser *
  ***************************/
 class OcrShutdownPragmaParser {
-  SgPragmaDeclaration* m_spgdecl;
+  SgPragmaDeclaration* m_sgpdecl;
   std::string m_input;
+  unsigned int m_traversalOrder;
   OcrObjectManager& m_ocrObjectManager;
   // sregex needed for matching the pragma
   boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist, sr_depevts;
  private:
   bool matchParams(std::string input, std::list<std::string>& paramList);
  public:
-  OcrShutdownPragmaParser(SgPragmaDeclaration* spgdecl, std::string input, OcrObjectManager& ocrObjectManager);
+  OcrShutdownPragmaParser(SgPragmaDeclaration* sgpdecl, std::string input, unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
   bool match();
 };
 
@@ -134,25 +189,15 @@ class OcrShutdownPragmaParser {
  * OcrPragmaParser *
  *******************/
 class OcrPragmaParser : public AstSimpleProcessing {
- public:
-    enum OcrPragmaType {
-    e_TaskBegin,
-    e_TaskEnd,
-    e_DbkBegin,
-    e_DbkEnd,
-    e_shutdown,
-    e_NotOcr
-  };
  private:
     OcrObjectManager m_ocrObjectManager;
+    // inorder traversal counter for annotations that will be tasks
     unsigned int m_taskOrderCounter;
+    OcrPragmaType m_ocrPragmaType;
  public:
   OcrPragmaParser();
   void visit(SgNode* sgn);
   const OcrObjectManager& getOcrObjectManager() const;
-  OcrPragmaType identifyPragmaType(std::string pragmaString);
-  void astIterate(SgPragmaDeclaration* sgn);
-  bool isMatchingPragma(SgNode* sgn);
   void atTraversalEnd();
 };
 
