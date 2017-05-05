@@ -3,7 +3,8 @@
  */
 
 #include "sage3basic.h"
-#include "ocrTranslateEngine.h"
+#include "ocrObjectInfo.h"
+#include "ocrAstInfo.h"
 #include "RoseAst.h"
 #include "ocrAstBuilder.h"
 #include "logger.h"
@@ -81,9 +82,10 @@ namespace AstBuilder {
     SgArrayType* arrType = SageBuilder::buildArrayType(ptype);
     return arrType;
   }
-  /************************
-   * Builders for OCR EDT *
-   ************************/
+
+  /**************************
+   * EDT Outlining Builders *
+   **************************/
   SgFunctionDeclaration* buildOcrEdtFuncDecl(string name, SgScopeStatement* scope) {
     // return type of the EDT
     SgType* returnType = buildOcrGuidType(scope);
@@ -122,11 +124,10 @@ namespace AstBuilder {
     return vdecl;
   }
 
-  SgClassDeclaration* buildOcrEdtDepElemStruct(OcrEdtContextPtr edtContext, SgFunctionDeclaration* decl) {
+  SgClassDeclaration* buildOcrEdtDepElemStruct(string edtName, list<SgVarRefExp*>& depElems, SgFunctionDeclaration* decl) {
     // Build a struct for all the parameters
-    string depElemStructName = edtContext->get_name() + "DepElems";
+    string depElemStructName = edtName + "DepElems";
     SgClassDeclaration* depElemStructDecl = SageBuilder::buildStructDeclaration(depElemStructName, decl->get_scope());
-    list<SgVarRefExp*> depElems = edtContext->getDepElems();
     list<SgVarRefExp*>::iterator v = depElems.begin();
     SgClassDefinition* sdefn = depElemStructDecl->get_definition();
     assert(sdefn);
@@ -148,7 +149,7 @@ namespace AstBuilder {
   }
 
   // Builds the datablock pointer from depv and slot number
-  SgVariableDeclaration* buildDbkPtrDecl(SgName name, SgType* dbkPtrType, unsigned int slot,
+  SgVariableDeclaration* buildDepDbkPtrDecl(string name, SgType* dbkPtrType, unsigned int slot,
 					 SgInitializedName* depv,SgScopeStatement* scope) {
     SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
     assert(vsymbol);
@@ -172,7 +173,7 @@ namespace AstBuilder {
   }
 
   // Build the datablock guid declaration from depv and slot number
-  SgVariableDeclaration* buildDbkGuidDecl(string guidName, unsigned int slot, SgInitializedName* depv, SgScopeStatement* scope) {
+  SgVariableDeclaration* buildDepDbkGuidDecl(string guidName, unsigned int slot, SgInitializedName* depv, SgScopeStatement* scope) {
     SgVariableSymbol* vsymbol = isSgVariableSymbol(depv->get_symbol_from_symbol_table());
     assert(vsymbol);
     SgType* ocrGuidType = buildOcrGuidType(scope);
@@ -306,6 +307,27 @@ namespace AstBuilder {
     // Build the statement
     SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEventDestroy", SageBuilder::buildVoidType(), exprList, scope);
     return stmt;
+  }
+
+  SgBasicBlock* buildLoopControlEdtBasicBlock(SgForStatement* forStmt) {
+    // NOTE: getLoopCondition might fail if the for loop has a non-standard form
+    SgStatement* loopConditionStmt = SageInterface::getLoopCondition(forStmt);
+    assert(loopConditionStmt);
+
+    // Get the loop increment expression
+    // NOTE: This will fail if the for loop's increment expression is inside the body
+    SgExpression* incrementExpr = forStmt->get_increment();
+    assert(incrementExpr);
+
+    SgBasicBlock* trueBasicBlock = SageBuilder::buildBasicBlock();
+    SgExprStatement* incrementExprStmt = SageBuilder::buildExprStatement(incrementExpr);
+    SageInterface::appendStatement(incrementExprStmt, trueBasicBlock);
+
+    SgBasicBlock* elseBasicBlock = SageBuilder::buildBasicBlock();
+    SgIfStmt* loopBoundaryStmt = SageBuilder::buildIfStmt(loopConditionStmt, trueBasicBlock, elseBasicBlock);
+
+    SgBasicBlock* loopControlBasicBlock = SageBuilder::buildBasicBlock(loopBoundaryStmt);
+    return loopControlBasicBlock;
   }
 
   /****************************************
@@ -818,7 +840,7 @@ namespace AstBuilder {
   SgType* buildOcrDbkType(SgType* varType, SgScopeStatement* scope) {
     switch(varType->variantT()) {
     case V_SgPointerType:
-      return buildu64PtrType(scope);
+      return varType;
       break;
     case V_SgArrayType:
       assert(false);
