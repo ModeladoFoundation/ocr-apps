@@ -41,13 +41,16 @@ endif
 
 CC := g++
 CFLAGS := $(ROSE_INC) -g
-OCRTRANSLATE_HEADERS := ocrObjectInfo.h ocrPragmaParsing.h ocrAstBuilder.h logger.h
+OCRTRANSLATE_HEADERS := ocrObjectInfo.h ocrPragmaParsing.h ocrTranslateEngine.h ocrAstInfo.h ocrAstBuilder.h logger.h ocrSymbolTable.h
 OCRTRANSLATE_SRCS := ocrObjectInfo.cpp \
+	ocrSymbolTable.cpp \
 	ocrPragmaParsing.cpp \
+	ocrAstInfo.cpp \
 	ocrTranslateEngine.cpp \
-	ocrTranslate.cpp \
 	ocrAstBuilder.cpp \
+	ocrTranslate.cpp \
 	logger.cpp
+
 OCRTRANSLATE_OBJS := $(notdir $(OCRTRANSLATE_SRCS:.cpp=.o))
 
 %.o: %.cpp $(OCRTRANSLATE_HEADERS)
