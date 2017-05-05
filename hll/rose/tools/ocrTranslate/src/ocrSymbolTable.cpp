@@ -6,6 +6,7 @@
 #include "ocrSymbolTable.h"
 #include <iostream>
 #include "ocrObjectInfo.h"
+#include "ocrAstInfo.h"
 #include "logger.h"
 
 using namespace std;
@@ -57,5 +58,26 @@ boost::shared_ptr<ObjectType> OcrObjectSymbolTable<ObjectType>::getObjectPtr(std
   return objectTypePtr;
 }
 
+template<class ObjectType>
+list<boost::shared_ptr<ObjectType> > OcrObjectSymbolTable<ObjectType>::flatten() const {
+  typedef map<string, boost::shared_ptr<ObjectType> > String2OcrObjectMap;
+  typedef map<SgScopeStatement*, String2OcrObjectMap> Scope2OcrObjectMap;
+  typename Scope2OcrObjectMap::const_iterator om = m_symbolTableMap.begin();
+  list<boost::shared_ptr<ObjectType> > objectTypePtrList;
+  for( ; om != m_symbolTableMap.end(); ++om) {
+    const String2OcrObjectMap& string2OcrObjectMap = om->second;
+    if(string2OcrObjectMap.size() > 0) {
+      typename String2OcrObjectMap::const_iterator im = string2OcrObjectMap.begin();
+      for( ; im != string2OcrObjectMap.end(); ++im) {
+  	boost::shared_ptr<ObjectType> objectPtr = im->second;
+  	objectTypePtrList.push_back(objectPtr);
+      }
+    }
+  }
+  return objectTypePtrList;
+}
+
 // Explicit template instantiation
 template class OcrObjectSymbolTable<OcrDbkContext>;
+template class OcrObjectSymbolTable<DbkAstInfo>;
+template class OcrObjectSymbolTable<EvtAstInfo>;

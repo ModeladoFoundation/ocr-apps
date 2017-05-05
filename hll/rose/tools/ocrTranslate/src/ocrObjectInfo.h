@@ -176,6 +176,7 @@ class OcrMainEdtContext : public OcrTaskContext {
   std::string getMainEdtFuncName() const;
   std::string str() const;
 };
+typedef boost::shared_ptr<OcrMainEdtContext> OcrMainEdtContextPtr;
 
 /*************************
  * OcrShutdownEdtContext *
@@ -264,6 +265,7 @@ class OcrObjectManager {
   const OcrTaskContextMap& getOcrTaskContextMap() const;
   OcrTaskContextPtr getOcrTaskContext(std::string edtname) const;
   OcrEvtContextPtr getOcrEvtContext(std::string evtname);
+  std::list<OcrDbkContextPtr> getOcrDbkContextList() const;
 };
 
 #endif

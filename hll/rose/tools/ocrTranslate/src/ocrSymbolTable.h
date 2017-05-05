@@ -6,6 +6,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <map>
+#include <list>
 
 /************************
  * OcrObjectSymbolTable *
@@ -22,5 +23,6 @@ class OcrObjectSymbolTable {
   OcrObjectSymbolTable();
   void insertObjectPtr(std::string objectKey, boost::shared_ptr<ObjectType> objectPtr, SgScopeStatement* scope);
   boost::shared_ptr<ObjectType> getObjectPtr(std::string, SgScopeStatement* scope);
+  std::list<boost::shared_ptr<ObjectType> > flatten() const;
 };
 #endif

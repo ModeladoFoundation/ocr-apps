@@ -597,6 +597,10 @@ list<string> OcrObjectManager::getEdtTraversalOrder() const {
   return edtTraversalOrder;
 }
 
+list<OcrDbkContextPtr> OcrObjectManager::getOcrDbkContextList() const {
+  return m_dbkSymbolTable.flatten();
+}
+
 OcrTaskContextPtr OcrObjectManager::getOcrTaskContext(string edtname) const {
   OcrTaskContextMap::const_iterator f = m_ocrTaskContextMap.find(edtname);
   assert(f != m_ocrTaskContextMap.end());
