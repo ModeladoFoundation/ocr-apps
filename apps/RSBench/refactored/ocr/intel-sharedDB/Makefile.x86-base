@@ -48,7 +48,7 @@ RUN_MODE ?=
 ## END of variables coming from user/environment
 #CC := icc
 
-CONFIG_FLAGS=--guid LABELED --binding seq
+CONFIG_FLAGS +=--guid LABELED --binding seq
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 

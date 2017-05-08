@@ -133,6 +133,9 @@ ifeq ($(FORCE_CC), no)
       $(info Setting CC to mpicc)
       # default to mpicc if CC=cc (that's the default value from make)
       CC = mpicc
+    else ifeq ($(OCR_TYPE), x86-phi)
+      $(info Setting CC to icc)
+      CC = icc
     else
       # For other platforms, use gcc
       $(info Setting CC to gcc)
