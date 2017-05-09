@@ -13,7 +13,7 @@ endif
 #         Select proper makefile         #
 ##########################################
 
-ifeq (,$(filter-out x86 x86-mpi x86-gasnet x86-mpi x86-phi tg-x86, $(OCR_TYPE)))
+ifeq (,$(filter-out x86 x86-mpi x86-gasnet x86-mpi x86-phi x86-phi-mpi tg-x86, $(OCR_TYPE)))
   include ${APPS_ROOT}/makefiles/make-x86.inc
 else ifeq (,$(filter-out tg, $(OCR_TYPE)))
   include ${APPS_ROOT}/makefiles/make-tg-xe.inc

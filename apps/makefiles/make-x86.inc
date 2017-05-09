@@ -65,7 +65,7 @@ CONFIG_NUM_THREADS    ?= 4
 # Legacy support for COMM_LAYER flag
 CONFIG_COMM_LAYER     ?= $(COMM_LAYER)
 ifeq ($(strip $(CONFIG_COMM_LAYER)),)
-  ifeq ($(OCR_TYPE), x86-mpi)
+  ifeq ( ,$(filter-out x86-mpi x86-phi-mpi, $(OCR_TYPE)))
     CONFIG_COMM_LAYER     := mpi
   else ifeq ($(OCR_TYPE), x86-gasnet)
     CONFIG_COMM_LAYER     := gasnet
@@ -133,8 +133,13 @@ ifeq ($(FORCE_CC), no)
       $(info Setting CC to mpicc)
       # default to mpicc if CC=cc (that's the default value from make)
       CC = mpicc
+    else ifeq ($(OCR_TYPE), x86-phi-mpi)
+      $(info Setting CC to mpiicc)
+      # default to mpiicc if CC=cc (that's the default value from make)
+      CC = mpiicc
     else ifeq ($(OCR_TYPE), x86-phi)
       $(info Setting CC to icc)
+      # default to icc if CC=cc (that's the default value from make)
       CC = icc
     else
       # For other platforms, use gcc
@@ -144,7 +149,7 @@ ifeq ($(FORCE_CC), no)
   endif # End of ifeq cc
 
   ifeq ($(CC), icc)
-    ifeq ($(OCR_TYPE), x86-mpi)
+    ifeq ( ,$(filter x86-mpi x86-phi-mpi, $(OCR_TYPE)))
       $(info Setting CC to mpiicc)
       CC = mpiicc
     endif
@@ -189,7 +194,7 @@ ifeq ($(ENABLE_VISUALIZER), yes)
   CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
 
-ifeq ( ,$(filter-out x86-mpi x86-gasnet, $(OCR_TYPE)))
+ifeq ( ,$(filter-out x86-mpi x86-gasnet x86-phi-mpi, $(OCR_TYPE)))
   CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
 
