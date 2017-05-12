@@ -58,17 +58,19 @@ namespace AstBuilder {
   SgStatement* buildEvtDestroyCallExp(unsigned int slot, SgVariableSymbol* depvSymbol, SgScopeStatement* scope);
 
 
-
-
-  // AST builders for loop outling
-  SgBasicBlock* buildLoopControlEdtBasicBlock(SgForStatement* forStmt);
+  /**********************
+   * Loop EDT Outlining *
+   **********************/
+  SgBasicBlock* buildLoopControlIfBody(SgForStatement* forStmt);
+  SgBasicBlock* buildLoopControlElseBody();
+  SgIfStmt* buildLoopControlIfStmt(SgBasicBlock* ifBasicBlock, SgBasicBlock* elseBasicBlock, SgForStatement* forStmt);
 
   // AST builders for OCR EDT template setup
   std::vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, SgClassDeclaration* depElemStructDecl,
 						      std::list<SgVarRefExp*> depElemVarList);
   SgVariableDeclaration* buildOcrGuidEdtTemplateVarDecl(std::string edtname, SgScopeStatement* scope);
   SgExprStatement* buildOcrEdtTemplateCallExp(SgVariableDeclaration* edtTemplateGuid, SgFunctionDeclaration* edtFuncDecl,
-					      unsigned int ndelems, unsigned int ndbks, SgScopeStatement* scope);
+					      SgExpression* nparamc, unsigned int ndbks, SgScopeStatement* scope);
   std::vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, OcrEdtContextPtr edtContext);
   SgExprStatement* buildOcrEdtCreateCallExp(SgVariableSymbol* edtGuidSymbol, SgVariableSymbol* edtTemplateGuidSymbol,
 					    SgVariableSymbol* depElemStructSymbol,
@@ -77,6 +79,8 @@ namespace AstBuilder {
 					    SgScopeStatement* scope);
   SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* dbkGuidSymbol, SgVariableSymbol* edtGuidSymbol,
 						int slot, DbkMode dbkmode, SgScopeStatement*  scope);
+  SgExpression* buildDepElemSizeOfExpr(SgType* depElemType, SgScopeStatement* scope);
+  SgVariableDeclaration* buildDepElemSizeVarDecl(std::string varName, SgType* depElemType, SgScopeStatement* scope);
 
   SgStatement* buildEdtReturnStmt();
 

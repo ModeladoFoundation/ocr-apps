@@ -835,7 +835,7 @@ bool OcrLoopIterPragmaParser::match() {
  *******************/
 OcrPragmaParser::OcrPragmaParser() : m_taskOrderCounter(0) { }
 
-const OcrObjectManager& OcrPragmaParser::getOcrObjectManager() const {
+OcrObjectManager& OcrPragmaParser::getOcrObjectManager() {
   return m_ocrObjectManager;
 }
 

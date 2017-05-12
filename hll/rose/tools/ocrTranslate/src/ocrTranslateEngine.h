@@ -49,7 +49,7 @@ class DepElemVarRefExpPass : public AstSimpleProcessing {
 //! Driver for OCR Translation
 class OcrTranslator {
   SgProject* m_project;
-  const OcrObjectManager& m_ocrObjectManager;
+  OcrObjectManager& m_ocrObjectManager;
   AstInfoManager m_astInfoManager;
  private:
   void insertOcrHeaderFiles();
@@ -57,7 +57,8 @@ class OcrTranslator {
   void outlineEdt(std::string edtName, std::list<OcrDbkContextPtr> depDbks, std::list<SgVarRefExp*>& depElems,
 		  SgBasicBlock* taskBasicBlock, SgSourceFile* sourcefile,
 		  TaskAstInfoPtr taskAstInfo);
-  void outlineForLoopEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
+  void outlineForLoopBodyEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
+  void outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
   void insertDepDbkDecl(std::string edtName, std::list<OcrDbkContextPtr>& depDbks,
 			unsigned int slotbegin, TaskAstInfoPtr taskAstInfo);
   void insertDepElemDecl(std::string edtName, std::list<SgVarRefExp*>& depElems, TaskAstInfoPtr taskAstInfo);
@@ -74,14 +75,17 @@ class OcrTranslator {
   void translateDbk(std::string name, OcrDbkContextPtr dbkContext);
 
   // EDT Translation
-  void setupEdtEvtCreate(std::string edtname, OcrEdtContextPtr edtContext);
-  void setupEdtTemplate(std::string edtname, OcrEdtContextPtr edtContext);
-  void setupEdtDepElems(std::string edtname, OcrEdtContextPtr edtContext);
-  void setupEdtCreate(std::string edtname, OcrEdtContextPtr edtContext);
-  void setupEdtDepDbks(std::string edtname, OcrEdtContextPtr edtContext);
-  void setupEdtDepEvts(std::string edtname, OcrEdtContextPtr edtContext);
+  std::vector<SgStatement*> setupEdtOutEvt(std::string edtname, std::string outEvt, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtTemplate(std::string edtname, unsigned int ndeps, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtDepElems(std::string edtname, std::list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtCreate(std::string edtname, std::string outEvtName, bool isFinishEdt, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtDepDbks(std::string edtname, std::list<OcrDbkContextPtr>& dbkList, unsigned int slotBegin, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtDepEvts(std::string edtname, std::list<OcrEvtContextPtr>& depEvts, unsigned int slotBegin, SgScopeStatement* scope);
   void setupEdtEvtsSatisfy(std::string edtname, OcrEdtContextPtr edtContext);
-  void removeOcrTaskPragma(std::string edtname, OcrEdtContextPtr edtContext);
+  void removeOcrTaskPragma(std::string edtname, SgBasicBlock* taskBasicBlock, SgPragmaDeclaration* taskPragma);
+
+  // Loop EDT Translation
+  std::vector<SgStatement*> setupForLoopIterCompEvt(std::string iterCompEvtName, SgScopeStatement* scope);
 
   // Shutdown EDTs
   void setupShutdownEdt(std::string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext);
@@ -89,7 +93,7 @@ class OcrTranslator {
   std::set<SgSourceFile*> getSourceFilesOfShutdownEdts(std::list<OcrShutdownEdtContextPtr>& shutdownEdts);
   void replaceDepElemVars(std::string edtname, OcrEdtContextPtr edtContext);
  public:
-  OcrTranslator(SgProject* project, const OcrObjectManager& ocrObjectManager);
+  OcrTranslator(SgProject* project, OcrObjectManager& ocrObjectManager);
   void outlineEdts();
   void setupEdts();
   void translateDbks();
