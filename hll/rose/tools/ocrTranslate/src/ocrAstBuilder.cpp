@@ -309,25 +309,31 @@ namespace AstBuilder {
     return stmt;
   }
 
-  SgBasicBlock* buildLoopControlEdtBasicBlock(SgForStatement* forStmt) {
-    // NOTE: getLoopCondition might fail if the for loop has a non-standard form
-    SgStatement* loopConditionStmt = SageInterface::getLoopCondition(forStmt);
-    assert(loopConditionStmt);
-
+  /**********************
+   * Loop EDT Outlining *
+   **********************/
+  SgBasicBlock* buildLoopControlIfBody(SgForStatement* forStmt) {
     // Get the loop increment expression
     // NOTE: This will fail if the for loop's increment expression is inside the body
     SgExpression* incrementExpr = forStmt->get_increment();
     assert(incrementExpr);
 
-    SgBasicBlock* trueBasicBlock = SageBuilder::buildBasicBlock();
+    SgBasicBlock* ifBasicBlock = SageBuilder::buildBasicBlock();
     SgExprStatement* incrementExprStmt = SageBuilder::buildExprStatement(incrementExpr);
-    SageInterface::appendStatement(incrementExprStmt, trueBasicBlock);
+    SageInterface::appendStatement(incrementExprStmt, ifBasicBlock);
+    return ifBasicBlock;
+  }
 
+  SgBasicBlock* buildLoopControlElseBody() {
     SgBasicBlock* elseBasicBlock = SageBuilder::buildBasicBlock();
-    SgIfStmt* loopBoundaryStmt = SageBuilder::buildIfStmt(loopConditionStmt, trueBasicBlock, elseBasicBlock);
+    return elseBasicBlock;
+  }
 
-    SgBasicBlock* loopControlBasicBlock = SageBuilder::buildBasicBlock(loopBoundaryStmt);
-    return loopControlBasicBlock;
+  SgIfStmt* buildLoopControlIfStmt(SgBasicBlock* ifBasicBlock, SgBasicBlock* elseBasicBlock, SgForStatement* forStmt) {
+    SgStatement* loopConditionStmt = SageInterface::getLoopCondition(forStmt);
+    assert(loopConditionStmt);
+    SgIfStmt* loopControlIfStmt = SageBuilder::buildIfStmt(loopConditionStmt, ifBasicBlock, elseBasicBlock);
+    return loopControlIfStmt;
   }
 
   /****************************************
@@ -341,7 +347,7 @@ namespace AstBuilder {
   }
 
   SgExprStatement* buildOcrEdtTemplateCallExp(SgVariableDeclaration* edtTemplateGuid, SgFunctionDeclaration* edtFuncDecl,
-					      unsigned int ndelems, unsigned int ndbks, SgScopeStatement* scope) {
+					      SgExpression* nparamc, unsigned int ndeps, SgScopeStatement* scope) {
     SgType* voidType = SageBuilder::buildVoidType();
     // Arguments for ocrEdtTemplateCreate
     vector<SgExpression*> args;
@@ -352,9 +358,11 @@ namespace AstBuilder {
     // Build the second argument
     SgExpression* second = SageBuilder::buildFunctionRefExp(edtFuncDecl);
     args.push_back(second);
-    SgUnsignedIntVal* third = SageBuilder::buildUnsignedIntVal(ndelems);
+
+    SgExpression* third = nparamc;
     args.push_back(third);
-    SgUnsignedIntVal* fourth = SageBuilder::buildUnsignedIntVal(ndbks);
+
+    SgUnsignedIntVal* fourth = SageBuilder::buildUnsignedIntVal(ndeps);
     args.push_back(fourth);
     // Build the argument list
     SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
@@ -415,6 +423,25 @@ namespace AstBuilder {
       depElemSetupStmts.push_back(setupStmt);
     }
     return depElemSetupStmts;
+  }
+
+  SgExpression*  buildDepElemSizeOfExpr(SgType* depElemType, SgScopeStatement* scope) {
+    SgType* u64Type = buildu64Type(scope);
+    SgSizeOfOp* sizeofu64Num = SageBuilder::buildSizeOfOp(u64Type);
+    SgSubtractOp* sizeofu64MinusOne = SageBuilder::buildSubtractOp(sizeofu64Num, SageBuilder::buildIntVal(1));
+    SgSizeOfOp* sizeofDepElem = SageBuilder::buildSizeOfOp(depElemType);
+    SgAddOp* sizeofDepElemPlus = SageBuilder::buildAddOp(sizeofDepElem, sizeofu64MinusOne);
+    SgSizeOfOp* sizeofu64Den = SageBuilder::buildSizeOfOp(u64Type);
+    SgDivideOp* depElemSizeExpr = SageBuilder::buildDivideOp(sizeofDepElemPlus, sizeofu64Den);
+    return depElemSizeExpr;
+  }
+
+  SgVariableDeclaration* buildDepElemSizeVarDecl(string varName, SgType* depElemType, SgScopeStatement* scope) {
+    SgType* u32Type = buildu32Type(scope);
+    SgExpression* depElemSizeExpr = buildDepElemSizeOfExpr(depElemType, scope);
+    SgInitializer* varInitializer = SageBuilder::buildAssignInitializer(depElemSizeExpr, u32Type);
+    SgVariableDeclaration* depElemSizeVarDecl = SageBuilder::buildVariableDeclaration(varName, u32Type, varInitializer, scope);
+    return depElemSizeVarDecl;
   }
 
   // vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, OcrEdtContextPtr edtContext) {

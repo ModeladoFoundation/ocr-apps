@@ -159,13 +159,22 @@ typedef boost::shared_ptr<EdtAstInfo> EdtAstInfoPtr;
 class LoopControlEdtAstInfo : public EdtAstInfo {
   // We generate this basic block and it is used to insert statements later
   SgBasicBlock* m_basicblock;
+  // Basic block for true body of the loop control EDT
+  SgBasicBlock* m_ifBasicBlock;
+  // Basic block for the false body of the loop control EDT
+  SgBasicBlock* m_elseBasicBlock;
+  // If Stmt for loop control structure
+  SgIfStmt* m_ifStmt;
   std::string m_iterCompEvtGuidName;
  public:
   LoopControlEdtAstInfo(std::string name);
   SgBasicBlock* getBasicBlock() const;
   std::string getIterCompEvtGuidName() const;
   void setBasicBlock(SgBasicBlock* basicblock);
-  void setCompEvtGuidName(std::string compEvtGuidName);
+  void setIterCompEvtGuidName(std::string compEvtGuidName);
+  void setLoopControlIfBasicBlock(SgBasicBlock* ifBasicBlock);
+  void setLoopControlElseBasicBlock(SgBasicBlock* elseBasicBlock);
+  void setLoopControlIfStmt(SgIfStmt* loopControlIfStmt);
   std::string str() const;
   ~LoopControlEdtAstInfo();
 };

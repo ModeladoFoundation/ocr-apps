@@ -108,6 +108,12 @@ public:
 		OcrEvtContextPtr outputEvt,
 		SgBasicBlock* basicblock,
 		bool finishEdt);
+  // Constructor to be used by its children
+  OcrEdtContext(OcrTaskType type, std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+		std::list<OcrDbkContextPtr> depDbks,
+		std::list<OcrEvtContextPtr> depEvts,
+		std::list<SgVarRefExp*> depElems,
+		OcrEvtContextPtr outputEvt);
   // Set Functions
   void setDbksToDestroy(std::list<std::string> dbksToDestroy);
   void setEvtsToDestroy(std::list<std::string> evtsToDestroy);
@@ -119,7 +125,6 @@ public:
   std::list<SgVarRefExp*> getDepElems() const;
   std::list<OcrDbkContextPtr> getDepDbks() const;
   std::list<OcrEvtContextPtr> getDepEvts() const;
-  std::list<OcrDbkContextPtr> getDbksToCreate() const;
   OcrEvtContextPtr getOutputEvt() const;
   SgPragmaDeclaration* getTaskPragma() const;
   unsigned int getNumDepElems() const;
@@ -140,11 +145,7 @@ typedef boost::shared_ptr<OcrEdtContext> OcrEdtContextPtr;
 /*************************
  * OcrLoopIterEdtContext *
  *************************/
-class OcrLoopIterEdtContext : public OcrTaskContext {
-  std::list<OcrDbkContextPtr> m_depDbks;
-  std::list<OcrEvtContextPtr> m_depEvts;
-  std::list<SgVarRefExp*> m_depElems;
-  OcrEvtContextPtr m_outputEvt;
+class OcrLoopIterEdtContext : public OcrEdtContext {
   // While/do-while/for
   SgStatement* m_loopStmt;
  public:
@@ -154,13 +155,12 @@ class OcrLoopIterEdtContext : public OcrTaskContext {
 			std::list<SgVarRefExp*> depElems,
 			OcrEvtContextPtr outputEvt,
 			SgStatement* loopStmt);
-  std::list<OcrDbkContextPtr> getDepDbks() const;
-  std::list<OcrEvtContextPtr> getDepEvts() const;
-  std::list<SgVarRefExp*> getDepElems() const;
   std::string getLoopBodyEdtName() const;
   std::string getLoopControlEdtName() const;
   SgSourceFile* getSourceFile() const;
   SgStatement* getLoopStmt() const;
+  std::vector<SgStatement*> getLoopInitStmts();
+  virtual SgBasicBlock* getTaskBasicBlock() const;
   std::string str() const;
   ~OcrLoopIterEdtContext();
 };

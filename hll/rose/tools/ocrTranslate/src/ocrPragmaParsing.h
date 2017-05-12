@@ -197,7 +197,7 @@ class OcrPragmaParser : public AstSimpleProcessing {
  public:
   OcrPragmaParser();
   void visit(SgNode* sgn);
-  const OcrObjectManager& getOcrObjectManager() const;
+  OcrObjectManager& getOcrObjectManager();
   void atTraversalEnd();
 };
 

@@ -260,8 +260,20 @@ void LoopControlEdtAstInfo::setBasicBlock(SgBasicBlock* basicblock) {
   m_basicblock = basicblock;
 }
 
-void LoopControlEdtAstInfo::setCompEvtGuidName(string compEvtGuidName) {
+void LoopControlEdtAstInfo::setIterCompEvtGuidName(string compEvtGuidName) {
   m_iterCompEvtGuidName = compEvtGuidName;
+}
+
+void LoopControlEdtAstInfo::setLoopControlIfBasicBlock(SgBasicBlock* ifBasicBlock) {
+  m_ifBasicBlock = ifBasicBlock;
+}
+
+void LoopControlEdtAstInfo::setLoopControlElseBasicBlock(SgBasicBlock* elseBasicBlock) {
+  m_elseBasicBlock = elseBasicBlock;
+}
+
+void LoopControlEdtAstInfo::setLoopControlIfStmt(SgIfStmt* loopControlIfStmt) {
+  m_ifStmt = loopControlIfStmt;
 }
 
 std::string LoopControlEdtAstInfo::str() const {
@@ -303,6 +315,13 @@ EvtAstInfoPtr AstInfoManager::regEvtAstInfo(string evtname, string evtGuidName, 
   EvtAstInfoPtr evtAstInfo = boost::make_shared<EvtAstInfo>(evtname, evtGuidName);
   m_evtAstInfoMap.insertObjectPtr(evtname, evtAstInfo, scope);
   return evtAstInfo;
+}
+
+LoopControlEdtAstInfoPtr AstInfoManager::regLoopControlEdtAstInfo(std::string edtName) {
+  LoopControlEdtAstInfoPtr loopControlEdtAstInfo = boost::make_shared<LoopControlEdtAstInfo>(edtName);
+  TaskAstInfoMapElem elem(edtName, loopControlEdtAstInfo);
+  m_taskAstInfoMap.insert(elem);
+  return loopControlEdtAstInfo;
 }
 
 DbkAstInfoPtr AstInfoManager::getDbkAstInfo(string dbkname, SgScopeStatement* scope) {

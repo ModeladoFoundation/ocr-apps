@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   OcrPragmaParser parser;
   parser.traverse(project, preorder);
 
-  const OcrObjectManager& ocrObjectManager = parser.getOcrObjectManager();
+  OcrObjectManager& ocrObjectManager = parser.getOcrObjectManager();
 
   OcrTranslator translator(project, ocrObjectManager);
   translator.translate();

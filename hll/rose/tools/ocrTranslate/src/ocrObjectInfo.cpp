@@ -172,6 +172,20 @@ OcrEdtContext::OcrEdtContext(string name,
     m_finishEdt(finishEdt) {
 }
 
+OcrEdtContext::OcrEdtContext(OcrTaskType type, string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+			     list<OcrDbkContextPtr> depDbks,
+			     list<OcrEvtContextPtr> depEvts,
+			     list<SgVarRefExp*> depElems,
+			     OcrEvtContextPtr outputEvt)
+  : OcrTaskContext(type, name, traversalOrder, sgpdecl),
+    m_depDbks(depDbks),
+    m_depEvts(depEvts),
+    m_depElems(depElems),
+    m_outputEvt(outputEvt),
+    m_basicblock(NULL),
+    m_finishEdt(false) {
+}
+
 string OcrEdtContext::get_name() const {
   return m_taskName;
 }
@@ -251,10 +265,6 @@ unsigned int OcrEdtContext::getNumDepDbks() const {
 
 unsigned int OcrEdtContext::getNumDepEvts() const {
   return m_depEvts.size();
-}
-
-list<OcrDbkContextPtr> OcrEdtContext::getDbksToCreate() const {
-  return m_dbksToCreate;
 }
 
 void OcrEdtContext::setDbksToDestroy(list<string> dbksToDestroy) {
@@ -369,29 +379,24 @@ OcrLoopIterEdtContext::OcrLoopIterEdtContext(std::string name,  unsigned int tra
 					     std::list<SgVarRefExp*> depElems,
 					     OcrEvtContextPtr outputEvt,
 					     SgStatement* loopStmt)
-  : OcrTaskContext(OcrTaskContext::e_TaskLoopIter, name, traversalOrder, sgpdecl),
-    m_depDbks(depDbks),
-    m_depEvts(depEvts),
-    m_depElems(depElems),
-    m_outputEvt(outputEvt),
+  : OcrEdtContext(OcrTaskContext::e_TaskLoopIter, name, traversalOrder, sgpdecl, depDbks, depEvts, depElems, outputEvt),
     m_loopStmt(loopStmt) {
 }
 
-list<OcrDbkContextPtr> OcrLoopIterEdtContext::getDepDbks() const {
-  return m_depDbks;
+SgBasicBlock* OcrLoopIterEdtContext::getTaskBasicBlock() const {
+  assert(false);
 }
-
-list<OcrEvtContextPtr> OcrLoopIterEdtContext::getDepEvts() const {
-  return m_depEvts;
-}
-
-list<SgVarRefExp*> OcrLoopIterEdtContext::getDepElems() const {
-  return m_depElems;
-}
-
 
 SgStatement* OcrLoopIterEdtContext::getLoopStmt() const {
   return m_loopStmt;
+}
+
+vector<SgStatement*> OcrLoopIterEdtContext::getLoopInitStmts() {
+  vector<SgStatement*> loopInitStmts;
+  if(SgForStatement* forStmt = isSgForStatement(m_loopStmt)) {
+    loopInitStmts = forStmt->get_init_stmt();
+  }
+  return loopInitStmts;
 }
 
 string OcrLoopIterEdtContext::getLoopBodyEdtName() const {
