@@ -34,6 +34,10 @@
 #include "threads.h"
 #include "codedesc.h"
 
+#if USE_OCR_LAYER
+#include "ocr/ocr_message.h"
+#endif // USE_OCR_LAYER
+
 namespace Realm {
 
     class ProcessorGroup;
@@ -270,9 +274,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args, const void *data, size_t datalen);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerMedium<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageMediumNoReply<SPAWN_TASK_MSGID,
  	                                 RequestArgs,
  	                                 handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, Processor proc,
 			       Processor::TaskFuncID func_id,

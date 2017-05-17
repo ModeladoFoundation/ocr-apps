@@ -22,6 +22,7 @@
 
 #if USE_OCR_LAYER
 #include "ocr.h"
+#include "ocr/ocr_util.h"
 
 #define U64_COUNT(size) ((size+(sizeof(u64)-1))/sizeof(u64))
 

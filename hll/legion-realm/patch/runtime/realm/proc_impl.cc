@@ -585,6 +585,16 @@ namespace Realm {
   // class SpawnTaskMessage
   //
 
+#if USE_OCR_LAYER
+  /*static*/ void SpawnTaskMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void SpawnTaskMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void SpawnTaskMessage::handle_request(RequestArgs args,
 						   const void *data,
 						   size_t datalen)
@@ -629,6 +639,9 @@ namespace Realm {
       // no profiling, so task args are the only payload
       Message::request(target, r_args, args, arglen, PAYLOAD_COPY);
     } else {
+#if USE_OCR_LAYER
+      assert(false);
+#endif // USE_OCR_LAYER
       // need to serialize both the task args and the profiling request
       //  into a single payload
       // allocate a little extra initial space for the profiling requests, but not too
@@ -788,7 +801,9 @@ namespace Realm {
 	assert(0);
       }
 
+#if ! USE_OCR_LAYER
       get_runtime()->optable.add_remote_operation(finish_event, target);
+#endif // USE_OCR_LAYER
 
       SpawnTaskMessage::send_request(target, me, func_id,
 				     args, arglen, &reqs,

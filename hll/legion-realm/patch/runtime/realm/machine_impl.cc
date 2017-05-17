@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1340,6 +1341,18 @@ namespace Realm {
 
   static int announcements_received = 0;
 
+#if USE_OCR_LAYER
+  //template<> ocrGuid_t NodeAnnounceMessage::Message::ocr_realm_handle_request_edt_t = NULL_GUID;
+
+  /*static*/ void NodeAnnounceMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void NodeAnnounceMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void NodeAnnounceMessage::handle_request(RequestArgs args,
 						      const void *data,
 						      size_t datalen)
@@ -1354,7 +1367,13 @@ namespace Realm {
     Node *n = &(get_runtime()->nodes[args.node_id]);
     n->processors.resize(args.num_procs);
     n->memories.resize(args.num_memories);
-
+#if USE_OCR_LAYER
+    if(args.node_id == 0) {
+      assert(ocrGuidIsNull(get_runtime()->ocr_shutdown_guid));
+      assert(! ocrGuidIsNull(args.shutdown_guid));
+      get_runtime()->ocr_shutdown_guid = args.shutdown_guid;
+    }
+#endif // USE_OCR_LAYER
     // do the parsing of this data inside a mutex because it touches common
     //  data structures
     {
@@ -1378,14 +1397,23 @@ namespace Realm {
     args.node_id = gasnet_mynode();
     args.num_procs = num_procs;
     args.num_memories = num_memories;
+#if USE_OCR_LAYER
+    if(args.node_id == 0) {
+      assert(! ocrGuidIsNull(get_runtime()->ocr_shutdown_guid));
+      args.shutdown_guid = get_runtime()->ocr_shutdown_guid;
+    }
+#endif // USE_OCR_LAYER
     Message::request(target, args, data, datalen, payload_mode);
   }
 
   /*static*/ void NodeAnnounceMessage::await_all_announcements(void)
   {
     // wait until we hear from everyone else?
-    while((int)announcements_received < (int)(gasnet_nodes() - 1))
+    while((int)announcements_received < (int)(gasnet_nodes() - 1)) {
+#if ! USE_OCR_LAYER
       do_some_polling();
+#endif // USE_OCR_LAYER
+    }
 
     log_annc.info("node %d has received all of its announcements\n", gasnet_mynode());
   }

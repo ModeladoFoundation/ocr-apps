@@ -411,7 +411,8 @@ namespace Realm {
     RuntimeImpl::~RuntimeImpl(void)
     {
 #if USE_OCR_LAYER
-      ocrEventDestroy(ocr_shutdown_guid);
+      if(OCRUtil::ocrCurrentPolicyDomain == 0)
+        ocrEventDestroy(ocr_shutdown_guid);
 #endif // USE_OCR_LAYER
       delete machine;
       delete core_reservations;
@@ -579,21 +580,26 @@ namespace Realm {
       OCREventImpl::static_init();
       OCRProcessor::static_init();
       LegionRuntime::LowLevel::DmaRequest::static_init();
+
+      NodeAnnounceMessage::static_init();
+      SpawnTaskMessage::static_init();
+
       //create the nodes which contains processors and memory
-      nodes = new Node[gasnet_nodes()];
+      nodes = new Node[OCRUtil::ocrNbPolicyDomains()];
 
       // create allocators index spaces
       {
-          Node& n = nodes[gasnet_mynode()];
-          local_index_space_free_list = new IndexSpaceTableAllocator::FreeList(n.index_spaces, gasnet_mynode());
+          Node& n = nodes[OCRUtil::ocrCurrentPolicyDomain()];
+          local_index_space_free_list = new IndexSpaceTableAllocator::FreeList(n.index_spaces, OCRUtil::ocrCurrentPolicyDomain());
       }
 
-      Node *n = &nodes[gasnet_mynode()];
+      Node *n = &nodes[OCRUtil::ocrCurrentPolicyDomain()];
       create_processors();
       create_memories();
 
-      //create a persistent event for use in wait_for_shutdown and
-      ocrEventCreate(&ocr_shutdown_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+      if(OCRUtil::ocrCurrentPolicyDomain() == 0)
+        //create a persistent event for use in wait_for_shutdown
+        ocrEventCreate(&ocr_shutdown_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
 
       // iterate over all local processors and add affinities for them
       // all of this should eventually be moved into appropriate modules
@@ -635,7 +641,95 @@ namespace Realm {
                          100, // "large" bandwidth
                          1   // "small" latency
                          );
-     }
+      }
+
+      if(OCRUtil::ocrNbPolicyDomains() > 1)
+      {
+        const unsigned ADATA_SIZE = 4096;
+        size_t adata[ADATA_SIZE];
+        unsigned apos = 0;
+
+        unsigned num_procs = 0;
+        unsigned num_memories = 0;
+
+        // announce each processor and its affinities
+        for(std::vector<ProcessorImpl *>::const_iterator it = n->processors.begin();
+            it != n->processors.end();
+            it++)
+          if(*it) {
+            Processor p = (*it)->me;
+            Processor::Kind k = (*it)->me.kind();
+        int num_cores = (*it)->num_cores;
+
+            num_procs++;
+            adata[apos++] = NODE_ANNOUNCE_PROC;
+            adata[apos++] = p.id;
+            adata[apos++] = k;
+            adata[apos++] = num_cores;
+
+            std::vector<Machine::ProcessorMemoryAffinity> pmas;
+            machine->get_proc_mem_affinity(pmas, p);
+
+            for(std::vector<Machine::ProcessorMemoryAffinity>::const_iterator it2 = pmas.begin();
+                it2 != pmas.end();
+                it2++) {
+              adata[apos++] = NODE_ANNOUNCE_PMA;
+              adata[apos++] = it2->p.id;
+              adata[apos++] = it2->m.id;
+              adata[apos++] = it2->bandwidth;
+              adata[apos++] = it2->latency;
+            }
+          }
+
+        // now each memory and its affinities with other memories
+        for(std::vector<MemoryImpl *>::const_iterator it = n->memories.begin();
+            it != n->memories.end();
+            it++)
+          if(*it) {
+            Memory m = (*it)->me;
+            Memory::Kind k = (*it)->me.kind();
+
+            num_memories++;
+            adata[apos++] = NODE_ANNOUNCE_MEM;
+            adata[apos++] = m.id;
+            adata[apos++] = k;
+            adata[apos++] = (*it)->size;
+            adata[apos++] = reinterpret_cast<size_t>((*it)->local_reg_base());
+
+            std::vector<Machine::MemoryMemoryAffinity> mmas;
+            machine->get_mem_mem_affinity(mmas, m);
+
+            for(std::vector<Machine::MemoryMemoryAffinity>::const_iterator it2 = mmas.begin();
+                it2 != mmas.end();
+                it2++) {
+              // only announce intra-node ones and only those with this memory as m1 to avoid
+              //  duplicates
+              if((it2->m1 != m) || (it2->m2.address_space() != OCRUtil::ocrCurrentPolicyDomain()))
+                continue;
+
+              adata[apos++] = NODE_ANNOUNCE_MMA;
+              adata[apos++] = it2->m1.id;
+              adata[apos++] = it2->m2.id;
+              adata[apos++] = it2->bandwidth;
+              adata[apos++] = it2->latency;
+            }
+          }
+
+        adata[apos++] = NODE_ANNOUNCE_DONE;
+        assert(apos < ADATA_SIZE);
+
+        OCRUtil::ocrBarrier();
+        // now announce ourselves to everyone else
+        for(unsigned i = 0; i < OCRUtil::ocrNbPolicyDomains(); i++)
+          if(i != OCRUtil::ocrCurrentPolicyDomain())
+            NodeAnnounceMessage::send_request(i,
+                                                     num_procs,
+                                                     num_memories,
+                                                     adata, apos*sizeof(adata[0]),
+                                                     PAYLOAD_COPY);
+
+        NodeAnnounceMessage::await_all_announcements();
+      }
 
       return true;
 #else // USE_OCR_LAYER
@@ -1358,12 +1452,24 @@ namespace Realm {
       log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " before=" << wait_on;
 
 #if USE_OCR_LAYER
-      //same as the non gasnet case
-      Event finish_event = target_proc.spawn(task_id, args, arglen, wait_on, priority);
+#ifndef REALM_ONLY
+      //Legion runtime currently does not call collective_spawn
+      assert(false);
+#endif // REALM_ONLY
+      OCRUtil::ocrBarrier();
+      //A better option is that the rank containing target_proc will spawn instead of rank 0
+      //But shutdown() performs actions only on node 0 and nop everywhere and therefore i
+      //we need to perform the spwan from node 0
+      if(OCRUtil::ocrCurrentPolicyDomain() == 0) {
+        Event finish_event = target_proc.spawn(task_id, args, arglen, wait_on, priority);
 
-      log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
+        log_collective.info() << "collective spawn: proc=" << target_proc << " func=" << task_id << " priority=" << priority << " after=" << finish_event;
 
-      return finish_event;
+        return finish_event;
+      }
+      else {
+        return Event::NO_EVENT;
+      }
 #else // USE_OCR_LAYER
 
 #ifdef USE_GASNET
@@ -1676,16 +1782,17 @@ namespace Realm {
 
     void RuntimeImpl::shutdown(Event wait_on)
     {
-        //invoke the showtdown EDT
-        ocrGuid_t sd_edt_t, sd_edt, out_sd_edt, persistent_evt_guid;
-        ocrEdtTemplateCreate(&sd_edt_t, shutdown_func, 0, 1);
-        ocrEdtCreate(&sd_edt, sd_edt_t, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, &out_sd_edt);
+      //collective_spawn() currently performs the spwan from node 0 and therefore
+      //the event linking performed in this procedure should only be done at node 0
+#ifdef REALM_ONLY
+      //Legion runtime currently calls shutdown from a single node whereas
+      //Realm application programs calls it from main() ie in SPMD fashion
+      if(OCRUtil::ocrCurrentPolicyDomain() != 0)
+        return;
+#endif // REALM_ONLY
 
-        //attach shutdown EDT to ocr_shutdown_guid sticky event since legacy_block_progress needs persistent event
-        ocrAddDependence(out_sd_edt, ocr_shutdown_guid, 0, DB_MODE_RO);
-
-        //start the EDT by statisfying dependency only after linking to the return event
-        ocrAddDependence(wait_on.evt_guid, sd_edt, 0, DB_MODE_RO);
+      //attach wait_on event to shutdown event so that wait_for_shutdown can wait on ocr_shutdown_guid
+      ocrAddDependence(wait_on.evt_guid, ocr_shutdown_guid, 0, DB_MODE_RO);
     }
 #endif // USE_OCR_LAYER
 
@@ -1730,6 +1837,9 @@ namespace Realm {
     OCREventImpl::static_destroy();
     OCRProcessor::static_destroy();
     LegionRuntime::LowLevel::DmaRequest::static_destroy();
+
+    NodeAnnounceMessage::static_destroy();
+    SpawnTaskMessage::static_destroy();
 
     // delete processors, memories, nodes, etc.
     {
@@ -2137,6 +2247,8 @@ namespace Realm {
 
 #if USE_OCR_LAYER
 
+#include "extensions/ocr-legacy.h"
+
 int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
 {
     printf("error: no legion_ocr_main defined.\n");
@@ -2148,16 +2260,77 @@ int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
 #ifdef __cplusplus
 extern "C"{
 #endif
+
+ocrGuid_t legion_ocr_main_func(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
+  //PRINTF("legion_ocr_main_func %d\n", Realm::OCRUtil::ocrCurrentPolicyDomain());
+
+  Realm::OCRUtil::static_init();
+
+  //TODO: get all argc and argv, not just one
+  const int argc = 1;
+  char *argv[argc] = {(char*)paramv};
+
+  int ret = legion_ocr_main(argc, argv);
+  assert(ret == 0);
+  Realm::OCRUtil::static_destroy();
+  return NULL_GUID;
+}
+
 ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
 {
+  int pd = Realm::OCRUtil::ocrCurrentPolicyDomain();
+  assert(pd == 0);
+
+  Realm::OCRUtil::static_init();
+  u64 numPD = Realm::OCRUtil::ocrNbPolicyDomains();
+
+  //extract argc and argv
   int argc = getArgc(depv[0].ptr), i;
   char *argv[argc];
   for(i=0;i<argc;i++)
     argv[i] = getArgv(depv[0].ptr, i);
 
-  ocrGuid_t ret;
-  GUIDA(ret) = legion_ocr_main(argc, argv);
-  return ret;
+  if(numPD == 1) {
+    legion_ocr_main(argc, argv);
+  }
+  else {
+    assert(numPD > 1);
+
+    //TODO: pack all argc and argv, not just one
+    size_t size = strlen(argv[0])+1;
+    u32 paramc_edt = U64_COUNT(size);
+    u64 paramv_edt[paramc_edt];
+    memcpy(paramv_edt, argv[0], size);
+
+    ocrGuid_t legion_ocr_main_edt, legion_ocr_main_edt_t, legion_ocr_main_out, legion_ocr_main_out_sticky;
+
+    //Create a latch event to use as return/output event of init EDTs and attach it to a sticky event
+    //The latch events should trigger after init EDTs in all policy domains complete
+    ocrEventParams_t params;
+    params.EVENT_LATCH.counter = numPD-1;
+    ocrEventCreateParams(&legion_ocr_main_out, OCR_EVENT_LATCH_T, false, &params);
+    ocrEventCreate(&legion_ocr_main_out_sticky, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
+    ocrAddDependence(legion_ocr_main_out, legion_ocr_main_out_sticky, 0, DB_MODE_RO);
+
+    //spawn init EDT on each policy domain except 0
+    ocrEdtTemplateCreate(&legion_ocr_main_edt_t, legion_ocr_main_func, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    for(int i=1; i<numPD; i++) {
+      ocrEdtCreate(&legion_ocr_main_edt, legion_ocr_main_edt_t, paramc_edt, paramv_edt, 0, NULL,
+        EDT_PROP_OEVT_VALID, &(Realm::OCRUtil::ocrHintArr[i]), &legion_ocr_main_out);
+    }
+    ocrEdtTemplateDestroy(legion_ocr_main_edt_t);
+
+    //Policy domain 0 will call the main() from here and all others from init EDTs
+    legion_ocr_main(argc, argv);
+
+    //wait for init EDT's to finish
+    ocrLegacyBlockProgress(legion_ocr_main_out_sticky, NULL, NULL, NULL, LEGACY_PROP_NONE);
+    ocrEventDestroy(legion_ocr_main_out_sticky);
+  }
+
+  Realm::OCRUtil::static_destroy();
+  ocrShutdown();
+  return NULL_GUID;
 }
 #ifdef __cplusplus
 }
