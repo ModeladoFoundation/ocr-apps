@@ -48,6 +48,21 @@ void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PT
 
 }
 
+void getAffinityHintsForDBandEdtAtPD( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT, int pd )
+{
+    ocrGuid_t PDaffinityGuid;
+
+    ocrHintInit( PTR_myEdtAffinityHNT, OCR_HINT_EDT_T );
+    ocrHintInit( PTR_myDbkAffinityHNT, OCR_HINT_DB_T );
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
+    ocrSetHintValue( PTR_myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+    ocrSetHintValue( PTR_myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
+}
+
 void getPartitionID(u64 i, u64 lb_g, u64 ub_g, u64 R, u64* id)
 {
     u64 N = ub_g - lb_g + 1;
@@ -242,9 +257,9 @@ void forkSpmdEdts_Cart1D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+    PRINTF("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n");
+    PRINTF("NOT Using affinity API\n\n");
 #endif
     u64 PD_X = affinityCount;
 
@@ -297,9 +312,9 @@ void forkSpmdEdts_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+    PRINTF("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n");
+    PRINTF("NOT Using affinity API\n\n");
 #endif
     u64 PD_X, PD_Y;
     splitDimension_Cart2D( affinityCount, &PD_X, &PD_Y ); //Split available PDs into a 2-D grid
@@ -354,9 +369,9 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+    PRINTF("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n");
+    PRINTF("NOT Using affinity API\n\n");
 #endif
     u64 PD_X, PD_Y, PD_Z;
     splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid

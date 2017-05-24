@@ -19,6 +19,7 @@ typedef ocrGuid_t ocrDBK_t;
 typedef ocrGuid_t ocrEVT_t;
 typedef ocrGuid_t ocrEDT_t;
 typedef ocrGuid_t ocrTML_t;
+typedef ocrHint_t ocrHNT_t;
 
 typedef struct
 {
@@ -48,6 +49,7 @@ typedef struct
 
 void createEventHelper(ocrGuid_t * evtGuid, u32 nbDeps);
 void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT );
+void getAffinityHintsForDBandEdtAtPD( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT, int pd );
 
 void partition_bounds(u64 id, u64 lb_g, u64 ub_g, u64 R, u64* s, u64* e);
 void getPartitionID(u64 i, u64 lb_g, u64 ub_g, u64 R, u64* id);
