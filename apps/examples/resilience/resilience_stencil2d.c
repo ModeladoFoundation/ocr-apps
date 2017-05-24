@@ -47,7 +47,7 @@
 #define ITER_SPACE (XDIM * YDIM)
 #define ITER_INDEX(x, y) ((x * YDIM) + y)
 
-#define USER_KEY(i, x, y) ((i * ITER_SPACE) + ITER_INDEX(x,y))
+#define USER_KEY(i, x, y) ((i * ITER_SPACE) + ITER_INDEX(x, y))
 
 #define GUID_PARAM (sizeof(ocrGuid_t)/sizeof(u64))
 #define NUM_PARAMS (1/*iter value*/ + NUM_DIMS/*coordinate value*/ + (GUID_PARAM * 2)/*shutdown guid + cleanup DB*/)
@@ -143,9 +143,9 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t shutdownEdt = guidParamv[0];
         ocrGuid_t curOutputEvent;
         ocrGetOutputEvent(&curOutputEvent);
-        ocrAddDependence(curOutputEvent, shutdownEdt, (ITER_INDEX(x, y)), DB_MODE_CONST);
-        ocrAddDependence(depv[0].guid, shutdownEdt, (ITER_SPACE + ITER_INDEX(x, y)), DB_MODE_CONST);
-        ocrAddDependence(db, shutdownEdt, ((ITER_SPACE * 2) + ITER_INDEX(x, y)), DB_MODE_CONST);
+        ocrAddDependence(curOutputEvent, shutdownEdt, ((ITER_SPACE * 0) + ITER_INDEX(x, y)), DB_MODE_CONST);
+        ocrAddDependence(depv[0].guid,   shutdownEdt, ((ITER_SPACE * 1) + ITER_INDEX(x, y)), DB_MODE_CONST);
+        ocrAddDependence(db,             shutdownEdt, ((ITER_SPACE * 2) + ITER_INDEX(x, y)), DB_MODE_CONST);
         return NULL_GUID;
     }
 
@@ -264,8 +264,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
             if (NUM_ITERS > 1) {
                 ocrGuid_t evt;
                 ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
-                u64 k = USER_KEY(2, i, j);
-                ocrGuidTablePut(k, evt);
+                u64 key = USER_KEY(2, i, j);
+                ocrGuidTablePut(key, evt);
             }
         }
     }

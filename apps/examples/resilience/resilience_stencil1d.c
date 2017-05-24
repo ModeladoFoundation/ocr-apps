@@ -239,8 +239,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         if (NUM_ITERS > 1) {
             ocrGuid_t evt;
             ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
-            u64 k = USER_KEY(2, i);
-            ocrGuidTablePut(k, evt);
+            u64 key = USER_KEY(2, i);
+            ocrGuidTablePut(key, evt);
         }
     }
 
