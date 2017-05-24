@@ -13,7 +13,7 @@ OCR_TRANSLATOR_BIN ?= ${OCR_TRANSLATOR_ROOT}/bin/ocrTranslate
 # TRANSLATOR INPUT SOURCE
 # Set the target file for translation
 # Space separated list of source files
-OCR_TRANSLATOR_TARGET_SRC := tailrecursion_test2.c
+OCR_TRANSLATOR_TARGET_SRC := tailrecursion_test1.c
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
