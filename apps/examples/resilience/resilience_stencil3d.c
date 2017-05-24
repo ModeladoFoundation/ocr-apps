@@ -38,11 +38,11 @@
  *
  */
 
-#define NUM_RANKS 4
+#define N 2
 #define NUM_ITERS 10
-#define XDIM NUM_RANKS
-#define YDIM NUM_RANKS
-#define ZDIM NUM_RANKS
+#define XDIM N
+#define YDIM N
+#define ZDIM N
 
 #define NUM_DIMS 3 //(x, y, z)
 #define ITER_SPACE (XDIM * YDIM * ZDIM)
@@ -119,6 +119,16 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         return NULL_GUID;
     }
 
+    //Check for termination condition on this iteration
+    if (iter == NUM_ITERS) {
+        ocrGuid_t shutdownEdt = guidParamv[0];
+        ocrGuid_t curOutputEvent;
+        ocrGetOutputEvent(&curOutputEvent);
+        ocrAddDependence(curOutputEvent, shutdownEdt, ((ITER_SPACE * 0) + ITER_INDEX(x, y, z)), DB_MODE_CONST);
+        ocrAddDependence(depv[0].guid,   shutdownEdt, ((ITER_SPACE * 1) + ITER_INDEX(x, y, z)), DB_MODE_CONST);
+        return NULL_GUID;
+    }
+
 #if INJECT_FAULT
     //Fault injection
     if (iter == NUM_ITERS/2 && x == 0 && y == 0 && z == 0) {
@@ -142,17 +152,6 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t oEvt;
         ocrGuidTableGet(USER_KEY((iter + 1), x, y, z), &oEvt);
         ocrEventSatisfy(oEvt, db);
-    }
-
-    //Check for termination condition on this iteration
-    if (iter == NUM_ITERS) {
-        ocrGuid_t shutdownEdt = guidParamv[0];
-        ocrGuid_t curOutputEvent;
-        ocrGetOutputEvent(&curOutputEvent);
-        ocrAddDependence(curOutputEvent, shutdownEdt, ((ITER_SPACE * 0) + ITER_INDEX(x, y, z)), DB_MODE_CONST);
-        ocrAddDependence(depv[0].guid,   shutdownEdt, ((ITER_SPACE * 1) + ITER_INDEX(x, y, z)), DB_MODE_CONST);
-        ocrAddDependence(db,             shutdownEdt, ((ITER_SPACE * 2) + ITER_INDEX(x, y, z)), DB_MODE_CONST);
-        return NULL_GUID;
     }
 
     //Schedule EDT for next iteration (iter + 1)
@@ -241,7 +240,6 @@ ocrGuid_t shutdownFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
                     ocrEventDestroy(pEvt);
                 }
                 ocrDbDestroy(depv[(ITER_SPACE * 1) + ITER_INDEX(i, j, k)].guid);
-                ocrDbDestroy(depv[(ITER_SPACE * 2) + ITER_INDEX(i, j, k)].guid);
             }
         }
     }
@@ -256,8 +254,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     //Create the shutdown EDT
     ocrGuid_t shutdown_template, shutdownEdt;
-    ocrEdtTemplateCreate(&shutdown_template, shutdownFunc, 0, (ITER_SPACE * 3));
-    ocrEdtCreate(&shutdownEdt, shutdown_template, 0, NULL, (ITER_SPACE * 3), NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+    ocrEdtTemplateCreate(&shutdown_template, shutdownFunc, 0, (ITER_SPACE * 2));
+    ocrEdtCreate(&shutdownEdt, shutdown_template, 0, NULL, (ITER_SPACE * 2), NULL, EDT_PROP_NONE, NULL_HINT, NULL);
 
     //Create the rank EDT template
     ocrGuid_t rankEdt_template;
