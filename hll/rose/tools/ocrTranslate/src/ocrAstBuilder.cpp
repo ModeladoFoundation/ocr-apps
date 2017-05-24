@@ -83,6 +83,12 @@ namespace AstBuilder {
     return arrType;
   }
 
+  SgVariableDeclaration* buildGuidVarDecl(string name, SgScopeStatement* scope) {
+    SgType* guidType = buildOcrGuidType(scope);
+    SgVariableDeclaration* guidDecl = SageBuilder::buildVariableDeclaration(name, guidType, NULL, scope);
+    return guidDecl;
+  }
+
   /**************************
    * EDT Outlining Builders *
    **************************/
@@ -124,10 +130,10 @@ namespace AstBuilder {
     return vdecl;
   }
 
-  SgClassDeclaration* buildOcrEdtDepElemStruct(string edtName, list<SgVarRefExp*>& depElems, SgFunctionDeclaration* decl) {
+  SgClassDeclaration* buildOcrEdtDepElemStruct(string edtName, list<SgVarRefExp*>& depElems, SgScopeStatement* scope) {
     // Build a struct for all the parameters
     string depElemStructName = edtName + "DepElems";
-    SgClassDeclaration* depElemStructDecl = SageBuilder::buildStructDeclaration(depElemStructName, decl->get_scope());
+    SgClassDeclaration* depElemStructDecl = SageBuilder::buildStructDeclaration(depElemStructName, scope);
     list<SgVarRefExp*>::iterator v = depElems.begin();
     SgClassDefinition* sdefn = depElemStructDecl->get_definition();
     assert(sdefn);
@@ -193,6 +199,17 @@ namespace AstBuilder {
     }
     // return the variable declaration
     return vdecl;
+  }
+
+  // Build an individual declaration for a depElem inside the EDT
+  SgVariableDeclaration* buildEdtDepElemVarDecl(SgVariableSymbol* depElemStructSymbol, SgVariableSymbol* memberVarSymbol, SgScopeStatement* scope) {
+    SgType* varType = memberVarSymbol->get_type();
+    SgVarRefExp* memberVarRefExp = SageBuilder::buildVarRefExp(memberVarSymbol);
+    SgVarRefExp* depElemStructVarRefExp = SageBuilder::buildVarRefExp(depElemStructSymbol);
+    SgArrowExp* memberRefExparrowExp = SageBuilder::buildArrowExp(depElemStructVarRefExp, memberVarRefExp);
+    SgAssignInitializer* assignInitializer = SageBuilder::buildAssignInitializer(memberRefExparrowExp, varType);
+    SgVariableDeclaration* depElemVarDecl = SageBuilder::buildVariableDeclaration(memberVarSymbol->get_name(), varType, assignInitializer, scope);
+    return depElemVarDecl;
   }
 
   vector<SgStatement*> buildEdtDepElemVarsDecl(SgClassDeclaration* depElemStructDecl, SgVariableSymbol* depElemStructSymbol, SgScopeStatement* scope) {
@@ -387,17 +404,26 @@ namespace AstBuilder {
     return members;
   }
 
-  SgInitializedName* getMatchingDepElemMemberVar(vector<SgInitializedName*> depElemMemberVars, SgVarRefExp* var) {
+  SgInitializedName* getMatchingDepElemMemberVar(vector<SgInitializedName*>& depElemMemberVars, string varName) {
     vector<SgInitializedName*>::iterator d = depElemMemberVars.begin();
     for( ; d != depElemMemberVars.end(); ++d) {
       string memberName = (*d)->get_name().getString();
-      string varName = var->get_symbol()->get_name().getString();
       if(memberName.compare(varName) == 0) {
 	return *d;
       }
     }
     assert(false);
   }
+
+  SgExprStatement* buildEdtDepElemSetupStmt(SgVariableSymbol* depElemStructVarSymbol, SgVariableSymbol* depElemMemberVarSymbol, SgVariableSymbol* depElemVarSymbol) {
+    SgVarRefExp* alhs = SageBuilder::buildVarRefExp(depElemStructVarSymbol);
+    SgVarRefExp* arhs = SageBuilder::buildVarRefExp(depElemMemberVarSymbol);
+    SgDotExp* dotExp = SageBuilder::buildDotExp(alhs, arhs);
+    SgVarRefExp* rhs = SageBuilder::buildVarRefExp(depElemVarSymbol);
+    SgExprStatement* assign = SageBuilder::buildAssignStatement(dotExp, rhs);
+    return assign;
+  }
+
 
   SgExprStatement* buildEdtDepElemSetupStmt(SgVariableDeclaration* depElemStructVar, SgInitializedName* memberVar,
 					    SgVarRefExp* depElemVarRef) {
@@ -410,7 +436,6 @@ namespace AstBuilder {
     return assign;
   }
 
-
   vector<SgStatement*> buildEdtDepElemSetupStmts(SgVariableDeclaration* depElemStructVar, SgClassDeclaration* depElemStructDecl,
 						 list<SgVarRefExp*> depElemVarList) {
     Logger::Logger lg("buildEdtDepElemSetupStmts");
@@ -418,7 +443,7 @@ namespace AstBuilder {
     list<SgVarRefExp*>::iterator v = depElemVarList.begin();
     vector<SgInitializedName*> depElemMemberVars = getDepElemStructMembers(depElemStructDecl);
     for( ; v != depElemVarList.end(); ++v) {
-      SgInitializedName* depElemMemberVar = getMatchingDepElemMemberVar(depElemMemberVars, *v);
+      SgInitializedName* depElemMemberVar = getMatchingDepElemMemberVar(depElemMemberVars, (*v)->get_symbol()->get_name().getString());
       SgExprStatement* setupStmt = buildEdtDepElemSetupStmt(depElemStructVar, depElemMemberVar, *v);
       depElemSetupStmts.push_back(setupStmt);
     }
@@ -608,6 +633,25 @@ namespace AstBuilder {
     SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
     // Build the function call exp
     SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEventCreate", voidType, exprList, scope);
+    return stmt;
+  }
+
+  SgExprStatement* buildEvtSatisfyCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEventCreate
+    vector<SgExpression*> args;
+    SgVarRefExp* evtGuidVarRefExp = SageBuilder::buildVarRefExp(evtGuidSymbol);
+    args.push_back(evtGuidVarRefExp);
+    // placeholder expression
+    SgIntVal* nullGuid = SageBuilder::buildIntVal();
+    // For now we will create idempotent events
+    string nullGuidStr = "NULL_GUID";
+    SageInterface::addTextForUnparser(nullGuid, nullGuidStr, AstUnparseAttribute::e_replace);
+    args.push_back(nullGuid);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEventSatisfy", voidType, exprList, scope);
     return stmt;
   }
 
