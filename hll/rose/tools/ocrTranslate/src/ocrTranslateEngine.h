@@ -54,14 +54,13 @@ class OcrTranslator {
  private:
   void insertOcrHeaderFiles();
   // Routines for building the EDT Function Definition
-  void outlineEdt(std::string edtName, std::list<OcrDbkContextPtr> depDbks, std::list<SgVarRefExp*>& depElems,
-		  SgBasicBlock* taskBasicBlock, SgSourceFile* sourcefile,
+  void outlineEdt(std::string edtName, SgBasicBlock* taskBasicBlock, SgSourceFile* sourcefile,
 		  TaskAstInfoPtr taskAstInfo);
   void outlineForLoopBodyEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
   void outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
   void insertDepDbkDecl(std::string edtName, std::list<OcrDbkContextPtr>& depDbks,
 			unsigned int slotbegin, TaskAstInfoPtr taskAstInfo);
-  void insertDepElemDecl(std::string edtName, std::list<SgVarRefExp*>& depElems, TaskAstInfoPtr taskAstInfo);
+  void insertDepElemDecl(std::string edtName, OcrEdtContextPtr edtContext, TaskAstInfoPtr taskAstInfo);
   void insertEdtReturnStmt(std::string edtName);
   /* void insertDbkDestroyStmts(std::string edtName, std::list<std::string>& dbksToDestroy, unsigned int slotbegin); */
   /* void insertEvtDestroyStmts(std::string edtName, std::list<std::string>& evtsToDestroy, unsigned int slotbegin); */
@@ -77,15 +76,15 @@ class OcrTranslator {
   // EDT Translation
   std::vector<SgStatement*> setupEdtOutEvt(std::string edtname, std::string outEvt, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtTemplate(std::string edtname, unsigned int ndeps, SgScopeStatement* scope);
-  std::vector<SgStatement*> setupEdtDepElems(std::string edtname, std::list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtDepElems(std::string edtname, OcrEdtContextPtr edtContext, std::list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtCreate(std::string edtname, std::string outEvtName, bool isFinishEdt, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtDepDbks(std::string edtname, std::list<OcrDbkContextPtr>& dbkList, unsigned int slotBegin, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtDepEvts(std::string edtname, std::list<OcrEvtContextPtr>& depEvts, unsigned int slotBegin, SgScopeStatement* scope);
-  void setupEdtEvtsSatisfy(std::string edtname, OcrEdtContextPtr edtContext);
+  SgExprStatement* setupEvtSatisfy(std::string evtName, SgScopeStatement* scope);
   void removeOcrTaskPragma(std::string edtname, SgBasicBlock* taskBasicBlock, SgPragmaDeclaration* taskPragma);
 
   // Loop EDT Translation
-  std::vector<SgStatement*> setupForLoopIterCompEvt(std::string iterCompEvtName, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupForLoopCompEvt(std::string loopCompEvtName, SgScopeStatement* scope);
 
   // Shutdown EDTs
   void setupShutdownEdt(std::string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext);

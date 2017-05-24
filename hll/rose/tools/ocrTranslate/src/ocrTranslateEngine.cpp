@@ -161,36 +161,61 @@ void OcrTranslator::insertDepDbkDecl(string edtName, list<OcrDbkContextPtr>& dep
   SageInterface::prependStatementList(depDbksDeclStmts, basicblock);
 }
 
-void OcrTranslator::insertDepElemDecl(string edtName, list<SgVarRefExp*>& depElems,
-				      TaskAstInfoPtr taskAstInfo) {
-  // struct declaration for the dependent elements
+void OcrTranslator::insertDepElemDecl(string edtName, OcrEdtContextPtr edtContext, TaskAstInfoPtr taskAstInfo) {
   SgFunctionDeclaration* edtDecl = taskAstInfo->getTaskFuncDecl();
+  assert(edtDecl);
+  SgScopeStatement* edtScope = SageInterface::getEnclosingScope(edtDecl);
+
+  // Build a depElem struct with annotated list of variables
+  list<SgVarRefExp*> depElems = edtContext->getDepElems();
+  SgClassDeclaration* depElemStructDecl = AstBuilder::buildOcrEdtDepElemStruct(edtName, depElems, edtScope);
+
+  // Build a typedef for it
+  SgTypedefDeclaration* depElemTypedefType = AstBuilder::buildTypeDefDecl(edtName, depElemStructDecl->get_type(), edtScope);
+
+  // Insert the depElem struct above the EDT
+  SageInterface::insertStatementBefore(edtDecl, depElemTypedefType, true);
+  SageInterface::insertStatementBefore(depElemTypedefType, depElemStructDecl, true);
+
+  // Bookkeeping
+  taskAstInfo->setDepElemStructDecl(depElemStructDecl);
+  taskAstInfo->setDepElemTypedefType(depElemTypedefType->get_type());
+  taskAstInfo->setDepElemBaseType(depElemStructDecl->get_type());
+
   SgBasicBlock* basicblock = edtDecl->get_definition()->get_body();
 
-  SgScopeStatement* edtDeclScope = SageInterface::getEnclosingScope(edtDecl);
-  SgClassDeclaration* depElemStructDecl = AstBuilder::buildOcrEdtDepElemStruct(edtName, depElems, edtDecl);
-
-  // corresponding typedef for the dependent elements
-  SgTypedefDeclaration* depElemTypedefType = AstBuilder::buildTypeDefDecl(edtName, depElemStructDecl->get_type(), edtDeclScope);
-
-  // Build a declaration for the depElem struct inside the EDT
+  // Insert the struct inside the edtDecl
   SgName depElemStructName("depElem");
   SgVariableDeclaration* depElemStructVar = AstBuilder::buildOcrEdtDepElemStructDecl(depElemTypedefType->get_type(), depElemStructName, basicblock);
   SageInterface::prependStatement(depElemStructVar, basicblock);
-  SageInterface::insertStatementBefore(edtDecl, depElemStructDecl, true);
-  SageInterface::insertStatementAfter(depElemStructDecl, depElemTypedefType, true);
+
   SgVariableSymbol* depElemStructSymbol = GetVariableSymbol(depElemStructVar, depElemStructName);
   // Build the stack of local variables for the EDT from the struct
   vector<SgStatement*> depElemVarDeclStmts = AstBuilder::buildEdtDepElemVarsDecl(depElemStructDecl, depElemStructSymbol, basicblock);
   SageInterface::insertStatementListAfter(depElemStructVar, depElemVarDeclStmts);
-  // Bookkeeping
-  taskAstInfo->setDepElemTypedefType(depElemTypedefType->get_type());
-  taskAstInfo->setDepElemBaseType(depElemStructDecl->get_type());
-  taskAstInfo->setDepElemStructDecl(depElemStructDecl);
+  //
+  if(boost::static_pointer_cast<OcrTaskContext>(edtContext)->getTaskType() == OcrTaskContext::e_TaskLoopIter) {
+    // anchor
+    SgStatement* lastStmt = depElemVarDeclStmts.back();
+    OcrLoopIterEdtContextPtr loopIterEdtContext = boost::dynamic_pointer_cast<OcrLoopIterEdtContext>(edtContext);
+    string loopCompEvtName = loopIterEdtContext->getOutputEvt()->get_name();
+    string loopCompEvtGuidName = loopCompEvtName + "Guid";
+    SgClassDefinition* depElemStructDefn = depElemStructDecl->get_definition();
+    // Register the event inside the struct scope
+    m_astInfoManager.regEvtAstInfo(loopCompEvtName, loopCompEvtGuidName, depElemStructDefn);
+
+    SgVariableDeclaration* loopCompEvtGuidDecl = AstBuilder::buildGuidVarDecl(loopCompEvtGuidName, depElemStructDefn);
+    SgVariableSymbol* loopCompEvtGuidSymbol = GetVariableSymbol(loopCompEvtGuidDecl, loopCompEvtGuidName);
+    depElemStructDefn->append_member(loopCompEvtGuidDecl);
+    // Now create a declration inside the EDT
+    SgVariableDeclaration* edtLoopCompEvtGuidDecl = AstBuilder::buildEdtDepElemVarDecl(depElemStructSymbol, loopCompEvtGuidSymbol, basicblock);
+    SageInterface::insertStatementAfter(lastStmt, edtLoopCompEvtGuidDecl, true);
+    // Bookkeeping
+    m_astInfoManager.regEvtAstInfo(loopCompEvtName, loopCompEvtGuidName, basicblock);
+  }
 }
 
-void OcrTranslator::outlineEdt(string edtName, list<OcrDbkContextPtr> depDbks, list<SgVarRefExp*>& depElems,
-			       SgBasicBlock* taskBasicBlock, SgSourceFile* sourcefile,
+void OcrTranslator::outlineEdt(string edtName, SgBasicBlock* taskBasicBlock, SgSourceFile* sourcefile,
 			       TaskAstInfoPtr taskAstInfo) {
   Logger::Logger lg("OcrTranslator::outlineEdt");
   // scope where the edt function will be created
@@ -225,10 +250,6 @@ void OcrTranslator::outlineEdt(string edtName, list<OcrDbkContextPtr> depDbks, l
 
   // Bookkeeping: Store the function declaration in the outlining info
   taskAstInfo->setTaskFuncDecl(edtDecl);
-
-  // Insert the dep dbks and depElems for the task
-  insertDepDbkDecl(edtName, depDbks, 0, taskAstInfo);
-  insertDepElemDecl(edtName, depElems, taskAstInfo);
 }
 
 void OcrTranslator::outlineShutdownEdt(OcrShutdownEdtContextPtr shutdownEdtContext) {
@@ -282,24 +303,29 @@ void OcrTranslator::outlineForLoopBodyEdt(OcrLoopIterEdtContextPtr loopIterEdtCo
   EdtAstInfoPtr loopBodyEdtAstInfo = m_astInfoManager.regEdtAstInfo(loopBodyEdtName);
 
   SgSourceFile* sourcefile = loopIterEdtContext->getSourceFile();
+
+  outlineEdt(loopBodyEdtName, loopBodyBasicBlock, sourcefile, loopBodyEdtAstInfo);
+  // Insert the ptr and guid for depDbks inside the EDT
   list<OcrDbkContextPtr> depDbks = loopIterEdtContext->getDepDbks();
+  insertDepDbkDecl(loopBodyEdtName, depDbks, 0, loopBodyEdtAstInfo);
+  // Insert declaration for depElem stack variables inside the EDT
   list<SgVarRefExp*> depElems = loopIterEdtContext->getDepElems();
-  outlineEdt(loopBodyEdtName, depDbks, depElems, loopBodyBasicBlock, sourcefile, loopBodyEdtAstInfo);
+  insertDepElemDecl(loopBodyEdtName, loopIterEdtContext, loopBodyEdtAstInfo);
 }
 
-vector<SgStatement*> OcrTranslator::setupForLoopIterCompEvt(string iterCompEvtName, SgScopeStatement* scope) {
+vector<SgStatement*> OcrTranslator::setupForLoopCompEvt(string loopCompEvtName, SgScopeStatement* scope) {
   vector<SgStatement*> setupStmts;
   // Create guid and events that this EDT has to satisfy
   // For each event create ocrGuid and the event using ocrEvtCreate
   SgType* ocrGuidType = AstBuilder::buildOcrGuidType(scope);
-  string iterCompEvtGuidName = iterCompEvtName + "Guid";
-  SgVariableDeclaration* iterCompEvtGuidDecl = SageBuilder::buildVariableDeclaration(iterCompEvtGuidName, ocrGuidType, NULL, scope);
-  setupStmts.push_back(iterCompEvtGuidDecl);
-  SgVariableSymbol* iterCompEvtGuidSymbol = GetVariableSymbol(iterCompEvtGuidName, scope);
-  SgExprStatement* iterCompEvtCreateCallExp = AstBuilder::buildEvtCreateCallExp(iterCompEvtGuidSymbol, scope);
-  setupStmts.push_back(iterCompEvtCreateCallExp);
+  string loopCompEvtGuidName = loopCompEvtName + "Guid";
+  SgVariableDeclaration* loopCompEvtGuidDecl = SageBuilder::buildVariableDeclaration(loopCompEvtGuidName, ocrGuidType, NULL, scope);
+  setupStmts.push_back(loopCompEvtGuidDecl);
+  SgVariableSymbol* loopCompEvtGuidSymbol = GetVariableSymbol(loopCompEvtGuidName, scope);
+  SgExprStatement* loopCompEvtCreateCallExp = AstBuilder::buildEvtCreateCallExp(loopCompEvtGuidSymbol, scope);
+  setupStmts.push_back(loopCompEvtCreateCallExp);
   // Now some bookkeeping
-  m_astInfoManager.regEvtAstInfo(iterCompEvtName, iterCompEvtGuidName, scope);
+  m_astInfoManager.regEvtAstInfo(loopCompEvtName, loopCompEvtGuidName, scope);
   return setupStmts;
 }
 
@@ -317,9 +343,15 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   SageInterface::appendStatement(loopControlIfStmt, loopControlBasicBlock);
 
   SgSourceFile* sourcefile = loopIterEdtContext->getSourceFile();
+
+  outlineEdt(loopControlEdtName, loopControlBasicBlock, sourcefile, loopControlEdtAstInfo);
+
+  // Insert the ptr and guid for depDbks inside the EDT
   list<OcrDbkContextPtr> depDbks = loopIterEdtContext->getDepDbks();
-  list<SgVarRefExp*> depElems = loopIterEdtContext->getDepElems();
-  outlineEdt(loopControlEdtName, depDbks, depElems, loopControlBasicBlock, sourcefile, loopControlEdtAstInfo);
+  insertDepDbkDecl(loopControlEdtName, depDbks, 0, loopControlEdtAstInfo);
+   // Insert declaration for depElem stack variables inside the EDT
+  insertDepElemDecl(loopControlEdtName,  loopIterEdtContext, loopControlEdtAstInfo);
+
 
   // book keeping
   loopControlEdtAstInfo->setLoopControlIfBasicBlock(ifBasicBlock);
@@ -327,7 +359,7 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   loopControlEdtAstInfo->setLoopControlIfStmt(loopControlIfStmt);
 
   // Outlining control EDT has the following steps
-  // 1. Create an iteration complete event for the body EDT
+  // 1. Create an iteration complete event for the body EDT (ignoring this step for now)
   // 2. Setup the output event for the body EDT
   // 3. Setup dependent element for the body EDT
   // 4. Setup the EDT template for the body EDT
@@ -339,14 +371,9 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   // 10. Setup depDbks for next iteration control EDT
   // 11. Setup iteration complete event as a dependency to the next iteration control EDT
   string loopBodyEdtName = loopIterEdtContext->getLoopBodyEdtName();
-  string iterCompEvtName = loopBodyEdtName + "IterCompEvt";
-  m_ocrObjectManager.registerOcrEvt(iterCompEvtName);
+
   vector<SgStatement*> stmtsToInsert;
   vector<SgStatement*> setupStmts;
-
-  setupStmts = setupForLoopIterCompEvt(iterCompEvtName, ifBasicBlock);
-  stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
-  setupStmts.clear();
 
   string loopBodyOutEvtName = loopBodyEdtName + "Out";
   m_ocrObjectManager.registerOcrEvt(loopBodyOutEvtName);
@@ -354,7 +381,8 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
   setupStmts.clear();
 
-  setupStmts = setupEdtDepElems(loopBodyEdtName, depElems, ifBasicBlock);
+  list<SgVarRefExp*> depElems = loopIterEdtContext->getDepElems();
+  setupStmts = setupEdtDepElems(loopBodyEdtName, loopIterEdtContext, depElems, ifBasicBlock);
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
   setupStmts.clear();
 
@@ -377,7 +405,7 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   stmtsToInsert.clear();
 
   // Now we can to setup the next iteration control EDT
-  setupStmts = setupEdtDepElems(loopControlEdtName, depElems, ifBasicBlock);
+  setupStmts = setupEdtDepElems(loopControlEdtName, loopIterEdtContext, depElems, ifBasicBlock);
   SageInterface::appendStatementList(setupStmts, ifBasicBlock);
   setupStmts.clear();
 
@@ -403,6 +431,11 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   setupStmts = setupEdtDepEvts(loopControlEdtName, loopControlEdtDepEvts, slotBegin, ifBasicBlock);
   SageInterface::appendStatementList(setupStmts, ifBasicBlock);
   setupStmts.clear();
+
+  // Finally setup the ovrEventSatisfy in the elseBasicBlock
+  string loopCompEvtName = loopIterEdtContext->getOutputEvt()->get_name();
+  SgExprStatement* evtSatisfyCallExp = setupEvtSatisfy(loopCompEvtName, elseBasicBlock);
+  SageInterface::appendStatement(evtSatisfyCallExp, elseBasicBlock);
 }
 
 // First step in creating the EDTs from pragmas
@@ -423,10 +456,13 @@ void OcrTranslator::outlineEdts() {
       // Arguments for EDT outlining
       SgBasicBlock* basicblock = edtContext->getTaskBasicBlock();
       SgSourceFile* sourcefile = edtContext->getSourceFile();
-      list<OcrDbkContextPtr> depDbks = edtContext->getDepDbks();
-      list<SgVarRefExp*> depElems = edtContext->getDepElems();
       // Outlining Info will be updated by the outlineEdt function
-      outlineEdt(edtname, depDbks, depElems, basicblock, sourcefile, edtAstInfo);
+      outlineEdt(edtname, basicblock, sourcefile, edtAstInfo);
+      // Insert the ptr, guid for depDbks inside the EDT
+      list<OcrDbkContextPtr> depDbks = edtContext->getDepDbks();
+      insertDepDbkDecl(edtname, depDbks, 0, edtAstInfo);
+      // Insert declaration for depElem stack variables inside the EDT
+      insertDepElemDecl(edtname, edtContext, edtAstInfo);
     }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskLoopIter) {
       OcrLoopIterEdtContextPtr loopIterEdtContext = boost::dynamic_pointer_cast<OcrLoopIterEdtContext>(taskContext);
@@ -509,18 +545,40 @@ vector<SgStatement*> OcrTranslator::setupEdtTemplate(string edtname, unsigned in
   return edtTemplSetupStmts;
 }
 
-vector<SgStatement*> OcrTranslator::setupEdtDepElems(string edtname, list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope) {
+vector<SgStatement*> OcrTranslator::setupEdtDepElems(string edtname, OcrEdtContextPtr edtContext, list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope) {
   Logger::Logger lg("OcrTranslator::setupEdtDepElems");
+  vector<SgStatement*> depElemSetupStmts;
   EdtAstInfoPtr edtAstInfoPtr = m_astInfoManager.getEdtAstInfo(edtname);
   // Next set up the depenedent elements
   SgType* depElemStructType = edtAstInfoPtr->getDepElemTypedefType();
   string depElemVarName = edtname+"DepElem";
   SgVariableDeclaration* depElemStructVar = SageBuilder::buildVariableDeclaration(depElemVarName, depElemStructType, NULL, scope);
+  depElemSetupStmts.push_back(depElemStructVar);
+
   SgClassDeclaration* depElemStructDecl = edtAstInfoPtr->getDepElemStructDecl();
-  vector<SgStatement*> depElemSetupStmts = AstBuilder::buildEdtDepElemSetupStmts(depElemStructVar, depElemStructDecl, depElemVarList);
-  // Now insert the variable declaration to the beginning of the setup stmts list
-  depElemSetupStmts.insert(depElemSetupStmts.begin(), depElemStructVar);
-  // Now some bookkeeping
+  vector<SgStatement*> depElemVarSetupStmts = AstBuilder::buildEdtDepElemSetupStmts(depElemStructVar, depElemStructDecl, depElemVarList);
+  depElemSetupStmts.insert(depElemSetupStmts.end(), depElemVarSetupStmts.begin(), depElemVarSetupStmts.end());
+
+  // If this is a depElem of loop iteration EDT add a setup for the loop completion event
+  if(boost::static_pointer_cast<OcrTaskContext>(edtContext)->getTaskType() == OcrTaskContext::e_TaskLoopIter) {
+    OcrLoopIterEdtContextPtr loopIterEdtContext = boost::dynamic_pointer_cast<OcrLoopIterEdtContext>(edtContext);
+    string loopCompEvtName = loopIterEdtContext->getOutputEvt()->get_name();
+    // OutEvt created at the struct scope
+    SgClassDefinition* depElemStructDefn = depElemStructDecl->get_definition();
+    EvtAstInfoPtr depElemOutEvtAstInfo = m_astInfoManager.getEvtAstInfo(loopCompEvtName, depElemStructDefn);
+    assert(depElemOutEvtAstInfo);
+    string depElemOutEvtGuidName = depElemOutEvtAstInfo->getEvtGuidName();
+    SgVariableSymbol* depElemMemberVarSymbol = GetVariableSymbol(depElemOutEvtGuidName, depElemStructDefn);
+    assert(depElemMemberVarSymbol);
+    // OutEvt created at the local scope
+    EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(loopCompEvtName, scope);
+    assert(outEvtAstInfo);
+    string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
+    SgVariableSymbol* depElemVarSymbol = GetVariableSymbol(outEvtGuidName, scope);
+    SgVariableSymbol* depElemStructVarSymbol = GetVariableSymbol(depElemStructVar, depElemVarName);
+    SgExprStatement* outEvtSetupStmt = AstBuilder::buildEdtDepElemSetupStmt(depElemStructVarSymbol, depElemMemberVarSymbol, depElemVarSymbol);
+    depElemSetupStmts.push_back(outEvtSetupStmt);
+  }
   edtAstInfoPtr->setDepElemStructName(depElemVarName);
   return depElemSetupStmts;
 }
@@ -598,6 +656,15 @@ vector<SgStatement*> OcrTranslator::setupEdtDepEvts(string edtname, list<OcrEvtC
     evtDepSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
   }
   return evtDepSetupStmts;
+}
+
+// Satisfies the event with NULL_GUID
+SgExprStatement* OcrTranslator::setupEvtSatisfy(string evtName, SgScopeStatement* scope) {
+  EvtAstInfoPtr evtAstInfo = m_astInfoManager.getEvtAstInfo(evtName, scope);
+  string evtGuidName = evtAstInfo->getEvtGuidName();
+  SgVariableSymbol* evtGuidSymbol = GetVariableSymbol(evtGuidName, scope);
+  SgExprStatement* evtSatisfyCallExp = AstBuilder::buildEvtSatisfyCallExp(evtGuidSymbol, scope);
+  return evtSatisfyCallExp;
 }
 
 void OcrTranslator::removeOcrTaskPragma(string edtname, SgBasicBlock* taskBasicBlock, SgPragmaDeclaration* taskPragma) {
@@ -697,7 +764,7 @@ void OcrTranslator::setupEdts() {
 
       // 3. Setup the depElems
       list<SgVarRefExp*> depElems = edtContext->getDepElems();
-      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(edtname, depElems, scope);
+      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(edtname, edtContext, depElems, scope);
       SageInterface::insertStatementListBefore(taskPragma, depElemSetupStmts);
       depElemSetupStmts.clear();
 
@@ -731,6 +798,12 @@ void OcrTranslator::setupEdts() {
       SgScopeStatement* scope = SageInterface::getEnclosingScope(taskPragma);
       string loopControlEdtName = loopIterEdtContext->getLoopControlEdtName();
 
+      // 1. Setup the output event for the EDT
+      string outEvtName = loopIterEdtContext->getOutputEvt()->get_name();
+      vector<SgStatement*> outEvtSetupStmts = setupEdtOutEvt(loopControlEdtName, outEvtName, scope);
+      SageInterface::insertStatementListBefore(taskPragma, outEvtSetupStmts);
+      outEvtSetupStmts.clear();
+
       vector<SgStatement*> loopInitStmts = loopIterEdtContext->getLoopInitStmts();
       if(loopInitStmts.size() > 0) {
 	SageInterface::insertStatementListBefore(taskPragma, loopInitStmts);
@@ -738,7 +811,7 @@ void OcrTranslator::setupEdts() {
       loopInitStmts.clear();
 
       list<SgVarRefExp*> depElems = loopIterEdtContext->getDepElems();
-      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(loopControlEdtName, depElems, scope);
+      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(loopControlEdtName, loopIterEdtContext, depElems, scope);
       SageInterface::insertStatementListBefore(taskPragma, depElemSetupStmts);
       depElemSetupStmts.clear();
 

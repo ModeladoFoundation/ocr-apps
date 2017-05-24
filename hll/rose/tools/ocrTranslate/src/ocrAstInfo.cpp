@@ -252,16 +252,24 @@ SgBasicBlock* LoopControlEdtAstInfo::getBasicBlock() const {
   return m_basicblock;
 }
 
-string LoopControlEdtAstInfo::getIterCompEvtGuidName() const {
-  return m_iterCompEvtGuidName;
+string LoopControlEdtAstInfo::getCompEvtGuidName() const {
+  return m_compEvtGuidName;
+}
+
+string LoopControlEdtAstInfo::getDepElemCompEvtGuidName() const {
+  return m_depElemCompEvtGuidName;
 }
 
 void LoopControlEdtAstInfo::setBasicBlock(SgBasicBlock* basicblock) {
   m_basicblock = basicblock;
 }
 
-void LoopControlEdtAstInfo::setIterCompEvtGuidName(string compEvtGuidName) {
-  m_iterCompEvtGuidName = compEvtGuidName;
+void LoopControlEdtAstInfo::setCompEvtGuidName(string compEvtGuidName) {
+  m_compEvtGuidName = compEvtGuidName;
+}
+
+void LoopControlEdtAstInfo::setDepElemCompEvtGuidName(string depElemCompEvtGuidName) {
+  m_depElemCompEvtGuidName = depElemCompEvtGuidName;
 }
 
 void LoopControlEdtAstInfo::setLoopControlIfBasicBlock(SgBasicBlock* ifBasicBlock) {
@@ -280,7 +288,7 @@ std::string LoopControlEdtAstInfo::str() const {
   ostringstream oss;
   oss << "[LoopControlEdtAstInfo : " << m_taskName;
   oss << "  " << AstDebug::astToString(m_basicblock) << "\n";
-  oss << m_iterCompEvtGuidName << "]";
+  oss << m_compEvtGuidName << "]";
   return oss.str();
 }
 
