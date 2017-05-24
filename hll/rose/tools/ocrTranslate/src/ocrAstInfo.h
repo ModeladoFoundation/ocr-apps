@@ -165,13 +165,19 @@ class LoopControlEdtAstInfo : public EdtAstInfo {
   SgBasicBlock* m_elseBasicBlock;
   // If Stmt for loop control structure
   SgIfStmt* m_ifStmt;
-  std::string m_iterCompEvtGuidName;
+  // Name we assign inside the depElem struct
+  std::string m_depElemCompEvtGuidName;
+  // Name we assign when creating the event
+  std::string m_compEvtGuidName;
  public:
   LoopControlEdtAstInfo(std::string name);
   SgBasicBlock* getBasicBlock() const;
-  std::string getIterCompEvtGuidName() const;
+  std::string getCompEvtGuidName() const;
+  std::string getDepElemCompEvtGuidName() const;
+
   void setBasicBlock(SgBasicBlock* basicblock);
-  void setIterCompEvtGuidName(std::string compEvtGuidName);
+  void setCompEvtGuidName(std::string compEvtGuidName);
+  void setDepElemCompEvtGuidName(std::string depElemCompEvtGuidName);
   void setLoopControlIfBasicBlock(SgBasicBlock* ifBasicBlock);
   void setLoopControlElseBasicBlock(SgBasicBlock* elseBasicBlock);
   void setLoopControlIfStmt(SgIfStmt* loopControlIfStmt);
