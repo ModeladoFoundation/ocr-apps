@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
 #pragma ocr datablock DATABLOCK(DBK_ARR)
   int* arr;
 
-  int size = 5;
+  int size = 20;
 
   arr = (int*) malloc(sizeof(int) * size * size);
 
