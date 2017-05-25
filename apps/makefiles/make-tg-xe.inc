@@ -290,7 +290,7 @@ endif
   else
 	$(AT)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
 	RUN_TORQUE=$(RUN_TORQUE) \
-	bash -ec 'cd $(WORKLOAD_LOGS) && ${RUN_CMD} ${MACHINE_CONFIG} ${PROCESS_PER_NODE} -D $(WORKLOAD_LOGS) -L $(WORKLOAD_LOGS) -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
+	bash -ec 'cd $(WORKLOAD_LOGS) && TG_INSTALL=$(TG_INSTALL) ${RUN_CMD} ${MACHINE_CONFIG} ${PROCESS_PER_NODE} -D $(WORKLOAD_LOGS) -L $(WORKLOAD_LOGS) -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
   endif
