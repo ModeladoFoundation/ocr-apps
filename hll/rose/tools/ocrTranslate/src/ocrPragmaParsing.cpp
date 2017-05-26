@@ -548,7 +548,7 @@ list<SgStatement*> OcrDbkPragmaParser::getAllocStmt(SgInitializedName* sgn) {
 }
 
 bool OcrDbkPragmaParser::match() {
-  Logger::Logger lg("OcrDbkPragmaParser::match()");
+  Logger::Logger lg("OcrDbkPragmaParser::match()", Logger::DEBUG);
   string pstr = m_sgpdecl->get_pragma()->get_pragma();
   try {
     smatch matchResults;
@@ -570,13 +570,15 @@ bool OcrDbkPragmaParser::match() {
 	  switch(vtype->variantT()) {
 	  case V_SgPointerType: {
 	    list<SgStatement*> varAllocStmts = getAllocStmt(*vIt);
-	    OcrDbkContextPtr dbkcontext_sp = boost::make_shared<OcrDbkContext>(*nIt, *vIt, varAllocStmts, m_sgpdecl);
+	    OcrDbkContextPtr dbkcontext_sp = boost::make_shared<OcrMemDbkContext>(*nIt, *vIt, varAllocStmts, m_sgpdecl);
 	    Logger::debug(lg) << dbkcontext_sp->str() << endl;
 	    m_dbkContextList.push_back(dbkcontext_sp);
 	    break;
 	  }
 	  case V_SgArrayType: {
-	    throw MatchException("Unhandled Array Type in OcrDbkPragmaParser::match()\n");
+	    OcrDbkContextPtr arrDbkContext = boost::make_shared<OcrArrDbkContext>(*nIt, *vIt, m_sgpdecl);
+	    Logger::debug(lg) << arrDbkContext->str() << endl;
+	    m_dbkContextList.push_back(arrDbkContext);
 	    break;
 	  }
 	  case V_SgNamedType: {

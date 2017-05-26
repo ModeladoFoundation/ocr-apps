@@ -931,11 +931,11 @@ namespace AstBuilder {
   }
 
   // Given an allocStmt extract the len in bytes
-  SgExpression* extractSizeInBytes(SgStatement* allocStmt) {
-    class ExtractMallocArgument : public AstSimpleProcessing {
+  SgExpression* extractSizeInBytes(SgNode* root) {
+    class GetDbkSizeTraversal : public AstSimpleProcessing {
       SgExpression* m_arg;
     public:
-      ExtractMallocArgument() { }
+      GetDbkSizeTraversal() { }
       void visit(SgNode* sgn) {
 	if(SgFunctionCallExp* mallocCallExp = isSgFunctionCallExp(sgn)) {
 	  string name = mallocCallExp->getAssociatedFunctionSymbol()->get_name().getString();
@@ -947,19 +947,22 @@ namespace AstBuilder {
 	    m_arg = exprList[0];
 	  }
 	}
+	else if(SgTypedefType* dbkType = isSgTypedefType(sgn)) {
+	  m_arg = SageBuilder::buildSizeOfOp(dbkType);
+	}
       }
 
       void atTraversalEnd() {
 	assert(m_arg);
       }
 
-      SgExpression* getMallocArg() const {
+      SgExpression* getSizeOfExpr() const {
 	return m_arg;
       }
     };
-    ExtractMallocArgument extractMallocArg;
-    extractMallocArg.traverse(allocStmt, preorder);
-    SgExpression* arg = extractMallocArg.getMallocArg();
+    GetDbkSizeTraversal getDbkSizeTraversal;
+    getDbkSizeTraversal.traverse(root, preorder);
+    SgExpression* arg = getDbkSizeTraversal.getSizeOfExpr();
     assert(arg);
     return arg;
   }
@@ -967,7 +970,7 @@ namespace AstBuilder {
   // Signature for ocrDbCreate
   // u8 ocrDbCreate( ocrGuid_t ∗ db, void ∗∗ addr, u64 len, u16
   // 		  flags, ocrHint_t ∗ hint, ocrInDbAllocator_t allocator )
-  SgExprStatement* buildOcrDbCreateFuncCallExp(SgName dbkGuidName, SgName dbkPtrName, SgScopeStatement* scope, SgStatement* allocStmt) {
+  SgExprStatement* buildOcrDbCreateFuncCallExp(SgName dbkGuidName, SgName dbkPtrName, SgScopeStatement* scope, SgNode* dbkSizeRoot) {
     SgType* voidType = SageBuilder::buildVoidType();
     // Arguments for ocrDbCreate
     vector<SgExpression*> args;
@@ -982,7 +985,7 @@ namespace AstBuilder {
     args.push_back(castExp);
     // third argument is len
     // this information is either in a malloc call or in the declaration
-    SgExpression* third = extractSizeInBytes(allocStmt);
+    SgExpression* third = extractSizeInBytes(dbkSizeRoot);
     args.push_back(third);
     // Build the fourth argument
     // fourth argument is flags
@@ -1010,5 +1013,38 @@ namespace AstBuilder {
     // Build the
     SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrDbCreate", voidType, exprList, scope);
     return stmt;
+  }
+
+  SgClassDeclaration* buildArrDbkStructDecl(std::string dbkStructName, SgInitializedName* arrInitializedName, SgScopeStatement* scope) {
+    SgClassDeclaration* dbkStructDecl = SageBuilder::buildStructDeclaration(dbkStructName, scope);
+    SgVariableDeclaration* arrDecl = SageBuilder::buildVariableDeclaration(arrInitializedName->get_name(), arrInitializedName->get_type(), NULL, scope);
+    SgClassDefinition* dbkStructDefn = dbkStructDecl->get_definition();
+    dbkStructDefn->append_member(arrDecl);
+    return dbkStructDecl;
+  }
+
+  SgTypedefDeclaration* buildArrDbkStructTypedefType(SgClassDeclaration* dbkStructDecl, SgScopeStatement* scope) {
+    std::string dbkStructName = dbkStructDecl->get_name().getString();
+    std::string dbkTypedefName = dbkStructName + "_t";
+    SgType* baseType = dbkStructDecl->get_type();
+    SgTypedefDeclaration* typedefDecl = SageBuilder::buildTypedefDeclaration(dbkTypedefName, baseType, scope, true);
+    return typedefDecl;
+  }
+
+  SgVariableDeclaration* buildArrPtrDecl(SgInitializedName* arrInitializedName, SgVariableSymbol* dbkPtrSymbol,
+					 SgClassDeclaration* dbkStructDecl, SgScopeStatement* scope) {
+    vector<SgInitializedName*> depElemMemberVars = getDepElemStructMembers(dbkStructDecl);
+    string arrPtrName = arrInitializedName->get_name().getString();
+    SgInitializedName* arrPtrMemberVar = getMatchingDepElemMemberVar(depElemMemberVars, arrPtrName);
+    SgArrayType* arrType = isSgArrayType(arrInitializedName->get_type());
+    // We need to skip the first dimension and create a pointer for array type from second dimension
+    SgPointerType* arrPtrType = SageBuilder::buildPointerType(arrType->get_base_type());
+    SgVarRefExp* dbkPtrVarRefExp = SageBuilder::buildVarRefExp(dbkPtrSymbol);
+    SgVariableSymbol* dbkMemberVarSymbol = GetVariableSymbol(arrPtrMemberVar);
+    SgVarRefExp* dbkMemberVarRefExp = SageBuilder::buildVarRefExp(dbkMemberVarSymbol);
+    SgArrowExp* rhsAssignOp = SageBuilder::buildArrowExp(dbkPtrVarRefExp, dbkMemberVarRefExp);
+    SgAssignInitializer* assignInitializer = SageBuilder::buildAssignInitializer(rhsAssignOp, arrPtrType);
+    SgVariableDeclaration* arrPtrDecl = SageBuilder::buildVariableDeclaration(arrPtrName, arrPtrType, assignInitializer, scope);
+    return arrPtrDecl;
   }
 }

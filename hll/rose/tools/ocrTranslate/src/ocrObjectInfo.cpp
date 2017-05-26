@@ -13,25 +13,43 @@ using namespace std;
 /*****************
  * OcrDbkContext *
  *****************/
-OcrDbkContext::OcrDbkContext(std::string name)
-  : m_name(name) { }
-
-OcrDbkContext::OcrDbkContext(std::string name, SgInitializedName* vdefn, list<SgStatement*> allocStmts, SgPragmaDeclaration* pragma)
+OcrDbkContext::OcrDbkContext(std::string name, OcrDbkType dbkType, SgPragmaDeclaration* pragma)
   : m_name(name),
-    m_vdefn(vdefn),
-    m_allocStmts(allocStmts),
+    m_type(dbkType),
     m_pragma(pragma) { }
 
-SgInitializedName* OcrDbkContext::getSgInitializedName() const {
-  return m_vdefn;
+OcrDbkContext::OcrDbkType OcrDbkContext::getDbkType() const {
+  return m_type;
 }
 
 SgPragmaDeclaration* OcrDbkContext::get_pragma() const {
   return m_pragma;
 }
 
+std::string OcrDbkContext::get_name() const {
+  return m_name;
+}
+
+OcrDbkContext::~OcrDbkContext() { }
+
+/********************
+ * OcrMemDbkContext *
+ ********************/
+OcrMemDbkContext::OcrMemDbkContext(std::string name, SgInitializedName* vdefn, list<SgStatement*> allocStmts, SgPragmaDeclaration* pragma)
+  : OcrDbkContext(name, OcrDbkContext::DBK_mem, pragma),
+    m_vdefn(vdefn),
+    m_allocStmts(allocStmts) { }
+
+SgInitializedName* OcrMemDbkContext::getSgInitializedName() const {
+  return m_vdefn;
+}
+
+SgPragmaDeclaration* OcrMemDbkContext::get_pragma() const {
+  return m_pragma;
+}
+
 // Function that computes the pointer type for the datablock pointer
-SgType* OcrDbkContext::getDbkPtrType() {
+SgType* OcrMemDbkContext::getDbkPtrType() {
   SgType* vtype = m_vdefn->get_type();
   SgType* dbkPtrType = NULL;
   SgType* btype = NULL;
@@ -73,21 +91,21 @@ SgType* OcrDbkContext::getDbkPtrType() {
   };
 }
 
-SgDeclarationStatement* OcrDbkContext::get_declaration() const {
+SgDeclarationStatement* OcrMemDbkContext::get_declaration() const {
   SgDeclarationStatement* stmt = m_vdefn->get_definition();
   assert(stmt);
   return stmt;
 }
 
-list<SgStatement*> OcrDbkContext::get_allocStmts() const {
+list<SgStatement*> OcrMemDbkContext::get_allocStmts() const {
   return m_allocStmts;
 }
 
-string OcrDbkContext::get_name() const {
+string OcrMemDbkContext::get_name() const {
   return m_name;
 }
 
-string OcrDbkContext::str() const {
+string OcrMemDbkContext::str() const {
   ostringstream oss;
   string indent = " ";
   oss << "[DBK: " << m_name << "\n";
@@ -97,9 +115,31 @@ string OcrDbkContext::str() const {
   return oss.str();
 }
 
-OcrDbkContext::~OcrDbkContext() {
+OcrMemDbkContext::~OcrMemDbkContext() {
   // No dynamic memory here to cleanup
 }
+
+/********************
+ * OcrArrDbkContext *
+ ********************/
+OcrArrDbkContext::OcrArrDbkContext(std::string name, SgInitializedName* arrInitName, SgPragmaDeclaration* pragma)
+  : OcrDbkContext(name, OcrDbkContext::DBK_arr, pragma), m_arrInitName(arrInitName) { }
+
+string OcrArrDbkContext::str() const {
+  ostringstream oss;
+  oss << "[OcrArrDbkContext name: " << m_name << ", ";
+  oss << "ndim=" << SageInterface::getDimensionCount(m_arrInitName->get_type()) << ", ";
+  SgType* arrElemType = SageInterface::getArrayElementType(m_arrInitName->get_type());
+  oss << "type=" << AstDebug::astTypeName(arrElemType);
+  oss << "]";
+  return oss.str();
+}
+
+SgInitializedName* OcrArrDbkContext::getArrInitializedName() const {
+  return m_arrInitName;
+}
+
+OcrArrDbkContext::~OcrArrDbkContext() { }
 
 /*****************
  * OcrEvtContext *

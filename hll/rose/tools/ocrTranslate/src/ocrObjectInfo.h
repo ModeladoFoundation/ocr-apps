@@ -15,13 +15,33 @@
  * OcrDbkContext *
  *****************/
 class OcrDbkContext {
+ public:
+  typedef enum {
+    DBK_mem,
+    DBK_arr
+  } OcrDbkType;
+ protected:
+  OcrDbkType m_type;
   std::string m_name;
+  SgPragmaDeclaration* m_pragma;
+ public:
+  OcrDbkContext(std::string name, OcrDbkType dbkType, SgPragmaDeclaration* pragma);
+  OcrDbkType getDbkType() const;
+  SgPragmaDeclaration* get_pragma() const;
+  std::string get_name() const;
+  virtual std::string str() const=0;
+  ~OcrDbkContext();
+};
+typedef boost::shared_ptr<OcrDbkContext> OcrDbkContextPtr;
+
+/********************
+ * OcrMemDbkContext *
+ ********************/
+class OcrMemDbkContext : public OcrDbkContext {
   SgInitializedName* m_vdefn;
   std::list<SgStatement*> m_allocStmts;
-  SgPragmaDeclaration* m_pragma;
 public:
-  OcrDbkContext(std::string name);
-  OcrDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgStatement*> allocStmt, SgPragmaDeclaration* pragma);
+  OcrMemDbkContext(std::string name, SgInitializedName* vdefn, std::list<SgStatement*> allocStmt, SgPragmaDeclaration* pragma);
   SgDeclarationStatement* get_declaration() const;
   SgInitializedName* getSgInitializedName() const;
   SgType* getDbkPtrType();
@@ -29,10 +49,19 @@ public:
   std::string get_name() const;
   SgPragmaDeclaration* get_pragma() const;
   std::string str() const;
-  ~OcrDbkContext();
+  ~OcrMemDbkContext();
 };
+typedef boost::shared_ptr<OcrMemDbkContext> OcrMemDbkContextPtr;
 
-typedef boost::shared_ptr<OcrDbkContext> OcrDbkContextPtr;
+class OcrArrDbkContext : public OcrDbkContext {
+  SgInitializedName* m_arrInitName;
+ public:
+  OcrArrDbkContext(std::string name, SgInitializedName* arrDefn, SgPragmaDeclaration* pragma);
+  SgInitializedName* getArrInitializedName() const;
+  std::string str() const;
+  ~OcrArrDbkContext();
+};
+typedef boost::shared_ptr<OcrArrDbkContext> OcrArrDbkContextPtr;
 
 /*****************
  * OcrEvtContext *
