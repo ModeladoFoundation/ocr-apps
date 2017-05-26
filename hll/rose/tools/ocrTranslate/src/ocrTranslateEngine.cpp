@@ -215,22 +215,31 @@ void OcrTranslator::insertDepDbkDecl(string edtName, list<OcrDbkContextPtr>& dep
       string arrInitName = arrInitializedName->get_name().getString();
       SgScopeStatement* arrInitNameScope = SageInterface::getEnclosingScope(arrInitializedName);
       assert(arrInitNameScope);
+      // Get the AstInfo from where the datablock was created
+      // We need the AstInfo to know the struct type we created for this datablock
       DbkAstInfoPtr dbkAstInfo = m_astInfoManager.getDbkAstInfo(dbkname, arrInitNameScope);
       ArrDbkAstInfoPtr arrDbkAstInfo = boost::dynamic_pointer_cast<ArrDbkAstInfo>(dbkAstInfo);
+      assert(arrDbkAstInfo);
       SgType* dbkType = arrDbkAstInfo->getDbkStructType();
+      // Build a pointer to the struct type
       SgPointerType* dbkPtrType = SageBuilder::buildPointerType(dbkType);
+      // Build the pointer variable
       string dbkPtrName = arrInitName+"DbkPtr";
       SgVariableDeclaration* vdecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, dbkPtrType, slot, depv, basicblock);
       depDbksDeclStmts.push_back(vdecl);
-
+      // Build the guid
       SgVariableSymbol* dbkPtrSymbol = GetVariableSymbol(vdecl, dbkPtrName);
       string guidName(dbkPtrName+"Guid");
       SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
       depDbksDeclStmts.push_back(guidDecl);
-
+      // Build the array pointer
       SgClassDeclaration* dbkStructDecl = arrDbkAstInfo->getDbkStructDecl();
       SgVariableDeclaration* arrPtrDecl = AstBuilder::buildArrPtrDecl(arrInitializedName, dbkPtrSymbol, dbkStructDecl, basicblock);
       depDbksDeclStmts.push_back(arrPtrDecl);
+      // Store the dbkAstInfo
+      DbkAstInfoPtr currDbkAstInfo = boost::make_shared<ArrDbkAstInfo>(dbkname, guidName, dbkPtrName, dbkStructDecl, dbkType,
+								       arrInitializedName->get_name().getString());
+      m_astInfoManager.regDbkAstInfo(dbkname, currDbkAstInfo, basicblock);
     }
 
   } // end for
