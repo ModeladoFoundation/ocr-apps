@@ -42,44 +42,89 @@ void OcrTranslator::insertOcrHeaderFiles() {
 }
 
 void OcrTranslator::translateDbk(string dbkName, OcrDbkContextPtr dbkContext) {
-  Logger::Logger lg("OcrTranslator::translateDbk");
+  Logger::Logger lg("OcrTranslator::translateDbk", Logger::DEBUG);
   // Mark the statements to be removed at the end of this function
   set<SgStatement*> stmtsToRemove;
-  SgInitializedName* varInitializedName = dbkContext->getSgInitializedName();
   SgScopeStatement* scope = SageInterface::getEnclosingScope(dbkContext->get_pragma());
-  SgName varName = varInitializedName->get_name();
-  SgName ocrGuidName(dbkName);
-  SgType* varType = varInitializedName->get_type();
-  SgType* varDbkType = AstBuilder::buildOcrDbkType(varType, scope);
-  SgVariableDeclaration* varDbkDecl = AstBuilder::buildOcrDbkVarDecl(varName, varDbkType, scope);
-  SgVariableDeclaration* varDbkGuid = AstBuilder::buildOcrDbkGuid(ocrGuidName.getString(), scope);
-  // AST Modifications
-  // stmt is the declaration of the datablock variable
-  // We don't need the declaration anymore
-  // Remove the stmt and insert datablock declaration instead
-  SgStatement* stmt = SageInterface::getEnclosingStatement(varInitializedName);
-  // First get the anchor point where the stmt will be inserted
-  SageInterface::insertStatementBefore(stmt, varDbkDecl, true);
-  SageInterface::insertStatementBefore(stmt, varDbkGuid, true);
-  stmtsToRemove.insert(stmt);
-  // Replace each alloc stmt with ocrDbCreate
-  list<SgStatement*> allocStmts = dbkContext->get_allocStmts();
-  list<SgStatement*>::iterator s = allocStmts.begin();
-  for( ; s != allocStmts.end(); ++s) {
-    SgExprStatement* dbCreateStmt = AstBuilder::buildOcrDbCreateFuncCallExp(ocrGuidName, varName, scope, *s);
-    SgStatement* stmtAfterAllocStmt = SageInterface::getNextStatement(*s);
-    SageInterface::insertStatementBefore(stmtAfterAllocStmt, dbCreateStmt, true);
-    // Mark the statement for removal
-    stmtsToRemove.insert(*s);
+  if(dbkContext->getDbkType() == OcrDbkContext::DBK_mem) {
+    OcrMemDbkContextPtr memDbkContext = boost::dynamic_pointer_cast<OcrMemDbkContext>(dbkContext);
+    SgInitializedName* varInitializedName = memDbkContext->getSgInitializedName();
+    SgName varName = varInitializedName->get_name();
+    SgName ocrGuidName(dbkName);
+    SgType* varType = varInitializedName->get_type();
+    SgType* varDbkType = AstBuilder::buildOcrDbkType(varType, scope);
+    SgVariableDeclaration* varDbkDecl = AstBuilder::buildOcrDbkVarDecl(varName, varDbkType, scope);
+    SgVariableDeclaration* varDbkGuid = AstBuilder::buildOcrDbkGuid(ocrGuidName.getString(), scope);
+    // AST Modifications
+    // stmt is the declaration of the datablock variable
+    // We don't need the declaration anymore
+    // Remove the stmt and insert datablock declaration instead
+    SgStatement* stmt = SageInterface::getEnclosingStatement(varInitializedName);
+    // First get the anchor point where the stmt will be inserted
+    SageInterface::insertStatementBefore(stmt, varDbkDecl, true);
+    SageInterface::insertStatementBefore(stmt, varDbkGuid, true);
+    stmtsToRemove.insert(stmt);
+    // Replace each alloc stmt with ocrDbCreate
+    list<SgStatement*> allocStmts = memDbkContext->get_allocStmts();
+    list<SgStatement*>::iterator s = allocStmts.begin();
+    for( ; s != allocStmts.end(); ++s) {
+      SgExprStatement* dbCreateStmt = AstBuilder::buildOcrDbCreateFuncCallExp(ocrGuidName, varName, scope, *s);
+      SgStatement* stmtAfterAllocStmt = SageInterface::getNextStatement(*s);
+      SageInterface::insertStatementBefore(stmtAfterAllocStmt, dbCreateStmt, true);
+      // Mark the statement for removal
+      stmtsToRemove.insert(*s);
+    }
+    // Bookkeeping
+    // Register the variable names we assigned to dbkGuid and dbkPtr
+    DbkAstInfoPtr dbkAstInfo = boost::make_shared<DbkAstInfo>(dbkName, ocrGuidName.getString(), varName.getString());
+    m_astInfoManager.regDbkAstInfo(dbkName, dbkAstInfo, scope);
   }
+  else if(dbkContext->getDbkType() == OcrDbkContext::DBK_arr) {
+    OcrArrDbkContextPtr arrDbkContext = boost::dynamic_pointer_cast<OcrArrDbkContext>(dbkContext);
+    SgInitializedName* arrInitializedName = arrDbkContext->getArrInitializedName();
+    // We need insert the dbk struct declarations in the global scope before all the EDTs
+    SgGlobal* globalScope = SageInterface::getGlobalScope(scope);
+    string dbkStructName = SageInterface::generateUniqueVariableName(globalScope, arrInitializedName->get_name().getString()+"Dbk");
+    SgClassDeclaration* dbkStructDecl = AstBuilder::buildArrDbkStructDecl(dbkStructName, arrInitializedName, globalScope);
+    SgTypedefDeclaration* dbkStructTypeDecl = AstBuilder::buildArrDbkStructTypedefType(dbkStructDecl, globalScope);
+    SgStatement* fstmt = SageInterface::getFirstStatement(globalScope);
+    SageInterface::insertStatementBefore(fstmt, dbkStructDecl);
+    SageInterface::insertStatementBefore(fstmt, dbkStructTypeDecl);
+
+    // Build a guid and pointer to the datablock
+    string dbkGuidName = arrInitializedName->get_name().getString() +"DbkGuid";
+    SgVariableDeclaration* dbkGuidDecl = AstBuilder::buildOcrDbkGuid(dbkGuidName, scope);
+    SgPointerType* dbkPtrType = SageBuilder::buildPointerType(dbkStructTypeDecl->get_type());
+
+    string dbkPtrName = arrInitializedName->get_name().getString()+"DbkPtr";
+    SgVariableDeclaration* dbkPtrDecl = AstBuilder::buildOcrDbkVarDecl(dbkPtrName, dbkPtrType, scope);
+    SgVariableSymbol* dbkPtrSymbol = GetVariableSymbol(dbkPtrDecl, dbkPtrName);
+
+    SgExprStatement* dbCreateStmt = AstBuilder::buildOcrDbCreateFuncCallExp(dbkGuidName, dbkPtrName, scope, dbkStructTypeDecl->get_type());
+    SgVariableDeclaration* arrPtrDecl = AstBuilder::buildArrPtrDecl(arrInitializedName, dbkPtrSymbol, dbkStructDecl, scope);
+
+    SgStatement* enclosingStmt = SageInterface::getEnclosingStatement(arrInitializedName);
+
+    SageInterface::insertStatementBefore(enclosingStmt, dbkGuidDecl);
+    SageInterface::insertStatementBefore(enclosingStmt, dbkPtrDecl);
+    SageInterface::insertStatementBefore(enclosingStmt, dbCreateStmt);
+    SageInterface::insertStatementBefore(enclosingStmt, arrPtrDecl);
+    stmtsToRemove.insert(enclosingStmt);
+    // Bookkeeping
+    DbkAstInfoPtr arrDbkAstInfo = boost::make_shared<ArrDbkAstInfo>(dbkName, dbkGuidName, dbkPtrName, dbkStructDecl, dbkStructTypeDecl->get_type(),
+								    arrInitializedName->get_name().getString());
+    assert(arrDbkAstInfo);
+    // Register the datablock in the scope
+    Logger::debug(lg) << arrDbkAstInfo->str() << endl;
+    Logger::debug(lg) << "registering dbk at scope: " << scope << endl;
+    m_astInfoManager.regDbkAstInfo(dbkName, arrDbkAstInfo, scope);
+  }
+  else assert(false);
   // Now remove all the statements marked for removal
   set<SgStatement*>::iterator st = stmtsToRemove.begin();
   for( ; st != stmtsToRemove.end(); ++st) {
     SageInterface::removeStatement(*st);
   }
-  // Bookkeeping
-  // Register the variable names we assigned to dbkGuid and dbkPtr
-  m_astInfoManager.regDbkAstInfo(dbkName, ocrGuidName.getString(), varName.getString(), scope);
 }
 
 // void OcrTranslator::insertDbkDestroyStmts(string edtName, list<string>& dbksToDestroy, unsigned int slotbegin) {
@@ -145,19 +190,50 @@ void OcrTranslator::insertDepDbkDecl(string edtName, list<OcrDbkContextPtr>& dep
   vector<SgStatement*> depDbksDeclStmts;
   unsigned int slot = slotbegin;
   for( ; dbk != depDbks.end(); ++dbk, ++slot) {
+    OcrDbkContextPtr dbkContext = *dbk;
     string dbkname = (*dbk)->get_name();
-    // Build the pointer
-    string dbkPtrName = (*dbk)->getSgInitializedName()->get_name();
-    SgType* dbkPtrType = (*dbk)->getDbkPtrType();
-    SgVariableDeclaration* vdecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, dbkPtrType, slot, depv, basicblock);
-    depDbksDeclStmts.push_back(vdecl);
-    // Build the Guid
-    string guidName(dbkPtrName+"Guid");
-    SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
-    depDbksDeclStmts.push_back(guidDecl);
-    // Bookkeeping
-    m_astInfoManager.regDbkAstInfo(dbkname, guidName, dbkPtrName, basicblock);
-  }
+    string dbkPtrName, guidName;
+    DbkAstInfoPtr dbkAstInfo;
+    if(dbkContext->getDbkType() == OcrDbkContext::DBK_mem) {
+      OcrMemDbkContextPtr mdbkContext = boost::dynamic_pointer_cast<OcrMemDbkContext>(dbkContext);
+      // Build the pointer
+      dbkPtrName = mdbkContext->getSgInitializedName()->get_name();
+      SgType* dbkPtrType = mdbkContext->getDbkPtrType();
+      SgVariableDeclaration* vdecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, dbkPtrType, slot, depv, basicblock);
+      depDbksDeclStmts.push_back(vdecl);
+      // Build the Guid
+      string guidName(dbkPtrName+"Guid");
+      SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+      depDbksDeclStmts.push_back(guidDecl);
+      dbkAstInfo = boost::make_shared<DbkAstInfo>(dbkname, guidName, dbkPtrName);
+      // Bookkeeping
+      m_astInfoManager.regDbkAstInfo(dbkname, dbkAstInfo, basicblock);
+    }
+    else if(dbkContext->getDbkType() == OcrDbkContext::DBK_arr) {
+      OcrArrDbkContextPtr arrDbkContext = boost::dynamic_pointer_cast<OcrArrDbkContext>(dbkContext);
+      SgInitializedName* arrInitializedName = arrDbkContext->getArrInitializedName();
+      string arrInitName = arrInitializedName->get_name().getString();
+      SgScopeStatement* arrInitNameScope = SageInterface::getEnclosingScope(arrInitializedName);
+      assert(arrInitNameScope);
+      DbkAstInfoPtr dbkAstInfo = m_astInfoManager.getDbkAstInfo(dbkname, arrInitNameScope);
+      ArrDbkAstInfoPtr arrDbkAstInfo = boost::dynamic_pointer_cast<ArrDbkAstInfo>(dbkAstInfo);
+      SgType* dbkType = arrDbkAstInfo->getDbkStructType();
+      SgPointerType* dbkPtrType = SageBuilder::buildPointerType(dbkType);
+      string dbkPtrName = arrInitName+"DbkPtr";
+      SgVariableDeclaration* vdecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, dbkPtrType, slot, depv, basicblock);
+      depDbksDeclStmts.push_back(vdecl);
+
+      SgVariableSymbol* dbkPtrSymbol = GetVariableSymbol(vdecl, dbkPtrName);
+      string guidName(dbkPtrName+"Guid");
+      SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+      depDbksDeclStmts.push_back(guidDecl);
+
+      SgClassDeclaration* dbkStructDecl = arrDbkAstInfo->getDbkStructDecl();
+      SgVariableDeclaration* arrPtrDecl = AstBuilder::buildArrPtrDecl(arrInitializedName, dbkPtrSymbol, dbkStructDecl, basicblock);
+      depDbksDeclStmts.push_back(arrPtrDecl);
+    }
+
+  } // end for
   SageInterface::prependStatementList(depDbksDeclStmts, basicblock);
 }
 
@@ -941,8 +1017,8 @@ void OcrTranslator::translate() {
   try {
     // insert the header files
     insertOcrHeaderFiles();
-    outlineEdts();
     translateDbks();
+    outlineEdts();
     setupEdts();
     outlineMainEdt();
   }

@@ -83,6 +83,52 @@ string DbkAstInfo::str() const {
   return oss.str();
 }
 
+/*****************
+ * ArrDbkAstInfo *
+ *****************/
+ArrDbkAstInfo::ArrDbkAstInfo(std::string dbkname, std::string guidName, std::string ptrName)
+  : DbkAstInfo(dbkname, guidName, ptrName) { }
+ArrDbkAstInfo::ArrDbkAstInfo(std::string dbkname, std::string guidName, std::string ptrName,
+			     SgClassDeclaration* dbkStructDecl, SgType* dbkStructType, std::string arrPtrName)
+  : DbkAstInfo(dbkname, guidName, ptrName),
+    m_dbkStructDecl(dbkStructDecl),
+    m_dbkStructType(dbkStructType),
+    m_arrPtrName(arrPtrName) { }
+// Get functions
+SgClassDeclaration* ArrDbkAstInfo::getDbkStructDecl() const {
+  return m_dbkStructDecl;
+}
+
+SgType* ArrDbkAstInfo::getDbkStructType() const {
+  return m_dbkStructType;
+}
+
+std::string ArrDbkAstInfo::getArrPtrName() const {
+  return m_arrPtrName;
+}
+
+// Set functions
+void ArrDbkAstInfo::setDbkStructDecl(SgClassDeclaration* dbkStructDecl) {
+  m_dbkStructDecl = dbkStructDecl;
+}
+
+void ArrDbkAstInfo::setDbkStructType(SgType* dbkStructType) {
+  m_dbkStructType = dbkStructType;
+}
+
+void ArrDbkAstInfo::setDbkArrPtrName(std::string arrPtrName) {
+  m_arrPtrName = arrPtrName;
+}
+
+std::string ArrDbkAstInfo::str() const {
+  ostringstream oss;
+  oss << "[ArrDbkAstInfo: " << m_dbkname << ", " << m_dbkGuidName << ", " << m_dbkPtrName << ", ";
+  oss << AstDebug::astTypeName(m_dbkStructType) << ", " << m_arrPtrName << "]";
+  return oss.str();
+}
+
+ArrDbkAstInfo::~ArrDbkAstInfo() { }
+
 /**************
  * EvtAstInfo *
  **************/
@@ -301,10 +347,8 @@ LoopControlEdtAstInfo::~LoopControlEdtAstInfo() {
  ******************/
 AstInfoManager::AstInfoManager() { }
 
-DbkAstInfoPtr AstInfoManager::regDbkAstInfo(string dbkname, string dbkGuidName, string dbkPtrName, SgScopeStatement* scope) {
-  DbkAstInfoPtr dbkAstInfoPtr = boost::make_shared<DbkAstInfo>(dbkname, dbkGuidName, dbkPtrName);
-  m_dbkAstInfoMap.insertObjectPtr(dbkname, dbkAstInfoPtr, scope);
-  return dbkAstInfoPtr;
+void AstInfoManager::regDbkAstInfo(string dbkName, DbkAstInfoPtr dbkAstInfo, SgScopeStatement* scope) {
+  m_dbkAstInfoMap.insertObjectPtr(dbkName, dbkAstInfo, scope);
 }
 
 bool AstInfoManager::findEdtAstInfo(string edtName) const {

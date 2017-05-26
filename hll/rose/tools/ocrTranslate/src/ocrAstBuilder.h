@@ -123,8 +123,23 @@ namespace AstBuilder {
   void translateOcrDbk(std::string name, OcrDbkContextPtr dbkContext);
   SgType* buildOcrDbkType(SgType* varType, SgScopeStatement* scope);
   SgVariableDeclaration* buildOcrDbkVarDecl(SgName name, SgType* varDbkType, SgScopeStatement* scope);
-  SgExprStatement* buildOcrDbCreateFuncCallExp(SgName dbkGuidName, SgName dbkPtrName, SgScopeStatement* scope, SgStatement* allocStmt);
+  SgExprStatement* buildOcrDbCreateFuncCallExp(SgName dbkGuidName, SgName dbkPtrName, SgScopeStatement* scope, SgNode* sizeOfRoot);
   SgVariableDeclaration* buildOcrDbkGuid(std::string dbkName, SgScopeStatement* scope);
+  /*!
+   * \brief Build an array variable declaration and wrap it inside a struct declaration
+   * @param[in] dbkStructName struct name for the arr datablock
+   * @param[in] arrInitializedName must be an SgInitializedName of an array declaration with type SgArrayType
+   * @param[in] scope scope where the struct declaration will be created
+   * \return Returns a SgClassDeclaration AST node
+   */
+  SgClassDeclaration* buildArrDbkStructDecl(std::string dbkStructName, SgInitializedName* arrInitializedName, SgScopeStatement* scope);
+  /*!
+   * \brief Build a typedef type for the struct declaration
+   * \return Returns the SgTypedefDeclaration AST node
+   */
+  SgTypedefDeclaration* buildArrDbkStructTypedefType(SgClassDeclaration* dbkStructDecl, SgScopeStatement* scope);
+  SgVariableDeclaration* buildArrPtrDecl(SgInitializedName* arrInitializedName, SgVariableSymbol* dbkPtrSymbol,
+					 SgClassDeclaration* dbkStructDecl, SgScopeStatement* scope);
 };
 
 #endif

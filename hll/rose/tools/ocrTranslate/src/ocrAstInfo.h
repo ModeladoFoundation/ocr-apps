@@ -31,6 +31,7 @@ SgVariableSymbol* GetVariableSymbol(SgInitializedName* vsgn);
  * The symbol is looked up using the SageInterface::lookupSymbolInParentScopes(varname)
  */
 class DbkAstInfo {
+ protected:
   std::string m_dbkname;
   std::string m_dbkGuidName;
   std::string m_dbkPtrName;
@@ -39,9 +40,52 @@ class DbkAstInfo {
   std::string getDbkName() const;
   std::string getDbkGuidName() const;
   std::string getDbkPtrName() const;
-  std::string str() const;
+  virtual std::string str() const;
 };
 typedef boost::shared_ptr<DbkAstInfo> DbkAstInfoPtr;
+
+/*****************
+ * ArrDbkAstInfo *
+ *****************/
+/*!
+ * \brief ArrDbkAstInfo stores the struct type, struct ptr name, guid name and the array name
+ *
+ * 1. The idea is to wrap the array declaration inside a struct definition
+ * 2. ocrDbCreate allocates memory for a multi-dimensional array using the size of struct type
+ * 3. Finally create a pointer to the array with the same name as the array and set the pointer
+ *     to array from the struct type
+ * Example:
+ * float weights[5][5];
+ * ------>
+ * struct weightsDbk {
+ *  float weights[5][5];
+ * };
+ * typedef struct weightsDbk weightsDbk_t;
+ *
+ * weightsDbk_t* weightsDbkPtr;
+ * ocrDbCreate(&dbkGuid, (void**)&weightsDbkPtr,...)
+ * float (*weights)[5][5] = weightsDbkPtr->weights;
+ */
+class ArrDbkAstInfo : public DbkAstInfo {
+  SgType* m_dbkStructType;
+  SgClassDeclaration* m_dbkStructDecl;
+  std::string m_arrPtrName;
+ public:
+  ArrDbkAstInfo(std::string dbkname, std::string guidName, std::string ptrName);
+  ArrDbkAstInfo(std::string dbkname, std::string guidName, std::string ptrName, SgClassDeclaration* dbkStructDecl,
+		SgType* dbkStructType, std::string arrPtrName);
+  // Get functions
+  SgClassDeclaration* getDbkStructDecl() const;
+  SgType* getDbkStructType() const;
+  std::string getArrPtrName() const;
+  // Set functions
+  void setDbkStructDecl(SgClassDeclaration* dbkStructDecl);
+  void setDbkStructType(SgType* dbkStructType);
+  void setDbkArrPtrName(std::string arrPtrName);
+  std::string str() const;
+  ~ArrDbkAstInfo();
+};
+typedef boost::shared_ptr<ArrDbkAstInfo> ArrDbkAstInfoPtr;
 
 /**************
  * EvtAstInfo *
@@ -198,7 +242,7 @@ class AstInfoManager {
  public:
   AstInfoManager();
   bool findEdtAstInfo(std::string edtName) const;
-  DbkAstInfoPtr regDbkAstInfo(std::string dbkname, std::string dbkGuidName, std::string dbkPtrName, SgScopeStatement* scope);
+  void regDbkAstInfo(std::string dbkName, DbkAstInfoPtr dbkAstInfo, SgScopeStatement* scope);
   EvtAstInfoPtr regEvtAstInfo(std::string evtName, std::string evtGuidName, SgScopeStatement* scope);
   EdtAstInfoPtr regEdtAstInfo(std::string edtName);
   LoopControlEdtAstInfoPtr regLoopControlEdtAstInfo(std::string edtName);
