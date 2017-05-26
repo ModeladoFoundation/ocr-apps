@@ -159,6 +159,7 @@ jobtype_ocr_run_app_tg_newlib = {
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/src',
                   'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'I_PATH': '${T_PATH}/install',
+                  'PATH': '${PATH}:/opt/intel/tools/impi/5.1.1.109/intel64/bin',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${I_PATH}'
               }
 }
@@ -178,6 +179,7 @@ jobtype_ocr_run_app_tg = {
                   'APPS_LIBS_ROOT': '${APPS_ROOT}/libs/src',
                   'OCR_INSTALL': '${JJOB_SHARED_HOME}/ocr/ocr/install',
                   'I_PATH': '${T_PATH}/install',
+                  'PATH': '${PATH}:/opt/intel/tools/impi/5.1.1.109/intel64/bin',
                   'WORKLOAD_INSTALL_ROOT': '${APPS_ROOT}/${I_PATH}'
               }
 }
