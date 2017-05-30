@@ -6,11 +6,33 @@
 # 1 as value. If you are adding a new app , find avg. runtime by
 # running app locally and use it.
 
+# TODO: establish workload arguments and average time for baseline
+# 'time_ocr-run-kernel-printf-x86-remote-regression':0,
+# 'scale_ocr-run-kernel-printf-x86-remote-scaling':1,
+# 'time_ocr-run-kernel-quicksort-x86-remote-regression':0.01,
+# 'scale_ocr-run-kernel-quicksort-x86-remote-scaling':1,
+# 'time_ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression':0.20,
+# 'scale_ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling':1,
+# 'time_ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression':1,
+# 'time_ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression':1,
+# 'time_ocr-run-kernel-hpcg-intel-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-hpcg-intel-x86-remote-regression':1,
+# 'time_ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression':1,
+# 'time_ocr-run-kernel-nqueens-ocr-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-nqueens-ocr-x86-remote-regression':1,
+# 'time_ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression':1,
+# 'time_ocr-run-kernel-reduction-intel-x86-remote-regression':TODO,
+# 'scale_ocr-run-kernel-reduction-intel-x86-remote-regression':1,
+
 test_baseval={
                 'time_ocr-run-kernel-cholesky-x86-remote-regression':0.381,
-                'scale_ocr-run-kernel-cholesky-x86-remote-scaling':1.0,
+                'scale_ocr-run-kernel-cholesky-x86-remote-scaling':1,
                 'time_ocr-run-kernel-fft-x86-remote-regression':0.893,
-                'scale_ocr-run-kernel-fft-x86-remote-scaling':1.0,
+                'scale_ocr-run-kernel-fft-x86-remote-scaling':1,
                 'time_ocr-run-kernel-fibonacci-x86-remote-regression':0.083,
                 'scale_ocr-run-kernel-fibonacci-x86-remote-scaling':1,
                 'time_ocr-run-kernel-smithwaterman-x86-remote-regression':0.047,

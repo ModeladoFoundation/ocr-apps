@@ -294,6 +294,11 @@ else
   debug_post_prerun: prerun
 endif
 
+# Rule to allow generating a cfg file with inhereted application's specific values
+.PHONY: run_config_generator
+run_config_generator:
+	$(ATI)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(OCR_CONFIG) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
+
 .PHONY: run_internal
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
 

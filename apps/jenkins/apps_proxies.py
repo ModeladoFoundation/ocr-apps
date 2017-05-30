@@ -114,31 +114,32 @@ job_ocr_run_kernel_XSBench_intel_sharedDB_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/XSBench-intel-sharedDB/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_XSBench_intel_sharedDB_x86_remote_regression = {
-    'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression',
-    'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'XSBench-intel-sharedDB x86 ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
-                  'S_PATH': '${T_PATH}/src',
-                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_XSBench_intel_sharedDB_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'XSBench-intel-sharedDB x86 ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+#                   'S_PATH': '${T_PATH}/src',
+#                   'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+#               }
+# }
 
-job_ocr_run_kernel_XSBench_intel_sharedDB_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'XSBench-intel-sharedDB x86 ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
-                  'S_PATH': '${T_PATH}/src',
-                  'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
-              }
-}
+# job_ocr_run_kernel_XSBench_intel_sharedDB_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-XSBench-intel-sharedDB-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'XSBench-intel-sharedDB x86 ocr-run-kernel-XSBench-intel-sharedDB-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'XSBench/refactored/ocr/intel-sharedDB',
+#                   'S_PATH': '${T_PATH}/src',
+#                   'WORKLOAD_ARGS': '-s small -l 100000 -t 32',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_XSBench_intel_sharedDB_mpi = {
@@ -240,31 +241,32 @@ job_ocr_run_kernel_miniAMR_intel_bryan_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/miniAMR-intel-bryan/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_miniAMR_intel_bryan_x86_remote_regression = {
-    'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression',
-    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'miniAMR-intel-bryan x86 ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_miniAMR_intel_bryan_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'miniAMR-intel-bryan x86 ocr-run-kernel-miniAMR-intel-bryan-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
-job_ocr_run_kernel_miniAMR_intel_bryan_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'miniAMR-intel-bryan x86 ocr-run-kernel-miniAMR-intel-bryan-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# job_ocr_run_kernel_miniAMR_intel_bryan_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-miniAMR-intel-bryan-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-miniAMR-intel-bryan-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'miniAMR-intel-bryan x86 ocr-run-kernel-miniAMR-intel-bryan-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'miniAMR/refactored/ocr/intel-bryan',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_miniAMR_intel_bryan_mpi = {
@@ -374,31 +376,32 @@ job_ocr_run_kernel_hpcg_intel_Eager_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel-Eager/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_hpcg_intel_Eager_x86_remote_regression = {
-    'name': 'ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression',
-    'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'hpcg-intel-Eager x86 ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_hpcg_intel_Eager_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'hpcg-intel-Eager x86 ocr-run-kernel-hpcg-intel-Eager-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
-job_ocr_run_kernel_hpcg_intel_Eager_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-hpcg-intel-Eager-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'hpcg-intel-Eager x86 ocr-run-kernel-hpcg-intel-Eager-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# job_ocr_run_kernel_hpcg_intel_Eager_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-hpcg-intel-Eager-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-hpcg-intel-Eager-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'hpcg-intel-Eager x86 ocr-run-kernel-hpcg-intel-Eager-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'hpcg/refactored/ocr/intel-Eager',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_hpcg_intel_Eager_mpi = {
@@ -509,31 +512,32 @@ job_ocr_run_kernel_hpcg_intel_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/hpcg-intel/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_hpcg_intel_x86_remote_regression = {
-    'name': 'ocr-run-kernel-hpcg-intel-x86-remote-regression',
-    'depends': ('ocr-build-kernel-hpcg-intel-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'hpcg-intel x86 ocr-run-kernel-hpcg-intel-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'hpcg/refactored/ocr/intel',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_hpcg_intel_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-hpcg-intel-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-hpcg-intel-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'hpcg-intel x86 ocr-run-kernel-hpcg-intel-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'hpcg/refactored/ocr/intel',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
-job_ocr_run_kernel_hpcg_intel_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-hpcg-intel-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-hpcg-intel-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'hpcg-intel x86 ocr-run-kernel-hpcg-intel-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'hpcg/refactored/ocr/intel',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# job_ocr_run_kernel_hpcg_intel_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-hpcg-intel-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-hpcg-intel-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'hpcg-intel x86 ocr-run-kernel-hpcg-intel-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'hpcg/refactored/ocr/intel',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_hpcg_intel_mpi = {
@@ -644,31 +648,32 @@ job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/CoMD-intel-chandra-tiled/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86_remote_regression = {
-    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression',
-    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'CoMD-intel-chandra-tiled x86 ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'CoMD-intel-chandra-tiled x86 ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
-job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'CoMD-intel-chandra-tiled x86 ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# job_ocr_run_kernel_CoMD_intel_chandra_tiled_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-CoMD-intel-chandra-tiled-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'CoMD-intel-chandra-tiled x86 ocr-run-kernel-CoMD-intel-chandra-tiled-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'CoMD/refactored/ocr/intel-chandra-tiled',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_CoMD_intel_chandra_tiled_mpi = {
@@ -778,31 +783,32 @@ job_ocr_run_kernel_nqueens_ocr_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/nqueens-ocr/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_nqueens_ocr_x86_remote_regression = {
-    'name': 'ocr-run-kernel-nqueens-ocr-x86-remote-regression',
-    'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'nqueens-ocr x86 ocr-run-kernel-nqueens-ocr-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'nqueens/refactored/ocr',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_nqueens_ocr_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-nqueens-ocr-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'nqueens-ocr x86 ocr-run-kernel-nqueens-ocr-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'nqueens/refactored/ocr',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
-job_ocr_run_kernel_nqueens_ocr_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-nqueens-ocr-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'nqueens-ocr x86 ocr-run-kernel-nqueens-ocr-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'nqueens/refactored/ocr',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# job_ocr_run_kernel_nqueens_ocr_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-nqueens-ocr-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-nqueens-ocr-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'nqueens-ocr x86 ocr-run-kernel-nqueens-ocr-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'nqueens/refactored/ocr',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
 ## Stencil2D-intel-channelEVTs
 
@@ -840,31 +846,32 @@ job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/Stencil2D-intel-channelEVTs/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86_remote_regression = {
-    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression',
-    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'Stencil2D-intel-channelEVTs x86 ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
-                  'S_PATH': '${T_PATH}',
-                  'WORKLOAD_ARGS': '2048 32 1000',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'Stencil2D-intel-channelEVTs x86 ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+#                   'S_PATH': '${T_PATH}',
+#                   'WORKLOAD_ARGS': '2048 32 1000',
+#               }
+# }
 
-job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'Stencil2D-intel-channelEVTs x86 ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
-                  'S_PATH': '${T_PATH}',
-                  'WORKLOAD_ARGS': '2048 32 1000',
-              }
-}
+# job_ocr_run_kernel_Stencil2D_intel_channelEVTs_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-Stencil2D-intel-channelEVTs-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'Stencil2D-intel-channelEVTs x86 ocr-run-kernel-Stencil2D-intel-channelEVTs-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'Stencil2D/refactored/ocr/intel-channelEVTs',
+#                   'S_PATH': '${T_PATH}',
+#                   'WORKLOAD_ARGS': '2048 32 1000',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_Stencil2D_intel_channelEVTs_mpi = {
@@ -974,31 +981,32 @@ job_ocr_run_kernel_reduction_intel_x86 = {
 #     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/reduction-intel/ocr/install/x86'}
 # }
 
-job_ocr_run_kernel_reduction_intel_x86_remote_regression = {
-    'name': 'ocr-run-kernel-reduction-intel-x86-remote-regression',
-    'depends': ('ocr-build-kernel-reduction-intel-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'reduction-intel x86 ocr-run-kernel-reduction-intel-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'reduction/refactored/ocr/intel',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_reduction_intel_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-reduction-intel-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-reduction-intel-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'reduction-intel x86 ocr-run-kernel-reduction-intel-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'reduction/refactored/ocr/intel',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
-job_ocr_run_kernel_reduction_intel_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-reduction-intel-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-reduction-intel-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'reduction-intel x86 ocr-run-kernel-reduction-intel-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'reduction/refactored/ocr/intel',
-                  'S_PATH': '${T_PATH}',
-                  #'WORKLOAD_ARGS': '',
-              }
-}
+# job_ocr_run_kernel_reduction_intel_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-reduction-intel-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-reduction-intel-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'reduction-intel x86 ocr-run-kernel-reduction-intel-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'reduction/refactored/ocr/intel',
+#                   'S_PATH': '${T_PATH}',
+#                   #'WORKLOAD_ARGS': '',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_reduction_intel_mpi = {

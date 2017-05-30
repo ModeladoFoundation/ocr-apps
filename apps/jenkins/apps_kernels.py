@@ -635,27 +635,28 @@ job_ocr_verify_kernel_printf_x86 = {
     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/printf/ocr/install/x86'}
 }
 
-job_ocr_run_kernel_printf_x86_remote_regression = {
-    'name': 'ocr-run-kernel-printf-x86-remote-regression',
-    'depends': ('ocr-build-kernel-printf-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'printf x86 ocr-run-kernel-printf-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'printf/ocr',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_printf_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-printf-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-printf-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'printf x86 ocr-run-kernel-printf-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'printf/ocr',
+#               }
+# }
 
-job_ocr_run_kernel_printf_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-printf-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-printf-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'printf x86 ocr-run-kernel-printf-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'printf/ocr',
-              }
-}
+# job_ocr_run_kernel_printf_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-printf-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-printf-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'printf x86 ocr-run-kernel-printf-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'printf/ocr',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_printf_mpi = {
@@ -831,27 +832,28 @@ job_ocr_verify_kernel_quicksort_x86 = {
     'env-vars': { 'WORKLOAD_EXEC': '${APPS_ROOT}/quicksort/ocr/install/x86'}
 }
 
-job_ocr_run_kernel_quicksort_x86_remote_regression = {
-    'name': 'ocr-run-kernel-quicksort-x86-remote-regression',
-    'depends': ('ocr-build-kernel-quicksort-x86',),
-    'jobtype': 'ocr-run-app-regression',
-    'run-args': 'quicksort x86 ocr-run-kernel-quicksort-x86-remote-regression 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'quicksort/ocr',
-              }
-}
+# TODO: calibrate and add to baselineVal.py
+# job_ocr_run_kernel_quicksort_x86_remote_regression = {
+#     'name': 'ocr-run-kernel-quicksort-x86-remote-regression',
+#     'depends': ('ocr-build-kernel-quicksort-x86',),
+#     'jobtype': 'ocr-run-app-regression',
+#     'run-args': 'quicksort x86 ocr-run-kernel-quicksort-x86-remote-regression 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'quicksort/ocr',
+#               }
+# }
 
-job_ocr_run_kernel_quicksort_x86_remote_scaling = {
-    'name': 'ocr-run-kernel-quicksort-x86-remote-scaling',
-    'depends': ('ocr-build-kernel-quicksort-x86',),
-    'jobtype': 'ocr-run-app-scaling',
-    'run-args': 'quicksort x86 ocr-run-kernel-quicksort-x86-remote-scaling 10',
-    'sandbox': ('shared','inherit0'),
-    'env-vars': { 'T_ARCH': 'x86',
-                  'T_PATH': 'quicksort/ocr',
-              }
-}
+# job_ocr_run_kernel_quicksort_x86_remote_scaling = {
+#     'name': 'ocr-run-kernel-quicksort-x86-remote-scaling',
+#     'depends': ('ocr-build-kernel-quicksort-x86',),
+#     'jobtype': 'ocr-run-app-scaling',
+#     'run-args': 'quicksort x86 ocr-run-kernel-quicksort-x86-remote-scaling 10',
+#     'sandbox': ('shared','inherit0'),
+#     'env-vars': { 'T_ARCH': 'x86',
+#                   'T_PATH': 'quicksort/ocr',
+#               }
+# }
 
 # MPI version
 job_ocr_build_kernel_quicksort_mpi = {
