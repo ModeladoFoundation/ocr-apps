@@ -1,6 +1,6 @@
 # Following script parses all stat files ( 1 per build )
-# present in archive dir and gnereates an input file
-# that contains trend line statistics . This is fed
+# present in archive dir and generates an input file
+# that contains trend line statistics. This is fed
 # to plotgraph.py which generates trendline plots
 #
 # Generated stat file has following format:
@@ -49,11 +49,14 @@ def main():
         # Extract test data from the stat file ( one per build ) in Archive dir
         for row in reader:
             key                    = row[0]                      # Test name - Key
-            filenameExecTimeTuple  = (modifiedFileName , (float(row[1])/float(baselineVal.test_baseval[key]))) # Value of key , Normalized runtimes
-            if key not in testdict:
-               testdict.setdefault(key,[filenameExecTimeTuple])
-            else:
-               testdict[key].append(filenameExecTimeTuple)
+            # Only consider entries available in the baseline dictionary
+            if key in baselineVal.test_baseval:
+                baseval = baselineVal.test_baseval[key]
+                filenameExecTimeTuple  = (modifiedFileName , (float(row[1])/float(baseval))) # Value of key , Normalized runtimes
+                if key not in testdict:
+                    testdict.setdefault(key,[filenameExecTimeTuple])
+                else:
+                    testdict[key].append(filenameExecTimeTuple)
         fd.close()
 
     # Purge old output file , if exist
