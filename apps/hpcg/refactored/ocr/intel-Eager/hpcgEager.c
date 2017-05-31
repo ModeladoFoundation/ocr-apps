@@ -624,53 +624,39 @@ sends the private block (to either spmv or smooth)
 
     for(i=0;i<26;i++) {
         recvPTR[i] = DEPVARRAY(unpack,block,i,ptr);
-        }
+    }
 
     u32 myrank = pbPTR->myrank;
     u32 debug = pbPTR->debug;
     gather_t * gather = &(pbPTR->gather[level]);
-
-
     double * dest = (double *) (((u64) ptr) + pbPTR->vector_offset[level][vectorIndex]);
-
-if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] "GUIDF" \n", myrank, i, GUIDA(depv[i].guid));
-
-
-
-
-    ocrGuid_t sticky;
-
-
+    if(debug > 1) for(i=0;i<27;i++) PRINTF("UN%d depv[%d] "GUIDF" \n", myrank, i, GUIDA(depv[i].guid));
     if(debug > 0) PRINTF("UN%d L%d \n", myrank, level);
     double * b;
-if(debug >1 ) for(i=0;i<pbPTR->mt[level];i++) PRINTF("UN%d i %d v %f \n", myrank, i, *(dest+i));
+    if(debug >1 ) for(i=0;i<pbPTR->mt[level];i++) PRINTF("UN%d i %d v %f \n", myrank, i, *(dest+i));
 //for(i=0;i<pbPTR->mt[level];i++) PRINTF("UN%d i %d v %f \n", myrank, i, *(dest+i));
 
     dest += pbPTR->mt[level];  //skip over existing vector
-
-
-
-
-
 
     u32 j, len;
     double * a;
 
 #ifdef COMPUTE
     for(i=0;i<26;i++) {
-if(debug > 1) PRINTF("UN%d start i %d\n", myrank, i);
+        if(debug > 1) PRINTF("UN%d start i %d\n", myrank, i);
         b = recvPTR[i];
         len = gather->l1[i]*gather->l2[i];
-        if(b == NULL) for(j=0;j<len;j++) *dest++ = 0.0;
-          else {
-
+        if(b == NULL)
+            for(j=0;j<len;j++)
+                *dest++ = 0.0;
+        else {
             for(j=0;j<len;j++) {
-if(debug >1) PRINTF("UN%d i %d v %f\n", myrank, i, *b);
-//PRINTF("rank%d UN i %d v %f\n", myrank, j, *b);
-               *dest++ = *b++;
+                if(debug >1) PRINTF("UN%d i %d v %f\n", myrank, i, *b);
+                //PRINTF("rank%d UN i %d v %f\n", myrank, j, *b);
+                *dest++ = *b++;
             }
-
         }
+        ocrDbRelease(DEPVARRAY(unpack,block,i,guid));
     }
 #endif
 
@@ -724,31 +710,26 @@ ocrGuid_t packEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
     double *src, * s, * d;
 
     for(i=0;i<26;i++) {
-if(debug > 0) PRINTF("PK%d L%d  DIR%d \n", myrank, level, i);
+        if(debug > 0) PRINTF("PK%d L%d  DIR%d \n", myrank, level, i);
         if(!ocrGuidIsNull(pbPTR->haloSendEVT[i][0])) {
-
-if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" \n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i][pbPTR->toggle]), GUIDA(haloDBK));
-        haloDBK = DEPVARRAY(pack,halo,i,guid);
-        src = vector;
-        d = DEPVARRAY(pack,halo,i,ptr);
-
-
+            if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" \n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i][pbPTR->toggle]), GUIDA(haloDBK));
+            haloDBK = DEPVARRAY(pack,halo,i,guid);
+            src = vector;
+            d = DEPVARRAY(pack,halo,i,ptr);
 #ifdef COMPUTE
-
-
-        s = src + *start;
-        for(i2=0;i2<*l2;i2++) {
-            for(i1=0;i1<*l1;i1++) {
-                *(d++) = *s;
-                s += *p1;
+            s = src + *start;
+            for(i2=0;i2<*l2;i2++) {
+                for(i1=0;i1<*l1;i1++) {
+                    *(d++) = *s;
+                    s += *p1;
+                }
+                s += *p2;
             }
-            s += *p2;
-        }
 #endif
-if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" \n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i][pbPTR->toggle]), GUIDA(haloDBK));
+            if(debug > 0) PRINTF("PK%d L%d  DIR%d satisfy "GUIDF" with "GUIDF" \n", myrank, level, i, GUIDA(pbPTR->haloSendEVT[i][pbPTR->toggle]), GUIDA(haloDBK));
             ocrDbRelease(haloDBK);
             ocrEventSatisfy(pbPTR->haloSendEVT[i][pbPTR->toggle], haloDBK);
-         }
+        }
 
          start++;
          l1++;
@@ -828,18 +809,16 @@ packs data and sends
     time[0] = getTime();
 
     u32 debug = pbPTR->debug;
-
-
     u32 myrank = pbPTR->myrank;
 
     u32 i, errno;
 
-if(debug != 0) PRINTF("HE%d start\n", myrank);
-if(debug != 0) PRINTF("HE%d start pbDBK "GUIDF" \n", myrank, GUIDA(pbDBK));
-if(debug != 0) PRINTF("HE%d start level %d \n", myrank, level);
-if(debug != 0) PRINTF("HE%d start vectorIndex %d \n", myrank, vectorIndex);
-if(debug != 0) PRINTF("HE%d start unpackEVT "GUIDF" \n", myrank, GUIDA(unpackEVT));
-if(debug != 0) PRINTF("HE%d start packEVT "GUIDF" \n", myrank, GUIDA(packEVT));
+    if(debug != 0) PRINTF("HE%d start\n", myrank);
+    if(debug != 0) PRINTF("HE%d start pbDBK "GUIDF" \n", myrank, GUIDA(pbDBK));
+    if(debug != 0) PRINTF("HE%d start level %d \n", myrank, level);
+    if(debug != 0) PRINTF("HE%d start vectorIndex %d \n", myrank, vectorIndex);
+    if(debug != 0) PRINTF("HE%d start unpackEVT "GUIDF" \n", myrank, GUIDA(unpackEVT));
+    if(debug != 0) PRINTF("HE%d start packEVT "GUIDF" \n", myrank, GUIDA(packEVT));
 
     ocrGuid_t packEDT;
     packPRM_t paramPack;
@@ -850,17 +829,10 @@ if(debug != 0) PRINTF("HE%d start packEVT "GUIDF" \n", myrank, GUIDA(packEVT));
     ocrEdtCreate(&packEDT, pbPTR->packTML, EDT_PARAM_DEF, (u64 *) packPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myEdtAffinityHNT, NULL);
 
     for(i=0;i<26;i++) {
-if(debug != 0) PRINTF("HE%d pack%d haloDBK "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloDBK[i][pbPTR->toggle]));
+        if(debug != 0) PRINTF("HE%d pack%d haloDBK "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloDBK[i][pbPTR->toggle]));
         ocrAddDependence(pbPTR->haloDBK[i][pbPTR->toggle], packEDT, SLOTARRAY(pack,halo,i), DB_MODE_RW);
     }
-
-
-
-if(debug > 0) PRINTF("HE%d after launch pack\n", myrank);
-
-
-
-
+    if(debug > 0) PRINTF("HE%d after launch pack\n", myrank);
     ocrGuid_t unpackEDT;
     unpackPRM_t paramUnpack;
     unpackPRM_t * unpackPRM = &paramUnpack;
@@ -869,17 +841,14 @@ if(debug > 0) PRINTF("HE%d after launch pack\n", myrank);
     PRM(unpack,returnEVT) = unpackEVT;
     ocrEdtCreate(&unpackEDT, pbPTR->unpackTML, EDT_PARAM_DEF, (u64 *) unpackPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myEdtAffinityHNT, NULL);
     for(i=0;i<26;i++) {
-if(debug != 0) PRINTF("HE%d unpack%d recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloRecvEVT[i][pbPTR->toggle]));
+        if(debug != 0) PRINTF("HE%d unpack%d recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloRecvEVT[i][pbPTR->toggle]));
         ocrAddDependence(pbPTR->haloRecvEVT[i][pbPTR->toggle], unpackEDT, SLOTARRAY(unpack,block,i), DB_MODE_RO);
     }
 
     ocrDbRelease(pbDBK); //needed because toggle changed
     ocrAddDependence(pbDBK, unpackEDT, SLOT(unpack,privateBlock), DB_MODE_RW);
     ocrAddDependence(pbDBK, packEDT, SLOT(pack,privateBlock), DB_MODE_RO);
-
-if(debug > 0) PRINTF("HE%d after launch unpack\n", myrank);
-
-
+    if(debug > 0) PRINTF("HE%d after launch unpack\n", myrank);
     return(NULL_GUID);
 }
 
@@ -2011,7 +1980,7 @@ if(sbPTR->debug > 0) PRINTF("I%d\n", myrank);
     pbPTR->npz = sbPTR->npz;
     pbPTR->maxIter = sbPTR->maxIter;
     pbPTR->debug = sbPTR->debug;
-
+    pbPTR->toggle = 0;
 
 
     pbPTR->finalOnceEVT = sbPTR->finalOnceEVT;
@@ -2279,12 +2248,8 @@ if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
                 } else {
 
 //create EAGER datablocks
-
-
                     ocrDbCreate(&(pbPTR->haloDBK[ind][0]), (void **) &dummy, (pbPTR->gather[0]).length[ind]*sizeof(double), DB_PROP_NONE, &pbPTR->myDbkAffinityHNT, NO_ALLOC);
                     ocrDbCreate(&(pbPTR->haloDBK[ind][1]), (void **) &dummy, (pbPTR->gather[0]).length[ind]*sizeof(double), DB_PROP_NONE, &pbPTR->myDbkAffinityHNT, NO_ALLOC);
-
-
 //send
                     ocrDbCreate(&channelDBK, (void**) &channelPTR, 2*sizeof(ocrGuid_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
                     ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, 26*myrank + ind);
@@ -2293,23 +2258,17 @@ if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
                     ocrEventCreateParams(&(pbPTR->haloRecvEVT[ind][1]), OCR_EVENT_CHANNEL_T, false, &params);
                     ((ocrGuid_t *)channelPTR)[0] = pbPTR->haloRecvEVT[ind][0];
                     ((ocrGuid_t *)channelPTR)[1] = pbPTR->haloRecvEVT[ind][1];
-
 //PRINTF("HI%d quids "GUIDF" "GUIDF" \n", myrank, GUIDA(((ocrGuid_t *)channelPTR)[0]), GUIDA(((ocrGuid_t *) channelPTR)[1]));
                     ocrDbRelease(channelDBK);
                     ocrEventSatisfy(stickyEVT, channelDBK);
-
 //receive
                     index = 26*(myrank + k*pbPTR->npx*pbPTR->npy + j*pbPTR->npx + i) + 25-ind;
 //PRINTF("I%d i%d j%d k%d ind%d index in %d \n", myrank, i, j, k, ind, index);
                     ocrGuidFromIndex(&(stickyEVT), sbPTR->haloRangeGUID, index);
                     ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     ocrAddDependence(stickyEVT, channelInitEDT, SLOTARRAY(channelInit,channel,ind), DB_MODE_RW);
-
-
                     ind++;
                 }
-
-
         }
 
 //initialize four matrices
@@ -2317,32 +2276,19 @@ if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
 //
 
 
-   void * ptr = (void *) pbPTR;
+    void * ptr = (void *) pbPTR;
 
     matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[0], myrank, (double *) (((u64) ptr) + (u64) pbPTR->matrix_offset[0]), (u32 *) (((u64) ptr) + (u64) pbPTR->diagonal_index_offset[0]), (u32 *)(((u64) ptr) + (u64) pbPTR->column_index_offset[0]), (s32 *) (((u64) ptr) + (u64) pbPTR->vector_offset[0][Z]));
     matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[1], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[1]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[1]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[1]), (s32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
     matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[2], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[2]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[2]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[2]), (s32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
     matrixfill(pbPTR->npx, pbPTR->npy, pbPTR->npz, pbPTR->m[3], myrank, (double *) (((u64) ptr) + pbPTR->matrix_offset[3]), (u32 *) (((u64) ptr) + pbPTR->diagonal_index_offset[3]), (u32 *)(((u64) ptr) + pbPTR->column_index_offset[3]), (s32 *) (((u64) ptr) + pbPTR->vector_offset[0][Z]));
-
 //initialize b vector
-
     vectorfill(pbPTR->mt[0], (double *) (((u64) ptr) + pbPTR->vector_offset[0][B]), (double *) (((u64) ptr) + pbPTR->matrix_offset[0]));
-
-
-
-
 //launch
-
-
     ocrDbRelease(pbDBK);
     ocrAddDependence(pbDBK, channelInitEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
     ocrDbRelease(rpDBK);
     ocrAddDependence(rpDBK, channelInitEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
-
-
-
-
-
     return NULL_GUID;
 }
 
@@ -2368,12 +2314,7 @@ ocrGuid_t wrapUpEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     return NULL_GUID;
 }
 
-
-
-
-
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-
 
 /*
 mainEDT is executed first
