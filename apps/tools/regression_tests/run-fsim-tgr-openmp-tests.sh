@@ -188,7 +188,7 @@ for TEST in $TESTS; do
   # We need to export this for the fsim.cfg file.
   export TGKRNL="$APPS_ROOT/libs/install/tg-xe/lib/tgkrnl-tgr"
 
-  export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+  export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
 
   declare -a REGEXS=(
     "TGR-MAIN: starting"

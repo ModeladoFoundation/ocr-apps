@@ -35,15 +35,15 @@ for TEST in $TESTS; do
   case $TEST in
     rtl-asm)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/tests/rtl-asm
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
       ;;
     rtl-asm2)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/tests/rtl-asm2
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
       ;;
     rtl-asm8)
       export WORKLOAD_INSTALL=$TG_INSTALL/../fsim/tests/rtl-asm8
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/rtl-asm.cfg"
       ;;
     *)
       echo "Invalid test name '$TEST'" 1>&2

@@ -87,7 +87,7 @@ for TEST in $TESTS; do
   case $TEST in
     c_test_1|c_test_1.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("TGR-CONSOLE: (XE1): c_test_1 starting"
                "TGR-CONSOLE: (XE1): tgr_mmap succeeded"
                "TGR-CONSOLE: (XE1): OK_1"
@@ -97,7 +97,7 @@ for TEST in $TESTS; do
       ;;
     c_test_2|c_test_2.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       # Make sure that the testing environment from last time was cleaned up
       rm -rf $WORKLOAD_INSTALL/ce-os-subdir
       # NOTE: clean_path comes from setup-test-env.sh
@@ -116,7 +116,7 @@ for TEST in $TESTS; do
       ;;
     c_test_3|c_test_3.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/libs/src/libtgr/tg-ce/test"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("TGR-MSG: clone entry"
                "TGR-MSG: XE 0x1: Cloned XE 0x2, entry 0x[0-9a-f]\+, stack top 0x[0-9a-f]\+"
                "TGR-CONSOLE: (XE2): Clone XE 0x2: 0x[0-9a-f]\+"
@@ -139,7 +139,7 @@ for TEST in $TESTS; do
       ;;
     legacy_hello|legacy_hello.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       # NOTE: It is very unlikly, but if this test is run just as the UTS time is
       # turning midnight, it may fail as the day will change as it is running.
       REGEXS+=("Hello World!" "time = $(date -u +'%a %b %-d ..:..:.. %Y')")
@@ -147,7 +147,7 @@ for TEST in $TESTS; do
       ;;
     legacy_cxxhello|legacy_cxxhello.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("Hello World!" "cplus output: 20")
       ;;
     legacy_iotest|legacy_iotest.p)
@@ -156,12 +156,12 @@ for TEST in $TESTS; do
       mkdir $TEST_DIR
       export WORKLOAD_INSTALL=$APPS_ROOT/legacy/tg-xe
       export TEST_ARGS="$TEST_DIR"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("all good." "terminate alarm")
     ;;
     legacy_float_tests|legacy_float_tests.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("float sqrtf(2.00000000) = 1.41421354")
       REGEXS+=("float cosf(0.00000000) = 1.00000000")
       REGEXS+=("float expf(0.00000000) = 1.00000000")
@@ -189,7 +189,7 @@ for TEST in $TESTS; do
     ;;
     legacy_double_tests|legacy_double_tests.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("double sqrt(2.0000000000000000) = 1.4142135623730951")
       REGEXS+=("double cos(0.0000000000000000) = 1.0000000000000000")
       REGEXS+=("double exp(0.0000000000000000) = 1.0000000000000000")
@@ -217,7 +217,7 @@ for TEST in $TESTS; do
     ;;
     legacy_float_complex_tests|legacy_float_complex_tests.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("float complex ccosf(0.00000000 0.00000000) = 1.00000000 -0.00000000")
       REGEXS+=("float complex cexpf(0.00000000 0.00000000) = 1.00000000 0.00000000")
       REGEXS+=("float complex ccosf(0.00000000 3.14159274) = 11.59195518 -0.00000000")
@@ -227,7 +227,7 @@ for TEST in $TESTS; do
     ;;
     legacy_double_complex_tests|legacy_double_complex_tests.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("double complex ccosf(0.0000000000000000 0.0000000000000000) = 1.0000000000000000 -0.0000000000000000")
       REGEXS+=("double complex cexpf(0.0000000000000000 0.0000000000000000) = 1.0000000000000000 0.0000000000000000")
       REGEXS+=("double complex ccosf(0.0000000000000000 3.1415926535897931) = 11.5919551849365234 -0.0000000000000000")
@@ -237,26 +237,26 @@ for TEST in $TESTS; do
     ;;
     tg_cdemo_nonewlib|tg_cdemo_nonewlib.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       REGEXS+=("ce_write to fd 1")
       REGEXS+=("ce_write to fd 2")
     ;;
     tg_cdemo|tg_cdemo.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       REGEXS+=("Write to fd 1")
       REGEXS+=("Write to fd 2")
     ;;
     tg_cxxdemo|tg_cxxdemo.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       #Not passing in arguments for now because they are not implemented for fsim-tgr yet.
       #export TEST_ARGS="foo bar"
       REGEXS+=("App $TEST_FILE: 1 args")
     ;;
     tg_throw|tg_throw.p)
       export WORKLOAD_INSTALL="$TG_INSTALL/../fsim/swtest"
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       REGEXS+=("do_try: Calling middle(4)" "middle e(10)")
       REGEXS+=("struct error(.*) = 10 destructor" "do_try: middle returns 5")
       REGEXS+=("do_try: Calling middle(7)" "middle e(10)")
@@ -266,22 +266,22 @@ for TEST in $TESTS; do
     ;;
     pthread_simple|pthread_simple.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("Child done" "Child knew who it was" "Child returned 1234" "Global val was 42")
     ;;
     pthread_detach|pthread_detach.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("making thread 1 (detached)" "making thread 2" "detaching thread 2" "parent done")
     ;;
     pthread_malloc|pthread_malloc.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("Child1 done" "Child2 done" "Parent done")
     ;;
     pthread_mutex_recursive|pthread_mutex_recursive.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("TEST: recursive" "main: creating child" "child: recursing" "child: done"
                "main: joined child" "main: locking mutex" "SUCCESS! Value was 42"
                "TEST: error check" "main: creating child" "child: recursing"
@@ -290,7 +290,7 @@ for TEST in $TESTS; do
     ;;
     pthread_cancel|pthread_cancel.p)
       export WORKLOAD_INSTALL="$APPS_ROOT/legacy/tg-xe"
-      export FSIM_ARGS="-s -c $WORKLOAD_INSTALL/fsim.cfg"
+      export FSIM_ARGS="-c $WORKLOAD_INSTALL/fsim.cfg"
       REGEXS+=("testing Enable Deferred" "joined thread"
                "testing Disable Deferred" "testing cancel" "enabling cancel" "joined thread"
                "testing Enable Async" "joined thread"
@@ -298,12 +298,12 @@ for TEST in $TESTS; do
     ;;
     PIE_fptr_simple|PIE_fptr_simple.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       REGEXS+=("v2 is: 6" "PASSED: v2 == 6" "terminate alarm")
     ;;
     PIE_multi_seg|PIE_multi_seg.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/PIE
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       REGEXS+=("\*b is: 42, \*y\[0] is: 42, xint is: 42"
                "\*b is: 42, \*y\[0] is: 7, xint is: 42"
                "\*b is: 7, \*y\[0] is: 7, xint is: 42"
@@ -315,7 +315,7 @@ for TEST in $TESTS; do
     ;;
     TCO_tailcall1|TCO_tailcall1.p)
       export WORKLOAD_INSTALL=$TG_INSTALL/../xe-llvm/test/CodeGen/XSTG/tailcall
-      export FSIM_ARGS="-s -c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
+      export FSIM_ARGS="-c $APPS_ROOT/legacy/tg-xe/fsim.cfg"
       REGEXS+=("tc_func1 - SUCCESS")
       REGEXS+=("tc_vfunc1 - SUCCESS")
       REGEXS+=("tc_vfunc2 - SUCCESS")
