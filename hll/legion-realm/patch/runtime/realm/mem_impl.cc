@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -871,6 +872,18 @@ namespace Realm {
   // class RemoteMemAllocRequest
   //
 
+#if USE_OCR_LAYER
+  /*static*/ void RemoteMemAllocRequest::static_init() {
+    Request::static_init();
+    Response::static_init();
+  }
+
+  /*static*/ void RemoteMemAllocRequest::static_destroy() {
+    Request::static_destroy();
+    Response::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void RemoteMemAllocRequest::handle_request(RequestArgs args)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
@@ -914,6 +927,18 @@ namespace Realm {
   //
   // class CreateInstanceRequest
   //
+
+#if USE_OCR_LAYER
+  /*static*/ void CreateInstanceRequest::static_init() {
+    Request::static_init();
+    Response::static_init();
+  }
+
+  /*static*/ void CreateInstanceRequest::static_destroy() {
+    Request::static_destroy();
+    Response::static_destroy();
+  }
+#endif // USE_OCR_LAYER
 
   /*static*/ void CreateInstanceRequest::handle_request(RequestArgs args,
 							const void *msgdata, size_t msglen)
@@ -1029,6 +1054,16 @@ namespace Realm {
   // class DestroyInstanceRequest
   //
 
+#if USE_OCR_LAYER
+  /*static*/ void DestroyInstanceMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void DestroyInstanceMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void DestroyInstanceMessage::handle_request(RequestArgs args)
   {
     MemoryImpl *m_impl = get_runtime()->get_memory_impl(args.m);
@@ -1072,6 +1107,16 @@ namespace Realm {
   static PartialWriteMap partial_remote_writes;
   static GASNetHSL partial_remote_writes_lock;
 
+#if USE_OCR_LAYER
+  /*static*/ void RemoteWriteMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void RemoteWriteMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void RemoteWriteMessage::handle_request(RequestArgs args,
 						     const void *data,
 						     size_t datalen)
@@ -1095,6 +1140,7 @@ namespace Realm {
 
     // determine if the active message already wrote the data to the
     //  right place in a registered memory
+    // OCR implementation do not have registered memory
     bool was_written_directly = false;
     if(impl->kind == MemoryImpl::MKIND_SYSMEM) {
       LocalCPUMemory *cpumem = (LocalCPUMemory *)impl;
@@ -1161,6 +1207,17 @@ namespace Realm {
   //
   // class RemoteSerdezMessage
   //
+
+#if USE_OCR_LAYER
+  /*static*/ void RemoteSerdezMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void RemoteSerdezMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void RemoteSerdezMessage::handle_request(RequestArgs args,
                                                       const void *data,
                                                       size_t datalen)
@@ -1382,6 +1439,16 @@ namespace Realm {
   // class RemoteWriteFenceMessage
   //
 
+#if USE_OCR_LAYER
+  /*static*/ void RemoteWriteFenceMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void RemoteWriteFenceMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void RemoteWriteFenceMessage::handle_request(RequestArgs args)
   {
     log_copy.debug("remote write fence (mem = " IDFMT ", seq = %d/%d, count = %d, fence = %p",
@@ -1454,6 +1521,16 @@ namespace Realm {
   //
   // class RemoteWriteFenceAckMessage
   //
+
+#if USE_OCR_LAYER
+  /*static*/ void RemoteWriteFenceAckMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void RemoteWriteFenceAckMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
 
   /*static*/ void RemoteWriteFenceAckMessage::handle_request(RequestArgs args)
   {
@@ -1550,6 +1627,7 @@ namespace Realm {
 			     unsigned sequence_id,
 			     bool make_copy /*= false*/)
     {
+      assert(false);
       log_copy.debug("sending remote write request: mem=" IDFMT ", offset=%zd, size=%zdx%zd",
 		     mem.id, (ssize_t)offset, datalen, lines);
 
@@ -1620,6 +1698,7 @@ namespace Realm {
 			     unsigned sequence_id,
 			     bool make_copy /*= false*/)
     {
+      assert(false);
       log_copy.debug("sending remote write request: mem=" IDFMT ", offset=%zd, size=%zd(%zd spans)",
 		     mem.id, (ssize_t)offset, datalen, spans.size());
 

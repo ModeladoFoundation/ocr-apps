@@ -85,13 +85,15 @@ namespace Realm {
 
     /*static*/ bool OCREventImpl::add_waiter(Event needed, EventWaiter *waiter)
     {
+      //TODO need to find out whether EDT can be created anywhere
+      const int dest = OCRUtil::ocrCurrentPolicyDomain();
       const size_t waiter_size = waiter->get_size();
 
       //invoke the EDT that calls event_triggered
       ocrGuid_t event_waiter_edt;
       ocrEdtCreate(&event_waiter_edt, OCREventImpl::event_waiter_edt_t,
         U64_COUNT(waiter_size), (u64*)waiter, 1, & needed.evt_guid,
-        EDT_PROP_NONE, NULL_HINT, NULL);
+        EDT_PROP_NONE, &(OCRUtil::ocrHintArr[dest]), NULL);
       return true;
     }
 

@@ -25,14 +25,47 @@
 
 template <class MSGTYPE, void (*FNPTR)(MSGTYPE)>
 class MessageHandlerShort {
-    static ocrGuid_t ocr_realm_handle_request_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[]){
-      assert(false);
+
+    struct ArgsMsgEDT{
+      u64 dest;
+      MSGTYPE args;
+    };
+
+    static ocrGuid_t ocr_realm_handle_request_edt_t;
+
+    static ocrGuid_t ocr_realm_handle_request_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[]) {
+      assert(argc > 0 && depc == 0);
+      //extract args, call the handle_request function
+      ArgsMsgEDT *args_ptr = (ArgsMsgEDT *)argv;
+      assert(args_ptr->dest == Realm::OCRUtil::ocrCurrentPolicyDomain());
+      FNPTR(args_ptr->args);
       return NULL_GUID;
     }
 
   public:
+
+    static void static_init() {
+      ocrEdtTemplateCreate(&ocr_realm_handle_request_edt_t, ocr_realm_handle_request_func, EDT_PARAM_UNK, EDT_PARAM_UNK);
+    }
+
+    static void static_destroy() {
+      ocrEdtTemplateDestroy(ocr_realm_handle_request_edt_t);
+    }
+
     static void request(const u32 dest, const MSGTYPE &args) {
-      assert(false);
+      assert(dest>=0 && dest<Realm::OCRUtil::ocrNbPolicyDomains());
+      //pack args
+      const int size = sizeof(ArgsMsgEDT);
+      const int argc = U64_COUNT(size);
+      u64 argv[argc];
+      ArgsMsgEDT *argv_ptr = (ArgsMsgEDT *) argv;
+      argv_ptr->dest = dest;
+      argv_ptr->args = args;
+
+      //create the EDT  on the dest PD
+      ocrGuid_t ocr_realm_handle_request_edt;
+      ocrEdtCreate(&ocr_realm_handle_request_edt, ocr_realm_handle_request_edt_t,
+        argc, argv, 0, NULL, EDT_PROP_NONE, &(Realm::OCRUtil::ocrHintArr[dest]), NULL);
     }
 };
 
@@ -40,6 +73,7 @@ template <class MSGTYPE, void (*FNPTR)(MSGTYPE, const void *, size_t)>
 class MessageHandlerMedium {
 
     struct ArgsMsgEDT{
+      u64 dest;
       MSGTYPE args;
       size_t datalen;
       char data[0];
@@ -51,6 +85,7 @@ class MessageHandlerMedium {
       assert(argc > 0 && depc == 0);
       //extract args and data, call the handle_request function
       ArgsMsgEDT *args_ptr = (ArgsMsgEDT *)argv;
+      assert(args_ptr->dest == Realm::OCRUtil::ocrCurrentPolicyDomain());
       FNPTR(args_ptr->args, args_ptr->data, args_ptr->datalen);
       return NULL_GUID;
     }
@@ -67,22 +102,41 @@ class MessageHandlerMedium {
 
     static void request(const u32 dest, const MSGTYPE &args,
                         const void *data, const size_t datalen,
-                        const int payload_mode) {
+                        const int payload_mode, void *dstptr=0) {
+      assert(dest>=0 && dest<Realm::OCRUtil::ocrNbPolicyDomains());
       //pack args and data
-      int size = sizeof(ArgsMsgEDT) + datalen;
-      int argc = U64_COUNT(size);
+      assert(dstptr == NULL);
+      const int size = sizeof(ArgsMsgEDT) + datalen;
+      const int argc = U64_COUNT(size);
       u64 argv[argc];
       ArgsMsgEDT *argv_ptr = (ArgsMsgEDT *) argv;
+      argv_ptr->dest = dest;
       argv_ptr->args = args;
       argv_ptr->datalen = datalen;
       memcpy(argv_ptr->data, data, datalen);
 
-      //create the EDT on on the dest PD
+      //create the EDT on the dest PD
       ocrGuid_t ocr_realm_handle_request_edt;
       ocrEdtCreate(&ocr_realm_handle_request_edt, ocr_realm_handle_request_edt_t,
         argc, argv, 0, NULL, EDT_PROP_NONE, &(Realm::OCRUtil::ocrHintArr[dest]), NULL);
     }
+
+    static void request(const u32 dest, const MSGTYPE &args,
+                        const void *data, const size_t line_len,
+                        const off_t line_stride, const size_t line_count,
+                        const int payload_mode, void *dstptr=0) {
+      assert(0);
+    }
+
+    static void request(const u32 dest, const MSGTYPE &args,
+                        const SpanList& spans, const size_t datalen,
+                        const int payload_mode, void *dstptr=0) {
+      assert(0);
+    }
 };
+
+template<class MSGTYPE, void (*FNPTR)(MSGTYPE)>
+ocrGuid_t MessageHandlerShort<MSGTYPE, FNPTR>::ocr_realm_handle_request_edt_t = NULL_GUID;
 
 template<class MSGTYPE, void (*FNPTR)(MSGTYPE, const void *, size_t)>
 ocrGuid_t MessageHandlerMedium<MSGTYPE, FNPTR>::ocr_realm_handle_request_edt_t = NULL_GUID;

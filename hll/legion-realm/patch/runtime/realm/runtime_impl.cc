@@ -583,6 +583,16 @@ namespace Realm {
 
       NodeAnnounceMessage::static_init();
       SpawnTaskMessage::static_init();
+      RemoteMemAllocRequest::static_init();
+      CreateInstanceRequest::static_init();
+      DestroyInstanceMessage::static_init();
+      RemoteWriteMessage::static_init();
+      RemoteSerdezMessage::static_init();
+      RemoteWriteFenceMessage::static_init();
+      RemoteWriteFenceAckMessage::static_init();
+      RemoteCopyMessage::static_init();
+      RemoteFillMessage::static_init();
+      MetadataBase::static_init();
 
       //create the nodes which contains processors and memory
       nodes = new Node[OCRUtil::ocrNbPolicyDomains()];
@@ -1840,6 +1850,15 @@ namespace Realm {
 
     NodeAnnounceMessage::static_destroy();
     SpawnTaskMessage::static_destroy();
+    CreateInstanceRequest::static_destroy();
+    DestroyInstanceMessage::static_destroy();
+    RemoteWriteMessage::static_destroy();
+    RemoteSerdezMessage::static_destroy();
+    RemoteWriteFenceMessage::static_destroy();
+    RemoteWriteFenceAckMessage::static_destroy();
+    RemoteCopyMessage::static_destroy();
+    RemoteFillMessage::static_destroy();
+    MetadataBase::static_destroy();
 
     // delete processors, memories, nodes, etc.
     {

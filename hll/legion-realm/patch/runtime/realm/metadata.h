@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +25,27 @@
 
 #include "activemsg.h"
 
+#if USE_OCR_LAYER
+#include "ocr/ocr_message.h"
+#endif // USE_OCR_LAYER
+
 namespace Realm {
 
+#if USE_OCR_LAYER
+  class OCREventImpl;
+#else
   class GenEventImpl;
+#endif // USE_OCR_LAYER
 
     class MetadataBase {
     public:
       MetadataBase(void);
       ~MetadataBase(void);
+
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+#endif // USE_OCR_LAYER
 
       enum State { STATE_INVALID,
 		   STATE_VALID,
@@ -71,9 +85,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageShortNoReply<METADATA_REQUEST_MSGID,
 					RequestArgs,
 					handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, ID::IDType id);
     };
@@ -85,9 +106,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args, const void *data, size_t datalen);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerMedium<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageMediumNoReply<METADATA_RESPONSE_MSGID,
 					 RequestArgs,
 					 handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, ID::IDType id,
 			       const void *data, size_t datalen, int payload_mode);
@@ -101,9 +129,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageShortNoReply<METADATA_INVALIDATE_MSGID,
 					RequestArgs,
 					handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, ID::IDType id);
       static void broadcast_request(const NodeSet& targets, ID::IDType id);
@@ -117,9 +152,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageShortNoReply<METADATA_INVALIDATE_ACK_MSGID,
 					RequestArgs,
 					handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, ID::IDType id);
     };

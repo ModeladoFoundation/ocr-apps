@@ -34,6 +34,10 @@
 #include <hdf5.h>
 #endif
 
+#if USE_OCR_LAYER
+#include "ocr/ocr_message.h"
+#endif // USE_OCR_LAYER
+
 namespace Realm {
 
   class RegionInstanceImpl;
@@ -378,6 +382,13 @@ namespace Realm {
       static void handle_request(RequestArgs args);
       static void handle_response(ResponseArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Request;
+      typedef MessageHandlerShort<ResponseArgs, handle_response> Response;
+#else
       typedef ActiveMessageShortNoReply<REMOTE_MALLOC_MSGID,
  	                                RequestArgs,
 	                                handle_request> Request;
@@ -385,6 +396,7 @@ namespace Realm {
       typedef ActiveMessageShortNoReply<REMOTE_MALLOC_RPLID,
  	                                ResponseArgs,
 	                                handle_response> Response;
+#endif // USE_OCR_LAYER
 
       static off_t send_request(gasnet_node_t target, Memory memory, size_t size);
     };
@@ -422,6 +434,13 @@ namespace Realm {
       static void handle_request(RequestArgs args, const void *data, size_t datalen);
       static void handle_response(ResponseArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerMedium<RequestArgs, handle_request> Request;
+      typedef MessageHandlerShort<ResponseArgs, handle_response> Response;
+#else
       typedef ActiveMessageMediumNoReply<CREATE_INST_MSGID,
  	                                 RequestArgs,
 	                                 handle_request> Request;
@@ -429,6 +448,7 @@ namespace Realm {
       typedef ActiveMessageShortNoReply<CREATE_INST_RPLID,
  	                                ResponseArgs,
 	                                handle_response> Response;
+#endif // USE_OCR_LAYER
 
       struct Result {
 	RegionInstance i;
@@ -454,9 +474,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageShortNoReply<DESTROY_INST_MSGID,
  	                                RequestArgs,
 	                                handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, Memory memory,
 			       RegionInstance inst);
@@ -472,9 +499,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args, const void *data, size_t datalen);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerMedium<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageMediumNoReply<REMOTE_WRITE_MSGID,
 				         RequestArgs,
 				         handle_request> Message;
+#endif // USE_OCR_LAYER
 
       // no simple send_request method here - see below
     };
@@ -491,9 +525,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args, const void *data, size_t datalen);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerMedium<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageMediumNoReply<REMOTE_SERDEZ_MSGID,
                                          RequestArgs,
                                          handle_request> Message;
+#endif // USE_OCR_LAYER
 
       // no simple send_request method here - see below
     };
@@ -556,9 +597,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageShortNoReply<REMOTE_WRITE_FENCE_MSGID,
 				        RequestArgs,
 				        handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target, Memory memory,
 			       unsigned sequence_id, unsigned num_writes,
@@ -573,9 +621,16 @@ namespace Realm {
 
       static void handle_request(RequestArgs args);
 
+#if USE_OCR_LAYER
+      static void static_init();
+      static void static_destroy();
+
+      typedef MessageHandlerShort<RequestArgs, handle_request> Message;
+#else
       typedef ActiveMessageShortNoReply<REMOTE_WRITE_FENCE_ACK_MSGID,
 				        RequestArgs,
 				        handle_request> Message;
+#endif // USE_OCR_LAYER
 
       static void send_request(gasnet_node_t target,
 			       RemoteWriteFence *fence);

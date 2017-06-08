@@ -20,6 +20,10 @@
 #include "lowlevel_impl.h"
 #include "activemsg.h"
 
+#if USE_OCR_LAYER
+#include "ocr/ocr_message.h"
+#endif // USE_OCR_LAYER
+
 namespace Realm {
   class CoreReservationSet;
 };
@@ -44,6 +48,10 @@ namespace LegionRuntime {
 
     extern void handle_remote_fill(RemoteFillArgs args, const void *data, size_t msglen);
 
+#if USE_OCR_LAYER
+    typedef MessageHandlerMedium<RemoteCopyArgs, handle_remote_copy> RemoteCopyMessage;
+    typedef MessageHandlerMedium<RemoteFillArgs, handle_remote_fill> RemoteFillMessage;
+#else
     enum DMAActiveMessageIDs {
       REMOTE_COPY_MSGID = 200,
       REMOTE_FILL_MSGID = 201,
@@ -56,6 +64,7 @@ namespace LegionRuntime {
     typedef ActiveMessageMediumNoReply<REMOTE_FILL_MSGID,
                                        RemoteFillArgs,
                                        handle_remote_fill> RemoteFillMessage;
+#endif // USE_OCR_LAYER
 
     extern void init_dma_handler(void);
 
@@ -110,6 +119,12 @@ namespace LegionRuntime {
         NUM_REQUEST_TYPES
       };
 
+      struct ArgsDMAEDT {
+        RequestType r_type;
+        size_t datalen;
+        char data[0];
+      };
+
       //EDT template for the perform_dma function
       static ocrGuid_t ocr_realm_perform_dma_edt_t;
       //initialize static variables
@@ -117,7 +132,7 @@ namespace LegionRuntime {
       //cleanup static variables
       static void static_destroy(void);
       //equivalent of check_readiness() function which uses OCR
-      virtual void ocr_check_readiness(bool just_check, RequestType, size_t = 0);
+      virtual void ocr_check_readiness(RequestType, size_t = 0);
 #endif // USE_OCR_LAYER
 
       virtual void print(std::ostream& os) const;
@@ -155,6 +170,9 @@ namespace LegionRuntime {
 	virtual bool event_triggered(Event e, bool poisoned);
 	virtual void print(std::ostream& os) const;
 	virtual Event get_finish_event(void) const;
+#if USE_OCR_LAYER
+        virtual size_t get_size() const;
+#endif // USE_OCR_LAYER
       };
     };
 

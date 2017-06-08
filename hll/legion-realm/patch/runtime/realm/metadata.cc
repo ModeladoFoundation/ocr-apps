@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +37,22 @@ namespace Realm {
 
     MetadataBase::~MetadataBase(void)
     {}
+
+#if USE_OCR_LAYER
+  /*static*/ void MetadataBase::static_init() {
+    MetadataRequestMessage::static_init();
+    MetadataResponseMessage::static_init();
+    MetadataInvalidateMessage::static_init();
+    MetadataInvalidateAckMessage::static_init();
+  }
+
+  /*static*/ void MetadataBase::static_destroy() {
+    MetadataRequestMessage::static_destroy();
+    MetadataResponseMessage::static_destroy();
+    MetadataInvalidateMessage::static_destroy();
+    MetadataInvalidateAckMessage::static_destroy();
+  }
+#endif // USE_OCR_LAYER
 
     void MetadataBase::mark_valid(void)
     {
@@ -77,7 +94,11 @@ namespace Realm {
       }
 
       if(to_trigger.exists())
+#if USE_OCR_LAYER
+        OCREventImpl::trigger(to_trigger.evt_guid);
+#else
 	GenEventImpl::trigger(to_trigger, false /*!poisoned*/);
+#endif // USE_OCR_LAYER
     }
 
     Event MetadataBase::request_data(int owner, ID::IDType id)
@@ -106,7 +127,11 @@ namespace Realm {
 	  {
 	    // if the current state is invalid, we'll need to issue a request
 	    state = STATE_REQUESTED;
+#if USE_OCR_LAYER
+            valid_event = OCREventImpl::create_ocrevent();
+#else
 	    valid_event = GenEventImpl::create_genevent()->current_event();
+#endif // USE_OCR_LAYER
             e = valid_event;
 	    issue_request = true;
 	    break;
@@ -223,6 +248,16 @@ namespace Realm {
   // class MetadataRequestMessage
   //
 
+#if USE_OCR_LAYER
+  /*static*/ void MetadataRequestMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void MetadataRequestMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
+
   /*static*/ void MetadataRequestMessage::handle_request(RequestArgs args)
   {
     void *data = 0;
@@ -257,6 +292,16 @@ namespace Realm {
   //
   // class MetadataResponseMessage
   //
+
+#if USE_OCR_LAYER
+  /*static*/ void MetadataResponseMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void MetadataResponseMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
 
   /*static*/ void MetadataResponseMessage::handle_request(RequestArgs args,
 							  const void *data,
@@ -293,6 +338,16 @@ namespace Realm {
   //
   // class MetadataInvalidateMessage
   //
+
+#if USE_OCR_LAYER
+  /*static*/ void MetadataInvalidateMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void MetadataInvalidateMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
 
   /*static*/ void MetadataInvalidateMessage::handle_request(RequestArgs args)
   {
@@ -350,6 +405,16 @@ namespace Realm {
   //
   // class MetadataInvalidateAckMessage
   //
+
+#if USE_OCR_LAYER
+  /*static*/ void MetadataInvalidateAckMessage::static_init() {
+    Message::static_init();
+  }
+
+  /*static*/ void MetadataInvalidateAckMessage::static_destroy() {
+    Message::static_destroy();
+  }
+#endif // USE_OCR_LAYER
 
   /*static*/ void MetadataInvalidateAckMessage::handle_request(RequestArgs args)
   {

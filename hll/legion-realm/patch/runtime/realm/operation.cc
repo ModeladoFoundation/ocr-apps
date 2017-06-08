@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -236,8 +237,14 @@ namespace Realm {
 
   void Operation::trigger_finish_event(bool poisoned)
   {
-    if(finish_event.exists())
+    if(finish_event.exists()) {
+#if USE_OCR_LAYER
+      assert(!poisoned);
+      OCREventImpl::trigger(finish_event.evt_guid);
+#else
       GenEventImpl::trigger(finish_event, poisoned);
+#endif // USE_OCR_LAYER
+    }
   }
 
   void Operation::clear_profiling(void)

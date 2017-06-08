@@ -84,8 +84,8 @@ namespace Realm {
   {
     //ignores reqs, priority
 
-    const int num_dep = 1; //start_event
-    ocrGuid_t db_guid = UNINITIALIZED_GUID;
+    const u64 dest = me.address_space();
+    assert(dest == OCRUtil::ocrCurrentPolicyDomain());
 
     int size = sizeof(ArgsEDT) + arglen;
     int argc = U64_COUNT(size);
@@ -98,15 +98,9 @@ namespace Realm {
 
     //create and call the EDT
     ocrGuid_t ocr_realm_conversion_edt, out_ocr_realm_conversion_edt, persistent_evt_guid;
-    ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t, argc,
-      argv, num_dep, &db_guid, EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_conversion_edt);
-
-    //attach the output of EDT to the finish_event
-    ocrAddDependence(out_ocr_realm_conversion_edt, finish_event.evt_guid, 0, DB_MODE_RO);
-
-    //satsify the dependency after setting the sticky event to prevent the
-    //EDT from starting before adding dependence to the sticky event
-    ocrAddDependence(start_event.evt_guid, ocr_realm_conversion_edt, 0, DB_MODE_RO);
+    ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t,
+      argc, argv, 1, &start_event.evt_guid, EDT_PROP_OEVT_VALID,
+      &(OCRUtil::ocrHintArr[dest]), &finish_event.evt_guid);
   }
 
   void OCRProcessor::shutdown()

@@ -55,7 +55,7 @@ namespace Realm {
       virtual void print(std::ostream& os) const = 0;
       virtual Event get_finish_event(void) const = 0;
 #if USE_OCR_LAYER
-      virtual size_t get_size() const { return sizeof(*this); }
+      virtual size_t get_size() const { assert(false); }
 #endif // USE_OCR_LAYER
     };
 

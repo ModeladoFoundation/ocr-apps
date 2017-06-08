@@ -569,12 +569,15 @@ namespace LegionRuntime {
       return req->get_finish_event();
     }
 
+#if USE_OCR_LAYER
+    size_t DmaRequest::Waiter::get_size(void) const
+    {
+      return sizeof(*this);
+    }
+#endif // USE_OCR_LAYER
+
     bool CopyRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
-#if USE_OCR_LAYER
-      DmaRequest::ocr_check_readiness(just_check, DmaRequest::COPY, sizeof(*this));
-      return true;
-#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -679,12 +682,16 @@ namespace LegionRuntime {
 	if(just_check) return true;
 
 	state = STATE_QUEUED;
-	assert(rq != 0);
 	log_dma.debug("request %p enqueued", this);
 
 	// once we're enqueued, we may be deleted at any time, so no more
 	//  references
+#if USE_OCR_LAYER
+        DmaRequest::ocr_check_readiness(DmaRequest::COPY, sizeof(*this));
+#else
+	assert(rq != 0);
 	rq->enqueue_request(this);
+#endif // USE_OCR_LAYER
 	return true;
       }
 
@@ -693,7 +700,6 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
-#endif // USE_OCR_LAYER
     }
 
     namespace RangeExecutors {
@@ -3405,10 +3411,6 @@ namespace LegionRuntime {
 
     bool ReduceRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
-#if USE_OCR_LAYER
-      DmaRequest::ocr_check_readiness(just_check, DmaRequest::REDUCE, sizeof(*this));
-      return true;
-#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -3537,12 +3539,16 @@ namespace LegionRuntime {
 	if(just_check) return true;
 
 	state = STATE_QUEUED;
-	assert(rq != 0);
 	log_dma.debug("request %p enqueued", this);
 
 	// once we're enqueued, we may be deleted at any time, so no more
 	//  references
+#if USE_OCR_LAYER
+        DmaRequest::ocr_check_readiness(DmaRequest::REDUCE, sizeof(*this));
+#else
+        assert(rq != 0);
 	rq->enqueue_request(this);
+#endif // USE_OCR_LAYER
 	return true;
       }
 
@@ -3551,7 +3557,6 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
-#endif // USE_OCR_LAYER
     }
 
     template <unsigned DIM>
@@ -4034,10 +4039,6 @@ namespace LegionRuntime {
 
     bool FillRequest::check_readiness(bool just_check, DmaRequestQueue *rq)
     {
-#if USE_OCR_LAYER
-      DmaRequest::ocr_check_readiness(just_check, DmaRequest::FILL, sizeof(*this));
-      return true;
-#else // USE_OCR_LAYER
       if(state == STATE_INIT)
 	state = STATE_METADATA_FETCH;
 
@@ -4108,12 +4109,16 @@ namespace LegionRuntime {
 	if(just_check) return true;
 
 	state = STATE_QUEUED;
-	assert(rq != 0);
 	log_dma.debug("request %p enqueued", this);
 
 	// once we're enqueued, we may be deleted at any time, so no more
 	//  references
+#if USE_OCR_LAYER
+        DmaRequest::ocr_check_readiness(DmaRequest::FILL, sizeof(*this));
+#else
+        assert(rq != 0);
 	rq->enqueue_request(this);
+#endif // USE_OCR_LAYER
 	return true;
       }
 
@@ -4122,7 +4127,6 @@ namespace LegionRuntime {
 
       assert(0);
       return false;
-#endif // USE_OCR_LAYER
     }
 
     void FillRequest::perform_dma(void)
@@ -4446,9 +4450,6 @@ namespace Realm {
 #endif // USE_OCR_LAYER
           r->check_readiness(false, dma_queue);
         } else {
-#if USE_OCR_LAYER
-          assert(false); //only dealing with one node now
-#endif // USE_OCR_LAYER
 
           RemoteFillArgs args;
           args.inst = it->inst;
@@ -4462,9 +4463,9 @@ namespace Realm {
           void *msgdata = malloc(msglen);
 
           r->serialize(msgdata);
-
+#if ! USE_OCR_LAYER
 	  get_runtime()->optable.add_remote_operation(ev, node);
-
+#endif // USE_OCR_LAYER
           RemoteFillMessage::request(node, args, msgdata, msglen, PAYLOAD_FREE);
 
 	  // release local copy of operation
@@ -4535,7 +4536,9 @@ namespace LegionRuntime {
 					 args.before_copy,
 					 args.after_copy,
 					 args.priority);
+#if ! USE_OCR_LAYER
 	Realm::get_runtime()->optable.add_local_operation(args.after_copy, r);
+#endif // USE_OCR_LAYER
 
 	r->check_readiness(false, dma_queue);
       } else {
@@ -4546,7 +4549,9 @@ namespace LegionRuntime {
 					     args.before_copy,
 					     args.after_copy,
 					     args.priority);
+#if ! USE_OCR_LAYER
 	Realm::get_runtime()->optable.add_local_operation(args.after_copy, r);
+#endif // USE_OCR_LAYER
 
 	r->check_readiness(false, dma_queue);
       }
@@ -4561,7 +4566,9 @@ namespace LegionRuntime {
                                        args.before_fill,
                                        args.after_fill,
                                        0 /* no room for args.priority */);
+#if ! USE_OCR_LAYER
       Realm::get_runtime()->optable.add_local_operation(args.after_fill, r);
+#endif // USE_OCR_LAYER
 
       r->check_readiness(false, dma_queue);
     }
@@ -4641,9 +4648,6 @@ namespace Realm {
               r->check_readiness(false, dma_queue);
               finish_events.insert(ev);
             } else {
-#if USE_OCR_LAYER
-              assert(false); //only dealing with one node now
-#endif
               RemoteCopyArgs args;
               args.redop_id = 0;
               args.red_fold = false;
@@ -4657,7 +4661,9 @@ namespace Realm {
               r->serialize(msgdata);
 
               log_dma.debug("performing serdez on remote node (%d), event=" IDFMT, dma_node, args.after_copy.id);
+#if ! USE_OCR_LAYER
 	      get_runtime()->optable.add_remote_operation(ev, dma_node);
+#endif // USE_OCR_LAYER
               RemoteCopyMessage::request(dma_node, args, msgdata, msglen, PAYLOAD_FREE);
 
               finish_events.insert(ev);
@@ -4739,9 +4745,6 @@ namespace Realm {
 
 	    finish_events.insert(ev);
 	  } else {
-#if USE_OCR_LAYER
-            assert(false); //only dealing with one node now
-#endif
 	    RemoteCopyArgs args;
 	    args.redop_id = 0;
 	    args.red_fold = false;
@@ -4755,7 +4758,9 @@ namespace Realm {
             r->serialize(msgdata);
 
 	    log_dma.debug("performing copy on remote node (%d), event=" IDFMT, dma_node, args.after_copy.id);
+#if ! USE_OCR_LAYER
 	    get_runtime()->optable.add_remote_operation(ev, dma_node);
+#endif // USE_OCR_LAYER
 	    RemoteCopyMessage::request(dma_node, args, msgdata, msglen, PAYLOAD_FREE);
 
 	    finish_events.insert(ev);
@@ -4817,9 +4822,6 @@ namespace Realm {
 #endif // USE_OCR_LAYER
 	  r->check_readiness(false, dma_queue);
 	} else {
-#if USE_OCR_LAYER
-          assert(false); //only dealing with one node now
-#endif
 	  RemoteCopyArgs args;
 	  args.redop_id = redop_id;
 	  args.red_fold = red_fold;
@@ -4833,7 +4835,9 @@ namespace Realm {
 
 	  log_dma.debug("performing reduction on remote node (%d), event=" IDFMT,
 		       src_node, args.after_copy.id);
+#if ! USE_OCR_LAYER
 	  get_runtime()->optable.add_remote_operation(ev, src_node);
+#endif // USE_OCR_LAYER
 	  RemoteCopyMessage::request(src_node, args, msgdata, msglen, PAYLOAD_FREE);
 	  // done with the local copy of the request
 	  r->remove_reference();
@@ -4892,40 +4896,61 @@ namespace LegionRuntime {
   ocrGuid_t DmaRequest::ocr_realm_perform_dma_edt_t = NULL_GUID;
 
   //EDT function that calls perform_dma
-  //depv[0] is the object whose perform_dma needs to be called
-  //ideally I like this to be passed using argv rather than depv
+  //argv contains the object whose perform_dma needs to be invoked
+  //A new malloc is required for the object since it is later used
+  //by RemoteWriteFenceAckMessage::handle_request(). Otherwise once
+  //this EDT is finished the object will be deallocated.
   ocrGuid_t ocr_realm_perform_dma_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
   {
-    assert(argc == 1 && depc == 1);
+    assert(depc == 0);
 
+    DmaRequest::ArgsDMAEDT *args_ptr = (DmaRequest::ArgsDMAEDT*)argv;
     DmaRequest *r;
-    const DmaRequest::RequestType r_type = (DmaRequest::RequestType)(*argv);
+    int size;
 
-    switch(r_type)
+    switch(args_ptr->r_type)
     {
       case DmaRequest::COPY:
-        r = (CopyRequest *)depv[0].ptr;
+        size = sizeof(*(CopyRequest *)(args_ptr->data));
+        r = (CopyRequest*)malloc(size);
+        memcpy(r, args_ptr->data, size);
+        //r = (CopyRequest *)(args_ptr->data);
         break;
       case DmaRequest::REDUCE:
-        r = (ReduceRequest *)depv[0].ptr;
+        size = sizeof(*(ReduceRequest *)(args_ptr->data));
+        r = (ReduceRequest *)malloc(size);
+        memcpy(r, args_ptr->data, size);
+        //r = (ReduceRequest *)(args_ptr->data);
         break;
       case DmaRequest::FILL:
-        r = (FillRequest *)depv[0].ptr;
+        size = sizeof(*(FillRequest *)(args_ptr->data));
+        r = (FillRequest *)malloc(size);
+        memcpy(r, args_ptr->data, size);
+        //r = (FillRequest *)(args_ptr->data);
         break;
       default:
-        fprintf(stderr, "ERROR: UNKNOWN DMA REQUEST %d\n", r_type);
+        fprintf(stderr, "ERROR: UNKNOWN DMA REQUEST %d\n", args_ptr->r_type);
         assert(false);
     }
 
-    r->perform_dma();
-    ocrDbDestroy(depv[0].guid);
+    bool ok_to_run = r->mark_started();
+    if(ok_to_run) {
+      // this will automatically add any necessary AsyncWorkItem's
+      r->perform_dma();
+
+      r->mark_finished(true /*successful*/);
+    } else {
+      assert(false);
+      r->mark_finished(false /*!successful*/);
+    }
+
     return NULL_GUID;
   }
 
   /*static*/ void DmaRequest::static_init(void)
   {
     //create the perform_dma conversion edt template
-    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, 1, 1);
+    ocrEdtTemplateCreate(&DmaRequest::ocr_realm_perform_dma_edt_t, ocr_realm_perform_dma_func, EDT_PARAM_UNK, EDT_PARAM_UNK);
   }
 
   /*static*/ void DmaRequest::static_destroy(void)
@@ -4936,31 +4961,41 @@ namespace LegionRuntime {
 
   //function that invokes the OCR EDT that calls perform_dma
   //this_size is the size of the object that invokes ocr_check_readiness
-  void DmaRequest::ocr_check_readiness(bool just_check, RequestType req_type, size_t this_size)
+  void DmaRequest::ocr_check_readiness(RequestType req_type, size_t this_size)
   {
+    //TODO assert current policy domain and destination of the DMA request are same
+
+    // Record that it is ready - check for cancellation though
+    bool ok_to_run = mark_ready();
+    if(!ok_to_run) {
+      assert(0);
+      mark_finished(false /*!successful*/);
+      return;
+    }
+
     //if size is zero then use size of current this object
     if(this_size == 0)
       this_size = sizeof(*this);
 
-    //pass this object using data block to the EDT
-    ocrGuid_t db_guid;
-    void *this_copy;
-    ocrDbCreate(&db_guid, (void **)(&this_copy), this_size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-    //'this' pointer is the dma descriptor with information such as size etc
-    memcpy(this_copy, this, this_size);
+    //pack arguments
+    int size = sizeof(ArgsDMAEDT) + this_size;
+    int argc = U64_COUNT(size);
+    u64 argv[argc];
+    ArgsDMAEDT *argv_ptr = (ArgsDMAEDT *) argv;
+    argv_ptr->r_type = req_type;
+    argv_ptr->datalen = this_size;
+    memcpy(argv_ptr->data, this, this_size);
 
     //invoke the EDT that calls perform_dma
+    //Event finish_event = get_finish_event();
+    ocrHint_t curr_node_hint = Realm::OCRUtil::ocrHintArr[Realm::OCRUtil::ocrCurrentPolicyDomain()];
     ocrGuid_t ocr_realm_perform_dma_edt, out_ocr_realm_perform_dma_edt, persistent_evt_guid;
+    //cannot attach to the finish event since the triggering needs to be done by
+    //ocr_realm_perform_dma_edt or RemoteWriteFenceAckMessage::handle_request whoever
+    //finishes last. Triggering taken care by Operatons::mark_finished() api
     ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t,
-      EDT_PARAM_DEF, (u64*)&req_type, EDT_PARAM_DEF, NULL,
-      EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_perform_dma_edt);
-
-    //attach finish_event to the EDT
-    Event finish_event = get_finish_event();
-    ocrAddDependence(out_ocr_realm_perform_dma_edt, finish_event.evt_guid, 0, DB_MODE_RO);
-
-    //start the EDT by statisfying dependency only after linking to the finish event
-    ocrAddDependence(db_guid, ocr_realm_perform_dma_edt, 0, DB_MODE_RO);
+      argc, argv, 0, NULL, EDT_PROP_NONE, &curr_node_hint, NULL);
+      //argc, argv, 0, NULL, EDT_PROP_OEVT_VALID, &curr_node_hint, &finish_event.evt_guid);
   }
  };
 };

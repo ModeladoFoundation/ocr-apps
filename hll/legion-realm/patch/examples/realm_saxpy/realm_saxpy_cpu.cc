@@ -29,7 +29,7 @@ enum {
   CHECK_RESULT_TASK = Processor::TASK_ID_FIRST_AVAILABLE+4,
 };
 
-void find_processors(Processor &first_cpu, Processor &first_gpu)
+void find_processors(Processor &first_cpu, Processor &first_gpu, int n)
 {
   // Print out our processors and their kinds
   // Remember the first CPU and GPU processor
@@ -45,16 +45,24 @@ void find_processors(Processor &first_cpu, Processor &first_gpu)
 #if USE_OCR_LAYER
        case OCR_PROC:
         {
-          if (!first_cpu.exists())
+          if (n==0) {
             first_cpu = *it;
+            printf("select OCR Processor " IDFMT "\n", it->id);
+	    return;
+	  }
+	  n--;
           printf("OCR Processor " IDFMT "\n", it->id);
           break;
         }
 #endif // USE_OCR_LAYER
       case LOC_PROC:
         {
-          if (!first_cpu.exists())
+          if (n==0) {
             first_cpu = *it;
+            printf("select CPU Processor " IDFMT "\n", it->id);
+	    return;
+	  }
+	  n--;
           printf("CPU Processor " IDFMT "\n", it->id);
           break;
         }
@@ -165,20 +173,27 @@ void find_memories(Processor cpu, Processor gpu,
 void top_level_task(const void *args, size_t arglen,
                     const void *userdata, size_t userlen, Processor p)
 {
+  int i=0, n=Machine::get_machine().get_address_space_count();
   printf("HELLO WORLD from Processor " IDFMT "!\n\n", p.id);
   Processor first_cpu = Processor::NO_PROC;
   Processor first_gpu = Processor::NO_PROC;
-  find_processors(first_cpu, first_gpu);
+  find_processors(first_cpu, first_gpu, (i++)%n);
 
   Memory system_mem = Memory::NO_MEMORY;
   Memory framebuffer_mem = Memory::NO_MEMORY;;
   find_memories(first_cpu, first_gpu, system_mem, framebuffer_mem);
 
-  Rect<1> bounds(Point<1>(0),Point<1>(16383));
+  Rect<1> bounds(Point<1>(0),Point<1>(8000));
   Domain dom = Domain::from_rect<1>(bounds);
 
   RegionInstance cpu_inst_x = dom.create_instance(system_mem, sizeof(float));
+
+  find_processors(first_cpu, first_gpu, (i++)%n);
+  find_memories(first_cpu, first_gpu, system_mem, framebuffer_mem);
   RegionInstance cpu_inst_y = dom.create_instance(system_mem, sizeof(float));
+
+  find_processors(first_cpu, first_gpu, (i++)%n);
+  find_memories(first_cpu, first_gpu, system_mem, framebuffer_mem);
   RegionInstance cpu_inst_z = dom.create_instance(system_mem, sizeof(float));
   printf("Created System Memory Instances: " IDFMT ", " IDFMT ", and " IDFMT "\n\n",
       cpu_inst_x.id, cpu_inst_y.id, cpu_inst_z.id);
@@ -263,15 +278,31 @@ void top_level_task(const void *args, size_t arglen,
   {
     // Run the computation on the CPU
     Event precondition = Event::merge_events(fill_x, fill_y);
+    find_processors(first_cpu, first_gpu, (i++)%n);
     z_ready = first_cpu.spawn(CPU_SAXPY_TASK, &saxpy_args,
                               sizeof(saxpy_args), precondition);
   }
 
   // Run our checker task
+  find_processors(first_cpu, first_gpu, (i++)%n);
   Event done = first_cpu.spawn(CHECK_RESULT_TASK, &saxpy_args,
                                 sizeof(saxpy_args), z_ready);
   printf("Done Event is (" IDFMT ")\n\n", done.id);
   done.wait();
+}
+
+RegionInstance get_local_inst(RegionInstance in_region, Domain dom, Memory mem,
+  std::vector<Domain::CopySrcDstField> &src, std::vector<Domain::CopySrcDstField> &dst) {
+
+  if(in_region.address_space() == mem.address_space()) {
+    return in_region;
+  }
+  else {
+    RegionInstance local_inst = dom.create_instance(mem, sizeof(float));
+    src.push_back(Domain::CopySrcDstField(in_region, 0, sizeof(float)));
+    dst.push_back(Domain::CopySrcDstField(local_inst, 0, sizeof(float)));
+    return local_inst;
+  }
 }
 
 void cpu_saxpy_task(const void *args, size_t arglen,
@@ -279,12 +310,24 @@ void cpu_saxpy_task(const void *args, size_t arglen,
 {
   assert(arglen == sizeof(SaxpyArgs));
   const SaxpyArgs *saxpy_args = (const SaxpyArgs*)args;
-  printf("Running CPU Saxpy Task\n\n");
+  printf("Running CPU Saxpy Task from Processor " IDFMT "!\n\n", p.id);;
+
+  //copy remote region instances to local memory
+  Domain dom = Domain::from_rect<1>(saxpy_args->bounds);
+  Processor first_gpu = Processor::NO_PROC;
+  Memory system_mem = Memory::NO_MEMORY;
+  Memory framebuffer_mem = Memory::NO_MEMORY;;
+  find_memories(p, first_gpu, system_mem, framebuffer_mem);
+  std::vector<Domain::CopySrcDstField> src, dst;
+  RegionInstance x_inst_cp = get_local_inst(saxpy_args->x_inst, dom, system_mem, src, dst);
+  RegionInstance y_inst_cp = get_local_inst(saxpy_args->y_inst, dom, system_mem, src, dst);
+  RegionInstance z_inst_cp = get_local_inst(saxpy_args->z_inst, dom, system_mem, src, dst);
+  dom.copy(src, dst).wait();
 
   // get the generic accessors for each of our three instances
-  RegionAccessor<AccessorType::Generic> ra_xg = saxpy_args->x_inst.get_accessor();
-  RegionAccessor<AccessorType::Generic> ra_yg = saxpy_args->y_inst.get_accessor();
-  RegionAccessor<AccessorType::Generic> ra_zg = saxpy_args->z_inst.get_accessor();
+  RegionAccessor<AccessorType::Generic> ra_xg = x_inst_cp.get_accessor();
+  RegionAccessor<AccessorType::Generic> ra_yg = y_inst_cp.get_accessor();
+  RegionAccessor<AccessorType::Generic> ra_zg = z_inst_cp.get_accessor();
 
   // now convert them to typed, "affine" accessors that we can use like arrays
   RegionAccessor<AccessorType::Affine<1>, float> ra_x = ra_xg.typeify<float>().convert<AccessorType::Affine<1> >();
@@ -293,19 +336,38 @@ void cpu_saxpy_task(const void *args, size_t arglen,
 
   for(GenericPointInRectIterator<1> pir(saxpy_args->bounds); pir; ++pir)
     ra_z[pir.p] = saxpy_args->alpha * ra_x[pir.p] + ra_y[pir.p];
+
+  if(saxpy_args->z_inst.address_space() != z_inst_cp.address_space()) {
+    std::vector<Domain::CopySrcDstField> src, dst;
+    src.push_back(Domain::CopySrcDstField(z_inst_cp, 0, sizeof(float)));
+    dst.push_back(Domain::CopySrcDstField(saxpy_args->z_inst, 0, sizeof(float)));
+    dom.copy(src, dst).wait();
+  }
 }
 
 void check_result_task(const void *args, size_t arglen,
-                       const void *userdata, size_t userlen, Processor)
+                       const void *userdata, size_t userlen, Processor p)
 {
   assert(arglen == sizeof(SaxpyArgs));
   const SaxpyArgs *saxpy_args = (const SaxpyArgs*)args;
-  printf("Running Checking Task...");
+  printf("Running Checking Task from Processor " IDFMT "!\n\n", p.id);
+
+  //copy remote region instances to local memory
+  Domain dom = Domain::from_rect<1>(saxpy_args->bounds);
+  Processor first_gpu = Processor::NO_PROC;
+  Memory system_mem = Memory::NO_MEMORY;
+  Memory framebuffer_mem = Memory::NO_MEMORY;;
+  find_memories(p, first_gpu, system_mem, framebuffer_mem);
+  std::vector<Domain::CopySrcDstField> src, dst;
+  RegionInstance x_inst_cp = get_local_inst(saxpy_args->x_inst, dom, system_mem, src, dst);
+  RegionInstance y_inst_cp = get_local_inst(saxpy_args->y_inst, dom, system_mem, src, dst);
+  RegionInstance z_inst_cp = get_local_inst(saxpy_args->z_inst, dom, system_mem, src, dst);
+  dom.copy(src, dst).wait();
 
   // get the generic accessors for each of our three instances
-  RegionAccessor<AccessorType::Generic> ra_xg = saxpy_args->x_inst.get_accessor();
-  RegionAccessor<AccessorType::Generic> ra_yg = saxpy_args->y_inst.get_accessor();
-  RegionAccessor<AccessorType::Generic> ra_zg = saxpy_args->z_inst.get_accessor();
+  RegionAccessor<AccessorType::Generic> ra_xg = x_inst_cp.get_accessor();
+  RegionAccessor<AccessorType::Generic> ra_yg = y_inst_cp.get_accessor();
+  RegionAccessor<AccessorType::Generic> ra_zg = z_inst_cp.get_accessor();
 
   // now convert them to typed, "affine" accessors that we can use like arrays
   RegionAccessor<AccessorType::Affine<1>, float> ra_x = ra_xg.typeify<float>().convert<AccessorType::Affine<1> >();
