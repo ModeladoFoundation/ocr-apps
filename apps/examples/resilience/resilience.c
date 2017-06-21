@@ -5,7 +5,7 @@
  */
 #include "ocr.h"
 
-/* Example of an iterative 2D Stencil + "fork-join" pattern in OCR
+/* Example of an iterative 1D Stencil + "fork-join" pattern in OCR
  *
  * Implements the following dependence graph:
  *
@@ -13,11 +13,11 @@
  *          /           \
  *         /             \
  *        /               \
- *    resEdt[1][0][0]     resEdt[1][0][1]     ... resEdt[1][XDIM-1][YDIM-1]
+ *    resEdt[1][0]        resEdt[1][1]      ...  resEdt[1][XDIM-1]
  *       / | \              / | \
  * locEdt ... locEdt  locEdt ... locEdt
  *       \ | /              \ | /
- *    resEdt[2][0][0]     resEdt[2][0][1]     ... resEdt[2][XDIM-1][YDIM-1]
+ *    resEdt[2][0]        resEdt[2][1]      ...  resEdt[2][XDIM-1]
  *       / | \              / | \
  * locEdt ... locEdt  locEdt ... locEdt
  *       \ | /              \ | /
@@ -25,7 +25,7 @@
  *                 ...
  *                 ...
  *
- * resEdt[ITERS][0][0]    resEdt[ITERS][0][1] ... resEdt[ITERS][XDIM-1][YDIM-1]
+ * resEdt[ITERS][0]       resEdt[ITERS][1]  ...  resEdt[ITERS][XDIM-1]
  *       / | \              / | \
  * locEdt ... locEdt  locEdt ... locEdt
  *       \ | /              \ | /
@@ -34,34 +34,33 @@
  *          \             /
  *            shutdownEdt
  *
- * NOTE: resEdt[<iter-value>][<x-value>][<y-value>]
+ * NOTE: resEdt[<iter-value>][<x-value>]
  *
  */
 
 //Configurable params
 #define N       4
 #define XDIM    N   //Number of tiles or blocks in X-dimension
-#define YDIM    N   //Number of tiles or blocks on Y-dimension
-#define ITERS   N   //Number of iterations in application
+#define ITERS   4   //Number of iterations in application
 
 //Derived params (DO NOT CHANGE)
-#define NUM_DIMS 2 //(x, y)
+#define NUM_DIMS 1 //(x)
 #define NUM_ITERS (ITERS + 1)
-#define ITER_SPACE (XDIM * YDIM)
-#define ITER_INDEX(x, y) ((x * YDIM) + y)
+#define ITER_SPACE XDIM
+#define ITER_INDEX(x) x
 
-#define USER_KEY(i, x, y) ((i * ITER_SPACE) + ITER_INDEX(x, y))
+#define USER_KEY(i, x) ((i * ITER_SPACE) + x)
 
 #define GUID_PARAM (sizeof(ocrGuid_t)/sizeof(u64))
 #define NUM_PARAMS (1/*iter value*/ + NUM_DIMS/*coordinate value*/ + (GUID_PARAM * 2)/*shutdown guid + cleanup DB*/)
-#define NUM_DEPS 5 /*5-point stencil*/
+#define NUM_DEPS 3 /*3-point stencil*/
 
 #define NUM_LOCAL_EDTS 2
 #define INJECT_FAULT 0
 
 //Dummy function for local computation EDT on every iteration in each rank
 ocrGuid_t localFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("[Node %lu]: Hello from local EDT (%lu, %lu, %lu, %lu)\n", ocrGetLocation(), paramv[0], paramv[1], paramv[2], paramv[3]);
+    PRINTF("[Node %lu]: Hello from local EDT (%lu, %lu, %lu)\n", ocrGetLocation(), paramv[0], paramv[1], paramv[2]);
     return NULL_GUID;
 }
 
@@ -70,19 +69,17 @@ static void doLocalComputation(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
     u64 i;
     u64 iter = paramv[0];
     u64 x = paramv[1];
-    u64 y = paramv[2];
 
     //Create the local computation EDTs
     ocrGuid_t localEdt_template;
-    ocrEdtTemplateCreate(&localEdt_template, localFunc, 4, 0);
-    u64 paramsLocal[4];
+    ocrEdtTemplateCreate(&localEdt_template, localFunc, 3, 0);
+    u64 paramsLocal[3];
     paramsLocal[0] = iter;
     paramsLocal[1] = x;
-    paramsLocal[2] = y;
     for (i = 0; i < NUM_LOCAL_EDTS; i++) {
         ocrGuid_t localEdt;
-        paramsLocal[3] = i;
-        ocrEdtCreate(&localEdt, localEdt_template, 4, paramsLocal, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+        paramsLocal[2] = i;
+        ocrEdtCreate(&localEdt, localEdt_template, 3, paramsLocal, 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
     }
     return;
 }
@@ -92,14 +89,13 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 i;
     u64 iter = paramv[0];
     u64 x = paramv[1];
-    u64 y = paramv[2];
 
     if (iter < NUM_ITERS) {
-        PRINTF("[Node %lu]: Hello from resilient EDT (%lu, %lu, %lu)\n", ocrGetLocation(), iter, x, y);
+        PRINTF("[Node %lu]: Hello from resilient EDT (%lu, %lu)\n", ocrGetLocation(), iter, x);
     } else if (iter == NUM_ITERS) {
-        PRINTF("[Node %lu]: Hello from epilogue EDT (%lu, %lu)\n", ocrGetLocation(), x, y);
+        PRINTF("[Node %lu]: Hello from epilogue EDT (%lu)\n", ocrGetLocation(), x);
     } else {
-        PRINTF("[Node %lu]: Hello from cleanup EDT (%lu, %lu)\n", ocrGetLocation(), x, y);
+        PRINTF("[Node %lu]: Hello from cleanup EDT (%lu)\n", ocrGetLocation(), x);
     }
 
     //Cleanup past iteration (iter - 2) DB and (iter - 1) Events
@@ -107,7 +103,7 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbDestroy(guidParamv[1]);
     if (iter > 2) {
         ocrGuid_t pEvt;
-        ocrGuidTableRemove(USER_KEY((iter - 1), x, y), &pEvt);
+        ocrGuidTableGet(USER_KEY((iter - 1), x), &pEvt);
         ocrEventDestroy(pEvt);
     }
 
@@ -116,25 +112,23 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t shutdownEdt = guidParamv[0];
         ocrGuid_t curOutputEvent;
         ocrGetOutputEvent(&curOutputEvent);
-        ocrAddDependence(curOutputEvent, shutdownEdt, ITER_INDEX(x, y), DB_MODE_CONST);
+        ocrAddDependence(curOutputEvent, shutdownEdt, x, DB_MODE_CONST);
         return NULL_GUID;
     }
 
-    //Verify the validity of the input DBs for this iteration (iter)
-    if ((*((u64*)depv[0].ptr) != USER_KEY(iter, x, y)) ||
-       ((x > 0) && (*((u64*)depv[1].ptr) != USER_KEY(iter, (x-1), y))) ||
-       ((y > 0) && (*((u64*)depv[2].ptr) != USER_KEY(iter, x, (y-1)))) ||
-       ((x < (XDIM-1)) && (*((u64*)depv[3].ptr) != USER_KEY(iter, (x+1), y))) ||
-       ((y < (YDIM-1)) && (*((u64*)depv[4].ptr) != USER_KEY(iter, x, (y+1))))) {
-        PRINTF("[Node %lu]: Data corruption detected in resilient EDT (%lu, %lu, %lu)\n", ocrGetLocation(), iter, x, y);
+    //Verify the validity of the input DBs to this iteration (iter)
+    if ((*((u64*)depv[0].ptr) != USER_KEY(iter, x)) ||
+       ((x > 0) && (*((u64*)depv[1].ptr) != USER_KEY(iter, (x - 1)))) ||
+       ((x < (XDIM - 1)) && (*((u64*)depv[2].ptr) != USER_KEY(iter, (x + 1))))) {
+        PRINTF("[Node %lu]: Data corruption detected in resilient EDT (%lu, %lu)\n", ocrGetLocation(), iter, x);
         ASSERT(0);
         return NULL_GUID;
     }
 
 #if INJECT_FAULT
     //Fault injection
-    if (iter == NUM_ITERS/2 && x == 0 && y == 0) {
-        PRINTF("[Node %lu]: Injecting fault from resilient EDT (%lu, %lu, %lu)\n", ocrGetLocation(), iter, x, y);
+    if (iter == NUM_ITERS/2 && x == 0) {
+        PRINTF("[Node %lu]: Injecting fault from resilient EDT (%lu, %lu)\n", ocrGetLocation(), iter, x);
         ocrNodeFailure();
     }
 #endif
@@ -145,16 +139,15 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         //Create a resilient output DB of this iteration
         void *ptr = NULL;
         ocrDbCreate(&db, (void**)&ptr, sizeof(u64), DB_PROP_RESILIENT, NULL_HINT, NO_ALLOC);
-        *((u64*)ptr) = USER_KEY((iter+1), x, y);
+        *((u64*)ptr) = USER_KEY((iter + 1), x);
 
         //Perform local computation for output DB of this iteration
-        doLocalComputation(paramc, paramv, depc, depv, db);
+        //doLocalComputation(paramc, paramv, depc, depv, db);
     }
 
-    //Satisfy event to transmit DB (x,y) from this iteration (iter) to
-    //next iteration (iter+1) EDT neighbors [(x-1, y), (x, y-1), (x+1, y), (x, y+1)]
+    //Satisfy event to transmit DB from this iteration to next iteration (iter + 1) EDT neighbors (x-1, x+1)
     ocrGuid_t oEvt;
-    ocrGuidTableGet(USER_KEY((iter + 1), x, y), &oEvt);
+    ocrGuidTableGet(USER_KEY((iter + 1), x), &oEvt);
     ocrEventSatisfy(oEvt, db);
 
     //Schedule EDT for next iteration (iter + 1)
@@ -168,38 +161,23 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t *guidParams = (ocrGuid_t*)&(params[1 + NUM_DIMS]);
     guidParams[1] = depv[0].guid; //DB to destroy
 
-    //Setup dependences inputs for 5-point stencil
+    //Setup dependences
     ocrGuid_t deps[NUM_DEPS];
+    //Dependence input from current rank
+    deps[0] = db; //We can directly use DB instead of using event
 
-    //Dependence input from current (x,y)
-    deps[0] = db; //We can directly use output DB instead of using event
-
-    //Dependence input from top (x-1, y)
+    //Dependence input from left
     if (x > 0) {
-        ocrGuidTableGet(USER_KEY((iter + 1), (x - 1), y), &deps[1]);
+        ocrGuidTableGet(USER_KEY((iter + 1), (x - 1)), &deps[1]);
     } else {
         deps[1] = NULL_GUID;
     }
 
-    //Dependence input from left (x, y-1)
-    if (y > 0) {
-        ocrGuidTableGet(USER_KEY((iter + 1), x, (y -1)), &deps[2]);
+    //Dependence input from right
+    if (x < (XDIM - 1)) {
+        ocrGuidTableGet(USER_KEY((iter + 1), (x + 1)), &deps[2]);
     } else {
         deps[2] = NULL_GUID;
-    }
-
-    //Dependence input from down (x+1, y)
-    if (x < (XDIM - 1)) {
-        ocrGuidTableGet(USER_KEY((iter + 1), (x + 1), y), &deps[3]);
-    } else {
-        deps[3] = NULL_GUID;
-    }
-
-    //Dependence input from right (x, y+1)
-    if (y < (YDIM - 1)) {
-        ocrGuidTableGet(USER_KEY((iter + 1), x, (y + 1)), &deps[4]);
-    } else {
-        deps[4] = NULL_GUID;
     }
 
     //Create EDT
@@ -207,26 +185,29 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtCreate(&rankEdt, rankEdt_template, NUM_PARAMS, params, NUM_DEPS, deps, EDT_PROP_RESILIENT, NULL_HINT, &outputEvent);
 
     //Create event for future iteration (iter + 2) and associate with user-defined key
+    ocrGuid_t evt = NULL_GUID;
     if ((iter + 2) <= (NUM_ITERS + 1)) {
-        ocrGuid_t evt;
-        ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
-        ocrGuidTablePut(USER_KEY((iter + 2), x, y), evt);
+        ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG | EVT_PROP_RESILIENT);
+        ocrGuidTablePut(USER_KEY((iter + 2), x), evt);
+    }
+
+    if (iter < NUM_ITERS) {
+        //PRINTF("[Node %lu]: Done (%lu, %lu). Created EDT: 0x%lx IN: (0x%lx, 0x%lx, 0x%lx). Satisfied EVT: 0x%lx Created EVT: 0x%lx\n",
+        //    ocrGetLocation(), iter, x, rankEdt.guid, deps[0].guid, deps[1].guid, deps[2].guid, oEvt, evt);
     }
     return NULL_GUID;
 }
 
 //Sync EDT used to call shutdown
 ocrGuid_t shutdownFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    u64 i, j;
+    u64 i;
     PRINTF("[Node %lu]: Hello from shutdownEdt\n", ocrGetLocation());
     //Cleanup past iteration events (NUM_ITERS)
     for (i = 0; i < XDIM; i++) {
-        for (j = 0; j < YDIM; j++) {
-            if (NUM_ITERS > 1) {
-                ocrGuid_t pEvt;
-                ocrGuidTableRemove(USER_KEY((NUM_ITERS + 1), i, j), &pEvt);
-                ocrEventDestroy(pEvt);
-            }
+        if (NUM_ITERS > 1) {
+            ocrGuid_t pEvt;
+            ocrGuidTableRemove(USER_KEY((NUM_ITERS + 1), i), &pEvt);
+            ocrEventDestroy(pEvt);
         }
     }
     ocrShutdown();
@@ -235,7 +216,7 @@ ocrGuid_t shutdownFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 //EDT to start the program
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    u64 i, j;
+    u64 i;
     PRINTF("[Node %lu]: Starting mainEdt\n", ocrGetLocation());
 
     //Create the shutdown EDT
@@ -252,47 +233,40 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     params[0] = 1; //start iteration at 1
     ocrGuid_t *guidParams = (ocrGuid_t*)&(params[1 + NUM_DIMS]);
     guidParams[0] = shutdownEdt;
-    guidParams[1] = NULL_GUID; //past iteration DB to destroy
+    guidParams[1] = NULL_GUID; //DB to destroy
 
     //Create the initial set of DBs and Events per rank
     ocrGuid_t dbArray[ITER_SPACE];
     for (i = 0; i < XDIM; i++) {
-        for (j = 0; j < YDIM; j++) {
-            //Create a resilient DB for future iteration (iter + 1)
-            ocrGuid_t db = NULL_GUID;
-            void *ptr = NULL;
-            ocrDbCreate(&db, (void**)&ptr, sizeof(u64), DB_PROP_RESILIENT, NULL_HINT, NO_ALLOC);
-            *((u64*)ptr) = USER_KEY(1, i, j);
-            ocrDbRelease(db);
-            dbArray[ITER_INDEX(i, j)] = db;
+        //Create a resilient DB for future iteration (iter + 1)
+        ocrGuid_t db = NULL_GUID;
+        void *ptr = NULL;
+        ocrDbCreate(&db, (void**)&ptr, sizeof(u64), DB_PROP_RESILIENT, NULL_HINT, NO_ALLOC);
+        //PRINTF("[Node %lu]: DB created %lu from EDT (%lu, %lu)\n", ocrGetLocation(), db.guid, 0, i);
+        *((u64*)ptr) = USER_KEY(1, i);
+        ocrDbRelease(db);
+        dbArray[i] = db;
 
-            //Create event for future iteration (iter + 2) and associate with user-defined key
-            if (NUM_ITERS > 1) {
-                ocrGuid_t evt;
-                ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
-                u64 key = USER_KEY(2, i, j);
-                ocrGuidTablePut(key, evt);
-            }
+        //Create event for future iteration (iter + 2) and associate with user-defined key
+        if (NUM_ITERS > 1) {
+            ocrGuid_t evt;
+            ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG | EVT_PROP_RESILIENT);
+            u64 key = USER_KEY(2, i);
+            ocrGuidTablePut(key, evt);
         }
     }
 
     //Create the initial rank EDTs (start iteration at 1)
     for (i = 0; i < XDIM; i++) {
-        for (j = 0; j < YDIM; j++) {
-            params[1] = i; //x-value
-            params[2] = j; //y-value
+        params[1] = i; //x-value
 
-            //5-point stencil
-            ocrGuid_t deps[NUM_DEPS];
-            deps[0] = dbArray[ITER_INDEX(i, j)];                                    //(i  , j  )
-            deps[1] = (i > 0) ? dbArray[ITER_INDEX((i-1), j)] : NULL_GUID;          //(i-1, j  )
-            deps[2] = (j > 0) ? dbArray[ITER_INDEX(i, (j-1))] : NULL_GUID;          //(i  , j-1)
-            deps[3] = (i < (XDIM-1)) ? dbArray[ITER_INDEX((i+1), j)] : NULL_GUID;   //(i+1, j  )
-            deps[4] = (j < (YDIM-1)) ? dbArray[ITER_INDEX(i, (j+1))] : NULL_GUID;   //(i  , j+1)
+        ocrGuid_t deps[NUM_DEPS];
+        deps[0] = dbArray[i];
+        deps[1] = (i > 0) ? dbArray[i-1] : NULL_GUID;
+        deps[2] = (i < (XDIM - 1)) ? dbArray[i+1] : NULL_GUID;
 
-            ocrGuid_t rankEdt, outputEvent;
-            ocrEdtCreate(&rankEdt, rankEdt_template, NUM_PARAMS, params, NUM_DEPS, deps, EDT_PROP_RESILIENT, NULL_HINT, &outputEvent);
-        }
+        ocrGuid_t rankEdt, outputEvent;
+        ocrEdtCreate(&rankEdt, rankEdt_template, NUM_PARAMS, params, NUM_DEPS, deps, EDT_PROP_RESILIENT, NULL_HINT, &outputEvent);
     }
 
     return NULL_GUID;
