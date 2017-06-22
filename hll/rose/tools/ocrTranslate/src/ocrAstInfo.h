@@ -96,6 +96,7 @@ class EvtAstInfo {
  public:
   EvtAstInfo(std::string evtname, std::string evtGuidName);
   std::string getEvtGuidName() const;
+  std::string str() const;
 };
 typedef boost::shared_ptr<EvtAstInfo> EvtAstInfoPtr;
 
@@ -108,6 +109,7 @@ typedef boost::shared_ptr<EvtAstInfo> EvtAstInfoPtr;
 class TaskOutliningAstInfo {
   std::string m_taskName;
   SgClassDeclaration* m_depElemStructDecl;
+  SgTypedefDeclaration* m_depElemTypedefDecl;
   SgType* m_depElemBaseType;
   SgType* m_depElemTypedefType;
   SgFunctionDeclaration* m_edtDecl;
@@ -118,8 +120,10 @@ class TaskOutliningAstInfo {
   void setDepElemBaseType(SgType* depElemBaseType);
   void setDepElemTypedefType(SgType* depElemTypedefType);
   void setTaskFuncDecl(SgFunctionDeclaration* edtDecl);
+  void setDepElemTypedefDecl(SgTypedefDeclaration* typedefDecl);
   // get functions
   SgClassDeclaration* getDepElemStructDecl() const;
+  SgTypedefDeclaration* getDepElemTypedefDecl() const;
   SgClassDefinition* getDepElemStructDefn() const;
   SgType* getDepElemBaseType() const;
   SgType* getDepElemTypedefType() const;
@@ -143,6 +147,8 @@ class TaskAstInfo {
   typedef enum {
     e_TaskEdt,
     e_TaskLoopIterControl,
+    e_TaskSpmdRegion,
+    e_TaskSpmdFinalize,
     e_TaskShutDown
   } TaskType;
  protected:
@@ -155,12 +161,14 @@ class TaskAstInfo {
   TaskOutliningAstInfoPtr getTaskOutliningAstInfo() const;
   // Get Functions for OutliningInfo
   SgClassDeclaration* getDepElemStructDecl() const;
+  SgTypedefDeclaration* getDepElemTypedefDecl() const;
   SgClassDefinition* getDepElemStructDefn() const;
   SgType* getDepElemBaseType() const;
   SgType* getDepElemTypedefType() const;
   SgFunctionDeclaration* getTaskFuncDecl() const;
   // Set Functions for Outlining Info
   void setDepElemStructDecl(SgClassDeclaration* depElemStructDecl);
+  void setDepElemTypedefDecl(SgTypedefDeclaration* depElemTypedefDecl);
   void setDepElemBaseType(SgType* depElemBaseType);
   void setDepElemTypedefType(SgType* depElemTypedefType);
   void setTaskFuncDecl(SgFunctionDeclaration* edtDecl);
@@ -230,6 +238,43 @@ class LoopControlEdtAstInfo : public EdtAstInfo {
 };
 typedef boost::shared_ptr<LoopControlEdtAstInfo> LoopControlEdtAstInfoPtr;
 
+/************************
+ * SpmdRegionEdtAstInfo *
+ ************************/
+/*!
+ * \brief SpmdRegionEdtAstInfo maintains AST information to
+ * setup and invoke spmdEdtSpawn
+ */
+class SpmdRegionEdtAstInfo : public EdtAstInfo {
+  std::string m_countVarName;
+  std::string m_dbkAccessTypeArrName;
+ public:
+  SpmdRegionEdtAstInfo(std::string name);
+  std::string getDbkAccessTypeArrName() const;
+  std::string getCountVarName() const;
+  void setDbkAccessTypeArrName(std::string dbkAccessTypeArrName);
+  void setCountVarName(std::string countVarName);
+  std::string str() const;
+  ~SpmdRegionEdtAstInfo();
+};
+
+typedef boost::shared_ptr<SpmdRegionEdtAstInfo> SpmdRegionEdtAstInfoPtr;
+
+/**************************
+ * SpmdFinalizeEdtAstInfo *
+ **************************/
+class SpmdFinalizeEdtAstInfo : public EdtAstInfo {
+  std::string m_depEvtGuidName;
+ public:
+  SpmdFinalizeEdtAstInfo(std::string name);
+  std::string getDepEvtGuidName() const;
+  void setDepEvtGuidName(std::string depEvtGuidName);
+  std::string str() const;
+  ~SpmdFinalizeEdtAstInfo();
+};
+
+typedef boost::shared_ptr<SpmdFinalizeEdtAstInfo> SpmdFinalizeEdtAstInfoPtr;
+
 /******************
  * AstInfoManager *
  ******************/
@@ -246,11 +291,13 @@ class AstInfoManager {
   EvtAstInfoPtr regEvtAstInfo(std::string evtName, std::string evtGuidName, SgScopeStatement* scope);
   EdtAstInfoPtr regEdtAstInfo(std::string edtName);
   LoopControlEdtAstInfoPtr regLoopControlEdtAstInfo(std::string edtName);
+  SpmdRegionEdtAstInfoPtr regSpmdRegionEdtAstInfo(std::string edtName);
 
   DbkAstInfoPtr getDbkAstInfo(std::string dbkname, SgScopeStatement* scope);
   EvtAstInfoPtr getEvtAstInfo(std::string evtname, SgScopeStatement* scope);
   EdtAstInfoPtr getEdtAstInfo(std::string edtname);
   LoopControlEdtAstInfo getLoopControlEdtAstInfo(std::string edtName);
+  SpmdRegionEdtAstInfoPtr getSpmdRegionEdtAstInfo(std::string edtName);
   std::string EvtAstInfoMap2Str() const;
 };
 

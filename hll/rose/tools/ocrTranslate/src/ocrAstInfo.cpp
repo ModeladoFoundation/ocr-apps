@@ -140,6 +140,12 @@ string EvtAstInfo::getEvtGuidName() const {
   return m_evtGuidName;
 }
 
+string EvtAstInfo::str() const {
+  ostringstream oss;
+  oss << "[" << m_evtname << ", " << m_evtGuidName << "]";
+  return oss.str();
+}
+
 /************************
  * TaskOutliningAstInfo *
  ************************/
@@ -147,6 +153,10 @@ TaskOutliningAstInfo::TaskOutliningAstInfo(string name) : m_taskName(name) { }
 
 void TaskOutliningAstInfo::setDepElemStructDecl(SgClassDeclaration* depElemStructDecl) {
   m_depElemStructDecl = depElemStructDecl;
+}
+
+void TaskOutliningAstInfo::setDepElemTypedefDecl(SgTypedefDeclaration* depElemTypedefDecl) {
+  m_depElemTypedefDecl = depElemTypedefDecl;
 }
 
 void TaskOutliningAstInfo::setDepElemBaseType(SgType* depElemBaseType) {
@@ -163,6 +173,10 @@ void TaskOutliningAstInfo::setTaskFuncDecl(SgFunctionDeclaration* edtDecl) {
 
 SgClassDeclaration* TaskOutliningAstInfo::getDepElemStructDecl() const {
   return m_depElemStructDecl;
+}
+
+SgTypedefDeclaration* TaskOutliningAstInfo::getDepElemTypedefDecl() const {
+  return m_depElemTypedefDecl;
 }
 
 SgClassDefinition* TaskOutliningAstInfo::getDepElemStructDefn() const {
@@ -215,6 +229,10 @@ SgClassDeclaration* TaskAstInfo::getDepElemStructDecl() const {
   return m_outliningInfo->getDepElemStructDecl();
 }
 
+SgTypedefDeclaration* TaskAstInfo::getDepElemTypedefDecl() const {
+  return m_outliningInfo->getDepElemTypedefDecl();
+}
+
 SgClassDefinition* TaskAstInfo::getDepElemStructDefn() const {
   return m_outliningInfo->getDepElemStructDefn();
 }
@@ -234,6 +252,10 @@ SgFunctionDeclaration* TaskAstInfo::getTaskFuncDecl() const {
 // Set Functions for Outlining Info
 void TaskAstInfo::setDepElemStructDecl(SgClassDeclaration* depElemStructDecl) {
   m_outliningInfo->setDepElemStructDecl(depElemStructDecl);
+}
+
+void TaskAstInfo::setDepElemTypedefDecl(SgTypedefDeclaration* depElemTypedefDecl) {
+  m_outliningInfo->setDepElemTypedefDecl(depElemTypedefDecl);
 }
 
 void TaskAstInfo::setDepElemBaseType(SgType* depElemBaseType) {
@@ -342,6 +364,56 @@ LoopControlEdtAstInfo::~LoopControlEdtAstInfo() {
   // Nothing to cleanup here
 }
 
+/************************
+ * SpmdRegionEdtAstInfo *
+ ************************/
+SpmdRegionEdtAstInfo::SpmdRegionEdtAstInfo(string name) : EdtAstInfo(name) { }
+
+string SpmdRegionEdtAstInfo::getDbkAccessTypeArrName() const {
+  return m_dbkAccessTypeArrName;
+}
+
+string SpmdRegionEdtAstInfo::getCountVarName() const {
+  return m_countVarName;
+}
+
+void SpmdRegionEdtAstInfo::setDbkAccessTypeArrName(string dbkAccessTypeArrName) {
+  m_dbkAccessTypeArrName = dbkAccessTypeArrName;
+}
+
+void SpmdRegionEdtAstInfo::setCountVarName(string countVarName) {
+  m_countVarName = countVarName;
+}
+
+string SpmdRegionEdtAstInfo::str() const {
+  return "[SpmdRegionEdtAstInfo]";
+}
+
+SpmdRegionEdtAstInfo::~SpmdRegionEdtAstInfo() {
+  // no cleanup required here
+}
+
+/**************************
+ * SpmdFinalizeEdtAstInfo *
+ **************************/
+SpmdFinalizeEdtAstInfo::SpmdFinalizeEdtAstInfo(string name) : EdtAstInfo(name) { }
+
+string SpmdFinalizeEdtAstInfo::getDepEvtGuidName() const {
+  return m_depEvtGuidName;
+}
+
+void SpmdFinalizeEdtAstInfo::setDepEvtGuidName(string depEvtGuidName) {
+  m_depEvtGuidName = depEvtGuidName;
+}
+
+string SpmdFinalizeEdtAstInfo::str() const {
+  return "[SpmdFinalizeEdtAstInfo]";
+}
+
+SpmdFinalizeEdtAstInfo::~SpmdFinalizeEdtAstInfo() {
+  // no cleanup here
+}
+
 /******************
  * AstInfoManager *
  ******************/
@@ -376,6 +448,13 @@ LoopControlEdtAstInfoPtr AstInfoManager::regLoopControlEdtAstInfo(std::string ed
   return loopControlEdtAstInfo;
 }
 
+SpmdRegionEdtAstInfoPtr AstInfoManager::regSpmdRegionEdtAstInfo(std::string edtName) {
+  SpmdRegionEdtAstInfoPtr spmdRegionEdtAstInfo = boost::make_shared<SpmdRegionEdtAstInfo>(edtName);
+  TaskAstInfoMapElem elem(edtName, spmdRegionEdtAstInfo);
+  m_taskAstInfoMap.insert(elem);
+  return spmdRegionEdtAstInfo;
+}
+
 DbkAstInfoPtr AstInfoManager::getDbkAstInfo(string dbkname, SgScopeStatement* scope) {
   DbkAstInfoPtr dbkAstInfo = m_dbkAstInfoMap.getObjectPtr(dbkname, scope);
   assert(dbkAstInfo);
@@ -390,8 +469,23 @@ EdtAstInfoPtr AstInfoManager::getEdtAstInfo(string edtname) {
   return edtAstInfo;
 }
 
+SpmdRegionEdtAstInfoPtr AstInfoManager::getSpmdRegionEdtAstInfo(string edtname) {
+  TaskAstInfoMap::iterator f = m_taskAstInfoMap.find(edtname);
+  assert(f != m_taskAstInfoMap.end());
+  SpmdRegionEdtAstInfoPtr spmdRegionEdtAstInfo = boost::dynamic_pointer_cast<SpmdRegionEdtAstInfo>(f->second);
+  assert(spmdRegionEdtAstInfo);
+  return spmdRegionEdtAstInfo;
+}
+
+/*!
+ * \brief Get the Event's AST info from the symbolTable map
+ */
 EvtAstInfoPtr AstInfoManager::getEvtAstInfo(string evtname, SgScopeStatement* scope) {
+  // getObjectPtr terminates when not found in the map
   EvtAstInfoPtr evtAstInfo = m_evtAstInfoMap.getObjectPtr(evtname, scope);
-  assert(evtAstInfo);
   return evtAstInfo;
+}
+
+string AstInfoManager::EvtAstInfoMap2Str() const {
+  return m_evtAstInfoMap.str();
 }
