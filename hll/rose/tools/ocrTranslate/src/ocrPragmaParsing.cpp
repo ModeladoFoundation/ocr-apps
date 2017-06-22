@@ -37,6 +37,8 @@ OcrPragmaType::OcrPragmaType_t OcrPragmaType::identifyPragmaType(SgPragmaDeclara
   else if(AstFromString::afs_match_substr("ocr datablock")) return e_Dbk;
   else if(AstFromString::afs_match_substr("ocr shutdown")) return e_ShutdownEdt;
   else if(AstFromString::afs_match_substr("ocr loop")) return e_LoopIterEdt;
+  else if(AstFromString::afs_match_substr("ocr spmd region")) return e_SpmdRegionEdt;
+  else if(AstFromString::afs_match_substr("ocr spmd finalize")) return e_SpmdFinalizeEdt;
   else return e_NotOcr;
 }
 
@@ -323,7 +325,7 @@ SgBasicBlock* OcrTaskPragmaParser::getTaskBasicBlock() {
 }
 
 bool OcrTaskPragmaParser::match() {
-  Logger::Logger lg("OcrTaskPragmaParser::match()", Logger::DEBUG) ;
+  Logger::Logger lg("OcrTaskPragmaParser::match()");
   try {
     smatch matchResults;
     // Check if the pragma matches the task annotation format
@@ -359,8 +361,8 @@ bool OcrTaskPragmaParser::match() {
       // We have all the information we need for creating OcrEdtContext
       SgSourceFile* sourceFile = SageInterface::getEnclosingSourceFile(m_sgpdecl);
       OcrTaskContextPtr taskcontext_sp = m_ocrObjectManager.registerOcrEdt(taskName_s, m_taskOrder, m_sgpdecl, depDbksContextPtrList,
-									 depEvtsContextPtrList, depElemsSgnList,
-									 outEvtContext, basicblock, finishEdt);
+									   depEvtsContextPtrList, depElemsSgnList,
+									   outEvtContext, basicblock, finishEdt);
       OcrEdtContextPtr edtcontext = boost::dynamic_pointer_cast<OcrEdtContext>(taskcontext_sp);
       Logger::debug(lg) << taskcontext_sp->str() << endl;
     }
@@ -548,7 +550,7 @@ list<SgStatement*> OcrDbkPragmaParser::getAllocStmt(SgInitializedName* sgn) {
 }
 
 bool OcrDbkPragmaParser::match() {
-  Logger::Logger lg("OcrDbkPragmaParser::match()", Logger::DEBUG);
+  Logger::Logger lg("OcrDbkPragmaParser::match()");
   string pstr = m_sgpdecl->get_pragma()->get_pragma();
   try {
     smatch matchResults;
@@ -688,7 +690,7 @@ OcrLoopIterPragmaParser::OcrLoopIterPragmaParser(SgPragmaDeclaration* sgpdecl, O
   sr_param = *_s >> *by_ref(sr_identifier);
   // paramseq is the tail seq of a parameter list
   sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
-  sr_paramlist = as_xpr('(') >> *_s >> sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+  sr_paramlist = as_xpr('(') >> *_s >> *sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
   sr_taskname = *_s >> icase("TASK") >> *_s >> as_xpr('(') >> *_s >> by_ref(sr_identifier) >> *_s >> as_xpr(')') >> *_s;
   sr_depdbks = *_s >> icase("DEP_DBKS") >> *_s >> by_ref(sr_paramlist);
   sr_depevts = *_s >> icase("DEP_EVTS") >> *_s >> by_ref(sr_paramlist);
@@ -797,7 +799,7 @@ SgStatement* OcrLoopIterPragmaParser::getLoopStmt(SgPragmaDeclaration* sgpdecl) 
 }
 
 bool OcrLoopIterPragmaParser::match() {
-  Logger::Logger lg("OcrLoopIterPragmaParser::match()", Logger::DEBUG);
+  Logger::Logger lg("OcrLoopIterPragmaParser::match()");
   string input = m_sgpdecl->get_pragma()->get_pragma();
   Logger::debug(lg) << "input: " << input << endl;
   try {
@@ -814,8 +816,6 @@ bool OcrLoopIterPragmaParser::match() {
       // register the output event
       OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outEvtName);
       SgStatement* loopStmt = getLoopStmt(m_sgpdecl);
-      // Empty list until we populate this with annotations
-      list<string> dbksToDestroy, evtsToDestroy;
       // We have all the information we need for creating OcrLoopIterEdtContext
       OcrTaskContextPtr taskcontext_sp = m_ocrObjectManager.registerOcrLoopIterEdt(taskname, m_taskOrder, m_sgpdecl, depDbks,
 										   depEvts, depElems,
@@ -831,6 +831,229 @@ bool OcrLoopIterPragmaParser::match() {
   }
   return true;
 }
+
+/*****************************
+ * OcrSpmdRegionPragmaParser *
+ *****************************/
+OcrSpmdRegionPragmaParser::OcrSpmdRegionPragmaParser(SgPragmaDeclaration* sgpdecl, string input,
+						     unsigned int traversalOrder, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl),
+    m_traversalOrder(traversalOrder),
+    m_ocrObjectManager(ocrObjectManager) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> *sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+}
+
+list<string> OcrSpmdRegionPragmaParser::matchParamNames(string input) {
+  list<string> paramList;
+  if(!regex_match(input, sr_paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier = *cur;
+    if(identifier.compare("NONE") == 0 || identifier.compare("none") == 0) {
+      continue;
+    }
+    paramList.push_back(identifier);
+  }
+  return paramList;
+}
+
+int OcrSpmdRegionPragmaParser::matchNTasks(string input) {
+  sregex sr_ntasks = *_s >> icase("NTASKS") >> *_s >> '(' >> (s1=+digit) >> ')';
+  smatch match_results;
+  if(regex_search(input, match_results, sr_ntasks)) {
+    string ntasksStr = match_results[1];
+    int ntasks = boost::lexical_cast<int>(ntasksStr);
+    if(ntasks < 0) {
+      throw MatchException("Negative Number Exception for NTASKS\n");
+    }
+    return ntasks;
+  }
+  else {
+    throw MatchException("Matching failed in NTASKS\n");
+  }
+}
+
+list<string> OcrSpmdRegionPragmaParser::matchDepDbks(string input) {
+  sregex sr_dbknames = icase("DEP_DBKS") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in DEP_DBKs\n");
+  }
+  return dbkNames;
+}
+
+list<string> OcrSpmdRegionPragmaParser::matchDepEvts(string input) {
+  sregex sr_dbknames = icase("DEP_EVTs") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in DEP_EVTs\n");
+  }
+  return dbkNames;
+}
+
+list<string> OcrSpmdRegionPragmaParser::matchDepElems(string input) {
+  sregex sr_delems = icase("DEP_ELEMS") >> *_s >> (s1=sr_paramlist);
+  list<string> depElemNames;
+  smatch matchResults;
+  if(regex_search(input, matchResults, sr_delems)) {
+    string paramlist = matchResults[1];
+    depElemNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in DEP_ELEMs\n");
+  }
+  return depElemNames;
+}
+
+string OcrSpmdRegionPragmaParser::matchOutEvt(string input) {
+  sregex outEvtNameOnly = *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, outEvtNameOnly)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OEVENT\n");
+    return "";
+  }
+}
+
+SgBasicBlock* OcrSpmdRegionPragmaParser::getSpmdRegionBasicBlock() {
+  SgStatement* nextStmt = SageInterface::getNextStatement(m_sgpdecl);
+  SgBasicBlock* basicblock = isSgBasicBlock(nextStmt);
+  if(!basicblock) {
+    throw MatchException("BasicBlock for SPMD region NOT found\n");
+  }
+  return basicblock;
+}
+
+bool OcrSpmdRegionPragmaParser::match() {
+  Logger::Logger lg("OcrSpmdRegionPragmaParser::match()", Logger::DEBUG);
+  boost::xpressive::sregex sr_spmdregion = *_s >> as_xpr("ocr spmd region")
+					       >> *_s >> icase("NTASKS") >> *_s >> '(' >> +(digit) >> ')'
+					       >> *_s >> icase("DEP_DBKS") >> *_s >> (sr_paramlist)
+					       >> *_s >> icase("DEP_EVTS") >> *_s >> (sr_paramlist)
+					       >> *_s >> icase("DEP_ELEMS") >> *_s >> (sr_paramlist)
+					       >> *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					       >> *_s;
+  string input = m_sgpdecl->get_pragma()->get_pragma();
+  try {
+    if(regex_match(input, sr_spmdregion)) {
+      int ntasks = matchNTasks(input);
+      list<string> depDbkNames = matchDepDbks(input);
+      list<string> depEvtNames = matchDepEvts(input);
+      list<string> depElemNames = matchDepElems(input);
+      string outEvtName = matchOutEvt(input);
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      list<OcrDbkContextPtr> depDbks = m_ocrObjectManager.getOcrDbkContextList(depDbkNames, scope);
+      list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
+      list<SgVarRefExp*> depElems = SgNodeUtil::identifiers2sgnlist(depElemNames, m_sgpdecl);
+      // Register the output event
+      OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outEvtName);
+      string spmdEdtName = SageInterface::generateUniqueVariableName(scope, "spmdEdt");
+      SgBasicBlock* basicblock = getSpmdRegionBasicBlock();
+      OcrTaskContextPtr taskContext = m_ocrObjectManager.registerOcrSpmdRegionEdt(spmdEdtName, m_traversalOrder, m_sgpdecl,
+										  depDbks, depEvts, depElems, outEvtContext, basicblock,
+										  ntasks);
+      return true;
+    }
+    else {
+      throw MatchException("Failed to Match SPMD Region Pragma\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
+
+/*******************************
+ * OcrSpmdFinalizePragmaParser *
+ *******************************/
+OcrSpmdFinalizePragmaParser::OcrSpmdFinalizePragmaParser(SgPragmaDeclaration* sgpdecl, string input,
+							 unsigned int traversalOrder, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl),
+    m_traversalOrder(traversalOrder),
+    m_ocrObjectManager(ocrObjectManager) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> *sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+}
+
+list<string> OcrSpmdFinalizePragmaParser::matchParamNames(string input) {
+  list<string> paramList;
+  if(!regex_match(input, sr_paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier = *cur;
+    if(identifier.compare("NONE") == 0 || identifier.compare("none") == 0) {
+      continue;
+    }
+    paramList.push_back(identifier);
+  }
+  return paramList;
+}
+
+list<string> OcrSpmdFinalizePragmaParser::matchDepEvts(string input) {
+  sregex sr_dbknames = icase("DEP_EVTs") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in OcrSpmdFinalizePragmaParser::DEP_EVTs\n");
+  }
+  return dbkNames;
+}
+
+bool OcrSpmdFinalizePragmaParser::match() {
+  Logger::Logger lg("OcrSpmdFinalizePragmaParser::match()", Logger::DEBUG);
+  boost::xpressive::sregex sr_spmdfinalize = *_s >> as_xpr("ocr spmd finalize")
+					       >> *_s >> icase("DEP_EVTS") >> *_s >> (sr_paramlist)
+					       >> *_s;
+  string input = m_sgpdecl->get_pragma()->get_pragma();
+  try {
+    if(regex_match(input, sr_spmdfinalize)) {
+      list<string> depEvtNames = matchDepEvts(input);
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
+      string spmdFinlaizeEdtName = SageInterface::generateUniqueVariableName(scope, "_spmdFinalizeEdt");
+      OcrTaskContextPtr taskContext = m_ocrObjectManager.registerOcrSpmdFinalizeEdt(spmdFinlaizeEdtName, m_traversalOrder, m_sgpdecl,
+										    depEvts);
+      return true;
+    }
+    else {
+      throw MatchException("Failed to Match SPMD Finalize Pragma\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
+
+
 
 /*******************
  * OcrPragmaParser *
@@ -883,6 +1106,32 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       }
       else {
 	Logger::error(lg) << "Shutdown Pragma Parsing Failed\n";
+	std::terminate();
+      }
+    }
+    else if(ptype == OcrPragmaType::e_SpmdRegionEdt) {
+      // Increase the traversal order counter
+      m_taskOrderCounter = m_taskOrderCounter+1;
+      AstFromString::afs_skip_whitespace();
+      OcrSpmdRegionPragmaParser spmdRegionPragmaParser(sgpdecl, AstFromString::c_char, m_taskOrderCounter, m_ocrObjectManager);
+      if(spmdRegionPragmaParser.match()) {
+	Logger::info(lg) << "Spmd Region Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "Spmd Region Pragma Parsing Failed\n";
+	std::terminate();
+      }
+    }
+    else if(ptype == OcrPragmaType::e_SpmdFinalizeEdt) {
+      // Increase the traversal order counter
+      m_taskOrderCounter = m_taskOrderCounter+1;
+      AstFromString::afs_skip_whitespace();
+      OcrSpmdFinalizePragmaParser spmdFinalizePragmaParser(sgpdecl, AstFromString::c_char, m_taskOrderCounter, m_ocrObjectManager);
+      if(spmdFinalizePragmaParser.match()) {
+	Logger::info(lg) << "SpmdFinalize Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "SpmdFinalize Pragma Parsing Failed\n";
 	std::terminate();
       }
     }
