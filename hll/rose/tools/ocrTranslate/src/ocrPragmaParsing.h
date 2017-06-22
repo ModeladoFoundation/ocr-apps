@@ -28,6 +28,8 @@ struct OcrPragmaType {
   typedef enum {
     e_TaskEdt,
     e_LoopIterEdt,
+    e_SpmdRegionEdt,
+    e_SpmdFinalizeEdt,
     e_Dbk,
     e_ShutdownEdt,
     e_NotOcr
@@ -182,6 +184,46 @@ class OcrShutdownPragmaParser {
   bool matchParams(std::string input, std::list<std::string>& paramList);
  public:
   OcrShutdownPragmaParser(SgPragmaDeclaration* sgpdecl, std::string input, unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
+  bool match();
+};
+
+/*****************************
+ * OcrSpmdRegionPragmaParser *
+ *****************************/
+class OcrSpmdRegionPragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  unsigned int m_traversalOrder;
+  OcrObjectManager& m_ocrObjectManager;
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
+ private:
+  std::string matchTaskName(std::string input);
+  int matchNTasks(std::string input);
+  std::list<std::string> matchParamNames(std::string input);
+  std::list<std::string> matchDepDbks(std::string input);
+  std::list<std::string> matchDepEvts(std::string input);
+  std::list<std::string> matchDepElems(std::string input);
+  std::string matchOutEvt(std::string input);
+  SgBasicBlock* getSpmdRegionBasicBlock();
+ public:
+  OcrSpmdRegionPragmaParser(SgPragmaDeclaration* sgpdecl, std::string input,
+			    unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
+  bool match();
+};
+
+/*******************************
+ * OcrSpmdFinalizePragmaParser *
+ *******************************/
+class OcrSpmdFinalizePragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  unsigned int m_traversalOrder;
+  OcrObjectManager& m_ocrObjectManager;
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
+ private:
+  std::list<std::string> matchParamNames(std::string input);
+  std::list<std::string> matchDepEvts(std::string input);
+ public:
+  OcrSpmdFinalizePragmaParser(SgPragmaDeclaration* sgpdecl, std::string input,
+			      unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
   bool match();
 };
 
