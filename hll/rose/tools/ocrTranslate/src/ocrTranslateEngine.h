@@ -58,14 +58,15 @@ class OcrTranslator {
 		  TaskAstInfoPtr taskAstInfo);
   void outlineForLoopBodyEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
   void outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEdtContext, SgForStatement* forStmt);
-  void insertDepDbkDecl(std::string edtName, std::list<OcrDbkContextPtr>& depDbks,
-			unsigned int slotbegin, TaskAstInfoPtr taskAstInfo);
-  void insertDepElemDecl(std::string edtName, OcrEdtContextPtr edtContext, TaskAstInfoPtr taskAstInfo);
-  void insertEdtReturnStmt(std::string edtName);
-  /* void insertDbkDestroyStmts(std::string edtName, std::list<std::string>& dbksToDestroy, unsigned int slotbegin); */
-  /* void insertEvtDestroyStmts(std::string edtName, std::list<std::string>& evtsToDestroy, unsigned int slotbegin); */
   // Routine for building the shutdown EDT
   void outlineShutdownEdt(OcrShutdownEdtContextPtr shutdownEdt);
+
+  void insertDepDbkDecl(std::string edtName, std::list<OcrDbkContextPtr>& depDbks,
+			unsigned int slotbegin, TaskAstInfoPtr taskAstInfo);
+  void buildDepElemAST(std::string edtName, std::list<SgVarRefExp*> depElems, TaskAstInfoPtr taskAstInfo);
+  void buildLoopDepElemAST(std::string edtName, std::list<SgVarRefExp*> depElems, TaskAstInfoPtr taskAstInfo, std::string loopCompEvtName);
+  void insertDepElemDecl(std::string edtName, TaskAstInfoPtr taskAstInfo);
+
   //! datablock translation involves building the following AST fragments
   //! 1. AST for variable declaration of ocrGuid for the datablock
   //! 2. AST for variable declaration of the pointer (u64*) for the datablock
@@ -88,6 +89,10 @@ class OcrTranslator {
 
   // Shutdown EDTs
   void setupShutdownEdt(std::string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext);
+  // Setup SpmdRegionEdt
+  void setupSpmdRegionEdt(std::string edtName, OcrSpmdRegionContextPtr spmdRegionContext);
+  // Setup SpmdRankFinalize
+  void setupSpmdFinalize(std::string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContextPtr);
   // Miscellaneous utility functions
   std::set<SgSourceFile*> getSourceFilesOfShutdownEdts(std::list<OcrShutdownEdtContextPtr>& shutdownEdts);
   void replaceDepElemVars(std::string edtname, OcrEdtContextPtr edtContext);
