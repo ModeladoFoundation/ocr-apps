@@ -41,7 +41,7 @@
 //Configurable params
 #define N       4
 #define XDIM    N   //Number of tiles or blocks in X-dimension
-#define ITERS   4   //Number of iterations in application
+#define ITERS   N   //Number of iterations in application
 
 //Derived params (DO NOT CHANGE)
 #define NUM_DIMS 1 //(x)
@@ -112,7 +112,7 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t shutdownEdt = guidParamv[0];
         ocrGuid_t curOutputEvent;
         ocrGetOutputEvent(&curOutputEvent);
-        ocrAddDependence(curOutputEvent, shutdownEdt, x, DB_MODE_CONST);
+        ocrAddDependence(NULL_GUID, shutdownEdt, x, DB_MODE_CONST);
         return NULL_GUID;
     }
 
