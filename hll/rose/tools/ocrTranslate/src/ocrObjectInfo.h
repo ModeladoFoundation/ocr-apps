@@ -93,6 +93,10 @@ class OcrTaskContext {
     e_TaskEdt,
     e_TaskLoopIter,
     e_TaskShutDown,
+    e_TaskSpmdRegion,
+    e_TaskSpmdFinalize,
+    e_TaskSpmdSend,
+    e_TaskSpmdRecv,
     e_TaskMain
   } OcrTaskType;
  protected:
@@ -123,14 +127,13 @@ class OcrEdtContext : public OcrTaskContext {
   SgBasicBlock* m_basicblock;
   std::list<OcrDbkContextPtr> m_depDbks;
   std::list<OcrEvtContextPtr> m_depEvts;
-  std::list<OcrDbkContextPtr> m_dbksToCreate;
+
   std::list<SgVarRefExp*> m_depElems;
   OcrEvtContextPtr m_outputEvt;
-  std::list<std::string> m_dbksToDestroy;
-  std::list<std::string> m_evtsToDestroy;
+
   bool m_finishEdt;
 public:
-  OcrEdtContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+  OcrEdtContext(OcrTaskType type, std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 		std::list<OcrDbkContextPtr> depDbks,
 		std::list<OcrEvtContextPtr> depEvts,
 		std::list<SgVarRefExp*> depElems,
@@ -143,10 +146,6 @@ public:
 		std::list<OcrEvtContextPtr> depEvts,
 		std::list<SgVarRefExp*> depElems,
 		OcrEvtContextPtr outputEvt);
-  // Set Functions
-  void setDbksToDestroy(std::list<std::string> dbksToDestroy);
-  void setEvtsToDestroy(std::list<std::string> evtsToDestroy);
-  void setDbksToCreate(std::list<OcrDbkContextPtr> dbksToCreate);
 
   // Get Functions
   std::string get_name() const;
@@ -163,8 +162,7 @@ public:
   unsigned int getDepEvtSlotNumber(std::string evtname) const;
   bool isFinishEdt() const;
   virtual SgBasicBlock* getTaskBasicBlock() const;
-  std::list<std::string> getDbksToDestroy() const;
-  std::list<std::string> getEvtsToDestroy() const;
+
   virtual std::string str() const;
   ~OcrEdtContext();
 };
@@ -194,6 +192,66 @@ class OcrLoopIterEdtContext : public OcrEdtContext {
   ~OcrLoopIterEdtContext();
 };
 typedef boost::shared_ptr<OcrLoopIterEdtContext> OcrLoopIterEdtContextPtr;
+
+/************************
+ * OcrSpmdRegionContext *
+ ************************/
+/*!
+ * \brief Store information required for spawning spmd EDTs
+ */
+class OcrSpmdRegionContext : public OcrEdtContext {
+  unsigned int m_ntasks;
+ public:
+  OcrSpmdRegionContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* spgdecl,
+		       std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> depEvts,
+		       std::list<SgVarRefExp*> depElems,
+		       OcrEvtContextPtr outEvt,
+		       SgBasicBlock* basicblock,
+		       unsigned int ntasks);
+  unsigned int getNTasks() const;
+  std::string str() const;
+};
+
+typedef boost::shared_ptr<OcrSpmdRegionContext> OcrSpmdRegionContextPtr;
+
+/**************************
+ * OcrSpmdFinalizeContext *
+ **************************/
+/*!
+ * \brief Store information required to call spmdRankFinalize()
+ */
+class OcrSpmdFinalizeContext : public OcrTaskContext {
+  std::list<OcrEvtContextPtr> m_depEvts;
+ public:
+  OcrSpmdFinalizeContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* spgdecl,
+			 std::list<OcrEvtContextPtr> depEvts);
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  std::string str() const;
+};
+typedef boost::shared_ptr<OcrSpmdFinalizeContext> OcrSpmdFinalizeContextPtr;
+
+/**********************
+ * OcrSpmdSendContext *
+ **********************/
+/* class OcrSpmdSendContext : public OcrTaskContextPtr { */
+/*   SgFunctionCallExp* m_sendCallExp; */
+/*  public: */
+/*   OcrSpmdSendContext(SgFunctionCallExp* sendCallExp); */
+/*   ~OcrSpmdSendContext(); */
+/* }; */
+/* typedef boost::shared_ptr<OcrSpmdSendContext> OcrSpmdSendContextPtr; */
+
+/**********************
+ * OcrSpmdRecvContext *
+ **********************/
+/* class OcrSpmdRecvContext : public OcrTaskContext { */
+/*   SgFunctionCallExp* m_recvCallExp; */
+/*   SgVariableSymbol* m_buffSymbol; */
+/*  public: */
+/*   OcrSpmdRecvContext(SgFunctionCallExp* recvCallExp, SgVariableSymbol* buffSymbol); */
+/*   ~OcrSpmdRecvContext(); */
+/* }; */
+/* typedef boost::shared_ptr<OcrSpmdRecvContext> OcrSpmdRecvContextPtr; */
 
 /*********************
  * OcrMainEdtContext *
@@ -287,6 +345,15 @@ class OcrObjectManager {
 					   SgStatement* loopStmt);
   OcrTaskContextPtr registerOcrShutdownEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* shutdownPragma,
 					   std::list<OcrEvtContextPtr> depEvts);
+  OcrTaskContextPtr registerOcrSpmdRegionEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+					     std::list<OcrDbkContextPtr> depDbks,
+					     std::list<OcrEvtContextPtr> depEvts,
+					     std::list<SgVarRefExp*> depElems,
+					     OcrEvtContextPtr outEvt,
+					     SgBasicBlock* basicblock,
+					     unsigned int ntasks);
+  OcrTaskContextPtr registerOcrSpmdFinalizeEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+					       std::list<OcrEvtContextPtr> depEvts);
   // return a list of edtnames in the same order they were encountered in the AST
   std::list<std::string> getEdtTraversalOrder() const;
 
@@ -297,4 +364,25 @@ class OcrObjectManager {
   std::list<OcrDbkContextPtr> getOcrDbkContextList() const;
 };
 
+/*************************
+ * OcrSpmdContextManager *
+ *************************/
+/*!
+ * \brief Context manager for spmd annotations
+ *
+ * OcrSpmdContextManager manages all context information associated with SPMD annotations
+ * SPMD annotations are as follows:
+ * 1. Identify SPMD regions in the code
+ * Example: #pragma ocr spmd region DEP_DBKs() DEP_EVTs() DEP_ELEMs() OEVENT() { .. }
+ * 2. Identify end of SPMD region
+ * Example: #pragma ocr spmd finalize DEP_EVTs()
+ * 3. SPMD communication operations
+ * Examples:
+ * #pragma ocr send DEP_DBKs() DEP_EVTs() OEVENT()
+ * MPI_Send(...)
+ * #pragma ocr recv DEP_EVTs() OEVENT()
+ * MPI_Recv(...)
+ *
+ * Create OcrSpmdContextManager only when dealing with SPMD annotations
+ */
 #endif

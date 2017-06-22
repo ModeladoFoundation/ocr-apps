@@ -194,16 +194,14 @@ OcrTaskContext::~OcrTaskContext() {
 /*****************
  * OcrEdtContext *
  *****************/
-OcrEdtContext::OcrEdtContext(string name,
-			     unsigned int traversalOrder,
-			     SgPragmaDeclaration* sgpdecl,
+OcrEdtContext::OcrEdtContext(OcrTaskType type, string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 			     list<OcrDbkContextPtr> depDbks,
 			     list<OcrEvtContextPtr> depEvts,
 			     list<SgVarRefExp*> depElems,
 			     OcrEvtContextPtr outputEvt,
 			     SgBasicBlock* basicblock,
 			     bool finishEdt)
-  : OcrTaskContext(OcrTaskContext::e_TaskEdt, name, traversalOrder, sgpdecl),
+  : OcrTaskContext(type, name, traversalOrder, sgpdecl),
     m_depDbks(depDbks),
     m_depEvts(depEvts),
     m_depElems(depElems),
@@ -287,14 +285,6 @@ unsigned int OcrEdtContext::getDepEvtSlotNumber(string evtname) const {
   }
 }
 
-list<string> OcrEdtContext::getDbksToDestroy() const {
-  return m_dbksToDestroy;
-}
-
-list<string> OcrEdtContext::getEvtsToDestroy() const {
-  return m_evtsToDestroy;
-}
-
 unsigned int OcrEdtContext::getNumDepElems() const {
   return m_depElems.size();
 }
@@ -305,18 +295,6 @@ unsigned int OcrEdtContext::getNumDepDbks() const {
 
 unsigned int OcrEdtContext::getNumDepEvts() const {
   return m_depEvts.size();
-}
-
-void OcrEdtContext::setDbksToDestroy(list<string> dbksToDestroy) {
-  m_dbksToDestroy = dbksToDestroy;
-}
-
-void OcrEdtContext::setEvtsToDestroy(list<string> evtsToDestroy) {
-  m_evtsToDestroy = evtsToDestroy;
-}
-
-void OcrEdtContext::setDbksToCreate(list<OcrDbkContextPtr> dbksToCreate) {
-  m_dbksToCreate = dbksToCreate;
 }
 
 bool OcrEdtContext::isFinishEdt() const {
@@ -338,13 +316,6 @@ string OcrEdtContext::str() const {
   oss << "]\n";
   oss << indent << "outEvt: " << m_outputEvt->str() << endl;
   oss << indent << "depElems: " << StrUtil::SgVarRefExpList2Str(m_depElems) << endl;
-  oss << indent << "dbksToCreate: [";
-  d = m_dbksToCreate.begin();
-  while(d != m_dbksToCreate.end()) {
-    oss << (*d)->get_name();
-    ++d;
-    if(d != m_depDbks.end()) oss << ", ";
-  }
   oss << "]\n";
   // oss << indent << "taskStmts:[\n" << AstDebug::astToString(m_basicblock) << "]";
   oss << "]";
@@ -458,6 +429,44 @@ string OcrLoopIterEdtContext::str() const {
 OcrLoopIterEdtContext::~OcrLoopIterEdtContext() {
 }
 
+/************************
+ * OcrSpmdRegionContext *
+ ************************/
+OcrSpmdRegionContext::OcrSpmdRegionContext(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+					   list<OcrDbkContextPtr> depDbks, list<OcrEvtContextPtr> depEvts,
+					   list<SgVarRefExp*> depElems,
+					   OcrEvtContextPtr outEvt,
+					   SgBasicBlock* basicblock,
+					   unsigned int ntasks)
+  : OcrEdtContext(OcrTaskContext::e_TaskSpmdRegion, name, traversalOrder, sgpdecl,
+		  depDbks, depEvts, depElems, outEvt, basicblock, false),
+    m_ntasks(ntasks) {
+}
+
+unsigned int OcrSpmdRegionContext::getNTasks() const {
+  return m_ntasks;
+}
+
+string OcrSpmdRegionContext::str() const {
+  return "[OcrSpmdRegionContext]";
+}
+
+/**************************
+ * OcrSpmdFinalizeContext *
+ **************************/
+OcrSpmdFinalizeContext::OcrSpmdFinalizeContext(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+					       list<OcrEvtContextPtr> depEvts)
+  : OcrTaskContext(OcrTaskContext::e_TaskSpmdFinalize, name, traversalOrder, sgpdecl),
+    m_depEvts(depEvts) { }
+
+list<OcrEvtContextPtr> OcrSpmdFinalizeContext::getDepEvts() const {
+  return m_depEvts;
+}
+
+string OcrSpmdFinalizeContext::str() const {
+  return "[OcrSpmdFinalizeContext]";
+}
+
 /********************
  * OcrObjectManager *
  ********************/
@@ -552,7 +561,7 @@ OcrTaskContextPtr OcrObjectManager::registerOcrEdt(std::string name, unsigned in
     return f->second;
   }
   else {
-    OcrTaskContextPtr taskcontext_sp(new OcrEdtContext(name, traversalOrder, sgpdecl, depDbks, depEvts, depElems, outputEvt,
+    OcrTaskContextPtr taskcontext_sp(new OcrEdtContext(OcrTaskContext::e_TaskEdt, name, traversalOrder, sgpdecl, depDbks, depEvts, depElems, outputEvt,
 						       basicblock, finishEdt));
     OcrTaskContextMapElem elem(name, taskcontext_sp);
     assert(taskcontext_sp);
@@ -613,6 +622,44 @@ OcrTaskContextPtr OcrObjectManager::registerOcrMainEdt(string name, unsigned int
     OcrTaskContextMapElem elem(name, taskcontext_sp);
     assert(taskcontext_sp);
     m_ocrTaskContextMap.insert(elem);
+    return taskcontext_sp;
+  }
+}
+
+OcrTaskContextPtr OcrObjectManager::registerOcrSpmdRegionEdt(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+							     list<OcrDbkContextPtr> depDbks,
+							     list<OcrEvtContextPtr> depEvts,
+							     list<SgVarRefExp*> depElems,
+							     OcrEvtContextPtr outEvt,
+							     SgBasicBlock* basicblock,
+							     unsigned int ntasks) {
+  OcrTaskContextMap::iterator f = m_ocrTaskContextMap.find(name);
+  if(f != m_ocrTaskContextMap.end()) {
+    assert(f->second);
+    cerr << "WARNING: TASK " << name << "is already registered\n";
+    return f->second;
+  }
+  else {
+    OcrTaskContextPtr taskcontext_sp(new OcrSpmdRegionContext(name, traversalOrder, sgpdecl, depDbks, depEvts, depElems, outEvt,
+							      basicblock, ntasks));
+    OcrTaskContextMapElem elem(name, taskcontext_sp);
+    assert(taskcontext_sp);
+    m_ocrTaskContextMap.insert(elem);
+    return taskcontext_sp;
+  }
+}
+
+OcrTaskContextPtr OcrObjectManager::registerOcrSpmdFinalizeEdt(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+							       std::list<OcrEvtContextPtr> depEvts) {
+  OcrTaskContextMap::iterator f = m_ocrTaskContextMap.find(name);
+  if(f != m_ocrTaskContextMap.end()) {
+    assert(f->second);
+    cerr << "WARNING: TASK " << name << "is already registered\n";
+    return f->second;
+  }
+  else {
+    OcrTaskContextPtr taskcontext_sp = boost::make_shared<OcrSpmdFinalizeContext>(name, traversalOrder, sgpdecl, depEvts);
+    OcrTaskContextMapElem elem(name, taskcontext_sp);
     return taskcontext_sp;
   }
 }
