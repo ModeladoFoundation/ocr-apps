@@ -77,6 +77,8 @@ class OcrTranslator {
   // EDT Translation
   std::vector<SgStatement*> setupEdtOutEvt(std::string edtname, std::string outEvt, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtTemplate(std::string edtname, unsigned int ndeps, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupEdtDepElems(std::string edtname, std::list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope);
+  std::vector<SgStatement*> setupLoopEdtDepElems(std::string edtname, std::list<SgVarRefExp*>& depElemVarList, std::string loopCompEvtName, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtDepElems(std::string edtname, OcrEdtContextPtr edtContext, std::list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtCreate(std::string edtname, std::string outEvtName, bool isFinishEdt, SgScopeStatement* scope);
   std::vector<SgStatement*> setupEdtDepDbks(std::string edtname, std::list<OcrDbkContextPtr>& dbkList, unsigned int slotBegin, SgScopeStatement* scope);
