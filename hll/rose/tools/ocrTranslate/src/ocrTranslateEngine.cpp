@@ -501,7 +501,6 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
 
 
   // Outlining control EDT has the following steps
-  // 1. Create an iteration complete event for the body EDT (ignoring this step for now)
   // 2. Setup the output event for the body EDT
   // 3. Setup dependent element for the body EDT
   // 4. Setup the EDT template for the body EDT
@@ -517,26 +516,31 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   vector<SgStatement*> stmtsToInsert;
   vector<SgStatement*> setupStmts;
 
+  // 2. Setup the output event for the body EDT
   string loopBodyOutEvtName = loopBodyEdtName + "Out";
   m_ocrObjectManager.registerOcrEvt(loopBodyOutEvtName);
   setupStmts = setupEdtOutEvt(loopBodyEdtName, loopBodyOutEvtName, ifBasicBlock);
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
   setupStmts.clear();
 
+  // 3. Setup dependent element for the body EDT
   list<SgVarRefExp*> depElems = loopIterEdtContext->getDepElems();
-  setupStmts = setupEdtDepElems(loopBodyEdtName, loopIterEdtContext, depElems, ifBasicBlock);
+  setupStmts = setupLoopEdtDepElems(loopBodyEdtName, depElems, loopIterEdtContext->getOutputEvt()->get_name(), ifBasicBlock);
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
   setupStmts.clear();
 
+  // 4. Setup the EDT template for the body EDT
   setupStmts = setupEdtTemplate(loopBodyEdtName, depDbks.size(), ifBasicBlock);
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
   setupStmts.clear();
 
+  // 5. Setup the EDT creation for the body EDT
   // Setup the body EDT as finish EDT
   setupStmts = setupEdtCreate(loopBodyEdtName, loopBodyOutEvtName, true, ifBasicBlock);
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
   setupStmts.clear();
 
+  // 6. Setup the EDT datablocks for the body EDT
   // Setup dependent datablocks for the body EDT
   setupStmts = setupEdtDepDbks(loopBodyEdtName, depDbks, 0, ifBasicBlock);
   stmtsToInsert.insert(stmtsToInsert.end(), setupStmts.begin(), setupStmts.end());
@@ -546,26 +550,30 @@ void OcrTranslator::outlineForLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEd
   SageInterface::prependStatementList(stmtsToInsert, ifBasicBlock);
   stmtsToInsert.clear();
 
+  // 7. Setup the depElem for next iteration of the control EDT
   // Now we can to setup the next iteration control EDT
-  setupStmts = setupEdtDepElems(loopControlEdtName, loopIterEdtContext, depElems, ifBasicBlock);
+  setupStmts = setupLoopEdtDepElems(loopControlEdtName, depElems, loopIterEdtContext->getOutputEvt()->get_name(), ifBasicBlock);
   SageInterface::appendStatementList(setupStmts, ifBasicBlock);
   setupStmts.clear();
 
+  // 8. Setup EDT template for next iteration of control EDT
   // Number of dependences for the next iteration is depDbks.size() + 1 for the output of bodyEDT outEvt
   setupStmts = setupEdtTemplate(loopControlEdtName, depDbks.size() + 1, ifBasicBlock);
   SageInterface::appendStatementList(setupStmts, ifBasicBlock);
   setupStmts.clear();
 
+  // 9. Setup EDT creation for next iteration control EDT
   setupStmts = setupEdtCreate(loopControlEdtName, "", false, ifBasicBlock);
   SageInterface::appendStatementList(setupStmts, ifBasicBlock);
   setupStmts.clear();
 
+  // 10. Setup depDbks for next iteration control EDT
   // Setup dependent datablocks for the body EDT
   setupStmts = setupEdtDepDbks(loopControlEdtName, depDbks, 0, ifBasicBlock);
   SageInterface::appendStatementList(setupStmts, ifBasicBlock);
   setupStmts.clear();
 
-
+  // 11. Setup iteration complete event as a dependency to t
   OcrEvtContextPtr loopBodyOutEvt = m_ocrObjectManager.getOcrEvtContext(loopBodyOutEvtName);
   list<OcrEvtContextPtr> loopControlEdtDepEvts;
   loopControlEdtDepEvts.push_back(loopBodyOutEvt);
@@ -718,6 +726,81 @@ vector<SgStatement*> OcrTranslator::setupEdtTemplate(string edtname, unsigned in
 
   return edtTemplSetupStmts;
 }
+
+/*!
+ *\brief Function for setting up the dependent elements for an EDT
+ *
+ * 1. First we generate a variable declaration for the depElem struct type
+ * 2. For each variable in the struct we generate an assignment statement
+ * which copies the current value of the variable in the stack into the struct member variable
+ * e.g., depElem.mvar = mvar;
+ */
+vector<SgStatement*> OcrTranslator::setupEdtDepElems(string edtName, list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope) {
+  Logger::Logger lg("OcrTranslator::setupEdtDepElems");
+  vector<SgStatement*> depElemSetupStmts;
+  EdtAstInfoPtr edtAstInfoPtr = m_astInfoManager.getEdtAstInfo(edtName);
+  // Next set up the depenedent elements
+  SgType* depElemStructType = edtAstInfoPtr->getDepElemTypedefType();
+  // First exit condition
+  // When there are no dependent elements to be copied return empty list
+  if(!depElemStructType && depElemVarList.empty()) return depElemSetupStmts;
+
+  string depElemVarName = SageInterface::generateUniqueVariableName(scope, "depElem");
+  SgVariableDeclaration* depElemStructVar = SageBuilder::buildVariableDeclaration(depElemVarName, depElemStructType, NULL, scope);
+  depElemSetupStmts.push_back(depElemStructVar);
+
+  SgClassDeclaration* depElemStructDecl = edtAstInfoPtr->getDepElemStructDecl();
+  // Build assignment statement for each member of the struct
+  vector<SgStatement*> depElemVarSetupStmts = AstBuilder::buildEdtDepElemSetupStmts(depElemStructVar, depElemStructDecl, depElemVarList);
+  // Copy the assignment statement list back in the setup stmts
+  depElemSetupStmts.insert(depElemSetupStmts.end(), depElemVarSetupStmts.begin(), depElemVarSetupStmts.end());
+  // Bookkeeping
+  edtAstInfoPtr->setDepElemStructName(depElemVarName);
+
+  return depElemSetupStmts;
+}
+
+vector<SgStatement*> OcrTranslator::setupLoopEdtDepElems(string edtName, list<SgVarRefExp*>& depElemVarList, string loopCompEvtName, SgScopeStatement* scope) {
+  Logger::Logger lg("OcrTranslator::setupLoopEdtDepElems");
+  vector<SgStatement*> depElemSetupStmts;
+  EdtAstInfoPtr edtAstInfoPtr = m_astInfoManager.getEdtAstInfo(edtName);
+  // Next set up the depenedent elements
+  SgType* depElemStructType = edtAstInfoPtr->getDepElemTypedefType();
+
+  string depElemVarName = SageInterface::generateUniqueVariableName(scope, "depElem");
+  SgVariableDeclaration* depElemStructVar = SageBuilder::buildVariableDeclaration(depElemVarName, depElemStructType, NULL, scope);
+  depElemSetupStmts.push_back(depElemStructVar);
+
+  SgClassDeclaration* depElemStructDecl = edtAstInfoPtr->getDepElemStructDecl();
+  if(!depElemVarList.empty()) {
+    // Build assignment statement for each member of the struct
+    vector<SgStatement*> depElemVarSetupStmts = AstBuilder::buildEdtDepElemSetupStmts(depElemStructVar, depElemStructDecl, depElemVarList);
+    // Copy the assignment statement list back in the setup stmts
+    depElemSetupStmts.insert(depElemSetupStmts.end(), depElemVarSetupStmts.begin(), depElemVarSetupStmts.end());
+  }
+  // Now generate the guid copy for the loop's completion event
+  // First get the guid name we gave for the Loop's completion event inside the struct
+  SgClassDefinition* depElemStructDefn = depElemStructDecl->get_definition();
+  EvtAstInfoPtr depElemOutEvtAstInfo = m_astInfoManager.getEvtAstInfo(loopCompEvtName, depElemStructDefn);
+  assert(depElemOutEvtAstInfo);
+  string depElemOutEvtGuidName = depElemOutEvtAstInfo->getEvtGuidName();
+  SgVariableSymbol* depElemMemberVarSymbol = GetVariableSymbol(depElemOutEvtGuidName, depElemStructDefn);
+  assert(depElemMemberVarSymbol);
+
+  // Now get the guid name we gave for the loop completetion event in an earlier scope
+  EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(loopCompEvtName, scope);
+  assert(outEvtAstInfo);
+  string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
+  SgVariableSymbol* depElemVarSymbol = GetVariableSymbol(outEvtGuidName, scope);
+  SgVariableSymbol* depElemStructVarSymbol = GetVariableSymbol(depElemStructVar, depElemVarName);
+  SgExprStatement* outEvtSetupStmt = AstBuilder::buildEdtDepElemSetupStmt(depElemStructVarSymbol, depElemMemberVarSymbol, depElemVarSymbol);
+  depElemSetupStmts.push_back(outEvtSetupStmt);
+  // Bookkeeping
+  edtAstInfoPtr->setDepElemStructName(depElemVarName);
+
+  return depElemSetupStmts;
+}
+
 
 vector<SgStatement*> OcrTranslator::setupEdtDepElems(string edtname, OcrEdtContextPtr edtContext,
 						     list<SgVarRefExp*>& depElemVarList, SgScopeStatement* scope) {
@@ -974,7 +1057,7 @@ void OcrTranslator::setupEdts() {
 
       // 3. Setup the depElems
       list<SgVarRefExp*> depElems = edtContext->getDepElems();
-      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(edtname, edtContext, depElems, scope);
+      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(edtname, depElems, scope);
       SageInterface::insertStatementListBefore(taskPragma, depElemSetupStmts);
       depElemSetupStmts.clear();
 
@@ -1008,20 +1091,20 @@ void OcrTranslator::setupEdts() {
       SgScopeStatement* scope = SageInterface::getEnclosingScope(taskPragma);
       string loopControlEdtName = loopIterEdtContext->getLoopControlEdtName();
 
-      // 1. Setup the output event for the EDT
-      string outEvtName = loopIterEdtContext->getOutputEvt()->get_name();
-      vector<SgStatement*> outEvtSetupStmts = setupEdtOutEvt(loopControlEdtName, outEvtName, scope);
-      SageInterface::insertStatementListBefore(taskPragma, outEvtSetupStmts);
-      outEvtSetupStmts.clear();
-
       vector<SgStatement*> loopInitStmts = loopIterEdtContext->getLoopInitStmts();
       if(loopInitStmts.size() > 0) {
 	SageInterface::insertStatementListBefore(taskPragma, loopInitStmts);
       }
       loopInitStmts.clear();
 
+      // 1. Setup the output event for the EDT
+      string outEvtName = loopIterEdtContext->getOutputEvt()->get_name();
+      vector<SgStatement*> outEvtSetupStmts = setupEdtOutEvt(loopControlEdtName, outEvtName, scope);
+      SageInterface::insertStatementListBefore(taskPragma, outEvtSetupStmts);
+      outEvtSetupStmts.clear();
+
       list<SgVarRefExp*> depElems = loopIterEdtContext->getDepElems();
-      vector<SgStatement*> depElemSetupStmts = setupEdtDepElems(loopControlEdtName, loopIterEdtContext, depElems, scope);
+      vector<SgStatement*> depElemSetupStmts = setupLoopEdtDepElems(loopControlEdtName, depElems, outEvtName, scope);
       SageInterface::insertStatementListBefore(taskPragma, depElemSetupStmts);
       depElemSetupStmts.clear();
 
