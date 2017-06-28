@@ -130,6 +130,9 @@ namespace AstBuilder {
 				    SgScopeStatement* scope);
   SgExprStatement* buildSpmdRankFinalizeCallExp(SgVariableSymbol* triggerEvtGuidSymbol, SgScopeStatement* scope);
 
+  SgStatement* buildSpmdMyRankCallExp(SgVarRefExp* rankVarRefExp, SgScopeStatement* scope);
+  SgStatement* buildSpmdSizeCallExp(SgVarRefExp* sizeVarRefExp, SgScopeStatement* scope);
+
   /*********************
    * ReplaceReturnStmt *
    *********************/
