@@ -467,6 +467,45 @@ string OcrSpmdFinalizeContext::str() const {
   return "[OcrSpmdFinalizeContext]";
 }
 
+/****************
+ * MpiOpContext *
+ ****************/
+MpiOpContext::MpiOpContext(MpiOpContext::MpiOpType type, SgStatement* stmt)
+  : m_opType(type),
+    m_stmt(stmt) { }
+
+string MpiOpContext::str() const {
+  ostringstream oss;
+  oss << "[MpiOpContext : ";
+  switch(m_opType) {
+  case OP_INIT:
+    oss << "MPI_Init";
+    break;
+  case OP_FINALIZE:
+    oss << "MPI_Finalize";
+    break;
+  case OP_COMM_RANK:
+    oss << "MPI_Comm_rank";
+    break;
+  case OP_COMM_SIZE:
+    oss << "MPI_Comm_size";
+    break;
+  case OP_SEND:
+    oss << "MPI_Send";
+    break;
+  case OP_RECV:
+    oss << "MPI_Recv";
+    break;
+  case OP_REDUCE:
+    oss << "MPI_Reduce";
+    break;
+  default:
+    oss << "Unknown";
+  }
+  oss << "]";
+  return oss.str();
+}
+
 /********************
  * OcrObjectManager *
  ********************/
@@ -660,8 +699,14 @@ OcrTaskContextPtr OcrObjectManager::registerOcrSpmdFinalizeEdt(string name, unsi
   else {
     OcrTaskContextPtr taskcontext_sp = boost::make_shared<OcrSpmdFinalizeContext>(name, traversalOrder, sgpdecl, depEvts);
     OcrTaskContextMapElem elem(name, taskcontext_sp);
+    m_ocrTaskContextMap.insert(elem);
     return taskcontext_sp;
   }
+}
+
+bool OcrObjectManager::registerMpiOpContext(MpiOpContextPtr mpiOpContext) {
+  m_mpiOpContextList.push_back(mpiOpContext);
+  return true;
 }
 
 struct TaskContextCompare {
