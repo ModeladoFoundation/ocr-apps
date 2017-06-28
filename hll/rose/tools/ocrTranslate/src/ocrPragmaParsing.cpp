@@ -1038,9 +1038,10 @@ bool OcrSpmdFinalizePragmaParser::match() {
       list<string> depEvtNames = matchDepEvts(input);
       SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
       list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
-      string spmdFinlaizeEdtName = SageInterface::generateUniqueVariableName(scope, "_spmdFinalizeEdt");
-      OcrTaskContextPtr taskContext = m_ocrObjectManager.registerOcrSpmdFinalizeEdt(spmdFinlaizeEdtName, m_traversalOrder, m_sgpdecl,
+      string spmdFinalizeEdtName = SageInterface::generateUniqueVariableName(scope, "spmdFinalizeEdt");
+      OcrTaskContextPtr taskContext = m_ocrObjectManager.registerOcrSpmdFinalizeEdt(spmdFinalizeEdtName, m_traversalOrder, m_sgpdecl,
 										    depEvts);
+      assert(taskContext);
       return true;
     }
     else {
@@ -1161,6 +1162,49 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       Logger::debug(lg) << mainEdtContext->str() << endl;
     }
     else{ } // do nothing
+  }
+  // Collect all MPI call expressions
+  else if(SgFunctionCallExp* callExp = isSgFunctionCallExp(sgn)) {
+    SgFunctionRefExp* functionExp = isSgFunctionRefExp(callExp->get_function());
+    SgStatement* callStmt = SageInterface::getEnclosingStatement(callExp);
+    if(functionExp) {
+      SgFunctionSymbol* fsymbol = functionExp->get_symbol();
+      assert(fsymbol);
+      string fname = fsymbol->get_name().getString();
+      MpiOpContextPtr mpiOpContext;
+      if(fname.compare("MPI_Init")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_INIT, callStmt);
+      }
+      else if(fname.compare("MPI_Finalize")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_FINALIZE, callStmt);
+      }
+      else if(fname.compare("MPI_Comm_rank")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_COMM_RANK, callStmt);
+      }
+      else if(fname.compare("MPI_Comm_size")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_COMM_SIZE, callStmt);
+      }
+      else if(fname.compare("MPI_Send")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_SEND, callStmt);
+      }
+      else if(fname.compare("MPI_Recv")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_RECV, callStmt);
+      }
+      else if(fname.compare("MPI_Reduce")) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_REDUCE, callStmt);
+      }
+      else {
+	std::cerr << "Unhandled MPI function " << fname << endl;
+	std::terminate();
+      }
+      assert(mpiOpContext);
+      m_ocrObjectManager.registerMpiOpContext(mpiOpContext);
+    }
+    // Function call expression is happening through pointers or class
+    // TODO: How to identify MPI calls under such cases
+    else {
+
+    }
   }
 }
 

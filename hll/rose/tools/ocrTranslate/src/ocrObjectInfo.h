@@ -288,6 +288,32 @@ class OcrShutdownEdtContext : public OcrTaskContext {
 
 typedef boost::shared_ptr<OcrShutdownEdtContext> OcrShutdownEdtContextPtr;
 
+/****************
+ * MpiOpContext *
+ ****************/
+/*!
+ *\brief Context information surrounding MPI operation
+ */
+class MpiOpContext {
+ public:
+  typedef enum {
+    OP_INIT,
+    OP_FINALIZE,
+    OP_COMM_RANK,
+    OP_COMM_SIZE,
+    OP_SEND,
+    OP_RECV,
+    OP_REDUCE
+  } MpiOpType;
+ private:
+  MpiOpType m_opType;
+  SgStatement* m_stmt;
+ public:
+  MpiOpContext(MpiOpType type, SgStatement* stmt);
+  std::string str() const;
+};
+typedef boost::shared_ptr<MpiOpContext> MpiOpContextPtr;
+
 /********************
  * OcrObjectManager *
  ********************/
@@ -309,6 +335,7 @@ typedef std::map<std::string, OcrEvtContextPtr> OcrEvtObjectMap;
 typedef std::pair<std::string, OcrEvtContextPtr> OcrEvtObjectMapElem;
 typedef std::map<int, std::string> EdtPragmaOrderMap;
 typedef std::pair<int, std::string> EdtPragmaOrderMapElem;
+typedef std::list<MpiOpContextPtr> MpiOpContextList;
 
 class OcrObjectManager {
   //! Associates an OcrContext for each OcrObject
@@ -317,6 +344,7 @@ class OcrObjectManager {
   OcrTaskContextMap m_ocrTaskContextMap;
   OcrEvtObjectMap m_ocrEvtObjectMap;
   EdtPragmaOrderMap m_edtPragmaOrderMap;
+  MpiOpContextList m_mpiOpContextList;
   OcrObjectSymbolTable<OcrDbkContext> m_dbkSymbolTable;
  public:
   OcrObjectManager();
@@ -354,6 +382,7 @@ class OcrObjectManager {
 					     unsigned int ntasks);
   OcrTaskContextPtr registerOcrSpmdFinalizeEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 					       std::list<OcrEvtContextPtr> depEvts);
+  bool registerMpiOpContext(MpiOpContextPtr mpiOpContext);
   // return a list of edtnames in the same order they were encountered in the AST
   std::list<std::string> getEdtTraversalOrder() const;
 
