@@ -252,12 +252,11 @@ void OcrTranslator::insertDepElemDecl(string edtName, TaskAstInfoPtr taskAstInfo
   SgFunctionDeclaration* edtDecl = taskAstInfo->getTaskFuncDecl();
 
   // If we did not create a struct decl nothing to insert here
-  if(!depElemStructDecl) {
+  if(!taskAstInfo->hasDepElems()) {
     return;
   }
   SgDeclarationStatementPtrList memberList = depElemStructDecl->get_definition()->get_members();
   assert(!memberList.empty());
-  assert(depElemStructDecl && depElemTypedefDecl && edtDecl);
   // Insert the depElem struct above the EDT
   SageInterface::insertStatementBefore(edtDecl, depElemTypedefDecl, true);
   SageInterface::insertStatementBefore(depElemTypedefDecl, depElemStructDecl, true);
@@ -290,10 +289,7 @@ void OcrTranslator::buildDepElemAST(string edtName, list<SgVarRefExp*> depElems,
   assert(edtDecl);
   SgScopeStatement* edtScope = SageInterface::getEnclosingScope(edtDecl);
   if(depElems.empty()) {
-    taskAstInfo->setDepElemStructDecl(NULL);
-    taskAstInfo->setDepElemTypedefDecl(NULL);
-    taskAstInfo->setDepElemTypedefType(NULL);
-    taskAstInfo->setDepElemBaseType(NULL);
+    assert(!taskAstInfo->hasDepElems());
     return;
   }
 
@@ -596,7 +592,7 @@ void OcrTranslator::outlineEdts() {
   list<string>::reverse_iterator edt = orderedEdts.rbegin();
   for( ; edt != orderedEdts.rend(); ++edt) {
     string edtname = *edt;
-    Logger::debug(lg) << "Outling " << edtname << "\n";
+    Logger::debug(lg) << "Outlining " << edtname << "\n";
     OcrTaskContextPtr taskContext = m_ocrObjectManager.getOcrTaskContext(edtname);
     if(taskContext->getTaskType() == OcrTaskContext::e_TaskEdt) {
       OcrEdtContextPtr edtContext = boost::dynamic_pointer_cast<OcrEdtContext>(taskContext);
@@ -665,7 +661,7 @@ void OcrTranslator::outlineEdts() {
       insertDepElemDecl(spmdRegionEdtName, spmdRegionEdtAstInfo);
     }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdFinalize) {
-      // No outlining
+      // No outlining necessary for spmdRankFinalize
     }
     else {
       cerr << "Unhandled Task Context in OcrTranslator::outlineEdts()\n";
@@ -705,10 +701,12 @@ vector<SgStatement*> OcrTranslator::setupEdtTemplate(string edtname, unsigned in
   SgType* depElemType = edtAstInfo->getDepElemTypedefType();
   SgExpression* depElemSizeVarRef;
   // Generate paramc variable expression only if we created a type for it
-  if(depElemType) {
+  if(edtAstInfo->hasDepElems()) {
     string depElemSizeName = SageInterface::generateUniqueVariableName(scope, "paramc");
     SgVariableDeclaration* depElemSizeVarDecl = AstBuilder::buildDepElemSizeVarDecl(depElemSizeName, depElemType, scope);
     edtTemplSetupStmts.push_back(depElemSizeVarDecl);
+    // Additional bookkeeping
+    edtAstInfo->setDepElemSizeVarName(depElemSizeName);
 
     SgVariableSymbol* depElemSizeVarSymbol = GetVariableSymbol(depElemSizeVarDecl, depElemSizeName);
     depElemSizeVarRef = SageBuilder::buildVarRefExp(depElemSizeVarSymbol);
@@ -743,7 +741,7 @@ vector<SgStatement*> OcrTranslator::setupEdtDepElems(string edtName, list<SgVarR
   SgType* depElemStructType = edtAstInfoPtr->getDepElemTypedefType();
   // First exit condition
   // When there are no dependent elements to be copied return empty list
-  if(!depElemStructType && depElemVarList.empty()) return depElemSetupStmts;
+  if(!edtAstInfoPtr->hasDepElems()) return depElemSetupStmts;
 
   string depElemVarName = SageInterface::generateUniqueVariableName(scope, "depElem");
   SgVariableDeclaration* depElemStructVar = SageBuilder::buildVariableDeclaration(depElemVarName, depElemStructType, NULL, scope);
@@ -947,26 +945,153 @@ void OcrTranslator::removeOcrTaskPragma(string edtname, SgBasicBlock* taskBasicB
  * 7. Setup output event
  * 8. Call spmdEdtSpawn with above arguments
  */
-
 void OcrTranslator::setupSpmdRegionEdt(string spmdRegionEdtName, OcrSpmdRegionContextPtr spmdRegionContext) {
   SgPragmaDeclaration* pragmaStmt = spmdRegionContext->getTaskPragma();
   SgScopeStatement* scope = SageInterface::getScope(pragmaStmt);
 
-  // Setup the edt template
+  // 7. Setup output event
   vector<SgStatement*> setupStmts;
   OcrEvtContextPtr outEvt = spmdRegionContext->getOutputEvt();
   setupStmts = setupEdtOutEvt(spmdRegionEdtName, outEvt->get_name(), scope);
   SageInterface::insertStatementListBefore(pragmaStmt, setupStmts);
   setupStmts.clear();
 
+  // 1. Setup template guid for spmdRegionEdt
+  // 2. Setup paramc for spmdRegionEdt
   unsigned int ndeps = spmdRegionContext->getNumDepDbks() + spmdRegionContext->getNumDepEvts();
   setupStmts = setupEdtTemplate(spmdRegionEdtName, ndeps, scope);
   SageInterface::insertStatementListBefore(pragmaStmt, setupStmts);
 
+  // 3. Setup paramv for spmdRegionEdt
+  list<SgVarRefExp*> depElems = spmdRegionContext->getDepElems();
+  setupStmts = setupEdtDepElems(spmdRegionEdtName, depElems, scope);
+  SageInterface::insertStatementListBefore(pragmaStmt, setupStmts);
+  setupStmts.clear();
+
+  // 5. Setup depv[] for spmdRegionEdt
+  // Create an array variable of ocrGuid_t[]
+  string depvGuidArrName = SageInterface::generateUniqueVariableName(scope, "depvGuids");
+  SgVariableDeclaration* depvGuidArrVarDecl = AstBuilder::buildGuidArrVarDecl(depvGuidArrName, ndeps, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, depvGuidArrVarDecl);
+
+  SgVariableSymbol* depvGuidArrSymbol = GetVariableSymbol(depvGuidArrVarDecl, depvGuidArrName);
+
+  // Copy the guids of dependent datablocks and dependent events in to the array
+  list<OcrDbkContextPtr> depDbks = spmdRegionContext->getDepDbks();
+  list<OcrDbkContextPtr>::iterator dbk = depDbks.begin();
+  int index;
+  for(int index=0; dbk != depDbks.end(); ++dbk, index++) {
+    string dbkName = (*dbk)->get_name();
+    string dbkGuidName = m_astInfoManager.getDbkAstInfo(dbkName, scope)->getDbkGuidName();
+    SgVariableSymbol* dbkGuidSymbol = GetVariableSymbol(dbkGuidName, scope);
+    SgStatement* guidCopyStmt = AstBuilder::buildGuidArrCopyStmt(dbkGuidSymbol, depvGuidArrSymbol, index);
+    SageInterface::insertStatementBefore(pragmaStmt, guidCopyStmt);
+  }
+
+  list<OcrEvtContextPtr> depEvts = spmdRegionContext->getDepEvts();
+  list<OcrEvtContextPtr>::iterator evt = depEvts.begin();
+  for( ; evt != depEvts.end(); ++evt, index++) {
+    string evtName = (*evt)->get_name();
+    string evtGuidName = m_astInfoManager.getEvtAstInfo(evtName, scope)->getEvtGuidName();
+    SgVariableSymbol* evtGuidSymbol = GetVariableSymbol(evtGuidName, scope);
+    SgStatement* guidCopyStmt = AstBuilder::buildGuidArrCopyStmt(evtGuidSymbol, depvGuidArrSymbol, index);
+    SageInterface::insertStatementBefore(pragmaStmt, guidCopyStmt);
+  }
+
+  // 6. Setup ocrDbAccessMode_t[] for spmdRegionEdt
+  string dbAccessModeArrName = SageInterface::generateUniqueVariableName(scope, "dbAcessModes");
+  SgVariableDeclaration* dbAccessModeArrVarDecl = AstBuilder::buildDbAccessModeArrVarDecl(dbAccessModeArrName, ndeps, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, dbAccessModeArrVarDecl);
+  SgVariableSymbol* dbAccessModeArrSymbol = GetVariableSymbol(dbAccessModeArrVarDecl, dbAccessModeArrName);
+
+  // Add datablocks in the default mode now
+  // This will change depending on the annotation
+  dbk = depDbks.begin();
+  for(index=0; dbk != depDbks.end(); ++dbk, index++) {
+    SgStatement* accessModeAssignStmt = AstBuilder::buildDbAccessModeAssignStmt(dbAccessModeArrSymbol, AstBuilder::DbkMode::DB_DEFAULT_MODE, index);
+    SageInterface::insertStatementBefore(pragmaStmt, accessModeAssignStmt);
+  }
+  // Events are added with DB_MODE_NULL
+  // Events may carry datablocks and this could be changed
+  evt = depEvts.begin();
+  for( ; evt != depEvts.end(); ++evt, index++) {
+    SgStatement* accessModeAssignStmt = AstBuilder::buildDbAccessModeAssignStmt(dbAccessModeArrSymbol, AstBuilder::DbkMode::DB_MODE_NULL, index);
+    SageInterface::insertStatementBefore(pragmaStmt, accessModeAssignStmt);
+  }
+
+  // 8. Call spmdEdtSpawn with above arguments
+  SpmdRegionEdtAstInfoPtr spmdRegionEdtAstInfo = m_astInfoManager.getSpmdRegionEdtAstInfo(spmdRegionEdtName);
+  string edtTemplGuidName = spmdRegionEdtAstInfo->getEdtTemplateGuidName();
+  // first argument
+  SgVariableSymbol* edtTemplGuidSymbol = GetVariableSymbol(edtTemplGuidName, scope);
+  // second argument
+  int ntasks = spmdRegionContext->getNTasks();
+  // third argument
+  SgVariableSymbol* depElemStructSymbol = NULL;
+  // fourth argument
+  SgVariableSymbol* depElemSizeVarSymbol = NULL;
+  if(spmdRegionEdtAstInfo->hasDepElems()) {
+    string depElemStructName = spmdRegionEdtAstInfo->getDepElemStructName();
+    string depElemSizeVarName = spmdRegionEdtAstInfo->getDepElemSizeVarName();
+    depElemStructSymbol = GetVariableSymbol(depElemStructName, scope);
+    depElemSizeVarSymbol = GetVariableSymbol(depElemSizeVarName, scope);
+  }
+  // fifth argument is ndeps
+  // sixth argument is depvGuidArrSymbol
+  // seventh argument is dbAccessModeArrSymbol
+  // eighth argument is ranksPerAffinity
+  int ranksPerAffinity = 0;
+  EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(outEvt->get_name(), scope);
+  string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
+  // ninth argument is outEvtGuid symbol
+  SgVariableSymbol* outEvtGuidSymbol = GetVariableSymbol(outEvtGuidName, scope);
+  SgStatement* spmdEdtSpawnStmt = AstBuilder::buildEdtSpawnCallExp(edtTemplGuidSymbol, ntasks, depElemStructSymbol,
+								   depElemSizeVarSymbol, ndeps, depvGuidArrSymbol, dbAccessModeArrSymbol,
+								   ranksPerAffinity, outEvtGuidSymbol, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, spmdEdtSpawnStmt);
+  // Remove the pragma
+  SageInterface::removeStatement(pragmaStmt);
+  SageInterface::removeStatement(spmdRegionContext->getTaskBasicBlock());
 }
 
 void OcrTranslator::setupSpmdFinalize(string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContext) {
-  // assert(false);
+  Logger::Logger lg("OcrTranslator::setupSpmdFinalize", Logger::DEBUG);
+  list<OcrEvtContextPtr> depEvts = spmdFinalizeContext->getDepEvts();
+  SgPragmaDeclaration* pragmaStmt = spmdFinalizeContext->getPragma();
+  SgScopeStatement* scope = SageInterface::getScope(pragmaStmt);
+
+  SgVariableSymbol* triggerEvtGuidSymbol = NULL;
+  if(depEvts.empty()) {
+    // Generate spmdRankFinalize with NULL_GUID
+    SgExprStatement* spmdRankFinalizeCallExp = AstBuilder::buildSpmdRankFinalizeCallExp(triggerEvtGuidSymbol, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, spmdRankFinalizeCallExp, true);
+  }
+  else {
+    // Create a trigger event
+    // Add all dependent events as dependencies to the trigger event using ocrAddDependence
+    string triggerEvtName = SageInterface::generateUniqueVariableName(scope, "trigger");
+    SgVariableDeclaration* triggerEvtGuidDecl = AstBuilder::buildGuidVarDecl(triggerEvtName, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtGuidDecl, true);
+    // Create the event
+    triggerEvtGuidSymbol = GetVariableSymbol(triggerEvtGuidDecl, triggerEvtName);
+    SgExprStatement* triggerEvtCreateStmt = AstBuilder::buildEvtCreateCallExp(triggerEvtGuidSymbol, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtCreateStmt, true);
+    // Add dependences from depEvts to triggerEvt
+    list<OcrEvtContextPtr>::iterator evt = depEvts.begin();
+    for(int slot = 0; evt != depEvts.end(); ++evt, ++slot) {
+      EvtAstInfoPtr depEvtAstInfo = m_astInfoManager.getEvtAstInfo((*evt)->get_name(), scope);
+      string depEvtGuidName = depEvtAstInfo->getEvtGuidName();
+      SgVariableSymbol* depEvtGuidSymbol = GetVariableSymbol(depEvtGuidName, scope);
+      assert(depEvtGuidSymbol);
+      SgExprStatement* addDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(depEvtGuidSymbol, triggerEvtGuidSymbol,
+										       slot, AstBuilder::DbkMode::DB_MODE_NULL, scope);
+      SageInterface::insertStatementBefore(pragmaStmt, addDependenceCallExp, true);
+    }
+    // Finally now add the spmdRankFinalizeCall
+    SgExprStatement* spmdRankFinalizeCallExp = AstBuilder::buildSpmdRankFinalizeCallExp(triggerEvtGuidSymbol, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, spmdRankFinalizeCallExp, true);
+  }
+  SageInterface::removeStatement(pragmaStmt);
 }
 
 void OcrTranslator::setupShutdownEdt(string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext) {
@@ -1025,11 +1150,13 @@ void OcrTranslator::setupShutdownEdt(string shutdownEdtName, OcrShutdownEdtConte
 }
 
 void OcrTranslator::setupEdts() {
+  Logger::Logger lg(" OcrTranslator::setupEdts", Logger::DEBUG);
   list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
   // Traverse them in the order
   list<string>::iterator edt = orderedEdts.begin();
   for( ; edt != orderedEdts.end(); ++edt) {
     string edtname = *edt;
+    Logger::debug(lg) << "Setting " << edtname << endl;
     OcrTaskContextPtr taskContext = m_ocrObjectManager.getOcrTaskContext(edtname);
     // EDT Setup consists of following steps
     // 1. Setup the output event for the EDT
