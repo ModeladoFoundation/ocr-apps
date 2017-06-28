@@ -149,9 +149,17 @@ string EvtAstInfo::str() const {
 /************************
  * TaskOutliningAstInfo *
  ************************/
-TaskOutliningAstInfo::TaskOutliningAstInfo(string name) : m_taskName(name) { }
+TaskOutliningAstInfo::TaskOutliningAstInfo(string name) :
+  m_taskName(name),
+  m_depElemStructDecl(NULL),
+  m_depElemTypedefDecl(NULL),
+  m_depElemBaseType(NULL),
+  m_depElemTypedefType(NULL),
+  m_edtDecl(NULL),
+  m_hasDepElems(false) { }
 
 void TaskOutliningAstInfo::setDepElemStructDecl(SgClassDeclaration* depElemStructDecl) {
+  m_hasDepElems = true;
   m_depElemStructDecl = depElemStructDecl;
 }
 
@@ -195,6 +203,10 @@ SgType* TaskOutliningAstInfo::getDepElemTypedefType() const {
 
 SgFunctionDeclaration* TaskOutliningAstInfo::getTaskFuncDecl() const {
   return m_edtDecl;
+}
+
+bool TaskOutliningAstInfo::hasDepElems() const {
+  return m_hasDepElems;
 }
 
 string TaskOutliningAstInfo::str() const {
@@ -249,6 +261,10 @@ SgFunctionDeclaration* TaskAstInfo::getTaskFuncDecl() const {
   return m_outliningInfo->getTaskFuncDecl();
 }
 
+bool TaskAstInfo::hasDepElems() const {
+  return m_outliningInfo->hasDepElems();
+}
+
 // Set Functions for Outlining Info
 void TaskAstInfo::setDepElemStructDecl(SgClassDeclaration* depElemStructDecl) {
   m_outliningInfo->setDepElemStructDecl(depElemStructDecl);
@@ -291,6 +307,10 @@ string EdtAstInfo::getEdtGuidName() const {
   return m_edtGuidName;
 }
 
+string EdtAstInfo::getDepElemSizeVarName() const {
+  return m_depElemSizeVarName;
+}
+
 void EdtAstInfo::setTemplGuidName(string edtTemplGuidName) {
   m_edtTemplGuidName = edtTemplGuidName;
 }
@@ -300,6 +320,10 @@ void EdtAstInfo::setDepElemStructName(string depElemStructName) {
 
 void EdtAstInfo::setEdtGuidName(string edtGuidName) {
   m_edtGuidName = edtGuidName;
+}
+
+void EdtAstInfo::setDepElemSizeVarName(string depElemSizeVarName) {
+  m_depElemSizeVarName = depElemSizeVarName;
 }
 
 string EdtAstInfo::str() const {
