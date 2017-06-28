@@ -8,10 +8,11 @@
 #include <vector>
 #include <list>
 
+// High-level API for building fragments of AST for OCR
 /**************
  * AstBuilder *
  **************/
-// High-level API for building fragments of AST for OCR
+
 namespace AstBuilder {
   class DbkMode {
   public:
@@ -37,6 +38,7 @@ namespace AstBuilder {
   SgType* buildOcrGuidType(SgScopeStatement* scope);
   SgType* buildVoidPtrType();
   SgType* buildArgvType();
+  SgType* buildOcrGuidArrType(SgScopeStatement* scope, SgExpression* dimExpr);
 
   // Utility Functions
   std::vector<SgInitializedName*> getDepElemStructMembers(SgClassDeclaration* depElemStructDecl);
@@ -84,7 +86,7 @@ namespace AstBuilder {
 					    SgVariableSymbol* outEvtGuidSymbol,
 					    bool finishEdt,
 					    SgScopeStatement* scope);
-  SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* dbkGuidSymbol, SgVariableSymbol* edtGuidSymbol,
+  SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* from, SgVariableSymbol* to,
 						int slot, DbkMode dbkmode, SgScopeStatement*  scope);
   SgExpression* buildDepElemSizeOfExpr(SgType* depElemType, SgScopeStatement* scope);
   SgVariableDeclaration* buildDepElemSizeVarDecl(std::string varName, SgType* depElemType, SgScopeStatement* scope);
@@ -108,6 +110,25 @@ namespace AstBuilder {
 						  SgVariableSymbol* mainEdtDbkSymbol, SgGlobal* global);
   SgExprStatement* buildMainEdtInitCallExp(SgName mainEdtInitName, SgVariableSymbol* mainEdtArgcSymbol,
 					   SgVariableSymbol* mainEdtArgvSymbol, SgVariableSymbol* mainEdtDbkSymbol, SgScopeStatement* scope);
+
+  /**********************
+   * SpmdRegionEdtSetup *
+   **********************/
+  SgVariableDeclaration* buildGuidArrVarDecl(std::string guidArrVarName, int dim, SgScopeStatement* scope);
+  /*!
+   * \brief Generate an assignment statement that copies a guid into array of guids at specified index
+   */
+  SgStatement* buildGuidArrCopyStmt(SgVariableSymbol* guidSymbol, SgVariableSymbol* guidArrSymbol, int index);
+
+  SgVariableDeclaration* buildDbAccessModeArrVarDecl(std::string dbAccessModeArrName, int dim, SgScopeStatement* scope);
+
+  SgStatement* buildDbAccessModeAssignStmt(SgVariableSymbol* dbAccessModeArrSymbol, DbkMode mode, int index);
+
+  SgStatement* buildEdtSpawnCallExp(SgVariableSymbol* edtTemplGuidSymbol, int ntasks, SgVariableSymbol* depElemStructSymbol,
+				    SgVariableSymbol* depElemSizeVarSymbol, int ndeps, SgVariableSymbol* depvGuidArrSymbol,
+				    SgVariableSymbol* dbAccessModeArrSymbol, int ranksPerAffinity, SgVariableSymbol* outEvtGuidSymbol,
+				    SgScopeStatement* scope);
+  SgExprStatement* buildSpmdRankFinalizeCallExp(SgVariableSymbol* triggerEvtGuidSymbol, SgScopeStatement* scope);
 
   /*********************
    * ReplaceReturnStmt *

@@ -66,6 +66,13 @@ namespace AstBuilder {
     return ocrGuidType;
   }
 
+  SgType* buildOcrGuidArrType(SgScopeStatement* scope, SgExpression* dimExpr) {
+    assert(scope);
+    SgType* guidType = buildOcrGuidType(scope);
+    SgType* guidArrType = SageBuilder::buildArrayType(guidType, dimExpr);
+    return guidArrType;
+  }
+
   SgTypedefDeclaration* buildTypeDefDecl(string edtName, SgType* baseType, SgScopeStatement* scope) {
     string typedefName = edtName + "DepElem_t";
     return SageBuilder::buildTypedefDeclaration(typedefName, baseType, scope, true);
@@ -578,13 +585,13 @@ namespace AstBuilder {
   }
 
   // u8 ocrAddDependence(ocrGuid_t source, ocrGuid_t destination, u32 slot, ocrDbAccessMode_t mode)
-  SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* dbkGuidSymbol, SgVariableSymbol* edtGuidSymbol, int slot, DbkMode dbkmode, SgScopeStatement*  scope) {
+  SgExprStatement* buildOcrAddDependenceCallExp(SgVariableSymbol* from, SgVariableSymbol* to, int slot, DbkMode dbkmode, SgScopeStatement*  scope) {
     SgType* voidType = SageBuilder::buildVoidType();
     // Arguments for ocrEdtTemplateCreate
     vector<SgExpression*> args;
-    SgVarRefExp* source = SageBuilder::buildVarRefExp(dbkGuidSymbol);
+    SgVarRefExp* source = SageBuilder::buildVarRefExp(from);
     args.push_back(source);
-    SgVarRefExp* destination = SageBuilder::buildVarRefExp(edtGuidSymbol);
+    SgVarRefExp* destination = SageBuilder::buildVarRefExp(to);
     args.push_back(destination);
     SgIntVal* slotn_ = SageBuilder::buildIntVal(slot);
     args.push_back(slotn_);
@@ -820,6 +827,132 @@ namespace AstBuilder {
 
     SageInterface::appendStatementList(mainEdtInitBody, mainEdtInitBasicBlock);
     return mainEdtInitFuncDecl;
+  }
+
+  /**********************
+   * SpmdRegionEdtSetup *
+   **********************/
+  SgVariableDeclaration* buildGuidArrVarDecl(string guidArrVarName, int dim, SgScopeStatement* scope) {
+    SgIntVal* dimExpr = SageBuilder::buildIntVal(dim);
+    SgType* guidArrType = buildOcrGuidArrType(scope, dimExpr);
+    SgVariableDeclaration* guidArrVarDecl = SageBuilder::buildVariableDeclaration(guidArrVarName, guidArrType, NULL, scope);
+    return guidArrVarDecl;
+  }
+
+  SgStatement* buildGuidArrCopyStmt(SgVariableSymbol* guidSymbol, SgVariableSymbol* guidArrSymbol, int index) {
+    SgVarRefExp* guidVarRefExp = SageBuilder::buildVarRefExp(guidSymbol);
+    SgIntVal* indexExp = SageBuilder::buildIntVal(index);
+    SgVarRefExp* arrVarRefExp = SageBuilder::buildVarRefExp(guidArrSymbol);
+    SgPntrArrRefExp* arrRefExp = SageBuilder::buildPntrArrRefExp(arrVarRefExp, indexExp);
+    SgExprStatement* assignStmt = SageBuilder::buildAssignStatement(arrRefExp, guidVarRefExp);
+    return assignStmt;
+  }
+
+  SgVariableDeclaration* buildDbAccessModeArrVarDecl(string dbAccessModeArrName, int dim, SgScopeStatement* scope) {
+    SgIntVal* dimExpr = SageBuilder::buildIntVal(dim);
+    SgType* dbAccessModeType = SageBuilder::buildOpaqueType("ocrDbAcessMode_t", scope);
+    SgType* dbArrAccessModeArrType = SageBuilder::buildArrayType(dbAccessModeType, dimExpr);
+    SgVariableDeclaration* dbAccessModeArrVarDecl = SageBuilder::buildVariableDeclaration(dbAccessModeArrName, dbArrAccessModeArrType, NULL, scope);
+    return dbAccessModeArrVarDecl;
+  }
+
+  SgStatement* buildDbAccessModeAssignStmt(SgVariableSymbol* dbAccessModeArrSymbol, DbkMode mode, int index) {
+    SgIntVal* indexExp = SageBuilder::buildIntVal(index);
+    SgVarRefExp* arrVarRefExp = SageBuilder::buildVarRefExp(dbAccessModeArrSymbol);
+    SgPntrArrRefExp* pntrArrRefExp = SageBuilder::buildPntrArrRefExp(arrVarRefExp, indexExp);
+    SgIntVal* modeExp = SageBuilder::buildIntVal(0);
+    string modeText;
+    switch(mode.getDbkMode()) {
+    case DbkMode::DB_DEFAULT_MODE:
+      modeText = "DB_DEFAULT_MODE";
+      break;
+    case DbkMode::DB_MODE_NULL:
+      modeText = "DB_MODE_NULL";
+      break;
+    default:
+      assert(false);
+    }
+    SageInterface::addTextForUnparser(modeExp, modeText, AstUnparseAttribute::e_replace);
+    SgExprStatement* assignStmt = SageBuilder::buildAssignStatement(pntrArrRefExp, modeExp);
+    return assignStmt;
+  }
+
+  SgStatement* buildEdtSpawnCallExp(SgVariableSymbol* edtTemplGuidSymbol, int ntasks, SgVariableSymbol* depElemStructSymbol,
+				    SgVariableSymbol* depElemSizeVarSymbol, int ndeps, SgVariableSymbol* depvGuidArrSymbol,
+				    SgVariableSymbol* dbAccessModeArrSymbol, int ranksPerAffinity, SgVariableSymbol* outEvtGuidSymbol,
+				    SgScopeStatement* scope) {
+    vector<SgExpression*> args;
+    SgVarRefExp* first = SageBuilder::buildVarRefExp(edtTemplGuidSymbol);
+    args.push_back(first);
+
+    SgIntVal* second = SageBuilder::buildIntVal(ntasks);
+    args.push_back(second);
+
+    // third and fourth can be NULL
+    SgExpression *third, *fourth;
+    if(depElemStructSymbol && depElemSizeVarSymbol) {
+      third = SageBuilder::buildVarRefExp(depElemSizeVarSymbol);
+      SgType* u64_t = AstBuilder::buildu64PtrType(scope);
+      SgVarRefExp* depElemVarRefExp = SageBuilder::buildVarRefExp(depElemStructSymbol);
+      SgExpression* addressOfExp = SageBuilder::buildAddressOfOp(depElemVarRefExp);
+      fourth = SageBuilder::buildCastExp(addressOfExp, u64_t);
+    }
+    else {
+      third = SageBuilder::buildIntVal(0);
+      fourth = SageBuilder::buildIntVal(0);
+    }
+    args.push_back(third);
+    args.push_back(fourth);
+
+    SgExpression* fifth = SageBuilder::buildIntVal(ndeps);
+    args.push_back(fifth);
+
+    SgExpression* sixth;
+    if(depvGuidArrSymbol) {
+      sixth = SageBuilder::buildVarRefExp(depvGuidArrSymbol);
+    }
+    else {
+      sixth = SageBuilder::buildIntVal(0);
+    }
+    args.push_back(sixth);
+
+    SgExpression* seventh;
+    if(dbAccessModeArrSymbol) {
+      seventh = SageBuilder::buildVarRefExp(dbAccessModeArrSymbol);
+    }
+    else {
+      seventh = SageBuilder::buildIntVal(0);
+    }
+    args.push_back(seventh);
+
+    SgExpression* eighth = SageBuilder::buildIntVal(ranksPerAffinity);
+    args.push_back(eighth);
+
+    SgExpression* ninth = SageBuilder::buildVarRefExp(outEvtGuidSymbol);
+    args.push_back(ninth);
+
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdEdtSpawn", SageBuilder::buildVoidType(), exprList, scope);
+    return SageBuilder::buildExprStatement(callExp);
+  }
+
+  SgExprStatement* buildSpmdRankFinalizeCallExp(SgVariableSymbol* triggerEvtGuidSymbol, SgScopeStatement* scope) {
+    vector<SgExpression*> args;
+    SgExpression* first = NULL;
+    if(triggerEvtGuidSymbol) {
+      first = SageBuilder::buildVarRefExp(triggerEvtGuidSymbol);
+    }
+    else {
+      first = SageBuilder::buildIntVal();
+      string nullGuidStr = "NULL_GUID";
+      SageInterface::addTextForUnparser(first, nullGuidStr, AstUnparseAttribute::e_replace);
+    }
+    args.push_back(first);
+    SgExpression* second = SageBuilder::buildBoolValExp(0);
+    args.push_back(second);
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdRankFinalize", SageBuilder::buildVoidType(), exprList, scope);
+    return SageBuilder::buildExprStatement(callExp);
   }
 
   /*********************
