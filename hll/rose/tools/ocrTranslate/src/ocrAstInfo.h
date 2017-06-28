@@ -113,6 +113,7 @@ class TaskOutliningAstInfo {
   SgType* m_depElemBaseType;
   SgType* m_depElemTypedefType;
   SgFunctionDeclaration* m_edtDecl;
+  bool m_hasDepElems;   //!< flag is set when we synthesize a struct for the dependent elements
  public:
   TaskOutliningAstInfo(std::string name);
   // set functions
@@ -128,6 +129,7 @@ class TaskOutliningAstInfo {
   SgType* getDepElemBaseType() const;
   SgType* getDepElemTypedefType() const;
   SgFunctionDeclaration* getTaskFuncDecl() const;
+  bool hasDepElems() const;
   std::string str() const;
   ~TaskOutliningAstInfo();
 };
@@ -172,6 +174,7 @@ class TaskAstInfo {
   void setDepElemBaseType(SgType* depElemBaseType);
   void setDepElemTypedefType(SgType* depElemTypedefType);
   void setTaskFuncDecl(SgFunctionDeclaration* edtDecl);
+  bool hasDepElems() const;
   virtual std::string str() const=0;
   ~TaskAstInfo();
 };
@@ -192,14 +195,17 @@ class EdtAstInfo : public TaskAstInfo {
   std::string m_edtTemplGuidName;
   std::string m_depElemStructName;
   std::string m_edtGuidName;
+  std::string m_depElemSizeVarName;
  public:
   EdtAstInfo(std::string edtname);
   std::string getEdtTemplateGuidName() const;
   std::string getDepElemStructName() const;
   std::string getEdtGuidName() const;
+  std::string getDepElemSizeVarName() const;
   void setTemplGuidName(std::string edtTemplGuidName);
   void setDepElemStructName(std::string depElemStructName);
   void setEdtGuidName(std::string edtGuidName);
+  void setDepElemSizeVarName(std::string depElemSizeVarName);
   std::string str() const;
   ~EdtAstInfo();
 };
