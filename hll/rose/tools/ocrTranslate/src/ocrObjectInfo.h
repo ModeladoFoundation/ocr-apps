@@ -310,6 +310,8 @@ class MpiOpContext {
   SgStatement* m_stmt;
  public:
   MpiOpContext(MpiOpType type, SgStatement* stmt);
+  MpiOpType getMpiOpType() const;
+  SgStatement* getMpiCallStmt() const;
   std::string str() const;
 };
 typedef boost::shared_ptr<MpiOpContext> MpiOpContextPtr;
@@ -391,27 +393,10 @@ class OcrObjectManager {
   OcrTaskContextPtr getOcrTaskContext(std::string edtname) const;
   OcrEvtContextPtr getOcrEvtContext(std::string evtname);
   std::list<OcrDbkContextPtr> getOcrDbkContextList() const;
+  std::list<MpiOpContextPtr> getMpiOpContextList() const;
+  /*!
+   *\brief Returns true if the program has MPI operations
+   */
+  bool hasMpiOp() const;
 };
-
-/*************************
- * OcrSpmdContextManager *
- *************************/
-/*!
- * \brief Context manager for spmd annotations
- *
- * OcrSpmdContextManager manages all context information associated with SPMD annotations
- * SPMD annotations are as follows:
- * 1. Identify SPMD regions in the code
- * Example: #pragma ocr spmd region DEP_DBKs() DEP_EVTs() DEP_ELEMs() OEVENT() { .. }
- * 2. Identify end of SPMD region
- * Example: #pragma ocr spmd finalize DEP_EVTs()
- * 3. SPMD communication operations
- * Examples:
- * #pragma ocr send DEP_DBKs() DEP_EVTs() OEVENT()
- * MPI_Send(...)
- * #pragma ocr recv DEP_EVTs() OEVENT()
- * MPI_Recv(...)
- *
- * Create OcrSpmdContextManager only when dealing with SPMD annotations
- */
 #endif

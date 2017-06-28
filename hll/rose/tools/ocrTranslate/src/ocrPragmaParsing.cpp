@@ -1172,33 +1172,39 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       assert(fsymbol);
       string fname = fsymbol->get_name().getString();
       MpiOpContextPtr mpiOpContext;
-      if(fname.compare("MPI_Init")) {
+      bool isMpiOp = false;
+      if(isMpiOp = fname.compare("MPI_Init") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_INIT, callStmt);
       }
-      else if(fname.compare("MPI_Finalize")) {
+      else if(isMpiOp = fname.compare("MPI_Finalize") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_FINALIZE, callStmt);
       }
-      else if(fname.compare("MPI_Comm_rank")) {
+      else if(isMpiOp = fname.compare("MPI_Comm_rank") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_COMM_RANK, callStmt);
       }
-      else if(fname.compare("MPI_Comm_size")) {
+      else if(isMpiOp = fname.compare("MPI_Comm_size") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_COMM_SIZE, callStmt);
       }
-      else if(fname.compare("MPI_Send")) {
+      else if(isMpiOp = fname.compare("MPI_Send") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_SEND, callStmt);
       }
-      else if(fname.compare("MPI_Recv")) {
+      else if(isMpiOp = fname.compare("MPI_Recv") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_RECV, callStmt);
       }
-      else if(fname.compare("MPI_Reduce")) {
+      else if(isMpiOp = fname.compare("MPI_Reduce") == 0) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_REDUCE, callStmt);
       }
-      else {
+      else if(isMpiOp = fname.find_first_of("MPI_") == 0){
 	std::cerr << "Unhandled MPI function " << fname << endl;
 	std::terminate();
       }
-      assert(mpiOpContext);
-      m_ocrObjectManager.registerMpiOpContext(mpiOpContext);
+      else {
+	// all other functions that are not MPI
+      }
+      if(isMpiOp) {
+	assert(mpiOpContext);
+	m_ocrObjectManager.registerMpiOpContext(mpiOpContext);
+      }
     }
     // Function call expression is happening through pointers or class
     // TODO: How to identify MPI calls under such cases

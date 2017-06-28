@@ -474,31 +474,46 @@ MpiOpContext::MpiOpContext(MpiOpContext::MpiOpType type, SgStatement* stmt)
   : m_opType(type),
     m_stmt(stmt) { }
 
+MpiOpContext::MpiOpType MpiOpContext::getMpiOpType() const {
+  return m_opType;
+}
+
+SgStatement* MpiOpContext::getMpiCallStmt() const {
+  return m_stmt;
+}
+
 string MpiOpContext::str() const {
   ostringstream oss;
   oss << "[MpiOpContext : ";
   switch(m_opType) {
-  case OP_INIT:
+  case OP_INIT: {
     oss << "MPI_Init";
     break;
-  case OP_FINALIZE:
+  }
+  case OP_FINALIZE: {
     oss << "MPI_Finalize";
     break;
-  case OP_COMM_RANK:
+  }
+  case OP_COMM_RANK: {
     oss << "MPI_Comm_rank";
     break;
-  case OP_COMM_SIZE:
+  }
+  case OP_COMM_SIZE: {
     oss << "MPI_Comm_size";
     break;
-  case OP_SEND:
+  }
+  case OP_SEND: {
     oss << "MPI_Send";
     break;
-  case OP_RECV:
+  }
+  case OP_RECV: {
     oss << "MPI_Recv";
     break;
-  case OP_REDUCE:
+  }
+  case OP_REDUCE: {
     oss << "MPI_Reduce";
     break;
+  }
   default:
     oss << "Unknown";
   }
@@ -752,4 +767,12 @@ OcrEvtContextPtr OcrObjectManager::getOcrEvtContext(string evtname) {
 
 const OcrTaskContextMap& OcrObjectManager::getOcrTaskContextMap() const {
   return m_ocrTaskContextMap;
+}
+
+list<MpiOpContextPtr> OcrObjectManager::getMpiOpContextList() const {
+  return m_mpiOpContextList;
+}
+
+bool OcrObjectManager::hasMpiOp() const {
+  return !m_mpiOpContextList.empty();
 }
