@@ -89,6 +89,15 @@ class OcrTranslator {
   // Loop EDT Translation
   std::vector<SgStatement*> setupForLoopCompEvt(std::string loopCompEvtName, SgScopeStatement* scope);
 
+  /*!
+   *\brief Replace MPI_Comm_rank with spmdMyRank()
+   */
+  SgStatement* replaceCommRank(SgStatement* callStmt);
+  /*!
+   *\brief Replace MPI_Comm_size with spmdSize()
+   */
+  SgStatement* replaceCommSize(SgStatement* callStmt);
+
   // Shutdown EDTs
   void setupShutdownEdt(std::string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext);
   // Setup SpmdRegionEdt
@@ -97,12 +106,12 @@ class OcrTranslator {
   void setupSpmdFinalize(std::string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContextPtr);
   // Miscellaneous utility functions
   std::set<SgSourceFile*> getSourceFilesOfShutdownEdts(std::list<OcrShutdownEdtContextPtr>& shutdownEdts);
-  void replaceDepElemVars(std::string edtname, OcrEdtContextPtr edtContext);
  public:
   OcrTranslator(SgProject* project, OcrObjectManager& ocrObjectManager);
   void outlineEdts();
   void setupEdts();
   void translateDbks();
+  void translateMpi();
   void outlineMainEdt();
   // main driver function
   void translate();
