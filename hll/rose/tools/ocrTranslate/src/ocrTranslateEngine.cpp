@@ -37,6 +37,9 @@ void OcrTranslator::insertOcrHeaderFiles() {
     if(SgSourceFile* source = isSgSourceFile(*f)) {
       SgGlobal* global = source->get_globalScope();
       SageInterface::insertHeader(source, "ocr.h", false, true);
+      if(m_ocrObjectManager.hasMpiOp()) {
+	SageInterface::insertHeader(source, "spmd.h", false, true);
+      }
     }
   }
 }
@@ -1303,6 +1306,99 @@ void OcrTranslator::translateDbks() {
   }
 }
 
+SgStatement* OcrTranslator::replaceCommRank(SgStatement* callStmt) {
+  // MPI_Comm_rank has the following AST - (SgExprStatement (SgFunctionCallExp (SgFunctionRefExp) (SgExprListExp)))
+  // When MPI_Comm_rank is called through a function pointer it will have a different AST
+  SgFunctionCallExp* callExp = isSgFunctionCallExp(isSgExprStatement(callStmt)->get_expression());
+  if(!callExp) {
+    ostringstream oss;
+    oss << "Cannot replace " << callStmt->unparseToString() << " with spmdMyRank()\n";
+    throw new TranslateException(oss.str());
+  }
+  SgExprListExp* args = callExp->get_args();
+  SgExpressionPtrList& argsList = args->get_expressions();
+  // We need to find the second argument of MPI_Comm_rank
+  SgExpression* second = NULL;
+  if(SgCastExp* castExp = isSgCastExp(argsList[1])) {
+    second = castExp->get_operand();
+  }
+  else {
+    second = argsList[1];
+  }
+  SgVarRefExp* rankVarRefExp = NULL;
+  if(SgAddressOfOp* addrOfOp = isSgAddressOfOp(second)) {
+    rankVarRefExp = isSgVarRefExp(addrOfOp->get_operand());
+  }
+  if(!rankVarRefExp) {
+    throw new TranslateException("Cannot find rank SgVarRefExp in MPI_Comm_rank\n");
+  }
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(callStmt);
+  SgStatement* spmdMyRankCallStmt = AstBuilder::buildSpmdMyRankCallExp(rankVarRefExp, scope);
+  return spmdMyRankCallStmt;
+}
+
+SgStatement* OcrTranslator::replaceCommSize(SgStatement* callStmt) {
+  // MPI_Comm_size has the following AST - (SgExprStatement (SgFunctionCallExp (SgFunctionRefExp) (SgExprListExp)))
+  // When MPI_Comm_size is called through a function pointer it will have a different AST
+  SgFunctionCallExp* callExp = isSgFunctionCallExp(isSgExprStatement(callStmt)->get_expression());
+  if(!callExp) {
+    ostringstream oss;
+    oss << "Cannot replace " << callStmt->unparseToString() << " with spmdMySize()\n";
+    throw new TranslateException(oss.str());
+  }
+  SgExprListExp* args = callExp->get_args();
+  SgExpressionPtrList& argsList = args->get_expressions();
+  // We need to find the second argument of MPI_Comm_size
+  SgExpression* second = NULL;
+  if(SgCastExp* castExp = isSgCastExp(argsList[1])) {
+    second = castExp->get_operand();
+  }
+  else {
+    second = argsList[1];
+  }
+  SgVarRefExp* sizeVarRefExp = NULL;
+  if(SgAddressOfOp* addrOfOp = isSgAddressOfOp(second)) {
+    sizeVarRefExp = isSgVarRefExp(addrOfOp->get_operand());
+  }
+  if(!sizeVarRefExp) {
+    throw new TranslateException("Cannot find size SgVarRefExp in MPI_Comm_size\n");
+  }
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(callStmt);
+  SgStatement* spmdSizeCallStmt = AstBuilder::buildSpmdSizeCallExp(sizeVarRefExp, scope);
+  return spmdSizeCallStmt;
+}
+
+void OcrTranslator::translateMpi() {
+  Logger::Logger lg("OcrTranslator::translateMpi", Logger::DEBUG);
+  list<MpiOpContextPtr> mpiOpContextList = m_ocrObjectManager.getMpiOpContextList();
+  list<MpiOpContextPtr>::iterator o = mpiOpContextList.begin();
+  for( ; o != mpiOpContextList.end(); ++o) {
+    MpiOpContextPtr mpiOpContext = *o;
+    SgStatement* callStmt = mpiOpContext->getMpiCallStmt();
+    switch(mpiOpContext->getMpiOpType()) {
+    case MpiOpContext::OP_INIT:
+    case MpiOpContext::OP_FINALIZE: {
+      SageInterface::removeStatement(callStmt);
+      break;
+    }
+    case MpiOpContext::OP_COMM_RANK: {
+      SgStatement* stmt = replaceCommRank(callStmt);
+      SageInterface::insertStatementBefore(callStmt, stmt, true);
+      SageInterface::removeStatement(callStmt);
+      break;
+    }
+    case MpiOpContext::OP_COMM_SIZE: {
+      SgStatement* stmt = replaceCommSize(callStmt);
+      SageInterface::insertStatementBefore(callStmt, stmt, true);
+      SageInterface::removeStatement(callStmt);
+      break;
+    }
+    default:
+      cerr << "Unhandled MPI Operation in OcrTranslator::translateMpi()\n";
+    }
+  }
+}
+
 void OcrTranslator::outlineMainEdt() {
   SgFunctionDeclaration* mainFunction = SageInterface::findMain(m_project);
   // scope where the edt function will be created
@@ -1372,6 +1468,7 @@ void OcrTranslator::translate() {
     translateDbks();
     outlineEdts();
     setupEdts();
+    translateMpi();
     outlineMainEdt();
   }
   catch(TranslateException& ewhat) {
