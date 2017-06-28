@@ -173,7 +173,8 @@ namespace AstBuilder {
     SgVarRefExp* ptrVarRefExp = SageBuilder::buildVarRefExp(ptrMemName, scope);
     SgVariableSymbol* ptrVarSymbol = ptrVarRefExp->get_symbol();
     SgDotExp* dotExp = SageBuilder::buildDotExp(arrRefExp, ptrVarRefExp);
-    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(dotExp, dbkPtrType);
+    SgCastExp* castExp = SageBuilder::buildCastExp(dotExp, dbkPtrType);
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(castExp, dbkPtrType);
     SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(name, dbkPtrType, initializer, scope);
 
     // Fix for avoiding ROSE Warnings
@@ -528,7 +529,7 @@ namespace AstBuilder {
       SageInterface::addTextForUnparser(fourth, "NULL", AstUnparseAttribute::e_replace);
     }
     args.push_back(fourth);
-    // fifth which is depv
+    // fifth which is depc
     SgIntVal* fifth = SageBuilder::buildIntVal(0);
     string depc = "EDT_PARAM_DEF";
     SageInterface::addTextForUnparser(fifth, depc, AstUnparseAttribute::e_replace);
@@ -850,7 +851,7 @@ namespace AstBuilder {
 
   SgVariableDeclaration* buildDbAccessModeArrVarDecl(string dbAccessModeArrName, int dim, SgScopeStatement* scope) {
     SgIntVal* dimExpr = SageBuilder::buildIntVal(dim);
-    SgType* dbAccessModeType = SageBuilder::buildOpaqueType("ocrDbAcessMode_t", scope);
+    SgType* dbAccessModeType = SageBuilder::buildOpaqueType("ocrDbAccessMode_t", scope);
     SgType* dbArrAccessModeArrType = SageBuilder::buildArrayType(dbAccessModeType, dimExpr);
     SgVariableDeclaration* dbAccessModeArrVarDecl = SageBuilder::buildVariableDeclaration(dbAccessModeArrName, dbArrAccessModeArrType, NULL, scope);
     return dbAccessModeArrVarDecl;
@@ -953,6 +954,26 @@ namespace AstBuilder {
     SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
     SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdRankFinalize", SageBuilder::buildVoidType(), exprList, scope);
     return SageBuilder::buildExprStatement(callExp);
+  }
+
+  SgStatement* buildSpmdMyRankCallExp(SgVarRefExp* rankVarRefExp, SgScopeStatement* scope) {
+    vector<SgExpression*> args;
+    assert(rankVarRefExp->get_symbol());
+    SgVarRefExp* lvalue = SageBuilder::buildVarRefExp(rankVarRefExp->get_symbol());
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdMyRank", SageBuilder::buildIntType(), exprList, scope);
+    SgExprStatement* rankStmt = SageBuilder::buildAssignStatement(lvalue, callExp);
+    return rankStmt;
+  }
+
+  SgStatement* buildSpmdSizeCallExp(SgVarRefExp* sizeVarRefExp, SgScopeStatement* scope) {
+    vector<SgExpression*> args;
+    assert(sizeVarRefExp->get_symbol());
+    SgVarRefExp* lvalue = SageBuilder::buildVarRefExp(sizeVarRefExp->get_symbol());
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdSize", SageBuilder::buildIntType(), exprList, scope);
+    SgExprStatement* sizeStmt = SageBuilder::buildAssignStatement(lvalue, callExp);
+    return sizeStmt;
   }
 
   /*********************
