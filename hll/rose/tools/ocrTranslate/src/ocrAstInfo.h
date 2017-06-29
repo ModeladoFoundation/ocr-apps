@@ -196,16 +196,19 @@ class EdtAstInfo : public TaskAstInfo {
   std::string m_depElemStructName;
   std::string m_edtGuidName;
   std::string m_depElemSizeVarName;
+  int m_ndeps;
  public:
   EdtAstInfo(std::string edtname);
   std::string getEdtTemplateGuidName() const;
   std::string getDepElemStructName() const;
   std::string getEdtGuidName() const;
   std::string getDepElemSizeVarName() const;
+  int getNDeps() const;
   void setTemplGuidName(std::string edtTemplGuidName);
   void setDepElemStructName(std::string depElemStructName);
   void setEdtGuidName(std::string edtGuidName);
   void setDepElemSizeVarName(std::string depElemSizeVarName);
+  void setNDeps(int ndeps);
   std::string str() const;
   ~EdtAstInfo();
 };

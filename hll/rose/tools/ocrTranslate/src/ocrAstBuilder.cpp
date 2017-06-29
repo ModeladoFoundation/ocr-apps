@@ -493,7 +493,9 @@ namespace AstBuilder {
   // 		   u32 depc, ocrGuid_t ∗ depv,
   // 		   u16 flags, ocrHint_t ∗ hint, ocrGuid_t ∗ outputEvent )
   SgExprStatement* buildOcrEdtCreateCallExp(SgVariableSymbol* edtGuidSymbol, SgVariableSymbol* edtTemplateGuidSymbol,
+					    SgVariableSymbol* paramcSymbol,
 					    SgVariableSymbol* depElemStructSymbol,
+					    int ndeps,
 					    SgVariableSymbol* outEvtGuidSymbol,
 					    bool finishEdt,
 					    SgScopeStatement* scope) {
@@ -510,9 +512,13 @@ namespace AstBuilder {
     // this is paramc argument
     // We will generate EDT_PARAM_DEF instead
     // First we need a dummy place holder expression
-    SgIntVal* third = SageBuilder::buildIntVal(1);
-    string paramc = "EDT_PARAM_DEF";
-    SageInterface::addTextForUnparser(third, paramc, AstUnparseAttribute::e_replace);
+    SgExpression* third = NULL;
+    if(paramcSymbol) {
+      third = SageBuilder::buildVarRefExp(paramcSymbol);
+    }
+    else {
+      third = SageBuilder::buildIntVal(0);
+    }
     args.push_back(third);
     // Fourth argument is address of depElem struct
     SgExpression* fourth;
@@ -530,9 +536,7 @@ namespace AstBuilder {
     }
     args.push_back(fourth);
     // fifth which is depc
-    SgIntVal* fifth = SageBuilder::buildIntVal(0);
-    string depc = "EDT_PARAM_DEF";
-    SageInterface::addTextForUnparser(fifth, depc, AstUnparseAttribute::e_replace);
+    SgIntVal* fifth = SageBuilder::buildIntVal(ndeps);
     args.push_back(fifth);
     // sixth is paramv
     // we will setup this one as NULL

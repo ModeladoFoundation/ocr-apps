@@ -82,7 +82,9 @@ namespace AstBuilder {
 
 
   SgExprStatement* buildOcrEdtCreateCallExp(SgVariableSymbol* edtGuidSymbol, SgVariableSymbol* edtTemplateGuidSymbol,
+					    SgVariableSymbol* paramcSymbol,
 					    SgVariableSymbol* depElemStructSymbol,
+					    int ndeps,
 					    SgVariableSymbol* outEvtGuidSymbol,
 					    bool finishEdt,
 					    SgScopeStatement* scope);
