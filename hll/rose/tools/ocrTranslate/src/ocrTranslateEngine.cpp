@@ -724,6 +724,7 @@ vector<SgStatement*> OcrTranslator::setupEdtTemplate(string edtname, unsigned in
   // Now some bookkeeping
   // Add the variable symbol of the template guid
   edtAstInfo->setTemplGuidName(edtTemplateGuidName);
+  edtAstInfo->setNDeps(ndeps);
 
   return edtTemplSetupStmts;
 }
@@ -856,18 +857,22 @@ vector<SgStatement*> OcrTranslator::setupEdtCreate(string edtname, string outEvt
   // We need the edtTemplateGuid
   string edtTemplGuidName = edtAstInfoPtr->getEdtTemplateGuidName();
   SgVariableSymbol* edtTemplateGuidSymbol = GetVariableSymbol(edtTemplGuidName, scope);
+  // We need the paramc symbol
+  string paramcName = edtAstInfoPtr->getDepElemSizeVarName();
+  SgVariableSymbol* paramcSymbol = GetVariableSymbol(paramcName, scope);
   // We also need the depElemStructSymbol
   string depElemStructName = edtAstInfoPtr->getDepElemStructName();
   SgVariableSymbol* depElemStructSymbol = GetVariableSymbol(depElemStructName, scope);
-
+  // Get depc
+  int ndeps = edtAstInfoPtr->getNDeps();
   SgVariableSymbol* outEvtGuidSymbol = NULL;
   if(outEvtName.length() != 0) {
     EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(outEvtName, scope);
     string outEvtGuidName  = outEvtAstInfo->getEvtGuidName();
     outEvtGuidSymbol = GetVariableSymbol(outEvtGuidName, scope);
   }
-  SgExprStatement* edtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol,
-									   depElemStructSymbol, outEvtGuidSymbol, isFinishEdt, scope);
+  SgExprStatement* edtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol, paramcSymbol,
+									   depElemStructSymbol, ndeps, outEvtGuidSymbol, isFinishEdt, scope);
   edtCreateSetupStmts.push_back(edtCreateCallExp);
   // Now some bookkeeping
   edtAstInfoPtr->setEdtGuidName(edtGuidName);
@@ -1123,7 +1128,8 @@ void OcrTranslator::setupShutdownEdt(string shutdownEdtName, OcrShutdownEdtConte
   SgVariableDeclaration* edtGuidDecl = SageBuilder::buildVariableDeclaration(edtGuidName, ocrGuidType, NULL, scope);
   SgVariableSymbol* edtGuidSymbol = GetVariableSymbol(edtGuidDecl, edtGuidName);
   // We need the edtTemplateGuid
-  SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol, NULL, NULL, false, scope);
+  SgExprStatement* ocrEdtCreateCallExp = AstBuilder::buildOcrEdtCreateCallExp(edtGuidSymbol, edtTemplateGuidSymbol, NULL,
+									      NULL, nevts, NULL, false, scope);
   SageInterface::insertStatementBefore(shutdownPragma, edtGuidDecl, true);
   SageInterface::insertStatementBefore(shutdownPragma, ocrEdtCreateCallExp, true);
   // Now some bookkeeping

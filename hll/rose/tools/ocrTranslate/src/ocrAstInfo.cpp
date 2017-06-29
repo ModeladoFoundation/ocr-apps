@@ -293,7 +293,7 @@ TaskAstInfo::~TaskAstInfo() {
 /**************
  * EdtAstInfo *
  **************/
-EdtAstInfo::EdtAstInfo(string edtname) : TaskAstInfo(edtname) { }
+EdtAstInfo::EdtAstInfo(string edtname) : TaskAstInfo(edtname), m_ndeps(0) { }
 
 string EdtAstInfo::getEdtTemplateGuidName() const {
   return m_edtTemplGuidName;
@@ -311,6 +311,10 @@ string EdtAstInfo::getDepElemSizeVarName() const {
   return m_depElemSizeVarName;
 }
 
+int EdtAstInfo::getNDeps() const {
+  return m_ndeps;
+}
+
 void EdtAstInfo::setTemplGuidName(string edtTemplGuidName) {
   m_edtTemplGuidName = edtTemplGuidName;
 }
@@ -325,6 +329,11 @@ void EdtAstInfo::setEdtGuidName(string edtGuidName) {
 void EdtAstInfo::setDepElemSizeVarName(string depElemSizeVarName) {
   m_depElemSizeVarName = depElemSizeVarName;
 }
+
+void EdtAstInfo::setNDeps(int ndeps) {
+  m_ndeps = ndeps;
+}
+
 
 string EdtAstInfo::str() const {
   ostringstream oss;
