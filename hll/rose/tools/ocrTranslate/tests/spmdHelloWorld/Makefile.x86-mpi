@@ -1,0 +1,9 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+CONFIG_COMM_LAYER := mpi
+OCR_TYPE := x86-mpi
+
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(TOP)/Makefile.x86-base
