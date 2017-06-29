@@ -414,6 +414,11 @@ _OCR_TASK_FNC_( FNC_initSimulation )
 
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
+
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
@@ -555,9 +560,15 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrGuid_t redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
     u64 itimestep = 0;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML, //redistributeAtomsEdt
+                  EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &redistributeAtomsOEVT );
+#else
     ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML, //redistributeAtomsEdt
                   EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
+#endif
 
     createEventHelper( &redistributeAtomsOEVTS, 1);
     ocrAddDependence( redistributeAtomsOEVT, redistributeAtomsOEVTS, 0, DB_MODE_NULL );
@@ -571,9 +582,15 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrGuid_t computeForceEDT, computeForceOEVT, computeForceOEVTS;
 
     //computeForceEdt
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &computeForceEDT, computeForceTML,
+                  EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &computeForceOEVT );
+#else
     ocrEdtCreate( &computeForceEDT, computeForceTML,
                   EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &computeForceOEVT );
+#endif
 
     createEventHelper( &computeForceOEVTS, 1);
     ocrAddDependence( computeForceOEVT, computeForceOEVTS, 0, DB_MODE_NULL );
@@ -609,9 +626,15 @@ _OCR_TASK_FNC_( FNC_initSimulation )
 
     ocrEdtTemplateCreate( &printSimulationDataTML, printSimulationDataEdt, 1, 5 );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &printSimulationDataEDT, printSimulationDataTML,
+                  EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &printSimulationDataOEVT );
+#else
     ocrEdtCreate( &printSimulationDataEDT, printSimulationDataTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &printSimulationDataOEVT );
+#endif
 
     ocrEdtTemplateDestroy( printSimulationDataTML );
 
@@ -647,9 +670,15 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     {
         ocrGuid_t timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
+                      EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
         ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
                       EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW );
@@ -678,6 +707,10 @@ _OCR_TASK_FNC_( FNC_comdMain )
 
     ocrHint_t myDbkAffinityHNT, myEdtAffinityHNT;
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrSetHintValue(&myEdtAffinityHNT , OCR_HINT_EDT_SPAWNING, 1);
+#endif
+    ocrHint_t spawnHint;
 
     ocrDBK_t DBK_sim;
     SimFlat* sim;
@@ -763,6 +796,9 @@ _OCR_TASK_FNC_( channelSetupEdt )
     ocrHint_t myDbkAffinityHNT, myEdtAffinityHNT;
 
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     MyOcrTaskStruct_t TS_comdMain; _paramc = 1; _depc = 1;
 
@@ -801,6 +837,9 @@ _OCR_TASK_FNC_( initEdt )
 
     ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     s32 gx = PTR_PRM_initEdt->edtGridDims[0];
     s32 gy = PTR_PRM_initEdt->edtGridDims[1];

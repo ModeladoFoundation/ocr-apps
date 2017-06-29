@@ -335,9 +335,17 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
     // Do halo-exchange along one axis
     ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = PTR_rankH->myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML, //exchangeDataEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &exchangeDataOEVT );
+#else
     ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML, //exchangeDataEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
+#endif
 
     createEventHelper( &exchangeDataOEVTS, 1);
     ocrAddDependence( exchangeDataOEVT, exchangeDataOEVTS, 0, DB_MODE_NULL );
@@ -355,9 +363,15 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
         //set up halo-exchange along the next axis
         ocrGuid_t haloExchangeEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
+                      EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL);
+#else
         ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, haloExchangeEDT, _idep++, DB_MODE_RO );
@@ -423,6 +437,10 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     sim->PTR_rankH = PTR_rankH;
 
     ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     ocrDBK_t DBK_pot = sim->DBK_pot;
 
@@ -437,9 +455,15 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
 
     ocrGuid_t loadAtomsBufferTML, loadAtomsBufferEDT, loadAtomsBufferOEVT, loadAtomsBufferOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &loadAtomsBufferEDT, PTR_rankTemplateH->loadAtomsBufferTML, //loadAtomsBufferEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, &loadAtomsBufferOEVT );
+#else
     ocrEdtCreate( &loadAtomsBufferEDT, PTR_rankTemplateH->loadAtomsBufferTML, //loadAtomsBufferEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &loadAtomsBufferOEVT );
+#endif
 
     createEventHelper( &loadAtomsBufferOEVTS, 1);
     ocrAddDependence( loadAtomsBufferOEVT, loadAtomsBufferOEVTS, 0, DB_MODE_NULL );
@@ -516,9 +540,17 @@ ocrGuid_t forceHaloExchangeEdt(EDT_ARGS)
     // Do halo-exchange along one axis
     ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = PTR_rankH->myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->forceExchangeDataTML, //forceExchangeDataEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &exchangeDataOEVT );
+#else
     ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->forceExchangeDataTML, //forceExchangeDataEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
+#endif
 
     createEventHelper( &exchangeDataOEVTS, 1);
     ocrAddDependence( exchangeDataOEVT, exchangeDataOEVTS, 0, DB_MODE_NULL );
@@ -537,9 +569,15 @@ ocrGuid_t forceHaloExchangeEdt(EDT_ARGS)
         //set up halo-exchange along the next axis
         ocrGuid_t haloExchangeEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->forceHaloExchangeTML,
+                      EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL);
+#else
         ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->forceHaloExchangeTML,
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, haloExchangeEDT, _idep++, DB_MODE_RO );
@@ -588,6 +626,10 @@ ocrGuid_t forceExchangeDataEdt(EDT_ARGS)
     sim->PTR_rankH = PTR_rankH;
 
     ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     ocrDBK_t DBK_nAtoms = sim->boxes->DBK_nAtoms;
 
@@ -604,9 +646,15 @@ ocrGuid_t forceExchangeDataEdt(EDT_ARGS)
 
     ocrGuid_t loadForceBufferTML, loadForceBufferEDT, loadForceBufferOEVT, loadForceBufferOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &loadForceBufferEDT, PTR_rankTemplateH->loadForceBufferTML, //loadForceBufferEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, &loadForceBufferOEVT );
+#else
     ocrEdtCreate( &loadForceBufferEDT, PTR_rankTemplateH->loadForceBufferTML, //loadForceBufferEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &loadForceBufferOEVT );
+#endif
 
     createEventHelper( &loadForceBufferOEVTS, 1);
     ocrAddDependence( loadForceBufferOEVT, loadForceBufferOEVTS, 0, DB_MODE_NULL );

@@ -356,6 +356,10 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
 
     ocrHint_t myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     Inputs* PTR_in = &(PTR_rankH->globalParamH.in);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
@@ -426,8 +430,13 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
 
         ocrGuid_t lookUpKernelPerThreadEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*) PTR_PRM_perThread, EDT_PARAM_DEF, NULL,
+                        EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL ); //lookUpKernelPerThreadEdt
+#else
         ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*) PTR_PRM_perThread, EDT_PARAM_DEF, NULL,
                         EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //lookUpKernelPerThreadEdt
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, lookUpKernelPerThreadEDT, _idep++, DB_MODE_RO );
@@ -454,6 +463,10 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
     ocrHint_t myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     Inputs* PTR_in = &(PTR_rankH->globalParamH.in);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
@@ -535,8 +548,13 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
         ocrGuid_t lookUpKernelPerThreadEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*)&PRM_perThread, EDT_PARAM_DEF, NULL,
+                        EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
         ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*)&PRM_perThread, EDT_PARAM_DEF, NULL,
                         EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, lookUpKernelPerThreadEDT, _idep++, DB_MODE_RO );
@@ -688,9 +706,17 @@ ocrGuid_t FNC_initSimulation( EDT_ARGS )
     ocrGuid_t lookUpKernelTML, lookUpKernelEDT, lookUpKernelOEVT, lookUpKernelOEVTS;
     ocrEdtTemplateCreate( &lookUpKernelTML, lookUpKernelEdt, 0, 2 );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &lookUpKernelEDT, lookUpKernelTML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &lookUpKernelEDT, lookUpKernelTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
     ocrEdtTemplateDestroy( lookUpKernelTML );
 
@@ -763,9 +789,17 @@ ocrGuid_t FNC_xsbenchMain( EDT_ARGS )
     TS_initSimulation.FNC = FNC_initSimulation;
     ocrEdtTemplateCreate( &TS_initSimulation.TML, TS_initSimulation.FNC, _paramc, _depc );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &TS_initSimulation.EDT, TS_initSimulation.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &TS_initSimulation.EDT, TS_initSimulation.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
     ocrEdtTemplateDestroy( TS_initSimulation.TML );
 
@@ -808,9 +842,17 @@ ocrGuid_t channelSetupEdt( EDT_ARGS )
     TS_xsbenchMain.FNC = FNC_xsbenchMain;
     ocrEdtTemplateCreate( &TS_xsbenchMain.TML, TS_xsbenchMain.FNC, _paramc, _depc );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &TS_xsbenchMain.EDT, TS_xsbenchMain.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &TS_xsbenchMain.EDT, TS_xsbenchMain.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_xsbenchMain.EDT, _idep++, DB_MODE_RO );
@@ -860,8 +902,15 @@ ocrGuid_t initEdt( EDT_ARGS )
     PRM_channelSetupEdt.myRank = myRank;
 
     ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, sizeof(PRM_channelSetupEdt_t)/sizeof(u64), 1 );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, (u64*)&PRM_channelSetupEdt, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
+                    &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, (u64*)&PRM_channelSetupEdt, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
                     &myEdtAffinityHNT, NULL );
+#endif
 
     ocrDbRelease(DBK_rankH);
 
