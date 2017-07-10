@@ -235,6 +235,8 @@ class LoopControlEdtAstInfo : public EdtAstInfo {
   SgBasicBlock* getBasicBlock() const;
   std::string getCompEvtGuidName() const;
   std::string getDepElemCompEvtGuidName() const;
+  SgBasicBlock* getLoopControlIfBasicBlock() const;
+  SgBasicBlock* getLoopControlElseBasicBlock() const;
 
   void setBasicBlock(SgBasicBlock* basicblock);
   void setCompEvtGuidName(std::string compEvtGuidName);
@@ -305,9 +307,10 @@ class AstInfoManager {
   DbkAstInfoPtr getDbkAstInfo(std::string dbkname, SgScopeStatement* scope);
   EvtAstInfoPtr getEvtAstInfo(std::string evtname, SgScopeStatement* scope);
   EdtAstInfoPtr getEdtAstInfo(std::string edtname);
-  LoopControlEdtAstInfo getLoopControlEdtAstInfo(std::string edtName);
+  LoopControlEdtAstInfoPtr getLoopControlEdtAstInfo(std::string edtName);
   SpmdRegionEdtAstInfoPtr getSpmdRegionEdtAstInfo(std::string edtName);
   std::string EvtAstInfoMap2Str() const;
+  std::string DbkAstInfoMap2Str() const;
 };
 
 #endif

@@ -361,6 +361,14 @@ string LoopControlEdtAstInfo::getDepElemCompEvtGuidName() const {
   return m_depElemCompEvtGuidName;
 }
 
+SgBasicBlock* LoopControlEdtAstInfo::getLoopControlIfBasicBlock() const {
+  return m_ifBasicBlock;
+}
+
+SgBasicBlock* LoopControlEdtAstInfo::getLoopControlElseBasicBlock() const {
+  return m_elseBasicBlock;
+}
+
 void LoopControlEdtAstInfo::setBasicBlock(SgBasicBlock* basicblock) {
   m_basicblock = basicblock;
 }
@@ -510,6 +518,14 @@ SpmdRegionEdtAstInfoPtr AstInfoManager::getSpmdRegionEdtAstInfo(string edtname) 
   return spmdRegionEdtAstInfo;
 }
 
+LoopControlEdtAstInfoPtr AstInfoManager::getLoopControlEdtAstInfo(string loopControlEdtName) {
+  TaskAstInfoMap::iterator f = m_taskAstInfoMap.find(loopControlEdtName);
+  assert(f != m_taskAstInfoMap.end());
+  LoopControlEdtAstInfoPtr loopControlEdtAstInfo = boost::dynamic_pointer_cast<LoopControlEdtAstInfo>(f->second);
+  assert(loopControlEdtAstInfo);
+  return loopControlEdtAstInfo;
+}
+
 /*!
  * \brief Get the Event's AST info from the symbolTable map
  */
@@ -521,4 +537,8 @@ EvtAstInfoPtr AstInfoManager::getEvtAstInfo(string evtname, SgScopeStatement* sc
 
 string AstInfoManager::EvtAstInfoMap2Str() const {
   return m_evtAstInfoMap.str();
+}
+
+string AstInfoManager::DbkAstInfoMap2Str() const {
+  return m_dbkAstInfoMap.str();
 }

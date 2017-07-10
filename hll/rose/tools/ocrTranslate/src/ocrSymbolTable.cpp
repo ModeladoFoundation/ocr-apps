@@ -16,6 +16,7 @@ OcrObjectSymbolTable<ObjectType>::OcrObjectSymbolTable() { }
 
 template<class ObjectType>
 void OcrObjectSymbolTable<ObjectType>::insertObjectPtr(std::string objectKey, boost::shared_ptr<ObjectType> objectPtr, SgScopeStatement* scope) {
+  Logger::Logger lg("insertObjectPtr");
   typedef map<string, boost::shared_ptr<ObjectType> > String2OcrObjectMap;
   String2OcrObjectMap& ocrObjectMap = m_symbolTableMap[scope];
 
@@ -24,6 +25,7 @@ void OcrObjectSymbolTable<ObjectType>::insertObjectPtr(std::string objectKey, bo
     cerr << "ERROR: OCR Object with key=" << objectKey << " already exists in the map\n";
     std::terminate();
   }
+  Logger::debug(lg) << "m_symbolTableMap[" << scope << "]" << "[" << objectKey << "]=" << objectPtr.get() << "\n";
   ocrObjectMap[objectKey] = objectPtr;
 }
 
