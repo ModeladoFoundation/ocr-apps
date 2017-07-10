@@ -467,6 +467,45 @@ string OcrSpmdFinalizeContext::str() const {
   return "[OcrSpmdFinalizeContext]";
 }
 
+/**********************
+ * OcrSpmdSendContext *
+ **********************/
+OcrSpmdSendContext::OcrSpmdSendContext(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+				       OcrDbkContextPtr dbkToSend, list<OcrEvtContextPtr> depEvts,
+				       OcrEvtContextPtr outEvt, SgFunctionCallExp* sendCallExp)
+  : OcrTaskContext(OcrTaskContext::e_TaskSpmdSend, name, traversalOrder, sgpdecl),
+    m_dbkToSend(dbkToSend),
+    m_depEvts(depEvts),
+    m_outEvt(outEvt),
+    m_sendCallExp(sendCallExp) { }
+
+OcrDbkContextPtr OcrSpmdSendContext::getDbkToSend() const {
+  return m_dbkToSend;
+}
+
+list<OcrEvtContextPtr> OcrSpmdSendContext::getDepEvts() const {
+  return m_depEvts;
+}
+
+OcrEvtContextPtr OcrSpmdSendContext::getOutputEvt() const {
+  return m_outEvt;
+}
+
+SgFunctionCallExp* OcrSpmdSendContext::getSendCallExp() const {
+  return m_sendCallExp;
+}
+
+string OcrSpmdSendContext::str() const {
+  ostringstream oss;
+  oss << "[OcrSpmdSendContext: ";
+  oss << "dbkToSend " << m_dbkToSend->get_name() << "]\n";
+  return oss.str();
+}
+
+OcrSpmdSendContext::~OcrSpmdSendContext() {
+  // Nothing to cleanup here
+}
+
 /****************
  * MpiOpContext *
  ****************/
@@ -564,6 +603,11 @@ list<OcrDbkContextPtr> OcrObjectManager::getOcrDbkContextList(list<string> dbkNa
     dbkContextList.push_back(dbkContext);
   }
   return dbkContextList;
+}
+
+OcrDbkContextPtr OcrObjectManager::getOcrDbkContext(string dbkName, SgScopeStatement* scope) {
+  OcrDbkContextPtr dbkContext = m_dbkSymbolTable.getObjectPtr(dbkName, scope);
+  return dbkContext;
 }
 
 list<OcrEvtContextPtr> OcrObjectManager::registerOcrEvts(list<string> evtsNameList) {
@@ -713,6 +757,24 @@ OcrTaskContextPtr OcrObjectManager::registerOcrSpmdFinalizeEdt(string name, unsi
   }
   else {
     OcrTaskContextPtr taskcontext_sp = boost::make_shared<OcrSpmdFinalizeContext>(name, traversalOrder, sgpdecl, depEvts);
+    OcrTaskContextMapElem elem(name, taskcontext_sp);
+    m_ocrTaskContextMap.insert(elem);
+    return taskcontext_sp;
+  }
+}
+
+OcrTaskContextPtr OcrObjectManager::registerOcrSpmdSendContext(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+							       OcrDbkContextPtr dbkToSend, list<OcrEvtContextPtr> depEvts,
+							       OcrEvtContextPtr outEvt, SgFunctionCallExp* sendCallExp) {
+  OcrTaskContextMap::iterator f = m_ocrTaskContextMap.find(name);
+  if(f != m_ocrTaskContextMap.end()) {
+    assert(f->second);
+    cerr << "WARNING: TASK " << name << "is already registered\n";
+    return f->second;
+  }
+  else {
+    OcrTaskContextPtr taskcontext_sp = boost::make_shared<OcrSpmdSendContext>(name, traversalOrder, sgpdecl, dbkToSend,
+									      depEvts, outEvt, sendCallExp);
     OcrTaskContextMapElem elem(name, taskcontext_sp);
     m_ocrTaskContextMap.insert(elem);
     return taskcontext_sp;

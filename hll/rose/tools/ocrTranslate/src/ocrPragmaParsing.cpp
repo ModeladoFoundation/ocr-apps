@@ -38,6 +38,9 @@ OcrPragmaType::OcrPragmaType_t OcrPragmaType::identifyPragmaType(SgPragmaDeclara
   else if(AstFromString::afs_match_substr("ocr shutdown")) return e_ShutdownEdt;
   else if(AstFromString::afs_match_substr("ocr loop")) return e_LoopIterEdt;
   else if(AstFromString::afs_match_substr("ocr spmd region")) return e_SpmdRegionEdt;
+  else if(AstFromString::afs_match_substr("ocr spmd send")) return e_SpmdSend;
+  else if(AstFromString::afs_match_substr("ocr spmd recv")) return e_SpmdRecv;
+  else if(AstFromString::afs_match_substr("ocr spmd reduce")) return e_SpmdReduce;
   else if(AstFromString::afs_match_substr("ocr spmd finalize")) return e_SpmdFinalizeEdt;
   else return e_NotOcr;
 }
@@ -1054,7 +1057,124 @@ bool OcrSpmdFinalizePragmaParser::match() {
   }
 }
 
+/***************************
+ * OcrSpmdSendPragmaParser *
+ ***************************/
+OcrSpmdSendPragmaParser::OcrSpmdSendPragmaParser(SgPragmaDeclaration* sgpdecl,
+						 unsigned int traversalOrder, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl),
+    m_traversalOrder(traversalOrder),
+    m_ocrObjectManager(ocrObjectManager) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> *sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+}
 
+list<string> OcrSpmdSendPragmaParser::matchParamNames(string input) {
+  list<string> paramList;
+  if(!regex_match(input, sr_paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier = *cur;
+    if(identifier.compare("NONE") == 0 || identifier.compare("none") == 0) {
+      continue;
+    }
+    paramList.push_back(identifier);
+  }
+  return paramList;
+}
+
+string OcrSpmdSendPragmaParser::matchSendDbk(string input) {
+  sregex sr_sendDbk = *_s >> icase("SEND_DBK") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, sr_sendDbk)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OcrSpmdSendPragmaParser::matchOutEvt\n");
+  }
+}
+
+list<string> OcrSpmdSendPragmaParser::matchDepEvts(string input) {
+  sregex sr_dbknames = icase("DEP_EVTs") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in OcrSpmdFinalizePragmaParser::DEP_EVTs\n");
+  }
+  return dbkNames;
+}
+
+string OcrSpmdSendPragmaParser::matchOutEvt(string input) {
+  sregex outEvtNameOnly = *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, outEvtNameOnly)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OcrSpmdSendPragmaParser::matchOutEvt\n");
+  }
+}
+
+bool OcrSpmdSendPragmaParser::match() {
+  Logger::Logger lg("OcrSpmdSendPragmaParser::match()", Logger::DEBUG);
+  boost::xpressive::sregex sr_spmdsend = *_s >> as_xpr("ocr spmd send")
+					       >> *_s >> icase("SEND_DBK") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					       >> *_s >> icase("DEP_EVTS") >> *_s >> (sr_paramlist)
+					       >> *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					       >> *_s;
+  string input = m_sgpdecl->get_pragma()->get_pragma();
+  try {
+    if(regex_match(input, sr_spmdsend)) {
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      string dbkName = matchSendDbk(input);
+      OcrDbkContextPtr sendDbkContext = m_ocrObjectManager.getOcrDbkContext(dbkName, scope);
+      list<string> depEvtNames = matchDepEvts(input);
+      list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
+      string outEvtName = matchOutEvt(input);
+      OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outEvtName);
+      string sendContextName = SageInterface::generateUniqueVariableName(scope, "send");
+      SgStatement* callExpStmt = SageInterface::getNextStatement(m_sgpdecl);
+      SgFunctionCallExp* sendCallExp = NULL;
+      if(sendCallExp = isSgFunctionCallExp(isSgExprStatement(callExpStmt)->get_expression())) {
+	SgFunctionRefExp* functionExp = isSgFunctionRefExp(sendCallExp->get_function());
+	// Ensure that the annotation follows MPI_Send
+	if(functionExp) {
+	  SgFunctionSymbol* fsymbol = functionExp->get_symbol();
+	  string fname = fsymbol->get_name().getString();
+	  assert(fname.compare("MPI_Send") == 0);
+	}
+	else {
+	  // Annotation is on a function call called through function pointer
+	  throw MatchException("Cannot find MPI send call expression\n");
+	}
+      }
+      else {
+	// Annotation is not followed by MPI_Send call statement
+	throw MatchException("Unexpected statement following Send annotation\n");
+      }
+      assert(sendCallExp);
+      OcrTaskContextPtr sendContext = m_ocrObjectManager.registerOcrSpmdSendContext(sendContextName, m_traversalOrder, m_sgpdecl,
+										    sendDbkContext, depEvts, outEvtContext, sendCallExp);
+      return true;
+    }
+    else {
+      throw MatchException("Failed to Match SPMD Send Pragma\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
 
 /*******************
  * OcrPragmaParser *
@@ -1136,6 +1256,24 @@ void OcrPragmaParser::visit(SgNode* sgn) {
 	std::terminate();
       }
     }
+    else if(ptype == OcrPragmaType::e_SpmdSend) {
+      // Increase the traversal order counter
+      m_taskOrderCounter++;
+      OcrSpmdSendPragmaParser spmdSendPragmaParser(sgpdecl, m_taskOrderCounter, m_ocrObjectManager);
+      if(spmdSendPragmaParser.match()) {
+	Logger::info(lg) << "SpmdSend Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "SpmdSend Pragma Parsing Failed\n";
+	std::terminate();
+      }
+    }
+    else if(ptype == OcrPragmaType::e_SpmdRecv) {
+      assert(false);
+    }
+    else if(ptype == OcrPragmaType::e_SpmdReduce) {
+      assert(false);
+    }
     else if(ptype == OcrPragmaType::e_Dbk) {
       AstFromString::afs_skip_whitespace();
       OcrDbkPragmaParser dbkPragmaParser(sgpdecl, m_ocrObjectManager);
@@ -1173,28 +1311,28 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       string fname = fsymbol->get_name().getString();
       MpiOpContextPtr mpiOpContext;
       bool isMpiOp = false;
-      if(isMpiOp = fname.compare("MPI_Init") == 0) {
+      if(isMpiOp = (fname.compare("MPI_Init") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_INIT, callStmt);
       }
-      else if(isMpiOp = fname.compare("MPI_Finalize") == 0) {
+      else if(isMpiOp = (fname.compare("MPI_Finalize") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_FINALIZE, callStmt);
       }
-      else if(isMpiOp = fname.compare("MPI_Comm_rank") == 0) {
+      else if(isMpiOp = (fname.compare("MPI_Comm_rank") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_COMM_RANK, callStmt);
       }
-      else if(isMpiOp = fname.compare("MPI_Comm_size") == 0) {
+      else if(isMpiOp = (fname.compare("MPI_Comm_size") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_COMM_SIZE, callStmt);
       }
-      else if(isMpiOp = fname.compare("MPI_Send") == 0) {
+      else if(isMpiOp = (fname.compare("MPI_Send") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_SEND, callStmt);
       }
-      else if(isMpiOp = fname.compare("MPI_Recv") == 0) {
+      else if(isMpiOp = (fname.compare("MPI_Recv") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_RECV, callStmt);
       }
-      else if(isMpiOp = fname.compare("MPI_Reduce") == 0) {
+      else if(isMpiOp = (fname.compare("MPI_Reduce") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_REDUCE, callStmt);
       }
-      else if(isMpiOp = fname.find_first_of("MPI_") == 0){
+      else if(isMpiOp = (fname.find("MPI_") == 0)){
 	std::cerr << "Unhandled MPI function " << fname << endl;
 	std::terminate();
       }

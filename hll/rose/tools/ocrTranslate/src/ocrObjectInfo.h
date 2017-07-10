@@ -233,13 +233,23 @@ typedef boost::shared_ptr<OcrSpmdFinalizeContext> OcrSpmdFinalizeContextPtr;
 /**********************
  * OcrSpmdSendContext *
  **********************/
-/* class OcrSpmdSendContext : public OcrTaskContextPtr { */
-/*   SgFunctionCallExp* m_sendCallExp; */
-/*  public: */
-/*   OcrSpmdSendContext(SgFunctionCallExp* sendCallExp); */
-/*   ~OcrSpmdSendContext(); */
-/* }; */
-/* typedef boost::shared_ptr<OcrSpmdSendContext> OcrSpmdSendContextPtr; */
+class OcrSpmdSendContext : public OcrTaskContext {
+  OcrDbkContextPtr m_dbkToSend;
+  std::list<OcrEvtContextPtr> m_depEvts;
+  OcrEvtContextPtr m_outEvt;
+  SgFunctionCallExp* m_sendCallExp;
+ public:
+  OcrSpmdSendContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+		     OcrDbkContextPtr dbkToSend, std::list<OcrEvtContextPtr> depEvts,
+		     OcrEvtContextPtr outEvt, SgFunctionCallExp* sendCallExp);
+  OcrDbkContextPtr getDbkToSend() const;
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  OcrEvtContextPtr getOutputEvt() const;
+  SgFunctionCallExp* getSendCallExp() const;
+  std::string str() const;
+  ~OcrSpmdSendContext();
+};
+typedef boost::shared_ptr<OcrSpmdSendContext> OcrSpmdSendContextPtr;
 
 /**********************
  * OcrSpmdRecvContext *
@@ -350,9 +360,6 @@ class OcrObjectManager {
   OcrObjectSymbolTable<OcrDbkContext> m_dbkSymbolTable;
  public:
   OcrObjectManager();
-  // Lookup functions for OcrContext using their names
-  std::list<OcrEvtContextPtr> getOcrEvtContextList(std::list<std::string> evtList);
-  std::list<OcrDbkContextPtr> getOcrDbkContextList(std::list<std::string> dbksList, SgScopeStatement* scope);
 
   // Functions to create shared_ptr for OcrContext
   std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
@@ -384,16 +391,24 @@ class OcrObjectManager {
 					     unsigned int ntasks);
   OcrTaskContextPtr registerOcrSpmdFinalizeEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 					       std::list<OcrEvtContextPtr> depEvts);
+  OcrTaskContextPtr registerOcrSpmdSendContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+					       OcrDbkContextPtr dbkToSend, std::list<OcrEvtContextPtr> depEvts,
+					       OcrEvtContextPtr outEvt, SgFunctionCallExp* sendCallExp);
   bool registerMpiOpContext(MpiOpContextPtr mpiOpContext);
   // return a list of edtnames in the same order they were encountered in the AST
   std::list<std::string> getEdtTraversalOrder() const;
 
-  // Access functions
-  const OcrTaskContextMap& getOcrTaskContextMap() const;
+
+  // Lookup functions for OcrContext using their names
+  std::list<OcrEvtContextPtr> getOcrEvtContextList(std::list<std::string> evtList);
+  std::list<OcrDbkContextPtr> getOcrDbkContextList(std::list<std::string> dbksList, SgScopeStatement* scope);
   OcrTaskContextPtr getOcrTaskContext(std::string edtname) const;
   OcrEvtContextPtr getOcrEvtContext(std::string evtname);
-  std::list<OcrDbkContextPtr> getOcrDbkContextList() const;
+  OcrDbkContextPtr getOcrDbkContext(std::string dbkname, SgScopeStatement* scope);
   std::list<MpiOpContextPtr> getMpiOpContextList() const;
+  const OcrTaskContextMap& getOcrTaskContextMap() const;
+  std::list<OcrDbkContextPtr> getOcrDbkContextList() const;
+
   /*!
    *\brief Returns true if the program has MPI operations
    */
