@@ -98,6 +98,11 @@ class OcrTranslator {
    */
   SgStatement* replaceCommSize(SgStatement* callStmt);
 
+  // EDT Setup
+  void setupEdt(std::string edtName, OcrEdtContextPtr edtContext);
+  // LoopIterControlEdt Body setup
+  void setupLoopControlEdtBody(OcrLoopIterEdtContextPtr loopIterEdtContext);
+  void setupLoopControlEdt(OcrLoopIterEdtContextPtr loopIterEdtContext);
   // Shutdown EDTs
   void setupShutdownEdt(std::string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext);
   // Setup SpmdRegionEdt
@@ -113,6 +118,11 @@ class OcrTranslator {
   void translateDbks();
   void translateMpi();
   void outlineMainEdt();
+  /*!
+   *\brief Insert dependent datablock declaration inside the body of each EDT
+   */
+  void insertEdtsDepDbksDecl();
+
   // main driver function
   void translate();
 };
