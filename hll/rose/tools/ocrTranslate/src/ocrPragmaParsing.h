@@ -30,6 +30,9 @@ struct OcrPragmaType {
     e_LoopIterEdt,
     e_SpmdRegionEdt,
     e_SpmdFinalizeEdt,
+    e_SpmdSend,
+    e_SpmdRecv,
+    e_SpmdReduce,
     e_Dbk,
     e_ShutdownEdt,
     e_NotOcr
@@ -224,6 +227,25 @@ class OcrSpmdFinalizePragmaParser {
  public:
   OcrSpmdFinalizePragmaParser(SgPragmaDeclaration* sgpdecl, std::string input,
 			      unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
+  bool match();
+};
+
+/***************************
+ * OcrSpmdSendPragmaParser *
+ ***************************/
+class OcrSpmdSendPragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  unsigned int m_traversalOrder;
+  OcrObjectManager& m_ocrObjectManager;
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
+ private:
+  std::string matchSendDbk(std::string input);
+  std::list<std::string> matchDepEvts(std::string input);
+  std::string matchOutEvt(std::string input);
+  std::list<std::string> matchParamNames(std::string input);
+ public:
+  OcrSpmdSendPragmaParser(SgPragmaDeclaration* sgpdecl,
+			  unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
   bool match();
 };
 
