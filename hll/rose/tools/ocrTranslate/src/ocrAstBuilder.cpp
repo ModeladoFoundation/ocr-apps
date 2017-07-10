@@ -267,8 +267,10 @@ namespace AstBuilder {
 	  }
 	  break;
 	}
-	  // Nothing targetBlock do for these declaration
-	case V_SgPragmaDeclaration:
+	case V_SgPragmaDeclaration: {
+	  assert(declStmt->get_scope() == targetBlock);
+	  break;
+	}
 	case V_SgTypedefDeclaration:
 	case V_SgFunctionDeclaration: {
 	  break;
