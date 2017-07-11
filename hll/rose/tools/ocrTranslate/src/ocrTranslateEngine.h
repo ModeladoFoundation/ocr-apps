@@ -107,6 +107,8 @@ class OcrTranslator {
   void setupShutdownEdt(std::string shutdownEdtName, OcrShutdownEdtContextPtr shutdownEdtContext);
   // Setup SpmdRegionEdt
   void setupSpmdRegionEdt(std::string edtName, OcrSpmdRegionContextPtr spmdRegionContext);
+  // Setup SpmdSend call
+  void setupSpmdSend(OcrSpmdSendContextPtr sendContext);
   // Setup SpmdRankFinalize
   void setupSpmdFinalize(std::string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContextPtr);
   // Miscellaneous utility functions

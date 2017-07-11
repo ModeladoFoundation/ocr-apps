@@ -1249,6 +1249,85 @@ void OcrTranslator::setupSpmdRegionEdt(string spmdRegionEdtName, OcrSpmdRegionCo
   SageInterface::removeStatement(spmdRegionContext->getTaskBasicBlock());
 }
 
+/*! Setting up spmdSend involves the following steps
+ * 1. Create and setup the output continutation event
+ * 2. Create and setup the trigger event
+ * 3. Add all depEvts as dependences for the trigger event
+ * 4. Extract and deep copy the to, tag from the MPI_Send/Isend call expression
+ * 5. Get the dbk guid symbol which needs to be sent
+ * 6. Build the spmdGSend call expression AST
+ * 7. Replace the MPI call expression with the spmdGSend AST
+ */
+void OcrTranslator::setupSpmdSend(OcrSpmdSendContextPtr sendContext) {
+  Logger::Logger lg("OcrTranslator::setupSpmdSend", Logger::DEBUG);
+  SgPragmaDeclaration* pragmaStmt = sendContext->getPragma();
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(pragmaStmt);
+  // 1. Create and setup the output continutation event
+  string outEvtName = sendContext->getOutputEvt()->get_name();
+  vector<SgStatement*> setupStmts;
+  setupStmts = setupEdtOutEvt(sendContext->getTaskName(), outEvtName, scope);
+  SageInterface::insertStatementListBefore(pragmaStmt, setupStmts);
+  EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(outEvtName, scope);
+  string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
+  SgVariableSymbol* outEvtGuidSymbol = GetVariableSymbol(outEvtGuidName, scope);
+
+  // 2. Create and setup the trigger event
+  // 3. Add all depEvts as dependences for the trigger event
+  list<OcrEvtContextPtr> depEvts = sendContext->getDepEvts();
+  SgVariableSymbol* triggerEvtGuidSymbol = NULL;
+  if(depEvts.empty()) {
+    // triggerEvtGuidSymbol must be set to NULL
+    triggerEvtGuidSymbol = NULL;
+  }
+  else {
+    // Create a trigger event
+    // Add all dependent events as dependencies to the trigger event using ocrAddDependence
+    string triggerEvtName = SageInterface::generateUniqueVariableName(scope, "trigger");
+    SgVariableDeclaration* triggerEvtGuidDecl = AstBuilder::buildGuidVarDecl(triggerEvtName, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtGuidDecl, true);
+    // Create the event
+    triggerEvtGuidSymbol = GetVariableSymbol(triggerEvtGuidDecl, triggerEvtName);
+    SgExprStatement* triggerEvtCreateStmt = AstBuilder::buildEvtCreateCallExp(triggerEvtGuidSymbol, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtCreateStmt, true);
+    // Add dependences from depEvts to triggerEvt
+    list<OcrEvtContextPtr>::iterator evt = depEvts.begin();
+    for(int slot = 0; evt != depEvts.end(); ++evt, ++slot) {
+      EvtAstInfoPtr depEvtAstInfo = m_astInfoManager.getEvtAstInfo((*evt)->get_name(), scope);
+      string depEvtGuidName = depEvtAstInfo->getEvtGuidName();
+      SgVariableSymbol* depEvtGuidSymbol = GetVariableSymbol(depEvtGuidName, scope);
+      assert(depEvtGuidSymbol);
+      SgExprStatement* addDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(depEvtGuidSymbol, triggerEvtGuidSymbol,
+										       slot, AstBuilder::DbkMode::DB_MODE_NULL, scope);
+      SageInterface::insertStatementBefore(pragmaStmt, addDependenceCallExp, true);
+    }
+  }
+
+  // 4. Extract and deep copy the to, tag from the MPI_Send/Isend call expression
+  SgFunctionCallExp* sendCallExp = sendContext->getSendCallExp();
+  SgExpressionPtrList& sendCallArgs = sendCallExp->get_args()->get_expressions();
+  // dest is 4th argument and tag is 5th argument
+  SgExpression* sto = sendCallArgs[3];
+  SgExpression* stag = sendCallArgs[4];
+  assert(sto && stag);
+
+  SgExpression* to = SageInterface::copyExpression(sto);
+  SgExpression* tag = SageInterface::copyExpression(stag);
+
+  // 5. Get the dbk guid symbol which needs to be sentet the dbk guid information
+  OcrDbkContextPtr dbkToSend = sendContext->getDbkToSend();
+  DbkAstInfoPtr dbkToSendAstInfo = m_astInfoManager.getDbkAstInfo(dbkToSend->get_name(), scope);
+  string dbkGuidName = dbkToSendAstInfo->getDbkGuidName();
+  SgVariableSymbol* dbkGuidSymbol = GetVariableSymbol(dbkGuidName, scope);
+
+  // 6. Build the spmdGSend call expression AST
+  SgExprStatement* spmdGSendCallExp = AstBuilder::buildSpmdGSendCallExp(to, tag, dbkGuidSymbol,
+									triggerEvtGuidSymbol, true, outEvtGuidSymbol, scope);
+  // 7. Replace the MPI call expression with the spmdGSend AST
+  SageInterface::insertStatementBefore(pragmaStmt, spmdGSendCallExp);
+  SageInterface::removeStatement(pragmaStmt);
+  SageInterface::removeStatement(SageInterface::getEnclosingStatement(sendCallExp));
+}
+
 void OcrTranslator::setupSpmdFinalize(string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContext) {
   Logger::Logger lg("OcrTranslator::setupSpmdFinalize", Logger::DEBUG);
   list<OcrEvtContextPtr> depEvts = spmdFinalizeContext->getDepEvts();
@@ -1366,6 +1445,8 @@ void OcrTranslator::setupEdts() {
     }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskLoopIter) {
       OcrLoopIterEdtContextPtr loopIterEdtContext = boost::dynamic_pointer_cast<OcrLoopIterEdtContext>(taskContext);
+      // Synthesize the loop control EDT body while only involves setting up successive iterations
+      // It is essential this follows all datablock synthesis
       setupLoopControlEdtBody(loopIterEdtContext);
       setupLoopControlEdt(loopIterEdtContext);
     }
@@ -1380,6 +1461,10 @@ void OcrTranslator::setupEdts() {
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdFinalize) {
       OcrSpmdFinalizeContextPtr spmdFinalizeContext = boost::dynamic_pointer_cast<OcrSpmdFinalizeContext>(taskContext);
       setupSpmdFinalize(edtname, spmdFinalizeContext);
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdSend) {
+      OcrSpmdSendContextPtr sendContext = boost::dynamic_pointer_cast<OcrSpmdSendContext>(taskContext);
+      setupSpmdSend(sendContext);
     }
     else {
       cerr << "Unhandled Task Context in OcrTranslator::setupEdts\n";

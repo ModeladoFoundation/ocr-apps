@@ -135,6 +135,13 @@ namespace AstBuilder {
   SgStatement* buildSpmdMyRankCallExp(SgVarRefExp* rankVarRefExp, SgScopeStatement* scope);
   SgStatement* buildSpmdSizeCallExp(SgVarRefExp* sizeVarRefExp, SgScopeStatement* scope);
 
+  /******************
+   * SpmdCallsSetup *
+   ******************/
+  SgExprStatement* buildSpmdGSendCallExp(SgExpression* to, SgExpression* tag, SgVariableSymbol* dbkGuidSymbol,
+					 SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
+					 SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope);
+
   /*********************
    * ReplaceReturnStmt *
    *********************/
