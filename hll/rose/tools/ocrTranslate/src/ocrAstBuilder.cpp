@@ -982,6 +982,42 @@ namespace AstBuilder {
     return sizeStmt;
   }
 
+  /******************
+   * SpmdCallsSetup *
+   ******************/
+  SgExprStatement* buildSpmdGSendCallExp(SgExpression* to, SgExpression* tag, SgVariableSymbol* dbkGuidSymbol,
+					 SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
+					 SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope) {
+    // Ensure we have valid arguments for the following
+    // NOTE - Do we always need outEvt?
+    assert(to && tag && dbkGuidSymbol && outEvtGuidSymbol);
+    vector<SgExpression*> args;
+    args.push_back(to);
+    args.push_back(tag);
+    SgVarRefExp* dbkGuidVarRefExp = SageBuilder::buildVarRefExp(dbkGuidSymbol);
+    args.push_back(dbkGuidVarRefExp);
+    SgExpression* fourth = NULL;
+    if(triggerEvtGuidSymbol) {
+      fourth = SageBuilder::buildVarRefExp(triggerEvtGuidSymbol);
+    }
+    else {
+      fourth = SageBuilder::buildIntVal();
+      string nullGuidStr = "NULL_GUID";
+      SageInterface::addTextForUnparser(fourth, nullGuidStr, AstUnparseAttribute::e_replace);
+    }
+    args.push_back(fourth);
+    SgExpression* fifth = SageBuilder::buildBoolValExp(destroyTrigger);
+    args.push_back(fifth);
+    SgExpression* sixth = SageBuilder::buildVarRefExp(outEvtGuidSymbol);
+    args.push_back(sixth);
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdGSend", SageBuilder::buildVoidType(), exprList, scope);
+    SgExprStatement* callExpStmt = SageBuilder::buildExprStatement(callExp);
+    return callExpStmt;
+  }
+
+
+
   /*********************
    * ReplaceReturnStmt *
    *********************/
