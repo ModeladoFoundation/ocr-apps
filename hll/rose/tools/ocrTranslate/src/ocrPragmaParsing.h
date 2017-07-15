@@ -249,6 +249,27 @@ class OcrSpmdSendPragmaParser {
   bool match();
 };
 
+/***************************
+ * OcrSpmdRecvPragmaParser *
+ ***************************/
+class OcrSpmdRecvPragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  unsigned int m_traversalOrder;
+  OcrObjectManager& m_ocrObjectManager;
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
+ private:
+  std::string matchRecvEvt(std::string input);
+  std::list<std::string> matchDepEvts(std::string input);
+  std::string matchOutEvt(std::string input);
+  std::list<std::string> matchParamNames(std::string input);
+  SgVariableSymbol* getRecvBuffVariableSymbol_rec(SgExpression* rbuffExp);
+  SgVariableSymbol* getRecvBuffVariableSymbol(SgFunctionCallExp* recvCallExp);
+ public:
+  OcrSpmdRecvPragmaParser(SgPragmaDeclaration* sgpdecl,
+			  unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
+  bool match();
+};
+
 /*******************
  * OcrPragmaParser *
  *******************/

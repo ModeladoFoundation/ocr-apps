@@ -97,6 +97,7 @@ namespace AstBuilder {
 
   // AST builders for OCR Event management
   SgExprStatement* buildEvtCreateCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope);
+  SgExprStatement* buildEvtDbkCreateCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope);
 
   // AST builder for shutdown EDT
   SgExprStatement* buildOcrShutdownCallExp(SgScopeStatement* scope);
@@ -141,6 +142,10 @@ namespace AstBuilder {
   SgExprStatement* buildSpmdGSendCallExp(SgExpression* to, SgExpression* tag, SgVariableSymbol* dbkGuidSymbol,
 					 SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
 					 SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope);
+
+  SgExprStatement* buildSpmdRecvCallExp(SgExpression* from, SgExpression* tag, SgVariableSymbol* recvEvtGuidSymbol,
+					SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
+					SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope);
 
   /*********************
    * ReplaceReturnStmt *

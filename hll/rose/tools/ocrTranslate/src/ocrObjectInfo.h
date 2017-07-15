@@ -53,6 +53,9 @@ public:
 };
 typedef boost::shared_ptr<OcrMemDbkContext> OcrMemDbkContextPtr;
 
+/********************
+ * OcrArrDbkContext *
+ ********************/
 class OcrArrDbkContext : public OcrDbkContext {
   SgInitializedName* m_arrInitName;
  public:
@@ -67,15 +70,38 @@ typedef boost::shared_ptr<OcrArrDbkContext> OcrArrDbkContextPtr;
  * OcrEvtContext *
  *****************/
 class OcrEvtContext {
+ public:
+  typedef enum {
+    EVT_NODBK,
+    EVT_DBK
+  } EvtDbkAttrType;
+ protected:
   std::string m_name;
+  EvtDbkAttrType m_dbkAttrType;
 public:
-  OcrEvtContext(std::string name);
+  OcrEvtContext(std::string name, EvtDbkAttrType dbkAttrType);
   std::string get_name() const;
-  std::string str() const;
+  EvtDbkAttrType getEvtDbkAttrType() const;
+  virtual bool isEvtTakesDbkArg() const;
+  virtual std::string str() const;
   ~OcrEvtContext();
 };
 
 typedef boost::shared_ptr<OcrEvtContext> OcrEvtContextPtr;
+
+/********************
+ * OcrEvtDbkContext *
+ ********************/
+class OcrEvtDbkContext : public OcrEvtContext {
+  SgVariableSymbol* m_dbkSymbol;
+ public:
+  OcrEvtDbkContext(std::string name, EvtDbkAttrType dbkAttrType, SgVariableSymbol* dbkSymbol);
+  virtual bool isEvtTakesDbkArg() const;
+  SgVariableSymbol* getDbkSymbol() const;
+  std::string str() const;
+  ~OcrEvtDbkContext();
+};
+typedef boost::shared_ptr<OcrEvtDbkContext> OcrEvtDbkContextPtr;
 
 /******************
  * OcrTaskContext *
@@ -254,14 +280,23 @@ typedef boost::shared_ptr<OcrSpmdSendContext> OcrSpmdSendContextPtr;
 /**********************
  * OcrSpmdRecvContext *
  **********************/
-/* class OcrSpmdRecvContext : public OcrTaskContext { */
-/*   SgFunctionCallExp* m_recvCallExp; */
-/*   SgVariableSymbol* m_buffSymbol; */
-/*  public: */
-/*   OcrSpmdRecvContext(SgFunctionCallExp* recvCallExp, SgVariableSymbol* buffSymbol); */
-/*   ~OcrSpmdRecvContext(); */
-/* }; */
-/* typedef boost::shared_ptr<OcrSpmdRecvContext> OcrSpmdRecvContextPtr; */
+class OcrSpmdRecvContext : public OcrTaskContext {
+  OcrEvtContextPtr m_recvEvt;
+  std::list<OcrEvtContextPtr> m_depEvts;
+  OcrEvtContextPtr m_outEvt;
+  SgFunctionCallExp* m_recvCallExp;
+ public:
+  OcrSpmdRecvContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+		     OcrEvtContextPtr recvEvt, std::list<OcrEvtContextPtr> depEvts,
+		     OcrEvtContextPtr outEvt, SgFunctionCallExp* recvCallExp);
+  OcrEvtContextPtr getRecvEvt() const;
+  OcrEvtContextPtr getOutputEvt() const;
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  SgFunctionCallExp* getRecvCallExp() const;
+  std::string str() const;
+  ~OcrSpmdRecvContext();
+};
+typedef boost::shared_ptr<OcrSpmdRecvContext> OcrSpmdRecvContextPtr;
 
 /*********************
  * OcrMainEdtContext *
@@ -364,6 +399,7 @@ class OcrObjectManager {
   // Functions to create shared_ptr for OcrContext
   std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
   OcrEvtContextPtr registerOcrEvt(std::string evtName);
+  OcrEvtContextPtr registerOcrEvtDbk(std::string evtName, SgVariableSymbol* dbkSymbol);
   void registerOcrDbk(std::string dbkName, OcrDbkContextPtr dbkContext, SgScopeStatement* scope);
   OcrTaskContextPtr registerOcrEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 				   std::list<OcrDbkContextPtr> depDbks,
@@ -394,6 +430,10 @@ class OcrObjectManager {
   OcrTaskContextPtr registerOcrSpmdSendContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 					       OcrDbkContextPtr dbkToSend, std::list<OcrEvtContextPtr> depEvts,
 					       OcrEvtContextPtr outEvt, SgFunctionCallExp* sendCallExp);
+  OcrTaskContextPtr registerOcrSpmdRecvContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+					       OcrEvtContextPtr recvEvt, std::list<OcrEvtContextPtr> depEvts,
+					       OcrEvtContextPtr outEvt, SgFunctionCallExp* recvCallExp);
+
   bool registerMpiOpContext(MpiOpContextPtr mpiOpContext);
   // return a list of edtnames in the same order they were encountered in the AST
   std::list<std::string> getEdtTraversalOrder() const;

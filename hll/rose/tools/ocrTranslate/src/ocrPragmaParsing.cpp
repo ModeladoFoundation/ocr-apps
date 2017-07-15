@@ -1176,6 +1176,160 @@ bool OcrSpmdSendPragmaParser::match() {
   }
 }
 
+/***************************
+ * OcrSpmdRecvPragmaParser *
+ ***************************/
+OcrSpmdRecvPragmaParser::OcrSpmdRecvPragmaParser(SgPragmaDeclaration* sgpdecl,
+						 unsigned int traversalOrder, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl),
+    m_traversalOrder(traversalOrder),
+    m_ocrObjectManager(ocrObjectManager) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> *sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+}
+
+list<string> OcrSpmdRecvPragmaParser::matchParamNames(string input) {
+  list<string> paramList;
+  if(!regex_match(input, sr_paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier = *cur;
+    if(identifier.compare("NONE") == 0 || identifier.compare("none") == 0) {
+      continue;
+    }
+    paramList.push_back(identifier);
+  }
+  return paramList;
+}
+
+string OcrSpmdRecvPragmaParser::matchRecvEvt(string input) {
+  sregex sr_recvDbk = *_s >> icase("RECV_EVT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, sr_recvDbk)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OcrSpmdRecvPragmaParser::matchRecvEvt\n");
+  }
+}
+
+list<string> OcrSpmdRecvPragmaParser::matchDepEvts(string input) {
+  sregex sr_dbknames = icase("DEP_EVTs") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in OcrSpmdFinalizePragmaParser::DEP_EVTs\n");
+  }
+  return dbkNames;
+}
+
+string OcrSpmdRecvPragmaParser::matchOutEvt(string input) {
+  sregex outEvtNameOnly = *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, outEvtNameOnly)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OcrSpmdRecvPragmaParser::matchOutEvt\n");
+  }
+}
+
+SgVariableSymbol* OcrSpmdRecvPragmaParser::getRecvBuffVariableSymbol_rec(SgExpression* rbuffExp) {
+  assert(rbuffExp);
+  switch(rbuffExp->variantT()) {
+  // MPI_Recv(buff,...)
+  // base case
+  case V_SgVarRefExp: {
+    return isSgVarRefExp(rbuffExp)->get_symbol();
+  }
+  // MPI_Recv(&buff,..)
+  case V_SgAddressOfOp: {
+    SgExpression* operand = isSgAddressOfOp(rbuffExp)->get_operand();
+    return getRecvBuffVariableSymbol_rec(operand);
+  }
+  // MPI_Recv((void*) &rbuff,..
+  case V_SgCastExp: {
+    SgExpression* operand = isSgCastExp(rbuffExp)->get_operand();
+    return getRecvBuffVariableSymbol_rec(operand);
+  }
+  default:
+    throw MatchException("Cannot find recv buff variable symbol from recvCallExp\n");
+  }
+}
+
+SgVariableSymbol* OcrSpmdRecvPragmaParser::getRecvBuffVariableSymbol(SgFunctionCallExp* recvCallExp) {
+  // recursively traverse the tree and extract the variable symbol
+  // recv buff is the first argument in the argument list
+  SgExpression* rbuffExp = recvCallExp->get_args()->get_expressions()[0];
+  return getRecvBuffVariableSymbol_rec(rbuffExp);
+}
+
+bool OcrSpmdRecvPragmaParser::match() {
+  Logger::Logger lg("OcrSpmdRecvPragmaParser::match()", Logger::DEBUG);
+  boost::xpressive::sregex sr_spmdrecv = *_s >> as_xpr("ocr spmd recv")
+					     >> *_s >> icase("RECV_EVT") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					     >> *_s >> icase("DEP_EVTS") >> *_s >> (sr_paramlist)
+					     >> *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					     >> *_s;
+  string input = m_sgpdecl->get_pragma()->get_pragma();
+  try {
+    if(regex_match(input, sr_spmdrecv)) {
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      SgStatement* callExpStmt = SageInterface::getNextStatement(m_sgpdecl);
+      SgFunctionCallExp* recvCallExp = NULL;
+      if(recvCallExp = isSgFunctionCallExp(isSgExprStatement(callExpStmt)->get_expression())) {
+	SgFunctionRefExp* functionExp = isSgFunctionRefExp(recvCallExp->get_function());
+	// Ensure that the annotation follows MPI_Recv
+	if(functionExp) {
+	  SgFunctionSymbol* fsymbol = functionExp->get_symbol();
+	  string fname = fsymbol->get_name().getString();
+	  assert(fname.compare("MPI_Recv") == 0);
+	}
+	else {
+	  // Annotation is on a function call called through function pointer
+	  throw MatchException("Cannot find MPI recv call expression\n");
+	}
+      }
+      else {
+	// Annotation is not followed by MPI_Recv call statement
+	throw MatchException("Unexpected statement following Recv annotation\n");
+      }
+      assert(recvCallExp);
+
+      string recvEvtName = matchRecvEvt(input);
+      // Get the recv buffer variable symbol from the recv call exp
+      SgVariableSymbol* dbkSymbol = getRecvBuffVariableSymbol(recvCallExp);
+      OcrEvtContextPtr recvEvtContext = m_ocrObjectManager.registerOcrEvtDbk(recvEvtName, dbkSymbol);
+
+      list<string> depEvtNames = matchDepEvts(input);
+      list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
+      string outEvtName = matchOutEvt(input);
+      OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outEvtName);
+
+      string recvContextName = SageInterface::generateUniqueVariableName(scope, "recv");
+      OcrTaskContextPtr recvContext = m_ocrObjectManager.registerOcrSpmdRecvContext(recvContextName, m_traversalOrder, m_sgpdecl,
+										    recvEvtContext, depEvts, outEvtContext, recvCallExp);
+      return true;
+    }
+    else {
+      throw MatchException("Failed to Match SPMD Recv Pragma\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
+
 /*******************
  * OcrPragmaParser *
  *******************/
@@ -1269,7 +1423,16 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       }
     }
     else if(ptype == OcrPragmaType::e_SpmdRecv) {
-      assert(false);
+      // Increase the traversal order counter
+      m_taskOrderCounter++;
+      OcrSpmdRecvPragmaParser spmdRecvPragmaParser(sgpdecl, m_taskOrderCounter, m_ocrObjectManager);
+      if(spmdRecvPragmaParser.match()) {
+	Logger::info(lg) << "SpmdRecv Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "SpmdRecv Pragma Parsing Failed\n";
+	std::terminate();
+      }
     }
     else if(ptype == OcrPragmaType::e_SpmdReduce) {
       assert(false);
