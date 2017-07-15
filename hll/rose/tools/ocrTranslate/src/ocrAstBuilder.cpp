@@ -624,7 +624,6 @@ namespace AstBuilder {
   }
 
   // u8 ocrEventCreate(ocrGuid_t ∗guid, ocrEventTypes_t eventType, u16 flags)
-  // We will assument OCR_EVENT_ONCE_T as a default for now
   // flags is EVT_PROP_NONE which is the default behavior
   SgExprStatement* buildEvtCreateCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope) {
     SgType* voidType = SageBuilder::buildVoidType();
@@ -641,6 +640,32 @@ namespace AstBuilder {
     args.push_back(eventType);
     SgIntVal* flags = SageBuilder::buildIntVal();
     string flagsStr = "EVT_PROP_NONE";
+    SageInterface::addTextForUnparser(flags, flagsStr, AstUnparseAttribute::e_replace);
+    args.push_back(flags);
+    // Build the argument list
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    // Build the function call exp
+    SgExprStatement* stmt = SageBuilder::buildFunctionCallStmt("ocrEventCreate", voidType, exprList, scope);
+    return stmt;
+  }
+
+  // u8 ocrEventCreate(ocrGuid_t ∗guid, ocrEventTypes_t eventType, u16 flags)
+  // flags is EVT_PROP_NONE which is the default behavior
+  SgExprStatement* buildEvtDbkCreateCallExp(SgVariableSymbol* evtGuidSymbol, SgScopeStatement* scope) {
+    SgType* voidType = SageBuilder::buildVoidType();
+    // Arguments for ocrEventCreate
+    vector<SgExpression*> args;
+    SgVarRefExp* evtGuidVarRefExp = SageBuilder::buildVarRefExp(evtGuidSymbol);
+    SgExpression* addressOfExp = SageBuilder::buildAddressOfOp(evtGuidVarRefExp);
+    args.push_back(addressOfExp);
+    // placeholder expression
+    SgIntVal* eventType = SageBuilder::buildIntVal();
+    // For now we will create sticky events
+    string eventTypeStr = "OCR_EVENT_STICKY_T";
+    SageInterface::addTextForUnparser(eventType, eventTypeStr, AstUnparseAttribute::e_replace);
+    args.push_back(eventType);
+    SgIntVal* flags = SageBuilder::buildIntVal();
+    string flagsStr = "EVT_PROP_TAKES_ARG";
     SageInterface::addTextForUnparser(flags, flagsStr, AstUnparseAttribute::e_replace);
     args.push_back(flags);
     // Build the argument list
@@ -1016,7 +1041,36 @@ namespace AstBuilder {
     return callExpStmt;
   }
 
-
+  SgExprStatement* buildSpmdRecvCallExp(SgExpression* from, SgExpression* tag, SgVariableSymbol* recvEvtGuidSymbol,
+					SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
+					SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope) {
+    // Ensure we have valid arguments for the following
+    // NOTE - Do we always need outEvt?
+    assert(from && tag && recvEvtGuidSymbol && outEvtGuidSymbol);
+    vector<SgExpression*> args;
+    args.push_back(from);
+    args.push_back(tag);
+    SgVarRefExp* recvEvtGuidVarRefExp = SageBuilder::buildVarRefExp(recvEvtGuidSymbol);
+    args.push_back(recvEvtGuidVarRefExp);
+    SgExpression* fourth = NULL;
+    if(triggerEvtGuidSymbol) {
+      fourth = SageBuilder::buildVarRefExp(triggerEvtGuidSymbol);
+    }
+    else {
+      fourth = SageBuilder::buildIntVal();
+      string nullGuidStr = "NULL_GUID";
+      SageInterface::addTextForUnparser(fourth, nullGuidStr, AstUnparseAttribute::e_replace);
+    }
+    args.push_back(fourth);
+    SgExpression* fifth = SageBuilder::buildBoolValExp(destroyTrigger);
+    args.push_back(fifth);
+    SgExpression* sixth = SageBuilder::buildVarRefExp(outEvtGuidSymbol);
+    args.push_back(sixth);
+    SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdRecv", SageBuilder::buildVoidType(), exprList, scope);
+    SgExprStatement* callExpStmt = SageBuilder::buildExprStatement(callExp);
+    return callExpStmt;
+  }
 
   /*********************
    * ReplaceReturnStmt *

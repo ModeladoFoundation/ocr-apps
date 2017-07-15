@@ -63,6 +63,8 @@ class OcrTranslator {
 
   void insertDepDbkDecl(std::string edtName, std::list<OcrDbkContextPtr>& depDbks,
 			unsigned int slotbegin, TaskAstInfoPtr taskAstInfo);
+  void insertDepEvtDbkDecl(std::string edtName, std::list<OcrEvtContextPtr>& depEvts,
+			   int slotbegin, TaskAstInfoPtr taskAstInfo);
   void buildDepElemAST(std::string edtName, std::list<SgVarRefExp*> depElems, TaskAstInfoPtr taskAstInfo);
   void buildLoopDepElemAST(std::string edtName, std::list<SgVarRefExp*> depElems, TaskAstInfoPtr taskAstInfo, std::string loopCompEvtName);
   void insertDepElemDecl(std::string edtName, TaskAstInfoPtr taskAstInfo);
@@ -109,6 +111,8 @@ class OcrTranslator {
   void setupSpmdRegionEdt(std::string edtName, OcrSpmdRegionContextPtr spmdRegionContext);
   // Setup SpmdSend call
   void setupSpmdSend(OcrSpmdSendContextPtr sendContext);
+  // Setup SpmdRecv call
+  void setupSpmdRecv(OcrSpmdRecvContextPtr recvContext);
   // Setup SpmdRankFinalize
   void setupSpmdFinalize(std::string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContextPtr);
   // Miscellaneous utility functions
@@ -124,7 +128,7 @@ class OcrTranslator {
    *\brief Insert dependent datablock declaration inside the body of each EDT
    */
   void insertEdtsDepDbksDecl();
-
+  void insertEdtsDepEvtsDbkDecl();
   // main driver function
   void translate();
 };

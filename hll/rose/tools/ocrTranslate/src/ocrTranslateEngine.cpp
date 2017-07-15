@@ -490,6 +490,9 @@ void OcrTranslator::outlineEdts() {
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdSend) {
       // No outlining required for spmdSend
     }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRecv) {
+      // No outlining required for spmdSend
+    }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdFinalize) {
       // No outlining necessary for spmdRankFinalize
     }
@@ -629,7 +632,116 @@ void OcrTranslator::insertEdtsDepDbksDecl() {
       // This is handled separately in outlineMainEdt
     }
     else {
-      throw TranslateException("Unhandled Task Context in OcrTranslator::outlineEdts()\n");
+      throw TranslateException("Unhandled Task Context in OcrTranslator::insertEdtsDepDbksDecl()\n");
+    }
+  }
+}
+
+void OcrTranslator::insertDepEvtDbkDecl(string edtName, list<OcrEvtContextPtr>& depEvts,
+					int slotbegin, TaskAstInfoPtr taskAstInfo) {
+  Logger::Logger lg(" OcrTranslator::insertDepEvtDbkDecl");
+  SgFunctionDeclaration* edtDecl = taskAstInfo->getTaskFuncDecl();
+  SgBasicBlock* basicblock = edtDecl->get_definition()->get_body();
+
+  // For each item in list of datablock dependences
+  // Build ASTs for the pointer declaration
+  // Build ASTs for the guid declaration
+  // For each dependences create the pointer and the guid
+  list<OcrEvtContextPtr>::iterator evt = depEvts.begin();
+  // For each datablock set up the declaration from depv
+  SgInitializedNamePtrList& args = edtDecl->get_args();
+  // depv is the last element in the EDT argument list
+  SgInitializedName* depv = args.back(); assert(depv);
+  vector<SgStatement*> depDbksDeclStmts;
+  unsigned int slot = slotbegin;
+  for( ; evt != depEvts.end(); ++evt, ++slot) {
+    OcrEvtContextPtr evtContext = *evt;
+    string evtName = (*evt)->get_name();
+    string dbkPtrName, guidName;
+    DbkAstInfoPtr dbkAstInfo;
+    if(evtContext->getEvtDbkAttrType() == OcrEvtContext::EVT_DBK) {
+      OcrEvtDbkContextPtr evtDbkContext = boost::dynamic_pointer_cast<OcrEvtDbkContext>(evtContext);
+      SgVariableSymbol* dbkSymbol = evtDbkContext->getDbkSymbol();
+      dbkPtrName = dbkSymbol->get_name().getString();
+      SgType* dbkPtrType = dbkSymbol->get_type();
+      SgVariableDeclaration* vdecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, dbkPtrType, slot, depv, basicblock);
+      depDbksDeclStmts.push_back(vdecl);
+      // Build the Guid
+      string guidName(dbkPtrName+"Guid");
+      SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+      depDbksDeclStmts.push_back(guidDecl);
+      dbkAstInfo = boost::make_shared<DbkAstInfo>(evtName, guidName, dbkPtrName);
+      // Bookkeeping
+      m_astInfoManager.regDbkAstInfo(evtName, dbkAstInfo, basicblock);
+      SageInterface::prependStatementList(depDbksDeclStmts, basicblock);
+    }
+    else if(evtContext->getEvtDbkAttrType() == OcrEvtContext::EVT_NODBK) {
+      // Nothing to be done here
+    }
+    else {
+      assert(false);
+    }
+  } // end for
+}
+
+void OcrTranslator::insertEdtsDepEvtsDbkDecl() {
+  Logger::Logger lg("OcrTranslator::insertEdtsDepEvtsDbkDecl", Logger::DEBUG);
+  list<string> orderedEdts = m_ocrObjectManager.getEdtTraversalOrder();
+  list<string>::iterator edt = orderedEdts.begin();
+  for( ; edt != orderedEdts.end(); ++edt) {
+    string edtname = *edt;
+    OcrTaskContextPtr taskContext = m_ocrObjectManager.getOcrTaskContext(edtname);
+    if(taskContext->getTaskType() == OcrTaskContext::e_TaskEdt) {
+      OcrEdtContextPtr edtContext = boost::dynamic_pointer_cast<OcrEdtContext>(taskContext);
+      assert(edtContext);
+      // Register the AST Info object for the EDT
+      EdtAstInfoPtr edtAstInfo = m_astInfoManager.getEdtAstInfo(edtname);
+      // Insert the ptr, guid for evts that carry datablocks inside the EDT
+      list<OcrEvtContextPtr> depEvts = edtContext->getDepEvts();
+      int slotBegin = edtContext->getDepDbks().size();
+      insertDepEvtDbkDecl(edtname, depEvts, slotBegin, edtAstInfo);
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskLoopIter) {
+      OcrLoopIterEdtContextPtr loopIterEdtContext = boost::dynamic_pointer_cast<OcrLoopIterEdtContext>(taskContext);
+      string loopBodyEdtName = loopIterEdtContext->getLoopBodyEdtName();
+      // Loop Body's Info is stored as a regular EdtAstInfo
+      EdtAstInfoPtr loopBodyEdtAstInfo = m_astInfoManager.getEdtAstInfo(loopBodyEdtName);
+
+      // We need to insert dep dbks in the loop control and loop body EDT
+      int slotBegin = loopIterEdtContext->getDepDbks().size();
+      list<OcrEvtContextPtr> depEvts = loopIterEdtContext->getDepEvts();
+      insertDepEvtDbkDecl(loopBodyEdtName, depEvts, slotBegin, loopBodyEdtAstInfo);
+      string loopControlEdtName = loopIterEdtContext->getLoopControlEdtName();
+      LoopControlEdtAstInfoPtr loopControlEdtAstInfo = m_astInfoManager.getLoopControlEdtAstInfo(loopControlEdtName);
+      insertDepEvtDbkDecl(loopControlEdtName, depEvts, slotBegin, loopControlEdtAstInfo);
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskShutDown) {
+      // Nothing to be done here
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRegion) {
+      OcrSpmdRegionContextPtr spmdRegionContext = boost::dynamic_pointer_cast<OcrSpmdRegionContext>(taskContext);
+      string spmdRegionEdtName = spmdRegionContext->get_name();
+      SpmdRegionEdtAstInfoPtr spmdRegionEdtAstInfo = m_astInfoManager.getSpmdRegionEdtAstInfo(spmdRegionEdtName);
+      assert(spmdRegionEdtAstInfo);
+      int slotBegin = spmdRegionContext->getDepDbks().size();
+      list<OcrEvtContextPtr> depEvts = spmdRegionContext->getDepEvts();
+      insertDepEvtDbkDecl(spmdRegionEdtName, depEvts, slotBegin, spmdRegionEdtAstInfo);
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdFinalize) {
+      // Nothing to be done here
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdSend) {
+      // Nothing to be done here
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRecv) {
+      // Nothing to be done here
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskMain) {
+      // Nothing to be done here
+      // This is handled separately in outlineMainEdt
+    }
+    else {
+      throw TranslateException("Unhandled Task Context in OcrTranslator::insertEdtsDepEvtsDbkDecl()\n");
     }
   }
 }
@@ -875,8 +987,15 @@ vector<SgStatement*> OcrTranslator::setupEdtDepEvts(string edtname, list<OcrEvtC
     EvtAstInfoPtr evtAstInfo = m_astInfoManager.getEvtAstInfo(evtname, scope);
     string evtGuidName = evtAstInfo->getEvtGuidName();
     SgVariableSymbol* evtGuid = GetVariableSymbol(evtGuidName, scope);
-    SgExprStatement* ocrAddDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(evtGuid, edtGuidSymbol, slotIndex,
-											AstBuilder::DbkMode::DB_MODE_NULL, scope);
+    SgExprStatement* ocrAddDependenceCallExp = NULL;
+    if(evt->isEvtTakesDbkArg()) {
+      ocrAddDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(evtGuid, edtGuidSymbol, slotIndex,
+									 AstBuilder::DbkMode::DB_DEFAULT_MODE, scope);
+    }
+    else {
+      ocrAddDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(evtGuid, edtGuidSymbol, slotIndex,
+									 AstBuilder::DbkMode::DB_MODE_NULL, scope);
+    }
     evtDepSetupStmts.push_back(static_cast<SgStatement*>(ocrAddDependenceCallExp));
   }
   return evtDepSetupStmts;
@@ -1328,6 +1447,90 @@ void OcrTranslator::setupSpmdSend(OcrSpmdSendContextPtr sendContext) {
   SageInterface::removeStatement(SageInterface::getEnclosingStatement(sendCallExp));
 }
 
+/*! Setting up spmdRecv involves the following steps
+ * 1. Create and setup the output continutation event
+ * 2. Create and setup the trigger event
+ * 3. Add all depEvts as dependences for the trigger event
+ * 4. Create and setup the recv evt where the datablock will reside
+ * 5. Extract and deep copy the from, tag from the MPI_Recv/Irecv call expression
+ * 6. Build the spmdRecv call expression AST
+ * 7. Replace the MPI call expression with the spmdRecv AST
+ */
+void OcrTranslator::setupSpmdRecv(OcrSpmdRecvContextPtr recvContext) {
+  Logger::Logger lg("OcrTranslator::setupSpmdRecv", Logger::DEBUG);
+  SgPragmaDeclaration* pragmaStmt = recvContext->getPragma();
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(pragmaStmt);
+  // 1. Create and setup the output continutation event
+  string outEvtName = recvContext->getOutputEvt()->get_name();
+  vector<SgStatement*> setupStmts;
+  setupStmts = setupEdtOutEvt(recvContext->getTaskName(), outEvtName, scope);
+  SageInterface::insertStatementListBefore(pragmaStmt, setupStmts);
+  EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(outEvtName, scope);
+  string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
+  SgVariableSymbol* outEvtGuidSymbol = GetVariableSymbol(outEvtGuidName, scope);
+
+  // 2. Create and setup the trigger event
+  // 3. Add all depEvts as dependences for the trigger event
+  list<OcrEvtContextPtr> depEvts = recvContext->getDepEvts();
+  SgVariableSymbol* triggerEvtGuidSymbol = NULL;
+  if(depEvts.empty()) {
+    // triggerEvtGuidSymbol must be set to NULL
+    triggerEvtGuidSymbol = NULL;
+  }
+  else {
+    // Create a trigger event
+    // Add all dependent events as dependencies to the trigger event using ocrAddDependence
+    string triggerEvtName = SageInterface::generateUniqueVariableName(scope, "trigger");
+    SgVariableDeclaration* triggerEvtGuidDecl = AstBuilder::buildGuidVarDecl(triggerEvtName, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtGuidDecl, true);
+    // Create the event
+    triggerEvtGuidSymbol = GetVariableSymbol(triggerEvtGuidDecl, triggerEvtName);
+    SgExprStatement* triggerEvtCreateStmt = AstBuilder::buildEvtCreateCallExp(triggerEvtGuidSymbol, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtCreateStmt, true);
+    // Add dependences from depEvts to triggerEvt
+    list<OcrEvtContextPtr>::iterator evt = depEvts.begin();
+    for(int slot = 0; evt != depEvts.end(); ++evt, ++slot) {
+      EvtAstInfoPtr depEvtAstInfo = m_astInfoManager.getEvtAstInfo((*evt)->get_name(), scope);
+      string depEvtGuidName = depEvtAstInfo->getEvtGuidName();
+      SgVariableSymbol* depEvtGuidSymbol = GetVariableSymbol(depEvtGuidName, scope);
+      assert(depEvtGuidSymbol);
+      SgExprStatement* addDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(depEvtGuidSymbol, triggerEvtGuidSymbol,
+										       slot, AstBuilder::DbkMode::DB_MODE_NULL, scope);
+      SageInterface::insertStatementBefore(pragmaStmt, addDependenceCallExp, true);
+    }
+  }
+  // 4. Create and setup the recv evt where the datablock will reside
+  string recvEvtName = recvContext->getRecvEvt()->get_name();
+  string recvEvtGuidName = SageInterface::generateUniqueVariableName(scope, "recvEvtGuid");
+  SgVariableDeclaration* recvEvtGuidDecl = AstBuilder::buildGuidVarDecl(recvEvtGuidName, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, recvEvtGuidDecl, true);
+  // Create the event
+  SgVariableSymbol* recvEvtGuidSymbol = GetVariableSymbol(recvEvtGuidDecl, recvEvtGuidName);
+  SgExprStatement* recvEvtCreateStmt = AstBuilder::buildEvtDbkCreateCallExp(recvEvtGuidSymbol, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, recvEvtCreateStmt, true);
+  // Bookkeeping
+  m_astInfoManager.regEvtAstInfo(recvEvtName, recvEvtGuidName, scope);
+
+  // 5. Extract and deep copy the from, tag from the MPI_Recv/Irecv call expression
+  SgFunctionCallExp* recvCallExp = recvContext->getRecvCallExp();
+  SgExpressionPtrList& recvCallArgs = recvCallExp->get_args()->get_expressions();
+  // dest is 4th argument and tag is 5th argument
+  SgExpression* rfrom = recvCallArgs[3];
+  SgExpression* rtag = recvCallArgs[4];
+  assert(rfrom && rtag);
+
+  SgExpression* from = SageInterface::copyExpression(rfrom);
+  SgExpression* tag = SageInterface::copyExpression(rtag);
+
+  // 6. Build the spmdRecv call expression AST
+  SgExprStatement* spmdRecvCallExp = AstBuilder::buildSpmdRecvCallExp(from, tag, recvEvtGuidSymbol,
+								      triggerEvtGuidSymbol, true, outEvtGuidSymbol, scope);
+  // 7. Replace the MPI call expression with the spmdGSend AST
+  SageInterface::insertStatementBefore(pragmaStmt, spmdRecvCallExp);
+  SageInterface::removeStatement(pragmaStmt);
+  SageInterface::removeStatement(SageInterface::getEnclosingStatement(recvCallExp));
+}
+
 void OcrTranslator::setupSpmdFinalize(string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContext) {
   Logger::Logger lg("OcrTranslator::setupSpmdFinalize", Logger::DEBUG);
   list<OcrEvtContextPtr> depEvts = spmdFinalizeContext->getDepEvts();
@@ -1466,6 +1669,10 @@ void OcrTranslator::setupEdts() {
       OcrSpmdSendContextPtr sendContext = boost::dynamic_pointer_cast<OcrSpmdSendContext>(taskContext);
       setupSpmdSend(sendContext);
     }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRecv) {
+      OcrSpmdRecvContextPtr recvContext = boost::dynamic_pointer_cast<OcrSpmdRecvContext>(taskContext);
+      setupSpmdRecv(recvContext);
+    }
     else {
       cerr << "Unhandled Task Context in OcrTranslator::setupEdts\n";
       std::terminate();
@@ -1560,6 +1767,11 @@ void OcrTranslator::translateMpi() {
       SageInterface::removeStatement(callStmt);
       break;
     }
+    case MpiOpContext::OP_SEND:
+    case MpiOpContext::OP_RECV: {
+      // Nothing to do at this step
+      break;
+    }
     default:
       cerr << "Unhandled MPI Operation in OcrTranslator::translateMpi()\n";
     }
@@ -1648,6 +1860,7 @@ void OcrTranslator::translate() {
     outlineEdts();
     translateDbks();
     insertEdtsDepDbksDecl();
+    insertEdtsDepEvtsDbkDecl();
     setupEdts();
     translateMpi();
     outlineMainEdt();
