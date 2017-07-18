@@ -741,7 +741,7 @@ ocrGuid_t FNC_initSimulation( EDT_ARGS )
 
 #ifdef ENABLE_SPAWNING_HINT
     ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
-    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 32);
     ocrEdtCreate( &lookUpKernelEDT, lookUpKernelTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );

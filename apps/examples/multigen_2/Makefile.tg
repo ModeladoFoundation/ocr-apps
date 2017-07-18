@@ -3,12 +3,11 @@
 # removed or modified.
 
 # ARCH
-ARCH        := x86
+ARCH        := tg-xe
 # APPS
-ifndef APPS_ROOT
-$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
-APPS_ROOT ?= ../../../../../apps
-endif
+APPS_ROOT   ?= ../../../apps
+# OCR_TYPE
+OCR_TYPE    := tg
 
 # APPLICATION
 WORKLOAD_SRC          ?= .
@@ -29,10 +28,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= -x 5 -y 5 -z 5
-
-# Set to yes if running visualizer or export as environment variable
-ENABLE_VISUALIZER ?= no
+#WORKLOAD_ARGS ?=
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -45,65 +41,43 @@ RUN_TORQUE ?= no
 # a test
 RUN_MODE ?=
 
-#set to 1 if you would like to use the static scheduler for this app
-STATIC_SCHEDULER ?= 0
-
-## END of variables coming from user/environment
-#CC := icc
+# END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := comd
+TARGET := multigen
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := reduction ocrAppUtils
+REQ_LIBS := libc
 
 # Space separated list of source files
-SRCS := CoMD.c mycommand.c cmdLineParser.c eam.c ljForce.c decomposition.c linkCells.c initAtoms.c \
-		random.c timestep.c performanceTimers.c haloExchange.c
-#OBJS := $(notdir $(SRCS:.c=.o))
-#$(OBJS): CoMDTypes.h CoMD_info.h cmdLineParser.h constants.h decomposition.h eam.h haloExchange.h initAtoms.h \
-#			linkCells.h ljForce.h mycommand.h mytype.h performanceTimers.h random.h timestep.h
-
-CONFIG_FLAGS+=--guid LABELED --binding seq
+SRCS := multigen.c
 
 # Additional CFLAGS. By default, it includes
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
-#CFLAGS := -DOCR_ENABLE_EDT_NAMING
-CFLAGS += -g -std=c99
-CFLAGS += -DENABLE_EXTENSION_AFFINITY
-#CFLAGS += -DENABLE_SPAWNING_HINT
-CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT
-CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
-CFLAGS += -DWITH_COUNTED_EVT
-CFLAGS += -DCHANNEL_EVENTS_AT_RECEIVER
-CFLAGS += -DDOUBLE_BUFFERED_EVTS
-#CFLAGS += -DUSE_EAGER_DB_HINT
-#CFLAGS += -DDEBUG_APP
-
-ifeq ($(STATIC_SCHEDULER),1)
-CFLAGS += -DUSE_STATIC_SCHEDULER
-CONFIG_FLAGS += --scheduler STATIC
-endif
+CFLAGS :=
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lreduction -locrAppUtils -lm
+LDFLAGS :=
+
+# Uncomment the following to enable use of OCR_HINT_EDT_SPAWNING
+CFLAGS += -DENABLE_SPAWNING_HINT
 
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3
+all:	CFLAGS += -O2
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -g -O0
+debug:	CFLAGS += -O0
 debug:	TARGETS := debug
 debug:	default
 

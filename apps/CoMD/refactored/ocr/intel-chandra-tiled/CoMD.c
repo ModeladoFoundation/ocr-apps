@@ -19,6 +19,9 @@ Copywrite Intel Corporation 2015
 #include "mycommand.h"
 #include "timestep.h"
 #include "constants.h"
+#ifdef ENABLE_SPAWNING_HINT
+#include "priority.h"
+#endif
 
 void initSpecies(SpeciesData* species, BasePotential* pot)
 {
@@ -416,7 +419,7 @@ _OCR_TASK_FNC_( FNC_initSimulation )
 
 #ifdef ENABLE_SPAWNING_HINT
     ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
-    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 0);
 #endif
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
@@ -561,9 +564,11 @@ _OCR_TASK_FNC_( FNC_initSimulation )
 
     u64 itimestep = 0;
 #ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t redistributeAtomsHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&redistributeAtomsHNT, OCR_HINT_EDT_SPAWNING, RedistributeAtomsEdt_PRIORITY);
     ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML, //redistributeAtomsEdt
                   EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &redistributeAtomsOEVT );
+                  EDT_PROP_FINISH, &redistributeAtomsHNT, &redistributeAtomsOEVT );
 #else
     ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML, //redistributeAtomsEdt
                   EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
@@ -627,9 +632,11 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrEdtTemplateCreate( &printSimulationDataTML, printSimulationDataEdt, 1, 5 );
 
 #ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t printSimHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&printSimHNT, OCR_HINT_EDT_SPAWNING, PrintSimulationDataEdt_PRIORITY);
     ocrEdtCreate( &printSimulationDataEDT, printSimulationDataTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &printSimulationDataOEVT );
+                  EDT_PROP_FINISH, &printSimHNT, &printSimulationDataOEVT );
 #else
     ocrEdtCreate( &printSimulationDataEDT, printSimulationDataTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
@@ -671,9 +678,11 @@ _OCR_TASK_FNC_( FNC_initSimulation )
         ocrGuid_t timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
 #ifdef ENABLE_SPAWNING_HINT
+        ocrHint_t timestepLoopHnt = myEdtAffinityHNT;
+        ocrSetHintValue(&timestepLoopHnt, OCR_HINT_EDT_SPAWNING, TimestepLoopEdt_PRIORITY);
         ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
                       EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+                      EDT_PROP_NONE, &timestepLoopHnt, NULL );
 #else
         ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
                       EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
@@ -708,7 +717,8 @@ _OCR_TASK_FNC_( FNC_comdMain )
     ocrHint_t myDbkAffinityHNT, myEdtAffinityHNT;
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
 #ifdef ENABLE_SPAWNING_HINT
-    ocrSetHintValue(&myEdtAffinityHNT , OCR_HINT_EDT_SPAWNING, 1);
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinityHNT , OCR_HINT_EDT_SPAWNING, FNC_initSimulation_PRIORITY);
 #endif
     ocrHint_t spawnHint;
 
@@ -797,7 +807,7 @@ _OCR_TASK_FNC_( channelSetupEdt )
 
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
 #ifdef ENABLE_SPAWNING_HINT
-    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 0);
 #endif
 
     MyOcrTaskStruct_t TS_comdMain; _paramc = 1; _depc = 1;
@@ -838,7 +848,7 @@ _OCR_TASK_FNC_( initEdt )
     ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
 #ifdef ENABLE_SPAWNING_HINT
-    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 0);
 #endif
 
     s32 gx = PTR_PRM_initEdt->edtGridDims[0];

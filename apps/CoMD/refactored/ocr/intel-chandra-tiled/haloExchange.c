@@ -37,6 +37,9 @@
 #include "linkCells.h"
 #include "eam.h"
 #include "performanceTimers.h"
+#ifdef ENABLE_SPAWNING_HINT
+#include "priority.h"
+#endif
 
 #define MAX(A,B) ((A) > (B) ? (A) : (B))
 
