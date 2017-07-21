@@ -72,16 +72,17 @@ typedef boost::shared_ptr<OcrArrDbkContext> OcrArrDbkContextPtr;
 class OcrEvtContext {
  public:
   typedef enum {
-    EVT_NODBK,
-    EVT_DBK
-  } EvtDbkAttrType;
+    EVT_CONTROL,
+    EVT_RECV,
+    EVT_REDUCE
+  } OcrEvtContextType;
  protected:
   std::string m_name;
-  EvtDbkAttrType m_dbkAttrType;
+  OcrEvtContextType m_evtContextType;
 public:
-  OcrEvtContext(std::string name, EvtDbkAttrType dbkAttrType);
+  OcrEvtContext(std::string name, OcrEvtContextType evtContextType);
   std::string get_name() const;
-  EvtDbkAttrType getEvtDbkAttrType() const;
+  OcrEvtContextType getEvtContextType() const;
   virtual bool isEvtTakesDbkArg() const;
   virtual std::string str() const;
   ~OcrEvtContext();
@@ -89,19 +90,33 @@ public:
 
 typedef boost::shared_ptr<OcrEvtContext> OcrEvtContextPtr;
 
-/********************
- * OcrEvtDbkContext *
- ********************/
-class OcrEvtDbkContext : public OcrEvtContext {
-  SgVariableSymbol* m_dbkSymbol;
+/*********************
+ * OcrRecvEvtContext *
+ *********************/
+class OcrRecvEvtContext : public OcrEvtContext {
+  SgNode* m_recvBuffExpr;
  public:
-  OcrEvtDbkContext(std::string name, EvtDbkAttrType dbkAttrType, SgVariableSymbol* dbkSymbol);
-  virtual bool isEvtTakesDbkArg() const;
-  SgVariableSymbol* getDbkSymbol() const;
+  OcrRecvEvtContext(std::string name, OcrEvtContextType evtContextType, SgNode* recvBuffExp);
+  bool isEvtTakesDbkArg() const;
+  SgNode* getRecvBuffExpr() const;
   std::string str() const;
-  ~OcrEvtDbkContext();
+  ~OcrRecvEvtContext();
 };
-typedef boost::shared_ptr<OcrEvtDbkContext> OcrEvtDbkContextPtr;
+typedef boost::shared_ptr<OcrRecvEvtContext> OcrRecvEvtContextPtr;
+
+/***********************
+ * OcrReduceEvtContext *
+ ***********************/
+class OcrReduceEvtContext : public OcrEvtContext {
+  SgNode* m_recvBuffExpr;
+ public:
+  OcrReduceEvtContext(std::string name,  OcrEvtContextType evtContextType, SgNode* recvBuffExp);
+  virtual bool isEvtTakesDbkArg() const;
+  SgNode* getRecvBuffExpr() const;
+  std::string str() const;
+  ~OcrReduceEvtContext();
+};
+typedef boost::shared_ptr<OcrReduceEvtContext> OcrReduceEvtContextPtr;
 
 /******************
  * OcrTaskContext *
@@ -123,6 +138,7 @@ class OcrTaskContext {
     e_TaskSpmdFinalize,
     e_TaskSpmdSend,
     e_TaskSpmdRecv,
+    e_TaskSpmdReduce,
     e_TaskMain
   } OcrTaskType;
  protected:
@@ -298,6 +314,28 @@ class OcrSpmdRecvContext : public OcrTaskContext {
 };
 typedef boost::shared_ptr<OcrSpmdRecvContext> OcrSpmdRecvContextPtr;
 
+/************************
+ * OcrSpmdReduceContext *
+ ************************/
+class OcrSpmdReduceContext : public OcrTaskContext {
+  OcrEvtContextPtr m_reduceEvt;
+  std::list<OcrEvtContextPtr> m_depEvts;
+  OcrEvtContextPtr m_outEvt;
+  SgFunctionCallExp* m_reduceCallExp;
+ public:
+  OcrSpmdReduceContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+		       OcrEvtContextPtr reduceEvt, std::list<OcrEvtContextPtr> depEvts,
+		       OcrEvtContextPtr outEvt, SgFunctionCallExp* reduceCallExp);
+  OcrEvtContextPtr getReduceEvt() const;
+  OcrEvtContextPtr getOutputEvt() const;
+  std::list<OcrEvtContextPtr> getDepEvts() const;
+  SgFunctionCallExp* getReduceCallExp() const;
+  std::string str() const;
+  ~OcrSpmdReduceContext();
+};
+
+typedef boost::shared_ptr<OcrSpmdReduceContext> OcrSpmdReduceContextPtr;
+
 /*********************
  * OcrMainEdtContext *
  *********************/
@@ -399,7 +437,8 @@ class OcrObjectManager {
   // Functions to create shared_ptr for OcrContext
   std::list<OcrEvtContextPtr> registerOcrEvts(std::list<std::string> evtsNameList);
   OcrEvtContextPtr registerOcrEvt(std::string evtName);
-  OcrEvtContextPtr registerOcrEvtDbk(std::string evtName, SgVariableSymbol* dbkSymbol);
+  OcrEvtContextPtr registerOcrReduceEvt(std::string evtName, SgNode* recvBuffExpr);
+  OcrEvtContextPtr registerOcrRecvEvt(std::string evtName, SgNode* recvBuffExpr);
   void registerOcrDbk(std::string dbkName, OcrDbkContextPtr dbkContext, SgScopeStatement* scope);
   OcrTaskContextPtr registerOcrEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 				   std::list<OcrDbkContextPtr> depDbks,
@@ -433,6 +472,10 @@ class OcrObjectManager {
   OcrTaskContextPtr registerOcrSpmdRecvContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 					       OcrEvtContextPtr recvEvt, std::list<OcrEvtContextPtr> depEvts,
 					       OcrEvtContextPtr outEvt, SgFunctionCallExp* recvCallExp);
+  OcrTaskContextPtr registerOcrSpmdReduceContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+						 OcrEvtContextPtr reduceEvt, std::list<OcrEvtContextPtr> depEvts,
+						 OcrEvtContextPtr outEvt, SgFunctionCallExp* reduceCallExp);
+
 
   bool registerMpiOpContext(MpiOpContextPtr mpiOpContext);
   // return a list of edtnames in the same order they were encountered in the AST

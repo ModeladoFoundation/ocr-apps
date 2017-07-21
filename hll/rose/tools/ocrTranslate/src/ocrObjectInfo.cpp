@@ -144,15 +144,15 @@ OcrArrDbkContext::~OcrArrDbkContext() { }
 /*****************
  * OcrEvtContext *
  *****************/
-OcrEvtContext::OcrEvtContext(std::string name, EvtDbkAttrType dbkAttrType)
-  : m_name(name), m_dbkAttrType(dbkAttrType) { }
+OcrEvtContext::OcrEvtContext(std::string name, OcrEvtContextType evtContextType)
+  : m_name(name), m_evtContextType(evtContextType) { }
 
 string OcrEvtContext::get_name() const {
   return m_name;
 }
 
-OcrEvtContext::EvtDbkAttrType OcrEvtContext::getEvtDbkAttrType() const {
-  return m_dbkAttrType;
+OcrEvtContext::OcrEvtContextType OcrEvtContext::getEvtContextType() const {
+  return m_evtContextType;
 }
 
 bool OcrEvtContext::isEvtTakesDbkArg() const {
@@ -161,7 +161,7 @@ bool OcrEvtContext::isEvtTakesDbkArg() const {
 
 string OcrEvtContext::str() const {
   ostringstream oss;
-  oss << "[EVT: " << m_name << ", EVT_TAKES_DBK :" << (m_dbkAttrType == EVT_NODBK?"false":"true") <<  "]";
+  oss << "[EVT: " << m_name << ", EVT_TAKES_DBK :" << (m_evtContextType != EVT_CONTROL?"false":"true") <<  "]";
   return oss.str();
 }
 
@@ -169,29 +169,52 @@ OcrEvtContext::~OcrEvtContext() {
   // Nothing to cleanup here
 }
 
-/********************
- * OcrEvtDbkContext *
- ********************/
-OcrEvtDbkContext::OcrEvtDbkContext(string name, EvtDbkAttrType dbkAttrType, SgVariableSymbol* dbkSymbol) :
-  OcrEvtContext(name, dbkAttrType), m_dbkSymbol(dbkSymbol) {
-}
+/*********************
+ * OcrRecvEvtContext *
+ *********************/
+OcrRecvEvtContext::OcrRecvEvtContext(string name, OcrEvtContextType evtContextType, SgNode* recvBuffExpr)
+  : OcrEvtContext(name, evtContextType), m_recvBuffExpr(recvBuffExpr) { }
 
-SgVariableSymbol* OcrEvtDbkContext::getDbkSymbol() const {
-  return m_dbkSymbol;
-}
-
-bool OcrEvtDbkContext::isEvtTakesDbkArg() const {
+bool OcrRecvEvtContext::isEvtTakesDbkArg() const {
   return true;
 }
 
-string OcrEvtDbkContext::str() const {
+SgNode* OcrRecvEvtContext::getRecvBuffExpr() const {
+  return m_recvBuffExpr;
+}
+
+string OcrRecvEvtContext::str() const {
   ostringstream oss;
-  oss << "[OcrEvtDbkContext " << m_name << ", EVT_TAKES_DBK :" << (m_dbkAttrType == EVT_DBK?"true":"false") <<  "]";
+  oss << "[OcrRecvEvtContext " << m_name << ", EVT_TAKES_DBK :" << "true" <<  "]";
   return oss.str();
 }
 
-OcrEvtDbkContext::~OcrEvtDbkContext() {
-  // No cleanup required
+OcrRecvEvtContext::~OcrRecvEvtContext() {
+  // no cleanup required
+}
+
+/***********************
+ * OcrReduceEvtContext *
+ ***********************/
+OcrReduceEvtContext::OcrReduceEvtContext(string name, OcrEvtContextType evtContextType, SgNode* recvBuffExpr)
+  : OcrEvtContext(name, evtContextType), m_recvBuffExpr(recvBuffExpr) { }
+
+bool OcrReduceEvtContext::isEvtTakesDbkArg() const {
+  return true;
+}
+
+SgNode* OcrReduceEvtContext::getRecvBuffExpr() const {
+  return m_recvBuffExpr;
+}
+
+string OcrReduceEvtContext::str() const {
+  ostringstream oss;
+  oss << "[OcrReduceEvtContext " << m_name << ", EVT_TAKES_DBK :" << "true" <<  "]";
+  return oss.str();
+}
+
+OcrReduceEvtContext::~OcrReduceEvtContext() {
+  // no cleanup required
 }
 
 /******************
@@ -578,6 +601,45 @@ OcrSpmdRecvContext::~OcrSpmdRecvContext() {
   // no cleanup required here
 }
 
+/************************
+ * OcrSpmdReduceContext *
+ ************************/
+OcrSpmdReduceContext::OcrSpmdReduceContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+				       OcrEvtContextPtr reduceEvt, std::list<OcrEvtContextPtr> depEvts,
+				       OcrEvtContextPtr outEvt, SgFunctionCallExp* reduceCallExp)
+  : OcrTaskContext(OcrTaskContext::e_TaskSpmdReduce, name, traversalOrder, sgpdecl),
+    m_reduceEvt(reduceEvt), m_depEvts(depEvts),
+    m_outEvt(outEvt), m_reduceCallExp(reduceCallExp) { }
+
+OcrEvtContextPtr OcrSpmdReduceContext::getReduceEvt() const {
+  return m_reduceEvt;
+}
+
+OcrEvtContextPtr OcrSpmdReduceContext::getOutputEvt() const {
+  return m_outEvt;
+}
+
+list<OcrEvtContextPtr> OcrSpmdReduceContext::getDepEvts() const {
+  return m_depEvts;
+}
+
+SgFunctionCallExp* OcrSpmdReduceContext::getReduceCallExp() const {
+  return m_reduceCallExp;
+}
+
+string OcrSpmdReduceContext::str() const {
+  ostringstream oss;
+  oss << "[OcrSpmdReduceContext: ";
+  oss << "reduceEvt : " << m_reduceEvt->str()
+      << " outEvt : " << (m_outEvt? m_outEvt->str() : "NULL") << "]";
+  return oss.str();
+}
+
+OcrSpmdReduceContext::~OcrSpmdReduceContext() {
+  // no cleanup required here
+}
+
+
 /****************
  * MpiOpContext *
  ****************/
@@ -703,7 +765,7 @@ OcrEvtContextPtr OcrObjectManager::registerOcrEvt(string evtName) {
   }
   else {
     // Using this method always creates an event with no datablock
-    evtcontext_sp = boost::make_shared<OcrEvtContext>(evtName, OcrEvtContext::EVT_NODBK);
+    evtcontext_sp = boost::make_shared<OcrEvtContext>(evtName, OcrEvtContext::EVT_CONTROL);
     OcrEvtObjectMapElem elem(evtName, evtcontext_sp);
     m_ocrEvtObjectMap.insert(elem);
   }
@@ -711,14 +773,29 @@ OcrEvtContextPtr OcrObjectManager::registerOcrEvt(string evtName) {
   return evtcontext_sp;
 }
 
-OcrEvtContextPtr OcrObjectManager::registerOcrEvtDbk(string evtName, SgVariableSymbol* dbkSymbol) {
+OcrEvtContextPtr OcrObjectManager::registerOcrRecvEvt(string evtName, SgNode* recvBuffExpr) {
   OcrEvtObjectMap::iterator f = m_ocrEvtObjectMap.find(evtName);
   OcrEvtContextPtr evtcontext_sp;
   if(f != m_ocrEvtObjectMap.end()) {
-    evtcontext_sp = boost::dynamic_pointer_cast<OcrEvtContext>(f->second);
+    evtcontext_sp = boost::dynamic_pointer_cast<OcrRecvEvtContext>(f->second);
   }
   else {
-    evtcontext_sp = boost::make_shared<OcrEvtDbkContext>(evtName, OcrEvtContext::EVT_DBK, dbkSymbol);
+    evtcontext_sp = boost::make_shared<OcrRecvEvtContext>(evtName, OcrEvtContext::EVT_RECV, recvBuffExpr);
+    OcrEvtObjectMapElem elem(evtName, evtcontext_sp);
+    m_ocrEvtObjectMap.insert(elem);
+  }
+  assert(evtcontext_sp);
+  return evtcontext_sp;
+}
+
+OcrEvtContextPtr OcrObjectManager::registerOcrReduceEvt(string evtName, SgNode* recvBuffExpr) {
+  OcrEvtObjectMap::iterator f = m_ocrEvtObjectMap.find(evtName);
+  OcrEvtContextPtr evtcontext_sp;
+  if(f != m_ocrEvtObjectMap.end()) {
+    evtcontext_sp = boost::dynamic_pointer_cast<OcrReduceEvtContext>(f->second);
+  }
+  else {
+    evtcontext_sp = boost::make_shared<OcrReduceEvtContext>(evtName, OcrEvtContext::EVT_REDUCE, recvBuffExpr);
     OcrEvtObjectMapElem elem(evtName, evtcontext_sp);
     m_ocrEvtObjectMap.insert(elem);
   }
@@ -881,6 +958,24 @@ OcrTaskContextPtr OcrObjectManager::registerOcrSpmdRecvContext(string name, unsi
   else {
     OcrTaskContextPtr taskcontext_sp = boost::make_shared<OcrSpmdRecvContext>(name, traversalOrder, sgpdecl, recvEvt,
 									      depEvts, outEvt, recvCallExp);
+    OcrTaskContextMapElem elem(name, taskcontext_sp);
+    m_ocrTaskContextMap.insert(elem);
+    return taskcontext_sp;
+  }
+}
+
+OcrTaskContextPtr OcrObjectManager::registerOcrSpmdReduceContext(string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
+							       OcrEvtContextPtr reduceEvt, list<OcrEvtContextPtr> depEvts,
+							       OcrEvtContextPtr outEvt, SgFunctionCallExp* reduceCallExp) {
+  OcrTaskContextMap::iterator f = m_ocrTaskContextMap.find(name);
+  if(f != m_ocrTaskContextMap.end()) {
+    assert(f->second);
+    cerr << "WARNING: TASK " << name << "is already registered\n";
+    return f->second;
+  }
+  else {
+    OcrTaskContextPtr taskcontext_sp = boost::make_shared<OcrSpmdReduceContext>(name, traversalOrder, sgpdecl, reduceEvt,
+									      depEvts, outEvt, reduceCallExp);
     OcrTaskContextMapElem elem(name, taskcontext_sp);
     m_ocrTaskContextMap.insert(elem);
     return taskcontext_sp;
