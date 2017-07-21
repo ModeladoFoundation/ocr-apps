@@ -113,6 +113,8 @@ class OcrTranslator {
   void setupSpmdSend(OcrSpmdSendContextPtr sendContext);
   // Setup SpmdRecv call
   void setupSpmdRecv(OcrSpmdRecvContextPtr recvContext);
+  // Setup SpmdReduce call
+  void setupSpmdReduce(OcrSpmdReduceContextPtr reduceContext);
   // Setup SpmdRankFinalize
   void setupSpmdFinalize(std::string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContextPtr);
   // Miscellaneous utility functions
