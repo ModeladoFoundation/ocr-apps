@@ -8,6 +8,7 @@
 #include "boost/make_shared.hpp"
 #include "logger.h"
 #include <algorithm>
+#include "mpi.h"
 
 using namespace std;
 
@@ -493,6 +494,9 @@ void OcrTranslator::outlineEdts() {
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRecv) {
       // No outlining required for spmdSend
     }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdReduce) {
+      // No outlining required for spmdSend
+    }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdFinalize) {
       // No outlining necessary for spmdRankFinalize
     }
@@ -627,6 +631,9 @@ void OcrTranslator::insertEdtsDepDbksDecl() {
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRecv) {
       // Nothing to be done here
     }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdReduce) {
+      // Nothing to be done here
+    }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskMain) {
       // Nothing to be done here
       // This is handled separately in outlineMainEdt
@@ -659,27 +666,77 @@ void OcrTranslator::insertDepEvtDbkDecl(string edtName, list<OcrEvtContextPtr>& 
     string evtName = (*evt)->get_name();
     string dbkPtrName, guidName;
     DbkAstInfoPtr dbkAstInfo;
-    if(evtContext->getEvtDbkAttrType() == OcrEvtContext::EVT_DBK) {
-      OcrEvtDbkContextPtr evtDbkContext = boost::dynamic_pointer_cast<OcrEvtDbkContext>(evtContext);
-      SgVariableSymbol* dbkSymbol = evtDbkContext->getDbkSymbol();
-      dbkPtrName = dbkSymbol->get_name().getString();
-      SgType* dbkPtrType = dbkSymbol->get_type();
-      SgVariableDeclaration* vdecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, dbkPtrType, slot, depv, basicblock);
-      depDbksDeclStmts.push_back(vdecl);
-      // Build the Guid
-      string guidName(dbkPtrName+"Guid");
-      SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
-      depDbksDeclStmts.push_back(guidDecl);
-      dbkAstInfo = boost::make_shared<DbkAstInfo>(evtName, guidName, dbkPtrName);
-      // Bookkeeping
-      m_astInfoManager.regDbkAstInfo(evtName, dbkAstInfo, basicblock);
+    if(evtContext->getEvtContextType() == OcrEvtContext::EVT_RECV) {
+      OcrRecvEvtContextPtr recvEvtContext = boost::dynamic_pointer_cast<OcrRecvEvtContext>(evtContext);
+      SgExpression* recvBuffExpr = isSgExpression(recvEvtContext->getRecvBuffExpr());
+      if(AstBuilder::isScalarType(recvBuffExpr)) {
+	string dbkPtrName = SageInterface::generateUniqueVariableName(basicblock, "ptr");
+	SgType* recvBuffType = AstBuilder::getRecvBuffTypeFromExpr(recvBuffExpr);
+	SgVariableDeclaration* dbkPtrDecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, recvBuffType, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(dbkPtrDecl);
+	string scalarVarName = AstBuilder::getRecvVarNameFromExpr(recvBuffExpr);
+	SgType* scalarVarType = AstBuilder::getRecvBuffScalarVarType(recvBuffExpr);
+	SgVariableSymbol* dbkPtrSymbol = GetVariableSymbol(dbkPtrDecl, dbkPtrName);
+	SgVariableDeclaration* dbkScalarDecl = AstBuilder::buildScalarVarDeclFromPtr(scalarVarName, scalarVarType, dbkPtrSymbol, basicblock);
+	depDbksDeclStmts.push_back(dbkScalarDecl);
+	// Build the Guid
+	string guidName = SageInterface::generateUniqueVariableName(basicblock, "guid");
+	SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(guidDecl);
+      }
+      else {
+	string dbkPtrName = AstBuilder::getRecvVarNameFromExpr(recvBuffExpr);
+	SgType* recvBuffType = AstBuilder::getRecvBuffTypeFromExpr(recvBuffExpr);
+	SgVariableDeclaration* dbkPtrDecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, recvBuffType, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(dbkPtrDecl);
+	// Build the Guid
+	string guidName = SageInterface::generateUniqueVariableName(basicblock, "guid");
+	SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(guidDecl);
+      }
+      // dbkAstInfo = boost::make_shared<DbkAstInfo>(evtName, guidName, dbkPtrName);
+      // // Bookkeeping
+      // m_astInfoManager.regDbkAstInfo(evtName, dbkAstInfo, basicblock);
       SageInterface::prependStatementList(depDbksDeclStmts, basicblock);
     }
-    else if(evtContext->getEvtDbkAttrType() == OcrEvtContext::EVT_NODBK) {
-      // Nothing to be done here
+    else if(evtContext->getEvtContextType() == OcrEvtContext::EVT_REDUCE) {
+      OcrReduceEvtContextPtr reduceEvtContext = boost::dynamic_pointer_cast<OcrReduceEvtContext>(evtContext);
+      SgExpression* recvBuffExpr = isSgExpression(reduceEvtContext->getRecvBuffExpr());
+      if(AstBuilder::isScalarType(recvBuffExpr)) {
+	string dbkPtrName = SageInterface::generateUniqueVariableName(basicblock, "ptr");
+	SgType* recvBuffType = AstBuilder::getRecvBuffTypeFromExpr(recvBuffExpr);
+	SgVariableDeclaration* dbkPtrDecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, recvBuffType, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(dbkPtrDecl);
+	string scalarVarName = AstBuilder::getRecvVarNameFromExpr(recvBuffExpr);
+	SgType* scalarVarType = AstBuilder::getRecvBuffScalarVarType(recvBuffExpr);
+	SgVariableSymbol* dbkPtrSymbol = GetVariableSymbol(dbkPtrDecl, dbkPtrName);
+	SgVariableDeclaration* dbkScalarDecl = AstBuilder::buildScalarVarDeclFromPtr(scalarVarName, scalarVarType, dbkPtrSymbol, basicblock);
+	depDbksDeclStmts.push_back(dbkScalarDecl);
+	// Build the Guid
+	string guidName = SageInterface::generateUniqueVariableName(basicblock, "guid");
+	SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(guidDecl);
+      }
+      else {
+	string dbkPtrName = AstBuilder::getRecvVarNameFromExpr(recvBuffExpr);
+	SgType* recvBuffType = AstBuilder::getRecvBuffTypeFromExpr(recvBuffExpr);
+	SgVariableDeclaration* dbkPtrDecl = AstBuilder::buildDepDbkPtrDecl(dbkPtrName, recvBuffType, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(dbkPtrDecl);
+	// Build the Guid
+	string guidName = SageInterface::generateUniqueVariableName(basicblock, "guid");
+	SgVariableDeclaration* guidDecl = AstBuilder::buildDepDbkGuidDecl(guidName, slot, depv, basicblock);
+	depDbksDeclStmts.push_back(guidDecl);
+      }
+      // dbkAstInfo = boost::make_shared<DbkAstInfo>(evtName, guidName, dbkPtrName);
+      // // Bookkeeping
+      // m_astInfoManager.regDbkAstInfo(evtName, dbkAstInfo, basicblock);
+      SageInterface::prependStatementList(depDbksDeclStmts, basicblock);
+    }
+    else if(evtContext->getEvtContextType() == OcrEvtContext::EVT_CONTROL) {
+      // Nothing to be done for this event
     }
     else {
-      assert(false);
+      throw TranslateException("Unhandled EvtContextType in insertDepEvtDbkDecl()\n");
     }
   } // end for
 }
@@ -734,6 +791,9 @@ void OcrTranslator::insertEdtsDepEvtsDbkDecl() {
       // Nothing to be done here
     }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdRecv) {
+      // Nothing to be done here
+    }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdReduce) {
       // Nothing to be done here
     }
     else if(taskContext->getTaskType() == OcrTaskContext::e_TaskMain) {
@@ -1531,6 +1591,113 @@ void OcrTranslator::setupSpmdRecv(OcrSpmdRecvContextPtr recvContext) {
   SageInterface::removeStatement(SageInterface::getEnclosingStatement(recvCallExp));
 }
 
+// 1. Setup the data type of the reduce operation
+// 2. Setup the reduce op
+// 3. Setup the count
+// 4. Setup the root
+// 5. Setup the sendbuf
+// 6. Setup the rootOutputEvt (For root a valid guid and for non-root NULL_GUID)
+// 7. Setup the trigger Event
+// 8. Setup continuation Event
+// 9. Setup the spmdPReduce Call Expr
+void OcrTranslator::setupSpmdReduce(OcrSpmdReduceContextPtr reduceContext) {
+  Logger::Logger lg("OcrTranslator::setupSpmdReduce", Logger::DEBUG);
+  SgPragmaDeclaration* pragmaStmt = reduceContext->getPragma();
+  SgScopeStatement* scope = SageInterface::getEnclosingScope(pragmaStmt);
+
+  SgFunctionCallExp* reduceCallExp = reduceContext->getReduceCallExp();
+  SgExprListExp* reduceExprListExp = reduceCallExp->get_args();
+  SgExpressionPtrList& reduceArgsList = reduceExprListExp->get_expressions();
+  assert(reduceArgsList.size() == 7);
+
+  // 1. Setup the data type of the reduce operation
+  // Datatype is the fourth argument in the call expression
+  SgExpression* mpiReduceDataTypeExpr = reduceArgsList[3];
+  SgExpression* spmdReduceDataTypeExpr = AstBuilder::buildSpmdReduceDataTypeExpr(mpiReduceDataTypeExpr);
+
+  // 2. Setup the reduce op
+  // Reduce Op is 5th arugment
+  SgExpression* mpiReduceOp = reduceArgsList[4];
+  SgExpression* spmdReduceOp = AstBuilder::buildSpmdReduceOp(mpiReduceOp);
+
+  // 3. Setup the count
+  // Count is 3rd argument
+  SgExpression* mpiReduceCountExpr = reduceArgsList[2];
+  SgExpression* spmdReduceSizeExpr = SageInterface::copyExpression(mpiReduceCountExpr);
+
+  // 4. Setup the root
+  // root is 6th argument
+  SgExpression* mpiReduceRootExpr = reduceArgsList[5];
+  SgExpression* spmdReduceRootExpr = SageInterface::copyExpression(mpiReduceRootExpr);
+
+  // 5. Setup the sendbuf
+  SgExpression* mpiReduceSendBuffExpr = reduceArgsList[0];
+  // Strip the (const void*) cast
+  if(SgCastExp* castExp = isSgCastExp(mpiReduceSendBuffExpr)) {
+    mpiReduceSendBuffExpr = castExp->get_operand();
+  }
+  SgExpression* spmdReduceSendBuffExpr = SageInterface::copyExpression(mpiReduceSendBuffExpr);
+
+  // 6. Setup the rootOutputEvt (For root a valid guid and for non-root NULL_GUID)
+  string reduceEvtName = reduceContext->getReduceEvt()->get_name();
+  string reduceEvtGuidName = SageInterface::generateUniqueVariableName(scope, "reduceEvtGuid");
+  SgVariableDeclaration* reduceEvtGuidDecl = AstBuilder::buildGuidVarDecl(reduceEvtGuidName, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, reduceEvtGuidDecl, true);
+  // Create the event
+  SgVariableSymbol* reduceEvtGuidSymbol = GetVariableSymbol(reduceEvtGuidDecl, reduceEvtGuidName);
+  SgStatement* reduceEvtCreateStmt = AstBuilder::buildSpmdReduceEvtCreateStmt(spmdReduceRootExpr, reduceEvtGuidSymbol, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, reduceEvtCreateStmt, true);
+  // Bookkeeping
+  m_astInfoManager.regEvtAstInfo(reduceEvtName, reduceEvtGuidName, scope);
+
+  // 7. Setup the trigger Event and dependences
+  list<OcrEvtContextPtr> depEvts = reduceContext->getDepEvts();
+  SgVariableSymbol* triggerEvtGuidSymbol = NULL;
+  if(depEvts.empty()) {
+    // triggerEvtGuidSymbol must be set to NULL
+    triggerEvtGuidSymbol = NULL;
+  }
+  else {
+    // Create a trigger event
+    // Add all dependent events as dependencies to the trigger event using ocrAddDependence
+    string triggerEvtName = SageInterface::generateUniqueVariableName(scope, "trigger");
+    SgVariableDeclaration* triggerEvtGuidDecl = AstBuilder::buildGuidVarDecl(triggerEvtName, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtGuidDecl, true);
+    // Create the event
+    triggerEvtGuidSymbol = GetVariableSymbol(triggerEvtGuidDecl, triggerEvtName);
+    SgExprStatement* triggerEvtCreateStmt = AstBuilder::buildEvtCreateCallExp(triggerEvtGuidSymbol, scope);
+    SageInterface::insertStatementBefore(pragmaStmt, triggerEvtCreateStmt, true);
+    // Add dependences from depEvts to triggerEvt
+    list<OcrEvtContextPtr>::iterator evt = depEvts.begin();
+    for(int slot = 0; evt != depEvts.end(); ++evt, ++slot) {
+      EvtAstInfoPtr depEvtAstInfo = m_astInfoManager.getEvtAstInfo((*evt)->get_name(), scope);
+      string depEvtGuidName = depEvtAstInfo->getEvtGuidName();
+      SgVariableSymbol* depEvtGuidSymbol = GetVariableSymbol(depEvtGuidName, scope);
+      assert(depEvtGuidSymbol);
+      SgExprStatement* addDependenceCallExp = AstBuilder::buildOcrAddDependenceCallExp(depEvtGuidSymbol, triggerEvtGuidSymbol,
+										       slot, AstBuilder::DbkMode::DB_MODE_NULL, scope);
+      SageInterface::insertStatementBefore(pragmaStmt, addDependenceCallExp, true);
+    }
+  }
+
+  // 8. Setup continuation Event
+  string outEvtName = reduceContext->getOutputEvt()->get_name();
+  vector<SgStatement*> setupStmts;
+  setupStmts = setupEdtOutEvt(reduceContext->getTaskName(), outEvtName, scope);
+  SageInterface::insertStatementListBefore(pragmaStmt, setupStmts);
+  EvtAstInfoPtr outEvtAstInfo = m_astInfoManager.getEvtAstInfo(outEvtName, scope);
+  string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
+  SgVariableSymbol* outEvtGuidSymbol = GetVariableSymbol(outEvtGuidName, scope);
+
+  // 9. Finally, build the spmdReduce CallExp
+  SgStatement* spmdPReduceCallExp = AstBuilder::buildSpmdPReduceCallExp(spmdReduceDataTypeExpr, spmdReduceOp, spmdReduceSizeExpr,
+									 spmdReduceRootExpr, spmdReduceSendBuffExpr, reduceEvtGuidSymbol,
+									triggerEvtGuidSymbol, (triggerEvtGuidSymbol != NULL), outEvtGuidSymbol, scope);
+  SageInterface::insertStatementBefore(pragmaStmt, spmdPReduceCallExp, true);
+  SageInterface::removeStatement(pragmaStmt);
+  SageInterface::removeStatement(SageInterface::getEnclosingStatement(reduceCallExp));
+}
+
 void OcrTranslator::setupSpmdFinalize(string spmdFinalizeName, OcrSpmdFinalizeContextPtr spmdFinalizeContext) {
   Logger::Logger lg("OcrTranslator::setupSpmdFinalize", Logger::DEBUG);
   list<OcrEvtContextPtr> depEvts = spmdFinalizeContext->getDepEvts();
@@ -1673,6 +1840,10 @@ void OcrTranslator::setupEdts() {
       OcrSpmdRecvContextPtr recvContext = boost::dynamic_pointer_cast<OcrSpmdRecvContext>(taskContext);
       setupSpmdRecv(recvContext);
     }
+    else if(taskContext->getTaskType() == OcrTaskContext::e_TaskSpmdReduce) {
+      OcrSpmdReduceContextPtr reduceContext = boost::dynamic_pointer_cast<OcrSpmdReduceContext>(taskContext);
+      setupSpmdReduce(reduceContext);
+    }
     else {
       cerr << "Unhandled Task Context in OcrTranslator::setupEdts\n";
       std::terminate();
@@ -1768,7 +1939,8 @@ void OcrTranslator::translateMpi() {
       break;
     }
     case MpiOpContext::OP_SEND:
-    case MpiOpContext::OP_RECV: {
+    case MpiOpContext::OP_RECV:
+    case MpiOpContext::OP_REDUCE: {
       // Nothing to do at this step
       break;
     }
