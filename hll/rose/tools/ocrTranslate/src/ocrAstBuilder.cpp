@@ -8,6 +8,7 @@
 #include "RoseAst.h"
 #include "ocrAstBuilder.h"
 #include "logger.h"
+#include "mpi.h"
 
 /**************
  * AstBuilder *
@@ -1010,6 +1011,138 @@ namespace AstBuilder {
   /******************
    * SpmdCallsSetup *
    ******************/
+  // (SgCastExp (SgAddressOfOp (SgVarRefExp)) - MPI_Recv((void*) &buff,..)
+  // (SgAddressofOp (SgVarRefExp)) - MPI_Recv(&buff,..)
+  // (SgVarRefExp) - MPI_Recv(buff,..)
+  // (SgPntrArrRefExp (SgVarRefExp) (SgIntVal)) - MPI_Recv(buff[0],..)
+  SgVariableSymbol* getRecvVarSymbolFromExpr_rec(SgExpression* expr) {
+    switch(expr->variantT()) {
+    case V_SgVarRefExp: {
+      // Base case
+      return isSgVarRefExp(expr)->get_symbol();
+    }
+    case V_SgCastExp:
+    case V_SgAddressOfOp:{
+      // Strip the cast and search recursively on its child
+      // If its SgAddressOfOp variable will be on its child
+      // For both cases recursively search on the child
+      return getRecvVarSymbolFromExpr_rec(isSgUnaryOp(expr)->get_operand());
+    }
+    case V_SgPntrArrRefExp: {
+      // example : buff[0][1][2]
+      // Var will be on the left-most children of the expression
+      // recursively search on the left sub-children
+      return getRecvVarSymbolFromExpr_rec(isSgPntrArrRefExp(expr)->get_lhs_operand());
+    }
+    default:
+      cerr << "Cannot locate Var Name in Expr : " << expr->unparseToString() << endl;
+      return NULL;
+    }
+  }
+
+  string getRecvVarNameFromExpr(SgExpression* expr) {
+    SgVariableSymbol* recvBuffVarSymbol = getRecvVarSymbolFromExpr_rec(expr);
+    assert(recvBuffVarSymbol);
+    return recvBuffVarSymbol->get_name().getString();
+  }
+
+  SgType* getRecvBuffScalarVarType(SgExpression* expr) {
+    SgExpression* operand = NULL;
+    if(SgCastExp* castExp = isSgCastExp(expr)) {
+      operand = castExp->get_operand();
+    }
+    else {
+      operand = expr;
+    }
+    SgAddressOfOp* addressOfOp = isSgAddressOfOp(operand);
+    assert(addressOfOp);
+    SgVarRefExp* scalar = isSgVarRefExp(addressOfOp->get_operand());
+    assert(scalar);
+    SgType* exprType = exprType = scalar->get_type();
+    switch(exprType->variantT()) {
+    case V_SgTypeChar:
+    case V_SgTypeDouble:
+    case V_SgTypeFloat:
+    case V_SgTypeInt:
+    case V_SgTypeLong:
+    case V_SgTypeLongDouble:
+    case V_SgTypeLongLong:
+    case V_SgTypeShort:
+    case V_SgTypeSignedInt:
+    case V_SgTypeSignedLong:
+    case V_SgTypeSignedLongLong:
+    case V_SgTypeSignedShort:
+    case V_SgTypeUnsignedChar:
+    case V_SgTypeUnsignedInt:
+    case V_SgTypeUnsignedLong:
+    case V_SgTypeUnsignedLongLong:
+    case V_SgTypeUnsignedShort: {
+      return exprType;
+    }
+    default:
+      cerr << "Unhandled Scalar Type in getRecvBuffScalarVarType(type=" << exprType->class_name() << "\n";
+      std::terminate();
+    }
+  }
+
+  // Type is void* from the signature of the MPI methods
+  // Strip the void* and determine the type of the expression
+  // We will use this type to generate dbk ptr declaration
+  SgType* getRecvBuffTypeFromExpr(SgExpression* expr) {
+    // Signature of the argument is void*
+    // When scalars are passed through SgAddressOfOp, we should create scalar decl
+    SgType* exprType = NULL;
+    SgExpression* recvBuffExpr = expr;
+    if(SgCastExp* castExp = isSgCastExp(expr)) {
+      recvBuffExpr = castExp->get_operand();
+    }
+    return recvBuffExpr->get_type();
+  }
+
+  bool isScalarType(SgExpression* expr) {
+    if(SgCastExp* castExp = isSgCastExp(expr)) {
+      if(SgAddressOfOp* addressOfOp = isSgAddressOfOp(castExp->get_operand())) {
+	// Only if the address of op is a scalar get the type of scalar
+	if(SgVarRefExp* scalar = isSgVarRefExp(addressOfOp->get_operand())) {
+	  SgType* exprType = exprType = scalar->get_type();
+	  switch(exprType->variantT()) {
+	  case V_SgTypeChar:
+	  case V_SgTypeDouble:
+	  case V_SgTypeFloat:
+	  case V_SgTypeInt:
+	  case V_SgTypeLong:
+	  case V_SgTypeLongDouble:
+	  case V_SgTypeLongLong:
+	  case V_SgTypeShort:
+	  case V_SgTypeSignedInt:
+	  case V_SgTypeSignedLong:
+	  case V_SgTypeSignedLongLong:
+	  case V_SgTypeSignedShort:
+	  case V_SgTypeUnsignedChar:
+	  case V_SgTypeUnsignedInt:
+	  case V_SgTypeUnsignedLong:
+	  case V_SgTypeUnsignedLongLong:
+	  case V_SgTypeUnsignedShort: {
+	    return true;
+	  }
+	  default:
+	    return false;
+	  }
+	}
+      }
+    }
+    return false;
+  }
+
+  SgVariableDeclaration* buildScalarVarDeclFromPtr(string scalarVarName, SgType* scalarVarType,
+						   SgVariableSymbol* dbkPtrSymbol, SgScopeStatement* scope) {
+    SgVarRefExp* dbkPtrVarRefExp = SageBuilder::buildVarRefExp(dbkPtrSymbol);
+    SgPointerDerefExp* ptrDerefExp = SageBuilder::buildPointerDerefExp(dbkPtrVarRefExp);
+    SgAssignInitializer* initializer = SageBuilder::buildAssignInitializer(ptrDerefExp, scalarVarType);
+    SgVariableDeclaration* vdecl = SageBuilder::buildVariableDeclaration(scalarVarName, scalarVarType, initializer, scope);
+    return vdecl;
+  }
+
   SgExprStatement* buildSpmdGSendCallExp(SgExpression* to, SgExpression* tag, SgVariableSymbol* dbkGuidSymbol,
 					 SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
 					 SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope) {
@@ -1068,6 +1201,131 @@ namespace AstBuilder {
     args.push_back(sixth);
     SgExprListExp* exprList = SageBuilder::buildExprListExp(args);
     SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdRecv", SageBuilder::buildVoidType(), exprList, scope);
+    SgExprStatement* callExpStmt = SageBuilder::buildExprStatement(callExp);
+    return callExpStmt;
+  }
+
+  // MPI data type is a predefined int value defined in the MPI header
+  // After pre-processing we see the macro expanded AST
+  // Compare the integer value of the expression with the MPI header to determine
+  // the datatype of the MPI operation
+  SgExpression* buildSpmdReduceDataTypeExpr(SgExpression* mpiReduceDataTypeExpr) {
+    //
+    SgIntVal* dataTypeIntValue = NULL;
+    // Strip the cast
+    if(SgCastExp* castExp = isSgCastExp(mpiReduceDataTypeExpr)) {
+      dataTypeIntValue = isSgIntVal(castExp->get_operand());
+    }
+    else {
+      dataTypeIntValue = isSgIntVal(mpiReduceDataTypeExpr);
+    }
+    assert(dataTypeIntValue);
+    SgExpression* spmdReduceDataTypeExpr = NULL;
+    switch(dataTypeIntValue->get_value()) {
+    case MPI_DOUBLE: {
+      spmdReduceDataTypeExpr = SageBuilder::buildIntVal(0);
+      SageInterface::addTextForUnparser(spmdReduceDataTypeExpr, "SPMD_REDUCE_TYPE_DOUBLE", AstUnparseAttribute::e_replace);
+      break;
+    }
+    case MPI_INT:
+    case MPI_CHAR:
+    case MPI_FLOAT:
+    default:
+      cerr << "Unsupported MPI DataType for spmdReduce\n";
+      std::terminate();
+    }
+    assert(spmdReduceDataTypeExpr);
+    return spmdReduceDataTypeExpr;
+  }
+
+  // Reduce Op is a predefined integer value in mpi.h
+  // After pre-processing we see the macro expanded AST
+  // Compare the integer value of the expression with the MPI header to determine
+  // the MPI reduce op of the MPI operation
+  SgExpression* buildSpmdReduceOp(SgExpression* mpiReduceOp) {
+    SgIntVal* mpiReduceOpIntVal = NULL;
+    if(SgCastExp* castExp = isSgCastExp(mpiReduceOp)) {
+      mpiReduceOpIntVal = isSgIntVal(castExp->get_operand());
+    }
+    else {
+      mpiReduceOpIntVal = isSgIntVal(mpiReduceOp);
+    }
+    assert(mpiReduceOpIntVal);
+    SgExpression* spmdReduceOpExpr = NULL;
+    switch(mpiReduceOpIntVal->get_value()) {
+    case MPI_SUM: {
+      spmdReduceOpExpr = SageBuilder::buildIntVal(0);
+      SageInterface::addTextForUnparser(spmdReduceOpExpr, "SPMD_REDUCE_OP_SUM", AstUnparseAttribute::e_replace);
+      break;
+    }
+    default:
+      cerr << "Unsupported MPI Op in spmdReduce\n";
+      std::terminate();
+    }
+    assert(spmdReduceOpExpr);
+    return spmdReduceOpExpr;
+  }
+
+  // We need to synthesize the following for output event of spmdReduce operation
+  // if(spmdMyRank() == root) {
+  //   ocrEvtCreate(&evtGuid, EVT_PROP_TAKES_ARG);
+  // }
+  // else {
+  //   evtGuid = NULL_GUID;
+  // }
+  SgStatement* buildSpmdReduceEvtCreateStmt(SgExpression* spmdReduceRootExpr,
+					    SgVariableSymbol* reduceEvtGuidSymbol, SgScopeStatement* scope) {
+    SgBasicBlock* trueBody = SageBuilder::buildBasicBlock();
+    SgStatement* evtCreateCallExp = buildEvtDbkCreateCallExp(reduceEvtGuidSymbol, scope);
+    SageInterface::appendStatement(evtCreateCallExp, trueBody);
+
+    SgBasicBlock* falseBody = SageBuilder::buildBasicBlock();
+    SgVarRefExp* reduceEvtGuidVarRefExp = SageBuilder::buildVarRefExp(reduceEvtGuidSymbol);
+    SgIntVal* nullguidExpr = SageBuilder::buildIntVal(0);
+    SageInterface::addTextForUnparser(nullguidExpr, "NULL_GUID", AstUnparseAttribute::e_replace);
+    SgStatement* assignStmt = SageBuilder::buildAssignStatement(reduceEvtGuidVarRefExp, nullguidExpr);
+    SageInterface::appendStatement(assignStmt, falseBody);
+
+    // build the conditional
+    SgFunctionCallExp* spmdMyRankCallExp = SageBuilder::buildFunctionCallExp("spmdMyRank", SageBuilder::buildIntType(), NULL, scope);
+    SgExpression* rootExpr = SageInterface::copyExpression(spmdReduceRootExpr);
+    SgExpression* testExpr = SageBuilder::buildEqualityOp(spmdMyRankCallExp, rootExpr);
+    SgIfStmt* ifStmt = SageBuilder::buildIfStmt(testExpr, trueBody, falseBody);
+    return ifStmt;
+  }
+
+  SgStatement* buildSpmdPReduceCallExp(SgExpression* spmdReduceDataTypeExpr, SgExpression* spmdReduceOp, SgExpression* spmdReduceSizeExpr,
+				       SgExpression* spmdReduceRootExpr, SgExpression* spmdReduceSendBuffExpr, SgVariableSymbol* reduceEvtGuidSymbol,
+				       SgVariableSymbol* triggerEvtGuidSymbol, bool triggerEvtDestroy, SgVariableSymbol* outEvtGuidSymbol,
+				       SgScopeStatement* scope) {
+    // Build the arguments for spmdPReduce Call Exp
+    // u8 spmdPReduce(reduceType_t type, reduceOperation_t operation, u64 count, u64 root, void* data,
+    // 		      ocrGuid_t rootOutputEvent, ocrGuid_t triggerEvent,
+    // 		      bool destroyTriggerEvent, ocrGuid_t continuationEvent);
+    vector<SgExpression*> args;
+    args.push_back(spmdReduceDataTypeExpr);
+    args.push_back(spmdReduceOp);
+    args.push_back(spmdReduceSizeExpr);
+    args.push_back(spmdReduceRootExpr);
+    args.push_back(spmdReduceSendBuffExpr);
+    // rootOutputEvt
+    assert(reduceEvtGuidSymbol);
+    args.push_back(SageBuilder::buildVarRefExp(reduceEvtGuidSymbol));
+    // We may or may not have a trigger Event
+    if(triggerEvtGuidSymbol) {
+      args.push_back(SageBuilder::buildVarRefExp(triggerEvtGuidSymbol));
+    }
+    else {
+      SgIntVal* nullGuidExpr = SageBuilder::buildIntVal(0);
+      SageInterface::addTextForUnparser(nullGuidExpr, "NULL_GUID", AstUnparseAttribute::e_replace);
+      args.push_back(nullGuidExpr);
+    }
+    // Use the boolean value passed for trigger Event destroy
+    args.push_back(SageBuilder::buildBoolValExp(triggerEvtDestroy));
+    assert(outEvtGuidSymbol);
+    args.push_back(SageBuilder::buildVarRefExp(outEvtGuidSymbol));
+    SgExprListExp* exprListExp = SageBuilder::buildExprListExp(args);
+    SgFunctionCallExp* callExp = SageBuilder::buildFunctionCallExp("spmdPReduce", SageBuilder::buildVoidType(), exprListExp, scope);
     SgExprStatement* callExpStmt = SageBuilder::buildExprStatement(callExp);
     return callExpStmt;
   }
