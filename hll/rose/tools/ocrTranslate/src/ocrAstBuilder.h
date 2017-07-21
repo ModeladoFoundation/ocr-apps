@@ -147,6 +147,21 @@ namespace AstBuilder {
 					SgVariableSymbol* triggerEvtGuidSymbol, bool destroyTrigger,
 					SgVariableSymbol* outEvtGuidSymbol, SgScopeStatement* scope);
 
+  SgExpression* buildSpmdReduceDataTypeExpr(SgExpression* mpiReduceDataTypeExpr);
+  SgExpression* buildSpmdReduceOp(SgExpression* mpiReduceOp);
+  SgVariableDeclaration* buildSpmdRecvBuffDbkDecl(SgExpression* recvBuffExpr, unsigned int slot, SgInitializedName* depv,SgScopeStatement* scope);
+  SgStatement* buildSpmdReduceEvtCreateStmt(SgExpression* spmdReduceRootExpr, SgVariableSymbol* reduceEvtGuidSymbol, SgScopeStatement* scope);
+  SgStatement* buildSpmdPReduceCallExp(SgExpression* spmdReduceDataTypeExpr, SgExpression* spmdReduceOp, SgExpression* spmdReduceSizeExpr,
+				       SgExpression* spmdReduceRootExpr, SgExpression* spmdReduceSendBuffExpr, SgVariableSymbol* reduceEvtGuidSymbol,
+				       SgVariableSymbol* triggerEvtGuidSymbol, bool triggerEvtDestroy, SgVariableSymbol* outEvtGuidSymbol,
+				       SgScopeStatement* scope);
+  bool isScalarType(SgExpression* expr);
+  std::string getRecvVarNameFromExpr(SgExpression* expr);
+  SgType* getRecvBuffTypeFromExpr(SgExpression* expr);
+  SgType* getRecvBuffScalarVarType(SgExpression* recvBuffExpr);
+  SgVariableDeclaration* buildScalarVarDeclFromPtr(std::string scalarVarName, SgType* scalarVarType,
+						   SgVariableSymbol* dbkPtrSymbol, SgScopeStatement* scope);
+
   /*********************
    * ReplaceReturnStmt *
    *********************/
