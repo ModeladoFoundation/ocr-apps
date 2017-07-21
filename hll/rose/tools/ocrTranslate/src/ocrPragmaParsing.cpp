@@ -1304,11 +1304,9 @@ bool OcrSpmdRecvPragmaParser::match() {
 	throw MatchException("Unexpected statement following Recv annotation\n");
       }
       assert(recvCallExp);
-
+      SgExpression* recvBuffExpr= recvCallExp->get_args()->get_expressions()[0];
       string recvEvtName = matchRecvEvt(input);
-      // Get the recv buffer variable symbol from the recv call exp
-      SgVariableSymbol* dbkSymbol = getRecvBuffVariableSymbol(recvCallExp);
-      OcrEvtContextPtr recvEvtContext = m_ocrObjectManager.registerOcrEvtDbk(recvEvtName, dbkSymbol);
+      OcrEvtContextPtr recvEvtContext = m_ocrObjectManager.registerOcrRecvEvt(recvEvtName, recvBuffExpr);
 
       list<string> depEvtNames = matchDepEvts(input);
       list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
@@ -1322,6 +1320,133 @@ bool OcrSpmdRecvPragmaParser::match() {
     }
     else {
       throw MatchException("Failed to Match SPMD Recv Pragma\n");
+    }
+  }
+  catch(std::exception& e) {
+    Logger::error(lg) << e.what();
+    return false;
+  }
+}
+
+/***************************
+ * OcrSpmdReducePragmaParser *
+ ***************************/
+OcrSpmdReducePragmaParser::OcrSpmdReducePragmaParser(SgPragmaDeclaration* sgpdecl,
+						 unsigned int traversalOrder, OcrObjectManager& ocrObjectManager)
+  : m_sgpdecl(sgpdecl),
+    m_traversalOrder(traversalOrder),
+    m_ocrObjectManager(ocrObjectManager) {
+  sr_identifier = +(alpha|as_xpr('_')) >> *_w;
+  sr_param = *_s >> *by_ref(sr_identifier);
+  // paramseq is the tail seq of a parameter list
+  sregex sr_paramseq = *_s >> as_xpr(',') >> *_s >> sr_param;
+  sr_paramlist = as_xpr('(') >> *_s >> *sr_param >> *by_ref(sr_paramseq) >> *_s >> as_xpr(')');
+}
+
+list<string> OcrSpmdReducePragmaParser::matchParamNames(string input) {
+  list<string> paramList;
+  if(!regex_match(input, sr_paramlist)) {
+    throw MatchException("MatchException thrown by matchParamNames");
+  }
+  sregex_token_iterator cur(input.begin(), input.end(), sr_identifier), end;
+  for( ; cur != end; ++cur) {
+    string identifier = *cur;
+    if(identifier.compare("NONE") == 0 || identifier.compare("none") == 0) {
+      continue;
+    }
+    paramList.push_back(identifier);
+  }
+  return paramList;
+}
+
+string OcrSpmdReducePragmaParser::matchReduceEvt(string input) {
+  sregex sr_reduceDbk = *_s >> icase("REDUCE_EVT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, sr_reduceDbk)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OcrSpmdReducePragmaParser::matchReduceEvt\n");
+  }
+}
+
+list<string> OcrSpmdReducePragmaParser::matchDepEvts(string input) {
+  sregex sr_dbknames = icase("DEP_EVTs") >> *_s >> (s1=sr_paramlist);
+  smatch matchResults;
+  list<string> dbkNames;
+  if(regex_search(input, matchResults, sr_dbknames)) {
+    string paramlist = matchResults[1];
+    dbkNames = matchParamNames(paramlist);
+  }
+  else {
+    throw MatchException("Matching failed in OcrSpmdFinalizePragmaParser::DEP_EVTs\n");
+  }
+  return dbkNames;
+}
+
+string OcrSpmdReducePragmaParser::matchOutEvt(string input) {
+  sregex outEvtNameOnly = *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (s1=sr_identifier) >> *_s >> ')';
+  smatch matchResults;
+  if(regex_search(input, matchResults, outEvtNameOnly)) {
+    return matchResults[1];
+  }
+  else {
+    throw MatchException("Matching Failed in OcrSpmdReducePragmaParser::matchOutEvt\n");
+  }
+}
+
+bool OcrSpmdReducePragmaParser::match() {
+  Logger::Logger lg("OcrSpmdReducePragmaParser::match()", Logger::DEBUG);
+  boost::xpressive::sregex sr_spmdreduce = *_s >> as_xpr("ocr spmd reduce")
+					     >> *_s >> icase("REDUCE_EVT") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					     >> *_s >> icase("DEP_EVTS") >> *_s >> (sr_paramlist)
+					     >> *_s >> icase("OEVENT") >> *_s >> '(' >> *_s >> (sr_identifier) >> *_s >> ')'
+					     >> *_s;
+  string input = m_sgpdecl->get_pragma()->get_pragma();
+  try {
+    if(regex_match(input, sr_spmdreduce)) {
+      SgScopeStatement* scope = SageInterface::getEnclosingScope(m_sgpdecl);
+      SgStatement* callExpStmt = SageInterface::getNextStatement(m_sgpdecl);
+      SgFunctionCallExp* reduceCallExp = NULL;
+      if(reduceCallExp = isSgFunctionCallExp(isSgExprStatement(callExpStmt)->get_expression())) {
+	SgFunctionRefExp* functionExp = isSgFunctionRefExp(reduceCallExp->get_function());
+	// Ensure that the annotation follows MPI_Reduce
+	if(functionExp) {
+	  SgFunctionSymbol* fsymbol = functionExp->get_symbol();
+	  string fname = fsymbol->get_name().getString();
+	  assert(fname.compare("MPI_Reduce") == 0);
+	}
+	else {
+	  // Annotation is on a function call called through function pointer
+	  throw MatchException("Cannot find MPI reduce call expression\n");
+	}
+      }
+      else {
+	// Annotation is not followed by MPI_Reduce call statement
+	throw MatchException("Unexpected statement following Reduce annotation\n");
+      }
+      assert(reduceCallExp);
+
+      string reduceEvtName = matchReduceEvt(input);
+      // Get the reduce buffer variable symbol from the reduce call exp
+      SgExprListExp* reduceCallArgs = reduceCallExp->get_args();
+      // recvbuf is the second argument
+      SgExpression* recvbuf = reduceCallArgs->get_expressions()[1];
+      assert(recvbuf);
+      OcrEvtContextPtr reduceEvtContext = m_ocrObjectManager.registerOcrReduceEvt(reduceEvtName, recvbuf);
+
+      list<string> depEvtNames = matchDepEvts(input);
+      list<OcrEvtContextPtr> depEvts = m_ocrObjectManager.getOcrEvtContextList(depEvtNames);
+      string outEvtName = matchOutEvt(input);
+      OcrEvtContextPtr outEvtContext = m_ocrObjectManager.registerOcrEvt(outEvtName);
+
+      string reduceContextName = SageInterface::generateUniqueVariableName(scope, "reduce");
+      OcrTaskContextPtr reduceContext = m_ocrObjectManager.registerOcrSpmdReduceContext(reduceContextName, m_traversalOrder, m_sgpdecl,
+											reduceEvtContext, depEvts, outEvtContext, reduceCallExp);
+      return true;
+    }
+    else {
+      throw MatchException("Failed to Match SPMD Reduce Pragma\n");
     }
   }
   catch(std::exception& e) {
@@ -1435,7 +1560,16 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       }
     }
     else if(ptype == OcrPragmaType::e_SpmdReduce) {
-      assert(false);
+      // Increase the traversal order counter
+      m_taskOrderCounter++;
+      OcrSpmdReducePragmaParser spmdReducePragmaParser(sgpdecl, m_taskOrderCounter, m_ocrObjectManager);
+      if(spmdReducePragmaParser.match()) {
+	Logger::info(lg) << "Spmd Reduce Pragma Parsed Successfully\n";
+      }
+      else {
+	Logger::error(lg) << "SpmdReduce Pragma Parsing Failed\n";
+	std::terminate();
+      }
     }
     else if(ptype == OcrPragmaType::e_Dbk) {
       AstFromString::afs_skip_whitespace();

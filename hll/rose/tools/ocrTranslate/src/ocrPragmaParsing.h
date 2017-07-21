@@ -270,6 +270,27 @@ class OcrSpmdRecvPragmaParser {
   bool match();
 };
 
+/*****************************
+ * OcrSpmdReducePragmaParser *
+ *****************************/
+class OcrSpmdReducePragmaParser {
+  SgPragmaDeclaration* m_sgpdecl;
+  unsigned int m_traversalOrder;
+  OcrObjectManager& m_ocrObjectManager;
+  boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
+ private:
+  std::string matchReduceEvt(std::string input);
+  std::list<std::string> matchDepEvts(std::string input);
+  std::string matchOutEvt(std::string input);
+  std::list<std::string> matchParamNames(std::string input);
+  SgVariableSymbol* getReduceBuffVariableSymbol_rec(SgExpression* rbuffExp);
+  SgVariableSymbol* getReduceBuffVariableSymbol(SgFunctionCallExp* recvCallExp);
+ public:
+  OcrSpmdReducePragmaParser(SgPragmaDeclaration* sgpdecl,
+			  unsigned int traversalOrder, OcrObjectManager& ocrObjectManager);
+  bool match();
+};
+
 /*******************
  * OcrPragmaParser *
  *******************/
