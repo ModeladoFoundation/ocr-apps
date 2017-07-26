@@ -687,6 +687,14 @@ string MpiOpContext::str() const {
     oss << "MPI_Reduce";
     break;
   }
+  case OP_WAIT: {
+    oss << "MPI_Wait";
+    break;
+  }
+  case OP_WTIME: {
+    oss << "MPI_Wtime";
+    break;
+  }
   default:
     oss << "Unknown";
   }
