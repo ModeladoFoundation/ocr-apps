@@ -1922,7 +1922,8 @@ void OcrTranslator::translateMpi() {
     SgStatement* callStmt = mpiOpContext->getMpiCallStmt();
     switch(mpiOpContext->getMpiOpType()) {
     case MpiOpContext::OP_INIT:
-    case MpiOpContext::OP_FINALIZE: {
+    case MpiOpContext::OP_FINALIZE:
+    case MpiOpContext::OP_WAIT: {
       SageInterface::removeStatement(callStmt);
       break;
     }
@@ -1940,7 +1941,8 @@ void OcrTranslator::translateMpi() {
     }
     case MpiOpContext::OP_SEND:
     case MpiOpContext::OP_RECV:
-    case MpiOpContext::OP_REDUCE: {
+    case MpiOpContext::OP_REDUCE:
+    case MpiOpContext::OP_WTIME: {
       // Nothing to do at this step
       break;
     }
@@ -1952,62 +1954,65 @@ void OcrTranslator::translateMpi() {
 
 void OcrTranslator::outlineMainEdt() {
   SgFunctionDeclaration* mainFunction = SageInterface::findMain(m_project);
-  // scope where the edt function will be created
-  SgSourceFile* sourcefile = SageInterface::getEnclosingSourceFile(mainFunction);
-  SgGlobal* global = sourcefile->get_globalScope();
-  // Build an empty defining declaration for the EDT
-  string mainEdtName = "mainEdt";
-  SgFunctionDeclaration* edt_decl = AstBuilder::buildOcrEdtFuncDecl(mainEdtName, global);
-  // Get the scope under which the statements of EDT will be outlined
-  SgBasicBlock* basicblock = edt_decl->get_definition()->get_body();
-  // parameters that make up the edt
-  vector<SgInitializedName*> edt_params = AstBuilder::buildOcrEdtSignature(basicblock);
-  // Insert the parameters to the function declaration
-  vector<SgInitializedName*>::iterator p = edt_params.begin();
-  SgFunctionParameterList* edt_paramlist = edt_decl->get_parameterList();
-  for( ; p != edt_params.end(); ++p) {
-    SageInterface::appendArg(edt_paramlist, *p);
+  // Apply this only if we have a mainFunction in the source file
+  if(mainFunction) {
+    // scope where the edt function will be created
+    SgSourceFile* sourcefile = SageInterface::getEnclosingSourceFile(mainFunction);
+    SgGlobal* global = sourcefile->get_globalScope();
+    // Build an empty defining declaration for the EDT
+    string mainEdtName = "mainEdt";
+    SgFunctionDeclaration* edt_decl = AstBuilder::buildOcrEdtFuncDecl(mainEdtName, global);
+    // Get the scope under which the statements of EDT will be outlined
+    SgBasicBlock* basicblock = edt_decl->get_definition()->get_body();
+    // parameters that make up the edt
+    vector<SgInitializedName*> edt_params = AstBuilder::buildOcrEdtSignature(basicblock);
+    // Insert the parameters to the function declaration
+    vector<SgInitializedName*>::iterator p = edt_params.begin();
+    SgFunctionParameterList* edt_paramlist = edt_decl->get_parameterList();
+    for( ; p != edt_params.end(); ++p) {
+      SageInterface::appendArg(edt_paramlist, *p);
+    }
+    // Synthesize arugments for argc and argv
+    // And then move the basicblock from main to mainEdt
+    vector<SgInitializedName*> main_args = mainFunction->get_args();
+    if(main_args.size() > 0) {
+      // main must have exactly two arguments
+      assert(main_args.size() == 2);
+      SgInitializedName* mainArgc = main_args[0];
+      SgInitializedName* mainArgv = main_args[1];
+      // First fetch the datablock from argument
+      SgName mainEdtDbkName("mainEdtDbk");
+      SgInitializedName* mainEdtArgv = edt_paramlist->get_args().back();
+      SgType* u64PtrType = AstBuilder::buildu64PtrType(basicblock);
+      SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildDepDbkPtrDecl(mainEdtDbkName, u64PtrType, 0, mainEdtArgv, basicblock);
+      SgVariableSymbol* mainEdtDbkSymbol = GetVariableSymbol(mainEdtDbkDecl, mainEdtDbkName);
+      SgVariableDeclaration* mainEdtArgcDecl = AstBuilder::buildMainEdtArgcDecl(mainArgc, mainEdtDbkSymbol, basicblock);
+      SgVariableDeclaration* mainEdtArgvDecl = AstBuilder::buildMainEdtArgvDecl(mainArgv, mainArgc, basicblock);
+      SageInterface::appendStatement(mainEdtDbkDecl, basicblock);
+      SageInterface::appendStatement(mainEdtArgcDecl, basicblock);
+      SageInterface::appendStatement(mainEdtArgvDecl, basicblock);
+
+      // Now setup the function to initialize the argv
+      SgName mainEdtInitName("mainEdtInit");
+      SgFunctionDeclaration* mainEdtInitFuncDecl = AstBuilder::buildMainEdtInitFuncDecl(mainEdtInitName, mainArgc, mainArgv, mainEdtDbkSymbol, global);
+      SgVariableSymbol* mainEdtArgcSymbol = GetVariableSymbol(mainEdtArgcDecl, mainArgc->get_name());
+      SgVariableSymbol* mainEdtArgvSymbol = GetVariableSymbol(mainEdtArgvDecl, mainArgv->get_name());
+      SgExprStatement* mainEdtInitCallExp = AstBuilder::buildMainEdtInitCallExp(mainEdtInitFuncDecl->get_name(), mainEdtArgcSymbol, mainEdtArgvSymbol, mainEdtDbkSymbol, basicblock);
+      SageInterface::appendStatement(mainEdtInitCallExp, basicblock);
+
+      // Insert the mainEdt_init function declaration before main
+      SageInterface::insertStatementBefore(mainFunction, mainEdtInitFuncDecl, true);
+    }
+    SgBasicBlock* mainBasicBlock = mainFunction->get_definition()->get_body();
+
+    // Replace all the return statements
+    AstBuilder::ReplaceReturnStmt replaceRetStmts;
+    replaceRetStmts.traverse(mainBasicBlock, preorder);
+    // Add the statements from main to mainEdt
+    SageInterface::appendStatementList(mainBasicBlock->get_statements(), basicblock);
+    // Finally replace the main with mainEdt
+    SageInterface::replaceStatement(mainFunction, edt_decl, true);
   }
-  // Synthesize arugments for argc and argv
-  // And then move the basicblock from main to mainEdt
-  vector<SgInitializedName*> main_args = mainFunction->get_args();
-  if(main_args.size() > 0) {
-    // main must have exactly two arguments
-    assert(main_args.size() == 2);
-    SgInitializedName* mainArgc = main_args[0];
-    SgInitializedName* mainArgv = main_args[1];
-    // First fetch the datablock from argument
-    SgName mainEdtDbkName("mainEdtDbk");
-    SgInitializedName* mainEdtArgv = edt_paramlist->get_args().back();
-    SgType* u64PtrType = AstBuilder::buildu64PtrType(basicblock);
-    SgVariableDeclaration* mainEdtDbkDecl = AstBuilder::buildDepDbkPtrDecl(mainEdtDbkName, u64PtrType, 0, mainEdtArgv, basicblock);
-    SgVariableSymbol* mainEdtDbkSymbol = GetVariableSymbol(mainEdtDbkDecl, mainEdtDbkName);
-    SgVariableDeclaration* mainEdtArgcDecl = AstBuilder::buildMainEdtArgcDecl(mainArgc, mainEdtDbkSymbol, basicblock);
-    SgVariableDeclaration* mainEdtArgvDecl = AstBuilder::buildMainEdtArgvDecl(mainArgv, mainArgc, basicblock);
-    SageInterface::appendStatement(mainEdtDbkDecl, basicblock);
-    SageInterface::appendStatement(mainEdtArgcDecl, basicblock);
-    SageInterface::appendStatement(mainEdtArgvDecl, basicblock);
-
-    // Now setup the function to initialize the argv
-    SgName mainEdtInitName("mainEdtInit");
-    SgFunctionDeclaration* mainEdtInitFuncDecl = AstBuilder::buildMainEdtInitFuncDecl(mainEdtInitName, mainArgc, mainArgv, mainEdtDbkSymbol, global);
-    SgVariableSymbol* mainEdtArgcSymbol = GetVariableSymbol(mainEdtArgcDecl, mainArgc->get_name());
-    SgVariableSymbol* mainEdtArgvSymbol = GetVariableSymbol(mainEdtArgvDecl, mainArgv->get_name());
-    SgExprStatement* mainEdtInitCallExp = AstBuilder::buildMainEdtInitCallExp(mainEdtInitFuncDecl->get_name(), mainEdtArgcSymbol, mainEdtArgvSymbol, mainEdtDbkSymbol, basicblock);
-    SageInterface::appendStatement(mainEdtInitCallExp, basicblock);
-
-    // Insert the mainEdt_init function declaration before main
-    SageInterface::insertStatementBefore(mainFunction, mainEdtInitFuncDecl, true);
-  }
-  SgBasicBlock* mainBasicBlock = mainFunction->get_definition()->get_body();
-
-  // Replace all the return statements
-  AstBuilder::ReplaceReturnStmt replaceRetStmts;
-  replaceRetStmts.traverse(mainBasicBlock, preorder);
-  // Add the statements from main to mainEdt
-  SageInterface::appendStatementList(mainBasicBlock->get_statements(), basicblock);
-  // Finally replace the main with mainEdt
-  SageInterface::replaceStatement(mainFunction, edt_decl, true);
 }
 
 // Main driver for translation
