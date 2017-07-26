@@ -7,6 +7,8 @@
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 #define MOD(a,b) ((((a)%(b))+(b))%(b))
 
+#define PARAMC_U64(name) ((sizeof(name) + sizeof(u64) -1)/sizeof(u64))
+
 #ifdef DEBUG_APP
     #define DEBUG_PRINTF(X) PRINTF X
 #else
@@ -67,5 +69,9 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
 
 void forkSpmdEdts_staticScheduler_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv );
 void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv );
+
+int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims );
+int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims );
+int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims );
 
 #endif

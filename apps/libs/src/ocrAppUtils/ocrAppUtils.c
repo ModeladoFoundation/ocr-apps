@@ -3,10 +3,6 @@
 #include "ocrAppUtils.h"
 #include "extensions/ocr-affinity.h" //needed for affinity
 
-static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims );
-static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims );
-static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims );
-
 #ifdef USE_STATIC_SCHEDULER
 typedef struct
 {
@@ -111,7 +107,7 @@ void globalCoordsFromRank_Cart3D( int id, int NR_X, int NR_Y, int NR_Z, int* id_
     *id_z = (id / NR_X) / NR_Y;
 }
 
-static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims )
+int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
 
@@ -126,7 +122,7 @@ static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGrid
     return mapToPD;
 }
 
-static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims )
+int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
     int id_y = b/edtGridDims[0];
@@ -146,7 +142,7 @@ static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGrid
     return mapToPD;
 }
 
-static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims )
+int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
     int id_y = (b/edtGridDims[0])%edtGridDims[1];
