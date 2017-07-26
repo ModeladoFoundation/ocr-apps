@@ -40,6 +40,7 @@ typedef struct
     ocrDBK_t DBK_sigTfactors;
     ocrDBK_t DBK_reductionVars;
     ocrDBK_t rpLoopReductionDBK;
+    ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
 } PRM_perThread_t;
 
 ocrGuid_t FNC_globalFinalize( EDT_ARGS )
@@ -356,6 +357,11 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
 
     ocrHint_t myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+#if defined(ENABLE_EXTENSION_AFFINITY) && defined(SINGLE_RUN_ACROSS_PD)
+    myDbkAffinityHNT = PTR_PRM_perThread->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_PRM_perThread->myEdtAffinityHNT;
+#endif
+
 #ifdef ENABLE_SPAWNING_HINT
     ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
     ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
@@ -480,6 +486,17 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
     int mype = PTR_rankH->myRank;
 
+    //Query the number of policy domains (nodes) available for the run
+    //Map the SPMD EDTs onto the policy domains
+    u64 affinityCount=1;
+#if defined(ENABLE_EXTENSION_AFFINITY) && defined(SINGLE_RUN_ACROSS_PD)
+    ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    if( mype == 0 ) PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+#else
+    PRINTF("NOT Using affinity API\n");
+#endif
+    u64 PD_X = affinityCount;
+
     if( mype == 0 )
     {
         PRINTF("\n");
@@ -540,20 +557,36 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
         ocrDbRelease( rpLoopReductionDBK );
 
+        u64 pdGridDims[1] = { PD_X };
+        u64 edtGridDims[1] = { nthreads };
+
+        int pd = getPolicyDomainID_Cart1D( i, edtGridDims, pdGridDims );
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
+
+#if defined(ENABLE_EXTENSION_AFFINITY) && defined(SINGLE_RUN_ACROSS_PD)
+        ocrGuid_t PDaffinityGuid;
+        ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
+        ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+        ocrSetHintValue( &myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
         PRM_perThread.DBK_seed = DBK_seed;
         PRM_perThread.DBK_xs = DBK_xs;
         PRM_perThread.DBK_sigTfactors = DBK_sigTfactors;
         PRM_perThread.DBK_reductionVars = DBK_reductionVars;
         PRM_perThread.rpLoopReductionDBK = rpLoopReductionDBK;
+        PRM_perThread.rpLoopReductionDBK = rpLoopReductionDBK;
+        PRM_perThread.myEdtAffinityHNT = myEdtAffinityHNT;
+        PRM_perThread.myDbkAffinityHNT = myDbkAffinityHNT;
 
         ocrGuid_t lookUpKernelPerThreadEDT;
 
 #ifdef ENABLE_SPAWNING_HINT
         ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*)&PRM_perThread, EDT_PARAM_DEF, NULL,
-                        EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+                        EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL ); //lookUpKernelPerThreadEdt
 #else
         ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*)&PRM_perThread, EDT_PARAM_DEF, NULL,
-                        EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+                        EDT_PROP_NONE, &myEdtAffinityHNT, NULL );  //lookUpKernelPerThreadEdt
 #endif
 
         _idep = 0;
