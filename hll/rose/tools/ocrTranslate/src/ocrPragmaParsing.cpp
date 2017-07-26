@@ -1150,7 +1150,8 @@ bool OcrSpmdSendPragmaParser::match() {
 	if(functionExp) {
 	  SgFunctionSymbol* fsymbol = functionExp->get_symbol();
 	  string fname = fsymbol->get_name().getString();
-	  assert(fname.compare("MPI_Send") == 0);
+	  assert(fname.compare("MPI_Send") == 0 ||
+		 fname.compare("MPI_Isend") == 0);
 	}
 	else {
 	  // Annotation is on a function call called through function pointer
@@ -1292,7 +1293,8 @@ bool OcrSpmdRecvPragmaParser::match() {
 	if(functionExp) {
 	  SgFunctionSymbol* fsymbol = functionExp->get_symbol();
 	  string fname = fsymbol->get_name().getString();
-	  assert(fname.compare("MPI_Recv") == 0);
+	  assert(fname.compare("MPI_Recv") == 0 ||
+		 fname.compare("MPI_Irecv") == 0);
 	}
 	else {
 	  // Annotation is on a function call called through function pointer
@@ -1623,11 +1625,23 @@ void OcrPragmaParser::visit(SgNode* sgn) {
       else if(isMpiOp = (fname.compare("MPI_Send") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_SEND, callStmt);
       }
+      else if(isMpiOp = (fname.compare("MPI_Isend") == 0)) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_SEND, callStmt);
+      }
       else if(isMpiOp = (fname.compare("MPI_Recv") == 0)) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_RECV, callStmt);
+      }
+      else if(isMpiOp = (fname.compare("MPI_Irecv") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_RECV, callStmt);
       }
       else if(isMpiOp = (fname.compare("MPI_Reduce") == 0)) {
 	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_REDUCE, callStmt);
+      }
+      else if(isMpiOp = (fname.compare("MPI_Wait") == 0)) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_WAIT, callStmt);
+      }
+      else if(isMpiOp = (fname.compare("MPI_Wtime") == 0)) {
+	mpiOpContext = boost::make_shared<MpiOpContext>(MpiOpContext::OP_WTIME, callStmt);
       }
       else if(isMpiOp = (fname.find("MPI_") == 0)){
 	std::cerr << "Unhandled MPI function " << fname << endl;

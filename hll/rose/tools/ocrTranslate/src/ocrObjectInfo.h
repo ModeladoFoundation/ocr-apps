@@ -386,6 +386,8 @@ class MpiOpContext {
     OP_COMM_SIZE,
     OP_SEND,
     OP_RECV,
+    OP_WAIT,
+    OP_WTIME,
     OP_REDUCE
   } MpiOpType;
  private:
