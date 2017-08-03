@@ -173,9 +173,10 @@ _OCR_TASK_FNC_( FNC_loadbalance );
 _OCR_TASK_FNC_( FNC_redistributeblocks );
 _OCR_TASK_FNC_( FNC_idgather );
 void printGatheredBlockIDs( rankH_t* PTR_rankH, int* blockids_gathered );
+int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt );
 
 // check_sum.c
-double check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum );
+void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum );
 
 // comm_block.c
 void comm_proc(void);

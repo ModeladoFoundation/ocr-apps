@@ -525,6 +525,8 @@ void initTemplates(rankH_t* PTR_rankH)
 
     _paramc = 0; _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_finalize), FNC_finalize, _paramc, _depc );
+    _paramc = 0; _depc = 2;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_finalizeBarrier), FNC_finalizeBarrier, _paramc, _depc );
 
     _paramc = 0; _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_idgather), FNC_idgather, _paramc, _depc );

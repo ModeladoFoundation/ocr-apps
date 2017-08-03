@@ -30,7 +30,7 @@
 #include "proto.h"
 
 // Generate check sum for a variable over all active blocks.
-double check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum )
+void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum )
 {
     int n, in, i, j, k;
     double gsum, block_sum, t1, t2, t3;
@@ -78,5 +78,5 @@ double check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, in
 
     DEBUG_PRINTF(("CHECKSUM block number %d level %d stage %d ts %d var %d sum %f\n", PTR_rankH->myRank, bp->level, istage, ts, var, *sum));
 
-    return *sum;
+    return;
 }

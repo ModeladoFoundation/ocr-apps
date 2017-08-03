@@ -289,7 +289,6 @@ _OCR_TASK_FNC_( FNC_refineAllLevels )
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
-    //int* PTR_out = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
@@ -297,34 +296,12 @@ _OCR_TASK_FNC_( FNC_refineAllLevels )
 
     int cur_max_level, cur_min_level;
 
-    //for (j = PTR_cmd->num_refine; j >= 0; j--)
-    //   if (PTR_out[j]) {
-    //      cur_max_level = j;
-    //      break;
-    //}
-
-    //for (j = 0; j <= PTR_cmd->num_refine; j++)
-    //   if (PTR_out[j]) {
-    //      cur_min_level = j;
-    //      PTR_rankH->num_blocks[j] = PTR_out[j];
-    //      break;
-    //}
-
-    //PTR_rankH->cur_min_level = cur_min_level;
-    //PTR_rankH->cur_max_level = cur_max_level;
-
     cur_min_level = PTR_rankH->cur_min_level;
     cur_max_level = PTR_rankH->cur_max_level;
 
     DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d ts %d cur_min_level %d blocks %d cur_max_level %d blocks %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, PTR_rankH->ts, cur_min_level, PTR_rankH->num_blocks[cur_min_level], cur_max_level, PTR_rankH->num_blocks[cur_max_level] ));
-    //PRINTF( "%s ilevel %d id_l %d irefine %d ts %d cur_min_level %d blocks %d cur_max_level %d blocks %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, PTR_rankH->ts, cur_min_level, PTR_rankH->num_blocks[cur_min_level], cur_max_level, PTR_rankH->num_blocks[cur_max_level] );
 
     int ilevel = PTR_rankH->cur_max_level;
-
-    //for (j = 0; j <= cur_max_level; j++) {
-    //    PTR_rankH->num_blocks[j] = PTR_out[j];
-    //    PTR_out[j] = 0;
-    //}
 
     int iter = 0; //start at iteration 0
     int r = REFINEINTENT_RED_HANDLE_LB+(ilevel+iter)%(MAX_REFINE_LEVELS); //current level being iterated

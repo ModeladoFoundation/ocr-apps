@@ -180,7 +180,7 @@ typedef struct
     ocrTML_t TML_comm;
     ocrTML_t TML_calcLoop, TML_calc;
     ocrTML_t TML_checkSumLoop, TML_checkSum;
-    ocrTML_t TML_print, TML_finalize;
+    ocrTML_t TML_print, TML_finalize, TML_finalizeBarrier;
 
     ocrTML_t commHaloNbrsTML, packHalosTML, unpackHalosTML;
 } rankTemplateH_t;

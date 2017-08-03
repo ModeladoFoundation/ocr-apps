@@ -69,9 +69,9 @@ _OCR_TASK_FNC_( FNC_loadbalance )
 
     ocrGuid_t idgatherEDT, idgatherOEVT, idgatherOEVTS;
 
-    ocrEdtCreate( &idgatherEDT, PTR_rankTemplateH->TML_idgather,
+    ocrEdtCreate( &idgatherEDT, TML_idgather,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &idgatherOEVT ); //FNC_idgather
+                  EDT_PROP_NONE, &myEdtAffinityHNT, &idgatherOEVT ); //FNC_idgather
     createEventHelper(&idgatherOEVTS, 1);
     ocrAddDependence( idgatherOEVT, idgatherOEVTS, 0, DB_MODE_NULL );
 
@@ -121,27 +121,21 @@ _OCR_TASK_FNC_( FNC_redistributeblocks )
 
     PTR_rankH->seqRank = seqRank; //update here
 
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->ts ));
+    #ifdef PRINTBLOCKINFO
+    PRINTF( "%s ilevel %d id_l %d myRank_g %d seqRank %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->myRank_g, seqRank, PTR_rankH->ts );
+    #endif
+
+    ocrDbRelease( PTR_rankH->DBK_active_blockids );
 
     if(PTR_cmd->lb_opt) {
         if(!seqRank) {
             PRINTF("ts %d Doing load balancing\n", PTR_rankH->ts);
         }
 
-        u64 affinityCount = 1;
-        ocrAffinityCount( AFFINITY_PD, &affinityCount );
-        u64 PD_X = affinityCount;
+        int newPD = mapBlocktoPD( PTR_rankH, PTR_cmd->lb_opt );
 
-        u64 pdGridDims[1] = { PD_X };
-        u64 edtGridDims[1] = { PTR_rankH->active_blockcount };
-
-        int pd = getPolicyDomainID_Cart1D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
-
-        //PRINTF( "%d is at location %d to be ASSIGNED PD %d\n", PTR_rankH->myRank_g, seqRank, pd );
-        ocrDbRelease( PTR_rankH->DBK_active_blockids );
-
-        ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
-        getAffinityHintsForDBandEdtAtPD( &myDbkAffinityHNT, &myEdtAffinityHNT, pd );
+        ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT; //New Affinities
+        getAffinityHintsForDBandEdtAtPD( &myDbkAffinityHNT, &myEdtAffinityHNT, newPD );
 
         PTR_rankH->myEdtAffinityHNT = myEdtAffinityHNT;
         PTR_rankH->myDbkAffinityHNT = myDbkAffinityHNT;
@@ -151,27 +145,69 @@ _OCR_TASK_FNC_( FNC_redistributeblocks )
 
 }
 
+int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
+{
+    u64 affinityCount = 1;
+    ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    u64 PDS = affinityCount;
+
+    int pd;
+
+    if( lb_opt == 1 ) { //3D
+        u64 edtGridDims[3];
+        u64 pdGridDims[3];
+
+        splitDimension_Cart3D(PTR_rankH->active_blockcount, &edtGridDims[0], &edtGridDims[1], &edtGridDims[2]);
+        splitDimension_Cart3D(PDS, &pdGridDims[0], &pdGridDims[1], &pdGridDims[2] );
+
+        pd = getPolicyDomainID_Cart3D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
+
+        #ifdef PRINTBLOCKINFO
+        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH-.seqRank, pd );
+        #endif
+    }
+    else { //1D
+        u64 pdGridDims[1] = { PDS };
+        u64 edtGridDims[1] = { PTR_rankH->active_blockcount };
+        #ifdef PRINTBLOCKINFO
+        pd = getPolicyDomainID_Cart1D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
+        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], 1, 1, pdGridDims[0], 1, 1, PTR_rankH->myRank_g, PTR_rankH->seqRank, pd );
+        #endif
+    }
+
+    return pd;
+}
+
 void printGatheredBlockIDs( rankH_t* PTR_rankH, int* blockids_gathered )
 {
     int i, j;
     PTR_rankH->active_blockcount = 0;
 
-    DEBUG_PRINTF(("Active block ids:"));
-    for( i = 0; i < PTR_rankH->max_possible_num_blocks; i++ )
+    #ifdef PRINTBLOCKINFO
+    PRINTF("Active block ids:");
+    #endif
+    for( i = 0; i < PTR_rankH->max_possible_num_blocks; i++ ) {
         if( blockids_gathered[i] != 0 ){
-            DEBUG_PRINTF(("%d \n", blockids_gathered[i]));
+    #ifdef PRINTBLOCKINFO
+            PRINTF("%d ", blockids_gathered[i]-1);
+    #endif
             PTR_rankH->active_blockcount++;
         }
-    DEBUG_PRINTF(("\n"));
+    }
+    #ifdef PRINTBLOCKINFO
+    PRINTF("\n");
+    #endif
 
     ocrDbCreate( &(PTR_rankH->DBK_active_blockids), (void **) &PTR_rankH->active_blockids,
                  PTR_rankH->active_blockcount*sizeof(int),
                  DB_PROP_NONE, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
 
-    for( i = 0, j = 0; i < PTR_rankH->max_possible_num_blocks; i++ )
+    for( i = 0, j = 0; i < PTR_rankH->max_possible_num_blocks; i++ ) {
         if( blockids_gathered[i] != 0 ){
+            blockids_gathered[i] -= 1; //remove the offset
             PTR_rankH->active_blockids[j++] = blockids_gathered[i];
         }
+    }
 }
 
 _OCR_TASK_FNC_( FNC_idgather )
@@ -191,7 +227,13 @@ _OCR_TASK_FNC_( FNC_idgather )
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
     block *bp = &PTR_rankH->blockH;
 
+    ocrTML_t TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
+    ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
+    myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+
     int ilevel = PTR_rankH->ilevel;
+    int ts = PTR_rankH->ts;
 
     int r = BLOCKIDGATHER_RED_HANDLE_LB;
     redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
@@ -201,7 +243,7 @@ _OCR_TASK_FNC_( FNC_idgather )
 
     memset(in, 0, PTR_rankH->max_possible_num_blocks*sizeof(int));
 
-    in[PTR_rankH->myRank_g] = PTR_rankH->myRank_g;
+    in[PTR_rankH->myRank_g] = (PTR_rankH->myRank_g+1); //ofset by 1
 
     DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d in %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->ts, in[PTR_rankH->myRank_g]));
 
@@ -211,14 +253,12 @@ _OCR_TASK_FNC_( FNC_idgather )
     ocrDbRelease( DBK_rankH );
 
     int phase = -22;
-    reducePRM_t reducePRM = {-1, PTR_rankH->ts, phase, r};
-    ocrGuid_t reduceAllUpEDT, reduceAllUpOEVT, reduceAllUpOEVTS;
+    reducePRM_t reducePRM = {-1, ts, phase, r};
+    ocrGuid_t reduceAllUpEDT;
 
-    ocrEdtCreate( &reduceAllUpEDT, PTR_rankTemplateH->TML_reduceAllUp, //FNC_reduceAllUp
+    ocrEdtCreate( &reduceAllUpEDT, TML_reduceAllUp, //FNC_reduceAllUp
                   EDT_PARAM_DEF, (u64*)&reducePRM, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &reduceAllUpOEVT );
-    createEventHelper(&reduceAllUpOEVTS, 1);
-    ocrAddDependence( reduceAllUpOEVT, reduceAllUpOEVTS, 0, DB_MODE_NULL );
+                  EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );

@@ -586,9 +586,9 @@ _OCR_TASK_FNC_( FNC_checkSum )
 
     int var = istart;
 
-    double sum = check_sum( DBK_rankH, PTR_rankH, ts, istage, var, DBK_gridSum_in, PTR_grid_sum_in );
+    check_sum( DBK_rankH, PTR_rankH, ts, istage, var, DBK_gridSum_in, PTR_grid_sum_in );
 
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d istage %d istart %d sum %f\n", __func__, ilevel, PTR_rankH->myRank, ts, istage, istart, sum ));
+    DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d istage %d istart %d\n", __func__, ilevel, PTR_rankH->myRank, ts, istage, istart ));
 
     ocrDbRelease( DBK_rankH );
 
@@ -690,7 +690,16 @@ _OCR_TASK_FNC_( FNC_finalize )
     ocrEVT_t redDownOEVT = PTR_redObjects->downOEVT;
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
 
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->ts ));
+    ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
+    myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+
+    int ts = PTR_rankH->ts;
+    ocrTML_t TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
+
+    #ifdef PRINTBLOCKINFO
+    PRINTF( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
+    #endif
 
     PTR_rankH->total_time = timer()-PTR_rankH->tBegin;
 
@@ -705,20 +714,18 @@ _OCR_TASK_FNC_( FNC_finalize )
     ocrDbRelease( DBK_rankH );
 
     int phase = -11;
-    reducePRM_t reducePRM = {-1, PTR_rankH->ts, phase, r};
+    reducePRM_t reducePRM = {-1, ts, phase, r};
     ocrGuid_t reduceAllUpEDT, reduceAllUpOEVT, reduceAllUpOEVTS;
 
-    ocrEdtCreate( &reduceAllUpEDT, PTR_rankTemplateH->TML_reduceAllUp, //FNC_reduceAllUp
+    ocrEdtCreate( &reduceAllUpEDT, TML_reduceAllUp, //FNC_reduceAllUp
                   EDT_PARAM_DEF, (u64*) &reducePRM, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &reduceAllUpOEVT );
+                  EDT_PROP_NONE, &myEdtAffinityHNT, &reduceAllUpOEVT );
     createEventHelper(&reduceAllUpOEVTS, 1);
     ocrAddDependence( reduceAllUpOEVT, reduceAllUpOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
-
-    ocrEVT_t wrapUpEVT = PTR_rankH->globalParamH.ocrParamH.EVT_OUT_spmdJoin_reduction;
 
     ocrGuid_t finalizeBarrierEDT, finalizeBarrierOEVT, finalizeBarrierOEVTS;
     ocrGuid_t finalizeBarrierTML;
@@ -728,7 +735,7 @@ _OCR_TASK_FNC_( FNC_finalize )
 
     ocrEdtCreate( &finalizeBarrierEDT, finalizeBarrierTML, //FNC_finalizeBarrier
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+                  EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, finalizeBarrierEDT, _idep++, DB_MODE_RW );
@@ -753,7 +760,6 @@ _OCR_TASK_FNC_( FNC_finalizeBarrier )
 
     ocrEVT_t wrapUpEVT = PTR_rankH->globalParamH.ocrParamH.EVT_OUT_spmdJoin_reduction;
 
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank ));
     #ifdef PRINTBLOCKINFO
     PRINTF( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
     #endif
