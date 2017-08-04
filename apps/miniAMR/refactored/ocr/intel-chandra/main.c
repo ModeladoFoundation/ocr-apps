@@ -122,15 +122,16 @@ void initGlobalOcrParamH( globalOcrParamH_t* ocrParamH, u64 nRanks, Command* cmd
 {
     ocrEventCreate( &(ocrParamH->EVT_OUT_spmdJoin_reduction), OCR_EVENT_IDEM_T, EVT_PROP_TAKES_ARG );
 
-    int r;
-    for( r=0; r<MAX_REDUCTION_HANDLES; r++ ) {
-    ocrGuidRangeCreate(&(ocrParamH->redUpRangeGUID[r]), nRanks, GUID_USER_EVENT_STICKY);
-    }
 
     //TODO: Either have 6 nbrs or 27 nbrs depending on the halo-exchange implementation
     int coarseBlocksPerRank =  cmd->init_block_x*cmd->init_block_y*cmd->init_block_z;
     int p8 = 1;
     int i;
+
+    int r;
+    for( r=0; r<MAX_REDUCTION_HANDLES; r++ ) {
+    ocrGuidRangeCreate(&(ocrParamH->redUpRangeGUID[r]), nRanks*coarseBlocksPerRank, GUID_USER_EVENT_STICKY);
+    }
 
     s64 totalBlocks = 0;
 
@@ -571,9 +572,8 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
          else memset(&PTR_sharedOcrObjH->parentRedObjects[r], 0, sizeof(redObjects_t));
       }
 
-    PTR_sharedOcrObjH->siblingintentionRedRangeGUID = (ilevel != 0) ? PTR_sharedOcrObjH_parent->childrenintentionRedRangeGUID : NULL_GUID;
-    PTR_sharedOcrObjH->siblingchkSumRedRangeGUID = (ilevel != 0) ? PTR_sharedOcrObjH_parent->childrenchkSumRedRangeGUID : NULL_GUID;
-    PTR_sharedOcrObjH->siblingredRangeGUID = (ilevel != 0) ? PTR_sharedOcrObjH_parent->childrenredRangeGUID : NULL_GUID;
+    PTR_sharedOcrObjH->siblingredRangeGUID[0] = (ilevel != 0) ? PTR_sharedOcrObjH_parent->childrenredRangeGUID[0] : NULL_GUID;
+    PTR_sharedOcrObjH->siblingredRangeGUID[1] = (ilevel != 0) ? PTR_sharedOcrObjH_parent->childrenredRangeGUID[1] : NULL_GUID;
 
     //eight children of the oct-tree
     for( k=0; k<2; k++)
@@ -752,9 +752,8 @@ void sharedOcrObjCreate( rankH_t* PTR_rankH )
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
 
-    ocrGuidRangeCreate(&(PTR_sharedOcrObjH->childrenintentionRedRangeGUID), 8, GUID_USER_EVENT_STICKY);
-    ocrGuidRangeCreate(&(PTR_sharedOcrObjH->childrenchkSumRedRangeGUID), 8, GUID_USER_EVENT_STICKY);
-    ocrGuidRangeCreate(&(PTR_sharedOcrObjH->childrenredRangeGUID), 8, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(PTR_sharedOcrObjH->childrenredRangeGUID[0]), 8, GUID_USER_EVENT_STICKY);
+    ocrGuidRangeCreate(&(PTR_sharedOcrObjH->childrenredRangeGUID[1]), 8, GUID_USER_EVENT_STICKY);
 
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = 2;

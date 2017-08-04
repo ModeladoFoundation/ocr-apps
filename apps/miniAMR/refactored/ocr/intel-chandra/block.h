@@ -256,8 +256,8 @@ typedef struct
     ocrDBK_t siblingsRankDBKs[8];
 
     //Reduction range guids
-    ocrGuid_t childrenintentionRedRangeGUID, childrenchkSumRedRangeGUID, childrenredRangeGUID;
-    ocrGuid_t siblingintentionRedRangeGUID, siblingchkSumRedRangeGUID, siblingredRangeGUID;
+    ocrGuid_t childrenredRangeGUID[2];
+    ocrGuid_t siblingredRangeGUID[2];
 
     ocrEVT_t initRedOEVT;
 

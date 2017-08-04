@@ -154,7 +154,8 @@ _OCR_TASK_FNC_( commHaloNbrsEdt )
     ocrAddDependence( DBK_array, packHalosEDT, _idep++, DB_MODE_RO );
 
     int i, j;
-    int phase = istage%2;
+    int comm_stage = (ts-1)*PTR_cmd->stages_per_ts + istage;
+    int phase = (comm_stage)%2;
 
     for (i = 2*iAxis; i < 2*(iAxis+1); i++) {
         if( bp->nei_level[i] == bp->level ) {
@@ -247,7 +248,8 @@ _OCR_TASK_FNC_( packHalosEdt )
     doubleBufferedOcrObj_t* PTR_dBufH1 = &(PTR_sharedOcrObjH->doubleBufferedOcrObjH[0]);
     doubleBufferedOcrObj_t* PTR_dBufH2 = &(PTR_sharedOcrObjH->doubleBufferedOcrObjH[1]);
 
-    int phase = istage%2;
+    int comm_stage = (ts-1)*PTR_cmd->stages_per_ts + istage;
+    int phase = comm_stage%2;
     int i, j;
     int fcase;
 
@@ -403,7 +405,8 @@ _OCR_TASK_FNC_( unpackHalosEdt )
 
     int num_comm = iend-istart+1;
 
-    int phase = istage%2;
+    int comm_stage = (ts-1)*PTR_cmd->stages_per_ts + istage;
+    int phase = comm_stage%2;
     reset_haloRecvPTRs(PTR_rankH, iAxis, phase);
 
     for (i = 2*iAxis; i < 2*(iAxis+1); i++) {

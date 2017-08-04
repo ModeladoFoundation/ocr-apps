@@ -205,7 +205,7 @@ void init(rankH_t* PTR_rankH)
          for (jb = 1; jb <= y_block_size; jb++)
             for (kb = 1; kb <= z_block_size; kb++) {
                #ifdef VERIFICATION_RUN
-               IN(bp,var,ib,jb,kb) = pow(8.0,(PTR_cmd->num_refine));
+               IN(bp,var,ib,jb,kb) = pow(8.0,(PTR_cmd->num_refine))+var;
                #else
                IN(bp,var,ib,jb,kb) = ((double) rand())/((double) RAND_MAX);
                #endif
@@ -322,7 +322,7 @@ void initDBKs( rankH_t* PTR_rankH )
         PTR_redUpH->myrank = (ilevel==0)?PTR_rankH->myRank:PTR_rankH->isibling;
         PTR_redUpH->ndata = MAX_REFINE_LEVELS;
         PTR_redUpH->reductionOperator = REDUCTION_U4_ADD;
-        PTR_redUpH->rangeGUID = (ilevel==0)?PTR_rankH->globalParamH.ocrParamH.redUpRangeGUID[r]:PTR_sharedOcrObjH->siblingredRangeGUID;
+        PTR_redUpH->rangeGUID = (ilevel==0)?PTR_rankH->globalParamH.ocrParamH.redUpRangeGUID[r]:PTR_sharedOcrObjH->siblingredRangeGUID[(r-COARSEN_RED_HANDLE_LB)%2];
         PTR_redUpH->reductionTML = NULL_GUID;
         PTR_redUpH->new = 1;  //first time
         PTR_redUpH->type = ALLREDUCE;

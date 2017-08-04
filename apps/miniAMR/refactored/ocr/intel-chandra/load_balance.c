@@ -121,7 +121,7 @@ _OCR_TASK_FNC_( FNC_redistributeblocks )
 
     PTR_rankH->seqRank = seqRank; //update here
 
-    #ifdef PRINTBLOCKINFO
+    #ifdef DEBUG_APP_COARSE
     PRINTF( "%s ilevel %d id_l %d myRank_g %d seqRank %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->myRank_g, seqRank, PTR_rankH->ts );
     #endif
 
@@ -162,14 +162,14 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
 
         pd = getPolicyDomainID_Cart3D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
 
-        #ifdef PRINTBLOCKINFO
-        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH-.seqRank, pd );
+        #ifdef DEBUG_APP_COARSE
+        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH->seqRank, pd );
         #endif
     }
     else { //1D
         u64 pdGridDims[1] = { PDS };
         u64 edtGridDims[1] = { PTR_rankH->active_blockcount };
-        #ifdef PRINTBLOCKINFO
+        #ifdef DEBUG_APP_COARSE
         pd = getPolicyDomainID_Cart1D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
         PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], 1, 1, pdGridDims[0], 1, 1, PTR_rankH->myRank_g, PTR_rankH->seqRank, pd );
         #endif
@@ -183,18 +183,18 @@ void printGatheredBlockIDs( rankH_t* PTR_rankH, int* blockids_gathered )
     int i, j;
     PTR_rankH->active_blockcount = 0;
 
-    #ifdef PRINTBLOCKINFO
+    #ifdef DEBUG_APP_COARSE
     PRINTF("Active block ids:");
     #endif
     for( i = 0; i < PTR_rankH->max_possible_num_blocks; i++ ) {
         if( blockids_gathered[i] != 0 ){
-    #ifdef PRINTBLOCKINFO
+    #ifdef DEBUG_APP_COARSE
             PRINTF("%d ", blockids_gathered[i]-1);
     #endif
             PTR_rankH->active_blockcount++;
         }
     }
-    #ifdef PRINTBLOCKINFO
+    #ifdef DEBUG_APP_COARSE
     PRINTF("\n");
     #endif
 

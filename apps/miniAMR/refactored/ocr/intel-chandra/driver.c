@@ -697,7 +697,7 @@ _OCR_TASK_FNC_( FNC_finalize )
     int ts = PTR_rankH->ts;
     ocrTML_t TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
 
-    #ifdef PRINTBLOCKINFO
+    #ifdef DEBUG_APP_COARSE
     PRINTF( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
     #endif
 
@@ -760,7 +760,7 @@ _OCR_TASK_FNC_( FNC_finalizeBarrier )
 
     ocrEVT_t wrapUpEVT = PTR_rankH->globalParamH.ocrParamH.EVT_OUT_spmdJoin_reduction;
 
-    #ifdef PRINTBLOCKINFO
+    #ifdef DEBUG_APP_COARSE
     PRINTF( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
     #endif
 
@@ -770,7 +770,7 @@ _OCR_TASK_FNC_( FNC_finalizeBarrier )
 
         PRINTF( "Active block stats at the end of the simulation\n" );
         for (j = 0; j <= PTR_rankH->cur_max_level; j++)
-            PRINTF("level %d #blocks %d\n", j, PTR_rankH->num_blocks[j] );
+            PRINTF("ts %d level %d #blocks %d\n", PTR_rankH->ts, j, PTR_rankH->num_blocks[j] );
 
         PRINTF("\n" );
 

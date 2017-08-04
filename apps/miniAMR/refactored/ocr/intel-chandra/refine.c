@@ -72,7 +72,9 @@ _OCR_TASK_FNC_( FNC_refine )
 
         mark_refinementIntention( PTR_rankH, irefine );
 
-        DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d REFINE %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, irefine, bp->refine, PTR_rankH->ts));
+        #ifdef DEBUG_APP_COARSE
+        PRINTF( "%s ilevel %d id_l %d irefine %d REFINE %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, irefine, bp->refine, PTR_rankH->ts);
+        #endif
 
         int r = BLOCKCOUNT_RED_HANDLE_LB + (irefine%2); //reserved for block counts
         redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
@@ -246,6 +248,8 @@ _OCR_TASK_FNC_( FNC_updateBlockCounts )
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
 
+    int num_refine_step = (PTR_rankH->ts!=0) ? PTR_cmd->block_change : PTR_cmd->num_refine;
+
     int j, cur_max_level, cur_min_level;
 
     for (j = PTR_cmd->num_refine; j >= 0; j--)
@@ -269,6 +273,16 @@ _OCR_TASK_FNC_( FNC_updateBlockCounts )
     PTR_rankH->cur_max_level = cur_max_level;
 
     DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d ts %d cur_min_level %d blocks %d cur_max_level %d blocks %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, PTR_rankH->ts, cur_min_level, PTR_rankH->num_blocks[cur_min_level], cur_max_level, PTR_rankH->num_blocks[cur_max_level] ));
+
+    #ifdef PRINTBLOCKSTATS
+    if( PTR_rankH->seqRank == 0 ) {
+        PRINTF( "Active block stats before refinement ilevel %d id_l %d\n", PTR_rankH->ilevel, PTR_rankH->myRank );
+        for (j = 0; j <= PTR_rankH->cur_max_level; j++)
+            PRINTF("ts %d irefine %d level %d #blocks %d\n", PTR_rankH->ts, irefine, j, PTR_rankH->num_blocks[j] );
+
+        PRINTF("\n" );
+    }
+    #endif
 
     ocrDbRelease(DBK_rankH);
 
@@ -872,7 +886,8 @@ void reset_all( rankH_t* PTR_rankH )
     //if ANY of my siblings are parents, then mark ALL the siblings as '0'
     ////i.e., if ANY of my siblings are refined/at a higher level, then set myself to '0'
 
-    for (c = 0; c < 8; c++)
-        if (bp->sib_level[c] > bp->level) bp->refine = 0;
+
+    for (c = 0; c < 8; c++) ;// ;
+        //if (bp->sib_level[c] > bp->level) bp->refine = 0; //TODO: Disabling this makes it a correct code
 
 }
