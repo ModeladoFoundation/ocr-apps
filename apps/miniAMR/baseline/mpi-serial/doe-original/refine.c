@@ -63,6 +63,14 @@ void refine(int ts)
             cur_max_level = j;
             break;
       }
+    #ifdef COMPARISONWITHOCR //Intel specific changes: Added by Chandra
+        if( !my_pe ) {
+         printf("Active block stats before refinement phase\n");
+         for (j = 0; j <= cur_max_level; j++)
+             printf("ts %d refine %d level %d #blocks %d\n", ts, i, j, num_blocks[j]);
+         printf("\n");
+        }
+    #endif
       reset_all();
       if (uniform_refine) {
          for (in = 0; in < sorted_index[num_refine+1]; in++) {
@@ -242,6 +250,22 @@ void refine(int ts)
    check_buff_size();
    t5 = timer();
    timer_refine_cc += t5 - t1 - t4;
+
+   for (j = num_refine; j >= 0; j--)
+      if (num_blocks[j]) {
+         cur_max_level = j;
+         break;
+   }
+
+#ifdef COMPARISONWITHOCR //Intel specific changes: Added by Chandra
+   i = num_refine_step;
+   if( !my_pe ) {
+    printf("Active block stats at the end of all refinements\n");
+    for (j = 0; j <= cur_max_level; j++)
+        printf("ts %d refine %d level %d #blocks %d\n", ts, i, j, num_blocks[j]);
+    printf("\n");
+   }
+#endif
 }
 
 int refine_level(void)
