@@ -13,7 +13,7 @@ THREAD_LIST=(1 2 4 8 16 24 36)     #Compute workers per node
 esac
 PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
 SCALINGTYPE_LIST=("strongscaling")
-SIZE_LIST_BENCH=("small" "large")
+SIZE_LIST=("small" "large")
 TASKFACTOR_LIST=(1 2 4)
 ARCH_LIST=("x86")
 SCHEDULER_LIST=("workstealing" "static")

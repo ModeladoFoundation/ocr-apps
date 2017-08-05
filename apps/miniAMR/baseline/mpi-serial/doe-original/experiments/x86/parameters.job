@@ -1,0 +1,17 @@
+HOST_ID=`hostname -s`
+
+case $HOST_ID in
+edison*)
+NODE_LIST0=(1 8 64)
+THREAD_LIST=(1 8)     #Compute workers per node
+    ;;
+
+thor*)
+NODE_LIST0=(1 8 64)
+THREAD_LIST=(1 8)     #Compute workers per node
+    ;;
+esac
+SCALINGTYPE_LIST=("strongscaling") # "strongscaling")
+SIZE_LIST=("small-r0-lb0" "small-r1-lb0" "small-r2-lb0" "small-r0-lb1" "small-r1-lb1" "small-r2-lb1")
+JOBHEADER="J"
+SRUN_AFFINITY="yes"

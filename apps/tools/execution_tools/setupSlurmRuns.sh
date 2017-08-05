@@ -6,6 +6,8 @@ if [[ -z "${APPS_ROOT}" ]]; then
 fi
 OCR_TOP="${APPS_ROOT}/../../ocr"
 
+nExp=1
+
 source $APPS_ROOT/tools/execution_tools/aux_bash_functions
 source ./experiments/x86/parameters.job
 
@@ -52,21 +54,8 @@ app_name=${spath[$len-4]}
 function getSizeList()
 {
     local app_name=$1
-    case ${app_name} in
 
-    "Stencil2D")
-        sizeList=(${SIZE_LIST_STENCIL2D[@]})
-        ;;
-
-    "CoMD")
-        sizeList=(${SIZE_LIST_COMD[@]})
-        ;;
-
-    *SBench)
-        sizeList=(${SIZE_LIST_BENCH[@]})
-        ;;
-
-    esac
+    sizeList=(${SIZE_LIST[@]})
 
     echo ${sizeList[@]}
 }
@@ -75,21 +64,8 @@ function getConfigFlags()
 {
     #Changed for static scheduler
     local app_name=$1
-    case ${app_name} in
 
-    "Stencil2D")
-        CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
-        ;;
-
-    "CoMD")
-        CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
-        ;;
-
-    *SBench)
-        CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
-        ;;
-
-    esac
+    CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
 
     echo $CONFIG_FLAGS
 }
@@ -196,6 +172,9 @@ function getworkloadargs()
 
     rankxyz=(1 1 1)
     rankxyz=(`splitDimensions $ranks $app_name`)
+    rx=${rankxyz[0]}
+    ry=${rankxyz[1]}
+    rz=${rankxyz[2]}
 
     if [[ "$scalingtype" == "weakscaling" ]]; then
         Nx=$(($problem_size_x*${rankxyz[0]}*${tx}))
@@ -239,6 +218,19 @@ function getworkloadargs()
         WORKLOAD_ARGS="-s $size -t $threads -l ${iter} -d"
         ;;
 
+    "miniAMR")
+        init_x=$((${problem_size_x}/${rx}/${tx}))
+        init_y=$((${problem_size_y}/${ry}/${ty}))
+        init_z=$((${problem_size_z}/${rz}/${tz}))
+        num_refine=(`getRefinements $app_name $size $scalingtype`)
+        lb=(`getlbOpt $app_name $size $scalingtype`)
+
+        BASE_ARGS="--num_refine ${num_refine} --max_blocks $(((8**${num_refine})*$init_x*$init_y*$init_z)) --init_x $init_x --init_y $init_y --init_z $init_z --npx $((${rx}*${tx})) --npy $((${ry}*${ty})) --npz $((${rz}*${tz})) --num_tsteps 50 --stages_per_ts 10 --report_diffusion 1 --num_vars 20 --lb_opt ${lb}"
+        #WORKLOAD_ARGS="--num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0${BASE_ARGS}" #One sphere moving diagonally (MPI code fails for multi-rank ranks)
+        #WORKLOAD_ARGS="--num_objects 1 --object 2 0 -0.01 -0.01 -0.01 0.0 0.0 0.0 0.0 0.0 0.0 0.0009 0.0009 0.0009 ${BASE_ARGS}"  # An expanding sphere (This is stable for MPI code)
+        WORKLOAD_ARGS="--num_objects 2 --object 2 0 -1.10 -1.10 -1.10 0.030 0.030 0.030 1.5 1.5 1.5 0.0 0.0 0.0 --object 2 0 0.5 0.5 1.76 0.0 0.0 -0.025 0.75 0.75 0.75 0.0 0.0 0.0 ${BASE_ARGS}" #Two moving spheres (MPI runs are stable)
+        ;;
+
     esac
 
     echo $WORKLOAD_ARGS
@@ -249,7 +241,7 @@ function getProfilerArgs()
     local profiler=$1
     case $profiler in
 
-    noProf)
+    noProf|baseline|lazyDB)
         MAKE_PROFILER_ARGS=""
         ;;
 
@@ -272,7 +264,7 @@ function getOcrRootDir()
     local arch0=$2
     case $profiler in
 
-    noProf)
+    noProf|baseline)
         OCR_ROOT_DIR="${APPS_ROOT}/../../ocr"
         #OCR_ROOT_DIR="${APPS_ROOT}/../../ocr_gcc" #TODO - CoMD
         if [[ $arch0 == "x86-mpiprobe" ]]; then
@@ -286,6 +278,10 @@ function getOcrRootDir()
 
     detailedProf)
         OCR_ROOT_DIR="${APPS_ROOT}/../../ocr_detailedProf"
+        ;;
+
+    lazyDB)
+        OCR_ROOT_DIR="${APPS_ROOT}/../../ocr_lazyDB"
         ;;
 
     esac
@@ -362,6 +358,45 @@ function getSizeComd()
             ;;
         large*)
             S1=288
+            ;;
+        esac
+        ;;
+
+    esac
+
+    echo $S1 $S1 $S1
+}
+
+function getSizeMiniAMR()
+{
+    local size=$1
+    local scalingtype=$2
+
+    case ${scalingtype} in
+    "weakscaling") #Weak-scaling is not suported
+        case ${size} in
+        "small")
+            S1=8
+            ;;
+        "medium")
+            S1=16
+            ;;
+        "large")
+            S1=32
+            ;;
+        esac
+        ;;
+
+    "strongscaling")
+        case ${size} in
+        small*)
+            S1=8
+            ;;
+        medium*)
+            S1=16
+            ;;
+        large*)
+            S1=32
             ;;
         esac
         ;;
@@ -513,6 +548,56 @@ function getIterations()
     echo ${S[@]}
 }
 
+function getRefinements()
+{
+    local app_name=$1
+    local size=$2
+    local scalingtype=$3
+
+    case ${size} in
+
+    *-r0-*)
+        R=0
+        ;;
+
+    *-r1-*)
+        R=1
+        ;;
+
+    *-r2-*)
+        R=2
+        ;;
+
+    *-r3-*)
+        R=3
+        ;;
+
+    esac
+
+    echo $R
+}
+
+function getlbOpt()
+{
+    local app_name=$1
+    local size=$2
+    local scalingtype=$3
+
+    case ${size} in
+
+    *-lb0)
+        R=0
+        ;;
+
+    *-lb1)
+        R=1
+        ;;
+
+    esac
+
+    echo $R
+}
+
 function getSize()
 {
     local app_name=$1
@@ -527,6 +612,10 @@ function getSize()
 
     "CoMD")
         S=(`getSizeComd $size $scalingtype`)
+        ;;
+
+    "miniAMR")
+        S=(`getSizeMiniAMR $size $scalingtype`)
         ;;
 
     *SBench)   #there's no medium size; S1 is dummy for this app
@@ -567,7 +656,7 @@ function generateJobScript()
 
     thor*)
         tplName="ThorJob.template"
-        queue="XAS"
+        queue="XAS64"
         ;;
 
     bar*)
@@ -717,8 +806,9 @@ for profiler in ${PROFILER_LIST[@]}; do
                                     #echo "echo $RUN_COMMAND" >> ${OUTNAME}
                                     echo $RUN_COMMAND >> ${OUTNAME}
                                     if [[ ${profiler} == "noProf" ]]; then
-                                        echo $RUN_COMMAND >> ${OUTNAME}
-                                        echo $RUN_COMMAND >> ${OUTNAME}
+                                        for(( iexp=0; iexp < $nExp; iexp++ )); do
+                                            echo $RUN_COMMAND >> ${OUTNAME}
+                                        done
                                     fi
                                     echo "" >> ${OUTNAME}
 
@@ -745,6 +835,10 @@ function getExecutableName()
 
     "CoMD")
         executable="bin/CoMD-mpi"
+        ;;
+
+    "miniAMR")
+        executable="./miniAMR.x"
         ;;
 
     "XSBench")
@@ -835,8 +929,9 @@ for scalingtype in ${SCALINGTYPE_LIST[@]}; do
                 mv run_command $ndir/
 
                 echo "echo $scalingtype $size $nodes $computeThreads" >> ${OUTNAME}
-                echo $RUN_COMMAND >> ${OUTNAME}
-                echo $RUN_COMMAND >> ${OUTNAME}
+                for(( iexp=0; iexp < $nExp; iexp++ )); do
+                    echo $RUN_COMMAND >> ${OUTNAME}
+                done
                 echo "" >> ${OUTNAME}
 
             done #computeThreads

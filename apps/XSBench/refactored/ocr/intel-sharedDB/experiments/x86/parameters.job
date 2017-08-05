@@ -14,7 +14,7 @@ esac
 
 PROFILER_LIST=("noProf") # "minimalProf") # "detailedProf")
 SCALINGTYPE_LIST=("strongscaling")
-SIZE_LIST_BENCH=("small" "large")
+SIZE_LIST=("small" "large")
 TASKFACTOR_LIST=(1 2 4)
 ARCH_LIST=("x86")
 SCHEDULER_LIST=("workstealing" "static")
