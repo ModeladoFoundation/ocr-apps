@@ -174,6 +174,7 @@ _OCR_TASK_FNC_( FNC_redistributeblocks );
 _OCR_TASK_FNC_( FNC_idgather );
 void printGatheredBlockIDs( rankH_t* PTR_rankH, int* blockids_gathered );
 int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt );
+u64 mortonZvalue(unsigned int x, unsigned int y, unsigned int z, unsigned int ilevel);
 
 // check_sum.c
 void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum );
@@ -273,6 +274,7 @@ void ma_malloc_counter( timerH_t* PTR_timerH, void* ptr, size_t size, char *file
 void transferTimer( timerH_t* dst, timerH_t* src );
 void resetTimer( timerH_t* PTR_timerH );
 int binary_search_double( int n, int quarry, int * A);
+void sortArray( int n, int *A);
 _OCR_TASK_FNC_( FNC_reduceAllUp );
 _OCR_TASK_FNC_( FNC_reduceAllDown );
 _OCR_TASK_FNC_( FNC_accumulator );

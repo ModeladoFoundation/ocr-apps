@@ -105,6 +105,11 @@ int binary_search_double( int n, int quarry, int * A)
     }
 }
 
+void sortArray( int n, int *A)
+{
+    qsort( A, n, sizeof(int), cmp );
+}
+
 size_t reductionDBKsize( int reductionHandle, rankH_t* PTR_rankH )
 {
     size_t size;

@@ -575,6 +575,8 @@ _OCR_TASK_FNC_( FNC_checkSum )
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
 
+    ocrTML_t TML_print = PTR_rankTemplateH->TML_print;
+
     bp->array = PTR_array;
 
     int ilevel = PTR_rankH->ilevel;
@@ -596,7 +598,7 @@ _OCR_TASK_FNC_( FNC_checkSum )
     ocrGuid_t printEDT;
 
     printPRM_t printPRM = {istart, istage, ts};
-    ocrEdtCreate( &printEDT, PTR_rankTemplateH->TML_print, //FNC_print
+    ocrEdtCreate( &printEDT, TML_print, //FNC_print
                   EDT_PARAM_DEF, (u64*)&printPRM, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 

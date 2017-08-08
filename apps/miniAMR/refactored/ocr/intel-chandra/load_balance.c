@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "block.h"
 #include "proto.h"
@@ -117,12 +118,18 @@ _OCR_TASK_FNC_( FNC_redistributeblocks )
 
     printGatheredBlockIDs( PTR_rankH, blockids_gathered );
 
-    int seqRank = binary_search_double( PTR_rankH->active_blockcount, PTR_rankH->myRank_g, PTR_rankH->active_blockids);
+    int seqRank;
+    if(PTR_cmd->lb_opt == 1) {
+        seqRank = binary_search_double( PTR_rankH->active_blockcount, PTR_rankH->zValue, PTR_rankH->active_blockzValues);
+    }
+    else {
+        seqRank = binary_search_double( PTR_rankH->active_blockcount, PTR_rankH->myRank_g, PTR_rankH->active_blockids);
+    }
 
     PTR_rankH->seqRank = seqRank; //update here
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF( "%s ilevel %d id_l %d myRank_g %d seqRank %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->myRank_g, seqRank, PTR_rankH->ts );
+    PRINTF( "%s ilevel %d id_l %d myRank_g %d zValue %d seqRank %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->myRank_g, PTR_rankH->zValue, seqRank, PTR_rankH->ts );
     #endif
 
     ocrDbRelease( PTR_rankH->DBK_active_blockids );
@@ -153,7 +160,7 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
 
     int pd;
 
-    if( lb_opt == 1 ) { //3D
+    if( lb_opt == 2 ) { // 3D
         u64 edtGridDims[3];
         u64 pdGridDims[3];
 
@@ -163,15 +170,16 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
         pd = getPolicyDomainID_Cart3D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
 
         #ifdef DEBUG_APP_COARSE
-        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH->seqRank, pd );
+        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
         #endif
     }
-    else { //1D
+    else if( lb_opt == 21 || lb_opt == 1 ) { //1D or Morton/Z-curve
         u64 pdGridDims[1] = { PDS };
         u64 edtGridDims[1] = { PTR_rankH->active_blockcount };
-        #ifdef DEBUG_APP_COARSE
         pd = getPolicyDomainID_Cart1D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
-        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], 1, 1, pdGridDims[0], 1, 1, PTR_rankH->myRank_g, PTR_rankH->seqRank, pd );
+
+        #ifdef DEBUG_APP_COARSE
+        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], 1, 1, pdGridDims[0], 1, 1, PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
         #endif
     }
 
@@ -183,31 +191,45 @@ void printGatheredBlockIDs( rankH_t* PTR_rankH, int* blockids_gathered )
     int i, j;
     PTR_rankH->active_blockcount = 0;
 
-    #ifdef DEBUG_APP_COARSE
-    PRINTF("Active block ids:");
-    #endif
     for( i = 0; i < PTR_rankH->max_possible_num_blocks; i++ ) {
         if( blockids_gathered[i] != 0 ){
-    #ifdef DEBUG_APP_COARSE
-            PRINTF("%d ", blockids_gathered[i]-1);
-    #endif
             PTR_rankH->active_blockcount++;
         }
     }
-    #ifdef DEBUG_APP_COARSE
-    PRINTF("\n");
-    #endif
 
     ocrDbCreate( &(PTR_rankH->DBK_active_blockids), (void **) &PTR_rankH->active_blockids,
+                 PTR_rankH->active_blockcount*sizeof(int),
+                 DB_PROP_NONE, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+    ocrDbCreate( &(PTR_rankH->DBK_active_blockzValues), (void **) &PTR_rankH->active_blockzValues,
                  PTR_rankH->active_blockcount*sizeof(int),
                  DB_PROP_NONE, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
 
     for( i = 0, j = 0; i < PTR_rankH->max_possible_num_blocks; i++ ) {
         if( blockids_gathered[i] != 0 ){
             blockids_gathered[i] -= 1; //remove the offset
-            PTR_rankH->active_blockids[j++] = blockids_gathered[i];
+            PTR_rankH->active_blockids[j] = i;
+            PTR_rankH->active_blockzValues[j] = blockids_gathered[i];
+            j++;
         }
     }
+
+    #ifdef DEBUG_APP_COARSE
+    PRINTF("Active block ids (zValues): ");
+    for( i = 0; i < PTR_rankH->active_blockcount; i++ ) {
+        PRINTF("%d (%d) ", PTR_rankH->active_blockids[i], PTR_rankH->active_blockzValues[i]);
+    }
+    PRINTF("\n");
+    #endif
+
+    sortArray( PTR_rankH->active_blockcount, PTR_rankH->active_blockzValues ); //Now, sort it
+
+    #ifdef DEBUG_APP_COARSE
+    PRINTF("Sorted Active block zValues: ");
+    for( i = 0; i < PTR_rankH->active_blockcount; i++ ) {
+        PRINTF("%d ", PTR_rankH->active_blockzValues[i]);
+    }
+    PRINTF("\n");
+    #endif
 }
 
 _OCR_TASK_FNC_( FNC_idgather )
@@ -243,7 +265,7 @@ _OCR_TASK_FNC_( FNC_idgather )
 
     memset(in, 0, PTR_rankH->max_possible_num_blocks*sizeof(int));
 
-    in[PTR_rankH->myRank_g] = (PTR_rankH->myRank_g+1); //ofset by 1
+    in[PTR_rankH->myRank_g] = (PTR_rankH->zValue+1); //ofset by 1
 
     DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d in %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->ts, in[PTR_rankH->myRank_g]));
 
@@ -265,4 +287,17 @@ _OCR_TASK_FNC_( FNC_idgather )
     ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
+}
+
+u64 mortonZvalue(unsigned int x, unsigned int y, unsigned int z, unsigned int ilevel)
+{
+    u64 answer = 0;
+    for (u64 i = 0; i < (sizeof(u64)*8)/3; ++i) {
+        answer |= ((x & ((u64)1 << i)) << 2*i) | ((y & ((u64)1 << i)) << (2*i + 1)) | ((z & ((u64)1 << i)) << (2*i + 2));
+    }
+
+    int shiftWidth = log(MAX_REFINE_LEVELS)/log(2) + 1;
+    answer = (answer << shiftWidth) | ilevel; //append ilevel to the right
+
+    return answer;
 }

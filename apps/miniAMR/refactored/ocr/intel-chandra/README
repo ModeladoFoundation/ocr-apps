@@ -94,13 +94,14 @@ The list of arguments and their defaults is as follows:
       by the average.  The default is zero, which means to always load
       balance at each refinement step.
 
-   --lb_opt - (0, 1, 2) determine load balance strategy (NOT SUPPORTED YET)
+   --lb_opt - (0, 1, 2) determine load balance strategy
       If set to 0, then load balancing is not performed.  The default is
-      set to 1 which load balances each refinement step.  Setting the
-      parameter to 2 results in load balancing at each stage of the
-      refinement step.  If a processor has a large number of blocks which
-      are refined several steps, this allows the work (and space needed)
-      to be shared amoung more processors.
+      set to 1 which load balances each refinement step according the Morzon/
+      Z-curve ordering.
+      if set to 2, load balancing is done by reordering the block #s and
+      mapping them to available PDs assuming 1D partitioning
+      If set to 21, loadbalcning is done by reordering the block #s but
+      with 3D paritioning of the blocks and PDs.
 
    --num_vars - number of variables (> 0)
       The number of variables the will be calculated on and communicated.

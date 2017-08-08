@@ -637,6 +637,8 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
 
+    ocrTML_t TML_checkSumLoop = PTR_rankTemplateH->TML_checkSumLoop;
+
     ocrEVT_t initRedOEVT = PTR_rankH->sharedOcrObjH.initRedOEVT;
 
     int PTR_dummy[1] = { 1 };
@@ -654,7 +656,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         int istart = 0; int iend = PTR_cmd->num_vars-1;
         int istage = 0; int ts = 0;
         checkSumLoopPRM_t checkSumLoopPRM = {istart, iend, istage, ts};
-        ocrEdtCreate( &checkSumLoopEDT, PTR_rankTemplateH->TML_checkSumLoop, //FNC_checkSumLoop
+        ocrEdtCreate( &checkSumLoopEDT, TML_checkSumLoop, //FNC_checkSumLoop
                       EDT_PARAM_DEF, (u64*)&checkSumLoopPRM, EDT_PARAM_DEF, NULL,
                       EDT_PROP_FINISH, &myEdtAffinityHNT, &checkSumLoopOEVT );
 
@@ -1274,8 +1276,8 @@ int check_input(Command cmd)
       PRINTF("code must be 0, 1, or 2\n");
       error = 1;
    }
-   if (cmd.lb_opt < 0 || cmd.lb_opt > 2) {
-      PRINTF("lb_opt must be 0, 1, or 2\n");
+   if (cmd.lb_opt != 0 && cmd.lb_opt != 1 && cmd.lb_opt != 2 && cmd.lb_opt != 21) {
+      PRINTF("lb_opt must be 0, 1, 2 or 21\n");
       error = 1;
    }
 

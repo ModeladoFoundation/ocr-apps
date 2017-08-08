@@ -200,6 +200,9 @@ void init(rankH_t* PTR_rankH)
    bp->cen[1] = PTR_rankH->jblock_g*size + size/2;
    bp->cen[2] = PTR_rankH->kblock_g*size + size/2;
 
+   PTR_rankH->zValue = mortonZvalue( PTR_rankH->iblock_g*size/2, PTR_rankH->jblock_g*size/2, PTR_rankH->kblock_g*size/2, PTR_rankH->ilevel); //Finest block size is "2" (not 1). Hence, the division by 2.
+   DEBUG_PRINTF(( "ZZZ ilevel %d id_l %d (%d, %d, %d) id_g %d zValue %d anchor %d %d %d\n", PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->iblock_g, PTR_rankH->jblock_g, PTR_rankH->kblock_g, PTR_rankH->myRank_g, PTR_rankH->zValue,  PTR_rankH->iblock_g*size/2, PTR_rankH->jblock_g*size/2, PTR_rankH->kblock_g*size/2 ));
+
    for (var = 0; var < PTR_cmd->num_vars; var++)
       for (ib = 1; ib <= x_block_size; ib++)
          for (jb = 1; jb <= y_block_size; jb++)

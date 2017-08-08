@@ -2,7 +2,7 @@
 
 source experiments/x86/parameters.job
 
-root="${JOBHEADER}_MPI_miniAMR"
+root="${JOBHEADER}_ocr_miniAMR"
 
 rm ${root}.post
 rm ${root}1.post

@@ -641,7 +641,7 @@ function generateJobScript()
     local type=$3
 
     local queue="regular"
-    local hours="4"
+    local hours="24"
     local minutes="00"
 
     local tplName=""

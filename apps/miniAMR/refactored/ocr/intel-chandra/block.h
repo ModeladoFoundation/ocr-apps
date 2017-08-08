@@ -281,6 +281,8 @@ typedef struct {
     int gx, gy, gz; //block grid size at ilevel
     int myRank_g; //global id of the block
 
+    u64 zValue;
+
     int isibling;
 
     ocrDBK_t DBK_initRedH;
@@ -331,8 +333,8 @@ typedef struct {
     timerH_t timerH;
 
     double tBegin, total_time;
-    ocrDBK_t DBK_active_blockids;
-    int* active_blockids;
+    ocrDBK_t DBK_active_blockids, DBK_active_blockzValues;
+    int *active_blockids, *active_blockzValues;
     int active_blockcount;
     int seqRank; //among the active blocks
 

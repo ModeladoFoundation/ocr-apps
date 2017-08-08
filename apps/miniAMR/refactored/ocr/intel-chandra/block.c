@@ -123,18 +123,20 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
         if( bp->refine == 1 || (bp->refine == -1 && PTR_rankH->isibling == 0 ) ) {
 
             ocrDBK_t parentRankDBK;
-            ocrDBK_t* childrenRankDBKs;
+            ocrDBK_t childrenRankDBKs[8];
 
             ocrEVT_t createChildTriggerEvent;
             if( bp->refine == 1 ) { //refine
                 parentRankDBK = DBK_rankH;
-                childrenRankDBKs = PTR_sharedOcrObjH->childrenRankDBKs;
+                //childrenRankDBKs = PTR_sharedOcrObjH->childrenRankDBKs;
+                memcpy( childrenRankDBKs, PTR_sharedOcrObjH->childrenRankDBKs, 8*sizeof(ocrDBK_t) );
 
                 createChildTriggerEvent = NULL_GUID;
             }
             else if( bp->refine == -1 ) {
                 parentRankDBK = PTR_sharedOcrObjH->parentRankDBK;
-                childrenRankDBKs = PTR_sharedOcrObjH->siblingsRankDBKs;
+                //childrenRankDBKs = PTR_sharedOcrObjH->siblingsRankDBKs;
+                memcpy( childrenRankDBKs, PTR_sharedOcrObjH->siblingsRankDBKs, 8*sizeof(ocrDBK_t) );
 
                 int r = COARSEN_RED_HANDLE_LB+irefine%2; //reserved
                 redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
@@ -406,6 +408,8 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
 
     bp->array = depv[9].ptr;
 
+    ocrTML_t TML_continuation = PTR_rankTemplateH->TML_continuation;
+
     // Define the 8 children
     for (o = 0; o < 8; o++) {
         childrenRankDBKs[o] = depv[o+1].guid;
@@ -428,7 +432,7 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
 
             ocrGuid_t continuationEDT;
             continuationPRM_t continuationPRM = {irefine};
-            ocrEdtCreate( &continuationEDT, PTR_rankTemplateH->TML_continuation,
+            ocrEdtCreate( &continuationEDT, TML_continuation,
                           EDT_PARAM_DEF, (u64*)&continuationPRM, EDT_PARAM_DEF, NULL,
                           EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_continuation
             _idep = 0;
@@ -448,7 +452,7 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
 
         ocrGuid_t continuationEDT;
         continuationPRM_t continuationPRM = {irefine};
-        ocrEdtCreate( &continuationEDT, PTR_rankTemplateH->TML_continuation,
+        ocrEdtCreate( &continuationEDT, TML_continuation,
                       EDT_PARAM_DEF, (u64*)&continuationPRM, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_continuation
         _idep = 0;
