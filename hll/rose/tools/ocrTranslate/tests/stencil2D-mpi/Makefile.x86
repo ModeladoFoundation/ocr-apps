@@ -3,6 +3,7 @@
 # removed or modified.
 
 OCR_TYPE := x86
+CC=g++
 
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(TOP)/Makefile.x86-base
