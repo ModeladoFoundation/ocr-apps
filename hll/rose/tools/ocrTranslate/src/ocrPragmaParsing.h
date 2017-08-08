@@ -200,7 +200,7 @@ class OcrSpmdRegionPragmaParser {
   boost::xpressive::sregex sr_identifier, sr_param, sr_paramlist;
  private:
   std::string matchTaskName(std::string input);
-  int matchNTasks(std::string input);
+  SgExpression* matchNTasks(std::string input);
   std::list<std::string> matchParamNames(std::string input);
   std::list<std::string> matchDepDbks(std::string input);
   std::list<std::string> matchDepEvts(std::string input);

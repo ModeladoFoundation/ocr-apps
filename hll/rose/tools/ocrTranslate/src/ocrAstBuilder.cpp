@@ -910,15 +910,16 @@ namespace AstBuilder {
     return assignStmt;
   }
 
-  SgStatement* buildEdtSpawnCallExp(SgVariableSymbol* edtTemplGuidSymbol, int ntasks, SgVariableSymbol* depElemStructSymbol,
-				    SgVariableSymbol* depElemSizeVarSymbol, int ndeps, SgVariableSymbol* depvGuidArrSymbol,
-				    SgVariableSymbol* dbAccessModeArrSymbol, int ranksPerAffinity, SgVariableSymbol* outEvtGuidSymbol,
-				    SgScopeStatement* scope) {
+  SgStatement* buildSpmdEdtSpawnCallExp(SgVariableSymbol* edtTemplGuidSymbol, SgExpression* ntaskExpr, SgVariableSymbol* depElemStructSymbol,
+					SgVariableSymbol* depElemSizeVarSymbol, int ndeps, SgVariableSymbol* depvGuidArrSymbol,
+					SgVariableSymbol* dbAccessModeArrSymbol, int ranksPerAffinity, SgVariableSymbol* outEvtGuidSymbol,
+					SgScopeStatement* scope) {
     vector<SgExpression*> args;
     SgVarRefExp* first = SageBuilder::buildVarRefExp(edtTemplGuidSymbol);
     args.push_back(first);
 
-    SgIntVal* second = SageBuilder::buildIntVal(ntasks);
+    SgExpression* second = ntaskExpr;
+    assert(second);
     args.push_back(second);
 
     // third and fourth can be NULL

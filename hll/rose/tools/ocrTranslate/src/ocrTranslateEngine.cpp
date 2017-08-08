@@ -1399,7 +1399,7 @@ void OcrTranslator::setupSpmdRegionEdt(string spmdRegionEdtName, OcrSpmdRegionCo
   // first argument
   SgVariableSymbol* edtTemplGuidSymbol = GetVariableSymbol(edtTemplGuidName, scope);
   // second argument
-  int ntasks = spmdRegionContext->getNTasks();
+  SgExpression* ntaskExpr = spmdRegionContext->getNTaskExpr();
   // third argument
   SgVariableSymbol* depElemStructSymbol = NULL;
   // fourth argument
@@ -1419,9 +1419,9 @@ void OcrTranslator::setupSpmdRegionEdt(string spmdRegionEdtName, OcrSpmdRegionCo
   string outEvtGuidName = outEvtAstInfo->getEvtGuidName();
   // ninth argument is outEvtGuid symbol
   SgVariableSymbol* outEvtGuidSymbol = GetVariableSymbol(outEvtGuidName, scope);
-  SgStatement* spmdEdtSpawnStmt = AstBuilder::buildEdtSpawnCallExp(edtTemplGuidSymbol, ntasks, depElemStructSymbol,
-								   depElemSizeVarSymbol, ndeps, depvGuidArrSymbol, dbAccessModeArrSymbol,
-								   ranksPerAffinity, outEvtGuidSymbol, scope);
+  SgStatement* spmdEdtSpawnStmt = AstBuilder::buildSpmdEdtSpawnCallExp(edtTemplGuidSymbol, ntaskExpr, depElemStructSymbol,
+								       depElemSizeVarSymbol, ndeps, depvGuidArrSymbol, dbAccessModeArrSymbol,
+								       ranksPerAffinity, outEvtGuidSymbol, scope);
   SageInterface::insertStatementBefore(pragmaStmt, spmdEdtSpawnStmt);
   // Remove the pragma
   SageInterface::removeStatement(pragmaStmt);

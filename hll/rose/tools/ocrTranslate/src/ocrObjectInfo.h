@@ -242,15 +242,15 @@ typedef boost::shared_ptr<OcrLoopIterEdtContext> OcrLoopIterEdtContextPtr;
  * \brief Store information required for spawning spmd EDTs
  */
 class OcrSpmdRegionContext : public OcrEdtContext {
-  unsigned int m_ntasks;
+  SgExpression* m_ntaskExpr;
  public:
   OcrSpmdRegionContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* spgdecl,
 		       std::list<OcrDbkContextPtr> depDbks, std::list<OcrEvtContextPtr> depEvts,
 		       std::list<SgVarRefExp*> depElems,
 		       OcrEvtContextPtr outEvt,
 		       SgBasicBlock* basicblock,
-		       unsigned int ntasks);
-  unsigned int getNTasks() const;
+		       SgExpression* taskExpr);
+  SgExpression* getNTaskExpr() const;
   std::string str() const;
 };
 
@@ -465,7 +465,7 @@ class OcrObjectManager {
 					     std::list<SgVarRefExp*> depElems,
 					     OcrEvtContextPtr outEvt,
 					     SgBasicBlock* basicblock,
-					     unsigned int ntasks);
+					     SgExpression* ntaskExpr);
   OcrTaskContextPtr registerOcrSpmdFinalizeEdt(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
 					       std::list<OcrEvtContextPtr> depEvts);
   OcrTaskContextPtr registerOcrSpmdSendContext(std::string name, unsigned int traversalOrder, SgPragmaDeclaration* sgpdecl,
