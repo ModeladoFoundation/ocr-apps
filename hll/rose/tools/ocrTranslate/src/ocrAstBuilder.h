@@ -127,10 +127,10 @@ namespace AstBuilder {
 
   SgStatement* buildDbAccessModeAssignStmt(SgVariableSymbol* dbAccessModeArrSymbol, DbkMode mode, int index);
 
-  SgStatement* buildEdtSpawnCallExp(SgVariableSymbol* edtTemplGuidSymbol, int ntasks, SgVariableSymbol* depElemStructSymbol,
-				    SgVariableSymbol* depElemSizeVarSymbol, int ndeps, SgVariableSymbol* depvGuidArrSymbol,
-				    SgVariableSymbol* dbAccessModeArrSymbol, int ranksPerAffinity, SgVariableSymbol* outEvtGuidSymbol,
-				    SgScopeStatement* scope);
+  SgStatement* buildSpmdEdtSpawnCallExp(SgVariableSymbol* edtTemplGuidSymbol, SgExpression* ntaskExpr, SgVariableSymbol* depElemStructSymbol,
+					SgVariableSymbol* depElemSizeVarSymbol, int ndeps, SgVariableSymbol* depvGuidArrSymbol,
+					SgVariableSymbol* dbAccessModeArrSymbol, int ranksPerAffinity, SgVariableSymbol* outEvtGuidSymbol,
+					SgScopeStatement* scope);
   SgExprStatement* buildSpmdRankFinalizeCallExp(SgVariableSymbol* triggerEvtGuidSymbol, SgScopeStatement* scope);
 
   SgStatement* buildSpmdMyRankCallExp(SgVarRefExp* rankVarRefExp, SgScopeStatement* scope);

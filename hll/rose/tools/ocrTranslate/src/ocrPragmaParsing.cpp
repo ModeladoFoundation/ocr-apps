@@ -866,20 +866,34 @@ list<string> OcrSpmdRegionPragmaParser::matchParamNames(string input) {
   return paramList;
 }
 
-int OcrSpmdRegionPragmaParser::matchNTasks(string input) {
-  sregex sr_ntasks = *_s >> icase("NTASKS") >> *_s >> '(' >> (s1=+digit) >> ')';
+SgExpression* OcrSpmdRegionPragmaParser::matchNTasks(string input) {
+  sregex sr_digits = +digit;
+  sregex sr_ntasks = *_s >> icase("NTASKS") >> *_s >> '(' >> (s1=(sr_digits|sr_identifier)) >> ')';
   smatch match_results;
   if(regex_search(input, match_results, sr_ntasks)) {
     string ntasksStr = match_results[1];
-    int ntasks = boost::lexical_cast<int>(ntasksStr);
-    if(ntasks < 0) {
-      throw MatchException("Negative Number Exception for NTASKS\n");
+    AstFromString::c_char = ntasksStr.c_str();
+    AstFromString::c_sgnode = m_sgpdecl;
+    if(AstFromString::afs_match_primary_expression()) {
+      SgNode* expr = AstFromString::c_parsed_node;
+      switch(expr->variantT()) {
+      case V_SgVarRefExp:
+      case V_SgIntVal: {
+	return isSgExpression(expr);
+      }
+      default:
+	// Any other Expr type is unexpected in pragma for ntasks
+	throw MatchException("Unexpected Expression in TASKS\n");
+      }
     }
-    return ntasks;
+    else {
+      throw MatchException("AstFromString Matching failed in NTASKS\n");
+    }
   }
   else {
-    throw MatchException("Matching failed in NTASKS\n");
+      throw MatchException("Failed matching pragma for NTASKS\n");
   }
+  return NULL;
 }
 
 list<string> OcrSpmdRegionPragmaParser::matchDepDbks(string input) {
@@ -948,7 +962,7 @@ SgBasicBlock* OcrSpmdRegionPragmaParser::getSpmdRegionBasicBlock() {
 bool OcrSpmdRegionPragmaParser::match() {
   Logger::Logger lg("OcrSpmdRegionPragmaParser::match()", Logger::DEBUG);
   boost::xpressive::sregex sr_spmdregion = *_s >> as_xpr("ocr spmd region")
-					       >> *_s >> icase("NTASKS") >> *_s >> '(' >> +(digit) >> ')'
+					       >> *_s >> icase("NTASKS") >> *_s >> '(' >> (sr_identifier |+digit) >> ')'
 					       >> *_s >> icase("DEP_DBKS") >> *_s >> (sr_paramlist)
 					       >> *_s >> icase("DEP_EVTS") >> *_s >> (sr_paramlist)
 					       >> *_s >> icase("DEP_ELEMS") >> *_s >> (sr_paramlist)
@@ -957,7 +971,7 @@ bool OcrSpmdRegionPragmaParser::match() {
   string input = m_sgpdecl->get_pragma()->get_pragma();
   try {
     if(regex_match(input, sr_spmdregion)) {
-      int ntasks = matchNTasks(input);
+      SgExpression* ntaskExpr = matchNTasks(input);
       list<string> depDbkNames = matchDepDbks(input);
       list<string> depEvtNames = matchDepEvts(input);
       list<string> depElemNames = matchDepElems(input);
@@ -972,7 +986,7 @@ bool OcrSpmdRegionPragmaParser::match() {
       SgBasicBlock* basicblock = getSpmdRegionBasicBlock();
       OcrTaskContextPtr taskContext = m_ocrObjectManager.registerOcrSpmdRegionEdt(spmdEdtName, m_traversalOrder, m_sgpdecl,
 										  depDbks, depEvts, depElems, outEvtContext, basicblock,
-										  ntasks);
+										  ntaskExpr);
       return true;
     }
     else {

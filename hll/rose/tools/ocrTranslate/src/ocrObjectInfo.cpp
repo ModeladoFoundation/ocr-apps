@@ -493,14 +493,14 @@ OcrSpmdRegionContext::OcrSpmdRegionContext(string name, unsigned int traversalOr
 					   list<SgVarRefExp*> depElems,
 					   OcrEvtContextPtr outEvt,
 					   SgBasicBlock* basicblock,
-					   unsigned int ntasks)
+					   SgExpression* ntaskExpr)
   : OcrEdtContext(OcrTaskContext::e_TaskSpmdRegion, name, traversalOrder, sgpdecl,
 		  depDbks, depEvts, depElems, outEvt, basicblock, false),
-    m_ntasks(ntasks) {
+    m_ntaskExpr(ntaskExpr) {
 }
 
-unsigned int OcrSpmdRegionContext::getNTasks() const {
-  return m_ntasks;
+SgExpression* OcrSpmdRegionContext::getNTaskExpr() const {
+  return m_ntaskExpr;
 }
 
 string OcrSpmdRegionContext::str() const {
@@ -903,7 +903,7 @@ OcrTaskContextPtr OcrObjectManager::registerOcrSpmdRegionEdt(string name, unsign
 							     list<SgVarRefExp*> depElems,
 							     OcrEvtContextPtr outEvt,
 							     SgBasicBlock* basicblock,
-							     unsigned int ntasks) {
+							     SgExpression* ntaskExpr) {
   OcrTaskContextMap::iterator f = m_ocrTaskContextMap.find(name);
   if(f != m_ocrTaskContextMap.end()) {
     assert(f->second);
@@ -912,7 +912,7 @@ OcrTaskContextPtr OcrObjectManager::registerOcrSpmdRegionEdt(string name, unsign
   }
   else {
     OcrTaskContextPtr taskcontext_sp(new OcrSpmdRegionContext(name, traversalOrder, sgpdecl, depDbks, depEvts, depElems, outEvt,
-							      basicblock, ntasks));
+							      basicblock, ntaskExpr));
     OcrTaskContextMapElem elem(name, taskcontext_sp);
     assert(taskcontext_sp);
     m_ocrTaskContextMap.insert(elem);
