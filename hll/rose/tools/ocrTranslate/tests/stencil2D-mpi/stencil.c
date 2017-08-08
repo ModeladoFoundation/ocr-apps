@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
   int    n;
   int    iterations;      /* number of times to run the algorithm                */
   int    error=0;         /* error flag                                          */
-
+  int ntasks;             /* used by ocrtranslator */
   /*******************************************************************************
   ** Initialize the MPI environment
   ********************************************************************************/
@@ -119,21 +119,39 @@ int main(int argc, char* argv[]) {
   goto BAIL;
 #endif
 
-  if (argc != 3){
-    printf("Usage: %s <# iterations> <array dimension> \n",
+#ifdef OCRTRANSLATE
+  /* Using command line to pass ntasks to the annotation */
+  if (argc != 4){
+    printf("Usage: %s <# ntasks> <# iterations> <array dimension> \n",
 	   *argv);
     error = 1;
-    goto BAIL;
+    bail_out(error);
   }
 
-  iterations = atoi(argv[1]);
+  ntasks = atoi(argv[1]);
+  iterations = atoi(argv[2]);
   if (iterations < 1){
     printf("ERROR: iterations must be >= 1 : %d \n",iterations);
     error = 1;
     goto BAIL;
   }
 
+  n = atoi(argv[3]);
+#else
+  if (argc != 3){
+    printf("Usage: %s <# iterations> <array dimension> \n",
+	   *argv);
+    error = 1;
+    goto BAIL;
+  }
+  iterations = atoi(argv[1]);
+  if (iterations < 1){
+    printf("ERROR: iterations must be >= 1 : %d \n",iterations);
+    error = 1;
+    goto BAIL;
+  }
   n = atoi(argv[2]);
+#endif
 
   if (RADIUS < 0) {
     printf("ERROR: Stencil radius %d should be non-negative\n", RADIUS);
@@ -150,7 +168,7 @@ int main(int argc, char* argv[]) {
  BAIL:;
   bail_out(error);
 
-#pragma ocr spmd region  NTASKS(16) DEP_DBKs() DEP_EVTs() \
+#pragma ocr spmd region  NTASKS(ntasks) DEP_DBKs() DEP_EVTs() \
   DEP_ELEMs(n, iterations, error) OEVENT(OEVT_spmd)
   {
     int    Num_procs;       /* number of ranks                                     */
@@ -426,14 +444,14 @@ int main(int argc, char* argv[]) {
 	  if (my_IDy < Num_procsy-1) {
 	    if(iter % 2 == 0) {
               #pragma ocr spmd recv RECV_EVT(EVT_TOP_BUF_IN) DEP_EVTs() OEVENT(OEVT_rtopbufin)
-	      MPI_Irecv(top_buf_in, RADIUS*width, MPI_DTYPE, top_nbr, 101,
+	      MPI_Irecv(top_buf_in, RADIUS*width, MPI_DTYPE, top_nbr, 2101,
 			MPI_COMM_WORLD, &(request[1]));
 
 	      for (kk=0,j=jend-RADIUS+1; j<=jend; j++) for (i=istart; i<=iend; i++) {
 		  top_buf_out[kk++]= IN(i,j);
 		}
               #pragma ocr spmd send SEND_DBK(DBK_TOP_BUF_OUT) DEP_EVTs() OEVENT(OEVT_stopbufout)
-	      MPI_Isend(top_buf_out, RADIUS*width,MPI_DTYPE, top_nbr, 99,
+	      MPI_Isend(top_buf_out, RADIUS*width,MPI_DTYPE, top_nbr, 299,
 			MPI_COMM_WORLD, &(request[0]));
 
               #pragma ocr task TASK(TASK_TopBufCopyEven) DEP_DBKs(DBK_IN) DEP_EVTs(EVT_TOP_BUF_IN, OEVT_stopbufout) \
@@ -449,14 +467,14 @@ int main(int argc, char* argv[]) {
 	    } // End even iteration
 	    else {
 	      #pragma ocr spmd recv RECV_EVT(EVT_TOP_BUF_IN) DEP_EVTs() OEVENT(OEVT_rtopbufin)
-	      MPI_Irecv(top_buf_in, RADIUS*width, MPI_DTYPE, top_nbr, 101,
+	      MPI_Irecv(top_buf_in, RADIUS*width, MPI_DTYPE, top_nbr, 1101,
 			MPI_COMM_WORLD, &(request[1]));
 
 	      for (kk=0,j=jend-RADIUS+1; j<=jend; j++) for (i=istart; i<=iend; i++) {
 		  top_buf_out2[kk++]= IN(i,j);
 		}
               #pragma ocr spmd send SEND_DBK(DBK_TOP_BUF_OUT2) DEP_EVTs() OEVENT(OEVT_stopbufout)
-	      MPI_Isend(top_buf_out2, RADIUS*width,MPI_DTYPE, top_nbr, 99,
+	      MPI_Isend(top_buf_out2, RADIUS*width,MPI_DTYPE, top_nbr, 199,
 			MPI_COMM_WORLD, &(request[0]));
 
               #pragma ocr task TASK(TASK_TopBufCopyOdd) DEP_DBKs(DBK_IN) DEP_EVTs(EVT_TOP_BUF_IN, OEVT_stopbufout) \
@@ -483,13 +501,13 @@ int main(int argc, char* argv[]) {
 	  if (my_IDy > 0) {
 	    if(iter % 2 == 0) {
               #pragma ocr spmd recv RECV_EVT(EVT_BOTTOM_BUF_IN) DEP_EVTs() OEVENT(OEVT_rbottombufin)
-	      MPI_Irecv(bottom_buf_in,RADIUS*width, MPI_DTYPE, bottom_nbr, 99,
+	      MPI_Irecv(bottom_buf_in,RADIUS*width, MPI_DTYPE, bottom_nbr, 299,
 			MPI_COMM_WORLD, &(request[3]));
 	      for (kk=0,j=jstart; j<=jstart+RADIUS-1; j++) for (i=istart; i<=iend; i++) {
 		  bottom_buf_out[kk++]= IN(i,j);
 		}
               #pragma ocr spmd send SEND_DBK(DBK_BOTTOM_BUF_OUT) DEP_EVTs() OEVENT(OEVT_sbottombufout)
-	      MPI_Isend(bottom_buf_out, RADIUS*width,MPI_DTYPE, bottom_nbr, 101,
+	      MPI_Isend(bottom_buf_out, RADIUS*width,MPI_DTYPE, bottom_nbr, 2101,
 			MPI_COMM_WORLD, &(request[2]));
 
               #pragma ocr task TASK(TASK_BottomBufCopyEven) DEP_DBKs(DBK_IN) DEP_EVTs(EVT_BOTTOM_BUF_IN, OEVT_sbottombufout) \
@@ -505,13 +523,13 @@ int main(int argc, char* argv[]) {
 	    } // End even iteration
 	    else {
 	      #pragma ocr spmd recv RECV_EVT(EVT_BOTTOM_BUF_IN) DEP_EVTs() OEVENT(OEVT_rbottombufin)
-	      MPI_Irecv(bottom_buf_in,RADIUS*width, MPI_DTYPE, bottom_nbr, 99,
+	      MPI_Irecv(bottom_buf_in,RADIUS*width, MPI_DTYPE, bottom_nbr, 199,
 			MPI_COMM_WORLD, &(request[3]));
 	      for (kk=0,j=jstart; j<=jstart+RADIUS-1; j++) for (i=istart; i<=iend; i++) {
 		  bottom_buf_out2[kk++]= IN(i,j);
 		}
               #pragma ocr spmd send SEND_DBK(DBK_BOTTOM_BUF_OUT2) DEP_EVTs() OEVENT(OEVT_sbottombufout)
-	      MPI_Isend(bottom_buf_out2, RADIUS*width,MPI_DTYPE, bottom_nbr, 101,
+	      MPI_Isend(bottom_buf_out2, RADIUS*width,MPI_DTYPE, bottom_nbr, 1101,
 			MPI_COMM_WORLD, &(request[2]));
 
               #pragma ocr task TASK(TASK_BottomBufCopyOdd) DEP_DBKs(DBK_IN) DEP_EVTs(EVT_BOTTOM_BUF_IN, OEVT_sbottombufout) \
@@ -539,14 +557,14 @@ int main(int argc, char* argv[]) {
 	  if (my_IDx < Num_procsx-1) {
 	    if(iter % 2 == 0) {
               #pragma ocr spmd recv RECV_EVT(EVT_RIGHT_BUF_IN) DEP_EVTs() OEVENT(OEVT_rrightbufin)
-	      MPI_Irecv(right_buf_in, RADIUS*height, MPI_DTYPE, right_nbr, 1010,
+	      MPI_Irecv(right_buf_in, RADIUS*height, MPI_DTYPE, right_nbr, 21010,
 			MPI_COMM_WORLD, &(request[1+4]));
 	      for (kk=0,j=jstart; j<=jend; j++) for (i=iend-RADIUS+1; i<=iend; i++) {
 		  right_buf_out[kk++]= IN(i,j);
 		}
 
               #pragma ocr spmd send SEND_DBK(DBK_RIGHT_BUF_OUT) DEP_EVTs() OEVENT(OEVT_srightbufout)
-	      MPI_Isend(right_buf_out, RADIUS*height, MPI_DTYPE, right_nbr, 990,
+	      MPI_Isend(right_buf_out, RADIUS*height, MPI_DTYPE, right_nbr, 2990,
 			MPI_COMM_WORLD, &(request[0+4]));
 
               #pragma ocr task TASK(TASK_RightBufCopyEven) DEP_DBKs(DBK_IN) DEP_EVTs(OEVT_srightbufout, EVT_RIGHT_BUF_IN) \
@@ -562,14 +580,14 @@ int main(int argc, char* argv[]) {
 	    } // end even iteration
 	    else {
               #pragma ocr spmd recv RECV_EVT(EVT_RIGHT_BUF_IN) DEP_EVTs() OEVENT(OEVT_rrightbufin)
-	      MPI_Irecv(right_buf_in, RADIUS*height, MPI_DTYPE, right_nbr, 1010,
+	      MPI_Irecv(right_buf_in, RADIUS*height, MPI_DTYPE, right_nbr, 11010,
 			MPI_COMM_WORLD, &(request[1+4]));
 	      for (kk=0,j=jstart; j<=jend; j++) for (i=iend-RADIUS+1; i<=iend; i++) {
 		  right_buf_out2[kk++]= IN(i,j);
 		}
 
               #pragma ocr spmd send SEND_DBK(DBK_RIGHT_BUF_OUT2) DEP_EVTs() OEVENT(OEVT_srightbufout)
-	      MPI_Isend(right_buf_out2, RADIUS*height, MPI_DTYPE, right_nbr, 990,
+	      MPI_Isend(right_buf_out2, RADIUS*height, MPI_DTYPE, right_nbr, 1990,
 			MPI_COMM_WORLD, &(request[0+4]));
 
               #pragma ocr task TASK(TASK_RightBufCopyOdd) DEP_DBKs(DBK_IN) DEP_EVTs(OEVT_srightbufout, EVT_RIGHT_BUF_IN) \
@@ -596,7 +614,7 @@ int main(int argc, char* argv[]) {
 	  if (my_IDx > 0) {
 	    if(iter % 2 == 0) {
               #pragma ocr spmd recv RECV_EVT(EVT_LEFT_BUF_IN) DEP_EVTs() OEVENT(OEVT_rleftbufin)
-	      MPI_Irecv(left_buf_in, RADIUS*height, MPI_DTYPE, left_nbr, 990,
+	      MPI_Irecv(left_buf_in, RADIUS*height, MPI_DTYPE, left_nbr, 2990,
 			MPI_COMM_WORLD, &(request[3+4]));
 
 	      for (kk=0,j=jstart; j<=jend; j++) for (i=istart; i<=istart+RADIUS-1; i++) {
@@ -604,7 +622,7 @@ int main(int argc, char* argv[]) {
 		}
 
               #pragma ocr spmd send SEND_DBK(DBK_LEFT_BUF_OUT) DEP_EVTs() OEVENT(OEVT_sleftbufout)
-	      MPI_Isend(left_buf_out, RADIUS*height, MPI_DTYPE, left_nbr, 1010,
+	      MPI_Isend(left_buf_out, RADIUS*height, MPI_DTYPE, left_nbr, 21010,
 			MPI_COMM_WORLD, &(request[2+4]));
 
               #pragma ocr task TASK(TASK_LeftBufCopyEven) DEP_DBKs(DBK_IN) DEP_EVTs(OEVT_sleftbufout, EVT_LEFT_BUF_IN) \
@@ -620,7 +638,7 @@ int main(int argc, char* argv[]) {
 	    } // end even iteration
 	    else {
 	      #pragma ocr spmd recv RECV_EVT(EVT_LEFT_BUF_IN) DEP_EVTs() OEVENT(OEVT_rleftbufin)
-	      MPI_Irecv(left_buf_in, RADIUS*height, MPI_DTYPE, left_nbr, 990,
+	      MPI_Irecv(left_buf_in, RADIUS*height, MPI_DTYPE, left_nbr, 1990,
 			MPI_COMM_WORLD, &(request[3+4]));
 
 	      for (kk=0,j=jstart; j<=jend; j++) for (i=istart; i<=istart+RADIUS-1; i++) {
@@ -628,7 +646,7 @@ int main(int argc, char* argv[]) {
 		}
 
               #pragma ocr spmd send SEND_DBK(DBK_LEFT_BUF_OUT2) DEP_EVTs() OEVENT(OEVT_sleftbufout)
-	      MPI_Isend(left_buf_out2, RADIUS*height, MPI_DTYPE, left_nbr, 1010,
+	      MPI_Isend(left_buf_out2, RADIUS*height, MPI_DTYPE, left_nbr, 11010,
 			MPI_COMM_WORLD, &(request[2+4]));
 
               #pragma ocr task TASK(TASK_LeftBufCopyOdd) DEP_DBKs(DBK_IN) DEP_EVTs(OEVT_sleftbufout, EVT_LEFT_BUF_IN) \
