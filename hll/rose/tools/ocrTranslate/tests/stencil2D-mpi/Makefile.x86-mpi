@@ -5,5 +5,7 @@
 CONFIG_COMM_LAYER := mpi
 OCR_TYPE := x86-mpi
 
+CC=mpicxx
+
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(TOP)/Makefile.x86-base

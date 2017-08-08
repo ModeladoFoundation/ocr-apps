@@ -10,7 +10,7 @@ APPS_ROOT   ?= ../../../../../../apps
 OCR_TRANSLATOR_ROOT ?= ../../../ocrTranslate
 OCR_TRANSLATOR_BIN ?= ${OCR_TRANSLATOR_ROOT}/bin/ocrTranslate
 OCR_TRANSLATOR_INC  ?= -I/opt/intel/tools/compilers_and_libraries_2016.0.109/linux/mpi/intel64/include
-OCR_TRANSLATOR_FLAGS ?= -DSTAR -DDOUBLE_USER
+OCR_TRANSLATOR_FLAGS ?= -DSTAR -DDOUBLE_USER -DOCRTRANSLATE
 
 # TRANSLATOR INPUT SOURCE
 # Set the target file for translation
@@ -22,7 +22,7 @@ WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
 
-CC = g++
+# CC = g++
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -38,7 +38,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 1000 2000
+WORKLOAD_ARGS ?= 16 100 8000
 
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
@@ -77,6 +77,11 @@ SRCS += wtime.c
 # all OCR required includes and $(APPS_LIBS_INSTALL)/include
 # TG_ARCH is also defined for Fsim
 CFLAGS = -DENABLE_EXTENSION_CHANNEL_EVT -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_RTITF -DENABLE_EXTENSION_AFFINITY
+CFLAGS += $(OCR_TRANSLATOR_FLAGS)
+
+#Tracing
+# CFLAGS += -DOCR_DEBUG_LVL=DEBUG_LVL_VERB
+
 # Additional LDFLAGS. By default, it includes
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
