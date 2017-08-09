@@ -224,8 +224,9 @@ function getworkloadargs()
         init_z=$((${problem_size_z}/${rz}/${tz}))
         num_refine=(`getRefinements $app_name $size $scalingtype`)
         lb=(`getlbOpt $app_name $size $scalingtype`)
+        gS=(`getGrainSizeMiniAMR $size $scalingtype`)
 
-        BASE_ARGS="--num_refine ${num_refine} --max_blocks $(((8**${num_refine})*$init_x*$init_y*$init_z)) --init_x $init_x --init_y $init_y --init_z $init_z --npx $((${rx}*${tx})) --npy $((${ry}*${ty})) --npz $((${rz}*${tz})) --num_tsteps 50 --stages_per_ts 10 --report_diffusion 1 --num_vars 20 --lb_opt ${lb}"
+        BASE_ARGS="--num_refine ${num_refine} --max_blocks $(((8**(${num_refine}+1))*$init_x*$init_y*$init_z)) --nx ${gS[0]} --ny ${gS[1]} --nz ${gS[2]} --init_x $init_x --init_y $init_y --init_z $init_z --npx $((${rx}*${tx})) --npy $((${ry}*${ty})) --npz $((${rz}*${tz})) --report_diffusion 1 --lb_opt ${lb}"
         #WORKLOAD_ARGS="--num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0${BASE_ARGS}" #One sphere moving diagonally (MPI code fails for multi-rank ranks)
         #WORKLOAD_ARGS="--num_objects 1 --object 2 0 -0.01 -0.01 -0.01 0.0 0.0 0.0 0.0 0.0 0.0 0.0009 0.0009 0.0009 ${BASE_ARGS}"  # An expanding sphere (This is stable for MPI code)
         WORKLOAD_ARGS="--num_objects 2 --object 2 0 -1.10 -1.10 -1.10 0.030 0.030 0.030 1.5 1.5 1.5 0.0 0.0 0.0 --object 2 0 0.5 0.5 1.76 0.0 0.0 -0.025 0.75 0.75 0.75 0.0 0.0 0.0 ${BASE_ARGS}" #Two moving spheres (MPI runs are stable)
@@ -241,7 +242,7 @@ function getProfilerArgs()
     local profiler=$1
     case $profiler in
 
-    noProf|baseline|lazyDB)
+    noProf|baseline)
         MAKE_PROFILER_ARGS=""
         ;;
 
@@ -396,6 +397,45 @@ function getSizeMiniAMR()
             S1=16
             ;;
         large*)
+            S1=32
+            ;;
+        esac
+        ;;
+
+    esac
+
+    echo $S1 $S1 $S1
+}
+
+function getGrainSizeMiniAMR()
+{
+    local size=$1
+    local scalingtype=$2
+
+    case ${scalingtype} in
+    "weakscaling") #Weak-scaling is not suported
+        case ${size} in
+        "small")
+            S1=8
+            ;;
+        "medium")
+            S1=16
+            ;;
+        "large")
+            S1=32
+            ;;
+        esac
+        ;;
+
+    "strongscaling")
+        case ${size} in
+        *-gs1-*)
+            S1=8
+            ;;
+        *-gs2*)
+            S1=16
+            ;;
+        *-gs4*)
             S1=32
             ;;
         esac
@@ -593,6 +633,14 @@ function getlbOpt()
         R=1
         ;;
 
+    *-lb31)
+        R=31
+        ;;
+
+    *-lb33)
+        R=33
+        ;;
+
     esac
 
     echo $R
@@ -728,10 +776,10 @@ for profiler in ${PROFILER_LIST[@]}; do
                     for appopts in ${APPOPTS_LIST[@]}; do
 
                         CFLAGS0=""
-                        if [[ $appopts == "noEagerDB" ]]; then
-                            echo $appopts
-                        elif [[ $appopts == "wEagerDB" ]]; then
+                        if [[ $appopts == "wEagerDB" ]]; then
                             CFLAGS0="-DUSE_EAGER_DB_HINT"
+                        elif [[ $appopts == "wLazyDB" ]]; then
+                            CFLAGS0="-DUSE_LAZY_DB_HINT"
                         fi
 
                         for schedulername in ${SCHEDULER_LIST[@]}; do

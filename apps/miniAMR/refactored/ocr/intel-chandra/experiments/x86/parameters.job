@@ -2,21 +2,21 @@ HOST_ID=`hostname -s`
 
 case $HOST_ID in
 edison*)
-NODE_LIST0=(1 8 64)
-THREAD_LIST=(1 8)     #Compute workers per node
+NODE_LIST0=(8 64)
+THREAD_LIST=(8)     #Compute workers per node
     ;;
 
 thor*)
-NODE_LIST0=(1 8 64)
-THREAD_LIST=(1 8)     #Compute workers per node
+NODE_LIST0=(8 64)
+THREAD_LIST=(8)     #Compute workers per node
     ;;
 esac
 
-PROFILER_LIST=("baseline" "lazyDB") # "minimalProf" "detailedProf")
+PROFILER_LIST=("baseline") # "minimalProf" "detailedProf")
 SCALINGTYPE_LIST=("strongscaling") #  weakscaling is impossible to setup with non-uniform refinement
-SIZE_LIST=("small-r0-lb0" "small-r1-lb0" "small-r2-lb0" "small-r0-lb1" "small-r1-lb1" "small-r2-lb1")
+SIZE_LIST=("small-gs4-r0-lb0" "small-gs4-r1-lb0" "small-gs4-r2-lb0" "small-gs4-r0-lb1" "small-gs4-r1-lb1" "small-gs4-r2-lb1")
 TASKFACTOR_LIST=(1)  #Anything other than "1" doesn't make sense for MiniAMR.
-ARCH_LIST=("x86" "x86-mpi")
+ARCH_LIST=("x86-mpi")
 SCHEDULER_LIST=("workstealing") #  "static")
-APPOPTS_LIST=("noEagerDB") # "wEagerDB")
+APPOPTS_LIST=("noLazyDB" "wLazyDB") # "wEagerDB")
 JOBHEADER="J"
