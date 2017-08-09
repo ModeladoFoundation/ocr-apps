@@ -80,7 +80,7 @@ _OCR_TASK_FNC_( FNC_comm )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, commHaloNbrsEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( NULL_GUID, commHaloNbrsEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( NULL_GUID, commHaloNbrsEDT, _idep++, DB_MODE_NULL );
 
     iAxis += 1;
     //paramv[1] = iAxis;
@@ -151,7 +151,7 @@ _OCR_TASK_FNC_( commHaloNbrsEdt )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, packHalosEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( DBK_array, packHalosEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_array, packHalosEDT, _idep++, DB_MODE_RW );
 
     int i, j;
     int comm_stage = (ts-1)*PTR_cmd->stages_per_ts + istage;
@@ -187,16 +187,16 @@ _OCR_TASK_FNC_( commHaloNbrsEdt )
     ocrAddDependence( DBK_array, unpackHalosEDT, _idep++, DB_MODE_RW );
     for (i = 2*iAxis; i < 2*(iAxis+1); i++) {
         if( bp->nei_level[i] == bp->level ) {
-            ocrAddDependence( PTR_dBufH1->haloCurrRecvEVTs[i], unpackHalosEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_dBufH1->haloCurrRecvEVTs[i], unpackHalosEDT, _idep++, DB_MODE_RW );
             DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCurrRecvEVTs[i] ));
         }
         else if( bp->nei_level[i] == bp->level-1 ) {
-            ocrAddDependence( PTR_dBufH1->haloCoarRecvEVTs[i], unpackHalosEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_dBufH1->haloCoarRecvEVTs[i], unpackHalosEDT, _idep++, DB_MODE_RW );
             DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCoarRecvEVTs[i] ));
         }
         else if( bp->nei_level[i] == bp->level+1 ) {
             for( j = 0; j < 4; j++ ) {
-                ocrAddDependence( PTR_dBufH1->haloRefnRecvEVTs[i][j], unpackHalosEDT, _idep++, DB_MODE_RO );
+                ocrAddDependence( PTR_dBufH1->haloRefnRecvEVTs[i][j], unpackHalosEDT, _idep++, DB_MODE_RW );
                 DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloRefnRecvEVTs[i][j] ));
             }
         }

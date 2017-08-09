@@ -274,7 +274,7 @@ _OCR_TASK_FNC_( FNC_continuation )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, loadbalanceEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( reduceBlockCountsOEVTS, loadbalanceEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( reduceBlockCountsOEVTS, loadbalanceEDT, _idep++, DB_MODE_RW );
 
         //start timesteploop
         ts += 1;
@@ -285,7 +285,7 @@ _OCR_TASK_FNC_( FNC_continuation )
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL ); //FNC_timestepLoop
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( loadbalanceOEVTS, timestepLoopEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( loadbalanceOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL );
     }
 
 }

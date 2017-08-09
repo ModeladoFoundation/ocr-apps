@@ -230,8 +230,8 @@ _OCR_TASK_FNC_( FNC_reduceAllUp )
                           EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
             _idep = 0;
-            ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, reduceAllUpEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->parentRedObjects[r].upIEVT, reduceAllUpEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, reduceAllUpEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->parentRedObjects[r].upIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
             //Accumulator EDT
             ocrGuid_t accumulatorEDT;
@@ -241,16 +241,16 @@ _OCR_TASK_FNC_( FNC_reduceAllUp )
                           EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
             _idep = 0; _ichild = 0;
-            ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, accumulatorEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, accumulatorEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( PTR_sharedOcrObjH->parentRedObjects[r].DBK_in, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
 
         }
     }
@@ -265,8 +265,8 @@ _OCR_TASK_FNC_( FNC_reduceAllUp )
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, reduceAllRootNodesEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( redUpOEVT, reduceAllRootNodesEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( redUpOEVT, reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( PTR_rankH->DBK_redUpH[r], reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
 
         ocrGuid_t reduceAllDownEDT;
@@ -276,8 +276,8 @@ _OCR_TASK_FNC_( FNC_reduceAllUp )
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, reduceAllDownEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( redDownIEVT, reduceAllDownEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, reduceAllDownEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( redDownIEVT, reduceAllDownEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_out, reduceAllDownEDT, _idep++, DB_MODE_RW );
 
     }
@@ -351,8 +351,8 @@ _OCR_TASK_FNC_( FNC_reduceAllDown )
                           EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
             _idep = 0;
-            ocrAddDependence( PTR_sharedOcrObjH->childrenRankDBKs[_ichild], reduceAllDownEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild][r].downIEVT, reduceAllDownEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_sharedOcrObjH->childrenRankDBKs[_ichild], reduceAllDownEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild][r].downIEVT, reduceAllDownEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild][r].DBK_out, reduceAllDownEDT, _idep++, DB_MODE_RW );
         }
 
@@ -364,8 +364,8 @@ _OCR_TASK_FNC_( FNC_reduceAllDown )
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
         _idep = 0; _ichild = 0;
-        ocrAddDependence( DBK_rankH, bcastEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( DBK_out, bcastEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_out, bcastEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );

@@ -111,7 +111,7 @@ _OCR_TASK_FNC_( FNC_refine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, commRefnNbrsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( reduceBlockCountsOEVTS, commRefnNbrsEDT, _idep++, DB_MODE_RO ); //TODO - is this dependency really needed?
+        ocrAddDependence( reduceBlockCountsOEVTS, commRefnNbrsEDT, _idep++, DB_MODE_NULL ); //TODO - is this dependency really needed?
 
         flag = 1;
         commRefnSibsPRM_t commRefnSibsPRM = {irefine, flag, 0};
@@ -125,7 +125,7 @@ _OCR_TASK_FNC_( FNC_refine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, commRefnSibsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( commRefnNbrsOEVTS, commRefnSibsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( commRefnNbrsOEVTS, commRefnSibsEDT, _idep++, DB_MODE_NULL );
 
         refineAllLevelsPRM_t refineAllLevelsPRM = {irefine};
         ocrGuid_t refineAllLevelsEDT, refineAllLevelsOEVT, refineAllLevelsOEVTS;
@@ -138,7 +138,7 @@ _OCR_TASK_FNC_( FNC_refine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, refineAllLevelsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( commRefnSibsOEVTS, refineAllLevelsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( commRefnSibsOEVTS, refineAllLevelsEDT, _idep++, DB_MODE_NULL );
         DEBUG_PRINTF(( "Depending on redDownOEVT "GUIDF" \n", redDownOEVT ));
 
         splitBlocksPRM_t splitBlocksPRM = {irefine};
@@ -215,8 +215,8 @@ _OCR_TASK_FNC_( FNC_reduceBlockCounts )
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RO );
-    ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
     ocrGuid_t updateBlockCountsEDT;
     updateBlockCountsPRM_t updateBlockCountsPRM = {irefine, ts};
@@ -495,8 +495,8 @@ _OCR_TASK_FNC_( FNC_refine1Level ) //Make sure irefine is set to '0' the first t
                           EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
             _idep = 0;
-            ocrAddDependence( DBK_rankH, reducelchangeEDT, _idep++, DB_MODE_RO );
-            ocrAddDependence( redUpIEVT, reducelchangeEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( DBK_rankH, reducelchangeEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( redUpIEVT, reducelchangeEDT, _idep++, DB_MODE_RW );
         }
 
         return NULL_GUID;
@@ -531,8 +531,8 @@ _OCR_TASK_FNC_( FNC_refine1Level ) //Make sure irefine is set to '0' the first t
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, reducelchangeEDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( redUpIEVT, reducelchangeEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, reducelchangeEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( redUpIEVT, reducelchangeEDT, _idep++, DB_MODE_RW );
 
         ocrGuid_t scatterRefineEDT, scatterRefineOEVT, scatterRefineOEVTS;
 
@@ -544,7 +544,7 @@ _OCR_TASK_FNC_( FNC_refine1Level ) //Make sure irefine is set to '0' the first t
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, scatterRefineEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( redDownOEVT, scatterRefineEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( redDownOEVT, scatterRefineEDT, _idep++, DB_MODE_RW );
 
         refineLevelsPRM->iter = iter+1;
 
@@ -614,7 +614,7 @@ _OCR_TASK_FNC_( FNC_scatterRefine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, commRefnNbrsReverseEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( NULL_GUID, commRefnNbrsReverseEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( NULL_GUID, commRefnNbrsReverseEDT, _idep++, DB_MODE_NULL );
 
         //refineIntentionSibsReverseHaloExchange();
         flag = -1;
@@ -629,7 +629,7 @@ _OCR_TASK_FNC_( FNC_scatterRefine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, commRefnSibsReverseEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( commRefnNbrsReverseOEVTS, commRefnSibsReverseEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( commRefnNbrsReverseOEVTS, commRefnSibsReverseEDT, _idep++, DB_MODE_NULL );
 
         iAxis = 0;
         flag = 1;
@@ -645,7 +645,7 @@ _OCR_TASK_FNC_( FNC_scatterRefine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, commRefnNbrsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( commRefnSibsReverseOEVTS, commRefnNbrsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( commRefnSibsReverseOEVTS, commRefnNbrsEDT, _idep++, DB_MODE_NULL );
 
         //refineIntentionSibsHaloExchange();
         flag = 1;
@@ -658,7 +658,7 @@ _OCR_TASK_FNC_( FNC_scatterRefine )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, commRefnSibsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( commRefnNbrsOEVTS, commRefnSibsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( commRefnNbrsOEVTS, commRefnSibsEDT, _idep++, DB_MODE_NULL );
 
     }
 

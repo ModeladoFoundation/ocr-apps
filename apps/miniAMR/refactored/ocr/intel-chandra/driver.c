@@ -540,7 +540,7 @@ _OCR_TASK_FNC_( FNC_checkSumLoop )
         ocrAddDependence( checkSumLoopOEVT, checkSumLoopOEVTS, 0, DB_MODE_NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, checkSumLoopEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, checkSumLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( checkSumOEVTS, checkSumLoopEDT, _idep++, DB_MODE_NULL );
     }
 
@@ -604,7 +604,7 @@ _OCR_TASK_FNC_( FNC_checkSum )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, printEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( redDownOEVT, printEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( redDownOEVT, printEDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 }
@@ -776,7 +776,7 @@ _OCR_TASK_FNC_( FNC_finalizeBarrier )
 
         PRINTF("\n" );
 
-        ocrAddDependence( NULL_GUID,  wrapUpEVT, 0, DB_MODE_RO ); //wrapUpEdt
+        ocrAddDependence( NULL_GUID,  wrapUpEVT, 0, DB_MODE_NULL ); //wrapUpEdt
     }
 
     return NULL_GUID;

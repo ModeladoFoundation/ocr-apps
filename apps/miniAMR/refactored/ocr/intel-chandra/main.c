@@ -378,7 +378,7 @@ _OCR_TASK_FNC_( FNC_driver )
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, TS_refineLoop.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, TS_refineLoop.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_in, TS_refineLoop.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( NULL_GUID, TS_refineLoop.EDT, _idep++, DB_MODE_NULL );
 
@@ -664,7 +664,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence( checkSumLoopOEVT, checkSumLoopOEVTS, 0, DB_MODE_NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, checkSumLoopEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, checkSumLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( initRedOEVT, checkSumLoopEDT, _idep++, DB_MODE_NULL );
 
         MyOcrTaskStruct_t TS_miniamrMain; _paramc = 1; _depc = 2;
@@ -677,8 +677,8 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, TS_miniamrMain.EDT, _idep++, DB_MODE_RO );
-        ocrAddDependence( checkSumLoopOEVTS, TS_miniamrMain.EDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( DBK_rankH, TS_miniamrMain.EDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( checkSumLoopOEVTS, TS_miniamrMain.EDT, _idep++, DB_MODE_NULL );
 
         ocrEdtTemplateDestroy( TS_miniamrMain.TML );
 
@@ -762,6 +762,17 @@ void sharedOcrObjCreate( rankH_t* PTR_rankH )
     params.EVENT_CHANNEL.nbSat = 1;
     params.EVENT_CHANNEL.nbDeps = 1;
 
+    ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
+    getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+
+    ocrHint_t dbHint;
+    ocrHintInit( &dbHint, OCR_HINT_DB_T );
+    dbHint = myDbkAffinityHNT;
+
+#ifdef USE_LAZY_DB_HINT
+    ocrSetHintValue(&dbHint, OCR_HINT_DB_LAZY, 1);
+#endif
+
     int *PTR_in, *PTR_out;
     int r;
     size_t size;
@@ -775,8 +786,8 @@ void sharedOcrObjCreate( rankH_t* PTR_rankH )
 
         size = reductionDBKsize( r, PTR_rankH );
 
-        ocrDbCreate( &PTR_redObjects->DBK_in, (void**) &PTR_in, size, 0, NULL_HINT, NO_ALLOC );
-        ocrDbCreate( &PTR_redObjects->DBK_out, (void**) &PTR_out, size, 0, NULL_HINT, NO_ALLOC );
+        ocrDbCreate( &PTR_redObjects->DBK_in, (void**) &PTR_in, size, 0, &dbHint, NO_ALLOC );
+        ocrDbCreate( &PTR_redObjects->DBK_out, (void**) &PTR_out, size, 0, &dbHint, NO_ALLOC );
 
         ocrDbRelease( PTR_redObjects->DBK_in );
         ocrDbRelease( PTR_redObjects->DBK_out );
@@ -845,6 +856,14 @@ ocrGuid_t initEdt( EDT_ARGS )
 
    int ievent;
 
+    ocrHint_t dbHint;
+    ocrHintInit( &dbHint, OCR_HINT_DB_T );
+    dbHint = myDbkAffinityHNT;
+
+#ifdef USE_LAZY_DB_HINT
+    ocrSetHintValue(&dbHint, OCR_HINT_DB_LAZY, 1);
+#endif
+
    for (ilevel = 0; ilevel <= num_refine; ilevel++)
    {
         gz = p2*npz*init_block_z; //global blocks in z at this level
@@ -866,7 +885,7 @@ ocrGuid_t initEdt( EDT_ARGS )
             rankH_t *PTR_rankH;
 
             //DB creation calls
-            ocrDbCreate( &DBK_rankH, (void**) &PTR_rankH, sizeof(rankH_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+            ocrDbCreate( &DBK_rankH, (void**) &PTR_rankH, sizeof(rankH_t), DB_PROP_NONE, &dbHint, NO_ALLOC );
             memcpy( &(PTR_rankH->globalParamH), PTR_globalParamH, sizeof(globalParamH_t) );
 
             PTR_rankH->myDbkAffinityHNT = myDbkAffinityHNT;
@@ -988,7 +1007,7 @@ ocrGuid_t initEdt( EDT_ARGS )
 
                 sharedOcrObj_t* PTR_sharedOcrObjH_copy;
                 ocrGuid_t eventsDBK;
-                ocrDbCreate( &eventsDBK, (void**) &PTR_sharedOcrObjH_copy, sizeof(sharedOcrObj_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                ocrDbCreate( &eventsDBK, (void**) &PTR_sharedOcrObjH_copy, sizeof(sharedOcrObj_t), DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
                 ievent = 0;
 
                 memcpy( PTR_sharedOcrObjH_copy, PTR_sharedOcrObjH, sizeof(sharedOcrObj_t) );
@@ -1276,8 +1295,8 @@ int check_input(Command cmd)
       PRINTF("code must be 0, 1, or 2\n");
       error = 1;
    }
-   if (cmd.lb_opt != 0 && cmd.lb_opt != 1 && cmd.lb_opt != 2 && cmd.lb_opt != 21) {
-      PRINTF("lb_opt must be 0, 1, 2 or 21\n");
+   if (cmd.lb_opt != 0 && cmd.lb_opt != 1 && cmd.lb_opt != 31 && cmd.lb_opt != 33) {
+      PRINTF("lb_opt must be 0, 1, 31 or 33\n");
       error = 1;
    }
 

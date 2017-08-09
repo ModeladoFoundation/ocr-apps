@@ -61,7 +61,7 @@ ocrGuid_t commRefnNbrsEdt(EDT_ARGS)
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, exchangeDataEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( NULL_GUID, exchangeDataEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( NULL_GUID, exchangeDataEDT, _idep++, DB_MODE_NULL );
 
     iAxis += 1;
     commRefnNbrsPRM->iAxis = iAxis;
@@ -170,16 +170,16 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     ocrAddDependence( DBK_rankH, unpackRefnBufsEDT, _idep++, DB_MODE_RW );
     for (i = 2*iAxis; i < 2*(iAxis+1); i++) {
         if( bp->nei_level[i] == bp->level ) {
-            ocrAddDependence( PTR_dBufH1->haloCurrRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_dBufH1->haloCurrRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
             DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCurrRecvEVTs[i] ));
         }
         else if( bp->nei_level[i] == bp->level-1 ) {
-            ocrAddDependence( PTR_dBufH1->haloCoarRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_dBufH1->haloCoarRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
             DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCoarRecvEVTs[i] ));
         }
         else if( bp->nei_level[i] == bp->level+1 ) {
             for( j = 0; j < 4; j++ ) {
-                ocrAddDependence( PTR_dBufH1->haloRefnRecvEVTs[i][j], unpackRefnBufsEDT, _idep++, DB_MODE_RO );
+                ocrAddDependence( PTR_dBufH1->haloRefnRecvEVTs[i][j], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
                 DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloRefnRecvEVTs[i][j] ));
             }
         }

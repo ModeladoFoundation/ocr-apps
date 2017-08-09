@@ -88,7 +88,7 @@ _OCR_TASK_FNC_( FNC_loadbalance )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, redistributeblocksEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( redDownOEVT, redistributeblocksEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( redDownOEVT, redistributeblocksEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( idgatherOEVTS, redistributeblocksEDT, _idep++, DB_MODE_NULL );
 
     return NULL_GUID;
@@ -160,7 +160,7 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
 
     int pd;
 
-    if( lb_opt == 2 ) { // 3D
+    if( lb_opt == 33 ) { // 3D
         u64 edtGridDims[3];
         u64 pdGridDims[3];
 
@@ -173,7 +173,7 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
         PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
         #endif
     }
-    else if( lb_opt == 21 || lb_opt == 1 ) { //1D or Morton/Z-curve
+    else if( lb_opt == 31 || lb_opt == 1 ) { //1D or Morton/Z-curve
         u64 pdGridDims[1] = { PDS };
         u64 edtGridDims[1] = { PTR_rankH->active_blockcount };
         pd = getPolicyDomainID_Cart1D( PTR_rankH->seqRank, edtGridDims, pdGridDims );

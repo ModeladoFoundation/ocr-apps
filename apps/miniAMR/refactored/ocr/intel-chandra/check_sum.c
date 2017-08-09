@@ -73,7 +73,7 @@ void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int 
     ocrAddDependence( reduceAllUpOEVT, reduceAllUpOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RO );
+    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
     DEBUG_PRINTF(("CHECKSUM block number %d level %d stage %d ts %d var %d sum %f\n", PTR_rankH->myRank, bp->level, istage, ts, var, *sum));

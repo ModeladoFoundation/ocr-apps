@@ -46,7 +46,7 @@
 #define REFINE_FREQ 5             //--refine_freq - frequency (in timesteps) of checking for refinement
 #define REPORT_DIFFUSION 0        //--report_diffusion - (>= 0) none if 0
 #define ERROR_TOL 8               //--error_tol - (e^{-error_tol} ; >= 0)
-#define NUM_TSTEPS 20             //--num_tsteps - number of timesteps (> 0)
+#define NUM_TSTEPS 50             //--num_tsteps - number of timesteps (> 0)
 #define STAGES_PER_TS 20          //--stages_per_ts - number of comm/calc stages per timestep
 #define CHECKSUM_FREQ 5           //--checksum_freq - number of stages between checksums
 #define STENCIL 7                 //--stencil - 7 or 27 point (27 will not work with refinement (except uniform))

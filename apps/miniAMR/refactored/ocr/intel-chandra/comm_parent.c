@@ -104,7 +104,7 @@ ocrGuid_t commRefnSibsEdt(EDT_ARGS)
     for (i = 0; i < 8; i++) {
         //if( bp->sib_level[i] == bp->level && bp->level != 0 ) {
         if( bp->level != 0 ) {
-            ocrAddDependence( PTR_dBufH1->haloSiblingsRecvEVTs[i], unpackRefnBufsSibsEDT, _idep++, DB_MODE_RO );
+            ocrAddDependence( PTR_dBufH1->haloSiblingsRecvEVTs[i], unpackRefnBufsSibsEDT, _idep++, DB_MODE_RW );
         }
         else {
             ocrAddDependence( NULL_GUID, unpackRefnBufsSibsEDT, _idep++, DB_MODE_RW );
@@ -124,7 +124,7 @@ ocrGuid_t commRefnSibsEdt(EDT_ARGS)
 
         _idep = 0;
         ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, exchangeDataParentSibsEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( NULL_GUID, exchangeDataParentSibsEDT, _idep++, DB_MODE_RO );
+        ocrAddDependence( NULL_GUID, exchangeDataParentSibsEDT, _idep++, DB_MODE_NULL );
 
     }
 

@@ -50,7 +50,7 @@ The list of arguments and their defaults is as follows:
       of these number has to equal the number of processors being used.  The
       default is 1 block in each direction.
 
-   --max_blocks - maximun number of blocks per processor
+   --max_blocks - maximun number of blocks per processor (N/A for the OCR code)
       The maximun number of blocks used per processor.  This is the number of
       blocks that will be allocated at the start of the run and the code will
       fail if this number is exceeded.  The default is 500 blocks.
@@ -94,13 +94,13 @@ The list of arguments and their defaults is as follows:
       by the average.  The default is zero, which means to always load
       balance at each refinement step.
 
-   --lb_opt - (0, 1, 2) determine load balance strategy
+   --lb_opt - (0, 1, 2) determine load balance strategy (2 is not supported!)
       If set to 0, then load balancing is not performed.  The default is
       set to 1 which load balances each refinement step according the Morzon/
       Z-curve ordering.
-      if set to 2, load balancing is done by reordering the block #s and
+      if set to 31, load balancing is done by reordering the block #s and
       mapping them to available PDs assuming 1D partitioning
-      If set to 21, loadbalcning is done by reordering the block #s but
+      If set to 33, loadbalcning is done by reordering the block #s but
       with 3D paritioning of the blocks and PDs.
 
    --num_vars - number of variables (> 0)
