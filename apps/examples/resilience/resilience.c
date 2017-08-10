@@ -17,6 +17,8 @@
  *       / | \              / | \
  * locEdt ... locEdt  locEdt ... locEdt
  *       \ | /              \ | /
+ *       syncEdt->(evt satisfy)
+ *       \ | /              \ | /
  *    resEdt[2][0]        resEdt[2][1]      ...  resEdt[2][XDIM-1]
  *       / | \              / | \
  * locEdt ... locEdt  locEdt ... locEdt
@@ -41,7 +43,7 @@
 //Configurable params
 #define N       4
 #define XDIM    N   //Number of tiles or blocks in X-dimension
-#define ITERS   N   //Number of iterations in application
+#define ITERS   N*N   //Number of iterations in application
 
 //Derived params (DO NOT CHANGE)
 #define NUM_DIMS 1 //(x)
@@ -56,7 +58,7 @@
 #define NUM_DEPS 3 /*3-point stencil*/
 
 #define NUM_LOCAL_EDTS 2
-#define INJECT_FAULT 0
+#define INJECT_FAULT 1
 
 //Dummy function for local computation EDT on every iteration in each rank
 ocrGuid_t localFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
@@ -112,7 +114,7 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuid_t shutdownEdt = guidParamv[0];
         ocrGuid_t curOutputEvent;
         ocrGetOutputEvent(&curOutputEvent);
-        ocrAddDependence(NULL_GUID, shutdownEdt, x, DB_MODE_CONST);
+        ocrAddDependence(NULL_GUID, shutdownEdt, x, DB_MODE_NULL);
         return NULL_GUID;
     }
 
@@ -149,6 +151,9 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t oEvt;
     ocrGuidTableGet(USER_KEY((iter + 1), x), &oEvt);
     ocrEventSatisfy(oEvt, db);
+    if (iter < NUM_ITERS) {
+        //PRINTF("[Node %lu]: (%lu, %lu) Satisfied EVT: 0x%lx with DB: 0x%lx\n", ocrGetLocation(), iter, x, oEvt.guid, db.guid);
+    }
 
     //Schedule EDT for next iteration (iter + 1)
     ocrGuid_t rankEdt_template;
@@ -191,10 +196,10 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrGuidTablePut(USER_KEY((iter + 2), x), evt);
     }
 
-    if (iter < NUM_ITERS) {
-        //PRINTF("[Node %lu]: Done (%lu, %lu). Created EDT: 0x%lx IN: (0x%lx, 0x%lx, 0x%lx). Satisfied EVT: 0x%lx Created EVT: 0x%lx\n",
-        //    ocrGetLocation(), iter, x, rankEdt.guid, deps[0].guid, deps[1].guid, deps[2].guid, oEvt, evt);
-    }
+    if (iter < NUM_ITERS) {/*
+        PRINTF("[Node %lu]: Done (%lu, %lu). Created EDT: 0x%lx IN: (0x%lx, 0x%lx, 0x%lx).\n",
+            ocrGetLocation(), iter, x, rankEdt.guid, deps[0].guid, deps[1].guid, deps[2].guid);
+    */}
     return NULL_GUID;
 }
 
@@ -223,6 +228,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t shutdown_template, shutdownEdt;
     ocrEdtTemplateCreate(&shutdown_template, shutdownFunc, 0, ITER_SPACE);
     ocrEdtCreate(&shutdownEdt, shutdown_template, 0, NULL, ITER_SPACE, NULL, EDT_PROP_NONE, NULL_HINT, NULL);
+    //PRINTF("Created SHUTDOWN EDT: 0x%lx\n", shutdownEdt.guid);
 
     //Create the rank EDT template
     ocrGuid_t rankEdt_template;
