@@ -30,16 +30,23 @@
 #include "proto.h"
 
 // Generate check sum for a variable over all active blocks.
-void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum )
+void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, ocrDBK_t DBK_octTreeRedH, octTreeRedH_t* PTR_octTreeRedH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum )
 {
     int n, in, i, j, k;
     double gsum, block_sum, t1, t2, t3;
 
     block *bp = &PTR_rankH->blockH;
+    int number = bp->number;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
+
+    ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
+    myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+
+    ocrTML_t TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
 
     int x_block_size = PTR_cmd->x_block_size;
     int y_block_size = PTR_cmd->y_block_size;
@@ -51,32 +58,33 @@ void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int 
             for (k = 1; k <= z_block_size; k++)
                 sum[0] += IN(bp,var,i,j,k);
 
+    DEBUG_PRINTF(("CHECKSUM block number %d level %d stage %d ts %d var %d sum %f\n", PTR_rankH->myRank, bp->level, istage, ts, var, *sum));
+
     s32 _idep, _paramc, _depc;
 
     int istart = var;
     int r = CHECKSUM_RED_HANDLE_LB + (istart)%2;
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
 
     ocrDbRelease( DBK_gridSum_in );
     ocrEventSatisfy( redUpIEVT, DBK_gridSum_in ); //All blocks provide partial sums
 
-    int phase = var;
-    reducePRM_t reducePRM = {-1, ts, phase, r};
-    ocrGuid_t reduceAllUpEDT, reduceAllUpOEVT, reduceAllUpOEVTS;
+    ocrDbRelease( DBK_rankH );
+    ocrDbRelease( DBK_octTreeRedH );
 
-    ocrEdtCreate( &reduceAllUpEDT, PTR_rankTemplateH->TML_reduceAllUp, //FNC_reduceAllUp
+    int phase = var;
+    reducePRM_t reducePRM = {-1, ts, phase, r, number};
+    ocrGuid_t reduceAllUpEDT;
+
+    ocrEdtCreate( &reduceAllUpEDT, TML_reduceAllUp, //FNC_reduceAllUp
                   EDT_PARAM_DEF, (u64*) &reducePRM, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &reduceAllUpOEVT );
-    createEventHelper(&reduceAllUpOEVTS, 1);
-    ocrAddDependence( reduceAllUpOEVT, reduceAllUpOEVTS, 0, DB_MODE_NULL );
+                  EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_octTreeRedH, reduceAllUpEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
-
-    DEBUG_PRINTF(("CHECKSUM block number %d level %d stage %d ts %d var %d sum %f\n", PTR_rankH->myRank, bp->level, istage, ts, var, *sum));
 
     return;
 }

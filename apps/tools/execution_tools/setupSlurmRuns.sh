@@ -438,6 +438,11 @@ function getGrainSizeMiniAMR()
         *-gs4*)
             S1=32
             ;;
+        *-gs5*)
+            S1=40
+            ;;
+        *-gs6*)
+            S1=48
         esac
         ;;
 

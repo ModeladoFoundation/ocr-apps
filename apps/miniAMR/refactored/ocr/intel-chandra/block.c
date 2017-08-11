@@ -69,11 +69,13 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
     s32 _idep, _paramc, _depc;
 
     _idep = 0;
-    ocrGuid_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrDBK_t DBK_consolidateRedH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     reductionPrivate_t* PTR_consolidateRedH = depv[_idep++].ptr;
 
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
@@ -115,31 +117,29 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
 
         printBlockSibsInfo(bp, 1);
 
-        if( bp->refine == -1 ) {
+        if( bp->refine == COARSEN ) {
             double tmp = 1.0;
             reductionLaunch(PTR_consolidateRedH, DBK_consolidateRedH, &tmp);
         }
 
-        if( bp->refine == 1 || (bp->refine == -1 && PTR_rankH->isibling == 0 ) ) {
+        if( bp->refine == REFINE || (bp->refine == COARSEN && PTR_rankH->isibling == 0 ) ) {
 
             ocrDBK_t parentRankDBK;
             ocrDBK_t childrenRankDBKs[8];
 
             ocrEVT_t createChildTriggerEvent;
-            if( bp->refine == 1 ) { //refine
+            if( bp->refine == REFINE ) { //refine
                 parentRankDBK = DBK_rankH;
-                //childrenRankDBKs = PTR_sharedOcrObjH->childrenRankDBKs;
                 memcpy( childrenRankDBKs, PTR_sharedOcrObjH->childrenRankDBKs, 8*sizeof(ocrDBK_t) );
 
                 createChildTriggerEvent = NULL_GUID;
             }
-            else if( bp->refine == -1 ) {
+            else if( bp->refine == COARSEN ) {
                 parentRankDBK = PTR_sharedOcrObjH->parentRankDBK;
-                //childrenRankDBKs = PTR_sharedOcrObjH->siblingsRankDBKs;
                 memcpy( childrenRankDBKs, PTR_sharedOcrObjH->siblingsRankDBKs, 8*sizeof(ocrDBK_t) );
 
                 int r = COARSEN_RED_HANDLE_LB+irefine%2; //reserved
-                redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+                redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
                 ocrEVT_t consolidateRedDownIEVT = PTR_redObjects->downIEVT;
 
@@ -147,6 +147,7 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
             }
 
             ocrDbRelease( DBK_rankH );
+            ocrDbRelease( DBK_octTreeRedH );
 
             ocrGuid_t createChildBlocksEDT;
             createChildBlocksPRM_t createChildBlocksPRM = {irefine, refine};
@@ -167,12 +168,13 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
             ocrAddDependence( childrenRankDBKs[_ichild++], createChildBlocksEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( createChildTriggerEvent, createChildBlocksEDT, _idep++, DB_MODE_RW );
         }
-        else if( bp->refine == 0 ) {
+        else if( bp->refine == STAY ) {
 
             updateNeighborLevels( bp );
             DEBUG_PRINTF(("\nunmodified block ilevel %d id_l %d nei_level %d %d %d %d %d %d sib_level %d %d %d %d %d %d %d %d\n", bp->level, PTR_rankH->myRank, bp->nei_level[0], bp->nei_level[1], bp->nei_level[2], bp->nei_level[3], bp->nei_level[4], bp->nei_level[5], bp->sib_level[0], bp->sib_level[1], bp->sib_level[2], bp->sib_level[3], bp->sib_level[4], bp->sib_level[5], bp->sib_level[6], bp->sib_level[7]));
 
             ocrDbRelease( DBK_rankH );
+            ocrDbRelease( DBK_octTreeRedH );
 
             ocrGuid_t continuationEDT;
             continuationPRM_t continuationPRM = {irefine};
@@ -181,11 +183,14 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
                           EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_continuation
             _idep = 0;
             ocrAddDependence( DBK_rankH, continuationEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( DBK_octTreeRedH, continuationEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( NULL_GUID, continuationEDT, _idep++, DB_MODE_NULL );
 
         }
-        else
+        else {
            ocrDbRelease(DBK_rankH);
+           ocrDbRelease(DBK_octTreeRedH);
+        }
 
     }
 
@@ -202,9 +207,11 @@ _OCR_TASK_FNC_( FNC_continuation )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
@@ -229,11 +236,15 @@ _OCR_TASK_FNC_( FNC_continuation )
 
     DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, irefine, PTR_rankH->ts ));
 
+    int r = BLOCKCOUNT_RED_HANDLE_LB+(irefine%2);
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
+    ocrDBK_t DBK_in = PTR_redObjects->DBK_in;
+
+    ocrDbRelease( DBK_rankH );
+    ocrDbRelease( DBK_octTreeRedH );
+
     //start next refine
     if( irefine < num_refine_step ) {
-        int r = BLOCKCOUNT_RED_HANDLE_LB+(irefine%2);
-        redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
-        ocrDBK_t DBK_in = PTR_redObjects->DBK_in;
 
         ocrGuid_t refineLoopEDT;
         refineLoopPRM_t refineLoopPRM = {irefine, ts};
@@ -242,15 +253,12 @@ _OCR_TASK_FNC_( FNC_continuation )
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_refineLoop
         _idep = 0;
         ocrAddDependence( DBK_rankH, refineLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, refineLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_in, refineLoopEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( NULL_GUID, refineLoopEDT, _idep++, DB_MODE_NULL );
+        ocrAddDependence( NULL_GUID, refineLoopEDT, _idep++, DB_MODE_NULL);
     }
     else {
         //update block counts
-        int r = BLOCKCOUNT_RED_HANDLE_LB+(irefine%2);
-        redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
-        ocrDBK_t DBK_in = PTR_redObjects->DBK_in;
-
         ocrGuid_t reduceBlockCountsEDT, reduceBlockCountsOEVT, reduceBlockCountsOEVTS;
         reduceBlockCountsPRM_t reduceBlockCountsPRM = {irefine, ts};
         ocrEdtCreate( &reduceBlockCountsEDT, TML_reduceBlockCounts,
@@ -261,6 +269,7 @@ _OCR_TASK_FNC_( FNC_continuation )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, reduceBlockCountsEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, reduceBlockCountsEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_in, reduceBlockCountsEDT, _idep++, DB_MODE_RW );
 
         //Loadbalancing
@@ -274,17 +283,19 @@ _OCR_TASK_FNC_( FNC_continuation )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, loadbalanceEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, loadbalanceEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( reduceBlockCountsOEVTS, loadbalanceEDT, _idep++, DB_MODE_RW );
 
         //start timesteploop
         ts += 1;
         timestepLoopPRM_t timestepLoopPRM = {ts};
         ocrGuid_t timestepLoopEDT;
-        ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->TML_timestepLoop,
+        ocrEdtCreate( &timestepLoopEDT, TML_timestepLoop,
                       EDT_PARAM_DEF, (u64*)&timestepLoopPRM, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL ); //FNC_timestepLoop
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_timestepLoop
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, timestepLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( loadbalanceOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL );
     }
 
@@ -320,10 +331,11 @@ _OCR_TASK_FNC_( FNC_createChildBlocks )
 
     u64 ts = PTR_rankH->ts;
 
+    ocrDBK_t DBK_array = bp->DBK_array;
+
     rankH_t* PTR_children_rankHs[8];
     ocrDBK_t childrenRankDBKs[8];
-
-    block *childrenbp[8];
+    ocrDBK_t DBK_array_children[8];
 
     int o;
     s32 _ichild;
@@ -331,16 +343,19 @@ _OCR_TASK_FNC_( FNC_createChildBlocks )
     // Define the 8 children
     for (o = 0; o < 8; o++) {
         childrenRankDBKs[o] = depv[o+1].guid;
-
         PTR_children_rankHs[o] = depv[o+1].ptr;
 
-        childrenbp[o] = &(PTR_children_rankHs[o]->blockH);
+        DBK_array_children[o] = PTR_children_rankHs[o]->blockH.DBK_array;
+
+        ocrDbRelease(childrenRankDBKs[o]);
     }
+
+    ocrDbRelease(DBK_rankH);
 
     ocrGuid_t createChildBlocks1EDT;
     ocrEdtCreate( &createChildBlocks1EDT, TML_createChildBlocks1, //FNC_createChildBlocks1
                   EDT_PARAM_DEF, (u64*)createChildBlocksPRM, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, NULL );
+                  EDT_PROP_FINISH, &myEdtAffinityHNT, NULL );
 
     _idep = 0; _ichild = 0;
     ocrAddDependence( DBK_rankH, createChildBlocks1EDT, _idep++, DB_MODE_RW );
@@ -352,16 +367,16 @@ _OCR_TASK_FNC_( FNC_createChildBlocks )
     ocrAddDependence( childrenRankDBKs[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( childrenRankDBKs[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
     ocrAddDependence( childrenRankDBKs[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( bp->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
     _ichild = 0;
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( childrenbp[_ichild++]->DBK_array, createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_array_children[_ichild++], createChildBlocks1EDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;
 
@@ -401,6 +416,8 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
 
     rankH_t* PTR_children_rankHs[8];
     ocrDBK_t childrenRankDBKs[8];
+    ocrDBK_t children_DBK_octTreeRedH[8];
+    ocrDBK_t DBK_array_children[8];
 
     block *childrenbp[8];
 
@@ -409,14 +426,17 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
     bp->array = depv[9].ptr;
 
     ocrTML_t TML_continuation = PTR_rankTemplateH->TML_continuation;
+    ocrDBK_t DBK_octTreeRedH = PTR_sharedOcrObjH->DBK_octTreeRedH;
 
     // Define the 8 children
     for (o = 0; o < 8; o++) {
         childrenRankDBKs[o] = depv[o+1].guid;
+        DBK_array_children[o] = depv[o+10].guid;
 
         PTR_children_rankHs[o] = depv[o+1].ptr;
         childrenbp[o] = &(PTR_children_rankHs[o]->blockH);
         childrenbp[o]->array = depv[o+10].ptr;
+        children_DBK_octTreeRedH[o] = PTR_children_rankHs[o]->sharedOcrObjH.DBK_octTreeRedH;
         DEBUG_PRINTF(( "child o %d DBK_array "GUIDF" array PTR %p\n", o, depv[o+10].guid, childrenbp[o]->array ));
     }
 
@@ -429,6 +449,7 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
         for (o = 0; o < 8; o++) {
 
             ocrDbRelease(childrenRankDBKs[o]);
+            ocrDbRelease(DBK_array_children[o]);
 
             ocrGuid_t continuationEDT;
             continuationPRM_t continuationPRM = {irefine};
@@ -437,6 +458,7 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
                           EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_continuation
             _idep = 0;
             ocrAddDependence( childrenRankDBKs[o], continuationEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( children_DBK_octTreeRedH[o], continuationEDT, _idep++, DB_MODE_RW );
             ocrAddDependence( NULL_GUID, continuationEDT, _idep++, DB_MODE_NULL );
         }
     }
@@ -446,6 +468,7 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
         ocrDbRelease(DBK_rankH);
         for (o = 0; o < 8; o++) {
             ocrDbRelease(childrenRankDBKs[o]);
+            ocrDbRelease(DBK_array_children[o]);
         }
 
         DEBUG_PRINTF(( "PARENT irefine %d ts %d\n", irefine, ts ));
@@ -457,6 +480,7 @@ _OCR_TASK_FNC_( FNC_createChildBlocks1 )
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_continuation
         _idep = 0;
         ocrAddDependence( DBK_rankH, continuationEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, continuationEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( NULL_GUID, continuationEDT, _idep++, DB_MODE_NULL );
 
     }
@@ -510,7 +534,7 @@ void split_blocks(rankH_t* PTR_rankH, rankH_t* PTR_children_rankHs[8], int irefi
 
     level = bp->level;
 
-    if (bp->refine == 1) {
+    if (bp->refine == REFINE) {
 
         nl = bp->number - PTR_rankH->block_start[level];
         zp = nl/((PTR_rankH->p2[level]*PTR_cmd->npx*PTR_cmd->init_block_x)*
@@ -521,7 +545,7 @@ void split_blocks(rankH_t* PTR_rankH, rankH_t* PTR_children_rankHs[8], int irefi
         xp = nl%(PTR_rankH->p2[level]*PTR_cmd->npx*PTR_cmd->init_block_x);
 
         pp->number = -1; //DEACTIVATE
-        pp->refine = 0;
+        pp->refine = STAY;
         pp->cen[0] = bp->cen[0];
         pp->cen[1] = bp->cen[1];
         pp->cen[2] = bp->cen[2];
@@ -541,7 +565,7 @@ void split_blocks(rankH_t* PTR_rankH, rankH_t* PTR_children_rankHs[8], int irefi
 
             sib[o] = m; //TODO
 
-            bp1->refine = 0;
+            bp1->refine = STAY;
             bp1->level = PTR_children_rankHs[o]->ilevel; //level + 1;
             bp1->child_number = o;
 
@@ -716,7 +740,7 @@ void consolidate_blocks(rankH_t* PTR_rankH, rankH_t* PTR_children_rankHs[8], int
 
         bp->number = PTR_rankH->myRank_g;//-pp->number;
         bp->level = PTR_rankH->ilevel;
-        bp->refine = 0;
+        bp->refine = STAY;
         bp->cen[0] = pp->cen[0];
         bp->cen[1] = pp->cen[1];
         bp->cen[2] = pp->cen[2];

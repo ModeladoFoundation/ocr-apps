@@ -41,9 +41,11 @@ _OCR_TASK_FNC_( FNC_loadbalance )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
 
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
@@ -63,7 +65,7 @@ _OCR_TASK_FNC_( FNC_loadbalance )
 
     //Launch blockIDgather reduction
     int r = BLOCKIDGATHER_RED_HANDLE_LB;
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redDownOEVT = PTR_redObjects->downOEVT;
     ocrDBK_t DBK_in = PTR_redObjects->DBK_in;
@@ -78,6 +80,7 @@ _OCR_TASK_FNC_( FNC_loadbalance )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, idgatherEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_octTreeRedH, idgatherEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_in, idgatherEDT, _idep++, DB_MODE_RW );
 
     redistributeblocksPRM_t redistributeblocksPRM = {ts};
@@ -238,10 +241,12 @@ _OCR_TASK_FNC_( FNC_idgather )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrDBK_t DBK_in = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     int* in = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
@@ -256,9 +261,10 @@ _OCR_TASK_FNC_( FNC_idgather )
 
     int ilevel = PTR_rankH->ilevel;
     int ts = PTR_rankH->ts;
+    int number = bp->number;
 
     int r = BLOCKIDGATHER_RED_HANDLE_LB;
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redDownOEVT = PTR_redObjects->downOEVT;
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
@@ -275,7 +281,7 @@ _OCR_TASK_FNC_( FNC_idgather )
     ocrDbRelease( DBK_rankH );
 
     int phase = -22;
-    reducePRM_t reducePRM = {-1, ts, phase, r};
+    reducePRM_t reducePRM = {-1, ts, phase, r, number};
     ocrGuid_t reduceAllUpEDT;
 
     ocrEdtCreate( &reduceAllUpEDT, TML_reduceAllUp, //FNC_reduceAllUp
@@ -283,7 +289,7 @@ _OCR_TASK_FNC_( FNC_idgather )
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_octTreeRedH, reduceAllUpEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
     return NULL_GUID;

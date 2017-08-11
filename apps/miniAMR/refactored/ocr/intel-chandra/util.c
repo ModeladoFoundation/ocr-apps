@@ -187,70 +187,94 @@ _OCR_TASK_FNC_( FNC_reduceAllUp )
     int ts = reducePRM->ts;
     int phase = reducePRM->phase;
     int r = reducePRM->r;
+    int number = reducePRM->number;
 
     s32 _idep, _paramc, _depc;
 
     _idep = 0;
-    ocrGuid_t DBK_rankH = depv[_idep++].guid;
+    ocrGuid_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrGuid_t DBK_in = depv[_idep++].guid;
 
     _idep = 0;
-    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     void* PTR_in = depv[_idep++].ptr;
 
-    sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
-    Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
-    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d isibling %d irefine %d phase %d r %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->isibling, irefine, phase, r, ts ));
+    DEBUG_PRINTF(( "%s ilevel %d id_l %d isibling %d irefine %d phase %d r %d ts %d\n", __func__, PTR_octTreeRedH->ilevel, PTR_octTreeRedH->myRank, PTR_octTreeRedH->isibling, irefine, phase, r, ts ));
 
-    int ilevel = PTR_rankH->ilevel;
-
-    block *bp = &PTR_rankH->blockH;
+    int ilevel = PTR_octTreeRedH->ilevel;
 
     s32 _ichild;
 
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redUpOEVT = PTR_redObjects->upOEVT;
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
     ocrEVT_t redDownIEVT = PTR_redObjects->downIEVT;
 
-    ocrEventSatisfy( redUpOEVT, DBK_in ); //All active blocks provide partial sums
+    ocrDBK_t DBK_redRootH = PTR_octTreeRedH->DBK_redRootH[r];
+
+    ocrDBK_t parentredH = PTR_octTreeRedH->parentredH;
+    redObjects_t parentRedObjects;
+    redObjects_t siblingsRedObjects[8];
+    memcpy( &parentRedObjects, &PTR_octTreeRedH->parentRedObjects[r], sizeof(redObjects_t) );
+
+    int _isibling;
+    for(_isibling=0; _isibling <8; _isibling++)
+        memcpy( &siblingsRedObjects[_isibling], &PTR_octTreeRedH->siblingsRedObjects[_isibling][r], sizeof(redObjects_t) );
+
+    PTR_octTreeRedH->number = number;
 
     ocrDBK_t DBK_out = PTR_redObjects->DBK_out;
+    int isibling = PTR_octTreeRedH->isibling;
+
+    ocrTML_t TML_reduceAllUp = PTR_octTreeRedH->TML_reduceAllUp;
+    ocrTML_t TML_reduceAllDown = PTR_octTreeRedH->TML_reduceAllDown;
+    ocrTML_t TML_accumulator = PTR_octTreeRedH->TML_accumulator;
+    ocrTML_t TML_reduceAllRootNodes = PTR_octTreeRedH->TML_reduceAllRootNodes;
+
+    ocrDbRelease( DBK_in );
+    ocrDbRelease( DBK_octTreeRedH );
+
+    ocrEventSatisfy( redUpOEVT, DBK_in ); //All active blocks provide partial sums
+
+    ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
+    getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+
+    reducePRM->number = -1;
 
     if(ilevel != 0) {
 
-        if( PTR_rankH->isibling == 0 ) { //parent reduction up
+        if( isibling == 0 ) { //parent reduction up
+
             //Create a FNC_reduceAllUp task with parents DBK
             ocrGuid_t reduceAllUpEDT;
 
-            ocrEdtCreate( &reduceAllUpEDT, PTR_rankTemplateH->TML_reduceAllUp, //FNC_reduceAllUp
+            ocrEdtCreate( &reduceAllUpEDT, TML_reduceAllUp, //FNC_reduceAllUp
                           EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+                          EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
             _idep = 0;
-            ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, reduceAllUpEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->parentRedObjects[r].upIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( parentredH, reduceAllUpEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( parentRedObjects.upIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
             //Accumulator EDT
             ocrGuid_t accumulatorEDT;
 
-            ocrEdtCreate( &accumulatorEDT, PTR_rankTemplateH->TML_accumulator, //FNC_accumulator
+            ocrEdtCreate( &accumulatorEDT, TML_accumulator, //FNC_accumulator
                           EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+                          EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
             _idep = 0; _ichild = 0;
-            ocrAddDependence( PTR_sharedOcrObjH->parentRankDBK, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->parentRedObjects[r].DBK_in, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->siblingsRedObjects[_ichild++][r].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( parentredH, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( parentRedObjects.DBK_in, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
+            ocrAddDependence( siblingsRedObjects[_ichild++].upOEVT, accumulatorEDT, _idep++, DB_MODE_RW );
 
         }
     }
@@ -260,23 +284,23 @@ _OCR_TASK_FNC_( FNC_reduceAllUp )
         //reductionLaunch(); on root
         ocrGuid_t reduceAllRootNodesEDT;
 
-        ocrEdtCreate( &reduceAllRootNodesEDT, PTR_rankTemplateH->TML_reduceAllRootNodes, //FNC_reduceAllRootNodes
+        ocrEdtCreate( &reduceAllRootNodesEDT, TML_reduceAllRootNodes, //FNC_reduceAllRootNodes
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( redUpOEVT, reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_rankH->DBK_redUpH[r], reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_redRootH, reduceAllRootNodesEDT, _idep++, DB_MODE_RW );
 
         ocrGuid_t reduceAllDownEDT;
 
-        ocrEdtCreate( &reduceAllDownEDT, PTR_rankTemplateH->TML_reduceAllDown, //FNC_reduceAllDown
+        ocrEdtCreate( &reduceAllDownEDT, TML_reduceAllDown, //FNC_reduceAllDown
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
         _idep = 0;
-        ocrAddDependence( DBK_rankH, reduceAllDownEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, reduceAllDownEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( redDownIEVT, reduceAllDownEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_out, reduceAllDownEDT, _idep++, DB_MODE_RW );
 
@@ -292,88 +316,97 @@ _OCR_TASK_FNC_( FNC_reduceAllDown )
     int ts = reducePRM->ts;
     int phase = reducePRM->phase;
     int r = reducePRM->r;
+    //int number = reducePRM->number;
 
     s32 _idep, _paramc, _depc;
 
     _idep = 0;
-    ocrGuid_t DBK_rankH = depv[_idep++].guid;
-    ocrGuid_t DBK_blockCountsOut = depv[_idep++].guid;
+    ocrGuid_t DBK_octTreeRedH = depv[_idep++].guid;
+    ocrGuid_t DBK_in = depv[_idep++].guid;
     ocrGuid_t DBK_out = depv[_idep++].guid;
 
     _idep = 0;
-    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     void* PTR_in = depv[_idep++].ptr;
     void* PTR_out = depv[_idep++].ptr;
 
-    sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
-    Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
-    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d isibling %d irefine %d phase %d r %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->isibling, irefine, phase, r, ts ));
+    DEBUG_PRINTF(( "%s ilevel %d id_l %d isibling %d irefine %d phase %d r %d ts %d\n", __func__, PTR_octTreeRedH->ilevel, PTR_octTreeRedH->myRank, PTR_octTreeRedH->isibling, irefine, phase, r, ts ));
 
-     redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redDownOEVT = PTR_redObjects->downOEVT;
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
 
     int i;
 
-    int ilevel = PTR_rankH->ilevel;
+    int ilevel = PTR_octTreeRedH->ilevel;
+    int number = PTR_octTreeRedH->number;
 
-    block *bp = &PTR_rankH->blockH;
+    ocrTML_t TML_reduceAllDown = PTR_octTreeRedH->TML_reduceAllDown;
+    ocrTML_t TML_bcast = PTR_octTreeRedH->TML_bcast;
 
-    s32 _ichild;
+    ocrDBK_t childrenredH[8];
+    redObjects_t childrenRedObjects[8];
+    memcpy( childrenredH, &PTR_octTreeRedH->childrenredH, 8*sizeof(ocrDBK_t) );
 
-    size_t size;
+    int _ichild;
+    for(_ichild=0; _ichild <8; _ichild++)
+        memcpy( &childrenRedObjects[_ichild], &PTR_octTreeRedH->childrenRedObjects[_ichild][r], sizeof(redObjects_t) );
 
-    size = reductionDBKsize( r, PTR_rankH );
+    ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
+    getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+
+    int size = PTR_octTreeRedH->size[r];
 
     memcpy((char*)PTR_out, (char*)PTR_in, size);
 
     ocrDbRelease(DBK_out);
 
-    if( bp->number >= 0 ) { //active node
+    if( number >= 0 ) { //active node
 
         DEBUG_PRINTF(( "redDownOEVT "GUIDF" is satisfied\n", redDownOEVT ));
-        DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d ts %d DONE\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, phase, ts ));
+        DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d ts %d DONE\n", __func__, PTR_octTreeRedH->ilevel, PTR_octTreeRedH->myRank, irefine, phase, ts ));
 
         ocrEventSatisfy( redDownOEVT, DBK_out ); //Only expose to the active blocks
 
     }
 
-    if( bp->number < 0 ) { // parent
+    ocrDbRelease(DBK_octTreeRedH);
 
-        for( _ichild=0; _ichild < 8; _ichild++ ) {
-            //Create a FNC_reduceAllDown task for all children
-            ocrGuid_t reduceAllDownEDT;
+    if( number < 0 ) { // parent
 
-            ocrEdtCreate( &reduceAllDownEDT, PTR_rankTemplateH->TML_reduceAllDown, //FNC_reduceAllDown
-                          EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                          EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+        //for( _ichild=0; _ichild < 8; _ichild++ ) {
+        //    //Create a FNC_reduceAllDown task for all children
+        //    ocrGuid_t reduceAllDownEDT;
 
-            _idep = 0;
-            ocrAddDependence( PTR_sharedOcrObjH->childrenRankDBKs[_ichild], reduceAllDownEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild][r].downIEVT, reduceAllDownEDT, _idep++, DB_MODE_RW );
-            ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild][r].DBK_out, reduceAllDownEDT, _idep++, DB_MODE_RW );
-        }
+        //    ocrEdtCreate( &reduceAllDownEDT, TML_reduceAllDown, //FNC_reduceAllDown
+        //                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+        //                  EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+
+        //    _idep = 0;
+        //    ocrAddDependence( childrenredH[_ichild], reduceAllDownEDT, _idep++, DB_MODE_RW );
+        //    ocrAddDependence( childrenRedObjects[_ichild].downIEVT, reduceAllDownEDT, _idep++, DB_MODE_RW );
+        //    ocrAddDependence( childrenRedObjects[_ichild].DBK_out, reduceAllDownEDT, _idep++, DB_MODE_RW );
+        //}
 
         //Broadcast to children
         ocrGuid_t bcastEDT;
 
-        ocrEdtCreate( &bcastEDT, PTR_rankTemplateH->TML_bcast, //FNC_bcast
+        ocrEdtCreate( &bcastEDT, TML_bcast, //FNC_bcast
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL );
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
         _idep = 0; _ichild = 0;
-        ocrAddDependence( DBK_rankH, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, bcastEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
-        ocrAddDependence( PTR_sharedOcrObjH->childrenRedObjects[_ichild++][r].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[_ichild++].DBK_out, bcastEDT, _idep++, DB_MODE_RW );
     }
 
     return NULL_GUID;
@@ -387,35 +420,55 @@ _OCR_TASK_FNC_( FNC_bcast )
     int ts = reducePRM->ts;
     int phase = reducePRM->phase;
     int r = reducePRM->r;
+    int number = reducePRM->number;
 
     _idep = 0;
-    ocrGuid_t DBK_rankH = depv[_idep++].guid;
+    ocrGuid_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrGuid_t DBK_out = depv[_idep++].guid;
 
     _idep = 0;
-    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     void* PTR_out = depv[_idep++].ptr;
 
-    sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
-    Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
-    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
+    ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
+    getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
 
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d r %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, phase, r, ts ));
+    ocrTML_t TML_reduceAllDown = PTR_octTreeRedH->TML_reduceAllDown;
 
-     redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d r %d ts %d\n", __func__, PTR_octTreeRedH->ilevel, PTR_octTreeRedH->myRank, irefine, phase, r, ts ));
 
     int i, j;
-    size_t size;
+    int size = PTR_octTreeRedH->size[r];
+
+    ocrDBK_t childrenredH[8];
+    redObjects_t childrenRedObjects[8];
+    memcpy( childrenredH, &PTR_octTreeRedH->childrenredH, 8*sizeof(ocrDBK_t) );
+
+    int _ichild;
+    for(_ichild=0; _ichild <8; _ichild++)
+        memcpy( &childrenRedObjects[_ichild], &PTR_octTreeRedH->childrenRedObjects[_ichild][r], sizeof(redObjects_t) );
+
+    ocrDbRelease( DBK_octTreeRedH );
 
     for( j = 0; j <= 7; j++ ) {
         void* PTR_outTmp = (void*) depv[2+j].ptr;
 
-        size = reductionDBKsize( r, PTR_rankH );
-
         memcpy((char*)PTR_outTmp, (char*)PTR_out, size);
 
         ocrDbRelease( depv[2+j].guid );
-        ocrEventSatisfy( PTR_sharedOcrObjH->childrenRedObjects[j][r].downIEVT, depv[2+j].guid );
+        ocrEventSatisfy( childrenRedObjects[j].downIEVT, depv[2+j].guid );
+        //
+        //Create a FNC_reduceAllDown task for all children
+        ocrGuid_t reduceAllDownEDT;
+
+        ocrEdtCreate( &reduceAllDownEDT, TML_reduceAllDown, //FNC_reduceAllDown
+                      EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+
+        _idep = 0;
+        ocrAddDependence( childrenredH[j], reduceAllDownEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[j].downIEVT, reduceAllDownEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( childrenRedObjects[j].DBK_out, reduceAllDownEDT, _idep++, DB_MODE_RW );
     }
 
     return NULL_GUID;
@@ -429,20 +482,21 @@ _OCR_TASK_FNC_( FNC_reduceAllRootNodes )
     int ts = reducePRM->ts;
     int phase = reducePRM->phase;
     int r = reducePRM->r;
+    int number = reducePRM->number;
 
     _idep = 0;
-    ocrGuid_t DBK_rankH = depv[_idep++].guid;
+    ocrGuid_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrGuid_t DBK_blockCounts = depv[_idep++].guid;
-    ocrDBK_t DBK_redUpH = depv[_idep++].guid;
+    ocrDBK_t DBK_redRootH = depv[_idep++].guid;
 
     _idep = 0;
-    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     void* PTR_in = depv[_idep++].ptr;
-    reductionPrivate_t* PTR_redUpH = depv[_idep++].ptr;
+    reductionPrivate_t* PTR_redRootH = depv[_idep++].ptr;
 
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d r %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, phase, r, ts ));
+    DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d r %d ts %d\n", __func__, PTR_octTreeRedH->ilevel, PTR_octTreeRedH->myRank, irefine, phase, r, ts ));
 
-    reductionLaunch(PTR_redUpH, DBK_redUpH, PTR_in);
+    reductionLaunch(PTR_redRootH, DBK_redRootH, PTR_in);
 
     return NULL_GUID;
 }
@@ -455,24 +509,21 @@ _OCR_TASK_FNC_( FNC_accumulator )
     int ts = reducePRM->ts;
     int phase = reducePRM->phase;
     int r = reducePRM->r;
+    int number = reducePRM->number;
 
     _idep = 0;
-    ocrGuid_t DBK_rankH = depv[_idep++].guid;
+    ocrGuid_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrGuid_t DBK_in = depv[_idep++].guid;
 
     _idep = 0;
-    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     void* PTR_in_void = depv[_idep++].ptr;
 
-    sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
-
-    DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d r %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, phase, r, ts ));
+    DEBUG_PRINTF(( "%s ilevel %d id_l %d irefine %d phase %d r %d ts %d\n", __func__, PTR_octTreeRedH->ilevel, PTR_octTreeRedH->myRank, irefine, phase, r, ts ));
 
     int i, j;
 
-    size_t size;
-
-    size = reductionDBKsize( r, PTR_rankH );
+    int size = PTR_octTreeRedH->size[r];
 
     if( (BLOCKCOUNT_RED_HANDLE_LB <= r && r <= BLOCKCOUNT_RED_HANDLE_UB) ||
         (BLOCKIDGATHER_RED_HANDLE_LB <= r && r <= BLOCKIDGATHER_RED_HANDLE_UB) ||
@@ -512,7 +563,7 @@ _OCR_TASK_FNC_( FNC_accumulator )
 
     ocrDbRelease( DBK_in );
 
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
 

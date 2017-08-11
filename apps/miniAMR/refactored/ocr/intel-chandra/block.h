@@ -38,9 +38,13 @@
 
 #define WORK(bp,i,j,k) bp->work[ INDEXIN(0,i,j,k) ]
 
-#define REFINE 1
-#define STAY 0
-#define COARSEN -1
+//-----------------------------------
+// DO NOT CHANGE THESE VALUES
+// THE CODE WILL BREAK OTHERWISE
+#define REFINE (1)
+#define STAY (0)
+#define COARSEN (-1)
+//-----------------------------------
 
 #define BLOCKCOUNT_RED_HANDLE_LB (0)
 #define BLOCKCOUNT_RED_HANDLE_UB (BLOCKCOUNT_RED_HANDLE_LB+1)
@@ -85,20 +89,6 @@ typedef struct {
    ocrDBK_t DBK_array;
    ocrDBK_t DBK_work;
 } block;
-//block *blocks;  //(max_num_blocks)
-
-typedef struct {
-   int number;
-   int level;
-   int parent;      // -1 if original block
-   int parent_node;
-   int child_number;
-   int refine;
-   int child[8];    // n if on node, number if not
-                    // if negative, then onnode child is a parent (-1 - n)
-   int child_node[8];
-   int cen[3];
-} parent;
 
 typedef struct {
    int type;
@@ -224,9 +214,9 @@ typedef struct
     int* refnCoarRecvPTRs[NUM_NBR_CHANNELS][2];
     int* refnRefnRecvPTRs[NUM_NBR_CHANNELS][4][2];
 
-    ocrDBK_t refnCurrSendSibsDBKs[NUM_CHILDREN_CHANNELS];
-    int* refnCurrSendSibsPTRs[NUM_CHILDREN_CHANNELS];
-    int* refnCurrRecvSibsPTRs[NUM_CHILDREN_CHANNELS];
+    ocrDBK_t refnCurrSendSibsDBKs[NUM_CHILDREN_CHANNELS][2];
+    int* refnCurrSendSibsPTRs[NUM_CHILDREN_CHANNELS][2];
+    int* refnCurrRecvSibsPTRs[NUM_CHILDREN_CHANNELS][2];
 
     ocrEVT_t haloParentSendEVTs[NUM_PARENT_CHANNELS]; //one parent
     ocrEVT_t haloChildrenSendEVTs[NUM_CHILDREN_CHANNELS]; //8 children
@@ -239,9 +229,28 @@ typedef struct
 } doubleBufferedOcrObj_t;
 
 typedef struct{
-    ocrEVT_t upIEVT, upOEVT, downIEVT, downOEVT;
     ocrDBK_t DBK_in, DBK_out;
+    ocrEVT_t upIEVT, upOEVT, downIEVT, downOEVT;
 } redObjects_t;
+
+typedef struct {
+    int number; //active or inactive node
+    int ilevel, myRank, isibling;
+    ocrTML_t TML_reduceAllUp, TML_reduceAllDown, TML_reduceAllRootNodes, TML_bcast, TML_accumulator;
+
+    ocrDBK_t DBK_octTreeRedH;//self-referencial DBK GUID
+    ocrDBK_t parentredH;
+    ocrDBK_t childrenredH[8];
+    ocrDBK_t siblingsredH[8];
+
+    int size[MAX_REDUCTION_HANDLES];
+    redObjects_t blockRedObjects[MAX_REDUCTION_HANDLES];
+    redObjects_t parentRedObjects[MAX_REDUCTION_HANDLES];
+    redObjects_t childrenRedObjects[8][MAX_REDUCTION_HANDLES];
+    redObjects_t siblingsRedObjects[8][MAX_REDUCTION_HANDLES];
+
+    ocrDBK_t DBK_redRootH[MAX_REDUCTION_HANDLES];
+} octTreeRedH_t;
 
 typedef struct
 {
@@ -255,16 +264,27 @@ typedef struct
     ocrDBK_t childrenRankDBKs[8];
     ocrDBK_t siblingsRankDBKs[8];
 
-    //Reduction range guids
+    int myRank_g;
+    int parent_myRank_g;
+
+    //Reduction range guids: Double buffered
     ocrGuid_t childrenredRangeGUID[2];
     ocrGuid_t siblingredRangeGUID[2];
 
     ocrEVT_t initRedOEVT;
 
-    redObjects_t blockRedObjects[MAX_REDUCTION_HANDLES];
-    redObjects_t parentRedObjects[MAX_REDUCTION_HANDLES];
-    redObjects_t childrenRedObjects[8][MAX_REDUCTION_HANDLES];
-    redObjects_t siblingsRedObjects[8][MAX_REDUCTION_HANDLES];
+    ocrDBK_t DBK_octTreeRedH;
+    octTreeRedH_t octTreeRedH;
+
+    //ocrDBK_t parentredH;
+    //ocrDBK_t childrenredH[8];
+    //ocrDBK_t siblingsredH[8];
+
+    //redObjects_t blockRedObjects[MAX_REDUCTION_HANDLES];
+    //redObjects_t parentRedObjects[MAX_REDUCTION_HANDLES];
+    //redObjects_t childrenRedObjects[8][MAX_REDUCTION_HANDLES];
+    //redObjects_t siblingsRedObjects[8][MAX_REDUCTION_HANDLES];
+
 
     doubleBufferedOcrObj_t doubleBufferedOcrObjH[2];
 } sharedOcrObj_t;
@@ -282,17 +302,19 @@ typedef struct {
     int myRank_g; //global id of the block
 
     u64 zValue;
+    u64 zValue_parent;
 
     int isibling;
 
-    ocrDBK_t DBK_initRedH;
-    ocrDBK_t DBK_redUpH[MAX_REDUCTION_HANDLES];
-
     reductionPrivate_t *PTR_initRedH;
+    ocrDBK_t DBK_initRedH;
+
+    //ocrDBK_t DBK_redRootH[MAX_REDUCTION_HANDLES];
 
     sharedOcrObj_t sharedOcrObjH;
 
     ocrHint_t myDbkAffinityHNT, myEdtAffinityHNT;
+    ocrHint_t myDbkAffinityHNT_lazyDB;
 
     globalParamH_t globalParamH;
     rankTemplateH_t rankTemplateH;

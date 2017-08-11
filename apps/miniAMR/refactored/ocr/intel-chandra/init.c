@@ -33,7 +33,7 @@
 #include "proto.h"
 
 // Initialize the problem and setup initial blocks.
-void init(rankH_t* PTR_rankH)
+void init(rankH_t* PTR_rankH, octTreeRedH_t* PTR_octTreeRedH)
 {
    #if 1
    int n, var, i, j, k, l, m, o, size, dir, i1, i2, j1, j2, k1, k2, ib, jb, kb;
@@ -49,16 +49,18 @@ void init(rankH_t* PTR_rankH)
 
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
 
-    PTR_rankH->myDbkAffinityHNT = myDbkAffinityHNT;
-    PTR_rankH->myEdtAffinityHNT = myEdtAffinityHNT;
+    PTR_rankH->myDbkAffinityHNT_lazyDB = myDbkAffinityHNT;
 
     ocrHint_t dbHint;
     ocrHintInit( &dbHint, OCR_HINT_DB_T );
 
 #ifdef USE_LAZY_DB_HINT
     ocrSetHintValue(&dbHint, OCR_HINT_DB_LAZY, 1);
-    PTR_rankH->myDbkAffinityHNT = dbHint;
+    PTR_rankH->myDbkAffinityHNT_lazyDB = dbHint;
 #endif
+
+    PTR_rankH->myDbkAffinityHNT = myDbkAffinityHNT;
+    PTR_rankH->myEdtAffinityHNT = myEdtAffinityHNT;
 
    int num_refine = PTR_cmd->num_refine;
 
@@ -183,7 +185,7 @@ void init(rankH_t* PTR_rankH)
    dbk_size = sizeof(double)*PTR_cmd->num_vars*(x_block_size+2)*(y_block_size+2)*(z_block_size+2);
    ocrDbCreate( &(bp->DBK_array), (void **) &bp->array,
                 dbk_size,
-                DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
+                DB_PROP_NONE, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
    ma_malloc_counter( PTR_timerH, bp->array, dbk_size, __FILE__, __LINE__ );
 
    DEBUG_PRINTF(( "%s ilevel %d id_l %d DBK_array "GUIDF" array %p\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, bp->DBK_array, bp->array ));
@@ -191,7 +193,7 @@ void init(rankH_t* PTR_rankH)
    dbk_size = sizeof(double)*1*(x_block_size+2)*(y_block_size+2)*(z_block_size+2);
    ocrDbCreate( &(bp->DBK_work), (void **) &bp->work,
                 dbk_size,
-                DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
+                DB_PROP_NONE, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
    ma_malloc_counter( PTR_timerH, bp->work, dbk_size, __FILE__, __LINE__ );
 
    size = PTR_rankH->p2[num_refine+1-ilevel];  // block size is p2[num_refine+1-level]
@@ -230,7 +232,7 @@ void init(rankH_t* PTR_rankH)
     j2 = PTR_rankH->jblock;
     k2 = PTR_rankH->kblock;
 
-    bp->nei_refine[0] = 0;
+    bp->nei_refine[0] = STAY;
     bp->nei_level[0] = 0;
 
     if(PTR_rankH->iblock_g==0) // 0 boundary
@@ -239,7 +241,7 @@ void init(rankH_t* PTR_rankH)
         bp->nei[0][0][0] = 0;
     }
 
-    bp->nei_refine[1] = 0;
+    bp->nei_refine[1] = STAY;
     bp->nei_level[1] = 0;
 
     if(PTR_rankH->iblock_g==PTR_rankH->gx-1) // 0 boundary
@@ -248,7 +250,7 @@ void init(rankH_t* PTR_rankH)
         bp->nei[1][0][0] = 0;
     }
 
-    bp->nei_refine[2] = 0;
+    bp->nei_refine[2] = STAY;
     bp->nei_level[2] = 0;
 
     if(PTR_rankH->jblock_g==0) // 0 boundary
@@ -257,7 +259,7 @@ void init(rankH_t* PTR_rankH)
         bp->nei[2][0][0] = 0;
     }
 
-    bp->nei_refine[3] = 0;
+    bp->nei_refine[3] = STAY;
     bp->nei_level[3] = 0;
 
     if(PTR_rankH->jblock_g==PTR_rankH->gy-1) // 0 boundary
@@ -266,7 +268,7 @@ void init(rankH_t* PTR_rankH)
         bp->nei[3][0][0] = 0;
     }
 
-    bp->nei_refine[4] = 0;
+    bp->nei_refine[4] = STAY;
     bp->nei_level[4] = 0;
 
     if(PTR_rankH->kblock_g==0) // 0 boundary
@@ -275,7 +277,7 @@ void init(rankH_t* PTR_rankH)
         bp->nei[4][0][0] = 0;
     }
 
-    bp->nei_refine[5] = 0;
+    bp->nei_refine[5] = STAY;
     bp->nei_level[5] = 0;
 
     if(PTR_rankH->kblock_g==PTR_rankH->gz-1) // 0 boundary
@@ -287,11 +289,11 @@ void init(rankH_t* PTR_rankH)
     int c;
     for (c = 0; c < 8; c++) {
         bp->sib_level[c] = (ilevel!=0) ? ilevel:-2; //No siblings for the coarsest blocks
-        bp->sib_refine[c] = -1; //(ilevel!=0) ?-1:-2; //NO SIBLINGS
+        bp->sib_refine[c] = COARSEN; //(ilevel!=0) ?-1:-2; //NO SIBLINGS
     }
 
     initTemplates(PTR_rankH);
-    initDBKs(PTR_rankH);
+    initDBKs(PTR_rankH, PTR_octTreeRedH);
 
     PTR_timerH->counter_malloc_init = PTR_timerH->counter_malloc;
     PTR_timerH->size_malloc_init = PTR_timerH->size_malloc;
@@ -299,10 +301,11 @@ void init(rankH_t* PTR_rankH)
 #endif
 }
 
-void initDBKs( rankH_t* PTR_rankH )
+void initDBKs( rankH_t* PTR_rankH, octTreeRedH_t* PTR_octTreeRedH )
 {
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
+    rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
     timerH_t* PTR_timerH = &(PTR_rankH->timerH);
 
     size_t dbk_size;
@@ -310,28 +313,36 @@ void initDBKs( rankH_t* PTR_rankH )
     int isibling = PTR_rankH->isibling;
     int ilevel = PTR_rankH->ilevel;
 
+    memcpy( PTR_octTreeRedH, &(PTR_sharedOcrObjH->octTreeRedH), sizeof(octTreeRedH_t) );
+
+    PTR_octTreeRedH->TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
+    PTR_octTreeRedH->TML_reduceAllDown = PTR_rankTemplateH->TML_reduceAllDown;
+    PTR_octTreeRedH->TML_reduceAllRootNodes = PTR_rankTemplateH->TML_reduceAllRootNodes;
+    PTR_octTreeRedH->TML_bcast = PTR_rankTemplateH->TML_bcast;
+    PTR_octTreeRedH->TML_accumulator = PTR_rankTemplateH->TML_accumulator;
+
     int r;
     for( r = 0; r <MAX_REDUCTION_HANDLES; r++ ) {
-        reductionPrivate_t* PTR_redUpH;
-        ocrDbCreate( &PTR_rankH->DBK_redUpH[r], (void**) &PTR_redUpH, sizeof(reductionPrivate_t), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+        reductionPrivate_t* PTR_redRootH;
+        ocrDbCreate( &PTR_octTreeRedH->DBK_redRootH[r], (void**) &PTR_redRootH, sizeof(reductionPrivate_t), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC ); //TODO: Lazy
 
-        PTR_redUpH->nrank = (ilevel==0)?PTR_rankH->nRanks:8;
-        PTR_redUpH->myrank = (ilevel==0)?PTR_rankH->myRank:PTR_rankH->isibling;
-        PTR_redUpH->ndata = MAX_REFINE_LEVELS;
-        PTR_redUpH->reductionOperator = REDUCTION_U4_ADD;
-        PTR_redUpH->rangeGUID = (ilevel==0)?PTR_rankH->globalParamH.ocrParamH.redUpRangeGUID[r]:PTR_sharedOcrObjH->siblingredRangeGUID[(r-COARSEN_RED_HANDLE_LB)%2];
-        PTR_redUpH->reductionTML = NULL_GUID;
-        PTR_redUpH->new = 1;  //first time
-        PTR_redUpH->type = ALLREDUCE;
-        PTR_redUpH->returnEVT = PTR_sharedOcrObjH->blockRedObjects[r].downIEVT;
+        PTR_redRootH->nrank = (ilevel==0)?PTR_rankH->nRanks:8;
+        PTR_redRootH->myrank = (ilevel==0)?PTR_rankH->myRank:PTR_rankH->isibling;
+        PTR_redRootH->ndata = MAX_REFINE_LEVELS;
+        PTR_redRootH->reductionOperator = REDUCTION_U4_ADD;
+        PTR_redRootH->rangeGUID = (ilevel==0)?PTR_rankH->globalParamH.ocrParamH.redUpRangeGUID[r]:PTR_sharedOcrObjH->siblingredRangeGUID[(r-COARSEN_RED_HANDLE_LB)%2];
+        PTR_redRootH->reductionTML = NULL_GUID;
+        PTR_redRootH->new = 1;  //first time
+        PTR_redRootH->type = ALLREDUCE;
+        PTR_redRootH->returnEVT = PTR_octTreeRedH->blockRedObjects[r].downIEVT;
 
-        reductionHandle_update( r, PTR_rankH, PTR_redUpH );
+        reductionHandle_update( r, PTR_rankH, PTR_redRootH ); //update the root reduction handle based on 'r'
 
-        ocrDbRelease( PTR_rankH->DBK_redUpH[r] );
+        ocrDbRelease( PTR_octTreeRedH->DBK_redRootH[r] );
+
     }
 
-
-    ocrDbCreate( &PTR_rankH->DBK_initRedH, (void**) &PTR_rankH->PTR_initRedH, sizeof(reductionPrivate_t), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+    ocrDbCreate( &PTR_rankH->DBK_initRedH, (void**) &PTR_rankH->PTR_initRedH, sizeof(reductionPrivate_t), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC ); //TODO: Lazy
 
     PTR_rankH->PTR_initRedH->nrank = PTR_rankH->block_start[PTR_cmd->num_refine+1];
     PTR_rankH->PTR_initRedH->myrank = PTR_rankH->myRank_g;
@@ -369,7 +380,7 @@ void initDBKs( rankH_t* PTR_rankH )
 
             PTR_dBufH1->haloCurrSendPTRs[i][phase] = NULL;
             dbk_size = size*sizeof(double);
-            ocrDbCreate( &(PTR_dBufH1->haloCurrSendDBKs[i][phase]), (void**) &(PTR_dBufH1->haloCurrSendPTRs[i][phase]), size*sizeof(double), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+            ocrDbCreate( &(PTR_dBufH1->haloCurrSendDBKs[i][phase]), (void**) &(PTR_dBufH1->haloCurrSendPTRs[i][phase]), size*sizeof(double), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
             ma_malloc_counter( PTR_timerH, PTR_dBufH1->haloCurrSendPTRs[i][phase], dbk_size, __FILE__, __LINE__ );
             ocrDbRelease( PTR_dBufH1->haloCurrSendDBKs[i][phase] );
 
@@ -377,7 +388,7 @@ void initDBKs( rankH_t* PTR_rankH )
             //face+[2,3,4,5] //
             PTR_dBufH1->haloCoarSendPTRs[i][phase] = NULL;
             dbk_size = size*sizeof(double);
-            ocrDbCreate( &(PTR_dBufH1->haloCoarSendDBKs[i][phase]), (void**) &(PTR_dBufH1->haloCoarSendPTRs[i][phase]), size*sizeof(double), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+            ocrDbCreate( &(PTR_dBufH1->haloCoarSendDBKs[i][phase]), (void**) &(PTR_dBufH1->haloCoarSendPTRs[i][phase]), size*sizeof(double), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
             ma_malloc_counter( PTR_timerH, PTR_dBufH1->haloCoarSendPTRs[i][phase], dbk_size, __FILE__, __LINE__ );
             ocrDbRelease( PTR_dBufH1->haloCoarSendDBKs[i][phase] );
 
@@ -385,7 +396,7 @@ void initDBKs( rankH_t* PTR_rankH )
                 size = return_buf_size( PTR_rankH, i/2, fcase+6+j, 1); //refined neighbor
                 dbk_size = size*sizeof(double);
                 PTR_dBufH1->haloRefnSendPTRs[i][j][phase] = NULL;
-                ocrDbCreate( &(PTR_dBufH1->haloRefnSendDBKs[i][j][phase]), (void**) &(PTR_dBufH1->haloRefnSendPTRs[i][j][phase]), size*sizeof(double), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+                ocrDbCreate( &(PTR_dBufH1->haloRefnSendDBKs[i][j][phase]), (void**) &(PTR_dBufH1->haloRefnSendPTRs[i][j][phase]), size*sizeof(double), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
                 ma_malloc_counter( PTR_timerH, PTR_dBufH1->haloRefnSendPTRs[i][j][phase], dbk_size, __FILE__, __LINE__ );
                 ocrDbRelease( PTR_dBufH1->haloRefnSendDBKs[i][j][phase] );
 
@@ -398,15 +409,15 @@ void initDBKs( rankH_t* PTR_rankH )
     for (i = 0; i < 6; i++) {
         for( phase = 0; phase < 2; phase++ ) {
             PTR_dBufH1->refnCurrSendPTRs[i][phase] = NULL;
-            ocrDbCreate( &(PTR_dBufH1->refnCurrSendDBKs[i][phase]), (void**) &(PTR_dBufH1->refnCurrSendPTRs[i][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+            ocrDbCreate( &(PTR_dBufH1->refnCurrSendDBKs[i][phase]), (void**) &(PTR_dBufH1->refnCurrSendPTRs[i][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
             ocrDbRelease( PTR_dBufH1->refnCurrSendDBKs[i][phase] );
 
             PTR_dBufH1->refnCoarSendPTRs[i][phase] = NULL;
-            ocrDbCreate( &(PTR_dBufH1->refnCoarSendDBKs[i][phase]), (void**) &(PTR_dBufH1->refnCoarSendPTRs[i][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+            ocrDbCreate( &(PTR_dBufH1->refnCoarSendDBKs[i][phase]), (void**) &(PTR_dBufH1->refnCoarSendPTRs[i][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
             ocrDbRelease( PTR_dBufH1->refnCoarSendDBKs[i][phase] );
             for( j = 0; j < 4; j++ ) {
                 PTR_dBufH1->refnRefnSendPTRs[i][j][phase] = NULL;
-                ocrDbCreate( &(PTR_dBufH1->refnRefnSendDBKs[i][j][phase]), (void**) &(PTR_dBufH1->refnRefnSendPTRs[i][j][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
+                ocrDbCreate( &(PTR_dBufH1->refnRefnSendDBKs[i][j][phase]), (void**) &(PTR_dBufH1->refnRefnSendPTRs[i][j][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
                 ocrDbRelease( PTR_dBufH1->refnRefnSendDBKs[i][j][phase] );
             }
 
@@ -414,9 +425,11 @@ void initDBKs( rankH_t* PTR_rankH )
     }
 
     for( i = 0; i < 8; i++ ) {
-        PTR_dBufH1->refnCurrSendSibsPTRs[i] = NULL;
-        ocrDbCreate( &(PTR_dBufH1->refnCurrSendSibsDBKs[i]), (void**) &(PTR_dBufH1->refnCurrSendSibsPTRs[i]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT, NO_ALLOC );
-        ocrDbRelease( PTR_dBufH1->refnCurrSendSibsDBKs[i] );
+        for( phase = 0; phase < 2; phase++ ) {
+            PTR_dBufH1->refnCurrSendSibsPTRs[i][phase] = NULL;
+            ocrDbCreate( &(PTR_dBufH1->refnCurrSendSibsDBKs[i][phase]), (void**) &(PTR_dBufH1->refnCurrSendSibsPTRs[i][phase]), sizeof(int), 0, &PTR_rankH->myDbkAffinityHNT_lazyDB, NO_ALLOC );
+            ocrDbRelease( PTR_dBufH1->refnCurrSendSibsDBKs[i][phase] );
+        }
     }
 }
 
@@ -426,12 +439,12 @@ void initTemplates(rankH_t* PTR_rankH)
 
     s32 _idep, _paramc, _depc;
 
-    _paramc = PARAMC_U64(refineLoopPRM_t); _depc = 2;
-    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_refine), FNC_refine, _paramc, _depc );
     _paramc = PARAMC_U64(refineLoopPRM_t); _depc = 3;
+    ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_refine), FNC_refine, _paramc, _depc );
+    _paramc = PARAMC_U64(refineLoopPRM_t); _depc = 4;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_refineLoop), FNC_refineLoop, _paramc, _depc );
 
-    _paramc = PARAMC_U64(reduceBlockCountsPRM_t); _depc = 2;
+    _paramc = PARAMC_U64(reduceBlockCountsPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_reduceBlockCounts), FNC_reduceBlockCounts, _paramc, _depc );
     _paramc = PARAMC_U64(updateBlockCountsPRM_t); _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_updateBlockCounts), FNC_updateBlockCounts, _paramc, _depc );
@@ -452,13 +465,13 @@ void initTemplates(rankH_t* PTR_rankH)
     _paramc = PARAMC_U64(commRefnSibsPRM_t); _depc = 10;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->unpackRefnBufsSibsTML), unpackRefnBufsSibsEdt, _paramc, _depc );
 
-    _paramc = PARAMC_U64(refineAllLevelsPRM_t); _depc = 2;
+    _paramc = PARAMC_U64(refineAllLevelsPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_refineAllLevels), FNC_refineAllLevels, _paramc, _depc );
 
-    _paramc = PARAMC_U64(refineLevelsPRM_t); _depc = 4;
+    _paramc = PARAMC_U64(refineLevelsPRM_t); _depc = 5;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_refine1AllLevels), FNC_refine1AllLevels, _paramc, _depc );
 
-    _paramc = PARAMC_U64(refineLevelsPRM_t); _depc = 4;
+    _paramc = PARAMC_U64(refineLevelsPRM_t); _depc = 5;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_refine1Level), FNC_refine1Level, _paramc, _depc );
 
     _paramc = PARAMC_U64(reducePRM_t); _depc = 2;
@@ -475,7 +488,7 @@ void initTemplates(rankH_t* PTR_rankH)
     _paramc = PARAMC_U64(scatterRefinePRM_t); _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_scatterRefine), FNC_scatterRefine, _paramc, _depc );
 
-    _paramc = PARAMC_U64(splitBlocksPRM_t); _depc = 3;
+    _paramc = PARAMC_U64(splitBlocksPRM_t); _depc = 4;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_splitBlocks), FNC_splitBlocks, _paramc, _depc );
 
     _paramc = PARAMC_U64(createChildBlocksPRM_t); _depc = 10;
@@ -483,7 +496,7 @@ void initTemplates(rankH_t* PTR_rankH)
     _paramc = PARAMC_U64(createChildBlocksPRM_t); _depc = 18;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_createChildBlocks1), FNC_createChildBlocks1, _paramc, _depc );
 
-    _paramc = PARAMC_U64(timestepLoopPRM_t); _depc = 2;
+    _paramc = PARAMC_U64(timestepLoopPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_timestepLoop), FNC_timestepLoop, _paramc, _depc );
     _paramc = PARAMC_U64(stageLoopPRM_t); _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_stageLoop), FNC_stageLoop, _paramc, _depc );
@@ -507,31 +520,31 @@ void initTemplates(rankH_t* PTR_rankH)
     _paramc = PARAMC_U64(commPRM_t); _depc = EDT_PARAM_UNK;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->unpackHalosTML), unpackHalosEdt, _paramc, _depc );
 
-    _paramc = PARAMC_U64(calcLoopPRM_t); _depc = 4;
+    _paramc = PARAMC_U64(calcLoopPRM_t); _depc = 5;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_calcLoop), FNC_calcLoop, _paramc, _depc );
     _paramc = PARAMC_U64(calcPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_calc), FNC_calc, _paramc, _depc );
 
-    _paramc = PARAMC_U64(checkSumLoopPRM_t); _depc = 2;
+    _paramc = PARAMC_U64(checkSumLoopPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_checkSumLoop), FNC_checkSumLoop, _paramc, _depc );
-    _paramc = PARAMC_U64(checkSumPRM_t); _depc = 4;
+    _paramc = PARAMC_U64(checkSumPRM_t); _depc = 5;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_checkSum), FNC_checkSum, _paramc, _depc );
 
     _paramc = PARAMC_U64(printPRM_t); _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_print), FNC_print, _paramc, _depc );
 
-    _paramc = 0; _depc = 2;
+    _paramc = 0; _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_finalize), FNC_finalize, _paramc, _depc );
     _paramc = 0; _depc = 2;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_finalizeBarrier), FNC_finalizeBarrier, _paramc, _depc );
 
-    _paramc = 0; _depc = 2;
+    _paramc = 0; _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_idgather), FNC_idgather, _paramc, _depc );
     _paramc = PARAMC_U64(redistributeblocksPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_redistributeblocks), FNC_redistributeblocks, _paramc, _depc );
-    _paramc = PARAMC_U64(loadbalancePRM_t); _depc = 2;
+    _paramc = PARAMC_U64(loadbalancePRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_loadbalance), FNC_loadbalance, _paramc, _depc );
 
-    _paramc = PARAMC_U64(continuationPRM_t); _depc = 2;
+    _paramc = PARAMC_U64(continuationPRM_t); _depc = 3;
     ocrEdtTemplateCreate( &(PTR_rankTemplateH->TML_continuation), FNC_continuation, _paramc, _depc );
 }

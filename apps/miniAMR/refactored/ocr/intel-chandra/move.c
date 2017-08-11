@@ -92,18 +92,18 @@ void mark_refinementIntention( rankH_t* PTR_rankH, u64 irefine )
 
     if( PTR_cmd->uniform_refine ) {
         if( bp->level < PTR_cmd->num_refine )
-           bp->refine = 1;
+           bp->refine = REFINE;
         else
-           bp->refine = 0;
+           bp->refine = STAY;
     }
     else {
        check_objects( PTR_rankH );
     }
 
     //if( irefine == 0 )
-    //    bp->refine = 1;
+    //    bp->refine = REFINE;
     //else if( irefine == 1 )
-    //    bp->refine = -1;
+    //    bp->refine = COARSEN;
 
     DEBUG_PRINTF(( "REFINE %s ilevel %d id_l %d refine %d irefine %d ts %d\n", __func__, bp->level, PTR_rankH->myRank, bp->refine, irefine, PTR_rankH->ts ));
 
@@ -158,7 +158,7 @@ void check_objects( rankH_t* PTR_rankH )
                     ((double) mesh_size[2]);
     }
     if (check_block( PTR_rankH, cor))
-       bp->refine = 1;
+       bp->refine = REFINE;
     else if (PTR_cmd->refine_ghost && bp->level) {
        /* check if this block would unrefine, but its parent would then
         * refine.  Then leave it alone */
@@ -176,17 +176,17 @@ void check_objects( rankH_t* PTR_rankH )
        cor[2][1] += (((double) sz)/((double) z_block_size))/
                     ((double) mesh_size[2]);
        if (check_block( PTR_rankH, cor ))
-          bp->refine = 0;
+          bp->refine = STAY;
     }
 
     /* if at max refinement, then can not refine */
-    if ((bp->level == num_refine && bp->refine == 1) || !bp->refine) {
-       bp->refine = 0;
+    if ((bp->level == num_refine && bp->refine == REFINE) || !bp->refine) {
+       bp->refine = STAY;
        //Force sibling marked for coarsening to '0' - OCR implementation
     }
     /* if 0 level, we can not unrefine */
-    if (!bp->level && bp->refine == -1)
-       bp->refine = 0;
+    if (!bp->level && bp->refine == COARSEN)
+       bp->refine = STAY;
 }
 
 int check_block( rankH_t* PTR_rankH, double cor[3][2] )

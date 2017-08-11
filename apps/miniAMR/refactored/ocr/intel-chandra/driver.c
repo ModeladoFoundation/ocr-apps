@@ -28,7 +28,6 @@
 
 #include <stdio.h>
 #include <math.h>
-//#include <unistd.h>
 
 #include "block.h"
 #include "proto.h"
@@ -42,9 +41,11 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
 
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
@@ -53,11 +54,11 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
 
     int irefine = 0;
     int r = BLOCKCOUNT_RED_HANDLE_LB + (irefine%2); //reserved for block counts
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
     ocrDBK_t DBK_in = PTR_redObjects->DBK_in;
 
     r = FINALIZE_RED_HANDLE_LB;
-    PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
     ocrDBK_t DBK_in_finalize = PTR_redObjects->DBK_in;
 
     ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
@@ -82,8 +83,11 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
     DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d num_tsteps %d bp->number %d\n", __func__, ilevel, PTR_rankH->myRank, ts, num_tsteps, number ));
 
     ocrDbRelease(DBK_rankH);
+    ocrDbRelease(DBK_octTreeRedH);
 
-    if( number >= 0  && ts <= num_tsteps ) {
+    ASSERT( number >= 0 );
+
+    if( ts <= num_tsteps ) {
 
         // Do one stageLoop
         ocrGuid_t stageLoopEDT, stageLoopOEVT, stageLoopOEVTS;
@@ -128,6 +132,7 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
                               EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_refineLoop
                 _idep = 0;
                 ocrAddDependence( DBK_rankH, refineLoopEDT, _idep++, DB_MODE_RW );
+                ocrAddDependence( DBK_octTreeRedH, refineLoopEDT, _idep++, DB_MODE_RW );
                 ocrAddDependence( DBK_in, refineLoopEDT, _idep++, DB_MODE_RW );
                 ocrAddDependence( moveOEVTS, refineLoopEDT, _idep++, DB_MODE_NULL );
 
@@ -148,10 +153,11 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_timestepLoop
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, timestepLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( continuationOEVTS, timestepLoopEDT, _idep++, DB_MODE_NULL );
 
     }
-    else if( number >= 0  && ts > num_tsteps ) {
+    else if( ts > num_tsteps ) {
         ocrGuid_t finalizeEDT;
 
         ocrEdtCreate( &finalizeEDT, TML_finalize,
@@ -159,6 +165,7 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_finalize
         _idep = 0;
         ocrAddDependence( DBK_rankH, finalizeEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, finalizeEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_in_finalize, finalizeEDT, _idep++, DB_MODE_RW );
     }
 
@@ -329,6 +336,7 @@ _OCR_TASK_FNC_( FNC_vars )
     rankH_t* PTR_rankH = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
+    sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
     block *bp = &PTR_rankH->blockH;
 
@@ -340,6 +348,7 @@ _OCR_TASK_FNC_( FNC_vars )
 
     ocrDBK_t DBK_array = bp->DBK_array;
     ocrDBK_t DBK_work = bp->DBK_work;
+    ocrDBK_t DBK_octTreeRedH = PTR_sharedOcrObjH->DBK_octTreeRedH;
 
     // Do one comm
     ocrGuid_t commEDT, commOEVT, commOEVTS;
@@ -369,6 +378,7 @@ _OCR_TASK_FNC_( FNC_vars )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, calcLoopEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_octTreeRedH, calcLoopEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_array, calcLoopEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_work, calcLoopEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( commOEVTS, calcLoopEDT, _idep++, DB_MODE_NULL );
@@ -389,11 +399,13 @@ _OCR_TASK_FNC_( FNC_calcLoop )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrDBK_t DBK_array = depv[_idep++].guid;
     ocrDBK_t DBK_work = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
@@ -426,7 +438,7 @@ _OCR_TASK_FNC_( FNC_calcLoop )
     if (PTR_cmd->checksum_freq && !(ts%PTR_cmd->checksum_freq) && !istage ) { //changed from istage% to ts%
 
         int r = CHECKSUM_RED_HANDLE_LB + (istart)%2;
-        redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+        redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
         ocrDBK_t DBK_gridSum_in = PTR_redObjects->DBK_in;
 
         ocrGuid_t checkSumEDT, checkSumOEVT, checkSumOEVTS;
@@ -441,6 +453,7 @@ _OCR_TASK_FNC_( FNC_calcLoop )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, checkSumEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, checkSumEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_array, checkSumEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_gridSum_in, checkSumEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( calcOEVTS, checkSumEDT, _idep++, DB_MODE_RW );
@@ -456,17 +469,16 @@ _OCR_TASK_FNC_( FNC_calcLoop )
     if( istart <= iend )
     {
         //start next vars
-        ocrGuid_t calcLoopEDT, calcLoopOEVT, calcLoopOEVTS;
+        ocrGuid_t calcLoopEDT;
 
         calcLoopPRM_t calcLoopPRM = {istart, iend, istage, ts};
         ocrEdtCreate( &calcLoopEDT, PTR_rankTemplateH->TML_calcLoop, //FNC_calcLoop
                       EDT_PARAM_DEF, (u64*)&calcLoopPRM, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &calcLoopOEVT );
-        createEventHelper(&calcLoopOEVTS, 1);
-        ocrAddDependence( calcLoopOEVT, calcLoopOEVTS, 0, DB_MODE_NULL );
+                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, calcLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, calcLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_array, calcLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_work, calcLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( continuationOEVTS, calcLoopEDT, _idep++, DB_MODE_NULL );
@@ -488,17 +500,24 @@ _OCR_TASK_FNC_( FNC_checkSumLoop )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
     block *bp = &PTR_rankH->blockH;
+
     ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+
+    ocrTML_t TML_checkSum = PTR_rankTemplateH->TML_checkSum;
+    ocrTML_t TML_checkSumLoop = PTR_rankTemplateH->TML_checkSumLoop;
+
     ocrDBK_t DBK_array = bp->DBK_array;
 
     int ilevel = PTR_rankH->ilevel;
@@ -506,13 +525,16 @@ _OCR_TASK_FNC_( FNC_checkSumLoop )
     DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d istage %d istart %d\n", __func__, ilevel, PTR_rankH->myRank, ts, istage, istart ));
 
     int r = CHECKSUM_RED_HANDLE_LB + (istart)%2;
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
     ocrDBK_t DBK_gridSum_in = PTR_redObjects->DBK_in;
+
+    ocrDbRelease( DBK_rankH );
+    ocrDbRelease( DBK_octTreeRedH );
 
     ocrGuid_t checkSumEDT, checkSumOEVT, checkSumOEVTS;
 
     checkSumPRM_t checkSumPRM = {istart, istage, ts};
-    ocrEdtCreate( &checkSumEDT, PTR_rankTemplateH->TML_checkSum, //FNC_checkSum
+    ocrEdtCreate( &checkSumEDT, TML_checkSum, //FNC_checkSum
                   EDT_PARAM_DEF, (u64*)&checkSumPRM, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &checkSumOEVT );
 
@@ -521,26 +543,26 @@ _OCR_TASK_FNC_( FNC_checkSumLoop )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, checkSumEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_octTreeRedH, checkSumEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_array, checkSumEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( DBK_gridSum_in, checkSumEDT, _idep++, DB_MODE_RW );
-    ocrAddDependence( NULL_GUID, checkSumEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( NULL_GUID, checkSumEDT, _idep++, DB_MODE_NULL );
 
     istart += 1;
 
     if( istart <= iend )
     {
         //start next vars
-        ocrGuid_t checkSumLoopEDT, checkSumLoopOEVT, checkSumLoopOEVTS;
+        ocrGuid_t checkSumLoopEDT;
 
         checkSumLoopPRM_t checkSumLoopPRM = {istart, iend, istage, ts};
-        ocrEdtCreate( &checkSumLoopEDT, PTR_rankTemplateH->TML_checkSumLoop, //FNC_checkSumLoop
+        ocrEdtCreate( &checkSumLoopEDT, TML_checkSumLoop, //FNC_checkSumLoop
                       EDT_PARAM_DEF, (u64*)&checkSumLoopPRM, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &myEdtAffinityHNT, &checkSumLoopOEVT );
-        createEventHelper(&checkSumLoopOEVTS, 1);
-        ocrAddDependence( checkSumLoopOEVT, checkSumLoopOEVTS, 0, DB_MODE_NULL );
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, checkSumLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, checkSumLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( checkSumOEVTS, checkSumLoopEDT, _idep++, DB_MODE_NULL );
     }
 
@@ -559,11 +581,13 @@ _OCR_TASK_FNC_( FNC_checkSum )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrDBK_t DBK_array = depv[_idep++].guid;
     ocrDBK_t DBK_gridSum_in = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     double* PTR_array      = depv[_idep++].ptr;
     double* PTR_grid_sum_in = depv[_idep++].ptr; //1 double
 
@@ -582,17 +606,17 @@ _OCR_TASK_FNC_( FNC_checkSum )
     int ilevel = PTR_rankH->ilevel;
 
     int r = CHECKSUM_RED_HANDLE_LB + (istart)%2;
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redDownOEVT = PTR_redObjects->downOEVT;
 
     int var = istart;
 
-    check_sum( DBK_rankH, PTR_rankH, ts, istage, var, DBK_gridSum_in, PTR_grid_sum_in );
-
     DEBUG_PRINTF(( "%s ilevel %d id_l %d ts %d istage %d istart %d\n", __func__, ilevel, PTR_rankH->myRank, ts, istage, istart ));
 
-    ocrDbRelease( DBK_rankH );
+    check_sum( DBK_rankH, PTR_rankH, DBK_octTreeRedH, PTR_octTreeRedH, ts, istage, var, DBK_gridSum_in, PTR_grid_sum_in );
+
+    ocrDbRelease(DBK_array);
 
     //printEDT
     ocrGuid_t printEDT;
@@ -673,10 +697,12 @@ _OCR_TASK_FNC_( FNC_finalize )
 
     _idep = 0;
     ocrDBK_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
     ocrDBK_t DBK_in = depv[_idep++].guid;
 
     _idep = 0;
     rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
     double* in = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
@@ -687,7 +713,7 @@ _OCR_TASK_FNC_( FNC_finalize )
     int ilevel = PTR_rankH->ilevel;
 
     int r = FINALIZE_RED_HANDLE_LB;
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
     ocrEVT_t redDownOEVT = PTR_redObjects->downOEVT;
     ocrEVT_t redUpIEVT = PTR_redObjects->upIEVT;
@@ -697,6 +723,8 @@ _OCR_TASK_FNC_( FNC_finalize )
     myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
 
     int ts = PTR_rankH->ts;
+    int number = bp->number;
+
     ocrTML_t TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
 
     #ifdef DEBUG_APP_COARSE
@@ -716,7 +744,7 @@ _OCR_TASK_FNC_( FNC_finalize )
     ocrDbRelease( DBK_rankH );
 
     int phase = -11;
-    reducePRM_t reducePRM = {-1, ts, phase, r};
+    reducePRM_t reducePRM = {-1, ts, phase, r, number};
     ocrGuid_t reduceAllUpEDT, reduceAllUpOEVT, reduceAllUpOEVTS;
 
     ocrEdtCreate( &reduceAllUpEDT, TML_reduceAllUp, //FNC_reduceAllUp
@@ -726,7 +754,7 @@ _OCR_TASK_FNC_( FNC_finalize )
     ocrAddDependence( reduceAllUpOEVT, reduceAllUpOEVTS, 0, DB_MODE_NULL );
 
     _idep = 0;
-    ocrAddDependence( DBK_rankH, reduceAllUpEDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( DBK_octTreeRedH, reduceAllUpEDT, _idep++, DB_MODE_RW );
     ocrAddDependence( redUpIEVT, reduceAllUpEDT, _idep++, DB_MODE_RW );
 
     ocrGuid_t finalizeBarrierEDT, finalizeBarrierOEVT, finalizeBarrierOEVTS;

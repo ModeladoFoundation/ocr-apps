@@ -85,6 +85,7 @@ typedef struct {
 
 typedef struct {
     int irefine, ts, phase, r;
+    int number, dummy;
 } reducePRM_t;
 
 typedef loadbalancePRM_t timestepLoopPRM_t;
@@ -177,7 +178,7 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt );
 u64 mortonZvalue(unsigned int x, unsigned int y, unsigned int z, unsigned int ilevel);
 
 // check_sum.c
-void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum );
+void check_sum( ocrDBK_t DBK_rankH, rankH_t* PTR_rankH, ocrDBK_t DBK_octTreeRedH, octTreeRedH_t* PTR_octTreeRedH, int ts, int istage, int var, ocrDBK_t DBK_gridSum_in, double* sum );
 
 // comm_block.c
 void comm_proc(void);
@@ -197,8 +198,8 @@ void apply_bc( rankH_t* PTR_rankH, int l, int start, int num_comm );
 ocrGuid_t commRefnSibsEdt(EDT_ARGS);
 ocrGuid_t packRefnBufsSibsEdt(EDT_ARGS);
 ocrGuid_t unpackRefnBufsSibsEdt(EDT_ARGS);
-void reset_refnRecvSibsPTRs( rankH_t *PTR_rankH, s64 flag );
-void reset_refnSendSibsPTRs( rankH_t *PTR_rankH );
+void reset_refnRecvSibsPTRs( rankH_t *PTR_rankH, int phase, s64 flag );
+void reset_refnSendSibsPTRs( rankH_t *PTR_rankH, int phase );
 
 // comm_refine.c
 int blockNnbrs(block *bp, int iAxis);
@@ -227,9 +228,9 @@ _OCR_TASK_FNC_( FNC_finalize );
 _OCR_TASK_FNC_( FNC_finalizeBarrier );
 
 // init.c
-void init(rankH_t* PTR_rankH);
+void init(rankH_t* PTR_rankH, octTreeRedH_t* PTR_octTreeRedH);
 void initTemplates(rankH_t* PTR_rankH);
-void initDBKs( rankH_t* PTR_rankH );
+void initDBKs( rankH_t* PTR_rankH, octTreeRedH_t* PTR_octTreeRedH );
 
 // move.c
 _OCR_TASK_FNC_( FNC_move );

@@ -47,14 +47,23 @@ ocrGuid_t commRefnNbrsEdt(EDT_ARGS)
 
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
 
+    ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
+    myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+
+    ocrTML_t exchangeDataTML = PTR_rankTemplateH->exchangeDataTML;
+    ocrTML_t TML_commRefnNbrs = PTR_rankTemplateH->TML_commRefnNbrs;
+
     DEBUG_PRINTF(( "%s ilevel %d id_l %d iAxis %d flag %d irefine %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, iAxis, flag, irefine, PTR_rankH->ts ));
 
-    // Do halo-exchange along one axis
-    ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
+    ocrDbRelease(DBK_rankH);
 
-    ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML, //exchangeDataEdt
+    // Do halo-exchange along one axis
+    ocrGuid_t exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
+
+    ocrEdtCreate( &exchangeDataEDT, exchangeDataTML, //exchangeDataEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                  EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
+                  EDT_PROP_FINISH, &myEdtAffinityHNT, &exchangeDataOEVT );
 
     createEventHelper( &exchangeDataOEVTS, 1);
     ocrAddDependence( exchangeDataOEVT, exchangeDataOEVTS, 0, DB_MODE_NULL );
@@ -71,9 +80,9 @@ ocrGuid_t commRefnNbrsEdt(EDT_ARGS)
         //set up halo-exchange along the next axis
         ocrGuid_t haloExchangeEDT;
 
-        ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->TML_commRefnNbrs,
+        ocrEdtCreate( &haloExchangeEDT, TML_commRefnNbrs,
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
-                      EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
+                      EDT_PROP_NONE, &myEdtAffinityHNT, NULL);
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, haloExchangeEDT, _idep++, DB_MODE_RW );
@@ -116,19 +125,51 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
 
-    u64 itimestep = (PTR_rankH->ts%PTR_cmd->refine_freq);
-
     block *bp = &PTR_rankH->blockH;
 
-    ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+    ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
+    myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+
+    ocrTML_t packRefnBufsTML = PTR_rankTemplateH->packRefnBufsTML;
+    ocrTML_t unpackRefnBufsTML = PTR_rankTemplateH->unpackRefnBufsTML;
 
     int nNbrs = blockNnbrs(bp, iAxis);
 
     DEBUG_PRINTF(( "%s ilevel %d id_l %d iAxis %d flag %d nNbrs %d irefine %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, iAxis, flag, nNbrs, irefine, PTR_rankH->ts ));
 
-    ocrGuid_t packRefnBufsTML, packRefnBufsEDT, packRefnBufsOEVT, packRefnBufsOEVTS;
+    ocrDBK_t refnCurrSendDBKs[6][2], refnCoarSendDBKs[6][2], refnRefnSendDBKs[6][4][2];
+    ocrDBK_t haloCurrRecvEVTs[6], haloCoarRecvEVTs[6], haloRefnRecvEVTs[6][4];
 
-    ocrEdtCreate( &packRefnBufsEDT, PTR_rankTemplateH->packRefnBufsTML, //packRefnBufsEdt
+    int nei_level[6];
+    int level = bp->level;
+
+    int i, j;
+    int phase = (flag == 1) ? 0 : 1;
+
+    for (i = 2*iAxis; i < 2*(iAxis+1); i++) {
+        nei_level[i] = bp->nei_level[i];
+        if( nei_level[i] == level ) {
+            refnCurrSendDBKs[i][phase] = PTR_dBufH1->refnCurrSendDBKs[i][phase];
+            haloCurrRecvEVTs[i] = PTR_dBufH1->haloCurrRecvEVTs[i];
+        }
+        else if( nei_level[i] == level-1 ) {
+            refnCoarSendDBKs[i][phase] = PTR_dBufH1->refnCoarSendDBKs[i][phase];
+            haloCoarRecvEVTs[i] = PTR_dBufH1->haloCoarRecvEVTs[i];
+        }
+        else if( nei_level[i] == level+1 ) {
+            for( j = 0; j < 4; j++ ) {
+                refnRefnSendDBKs[i][j][phase] = PTR_dBufH1->refnRefnSendDBKs[i][j][phase];
+                haloRefnRecvEVTs[i][j] = PTR_dBufH1->haloRefnRecvEVTs[i][j];
+            }
+        }
+    }
+
+    ocrDbRelease( DBK_rankH );
+
+    ocrGuid_t packRefnBufsEDT, packRefnBufsOEVT, packRefnBufsOEVTS;
+
+    ocrEdtCreate( &packRefnBufsEDT, packRefnBufsTML, //packRefnBufsEdt
                   EDT_PARAM_DEF, paramv, nNbrs+1, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &packRefnBufsOEVT );
 
@@ -138,52 +179,49 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     _idep = 0;
     ocrAddDependence( DBK_rankH, packRefnBufsEDT, _idep++, DB_MODE_RW );
 
-    int i, j;
-    int phase = (flag == 1) ? 0 : 1;
-
     for (i = 2*iAxis; i < 2*(iAxis+1); i++) {
-        if( bp->nei_level[i] == bp->level ) {
-            ocrAddDependence( PTR_dBufH1->refnCurrSendDBKs[i][phase], packRefnBufsEDT, _idep++, DB_MODE_RW );
+        if( nei_level[i] == level ) {
+            ocrAddDependence( refnCurrSendDBKs[i][phase], packRefnBufsEDT, _idep++, DB_MODE_RW );
         }
-        else if( bp->nei_level[i] == bp->level-1 ) {
-            ocrAddDependence( PTR_dBufH1->refnCoarSendDBKs[i][phase], packRefnBufsEDT, _idep++, DB_MODE_RW );
+        else if( nei_level[i] == level-1 ) {
+            ocrAddDependence( refnCoarSendDBKs[i][phase], packRefnBufsEDT, _idep++, DB_MODE_RW );
         }
-        else if( bp->nei_level[i] == bp->level+1 ) {
+        else if( nei_level[i] == level+1 ) {
             for( j = 0; j < 4; j++ ) {
-                ocrAddDependence( PTR_dBufH1->refnRefnSendDBKs[i][j][phase], packRefnBufsEDT, _idep++, DB_MODE_RW );
+                ocrAddDependence( refnRefnSendDBKs[i][j][phase], packRefnBufsEDT, _idep++, DB_MODE_RW );
             }
         }
-        else if( bp->nei_level[i] == -2 ) { //BOUNDARY
+        else if( nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
             PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 
-    ocrGuid_t unpackRefnBufsTML, unpackRefnBufsEDT;
+    ocrGuid_t unpackRefnBufsEDT;
 
-    ocrEdtCreate( &unpackRefnBufsEDT, PTR_rankTemplateH->unpackRefnBufsTML, //unpackRefnBufsEdt
+    ocrEdtCreate( &unpackRefnBufsEDT, unpackRefnBufsTML, //unpackRefnBufsEdt
                   EDT_PARAM_DEF, paramv, nNbrs+2, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL);
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, unpackRefnBufsEDT, _idep++, DB_MODE_RW );
     for (i = 2*iAxis; i < 2*(iAxis+1); i++) {
-        if( bp->nei_level[i] == bp->level ) {
-            ocrAddDependence( PTR_dBufH1->haloCurrRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
-            DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCurrRecvEVTs[i] ));
+        if( nei_level[i] == level ) {
+            ocrAddDependence( haloCurrRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
+            DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, haloCurrRecvEVTs[i] ));
         }
-        else if( bp->nei_level[i] == bp->level-1 ) {
-            ocrAddDependence( PTR_dBufH1->haloCoarRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
-            DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCoarRecvEVTs[i] ));
+        else if( nei_level[i] == level-1 ) {
+            ocrAddDependence( haloCoarRecvEVTs[i], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
+            DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, haloCoarRecvEVTs[i] ));
         }
-        else if( bp->nei_level[i] == bp->level+1 ) {
+        else if( nei_level[i] == level+1 ) {
             for( j = 0; j < 4; j++ ) {
-                ocrAddDependence( PTR_dBufH1->haloRefnRecvEVTs[i][j], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
-                DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloRefnRecvEVTs[i][j] ));
+                ocrAddDependence( haloRefnRecvEVTs[i][j], unpackRefnBufsEDT, _idep++, DB_MODE_RW );
+                DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, haloRefnRecvEVTs[i][j] ));
             }
         }
-        else if( bp->nei_level[i] == -2 ) { //BOUNDARY
+        else if( nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
             PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
@@ -237,7 +275,6 @@ ocrGuid_t packRefnBufsEdt(EDT_ARGS)
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
 
-    u64 itimestep = (PTR_rankH->ts%PTR_cmd->refine_freq);
     int phase = (flag == 1) ? 0 : 1;
 
     doubleBufferedOcrObj_t* PTR_dBufH1 = &(PTR_sharedOcrObjH->doubleBufferedOcrObjH[0]);
@@ -351,7 +388,7 @@ void reset_refnRecvPTRs( rankH_t *PTR_rankH, int iAxis, int phase )
         PTR_dBufH1->refnCoarRecvPTRs[i][phase] = NULL;
         for( j = 0; j < 4; j++ ) {
             PTR_dBufH1->refnRefnRecvPTRs[i][j][phase] = NULL;
-            //bp->nei_refine_recv[i][j] = 0;
+            //bp->nei_refine_recv[i][j] = STAY;
         }
     }
 }
@@ -375,7 +412,6 @@ ocrGuid_t unpackRefnBufsEdt(EDT_ARGS)
     sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
 
-    u64 itimestep = (PTR_rankH->ts%PTR_cmd->refine_freq);
     int phase = (flag == 1) ? 0 : 1;
 
     doubleBufferedOcrObj_t* PTR_dBufH1 = &(PTR_sharedOcrObjH->doubleBufferedOcrObjH[0]);
@@ -399,10 +435,10 @@ ocrGuid_t unpackRefnBufsEdt(EDT_ARGS)
 
             if( flag == 1 ) {
                 bp->nei_refine_recv[i][0] = refine;
-                if( refine == 1 )
-                    bp->nei_refine[i] = 1;
-                else if( refine >= 0 && bp->nei_refine[i] == -1 )
-                    bp->nei_refine[i] = 0;
+                if( refine == REFINE )
+                    bp->nei_refine[i] = REFINE;
+                else if( refine >= STAY && bp->nei_refine[i] == COARSEN  )
+                    bp->nei_refine[i] = STAY;
 
                 DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCurrRecvEVTs[i] ));
                 DEBUG_PRINTF(("nei recv %d nei_refine %d %d %d %d %d %d\n", refine, bp->nei_refine[0], bp->nei_refine[1], bp->nei_refine[2], bp->nei_refine[3], bp->nei_refine[4], bp->nei_refine[5]));
@@ -421,10 +457,10 @@ ocrGuid_t unpackRefnBufsEdt(EDT_ARGS)
 
             if( flag == 1 ) {
                 bp->nei_refine_recv[i][0] = refine;
-                if( refine == 1 )
-                    bp->nei_refine[i] = 1;
-                else if( refine >= 0 && bp->nei_refine[i] == -1 )
-                    bp->nei_refine[i] = 0;
+                if( refine == REFINE )
+                    bp->nei_refine[i] = REFINE;
+                else if( refine >= STAY && bp->nei_refine[i] == COARSEN  )
+                    bp->nei_refine[i] = STAY;
                 DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloCoarRecvEVTs[i] ));
                 DEBUG_PRINTF(("nei recv %d nei_refine %d %d %d %d %d %d\n", refine, bp->nei_refine[0], bp->nei_refine[1], bp->nei_refine[2], bp->nei_refine[3], bp->nei_refine[4], bp->nei_refine[5]));
             }
@@ -443,8 +479,8 @@ ocrGuid_t unpackRefnBufsEdt(EDT_ARGS)
                 if( flag == 1 ) {
                     bp->nei_refine_recv[i][j] = refine;
 
-                    if( refine >= 0 && bp->nei_refine[i] == -1 )
-                        bp->nei_refine[i] = 0;
+                    if( refine >= STAY && bp->nei_refine[i] == COARSEN  )
+                        bp->nei_refine[i] = STAY;
                     DEBUG_PRINTF(( "%s dep %d "GUIDF" \n", __func__, _idep-1, PTR_dBufH1->haloRefnRecvEVTs[i][j] ));
                     DEBUG_PRINTF(("nei recv %d nei_refine %d %d %d %d %d %d\n", refine, bp->nei_refine[0], bp->nei_refine[1], bp->nei_refine[2], bp->nei_refine[3], bp->nei_refine[4], bp->nei_refine[5]));
                 }

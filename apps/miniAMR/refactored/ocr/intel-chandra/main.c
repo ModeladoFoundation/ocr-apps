@@ -334,9 +334,13 @@ _OCR_TASK_FNC_( FNC_driver )
     s32 _idep, _paramc, _depc;
     u64 id = paramv[0];
 
-    ocrGuid_t DBK_rankH = depv[0].guid;
+    _idep = 0;
+    ocrGuid_t DBK_rankH = depv[_idep++].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[_idep++].guid;
 
-    rankH_t* PTR_rankH = depv[0].ptr;
+    _idep = 0;
+    rankH_t* PTR_rankH = depv[_idep++].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[_idep++].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
@@ -353,13 +357,13 @@ _OCR_TASK_FNC_( FNC_driver )
     int ts = 0;
 
     int r = BLOCKCOUNT_RED_HANDLE_LB + (irefine%2); //reserved for block counts
-    redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+    redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
     ocrDBK_t DBK_in = PTR_redObjects->DBK_in;
 
     ocrTML_t TML_refineLoop = PTR_rankTemplateH->TML_refineLoop;
     ocrTML_t TML_timestepLoop = PTR_rankTemplateH->TML_timestepLoop;
 
-    MyOcrTaskStruct_t TS_refineLoop; _paramc = 1; _depc = 1;
+    MyOcrTaskStruct_t TS_refineLoop;
 
     //At ts=0; All rankH handles are active blocks
     //Create a refine task --> the current block may become inactive due to refinement or coarsening
@@ -379,6 +383,7 @@ _OCR_TASK_FNC_( FNC_driver )
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, TS_refineLoop.EDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, TS_refineLoop.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( DBK_in, TS_refineLoop.EDT, _idep++, DB_MODE_RW );
         ocrAddDependence( NULL_GUID, TS_refineLoop.EDT, _idep++, DB_MODE_NULL );
 
@@ -394,6 +399,7 @@ _OCR_TASK_FNC_( FNC_driver )
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //FNC_timestepLoop
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, timestepLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( NULL_GUID, timestepLoopEDT, _idep++, DB_MODE_NULL );
     }
 
@@ -412,6 +418,7 @@ _OCR_TASK_FNC_( FNC_miniamrMain )
 
     rankH_t* PTR_rankH = depv[0].ptr;
 
+    sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
 
@@ -419,7 +426,7 @@ _OCR_TASK_FNC_( FNC_miniamrMain )
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
 
-    MyOcrTaskStruct_t TS_driver; _paramc = 1; _depc = 1;
+    MyOcrTaskStruct_t TS_driver; _paramc = 1; _depc = 2;
 
     TS_driver.FNC = FNC_driver;
     ocrEdtTemplateCreate( &TS_driver.TML, TS_driver.FNC, _paramc, _depc );
@@ -432,6 +439,7 @@ _OCR_TASK_FNC_( FNC_miniamrMain )
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_driver.EDT, _idep++, DB_MODE_RW );
+    ocrAddDependence( PTR_sharedOcrObjH->DBK_octTreeRedH, TS_driver.EDT, _idep++, DB_MODE_RW );
 #endif
 
     return NULL_GUID;
@@ -453,9 +461,11 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     u64 id = PRM_channelSetupEdt->id;
     int nNbrs = PRM_channelSetupEdt->nNbrs;
 
-    ocrGuid_t DBK_rankH = depv[6*nNbrs+9+8].guid;
+    ocrDBK_t DBK_octTreeRedH = depv[6*nNbrs+9+8].guid;
+    ocrDBK_t DBK_rankH = depv[6*nNbrs+9+9].guid;
 
-    rankH_t* PTR_rankH = depv[6*nNbrs+9+8].ptr;
+    octTreeRedH_t* PTR_octTreeRedH = depv[6*nNbrs+9+8].ptr;
+    rankH_t* PTR_rankH = depv[6*nNbrs+9+9].ptr;
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     rankTemplateH_t* PTR_rankTemplateH = &(PTR_rankH->rankTemplateH);
@@ -566,10 +576,13 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     sharedOcrObj_t* PTR_sharedOcrObjH_parent = depv[6*nNbrs].ptr;
     PTR_sharedOcrObjH->parentRankDBK = (ilevel != 0) ? PTR_sharedOcrObjH_parent->DBK_rankH : NULL_GUID;
+    PTR_sharedOcrObjH->parent_myRank_g = (ilevel != 0) ? PTR_sharedOcrObjH_parent->myRank_g: -1;
+
+    PTR_sharedOcrObjH->octTreeRedH.parentredH = (ilevel != 0) ? PTR_sharedOcrObjH_parent->octTreeRedH.DBK_octTreeRedH : NULL_GUID;
 
      for( r=0; r<MAX_REDUCTION_HANDLES; r++ ) {
-         if(ilevel!=0) memcpy( &PTR_sharedOcrObjH->parentRedObjects[r], &PTR_sharedOcrObjH_parent->blockRedObjects[r], sizeof(redObjects_t) );
-         else memset(&PTR_sharedOcrObjH->parentRedObjects[r], 0, sizeof(redObjects_t));
+         if(ilevel!=0) memcpy( &PTR_sharedOcrObjH->octTreeRedH.parentRedObjects[r], &PTR_sharedOcrObjH_parent->octTreeRedH.blockRedObjects[r], sizeof(redObjects_t) );
+         else memset(&PTR_sharedOcrObjH->octTreeRedH.parentRedObjects[r], 0, sizeof(redObjects_t));
       }
 
     PTR_sharedOcrObjH->siblingredRangeGUID[0] = (ilevel != 0) ? PTR_sharedOcrObjH_parent->childrenredRangeGUID[0] : NULL_GUID;
@@ -587,10 +600,11 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         doubleBufferedOcrObj_t* PTR_dBufH2_child = &(PTR_sharedOcrObjH_child->doubleBufferedOcrObjH[1]);
 
         PTR_sharedOcrObjH->childrenRankDBKs[ichild] = (ilevel!=num_refine) ? PTR_sharedOcrObjH_child->DBK_rankH : NULL_GUID;
+        PTR_sharedOcrObjH->octTreeRedH.childrenredH[ichild] = (ilevel!=num_refine) ? PTR_sharedOcrObjH_child->octTreeRedH.DBK_octTreeRedH : NULL_GUID;
 
         for( r=0; r<MAX_REDUCTION_HANDLES; r++ ) {
-            if(ilevel!=num_refine) memcpy( &PTR_sharedOcrObjH->childrenRedObjects[ichild][r], &PTR_sharedOcrObjH_child->blockRedObjects[r], sizeof(redObjects_t) );
-            else memset(&PTR_sharedOcrObjH->childrenRedObjects[ichild][r], 0, sizeof(redObjects_t));
+            if(ilevel!=num_refine) memcpy( &PTR_sharedOcrObjH->octTreeRedH.childrenRedObjects[ichild][r], &PTR_sharedOcrObjH_child->octTreeRedH.blockRedObjects[r], sizeof(redObjects_t) );
+            else memset(&PTR_sharedOcrObjH->octTreeRedH.childrenRedObjects[ichild][r], 0, sizeof(redObjects_t));
          }
 
     #ifdef CHANNEL_EVENTS_AT_RECEIVER
@@ -612,10 +626,11 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         doubleBufferedOcrObj_t* PTR_dBufH2_sibling = &(PTR_sharedOcrObjH_sibling->doubleBufferedOcrObjH[1]);
 
         PTR_sharedOcrObjH->siblingsRankDBKs[isibling] = (ilevel!=0) ? PTR_sharedOcrObjH_sibling->DBK_rankH : NULL_GUID;
+        PTR_sharedOcrObjH->octTreeRedH.siblingsredH[isibling] = (ilevel!=0) ? PTR_sharedOcrObjH_sibling->octTreeRedH.DBK_octTreeRedH : NULL_GUID;
 
         for( r=0; r<MAX_REDUCTION_HANDLES; r++ ) {
-            if(ilevel!=0) memcpy( &PTR_sharedOcrObjH->siblingsRedObjects[isibling][r], &PTR_sharedOcrObjH_sibling->blockRedObjects[r], sizeof(redObjects_t) );
-            else memset(&PTR_sharedOcrObjH->siblingsRedObjects[isibling][r], 0, sizeof(redObjects_t));
+            if(ilevel!=0) memcpy( &PTR_sharedOcrObjH->octTreeRedH.siblingsRedObjects[isibling][r], &PTR_sharedOcrObjH_sibling->octTreeRedH.blockRedObjects[r], sizeof(redObjects_t) );
+            else memset(&PTR_sharedOcrObjH->octTreeRedH.siblingsRedObjects[isibling][r], 0, sizeof(redObjects_t));
          }
 
     #ifdef CHANNEL_EVENTS_AT_RECEIVER
@@ -631,7 +646,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         PTR_sharedOcrObjH->siblingsRankDBKs[0], PTR_sharedOcrObjH->siblingsRankDBKs[1], PTR_sharedOcrObjH->siblingsRankDBKs[2], PTR_sharedOcrObjH->siblingsRankDBKs[3], PTR_sharedOcrObjH->siblingsRankDBKs[4], PTR_sharedOcrObjH->siblingsRankDBKs[5], PTR_sharedOcrObjH->siblingsRankDBKs[6], PTR_sharedOcrObjH->siblingsRankDBKs[7] ));
 
 
-    init(PTR_rankH);
+    init(PTR_rankH, PTR_octTreeRedH);
 
     ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
@@ -644,7 +659,8 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     int PTR_dummy[1] = { 1 };
     reductionLaunch(PTR_rankH->PTR_initRedH, PTR_rankH->DBK_initRedH, PTR_dummy);
 
-    ocrDbRelease(DBK_rankH);
+    ocrDbRelease( DBK_octTreeRedH );
+    ocrDbRelease( DBK_rankH );
 
     #if 1
 
@@ -665,6 +681,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, checkSumLoopEDT, _idep++, DB_MODE_RW );
+        ocrAddDependence( DBK_octTreeRedH, checkSumLoopEDT, _idep++, DB_MODE_RW );
         ocrAddDependence( initRedOEVT, checkSumLoopEDT, _idep++, DB_MODE_NULL );
 
         MyOcrTaskStruct_t TS_miniamrMain; _paramc = 1; _depc = 2;
@@ -773,11 +790,23 @@ void sharedOcrObjCreate( rankH_t* PTR_rankH )
     ocrSetHintValue(&dbHint, OCR_HINT_DB_LAZY, 1);
 #endif
 
+    octTreeRedH_t* PTR_octTreeRedH;
+    ocrDbCreate( &PTR_sharedOcrObjH->DBK_octTreeRedH, (void**) &PTR_octTreeRedH, sizeof(octTreeRedH_t), 0, &myDbkAffinityHNT, NO_ALLOC ); //TODO: LAZY
+    ocrDbRelease(PTR_sharedOcrObjH->DBK_octTreeRedH);
+
+    PTR_octTreeRedH = &(PTR_sharedOcrObjH->octTreeRedH);
+
+    PTR_octTreeRedH->DBK_octTreeRedH = PTR_sharedOcrObjH->DBK_octTreeRedH; //capture the GUID to be shared
+    PTR_octTreeRedH->number = ((PTR_rankH->ilevel==0) ? 1:-1)*PTR_rankH->myRank_g; //Level 0 is active in the initialization phase
+    PTR_octTreeRedH->ilevel = PTR_rankH->ilevel;
+    PTR_octTreeRedH->myRank = PTR_rankH->myRank;
+    PTR_octTreeRedH->isibling = PTR_rankH->isibling;
+
     int *PTR_in, *PTR_out;
     int r;
     size_t size;
     for( r=0; r<MAX_REDUCTION_HANDLES; r++ ) {
-        redObjects_t* PTR_redObjects = &PTR_sharedOcrObjH->blockRedObjects[r];
+        redObjects_t* PTR_redObjects = &PTR_octTreeRedH->blockRedObjects[r];
 
         ocrEventCreateParams(&(PTR_redObjects->upIEVT), OCR_EVENT_CHANNEL_T, true, &params);
         ocrEventCreateParams(&(PTR_redObjects->upOEVT), OCR_EVENT_CHANNEL_T, true, &params);
@@ -792,6 +821,7 @@ void sharedOcrObjCreate( rankH_t* PTR_rankH )
         ocrDbRelease( PTR_redObjects->DBK_in );
         ocrDbRelease( PTR_redObjects->DBK_out );
 
+        PTR_octTreeRedH->size[r] = size;
     }
 
     doubleBufferedOcrObj_t* PTR_dBufH1 = &(PTR_sharedOcrObjH->doubleBufferedOcrObjH[0]);
@@ -913,6 +943,7 @@ ocrGuid_t initEdt( EDT_ARGS )
 
             sharedOcrObj_t* PTR_sharedOcrObjH = &(PTR_rankH->sharedOcrObjH);
             PTR_sharedOcrObjH->DBK_rankH = DBK_rankH;
+            PTR_sharedOcrObjH->myRank_g = PTR_rankH->myRank_g;
 
             sharedOcrObjCreate( PTR_rankH );
 
@@ -925,7 +956,7 @@ ocrGuid_t initEdt( EDT_ARGS )
             PRM_channelSetupEdt.id = id_l;
             PRM_channelSetupEdt.nNbrs = nNbrs;
 
-            ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, PARAMC_U64(PRM_channelSetupEdt_t), 6*nNbrs+1+8+8+1 ); // (1 peer, 1 coarser, 4 refined) nbrs per dir + 1 parent + 8 children + 8 siblings + 1 self-rankH
+            ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, PARAMC_U64(PRM_channelSetupEdt_t), 6*nNbrs+1+8+8+1+1 ); // (1 peer, 1 coarser, 4 refined) nbrs per dir + 1 parent + 8 children + 8 siblings + 1 self-rankH
             ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, (u64*)&PRM_channelSetupEdt, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
                             &myEdtAffinityHNT, NULL );
             ocrEdtTemplateDestroy( channelSetupTML );
@@ -1156,8 +1187,9 @@ ocrGuid_t initEdt( EDT_ARGS )
                 ocrAddDependence( stkyEVT_sibling[isibling], channelSetupEDT, 6*nNbrs+9+isibling, DB_MODE_RO );
             }
 
+            ocrAddDependence( PTR_sharedOcrObjH->DBK_octTreeRedH, channelSetupEDT, 6*nNbrs+9+8, DB_MODE_RW );
             ocrDbRelease(DBK_rankH);
-            ocrAddDependence( DBK_rankH, channelSetupEDT, 6*nNbrs+9+8, DB_MODE_RW );
+            ocrAddDependence( DBK_rankH, channelSetupEDT, 6*nNbrs+9+9, DB_MODE_RW );
         }
 
         offset += p8*npx*npy*npz*init_block_x*init_block_y*init_block_z;
