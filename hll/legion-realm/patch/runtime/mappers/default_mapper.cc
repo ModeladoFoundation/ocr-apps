@@ -152,7 +152,15 @@ namespace Legion {
         switch (it->kind())
         {
 #if USE_OCR_LAYER
-          assert(false); //currently only single node
+          case Processor::OCR_PROC:
+            {
+              // See if we already have a target CPU processor for this node
+              if (node >= remote_cpus.size())
+                remote_cpus.resize(node+1, Processor::NO_PROC);
+              if (!remote_cpus[node].exists())
+                remote_cpus[node] = *it;
+              break;
+            }
 #else // USE_OCR_LAYER
           case Processor::TOC_PROC:
             {
@@ -190,9 +198,9 @@ namespace Legion {
                 remote_procsets[node] = *it;
               break;
             }
+#endif // USE_OCR_LAYER
           default: // ignore anything else
             break;
-#endif // USE_OCR_LAYER
         }
       }
       assert(!local_cpus.empty()); // better have some cpus
@@ -972,6 +980,22 @@ namespace Legion {
         visible_memories.has_affinity_to(task.target_proc);
         switch (task.target_proc.kind())
         {
+#if USE_OCR_LAYER
+          case Processor::OCR_PROC:
+            {
+              visible_memories.only_kind(Memory::OCR_MEM);
+              if (visible_memories.count() == 0)
+              {
+                log_mapper.error("Default mapper error. No memory found for "
+                    "CPU task %s (ID %lld) which is visible for all points "
+                    "in the index space.", task.get_task_name(),
+                    task.get_unique_id());
+                assert(false);
+              }
+              target_memory = visible_memories.first();
+              break;
+            }
+#else // USE_OCR_LAYER
           case Processor::IO_PROC:
           case Processor::LOC_PROC:
           case Processor::PROC_SET:
@@ -1003,6 +1027,7 @@ namespace Legion {
               target_memory = visible_memories.first();
               break;
             }
+#endif // USE_OCR_LAYER
           default:
             assert(false); // unknown processor kind
         }

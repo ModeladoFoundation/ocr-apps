@@ -18,6 +18,10 @@
 #include <assert.h>
 #include "ocr_util.h"
 #include "extensions/ocr-affinity.h"
+#include "extensions/ocr-legacy.h"
+#ifdef ENABLE_EXTENSION_LEGACY_FIBERS
+#include "extensions/ocr-legacy-fibers.h"
+#endif
 
 namespace Realm {
   /*static*/ ocrHint_t * OCRUtil::ocrHintArr = NULL;
@@ -65,6 +69,10 @@ namespace Realm {
   gasnet_barrier_wait(0, GASNET_BARRIERFLAG_ANONYMOUS);
 }
 
+/*static*/ void OCRUtil::ocrLegacyBlock(ocrGuid_t dep) {
+  ocrLegacyBlockProgress(dep, NULL, NULL, NULL, LEGACY_PROP_NONE);
+}
+
 };
 
 #else // USE_GASNET
@@ -80,6 +88,14 @@ namespace Realm {
 }
 
 /*static*/ void OCRUtil::ocrBarrier() {
+}
+
+/*static*/ void OCRUtil::ocrLegacyBlock(ocrGuid_t dep) {
+#ifdef ENABLE_EXTENSION_LEGACY_FIBERS
+  ocrLegacyFiberSuspendOnEvent(dep, DB_MODE_RO);
+#else
+  ocrLegacyBlockProgress(dep, NULL, NULL, NULL, LEGACY_PROP_NONE);
+#endif
 }
 
 };

@@ -164,7 +164,11 @@ namespace Realm {
   /*static*/ Event Event::merge_events_ignorefaults(const std::set<Event>& wait_for)
   {
     DetailedTimer::ScopedPush sp(TIME_LOW_LEVEL);
+#if USE_OCR_LAYER
+    return OCREventImpl::merge_events(wait_for);
+#else
     return GenEventImpl::merge_events(wait_for, true /*ignore faults*/);
+#endif // USE_OCR_LAYER
   }
 
   /*static*/ Event Event::ignorefaults(Event wait_for)
@@ -2469,7 +2473,7 @@ static void *bytedup(const void *data, size_t datalen)
     }
 
 #if USE_OCR_LAYER
-  inline /*static*/ bool EventImpl::add_waiter(Event needed, EventWaiter *waiter)
+  /*static*/ bool EventImpl::add_waiter(Event needed, EventWaiter *waiter)
   {
     return OCREventImpl::add_waiter(needed, waiter);
   }

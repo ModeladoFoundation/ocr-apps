@@ -50,6 +50,7 @@ class MessageHandlerShort {
 
     static void static_destroy() {
       ocrEdtTemplateDestroy(ocr_realm_handle_request_edt_t);
+      ocr_realm_handle_request_edt_t = NULL_GUID;
     }
 
     static void request(const u32 dest, const MSGTYPE &args) {
@@ -64,8 +65,8 @@ class MessageHandlerShort {
 
       //create the EDT  on the dest PD
       ocrGuid_t ocr_realm_handle_request_edt;
-      ocrEdtCreate(&ocr_realm_handle_request_edt, ocr_realm_handle_request_edt_t,
-        argc, argv, 0, NULL, EDT_PROP_NONE, &(Realm::OCRUtil::ocrHintArr[dest]), NULL);
+      ocrEdtCreate(NULL, ocr_realm_handle_request_edt_t, argc, argv,
+        0, NULL, EDT_PROP_NONE, &(Realm::OCRUtil::ocrHintArr[dest]), NULL);
     }
 };
 
@@ -117,8 +118,8 @@ class MessageHandlerMedium {
 
       //create the EDT on the dest PD
       ocrGuid_t ocr_realm_handle_request_edt;
-      ocrEdtCreate(&ocr_realm_handle_request_edt, ocr_realm_handle_request_edt_t,
-        argc, argv, 0, NULL, EDT_PROP_NONE, &(Realm::OCRUtil::ocrHintArr[dest]), NULL);
+      ocrEdtCreate(NULL, ocr_realm_handle_request_edt_t, argc, argv,
+        0, NULL, EDT_PROP_NONE, &(Realm::OCRUtil::ocrHintArr[dest]), NULL);
     }
 
     static void request(const u32 dest, const MSGTYPE &args,

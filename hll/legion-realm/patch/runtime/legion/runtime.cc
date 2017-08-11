@@ -18469,6 +18469,10 @@ namespace Legion {
 	  runtime_startup_event = mpi_sync_event;
         }
       }
+#if USE_OCR_LAYER
+      Realm::OCRUtil::ocrBarrier();
+#endif // USE_OCR_LAYER
+
       // See if we are supposed to start the top-level task
       if (top_level_proc.exists())
       {

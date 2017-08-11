@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -9909,7 +9910,11 @@ namespace Legion {
       // Assume for now that all msut epoch launches have to be
       // mapped to CPUs
       Machine::ProcessorQuery all_cpus(runtime->machine);
+#if USE_OCR_LAYER
+      all_cpus.only_kind(Processor::OCR_PROC);
+#else
       all_cpus.only_kind(Processor::LOC_PROC);
+#endif // USE_OCR_LAYER
       if (total_points > all_cpus.count())
       {
         log_run.error("Illegal must epoch launch in task %s (UID %lld). "

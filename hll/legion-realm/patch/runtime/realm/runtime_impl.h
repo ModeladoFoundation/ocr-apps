@@ -41,6 +41,10 @@
 
 #include "module.h"
 
+#if USE_OCR_LAYER
+#include "extensions/ocr-db-info.h"
+#endif // USE_OCR_LAYER
+
 #if __cplusplus >= 201103L
 #define typeof decltype
 #endif

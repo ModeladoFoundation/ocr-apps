@@ -594,6 +594,9 @@ namespace Realm {
       RemoteFillMessage::static_init();
       MetadataBase::static_init();
 
+      // initialize barrier timestamp
+      BarrierImpl::barrier_adjustment_timestamp = (((Barrier::timestamp_t)(OCRUtil::ocrCurrentPolicyDomain())) << BarrierImpl::BARRIER_TIMESTAMP_NODEID_SHIFT) + 1;
+
       //create the nodes which contains processors and memory
       nodes = new Node[OCRUtil::ocrNbPolicyDomains()];
 
@@ -601,6 +604,7 @@ namespace Realm {
       {
           Node& n = nodes[OCRUtil::ocrCurrentPolicyDomain()];
           local_index_space_free_list = new IndexSpaceTableAllocator::FreeList(n.index_spaces, OCRUtil::ocrCurrentPolicyDomain());
+          local_barrier_free_list = new BarrierTableAllocator::FreeList(n.barriers, OCRUtil::ocrCurrentPolicyDomain());
       }
 
       Node *n = &nodes[OCRUtil::ocrCurrentPolicyDomain()];
@@ -2266,8 +2270,6 @@ namespace Realm {
 
 #if USE_OCR_LAYER
 
-#include "extensions/ocr-legacy.h"
-
 int __attribute__ ((weak)) legion_ocr_main(int argc, char* argv[])
 {
     printf("error: no legion_ocr_main defined.\n");
@@ -2285,9 +2287,10 @@ ocrGuid_t legion_ocr_main_func(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t d
 
   Realm::OCRUtil::static_init();
 
-  //TODO: get all argc and argv, not just one
-  const int argc = 1;
-  char *argv[argc] = {(char*)paramv};
+  int argc = getArgc(paramv), i;
+  char *argv[argc];
+  for(i=0;i<argc;i++)
+    argv[i] = getArgv(paramv, i);
 
   int ret = legion_ocr_main(argc, argv);
   assert(ret == 0);
@@ -2316,10 +2319,11 @@ ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
     assert(numPD > 1);
 
     //TODO: pack all argc and argv, not just one
-    size_t size = strlen(argv[0])+1;
-    u32 paramc_edt = U64_COUNT(size);
+    u64 sz;
+    ocrDbGetSize(depv[0].guid, &sz);
+    u32 paramc_edt = U64_COUNT(sz);
     u64 paramv_edt[paramc_edt];
-    memcpy(paramv_edt, argv[0], size);
+    memcpy(paramv_edt, depv[0].ptr, sz);
 
     ocrGuid_t legion_ocr_main_edt, legion_ocr_main_edt_t, legion_ocr_main_out, legion_ocr_main_out_sticky;
 
@@ -2343,7 +2347,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
     legion_ocr_main(argc, argv);
 
     //wait for init EDT's to finish
-    ocrLegacyBlockProgress(legion_ocr_main_out_sticky, NULL, NULL, NULL, LEGACY_PROP_NONE);
+    Realm::OCRUtil::ocrLegacyBlock(legion_ocr_main_out_sticky);
     ocrEventDestroy(legion_ocr_main_out_sticky);
   }
 

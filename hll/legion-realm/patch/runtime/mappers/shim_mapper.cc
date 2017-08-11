@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -449,7 +450,11 @@ namespace Legion {
       : DefaultMapper(rhs.mapper_runtime, Machine::get_machine(),
           Processor::NO_PROC),
         mapper_runtime(rhs.mapper_runtime),
+#if USE_OCR_LAYER
+        local_kind(Processor::OCR_PROC), machine(rhs.machine), runtime(NULL),
+#else
         local_kind(Processor::LOC_PROC), machine(rhs.machine), runtime(NULL),
+#endif
         machine_interface(Utilities::MachineQueryInterface(rhs.machine))
     //--------------------------------------------------------------------------
     {
@@ -631,7 +636,11 @@ namespace Legion {
       task->selected_variant = task->variants->get_variant(target_kind,
                                                       !(task->is_index_space),
                                                       task->is_index_space);
+#if USE_OCR_LAYER
+      if (target_kind == Processor::OCR_PROC)
+#else
       if (target_kind == Processor::LOC_PROC)
+#endif
       {
         for (unsigned idx = 0; idx < task->regions.size(); idx++)
           // Elliott needs SOA for the compiler.
@@ -670,7 +679,11 @@ namespace Legion {
           {
             machine_interface.find_memory_stack(task->target_proc,
                     task->regions[idx].target_ranking,
+#if USE_OCR_LAYER
+                    (task->target_proc.kind() == Processor::OCR_PROC));
+#else
                     (task->target_proc.kind() == Processor::LOC_PROC));
+#endif
             memoizer.record_mapping(task->target_proc, task, idx,
                                     task->regions[idx].target_ranking);
           }
@@ -685,7 +698,11 @@ namespace Legion {
         task->regions[idx].enable_WAR_optimization = war_enabled;
         task->regions[idx].reduction_list = false;
         task->regions[idx].make_persistent = false;
+#if USE_OCR_LAYER
+        if (target_kind == Processor::OCR_PROC)
+#else
         if (target_kind == Processor::LOC_PROC)
+#endif
           // Elliott needs SOA for the compiler.
           task->regions[idx].blocking_factor = // 1;
             task->regions[idx].max_blocking_factor;
@@ -818,7 +835,11 @@ namespace Legion {
                     copy->get_unique_copy_id(), local_proc.id);
       std::vector<Memory> local_stack;
       machine_interface.find_memory_stack(local_proc, local_stack,
+#if USE_OCR_LAYER
+                                          (local_kind == Processor::OCR_PROC));
+#else
                                           (local_kind == Processor::LOC_PROC));
+#endif
       assert(copy->src_requirements.size() == copy->dst_requirements.size());
       for (unsigned idx = 0; idx < copy->src_requirements.size(); idx++)
       {
@@ -840,7 +861,11 @@ namespace Legion {
         {
           copy->dst_requirements[idx].target_ranking = local_stack;
         }
+#if USE_OCR_LAYER
+        if (local_kind == Processor::OCR_PROC)
+#else
         if (local_kind == Processor::LOC_PROC)
+#endif
         {
           // Elliott needs SOA for the compiler.
           copy->src_requirements[idx].blocking_factor = // 1;
@@ -911,7 +936,11 @@ namespace Legion {
       {
         machine_interface.find_memory_stack(local_proc,
                                           inline_op->requirement.target_ranking,
+#if USE_OCR_LAYER
+                                          (local_kind == Processor::OCR_PROC));
+#else
                                           (local_kind == Processor::LOC_PROC));
+#endif
       }
       else
       {
@@ -920,7 +949,11 @@ namespace Legion {
           (inline_op->requirement.current_instances.begin())->first;
         inline_op->requirement.target_ranking.push_back(target);
       }
+#if USE_OCR_LAYER
+      if (local_kind == Processor::OCR_PROC)
+#else
       if (local_kind == Processor::LOC_PROC)
+#endif
         // Elliott needs SOA for the compiler.
         inline_op->requirement.blocking_factor = // 1;
           inline_op->requirement.max_blocking_factor;
@@ -957,7 +990,11 @@ namespace Legion {
       if (profiler.profiling_complete(task))
         best_kind = profiler.best_processor_kind(task);
       else
+#if USE_OCR_LAYER
+        best_kind = Processor::OCR_PROC;
+#else
         best_kind = Processor::LOC_PROC;
+#endif
       std::set<Processor> all_procs;
       machine.get_all_processors(all_procs);
       machine_interface.filter_processors(machine, best_kind, all_procs);
@@ -1154,7 +1191,11 @@ namespace Legion {
       // Get all the variants for each of the processor kinds
       std::vector<VariantID> cpu_variants, gpu_variants, io_variants;
       mapper_runtime->find_valid_variants(ctx, task_id,
+#if USE_OCR_LAYER
+                                    cpu_variants, Processor::OCR_PROC);
+#else
                                     cpu_variants, Processor::LOC_PROC);
+#endif
       mapper_runtime->find_valid_variants(ctx, task_id,
                                     gpu_variants, Processor::TOC_PROC);
       mapper_runtime->find_valid_variants(ctx, task_id,
@@ -1164,7 +1205,11 @@ namespace Legion {
       {
         bool is_leaf = mapper_runtime->is_leaf_variant(ctx, task_id, *it);
         bool is_inner = mapper_runtime->is_inner_variant(ctx, task_id, *it);
+#if USE_OCR_LAYER
+        collection->add_variant(*it, Processor::OCR_PROC, true, true,
+#else
         collection->add_variant(*it, Processor::LOC_PROC, true, true,
+#endif
                                 is_inner, is_leaf, *it);
       }
       for (std::vector<VariantID>::const_iterator it = gpu_variants.begin();

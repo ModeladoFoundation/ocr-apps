@@ -37,6 +37,8 @@ namespace Realm {
       static u64 ocrCurrentPolicyDomain();
 
       static void ocrBarrier();
+
+      static void ocrLegacyBlock(ocrGuid_t dep);
   };
 };
 #endif // USE_OCR_LAYER

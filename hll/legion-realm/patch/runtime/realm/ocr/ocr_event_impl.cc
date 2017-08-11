@@ -75,7 +75,7 @@ namespace Realm {
 
     /*static*/ void OCREventImpl::wait(ocrGuid_t evt)
     {
-      ocrLegacyBlockProgress(evt, NULL, NULL, NULL, LEGACY_PROP_NONE);
+      OCRUtil::ocrLegacyBlock(evt);
     }
 
     /*static*/ void OCREventImpl::external_wait(ocrGuid_t evt)
@@ -91,7 +91,7 @@ namespace Realm {
 
       //invoke the EDT that calls event_triggered
       ocrGuid_t event_waiter_edt;
-      ocrEdtCreate(&event_waiter_edt, OCREventImpl::event_waiter_edt_t,
+      ocrEdtCreate(NULL, OCREventImpl::event_waiter_edt_t,
         U64_COUNT(waiter_size), (u64*)waiter, 1, & needed.evt_guid,
         EDT_PROP_NONE, &(OCRUtil::ocrHintArr[dest]), NULL);
       return true;

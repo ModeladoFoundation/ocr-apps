@@ -1,4 +1,5 @@
 /* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -4354,9 +4355,16 @@ namespace Legion {
             Runtime::release_reservation(manager_lock);
             RtEvent wait_on = send_remote_version_request(request_mask,
                                                           ready_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
             // Only retake the reservation, when we are ready
             RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                             manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
             // Might as well wait since we just sent a message
             lock_reacquired.wait();
 #ifdef DEBUG_LEGION
@@ -4414,9 +4422,16 @@ namespace Legion {
             Runtime::release_reservation(manager_lock);
             RtEvent wait_on = send_remote_version_request(request_mask,
                                                           ready_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
             // Only retake the reservation, when we are ready
             RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                             manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
             // Might as well wait since we just sent a message
             lock_reacquired.wait();
 #ifdef DEBUG_LEGION
@@ -4535,9 +4550,16 @@ namespace Legion {
           Runtime::release_reservation(manager_lock);
           RtEvent wait_on = send_remote_version_request(request_mask,
                                                         ready_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
           // Retake the lock only once we're ready to
           RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                           manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
           // Might as well wait since we're sending a remote message
           lock_reacquired.wait();
 #ifdef DEBUG_LEGION
@@ -4594,9 +4616,16 @@ namespace Legion {
           Runtime::release_reservation(manager_lock);
           RtEvent wait_on = send_remote_version_request(request_mask,
                                                         ready_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
           // Retake the lock only once we're ready to
           RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                           manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
           // Might as well wait since we're sending a remote message
           lock_reacquired.wait();
 #ifdef DEBUG_LEGION
@@ -4655,9 +4684,16 @@ namespace Legion {
           Runtime::release_reservation(manager_lock);
           RtEvent wait_on = send_remote_version_request(request_mask,
                                                         ready_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
           // Retake the lock only once we're ready to
           RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                           manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
           // Might as well wait since we're sending a remote message
           lock_reacquired.wait();
 #ifdef DEBUG_LEGION
@@ -4883,9 +4919,16 @@ namespace Legion {
           Runtime::release_reservation(manager_lock);
           RtEvent wait_on = send_remote_version_request(request_mask,
                                                         ready_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
           // Retake the lock only once we're ready to
           RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                           manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
           // Might as well wait since we're sending a remote message
           lock_reacquired.wait();
 #ifdef DEBUG_LEGION
@@ -5444,9 +5487,16 @@ namespace Legion {
           Runtime::release_reservation(manager_lock);
           RtEvent wait_on = send_remote_version_request(
               new_states.get_valid_mask(), applied_events);
+#if USE_OCR_LAYER
+            wait_on.wait();
+            // Only retake the reservation, when we are ready
+            RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
+                            manager_lock, false/*exclusive, wait_on*/);
+#else
           // Retake the lock only once we're ready to
           RtEvent lock_reacquired = Runtime::acquire_rt_reservation(
                           manager_lock, false/*exclusive*/, wait_on);
+#endif // USE_OCR_LAYER
           // Might as well wait since we're sending a remote message
           lock_reacquired.wait();
 #ifdef DEBUG_LEGION

@@ -58,6 +58,7 @@ namespace Realm {
     //extract the function pointer to be executed
     Processor::TaskFuncPtr task_func = argv_ptr->fnptr;
     //extract args and arglen and pass it to the function
+    assert(task_func!=NULL);
     task_func(argv_ptr->args, argv_ptr->arglen, NULL, 0, argv_ptr->p);
 
     return NULL_GUID;
@@ -93,6 +94,7 @@ namespace Realm {
     ArgsEDT *argv_ptr = (ArgsEDT *) argv;
     argv_ptr->p = me;
     argv_ptr->fnptr = task_table[func_id].fnptr;
+    assert(argv_ptr->fnptr!=NULL);
     argv_ptr->arglen = arglen;
     memcpy(argv_ptr->args, args, arglen);
 

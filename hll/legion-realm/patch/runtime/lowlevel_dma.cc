@@ -4993,7 +4993,7 @@ namespace LegionRuntime {
     //cannot attach to the finish event since the triggering needs to be done by
     //ocr_realm_perform_dma_edt or RemoteWriteFenceAckMessage::handle_request whoever
     //finishes last. Triggering taken care by Operatons::mark_finished() api
-    ocrEdtCreate(&ocr_realm_perform_dma_edt, DmaRequest::ocr_realm_perform_dma_edt_t,
+    ocrEdtCreate(NULL, DmaRequest::ocr_realm_perform_dma_edt_t,
       argc, argv, 0, NULL, EDT_PROP_NONE, &curr_node_hint, NULL);
       //argc, argv, 0, NULL, EDT_PROP_OEVT_VALID, &curr_node_hint, &finish_event.evt_guid);
   }

@@ -17,8 +17,6 @@
 
 #include "ocr_mem_impl.h"
 
-#include "extensions/ocr-legacy.h"
-
 namespace Realm {
 
   extern Logger log_malloc; // in mem_impl.cc
@@ -50,7 +48,7 @@ namespace Realm {
     ocrEventSatisfy(*((ocrGuid_t *)depv[0].ptr), ret_db_guid);
 
     //block the thread until memory destructor satisfies the event
-    ocrLegacyBlockProgress(data->block_evt_guid, NULL, NULL, NULL, LEGACY_PROP_NONE);
+    OCRUtil::ocrLegacyBlock(data->block_evt_guid);
 
     //cleanup the event
     ocrEventDestroy(data->block_evt_guid);
