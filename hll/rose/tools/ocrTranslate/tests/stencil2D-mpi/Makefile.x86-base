@@ -1,6 +1,11 @@
 # This file is subject to the license agreement located in the file LICENSE
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
+include ../../Makefile-mpi.def
+
+ifndef MPI_INSTALL
+  $(error Set MPI environment in ../../Makefile-mpi.def!)
+endif
 
 # ARCH
 ARCH        := x86
@@ -9,8 +14,9 @@ APPS_ROOT   ?= ../../../../../../apps
 # OCR TRANSLATOR ROOT
 OCR_TRANSLATOR_ROOT ?= ../../../ocrTranslate
 OCR_TRANSLATOR_BIN ?= ${OCR_TRANSLATOR_ROOT}/bin/ocrTranslate
-OCR_TRANSLATOR_INC  ?= -I/opt/intel/tools/compilers_and_libraries_2016.0.109/linux/mpi/intel64/include
-OCR_TRANSLATOR_FLAGS ?= -DSTAR -DDOUBLE_USER -DOCRTRANSLATE
+
+OCR_TRANSLATOR_INC  ?= -I${MPI_INSTALL}/include
+OCR_TRANSLATOR_FLAGS ?= -DSTAR -DDOUBLE_USER -DOCRTRANSLATE ${OCR_TRANSLATOR_INC}
 
 # TRANSLATOR INPUT SOURCE
 # Set the target file for translation
@@ -21,8 +27,6 @@ OCR_TRANSLATOR_TARGET_SRCS := MPI_bail_out.c stencil.c
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
-
-# CC = g++
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
@@ -93,7 +97,7 @@ LDFLAGS := -lpthread -lspmd $(EXTRALDFLAGS)
 #   - debug:   Build the debug version of the application
 #   - install: Build and install
 #   - run:     Run the application
-all:	CFLAGS += -O3
+all:	CFLAGS += -O2
 all:	TARGETS := all
 all:	default
 
