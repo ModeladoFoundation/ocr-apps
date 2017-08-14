@@ -1,13 +1,12 @@
 # This file is subject to the license agreement located in the file LICENSE
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
-include ../Makefile.def
+include ../Makefile-rose.def
+include ../Makefile-mpi.def
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 
 # Where the binaries will be installed
 BINDIR = $(TOP)bin
-
-OCR_TYPE := x86
 
 # AST Generator
 ASTGEN = astGenerate
@@ -23,6 +22,14 @@ OCRTRANSLATE = ocrTranslate
 
 # All binaries
 TARGETS := $(OCRTRANSLATE)
+
+ifndef ROSE_INS
+  $(error Set ROSE environment in ../Makefile-rose.def!)
+endif
+
+ifndef MPI_INSTALL
+  $(error Set MPI environment in ../Makefile-mpi.def!)
+endif
 
 .PHONY: all
 all: $(TARGETS)
@@ -40,7 +47,7 @@ endif
 	cp $(ASTGEN) ../bin
 
 CC := g++
-CFLAGS := $(ROSE_INC) -g
+CFLAGS := $(ROSE_INC) -I$(MPI_INCLUDE_DIR) -g
 OCRTRANSLATE_HEADERS := ocrObjectInfo.h ocrPragmaParsing.h ocrTranslateEngine.h ocrAstInfo.h ocrAstBuilder.h logger.h ocrSymbolTable.h
 OCRTRANSLATE_SRCS := ocrObjectInfo.cpp \
 	ocrSymbolTable.cpp \
