@@ -107,16 +107,14 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbDestroy(guidParamv[1]);
     if (iter > 2) {
         ocrGuid_t pEvt;
-        ocrGuidTableRemove(USER_KEY((iter - 1), x, y), &pEvt);
+        ocrGuidTableRemove(USER_KEY((iter - 2), x, y), &pEvt);
         ocrEventDestroy(pEvt);
     }
 
     //Check for termination condition on this iteration
     if (iter == (NUM_ITERS + 1)) {
         ocrGuid_t shutdownEdt = guidParamv[0];
-        ocrGuid_t curOutputEvent;
-        ocrGetOutputEvent(&curOutputEvent);
-        ocrAddDependence(curOutputEvent, shutdownEdt, ITER_INDEX(x, y), DB_MODE_CONST);
+        ocrAddDependence(NULL_GUID, shutdownEdt, ITER_INDEX(x, y), DB_MODE_NULL);
         return NULL_GUID;
     }
 
@@ -209,7 +207,7 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     //Create event for future iteration (iter + 2) and associate with user-defined key
     if ((iter + 2) <= (NUM_ITERS + 1)) {
         ocrGuid_t evt;
-        ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+        ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG | EVT_PROP_RESILIENT);
         ocrGuidTablePut(USER_KEY((iter + 2), x, y), evt);
     }
     return NULL_GUID;
@@ -269,7 +267,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
             //Create event for future iteration (iter + 2) and associate with user-defined key
             if (NUM_ITERS > 1) {
                 ocrGuid_t evt;
-                ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG);
+                ocrEventCreate(&evt, OCR_EVENT_STICKY_T, EVT_PROP_TAKES_ARG | EVT_PROP_RESILIENT);
                 u64 key = USER_KEY(2, i, j);
                 ocrGuidTablePut(key, evt);
             }

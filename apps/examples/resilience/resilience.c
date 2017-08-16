@@ -58,7 +58,7 @@
 #define NUM_DEPS 3 /*3-point stencil*/
 
 #define NUM_LOCAL_EDTS 2
-#define INJECT_FAULT 1
+#define INJECT_FAULT 0
 
 //Dummy function for local computation EDT on every iteration in each rank
 ocrGuid_t localFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
@@ -105,15 +105,13 @@ ocrGuid_t resilientFunc(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrDbDestroy(guidParamv[1]);
     if (iter > 2) {
         ocrGuid_t pEvt;
-        ocrGuidTableGet(USER_KEY((iter - 1), x), &pEvt);
+        ocrGuidTableRemove(USER_KEY((iter - 2), x), &pEvt);
         ocrEventDestroy(pEvt);
     }
 
     //Check for termination condition on this iteration
     if (iter == (NUM_ITERS + 1)) {
         ocrGuid_t shutdownEdt = guidParamv[0];
-        ocrGuid_t curOutputEvent;
-        ocrGetOutputEvent(&curOutputEvent);
         ocrAddDependence(NULL_GUID, shutdownEdt, x, DB_MODE_NULL);
         return NULL_GUID;
     }
