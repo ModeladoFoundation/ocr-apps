@@ -4,16 +4,20 @@
 #SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
 #SBATCH -J TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
 #SBATCH -o TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+#SBATCH -L SCRATCH
 
 export OCR_INSTALL=TPLARG_OCR_INSTALL
 export RUN_MODE=runApp
 
 export REPO_TOP=TPLARG_REPO_TOP
-export XST_BATCH="yes"
+export XST_BATCH=${XST_BATCH-"yes"}
 .  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
 
 export tile=${tile-TPLARG_TILE}
 export iter=${iter-TPLARG_ITER}
+
+# To instruct SLURM to affinitize MPI processes hosting OCR
+export OCR_MPI_OPTS+=" -c 48"
 
 if [[ ${XST_BATCH} == "yes" ]]; then
     if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
@@ -101,7 +105,9 @@ if [[ -n "${RUN_MPI}" ]]; then
         adjCores+="$adj "
     done
 
-    n="TPLARG_NODE_SCALING" c="${adjCores}" iter="TPLARG_ITER" tile="TPLARG_TILE" nbRuns="TPLARG_NB_RUN" prog="stencil_mapped" ./scripts/batch/runNersc.sh > ${SLURM_SUBMIT_DIR}/output_checked_mpi_TPLARG_NODE_SCALINGN
+    export OCR_MPI_OPTS=" -c 48 "
+
+    MY_MPI_ARGS="${OCR_MPI_OPTS}" n="TPLARG_NODE_SCALING" c="${adjCores}" iter="TPLARG_ITER" tile="TPLARG_TILE" nbRuns="TPLARG_NB_RUN" prog="stencil_mapped" ./scripts/batch/runNersc.sh > ${SLURM_SUBMIT_DIR}/output_checked_mpi_TPLARG_NODE_SCALINGN
 
     END_DATE=`date`
     echo "END_DATE=${END_DATE}" >> ${SLURM_SUBMIT_DIR}/output_dates_TPLARG_NODE_SCALINGN

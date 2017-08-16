@@ -1,0 +1,29 @@
+README
+
+
+TPLARG_*: overrides value that are sed into the batch template
+
+
+BATCH_TPL: The name of the template file (without its tpl extensions) to use located under ./scripts/batch
+CPGN: The folder whereto output the generated file and run experiments from
+
+
+MHOME: Allows to override the 'home' value. Essentially useful on NERSC system when using the SCRATCH space.
+
+OCR to link with:
+Either OCR_INSTALL
+
+
+
+
+
+
+
+- OCR_INSTALL to be set or default variant is used
+- CPGN:
+- Default app variant name
+
+- Would have liked to extract the application specific parameters and call into a generic function to call gen/run/res
+
+genBatch.sh
+	=> has both application and jobs specific stuff

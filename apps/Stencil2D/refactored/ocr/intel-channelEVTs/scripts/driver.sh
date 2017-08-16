@@ -1,33 +1,99 @@
 
-# Job parameters
-export c=${c-"2 5 17"}
-export n=${n-"1 4 16 64"}
-BATCH_TPL=${BATCH_TPL-Stencil2D}
+JOB_PROPERTIES=${JOB_PROPERTIES-./scripts/job.properties}
 
-# Application parameters
-# The driver script will interpret 'WORKLOAD_ARGS_NAMES' as a list of workload arguments names
-# It is expected there will be environment variables with the exact same names defining
-# a list of values for that workload argument.
-#
+. ${JOB_PROPERTIES}
 
-# Warning MUST NOT start with space and MUST end with space
-WORKLOAD_ARGS_NAMES="iter tile "
+BINARY_BASENAME=${BINARY_BASENAME-"stencil2d"}
 
-iter=${iter-"100 400 800 1600"}
-tile=${tile-"360 768 1536 3072"}
+function buildNameWithConfig {
+    local prepend="${1}"
+    local entries="${2}"
+    local LIST_TUPLE_VARIABLES="${3}"
+    local __resultvar=${4}
+    res="${prepend}_"
+    if [[ -n "${USE_EAGER_DB_HINT}" ]]; then
+        res+="Eager"
+    fi
+    if [[ -n "${USE_STATIC_SCHEDULER}" ]]; then
+        res+="Static"
+    fi
+    eval $__resultvar="'$res'"
+}
 
-#TODO need to do that more cleanly
-# Campaign setup
-CPGN=${CPGN-"xp-thor-tile-sweep"}
+function clean {
+    rm -Rf ${CPGN}
+}
 
-#
-# Customizable variables
-#
-# OCR_VARIANT_PATH
-# APP_VARIANT_PATH
-# REPO_TOP
-# MHOME: filesystem's home root
-# CPGN : Output folder
-APPS_ROOT="$PWD/../../../.."
+function build {
+    entries=""
+    LIST_TUPLE_VARIABLES=""
+    # Generate a binary name according to defined variables
+    export TARGET_NAME= # Need to be visible in the env
+    buildNameWithConfig "${BINARY_BASENAME}" "${entries}" "${LIST_TUPLE_VARIABLES}" TARGET_NAME
+    # Clean-up
+    rm -Rf ../../../../apps/libs/install
+    rm -f ../../../../apps/libs/src/reduction/x86/*.o
+    rm -f ../../../../apps/libs/src/reduction/x86/*.a
+    rm -f ../../../../apps/libs/src/reductionEager/x86/*.o
+    rm -f ../../../../apps/libs/src/reductionEager/x86/*.a
+    rm -f build/x86-mpi/*
+    rm -f install/x86-mpi/${TARGET_NAME}
+    CFLAGS_EXT=""
+    if [[ -n "${USE_EAGER_DB_HINT}" ]]; then
+        CFLAGS_EXT+="-DUSE_EAGER_DB_HINT "
+    fi
+    if [[ -n "${USE_STATIC_SCHEDULER}" ]]; then
+        CFLAGS_EXT+="-DUSE_STATIC_SCHEDULER "
+    fi
 
-. ${APPS_ROOT}/tools/execution_tools/batch/driver.sh
+    eval "CFLAGS=\"${CFLAGS_EXT} \" ${ADD_MAKEFLAGS} RUN_MODE=buildApp TARGET=${TARGET_NAME} V=1 make install"
+}
+
+function gen {
+    # Generate a binary name according to defined variables
+    entries=""
+    LIST_TUPLE_VARIABLES=""
+    export TPLARG_APP_NAME= # Need to be visible in the env
+    buildNameWithConfig "${BINARY_BASENAME}" "${entries}" "${LIST_TUPLE_VARIABLES}" TPLARG_APP_NAME
+    . ./scripts/invoke.sh gen
+}
+
+function run {
+    entries=""
+    LIST_TUPLE_VARIABLES=""
+    for rank in `echo ${n}`; do
+        export BATCH_SCRIPT=
+        BATCH_SCRIPT="ws_${BATCH_TPL}.${rank}N.sh"
+        . ./scripts/invoke.sh run
+    done
+}
+
+function res {
+    for i in `echo ${iter}`; do
+        for t in `echo ${tile}`; do
+            for node in `echo ${n}`; do
+                export outdir=`echo ${CPGN}/jobdir.iter_$i.tile_$t/*.${node}N*/`
+                #TODO: I had to change that because the mode where we segregate worker count
+                # for d in `ls -d ${outdir}/job_output_*`; do
+                    echo "outdir=${outdir}"
+                    if [[ -n "${SHOW_SCALING}" ]]; then
+                        ranks="${n}" ${REPO_TOP}/apps/apps/tools/execution_tools/batch/showMultiResults.sh "${PWD}/${outdir}" "${c}" pes_comp
+                    fi
+                    # if [[ -n "${SHOW_SCALING}" ]]; then
+                    #     ranks="${n}" ${REPO_TOP}/apps/apps/tools/execution_tools/batch/showMultiResults.sh "${d}" "${c}" pes_comp
+                    #     # ranks="${n}" ./scripts/batch/showMultiResults.sh "${d}" "${c}" pes_comp
+                    # fi
+                    if [[ -n "${SHOW_PSL}" ]]; then
+                        ${REPO_TOP}/apps/apps/tools/analysis_tools/profilerStatisticsDriver.sh ${PWD}/${outdir}
+                    fi
+                # done
+            done
+        done
+    done
+}
+
+while [[ $# -gt 0 ]]; do
+    cmd="${1#-}"
+    eval ${cmd}
+    shift
+done

@@ -56,7 +56,7 @@ STATIC_SCHEDULER ?= 0
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := stencil_2d
+TARGET ?= stencil_2d
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
 # Space separated list of directory names in apps/libs/src

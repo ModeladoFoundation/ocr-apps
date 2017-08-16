@@ -10,10 +10,11 @@ export RUN_MODE=runApp
 
 export REPO_TOP=TPLARG_REPO_TOP
 export XST_BATCH="yes"
+
 .  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
 
-export tile=${tile-TPLARG_TILE}
-export iter=${iter-TPLARG_ITER}
+export tile=TPLARG_TILE
+export iter=TPLARG_ITER
 
 if [[ ${XST_BATCH} == "yes" ]]; then
     if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
@@ -22,6 +23,11 @@ if [[ ${XST_BATCH} == "yes" ]]; then
         export LOGDIR="${SLURM_SUBMIT_DIR}/${rundirName}"
         mkdir -p ${LOGDIR}
     fi
+fi
+
+# To instruct SLURM to affinitize MPI processes hosting OCR
+if [[ "TPLARG_QUEUE" == "XAS*" ]]; then
+    export OCR_MPI_OPTS+=" -c 72"
 fi
 
 cd ${REPO_TOP}/apps/apps/Stencil2D/refactored/ocr/intel-channelEVTs
@@ -101,7 +107,11 @@ if [[ -n "${RUN_MPI}" ]]; then
         adjCores+="$adj "
     done
 
-    n="TPLARG_NODE_SCALING" c="${adjCores}" iter="TPLARG_ITER" tile="TPLARG_TILE" nbRuns="TPLARG_NB_RUN" prog="stencil_mapped" ./scripts/batch/runNersc.sh > ${SLURM_SUBMIT_DIR}/output_checked_mpi_TPLARG_NODE_SCALINGN
+    if [[ "TPLARG_QUEUE" == "XAS*" ]]; then
+        export OCR_MPI_OPTS=" -c 72 "
+    fi
+
+    MY_MPI_ARGS="${OCR_MPI_OPTS}" n="TPLARG_NODE_SCALING" c="${adjCores}" iter="TPLARG_ITER" tile="TPLARG_TILE" nbRuns="TPLARG_NB_RUN" prog="stencil_mapped" ./scripts/batch/runNersc.sh > ${SLURM_SUBMIT_DIR}/output_checked_mpi_TPLARG_NODE_SCALINGN
 
     END_DATE=`date`
     echo "END_DATE=${END_DATE}" >> ${SLURM_SUBMIT_DIR}/output_dates_TPLARG_NODE_SCALINGN
