@@ -1,0 +1,44 @@
+
+This folder 'analysis_tools' gathers various post-processing tools.
+
+
+= OCR runtime profiler-based analysis tools =
+
+== Percent Scaling Loss ==
+
+Performs a Percent Scaling Loss analysis based on OCR runtime profiler output.
+
+Impl:
+    psl/
+
+Usage:
+    ./profilerStatisticsDriver.sh $FOLDER
+
+    - Look for ALL raw profile output files recursively in $FOLDER.
+      Calls the profiler processing script if raw profile output files have not been processed yet. This step is done once unless the generated 'all.prof' files are manually deleted.
+
+Output:
+    For each function profiled, report the Percent Scaling Loss, for example:
+
+        [8,32,64,128,256,512,1024]
+        app_FNC_update    0.00%    90.79%    92.34%    89.93%    85.50%    79.81%    81.92%
+
+    Shows the PSL for seven core configurations. The PSL is computed wrt to the
+    eight cores baseline configuration. The output shows for each other
+    configuration how much of the extra total execution time spent in the
+    call 'app_FNC_update'. Thus, one can diagnose this particular call as being
+    the main source of scaling loss in the application.
+
+
+= OCR runtime metrics-based analysis tools =
+
+Performs various analysis based no metrics output by the OCR runtime
+
+== OCR worker idleness ==
+
+Impl:
+    metrics/
+
+Usage:
+    ./profilerStatisticsDriver.sh
+
