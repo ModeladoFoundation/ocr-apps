@@ -1,0 +1,11 @@
+1) You might need to install these dependencies first:
+    apt-get install libnetcdf-dev libnetcdf-cxx-legacy-dev libblas-dev liblapack-dev
+
+2) Make sure you have XSTG_ROOT and OCXXR_LIB_ROOT correctly set in your environment.
+   See the ocxxr README for more details on those variables.
+
+3) Run `make` in the root tempest directory to build the library.
+
+4) cd test/hpc
+
+5) make -f Makefile.x86 run

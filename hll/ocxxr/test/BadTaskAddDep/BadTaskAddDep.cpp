@@ -4,7 +4,7 @@ static constexpr float kPayload = 7.65f;
 
 void ChildTask(ocxxr::Datablock<double> arg) {
     PRINTF("Child task ran! (arg=%f)\n", arg.data());
-    ASSERT(arg.data() == kPayload);
+    assert(arg.data() == kPayload);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
 }

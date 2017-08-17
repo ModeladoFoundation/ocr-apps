@@ -9,7 +9,7 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     ocxxr::RelPtrFor<int****> p4 = &p3;
     ocxxr::RelPtrFor<decltype(&p3)> q4 = p4;
     PRINTF("x = %d = %d\n", ****p4, ****q4);
-    ASSERT(****p4 == kPayload);
-    ASSERT(****q4 == kPayload);
+    assert(****p4 == kPayload);
+    assert(****q4 == kPayload);
     ocxxr::Shutdown();
 }

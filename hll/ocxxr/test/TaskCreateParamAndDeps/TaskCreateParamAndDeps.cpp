@@ -8,9 +8,9 @@ ocxxr::NullHandle ChildTask(unsigned char suffix, ocxxr::Datablock<long> middle,
                             ocxxr::Datablock<char[2]> prefix) {
     PRINTF("Child task ran.\n");
     PRINTF("%s%lx%u!\n", prefix.data(), middle.data(), suffix);
-    ASSERT(suffix == kPayload0);
-    ASSERT(middle.data() == kPayload1);
-    ASSERT(prefix.data()[0] == kPayload2);
+    assert(suffix == kPayload0);
+    assert(middle.data() == kPayload1);
+    assert(prefix.data()[0] == kPayload2);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
     return ocxxr::NullHandle();

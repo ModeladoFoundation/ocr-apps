@@ -21,10 +21,10 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     x->p5 = &x->p4;
     x->q5 = x->p5;
     PRINTF("p4 = %d\n", ****x->p4);
-    ASSERT(****x->p4 == kPayload);
+    assert(****x->p4 == kPayload);
     PRINTF("p5 = %d\n", *****x->p5);
-    ASSERT(*****x->p5 == kPayload);
+    assert(*****x->p5 == kPayload);
     PRINTF("q5 = %d\n", *****x->q5);
-    ASSERT(*****x->q5 == kPayload);
+    assert(*****x->q5 == kPayload);
     ocxxr::Shutdown();
 }

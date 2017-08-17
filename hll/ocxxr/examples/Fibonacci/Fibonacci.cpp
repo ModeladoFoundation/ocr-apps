@@ -9,6 +9,15 @@
 
 #include <cstdlib>
 
+#ifdef MEASURE_TIME
+#include <ctime>
+#include <ratio>
+#include <chrono>
+using namespace std::chrono;
+
+high_resolution_clock::time_point start;
+#endif
+
 static constexpr bool kFibVerbose = false;
 
 // Using the same recursive structure as in the EDTs
@@ -25,7 +34,14 @@ void CheckResult(u32 n, ocxxr::Datablock<u64> result) {
     }
     PRINTF("Fib(%" PRIu32 ") = %" PRIu64 "\n", n, *result);
     const u64 expected_answer = SequentialFib(n);
-    ASSERT(*result == expected_answer);
+    assert(*result == expected_answer);
+
+#ifdef MEASURE_TIME
+	high_resolution_clock::time_point end = high_resolution_clock::now();
+	duration<double> time_span = duration_cast<duration<double>>(end - start);
+	PRINTF("elapsed time: %f second\n", time_span.count());
+#endif
+
     ocxxr::Shutdown();
 }
 
@@ -86,13 +102,17 @@ void Fib(FibParams &params) {
 }
 
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs> args) {
+#ifdef MEASURE_TIME
+    start = high_resolution_clock::now();
+#endif
+
     if (kFibVerbose) {
         PRINTF("Starting main task...\n");
     }
 
     u32 n;
     if (args->argc() != 2) {
-        n = 10;
+        n = 20;
         PRINTF("Usage: fib <num>, defaulting to %" PRIu32 "\n", n);
     } else {
         n = atoi(args->argv(1));

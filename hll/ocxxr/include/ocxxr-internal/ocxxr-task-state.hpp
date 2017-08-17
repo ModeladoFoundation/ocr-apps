@@ -97,7 +97,7 @@ inline void PushTaskState() {
     TaskLocalState *parent_state = _task_local_state;
     _task_local_state = OCXXR_TEMP_NEW_ZERO(TaskLocalState);
     bookkeeping::AcquiredDbInfo *db_info = &_task_local_state->acquired_dbs;
-    ASSERT(db_info->acquired_db_count == 0);  // should do zero-init
+    assert(db_info->acquired_db_count == 0);  // should do zero-init
     _task_local_state->parent = parent_state;
 }
 
@@ -122,7 +122,7 @@ inline void AddDatablock(ocrGuid_t guid, void *base_address) {
     auto g_end = db_info->dbs_by_guid_end();
     if (!std::binary_search(g_start, g_end, DbPair(guid),
                             DbPair::CompareGuids)) {
-        ASSERT(db_info->acquired_db_count < OCXXR_MAX_DB_ACQUIRE_COUNT &&
+        assert(db_info->acquired_db_count < OCXXR_MAX_DB_ACQUIRE_COUNT &&
                "Acquired too many datablocks in one task");
         // OK, this is a new GUID that we should actually track...
         DbPair new_info(guid, base_address);
@@ -144,40 +144,46 @@ inline void RemoveDatablock(ocrGuid_t guid) {
     bookkeeping::AcquiredDbInfo *db_info = &_task_local_state->acquired_dbs;
     auto g_start = db_info->dbs_by_guid_start();
     auto g_end = db_info->dbs_by_guid_end();
+    // Remove from by-guid list
     auto i = std::lower_bound(g_start, g_end, DbPair(guid),
                               DbPair::CompareGuids);
-    ASSERT(ocrGuidIsEq(guid, i->guid()) &&
+    assert(ocrGuidIsEq(guid, i->guid()) &&
            "Released untracked non-null datablock");
     ptrdiff_t base_addr = i->base_addr();
     std::swap(i, --g_end);
+    // XXX - should sort on-demand...
     std::sort(g_start, g_end, DbPair::CompareGuids);
+    // Remove from by-address list
     auto a_start = db_info->dbs_by_addr_start();
     auto a_end = db_info->dbs_by_addr_end();
     auto j = std::lower_bound(a_start, a_end, DbPair(base_addr),
                               DbPair::CompareBases);
-    ASSERT(base_addr == j->base_addr() &&
+    assert(base_addr == j->base_addr() &&
            "Matching base address for datablock GUID not found");
     std::swap(j, --a_end);
+    // XXX - should sort on-demand...
     std::sort(a_start, a_end, DbPair::CompareBases);
+    --db_info->acquired_db_count;
 }
 
 }  // namespace bookkeeping
 
 inline ptrdiff_t AddressForGuid(ocrGuid_t guid) {
     using bookkeeping::DbPair;
-    ASSERT(!ocrGuidIsNull(guid) && "Should not query for NULL_GUID");
+    assert(!ocrGuidIsNull(guid) && "Should not query for NULL_GUID");
     bookkeeping::AcquiredDbInfo *db_info = &_task_local_state->acquired_dbs;
     auto g_start = db_info->dbs_by_guid_start();
     auto g_end = db_info->dbs_by_guid_end();
     auto i = std::lower_bound(g_start, g_end, DbPair(guid),
                               DbPair::CompareGuids);
-    ASSERT(i != g_end && "Lookup of untracked non-null datablock");
-    ASSERT(ocrGuidIsEq(guid, i->guid()) && "Datablock lookup mismatch");
+    assert(i != g_end && "Lookup of untracked non-null datablock");
+    assert(ocrGuidIsEq(guid, i->guid()) && "Datablock lookup mismatch");
     return i->base_addr();
 }
 
 inline void GuidOffsetForAddress(const void *target, const void *source,
-                                 ocrGuid_t *guid_out, ptrdiff_t *offset_out) {
+                                 ocrGuid_t *guid_out, ptrdiff_t *offset_out,
+                                 bool embedded) {
     using bookkeeping::DbPair;
     // All three cases are handled internally by this function call.
     // optimized case: treat as intra-datablock RelPtr
@@ -195,23 +201,34 @@ inline void GuidOffsetForAddress(const void *target, const void *source,
         ptrdiff_t src_addr = reinterpret_cast<ptrdiff_t>(source);
         auto j = std::upper_bound(a_start, a_end, DbPair(dst_addr),
                                   DbPair::CompareBases);
-        ASSERT(j != a_start);
+        assert(j != a_start);
         auto i = j - 1;
-        ptrdiff_t end_addr = (j == a_end)
-                                     ? std::numeric_limits<ptrdiff_t>::max()
-                                     : j->base_addr();
-        ASSERT(i != a_end && i->base_addr() <= dst_addr &&
+        ptrdiff_t db_size = 0;
+        ocrDbGetSize(i->guid(), reinterpret_cast<u64 *>(&db_size));
+        ptrdiff_t end_addr = i->base_addr() + db_size;
+#if 1
+        if (!(dst_addr <= end_addr)) {
+//            FIX ME: failed in BinaryTree and UTS
+//            PRINTF("db size is %lu, src is %p, dst is %lx, target is %p, base "
+//                   "is %lx, end is %lx\n",
+//                   db_size, source, dst_addr, target, i->base_addr(), end_addr);
+        }
+        assert(i != a_end);
+        assert(i->base_addr() <= dst_addr);
+        assert(dst_addr <= end_addr);
+
+        assert(i != a_end && i->base_addr() <= dst_addr &&
                dst_addr <= end_addr &&
                "Based pointer must point into an acquired datablock");
-        // output results
-        if (i->base_addr() <= src_addr && src_addr <= end_addr) {
+#endif
+        if (embedded && i->base_addr() <= src_addr && src_addr <= end_addr) {
             // optimized case: treat as intra-datablock RelPtr
             *guid_out = UNINITIALIZED_GUID;
-            *offset_out = dst_addr - src_addr;
+            *offset_out = CombineBaseOffset(-src_addr, dst_addr);
         } else {
             // normal case: inter-datablock pointer
             *guid_out = i->guid();
-            *offset_out = dst_addr - i->base_addr();
+            *offset_out = CombineBaseOffset(-i->base_addr(), dst_addr);
         }
     }
 }

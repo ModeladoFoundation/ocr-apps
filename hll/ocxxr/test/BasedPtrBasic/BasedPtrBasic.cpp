@@ -6,7 +6,7 @@ void ChildTask(ocxxr::Datablock<ocxxr::BasedPtr<int>> db, ocxxr::Arena<void>) {
     PRINTF("Running child task\n");
     int actual = **db;
     PRINTF("%d vs %d\n", actual, kPayload);
-    ASSERT(actual == kPayload);
+    assert(actual == kPayload);
     ocxxr::Shutdown();
 }
 
