@@ -105,7 +105,7 @@ int DRinit_fcn(FFJ_Ledger_t * in_ledger, DRshared_t * in_shared, reductionPrivat
         err = ocrEventCreateParams(&(io_reducPrivate->returnEVT), OCR_EVENT_CHANNEL_T, false, &params); IFEB;
 
         err = clear_DRshared(in_shared); IFEB;
-
+        // PRINTF("INFO: DR: Init\n");
         TimeMark_t t = getTime();
         in_ledger->at_DRinit_fcn = t;
         break;
@@ -123,7 +123,7 @@ int DR_reduxA_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
 
         const unsigned int val = in_ledger->rankid + 1U;
         sum = val * in_multiplier;
-
+        // PRINTF("INFO: DR_reduxA_start_fcn\n");
 #       ifdef DR_ENABLE_REDUCTION_A
             err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
             reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
@@ -155,7 +155,7 @@ int DR_reduxA_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
 
         ReducSum_t x = *in_sum;
         err = ocrDbDestroy( in_sum_guid ); IFEB;
-
+        // PRINTF("INFO: DR_reduxA_stop_fcn\n");
         ReducSum_t expected = 0;
 
 #       ifdef DR_ENABLE_REDUCTION_A
@@ -194,7 +194,7 @@ int DR_reduxB_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
 
         const unsigned int val = in_ledger->rankid + 1U;
         sum = val * in_multiplier;
-
+        // PRINTF("INFO: DR_reduxB_start_fcn\n");
 #       ifdef DR_ENABLE_REDUCTION_B
 #ifdef DR_ENABLE_REDUCTION_EVENT
             err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
@@ -225,7 +225,7 @@ int DR_reduxB_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
     int err = 0;
     while(!err){
         //TODO: Find a way to reclaim the memory and objects used by io_reducPrivate and reduction algorithm.
-
+        // PRINTF("INFO: DR_reduxB_stop_fcn\n");
         TimeMark_t t = getTime();
         in_ledger->at_DR_reduxB_stop_fcn = t;
         TimeMark_t dt = t - in_ledger->at_DR_reduxB_start_fcn;

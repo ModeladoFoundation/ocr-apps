@@ -1,0 +1,57 @@
+2017Feb1 - dvillen
+= The test script "ptest" assumes that the command " OCR_TYPE=x86-mpi make run"
+  can be successfully run. If so, the performance test "ptest" creates a reference file
+  "z_ref_output" which is what we expect the code to output.
+  It then proceed to autogen the OCR code, run it and compare its output to the reference file.
+  Upon success, zero is returned; otherwise whatever caused an error is returned.
+= As it is now, this performance test is a performance test for
+  the OCR reduction library made by Dave S. Scott.
+= As usual, comment out the "rm -f z_*" line from the file "ptest" in order
+  to be able to retain the generated OCR .c driver file "z_ptest_daveReduction.c"
+
+= The file "ptest_daveReduction.h" has the following features:
+    - The code uses 2 ALLREDUCEs, the first one called A, and the second one called B.
+        The first reduction can be disable by commenting out "DR_ENABLE_REDUCTION_A".
+        The second reduction can be disable by commenting out "DR_ENABLE_REDUCTION_B".
+      When commented out, the receiving EDT will still get a DBK, mimicking what
+      the usual ALLREDUCE does.
+
+    - All ALLREDUCE operations is done using type "double" scalar with the addition
+      operator.
+
+= The file "ptest_FORforkjoin.h" has the following features:
+    - If one comments out the macro constant "FFJ_ENABLE_AFFINITIES", no affinities
+      will be used, i.e. the NULL_HINT value will be used instead.
+    - The function "calculate_pid" is where the policy domain attribution
+      calculated.  Provide your own function for a different attribution.
+
+= The following is a list of the constants used:
+
+  - COUNT_FOR_FORKJOIN in the file "ptest_FORforkjoin.h"
+        This defines the number of MPI-equivalent "ranks" to used.
+
+  - RECURB_ITER_COUNT in the file "ptest_FORforkjoin.c" is the constant which
+    specifies the number of tail iterations to do, i.e. the number of
+    reduction B which will be done.  By default, it is set to 100 iterations.
+
+  - The following 2 constants from the file "ptest_Davereduction.h"
+        SLOT4REDUCTION_A
+        SLOT4REDUCTION_B
+    determines which the slot number and offset for each of the reductions.
+    -->IMPORTANT: If the data flows changes, and these constants are not properly
+                  set, the code will hang.
+
+  - The number of times the reduction A is called is one.
+    The number of times the reduction B is called depends on the value given to
+        io->nb_iteration_for_recurB
+    in ptest_FORforkjoin.c::init_FFJ_Ledger()
+
+  - Uncommenting the constant TAILRECURSION_VERBOSE in file "tailrecursion.c"
+    causes the tail recursion to output a lot of comments.
+
+  - The constant FFJ_AFFINITY_STRATEGY in "ptest_FORforkjoin.h" determines which
+    affinity strategy to use.  The strategies are selected in the function "ptest_FORforkjoin.h::calculate_pid()"
+    By default, it is set to strategy 1, a simple compact stacking of the
+    virtual MPI ranks in the different policy domains.
+
+

@@ -1,0 +1,35 @@
+#!/bin/bash -l
+#SBATCH -p TPLARG_QUEUE
+#SBATCH -N TPLARG_NODE_SCALING
+#SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
+#SBATCH -J TPLARG_JOB_NAME
+#SBATCH -o TPLARG_JOB_NAME
+#SBATCH -L SCRATCH
+
+export REPO_TOP=TPLARG_REPO_TOP
+
+export OCRRUN_OPT_ENVKIND="SLURM"
+
+# To avoid confusing the meta submit dir for the application's one.
+unset SLURM_SUBMIT_DIR
+# Go over each campaign folder
+export LOG_CPGN=${PWD}/../../../log_cpgn
+for cpgn in `cat ${LOG_CPGN}`; do
+    # Do the invocation from the application's folder
+    cd ${cpgn}/..
+    echo "PWD=$PWD"
+    # Find the scripts that match this node configuration
+    # like: ws_reduction-nersc._A2_R3_TREDOP_ALLREDUCE_N3_C2.sh
+    for s in `ls ${cpgn}/jobdir/*_NTPLARG_NODE_SCALING[_.]*sh`; do
+        # Invoke the job
+        outname=`cat ${s} | grep "\-J" | cut -d' ' -f3-3`
+        echo "Invoke ${s}"
+        CURDATE=`date +%F_%Hh%M`
+        EXP_OUTDIR="job_output_${CURDATE}.XXX"
+        export EXP_OUTDIR=`mktemp -d ${EXP_OUTDIR}`
+        mkdir -p ${cpgn}/jobdir/${EXP_OUTDIR}
+        ${s}>${cpgn}/jobdir/${EXP_OUTDIR}/$outname
+    done
+done
+
+

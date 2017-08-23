@@ -26,7 +26,7 @@ echo "All other measurements in micro-seconds."
 #Processing for number of iterations
 #   INFO: FFJ_Ledger: Number of iterationB requested= 100
 LABEL='iterationB'
-ITER_COUNT="$(grep iterationB $FNAME|tr '=' '\n'|grep -v iteration)"
+ITER_COUNT="$(grep iterationB z_log|tr '=' '\n'|grep -v iteration)"
 echo "$LABEL= $ITER_COUNT"
 
 #Processing lines for reduxA
@@ -35,7 +35,7 @@ LABEL='reduxA'
 A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f1)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
-STATS="$(python y_calc_stats.py $OUTF)"
+STATS="$(python ./scripts/y_calc_stats.py $OUTF)"
 printf '%16s  %s\n' "$LABEL" "$STATS"
 
 #Processing lines for reduxB
@@ -44,7 +44,7 @@ LABEL='reduxB'
 A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f2)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
-STATS="$(python y_calc_stats.py $OUTF)"
+STATS="$(python ./scripts/y_calc_stats.py $OUTF)"
 printf '%16s  %s\n' "$LABEL" "$STATS"
 
 #Processing lines for cumulReduxB
@@ -53,7 +53,7 @@ LABEL='cumulReduxB'
 A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f3)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
-STATS="$(python y_calc_stats.py $OUTF)"
+STATS="$(python ./scripts/y_calc_stats.py $OUTF)"
 printf '%16s  %s\n' "$LABEL" "$STATS"
 
 #Processing lines for scatter
@@ -62,7 +62,7 @@ LABEL='scatter'
 A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f1)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
-STATS="$(python y_calc_stats.py $OUTF)"
+STATS="$(python ./scripts/y_calc_stats.py $OUTF)"
 printf '%16s  %s\n' "$LABEL" "$STATS"
 
 #Processing lines for FORtransit
@@ -71,6 +71,6 @@ LABEL='FORtransit'
 A="$(grep INFO $FNAME|grep $LABEL|tr -s ' ' '\t'|cut -f5|tr '=' '\n'|grep -v $LABEL|cut -d',' -f2)"
 #dbg> echo $A
 printf "%s\n" "${A[@]}" > $OUTF
-STATS="$(python y_calc_stats.py $OUTF)"
+STATS="$(python ./scripts/y_calc_stats.py $OUTF)"
 printf '%16s  %s\n' "$LABEL" "$STATS"
 

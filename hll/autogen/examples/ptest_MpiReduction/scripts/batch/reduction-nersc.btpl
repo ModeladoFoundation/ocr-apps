@@ -1,0 +1,18 @@
+#!/bin/bash -l
+#SBATCH -p TPLARG_QUEUE
+#SBATCH -N TPLARG_NODE_SCALING
+#SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
+#SBATCH -J TPLARG_JOB_NAME
+#SBATCH -o TPLARG_JOB_NAME.out
+#SBATCH -L SCRATCH
+
+export REPO_TOP=TPLARG_REPO_TOP
+
+cd ${REPO_TOP}/apps/hll/autogen/examples/ptest_MpiReduction
+
+let i=0
+let ub=TPLARG_NB_RUN
+while (( $i < $ub )); do
+    srun -c 48 -N TPLARG_NODE_SCALING -n TPLARG_NODE_SCALING TPLARG_SRUN_ARGS ./TPLARG_JOB_NAME
+    let i=$i+1
+done

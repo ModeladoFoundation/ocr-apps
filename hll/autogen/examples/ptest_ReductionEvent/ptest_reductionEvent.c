@@ -1,15 +1,9 @@
-#ifndef PTEST_DAVEREDUCTION_H
-#include "ptest_daveReduction.h"
+#ifndef PTEST_ReductionEvent_H
+#include "ptest_reductionEvent.h"
 #endif
 
 #define ENABLE_EXTENSION_LABELING  // For labeled GUIDs
 #include "extensions/ocr-labeling.h"  // For labeled GUIDs
-
-#ifdef REDUCTION_EAGER
-#include "reductionEager.h"
-#else
-#include "reduction.h"
-#endif
 
 #include "ptest_FORforkjoin.h" //FFJ_Ledger_t
 
@@ -49,14 +43,7 @@ int DRmainEdt_fcn(DRshared_t * o_sharedRef, DRshared_t * o_shared, unsigned long
         err = init_DRshared(o_shared); IFEB;
 
         ocrGuid_t reductionRangeGUID = NULL_GUID;
-        unsigned long rangeCount;
-#ifdef REDUCTION_EAGER
-        //Note: *2 is for eager reduction library double buffering I think
-        rangeCount = in_nrank*2;
-#else
-        rangeCount = in_nrank;
-#endif
-        err = ocrGuidRangeCreate(&reductionRangeGUID, rangeCount, GUID_USER_EVENT_STICKY); IFEB;
+        err = ocrGuidRangeCreate(&reductionRangeGUID, 1, GUID_USER_EVENT_REDUCTION); IFEB;
 
         GUID_ASSIGN_VALUE(o_sharedRef->reductionRangeGUID, reductionRangeGUID);
         GUID_ASSIGN_VALUE(o_shared->reductionRangeGUID, reductionRangeGUID);
@@ -89,23 +76,20 @@ int DRinit_fcn(FFJ_Ledger_t * in_ledger, DRshared_t * in_shared, reductionPrivat
     int err = 0;
     while(!err){
         //DBG> PRINTF("INFO: DBG: at DRinit_fcn rankid=%u\n", in_ledger->rankid);
-
-        io_reducPrivate->nrank  = in_ledger->nrank;
-        io_reducPrivate->myrank = in_ledger->rankid;
-        io_reducPrivate->ndata  = 1; // 1 means that the object we are going to allReduce will be a scalar.
-        io_reducPrivate->reductionOperator = REDUC_OPERATOR;
-        io_reducPrivate->rangeGUID = in_shared->reductionRangeGUID;
-        io_reducPrivate->new = 1;
-        io_reducPrivate->type = REDUC_OPERATION_TYPE;
-
+        ocrGuid_t evtGuid;
+        ocrGuidFromIndex(&evtGuid, in_shared->reductionRangeGUID, 0);
         ocrEventParams_t params;
-        params.EVENT_CHANNEL.maxGen = 2; //2 for channel exchange
-        params.EVENT_CHANNEL.nbSat = 1;
-        params.EVENT_CHANNEL.nbDeps = 1;
-        err = ocrEventCreateParams(&(io_reducPrivate->returnEVT), OCR_EVENT_CHANNEL_T, false, &params); IFEB;
-
+        params.EVENT_REDUCTION.maxGen        = TEST_MAXGEN;
+        params.EVENT_REDUCTION.nbContribs    = in_ledger->nrank;
+        params.EVENT_REDUCTION.nbContribsPd  = (in_ledger->nrank / in_ledger->OCR_affinityCount);
+        params.EVENT_REDUCTION.nbDatum       = TEST_NBDATUM;
+        params.EVENT_REDUCTION.arity         = TEST_ARITY;
+        params.EVENT_REDUCTION.op            = TEST_OP;
+        params.EVENT_REDUCTION.type          = TEST_TYPE;
+        params.EVENT_REDUCTION.reuseDbPerGen = TEST_REUSEDBPERGEN;
+        ocrEventCreateParams(&evtGuid, OCR_EVENT_REDUCTION_T, GUID_PROP_IS_LABELED, &params);
+        io_reducPrivate->evtGuid = evtGuid;
         err = clear_DRshared(in_shared); IFEB;
-
         TimeMark_t t = getTime();
         in_ledger->at_DRinit_fcn = t;
         break;
@@ -125,8 +109,9 @@ int DR_reduxA_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
         sum = val * in_multiplier;
 
 #       ifdef DR_ENABLE_REDUCTION_A
-            err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
-            reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
+            err = ocrAddDependenceSlot(io_reducPrivate->evtGuid, (u32) in_ledger->rankid, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+            err = ocrEventReductionSatisfySlot(io_reducPrivate->evtGuid, &sum, (u32) in_ledger->rankid); IFEB;
+            // reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
 #       else
             ocrGuid_t gd_sum = NULL_GUID;
             ReducSum_t * o_sum = NULL;
@@ -149,12 +134,12 @@ int DR_reduxA_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
 {
     int err = 0;
     while(!err){
-        //TODO: Find a way to reclaim the memory and objects used by io_reducPrivate and reduction algorithm.
         TimeMark_t t = getTime();
         in_ledger->at_DR_reduxA_stop_fcn = t;
 
         ReducSum_t x = *in_sum;
-        err = ocrDbDestroy( in_sum_guid ); IFEB;
+        // err = ocrDbDestroy( in_sum_guid ); IFEB;
+        err = ocrDbRelease( in_sum_guid ); IFEB;
 
         ReducSum_t expected = 0;
 
@@ -180,10 +165,6 @@ int DR_reduxA_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
     return err;
 }
 
-/**
- * io_reducPrivateGuid: where we want the reduction answer to be written to
- * reductionPrivate_t: reduction configuration data-structure
- */
 int DR_reduxB_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
                         ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
                         unsigned int in_destSlot, ocrGuid_t in_destinationGuid)
@@ -191,17 +172,15 @@ int DR_reduxB_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
     int err = 0;
     while(!err){
         ReducSum_t sum = 0;
-
-        const unsigned int val = in_ledger->rankid + 1U;
+        const unsigned int rankid = in_ledger->rankid;
+        const unsigned int val = rankid + 1U;
         sum = val * in_multiplier;
 
 #       ifdef DR_ENABLE_REDUCTION_B
-#ifdef DR_ENABLE_REDUCTION_EVENT
-            err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
-#else
-            err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
-            reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
-#endif
+            err = ocrAddDependenceSlot(io_reducPrivate->evtGuid, (u32) in_ledger->rankid, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+            err = ocrEventReductionSatisfySlot(io_reducPrivate->evtGuid, &sum, (u32) in_ledger->rankid); IFEB;
+            // err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+            // reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
 #       else
             ocrGuid_t gd_sum = NULL_GUID;
             ReducSum_t * o_sum = NULL;
@@ -224,8 +203,6 @@ int DR_reduxB_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
 {
     int err = 0;
     while(!err){
-        //TODO: Find a way to reclaim the memory and objects used by io_reducPrivate and reduction algorithm.
-
         TimeMark_t t = getTime();
         in_ledger->at_DR_reduxB_stop_fcn = t;
         TimeMark_t dt = t - in_ledger->at_DR_reduxB_start_fcn;
@@ -233,7 +210,8 @@ int DR_reduxB_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
         in_ledger->cumulsum_DR_reduxB_stop_fcn += dt;
 
         ReducSum_t x = *in_sum;
-        err = ocrDbDestroy( in_sum_guid ); IFEB;
+        err = ocrDbRelease( in_sum_guid ); IFEB;
+        // err = ocrDbDestroy( in_sum_guid ); IFEB;
 
         ReducSum_t expected = 0;
 

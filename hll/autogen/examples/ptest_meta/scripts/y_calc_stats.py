@@ -69,22 +69,21 @@ def calc_stats(in_filename):
     with open(in_filename) as f:
         content = f.readlines()
 
-    sz = len(content)
-    #print('sz=' + str(sz))
+    sanContext = filter(lambda x : x.strip().isdigit() , content)
+    sz = len(sanContext)
     if 1 >= sz:
         return (sz, -1,-1,-1,-1,-1)
 
-    for i,x in enumerate(content):
+    for i,x in enumerate(sanContext):
         x = x.strip()
-        content[i] = float(x)
+        sanContext[i] = float(x)
 
-    # print(content)
     count   = sz
-    moyenne = mean(content)
-    mediane = median(content)
-    biggest = maxi(content)
-    smallest= mini(content)
-    stdev   = std(content)
+    moyenne = mean(sanContext)
+    mediane = median(sanContext)
+    biggest = maxi(sanContext)
+    smallest= mini(sanContext)
+    stdev   = std(sanContext)
 
     return (count, mediane,moyenne, stdev, smallest,biggest)
 
