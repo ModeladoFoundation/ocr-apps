@@ -54,7 +54,7 @@ def gen_job_scripts(target_name, exp_name, max_ranks, partition_name, problem_si
     "export GMON_OUT_PREFIX=gmon.out-\n"
     "export OCR_NUM_NODES={0}\n"
     "export CONFIG_NUM_THREADS={thread_count}\n"
-    "export SLURM_SUBMIT_DIR=/home/saananth/apps/hll/rose/tools/ocrTranslate/tests/stencil2D-mpi\n"
+    "export SLURM_SUBMIT_DIR=/home/saananth/xstack-report-expts/apps/hll/rose/tools/ocrTranslate/tests/stencil2D-mpi\n"
     "cd $SLURM_SUBMIT_DIR\n"
     "OCR_TYPE=x86-mpi make run {nrank} {niter} {problem_size}\n"
     )
