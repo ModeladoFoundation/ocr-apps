@@ -1,4 +1,4 @@
 # MPI_INSTALL is required both for building ocrTranslate and translated apps
 # Default MPI_INSTALL can be easily overridden by setting this variable at build stage
-MPI_INSTALL ?= /opt/intel/impi/5.1.2.150/intel64
+MPI_INSTALL ?=
 MPI_INCLUDE_DIR ?= $(MPI_INSTALL)/include
