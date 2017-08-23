@@ -76,9 +76,10 @@ January 2017: modified to support EAGER data blocks
 #include "stdio.h"  //needed for PRINTF debugging
 #include "math.h" //for integer abs
 
+// OCR libraries
 #include "reductionEager.h"
 #include "macros.h"
-
+#include "timer.h"
 
 #define PHASES 54
 #define NPX 3  //number of workers is NPX x NPY x NPZ
@@ -159,7 +160,10 @@ typedef struct{
     ocrGuid_t haloDBK[26][2];
     ocrGuid_t finalOnceEVT;
 //WARNING: time only works for <=30 iterations
-
+#ifdef RANK_TIMER
+    u64 startRankWork;
+    u64 stopRankWork;
+#endif
 #ifdef TIMER
     u64 start[HPCGMAXITER+1][PHASES];
     u64 end[HPCGMAXITER+1][PHASES];
@@ -742,13 +746,12 @@ ocrGuid_t packEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
 #ifdef TIMER
     pbPTR->end[pbPTR->timestep][timePhase] = getTime();
 #endif
-//PRINTF("HE timePhase %d R%d timestep %d time %ld \n", timePhase, pbPTR->myrank, pbPTR->timestep, pbPTR->end[pbPTR->timestep][timePhase]-pbPTR->start[pbPTR->timestep][timePhase]);
 
     ocrEventSatisfy(returnEVT, NULL_GUID);
 
 if(debug != 0) PRINTF("PK%d finish\n", myrank);
 #ifdef TIMER
-    PRINTF("HE timePhase %d R%d timestep %d addD %ld create %ld satisfy %ld finish %ld\n", timePhase, pbPTR->myrank, pbPTR->timestep, time[1]-time[0], time[2]-time[1], time[3]-time[2], time[4]-time[3]);
+    PRINTF("HE timePhase %d R%d timestep %d time %ld \n", timePhase, pbPTR->myrank, pbPTR->timestep, pbPTR->end[pbPTR->timestep][timePhase]-pbPTR->start[pbPTR->timestep][timePhase]);
 #endif
 #ifdef USE_PROFILER
     RETURN_PROFILE(NULL_GUID);
@@ -788,6 +791,7 @@ packs data and sends
 #ifdef USE_PROFILER
     START_PROFILE(app_haloExchange);
 #endif
+#ifndef NO_HALO_HPCG
     PRMDEF(haloExchange);
     u64 level = PRM(haloExchange,level);
     u64 vectorIndex = PRM(haloExchange,vectorIndex);
@@ -849,6 +853,15 @@ packs data and sends
     ocrAddDependence(pbDBK, unpackEDT, SLOT(unpack,privateBlock), DB_MODE_RW);
     ocrAddDependence(pbDBK, packEDT, SLOT(pack,privateBlock), DB_MODE_RO);
     if(debug > 0) PRINTF("HE%d after launch unpack\n", myrank);
+#else
+    PRMDEF(haloExchange);
+    ocrGuid_t unpackEVT = PRM(haloExchange,unpackEVT);
+    ocrGuid_t packEVT = PRM(haloExchange,packEVT);
+    DEPVDEF(haloExchange);
+    ocrGuid_t pbDBK = DEPV(haloExchange,privateBlock,guid);
+    ocrEventSatisfy(packEVT, NULL_GUID);
+    ocrEventSatisfy(unpackEVT, pbDBK);
+#endif
     return(NULL_GUID);
 }
 
@@ -1428,6 +1441,13 @@ only work done is local linear algebra
     u32 myrank = pbPTR->myrank;
     u32 timestep = pbPTR->timestep;
     u32 phase = pbPTR->hpcgPhase;
+#ifdef RANK_TIMER
+#ifndef RANK_TIMER_ITONE
+    if ((timestep == 0) && (phase==0)) {
+        pbPTR->startRankWork = getTime();
+    }
+#endif
+#endif
 
 #ifdef TIMER
     if(phase==0) pbPTR->timePhase = 0;
@@ -1508,8 +1528,11 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase
         ocrAddDependence(rpPTR->returnEVT, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RO);
 
 //launch reduction
-
+#ifdef NO_REDUCTION
+        ocrEventSatisfy(rpPTR->returnEVT, myDataDBK);
+#else
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
+#endif
 
         ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 #ifdef USE_PROFILER
@@ -1520,28 +1543,43 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase
 
     case 1:
 
+#ifdef RANK_TIMER_ITONE
+    // First iteration of the algorithm and we're just past the very first allreduce
+    if ((timestep == 0) && (phase==1)) {
+        pbPTR->startRankWork = getTime();
+    }
+#endif
+
 //consume rtr   CONVERGENCE test
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d global rtr %f \n", myrank, timestep, phase, *returnPTR);
+#ifdef PRINT_DIAGNOSE
         if(myrank==0) PRINTF("time %d rtr %f \n", timestep, *returnPTR);
+#endif
 //PRINTF("time %d rtr %f \n", timestep, *returnPTR);
-        if(timestep==0) pbPTR->rtr0 = *returnPTR;
-           else if(*returnPTR/pbPTR->rtr0 < 1e-13 || timestep == pbPTR->maxIter) {
+        if(timestep==0)
+            pbPTR->rtr0 = *returnPTR;
+        else if(*returnPTR/pbPTR->rtr0 < 1e-13 || timestep == pbPTR->maxIter) {
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finishing \n", myrank, timestep, phase);
-
 /*
 for(i=0;i<pbPTR->maxIter;i++)
     for(j=0;j<PHASES;j++)
         PRINTF("%d %d %d %ld %ld\n", myrank, i, j, pbPTR->start[i][j], pbPTR->end[i][j]);
         */
-
             x = (double *) (((u64) ptr) + pbPTR->vector_offset[0][X]);
             sum = 0;
             for(i=0;i<pbPTR->mt[0];i++) sum += (1-x[i])*(1-x[i]);
             *myDataPTR = sum;
+#ifdef RANK_TIMER
+            u64 stopRankWork = getTime();
+            double elapsed = TICK*(stopRankWork - pbPTR->startRankWork);
+            PRINTF("rank[%"PRIu32"] time: %f \n", pbPTR->myrank, elapsed);
+#endif
             rpPTR->type = REDUCE;
-        rpPTR->returnEVT = pbPTR->finalOnceEVT;
+            rpPTR->returnEVT = pbPTR->finalOnceEVT;
             reductionLaunch(rpPTR, rpDBK, myDataPTR);
+#ifndef NO_REDUCTION
             ocrDbDestroy(returnDBK);
+#endif
 #ifdef USE_PROFILER
             RETURN_PROFILE(NULL_GUID);
 #endif
@@ -1565,9 +1603,9 @@ for(i=0;i<pbPTR->maxIter;i++)
         ocrEventCreate(&hpcgEVT, OCR_EVENT_ONCE_T, EVT_PROP_TAKES_ARG);
         PRM(mg,mgStep) = 0;
         PRM(mg,returnEVT) = hpcgEVT;
-
-
+#ifndef NO_MG
         ocrEdtCreate(&mgEDT, pbPTR->mgTML, EDT_PARAM_DEF, (u64 *) mgPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &pbPTR->myEdtAffinityHNT, NULL);
+#endif
 
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event "GUIDF" \n", myrank, timestep, phase, GUIDA(hpcgEVT));
 
@@ -1575,13 +1613,17 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d return from mg event "GUIDF" \n", myra
         ocrAddDependence(rpDBK, hpcgEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
         ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
         ocrAddDependence(NULL_GUID, hpcgEDT, SLOT(hpcg,returnBlock), DB_MODE_RW);
+#ifdef NO_MG
+        ocrEventSatisfy(hpcgEVT, pbDBK);
+#endif
 
 #ifdef TIMER
     pbPTR->end[pbPTR->timestep][timePhase] = getTime();
 #endif
         ocrDbRelease(pbDBK);
+#ifndef NO_MG
         ocrAddDependence(pbDBK, mgEDT, SLOT(mg,privateBlock), DB_MODE_RW);
-
+#endif
 #ifdef USE_PROFILER
         RETURN_PROFILE(NULL_GUID);
 #endif
@@ -1632,8 +1674,11 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %e \n", myrank, timestep, ph
         ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
 //launch reduction
-
+#ifdef NO_REDUCTION
+        ocrEventSatisfy(rpPTR->returnEVT, myDataDBK);
+#else
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
+#endif
 #ifdef USE_PROFILER
         RETURN_PROFILE(NULL_GUID);
 #endif
@@ -1641,13 +1686,17 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d local rtz %e \n", myrank, timestep, ph
 
     case 3:
 //consume rtz
+#ifdef PRINT_DIAGNOSE
         if(myrank==0) PRINTF("time %d rtz %f \n", timestep, *returnPTR);
+#endif
         pbPTR->rtz = *returnPTR;
 #ifdef COMPUTE
 //compute beta
         if(timestep == 0) beta = 0;
                else beta = *returnPTR/pbPTR->rtzold;
+#ifndef NO_REDUCTION
         ocrDbDestroy(returnDBK);
+#endif
 //update p
         z = (double *) (((u64) ptr) + pbPTR->vector_offset[0][Z]);
         p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
@@ -1736,7 +1785,11 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 
 //launch reduction
 
+#ifdef NO_REDUCTION
+        ocrEventSatisfy(rpPTR->returnEVT, myDataDBK);
+#else
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
+#endif
 #ifdef USE_PROFILER
         RETURN_PROFILE(NULL_GUID);
 #endif
@@ -1747,9 +1800,13 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
         pap = *returnPTR;
 #ifdef COMPUTE
         alpha = pbPTR->rtz/pap;
+#ifdef PRINT_DIAGNOSE
 if(myrank == 0) PRINTF("time %d pap %f \n", timestep, pap);
+#endif
         pbPTR->rtzold = pbPTR->rtz;  //safe time to move it
+#ifndef NO_REDUCTION
         ocrDbDestroy(returnDBK);
+#endif
 //update x and r
         ap = (double *) (((u64) ptr) + pbPTR->vector_offset[0][AP]);
         p = (double *) (((u64) ptr) + pbPTR->vector_offset[0][P]);
@@ -1792,9 +1849,11 @@ if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
         ocrAddDependence(myDataDBK, hpcgEDT, SLOT(hpcg,myDataBlock), DB_MODE_RW);
 
 //launch reduction
-
+#ifdef NO_REDUCTION
+        ocrEventSatisfy(rpPTR->returnEVT, myDataDBK);
+#else
         reductionLaunch(rpPTR, rpDBK, myDataPTR);
-
+#endif
 if(pbPTR->debug > 0) PRINTF("CG%d T%d P%d finish \n", myrank, timestep, phase);
 
 #ifdef USE_PROFILER
@@ -2286,9 +2345,9 @@ if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
     vectorfill(pbPTR->mt[0], (double *) (((u64) ptr) + pbPTR->vector_offset[0][B]), (double *) (((u64) ptr) + pbPTR->matrix_offset[0]));
 //launch
     ocrDbRelease(pbDBK);
-    ocrAddDependence(pbDBK, channelInitEDT, SLOT(hpcg,privateBlock), DB_MODE_RW);
+    ocrAddDependence(pbDBK, channelInitEDT, SLOT(channelInit,privateBlock), DB_MODE_RW);
     ocrDbRelease(rpDBK);
-    ocrAddDependence(rpDBK, channelInitEDT, SLOT(hpcg,reductionPrivateBlock), DB_MODE_RW);
+    ocrAddDependence(rpDBK, channelInitEDT, SLOT(channelInit,reductionPrivateBlock), DB_MODE_RW);
     return NULL_GUID;
 }
 
@@ -2310,6 +2369,7 @@ ocrGuid_t wrapUpEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 stop = getTime();
     double elapsed = TICK*(stop - PRM(wrapUp,startTime));
     PRINTF("elapsed time: %f \n", elapsed);
+    print_throughput_custom_name("HPCG", NULL, 1, NULL, elapsed, "MFlops/s", 1);
     ocrShutdown();
     return NULL_GUID;
 }
@@ -2408,14 +2468,18 @@ Passes the shared blocks to realMain
     u64 myrank;
     ocrGuid_t myEdtAffinity;
 #ifdef AFFINITY
-
     u64 PDcount, myPD;
     ocrAffinityCount(AFFINITY_PD, &PDcount);
+    u64 nrankPD = nrank / PDcount;
 #endif
 
     for(myrank=0;myrank<nrank;myrank++) {
 #ifdef AFFINITY
+#ifdef CONSECUTIVE_PLACEMENT
+        myPD = myrank / nrankPD;
+#else
         myPD = getMyPD(0L, PDcount-1, myrank, npx, npy, npz);
+#endif
         ocrAffinityGetAt(AFFINITY_PD, myPD, &(myEdtAffinity));
         ocrHint_t myHNT;
         ocrHintInit(&myHNT,OCR_HINT_EDT_T);
