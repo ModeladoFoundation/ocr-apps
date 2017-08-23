@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 
 # Jenkins needs to have the ROSE area defined.
-ROSE_INS ?= /home/saananth/local/rose
+ROSE_INS ?=
 
 # Set the boost include dir and lib dir for linking with -lrose
 BOOST_INCLUDE_DIR ?= /usr/include
