@@ -32,6 +32,7 @@ January 2017: modified to support EAGER data blocks
 */
 
 #include "time.h"
+//#define HIGHBW 1
 
 #ifndef TG_ARCH
 #else
@@ -2003,8 +2004,14 @@ if(sbPTR->debug > 0) PRINTF("I%d\n", myrank);
     privateBlock_t * pbPTR;
     reductionPrivate_t * rpPTR;
 
-
+#ifdef HIGHBW
+    ocrHint_t myHint;
+    ocrHintInit(&myHint, OCR_HINT_DB_T);
+    ocrSetHintValue(&myHint, OCR_HINT_DB_HIGHBW, 1);
+    ocrDbCreate(&pbDBK, (void**) &pbPTR, size, DB_PROP_NONE, &myHint, NO_ALLOC);
+#else
     ocrDbCreate(&pbDBK, (void**) &pbPTR, size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
+#endif
 
 //reduction block
     ocrDbCreate(&rpDBK, (void**) &rpPTR, sizeof(reductionPrivate_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
@@ -2293,6 +2300,9 @@ if(pbPTR->debug > 0) PRINTF("HI%d start\n", myrank);
     u32 index = 0;
     ocrHintInit(&pbPTR->myDbkAffinityHNT,OCR_HINT_DB_T);
     ocrSetHintValue(&pbPTR->myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
+#ifdef HIGHBW
+    ocrSetHintValue(&pbPTR->myDbkAffinityHNT, OCR_HINT_DB_HIGHBW, 1);
+#endif
 
     for(k=-1;k<2;k++)
         for(j=-1;j<2;j++)
