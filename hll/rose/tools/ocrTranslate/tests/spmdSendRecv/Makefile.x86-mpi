@@ -7,3 +7,5 @@ OCR_TYPE := x86-mpi
 
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(TOP)/Makefile.x86-base
+# Require for linking with SPMD library
+CC=mpicxx

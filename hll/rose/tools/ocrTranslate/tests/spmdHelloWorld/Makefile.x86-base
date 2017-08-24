@@ -2,6 +2,12 @@
 # and cannot be distributed without it. This notice cannot be
 # removed or modified.
 
+include ../../Makefile-mpi.def
+
+ifndef MPI_INSTALL
+  $(error Set MPI environment in ../../Makefile-mpi.def!)
+endif
+
 # ARCH
 ARCH        := x86
 # APPS
@@ -9,7 +15,7 @@ APPS_ROOT   ?= ../../../../../../apps
 # OCR TRANSLATOR ROOT
 OCR_TRANSLATOR_ROOT ?= ../../../ocrTranslate
 OCR_TRANSLATOR_BIN ?= ${OCR_TRANSLATOR_ROOT}/bin/ocrTranslate
-OCR_TRANSLATOR_INC  ?= -I/opt/intel/tools/compilers_and_libraries_2016.0.109/linux/mpi/intel64/include
+OCR_TRANSLATOR_INC  ?= -I${MPI_INSTALL}/include
 
 # TRANSLATOR INPUT SOURCE
 # Set the target file for translation
@@ -19,8 +25,6 @@ OCR_TRANSLATOR_TARGET_SRC := hello_world.c
 WORKLOAD_SRC          ?= .
 WORKLOAD_BUILD_ROOT   ?= ./build
 WORKLOAD_INSTALL_ROOT ?= ./install
-
-CC = g++
 
 # If 0, the workload has no input file
 # If 1+, this is the index in the argument
