@@ -1,0 +1,11 @@
+#!/bin/bash
+rm *.csv
+python collect-stats.py --file stencil_1_100_768.txt --path ./install/x86/stencil_2d > stencil_stats_1_100_768.txt
+python collect-stats.py --file stencil_2_100_1086.txt --path ./install/x86/stencil_2d > stencil_stats_2_100_1086.txt
+python collect-stats.py --file stencil_4_100_1536.txt --path ./install/x86/stencil_2d > stencil_stats_4_100_1536.txt
+python collect-stats.py --file stencil_8_100_2172.txt --path ./install/x86/stencil_2d > stencil_stats_8_100_2172.txt
+python collect-stats.py --file stencil_16_100_3072.txt --path ./install/x86/stencil_2d > stencil_stats_16_100_3072.txt
+python collect-stats.py --file stencil_32_100_4344.txt --path ./install/x86/stencil_2d > stencil_stats_32_100_4344.txt
+
+# Concatenate all results in to table in translator_stats.csv
+cat stencil_1_100_768.csv stencil_2_100_1086.csv stencil_4_100_1536.csv stencil_8_100_2172.csv stencil_16_100_3072.csv stencil_32_100_4344.csv > translator_stats.csv

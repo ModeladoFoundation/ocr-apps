@@ -1,0 +1,13 @@
+#!/bin/bash
+rm -f stencil_1_*.txt
+rm -f stencil_2_*.txt
+rm -f stencil_4_*.txt
+rm -f stencil_8_*.txt
+rm -f stencil_16_*.txt
+rm -f stencil_32_*.txt
+CONFIG_NUM_THREADS=1 OCR_TYPE=x86 make -f Makefile.x86 run 1 100 768 > stencil_1_100_768.txt
+CONFIG_NUM_THREADS=2 OCR_TYPE=x86 make -f Makefile.x86 run 2 100 1086 > stencil_2_100_1086.txt
+CONFIG_NUM_THREADS=4 OCR_TYPE=x86 make -f Makefile.x86 run 4 100 1536 > stencil_4_100_1536.txt
+CONFIG_NUM_THREADS=8 OCR_TYPE=x86 make -f Makefile.x86 run 8 100 2172 > stencil_8_100_2172.txt
+CONFIG_NUM_THREADS=16 OCR_TYPE=x86 make -f Makefile.x86 run 16 100 3072 > stencil_16_100_3072.txt
+CONFIG_NUM_THREADS=32 OCR_TYPE=x86 make -f Makefile.x86 run 32 100 4344 > stencil_32_100_4344.txt
