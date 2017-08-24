@@ -16,8 +16,12 @@
 #define SPMD_IMPLEMENTATION
 #include "spmd.h"
 
-//#define EDTPRINTF(X) PRINTF("%s", X)
+// #define EDTPRINTF(X) PRINTF("%s", X)
 #define EDTPRINTF(X)
+
+// SA: Uncomment this line to profile  SPMD's template creation
+// #define DPRINTF(...) PRINTF(__VA_ARGS__)
+#define DPRINTF(...)
 
 //#define STORE_DATA_IN_EVENT
 
@@ -695,6 +699,8 @@ u64 spmdSize()
 
 u8 spmd_ocrEdtTemplateCreate_internal(ocrGuid_t *guid, ocrEdt_t funcPtr, u32 paramc, u32 depc, const char* name)
 {
+        DPRINTF("API(INFO) [PD:0x0 W:0x0 EDT:0x0] ENTER spmd_ocrEdtTemplateCreate(*guid=%lx, funcPtr=%p, paramc=%d, depc=%d, name=%s)\n",
+		GUIDA(*guid), funcPtr, (s32)paramc, (s32)depc, name?name:"");
 	template_data* ptr;
 	ocrDbCreate(guid, (void**)&ptr, sizeof(template_data), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 #ifdef ENABLE_EXTENSION_HETEROGENEOUS_FUNCTIONS
