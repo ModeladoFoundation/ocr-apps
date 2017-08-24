@@ -90,7 +90,7 @@ CFLAGS += -DCHANNEL_EVENTS_AT_RECEIVER
 #CFLAGS += -DDEBUG_APP     #To enable DEBUG_PRINTF in the app
 #CFLAGS += -DDEBUG_APP_COARSE  #Minimal debug output for quick debugging
 CFLAGS += -DPRINTBLOCKSTATS
-CFLAGS += -DSHUTDOWN_LAG=120
+CFLAGS += -DSHUTDOWN_LAG=2
 CFLAGS += -DVERIFICATION_RUN   #You might want to use this to compare the reported checksum to the baseline MPI code, Does not affect performance
 
 ifeq ($(STATIC_SCHEDULER),1)
